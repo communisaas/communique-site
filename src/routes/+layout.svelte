@@ -64,7 +64,7 @@
 					}}
 				/>
 			{/if}
-			<span class="ml-auto flex gap-3 items-center h-full">
+			<span class="ml-auto flex gap-3 items-center h-full text-paper-500">
 				{#if $page.data.session}
 					{#if $page.data.session.user?.image}
 						<img src={$page.data.session.user.image} alt="avatar" class="h-10 w-10" />
