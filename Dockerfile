@@ -21,7 +21,7 @@ RUN apt-get update -qq && \
     apt-get install -y python-is-python3 pkg-config build-essential openssl 
 
 # Install node modules
-COPY --link package.json package-lock.json .
+COPY --link package.json package-lock.json ./
 RUN npm install --production=false
 
 # Generate Prisma Client
@@ -34,8 +34,14 @@ COPY --link . .
 # Build application
 RUN --mount=type=secret,id=TINYMCE_KEY \
     --mount=type=secret,id=DATABASE_URL \
+    --mount=type=secret,id=DISCORD_CLIENT_SECRET \
+    --mount=type=secret,id=DISCORD_CLIENT_ID \
+    --mount=type=secret,id=PROVIDER_SECRET \
     export TINYMCE_KEY="$(cat /run/secrets/TINYMCE_KEY)" && \
     export DATABASE_URL="$(cat /run/secrets/DATABASE_URL)" && \
+    export DISCORD_CLIENT_SECRET="$(cat /run/secrets/DISCORD_CLIENT_SECRET)" && \
+    export DISCORD_CLIENT_ID="$(cat /run/secrets/DISCORD_CLIENT_ID)" && \
+    export PROVIDER_SECRET="$(cat /run/secrets/PROVIDER_SECRET)" && \
     npm run build
 
 # Remove development dependencies

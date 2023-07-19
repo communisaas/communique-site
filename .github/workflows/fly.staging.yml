@@ -8,13 +8,16 @@ jobs:
     env:
       TINYMCE_KEY: ${{ secrets.TINYMCE_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+      DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+      PROVIDER_SECRET: ${{ secrets.PROVIDER_SECRET }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
       - name: Install dependencies
         run: npm ci
       - name: Install Playwright Browsers
@@ -35,8 +38,17 @@ jobs:
       FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
       TINYMCE_KEY: ${{ secrets.TINYMCE_KEY }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
+      DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
+      PROVIDER_SECRET: ${{ secrets.PROVIDER_SECRET }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only -c fly.staging.toml --build-secret TINYMCE_KEY=$TINYMCE_KEY --build-secret DATABASE_URL=$DATABASE_URL
+      - run: |
+          flyctl deploy --remote-only -c fly.staging.toml \
+            --build-secret TINYMCE_KEY=$TINYMCE_KEY \
+            --build-secret DATABASE_URL=$DATABASE_URL \
+            --build-secret DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID \
+            --build-secret DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET \
+            --build-secret PROVIDER_SECRET=$PROVIDER_SECRET
