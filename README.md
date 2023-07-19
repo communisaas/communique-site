@@ -16,12 +16,12 @@ Let the collective voice rise.
 2. Download dependencies into app directory with `npm install`
 3. Define or stub environment variables listed below into a `.env` file at repo root
 
-    ```.env
+   ```.env
 
-    TINYMCE_KEY={Public client token for TinyMCE editor}
+   TINYMCE_KEY={Public client token for TinyMCE editor}
 
-    DATABASE_URL={Cockroachdb connection URL for Prisma}
-    
-    ```
+   DATABASE_URL={Cockroachdb connection URL for Prisma}
+
+   ```
 
 4. Run development server on `localhost:5173` with `npm run dev`

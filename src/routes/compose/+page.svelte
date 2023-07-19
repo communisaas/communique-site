@@ -4,20 +4,45 @@
 	import AddRecipient from '$components/icon/Recipient.svelte';
 	import AddTopic from '$components/icon/Topic.svelte';
 	import Post from '$components/icon/Post.svelte';
+	import Reader from '$components/Reader.svelte';
 
 	import { writable, type Writable } from 'svelte/store';
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
+	import { createEventDispatcher, onMount } from 'svelte';
+	import { routeModal } from '$lib/ui/hash';
+	import { goto } from '$app/navigation';
+	import Modal from '$components/Modal.svelte';
+	import modal, { handlePopover } from '$lib/ui/modal';
 
 	export let data: ComposeSchema;
 
 	let composed: Writable<string> = writable('');
 	let postButtonHovered = writable(false);
+	let sessionStore: Writable<UserState>;
+
+	const dispatch = createEventDispatcher();
 
 	$: recipientEmails = [] as (string | FormDataEntryValue)[];
 	$: topics = [] as (string | FormDataEntryValue)[];
 
-	$: console.log($page.data.session);
+	onMount(async () => {
+		sessionStore = (await import('$lib/data/sessionStorage')).store;
+		const hashes = window.location.hash.substring(1).split('#');
+		// TODO use enum
+		await routeModal(hashes, $page, $sessionStore, dispatch);
+	});
+
+	let modalMapping: ModalMap = {
+		privacyPolicy: {
+			component: Reader,
+			props: () => ({ item: $page.data.privacyPolicy, inModal: true })
+		},
+		termsOfUse: {
+			component: Reader,
+			props: () => ({ item: $page.data.termsOfUse, inModal: true })
+		}
+	};
 </script>
 
 <svelte:head>
@@ -25,7 +50,7 @@
 	<meta name="description" content="Write & share email templates!" />
 </svelte:head>
 
-<section class="gradient-background py-8">
+<section class="py-8 min-h-screen">
 	<form
 		class="flex flex-col gap-y-5 rounded-full"
 		method="POST"
@@ -45,7 +70,7 @@
 			}
 
 			const letterInput = document.querySelector("input[name='body']");
-			// TODO validate & sanitize email body
+			// TODO validate & sanitize email body, use openAI moderation API + cheapest model to generate a shortID
 
 			// const webProfile = (
 			// 	await FingerprintJS.load({
@@ -134,6 +159,23 @@
 	</form>
 </section>
 
+{#if $sessionStore && $sessionStore.hasOwnProperty('show')}
+	<div use:modal>
+		{#each Object.keys($sessionStore.show) as modal (modal)}
+			{#if $sessionStore.show[modal] && modalMapping.hasOwnProperty(modal)}
+				<Modal
+					popoverComponent={modalMapping[modal].component}
+					props={modalMapping[modal].props()}
+					on:popover={async (e) => {
+						await handlePopover(e, sessionStore, modal, '/compose');
+						console.log('?');
+					}}
+				/>
+			{/if}
+		{/each}
+	</div>
+{/if}
+
 <style>
 	:global(.mce-content-body) {
 		padding: 0.125rem;
@@ -150,13 +192,5 @@
 	button[type='submit']:hover span {
 		transform: scale(1);
 		transition: 0.1s all ease-in;
-	}
-
-	.gradient-background {
-		background: linear-gradient(
-			90deg,
-			theme('colors.peacockFeather.600'),
-			theme('colors.teal.700')
-		);
 	}
 </style>

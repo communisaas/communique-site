@@ -1,0 +1,115 @@
+.markdown-content {
+    line-height: 1.6;
+    word-wrap: break-word;
+    font-size: 1rem;
+    color: theme('colors.paper.500');
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+    margin-top: 0;
+    margin-bottom: 0;
+    font-weight: 500;
+    line-height: 1.25;
+}
+
+.markdown-content h1 {
+    font-size: 2.6rem;
+    padding-bottom: 0.3em;
+}
+
+.markdown-content h2 {
+    font-size: 2rem;
+    border-bottom: 1px solid #eaecef;
+}
+
+.markdown-content h3 {
+    font-size: 1.6rem;
+}
+
+.markdown-content h4 {
+    font-size: 1.4rem;
+}
+
+.markdown-content h5 {
+    font-size: 1.2rem;
+}
+
+.markdown-content h6 {
+    font-size: 1rem;
+    color: theme('colors.paper.600');
+}
+
+.markdown-content p {
+    margin-top: 8px;
+    margin-bottom: 16px;
+    color: theme('colors.paper.600');
+}
+
+.markdown-content blockquote {
+    margin: 0;
+    padding: 0 1em;
+    color: theme('colors.paper.600');
+    border-left: 0.25em solid theme('colors.paper.800');
+}
+
+.markdown-content ul,
+.markdown-content ol {
+    padding-left: 2em;
+    list-style-type: revert; /* undo tailwind default */
+}
+
+.markdown-content ul.no-list,
+.markdown-content ol.no-list {
+    padding: 0;
+    list-style-type: none;
+}
+
+.markdown-content table {
+    display: block;
+    width: 100%;
+    overflow: auto;
+    border-spacing: 0;
+    border-collapse: collapse;
+}
+
+.markdown-content table th,
+.markdown-content table td {
+    padding: 6px 13px;
+    border: 1px solid theme('colors.paper.600');
+}
+
+.markdown-content img {
+    max-width: 100%;
+    box-sizing: content-box;
+    background-color: theme('colors.paper.500');
+}
+
+.markdown-content code {
+    padding: 0.2em 0.4em;
+    margin: 0;
+    font-size: 85%;
+    background-color: rgba(27,31,35,0.05);
+    border-radius: 3px;
+}
+
+.markdown-content pre {
+    word-wrap: normal;
+    padding: 16px;
+    overflow: auto;
+    line-height: 1.45;
+    background-color: theme('colors.paper.700');
+    border-radius: 3px;
+}
+
+.markdown-content a {
+    color: theme('colors.larimarGreen.600');
+}
+
+.markdown-content a:visited {
+    color: theme('colors.larimarGreen.700');
+}

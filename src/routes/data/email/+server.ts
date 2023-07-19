@@ -8,6 +8,7 @@ const emailFieldMap: FieldMap = {
 };
 
 /** @type {import('./$types').RequestHandler} */
+// TODO same origin policy
 export async function GET({ url }) {
 	const options = {
 		where: Array.from(url.searchParams.entries()).reduce(

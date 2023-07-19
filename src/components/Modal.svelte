@@ -5,8 +5,10 @@
 	import type { email } from '@prisma/client';
 
 	export let popoverComponent: ComponentType;
-	export let item: email;
+	export let props: Props;
+
 	let show: boolean;
+	let menu: HTMLElement;
 
 	const dispatch = createEventDispatcher();
 
@@ -17,21 +19,20 @@
 </script>
 
 <main
-	transition:fade={{ delay: 50, duration: 500, easing: expoIn }}
+	transition:fade={{ delay: 50, duration: 300, easing: expoIn }}
 	aria-label="Send status screen"
 	class="popover fixed items-center z-50 top-0"
 	style="--bodyOverflow: {show ? 'hidden' : 'auto'}"
-	on:click|stopPropagation|preventDefault
-	on:keypress|stopPropagation|preventDefault
 >
 	<section
 		class="absolute text-paper-800 flex flex-col gap-y-2 justify-center items-center min-w-[100vw] min-h-[100vh]"
-		in:fade={{ delay: 25, duration: 250, easing: expoOut }}
-		out:fade={{ delay: 50, duration: 300, easing: expoIn }}
+		in:fade={{ delay: 15, duration: 150, easing: expoIn }}
+		out:fade={{ delay: 25, duration: 200, easing: expoOut }}
+		bind:this={menu}
 	>
 		<svelte:component
 			this={popoverComponent}
-			bind:item
+			{...props}
 			on:popover={(e) => {
 				setPopover(e.detail);
 			}}

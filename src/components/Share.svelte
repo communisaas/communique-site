@@ -9,12 +9,11 @@
 	import { page } from '$app/stores';
 	import { createEventDispatcher } from 'svelte';
 
-	import he from 'he';
-	import { convertHtmlToText, handleMailto } from '$lib/email';
+	import { handleMailto } from '$lib/data/email';
+	import { handleCopy } from '$lib/data/select';
 
 	export let item: email;
 
-	let show: boolean;
 	let emailCopied = false;
 
 	let sent = false;
@@ -22,46 +21,7 @@
 	const dispatch = createEventDispatcher();
 
 	function setPopover(value: boolean) {
-		show = value;
-		dispatch('popover', show);
-	}
-
-	async function handleCopy() {
-		emailCopied = true;
-		const cleanedBody = DOMPurify.sanitize(item.body);
-
-		// Parse the HTML string into a DOM
-		let parser = new DOMParser();
-		let doc = parser.parseFromString(cleanedBody, 'text/html');
-		let plainBody = convertHtmlToText(doc.body);
-
-		// Decode any HTML entities
-		plainBody = he.decode(plainBody);
-
-		// Collapse consecutive newlines
-		plainBody = plainBody.replace(/\n{4,}/g, '\n');
-		try {
-			await navigator.clipboard.write([
-				new window.ClipboardItem({
-					'text/html': new Blob([cleanedBody], { type: 'text/html' })
-				})
-			]);
-		} catch (e) {
-			// handle Firefox where ClipboardItem is not available
-			try {
-				const copyListener = (e: ClipboardEvent) => {
-					e.clipboardData?.setData('text/html', cleanedBody);
-					e.clipboardData?.setData('text/plain', plainBody);
-					e.preventDefault();
-				};
-				document.addEventListener('copy', copyListener);
-				document.execCommand('copy');
-				document.removeEventListener('copy', copyListener);
-			} catch (e) {
-				(console.error || console.log).call(console, e.stack || e);
-			}
-		}
-		setTimeout(() => (emailCopied = false), 2000);
+		dispatch('popover', value);
 	}
 </script>
 
@@ -77,9 +37,9 @@
 					<p class="font-bold text-center">Click clipboard for a formatted copy.</p>
 				{/if}
 				<button
-					on:click={() => handleMailto(dispatch)}
+					on:click={() => handleMailto(dispatch, false)}
 					on:keypress={(e) => {
-						if (e.key === 'Enter') handleMailto(dispatch);
+						if (e.key === 'Enter') handleMailto(dispatch, false);
 					}}
 					class="text-sm opacity-75 hover:underline hover:cursor-pointer hover:bg-transparent"
 					style="background: unset; box-shadow: unset"
@@ -91,9 +51,17 @@
 			<button
 				class="relative w-fit flex-col"
 				style="background: unset; box-shadow: unset"
-				on:click={(e) => handleCopy()}
-				on:keypress={(e) => {
-					if (e.key === 'Enter') handleCopy();
+				on:click={async () => {
+					emailCopied = true;
+					const success = await handleCopy('email', item.body);
+					if (success) if (success) setTimeout(() => (emailCopied = false), 2000);
+				}}
+				on:keypress={async (e) => {
+					if (e.key === 'Enter') {
+						emailCopied = true;
+						const success = await handleCopy('email', item.body);
+						if (success) if (success) setTimeout(() => (emailCopied = false), 2000);
+					}
 				}}
 			>
 				{#if emailCopied}
@@ -184,6 +152,8 @@
 			transform: scale(0.99);
 		}
 	}
+
+	// TODO consolidate button styles
 	button {
 		background: rgba(255, 255, 255, 0.15);
 		border-radius: 16px;

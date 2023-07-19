@@ -1,54 +1,14 @@
 import { TINYMCE_KEY } from '$env/static/private';
 import { v4 as uuidv4 } from 'uuid';
 import type { RequestEvent, PageServerLoad } from './$types';
-import { authenticate } from '$lib/data/endpoint';
 
-import objectMapper from '$lib/data/database';
-import { fail, redirect } from '@sveltejs/kit';
-import { error } from 'console';
-
-class EmailForm {
-	inputFields: EmailFormInput = {
-		subject: '',
-		body: '',
-		shortid: '',
-		topic_list: [],
-		recipient_list: []
-	};
-
-	set subject(line: string) {
-		this.inputFields.subject = line;
-	}
-	set body(text: string) {
-		this.inputFields.body = text;
-	}
-	set topic_list(tagList: string) {
-		this.inputFields.topic_list = tagList.split('␞');
-	}
-	set recipient_list(tagList: string) {
-		this.inputFields.recipient_list = tagList.split('␞');
-	}
-
-	defaultMetrics = { open_count: 0, clipboard_count: 0, send_count: 0, read_count: 0 };
-	emailForm: FormData;
-
-	constructor(emailForm: FormData) {
-		this.emailForm = emailForm;
-	}
-
-	validate() {
-		for (const field of Object.keys(this.inputFields)) {
-			const value = this.emailForm.get(field);
-			if (value != null || value != undefined) {
-				(this as RawEmailForm)[field] = value.toString();
-			} else throw new Error(`${field} is empty`);
-		}
-	}
-}
+import { objectMapper } from '$lib/data/database';
+import { fail } from '@sveltejs/kit';
+import { EmailForm } from '$lib/data/email';
 
 /** @type {import('./$types').Actions} */
 export const actions = {
-	publish: async ({ cookies, request }: RequestEvent) => {
+	publish: async ({ request }: RequestEvent) => {
 		const formSubmission = await request.formData();
 
 		// TODO implement openid account linking to store profile

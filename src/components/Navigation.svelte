@@ -11,7 +11,7 @@
 
 <aside class="object-cover inline-flex h-full">
 	<div class="flex flex-col items-center h-full bg-peacockFeather-700 shadow-nav z-50">
-		<nav aria-label="Page navigation" class="flex flex-col">
+		<nav aria-label="Page navigation" class="flex flex-col sticky top-0">
 			{#each Object.entries(navLinks) as [route, link]}
 				<span
 					class:active={$page.route.id == route}
@@ -28,7 +28,6 @@
 							<svelte:component this={link.component} />
 						</icon>
 					</a>
-
 					<ins
 						style="transform-origin: center right;"
 						class:active={$page.route.id == route}
@@ -55,6 +54,7 @@
 	.active {
 		transform: scale(1);
 		height: 100%;
+		filter: contrast(0.4);
 	}
 
 	a::before {
@@ -80,9 +80,7 @@
 		padding: 1em 0.5em;
 		display: block;
 	}
-	.active {
-		filter: contrast(0.4);
-	}
+
 	.active a::before {
 		border-right: 4px solid theme('colors.larimarGreen.600');
 		display: block;

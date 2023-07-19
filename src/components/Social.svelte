@@ -1,32 +1,12 @@
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
 	import Checkmark from './icon/Checkmark.svelte';
+	import { handleCopy } from '$lib/data/select';
 
 	export let shortLink: URL;
 	export let linkMessage = '';
 
 	let linkCopied = false;
-
-	async function handleCopy() {
-		linkCopied = true;
-		try {
-			await navigator.clipboard.writeText(shortLink.href);
-		} catch (e) {
-			// handle Firefox where ClipboardItem is not available
-			try {
-				const copyListener = (e: ClipboardEvent) => {
-					e.clipboardData?.setData('text/plain', shortLink.href);
-					e.preventDefault();
-				};
-				document.addEventListener('copy', copyListener);
-				document.execCommand('copy');
-				document.removeEventListener('copy', copyListener);
-			} catch (e) {
-				(console.error || console.log).call(console, e.stack || e);
-			}
-		}
-		setTimeout(() => (linkCopied = false), 2000);
-	}
 </script>
 
 <aside>
@@ -63,8 +43,18 @@
 			class:blur-sm={linkCopied}
 			class:opacity-50={linkCopied}
 			aria-label="copy shortened link"
-			on:click={() => handleCopy()}
-			on:keypress={() => handleCopy()}
+			on:click={async () => {
+				linkCopied = true;
+				const success = await handleCopy('link', shortLink.host + shortLink.pathname);
+				if (success) setTimeout(() => (linkCopied = false), 2000);
+			}}
+			on:keypress={async (e) => {
+				if (e.key === 'Enter') {
+					linkCopied = true;
+					const success = await handleCopy('link', shortLink.host + shortLink.pathname);
+					if (success) setTimeout(() => (linkCopied = false), 2000);
+				}
+			}}
 		>
 			{shortLink.host + shortLink.pathname}
 		</button>

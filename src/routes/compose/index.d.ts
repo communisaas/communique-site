@@ -1,4 +1,4 @@
-interface ComposeSchema {
+interface ComposeSchema extends LayoutSchema {
 	profilerKey: string;
 	profilerURL: string;
 	profilerScriptURL: string;

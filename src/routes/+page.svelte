@@ -2,42 +2,44 @@
 	import Email from '$components/Email.svelte';
 	import Panel from '$components/Panel.svelte';
 	import Modal from '$components/Modal.svelte';
-	import modal from '$lib/ui/modal';
-	import { handleSelect } from '$lib/data/endpoint';
+	import modal, { handlePopover } from '$lib/ui/modal';
+	import { handleSelect } from '$lib/data/select';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import type { Writable } from 'svelte/store';
 	import { goto } from '$app/navigation';
-	import { setActiveEmail, handleMailto } from '$lib/email';
+	import { handleMailto } from '$lib/data/email';
 	import Share from '$components/Share.svelte';
 	import Tag from '$components/Tag.svelte';
+	import Login from '$components/Login.svelte';
+	import { page } from '$app/stores';
+	import { routeModal } from '$lib/ui/hash';
+	import Reader from '$components/Reader.svelte';
+
+	export let data;
 
 	let sessionStore: Writable<UserState>;
-	let showSharePopover = false;
 
 	const dispatch = createEventDispatcher();
 
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
-		// Watch for changes to the URL hash
-		const slug = window.location.hash.substring(1).replaceAll('#', '');
-		if (slug) {
-			// If the hash matches an email slug and email has been set as a selection target, show the modal
-			if (
-				$sessionStore &&
-				'email' in $sessionStore &&
-				'content' in $sessionStore.email &&
-				$sessionStore.email.content.shortid === slug
-			) {
-				showSharePopover = true;
-				handleMailto(dispatch);
-			} else {
-				// Otherwise, resolve the slug
-				await setActiveEmail(slug);
-				showSharePopover = true;
-				handleMailto(dispatch);
-			}
-		}
+		const hashes = window.location.hash.substring(1).split('#');
+		// TODO use enum
+		await routeModal(hashes, $page, $sessionStore, dispatch);
 	});
+
+	let modalMapping: ModalMap = {
+		share: { component: Share, props: () => ({ item: $sessionStore.email.content }) },
+		login: { component: Login, props: () => ({ providers: data.authProviders }) },
+		privacyPolicy: {
+			component: Reader,
+			props: () => ({ item: $page.data.privacyPolicy, inModal: true })
+		},
+		termsOfUse: {
+			component: Reader,
+			props: () => ({ item: $page.data.termsOfUse, inModal: true })
+		}
+	};
 
 	// TODO loading placeholders
 </script>
@@ -47,7 +49,11 @@
 	<meta name="description" content="Write & share email templates!" />
 </svelte:head>
 
-<div role="feed" aria-label="Welcome to communique, you are at the home page" class="flex flex-col">
+<div
+	role="feed"
+	aria-label="Welcome to communique, you are at the home page"
+	class="flex flex-col h-full"
+>
 	{#if $sessionStore && $sessionStore.hasOwnProperty('template')}
 		{#each Object.entries($sessionStore.template) as [index, panel]}
 			{#key panel.header}
@@ -77,7 +83,7 @@
 					on:externalAction={async (e) => {
 						if (e.detail.type === 'email') {
 							goto(`/#${e.detail.context.shortid}`, { noScroll: true });
-							showSharePopover = true;
+							$sessionStore.show.share = true;
 							handleMailto(dispatch);
 						}
 					}}
@@ -87,17 +93,16 @@
 	{/if}
 </div>
 
-{#if showSharePopover}
+{#if $sessionStore && $sessionStore.hasOwnProperty('show')}
 	<div use:modal>
-		<Modal
-			popoverComponent={Share}
-			bind:item={$sessionStore.email.content}
-			on:popover={(e) => {
-				showSharePopover = e.detail;
-				if (!showSharePopover) {
-					goto('/', { noScroll: true });
-				}
-			}}
-		/>
+		{#each Object.keys($sessionStore.show) as modal (modal)}
+			{#if $sessionStore.show[modal]}
+				<Modal
+					popoverComponent={modalMapping[modal].component}
+					props={modalMapping[modal].props()}
+					on:popover={(e) => handlePopover(e, sessionStore, modal, '/')}
+				/>
+			{/if}
+		{/each}
 	</div>
 {/if}

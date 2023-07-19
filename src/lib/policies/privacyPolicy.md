@@ -1,14 +1,14 @@
-# Privacy Policy for Communique
+# Privacy Policy
 
-Communique ("we", "us", "our") takes your privacy seriously and is committed to protecting your personal data. Here, we detail how your personal information is handled for our services on the communi.email website (the "Website") and the Communique application. It applies where we are acting as a [data controller](https://commission.europa.eu/law/law-topic/data-protection/reform/rules-business-and-organisations/obligations/controllerprocessor/what-data-controller-or-data-processor_en#:~:text=The%20data%20controller%20determines%20the,it%20is%20the%20data%20controller.) with respect to the personal data of our Website, application visitors, and users; in other words, wherever we must determine the purposes and means of the processing of personal data.
+Communique (_"we", "us", "our"_) takes your privacy seriously and is committed to protecting your personal data. Here, we detail how your personal information is handled for our services on the communi.email website (_the "Website"_) and the Communique application. It applies where we are acting as a [data controller](https://commission.europa.eu/law/law-topic/data-protection/reform/rules-business-and-organisations/obligations/controllerprocessor/what-data-controller-or-data-processor_en#:~:text=The%20data%20controller%20determines%20the,it%20is%20the%20data%20controller.) with respect to the personal data of our Website, application visitors, and users; in other words, wherever we must determine the purposes and means of the processing of personal data.
 
 ## Information We Collect and How We Collect It
 
-We collect personal data about you through:
+We collect personal data about you via—
 
-Direct interactions—you may provide us data by filling in forms or by corresponding with us by mail, email, or otherwise. This includes personal data you provide when you sign up for our service, create an account on our website, request customer support, or engage with us through social media.
+**Direct inputs:** you may provide us data by filling in forms or by corresponding with us by mail, email, or otherwise. This includes personal data you provide when you sign up for our service, create an account on our website, request customer support, or engage with us through social media.
 
-Automated technologies or interactions—as you interact with our Website and application, we may automatically collect technical data about your device, browsing actions, and patterns. We collect this personal data by using cookies, server logs, and other similar technologies.
+**General analytics:** as you interact with our Website and application, we may automatically collect technical data about your device, browsing actions, and patterns. We collect this personal data by using cookies, server logs, and other similar technologies.
 
 The types of personal data we collect include identifiers such as name, IP address, email address, and account names.
 

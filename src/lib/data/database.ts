@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-const objectMapper = new PrismaClient();
+export const objectMapper = new PrismaClient();
 
 export function find(table: string, options: Query, scope: 'unique' | 'many' = 'many') {
 	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -18,5 +18,3 @@ export function find(table: string, options: Query, scope: 'unique' | 'many' = '
 BigInt.prototype.toJSON = function (): string {
 	return this.toString();
 };
-
-export default objectMapper;

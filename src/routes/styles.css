@@ -1,4 +1,5 @@
 @import '@fontsource/fira-mono';
+@import 'markdown.css';
 
 :root {
 	--font-body: Arial, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu,
@@ -10,11 +11,15 @@
 	color: var(--color-text);
 }
 
+html {
+	background-color: theme('colors.peacockFeather.600');
+}
+
 body {
 	min-height: 100vh;
 	margin: 0;
 	background-attachment: fixed;
-	background-color: theme('colors.peacockFeather.700');
+	background: linear-gradient(90deg, theme('colors.peacockFeather.600'), theme('colors.teal.700'));
 	background-size: 100vw 100vh;
 	scroll-behavior: smooth;
 }
@@ -84,7 +89,9 @@ button:focus:not(:focus-visible) {
 	background-color: theme('colors.larimarGreen.600');
 }
 
-input[type="search"]::-webkit-search-decoration,
-input[type="search"]::-webkit-search-cancel-button,
-input[type="search"]::-webkit-search-results-button,
-input[type="search"]::-webkit-search-results-decoration { display: none; }
+input[type='search']::-webkit-search-decoration,
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-results-button,
+input[type='search']::-webkit-search-results-decoration {
+	display: none;
+}

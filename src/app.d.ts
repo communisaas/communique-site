@@ -7,3 +7,8 @@ declare namespace App {
 	// interface PageData {}
 	// interface Platform {}
 }
+
+declare module '*.md' {
+	const value: string;
+	export default value;
+}

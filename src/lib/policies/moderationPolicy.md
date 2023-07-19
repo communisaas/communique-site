@@ -8,13 +8,13 @@ To this end, Communique has put in place the following Content Moderation Policy
 
 Content that is explicitly prohibited includes, but is not limited to:
 
-*a. Harassment and Bullying:* We do not tolerate content that harasses or bullies individuals or groups in a way that is harmful or malicious. However, we recognize that not all discomforting speech constitutes harassment or bullying. Constructive political discourse, advocacy, and protest are vital aspects of free speech and are allowed on our platform. In this regard, content will be considered harassment or bullying if it involves targeted, repeated, and/or non-consensual aggression towards individuals or groups that is intended to degrade or harm.
+_a. Harassment and Bullying:_ We do not tolerate content that harasses or bullies individuals or groups in a way that is harmful or malicious. However, we recognize that not all discomforting speech constitutes harassment or bullying. Constructive political discourse, advocacy, and protest are vital aspects of free speech and are allowed on our platform. In this regard, content will be considered harassment or bullying if it involves targeted, repeated, and/or non-consensual aggression towards individuals or groups that is intended to degrade or harm.
 
-*b. Hate Speech:* We do not tolerate content that promotes or encourages hatred, discrimination, or violence against individuals or groups based on attributes such as race, ethnicity, religion, gender, age, national origin, disability, or sexual orientation.
+_b. Hate Speech:_ We do not tolerate content that promotes or encourages hatred, discrimination, or violence against individuals or groups based on attributes such as race, ethnicity, religion, gender, age, national origin, disability, or sexual orientation.
 
-*c. Defamatory Content:* False or misleading content intended to harm an individual's or group's reputation is prohibited. However, this does not include critiques or criticisms that are part of broader, constructive conversations or debates.
+_c. Defamatory Content:_ False or misleading content intended to harm an individual's or group's reputation is prohibited. However, this does not include critiques or criticisms that are part of broader, constructive conversations or debates.
 
-*d. Violent or Graphic Content:* Content that is shockingly violent or graphic, or intended to incite violence is prohibited. This does not include content that exposes issues related to violence and societal harm in an informative and respectful manner.
+_d. Violent or Graphic Content:_ Content that is shockingly violent or graphic, or intended to incite violence is prohibited. This does not include content that exposes issues related to violence and societal harm in an informative and respectful manner.
 
 ## 2. Content Reporting and Review
 

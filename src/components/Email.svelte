@@ -71,11 +71,14 @@
 	}
 
 	async function handleSelect() {
+		console.log('focus');
+		// TODO fix tab navigation for nested menu items
 		if (selected.id != item.rowid) {
 			selected.id = item.rowid;
 		}
 		if (expand) {
 			dispatch('externalAction', { type: 'email', context: item });
+			setExpand(false);
 		} else {
 			setExpand(true);
 			scrollToCard = true;
@@ -113,26 +116,23 @@
 <button
 	bind:this={card}
 	on:click={handleSelect}
-	on:keypress={(e) => {
-		if (e.key === 'Enter') {
-			handleSelect();
-		}
-	}}
 	on:blur={handleBlur}
 	aria-label="Email with a subject: {item.subject}"
-	class="{style} flex p-2 m-1 rounded bg-artistBlue-600 items-center relative
-		justify-center min-w-[95%] min-h-[15.5rem] max-w-4xl"
+	class="card flex p-2 m-1 rounded bg-artistBlue-600 items-center relative
+		justify-center w-[97%] max-w-4xl {style}"
 	class:cursor-alias={expand}
 	class:clickable={!nestedHover}
 	style="min-width: {expand ? '99%' : '95%'};"
 >
 	{#if showMenu}
 		<div
+			role="menu"
+			tabindex="0"
 			on:click|stopPropagation={() => {
 				if (expand) {
 					showMenu = !showMenu;
 				} else {
-					expand = true;
+					setExpand(true);
 					handleSelect();
 				} // if menu recently closed but not yet destroyed, still expand the card
 			}}
@@ -141,53 +141,57 @@
 					if (expand) {
 						showMenu = !showMenu;
 					} else {
-						expand = true;
+						setExpand(true);
 						handleSelect();
 					}
 				}
 			}}
 		>
 			<Menu on:mouseenter={() => (nestedHover = true)}>
-				{#each menuItems.filter((item) => item.show) as item (item.name)}
-					<li
-						class="menu__item"
-						on:click={() => {
-							if (item.nestedActions) focusMenuItem(item.name);
-						}}
-						on:keypress={(e) => {
-							if (e.key === 'Enter' && item.nestedActions) focusMenuItem(item.name);
-						}}
-						class:z-10={selectedMenuItem === item.name}
-						class:z-0={selectedMenuItem !== item.name}
-						out:fly={{
-							delay: 50,
-							duration: 500,
-							x: 500,
-							easing: quintOut
-						}}
-						animate:flip={{ delay: 50, duration: 500, easing: quintOut }}
-					>
-						{item.name}
+				{#each menuItems.filter((item) => item.show) as item, index (item.name)}
+					<li animate:flip={{ delay: 50, duration: 500, easing: quintOut }}>
+						<button
+							class="menu__item"
+							on:click={() => {
+								if (item.nestedActions) focusMenuItem(item.name);
+							}}
+							on:keypress={(e) => {
+								if (e.key === 'Enter' && item.nestedActions) focusMenuItem(item.name);
+							}}
+							class:z-10={selectedMenuItem === item.name}
+							class:z-0={selectedMenuItem !== item.name}
+							out:fly={{
+								delay: 50,
+								duration: 500,
+								x: 500,
+								easing: quintOut
+							}}
+						>
+							{item.name}
+						</button>
 					</li>
 				{/each}
-				<li
-					class="menu__item menu__item--close"
-					on:click={() => {
-						showMenu = false;
-						nestedHover = false;
-						selectedMenuItem = '';
-						menuItems = menuItems.map((i) => ({ ...i, show: true }));
-					}}
-					on:keypress={(e) => {
-						if (e.key === 'Enter') {
+				<li>
+					<button
+						class="menu__item menu__item--close"
+						on:click={() => {
 							showMenu = false;
 							nestedHover = false;
 							selectedMenuItem = '';
+							card.focus();
 							menuItems = menuItems.map((i) => ({ ...i, show: true }));
-						}
-					}}
-				>
-					Close
+						}}
+						on:keypress={(e) => {
+							if (e.key === 'Enter') {
+								showMenu = false;
+								nestedHover = false;
+								selectedMenuItem = '';
+								menuItems = menuItems.map((i) => ({ ...i, show: true }));
+							}
+						}}
+					>
+						Close
+					</button>
 				</li>
 			</Menu>
 		</div>
@@ -195,10 +199,10 @@
 	<section
 		class="flex flex-col relative {!expand
 			? 'cardWrapper'
-			: ''} min-h-[14.5rem] min-w-full overflow-hidden"
+			: ''} min-w-full min-h-fit overflow-hidden"
 	>
 		{#if sessionStore}
-			<span class="flex max-w-full relative">
+			<span class="flex max-w-full items-center h-fit relative">
 				<h1
 					aria-label="Subject line"
 					aria-describedby={item.subject}
@@ -206,6 +210,7 @@
 					bind:this={header}
 					on:wheel={(e) => {
 						if (scrollPosition.header.remainingWidth > 0) {
+							e.stopPropagation();
 							e.preventDefault();
 							header.scrollLeft += Math.abs(e.deltaX) > 0 ? e.deltaX : e.deltaY * 0.33;
 							scrollPosition.header.x = header.scrollLeft;
@@ -219,6 +224,7 @@
 					}}
 					on:touchmove={(e) => {
 						if (scrollPosition.header.remainingWidth > 0) {
+							e.stopPropagation();
 							e.preventDefault();
 							const x = e.touches[0].pageX;
 							const walk = (x - scrollPosition.header.startX) * 2;
@@ -241,28 +247,24 @@
 					{item.subject}
 				</h1>
 				{#if expand}
-					<icon
+					<button
 						title="Menu"
 						on:click|stopPropagation={() => {
 							showMenu = !showMenu;
 						}}
-						on:keypress|stopPropagation={(e) => {
-							if (e.key === 'Enter') {
-								showMenu = !showMenu;
-							}
-						}}
+						on:keypress|stopPropagation
 						on:mouseenter={() => (nestedHover = true)}
 						on:mouseleave={() => (nestedHover = false)}
-						class="z-10 flex items-center max-w-[24px] cursor-context-menu mx-1 hover:scale-125 ease-in-out duration-150"
+						class="z-10 max-w-[28px] max-h-fit cursor-context-menu mx-1 hover:scale-125 ease-in-out duration-150"
 						in:fade={{ delay: 50, duration: 200, easing: expoIn }}
 						out:scale={{ delay: 50, duration: 300, easing: expoOut }}
 					>
 						<MenuIcon />
-					</icon>
+					</button>
 				{/if}
 			</span>
 			<article
-				class="flex justify-between min-w-full"
+				class="flex grow justify-between min-w-full h-full"
 				style="flex-direction:{!expand ? 'row' : 'column'}"
 			>
 				<div class="flex flex-col min-h-full">
@@ -294,7 +296,7 @@
 					</div>
 
 					<div
-						class="tags min-w-[25rem]"
+						class="tags min-w-[25rem] h-full justify-between"
 						aria-label="Topic and recepient lists"
 						style="max-width: {!expand ? '35rem' : '100%'};"
 					>
@@ -332,16 +334,17 @@
 						</div>
 					</div>
 				</div>
-				<div
+				{#if expand}
+					<p aria-label="Info text" class="text-center mt-1"><i>click again to send...</i></p>
+				{/if}
+				<details
 					style="text-align: initial; margin-top: {!expand ? '-1.5rem' : '0'};"
-					class="whitespace-normal flex flex-col"
+					class="whitespace-normal flex flex-col appearance-none"
 				>
-					{#if expand}
-						<p aria-label="Info text" class="text-center"><i>click again to send...</i></p>
-					{/if}
-					<div
+					<summary
+						tabindex="-1"
+						aria-expanded={expand}
 						aria-label="Email body"
-						class="{expand ? 'bg-artistBlue-800' : 'mt-[1.5rem]'} rounded mt-4 p-2 min-w-full"
 						on:click={(e) => {
 							if (e.target instanceof HTMLElement && e.target.tagName === 'A') {
 								e.stopPropagation();
@@ -355,9 +358,9 @@
 							}
 						}}
 					>
-						<Reader {expand} email={item} />
-					</div>
-				</div>
+						<Reader bind:expand item={item.body} />
+					</summary>
+				</details>
 			</article>
 		{/if}
 	</section>
@@ -375,11 +378,10 @@
 			width: 100%;
 		}
 	}
-	button {
+	.card {
 		transition: 0.2s ease-out;
 		color: theme('colors.paper.500');
 		&:hover {
-			transform: scale(1.0073);
 			box-shadow: theme('colors.larimarGreen.700') 0 0 2px 2px;
 			transition: 0.1s ease-in;
 		}
@@ -474,5 +476,13 @@
 		right: 0;
 		bottom: 0;
 		background: linear-gradient(to right, theme('colors.artistBlue.600') 3%, transparent 15%);
+	}
+
+	summary {
+		transition: 0.2s ease-out;
+		list-style: none;
+		&::-webkit-details-marker {
+			display: none;
+		}
 	}
 </style>

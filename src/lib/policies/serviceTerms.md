@@ -1,4 +1,3 @@
-
 # Terms of Service for Communique
 
 ## 1. Acceptance of Terms
