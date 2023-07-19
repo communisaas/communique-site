@@ -7,7 +7,7 @@ import Reddit from '@auth/core/providers/reddit';
 import Twitter from '@auth/core/providers/twitter';
 
 import type { Provider } from '@auth/core/providers';
-import { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, PROVIDER_SECRET } from '$env/static/private';
+import { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, AUTH_SECRET } from '$env/static/private';
 
 export const providers: Provider[] = [
 	Facebook({}) as Provider,
@@ -33,7 +33,7 @@ const config: SvelteKitAuthConfig = {
 		// newUser: '/auth/new-user' // New users will be directed here on first sign in (leave the property out if not of interest)
 	},
 	debug: true,
-	secret: PROVIDER_SECRET,
+	secret: AUTH_SECRET,
 	trustHost: true,
 	session: {
 		maxAge: 1800 // 30 mins

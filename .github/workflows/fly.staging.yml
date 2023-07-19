@@ -10,7 +10,7 @@ jobs:
   #     DATABASE_URL: ${{ secrets.DATABASE_URL }}
   #     DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
   #     DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
-  #     PROVIDER_SECRET: ${{ secrets.PROVIDER_SECRET }}
+  #     AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
   #   timeout-minutes: 60
   #   runs-on: ubuntu-latest
   #   steps:
@@ -40,7 +40,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DISCORD_CLIENT_ID: ${{ secrets.DISCORD_CLIENT_ID }}
       DISCORD_CLIENT_SECRET: ${{ secrets.DISCORD_CLIENT_SECRET }}
-      PROVIDER_SECRET: ${{ secrets.PROVIDER_SECRET }}
+      AUTH_SECRET: ${{ secrets.AUTH_SECRET }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -51,4 +51,4 @@ jobs:
             --build-secret DATABASE_URL=$DATABASE_URL \
             --build-secret DISCORD_CLIENT_ID=$DISCORD_CLIENT_ID \
             --build-secret DISCORD_CLIENT_SECRET=$DISCORD_CLIENT_SECRET \
-            --build-secret PROVIDER_SECRET=$PROVIDER_SECRET
+            --build-secret AUTH_SECRET=$AUTH_SECRET
