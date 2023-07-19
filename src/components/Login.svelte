@@ -36,9 +36,8 @@
 				{#if !chosenProvider || chosenProvider === attributes.name}
 					<button
 						on:click={() => {
-							signIn(id, { callbackUrl: $sessionStore.loginCallbackURL });
 							chosenProvider = attributes.name;
-							$sessionStore.show.login = false;
+							signIn(id, { callbackUrl: $sessionStore.loginCallbackURL });
 						}}
 						class="flex flex-col items-center justify-center m-2 w-14 h-14"
 					>

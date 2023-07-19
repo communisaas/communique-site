@@ -15,9 +15,9 @@ export async function routeModal(
 	) => boolean
 ) {
 	if (browser) {
+		sessionStore.show.login = false; // reset login modal
 		if (urlHashes.length === 1 && urlHashes[0]) {
 			const slug = urlHashes[0];
-
 			if (slug === 'signin') {
 				if (!page.data.session) {
 					sessionStore.show.login = true;
