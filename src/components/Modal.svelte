@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { expoOut, expoIn } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
-	export let popoverComponent: ComponentType;
+	import type { SvelteComponent } from 'svelte';
+	export let popoverComponent: typeof SvelteComponent;
 	export let props: Props;
 
 	let show: boolean;

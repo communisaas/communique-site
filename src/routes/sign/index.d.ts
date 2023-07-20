@@ -7,13 +7,13 @@ interface ProviderStyle {
 	textDark: `#${string}`;
 }
 
-type ProviderAttributes = {
+interface ProviderAttributes extends Provider {
 	id: string;
 	name: string;
 	style: ProviderStyle;
-};
+}
 
 interface AuthSchema {
 	baseLogoURL: `https://${string}.svg`;
-	providers: Record<'id', ProviderAttributes>;
+	providers: Record<string, ProviderAttributes>;
 }
