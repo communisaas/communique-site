@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { email } from '@prisma/client';
 	import { createEventDispatcher, onMount, afterUpdate, tick } from 'svelte';
-	import type { Writable } from 'svelte/store';
+	import { writable, type Writable } from 'svelte/store';
 	import Selector from './Selector.svelte';
 	import Tag from './Tag.svelte';
 	import Reader from './Reader.svelte';
@@ -12,6 +12,8 @@
 	import { scale, fade, slide, fly } from 'svelte/transition';
 	import { expoIn, expoOut, quintOut } from 'svelte/easing';
 	import Menu from './Menu.svelte';
+	import { handleCopy } from '$lib/data/select';
+	import { page } from '$app/stores';
 
 	export let item: email;
 	export let selected: Selectable;
@@ -29,14 +31,41 @@
 	let scrollToCard = false;
 	let scrollableElements: { [key: string]: HTMLElement };
 	let nestedHover = false;
+	let activationState: 'click' | 'focus' | null = null;
+	let mouseDown = true;
 
 	let showMenu = false;
 	let selectedMenuItem = '';
-	let menuItems = [
-		{ name: 'Get link', show: true, nestedActions: false },
-		{ name: 'Not interested...', show: true, nestedActions: false },
-		{ name: 'Report', show: true, nestedActions: true }
-	];
+	let menuItems = writable([
+		{
+			name: 'Get link',
+			show: true,
+			nestedActions: false,
+			onClick: async () => {
+				await handleCopy('link', $page.url.host + '/' + item.shortid);
+				$menuItems[0].name = 'Copied!';
+				setTimeout(() => {
+					$menuItems[0].name = 'Get link';
+				}, 2000);
+			}
+		},
+		{
+			name: 'Not interested...',
+			show: true,
+			nestedActions: false,
+			onClick: () => {
+				return;
+			}
+		},
+		{
+			name: 'Report',
+			show: true,
+			nestedActions: true,
+			onClick: () => {
+				return;
+			}
+		}
+	]);
 
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
@@ -70,13 +99,13 @@
 		dispatch('expand', expand);
 	}
 
+	let justFocused = false;
+
 	async function handleSelect() {
-		console.log('focus');
-		// TODO fix tab navigation for nested menu items
 		if (selected.id != item.rowid) {
 			selected.id = item.rowid;
 		}
-		if (expand) {
+		if (expand && !justFocused) {
 			dispatch('externalAction', { type: 'email', context: item });
 			setExpand(false);
 		} else {
@@ -86,13 +115,6 @@
 			$sessionStore.email.content = item;
 		}
 		dispatch('select', selected);
-	}
-
-	async function focusMenuItem(itemName: string) {
-		selectedMenuItem = itemName;
-		menuItems = menuItems.map((i) =>
-			i.name === selectedMenuItem ? { ...i, show: true } : { ...i, show: false }
-		);
 	}
 
 	function handleBlur(event: FocusEvent) {
@@ -110,11 +132,19 @@
 			scrollPosition.header.x = 1;
 		}
 		showMenu = false;
+		activationState = null;
 	}
 </script>
 
 <button
 	bind:this={card}
+	on:focus={() => {
+		handleSelect();
+		justFocused = true;
+		setTimeout(() => {
+			justFocused = false;
+		}, 100);
+	}}
 	on:click={handleSelect}
 	on:blur={handleBlur}
 	aria-label="Email with a subject: {item.subject}"
@@ -148,26 +178,41 @@
 			}}
 		>
 			<Menu on:mouseenter={() => (nestedHover = true)}>
-				{#each menuItems.filter((item) => item.show) as item, index (item.name)}
-					<li animate:flip={{ delay: 50, duration: 500, easing: quintOut }}>
+				{#each $menuItems.filter((item) => item.show) as item, index (item.name)}
+					<li
+						animate:flip={{ delay: 50, duration: 500, easing: quintOut }}
+						out:fade|local={{
+							delay: 50,
+							duration: 500,
+							easing: quintOut
+						}}
+					>
 						<button
 							class="menu__item"
 							on:click={() => {
-								if (item.nestedActions) focusMenuItem(item.name);
+								if (item.nestedActions) {
+									selectedMenuItem = item.name;
+									$menuItems = $menuItems.map((i) =>
+										i.name === selectedMenuItem ? { ...i, show: true } : { ...i, show: false }
+									);
+								}
+								item.onClick();
 							}}
 							on:keypress={(e) => {
-								if (e.key === 'Enter' && item.nestedActions) focusMenuItem(item.name);
+								if (e.key === 'Enter' && item.nestedActions) {
+									selectedMenuItem = item.name;
+									$menuItems = $menuItems.map((i) =>
+										i.name === selectedMenuItem ? { ...i, show: true } : { ...i, show: false }
+									);
+								}
+								item.onClick();
 							}}
 							class:z-10={selectedMenuItem === item.name}
 							class:z-0={selectedMenuItem !== item.name}
-							out:fly={{
-								delay: 50,
-								duration: 500,
-								x: 500,
-								easing: quintOut
-							}}
 						>
-							{item.name}
+							<span transition:scale|local={{ delay: 50, duration: 250, easing: expoIn }}>
+								{item.name}
+							</span>
 						</button>
 					</li>
 				{/each}
@@ -179,14 +224,14 @@
 							nestedHover = false;
 							selectedMenuItem = '';
 							card.focus();
-							menuItems = menuItems.map((i) => ({ ...i, show: true }));
+							$menuItems = $menuItems.map((i) => ({ ...i, show: true }));
 						}}
 						on:keypress={(e) => {
 							if (e.key === 'Enter') {
 								showMenu = false;
 								nestedHover = false;
 								selectedMenuItem = '';
-								menuItems = menuItems.map((i) => ({ ...i, show: true }));
+								$menuItems = $menuItems.map((i) => ({ ...i, show: true }));
 							}
 						}}
 					>
