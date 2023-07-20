@@ -94,15 +94,15 @@
 </div>
 
 {#if $sessionStore && $sessionStore.hasOwnProperty('show')}
-	<div use:modal>
-		{#each Object.keys($sessionStore.show) as modal (modal)}
-			{#if $sessionStore.show[modal]}
+	{#each Object.keys($sessionStore.show) as modalName (modalName)}
+		{#if $sessionStore.show[modalName]}
+			<div use:modal>
 				<Modal
-					popoverComponent={modalMapping[modal].component}
-					props={modalMapping[modal].props()}
-					on:popover={(e) => handlePopover(e, sessionStore, modal, '/')}
+					popoverComponent={modalMapping[modalName].component}
+					props={modalMapping[modalName].props()}
+					on:popover={(e) => handlePopover(e, sessionStore, modalName, '/')}
 				/>
-			{/if}
-		{/each}
-	</div>
+			</div>
+		{/if}
+	{/each}
 {/if}

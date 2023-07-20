@@ -1,21 +1,11 @@
 <script lang="ts">
 	import { expoOut, expoIn } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
-	import { createEventDispatcher, type ComponentType } from 'svelte';
-	import type { email } from '@prisma/client';
-
 	export let popoverComponent: ComponentType;
 	export let props: Props;
 
 	let show: boolean;
 	let menu: HTMLElement;
-
-	const dispatch = createEventDispatcher();
-
-	function setPopover(value: boolean) {
-		show = value;
-		dispatch('popover', show);
-	}
 </script>
 
 <main
@@ -30,13 +20,7 @@
 		out:fade={{ delay: 25, duration: 200, easing: expoOut }}
 		bind:this={menu}
 	>
-		<svelte:component
-			this={popoverComponent}
-			{...props}
-			on:popover={(e) => {
-				setPopover(e.detail);
-			}}
-		/>
+		<svelte:component this={popoverComponent} {...props} on:popover />
 	</section>
 </main>
 

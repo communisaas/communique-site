@@ -11,7 +11,6 @@
 	let sessionStore: Writable<UserState>;
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
-		console.log($sessionStore.loginCallbackURL);
 	});
 
 	let chosenProvider: string;
@@ -36,8 +35,8 @@
 				{#if !chosenProvider || chosenProvider === attributes.name}
 					<button
 						on:click={() => {
-							chosenProvider = attributes.name;
 							signIn(id, { callbackUrl: $sessionStore.loginCallbackURL });
+							chosenProvider = attributes.name;
 						}}
 						class="flex flex-col items-center justify-center m-2 w-14 h-14"
 					>
