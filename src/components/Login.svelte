@@ -1,31 +1,46 @@
 <script lang="ts">
 	import { browser } from '$app/environment';
 	import { signIn } from '@auth/sveltekit/client';
-	import { createEventDispatcher } from 'svelte';
+	import { afterUpdate, createEventDispatcher } from 'svelte';
 	import type { Writable } from 'svelte/store';
 	import { fade, scale } from 'svelte/transition';
 	import { onMount, onDestroy } from 'svelte';
+	import { trapFocus, updateFocusableElements } from '$lib/ui/ux';
 
 	export let providers: AuthSchema;
 
 	let sessionStore: Writable<UserState>;
+	let chosenProvider: string | undefined;
+	let dialog: HTMLElement;
+	let focusableElements: HTMLElement[];
+	let firstFocusableElement: HTMLElement;
+	let lastFocusableElement: HTMLElement;
 
 	function handlePageshow(event: PageTransitionEvent) {
 		if (event.persisted) {
-			window.location.reload();
+			chosenProvider = undefined;
 		}
 	}
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
+		[focusableElements, firstFocusableElement, lastFocusableElement] = updateFocusableElements(
+			dialog
+		) as [HTMLElement[], HTMLElement, HTMLElement];
+		trapFocus(dialog, firstFocusableElement, lastFocusableElement, focusableElements);
 
 		window.addEventListener('pageshow', handlePageshow);
+	});
+
+	afterUpdate(() => {
+		[focusableElements, firstFocusableElement, lastFocusableElement] = updateFocusableElements(
+			dialog
+		) as [HTMLElement[], HTMLElement, HTMLElement];
 	});
 
 	onDestroy(() => {
 		window.removeEventListener('pageshow', handlePageshow);
 	});
 
-	let chosenProvider: string;
 	const dispatch = createEventDispatcher();
 	// TODO focus traps
 	function setPopover(value: boolean) {
@@ -33,7 +48,7 @@
 	}
 </script>
 
-<section role="dialog" class="flex flex-col items-center relative">
+<section role="dialog" bind:this={dialog} class="flex flex-col items-center relative">
 	{#if !chosenProvider}
 		<p class="absolute mb-4 w-max mx-auto -top-8" out:fade={{ duration: 30 }}>Sign in with</p>
 	{:else}
