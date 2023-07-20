@@ -4,13 +4,25 @@
 	import { createEventDispatcher } from 'svelte';
 	import type { Writable } from 'svelte/store';
 	import { fade, scale } from 'svelte/transition';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 
 	export let providers: AuthSchema;
 
 	let sessionStore: Writable<UserState>;
+
+	function handlePageshow(event: PageTransitionEvent) {
+		if (event.persisted) {
+			window.location.reload();
+		}
+	}
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
+
+		window.addEventListener('pageshow', handlePageshow);
+	});
+
+	onDestroy(() => {
+		window.removeEventListener('pageshow', handlePageshow);
 	});
 
 	let chosenProvider: string;
