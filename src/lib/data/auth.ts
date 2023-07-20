@@ -7,6 +7,7 @@ import Reddit from '@auth/core/providers/reddit';
 import Twitter from '@auth/core/providers/twitter';
 
 import type { Provider } from '@auth/core/providers';
+import { DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, AUTH_SECRET } from '$env/static/private';
 
 export const providers: Provider[] = [
 	Facebook({}) as Provider,
@@ -15,8 +16,8 @@ export const providers: Provider[] = [
 	Twitter({}) as Provider,
 	Reddit({}) as Provider,
 	Discord({
-		clientId: process.env.DISCORD_CLIENT_ID,
-		clientSecret: process.env.DISCORD_CLIENT_SECRET
+		clientId: process.env.DISCORD_CLIENT_ID || DISCORD_CLIENT_ID,
+		clientSecret: process.env.DISCORD_CLIENT_SECRET || DISCORD_CLIENT_SECRET
 	}) as Provider
 ];
 
@@ -32,7 +33,7 @@ const config: SvelteKitAuthConfig = {
 		// newUser: '/auth/new-user' // New users will be directed here on first sign in (leave the property out if not of interest)
 	},
 	debug: true,
-	secret: process.env.AUTH_SECRET as string,
+	secret: process.env.AUTH_SECRET || AUTH_SECRET,
 	trustHost: true,
 	session: {
 		maxAge: 1800 // 30 mins

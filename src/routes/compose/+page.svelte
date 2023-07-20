@@ -11,7 +11,6 @@
 	import { page } from '$app/stores';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { routeModal } from '$lib/ui/hash';
-	import { goto } from '$app/navigation';
 	import Modal from '$components/Modal.svelte';
 	import modal, { handlePopover } from '$lib/ui/modal';
 

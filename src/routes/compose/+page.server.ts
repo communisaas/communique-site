@@ -119,6 +119,6 @@ export const actions = {
 
 export const load = (async () => {
 	return {
-		editorKey: process.env.TINYMCE_KEY
+		editorKey: process.env.TINYMCE_KEY || TINYMCE_KEY
 	};
 }) satisfies PageServerLoad;
