@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { email } from '@prisma/client';
 	import { createEventDispatcher, onMount, afterUpdate, tick } from 'svelte';
-	import { writable, type Writable } from 'svelte/store';
 	import Selector from './Selector.svelte';
 	import Tag from './Tag.svelte';
 	import Reader from './Reader.svelte';
@@ -27,30 +26,32 @@
 	};
 	let header: HTMLHeadingElement;
 	let card: HTMLButtonElement;
-	let expand = false;
-	let scrollToCard = false;
+	let menu: HTMLElement;
 	let scrollableElements: { [key: string]: HTMLElement };
+	// state
+	let scrollToCard = false;
+	let expand = false;
 	let nestedHover = false;
 	let activationState: 'click' | 'focus' | null = null;
-	let mouseDown = true;
-
 	let showMenu = false;
 	let selectedMenuItem = '';
-	let menuItems = writable([
+	let menuItems = [
 		{
 			name: 'Get link',
+			key: 'copy',
 			show: true,
 			nestedActions: false,
 			onClick: async () => {
 				await handleCopy('link', $page.url.host + '/' + item.shortid);
-				$menuItems[0].name = 'Copied!';
+				menuItems[0].name = 'Copied!';
 				setTimeout(() => {
-					$menuItems[0].name = 'Get link';
+					menuItems[0].name = 'Get link';
 				}, 2000);
 			}
 		},
 		{
 			name: 'Not interested...',
+			key: 'interest',
 			show: true,
 			nestedActions: false,
 			onClick: () => {
@@ -59,13 +60,19 @@
 		},
 		{
 			name: 'Report',
+			key: 'moderation',
 			show: true,
 			nestedActions: true,
 			onClick: () => {
-				return;
+				menuItems = menuItems.map((item) => {
+					if (item.key !== 'moderation') {
+						item.show = false;
+					}
+					return item;
+				});
 			}
 		}
-	]);
+	];
 
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
@@ -121,7 +128,21 @@
 		if (document.activeElement == event.target) return; // keep expanded if focus is on the card
 		if (event.relatedTarget instanceof HTMLElement) {
 			// keep expanded if focus is on a nested button
-			if (!card.contains(event.relatedTarget)) setExpand(false);
+			console.log(event.relatedTarget);
+			console.log(
+				(!card.contains(event.relatedTarget) &&
+					!event.relatedTarget.classList.contains('menu__item')) ||
+					(menu && !menu.contains(event.relatedTarget))
+			);
+			if (
+				(!card.contains(event.relatedTarget) &&
+					!event.relatedTarget.classList.contains('menu__item')) ||
+				(menu && !menu.contains(event.relatedTarget))
+			) {
+				setExpand(false);
+				showMenu = false;
+			}
+			return;
 		} else {
 			setExpand(false);
 		}
@@ -145,7 +166,9 @@
 			justFocused = false;
 		}, 100);
 	}}
-	on:click={handleSelect}
+	on:click={(e) => {
+		handleSelect();
+	}}
 	on:blur={handleBlur}
 	aria-label="Email with a subject: {item.subject}"
 	class="card flex p-2 m-1 rounded bg-artistBlue-600 items-center relative
@@ -157,10 +180,11 @@
 	{#if showMenu}
 		<div
 			role="menu"
+			bind:this={menu}
 			tabindex="0"
-			on:click|stopPropagation={() => {
+			on:click|stopPropagation={async () => {
 				if (expand) {
-					showMenu = !showMenu;
+					showMenu = false;
 				} else {
 					setExpand(true);
 					handleSelect();
@@ -169,7 +193,7 @@
 			on:keypress|stopPropagation={(e) => {
 				if (e.key === 'Enter') {
 					if (expand) {
-						showMenu = !showMenu;
+						showMenu = false;
 					} else {
 						setExpand(true);
 						handleSelect();
@@ -178,39 +202,35 @@
 			}}
 		>
 			<Menu on:mouseenter={() => (nestedHover = true)}>
-				{#each $menuItems.filter((item) => item.show) as item, index (item.name)}
+				{#each menuItems.filter((item) => item.show) as item, index (item.key)}
 					<li
 						animate:flip={{ delay: 50, duration: 500, easing: quintOut }}
-						out:fade|local={{
+						out:fly={{
 							delay: 50,
 							duration: 500,
+							x: 500,
 							easing: quintOut
 						}}
 					>
 						<button
 							class="menu__item"
-							on:click={() => {
+							on:click|stopPropagation={() => {
 								if (item.nestedActions) {
 									selectedMenuItem = item.name;
-									$menuItems = $menuItems.map((i) =>
-										i.name === selectedMenuItem ? { ...i, show: true } : { ...i, show: false }
-									);
 								}
 								item.onClick();
 							}}
 							on:keypress={(e) => {
 								if (e.key === 'Enter' && item.nestedActions) {
 									selectedMenuItem = item.name;
-									$menuItems = $menuItems.map((i) =>
-										i.name === selectedMenuItem ? { ...i, show: true } : { ...i, show: false }
-									);
 								}
 								item.onClick();
 							}}
 							class:z-10={selectedMenuItem === item.name}
 							class:z-0={selectedMenuItem !== item.name}
+							on:blur={handleBlur}
 						>
-							<span transition:scale|local={{ delay: 50, duration: 250, easing: expoIn }}>
+							<span transition:scale={{ delay: 50, duration: 250, easing: expoIn }}>
 								{item.name}
 							</span>
 						</button>
@@ -224,16 +244,17 @@
 							nestedHover = false;
 							selectedMenuItem = '';
 							card.focus();
-							$menuItems = $menuItems.map((i) => ({ ...i, show: true }));
+							menuItems = menuItems.map((i) => ({ ...i, show: true }));
 						}}
 						on:keypress={(e) => {
 							if (e.key === 'Enter') {
 								showMenu = false;
 								nestedHover = false;
 								selectedMenuItem = '';
-								$menuItems = $menuItems.map((i) => ({ ...i, show: true }));
+								menuItems = menuItems.map((i) => ({ ...i, show: true }));
 							}
 						}}
+						on:blur={handleBlur}
 					>
 						Close
 					</button>
