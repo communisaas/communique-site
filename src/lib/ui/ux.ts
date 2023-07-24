@@ -1,4 +1,5 @@
 export function updateFocusableElements(focusableContainer: HTMLElement) {
+	// TODO fix changing number of focusable elements
 	const focusableElements = Array.from(
 		focusableContainer.querySelectorAll(
 			'a, button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select'

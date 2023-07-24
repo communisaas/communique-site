@@ -2,6 +2,7 @@
 	import '../app.postcss';
 	import './styles.css';
 	import colors from '$lib/ui/colors';
+	import weMakeChangeLogo from '$lib/assets/We Make Change Logo.png';
 	import Navigation from '$components/Navigation.svelte';
 
 	import { onMount } from 'svelte';
@@ -90,9 +91,10 @@
 <!-- TODO aria labels for footer -->
 <footer class="bg-gray-900 text-white py-6 static bottom-0 w-full">
 	<div class="container mx-auto flex flex-wrap items-center justify-between px-4">
-		<div class="w-full md:w-1/3 mb-4 md:mb-0">
+		<div class="w-full xl:w-1/4 lg:w-1/3 md:w-2/3 sm:w-1/2 mb-4 md:mb-0">
 			<div class="flex justify-center md:justify-start">
 				<h4 class="font-bold text-lg mb-2 mr-2">Communique</h4>
+
 				<span class="border-l border-gray-600 pl-2">
 					<p class="text-sm text-gray-400">
 						Changing the world is too important to be left on read.
@@ -117,8 +119,10 @@
 			</ul>
 		</div>
 	</div> -->
+
 		<div class="text-gray-400 text-sm mt-6 flex justify-center items-center">
-			<span class="mr-2">&copy; 2023 Communique DAO. All rights reserved.</span>
+			<span class="mr-2">&copy; 2023 Communique. All rights reserved.</span>
+
 			<span class="border-l border-gray-600 pl-2 ml-2">
 				<a
 					href="#terms-of-use"
@@ -132,6 +136,11 @@
 					on:click={() => ($sessionStore.show.privacyPolicy = true)}
 					class="text-teal-400 hover:text-teal-500">Privacy Policy</a
 				>
+			</span>
+			<span class="border-l border-gray-600 pl-2 ml-2">
+				<a href="https://www.wemakechange.org/" target="_blank" class="self-start">
+					<img src={weMakeChangeLogo} alt="We Make Change Logo" class="w-[10.125rem]" />
+				</a>
 			</span>
 		</div>
 	</div>
