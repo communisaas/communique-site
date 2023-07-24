@@ -95,7 +95,7 @@
 				<h4 class="font-bold text-lg mb-2 mr-2">Communique</h4>
 				<span class="border-l border-gray-600 pl-2">
 					<p class="text-sm text-gray-400">
-						Because changing the world is too important to be left on read.
+						Changing the world is too important to be left on read.
 					</p>
 				</span>
 			</div>
