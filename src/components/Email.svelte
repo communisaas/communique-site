@@ -164,7 +164,7 @@
 		justFocused = true;
 		setTimeout(() => {
 			justFocused = false;
-		}, 100);
+		}, 350);
 	}}
 	on:click={(e) => {
 		handleSelect();
