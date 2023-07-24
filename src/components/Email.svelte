@@ -13,6 +13,7 @@
 	import Menu from './Menu.svelte';
 	import { handleCopy } from '$lib/data/select';
 	import { page } from '$app/stores';
+	import type { Writable } from 'svelte/store';
 
 	export let item: email;
 	export let selected: Selectable;
@@ -39,8 +40,11 @@
 		{
 			name: 'Get link',
 			key: 'copy',
+			class: 'menu__item',
 			show: true,
-			nestedActions: false,
+			actionToggled: false,
+			actionComponent: undefined,
+
 			onClick: async () => {
 				await handleCopy('link', $page.url.host + '/' + item.shortid);
 				menuItems[0].name = 'Copied!';
@@ -52,20 +56,75 @@
 		{
 			name: 'Not interested...',
 			key: 'interest',
+			class: 'menu__item',
 			show: true,
-			nestedActions: false,
+			actionToggled: false,
+			actionComponent: undefined,
+
 			onClick: () => {
-				return;
+				menuItems = menuItems.map((item) => {
+					if (item.key !== 'interest' && item.key !== 'back') {
+						item.show = false;
+					} else {
+						item.show = true;
+					}
+					return item;
+				});
 			}
 		},
 		{
 			name: 'Report',
 			key: 'moderation',
+			class: 'menu__item',
 			show: true,
-			nestedActions: true,
+			actionToggled: true,
+			actionComponent: undefined,
+
 			onClick: () => {
 				menuItems = menuItems.map((item) => {
-					if (item.key !== 'moderation') {
+					if (item.key !== 'moderation' && item.key !== 'back') {
+						item.show = false;
+					} else {
+						item.show = true;
+					}
+					return item;
+				});
+			}
+		},
+		{
+			name: 'Close',
+			key: 'close',
+			class: 'menu__item menu__item--close',
+			show: true,
+			actionToggled: false,
+			actionComponent: undefined,
+			onClick: () => {
+				showMenu = false;
+				nestedHover = false;
+				selectedMenuItem = '';
+				card.focus();
+				menuItems = menuItems = menuItems.map((item) => {
+					if (item.key !== 'back') {
+						item.show = true;
+					} else {
+						item.show = false;
+					}
+					return item;
+				});
+			}
+		},
+		{
+			name: 'Back',
+			key: 'back',
+			class: 'menu__item menu__item--close',
+			show: false,
+			actionToggled: false,
+			actionComponent: undefined,
+			onClick: () => {
+				menuItems = menuItems.map((item) => {
+					if (item.key !== 'back') {
+						item.show = true;
+					} else {
 						item.show = false;
 					}
 					return item;
@@ -128,12 +187,6 @@
 		if (document.activeElement == event.target) return; // keep expanded if focus is on the card
 		if (event.relatedTarget instanceof HTMLElement) {
 			// keep expanded if focus is on a nested button
-			console.log(event.relatedTarget);
-			console.log(
-				(!card.contains(event.relatedTarget) &&
-					!event.relatedTarget.classList.contains('menu__item')) ||
-					(menu && !menu.contains(event.relatedTarget))
-			);
 			if (
 				(!card.contains(event.relatedTarget) &&
 					!event.relatedTarget.classList.contains('menu__item')) ||
@@ -213,52 +266,33 @@
 						}}
 					>
 						<button
-							class="menu__item"
+							class={item.class}
+							in:fade={{ delay: 0, duration: 250, easing: expoIn }}
 							on:click|stopPropagation={() => {
-								if (item.nestedActions) {
+								if (item.actionToggled) {
 									selectedMenuItem = item.name;
 								}
 								item.onClick();
 							}}
 							on:keypress={(e) => {
-								if (e.key === 'Enter' && item.nestedActions) {
+								if (e.key === 'Enter' && item.actionToggled) {
 									selectedMenuItem = item.name;
 								}
 								item.onClick();
 							}}
 							class:z-10={selectedMenuItem === item.name}
 							class:z-0={selectedMenuItem !== item.name}
-							on:blur={handleBlur}
+							on:blur={item.key !== 'back' ? handleBlur : undefined}
 						>
 							<span transition:scale={{ delay: 50, duration: 250, easing: expoIn }}>
 								{item.name}
 							</span>
 						</button>
+						{#if item.actionToggled && item.actionComponent !== undefined}
+							<svelte:component this={item.actionComponent} />
+						{/if}
 					</li>
 				{/each}
-				<li>
-					<button
-						class="menu__item menu__item--close"
-						on:click={() => {
-							showMenu = false;
-							nestedHover = false;
-							selectedMenuItem = '';
-							card.focus();
-							menuItems = menuItems.map((i) => ({ ...i, show: true }));
-						}}
-						on:keypress={(e) => {
-							if (e.key === 'Enter') {
-								showMenu = false;
-								nestedHover = false;
-								selectedMenuItem = '';
-								menuItems = menuItems.map((i) => ({ ...i, show: true }));
-							}
-						}}
-						on:blur={handleBlur}
-					>
-						Close
-					</button>
-				</li>
 			</Menu>
 		</div>
 	{/if}
@@ -445,7 +479,7 @@
 		}
 	}
 	.card {
-		transition: 0.2s ease-out;
+		transition: all 0.2s ease-out;
 		color: theme('colors.paper.500');
 		&:hover {
 			box-shadow: theme('colors.larimarGreen.700') 0 0 2px 2px;

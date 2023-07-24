@@ -18,6 +18,28 @@ interface Selectable {
 	content?: email;
 }
 
+interface Settable {
+	name: string;
+	description: string;
+	inputType:
+		| radio
+		| checkbox
+		| text
+		| textarea
+		| select
+		| number
+		| date
+		| time
+		| datetime
+		| email
+		| url
+		| search
+		| tel
+		| color;
+	key: string;
+	onUpdate: (e: FormEventHandler<HTMLInputElement>) => void;
+}
+
 interface Props {
 	[key: string]: unknown;
 }

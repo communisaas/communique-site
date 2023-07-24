@@ -5,6 +5,9 @@ interface UserState {
 	recipient: Selectable;
 	spotlight: Selectable;
 	template: Layout;
+	// TODO sync embeddings of these for logged-in users
+	hiddenEmails: string[];
+	hiddenTopics: string[];
 	loginCallbackURL?: `/${string}`;
 	show: ModalState;
 	[key: string];
