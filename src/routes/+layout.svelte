@@ -97,7 +97,7 @@
 
 				<span class="border-l border-gray-600 pl-2">
 					<p class="text-sm text-gray-400">
-						Changing the world is too important to be left on read.
+						Changing the world is too important to be left unread.
 					</p>
 				</span>
 			</div>
