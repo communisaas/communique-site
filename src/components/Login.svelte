@@ -2,7 +2,7 @@
 	import { browser } from '$app/environment';
 	import { signIn } from '@auth/sveltekit/client';
 	import { afterUpdate, createEventDispatcher } from 'svelte';
-	import type { Writable } from 'svelte/store';
+	import { writable, type Writable } from 'svelte/store';
 	import { fade, scale } from 'svelte/transition';
 	import { onMount, onDestroy } from 'svelte';
 	import { trapFocus, updateFocusableElements } from '$lib/ui/ux';
@@ -12,9 +12,11 @@
 	let sessionStore: Writable<UserState>;
 	let chosenProvider: string | undefined;
 	let dialog: HTMLElement;
-	let focusableElements: HTMLElement[];
-	let firstFocusableElement: HTMLElement;
-	let lastFocusableElement: HTMLElement;
+	let focusableElements = writable<HTMLElement[]>([]);
+	let firstFocusableElement = writable<HTMLElement | null>(null);
+	let lastFocusableElement = writable<HTMLElement | null>(null);
+
+	let focusHandler: (e: KeyboardEvent) => void;
 
 	function handlePageshow(event: PageTransitionEvent) {
 		if (event.persisted) {
@@ -23,26 +25,37 @@
 	}
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
-		[focusableElements, firstFocusableElement, lastFocusableElement] = updateFocusableElements(
-			dialog
-		) as [HTMLElement[], HTMLElement, HTMLElement];
-		trapFocus(dialog, firstFocusableElement, lastFocusableElement, focusableElements);
+		const [focusElems, firstElem, lastElem] = updateFocusableElements(dialog) as [
+			HTMLElement[],
+			HTMLElement,
+			HTMLElement
+		];
+		focusableElements.set(focusElems);
+		firstFocusableElement.set(firstElem);
+		lastFocusableElement.set(lastElem);
+
+		focusHandler = (e) => {
+			trapFocus(e, $focusableElements);
+		};
+
+		firstFocusableElement.update((first) => {
+			if (first) {
+				first.focus();
+				return null;
+			}
+			return first;
+		});
 
 		window.addEventListener('pageshow', handlePageshow);
-	});
-
-	afterUpdate(() => {
-		[focusableElements, firstFocusableElement, lastFocusableElement] = updateFocusableElements(
-			dialog
-		) as [HTMLElement[], HTMLElement, HTMLElement];
+		dialog.addEventListener('keydown', focusHandler);
 	});
 
 	onDestroy(() => {
 		window.removeEventListener('pageshow', handlePageshow);
+		dialog.removeEventListener('keydown', focusHandler);
 	});
 
 	const dispatch = createEventDispatcher();
-	// TODO focus traps
 	function setPopover(value: boolean) {
 		dispatch('popover', value);
 	}

@@ -167,7 +167,6 @@
 					props={modalMapping[modal].props()}
 					on:popover={async (e) => {
 						await handlePopover(e, sessionStore, modal, '/compose');
-						console.log('?');
 					}}
 				/>
 			{/if}

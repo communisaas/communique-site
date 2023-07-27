@@ -18,6 +18,21 @@ interface Selectable {
 	content?: email;
 }
 
+interface MenuItemClickArgs {
+	event?: MouseEvent | KeyboardEvent;
+	focusableElements?: HTMLElement[];
+}
+
+type MenuItem = {
+	name: string;
+	key: string;
+	class: string;
+	show: boolean;
+	actionToggled: boolean;
+	actionComponent: SvelteComponent;
+	onClick: (MenuItemClickArgs?) => void;
+};
+
 interface Settable {
 	name: string;
 	description: string;

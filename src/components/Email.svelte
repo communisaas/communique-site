@@ -14,6 +14,7 @@
 	import { handleCopy } from '$lib/data/select';
 	import { page } from '$app/stores';
 	import type { Writable } from 'svelte/store';
+	import Preferences from './input/Preferences.svelte';
 
 	export let item: email;
 	export let selected: Selectable;
@@ -35,7 +36,6 @@
 	let nestedHover = false;
 	let activationState: 'click' | 'focus' | null = null;
 	let showMenu = false;
-	let selectedMenuItem = '';
 	let menuItems = [
 		{
 			name: 'Get link',
@@ -59,7 +59,7 @@
 			class: 'menu__item',
 			show: true,
 			actionToggled: false,
-			actionComponent: undefined,
+			actionComponent: Preferences,
 
 			onClick: () => {
 				menuItems = menuItems.map((item) => {
@@ -99,11 +99,10 @@
 			actionToggled: false,
 			actionComponent: undefined,
 			onClick: () => {
+				card.focus();
 				showMenu = false;
 				nestedHover = false;
-				selectedMenuItem = '';
-				card.focus();
-				menuItems = menuItems = menuItems.map((item) => {
+				menuItems = menuItems.map((item) => {
 					if (item.key !== 'back') {
 						item.show = true;
 					} else {
@@ -120,7 +119,7 @@
 			show: false,
 			actionToggled: false,
 			actionComponent: undefined,
-			onClick: () => {
+			onClick: ({ focusableElements }: MenuItemClickArgs) => {
 				menuItems = menuItems.map((item) => {
 					if (item.key !== 'back') {
 						item.show = true;
@@ -129,6 +128,7 @@
 					}
 					return item;
 				});
+				if (focusableElements) focusableElements[0].focus();
 			}
 		}
 	];
@@ -171,7 +171,7 @@
 		if (selected.id != item.rowid) {
 			selected.id = item.rowid;
 		}
-		if (expand && !justFocused) {
+		if (expand && !justFocused && !showMenu) {
 			dispatch('externalAction', { type: 'email', context: item });
 			setExpand(false);
 		} else {
@@ -184,7 +184,12 @@
 	}
 
 	function handleBlur(event: FocusEvent) {
-		if (document.activeElement == event.target) return; // keep expanded if focus is on the card
+		if (
+			(menu && menu.contains(event.relatedTarget as Node)) ||
+			(card && card.contains(event.relatedTarget as Node)) ||
+			(menu && (event.target as HTMLElement).id === 'back')
+		)
+			return; // keep expanded if focus is on the card
 		if (event.relatedTarget instanceof HTMLElement) {
 			// keep expanded if focus is on a nested button
 			if (
@@ -194,6 +199,14 @@
 			) {
 				setExpand(false);
 				showMenu = false;
+				menuItems = menuItems.map((item) => {
+					if (item.key !== 'back') {
+						item.show = true;
+					} else {
+						item.show = false;
+					}
+					return item;
+				});
 			}
 			return;
 		} else {
@@ -232,9 +245,7 @@
 >
 	{#if showMenu}
 		<div
-			role="menu"
 			bind:this={menu}
-			tabindex="0"
 			on:click|stopPropagation={async () => {
 				if (expand) {
 					showMenu = false;
@@ -254,46 +265,7 @@
 				}
 			}}
 		>
-			<Menu on:mouseenter={() => (nestedHover = true)}>
-				{#each menuItems.filter((item) => item.show) as item, index (item.key)}
-					<li
-						animate:flip={{ delay: 50, duration: 500, easing: quintOut }}
-						out:fly={{
-							delay: 50,
-							duration: 500,
-							x: 500,
-							easing: quintOut
-						}}
-					>
-						<button
-							class={item.class}
-							in:fade={{ delay: 0, duration: 250, easing: expoIn }}
-							on:click|stopPropagation={() => {
-								if (item.actionToggled) {
-									selectedMenuItem = item.name;
-								}
-								item.onClick();
-							}}
-							on:keypress={(e) => {
-								if (e.key === 'Enter' && item.actionToggled) {
-									selectedMenuItem = item.name;
-								}
-								item.onClick();
-							}}
-							class:z-10={selectedMenuItem === item.name}
-							class:z-0={selectedMenuItem !== item.name}
-							on:blur={item.key !== 'back' ? handleBlur : undefined}
-						>
-							<span transition:scale={{ delay: 50, duration: 250, easing: expoIn }}>
-								{item.name}
-							</span>
-						</button>
-						{#if item.actionToggled && item.actionComponent !== undefined}
-							<svelte:component this={item.actionComponent} />
-						{/if}
-					</li>
-				{/each}
-			</Menu>
+			<Menu on:mouseenter={() => (nestedHover = true)} on:blur={handleBlur} items={menuItems} />
 		</div>
 	{/if}
 	<section
@@ -514,27 +486,6 @@
 		margin-bottom: 1rem;
 	}
 
-	.menu {
-		&__item {
-			min-width: 200%;
-			background-color: theme('colors.peacockFeather.500');
-			padding: 0.33em;
-			margin-top: 0.5em;
-			margin-left: -50%;
-			cursor: pointer;
-			transition: ease-in-out 0.2s;
-			&--close {
-				margin-top: 2em;
-				background-color: theme('colors.peacockFeather.600');
-			}
-		}
-		&__item:hover {
-			transform: scale(1.08);
-		}
-		&__item:active {
-			transform: scale(0.92);
-		}
-	}
 	.scrollable {
 		scrollbar-width: none;
 		&::-webkit-scrollbar {
