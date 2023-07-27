@@ -82,10 +82,10 @@
 				<button
 					class={item.class}
 					id={item.key}
-					animate:flip={{ delay: 50, duration: 500, easing: quintOut }}
+					animate:flip={{ delay: 0, duration: 250, easing: quintOut }}
 					out:fly={{
-						delay: 50,
-						duration: 500,
+						delay: 0,
+						duration: 250,
 						x: 500,
 						easing: quintOut
 					}}

@@ -185,33 +185,14 @@
 
 	function handleBlur(event: FocusEvent) {
 		if (
-			(menu && menu.contains(event.relatedTarget as Node)) ||
 			(card && card.contains(event.relatedTarget as Node)) ||
-			(menu && (event.target as HTMLElement).id === 'back')
+			(menu && (event.target as HTMLElement).id === 'back') ||
+			(card.contains(event.relatedTarget as Node) &&
+				(event.relatedTarget as HTMLElement).classList.contains('menu__item')) ||
+			(menu && menu.contains(event.relatedTarget as Node))
 		)
 			return; // keep expanded if focus is on the card
-		if (event.relatedTarget instanceof HTMLElement) {
-			// keep expanded if focus is on a nested button
-			if (
-				(!card.contains(event.relatedTarget) &&
-					!event.relatedTarget.classList.contains('menu__item')) ||
-				(menu && !menu.contains(event.relatedTarget))
-			) {
-				setExpand(false);
-				showMenu = false;
-				menuItems = menuItems.map((item) => {
-					if (item.key !== 'back') {
-						item.show = true;
-					} else {
-						item.show = false;
-					}
-					return item;
-				});
-			}
-			return;
-		} else {
-			setExpand(false);
-		}
+		setExpand(false);
 		if (!expand) {
 			header.scrollLeft = 0;
 			scrollPosition.header.x = 0;
@@ -220,6 +201,14 @@
 		}
 		showMenu = false;
 		activationState = null;
+		menuItems = menuItems.map((item) => {
+			if (item.key !== 'back') {
+				item.show = true;
+			} else {
+				item.show = false;
+			}
+			return item;
+		});
 	}
 </script>
 
