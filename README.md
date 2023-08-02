@@ -22,6 +22,9 @@ Let the collective voice rise.
 
    DATABASE_URL={Cockroachdb connection URL for Prisma}
 
+   DISCORD_CLIENT_SECRET={Authorization token for Discord}
+   DISCORD_CLIENT_ID={Authorization ID for Discord}
+   AUTH_SECRET={Cryptography seed for auth.js}
    ```
 
 4. Run development server on `localhost:5173` with `npm run dev`
