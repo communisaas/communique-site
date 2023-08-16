@@ -39,7 +39,7 @@
 	$: topicNames = data.loudestTopics.map((topic: topic) => topic.name);
 </script>
 
-<main class="flex min-h-screen">
+<main class="flex">
 	<div class="grow-0 shrink-0 w-20"><Navigation /></div>
 	<div class="w-full relative flex flex-col min-h-full">
 		<header
@@ -85,7 +85,9 @@
 				{/if}
 			</span>
 		</header>
-		<slot />
+		<div class="min-h-screen">
+			<slot />
+		</div>
 		<!-- TODO aria labels for footer -->
 		<footer class="bg-gray-900 text-white py-6 static bottom-0 w-full">
 			<div class="container mx-auto flex flex-wrap items-center justify-center px-4">
