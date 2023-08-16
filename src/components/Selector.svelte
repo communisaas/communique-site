@@ -15,9 +15,7 @@
 	const listStyle = `p-1 flex grow h-full items-${alignment} ${
 		alignment == 'end' ? 'flex-row-reverse' : 'flex-row'
 	} gap-3 gap-y-1.5 ${
-		overflow == 'wrap'
-			? 'whitespace-normal flex-wrap gap-y-1'
-			: 'whitespace-nowrap overflow-' + overflow
+		overflow == 'wrap' ? 'flex-wrap gap-y-1' : 'overflow-' + overflow
 	} ${selectorStyle}`;
 
 	let scrollPosition = {

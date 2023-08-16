@@ -16,8 +16,6 @@ html {
 }
 
 body {
-	min-height: 100vh;
-	margin: 0;
 	background-attachment: fixed;
 	background: linear-gradient(90deg, theme('colors.peacockFeather.600'), theme('colors.teal.700'));
 	background-size: 100vw 100vh;

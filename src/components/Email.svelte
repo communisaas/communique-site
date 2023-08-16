@@ -139,7 +139,7 @@
 
 	afterUpdate(() => {
 		if (scrollToCard) {
-			// TODO better fix for resolving events still pending after the DOM update
+			// TODO more contextual fix for resolving pending events after DOM update
 			setTimeout(() => {
 				card.scrollIntoView({ behavior: 'smooth', block: 'center' });
 			});
@@ -227,7 +227,7 @@
 	on:blur={handleBlur}
 	aria-label="Email with a subject: {item.subject}"
 	class="card flex p-2 m-1 rounded bg-artistBlue-600 items-center relative
-		justify-center w-[97%] max-w-4xl {style}"
+		justify-center w-[97%] {style}"
 	class:cursor-alias={expand}
 	class:clickable={!nestedHover}
 	style="min-width: {expand ? '99%' : '95%'};"
