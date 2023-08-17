@@ -95,14 +95,14 @@
 		}}
 	>
 		<div class="ml-20 mr-20 flex flex-col w-fit h-full max-md:w-18 gap-x-20 gap-y-3">
-			<span class="flex flex-row flex-wrap gap-5">
+			<span class="flex flex-row flex-wrap gap-5 mr-4">
 				<TagInput
 					bind:tagList={recipientEmails}
 					type="email"
 					name="recipient"
 					placeholder="Recipient"
 					style="h-14 w-fit bg-larimarGreen-700"
-					tagStyle="text-xs px-1 py-1 rounded bg-peacockFeather-600 text-paper-500"
+					tagStyle="text-xs px-1 py-1 rounded bg-peacockFeather-600 text-paper-500 m-2 w-fit"
 				>
 					<icon class="w-12 inline-block m-1"><AddRecipient /></icon>
 				</TagInput>
@@ -112,7 +112,7 @@
 					name="topic"
 					placeholder="Topic"
 					style="h-14 w-fit bg-larimarGreen-700"
-					tagStyle="text-xs px-1 py-1 rounded bg-peacockFeather-500 text-paper-500"
+					tagStyle="text-xs px-1 py-1 rounded bg-peacockFeather-500 text-paper-500 m-2 w-fit"
 				>
 					<icon class="w-12 inline-block m-1"><AddTopic /></icon>
 				</TagInput>

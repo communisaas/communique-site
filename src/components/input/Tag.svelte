@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 
 	export let type: 'text' | 'search' | 'email',
 		name: string,
@@ -18,6 +18,8 @@
 
 	let inputField: HTMLInputElement;
 
+	const dispatch = createEventDispatcher();
+
 	function addTag(tag: string) {
 		if (!inputField.checkValidity() || inputField.value == '') {
 			inputField.reportValidity();
@@ -31,6 +33,7 @@
 			inputField.reportValidity();
 		} else {
 			tagList = [...tagList, tag];
+			dispatch('add', tag);
 		}
 	}
 
@@ -50,85 +53,87 @@
 	});
 </script>
 
-<ul
-	class="max-w-fit px-3 py-1 gap h-fit flex flex-row place-items-center items-center justify-center
-		rounded cursor-pointer flex-wrap {style}"
-	aria-label="{name} list"
-	aria-describedby="List of {name}s with an add button"
-	on:mouseenter={() => (deleteVisible = true)}
-	on:mouseleave={() => (deleteVisible = false)}
-	on:click|preventDefault={() => {
-		inputVisible = true;
-	}}
-	on:keypress={(e) => {
-		if (e.key == 'Enter') {
-			inputVisible = true;
-		}
-	}}
+<div
+	class="px-3 py-1 rounded h-fit flex flex-nowrap items-center justify-center cursor-pointer {style}"
 >
-	{#each tagList as tag}
-		<li class="relative group mx-2 {tagStyle}">
-			<button
-				type="button"
-				on:click={(e) => {
-					tagList = tagList.filter((item) => item != tag);
-					if (!inputVisible) e.stopImmediatePropagation();
+	<ul
+		class="inline-flex flex-row flex-wrap items-center"
+		aria-label="{name} list"
+		aria-describedby="List of {name}s with an add button"
+		on:mouseenter={() => (deleteVisible = true)}
+		on:mouseleave={() => (deleteVisible = false)}
+		on:click|preventDefault={() => {
+			inputVisible = true;
+		}}
+		on:keypress={(e) => {
+			if (e.key == 'Enter') {
+				inputVisible = true;
+			}
+		}}
+	>
+		{#each tagList as tag}
+			<li class="relative mx-2 {tagStyle}">
+				<button
+					type="button"
+					on:click={(e) => {
+						tagList = tagList.filter((item) => item != tag);
+						if (!inputVisible) e.stopImmediatePropagation();
+					}}
+					on:focus={() => (deleteVisible = true)}
+					on:blur={() => (deleteVisible = false)}
+					class="delete absolute -top-1 -left-2 rounded-full bg-amber-600 w-4 h-4"
+					class:show={deleteVisible}
+					aria-label={`Remove ${name}`}
+				>
+					<!-- plus sign -->
+					&#215;
+				</button>
+				{tag}
+			</li>
+		{/each}
+
+		<li class="flex gap-3 justify-center flex-wrap items-center">
+			<input
+				required={tagList.length <= 0}
+				{name}
+				role="textbox"
+				aria-label="{name} input"
+				aria-describedby="Add a {name} here"
+				{placeholder}
+				inputmode={type}
+				bind:this={inputField}
+				on:blur={(e) => {
+					inputVisible = false;
+					e.currentTarget.value = '';
+					inputValueWidth = placeholderWidth * 1.25;
 				}}
-				on:focus={() => (deleteVisible = true)}
-				on:blur={() => (deleteVisible = false)}
-				class="delete absolute -top-1 -left-2 rounded-full bg-amber-600 w-4 h-4"
-				class:show={deleteVisible}
-				aria-label={`Remove ${name}`}
-			>
-				<!-- plus sign -->
-				&#215;
-			</button>
-			{tag}
+				on:focus={() => (inputVisible = true)}
+				on:keydown|self={(e) => {
+					// clear earlier validation errors
+					inputField.setCustomValidity('');
+					if (e.key == 'Enter') {
+						e.preventDefault();
+						addTag(inputField.value);
+						inputValueWidth = placeholderWidth * 1.25;
+					}
+				}}
+				on:input={() => {
+					const currentValueWidth = context.measureText(inputField.value).width;
+					if (currentValueWidth > placeholderWidth) {
+						inputValueWidth = currentValueWidth * 1.25;
+					} else {
+						inputValueWidth = placeholderWidth * 1.25;
+					}
+				}}
+				style="width: {inputVisible ? inputValueWidth : 0}px;"
+				class={inputStyle}
+				class:ml-2={tagList.length > 0 && inputVisible}
+				class:mr-1={tagList.length > 0 && inputVisible}
+				class:show={inputVisible}
+				{type}
+			/>
 		</li>
-	{/each}
-
-	<li class="flex flex-row gap-3 justify-center flex-wrap items-center">
-		<input
-			required={tagList.length <= 0}
-			{name}
-			role="textbox"
-			aria-label="{name} input"
-			aria-describedby="Add a {name} here"
-			{placeholder}
-			inputmode={type}
-			bind:this={inputField}
-			on:blur={(e) => {
-				inputVisible = false;
-				e.currentTarget.value = '';
-				inputValueWidth = placeholderWidth * 1.25;
-			}}
-			on:focus={() => (inputVisible = true)}
-			on:keydown|self={(e) => {
-				// clear earlier validation errors
-				inputField.setCustomValidity('');
-				if (e.key == 'Enter') {
-					e.preventDefault();
-					addTag(inputField.value);
-					inputValueWidth = placeholderWidth * 1.25;
-				}
-			}}
-			on:input={() => {
-				const currentValueWidth = context.measureText(inputField.value).width;
-				if (currentValueWidth > placeholderWidth) {
-					inputValueWidth = currentValueWidth * 1.25;
-				} else {
-					inputValueWidth = placeholderWidth * 1.25;
-				}
-			}}
-			style="width: {inputVisible ? inputValueWidth : 0}px;"
-			class={inputStyle}
-			class:ml-2={tagList.length > 0 && inputVisible}
-			class:mr-1={tagList.length > 0 && inputVisible}
-			class:show={inputVisible}
-			{type}
-		/>
-	</li>
-
+	</ul>
 	<button
 		name={`Add ${name}`}
 		aria-label="Add button for {name}s"
@@ -142,7 +147,7 @@
 			<icon class={addIconStyle} />
 		</span>
 	</button>
-</ul>
+</div>
 
 <style lang="scss">
 	input {

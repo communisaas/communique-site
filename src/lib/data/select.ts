@@ -8,6 +8,7 @@ import { convertHtmlToText } from './email';
 import he from 'he';
 
 export async function handleSelect(e: CustomEvent) {
+	console.log(e.detail);
 	const dataFetcher = async (endpoint: string) => {
 		const dataURL = new URL(endpoint, get(page).url);
 		dataURL.searchParams.append(e.detail.type, e.detail.id);

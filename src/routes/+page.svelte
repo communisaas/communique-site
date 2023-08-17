@@ -87,6 +87,10 @@
 							handleMailto(dispatch);
 						}
 					}}
+					on:search={async (e) => {
+						console.log(e);
+						console.log(await handleSelect(e));
+					}}
 				/>
 			{/key}
 		{/each}

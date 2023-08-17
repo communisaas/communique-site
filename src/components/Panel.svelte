@@ -17,7 +17,8 @@
 
 	const dispatch = createEventDispatcher();
 
-	let store: Writable<UserState>;
+	let store: Writable<UserState>,
+		selectionList = [initialSelection];
 
 	onMount(async () => {
 		store = (await import('$lib/data/sessionStorage')).store;
@@ -28,7 +29,7 @@
 	<aside class="flex pb-3" style="justify-content: {alignment}">
 		{#if filterable && selectorTarget != 'spotlight'}
 			<h1
-				class="text-paper-500 h-fit self-center justify-self-start"
+				class="text-paper-500 h-fit self-center justify-self-start mx-2 my-1"
 				style="background-color: transparent; padding: unset"
 			>
 				{header}
@@ -44,7 +45,10 @@
 						style="h-14 w-fit bg-transparent"
 						tagStyle="text-xl underline font-bold bg-transparent rounded px-2 pr-1 text-paper-500"
 						addIconStyle="add bg-peacockFeather-500 h-12 w-12 text-5xl inline-block leading-12"
-						tagList={[initialSelection]}
+						tagList={selectionList}
+						on:add={(e) => {
+							dispatch('search', e.detail);
+						}}
 					/>
 				{:else}
 					<h1 class="text-paper-500">
@@ -61,7 +65,7 @@
 		{selectable}
 		{items}
 		alignment="center"
-		selectorStyle="flex-col min-h-[13rem]"
+		selectorStyle="flex-col items-center min-h-[13rem] max-w-7xl m-auto"
 		target={selected.type}
 		scrollable={false}
 		bind:selectedContent={selected}
