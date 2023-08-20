@@ -25,7 +25,7 @@
 	});
 </script>
 
-<section class="flex flex-col relative pb-5 px-5 gradient-background">
+<section class="flex flex-col relative px-5 gradient-background h-full">
 	<aside class="flex pb-3" style="justify-content: {alignment}">
 		{#if filterable && selectorTarget != 'spotlight'}
 			<h1

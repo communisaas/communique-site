@@ -42,54 +42,54 @@
 <main class="flex">
 	<div class="grow-0 shrink-0 w-20"><Navigation /></div>
 	<div class="w-full relative flex flex-col min-h-full">
-		<header
-			aria-label="Popular topics list"
-			class="flex px-3 bg-peacockFeather-700 items-center relative h-14"
-		>
-			{#if $sessionStore && $sessionStore.template}
-				<Selector
-					selectable={Tag}
-					target="email"
-					itemStyle="bg-peacockFeather-500 text-paper-500"
-					selectorStyle="py-3"
-					items={topicNames}
-					alignment="center"
-					backgroundColor={colors.peacockFeather[700]}
-					bind:selectedContent={$sessionStore.topic}
-					on:select={async (e) => {
-						if ($sessionStore.template.primary) {
-							$sessionStore.template.primary.cardList = await handleSelect(e);
-							$sessionStore.template.primary.focus = e.detail.id;
-							await goto('/');
-						}
-					}}
-				/>
-			{/if}
-			<span class="ml-auto flex gap-3 items-center h-full text-paper-500">
-				{#if $page.data.session}
-					{#if $page.data.session.user?.image}
-						<img src={$page.data.session.user.image} alt="avatar" class="h-10 w-10" />
-					{/if}
-					<span class="signedInText">
-						<small>Signed in as</small><br />
-						<strong>{$page.data.session.user?.name ?? 'User'}</strong>
-					</span>
-					<button on:click={() => signOut({ callbackUrl: '/', redirect: false })}>
-						Sign out
-					</button>
-				{:else}
-					<span class="notSignedInText">You are not signed in</span>
-					<button class="w-12" on:click={() => signIn({ callbackUrl: '/', redirect: false })}>
-						<LoginIcon />
-					</button>
+		<section class="min-h-screen">
+			<header
+				aria-label="Popular topics list"
+				class="flex px-3 bg-peacockFeather-700 items-center relative h-14"
+			>
+				{#if $sessionStore && $sessionStore.template}
+					<Selector
+						selectable={Tag}
+						target="email"
+						itemStyle="bg-peacockFeather-500 text-paper-500"
+						selectorStyle="py-3"
+						items={topicNames}
+						alignment="center"
+						backgroundColor={colors.peacockFeather[700]}
+						bind:selectedContent={$sessionStore.topic}
+						on:select={async (e) => {
+							if ($sessionStore.template.primary) {
+								$sessionStore.template.primary.cardList = await handleSelect(e);
+								$sessionStore.template.primary.focus = e.detail.id;
+								await goto('/');
+							}
+						}}
+					/>
 				{/if}
-			</span>
-		</header>
-		<div class="min-h-screen">
+				<span class="ml-auto flex gap-3 items-center h-full text-paper-500">
+					{#if $page.data.session}
+						{#if $page.data.session.user?.image}
+							<img src={$page.data.session.user.image} alt="avatar" class="h-10 w-10" />
+						{/if}
+						<span class="signedInText">
+							<small>Signed in as</small><br />
+							<strong>{$page.data.session.user?.name ?? 'User'}</strong>
+						</span>
+						<button on:click={() => signOut({ callbackUrl: '/', redirect: false })}>
+							Sign out
+						</button>
+					{:else}
+						<span class="notSignedInText">You are not signed in</span>
+						<button class="w-12" on:click={() => signIn({ callbackUrl: '/', redirect: false })}>
+							<LoginIcon />
+						</button>
+					{/if}
+				</span>
+			</header>
 			<slot />
-		</div>
+		</section>
 		<!-- TODO aria labels for footer -->
-		<footer class="bg-gray-900 text-white py-6 static bottom-0 w-full">
+		<footer class="bg-gray-900 text-white py-6 static bottom-0 w-full z-10">
 			<div class="container mx-auto flex flex-wrap items-center justify-center px-4">
 				<div class="mb-4 md:mb-0">
 					<div class="flex justify-center md:justify-start">
