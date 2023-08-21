@@ -41,6 +41,16 @@
 		}
 	};
 
+	async function fetchSearchResults(query: string) {
+		const response = await fetch(`/data/search/${query}`);
+		if (response.ok) {
+			return await response.json();
+		} else {
+			console.error('Failed to fetch search results:', await response.text());
+			return null;
+		}
+	}
+
 	// TODO loading placeholders
 </script>
 
@@ -89,7 +99,7 @@
 					}}
 					on:search={async (e) => {
 						console.log(e);
-						console.log(await handleSelect(e));
+						console.log(await fetchSearchResults(e.detail));
 					}}
 				/>
 			{/key}

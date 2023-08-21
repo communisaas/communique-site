@@ -1,8 +1,9 @@
 import { PrismaClient } from '@prisma/client';
+import { Sql } from '@prisma/client/runtime';
 
 export const objectMapper = new PrismaClient();
 
-export function find(table: string, options: Query, scope: 'unique' | 'many' = 'many') {
+export function find(table: string, options: Clause, scope: 'unique' | 'many' = 'many') {
 	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 	// @ts-ignore indexing type error
 	const currentTable = objectMapper[table];
@@ -12,6 +13,10 @@ export function find(table: string, options: Query, scope: 'unique' | 'many' = '
 		case 'many':
 			return currentTable.findMany({ ...options });
 	}
+}
+
+export async function rawSqlQuery(query: Sql, params: unknown[] = []) {
+	return await objectMapper.$queryRaw(query, ...params);
 }
 
 // patch BigInt to serialize JSON as string
