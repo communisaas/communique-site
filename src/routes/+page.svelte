@@ -17,7 +17,8 @@
 
 	export let data;
 
-	let sessionStore: Writable<UserState>;
+	let sessionStore: Writable<UserState>,
+		searchResults: string[] = [];
 
 	const dispatch = createEventDispatcher();
 
@@ -76,6 +77,7 @@
 					alignment={panel.alignment}
 					items={panel.cardList}
 					filterable={true}
+					bind:searchResults
 					bind:selected={$sessionStore.email}
 					on:select={async (e) => {
 						$sessionStore.template.primary.cardList = await handleSelect(e);
@@ -99,7 +101,7 @@
 					}}
 					on:search={async (e) => {
 						console.log(e);
-						console.log(await fetchSearchResults(e.detail));
+						searchResults = await fetchSearchResults(e.detail);
 					}}
 				/>
 			{/key}

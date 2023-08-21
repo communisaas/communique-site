@@ -3,24 +3,47 @@ import { Prisma } from '@prisma/client';
 
 /** @type {import('./$types').RequestHandler} */
 export async function GET({ params }) {
-	const searchItem = `%${params.slug}%`; // Wrap in % for ILIKE
+	const searchItem = `%${params.slug}%`;
+	// TODO elastic search
 	const rawQuery = Prisma.sql`
-		WITH search_results AS (
-			SELECT 'email' AS source, shortid AS id FROM email 
-			WHERE subject ILIKE ${searchItem} OR body ILIKE ${searchItem} OR shortid ILIKE ${searchItem}
-		
-			UNION
-		
-			SELECT 'recipient' AS source, address AS id FROM recipient 
-			WHERE address ILIKE ${searchItem}
-		
-			UNION
-		
-			SELECT 'topic' AS source, name AS id FROM topic 
-			WHERE name ILIKE ${searchItem}
-		)
-		SELECT * FROM search_results LIMIT 10;
-    `;
+	WITH 
+	email_search AS (
+		SELECT 
+			'email' AS source, 
+			shortid AS id, 
+			ts_rank(to_tsvector('english', subject || ' ' || body), to_tsquery('english', ${searchItem})) AS rank
+		FROM email 
+		WHERE to_tsvector('english', subject || ' ' || body) @@ to_tsquery('english', ${searchItem})
+		LIMIT 10
+	),
+	recipient_search AS (
+		SELECT 
+			'recipient' AS source, 
+			address AS id, 
+			ts_rank(to_tsvector('english', address), to_tsquery('english', ${searchItem})) AS rank
+		FROM recipient 
+		WHERE to_tsvector('english', address) @@ to_tsquery('english', ${searchItem})
+		LIMIT 10
+	),
+	topic_search AS (
+		SELECT 
+			'topic' AS source, 
+			name AS id, 
+			ts_rank(to_tsvector('english', name), to_tsquery('english', ${searchItem})) AS rank
+		FROM topic 
+		WHERE to_tsvector('english', name) @@ to_tsquery('english', ${searchItem})
+		LIMIT 10
+	)
+	
+	SELECT * FROM email_search
+	UNION ALL
+	SELECT * FROM recipient_search
+	UNION ALL
+	SELECT * FROM topic_search
+	ORDER BY rank DESC;
+	
+	`;
+
 	const results = await rawSqlQuery(rawQuery);
 	console.log(results);
 	return new Response(JSON.stringify(results));

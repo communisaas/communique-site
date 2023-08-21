@@ -7,6 +7,15 @@ import DOMPurify from 'dompurify';
 import { convertHtmlToText } from './email';
 import he from 'he';
 
+export async function autocomplete(e: InputEvent, timeout = 300) {
+	// debounce to pull canonical input events
+	let timer;
+	return (e) => {
+		clearTimeout(timer);
+		timer = setTimeout(() => {}, timeout);
+	};
+}
+
 export async function handleSelect(e: CustomEvent) {
 	console.log(e.detail);
 	const dataFetcher = async (endpoint: string) => {

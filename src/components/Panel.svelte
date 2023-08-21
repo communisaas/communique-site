@@ -14,12 +14,14 @@
 	export let initialSelection: string;
 	export let items: Selectable[];
 	export let filterable = false;
+	export let searchResults: string[] = [];
 
 	const dispatch = createEventDispatcher();
 
 	let store: Writable<UserState>,
 		selectionList = [initialSelection];
 
+	$: console.log(searchResults);
 	onMount(async () => {
 		store = (await import('$lib/data/sessionStorage')).store;
 	});
@@ -46,6 +48,7 @@
 						tagStyle="text-xl underline font-bold bg-transparent rounded px-2 pr-1 text-paper-500"
 						addIconStyle="add bg-peacockFeather-500 h-12 w-12 text-5xl inline-block leading-12"
 						tagList={selectionList}
+						bind:searchResults
 						on:add={(e) => {
 							dispatch('search', e.detail);
 						}}
