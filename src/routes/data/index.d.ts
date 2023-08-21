@@ -3,12 +3,16 @@ interface FieldMap {
 }
 
 interface Query {
-	where: Criteria | Operator;
+	[table: string]: Clause;
+}
+
+interface Clause {
+	where: Criteria;
 	take?: number;
 }
 
 interface Criteria {
-	[field: string]: Operator | undefined;
+	[field: string]: Operator;
 }
 
 interface Operator {

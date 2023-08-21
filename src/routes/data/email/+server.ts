@@ -9,25 +9,27 @@ const emailFieldMap: FieldMap = {
 
 /** @type {import('./$types').RequestHandler} */
 // TODO same origin policy
-export async function GET({ url }) {
-	const options = {
+export async function GET({ url }: { url: URL }) {
+	const options: Clause = {
 		where: Array.from(url.searchParams.entries()).reduce(
-			(filter: Criteria, [field, value]: string[]) => {
+			(filter: Criteria, [field, value]: [string, string]) => {
 				const fieldName = emailFieldMap ? emailFieldMap[field] : field;
-				let criteria;
+				let clause: Operator;
 				switch (field) {
 					case 'recipient':
 					case 'topic': {
-						criteria = { has: value };
+						clause = { has: value };
 						break;
 					}
 					case 'email': {
-						criteria = { equals: value };
+						clause = { equals: value };
 						break;
 					}
+					default: {
+						throw Error('Invalid field name');
+					}
 				}
-				if (!criteria) throw Error('Invalid field name');
-				filter[fieldName] = criteria;
+				filter[fieldName as keyof Criteria] = clause;
 				return filter;
 			},
 			{} as Criteria

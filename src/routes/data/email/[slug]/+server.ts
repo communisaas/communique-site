@@ -1,4 +1,3 @@
-// TODO endpoint to handle short IDs for email: https://www.npmjs.com/package/hashids
 import { find } from '$lib/data/database';
 import { error } from '@sveltejs/kit';
 
@@ -10,11 +9,15 @@ function isUUID(s: string) {
 
 /** @type {import('./$types').RequestHandler} */
 export async function GET({ params }) {
-	// TODO email criteria filters
-	const options = isUUID(params.slug)
-		? { where: { rowid: { equals: params.slug } } }
-		: { where: { shortid: { equals: params.slug } } };
+	const whereCriteria: Criteria = {};
 
+	if (isUUID(params.slug)) {
+		whereCriteria.rowid = { equals: params.slug };
+	} else {
+		whereCriteria.shortid = { equals: params.slug };
+	}
+
+	const options = { where: whereCriteria };
 	const email = await find('email', options);
 	return new Response(JSON.stringify(email[0]));
 }
