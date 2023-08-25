@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { Sql } from '@prisma/client/runtime';
+import type { Sql } from '@prisma/client/runtime/library';
 
 export const objectMapper = new PrismaClient();
 

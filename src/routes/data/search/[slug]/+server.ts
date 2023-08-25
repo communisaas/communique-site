@@ -44,7 +44,16 @@ export async function GET({ params }) {
 	
 	`;
 
-	const results = await rawSqlQuery(rawQuery);
+	let results;
+	try {
+		results = await rawSqlQuery(rawQuery);
+	} catch (error) {
+		if (error.code == 'P2010') results = [];
+		else {
+			console.error(error);
+			return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+		}
+	}
 	console.log(results);
 	return new Response(JSON.stringify(results));
 }
