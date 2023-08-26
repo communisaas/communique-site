@@ -17,8 +17,7 @@
 
 	export let data;
 
-	let sessionStore: Writable<UserState>,
-		searchResults: string[] = [];
+	let sessionStore: Writable<UserState>;
 
 	const dispatch = createEventDispatcher();
 
@@ -41,16 +40,6 @@
 			props: () => ({ item: $page.data.termsOfUse, inModal: true })
 		}
 	};
-
-	async function fetchSearchResults(query: string) {
-		const response = await fetch(`/data/search/${query}`);
-		if (response.ok) {
-			return await response.json();
-		} else {
-			console.error('Failed to fetch search results:', await response.text());
-			return null;
-		}
-	}
 
 	// TODO loading placeholders
 </script>
@@ -77,7 +66,6 @@
 					alignment={panel.alignment}
 					items={panel.cardList}
 					filterable={true}
-					bind:searchResults
 					bind:selected={$sessionStore.email}
 					on:select={async (e) => {
 						$sessionStore.template.primary.cardList = await handleSelect(e);
@@ -98,10 +86,6 @@
 							$sessionStore.show.share = true;
 							handleMailto(dispatch);
 						}
-					}}
-					on:search={async (e) => {
-						console.log(e);
-						searchResults = await fetchSearchResults(e.detail);
 					}}
 				/>
 			{/key}

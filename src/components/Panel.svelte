@@ -3,6 +3,7 @@
 	import { createEventDispatcher, onMount, type ComponentType } from 'svelte';
 	import type { Writable } from 'svelte/store';
 	import TagInput from './input/Tag.svelte';
+	import { debounce, fetchSearchResults } from '$lib/data/select';
 
 	export let header: string;
 	export let alignment: 'start' | 'end' | 'center' | 'justify' | 'match-parent';
@@ -14,14 +15,21 @@
 	export let initialSelection: string;
 	export let items: Selectable[];
 	export let filterable = false;
-	export let searchResults: string[] = [];
+	let searchResults: string[] = [];
 
 	const dispatch = createEventDispatcher();
 
-	let store: Writable<UserState>,
-		selectionList = [initialSelection];
+	let store: Writable<UserState>;
+	$: selectionList = [initialSelection];
 
-	$: console.log(searchResults);
+	async function handleAutocomplete(e: CustomEvent<string>) {
+		try {
+			searchResults = (await debounce(1000, fetchSearchResults, e.detail, fetch)) as string[];
+			console.log(searchResults);
+		} catch (error) {
+			console.error('Error in fetching search results:', error);
+		}
+	}
 	onMount(async () => {
 		store = (await import('$lib/data/sessionStorage')).store;
 	});
@@ -48,9 +56,10 @@
 						tagStyle="text-xl underline font-bold bg-transparent rounded px-2 pr-1 text-paper-500"
 						addIconStyle="add bg-peacockFeather-500 h-12 w-12 text-5xl inline-block leading-12"
 						tagList={selectionList}
+						autocomplete={true}
 						bind:searchResults
-						on:add={(e) => {
-							dispatch('search', e.detail);
+						on:autocomplete={async (e) => {
+							handleAutocomplete(e);
 						}}
 					/>
 				{:else}
@@ -97,20 +106,32 @@
 	}
 
 	.space {
-		background-color: theme('colors.peacockFeather.700');
 		display: flex;
 	}
 
 	.tab {
 		filter: drop-shadow(1px 2px 1px theme('colors.artistBlue.500'));
+		position: relative;
+		z-index: 20;
 		&__start {
 			margin-left: -1.25rem;
 			align-items: start;
 			& .space {
-				clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
 				padding: 0.5em 0;
 				padding-right: 2em;
 				justify-content: center;
+				&::before {
+					content: '';
+					position: absolute;
+					top: 0;
+					left: 0;
+					right: 0;
+					bottom: 0;
+					width: 100%;
+					clip-path: polygon(0 0, 100% 0, 90% 100%, 0 100%);
+
+					background-color: theme('colors.peacockFeather.700');
+				}
 			}
 		}
 		&__end {
@@ -118,9 +139,19 @@
 			& .space {
 				padding: 0.5em 1.25em;
 				padding-left: 0.5em;
-				justify-content: start;
 				align-items: center;
-				clip-path: polygon(0 0, 100% 0, 100% 100%, 2em 100%);
+
+				&::before {
+					content: '';
+					position: absolute;
+					top: 0;
+					left: 0;
+					right: 0;
+					bottom: 0;
+					width: 100%;
+					clip-path: polygon(0 0, 100% 0, 100% 100%, 2em 100%);
+					background-color: theme('colors.peacockFeather.700');
+				}
 			}
 		}
 	}

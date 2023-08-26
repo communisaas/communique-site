@@ -61,7 +61,7 @@
 							if ($sessionStore.template.primary) {
 								$sessionStore.template.primary.cardList = await handleSelect(e);
 								$sessionStore.template.primary.focus = e.detail.id;
-								await goto('/');
+								await goto('/', { noScroll: true });
 							}
 						}}
 					/>

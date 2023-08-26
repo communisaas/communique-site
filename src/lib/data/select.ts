@@ -7,15 +7,6 @@ import DOMPurify from 'dompurify';
 import { convertHtmlToText } from './email';
 import he from 'he';
 
-export async function autocomplete(e: InputEvent, timeout = 300) {
-	// debounce to pull canonical input events
-	let timer;
-	return (e) => {
-		clearTimeout(timer);
-		timer = setTimeout(() => {}, timeout);
-	};
-}
-
 export async function handleSelect(e: CustomEvent) {
 	console.log(e.detail);
 	const dataFetcher = async (endpoint: string) => {
@@ -85,4 +76,31 @@ export async function handleCopy(dataType: 'email' | 'link', content: email | st
 	}
 
 	return true;
+}
+
+export async function fetchSearchResults(query: string, fetch: fetch) {
+	let response;
+	if (query) response = await fetch(`/data/search/${query}`);
+	if (response.ok) {
+		return await response.json();
+	} else {
+		console.error('Failed to fetch search results:', await response.text());
+		return null;
+	}
+}
+
+export function debounce(timeout: number, callback: CallableFunction, ...params: unknown[]) {
+	let timer: NodeJS.Timeout;
+
+	return new Promise<unknown>((resolve, reject) => {
+		clearTimeout(timer);
+		timer = setTimeout(async () => {
+			try {
+				const result = await callback(...params);
+				resolve(result);
+			} catch (error) {
+				reject(error);
+			}
+		}, timeout);
+	});
 }

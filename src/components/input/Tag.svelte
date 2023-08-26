@@ -6,7 +6,7 @@
 		placeholder: string,
 		style: string,
 		tagStyle: string,
-		backgroundColor = 'transparent';
+		autocomplete: boolean = false;
 	export let tagList: string[] = [];
 	export let searchResults: string[] = [];
 	export let inputStyle =
@@ -21,7 +21,7 @@
 	let deleteButtons: ButtonElementMap = {}; // A map to hold the delete buttons
 
 	const dispatch = createEventDispatcher();
-
+	$: console.log(searchResults);
 	function addTag(tag: string) {
 		if (!inputField.checkValidity() || inputField.value == '') {
 			inputField.reportValidity();
@@ -36,6 +36,18 @@
 		} else {
 			tagList = [...tagList, tag];
 			dispatch('add', tag);
+		}
+	}
+
+	async function handleInput() {
+		const currentValueWidth = context.measureText(inputField.value).width + 8;
+		if (currentValueWidth > placeholderWidth) {
+			inputValueWidth = currentValueWidth;
+		} else {
+			inputValueWidth = placeholderWidth;
+		}
+		if (autocomplete && inputField.value.length > 2) {
+			dispatch('autocomplete', inputField.value);
 		}
 	}
 
@@ -55,7 +67,7 @@
 	});
 </script>
 
-<div class="px-3 py-1 rounded h-fit flex flex-nowrap items-center justify-center {style}">
+<div class="px-3 py-1 rounded h-fit flex flex-nowrap items-center justify-center z-10 {style}">
 	<form
 		autocomplete="off"
 		class="flex"
@@ -98,9 +110,9 @@
 						<button
 							bind:this={deleteButtons[tag]}
 							type="button"
-							on:click={(e) => {
+							on:click|stopPropagation={(e) => {
 								tagList = tagList.filter((item) => item != tag);
-								if (!inputVisible) e.stopImmediatePropagation();
+								if (inputVisible) inputField.focus();
 							}}
 							on:focus={() => (deleteVisible[tag] = true)}
 							on:blur={() => (deleteVisible[tag] = false)}
@@ -116,7 +128,7 @@
 				</li>
 			{/each}
 
-			<li class="flex gap-3 justify-center flex-wrap items-center">
+			<li class="flex gap-3 justify-center flex-wrap items-center relative">
 				<input
 					required={tagList.length <= 0}
 					{name}
@@ -127,9 +139,12 @@
 					inputmode={type}
 					bind:this={inputField}
 					on:blur={(e) => {
-						inputVisible = false;
-						e.currentTarget.value = '';
-						inputValueWidth = placeholderWidth;
+						if (!Object.keys(deleteVisible).some((k) => deleteVisible[k])) {
+							inputVisible = false;
+							e.currentTarget.value = '';
+							inputValueWidth = placeholderWidth;
+							searchResults = [];
+						}
 					}}
 					on:focus={() => (inputVisible = true)}
 					on:keydown|self={(e) => {
@@ -142,12 +157,7 @@
 						}
 					}}
 					on:input={() => {
-						const currentValueWidth = context.measureText(inputField.value).width + 8;
-						if (currentValueWidth > placeholderWidth) {
-							inputValueWidth = currentValueWidth;
-						} else {
-							inputValueWidth = placeholderWidth;
-						}
+						handleInput();
 					}}
 					style="width: {inputVisible ? inputValueWidth : 0}px;"
 					class={inputStyle}
@@ -156,7 +166,7 @@
 				/>
 				<ul class="autocomplete flex flex-col">
 					{#each searchResults as result}
-						<li>{result.id}</li>
+						<li class="relative">{result.id}</li>
 					{/each}
 				</ul>
 			</li>
@@ -228,6 +238,26 @@
 		&.show {
 			transform: scale(1);
 			transition: opacity 0.2s, transform 0.2s, visibility 0s 0.2s;
+		}
+	}
+
+	.autocomplete {
+		position: absolute;
+		top: 100%;
+		right: 0;
+		max-height: 200px;
+		overflow-y: auto;
+		background-color: #fff;
+		border-radius: 4px;
+		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+		li {
+			padding: 4px;
+			cursor: pointer;
+
+			&:hover {
+				background-color: #eee;
+			}
 		}
 	}
 
