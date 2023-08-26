@@ -61,3 +61,11 @@ interface Props {
 
 // load props from a function that runs after the component mounts
 type ComponentProps = () => Props;
+
+interface ButtonElementMap {
+	[key: string]: HTMLButtonElement;
+}
+
+interface FlagMap {
+	[key: string]: boolean;
+}

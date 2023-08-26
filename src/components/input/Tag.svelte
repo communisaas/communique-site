@@ -7,17 +7,18 @@
 		style: string,
 		tagStyle: string,
 		backgroundColor = 'transparent';
-	export let tagList: (string | FormDataEntryValue)[] = [];
+	export let tagList: string[] = [];
 	export let searchResults: string[] = [];
 	export let inputStyle =
-		'rounded bg-larimarGreen-500 shadow-artistBlue shadow-card w-0 h-0 focus:p-0.5';
+		'rounded bg-larimarGreen-500 shadow-artistBlue shadow-card w-0 h-0 focus:p-1 focus:ml-2 focus:mr-1';
 	export let addIconStyle =
 		'add absolute bg-peacockFeather-600 h-6 w-6 text-2xl leading-6 font-bold';
 
 	let inputVisible: boolean = false;
-	let deleteVisible: boolean = false;
+	let deleteVisible: FlagMap = {}; // A map to hold visibility states
 
 	let inputField: HTMLInputElement;
+	let deleteButtons: ButtonElementMap = {}; // A map to hold the delete buttons
 
 	const dispatch = createEventDispatcher();
 
@@ -54,9 +55,7 @@
 	});
 </script>
 
-<div
-	class="px-3 py-1 rounded h-fit flex flex-nowrap items-center justify-center cursor-pointer {style}"
->
+<div class="px-3 py-1 rounded h-fit flex flex-nowrap items-center justify-center {style}">
 	<form
 		autocomplete="off"
 		class="flex"
@@ -68,35 +67,52 @@
 			class="inline-flex flex-row flex-wrap items-center"
 			aria-label="{name} list"
 			aria-describedby="List of {name}s with an add button"
-			on:mouseenter={() => (deleteVisible = true)}
-			on:mouseleave={() => (deleteVisible = false)}
-			on:click|preventDefault={() => {
-				inputVisible = true;
-			}}
-			on:keypress={(e) => {
-				if (e.key == 'Enter') {
-					inputVisible = true;
-				}
-			}}
 		>
 			{#each tagList as tag}
 				<li class="relative mx-2 {tagStyle}">
-					<button
-						type="button"
-						on:click={(e) => {
-							tagList = tagList.filter((item) => item != tag);
-							if (!inputVisible) e.stopImmediatePropagation();
+					<span
+						class="relative"
+						style="width: 100%; height: 100%;"
+						on:mouseenter={() => (deleteVisible[tag] = true)}
+						on:mouseleave={() => (deleteVisible[tag] = false)}
+						on:mousemove={(event) => {
+							const containerRect = event.currentTarget.getBoundingClientRect();
+
+							// Make sure the button stays within the boundaries
+							let deleteX = Math.min(
+								event.clientX - containerRect.left - 10,
+								containerRect.width - 10
+							);
+							let deleteY = Math.min(
+								event.clientY - containerRect.top - 10,
+								containerRect.height - 10
+							);
+
+							deleteX = Math.max(deleteX, 0); // To keep it within left boundary
+							deleteY = Math.max(deleteY, 0); // To keep it within top boundary
+
+							deleteButtons[tag].style.left = `${deleteX}px`;
+							deleteButtons[tag].style.top = `${deleteY}px`;
 						}}
-						on:focus={() => (deleteVisible = true)}
-						on:blur={() => (deleteVisible = false)}
-						class="delete absolute -top-1 -left-2 rounded-full bg-amber-600 w-4 h-4"
-						class:show={deleteVisible}
-						aria-label={`Remove ${name}`}
 					>
-						<!-- plus sign -->
-						&#215;
-					</button>
-					{tag}
+						<button
+							bind:this={deleteButtons[tag]}
+							type="button"
+							on:click={(e) => {
+								tagList = tagList.filter((item) => item != tag);
+								if (!inputVisible) e.stopImmediatePropagation();
+							}}
+							on:focus={() => (deleteVisible[tag] = true)}
+							on:blur={() => (deleteVisible[tag] = false)}
+							class="delete absolute -top-1 -left-2 rounded-full bg-amber-600 w-4 h-4"
+							class:show={deleteVisible[tag]}
+							aria-label={`Remove ${name}`}
+						>
+							<!-- x sign -->
+							&#215;
+						</button>
+						{tag}
+					</span>
 				</li>
 			{/each}
 
@@ -113,7 +129,7 @@
 					on:blur={(e) => {
 						inputVisible = false;
 						e.currentTarget.value = '';
-						inputValueWidth = placeholderWidth * 1.25;
+						inputValueWidth = placeholderWidth;
 					}}
 					on:focus={() => (inputVisible = true)}
 					on:keydown|self={(e) => {
@@ -122,21 +138,19 @@
 						if (e.key == 'Enter') {
 							e.preventDefault();
 							addTag(inputField.value);
-							inputValueWidth = placeholderWidth * 1.25;
+							inputValueWidth = placeholderWidth;
 						}
 					}}
 					on:input={() => {
-						const currentValueWidth = context.measureText(inputField.value).width;
+						const currentValueWidth = context.measureText(inputField.value).width + 8;
 						if (currentValueWidth > placeholderWidth) {
-							inputValueWidth = currentValueWidth * 1.25;
+							inputValueWidth = currentValueWidth;
 						} else {
-							inputValueWidth = placeholderWidth * 1.25;
+							inputValueWidth = placeholderWidth;
 						}
 					}}
 					style="width: {inputVisible ? inputValueWidth : 0}px;"
 					class={inputStyle}
-					class:ml-2={tagList.length > 0 && inputVisible}
-					class:mr-1={tagList.length > 0 && inputVisible}
 					class:show={inputVisible}
 					{type}
 				/>
