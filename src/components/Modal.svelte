@@ -12,11 +12,11 @@
 <main
 	transition:fade={{ delay: 50, duration: 300, easing: expoIn }}
 	aria-label="Send status screen"
-	class="popover fixed items-center z-50 top-0"
+	class="popover fixed items-center z-50 top-0 bottom-0 left-0 right-0"
 	style="--bodyOverflow: {show ? 'hidden' : 'auto'}"
 >
 	<section
-		class="absolute text-paper-800 flex flex-col gap-y-2 justify-center items-center min-w-[100vw] min-h-[100vh]"
+		class="absolute text-paper-800 flex flex-col gap-y-2 justify-center items-center min-w-full min-h-full"
 		in:fade={{ delay: 15, duration: 150, easing: expoIn }}
 		out:fade={{ delay: 25, duration: 200, easing: expoOut }}
 		bind:this={menu}
