@@ -7,20 +7,12 @@ export async function GET({ params }) {
 	// TODO elastic search
 	const rawQuery = Prisma.sql`
 	WITH 
-	email_search AS (
-		SELECT 
-			'email' AS source, 
-			shortid AS id, 
-			ts_rank(to_tsvector('english', subject || ' ' || body), to_tsquery('english', ${searchItem} || ':*')) AS rank
-		FROM email 
-		WHERE to_tsvector('english', subject || ' ' || body) @@ to_tsquery('english', ${searchItem} || ':*')
-		LIMIT 10
-	),
 	recipient_search AS (
 		SELECT 
 			'recipient' AS source, 
 			address AS id, 
-			ts_rank(to_tsvector('english', address), to_tsquery('english', ${searchItem} || ':*')) AS rank
+			ts_rank(to_tsvector('english', address), to_tsquery('english', ${searchItem} || ':*')) AS rank,
+			levenshtein(address, ${searchItem}) AS lev_distance
 		FROM recipient 
 		WHERE to_tsvector('english', address) @@ to_tsquery('english', ${searchItem} || ':*')
 		LIMIT 10
@@ -29,18 +21,16 @@ export async function GET({ params }) {
 		SELECT 
 			'topic' AS source, 
 			name AS id, 
-			ts_rank(to_tsvector('english', name), to_tsquery('english', ${searchItem} || ':*')) AS rank
+			ts_rank(to_tsvector('english', name), to_tsquery('english', ${searchItem} || ':*')) AS rank,
+			levenshtein(name, ${searchItem}) AS lev_distance
 		FROM topic 
 		WHERE to_tsvector('english', name) @@ to_tsquery('english', ${searchItem} || ':*')
 		LIMIT 10
 	)
-
-	SELECT * FROM email_search
-	UNION ALL
 	SELECT * FROM recipient_search
 	UNION ALL
 	SELECT * FROM topic_search
-	ORDER BY rank DESC;
+	ORDER BY rank DESC, lev_distance ASC;
 	`;
 
 	let results;
