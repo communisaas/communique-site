@@ -7,7 +7,6 @@
 	import RecipientIcon from './icon/Recipient.svelte';
 	import SentIcon from './icon/Sent.svelte';
 	import MenuIcon from './icon/Menu.svelte';
-	import { flip } from 'svelte/animate';
 	import { scale, fade, slide, fly } from 'svelte/transition';
 	import { expoIn, expoOut, quintOut } from 'svelte/easing';
 	import Menu from './Menu.svelte';
@@ -221,7 +220,7 @@
 			justFocused = false;
 		}, 350);
 	}}
-	on:click={(e) => {
+	on:click={() => {
 		handleSelect();
 	}}
 	on:blur={handleBlur}
@@ -325,8 +324,8 @@
 				{/if}
 			</span>
 			<article
-				class="flex grow justify-between min-w-full h-full"
-				style="flex-direction:{!expand ? 'row' : 'column'}"
+				class="flex grow justify-between min-w-full h-full flex-col"
+				class:md:flex-row={!expand}
 			>
 				<div class="flex flex-col min-h-full">
 					<div class="stats p-1 flex flex-row gap-x-5">
@@ -400,7 +399,8 @@
 				{/if}
 				<details
 					style="text-align: initial; margin-top: {!expand ? '-1.5rem' : '0'};"
-					class="whitespace-normal flex flex-col appearance-none"
+					class="w-fit whitespace-normal flex flex-col appearance-none self-center"
+					class:w-full={expand}
 				>
 					<summary
 						tabindex="-1"
