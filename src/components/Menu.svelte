@@ -65,14 +65,10 @@
 	out:fade={{ delay: 50, duration: 300, easing: expoOut }}
 	on:mouseenter
 	on:mouseleave
+	on:click|preventDefault
+	on:keypress|preventDefault
 >
-	<section
-		role="menu"
-		tabindex="0"
-		on:click|stopPropagation
-		on:keypress|stopPropagation
-		class="pt-[0.75rem] w-full"
-	>
+	<section role="menu" tabindex="0" class="pt-[0.75rem] w-full">
 		<div
 			bind:this={menu}
 			transition:slide={{ delay: 50, axis: 'x', easing: quintOut }}

@@ -13,3 +13,10 @@ interface Layout {
 interface ModalMap {
 	[key: keyof ModalState]: { component: ComponentType; props: ComponentProps };
 }
+
+interface Descriptor<T> {
+	type: string;
+	item: T;
+}
+
+declare module 'svelte-content-loader';

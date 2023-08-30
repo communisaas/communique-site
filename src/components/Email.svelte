@@ -183,6 +183,7 @@
 	}
 
 	function handleBlur(event: FocusEvent) {
+		console.log(event);
 		if (
 			(card && card.contains(event.relatedTarget as Node)) ||
 			(menu && (event.target as HTMLElement).id === 'back') ||
@@ -337,7 +338,7 @@
 							>
 								<RecipientIcon color="#94D2BD" />
 							</icon>
-							{item.open_count}
+							{item.open_count != BigInt(0) ? item.open_count : '?'}
 						</span>
 						<span
 							title="Send count"
@@ -345,13 +346,13 @@
 							class="flex items-center gap-x-1.5"
 						>
 							<icon
-								title="Send count"
+								title="Envelope"
 								class="max-w-[36px]"
 								style="filter: drop-shadow(1px 0.75px 0.75px rgb(0 0 0 / 0.4));"
 							>
 								<SentIcon color="#94D2BD" />
 							</icon>
-							{item.send_count}
+							{item.send_count != BigInt(0) ? item.send_count : '?'}
 						</span>
 					</div>
 
@@ -364,7 +365,7 @@
 							<Selector
 								selectable={Tag}
 								items={item.topic_list}
-								itemStyle="text-[11px] text-paper-500 bg-peacockFeather-500"
+								itemStyle="text-[11px] text-paper-500 bg-peacockFeather-500 hover:-translate-y-0.5"
 								alignment="start"
 								overflow="wrap"
 								target="email"
@@ -380,7 +381,7 @@
 							<Selector
 								selectable={Tag}
 								items={item.recipient_list}
-								itemStyle="text-[11px] text-paper-500 bg-peacockFeather-600"
+								itemStyle="text-[11px] text-paper-500 bg-peacockFeather-600 hover:-translate-y-0.5"
 								alignment="start"
 								overflow="wrap"
 								target="email"

@@ -54,15 +54,17 @@
 
 <style lang="scss">
 	button {
+		margin: 0;
+		transition: 0.1s ease-in;
 		&:hover {
-			transform: translateY(-1px);
+			margin-top: -0.25rem;
 			box-shadow: rgba(0, 0, 0, 0.16) 0 1px 4px;
 
 			transition: 0.1s ease-in;
 		}
 		&:active {
-			transform: translateY(1px);
-			transition: 0.1s ease-in-out;
+			margin-top: 0;
+			transition: 0.1s ease-in;
 		}
 	}
 </style>

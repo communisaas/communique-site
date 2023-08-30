@@ -4,6 +4,12 @@ import type { LayoutServerLoad } from './$types';
 import { marked } from 'marked';
 import termsOfUseMarkdown from '$lib/policies/serviceTerms.md?raw';
 import privacyPolicyMarkdown from '$lib/policies/privacyPolicy.md?raw';
+import type { Provider } from '@auth/core/providers';
+
+type DescribedProvider = Provider & {
+	id: string;
+	style: ProviderStyle;
+};
 
 export const load = (async ({ locals }) => {
 	// TODO: compound queries, lazy load, caching
@@ -43,7 +49,7 @@ export const load = (async ({ locals }) => {
 		session: await locals.getSession(),
 		authProviders: {
 			baseLogoURL: baseProviderLogoURL.toString() as `https://${string}.svg`,
-			providers: providers.reduce((accumulator, provider) => {
+			providers: (providers as DescribedProvider[]).reduce((accumulator, provider) => {
 				accumulator[provider.id] = { name: provider.name, id: provider.id, style: provider.style };
 				return accumulator;
 			}, {} as Record<string, ProviderAttributes>)

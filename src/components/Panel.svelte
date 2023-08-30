@@ -9,13 +9,12 @@
 	export let alignment: 'start' | 'end' | 'center' | 'justify' | 'match-parent';
 
 	export let selectable: ComponentType;
-	export let selector: ComponentType;
 	export let selectorTarget: 'topic' | 'recipient' | 'spotlight';
 	export let selected: Selectable;
-	export let initialSelection: string;
+	export let initialSelection: Descriptor<string>;
 	export let items: Selectable[];
 	export let filterable = false;
-	let searchResults: string[] = [];
+	let searchResults: Descriptor<string>[] = [];
 
 	const dispatch = createEventDispatcher();
 
@@ -24,7 +23,14 @@
 
 	async function handleAutocomplete(e: CustomEvent<string>) {
 		try {
-			searchResults = (await debounce(1000, fetchSearchResults, e.detail, fetch)) as string[];
+			searchResults = (
+				(await debounce(600, fetchSearchResults, e.detail, fetch)) as QueryResult[]
+			).map((result) => {
+				return {
+					type: result.source === 'recipient' ? 'email' : 'topic',
+					item: result.id
+				} as Descriptor<string>;
+			});
 			console.log(searchResults);
 		} catch (error) {
 			console.error('Error in fetching search results:', error);
@@ -107,6 +113,7 @@
 
 	.space {
 		display: flex;
+		height: 100%;
 	}
 
 	.tab {

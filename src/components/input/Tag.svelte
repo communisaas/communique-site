@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
+	import ContentLoader from 'svelte-content-loader';
+	import colors from '$lib/ui/colors';
 
 	export let type: 'text' | 'search' | 'email',
 		name: string,
@@ -7,26 +9,29 @@
 		style: string,
 		tagStyle: string,
 		autocomplete: boolean = false;
-	export let tagList: string[] = [];
-	export let searchResults: string[] = [];
+	export let tagList: Descriptor<string>[] = [];
+	export let searchResults: Descriptor<string>[] | null = null;
 	export let inputStyle =
-		'rounded bg-larimarGreen-500 shadow-artistBlue shadow-card w-0 h-0 focus:p-1 focus:ml-2 focus:mr-1';
+		'rounded bg-paper-500 shadow-artistBlue shadow-card w-0 h-0 focus:ml-2 focus:mr-1 self-center justify-self-center';
 	export let addIconStyle =
 		'add absolute bg-peacockFeather-600 h-6 w-6 text-2xl leading-6 font-bold';
 
 	let inputVisible: boolean = false;
+	let searching: boolean = false;
 	let deleteVisible: FlagMap = {}; // A map to hold visibility states
 
 	let inputField: HTMLInputElement;
+	let completionList: HTMLUListElement;
 	let deleteButtons: ButtonElementMap = {}; // A map to hold the delete buttons
 
+	let autocompleteIndex: number = 0;
+
 	const dispatch = createEventDispatcher();
-	$: console.log(searchResults);
-	function addTag(tag: string) {
-		if (!inputField.checkValidity() || inputField.value == '') {
-			inputField.reportValidity();
-			return;
-		}
+
+	$: console.log('taglist', tagList);
+	$: console.log('results', searchResults);
+
+	function addTag(tag: Descriptor<string>) {
 		inputField.value = '';
 		if (tagList.includes(tag)) {
 			inputField.setCustomValidity(
@@ -40,6 +45,13 @@
 	}
 
 	async function handleInput() {
+		searchResults = null;
+		if (inputField.value.length > 2) {
+			searching = true;
+		} else {
+			searching = false;
+		}
+
 		const currentValueWidth = context.measureText(inputField.value).width + 8;
 		if (currentValueWidth > placeholderWidth) {
 			inputValueWidth = currentValueWidth;
@@ -51,7 +63,37 @@
 		}
 	}
 
+	function handleBlur(e: FocusEvent) {
+		if (
+			!Object.keys(deleteVisible).some((k) => deleteVisible[k]) &&
+			!completionList.contains(e.relatedTarget as Node)
+		) {
+			searching = false;
+			inputVisible = false;
+			inputField.value = '';
+			inputValueWidth = placeholderWidth;
+			searchResults = null;
+		}
+	}
+
+	function handleSubmit() {
+		if (searchResults !== null && searchResults.length > 0) {
+			// Trigger the autocomplete item at `autocompleteIndex`
+			addTag(searchResults[autocompleteIndex]);
+			inputValueWidth = placeholderWidth;
+		} else if (inputField.value.length < 3) {
+			inputField.setCustomValidity('Too short!');
+			inputField.reportValidity();
+		} else if (inputField.value.length > 0 && !searching) {
+			inputField.setCustomValidity('Nothing here! Try adding it?');
+			inputField.reportValidity();
+		}
+	}
+
 	$: if (inputVisible) inputField.focus();
+	$: if (searchResults) {
+		searching = false;
+	}
 
 	let canvas: HTMLCanvasElement, context: CanvasRenderingContext2D;
 	let inputValueWidth: number, placeholderWidth: number;
@@ -67,12 +109,12 @@
 	});
 </script>
 
-<div class="px-3 py-1 rounded h-fit flex flex-nowrap items-center justify-center z-10 {style}">
+<div class="px-5 rounded h-max flex flex-nowrap items-center justify-center z-10 {style}">
 	<form
 		autocomplete="off"
 		class="flex"
 		on:submit|preventDefault={() => {
-			inputVisible ? addTag(inputField.value) : (inputVisible = true);
+			handleSubmit();
 		}}
 	>
 		<ul
@@ -85,8 +127,8 @@
 					<span
 						class="relative"
 						style="width: 100%; height: 100%;"
-						on:mouseenter={() => (deleteVisible[tag] = true)}
-						on:mouseleave={() => (deleteVisible[tag] = false)}
+						on:mouseenter={() => (deleteVisible[tag.item] = true)}
+						on:mouseleave={() => (deleteVisible[tag.item] = false)}
 						on:mousemove={(event) => {
 							const containerRect = event.currentTarget.getBoundingClientRect();
 
@@ -103,27 +145,27 @@
 							deleteX = Math.max(deleteX, 0); // To keep it within left boundary
 							deleteY = Math.max(deleteY, 0); // To keep it within top boundary
 
-							deleteButtons[tag].style.left = `${deleteX}px`;
-							deleteButtons[tag].style.top = `${deleteY}px`;
+							deleteButtons[tag.item].style.left = `${deleteX}px`;
+							deleteButtons[tag.item].style.top = `${deleteY}px`;
 						}}
 					>
 						<button
-							bind:this={deleteButtons[tag]}
+							bind:this={deleteButtons[tag.item]}
 							type="button"
 							on:click|stopPropagation={(e) => {
 								tagList = tagList.filter((item) => item != tag);
 								if (inputVisible) inputField.focus();
 							}}
-							on:focus={() => (deleteVisible[tag] = true)}
-							on:blur={() => (deleteVisible[tag] = false)}
+							on:focus={() => (deleteVisible[tag.item] = true)}
+							on:blur={() => (deleteVisible[tag.item] = false)}
 							class="delete absolute -top-1 -left-2 rounded-full bg-amber-600 w-4 h-4"
-							class:show={deleteVisible[tag]}
+							class:show={deleteVisible[tag.item]}
 							aria-label={`Remove ${name}`}
 						>
 							<!-- x sign -->
 							&#215;
 						</button>
-						{tag}
+						{tag.item}
 					</span>
 				</li>
 			{/each}
@@ -138,22 +180,37 @@
 					{placeholder}
 					inputmode={type}
 					bind:this={inputField}
-					on:blur={(e) => {
-						if (!Object.keys(deleteVisible).some((k) => deleteVisible[k])) {
-							inputVisible = false;
-							e.currentTarget.value = '';
-							inputValueWidth = placeholderWidth;
-							searchResults = [];
-						}
-					}}
+					on:blur={handleBlur}
 					on:focus={() => (inputVisible = true)}
 					on:keydown|self={(e) => {
 						// clear earlier validation errors
 						inputField.setCustomValidity('');
-						if (e.key == 'Enter') {
+
+						const resultsLength = searchResults ? searchResults.length : 0;
+
+						if (resultsLength > 0) {
+							if (e.key === 'Tab') {
+								e.preventDefault();
+							}
+						}
+
+						if (e.key === 'Enter') {
 							e.preventDefault();
-							addTag(inputField.value);
-							inputValueWidth = placeholderWidth;
+							handleSubmit();
+						}
+
+						if (e.key === 'ArrowDown' || (e.key === 'Tab' && !e.shiftKey)) {
+							e.preventDefault();
+							autocompleteIndex = (autocompleteIndex + 1) % resultsLength;
+						}
+
+						if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+							e.preventDefault();
+							if (autocompleteIndex === 0) {
+								autocompleteIndex = resultsLength - 1;
+							} else {
+								autocompleteIndex = (autocompleteIndex - 1 + resultsLength) % resultsLength;
+							}
 						}
 					}}
 					on:input={() => {
@@ -162,12 +219,39 @@
 					style="width: {inputVisible ? inputValueWidth : 0}px;"
 					class={inputStyle}
 					class:show={inputVisible}
+					class:p-1={inputVisible}
 					{type}
 				/>
-				<ul class="autocomplete flex flex-col">
-					{#each searchResults as result}
-						<li class="relative">{result.id}</li>
-					{/each}
+				<ul bind:this={completionList} class="autocomplete flex flex-col bg-paper-500 mx-2">
+					{#if searching && !searchResults}
+						<li class="relative">
+							<ContentLoader
+								width={inputValueWidth}
+								height={20}
+								secondaryColor={colors.larimarGreen[700]}
+								speed={0.5}
+							/>
+						</li>
+					{:else if searchResults && searchResults.length > 0}
+						{#each searchResults as result, index}
+							<li class="relative">
+								<input
+									type="button"
+									class="p-2 cursor-pointer w-full"
+									class:bg-paper-800={autocompleteIndex === index}
+									class:hidden={tagList.some(
+										(tag) => tag.item === result.item && tag.type === result.type
+									)}
+									on:mouseenter={() => (autocompleteIndex = index)}
+									on:click|preventDefault|stopPropagation={(e) => {
+										handleSubmit();
+										inputField.focus();
+									}}
+									value={result.item}
+								/>
+							</li>
+						{/each}
+					{/if}
 				</ul>
 			</li>
 		</ul>
@@ -247,18 +331,8 @@
 		right: 0;
 		max-height: 200px;
 		overflow-y: auto;
-		background-color: #fff;
 		border-radius: 4px;
 		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-
-		li {
-			padding: 4px;
-			cursor: pointer;
-
-			&:hover {
-				background-color: #eee;
-			}
-		}
 	}
 
 	.show {

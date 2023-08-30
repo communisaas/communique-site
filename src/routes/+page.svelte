@@ -9,7 +9,6 @@
 	import { goto } from '$app/navigation';
 	import { handleMailto } from '$lib/data/email';
 	import Share from '$components/Share.svelte';
-	import Tag from '$components/Tag.svelte';
 	import Login from '$components/Login.svelte';
 	import { page } from '$app/stores';
 	import { routeModal } from '$lib/ui/hash';
@@ -60,24 +59,23 @@
 				<Panel
 					header={`${panel.selectable in $sessionStore ? panel.header : 'Loading...'}`}
 					selectable={Email}
-					selector={Tag}
 					selectorTarget={panel.selectable}
-					initialSelection={$sessionStore.template[index].focus}
+					initialSelection={{ type: 'topic', item: $sessionStore.template[index].focus }}
 					alignment={panel.alignment}
 					items={panel.cardList}
 					filterable={true}
 					bind:selected={$sessionStore.email}
 					on:select={async (e) => {
 						$sessionStore.template.primary.cardList = await handleSelect(e);
-						switch (e.detail.type) {
-							case 'recipient':
-								$sessionStore.template.primary.header = 'Most emails sent to';
-								e.detail.id = e.detail.id.split('@')[0];
-								break;
-							case 'topic':
-								$sessionStore.template.primary.header = 'Loudest voices in';
-								break;
-						}
+						// switch (e.detail.type) {
+						// 	case 'recipient':
+						// 		$sessionStore.template.primary.header = 'Most emails sent to';
+						// 		e.detail.id = e.detail.id.split('@')[0];
+						// 		break;
+						// 	case 'topic':
+						// 		$sessionStore.template.primary.header = 'Loudest voices in';
+						// 		break;
+						// }
 						$sessionStore.template.primary.focus = e.detail.id;
 					}}
 					on:externalAction={async (e) => {

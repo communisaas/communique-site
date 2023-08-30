@@ -22,8 +22,14 @@
 
 	const dispatch = createEventDispatcher();
 
-	$: recipientEmails = [] as (string | FormDataEntryValue)[];
-	$: topics = [] as (string | FormDataEntryValue)[];
+	let recipientEmails = [] as Descriptor<string>[];
+	$: recipientEmails = recipientEmails.map((email) => {
+		return { type: 'email', item: email.toString() };
+	});
+	let topics = [] as Descriptor<string>[];
+	$: topics = topics.map((topic) => {
+		return { type: 'text', item: topic.toString() };
+	});
 
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
