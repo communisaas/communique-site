@@ -60,6 +60,7 @@
 		}
 		if (autocomplete && inputField.value.length > 2) {
 			dispatch('autocomplete', inputField.value);
+			autocompleteIndex = 0;
 		}
 	}
 
@@ -77,9 +78,9 @@
 	}
 
 	function handleSubmit() {
-		if (searchResults !== null && searchResults.length > 0) {
+		if (visibleSearchResults !== null && visibleSearchResults.length > 0) {
 			// Trigger the autocomplete item at `autocompleteIndex`
-			addTag(searchResults[autocompleteIndex]);
+			addTag(visibleSearchResults[autocompleteIndex]);
 			inputValueWidth = placeholderWidth;
 		} else if (inputField.value.length < 3) {
 			inputField.setCustomValidity('Too short!');
@@ -94,6 +95,11 @@
 	$: if (searchResults) {
 		searching = false;
 	}
+	$: visibleSearchResults = searchResults
+		? searchResults.filter(
+				(result) => !tagList.some((tag) => tag.item === result.item && tag.type === result.type)
+		  )
+		: [];
 
 	let canvas: HTMLCanvasElement, context: CanvasRenderingContext2D;
 	let inputValueWidth: number, placeholderWidth: number;
@@ -186,7 +192,7 @@
 						// clear earlier validation errors
 						inputField.setCustomValidity('');
 
-						const resultsLength = searchResults ? searchResults.length : 0;
+						const resultsLength = visibleSearchResults ? visibleSearchResults.length : 0;
 
 						if (resultsLength > 0) {
 							if (e.key === 'Tab') {
@@ -223,7 +229,7 @@
 					{type}
 				/>
 				<ul bind:this={completionList} class="autocomplete flex flex-col bg-paper-500 mx-2">
-					{#if searching && !searchResults}
+					{#if searching && !visibleSearchResults}
 						<li class="relative">
 							<ContentLoader
 								width={inputValueWidth}
@@ -232,8 +238,8 @@
 								speed={0.5}
 							/>
 						</li>
-					{:else if searchResults && searchResults.length > 0}
-						{#each searchResults as result, index}
+					{:else if visibleSearchResults && visibleSearchResults.length > 0}
+						{#each visibleSearchResults as result, index}
 							<li class="relative">
 								<input
 									type="button"
