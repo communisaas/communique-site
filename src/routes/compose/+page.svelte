@@ -10,7 +10,6 @@
 	import { enhance } from '$app/forms';
 	import { page } from '$app/stores';
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { routeModal } from '$lib/ui/hash';
 	import Modal from '$components/Modal.svelte';
 	import modal, { handlePopover } from '$lib/ui/modal';
 
@@ -23,19 +22,10 @@
 	const dispatch = createEventDispatcher();
 
 	let recipientEmails = [] as Descriptor<string>[];
-	$: recipientEmails = recipientEmails.map((email) => {
-		return { type: 'email', item: email.toString() };
-	});
 	let topics = [] as Descriptor<string>[];
-	$: topics = topics.map((topic) => {
-		return { type: 'text', item: topic.toString() };
-	});
 
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
-		const hashes = window.location.hash.substring(1).split('#');
-		// TODO use enum
-		await routeModal(hashes, $page, $sessionStore, dispatch);
 	});
 
 	let modalMapping: ModalMap = {
@@ -127,6 +117,7 @@
 			<span class="px-1 py-1 w-fit rounded bg-larimarGreen-700">
 				<input
 					required
+					autocomplete="off"
 					type="text"
 					aria-label="Subject line"
 					aria-describedby="Enter a subject line for your email"

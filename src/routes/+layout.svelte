@@ -5,7 +5,7 @@
 	import weMakeChangeLogo from '$lib/assets/We Make Change Logo.png';
 	import Navigation from '$components/Navigation.svelte';
 
-	import { onMount } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { signIn, signOut } from '@auth/sveltekit/client';
 	import type { topic } from '@prisma/client';
 	import Selector from '$components/Selector.svelte';
@@ -15,8 +15,10 @@
 	import { handleSelect } from '$lib/data/select';
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
+	import { routeModal } from '$lib/ui/hash';
 
 	export let data: LayoutSchema;
+	const dispatch = createEventDispatcher();
 
 	let sessionStore: Writable<UserState>;
 	onMount(async () => {
@@ -35,6 +37,9 @@
 			privacyPolicy: false,
 			termsOfUse: false
 		};
+		const hashes = window.location.hash.substring(1).split('#');
+		// TODO use enum
+		$sessionStore = await routeModal(hashes, $page, $sessionStore, dispatch);
 	});
 	$: topicNames = data.loudestTopics.map((topic: topic) => topic.name);
 </script>

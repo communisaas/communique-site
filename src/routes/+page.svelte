@@ -11,20 +11,15 @@
 	import Share from '$components/Share.svelte';
 	import Login from '$components/Login.svelte';
 	import { page } from '$app/stores';
-	import { routeModal } from '$lib/ui/hash';
 	import Reader from '$components/Reader.svelte';
 
 	export let data;
 
 	let sessionStore: Writable<UserState>;
-
 	const dispatch = createEventDispatcher();
 
 	onMount(async () => {
 		sessionStore = (await import('$lib/data/sessionStorage')).store;
-		const hashes = window.location.hash.substring(1).split('#');
-		// TODO use enum
-		await routeModal(hashes, $page, $sessionStore, dispatch);
 	});
 
 	let modalMapping: ModalMap = {

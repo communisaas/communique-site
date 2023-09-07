@@ -2,6 +2,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import ContentLoader from 'svelte-content-loader';
 	import colors from '$lib/ui/colors';
+	import Page from '../../routes/+page.svelte';
 
 	export let type: 'text' | 'search' | 'email',
 		name: string,
@@ -78,7 +79,7 @@
 	}
 
 	function handleSubmit() {
-		if (visibleSearchResults !== null && visibleSearchResults.length > 0) {
+		if (autocomplete && visibleSearchResults !== null && visibleSearchResults.length > 0) {
 			// Trigger the autocomplete item at `autocompleteIndex`
 			addTag(visibleSearchResults[autocompleteIndex]);
 			inputValueWidth = placeholderWidth;
@@ -88,6 +89,12 @@
 		} else if (inputField.value.length > 0 && !searching) {
 			inputField.setCustomValidity('Nothing here! Try adding it?');
 			inputField.reportValidity();
+		} else {
+			if (inputField.checkValidity()) {
+				addTag({ type, item: inputField.value.toString() });
+			} else {
+				inputField.reportValidity();
+			}
 		}
 	}
 
