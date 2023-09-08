@@ -2,7 +2,6 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import ContentLoader from 'svelte-content-loader';
 	import colors from '$lib/ui/colors';
-	import Page from '../../routes/+page.svelte';
 
 	export let type: 'text' | 'search' | 'email',
 		name: string,
@@ -18,7 +17,7 @@
 		'add absolute bg-peacockFeather-600 h-6 w-6 text-2xl leading-6 font-bold';
 
 	let inputVisible: boolean = false;
-	let searching: boolean = false;
+	$: searching = false;
 	let deleteVisible: FlagMap = {}; // A map to hold visibility states
 
 	let inputField: HTMLInputElement;
@@ -31,6 +30,7 @@
 
 	$: console.log('taglist', tagList);
 	$: console.log('results', searchResults);
+	$: console.log('searching', searching);
 
 	function addTag(tag: Descriptor<string>) {
 		inputField.value = '';
@@ -46,7 +46,6 @@
 	}
 
 	async function handleInput() {
-		searchResults = null;
 		if (inputField.value.length > 2) {
 			searching = true;
 		} else {
@@ -79,6 +78,8 @@
 	}
 
 	function handleSubmit() {
+		if (searching) return;
+
 		if (autocomplete && visibleSearchResults !== null && visibleSearchResults.length > 0) {
 			// Trigger the autocomplete item at `autocompleteIndex`
 			addTag(visibleSearchResults[autocompleteIndex]);
@@ -86,7 +87,7 @@
 		} else if (inputField.value.length < 3) {
 			inputField.setCustomValidity('Too short!');
 			inputField.reportValidity();
-		} else if (inputField.value.length > 0 && !searching) {
+		} else if (inputField.value.length > 0) {
 			inputField.setCustomValidity('Nothing here! Try adding it?');
 			inputField.reportValidity();
 		} else {
@@ -236,7 +237,7 @@
 					{type}
 				/>
 				<ul bind:this={completionList} class="autocomplete flex flex-col bg-paper-500 mx-2">
-					{#if searching && !visibleSearchResults}
+					{#if searching}
 						<li class="relative">
 							<ContentLoader
 								width={inputValueWidth}
