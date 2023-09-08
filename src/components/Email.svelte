@@ -227,7 +227,7 @@
 	on:blur={handleBlur}
 	aria-label="Email with a subject: {item.subject}"
 	class="card flex p-2 m-1 rounded bg-artistBlue-600 items-center relative
-		justify-center w-[97%] {style}"
+		justify-center w-48 {style}"
 	class:cursor-alias={expand}
 	class:clickable={!nestedHover}
 	style="min-width: {expand ? '99%' : '95%'};"
@@ -303,7 +303,7 @@
 					class:scrolled={scrollPosition.header.x > 1}
 					class:scrolled__max={scrollPosition.header.remainingWidth > 0 &&
 						scrollPosition.header.remainingWidth == scrollPosition.header.x}
-					class="max-w-full inline-block mr-1"
+					class=" inline-block mr-1"
 				>
 					{item.subject}
 				</h1>
@@ -400,7 +400,7 @@
 				{/if}
 				<details
 					style="text-align: initial; margin-top: {!expand ? '-1.5rem' : '0'};"
-					class="w-fit whitespace-normal flex flex-col appearance-none self-center"
+					class="whitespace-normal flex flex-col appearance-none self-center"
 					class:w-full={expand}
 				>
 					<summary
