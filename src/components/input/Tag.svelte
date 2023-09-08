@@ -28,10 +28,6 @@
 
 	const dispatch = createEventDispatcher();
 
-	$: console.log('taglist', tagList);
-	$: console.log('results', searchResults);
-	$: console.log('searching', searching);
-
 	function addTag(tag: Descriptor<string>) {
 		inputField.value = '';
 		if (tagList.includes(tag)) {
@@ -74,6 +70,7 @@
 			inputField.value = '';
 			inputValueWidth = placeholderWidth;
 			searchResults = null;
+			dispatch('blur', e.detail);
 		}
 	}
 
@@ -93,6 +90,7 @@
 		} else {
 			if (inputField.checkValidity()) {
 				addTag({ type, item: inputField.value.toString() });
+				inputValueWidth = placeholderWidth;
 			} else {
 				inputField.reportValidity();
 			}
@@ -168,7 +166,8 @@
 							type="button"
 							on:click|stopPropagation={(e) => {
 								tagList = tagList.filter((item) => item != tag);
-								if (inputVisible) inputField.focus();
+								if (tagList.length < 1 || inputVisible) inputField.focus();
+								dispatch('delete', tag);
 							}}
 							on:focus={() => (deleteVisible[tag.item] = true)}
 							on:blur={() => (deleteVisible[tag.item] = false)}

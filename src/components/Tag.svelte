@@ -18,7 +18,7 @@
 
 			canvas = document.createElement('canvas');
 			context = canvas.getContext('2d') as CanvasRenderingContext2D;
-			if (context) {
+			if (context && tag) {
 				context.font = getComputedStyle(tag).font;
 				tagWidth = context.measureText(item).width + 20;
 			}

@@ -55,7 +55,13 @@
 					header={`${panel.selectable in $sessionStore ? panel.header : 'Loading...'}`}
 					selectable={Email}
 					selectorTarget={panel.selectable}
-					initialSelection={{ type: 'topic', item: $sessionStore.template[index].focus }}
+					initialSelection={{
+						type: 'topic',
+						item: $sessionStore.template[index].focus,
+						field: 'topic_list',
+						source: 'topic',
+						iterable: true
+					}}
 					alignment={panel.alignment}
 					items={panel.cardList}
 					filterable={true}

@@ -17,6 +17,9 @@ interface ModalMap {
 interface Descriptor<T> {
 	type: string;
 	item: T;
+	field?: string;
+	source?: string;
+	iterable?: boolean;
 }
 
 declare module 'svelte-content-loader';

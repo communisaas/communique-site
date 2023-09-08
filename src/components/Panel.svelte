@@ -3,7 +3,7 @@
 	import { createEventDispatcher, onMount, type ComponentType } from 'svelte';
 	import type { Writable } from 'svelte/store';
 	import TagInput from './input/Tag.svelte';
-	import { debounce, fetchSearchResults } from '$lib/data/select';
+	import { debounce, fetchSearchResults, handleSelect } from '$lib/data/select';
 
 	export let header: string;
 	export let alignment: 'start' | 'end' | 'center' | 'justify' | 'match-parent';
@@ -19,16 +19,48 @@
 	const dispatch = createEventDispatcher();
 
 	let store: Writable<UserState>;
-	$: selectionList = [initialSelection];
+	let selectionList = [initialSelection];
+
+	let remainingItems: Selectable[] = [];
+	let lastItems: Selectable[] = [];
+	let lastSelection: Descriptor<string> = initialSelection;
+	$: if (initialSelection !== lastSelection) {
+		selectionList = [initialSelection];
+		if (selectionList.length > 0) {
+			lastSelection = selectionList[selectionList.length - 1];
+		}
+	}
 
 	async function handleAutocomplete(e: CustomEvent<string>) {
 		try {
 			searchResults = (
 				(await debounce(600, fetchSearchResults, e.detail, fetch)) as QueryResult[]
 			).map((result) => {
+				let fieldName: string,
+					iterable = false;
+				switch (result.source) {
+					case 'recipient':
+						fieldName = 'recipient_list';
+						iterable = true;
+						break;
+					case 'topic':
+						fieldName = 'topic_list';
+						iterable = true;
+						break;
+					case 'email':
+						fieldName = 'subject';
+						iterable = false;
+						break;
+					default: {
+						throw new Error('Invalid source type');
+					}
+				}
 				return {
 					type: result.source === 'recipient' ? 'email' : 'topic',
-					item: result.id
+					item: result.id,
+					field: fieldName,
+					iterable: iterable,
+					source: result.source
 				} as Descriptor<string>;
 			});
 			console.log(searchResults);
@@ -36,6 +68,28 @@
 			console.error('Error in fetching search results:', error);
 		}
 	}
+
+	function handleFilter(e, widen = false) {
+		if (widen) items = remainingItems;
+		if (selectionList.length === 0) {
+			return [];
+		}
+		return items.filter((item) => {
+			return selectionList.every((selection: Descriptor<string>) => {
+				// If the field is iterable, check if the item's field contains the selection's item
+				console.log(item);
+				console.log(selection);
+				if (selection.iterable) {
+					console.log(item[selection.field] && item[selection.field].includes(selection.item));
+					return item[selection.field] && item[selection.field].includes(selection.item);
+				}
+
+				// Otherwise, simply check if they're equal
+				return item[selection.field] === selection.item;
+			});
+		});
+	}
+
 	onMount(async () => {
 		store = (await import('$lib/data/sessionStorage')).store;
 	});
@@ -61,11 +115,30 @@
 						style="h-14 w-fit bg-transparent"
 						tagStyle="text-xl underline font-bold bg-transparent rounded px-2 pr-1 text-paper-500"
 						addIconStyle="add bg-peacockFeather-500 h-12 w-12 text-5xl inline-block leading-12"
-						tagList={selectionList}
 						autocomplete={true}
+						bind:tagList={selectionList}
 						bind:searchResults
 						on:autocomplete={async (e) => {
 							handleAutocomplete(e);
+						}}
+						on:delete={(e) => {
+							if (items.length > 0) {
+								lastItems = items;
+							}
+							items = handleFilter(e, true);
+							console.log(selectionList);
+						}}
+						on:add={(e) => {
+							if (items.length > 0) {
+								remainingItems = items;
+							}
+							items = handleFilter(e);
+						}}
+						on:blur={() => {
+							if (selectionList.length < 1) {
+								selectionList = [lastSelection];
+								items = lastItems;
+							}
 						}}
 					/>
 				{:else}
