@@ -71,21 +71,21 @@
 						}}
 					/>
 				{/if}
-				<span class="ml-auto flex gap-3 items-center h-full text-paper-500">
+				<span class="ml-auto flex items-center h-full text-paper-500">
 					{#if $page.data.session}
 						{#if $page.data.session.user?.image}
 							<img src={$page.data.session.user.image} alt="avatar" class="h-10 w-10" />
 						{/if}
-						<span class="signedInText">
-							<small>Signed in as</small><br />
-							<strong>{$page.data.session.user?.name ?? 'User'}</strong>
-						</span>
+
 						<button on:click={() => signOut({ callbackUrl: '/', redirect: false })}>
 							Sign out
 						</button>
 					{:else}
-						<span class="notSignedInText">You are not signed in</span>
-						<button class="w-12" on:click={() => signIn({ callbackUrl: '/', redirect: false })}>
+						<span class="whitespace-nowrap text-xs self-end justify-self-end -mr-4">Sign in</span>
+						<button
+							class="w-10 -mt-2"
+							on:click={() => signIn({ callbackUrl: '/', redirect: false })}
+						>
 							<LoginIcon />
 						</button>
 					{/if}
