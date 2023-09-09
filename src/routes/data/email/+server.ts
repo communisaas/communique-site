@@ -1,32 +1,32 @@
 import { error } from '@sveltejs/kit';
 import { find } from '$lib/data/database';
 
-const emailFieldMap: FieldMap = {
-	topic: 'topic_list',
-	recipient: 'recipient_list',
-	email: 'rowid'
-};
-
 /** @type {import('./$types').RequestHandler} */
 // TODO same origin policy
 export async function GET({ url }: { url: URL }) {
+	let fieldName: string;
 	const options: Clause = {
 		where: Array.from(url.searchParams.entries()).reduce(
-			(filter: Criteria, [field, value]: [string, string]) => {
-				const fieldName = emailFieldMap ? emailFieldMap[field] : field;
+			(filter: Criteria, [field, values]: [string, string]) => {
 				let clause: Operator;
+				const valueList = values.split('␞');
+				console.log(valueList);
 				switch (field) {
 					case 'recipient':
+						fieldName = 'recipient_list';
+						clause = { hasEvery: valueList };
+						break;
 					case 'topic': {
-						clause = { has: value };
+						fieldName = 'topic_list';
+						clause = { hasEvery: valueList };
 						break;
 					}
 					case 'email': {
-						clause = { equals: value };
+						clause = valueList.length > 1 ? { in: valueList } : { equals: valueList[0] };
 						break;
 					}
 					default: {
-						throw Error('Invalid field name');
+						throw Error('Invalid field name: ' + field);
 					}
 				}
 				filter[fieldName as keyof Criteria] = clause;

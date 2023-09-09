@@ -8,7 +8,6 @@ import { convertHtmlToText } from './email';
 import he from 'he';
 
 export async function handleSelect(e: CustomEvent) {
-	console.log(e.detail);
 	const dataFetcher = async (endpoint: string) => {
 		const dataURL = new URL(endpoint, get(page).url);
 		dataURL.searchParams.append(e.detail.type, e.detail.id);
@@ -78,9 +77,10 @@ export async function handleCopy(dataType: 'email' | 'link', content: email | st
 	return true;
 }
 
-export async function fetchSearchResults(query: string, fetch: fetch) {
+export async function fetchSearchResults(item: string, fetch: fetch) {
 	let response;
-	if (query) response = await fetch(`/data/search/${query}`);
+	// TODO error handling
+	if (item) response = await fetch(`/data/search/${item}`);
 	if (response.ok) {
 		return await response.json();
 	} else {

@@ -55,16 +55,10 @@
 					header={`${panel.selectable in $sessionStore ? panel.header : 'Loading...'}`}
 					selectable={Email}
 					selectorTarget={panel.selectable}
-					initialSelection={{
-						type: 'topic',
-						item: $sessionStore.template[index].focus,
-						field: 'topic_list',
-						source: 'topic',
-						iterable: true
-					}}
 					alignment={panel.alignment}
-					items={panel.cardList}
 					filterable={true}
+					initialSelection={$sessionStore.template[index].focus}
+					bind:items={panel.cardList}
 					bind:selected={$sessionStore.email}
 					on:select={async (e) => {
 						$sessionStore.template.primary.cardList = await handleSelect(e);
@@ -77,7 +71,13 @@
 						// 		$sessionStore.template.primary.header = 'Loudest voices in';
 						// 		break;
 						// }
-						$sessionStore.template.primary.focus = e.detail.id;
+						$sessionStore.template[index].focus = {
+							type: 'topic',
+							item: e.detail.id,
+							field: 'topic_list',
+							source: 'topic',
+							iterable: true
+						};
 					}}
 					on:externalAction={async (e) => {
 						if (e.detail.type === 'email') {

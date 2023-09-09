@@ -183,7 +183,6 @@
 	}
 
 	function handleBlur(event: FocusEvent) {
-		console.log(event);
 		if (
 			(card && card.contains(event.relatedTarget as Node)) ||
 			(menu && (event.target as HTMLElement).id === 'back') ||

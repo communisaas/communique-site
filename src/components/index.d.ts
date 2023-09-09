@@ -4,7 +4,7 @@ interface Expandable {
 
 interface Panel extends Expandable {
 	header: string;
-	focus: SelectableKey;
+	focus: Descriptor<string>;
 	alignment: 'start' | 'end' | 'left' | 'right' | 'center' | 'justify' | 'match-parent';
 	cardList: email[];
 }

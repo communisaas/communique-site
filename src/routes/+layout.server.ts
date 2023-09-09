@@ -33,7 +33,13 @@ export const load = (async ({ locals }) => {
 				type: 'panel',
 				selectable: 'topic',
 				header: 'Loudest voices',
-				focus: loudestTopics[0].name,
+				focus: {
+					type: 'topic',
+					item: loudestTopics[0].name,
+					field: 'topic_list',
+					source: 'topic',
+					iterable: true
+				},
 				alignment: 'end',
 				cardList: await loudestTopicEmails
 			}

@@ -19,16 +19,15 @@
 	const dispatch = createEventDispatcher();
 
 	let store: Writable<UserState>;
-	let selectionList = [initialSelection];
+	let selectionList: Descriptor<string>[] = [initialSelection];
 
-	let remainingItems: Selectable[] = [];
 	let lastItems: Selectable[] = [];
+	let oldInitialSelection: Descriptor<string> = initialSelection;
 	let lastSelection: Descriptor<string> = initialSelection;
-	$: if (initialSelection !== lastSelection) {
+
+	$: if (initialSelection !== oldInitialSelection) {
 		selectionList = [initialSelection];
-		if (selectionList.length > 0) {
-			lastSelection = selectionList[selectionList.length - 1];
-		}
+		oldInitialSelection = initialSelection;
 	}
 
 	async function handleAutocomplete(e: CustomEvent<string>) {
@@ -63,31 +62,24 @@
 					source: result.source
 				} as Descriptor<string>;
 			});
-			console.log(searchResults);
 		} catch (error) {
 			console.error('Error in fetching search results:', error);
 		}
 	}
 
-	function handleFilter(e, widen = false) {
-		if (widen) items = remainingItems;
-		if (selectionList.length === 0) {
-			return [];
-		}
-		return items.filter((item) => {
-			return selectionList.every((selection: Descriptor<string>) => {
-				// If the field is iterable, check if the item's field contains the selection's item
-				console.log(item);
-				console.log(selection);
-				if (selection.iterable) {
-					console.log(item[selection.field] && item[selection.field].includes(selection.item));
-					return item[selection.field] && item[selection.field].includes(selection.item);
-				}
+	async function handleFilter(e) {
+		// Grouping by fields
+		const grouped = selectionList.reduce((accumulator: Descriptor<string>, { item, source }) => {
+			if (!accumulator[source]) accumulator[source] = [];
+			accumulator[source].push(item);
+			return accumulator;
+		}, {} as Descriptor<string>);
 
-				// Otherwise, simply check if they're equal
-				return item[selection.field] === selection.item;
-			});
-		});
+		// Construct the query string from the grouped object
+		const tagString = Object.entries(grouped)
+			.map(([field, items]) => `${field}=${encodeURIComponent(items.join('␞'))}`)
+			.join('&');
+		return await (await fetch(`data/email?${tagString}`)).json();
 	}
 
 	onMount(async () => {
@@ -121,18 +113,14 @@
 						on:autocomplete={async (e) => {
 							handleAutocomplete(e);
 						}}
-						on:delete={(e) => {
-							if (items.length > 0) {
-								lastItems = items;
-							}
-							items = handleFilter(e, true);
-							console.log(selectionList);
+						on:delete={async (e) => {
+							lastSelection = e.detail;
+							lastItems = items;
+							items = await handleFilter(e);
+							console.log(items);
 						}}
-						on:add={(e) => {
-							if (items.length > 0) {
-								remainingItems = items;
-							}
-							items = handleFilter(e);
+						on:add={async (e) => {
+							items = await handleFilter(e);
 						}}
 						on:blur={() => {
 							if (selectionList.length < 1) {

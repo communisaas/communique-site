@@ -24,6 +24,9 @@ interface Criteria {
 
 interface Operator {
 	has?: string;
+	hasSome?: string[];
+	hasEvery?: string[];
+	in?: string[];
 	equals?: string | number;
 	OR?: Criteria[];
 }

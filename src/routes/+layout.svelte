@@ -65,7 +65,13 @@
 						on:select={async (e) => {
 							if ($sessionStore.template.primary) {
 								$sessionStore.template.primary.cardList = await handleSelect(e);
-								$sessionStore.template.primary.focus = e.detail.id;
+								$sessionStore.template.primary.focus = {
+									type: 'topic',
+									item: e.detail.id,
+									field: 'topic_list',
+									source: 'topic',
+									iterable: true
+								};
 								await goto('/', { noScroll: true });
 							}
 						}}
