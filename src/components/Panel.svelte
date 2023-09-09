@@ -117,7 +117,6 @@
 							lastSelection = e.detail;
 							lastItems = items;
 							items = await handleFilter(e);
-							console.log(items);
 						}}
 						on:add={async (e) => {
 							items = await handleFilter(e);

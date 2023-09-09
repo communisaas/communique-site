@@ -10,7 +10,6 @@ export async function GET({ url }: { url: URL }) {
 			(filter: Criteria, [field, values]: [string, string]) => {
 				let clause: Operator;
 				const valueList = values.split('␞');
-				console.log(valueList);
 				switch (field) {
 					case 'recipient':
 						fieldName = 'recipient_list';

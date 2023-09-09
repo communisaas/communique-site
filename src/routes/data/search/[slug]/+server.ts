@@ -53,6 +53,5 @@ export async function GET({ params }) {
 			return new Response(JSON.stringify({ error: error.message }), { status: 500 });
 		}
 	}
-	console.log(results);
 	return new Response(JSON.stringify(results));
 }
