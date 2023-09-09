@@ -67,9 +67,7 @@
 		) {
 			searching = false;
 			inputVisible = false;
-			inputField.value = '';
 			inputValueWidth = placeholderWidth;
-			searchResults = null;
 			dispatch('blur', e.detail);
 		}
 	}
@@ -95,6 +93,7 @@
 				inputField.reportValidity();
 			}
 		}
+		searchResults = null;
 	}
 
 	$: if (inputVisible) inputField.focus();
@@ -126,6 +125,7 @@
 		autocomplete="off"
 		class="flex"
 		on:submit|preventDefault={() => {
+			searching = false;
 			handleSubmit();
 		}}
 	>
@@ -225,6 +225,11 @@
 								autocompleteIndex = (autocompleteIndex - 1 + resultsLength) % resultsLength;
 							}
 						}
+
+						if (e.key === 'Escape' || e.key === 'Tab') {
+							e.preventDefault();
+							inputField.blur();
+						}
 					}}
 					on:input={() => {
 						handleInput();
@@ -245,7 +250,7 @@
 								speed={0.5}
 							/>
 						</li>
-					{:else if visibleSearchResults && visibleSearchResults.length > 0}
+					{:else if visibleSearchResults && visibleSearchResults.length > 0 && inputVisible}
 						{#each visibleSearchResults as result, index}
 							<li class="relative">
 								<input
