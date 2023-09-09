@@ -28,3 +28,7 @@ Let the collective voice rise.
    ```
 
 4. Run development server on `localhost:5173` with `npm run dev`
+
+## Notes
+
+Versioning is done on a milestone basis—these milestones are themed by project board. [Find them here.](https://github.com/orgs/communisaas/projects)
