@@ -1,7 +1,9 @@
 <script lang="ts">
-    import { IdCard, Send } from 'lucide-svelte';
+    import { Send } from 'lucide-svelte';
     import Button from '../../ui/Button.svelte';
     import HowItWorks from './HowItWorks.svelte';
+    import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
+
 </script>
 
 <div class="space-y-8">
@@ -11,7 +13,9 @@
             <span class="text-blue-600">Count</span>
             <span class="block sm:text-3xl text-2xl font-normal text-slate-600 mt-2">
                 On record.
+               
             </span>
+            <IdentityBadge />
         </h1>
 
         <p class="sm:text-xl text-base text-slate-600 mb-8">

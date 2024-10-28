@@ -9,7 +9,8 @@
     import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
     import Modal from '$lib/components/ui/Modal.svelte';
     import { browser } from '$app/environment';
-	import { IdCard } from 'lucide-svelte';
+	import { IdCard, Shield } from 'lucide-svelte';
+    import IdentityDetail from '$lib/components/verification/IdentityDetail.svelte';
     
     // Start message counter on mount
     onMount(() => {
@@ -32,6 +33,7 @@
     <meta name="description" content="Reach and influence decision makers at every level" />
 </svelte:head>
 
+<!-- Hero Section - Simple Badge -->
 <section class="pt-20">
     <div class="flex flex-row justify-center flex-wrap gap-8 items-center mb-6 max-w-6xl mx-auto">
         <span class="w-9/12 md:w-3/4 lg:w-7/12">
@@ -74,4 +76,26 @@
             />
         </Modal>
     {/if}
+</section>
+
+<!-- Trust Section - Detailed Information -->
+<section class="bg-slate-50 border-y border-slate-200 py-16 mt-16">
+    <div class="container mx-auto px-4">
+        <div class="max-w-3xl mx-auto">
+            <div class="text-center mb-12">
+                <div class="inline-flex items-center justify-center gap-2 mb-4">
+                    <Shield class="w-5 h-5 text-slate-600" />
+                    <h2 class="text-2xl font-light">Built on Trust</h2>
+                </div>
+                <p class="text-slate-600">
+                    Every message carries the weight of a verified voice. 
+                    Our platform ensures authentic communication between citizens and representatives.
+                </p>
+            </div>
+            
+            <div class="max-w-2xl mx-auto">
+                <IdentityDetail />
+            </div>
+        </div>
+    </div>
 </section>
