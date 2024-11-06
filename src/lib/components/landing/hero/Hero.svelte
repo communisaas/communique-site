@@ -15,7 +15,7 @@
                 On record.
                
             </span>
-            <IdentityBadge />
+                <IdentityBadge />
         </h1>
 
         <p class="sm:text-xl text-base text-slate-600 mb-8">

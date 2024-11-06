@@ -21,24 +21,27 @@
     ];
 </script>
 
-<div class="inline-block">
+<div class="flex w-full sm:w-auto mt-4">
     <Popover let:open>
-        <!-- Trigger styling matches HowItWorks button style -->
-        <div class="relative group" slot="trigger">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border 
-                        border-slate-200 rounded-lg text-slate-700 cursor-help">
-                <IdCard class="w-4 h-4" />
-                <span class="text-xs md:text-sm font-medium">Government ID Required</span>
-            </div>
-            <div class="absolute w-full h-4 bottom-0 translate-y-full" />
-        </div>
+        <!-- Trigger -->
+        <button 
+            slot="trigger"
+            class="inline-flex items-center gap-2 px-2 sm:px-3 py-1.5 bg-slate-50 border 
+                   border-slate-200 rounded-lg text-slate-700 cursor-help
+                   transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:border-slate-300
+                   relativ"
+        >
+            <IdCard class="w-4 h-4 shrink-0" />
+            <span class="text-xs md:text-sm font-medium whitespace-nowrap">Government ID Required</span>
+            <div class="absolute w-full left-0 h-4 bottom-0 translate-y-full"></div>
+        </button>
 
-        <!-- Popover content styling matches HowItWorks -->
-        <div class="w-[280px] md:w-[320px] p-4 max-w-[calc(100vw-2rem)] origin-top-left">
-            <div class="space-y-6"> <!-- Changed from grid to space-y-6 to match HowItWorks -->
+        <!-- Popover content -->
+        <div class="w-[280px] md:w-[320px] p-3 sm:p-4 max-w-[calc(100vw-2rem)] origin-top-left hover:opacity-100 cursor-text">
+            <div class="space-y-6">
                 {#each idChecks as check}
                     <div 
-                        class="flex items-start gap-4 sm:text-base text-sm"
+                        class="flex items-start gap-4 sm:text-base text-sm tracking-normal"
                         class:opacity-0={!open}
                     >
                         <div class="p-2 bg-blue-50 rounded-lg">
@@ -48,7 +51,7 @@
                             <h3 class="font-medium text-slate-900 mb-1">
                                 {check.title}
                             </h3>
-                            <p class="text-slate-600 text-sm">
+                            <p class="text-slate-600 text-sm font-normal">
                                 {check.description}
                             </p>
                         </div>
