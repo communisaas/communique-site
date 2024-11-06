@@ -77,25 +77,3 @@
         </Modal>
     {/if}
 </section>
-
-<!-- Trust Section - Detailed Information -->
-<section class="bg-slate-50 border-y border-slate-200 py-16 mt-16">
-    <div class="container mx-auto px-4">
-        <div class="max-w-3xl mx-auto">
-            <div class="text-center mb-12">
-                <div class="inline-flex items-center justify-center gap-2 mb-4">
-                    <Shield class="w-5 h-5 text-slate-600" />
-                    <h2 class="text-2xl font-light">Built on Trust</h2>
-                </div>
-                <p class="text-slate-600">
-                    Every message carries the weight of a verified voice. 
-                    Our platform ensures authentic communication between citizens and representatives.
-                </p>
-            </div>
-            
-            <div class="max-w-2xl mx-auto">
-                <IdentityDetail />
-            </div>
-        </div>
-    </div>
-</section>
