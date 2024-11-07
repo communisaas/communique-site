@@ -22,7 +22,7 @@
     const badge = badges[type];
 </script>
 
-<Tooltip content={badge.tooltip}>
+<Tooltip content={badge.tooltip} showInfoIcon={false}>
     <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-xs md:text-sm {badge.class}">
         <svelte:component this={badge.icon} class="w-3 h-3 md:w-4 md:h-4" />
         {badge.text}

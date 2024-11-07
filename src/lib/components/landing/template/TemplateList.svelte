@@ -11,8 +11,9 @@
 
 <div class="space-y-3 sm:space-y-4">
     {#each templates as template (template.id)}
-        <div
-            class="p-3 sm:p-4 rounded-lg border cursor-pointer transition-all flex justify-between items-start gap-3"
+        <button
+            type="button"
+            class="w-full p-3 sm:p-4 rounded-lg border cursor-pointer transition-all flex justify-between items-start gap-3 text-left"
             class:border-blue-400={selectedId === template.id}
             class:bg-blue-50={selectedId === template.id}
             class:border-slate-200={selectedId !== template.id}
@@ -36,6 +37,6 @@
             <div class="sm:hidden text-slate-400 shrink-0">
                 <ChevronRight class="w-5 h-5" />
             </div>
-        </div>
+        </button>
     {/each}
 </div>
