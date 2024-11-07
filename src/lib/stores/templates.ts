@@ -10,6 +10,8 @@ interface TemplateState {
     lastUpdated?: Date;
 }
 
+const USE_MOCK_DATA = true; // Cntrol this with an environment variable later if needed
+
 function createTemplateStore() {
     const { subscribe, set, update } = writable<TemplateState>({
         templates: [],
@@ -99,7 +101,7 @@ export const selectedTemplate = derived(
     $store => $store.templates.find(t => t.id === $store.selectedId)
 );
 
-// Load mock data in development
-if (import.meta.env.DEV) {
+// Load mock data based on configuration flag instead of DEV check
+if (USE_MOCK_DATA) {
     templateStore.loadMockData();
 }

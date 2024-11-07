@@ -20,12 +20,18 @@
             class:hover:border-blue-200={selectedId !== template.id}
             on:click={() => onSelect(template.id)}
         >
-            <div class="flex-1 min-w-0"> <!-- Add min-w-0 to allow text truncation -->
-                <Badge type={template.type} />
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap items-center gap-2">
+                    <Badge type={template.type} />
+                    <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs sm:text-sm">
+                        {template.category}
+                    </span>
+                </div>
                 
                 <h3 class="font-medium text-slate-900 mt-2 sm:mt-3 truncate">
                     {template.title}
                 </h3>
+
                 <p class="text-xs sm:text-sm text-slate-600 mb-2 sm:mb-3 line-clamp-2">
                     {template.description}
                 </p>

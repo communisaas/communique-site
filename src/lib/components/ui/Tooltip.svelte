@@ -18,7 +18,10 @@
 	});
 
 	function handleTouch(event: TouchEvent | MouseEvent) {
-		event.preventDefault();
+		// Only prevent default for mouse events
+		if (event instanceof MouseEvent) {
+			event.preventDefault();
+		}
 		event.stopPropagation();
 		
 		if (event.type === 'touchstart' || !window.matchMedia('(hover: hover)').matches) {
@@ -148,12 +151,14 @@
 
 	onMount(() => {
 		window.addEventListener('resize', updatePosition);
-		return () => window.removeEventListener('resize', updatePosition);
-	});
+		document.addEventListener('touchstart', handleGlobalClick, true);
+		document.addEventListener('click', handleGlobalClick, true);
 
-	onDestroy(() => {
-		document.removeEventListener('touchstart', handleGlobalClick, true);
-		document.removeEventListener('click', handleGlobalClick, true);
+		return () => {
+			window.removeEventListener('resize', updatePosition);
+			document.removeEventListener('touchstart', handleGlobalClick, true);
+			document.removeEventListener('click', handleGlobalClick, true);
+		};
 	});
 </script>
 

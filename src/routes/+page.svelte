@@ -1,7 +1,6 @@
 <script lang="ts">
     import { onMount } from 'svelte';
     import { templateStore, selectedTemplate } from '$lib/stores/templates';
-    import { messageCount } from '$lib/stores/messageCount';
     import Hero from '$lib/components/landing/hero/Hero.svelte';
     import ActivityFeed from '$lib/components/landing/activity/ActivityFeed.svelte';
     import ChannelExplainer from '$lib/components/landing/channel/ChannelExplainer.svelte';
@@ -10,13 +9,6 @@
     import Modal from '$lib/components/ui/Modal.svelte';
     import { browser } from '$app/environment';
 	import { IdCard, Shield } from 'lucide-svelte';
-    import IdentityDetail from '$lib/components/verification/IdentityDetail.svelte';
-    
-    // Start message counter on mount
-    onMount(() => {
-        messageCount.startCounting();
-        return () => messageCount.stopCounting();
-    });
     
     let showMobilePreview = false;
     
