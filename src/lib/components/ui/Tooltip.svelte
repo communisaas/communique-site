@@ -17,21 +17,26 @@
 		show = activeId === id;
 	});
 
+	let isTouchInteraction = false;
+
 	function handleTouch(event: TouchEvent | MouseEvent) {
-		// Only prevent default for mouse events
 		if (event instanceof MouseEvent) {
-			event.preventDefault();
-		}
-		event.stopPropagation();
-		
-		if (event.type === 'touchstart' || !window.matchMedia('(hover: hover)').matches) {
-			// If this tooltip is already active, close it
-			if (get(activeTooltipId) === id) {
-				activeTooltipId.set(null);
-			} else {
-				// Otherwise, make this the active tooltip
-				activeTooltipId.set(id);
+			if (!window.matchMedia('(hover: hover)').matches) {
+				event.preventDefault();
+				event.stopPropagation();
+				toggleTooltip();
 			}
+		} else if (event.type === 'touchstart') {
+			isTouchInteraction = true;
+			toggleTooltip();
+		}
+	}
+
+	function toggleTooltip() {
+		if (get(activeTooltipId) === id) {
+			activeTooltipId.set(null);
+		} else {
+			activeTooltipId.set(id);
 		}
 	}
 
@@ -58,10 +63,29 @@
 		// Don't handle if the event was already handled by a tooltip
 		if (event.defaultPrevented) return;
 		
+		// If this is a touch event and we're in a touch interaction, only handle touchstart
+		if (event instanceof TouchEvent) {
+			if (event.type !== 'touchstart') return;
+			
+			const target = event.target as HTMLElement;
+			if (!target.closest(`[data-tooltip-id="${id}"]`) && !target.closest('[role="tooltip"]')) {
+				activeTooltipId.set(null);
+			}
+			return;
+		}
+
+		// For mouse clicks, close if clicking outside
 		const target = event.target as HTMLElement;
-		// Close tooltip if click/touch is outside any tooltip
 		if (!target.closest('[role="tooltip"]')) {
 			activeTooltipId.set(null);
+		}
+	}
+
+	function handleTouchEnd(event: TouchEvent) {
+		// Prevent touchend from triggering click events
+		if (isTouchInteraction) {
+			event.preventDefault();
+			isTouchInteraction = false;
 		}
 	}
 
@@ -152,11 +176,13 @@
 	onMount(() => {
 		window.addEventListener('resize', updatePosition);
 		document.addEventListener('touchstart', handleGlobalClick, true);
+		document.addEventListener('touchend', handleTouchEnd, true);
 		document.addEventListener('click', handleGlobalClick, true);
 
 		return () => {
 			window.removeEventListener('resize', updatePosition);
 			document.removeEventListener('touchstart', handleGlobalClick, true);
+			document.removeEventListener('touchend', handleTouchEnd, true);
 			document.removeEventListener('click', handleGlobalClick, true);
 		};
 	});
@@ -171,12 +197,14 @@
 <span 
     bind:this={containerElement}
     role="tooltip"
+    data-tooltip-id={id}
     aria-label={content}
     class="relative inline-flex items-center group cursor-help {containerClass}"
     on:mouseenter={handleMouseEnter}
     on:mouseleave={handleMouseLeave}
     on:click={handleTouch}
     on:touchstart={handleTouch}
+    on:touchend|preventDefault
     on:keydown={handleKeyDown}
 >
     <div class="truncate min-w-0"> 

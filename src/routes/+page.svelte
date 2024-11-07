@@ -12,6 +12,13 @@
     
     let showMobilePreview = false;
     
+    onMount(() => {
+        // Select the first template if there are any templates
+        if ($templateStore.templates.length > 0) {
+            templateStore.selectTemplate($templateStore.templates[0].id);
+        }
+    });
+
     function handleTemplateSelect(id: number) {
         templateStore.selectTemplate(id);
         if (browser && window.innerWidth < 640) { // sm breakpoint is 640px

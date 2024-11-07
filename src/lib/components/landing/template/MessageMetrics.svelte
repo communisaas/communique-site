@@ -8,7 +8,7 @@
     const metrics = {
         certified: {
             icon: MapPin,
-            tooltip: "Congressional offices",
+            tooltip: "Congressional offices reached",
             value: template.metrics.districts
         },
         direct: {
