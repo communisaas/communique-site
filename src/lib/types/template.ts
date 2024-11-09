@@ -16,4 +16,5 @@ export type Template = {
     deliveryMethod: string;
     metrics: Metrics;
     preview: string;
+    recipientEmails?: string[];  // New field for direct templates
 }; 

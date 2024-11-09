@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { IdCard, Shield, Scan, Users2 } from 'lucide-svelte';
+    import { IdCard, Shield, Scan, UsersRound } from 'lucide-svelte';
 
     const idChecks = [
         {
@@ -13,7 +13,7 @@
             description: 'Real person confirmation'
         },
         {
-            icon: Users2,
+            icon: UsersRound,
             title: 'One Person, One Voice',
             description: 'No duplicate or anonymous messages'
         }

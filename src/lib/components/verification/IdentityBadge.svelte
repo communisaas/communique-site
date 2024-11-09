@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { IdCard, Shield, Scan, Users2 } from 'lucide-svelte';
+    import { IdCard, Scan, UsersRound } from 'lucide-svelte';
     import Popover from '../ui/Popover.svelte';
     
     const idChecks = [
@@ -14,7 +14,7 @@
             description: 'Liveliness check'
         },
         {
-            icon: Users2,
+            icon: UsersRound,
             title: 'One Person, One Voice',
             description: 'No duplicate or anonymous messages'
         }
@@ -23,21 +23,17 @@
 
 <div class="flex">
     <Popover let:open>
-        <!-- Trigger -->
         <button 
             slot="trigger"
             class="inline-flex items-center gap-2 px-2 sm:px-3 py-1.5 bg-slate-50 border 
                    border-slate-200 rounded-lg text-slate-700 cursor-help
-                   transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:border-slate-300
-                   relative"
+                   transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:border-slate-300"
         >
             <IdCard class="w-4 h-4 shrink-0" />
             <span class="text-xs md:text-sm font-medium whitespace-nowrap">Government ID Required</span>
-            <div class="absolute w-full left-0 h-4 bottom-0 translate-y-full"></div>
         </button>
 
-        <!-- Popover content -->
-        <div class="w-[280px] md:w-[320px] p-3 sm:p-4 max-w-[calc(100vw-2rem)] origin-top-left hover:opacity-100 cursor-text">
+        <div class="w-[280px] md:w-[320px] p-3 sm:p-4 max-w-[calc(100vw-2rem)] cursor-text">
             <div class="space-y-6">
                 {#each idChecks as check}
                     <div 

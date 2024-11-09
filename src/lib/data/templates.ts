@@ -75,7 +75,12 @@ I am writing regarding the implementation of ethical AI guidelines at [Company].
 I urge you to support and implement robust AI safety guidelines within your organization.
 
 Regards,
-[Your Name]`
+[Your Name]`,
+        recipientEmails: [
+            "ceo@techcompany.com",
+            "ethics@techcompany.com",
+            "board@techcompany.com"
+        ]
     },
     {
         id: 4,
@@ -125,7 +130,12 @@ I am writing regarding your bank's Community Reinvestment Act compliance and com
 I urge you to strengthen your community lending programs and support CRA reforms.
 
 Sincerely,
-[Your Name]`
+[Your Name]`,
+        recipientEmails: [
+            "compliance@bank.com",
+            "community@bank.com",
+            "leadership@bank.com"
+        ]
     },
     {
         id: 6,
@@ -201,6 +211,11 @@ I am writing regarding the pressing need for affordable housing solutions in our
 I urge you to support reasonable rent control measures and affordable housing initiatives.
 
 Sincerely,
-[Your Name]`
+[Your Name]`,
+        recipientEmails: [
+            "management@property.com",
+            "community@property.com",
+            "leadership@property.com"
+        ]
     }
 ];

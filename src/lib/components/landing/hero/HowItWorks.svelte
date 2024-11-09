@@ -26,13 +26,12 @@
         slot="trigger"
         variant="secondary" 
         cursor="help"
-        classNames="transition-all duration-200 hover:scale-[1.02] focus:scale-[1.02] hover:shadow-md focus:shadow-md hover:border-slate-300 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:ring-offset-2 relative"
+        classNames="transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:border-slate-300"
     >
         How It Works
-        <div class="absolute w-full left-0 h-4 bottom-0 translate-y-full"></div>
     </Button>
 
-    <div class={`w-[280px] md:w-[480px] p-4 max-w-[calc(100vw-2rem)] ${origin} hover:opacity-100 cursor-text`}>
+    <div class={`w-[280px] md:w-[480px] p-4 max-w-[calc(100vw-2rem)] ${origin} cursor-text`}>
         <div class="space-y-6">
             {#each steps as step, i}
                 <div 
