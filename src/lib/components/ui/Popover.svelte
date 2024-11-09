@@ -10,7 +10,6 @@
     const dispatch = createEventDispatcher();
     let popoverElement: HTMLDivElement;
     let containerElement: HTMLDivElement;
-    let triggerElement: HTMLElement;
     
     async function handleMouseEnter() {
         open = true;
@@ -20,10 +19,8 @@
     }
     
     function handleMouseLeave() {
-        if (!document.activeElement?.contains(containerElement)) {
-            open = false;
-            dispatch('close');
-        }
+        open = false;
+        dispatch('close');
     }
 
     function updatePosition() {
@@ -40,85 +37,43 @@
         }
     }
 
-    function handleFocus(event: FocusEvent) {
+    function handleFocus() {
         open = true;
         dispatch('open');
-        updatePosition();
     }
 
     function handleBlur(event: FocusEvent) {
         const currentTarget = event.currentTarget as HTMLElement;
         const relatedTarget = event.relatedTarget as Node | null;
         
-        if (!currentTarget.contains(relatedTarget as Node)) {
+        if (currentTarget && relatedTarget && !currentTarget.contains(relatedTarget)) {
             open = false;
             dispatch('close');
         }
     }
 
     function handleKeydown(event: KeyboardEvent) {
-        switch (event.key) {
-            case 'Escape':
-                if (open) {
-                    open = false;
-                    dispatch('close');
-                    triggerElement?.focus();
-                }
-                break;
-            case 'Tab':
-                if (open && popoverElement) {
-                    const focusableElements = popoverElement.querySelectorAll(
-                        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-                    );
-                    
-                    if (focusableElements.length === 0) return;
-                    
-                    const firstFocusable = focusableElements[0] as HTMLElement;
-                    const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement;
-                    
-                    if (event.shiftKey && document.activeElement === firstFocusable) {
-                        lastFocusable.focus();
-                        event.preventDefault();
-                    } else if (!event.shiftKey && document.activeElement === lastFocusable) {
-                        firstFocusable.focus();
-                        event.preventDefault();
-                    }
-                }
-                break;
+        if (event.key === 'Escape' && open) {
+            open = false;
+            dispatch('close');
         }
-    }
-
-    function bindTrigger(node: HTMLElement) {
-        triggerElement = node;
-        node.addEventListener('mouseenter', handleMouseEnter);
-        node.addEventListener('mouseleave', handleMouseLeave);
-        node.addEventListener('keydown', handleKeydown);
-        node.addEventListener('focusin', handleFocus);
-        node.addEventListener('focusout', handleBlur);
-        
-        return {
-            destroy() {
-                node.removeEventListener('mouseenter', handleMouseEnter);
-                node.removeEventListener('mouseleave', handleMouseLeave);
-                node.removeEventListener('keydown', handleKeydown);
-                node.removeEventListener('focusin', handleFocus);
-                node.removeEventListener('focusout', handleBlur);
-            }
-        };
     }
 </script>
 
 <div 
     bind:this={containerElement}
     class="relative inline-block"
+    role="button"
+    tabindex="0"
+    on:mouseenter={handleMouseEnter}
+    on:mouseleave={handleMouseLeave}
+    on:keydown={handleKeydown}
+    on:focusin={handleFocus}
+    on:focusout={handleBlur}
+    aria-haspopup="true"
+    aria-expanded={open}
 >
-    <div 
-        use:bindTrigger
-        aria-haspopup="true"
-        aria-expanded={open}
-    >
-        <slot name="trigger" aria-controls={id} />
-    </div>
+    <slot name="trigger" aria-controls={id} />
     
     {#if open}
         <div class="absolute left-0 w-full h-2 bottom-0 translate-y-full"></div>
@@ -134,7 +89,7 @@
                    {sticky ? '' : 'left-0'}"
             transition:fade={{ duration: 200 }}
         >
-            <div class="absolute left-0 w-full h-2 -top-2"></div>
+            <div class="absolute left-0 w-full h-3 -top-3 cursor-default"></div>
             <slot {open} />
         </div>
     {/if}

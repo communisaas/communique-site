@@ -28,7 +28,37 @@
     let lastFocusableElement: HTMLElement;
     let templateListButtons: NodeListOf<HTMLButtonElement>;
     
-    // Listen for focus move request
+    function handleKeyboardNav(event: KeyboardEvent) {
+        if (event.key === 'Tab') {
+            const templateButtons = Array.from(templateListButtons);
+            const selectedIndex = templateButtons.findIndex(
+                button => button.getAttribute('data-template-id') === template.id.toString()
+            );
+            const lastTemplateIndex = templateButtons.length - 1;
+            
+            if (event.shiftKey) {
+                // Handle shift+tab from first element
+                if (document.activeElement === firstFocusableElement) {
+                    event.preventDefault();
+                    // Focus the current template button
+                    templateButtons[selectedIndex]?.focus();
+                }
+            } else {
+                // Handle forward tab from last element
+                if (document.activeElement === lastFocusableElement) {
+                    // If we're not at the last template in the list,
+                    // move focus to the next template
+                    if (selectedIndex < lastTemplateIndex) {
+                        event.preventDefault();
+                        templateButtons[selectedIndex + 1]?.focus();
+                    }
+                    // Otherwise, let focus continue naturally
+                }
+            }
+        }
+    }
+    
+    // Listen for focus move request (when template is selected)
     onMount(() => {
         const handleMovePreviewFocus = () => {
             if (firstFocusableElement) {
@@ -55,35 +85,6 @@
             // Get reference to template list buttons
             templateListButtons = document.querySelectorAll('[data-template-button]');
         });
-    }
-    
-    function handleKeyboardNav(event: KeyboardEvent) {
-        if (event.key === 'Tab') {
-            const templateButtons = Array.from(templateListButtons);
-            const currentIndex = templateButtons.findIndex(
-                button => button.getAttribute('data-template-id') === template.id.toString()
-            );
-            const lastTemplateIndex = templateButtons.length - 1;
-            
-            // If we're viewing a template that's earlier in the list,
-            // let focus continue naturally to avoid trapping
-            if (currentIndex < lastTemplateIndex) return;
-            
-            if (event.shiftKey) {
-                // Handle shift+tab from first element
-                if (document.activeElement === firstFocusableElement) {
-                    event.preventDefault();
-                    // Focus the current template button
-                    templateButtons[currentIndex]?.focus();
-                }
-            } else {
-                // Handle forward tab from last element
-                if (document.activeElement === lastFocusableElement) {
-                    event.preventDefault();
-                    templateButtons[currentIndex + 1]?.focus();
-                }
-            }
-        }
     }
     
     async function copyToClipboard() {

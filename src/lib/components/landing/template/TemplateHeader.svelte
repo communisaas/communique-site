@@ -19,7 +19,10 @@
             <Badge type={template.type} />
         </div>
     </div>
-    <Button variant="primary" classNames="shrink-0">
+    <Button 
+        variant="primary" 
+        classNames="shrink-0 focus:ring-green-600/50"
+    >
         <span class="hidden sm:inline">Use Template</span>
         <span class="sm:hidden">Use</span>
         <Send class="w-4 h-4" />
