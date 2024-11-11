@@ -3,6 +3,7 @@
     import { fade } from 'svelte/transition';
     import { tick } from 'svelte';
     import type { PopoverSlots, TriggerAction } from '$lib/types/popover';
+	import { browser } from '$app/environment';
     
     export let open = false;
     export let id = crypto.randomUUID();
@@ -41,8 +42,10 @@
 
     onDestroy(() => {
         // Clean up event listeners
-        window.removeEventListener('scroll', handleScroll, true);
-        window.removeEventListener('resize', handleResize);
+        if (browser) {
+            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('resize', handleResize);
+        }
     });
 
     async function handleMouseEnter() {
@@ -143,6 +146,30 @@
             dispatch('close');
         }
     }
+
+    let isTouch = false;
+    let touchTimeout: number;
+
+    function handleTouchStart() {
+        isTouch = true;
+        // Clear any existing timeout
+        if (touchTimeout) {
+            clearTimeout(touchTimeout);
+        }
+        
+        open = !open;
+        if (open) {
+            dispatch('open');
+            tick().then(updatePosition);
+        } else {
+            dispatch('close');
+        }
+
+        // Reset isTouch after a delay to allow mouse events again
+        touchTimeout = window.setTimeout(() => {
+            isTouch = false;
+        }, 500);
+    }
 </script>
 
 <div 
@@ -152,6 +179,7 @@
     tabindex="-1"
     on:mouseenter={handleMouseEnter}
     on:mouseleave={handleMouseLeave}
+    on:touchstart={handleTouchStart}
     on:keydown={handleKeydown}
     on:focusin={handleFocus}
     on:focusout={handleBlur}
