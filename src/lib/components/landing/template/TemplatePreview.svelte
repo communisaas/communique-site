@@ -1,11 +1,12 @@
 <script lang="ts">
+    import type { ComponentProps } from 'svelte';
     import type { Template } from '$lib/types/template';
     import { Mail, Users, ClipboardCopy, ClipboardCheck } from 'lucide-svelte';
     import Tooltip from '$lib/components/ui/Tooltip.svelte';
     import TemplateHeader from './TemplateHeader.svelte';
     import DeliveryInfo from './DeliveryInfo.svelte';
-    import MessagePreview from './MessagePreview.svelte';
     import TemplateTips from './TemplateTips.svelte';
+    import MessagePreview from './MessagePreview.svelte';
     import Popover from '$lib/components/ui/Popover.svelte';
     import { fade } from 'svelte/transition';
 	import { onDestroy, onMount, tick } from 'svelte';
@@ -22,9 +23,13 @@
     let copyTimeout: NodeJS.Timeout;
     
     let previewContainer: HTMLDivElement;
-    let firstFocusableElement: HTMLElement;
-    let lastFocusableElement: HTMLElement;
+    let firstFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
+    let lastFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
     let templateListButtons: NodeListOf<HTMLButtonElement>;
+    
+    type TriggerAction = (node: HTMLElement) => {
+        destroy: () => void;
+    };
     
     function handleKeyboardNav(event: KeyboardEvent) {
         if (event.key === 'Tab') {
@@ -77,8 +82,8 @@
             const focusableElements = previewContainer.querySelectorAll(
                 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
             );
-            firstFocusableElement = focusableElements[0] as HTMLElement;
-            lastFocusableElement = focusableElements[focusableElements.length - 1] as HTMLElement;
+            firstFocusableElement = focusableElements[0] as HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
+            lastFocusableElement = focusableElements[focusableElements.length - 1] as HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
             
             // Get reference to template list buttons
             templateListButtons = document.querySelectorAll('[data-template-button]');
@@ -129,7 +134,6 @@
 
 <div
     bind:this={previewContainer}
-    on:keydown={handleKeyboardNav}
     class="bg-white rounded-xl border border-slate-200 
            {inModal ? 'p-2' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
            {inModal ? '' : 'sm:sticky sm:top-8'}
@@ -137,77 +141,87 @@
            flex flex-col overflow-visible"
 >
     {#if template}
-        <div class={inModal ? 'hidden' : 'shrink-0'}>
-            <TemplateHeader {template} />
-        </div>
-        <div class="shrink-0">
-            <DeliveryInfo {template} />
-        </div>
-        
-        {#if template.type === 'direct' && template.recipientEmails?.length}
-            <div class="shrink-0 flex items-center gap-2 text-sm text-slate-600 my-2">
-                <Users class="w-4 h-4 text-slate-500" />
-                <div class="flex items-center gap-1.5 overflow-hidden">
-                    <span class="truncate text-slate-600">{recipientPreview}</span>
-                    {#if recipientCount > 2}
-                        <Popover let:open>
-                            <button 
-                                slot="trigger" 
-                                class="inline-flex items-center px-1.5 py-0.5 rounded-md
-                                       bg-slate-100 hover:bg-slate-200 
-                                       text-slate-600 hover:text-slate-800
-                                       font-medium
-                                       transition-all duration-200"
-                            >
-                                +{recipientCount - 2} more
-                            </button>
-                            
-                            <div class="w-[280px] p-4 max-w-[calc(100vw-2rem)]">
-                                <div class="flex items-start gap-4 sm:text-base text-sm">
-                                    <button
-                                        on:click={copyToClipboard}
-                                        class="p-2 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200
-                                               transition-all duration-200 focus:outline-none 
-                                               focus:ring-2 focus:ring-blue-200 focus:ring-offset-2"
-                                        aria-label="Copy all recipient emails to clipboard"
+        <button 
+            type="button"
+            aria-label="Template preview navigation"
+            on:keydown={handleKeyboardNav}
+            class="outline-none flex-1 flex flex-col text-left bg-transparent border-0"
+        >
+            <div class={inModal ? 'hidden' : 'shrink-0'}>
+                <TemplateHeader {template} />
+            </div>
+            <div class="shrink-0">
+                <DeliveryInfo {template} />
+            </div>
+            
+            {#if template.type === 'direct' && template.recipientEmails?.length}
+                <div class="shrink-0 flex items-center gap-2 text-sm text-slate-600 my-2">
+                    <Users class="w-4 h-4 text-slate-500" />
+                    <div class="flex items-center gap-1.5 overflow-hidden">
+                        <span class="truncate text-slate-600">{recipientPreview}</span>
+                        {#if recipientCount > 2}
+                            <Popover>
+                                <svelte:fragment slot="trigger" let:trigger>
+                                    <button 
+                                        use:trigger
+                                        class="inline-flex items-center px-1.5 py-0.5 rounded-md
+                                               bg-slate-100 hover:bg-slate-200 
+                                               text-slate-600 hover:text-slate-800
+                                               font-medium
+                                               transition-all duration-200"
                                     >
-                                        {#if copied}
-                                            <div in:fade={{ duration: 200 }}>
-                                                <ClipboardCheck class="w-6 h-6 text-green-500" />
-                                            </div>
-                                        {:else}
-                                            <div in:fade={{ duration: 200 }}>
-                                                <ClipboardCopy class="w-6 h-6 text-blue-400" />
-                                            </div>
-                                        {/if}
+                                        +{recipientCount - 2} more
                                     </button>
-                                    <div>
-                                        <h3 class="font-medium text-slate-900 mb-1">
-                                            All Recipients ({recipientCount})
-                                        </h3>
-                                        <div class="space-y-1 text-slate-600 text-sm">
-                                            {#each template.recipientEmails as email}
-                                                <div>{email}</div>
-                                            {/each}
+                                </svelte:fragment>
+                                
+                                <svelte:fragment slot="default">
+                                    <div class="w-[280px] p-4 max-w-[calc(100vw-2rem)]">
+                                        <div class="flex items-start gap-4 sm:text-base text-sm">
+                                            <button
+                                                on:click={copyToClipboard}
+                                                class="p-2 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200
+                                                       transition-all duration-200 focus:outline-none 
+                                                       focus:ring-2 focus:ring-blue-200 focus:ring-offset-2"
+                                                aria-label="Copy all recipient emails to clipboard"
+                                            >
+                                                {#if copied}
+                                                    <div in:fade={{ duration: 200 }}>
+                                                        <ClipboardCheck class="w-6 h-6 text-green-500" />
+                                                    </div>
+                                                {:else}
+                                                    <div in:fade={{ duration: 200 }}>
+                                                        <ClipboardCopy class="w-6 h-6 text-blue-400" />
+                                                    </div>
+                                                {/if}
+                                            </button>
+                                            <div>
+                                                <h3 class="font-medium text-slate-900 mb-1">
+                                                    All Recipients ({recipientCount})
+                                                </h3>
+                                                <div class="space-y-1 text-slate-600 text-sm">
+                                                    {#each template.recipientEmails as email}
+                                                        <div>{email}</div>
+                                                    {/each}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </Popover>
-                    {/if}
+                                </svelte:fragment>
+                            </Popover>
+                        {/if}
+                    </div>
                 </div>
+            {/if}
+            
+            <div class="flex-1 min-h-0 my-4">
+                <MessagePreview 
+                    preview={template.preview}
+                />
             </div>
-        {/if}
-        
-        <div class="flex-1 min-h-0 my-4">
-            <MessagePreview 
-                title={template.title}
-                preview={template.preview}
-            />
-        </div>
-        <div class="shrink-0">
-            <TemplateTips isCertified={template.type === 'certified'} />
-        </div>
+            <div class="shrink-0">
+                <TemplateTips isCertified={template.type === 'certified'} />
+            </div>
+        </button>
     {:else}
         <div class="text-center text-slate-500 py-12">
             Select a template to preview

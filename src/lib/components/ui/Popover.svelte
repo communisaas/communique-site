@@ -2,14 +2,23 @@
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
     import { tick } from 'svelte';
+    import type { PopoverSlots, TriggerAction } from '$lib/types/popover';
     
     export let open = false;
     export let id = crypto.randomUUID();
-    export let sticky = false;
     
     const dispatch = createEventDispatcher();
     let popoverElement: HTMLDivElement;
     let containerElement: HTMLDivElement;
+    
+    interface $$Slots extends PopoverSlots {}
+
+    // Create the trigger action
+    const triggerAction: TriggerAction = (node) => {
+        return {
+            destroy: () => {} // Cleanup if needed
+        };
+    };
     
     // Track events that should trigger position updates
     function handleScroll() {
@@ -140,7 +149,7 @@
     bind:this={containerElement}
     class="relative inline-block"
     role="button"
-    tabindex="0"
+    tabindex="-1"
     on:mouseenter={handleMouseEnter}
     on:mouseleave={handleMouseLeave}
     on:keydown={handleKeydown}
@@ -149,7 +158,11 @@
     aria-haspopup="true"
     aria-expanded={open}
 >
-    <slot name="trigger" aria-controls={id} />
+    <slot 
+        name="trigger" 
+        trigger={triggerAction}
+        aria-controls={id} 
+    />
     
     {#if open}
         <div 

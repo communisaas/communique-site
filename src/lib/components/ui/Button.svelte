@@ -8,8 +8,8 @@
     export let buttonElement: HTMLButtonElement | undefined = undefined;
 
     interface $$Slots {
-        default: {};
-        trigger?: {}; // Add this to support the trigger slot
+        default: Record<string, never>;
+        trigger?: Record<string, never>;
     }
 </script>
 
