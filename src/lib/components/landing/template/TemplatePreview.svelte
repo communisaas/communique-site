@@ -133,14 +133,14 @@
            {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
            {inModal ? '' : 'sm:sticky sm:top-8'}
            {inModal ? '' : 'h-[calc(100vh-4rem)]'}
-           flex flex-col overflow-visible"
+           flex flex-col overflow-hidden"
 >
     {#if template}
         <button 
             type="button"
             aria-label="Template preview navigation"
             on:keydown={handleKeyboardNav}
-            class="outline-none flex-1 flex flex-col text-left bg-transparent border-0"
+            class="outline-none flex-1 flex flex-col text-left bg-transparent border-0 overflow-hidden"
         >
             <div class="shrink-0 w-full">
                 <TemplateHeader {template} />
@@ -182,7 +182,7 @@
                             <div class="w-[280px] p-4 max-w-[calc(100vw-2rem)]">
                                 <div class="flex items-start gap-4 sm:text-base text-sm">
                                     <button
-                                        on:click={copyToClipboard}
+                                        on:click|stopPropagation={copyToClipboard}
                                         class="p-2 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200
                                                transition-all duration-200 focus:outline-none 
                                                focus:ring-2 focus:ring-blue-200 focus:ring-offset-2"
@@ -215,7 +215,7 @@
                 </div>
             {/if}
             
-            <div class="flex-1 min-h-0 my-4">
+            <div class="flex-1 min-h-0 my-4 overflow-hidden">
                 <MessagePreview 
                     preview={template.preview}
                 />

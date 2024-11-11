@@ -4,12 +4,12 @@
     export let preview: string;
 </script>
 
-<div class="h-full flex flex-col">
+<div class="h-full flex flex-col overflow-hidden">
     <div class="flex items-center gap-2 mb-2 shrink-0">
         <Mail class="w-4 h-4 text-slate-500 shrink-0" />
         <h3 class="font-medium text-slate-900 text-sm sm:text-base">Message Preview</h3>
     </div>
-    <div class="flex-1 min-h-0">
+    <div class="flex-1 min-h-0 overflow-hidden">
         <pre 
             class="h-full p-2 sm:p-4 
                    bg-slate-50 rounded-lg text-slate-600 

@@ -150,7 +150,12 @@
     let isTouch = false;
     let touchTimeout: number;
 
-    function handleTouchStart() {
+    function handleTouchStart(event: TouchEvent) {
+        // Don't handle touch events from within the popover content
+        if (popoverElement?.contains(event.target as Node)) {
+            return;
+        }
+
         isTouch = true;
         // Clear any existing timeout
         if (touchTimeout) {
@@ -193,6 +198,20 @@
     />
     
     {#if open}
+        <!-- Add hover bridge that connects trigger to popover -->
+        <div 
+            class="fixed z-[69]"
+            role="presentation"
+            on:mouseenter={handleMouseEnter}
+            on:mouseleave={handleMouseLeave}
+            style="
+                left: {containerElement?.getBoundingClientRect().left}px;
+                width: {containerElement?.getBoundingClientRect().width}px;
+                top: {containerElement?.getBoundingClientRect().bottom}px;
+                height: 8px;
+            "
+        ></div>
+        
         <div 
             bind:this={popoverElement}
             {id}
@@ -200,6 +219,8 @@
             class="bg-white rounded-xl shadow-xl border border-slate-200 z-[70]"
             transition:fade={{ duration: 200 }}
             style="position: fixed; isolation: isolate;"
+            on:mouseenter={handleMouseEnter}
+            on:mouseleave={handleMouseLeave}
         >
             <slot {open} />
         </div>
