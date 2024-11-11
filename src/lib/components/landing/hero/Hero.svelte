@@ -2,12 +2,7 @@
     import { Send } from 'lucide-svelte';
     import Button from '../../ui/Button.svelte';
     import HowItWorks from './HowItWorks.svelte';
-    import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
 </script>
-
-<div class="flex justify-end mb-4">
-    <IdentityBadge />
-</div>
 
 <div class="space-y-8">
     <div>

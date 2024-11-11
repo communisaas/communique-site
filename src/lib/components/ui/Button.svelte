@@ -4,6 +4,9 @@
     export let cursor: 'default' | 'help' = 'default';
     export let classNames: string = '';
 
+    // Forward the button element reference with a different name
+    export let buttonElement: HTMLButtonElement | undefined = undefined;
+
     interface $$Slots {
         default: {};
         trigger?: {}; // Add this to support the trigger slot
@@ -11,6 +14,7 @@
 </script>
 
 <button
+    bind:this={buttonElement}
     {type}
     class="px-6 py-3 sm:text-base text-sm rounded-lg font-medium flex items-center gap-2 transition-all duration-200 cursor-{cursor} {classNames}"
     class:bg-blue-600={variant === 'primary'}

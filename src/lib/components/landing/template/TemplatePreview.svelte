@@ -13,8 +13,6 @@
     export let template: Template;
     export let inModal = false;
 
-    $: console.log('recipientemails', template?.recipientEmails);
-    
     $: recipientCount = template?.recipientEmails?.length ?? 0;
     $: recipientPreview = template?.recipientEmails
         ?.slice(0, 2)
@@ -152,7 +150,7 @@
                 <div class="flex items-center gap-1.5 overflow-hidden">
                     <span class="truncate text-slate-600">{recipientPreview}</span>
                     {#if recipientCount > 2}
-                        <Popover let:open sticky={true}>
+                        <Popover let:open>
                             <button 
                                 slot="trigger" 
                                 class="inline-flex items-center px-1.5 py-0.5 rounded-md

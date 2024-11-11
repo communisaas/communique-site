@@ -2,6 +2,7 @@
     import { Shield, AtSign, ArrowRight, Network, Route, CheckCircle2, Building2, Landmark, UsersRound } from 'lucide-svelte';
     import { flip } from 'svelte/animate';
     import { fade } from 'svelte/transition';
+    import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
     
     let selectedChannel: string | null = null;
     
@@ -69,7 +70,7 @@
             <div
                 role="button"
                 tabindex="0"
-                class="relative overflow-hidden group cursor-pointer border-2 rounded-lg transition-all duration-300"
+                class="relative group cursor-pointer border-2 rounded-lg transition-all duration-300"
                 class:border-emerald-500={isSelected && channel.id === 'certified'}
                 class:border-blue-500={isSelected && channel.id === 'direct'}
                 class:bg-emerald-50={isSelected && channel.id === 'certified'}
@@ -87,25 +88,32 @@
                     }
                 }}
             >
-                <div class="absolute inset-0 opacity-5 transition-opacity duration-300 pointer-events-none"
-                    class:opacity-10={isSelected}>
-                    <div class="absolute inset-0 grid grid-cols-8 gap-px">
-                        {#each Array(32) as _, i}
-                            <div class=" transform rotate-45 scale-150"></div>
-                        {/each}
+                <div class="absolute inset-0 overflow-hidden">
+                    <div class="absolute inset-0 opacity-5 transition-opacity duration-300 pointer-events-none"
+                        class:opacity-10={isSelected}>
+                        <div class="absolute inset-0 grid grid-cols-8 gap-px">
+                            {#each Array(32) as _, i}
+                                <div class="transform rotate-45 scale-150"></div>
+                            {/each}
+                        </div>
                     </div>
                 </div>
 
                 <div class="relative h-full p-6">
-                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium mb-4 transition-colors duration-200"
-                        class:bg-emerald-100={isSelected && channel.id === 'certified'}
-                        class:text-emerald-700={isSelected && channel.id === 'certified'}
-                        class:bg-blue-100={isSelected && channel.id === 'direct'}
-                        class:text-blue-700={isSelected && channel.id === 'direct'}
-                        class:bg-slate-100={!isSelected}
-                        class:text-slate-600={!isSelected}>
-                        <svelte:component this={channel.icon} class="w-4 h-4" />
-                        {channel.title}
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs sm:text-sm font-medium transition-colors duration-200"
+                            class:bg-emerald-100={isSelected && channel.id === 'certified'}
+                            class:text-emerald-700={isSelected && channel.id === 'certified'}
+                            class:bg-blue-100={isSelected && channel.id === 'direct'}
+                            class:text-blue-700={isSelected && channel.id === 'direct'}
+                            class:bg-slate-100={!isSelected}
+                            class:text-slate-600={!isSelected}>
+                            <svelte:component this={channel.icon} class="w-4 h-4" />
+                            {channel.title}
+                        </div>
+                        {#if channel.id === 'certified'}
+                            <IdentityBadge />
+                        {/if}
                     </div>
 
                     <div class="space-y-4">

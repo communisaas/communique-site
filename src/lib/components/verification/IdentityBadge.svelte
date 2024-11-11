@@ -1,7 +1,7 @@
 <script lang="ts">
     import { IdCard, Scan, UsersRound } from 'lucide-svelte';
     import Popover from '../ui/Popover.svelte';
-    
+
     const idChecks = [
         {
             icon: IdCard,
@@ -30,7 +30,7 @@
                    transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:border-slate-300"
         >
             <IdCard class="w-4 h-4 shrink-0" />
-            <span class="text-xs md:text-sm font-medium whitespace-nowrap">Government ID Required</span>
+            <span class="text-xs md:text-sm font-medium whitespace-nowrap">ID Required</span>
         </button>
 
         <div class="w-[280px] md:w-[320px] p-3 sm:p-4 max-w-[calc(100vw-2rem)] cursor-text">

@@ -5,7 +5,7 @@
     import { steps } from '$lib/data/steps';
     let alignment: 'left' | 'right' = 'right';
     $: origin = alignment === 'left' ? 'origin-top-left' : 'origin-top-right';
-    
+
     onMount(() => {
         const mediaQuery = window.matchMedia('(min-width: 768px)');
         const updateAlignment = (e: MediaQueryList | MediaQueryListEvent) => {

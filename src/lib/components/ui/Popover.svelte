@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createEventDispatcher } from 'svelte';
+    import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { fade } from 'svelte/transition';
     import { tick } from 'svelte';
     
@@ -11,6 +11,31 @@
     let popoverElement: HTMLDivElement;
     let containerElement: HTMLDivElement;
     
+    // Track events that should trigger position updates
+    function handleScroll() {
+        if (open) {
+            requestAnimationFrame(updatePosition);
+        }
+    }
+
+    function handleResize() {
+        if (open) {
+            requestAnimationFrame(updatePosition);
+        }
+    }
+
+    onMount(() => {
+        // Add event listeners
+        window.addEventListener('scroll', handleScroll, true); // true for capture phase to catch all scroll events
+        window.addEventListener('resize', handleResize);
+    });
+
+    onDestroy(() => {
+        // Clean up event listeners
+        window.removeEventListener('scroll', handleScroll, true);
+        window.removeEventListener('resize', handleResize);
+    });
+
     async function handleMouseEnter() {
         open = true;
         dispatch('open');
@@ -27,14 +52,65 @@
         if (!popoverElement || !containerElement) return;
         
         const triggerRect = containerElement.getBoundingClientRect();
+        const popoverRect = popoverElement.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
         
-        if (sticky) {
-            popoverElement.style.position = 'fixed';
-            popoverElement.style.top = `${triggerRect.bottom + 8}px`;
-            popoverElement.style.left = `${triggerRect.left}px`;
-            popoverElement.style.maxWidth = `${viewportWidth - triggerRect.left - 16}px`;
+        // Calculate available space in each direction
+        const spaceAbove = triggerRect.top;
+        const spaceBelow = viewportHeight - triggerRect.bottom;
+        const spaceLeft = triggerRect.left;
+        const spaceRight = viewportWidth - triggerRect.right;
+
+        // Determine vertical position
+        let verticalPosition: 'top' | 'bottom' = spaceBelow >= popoverRect.height || spaceBelow > spaceAbove 
+            ? 'bottom' 
+            : 'top';
+
+        // Calculate initial positions
+        let top: number;
+        let left: number;
+
+        // Vertical positioning
+        if (verticalPosition === 'bottom') {
+            top = triggerRect.bottom + 8;
+        } else {
+            top = triggerRect.top - popoverRect.height - 8;
         }
+
+        // Always try to align with trigger first
+        left = triggerRect.left;
+
+        // If popover would overflow right edge
+        if (left + popoverRect.width > viewportWidth - 16) {
+            // Align right edge of popover with right edge of trigger
+            left = triggerRect.right - popoverRect.width;
+        }
+
+        // If popover would overflow left edge after right alignment
+        if (left < 16) {
+            // Align with trigger center if possible
+            left = triggerRect.left + (triggerRect.width / 2) - (popoverRect.width / 2);
+            
+            // If still overflowing left, align with left viewport edge
+            if (left < 16) {
+                left = 16;
+            }
+            
+            // If now overflowing right, align with right viewport edge
+            if (left + popoverRect.width > viewportWidth - 16) {
+                left = viewportWidth - popoverRect.width - 16;
+            }
+        }
+
+        // Ensure vertical bounds
+        top = Math.max(16, Math.min(top, viewportHeight - popoverRect.height - 16));
+
+        // Apply positions
+        popoverElement.style.position = 'fixed';
+        popoverElement.style.top = `${top}px`;
+        popoverElement.style.left = `${left}px`;
+        popoverElement.style.maxWidth = `${viewportWidth - 32}px`;
     }
 
     function handleFocus() {
@@ -76,20 +152,14 @@
     <slot name="trigger" aria-controls={id} />
     
     {#if open}
-        <div class="absolute left-0 w-full h-2 bottom-0 translate-y-full"></div>
-    {/if}
-    
-    {#if open}
         <div 
             bind:this={popoverElement}
             {id}
             role="tooltip"
-            class="bg-white rounded-xl shadow-xl border border-slate-200 z-50
-                   {sticky ? 'fixed' : 'absolute top-full mt-2'}
-                   {sticky ? '' : 'left-0'}"
+            class="bg-white rounded-xl shadow-xl border border-slate-200 z-[70]"
             transition:fade={{ duration: 200 }}
+            style="position: fixed; isolation: isolate;"
         >
-            <div class="absolute left-0 w-full h-3 -top-3 cursor-default"></div>
             <slot {open} />
         </div>
     {/if}
