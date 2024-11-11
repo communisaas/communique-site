@@ -26,8 +26,8 @@
     const delivery = deliveryTypes[template.type];
 </script>
 
-<div class="mb-4 md:mb-6 p-3 md:p-4 bg-slate-50 rounded-lg border border-slate-200">
-    <div class="flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+<div class="mb-4 md:mb-6 p-3 md:p-4 bg-slate-50 rounded-lg border border-slate-200 w-full">
+    <div class="flex flex-wrap justify-between items-center gap-y-3 gap-x-6">
         <div class="flex items-center gap-2">
             <svelte:component this={delivery.icon} class="w-4 h-4 {delivery.iconClass}" />
             <span class="text-xs md:text-sm {delivery.textClass}">

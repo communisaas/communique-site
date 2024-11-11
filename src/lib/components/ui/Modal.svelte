@@ -1,9 +1,8 @@
 <script lang="ts">
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { scale } from 'svelte/transition';
+    import { X } from 'lucide-svelte';
 
-    export let title: string;
-    
     const dispatch = createEventDispatcher();
     let dialogElement: HTMLDialogElement;
     let isOpen = false;
@@ -45,13 +44,15 @@
 
     function lockScroll() {
         scrollPosition = window.scrollY;
+        document.body.style.position = 'fixed';
         document.body.style.top = `-${scrollPosition}px`;
-        document.body.classList.add('modal-open');
+        document.body.style.width = '100%';
     }
 
     function unlockScroll() {
-        document.body.classList.remove('modal-open');
+        document.body.style.position = '';
         document.body.style.top = '';
+        document.body.style.width = '';
         window.scrollTo(0, scrollPosition);
     }
 
@@ -72,41 +73,63 @@
 {#if isOpen}
     <dialog
         bind:this={dialogElement}
-        class="backdrop:bg-black/50 backdrop:backdrop-blur-sm p-4 md:p-0 bg-transparent w-full max-w-2xl fixed"
+        class="fixed inset-0 w-full h-full bg-transparent p-0 m-0
+               backdrop:bg-black/50 backdrop:backdrop-blur-sm"
     >
-        <div
-            class="relative bg-white rounded-xl w-[calc(100%-2rem)] md:w-full mx-auto shadow-xl overflow-hidden"
-            style="max-height: calc(var(--vh,1vh)*90);"
-            role="document"
-            transition:scale={{ duration: 200, start: 0.95 }}
-        >
-            <!-- Modal header -->
-            <div class="p-4 pb-0 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 id="modal-title" class="text-2xl font-bold text-gray-900">{title}</h2>
-                    <button
-                        on:click={close}
-                        class="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        aria-label="Close modal"
-                    >
-                        <svg class="w-6 h-6 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Scrollable content -->
-            <div 
-                class="pt-1 px-6 pb-6 overflow-y-scroll" 
-                style="height: calc(var(--vh,1vh)*90 - 8rem);"
+        <div class="h-full w-full p-4 flex items-center justify-center">
+            <div
+                class="relative bg-white rounded-xl w-full max-w-2xl shadow-xl overflow-hidden"
+                role="document"
+                transition:scale={{ duration: 200, start: 0.95 }}
             >
-                <slot />
+                <!-- Floating close button -->
+                <button
+                    on:click={close}
+                    class="absolute right-2 top-2 z-20 p-2 hover:bg-gray-100 
+                           rounded-full transition-colors bg-white/80 
+                           backdrop-blur-sm shadow-sm"
+                    aria-label="Close modal"
+                >
+                    <X class="w-5 h-5 text-gray-600" />
+                </button>
+
+                <!-- Content container -->
+                <div class="max-h-[90vh] overflow-y-auto">
+                    <div class="relative">
+                        <slot />
+                    </div>
+                </div>
             </div>
         </div>
     </dialog>
 {/if}
 
 <style>
-    /* ... keep existing styles ... */
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+    }
+    
+    dialog {
+        max-width: 100vw;
+        max-height: 100vh;
+    }
+    
+    /* Customize scrollbar */
+    div::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    div::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    div::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.5);
+        border-radius: 4px;
+    }
+
+    div::-webkit-scrollbar-thumb:hover {
+        background-color: rgba(156, 163, 175, 0.7);
+    }
 </style>

@@ -21,7 +21,7 @@
 
     function handleTemplateSelect(id: number) {
         templateStore.selectTemplate(id);
-        if (browser && window.innerWidth < 640) { // sm breakpoint is 640px
+        if (browser && window.innerWidth < 768) { // md breakpoint is 768px
             showMobilePreview = true;
         }
     }
@@ -41,8 +41,8 @@
         <ChannelExplainer />
     </div>
 
-    <div class="grid sm:grid-cols-3 grid-cols-1 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
-        <div class="sm:col-span-1">
+    <div class="grid md:grid-cols-3 grid-cols-1 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
+        <div class="md:col-span-1">
             <h2 class="text-xl font-semibold text-slate-900 mb-3">
                 Message Templates
             </h2>
@@ -58,15 +58,16 @@
         </div>
 
         <!-- Desktop/Tablet Preview -->
-        <div class="sm:col-span-2 hidden sm:block">
-            <TemplatePreview template={$selectedTemplate} />
+        <div class="md:col-span-2 hidden md:block">
+            {#if $selectedTemplate}
+                <TemplatePreview template={$selectedTemplate} />
+            {/if}
         </div>
     </div>
 
     <!-- Mobile Preview Modal -->
     {#if showMobilePreview && $selectedTemplate}
         <Modal 
-            title={$selectedTemplate.title}
             on:close={() => showMobilePreview = false}
         >
             <TemplatePreview 

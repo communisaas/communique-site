@@ -7,8 +7,8 @@
     export let template: Template;
 </script>
 
-<div class="flex justify-between items-start gap-4 mb-6">
-    <div class="min-w-0">
+<div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+    <div class="flex-1 min-w-0">
         <h2 class="text-lg sm:text-xl font-semibold text-slate-900 mb-2 truncate">
             {template.title}
         </h2>
@@ -19,12 +19,14 @@
             <Badge type={template.type} />
         </div>
     </div>
-    <Button 
-        variant="primary" 
-        classNames="shrink-0 focus:ring-green-600/50"
-    >
-        <span class="hidden sm:inline">Use Template</span>
-        <span class="sm:hidden">Use</span>
-        <Send class="w-4 h-4" />
-    </Button>
+    <div class="flex items-center">
+        <Button 
+            variant="primary" 
+            classNames="w-full sm:w-auto shrink-0 focus:ring-green-600/50"
+        >
+            <span class="hidden sm:inline">Use Template</span>
+            <span class="sm:hidden">Use</span>
+            <Send class="w-4 h-4 ml-2" />
+        </Button>
+    </div>
 </div>

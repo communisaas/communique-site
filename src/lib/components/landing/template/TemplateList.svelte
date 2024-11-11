@@ -46,13 +46,13 @@
     }
 </script>
 
-<div class="space-y-3 sm:space-y-4">
+<div class="space-y-3 md:space-y-4">
     {#each templates as template, index (template.id)}
         <button
             type="button"
             data-template-button
             data-template-id={template.id}
-            class="w-full p-3 sm:p-4 rounded-lg border cursor-pointer transition-all flex justify-between items-start gap-3 text-left"
+            class="w-full p-3 md:p-4 rounded-lg border cursor-pointer transition-all flex justify-between items-start gap-3 text-left"
             class:border-blue-400={selectedId === template.id}
             class:bg-blue-50={selectedId === template.id}
             class:border-slate-200={selectedId !== template.id}
@@ -63,16 +63,16 @@
             <div class="flex-1 min-w-0">
                 <div class="flex flex-wrap items-center gap-2">
                     <Badge type={template.type} />
-                    <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs sm:text-sm">
+                    <span class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs md:text-sm">
                         {template.category}
                     </span>
                 </div>
                 
-                <h3 class="font-medium text-slate-900 mt-2 sm:mt-3 truncate">
+                <h3 class="font-medium text-slate-900 mt-2 md:mt-3 truncate">
                     {template.title}
                 </h3>
 
-                <p class="text-xs sm:text-sm text-slate-600 mb-2 sm:mb-3 line-clamp-2">
+                <p class="text-xs md:text-sm text-slate-600 mb-2 md:mb-3 line-clamp-2">
                     {template.description}
                 </p>
                 
@@ -80,7 +80,7 @@
             </div>
             
             <!-- Mobile indicator -->
-            <div class="sm:hidden text-slate-400 shrink-0">
+            <div class="md:hidden text-slate-400 shrink-0">
                 <ChevronRight class="w-5 h-5" />
             </div>
         </button>
