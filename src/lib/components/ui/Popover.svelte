@@ -24,7 +24,8 @@
     // Track events that should trigger position updates
     function handleScroll() {
         if (open) {
-            requestAnimationFrame(updatePosition);
+            open = false;
+            dispatch('close');
         }
     }
 
