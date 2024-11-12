@@ -72,8 +72,6 @@
         // Calculate available space in each direction
         const spaceAbove = triggerRect.top;
         const spaceBelow = viewportHeight - triggerRect.bottom;
-        const spaceLeft = triggerRect.left;
-        const spaceRight = viewportWidth - triggerRect.right;
 
         // Determine vertical position
         let verticalPosition: 'top' | 'bottom' = spaceBelow >= popoverRect.height || spaceBelow > spaceAbove 

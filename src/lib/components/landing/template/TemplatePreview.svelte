@@ -129,7 +129,7 @@
 <div
     bind:this={previewContainer}
     class="bg-white border-slate-200 
-           {inModal ? 'border-0' : 'border rounded-xl'} 
+           {inModal ? 'border-0 h-full' : 'border rounded-xl'} 
            {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
            {inModal ? '' : 'sm:sticky sm:top-8'}
            {inModal ? '' : 'h-[calc(100vh-4rem)]'}
@@ -218,6 +218,7 @@
             <div class="flex-1 min-h-0 my-4 overflow-hidden">
                 <MessagePreview 
                     preview={template.preview}
+                    onScroll={isAtTop => inModal && updateCanDismiss(isAtTop)}
                 />
             </div>
             <div class="shrink-0">

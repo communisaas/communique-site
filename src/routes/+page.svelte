@@ -69,11 +69,14 @@
     {#if showMobilePreview && $selectedTemplate}
         <Modal 
             on:close={() => showMobilePreview = false}
+            inModal={true}
         >
-            <TemplatePreview 
-                template={$selectedTemplate}
-                inModal={true}
-            />
+            <div class="h-full">
+                <TemplatePreview 
+                    template={$selectedTemplate}
+                    inModal={true}
+                />
+            </div>
         </Modal>
     {/if}
 </section>
