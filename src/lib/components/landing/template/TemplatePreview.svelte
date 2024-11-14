@@ -7,8 +7,10 @@
     import MessagePreview from './MessagePreview.svelte';
     import Popover from '$lib/components/ui/Popover.svelte';
     import { fade } from 'svelte/transition';
-	import { onDestroy, onMount, tick } from 'svelte';
+	import { onDestroy, onMount, tick, createEventDispatcher } from 'svelte';
     
+    const dispatch = createEventDispatcher();
+
     export let template: Template;
     export let inModal = false;
     export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void = () => {};
@@ -125,6 +127,16 @@
     onDestroy(() => {
         if (copyTimeout) clearTimeout(copyTimeout);
     });
+
+    function handleScrollStateChange(event: CustomEvent) {
+        const scrollState = event.detail;
+        dispatch('scrollStateChange', scrollState);
+    }
+
+    function handleTouchStateChange(event: CustomEvent) {
+        const touchState = event.detail;
+        dispatch('touchStateChange', touchState);
+    }
 </script>
 
 <div
@@ -134,7 +146,7 @@
            {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
            {inModal ? '' : 'sm:sticky sm:top-8'}
            {inModal ? '' : 'h-[calc(100vh-4rem)]'}
-           flex flex-col overflow-visible"
+           flex flex-col overflow-hidden"
 >
     {#if template}
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
@@ -217,10 +229,12 @@
                 </div>
             {/if}
             
-            <div class="flex-1 min-h-0 my-4 overflow-hidden">
+            <div class="flex-1 min-h-0 my-4 overflow-hidden touch-pan-y">
                 <MessagePreview 
                     preview={template.preview}
                     {onScroll}
+                    on:scrollStateChange={handleScrollStateChange}
+                    on:touchStateChange={handleTouchStateChange}
                 />
             </div>
             <div class="shrink-0">

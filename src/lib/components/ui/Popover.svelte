@@ -68,16 +68,23 @@
         const popoverRect = popoverElement.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-
-        // Find if we're inside a modal
-        const modalContainer = containerElement.closest('[role="document"]');
-        let modalOffset = 0;
         
-        if (modalContainer) {
-            const modalRect = modalContainer.getBoundingClientRect();
-            modalOffset = modalRect.top;
+        // Find the closest modal parent if it exists
+        const modalParent = containerElement.closest('[role="document"]');
+        let modalTransform = { x: 0, y: 0 };
+        
+        if (modalParent) {
+            // Extract transform values from the modal
+            const transform = window.getComputedStyle(modalParent).transform;
+            if (transform && transform !== 'none') {
+                const matrix = new DOMMatrix(transform);
+                modalTransform = {
+                    x: matrix.m41,
+                    y: matrix.m42
+                };
+            }
         }
-
+        
         // Calculate available space in each direction
         const spaceAbove = triggerRect.top;
         const spaceBelow = viewportHeight - triggerRect.bottom;
@@ -93,9 +100,9 @@
 
         // Vertical positioning with modal offset compensation
         if (verticalPosition === 'bottom') {
-            top = triggerRect.bottom + 8 - modalOffset;
+            top = triggerRect.bottom + 8 - modalTransform.y;
         } else {
-            top = triggerRect.top - popoverRect.height - 8 - modalOffset;
+            top = triggerRect.top - popoverRect.height - 8 - modalTransform.y;
         }
 
         // Horizontal positioning
@@ -109,10 +116,10 @@
             ));
         }
 
-        // Apply positions
+        // Apply positions with modal transform offset
         popoverElement.style.position = 'fixed';
-        popoverElement.style.top = `${top}px`;
-        popoverElement.style.left = `${left}px`;
+        popoverElement.style.top = `${top - modalTransform.y}px`;
+        popoverElement.style.left = `${left - modalTransform.x}px`;
         popoverElement.style.maxWidth = `${viewportWidth - 32}px`;
     }
 

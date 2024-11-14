@@ -51,8 +51,8 @@
     let viewportHeight: number;
     
     // Calculate thresholds based on viewport height
-    $: dismissThreshold = viewportHeight * 0.05; // 5% of viewport height
-    $: dismissHintThreshold = viewportHeight * 0.05; // 5% of viewport height
+    $: dismissThreshold = viewportHeight * 0.2; // 20% of viewport height
+    $: dismissHintThreshold = viewportHeight * 0.2; // 20% of viewport height
     $: dismissAnimationDistance = viewportHeight; // Full viewport height for dismiss animation
     
     // Update resistance based on viewport height
@@ -75,6 +75,23 @@
     let lastTouchTime: number;
     let lastTouchY: number;
     let velocity = 0;
+
+    let scrollableContent = {
+        isScrollable: false,
+        isAtTop: true,
+        isAtBottom: true,
+        touchY: 0,
+        touchStartY: 0,
+        scrollPosition: 0,
+        maxScroll: 0
+    };
+
+    // Add new state for tracking dismissal transition
+    let initialDismissY: number | null = null;
+    let dismissStartTranslateY = 0;  // Track where the modal was when dismissal started
+
+    // Add gesture state tracking
+    let isInDismissalGesture = false;
 
     function updateViewportHeight() {
         viewportHeight = window.innerHeight;
@@ -110,6 +127,9 @@
     }
 
     function closeModal() {
+        if (isDismissing) {
+            preventScroll(false);  // Re-enable scrolling
+        }
         isOpen = false;
         dialogElement?.close();
     }
@@ -129,137 +149,179 @@
     }
 
     function handleTouchStart(e: TouchEvent) {
-        touchStartTarget = e.target;
         touchStart = e.touches[0].clientY;
         currentTouchY = touchStart;
-        isDismissing = false;
+        isInDismissalGesture = isDismissing;  // Track if we started in dismissal
+        initialDismissY = null;  // Reset the initial dismiss position
+        dismissStartTranslateY = $translateY;  // Capture starting position
+        
+        // Reset velocity tracking
         lastTouchTime = Date.now();
-        lastTouchY = e.touches[0].clientY;
+        lastTouchY = touchStart;
         velocity = 0;
     }
 
+    function preventScroll(prevent: boolean) {
+        // Find all scrollable elements within the modal
+        const scrollableElements = modalContent?.querySelectorAll('.overflow-y-auto, .overflow-auto');
+        
+        scrollableElements?.forEach(element => {
+            if (prevent) {
+                (element as HTMLElement).style.overflow = 'hidden';
+            } else {
+                (element as HTMLElement).style.overflow = '';
+            }
+        });
+    }
+
     function handleTouchMove(e: TouchEvent) {
+        const isPopoverTrigger = (e.target as HTMLElement).closest('[aria-haspopup="true"]');
+        console.log('Modal touch move:', {
+            target: e.target,
+            isPopoverTrigger,
+            isDismissing,
+            isInDismissalGesture
+        });
+        // Check if the touch started on a popover trigger
+        if (isPopoverTrigger) {
+            return; // Let the popover handle its own touch events
+        }
+
         const currentTime = Date.now();
         const currentY = e.touches[0].clientY;
+        
         const deltaTime = currentTime - lastTouchTime;
         
-        // Calculate instantaneous velocity (pixels per millisecond)
         if (deltaTime > 0) {
             velocity = (currentY - lastTouchY) / deltaTime;
         }
         
         lastTouchTime = currentTime;
         lastTouchY = currentY;
-        
-        const previousTouchY = currentTouchY;
-        currentTouchY = e.touches[0].clientY;
-        const deltaY = currentTouchY - touchStart;
-        const movementY = currentTouchY - previousTouchY;
-        
-        // Check if we're interacting with a scrollable element
-        const isScrollableInteraction = touchStartTarget instanceof Element && 
-            (touchStartTarget.closest('pre') || touchStartTarget.closest('[data-scrollable]'));
 
-        // Determine if we should handle modal movement
         const shouldHandleModal = 
-            isDismissing || // Already dismissing
-            !isScrollableInteraction || // Not a scrollable interaction
-            (scrollState.touchState?.isAtTop && deltaY < 0) || // At top and swiping up
-            (scrollState.touchState?.isAtBottom && deltaY > 0); // At bottom and swiping down
+            isInDismissalGesture ||  // If we're in a dismissal gesture, keep control
+            isDismissing || 
+            !scrollableContent.isScrollable || 
+            (!isDismissing && (
+                (scrollableContent.isAtTop && currentY > touchStart) || 
+                (scrollableContent.isAtBottom && currentY < touchStart)
+            ));
 
         if (shouldHandleModal) {
-            e.preventDefault();
-            isDismissing = true;
+            isInDismissalGesture = true;  // Set when we take control
+            // Calculate the current movement direction
+            const currentDeltaY = currentY - (initialDismissY ?? currentY);
+            const newDirection = currentDeltaY > 0 ? 'down' : 'up';
             
-            swipeDirection = deltaY < 0 ? 'up' : 'down';
-
-            const newTranslateY = $translateY + (movementY * resistance);
-            translateY.set(newTranslateY, { hard: false });
-            
-            // More gradual blur calculation
-            const progress = Math.min(
-                Math.abs(newTranslateY) / dismissHintThreshold,
-                1
-            );
-            const dismissProgress = Math.pow(progress, 1.2);
-            const blurProgress = Math.pow(progress, 2); // Square the progress for more gradual start
-            
-            dismissHintOpacity.set(dismissProgress, { duration: 0 });
-            hintScale.set(0.8 + (dismissProgress * 0.2), { duration: 0 });
-            blurAmount.set(blurProgress * 6, { duration: 0 }); // Remove duration for direct response
-
-            // Update threshold state
-            isPastThreshold = Math.abs(newTranslateY) > dismissThreshold;
-        } else {
-            // Reset state
-            isDismissing = false;
-            swipeDirection = null;
-            if ($translateY !== 0) {
-                translateY.set(0, { hard: true });
-                dismissHintOpacity.set(0, { duration: 100 });
-                hintScale.set(0.8, { duration: 100 });
-                blurAmount.set(0, { duration: 150 }); // Keep smooth reset
+            // CHANGE: Separate the scroll-to-dismiss transition logic
+            if (!isDismissing) {
+                // Initial transition from scroll to dismiss
+                initialDismissY = currentY;
+                dismissStartTranslateY = $translateY;
+                isDismissing = true;
+                swipeDirection = newDirection;
+                preventScroll(true);
+                // Add touchStart reset to align with new gesture
+                touchStart = currentY; 
+                // Notify child components of dismissal state
+                modalContent?.dispatchEvent(new CustomEvent('dismissStateChange', {
+                    detail: { isDismissing: true },
+                    bubbles: true
+                }));
+            } else if (swipeDirection && newDirection !== swipeDirection && 
+                Math.abs(currentDeltaY) > dismissHintThreshold * 0.5) {
+                // Direction reversal during dismissal
+                initialDismissY = currentY;
+                dismissStartTranslateY = $translateY;
+                swipeDirection = newDirection;
+                touchStart = currentY;
             }
+
+            e.preventDefault();
+            
+            // Calculate movement relative to where dismissal started
+            const dismissDeltaY = currentY - (initialDismissY ?? currentY);
+            
+            // Apply resistance and add to the starting position
+            const resistanceFactor = resistance;
+            const newTranslateY = dismissStartTranslateY + (dismissDeltaY * resistanceFactor);
+            
+            translateY.set(newTranslateY, { 
+                hard: isPastThreshold  // Use hard animation when past threshold
+            });
+            
+            // Update visual feedback
+            const progress = Math.abs(newTranslateY) / dismissHintThreshold;
+            const dismissProgress = Math.pow(progress, 1.2);
+            
+            dismissHintOpacity.set(dismissProgress);
+            hintScale.set(0.8 + (dismissProgress * 0.2));
+            blurAmount.set(Math.pow(progress, 2) * 6);
+            
+            isPastThreshold = Math.abs(newTranslateY) > dismissThreshold;
         }
     }
 
-    function handleTouchEnd() {
+    function handleTouchEnd(e: TouchEvent) {
         if (isDismissing) {
-            if (Math.abs($translateY) > dismissThreshold) {
-                const direction = $translateY > 0 ? 1 : -1;
-                dismissHintOpacity.set(1);
-                
-                // Calculate dynamic duration based on velocity
-                const absVelocity = Math.abs(velocity);
-                const baseDuration = 100;
-                const minDuration = 100;
-                const maxDuration = 400;
-                
-                const velocityFactor = Math.min(Math.max(absVelocity * 1000, 0.5), 3);
-                const dynamicDuration = Math.round(
-                    Math.min(
-                        Math.max(
-                            baseDuration * velocityFactor,
-                            minDuration
-                        ),
-                        maxDuration
-                    )
-                );
-                
-                const dismissTween = tweened($translateY, {
-                    duration: dynamicDuration,
-                    easing: quadOut
+            // Release touch capture and restore scrolling
+            modalContent?.releasePointerCapture?.(e.changedTouches[0].identifier);
+            document.body.style.overflow = '';
+            modalContent.style.touchAction = '';
+
+            // Calculate final velocity and direction
+            const endTime = Date.now();
+            const deltaTime = endTime - lastTouchTime;
+            if (deltaTime > 0) {
+                velocity = (e.changedTouches[0].clientY - lastTouchY) / deltaTime;
+            }
+
+            const finalVelocity = Math.abs(velocity);
+            const velocityThreshold = 0.5;
+            
+            if (isPastThreshold || finalVelocity > velocityThreshold) {
+                // Direct dismissal without spring animation
+                const dismissDistance = swipeDirection === 'down' ? 
+                    dismissAnimationDistance : 
+                    -dismissAnimationDistance;
+                    
+                translateY.set(dismissDistance, {
+                    hard: true  // Use hard: true to bypass spring animation
                 });
                 
-                dismissTween.set(direction * dismissAnimationDistance)
-                    .then(() => close());
-                
-                const unsubscribe = dismissTween.subscribe(value => {
-                    translateY.set(value, { hard: true });
-                });
-                
-                setTimeout(() => unsubscribe(), dynamicDuration);
-            } else {
-                // Reset position using spring for bounce-back
-                translateY.set(0);
                 dismissHintOpacity.set(0);
+                hintScale.set(0.8);
+                blurAmount.set(0);
+                
+                setTimeout(() => {
+                    close();
+                }, 200);
+            } else {
+                // Only use spring animation for bounce-back when not past threshold
+                translateY.set(dismissStartTranslateY);
+                dismissHintOpacity.set(0);
+                preventScroll(false);
             }
         }
         
         velocity = 0;
         isDismissing = false;
+        initialDismissY = null;
         swipeDirection = null;
         isPastThreshold = false;
+        isInDismissalGesture = false;  // Reset only when touch ends
     }
 
-    function updateScrollState(state: Partial<ModalScrollState>) {
-        scrollState = { ...scrollState, ...state };
-        dispatch('scrollStateChange', scrollState);
-    }
 
     // Create a function to handle scroll state updates
     function handleScrollStateChange(event: CustomEvent) {
-        scrollState = { ...scrollState, ...event.detail };
+        scrollableContent = { ...scrollableContent, ...event.detail };
+    }
+
+    function handleTouchStateChange(event: CustomEvent) {
+        const newState = event.detail;
+        scrollableContent = { ...scrollableContent, ...newState };
     }
 
     // Add a derived value for smoother blur
@@ -285,6 +347,7 @@
             handleScrollStateChange(event as CustomEvent);
         });
         unlockScroll();
+        preventScroll(false);  // Ensure scrolling is re-enabled when component is destroyed
     });
 </script>
 
@@ -296,15 +359,14 @@
     >
         <div class="h-full w-full p-4 flex items-center justify-center">
             <div
-                class="relative bg-white rounded-xl w-full max-w-2xl shadow-xl overflow-hidden
-                       h-[85vh]"
-                role="document"
-                transition:scale={{ duration: 200, start: 0.95 }}
+                bind:this={modalContent}
+                class="modal-content relative bg-white rounded-xl w-full max-w-2xl shadow-xl 
+                       h-[85vh] overflow-hidden touch-pan-y"
                 style="transform: translateY({$translateY}px)"
                 on:touchstart={handleTouchStart}
                 on:touchmove={handleTouchMove}
                 on:touchend={handleTouchEnd}
-                bind:this={modalContent}
+                on:touchcancel={handleTouchEnd}
             >
                 <!-- Close button -->
                 <button
