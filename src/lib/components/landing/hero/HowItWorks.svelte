@@ -25,7 +25,7 @@
     <Button 
         slot="trigger"
         variant="secondary" 
-        cursor="help"
+        cursor="alias"
         classNames="transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:border-slate-300"
     >
         How It Works

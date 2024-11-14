@@ -26,7 +26,7 @@
         <button 
             slot="trigger"
             class="inline-flex items-center gap-2 px-2 sm:px-3 py-1.5 bg-slate-50 border 
-                   border-slate-200 rounded-lg text-slate-700 cursor-help
+                   border-slate-200 rounded-lg text-slate-700 cursor-alias
                    transition-all duration-200 hover:scale-[1.02] hover:shadow-md hover:border-slate-300"
         >
             <IdCard class="w-4 h-4 shrink-0" />

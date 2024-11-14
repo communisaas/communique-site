@@ -1,7 +1,7 @@
 <script lang="ts">
     export let variant: 'primary' | 'secondary' = 'primary';
     export let type: 'button' | 'submit' = 'button';
-    export let cursor: 'default' | 'help' = 'default';
+    export let cursor: 'default' | 'help' | 'alias' | 'pointer' = 'pointer';
     export let classNames: string = '';
     export let href: string | undefined = undefined;
     export let rel: string | undefined = undefined;

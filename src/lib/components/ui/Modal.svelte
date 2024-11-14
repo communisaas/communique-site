@@ -174,7 +174,7 @@
             swipeDirection = deltaY < 0 ? 'up' : 'down';
 
             const newTranslateY = $translateY + (movementY * resistance);
-            translateY.set(newTranslateY, { duration: 0 });
+            translateY.set(newTranslateY, { hard: false });
             
             // More gradual blur calculation
             const progress = Math.min(
@@ -195,7 +195,7 @@
             isDismissing = false;
             swipeDirection = null;
             if ($translateY !== 0) {
-                translateY.set(0, { duration: 100 });
+                translateY.set(0, { hard: true });
                 dismissHintOpacity.set(0, { duration: 100 });
                 hintScale.set(0.8, { duration: 100 });
                 blurAmount.set(0, { duration: 150 }); // Keep smooth reset
@@ -215,7 +215,6 @@
                 const minDuration = 100;
                 const maxDuration = 400;
                 
-                // Invert the logic: higher velocity = higher velocityFactor = shorter duration
                 const velocityFactor = Math.min(Math.max(absVelocity * 1000, 0.5), 3);
                 const dynamicDuration = Math.round(
                     Math.min(
@@ -342,12 +341,12 @@
                                 <div 
                                     class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/20 to-transparent"
                                     style="opacity: {$dismissHintOpacity}"
-                                />
+                                ></div>
                             {:else if swipeDirection === 'up'}
                                 <div 
                                     class="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-transparent"
                                     style="opacity: {$dismissHintOpacity}"
-                                />
+                                ></div>
                             {/if}
                         </div>
 
@@ -360,7 +359,7 @@
                             style="transform: scale({$hintScale})
                                     translateY({swipeDirection === 'down' ? 20 : -20}px)"
                         >
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
                             <div class="relative w-[180px] h-[20px]">
                                 {#key isPastThreshold}
                                     <span 
@@ -372,7 +371,7 @@
                                     </span>
                                 {/key}
                             </div>
-                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
                         </div>
                     </div>
                 {/if}

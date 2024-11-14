@@ -77,6 +77,7 @@
                 class:bg-blue-50={isSelected && channel.id === 'direct'}
                 class:border-slate-200={!isSelected}
                 class:hover:border-slate-300={!isSelected}
+                class:cursor-default={isSelected}
                 on:click={() => selectedChannel = channel.id}
                 on:keydown={e => {
                     if (e.key === 'Enter') {

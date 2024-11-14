@@ -134,14 +134,15 @@
            {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
            {inModal ? '' : 'sm:sticky sm:top-8'}
            {inModal ? '' : 'h-[calc(100vh-4rem)]'}
-           flex flex-col overflow-hidden"
+           flex flex-col overflow-visible"
 >
     {#if template}
-        <button 
-            type="button"
+        <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+        <div 
+            role="region"
             aria-label="Template preview navigation"
             on:keydown={handleKeyboardNav}
-            class="outline-none flex-1 flex flex-col text-left bg-transparent border-0 overflow-hidden"
+            class="outline-none flex-1 flex flex-col text-left bg-transparent border-0 overflow-visible cursor-default"
         >
             <div class="shrink-0 w-full">
                 <TemplateHeader {template} />
@@ -165,13 +166,13 @@
                                 <button 
                                     use:trigger
                                     class="inline-flex items-center px-1.5 py-0.5 rounded-md
-                                           bg-slate-100 hover:bg-slate-200 
+                                           bg-slate-100 hover:bg-slate-200 cursor-alias
                                            text-slate-600 hover:text-slate-800
                                            font-medium
                                            transition-all duration-200"
                                 >
                                     <!-- Different text for small vs larger screens -->
-                                    <span class="sm:hidden truncate max-w-[120px]">
+                                    <span class="sm:hidden truncate max-w-[120px] cursor-text">
                                         {recipientCount} {recipientCount === 1 ? 'Recipient' : 'Recipients'}
                                     </span>
                                     <span class="hidden sm:inline truncate max-w-[120px]">
@@ -180,12 +181,12 @@
                                 </button>
                             </svelte:fragment>
                             
-                            <div class="w-[280px] p-4 max-w-[calc(100vw-2rem)]">
+                            <div class="w-[280px] p-4 max-w-[calc(100vw-2rem)] cursor-default">
                                 <div class="flex items-start gap-4 sm:text-base text-sm">
                                     <button
                                         on:click|stopPropagation={copyToClipboard}
                                         class="shrink-0 p-2 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200
-                                               transition-all duration-200 focus:outline-none 
+                                               transition-all duration-200 focus:outline-none cursor-pointer
                                                focus:ring-2 focus:ring-blue-200 focus:ring-offset-2"
                                         aria-label="Copy all recipient emails to clipboard"
                                     >
@@ -203,7 +204,7 @@
                                         <h3 class="font-medium text-slate-900 mb-1 truncate">
                                             All Recipients ({recipientCount})
                                         </h3>
-                                        <div class="space-y-1 text-slate-600 text-sm">
+                                        <div class="space-y-1 text-slate-600 text-sm cursor-text">
                                             {#each template.recipientEmails as email}
                                                 <div class="truncate">{email}</div>
                                             {/each}
@@ -225,7 +226,7 @@
             <div class="shrink-0">
                 <TemplateTips isCertified={template.type === 'certified'} />
             </div>
-        </button>
+        </div>
     {:else}
         <div class="text-center text-slate-500 py-12">
             Select a template to preview

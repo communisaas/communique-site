@@ -216,7 +216,7 @@
             
             <div
                 bind:this={tooltipElement}
-                class="absolute z-50 px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg
+                class="absolute z-[100] px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg
                        min-w-[12rem] whitespace-normal
                        {show ? 'opacity-100' : 'opacity-0 pointer-events-none'}
                        {isPositioned ? 'transition-opacity duration-150' : 'transition-none'}
@@ -236,7 +236,7 @@
             </div>
         </div>
     {:else}
-        <div bind:this={tooltipElement} class="absolute z-50 px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg
+        <div bind:this={tooltipElement} class="absolute z-[100] px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg
                    min-w-[12rem] whitespace-normal
                    {show ? 'opacity-100' : 'opacity-0 pointer-events-none'}
                    {isPositioned ? 'transition-opacity duration-150' : 'transition-none'}
