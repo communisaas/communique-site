@@ -189,9 +189,9 @@
     />
     
     {#if open}
-        <!-- Add hover bridge that connects trigger to popover -->
+        <!-- Update z-index to be higher than modal -->
         <div 
-            class="fixed z-[69]"
+            class="fixed z-[99]"
             role="presentation"
             on:mouseenter={handleMouseEnter}
             on:mouseleave={handleMouseLeave}
@@ -207,7 +207,7 @@
             bind:this={popoverElement}
             {id}
             role="tooltip"
-            class="bg-white rounded-xl shadow-xl border border-slate-200 z-[70]"
+            class="bg-white rounded-xl shadow-xl border border-slate-200 z-[100]"
             transition:fade={{ duration: 200 }}
             style="position: fixed; isolation: isolate;"
             on:mouseenter={handleMouseEnter}

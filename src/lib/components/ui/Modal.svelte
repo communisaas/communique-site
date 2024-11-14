@@ -2,7 +2,7 @@
     import { createEventDispatcher, onMount, onDestroy } from 'svelte';
     import { scale } from 'svelte/transition';
     import { X } from 'lucide-svelte';
-    import { tweened } from 'svelte/motion';
+    import { tweened, spring } from 'svelte/motion';
     import { cubicOut, quadOut } from 'svelte/easing';
     import { fade } from 'svelte/transition';
     import type { ModalScrollState } from '$lib/types/modal';
@@ -21,9 +21,10 @@
     let isDismissing = false;
     let swipeDirection: 'up' | 'down' | null = null;
     
-    const translateY = tweened(0, {
-        duration: 300,
-        easing: quadOut
+    const translateY = spring(0, {
+        stiffness: 0.35,
+        damping: 0.4,
+        precision: 0.0001
     });
     
     const dismissHintOpacity = tweened(0, {
@@ -68,6 +69,12 @@
         duration: 0,  // No duration for immediate response
         easing: cubicOut
     });
+
+    let isPastThreshold = false;
+
+    let lastTouchTime: number;
+    let lastTouchY: number;
+    let velocity = 0;
 
     function updateViewportHeight() {
         viewportHeight = window.innerHeight;
@@ -126,9 +133,24 @@
         touchStart = e.touches[0].clientY;
         currentTouchY = touchStart;
         isDismissing = false;
+        lastTouchTime = Date.now();
+        lastTouchY = e.touches[0].clientY;
+        velocity = 0;
     }
 
     function handleTouchMove(e: TouchEvent) {
+        const currentTime = Date.now();
+        const currentY = e.touches[0].clientY;
+        const deltaTime = currentTime - lastTouchTime;
+        
+        // Calculate instantaneous velocity (pixels per millisecond)
+        if (deltaTime > 0) {
+            velocity = (currentY - lastTouchY) / deltaTime;
+        }
+        
+        lastTouchTime = currentTime;
+        lastTouchY = currentY;
+        
         const previousTouchY = currentTouchY;
         currentTouchY = e.touches[0].clientY;
         const deltaY = currentTouchY - touchStart;
@@ -165,6 +187,9 @@
             dismissHintOpacity.set(dismissProgress, { duration: 0 });
             hintScale.set(0.8 + (dismissProgress * 0.2), { duration: 0 });
             blurAmount.set(blurProgress * 6, { duration: 0 }); // Remove duration for direct response
+
+            // Update threshold state
+            isPastThreshold = Math.abs(newTranslateY) > dismissThreshold;
         } else {
             // Reset state
             isDismissing = false;
@@ -181,20 +206,51 @@
     function handleTouchEnd() {
         if (isDismissing) {
             if (Math.abs($translateY) > dismissThreshold) {
-                // Complete the dismiss animation
                 const direction = $translateY > 0 ? 1 : -1;
                 dismissHintOpacity.set(1);
-                translateY.set(direction * dismissAnimationDistance, { duration: 400 })
+                
+                // Calculate dynamic duration based on velocity
+                const absVelocity = Math.abs(velocity);
+                const baseDuration = 100;
+                const minDuration = 100;
+                const maxDuration = 400;
+                
+                // Invert the logic: higher velocity = higher velocityFactor = shorter duration
+                const velocityFactor = Math.min(Math.max(absVelocity * 1000, 0.5), 3);
+                const dynamicDuration = Math.round(
+                    Math.min(
+                        Math.max(
+                            baseDuration * velocityFactor,
+                            minDuration
+                        ),
+                        maxDuration
+                    )
+                );
+                
+                const dismissTween = tweened($translateY, {
+                    duration: dynamicDuration,
+                    easing: quadOut
+                });
+                
+                dismissTween.set(direction * dismissAnimationDistance)
                     .then(() => close());
+                
+                const unsubscribe = dismissTween.subscribe(value => {
+                    translateY.set(value, { hard: true });
+                });
+                
+                setTimeout(() => unsubscribe(), dynamicDuration);
             } else {
-                // Reset position
+                // Reset position using spring for bounce-back
                 translateY.set(0);
                 dismissHintOpacity.set(0);
             }
         }
         
+        velocity = 0;
         isDismissing = false;
         swipeDirection = null;
+        isPastThreshold = false;
     }
 
     function updateScrollState(state: Partial<ModalScrollState>) {
@@ -305,9 +361,17 @@
                                     translateY({swipeDirection === 'down' ? 20 : -20}px)"
                         >
                             <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
-                            <span class="text-slate-900 text-sm font-medium">
-                                Keep swiping to close
-                            </span>
+                            <div class="relative w-[180px] h-[20px]">
+                                {#key isPastThreshold}
+                                    <span 
+                                        class="text-slate-900 text-sm font-medium absolute left-1/2 -translate-x-1/2 whitespace-nowrap"
+                                        in:scale={{ duration: 100, start: 0.8 }}
+                                        out:scale|local={{ duration: 100, start: 1.2 }}
+                                    >
+                                        {isPastThreshold ? 'Release to close' : 'Keep swiping to close'}
+                                    </span>
+                                {/key}
+                            </div>
                             <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
                         </div>
                     </div>

@@ -10,8 +10,9 @@
 
     function generateMailtoLink(template: Template): string {
         const recipients = template.recipientEmails?.join(',') || '';
+        const subject = encodeURIComponent(template.title);
         const body = encodeURIComponent(template.preview || '');
-        return `mailto:${recipients}?body=${body}`;
+        return `mailto:${recipients}?subject=${subject}&body=${body}`;
     }
 </script>
 

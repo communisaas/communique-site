@@ -171,10 +171,10 @@
                                            transition-all duration-200"
                                 >
                                     <!-- Different text for small vs larger screens -->
-                                    <span class="sm:hidden">
+                                    <span class="sm:hidden truncate max-w-[120px]">
                                         {recipientCount} {recipientCount === 1 ? 'Recipient' : 'Recipients'}
                                     </span>
-                                    <span class="hidden sm:inline">
+                                    <span class="hidden sm:inline truncate max-w-[120px]">
                                         +{recipientCount - (inModal ? 1 : 2)} more
                                     </span>
                                 </button>
@@ -184,7 +184,7 @@
                                 <div class="flex items-start gap-4 sm:text-base text-sm">
                                     <button
                                         on:click|stopPropagation={copyToClipboard}
-                                        class="p-2 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200
+                                        class="shrink-0 p-2 bg-blue-50 rounded-lg hover:bg-blue-100 active:bg-blue-200
                                                transition-all duration-200 focus:outline-none 
                                                focus:ring-2 focus:ring-blue-200 focus:ring-offset-2"
                                         aria-label="Copy all recipient emails to clipboard"
@@ -199,13 +199,13 @@
                                             </div>
                                         {/if}
                                     </button>
-                                    <div>
-                                        <h3 class="font-medium text-slate-900 mb-1">
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="font-medium text-slate-900 mb-1 truncate">
                                             All Recipients ({recipientCount})
                                         </h3>
                                         <div class="space-y-1 text-slate-600 text-sm">
                                             {#each template.recipientEmails as email}
-                                                <div>{email}</div>
+                                                <div class="truncate">{email}</div>
                                             {/each}
                                         </div>
                                     </div>

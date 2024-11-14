@@ -77,14 +77,10 @@
                 class:bg-blue-50={isSelected && channel.id === 'direct'}
                 class:border-slate-200={!isSelected}
                 class:hover:border-slate-300={!isSelected}
-                on:click={() => {
-                    selectedChannel = channel.id;
-                    document.getElementById('channel-continue')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                }}
+                on:click={() => selectedChannel = channel.id}
                 on:keydown={e => {
                     if (e.key === 'Enter') {
                         selectedChannel = channel.id;
-                        document.getElementById('channel-continue')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     }
                 }}
             >
@@ -138,10 +134,22 @@
                                 transition:fade={{ duration: 200 }}
                                 class="pt-4"
                             >
-                                <button class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center"
+                                <button 
+                                    class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center"
                                     class:bg-emerald-600={channel.id === 'certified'}
                                     class:bg-blue-600={channel.id === 'direct'}
-                                    class:text-white={isSelected}>
+                                    class:text-white={isSelected}
+                                    on:click|stopPropagation={() => {
+                                        document.getElementById('template-section')?.scrollIntoView({ 
+                                            behavior: 'smooth', 
+                                            block: 'start' 
+                                        });
+                                        dispatchEvent(new CustomEvent('channelSelect', { 
+                                            detail: channel.id,
+                                            bubbles: true 
+                                        }));
+                                    }}
+                                >
                                     Continue with {channel.title}
                                     <ArrowRight class="w-4 h-4" />
                                 </button>

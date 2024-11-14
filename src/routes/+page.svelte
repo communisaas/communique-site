@@ -12,9 +12,10 @@
     
     let showMobilePreview = false;
     let modalComponent: Modal;
+    let selectedChannel: string | null = null;
+
     onMount(() => {
-        // Select the first template if there are any templates
-        if ($templateStore.templates.length > 0) {
+        if (!selectedChannel && $templateStore.templates.length > 0) {
             templateStore.selectTemplate($templateStore.templates[0].id);
         }
     });
@@ -25,6 +26,18 @@
             showMobilePreview = true;
         }
     }
+
+    function handleChannelSelect(event: CustomEvent<string>) {
+        selectedChannel = event.detail;
+        const matchingTemplates = $templateStore.templates.filter(t => t.type === selectedChannel);
+        if (matchingTemplates.length > 0) {
+            templateStore.selectTemplate(matchingTemplates[0].id);
+        }
+    }
+
+    $: filteredTemplates = selectedChannel 
+        ? $templateStore.templates.filter(t => t.type === selectedChannel)
+        : $templateStore.templates;
 </script>
 
 <svelte:head>
@@ -38,10 +51,10 @@
         <span class="w-9/12 md:w-7/12">
             <Hero />
         </span>
-        <ChannelExplainer />
+        <ChannelExplainer on:channelSelect={handleChannelSelect} />
     </div>
 
-    <div class="grid md:grid-cols-3 grid-cols-1 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
+    <div id="template-section" class="grid md:grid-cols-3 grid-cols-1 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
         <div class="md:col-span-1">
             <h2 class="text-xl font-semibold text-slate-900 mb-3">
                 Message Templates
@@ -51,7 +64,7 @@
                 Every voice verified. Every message counted.
             </div>
             <TemplateList 
-                templates={$templateStore.templates}
+                templates={filteredTemplates}
                 selectedId={$templateStore.selectedId}
                 onSelect={handleTemplateSelect}
             />
