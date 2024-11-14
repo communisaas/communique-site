@@ -50,12 +50,24 @@
     let viewportHeight: number;
     
     // Calculate thresholds based on viewport height
-    $: dismissThreshold = viewportHeight * 0.04; // 5% of viewport height
+    $: dismissThreshold = viewportHeight * 0.05; // 5% of viewport height
     $: dismissHintThreshold = viewportHeight * 0.05; // 5% of viewport height
     $: dismissAnimationDistance = viewportHeight; // Full viewport height for dismiss animation
     
     // Update resistance based on viewport height
     $: resistance = Math.max(0.3, Math.min(0.5, viewportHeight / 1000));
+
+    // Add a store for the hint scale animation
+    const hintScale = tweened(0.8, {
+        duration: 100,
+        easing: cubicOut
+    });
+
+    // Add a store for the blur amount with shorter duration for smoother updates
+    const blurAmount = tweened(0, {
+        duration: 0,  // No duration for immediate response
+        easing: cubicOut
+    });
 
     function updateViewportHeight() {
         viewportHeight = window.innerHeight;
@@ -137,25 +149,31 @@
             e.preventDefault();
             isDismissing = true;
             
-            // Set swipe direction based on delta
             swipeDirection = deltaY < 0 ? 'up' : 'down';
 
-            // Apply viewport-sensitive resistance to the movement
             const newTranslateY = $translateY + (movementY * resistance);
-            
-            // Update modal position
             translateY.set(newTranslateY, { duration: 0 });
             
-            // Update dismiss hint opacity based on movement relative to viewport
-            const dismissProgress = Math.abs(newTranslateY) / dismissHintThreshold;
-            dismissHintOpacity.set(Math.min(dismissProgress, 0.95));
+            // More gradual blur calculation
+            const progress = Math.min(
+                Math.abs(newTranslateY) / dismissHintThreshold,
+                1
+            );
+            const dismissProgress = Math.pow(progress, 1.2);
+            const blurProgress = Math.pow(progress, 2); // Square the progress for more gradual start
+            
+            dismissHintOpacity.set(dismissProgress, { duration: 0 });
+            hintScale.set(0.8 + (dismissProgress * 0.2), { duration: 0 });
+            blurAmount.set(blurProgress * 6, { duration: 0 }); // Remove duration for direct response
         } else {
-            // Reset modal state if we're not handling it
+            // Reset state
             isDismissing = false;
             swipeDirection = null;
             if ($translateY !== 0) {
                 translateY.set(0, { duration: 100 });
-                dismissHintOpacity.set(0);
+                dismissHintOpacity.set(0, { duration: 100 });
+                hintScale.set(0.8, { duration: 100 });
+                blurAmount.set(0, { duration: 150 }); // Keep smooth reset
             }
         }
     }
@@ -188,6 +206,9 @@
     function handleScrollStateChange(event: CustomEvent) {
         scrollState = { ...scrollState, ...event.detail };
     }
+
+    // Add a derived value for smoother blur
+    $: blurStyle = `blur(${$blurAmount}px)`;
 
     onMount(() => {
         showModal();
@@ -254,30 +275,41 @@
                         class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center"
                         style="opacity: {$dismissHintOpacity}"
                     >
-                        {#if swipeDirection === 'down'}
-                            <div class="bg-gradient-to-t from-black/50 to-transparent 
-                                        absolute bottom-0 w-full flex items-center justify-center"
-                                style="height: {dismissHintThreshold * 2}px"
-                            >
-                                <span class="bg-black/30 backdrop-blur-sm px-4 py-1.5 rounded-full
-                                           text-white font-medium text-sm
-                                           border border-white/20 shadow-sm">
-                                    Release to close
-                                </span>
-                            </div>
-                        {/if}
-                        {#if swipeDirection === 'up'}
-                            <div class="bg-gradient-to-b from-black/50 to-transparent 
-                                        absolute top-0 w-full flex items-center justify-center"
-                                style="height: {dismissHintThreshold * 2}px"
-                            >
-                                <span class="bg-black/30 backdrop-blur-sm px-4 py-1.5 rounded-full
-                                           text-white font-medium text-sm
-                                           border border-white/20 shadow-sm">
-                                    Release to close
-                                </span>
-                            </div>
-                        {/if}
+                        <!-- Blur effect container -->
+                        <div 
+                            class="absolute inset-0 transition-[backdrop-filter] duration-75"
+                            style="backdrop-filter: {blurStyle};
+                                   background: rgba(241, 245, 249, {$dismissHintOpacity * 0.1})"
+                        >
+                            <!-- Background gradients -->
+                            {#if swipeDirection === 'down'}
+                                <div 
+                                    class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/20 to-transparent"
+                                    style="opacity: {$dismissHintOpacity}"
+                                />
+                            {:else if swipeDirection === 'up'}
+                                <div 
+                                    class="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-transparent"
+                                    style="opacity: {$dismissHintOpacity}"
+                                />
+                            {/if}
+                        </div>
+
+                        <!-- Centered hint message -->
+                        <div
+                            class="px-4 py-2.5 rounded-lg
+                                   bg-white shadow-lg
+                                   flex items-center gap-3
+                                   border border-slate-200"
+                            style="transform: scale({$hintScale})
+                                    translateY({swipeDirection === 'down' ? 20 : -20}px)"
+                        >
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                            <span class="text-slate-900 text-sm font-medium">
+                                Keep swiping to close
+                            </span>
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse" />
+                        </div>
                     </div>
                 {/if}
             </div>
