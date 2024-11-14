@@ -36,6 +36,8 @@
             touchY: number;
             deltaY: number;
             isScrolling: boolean;
+            isAtTop: boolean;
+            isAtBottom: boolean;
         };
     } = {
         canDismissTop: true,
@@ -43,14 +45,12 @@
         scrollProgress: 0
     };
 
-    export let inModal = false;
-
     let touchStartTarget: EventTarget | null = null;
 
     let viewportHeight: number;
     
     // Calculate thresholds based on viewport height
-    $: dismissThreshold = viewportHeight * 0.15; // 15% of viewport height
+    $: dismissThreshold = viewportHeight * 0.04; // 5% of viewport height
     $: dismissHintThreshold = viewportHeight * 0.05; // 5% of viewport height
     $: dismissAnimationDistance = viewportHeight; // Full viewport height for dismiss animation
     
@@ -195,7 +195,9 @@
         window.addEventListener('resize', updateViewportHeight);
         document.addEventListener('keydown', handleModalInteraction);
         document.addEventListener('click', handleModalInteraction);
-        modalContent?.addEventListener('scrollChange', handleScrollStateChange);
+        modalContent?.addEventListener('scrollChange', (event: Event) => {
+            handleScrollStateChange(event as CustomEvent);
+        });
         lockScroll();
     });
 
@@ -203,7 +205,9 @@
         window.removeEventListener('resize', updateViewportHeight);
         document.removeEventListener('keydown', handleModalInteraction);
         document.removeEventListener('click', handleModalInteraction);
-        modalContent?.removeEventListener('scrollChange', handleScrollStateChange);
+        modalContent?.removeEventListener('scrollChange', (event: Event) => {
+            handleScrollStateChange(event as CustomEvent);
+        });
         unlockScroll();
     });
 </script>

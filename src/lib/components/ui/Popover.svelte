@@ -68,7 +68,16 @@
         const popoverRect = popoverElement.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
+
+        // Find if we're inside a modal
+        const modalContainer = containerElement.closest('[role="document"]');
+        let modalOffset = 0;
         
+        if (modalContainer) {
+            const modalRect = modalContainer.getBoundingClientRect();
+            modalOffset = modalRect.top;
+        }
+
         // Calculate available space in each direction
         const spaceAbove = triggerRect.top;
         const spaceBelow = viewportHeight - triggerRect.bottom;
@@ -78,44 +87,27 @@
             ? 'bottom' 
             : 'top';
 
-        // Calculate initial positions
+        // Calculate positions
         let top: number;
-        let left: number;
+        let left = triggerRect.left;
 
-        // Vertical positioning
+        // Vertical positioning with modal offset compensation
         if (verticalPosition === 'bottom') {
-            top = triggerRect.bottom + 8;
+            top = triggerRect.bottom + 8 - modalOffset;
         } else {
-            top = triggerRect.top - popoverRect.height - 8;
+            top = triggerRect.top - popoverRect.height - 8 - modalOffset;
         }
 
-        // Always try to align with trigger first
-        left = triggerRect.left;
-
-        // If popover would overflow right edge
+        // Horizontal positioning
         if (left + popoverRect.width > viewportWidth - 16) {
-            // Align right edge of popover with right edge of trigger
             left = triggerRect.right - popoverRect.width;
         }
-
-        // If popover would overflow left edge after right alignment
         if (left < 16) {
-            // Align with trigger center if possible
-            left = triggerRect.left + (triggerRect.width / 2) - (popoverRect.width / 2);
-            
-            // If still overflowing left, align with left viewport edge
-            if (left < 16) {
-                left = 16;
-            }
-            
-            // If now overflowing right, align with right viewport edge
-            if (left + popoverRect.width > viewportWidth - 16) {
-                left = viewportWidth - popoverRect.width - 16;
-            }
+            left = Math.max(16, Math.min(
+                triggerRect.left + (triggerRect.width / 2) - (popoverRect.width / 2),
+                viewportWidth - popoverRect.width - 16
+            ));
         }
-
-        // Ensure vertical bounds
-        top = Math.max(16, Math.min(top, viewportHeight - popoverRect.height - 16));
 
         // Apply positions
         popoverElement.style.position = 'fixed';

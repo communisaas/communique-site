@@ -76,12 +76,6 @@
                 <TemplatePreview 
                     template={$selectedTemplate}
                     inModal={true}
-                    onScroll={(isAtBottom, scrollProgress) => {
-                        // Add this handler to pass scroll state to modal
-                        modalComponent.updateScrollState({ 
-                            scrollProgress 
-                        });
-                    }}
                 />
             </div>
         </Modal>
