@@ -9,7 +9,11 @@
     
     function handleScroll() {
         const isAtBottom = preElement.scrollHeight - preElement.scrollTop <= preElement.clientHeight + 1;
-        onScroll(isAtBottom);
+        const scrollProgress = Math.max(0, 
+            (preElement.scrollHeight - preElement.scrollTop - preElement.clientHeight) / 
+            Math.max(1, preElement.scrollHeight - preElement.clientHeight)
+        );
+        onScroll(isAtBottom, scrollProgress);
     }
 
     function handleTouchStart(e: TouchEvent) {
@@ -28,16 +32,16 @@
         );
         
         // Let modal handle swipe up when at bottom
-        if (deltaY < 0 && isAtBottom) {
+        if ((deltaY < 0 && isAtBottom) || (deltaY > 0 && isAtBottom && scrollProgress === 0)) {
             onScroll(true, 0);
-            // Don't stop propagation here - let the modal handle it
-            return;
+            return; // Don't stop propagation to allow modal dismissal
         }
         
         // Share scroll state with modal
         onScroll(isAtBottom, scrollProgress);
-        // Only stop propagation if we're actually scrolling
-        if (!isAtBottom || deltaY > 0) {
+        
+        // Stop propagation only during actual content scrolling
+        if (!isAtBottom && scrollProgress > 0) {
             e.stopPropagation();
         }
     }

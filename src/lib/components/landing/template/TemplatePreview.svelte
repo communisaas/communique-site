@@ -11,6 +11,7 @@
     
     export let template: Template;
     export let inModal = false;
+    export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void = () => {};
 
     $: recipientCount = template?.recipientEmails?.length ?? 0;
     $: recipientPreview = template?.recipientEmails
@@ -218,7 +219,7 @@
             <div class="flex-1 min-h-0 my-4 overflow-hidden">
                 <MessagePreview 
                     preview={template.preview}
-                    onScroll={isAtTop => inModal && updateCanDismiss(isAtTop)}
+                    {onScroll}
                 />
             </div>
             <div class="shrink-0">

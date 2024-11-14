@@ -5,6 +5,14 @@
     import Button from '../../ui/Button.svelte';
     
     export let template: Template;
+
+    $: mailtoLink = template.type === 'direct' ? generateMailtoLink(template) : undefined;
+
+    function generateMailtoLink(template: Template): string {
+        const recipients = template.recipientEmails?.join(',') || '';
+        const body = encodeURIComponent(template.preview || '');
+        return `mailto:${recipients}?body=${body}`;
+    }
 </script>
 
 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
@@ -23,6 +31,8 @@
         <Button 
             variant="primary" 
             classNames="w-full sm:w-auto shrink-0 focus:ring-green-600/50"
+            href={mailtoLink}
+            rel={mailtoLink ? "noopener noreferrer" : undefined}
         >
             <span class="hidden sm:inline">Use Template</span>
             <span class="sm:hidden">Use</span>

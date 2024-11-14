@@ -11,7 +11,7 @@
 	import { IdCard, Shield } from 'lucide-svelte';
     
     let showMobilePreview = false;
-    
+    let modalComponent: Modal;
     onMount(() => {
         // Select the first template if there are any templates
         if ($templateStore.templates.length > 0) {
@@ -67,7 +67,8 @@
 
     <!-- Mobile Preview Modal -->
     {#if showMobilePreview && $selectedTemplate}
-        <Modal 
+        <Modal
+            bind:this={modalComponent}
             on:close={() => showMobilePreview = false}
             inModal={true}
         >
@@ -75,6 +76,12 @@
                 <TemplatePreview 
                     template={$selectedTemplate}
                     inModal={true}
+                    onScroll={(isAtBottom, scrollProgress) => {
+                        // Add this handler to pass scroll state to modal
+                        modalComponent.updateScrollState({ 
+                            scrollProgress 
+                        });
+                    }}
                 />
             </div>
         </Modal>

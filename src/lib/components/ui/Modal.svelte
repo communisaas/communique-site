@@ -9,31 +9,57 @@
 
     const dispatch = createEventDispatcher<{
         close: void;
-        scrollStateChange: ModalScrollState & { scrollProgress?: number };
+        scrollStateChange: ModalScrollState;
     }>();
+
     let dialogElement: HTMLDialogElement;
     let isOpen = false;
     let scrollPosition: number;
     let modalContent: HTMLDivElement;
     let touchStart = 0;
-    let touchY = 0;
+    let currentTouchY = 0;
+    let isDismissing = false;
+    let swipeDirection: 'up' | 'down' | null = null;
+    
     const translateY = tweened(0, {
         duration: 300,
         easing: quadOut
     });
-    let showDismissHint = false;
-    let isAtTop = true;
-    let dismissHintOpacity = tweened(0, {
+    
+    const dismissHintOpacity = tweened(0, {
         duration: 200,
         easing: cubicOut
     });
-    let dismissHintText: HTMLDivElement;
-    let scrollState: ModalScrollState = {
+
+    let scrollState: ModalScrollState & {
+        touchState?: {
+            touchY: number;
+            deltaY: number;
+            isScrolling: boolean;
+        };
+    } = {
         canDismissTop: true,
-        canDismissBottom: true
+        canDismissBottom: true,
+        scrollProgress: 0
     };
 
     export let inModal = false;
+
+    let touchStartTarget: EventTarget | null = null;
+
+    let viewportHeight: number;
+    
+    // Calculate thresholds based on viewport height
+    $: dismissThreshold = viewportHeight * 0.15; // 15% of viewport height
+    $: dismissHintThreshold = viewportHeight * 0.05; // 5% of viewport height
+    $: dismissAnimationDistance = viewportHeight; // Full viewport height for dismiss animation
+    
+    // Update resistance based on viewport height
+    $: resistance = Math.max(0.3, Math.min(0.5, viewportHeight / 1000));
+
+    function updateViewportHeight() {
+        viewportHeight = window.innerHeight;
+    }
 
     function handleModalInteraction(e: MouseEvent | KeyboardEvent) {
         if (!isOpen) return;
@@ -84,66 +110,100 @@
     }
 
     function handleTouchStart(e: TouchEvent) {
+        touchStartTarget = e.target;
         touchStart = e.touches[0].clientY;
+        currentTouchY = touchStart;
+        isDismissing = false;
     }
 
     function handleTouchMove(e: TouchEvent) {
-        touchY = e.touches[0].clientY - touchStart;
+        const previousTouchY = currentTouchY;
+        currentTouchY = e.touches[0].clientY;
+        const deltaY = currentTouchY - touchStart;
+        const movementY = currentTouchY - previousTouchY;
         
-        // Only handle modal movement if we're:
-        // 1. Already showing dismiss hint
-        // 2. At the top and swiping up
-        // 3. At the bottom and have scroll progress
+        // Check if we're interacting with a scrollable element
+        const isScrollableInteraction = touchStartTarget instanceof Element && 
+            (touchStartTarget.closest('pre') || touchStartTarget.closest('[data-scrollable]'));
+
+        // Determine if we should handle modal movement
         const shouldHandleModal = 
-            showDismissHint || 
-            (touchY < 0 && scrollState.canDismissTop) ||
-            (touchY > 0 && scrollState.scrollProgress !== undefined);
-        
-        if (!shouldHandleModal) {
-            return; // Let the scroll event propagate to the content
-        }
-        
-        e.preventDefault();
-        
-        if (touchY < 0 && scrollState.canDismissTop) {
-            translateY.set(touchY * 0.5);
-            dismissHintOpacity.set(Math.min(Math.abs(touchY) / 150, 0.95));
-            showDismissHint = touchY < -30;
-        } else if (touchY > 0 && scrollState.scrollProgress !== undefined) {
-            const resistance = 0.3;
-            const offset = touchY * resistance * (1 - scrollState.scrollProgress);
-            translateY.set(offset, { duration: 0 });
+            isDismissing || // Already dismissing
+            !isScrollableInteraction || // Not a scrollable interaction
+            (scrollState.touchState?.isAtTop && deltaY < 0) || // At top and swiping up
+            (scrollState.touchState?.isAtBottom && deltaY > 0); // At bottom and swiping down
+
+        if (shouldHandleModal) {
+            e.preventDefault();
+            isDismissing = true;
+            
+            // Set swipe direction based on delta
+            swipeDirection = deltaY < 0 ? 'up' : 'down';
+
+            // Apply viewport-sensitive resistance to the movement
+            const newTranslateY = $translateY + (movementY * resistance);
+            
+            // Update modal position
+            translateY.set(newTranslateY, { duration: 0 });
+            
+            // Update dismiss hint opacity based on movement relative to viewport
+            const dismissProgress = Math.abs(newTranslateY) / dismissHintThreshold;
+            dismissHintOpacity.set(Math.min(dismissProgress, 0.95));
+        } else {
+            // Reset modal state if we're not handling it
+            isDismissing = false;
+            swipeDirection = null;
+            if ($translateY !== 0) {
+                translateY.set(0, { duration: 100 });
+                dismissHintOpacity.set(0);
+            }
         }
     }
 
     function handleTouchEnd() {
-        if (showDismissHint) {
-            dismissHintOpacity.set(1);
-            translateY.set(-window.innerHeight, { duration: 400 }).then(() => {
-                close();
-            });
-        } else {
-            translateY.set(0, { duration: 200 });
-            dismissHintOpacity.set(0);
+        if (isDismissing) {
+            if (Math.abs($translateY) > dismissThreshold) {
+                // Complete the dismiss animation
+                const direction = $translateY > 0 ? 1 : -1;
+                dismissHintOpacity.set(1);
+                translateY.set(direction * dismissAnimationDistance, { duration: 400 })
+                    .then(() => close());
+            } else {
+                // Reset position
+                translateY.set(0);
+                dismissHintOpacity.set(0);
+            }
         }
-        showDismissHint = false;
+        
+        isDismissing = false;
+        swipeDirection = null;
     }
 
-    export function updateScrollState(state: Partial<ModalScrollState>) {
+    function updateScrollState(state: Partial<ModalScrollState>) {
         scrollState = { ...scrollState, ...state };
         dispatch('scrollStateChange', scrollState);
     }
 
+    // Create a function to handle scroll state updates
+    function handleScrollStateChange(event: CustomEvent) {
+        scrollState = { ...scrollState, ...event.detail };
+    }
+
     onMount(() => {
         showModal();
+        updateViewportHeight();
+        window.addEventListener('resize', updateViewportHeight);
         document.addEventListener('keydown', handleModalInteraction);
         document.addEventListener('click', handleModalInteraction);
+        modalContent?.addEventListener('scrollChange', handleScrollStateChange);
         lockScroll();
     });
 
     onDestroy(() => {
+        window.removeEventListener('resize', updateViewportHeight);
         document.removeEventListener('keydown', handleModalInteraction);
         document.removeEventListener('click', handleModalInteraction);
+        modalContent?.removeEventListener('scrollChange', handleScrollStateChange);
         unlockScroll();
     });
 </script>
@@ -166,7 +226,7 @@
                 on:touchend={handleTouchEnd}
                 bind:this={modalContent}
             >
-                <!-- Floating close button -->
+                <!-- Close button -->
                 <button
                     on:click={close}
                     class="absolute right-2 top-2 z-20 p-2 hover:bg-gray-100 
@@ -177,27 +237,45 @@
                     <X class="w-5 h-5 text-gray-600" />
                 </button>
 
-                <!-- Content container -->
+                <!-- Content -->
                 <div class="h-full max-h-[85vh] overflow-hidden">
                     <div class="relative h-full">
                         <slot />
                     </div>
                 </div>
 
-                <!-- Dismiss hint overlay -->
-                <div
-                    class="absolute inset-0 pointer-events-none z-10 flex items-end justify-center"
-                    style="opacity: {$dismissHintOpacity}"
-                >
+                <!-- Dismiss hints with dynamic height -->
+                {#if $dismissHintOpacity > 0}
                     <div
-                        class="bg-gradient-to-t from-black/50 to-transparent h-32 w-full flex items-center justify-center"
-                        bind:this={dismissHintText}
+                        class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center"
+                        style="opacity: {$dismissHintOpacity}"
                     >
-                        <span class="text-white/90 font-medium text-sm">
-                            Release to close
-                        </span>
+                        {#if swipeDirection === 'down'}
+                            <div class="bg-gradient-to-t from-black/50 to-transparent 
+                                        absolute bottom-0 w-full flex items-center justify-center"
+                                style="height: {dismissHintThreshold * 2}px"
+                            >
+                                <span class="bg-black/30 backdrop-blur-sm px-4 py-1.5 rounded-full
+                                           text-white font-medium text-sm
+                                           border border-white/20 shadow-sm">
+                                    Release to close
+                                </span>
+                            </div>
+                        {/if}
+                        {#if swipeDirection === 'up'}
+                            <div class="bg-gradient-to-b from-black/50 to-transparent 
+                                        absolute top-0 w-full flex items-center justify-center"
+                                style="height: {dismissHintThreshold * 2}px"
+                            >
+                                <span class="bg-black/30 backdrop-blur-sm px-4 py-1.5 rounded-full
+                                           text-white font-medium text-sm
+                                           border border-white/20 shadow-sm">
+                                    Release to close
+                                </span>
+                            </div>
+                        {/if}
                     </div>
-                </div>
+                {/if}
             </div>
         </div>
     </dialog>
