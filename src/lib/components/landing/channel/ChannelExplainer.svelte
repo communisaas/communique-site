@@ -78,7 +78,14 @@
                 class:border-slate-200={!isSelected}
                 class:hover:border-slate-300={!isSelected}
                 class:cursor-default={isSelected}
-                on:click={() => selectedChannel = channel.id}
+                on:click={(event) => {
+                    selectedChannel = channel.id;
+                    const targetElement = event.currentTarget;
+                    targetElement.scrollIntoView({ 
+                        behavior: 'smooth', 
+                        block: 'center' 
+                    });
+                }}
                 on:keydown={e => {
                     if (e.key === 'Enter') {
                         selectedChannel = channel.id;
@@ -133,7 +140,7 @@
                         {#if isSelected}
                             <div 
                                 transition:fade={{ duration: 200 }}
-                                class="pt-4"
+                                class="pt-4 space-y-3"
                             >
                                 {#if channel.id === 'certified'}
                                     <div class="space-y-3">
@@ -153,27 +160,42 @@
                                                 <ArrowRight class="w-4 h-4 transform transition-transform duration-200 group-hover/link:translate-x-1" />
                                             </a>
                                         </div>
-                                        <p class="text-xs text-center text-slate-500">
-                                            Congressional delivery system integration in progress
+                                        <p class="text-sm text-center text-slate-500">
+                                            Congressional delivery integration in progress
                                         </p>
                                     </div>
                                 {:else}
-                                    <button 
-                                        class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center bg-blue-600 text-white"
-                                        on:click|stopPropagation={() => {
-                                            document.getElementById('template-section')?.scrollIntoView({ 
-                                                behavior: 'smooth', 
-                                                block: 'start' 
-                                            });
-                                            dispatchEvent(new CustomEvent('channelSelect', { 
-                                                detail: channel.id,
-                                                bubbles: true 
-                                            }));
-                                        }}
-                                    >
-                                        Continue with {channel.title}
-                                        <ArrowRight class="w-4 h-4" />
-                                    </button>
+                                    <div class="flex flex-col gap-3">
+                                        <button 
+                                            class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center bg-blue-600 text-white"
+                                            on:click|stopPropagation={() => {
+                                                dispatchEvent(new CustomEvent('createTemplate', { 
+                                                    detail: { channelId: channel.id },
+                                                    bubbles: true 
+                                                }));
+                                            }}
+                                        >
+                                            Create New Template
+                                            <ArrowRight class="w-4 h-4" />
+                                        </button>
+                                        
+                                        <button 
+                                            class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center border border-blue-200 text-blue-600 hover:bg-blue-50"
+                                            on:click|stopPropagation={() => {
+                                                document.getElementById('template-section')?.scrollIntoView({ 
+                                                    behavior: 'smooth', 
+                                                    block: 'center' 
+                                                });
+                                                dispatchEvent(new CustomEvent('channelSelect', { 
+                                                    detail: channel.id,
+                                                    bubbles: true 
+                                                }));
+                                            }}
+                                        >
+                                            Browse Existing Templates
+                                            <ArrowRight class="w-4 h-4" />
+                                        </button>
+                                    </div>
                                 {/if}
                             </div>
                         {/if}

@@ -21,7 +21,15 @@
     </div>
 
     <div class="flex gap-4">
-        <Button variant="primary">
+        <Button 
+            variant="primary"
+            on:click={() => {
+                document.querySelector('.w-full.max-w-4xl')?.scrollIntoView({ 
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }}
+        >
             Start Writing
             <Send class="w-4 h-4" />
         </Button>

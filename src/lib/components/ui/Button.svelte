@@ -9,6 +9,10 @@
     // Forward the button element reference with a different name
     export let buttonElement: HTMLButtonElement | undefined = undefined;
 
+    // Forward all events
+    import { createEventDispatcher } from 'svelte';
+    const dispatch = createEventDispatcher();
+
     interface $$Slots {
         default: Record<string, never>;
         trigger?: Record<string, never>;
@@ -34,7 +38,13 @@
                 e.preventDefault();
                 window.location.href = href;
             }
+            dispatch('click', e);
         }}
+        on:mouseover
+        on:mouseenter
+        on:mouseleave
+        on:focus
+        on:blur
     >
         <slot />
     </a>
@@ -51,6 +61,12 @@
         class:border={variant === 'secondary'}
         class:border-blue-200={variant === 'secondary'}
         class:hover:border-blue-300={variant === 'secondary'}
+        on:click
+        on:mouseover
+        on:mouseenter
+        on:mouseleave
+        on:focus
+        on:blur
     >
         <slot />
     </button>

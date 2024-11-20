@@ -7,7 +7,7 @@
     export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 
     const dispatch = createEventDispatcher();
-    let scrollContainer: HTMLPreElement;
+    let scrollContainer: HTMLDivElement;
     let isAtTop = true;
     let isAtBottom = false;
     let isScrollable = false;
@@ -187,6 +187,7 @@
             rounded-full
             font-mono text-sm
             leading-normal
+            cursor-pointer
             transition-all duration-150
             ${isActive 
                 ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-300' 
@@ -226,7 +227,7 @@
                     <span class="align-baseline leading-normal">{segment.content}</span>
                 {:else}
                     <button
-                        on:click={() => handleVariableClick(segment.name)}
+                        on:click={() => handleVariableClick(segment.name ?? '')}
                         class={getVariableClasses(activeVariable === segment.name)}
                     >
                         <div class="flex justify-center leading-normal">
@@ -243,20 +244,20 @@
 
 <style>
     /* Custom scrollbar styling */
-    pre::-webkit-scrollbar {
+    div[data-scrollable]::-webkit-scrollbar {
         width: 8px;
     }
 
-    pre::-webkit-scrollbar-track {
+    div[data-scrollable]::-webkit-scrollbar-track {
         background: transparent;
     }
 
-    pre::-webkit-scrollbar-thumb {
+    div[data-scrollable]::-webkit-scrollbar-thumb {
         background-color: rgba(156, 163, 175, 0.5);
         border-radius: 4px;
     }
 
-    pre::-webkit-scrollbar-thumb:hover {
+    div[data-scrollable]::-webkit-scrollbar-thumb:hover {
         background-color: rgba(156, 163, 175, 0.7);
     }
 </style>
