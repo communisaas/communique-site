@@ -11,6 +11,17 @@
     let isAtTop = true;
     let isAtBottom = false;
     let isScrollable = false;
+    let activeVariable: string | null = null;
+
+    interface Segment {
+        type: 'text' | 'variable';
+        content: string;
+        name?: string;
+    }
+
+    interface DismissStateEvent {
+        isDismissing: boolean;
+    }
 
     let debugInfo = {
         scrollHeight: 0,
@@ -22,25 +33,57 @@
 
     let modalDismissing = false;
 
-    // Add this interface near the top of the script
-    interface DismissStateEvent {
-        isDismissing: boolean;
+    // Parse template content into segments
+    function parseTemplate(text: string): Segment[] {
+        const segments: Segment[] = [];
+        let currentIndex = 0;
+        const variablePattern = /\[(.*?)\]/g;
+        let match: RegExpExecArray | null;
+        
+        while ((match = variablePattern.exec(text)) !== null) {
+            // Add text before variable if exists
+            if (match.index > currentIndex) {
+                segments.push({
+                    type: 'text',
+                    content: text.slice(currentIndex, match.index)
+                });
+            }
+            
+            // Add variable
+            segments.push({
+                type: 'variable',
+                name: match[1],
+                content: match[0]
+            });
+            
+            currentIndex = match.index + match[0].length;
+        }
+        
+        // Add remaining text if exists
+        if (currentIndex < text.length) {
+            segments.push({
+                type: 'text',
+                content: text.slice(currentIndex)
+            });
+        }
+        
+        return segments;
     }
 
+    // Reactive declaration for parsed segments
+    $: templateSegments = parseTemplate(preview);
+
     onMount(() => {
-        // Update the event handler type
         const handleDismissState = (e: CustomEvent<DismissStateEvent>) => {
             modalDismissing = e.detail.isDismissing;
         };
         
-        // Add touchend listener to reset state
         const handleTouchEnd = () => {
             if (modalDismissing) {
                 modalDismissing = false;
             }
         };
         
-        // Cast the event listener to handle the custom event type
         document.addEventListener('dismissStateChange', handleDismissState as EventListener);
         document.addEventListener('touchend', handleTouchEnd);
         
@@ -50,7 +93,6 @@
         };
     });
 
-    // Update debug info whenever scroll container changes
     function updateDebugInfo() {
         if (!scrollContainer) return;
         
@@ -64,7 +106,6 @@
         };
     }
 
-    // Check if content is scrollable and dispatch initial state
     function updateScrollState() {
         if (!scrollContainer) return;
         
@@ -112,7 +153,6 @@
             isDismissing: modalDismissing
         };
 
-        // Only stop propagation if we're not dismissing and need to handle scroll
         if (!modalDismissing && touchState.isScrollable && 
             !((touchState.isAtTop && touchY > touchStartY) || 
               (touchState.isAtBottom && touchY < touchStartY))) {
@@ -122,17 +162,41 @@
         dispatch('touchStateChange', touchState);
     }
 
-    // Add explicit touch end handler
     function handleTouchEnd() {
         if (modalDismissing) {
             modalDismissing = false;
         }
     }
 
+    function handleVariableClick(variableName: string) {
+        activeVariable = activeVariable === variableName ? null : variableName;
+        dispatch('variableSelect', { variableName, active: activeVariable === variableName });
+    }
+
     $: if (browser && preview) {
         setTimeout(() => {
             updateScrollState();
         }, 0);
+    }
+
+    // Update variable styling to be more subtle by default
+    function getVariableClasses(isActive: boolean): string {
+        return `
+            inline-flex justify-center
+            px-1 -my-0.5
+            rounded-full
+            font-mono text-sm
+            leading-normal
+            transition-all duration-150
+            ${isActive 
+                ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-300' 
+                : 'bg-blue-50/40 text-blue-600/90 hover:bg-blue-50 hover:text-blue-600 ring-1 ring-blue-200/60'}
+            focus:outline-none focus:ring-2 
+            focus:ring-blue-200 focus:ring-offset-1
+            cursor-pointer
+            align-baseline
+            max-w-full
+        `;
     }
 </script>
 
@@ -142,7 +206,7 @@
         <h3 class="font-medium text-slate-900 text-sm sm:text-base">Message Preview</h3>
     </div>
     <div class="flex-1 min-h-0 relative">
-        <pre 
+        <div 
             bind:this={scrollContainer}
             on:scroll={handleScroll}
             on:touchstart={handleTouchStart}
@@ -150,11 +214,30 @@
             on:touchend={handleTouchEnd}
             data-scrollable={isScrollable}
             class="absolute inset-0 p-2 sm:p-4 
-                   bg-slate-50 rounded-lg text-slate-600 
-                   whitespace-pre-wrap font-mono text-xs sm:text-sm 
+                   bg-slate-50 rounded-lg
+                   font-mono text-sm
+                   text-slate-600 leading-normal
                    border border-slate-200 overflow-y-auto
-                   touch-pan-y overscroll-contain"
-        >{preview}</pre>
+                   touch-pan-y overscroll-contain
+                   whitespace-pre-line break-words"
+        >
+            {#each templateSegments as segment, i (i)}
+                {#if segment.type === 'text'}
+                    <span class="align-baseline leading-normal">{segment.content}</span>
+                {:else}
+                    <button
+                        on:click={() => handleVariableClick(segment.name)}
+                        class={getVariableClasses(activeVariable === segment.name)}
+                    >
+                        <div class="flex justify-center leading-normal">
+                            <span class="break-words leading-normal">
+                                {segment.name}
+                            </span>
+                        </div>
+                    </button>
+                {/if}
+            {/each}
+        </div>
     </div>
 </div>
 

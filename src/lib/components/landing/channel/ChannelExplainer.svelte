@@ -135,25 +135,46 @@
                                 transition:fade={{ duration: 200 }}
                                 class="pt-4"
                             >
-                                <button 
-                                    class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center"
-                                    class:bg-emerald-600={channel.id === 'certified'}
-                                    class:bg-blue-600={channel.id === 'direct'}
-                                    class:text-white={isSelected}
-                                    on:click|stopPropagation={() => {
-                                        document.getElementById('template-section')?.scrollIntoView({ 
-                                            behavior: 'smooth', 
-                                            block: 'start' 
-                                        });
-                                        dispatchEvent(new CustomEvent('channelSelect', { 
-                                            detail: channel.id,
-                                            bubbles: true 
-                                        }));
-                                    }}
-                                >
-                                    Continue with {channel.title}
-                                    <ArrowRight class="w-4 h-4" />
-                                </button>
+                                {#if channel.id === 'certified'}
+                                    <div class="space-y-3">
+                                        <div class="flex flex-wrap items-center gap-4 px-4 py-3 rounded-lg w-full justify-between">
+                                            <span class="inline-flex items-center gap-2 text-slate-600 whitespace-nowrap text-sm">
+                                                <span class="relative flex h-2 w-2">
+                                                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+                                                </span>
+                                                <span>In Development</span>
+                                            </span>
+                                            <a 
+                                                href="https://github.com/communisaas/communique-site"
+                                                class="group/link flex items-center text-sm text-slate-600 hover:text-slate-900 px-2"
+                                            >
+                                                <span class="mr-1.5">Follow Progress</span>
+                                                <ArrowRight class="w-4 h-4 transform transition-transform duration-200 group-hover/link:translate-x-1" />
+                                            </a>
+                                        </div>
+                                        <p class="text-xs text-center text-slate-500">
+                                            Congressional delivery system integration in progress
+                                        </p>
+                                    </div>
+                                {:else}
+                                    <button 
+                                        class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center bg-blue-600 text-white"
+                                        on:click|stopPropagation={() => {
+                                            document.getElementById('template-section')?.scrollIntoView({ 
+                                                behavior: 'smooth', 
+                                                block: 'start' 
+                                            });
+                                            dispatchEvent(new CustomEvent('channelSelect', { 
+                                                detail: channel.id,
+                                                bubbles: true 
+                                            }));
+                                        }}
+                                    >
+                                        Continue with {channel.title}
+                                        <ArrowRight class="w-4 h-4" />
+                                    </button>
+                                {/if}
                             </div>
                         {/if}
 
