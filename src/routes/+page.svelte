@@ -8,11 +8,15 @@
     import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
     import Modal from '$lib/components/ui/Modal.svelte';
     import { browser } from '$app/environment';
-	import { IdCard, Shield } from 'lucide-svelte';
+    import type { TemplateCreationContext } from '$lib/types/template';
+	import { IdCard } from 'lucide-svelte';
+	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
     
     let showMobilePreview = false;
+    let showTemplateCreator = false;
     let modalComponent: Modal;
     let selectedChannel: string | null = null;
+    let creationContext: TemplateCreationContext | null = null;
 
     onMount(() => {
         if (!selectedChannel && $templateStore.templates.length > 0) {
@@ -35,6 +39,11 @@
         }
     }
 
+    function handleCreateTemplate(event: CustomEvent<TemplateCreationContext>) {
+        creationContext = event.detail;
+        showTemplateCreator = true;
+    }
+
     $: filteredTemplates = selectedChannel 
         ? $templateStore.templates.filter(t => t.type === selectedChannel)
         : $templateStore.templates;
@@ -54,7 +63,10 @@
             </span>
             <Hero />
         </span>
-        <ChannelExplainer on:channelSelect={handleChannelSelect} />
+        <ChannelExplainer 
+            on:channelSelect={handleChannelSelect} 
+            on:createTemplate={handleCreateTemplate}
+        />
     </div>
 
     <div id="template-section" class="grid md:grid-cols-3 grid-cols-1 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto">
@@ -92,6 +104,33 @@
                 <TemplatePreview 
                     template={$selectedTemplate}
                     inModal={true}
+                />
+            </div>
+        </Modal>
+    {/if}
+
+    <!-- Template Creator Modal -->
+    {#if showTemplateCreator && creationContext}
+        <Modal
+            bind:this={modalComponent}
+            on:close={() => {
+                showTemplateCreator = false;
+                creationContext = null;
+            }}
+        >
+            <div class="h-full">
+                <TemplateCreator 
+                    context={creationContext}
+                    on:close={() => {
+                        showTemplateCreator = false;
+                        creationContext = null;
+                    }}
+                    on:save={(event) => {
+                        // Handle template save
+                        templateStore.addTemplate(event.detail);
+                        showTemplateCreator = false;
+                        creationContext = null;
+                    }}
                 />
             </div>
         </Modal>

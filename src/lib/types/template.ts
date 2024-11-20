@@ -1,20 +1,45 @@
-type Metrics = {
-    messages: string;
-    districts?: string;  // Optional since direct types don't have this
-    tooltip: string;
-    verification?: string;  // Optional since direct types don't have this
-    reach: string;
-    target?: string;  // Optional since certified types don't have this
-};
-
-export type Template = {
+export interface Template {
     id: number;
     title: string;
     description: string;
     category: string;
     type: 'certified' | 'direct';
     deliveryMethod: string;
-    metrics: Metrics;
+    metrics: {
+        messages: string;
+        reach: string;
+        tooltip: string;
+        target: string;
+        districts?: string;    // For certified templates
+        verification?: string; // For certified templates
+    };
     preview: string;
-    recipientEmails?: string[];  // New field for direct templates
-}; 
+    recipientEmails?: string[]; // For direct templates
+}
+
+export interface TemplateCreationContext {
+    channelId: 'certified' | 'direct';
+    channelTitle: string;
+    features: Array<{
+        icon: any;
+        text: string;
+    }>;
+}
+
+export interface TemplateFormData {
+    objective: {
+        title: string;
+        description: string;
+        category: string;
+        goal: string;
+    };
+    audience: {
+        organizations: string[];
+        roles: string[];
+        emailPatterns: string[];
+    };
+    content: {
+        preview: string;
+        variables: string[];
+    };
+} 

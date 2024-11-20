@@ -1,8 +1,15 @@
 <script lang="ts">
+    import { createEventDispatcher } from 'svelte';
     import { Shield, AtSign, ArrowRight, Network, Route, CheckCircle2, Building2, Landmark, UsersRound } from 'lucide-svelte';
     import { flip } from 'svelte/animate';
     import { fade } from 'svelte/transition';
     import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
+    import type { TemplateCreationContext } from '$lib/types/template';
+    
+    const dispatch = createEventDispatcher<{
+        createTemplate: TemplateCreationContext;
+        channelSelect: string;
+    }>();
     
     let selectedChannel: string | null = null;
     
@@ -50,6 +57,14 @@
             color: 'blue'
         }
     ];
+
+    function handleCreateTemplate(channel: typeof channels[0]) {
+        dispatch('createTemplate', {
+            channelId: channel.id as 'certified' | 'direct',
+            channelTitle: channel.title,
+            features: channel.features
+        });
+    }
 </script>
 
 <div class="w-full max-w-4xl mx-auto py-6">
@@ -168,12 +183,7 @@
                                     <div class="flex flex-col gap-3">
                                         <button 
                                             class="flex items-center gap-2 px-4 py-2 rounded-lg w-full justify-center bg-blue-600 text-white"
-                                            on:click|stopPropagation={() => {
-                                                dispatchEvent(new CustomEvent('createTemplate', { 
-                                                    detail: { channelId: channel.id },
-                                                    bubbles: true 
-                                                }));
-                                            }}
+                                            on:click|stopPropagation={() => handleCreateTemplate(channel)}
                                         >
                                             Create New Template
                                             <ArrowRight class="w-4 h-4" />

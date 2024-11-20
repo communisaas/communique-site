@@ -49,28 +49,45 @@ function createTemplateStore() {
             }
         }, */
 
-        // Template CRUD operations (for future use)
-        /* async createTemplate(template: Omit<Template, 'id'>) {
-            update(state => ({ ...state, loading: true }));
-            try {
-                const response = await fetch('/api/templates', {
-                    method: 'POST',
-                    body: JSON.stringify(template)
-                });
-                const newTemplate = await response.json();
-                update(state => ({
-                    ...state,
-                    templates: [...state.templates, newTemplate],
-                    loading: false
-                }));
-            } catch (err) {
-                update(state => ({
-                    ...state,
-                    loading: false,
-                    error: err.message
-                }));
-            }
-        }, */
+        // Template CRUD operations
+        addTemplate: (template: Omit<Template, 'id'>) => {
+            update(store => {
+                const newId = Math.max(...store.templates.map(t => t.id), 0) + 1;
+                const newTemplate: Template = {
+                    id: newId,
+                    ...template,
+                    metrics: {
+                        messages: '0 messages sent',
+                        reach: template.metrics.reach || 'Pending',
+                        tooltip: template.metrics.tooltip || 'Campaign recently created',
+                        target: template.metrics.target || 'Pending'
+                    }
+                };
+                
+                return {
+                    ...store,
+                    templates: [...store.templates, newTemplate],
+                    selectedId: newId
+                };
+            });
+        },
+
+        updateTemplate: (id: number, updates: Partial<Template>) => {
+            update(store => ({
+                ...store,
+                templates: store.templates.map(t => 
+                    t.id === id ? { ...t, ...updates } : t
+                )
+            }));
+        },
+
+        deleteTemplate: (id: number) => {
+            update(store => ({
+                ...store,
+                templates: store.templates.filter(t => t.id !== id),
+                selectedId: store.selectedId === id ? null : store.selectedId
+            }));
+        },
 
         // Development helpers
         loadMockData: () => {
@@ -100,8 +117,8 @@ export const selectedTemplate = derived(
     templateStore,
     $store => $store.templates.find(t => t.id === $store.selectedId)
 );
-
 // Load mock data based on configuration flag instead of DEV check
 if (USE_MOCK_DATA) {
     templateStore.loadMockData();
 }
+
