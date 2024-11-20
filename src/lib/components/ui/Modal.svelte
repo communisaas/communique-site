@@ -51,8 +51,8 @@
     let viewportHeight: number;
     
     // Calculate thresholds based on viewport height
-    $: dismissThreshold = viewportHeight * 0.2; // 20% of viewport height
-    $: dismissHintThreshold = viewportHeight * 0.2; // 20% of viewport height
+    $: dismissThreshold = viewportHeight * 0.15; // 15% of viewport height
+    $: dismissHintThreshold = viewportHeight * 0.15; // 15% of viewport height
     $: dismissAnimationDistance = viewportHeight; // Full viewport height for dismiss animation
     
     // Update resistance based on viewport height
@@ -92,6 +92,12 @@
 
     // Add gesture state tracking
     let isInDismissalGesture = false;
+
+    // Add a new store for gesture progress at the top with other stores
+    const gestureProgress = tweened(0, {
+        duration: 0,  // No duration for immediate response
+        easing: cubicOut
+    });
 
     function updateViewportHeight() {
         viewportHeight = window.innerHeight;
@@ -251,10 +257,12 @@
                 hard: isPastThreshold  // Use hard animation when past threshold
             });
             
-            // Update visual feedback
+            // Calculate and update gesture progress independently
             const progress = Math.abs(newTranslateY) / dismissHintThreshold;
-            const dismissProgress = Math.pow(progress, 1.2);
+            gestureProgress.set(progress);
             
+            // Update other visual feedback
+            const dismissProgress = Math.pow(progress, 1.2);
             dismissHintOpacity.set(dismissProgress);
             hintScale.set(0.8 + (dismissProgress * 0.2));
             blurAmount.set(Math.pow(progress, 2) * 6);
@@ -287,20 +295,23 @@
                     -dismissAnimationDistance;
                     
                 translateY.set(dismissDistance, {
-                    hard: true  // Use hard: true to bypass spring animation
+                    hard: true
                 });
                 
                 dismissHintOpacity.set(0);
                 hintScale.set(0.8);
                 blurAmount.set(0);
+                gestureProgress.set(0);
                 
                 setTimeout(() => {
                     close();
                 }, 200);
             } else {
-                // Only use spring animation for bounce-back when not past threshold
-                translateY.set(dismissStartTranslateY);
+                // Always reset to 0 (initial position) regardless of swipe direction
+                translateY.set(0);
                 dismissHintOpacity.set(0);
+                blurAmount.set(0);
+                gestureProgress.set(0);
                 preventScroll(false);
             }
         }
@@ -311,6 +322,9 @@
         swipeDirection = null;
         isPastThreshold = false;
         isInDismissalGesture = false;  // Reset only when touch ends
+        
+        // Reset gesture progress
+        gestureProgress.set(0);
     }
 
 
@@ -386,32 +400,32 @@
                     </div>
                 </div>
 
-                <!-- Dismiss hints with dynamic height -->
+                <!-- Blur effect container - positioned after content -->
+                <div 
+                    class="absolute inset-0 transition-[backdrop-filter] duration-75 pointer-events-none"
+                    style="backdrop-filter: {blurStyle};
+                           background: rgba(241, 245, 249, {$gestureProgress * 0.1})"
+                >
+                    <!-- Background gradients -->
+                    {#if swipeDirection === 'down'}
+                        <div 
+                            class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/20 to-transparent"
+                            style="opacity: {$dismissHintOpacity}"
+                        ></div>
+                    {:else if swipeDirection === 'up'}
+                        <div 
+                            class="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-transparent"
+                            style="opacity: {$dismissHintOpacity}"
+                        ></div>
+                    {/if}
+                </div>
+
+                <!-- Dismissal hint -->
                 {#if $dismissHintOpacity > 0}
                     <div
                         class="absolute inset-0 pointer-events-none z-10 flex items-center justify-center"
                         style="opacity: {$dismissHintOpacity}"
                     >
-                        <!-- Blur effect container -->
-                        <div 
-                            class="absolute inset-0 transition-[backdrop-filter] duration-75"
-                            style="backdrop-filter: {blurStyle};
-                                   background: rgba(241, 245, 249, {$dismissHintOpacity * 0.1})"
-                        >
-                            <!-- Background gradients -->
-                            {#if swipeDirection === 'down'}
-                                <div 
-                                    class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/20 to-transparent"
-                                    style="opacity: {$dismissHintOpacity}"
-                                ></div>
-                            {:else if swipeDirection === 'up'}
-                                <div 
-                                    class="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-transparent"
-                                    style="opacity: {$dismissHintOpacity}"
-                                ></div>
-                            {/if}
-                        </div>
-
                         <!-- Centered hint message -->
                         <div
                             class="px-4 py-2.5 rounded-lg
