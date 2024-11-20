@@ -28,7 +28,7 @@
 
         <div class="mt-8 pt-8 border-t border-slate-200">
             <p class="text-center text-sm text-slate-500">
-                © 2024 Communiqué LLC
+                © 2024 Communique Inc.
             </p>
         </div>
     </div>

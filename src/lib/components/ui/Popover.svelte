@@ -126,6 +126,7 @@
     function handleFocus() {
         open = true;
         dispatch('open');
+        tick().then(updatePosition);
     }
 
     function handleBlur(event: FocusEvent) {

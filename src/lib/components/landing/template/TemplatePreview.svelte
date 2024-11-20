@@ -29,6 +29,11 @@
     let templateListButtons: NodeListOf<HTMLButtonElement>;
     
     function handleKeyboardNav(event: KeyboardEvent) {
+        // Allow focus events to pass through for popover triggers
+        if ((event.target as HTMLElement).closest('[aria-haspopup="true"]')) {
+            return;
+        }
+
         if (event.key === 'Tab') {
             const templateButtons = Array.from(templateListButtons);
             const selectedIndex = templateButtons.findIndex(
@@ -173,7 +178,7 @@
                         </span>
                         
                         <!-- Always show popover on small screens -->
-                        <Popover>
+                        <Popover let:open>
                             <svelte:fragment slot="trigger" let:trigger>
                                 <button 
                                     use:trigger

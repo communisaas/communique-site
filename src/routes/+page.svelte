@@ -48,7 +48,10 @@
 <!-- Hero Section - Simple Badge -->
 <section class="pt-12">
     <div class="flex flex-row justify-center flex-wrap gap-8 items-center mb-6 max-w-6xl mx-auto">
-        <span class="w-9/12 md:w-7/12">
+        <span class="w-9/12 md:w-7/12 relative">
+            <span class="text-xl">
+                Communiqué
+            </span>
             <Hero />
         </span>
         <ChannelExplainer on:channelSelect={handleChannelSelect} />
