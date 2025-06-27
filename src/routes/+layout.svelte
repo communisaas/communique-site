@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { i18n } from '$lib/i18n';
-	import { ParaglideJS } from '@inlang/paraglide-sveltekit';
 	import { templateStore } from '$lib/stores/templates';
 	import { onMount } from 'svelte';
 	import '../app.css';
@@ -35,9 +33,7 @@
 	});
 </script>
 
-<ParaglideJS {i18n}>
-	<div class="md:p-10 p-6 min-h-screen bg-gradient-to-b from-slate-50 to-white">
-		{@render children()}
-		<Footer />
-	</div>
-</ParaglideJS>
+<div class="md:p-10 p-6 min-h-screen bg-gradient-to-b from-slate-50 to-white">
+	{@render children()}
+	<Footer />
+</div>
