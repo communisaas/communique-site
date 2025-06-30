@@ -69,7 +69,7 @@
 								? 'direct'
 								: 'direct'}
 					/>
-					<span class="rounded bg-blue-100 px-2 py-1 text-xs text-blue-600 md:text-sm">
+					<span class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600 md:text-sm">
 						{template.category}
 					</span>
 				</div>

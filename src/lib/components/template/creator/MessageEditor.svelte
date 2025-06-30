@@ -8,8 +8,23 @@
 	};
 	export let context: TemplateCreationContext;
 
+	// Variables depend on template type
 	const senderVariables = ['[Name]', '[Address]', '[Personal Story]', '[Personal Reasoning]'];
-	const requiredVariables = ['[Name]', '[Address]'];
+	const congressionalVariables = [
+		'[Representative Name]',
+		'[Name]',
+		'[Address]',
+		'[Personal Story]',
+		'[Personal Reasoning]'
+	];
+
+	// Required variables depend on template type
+	const directRequiredVariables = ['[Name]', '[Address]'];
+	const congressionalRequiredVariables = ['[Representative Name]', '[Name]', '[Address]'];
+
+	$: isCongressional = context.channelId === 'certified';
+	$: availableVariables = isCongressional ? congressionalVariables : senderVariables;
+	$: requiredVariables = isCongressional ? congressionalRequiredVariables : directRequiredVariables;
 
 	function ensureRequiredVariables() {
 		if (!data.preview || data.preview.trim() === '') {
@@ -85,9 +100,19 @@
 						✓ Good: "[Personal Story]" (standalone paragraph)
 					</p>
 					<p class="font-medium text-red-700">✗ Bad: "This affects me because [Personal Story]."</p>
-					<p class="font-medium text-blue-700">
-						[Name] and [Address] will be automatically added when you start typing.
-					</p>
+					{#if isCongressional}
+						<p class="font-medium text-blue-700">
+							[Representative Name], [Name] and [Address] will be automatically added when you start
+							typing.
+						</p>
+						<p class="font-medium text-purple-700">
+							💡 [Representative Name] is populated based on the sender's congressional district.
+						</p>
+					{:else}
+						<p class="font-medium text-blue-700">
+							[Name] and [Address] will be automatically added when you start typing.
+						</p>
+					{/if}
 				</div>
 			</div>
 		</div>
@@ -112,19 +137,45 @@
 		<label class="block text-sm font-medium text-slate-700">
 			<div class="flex items-center gap-2">
 				<Braces class="h-4 w-4 text-slate-400" />
-				Add Sender Variables
+				{#if isCongressional}
+					Add Variables (Congressional Delivery)
+				{:else}
+					Add Sender Variables
+				{/if}
 			</div>
 		</label>
 
 		<div class="flex flex-wrap items-center gap-2">
-			{#each senderVariables as variable}
+			{#each availableVariables as variable}
+				{@const isRequired = requiredVariables.includes(variable)}
 				<button
-					class="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700 hover:bg-slate-200"
+					class="rounded-full px-3 py-1 text-sm transition-colors"
+					class:bg-blue-100={isRequired}
+					class:text-blue-700={isRequired}
+					class:bg-slate-100={!isRequired}
+					class:text-slate-700={!isRequired}
+					class:hover:bg-blue-200={isRequired}
+					class:hover:bg-slate-200={!isRequired}
 					on:click={() => insertVariable(variable)}
+					title={isRequired ? 'Required variable' : 'Optional variable'}
 				>
 					{variable}
+					{#if isRequired}
+						<span class="ml-1 text-xs">*</span>
+					{/if}
 				</button>
 			{/each}
 		</div>
+
+		{#if isCongressional}
+			<p class="text-xs text-slate-500">
+				* Required variables are auto-populated: [Representative Name] uses sender's district,
+				[Name] & [Address] use sender's info
+			</p>
+		{:else}
+			<p class="text-xs text-slate-500">
+				* Required variables [Name] & [Address] are auto-populated from sender's profile
+			</p>
+		{/if}
 	</div>
 </div>

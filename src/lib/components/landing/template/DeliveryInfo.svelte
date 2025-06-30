@@ -1,19 +1,20 @@
 <script lang="ts">
-	import { Shield, AtSign, MapPin, Building2 } from 'lucide-svelte';
+	import { Shield, AtSign, Landmark, Building2 } from 'lucide-svelte';
 	import type { Template } from '$lib/types/template';
 
 	export let template: Template;
 
 	// Determine badge type based on delivery method
-	const badgeType = template.deliveryMethod === 'both' ? 'certified' : 'direct';
+	$: badgeType =
+		template.deliveryMethod === 'both' ? 'certified' : ('direct' as 'certified' | 'direct');
 
-	const deliveryTypes = {
+	$: deliveryTypes = {
 		certified: {
 			icon: Shield,
 			iconClass: 'text-green-600',
 			textClass: 'text-green-700',
 			label: 'Certified Congressional Delivery',
-			MetricIcon: MapPin,
+			MetricIcon: Landmark,
 			metricValue: `${template.metrics.sent.toLocaleString()} sent`
 		},
 		direct: {
@@ -24,9 +25,9 @@
 			MetricIcon: Building2,
 			metricValue: `${template.metrics.sent.toLocaleString()} sent`
 		}
-	};
+	} as const;
 
-	const delivery = deliveryTypes[badgeType];
+	$: delivery = deliveryTypes[badgeType];
 </script>
 
 <div class="mb-4 w-full rounded-lg border border-slate-200 bg-slate-50 p-3 md:mb-6 md:p-4">

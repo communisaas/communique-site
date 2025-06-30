@@ -44,14 +44,23 @@
 		},
 		audience: (data: TemplateFormData['audience']) => {
 			const errors = [];
-			if (data.recipientEmails.length === 0)
+			// For congressional templates, auto-routing handles recipients
+			if (context.channelId === 'direct' && data.recipientEmails.length === 0) {
 				errors.push('At least one recipient email is required');
+			}
 			return errors;
 		},
 		content: (data: TemplateFormData['content']) => {
 			const errors = [];
 			if (!data.preview) errors.push('Message content is required');
 			if (!data.preview.includes('[')) errors.push('Message should include at least one variable');
+
+			// Check for required variables based on template type
+			if (context.channelId === 'certified') {
+				if (!data.preview.includes('[Representative Name]')) {
+					errors.push('Congressional templates must include [Representative Name] variable');
+				}
+			}
 			return errors;
 		},
 		review: () => [] // Review step doesn't need validation

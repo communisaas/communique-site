@@ -9,9 +9,9 @@ export interface Template {
     message_body: string;
     metrics: {
         sent: number;
-        opened: number;
-        clicked: number;
-        responded: number;
+        opened: number;          // Deprecated - not trackable for direct email
+        clicked: number;         // For direct: recipient count; for congressional: not used
+        responded: number;       // For congressional: delivery confirmations; for direct: not used
     };
     delivery_config: any;
     recipient_config: any;

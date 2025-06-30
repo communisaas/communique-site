@@ -22,7 +22,7 @@
 			{template.title}
 		</h2>
 		<div class="flex flex-wrap items-center gap-2 sm:gap-4">
-			<span class="rounded bg-blue-100 px-2 py-1 text-xs text-blue-600 sm:text-sm">
+			<span class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600 sm:text-sm">
 				{template.category}
 			</span>
 			<Badge type={template.deliveryMethod === 'both' ? 'certified' : 'direct'} />

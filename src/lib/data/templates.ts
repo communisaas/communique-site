@@ -44,9 +44,9 @@ Sincerely,
 		],
 		metrics: {
 			sent: 1847,
-			opened: 1203,
-			clicked: 456,
-			responded: 89
+			opened: 0,        // Not trackable for direct email
+			clicked: 2,       // Number of recipient addresses (direct email)
+			responded: 0      // Not applicable for direct email
 		},
 		delivery_config: {
 			timing: 'immediate',
@@ -104,9 +104,9 @@ Respectfully,
 		],
 		metrics: {
 			sent: 2341,
-			opened: 1789,
-			clicked: 623,
-			responded: 134
+			opened: 0,        // Not trackable for direct email
+			clicked: 3,       // Number of recipient addresses (direct email)
+			responded: 0      // Not applicable for direct email
 		},
 		delivery_config: {
 			timing: 'immediate',
@@ -128,7 +128,7 @@ Respectfully,
 		type: 'advocacy',
 		deliveryMethod: 'both',
 		subject: 'Invest in Public Education Funding',
-		preview: `Dear Representative,
+		preview: `Dear [Representative Name],
 
 I am writing to urge your support for increased federal funding for public education.
 
@@ -143,7 +143,7 @@ Please prioritize education funding in upcoming budget decisions.
 Thank you for your service,
 [Name]
 [Address]`,
-		message_body: `Dear Representative,
+		message_body: `Dear [Representative Name],
 
 I am writing to urge your support for increased federal funding for public education.
 
@@ -165,9 +165,9 @@ Thank you for your service,
 		],
 		metrics: {
 			sent: 3156,
-			opened: 2234,
-			clicked: 892,
-			responded: 167
+			opened: 0,        // Not trackable
+			clicked: 0,       // Not used for congressional
+			responded: 2834   // Delivery confirmations from congressional offices (89.8% delivery rate)
 		},
 		delivery_config: {
 			timing: 'immediate',
