@@ -24,7 +24,7 @@
 		}
 	});
 
-	function handleTemplateSelect(id: number) {
+	function handleTemplateSelect(id: string) {
 		templateStore.selectTemplate(id);
 		if (browser && window.innerWidth < 768) {
 			// md breakpoint is 768px
@@ -34,7 +34,14 @@
 
 	function handleChannelSelect(event: CustomEvent<string>) {
 		selectedChannel = event.detail;
-		const matchingTemplates = $templateStore.templates.filter((t) => t.type === selectedChannel);
+		const matchingTemplates = $templateStore.templates.filter((t) => {
+			if (selectedChannel === 'certified') {
+				return t.deliveryMethod === 'both';
+			} else if (selectedChannel === 'direct') {
+				return t.deliveryMethod === 'email';
+			}
+			return false;
+		});
 		if (matchingTemplates.length > 0) {
 			templateStore.selectTemplate(matchingTemplates[0].id);
 		}
@@ -46,7 +53,14 @@
 	}
 
 	$: filteredTemplates = selectedChannel
-		? $templateStore.templates.filter((t) => t.type === selectedChannel)
+		? $templateStore.templates.filter((t) => {
+				if (selectedChannel === 'certified') {
+					return t.deliveryMethod === 'both';
+				} else if (selectedChannel === 'direct') {
+					return t.deliveryMethod === 'email';
+				}
+				return false;
+			})
 		: $templateStore.templates;
 </script>
 

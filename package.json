@@ -20,7 +20,7 @@
 		"db:migrate": "prisma migrate dev",
 		"db:studio": "prisma studio",
 		"db:seed": "tsx scripts/seed-db.ts",
-		"postinstall": "prisma generate"
+		"postinstall": "prisma generate && svelte-kit sync"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.48.2",

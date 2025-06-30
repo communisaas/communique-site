@@ -3,7 +3,7 @@ import type { Template } from '$lib/types/template';
 
 interface TemplateState {
 	templates: Template[];
-	selectedId: number | null;
+	selectedId: string | null;
 	loading: boolean;
 	error: string | null;
 	lastUpdated?: Date;
@@ -20,7 +20,7 @@ function createTemplateStore() {
 	return {
 		subscribe,
 		// Core template management
-		selectTemplate: (id: number) => {
+		selectTemplate: (id: string) => {
 			update((state) => ({ ...state, selectedId: id }));
 		},
 
@@ -84,7 +84,7 @@ function createTemplateStore() {
 			}
 		},
 
-		async updateTemplate(id: number, updates: Partial<Template>) {
+		async updateTemplate(id: string, updates: Partial<Template>) {
 			try {
 				const response = await fetch(`/api/templates/${id}`, {
 					method: 'PUT',
@@ -116,7 +116,7 @@ function createTemplateStore() {
 			}
 		},
 
-		async deleteTemplate(id: number) {
+		async deleteTemplate(id: string) {
 			try {
 				const response = await fetch(`/api/templates/${id}`, {
 					method: 'DELETE'

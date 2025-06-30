@@ -5,10 +5,10 @@
 	import MessageMetrics from './MessageMetrics.svelte';
 
 	export let templates: Template[];
-	export let selectedId: number | null;
-	export let onSelect: (id: number) => void;
+	export let selectedId: string | null;
+	export let onSelect: (id: string) => void;
 
-	function handleKeydown(event: KeyboardEvent, templateId: number, index: number) {
+	function handleKeydown(event: KeyboardEvent, templateId: string, index: number) {
 		if (event.key === 'Enter' || event.key === ' ') {
 			event.preventDefault();
 			onSelect(templateId);
@@ -62,7 +62,13 @@
 		>
 			<div class="min-w-0 flex-1">
 				<div class="flex flex-wrap items-center gap-2">
-					<Badge type={template.type} />
+					<Badge
+						type={template.deliveryMethod === 'both'
+							? 'certified'
+							: template.deliveryMethod === 'email'
+								? 'direct'
+								: 'direct'}
+					/>
 					<span class="rounded bg-blue-100 px-2 py-1 text-xs text-blue-600 md:text-sm">
 						{template.category}
 					</span>

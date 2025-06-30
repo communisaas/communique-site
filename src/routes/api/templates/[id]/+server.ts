@@ -15,15 +15,20 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		const formattedTemplate = {
-			id: parseInt(template.id), // Convert string ID to number
+			id: template.id, // Keep as string ID
 			title: template.title,
 			description: template.description,
 			category: template.category,
-			type: template.type as 'certified' | 'direct',
+			type: template.type,
 			deliveryMethod: template.deliveryMethod,
+			subject: template.subject,
 			preview: template.preview,
+			message_body: template.message_body,
 			metrics: template.metrics as any,
-			recipientEmails: template.recipientEmails as string[] | undefined
+			delivery_config: template.delivery_config,
+			recipient_config: template.recipient_config,
+			is_public: template.is_public,
+			recipientEmails: (template.recipient_config as any)?.emails as string[] | undefined
 		};
 
 		return json(formattedTemplate);

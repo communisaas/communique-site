@@ -8,28 +8,25 @@ async function seedDatabase() {
     
     try {
         // Clear existing templates
-        await db.template.deleteMany({});
+        await db.Template.deleteMany({});
         console.log('✅ Cleared existing templates');
         
-        // Insert templates from mock data  
+        // Insert templates with updated structure
         for (const template of templates) {
-            await db.template.create({
+            await db.Template.create({
                 data: {
                     title: template.title,
                     description: template.description,
                     category: template.category,
                     type: template.type,
                     deliveryMethod: template.deliveryMethod,
+                    subject: template.subject,
                     preview: template.preview,
+                    message_body: template.message_body,
                     metrics: template.metrics,
-                    is_public: true,
-                    subject: `Support for ${template.title}`,
-                    message_body: template.preview,
-                    delivery_config: {},
-                    recipient_config:
-                        'recipientEmails' in template && template.recipientEmails
-                            ? { emails: template.recipientEmails }
-                            : {}
+                    delivery_config: template.delivery_config,
+                    recipient_config: template.recipient_config,
+                    is_public: template.is_public
                 }
             });
         }
@@ -37,8 +34,23 @@ async function seedDatabase() {
         console.log(`✅ Seeded ${templates.length} templates`);
         
         // Verify the data
-        const count = await db.template.count();
+        const count = await db.Template.count();
         console.log(`📊 Total templates in database: ${count}`);
+        
+        // Show template details
+        const allTemplates = await db.Template.findMany({
+            select: {
+                id: true,
+                title: true,
+                category: true,
+                deliveryMethod: true
+            }
+        });
+        
+        console.log('📋 Seeded templates:');
+        allTemplates.forEach(t => {
+            console.log(`  • ${t.title} (${t.category}) - ${t.deliveryMethod}`);
+        });
         
         console.log('🎉 Database seeding completed successfully!');
         

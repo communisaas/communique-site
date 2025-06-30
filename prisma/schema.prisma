@@ -9,24 +9,22 @@ datasource db {
 }
 
 model User {
-  id        String     @id @default(cuid())
-  email     String     @unique
-  name      String?
-  avatar    String?
-  phone     String?
-  // Address information from onboarding/KYC
-  street    String?
-  city      String?
-  state     String?
-  zip       String?
-  // Congressional district info
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  name                   String?
+  avatar                 String?
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+  city                   String?
   congressional_district String?
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-  account   account[]
-  sessions  Session[]
-  templates Template[]
-  representatives user_representatives[]
+  phone                  String?
+  state                  String?
+  street                 String?
+  zip                    String?
+  account                account[]
+  sessions               Session[]
+  templates              Template[]
+  representatives        user_representatives[]
 
   @@map("user")
 }
@@ -115,33 +113,33 @@ model template_campaign {
 }
 
 model representative {
-  id                  String                @id @default(cuid())
-  bioguide_id         String                @unique // Official Congress.gov bioguide ID
-  name                String
-  party               String
-  state               String
-  district            String                // "01", "02", etc. Senate uses "00"
-  chamber             String                // "house" or "senate"
-  office_code         String                // For CWC submissions
-  phone               String?
-  email               String?
-  is_active           Boolean               @default(true)
-  last_updated        DateTime              @default(now())
+  id                   String                 @id @default(cuid())
+  bioguide_id          String                 @unique
+  name                 String
+  party                String
+  state                String
+  district             String
+  chamber              String
+  office_code          String
+  phone                String?
+  email                String?
+  is_active            Boolean                @default(true)
+  last_updated         DateTime               @default(now())
   user_representatives user_representatives[]
 
   @@map("representative")
 }
 
 model user_representatives {
-  id               String        @id @default(cuid())
-  user_id          String        @map("user_id")
-  representative_id String        @map("representative_id")
-  relationship     String        // "house", "senate_senior", "senate_junior"
-  is_active        Boolean       @default(true)
-  assigned_at      DateTime      @default(now()) @map("assigned_at")
-  last_validated   DateTime?     @map("last_validated")
-  user             User          @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  representative   representative @relation(fields: [representative_id], references: [id], onDelete: Cascade)
+  id                String         @id @default(cuid())
+  user_id           String         @map("user_id")
+  representative_id String         @map("representative_id")
+  relationship      String
+  is_active         Boolean        @default(true)
+  assigned_at       DateTime       @default(now()) @map("assigned_at")
+  last_validated    DateTime?      @map("last_validated")
+  representative    representative @relation(fields: [representative_id], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, representative_id])
   @@map("user_representatives")

@@ -1,20 +1,23 @@
 export interface Template {
-    id: number;
+    id: string;
     title: string;
     description: string;
     category: string;
-    type: 'certified' | 'direct';
-    deliveryMethod: string;
+    type: string;
+    deliveryMethod: 'email' | 'both';
+    subject?: string;
+    message_body: string;
     metrics: {
-        messages: string;
-        reach: string;
-        tooltip: string;
-        target: string;
-        districts?: string;    // For certified templates
-        verification?: string; // For certified templates
+        sent: number;
+        opened: number;
+        clicked: number;
+        responded: number;
     };
+    delivery_config: any;
+    recipient_config: any;
     preview: string;
-    recipientEmails?: string[]; // For direct templates
+    recipientEmails?: string[]; // For backward compatibility
+    is_public: boolean;
 }
 
 export interface TemplateCreationContext {
@@ -34,9 +37,7 @@ export interface TemplateFormData {
         goal: string;
     };
     audience: {
-        organizations: string[];
-        roles: string[];
-        emailPatterns: string[];
+        recipientEmails: string[];
     };
     content: {
         preview: string;
