@@ -19,7 +19,8 @@
 		"db:push": "prisma db push",
 		"db:migrate": "prisma migrate dev",
 		"db:studio": "prisma studio",
-		"db:seed": "tsx scripts/seed-db.ts"
+		"db:seed": "tsx scripts/seed-db.ts",
+		"postinstall": "prisma generate"
 	},
 	"devDependencies": {
 		"@playwright/test": "^1.48.2",

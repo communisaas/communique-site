@@ -26,3 +26,4 @@ vite.config.ts.timestamp-*
 
 # Private documentation
 CombinedCWCDocumentation1.0.md
+cwc_schema_v2.rng

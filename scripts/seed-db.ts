@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { templates } from '../src/lib/data/templates.js';
 
-const db = new PrismaClient();
+const db: PrismaClient = new PrismaClient();
 
 async function seedDatabase() {
     console.log('🌱 Starting database seed...');
@@ -22,7 +22,14 @@ async function seedDatabase() {
                     deliveryMethod: template.deliveryMethod,
                     preview: template.preview,
                     metrics: template.metrics,
-                    recipientEmails: template.recipientEmails || null
+                    is_public: true,
+                    subject: `Support for ${template.title}`,
+                    message_body: template.preview,
+                    delivery_config: {},
+                    recipient_config:
+                        'recipientEmails' in template && template.recipientEmails
+                            ? { emails: template.recipientEmails }
+                            : {}
                 }
             });
         }
