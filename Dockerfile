@@ -3,7 +3,7 @@
 # Base stage
 FROM node:20.11.1-slim as base
 
-LABEL fly_launch_runtime="NodeJS/Drizzle"
+LABEL fly_launch_runtime="NodeJS/Prisma"
 
 # NodeJS lives here
 WORKDIR /app

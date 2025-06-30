@@ -57,8 +57,8 @@
 
 <!-- Hero Section - Simple Badge -->
 <section class="pt-12">
-	<div class="flex flex-row justify-center flex-wrap gap-8 items-center mb-6 max-w-6xl mx-auto">
-		<span class="w-9/12 md:w-7/12 relative">
+	<div class="mx-auto mb-6 flex max-w-6xl flex-row flex-wrap items-center justify-center gap-8">
+		<span class="relative w-9/12 md:w-7/12">
 			<span class="text-xl"> Communiqué </span>
 			<Hero />
 		</span>
@@ -70,10 +70,10 @@
 
 	<div
 		id="template-section"
-		class="grid md:grid-cols-3 grid-cols-1 gap-4 sm:gap-6 md:gap-8 max-w-6xl mx-auto"
+		class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:gap-8"
 	>
 		<div class="md:col-span-1">
-			<h2 class="text-xl font-semibold text-slate-900 mb-3">Message Templates</h2>
+			<h2 class="mb-3 text-xl font-semibold text-slate-900">Message Templates</h2>
 			<TemplateList
 				templates={filteredTemplates}
 				selectedId={$templateStore.selectedId}
@@ -82,7 +82,7 @@
 		</div>
 
 		<!-- Desktop/Tablet Preview -->
-		<div class="md:col-span-2 hidden md:block">
+		<div class="hidden md:col-span-2 md:block">
 			{#if $selectedTemplate}
 				<TemplatePreview template={$selectedTemplate} />
 			{/if}
@@ -114,11 +114,16 @@
 						showTemplateCreator = false;
 						creationContext = null;
 					}}
-					on:save={(event) => {
+					on:save={async (event) => {
 						// Handle template save
-						templateStore.addTemplate(event.detail);
-						showTemplateCreator = false;
-						creationContext = null;
+						try {
+							await templateStore.addTemplate(event.detail);
+							showTemplateCreator = false;
+							creationContext = null;
+						} catch (error) {
+							console.error('Failed to save template:', error);
+							// You might want to show an error message to the user here
+						}
 					}}
 				/>
 			</div>

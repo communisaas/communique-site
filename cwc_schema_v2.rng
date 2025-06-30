@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<grammar ns="" xmlns="http://relaxng.org/ns/structure/1.0" datatypeLibrary="http://www.w3.org/2001/XMLSchema-datatypes">
+  <define name="email_type">
+    <data type="token">
+      <param name="pattern">[^@]+@[^\.]+\..+</param>
+    </data>
+  </define>
+  <define name="uid_type">
+    <data type="token">
+      <param name="pattern">[a-zA-Z0-9]{32}</param>
+    </data>
+  </define>
+  <define name="pro_or_con">
+    <data type="token">
+      <param name="pattern">[Pp][Rr][Oo]|[Cc][Oo][Nn]</param>
+    </data>
+  </define>
+  <define name="y_or_n">
+    <data type="token">
+      <param name="pattern">[Yy]|[Nn]</param>
+    </data>
+  </define>
+  <define name="organization_statement">
+    <element name="OrganizationStatement">
+      <data type="string">
+        <param name="minLength">6</param>
+        <param name="maxLength">10000</param>
+      </data>
+    </element>
+  </define>
+  <define name="constituent_message">
+    <element name="ConstituentMessage">
+      <data type="string">
+        <param name="minLength">6</param>
+        <param name="maxLength">10000</param>
+      </data>
+    </element>
+  </define>
+  <start>
+    <element name="CWC">
+      <element name="CWCVersion">
+        <value>2.0</value>
+      </element>
+      <element name="Delivery">
+        <interleave>
+          <element name="DeliveryId">
+            <ref name="uid_type"/>
+          </element>
+          <element name="DeliveryDate">
+            <data type="token">
+              <param name="pattern">[0-9]{8}</param>
+            </data>
+          </element>
+          <element name="DeliveryAgent">
+            <data type="string">
+              <param name="minLength">4</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <element name="DeliveryAgentAckEmailAddress">
+            <ref name="email_type"/>
+          </element>
+          <element name="DeliveryAgentContact">
+            <interleave>
+              <element name="DeliveryAgentContactName">
+                <data type="string">
+                  <param name="minLength">6</param>
+                  <param name="maxLength">500</param>
+                </data>
+              </element>
+              <element name="DeliveryAgentContactEmail">
+                <ref name="email_type"/>
+              </element>
+              <element name="DeliveryAgentContactPhone">
+                <data type="token">
+                  <param name="pattern">[0-9]{3}-[0-9]{3}-[0-9]{4}</param>
+                </data>
+              </element>
+            </interleave>
+          </element>
+          <element name="CampaignId">
+            <data type="string">
+              <param name="minLength">2</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <optional>
+            <element name="Organization">
+              <data type="string">
+                <param name="minLength">6</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="OrganizationContact">
+              <interleave>
+                <optional>
+                  <element name="OrganizationContactName">
+                    <data type="string">
+                      <param name="minLength">2</param>
+                      <param name="maxLength">500</param>
+                    </data>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="OrganizationContactEmail">
+                    <ref name="email_type"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="OrganizationContactPhone">
+                    <data type="token">
+                      <param name="pattern">[0-9]{3}-[0-9]{3}-[0-9]{4}</param>
+                    </data>
+                  </element>
+                </optional>
+              </interleave>
+            </element>
+          </optional>
+          <optional>
+            <element name="OrganizationAbout">
+              <data type="string">
+                <param name="minLength">6</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+        </interleave>
+      </element>
+      <element name="Recipient">
+        <interleave>
+          <element name="MemberOffice">
+            <data type="token">
+              <param name="pattern">H[A-Z][A-Z][0-9][0-9]</param>
+            </data>
+          </element>
+          <optional>
+            <element name="IsResponseRequested">
+              <ref name="y_or_n"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="NewsletterOptIn">
+              <ref name="y_or_n"/>
+            </element>
+          </optional>
+        </interleave>
+      </element>
+      <element name="Constituent">
+        <interleave>
+          <element name="Prefix">
+            <data type="string">
+              <param name="minLength">1</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <element name="FirstName">
+            <data type="string">
+              <param name="minLength">1</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <element name="LastName">
+            <data type="string">
+              <param name="minLength">1</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <element name="Address1">
+            <data type="string">
+              <param name="minLength">3</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <element name="City">
+            <data type="string">
+              <param name="minLength">3</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <element name="StateAbbreviation">
+            <data type="token">
+              <param name="pattern">AK|AL|AR|AS|AZ|CA|CO|CT|DC|DE|FL|GA|GU|HI|IA|ID|IL|IN|KS|KY|LA|MA|MD|ME|MI|MN|MO|MP|MS|MT|NC|ND|NE|NH|NJ|NM|NV|NY|OH|OK|OR|PA|PR|RI|SC|SD|TN|TX|UT|VA|VI|VT|WA|WI|WV|WY</param>
+            </data>
+          </element>
+          <element name="Zip">
+            <data type="string">
+              <param name="pattern">[0-9]{5}(-[0-9]{4})?</param>
+            </data>
+          </element>
+          <element name="Email">
+            <ref name="email_type"/>
+          </element>
+          <optional>
+            <element name="MiddleName">
+              <data type="string">
+                <param name="minLength">1</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="Suffix">
+              <data type="string">
+                <param name="minLength">1</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="Title">
+              <data type="string">
+                <param name="minLength">1</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="ConstituentOrganization">
+              <data type="string">
+                <param name="minLength">3</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="Address2">
+              <data type="string">
+                <param name="minLength">3</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="Address3">
+              <data type="string">
+                <param name="minLength">3</param>
+                <param name="maxLength">500</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="Phone">
+              <data type="token">
+                <param name="pattern">[0-9]{3}-[0-9]{3}-[0-9]{4}</param>
+              </data>
+            </element>
+          </optional>
+          <optional>
+            <element name="AddressValidation">
+              <ref name="y_or_n"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="EmailValidation">
+              <ref name="y_or_n"/>
+            </element>
+          </optional>
+        </interleave>
+      </element>
+      <element name="Message">
+        <interleave>
+          <element name="Subject">
+            <data type="string">
+              <param name="minLength">6</param>
+              <param name="maxLength">500</param>
+            </data>
+          </element>
+          <element name="LibraryOfCongressTopics">
+            <oneOrMore>
+              <element name="LibraryOfCongressTopic">
+                <choice>
+                  <value>Agriculture and Food</value>
+                  <value>Animals</value>
+                  <value>Armed Forces and National Security</value>
+                  <value>Arts, Culture, Religion</value>
+                  <value>Civil Rights and Liberties, Minority Issues</value>
+                  <value>Commerce</value>
+                  <value>Congress</value>
+                  <value>Crime and Law Enforcement</value>
+                  <value>Economics and Public Finance</value>
+                  <value>Education</value>
+                  <value>Emergency Management</value>
+                  <value>Energy</value>
+                  <value>Environmental Protection</value>
+                  <value>Families</value>
+                  <value>Finance and Financial Sector</value>
+                  <value>Foreign Trade and International Finance</value>
+                  <value>Government Operations and Politics</value>
+                  <value>Health</value>
+                  <value>Housing and Community Development</value>
+                  <value>Immigration</value>
+                  <value>International Affairs</value>
+                  <value>Labor and Employment</value>
+                  <value>Law</value>
+                  <value>Native Americans</value>
+                  <value>Public Lands and Natural Resources</value>
+                  <value>Science, Technology, Communications</value>
+                  <value>Social Sciences and History</value>
+                  <value>Social Welfare</value>
+                  <value>Sports and Recreation</value>
+                  <value>Taxation</value>
+                  <value>Transportation and Public Works</value>
+                  <value>Water Resources Development</value>
+                </choice>
+              </element>
+            </oneOrMore>
+          </element>
+          <optional>
+            <element name="Bills">
+              <zeroOrMore>
+                <element name="Bill">
+                  <interleave>
+                    <optional>
+                      <element name="BillCongress">
+                        <data type="positiveInteger"/>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="BillTypeAbbreviation">
+                        <data type="token">
+                          <param name="pattern">hamdt|hconres|hjres|hr|hres|s|samdt|sconres|sjres|sres</param>
+                        </data>
+                      </element>
+                    </optional>
+                    <optional>
+                      <element name="BillNumber">
+                        <data type="positiveInteger"/>
+                      </element>
+                    </optional>
+                  </interleave>
+                </element>
+              </zeroOrMore>
+            </element>
+          </optional>
+          <optional>
+            <element name="ProOrCon">
+              <ref name="pro_or_con"/>
+            </element>
+          </optional>
+          <optional>
+            <element name="MoreInfo">
+              <data type="anyURI"/>
+            </element>
+          </optional>
+          <choice>
+            <group>
+              <ref name="organization_statement"/>
+              <optional>
+                <ref name="constituent_message"/>
+              </optional>
+            </group>
+            <group>
+              <optional>
+                <ref name="organization_statement"/>
+              </optional>
+              <ref name="constituent_message"/>
+            </group>
+          </choice>
+        </interleave>
+      </element>
+    </element>
+  </start>
+</grammar>

@@ -1,4 +1,4 @@
-import { writable, derived } from 'svelte/store';
+import { writable, derived, get } from 'svelte/store';
 import type { Template } from '$lib/types/template';
 import { templates as mockTemplates } from '$lib/data/templates';
 
@@ -10,7 +10,7 @@ interface TemplateState {
     lastUpdated?: Date;
 }
 
-const USE_MOCK_DATA = true; // Cntrol this with an environment variable later if needed
+const USE_MOCK_DATA = false; // Switch to true if you want to use mock data
 
 function createTemplateStore() {
     const { subscribe, set, update } = writable<TemplateState>({
@@ -27,11 +27,14 @@ function createTemplateStore() {
             update(state => ({ ...state, selectedId: id }));
         },
         
-        // API Integration (commented for future use)
-        /* async fetchTemplates() {
-            update(state => ({ ...state, loading: true }));
+        // API Integration - TODO: Update once Prisma API routes are ready
+        async fetchTemplates() {
+            update(state => ({ ...state, loading: true, error: null }));
             try {
                 const response = await fetch('/api/templates');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 update(state => ({
                     ...state,
@@ -41,18 +44,45 @@ function createTemplateStore() {
                     lastUpdated: new Date()
                 }));
             } catch (err) {
+                console.error('Error fetching templates:', err);
+                // Fall back to mock data if API fails
+                this.loadMockData();
                 update(state => ({
                     ...state,
                     loading: false,
-                    error: err.message
+                    error: err instanceof Error ? err.message : 'Failed to fetch templates - using mock data'
                 }));
             }
-        }, */
+        },
 
         // Template CRUD operations
-        addTemplate: (template: Omit<Template, 'id'>) => {
-            update(store => {
-                const newId = Math.max(...store.templates.map(t => t.id), 0) + 1;
+        async addTemplate(template: Omit<Template, 'id'>) {
+            try {
+                const response = await fetch('/api/templates', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(template),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const newTemplate = await response.json();
+                update(store => ({
+                    ...store,
+                    templates: [...store.templates, newTemplate],
+                    selectedId: newTemplate.id,
+                    error: null
+                }));
+                
+                return newTemplate;
+            } catch (err) {
+                console.error('Error adding template:', err);
+                // Fall back to local addition for now
+                const newId = Math.max(...(get(templateStore).templates.map(t => t.id)), 0) + 1;
                 const newTemplate: Template = {
                     id: newId,
                     ...template,
@@ -64,29 +94,76 @@ function createTemplateStore() {
                     }
                 };
                 
-                return {
+                update(store => ({
                     ...store,
                     templates: [...store.templates, newTemplate],
-                    selectedId: newId
-                };
-            });
+                    selectedId: newId,
+                    error: 'Template added locally - API integration needed'
+                }));
+                
+                return newTemplate;
+            }
         },
 
-        updateTemplate: (id: number, updates: Partial<Template>) => {
-            update(store => ({
-                ...store,
-                templates: store.templates.map(t => 
-                    t.id === id ? { ...t, ...updates } : t
-                )
-            }));
+        async updateTemplate(id: number, updates: Partial<Template>) {
+            try {
+                const response = await fetch(`/api/templates/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(updates),
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const updatedTemplate = await response.json();
+                update(store => ({
+                    ...store,
+                    templates: store.templates.map(t => 
+                        t.id === id ? updatedTemplate : t
+                    ),
+                    error: null
+                }));
+                
+                return updatedTemplate;
+            } catch (err) {
+                console.error('Error updating template:', err);
+                update(store => ({
+                    ...store,
+                    error: err instanceof Error ? err.message : 'Failed to update template'
+                }));
+                throw err;
+            }
         },
 
-        deleteTemplate: (id: number) => {
-            update(store => ({
-                ...store,
-                templates: store.templates.filter(t => t.id !== id),
-                selectedId: store.selectedId === id ? null : store.selectedId
-            }));
+        async deleteTemplate(id: number) {
+            try {
+                const response = await fetch(`/api/templates/${id}`, {
+                    method: 'DELETE',
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                update(store => ({
+                    ...store,
+                    templates: store.templates.filter(t => t.id !== id),
+                    selectedId: store.selectedId === id ? null : store.selectedId,
+                    error: null
+                }));
+                
+            } catch (err) {
+                console.error('Error deleting template:', err);
+                update(store => ({
+                    ...store,
+                    error: err instanceof Error ? err.message : 'Failed to delete template'
+                }));
+                throw err;
+            }
         },
 
         // Development helpers
@@ -117,8 +194,10 @@ export const selectedTemplate = derived(
     templateStore,
     $store => $store.templates.find(t => t.id === $store.selectedId)
 );
-// Load mock data based on configuration flag instead of DEV check
+// Load data on store initialization
 if (USE_MOCK_DATA) {
+    // For development/testing with mock data
     templateStore.loadMockData();
 }
+// Note: Templates are loaded via fetchTemplates() call in +layout.svelte
 

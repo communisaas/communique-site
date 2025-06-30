@@ -20,3 +20,9 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Prisma
+/node_modules/.prisma/client
+
+# Private documentation
+CombinedCWCDocumentation1.0.md

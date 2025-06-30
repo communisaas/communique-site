@@ -1,11 +1,9 @@
 import { hash, verify } from '@node-rs/argon2';
 import { generateRandomString } from '@oslojs/crypto/random';
 import { fail, redirect } from '@sveltejs/kit';
-import { eq } from 'drizzle-orm';
 import { dev } from '$app/environment';
 import * as auth from '$lib/server/auth';
 import { db } from '$lib/server/db';
-import * as table from '$lib/server/db/schema';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async (event) => {
@@ -28,9 +26,9 @@ export const actions: Actions = {
 			return fail(400, { message: 'Invalid password' });
 		}
 
-		const results = await db.select().from(table.user).where(eq(table.user.username, username));
-
-		const existingUser = results.at(0);
+		const existingUser = await db.user.findUnique({
+			where: { username }
+		});
 		if (!existingUser) {
 			return fail(400, { message: 'Incorrect username or password' });
 		}
@@ -78,8 +76,9 @@ export const actions: Actions = {
 		});
 
 		try {
-			await db.insert(table.user).values({ id: userId, username, passwordHash });
-
+			await db.user.create({
+				data: { id: userId, username, passwordHash }
+			});
 			const session = await auth.createSession(userId);
 			event.cookies.set(auth.sessionCookieName, session.id, {
 				path: '/',
@@ -88,10 +87,10 @@ export const actions: Actions = {
 				expires: session.expiresAt,
 				secure: !dev
 			});
+			return redirect(302, '/demo/lucia');
 		} catch (e) {
 			return fail(500, { message: 'An error has occurred' });
 		}
-		return redirect(302, '/demo/lucia');
 	}
 };
 
