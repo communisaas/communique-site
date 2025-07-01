@@ -10,9 +10,6 @@
 	};
 	export let context: TemplateCreationContext;
 
-	// Debug data changes
-	$: console.log('ObjectiveDefiner data:', data);
-
 	// Initialize data if empty
 	$: if (!data.title) data.title = '';
 	$: if (!data.goal) data.goal = '';

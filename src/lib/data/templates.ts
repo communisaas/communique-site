@@ -167,7 +167,10 @@ Thank you for your service,
 			sent: 3156,
 			opened: 0,        // Not trackable
 			clicked: 0,       // Not used for congressional
-			responded: 2834   // Delivery confirmations from congressional offices (89.8% delivery rate)
+			responded: 2834,  // Legacy delivery confirmations
+			districts_covered: 387,    // Unique districts reached
+			total_districts: 435,      // Total House districts
+			district_coverage_percent: 89  // 387/435 = 88.97%, rounded to 89%
 		},
 		delivery_config: {
 			timing: 'immediate',

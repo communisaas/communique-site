@@ -6,9 +6,12 @@
 
 	let { children } = $props();
 
-	// Initialize templates on app load
+	// Progressive enhancement: Initialize with static data immediately, then fetch from API
 	onMount(() => {
-		// Load templates from API
+		// Initialize with static data for immediate render
+		templateStore.initializeWithStaticData();
+
+		// Then fetch fresh data from API (will auto-replace static data)
 		templateStore.fetchTemplates();
 	});
 </script>

@@ -1,5 +1,6 @@
 import { writable, derived } from 'svelte/store';
 import type { Template } from '$lib/types/template';
+import { templates as staticTemplates } from '$lib/data/templates';
 
 interface TemplateState {
 	templates: Template[];
@@ -7,6 +8,7 @@ interface TemplateState {
 	loading: boolean;
 	error: string | null;
 	lastUpdated?: Date;
+	initialized: boolean;
 }
 
 function createTemplateStore() {
@@ -14,17 +16,44 @@ function createTemplateStore() {
 		templates: [],
 		selectedId: null,
 		loading: false,
-		error: null
+		error: null,
+		initialized: false
 	});
 
 	return {
 		subscribe,
+		
+		// Initialize with static data for immediate render
+		initializeWithStaticData() {
+			const templatesWithIds = staticTemplates.map((template, index) => ({
+				...template,
+				id: `static-${index + 1}` // Generate consistent IDs for static data
+			}));
+			
+			update((state) => ({
+				...state,
+				templates: templatesWithIds,
+				selectedId: templatesWithIds[0]?.id || null, // Auto-select first template
+				initialized: true
+			}));
+		},
+
 		// Core template management
 		selectTemplate: (id: string) => {
 			update((state) => ({ ...state, selectedId: id }));
 		},
 
-		// API Integration - TODO: Update once Prisma API routes are ready
+		// Auto-select first template when templates change
+		autoSelectFirst() {
+			update((state) => {
+				if (state.templates.length > 0 && !state.selectedId) {
+					return { ...state, selectedId: state.templates[0].id };
+				}
+				return state;
+			});
+		},
+
+		// API Integration with progressive enhancement
 		async fetchTemplates() {
 			update((state) => ({ ...state, loading: true, error: null }));
 			try {
@@ -33,13 +62,24 @@ function createTemplateStore() {
 					throw new Error(`HTTP error! status: ${response.status}`);
 				}
 				const data = await response.json();
-				update((state) => ({
-					...state,
-					templates: data,
-					loading: false,
-					error: null,
-					lastUpdated: new Date()
-				}));
+				
+				update((state) => {
+					const newState = {
+						...state,
+						templates: data,
+						loading: false,
+						error: null,
+						lastUpdated: new Date(),
+						initialized: true
+					};
+					
+					// Auto-select first template if none selected or selected template no longer exists
+					if (!newState.selectedId || !data.find((t: Template) => t.id === newState.selectedId)) {
+						newState.selectedId = data[0]?.id || null;
+					}
+					
+					return newState;
+				});
 			} catch (err) {
 				console.error('Error fetching templates:', err);
 				update((state) => ({
@@ -47,6 +87,11 @@ function createTemplateStore() {
 					loading: false,
 					error: err instanceof Error ? err.message : 'Failed to fetch templates'
 				}));
+				
+				// Fallback to static data if API fails and we haven't initialized yet
+				if (!state.initialized) {
+					this.initializeWithStaticData();
+				}
 			}
 		},
 
@@ -69,7 +114,7 @@ function createTemplateStore() {
 				update((store) => ({
 					...store,
 					templates: [...store.templates, newTemplate],
-					selectedId: newTemplate.id,
+					selectedId: newTemplate.id, // Auto-select newly created template
 					error: null
 				}));
 
@@ -126,12 +171,17 @@ function createTemplateStore() {
 					throw new Error(`HTTP error! status: ${response.status}`);
 				}
 
-				update((store) => ({
-					...store,
-					templates: store.templates.filter((t) => t.id !== id),
-					selectedId: store.selectedId === id ? null : store.selectedId,
-					error: null
-				}));
+				update((store) => {
+					const newTemplates = store.templates.filter((t) => t.id !== id);
+					const newSelectedId = store.selectedId === id ? (newTemplates[0]?.id || null) : store.selectedId;
+					
+					return {
+						...store,
+						templates: newTemplates,
+						selectedId: newSelectedId,
+						error: null
+					};
+				});
 			} catch (err) {
 				console.error('Error deleting template:', err);
 				update((store) => ({
@@ -148,7 +198,8 @@ function createTemplateStore() {
 				templates: [],
 				selectedId: null,
 				loading: false,
-				error: null
+				error: null,
+				initialized: false
 			});
 		}
 	};
@@ -160,5 +211,9 @@ export const selectedTemplate = derived(
 	templateStore,
 	($store) => $store.templates.find((t) => t.id === $store.selectedId)
 );
-// Note: Templates are loaded via fetchTemplates() call in +layout.svelte
+
+// Helper derived stores for better UX
+export const isLoading = derived(templateStore, ($store) => $store.loading);
+export const hasError = derived(templateStore, ($store) => !!$store.error);
+export const isInitialized = derived(templateStore, ($store) => $store.initialized);
 

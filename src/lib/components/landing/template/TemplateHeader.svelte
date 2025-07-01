@@ -26,6 +26,10 @@
 				{template.category}
 			</span>
 			<Badge type={template.deliveryMethod === 'both' ? 'certified' : 'direct'} />
+			<div class="flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm">
+				<Send class="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+				<span>{template.metrics.sent.toLocaleString()} sent</span>
+			</div>
 		</div>
 	</div>
 	<div class="flex items-center">

@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { updateTemplateDistrictMetrics } from '$lib/server/district-metrics';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -12,6 +13,20 @@ export const GET: RequestHandler = async ({ params }) => {
 
 		if (!template) {
 			return error(404, 'Template not found');
+		}
+
+		// Update district metrics for congressional templates
+		if (template.deliveryMethod === 'both') {
+			await updateTemplateDistrictMetrics(templateId);
+			
+			// Refetch template to get updated metrics
+			const updatedTemplate = await db.template.findUnique({
+				where: { id: templateId }
+			});
+			
+			if (updatedTemplate) {
+				template.metrics = updatedTemplate.metrics;
+			}
 		}
 
 		const formattedTemplate = {

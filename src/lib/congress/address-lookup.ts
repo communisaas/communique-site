@@ -153,7 +153,7 @@ export class AddressLookupService {
             // - Congress.gov district lookup
             // - Local lookup table
             
-            console.log(`Looking up district for ZIP ${cleanZip} in ${state}`);
+            
             
             // For now, return a placeholder
             // In production, implement actual lookup

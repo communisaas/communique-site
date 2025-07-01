@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         // Validate representatives data structure
         const repsData: UserRepsData = representatives;
         
-        console.log(`Storing representatives for user ${userId}`);
+        
         
         // Start transaction to ensure data consistency
         const result = await db.$transaction(async (tx) => {

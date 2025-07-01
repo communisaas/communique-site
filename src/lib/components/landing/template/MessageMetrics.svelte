@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Send, Landmark, Building2, CheckCircle, User, Users } from 'lucide-svelte';
+	import { Send, Landmark, Building2, MapPin, User, Users } from 'lucide-svelte';
 	import Tooltip from '../../ui/Tooltip.svelte';
 	import type { Template } from '$lib/types/template';
 
@@ -14,10 +14,23 @@
 	$: badgeType =
 		template.deliveryMethod === 'both' ? 'certified' : ('direct' as 'certified' | 'direct');
 
-	// Calculate delivery confirmation rate for congressional templates
-	function getDeliveryRate(template: Template): string {
+	// Calculate district coverage for congressional templates
+	function getDistrictCoverage(template: Template): string {
+		// Use the pre-calculated percentage if available
+		if (template.metrics.district_coverage_percent !== undefined) {
+			return `${template.metrics.district_coverage_percent}%`;
+		}
+
+		// Fallback: calculate from districts_covered and total_districts
+		if (template.metrics.districts_covered && template.metrics.total_districts) {
+			const percentage = Math.round(
+				(template.metrics.districts_covered / template.metrics.total_districts) * 100
+			);
+			return `${percentage}%`;
+		}
+
+		// Legacy fallback: use old delivery rate calculation
 		if (template.metrics.sent === 0) return '0%';
-		// For congressional templates, "responded" represents delivery confirmations
 		return Math.round((template.metrics.responded / template.metrics.sent) * 100) + '%';
 	}
 
@@ -26,9 +39,9 @@
 			icon: Landmark,
 			tooltip: 'Delivered through Congressional Web Communication system',
 			value: `${formatNumber(template.metrics.sent)} sent`,
-			secondaryIcon: CheckCircle,
-			secondaryTooltip: 'Percentage confirmed delivered to congressional offices',
-			secondaryValue: `${getDeliveryRate(template)} delivered`
+			secondaryIcon: MapPin,
+			secondaryTooltip: 'Percentage of congressional districts covered by this campaign',
+			secondaryValue: `${getDistrictCoverage(template)} districts covered`
 		},
 		direct: {
 			icon: Building2,

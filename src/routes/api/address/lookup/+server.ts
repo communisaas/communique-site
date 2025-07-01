@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ request }) => {
             throw error(400, 'ZIP code must be in format 12345 or 12345-6789');
         }
         
-        console.log(`Looking up representatives for address: ${address.city}, ${address.state} ${address.zip}`);
+        
         
         // Perform the lookup
         const userReps = await addressLookup.lookupRepsByAddress(address);

@@ -21,15 +21,6 @@
 	};
 
 	let itemsToShow = 2;
-
-	// function updateItemsToShow() {
-	//     itemsToShow = window.innerWidth >= 640 ? 3 : 2;
-	// }
-
-	// $: if (typeof window !== 'undefined') {
-	//     window.addEventListener('resize', updateItemsToShow);
-	//     updateItemsToShow();
-	// }
 </script>
 
 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
