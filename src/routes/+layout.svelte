@@ -4,7 +4,7 @@
 	import '../app.css';
 	import Footer from '$lib/components/layout/Footer.svelte';
 
-	let { children } = $props();
+	let { children, data } = $props();
 
 	// Progressive enhancement: Initialize with static data immediately, then fetch from API
 	onMount(() => {

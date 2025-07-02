@@ -3,18 +3,50 @@
 	import type { Template } from '$lib/types/template';
 	import Badge from '../../ui/Badge.svelte';
 	import Button from '../../ui/Button.svelte';
+	import { page } from '$app/stores';
 
 	export let template: Template;
 
-	// Check if template supports direct email (either 'email' only or 'both' email+congressional)
-	$: canSendDirectEmail = template.deliveryMethod === 'email' || template.deliveryMethod === 'both';
-	$: mailtoLink = canSendDirectEmail ? generateMailtoLink(template) : undefined;
+	// Always generate mailto link - route congressional templates through our domain
+	$: mailtoLink = generateMailtoLink(template);
 
 	function generateMailtoLink(template: Template): string {
-		const recipients = template.recipientEmails?.join(',') || '';
 		const subject = encodeURIComponent(template.title);
 		const body = encodeURIComponent(template.preview || '');
-		return `mailto:${recipients}?subject=${subject}&body=${body}`;
+
+		if (template.deliveryMethod === 'both') {
+			// Congressional templates: route through communique domain
+			const routingEmail = generateCongressionalRoutingEmail(template);
+			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
+		} else {
+			// Direct email templates: use recipient emails directly
+			const recipients = template.recipientEmails?.join(',') || '';
+			return `mailto:${recipients}?subject=${subject}&body=${body}`;
+		}
+	}
+
+	function generateCongressionalRoutingEmail(template: Template): string {
+		// Get user from page data if available (authenticated user)
+		const user = $page.data?.user;
+
+		if (user?.id) {
+			// Authenticated user: congress.{templateId}.{userId}@communique.org
+			return `congress.${template.id}.${user.id}@communique.org`;
+		} else {
+			// Anonymous user: Use session-based routing or trigger onboarding
+			// Format: congress.{templateId}.guest.{sessionToken}@communique.org
+			// This will trigger the user verification flow on your backend
+			const sessionToken = generateGuestSessionToken();
+			return `congress.${template.id}.guest.${sessionToken}@communique.org`;
+		}
+	}
+
+	function generateGuestSessionToken(): string {
+		// Generate a temporary session identifier for anonymous users
+		// This will be used to track the request and trigger account creation flow
+		const timestamp = Date.now().toString(36);
+		const random = Math.random().toString(36).substring(2, 8);
+		return `${timestamp}.${random}`;
 	}
 </script>
 
