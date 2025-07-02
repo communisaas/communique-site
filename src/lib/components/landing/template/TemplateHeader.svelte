@@ -6,7 +6,9 @@
 
 	export let template: Template;
 
-	$: mailtoLink = template.type === 'direct' ? generateMailtoLink(template) : undefined;
+	// Check if template supports direct email (either 'email' only or 'both' email+congressional)
+	$: canSendDirectEmail = template.deliveryMethod === 'email' || template.deliveryMethod === 'both';
+	$: mailtoLink = canSendDirectEmail ? generateMailtoLink(template) : undefined;
 
 	function generateMailtoLink(template: Template): string {
 		const recipients = template.recipientEmails?.join(',') || '';

@@ -5,7 +5,7 @@ import { templates as staticTemplates } from '$lib/data/templates';
 export async function GET() {
 	try {
 		// Attempt to fetch from database
-		const dbTemplates = await db.template.findMany({
+		const dbTemplates = await db.Template.findMany({
 			where: {
 				is_public: true
 			},
@@ -16,7 +16,7 @@ export async function GET() {
 
 		// If we have database templates, format and return them
 		if (dbTemplates && dbTemplates.length > 0) {
-			const formattedTemplates = dbTemplates.map(template => ({
+			const formattedTemplates = dbTemplates.map((template) => ({
 				id: template.id,
 				title: template.title,
 				description: template.description,
@@ -59,25 +59,19 @@ export async function GET() {
 }
 
 export async function POST({ request }) {
-	const body = await request.json();
+	try {
+		const templateData = await request.json();
+		
+		const newTemplate = await db.Template.create({
+			data: {
+				...templateData,
+				is_public: true
+			}
+		});
 
-	const newTemplate = await db.template.create({
-		data: {
-			title: body.title,
-			description: body.description,
-			category: body.category,
-			type: body.type,
-			deliveryMethod: body.deliveryMethod,
-			preview: body.preview,
-			message_body: body.preview, // Using preview as the message body for now
-			subject: `New Campaign: ${body.title}`, // Placeholder subject
-			metrics: body.metrics || {},
-			delivery_config: {}, // Placeholder
-			recipient_config: body.recipientEmails ? { emails: body.recipientEmails } : {},
-			is_public: false, // New templates are drafts by default
-			status: 'draft'
-		}
-	});
-
-	return json(newTemplate, { status: 201 });
+		return json(newTemplate);
+	} catch (error) {
+		console.error('Error creating template:', error);
+		return json({ error: 'Failed to create template' }, { status: 500 });
+	}
 } 
