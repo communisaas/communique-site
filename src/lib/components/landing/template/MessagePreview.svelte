@@ -12,6 +12,7 @@
 	let isAtBottom = false;
 	let isScrollable = false;
 	let activeVariable: string | null = null;
+	let variableValues: Record<string, string> = {};
 
 	interface Segment {
 		type: 'text' | 'variable';
@@ -57,6 +58,15 @@
 				type: 'text',
 				content: text.slice(currentIndex)
 			});
+		}
+
+		// Initialize variable values
+		if (Object.keys(variableValues).length === 0) {
+			for (const segment of segments) {
+				if (segment.type === 'variable' && segment.name) {
+					variableValues[segment.name] = '';
+				}
+			}
 		}
 
 		return segments;
@@ -155,6 +165,21 @@
 		dispatch('variableSelect', { variableName, active: activeVariable === variableName });
 	}
 
+	function handleInput(e: Event, name: string) {
+		const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+		variableValues[name] = target.value;
+
+		// Automatically resize textarea
+		if (target.tagName.toLowerCase() === 'textarea') {
+			target.style.height = 'auto';
+			target.style.height = `${target.scrollHeight}px`;
+		}
+	}
+
+	function handleBlur() {
+		activeVariable = null;
+	}
+
 	$: if (browser && preview) {
 		setTimeout(() => {
 			updateScrollState();
@@ -198,50 +223,51 @@
 			on:touchmove={handleTouch}
 			on:touchend={handleTouchEnd}
 			data-scrollable={isScrollable}
-			class="absolute inset-0 touch-pan-y overflow-y-auto
-                   overscroll-contain whitespace-pre-line
-                   break-words rounded-lg
-                   border border-slate-200
-                   bg-slate-50 p-2 font-mono
-                   text-sm leading-normal
-                   text-slate-600 sm:p-4"
+			class="styled-scrollbar-track scrollbar-thumb-slate-300 scrollbar-track-slate-100/10
+                   absolute inset-0 overflow-y-auto whitespace-pre-wrap rounded-lg
+                   bg-slate-50/70 p-4"
 		>
-			{#each templateSegments as segment, i (i)}
-				{#if segment.type === 'text'}
-					<span class="align-baseline leading-normal">{segment.content}</span>
-				{:else}
-					<button
-						on:click={() => handleVariableClick(segment.name ?? '')}
-						class={getVariableClasses(activeVariable === segment.name)}
-					>
-						<div class="flex justify-center leading-normal">
-							<span class="break-words leading-normal">
-								{segment.name}
-							</span>
-						</div>
-					</button>
-				{/if}
-			{/each}
+			<p class="font-mono text-sm leading-normal text-slate-600">
+				{#each templateSegments as segment}
+					{#if segment.type === 'text'}
+						{segment.content}
+					{:else if segment.name}
+						{#if activeVariable === segment.name}
+							{#if segment.name.toLowerCase().includes('story') || segment.name
+									.toLowerCase()
+									.includes('reasoning')}
+								<textarea
+									value={variableValues[segment.name]}
+									on:input={(e) => handleInput(e, segment.name ?? '')}
+									on:blur={handleBlur}
+									placeholder={`Enter your ${segment.name}...`}
+									class="w-full resize-none overflow-hidden rounded-md border-blue-300 bg-white p-2
+                                           font-sans text-sm shadow-inner focus:border-blue-500 focus:ring-blue-500"
+									rows="3"
+									autofocus
+								/>
+							{:else}
+								<input
+									value={variableValues[segment.name]}
+									on:input={(e) => handleInput(e, segment.name ?? '')}
+									on:blur={handleBlur}
+									placeholder={`Enter ${segment.name}...`}
+									class="inline-block w-48 rounded-md border-blue-300 bg-white px-2 py-1 align-baseline
+                                           font-sans text-sm shadow-inner focus:border-blue-500 focus:ring-blue-500"
+									autofocus
+								/>
+							{/if}
+						{:else}
+							<button
+								class={getVariableClasses(activeVariable === segment.name)}
+								on:click={() => handleVariableClick(segment.name ?? '')}
+							>
+								{variableValues[segment.name] || `[${segment.name}]`}
+							</button>
+						{/if}
+					{/if}
+				{/each}
+			</p>
 		</div>
 	</div>
 </div>
-
-<style>
-	/* Custom scrollbar styling */
-	div[data-scrollable]::-webkit-scrollbar {
-		width: 8px;
-	}
-
-	div[data-scrollable]::-webkit-scrollbar-track {
-		background: transparent;
-	}
-
-	div[data-scrollable]::-webkit-scrollbar-thumb {
-		background-color: rgba(156, 163, 175, 0.5);
-		border-radius: 4px;
-	}
-
-	div[data-scrollable]::-webkit-scrollbar-thumb:hover {
-		background-color: rgba(156, 163, 175, 0.7);
-	}
-</style>
