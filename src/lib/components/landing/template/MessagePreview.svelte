@@ -3,6 +3,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
+	import Popover from '$lib/components/ui/Popover.svelte';
 
 	export let preview: string;
 	export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
@@ -262,7 +263,7 @@
 	}
 
 	// Update variable styling with more delightful interactions
-	function getVariableClasses(isActive: boolean, variableName: string, isHovered: boolean): string {
+	function getVariableClasses(isActive: boolean, variableName: string): string {
 		const isSystemVariable = systemVariables.has(variableName);
 		const isUserEditable = userEditableVariables.has(variableName);
 		const isEmpty = !variableValues[variableName] || variableValues[variableName].trim() === '';
@@ -383,58 +384,55 @@
 									/>
 								{/if}
 							{:else}
-								<button
-									class={getVariableClasses(
-										activeVariable === segment.name,
-										segment.name,
-										hoveredVariable === segment.name
-									)}
-									on:click={() => handleVariableClick(segment.name ?? '')}
-									on:mouseenter={() => handleVariableHover(segment.name ?? null)}
-									on:mouseleave={() => handleVariableHover(null)}
-								>
-									{#if systemVariables.has(segment.name)}
-										<User class="h-3 w-3 text-emerald-600" />
-									{:else if userEditableVariables.has(segment.name) && (!variableValues[segment.name] || variableValues[segment.name].trim() === '')}
-										<Sparkles class="h-3 w-3 text-purple-500" />
+								<Popover>
+									<svelte:fragment slot="trigger" let:trigger>
+										<button
+											use:trigger
+											class={getVariableClasses(activeVariable === segment.name, segment.name)}
+											on:click={() => handleVariableClick(segment.name ?? '')}
+										>
+											{#if systemVariables.has(segment.name)}
+												<User class="h-3 w-3 text-emerald-600" />
+											{:else if userEditableVariables.has(segment.name) && (!variableValues[segment.name] || variableValues[segment.name].trim() === '')}
+												<Sparkles class="h-3 w-3 text-purple-500" />
+											{/if}
+											{variableValues[segment.name] || segment.name}
+										</button>
+									</svelte:fragment>
+
+									<!-- User-editable hint popup -->
+									{#if userEditableVariables.has(segment.name) && variableHints[segment.name]}
+										<div class="w-64 p-3">
+											<div
+												class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"
+											>
+												<Sparkles class="h-4 w-4 text-purple-500" />
+												{variableHints[segment.name].prompt}
+											</div>
+											<p class="mb-3 text-xs italic text-slate-500">
+												"{getRandomExample(segment.name)}"
+											</p>
+											<div class="text-center text-xs text-slate-400">
+												Click the tag to personalize
+											</div>
+										</div>
 									{/if}
-									{variableValues[segment.name] || segment.name}
-								</button>
 
-								<!-- User-editable hint popup -->
-								{#if showingHint === segment.name && userEditableVariables.has(segment.name) && variableHints[segment.name]}
-									<div
-										class="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 shadow-xl"
-										transition:fly={{ y: 8, duration: 200 }}
-									>
-										<div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-											<Sparkles class="h-4 w-4 text-purple-500" />
-											{variableHints[segment.name].prompt}
+									<!-- System-populated hint popup -->
+									{#if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
+										<div class="w-64 p-3">
+											<div
+												class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"
+											>
+												<User class="h-4 w-4 text-emerald-500" />
+												{systemVariableHints[segment.name].title}
+											</div>
+											<p class="text-xs text-slate-600">
+												{systemVariableHints[segment.name].description}
+											</p>
 										</div>
-										<p class="mb-3 text-xs italic text-slate-500">
-											"{getRandomExample(segment.name)}"
-										</p>
-										<div class="text-center text-xs text-slate-400">
-											Click to personalize this section
-										</div>
-									</div>
-								{/if}
-
-								<!-- System-populated hint popup -->
-								{#if showingHint === segment.name && systemVariables.has(segment.name) && systemVariableHints[segment.name]}
-									<div
-										class="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 shadow-xl"
-										transition:fly={{ y: 8, duration: 200 }}
-									>
-										<div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-											<User class="h-4 w-4 text-emerald-500" />
-											{systemVariableHints[segment.name].title}
-										</div>
-										<p class="text-xs text-slate-600">
-											{systemVariableHints[segment.name].description}
-										</p>
-									</div>
-								{/if}
+									{/if}
+								</Popover>
 							{/if}
 						</span>
 					{/if}
