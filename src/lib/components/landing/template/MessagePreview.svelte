@@ -44,18 +44,19 @@
 			}
 		};
 
-	const systemVariableHints: Record<string, { prompt: string; detail: string }> = {
+	const systemVariableHints: Record<string, { title: string; description: string }> = {
+		'Representative Name': {
+			title: 'Auto-filled Variable',
+			description:
+				"This will be replaced with the representative's name based on the sender's address."
+		},
 		Name: {
-			prompt: '👤 Auto-filled Name',
-			detail: 'This is automatically populated using your profile name.'
+			title: 'Auto-filled Variable',
+			description: "This will be replaced with the sender's name from their user profile."
 		},
 		Address: {
-			prompt: '🏠 Auto-filled Address',
-			detail: 'We use your address from your profile for verification.'
-		},
-		'Representative Name': {
-			prompt: '🏛️ Auto-filled Official',
-			detail: 'This is set to the correct representative for your district.'
+			title: 'Auto-filled Variable',
+			description: "This will be replaced with the sender's address from their user profile."
 		}
 	};
 
@@ -220,12 +221,13 @@
 		if (activeVariable) return; // Don't show hints while editing
 		hoveredVariable = variableName;
 
+		// Show contextual hint after a brief delay for any variable type
 		if (variableName) {
 			setTimeout(() => {
 				if (hoveredVariable === variableName && !activeVariable) {
 					showingHint = variableName;
 				}
-			}, 300); // Slightly faster pop-up
+			}, 400);
 		} else {
 			showingHint = null;
 		}
@@ -265,33 +267,46 @@
 		const isUserEditable = userEditableVariables.has(variableName);
 		const isEmpty = !variableValues[variableName] || variableValues[variableName].trim() === '';
 
-		const baseClasses = `
-			inline-flex items-center gap-1
-			px-1.5 rounded leading-tight
-			font-mono text-sm
-			cursor-pointer transition-colors duration-200
-			align-baseline
-		`;
-
 		if (isSystemVariable) {
 			return `
-				${baseClasses}
-				bg-emerald-100/60 text-emerald-800 ring-1 ring-emerald-200/50
-				cursor-default
+				inline-flex items-center gap-1.5
+				px-1.5 py-0.5 rounded
+				font-mono text-sm leading-tight
+				transition-colors duration-200
+				bg-emerald-100/50 text-emerald-800 ring-1 ring-emerald-200/40
+				cursor-default align-baseline
 			`;
 		} else if (isUserEditable) {
+			const baseClasses = `
+				inline-flex items-center gap-1.5
+				px-1.5 py-0.5 rounded
+				font-mono text-sm leading-tight
+				cursor-pointer transition-all duration-200
+				align-baseline transform
+			`;
+
 			if (isActive) {
-				return `${baseClasses} bg-blue-100 text-blue-700 ring-2 ring-blue-300`;
+				return baseClasses + ' bg-blue-100 text-blue-700 ring-2 ring-blue-300 scale-105';
 			} else if (isEmpty) {
-				return `${baseClasses} bg-purple-100/70 text-purple-800 ring-1 ring-purple-200/80 hover:bg-purple-100`;
+				return (
+					baseClasses +
+					' bg-purple-100/60 text-purple-800 ring-1 ring-purple-200/70 hover:bg-purple-100 hover:ring-purple-300 hover:scale-105'
+				);
 			} else {
-				return `${baseClasses} bg-blue-100/80 text-blue-800 ring-1 ring-blue-200/80 hover:bg-blue-100`;
+				return (
+					baseClasses +
+					' bg-blue-100/70 text-blue-800 ring-1 ring-blue-200/60 hover:bg-blue-100 hover:ring-blue-300 hover:scale-105'
+				);
 			}
 		} else {
 			// Default styling for unknown variables
 			return `
-				${baseClasses}
+				inline-flex items-center
+				px-1.5 py-0.5 rounded
+				font-mono text-sm leading-tight
+				cursor-pointer transition-colors duration-200
 				bg-slate-100 text-slate-700 ring-1 ring-slate-200
+				align-baseline
 			`;
 		}
 	}
@@ -301,6 +316,18 @@
 	<div class="mb-2 flex shrink-0 items-center gap-2">
 		<Mail class="h-4 w-4 shrink-0 text-slate-500" />
 		<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
+	</div>
+
+	<!-- Enhanced Variable Legend with personality -->
+	<div class="mb-3 flex flex-wrap items-center gap-4 text-xs text-slate-600">
+		<div class="flex items-center gap-1.5">
+			<User class="h-3 w-3 text-emerald-600" />
+			<span class="text-emerald-700">Auto-filled from your profile</span>
+		</div>
+		<div class="flex items-center gap-1.5">
+			<Edit3 class="h-3 w-3 text-purple-600" />
+			<span class="text-purple-700">Click to personalize</span>
+		</div>
 	</div>
 
 	<div class="relative min-h-0 flex-1">
@@ -374,41 +401,39 @@
 									{variableValues[segment.name] || segment.name}
 								</button>
 
-								<!-- Contextual hint popup -->
-								{#if showingHint === segment.name}
-									{#if userEditableVariables.has(segment.name) && variableHints[segment.name]}
-										<div
-											class="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 shadow-xl"
-											transition:fly={{ y: 8, duration: 200 }}
-										>
-											<div
-												class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"
-											>
-												<Sparkles class="h-4 w-4 text-purple-500" />
-												{variableHints[segment.name].prompt}
-											</div>
-											<p class="mb-3 text-xs italic text-slate-500">
-												"{getRandomExample(segment.name)}"
-											</p>
-											<div class="text-center text-xs text-slate-400">
-												Click the purple tag to start writing
-											</div>
+								<!-- User-editable hint popup -->
+								{#if showingHint === segment.name && userEditableVariables.has(segment.name) && variableHints[segment.name]}
+									<div
+										class="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 shadow-xl"
+										transition:fly={{ y: 8, duration: 200 }}
+									>
+										<div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
+											<Sparkles class="h-4 w-4 text-purple-500" />
+											{variableHints[segment.name].prompt}
 										</div>
-									{:else if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
-										<div
-											class="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 shadow-xl"
-											transition:fly={{ y: 8, duration: 200 }}
-										>
-											<div
-												class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"
-											>
-												{systemVariableHints[segment.name].prompt}
-											</div>
-											<p class="text-xs text-slate-500">
-												{systemVariableHints[segment.name].detail}
-											</p>
+										<p class="mb-3 text-xs italic text-slate-500">
+											"{getRandomExample(segment.name)}"
+										</p>
+										<div class="text-center text-xs text-slate-400">
+											Click to personalize this section
 										</div>
-									{/if}
+									</div>
+								{/if}
+
+								<!-- System-populated hint popup -->
+								{#if showingHint === segment.name && systemVariables.has(segment.name) && systemVariableHints[segment.name]}
+									<div
+										class="absolute bottom-full left-1/2 z-20 mb-2 w-64 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-3 shadow-xl"
+										transition:fly={{ y: 8, duration: 200 }}
+									>
+										<div class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
+											<User class="h-4 w-4 text-emerald-500" />
+											{systemVariableHints[segment.name].title}
+										</div>
+										<p class="text-xs text-slate-600">
+											{systemVariableHints[segment.name].description}
+										</p>
+									</div>
 								{/if}
 							{/if}
 						</span>
