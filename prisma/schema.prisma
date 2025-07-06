@@ -25,6 +25,8 @@ model User {
   sessions               Session[]
   templates              Template[]
   representatives        user_representatives[]
+  personalizations       template_personalization[]
+  writing_style          user_writing_style?
 
   @@map("user")
 }
@@ -61,6 +63,9 @@ model Template {
   userId            String?             @map("user_id")
   user              User?               @relation(fields: [userId], references: [id])
   template_campaign template_campaign[]
+  personalizations  template_personalization[]
+  ai_suggestions    ai_suggestions[]
+  analytics         template_analytics[]
 
   @@map("template")
 }
@@ -143,4 +148,75 @@ model user_representatives {
 
   @@unique([user_id, representative_id])
   @@map("user_representatives")
+}
+
+// New models for enhanced templating features
+
+model template_personalization {
+  id                    String   @id @default(cuid())
+  user_id               String   @map("user_id")
+  template_id           String   @map("template_id")
+  variable_name         String   @map("variable_name")
+  custom_value          String   @map("custom_value")
+  usage_count           Int      @default(1) @map("usage_count")
+  last_used             DateTime @default(now()) @map("last_used")
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+  user                  User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  template              Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, template_id, variable_name])
+  @@map("template_personalization")
+}
+
+model ai_suggestions {
+  id                    String   @id @default(cuid())
+  template_id           String   @map("template_id")
+  variable_name         String   @map("variable_name")
+  category              String   // e.g., "personal_story", "reasoning", "example"
+  suggestion_text       String   @map("suggestion_text")
+  context_tags          Json?    @map("context_tags") // ["education", "family", "healthcare"]
+  usage_count           Int      @default(0) @map("usage_count")
+  effectiveness_score   Float?   @map("effectiveness_score") // ML-derived score
+  is_active             Boolean  @default(true) @map("is_active")
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+  template              Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id, variable_name])
+  @@map("ai_suggestions")
+}
+
+model user_writing_style {
+  id                    String   @id @default(cuid())
+  user_id               String   @unique @map("user_id")
+  tone_preference       String?  @map("tone_preference") // "formal", "casual", "passionate"
+  length_preference     String?  @map("length_preference") // "concise", "detailed", "moderate"
+  personal_themes       Json?    @map("personal_themes") // ["family", "career", "community"]
+  writing_samples       Json?    @map("writing_samples") // Store anonymized samples for ML
+  engagement_metrics    Json?    @map("engagement_metrics") // Track what works for this user
+  last_analyzed         DateTime? @map("last_analyzed")
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+  user                  User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_writing_style")
+}
+
+model template_analytics {
+  id                    String   @id @default(cuid())
+  template_id           String   @map("template_id")
+  variable_name         String   @map("variable_name")
+  date                  Date
+  total_uses            Int      @default(0) @map("total_uses")
+  personalization_rate  Float    @default(0) @map("personalization_rate") // % of users who customize
+  avg_length            Float?   @map("avg_length") // Average length of personalized content
+  engagement_score      Float?   @map("engagement_score") // Derived from campaign performance
+  top_themes            Json?    @map("top_themes") // Most common themes/topics
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+  template              Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@unique([template_id, variable_name, date])
+  @@map("template_analytics")
 }
