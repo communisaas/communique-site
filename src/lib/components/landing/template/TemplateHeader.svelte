@@ -1,6 +1,8 @@
 <script lang="ts">
+	/// <reference types="@sveltejs/kit" />
 	import { Send } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
+	import type { SvelteComponent } from 'svelte';
 	import Badge from '../../ui/Badge.svelte';
 	import Button from '../../ui/Button.svelte';
 	import { page } from '$app/stores';
@@ -12,7 +14,21 @@
 
 	function generateMailtoLink(template: Template): string {
 		const subject = encodeURIComponent(template.title);
-		const body = encodeURIComponent(template.preview || '');
+
+		let bodyForMailto = template.preview || '';
+
+		// Remove any placeholder variables that are on their own lines (block)
+		const blockRegex = new RegExp(`^[ \t]*\\[.*?\\][ \t]*\\r?\\n`, 'gm');
+		bodyForMailto = bodyForMailto.replace(blockRegex, '');
+
+		// Remove any remaining inline placeholder variables
+		const inlineRegex = new RegExp(`\\[.*?\\]`, 'g');
+		bodyForMailto = bodyForMailto.replace(inlineRegex, '');
+
+		// Clean up any extra newlines that might result from empty variables
+		bodyForMailto = bodyForMailto.replace(/\n{3,}/g, '\n\n').trim();
+
+		const body = encodeURIComponent(bodyForMailto);
 
 		if (template.deliveryMethod === 'both') {
 			// Congressional templates: route through communique domain
@@ -30,14 +46,13 @@
 		const user = $page.data?.user;
 
 		if (user?.id) {
-			// Authenticated user: congress.{templateId}.{userId}@communique.org
-			return `congress.${template.id}.${user.id}@communique.org`;
+			// Authenticated user: congress+{templateId}-{userId}@communique.org
+			return `congress+${template.id}-${user.id}@communique.org`;
 		} else {
 			// Anonymous user: Use session-based routing or trigger onboarding
-			// Format: congress.{templateId}.guest.{sessionToken}@communique.org
-			// This will trigger the user verification flow on your backend
+			// Format: congress+guest-{templateId}-{sessionToken}@communique.org
 			const sessionToken = generateGuestSessionToken();
-			return `congress.${template.id}.guest.${sessionToken}@communique.org`;
+			return `congress+guest-${template.id}-${sessionToken}@communique.org`;
 		}
 	}
 
@@ -46,7 +61,7 @@
 		// This will be used to track the request and trigger account creation flow
 		const timestamp = Date.now().toString(36);
 		const random = Math.random().toString(36).substring(2, 8);
-		return `${timestamp}.${random}`;
+		return `${timestamp}-${random}`;
 	}
 </script>
 

@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import type { RequestHandler } from './$types';
+import { resolveVariables } from '$lib/services/personalization';
 
 /**
  * Congressional Email Routing Handler
@@ -61,25 +62,33 @@ interface CongressionalRoutingInfo {
 }
 
 function parseCongressionalRoutingAddress(address: string): CongressionalRoutingInfo | null {
-	// Format: congress.{templateId}.{userId}@communique.org
-	// or: congress.{templateId}.guest.{sessionToken}@communique.org
-	
-	const match = address.match(/^congress\.([^.]+)\.(.+)@communique\.org$/);
-	if (!match) return null;
+	// Format: congress+{templateId}-{userId}@communique.org
+	// or: congress+guest-{templateId}-{sessionToken}@communique.org
 
-	const [, templateId, userPart] = match;
-	
-	if (userPart.startsWith('guest.')) {
-		const sessionToken = userPart.substring(6); // Remove 'guest.' prefix
+	const localPart = address.split('@')[0];
+	if (!localPart.startsWith('congress+')) return null;
+
+	const routingPart = localPart.substring(9); // Remove 'congress+'
+
+	if (routingPart.startsWith('guest-')) {
+		const guestPart = routingPart.substring(6); // Remove 'guest-'
+		const match = guestPart.match(/^([^-]+)-(.+)$/);
+		if (!match) return null;
+
+		const [, templateId, sessionToken] = match;
 		return {
 			templateId,
 			isGuest: true,
 			sessionToken
 		};
 	} else {
+		const match = routingPart.match(/^([^-]+)-(.+)$/);
+		if (!match) return null;
+
+		const [, templateId, userId] = match;
 		return {
 			templateId,
-			userId: userPart,
+			userId,
 			isGuest: false
 		};
 	}
@@ -99,7 +108,13 @@ async function handleAuthenticatedCongressionalRequest({
 	// 1. Look up user and their address
 	const user = await db.user.findUnique({
 		where: { id: userId },
-		include: { representatives: true }
+		include: {
+			representatives: {
+				include: {
+					representative: true
+				}
+			}
+		}
 	});
 
 	if (!user) {
@@ -107,9 +122,10 @@ async function handleAuthenticatedCongressionalRequest({
 	}
 
 	// 2. Get user's representatives (if not cached, look them up)
-	let representatives = user.representatives;
+	let representatives = user.representatives.map((r) => r.representative);
 	if (!representatives.length && user.zip) {
 		// Look up representatives based on user's address
+		// This is a placeholder, as lookupRepresentativesByAddress is not fully implemented
 		representatives = await lookupRepresentativesByAddress({
 			street: user.street || '',
 			city: user.city || '',
@@ -177,9 +193,53 @@ async function lookupRepresentativesByAddress(address: any) {
 	return [];
 }
 
-async function routeToRepresentatives(params: any) {
-	// TODO: Implement CWC routing
-	return [];
+async function routeToRepresentatives({
+	templateId,
+	user,
+	representatives,
+	subject,
+	body
+}: {
+	templateId: string;
+	user: any;
+	representatives: any[];
+	subject: string;
+	body: string;
+}) {
+	const deliveryResults = [];
+
+	// Fetch the original template to ensure variables are present
+	const template = await db.template.findUnique({
+		where: { id: templateId },
+		select: { body: true }
+	});
+
+	if (!template) {
+		console.error(`Template with ID ${templateId} not found.`);
+		// Continue with the user-provided body as a fallback
+	}
+
+	// Use the database template body for variable resolution, but preserve user's custom message.
+	// We assume the user's custom message replaces the '[Personal Connection]' variable.
+	const bodyForResolution = template
+		? template.body.replace(/\[Personal Connection\]/g, body)
+		: body;
+
+	for (const rep of representatives) {
+		const personalizedBody = resolveVariables(bodyForResolution, user, rep);
+
+		// TODO: Replace with actual CWC submission logic
+		console.log(`Routing to ${rep.name} at ${rep.official_url}`);
+		console.log(`Subject: ${subject}`);
+		console.log(`Body: ${personalizedBody}`);
+
+		deliveryResults.push({
+			representative: rep.name,
+			status: 'queued'
+		});
+	}
+
+	return deliveryResults;
 }
 
 async function storeGuestCongressionalRequest(params: any) {
