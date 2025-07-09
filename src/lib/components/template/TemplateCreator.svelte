@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { Building2, Users, Mail, Target, ArrowRight, ArrowLeft } from 'lucide-svelte';
+	import { Building2, Users, Mail, Target, ArrowRight, ArrowLeft } from '@lucide/svelte';
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
 	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
 	import AudienceSelector from './creator/AudienceSelector.svelte';
@@ -31,7 +31,8 @@
 		content: {
 			preview: '',
 			variables: []
-		}
+		},
+		review: {}
 	};
 
 	// Validation functions for each step
@@ -52,27 +53,21 @@
 		},
 		content: (data: TemplateFormData['content']) => {
 			const errors = [];
-			if (!data.preview) errors.push('Message content is required');
-			if (!data.preview.includes('[')) errors.push('Message should include at least one variable');
-
-			// Check for required variables based on template type
-			if (context.channelId === 'certified') {
-				if (!data.preview.includes('[Representative Name]')) {
-					errors.push('Congressional templates must include [Representative Name] variable');
-				}
-			}
+			if (!data.preview.trim()) errors.push('Message content is required');
+			// Note: We removed variable requirements to give writers more agency
+			// Templates work great with or without personalization variables
 			return errors;
 		},
 		review: () => [] // Review step doesn't need validation
 	};
 
 	$: isCurrentStepValid = (() => {
-		const currentErrors = validators[currentStep](formData[currentStep]);
+		const currentErrors = validators[currentStep](formData[currentStep] as any);
 		return currentErrors.length === 0;
 	})();
 
 	function validateCurrentStep(): boolean {
-		formErrors = validators[currentStep](formData[currentStep]);
+		formErrors = validators[currentStep](formData[currentStep] as any);
 		return formErrors.length === 0;
 	}
 
@@ -112,19 +107,24 @@
 		if (!validateCurrentStep()) return;
 
 		const template = {
-			type: context.channelId,
 			title: formData.objective.title,
 			description: formData.objective.goal,
 			category: formData.objective.category || 'General',
+			type: context.channelId,
 			deliveryMethod: context.channelTitle,
-			metrics: {
-				messages: '0 messages sent',
-				reach: `${formData.audience.recipientEmails.length} recipients`,
-				tooltip: `Campaign targeting ${formData.audience.recipientEmails.length} recipients`,
-				target: 'Custom List'
+			subject: `Regarding: ${formData.objective.title}`,
+			message_body: formData.content.preview,
+			preview: formData.content.preview.substring(0, 100),
+			delivery_config: {},
+			cwc_config: {},
+			recipient_config: {
+				emails: formData.audience.recipientEmails
 			},
-			preview: formData.content.preview,
-			recipientEmails: formData.audience.recipientEmails
+			metrics: {
+				sends: 0,
+				opens: 0,
+				clicks: 0
+			}
 		};
 
 		dispatch('save', template);
@@ -223,7 +223,7 @@
 					on:click={handleSave}
 					disabled={!isCurrentStepValid}
 				>
-					Create Template
+					Save Draft
 					<ArrowRight class="h-4 w-4" />
 				</button>
 			{:else}

@@ -1,0 +1,45 @@
+# Core Communique Concept: Dual Delivery Channels
+
+The Communique platform has two primary message delivery channels that are triggered from the same `mailto:` interaction design. It is critical to understand the distinction between them when working on any feature related to message templates, creation, or sending.
+
+The delivery channel is determined by `context.channelId`. The UI and logic, particularly in components like `MessageEditor.svelte`, often use a reactive variable `isCongressional` which is true when `context.channelId === 'certified'`.
+
+---
+
+## 1. Congressional Delivery (`channelId: 'certified'`)
+
+This is for formal communication from a constituent to their elected representative. It has specific requirements and personalization variables.
+
+-   **Purpose**: To allow users to easily contact their members of congress.
+-   **Key Variable**: `[Representative Name]`. This is a special variable that is automatically populated based on the sender's congressional district, which is looked up from their address.
+-   **Available Variables**:
+    -   `[Representative Name]` (Auto-filled)
+    -   `[Name]` (Auto-filled from user profile)
+    -   `[Address]` (Auto-filled from user profile)
+    -   `[Personal Story]`
+    -   `[Personal Reasoning]`
+-   **Required Variables**: `[Representative Name]`, `[Name]`, `[Address]` must be present in the template.
+
+---
+
+## 2. Direct Delivery (any `channelId` other than 'certified')
+
+This is a general-purpose channel for less formal communication.
+
+-   **Purpose**: General messaging, not necessarily to a political figure.
+-   **Available Variables**:
+    -   `[Name]` (Auto-filled from user profile)
+    -   `[Address]` (Auto-filled from user profile)
+    -   `[Personal Story]`
+    -   `[Personal Reasoning]`
+-   **Required Variables**: `[Name]`, `[Address]` must be present in the template.
+
+---
+
+## **Instruction for AI**
+
+When generating or modifying any code, **you must first determine which delivery channel is relevant**. Always check for conditional logic based on `isCongressional` or `context.channelId`. The distinction between these two channels is fundamental to the Communique project.
+description:
+globs:
+alwaysApply: false
+---

@@ -53,53 +53,68 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 };
 
-export const PUT: RequestHandler = async ({ params, request }) => {
+export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	try {
+		const session = await locals.auth.validate();
+		if (!session?.user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const templateId = params.id;
 		const updateData = await request.json();
-		
-		const updatedTemplate = await db.template.update({
-			where: { id: templateId },
-			data: {
-				...(updateData.title && { title: updateData.title }),
-				...(updateData.description && { description: updateData.description }),
-				...(updateData.category && { category: updateData.category }),
-				...(updateData.type && { type: updateData.type }),
-				...(updateData.deliveryMethod && { deliveryMethod: updateData.deliveryMethod }),
-				...(updateData.preview && { preview: updateData.preview }),
-				...(updateData.metrics && { metrics: updateData.metrics }),
-				...(updateData.recipientEmails !== undefined && { recipientEmails: updateData.recipientEmails }),
-			}
+
+		// Ensure the user owns this template before updating
+		const template = await db.template.findFirst({
+			where: { id: templateId, userId: session.user.id }
 		});
 
-		const formattedTemplate = {
-			id: parseInt(updatedTemplate.id), // Convert string ID to number
-			title: updatedTemplate.title,
-			description: updatedTemplate.description,
-			category: updatedTemplate.category,
-			type: updatedTemplate.type as 'certified' | 'direct',
-			deliveryMethod: updatedTemplate.deliveryMethod,
-			preview: updatedTemplate.preview,
-			metrics: updatedTemplate.metrics as any,
-			recipientEmails: updatedTemplate.recipientEmails as string[] | undefined
-		};
+		if (!template) {
+			return error(404, 'Template not found or you do not have permission to edit it');
+		}
 
-		return json(formattedTemplate);
+		// Prepare the data for the update
+		const dataToUpdate: any = { ...updateData };
+
+		// If the status is being changed to 'published', also set 'is_public' to true
+		if (updateData.status && updateData.status === 'published') {
+			dataToUpdate.is_public = true;
+		}
+
+		const updatedTemplate = await db.template.update({
+			where: { id: templateId },
+			data: dataToUpdate
+		});
+
+		return json(updatedTemplate);
 	} catch (err) {
 		console.error('Error updating template:', err);
 		return error(500, 'Failed to update template');
 	}
 };
 
-export const DELETE: RequestHandler = async ({ params }) => {
+export const DELETE: RequestHandler = async ({ params, locals }) => {
 	try {
+		const session = await locals.auth.validate();
+		if (!session?.user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const templateId = params.id;
 
-		const deletedTemplate = await db.template.delete({
+		// Ensure the user owns this template before deleting
+		const template = await db.template.findFirst({
+			where: { id: templateId, userId: session.user.id }
+		});
+
+		if (!template) {
+			return error(404, 'Template not found or you do not have permission to delete it');
+		}
+
+		await db.template.delete({
 			where: { id: templateId }
 		});
 
-		return json({ success: true, id: parseInt(deletedTemplate.id) });
+		return json({ success: true, id: templateId });
 	} catch (err) {
 		console.error('Error deleting template:', err);
 		return error(500, 'Failed to delete template');

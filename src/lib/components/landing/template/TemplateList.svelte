@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronRight } from 'lucide-svelte';
+	import { ChevronRight } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 	import Badge from '../../ui/Badge.svelte';
 	import MessageMetrics from './MessageMetrics.svelte';

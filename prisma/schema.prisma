@@ -207,7 +207,7 @@ model template_analytics {
   id                    String   @id @default(cuid())
   template_id           String   @map("template_id")
   variable_name         String   @map("variable_name")
-  date                  Date
+  date                  DateTime
   total_uses            Int      @default(0) @map("total_uses")
   personalization_rate  Float    @default(0) @map("personalization_rate") // % of users who customize
   avg_length            Float?   @map("avg_length") // Average length of personalized content

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Info } from 'lucide-svelte';
+	import { Info } from '@lucide/svelte';
 	import { onMount, onDestroy, tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import { activeTooltipId } from '$lib/stores/tooltip';
@@ -225,7 +225,7 @@
 	role="tooltip"
 	data-tooltip-id={id}
 	aria-label={content}
-	class="relative inline-flex items-center group cursor-help {containerClass}"
+	class="group relative inline-flex cursor-help items-center {containerClass}"
 	on:mouseenter={handleMouseEnter}
 	on:mouseleave={handleMouseLeave}
 	on:click={handleTouch}
@@ -233,27 +233,27 @@
 	on:touchend|preventDefault
 	on:keydown={handleKeyDown}
 >
-	<div class="truncate min-w-0">
+	<div class="min-w-0 truncate">
 		<slot />
 	</div>
 	{#if showInfoIcon}
 		<div bind:this={infoIconElement} class="relative">
-			<Info class="w-4 h-4 text-slate-400 ml-1 shrink-0" />
+			<Info class="ml-1 h-4 w-4 shrink-0 text-slate-400" />
 
 			<div
 				bind:this={tooltipElement}
-				class="fixed z-[100] px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg
-                       min-w-[12rem] whitespace-normal
-                       {show ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+				class="fixed z-[100] min-w-[12rem] whitespace-normal rounded-lg bg-slate-800 px-3 py-2 text-sm
+                       text-white shadow-lg
+                       {show ? 'opacity-100' : 'pointer-events-none opacity-0'}
                        {isPositioned ? 'transition-opacity duration-150' : 'transition-none'}"
 				style="top: 0; left: 0;"
 			>
 				{content}
 
 				<div
-					class="absolute w-0 h-0 border-[6px] border-transparent
+					class="absolute h-0 w-0 border-[6px] border-transparent
                             {position === 'top'
-						? 'top-full left-1/2 -translate-x-1/2 border-t-slate-800'
+						? 'left-1/2 top-full -translate-x-1/2 border-t-slate-800'
 						: ''}
                             {position === 'bottom'
 						? 'bottom-full left-1/2 -translate-x-1/2 border-b-slate-800'
@@ -270,18 +270,18 @@
 	{:else}
 		<div
 			bind:this={tooltipElement}
-			class="fixed z-[100] px-3 py-2 bg-slate-800 text-white text-sm rounded-lg shadow-lg
-                   min-w-[12rem] whitespace-normal
-                   {show ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+			class="fixed z-[100] min-w-[12rem] whitespace-normal rounded-lg bg-slate-800 px-3 py-2 text-sm
+                   text-white shadow-lg
+                   {show ? 'opacity-100' : 'pointer-events-none opacity-0'}
                    {isPositioned ? 'transition-opacity duration-150' : 'transition-none'}"
 			style="top: 0; left: 0;"
 		>
 			{content}
 
 			<div
-				class="absolute w-0 h-0 border-[6px] border-transparent
+				class="absolute h-0 w-0 border-[6px] border-transparent
                         {position === 'top'
-					? 'top-full left-1/2 -translate-x-1/2 border-t-slate-800'
+					? 'left-1/2 top-full -translate-x-1/2 border-t-slate-800'
 					: ''}
                         {position === 'bottom'
 					? 'bottom-full left-1/2 -translate-x-1/2 border-b-slate-800'

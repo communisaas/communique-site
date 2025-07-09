@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Lightbulb } from 'lucide-svelte';
+	import { Lightbulb } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
 
 	export let data: {

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Megaphone, Shield, AtSign } from 'lucide-svelte';
+	import { Megaphone, Shield, AtSign } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 
 	export let templates: Template[];

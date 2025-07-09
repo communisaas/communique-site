@@ -1,0 +1,21 @@
+# TypeScript Guidelines
+
+## Typing
+
+-   Strive for strong type safety. Avoid using `any` whenever possible.
+-   Use descriptive type and interface names.
+-   Define custom types in the `src/lib/types` directory.
+
+## Modules
+
+-   Use ES modules (`import`/`export`) for all new code.
+-   Use relative paths for imports within the `src/lib` directory.
+
+## Code Style
+
+-   Follow the rules defined in the `tsconfig.json` and `eslint.config.js` files.
+-   Use private class fields (`#`) where appropriate to encapsulate internal logic.
+description:
+globs:
+alwaysApply: false
+---

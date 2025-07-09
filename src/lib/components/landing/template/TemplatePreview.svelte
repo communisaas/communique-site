@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Template } from '$lib/types/template';
-	import { Mail, Users, ClipboardCopy, ClipboardCheck } from 'lucide-svelte';
+	import { Mail, Users, ClipboardCopy, ClipboardCheck } from '@lucide/svelte';
 	import TemplateHeader from './TemplateHeader.svelte';
 
 	import TemplateTips from './TemplateTips.svelte';

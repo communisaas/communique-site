@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Send } from 'lucide-svelte';
+	import { Send } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 	import Badge from '../../ui/Badge.svelte';
 	import Button from '../../ui/Button.svelte';

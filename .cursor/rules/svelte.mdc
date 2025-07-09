@@ -1,0 +1,26 @@
+# Svelte Guidelines
+
+## Component Structure
+
+-   Keep your components small and focused on a single responsibility.
+-   The script block should be at the top of the file, followed by the markup, and then the style block.
+-   Use `lang="ts"` in your script blocks for TypeScript support.
+
+## State Management
+
+-   For simple component state, use reactive statements (`$:`).
+-   For more complex state that needs to be shared across components, use Svelte stores. Define stores in the `src/lib/stores` directory.
+
+## Styling
+
+-   Scope styles to the component by using the `<style>` block without any modifiers.
+-   If you need to use global styles, add them to `src/app.css`.
+
+## Accessibility
+
+-   Ensure all interactive elements are accessible. Use ARIA attributes where necessary.
+-   Use the `svelte-check` package to help identify accessibility issues.
+description:
+globs:
+alwaysApply: false
+---

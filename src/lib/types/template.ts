@@ -47,4 +47,5 @@ export interface TemplateFormData {
         preview: string;
         variables: string[];
     };
+    review: Record<string, never>; // For validation purposes, no data to store
 } 

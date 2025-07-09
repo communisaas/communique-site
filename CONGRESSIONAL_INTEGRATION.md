@@ -169,8 +169,8 @@ GOOGLE_CIVIC_API_KEY="your_google_civic_api_key"
 - Lookup representatives once during onboarding
 - Fast advocacy processing (no API calls needed)
 - Cached representative data
-
-### ✅ **User Experience**
+  `
+  ### ✅ **User Experience**`
 - Seamless onboarding with address entry
 - Instant advocacy actions (reps already known)
 - Clear rep targeting ("Your Representative: John Smith")

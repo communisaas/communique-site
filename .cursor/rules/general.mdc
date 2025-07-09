@@ -1,0 +1,42 @@
+# General Guidelines
+
+## About the Project
+
+Communique is a SvelteKit application using TypeScript, Prisma for the database ORM, Tailwind CSS for styling, and Playwright for e2e testing. The goal of the project is to provide a platform for constituents to easily communicate with their elected representatives.
+
+## Development Workflow
+
+1.  **Branching**: Create a new branch for each new feature or bug fix. Branch names should be descriptive, e.g., `feature/add-user-authentication` or `fix/header-layout-issue`.
+2.  **Commits**: Write clear and concise commit messages. Use the conventional commit format (e.g., `feat: add user login page`, `fix: correct typo in hero section`).
+3.  **Pull Requests**: Before merging, pull requests must be reviewed by at least one other team member. The PR description should clearly explain the changes and why they were made.
+4.  **Testing**: Before submitting a pull request, ensure all existing tests are passing. If you are adding a new feature, please add corresponding tests. Run tests using `npm test`.
+
+## Coding Style
+
+-   Follow the existing coding style.
+-   Use Prettier for code formatting. Run `npm run format` before committing.
+-   Use the ESLint for linting. Run `npm run lint` to check for linting errors.
+-   Write clear and descriptive comments where necessary, but avoid over-commenting obvious code.
+
+## Prisma
+
+-   When you change the `schema.prisma` file, run `npx prisma generate` to update the Prisma client.
+-   To create a new migration, run `npx prisma migrate dev --name <migration-name>`.
+-   Use `npx prisma db push` for schema prototyping (not for production).
+
+## SvelteKit
+
+-   Use `.svelte` files for components.
+-   Routes are defined in the `src/routes` directory.
+-   For server-side logic, use `+page.server.ts` or `+layout.server.ts`.
+
+## Tailwind CSS
+
+-   Use utility classes from Tailwind CSS for styling.
+-   For custom styles, use the `tailwind.config.js` file.
+
+Remember to always keep the user experience in mind and to write clean, maintainable, and well-tested code.
+description:
+globs:
+alwaysApply: false
+---

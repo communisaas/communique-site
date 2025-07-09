@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Mail, Sparkles, User, Edit3 } from 'lucide-svelte';
+	import { Mail, Sparkles, User, Edit3 } from '@lucide/svelte';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
@@ -20,28 +20,21 @@
 
 	// Define which variables are system-populated vs user-editable
 	const systemVariables = new Set(['Name', 'Address', 'Representative Name']);
-	const userEditableVariables = new Set(['Personal Story', 'Personal Reasoning']);
+	const userEditableVariables = new Set(['Why This Matters']);
 
 	// Contextual hints and suggestions
 	const variableHints: Record<string, { prompt: string; examples: string[]; placeholder: string }> =
 		{
-			'Personal Story': {
-				prompt: '✨ Share your experience',
+			'Why This Matters': {
+				prompt: '💭 Share your perspective',
 				examples: [
 					'How has this issue affected your family?',
 					'Tell about a moment when this mattered to you',
-					'Share a personal experience that illustrates why this is important'
+					'Share why this policy would make a difference in your community',
+					'Explain how you see this impacting people like you'
 				],
-				placeholder: 'Share your personal experience with this issue...'
-			},
-			'Personal Reasoning': {
-				prompt: '💭 Add your perspective',
-				examples: [
-					'Why does this matter to you personally?',
-					'What would change if this policy were enacted?',
-					'How do you see this impacting your community?'
-				],
-				placeholder: 'Explain why this issue is important to you...'
+				placeholder:
+					'Share your story, reasoning, or perspective on why this issue matters to you...'
 			}
 		};
 
@@ -350,9 +343,7 @@
 					{:else if segment.name}
 						<span class="relative inline-block">
 							{#if activeVariable === segment.name && userEditableVariables.has(segment.name)}
-								{#if segment.name.toLowerCase().includes('story') || segment.name
-										.toLowerCase()
-										.includes('reasoning')}
+								{#if segment.name.toLowerCase().includes('why this matters')}
 									<div class="relative" transition:scale={{ duration: 200 }}>
 										<textarea
 											value={variableValues[segment.name]}
@@ -367,8 +358,11 @@
 										/>
 										<!-- Character count and encouragement -->
 										{#if variableValues[segment.name]?.length > 10}
-											<div class="absolute -bottom-6 right-0 text-xs text-blue-600" transition:fade>
-												{variableValues[segment.name].length} characters • Looking great! 🎉
+											<div
+												class="absolute -bottom-6 right-0 whitespace-nowrap text-xs text-blue-600"
+												transition:fade
+											>
+												{variableValues[segment.name].length} characters • Looking great!
 											</div>
 										{/if}
 									</div>

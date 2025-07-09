@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Lightbulb, Users, Landmark } from 'lucide-svelte';
+	import { Lightbulb, Users, Landmark } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import { onMount } from 'svelte';
 

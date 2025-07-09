@@ -2,7 +2,7 @@ import type { Template } from '$lib/types/template';
 
 interface AISuggestion {
     id: string;
-    category: 'personal_story' | 'reasoning' | 'example';
+    category: 'why_this_matters' | 'example';
     text: string;
     contextTags: string[];
     effectivenessScore?: number;
@@ -87,40 +87,28 @@ export class AISuggestionsService {
     private static getMockSuggestions(variableName: string, userContext?: UserContext): AISuggestion[] {
         const suggestions: AISuggestion[] = [];
 
-        if (variableName === 'Personal Story') {
+        if (variableName === 'Why This Matters') {
             suggestions.push(
                 {
-                    id: 'story-1',
-                    category: 'personal_story',
-                    text: 'As a parent in [city], I\'ve seen firsthand how this issue affects our community...',
-                    contextTags: ['family', 'community'],
+                    id: 'why-1',
+                    category: 'why_this_matters',
+                    text: 'As a parent in [city], I\'ve seen firsthand how this issue affects our community. My child\'s school lacks the resources needed for quality education, and this policy would make a real difference.',
+                    contextTags: ['family', 'community', 'education'],
                     effectivenessScore: 0.85
                 },
                 {
-                    id: 'story-2',
-                    category: 'personal_story',
-                    text: 'My experience working in [industry] has shown me the importance of...',
-                    contextTags: ['career', 'professional'],
-                    effectivenessScore: 0.78
-                }
-            );
-        }
-
-        if (variableName === 'Personal Reasoning') {
-            suggestions.push(
-                {
-                    id: 'reason-1',
-                    category: 'reasoning',
-                    text: 'This policy would directly benefit families like mine by...',
-                    contextTags: ['family', 'economic'],
+                    id: 'why-2',
+                    category: 'why_this_matters',
+                    text: 'My experience working in [industry] has shown me the importance of this policy. Without action, families like mine will continue to struggle with these challenges.',
+                    contextTags: ['career', 'professional', 'personal impact'],
                     effectivenessScore: 0.82
                 },
                 {
-                    id: 'reason-2',
-                    category: 'reasoning',
-                    text: 'Without action on this issue, our community will continue to face...',
-                    contextTags: ['community', 'urgency'],
-                    effectivenessScore: 0.79
+                    id: 'why-3',
+                    category: 'why_this_matters',
+                    text: 'This issue hits close to home for me. Last year, [specific example], and it opened my eyes to why we need change. I believe this policy would prevent others from facing similar challenges.',
+                    contextTags: ['personal story', 'specific experience', 'prevention'],
+                    effectivenessScore: 0.88
                 }
             );
         }
@@ -131,19 +119,14 @@ export class AISuggestionsService {
     private static getMockPrompts(variableName: string, templateCategory: string, userContext?: UserContext): string[] {
         const prompts: string[] = [];
 
-        if (variableName === 'Personal Story') {
+        if (variableName === 'Why This Matters') {
             prompts.push(
                 'Think of a specific moment when this issue affected you or someone you know',
-                'Consider how this topic relates to your daily life or work',
-                'Reflect on a conversation you\'ve had about this issue'
-            );
-        }
-
-        if (variableName === 'Personal Reasoning') {
-            prompts.push(
-                'What would change in your community if this policy were enacted?',
-                'How does this issue align with your values?',
-                'What would you tell a friend about why this matters?'
+                'Consider how this topic relates to your daily life, work, or community',
+                'Reflect on what would change in your life if this policy were enacted',
+                'Share why you feel compelled to speak up about this issue',
+                'Describe how this connects to your values or beliefs',
+                'Think about the future you want for your family or community'
             );
         }
 

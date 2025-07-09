@@ -14,9 +14,7 @@ I am writing to urge you to support the continuation and expansion of clean ener
 
 These incentives are crucial for making renewable energy accessible to families and small businesses in our community. They help reduce both energy costs and our environmental impact.
 
-[Personal Story]
-
-[Personal Reasoning]
+[Why This Matters]
 
 Thank you for your consideration of this important issue.
 
@@ -29,9 +27,7 @@ I am writing to urge you to support the continuation and expansion of clean ener
 
 These incentives are crucial for making renewable energy accessible to families and small businesses in our community. They help reduce both energy costs and our environmental impact.
 
-[Personal Story]
-
-[Personal Reasoning]
+[Why This Matters]
 
 Thank you for your consideration of this important issue.
 
@@ -73,9 +69,7 @@ I am writing to express my strong support for legislation that protects and expa
 
 Healthcare is a fundamental need, and policies that make it more accessible and affordable directly impact the wellbeing of our communities.
 
-[Personal Story]
-
-[Personal Reasoning]
+[Why This Matters]
 
 I urge you to prioritize healthcare access in upcoming legislative decisions.
 
@@ -88,9 +82,7 @@ I am writing to express my strong support for legislation that protects and expa
 
 Healthcare is a fundamental need, and policies that make it more accessible and affordable directly impact the wellbeing of our communities.
 
-[Personal Story]
-
-[Personal Reasoning]
+[Why This Matters]
 
 I urge you to prioritize healthcare access in upcoming legislative decisions.
 
@@ -134,9 +126,7 @@ I am writing to urge your support for increased federal funding for public educa
 
 Quality education is the foundation of strong communities and economic opportunity. Our schools need adequate resources to provide every child with the education they deserve.
 
-[Personal Story]
-
-[Personal Reasoning]
+[Why This Matters]
 
 Please prioritize education funding in upcoming budget decisions.
 
@@ -149,9 +139,7 @@ I am writing to urge your support for increased federal funding for public educa
 
 Quality education is the foundation of strong communities and economic opportunity. Our schools need adequate resources to provide every child with the education they deserve.
 
-[Personal Story]
-
-[Personal Reasoning]
+[Why This Matters]
 
 Please prioritize education funding in upcoming budget decisions.
 

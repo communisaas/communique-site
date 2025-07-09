@@ -58,14 +58,21 @@ export async function GET() {
 	}
 }
 
-export async function POST({ request }) {
+export async function POST({ request, locals }) {
 	try {
+		const session = await locals.auth.validate();
+		if (!session?.user) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
+
 		const templateData = await request.json();
-		
+
 		const newTemplate = await db.Template.create({
 			data: {
 				...templateData,
-				is_public: true
+				is_public: false, // Default to not public
+				status: 'draft', // Default to draft
+				userId: session.user.id // Associate with the current user
 			}
 		});
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Send, Landmark, Building2, MapPin, User, Users } from 'lucide-svelte';
+	import { Send, Landmark, Building2, MapPin, User, Users } from '@lucide/svelte';
 	import Tooltip from '../../ui/Tooltip.svelte';
 	import type { Template } from '$lib/types/template';
 

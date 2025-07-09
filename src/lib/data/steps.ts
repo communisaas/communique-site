@@ -1,4 +1,4 @@
-import { Users, Mail, Globe } from 'lucide-svelte';
+import { Users, Mail, Globe } from '@lucide/svelte';
 import type { ComponentType } from 'svelte';
 
 interface Step {
