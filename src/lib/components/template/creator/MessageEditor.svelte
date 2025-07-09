@@ -2,7 +2,6 @@
 	import { Lightbulb, Braces, Plus } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import { onMount } from 'svelte';
-	import type { spellcheckerService as SpellcheckerServiceType } from '$lib/services/spellchecker';
 
 	const placeholderText = `Start writing your template message...\n\n💡 Tip: Click the buttons above to add personalization.\n✨ Variables work even when left empty.`;
 
@@ -13,9 +12,9 @@
 	export let context: TemplateCreationContext;
 
 	// Variables depend on template type
-	const senderVariables = ['[Why This Matters]', '[Name]', '[Address]'];
+	const senderVariables = ['[Personal Connection]', '[Name]', '[Address]'];
 	const congressionalVariables = [
-		'[Why This Matters]',
+		'[Personal Connection]',
 		'[Representative Name]',
 		'[Name]',
 		'[Address]'
@@ -24,16 +23,11 @@
 	$: isCongressional = context.channelId === 'certified';
 	$: availableVariables = isCongressional ? congressionalVariables : senderVariables;
 	$: unusedVariables = availableVariables.filter((v) => !data.variables.includes(v));
-	$: hasPersonalTouch = data.variables.includes('[Why This Matters]');
+	$: hasPersonalTouch = data.variables.includes('[Personal Connection]');
 	$: hasAuthenticity = data.variables.includes('[Name]') || data.variables.includes('[Address]');
 
 	let autoAddSignature = true;
 	let screenReaderAnnouncement = '';
-	let misspelledWords: Set<string> = new Set();
-	let highlightedText = '';
-	let debounceTimer: number;
-
-	let spellcheckerService: typeof SpellcheckerServiceType;
 
 	function ensureRequiredVariables(currentPreview: string, previousPreview: string) {
 		// Only auto-add variables if user is starting to type in an empty editor and has auto-signature enabled
@@ -121,59 +115,12 @@
 	}
 
 	let previousPreview = data.preview;
-	async function checkSpelling(text: string) {
-		if (!spellcheckerService) return;
-		misspelledWords = await spellcheckerService.getMisspelledWords(text);
-		updateHighlightedText(text);
-	}
-
-	function updateHighlightedText(text: string) {
-		const words = text.split(/(\s+|[.,;!?])/);
-		const seenVariables = new Set<string>();
-
-		highlightedText = words
-			.map((word) => {
-				const isVariable = word.startsWith('[') && word.endsWith(']');
-				const cleanWord = word.replace(/[.,;!?]/g, '');
-				const classes = [];
-
-				if (isVariable) {
-					if (seenVariables.has(word)) {
-						classes.push('duplicate-variable');
-					}
-					seenVariables.add(word);
-				}
-
-				if (misspelledWords.has(cleanWord.toLowerCase())) {
-					classes.push('misspelled');
-				}
-
-				if (classes.length > 0) {
-					return `<span class="${classes.join(' ')}">${word}</span>`;
-				}
-
-				return word;
-			})
-			.join('');
-	}
-
-	onMount(async () => {
-		const serviceModule = await import('$lib/services/spellchecker');
-		spellcheckerService = serviceModule.spellcheckerService;
-		await checkSpelling(data.preview);
-	});
 
 	// Monitor changes to ensure required variables are always present when there's content
 	$: {
 		if (data.preview !== previousPreview) {
 			ensureRequiredVariables(data.preview, previousPreview);
-			updateHighlightedText(data.preview);
 			previousPreview = data.preview;
-
-			clearTimeout(debounceTimer);
-			debounceTimer = setTimeout(() => {
-				checkSpelling(data.preview);
-			}, 300);
 		}
 	}
 
@@ -204,7 +151,7 @@
 			<div class="flex flex-wrap items-center gap-2">
 				{#each availableVariables as variable}
 					{@const isUsed = data.variables.includes(variable)}
-					{@const isPersonal = variable === '[Why This Matters]'}
+					{@const isPersonal = variable === '[Personal Connection]'}
 					{@const isAuthenticity = ['[Name]', '[Address]', '[Representative Name]'].includes(
 						variable
 					)}
@@ -226,7 +173,7 @@
 						<Plus class="h-3 w-3" />
 						{variable.replace(/[\[\]]/g, '')}
 						{#if isPersonal}
-							<span class="ml-1 text-xs opacity-75">💭</span>
+							<span class="ml-1 text-xs opacity-75">✨</span>
 						{:else if isAuthenticity}
 							<span class="ml-1 text-xs opacity-75">🔒</span>
 						{/if}
@@ -238,9 +185,9 @@
 			{#if data.preview.trim() && unusedVariables.length > 0}
 				<div class="mt-2 rounded-md border border-blue-100 bg-blue-50 p-2">
 					<div class="text-xs text-blue-700">
-						{#if !hasPersonalTouch && unusedVariables.includes('[Why This Matters]')}
-							<span class="font-medium">💭 Make it personal:</span>
-							Share your story, reasoning, or perspective to help your message resonate.
+						{#if !hasPersonalTouch && unusedVariables.includes('[Personal Connection]')}
+							<span class="font-medium">💡 Consider adding your personal connection:</span>
+							Share why this issue matters to you - your story, reasoning, or perspective.
 						{:else if !hasAuthenticity && unusedVariables.some( (v) => ['[Name]', '[Address]'].includes(v) )}
 							<span class="font-medium">🔒 Add authenticity:</span>
 							Name and address help establish credibility with recipients.
@@ -269,19 +216,16 @@
 			</div>
 		</div>
 
-		<div class="relative">
-			<div class="mirror-text" aria-hidden="true">
-				{@html highlightedText}
-			</div>
-			<textarea
-				id="message-template"
-				bind:value={data.preview}
-				class="editor-textarea"
-				placeholder={placeholderText}
-				aria-describedby="message-help"
-				spellcheck="false"
-			></textarea>
-		</div>
+		<textarea
+			id="message-template"
+			bind:value={data.preview}
+			class="editor-textarea"
+			placeholder={placeholderText}
+			aria-describedby="message-help"
+			spellcheck="true"
+			lang="en"
+			data-testid="template-message-editor"
+		></textarea>
 		<p id="message-help" class="text-xs text-slate-500">
 			Click personalization buttons above or type variables manually using [square brackets]
 		</p>
@@ -331,35 +275,20 @@
 		border: 0;
 	}
 
-	.mirror-text,
 	.editor-textarea {
 		min-height: 200px;
 		width: 100%;
 		resize: vertical;
 		border-radius: 0.5rem;
 		padding: 0.5rem 0.75rem;
-		font-family: monospace;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 		font-size: 0.875rem;
 		line-height: 1.25rem;
 		white-space: pre-wrap;
 		word-wrap: break-word;
-	}
-
-	.mirror-text {
-		color: transparent;
-		z-index: 1;
-		pointer-events: none;
-		border: 1px solid transparent;
-	}
-
-	.editor-textarea {
-		position: absolute;
-		top: 0;
-		left: 0;
-		background-color: transparent;
-		z-index: 2;
 		border: 1px solid #d1d5db; /* border-slate-300 */
 		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
+		background-color: white;
 	}
 
 	.editor-textarea:focus {
@@ -372,16 +301,5 @@
 		--tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width))
 			var(--tw-ring-color);
 		box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-	}
-
-	/* svelte-ignore css-unused-selector */
-	.misspelled {
-		text-decoration: underline wavy red;
-		text-decoration-skip-ink: none;
-	}
-	/* svelte-ignore css-unused-selector */
-	.duplicate-variable {
-		text-decoration: underline wavy orange;
-		text-decoration-skip-ink: none;
 	}
 </style>

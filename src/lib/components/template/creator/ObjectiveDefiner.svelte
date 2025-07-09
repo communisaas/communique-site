@@ -44,6 +44,8 @@
 				class:border-red-300={!isTitleValid && data.title}
 				class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
 				placeholder="e.g., Tech Ethics Initiative"
+				spellcheck="true"
+				lang="en"
 			/>
 			{#if !isTitleValid && data.title}
 				<p class="mt-1 text-sm text-red-600">Title is required</p>
@@ -58,6 +60,8 @@
 				class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
 				rows="3"
 				placeholder="What specific change or action are you seeking?"
+				spellcheck="true"
+				lang="en"
 			/>
 			{#if !isGoalValid && data.goal}
 				<p class="mt-1 text-sm text-red-600">Goal is required</p>

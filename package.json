@@ -60,7 +60,6 @@
 		"@oslojs/encoding": "^1.1.0",
 		"@prisma/client": "^6.10.1",
 		"ncu": "^0.2.1",
-		"postgres": "^3.4.5",
-		"spell-checker-js": "^1.2.6"
+		"postgres": "^3.4.5"
 	}
 }

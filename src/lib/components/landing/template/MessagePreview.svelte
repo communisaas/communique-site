@@ -20,21 +20,22 @@
 
 	// Define which variables are system-populated vs user-editable
 	const systemVariables = new Set(['Name', 'Address', 'Representative Name']);
-	const userEditableVariables = new Set(['Why This Matters']);
+	const userEditableVariables = new Set(['Personal Connection']);
 
 	// Contextual hints and suggestions
 	const variableHints: Record<string, { prompt: string; examples: string[]; placeholder: string }> =
 		{
-			'Why This Matters': {
-				prompt: '💭 Share your perspective',
+			'Personal Connection': {
+				prompt: '✨ Share your connection',
 				examples: [
 					'How has this issue affected your family?',
+					'Why does this matter to you personally?',
 					'Tell about a moment when this mattered to you',
-					'Share why this policy would make a difference in your community',
-					'Explain how you see this impacting people like you'
+					'What would change if this policy were enacted?',
+					'How do you see this impacting your community?'
 				],
 				placeholder:
-					'Share your story, reasoning, or perspective on why this issue matters to you...'
+					'Share why this issue matters to you - your story, reasoning, or perspective...'
 			}
 		};
 
@@ -343,7 +344,9 @@
 					{:else if segment.name}
 						<span class="relative inline-block">
 							{#if activeVariable === segment.name && userEditableVariables.has(segment.name)}
-								{#if segment.name.toLowerCase().includes('why this matters')}
+								{#if segment.name.toLowerCase().includes('story') || segment.name
+										.toLowerCase()
+										.includes('reasoning')}
 									<div class="relative" transition:scale={{ duration: 200 }}>
 										<textarea
 											value={variableValues[segment.name]}

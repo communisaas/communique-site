@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Badge } from '$lib/components/ui/Badge.svelte';
-	import { Button } from '$lib/components/ui/Button.svelte';
-	import { FileText, Edit, Send, PlusCircle } from 'lucide-svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { FileText, Edit, Send, PlusCircle } from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 

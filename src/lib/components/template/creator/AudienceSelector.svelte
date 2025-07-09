@@ -122,6 +122,7 @@
 				on:blur={reformatEmailInput}
 				placeholder="Paste a list of email addresses, separated by commas, semicolons, or new lines."
 				class="h-48 w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+				spellcheck="true"
 			/>
 			<p class="text-xs text-slate-500">
 				{data.recipientEmails?.length || 0} unique email addresses detected.
