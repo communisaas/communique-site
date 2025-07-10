@@ -16,7 +16,7 @@ FROM base as build
 
 # Install packages needed to build node modules
 RUN apt-get update -qq && \
-    apt-get install -y python-is-python3 pkg-config build-essential openssl 
+    apt-get install -y python-is-python3 pkg-config build-essential openssl curl
 
 # Install node modules
 COPY --link package.json package-lock.json ./
@@ -29,6 +29,8 @@ COPY --link . .
 # Build application
 ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
+ARG CONGRESS_API_KEY
+ENV CONGRESS_API_KEY=$CONGRESS_API_KEY
 RUN npm run build
 
 # Remove development dependencies
@@ -39,7 +41,7 @@ FROM base
 
 # Install runtime dependencies
 RUN apt-get update -qq && \
-    apt-get install -y openssl && \
+    apt-get install -y openssl curl && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy built application
