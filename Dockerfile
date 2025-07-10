@@ -20,6 +20,7 @@ RUN apt-get update -qq && \
 
 # Install node modules
 COPY --link package.json package-lock.json ./
+COPY --link prisma ./prisma
 RUN npm ci --include=dev
 
 # Copy application code
