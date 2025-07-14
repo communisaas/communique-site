@@ -12,14 +12,18 @@ function generateSessionToken(): string {
 	return token;
 }
 
-export async function createSession(userId: string) {
+export async function createSession(userId: string, extended = false) {
 	const token = generateSessionToken();
 	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));
+	
+	// Extended sessions for social media acquisition funnel (90 days)
+	const expiryDays = extended ? 90 : 30;
+	
 	const session = await db.session.create({
 		data: {
 			id: sessionId,
 			userId,
-			expiresAt: new Date(Date.now() + DAY_IN_MS * 30)
+			expiresAt: new Date(Date.now() + DAY_IN_MS * expiryDays)
 		}
 	});
 	return session;

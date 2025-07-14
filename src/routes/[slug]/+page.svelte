@@ -1,19 +1,44 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import { ArrowLeft, Users, Clock, Eye, Share2, Copy, CheckCircle } from '@lucide/svelte';
 	import TemplateHeader from '$lib/components/landing/template/TemplateHeader.svelte';
 	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
+	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
+	import { guestState } from '$lib/stores/guestState';
 	import type { PageData } from './$types';
 	
 	export let data: PageData;
 	
 	let showCopied = false;
 	let showShareMenu = false;
+	let showOnboardingModal = false;
+	let showTemplateModal = false;
 	
 	$: template = data.template;
 	$: shareUrl = `${$page.url.origin}/${template.slug}`;
+	$: authRequired = $page.url.searchParams.get('auth') === 'required';
+	$: source = ($page.url.searchParams.get('source') || 'direct-link') as 'social-link' | 'direct-link' | 'share';
+	
+	onMount(() => {
+		// Store template context for guest users
+		if (!data.user) {
+			guestState.setTemplate(template.slug, template.title, source);
+		}
+		
+		// Auto-open auth modal if coming from protected modal route
+		if (authRequired && !data.user) {
+			showOnboardingModal = true;
+		}
+		
+		// Auto-open template modal for authenticated users from certain sources
+		if (data.user && (source === 'social-link' || authRequired)) {
+			showTemplateModal = true;
+		}
+	});
 	
 	function copyLink() {
 		navigator.clipboard.writeText(shareUrl);
@@ -119,9 +144,20 @@
 					
 					{#if data.user}
 						<span class="text-sm text-slate-600">Welcome back!</span>
+						<Button 
+							variant="primary" 
+							size="sm"
+							on:click={() => showTemplateModal = true}
+						>
+							Quick action
+						</Button>
 					{:else}
-						<Button href="/auth/login?returnTo=/{template.slug}" variant="primary" size="sm">
-							Sign in to save
+						<Button 
+							variant="primary" 
+							size="sm"
+							on:click={() => showOnboardingModal = true}
+						>
+							Get started
 						</Button>
 					{/if}
 				</div>
@@ -170,10 +206,46 @@
 			</p>
 			
 			{#if !data.user}
-				<p class="text-sm text-slate-500">
-					<a href="/auth/login" class="text-blue-600 hover:text-blue-700">Sign in</a> to track your impact and save templates
+				<Button 
+					variant="primary" 
+					size="lg"
+					on:click={() => showOnboardingModal = true}
+				>
+					Join the movement
+				</Button>
+				<p class="text-sm text-slate-500 mt-4">
+					Sign up to track your impact and discover more campaigns
 				</p>
+			{:else}
+				<Button 
+					variant="primary" 
+					size="lg"
+					on:click={() => showTemplateModal = true}
+				>
+					Take action now
+				</Button>
 			{/if}
 		</div>
 	</main>
 </div>
+
+<!-- Modals -->
+{#if showOnboardingModal}
+	<OnboardingModal 
+		{template}
+		{source}
+		on:close={() => showOnboardingModal = false}
+	/>
+{/if}
+
+{#if showTemplateModal}
+	<TemplateModal 
+		{template}
+		user={data.user}
+		on:close={() => showTemplateModal = false}
+		on:used={() => {
+			showTemplateModal = false;
+			// Could show success toast or redirect
+		}}
+	/>
+{/if}

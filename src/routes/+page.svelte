@@ -6,16 +6,24 @@
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
+	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
+	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import { browser } from '$app/environment';
 	import type { TemplateCreationContext } from '$lib/types/template';
+	import type { PageData } from './$types';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
+	
+	export let data: PageData;
 
 	let showMobilePreview = false;
 	let showTemplateCreator = false;
+	let showOnboardingModal = false;
+	let showTemplateModal = false;
 	let modalComponent: Modal;
 	let selectedChannel: string | null = null;
 	let creationContext: TemplateCreationContext | null = null;
+	let pendingTemplate: any = null;
 
 	// No need for manual onMount template selection anymore -
 	// the store handles auto-selection when templates load
@@ -46,6 +54,41 @@
 	function handleCreateTemplate(event: CustomEvent<TemplateCreationContext>) {
 		creationContext = event.detail;
 		showTemplateCreator = true;
+	}
+	
+	function handleTemplateUse(event: CustomEvent) {
+		const { template, requiresAuth } = event.detail;
+		
+		if (requiresAuth) {
+			// Show onboarding modal for guests
+			pendingTemplate = template;
+			showOnboardingModal = true;
+		} else if (data.user) {
+			// Show template modal for authenticated users
+			pendingTemplate = template;
+			showTemplateModal = true;
+		} else {
+			// Direct mailto for simple templates
+			const mailtoLink = generateMailtoLink(template);
+			window.location.href = mailtoLink;
+		}
+	}
+	
+	function generateMailtoLink(template: any): string {
+		const subject = encodeURIComponent(template.title);
+		const body = encodeURIComponent(template.preview || template.message_body || '');
+		
+		if (template.deliveryMethod === 'both') {
+			// Congressional routing
+			const routingEmail = data.user 
+				? `congress+${template.id}-${data.user.id}@communi.email`
+				: `congress+guest-${template.id}-${Date.now()}@communi.email`;
+			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
+		} else {
+			// Direct email
+			const recipients = template.recipientEmails?.join(',') || '';
+			return `mailto:${recipients}?subject=${subject}&body=${body}`;
+		}
 	}
 
 	$: filteredTemplates = selectedChannel
@@ -137,7 +180,11 @@
 					</div>
 				</div>
 			{:else if $selectedTemplate}
-				<TemplatePreview template={$selectedTemplate} />
+				<TemplatePreview 
+					template={$selectedTemplate} 
+					user={data.user}
+					on:useTemplate={handleTemplateUse}
+				/>
 			{:else}
 				<!-- Empty state -->
 				<div class="rounded-xl border border-slate-200 bg-slate-50 p-12 text-center">
@@ -199,5 +246,32 @@
 				/>
 			</div>
 		</Modal>
+	{/if}
+	
+	<!-- Auth Modals -->
+	{#if showOnboardingModal && pendingTemplate}
+		<OnboardingModal 
+			template={pendingTemplate}
+			source="direct-link"
+			on:close={() => {
+				showOnboardingModal = false;
+				pendingTemplate = null;
+			}}
+		/>
+	{/if}
+
+	{#if showTemplateModal && pendingTemplate}
+		<TemplateModal 
+			template={pendingTemplate}
+			user={data.user}
+			on:close={() => {
+				showTemplateModal = false;
+				pendingTemplate = null;
+			}}
+			on:used={() => {
+				showTemplateModal = false;
+				pendingTemplate = null;
+			}}
+		/>
 	{/if}
 </section>

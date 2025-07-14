@@ -13,6 +13,7 @@
 
 	export let template: Template;
 	export let inModal = false;
+	export let user: { id: string; name: string } | null = null;
 	export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void = () => {};
 
 	$: recipientCount = template?.recipientEmails?.length ?? 0;
@@ -165,7 +166,11 @@
 			class="flex flex-1 cursor-default flex-col overflow-visible border-0 bg-transparent text-left outline-none"
 		>
 			<div class="w-full shrink-0">
-				<TemplateHeader {template} />
+				<TemplateHeader 
+					{template} 
+					{user}
+					on:useTemplate
+				/>
 			</div>
 			<div class="shrink-0">
 				<TemplateTips isCertified={template.type === 'certified'} />

@@ -59,6 +59,7 @@
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
 		"@prisma/client": "^6.10.1",
+		"arctic": "^3.7.0",
 		"ncu": "^0.2.1",
 		"postgres": "^3.4.5"
 	}

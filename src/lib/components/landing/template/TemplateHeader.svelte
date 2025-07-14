@@ -1,5 +1,6 @@
 <script lang="ts">
 	/// <reference types="@sveltejs/kit" />
+	import { createEventDispatcher } from 'svelte';
 	import { Send } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 	import type { SvelteComponent } from 'svelte';
@@ -8,6 +9,11 @@
 	import { page } from '$app/stores';
 
 	export let template: Template;
+	export let user: { id: string; name: string } | null = null;
+	
+	const dispatch = createEventDispatcher<{
+		useTemplate: { template: Template; requiresAuth: boolean };
+	}>();
 
 	// Always generate mailto link - route congressional templates through our domain
 	$: mailtoLink = generateMailtoLink(template);
@@ -63,6 +69,16 @@
 		const random = Math.random().toString(36).substring(2, 8);
 		return `${timestamp}-${random}`;
 	}
+	
+	function handleUseTemplate() {
+		// For congressional templates, require auth for better tracking
+		const requiresAuth = template.deliveryMethod === 'both' && !user;
+		
+		dispatch('useTemplate', { 
+			template, 
+			requiresAuth 
+		});
+	}
 </script>
 
 <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -81,16 +97,42 @@
 			</div>
 		</div>
 	</div>
-	<div class="flex items-center">
+	<div class="flex items-center gap-3">
+		{#if user}
+			<span class="hidden sm:block text-sm text-slate-600">
+				Hi {user.name?.split(' ')[0]}!
+			</span>
+		{/if}
+		
 		<Button
 			variant="primary"
-			classNames="w-full sm:w-auto shrink-0 focus:ring-green-600/50"
-			href={mailtoLink}
-			rel={mailtoLink ? 'noopener noreferrer' : undefined}
+			classNames="w-full sm:w-auto shrink-0 focus:ring-green-600/50 {
+				template.deliveryMethod === 'both' && !user ? 'ring-2 ring-blue-200' : ''
+			}"
+			on:click={handleUseTemplate}
 		>
-			<span class="hidden sm:inline">Use Template</span>
-			<span class="sm:hidden">Use</span>
+			<span class="hidden sm:inline">
+				{#if template.deliveryMethod === 'both'}
+					{user ? 'Send to Congress' : 'Contact Congress'}
+				{:else}
+					{user ? 'Send Message' : 'Use Template'}
+				{/if}
+			</span>
+			<span class="sm:hidden">
+				{user ? 'Send' : 'Use'}
+			</span>
 			<Send class="ml-2 h-4 w-4" />
 		</Button>
+		
+		{#if !user && template.deliveryMethod === 'both'}
+			<div class="text-xs">
+				<span class="hidden sm:block text-blue-600 font-medium">
+					🏛️ Congressional template - sign in for tracking
+				</span>
+				<span class="sm:hidden text-blue-600">
+					🏛️ Sign in
+				</span>
+			</div>
+		{/if}
 	</div>
 </div>
