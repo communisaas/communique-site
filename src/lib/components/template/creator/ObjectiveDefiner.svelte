@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { Lightbulb } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
+	import SlugCustomizer from './SlugCustomizer.svelte';
 
 	export let data: {
 		title: string;
 		description: string;
 		category: string;
 		goal: string;
+		slug?: string;
 	};
 	export let context: TemplateCreationContext;
 
@@ -14,6 +16,7 @@
 	$: if (!data.title) data.title = '';
 	$: if (!data.goal) data.goal = '';
 	$: if (!data.description) data.description = '';
+	$: if (!data.slug) data.slug = '';
 
 	$: isTitleValid = data.title.trim().length > 0;
 	$: isGoalValid = data.goal.trim().length > 0;
@@ -68,4 +71,14 @@
 			{/if}
 		</label>
 	</div>
+
+	<!-- Deep Link Customizer -->
+	{#if data.title}
+		<div class="border-t border-slate-200 pt-6">
+			<SlugCustomizer 
+				bind:title={data.title}
+				bind:slug={data.slug}
+			/>
+		</div>
+	{/if}
 </div>

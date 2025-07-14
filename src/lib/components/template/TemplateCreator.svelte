@@ -23,7 +23,8 @@
 			title: '',
 			description: '',
 			category: '',
-			goal: ''
+			goal: '',
+			slug: ''
 		},
 		audience: {
 			recipientEmails: []
@@ -115,6 +116,7 @@
 			subject: `Regarding: ${formData.objective.title}`,
 			message_body: formData.content.preview,
 			preview: formData.content.preview.substring(0, 100),
+			slug: formData.objective.slug,
 			delivery_config: {},
 			cwc_config: {},
 			recipient_config: {
@@ -123,7 +125,8 @@
 			metrics: {
 				sends: 0,
 				opens: 0,
-				clicks: 0
+				clicks: 0,
+				views: 0
 			}
 		};
 

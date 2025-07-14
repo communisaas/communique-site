@@ -1,5 +1,6 @@
 export interface Template {
     id: string;
+    slug?: string;
     title: string;
     description: string;
     category: string;
@@ -12,6 +13,7 @@ export interface Template {
         opened: number;          // Deprecated - not trackable for direct email
         clicked: number;         // For direct: recipient count; for congressional: not used
         responded: number;       // For congressional: delivery confirmations; for direct: not used
+        views?: number;          // Number of times the template has been viewed via deep link
         // New congressional-specific metrics
         districts_covered?: number;      // Number of unique districts reached
         total_districts?: number;        // Total districts in the target area (for calculating coverage %)
@@ -39,6 +41,7 @@ export interface TemplateFormData {
         description: string;
         category: string;
         goal: string;
+        slug?: string;
     };
     audience: {
         recipientEmails: string[];

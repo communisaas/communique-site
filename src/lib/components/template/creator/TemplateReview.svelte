@@ -1,142 +1,139 @@
 <script lang="ts">
-	import { CheckCircle2, AlertCircle, Users, Mail, Target, Building2 } from '@lucide/svelte';
-	import type { TemplateCreationContext, TemplateFormData } from '$lib/types/template';
-
+	import { CheckCircle2, Link2, Users, Mail, Target, ExternalLink } from '@lucide/svelte';
+	import type { TemplateFormData, TemplateCreationContext } from '$lib/types/template';
+	import { page } from '$app/stores';
+	import Badge from '../../ui/Badge.svelte';
+	
 	export let data: TemplateFormData;
 	export let context: TemplateCreationContext;
-
-	$: isComplete = validateTemplate();
-
-	function validateTemplate() {
-		const checks = {
-			objective: data.objective.title && data.objective.goal,
-			audience: data.audience.organizations.length > 0 || data.audience.roles.length > 0,
-			content: data.content.preview.length > 0
-		};
-
-		return Object.values(checks).every((v) => v);
-	}
-
-	const sections = [
-		{
-			title: 'Campaign Objective',
-			icon: Target,
-			items: [
-				{ label: 'Title', value: () => data.objective.title },
-				{ label: 'Category', value: () => data.objective.category || 'General' },
-				{ label: 'Goal', value: () => data.objective.goal }
-			]
-		},
-		{
-			title: 'Target Audience',
-			icon: Users,
-			items: [
-				{
-					label: 'Organizations',
-					value: () => data.audience.organizations.join(', ') || 'None specified',
-					type: 'list'
-				},
-				{
-					label: 'Decision Maker Roles',
-					value: () => data.audience.roles.join(', ') || 'None specified',
-					type: 'list'
-				}
-			]
-		},
-		{
-			title: 'Delivery Method',
-			icon: Mail,
-			items: [
-				{ label: 'Channel', value: () => context.channelTitle },
-				{
-					label: 'Email Patterns',
-					value: () => data.audience.emailPatterns.join(', ') || 'None specified',
-					type: 'list'
-				}
-			]
+	
+	// Generate preview URL using dynamic hostname
+	$: previewUrl = data.objective.slug ? `${$page.url.origin}/${data.objective.slug}` : null;
+	
+	// Format recipient display
+	$: recipientDisplay = (() => {
+		if (context.channelId === 'certified') {
+			return 'Congressional Representatives (auto-routed)';
 		}
-	];
+		const count = data.audience.recipientEmails.length;
+		return count === 1 ? '1 recipient' : `${count} recipients`;
+	})();
+
 </script>
 
 <div class="space-y-6">
-	<!-- Status Banner -->
-	<div class="rounded-md bg-{isComplete ? 'green' : 'yellow'}-50 p-4">
-		<div class="flex">
-			<div class="flex-shrink-0">
-				{#if isComplete}
-					<CheckCircle2 class="h-5 w-5 text-green-400" />
-				{:else}
-					<AlertCircle class="h-5 w-5 text-yellow-400" />
-				{/if}
-			</div>
-			<div class="ml-3">
-				<h3 class="text-sm font-medium text-{isComplete ? 'green' : 'yellow'}-800">
-					{isComplete ? 'Template Ready for Creation' : 'Template Needs Attention'}
-				</h3>
-				<div class="mt-2 text-sm text-{isComplete ? 'green' : 'yellow'}-700">
-					{#if isComplete}
-						<p>
-							All required information has been provided. Review the details below before creating
-							your template.
-						</p>
-					{:else}
-						<p>Please ensure all required information is complete before creating your template.</p>
-					{/if}
-				</div>
+	<!-- Success Header -->
+	<div class="rounded-lg border border-green-200 bg-green-50 p-4">
+		<div class="flex items-start gap-3">
+			<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+			<div>
+				<h4 class="font-medium text-green-900">Template Ready</h4>
+				<p class="mt-1 text-sm text-green-700">
+					Review your template details below before saving.
+				</p>
 			</div>
 		</div>
 	</div>
-
-	<!-- Review Sections -->
-	{#each sections as section}
-		<div class="divide-y divide-gray-200 rounded-lg bg-white shadow">
-			<div class="px-4 py-5 sm:px-6">
-				<h3 class="flex items-center gap-2 text-lg font-medium leading-6 text-gray-900">
-					<svelte:component this={section.icon} class="h-5 w-5 text-slate-400" />
-					{section.title}
-				</h3>
+	
+	<!-- Template Summary -->
+	<div class="space-y-4">
+		<!-- Objective Section -->
+		<div class="rounded-lg border border-slate-200 bg-white p-4">
+			<div class="mb-3 flex items-center gap-2">
+				<Target class="h-4 w-4 text-slate-400" />
+				<h3 class="font-medium text-slate-900">Campaign Objective</h3>
 			</div>
-			<div class="px-4 py-5 sm:p-6">
-				<dl class="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2">
-					{#each section.items as item}
-						<div class="sm:col-span-1">
-							<dt class="text-sm font-medium text-gray-500">
-								{item.label}
-							</dt>
-							<dd class="mt-1 text-sm text-gray-900">
-								{#if item.type === 'list' && Array.isArray(item.value())}
-									<div class="flex flex-wrap gap-2">
-										{#each item.value().split(', ') as value}
-											<span
-												class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800"
-											>
-												{value}
-											</span>
-										{/each}
-									</div>
-								{:else}
-									{item.value()}
-								{/if}
-							</dd>
-						</div>
-					{/each}
-				</dl>
+			<dl class="space-y-2 text-sm">
+				<div>
+					<dt class="text-slate-500">Title</dt>
+					<dd class="font-medium text-slate-900">{data.objective.title}</dd>
+				</div>
+				<div>
+					<dt class="text-slate-500">Goal</dt>
+					<dd class="text-slate-700">{data.objective.goal}</dd>
+				</div>
+			</dl>
+		</div>
+		
+		<!-- Deep Link Section -->
+		{#if previewUrl}
+			<div class="rounded-lg border border-slate-200 bg-white p-4">
+				<div class="mb-3 flex items-center gap-2">
+					<Link2 class="h-4 w-4 text-slate-400" />
+					<h3 class="font-medium text-slate-900">Campaign Link</h3>
+				</div>
+				<div class="space-y-3">
+					<div class="rounded-md bg-slate-50 p-2.5 font-mono text-sm text-slate-700">
+						{previewUrl}
+					</div>
+					<div class="flex items-center gap-4 text-xs text-slate-600">
+						<span>✓ Shareable on social media</span>
+						<span>✓ Tracks campaign views</span>
+						<span>✓ Mobile-friendly</span>
+					</div>
+					<a 
+						href={previewUrl} 
+						target="_blank" 
+						rel="noopener noreferrer"
+						class="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
+					>
+						Preview your campaign page
+						<ExternalLink class="h-3 w-3" />
+					</a>
+				</div>
 			</div>
+		{/if}
+		
+		<!-- Audience Section -->
+		<div class="rounded-lg border border-slate-200 bg-white p-4">
+			<div class="mb-3 flex items-center gap-2">
+				<Users class="h-4 w-4 text-slate-400" />
+				<h3 class="font-medium text-slate-900">Target Audience</h3>
+			</div>
+			<div class="flex items-center gap-3">
+				<Badge type={context.channelId} />
+				<span class="text-sm text-slate-700">{recipientDisplay}</span>
+			</div>
+			{#if data.audience.recipientEmails.length > 0}
+				<div class="mt-2 text-xs text-slate-500">
+					{data.audience.recipientEmails.join(', ')}
+				</div>
+			{/if}
 		</div>
-	{/each}
-
-	<!-- Message Preview -->
-	<div class="rounded-lg bg-white shadow">
-		<div class="px-4 py-5 sm:px-6">
-			<h3 class="flex items-center gap-2 text-lg font-medium leading-6 text-gray-900">
-				<Mail class="h-5 w-5 text-slate-400" />
-				Message Preview
-			</h3>
+		
+		<!-- Message Preview Section -->
+		<div class="rounded-lg border border-slate-200 bg-white p-4">
+			<div class="mb-3 flex items-center gap-2">
+				<Mail class="h-4 w-4 text-slate-400" />
+				<h3 class="font-medium text-slate-900">Message Preview</h3>
+			</div>
+			<div class="rounded-md bg-slate-50 p-3">
+				<p class="whitespace-pre-wrap text-sm text-slate-700">
+					{data.content.preview.substring(0, 200)}
+					{data.content.preview.length > 200 ? '...' : ''}
+				</p>
+			</div>
+			{#if data.content.variables.length > 0}
+				<div class="mt-2">
+					<span class="text-xs text-slate-500">Variables used: </span>
+					<span class="text-xs font-medium text-slate-700">
+						{data.content.variables.join(', ')}
+					</span>
+				</div>
+			{/if}
 		</div>
-		<div class="prose prose-sm max-w-none px-4 py-5 sm:p-6">
-			{#each data.content.preview.split('\n') as line}
-				<p class="whitespace-pre-wrap">{line}</p>
-			{/each}
-		</div>
+	</div>
+	
+	<!-- Next Steps -->
+	<div class="rounded-md bg-blue-50 p-4">
+		<h4 class="mb-2 text-sm font-medium text-blue-900">What happens next?</h4>
+		<ul class="space-y-1 text-sm text-blue-700">
+			<li>• Your template will be saved as a draft</li>
+			{#if previewUrl}
+				<li>• Share your campaign link to start gathering support</li>
+			{/if}
+			<li>• You can edit or publish it from your dashboard</li>
+			<li>• Track engagement metrics in real-time</li>
+		</ul>
 	</div>
 </div>
