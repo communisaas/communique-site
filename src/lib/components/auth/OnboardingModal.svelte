@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade, fly, scale, slide } from 'svelte/transition';
 	import { flip } from 'svelte/animate';
 	import { crossfade } from 'svelte/transition';
@@ -32,6 +32,15 @@
 	
 	let currentStep: 'preview' | 'benefits' | 'providers' = 'preview';
 	let isTransitioning = false;
+	
+	// Prevent background scrolling when modal is open
+	onMount(() => {
+		document.body.style.overflow = 'hidden';
+	});
+	
+	onDestroy(() => {
+		document.body.style.overflow = '';
+	});
 	
 	// Spring-powered step progression
 	const stepProgress = spring(0, { stiffness: 0.3, damping: 0.8 });

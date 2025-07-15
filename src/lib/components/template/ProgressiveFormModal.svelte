@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 	import { 
@@ -76,12 +76,19 @@
 	}
 	
 	onMount(() => {
+		// Prevent background scrolling when modal is open
+		document.body.style.overflow = 'hidden';
+		
 		// If user is authenticated and has address, skip to send step
 		if (user?.address && isCongressional) {
 			currentStep = 'send';
 		} else if (user && !isCongressional) {
 			currentStep = 'send';
 		}
+	});
+	
+	onDestroy(() => {
+		document.body.style.overflow = '';
 	});
 	
 	function validateName(): boolean {

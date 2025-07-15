@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade, fly, scale, slide } from 'svelte/transition';
 	import { quintOut, backOut, elasticOut } from 'svelte/easing';
 	import { spring } from 'svelte/motion';
@@ -45,12 +45,11 @@
 	
 	// Animate action button on mount
 	onMount(() => {
+		// Prevent background scrolling when modal is open
+		document.body.style.overflow = 'hidden';
+		
 		actionProgress.set(1);
-	});
-	
-	$: shareUrl = `${$page.url.origin}/${template.slug}`;
-	
-	onMount(() => {
+		
 		// Track that user opened the modal
 		trackEvent('template_modal_opened', {
 			template_id: template.id,
@@ -61,6 +60,10 @@
 		if (user) {
 			guestState.clear();
 		}
+	});
+	
+	onDestroy(() => {
+		document.body.style.overflow = '';
 	});
 	
 	function handleUseTemplate() {

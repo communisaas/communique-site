@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 	import { 
@@ -24,6 +24,15 @@
 	
 	let currentStep: 'collect' | 'verify' | 'complete' = 'collect';
 	let isTransitioning = false;
+	
+	// Prevent background scrolling when modal is open
+	onMount(() => {
+		document.body.style.overflow = 'hidden';
+	});
+	
+	onDestroy(() => {
+		document.body.style.overflow = '';
+	});
 	
 	// Address form data
 	let streetAddress = '';
