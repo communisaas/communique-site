@@ -60,23 +60,35 @@ export async function GET() {
 
 export async function POST({ request, locals }) {
 	try {
-		const session = await locals.auth.validate();
-		if (!session?.user) {
-			return json({ error: 'Unauthorized' }, { status: 401 });
-		}
-
 		const templateData = await request.json();
-
-		const newTemplate = await db.Template.create({
-			data: {
+		
+		// Check if user is authenticated (fix the auth method)
+		const user = locals.user;
+		
+		if (user) {
+			// Authenticated user - save to database
+			const newTemplate = await db.template.create({
+				data: {
+					...templateData,
+					is_public: false, // Default to not public
+					status: 'draft', // Default to draft
+					userId: user.id // Associate with the current user
+				}
+			});
+			return json(newTemplate);
+		} else {
+			// Guest user - return the template data with a temporary ID for client-side storage
+			// This allows the frontend to handle the progressive auth flow
+			const guestTemplate = {
 				...templateData,
-				is_public: false, // Default to not public
-				status: 'draft', // Default to draft
-				userId: session.user.id // Associate with the current user
-			}
-		});
-
-		return json(newTemplate);
+				id: `guest-${Date.now()}`, // Temporary ID
+				is_public: false,
+				status: 'draft',
+				createdAt: new Date().toISOString(),
+				userId: null
+			};
+			return json(guestTemplate);
+		}
 	} catch (error) {
 		console.error('Error creating template:', error);
 		return json({ error: 'Failed to create template' }, { status: 500 });

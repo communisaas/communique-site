@@ -71,8 +71,9 @@
 	}
 	
 	function handleUseTemplate() {
-		// For congressional templates, require auth for better tracking
-		const requiresAuth = template.deliveryMethod === 'both' && !user;
+		// All templates now require auth for enhanced experience and tracking
+		// Congressional templates need address, direct outreach needs profile/credentials
+		const requiresAuth = !user;
 		
 		dispatch('useTemplate', { 
 			template, 
@@ -106,33 +107,25 @@
 		
 		<Button
 			variant="primary"
-			classNames="w-full sm:w-auto shrink-0 focus:ring-green-600/50 {
-				template.deliveryMethod === 'both' && !user ? 'ring-2 ring-blue-200' : ''
-			}"
+			classNames="w-full sm:w-auto shrink-0 focus:ring-green-600/50"
 			on:click={handleUseTemplate}
 		>
 			<span class="hidden sm:inline">
 				{#if template.deliveryMethod === 'both'}
-					{user ? 'Send to Congress' : 'Contact Congress'}
+					Contact Congress
 				{:else}
-					{user ? 'Send Message' : 'Use Template'}
+					{user ? 'Send Message' : 'Make Your Voice Heard'}
 				{/if}
 			</span>
 			<span class="sm:hidden">
-				{user ? 'Send' : 'Use'}
+				{#if template.deliveryMethod === 'both'}
+					Contact
+				{:else}
+					{user ? 'Send' : 'Speak Up'}
+				{/if}
 			</span>
 			<Send class="ml-2 h-4 w-4" />
 		</Button>
 		
-		{#if !user && template.deliveryMethod === 'both'}
-			<div class="text-xs">
-				<span class="hidden sm:block text-blue-600 font-medium">
-					🏛️ Congressional template - sign in for tracking
-				</span>
-				<span class="sm:hidden text-blue-600">
-					🏛️ Sign in
-				</span>
-			</div>
-		{/if}
 	</div>
 </div>

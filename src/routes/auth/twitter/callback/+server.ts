@@ -114,7 +114,25 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			sameSite: 'lax'
 		});
 		
-		redirect(302, returnTo);
+		// Check if user needs address collection for congressional templates
+		const needsAddressForTemplate = returnTo.includes('template-modal') || isFromSocialFunnel;
+		const hasAddress = user.street && user.city && user.state && user.zip;
+		
+		// Check if this is for a direct outreach template (not congressional)
+		const isDirectOutreach = returnTo.includes('template-modal') && !returnTo.includes('congress');
+		const hasProfile = user.phone && user.phone.startsWith('{'); // Check if phone contains profile JSON
+		
+		if (needsAddressForTemplate && !hasAddress && !isDirectOutreach) {
+			// Congressional template - redirect to address collection
+			const addressCollectionUrl = `/onboarding/address?returnTo=${encodeURIComponent(returnTo)}`;
+			redirect(302, addressCollectionUrl);
+		} else if (isDirectOutreach && !hasProfile) {
+			// Direct outreach template - redirect to profile completion
+			const profileCollectionUrl = `/onboarding/profile?returnTo=${encodeURIComponent(returnTo)}`;
+			redirect(302, profileCollectionUrl);
+		} else {
+			redirect(302, returnTo);
+		}
 		
 	} catch (err) {
 		console.error('Twitter OAuth callback error:', err);

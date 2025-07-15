@@ -8,7 +8,10 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
+	import ProgressiveFormModal from '$lib/components/template/ProgressiveFormModal.svelte';
 	import { browser } from '$app/environment';
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import type { PageData } from './$types';
 
@@ -20,11 +23,36 @@
 	let showTemplateCreator = false;
 	let showOnboardingModal = false;
 	let showTemplateModal = false;
+	let showTemplateAuthModal = false;
 	let modalComponent: Modal;
 	let selectedChannel: string | null = null;
 	let creationContext: TemplateCreationContext | null = null;
 	let pendingTemplate: any = null;
+	let pendingTemplateToSave: any = null;
 
+	// Handle OAuth return for template creation
+	onMount(() => {
+		if (browser && $page.url.searchParams.get('template_saved') === 'pending') {
+			// User returned from OAuth, check for pending template
+			const pendingData = sessionStorage.getItem('pending_template_save');
+			if (pendingData) {
+				try {
+					const { templateData } = JSON.parse(pendingData);
+					// Now that user is authenticated, save the template
+					templateStore.addTemplate(templateData).then(() => {
+						console.log('Template saved successfully after authentication');
+						sessionStorage.removeItem('pending_template_save');
+						// Could show a success message here
+					}).catch(error => {
+						console.error('Failed to save template after authentication:', error);
+					});
+				} catch (error) {
+					console.error('Error parsing pending template data:', error);
+				}
+			}
+		}
+	});
+	
 	// No need for manual onMount template selection anymore -
 	// the store handles auto-selection when templates load
 
@@ -73,6 +101,25 @@
 			window.location.href = mailtoLink;
 		}
 	}
+	
+	
+	function handleTemplateCreatorAuth(event: CustomEvent) {
+		const { name, email } = event.detail;
+		
+		// For template creators, we need actual authentication to save templates
+		// Store the template data and redirect to OAuth
+		if (typeof window !== 'undefined') {
+			sessionStorage.setItem('pending_template_save', JSON.stringify({
+				templateData: pendingTemplateToSave,
+				creatorInfo: { name, email },
+				timestamp: Date.now()
+			}));
+		}
+		
+		// Redirect to OAuth - we'll use Google as the primary option for creators
+		window.location.href = `/auth/google?returnTo=${encodeURIComponent('/?template_saved=pending')}`;
+	}
+	
 	
 	function generateMailtoLink(template: any): string {
 		const subject = encodeURIComponent(template.title);
@@ -234,13 +281,19 @@
 					}}
 					on:save={async (event) => {
 						// Handle template save
-						try {
-							await templateStore.addTemplate(event.detail);
-							showTemplateCreator = false;
-							creationContext = null;
-						} catch (error) {
-							console.error('Failed to save template:', error);
-							// You might want to show an error message to the user here
+						if (data.user) {
+							// Authenticated user - save directly
+							try {
+								await templateStore.addTemplate(event.detail);
+								showTemplateCreator = false;
+								creationContext = null;
+							} catch (error) {
+								console.error('Failed to save template:', error);
+							}
+						} else {
+							// Guest user - show progressive auth modal
+							pendingTemplateToSave = event.detail;
+							showTemplateAuthModal = true;
 						}
 					}}
 				/>
@@ -272,6 +325,26 @@
 				showTemplateModal = false;
 				pendingTemplate = null;
 			}}
+		/>
+	{/if}
+	
+	<!-- Template Creator Auth Modal -->
+	{#if showTemplateAuthModal && pendingTemplateToSave}
+		<ProgressiveFormModal 
+			template={{
+				id: 'template-creation',
+				title: 'Save Your Template',
+				description: 'Create an account to save your template and track its impact',
+				slug: 'template-creation',
+				deliveryMethod: 'auth',
+				preview: 'Sign up to save your advocacy template and help others make their voices heard.'
+			}}
+			user={data.user}
+			on:close={() => {
+				showTemplateAuthModal = false;
+				pendingTemplateToSave = null;
+			}}
+			on:send={handleTemplateCreatorAuth}
 		/>
 	{/if}
 </section>

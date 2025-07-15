@@ -61,6 +61,7 @@
 		const url = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`;
 		window.open(url, '_blank');
 	}
+	
 </script>
 
 <svelte:head>
@@ -193,7 +194,7 @@
 		<!-- Template Card -->
 		<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
 			<div class="p-6">
-				<TemplateHeader {template} />
+				<TemplateHeader {template} user={data.user} />
 				<MessagePreview {template} />
 			</div>
 		</div>

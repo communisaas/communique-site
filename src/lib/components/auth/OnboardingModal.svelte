@@ -23,6 +23,7 @@
 		title: string;
 		description: string;
 		slug: string;
+		deliveryMethod?: string;
 		metrics: { sent: number; views?: number };
 	};
 	export let source: 'social-link' | 'direct-link' | 'share' = 'direct-link';
@@ -43,24 +44,93 @@
 		fallback: scale
 	});
 	
-	// Dynamic messaging based on source
-	$: sourceMessages = {
-		'social-link': {
-			headline: 'Join the movement!',
-			subtext: 'Someone shared this campaign because they believe in change.',
-			cta: 'Add your voice'
-		},
-		'direct-link': {
-			headline: 'Make your voice heard',
-			subtext: 'This campaign needs supporters like you.',
-			cta: 'Get started'
-		},
-		'share': {
-			headline: 'Shared with you',
-			subtext: 'Someone wants you to join this important cause.',
-			cta: 'Join them'
+	// Dynamic messaging based on source and template type - enhanced with agency and impact
+	$: sourceMessages = getSourceMessages(isCongressional, isDirectOutreach);
+	
+	function getSourceMessages(congressional: boolean, directOutreach: boolean) {
+		if (congressional) {
+			return {
+				'social-link': {
+					headline: 'Your voice can drive change',
+					subtext: 'Someone shared this because they know your voice matters to Congress.',
+					cta: 'Add your voice'
+				},
+				'direct-link': {
+					headline: 'Your representative needs to hear this',
+					subtext: 'Congressional offices count every message from constituents like you.',
+					cta: 'Speak up'
+				},
+				'share': {
+					headline: 'Join the pressure campaign',
+					subtext: 'Your voice adds to the growing momentum on this issue.',
+					cta: 'Join them'
+				}
+			};
+		} else if (directOutreach) {
+			return {
+				'social-link': {
+					headline: 'Make decision-makers listen',
+					subtext: 'Someone shared this because they believe your voice can create change.',
+					cta: 'Add your voice'
+				},
+				'direct-link': {
+					headline: 'Decision-makers need to hear from you',
+					subtext: 'Your voice carries weight when you speak as a stakeholder.',
+					cta: 'Make your voice heard'
+				},
+				'share': {
+					headline: 'Join the advocacy push',
+					subtext: 'Add your voice to the growing pressure on decision-makers.',
+					cta: 'Join them'
+				}
+			};
+		} else {
+			// Fallback messaging
+			return {
+				'social-link': {
+					headline: 'Your voice can drive change',
+					subtext: 'Someone shared this because they believe in change.',
+					cta: 'Add your voice'
+				},
+				'direct-link': {
+					headline: 'Make your voice heard',
+					subtext: 'This campaign needs supporters like you.',
+					cta: 'Get started'
+				},
+				'share': {
+					headline: 'Shared with you',
+					subtext: 'Someone wants you to join this important cause.',
+					cta: 'Join them'
+				}
+			};
 		}
-	};
+	}
+	
+	function getProcessSteps(congressional: boolean, directOutreach: boolean) {
+		if (congressional) {
+			return [
+				{ icon: Mail, title: 'Direct delivery to congressional office', desc: 'Your message goes straight to your representative\'s staff' },
+				{ icon: Users, title: 'Counted as constituent feedback', desc: 'Congressional offices track messages by issue and district' },
+				{ icon: CheckCircle2, title: 'Influences their position', desc: 'Representatives consider constituent input when voting' }
+			];
+		} else if (directOutreach) {
+			return [
+				{ icon: Mail, title: 'Direct delivery to decision-makers', desc: 'Your message reaches executives, officials, or stakeholders' },
+				{ icon: Users, title: 'Strengthened by your credentials', desc: 'Your role and connection amplify your message\'s impact' },
+				{ icon: CheckCircle2, title: 'Creates pressure for change', desc: 'Decision-makers respond when stakeholders speak up' }
+			];
+		} else {
+			return [
+				{ icon: Mail, title: 'Direct message delivery', desc: 'Your message is sent to the right people' },
+				{ icon: Users, title: 'Tracked for impact', desc: 'We monitor campaign effectiveness' },
+				{ icon: CheckCircle2, title: 'Drives change', desc: 'Collective voices create real impact' }
+			];
+		}
+	}
+	
+	// Detect template type for customized messaging
+	$: isCongressional = template.deliveryMethod === 'both';
+	$: isDirectOutreach = template.deliveryMethod === 'email';
 	
 	$: message = sourceMessages[source];
 	$: returnUrl = encodeURIComponent(`/template-modal/${template.slug}`);
@@ -200,19 +270,34 @@
 								{template.description}
 							</p>
 							
-							<!-- Social Proof with Count-up Animation -->
+							<!-- Enhanced Social Proof with Impact Context -->
 							<div 
-								class="flex items-center gap-4 text-xs text-slate-500"
+								class="space-y-2"
 								in:fly={{ y: 10, duration: 300, delay: 450 }}
 							>
-								<div class="flex items-center gap-1">
-									<Users class="h-3 w-3" />
-									<span>{template.metrics.sent.toLocaleString()} supporters</span>
-								</div>
-								{#if template.metrics.views}
+								<div class="flex items-center gap-4 text-xs text-slate-500">
 									<div class="flex items-center gap-1">
-										<Sparkles class="h-3 w-3" />
-										<span>{template.metrics.views.toLocaleString()} views</span>
+										<Users class="h-3 w-3" />
+										<span>{template.metrics.sent.toLocaleString()} voices sent to Congress</span>
+									</div>
+									{#if template.metrics.views}
+										<div class="flex items-center gap-1">
+											<Sparkles class="h-3 w-3" />
+											<span>{template.metrics.views.toLocaleString()} people engaged</span>
+										</div>
+									{/if}
+								</div>
+								{#if template.metrics.sent > 100}
+									<div class="text-xs text-blue-600 font-medium">
+										📈 Building momentum - congressional offices are taking notice
+									</div>
+								{:else if template.metrics.sent > 50}
+									<div class="text-xs text-green-600 font-medium">
+										🎯 Growing pressure - your voice adds to the impact
+									</div>
+								{:else}
+									<div class="text-xs text-amber-600 font-medium">
+										🚀 Early momentum - be among the first to speak up
 									</div>
 								{/if}
 							</div>
@@ -251,37 +336,51 @@
 								class="text-xl font-bold text-slate-900 mb-2"
 								in:fly={{ y: 10, duration: 200, delay: 50 }}
 							>
-								Why join Communiqué?
+								Here's what happens when you send
 							</h2>
 							<p 
 								class="text-slate-600"
 								in:fly={{ y: 10, duration: 200, delay: 100 }}
 							>
-								Make your advocacy more effective
+								{#if isCongressional}
+									Your message follows a direct path to Congress
+								{:else if isDirectOutreach}
+									Your message reaches decision-makers who can create change
+								{:else}
+									Your message gets delivered with maximum impact
+								{/if}
 							</p>
 						</div>
 						
-						<!-- Animated Benefits List -->
+						<!-- Process Visualization -->
 						<div class="space-y-4 mb-6">
-							{#each [
-								{ icon: CheckCircle2, title: 'Instant advocacy', desc: 'Send to representatives with one click' },
-								{ icon: CheckCircle2, title: 'Track your impact', desc: 'See delivery confirmations and metrics' },
-								{ icon: CheckCircle2, title: 'Discover campaigns', desc: 'Find causes you care about' }
-							] as benefit, i}
+							{#each getProcessSteps(isCongressional, isDirectOutreach) as step, i}
 								<div 
 									class="flex items-start gap-3"
 									in:fly={{ x: -20, duration: 200, delay: 150 + (i * 50) }}
 								>
-									<svelte:component 
-										this={benefit.icon} 
-										class="h-5 w-5 text-green-600 mt-0.5 shrink-0" 
-									/>
+									<div class="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-full shrink-0">
+										<svelte:component 
+											this={step.icon} 
+											class="h-4 w-4 text-blue-600" 
+										/>
+									</div>
 									<div>
-										<p class="font-medium text-slate-900">{benefit.title}</p>
-										<p class="text-sm text-slate-600">{benefit.desc}</p>
+										<p class="font-medium text-slate-900">{step.title}</p>
+										<p class="text-sm text-slate-600">{step.desc}</p>
 									</div>
 								</div>
 							{/each}
+						</div>
+						
+						<!-- Additional Benefits -->
+						<div class="bg-slate-50 rounded-lg p-3 mb-6">
+							<p class="text-sm text-slate-700 font-medium mb-1">Plus with your account:</p>
+							<div class="space-y-1 text-xs text-slate-600">
+								<div>📊 Track how many others joined your campaigns</div>
+								<div>🎯 Get notified of policy updates on issues you care about</div>
+								<div>🌟 Discover new advocacy opportunities</div>
+							</div>
 						</div>
 						
 						<!-- Navigation Buttons -->
@@ -318,13 +417,23 @@
 								class="text-xl font-bold text-slate-900 mb-2"
 								in:fly={{ y: 10, duration: 200, delay: 50 }}
 							>
-								Sign up in seconds
+								Join the advocacy community
 							</h2>
 							<p 
 								class="text-slate-600"
 								in:fly={{ y: 10, duration: 200, delay: 100 }}
 							>
-								Use your existing social account - no passwords needed
+								Quick signup - then your voice goes directly to Congress
+							</p>
+						</div>
+						
+						<!-- Momentum Indicator -->
+						<div class="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-3 mb-4 text-center">
+							<p class="text-sm font-medium text-slate-800">
+								🔥 {template.metrics.sent.toLocaleString()} people have already sent this message
+							</p>
+							<p class="text-xs text-slate-600 mt-1">
+								Your voice adds to the growing pressure on this issue
 							</p>
 						</div>
 						
@@ -380,7 +489,7 @@
 							class="text-xs text-center text-slate-500 mt-4"
 							in:fade={{ duration: 200, delay: 250 }}
 						>
-							By signing up, you agree to our terms and privacy policy. We'll only use your account for authentication.
+							By signing up, you agree to our terms and privacy policy. We'll only use your account for advocacy tracking and to keep you updated on your campaigns.
 						</p>
 					{/if}
 				</div>
