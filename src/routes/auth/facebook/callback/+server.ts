@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { facebook } from '$lib/server/oauth';
+import { Facebook } from 'arctic';
 import { db } from '$lib/server/db';
 import { createSession, sessionCookieName } from '$lib/server/auth';
 import type { RequestHandler } from './$types';
@@ -9,6 +9,13 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const state = url.searchParams.get('state');
 	const storedState = cookies.get('oauth_state');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
+
+	// Create Facebook OAuth provider with dynamic origin
+	const facebook = new Facebook(
+		process.env.FACEBOOK_CLIENT_ID!,
+		process.env.FACEBOOK_CLIENT_SECRET!,
+		`${url.origin}/auth/facebook/callback`
+	);
 
 	// Clear OAuth cookies
 	cookies.delete('oauth_state', { path: '/' });

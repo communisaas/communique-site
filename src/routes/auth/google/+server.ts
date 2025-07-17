@@ -1,10 +1,18 @@
 import { redirect } from '@sveltejs/kit';
-import { google, generateState, generateCodeVerifier } from '$lib/server/oauth';
+import { Google } from 'arctic';
+import { generateState, generateCodeVerifier } from '$lib/server/oauth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
+	
+	// Create Google OAuth provider with dynamic origin
+	const google = new Google(
+		process.env.GOOGLE_CLIENT_ID!,
+		process.env.GOOGLE_CLIENT_SECRET!,
+		`${url.origin}/auth/google/callback`
+	);
 	
 	// Store state and code verifier in cookies for verification
 	cookies.set('oauth_state', state, {

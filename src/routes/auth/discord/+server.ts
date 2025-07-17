@@ -1,10 +1,18 @@
 import { redirect } from '@sveltejs/kit';
-import { discord, generateState, generateCodeVerifier } from '$lib/server/oauth';
+import { Discord } from 'arctic';
+import { generateState, generateCodeVerifier } from '$lib/server/oauth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
+	
+	// Create Discord OAuth provider with dynamic origin
+	const discord = new Discord(
+		process.env.DISCORD_CLIENT_ID!,
+		process.env.DISCORD_CLIENT_SECRET!,
+		`${url.origin}/auth/discord/callback`
+	);
 	
 	// Store state and code verifier in cookies for verification
 	cookies.set('oauth_state', state, {

@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { linkedin } from '$lib/server/oauth';
+import { LinkedIn } from 'arctic';
 import { db } from '$lib/server/db';
 import { createSession, sessionCookieName } from '$lib/server/auth';
 import { encodeHexLowerCase } from '@oslojs/encoding';
@@ -11,6 +11,13 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const state = url.searchParams.get('state');
 	const storedState = cookies.get('oauth_state');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
+	
+	// Create LinkedIn OAuth provider with dynamic origin
+	const linkedin = new LinkedIn(
+		process.env.LINKEDIN_CLIENT_ID!,
+		process.env.LINKEDIN_CLIENT_SECRET!,
+		`${url.origin}/auth/linkedin/callback`
+	);
 	
 	// Clear OAuth cookies
 	cookies.delete('oauth_state', { path: '/' });

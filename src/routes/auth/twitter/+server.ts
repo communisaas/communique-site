@@ -1,10 +1,18 @@
 import { redirect } from '@sveltejs/kit';
-import { twitter, generateState, generateCodeVerifier } from '$lib/server/oauth';
+import { Twitter } from 'arctic';
+import { generateState, generateCodeVerifier } from '$lib/server/oauth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
+	
+	// Create Twitter OAuth provider with dynamic origin
+	const twitter = new Twitter(
+		process.env.TWITTER_CLIENT_ID!,
+		process.env.TWITTER_CLIENT_SECRET!,
+		`${url.origin}/auth/twitter/callback`
+	);
 	
 	// Store state and code verifier in cookies for verification
 	cookies.set('oauth_state', state, {

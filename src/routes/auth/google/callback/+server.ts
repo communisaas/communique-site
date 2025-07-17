@@ -1,5 +1,5 @@
 import { error, redirect } from '@sveltejs/kit';
-import { google } from '$lib/server/oauth';
+import { Google } from 'arctic';
 import { db } from '$lib/server/db';
 import { createSession, sessionCookieName } from '$lib/server/auth';
 import { encodeHexLowerCase } from '@oslojs/encoding';
@@ -12,6 +12,13 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const storedState = cookies.get('oauth_state');
 	const codeVerifier = cookies.get('oauth_code_verifier');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
+	
+	// Create Google OAuth provider with dynamic origin
+	const google = new Google(
+		process.env.GOOGLE_CLIENT_ID!,
+		process.env.GOOGLE_CLIENT_SECRET!,
+		`${url.origin}/auth/google/callback`
+	);
 	
 	// Clear OAuth cookies
 	cookies.delete('oauth_state', { path: '/' });
