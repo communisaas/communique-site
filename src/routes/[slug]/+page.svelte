@@ -81,7 +81,7 @@
 	<meta property="twitter:description" content={template.description} />
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white -m-6 md:-m-10">
 	<!-- Header -->
 	<header class="border-b border-slate-200 bg-white/80 backdrop-blur-sm sticky top-0 z-10">
 		<div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
