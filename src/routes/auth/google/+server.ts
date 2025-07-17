@@ -35,9 +35,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		});
 	}
 	
-	const authorizationURL = await google.createAuthorizationURL(state, codeVerifier, {
-		scopes: ['profile', 'email']
-	});
+	const authorizationURL = await google.createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);
 	
 	redirect(302, authorizationURL.toString());
 }; 

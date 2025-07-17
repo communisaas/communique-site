@@ -26,9 +26,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		});
 	}
 
-	const authorizationURL = await facebook.createAuthorizationURL(state, {
-		scopes: ['email', 'public_profile']
-	});
+	const authorizationURL = await facebook.createAuthorizationURL(state, ['email', 'public_profile']);
 
 	redirect(302, authorizationURL.toString());
 }; 

@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import { twitter, generateState, generateCodeVerifier } from '$lib/server/oauth';
+import { discord, generateState, generateCodeVerifier } from '$lib/server/oauth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
@@ -35,7 +35,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		});
 	}
 	
-	const authorizationURL = await twitter.createAuthorizationURL(state, codeVerifier, ['tweet.read', 'users.read']);
+	const authorizationURL = await discord.createAuthorizationURL(state, codeVerifier, ['identify', 'email']);
 	
 	redirect(302, authorizationURL.toString());
-}; 
+};
