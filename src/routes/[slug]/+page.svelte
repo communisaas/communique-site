@@ -2,8 +2,7 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { ArrowLeft, Users, Clock, Eye, Share2, Copy, CheckCircle } from '@lucide/svelte';
-	import TemplateHeader from '$lib/components/landing/template/TemplateHeader.svelte';
-	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
+	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
@@ -167,14 +166,14 @@
 	</header>
 	
 	<!-- Main Content -->
-	<main class="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+	<main class="mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
 		<!-- Campaign Header -->
-		<div class="mb-8 text-center">
-			<h1 class="mb-4 text-3xl font-bold text-slate-900 sm:text-4xl">{template.title}</h1>
+		<div class="mb-6 text-center">
+			<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">{template.title}</h1>
 			<p class="mx-auto max-w-2xl text-lg text-slate-600">{template.description}</p>
 			
 			<!-- Stats -->
-			<div class="mt-6 flex items-center justify-center gap-6 text-sm text-slate-500">
+			<div class="mt-4 flex items-center justify-center gap-6 text-sm text-slate-500">
 				<div class="flex items-center gap-1.5">
 					<Users class="h-4 w-4" />
 					<span>{template.metrics.sent.toLocaleString()} supporters</span>
@@ -191,19 +190,21 @@
 			</div>
 		</div>
 		
-		<!-- Template Card -->
-		<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
-			<div class="p-6">
-				<TemplateHeader {template} user={data.user} />
-				<MessagePreview {template} />
-			</div>
+		<!-- Template Preview -->
+		<div class="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden min-h-[600px]">
+			<TemplatePreview 
+				{template} 
+				user={data.user}
+				onScroll={() => {}}
+				on:useTemplate={() => showTemplateModal = true}
+			/>
 		</div>
 		
 		<!-- Call to Action -->
-		<div class="mt-8 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-8 text-center">
-			<h2 class="mb-3 text-xl font-semibold text-slate-900">Ready to make a difference?</h2>
-			<p class="mb-6 text-slate-600">
-				Click "Use Template" above to send your personalized message. Every voice matters!
+		<div class="mt-6 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 p-6 text-center">
+			<h2 class="mb-2 text-xl font-semibold text-slate-900">Ready to make a difference?</h2>
+			<p class="mb-4 text-slate-600">
+				Use the template above to send your personalized message. Every voice matters!
 			</p>
 			
 			{#if !data.user}
@@ -214,7 +215,7 @@
 				>
 					Join the movement
 				</Button>
-				<p class="text-sm text-slate-500 mt-4">
+				<p class="text-sm text-slate-500 mt-3">
 					Sign up to track your impact and discover more campaigns
 				</p>
 			{:else}
