@@ -1,4 +1,4 @@
-import { Google, Twitter, Apple, Facebook } from 'arctic';
+import { Google, Twitter, Apple, Facebook, LinkedIn, Discord } from 'arctic';
 
 // OAuth Provider Configuration
 export const google = new Google(
@@ -27,14 +27,28 @@ export const facebook = new Facebook(
 	`${process.env.ORIGIN}/auth/facebook/callback`
 );
 
+export const linkedin = new LinkedIn(
+	process.env.LINKEDIN_CLIENT_ID!,
+	process.env.LINKEDIN_CLIENT_SECRET!,
+	`${process.env.ORIGIN}/auth/linkedin/callback`
+);
+
+export const discord = new Discord(
+	process.env.DISCORD_CLIENT_ID!,
+	process.env.DISCORD_CLIENT_SECRET!,
+	`${process.env.ORIGIN}/auth/discord/callback`
+);
+
 // OAuth Provider Types
-export type OAuthProvider = 'google' | 'twitter' | 'apple' | 'facebook';
+export type OAuthProvider = 'google' | 'twitter' | 'apple' | 'facebook' | 'linkedin' | 'discord';
 
 export const providers: Record<OAuthProvider, any> = {
 	google,
 	twitter,
 	apple,
-	facebook
+	facebook,
+	linkedin,
+	discord
 };
 
 // Helper function to get provider instance
