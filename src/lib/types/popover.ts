@@ -4,8 +4,7 @@ export type TriggerAction = (node: HTMLElement) => {
 
 export interface PopoverSlots {
     trigger: {
-        trigger: TriggerAction;
-        'aria-controls': string;
+        triggerAction: TriggerAction;
     };
     default: {
         open: boolean;

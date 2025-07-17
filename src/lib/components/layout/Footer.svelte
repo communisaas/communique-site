@@ -17,7 +17,7 @@
 			<div class="md:text-right">
 				<h3 class="mb-3 text-sm font-semibold text-slate-900">Contact</h3>
 				<a
-					href="mailto:support@communique.com"
+					href="mailto:hello@communique.com"
 					class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600"
 				>
 					<Mail class="h-4 w-4" />
@@ -27,7 +27,9 @@
 		</div>
 
 		<div class="mt-8 border-t border-slate-200 pt-8">
-			<p class="text-center text-sm text-slate-500">© 2024 Communique Inc.</p>
+			<p class="text-center text-sm text-slate-500">
+				© {new Date().getFullYear()} Communique Inc.
+			</p>
 		</div>
 	</div>
 </footer>

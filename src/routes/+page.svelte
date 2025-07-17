@@ -12,6 +12,7 @@
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
+	import { goto } from '$app/navigation';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import type { PageData } from './$types';
 
@@ -29,8 +30,10 @@
 	let creationContext: TemplateCreationContext | null = null;
 	let pendingTemplate: any = null;
 	let pendingTemplateToSave: any = null;
+	let userInitiatedSelection = false; // Track if selection was user-initiated
+	let initialLoadComplete = false; // Track initial load completion
 
-	// Handle OAuth return for template creation
+	// Handle OAuth return for template creation and URL parameter initialization
 	onMount(() => {
 		if (browser && $page.url.searchParams.get('template_saved') === 'pending') {
 			// User returned from OAuth, check for pending template
@@ -51,13 +54,23 @@
 				}
 			}
 		}
+		
+		// Initialize template store - try database first, fallback to static
+		templateStore.fetchTemplates();
+		
+		// Mark initial load as complete after a short delay
+		setTimeout(() => {
+			initialLoadComplete = true;
+		}, 100);
 	});
 	
 	// No need for manual onMount template selection anymore -
 	// the store handles auto-selection when templates load
 
 	function handleTemplateSelect(id: string) {
+		userInitiatedSelection = true;
 		templateStore.selectTemplate(id);
+		
 		if (browser && window.innerWidth < 768) {
 			// md breakpoint is 768px
 			showMobilePreview = true;
@@ -66,6 +79,7 @@
 
 	function handleChannelSelect(event: CustomEvent<string>) {
 		selectedChannel = event.detail;
+		userInitiatedSelection = true;
 		const matchingTemplates = $templateStore.templates.filter((t) => {
 			if (selectedChannel === 'certified') {
 				return t.deliveryMethod === 'both';
@@ -148,6 +162,26 @@
 				return false;
 			})
 		: $templateStore.templates;
+	
+	// Handle URL parameter initialization when templates load (legacy support)
+	$: if (browser && $templateStore.templates.length > 0 && !userInitiatedSelection) {
+		const templateParam = $page.url.searchParams.get('template');
+		if (templateParam) {
+			// Find template by slug
+			const targetTemplate = $templateStore.templates.find(t => t.slug === templateParam);
+			if (targetTemplate && targetTemplate.id !== $templateStore.selectedId) {
+				templateStore.selectTemplateBySlug(templateParam);
+				// Redirect to clean URL format
+				history.replaceState({}, '', `/${targetTemplate.slug}`);
+			}
+		}
+	}
+	
+	// Update URL when template selection changes (only for user-initiated selections)
+	$: if (browser && initialLoadComplete && userInitiatedSelection && $selectedTemplate) {
+		// Use clean URL format: communi.email/tell-congress-climate-action
+		history.replaceState({}, '', `/${$selectedTemplate.slug}`);
+	}
 </script>
 
 <svelte:head>

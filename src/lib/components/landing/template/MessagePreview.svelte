@@ -3,7 +3,7 @@
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
-	import Popover from '$lib/components/ui/Popover.svelte';
+	import AnimatedPopover from '$lib/components/ui/AnimatedPopover.svelte';
 
 	export let preview: string;
 	export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
@@ -23,21 +23,12 @@
 	const userEditableVariables = new Set(['Personal Connection']);
 
 	// Contextual hints and suggestions
-	const variableHints: Record<string, { prompt: string; examples: string[]; placeholder: string }> =
-		{
-			'Personal Connection': {
-				prompt: '✨ Share your connection',
-				examples: [
-					'How has this issue affected your family?',
-					'Why does this matter to you personally?',
-					'Tell about a moment when this mattered to you',
-					'What would change if this policy were enacted?',
-					'How do you see this impacting your community?'
-				],
-				placeholder:
-					'Share why this issue matters to you - your story, reasoning, or perspective...'
-			}
-		};
+	const variableHints: Record<string, { prompt: string; placeholder: string }> = {
+		'Personal Connection': {
+			prompt: 'Personal Connection',
+			placeholder: 'Share why this issue matters to you - your story, reasoning, or perspective...'
+		}
+	};
 
 	const systemVariableHints: Record<string, { title: string; description: string }> = {
 		'Representative Name': {
@@ -244,12 +235,6 @@
 		showingHint = null;
 	}
 
-	function getRandomExample(variableName: string): string {
-		const hints = variableHints[variableName];
-		if (!hints) return '';
-		return hints.examples[Math.floor(Math.random() * hints.examples.length)];
-	}
-
 	$: if (browser && preview) {
 		setTimeout(() => {
 			updateScrollState();
@@ -264,43 +249,43 @@
 
 		if (isSystemVariable) {
 			return `
-				inline-flex items-center gap-1.5
-				px-1.5 py-0.5 rounded
-				font-mono text-sm leading-tight
-				transition-colors duration-200
-				bg-emerald-100/50 text-emerald-800 ring-1 ring-emerald-200/40
+				inline-flex items-center gap-1
+				px-1 py-0.5 rounded-sm
+				font-mono text-xs leading-none
+				transition-colors duration-150
+				bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
 				cursor-default align-baseline
 			`;
 		} else if (isUserEditable) {
 			const baseClasses = `
-				inline-flex items-center gap-1.5
-				px-1.5 py-0.5 rounded
-				font-mono text-sm leading-tight
-				cursor-pointer transition-all duration-200
+				inline-flex items-center gap-1
+				px-1 py-0.5 rounded-sm
+				font-mono text-xs leading-none
+				cursor-pointer transition-all duration-150
 				align-baseline transform
 			`;
 
 			if (isActive) {
-				return baseClasses + ' bg-blue-100 text-blue-700 ring-2 ring-blue-300 scale-105';
+				return baseClasses + ' bg-blue-50 text-blue-700 ring-1 ring-blue-400';
 			} else if (isEmpty) {
 				return (
 					baseClasses +
-					' bg-purple-100/60 text-purple-800 ring-1 ring-purple-200/70 hover:bg-purple-100 hover:ring-purple-300 hover:scale-105'
+					' bg-purple-50 text-purple-700 ring-1 ring-purple-200 hover:bg-purple-100 hover:ring-purple-300'
 				);
 			} else {
 				return (
 					baseClasses +
-					' bg-blue-100/70 text-blue-800 ring-1 ring-blue-200/60 hover:bg-blue-100 hover:ring-blue-300 hover:scale-105'
+					' bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100 hover:ring-blue-300'
 				);
 			}
 		} else {
 			// Default styling for unknown variables
 			return `
 				inline-flex items-center
-				px-1.5 py-0.5 rounded
-				font-mono text-sm leading-tight
-				cursor-pointer transition-colors duration-200
-				bg-slate-100 text-slate-700 ring-1 ring-slate-200
+				px-1 py-0.5 rounded-sm
+				font-mono text-xs leading-none
+				cursor-pointer transition-colors duration-150
+				bg-slate-50 text-slate-600 ring-1 ring-slate-200
 				align-baseline
 			`;
 		}
@@ -381,17 +366,17 @@
 									/>
 								{/if}
 							{:else}
-								<Popover>
-									<svelte:fragment slot="trigger" let:trigger>
+								<AnimatedPopover id={crypto.randomUUID()} animationStyle="expand" duration={250}>
+									<svelte:fragment slot="trigger" let:triggerAction>
 										<button
-											use:trigger
+											use:triggerAction
 											class={getVariableClasses(activeVariable === segment.name, segment.name)}
 											on:click={() => handleVariableClick(segment.name ?? '')}
 										>
 											{#if systemVariables.has(segment.name)}
-												<User class="h-3 w-3 text-emerald-600" />
+												<User class="h-2.5 w-2.5 text-emerald-600" />
 											{:else if userEditableVariables.has(segment.name) && (!variableValues[segment.name] || variableValues[segment.name].trim() === '')}
-												<Sparkles class="h-3 w-3 text-purple-500" />
+												<Sparkles class="h-2.5 w-2.5 text-purple-600" />
 											{/if}
 											{variableValues[segment.name] || segment.name}
 										</button>
@@ -399,37 +384,30 @@
 
 									<!-- User-editable hint popup -->
 									{#if userEditableVariables.has(segment.name) && variableHints[segment.name]}
-										<div class="w-64 p-3">
-											<div
-												class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"
+										<div class="mb-1 flex items-center gap-1.5">
+											<Sparkles class="h-3 w-3 text-purple-500" />
+											<span class="text-[11px] font-medium tracking-tight text-slate-700"
+												>{variableHints[segment.name].prompt}</span
 											>
-												<Sparkles class="h-4 w-4 text-purple-500" />
-												{variableHints[segment.name].prompt}
-											</div>
-											<p class="mb-3 text-xs italic text-slate-500">
-												"{getRandomExample(segment.name)}"
-											</p>
-											<div class="text-center text-xs text-slate-400">
-												Click the tag to personalize
-											</div>
 										</div>
+										<p class="text-[11px] leading-tight text-slate-500">
+											{variableHints[segment.name].placeholder}
+										</p>
 									{/if}
 
 									<!-- System-populated hint popup -->
 									{#if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
-										<div class="w-64 p-3">
-											<div
-												class="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800"
-											>
-												<User class="h-4 w-4 text-emerald-500" />
+										<div class="mb-1 flex items-center gap-1.5">
+											<User class="h-3 w-3 text-emerald-500" />
+											<span class="text-[11px] font-medium tracking-tight text-slate-700">
 												{systemVariableHints[segment.name].title}
-											</div>
-											<p class="text-xs text-slate-600">
-												{systemVariableHints[segment.name].description}
-											</p>
+											</span>
 										</div>
+										<p class="text-[11px] leading-tight text-slate-500">
+											{systemVariableHints[segment.name].description}
+										</p>
 									{/if}
-								</Popover>
+								</AnimatedPopover>
 							{/if}
 						</span>
 					{/if}

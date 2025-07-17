@@ -33,7 +33,7 @@ function createTemplateStore() {
 			update((state) => ({
 				...state,
 				templates: templatesWithIds,
-				selectedId: templatesWithIds[0]?.id || null, // Auto-select first template
+				selectedId: state.selectedId || templatesWithIds[0]?.id || null, // Preserve existing selection or auto-select first
 				initialized: true
 			}));
 		},
@@ -41,6 +41,16 @@ function createTemplateStore() {
 		// Core template management
 		selectTemplate: (id: string) => {
 			update((state) => ({ ...state, selectedId: id }));
+		},
+		
+		selectTemplateBySlug: (slug: string) => {
+			update((state) => {
+				const template = state.templates.find(t => t.slug === slug);
+				if (template) {
+					return { ...state, selectedId: template.id };
+				}
+				return state;
+			});
 		},
 
 		// Auto-select first template when templates change
