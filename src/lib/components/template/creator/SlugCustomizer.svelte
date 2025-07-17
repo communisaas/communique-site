@@ -6,6 +6,7 @@
 	
 	export let title: string = '';
 	export let slug: string = '';
+	export let context: { channelId: 'certified' | 'direct' } | undefined = undefined;
 	
 	const dispatch = createEventDispatcher();
 	
@@ -61,13 +62,25 @@
 		isAvailable = null;
 		
 		try {
-			const response = await fetch(`/api/templates/check-slug?slug=${encodeURIComponent(slugToCheck)}`);
+			// Convert channelId to deliveryMethod for API
+			const deliveryMethod = context?.channelId === 'certified' ? 'both' : 'email';
+			
+			const params = new URLSearchParams({
+				slug: slugToCheck,
+				...(title && { title }),
+				deliveryMethod
+			});
+			
+			const response = await fetch(`/api/templates/check-slug?${params}`);
 			const data = await response.json();
 			isAvailable = data.available;
 			
 			if (!isAvailable && slugToCheck === slug) {
-				// Generate alternatives if primary slug is taken
-				suggestions = generateSuggestions(slugToCheck);
+				// Use server-provided suggestions that are guaranteed to be available
+				suggestions = data.suggestions || [];
+			} else if (isAvailable && slugToCheck === slug) {
+				// Clear suggestions if slug is available
+				suggestions = [];
 			}
 		} catch (error) {
 			console.error('Error checking slug:', error);
@@ -95,16 +108,38 @@
 		}
 	}
 	
-	// Regenerate suggestions
-	function regenerateSuggestions() {
-		suggestions = generateSuggestions(slug);
+	// Regenerate suggestions by fetching from server
+	async function regenerateSuggestions() {
+		if (!title) return;
+		
+		try {
+			// Convert channelId to deliveryMethod for API
+			const deliveryMethod = context?.channelId === 'certified' ? 'both' : 'email';
+			
+			const params = new URLSearchParams({
+				slug: slug,
+				title: title,
+				deliveryMethod
+			});
+			
+			const response = await fetch(`/api/templates/check-slug?${params}`);
+			const data = await response.json();
+			
+			if (!data.available) {
+				suggestions = data.suggestions || [];
+			}
+		} catch (error) {
+			console.error('Error regenerating suggestions:', error);
+			// Fallback to client-side generation if server fails
+			suggestions = generateSuggestions(slug);
+		}
 	}
 	
 	// Select a suggestion
 	function selectSuggestion(suggestion: string) {
 		slug = suggestion;
 		checkAvailability(slug);
-		suggestions = [];
+		// Don't clear suggestions here - let checkAvailability handle it
 	}
 	
 	// Full URL for preview using dynamic hostname

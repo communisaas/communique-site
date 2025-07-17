@@ -5,7 +5,7 @@ import { templates as staticTemplates } from '$lib/data/templates';
 export async function GET() {
 	try {
 		// Attempt to fetch from database
-		const dbTemplates = await db.Template.findMany({
+		const dbTemplates = await db.template.findMany({
 			where: {
 				is_public: true
 			},
@@ -18,6 +18,7 @@ export async function GET() {
 		if (dbTemplates && dbTemplates.length > 0) {
 			const formattedTemplates = dbTemplates.map((template) => ({
 				id: template.id,
+				slug: template.slug, // CRITICAL: Include slug for URL generation
 				title: template.title,
 				description: template.description,
 				category: template.category,

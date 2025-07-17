@@ -78,6 +78,7 @@
 			<SlugCustomizer 
 				bind:title={data.title}
 				bind:slug={data.slug}
+				{context}
 			/>
 		</div>
 	{/if}
