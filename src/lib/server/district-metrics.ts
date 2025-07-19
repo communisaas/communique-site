@@ -9,55 +9,52 @@ export interface DistrictCoverageMetrics {
 }
 
 /**
- * Calculate district coverage metrics for a congressional template
- * based on actual campaign deliveries and representative data
+ * Calculate user geographic spread for a cross-district template
+ * based on which districts the USERS are from, not which districts are targeted
  */
-export async function calculateDistrictCoverage(templateId: string): Promise<DistrictCoverageMetrics> {
+export async function calculateUserGeographicSpread(templateId: string): Promise<DistrictCoverageMetrics> {
     try {
-        // Get all campaigns for this template
+        // Get all campaigns with user data for this template
         const campaigns = await db.template_campaign.findMany({
             where: {
                 template_id: templateId,
-                delivery_type: 'congressional', // Only congressional deliveries
-                status: { in: ['delivered', 'confirmed'] } // Successful deliveries only
+                status: { in: ['delivered', 'confirmed'] } // Successful uses only
+            },
+            include: {
+                template: {
+                    include: {
+                        user: {
+                            select: {
+                                congressional_district: true,
+                                state: true
+                            }
+                        }
+                    }
+                }
             }
         });
 
         if (campaigns.length === 0) {
             return {
                 districts_covered: 0,
-                total_districts: 435, // Total House districts
+                total_districts: 435,
                 district_coverage_percent: 0,
                 states_covered: 0,
                 total_states: 50
             };
         }
 
-        // Extract unique office codes from successful deliveries
-        const officeCodes = campaigns
-            .map(campaign => campaign.metadata as any)
-            .filter(metadata => metadata?.office_code)
-            .map(metadata => metadata.office_code as string);
+        // Extract unique districts from USERS who used this template
+        const userDistricts = campaigns
+            .map(campaign => campaign.template.user?.congressional_district)
+            .filter(Boolean) as string[];
+        
+        const userStates = campaigns
+            .map(campaign => campaign.template.user?.state)
+            .filter(Boolean) as string[];
 
-        // Get representatives for these office codes to determine districts
-        const representatives = await db.representative.findMany({
-            where: {
-                office_code: { in: officeCodes },
-                is_active: true
-            },
-            select: {
-                state: true,
-                district: true,
-                chamber: true
-            }
-        });
-
-        // Calculate unique House districts (exclude Senate)
-        const houseReps = representatives.filter(rep => rep.chamber === 'house');
-        const uniqueDistricts = new Set(
-            houseReps.map(rep => `${rep.state}-${rep.district}`)
-        );
-        const uniqueStates = new Set(houseReps.map(rep => rep.state));
+        const uniqueDistricts = new Set(userDistricts);
+        const uniqueStates = new Set(userStates);
 
         const districts_covered = uniqueDistricts.size;
         const total_districts = 435; // Total House districts

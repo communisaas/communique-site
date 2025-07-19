@@ -85,14 +85,7 @@ The app will be available at `http://localhost:5173`
 
 ## 📚 Documentation
 
-Complete documentation is available in the `/docs/` directory:
-
-- **[docs/development/CLAUDE.md](./docs/development/CLAUDE.md)** - Comprehensive development guide for Claude Code
-- **[docs/integrations/](./docs/integrations/)** - External service integrations (Congressional, OAuth)
-- **[docs/architecture/](./docs/architecture/)** - System architecture and user flows
-- **[docs/api-reference/](./docs/api-reference/)** - API specifications and schemas
-
-See **[docs/README.md](./docs/README.md)** for the complete documentation index.
+See **[docs/](./docs/)** for complete documentation.
 
 ## Building for Production
 
