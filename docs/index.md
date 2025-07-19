@@ -1,10 +1,15 @@
 # Documentation
 
-| Section | Document | Purpose |
-|---------|----------|---------|
-| **Development** | [CLAUDE.md](./development/CLAUDE.md) | Commands, architecture, environment setup |
-| **Integrations** | [CONGRESSIONAL_INTEGRATION.md](./integrations/CONGRESSIONAL_INTEGRATION.md) | Congressional advocacy system |
-| **Architecture** | [SOCIAL_MEDIA_FUNNEL.md](./architecture/SOCIAL_MEDIA_FUNNEL.md) | User acquisition flows |
-| **Architecture** | [blockchain-civic-engagement-analysis.md](./architecture/blockchain-civic-engagement-analysis.md) | Blockchain strategy |
+## Getting Started
+- **Developers**: [development/CLAUDE.md](./development/CLAUDE.md) - Setup, commands, architecture
+- **Understanding the Platform**: [community-information-theory.md](./architecture/community-information-theory.md) - Core vision and framework
 
-Start with [development/CLAUDE.md](./development/CLAUDE.md) for development work.
+## Technical Documentation
+
+| Area | Document | What It Covers |
+|------|----------|----------------|
+| **Core Framework** | [community-information-theory.md](./architecture/community-information-theory.md) | How communities process civic information |
+| **Mathematical Foundations** | [mathematical-foundations-cid.md](./architecture/mathematical-foundations-cid.md) | Research citations and formal models |
+| **Congressional Integration** | [CONGRESSIONAL_INTEGRATION.md](./integrations/CONGRESSIONAL_INTEGRATION.md) | Official government delivery system |
+| **User Acquisition** | [SOCIAL_MEDIA_FUNNEL.md](./architecture/SOCIAL_MEDIA_FUNNEL.md) | Social media to civic action conversion |
+| **Blockchain Strategy** | [blockchain-civic-engagement-analysis.md](./architecture/blockchain-civic-engagement-analysis.md) | NEAR protocol for transparent civic records |
