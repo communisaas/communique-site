@@ -261,7 +261,11 @@
 						<TemplateHeader {template} />
 					</div>
 					<div in:fly={{ y: 20, duration: 400, delay: 400 }}>
-						<MessagePreview {template} />
+						<MessagePreview 
+							preview={template.preview} 
+							{template} 
+							onScroll={() => {}}
+						/>
 					</div>
 					
 					<!-- Animated Action Section -->

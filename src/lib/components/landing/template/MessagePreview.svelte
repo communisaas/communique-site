@@ -1,11 +1,14 @@
 <script lang="ts">
-	import { Mail, Sparkles, User, Edit3 } from '@lucide/svelte';
+	import { Mail, Sparkles, User, Edit3, Link, Copy, Check } from '@lucide/svelte';
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import AnimatedPopover from '$lib/components/ui/AnimatedPopover.svelte';
+	import type { Template } from '$lib/types/template';
+	import { popover as popoverStore } from '$lib/stores/popover';
 
 	export let preview: string;
+	export let template: Template | undefined = undefined;
 	export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 
 	const dispatch = createEventDispatcher();
@@ -17,6 +20,7 @@
 	let variableValues: Record<string, string> = {};
 	let hoveredVariable: string | null = null;
 	let showingHint: string | null = null;
+	let showCopied = false;
 
 	// Define which variables are system-populated vs user-editable
 	const systemVariables = new Set(['Name', 'Address', 'Representative Name']);
@@ -147,6 +151,11 @@
 	function handleScroll() {
 		updateScrollState();
 		onScroll(isAtBottom);
+		
+		// Close any open popovers when scrolling
+		if ($popoverStore) {
+			popoverStore.close($popoverStore.id);
+		}
 	}
 
 	let touchStartY = 0;
@@ -241,6 +250,16 @@
 		}, 0);
 	}
 
+	// Copy deep link functionality
+	function copyDeepLink() {
+		if (!template?.slug || !browser) return;
+		
+		const deepLinkUrl = `${window.location.origin}/${template.slug}`;
+		navigator.clipboard.writeText(deepLinkUrl);
+		showCopied = true;
+		setTimeout(() => showCopied = false, 2000);
+	}
+
 	// Update variable styling with more delightful interactions
 	function getVariableClasses(isActive: boolean, variableName: string): string {
 		const isSystemVariable = systemVariables.has(variableName);
@@ -293,9 +312,37 @@
 </script>
 
 <div class="relative flex h-full cursor-text flex-col">
-	<div class="mb-2 flex shrink-0 items-center gap-2">
-		<Mail class="h-4 w-4 shrink-0 text-slate-500" />
-		<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
+	<div class="mb-2 flex shrink-0 items-center justify-between gap-2">
+		<div class="flex items-center gap-2">
+			<Mail class="h-4 w-4 shrink-0 text-slate-500" />
+			<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
+		</div>
+		
+		{#if template?.slug}
+			<AnimatedPopover id="copy-link-popover" animationStyle="expand" duration={200}>
+				<svelte:fragment slot="trigger" let:triggerAction>
+					<button
+						use:triggerAction
+						on:click={copyDeepLink}
+						class="group flex items-center gap-1.5 rounded-md px-2 py-1 text-xs
+							   text-slate-500 hover:text-slate-700 hover:bg-slate-100
+							   transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+					>
+						{#if showCopied}
+							<Check class="h-3 w-3 text-emerald-600" />
+							<span class="text-emerald-600 font-medium">Copied!</span>
+						{:else}
+							<Link class="h-3 w-3 group-hover:text-blue-600 transition-colors" />
+							<span class="group-hover:text-blue-600 transition-colors">Copy link</span>
+						{/if}
+					</button>
+				</svelte:fragment>
+				
+				<div class="text-[11px] text-slate-600 max-w-[200px]">
+					Share this template with others by copying its direct link
+				</div>
+			</AnimatedPopover>
+		{/if}
 	</div>
 
 	<!-- Enhanced Variable Legend with personality -->

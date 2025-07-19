@@ -1,5 +1,7 @@
 # Documentation
 
+**Communique is self-sustaining civic infrastructure - funded by blockchain protocol economics, not user fees or data extraction.**
+
 ## Getting Started
 - **Developers**: [development/CLAUDE.md](./development/CLAUDE.md) - Setup, commands, architecture
 - **Understanding the Platform**: [community-information-theory.md](./architecture/community-information-theory.md) - Core vision and framework

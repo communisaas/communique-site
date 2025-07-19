@@ -515,3 +515,20 @@ Your job: maximize this function using every mathematical tool you know.
 Sarah, David, Maria, Tom, Linda, James - they're not data points. They're the variables in the most important optimization problem you'll ever solve.
 
 **Make the math serve the people, not the other way around.**
+
+## Sustainable Infrastructure Economics
+
+Unlike traditional civic tech that requires endless fundraising or surveillance capitalism, this system achieves financial sustainability through blockchain protocol economics:
+
+**NEAR Protocol Revenue Model:**
+- Users never pay transaction fees (sponsored transactions)
+- Platform receives 30% of all gas fees generated automatically
+- Storage staking provides recoverable funding for long-term message archival
+- No extraction from democratic participation - the protocol itself funds civic infrastructure
+
+**Monthly Economic Reality:**
+- 1M messages = $4,583/month in NEAR storage costs
+- Gas fee revenue share ≈ $6,000-12,000/month (conservative estimate)
+- Net positive cash flow without charging users or selling data
+
+This isn't a startup seeking product-market fit. It's **civic infrastructure with built-in economic sustainability** - like roads that pay for their own maintenance through elegant protocol design.

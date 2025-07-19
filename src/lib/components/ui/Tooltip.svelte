@@ -199,14 +199,23 @@
 		setTimeout(updatePosition, 0);
 	}
 
+	function handleScroll() {
+		if (show) {
+			// Hide tooltip on scroll to prevent it from becoming detached
+			activeTooltipId.set(null);
+		}
+	}
+
 	onMount(() => {
 		window.addEventListener('resize', updatePosition);
+		window.addEventListener('scroll', handleScroll, true);
 		document.addEventListener('touchstart', handleGlobalClick, true);
 		document.addEventListener('touchend', handleTouchEnd, true);
 		document.addEventListener('click', handleGlobalClick, true);
 
 		return () => {
 			window.removeEventListener('resize', updatePosition);
+			window.removeEventListener('scroll', handleScroll, true);
 			document.removeEventListener('touchstart', handleGlobalClick, true);
 			document.removeEventListener('touchend', handleTouchEnd, true);
 			document.removeEventListener('click', handleGlobalClick, true);

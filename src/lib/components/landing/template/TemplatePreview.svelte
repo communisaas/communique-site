@@ -246,6 +246,7 @@
 			<div class="my-4 min-h-0 flex-1 touch-pan-y overflow-hidden">
 				<MessagePreview
 					preview={template.preview}
+					{template}
 					{onScroll}
 					on:scrollStateChange={handleScrollStateChange}
 					on:touchStateChange={handleTouchStateChange}

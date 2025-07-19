@@ -76,10 +76,10 @@
 	};
 
 	// Enhanced scroll handling with position updates
-	function handleScroll() {
-		if (open && !isAnimating && isPositioned) {
-			// Update position when scrolling instead of closing
-			requestAnimationFrame(updatePosition);
+	function handleScroll(event: Event) {
+		if (open && !isAnimating) {
+			// Close popover on scroll to prevent it from becoming detached
+			popoverStore.close(id);
 		}
 	}
 
@@ -90,6 +90,7 @@
 	}
 
 	onMount(() => {
+		// Listen to window scroll and resize events
 		window.addEventListener('scroll', handleScroll, true);
 		window.addEventListener('resize', handleResize);
 

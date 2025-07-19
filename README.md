@@ -2,6 +2,8 @@
 
 A full-stack web platform for creating, sharing, and managing email message templates for political advocacy and outreach.
 
+**Self-sustaining civic infrastructure funded by blockchain protocol economics - users never pay, data never sold.**
+
 *Let the collective voice rise.*
 
 ## Tech Stack

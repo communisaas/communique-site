@@ -183,6 +183,18 @@ You've seen what happens when decentralized systems get captured by centralized 
 
 **This is the only technical challenge that actually matters.**
 
+## Economic Sustainability Through Blockchain Architecture
+
+This platform operates as **self-sustaining civic infrastructure** - not a business model requiring revenue extraction from democratic participation.
+
+**Financial Architecture:**
+- **User messaging**: Always free through sponsored NEAR transactions
+- **Platform sustainability**: 30% developer revenue share from NEAR protocol gas fees
+- **Storage economics**: Recoverable storage staking that funds message archival
+- **Corporate integration**: Optional CSR sponsorship pools for enhanced civic engagement
+
+Democracy doesn't have paywalls. Democratic infrastructure pays for itself through efficient blockchain economics.
+
 ## Strategic Framework
 
 ### Phase 1: Community Information Mapping

@@ -203,47 +203,63 @@ class CivicMessaging {
 ## Recommendations
 
 ### Short-term (3-6 months)
-1. **Pilot on NEAR or Solana Testnet**
-   - Zero cost for users
-   - Prove model viability
-   - Gather user feedback
+1. **NEAR Testnet Pilot**
+   - Deploy civic messaging contract on NEAR testnet
+   - Implement sponsored transaction model
+   - Test storage staking for message archival
 
-2. **Implement Hybrid Architecture**
-   - Traditional delivery for immediate impact
-   - Blockchain recording for transparency
+2. **Hybrid Delivery Architecture**
+   - Traditional CWC API delivery for immediate impact
+   - NEAR storage for permanent record and transparency
    - Progressive enhancement approach
 
 ### Medium-term (6-12 months)
-1. **Launch Mainnet Integration**
-   - Start with NEAR for lowest costs
-   - Implement sponsorship pools
-   - Build reputation system
+1. **NEAR Mainnet Launch**
+   - Deploy production contract with sponsored transactions
+   - Implement storage recovery system for old messages
+   - Build reputation system on-chain
 
-2. **Develop Revenue Model**
-   - Partner with advocacy organizations
-   - Apply for government grants
-   - Launch premium features
+2. **Revenue Model Development**
+   - Leverage NEAR's 30% developer gas revenue share
+   - Partner with advocacy organizations for sponsorship pools
+   - Apply for government grants for democratic infrastructure
 
 ### Long-term (12+ months)
-1. **Multi-chain Support**
-   - Add Solana for scale
-   - Consider Ethereum L2s for ecosystem access
-   - Maintain chain-agnostic architecture
+1. **Scale with NEAR Sharding**
+   - Leverage NEAR's horizontal scaling capabilities
+   - Implement cross-shard message queries
+   - Maintain single-chain simplicity
 
-2. **Advanced Features**
-   - Quadratic funding mechanisms
-   - DAO governance for platform decisions
-   - Cross-chain reputation portability
+2. **Advanced Civic Features**
+   - Quadratic funding mechanisms for issue campaigns
+   - On-chain reputation and civic engagement scoring
+   - DAO governance using NEAR's native account abstraction
 
 ## Conclusion
 
-Blockchain integration for civic engagement is technically and economically feasible when:
-1. Users never pay gas fees (sponsored transactions)
-2. Platform uses efficient chains (NEAR/Solana)
-3. Revenue models support infrastructure costs
-4. Implementation maintains hybrid approach for reliability
+**NEAR Protocol is the clear choice for Communique's civic engagement platform.**
 
-The recommended approach leverages NEAR or Solana's low costs with sponsored transactions, ensuring democratic participation remains free while gaining blockchain's transparency and verification benefits.
+After comprehensive analysis comparing NEAR and Solana for storing full congressional messages:
+
+### Cost Analysis
+- **NEAR**: $55,000/year for 1M messages
+- **Solana**: $1,440,000/year for 1M messages
+- **NEAR is 26x more cost-effective** for full message storage
+
+### Key Advantages of NEAR-Only Approach
+1. **Storage Staking Model**: Recoverable fees when archiving old messages
+2. **Sharding Architecture**: Native horizontal scaling as platform grows
+3. **Developer Revenue Share**: 30% of gas fees create sustainable funding
+4. **Sponsored Transactions**: Users never pay gas fees
+5. **Human-Readable Accounts**: Better UX with communique.near addresses
+
+### Implementation Strategy
+- Store full message content on NEAR (not just hashes)
+- Leverage NEAR's storage staking for cost recovery
+- Use sponsored transactions to maintain free civic participation
+- Scale horizontally through NEAR's sharding as volume grows
+
+**No multi-chain complexity needed.** NEAR provides everything required for sustainable, decentralized civic engagement at massive scale.
 
 ---
 
@@ -269,4 +285,4 @@ The recommended approach leverages NEAR or Solana's low costs with sponsored tra
 ---
 
 *Last Updated: July 2025*
-*Document Version: 1.0*
+*Document Version: 2.0 - Updated with NEAR-only recommendation*
