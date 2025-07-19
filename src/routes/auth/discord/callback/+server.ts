@@ -13,11 +13,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const codeVerifier = cookies.get('oauth_code_verifier');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
 	
-	// Create Discord OAuth provider with dynamic origin
+	// Create Discord OAuth provider with static redirect URL
 	const discord = new Discord(
 		process.env.DISCORD_CLIENT_ID!,
 		process.env.DISCORD_CLIENT_SECRET!,
-		`${url.origin}/auth/discord/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`
 	);
 	
 	// Clear OAuth cookies

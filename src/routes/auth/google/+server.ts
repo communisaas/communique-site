@@ -7,11 +7,13 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
 	
-	// Create Google OAuth provider with dynamic origin
+	const redirectUri = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`;
+	
+	// Create Google OAuth provider with static redirect URI
 	const google = new Google(
 		process.env.GOOGLE_CLIENT_ID!,
 		process.env.GOOGLE_CLIENT_SECRET!,
-		`${url.origin}/auth/google/callback`
+		redirectUri
 	);
 	
 	// Store state and code verifier in cookies for verification

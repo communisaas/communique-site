@@ -6,11 +6,11 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	
-	// Create LinkedIn OAuth provider with dynamic origin
+	// Create LinkedIn OAuth provider with static redirect URL
 	const linkedin = new LinkedIn(
 		process.env.LINKEDIN_CLIENT_ID!,
 		process.env.LINKEDIN_CLIENT_SECRET!,
-		`${url.origin}/auth/linkedin/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`
 	);
 	
 	// Store state in cookies for verification
@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		});
 	}
 	
-	const authorizationURL = await linkedin.createAuthorizationURL(state, ['profile', 'email']);
+	const authorizationURL = await linkedin.createAuthorizationURL(state, ['openid', 'profile', 'email']);
 	
 	redirect(302, authorizationURL.toString());
 };

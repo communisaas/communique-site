@@ -13,11 +13,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const codeVerifier = cookies.get('oauth_code_verifier');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
 	
-	// Create Twitter OAuth provider with dynamic origin
+	// Create Twitter OAuth provider with static redirect URL
 	const twitter = new Twitter(
 		process.env.TWITTER_CLIENT_ID!,
 		process.env.TWITTER_CLIENT_SECRET!,
-		`${url.origin}/auth/twitter/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`
 	);
 	
 	// Clear OAuth cookies

@@ -7,11 +7,11 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
 	
-	// Create Twitter OAuth provider with dynamic origin
+	// Create Twitter OAuth provider with static redirect URI
 	const twitter = new Twitter(
 		process.env.TWITTER_CLIENT_ID!,
 		process.env.TWITTER_CLIENT_SECRET!,
-		`${url.origin}/auth/twitter/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`
 	);
 	
 	// Store state and code verifier in cookies for verification

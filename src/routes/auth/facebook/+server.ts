@@ -6,11 +6,11 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 
-	// Create Facebook OAuth provider with dynamic origin
+	// Create Facebook OAuth provider with static redirect URI
 	const facebook = new Facebook(
 		process.env.FACEBOOK_CLIENT_ID!,
 		process.env.FACEBOOK_CLIENT_SECRET!,
-		`${url.origin}/auth/facebook/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`
 	);
 
 	// Store state in cookies for verification

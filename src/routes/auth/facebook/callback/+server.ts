@@ -10,11 +10,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const storedState = cookies.get('oauth_state');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
 
-	// Create Facebook OAuth provider with dynamic origin
+	// Create Facebook OAuth provider with static redirect URL
 	const facebook = new Facebook(
 		process.env.FACEBOOK_CLIENT_ID!,
 		process.env.FACEBOOK_CLIENT_SECRET!,
-		`${url.origin}/auth/facebook/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`
 	);
 
 	// Clear OAuth cookies

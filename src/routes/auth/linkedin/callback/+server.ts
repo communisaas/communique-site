@@ -12,11 +12,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const storedState = cookies.get('oauth_state');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
 	
-	// Create LinkedIn OAuth provider with dynamic origin
+	// Create LinkedIn OAuth provider with static redirect URL
 	const linkedin = new LinkedIn(
 		process.env.LINKEDIN_CLIENT_ID!,
 		process.env.LINKEDIN_CLIENT_SECRET!,
-		`${url.origin}/auth/linkedin/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`
 	);
 	
 	// Clear OAuth cookies
@@ -96,7 +96,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						refresh_token: tokens.refreshToken,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
-						scope: 'profile email'
+						scope: 'openid profile email'
 					}
 				});
 				
@@ -122,7 +122,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						refresh_token: tokens.refreshToken,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
-						scope: 'profile email'
+						scope: 'openid profile email'
 					}
 				});
 			}

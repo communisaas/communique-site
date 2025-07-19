@@ -13,11 +13,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	const codeVerifier = cookies.get('oauth_code_verifier');
 	const returnTo = cookies.get('oauth_return_to') || '/dashboard';
 	
-	// Create Google OAuth provider with dynamic origin
+	// Create Google OAuth provider with static redirect URI
 	const google = new Google(
 		process.env.GOOGLE_CLIENT_ID!,
 		process.env.GOOGLE_CLIENT_SECRET!,
-		`${url.origin}/auth/google/callback`
+		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`
 	);
 	
 	// Clear OAuth cookies
