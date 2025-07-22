@@ -73,7 +73,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 				data: {
 					access_token: tokens.accessToken(),
 					refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
-					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
+					expires_at: tokens.accessTokenExpiresAt() ? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null,
 					updated_at: new Date()
 				}
 			});
@@ -100,7 +100,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 					provider_account_id: twitterUser.id,
 					access_token: tokens.accessToken(),
 					refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
-					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
+					expires_at: tokens.accessTokenExpiresAt() ? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null,
 					token_type: 'Bearer',
 					scope: 'tweet.read users.read'
 				}
