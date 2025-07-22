@@ -1,8 +1,8 @@
 import { Users, Mail, Globe } from '@lucide/svelte';
-import type { ComponentType } from 'svelte';
+import type { Component } from 'svelte';
 
 interface Step {
-    icon: ComponentType;
+    icon: Component;
     title: string;
     desc: string;
 }

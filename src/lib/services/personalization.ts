@@ -1,7 +1,7 @@
-import type { User, Representative } from '@prisma/client';
+import type { User, representative } from '@prisma/client';
 
 // Define a map of variables and their resolution logic
-const variableMap: Record<string, (user: User, rep?: Representative) => string> = {
+const variableMap: Record<string, (user: User, rep?: representative) => string> = {
     '[Name]': (user) => user.name || '',
     '[Address]': (user) => [user.street, user.city, user.state, user.zip].filter(Boolean).join(', ') || '',
     '[Representative Name]': (user, rep) => rep?.name || '',

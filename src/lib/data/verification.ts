@@ -1,8 +1,8 @@
 import { Shield, UserCheck, CheckCircle2 } from '@lucide/svelte';
-import type { ComponentType } from 'svelte';
+import type { Component } from 'svelte';
 
 interface Benefit {
-    icon: ComponentType;
+    icon: Component;
     title: string;
     description: string;
 }

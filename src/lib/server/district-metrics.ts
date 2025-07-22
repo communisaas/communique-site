@@ -87,10 +87,10 @@ export async function calculateUserGeographicSpread(templateId: string): Promise
  */
 export async function updateTemplateDistrictMetrics(templateId: string): Promise<void> {
     try {
-        const coverage = await calculateDistrictCoverage(templateId);
+        const coverage = await calculateUserGeographicSpread(templateId);
         
         // Get current template metrics
-        const template = await db.Template.findUnique({
+        const template = await db.template.findUnique({
             where: { id: templateId },
             select: { metrics: true }
         });
@@ -106,7 +106,7 @@ export async function updateTemplateDistrictMetrics(templateId: string): Promise
         };
 
         // Update template with new metrics
-        await db.Template.update({
+        await db.template.update({
             where: { id: templateId },
             data: { metrics: updatedMetrics }
         });
@@ -122,7 +122,7 @@ export async function updateTemplateDistrictMetrics(templateId: string): Promise
 export async function updateAllCongressionalTemplateMetrics(): Promise<void> {
     try {
         // Get all congressional templates
-        const templates = await db.Template.findMany({
+        const templates = await db.template.findMany({
             where: {
                 deliveryMethod: 'both' // Congressional templates use 'both'
             },

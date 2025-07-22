@@ -343,19 +343,119 @@ export async function detectPoliticalDeadEnds(userId: string, templateId: string
 
 // Helper functions (implementation details)
 
-async function findPoliticallySimilarUsers(userId: string, radiusMiles: number) {
+async function findPoliticallySimilarUsers(userId: string, radiusMiles: number): Promise<{id: string}[]> {
   // Implementation: Find users with similar template usage patterns within radius
-  return [];
+  // For now, return a basic mock result to allow compilation
+  const baseUser = await db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, congressional_district: true, state: true }
+  });
+  
+  if (!baseUser) return [];
+  
+  // Find users in same district as a basic similarity metric
+  const similarUsers = await db.user.findMany({
+    where: {
+      congressional_district: baseUser.congressional_district,
+      id: { not: userId }
+    },
+    select: { id: true },
+    take: 10
+  });
+  
+  return similarUsers;
 }
 
 async function calculateSharedBeliefs(userIds: string[]) {
-  // Implementation: Analyze common template categories/types
-  return {};
+  // Implementation: Analyze common template categories/types users have engaged with
+  if (userIds.length === 0) return {};
+  
+  const campaigns = await db.template_campaign.findMany({
+    where: {
+      template: {
+        user: {
+          id: { in: userIds }
+        }
+      }
+    },
+    include: {
+      template: {
+        select: {
+          category: true,
+          type: true
+        }
+      }
+    }
+  });
+  
+  // Count categories
+  const categoryCount: Record<string, number> = {};
+  campaigns.forEach(campaign => {
+    const category = campaign.template.category;
+    categoryCount[category] = (categoryCount[category] || 0) + 1;
+  });
+  
+  return categoryCount;
 }
 
-async function calculateAgreementStrength(userIds: string[]) {
-  // Implementation: Calculate how closely users align on issues
-  return 0.8;
+async function calculateAgreementStrength(userIds: string[]): Promise<number> {
+  // Implementation: Calculate how closely users align on issues based on template usage
+  if (userIds.length === 0) return 0;
+  
+  // Get template usage for all users
+  const userTemplates = await db.template_campaign.findMany({
+    where: {
+      template: {
+        user: {
+          id: { in: userIds }
+        }
+      }
+    },
+    include: {
+      template: {
+        select: {
+          category: true,
+          user: {
+            select: { id: true }
+          }
+        }
+      }
+    }
+  });
+  
+  // Calculate overlap in template categories used
+  const userCategories: Record<string, Set<string>> = {};
+  userTemplates.forEach(campaign => {
+    const userId = campaign.template.user?.id;
+    const category = campaign.template.category;
+    if (userId) {
+      if (!userCategories[userId]) userCategories[userId] = new Set();
+      userCategories[userId].add(category);
+    }
+  });
+  
+  // Calculate Jaccard similarity across all user pairs
+  const userIdsList = Object.keys(userCategories);
+  if (userIdsList.length < 2) return 0.5;
+  
+  let totalSimilarity = 0;
+  let comparisons = 0;
+  
+  for (let i = 0; i < userIdsList.length; i++) {
+    for (let j = i + 1; j < userIdsList.length; j++) {
+      const set1 = userCategories[userIdsList[i]];
+      const set2 = userCategories[userIdsList[j]];
+      
+      const intersection = new Set([...set1].filter(x => set2.has(x)));
+      const union = new Set([...set1, ...set2]);
+      
+      const jaccard = union.size > 0 ? intersection.size / union.size : 0;
+      totalSimilarity += jaccard;
+      comparisons++;
+    }
+  }
+  
+  return comparisons > 0 ? totalSimilarity / comparisons : 0.5;
 }
 
 function extractDominantIssues(sharedBeliefs: any): string[] {
@@ -368,9 +468,21 @@ async function detectBubbleConflicts(bubbleId: string, coordinates: any) {
   return [];
 }
 
-async function findUsersInBothCommunities(communityA: string, communityB: string) {
-  // Implementation: Find users tagged with both community types
-  return [];
+async function findUsersInBothCommunities(communityA: string, communityB: string): Promise<{id: string}[]> {
+  // Implementation: Find users that could belong to both community types
+  // For now, return users from similar geographic areas as a proxy
+  const users = await db.user.findMany({
+    where: {
+      AND: [
+        { state: { not: null } },
+        { congressional_district: { not: null } }
+      ]
+    },
+    select: { id: true },
+    take: 10
+  });
+  
+  return users;
 }
 
 async function calculateSharedPriorities(users: any[]) {
