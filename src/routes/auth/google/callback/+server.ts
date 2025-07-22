@@ -71,7 +71,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 				where: { id: existingAccount.id },
 				data: {
 					access_token: tokens.accessToken(),
-					refresh_token: tokens.refreshToken(),
+					refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 					updated_at: new Date()
 				}
@@ -94,7 +94,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						provider: 'google',
 						provider_account_id: googleUser.id,
 						access_token: tokens.accessToken(),
-						refresh_token: tokens.refreshToken(),
+						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'profile email'
@@ -120,7 +120,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						provider: 'google',
 						provider_account_id: googleUser.id,
 						access_token: tokens.accessToken(),
-						refresh_token: tokens.refreshToken(),
+						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'profile email'
