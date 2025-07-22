@@ -369,7 +369,7 @@
                    absolute inset-0 overflow-y-auto whitespace-pre-wrap rounded-lg
                    bg-slate-50/70 p-4"
 		>
-			<p class="font-mono text-sm leading-normal text-slate-600">
+			<div class="font-mono text-sm leading-normal text-slate-600">
 				{#each templateSegments as segment}
 					{#if segment.type === 'text'}
 						{segment.content}
@@ -459,7 +459,7 @@
 						</span>
 					{/if}
 				{/each}
-			</p>
+			</div>
 		</div>
 	</div>
 </div>
