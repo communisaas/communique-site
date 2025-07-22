@@ -40,7 +40,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		// Fetch user info from Google
 		const googleUserResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
 			headers: {
-				Authorization: `Bearer ${tokens.accessToken}`
+				Authorization: `Bearer ${tokens.accessToken()}`
 			}
 		});
 		
@@ -70,8 +70,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			await db.account.update({
 				where: { id: existingAccount.id },
 				data: {
-					access_token: tokens.accessToken,
-					refresh_token: tokens.refreshToken,
+					access_token: tokens.accessToken(),
+					refresh_token: tokens.refreshToken(),
 					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 					updated_at: new Date()
 				}
@@ -93,8 +93,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'google',
 						provider_account_id: googleUser.id,
-						access_token: tokens.accessToken,
-						refresh_token: tokens.refreshToken,
+						access_token: tokens.accessToken(),
+						refresh_token: tokens.refreshToken(),
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'profile email'
@@ -119,8 +119,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'google',
 						provider_account_id: googleUser.id,
-						access_token: tokens.accessToken,
-						refresh_token: tokens.refreshToken,
+						access_token: tokens.accessToken(),
+						refresh_token: tokens.refreshToken(),
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'profile email'
@@ -164,8 +164,24 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		}
 		
 	} catch (err) {
-		console.error('OAuth callback error:', err);
-		return error(500, 'Authentication failed');
+		console.error('OAuth callback error:', {
+			error: err,
+			message: err instanceof Error ? err.message : 'Unknown error',
+			stack: err instanceof Error ? err.stack : undefined,
+			env: {
+				hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
+				hasGoogleClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+				oauthRedirectBase: process.env.OAUTH_REDIRECT_BASE_URL,
+				nodeEnv: process.env.NODE_ENV
+			}
+		});
+		
+		// Return more specific error message in non-production for debugging
+		const errorMessage = process.env.NODE_ENV === 'production' 
+			? 'Authentication failed' 
+			: `Authentication failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
+		
+		return error(500, errorMessage);
 	}
 };
 
