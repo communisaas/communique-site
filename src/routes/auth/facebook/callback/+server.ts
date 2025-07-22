@@ -37,6 +37,12 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		);
 
 		if (!facebookUserResponse.ok) {
+			const errorText = await facebookUserResponse.text();
+			console.error('Facebook API error:', {
+				status: facebookUserResponse.status,
+				statusText: facebookUserResponse.statusText,
+				body: errorText
+			});
 			return error(500, 'Failed to fetch user information from Facebook');
 		}
 
