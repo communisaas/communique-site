@@ -40,7 +40,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		// Fetch user info from Twitter
 		const twitterUserResponse = await fetch('https://api.twitter.com/2/users/me?user.fields=profile_image_url', {
 			headers: {
-				Authorization: `Bearer ${tokens.accessToken}`
+				Authorization: `Bearer ${tokens.accessToken()}`
 			}
 		});
 		
@@ -71,8 +71,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			await db.account.update({
 				where: { id: existingAccount.id },
 				data: {
-					access_token: tokens.accessToken,
-					refresh_token: tokens.refreshToken,
+					access_token: tokens.accessToken(),
+					refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 					updated_at: new Date()
 				}
@@ -98,8 +98,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 					type: 'oauth',
 					provider: 'twitter',
 					provider_account_id: twitterUser.id,
-					access_token: tokens.accessToken,
-					refresh_token: tokens.refreshToken,
+					access_token: tokens.accessToken(),
+					refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 					token_type: 'Bearer',
 					scope: 'tweet.read users.read'

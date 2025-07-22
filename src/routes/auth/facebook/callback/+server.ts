@@ -33,7 +33,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		const tokens = await facebook.validateAuthorizationCode(code);
 
 		const facebookUserResponse = await fetch(
-			`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.accessToken}`
+			`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.accessToken()}`
 		);
 
 		if (!facebookUserResponse.ok) {
@@ -58,7 +58,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			await db.account.update({
 				where: { id: existingAccount.id },
 				data: {
-					access_token: tokens.accessToken,
+					access_token: tokens.accessToken(),
 					updated_at: new Date()
 				}
 			});
@@ -76,7 +76,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'facebook',
 						provider_account_id: facebookUser.id,
-						access_token: tokens.accessToken,
+						access_token: tokens.accessToken(),
 						token_type: 'Bearer',
 						scope: 'email public_profile'
 					}
@@ -98,7 +98,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'facebook',
 						provider_account_id: facebookUser.id,
-						access_token: tokens.accessToken,
+						access_token: tokens.accessToken(),
 						token_type: 'Bearer',
 						scope: 'email public_profile'
 					}

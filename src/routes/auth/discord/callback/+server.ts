@@ -40,7 +40,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		// Fetch user info from Discord API
 		const discordUserResponse = await fetch('https://discord.com/api/users/@me', {
 			headers: {
-				Authorization: `Bearer ${tokens.accessToken}`
+				Authorization: `Bearer ${tokens.accessToken()}`
 			}
 		});
 		
@@ -70,8 +70,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			await db.account.update({
 				where: { id: existingAccount.id },
 				data: {
-					access_token: tokens.accessToken,
-					refresh_token: tokens.refreshToken,
+					access_token: tokens.accessToken(),
+					refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 					updated_at: new Date()
 				}
@@ -93,8 +93,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'discord',
 						provider_account_id: discordUser.id,
-						access_token: tokens.accessToken,
-						refresh_token: tokens.refreshToken,
+						access_token: tokens.accessToken(),
+						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'identify email'
@@ -127,8 +127,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'discord',
 						provider_account_id: discordUser.id,
-						access_token: tokens.accessToken,
-						refresh_token: tokens.refreshToken,
+						access_token: tokens.accessToken(),
+						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'identify email'

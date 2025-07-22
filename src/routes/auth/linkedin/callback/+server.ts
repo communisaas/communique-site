@@ -38,7 +38,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		// Fetch user info from LinkedIn v2 API
 		const linkedinUserResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
 			headers: {
-				Authorization: `Bearer ${tokens.accessToken}`,
+				Authorization: `Bearer ${tokens.accessToken()}`,
 				'X-RestLi-Protocol-Version': '2.0.0'
 			}
 		});
@@ -69,8 +69,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			await db.account.update({
 				where: { id: existingAccount.id },
 				data: {
-					access_token: tokens.accessToken,
-					refresh_token: tokens.refreshToken,
+					access_token: tokens.accessToken(),
+					refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 					expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 					updated_at: new Date()
 				}
@@ -92,8 +92,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'linkedin',
 						provider_account_id: linkedinUser.sub,
-						access_token: tokens.accessToken,
-						refresh_token: tokens.refreshToken,
+						access_token: tokens.accessToken(),
+						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'openid profile email'
@@ -118,8 +118,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						type: 'oauth',
 						provider: 'linkedin',
 						provider_account_id: linkedinUser.sub,
-						access_token: tokens.accessToken,
-						refresh_token: tokens.refreshToken,
+						access_token: tokens.accessToken(),
+						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt ? Math.floor(tokens.accessTokenExpiresAt.getTime() / 1000) : null,
 						token_type: 'Bearer',
 						scope: 'openid profile email'
