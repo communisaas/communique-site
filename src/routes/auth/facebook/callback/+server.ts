@@ -32,8 +32,14 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 	try {
 		const tokens = await facebook.validateAuthorizationCode(code);
 
+		// Generate appsecret_proof for Facebook API security
+		const crypto = await import('crypto');
+		const appSecret = process.env.FACEBOOK_CLIENT_SECRET!;
+		const accessToken = tokens.accessToken();
+		const appsecretProof = crypto.createHmac('sha256', appSecret).update(accessToken).digest('hex');
+
 		const facebookUserResponse = await fetch(
-			`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${tokens.accessToken()}`
+			`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}&appsecret_proof=${appsecretProof}`
 		);
 
 		if (!facebookUserResponse.ok) {
