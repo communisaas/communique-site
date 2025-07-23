@@ -156,6 +156,10 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			redirect(302, returnTo);
 		}
 	} catch (err) {
+		// Don't log SvelteKit redirects as errors
+		if (err instanceof Response && err.status >= 300 && err.status < 400) {
+			throw err;
+		}
 		console.error('Facebook OAuth callback error:', err);
 		return error(500, 'Authentication failed');
 	}

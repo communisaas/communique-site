@@ -167,7 +167,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		}
 		
 	} catch (err) {
-		console.error('OAuth callback error:', err);
+		// Don't log SvelteKit redirects as errors
+		if (err instanceof Response && err.status >= 300 && err.status < 400) {
+			throw err;
+		}
+		console.error('LinkedIn OAuth callback error:', err);
 		return error(500, 'Authentication failed');
 	}
 };

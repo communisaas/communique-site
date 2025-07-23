@@ -168,7 +168,12 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		}
 		
 	} catch (err) {
-		console.error('OAuth callback error:', {
+		// Don't log SvelteKit redirects as errors
+		if (err instanceof Response && err.status >= 300 && err.status < 400) {
+			throw err;
+		}
+		
+		console.error('Google OAuth callback error:', {
 			error: err,
 			message: err instanceof Error ? err.message : 'Unknown error',
 			stack: err instanceof Error ? err.stack : undefined,

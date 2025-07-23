@@ -43,6 +43,9 @@
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 	let pulseAnimation = spring(1, { stiffness: 0.3, damping: 0.6 });
 	
+	// Generate share URL for template
+	$: shareUrl = `${$page.url.origin}/${template.slug}`;
+	
 	// Animate action button on mount
 	onMount(() => {
 		// Prevent background scrolling when modal is open
