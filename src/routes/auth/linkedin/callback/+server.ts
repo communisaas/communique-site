@@ -96,7 +96,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt() ? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null,
 						token_type: 'Bearer',
-						scope: 'openid profile email'
+						scope: 'openid profile email',
+						created_at: new Date(),
+						updated_at: new Date()
 					}
 				});
 				
@@ -122,7 +124,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						refresh_token: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
 						expires_at: tokens.accessTokenExpiresAt() ? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null,
 						token_type: 'Bearer',
-						scope: 'openid profile email'
+						scope: 'openid profile email',
+						created_at: new Date(),
+						updated_at: new Date()
 					}
 				});
 			}

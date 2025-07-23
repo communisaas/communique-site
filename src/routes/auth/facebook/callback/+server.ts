@@ -90,7 +90,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						provider_account_id: facebookUser.id,
 						access_token: tokens.accessToken(),
 						token_type: 'Bearer',
-						scope: 'email public_profile'
+						scope: 'email public_profile',
+						created_at: new Date(),
+						updated_at: new Date()
 					}
 				});
 				user = existingUser;
@@ -112,7 +114,9 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 						provider_account_id: facebookUser.id,
 						access_token: tokens.accessToken(),
 						token_type: 'Bearer',
-						scope: 'email public_profile'
+						scope: 'email public_profile',
+						created_at: new Date(),
+						updated_at: new Date()
 					}
 				});
 			}
