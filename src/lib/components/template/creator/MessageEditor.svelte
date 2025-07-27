@@ -1,15 +1,18 @@
 <script lang="ts">
 	import { Lightbulb, Braces, Plus } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
 	const placeholderText = `Start writing your template message...\n\n💡 Tip: Click the buttons above to add personalization.\n✨ Variables work even when left empty.`;
 
-	export let data: {
-		preview: string;
-		variables: string[];
-	};
-	export let context: TemplateCreationContext;
+	let { data, context }: {
+		data: {
+			preview: string;
+			variables: string[];
+		};
+		context: TemplateCreationContext;
+	} = $props();
 
 	// Variables depend on template type
 	const senderVariables = ['[Personal Connection]', '[Name]', '[Address]'];
@@ -20,14 +23,22 @@
 		'[Address]'
 	];
 
-	$: isCongressional = context.channelId === 'certified';
-	$: availableVariables = isCongressional ? congressionalVariables : senderVariables;
-	$: unusedVariables = availableVariables.filter((v) => !data.variables.includes(v));
-	$: hasPersonalTouch = data.variables.includes('[Personal Connection]');
-	$: hasAuthenticity = data.variables.includes('[Name]') || data.variables.includes('[Address]');
+	const isCongressional = $derived(context.channelId === 'certified');
+	const availableVariables = $derived(isCongressional ? congressionalVariables : senderVariables);
+	const unusedVariables = $derived(availableVariables.filter((v) => !data.variables.includes(v)));
+	const hasPersonalTouch = $derived(data.variables.includes('[Personal Connection]'));
+	const hasAuthenticity = $derived(data.variables.includes('[Name]') || data.variables.includes('[Address]'));
 
-	let autoAddSignature = true;
-	let screenReaderAnnouncement = '';
+	let autoAddSignature = $state(true);
+	let screenReaderAnnouncement = $state('');
+	
+	// Component ID for timer coordination
+	const componentId = 'message-editor-' + Math.random().toString(36).substring(2, 15);
+	
+	// Cleanup timers on destroy
+	onDestroy(() => {
+		useTimerCleanup(componentId)();
+	});
 
 	function ensureRequiredVariables(currentPreview: string, previousPreview: string) {
 		// Only auto-add variables if user is starting to type in an empty editor and has auto-signature enabled
@@ -42,16 +53,16 @@
 			screenReaderAnnouncement = 'Signature automatically added to message';
 
 			// Restore cursor position after the signature is added
-			setTimeout(() => {
+			coordinated.setTimeout(() => {
 				if (textarea) {
 					textarea.focus();
 					textarea.setSelectionRange(cursorPosition, cursorPosition);
 				}
 				// Clear announcement after a brief delay
-				setTimeout(() => {
+				coordinated.setTimeout(() => {
 					screenReaderAnnouncement = '';
-				}, 1000);
-			}, 0);
+				}, 1000, 'feedback', componentId);
+			}, 0, 'dom', componentId);
 		}
 
 		// Always ensure the variables array is up-to-date
@@ -101,31 +112,31 @@
 		screenReaderAnnouncement = `Variable ${variable} inserted`;
 
 		// Reset cursor position after variable
-		setTimeout(() => {
+		coordinated.setTimeout(() => {
 			if (textarea) {
 				textarea.focus();
 				const newPosition = start + textToInsert.length;
 				textarea.setSelectionRange(newPosition, newPosition);
 				// Clear announcement
-				setTimeout(() => {
+				coordinated.setTimeout(() => {
 					screenReaderAnnouncement = '';
-				}, 1000);
+				}, 1000, 'feedback', componentId);
 			}
-		}, 0);
+		}, 0, 'dom', componentId);
 	}
 
 	let previousPreview = data.preview;
 
 	// Monitor changes to ensure required variables are always present when there's content
-	$: {
+	$effect(() => {
 		if (data.preview !== previousPreview) {
 			ensureRequiredVariables(data.preview, previousPreview);
 			previousPreview = data.preview;
 		}
-	}
+	});
 
-	$: wordCount = data.preview.trim().split(/\s+/).length;
-	$: variableCount = (data.preview.match(/\[.*?\]/g) || []).length;
+	const wordCount = $derived(data.preview.trim().split(/\s+/).length);
+	const variableCount = $derived((data.preview.match(/\[.*?\]/g) || []).length);
 </script>
 
 <!-- Screen reader announcements -->
@@ -165,7 +176,7 @@
 						class:bg-slate-200={isUsed}
 						class:text-slate-500={isUsed}
 						class:cursor-not-allowed={isUsed}
-						on:click={() => insertVariable(variable)}
+						onclick={() => insertVariable(variable)}
 						disabled={isUsed}
 						title={isUsed ? 'Variable already in use' : `Insert ${variable} variable`}
 						aria-label={`Insert ${variable} variable`}

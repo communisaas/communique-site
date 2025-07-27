@@ -3,7 +3,6 @@ import { storeSingleUserSentiment } from '$lib/server/sentiment-storage';
 
 export async function POST() {
   try {
-    console.log('🧪 Creating test sentiment data for geographic interpolation...');
     
     // Create test sentiment data matching our mathematical pipeline example
     const testData = [
@@ -62,7 +61,6 @@ export async function POST() {
     });
     
   } catch (error) {
-    console.error('Error creating test data:', error);
     return json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

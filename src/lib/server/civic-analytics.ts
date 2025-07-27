@@ -61,7 +61,6 @@ export async function getCivicSentimentByIssue(): Promise<CivicSentiment[]> {
     },
     select: {
       category: true,
-      body: true,
       description: true
     }
   });
@@ -70,7 +69,7 @@ export async function getCivicSentimentByIssue(): Promise<CivicSentiment[]> {
   const categoryStats: Record<string, { pro: number; anti: number; neutral: number }> = {};
   
   templates.forEach(template => {
-    const text = template.body || template.description || '';
+    const text = template.description || '';
     const sentiment = analyzeSentiment(text);
     const category = template.category;
     
@@ -120,14 +119,14 @@ export async function getGeographicSentiment(): Promise<GeographicSentiment[]> {
     GROUP BY u.state, u.congressional_district
     HAVING message_count >= 3
     ORDER BY message_count DESC
-  ` as any[];
+  ` as Array<Record<string, unknown>>;
   
   return results.map(row => ({
-    state: row.state,
-    district: row.district,
+    state: String(row.state || ''),
+    district: String(row.district || ''),
     sentiment_ratio: Number(row.sentiment_ratio) || 0,
     message_count: Number(row.message_count) || 0,
-    dominant_issues: row.issues ? row.issues.split(',') : []
+    dominant_issues: row.issues ? String(row.issues).split(',') : []
   }));
 }
 
@@ -278,7 +277,7 @@ export async function getCivicDashboard(): Promise<{
   sentiment_by_issue: CivicSentiment[];
   geographic_sentiment: GeographicSentiment[];
   community_flow: CommunityFlow[];
-  information_flow: any;
+  information_flow: unknown;
   summary: {
     total_communities: number;
     growing_communities: number;
@@ -288,7 +287,6 @@ export async function getCivicDashboard(): Promise<{
   };
 }> {
   
-  console.log('🏛️  Generating Civic Intelligence Dashboard...');
   
   const [sentimentByIssue, geographicSentiment, communityFlow, informationFlow] = await Promise.all([
     getCivicSentimentByIssue(),

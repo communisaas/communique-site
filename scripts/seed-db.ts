@@ -1,8 +1,24 @@
 import { PrismaClient } from '@prisma/client';
-import { templates } from '../src/lib/data/templates.js';
 import { generateActionSlug } from '../src/lib/server/reserved-slugs.js';
 
 const db: PrismaClient = new PrismaClient();
+
+const seedTemplates = [
+    {
+        title: 'Climate Action Now',
+        description: 'Demand immediate Congressional action on climate change legislation to protect our planet for future generations.',
+        category: 'Environment',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Climate Action Now',
+        preview: 'Dear [Representative Name], I am writing as your constituent to urge immediate action on climate change legislation.',
+        message_body: 'Dear [Representative Name],\n\nI am writing as your constituent from [Address] to urge immediate action on climate change legislation.\n\nThe science is clear: we must act now to prevent catastrophic climate change. I urge you to support comprehensive climate legislation that includes:\n\n• Rapid transition to renewable energy\n• Investment in green infrastructure\n• Support for affected communities\n• Science-based emissions targets\n\n[Personal Connection]\n\nPlease vote for our planet\'s future.\n\nSincerely,\n[Name]\n[Address]',
+        metrics: { sent: 8234, opened: 0, clicked: 0, responded: 8234, districts_covered: 417, total_districts: 435, district_coverage_percent: 96 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['climate.committee@house.gov', 'environment.committee@senate.gov'] },
+        is_public: true
+    }
+];
 
 async function seedDatabase() {
     console.log('🌱 Starting database seed...');
@@ -14,7 +30,7 @@ async function seedDatabase() {
         
         // Insert templates with action-oriented slugs
         const createdTemplates = [];
-        for (const template of templates) {
+        for (const template of seedTemplates) {
             // Generate action-oriented slug
             const actionSlug = generateActionSlug(template.title, template.deliveryMethod);
             

@@ -2,6 +2,7 @@
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 	import { 
 		X, 
 		User,
@@ -12,14 +13,18 @@
 		Briefcase,
 		Home
 	} from '@lucide/svelte';
-	import Button from '../ui/Button.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	
-	export let template: {
-		title: string;
-		deliveryMethod: string;
-		category?: string;
-		recipientEmails?: string[];
-	};
+	let {
+		template
+	}: {
+		template: {
+			title: string;
+			deliveryMethod: string;
+			category?: string;
+			recipientEmails?: string[];
+		};
+	} = $props();
 	
 	const dispatch = createEventDispatcher<{ 
 		close: void; 
@@ -32,6 +37,9 @@
 		};
 	}>();
 	
+	// Component ID for timer coordination
+	const componentId = 'direct-outreach-modal-' + Math.random().toString(36).substring(2, 15);
+	
 	type Step = 'role' | 'connection' | 'verify';
 	let currentStep: Step = 'role';
 	let isTransitioning = false;
@@ -43,26 +51,27 @@
 	
 	onDestroy(() => {
 		document.body.style.overflow = '';
+		useTimerCleanup(componentId)();
 	});
 	
 	// Form data
-	let selectedRole = '';
-	let customRole = '';
-	let organization = '';
-	let location = '';
-	let selectedConnection = '';
-	let connectionDetails = '';
+	let selectedRole = $state('');
+	let customRole = $state('');
+	let organization = $state('');
+	let location = $state('');
+	let selectedConnection = $state('');
+	let connectionDetails = $state('');
 	
 	// Validation
-	let roleError = '';
-	let connectionError = '';
+	let roleError = $state('');
+	let connectionError = $state('');
 	
 	// Determine template context
-	$: isLocalGovernment = isLocalGovTemplate(template);
-	$: isCorporate = isCorporateTemplate(template);
-	$: templateContext = getTemplateContext(template);
+	const isLocalGovernment = $derived(isLocalGovTemplate(template));
+	const isCorporate = $derived(isCorporateTemplate(template));
+	const templateContext = $derived(getTemplateContext(template));
 	
-	function isLocalGovTemplate(template: any): boolean {
+	function isLocalGovTemplate(template: Record<string, unknown>): boolean {
 		const category = template.category?.toLowerCase() || '';
 		const title = template.title?.toLowerCase() || '';
 		return category.includes('local') || 
@@ -73,14 +82,14 @@
 			   title.includes('school board');
 	}
 	
-	function isCorporateTemplate(template: any): boolean {
+	function isCorporateTemplate(template: Record<string, unknown>): boolean {
 		const category = template.category?.toLowerCase() || '';
 		return category.includes('corporate') || 
 			   category.includes('business') ||
 			   category.includes('company');
 	}
 	
-	function getTemplateContext(template: any) {
+	function getTemplateContext(template: Record<string, unknown>) {
 		if (isLocalGovernment) return 'local-government';
 		if (isCorporate) return 'corporate';
 		return 'general';
@@ -133,7 +142,7 @@
 			currentStep = 'verify';
 		}
 		
-		setTimeout(() => isTransitioning = false, 300);
+		coordinated.setTimeout(() => isTransitioning = false, 300, 'transition', componentId);
 	}
 	
 	function prevStep() {
@@ -147,7 +156,7 @@
 			currentStep = 'role';
 		}
 		
-		setTimeout(() => isTransitioning = false, 300);
+		coordinated.setTimeout(() => isTransitioning = false, 300, 'transition', componentId);
 	}
 	
 	function handleComplete() {
@@ -164,8 +173,8 @@
 	}
 	
 	// Role options based on template context
-	$: roleOptions = getRoleOptions(templateContext);
-	$: connectionOptions = getConnectionOptions(templateContext);
+	const roleOptions = $derived(getRoleOptions(templateContext));
+	const connectionOptions = $derived(getConnectionOptions(templateContext));
 	
 	function getRoleOptions(context: string) {
 		const baseOptions = [
@@ -248,13 +257,13 @@
 
 <div 
 	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-	on:click={handleClose}
+	onclick={handleClose}
 	in:fade={{ duration: 300, easing: quintOut }}
 	out:fade={{ duration: 200 }}
 >
 	<div 
 		class="fixed inset-x-4 top-1/2 max-w-md mx-auto transform -translate-y-1/2 bg-white rounded-2xl shadow-2xl overflow-hidden"
-		on:click|stopPropagation
+		onclick={(e) => { e.stopPropagation(); }}
 		in:scale={{ 
 			duration: 400, 
 			easing: backOut,
@@ -269,7 +278,7 @@
 	>
 		<!-- Close Button -->
 		<button
-			on:click={handleClose}
+			onclick={handleClose}
 			class="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
 		>
 			<X class="h-5 w-5" />
@@ -299,7 +308,7 @@
 					class="absolute inset-0 p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					on:keydown={handleKeydown}
+					onkeydown={handleKeydown}
 				>
 					{#if currentStep === 'role'}
 						<!-- Role & Credentials Step -->
@@ -324,7 +333,7 @@
 									{#each roleOptions as role}
 										<button
 											type="button"
-											on:click={() => selectedRole = role.toLowerCase().replace(/\s+/g, '-')}
+											onclick={() => selectedRole = role.toLowerCase().replace(/\s+/g, '-')}
 											class="text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
 												selectedRole === role.toLowerCase().replace(/\s+/g, '-') 
 													? 'border-blue-500 bg-blue-50 text-blue-900' 
@@ -336,7 +345,7 @@
 									{/each}
 									<button
 										type="button"
-										on:click={() => selectedRole = 'other'}
+										onclick={() => selectedRole = 'other'}
 										class="text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
 											selectedRole === 'other' 
 												? 'border-blue-500 bg-blue-50 text-blue-900' 
@@ -353,7 +362,6 @@
 										bind:value={customRole}
 										placeholder="Enter your role"
 										class="mt-2 w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-										autofocus
 									/>
 								{/if}
 							</div>
@@ -384,7 +392,7 @@
 								variant="secondary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={handleClose}
+								onclick={handleClose}
 							>
 								Cancel
 							</Button>
@@ -392,7 +400,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={nextStep}
+								onclick={nextStep}
 								disabled={isTransitioning}
 							>
 								Continue
@@ -434,7 +442,7 @@
 									{#each connectionOptions as connection}
 										<button
 											type="button"
-											on:click={() => selectedConnection = connection.toLowerCase().replace(/\s+/g, '-')}
+											onclick={() => selectedConnection = connection.toLowerCase().replace(/\s+/g, '-')}
 											class="w-full text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
 												selectedConnection === connection.toLowerCase().replace(/\s+/g, '-') 
 													? 'border-blue-500 bg-blue-50 text-blue-900' 
@@ -446,7 +454,7 @@
 									{/each}
 									<button
 										type="button"
-										on:click={() => selectedConnection = 'other'}
+										onclick={() => selectedConnection = 'other'}
 										class="w-full text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
 											selectedConnection === 'other' 
 												? 'border-blue-500 bg-blue-50 text-blue-900' 
@@ -463,7 +471,6 @@
 										bind:value={connectionDetails}
 										placeholder="Describe your connection"
 										class="mt-2 w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-										autofocus
 									/>
 								{/if}
 							</div>
@@ -496,7 +503,7 @@
 								variant="secondary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={prevStep}
+								onclick={prevStep}
 								disabled={isTransitioning}
 							>
 								Back
@@ -505,7 +512,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={nextStep}
+								onclick={nextStep}
 								disabled={isTransitioning}
 							>
 								Continue
@@ -566,7 +573,7 @@
 								variant="secondary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={prevStep}
+								onclick={prevStep}
 								disabled={isTransitioning}
 							>
 								Back
@@ -575,7 +582,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={handleComplete}
+								onclick={handleComplete}
 								disabled={isTransitioning}
 							>
 								<CheckCircle2 class="mr-1 h-4 w-4" />

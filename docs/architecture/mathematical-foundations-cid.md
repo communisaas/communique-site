@@ -526,9 +526,9 @@ Unlike traditional civic tech that requires endless fundraising or surveillance 
 - Storage staking provides recoverable funding for long-term message archival
 - No extraction from democratic participation - the protocol itself funds civic infrastructure
 
-**Monthly Economic Reality:**
-- 1M messages = $4,583/month in NEAR storage costs
-- Gas fee revenue share ≈ $6,000-12,000/month (conservative estimate)
+**Economic Reality:**
+- 1M messages = $4,583 in NEAR storage costs
+- Gas fee revenue share ≈ $6,000-12,000 (conservative estimate)
 - Net positive cash flow without charging users or selling data
 
 This isn't a startup seeking product-market fit. It's **civic infrastructure with built-in economic sustainability** - like roads that pay for their own maintenance through elegant protocol design.

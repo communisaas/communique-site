@@ -10,16 +10,20 @@
 		Search,
 		Home
 	} from '@lucide/svelte';
-	import Button from '../ui/Button.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	
-	export let template: {
-		title: string;
-		deliveryMethod: string;
-	};
+	let { 
+		template 
+	}: {
+		template: {
+			title: string;
+			deliveryMethod: string;
+		};
+	} = $props();
 	
 	const dispatch = createEventDispatcher<{ 
 		close: void; 
-		complete: { address: string; verified: boolean; representatives?: any[] };
+		complete: { address: string; verified: boolean; representatives?: Array<Record<string, unknown>> };
 	}>();
 	
 	let currentStep: 'collect' | 'verify' | 'complete' = 'collect';
@@ -41,7 +45,7 @@
 	let zipCode = '';
 	let addressError = '';
 	let isVerifying = false;
-	let verificationResult: any = null;
+	let verificationResult: Record<string, unknown> | null = null;
 	let selectedAddress: string = '';
 	
 	function handleClose() {
@@ -81,28 +85,22 @@
 			const fullAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`;
 			
 			// Call stubbed USPS verification API
-			const response = await fetch('/api/address/verify', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					street: streetAddress,
-					city,
-					state,
-					zipCode
-				})
+			const { api } = await import('$lib/utils/apiClient');
+			const result = await api.post('/api/address/verify', {
+				street: streetAddress,
+				city,
+				state,
+				zipCode
 			});
 			
-			const result = await response.json();
-			
-			if (response.ok && result.verified) {
-				verificationResult = result;
-				selectedAddress = result.correctedAddress || fullAddress;
+			if (result.success && result.data?.verified) {
+				verificationResult = result.data;
+				selectedAddress = result.data.correctedAddress || fullAddress;
 				currentStep = 'verify';
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';
 			}
 		} catch (error) {
-			console.error('Address verification error:', error);
 			addressError = 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;
@@ -144,13 +142,13 @@
 
 <div 
 	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-	on:click={handleClose}
+	onclick={handleClose}
 	in:fade={{ duration: 300, easing: quintOut }}
 	out:fade={{ duration: 200 }}
 >
 	<div 
 		class="fixed inset-x-4 top-1/2 max-w-md mx-auto transform -translate-y-1/2 bg-white rounded-2xl shadow-2xl overflow-hidden"
-		on:click|stopPropagation
+		onclick={(e) => { e.stopPropagation(); }}
 		in:scale={{ 
 			duration: 400, 
 			easing: backOut,
@@ -165,7 +163,7 @@
 	>
 		<!-- Close Button -->
 		<button
-			on:click={handleClose}
+			onclick={handleClose}
 			class="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
 		>
 			<X class="h-5 w-5" />
@@ -195,7 +193,7 @@
 					class="absolute inset-0 p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					on:keydown={handleKeydown}
+					onkeydown={handleKeydown}
 				>
 					{#if currentStep === 'collect'}
 						<!-- Address Collection Step -->
@@ -222,7 +220,6 @@
 									bind:value={streetAddress}
 									placeholder="123 Main Street"
 									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-									autofocus
 								/>
 							</div>
 							
@@ -281,7 +278,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="w-full"
-								on:click={verifyAddress}
+								onclick={verifyAddress}
 								disabled={isVerifying || !streetAddress.trim() || !city.trim() || !state.trim() || !zipCode.trim()}
 							>
 								{#if isVerifying}
@@ -297,7 +294,7 @@
 								variant="secondary" 
 								size="sm" 
 								classNames="w-full"
-								on:click={skipVerification}
+								onclick={skipVerification}
 							>
 								Skip verification (may affect delivery)
 							</Button>
@@ -348,7 +345,7 @@
 								variant="secondary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={editAddress}
+								onclick={editAddress}
 							>
 								Edit Address
 							</Button>
@@ -356,7 +353,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={acceptAddress}
+								onclick={acceptAddress}
 							>
 								<CheckCircle2 class="mr-1 h-4 w-4" />
 								Looks Good

@@ -1,5 +1,6 @@
 import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templateConfig';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -30,8 +31,8 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		where: { id: template.id },
 		data: {
 			metrics: {
-				...(template.metrics as any),
-				views: ((template.metrics as any)?.views || 0) + 1
+				...extractTemplateMetrics(template.metrics),
+				views: (extractTemplateMetrics(template.metrics).views || 0) + 1
 			}
 		}
 	});
@@ -48,10 +49,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		subject: template.subject,
 		message_body: template.message_body,
 		preview: template.preview,
-		metrics: template.metrics as any,
+		metrics: extractTemplateMetrics(template.metrics),
 		delivery_config: template.delivery_config,
 		recipient_config: template.recipient_config,
-		recipientEmails: (template.recipient_config as any)?.emails as string[] | undefined,
+		recipientEmails: extractRecipientEmails(template.recipient_config),
 		author: template.user ? {
 			name: template.user.name,
 			avatar: template.user.avatar

@@ -173,7 +173,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			throw err;
 		}
 		
-		console.error('Google OAuth callback error:', {
+		console.error('Google OAuth error:', {
 			error: err,
 			message: err instanceof Error ? err.message : 'Unknown error',
 			stack: err instanceof Error ? err.stack : undefined,

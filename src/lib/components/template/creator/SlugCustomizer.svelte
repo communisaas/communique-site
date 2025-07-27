@@ -4,17 +4,21 @@
 	import { fade, fly } from 'svelte/transition';
 	import { page } from '$app/stores';
 	
-	export let title: string = '';
-	export let slug: string = '';
-	export let context: { channelId: 'certified' | 'direct' } | undefined = undefined;
+	interface Props {
+		title?: string;
+		slug?: string;
+		context?: { channelId: 'certified' | 'direct' } | undefined;
+	}
+
+	let { title = '', slug = $bindable(''), context = undefined }: Props = $props();
 	
 	const dispatch = createEventDispatcher();
 	
 	let isChecking = false;
-	let isAvailable: boolean | null = null;
-	let suggestions: string[] = [];
-	let customSlug = '';
-	let showCustomInput = false;
+	let isAvailable: boolean | null = $state(null);
+	let suggestions: string[] = $state([]);
+	let customSlug = $state('');
+	let showCustomInput = $state(false);
 	
 	// Generate slug from title
 	function slugify(text: string): string {
@@ -71,8 +75,10 @@
 				deliveryMethod
 			});
 			
-			const response = await fetch(`/api/templates/check-slug?${params}`);
-			const data = await response.json();
+			const { api } = await import('$lib/utils/apiClient');
+			const result = await api.get(`/api/templates/check-slug?${params}`);
+			if (!result.success) throw new Error(result.error);
+			const data = result.data;
 			isAvailable = data.available;
 			
 			if (!isAvailable && slugToCheck === slug) {
@@ -83,20 +89,21 @@
 				suggestions = [];
 			}
 		} catch (error) {
-			console.error('Error checking slug:', error);
 		} finally {
 			isChecking = false;
 		}
 	}
 	
 	// Update slug when title changes
-	$: if (title) {
-		const newSlug = slugify(title);
-		if (newSlug !== slug && !customSlug) {
-			slug = newSlug;
-			checkAvailability(slug);
+	$effect(() => {
+		if (title) {
+			const newSlug = slugify(title);
+			if (newSlug !== slug && !customSlug) {
+				slug = newSlug;
+				checkAvailability(slug);
+			}
 		}
-	}
+	});
 	
 	// Handle custom slug input
 	function handleCustomSlug() {
@@ -122,14 +129,15 @@
 				deliveryMethod
 			});
 			
-			const response = await fetch(`/api/templates/check-slug?${params}`);
-			const data = await response.json();
+			const { api } = await import('$lib/utils/apiClient');
+			const result = await api.get(`/api/templates/check-slug?${params}`);
+			if (!result.success) throw new Error(result.error);
+			const data = result.data;
 			
 			if (!data.available) {
 				suggestions = data.suggestions || [];
 			}
 		} catch (error) {
-			console.error('Error regenerating suggestions:', error);
 			// Fallback to client-side generation if server fails
 			suggestions = generateSuggestions(slug);
 		}
@@ -143,8 +151,8 @@
 	}
 	
 	// Full URL for preview using dynamic hostname
-	$: fullUrl = `${$page.url.origin}/${slug}`;
-	$: isValidSlug = slug.length > 0 && /^[a-z0-9-]+$/.test(slug);
+	const fullUrl = $derived(`${$page.url.origin}/${slug}`);
+	const isValidSlug = $derived(slug.length > 0 && /^[a-z0-9-]+$/.test(slug));
 </script>
 
 <div class="space-y-4">
@@ -190,7 +198,7 @@
 				{#each suggestions as suggestion}
 					<button
 						type="button"
-						on:click={() => selectSuggestion(suggestion)}
+						onclick={() => selectSuggestion(suggestion)}
 						class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
 					>
 						<Sparkles class="h-3 w-3" />
@@ -199,7 +207,7 @@
 				{/each}
 				<button
 					type="button"
-					on:click={regenerateSuggestions}
+					onclick={regenerateSuggestions}
 					class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
 				>
 					<RefreshCw class="h-3 w-3" />
@@ -215,20 +223,20 @@
 			<input
 				type="text"
 				bind:value={customSlug}
-				on:keydown={(e) => e.key === 'Enter' && handleCustomSlug()}
+				onkeydown={(e) => e.key === 'Enter' && handleCustomSlug()}
 				placeholder="enter-custom-link"
 				class="flex-1 rounded-md border-slate-300 text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500"
 			/>
 			<button
 				type="button"
-				on:click={handleCustomSlug}
+				onclick={handleCustomSlug}
 				class="rounded-md bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
 			>
 				Set
 			</button>
 			<button
 				type="button"
-				on:click={() => showCustomInput = false}
+				onclick={() => showCustomInput = false}
 				class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
 			>
 				Cancel
@@ -237,7 +245,7 @@
 	{:else}
 		<button
 			type="button"
-			on:click={() => showCustomInput = true}
+			onclick={() => showCustomInput = true}
 			class="text-xs text-blue-600 hover:text-blue-700"
 		>
 			Customize link

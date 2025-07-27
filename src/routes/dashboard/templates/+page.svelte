@@ -5,9 +5,9 @@
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
-	$: templates = data.templates || [];
+	const templates = $derived(data.templates || []);
 </script>
 
 <svelte:head>

@@ -356,11 +356,9 @@ function maxFlowMinCut(
  * Run complete percolation analysis on civic information network
  */
 export async function analyzeCivicInformationCascades(): Promise<CascadeAnalysis> {
-  console.log('🌊 Analyzing civic information cascades using percolation theory...');
   
   // Build network from actual user data
   const { nodes, edges } = await buildInformationNetwork();
-  console.log(`Network: ${nodes.length} nodes, ${edges.length} edges`);
   
   if (nodes.length < 5 || edges.length < 3) {
     return {
@@ -374,11 +372,9 @@ export async function analyzeCivicInformationCascades(): Promise<CascadeAnalysis
   
   // Calculate percolation threshold
   const threshold = calculatePercolationThreshold(nodes, edges);
-  console.log(`Percolation threshold: ${threshold.toFixed(3)}`);
   
   // Find network bottlenecks
   const bottlenecks = findNetworkBottlenecks(nodes, edges);
-  console.log(`Found ${bottlenecks.length} bottleneck edges`);
   
   // Identify critical nodes (highest activation probability)
   const criticalNodes = nodes
@@ -418,12 +414,12 @@ export async function storeCascadeAnalysis(analysis: CascadeAnalysis): Promise<v
   try {
     await db.political_flow.create({
       data: {
-        from_community: 'percolation_analysis',
-        to_community: 'network_wide',
-        flow_type: 'information_cascade',
-        strength: analysis.max_flow_capacity,
-        direction: analysis.cascade_potential === 'supercritical' ? 'amplifying' : 'dampening',
-        metadata: {
+        flow_sources: { from_community: 'percolation_analysis' },
+        flow_sinks: { to_community: 'network_wide' },
+        flow_direction: { type: 'information_cascade' },
+        flow_strength: analysis.max_flow_capacity,
+        flow_velocity: { direction: analysis.cascade_potential === 'supercritical' ? 'amplifying' : 'dampening' },
+        dominant_issues: {
           threshold: analysis.threshold_probability,
           critical_nodes: analysis.critical_nodes,
           bottleneck_count: analysis.bottleneck_edges.length,
@@ -432,8 +428,6 @@ export async function storeCascadeAnalysis(analysis: CascadeAnalysis): Promise<v
       }
     });
     
-    console.log('✅ Stored cascade analysis in political_flow table');
   } catch (error) {
-    console.error('❌ Error storing cascade analysis:', error);
   }
 }

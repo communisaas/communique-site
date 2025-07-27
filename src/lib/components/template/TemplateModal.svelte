@@ -4,6 +4,7 @@
 	import { quintOut, backOut, elasticOut } from 'svelte/easing';
 	import { spring } from 'svelte/motion';
 	import { page } from '$app/stores';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 	import { 
 		X, 
 		Send, 
@@ -15,121 +16,188 @@
 		ExternalLink,
 		Sparkles,
 		ArrowRight,
-		Zap
+		Zap,
+		Heart,
+		Trophy,
+		Flame
 	} from '@lucide/svelte';
-	import TemplateHeader from '../landing/template/TemplateHeader.svelte';
-	import MessagePreview from '../landing/template/MessagePreview.svelte';
-	import Button from '../ui/Button.svelte';
+	import TemplateHeader from '$lib/components/landing/template/TemplateHeader.svelte';
+	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
+	import { extractRecipientEmails } from '$lib/types/templateConfig';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { guestState } from '$lib/stores/guestState';
 	
-	export let template: {
-		id: string;
-		slug: string;
-		title: string;
-		description: string;
-		deliveryMethod: string;
-		metrics: { sent: number; views?: number };
-		[key: string]: any;
-	};
-	export let user: { id: string; name: string } | null = null;
+	let { 
+		template,
+		user = null
+	}: {
+		template: {
+			id: string;
+			slug: string;
+			title: string;
+			description: string;
+			deliveryMethod: string;
+			metrics: { sent: number; views?: number };
+			[key: string]: unknown;
+		};
+		user?: { id: string; name: string } | null;
+	} = $props();
 	
 	const dispatch = createEventDispatcher<{ 
 		close: void;
 		used: { templateId: string; action: 'mailto_opened' };
 	}>();
 	
-	let showCopied = false;
-	let showSuccess = false;
+	// Component ID for timer coordination
+	const componentId = 'template-modal-' + Math.random().toString(36).substring(2, 15);
+	
+	// Modal States
+	type ModalState = 'auth_required' | 'loading' | 'success' | 'celebration';
+	let currentState: ModalState = $state(user ? 'loading' : 'auth_required');
+	
+	let showCopied = $state(false);
+	let showShareMenu = $state(false);
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
-	let pulseAnimation = spring(1, { stiffness: 0.3, damping: 0.6 });
+	let celebrationScale = spring(1, { stiffness: 0.3, damping: 0.6 });
 	
 	// Generate share URL for template
-	$: shareUrl = `${$page.url.origin}/${template.slug}`;
+	const shareUrl = $derived(`${$page.url.origin}/${template.slug}`);
 	
-	// Animate action button on mount
+	// Auto-trigger mailto for authenticated users
 	onMount(() => {
-		// Prevent background scrolling when modal is open
 		document.body.style.overflow = 'hidden';
 		
-		actionProgress.set(1);
+		if (user) {
+			// For authenticated users, immediately start the mailto flow
+			handleMailtoFlow();
+		}
 		
-		// Track that user opened the modal
+		// Track modal opened
 		trackEvent('template_modal_opened', {
 			template_id: template.id,
-			user_authenticated: !!user
+			user_id: user?.id,
+			state: currentState
 		});
-		
-		// Clear guest state if user is now authenticated
-		if (user) {
-			guestState.clear();
-		}
 	});
 	
 	onDestroy(() => {
-		document.body.style.overflow = '';
+		document.body.style.overflow = 'auto';
+		useTimerCleanup(componentId)();
 	});
 	
-	function handleUseTemplate() {
-		// Track conversion
-		trackEvent('template_used', {
-			template_id: template.id,
-			delivery_method: template.deliveryMethod,
-			user_id: user?.id
-		});
+	function handleClose() {
+		dispatch('close');
+	}
+	
+	async function handleMailtoFlow() {
+		currentState = 'loading';
+		actionProgress.set(1);
 		
-		// Trigger button animation
-		pulseAnimation.set(1.2).then(() => pulseAnimation.set(1));
+		// Generate mailto link with user's auto-filled variables
+		const mailtoLink = generateMailtoLink();
 		
-		// Show success state with animation
-		showSuccess = true;
-		actionProgress.set(0);
-		
-		setTimeout(() => {
-			// Generate and open mailto link
-			const mailtoLink = generateMailtoLink();
+		// Show loading state briefly to let user understand what's happening
+		coordinated.setTimeout(() => {
+			// Open mailto
 			window.location.href = mailtoLink;
 			
-			// Notify parent of successful action
-			dispatch('used', { 
-				templateId: template.id, 
-				action: 'mailto_opened' 
+			// Track usage
+			trackEvent('template_used', {
+				template_id: template.id,
+				user_id: user?.id,
+				delivery_method: template.deliveryMethod
 			});
 			
-			// Close modal after brief delay
-			setTimeout(() => dispatch('close'), 800);
-		}, 600);
+			// Dispatch for analytics
+			dispatch('used', { templateId: template.id, action: 'mailto_opened' });
+			
+			// Transition to success state
+			currentState = 'success';
+			celebrationScale.set(1.1).then(() => celebrationScale.set(1));
+			
+			// Auto-transition to celebration after brief success
+			coordinated.setTimeout(() => {
+				currentState = 'celebration';
+				celebrationScale.set(1.05).then(() => celebrationScale.set(1));
+			}, 2000, 'transition', componentId);
+			
+		}, 1200, 'modal', componentId); // Brief loading to show intent
 	}
 	
 	function generateMailtoLink(): string {
 		const subject = encodeURIComponent(template.title);
-		const body = encodeURIComponent(template.preview || template.message_body || '');
+		let bodyForMailto = template.preview || '';
+		
+		// Auto-fill user variables if authenticated
+		if (user) {
+			const currentUser = $page.data?.user;
+			if (currentUser) {
+				// Replace [Name] with user's name
+				bodyForMailto = bodyForMailto.replace(/\[Name\]/g, currentUser.name || 'Your Name');
+				
+				// Replace [Address] with user's address if available, otherwise remove the line
+				if (currentUser.street && currentUser.city && currentUser.state && currentUser.zip) {
+					const userAddress = `${currentUser.street}, ${currentUser.city}, ${currentUser.state} ${currentUser.zip}`;
+					bodyForMailto = bodyForMailto.replace(/\[Address\]/g, userAddress);
+				} else {
+					// Remove lines that contain only [Address] 
+					bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Address\][ \t]*\r?\n/gm, '');
+					// Remove remaining inline [Address] 
+					bodyForMailto = bodyForMailto.replace(/\[Address\]/g, '');
+				}
+				
+				// Remove [Representative Name] - this gets filled server-side or remove if empty
+				bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Representative Name\][ \t]*\r?\n/gm, '');
+				bodyForMailto = bodyForMailto.replace(/\[Representative Name\]/g, 'Representative');
+				
+				// Remove empty [Personal Connection] blocks and lines
+				bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Personal Connection\][ \t]*\r?\n/gm, '');
+				bodyForMailto = bodyForMailto.replace(/\[Personal Connection\]/g, '');
+			}
+		} else {
+			// For unauthenticated users, remove all variables and their lines
+			const blockRegex = new RegExp(`^[ \t]*\\[.*?\\][ \t]*\\r?\\n`, 'gm');
+			bodyForMailto = bodyForMailto.replace(blockRegex, '');
+			const inlineRegex = new RegExp(`\\[.*?\\]`, 'g');
+			bodyForMailto = bodyForMailto.replace(inlineRegex, '');
+		}
+		
+		// Clean up multiple newlines and trim
+		bodyForMailto = bodyForMailto.replace(/\n{3,}/g, '\n\n').trim();
+		const body = encodeURIComponent(bodyForMailto);
 		
 		if (template.deliveryMethod === 'both') {
 			// Congressional routing
-			const routingEmail = user 
-				? `congress+${template.id}-${user.id}@communi.email`
-				: `congress+guest-${template.id}-${Date.now()}@communi.email`;
+			const routingEmail = user?.id 
+				? `congress+${template.id}-${user.id}@communique.org`
+				: `congress+guest-${template.id}@communique.org`;
 			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
 		} else {
 			// Direct email
-			const recipients = template.recipientEmails?.join(',') || '';
+			const recipients = extractRecipientEmails(template.recipient_config).join(',');
 			return `mailto:${recipients}?subject=${subject}&body=${body}`;
 		}
+	}
+	
+	function handleAuth() {
+		// Trigger auth flow - this would redirect to login
+		window.location.href = `/auth/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
 	}
 	
 	function copyShareLink() {
 		navigator.clipboard.writeText(shareUrl);
 		showCopied = true;
-		setTimeout(() => showCopied = false, 2000);
+		coordinated.setTimeout(() => showCopied = false, 2000, 'feedback', componentId);
 		
 		trackEvent('template_link_copied', {
 			template_id: template.id,
-			user_id: user?.id
+			user_id: user?.id,
+			context: 'celebration_modal'
 		});
 	}
 	
 	function shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {
-		const text = `Join me in supporting "${template.title}" - make your voice heard!`;
+		const text = `Just took action on "${template.title}" - every voice matters! Join the movement 🔥`;
 		const encodedUrl = encodeURIComponent(shareUrl);
 		const encodedText = encodeURIComponent(text);
 		
@@ -144,203 +212,192 @@
 		trackEvent('template_shared', {
 			template_id: template.id,
 			platform,
-			user_id: user?.id
-		});
-	}
-	
-	function handleClose() {
-		trackEvent('template_modal_closed', {
-			template_id: template.id,
-			action_taken: showSuccess ? 'used' : 'closed_without_action'
+			user_id: user?.id,
+			context: 'celebration_modal'
 		});
 		
-		dispatch('close');
+		showShareMenu = false;
 	}
 	
-	// Simple analytics tracking (replace with your analytics service)
-	function trackEvent(event: string, properties: Record<string, any>) {
-		// TODO: Implement analytics tracking
-		console.log('Analytics:', event, properties);
+	// Analytics helper
+	function trackEvent(eventName: string, properties: Record<string, any>) {
+		if (typeof window !== 'undefined' && window.gtag) {
+			window.gtag('event', eventName, properties);
+		}
 	}
 </script>
 
-<!-- Modal Backdrop with improved animation -->
+<!-- Modal Backdrop -->
 <div 
-	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-	on:click={handleClose}
-	in:fade={{ duration: 300, easing: quintOut }}
+	class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+	onclick={handleClose}
+	onkeydown={(e) => { if (e.key === 'Escape') handleClose(); }}
+	role="dialog"
+	aria-modal="true"
+	aria-label="Template modal"
+	tabindex="0"
+	in:fade={{ duration: 200 }}
 	out:fade={{ duration: 200 }}
 >
-	<!-- Modal Content with spring entrance -->
+	<!-- Modal Container -->
 	<div 
-		class="fixed inset-x-4 top-1/2 max-w-2xl mx-auto transform -translate-y-1/2 bg-white rounded-2xl shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
-		on:click|stopPropagation
-		in:scale={{ 
-			duration: 500, 
-			easing: backOut,
-			start: 0.9,
-			opacity: 0.5 
-		}}
-		out:scale={{ 
-			duration: 250, 
-			easing: quintOut,
-			start: 0.95 
-		}}
+		class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
+		onclick={(e) => { e.stopPropagation(); }}
+		onkeydown={(e) => { e.stopPropagation(); }}
+		role="document"
+		in:scale={{ duration: 300, start: 0.9, easing: backOut }}
+		out:scale={{ duration: 200, start: 1, easing: quintOut }}
 	>
-		<!-- Animated Header -->
-		<div 
-			class="flex items-center justify-between p-6 border-b border-slate-200"
-			in:fly={{ y: -10, duration: 400, delay: 200 }}
-		>
-			<div class="flex items-center gap-3">
-				<h2 
-					class="text-xl font-semibold text-slate-900"
-					in:fly={{ x: -10, duration: 400, delay: 300 }}
-				>
-					Ready to take action?
-				</h2>
-				{#if user}
-					<span 
-						class="text-sm text-green-600 bg-green-50 px-2 py-1 rounded-full"
-						in:scale={{ duration: 400, delay: 400, easing: backOut }}
-					>
-						Welcome back, {user.name?.split(' ')[0]}!
-					</span>
-				{/if}
-			</div>
-			<button
-				on:click={handleClose}
-				class="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200 hover:scale-110"
-				in:scale={{ duration: 300, delay: 500 }}
-			>
-				<X class="h-5 w-5" />
-			</button>
-		</div>
-		
-		<!-- Content -->
-		<div class="flex-1 overflow-y-auto">
-			<!-- Animated Success State -->
-			{#if showSuccess}
-				<div 
-					class="p-8 text-center" 
-					in:scale={{ duration: 500, easing: backOut }}
-					out:fade={{ duration: 200 }}
-				>
-					<div 
-						class="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4"
-						in:scale={{ duration: 600, delay: 200, easing: elasticOut }}
-						style="transform: scale({$pulseAnimation})"
-					>
-						<CheckCircle2 class="h-8 w-8 text-green-600" />
+		<!-- Dynamic Content Based on State -->
+		{#if currentState === 'auth_required'}
+			<!-- Auth Required State -->
+			<div class="p-8 text-center">
+				<div class="mb-6">
+					<div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+						<Zap class="h-8 w-8 text-blue-600" />
 					</div>
-					<h3 
-						class="text-xl font-semibold text-slate-900 mb-2"
-						in:fly={{ y: 10, duration: 400, delay: 400 }}
-					>
-						Opening your email app...
-					</h3>
-					<p 
-						class="text-slate-600"
-						in:fly={{ y: 10, duration: 400, delay: 500 }}
-					>
-						Your message is ready to send. Thank you for making your voice heard!
+					<h2 class="text-2xl font-bold text-slate-900 mb-2">Ready to make your voice heard?</h2>
+					<p class="text-slate-600 mb-6">
+						Sign in to auto-fill your information and join {template.metrics.sent.toLocaleString()} others taking action.
 					</p>
-					
-					<!-- Progress indicator -->
-					<div 
-						class="mt-6 w-24 h-1 bg-slate-200 rounded-full mx-auto overflow-hidden"
-						in:scale={{ duration: 300, delay: 600 }}
+				</div>
+				
+				<div class="space-y-4">
+					<Button 
+						variant="primary" 
+						size="lg" 
+						classNames="w-full"
+						onclick={handleAuth}
 					>
-						<div 
-							class="h-full bg-green-500 rounded-full transition-all duration-1000 ease-out"
-							style="width: {(1 - $actionProgress) * 100}%"
-						/>
+						<Send class="mr-2 h-5 w-5" />
+						Sign In & Send Message
+					</Button>
+					
+					<button
+						onclick={handleClose}
+						class="text-sm text-slate-500 hover:text-slate-700"
+					>
+						Maybe later
+					</button>
+				</div>
+			</div>
+			
+		{:else if currentState === 'loading'}
+			<!-- Loading State - mailto is being resolved -->
+			<div 
+				class="p-8 text-center" 
+				in:scale={{ duration: 500, easing: backOut }}
+			>
+				<div 
+					class="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6"
+					style="transform: scale({$celebrationScale})"
+				>
+					<Send class="h-10 w-10 text-blue-600" />
+				</div>
+				<h3 class="text-2xl font-bold text-slate-900 mb-2">
+					Opening your email app...
+				</h3>
+				<p class="text-slate-600 mb-6">
+					Your message is ready with your information pre-filled. 
+				</p>
+				
+				<!-- Animated progress indicator -->
+				<div class="w-32 h-2 bg-slate-200 rounded-full mx-auto overflow-hidden">
+					<div 
+						class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out"
+						style="width: {$actionProgress * 100}%"
+					></div>
+				</div>
+			</div>
+			
+		{:else if currentState === 'success'}
+			<!-- Success State - mailto opened successfully -->
+			<div 
+				class="p-8 text-center" 
+				in:scale={{ duration: 500, easing: backOut }}
+			>
+				<div 
+					class="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6"
+					style="transform: scale({$celebrationScale})"
+				>
+					<CheckCircle2 class="h-10 w-10 text-green-600" />
+				</div>
+				<h3 class="text-2xl font-bold text-slate-900 mb-2">
+					Perfect! Your email is ready
+				</h3>
+				<p class="text-slate-600">
+					Review your message and hit send when you're ready.
+				</p>
+			</div>
+			
+		{:else if currentState === 'celebration'}
+			<!-- Celebration State - after-send care -->
+			<div class="flex flex-col h-full">
+				<!-- Header -->
+				<div class="p-6 border-b border-slate-100 relative overflow-hidden">
+					<!-- Celebration background effect -->
+					<div class="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-red-50"></div>
+					<div class="relative flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div 
+								class="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full"
+								style="transform: scale({$celebrationScale})"
+							>
+								<Trophy class="h-6 w-6 text-white" />
+							</div>
+							<div>
+								<h2 class="text-xl font-bold text-slate-900">You're making a difference!</h2>
+								<p class="text-sm text-slate-600">Your voice is part of the movement</p>
+							</div>
+						</div>
+						<button
+							onclick={handleClose}
+							class="rounded-full p-2 text-slate-400 hover:bg-white/50 hover:text-slate-600 transition-all duration-200"
+						>
+							<X class="h-5 w-5" />
+						</button>
 					</div>
 				</div>
-			{:else}
-				<!-- Animated Template Content -->
-				<div class="p-6">
-					<div in:fly={{ y: 20, duration: 400, delay: 300 }}>
-						<TemplateHeader {template} />
-					</div>
-					<div in:fly={{ y: 20, duration: 400, delay: 400 }}>
-						<MessagePreview 
-							preview={template.preview} 
-							{template} 
-							onScroll={() => {}}
-						/>
+				
+				<!-- Content -->
+				<div class="flex-1 p-6 space-y-6">
+					<!-- Impact Stats -->
+					<div class="text-center">
+						<div class="flex items-center justify-center gap-6 mb-4">
+							<div class="text-center">
+								<div class="text-2xl font-bold text-slate-900">{(template.metrics.sent + 1).toLocaleString()}</div>
+								<div class="text-xs text-slate-500">voices heard</div>
+							</div>
+							<div class="w-px h-8 bg-slate-200"></div>
+							<div class="text-center">
+								<div class="text-2xl font-bold text-orange-600">1</div>
+								<div class="text-xs text-slate-500">your impact</div>
+							</div>
+						</div>
+						<p class="text-sm text-slate-600">
+							You just joined thousands making their voices heard on issues that matter.
+						</p>
 					</div>
 					
-					<!-- Animated Action Section -->
-					<div 
-						class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg"
-						in:scale={{ duration: 400, delay: 500, easing: backOut, start: 0.95 }}
-					>
-						<div 
-							class="flex items-center gap-3 mb-3"
-							in:fly={{ x: -10, duration: 300, delay: 600 }}
-						>
-							<Sparkles class="h-5 w-5 text-blue-600" />
-							<h3 class="font-semibold text-slate-900">Your voice matters</h3>
+					<!-- Amplify Section -->
+					<div class="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
+						<div class="flex items-center gap-2 mb-3">
+							<Flame class="h-5 w-5 text-purple-600" />
+							<h3 class="font-semibold text-slate-900">Amplify your impact</h3>
 						</div>
-						<p 
-							class="text-sm text-slate-600 mb-4"
-							in:fly={{ y: 10, duration: 300, delay: 700 }}
-						>
-							Join {template.metrics.sent.toLocaleString()} others who have already taken action on this campaign.
+						<p class="text-sm text-slate-600 mb-4">
+							Share this campaign to multiply your voice and inspire others to take action.
 						</p>
 						
-						<div in:scale={{ duration: 400, delay: 800, easing: backOut, start: 0.9 }}>
-							<Button 
-								variant="primary" 
-								size="lg" 
-								classNames="w-full transition-all duration-200 hover:scale-105 hover:shadow-lg group"
-								on:click={handleUseTemplate}
-								style="transform: scale({$pulseAnimation})"
-							>
-								<Send class="mr-2 h-5 w-5 transition-transform group-hover:rotate-12" />
-								Send your message
-								<ArrowRight class="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-							</Button>
-						</div>
-					</div>
-					
-					<!-- Animated Share Section -->
-					<div 
-						class="mt-6 pt-6 border-t border-slate-200"
-						in:slide={{ duration: 400, delay: 900, easing: quintOut }}
-					>
-						<h4 
-							class="font-medium text-slate-900 mb-3"
-							in:fly={{ y: 10, duration: 300, delay: 1000 }}
-						>
-							Amplify your impact
-						</h4>
-						<p 
-							class="text-sm text-slate-600 mb-4"
-							in:fly={{ y: 10, duration: 300, delay: 1050 }}
-						>
-							Share this campaign to multiply your voice
-						</p>
-						
-						<div 
-							class="flex gap-2"
-							in:fly={{ y: 20, duration: 400, delay: 1100 }}
-						>
+						<!-- Share Actions -->
+						<div class="flex gap-2">
 							<button
-								on:click={copyShareLink}
-								class="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 hover:scale-105 hover:shadow-md transition-all duration-200"
+								onclick={copyShareLink}
+								class="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
 							>
 								{#if showCopied}
-									<div in:scale={{ duration: 300, easing: backOut }}>
-										<CheckCircle2 class="h-4 w-4 text-green-600" />
-									</div>
-									<span 
-										class="text-green-600"
-										in:fly={{ x: 10, duration: 200 }}
-									>
-										Copied!
-									</span>
+									<CheckCircle2 class="h-4 w-4 text-green-600" />
+									<span class="text-green-600 font-medium">Copied!</span>
 								{:else}
 									<Copy class="h-4 w-4" />
 									<span>Copy link</span>
@@ -348,66 +405,48 @@
 							</button>
 							
 							<button
-								on:click={() => shareOnSocial('twitter')}
-								class="flex items-center justify-center p-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 hover:scale-110 hover:shadow-md transition-all duration-200"
+								onclick={() => shareOnSocial('twitter')}
+								class="flex items-center justify-center p-2 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
 								title="Share on X"
 							>
 								<span class="text-black font-bold text-sm">𝕏</span>
 							</button>
 							
 							<button
-								on:click={() => shareOnSocial('facebook')}
-								class="flex items-center justify-center p-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 hover:scale-110 hover:shadow-md transition-all duration-200"
+								onclick={() => shareOnSocial('facebook')}
+								class="flex items-center justify-center p-2 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
 								title="Share on Facebook"
 							>
 								<span class="text-[#1877F2] font-bold text-sm">f</span>
 							</button>
 							
 							<button
-								on:click={() => shareOnSocial('linkedin')}
-								class="flex items-center justify-center p-2 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 hover:scale-110 hover:shadow-md transition-all duration-200"
+								onclick={() => shareOnSocial('linkedin')}
+								class="flex items-center justify-center p-2 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
 								title="Share on LinkedIn"
 							>
 								<span class="text-[#0A66C2] font-bold text-sm">in</span>
 							</button>
 						</div>
 					</div>
-				</div>
-			{/if}
-		</div>
-		
-		<!-- Animated Footer -->
-		{#if !showSuccess}
-			<div 
-				class="p-4 bg-slate-50 border-t border-slate-200"
-				in:slide={{ duration: 200, delay: 650, easing: quintOut }}
-				out:slide={{ duration: 200, easing: quintOut }}
-			>
-				<div class="flex items-center justify-between text-xs text-slate-500">
-					<div 
-						class="flex items-center gap-4"
-						in:fly={{ x: -10, duration: 150, delay: 700 }}
-					>
-						<span class="flex items-center gap-1">
-							<Users class="h-3 w-3" />
-							{template.metrics.sent.toLocaleString()} sent
-						</span>
-						{#if template.metrics.views}
-							<span class="flex items-center gap-1">
-								<Eye class="h-3 w-3" />
-								{template.metrics.views.toLocaleString()} views
-							</span>
-						{/if}
+					
+					<!-- Next Steps -->
+					<div class="p-4 bg-slate-50 rounded-xl">
+						<div class="flex items-center gap-2 mb-3">
+							<Heart class="h-5 w-5 text-red-500" />
+							<h3 class="font-semibold text-slate-900">Keep the momentum</h3>
+						</div>
+						<p class="text-sm text-slate-600 mb-3">
+							Your community needs voices like yours on other important issues too.
+						</p>
+						<a 
+							href="/" 
+							class="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
+						>
+							Explore more campaigns
+							<ArrowRight class="h-3 w-3" />
+						</a>
 					</div>
-					<a 
-						href={shareUrl} 
-						target="_blank" 
-						class="flex items-center gap-1 hover:text-slate-700 hover:scale-105 transition-all duration-200"
-						in:fly={{ x: 10, duration: 150, delay: 750 }}
-					>
-						View campaign page
-						<ExternalLink class="h-3 w-3 transition-transform group-hover:rotate-12" />
-					</a>
 				</div>
 			</div>
 		{/if}

@@ -138,7 +138,7 @@ export async function processTemplateMessages(): Promise<MessageEmbedding[]> {
   const processedMessages: MessageEmbedding[] = [];
   
   for (const campaign of campaigns) {
-    const messageText = campaign.template.body || campaign.template.description;
+    const messageText = campaign.template.message_body || campaign.template.description;
     if (!messageText) continue;
     
     // Classify sentiment
@@ -213,31 +213,31 @@ export async function storePoliticalEmbeddings(messages: MessageEmbedding[]): Pr
       where: { id: message.message_id },
       include: {
         template: {
-          select: { user_id: true }
+          select: { userId: true }
         }
       }
     });
     
-    if (!campaign?.template.user_id) continue;
+    if (!campaign?.template.userId) continue;
     
     // Update or create political embedding
     await db.user_coordinates.upsert({
-      where: { user_id: campaign.template.user_id },
+      where: { user_id: campaign.template.userId },
       update: {
         political_embedding: {
           embedding: message.embedding,
-          sentiment: message.sentiment,
+          sentiment: JSON.parse(JSON.stringify(message.sentiment)),
           last_updated: new Date(),
           version: 'v1_mock_bert'
         }
       },
       create: {
-        user_id: campaign.template.user_id,
+        user_id: campaign.template.userId,
         latitude: message.geographic_coords.latitude,
         longitude: message.geographic_coords.longitude,
         political_embedding: {
           embedding: message.embedding,
-          sentiment: message.sentiment,
+          sentiment: JSON.parse(JSON.stringify(message.sentiment)),
           last_updated: new Date(),
           version: 'v1_mock_bert'
         },
@@ -254,15 +254,12 @@ export async function runSentimentClassificationPipeline(): Promise<{
   processed: number;
   results: MessageEmbedding[];
 }> {
-  console.log('🧠 Starting BERT sentiment classification pipeline...');
   
   // Step 1: Process recent template messages
   const messages = await processTemplateMessages();
-  console.log(`📝 Processed ${messages.length} messages`);
   
   // Step 2: Store political embeddings
   await storePoliticalEmbeddings(messages);
-  console.log(`💾 Stored embeddings for ${messages.length} users`);
   
   // Step 3: Return results for further processing
   return {

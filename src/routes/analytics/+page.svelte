@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
+  import type { PercolationData, FusionData } from '$lib/types/analytics';
   
-  let percolationData: any = null;
-  let fusionData: any = null;
+  let percolationData: PercolationData | null = null;
+  let fusionData: FusionData | null = null;
   let loading = true;
   let error = '';
 

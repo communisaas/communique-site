@@ -5,11 +5,11 @@
 	import AddressCollectionModal from '$lib/components/auth/AddressCollectionModal.svelte';
 	import type { PageData } from './$types';
 	
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 	
-	let showAddressModal = true;
-	let pendingTemplate: any = null;
-	let finalReturnUrl = '/dashboard';
+	let showAddressModal = $state(true);
+	let pendingTemplate: { slug: string; title: string } | null = $state(null);
+	let finalReturnUrl = $state('/dashboard');
 	
 	onMount(() => {
 		if (browser) {
@@ -21,7 +21,6 @@
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
 				} catch (error) {
-					console.error('Error parsing pending template action:', error);
 				}
 			}
 			
@@ -57,12 +56,10 @@
 				// Redirect to final destination
 				window.location.href = finalReturnUrl;
 			} else {
-				console.error('Failed to save address');
 				// Still redirect, but user might need to re-enter address later
 				window.location.href = finalReturnUrl;
 			}
 		} catch (error) {
-			console.error('Error saving address:', error);
 			// Still redirect to avoid getting stuck
 			window.location.href = finalReturnUrl;
 		}

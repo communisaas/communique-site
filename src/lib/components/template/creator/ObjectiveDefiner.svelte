@@ -3,23 +3,29 @@
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import SlugCustomizer from './SlugCustomizer.svelte';
 
-	export let data: {
-		title: string;
-		description: string;
-		category: string;
-		goal: string;
-		slug?: string;
-	};
-	export let context: TemplateCreationContext;
+	interface Props {
+		data: {
+			title: string;
+			description: string;
+			category: string;
+			goal: string;
+			slug?: string;
+		};
+		context: TemplateCreationContext;
+	}
+
+	let { data, context }: Props = $props();
 
 	// Initialize data if empty
-	$: if (!data.title) data.title = '';
-	$: if (!data.goal) data.goal = '';
-	$: if (!data.description) data.description = '';
-	$: if (!data.slug) data.slug = '';
+	$effect(() => {
+		if (!data.title) data.title = '';
+		if (!data.goal) data.goal = '';
+		if (!data.description) data.description = '';
+		if (!data.slug) data.slug = '';
+	});
 
-	$: isTitleValid = data.title.trim().length > 0;
-	$: isGoalValid = data.goal.trim().length > 0;
+	const isTitleValid = $derived(data.title.trim().length > 0);
+	const isGoalValid = $derived(data.goal.trim().length > 0);
 </script>
 
 <div class="space-y-6">
@@ -65,7 +71,7 @@
 				placeholder="What specific change or action are you seeking?"
 				spellcheck="true"
 				lang="en"
-			/>
+			></textarea>
 			{#if !isGoalValid && data.goal}
 				<p class="mt-1 text-sm text-red-600">Goal is required</p>
 			{/if}

@@ -144,7 +144,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         });
         
     } catch (err) {
-        console.error('Error storing user representatives:', err);
         
         // Re-throw SvelteKit errors
         if (err && typeof err === 'object' && 'status' in err) {
@@ -190,10 +189,23 @@ export const GET: RequestHandler = async ({ url, locals }) => {
             throw error(404, 'User not found');
         }
         
-        // Format response
-        const representatives = {
-            house: null as any,
-            senate: [] as any[]
+        // Format response with proper types
+        interface Representative {
+            id: string;
+            bioguideId: string;
+            name: string;
+            party: string;
+            type: string;
+            state: string;
+            district?: number;
+        }
+        
+        const representatives: {
+            house: Representative | null;
+            senate: Representative[];
+        } = {
+            house: null,
+            senate: []
         };
         
         user.representatives.forEach(userRep => {
@@ -233,7 +245,6 @@ export const GET: RequestHandler = async ({ url, locals }) => {
         });
         
     } catch (err) {
-        console.error('Error fetching user representatives:', err);
         
         if (err && typeof err === 'object' && 'status' in err) {
             throw err;
@@ -301,10 +312,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
         });
         
         const postHandler = (await import('./+server')).POST;
-        return await postHandler({ request: updateRequest, locals } as any);
+        return await postHandler({ request: updateRequest, locals } as Parameters<typeof postHandler>[0]);
         
     } catch (err) {
-        console.error('Error refreshing user representatives:', err);
         
         if (err && typeof err === 'object' && 'status' in err) {
             throw err;

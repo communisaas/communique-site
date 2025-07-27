@@ -1,4 +1,5 @@
 import { writable, get } from 'svelte/store';
+import { coordinated } from '$lib/utils/timerCoordinator';
 
 interface Popover {
 	id: string;
@@ -18,14 +19,14 @@ const createPopoverStore = () => {
 		});
 
 		// A short delay to allow the closing animation of the previous popover
-		setTimeout(() => {
+		coordinated.transition(() => {
 			update((current) => {
 				if (current?.id === id && current.state === 'opening') {
 					return { id, state: 'open' };
 				}
 				return current;
 			});
-		}, 50); // Small delay to ensure the UI can react
+		}, 50, `popover_${id}`);
 	};
 
 	const close = (id: string) => {

@@ -1,35 +1,63 @@
 <script lang="ts">
 	/// <reference types="@sveltejs/kit" />
-	import { createEventDispatcher } from 'svelte';
-	import { Send } from '@lucide/svelte';
+	import { Send, Shield, AtSign } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
-	import type { SvelteComponent } from 'svelte';
-	import Badge from '../../ui/Badge.svelte';
-	import Button from '../../ui/Button.svelte';
+	import { extractRecipientEmails } from '$lib/types/templateConfig';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import { page } from '$app/stores';
 
-	export let template: Template;
-	export let user: { id: string; name: string } | null = null;
-	
-	const dispatch = createEventDispatcher<{
-		useTemplate: { template: Template; requiresAuth: boolean };
-	}>();
+	let { 
+		template,
+		user = null,
+		onuseTemplate
+	}: {
+		template: Template;
+		user?: { id: string; name: string } | null;
+		onuseTemplate: (event: { template: Template; requiresAuth: boolean }) => void;
+	} = $props();
 
 	// Always generate mailto link - route congressional templates through our domain
-	$: mailtoLink = generateMailtoLink(template);
+	const mailtoLink = $derived(generateMailtoLink(template));
 
 	function generateMailtoLink(template: Template): string {
 		const subject = encodeURIComponent(template.title);
 
 		let bodyForMailto = template.preview || '';
+		
+		// Get user from page data if available (authenticated user)
+		const currentUser = $page.data?.user;
 
-		// Remove any placeholder variables that are on their own lines (block)
-		const blockRegex = new RegExp(`^[ \t]*\\[.*?\\][ \t]*\\r?\\n`, 'gm');
-		bodyForMailto = bodyForMailto.replace(blockRegex, '');
-
-		// Remove any remaining inline placeholder variables
-		const inlineRegex = new RegExp(`\\[.*?\\]`, 'g');
-		bodyForMailto = bodyForMailto.replace(inlineRegex, '');
+		// If user is authenticated, auto-fill their variables
+		if (currentUser) {
+			// Replace [Name] with user's name
+			bodyForMailto = bodyForMailto.replace(/\[Name\]/g, currentUser.name || 'Your Name');
+			
+			// Replace [Address] with user's address if available, otherwise remove the line
+			if (currentUser.street && currentUser.city && currentUser.state && currentUser.zip) {
+				const userAddress = `${currentUser.street}, ${currentUser.city}, ${currentUser.state} ${currentUser.zip}`;
+				bodyForMailto = bodyForMailto.replace(/\[Address\]/g, userAddress);
+			} else {
+				// Remove lines that contain only [Address] 
+				bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Address\][ \t]*\r?\n/gm, '');
+				// Remove remaining inline [Address] 
+				bodyForMailto = bodyForMailto.replace(/\[Address\]/g, '');
+			}
+			
+			// Remove [Representative Name] - this gets filled server-side or remove if empty
+			bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Representative Name\][ \t]*\r?\n/gm, '');
+			bodyForMailto = bodyForMailto.replace(/\[Representative Name\]/g, 'Representative');
+			
+			// Remove empty [Personal Connection] blocks and lines
+			bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Personal Connection\][ \t]*\r?\n/gm, '');
+			bodyForMailto = bodyForMailto.replace(/\[Personal Connection\]/g, '');
+		} else {
+			// For unauthenticated users, remove all variables and their lines
+			const blockRegex = new RegExp(`^[ \t]*\\[.*?\\][ \t]*\\r?\\n`, 'gm');
+			bodyForMailto = bodyForMailto.replace(blockRegex, '');
+			const inlineRegex = new RegExp(`\\[.*?\\]`, 'g');
+			bodyForMailto = bodyForMailto.replace(inlineRegex, '');
+		}
 
 		// Clean up any extra newlines that might result from empty variables
 		bodyForMailto = bodyForMailto.replace(/\n{3,}/g, '\n\n').trim();
@@ -42,7 +70,7 @@
 			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
 		} else {
 			// Direct email templates: use recipient emails directly
-			const recipients = template.recipientEmails?.join(',') || '';
+			const recipients = extractRecipientEmails(template.recipient_config).join(',');
 			return `mailto:${recipients}?subject=${subject}&body=${body}`;
 		}
 	}
@@ -70,14 +98,35 @@
 		return `${timestamp}-${random}`;
 	}
 	
-	function handleUseTemplate() {
-		// All templates now require auth for enhanced experience and tracking
-		// Congressional templates need address, direct outreach needs profile/credentials
-		const requiresAuth = !user;
+	// Smart CTA configuration based on template type and user state
+	const ctaConfig = $derived(() => {
+		const isCongressional = template.deliveryMethod === 'both';
 		
-		dispatch('useTemplate', { 
+		if (isCongressional) {
+			return {
+				icon: Shield,
+				colors: 'bg-green-600 hover:bg-green-700 focus:ring-green-600/50',
+				desktop: user ? 'Contact Your Representatives' : 'Sign in to Contact Congress',
+				mobile: user ? 'Contact' : 'Sign in',
+				subtitle: user ? 'Ready to send' : null
+			};
+		} else {
+			return {
+				icon: AtSign,
+				colors: 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50',
+				desktop: user ? 'Send This Message' : 'Sign in to Send',
+				mobile: user ? 'Send' : 'Sign in',
+				subtitle: user ? 'Ready to send' : null
+			};
+		}
+	});
+
+	function handleUseTemplate() {
+		// Always dispatch to show the smart modal flow
+		onuseTemplate({ 
 			template, 
-			requiresAuth 
+			requiresAuth: !user,
+			mailtoLink: user ? mailtoLink : null
 		});
 	}
 </script>
@@ -105,27 +154,28 @@
 			</span>
 		{/if}
 		
-		<Button
-			variant="primary"
-			classNames="w-full sm:w-auto shrink-0 focus:ring-green-600/50"
-			on:click={handleUseTemplate}
-		>
-			<span class="hidden sm:inline">
-				{#if template.deliveryMethod === 'both'}
-					Contact Congress
-				{:else}
-					{user ? 'Send Message' : 'Make Your Voice Heard'}
-				{/if}
-			</span>
-			<span class="sm:hidden">
-				{#if template.deliveryMethod === 'both'}
-					Contact
-				{:else}
-					{user ? 'Send' : 'Speak Up'}
-				{/if}
-			</span>
-			<Send class="ml-2 h-4 w-4" />
-		</Button>
+		<div class="flex flex-col items-end gap-2">
+			{#if ctaConfig.subtitle}
+				<span class="hidden sm:block text-xs text-slate-500">
+					{ctaConfig.subtitle}
+				</span>
+			{/if}
+			
+			<Button
+				variant="primary"
+				classNames="w-full sm:w-auto shrink-0 {ctaConfig.colors}"
+				onclick={handleUseTemplate}
+			>
+				<ctaConfig.icon class="h-4 w-4" />
+				
+				<span class="hidden sm:inline">
+					{ctaConfig.desktop}
+				</span>
+				<span class="sm:hidden">
+					{ctaConfig.mobile}
+				</span>
+			</Button>
+		</div>
 		
 	</div>
 </div>

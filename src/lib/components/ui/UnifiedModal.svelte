@@ -1,0 +1,119 @@
+<!--
+UNIFIED MODAL COMPONENT - Replaces scattered modal implementations
+
+Coordinates with central modal system for proper z-index management,
+backdrop handling, and keyboard navigation.
+-->
+<script lang="ts">
+	import { fade, scale } from 'svelte/transition';
+	import { quintOut, backOut } from 'svelte/easing';
+	import { createModalStore, type ModalType } from '$lib/stores/modalSystem';
+	import { X } from '@lucide/svelte';
+
+	let {
+		id,
+		type,
+		title = '',
+		size = 'md',
+		showCloseButton = true,
+		closeOnBackdrop = true,
+		closeOnEscape = true,
+		children
+	}: {
+		id: string;
+		type: ModalType;
+		title?: string;
+		size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
+		showCloseButton?: boolean;
+		closeOnBackdrop?: boolean;
+		closeOnEscape?: boolean;
+		children: unknown;
+	} = $props();
+
+	// Connect to modal system
+	const modal = createModalStore(id, type);
+
+	// Size classes
+	const sizeClasses = {
+		sm: 'max-w-md',
+		md: 'max-w-lg',
+		lg: 'max-w-2xl',
+		xl: 'max-w-4xl',
+		full: 'max-w-none w-full h-full'
+	};
+
+	// Open/close functions for external use
+	export function open(data?: unknown) {
+		modal.open(data, { closeOnBackdrop, closeOnEscape });
+	}
+
+	export function close() {
+		modal.close();
+	}
+</script>
+
+{#if $modal.isOpen}
+	<!-- Modal Backdrop -->
+	<div
+		class="modal-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+		style="z-index: {$modal.zIndex}"
+		in:fade={{ duration: 200 }}
+		out:fade={{ duration: 200 }}
+		onclick={(e) => {
+			if (e.target === e.currentTarget && closeOnBackdrop) {
+				modal.close();
+			}
+		}}
+		role="dialog"
+		aria-modal="true"
+		aria-labelledby={title ? `${id}-title` : undefined}
+		tabindex="0"
+	>
+		<!-- Modal Container -->
+		<div
+			class="bg-white rounded-2xl shadow-2xl w-full {sizeClasses[size]} max-h-[90vh] flex flex-col overflow-hidden"
+			onclick={(e) => e.stopPropagation()}
+			in:scale={{ duration: 300, start: 0.9, easing: backOut }}
+			out:scale={{ duration: 200, start: 1, easing: quintOut }}
+		>
+			<!-- Modal Header -->
+			{#if title || showCloseButton}
+				<div class="flex items-center justify-between p-6 border-b border-slate-100">
+					{#if title}
+						<h2 id="{id}-title" class="text-xl font-semibold text-slate-900">
+							{title}
+						</h2>
+					{:else}
+						<div></div>
+					{/if}
+					
+					{#if showCloseButton}
+						<button
+							onclick={modal.close}
+							class="rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200"
+							aria-label="Close modal"
+						>
+							<X class="h-5 w-5" />
+						</button>
+					{/if}
+				</div>
+			{/if}
+
+			<!-- Modal Content -->
+			<div class="flex-1 overflow-y-auto">
+				{@render children($modal.data)}
+			</div>
+		</div>
+	</div>
+{/if}
+
+<style>
+	/* Ensure modal renders above everything */
+	.modal-backdrop {
+		position: fixed;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+	}
+</style>

@@ -4,13 +4,20 @@
     import { tick } from 'svelte';
     import type { PopoverSlots, TriggerAction } from '$lib/types/popover';
 	import { browser } from '$app/environment';
+	import { coordinated, useTimerCleanup, timerCoordinator } from '$lib/utils/timerCoordinator';
     
-    export let open = false;
-    export let id = crypto.randomUUID();
+    interface Props {
+        open?: boolean;
+        id?: string;
+        trigger?: (props: { trigger: TriggerAction; 'aria-controls': string }) => any;
+        children?: unknown;
+    }
+
+    let { open = $bindable(false), id = `popover-${Math.random().toString(36).substr(2, 9)}`, trigger, children }: Props = $props();
     
     const dispatch = createEventDispatcher();
-    let popoverElement: HTMLDivElement;
-    let containerElement: HTMLDivElement;
+    let popoverElement: HTMLDivElement = $state();
+    let containerElement: HTMLDivElement = $state();
     
     interface $$Slots extends PopoverSlots {}
 
@@ -47,6 +54,7 @@
             window.removeEventListener('scroll', handleScroll, true);
             window.removeEventListener('resize', handleResize);
         }
+        useTimerCleanup(componentId)();
     });
 
     async function handleMouseEnter() {
@@ -147,7 +155,10 @@
     }
 
     let isTouch = false;
-    let touchTimeout: number;
+    let touchTimeout: string | null = null;
+
+    // Component ID for timer coordination
+    const componentId = 'popover-' + Math.random().toString(36).substring(2, 15);
 
     function handleTouchStart(event: TouchEvent) {
         // Don't handle touch events from within the popover content
@@ -158,7 +169,7 @@
         isTouch = true;
         // Clear any existing timeout
         if (touchTimeout) {
-            clearTimeout(touchTimeout);
+            timerCoordinator.clearTimer(touchTimeout);
         }
         
         open = !open;
@@ -170,9 +181,10 @@
         }
 
         // Reset isTouch after a delay to allow mouse events again
-        touchTimeout = window.setTimeout(() => {
+        touchTimeout = coordinated.setTimeout(() => {
             isTouch = false;
-        }, 500);
+            touchTimeout = null;
+        }, 500, 'gesture', componentId);
     }
 </script>
 
@@ -181,28 +193,24 @@
     class="relative inline-block"
     role="button"
     tabindex="-1"
-    on:mouseenter={handleMouseEnter}
-    on:mouseleave={handleMouseLeave}
-    on:touchstart={handleTouchStart}
-    on:keydown={handleKeydown}
-    on:focusin={handleFocus}
-    on:focusout={handleBlur}
+    onmouseenter={handleMouseEnter}
+    onmouseleave={handleMouseLeave}
+    ontouchstart={handleTouchStart}
+    onkeydown={handleKeydown}
+    onfocusin={handleFocus}
+    onfocusout={handleBlur}
     aria-haspopup="true"
     aria-expanded={open}
 >
-    <slot 
-        name="trigger" 
-        trigger={triggerAction}
-        aria-controls={id} 
-    />
+    {@render trigger?.({ trigger: triggerAction, 'aria-controls': id })}
     
     {#if open}
         <!-- Update z-index to be higher than modal -->
         <div 
             class="fixed z-[99]"
             role="presentation"
-            on:mouseenter={handleMouseEnter}
-            on:mouseleave={handleMouseLeave}
+            onmouseenter={handleMouseEnter}
+            onmouseleave={handleMouseLeave}
             style="
                 left: {containerElement?.getBoundingClientRect().left}px;
                 width: {containerElement?.getBoundingClientRect().width}px;
@@ -218,10 +226,10 @@
             class="bg-white rounded-xl shadow-xl border border-slate-200 z-[100]"
             transition:fade={{ duration: 200 }}
             style="position: fixed; isolation: isolate;"
-            on:mouseenter={handleMouseEnter}
-            on:mouseleave={handleMouseLeave}
+            onmouseenter={handleMouseEnter}
+            onmouseleave={handleMouseLeave}
         >
-            <slot {open} />
+            {@render children?.({ open })}
         </div>
     {/if}
 </div>

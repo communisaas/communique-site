@@ -1,6 +1,10 @@
 <script lang="ts">
-	export let variant: 'template' | 'message' | 'compact' = 'template';
-	export let animate: boolean = true;
+	interface Props {
+		variant?: 'template' | 'message' | 'compact';
+		animate?: boolean;
+	}
+
+	const { variant = 'template', animate = true }: Props = $props();
 </script>
 
 <div class="loading-card" class:animate>

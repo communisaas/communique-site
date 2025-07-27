@@ -1,25 +1,32 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, untrack } from 'svelte';
 	import { scale } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
 	import { tweened, spring } from 'svelte/motion';
 	import { cubicOut, quadOut } from 'svelte/easing';
 	import { fade } from 'svelte/transition';
 	import type { ModalScrollState } from '$lib/types/modal';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
-	const dispatch = createEventDispatcher<{
-		close: void;
-		scrollStateChange: ModalScrollState;
-	}>();
+	let {
+		onclose,
+		onscrollStateChange,
+		children
+	}: {
+		onclose?: () => void;
+		onscrollStateChange?: (state: ModalScrollState) => void;
+		children?: unknown;
+	} = $props();
 
-	let dialogElement: HTMLDialogElement;
-	let isOpen = false;
+
+	let dialogElement: HTMLDialogElement = $state();
+	let isOpen = $state(false);
 	let scrollPosition: number;
-	let modalContent: HTMLDivElement;
+	let modalContent: HTMLDivElement = $state();
 	let touchStart = 0;
 	let currentTouchY = 0;
 	let isDismissing = false;
-	let swipeDirection: 'up' | 'down' | null = null;
+	let swipeDirection: 'up' | 'down' | null = $state(null);
 
 	const translateY = spring(0, {
 		stiffness: 0.35,
@@ -51,12 +58,12 @@
 	let viewportHeight: number;
 
 	// Calculate thresholds based on viewport height
-	$: dismissThreshold = viewportHeight * 0.15; // 15% of viewport height
-	$: dismissHintThreshold = viewportHeight * 0.15; // 15% of viewport height
-	$: dismissAnimationDistance = viewportHeight; // Full viewport height for dismiss animation
+	const dismissThreshold = $derived(viewportHeight * 0.15); // 15% of viewport height
+	const dismissHintThreshold = $derived(viewportHeight * 0.15); // 15% of viewport height
+	const dismissAnimationDistance = $derived(viewportHeight); // Full viewport height for dismiss animation
 
 	// Update resistance based on viewport height
-	$: resistance = Math.max(0.3, Math.min(0.5, viewportHeight / 1000));
+	const resistance = $derived(Math.max(0.3, Math.min(0.5, viewportHeight / 1000)));
 
 	// Add a store for the hint scale animation
 	const hintScale = tweened(0.8, {
@@ -70,7 +77,7 @@
 		easing: cubicOut
 	});
 
-	let isPastThreshold = false;
+	let isPastThreshold = $state(false);
 
 	let lastTouchTime: number;
 	let lastTouchY: number;
@@ -85,6 +92,9 @@
 		scrollPosition: 0,
 		maxScroll: 0
 	};
+	
+	// Component ID for timer coordination
+	const componentId = 'modal-' + Math.random().toString(36).substring(2, 15);
 
 	// Add new state for tracking dismissal transition
 	let initialDismissY: number | null = null;
@@ -110,6 +120,7 @@
 			const mouseEvent = e as MouseEvent;
 			const clickedElement = mouseEvent.target as HTMLElement;
 
+			// Close when clicking the backdrop (dialogElement)
 			if (clickedElement === dialogElement) {
 				close();
 			}
@@ -121,23 +132,18 @@
 	}
 
 	function close() {
-		dispatch('close');
+		unlockScroll(); // Ensure scroll is unlocked when closing via any method
+		onclose?.();
 		closeModal();
 	}
 
-	function showModal() {
-		isOpen = true;
-		setTimeout(() => {
-			dialogElement?.showModal();
-		}, 0);
-	}
 
 	function closeModal() {
 		if (isDismissing) {
 			preventScroll(false); // Re-enable scrolling
 		}
+		unlockScroll(); // Restore page scrolling when modal closes
 		isOpen = false;
-		dialogElement?.close();
 	}
 
 	function lockScroll() {
@@ -182,12 +188,6 @@
 
 	function handleTouchMove(e: TouchEvent) {
 		const isPopoverTrigger = (e.target as HTMLElement).closest('[aria-haspopup="true"]');
-		console.log('Modal touch move:', {
-			target: e.target,
-			isPopoverTrigger,
-			isDismissing,
-			isInDismissalGesture
-		});
 		// Check if the touch started on a popover trigger
 		if (isPopoverTrigger) {
 			return; // Let the popover handle its own touch events
@@ -306,9 +306,9 @@
 				blurAmount.set(0);
 				gestureProgress.set(0);
 
-				setTimeout(() => {
+				coordinated.setTimeout(() => {
 					close();
-				}, 200);
+				}, 200, 'modal', componentId);
 			} else {
 				// Always reset to 0 (initial position) regardless of swipe direction
 				translateY.set(0);
@@ -341,10 +341,11 @@
 	}
 
 	// Add a derived value for smoother blur
-	$: blurStyle = `blur(${$blurAmount}px)`;
+	const blurStyle = $derived(`blur(${$blurAmount}px)`);
+
 
 	onMount(() => {
-		showModal();
+		isOpen = true; // Set isOpen to true so dialog element renders
 		updateViewportHeight();
 		window.addEventListener('resize', updateViewportHeight);
 		document.addEventListener('keydown', handleModalInteraction);
@@ -364,29 +365,42 @@
 		});
 		unlockScroll();
 		preventScroll(false); // Ensure scrolling is re-enabled when component is destroyed
+		useTimerCleanup(componentId)();
 	});
 </script>
 
 {#if isOpen}
-	<dialog
+	<!-- Modal is rendering! -->
+	<div
 		bind:this={dialogElement}
-		class="fixed inset-0 m-0 h-full w-full bg-transparent p-0
-               backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+		class="fixed inset-0 m-0 h-full w-full backdrop-blur-sm z-[60] flex items-center justify-center"
+		onclick={handleModalInteraction}
+		onkeydown={(e) => { if (e.key === 'Escape') handleModalInteraction(e); }}
+		role="dialog"
+		aria-modal="true"
+		aria-label="Modal dialog"
+		tabindex="0"
+		style="background: rgba(255, 0, 0, 0.8) !important;"
 	>
-		<div class="flex h-full w-full items-center justify-center p-4">
-			<div
-				bind:this={modalContent}
-				class="modal-content relative h-[85vh] w-full max-w-2xl touch-pan-y overflow-hidden
-                       rounded-xl bg-white shadow-xl"
-				style="transform: translateY({$translateY}px)"
-				on:touchstart={handleTouchStart}
-				on:touchmove={handleTouchMove}
-				on:touchend={handleTouchEnd}
-				on:touchcancel={handleTouchEnd}
-			>
+		<div class="absolute top-4 right-4 bg-yellow-500 text-black p-2 rounded text-xs z-[9999]">
+			🐛 MODAL BACKDROP IS RENDERING! isOpen = {isOpen}
+		</div>
+		<div
+			bind:this={modalContent}
+			class="modal-content relative h-[85vh] w-full max-w-2xl touch-pan-y overflow-hidden
+                   rounded-xl bg-white shadow-xl"
+			style="transform: translateY({$translateY}px)"
+			ontouchstart={handleTouchStart}
+			ontouchmove={handleTouchMove}
+			ontouchend={handleTouchEnd}
+			ontouchcancel={handleTouchEnd}
+			onkeydown={(e) => { e.stopPropagation(); }}
+			role="document"
+			onclick={(e) => e.stopPropagation()}
+		>
 				<!-- Close button -->
 				<button
-					on:click={close}
+					onclick={close}
 					class="absolute right-2 top-2 z-20 rounded-full bg-white/80
                            p-2 shadow-sm backdrop-blur-sm
                            transition-colors hover:bg-gray-100"
@@ -398,7 +412,7 @@
 				<!-- Content -->
 				<div class="h-full max-h-[85vh] overflow-hidden">
 					<div class="relative h-full">
-						<slot />
+						{@render children?.()}
 					</div>
 				</div>
 
@@ -453,21 +467,11 @@
 						</div>
 					</div>
 				{/if}
-			</div>
 		</div>
-	</dialog>
+	</div>
 {/if}
 
 <style>
-	dialog::backdrop {
-		background: rgba(0, 0, 0, 0.5);
-		backdrop-filter: blur(4px);
-	}
-
-	dialog {
-		max-width: 100vw;
-		max-height: 100vh;
-	}
 
 	/* Customize scrollbar */
 	div::-webkit-scrollbar {

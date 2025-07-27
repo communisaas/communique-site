@@ -36,7 +36,7 @@
 				},
 				{
 					icon: CheckCircle2,
-					text: 'Permanent blockchain record'
+					text: 'Verified delivery receipt'
 				},
 				{
 					icon: UsersRound,
@@ -104,7 +104,7 @@
 				class:border-slate-200={!isSelected}
 				class:hover:border-slate-300={!isSelected}
 				class:cursor-default={isSelected}
-				on:click={(event) => {
+				onclick={(event) => {
 					selectedChannel = channel.id;
 					const targetElement = event.currentTarget;
 					targetElement.scrollIntoView({
@@ -112,7 +112,7 @@
 						block: 'center'
 					});
 				}}
-				on:keydown={(e) => {
+				onkeydown={(e) => {
 					if (e.key === 'Enter') {
 						selectedChannel = channel.id;
 					}
@@ -204,7 +204,7 @@
 									<div class="flex flex-col gap-3">
 										<button
 											class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white"
-											on:click|stopPropagation={() => handleCreateTemplate(channel)}
+											onclick={(e) => { e.stopPropagation(); handleCreateTemplate(channel); }}
 										>
 											Create New Template
 											<ArrowRight class="h-4 w-4" />
@@ -212,7 +212,7 @@
 
 										<button
 											class="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 px-4 py-2 text-blue-600 hover:bg-blue-50"
-											on:click|stopPropagation={() => {
+											onclick={(e) => { e.stopPropagation(); 
 												document.getElementById('template-section')?.scrollIntoView({
 													behavior: 'smooth',
 													block: 'center'

@@ -1,26 +1,36 @@
 <script lang="ts">
-	import { Mail, Sparkles, User, Edit3, Link, Copy, Check } from '@lucide/svelte';
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { Mail, Sparkles, User, Edit3 } from '@lucide/svelte';
+	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import AnimatedPopover from '$lib/components/ui/AnimatedPopover.svelte';
 	import type { Template } from '$lib/types/template';
 	import { popover as popoverStore } from '$lib/stores/popover';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
-	export let preview: string;
-	export let template: Template | undefined = undefined;
-	export let onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
-
-	const dispatch = createEventDispatcher();
+	let { 
+		preview,
+		template = undefined,
+		onScroll,
+		onscrollStateChange,
+		ontouchStateChange,
+		onvariableSelect
+	}: {
+		preview: string;
+		template?: Template | undefined;
+		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
+		onscrollStateChange?: (scrollState: unknown) => void;
+		ontouchStateChange?: (touchState: unknown) => void;
+		onvariableSelect?: (event: { variableName: string; active: boolean }) => void;
+	} = $props();
 	let scrollContainer: HTMLDivElement;
-	let isAtTop = true;
-	let isAtBottom = false;
-	let isScrollable = false;
-	let activeVariable: string | null = null;
-	let variableValues: Record<string, string> = {};
-	let hoveredVariable: string | null = null;
-	let showingHint: string | null = null;
-	let showCopied = false;
+	let isAtTop = $state(true);
+	let isAtBottom = $state(false);
+	let isScrollable = $state(false);
+	let activeVariable: string | null = $state(null);
+	let variableValues: Record<string, string> = $state({});
+	let hoveredVariable: string | null = $state(null);
+	let showingHint: string | null = $state(null);
 
 	// Define which variables are system-populated vs user-editable
 	const systemVariables = new Set(['Name', 'Address', 'Representative Name']);
@@ -61,6 +71,9 @@
 	}
 
 	let modalDismissing = false;
+	
+	// Component ID for timer coordination
+	const componentId = 'message-preview-' + Math.random().toString(36).substring(2, 15);
 
 	// Parse template content into segments
 	function parseTemplate(text: string): Segment[] {
@@ -96,21 +109,23 @@
 			});
 		}
 
-		// Initialize variable values
+		return segments;
+	}
+
+	// Reactive declaration for parsed segments
+	const templateSegments = $derived(parseTemplate(preview));
+	
+	// Initialize variable values when segments change
+	$effect(() => {
 		if (Object.keys(variableValues).length === 0) {
-			for (const segment of segments) {
+			for (const segment of templateSegments) {
 				if (segment.type === 'variable' && segment.name) {
 					// Default to empty, which will show the bracketed name
 					variableValues[segment.name] = '';
 				}
 			}
 		}
-
-		return segments;
-	}
-
-	// Reactive declaration for parsed segments
-	$: templateSegments = parseTemplate(preview);
+	});
 
 	onMount(() => {
 		const handleDismissState = (e: CustomEvent<DismissStateEvent>) => {
@@ -129,6 +144,7 @@
 		return () => {
 			document.removeEventListener('dismissStateChange', handleDismissState as EventListener);
 			document.removeEventListener('touchend', handleTouchEnd);
+			useTimerCleanup(componentId)();
 		};
 	});
 
@@ -140,7 +156,7 @@
 		isAtTop = scrollTop <= 0;
 		isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 1;
 
-		dispatch('scrollStateChange', {
+		onscrollStateChange?.({
 			isScrollable,
 			isAtTop,
 			isAtBottom,
@@ -193,7 +209,7 @@
 			event.stopPropagation();
 		}
 
-		dispatch('touchStateChange', touchState);
+		ontouchStateChange?.(touchState);
 	}
 
 	function handleTouchEnd() {
@@ -209,7 +225,7 @@
 		}
 		activeVariable = activeVariable === variableName ? null : variableName;
 		showingHint = null; // Hide hint when editing starts
-		dispatch('variableSelect', { variableName, active: activeVariable === variableName });
+		onvariableSelect?.({ variableName, active: activeVariable === variableName });
 	}
 
 	function handleVariableHover(variableName: string | null) {
@@ -218,11 +234,11 @@
 
 		// Show contextual hint after a brief delay for any variable type
 		if (variableName) {
-			setTimeout(() => {
+			coordinated.setTimeout(() => {
 				if (hoveredVariable === variableName && !activeVariable) {
 					showingHint = variableName;
 				}
-			}, 400);
+			}, 400, 'gesture', componentId);
 		} else {
 			showingHint = null;
 		}
@@ -244,21 +260,14 @@
 		showingHint = null;
 	}
 
-	$: if (browser && preview) {
-		setTimeout(() => {
-			updateScrollState();
-		}, 0);
-	}
+	$effect(() => {
+		if (browser && preview) {
+			coordinated.setTimeout(() => {
+				updateScrollState();
+			}, 0, 'dom', componentId);
+		}
+	});
 
-	// Copy deep link functionality
-	function copyDeepLink() {
-		if (!template?.slug || !browser) return;
-		
-		const deepLinkUrl = `${window.location.origin}/${template.slug}`;
-		navigator.clipboard.writeText(deepLinkUrl);
-		showCopied = true;
-		setTimeout(() => showCopied = false, 2000);
-	}
 
 	// Update variable styling with more delightful interactions
 	function getVariableClasses(isActive: boolean, variableName: string): string {
@@ -312,37 +321,9 @@
 </script>
 
 <div class="relative flex h-full cursor-text flex-col">
-	<div class="mb-2 flex shrink-0 items-center justify-between gap-2">
-		<div class="flex items-center gap-2">
-			<Mail class="h-4 w-4 shrink-0 text-slate-500" />
-			<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
-		</div>
-		
-		{#if template?.slug}
-			<AnimatedPopover id="copy-link-popover" animationStyle="expand" duration={200}>
-				<svelte:fragment slot="trigger" let:triggerAction>
-					<button
-						use:triggerAction
-						on:click={copyDeepLink}
-						class="group flex items-center gap-1.5 rounded-md px-2 py-1 text-xs
-							   text-slate-500 hover:text-slate-700 hover:bg-slate-100
-							   transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-					>
-						{#if showCopied}
-							<Check class="h-3 w-3 text-emerald-600" />
-							<span class="text-emerald-600 font-medium">Copied!</span>
-						{:else}
-							<Link class="h-3 w-3 group-hover:text-blue-600 transition-colors" />
-							<span class="group-hover:text-blue-600 transition-colors">Copy link</span>
-						{/if}
-					</button>
-				</svelte:fragment>
-				
-				<div class="text-[11px] text-slate-600 max-w-[200px]">
-					Share this template with others by copying its direct link
-				</div>
-			</AnimatedPopover>
-		{/if}
+	<div class="mb-2 flex shrink-0 items-center gap-2">
+		<Mail class="h-4 w-4 shrink-0 text-slate-500" />
+		<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
 	</div>
 
 	<!-- Enhanced Variable Legend with personality -->
@@ -360,10 +341,10 @@
 	<div class="relative min-h-0 flex-1">
 		<div
 			bind:this={scrollContainer}
-			on:scroll={handleScroll}
-			on:touchstart={handleTouchStart}
-			on:touchmove={handleTouch}
-			on:touchend={handleTouchEnd}
+			onscroll={handleScroll}
+			ontouchstart={handleTouchStart}
+			ontouchmove={handleTouch}
+			ontouchend={handleTouchEnd}
 			data-scrollable={isScrollable}
 			class="styled-scrollbar-track scrollbar-thumb-slate-300 scrollbar-track-slate-100/10
                    absolute inset-0 overflow-y-auto whitespace-pre-wrap rounded-lg
@@ -382,15 +363,14 @@
 									<div class="relative" transition:scale={{ duration: 200 }}>
 										<textarea
 											value={variableValues[segment.name]}
-											on:input={(e) => handleInput(e, segment.name ?? '')}
-											on:blur={handleBlur}
+											oninput={(e) => handleInput(e, segment.name ?? '')}
+											onblur={handleBlur}
 											placeholder={variableHints[segment.name]?.placeholder ||
 												`Enter your ${segment.name}...`}
 											class="w-full min-w-[400px] resize-none overflow-hidden rounded-lg border-2 border-blue-300 bg-white p-3
 													font-sans text-sm shadow-lg focus:border-blue-500 focus:ring-blue-500 focus:ring-opacity-50"
 											rows="4"
-											autofocus
-										/>
+										></textarea>
 										<!-- Character count and encouragement -->
 										{#if variableValues[segment.name]?.length > 10}
 											<div
@@ -404,21 +384,20 @@
 								{:else}
 									<input
 										value={variableValues[segment.name]}
-										on:input={(e) => handleInput(e, segment.name ?? '')}
-										on:blur={handleBlur}
+										oninput={(e) => handleInput(e, segment.name ?? '')}
+										onblur={handleBlur}
 										placeholder={`Enter ${segment.name}...`}
 										class="inline-block w-64 rounded-lg border-2 border-blue-300 bg-white px-3 py-1.5 align-baseline
 												font-sans text-sm shadow-lg focus:border-blue-500 focus:ring-blue-500 focus:ring-opacity-50"
-										autofocus
 									/>
 								{/if}
 							{:else}
-								<AnimatedPopover id={crypto.randomUUID()} animationStyle="expand" duration={250}>
+								<AnimatedPopover id={`variable-${segment.name}`} animationStyle="expand" duration={250}>
 									<svelte:fragment slot="trigger" let:triggerAction>
 										<button
 											use:triggerAction
 											class={getVariableClasses(activeVariable === segment.name, segment.name)}
-											on:click={() => handleVariableClick(segment.name ?? '')}
+											onclick={() => handleVariableClick(segment.name ?? '')}
 										>
 											{#if systemVariables.has(segment.name)}
 												<User class="h-2.5 w-2.5 text-emerald-600" />

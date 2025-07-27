@@ -9,29 +9,33 @@
 	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import ProgressiveFormModal from '$lib/components/template/ProgressiveFormModal.svelte';
-	import { browser } from '$app/environment';
+	import { resolveTemplate } from '$lib/utils/templateResolver';
+	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
 	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import type { PageData } from './$types';
+	import { coordinated } from '$lib/utils/timerCoordinator';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
 	
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 
-	let showMobilePreview = false;
-	let showTemplateCreator = false;
-	let showOnboardingModal = false;
-	let showTemplateModal = false;
-	let showTemplateAuthModal = false;
-	let modalComponent: Modal;
-	let selectedChannel: string | null = null;
-	let creationContext: TemplateCreationContext | null = null;
-	let pendingTemplate: any = null;
-	let pendingTemplateToSave: any = null;
-	let userInitiatedSelection = false; // Track if selection was user-initiated
-	let initialLoadComplete = false; // Track initial load completion
+	const componentId = 'HomePage_' + Math.random().toString(36).substr(2, 9);
+	
+	let showMobilePreview = $state(false);
+	let showTemplateCreator = $state(false);
+	let showOnboardingModal = $state(false);
+	let showTemplateModal = $state(false);
+	let showTemplateAuthModal = $state(false);
+	let modalComponent = $state<Modal>();
+	let selectedChannel: string | null = $state(null);
+	let creationContext: TemplateCreationContext | null = $state(null);
+	let pendingTemplate: Record<string, unknown> | null = $state(null);
+	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
+	let userInitiatedSelection = $state(false); // Track if selection was user-initiated
+	let initialLoadComplete = $state(false); // Track initial load completion
 
 	// Handle OAuth return for template creation and URL parameter initialization
 	onMount(() => {
@@ -43,14 +47,12 @@
 					const { templateData } = JSON.parse(pendingData);
 					// Now that user is authenticated, save the template
 					templateStore.addTemplate(templateData).then(() => {
-						console.log('Template saved successfully after authentication');
 						sessionStorage.removeItem('pending_template_save');
-						// Could show a success message here
 					}).catch(error => {
-						console.error('Failed to save template after authentication:', error);
+						// Template save failed - user can retry later
 					});
 				} catch (error) {
-					console.error('Error parsing pending template data:', error);
+					// Invalid pending template data - ignore
 				}
 			}
 		}
@@ -59,9 +61,9 @@
 		templateStore.fetchTemplates();
 		
 		// Mark initial load as complete after a short delay
-		setTimeout(() => {
+		coordinated.setTimeout(() => {
 			initialLoadComplete = true;
-		}, 100);
+		}, 100, 'dom', componentId);
 	});
 	
 	// No need for manual onMount template selection anymore -
@@ -71,8 +73,7 @@
 		userInitiatedSelection = true;
 		templateStore.selectTemplate(id);
 		
-		if (browser && window.innerWidth < 768) {
-			// md breakpoint is 768px
+		if (isMobile()) {
 			showMobilePreview = true;
 		}
 	}
@@ -112,7 +113,7 @@
 		} else {
 			// Direct mailto for simple templates
 			const mailtoLink = generateMailtoLink(template);
-			window.location.href = mailtoLink;
+			navigateTo(mailtoLink);
 		}
 	}
 	
@@ -131,11 +132,11 @@
 		}
 		
 		// Redirect to OAuth - we'll use Google as the primary option for creators
-		window.location.href = `/auth/google?returnTo=${encodeURIComponent('/?template_saved=pending')}`;
+		navigateTo(`/auth/google?returnTo=${encodeURIComponent('/?template_saved=pending')}`);
 	}
 	
 	
-	function generateMailtoLink(template: any): string {
+	function generateMailtoLink(template: Record<string, unknown>): string {
 		const subject = encodeURIComponent(template.title);
 		const body = encodeURIComponent(template.preview || template.message_body || '');
 		
@@ -147,12 +148,12 @@
 			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
 		} else {
 			// Direct email
-			const recipients = template.recipientEmails?.join(',') || '';
+			const recipients = extractRecipientEmails(template.recipient_config).join(',');
 			return `mailto:${recipients}?subject=${subject}&body=${body}`;
 		}
 	}
 
-	$: filteredTemplates = selectedChannel
+	const filteredTemplates = $derived(selectedChannel
 		? $templateStore.templates.filter((t) => {
 				if (selectedChannel === 'certified') {
 					return t.deliveryMethod === 'both';
@@ -161,27 +162,22 @@
 				}
 				return false;
 			})
-		: $templateStore.templates;
+		: $templateStore.templates);
+	
 	
 	// Handle URL parameter initialization when templates load (legacy support)
-	$: if (browser && $templateStore.templates.length > 0 && !userInitiatedSelection) {
-		const templateParam = $page.url.searchParams.get('template');
-		if (templateParam) {
-			// Find template by slug
-			const targetTemplate = $templateStore.templates.find(t => t.slug === templateParam);
-			if (targetTemplate && targetTemplate.id !== $templateStore.selectedId) {
-				templateStore.selectTemplateBySlug(templateParam);
-				// Redirect to clean URL format
-				history.replaceState({}, '', `/${targetTemplate.slug}`);
+	$effect(() => {
+		if (browser && $templateStore.templates.length > 0 && !userInitiatedSelection) {
+			const templateParam = $page.url.searchParams.get('template');
+			if (templateParam) {
+				// Find template by slug
+				const targetTemplate = $templateStore.templates.find(t => t.slug === templateParam);
+				if (targetTemplate && targetTemplate.id !== $templateStore.selectedId) {
+					templateStore.selectTemplateBySlug(templateParam);
+				}
 			}
 		}
-	}
-	
-	// Update URL when template selection changes (only for user-initiated selections)
-	$: if (browser && initialLoadComplete && userInitiatedSelection && $selectedTemplate) {
-		// Use clean URL format: communi.email/tell-congress-climate-action
-		history.replaceState({}, '', `/${$selectedTemplate.slug}`);
-	}
+	});
 </script>
 
 <svelte:head>
@@ -212,6 +208,7 @@
 				templates={filteredTemplates}
 				selectedId={$templateStore.selectedId}
 				onSelect={handleTemplateSelect}
+				loading={$isLoading}
 			/>
 		</div>
 
@@ -234,7 +231,7 @@
 						There was a problem fetching the latest templates.
 					</p>
 					<button
-						on:click={() => templateStore.fetchTemplates()}
+						onclick={() => templateStore.fetchTemplates()}
 						class="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
 					>
 						Try Again
@@ -265,6 +262,24 @@
 					template={$selectedTemplate} 
 					user={data.user}
 					on:useTemplate={handleTemplateUse}
+					onSendMessage={() => {
+						if (!$selectedTemplate) {
+							return;
+						}
+						
+						const resolved = resolveTemplate($selectedTemplate, data.user);
+						
+						if (resolved.isCongressional && resolved.routingEmail) {
+							const subject = encodeURIComponent(resolved.subject);
+							const body = encodeURIComponent(resolved.body);
+							navigateTo(`mailto:${resolved.routingEmail}?subject=${subject}&body=${body}`);
+						} else {
+							const recipients = resolved.recipients.join(',') || '';
+							const subject = encodeURIComponent(resolved.subject);  
+							const body = encodeURIComponent(resolved.body);
+							navigateTo(`mailto:${recipients}?subject=${subject}&body=${body}`);
+						}
+					}}
 				/>
 			{:else}
 				<!-- Empty state -->
@@ -322,7 +337,7 @@
 								showTemplateCreator = false;
 								creationContext = null;
 							} catch (error) {
-								console.error('Failed to save template:', error);
+								// Template save failed - user can retry
 							}
 						} else {
 							// Guest user - show progressive auth modal

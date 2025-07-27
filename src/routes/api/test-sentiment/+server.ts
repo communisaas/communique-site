@@ -3,7 +3,6 @@ import { testOnRealData, runBasicSentimentTests } from '$lib/server/sentiment-ba
 
 export async function GET() {
   try {
-    console.log('🧪 Running sentiment analysis tests...');
     
     // Run the basic sentiment tests
     await runBasicSentimentTests();
@@ -15,7 +14,6 @@ export async function GET() {
     });
     
   } catch (error) {
-    console.error('Error running sentiment tests:', error);
     return json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error'

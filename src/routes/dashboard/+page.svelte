@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { Mail, User, MapPin, Settings, LogOut } from '@lucide/svelte';
 
-	$: user = $page.data.user;
+	const user = $derived($page.data.user);
 
 	async function handleLogout() {
 		await fetch('/auth/logout', { method: 'POST' });
@@ -39,7 +39,7 @@
 							<span class="text-sm font-medium text-gray-700">{user.name}</span>
 						</div>
 						<button
-							on:click={handleLogout}
+							onclick={handleLogout}
 							class="inline-flex items-center rounded-md border border-transparent px-3 py-2 text-sm font-medium leading-4 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 						>
 							<LogOut class="mr-2 h-4 w-4" />

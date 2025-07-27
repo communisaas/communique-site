@@ -1,9 +1,13 @@
 <script lang="ts">
 	import { Send, Landmark, Building2, MapPin, User, Users } from '@lucide/svelte';
-	import Tooltip from '../../ui/Tooltip.svelte';
+	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import type { Template } from '$lib/types/template';
 
-	export let template: Template;
+	interface Props {
+		template: Template;
+	}
+
+	const { template }: Props = $props();
 
 	// Format numbers with commas
 	function formatNumber(num: number): string {
@@ -11,8 +15,9 @@
 	}
 
 	// Determine badge type based on delivery method
-	$: badgeType =
-		template.deliveryMethod === 'both' ? 'certified' : ('direct' as 'certified' | 'direct');
+	const badgeType = $derived(
+		template.deliveryMethod === 'both' ? 'certified' : ('direct' as 'certified' | 'direct')
+	);
 
 	// Calculate district coverage for congressional templates
 	function getDistrictCoverage(template: Template): string {
@@ -34,7 +39,7 @@
 		return Math.round((template.metrics.responded / template.metrics.sent) * 100) + '%';
 	}
 
-	$: typeMetrics = {
+	const typeMetrics = $derived({
 		certified: {
 			icon: Landmark,
 			tooltip: 'Delivered through Congressional Web Communication system',
@@ -51,9 +56,9 @@
 			secondaryTooltip: 'Total recipient addresses targeted',
 			secondaryValue: `${formatNumber(template.metrics.clicked)} recipients`
 		}
-	} as const;
+	} as const);
 
-	$: currentMetric = typeMetrics[badgeType];
+	const currentMetric = $derived(typeMetrics[badgeType]);
 </script>
 
 <div class="min-w-0 max-w-full space-y-2 text-sm">

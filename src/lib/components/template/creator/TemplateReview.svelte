@@ -2,22 +2,21 @@
 	import { CheckCircle2, Link2, Users, Mail, Target, ExternalLink } from '@lucide/svelte';
 	import type { TemplateFormData, TemplateCreationContext } from '$lib/types/template';
 	import { page } from '$app/stores';
-	import Badge from '../../ui/Badge.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	
-	export let data: TemplateFormData;
-	export let context: TemplateCreationContext;
+	let { data, context }: { data: TemplateFormData; context: TemplateCreationContext } = $props();
 	
 	// Generate preview URL using dynamic hostname
-	$: previewUrl = data.objective.slug ? `${$page.url.origin}/${data.objective.slug}` : null;
+	const previewUrl = $derived(data.objective.slug ? `${$page.url.origin}/${data.objective.slug}` : null);
 	
 	// Format recipient display
-	$: recipientDisplay = (() => {
+	const recipientDisplay = $derived.by(() => {
 		if (context.channelId === 'certified') {
 			return 'Congressional Representatives (auto-routed)';
 		}
 		const count = data.audience.recipientEmails.length;
 		return count === 1 ? '1 recipient' : `${count} recipients`;
-	})();
+	});
 
 </script>
 

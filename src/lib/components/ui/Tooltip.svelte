@@ -4,13 +4,18 @@
 	import { get } from 'svelte/store';
 	import { activeTooltipId } from '$lib/stores/tooltip';
 
-	export let content: string;
-	export let containerClass = '';
-	export let showInfoIcon = true;
+	interface Props {
+		content: string;
+		containerClass?: string;
+		showInfoIcon?: boolean;
+		children?: unknown;
+	}
+
+	const { content, containerClass = '', showInfoIcon = true, children }: Props = $props();
 
 	// Generate unique ID for this tooltip instance
-	const id = crypto.randomUUID();
-	let show = false;
+	const id = `tooltip-${Math.random().toString(36).substr(2, 9)}`;
+	let show = $state(false);
 
 	// Update show state based on active tooltip
 	activeTooltipId.subscribe((activeId) => {
@@ -40,7 +45,7 @@
 		}
 	}
 
-	let isPositioned = false;
+	let isPositioned = $state(false);
 
 	async function handleMouseEnter() {
 		// Calculate position before showing
@@ -101,10 +106,10 @@
 		}
 	}
 
-	let tooltipElement: HTMLDivElement;
+	let tooltipElement: HTMLDivElement = $state();
 	let containerElement: HTMLSpanElement;
-	let infoIconElement: HTMLDivElement;
-	let position: 'top' | 'bottom' | 'left' | 'right' = 'top';
+	let infoIconElement: HTMLDivElement = $state();
+	let position: 'top' | 'bottom' | 'left' | 'right' = $state('top');
 
 	function updatePosition() {
 		if (!tooltipElement || !containerElement) return;
@@ -195,9 +200,11 @@
 		tooltipElement.style.left = `${left}px`;
 	}
 
-	$: if (show) {
-		setTimeout(updatePosition, 0);
-	}
+	$effect(() => {
+		if (show) {
+			tick().then(updatePosition);
+		}
+	});
 
 	function handleScroll() {
 		if (show) {
@@ -228,22 +235,23 @@
   We're ignoring a11y warnings because this is a custom tooltip implementation
   that needs to work both standalone and nested within interactive elements.
 -->
-<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <span
 	bind:this={containerElement}
-	role="tooltip"
+	role="button"
 	data-tooltip-id={id}
 	aria-label={content}
 	class="group relative inline-flex cursor-help items-center {containerClass}"
-	on:mouseenter={handleMouseEnter}
-	on:mouseleave={handleMouseLeave}
-	on:click={handleTouch}
-	on:touchstart={handleTouch}
-	on:touchend|preventDefault
-	on:keydown={handleKeyDown}
+	onmouseenter={handleMouseEnter}
+	tabindex="0"
+	onmouseleave={handleMouseLeave}
+	onclick={handleTouch}
+	ontouchstart={handleTouch}
+	ontouchend={(e) => { e.preventDefault(); handleTouch(e); }}
+	onkeydown={handleKeyDown}
 >
 	<div class="min-w-0 truncate">
-		<slot />
+		{@render children?.()}
 	</div>
 	{#if showInfoIcon}
 		<div bind:this={infoIconElement} class="relative">

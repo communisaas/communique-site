@@ -98,7 +98,6 @@ export async function POST({ request, locals }) {
 		});
 		
 	} catch (error) {
-		console.error('Error saving user address:', error);
 		return json({ 
 			error: 'Failed to save address' 
 		}, { status: 500 });

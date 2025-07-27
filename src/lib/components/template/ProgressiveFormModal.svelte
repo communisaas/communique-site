@@ -11,46 +11,55 @@
 		Send,
 		CheckCircle2
 	} from '@lucide/svelte';
-	import Button from '../ui/Button.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 	
-	export let template: {
-		id: string;
-		title: string;
-		description: string;
-		slug: string;
-		deliveryMethod: string;
-		preview?: string;
-	};
-	export let user: { id: string; name: string; address?: string } | null = null;
+	let {
+		template,
+		user = null
+	}: {
+		template: {
+			id: string;
+			title: string;
+			description: string;
+			slug: string;
+			deliveryMethod: string;
+			preview?: string;
+		};
+		user?: { id: string; name: string; address?: string } | null;
+	} = $props();
 	
 	const dispatch = createEventDispatcher<{ 
 		close: void; 
 		send: { name: string; address?: string; email?: string };
 	}>();
 	
+	// Component ID for timer coordination
+	const componentId = 'progressive-form-modal-' + Math.random().toString(36).substring(2, 15);
+	
 	type Step = 'name' | 'address' | 'send';
-	let currentStep: Step = 'name';
-	let isTransitioning = false;
+	let currentStep: Step = $state('name');
+	let isTransitioning = $state(false);
 	
 	// Form data
-	let name = user?.name || '';
-	let address = user?.address || '';
-	let email = '';
+	let name = $state(user?.name || '');
+	let address = $state(user?.address || '');
+	let email = $state('');
 	
 	// Validation states
-	let nameError = '';
-	let addressError = '';
-	let emailError = '';
+	let nameError = $state('');
+	let addressError = $state('');
+	let emailError = $state('');
 	
-	$: isCongressional = template.deliveryMethod === 'both';
-	$: isAuthFlow = template.deliveryMethod === 'auth';
-	$: requiresAddress = isCongressional && !isAuthFlow;
-	$: requiresEmail = !user || isAuthFlow; // Always need email for auth flow
+	const isCongressional = $derived(template.deliveryMethod === 'both');
+	const isAuthFlow = $derived(template.deliveryMethod === 'auth');
+	const requiresAddress = $derived(isCongressional && !isAuthFlow);
+	const requiresEmail = $derived(!user || isAuthFlow); // Always need email for auth flow
 	
 	// Determine the flow based on template type and user status
-	$: steps = getSteps();
-	$: currentStepIndex = steps.indexOf(currentStep);
-	$: isLastStep = currentStepIndex === steps.length - 1;
+	const steps = $derived(getSteps());
+	const currentStepIndex = $derived(steps.indexOf(currentStep));
+	const isLastStep = $derived(currentStepIndex === steps.length - 1);
 	
 	function getSteps(): Step[] {
 		if (isAuthFlow) {
@@ -89,6 +98,7 @@
 	
 	onDestroy(() => {
 		document.body.style.overflow = '';
+		useTimerCleanup(componentId)();
 	});
 	
 	function validateName(): boolean {
@@ -152,7 +162,7 @@
 			currentStep = steps[nextIndex];
 		}
 		
-		setTimeout(() => isTransitioning = false, 300);
+		coordinated.setTimeout(() => isTransitioning = false, 300, 'transition', componentId);
 	}
 	
 	function prevStep() {
@@ -165,7 +175,7 @@
 			currentStep = steps[prevIndex];
 		}
 		
-		setTimeout(() => isTransitioning = false, 300);
+		coordinated.setTimeout(() => isTransitioning = false, 300, 'transition', componentId);
 	}
 	
 	function handleSend() {
@@ -205,13 +215,20 @@
 
 <div 
 	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-	on:click={handleClose}
+	onclick={handleClose}
+	onkeydown={(e) => { if (e.key === 'Escape') handleClose(); }}
+	role="dialog"
+	aria-modal="true"
+	aria-label="Progressive form modal"
+	tabindex="0"
 	in:fade={{ duration: 300, easing: quintOut }}
 	out:fade={{ duration: 200 }}
 >
 	<div 
 		class="fixed inset-x-4 top-1/2 max-w-md mx-auto transform -translate-y-1/2 bg-white rounded-2xl shadow-2xl overflow-hidden"
-		on:click|stopPropagation
+		onclick={(e) => { e.stopPropagation(); }}
+		onkeydown={(e) => { e.stopPropagation(); }}
+		role="document"
 		in:scale={{ 
 			duration: 400, 
 			easing: backOut,
@@ -226,7 +243,7 @@
 	>
 		<!-- Close Button -->
 		<button
-			on:click={handleClose}
+			onclick={handleClose}
 			class="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
 		>
 			<X class="h-5 w-5" />
@@ -243,7 +260,7 @@
 									? 'w-12 bg-blue-600 shadow-lg shadow-blue-200' 
 									: 'w-8 bg-slate-200'
 							}"
-						/>
+						></div>
 					{/each}
 				</div>
 			</div>
@@ -256,7 +273,9 @@
 					class="absolute inset-0 p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					on:keydown={handleKeydown}
+					onkeydown={handleKeydown}
+					role="form"
+					tabindex="-1"
 				>
 					{#if currentStep === 'name'}
 						<!-- Name Collection Step -->
@@ -281,10 +300,9 @@
 									id="name"
 									type="text"
 									bind:value={name}
-									on:blur={validateName}
+									onblur={validateName}
 									placeholder="Enter your full name"
 									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {nameError ? 'border-red-300' : ''}"
-									autofocus
 								/>
 								{#if nameError}
 									<p class="mt-1 text-sm text-red-600">{nameError}</p>
@@ -300,7 +318,7 @@
 										id="email"
 										type="email"
 										bind:value={email}
-										on:blur={validateEmail}
+										onblur={validateEmail}
 										placeholder="your@email.com"
 										class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {emailError ? 'border-red-300' : ''}"
 									/>
@@ -323,7 +341,7 @@
 								variant="secondary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={handleClose}
+								onclick={handleClose}
 								disabled={isTransitioning}
 							>
 								Cancel
@@ -332,7 +350,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={nextStep}
+								onclick={nextStep}
 								disabled={isTransitioning || !name.trim() || (isAuthFlow && !email.trim())}
 							>
 								{isLastStep ? 'Send message' : 'Continue'}
@@ -362,11 +380,10 @@
 								<textarea
 									id="address"
 									bind:value={address}
-									on:blur={validateAddress}
+									onblur={validateAddress}
 									placeholder="123 Main Street, City, State, ZIP"
 									rows="3"
 									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none {addressError ? 'border-red-300' : ''}"
-									autofocus
 								></textarea>
 								{#if addressError}
 									<p class="mt-1 text-sm text-red-600">{addressError}</p>
@@ -382,7 +399,7 @@
 								variant="secondary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={prevStep}
+								onclick={prevStep}
 								disabled={isTransitioning}
 							>
 								<ArrowLeft class="mr-1 h-4 w-4" />
@@ -392,7 +409,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={nextStep}
+								onclick={nextStep}
 								disabled={isTransitioning || !address.trim()}
 							>
 								{isLastStep ? 'Send message' : 'Continue'}
@@ -456,7 +473,7 @@
 									variant="secondary" 
 									size="sm" 
 									classNames="flex-1"
-									on:click={prevStep}
+									onclick={prevStep}
 									disabled={isTransitioning}
 								>
 									<ArrowLeft class="mr-1 h-4 w-4" />
@@ -467,7 +484,7 @@
 									variant="secondary" 
 									size="sm" 
 									classNames="flex-1"
-									on:click={handleClose}
+									onclick={handleClose}
 									disabled={isTransitioning}
 								>
 									Cancel
@@ -477,7 +494,7 @@
 								variant="primary" 
 								size="sm" 
 								classNames="flex-1"
-								on:click={handleSend}
+								onclick={handleSend}
 								disabled={isTransitioning}
 							>
 								<Send class="mr-1 h-4 w-4" />

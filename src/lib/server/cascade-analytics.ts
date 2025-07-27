@@ -110,10 +110,10 @@ export async function getTemplateActivationChain(templateId: string): Promise<Us
  * Find most likely source user for a new activation
  */
 function findLikelySourceUser(
-    newUser: any,
+    newUser: Record<string, unknown>,
     activationTime: Date,
     existingActivations: UserActivation[],
-    campaigns: any[]
+    campaigns: Array<Record<string, unknown>>
 ): UserActivation | null {
     
     // Look for recent activations in same or nearby districts
@@ -129,10 +129,10 @@ function findLikelySourceUser(
     
     // Score potential sources by proximity and recency
     const scoredSources = recentActivations.map(activation => {
-        const sourceCampaign = campaigns.find(c => c.template.user?.id === activation.user_id);
-        if (!sourceCampaign?.template.user) return null;
+        const sourceCampaign = campaigns.find(c => (c.template as any).user?.id === activation.user_id);
+        if (!sourceCampaign?.template || !(sourceCampaign.template as any).user) return null;
         
-        const sourceUser = sourceCampaign.template.user;
+        const sourceUser = (sourceCampaign.template as any).user;
         
         // Geographic proximity score
         const geoScore = calculateGeographicProximity(newUser, sourceUser);
@@ -158,7 +158,7 @@ function findLikelySourceUser(
 /**
  * Calculate geographic proximity score between users
  */
-function calculateGeographicProximity(user1: any, user2: any): number {
+function calculateGeographicProximity(user1: Record<string, unknown>, user2: Record<string, unknown>): number {
     // Same congressional district = high proximity
     if (user1.congressional_district === user2.congressional_district) {
         return 1.0;
@@ -176,7 +176,7 @@ function calculateGeographicProximity(user1: any, user2: any): number {
 /**
  * Calculate distance between users (simplified)
  */
-function calculateDistanceBetweenUsers(user1: any, sourceActivation: UserActivation): number {
+function calculateDistanceBetweenUsers(user1: Record<string, unknown>, sourceActivation: UserActivation): number {
     // Simplified distance - in real implementation use actual coordinates
     if (user1.congressional_district === sourceActivation.user_id) return 0;
     if (user1.state === sourceActivation.user_id) return 50; // ~50 miles same state

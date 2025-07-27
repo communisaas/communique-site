@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { IdCard, Scan, UsersRound } from '@lucide/svelte';
-	import Popover from '../ui/Popover.svelte';
+	import Popover from '$lib/components/ui/Popover.svelte';
 
 	const idChecks = [
 		{

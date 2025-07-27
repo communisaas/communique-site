@@ -28,9 +28,16 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const { templateId, userId, isGuest, sessionToken } = routingInfo;
+		
+		if (!templateId) {
+			return error(400, 'Template ID is required');
+		}
 
 		if (isGuest) {
 			// Handle anonymous user flow
+			if (!sessionToken) {
+				return error(400, 'Session token is required for guest requests');
+			}
 			return await handleGuestCongressionalRequest({
 				templateId,
 				sessionToken,
@@ -40,6 +47,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		} else {
 			// Handle authenticated user flow
+			if (!userId) {
+				return error(400, 'User ID is required for authenticated requests');
+			}
 			return await handleAuthenticatedCongressionalRequest({
 				templateId,
 				userId,
@@ -49,7 +59,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 	} catch (err) {
-		console.error('Congressional routing error:', err);
 		return error(500, 'Failed to process congressional routing');
 	}
 };
@@ -188,7 +197,7 @@ async function handleGuestCongressionalRequest({
 }
 
 // Helper functions (to be implemented)
-async function lookupRepresentativesByAddress(address: any) {
+async function lookupRepresentativesByAddress(address: Record<string, unknown>) {
 	// TODO: Implement address-to-representative lookup
 	return [];
 }
@@ -201,8 +210,8 @@ async function routeToRepresentatives({
 	body
 }: {
 	templateId: string;
-	user: any;
-	representatives: any[];
+	user: Record<string, unknown>;
+	representatives: Array<Record<string, unknown>>;
 	subject: string;
 	body: string;
 }) {
@@ -211,27 +220,23 @@ async function routeToRepresentatives({
 	// Fetch the original template to ensure variables are present
 	const template = await db.template.findUnique({
 		where: { id: templateId },
-		select: { body: true }
+		select: { message_body: true }
 	});
 
 	if (!template) {
-		console.error(`Template with ID ${templateId} not found.`);
 		// Continue with the user-provided body as a fallback
 	}
 
 	// Use the database template body for variable resolution, but preserve user's custom message.
 	// We assume the user's custom message replaces the '[Personal Connection]' variable.
 	const bodyForResolution = template
-		? template.body.replace(/\[Personal Connection\]/g, body)
+		? template.message_body.replace(/\[Personal Connection\]/g, body)
 		: body;
 
 	for (const rep of representatives) {
-		const personalizedBody = resolveVariables(bodyForResolution, user, rep);
+		const personalizedBody = resolveVariables(bodyForResolution, user as any, rep as any);
 
 		// TODO: Replace with actual CWC submission logic
-		console.log(`Routing to ${rep.name} at ${rep.official_url}`);
-		console.log(`Subject: ${subject}`);
-		console.log(`Body: ${personalizedBody}`);
 
 		deliveryResults.push({
 			representative: rep.name,
@@ -242,10 +247,10 @@ async function routeToRepresentatives({
 	return deliveryResults;
 }
 
-async function storeGuestCongressionalRequest(params: any) {
+async function storeGuestCongressionalRequest(params: Record<string, unknown>) {
 	// TODO: Store pending request in database
 }
 
-async function sendOnboardingEmail(params: any) {
+async function sendOnboardingEmail(params: Record<string, unknown>) {
 	// TODO: Send onboarding email with account creation link
 } 

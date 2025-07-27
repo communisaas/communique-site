@@ -1,6 +1,10 @@
 <script lang="ts">
-	export let size: 'sm' | 'md' | 'lg' = 'md';
-	export let color: 'blue' | 'slate' | 'white' = 'blue';
+	interface Props {
+		size?: 'sm' | 'md' | 'lg';
+		color?: 'blue' | 'slate' | 'white';
+	}
+
+	const { size = 'md', color = 'blue' }: Props = $props();
 
 	const sizeClasses = {
 		sm: 'h-4 w-4',

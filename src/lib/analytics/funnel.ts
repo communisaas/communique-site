@@ -62,21 +62,19 @@ class FunnelAnalytics {
 		// Send to analytics service (implement your preferred service)
 		this.sendToAnalytics(funnelEvent);
 
-		console.log('📊 Funnel Event:', funnelEvent);
 	}
 
 	private async sendToAnalytics(event: FunnelEvent) {
-		try {
-			// TODO: Replace with your analytics service (PostHog, Mixpanel, GA4, etc.)
-			await fetch('/api/analytics/track', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(event)
-			});
-		} catch (error) {
-			console.warn('Failed to send analytics event:', error);
+		const { analyticsApi } = await import('$lib/utils/apiClient');
+		const result = await analyticsApi.track('funnel_event', event);
+		
+		if (!result.success) {
+			// Store failed events for retry
+			if (typeof window !== 'undefined') {
+				const failed = JSON.parse(localStorage.getItem('communique_failed_events') || '[]');
+				failed.push(event);
+				localStorage.setItem('communique_failed_events', JSON.stringify(failed));
+			}
 		}
 	}
 

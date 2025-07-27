@@ -2,8 +2,12 @@
 	import { Megaphone, Shield, AtSign } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 
-	export let templates: Template[];
-	export let messageCount: number;
+	interface Props {
+		templates: Template[];
+		messageCount: number;
+	}
+
+	const { templates, messageCount }: Props = $props();
 
 	const activityTypes = {
 		certified: {
@@ -40,7 +44,7 @@
 				class="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs sm:text-sm"
 			>
 				<div class="flex items-center gap-3">
-					<svelte:component this={activity.icon} class="h-4 w-4 {activity.iconClass}" />
+					<activity.icon class="h-4 w-4 {activity.iconClass}" />
 					<div>
 						<div class="text-xs font-medium sm:text-sm">
 							<span class={activity.textClass}>

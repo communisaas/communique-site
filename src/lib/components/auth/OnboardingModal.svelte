@@ -17,21 +17,30 @@
 		ArrowLeft,
 		Sparkles
 	} from '@lucide/svelte';
-	import Button from '../ui/Button.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
-	export let template: {
-		title: string;
-		description: string;
-		slug: string;
-		deliveryMethod?: string;
-		metrics: { sent: number; views?: number };
-	};
-	export let source: 'social-link' | 'direct-link' | 'share' = 'direct-link';
+	let {
+		template,
+		source = 'direct-link'
+	}: {
+		template: {
+			title: string;
+			description: string;
+			slug: string;
+			deliveryMethod?: string;
+			metrics: { sent: number; views?: number };
+		};
+		source?: 'social-link' | 'direct-link' | 'share';
+	} = $props();
 
 	const dispatch = createEventDispatcher<{ close: void }>();
+	
+	// Component ID for timer coordination
+	const componentId = 'onboarding-modal-' + Math.random().toString(36).substring(2, 15);
 
-	let currentStep: 'preview' | 'benefits' | 'providers' = 'preview';
-	let isTransitioning = false;
+	let currentStep: 'preview' | 'benefits' | 'providers' = $state('preview');
+	let isTransitioning = $state(false);
 
 	// Prevent background scrolling when modal is open
 	onMount(() => {
@@ -40,11 +49,14 @@
 
 	onDestroy(() => {
 		document.body.style.overflow = '';
+		useTimerCleanup(componentId)();
 	});
 
 	// Spring-powered step progression
 	const stepProgress = spring(0, { stiffness: 0.3, damping: 0.8 });
-	$: stepProgress.set(['preview', 'benefits', 'providers'].indexOf(currentStep));
+	$effect(() => {
+		stepProgress.set(['preview', 'benefits', 'providers'].indexOf(currentStep));
+	});
 
 	// Crossfade for smooth step transitions
 	const [send, receive] = crossfade({
@@ -54,7 +66,7 @@
 	});
 
 	// Dynamic messaging based on source and template type - enhanced with agency and impact
-	$: sourceMessages = getSourceMessages(isCongressional, isDirectOutreach);
+	const sourceMessages = $derived(getSourceMessages(isCongressional, isDirectOutreach));
 
 	function getSourceMessages(congressional: boolean, directOutreach: boolean) {
 		if (congressional) {
@@ -166,11 +178,11 @@
 	}
 
 	// Detect template type for customized messaging
-	$: isCongressional = template.deliveryMethod === 'both';
-	$: isDirectOutreach = template.deliveryMethod === 'email';
+	const isCongressional = $derived(template.deliveryMethod === 'both');
+	const isDirectOutreach = $derived(template.deliveryMethod === 'email');
 
-	$: message = sourceMessages[source];
-	$: returnUrl = encodeURIComponent(`/template-modal/${template.slug}`);
+	const message = $derived(sourceMessages[source]);
+	const returnUrl = $derived(encodeURIComponent(`/template-modal/${template.slug}`));
 
 	function handleAuth(provider: string) {
 		// Store the template context before redirecting
@@ -202,7 +214,7 @@
 		else if (currentStep === 'benefits') currentStep = 'providers';
 
 		// Short protection period
-		setTimeout(() => (isTransitioning = false), 150);
+		coordinated.setTimeout(() => (isTransitioning = false), 150, 'transition', componentId);
 	}
 
 	function prevStep() {
@@ -214,21 +226,28 @@
 		else if (currentStep === 'benefits') currentStep = 'preview';
 
 		// Short protection period
-		setTimeout(() => (isTransitioning = false), 150);
+		coordinated.setTimeout(() => (isTransitioning = false), 150, 'transition', componentId);
 	}
 </script>
 
 <!-- Modal Backdrop with improved animation -->
 <div
 	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-	on:click={handleClose}
+	onclick={handleClose}
+	onkeydown={(e) => { if (e.key === 'Escape') handleClose(); }}
+	role="dialog"
+	aria-modal="true"
+	aria-label="Onboarding modal"
+	tabindex="0"
 	in:fade={{ duration: 300, easing: quintOut }}
 	out:fade={{ duration: 200 }}
 >
 	<!-- Modal Content with spring-like entrance -->
 	<div
 		class="fixed inset-x-4 top-1/2 mx-auto max-w-lg -translate-y-1/2 transform overflow-hidden rounded-2xl bg-white shadow-2xl"
-		on:click|stopPropagation
+		onclick={(e) => { e.stopPropagation(); }}
+		onkeydown={(e) => { e.stopPropagation(); }}
+		role="document"
 		in:scale={{
 			duration: 400,
 			easing: backOut,
@@ -243,7 +262,7 @@
 	>
 		<!-- Close Button -->
 		<button
-			on:click={handleClose}
+			onclick={handleClose}
 			class="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
 		>
 			<X class="h-5 w-5" />
@@ -260,7 +279,7 @@
 								? 'w-8 bg-blue-300'
 								: 'w-8 bg-slate-200'}"
 						in:scale={{ delay: i * 100, duration: 300 }}
-					/>
+					></div>
 				{/each}
 			</div>
 		</div>
@@ -338,7 +357,7 @@
 								variant="secondary"
 								size="sm"
 								classNames="flex-1 transition-all duration-200 hover:scale-105"
-								on:click={handleClose}
+								onclick={handleClose}
 								disabled={isTransitioning}
 							>
 								Maybe later
@@ -347,7 +366,7 @@
 								variant="primary"
 								size="sm"
 								classNames="flex-1 transition-all duration-200 hover:scale-105 hover:shadow-lg"
-								on:click={nextStep}
+								onclick={nextStep}
 								disabled={isTransitioning}
 							>
 								{message.cta}
@@ -410,7 +429,7 @@
 								variant="secondary"
 								size="sm"
 								classNames="flex-1 transition-all duration-200 hover:scale-105"
-								on:click={prevStep}
+								onclick={prevStep}
 								disabled={isTransitioning}
 							>
 								<ArrowLeft class="mr-1 h-4 w-4" />
@@ -420,7 +439,7 @@
 								variant="primary"
 								size="sm"
 								classNames="flex-1 transition-all duration-200 hover:scale-105 hover:shadow-lg"
-								on:click={nextStep}
+								onclick={nextStep}
 								disabled={isTransitioning}
 							>
 								Sign up
@@ -457,7 +476,7 @@
 							<div class="mb-3 space-y-2">
 								{#each [{ provider: 'google', name: 'Google', icon: 'google-svg', color: 'bg-white' }, { provider: 'facebook', name: 'Facebook', icon: 'f', color: 'bg-[#1877F2]' }] as auth, i}
 									<button
-										on:click={() => handleAuth(auth.provider)}
+										onclick={() => handleAuth(auth.provider)}
 										class="flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 bg-white px-4 py-3 transition-all duration-200 hover:scale-105 hover:bg-slate-50 hover:shadow-md"
 										in:fly={{ x: -20, duration: 200, delay: 150 + i * 50 }}
 										disabled={isTransitioning}
@@ -497,7 +516,7 @@
 							<div class="grid grid-cols-3 gap-2">
 								{#each [{ provider: 'twitter', name: 'X', icon: '𝕏', color: 'bg-black' }, { provider: 'linkedin', name: 'LinkedIn', icon: 'linkedin-svg', color: 'bg-[#0077B5]' }, { provider: 'discord', name: 'Discord', icon: 'discord-svg', color: 'bg-[#5865F2]' }] as auth, i}
 									<button
-										on:click={() => handleAuth(auth.provider)}
+										onclick={() => handleAuth(auth.provider)}
 										class="flex flex-col items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-3 transition-all duration-200 hover:scale-105 hover:bg-slate-50 hover:shadow-md"
 										in:fly={{ x: -20, duration: 200, delay: 300 + i * 50 }}
 										disabled={isTransitioning}
@@ -533,7 +552,7 @@
 								variant="secondary"
 								size="sm"
 								classNames="flex-1 transition-all duration-200 hover:scale-105"
-								on:click={prevStep}
+								onclick={prevStep}
 								disabled={isTransitioning}
 							>
 								<ArrowLeft class="mr-1 h-4 w-4" />

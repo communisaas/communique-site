@@ -2,7 +2,7 @@
 	import { Shield, AtSign } from '@lucide/svelte';
 	import Tooltip from './Tooltip.svelte';
 
-	export let type: 'certified' | 'direct';
+	let { type }: { type: 'certified' | 'direct' } = $props();
 
 	const badges = {
 		certified: {

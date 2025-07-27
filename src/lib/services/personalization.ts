@@ -16,7 +16,7 @@ const variableMap: Record<string, (user: User, rep?: representative) => string> 
  * @param rep The representative receiving the email
  * @returns The email body with all variables resolved
  */
-export function resolveVariables(body: string, user: User, rep?: Representative): string {
+export function resolveVariables(body: string, user: User, rep?: representative): string {
 	let resolvedBody = body;
 
 	// Handle resolved variables

@@ -33,18 +33,14 @@ export class AISuggestionsService {
         userContext?: UserContext
     ): Promise<AISuggestion[]> {
         // Stub implementation - replace with actual AI service
-        console.log('🤖 AI Suggestions Service called:', { templateId, variableName, userContext });
         
         // Mock suggestions based on variable name and context
-        const mockSuggestions = this.getMockSuggestions(variableName, userContext);
+        const mockSuggestions = this.getMockSuggestions(variableName, 'general', userContext);
         
         // TODO: Replace with actual API call to AI service
-        // const response = await fetch('/api/ai/suggestions', {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify({ templateId, variableName, userContext })
-        // });
-        // return response.json();
+        // const { api } = await import('$lib/utils/apiClient');
+        // const result = await api.post('/api/ai/suggestions', { templateId, variableName, userContext });
+        // return result.success ? result.data : [];
         
         return mockSuggestions;
     }
@@ -59,7 +55,6 @@ export class AISuggestionsService {
         variableName: string,
         finalText: string
     ): Promise<void> {
-        console.log('📊 Recording suggestion usage:', { suggestionId, templateId, variableName });
         
         // TODO: Store in template_analytics table
         // await db.ai_suggestions.update({
@@ -77,7 +72,6 @@ export class AISuggestionsService {
         templateCategory: string,
         userContext?: UserContext
     ): Promise<string[]> {
-        console.log('✨ Generating personalized prompts:', { variableName, templateCategory, userContext });
         
         // Mock prompts - replace with AI-generated ones
         return this.getMockPrompts(variableName, templateCategory, userContext);
@@ -143,7 +137,6 @@ export class AISuggestionsService {
             effectiveness?: number;
         }
     ): Promise<void> {
-        console.log('📚 Updating user writing profile:', { userId, writingData });
         
         // TODO: Analyze writing patterns and update user_writing_style table
         // - Extract tone, style, themes

@@ -171,7 +171,6 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		if (err instanceof Response && err.status >= 300 && err.status < 400) {
 			throw err;
 		}
-		console.error('LinkedIn OAuth callback error:', err);
 		return error(500, 'Authentication failed');
 	}
 };

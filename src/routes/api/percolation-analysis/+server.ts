@@ -18,7 +18,6 @@ export async function GET({ request }) {
     });
   }
   try {
-    console.log('🌊 Running percolation analysis on civic information network...');
     
     const analysis = await analyzeCivicInformationCascades();
     
@@ -47,7 +46,6 @@ export async function GET({ request }) {
     // Log failed usage
     await logAnalyticsUsage(security.user_id!, 'percolation-analysis', false, Date.now() - startTime);
     
-    console.error('Error in percolation analysis:', error);
     return json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

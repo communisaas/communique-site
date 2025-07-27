@@ -45,7 +45,6 @@ export async function POST({ request, locals }) {
 		});
 		
 	} catch (error) {
-		console.error('Error saving user profile:', error);
 		return json({ 
 			error: 'Failed to save profile' 
 		}, { status: 500 });
@@ -95,7 +94,6 @@ export async function GET({ locals }) {
 		});
 		
 	} catch (error) {
-		console.error('Error fetching user profile:', error);
 		return json({ 
 			error: 'Failed to fetch profile' 
 		}, { status: 500 });

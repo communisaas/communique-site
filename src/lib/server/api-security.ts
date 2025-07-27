@@ -76,14 +76,14 @@ export function checkRateLimit(
 /**
  * Input sanitization and validation
  */
-export function validateAndSanitizeInput(input: any, schema: any): {
+export function validateAndSanitizeInput(input: unknown, schema: Record<string, any>): {
   valid: boolean;
-  sanitized?: any;
+  sanitized?: Record<string, unknown>;
   errors?: string[];
 } {
   
   const errors: string[] = [];
-  const sanitized: any = {};
+  const sanitized: Record<string, unknown> = {};
   
   // Basic type checking and sanitization
   Object.keys(schema).forEach(key => {
@@ -91,7 +91,7 @@ export function validateAndSanitizeInput(input: any, schema: any): {
     const required = schema[key].required || false;
     const maxLength = schema[key].maxLength || 1000;
     
-    const value = input[key];
+    const value = (input as Record<string, unknown>)[key];
     
     if (required && (value === undefined || value === null)) {
       errors.push(`Missing required field: ${key}`);
@@ -333,17 +333,15 @@ export async function logSecurityEvent(
   event_type: 'rate_limit' | 'invalid_key' | 'ip_blocked' | 'successful_auth',
   ip: string,
   endpoint: string,
-  details?: any
+  details?: unknown
 ): Promise<void> {
   
   try {
     // In production, log to proper security monitoring system
-    console.log(`[SECURITY] ${event_type}: ${ip} -> ${endpoint}`, details);
     
     // Could store in database for analysis
     // await db.security_log.create({ ... });
     
   } catch (error) {
-    console.error('Failed to log security event:', error);
   }
 }

@@ -1,6 +1,5 @@
 import { writable, derived } from 'svelte/store';
 import type { Template } from '$lib/types/template';
-import { templates as staticTemplates } from '$lib/data/templates';
 
 interface TemplateState {
 	templates: Template[];
@@ -23,20 +22,6 @@ function createTemplateStore() {
 	return {
 		subscribe,
 		
-		// Initialize with static data for immediate render
-		initializeWithStaticData() {
-			const templatesWithIds = staticTemplates.map((template, index) => ({
-				...template,
-				id: `static-${index + 1}` // Generate consistent IDs for static data
-			}));
-			
-			update((state) => ({
-				...state,
-				templates: templatesWithIds,
-				selectedId: state.selectedId || templatesWithIds[0]?.id || null, // Preserve existing selection or auto-select first
-				initialized: true
-			}));
-		},
 
 		// Core template management
 		selectTemplate: (id: string) => {
@@ -67,11 +52,14 @@ function createTemplateStore() {
 		async fetchTemplates() {
 			update((state) => ({ ...state, loading: true, error: null }));
 			try {
-				const response = await fetch('/api/templates');
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.list();
+				console.log('Templates API result:', result);
+				if (!result.success) {
+					console.error('Templates API error:', result.error);
+					throw new Error(result.error || 'Failed to fetch templates');
 				}
-				const data = await response.json();
+				const data = result.data;
 				
 				update((state) => {
 					const newState = {
@@ -91,36 +79,28 @@ function createTemplateStore() {
 					return newState;
 				});
 			} catch (err) {
-				console.error('Error fetching templates:', err);
+				console.error('Template fetch error:', err);
 				update((state) => ({
 					...state,
 					loading: false,
 					error: err instanceof Error ? err.message : 'Failed to fetch templates'
 				}));
 				
-				// Fallback to static data if API fails and we haven't initialized yet
-				if (!state.initialized) {
-					this.initializeWithStaticData();
-				}
+				// No fallback to static data - API-only approach
 			}
 		},
 
 		// Template CRUD operations
 		async addTemplate(template: Omit<Template, 'id'>) {
 			try {
-				const response = await fetch('/api/templates', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(template)
-				});
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.create(template);
 
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to create template');
 				}
 
-				const newTemplate = await response.json();
+				const newTemplate = result.data;
 				update((store) => ({
 					...store,
 					templates: [...store.templates, newTemplate],
@@ -130,7 +110,6 @@ function createTemplateStore() {
 
 				return newTemplate;
 			} catch (err) {
-				console.error('Error adding template:', err);
 				update((store) => ({
 					...store,
 					error: 'Template could not be added.'
@@ -141,19 +120,14 @@ function createTemplateStore() {
 
 		async updateTemplate(id: string, updates: Partial<Template>) {
 			try {
-				const response = await fetch(`/api/templates/${id}`, {
-					method: 'PUT',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify(updates)
-				});
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.update(id, updates);
 
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to update template');
 				}
 
-				const updatedTemplate = await response.json();
+				const updatedTemplate = result.data;
 				update((store) => ({
 					...store,
 					templates: store.templates.map((t) => (t.id === id ? updatedTemplate : t)),
@@ -162,7 +136,6 @@ function createTemplateStore() {
 
 				return updatedTemplate;
 			} catch (err) {
-				console.error('Error updating template:', err);
 				update((store) => ({
 					...store,
 					error: err instanceof Error ? err.message : 'Failed to update template'
@@ -173,12 +146,11 @@ function createTemplateStore() {
 
 		async deleteTemplate(id: string) {
 			try {
-				const response = await fetch(`/api/templates/${id}`, {
-					method: 'DELETE'
-				});
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.delete(id);
 
-				if (!response.ok) {
-					throw new Error(`HTTP error! status: ${response.status}`);
+				if (!result.success) {
+					throw new Error(result.error || 'Failed to delete template');
 				}
 
 				update((store) => {
@@ -193,7 +165,6 @@ function createTemplateStore() {
 					};
 				});
 			} catch (err) {
-				console.error('Error deleting template:', err);
 				update((store) => ({
 					...store,
 					error: err instanceof Error ? err.message : 'Failed to delete template'

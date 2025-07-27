@@ -1,9 +1,14 @@
 <script lang="ts">
     import type { ComponentType } from 'svelte';
     
-    export let variant: 'default' | 'success' | 'info' = 'default';
-    export let icon: ComponentType | null = null;
-    export let title: string | null = null;
+    interface Props {
+        variant?: 'default' | 'success' | 'info';
+        icon?: ComponentType | null;
+        title?: string | null;
+        children?: unknown;
+    }
+
+    const { variant = 'default', icon = null, title = null, children }: Props = $props();
     
     const variants = {
         default: 'bg-white border-slate-200',
@@ -22,6 +27,6 @@
         </h3>
     {/if}
     <div class="text-sm">
-        <slot />
+        {@render children?.()}
     </div>
 </div>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Send } from '@lucide/svelte';
-	import Button from '../../ui/Button.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
 	import HowItWorks from './HowItWorks.svelte';
 </script>
 
@@ -21,7 +21,7 @@
 	<div class="flex gap-4">
 		<Button
 			variant="primary"
-			on:click={() => {
+			onclick={() => {
 				document.querySelector('.w-full.max-w-4xl')?.scrollIntoView({
 					behavior: 'smooth',
 					block: 'start'

@@ -1,16 +1,18 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
+import { extractTemplateMetrics } from '$lib/types/templateConfig';
+import type { AnalyticsEvent, EnrichedAnalyticsEvent } from '$lib/types/api';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
 	try {
-		const event = await request.json();
+		const event: AnalyticsEvent = await request.json();
 		
 		// Add server-side context
-		const enrichedEvent = {
+		const enrichedEvent: EnrichedAnalyticsEvent = {
 			...event,
 			ip_address: getClientAddress(),
-			user_agent: request.headers.get('user-agent'),
+			user_agent: request.headers.get('user-agent') || undefined,
 			user_id: locals.user?.id || event.user_id,
 			server_timestamp: new Date().toISOString()
 		};
@@ -23,12 +25,11 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 
 		return json({ success: true });
 	} catch (error) {
-		console.error('Analytics tracking error:', error);
 		return json({ error: 'Failed to track event' }, { status: 500 });
 	}
 };
 
-async function storeAnalyticsEvent(event: any) {
+async function storeAnalyticsEvent(event: EnrichedAnalyticsEvent) {
 	try {
 		// Store in a simple analytics table (you might want to create this table)
 		// For now, we'll store in template metrics or create a separate analytics table
@@ -40,7 +41,7 @@ async function storeAnalyticsEvent(event: any) {
 			});
 
 			if (template) {
-				const currentMetrics = template.metrics as any || {};
+				const currentMetrics = extractTemplateMetrics(template.metrics);
 				const updatedMetrics = { ...currentMetrics };
 
 				// Increment specific event counters
@@ -69,11 +70,10 @@ async function storeAnalyticsEvent(event: any) {
 			}
 		}
 	} catch (error) {
-		console.error('Error storing analytics event:', error);
 	}
 }
 
-async function forwardToExternalAnalytics(event: any) {
+async function forwardToExternalAnalytics(event: EnrichedAnalyticsEvent) {
 	// TODO: Forward to your preferred analytics service
 	// Examples:
 
@@ -92,8 +92,9 @@ async function forwardToExternalAnalytics(event: any) {
 
 	// Google Analytics 4
 	// gtag('event', event.event, event.properties);
-
-	console.log('📊 Analytics Event (would forward to external service):', {
+	
+	// Placeholder for external analytics integration
+	console.log('Analytics event:', {
 		event: event.event,
 		template_id: event.template_id,
 		user_id: event.user_id,

@@ -6,7 +6,6 @@ export async function GET({ url }) {
     const category = url.searchParams.get('category') || 'education';
     const timeWindow = parseInt(url.searchParams.get('days') || '7');
     
-    console.log(`🔗 Running sheaf data fusion for category: ${category}`);
     
     const fusionResult = await fuseInformationSources(category, timeWindow);
     
@@ -34,7 +33,6 @@ export async function GET({ url }) {
     });
     
   } catch (error) {
-    console.error('Error in sheaf fusion:', error);
     return json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

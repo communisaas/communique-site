@@ -183,23 +183,23 @@ GOOGLE_CIVIC_API_KEY="your_google_civic_api_key"
 ## 🔄 Data Maintenance
 
 ### Rep Data Updates
-- **Frequency**: Check for changes monthly (elections, redistricting)
-- **Method**: `PUT /api/user/representatives` (refresh user's reps)
-- **Trigger**: Administrative sync or user-initiated refresh
+- Check for changes during elections and redistricting cycles
+- `PUT /api/user/representatives` to refresh user's reps
+- Administrative sync or user-initiated refresh
 
 ### Address Changes
 - User can update address → auto-refresh representatives
 - Handles moves, redistricting, etc.
 
-## 🎯 What's Next
+## 🎯 Implementation Status
 
-With this congressional integration complete, the remaining priorities are:
+Core congressional integration components:
 
-1. **Authentication System** - Protect API endpoints
-2. **KYC/Onboarding Flow** - UI for address capture
-3. **Email Service** - For direct delivery
-4. **CWC API Client** - For congressional submissions
-5. **Deep-linking** - mailto: → app integration
+- **Authentication System** - Protect API endpoints
+- **KYC/Onboarding Flow** - UI for address capture
+- **Email Service** - For direct delivery
+- **CWC API Client** - For congressional submissions
+- **Deep-linking** - mailto: → app integration
 
 ## 🧪 Testing
 
@@ -231,5 +231,4 @@ This approach recognizes that **users don't browse congressional directories** -
 
 ---
 
-**Status**: ✅ Core congressional integration complete  
-**Next**: Authentication system for API security 
+**Status**: Core congressional integration implementation 

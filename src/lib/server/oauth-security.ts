@@ -74,7 +74,6 @@ export async function validateOAuthSession(request: Request): Promise<SessionVal
     };
     
   } catch (error) {
-    console.error('Session validation error:', error);
     return { valid: false, error: 'Session validation failed' };
   }
 }
@@ -142,7 +141,6 @@ export async function checkAnalyticsPermission(
     }
     
   } catch (error) {
-    console.error('Permission check error:', error);
     return { allowed: false, reason: 'Permission check failed' };
   }
 }
@@ -276,7 +274,6 @@ export async function logAnalyticsUsage(
 ): Promise<void> {
   
   try {
-    console.log(`[ANALYTICS] User ${user_id} -> ${endpoint} (${success ? 'success' : 'failed'}) ${computation_time_ms || 0}ms`);
     
     // Could track usage stats in database
     // await db.analytics_usage.create({
@@ -290,6 +287,5 @@ export async function logAnalyticsUsage(
     // });
     
   } catch (error) {
-    console.error('Failed to log analytics usage:', error);
   }
 }

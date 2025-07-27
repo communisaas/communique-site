@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { Info } from '@lucide/svelte';
-	export let isCertified = false;
+	interface Props {
+		isCertified?: boolean;
+	}
+
+	const { isCertified = false }: Props = $props();
 </script>
 
 <div class="rounded-lg border border-blue-100 bg-blue-50 p-4">

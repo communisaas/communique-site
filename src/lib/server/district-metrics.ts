@@ -71,7 +71,6 @@ export async function calculateUserGeographicSpread(templateId: string): Promise
         };
 
     } catch (error) {
-        console.error('Error calculating district coverage:', error);
         return {
             districts_covered: 0,
             total_districts: 435,
@@ -98,8 +97,9 @@ export async function updateTemplateDistrictMetrics(templateId: string): Promise
         if (!template) return;
 
         // Merge new district metrics with existing metrics
+        const currentMetrics = template.metrics as Record<string, unknown> || {};
         const updatedMetrics = {
-            ...(template.metrics as any),
+            ...currentMetrics,
             districts_covered: coverage.districts_covered,
             total_districts: coverage.total_districts,
             district_coverage_percent: coverage.district_coverage_percent
@@ -112,7 +112,6 @@ export async function updateTemplateDistrictMetrics(templateId: string): Promise
         });
 
     } catch (error) {
-        console.error('Error updating template district metrics:', error);
     }
 }
 
@@ -134,8 +133,6 @@ export async function updateAllCongressionalTemplateMetrics(): Promise<void> {
             await updateTemplateDistrictMetrics(template.id);
         }
 
-        console.log(`Updated district metrics for ${templates.length} congressional templates`);
     } catch (error) {
-        console.error('Error updating all congressional template metrics:', error);
     }
 } 

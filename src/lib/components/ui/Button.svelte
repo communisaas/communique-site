@@ -1,17 +1,37 @@
 <script lang="ts">
-	export let variant: 'primary' | 'secondary' = 'primary';
-	export let type: 'button' | 'submit' = 'button';
-	export let cursor: 'default' | 'help' | 'alias' | 'pointer' = 'pointer';
-	export let classNames: string = '';
-	export let href: string | undefined = undefined;
-	export let rel: string | undefined = undefined;
+	let { 
+		variant = 'primary',
+		type = 'button',
+		cursor = 'pointer',
+		classNames = '',
+		href = undefined,
+		rel = undefined,
+		buttonElement = $bindable(),
+		onclick,
+		onmouseover,
+		onmouseenter,
+		onmouseleave,
+		onfocus,
+		onblur,
+		children
+	}: {
+		variant?: 'primary' | 'secondary';
+		type?: 'button' | 'submit';
+		cursor?: 'default' | 'help' | 'alias' | 'pointer';
+		classNames?: string;
+		href?: string | undefined;
+		rel?: string | undefined;
+		buttonElement?: HTMLButtonElement | undefined;
+		onclick?: (event: MouseEvent) => void;
+		onmouseover?: (event: MouseEvent) => void;
+		onmouseenter?: (event: MouseEvent) => void;
+		onmouseleave?: (event: MouseEvent) => void;
+		onfocus?: (event: FocusEvent) => void;
+		onblur?: (event: FocusEvent) => void;
+		children?: unknown;
+	} = $props();
 
-	// Forward the button element reference with a different name
-	export let buttonElement: HTMLButtonElement | undefined = undefined;
-
-	// Forward all events
-	import { createEventDispatcher } from 'svelte';
-	const dispatch = createEventDispatcher();
+	// Event forwarding handled through on: directives
 
 	interface $$Slots {
 		default: Record<string, never>;
@@ -33,17 +53,14 @@
 		class:border={variant === 'secondary'}
 		class:border-blue-200={variant === 'secondary'}
 		class:hover:border-blue-300={variant === 'secondary'}
-		on:click={(e) => {
-			// Let browser handle mailto links naturally - no preventDefault needed
-			dispatch('click', e);
-		}}
-		on:mouseover
-		on:mouseenter
-		on:mouseleave
-		on:focus
-		on:blur
+		{onclick}
+		{onmouseover}
+		{onmouseenter}
+		{onmouseleave}
+		{onfocus}
+		{onblur}
 	>
-		<slot />
+		{@render children?.()}
 	</a>
 {:else}
 	<button
@@ -58,13 +75,13 @@
 		class:border={variant === 'secondary'}
 		class:border-blue-200={variant === 'secondary'}
 		class:hover:border-blue-300={variant === 'secondary'}
-		on:click
-		on:mouseover
-		on:mouseenter
-		on:mouseleave
-		on:focus
-		on:blur
+		{onclick}
+		{onmouseover}
+		{onmouseenter}
+		{onmouseleave}
+		{onfocus}
+		{onblur}
 	>
-		<slot />
+		{@render children?.()}
 	</button>
 {/if}

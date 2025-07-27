@@ -1,7 +1,9 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { updateTemplateDistrictMetrics } from '$lib/server/district-metrics';
+import { extractRecipientEmails } from '$lib/types/templateConfig';
 import type { RequestHandler } from './$types';
+import type { TemplateUpdateData } from '$lib/types/api';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
@@ -30,7 +32,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		const formattedTemplate = {
-			id: template.id, // Keep as string ID
+			id: template.id,
 			title: template.title,
 			description: template.description,
 			category: template.category,
@@ -39,16 +41,15 @@ export const GET: RequestHandler = async ({ params }) => {
 			subject: template.subject,
 			preview: template.preview,
 			message_body: template.message_body,
-			metrics: template.metrics as any,
+			metrics: template.metrics,
 			delivery_config: template.delivery_config,
 			recipient_config: template.recipient_config,
 			is_public: template.is_public,
-			recipientEmails: (template.recipient_config as any)?.emails as string[] | undefined
+			recipientEmails: extractRecipientEmails(template.recipient_config)
 		};
 
 		return json(formattedTemplate);
 	} catch (err) {
-		console.error('Error fetching template:', err);
 		return error(500, 'Failed to fetch template');
 	}
 };
@@ -73,7 +74,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Prepare the data for the update
-		const dataToUpdate: any = { ...updateData };
+		const dataToUpdate: TemplateUpdateData & { is_public?: boolean } = { ...updateData };
 
 		// If the status is being changed to 'published', also set 'is_public' to true
 		if (updateData.status && updateData.status === 'published') {
@@ -87,7 +88,6 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		return json(updatedTemplate);
 	} catch (err) {
-		console.error('Error updating template:', err);
 		return error(500, 'Failed to update template');
 	}
 };
@@ -116,7 +116,6 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		return json({ success: true, id: templateId });
 	} catch (err) {
-		console.error('Error deleting template:', err);
 		return error(500, 'Failed to delete template');
 	}
 }; 

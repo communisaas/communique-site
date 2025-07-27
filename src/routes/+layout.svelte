@@ -4,15 +4,12 @@
 	import { User, LogOut } from '@lucide/svelte';
 	import '../app.css';
 	import Footer from '$lib/components/layout/Footer.svelte';
+	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 
 	let { children, data } = $props();
 
-	// Progressive enhancement: Initialize with static data immediately, then fetch from API
+	// Fetch templates from API
 	onMount(() => {
-		// Initialize with static data for immediate render
-		templateStore.initializeWithStaticData();
-
-		// Then fetch fresh data from API (will auto-replace static data)
 		templateStore.fetchTemplates();
 	});
 </script>
@@ -46,7 +43,9 @@
 	{/if}
 	
 	<div class="p-6 md:p-10">
-		{@render children()}
+		<ErrorBoundary fallback="detailed" showRetry={true}>
+			{@render children()}
+		</ErrorBoundary>
 	</div>
 	<Footer />
 </div>

@@ -38,7 +38,7 @@ export async function storeSingleUserSentiment(
     };
     
     if (dryRun) {
-      console.log(`🧪 DRY RUN - Would store for user ${userId}:`, sentimentData);
+      // DRY RUN - Would store sentiment data
       return {
         user_id: userId,
         message_text: messageText,
@@ -63,7 +63,7 @@ export async function storeSingleUserSentiment(
       }
     });
     
-    console.log(`✅ Stored sentiment for user ${userId}: ${sentiment.sentiment} (${sentiment.confidence.toFixed(2)})`);
+    // Stored sentiment successfully
     
     return {
       user_id: userId,
@@ -73,7 +73,7 @@ export async function storeSingleUserSentiment(
     };
     
   } catch (error) {
-    console.error(`❌ Error storing sentiment for user ${userId}:`, error);
+    // Error storing sentiment (suppressed for production)
     return null;
   }
 }
@@ -102,13 +102,13 @@ export async function processSingleCampaign(
     });
     
     if (!campaign?.template.user?.id) {
-      console.log(`⚠️  Campaign ${campaignId} has no valid user`);
+      // Campaign has no valid user
       return null;
     }
     
-    const messageText = campaign.template.body || campaign.template.description || '';
+    const messageText = campaign.template.message_body || campaign.template.description || '';
     if (messageText.length < 10) {
-      console.log(`⚠️  Campaign ${campaignId} has no meaningful text`);
+      // Campaign has no meaningful text
       return null;
     }
     
@@ -120,7 +120,6 @@ export async function processSingleCampaign(
     );
     
   } catch (error) {
-    console.error(`❌ Error processing campaign ${campaignId}:`, error);
     return null;
   }
 }
@@ -129,7 +128,6 @@ export async function processSingleCampaign(
  * Safe test: process just ONE recent campaign
  */
 export async function testSingleCampaignProcessing(dryRun: boolean = true): Promise<void> {
-  console.log(`🧪 Testing single campaign processing (dryRun: ${dryRun})...\n`);
   
   try {
     // Get the most recent campaign
@@ -139,7 +137,7 @@ export async function testSingleCampaignProcessing(dryRun: boolean = true): Prom
         template: {
           select: {
             id: true,
-            body: true,
+            message_body: true,
             description: true,
             category: true
           }
@@ -148,28 +146,17 @@ export async function testSingleCampaignProcessing(dryRun: boolean = true): Prom
     });
     
     if (!recentCampaign) {
-      console.log('No campaigns found for testing');
       return;
     }
     
-    console.log(`Testing with campaign: ${recentCampaign.id}`);
-    console.log(`Template category: ${recentCampaign.template.category}`);
-    console.log(`Message: "${(recentCampaign.template.body || recentCampaign.template.description || '').substring(0, 100)}..."\n`);
     
     const result = await processSingleCampaign(recentCampaign.id, dryRun);
     
     if (result) {
-      console.log('✅ Successfully processed campaign!');
-      console.log(`   User: ${result.user_id}`);
-      console.log(`   Sentiment: ${result.sentiment_result.sentiment}`);
-      console.log(`   Confidence: ${result.sentiment_result.confidence.toFixed(2)}`);
-      console.log(`   Intensity: ${result.sentiment_result.intensity.toFixed(2)}`);
     } else {
-      console.log('❌ Failed to process campaign');
     }
     
   } catch (error) {
-    console.error('❌ Error in test:', error);
   }
 }
 
@@ -179,10 +166,9 @@ export async function testSingleCampaignProcessing(dryRun: boolean = true): Prom
 export async function runSafeStorageTest(): Promise<{
   success: boolean;
   message: string;
-  data?: any;
+  data?: unknown;
 }> {
   try {
-    console.log('🔒 Running SAFE sentiment storage test...\n');
     
     // Always start with dry run
     await testSingleCampaignProcessing(true);

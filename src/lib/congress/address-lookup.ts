@@ -77,22 +77,22 @@ export class AddressLookupService {
                 return this.zipToDistrict(address.zip, address.state);
             }
 
-            const response = await fetch(
+            const { api } = await import('$lib/utils/apiClient');
+            const result = await api.get(
                 `https://www.googleapis.com/civicinfo/v2/representatives?key=${civicApiKey}&address=${encodeURIComponent(formattedAddress)}`
             );
             
-            if (!response.ok) {
-                throw new Error(`Google Civic API error: ${response.status}`);
+            if (!result.success) {
+                throw new Error(`Google Civic API error: ${result.error}`);
             }
             
-            const data = await response.json();
+            const data = result.data;
             
             // Extract congressional district from response
             const district = this.extractDistrictFromCivicData(data, address.state);
             return district;
             
         } catch (error) {
-            console.error('Address lookup failed, using fallback:', error);
             // Fallback to ZIP-based lookup
             return this.zipToDistrict(address.zip, address.state);
         }
@@ -101,7 +101,7 @@ export class AddressLookupService {
     /**
      * Extract congressional district from Google Civic API response
      */
-    private extractDistrictFromCivicData(civicData: any, state: string): CongressionalDistrict {
+    private extractDistrictFromCivicData(civicData: Record<string, unknown>, state: string): CongressionalDistrict {
         try {
             // Look for congressional district in the divisions
             const divisions = civicData.divisions || {};
@@ -127,7 +127,6 @@ export class AddressLookupService {
             };
             
         } catch (error) {
-            console.error('Error parsing civic data:', error);
             return {
                 state: state.toUpperCase(),
                 district: '01' // Default fallback
@@ -163,7 +162,6 @@ export class AddressLookupService {
             };
             
         } catch (error) {
-            console.error('ZIP lookup failed:', error);
             return {
                 state: state.toUpperCase(),
                 district: '01' // Fallback
@@ -176,15 +174,16 @@ export class AddressLookupService {
      */
     private async getHouseRep(state: string, district: string): Promise<Representative> {
         try {
-            const response = await fetch(
+            const { api } = await import('$lib/utils/apiClient');
+            const result = await api.get(
                 `https://api.data.gov/congress/v3/member?api_key=${this.congressApiKey}&format=json&currentMember=true&state=${state}&limit=50`
             );
             
-            if (!response.ok) {
-                throw new Error(`Congress API error: ${response.status}`);
+            if (!result.success) {
+                throw new Error(`Congress API error: ${result.error}`);
             }
             
-            const data = await response.json();
+            const data = result.data;
             const members = data.members || [];
             
             // Find the House rep for this district
@@ -200,7 +199,6 @@ export class AddressLookupService {
             return this.formatRepresentative(houseRep, 'house');
             
         } catch (error) {
-            console.error(`Error fetching House rep for ${state}-${district}:`, error);
             // Return placeholder data
             return {
                 bioguideId: `${state}${district}H`,
@@ -219,15 +217,16 @@ export class AddressLookupService {
      */
     private async getSenators(state: string): Promise<Representative[]> {
         try {
-            const response = await fetch(
+            const { api } = await import('$lib/utils/apiClient');
+            const result = await api.get(
                 `https://api.data.gov/congress/v3/member?api_key=${this.congressApiKey}&format=json&currentMember=true&state=${state}&limit=50`
             );
             
-            if (!response.ok) {
-                throw new Error(`Congress API error: ${response.status}`);
+            if (!result.success) {
+                throw new Error(`Congress API error: ${result.error}`);
             }
             
-            const data = await response.json();
+            const data = result.data;
             const members = data.members || [];
             
             // Find both senators for this state
@@ -263,7 +262,6 @@ export class AddressLookupService {
             return senators;
             
         } catch (error) {
-            console.error(`Error fetching senators for ${state}:`, error);
             // Return placeholder senators
             return [
                 {
@@ -293,13 +291,13 @@ export class AddressLookupService {
      */
     private formatRepresentative(member: any, chamber: 'house' | 'senate'): Representative {
         return {
-            bioguideId: member.bioguideId,
-            name: member.name,
+            bioguideId: member.bioguideId || '',
+            name: member.name || '',
             party: member.partyName || 'Unknown',
-            state: member.state,
+            state: member.state || '',
             district: chamber === 'senate' ? '00' : (member.district || '01'),
             chamber,
-            officeCode: member.bioguideId // Use bioguide ID as office code
+            officeCode: member.bioguideId || ''
         };
     }
 
@@ -314,16 +312,17 @@ export class AddressLookupService {
             const allReps = [reps.house, ...reps.senate];
             
             for (const rep of allReps) {
-                const response = await fetch(
+                const { api } = await import('$lib/utils/apiClient');
+                const result = await api.get(
                     `https://api.data.gov/congress/v3/member/${rep.bioguideId}?api_key=${this.congressApiKey}&format=json`
                 );
                 
-                if (!response.ok) {
+                if (!result.success) {
                     errors.push(`Cannot validate representative ${rep.name} (${rep.bioguideId})`);
                     continue;
                 }
                 
-                const data = await response.json();
+                const data = result.data;
                 const member = data.member;
                 
                 if (!member?.currentMember) {

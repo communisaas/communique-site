@@ -4,27 +4,31 @@
 	import { quintOut, expoOut } from 'svelte/easing';
 	import { tick } from 'svelte';
 	import type { PopoverSlots, TriggerAction } from '$lib/types/popover';
-	import { browser } from '$app/environment';
+	import { addEventListener, addDocumentEventListener } from '$lib/utils/browserUtils';
 	import { popover as popoverStore } from '$lib/stores/popover';
 
-	export let id = crypto.randomUUID();
-	export let animationStyle: 'scale' | 'fly' | 'expand' = 'expand';
-	export let duration = 200;
+	interface Props {
+		id: string;
+		animationStyle?: 'scale' | 'fly' | 'expand';
+		duration?: number;
+	}
+
+	const { id, animationStyle = 'expand', duration = 200 }: Props = $props();
 
 	const dispatch = createEventDispatcher();
-	let popoverElement: HTMLDivElement;
+	let popoverElement: HTMLDivElement = $state();
 	let containerElement: HTMLDivElement;
-	let contentElement: HTMLDivElement;
+	let contentElement: HTMLDivElement = $state();
 	let isAnimating = false;
 	let position = 'bottom';
-	let isPositioned = false;
+	let isPositioned = $state(false);
 
-	let open = false;
+	let open = $state(false);
 
 	interface $$Slots extends PopoverSlots {}
 
 	// React to popover store changes
-	$: {
+	$effect(() => {
 		if ($popoverStore?.id === id) {
 			switch ($popoverStore.state) {
 				case 'opening':
@@ -47,7 +51,7 @@
 			// If this popover is open but the store changed to another one, close this one
 			open = false;
 		}
-	}
+	});
 
 	// Enhanced animation configurations
 	const animations = {
@@ -89,10 +93,13 @@
 		}
 	}
 
+	// Event listener cleanup functions
+	let cleanupFunctions: (() => void)[] = [];
+
 	onMount(() => {
-		// Listen to window scroll and resize events
-		window.addEventListener('scroll', handleScroll, true);
-		window.addEventListener('resize', handleResize);
+		// Listen to window scroll and resize events with automatic cleanup
+		const scrollCleanup = addEventListener('scroll', handleScroll, true);
+		const resizeCleanup = addEventListener('resize', handleResize);
 
 		// Global click handler to close popover when clicking outside
 		const handleGlobalClick = (event: MouseEvent) => {
@@ -106,20 +113,19 @@
 			}
 		};
 
-		document.addEventListener('click', handleGlobalClick, true);
+		const clickCleanup = addDocumentEventListener('click', handleGlobalClick, true);
+
+		// Store cleanup functions
+		cleanupFunctions = [scrollCleanup, resizeCleanup, clickCleanup].filter(Boolean) as (() => void)[];
 
 		return () => {
-			window.removeEventListener('scroll', handleScroll, true);
-			window.removeEventListener('resize', handleResize);
-			document.removeEventListener('click', handleGlobalClick, true);
+			cleanupFunctions.forEach(cleanup => cleanup());
 		};
 	});
 
 	onDestroy(() => {
-		if (browser) {
-			window.removeEventListener('scroll', handleScroll, true);
-			window.removeEventListener('resize', handleResize);
-		}
+		// Cleanup any remaining event listeners
+		cleanupFunctions.forEach(cleanup => cleanup());
 	});
 
 	async function handleMouseEnter() {
@@ -203,8 +209,12 @@
 <div
 	bind:this={containerElement}
 	class="relative inline-block touch-manipulation"
-	on:mouseenter={handleMouseEnter}
-	on:mouseleave={handleMouseLeave}
+	onmouseenter={handleMouseEnter}
+	onmouseleave={handleMouseLeave}
+	role="button"
+	tabindex="0"
+	aria-haspopup="true"
+	aria-expanded={open}
 >
 	<slot name="trigger" {triggerAction}></slot>
 
@@ -221,14 +231,14 @@
 				opacity: animations[animationStyle].in.opacity,
 				easing: animations[animationStyle].easing
 			}}
-			on:introstart={handleAnimationIn}
+			onintrostart={handleAnimationIn}
 			out:scale={{
 				duration: duration * 0.8,
 				start: animations[animationStyle].out.start,
 				opacity: animations[animationStyle].out.opacity,
 				easing: quintOut
 			}}
-			on:outroend={handleAnimationOut}
+			onoutroend={handleAnimationOut}
 		>
 			<div bind:this={contentElement} class="px-3 py-2 text-sm">
 				<slot {open}></slot>

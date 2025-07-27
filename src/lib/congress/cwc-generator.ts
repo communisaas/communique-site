@@ -187,7 +187,7 @@ export class CWCGenerator {
      */
     static getDeliveryMethod(template: Template, targetRep: UserRepresentative): 'cwc' | 'email' | 'hybrid' {
         // Check template delivery configuration
-        const deliveryConfig = template.delivery_config as any;
+        const deliveryConfig = template.delivery_config as Record<string, unknown>;
         
         if (deliveryConfig?.method === 'direct_email') {
             return 'email';

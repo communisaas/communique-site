@@ -62,7 +62,6 @@ export const POST: RequestHandler = async ({ request }) => {
         });
         
     } catch (err) {
-        console.error('Error in address lookup:', err);
         
         // Handle specific error types
         if (err && typeof err === 'object' && 'status' in err) {
@@ -136,7 +135,6 @@ export const GET: RequestHandler = async ({ url }) => {
         });
         
     } catch (err) {
-        console.error('Error in district lookup:', err);
         
         if (err && typeof err === 'object' && 'status' in err) {
             throw err;

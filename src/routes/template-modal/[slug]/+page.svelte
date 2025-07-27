@@ -4,10 +4,11 @@
 	import { goto } from '$app/navigation';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import type { PageData } from './$types';
+	import { coordinated } from '$lib/utils/timerCoordinator';
 	
-	export let data: PageData;
+	let { data }: { data: PageData } = $props();
 	
-	let showModal = true;
+	let showModal = $state(true);
 	
 	onMount(() => {
 		// Check for pending template action from OAuth flow
@@ -15,7 +16,6 @@
 		if (pendingAction) {
 			sessionStorage.removeItem('pending_template_action');
 			// User just completed OAuth, show success state briefly
-			console.log('User completed OAuth flow for template action');
 		}
 	});
 	
@@ -25,14 +25,15 @@
 		goto(`/${data.template.slug}`);
 	}
 	
+	const componentId = 'TemplateModalPage_' + Math.random().toString(36).substr(2, 9);
+	
 	function handleTemplateUsed(event: CustomEvent) {
 		// Track successful conversion
-		console.log('Template used successfully:', event.detail);
 		
 		// Optionally redirect to dashboard or success page
-		setTimeout(() => {
+		coordinated.setTimeout(() => {
 			goto('/dashboard?success=template_sent');
-		}, 2000);
+		}, 2000, 'transition', componentId);
 	}
 </script>
 

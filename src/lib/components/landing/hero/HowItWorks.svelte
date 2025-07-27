@@ -1,10 +1,10 @@
 <script lang="ts">
-    import Button from '../../ui/Button.svelte';
-    import Popover from '../../ui/Popover.svelte';
+    import Button from '$lib/components/ui/Button.svelte';
+    import Popover from '$lib/components/ui/Popover.svelte';
     import { onMount } from 'svelte';
     import { steps } from '$lib/data/steps';
     let alignment: 'left' | 'right' = 'right';
-    $: origin = alignment === 'left' ? 'origin-top-left' : 'origin-top-right';
+    const origin = $derived(alignment === 'left' ? 'origin-top-left' : 'origin-top-right');
 
     onMount(() => {
         const mediaQuery = window.matchMedia('(min-width: 768px)');
@@ -39,7 +39,7 @@
                     class:opacity-0={!open}
                 >
                     <div class="p-2 bg-blue-50 rounded-lg">
-                        <svelte:component this={step.icon} class="w-6 h-6 text-blue-400" />
+                        <step.icon class="w-6 h-6 text-blue-400" />
                     </div>
                     <div>
                         <h3 class="font-medium text-slate-900 mb-1">

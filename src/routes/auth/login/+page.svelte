@@ -3,7 +3,7 @@
 	import { Mail, MessageCircle } from '@lucide/svelte';
 
 	// Get return URL from query params
-	$: returnTo = $page.url.searchParams.get('returnTo') || '/dashboard';
+	const returnTo = $derived($page.url.searchParams.get('returnTo') || '/dashboard');
 
 	function handleGoogleLogin() {
 		window.location.href = `/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
@@ -48,7 +48,7 @@
 		<div class="mt-8 space-y-4">
 			<button
 				type="button"
-				on:click={handleGoogleLogin}
+				onclick={handleGoogleLogin}
 				class="group relative flex w-full justify-center rounded-md border border-transparent bg-white px-4 py-3 text-sm font-medium text-gray-700 shadow-md transition-all duration-200 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 			>
 				<span class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -76,7 +76,7 @@
 
 			<button
 				type="button"
-				on:click={handleTwitterLogin}
+				onclick={handleTwitterLogin}
 				class="group relative flex w-full justify-center rounded-md border border-transparent bg-black px-4 py-3 text-sm font-medium text-white shadow-md transition-all duration-200 hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
 			>
 				<span class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -87,7 +87,7 @@
 
 			<button
 				type="button"
-				on:click={handleFacebookLogin}
+				onclick={handleFacebookLogin}
 				class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-800 px-4 py-3 text-sm font-medium text-white shadow-md transition-all duration-200 hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 			>
 				<span class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -102,7 +102,7 @@
 
 			<button
 				type="button"
-				on:click={handleLinkedInLogin}
+				onclick={handleLinkedInLogin}
 				class="group relative flex w-full justify-center rounded-md border border-transparent bg-blue-700 px-4 py-3 text-sm font-medium text-white shadow-md transition-all duration-200 hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 			>
 				<span class="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -117,7 +117,7 @@
 
 			<button
 				type="button"
-				on:click={handleDiscordLogin}
+				onclick={handleDiscordLogin}
 				class="group relative flex w-full justify-center rounded-md border border-transparent bg-indigo-600 px-4 py-3 text-sm font-medium text-white shadow-md transition-all duration-200 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
 			>
 				<span class="absolute inset-y-0 left-0 flex items-center pl-3">

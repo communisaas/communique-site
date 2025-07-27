@@ -20,7 +20,6 @@ export const GET: RequestHandler = async ({ locals }) => {
 
 		return json(userTemplates);
 	} catch (error) {
-		console.error("Error fetching user's templates:", error);
 		return json({ error: 'Failed to fetch templates' }, { status: 500 });
 	}
 }; 

@@ -3,13 +3,15 @@
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import { onMount } from 'svelte';
 
-	export let data: {
-		recipientEmails: string[];
-	};
-	export let context: TemplateCreationContext;
+	let { data, context }: {
+		data: {
+			recipientEmails: string[];
+		};
+		context: TemplateCreationContext;
+	} = $props();
 
-	let emailInput = '';
-	$: isCongressional = context.channelId === 'certified';
+	let emailInput = $state('');
+	const isCongressional = $derived(context.channelId === 'certified');
 
 	onMount(() => {
 		if (data.recipientEmails && data.recipientEmails.length > 0) {
@@ -118,12 +120,12 @@
 			<textarea
 				id="email-list"
 				bind:value={emailInput}
-				on:input={updateEmailCount}
-				on:blur={reformatEmailInput}
+				oninput={updateEmailCount}
+				onblur={reformatEmailInput}
 				placeholder="Paste a list of email addresses, separated by commas, semicolons, or new lines."
 				class="h-48 w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
 				spellcheck="true"
-			/>
+			></textarea>
 			<p class="text-xs text-slate-500">
 				{data.recipientEmails?.length || 0} unique email addresses detected.
 			</p>

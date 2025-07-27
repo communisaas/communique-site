@@ -458,12 +458,12 @@ async function calculateAgreementStrength(userIds: string[]): Promise<number> {
   return comparisons > 0 ? totalSimilarity / comparisons : 0.5;
 }
 
-function extractDominantIssues(sharedBeliefs: any): string[] {
+function extractDominantIssues(sharedBeliefs: unknown): string[] {
   // Implementation: Extract top issues from shared beliefs
   return ['healthcare', 'education'];
 }
 
-async function detectBubbleConflicts(bubbleId: string, coordinates: any) {
+async function detectBubbleConflicts(bubbleId: string, coordinates: unknown) {
   // Implementation: Find nearby bubbles with conflicting views
   return [];
 }
@@ -485,27 +485,27 @@ async function findUsersInBothCommunities(communityA: string, communityB: string
   return users;
 }
 
-async function calculateSharedPriorities(users: any[]) {
+async function calculateSharedPriorities(users: Array<Record<string, unknown>>) {
   // Implementation: Find issues both communities care about
   return ['jobs', 'infrastructure'];
 }
 
-async function calculateTensionPoints(communityA: string, communityB: string, users: any[]) {
+async function calculateTensionPoints(communityA: string, communityB: string, users: Array<Record<string, unknown>>) {
   // Implementation: Find issues where communities disagree
   return ['taxation', 'regulation'];
 }
 
-async function calculateInfluenceDirection(communityA: string, communityB: string, users: any[]): Promise<'a_dominates' | 'b_dominates' | 'balanced' | 'conflicted'> {
+async function calculateInfluenceDirection(communityA: string, communityB: string, users: Array<Record<string, unknown>>): Promise<'a_dominates' | 'b_dominates' | 'balanced' | 'conflicted'> {
   // Implementation: Determine which community has more influence
   return 'balanced';
 }
 
-async function findAbsorptionZones(campaigns: any[]) {
+async function findAbsorptionZones(campaigns: Array<Record<string, unknown>>) {
   // Implementation: Find areas with low activity despite high user density
   return [];
 }
 
-async function findTurbulenceZones(campaigns: any[]) {
+async function findTurbulenceZones(campaigns: Array<Record<string, unknown>>) {
   // Implementation: Find areas with conflicting high activity
   return [];
 }
@@ -515,12 +515,12 @@ async function calculateAvgActivationTime(cutoffTime: Date) {
   return 4.2; // hours
 }
 
-async function calculatePrimaryFlowDirection(campaigns: any[]) {
+async function calculatePrimaryFlowDirection(campaigns: Array<Record<string, unknown>>) {
   // Implementation: Calculate net direction of political flow
   return { north_south: 0.3, east_west: -0.1 };
 }
 
-async function calculateDominantIssues(campaigns: any[]) {
+async function calculateDominantIssues(campaigns: Array<Record<string, unknown>>) {
   // Implementation: Find most active issues in time window
   return ['climate', 'economy'];
 }

@@ -1,13 +1,18 @@
 <script lang="ts">
 	import { ChevronRight } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
-	import Badge from '../../ui/Badge.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import MessageMetrics from './MessageMetrics.svelte';
 
-	export let templates: Template[];
-	export let selectedId: string | null;
-	export let onSelect: (id: string) => void;
-	export let loading: boolean = false;
+	interface Props {
+		templates: Template[];
+		selectedId: string | null;
+		onSelect: (id: string) => void;
+		loading?: boolean;
+	}
+
+	const { templates, selectedId, onSelect, loading = false }: Props = $props();
+	
 
 	function handleKeydown(event: KeyboardEvent, templateId: string, index: number) {
 		if (event.key === 'Enter' || event.key === ' ') {
@@ -107,8 +112,8 @@
 				class:bg-blue-50={selectedId === template.id}
 				class:border-slate-200={selectedId !== template.id}
 				class:hover:border-blue-200={selectedId !== template.id}
-				on:click={() => onSelect(template.id)}
-				on:keydown={(e) => handleKeydown(e, template.id, index)}
+				onclick={() => onSelect(template.id)}
+				onkeydown={(e) => handleKeydown(e, template.id, index)}
 			>
 				<div class="min-w-0 flex-1">
 					<div class="flex flex-wrap items-center gap-2">

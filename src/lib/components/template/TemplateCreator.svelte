@@ -13,10 +13,10 @@
 		save: Omit<Template, 'id'>;
 	}>();
 
-	export let context: TemplateCreationContext;
+	let { context }: { context: TemplateCreationContext } = $props();
 
-	let currentStep: 'objective' | 'audience' | 'content' | 'review' = 'objective';
-	let formErrors: string[] = [];
+	let currentStep: 'objective' | 'audience' | 'content' | 'review' = $state('objective');
+	let formErrors: string[] = $state([]);
 
 	let formData: TemplateFormData = {
 		objective: {
@@ -62,13 +62,13 @@
 		review: () => [] // Review step doesn't need validation
 	};
 
-	$: isCurrentStepValid = (() => {
-		const currentErrors = validators[currentStep](formData[currentStep] as any);
+	const isCurrentStepValid = $derived.by(() => {
+		const currentErrors = validators[currentStep](formData[currentStep] as Record<string, unknown>);
 		return currentErrors.length === 0;
-	})();
+	});
 
 	function validateCurrentStep(): boolean {
-		formErrors = validators[currentStep](formData[currentStep] as any);
+		formErrors = validators[currentStep](formData[currentStep] as Record<string, unknown>);
 		return formErrors.length === 0;
 	}
 
@@ -134,10 +134,10 @@
 	}
 
 	// Progress calculation
-	$: progress = (() => {
+	const progress = $derived.by(() => {
 		const steps = ['objective', 'audience', 'content', 'review'];
 		return ((steps.indexOf(currentStep) + 1) / steps.length) * 100;
-	})();
+	});
 
 	const stepInfo = {
 		objective: {
@@ -166,7 +166,7 @@
 <div class="flex h-full flex-col">
 	<!-- Progress bar -->
 	<div class="h-1 bg-slate-100">
-		<div class="h-full bg-blue-600 transition-all duration-300" style="width: {progress}%" />
+		<div class="h-full bg-blue-600 transition-all duration-300" style="width: {progress}%"></div>
 	</div>
 
 	<!-- Step Header -->
@@ -213,7 +213,7 @@
 		<div class="flex items-center justify-between">
 			<button
 				class="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 disabled:opacity-50"
-				on:click={handleBack}
+				onclick={handleBack}
 				disabled={currentStep === 'objective'}
 			>
 				<ArrowLeft class="h-4 w-4" />
@@ -223,7 +223,7 @@
 			{#if currentStep === 'review'}
 				<button
 					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-					on:click={handleSave}
+					onclick={handleSave}
 					disabled={!isCurrentStepValid}
 				>
 					Save Draft
@@ -232,7 +232,7 @@
 			{:else}
 				<button
 					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-					on:click={handleNext}
+					onclick={handleNext}
 					disabled={!isCurrentStepValid}
 				>
 					Continue

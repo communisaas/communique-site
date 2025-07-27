@@ -19,10 +19,10 @@ export interface Template {
         total_districts?: number;        // Total districts in the target area (for calculating coverage %)
         district_coverage_percent?: number; // Calculated: districts_covered / total_districts * 100
     };
-    delivery_config: any;
-    recipient_config: any;
+    delivery_config: unknown;
+    recipient_config: unknown;
     preview: string;
-    recipientEmails?: string[]; // For backward compatibility
+    recipientEmails?: string[]; // Computed field - use extractRecipientEmails(recipient_config) instead
     is_public: boolean;
 }
 
@@ -30,7 +30,7 @@ export interface TemplateCreationContext {
     channelId: 'certified' | 'direct';
     channelTitle: string;
     features: Array<{
-        icon: any;
+        icon: unknown;
         text: string;
     }>;
 }

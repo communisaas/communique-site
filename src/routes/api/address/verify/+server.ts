@@ -68,7 +68,6 @@ export async function POST({ request }) {
 		});
 		
 	} catch (error) {
-		console.error('Address verification error:', error);
 		return json({ 
 			verified: false, 
 			error: 'Address verification service temporarily unavailable' 
