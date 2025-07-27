@@ -11,6 +11,7 @@
 	let { 
 		preview,
 		template = undefined,
+		user = null,
 		onScroll,
 		onscrollStateChange,
 		ontouchStateChange,
@@ -18,6 +19,7 @@
 	}: {
 		preview: string;
 		template?: Template | undefined;
+		user?: { id: string; name: string; street?: string; city?: string; state?: string; zip?: string } | null;
 		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onscrollStateChange?: (scrollState: unknown) => void;
 		ontouchStateChange?: (touchState: unknown) => void;
@@ -35,6 +37,32 @@
 	// Define which variables are system-populated vs user-editable
 	const systemVariables = new Set(['Name', 'Address', 'Representative Name']);
 	const userEditableVariables = new Set(['Personal Connection']);
+
+	// Function to resolve template variables with user data
+	function resolveTemplateVariables(text: string): string {
+		if (!user) return text;
+
+		let resolvedText = text;
+
+		// Replace [Name] with user's name
+		if (user.name) {
+			resolvedText = resolvedText.replace(/\[Name\]/g, user.name);
+		}
+
+		// Replace [Address] with user's address if available
+		if (user.street && user.city && user.state && user.zip) {
+			const userAddress = `${user.street}, ${user.city}, ${user.state} ${user.zip}`;
+			resolvedText = resolvedText.replace(/\[Address\]/g, userAddress);
+		}
+
+		// Note: [Representative Name] and [Personal Connection] are handled by the editing system
+		// or filled in server-side for congressional delivery
+
+		return resolvedText;
+	}
+
+	// Resolved preview text with user data substituted
+	const resolvedPreview = $derived(resolveTemplateVariables(preview));
 
 	// Contextual hints and suggestions
 	const variableHints: Record<string, { prompt: string; placeholder: string }> = {
@@ -113,7 +141,7 @@
 	}
 
 	// Reactive declaration for parsed segments
-	const templateSegments = $derived(parseTemplate(preview));
+	const templateSegments = $derived(parseTemplate(resolvedPreview));
 	
 	// Initialize variable values when segments change
 	$effect(() => {

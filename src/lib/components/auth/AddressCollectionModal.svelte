@@ -209,6 +209,44 @@
 							</p>
 						</div>
 						
+						<!-- Self.xyz Integration Option -->
+						<div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+							<div class="flex items-center gap-3 mb-3">
+								<div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+									<svg class="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
+										<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+									</svg>
+								</div>
+								<div>
+									<h3 class="text-sm font-semibold text-purple-900">Use Self.xyz (Recommended)</h3>
+									<p class="text-xs text-purple-700">Secure, private identity verification</p>
+								</div>
+							</div>
+							<button 
+								type="button"
+								class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+								onclick={() => {
+									// TODO: Integrate with self.xyz
+									window.open('https://self.xyz', '_blank');
+								}}
+							>
+								Connect with Self.xyz
+							</button>
+							<p class="text-xs text-purple-600 mt-2 text-center">
+								Verify your identity privately without sharing personal data
+							</p>
+						</div>
+						
+						<!-- Divider -->
+						<div class="relative mb-6">
+							<div class="absolute inset-0 flex items-center">
+								<div class="w-full border-t border-slate-200"></div>
+							</div>
+							<div class="relative flex justify-center text-sm">
+								<span class="px-2 bg-white text-slate-500">or enter manually</span>
+							</div>
+						</div>
+						
 						<div class="space-y-4 mb-6">
 							<div>
 								<label for="street" class="block text-sm font-medium text-slate-700 mb-2">

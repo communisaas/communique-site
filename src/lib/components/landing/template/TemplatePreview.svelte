@@ -281,6 +281,7 @@
 				<MessagePreview
 					preview={template.preview}
 					{template}
+					{user}
 					{onScroll}
 					onscrollStateChange={handleScrollStateChange}
 					ontouchStateChange={handleTouchStateChange}

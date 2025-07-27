@@ -147,16 +147,21 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			sameSite: 'lax'
 		});
 		
-		// Check if user needs address collection for congressional templates
-		const needsAddressForTemplate = returnTo.includes('template-modal') || isFromSocialFunnel;
+		// Check if user needs address collection
 		const hasAddress = user.street && user.city && user.state && user.zip;
+		const needsAddressCollection = !hasAddress && (
+			returnTo.includes('template-modal') || 
+			returnTo.includes('/template/') ||
+			isFromSocialFunnel ||
+			returnTo !== '/dashboard' // Any non-dashboard destination likely needs address
+		);
 		
-		// Check if this is for a direct outreach template (not congressional)
-		const isDirectOutreach = returnTo.includes('template-modal') && !returnTo.includes('congress');
+		// Check if this is specifically for direct outreach (profile needed)
+		const isDirectOutreach = returnTo.includes('template-modal') && returnTo.includes('direct');
 		const hasProfile = user.phone && user.phone.startsWith('{'); // Check if phone contains profile JSON
 		
-		if (needsAddressForTemplate && !hasAddress && !isDirectOutreach) {
-			// Congressional template - redirect to address collection
+		if (needsAddressCollection) {
+			// Redirect to address collection for congressional templates
 			const addressCollectionUrl = `/onboarding/address?returnTo=${encodeURIComponent(returnTo)}`;
 			redirect(302, addressCollectionUrl);
 		} else if (isDirectOutreach && !hasProfile) {
