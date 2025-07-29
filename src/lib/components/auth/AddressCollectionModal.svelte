@@ -84,7 +84,7 @@
 		try {
 			const fullAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`;
 			
-			// Call stubbed USPS verification API
+			// Call real address verification API (Census Bureau + ZIP lookup)
 			const { api } = await import('$lib/utils/apiClient');
 			const result = await api.post('/api/address/verify', {
 				street: streetAddress,
@@ -209,41 +209,18 @@
 							</p>
 						</div>
 						
-						<!-- Self.xyz Integration Option -->
-						<div class="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
-							<div class="flex items-center gap-3 mb-3">
-								<div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
-									<svg class="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 24 24">
-										<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
-									</svg>
-								</div>
+						<!-- Privacy Note -->
+						<div class="mb-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+							<div class="flex items-start gap-2">
+								<svg class="w-4 h-4 text-blue-600 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+									<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+								</svg>
 								<div>
-									<h3 class="text-sm font-semibold text-purple-900">Use Self.xyz (Recommended)</h3>
-									<p class="text-xs text-purple-700">Secure, private identity verification</p>
+									<h3 class="text-sm font-medium text-blue-900">Privacy Protected</h3>
+									<p class="text-xs text-blue-700 mt-1">
+										Your address is only used to identify your representatives and is not stored or shared with third parties.
+									</p>
 								</div>
-							</div>
-							<button 
-								type="button"
-								class="w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-								onclick={() => {
-									// TODO: Integrate with self.xyz
-									window.open('https://self.xyz', '_blank');
-								}}
-							>
-								Connect with Self.xyz
-							</button>
-							<p class="text-xs text-purple-600 mt-2 text-center">
-								Verify your identity privately without sharing personal data
-							</p>
-						</div>
-						
-						<!-- Divider -->
-						<div class="relative mb-6">
-							<div class="absolute inset-0 flex items-center">
-								<div class="w-full border-t border-slate-200"></div>
-							</div>
-							<div class="relative flex justify-center text-sm">
-								<span class="px-2 bg-white text-slate-500">or enter manually</span>
 							</div>
 						</div>
 						

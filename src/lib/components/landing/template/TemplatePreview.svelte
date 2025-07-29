@@ -296,13 +296,27 @@
 							size="lg"
 							classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full"
 							onclick={() => {
-								showEmailModal = true;
-								coordinated.transition(() => {
-									onSendMessage?.();
-									coordinated.autoClose(() => {
-										showEmailModal = false;
+								console.log('Button clicked, user:', user);
+								// Only show email modal if user is authenticated
+								if (user) {
+									showEmailModal = true;
+									coordinated.transition(() => {
+										onSendMessage?.();
+										coordinated.autoClose(() => {
+											showEmailModal = false;
 									}, 1500, componentId);
 								}, 100, componentId);
+								} else {
+									// Let parent handle auth flow
+									console.log('About to call onSendMessage, exists?', !!onSendMessage);
+									if (onSendMessage) {
+										console.log('Calling onSendMessage');
+										onSendMessage();
+										console.log('onSendMessage returned');
+									} else {
+										console.log('onSendMessage is null/undefined!');
+									}
+								}
 							}}
 						>
 							<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -316,13 +330,27 @@
 							size="lg"
 							classNames="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50 w-full"
 							onclick={() => {
-								showEmailModal = true;
-								coordinated.transition(() => {
-									onSendMessage?.();
-									coordinated.autoClose(() => {
-										showEmailModal = false;
+								console.log('Button clicked, user:', user);
+								// Only show email modal if user is authenticated
+								if (user) {
+									showEmailModal = true;
+									coordinated.transition(() => {
+										onSendMessage?.();
+										coordinated.autoClose(() => {
+											showEmailModal = false;
 									}, 1500, componentId);
 								}, 100, componentId);
+								} else {
+									// Let parent handle auth flow
+									console.log('About to call onSendMessage, exists?', !!onSendMessage);
+									if (onSendMessage) {
+										console.log('Calling onSendMessage');
+										onSendMessage();
+										console.log('onSendMessage returned');
+									} else {
+										console.log('onSendMessage is null/undefined!');
+									}
+								}
 							}}
 						>
 							<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

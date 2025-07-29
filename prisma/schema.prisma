@@ -21,6 +21,11 @@ model User {
   state                  String?
   street                 String?
   zip                    String?
+  // Verification status
+  is_verified            Boolean                @default(false) @map("is_verified")
+  verification_method    String?                @map("verification_method") // 'self_xyz', 'manual', etc.
+  verification_data      Json?                  @map("verification_data") // Store verification details
+  verified_at            DateTime?              @map("verified_at")
   account                account[]
   sessions               Session[]
   templates              Template[]

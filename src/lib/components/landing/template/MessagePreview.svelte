@@ -4,11 +4,12 @@
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import AnimatedPopover from '$lib/components/ui/AnimatedPopover.svelte';
+	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
 	import type { Template } from '$lib/types/template';
 	import { popover as popoverStore } from '$lib/stores/popover';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
-	let { 
+	let {
 		preview,
 		template = undefined,
 		user = null,
@@ -19,7 +20,16 @@
 	}: {
 		preview: string;
 		template?: Template | undefined;
-		user?: { id: string; name: string; street?: string; city?: string; state?: string; zip?: string } | null;
+		user?: {
+			id: string;
+			name: string;
+			street?: string;
+			city?: string;
+			state?: string;
+			zip?: string;
+			is_verified?: boolean;
+			verification_method?: string;
+		} | null;
 		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onscrollStateChange?: (scrollState: unknown) => void;
 		ontouchStateChange?: (touchState: unknown) => void;
@@ -80,11 +90,11 @@
 		},
 		Name: {
 			title: 'Auto-filled Variable',
-			description: "This will be replaced with the sender's name from their user profile."
+			description: 'This will be replaced with the your name from your user profile.'
 		},
 		Address: {
 			title: 'Auto-filled Variable',
-			description: "This will be replaced with the sender's address from their user profile."
+			description: 'This will be replaced with the your address from your user profile.'
 		}
 	};
 
@@ -99,7 +109,7 @@
 	}
 
 	let modalDismissing = false;
-	
+
 	// Component ID for timer coordination
 	const componentId = 'message-preview-' + Math.random().toString(36).substring(2, 15);
 
@@ -142,7 +152,7 @@
 
 	// Reactive declaration for parsed segments
 	const templateSegments = $derived(parseTemplate(resolvedPreview));
-	
+
 	// Initialize variable values when segments change
 	$effect(() => {
 		if (Object.keys(variableValues).length === 0) {
@@ -195,7 +205,7 @@
 	function handleScroll() {
 		updateScrollState();
 		onScroll(isAtBottom);
-		
+
 		// Close any open popovers when scrolling
 		if ($popoverStore) {
 			popoverStore.close($popoverStore.id);
@@ -262,11 +272,16 @@
 
 		// Show contextual hint after a brief delay for any variable type
 		if (variableName) {
-			coordinated.setTimeout(() => {
-				if (hoveredVariable === variableName && !activeVariable) {
-					showingHint = variableName;
-				}
-			}, 400, 'gesture', componentId);
+			coordinated.setTimeout(
+				() => {
+					if (hoveredVariable === variableName && !activeVariable) {
+						showingHint = variableName;
+					}
+				},
+				400,
+				'gesture',
+				componentId
+			);
 		} else {
 			showingHint = null;
 		}
@@ -290,12 +305,16 @@
 
 	$effect(() => {
 		if (browser && preview) {
-			coordinated.setTimeout(() => {
-				updateScrollState();
-			}, 0, 'dom', componentId);
+			coordinated.setTimeout(
+				() => {
+					updateScrollState();
+				},
+				0,
+				'dom',
+				componentId
+			);
 		}
 	});
-
 
 	// Update variable styling with more delightful interactions
 	function getVariableClasses(isActive: boolean, variableName: string): string {
@@ -352,6 +371,9 @@
 	<div class="mb-2 flex shrink-0 items-center gap-2">
 		<Mail class="h-4 w-4 shrink-0 text-slate-500" />
 		<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
+		{#if user?.is_verified}
+			<VerificationBadge size="sm" />
+		{/if}
 	</div>
 
 	<!-- Enhanced Variable Legend with personality -->
@@ -420,7 +442,11 @@
 									/>
 								{/if}
 							{:else}
-								<AnimatedPopover id={`variable-${segment.name}`} animationStyle="expand" duration={250}>
+								<AnimatedPopover
+									id={`variable-${segment.name}`}
+									animationStyle="expand"
+									duration={250}
+								>
 									<svelte:fragment slot="trigger" let:triggerAction>
 										<button
 											use:triggerAction

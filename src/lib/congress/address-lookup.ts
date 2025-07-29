@@ -135,36 +135,24 @@ export class AddressLookupService {
     }
 
     /**
-     * Fallback: ZIP code to district lookup
-     * This is less accurate but works without Google Civic API
+     * Fallback: ZIP code to district lookup using real data
+     * Uses OpenSourceActivismTech ZIP-district mapping
      */
     private async zipToDistrict(zip: string, state: string): Promise<CongressionalDistrict> {
         try {
-            // Use a ZIP → Congressional District API or lookup table
-            // For now, we'll use a simple approach and enhance later
+            const { zipDistrictLookup } = await import('$lib/services/zipDistrictLookup');
+            const result = await zipDistrictLookup.lookupDistrict(zip, state);
             
-            // Clean ZIP code
-            const cleanZip = zip.replace(/\D/g, '').substring(0, 5);
-            
-            // TODO: Implement actual ZIP → District lookup
-            // This could use a service like:
-            // - unitedstateszip.org API
-            // - Congress.gov district lookup
-            // - Local lookup table
-            
-            
-            
-            // For now, return a placeholder
-            // In production, implement actual lookup
             return {
-                state: state.toUpperCase(),
-                district: '01' // Placeholder - implement real lookup
+                state: result.state,
+                district: result.district
             };
             
         } catch (error) {
+            console.error('ZIP district lookup failed:', error);
             return {
                 state: state.toUpperCase(),
-                district: '01' // Fallback
+                district: '01' // Final fallback
             };
         }
     }

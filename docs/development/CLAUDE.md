@@ -40,14 +40,68 @@ npm run db:seed      # Seed database with sample data
 - **Authentication**: Custom session-based auth using @oslojs/crypto
 - **Testing**: Vitest (unit) + Playwright (e2e)
 
-### Core Concept: Dual Delivery Channels
+### Core Concepts
 
+#### Dual Delivery Channels
 The platform supports two message delivery methods, determined by `channelId`:
 
 1. **Congressional Delivery** (`channelId: 'certified'`)
    - Formal constituent-to-representative communication
    - Requires: `[Representative Name]`, `[Name]`, `[Address]` variables
    - Auto-populates representative based on user's district
+
+#### Tiered User Verification System
+Users can exist at different verification levels for enhanced credibility:
+
+1. **Unverified Users** (`is_verified: false`)
+   - Standard OAuth authentication (Google, Facebook, etc.)
+   - Can send messages but without verification badges
+   - Subject to standard rate limiting
+
+2. **Verified Users** (`is_verified: true`)
+   - **Self.xyz Integration**: Zero-knowledge proof identity verification
+     - Uses passport NFC scanning for humanity proof
+     - Provides Sybil resistance (prevents fake accounts)
+     - Age verification (18+) for voting eligibility
+     - Nationality verification for appropriate advocacy
+   - **Benefits**: 
+     - Verified badge on advocacy messages and user profile
+     - "Enhanced Credibility" indicator for congressional templates
+     - Higher priority in congressional routing systems
+     - Enhanced anti-spam protection for the community
+
+#### Self.xyz Verification Flow
+1. User completes OAuth (gets address for congressional templates)
+2. Optional: User chooses identity verification via VerificationModal
+3. **Real Self.xyz Integration**:
+   - Frontend uses `@selfxyz/qrcode` SelfQRcodeWrapper component
+   - QR code generated with SelfAppBuilder configuration
+   - Backend API endpoint `/api/identity/verify` handles verification
+   - Uses `@selfxyz/core` SelfBackendVerifier for proof validation
+4. User scans passport with Self mobile app (NFC required)
+5. Zero-knowledge proof generated, submitted to our API endpoint
+6. Backend verifies proof and updates user verification status
+7. User marked as verified with comprehensive verification metadata
+
+**Database Schema for Verification:**
+```sql
+-- Added to User model
+is_verified: Boolean @default(false)
+verification_method: String? -- 'self_xyz', 'manual', etc.
+verification_data: Json?     -- Store Self.xyz verification details:
+                            -- { attestationId, nationality, ageVerified, 
+                            --   ofacPassed, nullifier, sessionUserId, verifiedAt }
+verified_at: DateTime?
+```
+
+**Self.xyz SDK Configuration:**
+- **Frontend**: `@selfxyz/qrcode` - SelfQRcodeWrapper component
+- **Backend**: `@selfxyz/core` - SelfBackendVerifier with custom config storage
+- **Scope**: `communique-sybil-resistance`
+- **Requirements**: Age 18+, OFAC compliance, nationality disclosure
+- **Document Types**: Passports and EU ID cards supported
+
+**Note**: Self.xyz provides **identity verification** (humanity/age), not address verification. Address collection remains separate for congressional routing.
    - Generates CWC-compliant XML for submission
 
 2. **Direct Delivery** (any other `channelId`)
@@ -60,9 +114,13 @@ The platform supports two message delivery methods, determined by `channelId`:
 ```
 src/
 ├── routes/              # SvelteKit pages and API endpoints
-│   ├── api/            # REST API endpoints
+│   ├── api/            # REST API endpoints (organized by domain)
+│   │   ├── (dev)/      # Development/testing endpoints
+│   │   ├── address/    # Address validation services
+│   │   ├── civic/      # Congressional routing & analytics
+│   │   ├── errors/     # Error reporting
+│   │   ├── identity/   # Identity verification (Self.xyz)
 │   │   ├── templates/  # Template CRUD operations
-│   │   ├── address/    # Congressional district lookup
 │   │   └── user/       # User-specific data
 │   ├── auth/           # OAuth providers (Google, Facebook, Twitter)
 │   └── dashboard/      # User dashboard views
@@ -125,13 +183,37 @@ TWITTER_CLIENT_SECRET
 GOOGLE_CIVIC_API_KEY  # Enhanced address lookup
 ```
 
-### Congressional Integration
+### Address Validation & Congressional Integration
 
-User flow:
-1. **Onboarding**: User enters address → lookup representatives → store in DB
-2. **Advocacy**: Retrieve stored reps → generate CWC XML → submit
+**Real Implementation Stack** (No Mock Data):
 
-This avoids repeated API calls and provides instant rep access during advocacy.
+#### **Address Verification Flow**
+1. **Primary**: Census Bureau Geocoding API validates addresses and extracts congressional districts
+2. **Fallback**: ZIP-to-district lookup using OpenSourceActivismTech dataset (119th Congress)
+3. **Representatives**: Congress.gov API gets actual representative data
+
+#### **API Endpoints**
+- `POST /api/address/verify` - Real address validation + district extraction
+- `POST /api/address/lookup` - Representative lookup with ZIP fallback
+- `GET /api/address/lookup?state=CA&district=12` - Test district lookup
+- `POST /api/civic/routing` - Congressional message routing
+- `POST /api/civic/analytics` - Engagement tracking
+- `POST /api/identity/init` - Initialize identity verification
+- `GET /api/identity/status/[userId]` - Check verification status
+
+#### **User Onboarding Flow**
+1. **Address Collection**: AddressCollectionModal.svelte captures user address
+2. **Real Validation**: Census Bureau API standardizes address (e.g., "Main St" → "MAIN ST") 
+3. **District Extraction**: Gets congressional district from geographies data
+4. **Representative Lookup**: Congress.gov API retrieves actual representatives
+5. **Storage**: Store validated address + reps in database
+
+#### **Data Sources**
+- **Census Bureau**: Free geocoding API for address validation
+- **OpenSourceActivismTech**: Free ZIP-district mapping (updated July 2024)
+- **Congress.gov**: Free representative data with actual API key
+
+This eliminates all mock data and provides production-grade address validation.
 
 ### Testing Approach
 

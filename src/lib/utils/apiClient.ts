@@ -249,14 +249,14 @@ export const api = {
 // Analytics API wrapper
 export const analyticsApi = {
 	async track<T = any>(event: string, data?: any): Promise<ApiResponse<T>> {
-		return api.post('/api/analytics', { event, ...data }, { skipErrorLogging: true });
+		return api.post('/api/civic/analytics', { event, ...data }, { skipErrorLogging: true });
 	}
 };
 
 // Congress API wrapper  
 export const congressApi = {
 	async lookup<T = any>(address: string): Promise<ApiResponse<T>> {
-		return api.post('/api/congress/lookup', { address });
+		return api.post('/api/address/lookup', { address });
 	}
 };
 

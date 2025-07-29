@@ -11,7 +11,11 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			city: locals.user.city,
 			state: locals.user.state,
 			zip: locals.user.zip,
-			congressional_district: locals.user.congressional_district
+			congressional_district: locals.user.congressional_district,
+			// Verification status
+			is_verified: locals.user.is_verified || false,
+			verification_method: locals.user.verification_method,
+			verified_at: locals.user.verified_at
 		} : null
 	};
 }; 

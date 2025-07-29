@@ -9,6 +9,7 @@
 	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import ProgressiveFormModal from '$lib/components/template/ProgressiveFormModal.svelte';
+	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
 	import { resolveTemplate } from '$lib/utils/templateResolver';
 	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
 	import { onMount } from 'svelte';
@@ -17,6 +18,7 @@
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import type { PageData } from './$types';
 	import { coordinated } from '$lib/utils/timerCoordinator';
+	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
 	
@@ -29,6 +31,7 @@
 	let showOnboardingModal = $state(false);
 	let showTemplateModal = $state(false);
 	let showTemplateAuthModal = $state(false);
+	let showAddressModal = $state(false);
 	let modalComponent = $state<Modal>();
 	let selectedChannel: string | null = $state(null);
 	let creationContext: TemplateCreationContext | null = $state(null);
@@ -102,18 +105,25 @@
 	function handleTemplateUse(event: CustomEvent) {
 		const { template, requiresAuth } = event.detail;
 		
-		if (requiresAuth) {
+		const flow = analyzeEmailFlow(template as any, data.user);
+		
+		if (flow.nextAction === 'auth') {
 			// Show onboarding modal for guests
 			pendingTemplate = template;
 			showOnboardingModal = true;
-		} else if (data.user) {
-			// Show template modal for authenticated users
+		} else if (flow.nextAction === 'address') {
+			// Need address - show unified address requirement modal
 			pendingTemplate = template;
-			showTemplateModal = true;
-		} else {
-			// Direct mailto for simple templates
-			const mailtoLink = generateMailtoLink(template);
-			navigateTo(mailtoLink);
+			showAddressModal = true;
+		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+			if (data.user) {
+				// Show template modal for authenticated users
+				pendingTemplate = template;
+				showTemplateModal = true;
+			} else {
+				// Direct mailto launch
+				launchEmail(flow.mailtoUrl);
+			}
 		}
 	}
 	
@@ -136,22 +146,6 @@
 	}
 	
 	
-	function generateMailtoLink(template: Record<string, unknown>): string {
-		const subject = encodeURIComponent(template.title);
-		const body = encodeURIComponent(template.preview || template.message_body || '');
-		
-		if (template.deliveryMethod === 'both') {
-			// Congressional routing
-			const routingEmail = data.user 
-				? `congress+${template.id}-${data.user.id}@communi.email`
-				: `congress+guest-${template.id}-${Date.now()}@communi.email`;
-			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
-		} else {
-			// Direct email
-			const recipients = extractRecipientEmails(template.recipient_config).join(',');
-			return `mailto:${recipients}?subject=${subject}&body=${body}`;
-		}
-	}
 
 	const filteredTemplates = $derived(selectedChannel
 		? $templateStore.templates.filter((t) => {
@@ -267,17 +261,16 @@
 							return;
 						}
 						
-						const resolved = resolveTemplate($selectedTemplate, data.user);
+						const flow = analyzeEmailFlow($selectedTemplate, data.user);
 						
-						if (resolved.isCongressional && resolved.routingEmail) {
-							const subject = encodeURIComponent(resolved.subject);
-							const body = encodeURIComponent(resolved.body);
-							navigateTo(`mailto:${resolved.routingEmail}?subject=${subject}&body=${body}`);
-						} else {
-							const recipients = resolved.recipients.join(',') || '';
-							const subject = encodeURIComponent(resolved.subject);  
-							const body = encodeURIComponent(resolved.body);
-							navigateTo(`mailto:${recipients}?subject=${subject}&body=${body}`);
+						if (flow.nextAction === 'auth') {
+							pendingTemplate = $selectedTemplate;
+							showOnboardingModal = true;
+						} else if (flow.nextAction === 'address') {
+							pendingTemplate = $selectedTemplate;
+							showAddressModal = true;
+						} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+							launchEmail(flow.mailtoUrl);
 						}
 					}}
 				/>
@@ -394,6 +387,43 @@
 				pendingTemplateToSave = null;
 			}}
 			on:send={handleTemplateCreatorAuth}
+		/>
+	{/if}
+	
+	<!-- Address Requirement Modal -->
+	{#if showAddressModal && pendingTemplate}
+		<AddressRequirementModal 
+			template={pendingTemplate}
+			user={data.user}
+			isOpen={showAddressModal}
+			on:close={() => {
+				showAddressModal = false;
+				pendingTemplate = null;
+			}}
+			on:complete={(event) => {
+				const { address, verified, enhancedCredibility } = event.detail;
+				
+				// Update user address if needed (for manual entry)
+				if (!enhancedCredibility && data.user) {
+					// Call API to save address - simplified for demo
+					fetch('/api/user/address', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ address })
+					});
+				}
+				
+				// Close modal and proceed with email
+				showAddressModal = false;
+				const template = pendingTemplate;
+				pendingTemplate = null;
+				
+				// Generate email with updated user context
+				const flow = analyzeEmailFlow(template as any, data.user);
+				if (flow.mailtoUrl) {
+					launchEmail(flow.mailtoUrl);
+				}
+			}}
 		/>
 	{/if}
 </section>

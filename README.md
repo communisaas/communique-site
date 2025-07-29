@@ -19,7 +19,7 @@ Turn-key email delivery to Congress via Communicating With Congress (CWC) API, p
 - **Database**: CockroachDB + Prisma ORM
 - **Authentication**: OAuth (Google, Facebook, Twitter, LinkedIn, Discord)
 - **Congressional Delivery**: Communicating With Congress (CWC) API
-- **Address Validation**: Smarty Streets API
+- **Address Validation**: Census Bureau Geocoding API
 - **Deployment**: Fly.io
 - **Analytics**: PostHog
 

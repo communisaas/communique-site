@@ -23,8 +23,11 @@ User Signup → Address Entry → Rep Lookup → Store Reps → Advocacy Ready
 
 #### 1. **Address Lookup Service** (`src/lib/congress/address-lookup.ts`)
 - **Purpose**: Convert user address → their representatives during onboarding
-- **APIs**: Congress.gov + Google Civic (with fallbacks)
-- **Output**: User's House rep + 2 Senators
+- **APIs**: 
+  - **Primary**: Census Bureau Geocoding API (free, reliable)
+  - **Fallback**: OpenSourceActivismTech ZIP-district mapping (119th Congress)
+  - **Representatives**: Congress.gov API (real government data)
+- **Output**: User's House rep + 2 Senators with actual contact info
 
 #### 2. **User Representatives Storage** (Database)
 - **Purpose**: Store each user's specific representatives
@@ -154,7 +157,7 @@ const cwcXml = CWCGenerator.generateUserAdvocacyXML({
 # Required: Congress.gov API
 CONGRESS_API_KEY="your_congress_gov_api_key"
 
-# Optional: Google Civic API (for better address → district lookup)
+# Optional: Google Civic API (legacy - Census Bureau API now primary)
 GOOGLE_CIVIC_API_KEY="your_google_civic_api_key"
 ```
 

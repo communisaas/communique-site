@@ -1,23 +1,22 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { X, Shield, AtSign, ArrowRight } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { Template } from '$lib/types/template';
+	import { createModalStore } from '$lib/stores/modalSystem';
 
-	let { 
-		template,
-		source = 'direct-link'
-	}: {
-		template: Template;
-		source?: 'social-link' | 'direct-link' | 'share';
-	} = $props();
-
-	const dispatch = createEventDispatcher<{ close: void }>();
+	// Connect to modal system
+	const modal = createModalStore('auth-modal', 'auth');
+	
+	// Get modal data which includes template and source
+	const modalData = $derived($modal.data as { template: Template; source?: 'social-link' | 'direct-link' | 'share' } | null);
+	const template = $derived(modalData?.template);
+	const source = $derived(modalData?.source || 'direct-link');
 
 	// Smart messaging based on template type
 	const authConfig = $derived(() => {
+		if (!template) return null;
 		const isCongressional = template.deliveryMethod === 'both';
 		
 		if (isCongressional) {
@@ -44,6 +43,8 @@
 	});
 
 	function handleAuth(provider: string) {
+		if (!template) return;
+		
 		// Store template context for post-auth flow
 		if (typeof window !== 'undefined') {
 			sessionStorage.setItem('pending_template_action', JSON.stringify({
@@ -58,10 +59,11 @@
 	}
 
 	function handleClose() {
-		dispatch('close');
+		modal.close();
 	}
 </script>
 
+{#if $modal.isOpen && template && authConfig}
 <!-- Modal Backdrop -->
 <div 
 	class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -142,3 +144,4 @@
 		</div>
 	</div>
 </div>
+{/if}

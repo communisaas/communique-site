@@ -134,7 +134,7 @@ async function handleAuthenticatedCongressionalRequest({
 	let representatives = user.representatives.map((r) => r.representative);
 	if (!representatives.length && user.zip) {
 		// Look up representatives based on user's address
-		// This is a placeholder, as lookupRepresentativesByAddress is not fully implemented
+		// Lookup representatives using real address lookup service
 		representatives = await lookupRepresentativesByAddress({
 			street: user.street || '',
 			city: user.city || '',
@@ -196,10 +196,41 @@ async function handleGuestCongressionalRequest({
 	});
 }
 
-// Helper functions (to be implemented)
+// Helper functions
 async function lookupRepresentativesByAddress(address: Record<string, unknown>) {
-	// TODO: Implement address-to-representative lookup
-	return [];
+	try {
+		const { addressLookup } = await import('$lib/congress/address-lookup');
+		
+		// Convert to proper Address interface
+		const properAddress = {
+			street: String(address.street || ''),
+			city: String(address.city || ''),
+			state: String(address.state || ''),
+			zip: String(address.zip || '')
+		};
+		
+		const userReps = await addressLookup.lookupRepsByAddress(properAddress);
+		
+		// Convert to format expected by routing function
+		return [
+			{
+				name: userReps.house.name,
+				chamber: 'house',
+				officeCode: userReps.house.officeCode,
+				district: userReps.district
+			},
+			...userReps.senate.map(senator => ({
+				name: senator.name,
+				chamber: 'senate',
+				officeCode: senator.officeCode,
+				state: senator.state
+			}))
+		];
+		
+	} catch (error) {
+		console.error('Representative lookup failed:', error);
+		return [];
+	}
 }
 
 async function routeToRepresentatives({

@@ -56,7 +56,7 @@ npm run preview  # Manual verification of build
 **External Integrations:**
 - Congressional data via Congress.gov API
 - OAuth providers (Google, Facebook, Twitter, LinkedIn, Discord)
-- Address validation via Google Civic Information API
+- Address validation via Census Bureau Geocoding API
 
 ## Implementation Standards
 

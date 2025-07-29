@@ -2,10 +2,10 @@
 	/// <reference types="@sveltejs/kit" />
 	import { Send, Shield, AtSign } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
-	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { page } from '$app/stores';
+	import { analyzeEmailFlow } from '$lib/services/emailService';
 
 	let { 
 		template,
@@ -17,86 +17,9 @@
 		onuseTemplate: (event: { template: Template; requiresAuth: boolean }) => void;
 	} = $props();
 
-	// Always generate mailto link - route congressional templates through our domain
-	const mailtoLink = $derived(generateMailtoLink(template));
+	// Use unified email service to determine flow
+	const emailFlow = $derived(analyzeEmailFlow(template, user));
 
-	function generateMailtoLink(template: Template): string {
-		const subject = encodeURIComponent(template.title);
-
-		let bodyForMailto = template.preview || '';
-		
-		// Get user from page data if available (authenticated user)
-		const currentUser = $page.data?.user;
-
-		// If user is authenticated, auto-fill their variables
-		if (currentUser) {
-			// Replace [Name] with user's name
-			bodyForMailto = bodyForMailto.replace(/\[Name\]/g, currentUser.name || 'Your Name');
-			
-			// Replace [Address] with user's address if available, otherwise remove the line
-			if (currentUser.street && currentUser.city && currentUser.state && currentUser.zip) {
-				const userAddress = `${currentUser.street}, ${currentUser.city}, ${currentUser.state} ${currentUser.zip}`;
-				bodyForMailto = bodyForMailto.replace(/\[Address\]/g, userAddress);
-			} else {
-				// Remove lines that contain only [Address] 
-				bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Address\][ \t]*\r?\n/gm, '');
-				// Remove remaining inline [Address] 
-				bodyForMailto = bodyForMailto.replace(/\[Address\]/g, '');
-			}
-			
-			// Remove [Representative Name] - this gets filled server-side or remove if empty
-			bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Representative Name\][ \t]*\r?\n/gm, '');
-			bodyForMailto = bodyForMailto.replace(/\[Representative Name\]/g, 'Representative');
-			
-			// Remove empty [Personal Connection] blocks and lines
-			bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Personal Connection\][ \t]*\r?\n/gm, '');
-			bodyForMailto = bodyForMailto.replace(/\[Personal Connection\]/g, '');
-		} else {
-			// For unauthenticated users, remove all variables and their lines
-			const blockRegex = new RegExp(`^[ \t]*\\[.*?\\][ \t]*\\r?\\n`, 'gm');
-			bodyForMailto = bodyForMailto.replace(blockRegex, '');
-			const inlineRegex = new RegExp(`\\[.*?\\]`, 'g');
-			bodyForMailto = bodyForMailto.replace(inlineRegex, '');
-		}
-
-		// Clean up any extra newlines that might result from empty variables
-		bodyForMailto = bodyForMailto.replace(/\n{3,}/g, '\n\n').trim();
-
-		const body = encodeURIComponent(bodyForMailto);
-
-		if (template.deliveryMethod === 'both') {
-			// Congressional templates: route through communique domain
-			const routingEmail = generateCongressionalRoutingEmail(template);
-			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
-		} else {
-			// Direct email templates: use recipient emails directly
-			const recipients = extractRecipientEmails(template.recipient_config).join(',');
-			return `mailto:${recipients}?subject=${subject}&body=${body}`;
-		}
-	}
-
-	function generateCongressionalRoutingEmail(template: Template): string {
-		// Get user from page data if available (authenticated user)
-		const user = $page.data?.user;
-
-		if (user?.id) {
-			// Authenticated user: congress+{templateId}-{userId}@communique.org
-			return `congress+${template.id}-${user.id}@communique.org`;
-		} else {
-			// Anonymous user: Use session-based routing or trigger onboarding
-			// Format: congress+guest-{templateId}-{sessionToken}@communique.org
-			const sessionToken = generateGuestSessionToken();
-			return `congress+guest-${template.id}-${sessionToken}@communique.org`;
-		}
-	}
-
-	function generateGuestSessionToken(): string {
-		// Generate a temporary session identifier for anonymous users
-		// This will be used to track the request and trigger account creation flow
-		const timestamp = Date.now().toString(36);
-		const random = Math.random().toString(36).substring(2, 8);
-		return `${timestamp}-${random}`;
-	}
 	
 	// Smart CTA configuration based on template type and user state
 	const ctaConfig = $derived(() => {
@@ -122,11 +45,10 @@
 	});
 
 	function handleUseTemplate() {
-		// Always dispatch to show the smart modal flow
+		// Use unified email flow analysis
 		onuseTemplate({ 
 			template, 
-			requiresAuth: !user,
-			mailtoLink: user ? mailtoLink : null
+			requiresAuth: emailFlow.requiresAuth
 		});
 	}
 </script>

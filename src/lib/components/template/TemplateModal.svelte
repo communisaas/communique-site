@@ -23,9 +23,9 @@
 	} from '@lucide/svelte';
 	import TemplateHeader from '$lib/components/landing/template/TemplateHeader.svelte';
 	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
-	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { guestState } from '$lib/stores/guestState';
+	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	
 	let { 
 		template,
@@ -69,7 +69,7 @@
 		
 		if (user) {
 			// For authenticated users, immediately start the mailto flow
-			handleMailtoFlow();
+			handleUnifiedEmailFlow();
 		}
 		
 		// Track modal opened
@@ -89,27 +89,30 @@
 		dispatch('close');
 	}
 	
-	async function handleMailtoFlow() {
+	async function handleUnifiedEmailFlow() {
 		currentState = 'loading';
 		actionProgress.set(1);
 		
-		// Generate mailto link with user's auto-filled variables
-		const mailtoLink = generateMailtoLink();
+		// Use unified email service
+		const currentUser = $page.data?.user || user;
+		const flow = analyzeEmailFlow(template as any, currentUser);
 		
 		// Show loading state briefly to let user understand what's happening
 		coordinated.setTimeout(() => {
-			// Open mailto
-			window.location.href = mailtoLink;
-			
-			// Track usage
-			trackEvent('template_used', {
-				template_id: template.id,
-				user_id: user?.id,
-				delivery_method: template.deliveryMethod
-			});
-			
-			// Dispatch for analytics
-			dispatch('used', { templateId: template.id, action: 'mailto_opened' });
+			if (flow.mailtoUrl) {
+				// Launch email using unified service
+				launchEmail(flow.mailtoUrl);
+				
+				// Track usage
+				trackEvent('template_used', {
+					template_id: template.id,
+					user_id: user?.id,
+					delivery_method: template.deliveryMethod
+				});
+				
+				// Dispatch for analytics
+				dispatch('used', { templateId: template.id, action: 'mailto_opened' });
+			}
 			
 			// Transition to success state
 			currentState = 'success';
@@ -122,61 +125,6 @@
 			}, 2000, 'transition', componentId);
 			
 		}, 1200, 'modal', componentId); // Brief loading to show intent
-	}
-	
-	function generateMailtoLink(): string {
-		const subject = encodeURIComponent(template.title);
-		let bodyForMailto = template.preview || '';
-		
-		// Auto-fill user variables if authenticated
-		if (user) {
-			const currentUser = $page.data?.user;
-			if (currentUser) {
-				// Replace [Name] with user's name
-				bodyForMailto = bodyForMailto.replace(/\[Name\]/g, currentUser.name || 'Your Name');
-				
-				// Replace [Address] with user's address if available, otherwise remove the line
-				if (currentUser.street && currentUser.city && currentUser.state && currentUser.zip) {
-					const userAddress = `${currentUser.street}, ${currentUser.city}, ${currentUser.state} ${currentUser.zip}`;
-					bodyForMailto = bodyForMailto.replace(/\[Address\]/g, userAddress);
-				} else {
-					// Remove lines that contain only [Address] 
-					bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Address\][ \t]*\r?\n/gm, '');
-					// Remove remaining inline [Address] 
-					bodyForMailto = bodyForMailto.replace(/\[Address\]/g, '');
-				}
-				
-				// Remove [Representative Name] - this gets filled server-side or remove if empty
-				bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Representative Name\][ \t]*\r?\n/gm, '');
-				bodyForMailto = bodyForMailto.replace(/\[Representative Name\]/g, 'Representative');
-				
-				// Remove empty [Personal Connection] blocks and lines
-				bodyForMailto = bodyForMailto.replace(/^[ \t]*\[Personal Connection\][ \t]*\r?\n/gm, '');
-				bodyForMailto = bodyForMailto.replace(/\[Personal Connection\]/g, '');
-			}
-		} else {
-			// For unauthenticated users, remove all variables and their lines
-			const blockRegex = new RegExp(`^[ \t]*\\[.*?\\][ \t]*\\r?\\n`, 'gm');
-			bodyForMailto = bodyForMailto.replace(blockRegex, '');
-			const inlineRegex = new RegExp(`\\[.*?\\]`, 'g');
-			bodyForMailto = bodyForMailto.replace(inlineRegex, '');
-		}
-		
-		// Clean up multiple newlines and trim
-		bodyForMailto = bodyForMailto.replace(/\n{3,}/g, '\n\n').trim();
-		const body = encodeURIComponent(bodyForMailto);
-		
-		if (template.deliveryMethod === 'both') {
-			// Congressional routing
-			const routingEmail = user?.id 
-				? `congress+${template.id}-${user.id}@communique.org`
-				: `congress+guest-${template.id}@communique.org`;
-			return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
-		} else {
-			// Direct email
-			const recipients = extractRecipientEmails(template.recipient_config).join(',');
-			return `mailto:${recipients}?subject=${subject}&body=${body}`;
-		}
 	}
 	
 	function handleAuth() {

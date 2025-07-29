@@ -12,8 +12,12 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest",
-		"test": "npm run test:unit -- --run && npm run test:e2e",
+		"test:unit:run": "vitest --run",
+		"test:unit:coverage": "vitest --coverage",
+		"test": "npm run test:unit:run && npm run test:e2e",
 		"test:e2e": "playwright test",
+		"test:address": "npm run test:unit:run src/lib/services/zipDistrictLookup.test.ts src/lib/congress/address-lookup.test.ts src/routes/api/address/*/server.test.ts",
+		"test:all": "./scripts/test-all.sh",
 		"db:start": "docker compose up",
 		"db:generate": "prisma generate",
 		"db:push": "prisma db push",
@@ -34,6 +38,7 @@
 		"@tailwindcss/typography": "^0.5.15",
 		"@types/eslint": "^9.6.1",
 		"@types/node": "^24.0.6",
+		"@vitest/coverage-istanbul": "^2.1.9",
 		"autoprefixer": "^10.4.20",
 		"eslint": "^9.14.0",
 		"eslint-config-prettier": "^9.1.0",
@@ -59,8 +64,11 @@
 		"@oslojs/crypto": "^1.0.1",
 		"@oslojs/encoding": "^1.1.0",
 		"@prisma/client": "^6.10.1",
+		"@selfxyz/core": "^1.0.7-beta.1",
+		"@selfxyz/qrcode": "^1.0.10-beta.1",
 		"arctic": "^3.7.0",
 		"ncu": "^0.2.1",
-		"postgres": "^3.4.5"
+		"postgres": "^3.4.5",
+		"uuid": "^11.1.0"
 	}
 }
