@@ -14,12 +14,87 @@ npm start            # Start production server
 
 ### Code Quality & Testing
 ```bash
-npm run lint         # Run ESLint and Prettier checks
-npm run format       # Auto-format code with Prettier
-npm run check        # Type-check with svelte-check
-npm run test         # Run all tests (unit + e2e)
-npm run test:unit    # Run unit tests with Vitest
-npm run test:e2e     # Run e2e tests with Playwright
+npm run lint              # Run ESLint and Prettier checks
+npm run format            # Auto-format code with Prettier
+npm run check             # Type-check with svelte-check
+npm run test              # Run all tests (unit + e2e)
+npm run test:unit         # Run unit tests with Vitest
+npm run test:unit:coverage # Run unit tests with coverage analysis
+npm run test:e2e          # Run e2e tests with Playwright
+```
+
+#### Testing Architecture
+The project uses a comprehensive multi-layered testing approach:
+
+**📊 Current Coverage: 200+ test cases across critical system components**
+
+1. **Unit Tests (`src/**/*.test.ts`)**
+   - **Store Testing**: Modal system, popover, tooltip, guest state, templates
+   - **API Testing**: Congressional routing, user management, error handling, templates
+   - **Component Testing**: Auth modals, address requirements, UI components
+   - **Service Testing**: AI suggestions, email service, geolocation, personalization
+
+2. **Integration Tests (`src/tests/integration/`)**
+   - **Congressional Delivery Flow**: End-to-end message routing and CWC submission
+   - **Authentication Flow**: OAuth providers, session management, template context
+   - **Address Collection Flow**: Verification, representative lookup, Self.xyz integration
+
+3. **E2E Tests (`e2e/`)**
+   - **Critical User Journeys**: Auth flow, template creation, congressional delivery
+   - **Mobile Experience**: Responsive design, touch interactions
+   - **OAuth Integration**: Google, Facebook, Twitter, LinkedIn, Discord
+
+#### Testing Patterns & Best Practices
+
+**Component Testing**:
+```typescript
+// Standard pattern for Svelte component tests
+import { render, fireEvent, screen } from '@testing-library/svelte';
+import Component from './Component.svelte';
+
+describe('Component', () => {
+  it('handles user interaction correctly', async () => {
+    render(Component, { props: { isOpen: true } });
+    
+    const button = screen.getByText('Click me');
+    await fireEvent.click(button);
+    
+    expect(screen.getByText('Success')).toBeTruthy();
+  });
+});
+```
+
+**API Endpoint Testing**:
+```typescript
+// Standard pattern for SvelteKit API tests
+import { POST } from './+server.ts';
+
+describe('API Endpoint', () => {
+  it('processes requests correctly', async () => {
+    const mockRequest = {
+      json: vi.fn().mockResolvedValue({ data: 'test' })
+    };
+    
+    const response = await POST({ request: mockRequest } as any);
+    const data = JSON.parse(response.body);
+    
+    expect(data.success).toBe(true);
+  });
+});
+```
+
+**Store Testing**:
+```typescript
+// Standard pattern for Svelte store tests
+import { get } from 'svelte/store';
+import { myStore, actions } from './store.ts';
+
+describe('Store', () => {
+  it('manages state correctly', () => {
+    actions.update('new value');
+    expect(get(myStore)).toBe('new value');
+  });
+});
 ```
 
 ### Database Management

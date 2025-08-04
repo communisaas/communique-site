@@ -7,6 +7,7 @@
 		href = undefined,
 		rel = undefined,
 		buttonElement = $bindable(),
+		testId = undefined,
 		onclick,
 		onmouseover,
 		onmouseenter,
@@ -22,6 +23,7 @@
 		href?: string | undefined;
 		rel?: string | undefined;
 		buttonElement?: HTMLButtonElement | undefined;
+		testId?: string | undefined;
 		onclick?: (event: MouseEvent) => void;
 		onmouseover?: (event: MouseEvent) => void;
 		onmouseenter?: (event: MouseEvent) => void;
@@ -44,6 +46,7 @@
 		{href}
 		{rel}
 		target={href.startsWith('mailto:') ? undefined : '_blank'}
+		data-testid={testId}
 		class="flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-all duration-200 sm:text-base cursor-{cursor} select-none no-underline {classNames}"
 		class:bg-blue-600={variant === 'primary'}
 		class:text-white={variant === 'primary'}
@@ -66,6 +69,7 @@
 	<button
 		bind:this={buttonElement}
 		{type}
+		data-testid={testId}
 		class="flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-all duration-200 sm:text-base cursor-{cursor} {classNames}"
 		class:bg-blue-600={variant === 'primary'}
 		class:text-white={variant === 'primary'}

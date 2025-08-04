@@ -194,10 +194,11 @@
 
 	<div
 		id="template-section"
+		data-testid="template-section"
 		class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:gap-8"
 	>
 		<div class="md:col-span-1">
-			<h2 class="mb-3 text-xl font-semibold text-slate-900">Message Templates</h2>
+			<h2 class="mb-3 text-xl font-semibold text-slate-900" data-testid="templates-heading">Message Templates</h2>
 			<TemplateList
 				templates={filteredTemplates}
 				selectedId={$templateStore.selectedId}
@@ -226,6 +227,7 @@
 					</p>
 					<button
 						onclick={() => templateStore.fetchTemplates()}
+						data-testid="retry-templates-button"
 						class="inline-flex items-center rounded-lg bg-red-600 px-4 py-2 text-white transition-colors hover:bg-red-700"
 					>
 						Try Again

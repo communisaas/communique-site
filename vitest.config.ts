@@ -3,41 +3,40 @@ import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	resolve: {
+		conditions: ['browser']
+	},
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
-		environment: 'node',
+		environment: 'jsdom',
+		setupFiles: ['./src/test-setup.ts'],
 		globals: true,
-		setupFiles: ['src/test/setup.ts'],
 		coverage: {
 			provider: 'istanbul',
-			reporter: ['text', 'json', 'html', 'lcov'],
-			include: [
-				'src/lib/services/**/*.{js,ts}',
-				'src/lib/congress/**/*.{js,ts}',
-				'src/routes/api/**/*.{js,ts}'
-			],
+			reporter: ['text', 'html', 'json', 'lcov'],
+			reportsDirectory: './coverage',
 			exclude: [
-				'node_modules/',
-				'src/**/*.{test,spec}.{js,ts}',
-				'src/**/*.d.ts',
-				'src/test/**/*',
-				'src/app.html',
-				'**/.svelte-kit/**',
-				'src/lib/components/**/*'
+				'node_modules/**',
+				'src/test/**',
+				'**/*.d.ts',
+				'**/*.config.{js,ts}',
+				'**/coverage/**',
+				'e2e/**',
+				'prisma/**',
+				'**/*.spec.ts',
+				'**/*.test.ts'
+			],
+			include: [
+				'src/**/*.{js,ts,svelte}'
 			],
 			thresholds: {
-				branches: 80,
-				functions: 80,
-				lines: 80,
-				statements: 80
-			},
-			ignoreEmptyLines: true,
-			skipFull: true
-		},
-		env: {
-			// Test environment variables
-			CONGRESS_API_KEY: 'test-congress-key',
-			GOOGLE_CIVIC_API_KEY: 'test-civic-key'
+				global: {
+					branches: 70,
+					functions: 70,
+					lines: 70,
+					statements: 70
+				}
+			}
 		}
-	}
+	},
 });

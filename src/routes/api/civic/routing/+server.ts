@@ -267,12 +267,68 @@ async function routeToRepresentatives({
 	for (const rep of representatives) {
 		const personalizedBody = resolveVariables(bodyForResolution, user as any, rep as any);
 
-		// TODO: Replace with actual CWC submission logic
+		// Submit to representative via CWC API
+		try {
+			const { cwcClient } = await import('$lib/congress/cwc-client');
+			
+			// Convert representative data to expected format
+			const congressionalOffice = {
+				bioguideId: rep.bioguide_id || `${rep.officeCode || rep.office_code}`,
+				name: rep.name,
+				chamber: rep.chamber as 'house' | 'senate',
+				officeCode: rep.officeCode || rep.office_code || '',
+				state: rep.state || user.state || '',
+				district: rep.district || user.congressional_district || '00', // Default for senators
+				party: rep.party || 'Unknown'
+			};
 
-		deliveryResults.push({
-			representative: rep.name,
-			status: 'queued'
-		});
+			// Use the template from the outer scope (already fetched)
+			const templateForSubmission = template ? {
+				id: templateId,
+				subject: template.subject || 'Congressional Communication',
+				message_body: personalizedBody,
+				delivery_config: {},
+				cwc_config: {}
+			} : {
+				id: templateId,
+				subject: subject,
+				message_body: personalizedBody,
+				delivery_config: {},
+				cwc_config: {}
+			};
+
+			let submissionResult;
+			if (congressionalOffice.chamber === 'senate') {
+				submissionResult = await cwcClient.submitToSenate(
+					templateForSubmission as any,
+					user as any,
+					congressionalOffice,
+					personalizedBody
+				);
+			} else {
+				submissionResult = await cwcClient.submitToHouse(
+					templateForSubmission as any,
+					user as any,
+					congressionalOffice,
+					personalizedBody
+				);
+			}
+
+			deliveryResults.push({
+				representative: rep.name,
+				status: submissionResult.success ? 'submitted' : 'failed',
+				messageId: submissionResult.messageId,
+				error: submissionResult.error
+			});
+
+		} catch (error) {
+			console.error(`Failed to submit to ${rep.name}:`, error);
+			deliveryResults.push({
+				representative: rep.name,
+				status: 'failed',
+				error: error instanceof Error ? error.message : 'Submission failed'
+			});
+		}
 	}
 
 	return deliveryResults;

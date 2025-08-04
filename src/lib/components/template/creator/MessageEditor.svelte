@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { Lightbulb, Braces, Plus } from '@lucide/svelte';
+	import { Lightbulb, Braces, Plus, Wand2, Sparkles, TrendingUp } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import { onMount, onDestroy } from 'svelte';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
+	import { predictPerformance } from '$lib/services/template-intelligence';
+	import { debounce } from '$lib/utils/debounce';
 
 	const placeholderText = `Start writing your template message...\n\n💡 Tip: Click the buttons above to add personalization.\n✨ Variables work even when left empty.`;
 
@@ -31,6 +33,11 @@
 
 	let autoAddSignature = $state(true);
 	let screenReaderAnnouncement = $state('');
+	let showAiSuggestions = $state(false);
+	let performanceScore = $state(0);
+	let predictedReach = $state(0);
+	let isAnalyzing = $state(false);
+	let aiSuggestions = $state<any[]>([]);
 	
 	// Component ID for timer coordination
 	const componentId = 'message-editor-' + Math.random().toString(36).substring(2, 15);
@@ -137,6 +144,40 @@
 
 	const wordCount = $derived(data.preview.trim().split(/\s+/).length);
 	const variableCount = $derived((data.preview.match(/\[.*?\]/g) || []).length);
+	
+	// Auto-analyze message for performance prediction
+	const analyzeMessage = debounce(async () => {
+		if (data.preview.length < 50) return;
+		
+		isAnalyzing = true;
+		try {
+			const detectedVars = data.preview.match(/\[.*?\]/g) || [];
+			const performance = predictPerformance(data.preview, detectedVars, context.channelId || 'general');
+			performanceScore = performance.engagementScore;
+			predictedReach = performance.predictedReach;
+			
+			// Generate contextual AI suggestions
+			aiSuggestions = [];
+			if (!data.variables.includes('[Personal Connection]')) {
+				aiSuggestions.push({
+					text: 'Consider adding your personal connection to this issue',
+					action: () => insertVariable('[Personal Connection]')
+				});
+			}
+			if (wordCount < 100) {
+				aiSuggestions.push({
+					text: 'Message could be more detailed for greater impact',
+					action: () => {}
+				});
+			}
+		} finally {
+			isAnalyzing = false;
+		}
+	}, 500);
+	
+	$effect(() => {
+		if (data.preview) analyzeMessage();
+	});
 </script>
 
 <!-- Screen reader announcements -->
@@ -241,6 +282,52 @@
 			Click personalization buttons above or type variables manually using [square brackets]
 		</p>
 	</div>
+
+	<!-- AI Suggestions -->
+	{#if aiSuggestions.length > 0}
+		<div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
+			<div class="flex items-center gap-2 mb-2">
+				<Sparkles class="w-4 h-4 text-blue-600" />
+				<h4 class="text-sm font-medium text-blue-900">AI Suggestions</h4>
+			</div>
+			<div class="space-y-2">
+				{#each aiSuggestions as suggestion}
+					<button
+						class="w-full text-left p-2 rounded hover:bg-blue-100 transition-colors text-sm text-blue-800"
+						onclick={suggestion.action}
+					>
+						💡 {suggestion.text}
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Performance Prediction -->
+	{#if performanceScore > 0}
+		<div class="rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50 p-3">
+			<div class="flex items-center gap-2 mb-2">
+				<TrendingUp class="w-4 h-4 text-purple-600" />
+				<h4 class="text-sm font-medium text-purple-900">Performance Prediction</h4>
+			</div>
+			<div class="grid grid-cols-2 gap-4 mb-2">
+				<div>
+					<div class="text-lg font-bold text-purple-600">{performanceScore}%</div>
+					<div class="text-xs text-gray-600">Engagement Score</div>
+				</div>
+				<div>
+					<div class="text-lg font-bold text-blue-600">{predictedReach}</div>
+					<div class="text-xs text-gray-600">Predicted Reach</div>
+				</div>
+			</div>
+			<div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+				<div 
+					class="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500"
+					style="width: {performanceScore}%"
+				/>
+			</div>
+		</div>
+	{/if}
 
 	<!-- Settings - Compact -->
 	<div class="rounded-lg border border-slate-200 bg-slate-50 p-3">

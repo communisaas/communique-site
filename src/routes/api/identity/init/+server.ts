@@ -1,17 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { v4 as uuidv4 } from 'uuid';
-
-// In-memory storage for demo (use Redis/DB in production)
-const verificationSessions = new Map<string, {
-	userId: string;
-	templateSlug: string;
-	disclosures: any;
-	qrCodeData: string;
-	status: 'pending' | 'verified' | 'failed';
-	credentialSubject?: any;
-	createdAt: Date;
-}>();
+import { SELF_XYZ_CONFIG, createUserConfig } from '$lib/server/selfxyz-config';
+import { verificationSessions, cleanupOldSessions } from '$lib/server/verification-sessions';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -24,62 +14,74 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		// Generate Self.xyz app configuration
-		const selfAppConfig = {
-			appName: "Communiqué",
-			scope: "communique-congressional-advocacy",
-			endpoint: `${process.env.ORIGIN || 'http://localhost:5173'}/api/identity/verify`,
-			userId,
-			userIdType: 'uuid',
-			version: 2,
-			disclosures: {
-				nationality: true,
-				issuing_state: true,
-				name: true,
-				minimumAge: 18,
-				ofac: true,
+		// Generate Self.xyz app configuration with user context
+		const appConfig = createUserConfig(userId, templateSlug, requireAddress);
+		
+		// Merge any additional disclosures
+		if (disclosures) {
+			appConfig.disclosures = {
+				...appConfig.disclosures,
 				...disclosures
-			},
-			userDefinedData: JSON.stringify({
-				templateSlug,
-				requireAddress,
-				timestamp: Date.now()
-			})
-		};
+			};
+		}
 
-		// For demo purposes, we'll create a mock QR code data
-		// In production, you'd use the Self.xyz SDK to generate this
-		const qrCodeData = `self://verify?config=${encodeURIComponent(JSON.stringify(selfAppConfig))}`;
+		// Create QR code data directly (Self.xyz app format)
+		// This matches the format that SelfAppBuilder.build() would generate
+		const builtConfig = {
+			...appConfig,
+			sessionId: userId,
+			version: appConfig.version || 2,
+			userIdType: 'uuid'
+		};
+		
+		// Create QR code data string (the app will read this)
+		const qrCodeData = JSON.stringify(builtConfig);
 
 		// Store session for polling
 		verificationSessions.set(userId, {
 			userId,
 			templateSlug,
-			disclosures,
+			disclosures: appConfig.disclosures,
 			qrCodeData,
 			status: 'pending',
 			createdAt: new Date()
 		});
 
 		// Clean up old sessions (>1 hour)
-		const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-		for (const [key, session] of verificationSessions.entries()) {
-			if (session.createdAt < oneHourAgo) {
-				verificationSessions.delete(key);
-			}
-		}
+		cleanupOldSessions();
+
+		console.log('Self.xyz verification session initialized:', {
+			userId,
+			templateSlug,
+			disclosures: Object.keys(appConfig.disclosures),
+			sessionCount: verificationSessions.size
+		});
 
 		return json({
 			success: true,
 			qrCodeData,
-			sessionId: userId
+			sessionId: userId,
+			config: appConfig
 		});
 
 	} catch (error) {
 		console.error('Self.xyz init error:', error);
+		
+		// Log detailed error for debugging
+		if (error instanceof Error) {
+			console.error('Initialization error details:', {
+				name: error.name,
+				message: error.message,
+				stack: error.stack?.split('\n').slice(0, 3)
+			});
+		}
+
 		return json(
 			{ success: false, error: 'Failed to initialize Self.xyz verification' },
 			{ status: 500 }
 		);
 	}
 };
+
+// Export the verification sessions for use in other endpoints
+// verificationSessions is internal to this module

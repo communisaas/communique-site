@@ -496,10 +496,11 @@
 						{#if selfXyzQrCode}
 							<div class="flex justify-center mb-6">
 								<div class="p-4 bg-white rounded-lg border border-slate-200">
-									<div class="w-48 h-48 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-lg flex items-center justify-center">
+									<div class="w-48 h-48 bg-gray-100 rounded-lg flex items-center justify-center">
 										<div class="text-center">
-											<QrCode class="h-12 w-12 text-indigo-400 mx-auto mb-2" />
-											<p class="text-xs text-slate-500">QR Code Loading...</p>
+											<QrCode class="h-12 w-12 text-gray-400 mx-auto mb-2" />
+											<p class="text-xs text-gray-500">QR Code: {selfXyzQrCode.slice(0, 20)}...</p>
+											<p class="text-xs text-gray-400 mt-1">Use Self.xyz app to scan</p>
 										</div>
 									</div>
 								</div>

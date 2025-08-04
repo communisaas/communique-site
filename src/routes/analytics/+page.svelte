@@ -1,180 +1,218 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { page } from '$app/stores';
-  import type { PercolationData, FusionData } from '$lib/types/analytics';
-  
-  let percolationData: PercolationData | null = null;
-  let fusionData: FusionData | null = null;
-  let loading = true;
-  let error = '';
-
-  onMount(async () => {
-    try {
-      // Fetch analytics data (will require OAuth)
-      const [percolationRes, fusionRes] = await Promise.all([
-        fetch('/api/percolation-analysis'),
-        fetch('/api/sheaf-fusion?category=education')
-      ]);
-      
-      if (percolationRes.ok) {
-        percolationData = await percolationRes.json();
-      }
-      
-      if (fusionRes.ok) {
-        fusionData = await fusionRes.json();
-      }
-      
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Failed to load analytics';
-    } finally {
-      loading = false;
-    }
-  });
+	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import PercolationDashboard from '$lib/components/analytics/PercolationDashboard.svelte';
+	import CascadeAnalytics from '$lib/components/analytics/CascadeAnalytics.svelte';
+	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	
+	let selectedTemplateId = $state<string | null>(null);
+	let templates = $state<any[]>([]);
+	let loading = $state(true);
+	let activeTab = $state<'network' | 'template'>('network');
+	
+	onMount(async () => {
+		// Get template ID from URL params if provided
+		const urlTemplateId = $page.url.searchParams.get('template');
+		if (urlTemplateId) {
+			selectedTemplateId = urlTemplateId;
+			activeTab = 'template';
+		}
+		
+		await loadTemplates();
+		loading = false;
+	});
+	
+	async function loadTemplates() {
+		try {
+			const response = await fetch('/api/templates');
+			const data = await response.json();
+			
+			if (data.success) {
+				templates = data.templates || [];
+			}
+		} catch (error) {
+			console.error('Failed to load templates:', error);
+		}
+	}
+	
+	function selectTemplate(templateId: string) {
+		selectedTemplateId = templateId;
+		activeTab = 'template';
+		
+		// Update URL without navigation
+		const url = new URL(window.location.href);
+		url.searchParams.set('template', templateId);
+		window.history.replaceState({}, '', url.toString());
+	}
+	
+	function clearTemplateSelection() {
+		selectedTemplateId = null;
+		activeTab = 'network';
+		
+		// Remove template param from URL
+		const url = new URL(window.location.href);
+		url.searchParams.delete('template');
+		window.history.replaceState({}, '', url.toString());
+	}
 </script>
 
 <svelte:head>
-  <title>Civic Analytics - Communiqué</title>
+	<title>Analytics Dashboard - Communiqué</title>
+	<meta name="description" content="Advanced analytics dashboard with percolation analysis and cascade modeling for civic engagement campaigns." />
 </svelte:head>
 
-<div class="max-w-6xl mx-auto p-6 space-y-8">
-  <div class="text-center">
-    <h1 class="text-3xl font-bold text-slate-900 mb-2">Civic Information Analytics</h1>
-    <p class="text-slate-600">Mathematical analysis of how information flows through communities</p>
-  </div>
-
-  {#if loading}
-    <div class="text-center py-12">
-      <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-      <p class="mt-4 text-slate-600">Analyzing civic information dynamics...</p>
-    </div>
-  {/if}
-
-  {#if error}
-    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
-      <p class="text-red-800">
-        {#if error.includes('Authentication')}
-          Please <a href="/auth/login" class="underline">log in</a> to access analytics.
-        {:else}
-          Error: {error}
-        {/if}
-      </p>
-    </div>
-  {/if}
-
-  {#if percolationData}
-    <div class="bg-white rounded-lg border border-slate-200 p-6">
-      <h2 class="text-xl font-semibold text-slate-900 mb-4">🌊 Information Cascade Analysis</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <div class="bg-blue-50 rounded-lg p-4">
-          <h3 class="font-medium text-blue-900">Cascade Potential</h3>
-          <p class="text-2xl font-bold text-blue-700 capitalize">
-            {percolationData.data.cascade_analysis.cascade_potential}
-          </p>
-          <p class="text-sm text-blue-600 mt-1">
-            {percolationData.data.interpretation.cascade_status === 'subcritical' 
-              ? 'Information stays localized' 
-              : percolationData.data.interpretation.cascade_status === 'critical'
-              ? 'On the edge of viral spread'
-              : 'High viral potential'}
-          </p>
-        </div>
-
-        <div class="bg-green-50 rounded-lg p-4">
-          <h3 class="font-medium text-green-900">Threshold</h3>
-          <p class="text-2xl font-bold text-green-700">
-            {(percolationData.data.cascade_analysis.threshold_probability * 100).toFixed(1)}%
-          </p>
-          <p class="text-sm text-green-600 mt-1">
-            Activation rate needed for viral spread
-          </p>
-        </div>
-
-        <div class="bg-purple-50 rounded-lg p-4">
-          <h3 class="font-medium text-purple-900">Network Health</h3>
-          <p class="text-2xl font-bold text-purple-700 capitalize">
-            {percolationData.data.interpretation.network_resilience}
-          </p>
-          <p class="text-sm text-purple-600 mt-1">
-            {percolationData.data.interpretation.bottleneck_count} critical bottlenecks
-          </p>
-        </div>
-      </div>
-
-      <div class="bg-slate-50 rounded-lg p-4">
-        <h3 class="font-medium text-slate-900 mb-2">What This Means</h3>
-        <p class="text-slate-700">
-          {percolationData.data.interpretation.threshold_meaning}. 
-          The network is currently in a <strong>{percolationData.data.cascade_analysis.cascade_potential}</strong> state,
-          meaning information spread is 
-          {#if percolationData.data.cascade_analysis.cascade_potential === 'subcritical'}
-            limited to local communities.
-          {:else if percolationData.data.cascade_analysis.cascade_potential === 'critical'}
-            on the edge of breaking into viral cascade.
-          {:else}
-            primed for rapid viral spread across the entire network.
-          {/if}
-        </p>
-      </div>
-    </div>
-  {/if}
-
-  {#if fusionData}
-    <div class="bg-white rounded-lg border border-slate-200 p-6">
-      <h2 class="text-xl font-semibold text-slate-900 mb-4">🔗 Information Consistency Analysis</h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div class="bg-emerald-50 rounded-lg p-4">
-          <h3 class="font-medium text-emerald-900">Fusion Quality</h3>
-          <p class="text-2xl font-bold text-emerald-700">
-            {(fusionData.data.fusion_result.quality_metrics.fusion_quality * 100).toFixed(1)}%
-          </p>
-          <p class="text-sm text-emerald-600 mt-1">
-            Information sources in agreement
-          </p>
-        </div>
-
-        <div class="bg-orange-50 rounded-lg p-4">
-          <h3 class="font-medium text-orange-900">Conflicts Detected</h3>
-          <p class="text-2xl font-bold text-orange-700">
-            {fusionData.data.fusion_result.conflicts.length}
-          </p>
-          <p class="text-sm text-orange-600 mt-1">
-            Regional disagreements
-          </p>
-        </div>
-      </div>
-
-      <div class="bg-slate-50 rounded-lg p-4">
-        <h3 class="font-medium text-slate-900 mb-2">Mathematical Interpretation</h3>
-        <ul class="text-slate-700 space-y-1 text-sm">
-          <li><strong>H⁰ (Global Consensus):</strong> {fusionData.data.mathematical_interpretation.h0_meaning}</li>
-          <li><strong>H¹ (Information Conflicts):</strong> {fusionData.data.mathematical_interpretation.h1_meaning}</li>
-          <li><strong>Confidence Bound:</strong> {fusionData.data.mathematical_interpretation.confidence_bound_meaning}</li>
-        </ul>
-      </div>
-    </div>
-  {/if}
-
-  {#if !loading && !percolationData && !fusionData && !error}
-    <div class="text-center py-12">
-      <h2 class="text-xl font-semibold text-slate-900 mb-4">Ready for Analysis</h2>
-      <p class="text-slate-600 mb-6">
-        Create templates and engage with the platform to generate civic analytics insights.
-      </p>
-      <a href="/dashboard/templates" 
-         class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-        Create Your First Template
-      </a>
-    </div>
-  {/if}
-
-  <div class="bg-blue-50 rounded-lg p-6">
-    <h2 class="text-lg font-semibold text-blue-900 mb-3">About These Analytics</h2>
-    <div class="text-blue-800 space-y-2 text-sm">
-      <p><strong>Percolation Analysis:</strong> Uses network flow algorithms (Ford-Fulkerson) to predict information cascade potential across civic networks.</p>
-      <p><strong>Sheaf Data Fusion:</strong> Applies algebraic topology (Čech cohomology) to detect and resolve conflicts between information sources across geographic regions.</p>
-      <p><strong>Mathematical Guarantees:</strong> All analyses use proven algorithms with polynomial-time complexity and established theoretical foundations.</p>
-    </div>
-  </div>
+<div class="min-h-screen bg-gray-50">
+	<!-- Header -->
+	<div class="bg-white shadow-sm border-b border-gray-200">
+		<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+			<div class="py-6">
+				<div class="flex items-center justify-between">
+					<div>
+						<h1 class="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
+						<p class="mt-2 text-gray-600">
+							Advanced network analysis and campaign intelligence powered by mathematical modeling
+						</p>
+					</div>
+					<div class="flex items-center space-x-4">
+						<div class="flex bg-gray-100 rounded-lg p-1">
+							<button
+								onclick={() => { activeTab = 'network'; clearTemplateSelection(); }}
+								class={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+									activeTab === 'network' 
+									? 'bg-white text-blue-700 shadow-sm' 
+									: 'text-gray-500 hover:text-gray-700'
+								}`}
+							>
+								Network Analysis
+							</button>
+							<button
+								onclick={() => activeTab = 'template'}
+								class={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+									activeTab === 'template' 
+									? 'bg-white text-blue-700 shadow-sm' 
+									: 'text-gray-500 hover:text-gray-700'
+								}`}
+							>
+								Template Analytics
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+		{#if loading}
+			<div class="flex items-center justify-center py-12">
+				<LoadingSpinner />
+				<span class="ml-3 text-gray-600">Loading analytics dashboard...</span>
+			</div>
+		{:else}
+			<!-- Network Analysis Tab -->
+			{#if activeTab === 'network'}
+				<div class="space-y-8">
+					<!-- Network Percolation Analysis -->
+					<PercolationDashboard />
+					
+					<!-- Additional Network Insights -->
+					<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+						<div class="bg-white rounded-xl shadow-lg p-6">
+							<h3 class="text-lg font-semibold text-gray-900 mb-4">Network Intelligence</h3>
+							<div class="space-y-3">
+								<div class="flex items-center justify-between">
+									<span class="text-gray-600">Algorithm</span>
+									<span class="font-semibold text-blue-600">Ford-Fulkerson</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-gray-600">Analysis Type</span>
+									<span class="font-semibold text-blue-600">Bond Percolation</span>
+								</div>
+								<div class="flex items-center justify-between">
+									<span class="text-gray-600">Complexity</span>
+									<span class="font-semibold text-blue-600">O(E²V)</span>
+								</div>
+							</div>
+						</div>
+						
+						<div class="bg-white rounded-xl shadow-lg p-6">
+							<h3 class="text-lg font-semibold text-gray-900 mb-4">Real-Time Metrics</h3>
+							<div class="space-y-3">
+								<div class="text-sm text-gray-600">
+									Network analysis runs continuously on live user activation data
+								</div>
+								<div class="flex items-center">
+									<div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div>
+									<span class="text-sm text-green-600">Live data stream active</span>
+								</div>
+							</div>
+						</div>
+						
+						<div class="bg-white rounded-xl shadow-lg p-6">
+							<h3 class="text-lg font-semibold text-gray-900 mb-4">Methodology</h3>
+							<div class="text-sm text-gray-600 space-y-2">
+								<p>Uses epidemiological cascade modeling with geographic weighting and temporal decay functions.</p>
+								<p class="text-xs text-gray-500">Based on research in network theory and information propagation.</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			{/if}
+			
+			<!-- Template Analytics Tab -->
+			{#if activeTab === 'template'}
+				<div class="space-y-8">
+					<!-- Template Selection -->
+					{#if !selectedTemplateId}
+						<div class="bg-white rounded-xl shadow-lg p-6">
+							<h2 class="text-xl font-semibold text-gray-900 mb-4">Select Template for Analysis</h2>
+							<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+								{#each templates as template}
+									<button
+										onclick={() => selectTemplate(template.id)}
+										class="text-left p-4 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+									>
+										<h3 class="font-medium text-gray-900 mb-1">{template.title}</h3>
+										<p class="text-sm text-gray-600 line-clamp-2">{template.description || 'No description'}</p>
+										<div class="mt-2 flex items-center text-xs text-gray-500">
+											<span class="mr-3">ID: {template.id.slice(0, 8)}...</span>
+											{#if template.metrics?.sent}
+												<span>{template.metrics.sent} sent</span>
+											{/if}
+										</div>
+									</button>
+								{/each}
+								
+								{#if templates.length === 0}
+									<div class="col-span-full text-center py-8 text-gray-500">
+										<svg class="w-12 h-12 mx-auto mb-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+										</svg>
+										<p>No templates found</p>
+										<p class="text-sm mt-1">Create a template to see cascade analytics</p>
+									</div>
+								{/if}
+							</div>
+						</div>
+					{:else}
+						<!-- Selected Template Analytics -->
+						<div class="flex items-center justify-between mb-6">
+							<div>
+								<h2 class="text-2xl font-semibold text-gray-900">Template Cascade Analysis</h2>
+								<p class="text-gray-600">Analyzing template: {selectedTemplateId.slice(0, 8)}...</p>
+							</div>
+							<button
+								onclick={clearTemplateSelection}
+								class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+							>
+								← Back to Templates
+							</button>
+						</div>
+						
+						<CascadeAnalytics {selectedTemplateId} />
+					{/if}
+				</div>
+			{/if}
+		{/if}
+	</div>
 </div>

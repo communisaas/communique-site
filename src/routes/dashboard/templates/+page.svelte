@@ -1,13 +1,15 @@
 <script lang="ts">
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { FileText, Edit, Send, PlusCircle } from '@lucide/svelte';
+	import CampaignDashboard from '$lib/components/analytics/CampaignDashboard.svelte';
+	import { FileText, Edit, Send, PlusCircle, BarChart3 } from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 
 	let { data }: { data: PageData } = $props();
 
 	const templates = $derived(data.templates || []);
+	let showAnalytics = $state(false);
 </script>
 
 <svelte:head>
@@ -15,17 +17,36 @@
 	<meta name="description" content="Manage your Communiqué message templates." />
 </svelte:head>
 
-<div class="container mx-auto max-w-5xl px-4 py-8">
+<div class="container mx-auto max-w-7xl px-4 py-8">
 	<div class="mb-6 flex items-center justify-between">
 		<h1 class="text-3xl font-bold text-slate-900">My Templates</h1>
-		<a
-			href="/demo"
-			class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-		>
-			<PlusCircle class="h-5 w-5" />
-			New Template
-		</a>
+		<div class="flex items-center space-x-3">
+			<button
+				onclick={() => showAnalytics = !showAnalytics}
+				class={`inline-flex items-center gap-2 rounded-lg px-4 py-2 transition-colors ${
+					showAnalytics 
+					? 'bg-purple-600 text-white hover:bg-purple-700' 
+					: 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+				}`}
+			>
+				<BarChart3 class="h-5 w-5" />
+				{showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
+			</button>
+			<a
+				href="/templates/create"
+				class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+			>
+				<PlusCircle class="h-5 w-5" />
+				New Template
+			</a>
+		</div>
 	</div>
+	
+	{#if showAnalytics && data.user}
+		<div class="mb-8">
+			<CampaignDashboard userId={data.user.id} />
+		</div>
+	{/if}
 
 	{#if templates.length > 0}
 		<div class="space-y-4">
@@ -87,7 +108,7 @@
 				Get started by creating your first message template.
 			</p>
 			<a
-				href="/demo"
+				href="/templates/create"
 				class="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
 			>
 				<PlusCircle class="h-5 w-5" />

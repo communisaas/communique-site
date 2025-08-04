@@ -1,0 +1,414 @@
+{
+  "config": {
+    "configFile": "/Users/noot/Documents/communique/playwright-mcp.config.ts",
+    "rootDir": "/Users/noot/Documents/communique/e2e",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": "/Users/noot/Documents/communique/playwright-mcp-setup.ts",
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "html",
+        {
+          "outputFolder": "playwright-report",
+          "open": "never"
+        }
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results.json"
+        }
+      ],
+      [
+        "list",
+        null
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/noot/Documents/communique/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "mcp-chromium",
+        "name": "mcp-chromium",
+        "testDir": "/Users/noot/Documents/communique/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/noot/Documents/communique/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "mcp-mobile",
+        "name": "mcp-mobile",
+        "testDir": "/Users/noot/Documents/communique/e2e",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.53.1",
+    "workers": 5,
+    "webServer": {
+      "command": "npm run build && npm run preview",
+      "port": 4173
+    }
+  },
+  "suites": [
+    {
+      "title": "critical-auth-flow.spec.ts",
+      "file": "critical-auth-flow.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Critical Auth Flow - Revenue Path",
+          "file": "critical-auth-flow.spec.ts",
+          "line": 9,
+          "column": 6,
+          "specs": [
+            {
+              "title": "CRITICAL: Anonymous user can access core template functionality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mcp-chromium",
+                  "projectName": "mcp-chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6609,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "✅ CRITICAL: Core template section accessible\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-07-30T04:38:26.220Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f314b5902fbc8e1fdd45-9daef444002af0751280",
+              "file": "critical-auth-flow.spec.ts",
+              "line": 15,
+              "column": 2
+            },
+            {
+              "title": "CRITICAL: Template interaction triggers auth flow (HIGH LEVERAGE)",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mcp-chromium",
+                  "projectName": "mcp-chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 30692,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/noot/Documents/communique/e2e/critical-auth-flow.spec.ts",
+                            "column": 27,
+                            "line": 46
+                          },
+                          "message": "Error: locator.count: Target page, context or browser has been closed\n\n  44 | \t\t\t// Look for any auth trigger buttons that might exist\n  45 | \t\t\tconst authTriggers = page.locator('button', { hasText: /sign in|login|get started/i });\n> 46 | \t\t\tif (await authTriggers.count() > 0) {\n     | \t\t\t                       ^\n  47 | \t\t\t\tawait authTriggers.first().click();\n  48 | \t\t\t\tconsole.log('✅ CRITICAL: Auth triggered via fallback UI');\n  49 | \t\t\t} else {\n    at /Users/noot/Documents/communique/e2e/critical-auth-flow.spec.ts:46:27"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "⚠️  No templates - testing offline auth trigger fallback\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-07-30T04:38:32.972Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/noot/Documents/communique/test-results/critical-auth-flow-Critica-13e22-rs-auth-flow-HIGH-LEVERAGE--mcp-chromium/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/noot/Documents/communique/test-results/critical-auth-flow-Critica-13e22-rs-auth-flow-HIGH-LEVERAGE--mcp-chromium/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/noot/Documents/communique/test-results/critical-auth-flow-Critica-13e22-rs-auth-flow-HIGH-LEVERAGE--mcp-chromium/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "f314b5902fbc8e1fdd45-7e12f6e87c68617e4de9",
+              "file": "critical-auth-flow.spec.ts",
+              "line": 34,
+              "column": 2
+            },
+            {
+              "title": "CRITICAL: Page loads and functions without database connection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mcp-chromium",
+                  "projectName": "mcp-chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6982,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "✅ CRITICAL: Graceful error handling present\n"
+                        },
+                        {
+                          "text": "✅ CRITICAL: Retry functionality works\n"
+                        },
+                        {
+                          "text": "✅ CRITICAL: Offline resilience confirmed\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-07-30T04:39:04.014Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f314b5902fbc8e1fdd45-9ba89a2705243f22e80e",
+              "file": "critical-auth-flow.spec.ts",
+              "line": 116,
+              "column": 2
+            },
+            {
+              "title": "CRITICAL: Anonymous user can access core template functionality",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mcp-mobile",
+                  "projectName": "mcp-mobile",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 4799,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "✅ CRITICAL: Core template section accessible\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-07-30T04:38:26.220Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f314b5902fbc8e1fdd45-783cdfcf38e78912eae9",
+              "file": "critical-auth-flow.spec.ts",
+              "line": 15,
+              "column": 2
+            },
+            {
+              "title": "CRITICAL: Template interaction triggers auth flow (HIGH LEVERAGE)",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mcp-mobile",
+                  "projectName": "mcp-mobile",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 1,
+                      "status": "timedOut",
+                      "duration": 30105,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "/Users/noot/Documents/communique/e2e/critical-auth-flow.spec.ts",
+                            "column": 27,
+                            "line": 46
+                          },
+                          "message": "Error: locator.count: Target page, context or browser has been closed\n\n  44 | \t\t\t// Look for any auth trigger buttons that might exist\n  45 | \t\t\tconst authTriggers = page.locator('button', { hasText: /sign in|login|get started/i });\n> 46 | \t\t\tif (await authTriggers.count() > 0) {\n     | \t\t\t                       ^\n  47 | \t\t\t\tawait authTriggers.first().click();\n  48 | \t\t\t\tconsole.log('✅ CRITICAL: Auth triggered via fallback UI');\n  49 | \t\t\t} else {\n    at /Users/noot/Documents/communique/e2e/critical-auth-flow.spec.ts:46:27"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "⚠️  No templates - testing offline auth trigger fallback\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-07-30T04:38:31.452Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "/Users/noot/Documents/communique/test-results/critical-auth-flow-Critica-13e22-rs-auth-flow-HIGH-LEVERAGE--mcp-mobile/test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "/Users/noot/Documents/communique/test-results/critical-auth-flow-Critica-13e22-rs-auth-flow-HIGH-LEVERAGE--mcp-mobile/video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "/Users/noot/Documents/communique/test-results/critical-auth-flow-Critica-13e22-rs-auth-flow-HIGH-LEVERAGE--mcp-mobile/error-context.md"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "f314b5902fbc8e1fdd45-f85de7edfc80244aab93",
+              "file": "critical-auth-flow.spec.ts",
+              "line": 34,
+              "column": 2
+            },
+            {
+              "title": "CRITICAL: Page loads and functions without database connection",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "mcp-mobile",
+                  "projectName": "mcp-mobile",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 1,
+                      "status": "passed",
+                      "duration": 1960,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "✅ CRITICAL: Page functions without errors in offline mode\n"
+                        },
+                        {
+                          "text": "✅ CRITICAL: Offline resilience confirmed\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2025-07-30T04:39:01.973Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "f314b5902fbc8e1fdd45-3d71ae07d9e0871edcdd",
+              "file": "critical-auth-flow.spec.ts",
+              "line": 116,
+              "column": 2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-07-30T04:38:05.652Z",
+    "duration": 65545.738,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

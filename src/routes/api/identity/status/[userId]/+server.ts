@@ -1,9 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
-// This would be shared state in production (Redis/DB)
-// For demo, we'll simulate the verification results
-const verificationSessions = new Map();
+import { verificationSessions } from '$lib/server/verification-sessions';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const { userId } = params;
@@ -25,28 +22,22 @@ export const GET: RequestHandler = async ({ params }) => {
 		);
 	}
 
-	// For demo purposes, simulate verification completion after 10 seconds
-	const timeSinceCreation = Date.now() - session.createdAt.getTime();
-	
-	if (timeSinceCreation > 10000 && session.status === 'pending') {
-		// Simulate successful verification with mock passport data
-		session.status = 'verified';
-		session.credentialSubject = {
-			nationality: 'USA',
-			issuing_state: 'USA',
-			name: ['John', 'Doe'],
-			date_of_birth: '15-03-90',
-			older_than: '18',
-			passport_no_ofac: true,
-			name_and_dob_ofac: true,
-			name_and_yob_ofac: true
-		};
-	}
-
-	return json({
+	// Return current verification status
+	const response = {
 		verified: session.status === 'verified',
 		failed: session.status === 'failed',
 		pending: session.status === 'pending',
-		credentialSubject: session.credentialSubject
+		credentialSubject: session.credentialSubject || null,
+		sessionAge: Math.floor((Date.now() - session.createdAt.getTime()) / 1000)
+	};
+
+	// Log status check for debugging (without sensitive data)
+	console.log('Self.xyz status check:', {
+		userId: userId.substring(0, 8) + '...',
+		status: session.status,
+		sessionAge: response.sessionAge,
+		hasCredentials: !!session.credentialSubject
 	});
+
+	return json(response);
 };

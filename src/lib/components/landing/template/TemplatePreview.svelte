@@ -186,6 +186,7 @@
 
 <div
 	bind:this={previewContainer}
+	data-testid="template-preview"
 	class="border-slate-200 bg-white
            {inModal ? 'h-full border-0' : 'rounded-xl border'} 
            {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
@@ -294,6 +295,7 @@
 						<Button 
 							variant="primary" 
 							size="lg"
+							testId="contact-congress-button"
 							classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full"
 							onclick={() => {
 								console.log('Button clicked, user:', user);
@@ -328,6 +330,7 @@
 						<Button 
 							variant="primary" 
 							size="lg"
+							testId="send-email-button"
 							classNames="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50 w-full"
 							onclick={() => {
 								console.log('Button clicked, user:', user);

@@ -52,11 +52,11 @@
 	}
 </script>
 
-<div class="space-y-3 md:space-y-4">
+<div class="space-y-3 md:space-y-4" data-testid="template-list">
 	{#if loading}
 		<!-- Swiss/Bauhaus Loading State -->
 		{#each Array(3) as _, index}
-			<div class="template-loading-card rounded-lg border border-slate-200 p-3 md:p-4">
+			<div class="template-loading-card rounded-lg border border-slate-200 p-3 md:p-4" data-testid="template-loading-{index}">
 				<div class="flex items-start justify-between gap-3">
 					<div class="min-w-0 flex-1 space-y-3">
 						<!-- Badge area with geometric shapes -->
@@ -107,6 +107,7 @@
 				type="button"
 				data-template-button
 				data-template-id={template.id}
+				data-testid="template-button-{template.id}"
 				class="flex w-full cursor-pointer items-start justify-between gap-3 rounded-lg border p-3 text-left transition-all md:p-4"
 				class:border-blue-400={selectedId === template.id}
 				class:bg-blue-50={selectedId === template.id}

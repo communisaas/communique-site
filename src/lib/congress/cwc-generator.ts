@@ -43,6 +43,11 @@ export class CWCGenerator {
     static generateUserAdvocacyXML(message: CWCMessage): string {
         const { template, user, targetRep } = message;
         
+        // Use Senate-specific format if targeting Senate
+        if (targetRep.chamber === 'senate') {
+            return this.generateSenateXML(message);
+        }
+        
         const timestamp = new Date().toISOString();
         const messageId = this.generateMessageId(user.id, template.id, targetRep.bioguideId);
         
@@ -51,7 +56,7 @@ export class CWCGenerator {
         const lastName = lastNameParts.join(' ') || 'User';
         
         const xml = `<?xml version="1.0" encoding="UTF-8"?>
-<CWC version="2.0" xmlns="http://www.house.gov/htbin/findrep_form.pl">
+<CWC version="2.0">
     <MessageHeader>
         <MessageId>${this.escapeXML(messageId)}</MessageId>
         <Timestamp>${timestamp}</Timestamp>
@@ -86,6 +91,59 @@ export class CWCGenerator {
             <IntegrityHash>${this.generateIntegrityHash(user.id, template.id, targetRep.bioguideId)}</IntegrityHash>
         </MessageMetadata>
     </MessageData>
+</CWC>`;
+        
+        return xml;
+    }
+
+    /**
+     * Generate Senate-specific CWC XML
+     * The Senate uses a different XML schema than the House
+     */
+    static generateSenateXML(message: CWCMessage): string {
+        const { template, user, targetRep } = message;
+        
+        const messageId = this.generateMessageId(user.id, template.id, targetRep.bioguideId);
+        
+        // Extract user name parts
+        const [firstName, ...lastNameParts] = (user.name || 'Constituent').split(' ');
+        const lastName = lastNameParts.join(' ') || 'User';
+        
+        // Simplified Senate XML format based on error feedback
+        const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<CWC>
+    <DeliveryId>${this.escapeXML(messageId)}</DeliveryId>
+    <DeliveryAgent>
+        <Name>Communique Advocacy Platform</Name>
+        <Email>cwc@communique.org</Email>
+        <Phone>+1-555-CWC-MAIL</Phone>
+    </DeliveryAgent>
+    <Constituent>
+        <Prefix></Prefix>
+        <FirstName>${this.escapeXML(firstName)}</FirstName>
+        <MiddleName></MiddleName>
+        <LastName>${this.escapeXML(lastName)}</LastName>
+        <Suffix></Suffix>
+        <Title></Title>
+        <ConstituentAddress>
+            <Address1>${this.escapeXML(user.address.street)}</Address1>
+            <Address2></Address2>
+            <City>${this.escapeXML(user.address.city)}</City>
+            <StateAbbreviation>${this.escapeXML(user.address.state)}</StateAbbreviation>
+            <Zip>${this.escapeXML(user.address.zip)}</Zip>
+        </ConstituentAddress>
+        <ConstituentEmail>${this.escapeXML(user.email)}</ConstituentEmail>
+        <ConstituentPhone>${this.escapeXML(user.phone || '')}</ConstituentPhone>
+    </Constituent>
+    <Message>
+        <Subject>${this.escapeXML(template.subject || 'Congressional Communication')}</Subject>
+        <LibraryOfCongressTopics></LibraryOfCongressTopics>
+        <BillNumber></BillNumber>
+        <ProOrCon></ProOrCon>
+        <OrganizationAcronym></OrganizationAcronym>
+        <ConstituentMessage>${this.escapeXML(template.message_body)}</ConstituentMessage>
+    </Message>
+    <OfficeCode>${this.escapeXML(targetRep.officeCode)}</OfficeCode>
 </CWC>`;
         
         return xml;
@@ -160,21 +218,42 @@ export class CWCGenerator {
     static validateXML(xml: string): { valid: boolean; errors: string[] } {
         const errors: string[] = [];
         
-        // Check required elements
-        const requiredElements = [
-            '<CWC version="2.0"',
-            '<MessageId>',
-            '<DeliveryAgent>',
-            '<OfficeCode>',
-            '<ConstituentData>',
-            '<MessageData>'
-        ];
+        // Determine if this is Senate or House format
+        const isSenateFormat = xml.includes('<DeliveryId>') && xml.includes('<Constituent>');
         
-        requiredElements.forEach(element => {
-            if (!xml.includes(element)) {
-                errors.push(`Missing required element: ${element}`);
-            }
-        });
+        if (isSenateFormat) {
+            // Senate-specific validation
+            const senateRequiredElements = [
+                '<CWC>',
+                '<DeliveryId>',
+                '<DeliveryAgent>',
+                '<Constituent>',
+                '<Message>',
+                '<OfficeCode>'
+            ];
+            
+            senateRequiredElements.forEach(element => {
+                if (!xml.includes(element)) {
+                    errors.push(`Missing required Senate element: ${element}`);
+                }
+            });
+        } else {
+            // House-specific validation
+            const houseRequiredElements = [
+                '<CWC version="2.0"',
+                '<MessageId>',
+                '<DeliveryAgent>',
+                '<OfficeCode>',
+                '<ConstituentData>',
+                '<MessageData>'
+            ];
+            
+            houseRequiredElements.forEach(element => {
+                if (!xml.includes(element)) {
+                    errors.push(`Missing required House element: ${element}`);
+                }
+            });
+        }
         
         return {
             valid: errors.length === 0,
