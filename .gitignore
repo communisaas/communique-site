@@ -27,3 +27,33 @@ vite.config.ts.timestamp-*
 # Private documentation
 CombinedCWCDocumentation1.0.md
 cwc_schema_v2.rng
+
+# Debug and logs
+*.har
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.webm
+debug-*
+network-logs.*
+
+# Generated files
+/generated/
+/coverage/
+/playwright-report/
+/test-results/
+
+# Test artifacts
+test-results.json
+test-coverage-report.json
+real-coverage-report.json
+test-execution-summary.md
+*.spec.js
+*.test.js
+
+# Temporary files
+*.tmp
+*.temp
+*.log
