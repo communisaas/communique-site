@@ -1,6 +1,5 @@
 # Svelte 5 Migration Hangups in Legacy v4 Codebase
 
-**Date:** 2025-01-25  
 **Status:** Active Migration Challenges  
 **Context:** Communique platform running SvelteKit 5 with mixed Svelte 4/5 patterns
 

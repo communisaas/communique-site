@@ -15,7 +15,7 @@
 		"test:unit:run": "vitest --run --config=vitest.config.ts",
 		"test:unit:coverage": "vitest --coverage --config=vitest.config.ts",
 		"test": "npm run test:unit:run && npm run test:e2e",
-		"test:e2e": "playwright test",
+        "test:e2e": "playwright test --config=playwright.config.ts",
 		"test:e2e:mcp": "playwright test --config=playwright-mcp.config.ts",
 		"test:e2e:debug": "playwright test --config=playwright-mcp.config.ts --debug",
 		"test:e2e:headed": "playwright test --config=playwright-mcp.config.ts --headed",

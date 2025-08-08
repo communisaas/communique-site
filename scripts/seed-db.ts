@@ -3,19 +3,337 @@ import { generateActionSlug } from '../src/lib/server/reserved-slugs.js';
 
 const db: PrismaClient = new PrismaClient();
 
+// Congressional Policy Areas mapping for CWC API compatibility
+const policyAreaMap = {
+    'Environment': 'Environmental Protection',
+    'Healthcare': 'Health',
+    'Economy': 'Economics and Public Finance',
+    'Democracy': 'Government Operations and Politics',
+    'Education': 'Education',
+    'Immigration': 'Immigration',
+    'Justice': 'Crime and Law Enforcement',
+    'Housing': 'Housing and Community Development',
+    'Defense': 'Armed Forces and National Security'
+};
+
 const seedTemplates = [
     {
-        title: 'Climate Action Now',
-        description: 'Demand immediate Congressional action on climate change legislation to protect our planet for future generations.',
+        title: 'Stop Trump\'s Fossil Fuel Giveaway',
+        description: 'Block the administration\'s plan to gut climate regulations and hand billions to oil executives.',
         category: 'Environment',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Climate Action Now',
-        preview: 'Dear [Representative Name], I am writing as your constituent to urge immediate action on climate change legislation.',
-        message_body: 'Dear [Representative Name],\n\nI am writing as your constituent from [Address] to urge immediate action on climate change legislation.\n\nThe science is clear: we must act now to prevent catastrophic climate change. I urge you to support comprehensive climate legislation that includes:\n\n• Rapid transition to renewable energy\n• Investment in green infrastructure\n• Support for affected communities\n• Science-based emissions targets\n\n[Personal Connection]\n\nPlease vote for our planet\'s future.\n\nSincerely,\n[Name]\n[Address]',
+        subject: 'Reconciliation Bill Environmental Provisions',
+        preview: 'Dear [Representative Name], The current bill prioritizes fossil fuel subsidies over climate action.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding the current reconciliation bill's environmental provisions and their impact on climate action.
+
+Current policies are accelerating environmental damage:
+
+• Fast-tracked drilling permits while communities face increased flooding
+• Clean energy tax credits eliminated to fund fossil fuel subsidies
+• EPA scientific staff reductions undermining climate assessment capability
+• International climate commitments abandoned during extreme weather events
+• Offshore renewable energy projects blocked while sea levels rise
+
+Essential policy changes needed:
+
+• Remove fossil fuel subsidies from the reconciliation bill
+• Restore EPA's regulatory authority for climate protection
+• Fund climate adaptation infrastructure for vulnerable communities
+• Investigate conflicts of interest in energy policy decisions
+• Prioritize renewable energy development over fossil fuel expansion
+
+[Personal Connection]
+
+Climate change requires immediate legislative action based on scientific evidence, not industry lobbying.
+
+Sincerely,
+[Name]
+[Address]`,
         metrics: { sent: 8234, opened: 0, clicked: 0, responded: 8234, districts_covered: 417, total_districts: 435, district_coverage_percent: 96 },
         delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
         recipient_config: { emails: ['climate.committee@house.gov', 'environment.committee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Block GOP Medicaid Cuts',
+        description: 'Stop Republicans from gutting healthcare to fund tax cuts for billionaires.',
+        category: 'Healthcare',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Medicaid Funding and Healthcare Access',
+        preview: 'Dear [Representative Name], The reconciliation bill reduces healthcare access while extending tax benefits.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding proposed changes to Medicaid funding and healthcare access in the current reconciliation bill.
+
+The proposed healthcare provisions would:
+
+• Reduce Medicaid funding by $500 billion while lowering corporate tax rates
+• Impose work requirements that restrict coverage for disabled individuals
+• Eliminate ACA insurance subsidies during a period of rising healthcare costs
+• Cap prescription drug benefits affecting seniors' medication access
+• Defund community health centers serving rural and low-income areas
+
+Simultaneously, tax benefits would extend to:
+
+• Financial sector professionals through carried interest provisions
+• Real estate investment structures
+• Pharmaceutical industry executives
+• Health insurance company shareholders
+
+[Personal Connection]
+
+Healthcare policy should prioritize patient outcomes and access over industry profits.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 9456, opened: 0, clicked: 0, responded: 9456, districts_covered: 398, total_districts: 435, district_coverage_percent: 91 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['healthcare.committee@house.gov', 'health.committee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Stop the Billionaire Tax Heist',
+        description: 'Block the 2017 tax cut extensions that favor wealthy individuals over working families.',
+        category: 'Economy',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Tax Policy and Economic Equity',
+        preview: 'Dear [Representative Name], The tax reconciliation bill disproportionately benefits high earners.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding the proposed extension of 2017 tax provisions and their economic impact.
+
+The current reconciliation bill would:
+
+• Extend $1.9 trillion in tax benefits primarily to high-income earners
+• Reduce estate taxes on inherited wealth above $11 million
+• Lower corporate tax rates below individual rates for many workers
+• Preserve carried interest loopholes for investment fund managers
+• Expand depreciation benefits for private aircraft and luxury assets
+
+Simultaneously, spending reductions target:
+
+• $30 billion from SNAP nutrition assistance programs
+• Medicaid funding for disability services
+• Child tax credits that reduced family poverty
+• Head Start early childhood education programs
+• Housing assistance during rising homelessness
+
+[Personal Connection]
+
+Tax policy should strengthen economic opportunity for working families, not concentrate wealth among high earners.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 11234, opened: 0, clicked: 0, responded: 11234, districts_covered: 411, total_districts: 435, district_coverage_percent: 94 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['financial.services@house.gov', 'banking.committee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Strengthen Democratic Institutions',
+        description: 'Support measures to protect democratic processes and government accountability.',
+        category: 'Democracy',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Government Accountability and Democratic Reform',
+        preview: 'Dear [Representative Name], Democracy requires strong institutions and transparent governance.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding proposed changes to government operations and democratic oversight mechanisms.
+
+Current proposals would modify:
+
+• Civil service employment protections through Schedule F reclassification
+• Department of Justice independence in criminal investigations
+• Congressional subpoena enforcement capabilities
+• Ethics oversight for government officials
+• Election security funding and oversight
+
+Essential democratic safeguards include:
+
+• Maintaining independent inspector general offices
+• Preserving civil service merit-based employment
+• Ensuring transparent campaign finance reporting
+• Protecting voting access and election security
+• Strengthening ethics enforcement across government branches
+
+[Personal Connection]
+
+Democratic institutions require bipartisan support to maintain public trust and effective governance.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 8901, opened: 0, clicked: 0, responded: 8901, districts_covered: 389, total_districts: 435, district_coverage_percent: 89 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['oversight.committee@house.gov', 'rules.committee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Education Funding Priorities',
+        description: 'Advocate for increased education investment and teacher support.',
+        category: 'Education',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Education Budget and Resource Allocation',
+        preview: 'Dear [Representative Name], Education funding should match the importance of learning outcomes.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding federal education funding priorities and resource allocation.
+
+Current education challenges include:
+
+• Teachers spending personal funds on classroom supplies
+• Aging school infrastructure affecting learning environments
+• Outdated textbooks and educational materials
+• Insufficient counseling staff during mental health crises
+• Student lunch debt in economically disadvantaged districts
+
+Essential education investments:
+
+• Competitive teacher salaries to attract qualified educators
+• School building modernization and safety improvements
+• Universal school meal programs for all students
+• Reduced class sizes for more individualized attention
+• Mental health support staff in every school
+
+[Personal Connection]
+
+Quality education requires adequate funding to support both students and educators effectively.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 7823, opened: 0, clicked: 0, responded: 7823, districts_covered: 402, total_districts: 435, district_coverage_percent: 92 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['education.committee@house.gov', 'education.committee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Criminal Justice Reform',
+        description: 'Support evidence-based approaches to incarceration and rehabilitation.',
+        category: 'Justice',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Incarceration Policy and Rehabilitation',
+        preview: 'Dear [Representative Name], Criminal justice policy should emphasize rehabilitation over profit.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding criminal justice policy and incarceration practices.
+
+Current system challenges:
+
+• Private prison contracts with occupancy requirements
+• Below-minimum-wage prison labor practices
+• High-cost communication services for incarcerated individuals
+• Family separation due to non-violent offense sentences
+• Recidivism rates indicating insufficient rehabilitation programs
+
+Policy improvements needed:
+
+• Eliminate private prison and detention center contracts
+• Reform cash bail system that discriminates based on wealth
+• Expunge records for non-violent marijuana-related convictions
+• Restore voting rights for formerly incarcerated citizens
+• Expand rehabilitation, education, and mental health services
+
+[Personal Connection]
+
+Effective criminal justice policy should reduce recidivism through evidence-based rehabilitation approaches.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 6234, opened: 0, clicked: 0, responded: 6234, districts_covered: 378, total_districts: 435, district_coverage_percent: 87 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['judiciary.committee@house.gov', 'judiciary.committee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Housing Affordability Crisis',
+        description: 'Address housing costs and availability through comprehensive policy solutions.',
+        category: 'Housing',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Housing Policy and Market Regulation',
+        preview: 'Dear [Representative Name], Housing costs require policy intervention to ensure affordability.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding housing affordability and market dynamics affecting families nationwide.
+
+Current housing market conditions:
+
+• Median home prices at historically high income ratios
+• Investment firm purchases of residential properties
+• Rising eviction rates amid stagnant wages
+• Homelessness increasing despite economic growth
+• Veterans experiencing housing insecurity
+
+Policy solutions needed:
+
+• Rent stabilization tied to local median incomes
+• Restrictions on corporate single-family home ownership
+• Expanded public housing investment similar to international models
+• Higher taxes on vacant residential properties
+• Constitutional recognition of housing as a fundamental right
+
+[Personal Connection]
+
+Housing policy should prioritize stable communities over speculative investment returns.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 9123, opened: 0, clicked: 0, responded: 9123, districts_covered: 423, total_districts: 435, district_coverage_percent: 97 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['financial.services@house.gov', 'banking.committee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Immigration Policy Reform',
+        description: 'Support comprehensive immigration policy focused on human dignity and economic needs.',
+        category: 'Immigration',
+        type: 'advocacy',
+        deliveryMethod: 'both',
+        subject: 'Immigration Policy and Border Security',
+        preview: 'Dear [Representative Name], Immigration policy should balance security with humanitarian concerns.',
+        message_body: `Dear [Representative Name],
+
+I am writing from [Address] regarding immigration policy and border security funding in the reconciliation bill.
+
+Current immigration enforcement includes:
+
+• $100 billion allocated for expanded deportation operations
+• Increased detention facility capacity
+• National Guard deployment for immigration enforcement
+• ICE expansion affecting mixed-status families
+• Border infrastructure prioritized over other infrastructure needs
+
+Alternative policy approaches:
+
+• Address root causes of migration through development aid
+• Provide pathways to legal status for established residents
+• Reunite families separated by immigration enforcement
+• Restore asylum processing capacity and protections
+• Focus border security on actual security threats
+
+[Personal Connection]
+
+Immigration policy should reflect both national security needs and humanitarian values.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 5892, opened: 0, clicked: 0, responded: 5892, districts_covered: 356, total_districts: 435, district_coverage_percent: 82 },
+        delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+        recipient_config: { emails: ['homeland.security@house.gov', 'immigration.subcommittee@senate.gov'] },
         is_public: true
     }
 ];
@@ -48,7 +366,9 @@ async function seedDatabase() {
                     metrics: template.metrics,
                     delivery_config: template.delivery_config,
                     recipient_config: template.recipient_config,
-                    is_public: template.is_public
+                    is_public: template.is_public,
+                    // Add CWC API policy area mapping
+                    // policy_area: policyAreaMap[template.category] || template.category
                 }
             });
             
@@ -56,7 +376,7 @@ async function seedDatabase() {
             console.log(`📝 Created: "${template.title}" → ${actionSlug}`);
         }
         
-        console.log(`✅ Seeded ${templates.length} templates`);
+        console.log(`✅ Seeded ${seedTemplates.length} templates`);
         
         // Verify the data
         const count = await db.template.count();
@@ -95,4 +415,4 @@ async function seedDatabase() {
     process.exit(0);
 }
 
-seedDatabase(); 
+seedDatabase();

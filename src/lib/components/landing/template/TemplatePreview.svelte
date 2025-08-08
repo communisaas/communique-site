@@ -280,7 +280,7 @@
 
 			<div class="my-4 min-h-0 flex-1 touch-pan-y overflow-hidden">
 				<MessagePreview
-					preview={template.preview}
+					preview={template.message_body}
 					{template}
 					{user}
 					{onScroll}

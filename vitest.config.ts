@@ -6,10 +6,10 @@ export default defineConfig({
 	resolve: {
 		conditions: ['browser']
 	},
-	test: {
-		include: ['src/**/*.{test,spec}.{js,ts}'],
+    test: {
+        include: ['tests/unit/**/*.{test,spec}.{js,ts}','tests/integration/**/*.test.{js,ts}'],
 		environment: 'jsdom',
-		setupFiles: ['./src/test-setup.ts'],
+        setupFiles: ['./src/test-setup.ts'],
 		globals: true,
 		coverage: {
 			provider: 'istanbul',
@@ -27,7 +27,8 @@ export default defineConfig({
 				'**/*.test.ts'
 			],
 			include: [
-				'src/**/*.{js,ts,svelte}'
+                'src/**/*.{js,ts,svelte}',
+                'tests/**/*.{js,ts}'
 			],
 			thresholds: {
 				global: {

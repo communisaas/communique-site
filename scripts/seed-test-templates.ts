@@ -3,35 +3,38 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 async function main() {
-	// Create test templates for E2E testing
+	// Create test templates for E2E testing - Proper Congressional Format
 	const templates = [
 		{
-			id: 'climate-action-template',
-			slug: 'climate-action',
-			title: 'Climate Action Template',
-			description: 'Urge your representatives to take immediate action on climate change',
-			category: 'Environment',
+			id: 'gun-safety-legislation',
+			slug: 'support-gun-safety-reforms',
+			title: 'Gun Safety Legislation',
+			description: 'Urge Congress to pass comprehensive gun safety measures that protect communities while respecting constitutional rights.',
+			category: 'Gun Safety',
 			type: 'advocacy',
 			deliveryMethod: 'both',
-			subject: 'Urgent Action Needed on Climate Change',
-			preview: 'Dear Representative, I am writing as your constituent to urge immediate action...',
-			message_body: `Dear [REPRESENTATIVE_NAME],
+			subject: 'Support Comprehensive Gun Safety Legislation',
+			preview: 'Dear [Representative Name], I am writing to urge your support for common-sense gun safety measures.',
+			message_body: `Dear [Representative Name],
 
-I am writing as your constituent to urge immediate action on climate change.
+I am writing as your constituent to urge your support for comprehensive gun safety legislation that will help protect our communities.
 
-The science is clear: we need bold action now to address the climate crisis. I am asking you to:
+Gun violence continues to devastate families and communities across our nation. We need evidence-based solutions that respect constitutional rights while prioritizing public safety:
 
-- Support renewable energy investments
-- Vote for strong climate legislation
-- Oppose new fossil fuel projects
+• Universal background checks for all gun sales
+• Extreme risk protection orders (red flag laws)
+• Safe storage requirements to prevent accidents
+• Enhanced support for community violence intervention programs
 
-My community is already feeling the impacts of climate change, and we need leaders who will act with the urgency this crisis demands.
+[Personal Connection]
 
-Thank you for your consideration.
+These measures have broad public support and can help reduce gun violence while protecting the rights of law-abiding gun owners.
+
+Please support comprehensive gun safety legislation in Congress.
 
 Sincerely,
-[YOUR_NAME]
-[YOUR_ADDRESS]`,
+[Name]
+[Address]`,
 			delivery_config: JSON.stringify({
 				priority: 'high',
 				followUp: true
@@ -39,43 +42,46 @@ Sincerely,
 			recipient_config: JSON.stringify({
 				targetType: 'congress',
 				chambers: ['house', 'senate'],
-				committees: ['energy', 'environment']
+				committees: ['judiciary', 'public_safety']
 			}),
 			metrics: JSON.stringify({
-				sent: 1247,
-				views: 3890,
-				responses: 23
+				sent: 18456,
+				views: 47291,
+				responses: 892
 			}),
 			is_public: true,
 			status: 'published'
 		},
 		{
-			id: 'healthcare-access-template', 
-			slug: 'healthcare-access',
-			title: 'Healthcare Access Template',
-			description: 'Advocate for affordable healthcare access for all Americans',
-			category: 'Healthcare',
+			id: 'reproductive-healthcare-access', 
+			slug: 'protect-reproductive-rights',
+			title: 'Reproductive Healthcare Access',
+			description: 'Advocate for protecting access to comprehensive reproductive healthcare services.',
+			category: 'Reproductive Rights',
 			type: 'advocacy',
 			deliveryMethod: 'both',
-			subject: 'Support Universal Healthcare Access',
-			preview: 'Dear Representative, Healthcare is a human right...',
-			message_body: `Dear [REPRESENTATIVE_NAME],
+			subject: 'Protect Access to Reproductive Healthcare',
+			preview: 'Dear [Representative Name], I am writing to urge protection of reproductive healthcare access.',
+			message_body: `Dear [Representative Name],
 
-Healthcare is a human right, and I urge you to support legislation that ensures all Americans have access to affordable healthcare.
+I am writing to urge your support for protecting access to comprehensive reproductive healthcare services.
 
-The current system leaves too many families choosing between medical care and basic necessities. We need:
+Access to reproductive healthcare is essential for the health, safety, and economic security of individuals and families. Key protections should include:
 
-- Medicare for All or similar universal coverage
-- Price controls on prescription drugs
-- Protection for pre-existing conditions
+• Ensuring access to contraception and family planning services
+• Protecting the doctor-patient relationship in medical decisions
+• Supporting maternal health programs and resources
+• Maintaining healthcare privacy protections
 
-Every person deserves quality healthcare regardless of their financial situation.
+[Personal Connection]
 
-Thank you for fighting for your constituents' health and wellbeing.
+These healthcare services are fundamental to ensuring healthy families and communities.
+
+Please support legislation that protects access to reproductive healthcare.
 
 Sincerely,
-[YOUR_NAME]
-[YOUR_ADDRESS]`,
+[Name]
+[Address]`,
 			delivery_config: JSON.stringify({
 				priority: 'high',
 				followUp: true
@@ -83,55 +89,59 @@ Sincerely,
 			recipient_config: JSON.stringify({
 				targetType: 'congress',
 				chambers: ['house', 'senate'],
-				committees: ['health']
+				committees: ['health', 'judiciary']
 			}),
 			metrics: JSON.stringify({
-				sent: 892,
-				views: 2156,
-				responses: 31
+				sent: 23847,
+				views: 58291,
+				responses: 1247
 			}),
 			is_public: true,
 			status: 'published'
 		},
 		{
-			id: 'education-funding-template',
-			slug: 'education-funding', 
-			title: 'Education Funding Template',
-			description: 'Support increased funding for public education',
-			category: 'Education',
+			id: 'affordable-housing-initiative',
+			slug: 'support-affordable-housing', 
+			title: 'Affordable Housing Initiative',
+			description: 'Advocate for policies that address the housing affordability crisis and expand access to safe, affordable homes.',
+			category: 'Housing',
 			type: 'advocacy',
-			deliveryMethod: 'email',
-			subject: 'Increase Public Education Funding',
-			preview: 'Dear [RECIPIENT], Our schools need your support...',
-			message_body: `Dear [RECIPIENT_NAME],
+			deliveryMethod: 'both',
+			subject: 'Support Affordable Housing Solutions',
+			preview: 'Dear [Representative Name], I am writing to urge support for affordable housing initiatives.',
+			message_body: `Dear [Representative Name],
 
-Our public schools are the foundation of our democracy and economic future, but they are severely underfunded.
+I am writing to urge your support for policies that address the housing affordability crisis affecting communities across our district.
 
-I urge you to support increased funding for:
+Too many working families are struggling to find safe, affordable housing. We need comprehensive solutions that include:
 
-- Teacher salaries and professional development
-- School infrastructure and technology
-- Special education services
-- After-school and enrichment programs
+• Increased funding for affordable housing development
+• Down payment assistance programs for first-time homebuyers
+• Tenant protections and rent stabilization measures
+• Support for community land trusts and cooperative housing
 
-Every child deserves a quality education, regardless of their zip code.
+[Personal Connection]
 
-Please prioritize education funding in the upcoming budget.
+Safe, affordable housing is fundamental to strong communities and economic opportunity.
+
+Please support federal initiatives that expand access to affordable housing.
 
 Sincerely,
-[YOUR_NAME]`,
+[Name]
+[Address]`,
 			delivery_config: JSON.stringify({
-				priority: 'medium',
-				followUp: false
+				priority: 'high',
+				followUp: true
 			}),
 			recipient_config: JSON.stringify({
-				targetType: 'local',
-				offices: ['school_board', 'superintendent']
+				targetType: 'congress',
+				chambers: ['house', 'senate'],
+				committees: ['financial_services', 'banking']
 			}),
 			metrics: JSON.stringify({
-				sent: 634,
-				views: 1429,
-				responses: 18
+				sent: 15678,
+				views: 34291,
+				responses: 567
 			}),
 			is_public: true,
 			status: 'published'

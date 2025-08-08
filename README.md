@@ -228,10 +228,9 @@ Ensure redirect URIs in OAuth provider consoles match exactly:
 
 See **[docs/](./docs/)** for comprehensive documentation:
 
-- **[Development Guide](./docs/development/CLAUDE.md)** - Complete setup & workflow
-- **[Architecture](./docs/architecture/)** - System design & user flows  
-- **[API Reference](./docs/api-reference/)** - Endpoint specifications
-- **[Integrations](./docs/integrations/)** - External service setup
+- **[Claude guide](./CLAUDE.md)** - Single authoritative development guide
+- **[Architecture](./docs/architecture.md)** - System design & flows
+- **[Integrations](./docs/integrations.md)** - External services
 
 ## 🤝 Contributing
 

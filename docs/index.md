@@ -1,17 +1,23 @@
-# Documentation
+# Communique Docs
 
-**Communique is self-sustaining civic infrastructure - funded by blockchain protocol economics, not user fees or data extraction.**
+**What this is**: Communique lets people take civic action in seconds. Templates resolve on-device and open a mailto with personalized content; for congressional delivery we generate CWC-compliant payloads.
 
-## Getting Started
-- **Developers**: [development/CLAUDE.md](./development/CLAUDE.md) - Setup, commands, architecture
-- **Understanding the Platform**: [community-information-theory.md](./architecture/community-information-theory.md) - Core vision and framework
+## Start here
+- **Dev quickstart**: [dev-quickstart.md](./dev-quickstart.md)
+- **Architecture (at a glance)**: [architecture.md](./architecture.md)
+- **Integrations**: [integrations.md](./integrations.md)
 
-## Technical Documentation
+## Deep dives (optional)
+- Vision: [architecture/community-information-theory.md](./architecture/community-information-theory.md)
+- Mathematical foundations: [architecture/mathematical-foundations-cid.md](./architecture/mathematical-foundations-cid.md)
+- Social funnel: [architecture/SOCIAL_MEDIA_FUNNEL.md](./architecture/SOCIAL_MEDIA_FUNNEL.md)
+- Pipeline trace: [architecture/MATHEMATICAL_PIPELINE_TRACE.md](./architecture/MATHEMATICAL_PIPELINE_TRACE.md)
 
-| Area | Document | What It Covers |
-|------|----------|----------------|
-| **Core Framework** | [community-information-theory.md](./architecture/community-information-theory.md) | How communities process civic information |
-| **Mathematical Foundations** | [mathematical-foundations-cid.md](./architecture/mathematical-foundations-cid.md) | Research citations and formal models |
-| **Congressional Integration** | [CONGRESSIONAL_INTEGRATION.md](./integrations/CONGRESSIONAL_INTEGRATION.md) | Official government delivery system |
-| **User Acquisition** | [SOCIAL_MEDIA_FUNNEL.md](./architecture/SOCIAL_MEDIA_FUNNEL.md) | Social media to civic action conversion |
-| **Blockchain Strategy** | [blockchain-civic-engagement-analysis.md](./architecture/blockchain-civic-engagement-analysis.md) | NEAR protocol for transparent civic records |
+If it isn’t linked above, consider it a deep dive.
+
+## Source of truth (code)
+- Key routes: `src/routes/`
+- Core UI: `src/lib/components/`
+- API + server utils: `src/lib/server/`, `src/routes/api/`
+- Congressional: `src/lib/congress/`
+- Types/stores/utils: `src/lib/types/`, `src/lib/stores/`, `src/lib/utils/`

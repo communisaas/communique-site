@@ -30,7 +30,7 @@
 		onmouseleave?: (event: MouseEvent) => void;
 		onfocus?: (event: FocusEvent) => void;
 		onblur?: (event: FocusEvent) => void;
-		children?: unknown;
+		children?: import('svelte').Snippet;
 	} = $props();
 
 	// Event forwarding handled through on: directives

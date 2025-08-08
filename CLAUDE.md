@@ -1,47 +1,52 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Authoritative guide for Claude Code in this repo. Single source of truth.
 
-## 📚 Complete Documentation
-
-**For comprehensive development documentation, see [docs/development/CLAUDE.md](./docs/development/CLAUDE.md)**
-
-The main development guide has been moved to the organized docs directory structure. This includes:
-
-- Essential development commands and workflows
-- Architecture overview and tech stack details
-- Environment variables and testing approaches
-- Database management and deployment instructions
-
-## 📁 Documentation Structure
-
-All documentation is now organized in the `/docs/` directory:
-
-- **`/docs/development/`** - Development guides and Claude Code integration
-- **`/docs/integrations/`** - External service integrations
-- **`/docs/architecture/`** - System architecture and user flows
-- **`/docs/api-reference/`** - API specifications and schemas
-
-## 🚀 Quick Start
-
-For immediate development:
-
+## Quick start
 ```bash
-npm run dev          # Start development server
-npm run build        # Build for production
-npm run lint         # Check code quality
-npm run check        # Type checking
-npm run test         # Run tests
+npm install
+npm run dev        # http://localhost:5173
 ```
 
-## 🎯 Essential Context
+Common:
+```bash
+npm run build    # prod build
+npm run preview  # preview
+npm run check    # type + svelte-check
+npm run lint     # eslint
+npm run test     # unit + e2e
+```
 
-This is a **SvelteKit 5 + TypeScript + Tailwind CSS** civic engagement platform supporting:
+## Environment
+Required:
+```bash
+DATABASE_URL=...
+CONGRESS_API_KEY=...
+```
+Optional OAuth keys as needed.
 
-- **Congressional Delivery** via Communicating With Congress (CWC) API
-- **Direct Email Delivery** for general advocacy
-- **OAuth Authentication** (Google, Facebook, Twitter, LinkedIn, Discord)
-- **Template Creation** with action-oriented URL slugs
-- **Address-based Representative Lookup** for congressional advocacy
+## Architecture (at a glance)
+- SvelteKit 5 + TypeScript + Tailwind
+- CockroachDB via Prisma; sessions via `@oslojs/crypto`
+- Client-side template resolution → `mailto:`
+- Congressional flow: address verify → reps lookup → CWC XML
 
-For detailed information, see the complete documentation in `/docs/`.
+Code map:
+- Routes/API: `src/routes/`
+- UI: `src/lib/components/`
+- Server utils: `src/lib/server/`
+- Congress: `src/lib/congress/`
+- Types/stores/utils: `src/lib/types/`, `src/lib/stores/`, `src/lib/utils/`
+
+## Database
+```bash
+npm run db:generate
+npm run db:push
+npm run db:migrate
+npm run db:studio
+```
+
+## Where to read more
+- Dev quickstart: `docs/dev-quickstart.md`
+- Architecture: `docs/architecture.md`
+- Integrations: `docs/integrations.md`
