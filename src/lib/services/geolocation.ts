@@ -94,10 +94,10 @@ export class GeolocationService {
 
     /**
      * Convert coordinates to congressional district
+     * Delegates to server-side geo endpoint that uses Census Geocoding
      */
     async coordinatesToDistrict(lat: number, lng: number): Promise<GeolocationData['district']> {
         try {
-            // Use Google Civic Information API or similar
             const { api } = await import('$lib/utils/apiClient');
             const result = await api.get(`/api/geo/district?lat=${lat}&lng=${lng}`);
             

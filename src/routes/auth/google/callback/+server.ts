@@ -133,11 +133,11 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			}
 		}
 		
-		// Create extended session for social media funnel users
-		const isFromSocialFunnel = returnTo.includes('template-modal') || returnTo.includes('auth=required');
+    // Create extended session for template-action deep-link flows (template-modal/auth=required/action=complete)
+    const isFromSocialFunnel = returnTo.includes('template-modal') || returnTo.includes('auth=required') || returnTo.includes('action=complete');
 		const session = await createSession(user.id, isFromSocialFunnel);
 		
-		// Set session cookie with extended expiry for social funnel users
+    // Set session cookie with extended expiry for template-action deep-link flows
 		const cookieMaxAge = isFromSocialFunnel ? 60 * 60 * 24 * 90 : 60 * 60 * 24 * 30; // 90 or 30 days
 		cookies.set(sessionCookieName, session.id, {
 			path: '/',
@@ -160,16 +160,16 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		const isDirectOutreach = returnTo.includes('template-modal') && returnTo.includes('direct');
 		const hasProfile = user.phone && user.phone.startsWith('{'); // Check if phone contains profile JSON
 		
-		if (needsAddressCollection) {
+    if (needsAddressCollection) {
 			// Redirect to address collection for congressional templates
-			const addressCollectionUrl = `/onboarding/address?returnTo=${encodeURIComponent(returnTo)}`;
+      const addressCollectionUrl = `/onboarding/address?returnTo=${encodeURIComponent(returnTo)}&provider=google`;
 			redirect(302, addressCollectionUrl);
 		} else if (isDirectOutreach && !hasProfile) {
 			// Direct outreach template - redirect to profile completion
-			const profileCollectionUrl = `/onboarding/profile?returnTo=${encodeURIComponent(returnTo)}`;
+      const profileCollectionUrl = `/onboarding/profile?returnTo=${encodeURIComponent(returnTo)}&provider=google`;
 			redirect(302, profileCollectionUrl);
 		} else {
-			redirect(302, returnTo);
+      redirect(302, returnTo.includes('provider=') ? returnTo : `${returnTo}${returnTo.includes('?') ? '&' : '?'}provider=google`);
 		}
 		
 	} catch (err) {

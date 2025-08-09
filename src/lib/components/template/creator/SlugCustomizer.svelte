@@ -3,7 +3,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { page } from '$app/stores';
-	
+
 	interface Props {
 		title?: string;
 		slug?: string;
@@ -11,15 +11,15 @@
 	}
 
 	let { title = '', slug = $bindable(''), context = undefined }: Props = $props();
-	
+
 	const dispatch = createEventDispatcher();
-	
+
 	let isChecking = false;
 	let isAvailable: boolean | null = $state(null);
 	let suggestions: string[] = $state([]);
 	let customSlug = $state('');
 	let showCustomInput = $state(false);
-	
+
 	// Generate slug from title
 	function slugify(text: string): string {
 		return text
@@ -31,56 +31,56 @@
 			.replace(/^-+/, '')
 			.replace(/-+$/, '');
 	}
-	
+
 	// Generate creative variations
 	function generateSuggestions(baseSlug: string): string[] {
 		const variations = [];
-		
+
 		// Action-oriented prefixes
 		const actionPrefixes = ['act', 'support', 'defend', 'protect', 'save', 'help'];
 		const randomPrefix = actionPrefixes[Math.floor(Math.random() * actionPrefixes.length)];
 		variations.push(`${randomPrefix}-${baseSlug}`);
-		
+
 		// Year suffix for campaigns
 		const year = new Date().getFullYear();
 		variations.push(`${baseSlug}-${year}`);
-		
+
 		// Shortened version
 		const words = baseSlug.split('-');
 		if (words.length > 3) {
 			variations.push(words.slice(0, 3).join('-'));
 		}
-		
+
 		// Acronym version if multi-word
 		if (words.length > 1) {
-			const acronym = words.map(w => w[0]).join('');
+			const acronym = words.map((w) => w[0]).join('');
 			variations.push(`${acronym}-campaign`);
 		}
-		
+
 		return variations.slice(0, 3);
 	}
-	
+
 	// Check slug availability
 	async function checkAvailability(slugToCheck: string) {
 		isChecking = true;
 		isAvailable = null;
-		
+
 		try {
 			// Convert channelId to deliveryMethod for API
 			const deliveryMethod = context?.channelId === 'certified' ? 'both' : 'email';
-			
+
 			const params = new URLSearchParams({
 				slug: slugToCheck,
 				...(title && { title }),
 				deliveryMethod
 			});
-			
+
 			const { api } = await import('$lib/utils/apiClient');
 			const result = await api.get(`/api/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
 			const data = result.data;
 			isAvailable = data.available;
-			
+
 			if (!isAvailable && slugToCheck === slug) {
 				// Use server-provided suggestions that are guaranteed to be available
 				suggestions = data.suggestions || [];
@@ -93,7 +93,7 @@
 			isChecking = false;
 		}
 	}
-	
+
 	// Update slug when title changes
 	$effect(() => {
 		if (title) {
@@ -104,7 +104,7 @@
 			}
 		}
 	});
-	
+
 	// Handle custom slug input
 	function handleCustomSlug() {
 		if (customSlug) {
@@ -114,26 +114,26 @@
 			customSlug = '';
 		}
 	}
-	
+
 	// Regenerate suggestions by fetching from server
 	async function regenerateSuggestions() {
 		if (!title) return;
-		
+
 		try {
 			// Convert channelId to deliveryMethod for API
 			const deliveryMethod = context?.channelId === 'certified' ? 'both' : 'email';
-			
+
 			const params = new URLSearchParams({
 				slug: slug,
 				title: title,
 				deliveryMethod
 			});
-			
+
 			const { api } = await import('$lib/utils/apiClient');
 			const result = await api.get(`/api/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
 			const data = result.data;
-			
+
 			if (!data.available) {
 				suggestions = data.suggestions || [];
 			}
@@ -142,14 +142,14 @@
 			suggestions = generateSuggestions(slug);
 		}
 	}
-	
+
 	// Select a suggestion
 	function selectSuggestion(suggestion: string) {
 		slug = suggestion;
 		checkAvailability(slug);
 		// Don't clear suggestions here - let checkAvailability handle it
 	}
-	
+
 	// Full URL for preview using dynamic hostname
 	const fullUrl = $derived(`${$page.url.origin}/${slug}`);
 	const isValidSlug = $derived(slug.length > 0 && /^[a-z0-9-]+$/.test(slug));
@@ -174,7 +174,7 @@
 			</span>
 		{/if}
 	</div>
-	
+
 	<!-- URL Preview -->
 	<div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
 		<div class="flex items-center gap-2 font-mono text-sm">
@@ -182,14 +182,14 @@
 			<span class="font-semibold text-slate-900">{slug || 'your-campaign'}</span>
 		</div>
 	</div>
-	
+
 	<!-- Validation Messages -->
 	{#if slug && !isValidSlug}
 		<p class="text-xs text-red-600">
 			Links can only contain lowercase letters, numbers, and hyphens
 		</p>
 	{/if}
-	
+
 	<!-- Suggestions when slug is taken -->
 	{#if isAvailable === false && suggestions.length > 0}
 		<div class="space-y-2" in:fly={{ y: 10, duration: 200 }}>
@@ -199,7 +199,7 @@
 					<button
 						type="button"
 						onclick={() => selectSuggestion(suggestion)}
-						class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors"
+						class="inline-flex items-center gap-1 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
 					>
 						<Sparkles class="h-3 w-3" />
 						{suggestion}
@@ -208,7 +208,7 @@
 				<button
 					type="button"
 					onclick={regenerateSuggestions}
-					class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200 transition-colors"
+					class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
 				>
 					<RefreshCw class="h-3 w-3" />
 					More
@@ -216,7 +216,7 @@
 			</div>
 		</div>
 	{/if}
-	
+
 	<!-- Custom slug input -->
 	{#if showCustomInput}
 		<div class="flex gap-2" in:fly={{ y: -10, duration: 200 }}>
@@ -236,7 +236,7 @@
 			</button>
 			<button
 				type="button"
-				onclick={() => showCustomInput = false}
+				onclick={() => (showCustomInput = false)}
 				class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
 			>
 				Cancel
@@ -245,16 +245,15 @@
 	{:else}
 		<button
 			type="button"
-			onclick={() => showCustomInput = true}
+			onclick={() => (showCustomInput = true)}
 			class="text-xs text-blue-600 hover:text-blue-700"
 		>
 			Customize link
 		</button>
 	{/if}
-	
+
 	<!-- Info box -->
 	<div class="rounded-md bg-blue-50 p-3 text-xs text-blue-700">
-		<p class="font-medium mb-1">🔗 Direct Access Link</p>
-		<p>Anyone with this link can instantly use your template. Share it on social media, in emails, or embed it on websites to maximize your campaign's reach.</p>
+		<p>Anyone with this link can instantly use your template. Share it.</p>
 	</div>
 </div>

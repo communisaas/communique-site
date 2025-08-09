@@ -10,8 +10,8 @@
 ## Deep dives (optional)
 - Vision: [architecture/community-information-theory.md](./architecture/community-information-theory.md)
 - Mathematical foundations: [architecture/mathematical-foundations-cid.md](./architecture/mathematical-foundations-cid.md)
-- Social funnel: [architecture/SOCIAL_MEDIA_FUNNEL.md](./architecture/SOCIAL_MEDIA_FUNNEL.md)
-- Pipeline trace: [architecture/MATHEMATICAL_PIPELINE_TRACE.md](./architecture/MATHEMATICAL_PIPELINE_TRACE.md)
+- Low‑friction action funnel: [architecture/low-friction-civic-action.md](./architecture/low-friction-civic-action.md)
+- UI patterns: [development/ui-structure-guidelines.md](./development/ui-structure-guidelines.md)
 
 If it isn’t linked above, consider it a deep dive.
 
@@ -21,3 +21,4 @@ If it isn’t linked above, consider it a deep dive.
 - API + server utils: `src/lib/server/`, `src/routes/api/`
 - Congressional: `src/lib/congress/`
 - Types/stores/utils: `src/lib/types/`, `src/lib/stores/`, `src/lib/utils/`
+- Database: Prisma client in `src/lib/server/db.ts` (Supabase Postgres)

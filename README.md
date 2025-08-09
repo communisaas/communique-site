@@ -16,7 +16,7 @@ Turn-key email delivery to Congress via Communicating With Congress (CWC) API, p
 ## 🛠 Tech Stack
 
 - **Framework**: SvelteKit 5 + TypeScript + Tailwind CSS
-- **Database**: CockroachDB + Prisma ORM
+- **Database**: Supabase (Postgres) + Prisma ORM
 - **Authentication**: OAuth (Google, Facebook, Twitter, LinkedIn, Discord)
 - **Congressional Delivery**: Communicating With Congress (CWC) API
 - **Address Validation**: Census Bureau Geocoding API
@@ -36,8 +36,8 @@ npm install
 Create `.env` with required variables:
 
 ```bash
-# Database
-DATABASE_URL="postgresql://user:pass@host:port/db"
+# Database (Supabase Postgres)
+SUPABASE_DATABASE_URL="postgresql://user:pass@host:port/db"
 
 # OAuth Providers
 GOOGLE_CLIENT_ID="your-google-client-id"
@@ -57,18 +57,13 @@ OAUTH_REDIRECT_BASE_URL="http://localhost:5173"
 # APIs
 CWC_API_KEY="your-cwc-api-key"
 CWC_API_BASE_URL="https://cwc.api.url"
-SMARTY_AUTH_ID="your-smarty-auth-id"
-SMARTY_AUTH_TOKEN="your-smarty-auth-token"
 
 # Analytics (Optional)
 PUBLIC_POSTHOG_KEY="your-posthog-key"
 PUBLIC_POSTHOG_HOST="https://app.posthog.com"
 
-# Email (Optional)
-SMTP_HOST="smtp.example.com"
-SMTP_PORT="587"
-SMTP_USER="your-email@example.com"
-SMTP_PASS="your-password"
+# (Optional) Analytics
+# PUBLIC_POSTHOG_KEY / PUBLIC_POSTHOG_HOST
 ```
 
 ### 3. Database Setup
@@ -150,7 +145,7 @@ fly deploy
 - **Personalization** - Custom user details injection
 
 ### 🎯 Direct Email Campaigns
-- **SMTP delivery** - Direct email sending
+- **mailto-based delivery** - Opens the user’s email client with pre-filled content
 - **Template engine** - Customizable message templates
 - **Campaign tracking** - Delivery analytics
 
@@ -158,7 +153,7 @@ fly deploy
 - **OAuth providers** - Google, Facebook, Twitter, LinkedIn, Discord
 - **Address collection** - For congressional campaigns
 - **Profile completion** - For direct outreach
-- **Extended sessions** - 90-day cookies for social media funnel users
+- **Extended sessions** - 90-day cookies for template-action deep-link flows (e.g., `template-modal`, `auth=required`, `action=complete`)
 
 ### 📱 User Experience
 - **Responsive design** - Mobile-first interface
@@ -196,10 +191,9 @@ static/               # Static assets
 - Handles delivery to congressional offices
 - Provides delivery confirmation
 
-### Smarty Streets
-- Validates US addresses
-- Determines congressional districts
-- Enables representative lookup
+### Address Validation
+- Census Bureau Geocoding API (primary)
+- ZIP→District fallback (OpenSourceActivismTech, 119th)
 
 ### PostHog
 - User behavior analytics
@@ -215,7 +209,7 @@ Ensure redirect URIs in OAuth provider consoles match exactly:
 - `https://communi.email/auth/{provider}/callback` (prod)
 
 ### Database Connection Issues
-- Check CockroachDB connection string format
+- Check Supabase Postgres connection string format
 - Ensure database exists and is accessible
 - Run `npm run db:generate` after schema changes
 

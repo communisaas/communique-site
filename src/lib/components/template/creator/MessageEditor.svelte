@@ -8,7 +8,10 @@
 
 	const placeholderText = `Start writing your template message...\n\n💡 Tip: Click the buttons above to add personalization.\n✨ Variables work even when left empty.`;
 
-	let { data, context }: {
+	let {
+		data = $bindable(),
+		context
+	}: {
 		data: {
 			preview: string;
 			variables: string[];
@@ -29,7 +32,9 @@
 	const availableVariables = $derived(isCongressional ? congressionalVariables : senderVariables);
 	const unusedVariables = $derived(availableVariables.filter((v) => !data.variables.includes(v)));
 	const hasPersonalTouch = $derived(data.variables.includes('[Personal Connection]'));
-	const hasAuthenticity = $derived(data.variables.includes('[Name]') || data.variables.includes('[Address]'));
+	const hasAuthenticity = $derived(
+		data.variables.includes('[Name]') || data.variables.includes('[Address]')
+	);
 
 	let autoAddSignature = $state(true);
 	let screenReaderAnnouncement = $state('');
@@ -38,41 +43,67 @@
 	let predictedReach = $state(0);
 	let isAnalyzing = $state(false);
 	let aiSuggestions = $state<any[]>([]);
-	
+
 	// Component ID for timer coordination
 	const componentId = 'message-editor-' + Math.random().toString(36).substring(2, 15);
-	
+
 	// Cleanup timers on destroy
 	onDestroy(() => {
 		useTimerCleanup(componentId)();
 	});
 
 	function ensureRequiredVariables(currentPreview: string, previousPreview: string) {
-		// Only auto-add variables if user is starting to type in an empty editor and has auto-signature enabled
-		if (autoAddSignature && previousPreview.trim() === '' && currentPreview.trim() !== '') {
+		// On first keystroke in an empty editor, enforce core block-level variables
+		if (previousPreview.trim() === '' && currentPreview.trim() !== '') {
 			const textarea = document.querySelector('textarea');
-			const cursorPosition = textarea ? textarea.selectionStart : currentPreview.length;
+			const originalCursor = textarea ? textarea.selectionStart : currentPreview.length;
 
-			const closing = '\n\nSincerely,\n[Name]\n[Address]';
-			data.preview = currentPreview + closing;
+			// Prefix: Personal Connection block
+			let addedPrefix = '';
+			if (!currentPreview.includes('[Personal Connection]')) {
+				addedPrefix = '[Personal Connection]\n\n';
+			}
 
-			// Announce the change to screen readers
-			screenReaderAnnouncement = 'Signature automatically added to message';
-
-			// Restore cursor position after the signature is added
-			coordinated.setTimeout(() => {
-				if (textarea) {
-					textarea.focus();
-					textarea.setSelectionRange(cursorPosition, cursorPosition);
+			// Suffix: signature with Name/Address when enabled
+			let addedSuffix = '';
+			if (autoAddSignature) {
+				const needsName = !currentPreview.includes('[Name]');
+				const needsAddress = !currentPreview.includes('[Address]');
+				if (needsName || needsAddress) {
+					addedSuffix =
+						'\n\nSincerely,\n' + (needsName ? '[Name]\n' : '') + (needsAddress ? '[Address]' : '');
 				}
-				// Clear announcement after a brief delay
-				coordinated.setTimeout(() => {
-					screenReaderAnnouncement = '';
-				}, 1000, 'feedback', componentId);
-			}, 0, 'dom', componentId);
+			}
+
+			if (addedPrefix || addedSuffix) {
+				data.preview = `${addedPrefix}${currentPreview}${addedSuffix}`;
+
+				// Announce changes and restore cursor accounting for prefix length
+				screenReaderAnnouncement = 'Personalization blocks inserted automatically';
+				coordinated.setTimeout(
+					() => {
+						if (textarea) {
+							textarea.focus();
+							const newPos = originalCursor + addedPrefix.length;
+							textarea.setSelectionRange(newPos, newPos);
+						}
+						coordinated.setTimeout(
+							() => {
+								screenReaderAnnouncement = '';
+							},
+							1000,
+							'feedback',
+							componentId
+						);
+					},
+					0,
+					'dom',
+					componentId
+				);
+			}
 		}
 
-		// Always ensure the variables array is up-to-date
+		// Keep variables array in sync with text
 		const allVariables = data.preview.match(/\[.*?\]/g) || [];
 		data.variables = [...new Set(allVariables)];
 	}
@@ -119,17 +150,27 @@
 		screenReaderAnnouncement = `Variable ${variable} inserted`;
 
 		// Reset cursor position after variable
-		coordinated.setTimeout(() => {
-			if (textarea) {
-				textarea.focus();
-				const newPosition = start + textToInsert.length;
-				textarea.setSelectionRange(newPosition, newPosition);
-				// Clear announcement
-				coordinated.setTimeout(() => {
-					screenReaderAnnouncement = '';
-				}, 1000, 'feedback', componentId);
-			}
-		}, 0, 'dom', componentId);
+		coordinated.setTimeout(
+			() => {
+				if (textarea) {
+					textarea.focus();
+					const newPosition = start + textToInsert.length;
+					textarea.setSelectionRange(newPosition, newPosition);
+					// Clear announcement
+					coordinated.setTimeout(
+						() => {
+							screenReaderAnnouncement = '';
+						},
+						1000,
+						'feedback',
+						componentId
+					);
+				}
+			},
+			0,
+			'dom',
+			componentId
+		);
 	}
 
 	let previousPreview = data.preview;
@@ -142,20 +183,29 @@
 		}
 	});
 
-	const wordCount = $derived(data.preview.trim().split(/\s+/).length);
+	// Words should exclude variable tokens like [Name]
+	const wordCount = $derived.by(() => {
+		const withoutVars = data.preview.replace(/\[.*?\]/g, ' ').trim();
+		if (!withoutVars) return 0;
+		return withoutVars.split(/\s+/).length;
+	});
 	const variableCount = $derived((data.preview.match(/\[.*?\]/g) || []).length);
-	
+
 	// Auto-analyze message for performance prediction
 	const analyzeMessage = debounce(async () => {
 		if (data.preview.length < 50) return;
-		
+
 		isAnalyzing = true;
 		try {
 			const detectedVars = data.preview.match(/\[.*?\]/g) || [];
-			const performance = predictPerformance(data.preview, detectedVars, context.channelId || 'general');
+			const performance = predictPerformance(
+				data.preview,
+				detectedVars,
+				context.channelId || 'general'
+			);
 			performanceScore = performance.engagementScore;
 			predictedReach = performance.predictedReach;
-			
+
 			// Generate contextual AI suggestions
 			aiSuggestions = [];
 			if (!data.variables.includes('[Personal Connection]')) {
@@ -174,7 +224,7 @@
 			isAnalyzing = false;
 		}
 	}, 500);
-	
+
 	$effect(() => {
 		if (data.preview) analyzeMessage();
 	});
@@ -237,10 +287,7 @@
 			{#if data.preview.trim() && unusedVariables.length > 0}
 				<div class="mt-2 rounded-md border border-blue-100 bg-blue-50 p-2">
 					<div class="text-xs text-blue-700">
-						{#if !hasPersonalTouch && unusedVariables.includes('[Personal Connection]')}
-							<span class="font-medium">💡 Consider adding your personal connection:</span>
-							Share why this issue matters to you - your story, reasoning, or perspective.
-						{:else if !hasAuthenticity && unusedVariables.some( (v) => ['[Name]', '[Address]'].includes(v) )}
+						{#if !hasAuthenticity && unusedVariables.some( (v) => ['[Name]', '[Address]'].includes(v) )}
 							<span class="font-medium">🔒 Add authenticity:</span>
 							Name and address help establish credibility with recipients.
 						{:else if isCongressional && !data.variables.includes('[Representative Name]')}
@@ -286,14 +333,14 @@
 	<!-- AI Suggestions -->
 	{#if aiSuggestions.length > 0}
 		<div class="rounded-lg border border-blue-200 bg-blue-50 p-3">
-			<div class="flex items-center gap-2 mb-2">
-				<Sparkles class="w-4 h-4 text-blue-600" />
+			<div class="mb-2 flex items-center gap-2">
+				<Sparkles class="h-4 w-4 text-blue-600" />
 				<h4 class="text-sm font-medium text-blue-900">AI Suggestions</h4>
 			</div>
 			<div class="space-y-2">
 				{#each aiSuggestions as suggestion}
 					<button
-						class="w-full text-left p-2 rounded hover:bg-blue-100 transition-colors text-sm text-blue-800"
+						class="w-full rounded p-2 text-left text-sm text-blue-800 transition-colors hover:bg-blue-100"
 						onclick={suggestion.action}
 					>
 						💡 {suggestion.text}
@@ -306,11 +353,11 @@
 	<!-- Performance Prediction -->
 	{#if performanceScore > 0}
 		<div class="rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50 p-3">
-			<div class="flex items-center gap-2 mb-2">
-				<TrendingUp class="w-4 h-4 text-purple-600" />
+			<div class="mb-2 flex items-center gap-2">
+				<TrendingUp class="h-4 w-4 text-purple-600" />
 				<h4 class="text-sm font-medium text-purple-900">Performance Prediction</h4>
 			</div>
-			<div class="grid grid-cols-2 gap-4 mb-2">
+			<div class="mb-2 grid grid-cols-2 gap-4">
 				<div>
 					<div class="text-lg font-bold text-purple-600">{performanceScore}%</div>
 					<div class="text-xs text-gray-600">Engagement Score</div>
@@ -320,8 +367,8 @@
 					<div class="text-xs text-gray-600">Predicted Reach</div>
 				</div>
 			</div>
-			<div class="h-2 bg-gray-200 rounded-full overflow-hidden">
-				<div 
+			<div class="h-2 overflow-hidden rounded-full bg-gray-200">
+				<div
 					class="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500"
 					style="width: {performanceScore}%"
 				/>

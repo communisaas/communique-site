@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 
-// Real address verification using Google Civic Information API
+// Real address verification using Census Bureau Geocoding API (primary)
 export async function POST({ request }) {
 	try {
 		const { street, city, state, zipCode } = await request.json();

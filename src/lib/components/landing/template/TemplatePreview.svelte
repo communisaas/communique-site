@@ -15,7 +15,7 @@
 	const dispatch = createEventDispatcher();
 	const componentId = 'TemplatePreview_' + Math.random().toString(36).substr(2, 9);
 
-	let { 
+	let {
 		template,
 		inModal = false,
 		user = null,
@@ -142,40 +142,42 @@
 
 			// Clear any existing timeout
 			if (copyTimeout) {
-				coordinated.clearTimer(copyTimeout);
+				// clear existing feedback timer
+				coordinated.autoClose(() => {}, 0, componentId);
 			}
 
 			// Reset after 2 seconds
-			copyTimeout = coordinated.feedback(() => {
-				copied = false;
-			}, 2000, componentId);
-		} catch (err) {
-		}
+			copyTimeout = coordinated.feedback(
+				() => {
+					copied = false;
+				},
+				2000,
+				componentId
+			);
+		} catch (err) {}
 	}
 
 	onDestroy(() => {
 		useTimerCleanup(componentId)();
 	});
 
-	function handleScrollStateChange(event: CustomEvent) {
-		const scrollState = event.detail;
+	function handleScrollStateChange(scrollState: unknown) {
 		dispatch('scrollStateChange', scrollState);
 	}
 
-	function handleTouchStateChange(event: CustomEvent) {
-		const touchState = event.detail;
+	function handleTouchStateChange(touchState: unknown) {
 		dispatch('touchStateChange', touchState);
 	}
-	
+
 	function handleMobileClick(event: MouseEvent) {
 		// Don't intercept button clicks
 		const target = event.target as HTMLElement;
 		if (target.tagName === 'BUTTON' || target.closest('button')) {
 			return;
 		}
-		
+
 		const isMobileDevice = isMobile();
-		
+
 		if (!inModal && onOpenModal && isMobileDevice) {
 			event.preventDefault();
 			event.stopPropagation();
@@ -188,15 +190,15 @@
 	bind:this={previewContainer}
 	data-testid="template-preview"
 	class="border-slate-200 bg-white
-           {inModal ? 'h-full border-0' : 'rounded-xl border'} 
-           {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
-           {inModal ? '' : 'sm:sticky sm:top-8'}
-           {inModal ? '' : 'h-[calc(100vh-4rem)]'}
-           {!inModal && onOpenModal ? 'cursor-pointer md:cursor-default' : ''}
-           flex flex-col overflow-hidden"
+               {inModal ? 'h-full border-0' : 'rounded-xl border'} 
+               {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
+               {inModal ? '' : 'sm:sticky sm:top-8'}
+               {inModal ? '' : 'h-[calc(100vh-4rem)]'}
+               {!inModal && onOpenModal ? 'cursor-pointer md:cursor-default' : ''}
+               flex flex-col overflow-hidden"
 	onclick={handleMobileClick}
 	role={!inModal && onOpenModal ? 'button' : 'region'}
-	tabindex={!inModal && onOpenModal ? 0 : -1}
+	{...!inModal && onOpenModal ? { tabindex: 0 } : {}}
 	aria-label={!inModal && onOpenModal ? 'Open template in modal' : 'Template preview'}
 >
 	{#if template}
@@ -222,9 +224,9 @@
 
 						<!-- Always show popover on small screens -->
 						<Popover let:open>
-							<svelte:fragment slot="trigger" let:trigger>
+							<svelte:fragment slot="trigger" let:triggerAction>
 								<button
-									use:trigger
+									use:triggerAction
 									class="inline-flex cursor-alias items-center rounded-md bg-slate-100
                                            px-1.5 py-0.5 font-medium
                                            text-slate-600 transition-all
@@ -245,7 +247,10 @@
 							<div class="w-[280px] max-w-[calc(100vw-2rem)] cursor-default p-4">
 								<div class="flex items-start gap-4 text-sm sm:text-base">
 									<button
-										onclick={(e) => { e.stopPropagation(); copyToClipboard(); }}
+										onclick={(e) => {
+											e.stopPropagation();
+											copyToClipboard();
+										}}
 										class="shrink-0 cursor-pointer rounded-lg bg-blue-50 p-2 transition-all
                                                duration-200 hover:bg-blue-100 focus:outline-none focus:ring-2
                                                focus:ring-blue-200 focus:ring-offset-2 active:bg-blue-200"
@@ -292,72 +297,84 @@
 			{#if onSendMessage}
 				<div class="mt-4 flex justify-center">
 					{#if template.deliveryMethod === 'both'}
-						<Button 
-							variant="primary" 
-							size="lg"
+						<Button
+							variant="primary"
 							testId="contact-congress-button"
 							classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full"
 							onclick={() => {
-								console.log('Button clicked, user:', user);
 								// Only show email modal if user is authenticated
 								if (user) {
 									showEmailModal = true;
-									coordinated.transition(() => {
-										onSendMessage?.();
-										coordinated.autoClose(() => {
-											showEmailModal = false;
-									}, 1500, componentId);
-								}, 100, componentId);
+									coordinated.transition(
+										() => {
+											onSendMessage?.();
+											coordinated.autoClose(
+												() => {
+													showEmailModal = false;
+												},
+												1500,
+												componentId
+											);
+										},
+										100,
+										componentId
+									);
 								} else {
 									// Let parent handle auth flow
-									console.log('About to call onSendMessage, exists?', !!onSendMessage);
 									if (onSendMessage) {
-										console.log('Calling onSendMessage');
 										onSendMessage();
-										console.log('onSendMessage returned');
-									} else {
-										console.log('onSendMessage is null/undefined!');
 									}
 								}
 							}}
 						>
 							<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 2.676-.732 5.162-2.217 7.162-4.416.43-.462.753-.96.938-1.49z"/>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 2.676-.732 5.162-2.217 7.162-4.416.43-.462.753-.96.938-1.49z"
+								/>
 							</svg>
 							{user ? 'Contact Your Representatives' : 'Sign in to Contact Congress'}
 						</Button>
 					{:else}
-						<Button 
-							variant="primary" 
-							size="lg"
+						<Button
+							variant="primary"
 							testId="send-email-button"
 							classNames="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50 w-full"
 							onclick={() => {
-								console.log('Button clicked, user:', user);
 								// Only show email modal if user is authenticated
 								if (user) {
 									showEmailModal = true;
-									coordinated.transition(() => {
-										onSendMessage?.();
-										coordinated.autoClose(() => {
-											showEmailModal = false;
-									}, 1500, componentId);
-								}, 100, componentId);
+									coordinated.transition(
+										() => {
+											onSendMessage?.();
+											coordinated.autoClose(
+												() => {
+													showEmailModal = false;
+												},
+												1500,
+												componentId
+											);
+										},
+										100,
+										componentId
+									);
 								} else {
 									// Let parent handle auth flow
-									console.log('About to call onSendMessage, exists?', !!onSendMessage);
 									if (onSendMessage) {
-										console.log('Calling onSendMessage');
 										onSendMessage();
-										console.log('onSendMessage returned');
-									} else {
-										console.log('onSendMessage is null/undefined!');
 									}
 								}
 							}}
 						>
 							<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"/>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+								/>
 							</svg>
 							{user ? 'Send This Message' : 'Sign in to Send'}
 						</Button>
@@ -373,29 +390,43 @@
 <!-- Email Loading Modal -->
 {#if showEmailModal}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-		<div class="bg-white rounded-2xl p-8 mx-4 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+		<div
+			class="animate-in zoom-in-95 mx-4 w-full max-w-sm rounded-2xl bg-white p-8 shadow-2xl duration-200"
+		>
 			<div class="text-center">
 				<!-- Animated mail icon -->
-				<div class="mb-4 relative">
-					<svg class="h-16 w-16 mx-auto text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+				<div class="relative mb-4">
+					<svg
+						class="mx-auto h-16 w-16 animate-pulse text-blue-600"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+						/>
 					</svg>
 					<!-- Flying papers animation -->
-					<div class="absolute -top-1 -right-1 w-3 h-3 bg-blue-400 rounded-full animate-ping"></div>
+					<div class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-blue-400"></div>
 				</div>
-				
-				<h3 class="text-lg font-semibold text-slate-900 mb-2">
-					Opening Mail App
-				</h3>
-				<p class="text-sm text-slate-600">
-					Your message is ready to send
-				</p>
-				
+
+				<h3 class="mb-2 text-lg font-semibold text-slate-900">Opening Mail App</h3>
+				<p class="text-sm text-slate-600">Your message is ready to send</p>
+
 				<!-- Progress dots -->
-				<div class="flex justify-center mt-4 space-x-1">
-					<div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce"></div>
-					<div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-					<div class="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+				<div class="mt-4 flex justify-center space-x-1">
+					<div class="h-2 w-2 animate-bounce rounded-full bg-blue-600"></div>
+					<div
+						class="h-2 w-2 animate-bounce rounded-full bg-blue-600"
+						style="animation-delay: 0.1s"
+					></div>
+					<div
+						class="h-2 w-2 animate-bounce rounded-full bg-blue-600"
+						style="animation-delay: 0.2s"
+					></div>
 				</div>
 			</div>
 		</div>

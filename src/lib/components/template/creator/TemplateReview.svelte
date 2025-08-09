@@ -3,12 +3,14 @@
 	import type { TemplateFormData, TemplateCreationContext } from '$lib/types/template';
 	import { page } from '$app/stores';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	
+
 	let { data, context }: { data: TemplateFormData; context: TemplateCreationContext } = $props();
-	
+
 	// Generate preview URL using dynamic hostname
-	const previewUrl = $derived(data.objective.slug ? `${$page.url.origin}/${data.objective.slug}` : null);
-	
+	const previewUrl = $derived(
+		data.objective.slug ? `${$page.url.origin}/${data.objective.slug}` : null
+	);
+
 	// Format recipient display
 	const recipientDisplay = $derived.by(() => {
 		if (context.channelId === 'certified') {
@@ -17,7 +19,6 @@
 		const count = data.audience.recipientEmails.length;
 		return count === 1 ? '1 recipient' : `${count} recipients`;
 	});
-
 </script>
 
 <div class="space-y-6">
@@ -27,13 +28,11 @@
 			<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
 			<div>
 				<h4 class="font-medium text-green-900">Template Ready</h4>
-				<p class="mt-1 text-sm text-green-700">
-					Review your template details below before saving.
-				</p>
+				<p class="mt-1 text-sm text-green-700">Review your template details below before saving.</p>
 			</div>
 		</div>
 	</div>
-	
+
 	<!-- Template Summary -->
 	<div class="space-y-4">
 		<!-- Objective Section -->
@@ -47,13 +46,9 @@
 					<dt class="text-slate-500">Title</dt>
 					<dd class="font-medium text-slate-900">{data.objective.title}</dd>
 				</div>
-				<div>
-					<dt class="text-slate-500">Goal</dt>
-					<dd class="text-slate-700">{data.objective.goal}</dd>
-				</div>
 			</dl>
 		</div>
-		
+
 		<!-- Deep Link Section -->
 		{#if previewUrl}
 			<div class="rounded-lg border border-slate-200 bg-white p-4">
@@ -70,9 +65,9 @@
 						<span>✓ Tracks campaign views</span>
 						<span>✓ Mobile-friendly</span>
 					</div>
-					<a 
-						href={previewUrl} 
-						target="_blank" 
+					<a
+						href={previewUrl}
+						target="_blank"
 						rel="noopener noreferrer"
 						class="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700"
 					>
@@ -82,7 +77,7 @@
 				</div>
 			</div>
 		{/if}
-		
+
 		<!-- Audience Section -->
 		<div class="rounded-lg border border-slate-200 bg-white p-4">
 			<div class="mb-3 flex items-center gap-2">
@@ -99,7 +94,7 @@
 				</div>
 			{/if}
 		</div>
-		
+
 		<!-- Message Preview Section -->
 		<div class="rounded-lg border border-slate-200 bg-white p-4">
 			<div class="mb-3 flex items-center gap-2">
@@ -122,7 +117,7 @@
 			{/if}
 		</div>
 	</div>
-	
+
 	<!-- Next Steps -->
 	<div class="rounded-md bg-blue-50 p-4">
 		<h4 class="mb-2 text-sm font-medium text-blue-900">What happens next?</h4>

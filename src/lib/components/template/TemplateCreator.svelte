@@ -18,12 +18,11 @@
 	let currentStep: 'objective' | 'audience' | 'content' | 'review' = $state('objective');
 	let formErrors: string[] = $state([]);
 
-	let formData: TemplateFormData = {
+	let formData: TemplateFormData = $state({
 		objective: {
 			title: '',
 			description: '',
 			category: '',
-			goal: '',
 			slug: ''
 		},
 		audience: {
@@ -34,14 +33,13 @@
 			variables: []
 		},
 		review: {}
-	};
+	});
 
 	// Validation functions for each step
 	const validators = {
 		objective: (data: TemplateFormData['objective']) => {
-			const errors = [];
+			const errors: string[] = [];
 			if (!data.title.trim()) errors.push('Title is required');
-			if (!data.goal.trim()) errors.push('Goal is required');
 			return errors;
 		},
 		audience: (data: TemplateFormData['audience']) => {
@@ -63,12 +61,14 @@
 	};
 
 	const isCurrentStepValid = $derived.by(() => {
-		const currentErrors = validators[currentStep](formData[currentStep] as Record<string, unknown>);
+		const stepData = (formData as any)[currentStep] as Record<string, unknown>;
+		const currentErrors = validators[currentStep](stepData);
 		return currentErrors.length === 0;
 	});
 
 	function validateCurrentStep(): boolean {
-		formErrors = validators[currentStep](formData[currentStep] as Record<string, unknown>);
+		const stepData = (formData as any)[currentStep] as Record<string, unknown>;
+		formErrors = validators[currentStep](stepData);
 		return formErrors.length === 0;
 	}
 
@@ -109,10 +109,10 @@
 
 		const template = {
 			title: formData.objective.title,
-			description: formData.objective.goal,
+			description: formData.content.preview.substring(0, 160),
 			category: formData.objective.category || 'General',
 			type: context.channelId,
-			deliveryMethod: context.channelTitle,
+			deliveryMethod: (context.channelId === 'certified' ? 'both' : 'email') as 'both' | 'email',
 			subject: `Regarding: ${formData.objective.title}`,
 			message_body: formData.content.preview,
 			preview: formData.content.preview.substring(0, 100),
@@ -127,7 +127,8 @@
 				opens: 0,
 				clicks: 0,
 				views: 0
-			}
+			},
+			is_public: false
 		};
 
 		dispatch('save', template);
@@ -197,11 +198,11 @@
 	<div class="flex-1 overflow-y-auto">
 		<div class="p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
-				<ObjectiveDefiner bind:data={formData.objective} {context} />
+				<ObjectiveDefiner data={formData.objective} {context} />
 			{:else if currentStep === 'audience'}
-				<AudienceSelector bind:data={formData.audience} {context} />
+				<AudienceSelector data={formData.audience} {context} />
 			{:else if currentStep === 'content'}
-				<MessageEditor bind:data={formData.content} {context} />
+				<MessageEditor data={formData.content} {context} />
 			{:else}
 				<TemplateReview data={formData} {context} />
 			{/if}

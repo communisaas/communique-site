@@ -11,6 +11,7 @@
 	import { modalActions } from '$lib/stores/modalSystem';
 	import { guestState } from '$lib/stores/guestState';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import { funnelAnalytics } from '$lib/analytics/funnel';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -37,6 +38,8 @@
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
 
 	onMount(() => {
+		// Track template view with source attribution
+		funnelAnalytics.trackTemplateView(template.id, source);
 		// Store template context for guest users
 		if (!data.user) {
 			guestState.setTemplate(template.slug, template.title, source);
@@ -46,16 +49,20 @@
 		const actionParam = $page.url.searchParams.get('action');
 		if (actionParam === 'complete' && data.user) {
 			// User just completed auth, check what they need next
+			// Track auth completion (provider may or may not be present)
+			const provider = $page.url.searchParams.get('provider') || 'unknown';
+			funnelAnalytics.trackAuthCompleted(template.id, provider, data.user.id);
 			handlePostAuthFlow();
 		} else if (authRequired && !data.user) {
 			// Show smart auth modal for unauthenticated users
+			funnelAnalytics.trackOnboardingStarted(template.id, source);
 			modalActions.open('auth-modal', 'auth', { template, source });
 		}
 	});
 
 	function handlePostAuthFlow() {
 		const flow = analyzeEmailFlow(template, data.user);
-		
+
 		if (flow.nextAction === 'address') {
 			// Need address collection
 			modalActions.open('address-modal', 'address', { template, source });
@@ -65,7 +72,6 @@
 			setTimeout(() => launchEmail(flow.mailtoUrl!), 100);
 		}
 	}
-
 
 	async function handleAddressSubmit(address: string) {
 		try {
@@ -188,6 +194,7 @@
 					onclick={() => {
 						if (!data.user) {
 							showAuthModal = true;
+							funnelAnalytics.trackOnboardingStarted(template.id, source);
 						} else {
 							handlePostAuthFlow();
 						}
@@ -219,6 +226,7 @@
 							handlePostAuthFlow();
 						} else {
 							showAuthModal = true;
+							funnelAnalytics.trackOnboardingStarted(template.id, source);
 						}
 					}}
 				>
@@ -282,7 +290,7 @@
 			}}
 			onSendMessage={() => {
 				const flow = analyzeEmailFlow(template, data.user);
-				
+
 				if (flow.nextAction === 'auth') {
 					showAuthModal = true;
 				} else if (flow.nextAction === 'address') {

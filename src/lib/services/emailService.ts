@@ -56,8 +56,10 @@ export function analyzeEmailFlow(template: Template, user: User | null): EmailFl
 }
 
 export function generateMailtoUrl(template: Template, user: User | null): string {
-	const subject = encodeURIComponent(template.title);
-	const body = encodeURIComponent(fillTemplateVariables(template.preview || '', user));
+    const subject = encodeURIComponent(template.title);
+    // Use the full message body when available; fall back to preview
+    const bodySource = (template as any).message_body || template.preview || '';
+    const body = encodeURIComponent(fillTemplateVariables(bodySource, user));
 
 	if (template.deliveryMethod === 'both') {
 		// Congressional routing

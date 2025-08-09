@@ -3,14 +3,39 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import DirectOutreachModal from '$lib/components/auth/DirectOutreachModal.svelte';
+	import DirectOutreachCompact from '$lib/components/auth/DirectOutreachCompact.svelte';
 	import type { PageData } from './$types';
-	
+
 	let { data }: { data: PageData } = $props();
-	
+
 	let showDirectModal = $state(true);
-	let pendingTemplate: { slug: string; title: string } | null = $state(null);
+	let useCompact = $state(false);
+	let pendingTemplate: {
+		slug: string;
+		title: string;
+		deliveryMethod?: string;
+		category?: string;
+	} | null = $state(null);
+	const defaultTemplate = {
+		title: 'Direct Outreach Message',
+		deliveryMethod: 'email',
+		category: 'advocacy'
+	} as const;
+	type FlowTemplate = { title: string; deliveryMethod: string; category: string };
+	function computeFlowTemplate(): FlowTemplate {
+		const pt = pendingTemplate;
+		if (pt) {
+			return {
+				title: pt.title,
+				deliveryMethod: pt.deliveryMethod ?? 'email',
+				category: pt.category ?? 'advocacy'
+			};
+		}
+		return defaultTemplate;
+	}
+	const flowTemplate: FlowTemplate = $derived(computeFlowTemplate());
 	let finalReturnUrl = $state('/dashboard');
-	
+
 	onMount(() => {
 		if (browser) {
 			// Check if there's a pending template action
@@ -20,21 +45,23 @@
 					const actionData = JSON.parse(pendingAction);
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
-				} catch (error) {
-				}
+				} catch (error) {}
 			}
-			
+
 			// Check for return URL from query params
 			const returnTo = $page.url.searchParams.get('returnTo');
 			if (returnTo) {
 				finalReturnUrl = decodeURIComponent(returnTo);
 			}
+
+			// Feature flag: compact direct outreach
+			useCompact = $page.url.searchParams.get('compact') === '1';
 		}
 	});
-	
+
 	async function handleProfileComplete(event: CustomEvent) {
 		const { role, organization, location, connection, connectionDetails } = event.detail;
-		
+
 		try {
 			// Save profile information to user
 			const response = await fetch('/api/user/profile', {
@@ -48,13 +75,13 @@
 					connectionDetails
 				})
 			});
-			
+
 			if (response.ok) {
 				// Clear any pending template action
 				if (browser) {
 					sessionStorage.removeItem('pending_template_action');
 				}
-				
+
 				// Redirect to final destination
 				window.location.href = finalReturnUrl;
 			} else {
@@ -66,7 +93,7 @@
 			window.location.href = finalReturnUrl;
 		}
 	}
-	
+
 	function handleProfileSkip() {
 		// User chose to skip profile completion
 		if (browser) {
@@ -81,33 +108,38 @@
 	<meta name="description" content="Complete your profile to strengthen your advocacy messages" />
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-4">
-	<div class="max-w-md w-full text-center">
-		<h1 class="text-2xl font-bold text-slate-900 mb-4">
-			Make your voice stronger
-		</h1>
-		<p class="text-slate-600 mb-8">
-			Adding your role and connection to this issue increases your message's impact with decision-makers.
+<div
+	class="flex min-h-screen items-center justify-center bg-gradient-to-b from-slate-50 to-white p-4"
+>
+	<div class="w-full max-w-md text-center">
+		<h1 class="mb-4 text-2xl font-bold text-slate-900">Make your voice stronger</h1>
+		<p class="mb-8 text-slate-600">
+			Adding your role and connection to this issue increases your message's impact with
+			decision-makers.
 		</p>
-		
+
 		<!-- Loading state while modal appears -->
 		{#if !showDirectModal}
 			<div class="animate-pulse">
-				<div class="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-2"></div>
-				<div class="h-4 bg-slate-200 rounded w-1/2 mx-auto"></div>
+				<div class="mx-auto mb-2 h-4 w-3/4 rounded bg-slate-200"></div>
+				<div class="mx-auto h-4 w-1/2 rounded bg-slate-200"></div>
 			</div>
 		{/if}
 	</div>
 </div>
 
 {#if showDirectModal}
-	<DirectOutreachModal 
-		template={pendingTemplate || { 
-			title: 'Direct Outreach Message', 
-			deliveryMethod: 'email',
-			category: 'advocacy'
-		}}
-		on:complete={handleProfileComplete}
-		on:close={handleProfileSkip}
-	/>
+	{#if useCompact}
+		<DirectOutreachCompact
+			template={flowTemplate}
+			on:complete={handleProfileComplete}
+			on:close={handleProfileSkip}
+		/>
+	{:else}
+		<DirectOutreachModal
+			template={flowTemplate}
+			on:complete={handleProfileComplete}
+			on:close={handleProfileSkip}
+		/>
+	{/if}
 {/if}

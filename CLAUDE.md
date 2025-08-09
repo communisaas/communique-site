@@ -20,14 +20,14 @@ npm run test     # unit + e2e
 ## Environment
 Required:
 ```bash
-DATABASE_URL=...
+SUPABASE_DATABASE_URL=...
 CONGRESS_API_KEY=...
 ```
 Optional OAuth keys as needed.
 
 ## Architecture (at a glance)
 - SvelteKit 5 + TypeScript + Tailwind
-- CockroachDB via Prisma; sessions via `@oslojs/crypto`
+- Supabase (Postgres) via Prisma; sessions via `@oslojs/crypto`
 - Client-side template resolution → `mailto:`
 - Congressional flow: address verify → reps lookup → CWC XML
 

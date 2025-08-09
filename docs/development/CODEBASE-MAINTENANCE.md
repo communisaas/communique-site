@@ -49,7 +49,7 @@ npm run preview  # Manual verification of build
 - Session-based authentication via `@oslojs/crypto`
 
 **Database Layer:**
-- CockroachDB with Prisma ORM
+- Supabase (Postgres) with Prisma ORM
 - Migrations managed via `npm run db:migrate`
 - Type generation via `npm run db:generate`
 

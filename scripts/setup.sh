@@ -4,8 +4,8 @@ echo "🚀 Setting up Communiqué development environment..."
 
 # Check if .env exists
 if [ ! -f .env ]; then
-    echo "📝 Please create a .env file with your CockroachDB connection string:"
-    echo "DATABASE_URL=\"your_cockroachdb_connection_string\""
+    echo "📝 Please create a .env file with your Supabase Postgres connection string:"
+    echo "SUPABASE_DATABASE_URL=\"your_supabase_postgres_connection_string\""
     echo "❌ .env file required - setup cannot continue"
     exit 1
 else
@@ -21,7 +21,7 @@ echo "🔧 Generating Prisma client..."
 npm run db:generate
 
 # Push schema to database
-echo "🗄️ Pushing database schema to CockroachDB..."
+echo "🗄️ Pushing database schema to Supabase (Postgres)..."
 npm run db:push
 
 echo "🎉 Setup complete!"

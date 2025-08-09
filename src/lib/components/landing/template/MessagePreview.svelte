@@ -296,6 +296,8 @@
 			target.style.height = 'auto';
 			target.style.height = `${target.scrollHeight}px`;
 		}
+
+		// No heuristics here – personalization is purely user-driven.
 	}
 
 	function handleBlur() {
@@ -371,6 +373,7 @@
 	<div class="mb-2 flex shrink-0 items-center gap-2">
 		<Mail class="h-4 w-4 shrink-0 text-slate-500" />
 		<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
+		<!-- intentionally minimal; no heuristic meters -->
 		{#if user?.is_verified}
 			<VerificationBadge size="sm" />
 		{/if}
@@ -459,6 +462,12 @@
 												<Sparkles class="h-2.5 w-2.5 text-purple-600" />
 											{/if}
 											{variableValues[segment.name] || segment.name}
+											{#if segment.name === 'Personal Connection' && (variableValues[segment.name] || '').trim().length > 0}
+												<span
+													class="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
+													>Personalized</span
+												>
+											{/if}
 										</button>
 									</svelte:fragment>
 

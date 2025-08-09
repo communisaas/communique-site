@@ -15,14 +15,13 @@
 	}: {
 		onclose?: () => void;
 		onscrollStateChange?: (state: ModalScrollState) => void;
-		children?: unknown;
+		children?: import('svelte').Snippet;
 	} = $props();
 
-
-	let dialogElement: HTMLDialogElement = $state();
+	let dialogElement: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
 	let isOpen = $state(false);
 	let scrollPosition: number;
-	let modalContent: HTMLDivElement = $state();
+	let modalContent: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
 	let touchStart = 0;
 	let currentTouchY = 0;
 	let isDismissing = false;
@@ -55,7 +54,7 @@
 
 	let touchStartTarget: EventTarget | null = null;
 
-	let viewportHeight: number;
+	let viewportHeight = 0;
 
 	// Calculate thresholds based on viewport height
 	const dismissThreshold = $derived(viewportHeight * 0.15); // 15% of viewport height
@@ -92,7 +91,7 @@
 		scrollPosition: 0,
 		maxScroll: 0
 	};
-	
+
 	// Component ID for timer coordination
 	const componentId = 'modal-' + Math.random().toString(36).substring(2, 15);
 
@@ -136,7 +135,6 @@
 		onclose?.();
 		closeModal();
 	}
-
 
 	function closeModal() {
 		if (isDismissing) {
@@ -306,9 +304,14 @@
 				blurAmount.set(0);
 				gestureProgress.set(0);
 
-				coordinated.setTimeout(() => {
-					close();
-				}, 200, 'modal', componentId);
+				coordinated.setTimeout(
+					() => {
+						close();
+					},
+					200,
+					'modal',
+					componentId
+				);
 			} else {
 				// Always reset to 0 (initial position) regardless of swipe direction
 				translateY.set(0);
@@ -343,7 +346,6 @@
 	// Add a derived value for smoother blur
 	const blurStyle = $derived(`blur(${$blurAmount}px)`);
 
-
 	onMount(() => {
 		isOpen = true; // Set isOpen to true so dialog element renders
 		updateViewportHeight();
@@ -370,109 +372,106 @@
 </script>
 
 {#if isOpen}
-	<!-- Modal is rendering! -->
 	<div
 		bind:this={dialogElement}
-		class="fixed inset-0 m-0 h-full w-full backdrop-blur-sm z-[60] flex items-center justify-center"
+		class="fixed inset-0 z-[60] m-0 flex h-full w-full items-center justify-center backdrop-blur-sm"
 		onclick={handleModalInteraction}
-		onkeydown={(e) => { if (e.key === 'Escape') handleModalInteraction(e); }}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') handleModalInteraction(e);
+		}}
 		role="dialog"
 		aria-modal="true"
 		aria-label="Modal dialog"
 		tabindex="0"
-		style="background: rgba(255, 0, 0, 0.8) !important;"
 	>
-		<div class="absolute top-4 right-4 bg-yellow-500 text-black p-2 rounded text-xs z-[9999]">
-			🐛 MODAL BACKDROP IS RENDERING! isOpen = {isOpen}
-		</div>
 		<div
 			bind:this={modalContent}
-			class="modal-content relative h-[85vh] w-full max-w-2xl touch-pan-y overflow-hidden
-                   rounded-xl bg-white shadow-xl"
+			class="modal-content relative h-[85vh] w-full max-w-2xl touch-pan-y overflow-hidden rounded-xl bg-white shadow-xl"
 			style="transform: translateY({$translateY}px)"
 			ontouchstart={handleTouchStart}
 			ontouchmove={handleTouchMove}
 			ontouchend={handleTouchEnd}
 			ontouchcancel={handleTouchEnd}
-			onkeydown={(e) => { e.stopPropagation(); }}
+			onkeydown={(e) => {
+				e.stopPropagation();
+			}}
 			role="document"
 			onclick={(e) => e.stopPropagation()}
 		>
-				<!-- Close button -->
-				<button
-					onclick={close}
-					class="absolute right-2 top-2 z-20 rounded-full bg-white/80
+			<!-- Close button -->
+			<button
+				onclick={close}
+				class="absolute right-2 top-2 z-20 rounded-full bg-white/80
                            p-2 shadow-sm backdrop-blur-sm
                            transition-colors hover:bg-gray-100"
-					aria-label="Close modal"
-				>
-					<X class="h-5 w-5 text-gray-600" />
-				</button>
+				aria-label="Close modal"
+			>
+				<X class="h-5 w-5 text-gray-600" />
+			</button>
 
-				<!-- Content -->
-				<div class="h-full max-h-[85vh] overflow-hidden">
-					<div class="relative h-full">
-						{@render children?.()}
-					</div>
+			<!-- Content -->
+			<div class="h-full max-h-[85vh] overflow-hidden">
+				<div class="relative h-full">
+					{@render children?.()}
 				</div>
+			</div>
 
-				<!-- Blur effect container - positioned after content -->
-				<div
-					class="pointer-events-none absolute inset-0 transition-[backdrop-filter] duration-75"
-					style="backdrop-filter: {blurStyle};
+			<!-- Blur effect container - positioned after content -->
+			<div
+				class="pointer-events-none absolute inset-0 transition-[backdrop-filter] duration-75"
+				style="backdrop-filter: {blurStyle};
                            background: rgba(241, 245, 249, {$gestureProgress * 0.1})"
-				>
-					<!-- Background gradients -->
-					{#if swipeDirection === 'down'}
-						<div
-							class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/20 to-transparent"
-							style="opacity: {$dismissHintOpacity}"
-						></div>
-					{:else if swipeDirection === 'up'}
-						<div
-							class="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-transparent"
-							style="opacity: {$dismissHintOpacity}"
-						></div>
-					{/if}
-				</div>
-
-				<!-- Dismissal hint -->
-				{#if $dismissHintOpacity > 0}
+			>
+				<!-- Background gradients -->
+				{#if swipeDirection === 'down'}
 					<div
-						class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+						class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-slate-900/20 to-transparent"
 						style="opacity: {$dismissHintOpacity}"
-					>
-						<!-- Centered hint message -->
-						<div
-							class="flex items-center gap-3
+					></div>
+				{:else if swipeDirection === 'up'}
+					<div
+						class="absolute inset-0 bg-gradient-to-b from-slate-900/40 via-slate-900/20 to-transparent"
+						style="opacity: {$dismissHintOpacity}"
+					></div>
+				{/if}
+			</div>
+
+			<!-- Dismissal hint -->
+			{#if $dismissHintOpacity > 0}
+				<div
+					class="pointer-events-none absolute inset-0 z-10 flex items-center justify-center"
+					style="opacity: {$dismissHintOpacity}"
+				>
+					<!-- Centered hint message -->
+					<div
+						class="flex items-center gap-3
                                    rounded-lg border
                                    border-slate-200 bg-white px-4
                                    py-2.5 shadow-lg"
-							style="transform: scale({$hintScale})
+						style="transform: scale({$hintScale})
                                     translateY({swipeDirection === 'down' ? 20 : -20}px)"
-						>
-							<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-600"></span>
-							<div class="relative h-[20px] w-[180px]">
-								{#key isPastThreshold}
-									<span
-										class="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-medium text-slate-900"
-										in:scale={{ duration: 100, start: 0.8 }}
-										out:scale|local={{ duration: 100, start: 1.2 }}
-									>
-										{isPastThreshold ? 'Release to close' : 'Keep swiping to close'}
-									</span>
-								{/key}
-							</div>
-							<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-600"></span>
+					>
+						<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-600"></span>
+						<div class="relative h-[20px] w-[180px]">
+							{#key isPastThreshold}
+								<span
+									class="absolute left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-medium text-slate-900"
+									in:scale={{ duration: 100, start: 0.8 }}
+									out:scale|local={{ duration: 100, start: 1.2 }}
+								>
+									{isPastThreshold ? 'Release to close' : 'Keep swiping to close'}
+								</span>
+							{/key}
 						</div>
+						<span class="h-1.5 w-1.5 animate-pulse rounded-full bg-blue-600"></span>
 					</div>
-				{/if}
+				</div>
+			{/if}
 		</div>
 	</div>
 {/if}
 
 <style>
-
 	/* Customize scrollbar */
 	div::-webkit-scrollbar {
 		width: 8px;

@@ -141,17 +141,17 @@ describe('EmailService', () => {
 		it('should generate mailto URL for email template', () => {
 			const mailtoUrl = generateMailtoUrl(mockEmailTemplate, mockUserComplete);
 
-			expect(mailtoUrl).toContain('mailto:recipient@example.com,admin@example.com');
-			expect(mailtoUrl).toContain('subject=Test%20Email%20Template');
-			expect(mailtoUrl).toContain('body=Hello%20John%20Doe');
+            expect(mailtoUrl).toContain('mailto:recipient@example.com,admin@example.com');
+            expect(mailtoUrl).toContain('subject=Test%20Email%20Template');
+            expect(decodeURIComponent(mailtoUrl)).toContain('Test message body');
 		});
 
 		it('should generate congressional routing URL for congressional template', () => {
 			const mailtoUrl = generateMailtoUrl(mockCongressionalTemplate, mockUserComplete);
 
-			expect(mailtoUrl).toContain('mailto:congress+template-congress-123-user-123@communique.org');
-			expect(mailtoUrl).toContain('subject=Test%20Congressional%20Template');
-			expect(mailtoUrl).toContain('body=Hello%20John%20Doe');
+            expect(mailtoUrl).toContain('mailto:congress+template-congress-123-user-123@communique.org');
+            expect(mailtoUrl).toContain('subject=Test%20Congressional%20Template');
+            expect(decodeURIComponent(mailtoUrl)).toContain('Test message body');
 		});
 
 		it('should handle anonymous user for congressional template', () => {
@@ -162,11 +162,11 @@ describe('EmailService', () => {
 		});
 
 		it('should URL encode subject and body', () => {
-			const templateWithSpecialChars: Template = {
-				...mockEmailTemplate,
-				title: 'Test & Symbols!',
-				preview: 'Hello [Name], this has special characters: & < > " \''
-			};
+            const templateWithSpecialChars: Template = {
+                ...mockEmailTemplate,
+                title: 'Test & Symbols!',
+                message_body: 'Hello [Name], this has special characters: & < > " \''
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithSpecialChars, mockUserComplete);
 
@@ -176,10 +176,10 @@ describe('EmailService', () => {
 		});
 
 		it('should fill template variables in body', () => {
-			const templateWithVariables: Template = {
-				...mockEmailTemplate,
-				preview: 'Hello [Name], I live at [Address]. Writing to [Representative Name].'
-			};
+            const templateWithVariables: Template = {
+                ...mockEmailTemplate,
+                message_body: 'Hello [Name], I live at [Address]. Writing to [Representative Name].'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithVariables, mockUserComplete);
 
@@ -213,10 +213,10 @@ describe('EmailService', () => {
 
 	describe('Template Variable Filling', () => {
 		it('should replace [Name] with user name', () => {
-			const templateWithName: Template = {
-				...mockEmailTemplate,
-				preview: 'Hello [Name], how are you?'
-			};
+            const templateWithName: Template = {
+                ...mockEmailTemplate,
+                message_body: 'Hello [Name], how are you?'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithName, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -225,10 +225,10 @@ describe('EmailService', () => {
 		});
 
 		it('should replace [Address] with complete address', () => {
-			const templateWithAddress: Template = {
-				...mockEmailTemplate,
-				preview: 'I live at [Address].'
-			};
+            const templateWithAddress: Template = {
+                ...mockEmailTemplate,
+                message_body: 'I live at [Address].'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithAddress, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -254,10 +254,10 @@ describe('EmailService', () => {
 		});
 
 		it('should remove address blocks when address is incomplete', () => {
-			const templateWithAddressBlock: Template = {
-				...mockEmailTemplate,
-				preview: 'From:\n[Address]\n\nHello there.'
-			};
+            const templateWithAddressBlock: Template = {
+                ...mockEmailTemplate,
+                message_body: 'From:\n[Address]\n\nHello there.'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithAddressBlock, mockUserIncomplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -266,10 +266,10 @@ describe('EmailService', () => {
 		});
 
 		it('should replace [Representative Name] with generic text', () => {
-			const templateWithRep: Template = {
-				...mockEmailTemplate,
-				preview: 'Dear [Representative Name], I am writing to you.'
-			};
+            const templateWithRep: Template = {
+                ...mockEmailTemplate,
+                message_body: 'Dear [Representative Name], I am writing to you.'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithRep, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -278,10 +278,10 @@ describe('EmailService', () => {
 		});
 
 		it('should remove [Personal Connection] blocks', () => {
-			const templateWithPersonalConnection: Template = {
-				...mockEmailTemplate,
-				preview: 'Dear Representative,\n\n[Personal Connection]\n\nThank you.'
-			};
+            const templateWithPersonalConnection: Template = {
+                ...mockEmailTemplate,
+                message_body: 'Dear Representative,\n\n[Personal Connection]\n\nThank you.'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithPersonalConnection, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -290,10 +290,10 @@ describe('EmailService', () => {
 		});
 
 		it('should clean up excessive newlines', () => {
-			const templateWithExtraNewlines: Template = {
-				...mockEmailTemplate,
-				preview: 'Hello\n\n\n\n\nWorld'
-			};
+            const templateWithExtraNewlines: Template = {
+                ...mockEmailTemplate,
+                message_body: 'Hello\n\n\n\n\nWorld'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithExtraNewlines, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -372,11 +372,11 @@ describe('EmailService', () => {
 		});
 
 		it('should handle unicode characters in template', () => {
-			const templateWithUnicode: Template = {
-				...mockEmailTemplate,
-				title: 'Test 🚀 Émojis & Spëcial Chārs',
-				preview: 'Hello [Name] 👋, this has émojis 🎉 and spëcial chārs!'
-			};
+            const templateWithUnicode: Template = {
+                ...mockEmailTemplate,
+                title: 'Test 🚀 Émojis & Spëcial Chārs',
+                message_body: 'Hello [Name] 👋, this has émojis 🎉 and spëcial chārs!'
+            };
 
 			const mailtoUrl = generateMailtoUrl(templateWithUnicode, mockUserComplete);
 

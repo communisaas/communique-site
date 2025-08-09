@@ -5,7 +5,7 @@ export interface Template {
     description: string;
     category: string;
     type: string;
-    deliveryMethod: 'email' | 'both';
+    deliveryMethod: 'email' | 'both' | 'direct';
     subject?: string;
     message_body: string;
     metrics: {
@@ -41,7 +41,6 @@ export interface TemplateFormData {
         title: string;
         description: string;
         category: string;
-        goal: string;
         slug?: string;
     };
     audience: {

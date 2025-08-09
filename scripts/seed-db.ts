@@ -58,6 +58,106 @@ Sincerely,
         is_public: true
     },
     {
+        title: 'Seattle: Legalize Homes Near Transit',
+        description: 'Urge the Seattle City Council to end exclusionary zoning and allow more housing near frequent transit.',
+        category: 'Housing',
+        type: 'advocacy',
+        deliveryMethod: 'direct',
+        subject: 'Upzone Near Transit and Permit More Homes',
+        preview: 'Seattle must end exclusionary zoning and allow more homes near transit to reduce displacement and cut emissions.',
+        message_body: `Dear Seattle City Council,
+
+I am writing as a Seattle resident to urge you to allow more housing near frequent transit and walkable amenities.
+
+Current zoning keeps most residential land locked to low-density use, which:
+
+• Increases displacement pressure in limited upzoned areas
+• Pushes new households to car-dependent exurbs
+• Worsens climate emissions from longer commutes
+• Keeps rents high and limits family-sized options
+
+Please advance reforms to:
+
+• Allow midrise housing near frequent transit, schools, and jobs
+• Permit small apartments and missing-middle housing citywide
+• Reduce costly parking mandates near frequent transit
+• Pair upzoning with anti-displacement and affordability tools
+
+[Personal Connection]
+
+Please prioritize abundant homes near transit so people can live close to opportunity.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 0, opened: 0, clicked: 0, responded: 0 },
+        delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
+        recipient_config: { emails: ['council@seattle.gov'] },
+        is_public: true
+    },
+    {
+        title: 'SFUSD: Keep Students Housed and Learning',
+        description: 'Ask the San Francisco Board of Education to adopt a housing stability plan for students and educators.',
+        category: 'Education',
+        type: 'advocacy',
+        deliveryMethod: 'direct',
+        subject: 'Adopt a Student and Educator Housing Stability Plan',
+        preview: 'Housing instability hurts attendance and learning. Please act to stabilize students and educators.',
+        message_body: `Dear San Francisco Board of Education,
+
+Housing instability is directly impacting student attendance, graduation, and educator retention.
+
+Please adopt a housing stability plan that includes:
+
+• Expanded McKinney-Vento supports and rapid response for families at risk of eviction
+• Partnerships for educator housing and rent stabilization tools
+• Dedicated liaisons to coordinate school-city services
+• Transparent metrics on housing-related absenteeism and interventions
+
+[Personal Connection]
+
+Stable housing supports stable learning. Please make this an immediate priority.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 0, opened: 0, clicked: 0, responded: 0 },
+        delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
+        recipient_config: { emails: ['boardoffice@sfusd.edu'] },
+        is_public: true
+    },
+    {
+        title: 'Canada: Protect Housing Affordability',
+        description: 'Urge the Prime Minister to strengthen measures that protect renters and first-time buyers.',
+        category: 'Housing',
+        type: 'advocacy',
+        deliveryMethod: 'direct',
+        subject: 'Strengthen Renter Protections and First-Time Buyer Supports',
+        preview: 'Please act to protect renters and first-time buyers facing rising costs and limited supply.',
+        message_body: `Dear Prime Minister,
+
+I am writing regarding housing affordability pressures facing renters and first-time buyers across Canada.
+
+Please strengthen measures to:
+
+• Expand supply of purpose-built rental housing
+• Support non-profit and co-op acquisition of at-risk affordable homes
+• Enforce anti-renoviction and fair notice protections
+• Improve first-time buyer access without inflating prices
+
+[Personal Connection]
+
+Thank you for prioritizing stable, affordable homes in every community.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 0, opened: 0, clicked: 0, responded: 0 },
+        delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
+        recipient_config: { emails: ['pm@pm.gc.ca'] },
+        is_public: true
+    },
+    {
         title: 'Block GOP Medicaid Cuts',
         description: 'Stop Republicans from gutting healthcare to fund tax cuts for billionaires.',
         category: 'Healthcare',
@@ -334,6 +434,126 @@ Sincerely,
         metrics: { sent: 5892, opened: 0, clicked: 0, responded: 5892, districts_covered: 356, total_districts: 435, district_coverage_percent: 82 },
         delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
         recipient_config: { emails: ['homeland.security@house.gov', 'immigration.subcommittee@senate.gov'] },
+        is_public: true
+    },
+    {
+        title: 'SF Homelessness: Stop the Sweeps',
+        description: 'Direct action against San Francisco\'s tent encampment clearings without adequate shelter alternatives.',
+        category: 'Housing',
+        type: 'advocacy',
+        deliveryMethod: 'direct',
+        subject: 'Tent Sweeps Are Not Housing Solutions',
+        preview: 'Your encampment clearance policies move homelessness out of sight without creating permanent housing.',
+        message_body: `Dear Mayor Breed and SF Board of Supervisors,
+
+I am writing regarding San Francisco's encampment sweep policies and their impact on unhoused residents.
+
+Current sweep operations result in:
+
+• Confiscation of personal belongings including medication and identification
+• Displacement without guaranteed shelter alternatives
+• 85% reduction in visible tents but unclear impact on actual homelessness
+• People sleeping rough without even basic tent shelter
+• Only 13% of shelter residents transitioning to permanent housing
+
+Effective homelessness solutions require:
+
+• Guaranteed shelter placement before any encampment clearing
+• Safe storage for personal belongings during transitions
+• Mental health and addiction services integrated with housing
+• Accelerated affordable housing production
+• Focus on permanent housing outcomes, not just clearing visible camps
+
+[Personal Connection]
+
+Housing policy should address root causes, not criminalize poverty through visibility enforcement.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 3456, opened: 0, clicked: 0, responded: 3456, districts_covered: 1, total_districts: 1, district_coverage_percent: 100 },
+        delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
+        recipient_config: { emails: ['mayorlondonbreed@sfgov.org', 'board.of.supervisors@sfgov.org', 'district1@sfgov.org', 'district3@sfgov.org', 'district6@sfgov.org'] },
+        is_public: true
+    },
+    {
+        title: 'NYC: Fix the Subway System',
+        description: 'Demand immediate action from NYC officials on subway delays, safety, and accessibility.',
+        category: 'Transportation',
+        type: 'advocacy', 
+        deliveryMethod: 'direct',
+        subject: 'MTA Crisis Requires Emergency Action',
+        preview: 'The subway system is failing millions of daily riders with preventable delays and safety issues.',
+        message_body: `Dear Mayor Adams and NYC Council,
+
+I am writing about the Metropolitan Transportation Authority crisis affecting millions of daily commuters.
+
+Current MTA conditions include:
+
+• 75% on-time performance during peak hours
+• Elevator outages affecting accessibility compliance
+• Platform overcrowding creating safety hazards
+• Signal failures causing cascading delays
+• Deferred maintenance backlog approaching $50 billion
+
+Immediate improvements needed:
+
+• Emergency funding for signal system modernization
+• Mandatory accessibility upgrades at all stations
+• Increased service frequency during peak hours
+• Transparent reporting on maintenance schedules
+• Investment in electric bus fleet expansion
+
+[Personal Connection]
+
+Public transportation is essential infrastructure that affects economic opportunity and quality of life for all New Yorkers.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 5234, opened: 0, clicked: 0, responded: 5234, districts_covered: 1, total_districts: 1, district_coverage_percent: 100 },
+        delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
+        recipient_config: { emails: ['info@cityhall.nyc.gov', 'speakeradams@council.nyc.gov', 'district1@council.nyc.gov', 'district2@council.nyc.gov'] },
+        is_public: true
+    },
+    {
+        title: 'Chicago: Address Gun Violence Crisis',
+        description: 'Demand comprehensive action from Chicago officials on community violence prevention.',
+        category: 'Public Safety',
+        type: 'advocacy',
+        deliveryMethod: 'direct', 
+        subject: 'Community Violence Prevention Funding',
+        preview: 'Chicago needs comprehensive violence intervention programs, not just increased policing.',
+        message_body: `Dear Mayor Johnson and Chicago City Council,
+
+I am writing about community violence prevention strategies and their funding priorities.
+
+Current violence intervention gaps:
+
+• Limited funding for community-based violence prevention programs
+• Insufficient mental health crisis response teams
+• Inadequate youth programming in high-risk neighborhoods
+• Economic disinvestment in communities with highest violence rates
+• Trauma-informed services underfunded compared to enforcement
+
+Evidence-based solutions to prioritize:
+
+• Expand Cure Violence and similar community intervention programs
+• Fund youth employment and mentorship opportunities
+• Increase mental health services in public schools
+• Support small business development in affected neighborhoods  
+• Invest in trauma recovery services for families
+
+[Personal Connection]
+
+Community safety requires addressing root causes through investment in people and neighborhoods, not just enforcement.
+
+Sincerely,
+[Name]
+[Address]`,
+        metrics: { sent: 4567, opened: 0, clicked: 0, responded: 4567, districts_covered: 1, total_districts: 1, district_coverage_percent: 100 },
+        delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
+        recipient_config: { emails: ['mayor@cityofchicago.org', 'ccc@cityofchicago.org'] },
         is_public: true
     }
 ];

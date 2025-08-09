@@ -63,74 +63,53 @@ export class AddressLookupService {
 
     /**
      * Convert address to congressional district
-     * Using Google Civic Information API (more reliable than Congress.gov for address lookup)
+     * Primary: Census Bureau Geocoding API; Fallback: ZIP→district
      */
     private async addressToDistrict(address: Address): Promise<CongressionalDistrict> {
         try {
-            // Format address for Google Civic API
-            const formattedAddress = `${address.street}, ${address.city}, ${address.state} ${address.zip}`;
-            
-            // Use Google Civic Information API
-            const civicApiKey = env.GOOGLE_CIVIC_API_KEY;
-            if (!civicApiKey) {
-                // Fallback: Extract district from ZIP code (less accurate)
+            const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.zip}`;
+            const url = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=4&vintage=4&format=json`;
+
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Census geocoding API error: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const match = data?.result?.addressMatches?.[0];
+            if (!match) {
+                // No match; fallback to ZIP-based
                 return this.zipToDistrict(address.zip, address.state);
             }
 
-            const { api } = await import('$lib/utils/apiClient');
-            const result = await api.get(
-                `https://www.googleapis.com/civicinfo/v2/representatives?key=${civicApiKey}&address=${encodeURIComponent(formattedAddress)}`
-            );
-            
-            if (!result.success) {
-                throw new Error(`Google Civic API error: ${result.error}`);
-            }
-            
-            const data = result.data;
-            
-            // Extract congressional district from response
-            const district = this.extractDistrictFromCivicData(data, address.state);
+            const district = this.extractDistrictFromCensus(match.geographies, address.state);
             return district;
-            
-        } catch (error) {
+        } catch (_err) {
             // Fallback to ZIP-based lookup
             return this.zipToDistrict(address.zip, address.state);
         }
     }
 
     /**
-     * Extract congressional district from Google Civic API response
+     * Extract congressional district from Census Bureau geocoding response
      */
-    private extractDistrictFromCivicData(civicData: Record<string, unknown>, state: string): CongressionalDistrict {
+    private extractDistrictFromCensus(geographies: Record<string, any>, state: string): CongressionalDistrict {
         try {
-            // Look for congressional district in the divisions
-            const divisions = civicData.divisions || {};
-            
-            for (const [divisionId, division] of Object.entries(divisions)) {
-                // Congressional district format: "ocd-division/country:us/state:ca/cd:12"
-                const match = divisionId.match(/\/state:([a-z]{2})\/cd:(\d+)$/);
-                if (match) {
-                    const [, stateCode, districtNum] = match;
-                    if (stateCode.toUpperCase() === state.toUpperCase()) {
-                        return {
-                            state: state.toUpperCase(),
-                            district: districtNum.padStart(2, '0') // "01", "02", etc.
-                        };
-                    }
+            const districts = geographies?.['119th Congressional Districts'];
+            if (Array.isArray(districts) && districts.length > 0) {
+                const cd = districts[0]?.CD119;
+                if (cd === '98') {
+                    // DC delegate special case → at-large
+                    return { state: state.toUpperCase(), district: '00' };
                 }
+                return {
+                    state: state.toUpperCase(),
+                    district: String(cd).padStart(2, '0')
+                };
             }
-            
-            // If no congressional district found, might be at-large district
-            return {
-                state: state.toUpperCase(),
-                district: '00' // At-large or fallback
-            };
-            
-        } catch (error) {
-            return {
-                state: state.toUpperCase(),
-                district: '01' // Default fallback
-            };
+            return { state: state.toUpperCase(), district: '00' };
+        } catch (_e) {
+            return { state: state.toUpperCase(), district: '01' };
         }
     }
 

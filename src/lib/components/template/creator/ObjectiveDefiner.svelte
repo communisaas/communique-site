@@ -8,24 +8,21 @@
 			title: string;
 			description: string;
 			category: string;
-			goal: string;
 			slug?: string;
 		};
 		context: TemplateCreationContext;
 	}
 
-	let { data, context }: Props = $props();
+	let { data = $bindable(), context }: Props = $props();
 
 	// Initialize data if empty
 	$effect(() => {
 		if (!data.title) data.title = '';
-		if (!data.goal) data.goal = '';
 		if (!data.description) data.description = '';
 		if (!data.slug) data.slug = '';
 	});
 
 	const isTitleValid = $derived(data.title.trim().length > 0);
-	const isGoalValid = $derived(data.goal.trim().length > 0);
 </script>
 
 <div class="space-y-6">
@@ -36,9 +33,9 @@
 			<div class="space-y-2">
 				<h4 class="font-medium text-blue-900">Writing Tips</h4>
 				<ul class="space-y-1 text-sm text-blue-700">
-					<li>• Make your goal specific and measurable</li>
-					<li>• Focus on a single primary objective</li>
-					<li>• Consider both short and long-term impact</li>
+					<li>• Pick a clear, specific title</li>
+					<li>• Put the core ask in your message body</li>
+					<li>• Personalize with your connection where helpful</li>
 				</ul>
 			</div>
 		</div>
@@ -60,32 +57,12 @@
 				<p class="mt-1 text-sm text-red-600">Title is required</p>
 			{/if}
 		</label>
-
-		<label class="block">
-			<span class="text-sm font-medium text-slate-700">Campaign Goal</span>
-			<textarea
-				bind:value={data.goal}
-				class:border-red-300={!isGoalValid && data.goal}
-				class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-				rows="3"
-				placeholder="What specific change or action are you seeking?"
-				spellcheck="true"
-				lang="en"
-			></textarea>
-			{#if !isGoalValid && data.goal}
-				<p class="mt-1 text-sm text-red-600">Goal is required</p>
-			{/if}
-		</label>
 	</div>
 
 	<!-- Deep Link Customizer -->
 	{#if data.title}
 		<div class="border-t border-slate-200 pt-6">
-			<SlugCustomizer 
-				bind:title={data.title}
-				bind:slug={data.slug}
-				{context}
-			/>
+			<SlugCustomizer title={data.title} bind:slug={data.slug} {context} />
 		</div>
 	{/if}
 </div>

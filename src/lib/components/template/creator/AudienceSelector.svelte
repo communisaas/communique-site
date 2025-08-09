@@ -3,7 +3,10 @@
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import { onMount } from 'svelte';
 
-	let { data, context }: {
+	let {
+		data = $bindable(),
+		context
+	}: {
 		data: {
 			recipientEmails: string[];
 		};
