@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
-	
+	// Note: using inline badges here to avoid dependency on specific Badge props
+
 	interface PercolationAnalysis {
 		threshold_probability: number;
 		critical_nodes: string[];
@@ -10,7 +10,7 @@
 		max_flow_capacity: number;
 		cascade_potential: 'subcritical' | 'critical' | 'supercritical';
 	}
-	
+
 	interface NetworkHealth {
 		cascade_status: string;
 		network_health: string;
@@ -18,25 +18,25 @@
 		bottleneck_severity: string;
 		recommendation: string;
 	}
-	
+
 	let analysis: PercolationAnalysis | null = $state(null);
 	let interpretation: NetworkHealth | null = $state(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let lastUpdated = $state<string>('');
-	
+
 	onMount(async () => {
 		await loadAnalysis();
 	});
-	
+
 	async function loadAnalysis() {
 		loading = true;
 		error = null;
-		
+
 		try {
 			const response = await fetch('/api/analytics/percolation');
 			const data = await response.json();
-			
+
 			if (data.success) {
 				analysis = data.analysis;
 				interpretation = data.interpretation;
@@ -51,19 +51,19 @@
 			loading = false;
 		}
 	}
-	
+
 	async function refreshAnalysis() {
 		loading = true;
-		
+
 		try {
 			const response = await fetch('/api/analytics/percolation', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ action: 'refresh' })
 			});
-			
+
 			const data = await response.json();
-			
+
 			if (data.success) {
 				analysis = data.analysis;
 				lastUpdated = new Date().toLocaleString();
@@ -76,86 +76,120 @@
 			loading = false;
 		}
 	}
-	
+
 	function getCascadeBadgeVariant(potential: string): 'success' | 'warning' | 'error' | 'info' {
 		switch (potential) {
-			case 'supercritical': return 'success';
-			case 'critical': return 'warning';
-			case 'subcritical': return 'error';
-			default: return 'info';
+			case 'supercritical':
+				return 'success';
+			case 'critical':
+				return 'warning';
+			case 'subcritical':
+				return 'error';
+			default:
+				return 'info';
 		}
 	}
-	
+
 	function getHealthBadgeVariant(health: string): 'success' | 'warning' | 'error' | 'info' {
 		switch (health) {
-			case 'strong': return 'success';
-			case 'moderate': return 'warning';
-			case 'weak': return 'error';
-			default: return 'info';
+			case 'strong':
+				return 'success';
+			case 'moderate':
+				return 'warning';
+			case 'weak':
+				return 'error';
+			default:
+				return 'info';
+		}
+	}
+
+	function getBadgeClass(variant: 'success' | 'warning' | 'error' | 'info'): string {
+		switch (variant) {
+			case 'success':
+				return 'bg-green-100 text-green-700';
+			case 'warning':
+				return 'bg-yellow-100 text-yellow-700';
+			case 'error':
+				return 'bg-red-100 text-red-700';
+			default:
+				return 'bg-blue-100 text-blue-700';
 		}
 	}
 </script>
 
-<div class="bg-white rounded-xl shadow-lg p-6">
-	<div class="flex items-center justify-between mb-6">
+<div class="rounded-xl bg-white p-6 shadow-lg">
+	<div class="mb-6 flex items-center justify-between">
 		<div>
 			<h2 class="text-2xl font-bold text-gray-900">Network Percolation Analysis</h2>
-			<p class="text-gray-600 mt-1">Information cascade modeling using Ford-Fulkerson max flow algorithm</p>
+			<p class="mt-1 text-gray-600">
+				Information cascade modeling using Edmonds–Karp max flow/min‑cut and a percolation‑style
+				connectivity heuristic
+			</p>
 		</div>
-		<button 
+		<button
 			onclick={refreshAnalysis}
 			disabled={loading}
-			class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+			class="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
 		>
 			{loading ? 'Analyzing...' : 'Refresh Analysis'}
 		</button>
 	</div>
-	
+
 	{#if loading && !analysis}
 		<div class="flex items-center justify-center py-12">
 			<LoadingSpinner />
 			<span class="ml-3 text-gray-600">Running network percolation analysis...</span>
 		</div>
 	{:else if error}
-		<div class="bg-red-50 border border-red-200 rounded-lg p-4">
+		<div class="rounded-lg border border-red-200 bg-red-50 p-4">
 			<div class="flex items-center">
-				<svg class="w-5 h-5 text-red-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
-					<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path>
+				<svg class="mr-2 h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+					<path
+						fill-rule="evenodd"
+						d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+						clip-rule="evenodd"
+					></path>
 				</svg>
-				<span class="text-red-800 font-medium">Analysis Failed</span>
+				<span class="font-medium text-red-800">Analysis Failed</span>
 			</div>
-			<p class="text-red-700 mt-1">{error}</p>
+			<p class="mt-1 text-red-700">{error}</p>
 		</div>
 	{:else if analysis && interpretation}
-		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<!-- Network Status Overview -->
-			<div class="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6">
-				<h3 class="text-lg font-semibold text-gray-900 mb-4">Network Status</h3>
+			<div class="rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+				<h3 class="mb-4 text-lg font-semibold text-gray-900">Network Status</h3>
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">
 						<span class="text-gray-600">Cascade Potential</span>
-						<Badge variant={getCascadeBadgeVariant(analysis.cascade_potential)}>
+						<span
+							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(getCascadeBadgeVariant(analysis.cascade_potential))}`}
+						>
 							{analysis.cascade_potential.toUpperCase()}
-						</Badge>
+						</span>
 					</div>
 					<div class="flex items-center justify-between">
 						<span class="text-gray-600">Network Health</span>
-						<Badge variant={getHealthBadgeVariant(interpretation.network_health)}>
+						<span
+							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(getHealthBadgeVariant(interpretation.network_health))}`}
+						>
 							{interpretation.network_health.toUpperCase()}
-						</Badge>
+						</span>
 					</div>
 					<div class="flex items-center justify-between">
 						<span class="text-gray-600">Bottleneck Severity</span>
-						<Badge variant={interpretation.bottleneck_severity === 'high' ? 'error' : 'warning'}>
+						<span
+							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(interpretation.bottleneck_severity === 'high' ? 'error' : 'warning')}`}
+						>
 							{interpretation.bottleneck_severity.toUpperCase()}
-						</Badge>
+						</span>
 					</div>
 				</div>
 			</div>
-			
+
 			<!-- Key Metrics -->
-			<div class="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6">
-				<h3 class="text-lg font-semibold text-gray-900 mb-4">Key Metrics</h3>
+			<div class="rounded-lg bg-gradient-to-br from-green-50 to-emerald-50 p-6">
+				<h3 class="mb-4 text-lg font-semibold text-gray-900">Key Metrics</h3>
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">
 						<span class="text-gray-600">Percolation Threshold</span>
@@ -184,28 +218,50 @@
 				</div>
 			</div>
 		</div>
-		
+
 		<!-- Recommendation Panel -->
-		<div class="mt-6 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-6">
-			<h3 class="text-lg font-semibold text-gray-900 mb-3">Strategic Recommendation</h3>
+		<div class="mt-6 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 p-6">
+			<h3 class="mb-3 text-lg font-semibold text-gray-900">Strategic Recommendation</h3>
 			<div class="flex items-start">
-				<svg class="w-6 h-6 text-purple-500 mt-0.5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+				<svg
+					class="mr-3 mt-0.5 h-6 w-6 flex-shrink-0 text-purple-500"
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+					></path>
 				</svg>
-				<p class="text-gray-700 leading-relaxed">{interpretation.recommendation}</p>
+				<p class="leading-relaxed text-gray-700">{interpretation.recommendation}</p>
 			</div>
 		</div>
-		
+
 		<!-- Network Visualization Placeholder -->
-		<div class="mt-6 bg-gray-50 rounded-lg p-8 text-center">
-			<svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+		<div class="mt-6 rounded-lg bg-gray-50 p-8 text-center">
+			<svg
+				class="mx-auto mb-4 h-16 w-16 text-gray-400"
+				fill="none"
+				stroke="currentColor"
+				viewBox="0 0 24 24"
+			>
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+				></path>
 			</svg>
-			<h4 class="text-lg font-medium text-gray-600 mb-2">Network Visualization</h4>
+			<h4 class="mb-2 text-lg font-medium text-gray-600">Network Visualization</h4>
 			<p class="text-gray-500">Interactive network graph coming soon</p>
-			<p class="text-sm text-gray-400 mt-1">Will show critical nodes, bottlenecks, and information flow paths</p>
+			<p class="mt-1 text-sm text-gray-400">
+				Will show critical nodes, bottlenecks, and information flow paths
+			</p>
 		</div>
-		
+
 		{#if lastUpdated}
 			<div class="mt-4 text-center text-sm text-gray-500">
 				Last updated: {lastUpdated}

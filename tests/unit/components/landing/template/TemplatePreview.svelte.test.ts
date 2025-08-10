@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/svelte';
-import TemplatePreview from './TemplatePreview.svelte';
+import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 import type { Template } from '$lib/types/template';
 
 // Mock child components
-vi.mock('./TemplateTips.svelte', () => ({
+vi.mock('$lib/components/landing/template/TemplateTips.svelte', () => ({
 	default: () => ({ default: () => 'TemplateTips' })
 }));
 
-vi.mock('./MessagePreview.svelte', () => ({
+vi.mock('$lib/components/landing/template/MessagePreview.svelte', () => ({
 	default: () => ({ default: () => 'MessagePreview' })
 }));
 

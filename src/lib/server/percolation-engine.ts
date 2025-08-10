@@ -2,9 +2,12 @@ import { db } from './db';
 
 /**
  * PERCOLATION ENGINE - Information Cascade Analysis
- * 
- * Implements Ford-Fulkerson max flow and percolation threshold detection
- * on our actual civic information network using template_campaign data
+ *
+ * Implements Edmonds–Karp max flow/min-cut and a percolation-style
+ * connectivity threshold heuristic on our civic information network built
+ * from real template/campaign data. The threshold detection here is a
+ * practical proxy (edge-weight connectivity with giant-component check),
+ * not a statistically validated percolation exponent analysis.
  */
 
 export interface NetworkNode {
@@ -147,7 +150,7 @@ export function calculatePercolationThreshold(
   edges: NetworkEdge[]
 ): number {
   
-  // Sort edges by weight (bond percolation = remove weakest edges first)
+  // Sort edges by weight (bond-percolation-style: remove weakest edges first)
   const sortedEdges = [...edges].sort((a, b) => a.weight - b.weight);
   
   // Binary search for critical threshold

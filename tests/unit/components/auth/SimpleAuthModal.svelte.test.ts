@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/svelte';
-import SimpleAuthModal from './SimpleAuthModal.svelte';
+import SimpleAuthModal from '$lib/components/auth/SimpleAuthModal.svelte';
 
 // Mock window.location
 delete window.location;

@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 			...event,
 			ip_address: getClientAddress(),
 			user_agent: request.headers.get('user-agent') || undefined,
-			user_id: locals.user?.id || event.user_id,
+			user_id: locals.user?.id || event.user_id,	
 			server_timestamp: new Date().toISOString()
 		};
 

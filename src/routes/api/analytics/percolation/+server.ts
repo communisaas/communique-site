@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
-		// Run percolation analysis on the civic information network
+		// Run percolation-style connectivity analysis on the civic information network
 		const analysis = await analyzeCivicInformationCascades();
 		
 		// Store results for historical tracking

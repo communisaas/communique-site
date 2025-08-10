@@ -2,9 +2,11 @@ import { db } from './db';
 
 /**
  * SHEAF DATA FUSION ENGINE - Distributed Information Consistency
- * 
- * Implements Čech cohomology for fusing inconsistent information sources
- * across geographic and community boundaries in our civic system
+ *
+ * Prototype, sheaf-inspired consistency over overlaps. This is a pragmatic
+ * proxy for Čech-style reasoning, not a full cohomology implementation.
+ * Used to detect cross-region agreement and conflicts with transparent
+ * heuristics suitable for production.
  */
 
 export interface InformationSource {
@@ -39,6 +41,12 @@ export interface CohomologyResult {
   fusion_quality: number; // 0-1 quality score
   confidence_bound: number; // Mathematical lower bound on result quality
 }
+
+// Tunable heuristic weight for penalizing conflicts when computing the
+// confidence bound. This is intentionally simple and transparent.
+export const SHEAF_CONFLICT_PENALTY_WEIGHT = Number(
+  (process.env.SHEAF_CONFLICT_PENALTY_WEIGHT ?? '0.1')
+);
 
 /**
  * Get overlapping information sources from our template/campaign system
@@ -184,9 +192,17 @@ function checkLocalConsistency(
 }
 
 /**
- * Calculate Čech cohomology for sheaf data fusion
+ * Estimate sheaf-style consistency using a Čech-inspired proxy.
+ *
+ * Notes:
+ * - H0 is treated as globally consistent sections that match on
+ *   sentiment and category across all regions.
+ * - H1 is a list of pairwise conflicts by category across regions.
+ * - H2 is not computed in this proxy.
  */
-export function calculateCechCohomology(sheaf: Map<string, SheafSection[]>): CohomologyResult {
+export function estimateSheafConsistencyCechProxy(
+  sheaf: Map<string, SheafSection[]>
+): CohomologyResult {
   const regions = Array.from(sheaf.keys());
   
   // H^0: Global sections (consistent across all regions)
@@ -295,7 +311,7 @@ export function calculateCechCohomology(sheaf: Map<string, SheafSection[]>): Coh
   
   // Confidence bound (theoretical lower bound on result quality)
   const avgConfidence = H0.reduce((sum, section) => sum + section.confidence, 0) / Math.max(H0.length, 1);
-  const conflictPenalty = H1.length * 0.1; // Penalty for each conflict
+  const conflictPenalty = H1.length * SHEAF_CONFLICT_PENALTY_WEIGHT; // Heuristic penalty per conflict
   const confidenceBound = Math.max(0, avgConfidence - conflictPenalty);
   
   return {
@@ -346,8 +362,8 @@ export async function fuseInformationSources(
   // Build sheaf structure
   const sheaf = buildSheafStructure(sources);
   
-  // Calculate cohomology
-  const cohomology = calculateCechCohomology(sheaf);
+  // Calculate proxy cohomology/consistency
+  const cohomology = estimateSheafConsistencyCechProxy(sheaf);
   
   
   return {

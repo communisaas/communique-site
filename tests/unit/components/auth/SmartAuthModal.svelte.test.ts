@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/svelte';
-import SmartAuthModal from './SmartAuthModal.svelte';
+import SmartAuthModal from '$lib/components/auth/SmartAuthModal.svelte';
 
 // Mock the modal store
 const mockModalStore = {

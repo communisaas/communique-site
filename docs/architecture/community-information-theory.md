@@ -22,7 +22,7 @@ Sarah's electrician union has a consensus mechanism for evaluating policy: "Does
 These aren't bugs to be fixed. They're legitimate community validation systems that have kept people alive and fed for decades.
 
 **The engineering challenge**: How do you build information systems that respect both consensus mechanisms while enabling collective democratic action?
-Production: respect existing validation systems and translate policy into their decision language. Research: formalize these as local validation rules on a network (see sheaf-theoretic modeling in the math foundations).
+Production: respect existing validation systems and translate policy into their decision language. Research: formalize these as local validation rules on a network (see sheaf-inspired consistency proxy in the math foundations).
 
 ### You Know How Networks Fragment Under Load
 Remember Terra Luna? $60 billion to zero because the network couldn't handle coordinated selling pressure. 
@@ -112,7 +112,7 @@ We avoid paywalls and surveillance economics. Production: on-device rendering, `
 ## Core Frameworks
 
 - Carrier waves: message motifs and timing that preserve meaning across communities; measured by co‑signs and stability over time.
-- Boundary/sheaf consistency: model local acceptance rules and check overlaps; resolve obstructions with targeted translation.
+- Boundary/sheaf consistency: model local acceptance rules and check overlaps using a Čech-inspired proxy; resolve obstructions with targeted translation.
 - Virulence on aggregates: compare Bass/SIR parameters (p,q) across copy/audience; no individual modeling.
 
 ## Glossary: Co‑sign (what it means here)
@@ -124,7 +124,7 @@ We avoid paywalls and surveillance economics. Production: on-device rendering, `
 ## Production vs Research
 
 - Production: client-first delivery, translation, measurable outcomes, minimal data.
-- Research: social field theory, sheaf consistency, and contagion/virulence computed on aggregates to inform copy, timing, and coalition strategy — never individual targeting.
+- Research: social field theory, sheaf-style consistency, and contagion/virulence computed on aggregates to inform copy, timing, and coalition strategy — never individual targeting.
 
 ## Democratic Theory Implications
 

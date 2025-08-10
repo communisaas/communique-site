@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, waitFor, screen } from '@testing-library/svelte';
-import AddressRequirementModal from './AddressRequirementModal.svelte';
+import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
 
 // Mock fetch globally
 const mockFetch = vi.fn();

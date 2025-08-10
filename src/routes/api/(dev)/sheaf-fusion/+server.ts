@@ -17,15 +17,15 @@ export async function GET({ url }) {
     return json({
       success: fusionResult.success,
       message: fusionResult.success 
-        ? `Sheaf data fusion completed for ${category}`
+        ? `Sheaf (Čech-inspired proxy) data fusion completed for ${category}`
         : `No data available for fusion in category ${category}`,
       data: {
         category,
         time_window_days: timeWindow,
         fusion_result: fusionResult,
         mathematical_interpretation: {
-          h0_meaning: 'Global consensus across all geographic regions',
-          h1_meaning: 'Information conflicts requiring resolution',
+          h0_meaning: 'Proxy for global consensus across all geographic regions',
+          h1_meaning: 'Proxy-detected information conflicts requiring resolution',
           fusion_quality_meaning: `${(fusionResult.quality_metrics.fusion_quality * 100).toFixed(1)}% of sources are globally consistent`,
           confidence_bound_meaning: `Mathematical lower bound: ${(fusionResult.quality_metrics.confidence_bound * 100).toFixed(1)}% confidence`
         }

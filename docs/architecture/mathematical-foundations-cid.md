@@ -13,7 +13,7 @@ Time to use those same mathematical tools to build something that doesn't make t
 We use math where it moves the real product forward:
 
 - Production: network diffusion intuition, simple grouping, moving averages, anomaly flags (deliverability, conversion).
-- Research: estimate Bass/SIR parameters on aggregates; test field-like gradients across adjacent audiences; evaluate sheaf consistency on overlaps to localize translation conflicts.
+- Research: estimate Bass/SIR parameters on aggregates; test field-like gradients across adjacent audiences; evaluate sheaf-style consistency on overlaps to localize translation conflicts.
 
 ### Community consensus, grounded
 
@@ -96,6 +96,30 @@ True decentralization means communities can process information according to the
 Not another token. Not another DeFi protocol. Not another DAO that gets captured by whales.
 
 **Systems that give power back to communities while enabling collective action at scale.**
+
+## Current implementation status (production vs research)
+
+| Framework | What we ship today | Notes |
+| --- | --- | --- |
+| Percolation/Max-Flow | Implemented: Edmonds–Karp max-flow/min-cut; percolation-style connectivity threshold heuristic with giant-component check | Threshold is a practical proxy; no exponent/universality claims |
+| Epidemiology (R0, decay) | Implemented: R0, activation velocity/decay from real cascade data | Uses `user_activation` generations and timestamps |
+| Sheaf consistency | Implemented: Čech-inspired proxy for global agreement and pairwise conflicts | Not full cohomology; H2 not computed; confidence bound is heuristic |
+| Population genetics (FST) | Roadmap | Not implemented in code |
+| Information geometry | Roadmap | Not implemented in code |
+| Fiber bundles | Roadmap | Not implemented in code |
+
+We keep production claims modest; advanced theory is used to inform research and future work.
+
+### Validation notes (lightweight, ongoing)
+
+- Percolation proxy: back-test threshold vs. observed cascade onset across time windows; report precision/recall on critical vs non‑critical classification.
+- Sheaf proxy: human-label a small set of cross-region contradictions; measure precision/recall of H1 conflict detection; tune `SHEAF_CONFLICT_PENALTY_WEIGHT` via env.
+
+Config:
+
+```
+SHEAF_CONFLICT_PENALTY_WEIGHT=0.1
+```
 
 ## The Mathematical Lineage: Standing on Giants' Shoulders
 

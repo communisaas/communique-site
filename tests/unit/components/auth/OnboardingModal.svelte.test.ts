@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, fireEvent, screen } from '@testing-library/svelte';
-import OnboardingModal from './OnboardingModal.svelte';
+import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
 
 // Mock window.location
 delete window.location;
