@@ -40,19 +40,17 @@
 	const metrics = $derived(normalizeMetrics(template.metrics));
 	
 	// Calculate recipient count for direct email templates
-	const recipientCount = $derived(() => {
+	const recipientCount = $derived(
 		// Use pre-computed recipientEmails from API if available
-		if (template.recipientEmails && Array.isArray(template.recipientEmails)) {
-			return template.recipientEmails.length;
-		}
-		// Fallback to parsing recipient_config
-		const recipientEmails = extractRecipientEmails(
-			typeof template.recipient_config === 'string' 
-				? JSON.parse(template.recipient_config) 
-				: template.recipient_config
-		);
-		return recipientEmails.length;
-	});
+		template.recipientEmails && Array.isArray(template.recipientEmails)
+			? template.recipientEmails.length
+			// Fallback to parsing recipient_config
+			: extractRecipientEmails(
+				typeof template.recipient_config === 'string' 
+					? JSON.parse(template.recipient_config) 
+					: template.recipient_config
+			).length
+	);
 
 	// Format numbers with commas, handle undefined/null values
 	function formatNumber(num: number | undefined | null): string {
