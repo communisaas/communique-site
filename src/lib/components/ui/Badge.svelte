@@ -24,7 +24,11 @@
 
 <Tooltip content={badge.tooltip} showInfoIcon={false}>
 	<span class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm {badge.class}">
-		<svelte:component this={badge.icon} class="h-3 w-3 md:h-4 md:w-4" />
+		{#snippet iconSnippet()}
+			{@const IconComponent = badge.icon}
+			<IconComponent class="h-3 w-3 md:h-4 md:w-4" />
+		{/snippet}
+		{@render iconSnippet()}
 		{badge.text}
 	</span>
 </Tooltip>

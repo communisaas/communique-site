@@ -2,6 +2,7 @@
 	import { Send, Landmark, Building2, MapPin, User, Users } from '@lucide/svelte';
 	import Tooltip from '$lib/components/ui/Tooltip.svelte';
 	import type { Template } from '$lib/types/template';
+	import { extractRecipientEmails } from '$lib/types/templateConfig';
 
 	interface Props {
 		template: Template;
@@ -37,6 +38,12 @@
 
 	// Get normalized metrics
 	const metrics = $derived(normalizeMetrics(template.metrics));
+	
+	// Calculate recipient count for direct email templates
+	const recipientCount = $derived(() => {
+		const recipientEmails = extractRecipientEmails(template.recipient_config);
+		return recipientEmails.length;
+	});
 
 	// Format numbers with commas, handle undefined/null values
 	function formatNumber(num: number | undefined | null): string {
@@ -50,6 +57,9 @@
 	const badgeType = $derived(
 		template.deliveryMethod === 'both' ? 'certified' : ('direct' as 'certified' | 'direct')
 	);
+	
+	// For templates with recipients, always show recipient count regardless of delivery method
+	const shouldShowRecipients = $derived(recipientCount > 0);
 
 	// Calculate district coverage for congressional templates
 	function getDistrictCoverage(normalizedMetrics: ReturnType<typeof normalizeMetrics>): string {
@@ -78,17 +88,17 @@
 			icon: Landmark,
 			tooltip: 'Delivered through Congressional Web Communication system',
 			value: `${formatNumber(metrics.sent)} sent`,
-			secondaryIcon: MapPin,
-			secondaryTooltip: 'Percentage of congressional districts covered by this campaign',
-			secondaryValue: `${getDistrictCoverage(metrics)} districts covered`
+			secondaryIcon: shouldShowRecipients ? (recipientCount > 1 ? Users : User) : MapPin,
+			secondaryTooltip: shouldShowRecipients ? 'Total recipient addresses targeted' : 'Percentage of congressional districts covered by this campaign',
+			secondaryValue: shouldShowRecipients ? `${formatNumber(recipientCount)} recipients` : `${getDistrictCoverage(metrics)} districts covered`
 		},
 		direct: {
 			icon: Building2,
 			tooltip: 'Direct email outreach to decision makers',
 			value: `${formatNumber(metrics.sent)} sent`,
-			secondaryIcon: (metrics.clicked || 0) > 1 ? Users : User,
+			secondaryIcon: recipientCount > 1 ? Users : User,
 			secondaryTooltip: 'Total recipient addresses targeted',
-			secondaryValue: `${formatNumber(metrics.clicked)} recipients`
+			secondaryValue: `${formatNumber(recipientCount)} recipients`
 		}
 	} as const);
 
@@ -104,7 +114,11 @@
 	</div>
 
 	<div class="flex max-w-fit items-center gap-2 text-slate-500">
-		<svelte:component this={currentMetric.secondaryIcon} class="h-4 w-4 shrink-0" />
+		{#snippet secondaryIconSnippet()}
+			{@const SecondaryIconComponent = currentMetric.secondaryIcon}
+			<SecondaryIconComponent class="h-4 w-4 shrink-0" />
+		{/snippet}
+		{@render secondaryIconSnippet()}
 		<Tooltip content={currentMetric.secondaryTooltip} containerClass="min-w-0 flex-1">
 			{currentMetric.secondaryValue}
 		</Tooltip>

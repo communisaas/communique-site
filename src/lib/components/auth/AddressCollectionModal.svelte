@@ -26,8 +26,8 @@
 		complete: { address: string; verified: boolean; representatives?: Array<Record<string, unknown>> };
 	}>();
 	
-	let currentStep: 'collect' | 'verify' | 'complete' = 'collect';
-	let isTransitioning = false;
+	let currentStep = $state<'collect' | 'verify' | 'complete'>('collect');
+	let isTransitioning = $state(false);
 	
 	// Prevent background scrolling when modal is open
 	onMount(() => {
@@ -39,14 +39,14 @@
 	});
 	
 	// Address form data
-	let streetAddress = '';
-	let city = '';
-	let state = '';
-	let zipCode = '';
-	let addressError = '';
-	let isVerifying = false;
-	let verificationResult: Record<string, unknown> | null = null;
-	let selectedAddress: string = '';
+	let streetAddress = $state('');
+	let city = $state('');
+	let state = $state('');
+	let zipCode = $state('');
+	let addressError = $state('');
+	let isVerifying = $state(false);
+	let verificationResult = $state<Record<string, unknown> | null>(null);
+	let selectedAddress = $state('');
 	
 	function handleClose() {
 		dispatch('close');

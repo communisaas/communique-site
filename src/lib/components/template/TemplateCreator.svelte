@@ -173,7 +173,11 @@
 	<!-- Step Header -->
 	<div class="border-b border-slate-200 px-6 py-4">
 		<div class="mb-1 flex items-center gap-3">
-			<svelte:component this={stepInfo[currentStep].icon} class="h-5 w-5 text-blue-600" />
+			{#snippet iconSnippet()}
+				{@const IconComponent = stepInfo[currentStep].icon}
+				<IconComponent class="h-5 w-5 text-blue-600" />
+			{/snippet}
+			{@render iconSnippet()}
 			<h2 class="text-xl font-semibold text-slate-900">
 				{stepInfo[currentStep].title}
 			</h2>
