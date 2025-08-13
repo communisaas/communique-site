@@ -150,13 +150,15 @@
 	const filteredTemplates = $derived(selectedChannel
 		? $templateStore.templates.filter((t) => {
 				if (selectedChannel === 'certified') {
-					return t.deliveryMethod === 'both';
+					// Congressional delivery under construction - show nothing for now
+					return false;
 				} else if (selectedChannel === 'direct') {
-					return t.deliveryMethod === 'email';
+					return t.deliveryMethod === 'email' || t.deliveryMethod === 'direct';
 				}
 				return false;
 			})
-		: $templateStore.templates);
+		// For MVP: Only show direct email templates
+		: $templateStore.templates.filter((t) => t.deliveryMethod === 'email' || t.deliveryMethod === 'direct'));
 	
 	
 	// Handle URL parameter initialization when templates load (legacy support)
