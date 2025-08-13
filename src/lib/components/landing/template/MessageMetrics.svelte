@@ -41,7 +41,16 @@
 	
 	// Calculate recipient count for direct email templates
 	const recipientCount = $derived(() => {
-		const recipientEmails = extractRecipientEmails(template.recipient_config);
+		// Use pre-computed recipientEmails from API if available
+		if (template.recipientEmails && Array.isArray(template.recipientEmails)) {
+			return template.recipientEmails.length;
+		}
+		// Fallback to parsing recipient_config
+		const recipientEmails = extractRecipientEmails(
+			typeof template.recipient_config === 'string' 
+				? JSON.parse(template.recipient_config) 
+				: template.recipient_config
+		);
 		return recipientEmails.length;
 	});
 

@@ -28,7 +28,11 @@ export async function GET() {
 			delivery_config: template.delivery_config,
 			recipient_config: template.recipient_config,
 			is_public: template.is_public,
-			recipientEmails: extractRecipientEmails(template.recipient_config)
+			recipientEmails: extractRecipientEmails(
+				typeof template.recipient_config === 'string' 
+					? JSON.parse(template.recipient_config) 
+					: template.recipient_config
+			)
 		}));
 
 		return json(formattedTemplates);
