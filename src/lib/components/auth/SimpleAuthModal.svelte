@@ -13,13 +13,21 @@
 		template: any;
 	} = $props();
 
-	function handleAuth(provider: string) {
-		const returnUrl = encodeURIComponent(window.location.href);
+	async function handleAuth(provider: string) {
+		// Store return URL via secure cookie to avoid leaking state through query
+		try {
+			await fetch('/auth/prepare', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ returnTo: window.location.href })
+			});
+		} catch {}
+
 		// Optional: mark onboarding start if not already captured
 		if (template?.id) {
 			funnelAnalytics.trackOnboardingStarted(template.id, 'direct-link');
 		}
-		window.location.href = `/auth/${provider}?returnTo=${returnUrl}`;
+		window.location.href = `/auth/${provider}`;
 	}
 </script>
 
@@ -30,7 +38,7 @@
 			<!-- Header -->
 			<div class="mb-6 flex items-center justify-between">
 				<h2 class="text-xl font-semibold text-slate-900">Sign in to continue</h2>
-				<button onclick={onClose} class="text-slate-400 hover:text-slate-600">
+				<button onclick={onClose} aria-label="Close" class="text-slate-400 hover:text-slate-600">
 					<X class="h-5 w-5" />
 				</button>
 			</div>

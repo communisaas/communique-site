@@ -6,8 +6,10 @@
 - Representatives: Congress.gov API
 - Code: `src/lib/congress/address-lookup.ts`
 
-## Congressional delivery (CWC)
-- Generate CWC XML from template + user + target rep
+## Legislative submission adapters (e.g., CWC)
+- User flow is invariant: we open the mail client with prepared content
+- Backend adapters can translate/submit to certified APIs/forms when required
+- US example: generate CWC XML from template + user + target rep
 - Code: `src/lib/congress/cwc-generator.ts`
 - API examples under `src/routes/api/civic/*`
 - See: `docs/integrations/congressional-integration.md`
@@ -25,5 +27,5 @@
 
 ## Env
 - `SUPABASE_DATABASE_URL` required
-- `CONGRESS_API_KEY` required
+- Adapter keys (as needed), e.g., `CWC_API_KEY`
 - OAuth client IDs/secrets as configured per provider

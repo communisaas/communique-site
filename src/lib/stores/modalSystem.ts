@@ -232,20 +232,19 @@ if (typeof window !== 'undefined') {
 
 // Modal Component Utilities
 export function createModalStore(id: string, type: ModalType) {
+	const value = derived(activeModals, ($modals) => {
+		const modal = $modals.get(id);
+		return {
+			isOpen: modal?.isOpen ?? false,
+			data: modal?.data ?? null,
+			zIndex: modal?.zIndex ?? 1000
+		};
+	});
+
 	return {
-		isOpen: derived(activeModals, ($modals) => {
-			const modal = $modals.get(id);
-			return modal?.isOpen ?? false;
-		}),
-		data: derived(activeModals, ($modals) => {
-			const modal = $modals.get(id);
-			return modal?.data;
-		}),
-		zIndex: derived(activeModals, ($modals) => {
-			const modal = $modals.get(id);
-			return modal?.zIndex ?? 1000;
-		}),
-		open: (data?: unknown, options?: { closeOnBackdrop?: boolean; closeOnEscape?: boolean; autoClose?: number }) => modalActions.open(id, type, data, options),
+		subscribe: value.subscribe,
+		open: (data?: unknown, options?: { closeOnBackdrop?: boolean; closeOnEscape?: boolean; autoClose?: number }) =>
+			modalActions.open(id, type, data, options),
 		close: () => modalActions.close(id)
 	};
 }

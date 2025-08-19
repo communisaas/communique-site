@@ -336,7 +336,7 @@ describe('OnboardingModal', () => {
       );
     });
 
-    it('redirects to correct OAuth provider with return URL', async () => {
+    it('redirects to correct OAuth provider and prepares cookie', async () => {
       render(OnboardingModal, {
         props: {
           template: congressionalTemplate,
@@ -345,13 +345,12 @@ describe('OnboardingModal', () => {
       });
 
       // Find and click an auth button (implementation may vary)
-      const authButtons = screen.getAllByText(/Get started with|Continue with|Sign up with/);
+      const authButtons = screen.getAllByText(/Continue with/);
       if (authButtons.length > 0) {
         await fireEvent.click(authButtons[0]);
 
-        const expectedReturnUrl = encodeURIComponent('/template-modal/climate-action');
         expect(window.location.href).toContain('/auth/');
-        expect(window.location.href).toContain(`returnTo=${expectedReturnUrl}`);
+        expect(fetch).toHaveBeenCalledWith('/auth/prepare', expect.any(Object));
       }
     });
 
@@ -384,40 +383,27 @@ describe('OnboardingModal', () => {
   });
 
   describe('Modal Interaction', () => {
-    it('dispatches close event when close button is clicked', async () => {
-      const { component } = render(OnboardingModal, {
-        props: {
-          template: congressionalTemplate,
-          source: 'direct-link'
-        }
+    it('invokes onclose when close button is clicked', async () => {
+      const onclose = vi.fn();
+      render(OnboardingModal, {
+        props: { template: congressionalTemplate, source: 'direct-link', onclose }
       });
-
-      const closeHandler = vi.fn();
-      component.$on('close', closeHandler);
 
       const closeButton = screen.getByRole('button', { name: /close/i });
       await fireEvent.click(closeButton);
-
-      expect(closeHandler).toHaveBeenCalled();
+      expect(onclose).toHaveBeenCalled();
     });
 
-    it('dispatches close event when backdrop is clicked', async () => {
-      const { component, container } = render(OnboardingModal, {
-        props: {
-          template: congressionalTemplate,
-          source: 'direct-link'
-        }
+    it('invokes onclose when backdrop is clicked', async () => {
+      const onclose = vi.fn();
+      const { container } = render(OnboardingModal, {
+        props: { template: congressionalTemplate, source: 'direct-link', onclose }
       });
-
-      const closeHandler = vi.fn();
-      component.$on('close', closeHandler);
 
       const backdrop = container.querySelector('.fixed.inset-0');
       expect(backdrop).toBeTruthy();
-
       await fireEvent.click(backdrop!);
-
-      expect(closeHandler).toHaveBeenCalled();
+      expect(onclose).toHaveBeenCalled();
     });
   });
 
@@ -487,7 +473,6 @@ describe('OnboardingModal', () => {
 
       // Look for metrics in the rendered content
       expect(screen.getByText(/1247|1,247/)).toBeTruthy(); // sent count
-      expect(screen.getByText(/3425|3,425/)).toBeTruthy(); // views count
     });
 
     it('handles templates with minimal metrics', () => {

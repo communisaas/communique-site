@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
@@ -46,11 +47,15 @@
 	
 	// Prevent background scrolling when modal is open
 	onMount(() => {
-		document.body.style.overflow = 'hidden';
+		if (browser) {
+			document.body.style.overflow = 'hidden';
+		}
 	});
 	
 	onDestroy(() => {
-		document.body.style.overflow = '';
+		if (browser) {
+			document.body.style.overflow = '';
+		}
 		useTimerCleanup(componentId)();
 	});
 	
@@ -102,6 +107,7 @@
 	function validateRole(): boolean {
 		roleError = '';
 		const role = selectedRole === 'other' ? customRole : selectedRole;
+		console.log('Validating role:', { selectedRole, customRole, role });
 		if (!role.trim()) {
 			roleError = 'Please select or enter your role';
 			return false;
@@ -123,6 +129,7 @@
 	}
 	
 	function nextStep() {
+		console.log('nextStep called, isTransitioning:', isTransitioning, 'currentStep:', currentStep);
 		if (isTransitioning) return;
 		
 		let isValid = true;
@@ -132,6 +139,7 @@
 			isValid = validateConnection();
 		}
 		
+		console.log('Validation result:', isValid);
 		if (!isValid) return;
 		
 		isTransitioning = true;
@@ -142,6 +150,7 @@
 			currentStep = 'verify';
 		}
 		
+		console.log('New currentStep:', currentStep);
 		coordinated.setTimeout(() => isTransitioning = false, 300, 'transition', componentId);
 	}
 	
@@ -261,21 +270,24 @@
 	in:fade={{ duration: 300, easing: quintOut }}
 	out:fade={{ duration: 200 }}
 >
-	<div 
-		class="fixed inset-x-4 top-1/2 max-w-md mx-auto transform -translate-y-1/2 bg-white rounded-2xl shadow-2xl overflow-hidden"
+	<div
+		class="fixed inset-x-4 inset-y-4 mx-auto flex max-w-md items-center justify-center"
 		onclick={(e) => { e.stopPropagation(); }}
-		in:scale={{ 
-			duration: 400, 
-			easing: backOut,
-			start: 0.9,
-			opacity: 0.5
-		}}
-		out:scale={{ 
-			duration: 200, 
-			easing: quintOut,
-			start: 0.95
-		}}
 	>
+		<div
+			class="w-full max-h-full overflow-y-auto bg-white rounded-2xl shadow-2xl"
+			in:scale={{ 
+				duration: 400, 
+				easing: backOut,
+				start: 0.9,
+				opacity: 0.5
+			}}
+			out:scale={{ 
+				duration: 200, 
+				easing: quintOut,
+				start: 0.95
+			}}
+		>
 		<!-- Close Button -->
 		<button
 			onclick={handleClose}
@@ -302,10 +314,10 @@
 		</div>
 		
 		<!-- Content -->
-		<div class="relative overflow-hidden min-h-[500px]">
+		<div class="relative">
 			{#key currentStep}
 				<div 
-					class="absolute inset-0 p-6 pt-2"
+					class="p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
 					onkeydown={handleKeydown}
@@ -592,6 +604,7 @@
 					{/if}
 				</div>
 			{/key}
+		</div>
 		</div>
 	</div>
 </div>

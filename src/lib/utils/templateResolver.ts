@@ -19,7 +19,7 @@ import { extractRecipientEmails } from '$lib/types/templateConfig';
 interface User {
 	id: string;
 	name?: string | null;
-	email: string;
+	email?: string;  // Made optional for compatibility
 	street?: string | null;
 	city?: string | null;
 	state?: string | null;
@@ -59,24 +59,25 @@ export function resolveTemplate(template: Template, user: User | null): Resolved
 	const baseMessage = template.message_body || template.preview || '';
 	
 	// Initialize resolution context
-	let resolvedSubject = template.subject || template.title;
+	const subjectHasPlaceholders = typeof template.subject === 'string' && /\[.+?\]/.test(template.subject);
+	let resolvedSubject = subjectHasPlaceholders ? (template.subject || template.title || '') : (template.title || template.subject || '');
 	let resolvedBody = baseMessage;
 	
 	if (user) {
 		// User context resolution - real name, real address, real representatives
-		const userName = user.name || 'Constituent';
+		const userName = user.name || '';
 		const userAddress = buildUserAddress(user);
 		
 		// Block variable resolution with actual data
-		const replacements: Record<string, string> = {
-			'[Name]': userName,
+		const replacements: Record<string, string | null> = {
+			'[Name]': userName, // allow empty string to preserve punctuation
 			'[Your Name]': userName,
-			'[Address]': userAddress,
-			'[Your Address]': userAddress,
-			'[City]': user.city || '',
-			'[State]': user.state || '',
-			'[ZIP]': user.zip || '',
-			'[Zip Code]': user.zip || ''
+			'[Address]': (user.street && user.city && user.state && user.zip) ? userAddress : null,
+			'[Your Address]': (user.street && user.city && user.state && user.zip) ? userAddress : null,
+			'[City]': user.city || null,
+			'[State]': user.state || null,
+			'[ZIP]': user.zip || null,
+			'[Zip Code]': user.zip || null
 		};
 		
 		// Congressional representative resolution
@@ -87,6 +88,10 @@ export function resolveTemplate(template: Template, user: User | null): Resolved
 				replacements['[Representative Name]'] = primaryRep.name;
 				replacements['[Rep Name]'] = primaryRep.name;
 				replacements['[Representative]'] = `Rep. ${primaryRep.name}`;
+			} else {
+				replacements['[Representative Name]'] = null;
+				replacements['[Rep Name]'] = null;
+				replacements['[Representative]'] = null;
 			}
 			
 			// Senate representatives
@@ -94,25 +99,64 @@ export function resolveTemplate(template: Template, user: User | null): Resolved
 			if (senators.length > 0) {
 				replacements['[Senator Name]'] = senators[0].name;
 				replacements['[Senator]'] = `Sen. ${senators[0].name}`;
+			} else {
+				replacements['[Senator Name]'] = null;
+				replacements['[Senator]'] = null;
 			}
 			if (senators.length > 1) {
 				replacements['[Senior Senator]'] = `Sen. ${senators[0].name}`;
 				replacements['[Junior Senator]'] = `Sen. ${senators[1].name}`;
+			} else {
+				replacements['[Senior Senator]'] = null;
+				replacements['[Junior Senator]'] = null;
 			}
 		} else {
-			// Fallback for users without representative data
-			replacements['[Representative Name]'] = 'your Representative';
-			replacements['[Rep Name]'] = 'your Representative';
-			replacements['[Representative]'] = 'your Representative';
-			replacements['[Senator Name]'] = 'your Senator';
-			replacements['[Senator]'] = 'your Senator';
+			// No representative data - use generic labels where appropriate
+			replacements['[Representative Name]'] = 'Representative';
+			replacements['[Rep Name]'] = 'Representative';
+			replacements['[Representative]'] = 'Representative';
+			replacements['[Senator Name]'] = 'Senator';
+			replacements['[Senator]'] = 'Senator';
+			replacements['[Senior Senator]'] = 'Senior Senator';
+			replacements['[Junior Senator]'] = 'Junior Senator';
 		}
+		
+		// Remove all manual-fill placeholders - everything auto-resolves or gets removed
+		replacements['[Personal Connection]'] = null;
+		replacements['[Phone]'] = null;
+		replacements['[Phone Number]'] = null;
+		replacements['[Your Phone]'] = null;
+		replacements['[Your Story]'] = null;
+		replacements['[Your Experience]'] = null;
+		replacements['[Personal Story]'] = null;
 		
 		// Apply all replacements to subject and body
 		Object.entries(replacements).forEach(([placeholder, value]) => {
-			resolvedSubject = resolvedSubject.replace(new RegExp(escapeRegex(placeholder), 'g'), value);
-			resolvedBody = resolvedBody.replace(new RegExp(escapeRegex(placeholder), 'g'), value);
+			if (value !== null) {
+				// Replace with actual value
+				resolvedSubject = resolvedSubject.replace(new RegExp(escapeRegex(placeholder), 'g'), value);
+				resolvedBody = resolvedBody.replace(new RegExp(escapeRegex(placeholder), 'g'), value);
+			} else {
+				// Remove lines containing only this placeholder (with optional whitespace)
+				const linePattern = new RegExp(`^[ \\t]*${escapeRegex(placeholder)}[ \\t]*$`, 'gm');
+				resolvedSubject = resolvedSubject.replace(linePattern, '');
+				resolvedBody = resolvedBody.replace(linePattern, '');
+				
+				// Remove inline occurrences with surrounding context
+				// Handle patterns like "from [Address]" or "at [Address]"
+				const contextPattern = new RegExp(`(from|at|in|of)\\s+${escapeRegex(placeholder)}`, 'gi');
+				resolvedSubject = resolvedSubject.replace(contextPattern, '');
+				resolvedBody = resolvedBody.replace(contextPattern, '');
+				
+				// Remove any remaining standalone occurrences
+				resolvedSubject = resolvedSubject.replace(new RegExp(escapeRegex(placeholder), 'g'), '');
+				resolvedBody = resolvedBody.replace(new RegExp(escapeRegex(placeholder), 'g'), '');
+			}
 		});
+		
+		// Clean up any multiple consecutive newlines left after removing placeholders
+		resolvedBody = resolvedBody.replace(/\n{3,}/g, '\n\n').trim();
+		resolvedSubject = resolvedSubject.trim();
 	} else {
 		// Non-authenticated user - preserve placeholders but make them instructional
 		resolvedBody = resolvedBody
@@ -123,12 +167,22 @@ export function resolveTemplate(template: Template, user: User | null): Resolved
 	
 	// Determine delivery method and routing
 	const isCongressional = template.deliveryMethod === 'both';
-	const recipients = extractRecipientEmails(template.recipient_config);
+	// Parse recipient_config safely
+	let recipientConfig: unknown = template.recipient_config;
+	if (typeof template.recipient_config === 'string') {
+		try {
+			recipientConfig = JSON.parse(template.recipient_config);
+		} catch (_e) {
+			recipientConfig = undefined; // allow downstream defaulting
+		}
+	}
+	const recipients = extractRecipientEmails(recipientConfig);
 	
 	let routingEmail: string | undefined;
-	if (isCongressional && user) {
-		// Congressional routing via CWC API
-		routingEmail = `congress+${template.id}-${user.id}@communique.org`;
+	if (isCongressional) {
+		// Congressional routing via CWC API, include anon when user is null
+		const userPart = user?.id ?? 'anon';
+		routingEmail = `congress+${template.id}-${userPart}@communique.org`;
 	}
 	
 	return {
@@ -144,14 +198,11 @@ export function resolveTemplate(template: Template, user: User | null): Resolved
  * Build complete user address string
  */
 function buildUserAddress(user: User): string {
-	const parts = [
-		user.street,
-		user.city,
-		user.state,
-		user.zip
-	].filter(Boolean);
-	
-	return parts.length > 0 ? parts.join(', ') : '[Your Address]';
+	// Only return address if ALL parts are present
+	if (user.street && user.city && user.state && user.zip) {
+		return `${user.street}, ${user.city}, ${user.state} ${user.zip}`;
+	}
+	return ''; // Return empty if incomplete - will be removed from template
 }
 
 /**

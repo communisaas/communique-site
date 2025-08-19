@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
 	import { fade, fly, scale, slide } from 'svelte/transition';
 	import { quintOut, backOut, elasticOut } from 'svelte/easing';
 	import { spring } from 'svelte/motion';
 	import { page } from '$app/stores';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
-	import { 
-		X, 
-		Send, 
-		Users, 
-		Eye, 
-		Share2, 
+	import {
+		X,
+		Send,
+		Users,
+		Eye,
+		Share2,
 		Copy,
 		CheckCircle2,
 		ExternalLink,
@@ -25,9 +27,11 @@
 	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { guestState } from '$lib/stores/guestState';
+	import { modalActions, modalState, isModalOpen } from '$lib/stores/modalState';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
-	
-	let { 
+	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
+
+	let {
 		template,
 		user = null
 	}: {
@@ -37,41 +41,55 @@
 			title: string;
 			description: string;
 			deliveryMethod: string;
-			metrics: { sent: number; views?: number };
+			type?: string;
+			message_body?: string;
+			recipient_config?: any;
+			recipientEmails?: string[];
+			metrics: { sent?: number; views?: number };
 			[key: string]: unknown;
 		};
 		user?: { id: string; name: string } | null;
 	} = $props();
-	
-	const dispatch = createEventDispatcher<{ 
+
+	const dispatch = createEventDispatcher<{
 		close: void;
 		used: { templateId: string; action: 'mailto_opened' };
 	}>();
-	
+
 	// Component ID for timer coordination
 	const componentId = 'template-modal-' + Math.random().toString(36).substring(2, 15);
-	
-	// Modal States
-	type ModalState = 'auth_required' | 'loading' | 'success' | 'celebration';
-	let currentState: ModalState = $state(user ? 'loading' : 'auth_required');
-	
+
+	// Modal States - use persistent store
+	const currentState = $derived($modalState);
+
 	let showCopied = $state(false);
 	let showShareMenu = $state(false);
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 	let celebrationScale = spring(1, { stiffness: 0.3, damping: 0.6 });
-	
+
+	// Enhanced URL copy component state
+	let copyButtonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
+	let copyButtonRotation = spring(0, { stiffness: 0.3, damping: 0.7 });
+	let copyButtonGlow = $state(false);
+	let copySuccessWave = $state(false);
+
 	// Generate share URL for template
 	const shareUrl = $derived(`${$page.url.origin}/${template.slug}`);
-	
-	// Auto-trigger mailto for authenticated users
+
+	// Initialize modal state and auto-trigger mailto for authenticated users
 	onMount(() => {
-		document.body.style.overflow = 'hidden';
-		
+		if (browser) {
+			document.body.style.overflow = 'hidden';
+		}
+
+		// Initialize the modal state
+		modalActions.open(template, user);
+
 		if (user) {
 			// For authenticated users, immediately start the mailto flow
 			handleUnifiedEmailFlow();
 		}
-		
+
 		// Track modal opened
 		trackEvent('template_modal_opened', {
 			template_id: template.id,
@@ -79,94 +97,241 @@
 			state: currentState
 		});
 	});
-	
+
 	onDestroy(() => {
-		document.body.style.overflow = 'auto';
+		if (browser) {
+			document.body.style.overflow = 'auto';
+		}
 		useTimerCleanup(componentId)();
 	});
-	
+
 	function handleClose() {
 		dispatch('close');
 	}
-	
+
 	async function handleUnifiedEmailFlow() {
-		currentState = 'loading';
+		modalActions.setState('loading');
 		actionProgress.set(1);
-		
+
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
 		const flow = analyzeEmailFlow(template as any, currentUser);
-		
+
+		// Store mailto URL for later use
+		if (flow.mailtoUrl) {
+			modalActions.setMailtoUrl(flow.mailtoUrl);
+		}
+
+		// Navigate to template page in background (seamless transition)
+		coordinated.setTimeout(
+			async () => {
+				await goto(`/${template.slug}`, { replaceState: true });
+			},
+			500,
+			'navigation',
+			componentId
+		);
+
 		// Show loading state briefly to let user understand what's happening
-		coordinated.setTimeout(() => {
-			if (flow.mailtoUrl) {
-				// Launch email using unified service
-				launchEmail(flow.mailtoUrl);
-				
-				// Track usage
-				trackEvent('template_used', {
-					template_id: template.id,
-					user_id: user?.id,
-					delivery_method: template.deliveryMethod
-				});
-				
-				// Dispatch for analytics
-				dispatch('used', { templateId: template.id, action: 'mailto_opened' });
+		coordinated.setTimeout(
+			() => {
+				if (flow.mailtoUrl) {
+					// Launch email using unified service
+					launchEmail(flow.mailtoUrl, '/');
+
+					// Track usage
+					trackEvent('template_used', {
+						template_id: template.id,
+						user_id: user?.id,
+						delivery_method: template.deliveryMethod
+					});
+
+					// Dispatch for analytics
+					dispatch('used', { templateId: template.id, action: 'mailto_opened' });
+
+					// Set up mail app detection
+					setupMailAppDetection();
+				}
+			},
+			1200,
+			'modal',
+			componentId
+		); // Brief loading to show intent
+	}
+
+	function setupMailAppDetection() {
+		let hasDetectedSwitch = false;
+
+		// Detect when user leaves browser (mail app opens)
+		const handleBlur = () => {
+			if (!hasDetectedSwitch) {
+				hasDetectedSwitch = true;
+				// Transition to confirmation state when mail app opens
+				coordinated.setTimeout(
+					() => {
+						modalActions.setState('confirmation');
+					},
+					100,
+					'detection',
+					componentId
+				);
 			}
-			
-			// Transition to success state
-			currentState = 'success';
-			celebrationScale.set(1.1).then(() => celebrationScale.set(1));
-			
-			// Auto-transition to celebration after brief success
-			coordinated.setTimeout(() => {
-				currentState = 'celebration';
-				celebrationScale.set(1.05).then(() => celebrationScale.set(1));
-			}, 2000, 'transition', componentId);
-			
-		}, 1200, 'modal', componentId); // Brief loading to show intent
+		};
+
+		const handleVisibilityChange = () => {
+			if (document.hidden && !hasDetectedSwitch) {
+				hasDetectedSwitch = true;
+				coordinated.setTimeout(
+					() => {
+						modalActions.setState('confirmation');
+					},
+					100,
+					'detection',
+					componentId
+				);
+			}
+		};
+
+		// Add event listeners
+		window.addEventListener('blur', handleBlur);
+		document.addEventListener('visibilitychange', handleVisibilityChange);
+
+		// Fallback timeout if no detection
+		coordinated.setTimeout(
+			() => {
+				if (!hasDetectedSwitch) {
+					modalActions.setState('confirmation');
+				}
+			},
+			3000,
+			'fallback',
+			componentId
+		);
+
+		// Cleanup function
+		coordinated.setTimeout(
+			() => {
+				window.removeEventListener('blur', handleBlur);
+				document.removeEventListener('visibilitychange', handleVisibilityChange);
+			},
+			10000,
+			'cleanup',
+			componentId
+		);
 	}
-	
+
+	function handleSendConfirmation(sent: boolean) {
+		if (sent) {
+			// User confirmed they sent the message
+			modalActions.confirmSend();
+
+			// Track actual send confirmation
+			trackEvent('template_send_confirmed', {
+				template_id: template.id,
+				user_id: user?.id,
+				delivery_method: template.deliveryMethod
+			});
+
+			// Celebration animation
+			celebrationScale.set(1.05).then(() => celebrationScale.set(1));
+		} else {
+			// User didn't send, return to loading
+			modalActions.setState('loading');
+			// Could retry the flow here if needed
+		}
+	}
+
 	function handleAuth() {
-		// Trigger auth flow - this would redirect to login
-		window.location.href = `/auth/login?returnTo=${encodeURIComponent(window.location.pathname)}`;
-	}
-	
-	function copyShareLink() {
-		navigator.clipboard.writeText(shareUrl);
-		showCopied = true;
-		coordinated.setTimeout(() => showCopied = false, 2000, 'feedback', componentId);
-		
-		trackEvent('template_link_copied', {
-			template_id: template.id,
-			user_id: user?.id,
-			context: 'celebration_modal'
+		// Prepare secure return cookie then redirect to login
+		fetch('/auth/prepare', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ returnTo: window.location.pathname })
+		}).finally(() => {
+			window.location.href = `/auth/login`;
 		});
 	}
-	
+
+	async function copyTemplateUrl() {
+		try {
+			// Trigger press animation
+			copyButtonScale.set(0.95);
+			copyButtonRotation.set(-2);
+			copyButtonGlow = true;
+
+			// Copy to clipboard
+			await navigator.clipboard.writeText(shareUrl);
+
+			// Success animation sequence
+			coordinated.setTimeout(
+				() => {
+					copyButtonScale.set(1.02);
+					copyButtonRotation.set(2);
+					copySuccessWave = true;
+					showCopied = true;
+				},
+				100,
+				'copy-success',
+				componentId
+			);
+
+			// Reset to normal
+			coordinated.setTimeout(
+				() => {
+					copyButtonScale.set(1);
+					copyButtonRotation.set(0);
+					copyButtonGlow = false;
+				},
+				300,
+				'copy-reset',
+				componentId
+			);
+
+			// Hide success state
+			coordinated.setTimeout(
+				() => {
+					showCopied = false;
+					copySuccessWave = false;
+				},
+				3000,
+				'copy-hide',
+				componentId
+			);
+
+			// Track the copy action
+			trackEvent('template_url_copied', {
+				template_id: template.id,
+				user_id: user?.id,
+				context: 'celebration_modal'
+			});
+		} catch (err) {
+			console.warn('Copy failed:', err);
+		}
+	}
+
 	function shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {
 		const text = `Just took action on "${template.title}" - every voice matters! Join the movement 🔥`;
 		const encodedUrl = encodeURIComponent(shareUrl);
 		const encodedText = encodeURIComponent(text);
-		
+
 		const urls = {
 			twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
 			facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
 			linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
 		};
-		
+
 		window.open(urls[platform], '_blank', 'width=600,height=400');
-		
+
 		trackEvent('template_shared', {
 			template_id: template.id,
 			platform,
 			user_id: user?.id,
 			context: 'celebration_modal'
 		});
-		
+
 		showShareMenu = false;
 	}
-	
+
 	// Analytics helper
 	function trackEvent(eventName: string, properties: Record<string, any>) {
 		if (typeof window !== 'undefined' && window.gtag) {
@@ -176,10 +341,12 @@
 </script>
 
 <!-- Modal Backdrop -->
-<div 
-	class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+<div
+	class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 	onclick={handleClose}
-	onkeydown={(e) => { if (e.key === 'Escape') handleClose(); }}
+	onkeydown={(e) => {
+		if (e.key === 'Escape') handleClose();
+	}}
 	role="dialog"
 	aria-modal="true"
 	aria-label="Template modal"
@@ -188,10 +355,14 @@
 	out:fade={{ duration: 200 }}
 >
 	<!-- Modal Container -->
-	<div 
-		class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden"
-		onclick={(e) => { e.stopPropagation(); }}
-		onkeydown={(e) => { e.stopPropagation(); }}
+	<div
+		class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+		onclick={(e) => {
+			e.stopPropagation();
+		}}
+		onkeydown={(e) => {
+			e.stopPropagation();
+		}}
 		role="document"
 		in:scale={{ duration: 300, start: 0.9, easing: backOut }}
 		out:scale={{ duration: 200, start: 1, easing: quintOut }}
@@ -201,199 +372,172 @@
 			<!-- Auth Required State -->
 			<div class="p-8 text-center">
 				<div class="mb-6">
-					<div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+					<div
+						class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-blue-100"
+					>
 						<Zap class="h-8 w-8 text-blue-600" />
 					</div>
-					<h2 class="text-2xl font-bold text-slate-900 mb-2">Ready to make your voice heard?</h2>
-					<p class="text-slate-600 mb-6">
-						Sign in to auto-fill your information and join {template.metrics.sent.toLocaleString()} others taking action.
+					<h2 class="mb-2 text-2xl font-bold text-slate-900">Ready to make your voice heard?</h2>
+					<p class="mb-6 text-slate-600">
+						Sign in to auto-fill your information and join {(
+							template.metrics.sent || 0
+						).toLocaleString()} others taking action.
 					</p>
 				</div>
-				
+
 				<div class="space-y-4">
-					<Button 
-						variant="primary" 
-						size="lg" 
-						classNames="w-full"
-						onclick={handleAuth}
-					>
+					<Button variant="primary" size="lg" classNames="w-full" onclick={handleAuth}>
 						<Send class="mr-2 h-5 w-5" />
 						Sign In & Send Message
 					</Button>
-					
-					<button
-						onclick={handleClose}
-						class="text-sm text-slate-500 hover:text-slate-700"
-					>
+
+					<button onclick={handleClose} class="text-sm text-slate-500 hover:text-slate-700">
 						Maybe later
 					</button>
 				</div>
 			</div>
-			
 		{:else if currentState === 'loading'}
 			<!-- Loading State - mailto is being resolved -->
-			<div 
-				class="p-8 text-center" 
-				in:scale={{ duration: 500, easing: backOut }}
-			>
-				<div 
-					class="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-full mb-6"
+			<div class="p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
+				<div
+					class="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-blue-100"
 					style="transform: scale({$celebrationScale})"
 				>
 					<Send class="h-10 w-10 text-blue-600" />
 				</div>
-				<h3 class="text-2xl font-bold text-slate-900 mb-2">
-					Opening your email app...
-				</h3>
-				<p class="text-slate-600 mb-6">
-					Your message is ready with your information pre-filled. 
-				</p>
-				
+				<h3 class="mb-2 text-2xl font-bold text-slate-900">Opening your email app...</h3>
+				<p class="mb-6 text-slate-600">Your message is ready with your information pre-filled.</p>
+
 				<!-- Animated progress indicator -->
-				<div class="w-32 h-2 bg-slate-200 rounded-full mx-auto overflow-hidden">
-					<div 
-						class="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full transition-all duration-1000 ease-out"
+				<div class="mx-auto h-2 w-32 overflow-hidden rounded-full bg-slate-200">
+					<div
+						class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 ease-out"
 						style="width: {$actionProgress * 100}%"
 					></div>
 				</div>
 			</div>
-			
-		{:else if currentState === 'success'}
-			<!-- Success State - mailto opened successfully -->
-			<div 
-				class="p-8 text-center" 
-				in:scale={{ duration: 500, easing: backOut }}
-			>
-				<div 
-					class="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6"
-					style="transform: scale({$celebrationScale})"
+		{:else if currentState === 'confirmation'}
+			<!-- Send Confirmation State - Did user actually send? -->
+			<div class="p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
+				<div
+					class="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-blue-100"
 				>
-					<CheckCircle2 class="h-10 w-10 text-green-600" />
+					<Send class="h-10 w-10 text-blue-600" />
 				</div>
-				<h3 class="text-2xl font-bold text-slate-900 mb-2">
-					Perfect! Your email is ready
-				</h3>
-				<p class="text-slate-600">
-					Review your message and hit send when you're ready.
-				</p>
+				<h3 class="mb-2 text-2xl font-bold text-slate-900">Did you send your message?</h3>
+				<p class="mb-6 text-slate-600">Help us track real impact by confirming your send.</p>
+
+				<div class="flex justify-center gap-3">
+					<Button
+						variant="primary"
+						size="lg"
+						classNames="flex-1 max-w-40"
+						onclick={() => handleSendConfirmation(true)}
+					>
+						<CheckCircle2 class="mr-2 h-5 w-5" />
+						Yes, sent
+					</Button>
+					<Button
+						variant="secondary"
+						size="lg"
+						classNames="flex-1 max-w-40"
+						onclick={() => handleSendConfirmation(false)}
+					>
+						<ArrowRight class="mr-2 h-5 w-5 rotate-180" />
+						No, try again
+					</Button>
+				</div>
 			</div>
-			
 		{:else if currentState === 'celebration'}
-			<!-- Celebration State - after-send care -->
-			<div class="flex flex-col h-full">
-				<!-- Header -->
-				<div class="p-6 border-b border-slate-100 relative overflow-hidden">
-					<!-- Celebration background effect -->
-					<div class="absolute inset-0 bg-gradient-to-br from-amber-50 via-orange-50 to-red-50"></div>
-					<div class="relative flex items-center justify-between">
+			<!-- Professional Celebration State -->
+			<div class="flex h-full flex-col">
+				<!-- Clean Header -->
+				<div class="border-b border-slate-100 p-6">
+					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-3">
-							<div 
-								class="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full"
+							<div
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-100"
 								style="transform: scale({$celebrationScale})"
 							>
-								<Trophy class="h-6 w-6 text-white" />
+								<CheckCircle2 class="h-5 w-5 text-green-600" />
 							</div>
 							<div>
-								<h2 class="text-xl font-bold text-slate-900">You're making a difference!</h2>
-								<p class="text-sm text-slate-600">Your voice is part of the movement</p>
+								<h2 class="text-lg font-semibold text-slate-900">Message sent successfully</h2>
+								<p class="text-sm text-slate-600">Your voice has been added to the campaign</p>
 							</div>
 						</div>
 						<button
 							onclick={handleClose}
-							class="rounded-full p-2 text-slate-400 hover:bg-white/50 hover:text-slate-600 transition-all duration-200"
+							class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
 						>
 							<X class="h-5 w-5" />
 						</button>
 					</div>
 				</div>
-				
+
 				<!-- Content -->
-				<div class="flex-1 p-6 space-y-6">
-					<!-- Impact Stats -->
+				<div class="flex-1 space-y-6 p-6">
+					<!-- Impact Counter -->
 					<div class="text-center">
-						<div class="flex items-center justify-center gap-6 mb-4">
-							<div class="text-center">
-								<div class="text-2xl font-bold text-slate-900">{(template.metrics.sent + 1).toLocaleString()}</div>
-								<div class="text-xs text-slate-500">voices heard</div>
-							</div>
-							<div class="w-px h-8 bg-slate-200"></div>
-							<div class="text-center">
-								<div class="text-2xl font-bold text-orange-600">1</div>
-								<div class="text-xs text-slate-500">your impact</div>
-							</div>
+						<div class="mb-1 text-3xl font-bold text-slate-900">
+							You + {(template.metrics.sent || 0).toLocaleString()} others
 						</div>
-						<p class="text-sm text-slate-600">
-							You just joined thousands making their voices heard on issues that matter.
-						</p>
+						<p class="text-sm text-slate-600">Real voices creating real change</p>
 					</div>
-					
-					<!-- Amplify Section -->
-					<div class="p-4 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl border border-purple-100">
-						<div class="flex items-center gap-2 mb-3">
-							<Flame class="h-5 w-5 text-purple-600" />
-							<h3 class="font-semibold text-slate-900">Amplify your impact</h3>
+
+					<!-- Prominent URL Copy Section -->
+					<div class="rounded-xl border-2 border-slate-200 bg-slate-50 p-6">
+						<div class="mb-4 text-center">
+							<h3 class="mb-2 text-lg font-semibold text-slate-900">Share this campaign</h3>
+							<p class="text-sm text-slate-600">Help others join the movement</p>
 						</div>
-						<p class="text-sm text-slate-600 mb-4">
-							Share this campaign to multiply your voice and inspire others to take action.
-						</p>
-						
-						<!-- Share Actions -->
-						<div class="flex gap-2">
-							<button
-								onclick={copyShareLink}
-								class="flex-1 flex items-center justify-center gap-2 px-3 py-2 text-sm bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
-							>
-								{#if showCopied}
-									<CheckCircle2 class="h-4 w-4 text-green-600" />
-									<span class="text-green-600 font-medium">Copied!</span>
-								{:else}
-									<Copy class="h-4 w-4" />
-									<span>Copy link</span>
-								{/if}
-							</button>
-							
+
+						<!-- The URL Display -->
+						<div class="mb-4 rounded-lg border border-slate-300 bg-white p-4">
+							<div class="flex items-center justify-between">
+								<div class="mr-3 flex-1">
+									<div class="truncate font-mono text-sm text-slate-600">
+										{shareUrl}
+									</div>
+								</div>
+								<button
+									onclick={copyTemplateUrl}
+									class="flex items-center gap-2 rounded-lg border px-4 py-2 transition-all duration-200 {copyButtonGlow
+										? 'border-blue-400 bg-blue-50'
+										: 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'}"
+									style="transform: scale({$copyButtonScale}) rotate({$copyButtonRotation}deg)"
+								>
+									{#if showCopied}
+										<CheckCircle2 class="h-4 w-4 text-green-600" />
+										<span class="text-sm font-medium text-green-600">Copied!</span>
+									{:else}
+										<Copy class="h-4 w-4 text-slate-600" />
+										<span class="text-sm font-medium text-slate-700">Copy</span>
+									{/if}
+								</button>
+							</div>
+
+							<!-- Success Wave Animation -->
+							{#if copySuccessWave}
+								<div
+									class="pointer-events-none absolute inset-0 rounded-lg bg-green-100 opacity-30"
+									in:scale={{ duration: 300, start: 0.8 }}
+									out:fade={{ duration: 200 }}
+								></div>
+							{/if}
+						</div>
+
+						<!-- Social Share -->
+						<div class="flex justify-center gap-3">
 							<button
 								onclick={() => shareOnSocial('twitter')}
-								class="flex items-center justify-center p-2 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
+								class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 transition-all duration-200 hover:border-slate-400 hover:bg-slate-50"
 								title="Share on X"
 							>
-								<span class="text-black font-bold text-sm">𝕏</span>
-							</button>
-							
-							<button
-								onclick={() => shareOnSocial('facebook')}
-								class="flex items-center justify-center p-2 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
-								title="Share on Facebook"
-							>
-								<span class="text-[#1877F2] font-bold text-sm">f</span>
-							</button>
-							
-							<button
-								onclick={() => shareOnSocial('linkedin')}
-								class="flex items-center justify-center p-2 bg-white border border-purple-200 rounded-lg hover:bg-purple-50 hover:border-purple-300 transition-all duration-200"
-								title="Share on LinkedIn"
-							>
-								<span class="text-[#0A66C2] font-bold text-sm">in</span>
+								<span class="text-sm font-bold text-black">𝕏</span>
+								<span class="text-sm text-slate-700">Share</span>
 							</button>
 						</div>
-					</div>
-					
-					<!-- Next Steps -->
-					<div class="p-4 bg-slate-50 rounded-xl">
-						<div class="flex items-center gap-2 mb-3">
-							<Heart class="h-5 w-5 text-red-500" />
-							<h3 class="font-semibold text-slate-900">Keep the momentum</h3>
-						</div>
-						<p class="text-sm text-slate-600 mb-3">
-							Your community needs voices like yours on other important issues too.
-						</p>
-						<a 
-							href="/" 
-							class="inline-flex items-center gap-1 text-sm text-blue-600 hover:text-blue-800 font-medium"
-						>
-							Explore more campaigns
-							<ArrowRight class="h-3 w-3" />
-						</a>
 					</div>
 				</div>
 			</div>

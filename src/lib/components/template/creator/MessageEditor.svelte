@@ -6,7 +6,7 @@
 	import { predictPerformance } from '$lib/services/template-intelligence';
 	import { debounce } from '$lib/utils/debounce';
 
-	const placeholderText = `Start writing your template message...\n\n💡 Tip: Click the buttons above to add personalization.\n✨ Variables work even when left empty.`;
+	const placeholderText = `The math doesn't work anymore.\n\n[Insert devastating numerical contrast here]\n\nFrom [Address] where [local impact].\n\n[Personal Connection]\n\nWhich [option] do you defend?\n\n💡 Tip: Use stark numbers, personal stakes, and devastating questions that force a choice.`;
 
 	let {
 		data = $bindable(),
@@ -43,6 +43,39 @@
 	let predictedReach = $state(0);
 	let isAnalyzing = $state(false);
 	let aiSuggestions = $state<any[]>([]);
+	let showSnippets = $state(false);
+
+	// Cutting template snippets that trigger sharing while passing filters
+	const viralSnippets = [
+		{
+			label: "The Math Opening",
+			text: "The math doesn't work anymore.\n\n"
+		},
+		{
+			label: "Corporate vs People",
+			text: "[Corporation] made $[X] billion.\n[Regular people] lost $[Y] billion.\nThe transfer: [outcome]."
+		},
+		{
+			label: "Devastating Question",
+			text: "Which [option A or option B] do you defend?\n\nPlease explain this to your constituents."
+		},
+		{
+			label: "Local Impact",
+			text: "From [Address] where [local consequence]."
+		},
+		{
+			label: "Tax Hypocrisy",
+			text: "[Rich entity] pays [low %] tax rate.\n[Working entity] pays [high %] tax rate.\nThe math: [working people] fund [rich people]."
+		},
+		{
+			label: "Housing Math",
+			text: "[Corporation] owns [X] homes.\n[Regular people] lost [Y] homes to eviction.\nThe transfer: Homes move from families to Wall Street."
+		},
+		{
+			label: "Profit vs Purpose",
+			text: "[Industry] profits: $[X] billion.\n[Public service] budget: $[Y] million.\nThe gap: Profit beats purpose."
+		}
+	];
 
 	// Component ID for timer coordination
 	const componentId = 'message-editor-' + Math.random().toString(36).substring(2, 15);
@@ -106,6 +139,48 @@
 		// Keep variables array in sync with text
 		const allVariables = data.preview.match(/\[.*?\]/g) || [];
 		data.variables = [...new Set(allVariables)];
+	}
+
+	function insertSnippet(snippet: string) {
+		const textarea = document.querySelector('textarea');
+		if (!textarea) return;
+
+		const start = textarea.selectionStart;
+		const end = textarea.selectionEnd;
+		const text = textarea.value;
+
+		// Add snippet at cursor position with proper spacing
+		let textToInsert = snippet;
+		const textBefore = text.substring(0, start);
+		const textAfter = text.substring(end);
+
+		// Add spacing if needed
+		if (textBefore.length > 0 && !textBefore.endsWith('\n\n')) {
+			textToInsert = '\n\n' + textToInsert;
+		}
+		if (textAfter.length > 0 && !textAfter.startsWith('\n\n')) {
+			textToInsert = textToInsert + '\n\n';
+		}
+
+		data.preview = text.substring(0, start) + textToInsert + text.substring(end);
+
+		// Update variables array
+		const allVariables = data.preview.match(/\[.*?\]/g) || [];
+		data.variables = [...new Set(allVariables)];
+
+		// Reset cursor position after snippet
+		coordinated.setTimeout(
+			() => {
+				if (textarea) {
+					textarea.focus();
+					const newPosition = start + textToInsert.length;
+					textarea.setSelectionRange(newPosition, newPosition);
+				}
+			},
+			0,
+			'dom',
+			componentId
+		);
 	}
 
 	function insertVariable(variable: string) {
@@ -206,17 +281,38 @@
 			performanceScore = performance.engagementScore;
 			predictedReach = performance.predictedReach;
 
-			// Generate contextual AI suggestions
+			// Generate contextual AI suggestions - cutting and provocative
 			aiSuggestions = [];
 			if (!data.variables.includes('[Personal Connection]')) {
 				aiSuggestions.push({
-					text: 'Consider adding your personal connection to this issue',
+					text: 'Add personal stake - what\'s this costing YOU personally?',
 					action: () => insertVariable('[Personal Connection]')
 				});
 			}
 			if (wordCount < 100) {
 				aiSuggestions.push({
-					text: 'Message could be more detailed for greater impact',
+					text: 'Too polite. Add devastating numerical contrasts that trigger sharing.',
+					action: () => {}
+				});
+			}
+			if (!data.preview.includes('math doesn\'t work')) {
+				aiSuggestions.push({
+					text: 'Try opening with "The math doesn\'t work anymore" - proven viral trigger',
+					action: () => {
+						const currentText = data.preview;
+						data.preview = `The math doesn't work anymore.\n\n${currentText}`;
+					}
+				});
+			}
+			if (!data.preview.match(/\$[\d,]+/)) {
+				aiSuggestions.push({
+					text: 'Add specific dollar amounts - numbers cut deeper than words',
+					action: () => {}
+				});
+			}
+			if (!data.preview.includes('Which') && !data.preview.includes('Who')) {
+				aiSuggestions.push({
+					text: 'End with a devastating question: "Which [x] do you defend?"',
 					action: () => {}
 				});
 			}
@@ -288,16 +384,53 @@
 				<div class="mt-2 rounded-md border border-blue-100 bg-blue-50 p-2">
 					<div class="text-xs text-blue-700">
 						{#if !hasAuthenticity && unusedVariables.some( (v) => ['[Name]', '[Address]'].includes(v) )}
-							<span class="font-medium">🔒 Add authenticity:</span>
-							Name and address help establish credibility with recipients.
+							<span class="font-medium">🔒 Make it real:</span>
+							Your name and address prove this isn't corporate astroturf.
 						{:else if isCongressional && !data.variables.includes('[Representative Name]')}
-							<span class="font-medium">🏛️ Congressional tip:</span>
-							Including the representative's name personalizes your message.
+							<span class="font-medium">🏛️ Congressional power move:</span>
+							Force them to own their position by name.
 						{:else}
-							<span class="font-medium">✨ Great work!</span>
-							You can add more personalization if you'd like, or your template is ready as-is.
+							<span class="font-medium">⚡ Cutting edge!</span>
+							This message barely passes filters but triggers maximum sharing.
 						{/if}
 					</div>
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Viral Snippets - Pre-built cutting messages -->
+	<div class="rounded-lg border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 p-3">
+		<div class="space-y-2">
+			<div class="flex items-center gap-2">
+				<Wand2 class="h-5 w-5 text-red-600" />
+				<h3 class="font-semibold text-red-900">Viral Message Snippets</h3>
+				<button 
+					type="button"
+					class="ml-auto text-xs text-red-600 hover:text-red-800"
+					onclick={() => showSnippets = !showSnippets}
+				>
+					{showSnippets ? 'Hide' : 'Show'} Cutting Templates
+				</button>
+			</div>
+
+			{#if showSnippets}
+				<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+					{#each viralSnippets as snippet}
+						<button
+							type="button"
+							class="p-2 text-left rounded border border-red-200 bg-white hover:bg-red-50 transition-colors"
+							onclick={() => insertSnippet(snippet.text)}
+							title="Insert this viral snippet into your message"
+						>
+							<div class="font-medium text-xs text-red-800 mb-1">{snippet.label}</div>
+							<div class="text-xs text-slate-600 line-clamp-2">{snippet.text.replace(/\n/g, ' ')}</div>
+						</button>
+					{/each}
+				</div>
+				<div class="text-xs text-red-700 bg-red-100 rounded p-2">
+					⚡ These snippets are designed to trigger viral sharing while barely passing congressional filters.
+					Replace bracketed placeholders with specific numbers and entities.
 				</div>
 			{/if}
 		</div>
@@ -326,7 +459,7 @@
 			data-testid="template-message-editor"
 		></textarea>
 		<p id="message-help" class="text-xs text-slate-500">
-			Click personalization buttons above or type variables manually using [square brackets]
+			Write messages that cut through the noise. Use [variables] to make it personal. Think viral, but congressional-approved.
 		</p>
 	</div>
 
@@ -399,9 +532,11 @@
 		</summary>
 		<div class="border-t border-slate-200 p-3 text-sm text-slate-600">
 			<ul class="space-y-1">
-				<li>• Write messages that work with or without personalization</li>
-				<li>• Variables are optional - use them to enhance, not replace, your core message</li>
-				<li>• Personal touches help build connection, but generic templates work too</li>
+				<li>• Lead with devastating numerical contrasts that expose hypocrisy</li>
+				<li>• End with forcing a choice: "Which [x] do you defend?"</li>
+				<li>• Use specific dollar amounts - numbers cut deeper than words</li>
+				<li>• Make it personal: "From [Address] where [local impact]"</li>
+				<li>• Barely pass filters but trigger viral sharing</li>
 			</ul>
 		</div>
 	</details>

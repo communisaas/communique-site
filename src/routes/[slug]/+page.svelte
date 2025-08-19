@@ -13,6 +13,7 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { funnelAnalytics } from '$lib/analytics/funnel';
 	import type { PageData } from './$types';
+	import type { Template as TemplateType } from '$lib/types/template';
 
 	let { data }: { data: PageData } = $props();
 
@@ -20,7 +21,8 @@
 	let showAuthModal = $state(false);
 	let isUpdatingAddress = $state(false);
 
-	const template = $derived(data.template);
+	const template: TemplateType = $derived(data.template as unknown as TemplateType);
+	const channel = $derived(data.channel);
 	const authRequired = $derived($page.url.searchParams.get('auth') === 'required');
 	const source = $derived(
 		($page.url.searchParams.get('source') || 'direct-link') as
@@ -28,7 +30,15 @@
 			| 'direct-link'
 			| 'share'
 	);
-	const shareUrl = $derived($page.url.href);
+	const shareUrl = $derived(
+		(() => {
+			try {
+				return $page.url?.href ?? '';
+			} catch {
+				return '';
+			}
+		})()
+	);
 
 	// Check if user has complete address for congressional templates
 	const hasCompleteAddress = $derived(
@@ -39,14 +49,23 @@
 
 	onMount(() => {
 		// Track template view with source attribution
-		funnelAnalytics.trackTemplateView(template.id, source);
+		funnelAnalytics.trackTemplateView(
+			template.id,
+			source as 'social-link' | 'direct-link' | 'share'
+		);
 		// Store template context for guest users
 		if (!data.user) {
-			guestState.setTemplate(template.slug, template.title, source);
+			const safeSlug = (template.slug ?? template.id) as string;
+			guestState.setTemplate(
+				safeSlug,
+				template.title,
+				source as 'social-link' | 'direct-link' | 'share'
+			);
 		}
 
 		// Smart post-auth flow detection
-		const actionParam = $page.url.searchParams.get('action');
+		const actionParam =
+			$page.url && $page.url.searchParams ? $page.url.searchParams.get('action') : null;
 		if (actionParam === 'complete' && data.user) {
 			// User just completed auth, check what they need next
 			// Track auth completion (provider may or may not be present)
@@ -55,7 +74,10 @@
 			handlePostAuthFlow();
 		} else if (authRequired && !data.user) {
 			// Show smart auth modal for unauthenticated users
-			funnelAnalytics.trackOnboardingStarted(template.id, source);
+			funnelAnalytics.trackOnboardingStarted(
+				template.id,
+				source as 'social-link' | 'direct-link' | 'share'
+			);
 			modalActions.open('auth-modal', 'auth', { template, source });
 		}
 	});
@@ -69,7 +91,7 @@
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 			// Ready to send email
 			modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-			setTimeout(() => launchEmail(flow.mailtoUrl!), 100);
+			setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
 		}
 	}
 
@@ -105,7 +127,7 @@
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-				setTimeout(() => launchEmail(flow.mailtoUrl!), 100);
+				setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
 			}
 		} catch (error) {
 			// TODO: Show error toast to user
@@ -114,7 +136,7 @@
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-				setTimeout(() => launchEmail(flow.mailtoUrl!), 100);
+				setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
 			}
 		} finally {
 			isUpdatingAddress = false;
@@ -156,18 +178,18 @@
 				</span>
 				{#if data.user?.is_verified && template.deliveryMethod === 'both'}
 					<div class="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-sm text-green-700">
-						<VerificationBadge size="xs" showText={false} />
+						<VerificationBadge showText={false} />
 						<span>Enhanced Credibility</span>
 					</div>
 				{/if}
 				<div class="flex items-center gap-6 text-sm text-slate-500">
 					<div class="flex items-center gap-1.5">
 						<Users class="h-4 w-4" />
-						<span>{template.metrics.sent.toLocaleString()} supporters</span>
+						<span>{(template.metrics?.sent || 0).toLocaleString()} supporters</span>
 					</div>
 					<div class="flex items-center gap-1.5">
 						<Eye class="h-4 w-4" />
-						<span>{(template.metrics.views || 0).toLocaleString()} views</span>
+						<span>{(template.metrics?.views || 0).toLocaleString()} views</span>
 					</div>
 				</div>
 			</div>
@@ -181,7 +203,7 @@
 						Hi {data.user.name?.split(' ')[0]}! Ready to send
 					</span>
 					{#if data.user.is_verified}
-						<VerificationBadge size="xs" />
+						<VerificationBadge />
 					{/if}
 				</div>
 			{/if}
@@ -189,12 +211,14 @@
 			{#if template.deliveryMethod === 'both'}
 				<Button
 					variant="primary"
-					size="lg"
 					classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full sm:w-auto"
 					onclick={() => {
 						if (!data.user) {
 							showAuthModal = true;
-							funnelAnalytics.trackOnboardingStarted(template.id, source);
+							funnelAnalytics.trackOnboardingStarted(
+								template.id,
+								source as 'social-link' | 'direct-link' | 'share'
+							);
 						} else {
 							handlePostAuthFlow();
 						}
@@ -219,14 +243,16 @@
 			{:else}
 				<Button
 					variant="primary"
-					size="lg"
 					classNames="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50 w-full sm:w-auto"
 					onclick={() => {
 						if (data.user) {
 							handlePostAuthFlow();
 						} else {
 							showAuthModal = true;
-							funnelAnalytics.trackOnboardingStarted(template.id, source);
+							funnelAnalytics.trackOnboardingStarted(
+								template.id,
+								source as 'social-link' | 'direct-link' | 'share'
+							);
 						}
 					}}
 				>
@@ -238,7 +264,13 @@
 							d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
 						/>
 					</svg>
-					{data.user ? 'Send This Message' : 'Sign in to Send'}
+					{#if channel && channel.access_tier === 1}
+						{data.user ? 'Send Email' : 'Sign in to Send'}
+					{:else if channel && channel.country_code === 'US'}
+						{data.user ? 'Contact Congress (Certified)' : 'Sign in to Contact Congress'}
+					{:else}
+						{data.user ? 'Share This Message' : 'Sign in to Share'}
+					{/if}
 				</Button>
 			{/if}
 		</div>
@@ -268,7 +300,6 @@
 					</div>
 					<Button
 						variant="secondary"
-						size="sm"
 						onclick={() => modalActions.open('address-modal', 'address', { template, source })}
 						classNames="ml-auto"
 					>
@@ -280,7 +311,7 @@
 
 		<TemplatePreview
 			{template}
-			user={data.user}
+			user={data.user as { id: string; name: string | null } | null}
 			onScroll={() => {}}
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
@@ -288,17 +319,36 @@
 					modalActions.open('mobile-preview', 'mobile_preview', { template, user: data.user });
 				}
 			}}
-			onSendMessage={() => {
-				const flow = analyzeEmailFlow(template, data.user);
-
-				if (flow.nextAction === 'auth') {
-					showAuthModal = true;
-				} else if (flow.nextAction === 'address') {
-					modalActions.open('address-modal', 'address', { template, source });
-				} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-					modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-					setTimeout(() => launchEmail(flow.mailtoUrl!), 100);
+			onSendMessage={async () => {
+				if (channel?.access_tier === 1) {
+					const flow = analyzeEmailFlow(template, data.user);
+					if (flow.nextAction === 'auth') {
+						showAuthModal = true;
+					} else if (flow.nextAction === 'address') {
+						modalActions.open('address-modal', 'address', { template, source });
+					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+						modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
+						setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
+					}
+					return;
 				}
+
+				// For now, treat US or certified templates as existing path
+				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'both')) {
+					const flow = analyzeEmailFlow(template, data.user);
+					if (flow.nextAction === 'address') {
+						modalActions.open('address-modal', 'address', { template, source });
+					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+						modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
+						setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
+					} else {
+						showAuthModal = true;
+					}
+					return;
+				}
+
+				// Default: prompt share (no modal implementation yet)
+				modalActions.open('share-menu', 'share_menu', { template });
 			}}
 		/>
 	</div>

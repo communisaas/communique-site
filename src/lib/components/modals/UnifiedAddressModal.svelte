@@ -38,7 +38,7 @@
 		if (modalData?.template) {
 			const flow = analyzeEmailFlow(modalData.template, modalData.user);
 			if (flow.mailtoUrl) {
-				launchEmail(flow.mailtoUrl);
+				launchEmail(flow.mailtoUrl, '/');
 			}
 		}
 	}

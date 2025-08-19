@@ -41,6 +41,31 @@ beforeAll(() => {
 
 	// Mock global fetch
 	global.fetch = vi.fn();
+
+	// Polyfill Web Animations API used by Svelte transitions
+	if (typeof (global as any).Element !== 'undefined') {
+		Object.defineProperty((global as any).Element.prototype, 'animate', {
+			value: function () {
+				return { cancel: () => {}, finish: () => {} } as any;
+			},
+			configurable: true
+		});
+	}
+
+	// Polyfill matchMedia for jsdom
+	if (typeof window !== 'undefined' && !window.matchMedia) {
+		// @ts-ignore
+		window.matchMedia = (query: string) => ({
+			matches: false,
+			media: query,
+			onchange: null,
+			addListener: () => {},
+			removeListener: () => {},
+			addEventListener: () => {},
+			removeEventListener: () => {},
+			dispatchEvent: () => false
+		}) as any;
+	}
 });
 
 beforeEach(() => {

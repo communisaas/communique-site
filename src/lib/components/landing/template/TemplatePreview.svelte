@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { browser } from '$app/environment';
 	import type { Template } from '$lib/types/template';
 	import { Mail, Users, ClipboardCopy, ClipboardCheck } from '@lucide/svelte';
 
@@ -9,6 +10,7 @@
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import { fade } from 'svelte/transition';
 	import { onDestroy, onMount, tick, createEventDispatcher } from 'svelte';
+	import { spring } from 'svelte/motion';
 	import { isMobile } from '$lib/utils/browserUtils';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
@@ -25,7 +27,7 @@
 	}: {
 		template: Template;
 		inModal?: boolean;
-		user?: { id: string; name: string } | null;
+		user?: { id: string; name: string | null } | null;
 		onScroll?: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onOpenModal?: (() => void) | null;
 		onSendMessage?: (() => void) | null;
@@ -38,6 +40,7 @@
 	let copied = $state(false);
 	let copyTimeout: string | null = null;
 	let showEmailModal = $state(false);
+	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 
 	let previewContainer: HTMLDivElement;
 	let firstFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
@@ -120,6 +123,7 @@
 		const csvEmails = recipients.join(', ');
 
 		try {
+			if (!browser) return;
 			// Try modern clipboard API first
 			if (navigator.clipboard && window.isSecureContext) {
 				await navigator.clipboard.writeText(csvEmails);
@@ -209,12 +213,44 @@
 			onkeydown={handleKeyboardNav}
 			class="flex flex-1 cursor-default flex-col overflow-visible border-0 bg-transparent text-left outline-none"
 		>
-			<div class="shrink-0">
+			<div class="mb-4 shrink-0">
 				<TemplateTips isCertified={template.type === 'certified'} />
 			</div>
 
+			<!-- Share Link Button - Always available -->
+			{#if !inModal}
+				<div class="mb-4 flex shrink-0 items-center gap-2">
+					<button
+						onclick={async () => {
+							const shareUrl = `${window.location.origin}/${template.slug}`;
+							try {
+								await navigator.clipboard.writeText(shareUrl);
+								copied = true;
+								if (copyTimeout) coordinated.autoClose(() => {}, 0, componentId);
+								copyTimeout = coordinated.feedback(
+									() => {
+										copied = false;
+									},
+									2000,
+									componentId
+								);
+							} catch (err) {}
+						}}
+						class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
+					>
+						{#if copied}
+							<ClipboardCheck class="h-3 w-3" />
+							Copied!
+						{:else}
+							<ClipboardCopy class="h-3 w-3" />
+							Share Link
+						{/if}
+					</button>
+				</div>
+			{/if}
+
 			{#if template.type === 'direct' && recipients.length}
-				<div class="my-2 flex shrink-0 items-center gap-2 text-sm text-slate-600">
+				<div class="mb-4 flex shrink-0 items-center gap-2 text-sm text-slate-600">
 					<Users class="h-4 w-4 text-slate-500" />
 					<div class="flex items-center gap-1.5 overflow-hidden">
 						<!-- Only show preview on larger screens -->
@@ -222,7 +258,7 @@
 							{recipientPreview}
 						</span>
 
-						<!-- Always show popover on small screens -->
+						<!-- Recipients popover -->
 						<Popover let:open>
 							<svelte:fragment slot="trigger" let:triggerAction>
 								<button
@@ -283,7 +319,11 @@
 				</div>
 			{/if}
 
-			<div class="my-4 min-h-0 flex-1 touch-pan-y overflow-hidden">
+			<div
+				class={inModal
+					? 'min-h-0 flex-1 touch-pan-y overflow-hidden'
+					: 'min-h-0 flex-1 touch-pan-y overflow-hidden'}
+			>
 				<MessagePreview
 					preview={template.message_body}
 					{template}
@@ -305,12 +345,14 @@
 								// Only show email modal if user is authenticated
 								if (user) {
 									showEmailModal = true;
+									actionProgress.set(1);
 									coordinated.transition(
 										() => {
 											onSendMessage?.();
 											coordinated.autoClose(
 												() => {
 													showEmailModal = false;
+													actionProgress.set(0);
 												},
 												1500,
 												componentId
@@ -346,12 +388,14 @@
 								// Only show email modal if user is authenticated
 								if (user) {
 									showEmailModal = true;
+									actionProgress.set(1);
 									coordinated.transition(
 										() => {
 											onSendMessage?.();
 											coordinated.autoClose(
 												() => {
 													showEmailModal = false;
+													actionProgress.set(0);
 												},
 												1500,
 												componentId
@@ -413,19 +457,16 @@
 					<div class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-blue-400"></div>
 				</div>
 
-				<h3 class="mb-2 text-lg font-semibold text-slate-900">Opening Mail App</h3>
-				<p class="text-sm text-slate-600">Your message is ready to send</p>
+				<h3 class="mb-2 text-lg font-semibold text-slate-900">Opening your email app...</h3>
+				<p class="mb-4 text-sm text-slate-600">
+					Your message is ready with your information pre-filled.
+				</p>
 
-				<!-- Progress dots -->
-				<div class="mt-4 flex justify-center space-x-1">
-					<div class="h-2 w-2 animate-bounce rounded-full bg-blue-600"></div>
+				<!-- Animated progress bar -->
+				<div class="mx-auto h-2 w-32 overflow-hidden rounded-full bg-slate-200">
 					<div
-						class="h-2 w-2 animate-bounce rounded-full bg-blue-600"
-						style="animation-delay: 0.1s"
-					></div>
-					<div
-						class="h-2 w-2 animate-bounce rounded-full bg-blue-600"
-						style="animation-delay: 0.2s"
+						class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 ease-out"
+						style="width: {$actionProgress * 100}%"
 					></div>
 				</div>
 			</div>

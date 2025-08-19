@@ -7,63 +7,55 @@
 	import { createModalStore } from '$lib/stores/modalSystem';
 	import { funnelAnalytics } from '$lib/analytics/funnel';
 
-	// Connect to modal system
 	const modal = createModalStore('auth-modal', 'auth');
 
-	// Get modal data which includes template and source
 	const modalData = $derived(
 		$modal.data as { template: Template; source?: 'social-link' | 'direct-link' | 'share' } | null
 	);
 	const template = $derived(modalData?.template);
 	const source = $derived(modalData?.source || 'direct-link');
 
-	// Smart messaging based on template type
 	const authConfig = $derived(() => {
 		if (!template) return null;
 		const isCongressional = template.deliveryMethod === 'both';
-
-		if (isCongressional) {
-			return {
-				icon: Shield,
-				iconColor: 'text-green-600',
-				bgColor: 'bg-green-50',
-				buttonColor: 'bg-green-600 hover:bg-green-700',
-				headline: 'Contact your representatives',
-				subtext: "Your message will be delivered directly to your representative's office",
-				nextStep: 'Next: Find your representatives'
-			};
-		} else {
-			return {
-				icon: AtSign,
-				iconColor: 'text-blue-600',
-				bgColor: 'bg-blue-50',
-				buttonColor: 'bg-blue-600 hover:bg-blue-700',
-				headline: 'Send your message',
-				subtext: 'Your message will be sent directly to decision-makers',
-				nextStep: 'Next: Send message'
-			};
-		}
+		return isCongressional
+			? {
+					icon: Shield,
+					iconColor: 'text-green-600',
+					bgColor: 'bg-green-50',
+					buttonColor: 'bg-green-600 hover:bg-green-700',
+					headline: 'Contact your representatives',
+					subtext: "Your message will be delivered directly to your representative's office",
+					nextStep: 'Next: Find your representatives'
+				}
+			: {
+					icon: AtSign,
+					iconColor: 'text-blue-600',
+					bgColor: 'bg-blue-50',
+					buttonColor: 'bg-blue-600 hover:bg-blue-700',
+					headline: 'Send your message',
+					subtext: 'Your message will be sent directly to decision-makers',
+					nextStep: 'Next: Send message'
+				};
 	});
 
-	function handleAuth(provider: string) {
+	async function handleAuth(provider: string) {
 		if (!template) return;
-
-		// Store template context for post-auth flow
 		if (typeof window !== 'undefined') {
 			sessionStorage.setItem(
 				'pending_template_action',
-				JSON.stringify({
-					slug: template.slug,
-					action: 'use_template',
-					timestamp: Date.now()
-				})
+				JSON.stringify({ slug: template.slug, action: 'use_template', timestamp: Date.now() })
 			);
 		}
-
-		const returnUrl = encodeURIComponent(`/${template.slug}?action=complete`);
-		// Track onboarding start
+		try {
+			await fetch('/auth/prepare', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ returnTo: `/${template.slug}` })
+			});
+		} catch {}
 		funnelAnalytics.trackOnboardingStarted(template.id, source);
-		window.location.href = `/auth/${provider}?returnTo=${returnUrl}`;
+		window.location.href = `/auth/${provider}`;
 	}
 
 	function handleClose() {
@@ -72,7 +64,6 @@
 </script>
 
 {#if $modal.isOpen && template && authConfig}
-	<!-- Modal Backdrop -->
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		onclick={handleClose}
@@ -81,7 +72,6 @@
 		role="button"
 		tabindex="-1"
 	>
-		<!-- Modal Container -->
 		<div
 			class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
@@ -90,30 +80,21 @@
 			role="button"
 			tabindex="-1"
 		>
-			<!-- Header with close button -->
 			<div class="flex items-center justify-between p-6 pb-4">
 				<div class="flex items-center gap-3">
 					<div class="flex h-10 w-10 items-center justify-center rounded-full {authConfig.bgColor}">
 						<svelte:component this={authConfig.icon} class="h-5 w-5 {authConfig.iconColor}" />
 					</div>
 					<div>
-						<h2 class="text-lg font-semibold text-slate-900">
-							{authConfig.headline}
-						</h2>
+						<h2 class="text-lg font-semibold text-slate-900">{authConfig.headline}</h2>
 					</div>
 				</div>
 				<button onclick={handleClose} class="text-slate-400 transition-colors hover:text-slate-600">
 					<X class="h-5 w-5" />
 				</button>
 			</div>
-
-			<!-- Content -->
 			<div class="px-6 pb-6">
-				<p class="mb-6 text-slate-600">
-					{authConfig.subtext}
-				</p>
-
-				<!-- OAuth Buttons -->
+				<p class="mb-6 text-slate-600">{authConfig.subtext}</p>
 				<div class="space-y-3">
 					<Button
 						onclick={() => handleAuth('google')}
@@ -139,7 +120,6 @@
 						</svg>
 						Continue with Google
 					</Button>
-
 					<Button
 						onclick={() => handleAuth('facebook')}
 						classNames="w-full bg-[#1877F2] hover:bg-[#166FE5] text-white"
@@ -152,8 +132,6 @@
 						Continue with Facebook
 					</Button>
 				</div>
-
-				<!-- Next step hint -->
 				<div class="mt-4 rounded-lg bg-slate-50 p-3">
 					<div class="flex items-center gap-2 text-sm text-slate-600">
 						<ArrowRight class="h-3 w-3" />

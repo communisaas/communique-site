@@ -13,6 +13,12 @@ export async function GET() {
 			}
 		});
 
+		// Include template scopes
+		const scopes = await db.template_scope.findMany({
+			where: { template_id: { in: dbTemplates.map((t) => t.id) } }
+		});
+		const idToScope = new Map(scopes.map((s) => [s.template_id, s]));
+
 		const formattedTemplates = dbTemplates.map((template) => ({
 			id: template.id,
 			slug: template.slug,
@@ -28,6 +34,7 @@ export async function GET() {
 			delivery_config: template.delivery_config,
 			recipient_config: template.recipient_config,
 			is_public: template.is_public,
+			scope: idToScope.get(template.id) || null,
 			recipientEmails: extractRecipientEmails(
 				typeof template.recipient_config === 'string' 
 					? JSON.parse(template.recipient_config) 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 	import { 
@@ -86,7 +87,9 @@
 	
 	onMount(() => {
 		// Prevent background scrolling when modal is open
-		document.body.style.overflow = 'hidden';
+		if (browser) {
+			document.body.style.overflow = 'hidden';
+		}
 		
 		// If user is authenticated and has address, skip to send step
 		if (user?.address && isCongressional) {
@@ -97,7 +100,9 @@
 	});
 	
 	onDestroy(() => {
-		document.body.style.overflow = '';
+		if (browser) {
+			document.body.style.overflow = '';
+		}
 		useTimerCleanup(componentId)();
 	});
 	

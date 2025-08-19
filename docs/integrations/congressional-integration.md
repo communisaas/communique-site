@@ -1,24 +1,34 @@
-# Congressional Integration
+# Legislative Integration (APIs and Certified Forms)
 
-User-centric congressional delivery with address→representative mapping during onboarding and CWC generation during advocacy.
+User‑centric legislative delivery across jurisdictions. The user interaction is always the same: we open the user’s mail client with a prepared message. Behind the scenes, adapters can translate that content for legislatures that require certified APIs/forms, or send directly when public emails exist.
 
 ## Overview
 
-1. Onboarding: collect address, map to House + Senate
-2. Advocacy: use stored reps for delivery
-3. Simplicity: right-sized for the primary use case
+1. Resolution (SSR): detect country/region → determine adapter policy
+2. Onboarding (if required by target): collect address or other jurisdictional fields
+3. Advocacy (single UX): open `mailto:` with prepared content and routing recipients
+4. Backend: adapter consumes routed emails to complete certified submissions (when required) and records verification/attestations
+
+### Distribution model (clarification)
+
+- Sharing propagates deep links to template slugs.
+- On open, we always open the mail client; adapter policy decides routing/translation on the backend.
+- “Social” is amplification, not a delivery method.
 
 ## Components
 
-- Address lookup: `src/lib/congress/address-lookup.ts` (Census primary, ZIP→district fallback)
-- Rep storage: Prisma models `representative` and `user_representatives` in `prisma/schema.prisma`
-- CWC generator: `src/lib/congress/cwc-generator.ts`
+- Address/region lookup (if required): `src/lib/congress/address-lookup.ts` (Census primary, ZIP→district fallback)
+- Representative/target directory (pluggable per country)
+- Mail routing service (ingest mailbox / webhook)
+- Submission adapters (pluggable, backend):
+  - US: CWC generator `src/lib/congress/cwc-generator.ts`
+  - Others: implement adapter interface (payload mapping, rate limits, captcha policy)
 
 ## API
 
-- POST `/api/address/lookup` → reps
-- POST `/api/user/representatives` → persist
-- GET `/api/user/representatives?userId=...` → fetch
+- POST `/api/address/lookup` → representatives/targets (when required)
+- POST `/api/user/representatives` → persist mapping (when used)
+- POST `/api/legislative/submit` → route via adapter (e.g., CWC); accepts payload + jurisdiction (used by router/ingest)
 
 ### Request/Response examples
 
@@ -35,7 +45,7 @@ Content-Type: application/json
 }
 ```
 
-Store representatives
+Store representatives (optional)
 ```http
 POST /api/user/representatives
 Content-Type: application/json
@@ -54,12 +64,12 @@ GET /api/user/representatives?userId=user_123
 
 ## Database mapping
 
-- `representative` stores Congress.gov identifiers and office codes
-- `user_representatives` links a user to their House and Senate members
+- `representative` / `user_representatives` (US) or country‑specific equivalents
+- Address fields on `User`
 
-See `prisma/schema.prisma` models: `representative`, `user_representatives`, and address fields on `User`.
+See `prisma/schema.prisma` models for current US implementation; other jurisdictions add adapters without schema coupling when emails are used.
 
-## Usage in advocacy
+## Usage in advocacy (US adapter example)
 
 ```ts
 import { CWCGenerator } from '$lib/congress/cwc-generator';
@@ -73,14 +83,16 @@ const xml = CWCGenerator.generateUserAdvocacyXML({
 
 ## Notes
 
-- Lookup once at onboarding; advocacy is fast and cached
-- Senate delivery implemented; House requires proxy and is simulated where needed
+- Lookup once at onboarding; advocacy is fast and cached when targets are static
+- Adapters may impose rate limits/captcha; queue/retry at the orchestrator layer
 
 ## Env
 
 ```bash
 SUPABASE_DATABASE_URL=...
-CONGRESS_API_KEY=...
+# Adapter‑specific keys (optional)
+CWC_API_KEY=...
+LEGISLATIVE_API_BASE_URL=...
 ```
 
 

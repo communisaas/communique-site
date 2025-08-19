@@ -108,7 +108,9 @@
 				data-template-button
 				data-template-id={template.id}
 				data-testid="template-button-{template.id}"
-				class="flex w-full cursor-pointer items-start justify-between gap-3 rounded-lg border p-3 text-left transition-all md:p-4"
+				class="flex w-full items-start justify-between gap-3 rounded-lg border p-3 text-left transition-all md:p-4"
+				class:cursor-pointer={selectedId !== template.id}
+				class:cursor-default={selectedId === template.id}
 				class:border-blue-400={selectedId === template.id}
 				class:bg-blue-50={selectedId === template.id}
 				class:border-slate-200={selectedId !== template.id}

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy, untrack } from 'svelte';
+	import { browser } from '$app/environment';
 	import { scale } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
 	import { tweened, spring } from 'svelte/motion';
@@ -145,6 +146,7 @@
 	}
 
 	function lockScroll() {
+		if (!browser) return;
 		scrollPosition = window.scrollY;
 		document.body.style.position = 'fixed';
 		document.body.style.top = `-${scrollPosition}px`;
@@ -152,6 +154,7 @@
 	}
 
 	function unlockScroll() {
+		if (!browser) return;
 		document.body.style.position = '';
 		document.body.style.top = '';
 		document.body.style.width = '';
@@ -277,7 +280,9 @@
 		if (isDismissing) {
 			// Release touch capture and restore scrolling
 			modalContent?.releasePointerCapture?.(e.changedTouches[0].identifier);
-			document.body.style.overflow = '';
+			if (browser) {
+				document.body.style.overflow = '';
+			}
 			modalContent.style.touchAction = '';
 
 			// Calculate final velocity and direction
@@ -386,7 +391,7 @@
 	>
 		<div
 			bind:this={modalContent}
-			class="modal-content relative h-[85vh] w-full max-w-2xl touch-pan-y overflow-hidden rounded-xl bg-white shadow-xl"
+			class="modal-content relative h-[90vh] w-full max-w-2xl touch-pan-y flex flex-col overflow-hidden rounded-xl bg-white shadow-xl"
 			style="transform: translateY({$translateY}px)"
 			ontouchstart={handleTouchStart}
 			ontouchmove={handleTouchMove}
@@ -410,8 +415,8 @@
 			</button>
 
 			<!-- Content -->
-			<div class="h-full max-h-[85vh] overflow-hidden">
-				<div class="relative h-full">
+			<div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+				<div class="relative flex-1 flex flex-col">
 					{@render children?.()}
 				</div>
 			</div>

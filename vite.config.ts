@@ -6,6 +6,10 @@ export default defineConfig({
 		sveltekit()
 	],
 
+	optimizeDeps: {
+		exclude: ['chunk-PCGYAOMB.js']
+	},
+
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
 		environment: 'jsdom',

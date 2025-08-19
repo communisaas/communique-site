@@ -7,8 +7,11 @@
 - Sessions via custom crypto (`@oslojs/crypto`)
 
 ## Key flows
-- Template preview → resolve on client → `mailto:` open
-- Congressional: address verify → reps lookup → CWC generate → delivery
+- Country resolve (SSR) → choose delivery method
+  - Email countries: template resolve → `mailto:` open
+  - Certified (e.g., US CWC): generate and submit required forms
+  - Always: viral pattern generator for platform-native sharing
+- Congressional (US): address verify → reps lookup → CWC generate → delivery
 - Onboarding: OAuth-only; 90-day sessions for template-action deep-link flows
 
 ## Core modules
@@ -19,14 +22,14 @@
 - Congress: `src/lib/congress/` (address lookup, CWC)
 
 ## Env vars
-- Required: `SUPABASE_DATABASE_URL`, `CONGRESS_API_KEY`
-- Optional: OAuth client IDs/secrets; `GOOGLE_CIVIC_API_KEY`
+- Required: `SUPABASE_DATABASE_URL`
+- Optional: OAuth client IDs/secrets; `CWC_API_KEY`, `PUBLIC_POSTHOG_*`
 
 ## Deep dives
 - Vision: `docs/architecture/community-information-theory.md`
-- Mathematical foundations: `docs/architecture/mathematical-foundations-cid.md`
-- Low‑friction action funnel: `docs/architecture/low-friction-civic-action.md`
-- UI patterns: `docs/development/ui-structure-guidelines.md`
+- Math: `docs/architecture/mathematical-foundations-cid.md`
+- Funnel: `docs/architecture/low-friction-civic-action.md`
+- UI: `docs/development/ui-structure-guidelines.md`
 
 ## Directory basics
 - Routes: `src/routes/` (pages + API)

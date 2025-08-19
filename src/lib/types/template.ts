@@ -1,3 +1,5 @@
+import type { TemplateScope } from './jurisdiction';
+
 export interface Template {
     id: string;
     slug?: string;
@@ -25,6 +27,13 @@ export interface Template {
     preview: string;
     recipientEmails?: string[]; // Computed field - use extractRecipientEmails(recipient_config) instead
     is_public: boolean;
+    // Optional place scoping linked via separate table
+    scope?: TemplateScope;
+
+    // Geographic scope (from Prisma Template model)
+    applicable_countries?: string[];
+    jurisdiction_level?: string | null;
+    specific_locations?: string[];
 }
 
 export interface TemplateCreationContext {
@@ -52,3 +61,6 @@ export interface TemplateFormData {
     };
     review: Record<string, never>; // For validation purposes, no data to store
 } 
+
+// For UI components that only need a minimal user shape
+export type MinimalUser = { id: string; name: string };

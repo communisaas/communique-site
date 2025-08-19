@@ -79,7 +79,7 @@ class FunnelAnalytics {
 	}
 
 	// Track funnel progression
-	trackTemplateView(templateId: string, source: string = 'direct-link') {
+	trackTemplateView(templateId: string, source: 'social-link' | 'direct-link' | 'share' = 'direct-link') {
 		this.track('template_viewed', {
 			template_id: templateId,
 			source,
@@ -87,7 +87,7 @@ class FunnelAnalytics {
 		});
 	}
 
-	trackOnboardingStarted(templateId: string, source: string) {
+	trackOnboardingStarted(templateId: string, source: 'social-link' | 'direct-link' | 'share') {
 		this.track('onboarding_started', {
 			template_id: templateId,
 			source,

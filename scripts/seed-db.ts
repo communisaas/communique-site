@@ -18,36 +18,28 @@ const policyAreaMap = {
 
 const seedTemplates = [
     {
-        title: 'Stop Trump\'s Fossil Fuel Giveaway',
-        description: 'Block the administration\'s plan to gut climate regulations and hand billions to oil executives.',
+        title: 'The Math Doesn\'t Work: Climate Edition',
+        description: 'Expose the numbers behind fossil fuel subsidies while communities flood.',
         category: 'Environment',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Reconciliation Bill Environmental Provisions',
-        preview: 'Dear [Representative Name], The current bill prioritizes fossil fuel subsidies over climate action.',
+        subject: 'The Math on Climate Subsidies',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding the current reconciliation bill's environmental provisions and their impact on climate action.
+The math doesn't work anymore.
 
-Current policies are accelerating environmental damage:
+Oil companies get $20 billion in subsidies.
+Climate disasters cost us $165 billion last year.
+The gap: $145 billion we pay twice.
 
-• Fast-tracked drilling permits while communities face increased flooding
-• Clean energy tax credits eliminated to fund fossil fuel subsidies
-• EPA scientific staff reductions undermining climate assessment capability
-• International climate commitments abandoned during extreme weather events
-• Offshore renewable energy projects blocked while sea levels rise
-
-Essential policy changes needed:
-
-• Remove fossil fuel subsidies from the reconciliation bill
-• Restore EPA's regulatory authority for climate protection
-• Fund climate adaptation infrastructure for vulnerable communities
-• Investigate conflicts of interest in energy policy decisions
-• Prioritize renewable energy development over fossil fuel expansion
+From [Address] where flood insurance is now unaffordable.
 
 [Personal Connection]
 
-Climate change requires immediate legislative action based on scientific evidence, not industry lobbying.
+Which number do you defend?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -58,34 +50,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Seattle: Legalize Homes Near Transit',
-        description: 'Urge the Seattle City Council to end exclusionary zoning and allow more housing near frequent transit.',
+        title: 'Teachers Need 2 Jobs for 1 Bedroom',
+        description: 'Expose how private equity owns 44% of homes while teachers work multiple jobs.',
         category: 'Housing',
         type: 'advocacy',
         deliveryMethod: 'direct',
-        subject: 'Upzone Near Transit and Permit More Homes',
-        preview: 'Seattle must end exclusionary zoning and allow more homes near transit to reduce displacement and cut emissions.',
+        subject: 'The Math on Teacher Housing',
+        preview: 'The math doesn\'t work anymore.',
         message_body: `Dear Seattle City Council,
 
-I am writing as a Seattle resident to urge you to allow more housing near frequent transit and walkable amenities.
+The math doesn't work anymore.
 
-Current zoning keeps most residential land locked to low-density use, which:
+Private equity owns 44% of single-family homes.
+Teachers earn $65,000 but need $85,000 for rent.
+The gap: 2 jobs to afford 1 bedroom.
 
-• Increases displacement pressure in limited upzoned areas
-• Pushes new households to car-dependent exurbs
-• Worsens climate emissions from longer commutes
-• Keeps rents high and limits family-sized options
-
-Please advance reforms to:
-
-• Allow midrise housing near frequent transit, schools, and jobs
-• Permit small apartments and missing-middle housing citywide
-• Reduce costly parking mandates near frequent transit
-• Pair upzoning with anti-displacement and affordability tools
+From [Address] where teachers commute 90 minutes each way.
 
 [Personal Connection]
 
-Please prioritize abundant homes near transit so people can live close to opportunity.
+How many jobs should a teacher need?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -96,27 +82,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'SFUSD: Keep Students Housed and Learning',
-        description: 'Ask the San Francisco Board of Education to adopt a housing stability plan for students and educators.',
+        title: 'SF Teachers Commute 2 Hours, Students Skip School',
+        description: 'Expose how housing costs force teachers to commute while students become homeless.',
         category: 'Education',
         type: 'advocacy',
         deliveryMethod: 'direct',
-        subject: 'Adopt a Student and Educator Housing Stability Plan',
-        preview: 'Housing instability hurts attendance and learning. Please act to stabilize students and educators.',
+        subject: 'The Math on Student Housing',
+        preview: 'The math doesn\'t work anymore.',
         message_body: `Dear San Francisco Board of Education,
 
-Housing instability is directly impacting student attendance, graduation, and educator retention.
+The math doesn't work anymore.
 
-Please adopt a housing stability plan that includes:
+Teachers commute 2+ hours because they can't afford SF.
+Students miss 30+ school days due to housing instability.
+The connection: No stable adults, no stable learning.
 
-• Expanded McKinney-Vento supports and rapid response for families at risk of eviction
-• Partnerships for educator housing and rent stabilization tools
-• Dedicated liaisons to coordinate school-city services
-• Transparent metrics on housing-related absenteeism and interventions
+From [Address] where classrooms have substitute teachers and empty desks.
 
 [Personal Connection]
 
-Stable housing supports stable learning. Please make this an immediate priority.
+How can students learn when teachers can't afford to live here?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -127,27 +114,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Canada: Protect Housing Affordability',
-        description: 'Urge the Prime Minister to strengthen measures that protect renters and first-time buyers.',
+        title: 'Canadian REITs Own 2.3 Million Units, Families Own None',
+        description: 'Expose how Real Estate Investment Trusts monopolize Canadian housing.',
         category: 'Housing',
         type: 'advocacy',
         deliveryMethod: 'direct',
-        subject: 'Strengthen Renter Protections and First-Time Buyer Supports',
-        preview: 'Please act to protect renters and first-time buyers facing rising costs and limited supply.',
+        subject: 'The Math on Housing Monopoly',
+        preview: 'The math doesn\'t work anymore.',
         message_body: `Dear Prime Minister,
 
-I am writing regarding housing affordability pressures facing renters and first-time buyers across Canada.
+The math doesn't work anymore.
 
-Please strengthen measures to:
+REITs control 2.3 million rental units across Canada.
+First-time buyers: Down 47% since 2019.
+The takeover: Corporations own homes, families rent forever.
 
-• Expand supply of purpose-built rental housing
-• Support non-profit and co-op acquisition of at-risk affordable homes
-• Enforce anti-renoviction and fair notice protections
-• Improve first-time buyer access without inflating prices
+From [Address] where entire neighborhoods are corporate-owned.
 
 [Personal Connection]
 
-Thank you for prioritizing stable, affordable homes in every community.
+Who should own Canadian homes?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -158,35 +146,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Block GOP Medicaid Cuts',
-        description: 'Stop Republicans from gutting healthcare to fund tax cuts for billionaires.',
+        title: 'Insulin Costs More Than CEO Salaries',
+        description: 'Expose pharmaceutical CEO compensation vs. patient costs.',
         category: 'Healthcare',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Medicaid Funding and Healthcare Access',
-        preview: 'Dear [Representative Name], The reconciliation bill reduces healthcare access while extending tax benefits.',
+        subject: 'The Math on Insulin Prices',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding proposed changes to Medicaid funding and healthcare access in the current reconciliation bill.
+The math doesn't work anymore.
 
-The proposed healthcare provisions would:
+Insulin costs $300 per month.
+The pharma CEO made $21 million last year.
+That's 5,833 months of insulin per CEO.
 
-• Reduce Medicaid funding by $500 billion while lowering corporate tax rates
-• Impose work requirements that restrict coverage for disabled individuals
-• Eliminate ACA insurance subsidies during a period of rising healthcare costs
-• Cap prescription drug benefits affecting seniors' medication access
-• Defund community health centers serving rural and low-income areas
-
-Simultaneously, tax benefits would extend to:
-
-• Financial sector professionals through carried interest provisions
-• Real estate investment structures
-• Pharmaceutical industry executives
-• Health insurance company shareholders
+From [Address] where diabetics ration doses.
 
 [Personal Connection]
 
-Healthcare policy should prioritize patient outcomes and access over industry profits.
+Which number do you defend?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -197,36 +178,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Stop the Billionaire Tax Heist',
-        description: 'Block the 2017 tax cut extensions that favor wealthy individuals over working families.',
+        title: 'Billionaires Pay Less Than Teachers',
+        description: 'Expose effective tax rates: billionaires vs. working families.',
         category: 'Economy',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Tax Policy and Economic Equity',
-        preview: 'Dear [Representative Name], The tax reconciliation bill disproportionately benefits high earners.',
+        subject: 'The Math on Tax Rates',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding the proposed extension of 2017 tax provisions and their economic impact.
+The math doesn't work anymore.
 
-The current reconciliation bill would:
+Billionaires pay 8.2% effective tax rate.
+Teachers pay 22% effective tax rate.
+The difference: Teachers fund billionaires.
 
-• Extend $1.9 trillion in tax benefits primarily to high-income earners
-• Reduce estate taxes on inherited wealth above $11 million
-• Lower corporate tax rates below individual rates for many workers
-• Preserve carried interest loopholes for investment fund managers
-• Expand depreciation benefits for private aircraft and luxury assets
-
-Simultaneously, spending reductions target:
-
-• $30 billion from SNAP nutrition assistance programs
-• Medicaid funding for disability services
-• Child tax credits that reduced family poverty
-• Head Start early childhood education programs
-• Housing assistance during rising homelessness
+From [Address] where teachers work summers to survive.
 
 [Personal Connection]
 
-Tax policy should strengthen economic opportunity for working families, not concentrate wealth among high earners.
+Who should pay more?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -237,36 +210,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Strengthen Democratic Institutions',
-        description: 'Support measures to protect democratic processes and government accountability.',
+        title: 'Democracy Costs $16.5 Billion, Autocracy is Free',
+        description: 'Expose the price tag of dismantling democratic institutions.',
         category: 'Democracy',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Government Accountability and Democratic Reform',
-        preview: 'Dear [Representative Name], Democracy requires strong institutions and transparent governance.',
+        subject: 'The Math on Democracy',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding proposed changes to government operations and democratic oversight mechanisms.
+The math doesn't work anymore.
 
-Current proposals would modify:
+Election security: $16.5 billion requested.
+Schedule F reclassification: Unlimited power, no cost.
+The price: Democracy has a budget. Autocracy doesn't.
 
-• Civil service employment protections through Schedule F reclassification
-• Department of Justice independence in criminal investigations
-• Congressional subpoena enforcement capabilities
-• Ethics oversight for government officials
-• Election security funding and oversight
-
-Essential democratic safeguards include:
-
-• Maintaining independent inspector general offices
-• Preserving civil service merit-based employment
-• Ensuring transparent campaign finance reporting
-• Protecting voting access and election security
-• Strengthening ethics enforcement across government branches
+From [Address] where voting machines need updating.
 
 [Personal Connection]
 
-Democratic institutions require bipartisan support to maintain public trust and effective governance.
+Which system can we afford?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -277,36 +242,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Education Funding Priorities',
-        description: 'Advocate for increased education investment and teacher support.',
+        title: 'Teachers Buy Supplies, Billionaires Buy Yachts',
+        description: 'Expose teachers spending their own money while billionaires avoid taxes.',
         category: 'Education',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Education Budget and Resource Allocation',
-        preview: 'Dear [Representative Name], Education funding should match the importance of learning outcomes.',
+        subject: 'The Math on Teacher Spending',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding federal education funding priorities and resource allocation.
+The math doesn't work anymore.
 
-Current education challenges include:
+Teachers spend $750 of their own money on supplies.
+Billionaires paid 8.2% tax rate last year.
+The gap: Teachers fund classrooms. Billionaires fund nothing.
 
-• Teachers spending personal funds on classroom supplies
-• Aging school infrastructure affecting learning environments
-• Outdated textbooks and educational materials
-• Insufficient counseling staff during mental health crises
-• Student lunch debt in economically disadvantaged districts
-
-Essential education investments:
-
-• Competitive teacher salaries to attract qualified educators
-• School building modernization and safety improvements
-• Universal school meal programs for all students
-• Reduced class sizes for more individualized attention
-• Mental health support staff in every school
+From [Address] where teachers skip lunch to buy pencils.
 
 [Personal Connection]
 
-Quality education requires adequate funding to support both students and educators effectively.
+Who should pay for education?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -317,36 +274,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Criminal Justice Reform',
-        description: 'Support evidence-based approaches to incarceration and rehabilitation.',
+        title: 'Prisons Profit $74 Billion, Rehab Gets $0',
+        description: 'Expose how prison companies profit while rehabilitation gets nothing.',
         category: 'Justice',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Incarceration Policy and Rehabilitation',
-        preview: 'Dear [Representative Name], Criminal justice policy should emphasize rehabilitation over profit.',
+        subject: 'The Math on Prison Profits',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding criminal justice policy and incarceration practices.
+The math doesn't work anymore.
 
-Current system challenges:
+Private prisons: $74 billion industry.
+Rehabilitation programs: Cut to zero in budget.
+The result: 68% reoffend because profit beats prevention.
 
-• Private prison contracts with occupancy requirements
-• Below-minimum-wage prison labor practices
-• High-cost communication services for incarcerated individuals
-• Family separation due to non-violent offense sentences
-• Recidivism rates indicating insufficient rehabilitation programs
-
-Policy improvements needed:
-
-• Eliminate private prison and detention center contracts
-• Reform cash bail system that discriminates based on wealth
-• Expunge records for non-violent marijuana-related convictions
-• Restore voting rights for formerly incarcerated citizens
-• Expand rehabilitation, education, and mental health services
+From [Address] where families can't afford prison phone calls.
 
 [Personal Connection]
 
-Effective criminal justice policy should reduce recidivism through evidence-based rehabilitation approaches.
+Which makes us safer?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -357,36 +306,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Housing Affordability Crisis',
-        description: 'Address housing costs and availability through comprehensive policy solutions.',
+        title: 'Blackstone Owns Your Neighborhood',
+        description: 'Expose how investment firms buy homes while families get evicted.',
         category: 'Housing',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Housing Policy and Market Regulation',
-        preview: 'Dear [Representative Name], Housing costs require policy intervention to ensure affordability.',
+        subject: 'The Math on Corporate Housing',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding housing affordability and market dynamics affecting families nationwide.
+The math doesn't work anymore.
 
-Current housing market conditions:
+Blackstone owns 300,000 single-family homes.
+Families lost 2.3 million homes to eviction this year.
+The transfer: Homes move from families to Wall Street.
 
-• Median home prices at historically high income ratios
-• Investment firm purchases of residential properties
-• Rising eviction rates amid stagnant wages
-• Homelessness increasing despite economic growth
-• Veterans experiencing housing insecurity
-
-Policy solutions needed:
-
-• Rent stabilization tied to local median incomes
-• Restrictions on corporate single-family home ownership
-• Expanded public housing investment similar to international models
-• Higher taxes on vacant residential properties
-• Constitutional recognition of housing as a fundamental right
+From [Address] where neighbors got evicted for corporate profit.
 
 [Personal Connection]
 
-Housing policy should prioritize stable communities over speculative investment returns.
+Who should own our neighborhoods?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -397,36 +338,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Immigration Policy Reform',
-        description: 'Support comprehensive immigration policy focused on human dignity and economic needs.',
+        title: 'Deportation Costs $100 Billion, Schools Get $0',
+        description: 'Expose immigration enforcement funding vs. underfunded schools.',
         category: 'Immigration',
         type: 'advocacy',
         deliveryMethod: 'both',
-        subject: 'Immigration Policy and Border Security',
-        preview: 'Dear [Representative Name], Immigration policy should balance security with humanitarian concerns.',
+        subject: 'The Math on Border Spending',
+        preview: 'Dear [Representative Name], The math doesn\'t work anymore.',
         message_body: `Dear [Representative Name],
 
-I am writing from [Address] regarding immigration policy and border security funding in the reconciliation bill.
+The math doesn't work anymore.
 
-Current immigration enforcement includes:
+Immigration enforcement: $100 billion in new funding.
+Title I school improvements: $0 in reconciliation.
+The choice: Deportations or education.
 
-• $100 billion allocated for expanded deportation operations
-• Increased detention facility capacity
-• National Guard deployment for immigration enforcement
-• ICE expansion affecting mixed-status families
-• Border infrastructure prioritized over other infrastructure needs
-
-Alternative policy approaches:
-
-• Address root causes of migration through development aid
-• Provide pathways to legal status for established residents
-• Reunite families separated by immigration enforcement
-• Restore asylum processing capacity and protections
-• Focus border security on actual security threats
+From [Address] where schools need books, not border walls.
 
 [Personal Connection]
 
-Immigration policy should reflect both national security needs and humanitarian values.
+Which investment builds America?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -437,36 +370,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'SF Homelessness: Stop the Sweeps',
-        description: 'Direct action against San Francisco\'s tent encampment clearings without adequate shelter alternatives.',
+        title: 'SF Sweeps Cost $60K Per Tent Cleared',
+        description: 'Expose the cost of tent sweeps vs. actual housing solutions.',
         category: 'Housing',
         type: 'advocacy',
         deliveryMethod: 'direct',
-        subject: 'Tent Sweeps Are Not Housing Solutions',
-        preview: 'Your encampment clearance policies move homelessness out of sight without creating permanent housing.',
+        subject: 'The Math on Tent Sweeps',
+        preview: 'The math doesn\'t work anymore.',
         message_body: `Dear Mayor Breed and SF Board of Supervisors,
 
-I am writing regarding San Francisco's encampment sweep policies and their impact on unhoused residents.
+The math doesn't work anymore.
 
-Current sweep operations result in:
+Tent sweeps: $60,000 per tent cleared.
+Permanent housing: Only 13% transition from shelters.
+The waste: $60K to move problems, $0 to solve them.
 
-• Confiscation of personal belongings including medication and identification
-• Displacement without guaranteed shelter alternatives
-• 85% reduction in visible tents but unclear impact on actual homelessness
-• People sleeping rough without even basic tent shelter
-• Only 13% of shelter residents transitioning to permanent housing
-
-Effective homelessness solutions require:
-
-• Guaranteed shelter placement before any encampment clearing
-• Safe storage for personal belongings during transitions
-• Mental health and addiction services integrated with housing
-• Accelerated affordable housing production
-• Focus on permanent housing outcomes, not just clearing visible camps
+From [Address] where tents reappear the next block over.
 
 [Personal Connection]
 
-Housing policy should address root causes, not criminalize poverty through visibility enforcement.
+Which approach actually works?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -477,36 +402,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'NYC: Fix the Subway System',
-        description: 'Demand immediate action from NYC officials on subway delays, safety, and accessibility.',
+        title: 'We Pay More for Broken Trains',
+        description: 'Expose how transit costs rise while service gets worse.',
         category: 'Transportation',
         type: 'advocacy', 
         deliveryMethod: 'direct',
-        subject: 'MTA Crisis Requires Emergency Action',
-        preview: 'The subway system is failing millions of daily riders with preventable delays and safety issues.',
+        subject: 'The Math on Transit Failure',
+        preview: 'The math doesn\'t work anymore.',
         message_body: `Dear Mayor Adams and NYC Council,
 
-I am writing about the Metropolitan Transportation Authority crisis affecting millions of daily commuters.
+The math doesn't work anymore.
 
-Current MTA conditions include:
+MetroCard cost: $2.90 (up 28% since 2019)
+On-time performance: 75% (down from 85%)
+We pay more for worse service.
 
-• 75% on-time performance during peak hours
-• Elevator outages affecting accessibility compliance
-• Platform overcrowding creating safety hazards
-• Signal failures causing cascading delays
-• Deferred maintenance backlog approaching $50 billion
-
-Immediate improvements needed:
-
-• Emergency funding for signal system modernization
-• Mandatory accessibility upgrades at all stations
-• Increased service frequency during peak hours
-• Transparent reporting on maintenance schedules
-• Investment in electric bus fleet expansion
+From [Address] where commutes cost $150/month for delays.
 
 [Personal Connection]
 
-Public transportation is essential infrastructure that affects economic opportunity and quality of life for all New Yorkers.
+When do we get what we pay for?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -517,36 +434,28 @@ Sincerely,
         is_public: true
     },
     {
-        title: 'Chicago: Address Gun Violence Crisis',
-        description: 'Demand comprehensive action from Chicago officials on community violence prevention.',
+        title: 'Chicago Spends $4.9B on Police, $50M on Prevention',
+        description: 'Expose police budget vs. violence prevention funding.',
         category: 'Public Safety',
         type: 'advocacy',
         deliveryMethod: 'direct', 
-        subject: 'Community Violence Prevention Funding',
-        preview: 'Chicago needs comprehensive violence intervention programs, not just increased policing.',
+        subject: 'The Math on Violence Prevention',
+        preview: 'The math doesn\'t work anymore.',
         message_body: `Dear Mayor Johnson and Chicago City Council,
 
-I am writing about community violence prevention strategies and their funding priorities.
+The math doesn't work anymore.
 
-Current violence intervention gaps:
+Police budget: $4.9 billion this year.
+Cure Violence programs: $50 million total.
+The ratio: 98 to 1 for enforcement over prevention.
 
-• Limited funding for community-based violence prevention programs
-• Insufficient mental health crisis response teams
-• Inadequate youth programming in high-risk neighborhoods
-• Economic disinvestment in communities with highest violence rates
-• Trauma-informed services underfunded compared to enforcement
-
-Evidence-based solutions to prioritize:
-
-• Expand Cure Violence and similar community intervention programs
-• Fund youth employment and mentorship opportunities
-• Increase mental health services in public schools
-• Support small business development in affected neighborhoods  
-• Invest in trauma recovery services for families
+From [Address] where kids need jobs, not more squad cars.
 
 [Personal Connection]
 
-Community safety requires addressing root causes through investment in people and neighborhoods, not just enforcement.
+Which investment actually prevents violence?
+
+Please explain this to your constituents.
 
 Sincerely,
 [Name]
@@ -562,7 +471,8 @@ async function seedDatabase() {
     console.log('🌱 Starting database seed...');
     
     try {
-        // Clear existing templates
+        // Clear existing template scopes and templates
+        await db.template_scope.deleteMany({});
         await db.template.deleteMany({});
         console.log('✅ Cleared existing templates');
         
@@ -590,6 +500,14 @@ async function seedDatabase() {
                     // Add CWC API policy area mapping
                     // policy_area: policyAreaMap[template.category] || template.category
                 }
+            });
+            // Create a default broad scope per template (country-only US as demo)
+            await db.template_scope.create({
+                data: {
+                    template_id: createdTemplate.id,
+                    mode: 'country',
+                    country_codes: ['US'],
+                },
             });
             
             createdTemplates.push(createdTemplate);

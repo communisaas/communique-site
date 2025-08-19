@@ -2,8 +2,9 @@ import { error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templateConfig';
 import type { PageServerLoad } from './$types';
+import { detectCountryFromHeaders, resolveChannel } from '$lib/services/channelResolver';
 
-export const load: PageServerLoad = async ({ params, locals }) => {
+export const load: PageServerLoad = async ({ params, locals, request }) => {
 	const { slug } = params;
 	
 	// Look up template by slug
@@ -37,6 +38,10 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		}
 	});
 	
+	// Detect country and resolve channel
+	const detectedCountry = detectCountryFromHeaders(request.headers) || 'US';
+	const channelInfo = await resolveChannel(detectedCountry);
+
 	// Format template for client
 	const formattedTemplate = {
 		id: template.id,
@@ -49,10 +54,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 		subject: template.subject,
 		message_body: template.message_body,
 		preview: template.preview,
+		is_public: template.is_public,
 		metrics: extractTemplateMetrics(template.metrics),
 		delivery_config: template.delivery_config,
 		recipient_config: template.recipient_config,
 		recipientEmails: extractRecipientEmails(template.recipient_config),
+		applicable_countries: (template as any).applicable_countries ?? [],
+		jurisdiction_level: (template as any).jurisdiction_level ?? null,
+		specific_locations: (template as any).specific_locations ?? [],
 		author: template.user ? {
 			name: template.user.name,
 			avatar: template.user.avatar
@@ -62,6 +71,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 	
 	return {
 		template: formattedTemplate,
-		user: locals.user
+		user: locals.user,
+		channel: channelInfo
 	};
 };

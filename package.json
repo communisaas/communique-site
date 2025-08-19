@@ -15,7 +15,7 @@
 		"test:unit:run": "vitest --run --config=vitest.config.ts",
 		"test:unit:coverage": "vitest --coverage --config=vitest.config.ts",
 		"test": "npm run test:unit:run && npm run test:e2e",
-        "test:e2e": "playwright test --config=playwright.config.ts",
+		"test:e2e": "playwright test --config=playwright.config.ts",
 		"test:e2e:mcp": "playwright test --config=playwright-mcp.config.ts",
 		"test:e2e:debug": "playwright test --config=playwright-mcp.config.ts --debug",
 		"test:e2e:headed": "playwright test --config=playwright-mcp.config.ts --headed",
@@ -27,6 +27,8 @@
 		"db:migrate": "prisma migrate dev",
 		"db:studio": "prisma studio",
 		"db:seed": "tsx scripts/seed-db.ts",
+		"db:seed:jurisdictions": "tsx scripts/seed-jurisdictions.ts",
+		"db:seed:channels": "tsx scripts/seed-legislative-channels.ts",
 		"postinstall": "prisma generate && svelte-kit sync"
 	},
 	"devDependencies": {

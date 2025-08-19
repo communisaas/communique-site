@@ -8,7 +8,7 @@ export async function POST({ request, locals }) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 		
-		const { address, verified, representatives, street, city, state, zipCode } = await request.json();
+		const { address, verified, representatives, street, city, state, zipCode, countryCode, latitude, longitude } = await request.json();
 		
 		// Address can be provided as a single string or as separate components
 		let addressComponents = { street: '', city: '', state: '', zip: '' };
@@ -31,6 +31,9 @@ export async function POST({ request, locals }) {
 				city: addressComponents.city,
 				state: addressComponents.state,
 				zip: addressComponents.zip,
+				country_code: countryCode ?? 'US',
+				latitude: typeof latitude === 'number' ? latitude : undefined,
+				longitude: typeof longitude === 'number' ? longitude : undefined,
 				updatedAt: new Date()
 			}
 		});
@@ -93,7 +96,10 @@ export async function POST({ request, locals }) {
 				street: updatedUser.street,
 				city: updatedUser.city,
 				state: updatedUser.state,
-				zip: updatedUser.zip
+				zip: updatedUser.zip,
+				country_code: updatedUser.country_code,
+				latitude: updatedUser.latitude,
+				longitude: updatedUser.longitude
 			}
 		});
 		

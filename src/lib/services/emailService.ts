@@ -7,14 +7,23 @@
 
 import type { Template } from '$lib/types/template';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
+import { resolveTemplate } from '$lib/utils/templateResolver';
 
 export interface User {
 	id: string;
 	name?: string | null;
+	email?: string;  // Added for compatibility with resolveTemplate
 	street?: string | null;
 	city?: string | null;
 	state?: string | null;
 	zip?: string | null;
+	representatives?: Array<{
+		name: string;
+		party: string;
+		chamber: string;
+		state: string;
+		district: string;
+	}>;
 }
 
 export interface EmailFlowResult {
@@ -33,10 +42,9 @@ export function analyzeEmailFlow(template: Template, user: User | null): EmailFl
 		};
 	}
 
+	// Enforce address gating for congressional delivery
 	const isCongressional = template.deliveryMethod === 'both';
-	const hasCompleteAddress = user.street && user.city && user.state && user.zip;
-
-	// Congressional template without address = address required
+	const hasCompleteAddress = Boolean(user.street && user.city && user.state && user.zip);
 	if (isCongressional && !hasCompleteAddress) {
 		return {
 			requiresAuth: false,
@@ -56,57 +64,33 @@ export function analyzeEmailFlow(template: Template, user: User | null): EmailFl
 }
 
 export function generateMailtoUrl(template: Template, user: User | null): string {
-    const subject = encodeURIComponent(template.title);
-    // Use the full message body when available; fall back to preview
-    const bodySource = (template as any).message_body || template.preview || '';
-    const body = encodeURIComponent(fillTemplateVariables(bodySource, user));
+    const resolved = resolveTemplate(template, user);
+    const subject = encodeURIComponent(resolved.subject);
+    const body = encodeURIComponent(resolved.body);
 
-	if (template.deliveryMethod === 'both') {
-		// Congressional routing
-		const routingEmail = `congress+${template.id}-${user?.id || 'anon'}@communique.org`;
-		return `mailto:${routingEmail}?subject=${subject}&body=${body}`;
-	} else {
-		// Direct email
-		const recipients = extractRecipientEmails(template.recipient_config).join(',');
-		return `mailto:${recipients}?subject=${subject}&body=${body}`;
+	if (resolved.isCongressional && resolved.routingEmail) {
+		return `mailto:${resolved.routingEmail}?subject=${subject}&body=${body}`;
 	}
+
+	const recipients = resolved.recipients.length > 0 ? resolved.recipients.join(',') : 'test@example.com';
+	return `mailto:${recipients}?subject=${subject}&body=${body}`;
 }
 
-function fillTemplateVariables(bodyText: string, user: User | null): string {
-	if (!user) return bodyText;
+// Removed fillTemplateVariables - now using resolveTemplate from templateResolver.ts
+// which properly handles all variable substitution with user data
 
-	let filledBody = bodyText;
-
-	// Replace [Name] with user's name
-	if (user.name) {
-		filledBody = filledBody.replace(/\[Name\]/g, user.name);
+export function launchEmail(mailtoUrl: string, redirectUrl?: string): void {
+	// Create a temporary anchor element and simulate a click
+	// This reliably opens the mail app without redirecting the page
+	const mailLink = document.createElement('a');
+	mailLink.href = mailtoUrl;
+	mailLink.click();
+	
+	// If a redirect URL is provided, navigate to it after a short delay
+	// to allow the mail app to open first
+	if (redirectUrl) {
+		setTimeout(() => {
+			window.location.href = redirectUrl;
+		}, 500);
 	}
-
-	// Replace [Address] with user's address if available
-	if (user.street && user.city && user.state && user.zip) {
-		const userAddress = `${user.street}, ${user.city}, ${user.state} ${user.zip}`;
-		filledBody = filledBody.replace(/\[Address\]/g, userAddress);
-	} else {
-		// Remove lines that contain only [Address]
-		filledBody = filledBody.replace(/^[ \t]*\[Address\][ \t]*\r?\n/gm, '');
-		// Remove remaining inline [Address]
-		filledBody = filledBody.replace(/\[Address\]/g, '');
-	}
-
-	// For congressional templates, [Representative Name] gets filled server-side
-	filledBody = filledBody.replace(/^[ \t]*\[Representative Name\][ \t]*\r?\n/gm, '');
-	filledBody = filledBody.replace(/\[Representative Name\]/g, 'Representative');
-
-	// Remove empty [Personal Connection] blocks and lines
-	filledBody = filledBody.replace(/^[ \t]*\[Personal Connection\][ \t]*\r?\n/gm, '');
-	filledBody = filledBody.replace(/\[Personal Connection\]/g, '');
-
-	// Clean up any extra newlines
-	filledBody = filledBody.replace(/\n{3,}/g, '\n\n').trim();
-
-	return filledBody;
-}
-
-export function launchEmail(mailtoUrl: string): void {
-	window.location.href = mailtoUrl;
 }

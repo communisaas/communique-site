@@ -133,8 +133,8 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 			}
 		}
 		
-    // Create extended session for template-action deep-link flows (template-modal/auth=required/action=complete)
-    const isFromSocialFunnel = returnTo.includes('template-modal') || returnTo.includes('auth=required') || returnTo.includes('action=complete');
+    // Create extended session for template-action deep-link flows (avoid stateful query params)
+    const isFromSocialFunnel = returnTo.includes('template-modal') || returnTo.includes('auth=required');
 		const session = await createSession(user.id, isFromSocialFunnel);
 		
     // Set session cookie with extended expiry for template-action deep-link flows
@@ -173,8 +173,12 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
 		}
 		
 	} catch (err) {
-		// Don't log SvelteKit redirects as errors
+		// Don't log SvelteKit redirects as errors - they're thrown by redirect() calls
 		if (err instanceof Response && err.status >= 300 && err.status < 400) {
+			throw err;
+		}
+		// Also check for SvelteKit redirect objects (which have status and location properties)
+		if (err && typeof err === 'object' && 'status' in err && 'location' in err && err.status >= 300 && err.status < 400) {
 			throw err;
 		}
 		

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
 	import { 
@@ -31,11 +32,15 @@
 	
 	// Prevent background scrolling when modal is open
 	onMount(() => {
-		document.body.style.overflow = 'hidden';
+		if (browser) {
+			document.body.style.overflow = 'hidden';
+		}
 	});
 	
 	onDestroy(() => {
-		document.body.style.overflow = '';
+		if (browser) {
+			document.body.style.overflow = '';
+		}
 	});
 	
 	// Address form data

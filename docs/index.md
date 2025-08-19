@@ -1,6 +1,10 @@
 # Communique Docs
 
-**What this is**: Communique lets people take civic action in seconds. Templates resolve on-device and open a mailto with personalized content; for congressional delivery we generate CWC-compliant payloads.
+**What this is**: Communique lets people take civic action in seconds.
+
+- Global delivery: Email (countries with public emails) and Certified API/Form (e.g., US CWC); always includes social amplification tools
+- Viral pattern generator for platform-native sharing
+- Anchoring: Monad primary; optional mirror to ETH L2 (ERC‑8004 registries) when needed
 
 ## Start here
 - **Dev quickstart**: [dev-quickstart.md](./dev-quickstart.md)

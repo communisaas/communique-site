@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { analyzeEmailFlow, generateMailtoUrl, launchEmail, type User, type EmailFlowResult } from './emailService';
+import { analyzeEmailFlow, generateMailtoUrl, launchEmail, type User, type EmailFlowResult } from '$lib/services/emailService';
 import type { Template } from '$lib/types/template';
 
 // Mock the template config extraction
@@ -141,32 +141,32 @@ describe('EmailService', () => {
 		it('should generate mailto URL for email template', () => {
 			const mailtoUrl = generateMailtoUrl(mockEmailTemplate, mockUserComplete);
 
-            expect(mailtoUrl).toContain('mailto:recipient@example.com,admin@example.com');
-            expect(mailtoUrl).toContain('subject=Test%20Email%20Template');
-            expect(decodeURIComponent(mailtoUrl)).toContain('Test message body');
+			expect(mailtoUrl).toContain('mailto:recipient@example.com,admin@example.com');
+			expect(mailtoUrl).toContain('subject=Test%20Subject');
+			expect(decodeURIComponent(mailtoUrl)).toContain('Test message body');
 		});
 
 		it('should generate congressional routing URL for congressional template', () => {
 			const mailtoUrl = generateMailtoUrl(mockCongressionalTemplate, mockUserComplete);
 
-            expect(mailtoUrl).toContain('mailto:congress+template-congress-123-user-123@communique.org');
-            expect(mailtoUrl).toContain('subject=Test%20Congressional%20Template');
-            expect(decodeURIComponent(mailtoUrl)).toContain('Test message body');
+			expect(mailtoUrl).toContain('mailto:congress+template-congress-123-user-123@communique.org');
+			expect(mailtoUrl).toContain('subject=Test%20Subject');
+			expect(decodeURIComponent(mailtoUrl)).toContain('Test message body');
 		});
 
 		it('should handle anonymous user for congressional template', () => {
 			const mailtoUrl = generateMailtoUrl(mockCongressionalTemplate, null);
 
 			expect(mailtoUrl).toContain('mailto:congress+template-congress-123-anon@communique.org');
-			expect(mailtoUrl).toContain('subject=Test%20Congressional%20Template');
+			expect(mailtoUrl).toContain('subject=Test%20Subject');
 		});
 
 		it('should URL encode subject and body', () => {
-            const templateWithSpecialChars: Template = {
-                ...mockEmailTemplate,
-                title: 'Test & Symbols!',
-                message_body: 'Hello [Name], this has special characters: & < > " \''
-            };
+			const templateWithSpecialChars: Template = {
+				...mockEmailTemplate,
+				title: 'Test & Symbols!',
+				message_body: 'Hello [Name], this has special characters: & < > " \''
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithSpecialChars, mockUserComplete);
 
@@ -176,10 +176,10 @@ describe('EmailService', () => {
 		});
 
 		it('should fill template variables in body', () => {
-            const templateWithVariables: Template = {
-                ...mockEmailTemplate,
-                message_body: 'Hello [Name], I live at [Address]. Writing to [Representative Name].'
-            };
+			const templateWithVariables: Template = {
+				...mockEmailTemplate,
+				message_body: 'Hello [Name], I live at [Address]. Writing to [Representative Name].'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithVariables, mockUserComplete);
 
@@ -213,10 +213,10 @@ describe('EmailService', () => {
 
 	describe('Template Variable Filling', () => {
 		it('should replace [Name] with user name', () => {
-            const templateWithName: Template = {
-                ...mockEmailTemplate,
-                message_body: 'Hello [Name], how are you?'
-            };
+			const templateWithName: Template = {
+				...mockEmailTemplate,
+				message_body: 'Hello [Name], how are you?'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithName, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -225,10 +225,10 @@ describe('EmailService', () => {
 		});
 
 		it('should replace [Address] with complete address', () => {
-            const templateWithAddress: Template = {
-                ...mockEmailTemplate,
-                message_body: 'I live at [Address].'
-            };
+			const templateWithAddress: Template = {
+				...mockEmailTemplate,
+				message_body: 'I live at [Address].'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithAddress, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -237,14 +237,10 @@ describe('EmailService', () => {
 		});
 
 		it('should handle missing name gracefully', () => {
-			const userWithoutName: User = {
-				...mockUserComplete,
-				name: null
-			};
-
+			const userWithoutName: User = { ...mockUserComplete, name: null };
 			const templateWithName: Template = {
 				...mockEmailTemplate,
-				preview: 'Hello [Name], how are you?'
+				message_body: 'Hello [Name], how are you?'
 			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithName, userWithoutName);
@@ -254,10 +250,10 @@ describe('EmailService', () => {
 		});
 
 		it('should remove address blocks when address is incomplete', () => {
-            const templateWithAddressBlock: Template = {
-                ...mockEmailTemplate,
-                message_body: 'From:\n[Address]\n\nHello there.'
-            };
+			const templateWithAddressBlock: Template = {
+				...mockEmailTemplate,
+				message_body: 'From:\n[Address]\n\nHello there.'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithAddressBlock, mockUserIncomplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -266,10 +262,10 @@ describe('EmailService', () => {
 		});
 
 		it('should replace [Representative Name] with generic text', () => {
-            const templateWithRep: Template = {
-                ...mockEmailTemplate,
-                message_body: 'Dear [Representative Name], I am writing to you.'
-            };
+			const templateWithRep: Template = {
+				...mockEmailTemplate,
+				message_body: 'Dear [Representative Name], I am writing to you.'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithRep, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -278,10 +274,10 @@ describe('EmailService', () => {
 		});
 
 		it('should remove [Personal Connection] blocks', () => {
-            const templateWithPersonalConnection: Template = {
-                ...mockEmailTemplate,
-                message_body: 'Dear Representative,\n\n[Personal Connection]\n\nThank you.'
-            };
+			const templateWithPersonalConnection: Template = {
+				...mockEmailTemplate,
+				message_body: 'Dear Representative,\n\n[Personal Connection]\n\nThank you.'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithPersonalConnection, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -290,10 +286,10 @@ describe('EmailService', () => {
 		});
 
 		it('should clean up excessive newlines', () => {
-            const templateWithExtraNewlines: Template = {
-                ...mockEmailTemplate,
-                message_body: 'Hello\n\n\n\n\nWorld'
-            };
+			const templateWithExtraNewlines: Template = {
+				...mockEmailTemplate,
+				message_body: 'Hello\n\n\n\n\nWorld'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithExtraNewlines, mockUserComplete);
 			const decodedUrl = decodeURIComponent(mailtoUrl);
@@ -303,83 +299,82 @@ describe('EmailService', () => {
 	});
 
 	describe('launchEmail', () => {
-		it('should set window.location.href to mailto URL', () => {
-			// Mock window.location
-			const mockLocation = {
-				href: ''
-			};
-			Object.defineProperty(window, 'location', {
-				value: mockLocation,
-				writable: true
-			});
+		it('should create and click anchor element with mailto URL', () => {
+			// Mock document.createElement and element.click
+			const mockAnchor = { href: '', click: vi.fn() } as any;
+			const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
 
 			const mailtoUrl = 'mailto:test@example.com?subject=Test&body=Hello';
 			launchEmail(mailtoUrl);
 
-			expect(window.location.href).toBe(mailtoUrl);
+			expect(createElementSpy).toHaveBeenCalledWith('a');
+			expect(mockAnchor.href).toBe(mailtoUrl);
+			expect(mockAnchor.click).toHaveBeenCalled();
+
+			createElementSpy.mockRestore();
 		});
 
 		it('should handle empty mailto URL', () => {
-			const mockLocation = {
-				href: ''
-			};
-			Object.defineProperty(window, 'location', {
-				value: mockLocation,
-				writable: true
-			});
+			const mockAnchor = { href: '', click: vi.fn() } as any;
+			const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
 
 			launchEmail('');
 
-			expect(window.location.href).toBe('');
+			expect(createElementSpy).toHaveBeenCalledWith('a');
+			expect(mockAnchor.href).toBe('');
+			expect(mockAnchor.click).toHaveBeenCalled();
+
+			createElementSpy.mockRestore();
+		});
+
+		it('should redirect to landing page when redirect URL is provided', () => {
+			const mockAnchor = { href: '', click: vi.fn() } as any;
+			const createElementSpy = vi.spyOn(document, 'createElement').mockReturnValue(mockAnchor);
+			const mockLocation = { href: '' } as any;
+			Object.defineProperty(window, 'location', { value: mockLocation, writable: true });
+			const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+
+			const mailtoUrl = 'mailto:test@example.com?subject=Test&body=Hello';
+			launchEmail(mailtoUrl, '/');
+
+			expect(createElementSpy).toHaveBeenCalledWith('a');
+			expect(mockAnchor.href).toBe(mailtoUrl);
+			expect(mockAnchor.click).toHaveBeenCalled();
+			expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 500);
+
+			createElementSpy.mockRestore();
+			setTimeoutSpy.mockRestore();
 		});
 	});
 
 	describe('Edge Cases', () => {
 		it('should handle template without recipient_config', () => {
-			const templateWithoutRecipients: Template = {
-				...mockEmailTemplate,
-				recipient_config: ''
-			};
-
+			const templateWithoutRecipients: Template = { ...mockEmailTemplate, recipient_config: '' };
 			const mailtoUrl = generateMailtoUrl(templateWithoutRecipients, mockUserComplete);
-
 			expect(mailtoUrl).toContain('mailto:test@example.com'); // Default from mock
 		});
 
 		it('should handle invalid JSON in recipient_config', () => {
-			const templateWithInvalidConfig: Template = {
-				...mockEmailTemplate,
-				recipient_config: 'invalid json'
-			};
-
-			// This should not throw, and should use the mock default
-			expect(() => {
-				generateMailtoUrl(templateWithInvalidConfig, mockUserComplete);
-			}).not.toThrow();
+			const templateWithInvalidConfig: Template = { ...mockEmailTemplate, recipient_config: 'invalid json' };
+			expect(() => { generateMailtoUrl(templateWithInvalidConfig, mockUserComplete); }).not.toThrow();
 		});
 
 		it('should handle very long template content', () => {
 			const longContent = 'A'.repeat(10000);
-			const templateWithLongContent: Template = {
-				...mockEmailTemplate,
-				preview: longContent
-			};
-
+			const templateWithLongContent: Template = { ...mockEmailTemplate, message_body: longContent };
 			const mailtoUrl = generateMailtoUrl(templateWithLongContent, mockUserComplete);
-
 			expect(mailtoUrl).toContain('mailto:');
 			expect(mailtoUrl.length).toBeGreaterThan(1000);
 		});
 
 		it('should handle unicode characters in template', () => {
-            const templateWithUnicode: Template = {
-                ...mockEmailTemplate,
-                title: 'Test 🚀 Émojis & Spëcial Chārs',
-                message_body: 'Hello [Name] 👋, this has émojis 🎉 and spëcial chārs!'
-            };
+			const templateWithUnicode: Template = {
+				...mockEmailTemplate,
+				title: 'Test 🚀 Émojis & Spëcial Chārs',
+				message_body: 'Hello [Name] 👋, this has émojis 🎉 and spëcial chārs!'
+			};
 
 			const mailtoUrl = generateMailtoUrl(templateWithUnicode, mockUserComplete);
-
 			expect(mailtoUrl).toContain('mailto:');
 			expect(decodeURIComponent(mailtoUrl)).toContain('🚀');
 			expect(decodeURIComponent(mailtoUrl)).toContain('émojis');
@@ -390,13 +385,11 @@ describe('EmailService', () => {
 		it('should provide consistent mailto URLs between analyzeEmailFlow and generateMailtoUrl', () => {
 			const flowResult = analyzeEmailFlow(mockEmailTemplate, mockUserComplete);
 			const directUrl = generateMailtoUrl(mockEmailTemplate, mockUserComplete);
-
 			expect(flowResult.mailtoUrl).toBe(directUrl);
 		});
 
 		it('should not provide mailto URL when address is required', () => {
 			const flowResult = analyzeEmailFlow(mockCongressionalTemplate, mockUserIncomplete);
-
 			expect(flowResult.mailtoUrl).toBeUndefined();
 			expect(flowResult.requiresAddress).toBe(true);
 		});

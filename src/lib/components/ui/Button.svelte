@@ -1,9 +1,10 @@
 <script lang="ts">
-	let { 
+	let {
 		variant = 'primary',
 		type = 'button',
 		cursor = 'pointer',
 		classNames = '',
+		text = undefined,
 		href = undefined,
 		rel = undefined,
 		buttonElement = $bindable(),
@@ -20,6 +21,7 @@
 		type?: 'button' | 'submit';
 		cursor?: 'default' | 'help' | 'alias' | 'pointer';
 		classNames?: string;
+		text?: string | undefined;
 		href?: string | undefined;
 		rel?: string | undefined;
 		buttonElement?: HTMLButtonElement | undefined;
@@ -48,6 +50,7 @@
 		target={href.startsWith('mailto:') ? undefined : '_blank'}
 		data-testid={testId}
 		class="flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-all duration-200 sm:text-base cursor-{cursor} select-none no-underline {classNames}"
+		aria-label={text}
 		class:bg-blue-600={variant === 'primary'}
 		class:text-white={variant === 'primary'}
 		class:hover:bg-blue-700={variant === 'primary'}
@@ -64,6 +67,7 @@
 		{onblur}
 	>
 		{@render children?.()}
+		{#if !children && text}{text}{/if}
 	</a>
 {:else}
 	<button
@@ -71,6 +75,7 @@
 		{type}
 		data-testid={testId}
 		class="flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-all duration-200 sm:text-base cursor-{cursor} {classNames}"
+		aria-label={text}
 		class:bg-blue-600={variant === 'primary'}
 		class:text-white={variant === 'primary'}
 		class:hover:bg-blue-700={variant === 'primary'}
@@ -87,5 +92,6 @@
 		{onblur}
 	>
 		{@render children?.()}
+		{#if !children && text}{text}{/if}
 	</button>
 {/if}

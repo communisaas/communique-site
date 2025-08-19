@@ -74,8 +74,9 @@ npm run db:generate
 # Push schema to database
 npm run db:push
 
-# Seed with sample templates (optional)
+# Seed sample templates and global legislative channels
 npm run db:seed
+npm run db:seed:channels
 ```
 
 ### 4. Start Development
@@ -138,6 +139,11 @@ fly deploy
 
 ## ✨ Features
 
+### 🌍 Global Legislative Channels
+- Tiered access by country (email, api/form, social-only)
+- Dynamic channel resolution in SSR via `channelResolver`
+- US certified delivery (web forms) gated; Tier 1 countries use direct email
+
 ### 📧 Congressional Advocacy
 - **Address-based representative lookup** - Find user's Congress members
 - **CWC API integration** - Direct delivery to congressional offices
@@ -158,8 +164,8 @@ fly deploy
 ### 📱 User Experience
 - **Responsive design** - Mobile-first interface
 - **Template modal** - Streamlined sharing flow
-- **mailto: integration** - One-click email client launch
-- **Social sharing** - Template URL sharing
+- **mailto: integration** - One-click email client launch (Tier 1 countries)
+- **Social amplification** - Built-in viral pattern generator and share flow
 
 ## 📁 Project Structure
 
@@ -195,10 +201,11 @@ static/               # Static assets
 - Census Bureau Geocoding API (primary)
 - ZIP→District fallback (OpenSourceActivismTech, 119th)
 
-### PostHog
-- User behavior analytics
-- Campaign performance tracking
-- A/B testing framework
+### Blockchain (Anchoring & Attestations)
+- Anchoring: Monad (cheap EVM) as source-of-truth; batch Merkle roots and minimal on-chain fields (status, root, hash, timestamp)
+- Optional L2 mirror: ERC-8004 registries (Identity/Validation/Reputation) on a major L2 when ETH-native consumers need on-chain reads
+- Attestations: EAS optional for partner integrations
+- Storage: off-chain payloads (e.g., IPFS) with on-chain hashes
 
 ## 🚨 Common Issues
 

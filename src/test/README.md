@@ -94,7 +94,7 @@ Tests run automatically on:
 ### Environment Variables
 ```bash
 # Test-specific overrides
-CONGRESS_API_KEY=test-congress-key
+CWC_API_KEY=test-cwc-key
 GOOGLE_CIVIC_API_KEY=test-civic-key
 ```
 

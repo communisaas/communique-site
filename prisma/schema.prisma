@@ -72,6 +72,12 @@ model Template {
   campaign_id       String?
   status            String              @default("draft")
   is_public         Boolean             @default(false)
+  
+  // Geographic scope
+  applicable_countries String[]          @default([]) // ISO country codes ["US", "CA", "UK"]
+  jurisdiction_level   String?           // "municipal", "state", "federal", "international"
+  specific_locations   String[]          @default([]) // ["San Francisco", "Chicago", "Toronto"]
+  
   createdAt         DateTime            @default(now()) @map("created_at")
   updatedAt         DateTime            @updatedAt @map("updated_at")
   userId            String?             @map("user_id")
@@ -85,6 +91,7 @@ model Template {
   target_morphisms  template_morphism[] @relation("TargetMorphisms")
   community_lifecycles community_lifecycle[]
   political_uncertainty political_uncertainty[]
+  template_adaptations template_adaptation[]
 
   @@map("template")
 }
@@ -451,4 +458,132 @@ model political_uncertainty {
   @@unique([user_id, template_id])
   @@index([certainty_level, change_likelihood])
   @@map("political_uncertainty")
+}
+
+// Global legislative channel access methods by country
+model legislative_channel {
+  id                      String   @id @default(cuid())
+  country_code            String   @unique // ISO 3166-1 alpha-2 (US, CA, UK, FR, etc.)
+  country_name            String
+  legislature_name        String   // "Congress", "Parliament", "Bundestag", etc.
+  legislature_type        String   // "bicameral", "unicameral"
+  
+  // Access method configuration
+  access_method           String   // "email", "api", "form", "none"
+  access_tier             Int      @default(3) // 1=email, 2=api/form, 3=social only
+  
+  // Email configuration (Tier 1)
+  email_pattern           String?  // "firstname.lastname@parl.gc.ca"
+  email_domain            String?  // "parl.gc.ca"
+  email_format_notes      String?  // Special formatting rules
+  
+  // API configuration (Tier 2)
+  api_endpoint            String?  // Base URL for API
+  api_auth_type           String?  // "oauth", "key", "captcha", "none"
+  api_documentation_url   String?  // Link to API docs
+  rate_limit_requests     Int?     // Requests per minute
+  rate_limit_daily        Int?     // Daily request limit
+  
+  // Form configuration (Tier 2)
+  form_url                String?  // Web form URL pattern
+  form_requires_captcha   Boolean  @default(false)
+  form_max_length         Int?     // Character limit
+  
+  // Language and validation
+  primary_language        String   // ISO 639-1 code
+  supported_languages     String[] // Array of ISO 639-1 codes
+  requires_constituent    Boolean  @default(false) // Must be from district
+  requires_real_address   Boolean  @default(false) // Address validation
+  
+  // Message restrictions
+  forbidden_words         String[] @default([]) // Blocked terms
+  message_guidelines      String?  // Cultural/political guidelines
+  
+  // Metadata
+  population              BigInt?  // Country population
+  internet_penetration    Float?   // % with internet access (0-1)
+  democracy_index         Float?   // EIU Democracy Index score (0-10)
+  
+  is_active               Boolean  @default(true)
+  last_verified           DateTime?
+  created_at              DateTime @default(now()) @map("created_at")
+  updated_at              DateTime @updatedAt @map("updated_at")
+  
+  // Relations
+  legislative_bodies      legislative_body[]
+  template_adaptations    template_adaptation[]
+  
+  @@index([access_tier, is_active])
+  @@index([country_code])
+  @@map("legislative_channel")
+}
+
+// Specific legislative bodies within a country (House/Senate, Lords/Commons, etc.)
+model legislative_body {
+  id                    String   @id @default(cuid())
+  channel_id            String   @map("channel_id")
+  body_name             String   // "House of Representatives", "Senate", "House of Commons"
+  body_type             String   // "upper", "lower"
+  
+  member_count          Int      // Number of members
+  member_title          String   // "Representative", "Senator", "MP", "Deputy"
+  
+  // Body-specific contact patterns
+  email_pattern         String?  // Override country pattern if different
+  api_endpoint          String?  // Body-specific API
+  
+  // Terms and elections
+  term_length_years     Int      // Length of term
+  last_election         DateTime?
+  next_election         DateTime?
+  
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+  
+  legislative_channel   legislative_channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+  
+  @@index([channel_id])
+  @@map("legislative_body")
+}
+
+// Template adaptations for different countries/languages
+model template_adaptation {
+  id                    String   @id @default(cuid())
+  source_template_id    String   @map("source_template_id")
+  target_country_code   String   @map("target_country_code")
+  target_language       String   @map("target_language") // ISO 639-1
+  
+  // Adapted content
+  adapted_title         String
+  adapted_subject       String?
+  adapted_body          String   @db.Text
+  
+  // Localization
+  currency_symbol       String?  // Local currency symbol
+  number_format         String?  // "1,000.00" vs "1.000,00"
+  
+  // Local context replacements
+  local_examples        Json?    // {"oil_company": "Petrobras", "healthcare": "NHS"}
+  local_officials       Json?    // {"mayor": "current_mayor_name"}
+  local_data_sources    Json?    // {"rent_data": "local_housing_authority"}
+  
+  // Cultural adaptations
+  tone_adjustment       String?  // "formal", "respectful", "direct"
+  cultural_notes        String?  // Guidelines for this culture
+  
+  // Performance metrics
+  usage_count           Int      @default(0)
+  success_rate          Float?   // 0-1 delivery/response rate
+  viral_coefficient     Float?   // Sharing rate
+  
+  is_active             Boolean  @default(true)
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+  
+  source_template       Template @relation(fields: [source_template_id], references: [id], onDelete: Cascade)
+  legislative_channel   legislative_channel @relation(fields: [target_country_code], references: [country_code], onDelete: Cascade)
+  
+  @@unique([source_template_id, target_country_code, target_language])
+  @@index([target_country_code, is_active])
+  @@map("template_adaptation")
 }

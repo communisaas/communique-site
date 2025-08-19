@@ -8,6 +8,7 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
+	import { modalActions, isModalOpen, currentTemplate } from '$lib/stores/modalState';
 	import ProgressiveFormModal from '$lib/components/template/ProgressiveFormModal.svelte';
 	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
 	import { resolveTemplate } from '$lib/utils/templateResolver';
@@ -21,15 +22,15 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
-	
+
 	let { data }: { data: PageData } = $props();
 
 	const componentId = 'HomePage_' + Math.random().toString(36).substr(2, 9);
-	
+
 	let showMobilePreview = $state(false);
 	let showTemplateCreator = $state(false);
 	let showOnboardingModal = $state(false);
-	let showTemplateModal = $state(false);
+	// Removed showTemplateModal - now using persistent modalState store
 	let showTemplateAuthModal = $state(false);
 	let showAddressModal = $state(false);
 	let modalComponent = $state<Modal>();
@@ -49,33 +50,64 @@
 				try {
 					const { templateData } = JSON.parse(pendingData);
 					// Now that user is authenticated, save the template
-					templateStore.addTemplate(templateData).then(() => {
-						sessionStorage.removeItem('pending_template_save');
-					}).catch(error => {
-						// Template save failed - user can retry later
-					});
+					templateStore
+						.addTemplate(templateData)
+						.then(() => {
+							sessionStorage.removeItem('pending_template_save');
+						})
+						.catch((error) => {
+							// Template save failed - user can retry later
+						});
 				} catch (error) {
 					// Invalid pending template data - ignore
 				}
 			}
 		}
-		
+
 		// Initialize template store - try database first, fallback to static
 		templateStore.fetchTemplates();
-		
+
+		// Check for OAuth return with template parameter
+		const templateSlug = $page.url.searchParams.get('template');
+		const action = $page.url.searchParams.get('action');
+
+		if (templateSlug && action === 'open-modal') {
+			// User returned from OAuth, find and open the template modal
+			coordinated.setTimeout(
+				async () => {
+					const templates = $templateStore.templates;
+					const template = templates.find((t) => t.slug === templateSlug);
+					if (template) {
+						templateStore.selectTemplate(template.id);
+						modalActions.open(template, data.user);
+						// Clean up URL
+						window.history.replaceState({}, '', '/');
+					}
+				},
+				500,
+				'auth-return',
+				componentId
+			);
+		}
+
 		// Mark initial load as complete after a short delay
-		coordinated.setTimeout(() => {
-			initialLoadComplete = true;
-		}, 100, 'dom', componentId);
+		coordinated.setTimeout(
+			() => {
+				initialLoadComplete = true;
+			},
+			100,
+			'dom',
+			componentId
+		);
 	});
-	
+
 	// No need for manual onMount template selection anymore -
 	// the store handles auto-selection when templates load
 
 	function handleTemplateSelect(id: string) {
 		userInitiatedSelection = true;
 		templateStore.selectTemplate(id);
-		
+
 		if (isMobile()) {
 			showMobilePreview = true;
 		}
@@ -101,12 +133,12 @@
 		creationContext = event.detail;
 		showTemplateCreator = true;
 	}
-	
+
 	function handleTemplateUse(event: CustomEvent) {
 		const { template, requiresAuth } = event.detail;
-		
+
 		const flow = analyzeEmailFlow(template as any, data.user);
-		
+
 		if (flow.nextAction === 'auth') {
 			// Show onboarding modal for guests
 			pendingTemplate = template;
@@ -117,57 +149,65 @@
 			showAddressModal = true;
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 			if (data.user) {
-				// Show template modal for authenticated users
-				pendingTemplate = template;
-				showTemplateModal = true;
+				// Show template modal for authenticated users using persistent store
+				modalActions.open(template, data.user);
 			} else {
 				// Direct mailto launch
-				launchEmail(flow.mailtoUrl);
+				launchEmail(flow.mailtoUrl, '/');
 			}
 		}
 	}
-	
-	
+
 	function handleTemplateCreatorAuth(event: CustomEvent) {
 		const { name, email } = event.detail;
-		
+
 		// For template creators, we need actual authentication to save templates
 		// Store the template data and redirect to OAuth
 		if (typeof window !== 'undefined') {
-			sessionStorage.setItem('pending_template_save', JSON.stringify({
-				templateData: pendingTemplateToSave,
-				creatorInfo: { name, email },
-				timestamp: Date.now()
-			}));
+			sessionStorage.setItem(
+				'pending_template_save',
+				JSON.stringify({
+					templateData: pendingTemplateToSave,
+					creatorInfo: { name, email },
+					timestamp: Date.now()
+				})
+			);
 		}
-		
-		// Redirect to OAuth - we'll use Google as the primary option for creators
-		navigateTo(`/auth/google?returnTo=${encodeURIComponent('/?template_saved=pending')}`);
-	}
-	
-	
 
-	const filteredTemplates = $derived(selectedChannel
-		? $templateStore.templates.filter((t) => {
-				if (selectedChannel === 'certified') {
-					// Congressional delivery under construction - show nothing for now
+		// Redirect to OAuth - we'll use Google as the primary option for creators
+		fetch('/auth/prepare', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ returnTo: '/?template_saved=pending' })
+		}).finally(() => {
+			navigateTo(`/auth/google`);
+		});
+	}
+
+	const filteredTemplates = $derived(
+		selectedChannel
+			? $templateStore.templates.filter((t) => {
+					if (selectedChannel === 'certified') {
+						// Congressional delivery under construction - show nothing for now
+						return false;
+					} else if (selectedChannel === 'direct') {
+						return t.deliveryMethod === 'email' || t.deliveryMethod === 'direct';
+					}
 					return false;
-				} else if (selectedChannel === 'direct') {
-					return t.deliveryMethod === 'email' || t.deliveryMethod === 'direct';
-				}
-				return false;
-			})
-		// For MVP: Only show direct email templates
-		: $templateStore.templates.filter((t) => t.deliveryMethod === 'email' || t.deliveryMethod === 'direct'));
-	
-	
+				})
+			: // For MVP: Only show direct email templates
+				$templateStore.templates.filter(
+					(t) => t.deliveryMethod === 'email' || t.deliveryMethod === 'direct'
+				)
+	);
+
 	// Handle URL parameter initialization when templates load (legacy support)
 	$effect(() => {
 		if (browser && $templateStore.templates.length > 0 && !userInitiatedSelection) {
 			const templateParam = $page.url.searchParams.get('template');
 			if (templateParam) {
 				// Find template by slug
-				const targetTemplate = $templateStore.templates.find(t => t.slug === templateParam);
+				const targetTemplate = $templateStore.templates.find((t) => t.slug === templateParam);
 				if (targetTemplate && targetTemplate.id !== $templateStore.selectedId) {
 					templateStore.selectTemplateBySlug(templateParam);
 				}
@@ -200,7 +240,9 @@
 		class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:gap-8"
 	>
 		<div class="md:col-span-1">
-			<h2 class="mb-3 text-xl font-semibold text-slate-900" data-testid="templates-heading">Message Templates</h2>
+			<h2 class="mb-3 text-xl font-semibold text-slate-900" data-testid="templates-heading">
+				Message Templates
+			</h2>
 			<TemplateList
 				templates={filteredTemplates}
 				selectedId={$templateStore.selectedId}
@@ -256,17 +298,17 @@
 					</div>
 				</div>
 			{:else if $selectedTemplate}
-				<TemplatePreview 
-					template={$selectedTemplate} 
+				<TemplatePreview
+					template={$selectedTemplate}
 					user={data.user}
 					on:useTemplate={handleTemplateUse}
 					onSendMessage={() => {
 						if (!$selectedTemplate) {
 							return;
 						}
-						
+
 						const flow = analyzeEmailFlow($selectedTemplate, data.user);
-						
+
 						if (flow.nextAction === 'auth') {
 							pendingTemplate = $selectedTemplate;
 							showOnboardingModal = true;
@@ -274,7 +316,7 @@
 							pendingTemplate = $selectedTemplate;
 							showAddressModal = true;
 						} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-							launchEmail(flow.mailtoUrl);
+							launchEmail(flow.mailtoUrl, '/');
 						}
 					}}
 				/>
@@ -304,7 +346,12 @@
 	{#if showMobilePreview && $selectedTemplate}
 		<Modal bind:this={modalComponent} on:close={() => (showMobilePreview = false)} inModal={true}>
 			<div class="h-full">
-				<TemplatePreview template={$selectedTemplate} inModal={true} />
+				<TemplatePreview
+					template={$selectedTemplate}
+					inModal={true}
+					user={data.user}
+					onSendMessage={() => handleTemplateUse({ detail: { template: $selectedTemplate } })}
+				/>
 			</div>
 		</Modal>
 	{/if}
@@ -346,10 +393,10 @@
 			</div>
 		</Modal>
 	{/if}
-	
+
 	<!-- Auth Modals -->
 	{#if showOnboardingModal && pendingTemplate}
-		<OnboardingModal 
+		<OnboardingModal
 			template={pendingTemplate}
 			source="direct-link"
 			on:close={() => {
@@ -359,24 +406,22 @@
 		/>
 	{/if}
 
-	{#if showTemplateModal && pendingTemplate}
-		<TemplateModal 
-			template={pendingTemplate}
+	{#if $isModalOpen && $currentTemplate}
+		<TemplateModal
+			template={$currentTemplate}
 			user={data.user}
 			on:close={() => {
-				showTemplateModal = false;
-				pendingTemplate = null;
+				modalActions.close();
 			}}
 			on:used={() => {
-				showTemplateModal = false;
-				pendingTemplate = null;
+				// Don't close modal on used - let it persist for post-send flow
 			}}
 		/>
 	{/if}
-	
+
 	<!-- Template Creator Auth Modal -->
 	{#if showTemplateAuthModal && pendingTemplateToSave}
-		<ProgressiveFormModal 
+		<ProgressiveFormModal
 			template={{
 				id: 'template-creation',
 				title: 'Save Your Template',
@@ -393,10 +438,10 @@
 			on:send={handleTemplateCreatorAuth}
 		/>
 	{/if}
-	
+
 	<!-- Address Requirement Modal -->
 	{#if showAddressModal && pendingTemplate}
-		<AddressRequirementModal 
+		<AddressRequirementModal
 			template={pendingTemplate}
 			user={data.user}
 			isOpen={showAddressModal}
@@ -406,7 +451,7 @@
 			}}
 			on:complete={(event) => {
 				const { address, verified, enhancedCredibility } = event.detail;
-				
+
 				// Update user address if needed (for manual entry)
 				if (!enhancedCredibility && data.user) {
 					// Call API to save address - simplified for demo
@@ -416,16 +461,16 @@
 						body: JSON.stringify({ address })
 					});
 				}
-				
+
 				// Close modal and proceed with email
 				showAddressModal = false;
 				const template = pendingTemplate;
 				pendingTemplate = null;
-				
+
 				// Generate email with updated user context
 				const flow = analyzeEmailFlow(template as any, data.user);
 				if (flow.mailtoUrl) {
-					launchEmail(flow.mailtoUrl);
+					launchEmail(flow.mailtoUrl, '/');
 				}
 			}}
 		/>

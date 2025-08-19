@@ -158,6 +158,59 @@ describe('Modal Component', () => {
 		expect(modalContent).toBeInTheDocument();
 	});
 
+	it('dismisses on sufficient swipe down gesture', async () => {
+		const mockOnClose = vi.fn();
+		const prevHeight = (window as any).innerHeight;
+		Object.defineProperty(window, 'innerHeight', { value: 1000, configurable: true });
+
+		const { container } = render(Modal, {
+			props: {
+				onclose: mockOnClose,
+				children: () => 'Modal content'
+			}
+		});
+
+		const modalContent = container.querySelector('.modal-content')!;
+		await fireEvent.touchStart(modalContent, { touches: [{ clientY: 300 }] });
+		// Move far enough to cross threshold: delta 320 -> translate ~160 (> 150 threshold)
+		await fireEvent.touchMove(modalContent, { touches: [{ clientY: 620 }] });
+		await fireEvent.touchEnd(modalContent, { changedTouches: [{ clientY: 620 }] });
+
+		// Wait for coordinated dismissal timeout (~200ms)
+		await new Promise((r) => setTimeout(r, 250));
+
+		expect(mockOnClose).toHaveBeenCalledOnce();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+		Object.defineProperty(window, 'innerHeight', { value: prevHeight, configurable: true });
+	});
+
+	it('dismisses on sufficient swipe up gesture', async () => {
+		const mockOnClose = vi.fn();
+		const prevHeight = (window as any).innerHeight;
+		Object.defineProperty(window, 'innerHeight', { value: 1000, configurable: true });
+
+		const { container } = render(Modal, {
+			props: {
+				onclose: mockOnClose,
+				children: () => 'Modal content'
+			}
+		});
+
+		const modalContent = container.querySelector('.modal-content')!;
+		await fireEvent.touchStart(modalContent, { touches: [{ clientY: 600 }] });
+		// Swipe up: decrease Y by 320 -> translate ~-160 (< -150 threshold)
+		await fireEvent.touchMove(modalContent, { touches: [{ clientY: 280 }] });
+		await fireEvent.touchEnd(modalContent, { changedTouches: [{ clientY: 280 }] });
+
+		await new Promise((r) => setTimeout(r, 250));
+
+		expect(mockOnClose).toHaveBeenCalledOnce();
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+		Object.defineProperty(window, 'innerHeight', { value: prevHeight, configurable: true });
+	});
+
 	it('prevents event propagation on content clicks', async () => {
 		const mockOnClose = vi.fn();
 		const { container } = render(Modal, {

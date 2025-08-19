@@ -2,27 +2,32 @@
 	import { page } from '$app/stores';
 	import { Mail, MessageCircle } from '@lucide/svelte';
 
-	// Get return URL from query params
-	const returnTo = $derived($page.url.searchParams.get('returnTo') || '/dashboard');
+	async function prepare(returnTo: string) {
+		await fetch('/auth/prepare', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ returnTo })
+		});
+	}
 
 	function handleGoogleLogin() {
-		window.location.href = `/auth/google?returnTo=${encodeURIComponent(returnTo)}`;
+		prepare('/dashboard').finally(() => (window.location.href = `/auth/google`));
 	}
 
 	function handleTwitterLogin() {
-		window.location.href = `/auth/twitter?returnTo=${encodeURIComponent(returnTo)}`;
+		prepare('/dashboard').finally(() => (window.location.href = `/auth/twitter`));
 	}
 
 	function handleFacebookLogin() {
-		window.location.href = `/auth/facebook?returnTo=${encodeURIComponent(returnTo)}`;
+		prepare('/dashboard').finally(() => (window.location.href = `/auth/facebook`));
 	}
 
 	function handleLinkedInLogin() {
-		window.location.href = `/auth/linkedin?returnTo=${encodeURIComponent(returnTo)}`;
+		prepare('/dashboard').finally(() => (window.location.href = `/auth/linkedin`));
 	}
 
 	function handleDiscordLogin() {
-		window.location.href = `/auth/discord?returnTo=${encodeURIComponent(returnTo)}`;
+		prepare('/dashboard').finally(() => (window.location.href = `/auth/discord`));
 	}
 </script>
 
