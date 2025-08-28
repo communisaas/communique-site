@@ -276,5 +276,7 @@ ${errorInfo.stack || 'Not available'}
 	</div>
 {:else}
 	<!-- Normal component rendering -->
-	{@render children?.()}
+	{#if children}
+		{@render children()}
+	{/if}
 {/if}

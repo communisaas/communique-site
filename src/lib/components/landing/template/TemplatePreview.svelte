@@ -42,6 +42,9 @@
 	let showEmailModal = $state(false);
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 
+	// Capture user-provided Personal Connection to apply in JS-land before mailto
+	let personalConnectionValue: string = $state('');
+
 	let previewContainer: HTMLDivElement;
 	let firstFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
 	let lastFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
@@ -331,6 +334,11 @@
 					{onScroll}
 					onscrollStateChange={handleScrollStateChange}
 					ontouchStateChange={handleTouchStateChange}
+					onvariableChange={(e) => {
+						if (e?.name === 'Personal Connection') {
+							personalConnectionValue = e.value ?? '';
+						}
+					}}
 				/>
 			</div>
 
@@ -342,6 +350,14 @@
 							testId="contact-congress-button"
 							classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full"
 							onclick={() => {
+								// Apply Personal Connection into the template body in JS-land
+								const pc = personalConnectionValue?.trim();
+								if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
+									template.message_body = template.message_body.replace(
+										/\[Personal Connection\]/g,
+										pc
+									);
+								}
 								// Only show email modal if user is authenticated
 								if (user) {
 									showEmailModal = true;
@@ -385,6 +401,14 @@
 							testId="send-email-button"
 							classNames="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50 w-full"
 							onclick={() => {
+								// Apply Personal Connection into the template body in JS-land
+								const pc = personalConnectionValue?.trim();
+								if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
+									template.message_body = template.message_body.replace(
+										/\[Personal Connection\]/g,
+										pc
+									);
+								}
 								// Only show email modal if user is authenticated
 								if (user) {
 									showEmailModal = true;

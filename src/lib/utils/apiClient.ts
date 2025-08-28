@@ -131,17 +131,42 @@ class ApiClient {
 					throw apiError;
 				}
 
-				// Parse response
-				let data: T;
+				// Parse response and normalize to ApiResponse<T>
 				if (isJson) {
-					data = await response.json();
-				} else {
-					data = (await response.text()) as unknown as T;
+					const body = await response.json();
+					// If server already returns an envelope { success, data, error }
+					if (body && typeof body === 'object' && 'success' in body) {
+						if (body.success) {
+							return {
+								success: true,
+								data: body.data as T,
+								status: response.status
+							};
+						}
+						// Normalize error to string for consumers
+						const normalizedError = typeof body.error === 'string'
+							? body.error
+							: body?.error?.message || 'Request failed';
+						return {
+							success: false,
+							error: normalizedError,
+							status: response.status
+						};
+					}
+
+					// Raw JSON response (no envelope)
+					return {
+						success: true,
+						data: body as T,
+						status: response.status
+					};
 				}
 
+				// Non-JSON response
+				const textData = (await response.text()) as unknown as T;
 				return {
 					success: true,
-					data,
+					data: textData,
 					status: response.status
 				};
 
@@ -267,11 +292,19 @@ export const templatesApi = {
 	},
 	
 	async create<T = any>(template: any): Promise<ApiResponse<T>> {
-		return api.post('/api/templates', template);
+		const res = await api.post('/api/templates', template);
+		if (res.success && res.data && typeof res.data === 'object' && 'template' in (res.data as any)) {
+			return { success: true, data: (res.data as any).template as T, status: res.status };
+		}
+		return res as ApiResponse<T>;
 	},
 	
 	async update<T = any>(id: string, template: any): Promise<ApiResponse<T>> {
-		return api.put(`/api/templates/${id}`, template);
+		const res = await api.put(`/api/templates/${id}`, template);
+		if (res.success && res.data && typeof res.data === 'object' && 'template' in (res.data as any)) {
+			return { success: true, data: (res.data as any).template as T, status: res.status };
+		}
+		return res as ApiResponse<T>;
 	},
 	
 	async delete<T = any>(id: string): Promise<ApiResponse<T>> {

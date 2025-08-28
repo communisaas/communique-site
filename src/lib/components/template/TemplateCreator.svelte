@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { Building2, Users, Mail, Target, ArrowRight, ArrowLeft } from '@lucide/svelte';
+	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft } from '@lucide/svelte';
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
+	import { templateDraftStore, generateDraftId, formatTimeAgo } from '$lib/stores/templateDraft';
 	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
 	import AudienceSelector from './creator/AudienceSelector.svelte';
 	import MessageEditor from './creator/MessageEditor.svelte';
@@ -13,10 +14,24 @@
 		save: Omit<Template, 'id'>;
 	}>();
 
-	let { context }: { context: TemplateCreationContext } = $props();
+	let { 
+		context,
+		isSubmitting = false,
+		validationErrors = {}
+	}: { 
+		context: TemplateCreationContext;
+		isSubmitting?: boolean;
+		validationErrors?: Record<string, string>;
+	} = $props();
 
 	let currentStep: 'objective' | 'audience' | 'content' | 'review' = $state('objective');
 	let formErrors: string[] = $state([]);
+	let draftId = $state<string>(generateDraftId());
+	let lastSaved = $state<number | null>(null);
+	let showDraftRecovery = $state(false);
+	
+	// Auto-save cleanup function
+	let cleanupAutoSave: (() => void) | null = null;
 
 	let formData: TemplateFormData = $state({
 		objective: {
@@ -132,6 +147,9 @@
 		};
 
 		dispatch('save', template);
+		
+		// Clean up draft after successful save
+		templateDraftStore.deleteDraft(draftId);
 	}
 
 	// Progress calculation
@@ -142,9 +160,9 @@
 
 	const stepInfo = {
 		objective: {
-			title: 'Define Your Objective',
-			icon: Target,
-			description: 'What do you want to achieve with this campaign?'
+			title: 'What Issue Needs Action?',
+			icon: Megaphone,
+			description: 'What issue do you want decision-makers to address?'
 		},
 		audience: {
 			title: 'Identify Your Audience',
@@ -162,6 +180,71 @@
 			description: 'Review your template before creation'
 		}
 	};
+
+	// Draft recovery and auto-save setup
+	onMount(() => {
+		// Check for existing draft
+		const availableDrafts = templateDraftStore.getAllDraftIds();
+		if (availableDrafts.length > 0) {
+			// Show recovery dialog for the most recent draft
+			const mostRecentDraftId = availableDrafts
+				.map(id => ({ id, age: templateDraftStore.getDraftAge(id) || Infinity }))
+				.sort((a, b) => a.age - b.age)[0].id;
+			
+			const draft = templateDraftStore.getDraft(mostRecentDraftId);
+			if (draft && draft.lastSaved > Date.now() - (24 * 60 * 60 * 1000)) { // Within 24 hours
+				showDraftRecovery = true;
+				draftId = mostRecentDraftId;
+			}
+		}
+
+		// Start auto-save
+		cleanupAutoSave = templateDraftStore.startAutoSave(
+			draftId,
+			() => formData,
+			() => currentStep
+		);
+	});
+
+	onDestroy(() => {
+		// Cleanup auto-save
+		if (cleanupAutoSave) {
+			cleanupAutoSave();
+		}
+	});
+
+	// Functions for draft management
+	function recoverDraft() {
+		const draft = templateDraftStore.getDraft(draftId);
+		if (draft) {
+			formData = draft.data;
+			currentStep = draft.currentStep as any;
+			lastSaved = draft.lastSaved;
+		}
+		showDraftRecovery = false;
+	}
+
+	function discardDraft() {
+		templateDraftStore.deleteDraft(draftId);
+		showDraftRecovery = false;
+		// Generate new draft ID for current session
+		draftId = generateDraftId();
+		
+		// Restart auto-save with new ID
+		if (cleanupAutoSave) {
+			cleanupAutoSave();
+		}
+		cleanupAutoSave = templateDraftStore.startAutoSave(
+			draftId,
+			() => formData,
+			() => currentStep
+		);
+	}
+
+	function manualSave() {
+		templateDraftStore.saveDraft(draftId, formData, currentStep);
+		lastSaved = Date.now();
+	}
 </script>
 
 <div class="flex h-full flex-col">
@@ -188,18 +271,21 @@
 	</div>
 
 	<!-- Error display -->
-	{#if formErrors.length > 0}
+	{#if formErrors.length > 0 || Object.keys(validationErrors).length > 0}
 		<div class="border-b border-red-200 bg-red-50 px-6 py-3">
 			<ul class="list-inside list-disc text-sm text-red-600">
 				{#each formErrors as error}
 					<li>{error}</li>
+				{/each}
+				{#each Object.entries(validationErrors) as [field, message]}
+					<li>{message}</li>
 				{/each}
 			</ul>
 		</div>
 	{/if}
 
 	<!-- Content -->
-	<div class="flex-1 overflow-y-auto">
+	<div class="flex-1 overflow-y-auto relative">
 		<div class="p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
 				<ObjectiveDefiner data={formData.objective} {context} />
@@ -211,6 +297,13 @@
 				<TemplateReview data={formData} {context} />
 			{/if}
 		</div>
+		
+		<!-- Auto-save indicator -->
+		{#if lastSaved}
+			<div class="absolute bottom-2 left-6 text-xs text-slate-500 bg-white/90 px-2 py-1 rounded shadow-sm">
+				Auto-saved {formatTimeAgo(lastSaved)}
+			</div>
+		{/if}
 	</div>
 
 	<!-- Navigation -->
@@ -219,7 +312,7 @@
 			<button
 				class="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 disabled:opacity-50"
 				onclick={handleBack}
-				disabled={currentStep === 'objective'}
+				disabled={currentStep === 'objective' || isSubmitting}
 			>
 				<ArrowLeft class="h-4 w-4" />
 				Back
@@ -227,23 +320,66 @@
 
 			{#if currentStep === 'review'}
 				<button
-					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
 					onclick={handleSave}
-					disabled={!isCurrentStepValid}
+					disabled={!isCurrentStepValid || isSubmitting}
 				>
-					Save Draft
-					<ArrowRight class="h-4 w-4" />
+					{#if isSubmitting}
+						<div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+						Saving...
+					{:else}
+						Save Draft
+						<ArrowRight class="h-4 w-4" />
+					{/if}
 				</button>
 			{:else}
 				<button
 					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
 					onclick={handleNext}
-					disabled={!isCurrentStepValid}
+					disabled={!isCurrentStepValid || isSubmitting}
 				>
-					Continue
+					{#if currentStep === 'objective'}
+						Choose Recipients
+					{:else if currentStep === 'audience'}
+						Write Your Message  
+					{:else if currentStep === 'content'}
+						Review Template
+					{:else}
+						Continue
+					{/if}
 					<ArrowRight class="h-4 w-4" />
 				</button>
 			{/if}
 		</div>
 	</div>
 </div>
+
+<!-- Draft Recovery Modal -->
+{#if showDraftRecovery}
+	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+		<div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+			<div class="p-6">
+				<h3 class="text-lg font-semibold text-slate-900 mb-2">
+					Recover Previous Draft?
+				</h3>
+				<p class="text-sm text-slate-600 mb-4">
+					We found a draft that was auto-saved {templateDraftStore.getDraftAge(draftId) ? formatTimeAgo(Date.now() - templateDraftStore.getDraftAge(draftId)!) : 'recently'}. Would you like to recover it?
+				</p>
+				<div class="flex gap-3 justify-end">
+					<button
+						class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+						onclick={discardDraft}
+					>
+						Start Fresh
+					</button>
+					<button
+						class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+						onclick={recoverDraft}
+					>
+						Recover Draft
+					</button>
+				</div>
+			</div>
+		</div>
+	</div>
+{/if}

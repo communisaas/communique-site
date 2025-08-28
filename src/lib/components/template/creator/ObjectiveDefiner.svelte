@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { Lightbulb } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
+	import { templateValidationRules } from '$lib/utils/validation';
+	import ValidatedInput from '$lib/components/ui/ValidatedInput.svelte';
 	import SlugCustomizer from './SlugCustomizer.svelte';
 
 	interface Props {
@@ -31,38 +33,27 @@
 		<div class="flex items-start gap-3">
 			<Lightbulb class="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
 			<div class="space-y-2">
-				<h4 class="font-medium text-blue-900">Writing Tips</h4>
+				<h4 class="font-medium text-blue-900">Tips for Effective Advocacy</h4>
 				<ul class="space-y-1 text-sm text-blue-700">
-					<li>• Pick a clear, specific title</li>
-					<li>• Put the core ask in your message body</li>
-					<li>• Personalize with your connection where helpful</li>
+					<li>• Be specific about the issue or bill you're addressing</li>
+					<li>• Clear subject lines get opened - save emotion for the message</li>
+					<li>• Officials need to quickly understand what action you want</li>
 				</ul>
 			</div>
 		</div>
 	</div>
 
 	<div class="space-y-4">
-		<label class="block">
-			<span class="text-sm font-medium text-slate-700">Template Title</span>
-			<input
-				type="text"
-				bind:value={data.title}
-				class:border-red-300={!isTitleValid && data.title}
-				class="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-				placeholder="e.g., Tech Ethics Initiative"
-				spellcheck="true"
-				lang="en"
-			/>
-			{#if !isTitleValid && data.title}
-				<p class="mt-1 text-sm text-red-600">Title is required</p>
-			{/if}
-		</label>
+		<ValidatedInput
+			bind:value={data.title}
+			label="Issue Title (will be the subject line when sent)"
+			placeholder="e.g., Stop the Internet Censorship Act"
+			rules={templateValidationRules.title}
+		/>
 	</div>
 
-	<!-- Deep Link Customizer -->
-	{#if data.title}
-		<div class="border-t border-slate-200 pt-6">
-			<SlugCustomizer title={data.title} bind:slug={data.slug} {context} />
-		</div>
-	{/if}
+	<!-- Deep Link Customizer (always visible) -->
+	<div class="border-t border-slate-200 pt-6">
+		<SlugCustomizer title={data.title} bind:slug={data.slug} {context} />
+	</div>
 </div>

@@ -5,7 +5,7 @@ import { TEST_ADDRESSES, MOCK_CONGRESS_RESPONSE } from '../../test/setup';
 // Mock environment variable
 vi.mock('$env/dynamic/private', () => ({
 	env: {
-		CONGRESS_API_KEY: 'test-congress-key'
+		CWC_API_KEY: 'test-congress-key'
 	}
 }));
 

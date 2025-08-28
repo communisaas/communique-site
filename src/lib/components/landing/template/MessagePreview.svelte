@@ -16,7 +16,8 @@
 		onScroll,
 		onscrollStateChange,
 		ontouchStateChange,
-		onvariableSelect
+		onvariableSelect,
+		onvariableChange
 	}: {
 		preview: string;
 		template?: Template | undefined;
@@ -34,6 +35,7 @@
 		onscrollStateChange?: (scrollState: unknown) => void;
 		ontouchStateChange?: (touchState: unknown) => void;
 		onvariableSelect?: (event: { variableName: string; active: boolean }) => void;
+		onvariableChange?: (event: { name: string; value: string }) => void;
 	} = $props();
 	let scrollContainer: HTMLDivElement;
 	let isAtTop = $state(true);
@@ -194,12 +196,15 @@
 		isAtTop = scrollTop <= 0;
 		isAtBottom = Math.abs(scrollHeight - clientHeight - scrollTop) < 1;
 
-		onscrollStateChange?.({
+		const detail = {
 			isScrollable,
 			isAtTop,
 			isAtBottom,
 			scrollProgress: scrollTop / (scrollHeight - clientHeight)
-		});
+		};
+		// Dispatch custom event so modal can intercept
+		scrollContainer.dispatchEvent(new CustomEvent('scrollStateChange', { detail, bubbles: true }));
+		onscrollStateChange?.(detail);
 	}
 
 	function handleScroll() {
@@ -247,6 +252,10 @@
 			event.stopPropagation();
 		}
 
+		// Dispatch custom event so modal can adjust gesture handling
+		scrollContainer.dispatchEvent(
+			new CustomEvent('touchStateChange', { detail: touchState, bubbles: true })
+		);
 		ontouchStateChange?.(touchState);
 	}
 
@@ -290,6 +299,9 @@
 	function handleInput(e: Event, name: string) {
 		const target = e.target as HTMLInputElement | HTMLTextAreaElement;
 		variableValues[name] = target.value;
+
+		// Bubble variable changes up to parent for JS-land template updates
+		onvariableChange?.({ name, value: target.value });
 
 		// Automatically resize textarea
 		if (target.tagName.toLowerCase() === 'textarea') {

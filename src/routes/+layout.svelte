@@ -5,6 +5,7 @@
 	import '../app.css';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
+	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 
 	let { children, data } = $props();
 
@@ -48,4 +49,7 @@
 		</ErrorBoundary>
 	</div>
 	<Footer />
+	
+	<!-- Toast notifications -->
+	<ToastContainer />
 </div>

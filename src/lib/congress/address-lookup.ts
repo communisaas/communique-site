@@ -34,9 +34,10 @@ export class AddressLookupService {
     private congressApiKey: string;
     
     constructor() {
-        this.congressApiKey = env.CONGRESS_API_KEY;
-        if (!this.congressApiKey) {
-            throw new Error('CONGRESS_API_KEY environment variable is required');
+        this.congressApiKey = env.CWC_API_KEY || '';
+        // Only throw error if we're in production and the key is missing
+        if (!this.congressApiKey && env.NODE_ENV === 'production') {
+            console.warn('CWC_API_KEY environment variable is missing - CWC features will be disabled');
         }
     }
 

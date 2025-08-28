@@ -5,6 +5,8 @@
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 	import { predictPerformance } from '$lib/services/template-intelligence';
 	import { debounce } from '$lib/utils/debounce';
+	import { templateValidationRules } from '$lib/utils/validation';
+	import ValidatedInput from '$lib/components/ui/ValidatedInput.svelte';
 
 	const placeholderText = `The math doesn't work anymore.\n\n[Insert devastating numerical contrast here]\n\nFrom [Address] where [local impact].\n\n[Personal Connection]\n\nWhich [option] do you defend?\n\n💡 Tip: Use stark numbers, personal stakes, and devastating questions that force a choice.`;
 
@@ -88,7 +90,7 @@
 	function ensureRequiredVariables(currentPreview: string, previousPreview: string) {
 		// On first keystroke in an empty editor, enforce core block-level variables
 		if (previousPreview.trim() === '' && currentPreview.trim() !== '') {
-			const textarea = document.querySelector('textarea');
+			const textarea = document.querySelector('textarea[placeholder*="devastating"]');
 			const originalCursor = textarea ? textarea.selectionStart : currentPreview.length;
 
 			// Prefix: Personal Connection block
@@ -142,7 +144,7 @@
 	}
 
 	function insertSnippet(snippet: string) {
-		const textarea = document.querySelector('textarea');
+		const textarea = document.querySelector('textarea[placeholder*="devastating"]');
 		if (!textarea) return;
 
 		const start = textarea.selectionStart;
@@ -184,7 +186,7 @@
 	}
 
 	function insertVariable(variable: string) {
-		const textarea = document.querySelector('textarea');
+		const textarea = document.querySelector('textarea[placeholder*="devastating"]');
 		if (!textarea) return;
 
 		const start = textarea.selectionStart;
@@ -448,16 +450,13 @@
 			</div>
 		</div>
 
-		<textarea
-			id="message-template"
+		<ValidatedInput
 			bind:value={data.preview}
-			class="editor-textarea"
+			type="textarea"
 			placeholder={placeholderText}
-			aria-describedby="message-help"
-			spellcheck="true"
-			lang="en"
-			data-testid="template-message-editor"
-		></textarea>
+			rules={templateValidationRules.message_body}
+			rows={8}
+		/>
 		<p id="message-help" class="text-xs text-slate-500">
 			Write messages that cut through the noise. Use [variables] to make it personal. Think viral, but congressional-approved.
 		</p>

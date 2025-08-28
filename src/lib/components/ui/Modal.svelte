@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy, untrack } from 'svelte';
+	import { onMount, onDestroy, untrack, createEventDispatcher } from 'svelte';
 	import { browser } from '$app/environment';
 	import { scale } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
@@ -18,6 +18,8 @@
 		onscrollStateChange?: (state: ModalScrollState) => void;
 		children?: import('svelte').Snippet;
 	} = $props();
+
+	const dispatch = createEventDispatcher<{ close: void }>();
 
 	let dialogElement: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
 	let isOpen = $state(false);
@@ -54,6 +56,8 @@
 	};
 
 	let touchStartTarget: EventTarget | null = null;
+	let activeScrollableEl: HTMLElement | null = null;
+	let gestureMode: 'scroll' | 'dismiss' | null = $state(null);
 
 	let viewportHeight = 0;
 
@@ -134,6 +138,7 @@
 	function close() {
 		unlockScroll(); // Ensure scroll is unlocked when closing via any method
 		onclose?.();
+		dispatch('close');
 		closeModal();
 	}
 
@@ -167,6 +172,11 @@
 		isInDismissalGesture = isDismissing; // Track if we started in dismissal
 		initialDismissY = null; // Reset the initial dismiss position
 		dismissStartTranslateY = $translateY; // Capture starting position
+		touchStartTarget = e.target;
+		activeScrollableEl = (e.target as HTMLElement)?.closest(
+			'.overflow-y-auto, .overflow-auto, .overflow-scroll'
+		) as HTMLElement | null;
+		gestureMode = null;
 
 		// Reset velocity tracking
 		lastTouchTime = Date.now();
@@ -194,8 +204,46 @@
 			return; // Let the popover handle its own touch events
 		}
 
+		// If the touch is inside a scrollable element and that element can continue scrolling
+		// in the swipe direction, do not engage modal dismissal.
+		const scrollableTarget = (e.target as HTMLElement).closest('.overflow-y-auto, .overflow-auto');
+		if (scrollableTarget) {
+			const el = scrollableTarget as HTMLElement;
+			const currentY = e.touches[0].clientY;
+			const directionDown = currentY > touchStart;
+			const isAtTop = el.scrollTop <= 0;
+			const isAtBottom = Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) < 1;
+
+			// If we can scroll within the target in the swipe direction, ignore modal logic
+			if ((directionDown && !isAtTop) || (!directionDown && !isAtBottom)) {
+				// Allow native scrolling by not calling preventDefault and exiting early
+				return;
+			}
+		}
+
 		const currentTime = Date.now();
 		const currentY = e.touches[0].clientY;
+		const deltaYFromStart = currentY - touchStart;
+		// If swiping within a scrollable element and it can scroll further in the
+		// swipe direction, treat this gesture as content scroll, not modal dismiss.
+		if (activeScrollableEl) {
+			const el = activeScrollableEl;
+			const isAtTopEl = el.scrollTop <= 0;
+			const isAtBottomEl = Math.abs(el.scrollHeight - el.clientHeight - el.scrollTop) < 1;
+			const directionDown = deltaYFromStart > 0;
+
+			if (gestureMode === null) {
+				if ((directionDown && !isAtTopEl) || (!directionDown && !isAtBottomEl)) {
+					gestureMode = 'scroll';
+				} else {
+					gestureMode = 'dismiss';
+				}
+			}
+
+			if (gestureMode === 'scroll') {
+				return; // allow native scrolling to proceed
+			}
+		}
 
 		const deltaTime = currentTime - lastTouchTime;
 
@@ -228,6 +276,10 @@
 				isDismissing = true;
 				swipeDirection = newDirection;
 				preventScroll(true);
+				// Only disable native scrolling if content isn't scrollable
+				if (modalContent && !scrollableContent.isScrollable) {
+					modalContent.style.touchAction = 'none';
+				}
 				// Add touchStart reset to align with new gesture
 				touchStart = currentY;
 				// Notify child components of dismissal state
@@ -283,7 +335,9 @@
 			if (browser) {
 				document.body.style.overflow = '';
 			}
-			modalContent.style.touchAction = '';
+			if (modalContent) {
+				modalContent.style.touchAction = '';
+			}
 
 			// Calculate final velocity and direction
 			const endTime = Date.now();
@@ -324,6 +378,9 @@
 				blurAmount.set(0);
 				gestureProgress.set(0);
 				preventScroll(false);
+				if (modalContent) {
+					modalContent.style.touchAction = '';
+				}
 			}
 		}
 
@@ -333,6 +390,8 @@
 		swipeDirection = null;
 		isPastThreshold = false;
 		isInDismissalGesture = false; // Reset only when touch ends
+		activeScrollableEl = null;
+		gestureMode = null;
 
 		// Reset gesture progress
 		gestureProgress.set(0);
@@ -351,14 +410,37 @@
 	// Add a derived value for smoother blur
 	const blurStyle = $derived(`blur(${$blurAmount}px)`);
 
+	// Svelte action to attach a non-passive touchmove handler
+	function nonPassiveTouchMove(node: HTMLElement) {
+		const onStart = (event: TouchEvent) => handleTouchStart(event);
+		const onMove = (event: TouchEvent) => handleTouchMove(event);
+		const onEnd = (event: TouchEvent) => handleTouchEnd(event);
+		const onCancel = (event: TouchEvent) => handleTouchEnd(event);
+		node.addEventListener('touchstart', onStart, { passive: false });
+		node.addEventListener('touchmove', onMove, { passive: false });
+		node.addEventListener('touchend', onEnd, { passive: true });
+		node.addEventListener('touchcancel', onCancel, { passive: true });
+		return {
+			destroy() {
+				node.removeEventListener('touchstart', onStart as unknown as EventListener);
+				node.removeEventListener('touchmove', onMove as unknown as EventListener);
+				node.removeEventListener('touchend', onEnd as unknown as EventListener);
+				node.removeEventListener('touchcancel', onCancel as unknown as EventListener);
+			}
+		};
+	}
+
 	onMount(() => {
 		isOpen = true; // Set isOpen to true so dialog element renders
 		updateViewportHeight();
 		window.addEventListener('resize', updateViewportHeight);
 		document.addEventListener('keydown', handleModalInteraction);
 		document.addEventListener('click', handleModalInteraction);
-		modalContent?.addEventListener('scrollChange', (event: Event) => {
+		modalContent?.addEventListener('scrollStateChange', (event: Event) => {
 			handleScrollStateChange(event as CustomEvent);
+		});
+		modalContent?.addEventListener('touchStateChange', (event: Event) => {
+			handleTouchStateChange(event as CustomEvent);
 		});
 		lockScroll();
 	});
@@ -367,8 +449,11 @@
 		window.removeEventListener('resize', updateViewportHeight);
 		document.removeEventListener('keydown', handleModalInteraction);
 		document.removeEventListener('click', handleModalInteraction);
-		modalContent?.removeEventListener('scrollChange', (event: Event) => {
+		modalContent?.removeEventListener('scrollStateChange', (event: Event) => {
 			handleScrollStateChange(event as CustomEvent);
+		});
+		modalContent?.removeEventListener('touchStateChange', (event: Event) => {
+			handleTouchStateChange(event as CustomEvent);
 		});
 		unlockScroll();
 		preventScroll(false); // Ensure scrolling is re-enabled when component is destroyed
@@ -391,12 +476,9 @@
 	>
 		<div
 			bind:this={modalContent}
-			class="modal-content relative h-[90vh] w-full max-w-2xl touch-pan-y flex flex-col overflow-hidden rounded-xl bg-white shadow-xl"
+			class="modal-content relative mx-4 flex h-[90vh] w-full max-w-2xl touch-pan-y flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:mx-6"
 			style="transform: translateY({$translateY}px)"
-			ontouchstart={handleTouchStart}
-			ontouchmove={handleTouchMove}
-			ontouchend={handleTouchEnd}
-			ontouchcancel={handleTouchEnd}
+			use:nonPassiveTouchMove
 			onkeydown={(e) => {
 				e.stopPropagation();
 			}}
@@ -415,8 +497,8 @@
 			</button>
 
 			<!-- Content -->
-			<div class="flex-1 flex flex-col min-h-0 overflow-hidden">
-				<div class="relative flex-1 flex flex-col">
+			<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+				<div class="relative flex flex-1 flex-col">
 					{@render children?.()}
 				</div>
 			</div>
