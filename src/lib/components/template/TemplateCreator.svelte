@@ -300,7 +300,11 @@
 		
 		<!-- Auto-save indicator -->
 		{#if lastSaved}
-			<div class="absolute bottom-2 left-6 text-xs text-slate-500 bg-white/90 px-2 py-1 rounded shadow-sm">
+			<div class="absolute bottom-2 left-6 inline-flex items-center gap-1.5 px-2.5 py-1 
+			            bg-emerald-50 text-emerald-700 
+			            border border-emerald-200 rounded-full 
+			            text-xs font-medium">
+				<div class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-save-pulse" />
 				Auto-saved {formatTimeAgo(lastSaved)}
 			</div>
 		{/if}

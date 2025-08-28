@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ChevronRight } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
+	import ChannelBadge from '$lib/components/ui/ChannelBadge.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import MessageMetrics from './MessageMetrics.svelte';
 
@@ -103,30 +104,35 @@
 		{/each}
 	{:else}
 		{#each templates as template, index (template.id)}
+			{@const isCongressional = template.deliveryMethod === 'both'}
 			<button
 				type="button"
 				data-template-button
 				data-template-id={template.id}
 				data-testid="template-button-{template.id}"
-				class="flex w-full items-start justify-between gap-3 rounded-lg border p-3 text-left transition-all md:p-4"
+				class="relative flex w-full items-start justify-between gap-3 rounded-lg border-2 border-l-4 p-3 text-left transition-all md:p-4"
 				class:cursor-pointer={selectedId !== template.id}
 				class:cursor-default={selectedId === template.id}
-				class:border-blue-400={selectedId === template.id}
-				class:bg-blue-50={selectedId === template.id}
+				class:border-direct-400={selectedId === template.id && !isCongressional}
+				class:border-congressional-400={selectedId === template.id && isCongressional}
+				class:bg-direct-50={selectedId === template.id && !isCongressional}
+				class:bg-congressional-50={selectedId === template.id && isCongressional}
 				class:border-slate-200={selectedId !== template.id}
-				class:hover:border-blue-200={selectedId !== template.id}
+				class:border-l-congressional-500={isCongressional}
+				class:border-l-direct-500={!isCongressional}
+				class:hover:border-direct-200={selectedId !== template.id && !isCongressional}
+				class:hover:border-congressional-200={selectedId !== template.id && isCongressional}
 				onclick={() => onSelect(template.id)}
 				onkeydown={(e) => handleKeydown(e, template.id, index)}
 			>
 				<div class="min-w-0 flex-1">
 					<div class="flex flex-wrap items-center gap-2">
 						<Badge
-							type={template.deliveryMethod === 'both'
-								? 'certified'
-								: template.deliveryMethod === 'email'
-									? 'direct'
-									: 'direct'}
-						/>
+							variant={isCongressional ? 'congressional' : 'direct'}
+							size="sm"
+						>
+							{isCongressional ? 'Certified Delivery' : 'Direct Outreach'}
+						</Badge>
 						<span class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600 md:text-sm">
 							{template.category}
 						</span>

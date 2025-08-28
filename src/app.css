@@ -1,3 +1,81 @@
 @import 'tailwindcss/base';
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
+
+@layer base {
+	:root {
+		/* Delivery channels */
+		--color-congressional: theme('colors.congressional.500');
+		--color-congressional-light: theme('colors.congressional.50');
+		--color-congressional-border: theme('colors.congressional.200');
+		--color-direct: theme('colors.direct.500');
+		--color-direct-light: theme('colors.direct.50');
+		--color-direct-border: theme('colors.direct.200');
+		
+		/* Status indicators */
+		--color-status-saving: theme('colors.status.pending');
+		--color-status-saved: theme('colors.status.active');
+		--color-status-error: theme('colors.status.error');
+		--color-status-neutral: theme('colors.status.neutral');
+		
+		/* Surface colors */
+		--color-surface-base: theme('colors.surface.base');
+		--color-surface-raised: theme('colors.surface.raised');
+		--color-surface-overlay: theme('colors.surface.overlay');
+		--color-surface-inverted: theme('colors.surface.inverted');
+	}
+}
+
+@layer components {
+	/* Interactive element base styles */
+	.interactive-element {
+		@apply transition-colors duration-150;
+		@apply hover:bg-surface-overlay;
+		@apply active:scale-[0.98];
+		@apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+	}
+
+	.interactive-congressional {
+		@apply focus:ring-congressional-500;
+	}
+
+	.interactive-direct {
+		@apply focus:ring-direct-500;
+	}
+
+	/* Typography hierarchy */
+	.text-primary { @apply text-gray-900; }
+	.text-secondary { @apply text-gray-600; }
+	.text-tertiary { @apply text-gray-500; }
+	.text-inverse { @apply text-white; }
+
+	/* Badge styles */
+	.badge {
+		@apply inline-flex items-center border rounded-full font-medium;
+		@apply px-badge-x py-badge-y text-xs;
+	}
+
+	.badge-congressional {
+		@apply bg-congressional-50 text-congressional-700 border-congressional-200;
+	}
+
+	.badge-direct {
+		@apply bg-direct-50 text-direct-700 border-direct-200;
+	}
+
+	.badge-success {
+		@apply bg-emerald-50 text-emerald-700 border-emerald-200;
+	}
+
+	.badge-warning {
+		@apply bg-amber-50 text-amber-700 border-amber-200;
+	}
+
+	.badge-error {
+		@apply bg-red-50 text-red-700 border-red-200;
+	}
+
+	.badge-neutral {
+		@apply bg-gray-50 text-gray-700 border-gray-200;
+	}
+}

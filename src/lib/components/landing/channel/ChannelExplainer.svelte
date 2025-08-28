@@ -97,10 +97,10 @@
 				role="button"
 				tabindex="0"
 				class="group relative cursor-pointer rounded-lg border-2 transition-all duration-300"
-				class:border-emerald-500={isSelected && channel.id === 'certified'}
-				class:border-blue-500={isSelected && channel.id === 'direct'}
-				class:bg-emerald-50={isSelected && channel.id === 'certified'}
-				class:bg-blue-50={isSelected && channel.id === 'direct'}
+				class:border-congressional-500={isSelected && channel.id === 'certified'}
+				class:border-direct-500={isSelected && channel.id === 'direct'}
+				class:bg-congressional-50={isSelected && channel.id === 'certified'}
+				class:bg-direct-50={isSelected && channel.id === 'direct'}
 				class:border-slate-200={!isSelected}
 				class:hover:border-slate-300={!isSelected}
 				class:cursor-default={isSelected}
@@ -135,10 +135,10 @@
 					<div class="mb-4 flex items-start justify-between">
 						<div
 							class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200 sm:text-sm"
-							class:bg-emerald-100={isSelected && channel.id === 'certified'}
-							class:text-emerald-700={isSelected && channel.id === 'certified'}
-							class:bg-blue-100={isSelected && channel.id === 'direct'}
-							class:text-blue-700={isSelected && channel.id === 'direct'}
+							class:bg-congressional-100={isSelected && channel.id === 'certified'}
+							class:text-congressional-700={isSelected && channel.id === 'certified'}
+							class:bg-direct-100={isSelected && channel.id === 'direct'}
+							class:text-direct-700={isSelected && channel.id === 'direct'}
 							class:bg-slate-100={!isSelected}
 							class:text-slate-600={!isSelected}
 						>
