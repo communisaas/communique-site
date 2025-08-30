@@ -14,11 +14,11 @@
 		save: Omit<Template, 'id'>;
 	}>();
 
-	let { 
+	let {
 		context,
 		isSubmitting = false,
 		validationErrors = {}
-	}: { 
+	}: {
 		context: TemplateCreationContext;
 		isSubmitting?: boolean;
 		validationErrors?: Record<string, string>;
@@ -29,7 +29,7 @@
 	let draftId = $state<string>(generateDraftId());
 	let lastSaved = $state<number | null>(null);
 	let showDraftRecovery = $state(false);
-	
+
 	// Auto-save cleanup function
 	let cleanupAutoSave: (() => void) | null = null;
 
@@ -147,7 +147,7 @@
 		};
 
 		dispatch('save', template);
-		
+
 		// Clean up draft after successful save
 		templateDraftStore.deleteDraft(draftId);
 	}
@@ -188,11 +188,12 @@
 		if (availableDrafts.length > 0) {
 			// Show recovery dialog for the most recent draft
 			const mostRecentDraftId = availableDrafts
-				.map(id => ({ id, age: templateDraftStore.getDraftAge(id) || Infinity }))
+				.map((id) => ({ id, age: templateDraftStore.getDraftAge(id) || Infinity }))
 				.sort((a, b) => a.age - b.age)[0].id;
-			
+
 			const draft = templateDraftStore.getDraft(mostRecentDraftId);
-			if (draft && draft.lastSaved > Date.now() - (24 * 60 * 60 * 1000)) { // Within 24 hours
+			if (draft && draft.lastSaved > Date.now() - 24 * 60 * 60 * 1000) {
+				// Within 24 hours
 				showDraftRecovery = true;
 				draftId = mostRecentDraftId;
 			}
@@ -229,7 +230,7 @@
 		showDraftRecovery = false;
 		// Generate new draft ID for current session
 		draftId = generateDraftId();
-		
+
 		// Restart auto-save with new ID
 		if (cleanupAutoSave) {
 			cleanupAutoSave();
@@ -247,27 +248,44 @@
 	}
 </script>
 
-<div class="flex h-full flex-col">
+<div>
 	<!-- Progress bar -->
 	<div class="h-1 bg-slate-100">
 		<div class="h-full bg-blue-600 transition-all duration-300" style="width: {progress}%"></div>
 	</div>
 
 	<!-- Step Header -->
-	<div class="border-b border-slate-200 px-6 py-4">
-		<div class="mb-1 flex items-center gap-3">
-			{#snippet iconSnippet()}
-				{@const IconComponent = stepInfo[currentStep].icon}
-				<IconComponent class="h-5 w-5 text-blue-600" />
-			{/snippet}
-			{@render iconSnippet()}
-			<h2 class="text-xl font-semibold text-slate-900">
-				{stepInfo[currentStep].title}
-			</h2>
+	<div class="border-b border-slate-200 px-3 md:px-6 py-2 md:py-4">
+		<div class="flex flex-col gap-1 md:gap-1">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-1.5 md:gap-3">
+					{#snippet iconSnippet()}
+						{@const IconComponent = stepInfo[currentStep].icon}
+						<IconComponent class="h-3 w-3 text-blue-600 md:h-5 md:w-5" />
+					{/snippet}
+					{@render iconSnippet()}
+					<h2 class="text-xs font-semibold text-slate-900 md:text-xl">
+						{stepInfo[currentStep].title}
+					</h2>
+				</div>
+
+				<!-- Auto-save indicator -->
+				{#if lastSaved}
+					<div
+						class="mr-2 inline-flex items-center gap-0.5 rounded-full border border-emerald-200
+					            bg-emerald-50 px-1
+					            py-0.5 text-[9px] text-emerald-600 md:mr-6 md:px-2
+					            md:text-xs"
+					>
+						<div class="animate-save-pulse h-0.5 w-0.5 rounded-full bg-emerald-500 md:h-1 md:w-1" />
+						saved {formatTimeAgo(lastSaved).toLowerCase()}
+					</div>
+				{/if}
+			</div>
+			<p class="ml-4.5 text-[10px] text-slate-600 md:ml-8 md:text-sm">
+				{stepInfo[currentStep].description}
+			</p>
 		</div>
-		<p class="ml-8 text-sm text-slate-600">
-			{stepInfo[currentStep].description}
-		</p>
 	</div>
 
 	<!-- Error display -->
@@ -285,8 +303,8 @@
 	{/if}
 
 	<!-- Content -->
-	<div class="flex-1 overflow-y-auto relative">
-		<div class="p-6" transition:fade={{ duration: 150 }}>
+	<div class="relative">
+		<div class="p-3 md:p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
 				<ObjectiveDefiner data={formData.objective} {context} />
 			{:else if currentStep === 'audience'}
@@ -297,61 +315,52 @@
 				<TemplateReview data={formData} {context} />
 			{/if}
 		</div>
-		
-		<!-- Auto-save indicator -->
-		{#if lastSaved}
-			<div class="absolute bottom-2 left-6 inline-flex items-center gap-1.5 px-2.5 py-1 
-			            bg-emerald-50 text-emerald-700 
-			            border border-emerald-200 rounded-full 
-			            text-xs font-medium">
-				<div class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-save-pulse" />
-				Auto-saved {formatTimeAgo(lastSaved)}
-			</div>
-		{/if}
 	</div>
 
 	<!-- Navigation -->
-	<div class="border-t border-slate-200 bg-slate-50 px-6 py-4">
+	<div class="border-t border-slate-200 bg-slate-50 px-3 py-2 md:px-6 md:py-4">
 		<div class="flex items-center justify-between">
 			<button
-				class="flex items-center gap-2 px-4 py-2 text-slate-600 hover:text-slate-900 disabled:opacity-50"
+				class="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 hover:text-slate-900 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 				onclick={handleBack}
 				disabled={currentStep === 'objective' || isSubmitting}
 			>
-				<ArrowLeft class="h-4 w-4" />
+				<ArrowLeft class="h-2.5 w-2.5 md:h-4 md:w-4" />
 				Back
 			</button>
 
 			{#if currentStep === 'review'}
 				<button
-					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+					class="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 					onclick={handleSave}
 					disabled={!isCurrentStepValid || isSubmitting}
 				>
 					{#if isSubmitting}
-						<div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+						<div
+							class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent md:h-4 md:w-4"
+						></div>
 						Saving...
 					{:else}
 						Save Draft
-						<ArrowRight class="h-4 w-4" />
+						<ArrowRight class="h-2.5 w-2.5 md:h-4 md:w-4" />
 					{/if}
 				</button>
 			{:else}
 				<button
-					class="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
+					class="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 					onclick={handleNext}
 					disabled={!isCurrentStepValid || isSubmitting}
 				>
 					{#if currentStep === 'objective'}
 						Choose Recipients
 					{:else if currentStep === 'audience'}
-						Write Your Message  
+						Write Your Message
 					{:else if currentStep === 'content'}
 						Review Template
 					{:else}
 						Continue
 					{/if}
-					<ArrowRight class="h-4 w-4" />
+					<ArrowRight class="h-2.5 w-2.5 md:h-4 md:w-4" />
 				</button>
 			{/if}
 		</div>
@@ -361,15 +370,15 @@
 <!-- Draft Recovery Modal -->
 {#if showDraftRecovery}
 	<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-		<div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+		<div class="mx-4 w-full max-w-md rounded-lg bg-white shadow-xl">
 			<div class="p-6">
-				<h3 class="text-lg font-semibold text-slate-900 mb-2">
-					Recover Previous Draft?
-				</h3>
-				<p class="text-sm text-slate-600 mb-4">
-					We found a draft that was auto-saved {templateDraftStore.getDraftAge(draftId) ? formatTimeAgo(Date.now() - templateDraftStore.getDraftAge(draftId)!) : 'recently'}. Would you like to recover it?
+				<h3 class="mb-2 text-lg font-semibold text-slate-900">Recover Previous Draft?</h3>
+				<p class="mb-4 text-sm text-slate-600">
+					We found a draft that was auto-saved {templateDraftStore.getDraftAge(draftId)
+						? formatTimeAgo(Date.now() - templateDraftStore.getDraftAge(draftId)!)
+						: 'recently'}. Would you like to recover it?
 				</p>
-				<div class="flex gap-3 justify-end">
+				<div class="flex justify-end gap-3">
 					<button
 						class="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
 						onclick={discardDraft}
@@ -377,7 +386,7 @@
 						Start Fresh
 					</button>
 					<button
-						class="px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700"
+						class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
 						onclick={recoverDraft}
 					>
 						Recover Draft

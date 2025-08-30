@@ -54,18 +54,18 @@
 
 <div class="space-y-6">
 	<!-- Guidelines -->
-	<div class="rounded-lg border border-blue-100 bg-blue-50 p-4">
+	<div class="rounded-lg border border-blue-100 bg-blue-50 p-3 md:p-4">
 		<div class="flex items-start gap-3">
-			<Lightbulb class="mt-0.5 h-5 w-5 shrink-0 text-blue-600" />
+			<Lightbulb class="mt-0.5 h-4 md:h-5 w-4 md:w-5 shrink-0 text-blue-600" />
 			<div class="space-y-2">
-				<h4 class="font-medium text-blue-900">
+				<h4 class="text-sm md:text-base font-medium text-blue-900">
 					{#if isCongressional}
 						Congressional Delivery
 					{:else}
 						Audience Tips
 					{/if}
 				</h4>
-				<ul class="space-y-1 text-sm text-blue-700">
+				<ul class="space-y-1 text-xs md:text-sm text-blue-700">
 					{#if isCongressional}
 						<li>
 							• Messages are delivered through the Congressional Web Communication (CWC) system
@@ -114,9 +114,9 @@
 	{:else}
 		<!-- Direct Email Input -->
 		<div class="space-y-3">
-			<label for="email-list" class="block text-sm font-medium text-slate-700">
+			<label for="email-list" class="block text-xs md:text-sm font-medium text-slate-700">
 				<div class="flex items-center gap-2">
-					<Users class="h-4 w-4 text-slate-400" />
+					<Users class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
 					Recipient Email Addresses
 				</div>
 			</label>
@@ -126,7 +126,7 @@
 				oninput={updateEmailCount}
 				onblur={reformatEmailInput}
 				placeholder="Paste a list of email addresses, separated by commas, semicolons, or new lines."
-				class="h-48 w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+				class="h-32 md:h-48 w-full rounded-md border-slate-300 shadow-sm text-xs md:text-sm focus:border-blue-500 focus:ring-blue-500"
 				spellcheck="true"
 			></textarea>
 			<p class="text-xs text-slate-500">

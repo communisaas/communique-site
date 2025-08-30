@@ -67,6 +67,44 @@
 		// Initialize template store - try database first, fallback to static
 		templateStore.fetchTemplates();
 
+		// Check for template creation parameter
+		const createTemplate = $page.url.searchParams.get('create');
+		if (createTemplate === 'true') {
+			// Scroll to channel selector and open template creator
+			coordinated.setTimeout(
+				() => {
+					// First scroll to the channel explainer section
+					const channelSection = document.querySelector('.w-full.max-w-4xl');
+					if (channelSection) {
+						channelSection.scrollIntoView({
+							behavior: 'smooth',
+							block: 'center'
+						});
+					}
+					
+					// Then open the template creator modal after a brief delay
+					coordinated.setTimeout(
+						() => {
+							creationContext = {
+								channelId: 'direct',
+								channelTitle: 'Direct Outreach',
+								isCongressional: false
+							};
+							showTemplateCreator = true;
+							// Clean up URL
+							window.history.replaceState({}, '', '/');
+						},
+						800,
+						'open-creator',
+						componentId
+					);
+				},
+				100,
+				'scroll-to-channel',
+				componentId
+			);
+		}
+
 		// Check for OAuth return with template parameter
 		const templateSlug = $page.url.searchParams.get('template');
 		const action = $page.url.searchParams.get('action');

@@ -33,7 +33,7 @@
 				{showAnalytics ? 'Hide Analytics' : 'Show Analytics'}
 			</button>
 			<a
-				href="/templates/create"
+				href="/?create=true"
 				class="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
 			>
 				<PlusCircle class="h-5 w-5" />
@@ -108,7 +108,7 @@
 				Get started by creating your first message template.
 			</p>
 			<a
-				href="/templates/create"
+				href="/?create=true"
 				class="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
 			>
 				<PlusCircle class="h-5 w-5" />

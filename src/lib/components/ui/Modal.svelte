@@ -476,7 +476,7 @@
 	>
 		<div
 			bind:this={modalContent}
-			class="modal-content relative mx-4 flex h-[90vh] w-full max-w-2xl touch-pan-y flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:mx-6"
+			class="modal-content relative mx-4 flex max-h-[90vh] w-full max-w-2xl touch-pan-y flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:mx-6"
 			style="transform: translateY({$translateY}px)"
 			use:nonPassiveTouchMove
 			onkeydown={(e) => {

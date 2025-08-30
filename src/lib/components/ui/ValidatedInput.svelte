@@ -70,7 +70,7 @@
 
 	// Input classes based on state
 	const inputClasses = $derived(() => {
-		const base = 'block w-full rounded-md border px-3 py-2 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2';
+		const base = 'block w-full rounded-md border px-2 md:px-3 py-1 md:py-2 text-xs md:text-sm transition-colors focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-offset-1 md:focus:ring-offset-2';
 		
 		if (hasError) {
 			return `${base} border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500`;
@@ -82,7 +82,7 @@
 	});
 
 	const labelClasses = $derived(() => {
-		const base = 'block text-sm font-medium mb-1';
+		const base = 'block text-[10px] md:text-sm font-medium mb-0.5 md:mb-1';
 		if (hasError) {
 			return `${base} text-red-700`;
 		} else {
@@ -127,15 +127,15 @@
 
 	<!-- Error message -->
 	{#if displayError}
-		<div class="flex items-center gap-1 text-sm text-red-600" role="alert">
-			<svg class="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+		<div class="flex items-center gap-1 text-xs md:text-sm text-red-600" role="alert">
+			<svg class="h-3 md:h-4 w-3 md:w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
 				<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
 			</svg>
 			<span>{displayError}</span>
 		</div>
 	{:else if isValid && rules.required}
-		<div class="flex items-center gap-1 text-sm text-green-600">
-			<svg class="h-4 w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+		<div class="flex items-center gap-1 text-xs md:text-sm text-green-600">
+			<svg class="h-3 md:h-4 w-3 md:w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
 				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
 			</svg>
 			<span>Looks good!</span>

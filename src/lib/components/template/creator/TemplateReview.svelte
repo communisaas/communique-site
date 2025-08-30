@@ -23,12 +23,12 @@
 
 <div class="space-y-6">
 	<!-- Success Header -->
-	<div class="rounded-lg border border-green-200 bg-green-50 p-4">
+	<div class="rounded-lg border border-green-200 bg-green-50 p-3 md:p-4">
 		<div class="flex items-start gap-3">
-			<CheckCircle2 class="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+			<CheckCircle2 class="mt-0.5 h-4 md:h-5 w-4 md:w-5 shrink-0 text-green-600" />
 			<div>
-				<h4 class="font-medium text-green-900">Template Ready</h4>
-				<p class="mt-1 text-sm text-green-700">Review your template details below before saving.</p>
+				<h4 class="text-sm md:text-base font-medium text-green-900">Template Ready</h4>
+				<p class="mt-1 text-xs md:text-sm text-green-700">Review your template details below before saving.</p>
 			</div>
 		</div>
 	</div>
@@ -36,12 +36,12 @@
 	<!-- Template Summary -->
 	<div class="space-y-4">
 		<!-- Objective Section -->
-		<div class="rounded-lg border border-slate-200 bg-white p-4">
+		<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 			<div class="mb-3 flex items-center gap-2">
-				<Target class="h-4 w-4 text-slate-400" />
-				<h3 class="font-medium text-slate-900">Campaign Objective</h3>
+				<Target class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
+				<h3 class="text-sm md:text-base font-medium text-slate-900">Campaign Objective</h3>
 			</div>
-			<dl class="space-y-2 text-sm">
+			<dl class="space-y-2 text-xs md:text-sm">
 				<div>
 					<dt class="text-slate-500">Title</dt>
 					<dd class="font-medium text-slate-900">{data.objective.title}</dd>
@@ -51,16 +51,16 @@
 
 		<!-- Deep Link Section -->
 		{#if previewUrl}
-			<div class="rounded-lg border border-slate-200 bg-white p-4">
+			<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 				<div class="mb-3 flex items-center gap-2">
-					<Link2 class="h-4 w-4 text-slate-400" />
-					<h3 class="font-medium text-slate-900">Campaign Link</h3>
+					<Link2 class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
+					<h3 class="text-sm md:text-base font-medium text-slate-900">Campaign Link</h3>
 				</div>
 				<div class="space-y-3">
-					<div class="rounded-md bg-slate-50 p-2.5 font-mono text-sm text-slate-700">
+					<div class="rounded-md bg-slate-50 p-2 md:p-2.5 font-mono text-xs md:text-sm text-slate-700 break-all">
 						{previewUrl}
 					</div>
-					<div class="flex items-center gap-4 text-xs text-slate-600">
+					<div class="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 text-xs text-slate-600">
 						<span>✓ Shareable on social media</span>
 						<span>✓ Tracks campaign views</span>
 						<span>✓ Mobile-friendly</span>
@@ -79,14 +79,14 @@
 		{/if}
 
 		<!-- Audience Section -->
-		<div class="rounded-lg border border-slate-200 bg-white p-4">
+		<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 			<div class="mb-3 flex items-center gap-2">
-				<Users class="h-4 w-4 text-slate-400" />
-				<h3 class="font-medium text-slate-900">Target Audience</h3>
+				<Users class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
+				<h3 class="text-sm md:text-base font-medium text-slate-900">Target Audience</h3>
 			</div>
 			<div class="flex items-center gap-3">
 				<Badge type={context.channelId} />
-				<span class="text-sm text-slate-700">{recipientDisplay}</span>
+				<span class="text-xs md:text-sm text-slate-700">{recipientDisplay}</span>
 			</div>
 			{#if data.audience.recipientEmails.length > 0}
 				<div class="mt-2 text-xs text-slate-500">
@@ -96,13 +96,13 @@
 		</div>
 
 		<!-- Message Preview Section -->
-		<div class="rounded-lg border border-slate-200 bg-white p-4">
+		<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 			<div class="mb-3 flex items-center gap-2">
-				<Mail class="h-4 w-4 text-slate-400" />
-				<h3 class="font-medium text-slate-900">Message Preview</h3>
+				<Mail class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
+				<h3 class="text-sm md:text-base font-medium text-slate-900">Message Preview</h3>
 			</div>
-			<div class="rounded-md bg-slate-50 p-3">
-				<p class="whitespace-pre-wrap text-sm text-slate-700">
+			<div class="rounded-md bg-slate-50 p-2 md:p-3">
+				<p class="whitespace-pre-wrap text-xs md:text-sm text-slate-700">
 					{data.content.preview.substring(0, 200)}
 					{data.content.preview.length > 200 ? '...' : ''}
 				</p>
@@ -119,9 +119,9 @@
 	</div>
 
 	<!-- Next Steps -->
-	<div class="rounded-md bg-blue-50 p-4">
-		<h4 class="mb-2 text-sm font-medium text-blue-900">What happens next?</h4>
-		<ul class="space-y-1 text-sm text-blue-700">
+	<div class="rounded-md bg-blue-50 p-3 md:p-4">
+		<h4 class="mb-2 text-xs md:text-sm font-medium text-blue-900">What happens next?</h4>
+		<ul class="space-y-1 text-xs md:text-sm text-blue-700">
 			<li>• Your template will be saved as a draft</li>
 			{#if previewUrl}
 				<li>• Share your campaign link to start gathering support</li>

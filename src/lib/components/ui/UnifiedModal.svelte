@@ -55,7 +55,9 @@ backdrop handling, and keyboard navigation.
 {#if $modal.isOpen}
 	<!-- Modal Backdrop -->
 	<div
-		class="modal-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+		class="modal-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center pt-4 px-4"
+		class:items-center={size === 'full'}
+		class:items-start={size !== 'full'}
 		style="z-index: {$modal.zIndex}"
 		in:fade={{ duration: 200 }}
 		out:fade={{ duration: 200 }}
@@ -71,7 +73,13 @@ backdrop handling, and keyboard navigation.
 	>
 		<!-- Modal Container -->
 		<div
-			class="bg-white rounded-2xl shadow-2xl w-full {sizeClasses[size]} max-h-[90vh] flex flex-col overflow-hidden"
+			class="bg-white rounded-2xl shadow-2xl w-full {sizeClasses[size]} max-h-[calc(100vh-2rem)] mb-4"
+			class:flex={size === 'full'}
+			class:flex-col={size === 'full'}
+			class:overflow-hidden={size === 'full'}
+			class:max-h-none={size === 'full'}
+			class:h-full={size === 'full'}
+			class:mb-0={size === 'full'}
 			onclick={(e) => e.stopPropagation()}
 			in:scale={{ duration: 300, start: 0.9, easing: backOut }}
 			out:scale={{ duration: 200, start: 1, easing: quintOut }}
@@ -100,7 +108,7 @@ backdrop handling, and keyboard navigation.
 			{/if}
 
 			<!-- Modal Content -->
-			<div class="flex-1 overflow-y-auto">
+			<div class="overflow-y-auto" class:flex-1={size === 'full'}>
 				{@render children($modal.data)}
 			</div>
 		</div>
