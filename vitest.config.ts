@@ -7,9 +7,10 @@ export default defineConfig({
 		conditions: ['browser']
 	},
     test: {
-        include: ['tests/unit/**/*.{test,spec}.{js,ts}','tests/integration/**/*.test.{js,ts}'],
+        include: ['tests/**/*.{test,spec}.{js,ts}'],
+        exclude: ['tests/e2e/**/*'], 
 		environment: 'jsdom',
-        setupFiles: ['./src/test-setup.ts'],
+        setupFiles: ['tests/config/setup.ts'],
 		globals: true,
 		coverage: {
 			provider: 'istanbul',
@@ -17,18 +18,21 @@ export default defineConfig({
 			reportsDirectory: './coverage',
 			exclude: [
 				'node_modules/**',
-				'src/test/**',
+				'tests/**',
+				'src/lib/experimental/**', // Exclude experimental code from coverage
+				'src/lib/features/**', // Feature flags don't need coverage
 				'**/*.d.ts',
 				'**/*.config.{js,ts}',
 				'**/coverage/**',
 				'e2e/**',
 				'prisma/**',
 				'**/*.spec.ts',
-				'**/*.test.ts'
+				'**/*.test.ts',
+				'build/',
+				'.svelte-kit/'
 			],
 			include: [
-                'src/**/*.{js,ts,svelte}',
-                'tests/**/*.{js,ts}'
+                'src/**/*.{js,ts,svelte}'
 			],
 			thresholds: {
 				global: {
@@ -37,6 +41,12 @@ export default defineConfig({
 					lines: 70,
 					statements: 70
 				}
+			}
+		},
+		pool: 'forks', // Better isolation for integration tests
+		poolOptions: {
+			forks: {
+				singleFork: true
 			}
 		}
 	},

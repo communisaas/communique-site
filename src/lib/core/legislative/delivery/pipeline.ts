@@ -1,0 +1,164 @@
+import type { LegislativeAdapter, DeliveryRequest, DeliveryResult, Address, User, Template } from '../adapters/base';
+import type { Representative } from '../models';
+import { adapterRegistry } from '../adapters/registry';
+// Note: Using internal variable resolution for now
+// import { resolveVariables } from '$lib/services/personalization';
+
+export interface DeliveryJob {
+    id: string;
+    template: Template;
+    user: User;
+    target_country?: string;
+    custom_message?: string;
+    created_at: Date;
+}
+
+export interface DeliveryJobResult {
+    job_id: string;
+    total_recipients: number;
+    successful_deliveries: number;
+    failed_deliveries: number;
+    results: DeliveryResult[];
+    duration_ms: number;
+}
+
+export class LegislativeDeliveryPipeline {
+    async deliverToRepresentatives(job: DeliveryJob): Promise<DeliveryJobResult> {
+        const startTime = Date.now();
+        const results: DeliveryResult[] = [];
+
+        try {
+            // 1. Determine target country
+            const country_code = job.target_country || job.user.address?.country_code || 'US';
+            
+            // 2. Get appropriate adapter
+            const adapter = await adapterRegistry.getAdapter(country_code);
+            if (!adapter) {
+                return {
+                    job_id: job.id,
+                    total_recipients: 0,
+                    successful_deliveries: 0,
+                    failed_deliveries: 1,
+                    results: [{
+                        success: false,
+                        error: `No legislative adapter available for country: ${country_code}`
+                    }],
+                    duration_ms: Date.now() - startTime
+                };
+            }
+
+            // 3. Look up representatives
+            const representatives = await this.lookupRepresentatives(adapter, job.user);
+            if (representatives.length === 0) {
+                return {
+                    job_id: job.id,
+                    total_recipients: 0,
+                    successful_deliveries: 0,
+                    failed_deliveries: 1,
+                    results: [{
+                        success: false,
+                        error: 'No representatives found for user address'
+                    }],
+                    duration_ms: Date.now() - startTime
+                };
+            }
+
+            // 4. Deliver to each representative
+            for (const rep of representatives) {
+                const office = this.createOfficeFromRepresentative(rep, country_code);
+                const personalizedMessage = this.personalizeMessage(job.template, job.user, rep, job.custom_message);
+                
+                const request: DeliveryRequest = {
+                    template: job.template,
+                    user: job.user,
+                    representative: rep,
+                    office,
+                    personalized_message: personalizedMessage
+                };
+
+                const result = await adapter.deliverMessage(request);
+                results.push(result);
+            }
+
+            const successful = results.filter(r => r.success).length;
+            const failed = results.length - successful;
+
+            return {
+                job_id: job.id,
+                total_recipients: representatives.length,
+                successful_deliveries: successful,
+                failed_deliveries: failed,
+                results,
+                duration_ms: Date.now() - startTime
+            };
+
+        } catch (error) {
+            return {
+                job_id: job.id,
+                total_recipients: 0,
+                successful_deliveries: 0,
+                failed_deliveries: 1,
+                results: [{
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Pipeline delivery failed'
+                }],
+                duration_ms: Date.now() - startTime
+            };
+        }
+    }
+
+    private async lookupRepresentatives(adapter: LegislativeAdapter, user: User): Promise<Representative[]> {
+        if (!user.address) return [];
+        
+        const representatives = await adapter.lookupRepresentativesByAddress(user.address);
+        
+        // Validate representatives are current
+        const validatedReps = [];
+        for (const rep of representatives) {
+            const isValid = await adapter.validateRepresentative(rep);
+            if (isValid) {
+                validatedReps.push(rep);
+            }
+        }
+        
+        return validatedReps;
+    }
+
+    private createOfficeFromRepresentative(rep: Representative, country_code: string) {
+        return {
+            id: rep.office_id,
+            jurisdiction_id: `${country_code.toLowerCase()}-federal`,
+            role: rep.office_id.includes('senate') ? 'senator' : 'representative',
+            title: rep.office_id.includes('senate') ? 'Senator' : 'Representative',
+            chamber: rep.office_id.includes('senate') ? 'senate' : 'house',
+            level: 'national' as const,
+            contact_methods: [],
+            is_active: rep.is_current
+        };
+    }
+
+    private personalizeMessage(template: Template, user: User, rep: Representative, customMessage?: string): string {
+        // Use custom message or template body
+        const baseMessage = customMessage || template.message_body;
+        
+        // Replace [Personal Connection] placeholder if it exists
+        const messageWithCustom = customMessage 
+            ? baseMessage.replace(/\[Personal Connection\]/g, customMessage)
+            : baseMessage;
+        
+        // Apply basic variable resolution (will be enhanced later)
+        return this.basicVariableResolution(messageWithCustom, user, rep);
+    }
+
+    private basicVariableResolution(text: string, user: User, rep: Representative): string {
+        return text
+            .replace(/\[user\.name\]/g, user.name || 'Constituent')
+            .replace(/\[user\.first_name\]/g, (user.name || '').split(' ')[0] || 'Constituent')
+            .replace(/\[representative\.name\]/g, rep.name)
+            .replace(/\[representative\.title\]/g, rep.name) // Will be enhanced
+            .replace(/\[Name\]/g, user.name || 'Constituent')  // Legacy support
+            .replace(/\[Representative Name\]/g, rep.name); // Legacy support
+    }
+}
+
+export const deliveryPipeline = new LegislativeDeliveryPipeline();

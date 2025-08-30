@@ -147,7 +147,7 @@ class ErrorBoundaryManager {
 		this.reportQueue.length = 0;
 
 		try {
-			const { api } = await import('$lib/utils/apiClient');
+			const { api } = await import('$lib/core/api/client');
 			await api.post('/api/errors/batch', { errors }, { 
 				skipErrorLogging: true,
 				timeout: 5000 

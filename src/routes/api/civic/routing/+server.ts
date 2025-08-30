@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import { db } from '$lib/server/db';
 import type { RequestHandler } from './$types';
-import { resolveVariables } from '$lib/services/personalization';
+import { deliveryPipeline } from '$lib/core/legislative';
 
 /**
  * Congressional Email Routing Handler
@@ -114,48 +114,63 @@ async function handleAuthenticatedCongressionalRequest({
 	subject: string;
 	body: string;
 }) {
-	// 1. Look up user and their address
+	// 1. Look up user
 	const user = await db.user.findUnique({
-		where: { id: userId },
-		include: {
-			representatives: {
-				include: {
-					representative: true
-				}
-			}
-		}
+		where: { id: userId }
 	});
 
 	if (!user) {
 		return error(404, 'User not found');
 	}
 
-	// 2. Get user's representatives (if not cached, look them up)
-	let representatives = user.representatives.map((r) => r.representative);
-	if (!representatives.length && user.zip) {
-		// Look up representatives based on user's address
-		// Lookup representatives using real address lookup service
-		representatives = await lookupRepresentativesByAddress({
-			street: user.street || '',
-			city: user.city || '',
-			state: user.state || '',
-			zip: user.zip
-		});
-	}
-
-	// 3. Route to representatives via CWC
-	const deliveryResults = await routeToRepresentatives({
-		templateId,
-		user,
-		representatives,
-		subject,
-		body
+	// 2. Get template
+	const template = await db.template.findUnique({
+		where: { id: templateId }
 	});
 
+	if (!template) {
+		return error(404, 'Template not found');
+	}
+
+	// 3. Use new delivery pipeline
+	const deliveryJob = {
+		id: `${templateId}-${userId}-${Date.now()}`,
+		template: {
+			id: template.id,
+			subject: template.subject || subject,
+			message_body: template.message_body,
+			variables: {}
+		},
+		user: {
+			id: user.id,
+			name: user.name || '',
+			email: user.email,
+			address: {
+				street: user.street || '',
+				city: user.city || '',
+				state: user.state || '',
+				postal_code: user.zip || '',
+				country_code: 'US'
+			}
+		},
+		custom_message: body,
+		created_at: new Date()
+	};
+
+	const result = await deliveryPipeline.deliverToRepresentatives(deliveryJob);
+
 	return json({
-		success: true,
-		message: 'Congressional messages queued for delivery',
-		deliveryCount: deliveryResults.length
+		success: result.successful_deliveries > 0,
+		message: result.successful_deliveries > 0 
+			? 'Congressional messages queued for delivery' 
+			: 'Failed to deliver messages',
+		deliveryCount: result.successful_deliveries,
+		totalRecipients: result.total_recipients,
+		results: result.results.map(r => ({
+			success: r.success,
+			error: r.error,
+			representative: r.metadata?.representative
+		}))
 	});
 }
 
@@ -196,144 +211,7 @@ async function handleGuestCongressionalRequest({
 	});
 }
 
-// Helper functions
-async function lookupRepresentativesByAddress(address: Record<string, unknown>) {
-	try {
-		const { addressLookup } = await import('$lib/congress/address-lookup');
-		
-		// Convert to proper Address interface
-		const properAddress = {
-			street: String(address.street || ''),
-			city: String(address.city || ''),
-			state: String(address.state || ''),
-			zip: String(address.zip || '')
-		};
-		
-		const userReps = await addressLookup.lookupRepsByAddress(properAddress);
-		
-		// Convert to format expected by routing function
-		return [
-			{
-				name: userReps.house.name,
-				chamber: 'house',
-				officeCode: userReps.house.officeCode,
-				district: userReps.district
-			},
-			...userReps.senate.map(senator => ({
-				name: senator.name,
-				chamber: 'senate',
-				officeCode: senator.officeCode,
-				state: senator.state
-			}))
-		];
-		
-	} catch (error) {
-		console.error('Representative lookup failed:', error);
-		return [];
-	}
-}
-
-async function routeToRepresentatives({
-	templateId,
-	user,
-	representatives,
-	subject,
-	body
-}: {
-	templateId: string;
-	user: Record<string, unknown>;
-	representatives: Array<Record<string, unknown>>;
-	subject: string;
-	body: string;
-}) {
-	const deliveryResults = [];
-
-	// Fetch the original template to ensure variables are present
-	const template = await db.template.findUnique({
-		where: { id: templateId },
-		select: { message_body: true }
-	});
-
-	if (!template) {
-		// Continue with the user-provided body as a fallback
-	}
-
-	// Use the database template body for variable resolution, but preserve user's custom message.
-	// We assume the user's custom message replaces the '[Personal Connection]' variable.
-	const bodyForResolution = template
-		? template.message_body.replace(/\[Personal Connection\]/g, body)
-		: body;
-
-	for (const rep of representatives) {
-		const personalizedBody = resolveVariables(bodyForResolution, user as any, rep as any);
-
-		// Submit to representative via CWC API
-		try {
-			const { cwcClient } = await import('$lib/congress/cwc-client');
-			
-			// Convert representative data to expected format
-			const congressionalOffice = {
-				bioguideId: rep.bioguide_id || `${rep.officeCode || rep.office_code}`,
-				name: rep.name,
-				chamber: rep.chamber as 'house' | 'senate',
-				officeCode: rep.officeCode || rep.office_code || '',
-				state: rep.state || user.state || '',
-				district: rep.district || user.congressional_district || '00', // Default for senators
-				party: rep.party || 'Unknown'
-			};
-
-			// Use the template from the outer scope (already fetched)
-			const templateForSubmission = template ? {
-				id: templateId,
-				subject: template.subject || 'Congressional Communication',
-				message_body: personalizedBody,
-				delivery_config: {},
-				cwc_config: {}
-			} : {
-				id: templateId,
-				subject: subject,
-				message_body: personalizedBody,
-				delivery_config: {},
-				cwc_config: {}
-			};
-
-			let submissionResult;
-			if (congressionalOffice.chamber === 'senate') {
-				submissionResult = await cwcClient.submitToSenate(
-					templateForSubmission as any,
-					user as any,
-					congressionalOffice,
-					personalizedBody
-				);
-			} else {
-				submissionResult = await cwcClient.submitToHouse(
-					templateForSubmission as any,
-					user as any,
-					congressionalOffice,
-					personalizedBody
-				);
-			}
-
-			deliveryResults.push({
-				representative: rep.name,
-				status: submissionResult.success ? 'submitted' : 'failed',
-				messageId: submissionResult.messageId,
-				error: submissionResult.error
-			});
-
-		} catch (error) {
-			console.error(`Failed to submit to ${rep.name}:`, error);
-			deliveryResults.push({
-				representative: rep.name,
-				status: 'failed',
-				error: error instanceof Error ? error.message : 'Submission failed'
-			});
-		}
-	}
-
-	return deliveryResults;
-}
-
+// Helper functions (kept for guest flow compatibility)
 async function storeGuestCongressionalRequest(params: Record<string, unknown>) {
 	// TODO: Store pending request in database
 }

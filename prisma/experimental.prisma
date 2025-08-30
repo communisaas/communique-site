@@ -1,0 +1,165 @@
+// Experimental Schema
+// Research models for academic experiments - NOT deployed to production
+// These models support research into political field theory, community dynamics, etc.
+
+// NOTE: This schema is for research only and requires ENABLE_RESEARCH=true
+
+datasource db {
+  provider = "postgresql"
+  url      = env("SUPABASE_DATABASE_URL")
+}
+
+// POLITICAL FIELD THEORY MODELS
+// Research into political information dynamics
+
+model political_field_state {
+  id                   String   @id @default(cuid())
+  user_id              String?  @map("user_id")
+  template_id          String?  @map("template_id")
+  field_vector         Json     // Vector representation of political state
+  coherence_score      Float    // Field coherence measurement
+  polarization_index   Float    // Degree of polarization
+  engagement_potential Float    // Predicted engagement likelihood
+  created_at           DateTime @default(now()) @map("created_at")
+  expires_at           DateTime @map("expires_at") // Temporal fields
+
+  @@index([user_id])
+  @@index([created_at])
+  @@map("political_field_state")
+}
+
+model political_flow {
+  id              String   @id @default(cuid())
+  source_user_id  String   @map("source_user_id")
+  target_user_id  String?  @map("target_user_id") // null for broadcast
+  template_id     String   @map("template_id")
+  flow_type       String   // "information", "influence", "resonance"
+  flow_strength   Float    // Measured flow intensity
+  resistance      Float    // Resistance encountered
+  temporal_decay  Float    // Rate of information decay
+  created_at      DateTime @default(now()) @map("created_at")
+
+  @@index([source_user_id, created_at])
+  @@map("political_flow")
+}
+
+model political_uncertainty {
+  id                String   @id @default(cuid())
+  user_id           String   @map("user_id")
+  template_id       String?  @map("template_id")
+  uncertainty_type  String   // "epistemic", "aleatory", "model"
+  entropy_measure   Float    // Shannon entropy of political beliefs
+  confidence_interval Json   // Confidence bounds
+  resolution_path   String?  // How uncertainty might resolve
+  created_at        DateTime @default(now()) @map("created_at")
+
+  @@index([user_id])
+  @@map("political_uncertainty")
+}
+
+model political_dead_end {
+  id                    String   @id @default(cuid())
+  user_id               String   @map("user_id")
+  template_id           String?  @map("template_id")
+  dead_end_type         String   // "information", "engagement", "action"
+  blockage_strength     Float    // How blocked the path is
+  alternative_paths     Json     // Possible workarounds
+  resolution_complexity Float    // How hard to resolve
+  created_at            DateTime @default(now()) @map("created_at")
+
+  @@index([user_id])
+  @@map("political_dead_end")
+}
+
+// COMMUNITY THEORY MODELS
+// Research into community information dynamics
+
+model community_intersection {
+  id                  String   @id @default(cuid())
+  community_a_id      String   @map("community_a_id") 
+  community_b_id      String   @map("community_b_id")
+  intersection_type   String   // "informational", "demographic", "value-based"
+  overlap_coefficient Float    // Degree of overlap (0-1)
+  bridge_users        String[] // Users who bridge communities
+  shared_templates    String[] // Templates that resonate in both
+  tension_score       Float?   // Degree of inter-community tension
+  created_at          DateTime @default(now()) @map("created_at")
+
+  @@unique([community_a_id, community_b_id])
+  @@map("community_intersection")
+}
+
+model local_political_bubble {
+  id                   String   @id @default(cuid())
+  user_id              String   @map("user_id")
+  bubble_type          String   // "geographic", "ideological", "social"
+  bubble_strength      Float    // How insular (0-1)
+  permeability         Float    // How permeable to outside info
+  characteristic_views Json     // Views that define this bubble
+  bridge_potential     Float    // Likelihood of bridging
+  created_at           DateTime @default(now()) @map("created_at")
+
+  @@index([user_id])
+  @@map("local_political_bubble")
+}
+
+model community_lifecycle {
+  id                String   @id @default(cuid())
+  template_id       String   @map("template_id")
+  lifecycle_stage   String   // "formation", "growth", "maturity", "decline"
+  community_size    Int      // Estimated community size
+  engagement_rate   Float    // Community engagement level
+  fragmentation_risk Float   // Risk of community splitting
+  external_pressure Float    // Pressure from outside forces
+  resilience_score  Float    // Ability to withstand shocks
+  created_at        DateTime @default(now()) @map("created_at")
+
+  @@index([template_id, created_at])
+  @@map("community_lifecycle")
+}
+
+// CATEGORY THEORY MODELS
+// Mathematical structures for template relationships
+
+model template_morphism {
+  id                String   @id @default(cuid())
+  source_template_id String  @map("source_template_id")
+  target_template_id String  @map("target_template_id")
+  morphism_type     String   // "specialization", "generalization", "adaptation"
+  transformation    Json     // The actual transformation function
+  preservation_map  Json     // What properties are preserved
+  information_loss  Float    // Amount of information lost (0-1)
+  created_at        DateTime @default(now()) @map("created_at")
+
+  @@unique([source_template_id, target_template_id, morphism_type])
+  @@map("template_morphism")
+}
+
+model user_context_stack {
+  id             String   @id @default(cuid())
+  user_id        String   @unique @map("user_id")
+  context_layers Json     // Stack of contextual information
+  active_layer   Int      // Currently active context layer
+  coherence_check Json    // Consistency verification
+  last_updated   DateTime @updatedAt @map("last_updated")
+
+  @@map("user_context_stack")
+}
+
+// RESEARCH METADATA
+
+model research_experiment {
+  id               String   @id @default(cuid())
+  experiment_name  String   @unique
+  description      String
+  hypothesis       String
+  methodology      Json     // Experimental design
+  status           String   @default("active") // "active", "completed", "archived"
+  start_date       DateTime @default(now()) @map("start_date")
+  end_date         DateTime? @map("end_date")
+  results_summary  Json?    // Final results
+  publication_refs String[] // Academic papers referencing this
+  created_by       String   // Researcher identifier
+
+  @@map("research_experiment")
+}

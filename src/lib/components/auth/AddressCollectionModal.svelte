@@ -90,7 +90,7 @@
 			const fullAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`;
 			
 			// Call real address verification API (Census Bureau + ZIP lookup)
-			const { api } = await import('$lib/utils/apiClient');
+			const { api } = await import('$lib/core/api/client');
 			const result = await api.post('/api/address/verify', {
 				street: streetAddress,
 				city,

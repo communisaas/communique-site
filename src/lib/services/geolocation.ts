@@ -98,7 +98,7 @@ export class GeolocationService {
      */
     async coordinatesToDistrict(lat: number, lng: number): Promise<GeolocationData['district']> {
         try {
-            const { api } = await import('$lib/utils/apiClient');
+            const { api } = await import('$lib/core/api/client');
             const result = await api.get(`/api/geo/district?lat=${lat}&lng=${lng}`);
             
             if (!result.success) {
@@ -122,7 +122,7 @@ export class GeolocationService {
      */
     async zipToDistrict(zip: string): Promise<GeolocationData['district']> {
         try {
-            const { api } = await import('$lib/utils/apiClient');
+            const { api } = await import('$lib/core/api/client');
             const result = await api.get(`/api/geo/zip-district?zip=${zip}`);
             
             if (!result.success) {
@@ -175,7 +175,7 @@ export class GeolocationService {
     private async getIPLocation(): Promise<GeolocationData['address']> {
         try {
             // Use a service like ipapi.co or similar
-            const { api } = await import('$lib/utils/apiClient');
+            const { api } = await import('$lib/core/api/client');
             const result = await api.get('/api/geo/ip-location');
             
             if (!result.success) {

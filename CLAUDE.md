@@ -34,9 +34,11 @@ Optional OAuth keys as needed.
 Code map:
 - Routes/API: `src/routes/`
 - UI: `src/lib/components/`
-- Server utils: `src/lib/server/`
-- Congress: `src/lib/congress/`
-- Types/stores/utils: `src/lib/types/`, `src/lib/stores/`, `src/lib/utils/`
+- Core production: `src/lib/core/`
+- Feature-flagged: `src/lib/features/`
+- Research/experimental: `src/lib/experimental/`
+- Shared utilities: `src/lib/shared/`
+- Legacy: `src/lib/server/`, `src/lib/services/` (being migrated)
 
 ## Database
 ```bash

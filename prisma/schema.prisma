@@ -1,3 +1,6 @@
+// Main Schema - Core Production Models Only
+// See also: core.prisma, features.prisma, experimental.prisma
+
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -26,20 +29,12 @@ model User {
   verification_method    String?                @map("verification_method") // 'self_xyz', 'manual', etc.
   verification_data      Json?                  @map("verification_data") // Store verification details
   verified_at            DateTime?              @map("verified_at")
+  // Core production relations only
   account                account[]
   sessions               Session[]
   templates              Template[]
   representatives        user_representatives[]
-  personalizations       template_personalization[]
-  writing_style          user_writing_style?
   campaigns              template_campaign[] @relation("UserCampaigns")
-  activations            user_activation[] @relation("UserActivations")
-  activated_users        user_activation[] @relation("UserSources")
-  coordinates            user_coordinates?
-  political_bubbles      local_political_bubble[]
-  political_dead_ends    political_dead_end[]
-  context_stack          user_context_stack?
-  political_uncertainty  political_uncertainty[]
 
   @@map("user")
 }
@@ -82,16 +77,9 @@ model Template {
   updatedAt         DateTime            @updatedAt @map("updated_at")
   userId            String?             @map("user_id")
   user              User?               @relation(fields: [userId], references: [id])
+  
+  // Core production relations only
   template_campaign template_campaign[]
-  personalizations  template_personalization[]
-  ai_suggestions    ai_suggestions[]
-  analytics         template_analytics[]
-  user_activations  user_activation[]
-  source_morphisms  template_morphism[] @relation("SourceMorphisms")
-  target_morphisms  template_morphism[] @relation("TargetMorphisms")
-  community_lifecycles community_lifecycle[]
-  political_uncertainty political_uncertainty[]
-  template_adaptations template_adaptation[]
 
   @@map("template")
 }

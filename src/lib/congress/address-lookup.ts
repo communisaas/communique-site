@@ -142,7 +142,7 @@ export class AddressLookupService {
      */
     private async getHouseRep(state: string, district: string): Promise<Representative> {
         try {
-            const { api } = await import('$lib/utils/apiClient');
+            const { api } = await import('$lib/core/api/client');
             const result = await api.get(
                 `https://api.data.gov/congress/v3/member?api_key=${this.congressApiKey}&format=json&currentMember=true&state=${state}&limit=50`
             );
@@ -185,7 +185,7 @@ export class AddressLookupService {
      */
     private async getSenators(state: string): Promise<Representative[]> {
         try {
-            const { api } = await import('$lib/utils/apiClient');
+            const { api } = await import('$lib/core/api/client');
             const result = await api.get(
                 `https://api.data.gov/congress/v3/member?api_key=${this.congressApiKey}&format=json&currentMember=true&state=${state}&limit=50`
             );
@@ -280,7 +280,7 @@ export class AddressLookupService {
             const allReps = [reps.house, ...reps.senate];
             
             for (const rep of allReps) {
-                const { api } = await import('$lib/utils/apiClient');
+                const { api } = await import('$lib/core/api/client');
                 const result = await api.get(
                     `https://api.data.gov/congress/v3/member/${rep.bioguideId}?api_key=${this.congressApiKey}&format=json`
                 );

@@ -75,7 +75,7 @@
 				deliveryMethod
 			});
 
-			const { api } = await import('$lib/utils/apiClient');
+			const { api } = await import('$lib/core/api/client');
 			const result = await api.get(`/api/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
 			const data = result.data;
@@ -129,7 +129,7 @@
 				deliveryMethod
 			});
 
-			const { api } = await import('$lib/utils/apiClient');
+			const { api } = await import('$lib/core/api/client');
 			const result = await api.get(`/api/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
 			const data = result.data;

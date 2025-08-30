@@ -65,8 +65,8 @@ class FunnelAnalytics {
 	}
 
 	private async sendToAnalytics(event: FunnelEvent) {
-		const { analyticsApi } = await import('$lib/utils/apiClient');
-		const result = await analyticsApi.track('funnel_event', event);
+		const { api } = await import('$lib/core/api/client');
+		const result = await api.track('funnel_event', event);
 		
 		if (!result.success) {
 			// Store failed events for retry

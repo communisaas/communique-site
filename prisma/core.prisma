@@ -1,0 +1,208 @@
+// Core Production Schema
+// Contains only the essential models used in production
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("SUPABASE_DATABASE_URL")
+}
+
+// AUTHENTICATION & USERS
+
+model User {
+  id                     String                 @id @default(cuid())
+  email                  String                 @unique
+  name                   String?
+  avatar                 String?
+  createdAt              DateTime               @default(now()) @map("created_at")
+  updatedAt              DateTime               @updatedAt @map("updated_at")
+  city                   String?
+  congressional_district String?
+  phone                  String?
+  state                  String?
+  street                 String?
+  zip                    String?
+  
+  // Verification status
+  is_verified            Boolean                @default(false) @map("is_verified")
+  verification_method    String?                @map("verification_method") // 'self_xyz', 'manual', etc.
+  verification_data      Json?                  @map("verification_data") // Store verification details
+  verified_at            DateTime?              @map("verified_at")
+  
+  // Core relations only
+  account                account[]
+  sessions               Session[]
+  templates              Template[]
+  representatives        user_representatives[]
+  campaigns              template_campaign[] @relation("UserCampaigns")
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("session")
+}
+
+model account {
+  id                  String   @id
+  user_id             String
+  type                String
+  provider            String
+  provider_account_id String
+  refresh_token       String?
+  access_token        String?
+  expires_at          Int?
+  token_type          String?
+  scope               String?
+  id_token            String?
+  session_state       String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+}
+
+// CORE BUSINESS LOGIC
+
+model Template {
+  id                String              @id @default(cuid())
+  slug              String              @unique
+  title             String
+  description       String
+  category          String
+  type              String
+  deliveryMethod    String              @map("delivery_method")
+  subject           String?
+  preview           String
+  message_body      String
+  delivery_config   Json
+  cwc_config        Json?
+  recipient_config  Json
+  metrics           Json
+  campaign_id       String?
+  status            String              @default("draft")
+  is_public         Boolean             @default(false)
+  
+  // Geographic scope
+  applicable_countries String[]          @default([]) // ISO country codes ["US", "CA", "UK"]
+  jurisdiction_level   String?           // "municipal", "state", "federal", "international"
+  specific_locations   String[]          @default([]) // ["San Francisco", "Chicago", "Toronto"]
+  
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  userId            String?             @map("user_id")
+  user              User?               @relation(fields: [userId], references: [id])
+  
+  // Core relations only
+  template_campaign template_campaign[]
+
+  @@map("template")
+}
+
+model template_campaign {
+  id              String    @id @default(cuid())
+  template_id     String
+  user_id         String    // WHO actually used this template
+  delivery_type   String
+  recipient_id    String?
+  cwc_delivery_id String?
+  status          String    @default("pending")
+  sent_at         DateTime?
+  delivered_at    DateTime?
+  error_message   String?
+  metadata        Json?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  template        Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user            User      @relation("UserCampaigns", fields: [user_id], references: [id], onDelete: Cascade)
+}
+
+// CONGRESSIONAL FEATURES
+
+model representative {
+  id                   String                 @id @default(cuid())
+  bioguide_id          String                 @unique
+  name                 String
+  party                String
+  state                String
+  district             String
+  chamber              String
+  office_code          String
+  phone                String?
+  email                String?
+  is_active            Boolean                @default(true)
+  last_updated         DateTime               @default(now()) @map("last_updated")
+  user_representatives user_representatives[]
+
+  @@map("representative")
+}
+
+model user_representatives {
+  id                String         @id @default(cuid())
+  user_id           String         @map("user_id")
+  representative_id String         @map("representative_id")
+  relationship      String
+  is_active         Boolean        @default(true)
+  assigned_at       DateTime       @default(now()) @map("assigned_at")
+  last_validated    DateTime?      @map("last_validated")
+  representative    representative @relation(fields: [representative_id], references: [id], onDelete: Cascade)
+  user              User           @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, representative_id])
+  @@map("user_representatives")
+}
+
+model congressional_office {
+  id           String   @id @default(cuid())
+  office_code  String   @unique
+  state        String
+  district     String
+  member_name  String
+  party        String?
+  is_active    Boolean  @default(true)
+  last_updated DateTime @default(now()) @map("last_updated")
+}
+
+// LEGISLATIVE SYSTEM (BETA)
+
+model legislative_channel {
+  id                    String   @id @default(cuid())
+  channel_id            String   @unique @map("channel_id")
+  name                  String
+  type                  String   // "email", "form", "cwc"
+  jurisdiction_level    String   // "federal", "state", "municipal"
+  country_code          String   // ISO code
+  state_code            String?  // US state code
+  district              String?  // Congressional district
+  delivery_config       Json     // Channel-specific config
+  is_active             Boolean  @default(true)
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+
+  @@index([country_code, state_code, jurisdiction_level])
+  @@map("legislative_channel")
+}
+
+model legislative_body {
+  id                String   @id @default(cuid())
+  name              String
+  type              String   // "congress", "parliament", "legislature"
+  country_code      String   // ISO code
+  state_code        String?  // For state-level bodies
+  jurisdiction_level String  // "federal", "state", "municipal"
+  is_active         Boolean  @default(true)
+  created_at        DateTime @default(now()) @map("created_at")
+
+  @@map("legislative_body")
+}

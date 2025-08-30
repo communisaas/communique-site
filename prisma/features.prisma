@@ -1,0 +1,178 @@
+// Features Schema  
+// Models for feature-flagged functionality that can be enabled/disabled
+// These are production-ready but gated behind feature flags
+
+datasource db {
+  provider = "postgresql"
+  url      = env("SUPABASE_DATABASE_URL")
+}
+
+// AI FEATURES (ROADMAP - requires AI_SUGGESTIONS flag)
+
+model ai_suggestions {
+  id            String   @id @default(cuid())
+  template_id   String   @map("template_id")
+  user_id       String?  @map("user_id")
+  variable_name String   @map("variable_name")
+  suggestion    String   // The AI-generated suggestion
+  confidence    Float    // AI confidence score (0-1)
+  context       Json     // Context used for generation
+  feedback      String?  // User feedback ("helpful", "not_helpful")
+  used          Boolean  @default(false) // Whether user used it
+  created_at    DateTime @default(now()) @map("created_at")
+
+  @@index([template_id, variable_name])
+  @@index([user_id])
+  @@map("ai_suggestions")
+}
+
+model user_writing_style {
+  id                    String   @id @default(cuid())
+  user_id               String   @unique @map("user_id")
+  tone_preference       String?  // "formal", "casual", "passionate"
+  complexity_level      String?  // "simple", "moderate", "complex"
+  common_phrases        String[] // Frequently used phrases
+  vocabulary_level      Int?     // Estimated vocabulary complexity
+  typical_length        Int?     // Typical message length
+  persuasion_style      String?  // "logical", "emotional", "ethical"
+  cultural_markers      Json?    // Cultural/regional language patterns
+  last_analyzed         DateTime @default(now()) @map("last_analyzed")
+  sample_count          Int      @default(1) // Number of samples analyzed
+
+  @@map("user_writing_style")
+}
+
+model template_analytics {
+  id                  String   @id @default(cuid())
+  template_id         String   @map("template_id")
+  metric_type         String   // "engagement", "conversion", "sharing"
+  metric_value        Float    // The measured value
+  time_period         String   // "daily", "weekly", "monthly"
+  demographic_segment Json?    // Which demographic this applies to
+  geographic_region   String?  // Geographic scope
+  confidence_interval Json?    // Statistical confidence
+  created_at          DateTime @default(now()) @map("created_at")
+
+  @@index([template_id, metric_type, created_at])
+  @@map("template_analytics")
+}
+
+// USER ACTIVATION FEATURES (BETA - requires CASCADE_ANALYTICS flag)
+
+model user_activation {
+  id                String   @id @default(cuid())
+  user_id           String   @map("user_id") // The user who got activated
+  source_user_id    String?  @map("source_user_id") // Who activated them
+  template_id       String?  @map("template_id") // Template that caused activation
+  activation_type   String   // "template_use", "registration", "verification"
+  activation_depth  Int      @default(1) // How deep in cascade chain
+  referral_metadata Json?    // Additional referral data
+  activated_at      DateTime @default(now()) @map("activated_at")
+
+  @@index([user_id])
+  @@index([source_user_id])
+  @@index([template_id])
+  @@map("user_activation")
+}
+
+model user_coordinates {
+  id         String    @id @default(cuid())
+  user_id    String    @unique @map("user_id")
+  latitude   Float
+  longitude  Float
+  accuracy   Float?    // GPS accuracy in meters
+  source     String    // "gps", "ip", "manual", "geocoded"
+  updated_at DateTime  @updatedAt @map("updated_at")
+  expires_at DateTime? @map("expires_at") // For privacy
+
+  @@index([latitude, longitude])
+  @@map("user_coordinates")
+}
+
+// TEMPLATE ENHANCEMENT FEATURES (ROADMAP - requires TEMPLATE_PERSONALIZATION flag)
+
+model template_personalization {
+  id                    String   @id @default(cuid())
+  user_id               String   @map("user_id")
+  template_id           String   @map("template_id")
+  variable_name         String   @map("variable_name")
+  custom_value          String   @map("custom_value")
+  usage_count           Int      @default(1) @map("usage_count")
+  last_used             DateTime @default(now()) @map("last_used")
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
+
+  @@unique([user_id, template_id, variable_name])
+  @@map("template_personalization")
+}
+
+model template_adaptation {
+  id                   String   @id @default(cuid())
+  original_template_id String   @map("original_template_id")
+  adapted_for_country  String   @map("adapted_for_country") // ISO country code
+  adapted_for_state    String?  @map("adapted_for_state") // State/province
+  adapted_for_city     String?  @map("adapted_for_city")
+  adaptation_type      String   // "language", "cultural", "legal", "procedural"
+  changes_made         Json     // Description of adaptations
+  effectiveness_score  Float?   // How well it works (0-1)
+  created_at           DateTime @default(now()) @map("created_at")
+  updated_at           DateTime @updatedAt @map("updated_at")
+
+  @@index([original_template_id])
+  @@index([adapted_for_country, adapted_for_state])
+  @@map("template_adaptation")
+}
+
+// VARIABLE RESOLUTION FEATURES (ROADMAP - requires VARIABLE_RESOLUTION flag)
+
+model resolved_variable {
+  id            String   @id @default(cuid())
+  template_id   String   @map("template_id")
+  user_id       String   @map("user_id")
+  variable_name String   @map("variable_name")
+  resolved_value String  @map("resolved_value")
+  data_source   Json     // Source metadata (API, confidence, etc.)
+  cached_until  DateTime @map("cached_until")
+  resolution_method String // "api", "calculation", "lookup", "ai"
+  confidence_score Float  // How confident we are (0-1)
+  created_at    DateTime @default(now()) @map("created_at")
+
+  @@unique([template_id, user_id, variable_name])
+  @@index([cached_until]) // For cleanup
+  @@map("resolved_variable")
+}
+
+model data_source_config {
+  id                String   @id @default(cuid())
+  source_name       String   @unique // "census", "bls", "hud", etc.
+  api_endpoint      String?  // Base API URL
+  auth_method       String?  // "key", "oauth", "none"
+  rate_limit        Int?     // Requests per hour
+  cache_ttl         Int      @default(3600) // Cache time in seconds
+  trust_score       Float    @default(0.8) // How much we trust this source
+  is_active         Boolean  @default(true)
+  configuration     Json     // Source-specific config
+  last_tested       DateTime? @map("last_tested")
+  created_at        DateTime @default(now()) @map("created_at")
+
+  @@map("data_source_config")
+}
+
+// ANALYTICS FEATURES (BETA)
+
+model cascade_event {
+  id                String   @id @default(cuid())
+  template_id       String   @map("template_id")
+  user_id           String   @map("user_id")
+  event_type        String   // "view", "share", "use", "adapt"
+  cascade_depth     Int      @default(0) // How deep in the cascade
+  source_event_id   String?  @map("source_event_id") // Previous event in chain
+  viral_coefficient Float?   // Measured virality
+  geographic_spread Json?    // Where it spread
+  demographic_reach Json?    // Who it reached
+  created_at        DateTime @default(now()) @map("created_at")
+
+  @@index([template_id, created_at])
+  @@index([user_id])
+  @@map("cascade_event")
+}

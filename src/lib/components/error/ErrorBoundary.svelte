@@ -111,7 +111,7 @@ Catches and handles component failures gracefully
 
 	async function reportError(info: ErrorInfo) {
 		try {
-			const { api } = await import('$lib/utils/apiClient');
+			const { api } = await import('$lib/core/api/client');
 			await api.post('/api/errors/report', {
 				error: info,
 				context: 'ErrorBoundary',
