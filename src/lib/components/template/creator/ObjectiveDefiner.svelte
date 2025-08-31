@@ -37,12 +37,6 @@
 				placeholder="e.g., Update City Park Hours"
 				rules={templateValidationRules.title}
 			/>
-			{#if data.title.trim()}
-				<div class="flex items-center gap-2 text-xs text-green-600">
-					<div class="h-2 w-2 rounded-full bg-green-500"></div>
-					<span>Campaign created! Keep going to build your message.</span>
-				</div>
-			{/if}
 		</div>
 	</div>
 

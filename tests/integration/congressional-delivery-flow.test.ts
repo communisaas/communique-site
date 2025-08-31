@@ -117,7 +117,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       });
 
       // 6. EXECUTE: Import and call the civic routing endpoint
-      const { POST } = await import('$routes/api/civic/routing/+server.ts');
+      const { POST } = await import('../../src/routes/api/civic/routing/+server.ts');
       
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
@@ -227,7 +227,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       cwcClient.submitToHouse.mockResolvedValue({ success: true, messageId: 'msg1' });
       cwcClient.submitToSenate.mockResolvedValue({ success: true, messageId: 'msg2' });
 
-      const { POST } = await import('$routes/api/civic/routing/+server.ts');
+      const { POST } = await import('../../src/routes/api/civic/routing/+server.ts');
       
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
@@ -257,7 +257,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       const templateId = 'voting-rights';
       const sessionToken = 'guest-session-123';
 
-      const { POST } = await import('$routes/api/civic/routing/+server.ts');
+      const { POST } = await import('../../src/routes/api/civic/routing/+server.ts');
       
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
@@ -308,7 +308,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       const { addressLookup } = await import('$lib/congress/address-lookup');
       addressLookup.lookupRepsByAddress.mockRejectedValue(new Error('Address service unavailable'));
 
-      const { POST } = await import('$routes/api/civic/routing/+server.ts');
+      const { POST } = await import('../../src/routes/api/civic/routing/+server.ts');
       
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
@@ -372,7 +372,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       cwcClient.submitToHouse.mockRejectedValue(new Error('House submission failed'));
       cwcClient.submitToSenate.mockResolvedValue({ success: true, messageId: 'senate-ok' });
 
-      const { POST } = await import('$routes/api/civic/routing/+server.ts');
+      const { POST } = await import('../../src/routes/api/civic/routing/+server.ts');
       
       const mockRequest = {
         json: vi.fn().mockResolvedValue({
@@ -451,7 +451,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
         return Promise.resolve({ success: true, messageId: 'fully-personalized' });
       });
 
-      const { POST } = await import('$routes/api/civic/routing/+server.ts');
+      const { POST } = await import('../../src/routes/api/civic/routing/+server.ts');
       
       const mockRequest = {
         json: vi.fn().mockResolvedValue({

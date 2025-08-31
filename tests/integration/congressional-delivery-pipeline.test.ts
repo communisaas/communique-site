@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { POST } from '$routes/api/civic/routing/+server';
+import { POST } from '../../src/routes/api/civic/routing/+server';
 import { userFactory, templateFactory, testScenarios } from '../fixtures/factories';
 import mockRegistry from '../mocks/registry';
 

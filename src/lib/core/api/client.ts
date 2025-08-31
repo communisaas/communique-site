@@ -70,7 +70,10 @@ class UnifiedApiClient {
 			...fetchOptions
 		} = options;
 
-		const url = `${this.baseURL}${endpoint}`;
+		// Ensure proper path joining
+		const normalizedBase = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
+		const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+		const url = `${normalizedBase}${normalizedEndpoint}`;
 
 		// Set default headers
 		const headers = new Headers(fetchOptions.headers);

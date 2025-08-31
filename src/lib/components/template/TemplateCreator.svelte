@@ -319,13 +319,6 @@
 
 	<!-- Navigation -->
 	<div class="border-t border-slate-200 bg-slate-50 px-4 py-3 md:px-6 md:py-4">
-		<!-- Contextual sharing tip for objective step -->
-		{#if currentStep === 'objective' && formData.objective.title.trim()}
-			<div class="mb-3 rounded bg-blue-50 px-3 py-2 text-xs text-blue-700">
-				<p>Your campaign link is ready! Anyone can use it to join your cause.</p>
-			</div>
-		{/if}
-		
 		<div class="flex items-center justify-between">
 			<button
 				class="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"

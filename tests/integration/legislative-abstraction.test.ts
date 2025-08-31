@@ -1,5 +1,22 @@
-import { describe, it, expect, vi } from 'vitest';
-import { deliveryPipeline, adapterRegistry } from '$lib/core/legislative';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { deliveryPipeline } from '$lib/core/legislative';
+
+// Mock the adapter registry
+const mockAdapterRegistry = {
+  getAdapter: vi.fn(),
+  getSupportedCountries: vi.fn(),
+  getCapabilities: vi.fn()
+};
+
+vi.mock('$lib/core/legislative', async (importOriginal) => {
+  const original = await importOriginal();
+  return {
+    ...original,
+    adapterRegistry: mockAdapterRegistry
+  };
+});
+
+const adapterRegistry = mockAdapterRegistry;
 import { userFactory, templateFactory, deliveryJobFactory, addressFactory } from '../fixtures/factories';
 import mockRegistry from '../mocks/registry';
 
@@ -57,7 +74,7 @@ describe('Legislative Abstraction Integration', () => {
       })
     };
 
-    vi.mocked(adapterRegistry.getAdapter).mockResolvedValue(mockUSAdapter);
+    adapterRegistry.getAdapter.mockResolvedValue(mockUSAdapter);
 
     // Execute delivery
     const result = await deliveryPipeline.deliverToRepresentatives(job);
@@ -139,7 +156,7 @@ describe('Legislative Abstraction Integration', () => {
       })
     };
 
-    vi.mocked(adapterRegistry.getAdapter).mockResolvedValue(mockUKAdapter);
+    adapterRegistry.getAdapter.mockResolvedValue(mockUKAdapter);
 
     const result = await deliveryPipeline.deliverToRepresentatives(job);
 
@@ -200,7 +217,7 @@ describe('Legislative Abstraction Integration', () => {
       })
     };
 
-    vi.mocked(adapterRegistry.getAdapter).mockResolvedValue(mockGenericAdapter);
+    adapterRegistry.getAdapter.mockResolvedValue(mockGenericAdapter);
 
     const result = await deliveryPipeline.deliverToRepresentatives(job);
 
@@ -216,8 +233,8 @@ describe('Legislative Abstraction Integration', () => {
   });
 
   it('should handle adapter registry capabilities query', async () => {
-    vi.mocked(adapterRegistry.getSupportedCountries).mockResolvedValue(['US', 'UK']);
-    vi.mocked(adapterRegistry.getCapabilities).mockResolvedValue([
+    adapterRegistry.getSupportedCountries.mockResolvedValue(['US', 'UK']);
+    adapterRegistry.getCapabilities.mockResolvedValue([
       {
         country_code: 'US',
         methods: ['api', 'form'],
@@ -267,7 +284,7 @@ describe('Legislative Abstraction Integration', () => {
       deliverMessage: vi.fn()
     };
 
-    vi.mocked(adapterRegistry.getAdapter).mockResolvedValue(mockAdapter);
+    adapterRegistry.getAdapter.mockResolvedValue(mockAdapter);
 
     const result = await deliveryPipeline.deliverToRepresentatives(job);
 

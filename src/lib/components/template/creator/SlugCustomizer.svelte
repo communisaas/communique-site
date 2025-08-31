@@ -76,7 +76,7 @@
 			});
 
 			const { api } = await import('$lib/core/api/client');
-			const result = await api.get(`/api/templates/check-slug?${params}`);
+			const result = await api.get(`/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
 			const data = result.data;
 			isAvailable = data.available;
@@ -130,7 +130,7 @@
 			});
 
 			const { api } = await import('$lib/core/api/client');
-			const result = await api.get(`/api/templates/check-slug?${params}`);
+			const result = await api.get(`/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
 			const data = result.data;
 
@@ -246,9 +246,11 @@
 		<button
 			type="button"
 			onclick={() => (showCustomInput = true)}
-			class="text-xs md:text-xs text-blue-600 hover:text-blue-700"
+			class="{isAvailable === false 
+				? 'rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700' 
+				: 'text-xs md:text-xs text-blue-600 hover:text-blue-700'}"
 		>
-			Customize link
+			{isAvailable === false ? 'Create Custom Link' : 'Customize link'}
 		</button>
 	{/if}
 
