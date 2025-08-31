@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 
 interface RepresentativeData {
     bioguideId: string;

@@ -1,7 +1,7 @@
 import { error, redirect } from '@sveltejs/kit';
 import { Facebook } from 'arctic';
-import { db } from '$lib/server/db';
-import { createSession, sessionCookieName } from '$lib/server/auth';
+import { db } from '$lib/core/db';
+import { createSession, sessionCookieName } from '$lib/core/auth/auth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, cookies }) => {

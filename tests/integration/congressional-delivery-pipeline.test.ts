@@ -12,7 +12,7 @@ describe('Congressional Delivery Pipeline Integration', () => {
 
     // Setup: Configure mocks
     const mocks = mockRegistry.setupMocks();
-    const dbMock = mocks['$lib/server/db'].db;
+    const dbMock = mocks['$lib/core/db'].db;
     const { deliveryPipeline } = mocks['$lib/core/legislative'];
 
     // Mock database responses
@@ -120,7 +120,7 @@ describe('Congressional Delivery Pipeline Integration', () => {
     const template = testScenarios.healthcareTemplate();
     
     const mocks = mockRegistry.setupMocks();
-    const dbMock = mocks['$lib/server/db'].db;
+    const dbMock = mocks['$lib/core/db'].db;
     const { deliveryPipeline } = mocks['$lib/core/legislative'];
 
     dbMock.user.findUnique.mockResolvedValue(user);
@@ -184,7 +184,7 @@ describe('Congressional Delivery Pipeline Integration', () => {
 
   it('should handle missing user gracefully', async () => {
     const mocks = mockRegistry.setupMocks();
-    const dbMock = mocks['$lib/server/db'].db;
+    const dbMock = mocks['$lib/core/db'].db;
     
     dbMock.user.findUnique.mockResolvedValue(null);
 
@@ -207,7 +207,7 @@ describe('Congressional Delivery Pipeline Integration', () => {
     const user = testScenarios.californiaUser();
     
     const mocks = mockRegistry.setupMocks();
-    const dbMock = mocks['$lib/server/db'].db;
+    const dbMock = mocks['$lib/core/db'].db;
     const { deliveryPipeline } = mocks['$lib/core/legislative'];
 
     dbMock.user.findUnique.mockResolvedValue(user);

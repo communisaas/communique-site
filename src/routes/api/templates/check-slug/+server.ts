@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 import { isSlugReserved, getReservedSlugError, suggestAlternativeSlug, suggestAvailableAlternatives } from '$lib/server/reserved-slugs';
 import type { RequestHandler } from './$types';
 

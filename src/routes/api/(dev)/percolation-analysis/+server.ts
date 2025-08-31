@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { analyzeCivicInformationCascades, storeCascadeAnalysis } from '$lib/server/percolation-engine';
-import { oauthSecurityMiddleware, logAnalyticsUsage } from '$lib/server/oauth-security';
+import { oauthSecurityMiddleware, logAnalyticsUsage } from '$lib/core/auth/oauth-security';
 
 export async function GET({ request }) {
   const startTime = Date.now();

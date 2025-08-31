@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock all the services this integration test will use
-vi.mock('$lib/server/db', () => ({
+vi.mock('$lib/core/db', () => ({
   db: {
     user: {
       findUnique: vi.fn(),
@@ -56,7 +56,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       };
 
       // 1. SETUP: Mock user with address but no cached representatives
-      const { db } = await import('$lib/server/db');
+      const { db } = await import('$lib/core/db');
       db.user.findUnique.mockResolvedValue({
         id: userId,
         name: 'Jane Citizen',
@@ -180,7 +180,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       const templateId = 'healthcare-reform';
 
       // Mock user with cached representatives
-      const { db } = await import('$lib/server/db');
+      const { db } = await import('$lib/core/db');
       db.user.findUnique.mockResolvedValue({
         id: userId,
         name: 'Bob Smith',
@@ -287,7 +287,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       const userId = 'user789';
       const templateId = 'education-funding';
 
-      const { db } = await import('$lib/server/db');
+      const { db } = await import('$lib/core/db');
       db.user.findUnique.mockResolvedValue({
         id: userId,
         name: 'Alice Johnson',
@@ -336,7 +336,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       const userId = 'user999';
       const templateId = 'infrastructure';
 
-      const { db } = await import('$lib/server/db');
+      const { db } = await import('$lib/core/db');
       db.user.findUnique.mockResolvedValue({
         id: userId,
         name: 'Carlos Rodriguez',
@@ -400,7 +400,7 @@ describe('Congressional Message Delivery Integration Flow', () => {
       const userId = 'user-variables';
       const templateId = 'climate-detailed';
 
-      const { db } = await import('$lib/server/db');
+      const { db } = await import('$lib/core/db');
       db.user.findUnique.mockResolvedValue({
         id: userId,
         name: 'Maria Garcia',

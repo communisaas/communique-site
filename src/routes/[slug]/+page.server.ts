@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templateConfig';
 import type { PageServerLoad } from './$types';
 import { detectCountryFromHeaders, resolveChannel } from '$lib/services/channelResolver';

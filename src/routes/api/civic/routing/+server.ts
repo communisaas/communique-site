@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 import type { RequestHandler } from './$types';
 import { deliveryPipeline } from '$lib/core/legislative';
 

@@ -236,7 +236,7 @@ class MockRegistry {
 
     const mocks = {
       // Database
-      '$lib/server/db': { db: this.createDatabaseMock() },
+      '$lib/core/db': { db: this.createDatabaseMock() },
       
       // Congressional services
       '$lib/congress/cwc-client': this.createCWCMock(),

@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { Facebook } from 'arctic';
-import { generateState } from '$lib/server/oauth';
+import { generateState } from '$lib/core/auth/oauth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {

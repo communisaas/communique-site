@@ -52,8 +52,8 @@ function createTemplateStore() {
 		async fetchTemplates() {
 			update((state) => ({ ...state, loading: true, error: null }));
 			try {
-				const { api } = await import('$lib/core/api/client');
-				const result = await api.list();
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.list();
 				console.log('Templates API result:', result);
 				if (!result.success) {
 					console.error('Templates API error:', result.error);
@@ -93,8 +93,8 @@ function createTemplateStore() {
 		// Template CRUD operations
 		async addTemplate(template: Omit<Template, 'id'>) {
 			try {
-				const { api } = await import('$lib/core/api/client');
-				const result = await api.create(template);
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.create(template);
 
 				if (!result.success) {
 					throw new Error(result.error || 'Failed to create template');
@@ -120,8 +120,8 @@ function createTemplateStore() {
 
 		async updateTemplate(id: string, updates: Partial<Template>) {
 			try {
-				const { api } = await import('$lib/core/api/client');
-				const result = await api.update(id, updates);
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.update(id, updates);
 
 				if (!result.success) {
 					throw new Error(result.error || 'Failed to update template');
@@ -146,8 +146,8 @@ function createTemplateStore() {
 
 		async deleteTemplate(id: string) {
 			try {
-				const { api } = await import('$lib/core/api/client');
-				const result = await api.delete(id);
+				const { templatesApi } = await import('$lib/utils/apiClient');
+				const result = await templatesApi.delete(id);
 
 				if (!result.success) {
 					throw new Error(result.error || 'Failed to delete template');

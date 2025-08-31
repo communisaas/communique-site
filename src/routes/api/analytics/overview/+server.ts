@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 import { analyzeCascade, hasActivationData } from '$lib/server/cascade-analytics-fixed';
 import type { RequestHandler } from './$types';
 

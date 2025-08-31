@@ -1,4 +1,4 @@
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 
 export type AccessMethod = 'email' | 'api' | 'form' | 'none';
 

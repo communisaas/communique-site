@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import { createApiError, createValidationError, type ApiResponse } from '$lib/types/errors';
 

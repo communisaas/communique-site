@@ -5,7 +5,7 @@ import {
 	AllIds
 } from '@selfxyz/core';
 import type { AttestationId, IConfigStorage } from '@selfxyz/core';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 
 // Configuration storage implementation for Self.xyz
 class CommuniqueConfigStorage implements IConfigStorage {

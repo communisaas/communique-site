@@ -1,6 +1,3 @@
-// Main Schema - Core Production Models Only
-// See also: core.prisma, features.prisma, experimental.prisma
-
 generator client {
   provider = "prisma-client-js"
   output   = "../node_modules/.prisma/client"
@@ -12,29 +9,36 @@ datasource db {
 }
 
 model User {
-  id                     String                 @id @default(cuid())
-  email                  String                 @unique
-  name                   String?
-  avatar                 String?
-  createdAt              DateTime               @default(now()) @map("created_at")
-  updatedAt              DateTime               @updatedAt @map("updated_at")
-  city                   String?
-  congressional_district String?
-  phone                  String?
-  state                  String?
-  street                 String?
-  zip                    String?
-  // Verification status
-  is_verified            Boolean                @default(false) @map("is_verified")
-  verification_method    String?                @map("verification_method") // 'self_xyz', 'manual', etc.
-  verification_data      Json?                  @map("verification_data") // Store verification details
-  verified_at            DateTime?              @map("verified_at")
-  // Core production relations only
-  account                account[]
-  sessions               Session[]
-  templates              Template[]
-  representatives        user_representatives[]
-  campaigns              template_campaign[] @relation("UserCampaigns")
+  id                        String                     @id @default(cuid())
+  email                     String                     @unique
+  name                      String?
+  avatar                    String?
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  city                      String?
+  congressional_district    String?
+  phone                     String?
+  state                     String?
+  street                    String?
+  zip                       String?
+  is_verified               Boolean                    @default(false) @map("is_verified")
+  verification_method       String?                    @map("verification_method")
+  verification_data         Json?                      @map("verification_data")
+  verified_at               DateTime?                  @map("verified_at")
+  account                   account[]
+  political_bubbles         local_political_bubble[]
+  political_dead_ends       political_dead_end[]
+  political_uncertainties   political_uncertainty[]
+  sessions                  Session[]
+  templates                 Template[]
+  campaigns                 template_campaign[]        @relation("UserCampaigns")
+  template_personalizations template_personalization[]
+  source_activations        user_activation[]          @relation("UserSources")
+  activations               user_activation[]          @relation("UserActivations")
+  context_stack             user_context_stack?
+  coordinates               user_coordinates?
+  representatives           user_representatives[]
+  writing_style             user_writing_style?
 
   @@map("user")
 }
@@ -50,36 +54,40 @@ model Session {
 }
 
 model Template {
-  id                String              @id @default(cuid())
-  slug              String              @unique
-  title             String
-  description       String
-  category          String
-  type              String
-  deliveryMethod    String              @map("delivery_method")
-  subject           String?
-  preview           String
-  message_body      String
-  delivery_config   Json
-  cwc_config        Json?
-  recipient_config  Json
-  metrics           Json
-  campaign_id       String?
-  status            String              @default("draft")
-  is_public         Boolean             @default(false)
-  
-  // Geographic scope
-  applicable_countries String[]          @default([]) // ISO country codes ["US", "CA", "UK"]
-  jurisdiction_level   String?           // "municipal", "state", "federal", "international"
-  specific_locations   String[]          @default([]) // ["San Francisco", "Chicago", "Toronto"]
-  
-  createdAt         DateTime            @default(now()) @map("created_at")
-  updatedAt         DateTime            @updatedAt @map("updated_at")
-  userId            String?             @map("user_id")
-  user              User?               @relation(fields: [userId], references: [id])
-  
-  // Core production relations only
-  template_campaign template_campaign[]
+  id                        String                     @id @default(cuid())
+  slug                      String                     @unique
+  title                     String
+  description               String
+  category                  String
+  type                      String
+  deliveryMethod            String                     @map("delivery_method")
+  subject                   String?
+  preview                   String
+  message_body              String
+  delivery_config           Json
+  cwc_config                Json?
+  recipient_config          Json
+  metrics                   Json
+  campaign_id               String?
+  status                    String                     @default("draft")
+  is_public                 Boolean                    @default(false)
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  userId                    String?                    @map("user_id")
+  applicable_countries      String[]                   @default([])
+  jurisdiction_level        String?
+  specific_locations        String[]                   @default([])
+  ai_suggestions            ai_suggestions[]
+  founding_communities      community_lifecycle[]
+  political_uncertainties   political_uncertainty[]
+  user                      User?                      @relation(fields: [userId], references: [id])
+  adaptations               template_adaptation[]
+  template_analytics        template_analytics[]
+  template_campaign         template_campaign[]
+  source_morphisms          template_morphism[]        @relation("SourceMorphisms")
+  target_morphisms          template_morphism[]        @relation("TargetMorphisms")
+  template_personalizations template_personalization[]
+  activations               user_activation[]
 
   @@map("template")
 }
@@ -105,7 +113,7 @@ model account {
 }
 
 model congressional_office {
-  id           String   @id
+  id           String   @id @default(cuid())
   office_code  String   @unique
   state        String
   district     String
@@ -118,7 +126,7 @@ model congressional_office {
 model template_campaign {
   id              String    @id
   template_id     String
-  user_id         String    // WHO actually used this template
+  user_id         String
   delivery_type   String
   recipient_id    String?
   cwc_delivery_id String?
@@ -166,94 +174,90 @@ model user_representatives {
   @@map("user_representatives")
 }
 
-// New models for enhanced templating features
-
 model template_personalization {
-  id                    String   @id @default(cuid())
-  user_id               String   @map("user_id")
-  template_id           String   @map("template_id")
-  variable_name         String   @map("variable_name")
-  custom_value          String   @map("custom_value")
-  usage_count           Int      @default(1) @map("usage_count")
-  last_used             DateTime @default(now()) @map("last_used")
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
-  user                  User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  template              Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  user_id       String   @map("user_id")
+  template_id   String   @map("template_id")
+  variable_name String   @map("variable_name")
+  custom_value  String   @map("custom_value")
+  usage_count   Int      @default(1) @map("usage_count")
+  last_used     DateTime @default(now()) @map("last_used")
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
+  template      Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, template_id, variable_name])
   @@map("template_personalization")
 }
 
 model ai_suggestions {
-  id                    String   @id @default(cuid())
-  template_id           String   @map("template_id")
-  variable_name         String   @map("variable_name")
-  category              String   // e.g., "personal_story", "reasoning", "example"
-  suggestion_text       String   @map("suggestion_text")
-  context_tags          Json?    @map("context_tags") // ["education", "family", "healthcare"]
-  usage_count           Int      @default(0) @map("usage_count")
-  effectiveness_score   Float?   @map("effectiveness_score") // ML-derived score
-  is_active             Boolean  @default(true) @map("is_active")
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
-  template              Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  id                  String   @id @default(cuid())
+  template_id         String   @map("template_id")
+  variable_name       String   @map("variable_name")
+  category            String
+  suggestion_text     String   @map("suggestion_text")
+  context_tags        Json?    @map("context_tags")
+  usage_count         Int      @default(0) @map("usage_count")
+  effectiveness_score Float?   @map("effectiveness_score")
+  is_active           Boolean  @default(true) @map("is_active")
+  created_at          DateTime @default(now()) @map("created_at")
+  updated_at          DateTime @updatedAt @map("updated_at")
+  template            Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   @@index([template_id, variable_name])
   @@map("ai_suggestions")
 }
 
 model user_writing_style {
-  id                    String   @id @default(cuid())
-  user_id               String   @unique @map("user_id")
-  tone_preference       String?  @map("tone_preference") // "formal", "casual", "passionate"
-  length_preference     String?  @map("length_preference") // "concise", "detailed", "moderate"
-  personal_themes       Json?    @map("personal_themes") // ["family", "career", "community"]
-  writing_samples       Json?    @map("writing_samples") // Store anonymized samples for ML
-  engagement_metrics    Json?    @map("engagement_metrics") // Track what works for this user
-  last_analyzed         DateTime? @map("last_analyzed")
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
-  user                  User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id                 String    @id @default(cuid())
+  user_id            String    @unique @map("user_id")
+  tone_preference    String?   @map("tone_preference")
+  length_preference  String?   @map("length_preference")
+  personal_themes    Json?     @map("personal_themes")
+  writing_samples    Json?     @map("writing_samples")
+  engagement_metrics Json?     @map("engagement_metrics")
+  last_analyzed      DateTime? @map("last_analyzed")
+  created_at         DateTime  @default(now()) @map("created_at")
+  updated_at         DateTime  @updatedAt @map("updated_at")
+  user               User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("user_writing_style")
 }
 
 model template_analytics {
-  id                    String   @id @default(cuid())
-  template_id           String   @map("template_id")
-  variable_name         String   @map("variable_name")
-  date                  DateTime
-  total_uses            Int      @default(0) @map("total_uses")
-  personalization_rate  Float    @default(0) @map("personalization_rate") // % of users who customize
-  avg_length            Float?   @map("avg_length") // Average length of personalized content
-  engagement_score      Float?   @map("engagement_score") // Derived from campaign performance
-  top_themes            Json?    @map("top_themes") // Most common themes/topics
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
-  template              Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  template_id          String   @map("template_id")
+  variable_name        String   @map("variable_name")
+  date                 DateTime
+  total_uses           Int      @default(0) @map("total_uses")
+  personalization_rate Float    @default(0) @map("personalization_rate")
+  avg_length           Float?   @map("avg_length")
+  engagement_score     Float?   @map("engagement_score")
+  top_themes           Json?    @map("top_themes")
+  created_at           DateTime @default(now()) @map("created_at")
+  updated_at           DateTime @updatedAt @map("updated_at")
+  template             Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   @@unique([template_id, variable_name, date])
   @@map("template_analytics")
 }
 
-// User activation network for cascade tracking
 model user_activation {
   id                    String   @id @default(cuid())
   user_id               String   @map("user_id")
   template_id           String   @map("template_id")
-  source_user_id        String?  @map("source_user_id") // Who activated them (functor arrow)
-  activation_generation Int      @default(0) @map("activation_generation") // Degrees of separation
-  activation_method     String   @map("activation_method") // "share", "view", "referral"
-  geographic_distance   Float?   @map("geographic_distance") // Miles from source
+  source_user_id        String?  @map("source_user_id")
+  activation_generation Int      @default(0) @map("activation_generation")
+  activation_method     String   @map("activation_method")
+  geographic_distance   Float?   @map("geographic_distance")
   activation_time       DateTime @default(now()) @map("activation_time")
-  time_to_activation    Float?   @map("time_to_activation") // Hours from exposure
-  cascade_metadata      Json?    @map("cascade_metadata") // Additional tracking data
+  time_to_activation    Float?   @map("time_to_activation")
+  cascade_metadata      Json?    @map("cascade_metadata")
   created_at            DateTime @default(now()) @map("created_at")
-  
-  user                  User     @relation("UserActivations", fields: [user_id], references: [id], onDelete: Cascade)
-  source_user           User?    @relation("UserSources", fields: [source_user_id], references: [id], onDelete: SetNull)
+  source_user           User?    @relation("UserSources", fields: [source_user_id], references: [id])
   template              Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user                  User     @relation("UserActivations", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, template_id])
   @@index([template_id, activation_time])
@@ -261,36 +265,32 @@ model user_activation {
   @@map("user_activation")
 }
 
-// Geographic and political coordinate embeddings
 model user_coordinates {
-  user_id             String @id @map("user_id")
+  user_id             String   @id @map("user_id")
   latitude            Float?
   longitude           Float?
-  political_embedding Json?  // n-dimensional political position vector
-  community_sheaves   Json?  // overlapping community memberships with weights
-  embedding_version   String @default("v1") @map("embedding_version")
+  political_embedding Json?
+  community_sheaves   Json?
+  embedding_version   String   @default("v1") @map("embedding_version")
   last_calculated     DateTime @default(now()) @map("last_calculated")
   updated_at          DateTime @updatedAt @map("updated_at")
-  
-  user                User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("user_coordinates")
 }
 
-// Template morphisms - functors between templates
 model template_morphism {
   id                  String   @id @default(cuid())
   source_template_id  String   @map("source_template_id")
   target_template_id  String   @map("target_template_id")
-  transformation_type String   @map("transformation_type") // "adaptation", "generalization", "specialization"
-  morphism_data       Json     @map("morphism_data") // How source maps to target
-  similarity_score    Float?   @map("similarity_score") // 0-1 semantic similarity
+  transformation_type String   @map("transformation_type")
+  morphism_data       Json     @map("morphism_data")
+  similarity_score    Float?   @map("similarity_score")
   usage_count         Int      @default(0) @map("usage_count")
-  effectiveness_score Float?   @map("effectiveness_score") // How well the morphism works
+  effectiveness_score Float?   @map("effectiveness_score")
   is_active           Boolean  @default(true) @map("is_active")
   created_at          DateTime @default(now()) @map("created_at")
   updated_at          DateTime @updatedAt @map("updated_at")
-  
   source_template     Template @relation("SourceMorphisms", fields: [source_template_id], references: [id], onDelete: Cascade)
   target_template     Template @relation("TargetMorphisms", fields: [target_template_id], references: [id], onDelete: Cascade)
 
@@ -299,278 +299,226 @@ model template_morphism {
   @@map("template_morphism")
 }
 
-// Political field state for continuous space tracking
 model political_field_state {
-  id                  String   @id @default(cuid())
-  timestamp           DateTime @default(now())
-  field_data          Json     // Gradient, divergence, curl calculations
-  critical_points     Json?    // Political attractors/repellers
-  community_topology  Json?    // Persistent homology data
-  field_version       String   @default("v1") @map("field_version")
-  calculation_params  Json?    @map("calculation_params")
-  
+  id                 String   @id @default(cuid())
+  timestamp          DateTime @default(now())
+  field_data         Json
+  critical_points    Json?
+  community_topology Json?
+  field_version      String   @default("v1") @map("field_version")
+  calculation_params Json?    @map("calculation_params")
+
   @@index([timestamp])
   @@map("political_field_state")
 }
 
-// Local political bubbles - coherent views within geographic/social radius
 model local_political_bubble {
   id              String   @id @default(cuid())
   center_user_id  String   @map("center_user_id")
   radius_miles    Float    @map("radius_miles")
-  shared_beliefs  Json     @map("shared_beliefs") // What everyone agrees on
-  bubble_strength Float    @map("bubble_strength") // Agreement intensity 0-1
-  edge_conflicts  Json?    @map("edge_conflicts") // Conflicts with neighboring bubbles
+  shared_beliefs  Json     @map("shared_beliefs")
+  bubble_strength Float    @map("bubble_strength")
+  edge_conflicts  Json?    @map("edge_conflicts")
   member_count    Int      @default(1) @map("member_count")
   formation_date  DateTime @default(now()) @map("formation_date")
   last_updated    DateTime @updatedAt @map("last_updated")
   is_active       Boolean  @default(true) @map("is_active")
-  
   center_user     User     @relation(fields: [center_user_id], references: [id], onDelete: Cascade)
-  
+
   @@index([center_user_id, radius_miles])
   @@index([bubble_strength])
   @@map("local_political_bubble")
 }
 
-// Community intersection zones - where different groups overlap
 model community_intersection {
-  id              String   @id @default(cuid())
-  community_a     String   @map("community_a") // "union_members"
-  community_b     String   @map("community_b") // "parents"
-  shared_users    Json     @map("shared_users") // User IDs in both communities
-  shared_issues   Json     @map("shared_issues") // Issues both care about
-  conflict_issues Json?    @map("conflict_issues") // Issues they disagree on
-  influence_flow  Json?    @map("influence_flow") // Which dominates on which issues
-  intersection_strength Float @map("intersection_strength") // How much overlap
-  discovered_at   DateTime @default(now()) @map("discovered_at")
-  last_calculated DateTime @updatedAt @map("last_calculated")
-  
+  id                    String   @id @default(cuid())
+  community_a           String   @map("community_a")
+  community_b           String   @map("community_b")
+  shared_users          Json     @map("shared_users")
+  shared_issues         Json     @map("shared_issues")
+  conflict_issues       Json?    @map("conflict_issues")
+  influence_flow        Json?    @map("influence_flow")
+  intersection_strength Float    @map("intersection_strength")
+  discovered_at         DateTime @default(now()) @map("discovered_at")
+  last_calculated       DateTime @updatedAt @map("last_calculated")
+
   @@unique([community_a, community_b])
   @@index([intersection_strength])
   @@map("community_intersection")
 }
 
-// Political dead ends - views that can't spread
 model political_dead_end {
-  id              String   @id @default(cuid())
-  political_view  Json     @map("political_view") // The view that can't spread
-  origin_user_id  String   @map("origin_user_id") // Where it started
-  origin_location Json     @map("origin_location") // Geographic origin
-  blocking_factors Json    @map("blocking_factors") // What prevents spread
-  max_reach_miles Float    @map("max_reach_miles") // Furthest it spread
-  decay_rate      Float    @map("decay_rate") // How fast it dies with distance
-  attempt_count   Int      @default(0) @map("attempt_count") // Times tried to spread
-  last_attempt    DateTime @default(now()) @map("last_attempt")
-  identified_at   DateTime @default(now()) @map("identified_at")
-  
-  origin_user     User     @relation(fields: [origin_user_id], references: [id], onDelete: Cascade)
-  
+  id               String   @id @default(cuid())
+  political_view   Json     @map("political_view")
+  origin_user_id   String   @map("origin_user_id")
+  origin_location  Json     @map("origin_location")
+  blocking_factors Json     @map("blocking_factors")
+  max_reach_miles  Float    @map("max_reach_miles")
+  decay_rate       Float    @map("decay_rate")
+  attempt_count    Int      @default(0) @map("attempt_count")
+  last_attempt     DateTime @default(now()) @map("last_attempt")
+  identified_at    DateTime @default(now()) @map("identified_at")
+  origin_user      User     @relation(fields: [origin_user_id], references: [id], onDelete: Cascade)
+
   @@index([decay_rate, max_reach_miles])
   @@map("political_dead_end")
 }
 
-// Community lifecycle - birth, growth, death of political groups
 model community_lifecycle {
-  id              String    @id @default(cuid())
-  community_name  String    @map("community_name")
-  community_type  String    @map("community_type") // "issue_based", "geographic", "demographic"
-  formation_date  DateTime  @default(now()) @map("formation_date")
-  peak_date       DateTime? @map("peak_date")
-  dissolution_date DateTime? @map("dissolution_date")
-  trigger_event   String?   @map("trigger_event") // What caused formation/dissolution
-  founding_template_id String? @map("founding_template_id") // Template that started it
-  member_count_timeline Json @map("member_count_timeline") // Historical membership
-  engagement_timeline   Json @map("engagement_timeline") // Activity over time
-  current_status  String   @default("active") @map("current_status") // active, declining, dormant, dissolved
-  
-  founding_template Template? @relation(fields: [founding_template_id], references: [id], onDelete: SetNull)
-  
+  id                    String    @id @default(cuid())
+  community_name        String    @map("community_name")
+  community_type        String    @map("community_type")
+  formation_date        DateTime  @default(now()) @map("formation_date")
+  peak_date             DateTime? @map("peak_date")
+  dissolution_date      DateTime? @map("dissolution_date")
+  trigger_event         String?   @map("trigger_event")
+  founding_template_id  String?   @map("founding_template_id")
+  member_count_timeline Json      @map("member_count_timeline")
+  engagement_timeline   Json      @map("engagement_timeline")
+  current_status        String    @default("active") @map("current_status")
+  founding_template     Template? @relation(fields: [founding_template_id], references: [id])
+
   @@index([community_type, current_status])
   @@index([formation_date])
   @@map("community_lifecycle")
 }
 
-// User context stack - multiple simultaneous contexts affecting politics
 model user_context_stack {
-  id              String   @id @default(cuid())
-  user_id         String   @unique @map("user_id")
-  geographic_context Json  @map("geographic_context") // Location affects politics
-  economic_context   Json  @map("economic_context") // Job/income affects politics
-  social_context     Json  @map("social_context") // Family/friends affect politics
-  institutional_context Json @map("institutional_context") // Schools, orgs, etc
-  context_conflicts  Json? @map("context_conflicts") // Where contexts pull different ways
-  dominant_context   String? @map("dominant_context") // Which context usually wins
-  context_stability  Float @default(0.5) @map("context_stability") // How stable contexts are
-  last_calculated    DateTime @updatedAt @map("last_calculated")
-  
-  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
+  id                    String   @id @default(cuid())
+  user_id               String   @unique @map("user_id")
+  geographic_context    Json     @map("geographic_context")
+  economic_context      Json     @map("economic_context")
+  social_context        Json     @map("social_context")
+  institutional_context Json     @map("institutional_context")
+  context_conflicts     Json?    @map("context_conflicts")
+  dominant_context      String?  @map("dominant_context")
+  context_stability     Float    @default(0.5) @map("context_stability")
+  last_calculated       DateTime @updatedAt @map("last_calculated")
+  user                  User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
   @@map("user_context_stack")
 }
 
-// Political flow dynamics - how sentiment moves through network
 model political_flow {
-  id              String   @id @default(cuid())
-  timestamp       DateTime @default(now())
-  time_window_hours Int    @default(24) @map("time_window_hours") // Analysis window
-  flow_sources    Json     @map("flow_sources") // Where energy is generated
-  flow_sinks      Json     @map("flow_sinks") // Where it's absorbed
-  flow_velocity   Json     @map("flow_velocity") // Speed of spread
-  flow_direction  Json     @map("flow_direction") // Primary direction vectors
-  turbulence_zones Json?   @map("turbulence_zones") // Chaotic/unpredictable areas
-  flow_strength   Float    @map("flow_strength") // Overall intensity 0-1
-  dominant_issues Json     @map("dominant_issues") // What's driving the flow
-  
+  id                String   @id @default(cuid())
+  timestamp         DateTime @default(now())
+  time_window_hours Int      @default(24) @map("time_window_hours")
+  flow_sources      Json     @map("flow_sources")
+  flow_sinks        Json     @map("flow_sinks")
+  flow_velocity     Json     @map("flow_velocity")
+  flow_direction    Json     @map("flow_direction")
+  turbulence_zones  Json?    @map("turbulence_zones")
+  flow_strength     Float    @map("flow_strength")
+  dominant_issues   Json     @map("dominant_issues")
+
   @@index([timestamp, flow_strength])
   @@map("political_flow")
 }
 
-// Political uncertainty - positions aren't fixed, they're probabilistic
 model political_uncertainty {
-  id                String   @id @default(cuid())
-  user_id           String   @map("user_id")
-  template_id       String?  @map("template_id") // Uncertainty about specific template
-  position_cloud    Json     @map("position_cloud") // Range of possible positions
-  certainty_level   Float    @map("certainty_level") // 0-1 how sure they are
-  change_likelihood Float    @map("change_likelihood") // 0-1 probability of position change
-  influence_susceptibility Json @map("influence_susceptibility") // What might change their mind
-  position_volatility Float  @default(0.5) @map("position_volatility") // How much positions fluctuate
-  last_position_change DateTime? @map("last_position_change")
-  uncertainty_calculated_at DateTime @default(now()) @map("uncertainty_calculated_at")
-  updated_at        DateTime @updatedAt @map("updated_at")
-  
-  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  template        Template? @relation(fields: [template_id], references: [id], onDelete: Cascade)
-  
+  id                        String    @id @default(cuid())
+  user_id                   String    @map("user_id")
+  template_id               String?   @map("template_id")
+  position_cloud            Json      @map("position_cloud")
+  certainty_level           Float     @map("certainty_level")
+  change_likelihood         Float     @map("change_likelihood")
+  influence_susceptibility  Json      @map("influence_susceptibility")
+  position_volatility       Float     @default(0.5) @map("position_volatility")
+  last_position_change      DateTime? @map("last_position_change")
+  uncertainty_calculated_at DateTime  @default(now()) @map("uncertainty_calculated_at")
+  updated_at                DateTime  @updatedAt @map("updated_at")
+  template                  Template? @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user                      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
   @@unique([user_id, template_id])
   @@index([certainty_level, change_likelihood])
   @@map("political_uncertainty")
 }
 
-// Global legislative channel access methods by country
 model legislative_channel {
-  id                      String   @id @default(cuid())
-  country_code            String   @unique // ISO 3166-1 alpha-2 (US, CA, UK, FR, etc.)
-  country_name            String
-  legislature_name        String   // "Congress", "Parliament", "Bundestag", etc.
-  legislature_type        String   // "bicameral", "unicameral"
-  
-  // Access method configuration
-  access_method           String   // "email", "api", "form", "none"
-  access_tier             Int      @default(3) // 1=email, 2=api/form, 3=social only
-  
-  // Email configuration (Tier 1)
-  email_pattern           String?  // "firstname.lastname@parl.gc.ca"
-  email_domain            String?  // "parl.gc.ca"
-  email_format_notes      String?  // Special formatting rules
-  
-  // API configuration (Tier 2)
-  api_endpoint            String?  // Base URL for API
-  api_auth_type           String?  // "oauth", "key", "captcha", "none"
-  api_documentation_url   String?  // Link to API docs
-  rate_limit_requests     Int?     // Requests per minute
-  rate_limit_daily        Int?     // Daily request limit
-  
-  // Form configuration (Tier 2)
-  form_url                String?  // Web form URL pattern
-  form_requires_captcha   Boolean  @default(false)
-  form_max_length         Int?     // Character limit
-  
-  // Language and validation
-  primary_language        String   // ISO 639-1 code
-  supported_languages     String[] // Array of ISO 639-1 codes
-  requires_constituent    Boolean  @default(false) // Must be from district
-  requires_real_address   Boolean  @default(false) // Address validation
-  
-  // Message restrictions
-  forbidden_words         String[] @default([]) // Blocked terms
-  message_guidelines      String?  // Cultural/political guidelines
-  
-  // Metadata
-  population              BigInt?  // Country population
-  internet_penetration    Float?   // % with internet access (0-1)
-  democracy_index         Float?   // EIU Democracy Index score (0-10)
-  
-  is_active               Boolean  @default(true)
-  last_verified           DateTime?
-  created_at              DateTime @default(now()) @map("created_at")
-  updated_at              DateTime @updatedAt @map("updated_at")
-  
-  // Relations
-  legislative_bodies      legislative_body[]
-  template_adaptations    template_adaptation[]
-  
+  id                    String                @id @default(cuid())
+  country_code          String                @unique
+  country_name          String
+  legislature_name      String
+  legislature_type      String
+  access_method         String
+  access_tier           Int                   @default(3)
+  email_pattern         String?
+  email_domain          String?
+  email_format_notes    String?
+  api_endpoint          String?
+  api_auth_type         String?
+  api_documentation_url String?
+  rate_limit_requests   Int?
+  rate_limit_daily      Int?
+  form_url              String?
+  form_requires_captcha Boolean               @default(false)
+  form_max_length       Int?
+  primary_language      String
+  supported_languages   String[]
+  requires_constituent  Boolean               @default(false)
+  requires_real_address Boolean               @default(false)
+  forbidden_words       String[]              @default([])
+  message_guidelines    String?
+  population            BigInt?
+  internet_penetration  Float?
+  democracy_index       Float?
+  is_active             Boolean               @default(true)
+  last_verified         DateTime?
+  created_at            DateTime              @default(now()) @map("created_at")
+  updated_at            DateTime              @updatedAt @map("updated_at")
+  legislative_bodies    legislative_body[]
+  template_adaptations  template_adaptation[]
+
   @@index([access_tier, is_active])
   @@index([country_code])
   @@map("legislative_channel")
 }
 
-// Specific legislative bodies within a country (House/Senate, Lords/Commons, etc.)
 model legislative_body {
-  id                    String   @id @default(cuid())
-  channel_id            String   @map("channel_id")
-  body_name             String   // "House of Representatives", "Senate", "House of Commons"
-  body_type             String   // "upper", "lower"
-  
-  member_count          Int      // Number of members
-  member_title          String   // "Representative", "Senator", "MP", "Deputy"
-  
-  // Body-specific contact patterns
-  email_pattern         String?  // Override country pattern if different
-  api_endpoint          String?  // Body-specific API
-  
-  // Terms and elections
-  term_length_years     Int      // Length of term
-  last_election         DateTime?
-  next_election         DateTime?
-  
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
-  
-  legislative_channel   legislative_channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
-  
+  id                  String              @id @default(cuid())
+  channel_id          String              @map("channel_id")
+  body_name           String
+  body_type           String
+  member_count        Int
+  member_title        String
+  email_pattern       String?
+  api_endpoint        String?
+  term_length_years   Int
+  last_election       DateTime?
+  next_election       DateTime?
+  created_at          DateTime            @default(now()) @map("created_at")
+  updated_at          DateTime            @updatedAt @map("updated_at")
+  legislative_channel legislative_channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
+
   @@index([channel_id])
   @@map("legislative_body")
 }
 
-// Template adaptations for different countries/languages
 model template_adaptation {
-  id                    String   @id @default(cuid())
-  source_template_id    String   @map("source_template_id")
-  target_country_code   String   @map("target_country_code")
-  target_language       String   @map("target_language") // ISO 639-1
-  
-  // Adapted content
-  adapted_title         String
-  adapted_subject       String?
-  adapted_body          String   @db.Text
-  
-  // Localization
-  currency_symbol       String?  // Local currency symbol
-  number_format         String?  // "1,000.00" vs "1.000,00"
-  
-  // Local context replacements
-  local_examples        Json?    // {"oil_company": "Petrobras", "healthcare": "NHS"}
-  local_officials       Json?    // {"mayor": "current_mayor_name"}
-  local_data_sources    Json?    // {"rent_data": "local_housing_authority"}
-  
-  // Cultural adaptations
-  tone_adjustment       String?  // "formal", "respectful", "direct"
-  cultural_notes        String?  // Guidelines for this culture
-  
-  // Performance metrics
-  usage_count           Int      @default(0)
-  success_rate          Float?   // 0-1 delivery/response rate
-  viral_coefficient     Float?   // Sharing rate
-  
-  is_active             Boolean  @default(true)
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
-  
-  source_template       Template @relation(fields: [source_template_id], references: [id], onDelete: Cascade)
-  legislative_channel   legislative_channel @relation(fields: [target_country_code], references: [country_code], onDelete: Cascade)
-  
+  id                  String              @id @default(cuid())
+  source_template_id  String              @map("source_template_id")
+  target_country_code String              @map("target_country_code")
+  target_language     String              @map("target_language")
+  adapted_title       String
+  adapted_subject     String?
+  adapted_body        String
+  currency_symbol     String?
+  number_format       String?
+  local_examples      Json?
+  local_officials     Json?
+  local_data_sources  Json?
+  tone_adjustment     String?
+  cultural_notes      String?
+  usage_count         Int                 @default(0)
+  success_rate        Float?
+  viral_coefficient   Float?
+  is_active           Boolean             @default(true)
+  created_at          DateTime            @default(now()) @map("created_at")
+  updated_at          DateTime            @updatedAt @map("updated_at")
+  source_template     Template            @relation(fields: [source_template_id], references: [id], onDelete: Cascade)
+  legislative_channel legislative_channel @relation(fields: [target_country_code], references: [country_code], onDelete: Cascade)
+
   @@unique([source_template_id, target_country_code, target_language])
   @@index([target_country_code, is_active])
   @@map("template_adaptation")

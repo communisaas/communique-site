@@ -1,5 +1,5 @@
 import { json, error } from '@sveltejs/kit';
-import { db } from '$lib/server/db';
+import { db } from '$lib/core/db';
 import { updateTemplateDistrictMetrics } from '$lib/server/district-metrics';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import type { RequestHandler } from './$types';
