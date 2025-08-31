@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from '$lib/core/db';
 import { classifyBasicSentiment, type BasicSentiment } from './sentiment-basic';
 
 /**

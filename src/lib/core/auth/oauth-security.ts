@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from '$lib/core/db';
 
 /**
  * OAUTH-BASED API SECURITY - Use Our Existing Login System

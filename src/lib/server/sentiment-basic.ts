@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from '$lib/core/db';
 
 /**
  * Basic Sentiment Classification - Safe Implementation

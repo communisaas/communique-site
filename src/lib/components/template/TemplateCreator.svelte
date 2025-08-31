@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft } from '@lucide/svelte';
+	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft, Link2, Share } from '@lucide/svelte';
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
 	import { templateDraftStore, generateDraftId, formatTimeAgo } from '$lib/stores/templateDraft';
 	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
@@ -225,6 +225,27 @@
 		showDraftRecovery = false;
 	}
 
+	// Share functionality
+	function handleShare() {
+		if (formData.objective.slug && formData.objective.title) {
+			const shareUrl = `${window.location.origin}/${formData.objective.slug}`;
+			if (navigator.share) {
+				navigator.share({
+					title: `Join the campaign: ${formData.objective.title}`,
+					text: `Help advocate for change on this important issue.`,
+					url: shareUrl
+				});
+			} else {
+				// Fallback: copy to clipboard
+				navigator.clipboard.writeText(shareUrl).then(() => {
+					// Could add toast notification here
+				});
+			}
+		}
+	}
+
+	const canShare = $derived(formData.objective.slug && formData.objective.title.trim());
+
 	function discardDraft() {
 		templateDraftStore.deleteDraft(draftId);
 		showDraftRecovery = false;
@@ -269,18 +290,33 @@
 					</h2>
 				</div>
 
-				<!-- Auto-save indicator -->
-				{#if lastSaved}
-					<div
-						class="mr-2 inline-flex items-center gap-0.5 rounded-full border border-emerald-200
-					            bg-emerald-50 px-1.5
-					            py-0.5 text-xs text-emerald-600 md:mr-6 md:px-2
-					            md:text-xs"
-					>
-						<div class="animate-save-pulse h-0.5 w-0.5 rounded-full bg-emerald-500 md:h-1 md:w-1" />
-						saved {formatTimeAgo(lastSaved).toLowerCase()}
-					</div>
-				{/if}
+				<div class="flex items-center gap-2 md:gap-3">
+					<!-- Share Button -->
+					{#if canShare}
+						<button
+							type="button"
+							onclick={handleShare}
+							class="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 md:gap-2 md:px-4 md:py-2 md:text-sm"
+						>
+							<Share class="h-3 w-3 md:h-4 md:w-4" />
+							<span class="hidden sm:inline">Share Link</span>
+							<span class="sm:hidden">Share</span>
+						</button>
+					{/if}
+
+					<!-- Auto-save indicator -->
+					{#if lastSaved}
+						<div
+							class="inline-flex items-center gap-0.5 rounded-full border border-emerald-200
+						            bg-emerald-50 px-1.5
+						            py-0.5 text-xs text-emerald-600 md:px-2
+						            md:text-xs"
+						>
+							<div class="animate-save-pulse h-0.5 w-0.5 rounded-full bg-emerald-500 md:h-1 md:w-1" />
+							saved {formatTimeAgo(lastSaved).toLowerCase()}
+						</div>
+					{/if}
+				</div>
 			</div>
 			<p class="ml-6 text-sm text-slate-600 md:ml-8 md:text-sm">
 				{stepInfo[currentStep].description}

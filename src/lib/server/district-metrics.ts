@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from '$lib/core/db';
 
 export interface DistrictCoverageMetrics {
     districts_covered: number;

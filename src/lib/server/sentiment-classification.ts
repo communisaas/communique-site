@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from '$lib/core/db';
 
 /**
  * BERT Sentiment Classification Pipeline
