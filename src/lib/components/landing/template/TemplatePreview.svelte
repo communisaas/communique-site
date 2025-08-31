@@ -221,8 +221,7 @@
 			</div>
 
 			<!-- Share Link Button - Always available -->
-			{#if !inModal}
-				<div class="mb-4 flex shrink-0 items-center gap-2">
+			<div class="mb-4 flex shrink-0 items-center gap-2">
 					<button
 						onclick={async () => {
 							const shareUrl = `${window.location.origin}/${template.slug}`;
@@ -249,8 +248,7 @@
 							Share Link
 						{/if}
 					</button>
-				</div>
-			{/if}
+			</div>
 
 			{#if template.type === 'direct' && recipients.length}
 				<div class="mb-4 flex shrink-0 items-center gap-2 text-sm text-slate-600">

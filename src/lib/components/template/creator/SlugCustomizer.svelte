@@ -158,18 +158,18 @@
 <div class="space-y-2 md:space-y-4">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
-		<label class="flex items-center gap-1 md:gap-2 text-[10px] md:text-sm font-medium text-slate-700">
-			<Link2 class="h-2.5 md:h-4 w-2.5 md:w-4" />
+		<label class="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium text-slate-700">
+			<Link2 class="h-3 md:h-4 w-3 md:w-4" />
 			Campaign Link
 		</label>
 		{#if isAvailable === true}
-			<span class="flex items-center gap-1 text-[9px] md:text-xs text-green-600" in:fade>
-				<CheckCircle2 class="h-2 md:h-3 w-2 md:w-3" />
+			<span class="flex items-center gap-1 text-xs md:text-xs text-green-600" in:fade>
+				<CheckCircle2 class="h-3 md:h-3 w-3 md:w-3" />
 				Available
 			</span>
 		{:else if isAvailable === false}
-			<span class="flex items-center gap-1 text-[9px] md:text-xs text-amber-600" in:fade>
-				<AlertCircle class="h-2 md:h-3 w-2 md:w-3" />
+			<span class="flex items-center gap-1 text-xs md:text-xs text-amber-600" in:fade>
+				<AlertCircle class="h-3 md:h-3 w-3 md:w-3" />
 				Already taken
 			</span>
 		{/if}
@@ -177,7 +177,7 @@
 
 	<!-- URL Preview -->
 	<div class="rounded border border-slate-200 bg-slate-50 p-1.5 md:p-3">
-		<div class="flex items-center gap-0.5 md:gap-2 font-mono text-[9px] md:text-sm">
+		<div class="flex items-center gap-1 md:gap-2 font-mono text-xs md:text-sm">
 			<span class="text-slate-500 break-all">{$page.url.origin}/</span>
 			<span class="font-semibold text-slate-900">{slug || 'your-campaign'}</span>
 		</div>
@@ -185,7 +185,7 @@
 
 	<!-- Validation Messages -->
 	{#if slug && !isValidSlug}
-		<p class="text-[9px] md:text-xs text-red-600">
+		<p class="text-xs md:text-xs text-red-600">
 			Links can only contain lowercase letters, numbers, and hyphens
 		</p>
 	{/if}
@@ -193,24 +193,24 @@
 	<!-- Suggestions when slug is taken -->
 	{#if isAvailable === false && suggestions.length > 0}
 		<div class="space-y-1 md:space-y-2" in:fly={{ y: 10, duration: 200 }}>
-			<p class="text-[9px] md:text-xs text-slate-600">Try one of these alternatives:</p>
+			<p class="text-xs md:text-xs text-slate-600">Try one of these alternatives:</p>
 			<div class="flex flex-wrap gap-1 md:gap-2">
 				{#each suggestions as suggestion}
 					<button
 						type="button"
 						onclick={() => selectSuggestion(suggestion)}
-						class="inline-flex items-center gap-0.5 md:gap-1 rounded-full bg-blue-50 px-1.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+						class="inline-flex items-center gap-1 md:gap-1 rounded-full bg-blue-50 px-2 md:px-3 py-1 md:py-1 text-xs md:text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
 					>
-						<Sparkles class="h-2 md:h-3 w-2 md:w-3" />
+						<Sparkles class="h-3 md:h-3 w-3 md:w-3" />
 						{suggestion}
 					</button>
 				{/each}
 				<button
 					type="button"
 					onclick={regenerateSuggestions}
-					class="inline-flex items-center gap-0.5 md:gap-1 rounded-full bg-slate-100 px-1.5 md:px-3 py-0.5 md:py-1 text-[9px] md:text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
+					class="inline-flex items-center gap-1 md:gap-1 rounded-full bg-slate-100 px-2 md:px-3 py-1 md:py-1 text-xs md:text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
 				>
-					<RefreshCw class="h-2 md:h-3 w-2 md:w-3" />
+					<RefreshCw class="h-3 md:h-3 w-3 md:w-3" />
 					More
 				</button>
 			</div>
@@ -246,14 +246,14 @@
 		<button
 			type="button"
 			onclick={() => (showCustomInput = true)}
-			class="text-[9px] md:text-xs text-blue-600 hover:text-blue-700"
+			class="text-xs md:text-xs text-blue-600 hover:text-blue-700"
 		>
 			Customize link
 		</button>
 	{/if}
 
-	<!-- Info box -->
-	<div class="rounded bg-blue-50 p-2 md:p-3 text-[9px] md:text-xs text-blue-700">
+	<!-- Share Context -->
+	<div class="rounded bg-blue-50 p-2 md:p-3 text-xs text-blue-700">
 		<p>Anyone with this link can instantly use your template. Share it.</p>
 	</div>
 </div>

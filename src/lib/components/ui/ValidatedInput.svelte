@@ -70,7 +70,7 @@
 
 	// Input classes based on state
 	const inputClasses = $derived(() => {
-		const base = 'block w-full rounded-md border px-2 md:px-3 py-1 md:py-2 text-xs md:text-sm transition-colors focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-offset-1 md:focus:ring-offset-2';
+		const base = 'block w-full rounded-md border px-3 md:px-3 py-2 md:py-2 text-sm md:text-sm transition-colors focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-offset-1 md:focus:ring-offset-2';
 		
 		if (hasError) {
 			return `${base} border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500`;
@@ -82,7 +82,7 @@
 	});
 
 	const labelClasses = $derived(() => {
-		const base = 'block text-[10px] md:text-sm font-medium mb-0.5 md:mb-1';
+		const base = 'block text-sm md:text-sm font-medium mb-1 md:mb-1';
 		if (hasError) {
 			return `${base} text-red-700`;
 		} else {

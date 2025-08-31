@@ -403,7 +403,7 @@
 		</div>
 	</div>
 
-	<div class="relative min-h-0 flex-1">
+	<div class="relative flex-1 min-h-[16rem]">
 		<div
 			class="styled-scrollbar-track scrollbar-thumb-slate-300 scrollbar-track-slate-100/10 absolute inset-0 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
 			bind:this={scrollContainer}
@@ -413,7 +413,7 @@
 			ontouchend={handleTouchEnd}
 			data-scrollable={isScrollable}
 		>
-			<div class="font-mono text-sm leading-normal text-slate-600">
+			<div class="min-h-[12rem] font-mono text-sm leading-normal text-slate-600">
 				{#each templateSegments as segment}
 					{#if segment.type === 'text'}
 						{segment.content}

@@ -27,33 +27,45 @@
 	const isTitleValid = $derived(data.title.trim().length > 0);
 </script>
 
-<div class="space-y-3 md:space-y-6">
-	<!-- Guidelines -->
-	<div class="rounded-lg border border-blue-100 bg-blue-50 p-2 md:p-4">
-		<div class="flex items-start gap-2">
-			<Lightbulb class="mt-0.5 h-3 md:h-5 w-3 md:w-5 shrink-0 text-blue-600" />
-			<div class="space-y-1 md:space-y-2">
-				<h4 class="text-xs md:text-base font-medium text-blue-900">Tips for Effective Advocacy</h4>
-				<ul class="space-y-0.5 text-[10px] md:text-sm text-blue-700 leading-tight">
+<div class="space-y-4 md:space-y-6">
+	<!-- Hero Focus: Main Action -->
+	<div class="space-y-3 md:space-y-4">
+		<div class="space-y-2">
+			<ValidatedInput
+				bind:value={data.title}
+				label="Issue Title (will be the subject line when sent)"
+				placeholder="e.g., Update City Park Hours"
+				rules={templateValidationRules.title}
+			/>
+			{#if data.title.trim()}
+				<div class="flex items-center gap-2 text-xs text-green-600">
+					<div class="h-2 w-2 rounded-full bg-green-500"></div>
+					<span>Campaign created! Keep going to build your message.</span>
+				</div>
+			{/if}
+		</div>
+	</div>
+
+	<!-- Live Campaign Link Generation -->
+	<div class="space-y-3">
+		<SlugCustomizer title={data.title} bind:slug={data.slug} {context} />
+	</div>
+
+	<!-- Reference Tips - Available When Needed -->
+	<div class="space-y-3 border-t border-slate-100 pt-4">
+		<details class="group">
+			<summary class="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900">
+				<Lightbulb class="h-4 w-4 text-blue-600 group-open:text-blue-700" />
+				Tips for Effective Advocacy
+				<span class="ml-auto text-xs text-slate-500 group-open:hidden">Click to expand</span>
+			</summary>
+			<div class="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-3">
+				<ul class="space-y-1.5 text-xs md:text-sm text-blue-700 leading-relaxed">
 					<li>• Be specific about the issue or bill you're addressing</li>
 					<li>• Clear subject lines get opened - save emotion for the message</li>
 					<li>• Officials need to quickly understand what action you want</li>
 				</ul>
 			</div>
-		</div>
-	</div>
-
-	<div class="space-y-2 md:space-y-4">
-		<ValidatedInput
-			bind:value={data.title}
-			label="Issue Title (will be the subject line when sent)"
-			placeholder="e.g., Stop the Internet Censorship Act"
-			rules={templateValidationRules.title}
-		/>
-	</div>
-
-	<!-- Deep Link Customizer (always visible) -->
-	<div class="border-t border-slate-200 pt-3 md:pt-6">
-		<SlugCustomizer title={data.title} bind:slug={data.slug} {context} />
+		</details>
 	</div>
 </div>

@@ -248,23 +248,23 @@
 	}
 </script>
 
-<div>
+<div class="flex h-full flex-col">
 	<!-- Progress bar -->
 	<div class="h-1 bg-slate-100">
 		<div class="h-full bg-blue-600 transition-all duration-300" style="width: {progress}%"></div>
 	</div>
 
 	<!-- Step Header -->
-	<div class="border-b border-slate-200 px-3 md:px-6 py-2 md:py-4">
+	<div class="border-b border-slate-200 px-4 md:px-6 py-3 md:py-4">
 		<div class="flex flex-col gap-1 md:gap-1">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-1.5 md:gap-3">
 					{#snippet iconSnippet()}
 						{@const IconComponent = stepInfo[currentStep].icon}
-						<IconComponent class="h-3 w-3 text-blue-600 md:h-5 md:w-5" />
+						<IconComponent class="h-4 w-4 text-blue-600 md:h-5 md:w-5" />
 					{/snippet}
 					{@render iconSnippet()}
-					<h2 class="text-xs font-semibold text-slate-900 md:text-xl">
+					<h2 class="text-base font-semibold text-slate-900 md:text-xl">
 						{stepInfo[currentStep].title}
 					</h2>
 				</div>
@@ -273,8 +273,8 @@
 				{#if lastSaved}
 					<div
 						class="mr-2 inline-flex items-center gap-0.5 rounded-full border border-emerald-200
-					            bg-emerald-50 px-1
-					            py-0.5 text-[9px] text-emerald-600 md:mr-6 md:px-2
+					            bg-emerald-50 px-1.5
+					            py-0.5 text-xs text-emerald-600 md:mr-6 md:px-2
 					            md:text-xs"
 					>
 						<div class="animate-save-pulse h-0.5 w-0.5 rounded-full bg-emerald-500 md:h-1 md:w-1" />
@@ -282,7 +282,7 @@
 					</div>
 				{/if}
 			</div>
-			<p class="ml-4.5 text-[10px] text-slate-600 md:ml-8 md:text-sm">
+			<p class="ml-6 text-sm text-slate-600 md:ml-8 md:text-sm">
 				{stepInfo[currentStep].description}
 			</p>
 		</div>
@@ -303,8 +303,8 @@
 	{/if}
 
 	<!-- Content -->
-	<div class="relative">
-		<div class="p-3 md:p-6" transition:fade={{ duration: 150 }}>
+	<div class="relative flex-1">
+		<div class="p-4 md:p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
 				<ObjectiveDefiner data={formData.objective} {context} />
 			{:else if currentStep === 'audience'}
@@ -318,36 +318,43 @@
 	</div>
 
 	<!-- Navigation -->
-	<div class="border-t border-slate-200 bg-slate-50 px-3 py-2 md:px-6 md:py-4">
+	<div class="border-t border-slate-200 bg-slate-50 px-4 py-3 md:px-6 md:py-4">
+		<!-- Contextual sharing tip for objective step -->
+		{#if currentStep === 'objective' && formData.objective.title.trim()}
+			<div class="mb-3 rounded bg-blue-50 px-3 py-2 text-xs text-blue-700">
+				<p>Your campaign link is ready! Anyone can use it to join your cause.</p>
+			</div>
+		{/if}
+		
 		<div class="flex items-center justify-between">
 			<button
-				class="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 hover:text-slate-900 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+				class="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 				onclick={handleBack}
 				disabled={currentStep === 'objective' || isSubmitting}
 			>
-				<ArrowLeft class="h-2.5 w-2.5 md:h-4 md:w-4" />
+				<ArrowLeft class="h-4 w-4 md:h-4 md:w-4" />
 				Back
 			</button>
 
 			{#if currentStep === 'review'}
 				<button
-					class="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+					class="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 					onclick={handleSave}
 					disabled={!isCurrentStepValid || isSubmitting}
 				>
 					{#if isSubmitting}
 						<div
-							class="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent md:h-4 md:w-4"
+							class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent md:h-4 md:w-4"
 						></div>
 						Saving...
 					{:else}
 						Save Draft
-						<ArrowRight class="h-2.5 w-2.5 md:h-4 md:w-4" />
+						<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
 					{/if}
 				</button>
 			{:else}
 				<button
-					class="flex items-center gap-1 rounded bg-blue-600 px-2 py-1 text-xs text-white hover:bg-blue-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+					class="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 					onclick={handleNext}
 					disabled={!isCurrentStepValid || isSubmitting}
 				>
@@ -360,7 +367,7 @@
 					{:else}
 						Continue
 					{/if}
-					<ArrowRight class="h-2.5 w-2.5 md:h-4 md:w-4" />
+					<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
 				</button>
 			{/if}
 		</div>
