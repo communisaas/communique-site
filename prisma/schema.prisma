@@ -39,6 +39,8 @@ model User {
   coordinates               user_coordinates?
   representatives           user_representatives[]
   writing_style             user_writing_style?
+  analytics_events          analytics_event[]
+  user_sessions             user_session[]
 
   @@map("user")
 }
@@ -88,6 +90,7 @@ model Template {
   target_morphisms          template_morphism[]        @relation("TargetMorphisms")
   template_personalizations template_personalization[]
   activations               user_activation[]
+  analytics_events          analytics_event[]
 
   @@map("template")
 }
@@ -522,4 +525,76 @@ model template_adaptation {
   @@unique([source_template_id, target_country_code, target_language])
   @@index([target_country_code, is_active])
   @@map("template_adaptation")
+}
+
+model analytics_event {
+  id                String        @id @default(cuid())
+  session_id        String        @map("session_id")
+  user_id           String?       @map("user_id")
+  template_id       String?       @map("template_id")
+  event_type        String        @map("event_type")
+  event_name        String        @map("event_name")
+  event_properties  Json?         @map("event_properties")
+  page_url          String?       @map("page_url")
+  referrer          String?       @map("referrer")
+  user_agent        String?       @map("user_agent")
+  ip_address        String?       @map("ip_address")
+  country           String?
+  region            String?
+  city              String?
+  device_type       String?       @map("device_type")
+  browser           String?
+  os                String?
+  timestamp         DateTime      @default(now())
+  processed_at      DateTime?     @map("processed_at")
+  created_at        DateTime      @default(now()) @map("created_at")
+  user              User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  template          Template?     @relation(fields: [template_id], references: [id], onDelete: SetNull)
+  user_session      user_session  @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+
+  @@index([session_id, timestamp])
+  @@index([user_id, timestamp])
+  @@index([template_id, timestamp])
+  @@index([event_type, event_name, timestamp])
+  @@index([timestamp])
+  @@map("analytics_event")
+}
+
+model user_session {
+  id                 String              @id @default(cuid())
+  session_id         String              @unique @map("session_id")
+  user_id            String?             @map("user_id")
+  fingerprint        String?
+  ip_address         String?             @map("ip_address")
+  user_agent         String?             @map("user_agent")
+  country            String?
+  region             String?
+  city               String?
+  device_type        String?             @map("device_type")
+  browser            String?
+  os                 String?
+  referrer           String?
+  utm_source         String?             @map("utm_source")
+  utm_medium         String?             @map("utm_medium")
+  utm_campaign       String?             @map("utm_campaign")
+  landing_page       String?             @map("landing_page")
+  session_start      DateTime            @default(now()) @map("session_start")
+  session_end        DateTime?           @map("session_end")
+  duration_seconds   Int?                @map("duration_seconds")
+  page_views         Int                 @default(0) @map("page_views")
+  events_count       Int                 @default(0) @map("events_count")
+  converted          Boolean             @default(false)
+  conversion_type    String?             @map("conversion_type")
+  conversion_value   Float?              @map("conversion_value")
+  is_bounce          Boolean             @default(false) @map("is_bounce")
+  created_at         DateTime            @default(now()) @map("created_at")
+  updated_at         DateTime            @updatedAt @map("updated_at")
+  user               User?               @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  analytics_events   analytics_event[]
+
+  @@index([session_id, session_start])
+  @@index([user_id, session_start])
+  @@index([session_start])
+  @@index([converted, conversion_type])
+  @@map("user_session")
 }

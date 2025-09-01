@@ -65,16 +65,18 @@ class FunnelAnalytics {
 	}
 
 	private async sendToAnalytics(event: FunnelEvent) {
-		const { api } = await import('$lib/core/api/client');
-		const result = await api.track('funnel_event', event);
-		
-		if (!result.success) {
-			// Store failed events for retry
+		try {
+			// Use our custom database analytics
+			const { analytics } = await import('$lib/core/analytics/database');
+			analytics.trackFunnelEvent(event);
+		} catch (error) {
+			// Fallback: Store failed events for retry
 			if (typeof window !== 'undefined') {
 				const failed = JSON.parse(localStorage.getItem('communique_failed_events') || '[]');
 				failed.push(event);
 				localStorage.setItem('communique_failed_events', JSON.stringify(failed));
 			}
+			console.error('Failed to send analytics event:', error);
 		}
 	}
 
