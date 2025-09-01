@@ -29,6 +29,22 @@ export interface DatabaseMock {
     findFirst: ReturnType<typeof vi.fn>;
     create: ReturnType<typeof vi.fn>;
   };
+  // Analytics tables
+  analytics_event: {
+    findMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    createMany: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  };
+  user_session: {
+    findUnique: ReturnType<typeof vi.fn>;
+    findMany: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    upsert: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+    delete: ReturnType<typeof vi.fn>;
+  };
 }
 
 class MockRegistry {
@@ -87,6 +103,22 @@ class MockRegistry {
       representative: {
         findFirst: vi.fn(),
         create: vi.fn()
+      },
+      // Analytics tables
+      analytics_event: {
+        findMany: vi.fn(),
+        create: vi.fn(),
+        createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        update: vi.fn(),
+        delete: vi.fn()
+      },
+      user_session: {
+        findUnique: vi.fn(),
+        findMany: vi.fn(),
+        create: vi.fn(),
+        upsert: vi.fn().mockResolvedValue({ id: 'mock-session', session_id: 'mock-session-id' }),
+        update: vi.fn(),
+        delete: vi.fn()
       }
     };
 
@@ -207,6 +239,51 @@ class MockRegistry {
   }
 
   /**
+   * Create analytics system mock
+   */
+  createAnalyticsMock() {
+    return {
+      analytics: {
+        trackEvent: vi.fn().mockResolvedValue(undefined),
+        trackFunnelEvent: vi.fn().mockResolvedValue(undefined),
+        trackTemplateView: vi.fn().mockResolvedValue(undefined),
+        trackOnboardingStarted: vi.fn().mockResolvedValue(undefined),
+        trackAuthCompleted: vi.fn().mockResolvedValue(undefined),
+        trackTemplateUsed: vi.fn().mockResolvedValue(undefined),
+        trackSocialShare: vi.fn().mockResolvedValue(undefined),
+        trackPageView: vi.fn().mockResolvedValue(undefined),
+        trackInteraction: vi.fn().mockResolvedValue(undefined),
+        trackError: vi.fn().mockResolvedValue(undefined),
+        identifyUser: vi.fn().mockResolvedValue(undefined),
+        flushEvents: vi.fn().mockResolvedValue(undefined),
+        destroy: vi.fn(),
+        isReady: true,
+        currentSessionId: 'mock-session-123'
+      },
+      funnelAnalytics: {
+        track: vi.fn(),
+        trackTemplateView: vi.fn(),
+        trackOnboardingStarted: vi.fn(),
+        trackAuthCompleted: vi.fn(),
+        trackTemplateUsed: vi.fn(),
+        trackSocialShare: vi.fn(),
+        getFunnelMetrics: vi.fn().mockReturnValue({
+          total_events: 0,
+          unique_templates: 0,
+          conversion_rate: 0,
+          funnel_steps: {
+            template_viewed: 0,
+            onboarding_started: 0,
+            auth_completed: 0,
+            template_used: 0
+          }
+        }),
+        clear: vi.fn()
+      }
+    };
+  }
+
+  /**
    * Get SvelteKit mocks
    */
   createSvelteKitMocks() {
@@ -244,6 +321,10 @@ class MockRegistry {
       
       // New legislative abstraction
       '$lib/core/legislative': this.createLegislativeMock(),
+      
+      // Analytics system
+      '$lib/core/analytics/database': this.createAnalyticsMock().analytics,
+      '$lib/analytics/funnel': this.createAnalyticsMock().funnelAnalytics,
       
       // SvelteKit
       '@sveltejs/kit': this.createSvelteKitMocks(),
