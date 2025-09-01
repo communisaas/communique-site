@@ -7,6 +7,7 @@
 	const { isCertified = false }: Props = $props();
 </script>
 
+{#if isCertified}
 <div
 	class="mb-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800"
 	role="status"
@@ -14,11 +15,7 @@
 >
 	<div class="flex items-center gap-2">
 		<Info class="h-4 w-4 text-blue-500" aria-hidden="true" />
-		<span>Adding personal experience increases message impact</span>
+		<span>Address verification required for Congressional delivery</span>
 	</div>
-	{#if isCertified}
-		<div class="mt-1 pl-6 text-[12px] text-blue-700">
-			Address verification required for Congressional delivery
-		</div>
-	{/if}
 </div>
+{/if}

@@ -41,10 +41,7 @@
 	let isAtTop = $state(true);
 	let isAtBottom = $state(false);
 	let isScrollable = $state(false);
-	let activeVariable: string | null = $state(null);
 	let variableValues: Record<string, string> = $state({});
-	let hoveredVariable: string | null = $state(null);
-	let showingHint: string | null = $state(null);
 
 	// Define which variables are system-populated vs user-editable
 	const systemVariables = new Set(['Name', 'Address', 'Representative Name']);
@@ -104,6 +101,7 @@
 		type: 'text' | 'variable';
 		content: string;
 		name?: string;
+		instanceId?: string;
 	}
 
 	interface DismissStateEvent {
@@ -121,6 +119,7 @@
 		let currentIndex = 0;
 		const variablePattern = /\[(.*?)\]/g;
 		let match: RegExpExecArray | null;
+		const instanceCounts = new Map<string, number>();
 
 		while ((match = variablePattern.exec(text)) !== null) {
 			// Add text before variable if exists
@@ -131,11 +130,18 @@
 				});
 			}
 
-			// Add variable
+			// Track instances of each variable type
+			const variableName = match[1];
+			const currentCount = instanceCounts.get(variableName) || 0;
+			const instanceNumber = currentCount + 1;
+			instanceCounts.set(variableName, instanceNumber);
+
+			// Add variable with unique instance ID
 			segments.push({
 				type: 'variable',
-				name: match[1],
-				content: match[0]
+				name: variableName,
+				content: match[0],
+				instanceId: `${variableName}-${instanceNumber}`
 			});
 
 			currentIndex = match.index + match[0].length;
@@ -266,35 +272,13 @@
 	}
 
 	function handleVariableClick(variableName: string) {
-		// Only allow editing of user-editable variables
-		if (!userEditableVariables.has(variableName)) {
-			return;
-		}
-		activeVariable = activeVariable === variableName ? null : variableName;
-		showingHint = null; // Hide hint when editing starts
-		onvariableSelect?.({ variableName, active: activeVariable === variableName });
-	}
-
-	function handleVariableHover(variableName: string | null) {
-		if (activeVariable) return; // Don't show hints while editing
-		hoveredVariable = variableName;
-
-		// Show contextual hint after a brief delay for any variable type
-		if (variableName) {
-			coordinated.setTimeout(
-				() => {
-					if (hoveredVariable === variableName && !activeVariable) {
-						showingHint = variableName;
-					}
-				},
-				400,
-				'gesture',
-				componentId
-			);
-		} else {
-			showingHint = null;
+		// The popover handles opening/closing automatically
+		// We just need to notify the parent component
+		if (userEditableVariables.has(variableName)) {
+			onvariableSelect?.({ variableName, active: true });
 		}
 	}
+
 
 	function handleInput(e: Event, name: string) {
 		const target = e.target as HTMLInputElement | HTMLTextAreaElement;
@@ -312,10 +296,6 @@
 		// No heuristics here – personalization is purely user-driven.
 	}
 
-	function handleBlur() {
-		activeVariable = null;
-		showingHint = null;
-	}
 
 	$effect(() => {
 		if (browser && preview) {
@@ -331,7 +311,7 @@
 	});
 
 	// Update variable styling with more delightful interactions
-	function getVariableClasses(isActive: boolean, variableName: string): string {
+	function getVariableClasses(variableName: string): string {
 		const isSystemVariable = systemVariables.has(variableName);
 		const isUserEditable = userEditableVariables.has(variableName);
 		const isEmpty = !variableValues[variableName] || variableValues[variableName].trim() === '';
@@ -354,9 +334,7 @@
 				align-baseline transform
 			`;
 
-			if (isActive) {
-				return baseClasses + ' bg-blue-50 text-blue-700 ring-1 ring-blue-400';
-			} else if (isEmpty) {
+			if (isEmpty) {
 				return (
 					baseClasses +
 					' bg-purple-50 text-purple-700 ring-1 ring-purple-200 hover:bg-purple-100 hover:ring-purple-300'
@@ -382,26 +360,33 @@
 </script>
 
 <div class="relative flex h-full cursor-text flex-col">
-	<div class="mb-2 flex shrink-0 items-center gap-2">
-		<Mail class="h-4 w-4 shrink-0 text-slate-500" />
-		<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
-		<!-- intentionally minimal; no heuristic meters -->
-		{#if user?.is_verified}
-			<VerificationBadge size="sm" />
-		{/if}
-	</div>
+	<!-- Subject/Title Header -->
+	{#if template?.subject || template?.title}
+		<div class="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-2 text-xs font-medium text-blue-700 mb-1">
+					<Mail class="h-3 w-3" />
+					Subject Line
+				</div>
+				{#if user?.is_verified}
+					<VerificationBadge size="sm" />
+				{/if}
+			</div>
+			<div class="font-medium text-blue-900 text-sm">
+				{template.subject || template.title}
+			</div>
+		</div>
+	{:else}
+		<!-- Fallback header when no subject/title -->
+		<div class="mb-2 flex shrink-0 items-center gap-2">
+			<Mail class="h-4 w-4 shrink-0 text-slate-500" />
+			<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
+			{#if user?.is_verified}
+				<VerificationBadge size="sm" />
+			{/if}
+		</div>
+	{/if}
 
-	<!-- Enhanced Variable Legend with personality -->
-	<div class="mb-3 flex flex-wrap items-center gap-4 text-xs text-slate-600">
-		<div class="flex items-center gap-1.5">
-			<User class="h-3 w-3 text-emerald-600" />
-			<span class="text-emerald-700">Auto-filled from your profile</span>
-		</div>
-		<div class="flex items-center gap-1.5">
-			<Edit3 class="h-3 w-3 text-purple-600" />
-			<span class="text-purple-700">Click to personalize</span>
-		</div>
-	</div>
 
 	<div class="relative flex-1 min-h-[16rem]">
 		<div
@@ -419,95 +404,82 @@
 						{segment.content}
 					{:else if segment.name}
 						<span class="relative inline-block">
-							{#if activeVariable === segment.name && userEditableVariables.has(segment.name)}
-								{#if segment.name.toLowerCase().includes('story') || segment.name
-										.toLowerCase()
-										.includes('reasoning')}
-									<div class="relative" transition:scale={{ duration: 200 }}>
+							<AnimatedPopover
+								id={`variable-${segment.instanceId}`}
+								animationStyle="expand"
+								duration={250}
+							>
+								<svelte:fragment slot="trigger" let:triggerAction>
+									<button
+										use:triggerAction
+										class={getVariableClasses(segment.name)}
+										onclick={() => handleVariableClick(segment.name ?? '')}
+									>
+										{#if systemVariables.has(segment.name)}
+											<User class="h-2.5 w-2.5 text-emerald-600" />
+										{:else if userEditableVariables.has(segment.name) && (!variableValues[segment.name] || variableValues[segment.name].trim() === '')}
+											<Sparkles class="h-2.5 w-2.5 text-purple-600" />
+										{:else if userEditableVariables.has(segment.name)}
+											<Edit3 class="h-2.5 w-2.5 text-blue-600" />
+										{/if}
+										{variableValues[segment.name] || segment.name}
+										{#if segment.name === 'Personal Connection' && (variableValues[segment.name] || '').trim().length > 0}
+											<span
+												class="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
+												>Personalized</span
+											>
+										{/if}
+									</button>
+								</svelte:fragment>
+
+								<!-- User-editable variables with input in popover -->
+								{#if userEditableVariables.has(segment.name)}
+									<div class="mb-2 flex items-center gap-1.5">
+										<Sparkles class="h-3 w-3 text-purple-500" />
+										<span class="text-[11px] font-medium tracking-tight text-slate-700">
+											{variableHints[segment.name]?.prompt || segment.name}
+										</span>
+									</div>
+									
+									{#if segment.name.toLowerCase().includes('connection') || segment.name.toLowerCase().includes('story') || segment.name.toLowerCase().includes('reasoning')}
 										<textarea
 											value={variableValues[segment.name]}
 											oninput={(e) => handleInput(e, segment.name ?? '')}
-											onblur={handleBlur}
-											placeholder={variableHints[segment.name]?.placeholder ||
-												`Enter your ${segment.name}...`}
-											class="w-full min-w-[400px] resize-none overflow-hidden rounded-lg border-2 border-blue-300 bg-white p-3
-													font-sans text-sm shadow-lg focus:border-blue-500 focus:ring-blue-500 focus:ring-opacity-50"
+											placeholder={variableHints[segment.name]?.placeholder || `Enter your ${segment.name}...`}
+											class="w-full min-w-[280px] resize-none rounded-lg border border-slate-300 bg-white p-3
+													font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
 											rows="4"
 										></textarea>
 										<!-- Character count and encouragement -->
 										{#if variableValues[segment.name]?.length > 10}
-											<div
-												class="absolute -bottom-6 right-0 whitespace-nowrap text-xs text-blue-600"
-												transition:fade
-											>
+											<div class="mt-1 text-xs text-purple-600">
 												{variableValues[segment.name].length} characters • Looking great!
 											</div>
 										{/if}
-									</div>
-								{:else}
-									<input
-										value={variableValues[segment.name]}
-										oninput={(e) => handleInput(e, segment.name ?? '')}
-										onblur={handleBlur}
-										placeholder={`Enter ${segment.name}...`}
-										class="inline-block w-64 rounded-lg border-2 border-blue-300 bg-white px-3 py-1.5 align-baseline
-												font-sans text-sm shadow-lg focus:border-blue-500 focus:ring-blue-500 focus:ring-opacity-50"
-									/>
+									{:else}
+										<input
+											value={variableValues[segment.name]}
+											oninput={(e) => handleInput(e, segment.name ?? '')}
+											placeholder={`Enter ${segment.name}...`}
+											class="w-full min-w-[240px] rounded-lg border border-slate-300 bg-white px-3 py-2
+													font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
+										/>
+									{/if}
 								{/if}
-							{:else}
-								<AnimatedPopover
-									id={`variable-${segment.name}`}
-									animationStyle="expand"
-									duration={250}
-								>
-									<svelte:fragment slot="trigger" let:triggerAction>
-										<button
-											use:triggerAction
-											class={getVariableClasses(activeVariable === segment.name, segment.name)}
-											onclick={() => handleVariableClick(segment.name ?? '')}
-										>
-											{#if systemVariables.has(segment.name)}
-												<User class="h-2.5 w-2.5 text-emerald-600" />
-											{:else if userEditableVariables.has(segment.name) && (!variableValues[segment.name] || variableValues[segment.name].trim() === '')}
-												<Sparkles class="h-2.5 w-2.5 text-purple-600" />
-											{/if}
-											{variableValues[segment.name] || segment.name}
-											{#if segment.name === 'Personal Connection' && (variableValues[segment.name] || '').trim().length > 0}
-												<span
-													class="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
-													>Personalized</span
-												>
-											{/if}
-										</button>
-									</svelte:fragment>
 
-									<!-- User-editable hint popup -->
-									{#if userEditableVariables.has(segment.name) && variableHints[segment.name]}
-										<div class="mb-1 flex items-center gap-1.5">
-											<Sparkles class="h-3 w-3 text-purple-500" />
-											<span class="text-[11px] font-medium tracking-tight text-slate-700"
-												>{variableHints[segment.name].prompt}</span
-											>
-										</div>
-										<p class="text-[11px] leading-tight text-slate-500">
-											{variableHints[segment.name].placeholder}
-										</p>
-									{/if}
-
-									<!-- System-populated hint popup -->
-									{#if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
-										<div class="mb-1 flex items-center gap-1.5">
-											<User class="h-3 w-3 text-emerald-500" />
-											<span class="text-[11px] font-medium tracking-tight text-slate-700">
-												{systemVariableHints[segment.name].title}
-											</span>
-										</div>
-										<p class="text-[11px] leading-tight text-slate-500">
-											{systemVariableHints[segment.name].description}
-										</p>
-									{/if}
-								</AnimatedPopover>
-							{/if}
+								<!-- System-populated hint popup -->
+								{#if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
+									<div class="mb-1 flex items-center gap-1.5">
+										<User class="h-3 w-3 text-emerald-500" />
+										<span class="text-[11px] font-medium tracking-tight text-slate-700">
+											{systemVariableHints[segment.name].title}
+										</span>
+									</div>
+									<p class="text-[11px] leading-tight text-slate-500">
+										{systemVariableHints[segment.name].description}
+									</p>
+								{/if}
+							</AnimatedPopover>
 						</span>
 					{/if}
 				{/each}

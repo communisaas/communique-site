@@ -296,11 +296,10 @@
 						<button
 							type="button"
 							onclick={handleShare}
-							class="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700 md:gap-2 md:px-4 md:py-2 md:text-sm"
+							class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 md:px-5 md:py-3 md:text-base"
 						>
-							<Share class="h-3 w-3 md:h-4 md:w-4" />
-							<span class="hidden sm:inline">Share Link</span>
-							<span class="sm:hidden">Share</span>
+							<Share class="h-4 w-4 md:h-5 md:w-5" />
+							<span>Share Link</span>
 						</button>
 					{/if}
 
