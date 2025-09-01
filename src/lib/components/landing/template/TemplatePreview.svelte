@@ -44,6 +44,17 @@
 
 	// Capture user-provided Personal Connection to apply in JS-land before mailto
 	let personalConnectionValue: string = $state('');
+	
+	// Persist and restore personalization data across OAuth flow
+	$effect(() => {
+		if (browser && personalConnectionValue) {
+			// Save to session storage whenever it changes
+			sessionStorage.setItem(`template_${template.id}_personalization`, JSON.stringify({
+				personalConnection: personalConnectionValue,
+				timestamp: Date.now()
+			}));
+		}
+	});
 
 	let previewContainer: HTMLDivElement;
 	let firstFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
@@ -87,6 +98,66 @@
 
 	// Listen for focus move request (when template is selected)
 	onMount(() => {
+		// Restore personalization data if returning from OAuth
+		if (browser) {
+			console.log('🔍 Checking for restoration...', {
+				templateId: template.id,
+				hasUser: !!user,
+				userState: user ? 'loaded' : 'not loaded'
+			});
+			
+			const savedData = sessionStorage.getItem(`template_${template.id}_personalization`);
+			const pendingSend = sessionStorage.getItem(`template_${template.id}_pending_send`);
+			
+			console.log('💾 Session data:', {
+				hasSavedData: !!savedData,
+				pendingSend,
+				savedDataPreview: savedData ? savedData.substring(0, 50) + '...' : 'none'
+			});
+			
+			if (savedData) {
+				try {
+					const parsed = JSON.parse(savedData);
+					// Only restore if data is less than 30 minutes old
+					if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 60 * 1000) {
+						personalConnectionValue = parsed.personalConnection || '';
+						console.log('✅ Restored personalization:', parsed.personalConnection);
+						
+						// Check if we should auto-trigger send flow
+						if (pendingSend === 'true' && user) {
+							// Clear the pending flag
+							sessionStorage.removeItem(`template_${template.id}_pending_send`);
+							// Auto-trigger send flow after a brief delay
+							coordinated.setTimeout(() => {
+								// Apply Personal Connection to template if available
+								const pc = personalConnectionValue?.trim();
+								if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
+									console.log('📝 Applying Personal Connection:', pc);
+									template.message_body = template.message_body.replace(
+										/\[Personal Connection\]/g,
+										pc
+									);
+								}
+								
+								// Let parent handle the full flow (modal + email launch)
+								console.log('📧 Auto-triggering send message...');
+								if (onSendMessage) {
+									onSendMessage();
+								} else {
+									console.error('❌ No onSendMessage callback available');
+								}
+							}, 500, 'auto-send', componentId);
+						}
+					} else {
+						// Data is too old, clean it up
+						sessionStorage.removeItem(`template_${template.id}_personalization`);
+					}
+				} catch (e) {
+					console.error('Failed to restore personalization data:', e);
+				}
+			}
+		}
+		
 		const handleMovePreviewFocus = () => {
 			if (firstFocusableElement) {
 				firstFocusableElement.focus();
@@ -376,6 +447,18 @@
 										componentId
 									);
 								} else {
+									// Save personalization and set pending flag before auth
+									if (browser) {
+										// Ensure personalization is saved
+										if (personalConnectionValue) {
+											sessionStorage.setItem(`template_${template.id}_personalization`, JSON.stringify({
+												personalConnection: personalConnectionValue,
+												timestamp: Date.now()
+											}));
+										}
+										// Set pending send flag
+										sessionStorage.setItem(`template_${template.id}_pending_send`, 'true');
+									}
 									// Let parent handle auth flow
 									if (onSendMessage) {
 										onSendMessage();
@@ -427,6 +510,18 @@
 										componentId
 									);
 								} else {
+									// Save personalization and set pending flag before auth
+									if (browser) {
+										// Ensure personalization is saved
+										if (personalConnectionValue) {
+											sessionStorage.setItem(`template_${template.id}_personalization`, JSON.stringify({
+												personalConnection: personalConnectionValue,
+												timestamp: Date.now()
+											}));
+										}
+										// Set pending send flag
+										sessionStorage.setItem(`template_${template.id}_pending_send`, 'true');
+									}
 									// Let parent handle auth flow
 									if (onSendMessage) {
 										onSendMessage();

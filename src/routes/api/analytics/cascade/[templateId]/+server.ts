@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { analyzeCascade, calculateTemplateR0, calculateActivationVelocity, getTemplateActivationChain, hasActivationData } from '$lib/server/cascade-analytics-fixed';
+import { analyzeCascade, calculateTemplateR0, calculateActivationVelocity, getTemplateActivationChain, hasActivationData } from '$lib/experimental/cascade/cascade-analytics-fixed';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params }) => {

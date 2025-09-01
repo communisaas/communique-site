@@ -320,13 +320,22 @@
 				}
 			}}
 			onSendMessage={async () => {
+				console.log('🎯 onSendMessage called', {
+					hasUser: !!data.user,
+					accessTier: channel?.access_tier,
+					countryCode: channel?.country_code,
+					deliveryMethod: template.deliveryMethod
+				});
+
 				if (channel?.access_tier === 1) {
 					const flow = analyzeEmailFlow(template, data.user);
+					console.log('📊 Email flow analysis (tier 1):', flow);
 					if (flow.nextAction === 'auth') {
 						showAuthModal = true;
 					} else if (flow.nextAction === 'address') {
 						modalActions.open('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+						console.log('📧 Opening email loading modal and launching email');
 						modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
 						setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
 					}
@@ -336,18 +345,22 @@
 				// For now, treat US or certified templates as existing path
 				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'both')) {
 					const flow = analyzeEmailFlow(template, data.user);
+					console.log('📊 Email flow analysis (US/both):', flow);
 					if (flow.nextAction === 'address') {
 						modalActions.open('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+						console.log('📧 Opening email loading modal and launching email');
 						modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
 						setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
 					} else {
+						console.log('🔐 Showing auth modal');
 						showAuthModal = true;
 					}
 					return;
 				}
 
 				// Default: prompt share (no modal implementation yet)
+				console.log('📤 Opening share menu');
 				modalActions.open('share-menu', 'share_menu', { template });
 			}}
 		/>

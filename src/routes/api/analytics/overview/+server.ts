@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
-import { analyzeCascade, hasActivationData } from '$lib/server/cascade-analytics-fixed';
+import { analyzeCascade, hasActivationData } from '$lib/experimental/cascade/cascade-analytics-fixed';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -19,7 +19,26 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const timeframeDays = timeframe === '24h' ? 1 : timeframe === '7d' ? 7 : 30;
 		const startDate = new Date(Date.now() - timeframeDays * 24 * 60 * 60 * 1000);
 		
-		// Get user's templates
+		// Get real-time analytics data from our new system
+		const userSessions = await db.user_session.findMany({
+			where: {
+				user_id: userId,
+				session_start: {
+					gte: startDate
+				}
+			},
+			include: {
+				analytics_events: {
+					where: {
+						timestamp: {
+							gte: startDate
+						}
+					}
+				}
+			}
+		});
+		
+		// Get user's templates with analytics
 		const userTemplates = await db.template.findMany({
 			where: {
 				user_id: userId,
@@ -34,11 +53,18 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 							gte: startDate
 						}
 					}
+				},
+				analytics_events: {
+					where: {
+						timestamp: {
+							gte: startDate
+						}
+					}
 				}
 			}
 		});
 		
-		// Calculate overview metrics
+		// Calculate enhanced overview metrics
 		const totalTemplates = userTemplates.length;
 		const activeCampaigns = userTemplates.filter(t => 
 			t.template_campaign.some(c => c.status === 'delivered' || c.status === 'pending')
@@ -46,6 +72,21 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		
 		const totalActivations = userTemplates.reduce((sum, template) => 
 			sum + template.template_campaign.filter(c => c.status === 'delivered').length, 0
+		);
+		
+		// Calculate analytics metrics
+		const totalSessions = userSessions.length;
+		const totalPageViews = userSessions.reduce((sum, session) => sum + session.page_views, 0);
+		const totalEvents = userSessions.reduce((sum, session) => sum + session.events_count, 0);
+		const conversionRate = totalSessions > 0 ? userSessions.filter(s => s.converted).length / totalSessions : 0;
+		
+		// Template interaction analytics
+		const templateViews = userTemplates.reduce((sum, template) => 
+			sum + template.analytics_events.filter(e => e.event_name === 'template_viewed').length, 0
+		);
+		
+		const templateShares = userTemplates.reduce((sum, template) => 
+			sum + template.analytics_events.filter(e => e.event_name === 'template_shared').length, 0
 		);
 		
 		// Calculate viral coefficients for each template (sample calculation)
@@ -102,35 +143,56 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Sort top performers by viral coefficient
 		topPerformers.sort((a, b) => b.viral_coefficient - a.viral_coefficient);
 		
-		// Generate recent activity (mock data - in real implementation, track actual events)
-		const recentActivity = [
-			{
-				timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-				event: 'activation_spike',
-				template_id: userTemplates[0]?.id || 'unknown',
-				template_title: userTemplates[0]?.title || 'Unknown Template'
+		// Generate recent activity from real analytics events
+		const recentEvents = await db.analytics_event.findMany({
+			where: {
+				user_id: userId,
+				timestamp: {
+					gte: startDate
+				},
+				event_name: {
+					in: ['template_viewed', 'template_used', 'template_shared', 'auth_completed']
+				}
 			},
-			{
-				timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-				event: 'template_created',
-				template_id: userTemplates[1]?.id || 'unknown',
-				template_title: userTemplates[1]?.title || 'New Template'
+			include: {
+				template: {
+					select: {
+						title: true
+					}
+				}
 			},
-			{
-				timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(),
-				event: 'campaign_launched',
-				template_id: userTemplates[0]?.id || 'unknown',
-				template_title: userTemplates[0]?.title || 'Campaign Template'
-			}
-		].filter(activity => activity.template_id !== 'unknown');
+			orderBy: {
+				timestamp: 'desc'
+			},
+			take: 10
+		});
+		
+		const recentActivity = recentEvents.map(event => ({
+			timestamp: event.timestamp.toISOString(),
+			event: event.event_name,
+			template_id: event.template_id,
+			template_title: event.template?.title || 'Unknown Template',
+			event_properties: event.event_properties
+		}));
 		
 		return json({
 			success: true,
 			overview: {
+				// Core metrics
 				total_templates: totalTemplates,
 				active_campaigns: activeCampaigns,
 				total_activations: totalActivations,
 				avg_viral_coefficient: avgViralCoefficient,
+				
+				// Analytics metrics
+				total_sessions: totalSessions,
+				total_page_views: totalPageViews,
+				total_events: totalEvents,
+				conversion_rate: conversionRate,
+				template_views: templateViews,
+				template_shares: templateShares,
+				
+				// Performance data
 				top_performers: topPerformers.slice(0, 5),
 				recent_activity: recentActivity
 			},

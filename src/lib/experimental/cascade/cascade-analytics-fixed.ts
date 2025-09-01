@@ -1,4 +1,4 @@
-import { db } from './db';
+import { db } from '$lib/core/db';
 
 export interface CascadeMetrics {
     r0: number;                    // Average users activated per initial user
