@@ -8,8 +8,14 @@ interface Popover {
 
 const createPopoverStore = () => {
 	const { subscribe, update } = writable<Popover | null>(null);
+	
+	// Track pending close timeouts
+	const pendingCloseTimeouts = new Map<string, number>();
 
 	const open = (id: string) => {
+		// Cancel any pending close for this popover
+		cancelClose(id);
+		
 		update((current) => {
 			if (current && current.id !== id && current.state !== 'closing') {
 				// Close the current popover before opening the new one
@@ -30,12 +36,36 @@ const createPopoverStore = () => {
 	};
 
 	const close = (id: string) => {
+		// Cancel any pending close timeout first
+		cancelClose(id);
+		
 		update((current) => {
 			if (current && current.id === id && (current.state === 'open' || current.state === 'opening')) {
 				return { ...current, state: 'closing' };
 			}
 			return current;
 		});
+	};
+
+	const closeWithDelay = (id: string, delay: number = 150) => {
+		// Cancel any existing timeout for this popover
+		cancelClose(id);
+		
+		// Set a new timeout
+		const timeoutId = setTimeout(() => {
+			pendingCloseTimeouts.delete(id);
+			close(id);
+		}, delay) as unknown as number;
+		
+		pendingCloseTimeouts.set(id, timeoutId);
+	};
+
+	const cancelClose = (id: string) => {
+		const timeoutId = pendingCloseTimeouts.get(id);
+		if (timeoutId) {
+			clearTimeout(timeoutId);
+			pendingCloseTimeouts.delete(id);
+		}
 	};
 
 	const closed = (id: string) => {
@@ -51,6 +81,8 @@ const createPopoverStore = () => {
 		subscribe,
 		open,
 		close,
+		closeWithDelay,
+		cancelClose,
 		closed
 	};
 };

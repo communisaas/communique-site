@@ -103,9 +103,19 @@
 
 		// Global click handler to close popover when clicking outside
 		const handleGlobalClick = (event: MouseEvent) => {
+			// Don't handle if this was a touch interaction
+			if (isTouch) return;
+			
 			if (!containerElement || !popoverElement) return;
 
 			const target = event.target as Node;
+			
+			// Don't close if clicking a form element inside the popover
+			if (popoverElement.contains(target) && isFormElement(event.target)) {
+				return;
+			}
+			
+			// Close if clicking outside both container and popover
 			if (!containerElement.contains(target) && !popoverElement.contains(target)) {
 				if ($popoverStore?.id === id) {
 					popoverStore.close(id);
@@ -114,9 +124,30 @@
 		};
 
 		const clickCleanup = addDocumentEventListener('click', handleGlobalClick, true);
+		
+		// Global touch handler to close popover when tapping outside
+		const handleGlobalTouch = (event: TouchEvent) => {
+			if (!isTouch || !containerElement || !popoverElement) return;
+			
+			const target = event.target as Node;
+			
+			// Don't close if touching a form element inside the popover
+			if (popoverElement.contains(target) && isFormElement(event.target)) {
+				return;
+			}
+			
+			// Close if touching outside both container and popover
+			if (!containerElement.contains(target) && !popoverElement.contains(target)) {
+				if ($popoverStore?.id === id) {
+					popoverStore.close(id);
+				}
+			}
+		};
+		
+		const touchCleanup = addDocumentEventListener('touchstart', handleGlobalTouch, { capture: true, passive: false });
 
 		// Store cleanup functions
-		cleanupFunctions = [scrollCleanup, resizeCleanup, clickCleanup].filter(Boolean) as (() => void)[];
+		cleanupFunctions = [scrollCleanup, resizeCleanup, clickCleanup, touchCleanup].filter(Boolean) as (() => void)[];
 
 		return () => {
 			cleanupFunctions.forEach(cleanup => cleanup());
@@ -128,12 +159,84 @@
 		cleanupFunctions.forEach(cleanup => cleanup());
 	});
 
+	let isTouch = false;
+	let touchTimeout: number | null = null;
+
 	async function handleMouseEnter() {
-		popoverStore.open(id);
+		if (!isTouch) {
+			popoverStore.open(id);
+		}
 	}
 
 	async function handleMouseLeave() {
-		popoverStore.close(id);
+		if (!isTouch) {
+			popoverStore.closeWithDelay(id, 150);
+		}
+	}
+
+	function handlePopoverMouseEnter() {
+		if (!isTouch) {
+			// Cancel any pending close when mouse enters the popover
+			popoverStore.cancelClose(id);
+		}
+	}
+
+	function handlePopoverMouseLeave() {
+		if (!isTouch) {
+			// Close the popover when mouse leaves the popover itself
+			popoverStore.closeWithDelay(id, 150);
+		}
+	}
+
+	// Helper function to check if target is a form element
+	function isFormElement(target: EventTarget | null): boolean {
+		if (!target || !(target instanceof Element)) return false;
+		
+		const formTags = ['input', 'textarea', 'select', 'button'];
+		const tagName = target.tagName.toLowerCase();
+		
+		return formTags.includes(tagName) || 
+			   target.contentEditable === 'true' ||
+			   target.closest('input, textarea, select, button') !== null;
+	}
+
+	function handleTouchStart(event: TouchEvent) {
+		isTouch = true;
+		
+		// Check if the touch is on a form element INSIDE the popover content
+		// (not the trigger button itself)
+		const target = event.target as Element;
+		if (popoverElement && popoverElement.contains(target) && isFormElement(event.target)) {
+			// Don't close popover when interacting with form elements inside it
+			return;
+		}
+		
+		event.stopPropagation();
+		
+		// Clear any existing timeout
+		if (touchTimeout) {
+			clearTimeout(touchTimeout);
+		}
+		
+		// Toggle popover on tap
+		if ($popoverStore?.id === id) {
+			popoverStore.close(id);
+		} else {
+			popoverStore.open(id);
+		}
+		
+		// Reset touch flag after a longer delay to prevent immediate closure
+		touchTimeout = setTimeout(() => {
+			isTouch = false;
+			touchTimeout = null;
+		}, 1000) as unknown as number;
+	}
+
+	function handleTouchEnd(event: TouchEvent) {
+		// Only prevent mouse events for non-form elements
+		if (!isFormElement(event.target)) {
+			event.preventDefault();
+		}
 	}
 
 	async function handleAnimationOut() {
@@ -208,9 +311,12 @@
 
 <div
 	bind:this={containerElement}
-	class="relative inline-block touch-manipulation"
+	class="relative inline-block"
+	style="touch-action: manipulation;"
 	onmouseenter={handleMouseEnter}
 	onmouseleave={handleMouseLeave}
+	ontouchstart={handleTouchStart}
+	ontouchend={handleTouchEnd}
 	role="button"
 	tabindex="0"
 	aria-haspopup="true"
@@ -224,7 +330,17 @@
 			class="fixed z-[100] min-w-[200px] max-w-[280px] whitespace-normal
 				   rounded-lg border border-gray-200 bg-white shadow-lg sm:max-w-[320px]
 				   {isPositioned ? 'transition-opacity duration-150' : 'transition-none'}"
-			style="top: 0; left: 0;"
+			style="top: 0; left: 0; touch-action: auto;"
+			onmouseenter={handlePopoverMouseEnter}
+			onmouseleave={handlePopoverMouseLeave}
+			ontouchstart={(e) => {
+				// Prevent popover from closing when touching inside it
+				e.stopPropagation();
+			}}
+			onclick={(e) => {
+				// Prevent popover from closing when clicking inside it
+				e.stopPropagation();
+			}}
 			in:scale={{
 				duration,
 				start: animations[animationStyle].in.start,
