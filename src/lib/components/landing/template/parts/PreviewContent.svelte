@@ -1,0 +1,200 @@
+<script lang="ts">
+	import type { Template } from '$lib/types/template';
+	import { Users, ClipboardCopy, ClipboardCheck } from '@lucide/svelte';
+	import TemplateTips from '../TemplateTips.svelte';
+	import MessagePreview from '../MessagePreview.svelte';
+	import Popover from '$lib/components/ui/Popover.svelte';
+	import { extractRecipientEmails } from '$lib/types/templateConfig';
+	import { fade } from 'svelte/transition';
+	import { coordinated } from '$lib/utils/timerCoordinator';
+	
+	let {
+		template,
+		inModal,
+		user,
+		onScroll,
+		personalConnectionValue = $bindable(),
+		onScrollStateChange,
+		onTouchStateChange,
+		componentId
+	}: {
+		template: Template;
+		inModal: boolean;
+		user: { id: string; name: string | null } | null;
+		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
+		personalConnectionValue: string;
+		onScrollStateChange: (scrollState: unknown) => void;
+		onTouchStateChange: (touchState: unknown) => void;
+		componentId: string;
+	} = $props();
+	
+	const recipients = $derived(extractRecipientEmails(template?.recipient_config));
+	const recipientCount = $derived(recipients.length);
+	const recipientPreview = $derived(recipients.slice(0, inModal ? 1 : 2).join(' • '));
+	
+	let copied = $state(false);
+	let copyTimeout: string | null = null;
+	
+	async function copyToClipboard() {
+		const csvEmails = recipients.join(', ');
+		
+		try {
+			if (navigator.clipboard && window.isSecureContext) {
+				await navigator.clipboard.writeText(csvEmails);
+			} else {
+				// Fallback for older browsers
+				const textArea = document.createElement('textarea');
+				textArea.value = csvEmails;
+				textArea.style.position = 'fixed';
+				textArea.style.left = '-999999px';
+				textArea.style.top = '-999999px';
+				document.body.appendChild(textArea);
+				textArea.focus();
+				textArea.select();
+				document.execCommand('copy');
+				textArea.remove();
+			}
+			
+			// Show success feedback
+			copied = true;
+			
+			// Clear any existing timeout
+			if (copyTimeout) {
+				coordinated.autoClose(() => {}, 0, componentId);
+			}
+			
+			// Reset after 2 seconds
+			copyTimeout = coordinated.feedback(
+				() => {
+					copied = false;
+				},
+				2000,
+				componentId
+			);
+		} catch (err) {}
+	}
+</script>
+
+<div class="mb-4 shrink-0">
+	<TemplateTips isCertified={template.type === 'certified'} />
+</div>
+
+<!-- Share Link Button - Always available -->
+<div class="mb-4 flex shrink-0 items-center gap-2">
+	<button
+		onclick={async () => {
+			const shareUrl = `${window.location.origin}/${template.slug}`;
+			try {
+				await navigator.clipboard.writeText(shareUrl);
+				copied = true;
+				if (copyTimeout) coordinated.autoClose(() => {}, 0, componentId);
+				copyTimeout = coordinated.feedback(
+					() => {
+						copied = false;
+					},
+					2000,
+					componentId
+				);
+			} catch (err) {}
+		}}
+		class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
+	>
+		{#if copied}
+			<ClipboardCheck class="h-3 w-3" />
+			Copied!
+		{:else}
+			<ClipboardCopy class="h-3 w-3" />
+			Share Link
+		{/if}
+	</button>
+</div>
+
+{#if template.type === 'direct' && recipients.length}
+	<div class="mb-4 flex shrink-0 items-center gap-2 text-sm text-slate-600">
+		<Users class="h-4 w-4 text-slate-500" />
+		<div class="flex items-center gap-1.5 overflow-hidden">
+			<!-- Only show preview on larger screens -->
+			<span class="hidden truncate text-slate-600 sm:block">
+				{recipientPreview}
+			</span>
+
+			<!-- Recipients popover -->
+			<Popover let:open>
+				<svelte:fragment slot="trigger" let:triggerAction>
+					<button
+						use:triggerAction
+						class="inline-flex cursor-alias items-center rounded-md bg-slate-100
+                               px-1.5 py-0.5 font-medium
+                               text-slate-600 transition-all
+                               duration-200
+                               hover:bg-slate-200 hover:text-slate-800"
+					>
+						<!-- Different text for small vs larger screens -->
+						<span class="max-w-[120px] cursor-text truncate sm:hidden">
+							{recipientCount}
+							{recipientCount === 1 ? 'Recipient' : 'Recipients'}
+						</span>
+						<span class="hidden max-w-[120px] truncate sm:inline">
+							+{recipientCount - (inModal ? 1 : 2)} more
+						</span>
+					</button>
+				</svelte:fragment>
+
+				<div class="w-[280px] max-w-[calc(100vw-2rem)] cursor-default p-4">
+					<div class="flex items-start gap-4 text-sm sm:text-base">
+						<button
+							onclick={(e) => {
+								e.stopPropagation();
+								copyToClipboard();
+							}}
+							class="shrink-0 cursor-pointer rounded-lg bg-blue-50 p-2 transition-all
+                                   duration-200 hover:bg-blue-100 focus:outline-none focus:ring-2
+                                   focus:ring-blue-200 focus:ring-offset-2 active:bg-blue-200"
+							aria-label="Copy all recipient emails to clipboard"
+						>
+							{#if copied}
+								<div in:fade={{ duration: 200 }}>
+									<ClipboardCheck class="h-6 w-6 text-green-500" />
+								</div>
+							{:else}
+								<div in:fade={{ duration: 200 }}>
+									<ClipboardCopy class="h-6 w-6 text-blue-400" />
+								</div>
+							{/if}
+						</button>
+						<div class="min-w-0 flex-1">
+							<h3 class="mb-1 truncate font-medium text-slate-900">
+								All Recipients ({recipientCount})
+							</h3>
+							<div class="cursor-text space-y-1 text-sm text-slate-600">
+								{#each recipients as email}
+									<div class="truncate">{email}</div>
+								{/each}
+							</div>
+						</div>
+					</div>
+				</div>
+			</Popover>
+		</div>
+	</div>
+{/if}
+
+<div
+	class={inModal
+		? 'min-h-0 flex-1 touch-pan-y overflow-hidden'
+		: 'min-h-0 flex-1 touch-pan-y overflow-hidden'}
+>
+	<MessagePreview
+		preview={template.message_body}
+		{template}
+		{user}
+		{onScroll}
+		onscrollStateChange={onScrollStateChange}
+		ontouchStateChange={onTouchStateChange}
+		onvariableChange={(e) => {
+			if (e?.name === 'Personal Connection') {
+				personalConnectionValue = e.value ?? '';
+			}
+		}}
+	/>
+</div>

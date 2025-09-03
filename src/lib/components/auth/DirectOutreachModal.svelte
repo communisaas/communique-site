@@ -1,20 +1,12 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
-	import { fade, fly, scale } from 'svelte/transition';
-	import { quintOut, backOut } from 'svelte/easing';
+	import { fly } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
-	import { 
-		X, 
-		User,
-		Building2,
-		MapPin,
-		CheckCircle2,
-		Users,
-		Briefcase,
-		Home
-	} from '@lucide/svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { createModalStore } from '$lib/stores/modalSystem';
+	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
+	import { RoleSelector, ConnectionPicker, VerificationStep } from './steps';
 	
 	let {
 		template
@@ -38,6 +30,9 @@
 		};
 	}>();
 	
+	// Modal system integration
+	const modalStore = createModalStore('direct-outreach-modal', 'template_modal');
+	
 	// Component ID for timer coordination
 	const componentId = 'direct-outreach-modal-' + Math.random().toString(36).substring(2, 15);
 	
@@ -45,17 +40,22 @@
 	let currentStep: Step = $state('role');
 	let isTransitioning = $state(false);
 	
-	// Prevent background scrolling when modal is open
+	// Modal control functions
+	let unifiedModal: UnifiedModal;
+
+	export function open(data?: unknown) {
+		unifiedModal?.open(data);
+	}
+
+	export function close() {
+		unifiedModal?.close();
+	}
+
 	onMount(() => {
-		if (browser) {
-			document.body.style.overflow = 'hidden';
-		}
+		// Modal system handles body scroll locking
 	});
 	
 	onDestroy(() => {
-		if (browser) {
-			document.body.style.overflow = '';
-		}
 		useTimerCleanup(componentId)();
 	});
 	
@@ -102,6 +102,7 @@
 	
 	function handleClose() {
 		dispatch('close');
+		modalStore.close();
 	}
 	
 	function validateRole(): boolean {
@@ -181,75 +182,9 @@
 		});
 	}
 	
-	// Role options based on template context
-	const roleOptions = $derived(getRoleOptions(templateContext));
-	const connectionOptions = $derived(getConnectionOptions(templateContext));
-	
-	function getRoleOptions(context: string) {
-		const baseOptions = [
-			'Resident',
-			'Business Owner', 
-			'Employee',
-			'Student',
-			'Community Volunteer'
-		];
-		
-		if (context === 'corporate') {
-			return [
-				'Customer',
-				'Employee', 
-				'Shareholder',
-				'Business Partner',
-				'Industry Professional',
-				...baseOptions
-			];
-		}
-		
-		if (context === 'local-government') {
-			return [
-				'Local Resident',
-				'Voter',
-				'Taxpayer',
-				'Business Owner',
-				'Parent',
-				'Community Leader',
-				...baseOptions
-			];
-		}
-		
-		return baseOptions;
-	}
-	
-	function getConnectionOptions(context: string) {
-		if (context === 'corporate') {
-			return [
-				'Customer/Client',
-				'Employee',
-				'Shareholder/Investor', 
-				'Business Partner',
-				'Community Member Affected',
-				'Industry Stakeholder'
-			];
-		}
-		
-		if (context === 'local-government') {
-			return [
-				'Local Resident',
-				'Voter in District',
-				'Taxpayer',
-				'Business in Area',
-				'Family Affected',
-				'Community Organization'
-			];
-		}
-		
-		return [
-			'Directly Affected',
-			'Community Member',
-			'Concerned Citizen',
-			'Professional Stakeholder',
-			'Advocate/Supporter'
-		];
+	// Step handlers
+	function handleCancel() {
+		dispatch('close');
 	}
 	
 	function handleKeydown(event: KeyboardEvent) {
@@ -264,38 +199,15 @@
 	}
 </script>
 
-<div 
-	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-	onclick={handleClose}
-	in:fade={{ duration: 300, easing: quintOut }}
-	out:fade={{ duration: 200 }}
+<UnifiedModal 
+	bind:this={unifiedModal}
+	id="direct-outreach-modal"
+	type="template_modal"
+	size="sm"
+	closeOnBackdrop={true}
+	closeOnEscape={true}
 >
-	<div
-		class="fixed inset-x-4 inset-y-4 mx-auto flex max-w-md items-center justify-center"
-		onclick={(e) => { e.stopPropagation(); }}
-	>
-		<div
-			class="w-full max-h-full overflow-y-auto bg-white rounded-2xl shadow-2xl"
-			in:scale={{ 
-				duration: 400, 
-				easing: backOut,
-				start: 0.9,
-				opacity: 0.5
-			}}
-			out:scale={{ 
-				duration: 200, 
-				easing: quintOut,
-				start: 0.95
-			}}
-		>
-		<!-- Close Button -->
-		<button
-			onclick={handleClose}
-			class="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
-		>
-			<X class="h-5 w-5" />
-		</button>
-		
+	{#snippet children(data)}
 		<!-- Progress Indicator -->
 		<div class="flex justify-center pt-6 pb-4">
 			<div class="flex gap-2">
@@ -308,7 +220,7 @@
 									? 'w-8 bg-blue-300' 
 									: 'w-8 bg-slate-200'
 						}"
-					/>
+					></div>
 				{/each}
 			</div>
 		</div>
@@ -323,288 +235,45 @@
 					onkeydown={handleKeydown}
 				>
 					{#if currentStep === 'role'}
-						<!-- Role & Credentials Step -->
-						<div class="text-center mb-6">
-							<div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
-								<User class="h-6 w-6 text-blue-600" />
-							</div>
-							<h2 class="text-xl font-bold text-slate-900 mb-2">
-								Strengthen your voice
-							</h2>
-							<p class="text-slate-600">
-								Adding your role and credentials increases your message's impact
-							</p>
-						</div>
-						
-						<div class="space-y-4 mb-6">
-							<div>
-								<label class="block text-sm font-medium text-slate-700 mb-3">
-									What's your role?
-								</label>
-								<div class="grid grid-cols-2 gap-2">
-									{#each roleOptions as role}
-										<button
-											type="button"
-											onclick={() => selectedRole = role.toLowerCase().replace(/\s+/g, '-')}
-											class="text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
-												selectedRole === role.toLowerCase().replace(/\s+/g, '-') 
-													? 'border-blue-500 bg-blue-50 text-blue-900' 
-													: 'border-slate-300 text-slate-700'
-											}"
-										>
-											{role}
-										</button>
-									{/each}
-									<button
-										type="button"
-										onclick={() => selectedRole = 'other'}
-										class="text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
-											selectedRole === 'other' 
-												? 'border-blue-500 bg-blue-50 text-blue-900' 
-												: 'border-slate-300 text-slate-700'
-										}"
-									>
-										Other
-									</button>
-								</div>
-								
-								{#if selectedRole === 'other'}
-									<input
-										type="text"
-										bind:value={customRole}
-										placeholder="Enter your role"
-										class="mt-2 w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-									/>
-								{/if}
-							</div>
-							
-							<div>
-								<label for="organization" class="block text-sm font-medium text-slate-700 mb-2">
-									Organization (optional but recommended)
-								</label>
-								<input
-									id="organization"
-									type="text"
-									bind:value={organization}
-									placeholder="Company, school, or organization"
-									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-								/>
-								<p class="mt-1 text-xs text-slate-500">
-									Adding your organization increases credibility
-								</p>
-							</div>
-							
-							{#if roleError}
-								<p class="text-sm text-red-600">{roleError}</p>
-							{/if}
-						</div>
-						
-						<div class="flex gap-3">
-							<Button 
-								variant="secondary" 
-								size="sm" 
-								classNames="flex-1"
-								onclick={handleClose}
-							>
-								Cancel
-							</Button>
-							<Button 
-								variant="primary" 
-								size="sm" 
-								classNames="flex-1"
-								onclick={nextStep}
-								disabled={isTransitioning}
-							>
-								Continue
-							</Button>
-						</div>
-						
+						<RoleSelector 
+							{templateContext}
+							bind:selectedRole
+							bind:customRole
+							bind:organization
+							bind:roleError
+							{isTransitioning}
+							onNext={nextStep}
+							onCancel={handleCancel}
+						/>
 					{:else if currentStep === 'connection'}
-						<!-- Connection & Context Step -->
-						<div class="text-center mb-6">
-							<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
-								{#if isLocalGovernment}
-									<Home class="h-6 w-6 text-green-600" />
-								{:else if isCorporate}
-									<Building2 class="h-6 w-6 text-green-600" />
-								{:else}
-									<Users class="h-6 w-6 text-green-600" />
-								{/if}
-							</div>
-							<h2 class="text-xl font-bold text-slate-900 mb-2">
-								Your connection
-							</h2>
-							<p class="text-slate-600">
-								{#if isLocalGovernment}
-									How are you connected to this local issue?
-								{:else if isCorporate}
-									What's your relationship to this organization?
-								{:else}
-									How does this issue affect you?
-								{/if}
-							</p>
-						</div>
-						
-						<div class="space-y-4 mb-6">
-							<div>
-								<label class="block text-sm font-medium text-slate-700 mb-3">
-									Select your connection:
-								</label>
-								<div class="space-y-2">
-									{#each connectionOptions as connection}
-										<button
-											type="button"
-											onclick={() => selectedConnection = connection.toLowerCase().replace(/\s+/g, '-')}
-											class="w-full text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
-												selectedConnection === connection.toLowerCase().replace(/\s+/g, '-') 
-													? 'border-blue-500 bg-blue-50 text-blue-900' 
-													: 'border-slate-300 text-slate-700'
-											}"
-										>
-											{connection}
-										</button>
-									{/each}
-									<button
-										type="button"
-										onclick={() => selectedConnection = 'other'}
-										class="w-full text-left p-3 border rounded-lg text-sm transition-all hover:border-blue-300 {
-											selectedConnection === 'other' 
-												? 'border-blue-500 bg-blue-50 text-blue-900' 
-												: 'border-slate-300 text-slate-700'
-										}"
-									>
-										Other
-									</button>
-								</div>
-								
-								{#if selectedConnection === 'other'}
-									<input
-										type="text"
-										bind:value={connectionDetails}
-										placeholder="Describe your connection"
-										class="mt-2 w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-									/>
-								{/if}
-							</div>
-							
-							{#if isLocalGovernment}
-								<div>
-									<label for="location" class="block text-sm font-medium text-slate-700 mb-2">
-										Location (optional)
-									</label>
-									<input
-										id="location"
-										type="text"
-										bind:value={location}
-										placeholder="City, State"
-										class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-									/>
-									<p class="mt-1 text-xs text-slate-500">
-										Helps verify you're in the jurisdiction
-									</p>
-								</div>
-							{/if}
-							
-							{#if connectionError}
-								<p class="text-sm text-red-600">{connectionError}</p>
-							{/if}
-						</div>
-						
-						<div class="flex gap-3">
-							<Button 
-								variant="secondary" 
-								size="sm" 
-								classNames="flex-1"
-								onclick={prevStep}
-								disabled={isTransitioning}
-							>
-								Back
-							</Button>
-							<Button 
-								variant="primary" 
-								size="sm" 
-								classNames="flex-1"
-								onclick={nextStep}
-								disabled={isTransitioning}
-							>
-								Continue
-							</Button>
-						</div>
-						
+						<ConnectionPicker 
+							{templateContext}
+							{isLocalGovernment}
+							{isCorporate}
+							bind:selectedConnection
+							bind:connectionDetails
+							bind:location
+							bind:connectionError
+							{isTransitioning}
+							onNext={nextStep}
+							onPrev={prevStep}
+						/>
 					{:else}
-						<!-- Verification & Send Step -->
-						<div class="text-center mb-6">
-							<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
-								<CheckCircle2 class="h-6 w-6 text-green-600" />
-							</div>
-							<h2 class="text-xl font-bold text-slate-900 mb-2">
-								Ready to send
-							</h2>
-							<p class="text-slate-600">
-								Your credentials strengthen your message's impact
-							</p>
-						</div>
-						
-						<!-- Summary Card -->
-						<div class="bg-slate-50 rounded-lg p-4 mb-6 space-y-3">
-							<div class="flex items-start justify-between">
-								<span class="text-sm text-slate-600">Role:</span>
-								<span class="text-sm font-medium text-slate-900 text-right max-w-[60%]">
-									{selectedRole === 'other' ? customRole : selectedRole.replace(/-/g, ' ')}
-									{#if organization}
-										<br><span class="text-slate-600">at {organization}</span>
-									{/if}
-								</span>
-							</div>
-							<div class="flex items-start justify-between">
-								<span class="text-sm text-slate-600">Connection:</span>
-								<span class="text-sm font-medium text-slate-900 text-right max-w-[60%]">
-									{selectedConnection === 'other' ? connectionDetails : selectedConnection.replace(/-/g, ' ')}
-								</span>
-							</div>
-							{#if location}
-								<div class="flex items-start justify-between">
-									<span class="text-sm text-slate-600">Location:</span>
-									<span class="text-sm font-medium text-slate-900">{location}</span>
-								</div>
-							{/if}
-							<div class="flex items-start justify-between">
-								<span class="text-sm text-slate-600">Template:</span>
-								<span class="text-sm font-medium text-slate-900 text-right max-w-[60%]">{template.title}</span>
-							</div>
-						</div>
-						
-						<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
-							<p class="text-sm text-blue-800">
-								💡 These details help decision-makers understand why your voice matters and increases the likelihood of a response.
-							</p>
-						</div>
-						
-						<div class="flex gap-3">
-							<Button 
-								variant="secondary" 
-								size="sm" 
-								classNames="flex-1"
-								onclick={prevStep}
-								disabled={isTransitioning}
-							>
-								Back
-							</Button>
-							<Button 
-								variant="primary" 
-								size="sm" 
-								classNames="flex-1"
-								onclick={handleComplete}
-								disabled={isTransitioning}
-							>
-								<CheckCircle2 class="mr-1 h-4 w-4" />
-								Send Message
-							</Button>
-						</div>
+						<VerificationStep 
+							{template}
+							{selectedRole}
+							{customRole}
+							{organization}
+							{selectedConnection}
+							{connectionDetails}
+							{location}
+							{isTransitioning}
+							onPrev={prevStep}
+							onComplete={handleComplete}
+						/>
 					{/if}
 				</div>
 			{/key}
 		</div>
-		</div>
-	</div>
-</div>
+	{/snippet}
+</UnifiedModal>
