@@ -1,4 +1,3 @@
-import { writable, get } from 'svelte/store';
 import { coordinated } from '$lib/utils/timerCoordinator';
 
 interface Popover {
@@ -6,8 +5,8 @@ interface Popover {
 	state: 'opening' | 'open' | 'closing' | 'closed';
 }
 
-const createPopoverStore = () => {
-	const { subscribe, update } = writable<Popover | null>(null);
+function createPopoverStore() {
+	let currentPopover = $state<Popover | null>(null);
 	
 	// Track pending close timeouts
 	const pendingCloseTimeouts = new Map<string, number>();
@@ -16,22 +15,18 @@ const createPopoverStore = () => {
 		// Cancel any pending close for this popover
 		cancelClose(id);
 		
-		update((current) => {
-			if (current && current.id !== id && current.state !== 'closing') {
-				// Close the current popover before opening the new one
-				return { id: current.id, state: 'closing' };
-			}
-			return { id, state: 'opening' };
-		});
+		if (currentPopover && currentPopover.id !== id && currentPopover.state !== 'closing') {
+			// Close the current popover before opening the new one
+			currentPopover = { id: currentPopover.id, state: 'closing' };
+		} else {
+			currentPopover = { id, state: 'opening' };
+		}
 
 		// A short delay to allow the closing animation of the previous popover
 		coordinated.transition(() => {
-			update((current) => {
-				if (current?.id === id && current.state === 'opening') {
-					return { id, state: 'open' };
-				}
-				return current;
-			});
+			if (currentPopover?.id === id && currentPopover.state === 'opening') {
+				currentPopover = { id, state: 'open' };
+			}
 		}, 50, `popover_${id}`);
 	};
 
@@ -39,12 +34,9 @@ const createPopoverStore = () => {
 		// Cancel any pending close timeout first
 		cancelClose(id);
 		
-		update((current) => {
-			if (current && current.id === id && (current.state === 'open' || current.state === 'opening')) {
-				return { ...current, state: 'closing' };
-			}
-			return current;
-		});
+		if (currentPopover && currentPopover.id === id && (currentPopover.state === 'open' || currentPopover.state === 'opening')) {
+			currentPopover = { ...currentPopover, state: 'closing' };
+		}
 	};
 
 	const closeWithDelay = (id: string, delay: number = 150) => {
@@ -69,22 +61,19 @@ const createPopoverStore = () => {
 	};
 
 	const closed = (id: string) => {
-		update((current) => {
-			if (current && current.id === id && current.state === 'closing') {
-				return null;
-			}
-			return current;
-		});
+		if (currentPopover && currentPopover.id === id && currentPopover.state === 'closing') {
+			currentPopover = null;
+		}
 	};
 
 	return {
-		subscribe,
+		get popover() { return currentPopover; },
 		open,
 		close,
 		closeWithDelay,
 		cancelClose,
 		closed
 	};
-};
+}
 
 export const popover = createPopoverStore();

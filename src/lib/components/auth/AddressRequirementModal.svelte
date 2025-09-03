@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { createModalStore } from '$lib/stores/modalSystem';
+	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
 	import { AddressForm, AddressVerification, SelfXyzVerification, CompletionStep } from './address-steps';
 

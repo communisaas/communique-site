@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { templateStore, selectedTemplate, isLoading, hasError } from '$lib/stores/templates';
+	import { templateStore } from '$lib/stores/templates.svelte';
 	import Hero from '$lib/components/landing/hero/Hero.svelte';
 	import ActivityFeed from '$lib/components/landing/activity/ActivityFeed.svelte';
 	import ChannelExplainer from '$lib/components/landing/channel/ChannelExplainer.svelte';
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
-	import Modal from '$lib/components/ui/Modal.svelte';
-	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
+	import TouchModal from '$lib/components/ui/TouchModal.svelte';
+	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
-	import { modalActions, isModalOpen, currentTemplate } from '$lib/stores/modalSystem';
-	import ProgressiveFormModal from '$lib/components/template/ProgressiveFormModal.svelte';
+	import { modalActions, isModalOpen, currentTemplate } from '$lib/stores/modalSystem.svelte';
+	import UnifiedProgressiveFormModal from '$lib/components/modals/UnifiedProgressiveFormModal.svelte';
 	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
 	import { resolveTemplate } from '$lib/utils/templateResolver';
 	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
@@ -26,16 +26,19 @@
 	let { data }: { data: PageData } = $props();
 
 	const componentId = 'HomePage_' + Math.random().toString(36).substr(2, 9);
+	
+	// Create derived values from the store using Svelte 5 runes
+	const selectedTemplate = $derived(templateStore.templates.find((t) => t.id === templateStore.selectedId));
+	const isLoading = $derived(templateStore.loading);
+	const hasError = $derived(!!templateStore.error);
 
 	let showMobilePreview = $state(false);
 	let showTemplateCreator = $state(false);
-	let showOnboardingModal = $state(false);
 	// Removed showTemplateModal - now using persistent modalState store
 	let showTemplateAuthModal = $state(false);
-	let modalComponent = $state<Modal>();
+	let modalComponent = $state<TouchModal>();
 	let selectedChannel: string | null = $state(null);
 	let creationContext: TemplateCreationContext | null = $state(null);
-	let pendingTemplate: Record<string, unknown> | null = $state(null);
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let userInitiatedSelection = $state(false); // Track if selection was user-initiated
 	let initialLoadComplete = $state(false); // Track initial load completion
@@ -112,7 +115,7 @@
 			// User returned from OAuth, find and open the template modal
 			coordinated.setTimeout(
 				async () => {
-					const templates = $templateStore.templates;
+					const templates = templateStore.templates;
 					const template = templates.find((t) => t.slug === templateSlug);
 					if (template) {
 						templateStore.selectTemplate(template.id);
@@ -153,7 +156,7 @@
 	function handleChannelSelect(event: CustomEvent<string>) {
 		selectedChannel = event.detail;
 		userInitiatedSelection = true;
-		const matchingTemplates = $templateStore.templates.filter((t) => {
+		const matchingTemplates = templateStore.templates.filter((t) => {
 			if (selectedChannel === 'certified') {
 				return t.deliveryMethod === 'both';
 			} else if (selectedChannel === 'direct') {
@@ -178,8 +181,7 @@
 
 		if (flow.nextAction === 'auth') {
 			// Show onboarding modal for guests
-			pendingTemplate = template;
-			showOnboardingModal = true;
+			modalActions.openModal('onboarding-modal', 'onboarding', { template, source: 'hero' });
 		} else if (flow.nextAction === 'address') {
 			// Need address - show unified address requirement modal
 			modalActions.open('address-modal', 'address', { template, source: 'hero', user: data.user });
@@ -222,7 +224,7 @@
 
 	const filteredTemplates = $derived(
 		selectedChannel
-			? $templateStore.templates.filter((t) => {
+			? templateStore.templates.filter((t) => {
 					if (selectedChannel === 'certified') {
 						// Congressional delivery under construction - show nothing for now
 						return false;
@@ -232,19 +234,19 @@
 					return false;
 				})
 			: // For MVP: Only show direct email templates
-				$templateStore.templates.filter(
+				templateStore.templates.filter(
 					(t) => t.deliveryMethod === 'email' || t.deliveryMethod === 'direct'
 				)
 	);
 
 	// Handle URL parameter initialization when templates load (legacy support)
 	$effect(() => {
-		if (browser && $templateStore.templates.length > 0 && !userInitiatedSelection) {
+		if (browser && templateStore.templates.length > 0 && !userInitiatedSelection) {
 			const templateParam = $page.url.searchParams.get('template');
 			if (templateParam) {
 				// Find template by slug
-				const targetTemplate = $templateStore.templates.find((t) => t.slug === templateParam);
-				if (targetTemplate && targetTemplate.id !== $templateStore.selectedId) {
+				const targetTemplate = templateStore.templates.find((t) => t.slug === templateParam);
+				if (targetTemplate && targetTemplate.id !== templateStore.selectedId) {
 					templateStore.selectTemplateBySlug(templateParam);
 				}
 			}
@@ -280,15 +282,15 @@
 			</h2>
 			<TemplateList
 				templates={filteredTemplates}
-				selectedId={$templateStore.selectedId}
+				selectedId={templateStore.selectedId}
 				onSelect={handleTemplateSelect}
-				loading={$isLoading}
+				loading={isLoading}
 			/>
 		</div>
 
 		<!-- Desktop/Tablet Preview -->
 		<div class="hidden md:col-span-2 md:block">
-			{#if $hasError}
+			{#if hasError}
 				<div class="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
 					<div class="mb-2 text-red-600">
 						<svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -312,7 +314,7 @@
 						Try Again
 					</button>
 				</div>
-			{:else if $isLoading && !$selectedTemplate}
+			{:else if isLoading && !selectedTemplate}
 				<!-- Skeleton loader for first load -->
 				<div class="rounded-xl border border-slate-200 bg-white p-6">
 					<div class="animate-pulse">
@@ -332,23 +334,22 @@
 						<div class="h-64 rounded bg-slate-200"></div>
 					</div>
 				</div>
-			{:else if $selectedTemplate}
+			{:else if selectedTemplate}
 				<TemplatePreview
-					template={$selectedTemplate}
+					template={selectedTemplate}
 					user={data.user}
 					on:useTemplate={handleTemplateUse}
 					onSendMessage={() => {
-						if (!$selectedTemplate) {
+						if (!selectedTemplate) {
 							return;
 						}
 
-						const flow = analyzeEmailFlow($selectedTemplate, data.user);
+						const flow = analyzeEmailFlow(selectedTemplate, data.user);
 
 						if (flow.nextAction === 'auth') {
-							pendingTemplate = $selectedTemplate;
-							showOnboardingModal = true;
+							modalActions.openModal('onboarding-modal', 'onboarding', { template: selectedTemplate, source: 'featured' });
 						} else if (flow.nextAction === 'address') {
-							modalActions.open('address-modal', 'address', { template: $selectedTemplate, source: 'featured', user: data.user });
+							modalActions.open('address-modal', 'address', { template: selectedTemplate, source: 'featured', user: data.user });
 						} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 							launchEmail(flow.mailtoUrl);
 						}
@@ -377,22 +378,22 @@
 	</div>
 
 	<!-- Mobile Preview Modal -->
-	{#if showMobilePreview && $selectedTemplate}
-		<Modal bind:this={modalComponent} on:close={() => (showMobilePreview = false)} inModal={true}>
+	{#if showMobilePreview && selectedTemplate}
+		<TouchModal bind:this={modalComponent} on:close={() => (showMobilePreview = false)} inModal={true}>
 			<div class="h-full">
 				<TemplatePreview
-					template={$selectedTemplate}
+					template={selectedTemplate}
 					inModal={true}
 					user={data.user}
-					onSendMessage={() => handleTemplateUse({ detail: { template: $selectedTemplate } })}
+					onSendMessage={() => handleTemplateUse({ detail: { template: selectedTemplate } })}
 				/>
 			</div>
-		</Modal>
+		</TouchModal>
 	{/if}
 
 	<!-- Template Creator Modal -->
 	{#if showTemplateCreator && creationContext}
-		<Modal
+		<TouchModal
 			bind:this={modalComponent}
 			on:close={() => {
 				showTemplateCreator = false;
@@ -425,24 +426,15 @@
 					}}
 				/>
 			</div>
-		</Modal>
+		</TouchModal>
 	{/if}
 
 	<!-- Auth Modals -->
-	{#if showOnboardingModal && pendingTemplate}
-		<OnboardingModal
-			template={pendingTemplate}
-			source="direct-link"
-			on:close={() => {
-				showOnboardingModal = false;
-				pendingTemplate = null;
-			}}
-		/>
-	{/if}
+	<UnifiedOnboardingModal />
 
-	{#if $isModalOpen && $currentTemplate}
+	{#if isModalOpen && currentTemplate}
 		<TemplateModal
-			template={$currentTemplate}
+			template={currentTemplate}
 			user={data.user}
 			on:close={() => {
 				modalActions.close();
@@ -455,7 +447,7 @@
 
 	<!-- Template Creator Auth Modal -->
 	{#if showTemplateAuthModal && pendingTemplateToSave}
-		<ProgressiveFormModal
+		<UnifiedProgressiveFormModal
 			template={{
 				id: 'template-creation',
 				title: 'Save Your Template',

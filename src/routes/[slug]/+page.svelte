@@ -7,8 +7,8 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
-	import { modalActions } from '$lib/stores/modalSystem';
-	import { guestState } from '$lib/stores/guestState';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
+	import { guestState } from '$lib/stores/guestState.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 	import type { PageData } from './$types';
@@ -160,8 +160,8 @@
 				}, 100);
 			}
 		} catch (error) {
-			// TODO: Show error toast to user
-			// For now, still proceed with email generation
+			// Error occurred during address update, but we'll still proceed with email
+			// In production, consider showing a warning about unverified address
 			modalActions.close('address-modal');
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
@@ -358,22 +358,13 @@
 				}
 			}}
 			onSendMessage={async () => {
-				console.log('🎯 onSendMessage called', {
-					hasUser: !!data.user,
-					accessTier: channel?.access_tier,
-					countryCode: channel?.country_code,
-					deliveryMethod: template.deliveryMethod
-				});
-
 				if (channel?.access_tier === 1) {
 					const flow = analyzeEmailFlow(template, data.user);
-					console.log('📊 Email flow analysis (tier 1):', flow);
 					if (flow.nextAction === 'auth') {
 						modalActions.open('auth-modal', 'auth', { template, source });
 					} else if (flow.nextAction === 'address') {
 						modalActions.open('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						console.log('📧 Launching email directly from onSendMessage');
 						// The modal is already shown by TemplatePreview when button clicked
 						setTimeout(() => {
 							launchEmail(flow.mailtoUrl!);
@@ -389,11 +380,9 @@
 				// For now, treat US or certified templates as existing path
 				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'both')) {
 					const flow = analyzeEmailFlow(template, data.user);
-					console.log('📊 Email flow analysis (US/both):', flow);
 					if (flow.nextAction === 'address') {
 						modalActions.open('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						console.log('📧 Launching email directly from onSendMessage');
 						// The modal is already shown by TemplatePreview when button clicked
 						setTimeout(() => {
 							launchEmail(flow.mailtoUrl!);
@@ -403,14 +392,12 @@
 							}, 1500);
 						}, 100);
 					} else {
-						console.log('🔐 Showing auth modal');
 						modalActions.open('auth-modal', 'auth', { template, source });
 					}
 					return;
 				}
 
 				// Default: prompt share (no modal implementation yet)
-				console.log('📤 Opening share menu');
 				modalActions.open('share-menu', 'share_menu', { template });
 			}}
 		/>

@@ -1,0 +1,368 @@
+<script lang="ts">
+	import { fade, fly } from 'svelte/transition';
+	import { quintOut } from 'svelte/easing';
+	import { 
+		ArrowRight,
+		ArrowLeft,
+		User,
+		MapPin,
+		Send,
+		CheckCircle2
+	} from '@lucide/svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
+
+	let {
+		template,
+		user = null,
+		onclose,
+		onsend
+	}: {
+		template: {
+			id: string;
+			title: string;
+			description: string;
+			slug: string;
+			deliveryMethod: string;
+			preview?: string;
+		};
+		user?: { id: string; name: string; address?: string } | null;
+		onclose?: () => void;
+		onsend: (data: { name: string; address?: string; email?: string }) => void;
+	} = $props();
+
+	// Component ID for timer coordination
+	const componentId = 'progressive-form-content-' + Math.random().toString(36).substring(2, 15);
+
+	type Step = 'name' | 'address' | 'send';
+	let currentStep: Step = $state('name');
+	let isTransitioning = $state(false);
+
+	// Form data
+	let name = $state(user?.name || '');
+	let address = $state(user?.address || '');
+	let email = $state('');
+
+	// Validation states
+	let nameError = $state('');
+	let addressError = $state('');
+	let emailError = $state('');
+
+	const isCongressional = $derived(template.deliveryMethod === 'both');
+	const isAuthFlow = $derived(template.deliveryMethod === 'auth');
+	const requiresAddress = $derived(isCongressional && !isAuthFlow);
+	const requiresEmail = $derived(!user || isAuthFlow); // Always need email for auth flow
+
+	// Determine the flow based on template type and user status
+	const steps = $derived(getSteps());
+	const currentStepIndex = $derived(steps.indexOf(currentStep));
+	const isLastStep = $derived(currentStepIndex === steps.length - 1);
+
+	function getSteps(): Step[] {
+		if (isAuthFlow) {
+			// Auth flow for template creators - always need name/email
+			return ['name', 'send'];
+		} else if (user) {
+			// Authenticated user
+			if (user.address && isCongressional) {
+				return ['send']; // Skip directly to send
+			} else if (isCongressional) {
+				return ['address', 'send']; // Need address for congressional
+			} else {
+				return ['send']; // Direct email, no address needed
+			}
+		} else {
+			// Guest user
+			if (isCongressional) {
+				return ['name', 'address', 'send']; // Need name and address
+			} else {
+				return ['name', 'send']; // Only need name for direct email
+			}
+		}
+	}
+
+	function validateName(): boolean {
+		nameError = '';
+		if (!name.trim()) {
+			nameError = 'Please enter your name';
+			return false;
+		}
+		if (name.trim().length < 2) {
+			nameError = 'Name must be at least 2 characters';
+			return false;
+		}
+		return true;
+	}
+
+	function validateAddress(): boolean {
+		addressError = '';
+		if (!address.trim()) {
+			addressError = 'Please enter your address';
+			return false;
+		}
+		// Basic address validation - should contain street and city/state
+		const addressParts = address.trim().split(',');
+		if (addressParts.length < 2) {
+			addressError = 'Please enter a complete address (street, city, state)';
+			return false;
+		}
+		return true;
+	}
+
+	function validateEmail(): boolean {
+		emailError = '';
+		if ((requiresEmail || isAuthFlow) && !email.trim()) {
+			emailError = 'Please enter your email';
+			return false;
+		}
+		if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+			emailError = 'Please enter a valid email address';
+			return false;
+		}
+		return true;
+	}
+
+	function validateCurrentStep(): boolean {
+		switch (currentStep) {
+			case 'name':
+				return validateName() && validateEmail();
+			case 'address':
+				return validateAddress();
+			case 'send':
+				return true; // Send step doesn't need validation
+			default:
+				return false;
+		}
+	}
+
+	function nextStep() {
+		if (!validateCurrentStep()) return;
+
+		isTransitioning = true;
+		
+		coordinated.transition(() => {
+			const nextIndex = currentStepIndex + 1;
+			if (nextIndex < steps.length) {
+				currentStep = steps[nextIndex];
+			}
+			isTransitioning = false;
+		}, 200, componentId);
+	}
+
+	function prevStep() {
+		isTransitioning = true;
+		
+		coordinated.transition(() => {
+			const prevIndex = currentStepIndex - 1;
+			if (prevIndex >= 0) {
+				currentStep = steps[prevIndex];
+			}
+			isTransitioning = false;
+		}, 200, componentId);
+	}
+
+	function handleSend() {
+		if (!validateCurrentStep()) return;
+
+		onsend({
+			name: name.trim(),
+			address: requiresAddress ? address.trim() : undefined,
+			email: (requiresEmail || isAuthFlow) ? email.trim() : undefined
+		});
+	}
+
+	// Initialize step based on user state
+	$effect(() => {
+		if (user?.address && isCongressional) {
+			currentStep = 'send';
+		} else if (user && !isCongressional) {
+			currentStep = 'send';
+		}
+	});
+
+	// Cleanup on destroy
+	$effect(() => {
+		return () => {
+			useTimerCleanup(componentId)();
+		};
+	});
+</script>
+
+<div class="p-6">
+	<!-- Progress Indicator -->
+	<div class="flex justify-center pb-6 -mt-2">
+		<div class="flex gap-2">
+			{#each steps as step, i}
+				<div 
+					class="h-2 rounded-full transition-all duration-500 ease-out {
+						currentStepIndex === i
+							? 'w-12 bg-blue-600 shadow-lg shadow-blue-200' 
+							: currentStepIndex > i 
+								? 'w-8 bg-blue-300' 
+								: 'w-8 bg-slate-200'
+					}"
+				></div>
+			{/each}
+		</div>
+	</div>
+
+	<!-- Content -->
+	<div class="relative overflow-hidden min-h-[400px]">
+		{#key currentStep}
+			<div 
+				class="absolute inset-0"
+				in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
+				out:fly={{ x: -20, duration: 300, easing: quintOut }}
+			>
+				{#if currentStep === 'name'}
+					<!-- Name Step -->
+					<div class="text-center mb-6">
+						<div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+							<User class="h-6 w-6 text-blue-600" />
+						</div>
+						<h2 class="text-xl font-bold text-slate-900 mb-2">
+							{isAuthFlow ? 'Create Your Account' : 'Let\'s get started'}
+						</h2>
+						<p class="text-slate-600">
+							{isAuthFlow 
+								? 'Save your template and track its impact over time'
+								: `Tell us your name to personalize "${template.title}"`
+							}
+						</p>
+					</div>
+
+					<div class="space-y-4 mb-6">
+						<div>
+							<label for="name" class="block text-sm font-medium text-slate-700 mb-2">
+								Full Name
+							</label>
+							<input
+								id="name"
+								type="text"
+								bind:value={name}
+								placeholder="Enter your full name"
+								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+							/>
+							{#if nameError}
+								<p class="mt-1 text-sm text-red-600">{nameError}</p>
+							{/if}
+						</div>
+
+						{#if requiresEmail || isAuthFlow}
+							<div>
+								<label for="email" class="block text-sm font-medium text-slate-700 mb-2">
+									Email Address
+								</label>
+								<input
+									id="email"
+									type="email"
+									bind:value={email}
+									placeholder="Enter your email address"
+									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+								/>
+								{#if emailError}
+									<p class="mt-1 text-sm text-red-600">{emailError}</p>
+								{/if}
+							</div>
+						{/if}
+					</div>
+
+				{:else if currentStep === 'address'}
+					<!-- Address Step -->
+					<div class="text-center mb-6">
+						<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+							<MapPin class="h-6 w-6 text-green-600" />
+						</div>
+						<h2 class="text-xl font-bold text-slate-900 mb-2">
+							Where should we send this?
+						</h2>
+						<p class="text-slate-600">
+							We'll find your congressional representatives and deliver "{template.title}"
+						</p>
+					</div>
+
+					<div class="space-y-4 mb-6">
+						<div>
+							<label for="address" class="block text-sm font-medium text-slate-700 mb-2">
+								Address
+							</label>
+							<textarea
+								id="address"
+								bind:value={address}
+								placeholder="123 Main Street, City, State 12345"
+								rows="3"
+								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+							></textarea>
+							{#if addressError}
+								<p class="mt-1 text-sm text-red-600">{addressError}</p>
+							{/if}
+						</div>
+					</div>
+
+				{:else if currentStep === 'send'}
+					<!-- Send Step -->
+					<div class="text-center mb-6">
+						<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+							<Send class="h-6 w-6 text-green-600" />
+						</div>
+						<h2 class="text-xl font-bold text-slate-900 mb-2">
+							{isAuthFlow ? 'Save Your Template' : 'Ready to send!'}
+						</h2>
+						<p class="text-slate-600">
+							{isAuthFlow 
+								? 'Your template will be saved and you can track its impact'
+								: `"${template.title}" will be sent ${isCongressional ? 'to your representatives' : 'via email'}`
+							}
+						</p>
+					</div>
+
+					{#if template.preview}
+						<div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+							<p class="text-sm text-slate-700">{template.preview}</p>
+						</div>
+					{/if}
+				{/if}
+
+				<!-- Navigation -->
+				<div class="flex gap-3">
+					{#if currentStepIndex > 0}
+						<Button 
+							variant="secondary" 
+							size="sm" 
+							classNames="flex-1"
+							onclick={prevStep}
+							disabled={isTransitioning}
+						>
+							<ArrowLeft class="mr-1 h-4 w-4" />
+							Back
+						</Button>
+					{/if}
+
+					{#if isLastStep}
+						<Button 
+							variant="primary" 
+							size="sm" 
+							classNames={currentStepIndex === 0 ? 'w-full' : 'flex-1'}
+							onclick={handleSend}
+							disabled={isTransitioning}
+						>
+							<Send class="mr-1 h-4 w-4" />
+							{isAuthFlow ? 'Save Template' : 'Send Message'}
+						</Button>
+					{:else}
+						<Button 
+							variant="primary" 
+							size="sm" 
+							classNames={currentStepIndex === 0 ? 'w-full' : 'flex-1'}
+							onclick={nextStep}
+							disabled={isTransitioning}
+						>
+							Continue
+							<ArrowRight class="ml-1 h-4 w-4" />
+						</Button>
+					{/if}
+				</div>
+			</div>
+		{/key}
+	</div>
+</div>

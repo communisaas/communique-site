@@ -4,9 +4,10 @@
 	import PercolationDashboard from '$lib/components/analytics/PercolationDashboard.svelte';
 	import CascadeAnalytics from '$lib/components/analytics/CascadeAnalytics.svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
+	import type { Template } from '$lib/types/template';
 
 	let selectedTemplateId = $state<string | null>(null);
-	let templates = $state<any[]>([]);
+	let templates = $state<Template[]>([]);
 	let loading = $state(true);
 	let activeTab = $state<'network' | 'template'>('network');
 
@@ -31,7 +32,7 @@
 				templates = data.templates || [];
 			}
 		} catch (error) {
-			console.error('Failed to load templates:', error);
+			// Failed to load templates - templates will remain empty array
 		}
 	}
 

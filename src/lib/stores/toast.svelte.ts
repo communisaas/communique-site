@@ -1,5 +1,3 @@
-import { writable } from 'svelte/store';
-
 export interface ToastData {
 	id: string;
 	type: 'success' | 'error' | 'warning' | 'info';
@@ -9,12 +7,8 @@ export interface ToastData {
 	dismissible?: boolean;
 }
 
-interface ToastStore {
-	toasts: ToastData[];
-}
-
 function createToastStore() {
-	const { subscribe, update } = writable<ToastStore>({ toasts: [] });
+	let toasts = $state<ToastData[]>([]);
 
 	function addToast(toast: Omit<ToastData, 'id'>): string {
 		const id = crypto.randomUUID();
@@ -25,21 +19,16 @@ function createToastStore() {
 			...toast
 		};
 
-		update(state => ({
-			toasts: [...state.toasts, newToast]
-		}));
-
+		toasts = [...toasts, newToast];
 		return id;
 	}
 
 	function removeToast(id: string) {
-		update(state => ({
-			toasts: state.toasts.filter(toast => toast.id !== id)
-		}));
+		toasts = toasts.filter(toast => toast.id !== id);
 	}
 
 	function clearAll() {
-		update(() => ({ toasts: [] }));
+		toasts = [];
 	}
 
 	// Convenience methods
@@ -60,7 +49,7 @@ function createToastStore() {
 	}
 
 	return {
-		subscribe,
+		get toasts() { return toasts; },
 		addToast,
 		removeToast,
 		clearAll,

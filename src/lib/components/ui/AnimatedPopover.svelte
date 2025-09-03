@@ -5,7 +5,7 @@
 	import { tick } from 'svelte';
 	import type { PopoverSlots, TriggerAction } from '$lib/types/popover';
 	import { addEventListener, addDocumentEventListener } from '$lib/utils/browserUtils';
-	import { popover as popoverStore } from '$lib/stores/popover';
+	import { popover as popoverStore } from '$lib/stores/popover.svelte';
 
 	interface Props {
 		id: string;
@@ -29,8 +29,8 @@
 
 	// React to popover store changes
 	$effect(() => {
-		if ($popoverStore?.id === id) {
-			switch ($popoverStore.state) {
+		if (popoverStore.popover?.id === id) {
+			switch (popoverStore.popover.state) {
 				case 'opening':
 					if (!open) {
 						open = true;
@@ -117,7 +117,7 @@
 			
 			// Close if clicking outside both container and popover
 			if (!containerElement.contains(target) && !popoverElement.contains(target)) {
-				if ($popoverStore?.id === id) {
+				if (popoverStore.popover?.id === id) {
 					popoverStore.close(id);
 				}
 			}
@@ -138,7 +138,7 @@
 			
 			// Close if touching outside both container and popover
 			if (!containerElement.contains(target) && !popoverElement.contains(target)) {
-				if ($popoverStore?.id === id) {
+				if (popoverStore.popover?.id === id) {
 					popoverStore.close(id);
 				}
 			}
@@ -219,7 +219,7 @@
 		}
 		
 		// Toggle popover on tap
-		if ($popoverStore?.id === id) {
+		if (popoverStore.popover?.id === id) {
 			popoverStore.close(id);
 		} else {
 			popoverStore.open(id);

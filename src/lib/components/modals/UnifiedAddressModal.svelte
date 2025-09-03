@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { createModalStore } from '$lib/stores/modalSystem';
+	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
-	import AddressCollectionModal from '$lib/components/auth/AddressCollectionModal.svelte';
+	import UnifiedAddressCollectionWrapper from '$lib/components/modals/UnifiedAddressCollectionWrapper.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	
 	const modalStore = createModalStore('address-modal', 'address');
 	
 	// Extract data from modal store
-	$: modalData = $modalStore.data as {
+	$: modalData = modalStore.data as {
 		template: any;
 		source: string;
 		user?: any;
@@ -61,9 +61,9 @@
 	}
 </script>
 
-{#if $modalStore.isOpen && modalData}
+{#if modalStore.isOpen && modalData}
 	{#if modalData.mode === 'collection'}
-		<AddressCollectionModal 
+		<UnifiedAddressCollectionWrapper 
 			template={modalData.template}
 			on:close={modalStore.close}
 			on:complete={handleComplete}
@@ -72,7 +72,7 @@
 		<AddressRequirementModal 
 			template={modalData.template}
 			user={modalData.user}
-			isOpen={$modalStore.isOpen}
+			isOpen={modalStore.isOpen}
 			on:close={modalStore.close}
 			on:complete={handleComplete}
 		/>

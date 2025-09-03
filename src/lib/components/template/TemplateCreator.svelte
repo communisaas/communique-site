@@ -311,7 +311,7 @@
 						            py-0.5 text-xs text-emerald-600 md:px-2
 						            md:text-xs"
 						>
-							<div class="animate-save-pulse h-0.5 w-0.5 rounded-full bg-emerald-500 md:h-1 md:w-1" />
+							<div class="animate-save-pulse h-0.5 w-0.5 rounded-full bg-emerald-500 md:h-1 md:w-1"></div>
 							saved {formatTimeAgo(lastSaved).toLowerCase()}
 						</div>
 					{/if}

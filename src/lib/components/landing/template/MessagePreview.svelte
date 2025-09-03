@@ -6,7 +6,7 @@
 	import AnimatedPopover from '$lib/components/ui/AnimatedPopover.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
 	import type { Template } from '$lib/types/template';
-	import { popover as popoverStore } from '$lib/stores/popover';
+	import { popover as popoverStore } from '$lib/stores/popover.svelte';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
 	let {
@@ -218,8 +218,8 @@
 		onScroll(isAtBottom);
 
 		// Close any open popovers when scrolling
-		if ($popoverStore) {
-			popoverStore.close($popoverStore.id);
+		if (popoverStore.popover) {
+			popoverStore.close(popoverStore.popover.id);
 		}
 	}
 

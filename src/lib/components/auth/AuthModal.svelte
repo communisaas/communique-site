@@ -4,13 +4,13 @@
 	import { X, Shield, AtSign, ArrowRight } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { Template } from '$lib/types/template';
-	import { createModalStore } from '$lib/stores/modalSystem';
+	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 
 	const modal = createModalStore('auth-modal', 'auth');
 
 	const modalData = $derived(
-		$modal.data as { template: Template; source?: 'social-link' | 'direct-link' | 'share' } | null
+		modal.data as { template: Template; source?: 'social-link' | 'direct-link' | 'share' } | null
 	);
 	const template = $derived(modalData?.template);
 	const source = $derived(modalData?.source || 'direct-link');
@@ -63,7 +63,7 @@
 	}
 </script>
 
-{#if $modal.isOpen && template && authConfig}
+{#if modal.isOpen && template && authConfig}
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		onclick={handleClose}

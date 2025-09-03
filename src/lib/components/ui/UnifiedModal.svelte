@@ -7,7 +7,7 @@ backdrop handling, and keyboard navigation.
 <script lang="ts">
 	import { fade, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
-	import { createModalStore, type ModalType } from '$lib/stores/modalSystem';
+	import { createModalStore, type ModalType } from '$lib/stores/modalSystem.svelte';
 	import { X } from '@lucide/svelte';
 
 	let {
@@ -52,13 +52,13 @@ backdrop handling, and keyboard navigation.
 	}
 </script>
 
-{#if $modal.isOpen}
+{#if modal.isOpen}
 	<!-- Modal Backdrop -->
 	<div
 		class="modal-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center pt-4 px-4"
 		class:items-center={size === 'full'}
 		class:items-start={size !== 'full'}
-		style="z-index: {$modal.zIndex}"
+		style="z-index: {modal.zIndex}"
 		in:fade={{ duration: 200 }}
 		out:fade={{ duration: 200 }}
 		onclick={(e) => {
@@ -109,7 +109,7 @@ backdrop handling, and keyboard navigation.
 
 			<!-- Modal Content -->
 			<div class="overflow-y-auto" class:flex-1={size === 'full'}>
-				{@render children($modal.data)}
+				{@render children(modal.data)}
 			</div>
 		</div>
 	</div>

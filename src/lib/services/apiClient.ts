@@ -20,7 +20,7 @@ export {
 } from '$lib/core/api';
 
 // Re-export toast integration for components that expect it here
-export { toast } from '$lib/stores/toast';
+export { toast } from '$lib/stores/toast.svelte';
 
 // Templates API wrapper
 export const templatesApi = {

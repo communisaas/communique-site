@@ -29,7 +29,7 @@
 
 <span class="inline-flex items-center gap-1.5 border rounded-full font-medium transition-colors {variants[variant]} {sizes[size]}">
 	{#if pulse}
-		<div class="w-1.5 h-1.5 rounded-full animate-save-pulse {pulseColors[variant]}" />
+		<div class="w-1.5 h-1.5 rounded-full animate-save-pulse {pulseColors[variant]}"></div>
 	{/if}
 	<slot />
 </span>

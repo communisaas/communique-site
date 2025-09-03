@@ -26,8 +26,8 @@
 	import TemplateHeader from '$lib/components/landing/template/TemplateHeader.svelte';
 	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { guestState } from '$lib/stores/guestState';
-	import { modalActions, modalState, isModalOpen } from '$lib/stores/modalSystem';
+	import { guestState } from '$lib/stores/guestState.svelte';
+	import { modalActions, modalState, isModalOpen } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 

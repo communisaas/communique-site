@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
-	import { modalActions } from '$lib/stores/modalSystem';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { PageData } from './$types';
 	
 	let { data }: { data: PageData } = $props();

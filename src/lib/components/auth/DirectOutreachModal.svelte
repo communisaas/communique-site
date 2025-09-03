@@ -4,7 +4,7 @@
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
-	import { createModalStore } from '$lib/stores/modalSystem';
+	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
 	import { RoleSelector, ConnectionPicker, VerificationStep } from './steps';
 	

@@ -1,4 +1,3 @@
-import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
 export interface GuestTemplateState {
@@ -11,14 +10,14 @@ export interface GuestTemplateState {
 
 // Guest state for pre-authentication template interactions
 function createGuestState() {
-	const { subscribe, set, update } = writable<GuestTemplateState | null>(null);
+	let state = $state<GuestTemplateState | null>(null);
 
 	return {
-		subscribe,
+		get state() { return state; },
 		
 		// Store template interaction for guest users
 		setTemplate: (slug: string, title: string, source: GuestTemplateState['source'] = 'direct-link') => {
-			const state: GuestTemplateState = {
+			const newState: GuestTemplateState = {
 				templateSlug: slug,
 				templateTitle: title,
 				source,
@@ -26,31 +25,29 @@ function createGuestState() {
 				viewCount: 1
 			};
 			
-			set(state);
+			state = newState;
 			
 			// Persist to localStorage for cross-session continuity
 			if (browser) {
-				localStorage.setItem('communique_guest_template', JSON.stringify(state));
+				localStorage.setItem('communique_guest_template', JSON.stringify(newState));
 			}
 		},
 		
 		// Track repeat views for engagement scoring
 		incrementView: () => {
-			update(state => {
-				if (!state) return null;
-				const updated = { ...state, viewCount: state.viewCount + 1 };
-				
-				if (browser) {
-					localStorage.setItem('communique_guest_template', JSON.stringify(updated));
-				}
-				
-				return updated;
-			});
+			if (!state) return;
+			
+			const updated = { ...state, viewCount: state.viewCount + 1 };
+			state = updated;
+			
+			if (browser) {
+				localStorage.setItem('communique_guest_template', JSON.stringify(updated));
+			}
 		},
 		
 		// Clear after successful conversion
 		clear: () => {
-			set(null);
+			state = null;
 			if (browser) {
 				localStorage.removeItem('communique_guest_template');
 			}
@@ -62,10 +59,10 @@ function createGuestState() {
 				const stored = localStorage.getItem('communique_guest_template');
 				if (stored) {
 					try {
-						const state = JSON.parse(stored);
+						const parsedState = JSON.parse(stored);
 						// Only restore if within 7 days
-						if (Date.now() - state.timestamp < 7 * 24 * 60 * 60 * 1000) {
-							set(state);
+						if (Date.now() - parsedState.timestamp < 7 * 24 * 60 * 60 * 1000) {
+							state = parsedState;
 						} else {
 							localStorage.removeItem('communique_guest_template');
 						}

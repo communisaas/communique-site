@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { templateStore } from '$lib/stores/templates';
+	import { templateStore } from '$lib/stores/templates.svelte';
 	import { onMount } from 'svelte';
 	import { User, LogOut } from '@lucide/svelte';
 	import { page } from '$app/stores';
@@ -8,8 +8,9 @@
 	import AppHeader from '$lib/components/layout/AppHeader.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
-	import { modalActions } from '$lib/stores/modalSystem';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import type { Template } from '$lib/types/template';
 
 	let { children, data } = $props();
 
@@ -19,7 +20,7 @@
 	});
 	
 	// Handle template use from header
-	function handleTemplateUse(event: { template: any; requiresAuth: boolean }) {
+	function handleTemplateUse(event: { template: Template; requiresAuth: boolean }) {
 		const { template, requiresAuth } = event;
 		
 		const flow = analyzeEmailFlow(template, data.user);

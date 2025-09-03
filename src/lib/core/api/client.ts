@@ -11,7 +11,7 @@
  */
 
 import { browser } from '$app/environment';
-import { toast } from '$lib/stores/toast';
+import { toast } from '$lib/stores/toast.svelte';
 import type { ApiError } from '$lib/types/errors';
 
 export interface ApiResponse<T = any> {
