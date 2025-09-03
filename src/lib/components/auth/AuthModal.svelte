@@ -5,7 +5,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { Template } from '$lib/types/template';
 	import { createModalStore } from '$lib/stores/modalSystem';
-	import { funnelAnalytics } from '$lib/analytics/funnel';
+	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 
 	const modal = createModalStore('auth-modal', 'auth');
 

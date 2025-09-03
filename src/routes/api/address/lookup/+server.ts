@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { addressLookup } from '$lib/congress/address-lookup';
+import { addressLookup } from '$lib/core/congress/address-lookup';
 
 // POST /api/address/lookup - Find representatives for a given address
 export const POST: RequestHandler = async ({ request }) => {

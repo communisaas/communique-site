@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import PercolationDashboard from '$lib/components/analytics/PercolationDashboard.svelte';
 	import CascadeAnalytics from '$lib/components/analytics/CascadeAnalytics.svelte';
-	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
 
 	let selectedTemplateId = $state<string | null>(null);
 	let templates = $state<any[]>([]);
@@ -111,7 +111,7 @@
 	<div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 		{#if loading}
 			<div class="flex items-center justify-center py-12">
-				<LoadingSpinner />
+				<LoadingCard variant="spinner" />
 				<span class="ml-3 text-gray-600">Loading analytics dashboard...</span>
 			</div>
 		{:else}

@@ -6,7 +6,7 @@
  */
 
 import { browser } from '$app/environment';
-import type { FunnelEvent } from '$lib/analytics/funnel';
+import type { FunnelEvent } from './funnel';
 
 // Analytics event types
 export type AnalyticsEventType = 'funnel' | 'interaction' | 'navigation' | 'performance' | 'error';

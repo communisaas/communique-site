@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { cwcClient } from '$lib/congress/cwc-client';
-import { CWCGenerator } from '$lib/congress/cwc-generator';
+import { cwcClient } from '$lib/core/congress/cwc-client';
+import { CWCGenerator } from '$lib/core/congress/cwc-generator';
 
 /**
  * Test CWC integration

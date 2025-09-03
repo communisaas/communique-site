@@ -5,21 +5,20 @@
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import SimpleAuthModal from '$lib/components/auth/SimpleAuthModal.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import { modalActions } from '$lib/stores/modalSystem';
 	import { guestState } from '$lib/stores/guestState';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
-	import { funnelAnalytics } from '$lib/analytics/funnel';
+	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 	import type { PageData } from './$types';
 	import type { Template as TemplateType } from '$lib/types/template';
 
 	let { data }: { data: PageData } = $props();
 
 	// Simple modal state
-	let showAuthModal = $state(false);
 	let isUpdatingAddress = $state(false);
+	let showEmailLoadingModal = $state(false);
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
@@ -66,12 +65,31 @@
 		// Smart post-auth flow detection
 		const actionParam =
 			$page.url && $page.url.searchParams ? $page.url.searchParams.get('action') : null;
+		const providerParam = 
+			$page.url && $page.url.searchParams ? $page.url.searchParams.get('provider') : null;
+		
+		// Check if user just completed auth (only via action=complete parameter)
 		if (actionParam === 'complete' && data.user) {
 			// User just completed auth, check what they need next
-			// Track auth completion (provider may or may not be present)
-			const provider = $page.url.searchParams.get('provider') || 'unknown';
+			// Track auth completion (provider param is for analytics only)
+			const provider = providerParam || 'unknown';
 			funnelAnalytics.trackAuthCompleted(template.id, provider, data.user.id);
-			handlePostAuthFlow();
+			
+			// Show loading modal immediately for seamless experience
+			const flow = analyzeEmailFlow(template, data.user);
+			if (flow.nextAction === 'email' && flow.mailtoUrl) {
+				showEmailLoadingModal = true;
+				// Launch email after brief delay to let modal render
+				setTimeout(() => {
+					launchEmail(flow.mailtoUrl!);
+					// Auto-close modal after 1.5s
+					setTimeout(() => {
+						showEmailLoadingModal = false;
+					}, 1500);
+				}, 100);
+			} else {
+				handlePostAuthFlow();
+			}
 		} else if (authRequired && !data.user) {
 			// Show smart auth modal for unauthenticated users
 			funnelAnalytics.trackOnboardingStarted(
@@ -89,9 +107,15 @@
 			// Need address collection
 			modalActions.open('address-modal', 'address', { template, source });
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-			// Ready to send email
-			modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-			setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
+			// Ready to send email - show loading modal
+			showEmailLoadingModal = true;
+			setTimeout(() => {
+				launchEmail(flow.mailtoUrl!);
+				// Auto-close modal after 1.5s
+				setTimeout(() => {
+					showEmailLoadingModal = false;
+				}, 1500);
+			}, 100);
 		}
 	}
 
@@ -126,8 +150,14 @@
 			modalActions.close('address-modal');
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
-				modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-				setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
+				showEmailLoadingModal = true;
+				setTimeout(() => {
+					launchEmail(flow.mailtoUrl!);
+					// Auto-close modal after 1.5s
+					setTimeout(() => {
+						showEmailLoadingModal = false;
+					}, 1500);
+				}, 100);
 			}
 		} catch (error) {
 			// TODO: Show error toast to user
@@ -135,8 +165,14 @@
 			modalActions.close('address-modal');
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
-				modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-				setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
+				showEmailLoadingModal = true;
+				setTimeout(() => {
+					launchEmail(flow.mailtoUrl!);
+					// Auto-close modal after 1.5s
+					setTimeout(() => {
+						showEmailLoadingModal = false;
+					}, 1500);
+				}, 100);
 			}
 		} finally {
 			isUpdatingAddress = false;
@@ -214,7 +250,7 @@
 					classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full sm:w-auto"
 					onclick={() => {
 						if (!data.user) {
-							showAuthModal = true;
+							modalActions.open('auth-modal', 'auth', { template, source });
 							funnelAnalytics.trackOnboardingStarted(
 								template.id,
 								source as 'social-link' | 'direct-link' | 'share'
@@ -248,7 +284,7 @@
 						if (data.user) {
 							handlePostAuthFlow();
 						} else {
-							showAuthModal = true;
+							modalActions.open('auth-modal', 'auth', { template, source });
 							funnelAnalytics.trackOnboardingStarted(
 								template.id,
 								source as 'social-link' | 'direct-link' | 'share'
@@ -312,6 +348,8 @@
 		<TemplatePreview
 			{template}
 			user={data.user as { id: string; name: string | null } | null}
+			showEmailModal={showEmailLoadingModal}
+			onEmailModalClose={() => showEmailLoadingModal = false}
 			onScroll={() => {}}
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
@@ -331,13 +369,19 @@
 					const flow = analyzeEmailFlow(template, data.user);
 					console.log('📊 Email flow analysis (tier 1):', flow);
 					if (flow.nextAction === 'auth') {
-						showAuthModal = true;
+						modalActions.open('auth-modal', 'auth', { template, source });
 					} else if (flow.nextAction === 'address') {
 						modalActions.open('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						console.log('📧 Opening email loading modal and launching email');
-						modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-						setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
+						console.log('📧 Launching email directly from onSendMessage');
+						// The modal is already shown by TemplatePreview when button clicked
+						setTimeout(() => {
+							launchEmail(flow.mailtoUrl!);
+							// Auto-close modal after 1.5s
+							setTimeout(() => {
+								showEmailLoadingModal = false;
+							}, 1500);
+						}, 100);
 					}
 					return;
 				}
@@ -349,12 +393,18 @@
 					if (flow.nextAction === 'address') {
 						modalActions.open('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						console.log('📧 Opening email loading modal and launching email');
-						modalActions.open('email-loading', 'email_loading', null, { autoClose: 1500 });
-						setTimeout(() => launchEmail(flow.mailtoUrl!, '/'), 100);
+						console.log('📧 Launching email directly from onSendMessage');
+						// The modal is already shown by TemplatePreview when button clicked
+						setTimeout(() => {
+							launchEmail(flow.mailtoUrl!);
+							// Auto-close modal after 1.5s
+							setTimeout(() => {
+								showEmailLoadingModal = false;
+							}, 1500);
+						}, 100);
 					} else {
 						console.log('🔐 Showing auth modal');
-						showAuthModal = true;
+						modalActions.open('auth-modal', 'auth', { template, source });
 					}
 					return;
 				}
@@ -367,5 +417,3 @@
 	</div>
 </div>
 
-<!-- Simple Auth Modal -->
-<SimpleAuthModal isOpen={showAuthModal} onClose={() => (showAuthModal = false)} {template} />

@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { analyzeCivicInformationCascades, storeCascadeAnalysis } from '$lib/server/percolation-engine';
+import { analyzeCivicInformationCascades, storeCascadeAnalysis } from '$lib/core/server/percolation-engine';
 import { oauthSecurityMiddleware, logAnalyticsUsage } from '$lib/core/auth/oauth-security';
 
 export async function GET({ request }) {

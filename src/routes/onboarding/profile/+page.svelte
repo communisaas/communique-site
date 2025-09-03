@@ -82,15 +82,18 @@
 					sessionStorage.removeItem('pending_template_action');
 				}
 
-				// Redirect to final destination
-				window.location.href = finalReturnUrl;
+				// Redirect to final destination with action=complete
+				const separator = finalReturnUrl.includes('?') ? '&' : '?';
+				window.location.href = `${finalReturnUrl}${separator}action=complete`;
 			} else {
-				// Still redirect, but user might need to re-enter info later
-				window.location.href = finalReturnUrl;
+				// Still redirect with action=complete
+				const separator = finalReturnUrl.includes('?') ? '&' : '?';
+				window.location.href = `${finalReturnUrl}${separator}action=complete`;
 			}
 		} catch (error) {
-			// Still redirect to avoid getting stuck
-			window.location.href = finalReturnUrl;
+			// Still redirect to avoid getting stuck with action=complete
+			const separator = finalReturnUrl.includes('?') ? '&' : '?';
+			window.location.href = `${finalReturnUrl}${separator}action=complete`;
 		}
 	}
 
@@ -99,7 +102,9 @@
 		if (browser) {
 			sessionStorage.removeItem('pending_template_action');
 		}
-		window.location.href = finalReturnUrl;
+		// Add action=complete to signal completion
+		const separator = finalReturnUrl.includes('?') ? '&' : '?';
+		window.location.href = `${finalReturnUrl}${separator}action=complete`;
 	}
 </script>
 

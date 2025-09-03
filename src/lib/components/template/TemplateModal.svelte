@@ -27,7 +27,7 @@
 	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { guestState } from '$lib/stores/guestState';
-	import { modalActions, modalState, isModalOpen } from '$lib/stores/modalState';
+	import { modalActions, modalState, isModalOpen } from '$lib/stores/modalSystem';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 
@@ -137,7 +137,7 @@
 			() => {
 				if (flow.mailtoUrl) {
 					// Launch email using unified service
-					launchEmail(flow.mailtoUrl, '/');
+					launchEmail(flow.mailtoUrl);
 
 					// Track usage
 					trackEvent('template_used', {

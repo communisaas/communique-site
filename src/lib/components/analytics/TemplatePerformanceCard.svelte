@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
 	
 	interface TemplatePerformance {
 		template_id: string;
@@ -101,7 +101,7 @@
 <div class={`bg-white rounded-lg shadow-sm border border-gray-200 ${compact ? 'p-4' : 'p-6'}`}>
 	{#if loading}
 		<div class="flex items-center justify-center py-8">
-			<LoadingSpinner size="sm" />
+			<LoadingCard variant="spinner" size="sm" />
 			<span class="ml-2 text-gray-500 text-sm">Loading metrics...</span>
 		</div>
 	{:else if error}

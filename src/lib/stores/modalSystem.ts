@@ -8,6 +8,7 @@
 import { writable, derived } from 'svelte/store';
 import { toggleBodyScroll } from '$lib/utils/browserUtils';
 import { coordinated } from '$lib/utils/timerCoordinator';
+import type { Template } from '$lib/types/template';
 
 // Modal Type Registry - All possible modals in the system
 export type ModalType = 
@@ -57,8 +58,8 @@ export const topModal = derived(modalSystem, ($state) => {
 });
 export const hasActiveModal = derived(modalSystem, ($state) => $state.modalStack.length > 0);
 
-// Modal Management Actions
-export const modalActions = {
+// Original Modal Management Actions (will be replaced by enhanced version)
+const originalModalActions = {
 	/**
 	 * Open a modal with proper z-index management
 	 */
@@ -244,9 +245,146 @@ export function createModalStore(id: string, type: ModalType) {
 	return {
 		subscribe: value.subscribe,
 		open: (data?: unknown, options?: { closeOnBackdrop?: boolean; closeOnEscape?: boolean; autoClose?: number }) =>
-			modalActions.open(id, type, data, options),
-		close: () => modalActions.close(id)
+			originalModalActions.open(id, type, data, options),
+		close: () => originalModalActions.close(id)
 	};
 }
 
-export default modalActions;
+export default originalModalActions;
+
+// =============================================================================
+// BACKWARD COMPATIBILITY LAYER for modalState.ts
+// =============================================================================
+
+// Legacy modal state types from modalState.ts
+export type LegacyModalState = 'closed' | 'auth_required' | 'loading' | 'confirmation' | 'celebration';
+export type ModalState = LegacyModalState; // Export with original name for backward compatibility
+
+interface LegacyModalContext {
+	template: Template | null;
+	user: any;
+	state: LegacyModalState;
+	mailtoUrl?: string;
+	sendConfirmed: boolean;
+	showModal: boolean;
+}
+
+const legacyInitialContext: LegacyModalContext = {
+	template: null,
+	user: null,
+	state: 'closed',
+	sendConfirmed: false,
+	showModal: false
+};
+
+// Legacy store for template modal state
+const legacyModalContext = writable<LegacyModalContext>(legacyInitialContext);
+
+// Legacy derived stores (exact API compatibility)
+export const modalContext = legacyModalContext;
+export const modalState = derived(legacyModalContext, ($context) => $context.state);
+export const isModalOpen = derived(legacyModalContext, ($context) => $context.showModal);
+export const currentTemplate = derived(legacyModalContext, ($context) => $context.template);
+
+// Enhanced modalActions that includes both new API and legacy compatibility
+const enhancedModalActions = {
+	// =========================================================================
+	// NEW UNIFIED API (from original modalSystem.ts)
+	// =========================================================================
+	
+	openModal(id: string, type: ModalType, data?: unknown, options?: {
+		closeOnBackdrop?: boolean;
+		closeOnEscape?: boolean;
+		autoClose?: number;
+	}) {
+		return originalModalActions.open(id, type, data, options);
+	},
+
+	closeModal(id: string) {
+		return originalModalActions.close(id);
+	},
+
+	closeAll() {
+		return originalModalActions.closeAll();
+	},
+
+	closeTop() {
+		return originalModalActions.closeTop();
+	},
+
+	findModalByType(type: ModalType): string | null {
+		return originalModalActions.findModalByType(type);
+	},
+
+	isModalOpen(id: string): boolean {
+		return originalModalActions.isOpen(id);
+	},
+
+	getModalData(id: string): unknown {
+		return originalModalActions.getData(id);
+	},
+
+	// =========================================================================
+	// LEGACY API COMPATIBILITY (from modalState.ts)
+	// =========================================================================
+
+	// Legacy template modal API - preserves exact behavior
+	open(template: Template, user: any) {
+		// Update legacy store to maintain backward compatibility
+		legacyModalContext.update(ctx => ({
+			...ctx,
+			template,
+			user,
+			state: user ? 'loading' : 'auth_required',
+			showModal: true,
+			sendConfirmed: false
+		}));
+
+		// Also register in new unified system for consistency
+		originalModalActions.open('legacy-template-modal', 'template_modal', { template, user });
+	},
+
+	// Legacy template modal state management
+	setState(state: ModalState) {
+		legacyModalContext.update(ctx => ({
+			...ctx,
+			state
+		}));
+	},
+
+	setMailtoUrl(url: string) {
+		legacyModalContext.update(ctx => ({
+			...ctx,
+			mailtoUrl: url
+		}));
+	},
+
+	confirmSend() {
+		legacyModalContext.update(ctx => ({
+			...ctx,
+			sendConfirmed: true,
+			state: 'celebration'
+		}));
+	},
+
+	// Legacy close method
+	close() {
+		// Legacy template modal close
+		legacyModalContext.update(ctx => ({
+			...ctx,
+			showModal: false,
+			state: 'closed'
+		}));
+		
+		// Also close in unified system
+		originalModalActions.close('legacy-template-modal');
+	},
+
+	reset() {
+		legacyModalContext.set(legacyInitialContext);
+		originalModalActions.closeAll();
+	}
+};
+
+// Replace the original modalActions export with the enhanced version
+export { enhancedModalActions as modalActions };

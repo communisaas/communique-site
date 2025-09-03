@@ -5,7 +5,7 @@ import mockRegistry from '../mocks/registry';
 describe('CWC Client Unit Tests', () => {
   it('should submit to House successfully', async () => {
     const mocks = mockRegistry.setupMocks();
-    const { cwcClient } = mocks['$lib/congress/cwc-client'];
+    const { cwcClient } = mocks['$lib/core/congress/cwc-client'];
 
     const template = templateFactory.build();
     const user = userFactory.build();
@@ -25,7 +25,7 @@ describe('CWC Client Unit Tests', () => {
 
   it('should submit to Senate successfully', async () => {
     const mocks = mockRegistry.setupMocks();
-    const { cwcClient } = mocks['$lib/congress/cwc-client'];
+    const { cwcClient } = mocks['$lib/core/congress/cwc-client'];
 
     const template = templateFactory.build();
     const user = userFactory.build();
@@ -45,7 +45,7 @@ describe('CWC Client Unit Tests', () => {
 
   it('should validate template format', async () => {
     const mocks = mockRegistry.setupMocks();
-    const { cwcClient } = mocks['$lib/congress/cwc-client'];
+    const { cwcClient } = mocks['$lib/core/congress/cwc-client'];
 
     const template = templateFactory.build();
     const result = await cwcClient.validateTemplate(template);
@@ -56,7 +56,7 @@ describe('CWC Client Unit Tests', () => {
 
   it('should check delivery status', async () => {
     const mocks = mockRegistry.setupMocks();
-    const { cwcClient } = mocks['$lib/congress/cwc-client'];
+    const { cwcClient } = mocks['$lib/core/congress/cwc-client'];
 
     const messageId = 'test-msg-123';
     const result = await cwcClient.getDeliveryStatus(messageId);

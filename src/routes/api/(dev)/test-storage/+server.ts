@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { runSafeStorageTest } from '$lib/server/sentiment-storage';
+import { runSafeStorageTest } from '$lib/core/server/sentiment-storage';
 
 export async function GET() {
   const result = await runSafeStorageTest();

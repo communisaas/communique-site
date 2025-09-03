@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { verificationSessions } from '$lib/server/verification-sessions';
+import { verificationSessions } from '$lib/core/server/verification-sessions';
 
 export const GET: RequestHandler = async ({ params }) => {
 	const { userId } = params;

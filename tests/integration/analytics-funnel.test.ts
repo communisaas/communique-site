@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { funnelAnalytics } from '$lib/analytics/funnel';
-import type { FunnelEvent } from '$lib/analytics/funnel';
+import { funnelAnalytics } from '$lib/core/analytics/funnel';
+import type { FunnelEvent } from '$lib/core/analytics/funnel';
 
 // Mock the database analytics module
 vi.mock('$lib/core/analytics/database', () => {

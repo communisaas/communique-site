@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { fuseInformationSources, storeFusionResults } from '$lib/server/sheaf-fusion';
+import { fuseInformationSources, storeFusionResults } from '$lib/core/server/sheaf-fusion';
 
 export async function GET({ url }) {
   try {

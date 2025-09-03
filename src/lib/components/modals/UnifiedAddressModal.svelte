@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createModalStore } from '$lib/stores/modalSystem';
 	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
+	import AddressCollectionModal from '$lib/components/auth/AddressCollectionModal.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	
 	const modalStore = createModalStore('address-modal', 'address');
@@ -10,46 +11,70 @@
 		template: any;
 		source: string;
 		user?: any;
+		mode?: 'requirement' | 'collection';
 	} | null;
 	
 	function handleComplete(event: CustomEvent) {
-		const { address, verified, enhancedCredibility } = event.detail;
+		const { address, verified, enhancedCredibility, representatives } = event.detail;
 		
-		// Update user address if needed (for manual entry)
-		if (!enhancedCredibility && modalData?.user) {
-			// Call API to save address - simplified for demo
-			fetch('/api/user/address', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ address })
-			}).then(response => response.json())
-			.then(result => {
-				// Update local user data
-				if (modalData?.user && result.user) {
-					Object.assign(modalData.user, result.user);
-				}
-			});
-		}
+		// Save address to backend
+		const saveAddress = async () => {
+			if (modalData?.mode === 'collection' || (!enhancedCredibility && modalData?.user)) {
+				await fetch('/api/user/address', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ address, verified, representatives })
+				}).then(response => response.json())
+				.then(result => {
+					// Update local user data
+					if (modalData?.user && result.user) {
+						Object.assign(modalData.user, result.user);
+					}
+				});
+			}
+		};
 		
 		// Close modal
 		modalStore.close();
 		
-		// Proceed with email generation
-		if (modalData?.template) {
-			const flow = analyzeEmailFlow(modalData.template, modalData.user);
-			if (flow.mailtoUrl) {
-				launchEmail(flow.mailtoUrl, '/');
+		// Handle different completion flows
+		if (modalData?.source === 'onboarding') {
+			// For onboarding flow - save address and redirect
+			saveAddress().then(() => {
+				// Clear any pending template action
+				sessionStorage.removeItem('pending_template_action');
+				// Redirect to return URL with completion signal
+				const finalReturnUrl = new URLSearchParams(window.location.search).get('returnTo') || '/dashboard';
+				const separator = finalReturnUrl.includes('?') ? '&' : '?';
+				window.location.href = `${finalReturnUrl}${separator}action=complete`;
+			});
+		} else {
+			// For regular template flow - save address and launch email
+			saveAddress();
+			if (modalData?.template) {
+				const flow = analyzeEmailFlow(modalData.template, modalData.user);
+				if (flow.mailtoUrl) {
+					launchEmail(flow.mailtoUrl);
+				}
 			}
 		}
 	}
 </script>
 
 {#if $modalStore.isOpen && modalData}
-	<AddressRequirementModal 
-		template={modalData.template}
-		user={modalData.user}
-		isOpen={$modalStore.isOpen}
-		on:close={modalStore.close}
-		on:complete={handleComplete}
-	/>
+	{#if modalData.mode === 'collection'}
+		<AddressCollectionModal 
+			template={modalData.template}
+			on:close={modalStore.close}
+			on:complete={handleComplete}
+		/>
+	{:else}
+		<AddressRequirementModal 
+			template={modalData.template}
+			user={modalData.user}
+			isOpen={$modalStore.isOpen}
+			on:close={modalStore.close}
+			on:complete={handleComplete}
+		/>
+	{/if}
 {/if}

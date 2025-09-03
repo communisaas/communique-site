@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { testOnRealData, runBasicSentimentTests } from '$lib/server/sentiment-basic';
+import { testOnRealData, runBasicSentimentTests } from '$lib/core/server/sentiment-basic';
 
 export async function GET() {
   try {

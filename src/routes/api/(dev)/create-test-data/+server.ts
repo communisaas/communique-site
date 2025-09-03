@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { storeSingleUserSentiment } from '$lib/server/sentiment-storage';
+import { storeSingleUserSentiment } from '$lib/core/server/sentiment-storage';
 
 export async function POST() {
   try {

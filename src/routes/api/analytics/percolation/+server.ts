@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { analyzeCivicInformationCascades, storeCascadeAnalysis } from '$lib/server/percolation-engine';
+import { analyzeCivicInformationCascades, storeCascadeAnalysis } from '$lib/core/server/percolation-engine';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {

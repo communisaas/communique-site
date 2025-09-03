@@ -21,7 +21,7 @@
 					class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600"
 				>
 					<Mail class="h-4 w-4" />
-					hello@communi.email
+					hello@communique.com
 				</a>
 			</div>
 		</div>

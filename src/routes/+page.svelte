@@ -8,9 +8,9 @@
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import OnboardingModal from '$lib/components/auth/OnboardingModal.svelte';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
-	import { modalActions, isModalOpen, currentTemplate } from '$lib/stores/modalState';
+	import { modalActions, isModalOpen, currentTemplate } from '$lib/stores/modalSystem';
 	import ProgressiveFormModal from '$lib/components/template/ProgressiveFormModal.svelte';
-	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
+	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
 	import { resolveTemplate } from '$lib/utils/templateResolver';
 	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
 	import { onMount } from 'svelte';
@@ -32,7 +32,6 @@
 	let showOnboardingModal = $state(false);
 	// Removed showTemplateModal - now using persistent modalState store
 	let showTemplateAuthModal = $state(false);
-	let showAddressModal = $state(false);
 	let modalComponent = $state<Modal>();
 	let selectedChannel: string | null = $state(null);
 	let creationContext: TemplateCreationContext | null = $state(null);
@@ -81,7 +80,7 @@
 							block: 'center'
 						});
 					}
-					
+
 					// Then open the template creator modal after a brief delay
 					coordinated.setTimeout(
 						() => {
@@ -183,15 +182,14 @@
 			showOnboardingModal = true;
 		} else if (flow.nextAction === 'address') {
 			// Need address - show unified address requirement modal
-			pendingTemplate = template;
-			showAddressModal = true;
+			modalActions.open('address-modal', 'address', { template, source: 'hero', user: data.user });
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 			if (data.user) {
 				// Show template modal for authenticated users using persistent store
 				modalActions.open(template, data.user);
 			} else {
 				// Direct mailto launch
-				launchEmail(flow.mailtoUrl, '/');
+				launchEmail(flow.mailtoUrl);
 			}
 		}
 	}
@@ -263,7 +261,6 @@
 <section class="pt-12">
 	<div class="mx-auto mb-6 flex max-w-6xl flex-row flex-wrap items-center justify-center gap-8">
 		<span class="relative w-9/12 md:w-7/12">
-			<span class="text-xl"> Communiqué </span>
 			<Hero />
 		</span>
 		<ChannelExplainer
@@ -351,10 +348,9 @@
 							pendingTemplate = $selectedTemplate;
 							showOnboardingModal = true;
 						} else if (flow.nextAction === 'address') {
-							pendingTemplate = $selectedTemplate;
-							showAddressModal = true;
+							modalActions.open('address-modal', 'address', { template: $selectedTemplate, source: 'featured', user: data.user });
 						} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-							launchEmail(flow.mailtoUrl, '/');
+							launchEmail(flow.mailtoUrl);
 						}
 					}}
 				/>
@@ -477,40 +473,6 @@
 		/>
 	{/if}
 
-	<!-- Address Requirement Modal -->
-	{#if showAddressModal && pendingTemplate}
-		<AddressRequirementModal
-			template={pendingTemplate}
-			user={data.user}
-			isOpen={showAddressModal}
-			on:close={() => {
-				showAddressModal = false;
-				pendingTemplate = null;
-			}}
-			on:complete={(event) => {
-				const { address, verified, enhancedCredibility } = event.detail;
-
-				// Update user address if needed (for manual entry)
-				if (!enhancedCredibility && data.user) {
-					// Call API to save address - simplified for demo
-					fetch('/api/user/address', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({ address })
-					});
-				}
-
-				// Close modal and proceed with email
-				showAddressModal = false;
-				const template = pendingTemplate;
-				pendingTemplate = null;
-
-				// Generate email with updated user context
-				const flow = analyzeEmailFlow(template as any, data.user);
-				if (flow.mailtoUrl) {
-					launchEmail(flow.mailtoUrl, '/');
-				}
-			}}
-		/>
-	{/if}
+	<!-- Address Collection Modal -->
+	<UnifiedAddressModal />
 </section>

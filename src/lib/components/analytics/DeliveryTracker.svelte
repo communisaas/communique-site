@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	
 	interface DeliveryStatus {
@@ -160,7 +160,7 @@
 	
 	{#if loading && deliveries.length === 0}
 		<div class="flex items-center justify-center py-8">
-			<LoadingSpinner />
+			<LoadingCard variant="spinner" />
 			<span class="ml-3 text-gray-600">Loading delivery status...</span>
 		</div>
 	{:else if error}

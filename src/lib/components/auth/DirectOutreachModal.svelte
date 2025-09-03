@@ -42,8 +42,8 @@
 	const componentId = 'direct-outreach-modal-' + Math.random().toString(36).substring(2, 15);
 	
 	type Step = 'role' | 'connection' | 'verify';
-	let currentStep: Step = 'role';
-	let isTransitioning = false;
+	let currentStep: Step = $state('role');
+	let isTransitioning = $state(false);
 	
 	// Prevent background scrolling when modal is open
 	onMount(() => {

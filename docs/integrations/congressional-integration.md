@@ -72,7 +72,7 @@ See `prisma/schema.prisma` models for current US implementation; other jurisdict
 ## Usage in advocacy (US adapter example)
 
 ```ts
-import { CWCGenerator } from '$lib/congress/cwc-generator';
+import { CWCGenerator } from '$lib/core/congress/cwc-generator';
 
 const xml = CWCGenerator.generateUserAdvocacyXML({
   template,

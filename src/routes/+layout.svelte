@@ -2,10 +2,14 @@
 	import { templateStore } from '$lib/stores/templates';
 	import { onMount } from 'svelte';
 	import { User, LogOut } from '@lucide/svelte';
+	import { page } from '$app/stores';
 	import '../app.css';
 	import Footer from '$lib/components/layout/Footer.svelte';
+	import AppHeader from '$lib/components/layout/AppHeader.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
+	import { modalActions } from '$lib/stores/modalSystem';
+	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 
 	let { children, data } = $props();
 
@@ -13,35 +17,35 @@
 	onMount(() => {
 		templateStore.fetchTemplates();
 	});
+	
+	// Handle template use from header
+	function handleTemplateUse(event: { template: any; requiresAuth: boolean }) {
+		const { template, requiresAuth } = event;
+		
+		const flow = analyzeEmailFlow(template, data.user);
+		
+		if (flow.nextAction === 'auth') {
+			// Navigate to auth or show modal
+			window.location.href = `/auth/google?returnTo=${encodeURIComponent($page.url.pathname)}`;
+		} else if (flow.nextAction === 'address') {
+			// Handle address requirement 
+			// For now, redirect to auth flow which will handle address collection
+			window.location.href = `/auth/google?returnTo=${encodeURIComponent($page.url.pathname)}`;
+		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+			if (data.user) {
+				// Show template modal for authenticated users
+				modalActions.open(template, data.user);
+			} else {
+				// Direct mailto launch for guests
+				launchEmail(flow.mailtoUrl);
+			}
+		}
+	}
 </script>
 
 <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-	<!-- Simple Header with Auth Status -->
-	{#if data.user}
-		<div class="border-b border-slate-200 bg-white/80 backdrop-blur-sm">
-			<div class="mx-auto max-w-7xl px-6 py-3">
-				<div class="flex items-center justify-between">
-					<div class="text-sm text-slate-600">
-						<span class="hidden sm:inline">Welcome back, </span>{data.user.name?.split(' ')[0] || 'User'}!
-					</div>
-					<div class="flex items-center gap-4">
-						<div class="flex items-center gap-1.5 text-xs text-green-600">
-							<User class="h-3 w-3" />
-							<span class="hidden sm:inline">Signed in</span>
-						</div>
-						<a 
-							href="/auth/logout" 
-							class="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-700 transition-colors"
-							title="Sign out"
-						>
-							<LogOut class="h-3 w-3" />
-							<span class="hidden sm:inline">Sign out</span>
-						</a>
-					</div>
-				</div>
-			</div>
-		</div>
-	{/if}
+	<!-- Unified Ambient Header -->
+	<AppHeader user={data.user} template={data.template} onTemplateUse={handleTemplateUse} />
 	
 	<div class="p-6 md:p-10">
 		<ErrorBoundary fallback="detailed" showRetry={true}>

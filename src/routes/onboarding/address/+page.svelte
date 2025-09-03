@@ -2,12 +2,12 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import AddressCollectionModal from '$lib/components/auth/AddressCollectionModal.svelte';
+	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
+	import { modalActions } from '$lib/stores/modalSystem';
 	import type { PageData } from './$types';
 	
 	let { data }: { data: PageData } = $props();
 	
-	let showAddressModal = $state(true);
 	let pendingTemplate: { slug: string; title: string } | null = $state(null);
 	let finalReturnUrl = $state('/dashboard');
 	
@@ -29,49 +29,19 @@
 			if (returnTo) {
 				finalReturnUrl = decodeURIComponent(returnTo);
 			}
+			
+			// Open the address collection modal
+			modalActions.open('address-modal', 'address', { 
+				template: pendingTemplate || { 
+					title: 'Congressional Message', 
+					deliveryMethod: 'both' 
+				}, 
+				mode: 'collection',
+				source: 'onboarding'
+			});
 		}
 	});
 	
-	async function handleAddressComplete(event: CustomEvent) {
-		const { address, verified, representatives } = event.detail;
-		
-		try {
-			// Save address to user profile
-			const response = await fetch('/api/user/address', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					address,
-					verified,
-					representatives
-				})
-			});
-			
-			if (response.ok) {
-				// Clear any pending template action
-				if (browser) {
-					sessionStorage.removeItem('pending_template_action');
-				}
-				
-				// Redirect to final destination
-				window.location.href = finalReturnUrl;
-			} else {
-				// Still redirect, but user might need to re-enter address later
-				window.location.href = finalReturnUrl;
-			}
-		} catch (error) {
-			// Still redirect to avoid getting stuck
-			window.location.href = finalReturnUrl;
-		}
-	}
-	
-	function handleAddressSkip() {
-		// User chose to skip address collection
-		if (browser) {
-			sessionStorage.removeItem('pending_template_action');
-		}
-		window.location.href = finalReturnUrl;
-	}
 </script>
 
 <svelte:head>
@@ -98,13 +68,5 @@
 	</div>
 </div>
 
-{#if showAddressModal}
-	<AddressCollectionModal 
-		template={pendingTemplate || { 
-			title: 'Congressional Message', 
-			deliveryMethod: 'both' 
-		}}
-		on:complete={handleAddressComplete}
-		on:close={handleAddressSkip}
-	/>
-{/if}
+<!-- Address collection modal managed by UnifiedAddressModal -->
+<UnifiedAddressModal />

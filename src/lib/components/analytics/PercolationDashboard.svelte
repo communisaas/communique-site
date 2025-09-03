@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import LoadingSpinner from '$lib/components/ui/LoadingSpinner.svelte';
+	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
 	// Note: using inline badges here to avoid dependency on specific Badge props
 
 	interface PercolationAnalysis {
@@ -137,7 +137,7 @@
 
 	{#if loading && !analysis}
 		<div class="flex items-center justify-center py-12">
-			<LoadingSpinner />
+			<LoadingCard variant="spinner" />
 			<span class="ml-3 text-gray-600">Running network percolation analysis...</span>
 		</div>
 	{:else if error}

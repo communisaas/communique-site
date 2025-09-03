@@ -65,7 +65,7 @@ export class USCongressAdapter extends LegislativeAdapter {
     async lookupRepresentativesByAddress(address: Address): Promise<Representative[]> {
         try {
             // Use existing address lookup service
-            const { addressLookup } = await import('$lib/congress/address-lookup');
+            const { addressLookup } = await import('$lib/core/congress/address-lookup');
             
             const properAddress = {
                 street: address.street || '',
@@ -112,7 +112,7 @@ export class USCongressAdapter extends LegislativeAdapter {
         if (!representative.bioguide_id) return false;
         
         try {
-            const { addressLookup } = await import('$lib/congress/address-lookup');
+            const { addressLookup } = await import('$lib/core/congress/address-lookup');
             const userReps = {
                 house: { bioguideId: representative.bioguide_id, name: representative.name },
                 senate: [{ bioguideId: representative.bioguide_id, name: representative.name }]
@@ -127,7 +127,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 
     async deliverMessage(request: DeliveryRequest): Promise<DeliveryResult> {
         try {
-            const { cwcClient } = await import('$lib/congress/cwc-client');
+            const { cwcClient } = await import('$lib/core/congress/cwc-client');
             
             // Convert to CWC format
             const congressionalOffice = {

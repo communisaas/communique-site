@@ -59,6 +59,7 @@
 	};
 	
 	const config = typeConfig[type];
+	const IconComponent = $derived(config.icon);
 	
 	function dismiss() {
 		visible = false;
@@ -80,7 +81,7 @@
 		class="flex items-start gap-3 rounded-lg border p-4 shadow-sm {config.bgColor} {config.borderColor}"
 		transition:fly={{ y: -20, duration: 200 }}
 	>
-		<svelte:component this={config.icon} class="h-5 w-5 flex-shrink-0 {config.iconColor}" />
+		<IconComponent class="h-5 w-5 flex-shrink-0 {config.iconColor}" />
 		
 		<div class="flex-1 min-w-0">
 			{#if title}

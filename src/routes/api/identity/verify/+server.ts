@@ -2,10 +2,10 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { SelfBackendVerifier, InMemoryConfigStore } from '@selfxyz/core';
 import { db } from '$lib/core/db';
-import { SELF_XYZ_SCOPE, SELF_XYZ_ENDPOINT } from '$lib/server/selfxyz-config';
+import { SELF_XYZ_SCOPE, SELF_XYZ_ENDPOINT } from '$lib/core/server/selfxyz-config';
 // Import shared verification sessions from init endpoint
 // In production, this would be Redis/DB shared state
-import { verificationSessions } from '$lib/server/verification-sessions';
+import { verificationSessions } from '$lib/core/server/verification-sessions';
 
 // Initialize configuration store for Self.xyz
 const configStore = new InMemoryConfigStore(async (userIdentifier: string, userDefinedData: string) => {

@@ -316,15 +316,15 @@ class MockRegistry {
       '$lib/core/db': { db: this.createDatabaseMock() },
       
       // Congressional services
-      '$lib/congress/cwc-client': this.createCWCMock(),
-      '$lib/congress/address-lookup': this.createAddressLookupMock(),
+      '$lib/core/congress/cwc-client': this.createCWCMock(),
+      '$lib/core/congress/address-lookup': this.createAddressLookupMock(),
       
       // New legislative abstraction
       '$lib/core/legislative': this.createLegislativeMock(),
       
       // Analytics system
       '$lib/core/analytics/database': this.createAnalyticsMock().analytics,
-      '$lib/analytics/funnel': this.createAnalyticsMock().funnelAnalytics,
+      '$lib/core/analytics/funnel': this.createAnalyticsMock().funnelAnalytics,
       
       // SvelteKit
       '@sveltejs/kit': this.createSvelteKitMocks(),

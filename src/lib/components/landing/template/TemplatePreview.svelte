@@ -23,7 +23,9 @@
 		user = null,
 		onScroll = () => {},
 		onOpenModal = null,
-		onSendMessage = null
+		onSendMessage = null,
+		showEmailModal: externalShowEmailModal = false,
+		onEmailModalClose = () => {}
 	}: {
 		template: Template;
 		inModal?: boolean;
@@ -31,6 +33,8 @@
 		onScroll?: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onOpenModal?: (() => void) | null;
 		onSendMessage?: (() => void) | null;
+		showEmailModal?: boolean;
+		onEmailModalClose?: () => void;
 	} = $props();
 
 	const recipients = $derived(extractRecipientEmails(template?.recipient_config));
@@ -39,11 +43,21 @@
 
 	let copied = $state(false);
 	let copyTimeout: string | null = null;
-	let showEmailModal = $state(false);
+	let localShowEmailModal = $state(false);
+	const showEmailModal = $derived(externalShowEmailModal || localShowEmailModal);
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 
 	// Capture user-provided Personal Connection to apply in JS-land before mailto
 	let personalConnectionValue: string = $state('');
+	
+	// Set actionProgress when modal is externally controlled
+	$effect(() => {
+		if (externalShowEmailModal) {
+			actionProgress.set(1);
+		} else if (!showEmailModal) {
+			actionProgress.set(0);
+		}
+	});
 	
 	// Persist and restore personalization data across OAuth flow
 	$effect(() => {
@@ -429,14 +443,15 @@
 								}
 								// Only show email modal if user is authenticated
 								if (user) {
-									showEmailModal = true;
+									localShowEmailModal = true;
 									actionProgress.set(1);
 									coordinated.transition(
 										() => {
 											onSendMessage?.();
 											coordinated.autoClose(
 												() => {
-													showEmailModal = false;
+													localShowEmailModal = false;
+													onEmailModalClose();
 													actionProgress.set(0);
 												},
 												1500,
@@ -492,14 +507,15 @@
 								}
 								// Only show email modal if user is authenticated
 								if (user) {
-									showEmailModal = true;
+									localShowEmailModal = true;
 									actionProgress.set(1);
 									coordinated.transition(
 										() => {
 											onSendMessage?.();
 											coordinated.autoClose(
 												() => {
-													showEmailModal = false;
+													localShowEmailModal = false;
+													onEmailModalClose();
 													actionProgress.set(0);
 												},
 												1500,

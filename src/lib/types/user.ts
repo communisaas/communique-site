@@ -39,3 +39,43 @@ export interface Representative {
     email?: string;
     website?: string;
 }
+
+/**
+ * UNIFIED EMAIL SERVICE USER INTERFACE
+ * 
+ * Consolidated User interface for email and template services.
+ * This interface represents the user context needed for:
+ * - Email flow analysis (auth, address, send)
+ * - Template variable resolution with user data
+ * - Congressional routing determination
+ * - Component user context handling
+ */
+export interface EmailServiceUser {
+	/** Unique user identifier */
+	id: string;
+	
+	/** User's display name for template personalization */
+	name?: string | null;
+	
+	/** User's email address (optional for guest flows) */
+	email?: string;
+	
+	/** Address components required for congressional routing */
+	street?: string | null;
+	city?: string | null;
+	state?: string | null;
+	zip?: string | null;
+	
+	/** Congressional representatives for template variable resolution */
+	representatives?: Array<{
+		name: string;
+		party: string;
+		chamber: string;
+		state: string;
+		district: string;
+	}>;
+	
+	/** Identity verification status for enhanced delivery */
+	is_verified?: boolean;
+	verification_method?: string;
+}

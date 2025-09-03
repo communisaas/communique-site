@@ -14,24 +14,8 @@
  */
 
 import type { Template } from '$lib/types/template';
+import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
-
-interface User {
-	id: string;
-	name?: string | null;
-	email?: string;  // Made optional for compatibility
-	street?: string | null;
-	city?: string | null;
-	state?: string | null;
-	zip?: string | null;
-	representatives?: Array<{
-		name: string;
-		party: string;
-		chamber: string;
-		state: string;
-		district: string;
-	}>;
-}
 
 interface ResolvedTemplate {
 	subject: string;
@@ -54,7 +38,7 @@ interface ResolvedTemplate {
  * is a living, breathing transformation of Model data that resolves
  * block variables with actual user context AT THE MOMENT OF INTERACTION.
  */
-export function resolveTemplate(template: Template, user: User | null): ResolvedTemplate {
+export function resolveTemplate(template: Template, user: EmailServiceUser | null): ResolvedTemplate {
 	// Get the base message content - prefer message_body over preview
 	const baseMessage = template.message_body || template.preview || '';
 	
@@ -197,7 +181,7 @@ export function resolveTemplate(template: Template, user: User | null): Resolved
 /**
  * Build complete user address string
  */
-function buildUserAddress(user: User): string {
+function buildUserAddress(user: EmailServiceUser): string {
 	// Only return address if ALL parts are present
 	if (user.street && user.city && user.state && user.zip) {
 		return `${user.street}, ${user.city}, ${user.state} ${user.zip}`;

@@ -5,7 +5,7 @@ import mockRegistry from '../mocks/registry';
 describe('Address Lookup Unit Tests', () => {
   it('should lookup representatives by address', async () => {
     const mocks = mockRegistry.setupMocks();
-    const { addressLookup } = mocks['$lib/congress/address-lookup'];
+    const { addressLookup } = mocks['$lib/core/congress/address-lookup'];
 
     const address = addressFactory.build({
       overrides: {
@@ -52,7 +52,7 @@ describe('Address Lookup Unit Tests', () => {
 
   it('should validate representatives', async () => {
     const mocks = mockRegistry.setupMocks();
-    const { addressLookup } = mocks['$lib/congress/address-lookup'];
+    const { addressLookup } = mocks['$lib/core/congress/address-lookup'];
 
     const userReps = {
       house: { bioguideId: 'S001234', name: 'Rep. Smith' },
@@ -71,7 +71,7 @@ describe('Address Lookup Unit Tests', () => {
 
   it('should handle address lookup errors gracefully', async () => {
     const mocks = mockRegistry.setupMocks();
-    const { addressLookup } = mocks['$lib/congress/address-lookup'];
+    const { addressLookup } = mocks['$lib/core/congress/address-lookup'];
 
     // Override mock to simulate error
     addressLookup.lookupRepsByAddress.mockRejectedValue(new Error('Census API error'));

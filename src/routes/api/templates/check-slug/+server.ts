@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
-import { isSlugReserved, getReservedSlugError, suggestAlternativeSlug, suggestAvailableAlternatives } from '$lib/server/reserved-slugs';
+import { isSlugReserved, getReservedSlugError, suggestAlternativeSlug, suggestAvailableAlternatives } from '$lib/core/server/reserved-slugs';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
