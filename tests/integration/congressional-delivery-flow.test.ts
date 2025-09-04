@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { voterMocks } from '../mocks/voter.mock';
 
 // Create mocks using vi.hoisted to fix hoisting issues
 const mocks = vi.hoisted(() => ({
@@ -88,6 +89,14 @@ import { POST } from '../../src/routes/api/civic/routing/+server.js';
 describe('Congressional Message Delivery Integration Flow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear VOTER mocks if certification is enabled
+    if (process.env.ENABLE_CERTIFICATION === 'true') {
+      Object.values(voterMocks.certification).forEach(mock => {
+        if (typeof mock === 'function' && 'mockClear' in mock) {
+          mock.mockClear();
+        }
+      });
+    }
   });
 
   describe('Complete Authenticated User Flow', () => {
@@ -259,6 +268,21 @@ describe('Congressional Message Delivery Integration Flow', () => {
       expect(responseData.deliveryCount).toBe(3); // Pipeline mock always returns 3
 
       // Note: The new pipeline encapsulates cache behavior and CWC calls internally
+      
+      // VOTER Protocol certification should be triggered if enabled
+      if (process.env.ENABLE_CERTIFICATION === 'true') {
+        // Wait a tick for async certification to be called
+        await new Promise(resolve => setTimeout(resolve, 0));
+        
+        expect(voterMocks.certification.certifyAction).toHaveBeenCalledWith(
+          userId,
+          expect.objectContaining({
+            actionType: 'cwc_message',
+            messageHash: expect.any(String),
+            timestamp: expect.any(String)
+          })
+        );
+      }
     });
 
     it('handles guest users with onboarding flow', async () => {

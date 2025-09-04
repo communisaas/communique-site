@@ -23,7 +23,7 @@
 		Trophy,
 		Flame
 	} from '@lucide/svelte';
-	import TemplateHeader from '$lib/components/landing/template/TemplateHeader.svelte';
+	import TemplateMeta from '$lib/components/template/TemplateMeta.svelte';
 	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
@@ -227,13 +227,13 @@
 	}
 
 	function handleAuth() {
-		// Prepare secure return cookie then redirect to login
+		// Prepare secure return cookie then redirect to Google OAuth
 		fetch('/auth/prepare', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ returnTo: window.location.pathname })
 		}).finally(() => {
-			window.location.href = `/auth/login`;
+			window.location.href = `/auth/google`;
 		});
 	}
 

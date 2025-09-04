@@ -14,23 +14,16 @@ export async function POST({ request, locals }) {
 			return json({ error: 'Role and connection are required' }, { status: 400 });
 		}
 		
-		// Update user with profile information
-		// Since we don't have dedicated fields for this in the current schema,
-		// we'll store it in a JSON field or add new fields as needed
+		// Update user with profile information using proper fields
 		const updatedUser = await db.user.update({
 			where: { id: locals.user.id },
 			data: {
-				// Store profile info - we'll need to extend the schema or use existing fields creatively
-				// For now, let's use the phone field to store a JSON string of profile data
-				// In production, you'd want dedicated fields in the schema
-				phone: JSON.stringify({
-					role,
-					organization: organization || null,
-					location: location || null,
-					connection,
-					connectionDetails: connectionDetails || null,
-					completedAt: new Date().toISOString()
-				}),
+				role,
+				organization: organization || null,
+				location: location || null,
+				connection,
+				connection_details: connectionDetails || null,
+				profile_completed_at: new Date(),
 				updatedAt: new Date()
 			}
 		});
@@ -65,7 +58,23 @@ export async function GET({ locals }) {
 				id: true,
 				name: true,
 				email: true,
-				phone: true // Contains our profile JSON
+				avatar: true,
+				phone: true,
+				street: true,
+				city: true,
+				state: true,
+				zip: true,
+				congressional_district: true,
+				role: true,
+				organization: true,
+				location: true,
+				connection: true,
+				connection_details: true,
+				profile_completed_at: true,
+				profile_visibility: true,
+				is_verified: true,
+				createdAt: true,
+				updatedAt: true
 			}
 		});
 		
@@ -73,23 +82,36 @@ export async function GET({ locals }) {
 			return json({ error: 'User not found' }, { status: 404 });
 		}
 		
-		// Parse profile data from phone field
-		let profile = null;
-		if (user.phone) {
-			try {
-				profile = JSON.parse(user.phone);
-			} catch (error) {
-				// phone field might contain actual phone number, not profile data
-				profile = null;
-			}
-		}
-		
 		return json({
 			user: {
 				id: user.id,
 				name: user.name,
 				email: user.email,
-				profile
+				avatar: user.avatar,
+				phone: user.phone,
+				address: {
+					street: user.street,
+					city: user.city,
+					state: user.state,
+					zip: user.zip,
+					congressional_district: user.congressional_district
+				},
+				profile: {
+					role: user.role,
+					organization: user.organization,
+					location: user.location,
+					connection: user.connection,
+					connection_details: user.connection_details,
+					completed_at: user.profile_completed_at,
+					visibility: user.profile_visibility
+				},
+				verification: {
+					is_verified: user.is_verified
+				},
+				timestamps: {
+					created_at: user.createdAt,
+					updated_at: user.updatedAt
+				}
 			}
 		});
 		

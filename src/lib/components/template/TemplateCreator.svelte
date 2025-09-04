@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft, Link2, Share } from '@lucide/svelte';
+	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft, X } from '@lucide/svelte';
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
 	import { templateDraftStore, generateDraftId, formatTimeAgo } from '$lib/stores/templateDraft';
 	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
@@ -225,26 +225,6 @@
 		showDraftRecovery = false;
 	}
 
-	// Share functionality
-	function handleShare() {
-		if (formData.objective.slug && formData.objective.title) {
-			const shareUrl = `${window.location.origin}/${formData.objective.slug}`;
-			if (navigator.share) {
-				navigator.share({
-					title: `Join the campaign: ${formData.objective.title}`,
-					text: `Help advocate for change on this important issue.`,
-					url: shareUrl
-				});
-			} else {
-				// Fallback: copy to clipboard
-				navigator.clipboard.writeText(shareUrl).then(() => {
-					// Could add toast notification here
-				});
-			}
-		}
-	}
-
-	const canShare = $derived(formData.objective.slug && formData.objective.title.trim());
 
 	function discardDraft() {
 		templateDraftStore.deleteDraft(draftId);
@@ -290,19 +270,7 @@
 					</h2>
 				</div>
 
-				<div class="flex items-center gap-2 md:gap-3">
-					<!-- Share Button -->
-					{#if canShare}
-						<button
-							type="button"
-							onclick={handleShare}
-							class="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 md:px-5 md:py-3 md:text-base"
-						>
-							<Share class="h-4 w-4 md:h-5 md:w-5" />
-							<span>Share Link</span>
-						</button>
-					{/if}
-
+				<div class="flex items-center gap-2">
 					<!-- Auto-save indicator -->
 					{#if lastSaved}
 						<div
@@ -315,6 +283,16 @@
 							saved {formatTimeAgo(lastSaved).toLowerCase()}
 						</div>
 					{/if}
+
+					<!-- Close button -->
+					<button
+						type="button"
+						onclick={() => dispatch('close')}
+						class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+						aria-label="Close"
+					>
+						<X class="h-5 w-5" />
+					</button>
 				</div>
 			</div>
 			<p class="ml-6 text-sm text-slate-600 md:ml-8 md:text-sm">

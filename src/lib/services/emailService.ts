@@ -17,6 +17,7 @@ import type { Template } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import { resolveTemplate } from '$lib/utils/templateResolver';
+import { voterIntegration } from '$lib/integrations/voter';
 
 // Re-export the unified User interface for backward compatibility
 export type { EmailServiceUser as User } from '$lib/types/user';
@@ -425,6 +426,13 @@ export function launchEmail(
 		redirectUrl?: string;
 		redirectDelay?: number;
 		analytics?: boolean;
+		// VOTER Protocol certification options
+		certification?: {
+			enabled?: boolean;
+			user?: EmailServiceUser;
+			template?: Template;
+			recipients?: string[];
+		};
 	}
 ): EmailLaunchResult {
 	try {
@@ -476,6 +484,22 @@ export function launchEmail(
 					console.warn('Failed to redirect after email launch:', e);
 				}
 			}, delay);
+		}
+		
+		// Handle VOTER Protocol certification if enabled
+		if (options?.certification?.enabled && 
+		    options.certification.user && 
+		    options.certification.template) {
+			// Run certification in background (don't block email launch)
+			voterIntegration.certifyEmailDelivery({
+				user: options.certification.user,
+				template: options.certification.template,
+				mailtoUrl: mailtoUrl,
+				recipients: options.certification.recipients || []
+			}).catch((error) => {
+				// Log certification errors but don't fail the email launch
+				console.warn('[VOTER Certification] Failed to certify email delivery:', error);
+			});
 		}
 		
 		return {

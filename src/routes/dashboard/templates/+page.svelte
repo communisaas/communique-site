@@ -2,7 +2,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import CampaignDashboard from '$lib/components/analytics/CampaignDashboard.svelte';
-	import { FileText, Edit, Send, PlusCircle, BarChart3 } from '@lucide/svelte';
+	import { FileText, Edit, Send, PlusCircle, BarChart3, Share2 } from '@lucide/svelte';
 	import type { PageData } from './$types';
 	import { enhance } from '$app/forms';
 
@@ -74,12 +74,34 @@
 
 						<div class="flex flex-shrink-0 items-center gap-2">
 							<a
-								href={`/demo/lucia/login`}
+								href={`/${template.slug}`}
+								target="_blank"
 								class="inline-flex items-center gap-2 rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-700 ring-1 ring-inset ring-slate-200 hover:bg-slate-50"
 							>
 								<Edit class="h-4 w-4" />
-								Edit
+								View
 							</a>
+
+							<button
+								onclick={() => {
+									const shareUrl = `${window.location.origin}/${template.slug}`;
+									if (navigator.share) {
+										navigator.share({
+											title: template.title,
+											text: `Check out this advocacy template: ${template.title}`,
+											url: shareUrl
+										});
+									} else {
+										navigator.clipboard.writeText(shareUrl).then(() => {
+											// Could add toast notification
+										});
+									}
+								}}
+								class="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+							>
+								<Share2 class="h-4 w-4" />
+								Share
+							</button>
 
 							{#if template.status === 'draft'}
 								<form method="POST" action="?/publish" use:enhance>

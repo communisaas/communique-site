@@ -8,14 +8,14 @@ export async function POST({ request, locals }) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 		
-		const { address, verified, representatives, street, city, state, zipCode, countryCode, latitude, longitude } = await request.json();
+		const { address, verified, representatives, street, city, state, zip, zipCode, countryCode, latitude, longitude, congressional_district } = await request.json();
 		
 		// Address can be provided as a single string or as separate components
 		let addressComponents = { street: '', city: '', state: '', zip: '' };
 		
-		if (street && city && state && zipCode) {
+		if (street && city && state && (zipCode || zip)) {
 			// Separate components provided
-			addressComponents = { street, city, state, zip: zipCode };
+			addressComponents = { street, city, state, zip: zipCode || zip };
 		} else if (address) {
 			// Parse full address string into components
 			addressComponents = parseAddressString(address);
@@ -31,9 +31,7 @@ export async function POST({ request, locals }) {
 				city: addressComponents.city,
 				state: addressComponents.state,
 				zip: addressComponents.zip,
-				country_code: countryCode ?? 'US',
-				latitude: typeof latitude === 'number' ? latitude : undefined,
-				longitude: typeof longitude === 'number' ? longitude : undefined,
+				congressional_district: congressional_district || undefined,
 				updatedAt: new Date()
 			}
 		});
@@ -97,9 +95,7 @@ export async function POST({ request, locals }) {
 				city: updatedUser.city,
 				state: updatedUser.state,
 				zip: updatedUser.zip,
-				country_code: updatedUser.country_code,
-				latitude: updatedUser.latitude,
-				longitude: updatedUser.longitude
+				congressional_district: updatedUser.congressional_district
 			}
 		});
 		

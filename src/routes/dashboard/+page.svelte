@@ -179,10 +179,10 @@
 			<h2 class="mb-4 text-2xl font-bold text-gray-900">Access Denied</h2>
 			<p class="mb-6 text-gray-600">You need to be signed in to access this page.</p>
 			<a
-				href="/auth/login"
+				href="/"
 				class="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
 			>
-				Sign In
+				Go Home
 			</a>
 		</div>
 	</div>

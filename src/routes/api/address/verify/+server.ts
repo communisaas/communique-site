@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { addressLookup } from '$lib/core/congress/address-lookup';
 
 // Real address verification using Census Bureau Geocoding API (primary)
 export async function POST({ request }) {
@@ -50,9 +51,44 @@ export async function POST({ request }) {
 		// Extract normalized address
 		const correctedAddress = match.matchedAddress || fullAddress;
 		
-		// Extract congressional district and create representatives
+		// Extract congressional district
 		const district = extractCongressionalDistrictFromCensus(match.geographies, state);
-		const representatives = await createRepresentativesFromDistrict(district, state);
+		
+		// Get real representatives using Congress.gov API
+		let representatives = [];
+		try {
+			const userReps = await addressLookup.lookupRepsByAddress({
+				street: street,
+				city: city,
+				state: state,
+				zip: zipCode
+			});
+			
+			// Format representatives for frontend
+			representatives = [
+				{
+					name: userReps.house.name,
+					office: `House Representative, ${userReps.house.state}-${userReps.house.district}`,
+					chamber: 'house',
+					party: userReps.house.party,
+					district: `${userReps.house.state}-${userReps.house.district}`,
+					bioguideId: userReps.house.bioguideId
+				},
+				...userReps.senate.map(senator => ({
+					name: senator.name,
+					office: `Senator, ${senator.state}`,
+					chamber: 'senate',
+					party: senator.party,
+					district: senator.state,
+					bioguideId: senator.bioguideId
+				}))
+			];
+		} catch (error) {
+			console.error('Failed to get real representatives, using placeholders:', error);
+			console.error('Error details:', error instanceof Error ? error.stack : error);
+			// Fallback to placeholders if Congress API fails
+			representatives = createRepresentativesFromDistrict(district, state);
+		}
 		
 		return json({
 			verified: true,

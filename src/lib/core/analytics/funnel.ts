@@ -119,6 +119,44 @@ class FunnelAnalytics {
 		});
 	}
 
+	// VOTER Protocol certification tracking
+	trackCertificationAttempted(templateId: string, actionType: string, userId?: string) {
+		this.track('certification_attempted', {
+			template_id: templateId,
+			action_type: actionType,
+			user_id: userId,
+			step: 'certification_start'
+		});
+	}
+
+	trackCertificationSuccess(templateId: string, rewardAmount: number, userId?: string, certificationHash?: string) {
+		this.track('certification_success', {
+			template_id: templateId,
+			reward_amount: rewardAmount,
+			certification_hash: certificationHash,
+			user_id: userId,
+			step: 'certification_complete'
+		});
+	}
+
+	trackRewardEarned(amount: number, actionType: string, userId?: string) {
+		this.track('reward_earned', {
+			reward_amount: amount,
+			action_type: actionType,
+			user_id: userId,
+			step: 'reward_distribution'
+		});
+	}
+
+	trackCertificationError(templateId: string, error: string, userId?: string) {
+		this.track('certification_error', {
+			template_id: templateId,
+			error_message: error,
+			user_id: userId,
+			step: 'certification_failed'
+		});
+	}
+
 	// Get funnel metrics for debugging/optimization
 	getFunnelMetrics() {
 		const metrics = {
@@ -129,7 +167,10 @@ class FunnelAnalytics {
 				template_viewed: this.events.filter(e => e.event === 'template_viewed').length,
 				onboarding_started: this.events.filter(e => e.event === 'onboarding_started').length,
 				auth_completed: this.events.filter(e => e.event === 'auth_completed').length,
-				template_used: this.events.filter(e => e.event === 'template_used').length
+				template_used: this.events.filter(e => e.event === 'template_used').length,
+				certification_attempted: this.events.filter(e => e.event === 'certification_attempted').length,
+				certification_success: this.events.filter(e => e.event === 'certification_success').length,
+				reward_earned: this.events.filter(e => e.event === 'reward_earned').length
 			}
 		};
 

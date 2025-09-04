@@ -60,6 +60,9 @@ class MockRegistry {
     this.enableMock('congressional_routing', FEATURES.CONGRESSIONAL_ROUTING === FeatureStatus.ON);
     this.enableMock('oauth_login', FEATURES.OAUTH_LOGIN === FeatureStatus.ON);
     
+    // VOTER Protocol certification (opt-in via env var)
+    this.enableMock('voter_certification', process.env.ENABLE_CERTIFICATION === 'true');
+    
     // Beta features conditionally mocked
     if (process.env.ENABLE_BETA === 'true') {
       this.enableMock('cascade_analytics', FEATURES.CASCADE_ANALYTICS === FeatureStatus.BETA);

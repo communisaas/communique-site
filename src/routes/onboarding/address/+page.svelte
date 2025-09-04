@@ -2,8 +2,8 @@
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
-	import { modalActions } from '$lib/stores/modalSystem.svelte';
+	import { goto } from '$app/navigation';
+	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import type { PageData } from './$types';
 	
 	let { data }: { data: PageData } = $props();
@@ -21,6 +21,7 @@
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
 				} catch (error) {
+					console.error('Failed to parse pending action:', error);
 				}
 			}
 			
@@ -29,18 +30,49 @@
 			if (returnTo) {
 				finalReturnUrl = decodeURIComponent(returnTo);
 			}
-			
-			// Open the address collection modal
-			modalActions.open('address-modal', 'address', { 
-				template: pendingTemplate || { 
-					title: 'Congressional Message', 
-					deliveryMethod: 'both' 
-				}, 
-				mode: 'collection',
-				source: 'onboarding'
-			});
 		}
 	});
+	
+	async function handleAddressComplete(event: CustomEvent) {
+		const { address, verified, representatives, district, streetAddress, city, state, zipCode } = event.detail;
+		
+		// Save address to database
+		try {
+			const { api } = await import('$lib/core/api/client');
+			const result = await api.post('/api/user/address', {
+				street: streetAddress,
+				city,
+				state,
+				zip: zipCode,
+				congressional_district: district,
+				verified,
+				representatives
+			});
+			
+			if (!result.success) {
+				console.error('Failed to save address:', result.error);
+			}
+		} catch (error) {
+			console.error('Error saving address:', error);
+		}
+		
+		// Save address completion to sessionStorage if needed
+		if (browser) {
+			sessionStorage.setItem('address_completed', JSON.stringify({
+				address,
+				verified,
+				representatives,
+				district,
+				completedAt: new Date().toISOString()
+			}));
+			
+			// Clear pending template action since we're completing it
+			sessionStorage.removeItem('pending_template_action');
+		}
+		
+		// Redirect to final destination
+		goto(finalReturnUrl);
+	}
 	
 </script>
 
@@ -49,24 +81,24 @@
 	<meta name="description" content="Complete your profile to start sending messages to Congress" />
 </svelte:head>
 
-<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white flex items-center justify-center p-4">
-	<div class="max-w-md w-full text-center">
-		<h1 class="text-2xl font-bold text-slate-900 mb-4">
-			One more step...
-		</h1>
-		<p class="text-slate-600 mb-8">
-			We need to verify your address to send your message to the right representatives.
-		</p>
-		
-		<!-- Loading state while modal appears -->
-		{#if !showAddressModal}
-			<div class="animate-pulse">
-				<div class="h-4 bg-slate-200 rounded w-3/4 mx-auto mb-2"></div>
-				<div class="h-4 bg-slate-200 rounded w-1/2 mx-auto"></div>
-			</div>
-		{/if}
+<div class="bg-gradient-to-b from-slate-50 to-white py-8">
+	<div class="max-w-lg mx-auto px-4">
+		<!-- Engaging Header -->
+		<div class="text-center mb-4">
+			<h1 class="text-2xl font-bold text-slate-900 mb-2">
+				Let's get your message delivered
+			</h1>
+			<p class="text-sm text-slate-600">
+				Your address unlocks direct routes to decision makers
+			</p>
+		</div>
+
+		<!-- Address Collection Card - Connected to header -->
+		<div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+			<AddressCollectionForm
+				template={pendingTemplate || { title: 'Congressional Message', deliveryMethod: 'both' }}
+				on:complete={handleAddressComplete}
+			/>
+		</div>
 	</div>
 </div>
-
-<!-- Address collection modal managed by UnifiedAddressModal -->
-<UnifiedAddressModal />

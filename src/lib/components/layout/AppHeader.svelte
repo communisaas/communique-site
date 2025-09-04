@@ -4,6 +4,7 @@
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { createEventDispatcher } from 'svelte';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
+	import SignInModal from '$lib/components/modals/SignInModal.svelte';
 	
 	const dispatch = createEventDispatcher();
 	
@@ -21,6 +22,8 @@
 	
 	let showCopied = $state(false);
 	let showShareMenu = $state(false);
+	let showAuthModal = $state(false);
+	let authModal: SignInModal;
 	
 	const componentId = 'AppHeader_' + Math.random().toString(36).substr(2, 9);
 	const shareUrl = $derived($page.url.href);
@@ -156,6 +159,10 @@
 			requiresAuth: emailFlow.requiresAuth
 		});
 	}
+
+	function handleHeaderSignIn() {
+		authModal.open();
+	}
 </script>
 
 <!-- Ambient Header - Context-Aware Design -->
@@ -200,6 +207,16 @@
 							</div>
 						{/if}
 						
+						<!-- Profile link -->
+						<a 
+							href="/profile" 
+							class="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+							title="View profile"
+						>
+							<User class="h-3 w-3" />
+							<span class="hidden sm:inline">Profile</span>
+						</a>
+						
 						<!-- Sign out -->
 						<a 
 							href="/auth/logout" 
@@ -210,6 +227,17 @@
 							<span class="hidden sm:inline">Sign out</span>
 						</a>
 					</div>
+				{:else}
+					<!-- General sign-in for unauthenticated users when no template CTA -->
+					<button
+						onclick={handleHeaderSignIn}
+						class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+						title="Sign in"
+					>
+						<User class="h-4 w-4" />
+						<span class="hidden sm:inline">Sign In</span>
+						<span class="sm:hidden">Sign In</span>
+					</button>
 				{/if}
 				
 				<!-- Primary CTA for template actions -->
@@ -305,3 +333,6 @@
 		aria-label="Close share menu"
 	></div>
 {/if}
+
+<!-- Sign In Modal -->
+<SignInModal bind:this={authModal} />

@@ -14,6 +14,12 @@
 - API examples under `src/routes/api/civic/*`
 - See: `docs/integrations/congressional-integration.md`
 
+## VOTER Protocol Integration
+- Blockchain-based civic action rewards and verification
+- Server-side proxy architecture for secure API communication
+- Deterministic address generation for wallet-free participation
+- See: `docs/integrations/VOTER_INTEGRATION.md`
+
 ## Identity (optional)
 - Self.xyz for humanity/age (ZK proofs)
 - UI: `VerificationModal.svelte`; API: `src/routes/api/identity/*`

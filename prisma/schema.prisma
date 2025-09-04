@@ -25,7 +25,18 @@ model User {
   verification_method       String?                    @map("verification_method")
   verification_data         Json?                      @map("verification_data")
   verified_at               DateTime?                  @map("verified_at")
+  voter_address             String?                    @unique @map("voter_address") // VOTER Protocol wallet address
+  voter_reputation          Int                        @default(0) @map("voter_reputation") // VOTER reputation score
+  // Profile fields
+  role                      String?                    // User's role/profession
+  organization              String?                    // User's organization  
+  location                  String?                    // General location description
+  connection                String?                    // Connection to issues they advocate for
+  connection_details        String?                    @map("connection_details") // Additional connection context
+  profile_completed_at      DateTime?                  @map("profile_completed_at") // When profile was completed
+  profile_visibility        String                     @default("private") @map("profile_visibility") // public, private, limited
   account                   account[]
+  certification_logs        CertificationLog[]
   political_bubbles         local_political_bubble[]
   political_dead_ends       political_dead_end[]
   political_uncertainties   political_uncertainty[]
@@ -107,7 +118,7 @@ model account {
   id_token            String?
   session_state       String?
   created_at          DateTime @default(now())
-  updated_at          DateTime
+  updated_at          DateTime @updatedAt
   user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([provider, provider_account_id])
@@ -137,7 +148,7 @@ model template_campaign {
   error_message   String?
   metadata        Json?
   created_at      DateTime  @default(now())
-  updated_at      DateTime
+  updated_at      DateTime  @updatedAt
   template        Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
   user            User      @relation("UserCampaigns", fields: [user_id], references: [id], onDelete: Cascade)
 }
@@ -621,4 +632,26 @@ model analytics_variation {
   description String?
 
   events      analytics_event[]
+}
+
+// VOTER Protocol Integration
+model CertificationLog {
+  id                 String   @id @default(uuid())
+  user_id            String   @map("user_id")
+  certification_hash String?  @map("certification_hash")
+  action_type        String   @map("action_type")
+  reward_amount      BigInt?  @map("reward_amount")
+  reputation_change  Int?     @map("reputation_change")
+  template_id        String?  @map("template_id")
+  recipient_emails   String[] @map("recipient_emails")
+  status             String   @default("pending") // pending, certified, failed
+  error_message      String?  @map("error_message")
+  created_at         DateTime @default(now()) @map("created_at")
+  
+  user User @relation(fields: [user_id], references: [id])
+  
+  @@index([user_id])
+  @@index([certification_hash])
+  @@index([created_at])
+  @@map("certification_log")
 }

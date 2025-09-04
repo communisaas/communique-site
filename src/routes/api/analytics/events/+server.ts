@@ -85,16 +85,11 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		const eventsToCreate = events.map(event => ({
 			session_id: session_data.session_id,
 			user_id: event.user_id || validatedUserId || null,
-			template_id: event.template_id && validTemplateIds.has(event.template_id) ? event.template_id : null,
-			event_type: event.event_type,
-			event_name: event.event_name,
-			event_properties: event.event_properties || null,
-			page_url: event.page_url || null,
-			referrer: event.referrer || session_data.referrer || null,
-			user_agent: session_data.user_agent || null,
-			ip_address: clientIP,
 			timestamp: event.timestamp || new Date(),
-			created_at: new Date()
+			name: event.event_name || event.name || 'unknown',
+			funnel_id: event.funnel_id || null,
+			campaign_id: event.campaign_id || null,
+			variation_id: event.variation_id || null
 		}));
 
 		// Batch insert events

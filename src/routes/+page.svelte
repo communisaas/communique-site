@@ -6,6 +6,8 @@
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import TouchModal from '$lib/components/ui/TouchModal.svelte';
+import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
+import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.svelte';
 	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import { modalActions, isModalOpen, currentTemplate } from '$lib/stores/modalSystem.svelte';
@@ -36,10 +38,12 @@
 	let showTemplateCreator = $state(false);
 	// Removed showTemplateModal - now using persistent modalState store
 	let showTemplateAuthModal = $state(false);
+	let showTemplateSuccess = $state(false);
 	let modalComponent = $state<TouchModal>();
 	let selectedChannel: string | null = $state(null);
 	let creationContext: TemplateCreationContext | null = $state(null);
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
+	let savedTemplate = $state<any>(null);
 	let userInitiatedSelection = $state(false); // Track if selection was user-initiated
 	let initialLoadComplete = $state(false); // Track initial load completion
 
@@ -393,40 +397,41 @@
 
 	<!-- Template Creator Modal -->
 	{#if showTemplateCreator && creationContext}
-		<TouchModal
-			bind:this={modalComponent}
-			on:close={() => {
+		<SimpleModal
+			maxWidth="max-w-4xl"
+			showClose={false}
+			onclose={() => {
 				showTemplateCreator = false;
 				creationContext = null;
 			}}
 		>
-			<div class="h-full">
-				<TemplateCreator
-					context={creationContext}
-					on:close={() => {
-						showTemplateCreator = false;
-						creationContext = null;
-					}}
-					on:save={async (event) => {
-						// Handle template save
-						if (data.user) {
-							// Authenticated user - save directly
-							try {
-								await templateStore.addTemplate(event.detail);
-								showTemplateCreator = false;
-								creationContext = null;
-							} catch (error) {
-								// Template save failed - user can retry
-							}
-						} else {
-							// Guest user - show progressive auth modal
-							pendingTemplateToSave = event.detail;
-							showTemplateAuthModal = true;
+			<TemplateCreator
+				context={creationContext}
+				on:close={() => {
+					showTemplateCreator = false;
+					creationContext = null;
+				}}
+				on:save={async (event) => {
+					// Handle template save
+					if (data.user) {
+						// Authenticated user - save directly
+						try {
+							const newTemplate = await templateStore.addTemplate(event.detail);
+							showTemplateCreator = false;
+							creationContext = null;
+							savedTemplate = newTemplate;
+							showTemplateSuccess = true;
+						} catch (error) {
+							// Template save failed - user can retry
 						}
-					}}
-				/>
-			</div>
-		</TouchModal>
+					} else {
+						// Guest user - show progressive auth modal
+						pendingTemplateToSave = event.detail;
+						showTemplateAuthModal = true;
+					}
+				}}
+			/>
+		</SimpleModal>
 	{/if}
 
 	<!-- Auth Modals -->
@@ -467,4 +472,23 @@
 
 	<!-- Address Collection Modal -->
 	<UnifiedAddressModal />
+
+	<!-- Template Success Modal -->
+	{#if showTemplateSuccess && savedTemplate}
+		<TemplateSuccessModal
+			template={savedTemplate}
+			onclose={() => {
+				showTemplateSuccess = false;
+				savedTemplate = null;
+			}}
+			on:createAnother={() => {
+				showTemplateSuccess = false;
+				savedTemplate = null;
+				// Re-open creator with same context
+				if (creationContext) {
+					showTemplateCreator = true;
+				}
+			}}
+		/>
+	{/if}
 </section>

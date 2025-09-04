@@ -3,9 +3,9 @@
  * 
  * Handles certification of civic actions through VOTER Protocol
  * Called AFTER successful delivery to certify and earn rewards
+ * 
+ * This is a client-safe service that communicates with server-side API endpoints
  */
-
-import { env } from '$env/dynamic/private';
 
 export interface CertificationRequest {
 	actionType: 'direct_email' | 'cwc_message' | 'local_action';
@@ -27,47 +27,31 @@ export interface CertificationResponse {
 }
 
 class CertificationService {
-	private apiUrl: string;
-	private apiKey: string;
-	private enabled: boolean;
-
-	constructor() {
-		this.apiUrl = env.VOTER_API_URL || 'http://localhost:8000';
-		this.apiKey = env.VOTER_API_KEY || '';
-		this.enabled = env.ENABLE_CERTIFICATION === 'true';
-	}
+	// Use relative API endpoints that will be handled by SvelteKit's server-side routing
+	// This keeps all sensitive configuration on the server side
+	private readonly endpoints = {
+		certify: '/api/voter-proxy/certify',
+		status: '/api/voter-proxy/status',
+		receipt: '/api/voter-proxy/receipt'
+	};
 
 	/**
 	 * Certify a civic action after successful delivery
+	 * Calls server-side proxy endpoint to keep API keys secure
 	 */
 	async certifyAction(
 		userAddress: string,
 		request: CertificationRequest
 	): Promise<CertificationResponse> {
-		if (!this.enabled) {
-			console.log('[Certification] Service disabled, skipping certification');
-			return { success: true };
-		}
-
 		try {
-			const response = await fetch(`${this.apiUrl}/api/v1/certification/action`, {
+			const response = await fetch(this.endpoints.certify, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'X-API-Key': this.apiKey,
-					'X-User-Address': userAddress
 				},
 				body: JSON.stringify({
-					action_type: request.actionType,
-					delivery_receipt: request.deliveryReceipt,
-					message_hash: request.messageHash,
-					timestamp: request.timestamp,
-					metadata: {
-						recipient_email: request.recipientEmail,
-						recipient_name: request.recipientName,
-						subject: request.subject,
-						...request.metadata
-					}
+					userAddress,
+					...request
 				})
 			});
 
@@ -81,13 +65,7 @@ class CertificationService {
 			}
 
 			const data = await response.json();
-			
-			return {
-				success: true,
-				certificationHash: data.certification_hash,
-				rewardAmount: data.reward_amount,
-				reputationChange: data.reputation_change
-			};
+			return data;
 
 		} catch (error) {
 			console.error('[Certification] Network error:', error);
@@ -101,20 +79,12 @@ class CertificationService {
 
 	/**
 	 * Check certification status
+	 * Calls server-side proxy endpoint
 	 */
 	async getStatus(certificationHash: string): Promise<any> {
-		if (!this.enabled) {
-			return null;
-		}
-
 		try {
 			const response = await fetch(
-				`${this.apiUrl}/api/v1/certification/status/${certificationHash}`,
-				{
-					headers: {
-						'X-API-Key': this.apiKey
-					}
-				}
+				`${this.endpoints.status}/${certificationHash}`
 			);
 
 			if (!response.ok) {
@@ -130,26 +100,22 @@ class CertificationService {
 
 	/**
 	 * Submit delivery receipt for verification
+	 * Calls server-side proxy endpoint
 	 */
 	async submitReceipt(
 		receipt: string,
 		actionType: string,
 		metadata?: any
 	): Promise<{ verified: boolean; hash?: string }> {
-		if (!this.enabled) {
-			return { verified: false };
-		}
-
 		try {
-			const response = await fetch(`${this.apiUrl}/api/v1/certification/receipt`, {
+			const response = await fetch(this.endpoints.receipt, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					'X-API-Key': this.apiKey
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					receipt,
-					action_type: actionType,
+					actionType,
 					metadata
 				})
 			});
@@ -159,10 +125,7 @@ class CertificationService {
 			}
 
 			const data = await response.json();
-			return {
-				verified: data.verified,
-				hash: data.receipt_hash
-			};
+			return data;
 
 		} catch (error) {
 			console.error('[Certification] Receipt submission error:', error);
