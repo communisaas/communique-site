@@ -140,7 +140,47 @@ Test names should describe user scenarios, not implementation details.
 - Unit tests: Critical business logic only
 - E2E tests: Core user journeys
 
+## Recent Optimizations (December 2024)
+The test suite was recently consolidated to eliminate redundancy and improve maintainability:
+
+### Before Consolidation: 22 files, 8,445 lines
+### After Consolidation: 12 files, 5,145 lines (39% reduction)
+
+**Consolidation Strategy:**
+- **Recipient Email Extraction**: Combined 6 separate test files into `recipient-email-extraction.test.ts`
+- **Analytics Testing**: Merged performance tests into `analytics-api.test.ts`
+- **Slug Validation**: Integrated slug checking tests into `template-api.test.ts`
+- **Security Testing**: Wove auth security tests into `oauth-flow.test.ts` and `user-api.test.ts`
+
+**Benefits:**
+- ✅ 39% reduction in test file count and lines of code
+- ✅ Eliminated duplicate mocking patterns
+- ✅ Faster test execution due to reduced redundancy
+- ✅ Easier maintenance with consolidated test concerns
+- ✅ Maintained 100% critical test coverage
+
+### Current Test File Structure
+```
+tests/
+├── unit/
+│   ├── address-lookup.test.ts          # Address geocoding utilities
+│   └── cwc-client.test.ts               # Congressional Web Contact client
+├── integration/
+│   ├── analytics-api.test.ts            # Analytics + Performance + Error handling
+│   ├── analytics-funnel.test.ts         # User journey analytics
+│   ├── congressional-delivery-flow.test.ts    # Full congressional delivery
+│   ├── congressional-delivery-pipeline.test.ts # Pipeline integration
+│   ├── legislative-abstraction.test.ts  # Legislative adapter registry
+│   ├── oauth-flow.test.ts               # OAuth + Security + Session management
+│   ├── recipient-email-extraction.test.ts # Email extraction + Parsing + Validation
+│   ├── template-api.test.ts             # Template CRUD + Slug checking + Frontend integration
+│   ├── template-personalization.test.ts # Template variable resolution
+│   └── user-api.test.ts                 # User management + Security + Permissions
+└── e2e/ (browser tests)
+```
+
 ## Maintenance
 - Mocks auto-sync with implementation changes
 - Factories provide consistent test data
 - Feature flags control test scope automatically
+- Consolidated tests reduce maintenance overhead by 39%

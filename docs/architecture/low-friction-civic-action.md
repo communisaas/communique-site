@@ -28,7 +28,7 @@ Link → Recognized session → Template modal → mailto open → Done
 
 ## Implementation components
 
-- Guest state: `src/lib/stores/guestState.ts`
+- Guest state: `src/lib/stores/guestState.svelte.ts`
   - Persists template context up to 7 days in `localStorage`
   - Tracks `source` (`social-link` | `direct-link` | `share`) and `viewCount`
 
@@ -40,12 +40,12 @@ Link → Recognized session → Template modal → mailto open → Done
   - For authenticated users, auto‑generates and opens `mailto:`
   - Success state with share options; copy link + platform share
 
-- Extended sessions: `src/lib/server/auth.ts` + OAuth callbacks
+- Extended sessions: `src/lib/core/auth/auth.ts` + OAuth callbacks
   - 90‑day sessions when returning from `template-modal` or `auth=required`
   - 30‑day sessions otherwise
   - See callbacks under `src/routes/auth/*/callback/+server.ts`
 
-- Analytics hooks: `src/lib/analytics/funnel.ts` and inline `gtag` events
+- Analytics hooks: `src/lib/core/analytics/funnel.ts`
   - Event model supports: `template_viewed`, `onboarding_started`, `auth_completed`, `template_used`, `template_shared`
   - Server endpoint increments per‑template counters under `src/routes/api/civic/analytics/+server.ts`
   - Template modal usage/sharing instrumented; add view/onboarding/auth events in `/{slug}` as needed
@@ -89,7 +89,7 @@ Link → Recognized session → Template modal → mailto open → Done
 ## Current status
 
 - Guest state, quick action modal, extended sessions, sharing: implemented
-- Event model and API exist; some events use inline `gtag` today; broader adoption can wire through `funnelAnalytics`
+- Event model and API exist; broader adoption can wire through `funnelAnalytics`
 - Claims are grounded in shipped code; additional analytics visualization and A/B testing are optional follow‑ups
 
 

@@ -14,13 +14,11 @@ export type AnalyticsEventType = 'funnel' | 'interaction' | 'navigation' | 'perf
 export interface AnalyticsEvent {
 	session_id: string;
 	user_id?: string;
-	template_id?: string;
-	event_type: AnalyticsEventType;
-	event_name: string;
-	event_properties?: Record<string, any>;
-	page_url?: string;
-	referrer?: string;
-	timestamp?: Date;
+	name: string;
+	funnel_id?: string;
+	campaign_id?: string;
+	variation_id?: string;
+	properties?: Record<string, any>;
 }
 
 export interface SessionData {
@@ -46,7 +44,7 @@ class DatabaseAnalytics {
 	constructor() {
 		this.sessionId = this.generateSessionId();
 		this.sessionData = { session_id: this.sessionId };
-		
+
 		if (browser) {
 			this.initializeSession();
 		}
@@ -76,10 +74,8 @@ class DatabaseAnalytics {
 			// Track initial session start
 			await this.trackEvent({
 				session_id: this.sessionId,
-				event_type: 'navigation',
-				event_name: 'session_start',
-				page_url: window.location.href,
-				event_properties: {
+				name: 'session_start',
+				properties: {
 					timestamp: Date.now(),
 					viewport: {
 						width: window.innerWidth,
@@ -128,10 +124,7 @@ class DatabaseAnalytics {
 
 		const fullEvent: AnalyticsEvent = {
 			...event,
-			session_id: this.sessionId,
-			page_url: event.page_url || window.location.href,
-			referrer: event.referrer || document.referrer || undefined,
-			timestamp: event.timestamp || new Date()
+			session_id: this.sessionId
 		};
 
 		// Add to queue for batching
@@ -143,6 +136,32 @@ class DatabaseAnalytics {
 		}
 	}
 
+	private safeStringify(obj: any): string {
+		const seen = new WeakSet();
+		return JSON.stringify(obj, (key, value) => {
+			// Skip DOM elements
+			if (value instanceof HTMLElement) {
+				return '[HTMLElement]';
+			}
+			// Skip Window/Document objects
+			if (value === window || value === document) {
+				return '[Window/Document]';
+			}
+			// Handle circular references
+			if (typeof value === 'object' && value !== null) {
+				if (seen.has(value)) {
+					return '[Circular]';
+				}
+				seen.add(value);
+			}
+			// Skip functions
+			if (typeof value === 'function') {
+				return '[Function]';
+			}
+			return value;
+		});
+	}
+
 	async flushEvents(sync = false): Promise<void> {
 		if (!this.eventQueue.length || !browser) {
 			return;
@@ -152,20 +171,14 @@ class DatabaseAnalytics {
 		this.eventQueue = [];
 
 		try {
-			// Handle circular references in event properties
-			const safeEvents = events.map(event => ({
-				...event,
-				event_properties: event.event_properties ? this.safeStringify(event.event_properties) : undefined
-			}));
-
 			const response = await fetch('/api/analytics/events', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
-				body: JSON.stringify({
+				body: this.safeStringify({
 					session_data: this.sessionData,
-					events: safeEvents
+					events: events
 				}),
 				...(sync && { keepalive: true })
 			});
@@ -175,7 +188,6 @@ class DatabaseAnalytics {
 				this.eventQueue.unshift(...events);
 				console.warn('Failed to flush analytics events:', response.status);
 			}
-
 		} catch (error) {
 			// Put events back in queue for retry
 			this.eventQueue.unshift(...events);
@@ -189,9 +201,8 @@ class DatabaseAnalytics {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			user_id: userId,
-			event_type: 'funnel',
-			event_name: 'user_identified',
-			event_properties: {
+			name: 'user_identified',
+			properties: {
 				...userProperties,
 				identification_time: Date.now()
 			}
@@ -203,10 +214,8 @@ class DatabaseAnalytics {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			user_id: event.user_id,
-			template_id: event.template_id,
-			event_type: 'funnel',
-			event_name: event.event,
-			event_properties: {
+			name: event.event,
+			properties: {
 				source: event.source,
 				platform: event.platform,
 				...event.properties
@@ -217,10 +226,9 @@ class DatabaseAnalytics {
 	async trackTemplateView(templateId: string, source: 'social-link' | 'direct-link' | 'share' = 'direct-link'): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
-			template_id: templateId,
-			event_type: 'funnel',
-			event_name: 'template_viewed',
-			event_properties: {
+			name: 'template_viewed',
+			properties: {
+				template_id: templateId,
 				source,
 				step: 'landing'
 			}
@@ -230,10 +238,9 @@ class DatabaseAnalytics {
 	async trackOnboardingStarted(templateId: string, source: 'social-link' | 'direct-link' | 'share'): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
-			template_id: templateId,
-			event_type: 'funnel',
-			event_name: 'onboarding_started',
-			event_properties: {
+			name: 'onboarding_started',
+			properties: {
+				template_id: templateId,
 				source,
 				step: 'auth_modal'
 			}
@@ -242,14 +249,13 @@ class DatabaseAnalytics {
 
 	async trackAuthCompleted(templateId: string, provider: string, userId: string): Promise<void> {
 		await this.identifyUser(userId, { auth_provider: provider });
-		
+
 		await this.trackEvent({
 			session_id: this.sessionId,
 			user_id: userId,
-			template_id: templateId,
-			event_type: 'funnel',
-			event_name: 'auth_completed',
-			event_properties: {
+			name: 'auth_completed',
+			properties: {
+				template_id: templateId,
 				provider,
 				step: 'auth_success'
 			}
@@ -260,10 +266,9 @@ class DatabaseAnalytics {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			user_id: userId,
-			template_id: templateId,
-			event_type: 'funnel',
-			event_name: 'template_used',
-			event_properties: {
+			name: 'template_used',
+			properties: {
+				template_id: templateId,
 				delivery_method: deliveryMethod,
 				step: 'conversion'
 			}
@@ -274,10 +279,9 @@ class DatabaseAnalytics {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			user_id: userId,
-			template_id: templateId,
-			event_type: 'interaction',
-			event_name: 'template_shared',
-			event_properties: {
+			name: 'template_shared',
+			properties: {
+				template_id: templateId,
 				platform
 			}
 		});
@@ -286,10 +290,9 @@ class DatabaseAnalytics {
 	async trackPageView(url?: string): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
-			event_type: 'navigation',
-			event_name: 'page_view',
-			page_url: url || window.location.href,
-			event_properties: {
+			name: 'page_view',
+			properties: {
+				url: url || window.location.href,
 				timestamp: Date.now()
 			}
 		});
@@ -298,9 +301,8 @@ class DatabaseAnalytics {
 	async trackInteraction(element: string, action: string, properties: Record<string, any> = {}): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
-			event_type: 'interaction',
-			event_name: `${element}_${action}`,
-			event_properties: {
+			name: `${element}_${action}`,
+			properties: {
 				element,
 				action,
 				...properties
@@ -311,9 +313,8 @@ class DatabaseAnalytics {
 	async trackError(error: Error, context: Record<string, any> = {}): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
-			event_type: 'error',
-			event_name: 'javascript_error',
-			event_properties: {
+			name: 'javascript_error',
+			properties: {
 				error_message: error.message,
 				error_stack: error.stack,
 				error_name: error.name,
@@ -327,7 +328,7 @@ class DatabaseAnalytics {
 			clearInterval(this.flushInterval);
 			this.flushInterval = null;
 		}
-		
+
 		// Final flush
 		this.flushEvents(true);
 	}
@@ -338,27 +339,6 @@ class DatabaseAnalytics {
 
 	get currentSessionId(): string {
 		return this.sessionId;
-	}
-
-	/**
-	 * Safe JSON stringify that handles circular references
-	 */
-	private safeStringify(obj: any): any {
-		try {
-			return JSON.parse(JSON.stringify(obj));
-		} catch (error) {
-			// Handle circular references
-			const seen = new WeakSet();
-			return JSON.parse(JSON.stringify(obj, (key, value) => {
-				if (typeof value === 'object' && value !== null) {
-					if (seen.has(value)) {
-						return '[Circular Reference]';
-					}
-					seen.add(value);
-				}
-				return value;
-			}));
-		}
 	}
 }
 

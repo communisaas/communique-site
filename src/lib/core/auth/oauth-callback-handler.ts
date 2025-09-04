@@ -93,7 +93,7 @@ export class OAuthCallbackHandler {
 
 			// Step 4: Find or create user in database
 			const user = await this.findOrCreateUser(
-				config.provider,
+				config,
 				userData,
 				tokenData
 			);
@@ -158,7 +158,7 @@ export class OAuthCallbackHandler {
 	 * Find existing user or create new one with OAuth account
 	 */
 	private async findOrCreateUser(
-		provider: OAuthProvider,
+		config: OAuthCallbackConfig,
 		userData: UserData,
 		tokenData: TokenData
 	): Promise<any> {
@@ -166,7 +166,7 @@ export class OAuthCallbackHandler {
 		let existingAccount = await db.account.findUnique({
 			where: {
 				provider_provider_account_id: {
-					provider,
+					provider: config.provider,
 					provider_account_id: userData.id
 				}
 			},
@@ -180,8 +180,7 @@ export class OAuthCallbackHandler {
 				data: {
 					access_token: tokenData.accessToken,
 					refresh_token: tokenData.refreshToken,
-					expires_at: tokenData.expiresAt,
-					updated_at: new Date()
+					expires_at: tokenData.expiresAt
 				}
 			});
 			return existingAccount.user;
@@ -199,42 +198,35 @@ export class OAuthCallbackHandler {
 					id: this.generateAccountId(),
 					user_id: existingUser.id,
 					type: 'oauth',
-					provider,
+					provider: config.provider,
 					provider_account_id: userData.id,
 					access_token: tokenData.accessToken,
 					refresh_token: tokenData.refreshToken,
 					expires_at: tokenData.expiresAt,
 					token_type: 'Bearer',
-					scope: config.scope,
-					created_at: new Date(),
-					updated_at: new Date()
+					scope: config.scope
 				}
 			});
 			return existingUser;
 		}
 
-		// Create new user with OAuth account
+		// Create new user with OAuth account  
 		const newUser = await db.user.create({
 			data: {
 				email: userData.email,
 				name: userData.name,
 				avatar: userData.avatar,
-				email_verified: true,
-				created_at: new Date(),
-				updated_at: new Date(),
 				account: {
 					create: {
 						id: this.generateAccountId(),
 						type: 'oauth',
-						provider,
+						provider: config.provider,
 						provider_account_id: userData.id,
 						access_token: tokenData.accessToken,
 						refresh_token: tokenData.refreshToken,
 						expires_at: tokenData.expiresAt,
 						token_type: 'Bearer',
-						scope: config.scope,
-						created_at: new Date(),
-						updated_at: new Date()
+						scope: config.scope
 					}
 				}
 			}

@@ -90,12 +90,7 @@
 			handleUnifiedEmailFlow();
 		}
 
-		// Track modal opened
-		trackEvent('template_modal_opened', {
-			template_id: template.id,
-			user_id: user?.id,
-			state: currentState
-		});
+		
 	});
 
 	onDestroy(() => {
@@ -139,12 +134,7 @@
 					// Launch email using unified service
 					launchEmail(flow.mailtoUrl);
 
-					// Track usage
-					trackEvent('template_used', {
-						template_id: template.id,
-						user_id: user?.id,
-						delivery_method: template.deliveryMethod
-					});
+					
 
 					// Dispatch for analytics
 					dispatch('used', { templateId: template.id, action: 'mailto_opened' });
@@ -225,12 +215,7 @@
 			// User confirmed they sent the message
 			modalActions.confirmSend();
 
-			// Track actual send confirmation
-			trackEvent('template_send_confirmed', {
-				template_id: template.id,
-				user_id: user?.id,
-				delivery_method: template.deliveryMethod
-			});
+			
 
 			// Celebration animation
 			celebrationScale.set(1.05).then(() => celebrationScale.set(1));
@@ -298,12 +283,7 @@
 				componentId
 			);
 
-			// Track the copy action
-			trackEvent('template_url_copied', {
-				template_id: template.id,
-				user_id: user?.id,
-				context: 'celebration_modal'
-			});
+			
 		} catch (err) {
 			console.warn('Copy failed:', err);
 		}
@@ -322,22 +302,12 @@
 
 		window.open(urls[platform], '_blank', 'width=600,height=400');
 
-		trackEvent('template_shared', {
-			template_id: template.id,
-			platform,
-			user_id: user?.id,
-			context: 'celebration_modal'
-		});
+		
 
 		showShareMenu = false;
 	}
 
-	// Analytics helper
-	function trackEvent(eventName: string, properties: Record<string, any>) {
-		if (typeof window !== 'undefined' && window.gtag) {
-			window.gtag('event', eventName, properties);
-		}
-	}
+	
 </script>
 
 <!-- Modal Backdrop -->

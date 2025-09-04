@@ -65,12 +65,28 @@ npm run preview  # Manual verification of build
 **File Structure:**
 ```
 src/lib/
-├── components/     # Reusable Svelte components
-├── server/         # Server-side utilities
-├── types/          # TypeScript definitions
-├── stores/         # Svelte stores for state management
-├── utils/          # Pure utility functions
-└── congress/       # Congressional API integration
+├── core/                    # Production-ready code only
+│   ├── auth/               # Authentication (OAuth, sessions)
+│   ├── templates/          # Template CRUD and delivery
+│   ├── congress/           # US Congressional features
+│   ├── api/                # Single unified API client
+│   └── db.ts               # Database client
+│
+├── experimental/            # Research & prototypes
+│   ├── political-field/    # Political field analytics
+│   ├── cascade/            # Viral cascade modeling
+│   ├── sheaf/              # Sheaf fusion theory
+│   └── percolation/        # Percolation engine
+│
+├── features/                # Feature-flagged implementations
+│   ├── ai-suggestions/     # AI features (OFF by default)
+│   ├── variable-resolver/  # ROADMAP.md implementation (OFF)
+│   └── analytics/          # Advanced analytics (BETA)
+│
+└── shared/                  # Used by all layers
+    ├── types/              # TypeScript types
+    ├── utils/              # Pure utility functions
+    └── constants/          # App constants
 ```
 
 **Import Hierarchy:**

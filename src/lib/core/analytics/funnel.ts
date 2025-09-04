@@ -1,4 +1,6 @@
 // Funnel Analytics Tracking System
+import { analytics } from '$lib/core/analytics/database';
+
 export interface FunnelEvent {
 	event: string;
 	template_id?: string;
@@ -15,16 +17,12 @@ class FunnelAnalytics {
 	private sessionId: string;
 
 	constructor() {
-		this.sessionId = this.generateSessionId();
-		
+		this.sessionId = analytics.currentSessionId;
+
 		// Restore any pending events from localStorage
 		if (typeof window !== 'undefined') {
 			this.restoreEvents();
 		}
-	}
-
-	private generateSessionId(): string {
-		return `${Date.now()}-${Math.random().toString(36).substring(2)}`;
 	}
 
 	private restoreEvents() {
@@ -32,7 +30,7 @@ class FunnelAnalytics {
 		if (stored) {
 			try {
 				const events = JSON.parse(stored);
-				this.events = events.filter((e: FunnelEvent) => 
+				this.events = events.filter((e: FunnelEvent) =>
 					Date.now() - e.timestamp < 24 * 60 * 60 * 1000 // Keep events for 24 hours
 				);
 			} catch {
@@ -59,16 +57,14 @@ class FunnelAnalytics {
 		this.events.push(funnelEvent);
 		this.persistEvents();
 
-		// Send to analytics service (implement your preferred service)
+		// Send to analytics service
 		this.sendToAnalytics(funnelEvent);
 
 	}
 
 	private async sendToAnalytics(event: FunnelEvent) {
 		try {
-			// Use our custom database analytics
-			const { analytics } = await import('$lib/core/analytics/database');
-			analytics.trackFunnelEvent(event);
+			await analytics.trackFunnelEvent(event);
 		} catch (error) {
 			// Fallback: Store failed events for retry
 			if (typeof window !== 'undefined') {

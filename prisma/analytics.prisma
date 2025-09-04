@@ -1,0 +1,85 @@
+// Analytics Schema
+// New data model for the rebuilt analytics system
+
+datasource db {
+  provider = "postgresql"
+  url      = env("SUPABASE_DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+// ANALYTICS MODELS
+
+model analytics_event {
+  id          String    @id @default(cuid())
+  session_id  String
+  user_id     String?
+  timestamp   DateTime  @default(now())
+  name        String
+  funnel_id   String?
+  campaign_id String?
+  variation_id String?
+
+  funnel      analytics_funnel?   @relation(fields: [funnel_id], references: [id])
+  campaign    analytics_campaign? @relation(fields: [campaign_id], references: [id])
+  variation   analytics_variation? @relation(fields: [variation_id], references: [id])
+  properties  analytics_event_property[]
+
+  @@index([session_id, timestamp])
+  @@index([user_id, timestamp])
+  @@index([name, timestamp])
+}
+
+model analytics_event_property {
+  id      String @id @default(cuid())
+  event_id String
+  name    String
+  value   String
+
+  event   analytics_event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@unique([event_id, name])
+}
+
+model analytics_funnel {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+
+  steps       analytics_funnel_step[]
+  events      analytics_event[]
+}
+
+model analytics_funnel_step {
+  id          String   @id @default(cuid())
+  funnel_id   String
+  name        String
+  step_order  Int
+
+  funnel      analytics_funnel @relation(fields: [funnel_id], references: [id], onDelete: Cascade)
+
+  @@unique([funnel_id, step_order])
+}
+
+model analytics_campaign {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  start_date  DateTime
+  end_date    DateTime?
+  budget      Float?
+
+  events      analytics_event[]
+}
+
+model analytics_variation {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+
+  events      analytics_event[]
+}

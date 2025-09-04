@@ -77,8 +77,7 @@ async function forwardToExternalAnalytics(event: EnrichedAnalyticsEvent) {
 	// TODO: Forward to your preferred analytics service
 	// Examples:
 
-	// PostHog
-	// await posthog.capture({
+	
 	//   distinctId: event.user_id || event.session_id,
 	//   event: event.event,
 	//   properties: event.properties
@@ -91,7 +90,7 @@ async function forwardToExternalAnalytics(event: EnrichedAnalyticsEvent) {
 	// });
 
 	// Google Analytics 4
-	// gtag('event', event.event, event.properties);
+	// 
 	
 	// Placeholder for external analytics integration
 	console.log('Analytics event:', {

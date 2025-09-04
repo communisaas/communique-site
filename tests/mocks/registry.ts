@@ -116,7 +116,12 @@ class MockRegistry {
         findUnique: vi.fn(),
         findMany: vi.fn(),
         create: vi.fn(),
-        upsert: vi.fn().mockResolvedValue({ id: 'mock-session', session_id: 'mock-session-id' }),
+        upsert: vi.fn().mockResolvedValue({ 
+          id: 'mock-session', 
+          session_id: 'mock-session-id',
+          user_id: null,
+          converted: false 
+        }),
         update: vi.fn(),
         delete: vi.fn()
       }
@@ -302,6 +307,68 @@ class MockRegistry {
         status,
         headers: { location }
       }))
+    };
+  }
+
+  /**
+   * Setup browser environment for client-side testing
+   */
+  setupBrowserEnvironment() {
+    // Mock document
+    const mockDocument = {
+      referrer: '',
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      visibilityState: 'visible'
+    };
+
+    // Mock window
+    const mockWindow = {
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      location: { 
+        href: 'https://localhost:5173/',
+        search: ''
+      },
+      innerWidth: 1920,
+      innerHeight: 1080,
+      navigator: { userAgent: 'Test Browser' },
+      document: mockDocument
+    };
+
+    // Set globals
+    Object.defineProperty(global, 'document', {
+      value: mockDocument,
+      writable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(global, 'window', {
+      value: mockWindow,
+      writable: true,
+      configurable: true
+    });
+
+    Object.defineProperty(global, 'navigator', {
+      value: { userAgent: 'Test Browser' },
+      writable: true,
+      configurable: true
+    });
+
+    // Mock fetch
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true })
+    });
+
+    // Mock timers
+    global.setInterval = vi.fn(() => 123) as any;
+    global.clearInterval = vi.fn();
+
+    return {
+      mockDocument,
+      mockWindow,
+      mockFetch: global.fetch
     };
   }
 

@@ -39,8 +39,7 @@ model User {
   coordinates               user_coordinates?
   representatives           user_representatives[]
   writing_style             user_writing_style?
-  analytics_events          analytics_event[]
-  user_sessions             user_session[]
+  
 
   @@map("user")
 }
@@ -90,7 +89,6 @@ model Template {
   target_morphisms          template_morphism[]        @relation("TargetMorphisms")
   template_personalizations template_personalization[]
   activations               user_activation[]
-  analytics_events          analytics_event[]
 
   @@map("template")
 }
@@ -527,74 +525,100 @@ model template_adaptation {
   @@map("template_adaptation")
 }
 
+
+
+
+// ANALYTICS MODELS
+
+model user_session {
+  id               String    @id @default(cuid())
+  session_id       String    @unique
+  user_id          String?
+  fingerprint      String?
+  ip_address       String?
+  user_agent       String?
+  referrer         String?
+  utm_source       String?
+  utm_medium       String?
+  utm_campaign     String?
+  landing_page     String?
+  events_count     Int       @default(0)
+  page_views       Int       @default(0)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @default(now()) @updatedAt
+
+  @@index([session_id])
+  @@index([user_id])
+  @@index([created_at])
+}
+
 model analytics_event {
-  id                String        @id @default(cuid())
-  session_id        String        @map("session_id")
-  user_id           String?       @map("user_id")
-  template_id       String?       @map("template_id")
-  event_type        String        @map("event_type")
-  event_name        String        @map("event_name")
-  event_properties  Json?         @map("event_properties")
-  page_url          String?       @map("page_url")
-  referrer          String?       @map("referrer")
-  user_agent        String?       @map("user_agent")
-  ip_address        String?       @map("ip_address")
-  country           String?
-  region            String?
-  city              String?
-  device_type       String?       @map("device_type")
-  browser           String?
-  os                String?
-  timestamp         DateTime      @default(now())
-  processed_at      DateTime?     @map("processed_at")
-  created_at        DateTime      @default(now()) @map("created_at")
-  user              User?         @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  template          Template?     @relation(fields: [template_id], references: [id], onDelete: SetNull)
-  user_session      user_session  @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  session_id  String
+  user_id     String?
+  timestamp   DateTime  @default(now())
+  name        String
+  funnel_id   String?
+  campaign_id String?
+  variation_id String?
+
+  funnel      analytics_funnel?   @relation(fields: [funnel_id], references: [id])
+  campaign    analytics_campaign? @relation(fields: [campaign_id], references: [id])
+  variation   analytics_variation? @relation(fields: [variation_id], references: [id])
+  properties  analytics_event_property[]
 
   @@index([session_id, timestamp])
   @@index([user_id, timestamp])
-  @@index([template_id, timestamp])
-  @@index([event_type, event_name, timestamp])
-  @@index([timestamp])
-  @@map("analytics_event")
+  @@index([name, timestamp])
 }
 
-model user_session {
-  id                 String              @id @default(cuid())
-  session_id         String              @unique @map("session_id")
-  user_id            String?             @map("user_id")
-  fingerprint        String?
-  ip_address         String?             @map("ip_address")
-  user_agent         String?             @map("user_agent")
-  country            String?
-  region             String?
-  city               String?
-  device_type        String?             @map("device_type")
-  browser            String?
-  os                 String?
-  referrer           String?
-  utm_source         String?             @map("utm_source")
-  utm_medium         String?             @map("utm_medium")
-  utm_campaign       String?             @map("utm_campaign")
-  landing_page       String?             @map("landing_page")
-  session_start      DateTime            @default(now()) @map("session_start")
-  session_end        DateTime?           @map("session_end")
-  duration_seconds   Int?                @map("duration_seconds")
-  page_views         Int                 @default(0) @map("page_views")
-  events_count       Int                 @default(0) @map("events_count")
-  converted          Boolean             @default(false)
-  conversion_type    String?             @map("conversion_type")
-  conversion_value   Float?              @map("conversion_value")
-  is_bounce          Boolean             @default(false) @map("is_bounce")
-  created_at         DateTime            @default(now()) @map("created_at")
-  updated_at         DateTime            @updatedAt @map("updated_at")
-  user               User?               @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  analytics_events   analytics_event[]
+model analytics_event_property {
+  id      String @id @default(cuid())
+  event_id String
+  name    String
+  value   String
 
-  @@index([session_id, session_start])
-  @@index([user_id, session_start])
-  @@index([session_start])
-  @@index([converted, conversion_type])
-  @@map("user_session")
+  event   analytics_event @relation(fields: [event_id], references: [id], onDelete: Cascade)
+
+  @@unique([event_id, name])
+}
+
+model analytics_funnel {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+
+  steps       analytics_funnel_step[]
+  events      analytics_event[]
+}
+
+model analytics_funnel_step {
+  id          String   @id @default(cuid())
+  funnel_id   String
+  name        String
+  step_order  Int
+
+  funnel      analytics_funnel @relation(fields: [funnel_id], references: [id], onDelete: Cascade)
+
+  @@unique([funnel_id, step_order])
+}
+
+model analytics_campaign {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  start_date  DateTime
+  end_date    DateTime?
+  budget      Float?
+
+  events      analytics_event[]
+}
+
+model analytics_variation {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+
+  events      analytics_event[]
 }

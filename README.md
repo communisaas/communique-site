@@ -21,7 +21,7 @@ Turn-key email delivery to Congress via Communicating With Congress (CWC) API, p
 - **Congressional Delivery**: Communicating With Congress (CWC) API
 - **Address Validation**: Census Bureau Geocoding API
 - **Deployment**: Fly.io
-- **Analytics**: PostHog
+
 
 ## ⚡ Quick Start
 
@@ -59,11 +59,7 @@ CWC_API_KEY="your-cwc-api-key"
 CWC_API_BASE_URL="https://cwc.api.url"
 
 # Analytics (Optional)
-PUBLIC_POSTHOG_KEY="your-posthog-key"
-PUBLIC_POSTHOG_HOST="https://app.posthog.com"
 
-# (Optional) Analytics
-# PUBLIC_POSTHOG_KEY / PUBLIC_POSTHOG_HOST
 ```
 
 ### 3. Database Setup
