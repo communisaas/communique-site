@@ -13,6 +13,7 @@
 	} from '@lucide/svelte';
 	import { flip } from 'svelte/animate';
 	import { fade } from 'svelte/transition';
+	import { spring } from 'svelte/motion';
 	import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
 
@@ -22,6 +23,11 @@
 	}>();
 
 	let selectedChannel: string | null = null;
+	let hoveredChannel: string | null = null;
+	
+	function handleChannelHover(channelId: string, isHovering: boolean) {
+		hoveredChannel = isHovering ? channelId : null;
+	}
 
 	const channels = [
 		{
@@ -81,29 +87,32 @@
 	<div class="mb-8 text-center">
 		<div class="mb-2 flex items-center justify-center gap-3">
 			<Network class="h-5 w-5 text-slate-600" />
-			<h2 class="font-mono text-xs uppercase tracking-wide text-slate-600 sm:text-sm">
-				Two Ways to Make Impact
+			<h2 class="text-xs uppercase tracking-widest text-gray-500 sm:text-sm">
+				We Write to Make Impact
 			</h2>
 		</div>
 		<div class="flex items-center justify-center">
-			<h3 class="text-2xl font-light sm:text-3xl">Choose Your Outreach Channel</h3>
+			<h3 class="text-2xl font-semibold text-gray-900 sm:text-3xl">Choose Your Outreach Channel</h3>
 		</div>
 	</div>
 
 	<div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
 		{#each channels as channel}
 			{@const isSelected = selectedChannel === channel.id}
+			{@const isHovered = hoveredChannel === channel.id}
 			<div
 				role="button"
 				tabindex="0"
-				class="group relative cursor-pointer rounded-lg border-2 transition-all duration-300"
+				class="group relative cursor-pointer rounded-md border-2 transition-all duration-300 transform-gpu hover:scale-[1.02] hover:shadow-lg"
 				class:border-congressional-500={isSelected && channel.id === 'certified'}
 				class:border-direct-500={isSelected && channel.id === 'direct'}
 				class:bg-congressional-50={isSelected && channel.id === 'certified'}
 				class:bg-direct-50={isSelected && channel.id === 'direct'}
-				class:border-slate-200={!isSelected}
-				class:hover:border-slate-300={!isSelected}
+				class:border-slate-200={!isSelected && !isHovered}
+				class:border-slate-300={!isSelected && isHovered}
 				class:cursor-default={isSelected}
+				onmouseenter={() => handleChannelHover(channel.id, true)}
+				onmouseleave={() => handleChannelHover(channel.id, false)}
 				onclick={(event) => {
 					selectedChannel = channel.id;
 					const targetElement = event.currentTarget;
@@ -134,7 +143,7 @@
 				<div class="relative h-full p-6">
 					<div class="mb-4 flex items-start justify-between">
 						<div
-							class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-200 sm:text-sm"
+							class="inline-flex items-center gap-2 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-200 sm:text-sm"
 							class:bg-congressional-100={isSelected && channel.id === 'certified'}
 							class:text-congressional-700={isSelected && channel.id === 'certified'}
 							class:bg-direct-100={isSelected && channel.id === 'direct'}
@@ -151,7 +160,7 @@
 					</div>
 
 					<div class="space-y-4">
-						<p class="text-sm leading-relaxed text-slate-600 sm:text-base">
+						<p class="text-sm leading-relaxed text-gray-600 sm:text-base">
 							{channel.description}
 						</p>
 
@@ -159,7 +168,7 @@
 							{#each channel.features as feature (feature.text)}
 								<li
 									animate:flip={{ duration: 300 }}
-									class="grid grid-cols-[20px_1fr] items-start gap-2 text-sm text-slate-600 sm:text-base"
+									class="grid grid-cols-[20px_1fr] items-start gap-2 text-sm text-gray-600 sm:text-base"
 								>
 									<svelte:component this={feature.icon} class="mt-1 h-4 w-4 text-slate-400" />
 									<span>{feature.text}</span>
@@ -188,7 +197,7 @@
 											</span>
 											<a
 												href="https://github.com/communisaas/communique-site"
-												class="group/link flex items-center px-2 text-sm text-slate-600 hover:text-slate-900"
+												class="group/link flex items-center px-2 text-sm text-gray-600 hover:text-gray-900"
 											>
 												<span class="mr-1.5">Follow Progress</span>
 												<ArrowRight
@@ -196,14 +205,14 @@
 												/>
 											</a>
 										</div>
-										<p class="text-center text-sm text-slate-500">
+										<p class="text-center text-sm text-gray-500">
 											Congressional delivery integration in progress
 										</p>
 									</div>
 								{:else}
 									<div class="flex flex-col gap-3">
 										<button
-											class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-white"
+											class="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white shadow-lg shadow-blue-600/20 transition-all duration-200 transform-gpu hover:scale-[1.02]"
 											onclick={(e) => { e.stopPropagation(); handleCreateTemplate(channel); }}
 										>
 											Create New Template
@@ -211,7 +220,7 @@
 										</button>
 
 										<button
-											class="flex w-full items-center justify-center gap-2 rounded-lg border border-blue-200 px-4 py-2 text-blue-600 hover:bg-blue-50"
+											class="flex w-full items-center justify-center gap-2 rounded-md border border-blue-200 hover:border-blue-300 px-4 py-2 text-blue-700 hover:text-blue-800 hover:bg-blue-50 shadow-md hover:shadow-lg transition-all duration-200 transform-gpu hover:scale-[1.02]"
 											onclick={(e) => { e.stopPropagation(); 
 												document.getElementById('template-section')?.scrollIntoView({
 													behavior: 'smooth',

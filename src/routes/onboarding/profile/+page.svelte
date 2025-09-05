@@ -48,10 +48,21 @@
 				} catch (error) {}
 			}
 
-			// Check for return URL from query params
-			const returnTo = $page.url.searchParams.get('returnTo');
-			if (returnTo) {
-				finalReturnUrl = decodeURIComponent(returnTo);
+			// Check for return URL from OAuth cookie (fallback to query params for compatibility)
+			const oauthReturnCookie = document.cookie
+				.split('; ')
+				.find(row => row.startsWith('oauth_return_to='));
+			
+			if (oauthReturnCookie) {
+				finalReturnUrl = decodeURIComponent(oauthReturnCookie.split('=')[1]);
+				// Clean up the cookie after use
+				document.cookie = 'oauth_return_to=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+			} else {
+				// Fallback to query params for backward compatibility
+				const returnTo = $page.url.searchParams.get('returnTo');
+				if (returnTo) {
+					finalReturnUrl = decodeURIComponent(returnTo);
+				}
 			}
 
 			// Feature flag: compact direct outreach
@@ -82,18 +93,36 @@
 					sessionStorage.removeItem('pending_template_action');
 				}
 
-				// Redirect to final destination with action=complete
-				const separator = finalReturnUrl.includes('?') ? '&' : '?';
-				window.location.href = `${finalReturnUrl}${separator}action=complete`;
+				// Set OAuth completion info in cookie for client-side detection
+				document.cookie = `oauth_completion=${JSON.stringify({ 
+					provider: 'unknown',
+					completed: true, 
+					timestamp: Date.now() 
+				})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
+
+				// Clean redirect without query parameters
+				window.location.href = finalReturnUrl;
 			} else {
-				// Still redirect with action=complete
-				const separator = finalReturnUrl.includes('?') ? '&' : '?';
-				window.location.href = `${finalReturnUrl}${separator}action=complete`;
+				// Set OAuth completion info even on error for clean redirect
+				document.cookie = `oauth_completion=${JSON.stringify({ 
+					provider: 'unknown',
+					completed: true, 
+					timestamp: Date.now() 
+				})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
+
+				// Clean redirect without query parameters
+				window.location.href = finalReturnUrl;
 			}
 		} catch (error) {
-			// Still redirect to avoid getting stuck with action=complete
-			const separator = finalReturnUrl.includes('?') ? '&' : '?';
-			window.location.href = `${finalReturnUrl}${separator}action=complete`;
+			// Set OAuth completion info even on error for clean redirect
+			document.cookie = `oauth_completion=${JSON.stringify({ 
+				provider: 'unknown',
+				completed: true, 
+				timestamp: Date.now() 
+			})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
+
+			// Clean redirect without query parameters
+			window.location.href = finalReturnUrl;
 		}
 	}
 
@@ -102,9 +131,16 @@
 		if (browser) {
 			sessionStorage.removeItem('pending_template_action');
 		}
-		// Add action=complete to signal completion
-		const separator = finalReturnUrl.includes('?') ? '&' : '?';
-		window.location.href = `${finalReturnUrl}${separator}action=complete`;
+		
+		// Set OAuth completion info in cookie for client-side detection
+		document.cookie = `oauth_completion=${JSON.stringify({ 
+			provider: 'unknown',
+			completed: true, 
+			timestamp: Date.now() 
+		})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
+
+		// Clean redirect without query parameters
+		window.location.href = finalReturnUrl;
 	}
 </script>
 

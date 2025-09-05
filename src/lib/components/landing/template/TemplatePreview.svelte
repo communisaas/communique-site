@@ -13,6 +13,7 @@
 	let {
 		template,
 		inModal = false,
+		context = 'list',
 		user = null,
 		onScroll = () => {},
 		onOpenModal = null,
@@ -22,6 +23,7 @@
 	}: {
 		template: Template;
 		inModal?: boolean;
+		context?: 'list' | 'page' | 'modal';
 		user?: { id: string; name: string | null } | null;
 		onScroll?: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onOpenModal?: (() => void) | null;
@@ -253,6 +255,7 @@
 				<PreviewContent 
 				{template}
 				{inModal}
+				{context}
 				{user}
 				{onScroll}
 				bind:personalConnectionValue

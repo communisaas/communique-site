@@ -25,6 +25,8 @@
 		componentId: string;
 	} = $props();
 	
+	let flightState = $state('ready');
+	
 	function handleSendClick() {
 		// Apply Personal Connection into the template body in JS-land
 		const pc = personalConnectionValue?.trim();
@@ -80,38 +82,26 @@
 	<div class="mt-4 flex justify-center">
 		{#if template.deliveryMethod === 'both'}
 			<Button
-				variant="primary"
+				variant="certified"
+				size="lg"
 				testId="contact-congress-button"
-				classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full"
+				classNames="w-full"
+				enableFlight={true}
+				bind:flightState
 				onclick={handleSendClick}
-			>
-				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 2.676-.732 5.162-2.217 7.162-4.416.43-.462.753-.96.938-1.49z"
-					/>
-				</svg>
-				{user ? 'Contact Your Representatives' : 'Sign in to Contact Congress'}
-			</Button>
+				text={user ? 'Contact Your Representatives' : 'Sign in to Contact Congress'}
+			/>
 		{:else}
 			<Button
-				variant="primary"
+				variant="direct"
+				size="lg"
 				testId="send-email-button"
-				classNames="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50 w-full"
+				classNames="w-full"
+				enableFlight={true}
+				bind:flightState
 				onclick={handleSendClick}
-			>
-				<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-					/>
-				</svg>
-				{user ? 'Send This Message' : 'Sign in to Send'}
-			</Button>
+				text={user ? 'Send This Message' : 'Sign in to Send'}
+			/>
 		{/if}
 	</div>
 {/if}

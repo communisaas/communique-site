@@ -281,7 +281,7 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 		class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:gap-8"
 	>
 		<div class="md:col-span-1">
-			<h2 class="mb-3 text-xl font-semibold text-slate-900" data-testid="templates-heading">
+			<h2 class="mb-3 text-xl font-semibold text-gray-900" data-testid="templates-heading">
 				Message Templates
 			</h2>
 			<TemplateList

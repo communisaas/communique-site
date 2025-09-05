@@ -283,25 +283,47 @@ export class OAuthCallbackHandler {
 			
 		const hasProfile = user.phone && user.phone.startsWith('{');
 
-		// Determine redirect path
+		// Store OAuth completion info in session storage-accessible cookie for client-side access
+		cookies.set('oauth_completion', JSON.stringify({ 
+			provider,
+			returnTo,
+			completed: true,
+			timestamp: Date.now()
+		}), {
+			path: '/',
+			secure: false, // Allow client-side access
+			httpOnly: false, // Allow client-side access
+			maxAge: 60 * 5, // 5 minutes
+			sameSite: 'lax'
+		});
+
+		// Determine redirect path - clean URLs without query params
 		if (needsAddressCollection) {
-			return redirect(
-				302,
-				`/onboarding/address?returnTo=${encodeURIComponent(returnTo)}&provider=${provider}`
-			);
+			// Store return URL in session-accessible cookie
+			cookies.set('oauth_return_to', returnTo, {
+				path: '/',
+				secure: false,
+				httpOnly: false,
+				maxAge: 60 * 10,
+				sameSite: 'lax'
+			});
+			return redirect(302, '/onboarding/address');
 		}
 
 		if (isDirectOutreach && !hasProfile) {
-			return redirect(
-				302,
-				`/onboarding/profile?returnTo=${encodeURIComponent(returnTo)}&provider=${provider}`
-			);
+			// Store return URL in session-accessible cookie  
+			cookies.set('oauth_return_to', returnTo, {
+				path: '/',
+				secure: false,
+				httpOnly: false,
+				maxAge: 60 * 10,
+				sameSite: 'lax'
+			});
+			return redirect(302, '/onboarding/profile');
 		}
 
-		// Final redirect with success parameters
-		const separator = returnTo.includes('?') ? '&' : '?';
-		const redirectUrl = `${returnTo}${separator}action=complete&provider=${provider}`;
-		return redirect(302, redirectUrl);
+		// Clean redirect without query parameters
+		return redirect(302, returnTo);
 	}
 
 	/**

@@ -4,6 +4,7 @@
 	import TemplateTips from '../TemplateTips.svelte';
 	import MessagePreview from '../MessagePreview.svelte';
 	import Popover from '$lib/components/ui/Popover.svelte';
+	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import { fade } from 'svelte/transition';
 	import { coordinated } from '$lib/utils/timerCoordinator';
@@ -11,6 +12,7 @@
 	let {
 		template,
 		inModal,
+		context = 'list',
 		user,
 		onScroll,
 		personalConnectionValue = $bindable(),
@@ -20,6 +22,7 @@
 	}: {
 		template: Template;
 		inModal: boolean;
+		context?: 'list' | 'page' | 'modal';
 		user: { id: string; name: string | null } | null;
 		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 		personalConnectionValue: string;
@@ -75,46 +78,41 @@
 	}
 </script>
 
-<div class="mb-4 shrink-0">
+<div class="mb-4 shrink-0 space-y-4 relative overflow-visible">
 	<TemplateTips isCertified={template.type === 'certified'} />
-</div>
-
-<!-- Share Link Button - Always available -->
-<div class="mb-4 flex shrink-0 items-center gap-2">
-	<button
-		onclick={async () => {
-			const shareUrl = `${window.location.origin}/s/${template.slug}`;
-			try {
-				await navigator.clipboard.writeText(shareUrl);
-				copied = true;
-				if (copyTimeout) coordinated.autoClose(() => {}, 0, componentId);
-				copyTimeout = coordinated.feedback(
-					() => {
-						copied = false;
-					},
-					2000,
-					componentId
-				);
-			} catch (err) {}
-		}}
-		class="inline-flex cursor-pointer items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
-	>
-		{#if copied}
-			<ClipboardCheck class="h-3 w-3" />
-			Copied!
-		{:else}
-			<ClipboardCopy class="h-3 w-3" />
-			Share Link
-		{/if}
-	</button>
+	
+	<!-- Prominent Share Button - Context aware positioning -->
+	{#if context === 'page'}
+		<!-- On template page, show larger, more prominent share button -->
+		<div class="flex items-center gap-3">
+			<ShareButton 
+				url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
+				title={template.subject || template.title}
+				variant="magical"
+				size="lg"
+			/>
+			<div class="text-sm text-gray-600">
+				<div class="font-medium">{template.metrics?.sent || 0} people shared this</div>
+				<div class="text-xs text-gray-500">Help spread the message</div>
+			</div>
+		</div>
+	{:else}
+		<!-- In list/modal context, show smaller share button -->
+		<ShareButton 
+			url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
+			title={template.subject || template.title}
+			variant="primary"
+			size="default"
+		/>
+	{/if}
 </div>
 
 {#if template.type === 'direct' && recipients.length}
-	<div class="mb-4 flex shrink-0 items-center gap-2 text-sm text-slate-600">
-		<Users class="h-4 w-4 text-slate-500" />
+	<div class="mb-4 flex shrink-0 items-center gap-2 text-sm text-gray-600">
+		<Users class="h-4 w-4 text-gray-500" />
 		<div class="flex items-center gap-1.5 overflow-hidden">
 			<!-- Only show preview on larger screens -->
-			<span class="hidden truncate text-slate-600 sm:block">
+			<span class="hidden truncate text-gray-600 sm:block">
 				{recipientPreview}
 			</span>
 
@@ -123,11 +121,11 @@
 				<svelte:fragment slot="trigger" let:triggerAction>
 					<button
 						use:triggerAction
-						class="inline-flex cursor-alias items-center rounded-md bg-slate-100
+						class="inline-flex cursor-alias items-center rounded-md bg-gray-100
                                px-1.5 py-0.5 font-medium
-                               text-slate-600 transition-all
+                               text-gray-600 transition-all
                                duration-200
-                               hover:bg-slate-200 hover:text-slate-800"
+                               hover:bg-gray-200 hover:text-gray-800"
 					>
 						<!-- Different text for small vs larger screens -->
 						<span class="max-w-[120px] cursor-text truncate sm:hidden">
@@ -188,6 +186,7 @@
 		preview={template.message_body}
 		{template}
 		{user}
+		{context}
 		{onScroll}
 		onscrollStateChange={onScrollStateChange}
 		ontouchStateChange={onTouchStateChange}

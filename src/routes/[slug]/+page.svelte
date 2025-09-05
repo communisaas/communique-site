@@ -11,6 +11,7 @@
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
+	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import type { PageData } from './$types';
 	import type { Template as TemplateType } from '$lib/types/template';
 
@@ -22,13 +23,8 @@
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
-	const authRequired = $derived($page.url.searchParams.get('auth') === 'required');
-	const source = $derived(
-		($page.url.searchParams.get('source') || 'direct-link') as
-			| 'social-link'
-			| 'direct-link'
-			| 'share'
-	);
+	// Simplified - no query parameters needed, default to direct-link
+	const source = 'direct-link';
 	const shareUrl = $derived(
 		(() => {
 			try {
@@ -52,6 +48,7 @@
 			template.id,
 			source as 'social-link' | 'direct-link' | 'share'
 		);
+		
 		// Store template context for guest users
 		if (!data.user) {
 			const safeSlug = (template.slug ?? template.id) as string;
@@ -60,97 +57,6 @@
 				template.title,
 				source as 'social-link' | 'direct-link' | 'share'
 			);
-		}
-
-		// Smart post-auth flow detection
-		const actionParam =
-			$page.url && $page.url.searchParams ? $page.url.searchParams.get('action') : null;
-		const providerParam = 
-			$page.url && $page.url.searchParams ? $page.url.searchParams.get('provider') : null;
-		
-		// Handle share link with action=send (immediate email trigger)
-		if (actionParam === 'send') {
-			// User clicked a share link - trigger email flow immediately
-			if (!data.user) {
-				// Not authenticated - show auth modal that will auto-send after login
-				funnelAnalytics.trackOnboardingStarted(
-					template.id,
-					source as 'social-link' | 'direct-link' | 'share'
-				);
-				// Store intent to send after auth
-				sessionStorage.setItem(`template_${template.id}_intent`, 'send');
-				modalActions.open('auth-modal', 'auth', { template, source, autoSend: true });
-			} else {
-				// User is authenticated - proceed with email flow
-				const flow = analyzeEmailFlow(template, data.user);
-				if (flow.nextAction === 'address') {
-					// Need address first
-					modalActions.open('address-modal', 'address', { template, source, autoSend: true });
-				} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-					// Ready to send - show loading modal and launch email
-					showEmailLoadingModal = true;
-					setTimeout(() => {
-						launchEmail(flow.mailtoUrl!);
-						// Auto-close modal after 1.5s
-						setTimeout(() => {
-							showEmailLoadingModal = false;
-						}, 1500);
-					}, 100);
-				}
-			}
-			return; // Exit early for share link flow
-		}
-		
-		// Check if user just completed auth (only via action=complete parameter)
-		if (actionParam === 'complete' && data.user) {
-			// User just completed auth, check what they need next
-			// Track auth completion (provider param is for analytics only)
-			const provider = providerParam || 'unknown';
-			funnelAnalytics.trackAuthCompleted(template.id, provider, data.user.id);
-			
-			// Check if there was a stored intent to send
-			const storedIntent = sessionStorage.getItem(`template_${template.id}_intent`);
-			if (storedIntent === 'send') {
-				sessionStorage.removeItem(`template_${template.id}_intent`);
-				// Proceed with email flow
-				const flow = analyzeEmailFlow(template, data.user);
-				if (flow.nextAction === 'email' && flow.mailtoUrl) {
-					showEmailLoadingModal = true;
-					// Launch email after brief delay to let modal render
-					setTimeout(() => {
-						launchEmail(flow.mailtoUrl!);
-						// Auto-close modal after 1.5s
-						setTimeout(() => {
-							showEmailLoadingModal = false;
-						}, 1500);
-					}, 100);
-				} else {
-					handlePostAuthFlow();
-				}
-			} else {
-				// Show loading modal immediately for seamless experience
-				const flow = analyzeEmailFlow(template, data.user);
-				if (flow.nextAction === 'email' && flow.mailtoUrl) {
-					showEmailLoadingModal = true;
-					// Launch email after brief delay to let modal render
-					setTimeout(() => {
-						launchEmail(flow.mailtoUrl!);
-						// Auto-close modal after 1.5s
-						setTimeout(() => {
-							showEmailLoadingModal = false;
-						}, 1500);
-					}, 100);
-				} else {
-					handlePostAuthFlow();
-				}
-			}
-		} else if (authRequired && !data.user) {
-			// Show smart auth modal for unauthenticated users
-			funnelAnalytics.trackOnboardingStarted(
-				template.id,
-				source as 'social-link' | 'direct-link' | 'share'
-			);
-			modalActions.open('auth-modal', 'auth', { template, source });
 		}
 	});
 
@@ -265,7 +171,14 @@
 	<!-- Template Header with Action -->
 	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="min-w-0 flex-1">
-			<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">{template.title}</h1>
+			<!-- Use subject as primary title, fall back to title if no subject -->
+			<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">
+				{template.subject || template.title}
+			</h1>
+			<!-- Show the longer title as supporting text if we're using subject as h1 -->
+			{#if template.subject && template.title}
+				<p class="mb-2 text-xl text-slate-700">{template.title}</p>
+			{/if}
 			<p class="mb-4 text-lg text-slate-600">{template.description}</p>
 
 			<!-- Template metadata -->
@@ -409,6 +322,7 @@
 
 		<TemplatePreview
 			{template}
+			context="page"
 			user={data.user as { id: string; name: string | null } | null}
 			showEmailModal={showEmailLoadingModal}
 			onEmailModalClose={() => showEmailLoadingModal = false}

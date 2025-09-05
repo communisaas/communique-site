@@ -2,8 +2,17 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+/* Import monospace fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
 @layer base {
 	:root {
+		/* Monospace aesthetic with violet accent */
+		--color-accent: theme('colors.violet.500');
+		--color-accent-hover: theme('colors.violet.600');
+		--color-accent-light: theme('colors.violet.50');
+		--color-accent-border: theme('colors.violet.200');
+		
 		/* Delivery channels */
 		--color-congressional: theme('colors.congressional.500');
 		--color-congressional-light: theme('colors.congressional.50');

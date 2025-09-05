@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { ChevronRight } from '@lucide/svelte';
+	import { spring } from 'svelte/motion';
 	import type { Template } from '$lib/types/template';
 	import ChannelBadge from '$lib/components/ui/ChannelBadge.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -14,6 +15,12 @@
 	}
 
 	const { templates, selectedId, onSelect, loading = false }: Props = $props();
+	
+	let hoveredTemplate: string | null = null;
+	
+	function handleTemplateHover(templateId: string, isHovering: boolean) {
+		hoveredTemplate = isHovering ? templateId : null;
+	}
 	
 
 	function handleKeydown(event: KeyboardEvent, templateId: string, index: number) {
@@ -67,23 +74,25 @@
 	{:else}
 		{#each templates as template, index (template.id)}
 			{@const isCongressional = template.deliveryMethod === 'both'}
+			{@const isHovered = hoveredTemplate === template.id}
 			<button
 				type="button"
 				data-template-button
 				data-template-id={template.id}
 				data-testid="template-button-{template.id}"
-				class="relative flex w-full items-start justify-between gap-3 rounded-lg border-2 border-l-4 p-3 text-left transition-all md:p-4"
+				class="relative flex w-full items-start justify-between gap-3 rounded-md border-2 border-l-4 p-3 text-left transition-all duration-200 md:p-4 transform-gpu hover:scale-[1.02] hover:shadow-lg"
 				class:cursor-pointer={selectedId !== template.id}
 				class:cursor-default={selectedId === template.id}
 				class:border-direct-400={selectedId === template.id && !isCongressional}
 				class:border-congressional-400={selectedId === template.id && isCongressional}
 				class:bg-direct-50={selectedId === template.id && !isCongressional}
 				class:bg-congressional-50={selectedId === template.id && isCongressional}
-				class:border-slate-200={selectedId !== template.id}
+				class:border-slate-200={selectedId !== template.id && !isHovered}
+				class:border-slate-300={selectedId !== template.id && isHovered}
 				class:border-l-congressional-500={isCongressional}
 				class:border-l-direct-500={!isCongressional}
-				class:hover:border-direct-200={selectedId !== template.id && !isCongressional}
-				class:hover:border-congressional-200={selectedId !== template.id && isCongressional}
+				onmouseenter={() => handleTemplateHover(template.id, true)}
+				onmouseleave={() => handleTemplateHover(template.id, false)}
 				onclick={() => onSelect(template.id)}
 				onkeydown={(e) => handleKeydown(e, template.id, index)}
 			>
@@ -95,16 +104,16 @@
 						>
 							{isCongressional ? 'Certified Delivery' : 'Direct Outreach'}
 						</Badge>
-						<span class="rounded bg-slate-100 px-2 py-1 text-xs text-slate-600 md:text-sm">
+						<span class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 md:text-sm">
 							{template.category}
 						</span>
 					</div>
 
-					<h3 class="mt-2 truncate font-medium text-slate-900 md:mt-3">
+					<h3 class="mt-2 truncate font-medium text-gray-900 md:mt-3">
 						{template.title}
 					</h3>
 
-					<p class="mb-2 line-clamp-2 text-xs text-slate-600 md:mb-3 md:text-sm">
+					<p class="mb-2 line-clamp-2 text-xs text-gray-600 md:mb-3 md:text-sm">
 						{template.description}
 					</p>
 

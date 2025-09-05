@@ -9,6 +9,9 @@ export default {
 
 	theme: {
 		extend: {
+			fontFamily: {
+				'mono': ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
+			},
 			colors: {
 				// Semantic delivery channel colors
 				'congressional': {
@@ -51,12 +54,17 @@ export default {
 				'card': '1.5rem'
 			},
 			animation: {
-				'save-pulse': 'save-pulse 2s ease-in-out infinite'
+				'save-pulse': 'save-pulse 2s ease-in-out infinite',
+				'shine': 'shine 3s ease-in-out infinite'
 			},
 			keyframes: {
 				'save-pulse': {
 					'0%, 100%': { opacity: '1' },
 					'50%': { opacity: '0.5' }
+				},
+				'shine': {
+					'0%': { transform: 'translateX(-100%) rotate(12deg)' },
+					'50%, 100%': { transform: 'translateX(200%) rotate(12deg)' }
 				}
 			}
 		}

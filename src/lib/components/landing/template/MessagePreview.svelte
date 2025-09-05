@@ -13,6 +13,7 @@
 		preview,
 		template = undefined,
 		user = null,
+		context = 'list',
 		onScroll,
 		onscrollStateChange,
 		ontouchStateChange,
@@ -31,6 +32,7 @@
 			is_verified?: boolean;
 			verification_method?: string;
 		} | null;
+		context?: 'list' | 'page' | 'modal';
 		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onscrollStateChange?: (scrollState: unknown) => void;
 		ontouchStateChange?: (touchState: unknown) => void;
@@ -360,31 +362,33 @@
 </script>
 
 <div class="relative flex h-full cursor-text flex-col">
-	<!-- Subject/Title Header -->
-	{#if template?.subject || template?.title}
-		<div class="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-2 text-xs font-medium text-blue-700 mb-1">
-					<Mail class="h-3 w-3" />
-					Subject Line
+	<!-- Subject/Title Header - Hide on template page to avoid duplication -->
+	{#if context !== 'page'}
+		{#if template?.subject || template?.title}
+			<div class="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-2 text-xs font-medium text-blue-700 mb-1">
+						<Mail class="h-3 w-3" />
+						Subject Line
+					</div>
+					{#if user?.is_verified}
+						<VerificationBadge size="sm" />
+					{/if}
 				</div>
+				<div class="font-medium text-blue-900 text-sm">
+					{template.subject || template.title}
+				</div>
+			</div>
+		{:else}
+			<!-- Fallback header when no subject/title -->
+			<div class="mb-2 flex shrink-0 items-center gap-2">
+				<Mail class="h-4 w-4 shrink-0 text-slate-500" />
+				<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
 				{#if user?.is_verified}
 					<VerificationBadge size="sm" />
 				{/if}
 			</div>
-			<div class="font-medium text-blue-900 text-sm">
-				{template.subject || template.title}
-			</div>
-		</div>
-	{:else}
-		<!-- Fallback header when no subject/title -->
-		<div class="mb-2 flex shrink-0 items-center gap-2">
-			<Mail class="h-4 w-4 shrink-0 text-slate-500" />
-			<h3 class="text-sm font-medium text-slate-900 sm:text-base">Message Preview</h3>
-			{#if user?.is_verified}
-				<VerificationBadge size="sm" />
-			{/if}
-		</div>
+		{/if}
 	{/if}
 
 

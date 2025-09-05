@@ -25,10 +25,21 @@
 				}
 			}
 			
-			// Check for return URL from query params
-			const returnTo = $page.url.searchParams.get('returnTo');
-			if (returnTo) {
-				finalReturnUrl = decodeURIComponent(returnTo);
+			// Check for return URL from OAuth cookie (fallback to query params for compatibility)
+			const oauthReturnCookie = document.cookie
+				.split('; ')
+				.find(row => row.startsWith('oauth_return_to='));
+			
+			if (oauthReturnCookie) {
+				finalReturnUrl = decodeURIComponent(oauthReturnCookie.split('=')[1]);
+				// Clean up the cookie after use
+				document.cookie = 'oauth_return_to=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+			} else {
+				// Fallback to query params for backward compatibility
+				const returnTo = $page.url.searchParams.get('returnTo');
+				if (returnTo) {
+					finalReturnUrl = decodeURIComponent(returnTo);
+				}
 			}
 		}
 	});
