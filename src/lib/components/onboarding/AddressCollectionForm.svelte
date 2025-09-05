@@ -33,6 +33,7 @@
 	let zipCode = $state('');
 	let addressError = $state('');
 	let isVerifying = $state(false);
+	let isSaving = $state(false);
 	let verificationResult = $state<Record<string, unknown> | null>(null);
 	let selectedAddress = $state('');
 
@@ -93,6 +94,7 @@
 	}
 
 	function acceptAddress() {
+		isSaving = true;
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
@@ -309,6 +311,7 @@
 							size="sm" 
 							classNames="flex-1"
 							onclick={editAddress}
+							disabled={isSaving}
 						>
 							Edit Address
 						</Button>
@@ -317,9 +320,15 @@
 							size="sm" 
 							classNames="flex-1"
 							onclick={acceptAddress}
+							disabled={isSaving}
 						>
-							<CheckCircle2 class="mr-1 h-4 w-4" />
-							Looks Good
+							{#if isSaving}
+								<Loader2 class="mr-1 h-4 w-4 animate-spin" />
+								Saving...
+							{:else}
+								<CheckCircle2 class="mr-1 h-4 w-4" />
+								Looks Good
+							{/if}
 						</Button>
 					</div>
 					

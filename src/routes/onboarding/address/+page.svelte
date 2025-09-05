@@ -9,7 +9,7 @@
 	let { data }: { data: PageData } = $props();
 	
 	let pendingTemplate: { slug: string; title: string } | null = $state(null);
-	let finalReturnUrl = $state('/dashboard');
+	let finalReturnUrl = $state('/profile');
 	
 	onMount(() => {
 		if (browser) {
@@ -36,10 +36,14 @@
 	async function handleAddressComplete(event: CustomEvent) {
 		const { address, verified, representatives, district, streetAddress, city, state, zipCode } = event.detail;
 		
+		let success = false;
+		
 		// Save address to database
 		try {
 			const { api } = await import('$lib/core/api/client');
-			const result = await api.post('/api/user/address', {
+			const { toast } = await import('$lib/stores/toast.svelte');
+			
+			const result = await api.post('/user/address', {
 				street: streetAddress,
 				city,
 				state,
@@ -50,28 +54,44 @@
 			});
 			
 			if (!result.success) {
-				console.error('Failed to save address:', result.error);
+				console.error('Failed to save address:', result.error, result);
+				toast.error(result.error || 'Failed to save address. Please try again.');
+				// Reset the saving state in the child component
+				const form = document.querySelector('form');
+				if (form) {
+					form.dispatchEvent(new CustomEvent('savingerror'));
+				}
+				return; // Don't redirect on error
+			} else {
+				success = true;
+				toast.success('Address saved successfully!');
 			}
 		} catch (error) {
 			console.error('Error saving address:', error);
+			const { toast } = await import('$lib/stores/toast.svelte');
+			toast.error('Failed to save address. Please try again.');
+			return; // Don't redirect on error
 		}
 		
-		// Save address completion to sessionStorage if needed
-		if (browser) {
-			sessionStorage.setItem('address_completed', JSON.stringify({
-				address,
-				verified,
-				representatives,
-				district,
-				completedAt: new Date().toISOString()
-			}));
+		// Only proceed if save was successful
+		if (success) {
+			// Save address completion to sessionStorage if needed
+			if (browser) {
+				sessionStorage.setItem('address_completed', JSON.stringify({
+					address,
+					verified,
+					representatives,
+					district,
+					completedAt: new Date().toISOString()
+				}));
+				
+				// Clear pending template action since we're completing it
+				sessionStorage.removeItem('pending_template_action');
+			}
 			
-			// Clear pending template action since we're completing it
-			sessionStorage.removeItem('pending_template_action');
+			// Redirect to final destination after successful save
+			goto(finalReturnUrl);
 		}
-		
-		// Redirect to final destination
-		goto(finalReturnUrl);
 	}
 	
 </script>

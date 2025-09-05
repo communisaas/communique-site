@@ -74,7 +74,7 @@
 	let copySuccessWave = $state(false);
 
 	// Generate share URL for template
-	const shareUrl = $derived(`${$page.url.origin}/${template.slug}`);
+	const shareUrl = $derived(`${$page.url.origin}/s/${template.slug}`);
 
 	// Initialize modal state and auto-trigger mailto for authenticated users
 	onMount(() => {

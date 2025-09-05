@@ -34,7 +34,7 @@
 		return defaultTemplate;
 	}
 	const flowTemplate: FlowTemplate = $derived(computeFlowTemplate());
-	let finalReturnUrl = $state('/dashboard');
+	let finalReturnUrl = $state('/profile');
 
 	onMount(() => {
 		if (browser) {

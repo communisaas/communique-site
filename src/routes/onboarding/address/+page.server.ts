@@ -10,7 +10,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 	// If user already has an address, redirect them away
 	const hasAddress = locals.user.street && locals.user.city && locals.user.state && locals.user.zip;
 	if (hasAddress) {
-		throw redirect(302, '/dashboard');
+		throw redirect(302, '/profile');
 	}
 	
 	return {

@@ -2,7 +2,10 @@
 	import { onMount } from 'svelte';
 	import TemplatePerformanceCard from './TemplatePerformanceCard.svelte';
 	import DeliveryTracker from './DeliveryTracker.svelte';
-	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
+	import SkeletonCard from '$lib/components/ui/SkeletonCard.svelte';
+	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
+	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
+	import SkeletonTable from '$lib/components/ui/SkeletonTable.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	
 	interface CampaignOverview {
@@ -135,9 +138,25 @@
 	</div>
 	
 	{#if loading}
-		<div class="flex items-center justify-center py-12">
-			<LoadingCard variant="spinner" />
-			<span class="ml-3 text-gray-600">Loading campaign data...</span>
+		<!-- Overview Cards Skeleton -->
+		<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+			{#each Array(4) as _}
+				<div class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-6">
+					<SkeletonStat />
+				</div>
+			{/each}
+		</div>
+
+		<!-- Top Performers Skeleton -->
+		<SkeletonCard lines={5} showActions={false} classNames="mt-6" />
+
+		<!-- Recent Activity Skeleton -->
+		<SkeletonList items={3} showAvatar={true} classNames="mt-6" />
+
+		<!-- Performance Cards Skeleton -->
+		<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+			<SkeletonCard lines={6} />
+			<SkeletonCard lines={6} />
 		</div>
 	{:else}
 		<!-- Overview Cards -->
@@ -214,7 +233,7 @@
 			<div class="flex items-center justify-between mb-4">
 				<h2 class="text-xl font-semibold text-gray-900">Template Performance</h2>
 				<a 
-					href="/dashboard/templates"
+					href="/"
 					class="text-sm text-blue-600 hover:text-blue-700 font-medium"
 				>
 					Create New Template →
@@ -247,7 +266,7 @@
 					<h3 class="text-lg font-medium text-gray-600 mb-2">No Templates Yet</h3>
 					<p class="text-gray-500 mb-4">Create your first template to start tracking performance metrics</p>
 					<a 
-						href="/dashboard/templates"
+						href="/"
 						class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
 					>
 						Create First Template

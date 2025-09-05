@@ -44,17 +44,26 @@
 	}
 </script>
 
-<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-	<!-- Unified Ambient Header -->
-	<AppHeader user={data.user} template={data.template} onTemplateUse={handleTemplateUse} />
-	
-	<div class="p-6 md:p-10">
+{#if $page.url.pathname.startsWith('/profile')}
+	<!-- Profile pages: No AppHeader, no padding, full control -->
+	<div class="min-h-screen bg-slate-50">
 		<ErrorBoundary fallback="detailed" showRetry={true}>
 			{@render children()}
 		</ErrorBoundary>
+		<Footer />
 	</div>
-	<Footer />
-	
-	<!-- Toast notifications -->
-	<ToastContainer />
-</div>
+{:else}
+	<!-- Regular pages: AppHeader + padding -->
+	<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+		<AppHeader user={data.user} template={data.template} onTemplateUse={handleTemplateUse} />
+		<div class="p-6 md:p-10">
+			<ErrorBoundary fallback="detailed" showRetry={true}>
+				{@render children()}
+			</ErrorBoundary>
+		</div>
+		<Footer />
+	</div>
+{/if}
+
+<!-- Toast notifications (always present) -->
+<ToastContainer />

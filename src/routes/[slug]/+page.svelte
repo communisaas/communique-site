@@ -68,6 +68,39 @@
 		const providerParam = 
 			$page.url && $page.url.searchParams ? $page.url.searchParams.get('provider') : null;
 		
+		// Handle share link with action=send (immediate email trigger)
+		if (actionParam === 'send') {
+			// User clicked a share link - trigger email flow immediately
+			if (!data.user) {
+				// Not authenticated - show auth modal that will auto-send after login
+				funnelAnalytics.trackOnboardingStarted(
+					template.id,
+					source as 'social-link' | 'direct-link' | 'share'
+				);
+				// Store intent to send after auth
+				sessionStorage.setItem(`template_${template.id}_intent`, 'send');
+				modalActions.open('auth-modal', 'auth', { template, source, autoSend: true });
+			} else {
+				// User is authenticated - proceed with email flow
+				const flow = analyzeEmailFlow(template, data.user);
+				if (flow.nextAction === 'address') {
+					// Need address first
+					modalActions.open('address-modal', 'address', { template, source, autoSend: true });
+				} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+					// Ready to send - show loading modal and launch email
+					showEmailLoadingModal = true;
+					setTimeout(() => {
+						launchEmail(flow.mailtoUrl!);
+						// Auto-close modal after 1.5s
+						setTimeout(() => {
+							showEmailLoadingModal = false;
+						}, 1500);
+					}, 100);
+				}
+			}
+			return; // Exit early for share link flow
+		}
+		
 		// Check if user just completed auth (only via action=complete parameter)
 		if (actionParam === 'complete' && data.user) {
 			// User just completed auth, check what they need next
@@ -75,20 +108,41 @@
 			const provider = providerParam || 'unknown';
 			funnelAnalytics.trackAuthCompleted(template.id, provider, data.user.id);
 			
-			// Show loading modal immediately for seamless experience
-			const flow = analyzeEmailFlow(template, data.user);
-			if (flow.nextAction === 'email' && flow.mailtoUrl) {
-				showEmailLoadingModal = true;
-				// Launch email after brief delay to let modal render
-				setTimeout(() => {
-					launchEmail(flow.mailtoUrl!);
-					// Auto-close modal after 1.5s
+			// Check if there was a stored intent to send
+			const storedIntent = sessionStorage.getItem(`template_${template.id}_intent`);
+			if (storedIntent === 'send') {
+				sessionStorage.removeItem(`template_${template.id}_intent`);
+				// Proceed with email flow
+				const flow = analyzeEmailFlow(template, data.user);
+				if (flow.nextAction === 'email' && flow.mailtoUrl) {
+					showEmailLoadingModal = true;
+					// Launch email after brief delay to let modal render
 					setTimeout(() => {
-						showEmailLoadingModal = false;
-					}, 1500);
-				}, 100);
+						launchEmail(flow.mailtoUrl!);
+						// Auto-close modal after 1.5s
+						setTimeout(() => {
+							showEmailLoadingModal = false;
+						}, 1500);
+					}, 100);
+				} else {
+					handlePostAuthFlow();
+				}
 			} else {
-				handlePostAuthFlow();
+				// Show loading modal immediately for seamless experience
+				const flow = analyzeEmailFlow(template, data.user);
+				if (flow.nextAction === 'email' && flow.mailtoUrl) {
+					showEmailLoadingModal = true;
+					// Launch email after brief delay to let modal render
+					setTimeout(() => {
+						launchEmail(flow.mailtoUrl!);
+						// Auto-close modal after 1.5s
+						setTimeout(() => {
+							showEmailLoadingModal = false;
+						}, 1500);
+					}, 100);
+				} else {
+					handlePostAuthFlow();
+				}
 			}
 		} else if (authRequired && !data.user) {
 			// Show smart auth modal for unauthenticated users
@@ -148,6 +202,10 @@
 
 			// Close address modal and proceed to email generation
 			modalActions.close('address-modal');
+			
+			// Clear any stored intent after successful address submission
+			sessionStorage.removeItem(`template_${template.id}_intent`);
+			
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				showEmailLoadingModal = true;
@@ -163,6 +221,10 @@
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
 			modalActions.close('address-modal');
+			
+			// Clear any stored intent even on error
+			sessionStorage.removeItem(`template_${template.id}_intent`);
+			
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				showEmailLoadingModal = true;

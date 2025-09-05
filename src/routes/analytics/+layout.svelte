@@ -13,11 +13,11 @@
         </div>
         
         <div class="flex items-center space-x-4">
-          <a href="/dashboard" 
+          <a href="/profile" 
              class="text-slate-600 hover:text-slate-900 transition-colors">
-            Dashboard
+            Profile
           </a>
-          <a href="/dashboard/templates" 
+          <a href="/" 
              class="text-slate-600 hover:text-slate-900 transition-colors">
             Templates
           </a>

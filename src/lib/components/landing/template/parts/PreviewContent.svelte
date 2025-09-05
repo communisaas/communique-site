@@ -83,7 +83,7 @@
 <div class="mb-4 flex shrink-0 items-center gap-2">
 	<button
 		onclick={async () => {
-			const shareUrl = `${window.location.origin}/${template.slug}`;
+			const shareUrl = `${window.location.origin}/s/${template.slug}`;
 			try {
 				await navigator.clipboard.writeText(shareUrl);
 				copied = true;

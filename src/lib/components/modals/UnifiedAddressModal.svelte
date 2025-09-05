@@ -44,7 +44,7 @@
 				// Clear any pending template action
 				sessionStorage.removeItem('pending_template_action');
 				// Redirect to return URL with completion signal
-				const finalReturnUrl = new URLSearchParams(window.location.search).get('returnTo') || '/dashboard';
+				const finalReturnUrl = new URLSearchParams(window.location.search).get('returnTo') || '/profile';
 				const separator = finalReturnUrl.includes('?') ? '&' : '?';
 				window.location.href = `${finalReturnUrl}${separator}action=complete`;
 			});

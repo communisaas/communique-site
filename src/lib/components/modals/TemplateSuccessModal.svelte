@@ -20,7 +20,7 @@
 	}>();
 
 	let copied = $state(false);
-	let shareUrl = $derived(`${typeof window !== 'undefined' ? window.location.origin : ''}/${template.slug}`);
+	let shareUrl = $derived(`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`);
 
 	function handleClose() {
 		onclose?.();
@@ -50,7 +50,7 @@
 
 	function handleDashboard() {
 		dispatch('dashboard');
-		window.location.href = '/dashboard/templates';
+		window.location.href = '/';
 	}
 
 	function handleCreateAnother() {

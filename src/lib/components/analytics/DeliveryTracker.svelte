@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
-	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
+	import SkeletonCard from '$lib/components/ui/SkeletonCard.svelte';
+	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
+	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	
 	interface DeliveryStatus {
@@ -159,10 +161,15 @@
 	</div>
 	
 	{#if loading && deliveries.length === 0}
-		<div class="flex items-center justify-center py-8">
-			<LoadingCard variant="spinner" />
-			<span class="ml-3 text-gray-600">Loading delivery status...</span>
+		<!-- Metrics Skeleton -->
+		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+			<SkeletonStat />
+			<SkeletonStat />
+			<SkeletonStat />
+			<SkeletonStat />
 		</div>
+		<!-- Delivery List Skeleton -->
+		<SkeletonList items={3} showActions={true} />
 	{:else if error}
 		<div class="bg-red-50 border border-red-200 rounded-lg p-4">
 			<div class="flex items-center">

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { User, LogOut, ArrowLeft, Share2, Copy, CheckCircle, Send, Shield, AtSign } from '@lucide/svelte';
+	import { User, LogOut, ArrowLeft, Share2, Copy, CheckCircle, Send, Shield, AtSign, Home } from '@lucide/svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { createEventDispatcher } from 'svelte';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
@@ -29,9 +29,10 @@
 	const shareUrl = $derived($page.url.href);
 	
 	// Context-aware header configuration
-	const headerConfig = $derived(() => {
+	const headerConfig = $derived((() => {
 		const isTemplate = $page.route.id === '/[slug]';
 		const isHomepage = $page.route.id === '/';
+		const isProfile = $page.route.id?.startsWith('/profile');
 		
 		if (isTemplate && template) {
 			return {
@@ -39,6 +40,8 @@
 				showBack: true,
 				showShare: true,
 				showCTA: true,
+				showProfileLink: true,
+				showHomeLink: false,
 				title: template.title,
 				backText: 'All Templates',
 				backHref: '/'
@@ -51,6 +54,22 @@
 				showBack: false,
 				showShare: false,
 				showCTA: false,
+				showProfileLink: true,
+				showHomeLink: false,
+				title: null,
+				backText: null,
+				backHref: null
+			};
+		}
+		
+		if (isProfile) {
+			return {
+				type: 'profile',
+				showBack: false,
+				showShare: false,
+				showCTA: false,
+				showProfileLink: false,
+				showHomeLink: true,
 				title: null,
 				backText: null,
 				backHref: null
@@ -62,11 +81,13 @@
 			showBack: false,
 			showShare: false,
 			showCTA: false,
+			showProfileLink: true,
+			showHomeLink: true,
 			title: null,
 			backText: null,
 			backHref: null
 		};
-	});
+	})());
 	
 	// Smart CTA configuration for template actions
 	const ctaConfig = $derived(() => {
@@ -180,6 +201,19 @@
 						<ArrowLeft class="h-4 w-4 group-hover:-translate-x-0.5 transition-transform" />
 						<span class="text-sm font-medium">{headerConfig.backText}</span>
 					</a>
+				{:else if headerConfig.showHomeLink}
+					<!-- Animated Home Navigation -->
+					<a 
+						href="/" 
+						class="group flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-200 hover:bg-slate-50 hover:scale-105"
+						aria-label="Return to home"
+						title="Return to home"
+					>
+						<Home class="h-4 w-4 text-slate-600 group-hover:text-blue-600 group-hover:-translate-x-0.5 transition-all duration-200" />
+						<span class="text-slate-900 font-medium text-lg group-hover:text-blue-600 transition-colors duration-200">
+							Communiqué
+						</span>
+					</a>
 				{:else}
 					<!-- Brand/Context indicator for homepage -->
 					<div class="text-slate-900 font-medium text-lg">
@@ -193,13 +227,10 @@
 				
 				<!-- User authentication and welcome -->
 				{#if user}
-					<div class="flex items-center gap-3 text-sm">
-						<!-- User icon with greeting -->
-						<div class="flex items-center gap-1.5 text-green-600">
-							<User class="h-3 w-3" />
-							<span class="text-slate-600 hidden sm:inline">{userRepresentation?.greeting || `Welcome back, ${user.name?.split(' ')[0]}!`}</span>
-							<span class="text-slate-600 sm:hidden">{user.name?.split(' ')[0] || 'User'}</span>
-						</div>
+					<div class="flex items-center gap-4 text-sm">
+						<!-- Greeting -->
+						<span class="text-slate-600 hidden sm:inline">{userRepresentation?.greeting || `Welcome back, ${user.name?.split(' ')[0]}!`}</span>
+						<span class="text-slate-600 sm:hidden">{user.name?.split(' ')[0] || 'User'}</span>
 						
 						{#if userRepresentation?.context}
 							<div class="text-xs text-slate-500 hidden lg:block">
@@ -207,23 +238,26 @@
 							</div>
 						{/if}
 						
-						<!-- Profile link -->
-						<a 
-							href="/profile" 
-							class="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
-							title="View profile"
-						>
-							<User class="h-3 w-3" />
-							<span class="hidden sm:inline">Profile</span>
-						</a>
+						<!-- Profile link (hidden on profile page) -->
+						{#if headerConfig.showProfileLink}
+							<a 
+								href="/profile" 
+								class="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded transition-all"
+								title="View profile"
+								data-sveltekit-preload-data="tap"
+							>
+								<User class="h-4 w-4" />
+								<span class="hidden sm:inline">Profile</span>
+							</a>
+						{/if}
 						
 						<!-- Sign out -->
 						<a 
 							href="/auth/logout" 
-							class="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 transition-colors"
+							class="flex items-center gap-1.5 px-2 py-1 text-sm text-slate-500 hover:text-slate-700 hover:bg-slate-50 rounded transition-all"
 							title="Sign out"
 						>
-							<LogOut class="h-3 w-3" />
+							<LogOut class="h-4 w-4" />
 							<span class="hidden sm:inline">Sign out</span>
 						</a>
 					</div>

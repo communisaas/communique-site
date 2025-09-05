@@ -4,6 +4,7 @@
 	import ChannelBadge from '$lib/components/ui/ChannelBadge.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import MessageMetrics from './MessageMetrics.svelte';
+	import SkeletonTemplate from '$lib/components/ui/SkeletonTemplate.svelte';
 
 	interface Props {
 		templates: Template[];
@@ -55,52 +56,13 @@
 
 <div class="space-y-3 md:space-y-4" data-testid="template-list">
 	{#if loading}
-		<!-- Swiss/Bauhaus Loading State -->
+		<!-- Loading State using SkeletonTemplate -->
 		{#each Array(3) as _, index}
-			<div class="template-loading-card rounded-lg border border-slate-200 p-3 md:p-4" data-testid="template-loading-{index}">
-				<div class="flex items-start justify-between gap-3">
-					<div class="min-w-0 flex-1 space-y-3">
-						<!-- Badge area with geometric shapes -->
-						<div class="flex items-center gap-2">
-							<div class="loading-badge h-6 w-16 rounded-full bg-slate-200"></div>
-							<div class="loading-badge h-6 w-20 rounded bg-slate-100"></div>
-						</div>
-
-						<!-- Title with mathematical proportions -->
-						<div
-							class="loading-title h-5 w-3/4 rounded bg-slate-200"
-							style="animation-delay: {index * 150}ms"
-						></div>
-
-						<!-- Description lines with Swiss grid -->
-						<div class="space-y-2">
-							<div
-								class="loading-line h-3 w-full rounded bg-slate-100"
-								style="animation-delay: {index * 150 + 75}ms"
-							></div>
-							<div
-								class="loading-line h-3 w-4/5 rounded bg-slate-100"
-								style="animation-delay: {index * 150 + 150}ms"
-							></div>
-						</div>
-
-						<!-- Metrics with geometric precision -->
-						<div class="flex items-center gap-4 pt-2">
-							<div class="flex items-center gap-1">
-								<div class="loading-metric-icon h-3 w-3 rounded-full bg-slate-200"></div>
-								<div class="loading-metric h-3 w-8 rounded bg-slate-100"></div>
-							</div>
-							<div class="flex items-center gap-1">
-								<div class="loading-metric-icon h-3 w-3 rounded-full bg-slate-200"></div>
-								<div class="loading-metric h-3 w-12 rounded bg-slate-100"></div>
-							</div>
-						</div>
-					</div>
-
-					<!-- Chevron placeholder -->
-					<div class="loading-chevron h-5 w-5 rounded bg-slate-200 md:hidden"></div>
-				</div>
-			</div>
+			<SkeletonTemplate 
+				variant="list" 
+				animate={true}
+				classNames="template-loading-{index}"
+			/>
 		{/each}
 	{:else}
 		{#each templates as template, index (template.id)}
@@ -157,64 +119,3 @@
 		{/each}
 	{/if}
 </div>
-
-<style>
-	/* Swiss/Bauhaus Loading Animations */
-	.template-loading-card {
-		animation: fadeIn 0.6s ease-out;
-	}
-
-	.loading-badge,
-	.loading-title,
-	.loading-line,
-	.loading-metric,
-	.loading-metric-icon,
-	.loading-chevron {
-		position: relative;
-		overflow: hidden;
-		background: linear-gradient(
-			90deg,
-			theme('colors.slate.200') 0%,
-			theme('colors.slate.100') 50%,
-			theme('colors.slate.200') 100%
-		);
-		animation: shimmer 1.8s ease-in-out infinite;
-	}
-
-	@keyframes shimmer {
-		0% {
-			background-position: -200% 0;
-		}
-		100% {
-			background-position: 200% 0;
-		}
-	}
-
-	@keyframes fadeIn {
-		from {
-			opacity: 0;
-			transform: translateY(8px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	/* Mathematical progression timing (Fibonacci-inspired) */
-	.loading-badge {
-		animation-delay: 0ms;
-	}
-	.loading-title {
-		animation-delay: 150ms;
-	}
-	.loading-line:nth-child(1) {
-		animation-delay: 300ms;
-	}
-	.loading-line:nth-child(2) {
-		animation-delay: 450ms;
-	}
-	.loading-metric {
-		animation-delay: 600ms;
-	}
-</style>

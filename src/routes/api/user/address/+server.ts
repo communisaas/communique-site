@@ -3,8 +3,11 @@ import { db } from '$lib/core/db';
 
 export async function POST({ request, locals }) {
 	try {
+		console.log('Address API called, user:', locals.user?.id);
+		
 		// Ensure user is authenticated
 		if (!locals.user) {
+			console.log('No user in locals');
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 		
@@ -24,6 +27,14 @@ export async function POST({ request, locals }) {
 		}
 		
 		// Update user with address components
+		console.log('Updating user with address:', {
+			street: addressComponents.street,
+			city: addressComponents.city,
+			state: addressComponents.state,
+			zip: addressComponents.zip,
+			congressional_district: congressional_district || undefined
+		});
+		
 		const updatedUser = await db.user.update({
 			where: { id: locals.user.id },
 			data: {
@@ -35,6 +46,8 @@ export async function POST({ request, locals }) {
 				updatedAt: new Date()
 			}
 		});
+		
+		console.log('User updated successfully:', updatedUser.id);
 		
 		// If representatives were found, store them for this user
 		if (representatives && representatives.length > 0) {
@@ -100,8 +113,10 @@ export async function POST({ request, locals }) {
 		});
 		
 	} catch (error) {
+		console.error('Address save error:', error);
 		return json({ 
-			error: 'Failed to save address' 
+			error: 'Failed to save address',
+			details: error instanceof Error ? error.message : 'Unknown error'
 		}, { status: 500 });
 	}
 }

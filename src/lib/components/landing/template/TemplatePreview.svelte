@@ -176,6 +176,9 @@
 	$effect(() => {
 		if (template && previewContainer) {
 			tick().then(() => {
+				// Re-check previewContainer as it might have become null during async operation
+				if (!previewContainer) return;
+				
 				const focusableElements = previewContainer.querySelectorAll(
 					'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 				);

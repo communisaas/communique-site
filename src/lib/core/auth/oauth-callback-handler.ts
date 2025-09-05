@@ -128,7 +128,7 @@ export class OAuthCallbackHandler {
 		const code = url.searchParams.get('code');
 		const state = url.searchParams.get('state');
 		const storedState = cookies.get('oauth_state');
-		const returnTo = cookies.get('oauth_return_to') || '/dashboard';
+		const returnTo = cookies.get('oauth_return_to') || '/profile';
 		const codeVerifier = requiresCodeVerifier ? cookies.get('oauth_code_verifier') : undefined;
 
 		// Clean up cookies
@@ -273,7 +273,7 @@ export class OAuthCallbackHandler {
 			returnTo.includes('template-modal') ||
 			returnTo.includes('/template/') ||
 			isFromSocialFunnel ||
-			returnTo !== '/dashboard'
+			returnTo !== '/profile'
 		);
 
 		// Check profile requirements for direct outreach

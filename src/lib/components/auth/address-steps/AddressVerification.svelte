@@ -1,6 +1,23 @@
 <script lang="ts">
 	import { CheckCircle2, Home } from '@lucide/svelte';
 	
+	interface Representative {
+		name: string;
+		office: string;
+		state?: string;
+		district?: string;
+		chamber?: string;
+		email?: string;
+		phone?: string;
+	}
+	
+	interface VerificationResult {
+		representatives?: Representative[];
+		district?: string;
+		correctedAddress?: string;
+		[key: string]: unknown;
+	}
+	
 	let {
 		selectedAddress,
 		verificationResult,
@@ -8,7 +25,7 @@
 		onAcceptAddress
 	}: {
 		selectedAddress: string;
-		verificationResult: Record<string, unknown> | null;
+		verificationResult: VerificationResult | null;
 		onEditAddress: () => void;
 		onAcceptAddress: () => void;
 	} = $props();

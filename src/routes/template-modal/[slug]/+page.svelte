@@ -30,9 +30,9 @@
 	function handleTemplateUsed(event: CustomEvent) {
 		// Track successful conversion
 		
-		// Optionally redirect to dashboard or success page
+		// Optionally redirect to profile or success page
 		coordinated.setTimeout(() => {
-			goto('/dashboard?success=template_sent');
+			goto('/profile?success=template_sent');
 		}, 2000, 'transition', componentId);
 	}
 </script>
