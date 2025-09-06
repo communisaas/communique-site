@@ -22,7 +22,7 @@
 	function handleModalClose() {
 		showModal = false;
 		// Navigate to template page instead of closing modal
-		goto(`/${data.template.slug}`);
+		goto(`/s/${data.template.slug}`);
 	}
 	
 	const componentId = 'TemplateModalPage_' + Math.random().toString(36).substr(2, 9);

@@ -120,7 +120,7 @@
 		// Navigate to template page in background (seamless transition)
 		coordinated.setTimeout(
 			async () => {
-				await goto(`/${template.slug}`, { replaceState: true });
+				await goto(`/s/${template.slug}`, { replaceState: true });
 			},
 			500,
 			'navigation',

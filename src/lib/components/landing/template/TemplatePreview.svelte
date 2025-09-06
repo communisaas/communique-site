@@ -264,16 +264,19 @@
 				{componentId}
 			/>
 			
-			<ActionBar 
-				{template}
-				{user}
-				{personalConnectionValue}
-				{onSendMessage}
-				bind:localShowEmailModal
-				bind:actionProgress
-				{onEmailModalClose}
-				{componentId}
-			/>
+			<!-- Only show ActionBar in list/modal contexts, not on page -->
+			{#if context !== 'page'}
+				<ActionBar 
+					{template}
+					{user}
+					{personalConnectionValue}
+					{onSendMessage}
+					bind:localShowEmailModal
+					bind:actionProgress
+					{onEmailModalClose}
+					{componentId}
+				/>
+			{/if}
 		</div>
 	{:else}
 		<div class="py-12 text-center text-slate-500">Select a template to preview</div>

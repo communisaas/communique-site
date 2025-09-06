@@ -24,9 +24,8 @@
 	let hovered = $state(false);
 	let buttonRef: HTMLButtonElement;
 	
-	// Spring animations for smooth interactions - adjusted for smoother motion
+	// Spring animations for smooth interactions - simplified for reliability
 	let buttonScale = spring(1, { stiffness: 0.4, damping: 0.85 });
-	let iconRotation = spring(0, { stiffness: 0.15, damping: 0.85 }); // Slower for smooth spin
 	let glowIntensity = spring(0, { stiffness: 0.2, damping: 0.9 });
 	let particleSpring = spring(0, { stiffness: 0.3, damping: 0.8 });
 	let copiedGlow = spring(0, { stiffness: 0.3, damping: 0.9 });
@@ -45,7 +44,6 @@
 		
 		if (hovered) {
 			buttonScale.set(1.05);
-			iconRotation.set(15);
 			glowIntensity.set(1);
 			
 			// Create particles on hover
@@ -64,7 +62,6 @@
 			}
 		} else {
 			buttonScale.set(1);
-			iconRotation.set(0);
 			glowIntensity.set(0);
 			particles = [];
 		}
@@ -109,33 +106,26 @@
 			animating = true; // Start animation lock
 			hovered = false; // Hide tooltip immediately
 			
-			// Trigger copy animation with smoother timing
-			buttonScale.set(0.92);
+			// Trigger copy animation with perfect timing
+			buttonScale.set(0.95);
 			copiedGlow.set(1);
-			setTimeout(() => buttonScale.set(1.05), 150);
-			setTimeout(() => buttonScale.set(1), 300);
+			setTimeout(() => buttonScale.set(1.08), 100);
+			setTimeout(() => buttonScale.set(1), 250);
 			
-			// Rotate to 180 degrees to flip the upside-down checkmark right-side up
-			// Checkmark starts at 180° (upside down), container rotates to 180°
-			// Result: 180° + 180° = 360° = 0° (right-side up)
-			iconRotation.set(180);
+			// Trigger particle burst
 			particleSpring.set(1);
 			
 			setTimeout(() => {
-				// Keep rotation at 180 so checkmark stays right-side up
-				// Don't reset to 0 or it will flip back upside down
 				particleSpring.set(0);
 				copiedGlow.set(0);
 			}, 400);
 			
 			setTimeout(() => {
 				copied = false;
-				// Reset rotation after copied state ends, ready for next click
-				iconRotation.set(0);
-				// Small delay before re-enabling hover to let springs settle
+				// Small delay before re-enabling hover
 				setTimeout(() => {
 					animating = false; // Animation complete, re-enable hover
-				}, 300);
+				}, 200);
 			}, 2000);
 		} catch (err) {
 			console.error('Failed to copy:', err);
@@ -264,29 +254,31 @@
 		
 		<!-- Content container with fixed layout -->
 		<div class="flex items-center gap-2">
-			<!-- Icon container - isolated rotation -->
-			<div class="flex items-center justify-center w-4 h-4">
-				<span 
-					class="relative flex items-center justify-center"
-					style="transform: rotate({$iconRotation}deg)"
+			<!-- Icon container - morphing animation with both icons -->
+			<div class="relative inline-flex items-center justify-center" style="width: 18px; height: 18px;">
+				<!-- Share icon -->
+				<div 
+					class="absolute inset-0 flex items-center justify-center"
+					style="
+						opacity: {copied ? 0 : 1};
+						transform: scale({copied ? 0.3 : 1});
+						transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+					"
 				>
-					{#if copied}
-						<span 
-							in:scale={{ duration: 300, easing: elasticOut, start: 0.5 }}
-							out:scale={{ duration: 200, start: 0.8 }}
-							style="transform: rotate(-180deg)"
-						>
-							<CheckCircle class="{iconSizes[size]} text-current" />
-						</span>
-					{:else}
-						<span
-							in:fade={{ duration: 200, delay: 100 }}
-							out:fade={{ duration: 150 }}
-						>
-							<Share2 class="{iconSizes[size]} text-current" />
-						</span>
-					{/if}
-				</span>
+					<Share2 class="{iconSizes[size]} text-current" />
+				</div>
+				
+				<!-- Check icon -->
+				<div 
+					class="absolute inset-0 flex items-center justify-center"
+					style="
+						opacity: {copied ? 1 : 0};
+						transform: scale({copied ? 1 : 1.5});
+						transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+					"
+				>
+					<CheckCircle class="{iconSizes[size]} text-current" />
+				</div>
 			</div>
 			
 			<!-- Text container - completely isolated -->

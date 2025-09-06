@@ -162,7 +162,7 @@
 													</span>
 												</div>
 											</div>
-											<a href="/{template.slug}" target="_blank">
+											<a href="/s/{template.slug}" target="_blank">
 												<Button variant="secondary" size="sm">
 													<ExternalLink class="w-4 h-4 mr-1" />
 													View

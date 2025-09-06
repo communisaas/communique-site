@@ -12,6 +12,9 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
+	import ActionBar from '$lib/components/landing/template/parts/ActionBar.svelte';
+	import { spring } from 'svelte/motion';
+	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
 	import type { Template as TemplateType } from '$lib/types/template';
 
@@ -20,6 +23,11 @@
 	// Simple modal state
 	let isUpdatingAddress = $state(false);
 	let showEmailLoadingModal = $state(false);
+	
+	// ActionBar state
+	let personalConnectionValue = $state('');
+	let localShowEmailModal = $state(false);
+	let actionProgress = spring(0);
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
@@ -43,22 +51,88 @@
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
 
 	onMount(() => {
-		// Track template view with source attribution
-		funnelAnalytics.trackTemplateView(
-			template.id,
-			source as 'social-link' | 'direct-link' | 'share'
-		);
+		// Check if this is a share link flow
+		const isShareFlow = browser && sessionStorage.getItem(`template_${template.id}_share_flow`) === 'true';
 		
-		// Store template context for guest users
-		if (!data.user) {
-			const safeSlug = (template.slug ?? template.id) as string;
-			guestState.setTemplate(
-				safeSlug,
-				template.title,
+		if (isShareFlow) {
+			// Clean up the share flow flag
+			sessionStorage.removeItem(`template_${template.id}_share_flow`);
+			
+			// Override source for share flows
+			const shareSource = 'share';
+			
+			// Track template view with share source
+			funnelAnalytics.trackTemplateView(template.id, shareSource);
+			
+			// Store template context for guest users with share source
+			if (!data.user) {
+				const safeSlug = (template.slug ?? template.id) as string;
+				guestState.setTemplate(safeSlug, template.title, shareSource);
+			}
+			
+			// Trigger the share flow immediately
+			handleShareFlow();
+		} else {
+			// Normal template view - track with default source
+			funnelAnalytics.trackTemplateView(
+				template.id,
 				source as 'social-link' | 'direct-link' | 'share'
 			);
+			
+			// Store template context for guest users
+			if (!data.user) {
+				const safeSlug = (template.slug ?? template.id) as string;
+				guestState.setTemplate(
+					safeSlug,
+					template.title,
+					source as 'social-link' | 'direct-link' | 'share'
+				);
+			}
 		}
 	});
+
+	function handleShareFlow() {
+		// Analyze what flow is needed for this template and user
+		const flow = analyzeEmailFlow(template, data.user);
+		const shareSource = 'share';
+
+		// Execute the appropriate flow
+		switch (flow.nextAction) {
+			case 'auth':
+				// User needs to authenticate first
+				modalActions.open('auth-modal', 'auth', { 
+					template, 
+					source: shareSource,
+					autoSend: true 
+				});
+				funnelAnalytics.trackOnboardingStarted(template.id, shareSource);
+				break;
+				
+			case 'address':
+				// User needs to provide address for congressional delivery
+				modalActions.open('address-modal', 'address', { 
+					template, 
+					source: shareSource,
+					user: data.user,
+					autoSend: true 
+				});
+				break;
+				
+			case 'email':
+				// Ready to send - show the cool loading modal and launch email
+				if (flow.mailtoUrl) {
+					showEmailLoadingModal = true;
+					setTimeout(() => {
+						launchEmail(flow.mailtoUrl!);
+						// Auto-close modal after 1.5s
+						setTimeout(() => {
+							showEmailLoadingModal = false;
+						}, 1500);
+					}, 100);
+				}
+				break;
+		}
+	}
 
 	function handlePostAuthFlow() {
 		const flow = analyzeEmailFlow(template, data.user);
@@ -206,7 +280,7 @@
 			</div>
 		</div>
 
-		<!-- Template Action CTA -->
+		<!-- User greeting and Action Button -->
 		<div class="flex flex-col items-start gap-3 sm:items-end">
 			{#if data.user}
 				<div class="flex items-center gap-2">
@@ -218,12 +292,14 @@
 					{/if}
 				</div>
 			{/if}
-
-			{#if template.deliveryMethod === 'both'}
-				<Button
-					variant="primary"
-					classNames="bg-green-600 hover:bg-green-700 focus:ring-green-600/50 w-full sm:w-auto"
-					onclick={() => {
+			
+			<!-- ActionBar positioned in header -->
+			<div class="w-full sm:w-auto [&>div]:mt-0">
+				<ActionBar 
+					{template}
+					user={data.user as { id: string; name: string | null } | null}
+					{personalConnectionValue}
+					onSendMessage={() => {
 						if (!data.user) {
 							modalActions.open('auth-modal', 'auth', { template, source });
 							funnelAnalytics.trackOnboardingStarted(
@@ -234,56 +310,12 @@
 							handlePostAuthFlow();
 						}
 					}}
-				>
-					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 2.676-.732 5.162-2.217 7.162-4.416.43-.462.753-.96.938-1.49z"
-						/>
-					</svg>
-					{#if !data.user}
-						Sign in to Contact Congress
-					{:else if addressRequired}
-						Add Address to Contact Congress
-					{:else}
-						Contact Your Representatives
-					{/if}
-				</Button>
-			{:else}
-				<Button
-					variant="primary"
-					classNames="bg-blue-600 hover:bg-blue-700 focus:ring-blue-600/50 w-full sm:w-auto"
-					onclick={() => {
-						if (data.user) {
-							handlePostAuthFlow();
-						} else {
-							modalActions.open('auth-modal', 'auth', { template, source });
-							funnelAnalytics.trackOnboardingStarted(
-								template.id,
-								source as 'social-link' | 'direct-link' | 'share'
-							);
-						}
-					}}
-				>
-					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
-						/>
-					</svg>
-					{#if channel && channel.access_tier === 1}
-						{data.user ? 'Send Email' : 'Sign in to Send'}
-					{:else if channel && channel.country_code === 'US'}
-						{data.user ? 'Contact Congress (Certified)' : 'Sign in to Contact Congress'}
-					{:else}
-						{data.user ? 'Share This Message' : 'Sign in to Share'}
-					{/if}
-				</Button>
-			{/if}
+					bind:localShowEmailModal
+					bind:actionProgress
+					onEmailModalClose={() => showEmailLoadingModal = false}
+					componentId="template-page-action"
+				/>
+			</div>
 		</div>
 	</div>
 
