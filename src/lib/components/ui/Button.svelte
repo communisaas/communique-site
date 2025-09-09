@@ -60,9 +60,9 @@
 	let glowIntensity = spring(0, { stiffness: 0.4, damping: 0.8 }); // For magical variant glow
 	
 	// Dynamic paper plane flight animation with realistic physics
-	// Position uses state for instant reset, effects use springs for smooth animation
-	let planeX = $state(0);
-	let planeY = $state(0);
+	// All animations use springs for natural paper plane movement
+	let planeX = spring(0, { stiffness: 0.3, damping: 0.7 });
+	let planeY = spring(0, { stiffness: 0.25, damping: 0.6 });
 	let planeOpacity = spring(1, { stiffness: 0.4, damping: 0.8 });
 	let planeRotation = spring(0, { stiffness: 0.35, damping: 0.6 });
 	let planeScale = spring(1, { stiffness: 0.3, damping: 0.7 });
@@ -181,36 +181,36 @@
 				
 				switch (flightState) {
 					case 'taking-off':
-						// Elegant launch like send button - upward arc with banking
-						planeX = 45;
-						planeY = -12;
+						// Elegant launch - natural paper plane physics
+						planeX.set(45);
+						planeY.set(-12);
 						planeRotation.set(-8); // Gentle banking for natural launch
 						planeScale.set(1.1);
 						planeOpacity.set(0.95);
 						planeBlur.set(0.3);
 						break;
 					case 'flying':
-						// Continue elegant arc - main flight phase
-						planeX = 80;
-						planeY = -25;
+						// Continue elegant arc with natural deceleration
+						planeX.set(80);
+						planeY.set(-25);
 						planeRotation.set(5); // Leveling out
 						planeScale.set(1.2);
 						planeOpacity.set(0.85);
 						planeBlur.set(0.6);
 						break;
 					case 'sent':
-						// Natural banking turn - like send button physics
-						planeX = 140;
-						planeY = -40;
+						// Natural banking turn with realistic physics
+						planeX.set(140);
+						planeY.set(-40);
 						planeRotation.set(25); // Natural banking
 						planeScale.set(1.1);
 						planeOpacity.set(0.75);
 						planeBlur.set(1.0);
 						break;
 					case 'departing':
-						// Continue graceful flight off screen
-						planeX = 220;
-						planeY = -55;
+						// Gravity and air resistance taking effect
+						planeX.set(220);
+						planeY.set(-55);
 						planeRotation.set(30); // Continuing bank
 						planeScale.set(0.7);
 						planeOpacity.set(0);
@@ -218,8 +218,8 @@
 						break;
 					default: // 'ready'
 						// Smooth reset - clean re-materialization
-						planeX = 0;
-						planeY = 0;
+						planeX.set(0);
+						planeY.set(0);
 						planeRotation.set(0);
 						planeScale.set(1);
 						planeOpacity.set(1);
@@ -231,48 +231,47 @@
 				// Default animation for send buttons - dramatic and powerful
 				switch (flightState) {
 					case 'taking-off':
-						// Initial launch - slight upward arc with anticipation
-						planeX = 45;
-						planeY = -8;
+						// Powerful launch with natural physics variation
+						planeX.set(45);
+						planeY.set(-8);
 						planeRotation.set(-12); // Banking left for the turn
-						planeScale.set(1.1); // Slight grow as it "approaches"
+						planeScale.set(1.1);
 						planeOpacity.set(0.95);
 						planeBlur.set(0.5);
 						break;
 					case 'flying':
-						// Main flight - dramatic curved trajectory like a real paper plane
-						planeX = 120;
-						planeY = -35; // Higher arc
+						// Dramatic arc with realistic paper plane movement
+						planeX.set(120);
+						planeY.set(-35); // Higher arc
 						planeRotation.set(25); // Banking right into the dive
 						planeScale.set(1.3); // Growing larger as it "flies toward us"
 						planeOpacity.set(0.7);
 						planeBlur.set(1.2); // Motion blur effect
 						break;
 					case 'sent':
-						// Success state - plane at peak trajectory
-						planeX = 140;
-						planeY = -40;
+						// Peak trajectory with natural deceleration
+						planeX.set(140);
+						planeY.set(-40);
 						planeRotation.set(30);
 						planeScale.set(1.2);
 						planeOpacity.set(0.8);
 						planeBlur.set(1);
 						break;
 					case 'departing':
-						// Continue flying off screen to the right and fade away
-						planeX = 250; // Far off right
-						planeY = -60; // Continuing upward
+						// Natural descent with air resistance
+						planeX.set(250); // Far off right
+						planeY.set(-60); // Continuing upward
 						planeRotation.set(35); // Still banking
 						planeScale.set(0.6); // Getting smaller
 						planeOpacity.set(0); // Completely faded out
 						planeBlur.set(2); // Heavy blur
 						break;
 					default: // 'ready'
-						// Resting state - new plane ready to go (instant reset)
-						planeX = 0;
-						planeY = 0;
+						// Smooth reset with spring physics
+						planeX.set(0);
+						planeY.set(0);
 						planeRotation.set(0);
 						planeScale.set(1);
-						// Instant reset - new plane just appears
 						planeOpacity.set(1);
 						planeBlur.set(0);
 				}
@@ -434,7 +433,7 @@
 			style="
 				top: 50%;
 				right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
-				transform: translate({planeX}px, calc(-50% + {planeY}px)) rotate({$planeRotation}deg) scale({$planeScale});
+				transform: translate({$planeX}px, calc(-50% + {$planeY}px)) rotate({$planeRotation}deg) scale({$planeScale});
 				opacity: {$planeOpacity};
 				filter: blur({$planeBlur}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {flightState === 'ready' ? 0 : 0.6}));
 				transform-origin: center;

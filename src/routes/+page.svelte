@@ -9,8 +9,7 @@
 import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
 import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.svelte';
 	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
-	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
-	import { modalActions, isModalOpen, currentTemplate } from '$lib/stores/modalSystem.svelte';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import UnifiedProgressiveFormModal from '$lib/components/modals/UnifiedProgressiveFormModal.svelte';
 	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
 	import { resolveTemplate } from '$lib/utils/templateResolver';
@@ -18,6 +17,7 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
+	import { goto, preloadData, onNavigate } from '$app/navigation';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import type { PageData } from './$types';
 	import { coordinated } from '$lib/utils/timerCoordinator';
@@ -111,28 +111,6 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 			);
 		}
 
-		// Check for OAuth return with template parameter
-		const templateSlug = $page.url.searchParams.get('template');
-		const action = $page.url.searchParams.get('action');
-
-		if (templateSlug && action === 'open-modal') {
-			// User returned from OAuth, find and open the template modal
-			coordinated.setTimeout(
-				async () => {
-					const templates = templateStore.templates;
-					const template = templates.find((t) => t.slug === templateSlug);
-					if (template) {
-						templateStore.selectTemplate(template.id);
-						modalActions.open(template, data.user);
-						// Clean up URL
-						window.history.replaceState({}, '', '/');
-					}
-				},
-				500,
-				'auth-return',
-				componentId
-			);
-		}
 
 		// Mark initial load as complete after a short delay
 		coordinated.setTimeout(
@@ -143,6 +121,20 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 			'dom',
 			componentId
 		);
+	});
+
+	// Enable smooth page transitions using View Transitions API
+	onNavigate((navigation) => {
+		// Only use view transitions for template navigation and if supported by browser
+		if (!document.startViewTransition || !navigation.to?.url.pathname.includes('/s/')) {
+			return;
+		}
+		
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+			});
+		});
 	});
 
 	// No need for manual onMount template selection anymore -
@@ -178,27 +170,6 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 		showTemplateCreator = true;
 	}
 
-	function handleTemplateUse(event: CustomEvent) {
-		const { template, requiresAuth } = event.detail;
-
-		const flow = analyzeEmailFlow(template as any, data.user);
-
-		if (flow.nextAction === 'auth') {
-			// Show onboarding modal for guests
-			modalActions.openModal('onboarding-modal', 'onboarding', { template, source: 'hero' });
-		} else if (flow.nextAction === 'address') {
-			// Need address - show unified address requirement modal
-			modalActions.open('address-modal', 'address', { template, source: 'hero', user: data.user });
-		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-			if (data.user) {
-				// Show template modal for authenticated users using persistent store
-				modalActions.open(template, data.user);
-			} else {
-				// Direct mailto launch
-				launchEmail(flow.mailtoUrl);
-			}
-		}
-	}
 
 	function handleTemplateCreatorAuth(event: CustomEvent) {
 		const { name, email } = event.detail;
@@ -342,8 +313,7 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 				<TemplatePreview
 					template={selectedTemplate}
 					user={data.user}
-					on:useTemplate={handleTemplateUse}
-					onSendMessage={() => {
+					onSendMessage={async () => {
 						if (!selectedTemplate) {
 							return;
 						}
@@ -353,9 +323,17 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 						if (flow.nextAction === 'auth') {
 							modalActions.openModal('onboarding-modal', 'onboarding', { template: selectedTemplate, source: 'featured' });
 						} else if (flow.nextAction === 'address') {
-							modalActions.open('address-modal', 'address', { template: selectedTemplate, source: 'featured', user: data.user });
-						} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-							launchEmail(flow.mailtoUrl);
+							modalActions.openModal('address-modal', 'address', { template: selectedTemplate, source: 'featured', user: data.user });
+						} else {
+							// Preload the template page data immediately
+							const templateUrl = `/s/${selectedTemplate.slug}`;
+							preloadData(templateUrl);
+							
+							// Let button animation play until plane is off-screen (1200ms)
+							// This avoids showing the reset animation
+							setTimeout(() => {
+								goto(templateUrl);
+							}, 1200);
 						}
 					}}
 				/>
@@ -389,7 +367,27 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 					template={selectedTemplate}
 					inModal={true}
 					user={data.user}
-					onSendMessage={() => handleTemplateUse({ detail: { template: selectedTemplate } })}
+					onSendMessage={async () => {
+						const flow = analyzeEmailFlow(selectedTemplate, data.user);
+						
+						if (flow.nextAction === 'auth') {
+							modalActions.openModal('onboarding-modal', 'onboarding', { template: selectedTemplate, source: 'mobile' });
+							showMobilePreview = false;
+						} else if (flow.nextAction === 'address') {
+							modalActions.openModal('address-modal', 'address', { template: selectedTemplate, source: 'mobile', user: data.user });
+							showMobilePreview = false;
+						} else {
+							// Preload the template page
+							const templateUrl = `/s/${selectedTemplate.slug}`;
+							preloadData(templateUrl);
+							
+							// Let button animation play until plane is off-screen (1200ms)
+							// This avoids showing the reset animation
+							setTimeout(() => {
+								goto(templateUrl);
+							}, 1200);
+						}
+					}}
 				/>
 			</div>
 		</TouchModal>
@@ -436,19 +434,6 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 
 	<!-- Auth Modals -->
 	<UnifiedOnboardingModal />
-
-	{#if isModalOpen && currentTemplate}
-		<TemplateModal
-			template={currentTemplate}
-			user={data.user}
-			on:close={() => {
-				modalActions.close();
-			}}
-			on:used={() => {
-				// Don't close modal on used - let it persist for post-send flow
-			}}
-		/>
-	{/if}
 
 	<!-- Template Creator Auth Modal -->
 	{#if showTemplateAuthModal && pendingTemplateToSave}
