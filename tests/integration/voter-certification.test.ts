@@ -213,7 +213,7 @@ describe('VOTER Protocol Certification Integration', () => {
       const { default: mockRegistry } = await import('../mocks/registry');
       
       // Configure mocks
-      mockRegistry.configureMocks();
+      mockRegistry.setupMocks();
       
       // Setup should create mocks
       const mocks = mockRegistry.setupMocks();
@@ -221,7 +221,7 @@ describe('VOTER Protocol Certification Integration', () => {
       
       // Check that VOTER certification was enabled
       // The registry tracks enabled mocks internally
-      expect(mocks['$lib/core/db']).toBeDefined();
+      expect(mocks.db).toBeDefined();
     });
   });
 });

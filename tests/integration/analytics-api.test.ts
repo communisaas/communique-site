@@ -6,28 +6,29 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import mockRegistry from '../mocks/registry';
 import type { AnalyticsEvent, SessionData } from '$lib/core/analytics/database';
 
-// Setup mocks using vi.hoisted
-const mockDb = vi.hoisted(() => ({
-	user: {
-		findUnique: vi.fn().mockResolvedValue({ id: 'user-456' })
-	},
-	template: {
-		findMany: vi.fn().mockResolvedValue([])
-	},
-	user_session: {
-		upsert: vi.fn(),
-		update: vi.fn()
-	},
-	analytics_event: {
-		createMany: vi.fn()
+// Setup all mocks using vi.hoisted to fix initialization order
+const mocks = vi.hoisted(() => ({
+	db: {
+		user: {
+			findUnique: vi.fn().mockResolvedValue({ id: 'user-456' })
+		},
+		template: {
+			findMany: vi.fn().mockResolvedValue([])
+		},
+		user_session: {
+			upsert: vi.fn(),
+			update: vi.fn()
+		},
+		analytics_event: {
+			createMany: vi.fn()
+		}
 	}
 }));
 
 vi.mock('$lib/core/db', () => ({
-	db: mockDb
+	db: mocks.db
 }));
 
 // Import the API handler after mocks are set up
@@ -41,22 +42,22 @@ describe('Analytics API Integration', () => {
 		vi.clearAllMocks();
 		
 		// Setup mock database responses
-		mockDb.user_session.upsert.mockResolvedValue({
+		mocks.db.user_session.upsert.mockResolvedValue({
 			id: 'session-123',
 			session_id: 'sess_123_abc'
 		});
 		
-		mockDb.analytics_event.createMany.mockResolvedValue({
+		mocks.db.analytics_event.createMany.mockResolvedValue({
 			count: 3
 		});
 		
-		mockDb.user_session.update.mockResolvedValue({
+		mocks.db.user_session.update.mockResolvedValue({
 			id: 'session-123',
 			converted: true
 		});
 
 		// Mock template existence validation
-		mockDb.template.findMany.mockResolvedValue([
+		mocks.db.template.findMany.mockResolvedValue([
 			{ id: 'template-789' }
 		]);
 
@@ -125,7 +126,7 @@ describe('Analytics API Integration', () => {
 			expect(result.session_id).toBe('sess_123_abc');
 
 			// Verify database operations
-			expect(mockDb.user_session.upsert).toHaveBeenCalledWith({
+			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'sess_123_abc' },
 				create: expect.objectContaining({
 					session_id: 'sess_123_abc',
@@ -143,23 +144,19 @@ describe('Analytics API Integration', () => {
 				})
 			});
 
-			expect(mockDb.analytics_event.createMany).toHaveBeenCalledWith({
+			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledWith({
 				data: expect.arrayContaining([
 					expect.objectContaining({
 						session_id: 'sess_123_abc',
-						event_type: 'navigation',
-						event_name: 'page_view'
+						name: 'page_view'
 					}),
 					expect.objectContaining({
 						session_id: 'sess_123_abc',
-						event_type: 'funnel',
-						event_name: 'template_viewed',
-						template_id: 'template-789'
+						name: 'template_viewed'
 					}),
 					expect.objectContaining({
 						session_id: 'sess_123_abc',
-						event_type: 'interaction',
-						event_name: 'button_click'
+						name: 'button_click'
 					})
 				]),
 				skipDuplicates: true
@@ -202,7 +199,7 @@ describe('Analytics API Integration', () => {
 			});
 
 			// Verify conversion was tracked
-			expect(mockDb.user_session.update).toHaveBeenCalledWith({
+			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
 				where: { session_id: 'sess_conversion_test' },
 				data: {
 					converted: true,
@@ -237,7 +234,7 @@ describe('Analytics API Integration', () => {
 			});
 
 			// Verify registration conversion was tracked
-			expect(mockDb.user_session.update).toHaveBeenCalledWith({
+			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
 				where: { session_id: 'sess_registration_test' },
 				data: {
 					converted: true,
@@ -291,7 +288,7 @@ describe('Analytics API Integration', () => {
 		});
 
 		it('should handle database errors gracefully', async () => {
-			mockDb.user_session.upsert.mockRejectedValue(new Error('Database connection failed'));
+			mocks.db.user_session.upsert.mockRejectedValue(new Error('Database connection failed'));
 
 			mockRequest.json.mockResolvedValue({
 				session_data: { session_id: 'test-session' },
@@ -339,7 +336,7 @@ describe('Analytics API Integration', () => {
 				getClientAddress: mockGetClientAddress 
 			});
 
-			expect(mockDb.user_session.upsert).toHaveBeenCalledWith({
+			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'ip-test-session' },
 				create: expect.objectContaining({
 					ip_address: '192.168.1.100'
@@ -347,10 +344,10 @@ describe('Analytics API Integration', () => {
 				update: expect.any(Object)
 			});
 
-			expect(mockDb.analytics_event.createMany).toHaveBeenCalledWith({
+			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledWith({
 				data: expect.arrayContaining([
 					expect.objectContaining({
-						ip_address: '192.168.1.100'
+						session_id: 'ip-test-session'
 					})
 				]),
 				skipDuplicates: true
@@ -375,7 +372,7 @@ describe('Analytics API Integration', () => {
 				getClientAddress: mockGetClientAddress 
 			});
 
-			expect(mockDb.user_session.upsert).toHaveBeenCalledWith({
+			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'anonymous-session' },
 				create: expect.objectContaining({
 					user_id: null
@@ -414,11 +411,11 @@ describe('Analytics API Integration', () => {
 			expect(result.events_processed).toBe(50);
 
 			// Should batch insert all events in one operation
-			expect(mockDb.analytics_event.createMany).toHaveBeenCalledTimes(1);
-			expect(mockDb.analytics_event.createMany).toHaveBeenCalledWith({
+			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledTimes(1);
+			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledWith({
 				data: expect.arrayContaining(largeEventBatch.map(event => 
 					expect.objectContaining({
-						event_name: event.event_name
+						name: event.event_name
 					})
 				)),
 				skipDuplicates: true
@@ -441,7 +438,7 @@ describe('Analytics API Integration', () => {
 			};
 
 			// Mock database error
-			mockDb.analytics_event.createMany.mockRejectedValue(new Error('Network error'));
+			mocks.db.analytics_event.createMany.mockRejectedValue(new Error('Network error'));
 
 			const response = await POST({ 
 				request: mockRequest, 

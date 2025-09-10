@@ -157,6 +157,7 @@ export function isValidRecipientConfig(obj: unknown): obj is RecipientConfig {
 	
 	const record = obj as Record<string, unknown>;
 	return 'emails' in record && Array.isArray(record.emails) && 
+		   record.emails.length > 0 &&
 		   record.emails.every((email: unknown) => typeof email === 'string');
 }
 
