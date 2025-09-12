@@ -10,6 +10,16 @@
 	} from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
+	type Representative = {
+		name: string;
+		office: string;
+	};
+
+	type VerificationResult = {
+		representatives?: Representative[];
+		[key: string]: any;
+	};
+
 	let {
 		template,
 		onclose,
@@ -32,7 +42,7 @@
 	let zipCode = $state('');
 	let addressError = $state('');
 	let isVerifying = $state(false);
-	let verificationResult = $state(null as Record<string, unknown> | null);
+	let verificationResult = $state<VerificationResult | null>(null);
 	let selectedAddress = $state('');
 
 	function validateAddress(): boolean {
@@ -94,7 +104,7 @@
 		oncomplete({
 			address: selectedAddress,
 			verified: true,
-			representatives: verificationResult?.representatives
+			representatives: verificationResult?.representatives as Array<Record<string, unknown>> | undefined
 		});
 	}
 
