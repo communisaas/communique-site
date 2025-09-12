@@ -37,43 +37,22 @@
 			);
 		}
 		
-		// Only show email modal if user is authenticated
-		if (user) {
-			localShowEmailModal = true;
-			actionProgress.set(1);
-			coordinated.transition(
-				() => {
-					onSendMessage?.();
-					coordinated.autoClose(
-						() => {
-							localShowEmailModal = false;
-							onEmailModalClose();
-							actionProgress.set(0);
-						},
-						1500,
-						componentId
-					);
-				},
-				100,
-				componentId
-			);
-		} else {
-			// Save personalization and set pending flag before auth
-			if (browser) {
-				// Ensure personalization is saved
-				if (personalConnectionValue) {
-					sessionStorage.setItem(`template_${template.id}_personalization`, JSON.stringify({
-						personalConnection: personalConnectionValue,
-						timestamp: Date.now()
-					}));
-				}
-				// Set pending send flag
-				sessionStorage.setItem(`template_${template.id}_pending_send`, 'true');
-			}
-			// Let parent handle auth flow
-			if (onSendMessage) {
-				onSendMessage();
-			}
+		// Save personalization for all users
+		if (browser && personalConnectionValue) {
+			sessionStorage.setItem(`template_${template.id}_personalization`, JSON.stringify({
+				personalConnection: personalConnectionValue,
+				timestamp: Date.now()
+			}));
+		}
+		
+		// For unauthenticated users, set pending send flag
+		if (!user && browser) {
+			sessionStorage.setItem(`template_${template.id}_pending_send`, 'true');
+		}
+		
+		// Let parent handle the entire flow (auth, address, or email modal)
+		if (onSendMessage) {
+			onSendMessage();
 		}
 	}
 </script>
@@ -86,7 +65,7 @@
 				size="lg"
 				testId="contact-congress-button"
 				classNames="w-full"
-				enableFlight={true}
+				enableFlight={!!user}
 				bind:flightState
 				onclick={handleSendClick}
 				text={user ? 'Contact Your Representatives' : 'Sign in to Contact Congress'}
@@ -97,7 +76,7 @@
 				size="lg"
 				testId="send-email-button"
 				classNames="w-full"
-				enableFlight={true}
+				enableFlight={!!user}
 				bind:flightState
 				onclick={handleSendClick}
 				text={user ? 'Send This Message' : 'Sign in to Send'}

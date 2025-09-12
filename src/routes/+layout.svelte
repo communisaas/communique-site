@@ -35,7 +35,7 @@
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 			if (data.user) {
 				// Show template modal for authenticated users
-				modalActions.open(template, data.user);
+				modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
 			} else {
 				// Direct mailto launch for guests
 				launchEmail(flow.mailtoUrl);

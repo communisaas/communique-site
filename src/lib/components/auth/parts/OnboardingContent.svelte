@@ -24,8 +24,8 @@
 	let showDetails = $state(false);
 
 	// Detect template type for customized messaging
-	const isCongressional = $derived(template.deliveryMethod === 'both');
-	const isDirectOutreach = $derived(template.deliveryMethod === 'email');
+	const isCongressional = $derived(template?.deliveryMethod === 'both');
+	const isDirectOutreach = $derived(template?.deliveryMethod === 'email');
 
 	// Check if user has seen onboarding before
 	const hasSeenOnboarding = $derived(() => {
@@ -144,14 +144,14 @@
 		}
 	}
 
-	const message = $derived(sourceMessages[source]);
+	const message = $derived(sourceMessages ? sourceMessages[source] : null);
 
 	async function prepareReturn() {
 		try {
 			await fetch('/auth/prepare', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ returnTo: `/${template.slug}` })
+				body: JSON.stringify({ returnTo: `/s/${template.slug}` })
 			});
 		} catch {}
 	}
@@ -184,11 +184,17 @@
 	}
 </script>
 
+{#if !template}
+	<!-- Fallback if template is not available -->
+	<div class="p-6 text-center">
+		<p class="text-slate-600">Loading...</p>
+	</div>
+{:else}
 <div class="p-6">
 	<!-- Header -->
 	<div class="mb-6 text-center">
 		<h2 class="mb-2 text-xl font-bold text-slate-900">
-			{message.headline}
+			{message?.headline || 'Make your voice heard'}
 		</h2>
 		<p class="text-sm text-slate-600">
 			{#if isCongressional}
@@ -339,3 +345,4 @@
 		By signing up, you agree to our terms and privacy policy.
 	</p>
 </div>
+{/if}

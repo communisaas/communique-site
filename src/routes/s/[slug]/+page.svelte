@@ -7,12 +7,15 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
-	import { modalActions } from '$lib/stores/modalSystem.svelte';
+	import { modalActions, modalSystem } from '$lib/stores/modalSystem.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/landing/template/parts/ActionBar.svelte';
+	import UnifiedTemplateModal from '$lib/components/modals/UnifiedTemplateModal.svelte';
+	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
+	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
 	import { spring } from 'svelte/motion';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
@@ -22,12 +25,13 @@
 
 	// Simple modal state
 	let isUpdatingAddress = $state(false);
-	let showEmailLoadingModal = $state(false);
 	
 	// ActionBar state
 	let personalConnectionValue = $state('');
-	let localShowEmailModal = $state(false);
 	let actionProgress = $state(spring(0));
+	
+	// Template modal reference
+	let templateModal: UnifiedTemplateModal;
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
@@ -51,6 +55,11 @@
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
 
 	onMount(() => {
+		// Clean up OAuth redirect hash fragment from Facebook
+		if (browser && window.location.hash === '#_=_') {
+			history.replaceState(null, '', window.location.pathname + window.location.search);
+		}
+		
 		// Normal template view - track with default source  
 		// Share links now land here directly, no redirect needed
 		funnelAnalytics.trackTemplateView(
@@ -66,6 +75,18 @@
 				template.title,
 				source as 'social-link' | 'direct-link' | 'share'
 			);
+		} else {
+			// For authenticated users, immediately trigger email flow on share link landing
+			// Use the same TemplateModal as homepage for consistency
+			const flow = analyzeEmailFlow(template, data.user);
+			
+			if (flow.nextAction === 'address') {
+				// Need address - show modal
+				modalActions.openModal('address-modal', 'address', { template, source });
+			} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
+				// Use modalSystem directly since component may not be mounted yet
+				modalSystem.openModal('template-modal', 'template_modal', { template, user: data.user });
+			}
 		}
 	});
 
@@ -74,17 +95,10 @@
 
 		if (flow.nextAction === 'address') {
 			// Need address collection
-			modalActions.open('address-modal', 'address', { template, source });
+			modalActions.openModal('address-modal', 'address', { template, source });
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-			// Ready to send email - show loading modal
-			showEmailLoadingModal = true;
-			setTimeout(() => {
-				launchEmail(flow.mailtoUrl!);
-				// Auto-close modal after 1.5s
-				setTimeout(() => {
-					showEmailLoadingModal = false;
-				}, 1500);
-			}, 100);
+			// Open TemplateModal using component method for consistency
+			templateModal?.open(template, data.user);
 		}
 	}
 
@@ -123,14 +137,8 @@
 			
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
-				showEmailLoadingModal = true;
-				setTimeout(() => {
-					launchEmail(flow.mailtoUrl!);
-					// Auto-close modal after 1.5s
-					setTimeout(() => {
-						showEmailLoadingModal = false;
-					}, 1500);
-				}, 100);
+				// Open TemplateModal using component method for consistency
+				templateModal?.open(template, data.user);
 			}
 		} catch (error) {
 			// Error occurred during address update, but we'll still proceed with email
@@ -142,14 +150,8 @@
 			
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
-				showEmailLoadingModal = true;
-				setTimeout(() => {
-					launchEmail(flow.mailtoUrl!);
-					// Auto-close modal after 1.5s
-					setTimeout(() => {
-						showEmailLoadingModal = false;
-					}, 1500);
-				}, 100);
+				// Open TemplateModal using component method for consistency
+				templateModal?.open(template, data.user);
 			}
 		} finally {
 			isUpdatingAddress = false;
@@ -236,18 +238,23 @@
 					{personalConnectionValue}
 					onSendMessage={() => {
 						if (!data.user) {
-							modalActions.open('auth-modal', 'auth', { template, source });
+							// Use UnifiedOnboardingModal for consistency with landing page
+							modalActions.openModal('onboarding-modal', 'onboarding', { 
+								template, 
+								source: source as 'social-link' | 'direct-link' | 'share' 
+							});
 							funnelAnalytics.trackOnboardingStarted(
 								template.id,
 								source as 'social-link' | 'direct-link' | 'share'
 							);
 						} else {
+							// For authenticated users, use TemplateModal for the entire flow
 							handlePostAuthFlow();
 						}
 					}}
-					bind:localShowEmailModal
+					localShowEmailModal={false}
 					bind:actionProgress
-					onEmailModalClose={() => showEmailLoadingModal = false}
+					onEmailModalClose={() => {}}
 					componentId="template-page-action"
 				/>
 			</div>
@@ -278,7 +285,7 @@
 					</div>
 					<Button
 						variant="secondary"
-						onclick={() => modalActions.open('address-modal', 'address', { template, source })}
+						onclick={() => modalActions.openModal('address-modal', 'address', { template, source })}
 						classNames="ml-auto"
 					>
 						Add Address
@@ -291,8 +298,8 @@
 			{template}
 			context="page"
 			user={data.user as { id: string; name: string | null } | null}
-			showEmailModal={showEmailLoadingModal}
-			onEmailModalClose={() => showEmailLoadingModal = false}
+			showEmailModal={false}
+			onEmailModalClose={() => {}}
 			onScroll={() => {}}
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
@@ -304,18 +311,12 @@
 				if (channel?.access_tier === 1) {
 					const flow = analyzeEmailFlow(template, data.user);
 					if (flow.nextAction === 'auth') {
-						modalActions.open('auth-modal', 'auth', { template, source });
+						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
 					} else if (flow.nextAction === 'address') {
-						modalActions.open('address-modal', 'address', { template, source });
+						modalActions.openModal('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						// The modal is already shown by TemplatePreview when button clicked
-						setTimeout(() => {
-							launchEmail(flow.mailtoUrl!);
-							// Auto-close modal after 1.5s
-							setTimeout(() => {
-								showEmailLoadingModal = false;
-							}, 1500);
-						}, 100);
+						// Open TemplateModal using component method for consistency
+						templateModal?.open(template, data.user);
 					}
 					return;
 				}
@@ -324,26 +325,25 @@
 				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'both')) {
 					const flow = analyzeEmailFlow(template, data.user);
 					if (flow.nextAction === 'address') {
-						modalActions.open('address-modal', 'address', { template, source });
+						modalActions.openModal('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						// The modal is already shown by TemplatePreview when button clicked
-						setTimeout(() => {
-							launchEmail(flow.mailtoUrl!);
-							// Auto-close modal after 1.5s
-							setTimeout(() => {
-								showEmailLoadingModal = false;
-							}, 1500);
-						}, 100);
+						// Open TemplateModal using component method for consistency
+						templateModal?.open(template, data.user);
 					} else {
-						modalActions.open('auth-modal', 'auth', { template, source });
+						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
 					}
 					return;
 				}
 
 				// Default: prompt share (no modal implementation yet)
-				modalActions.open('share-menu', 'share_menu', { template });
+				modalActions.openModal('share-menu', 'share_menu', { template });
 			}}
 		/>
 	</div>
 </div>
+
+<!-- Modal Components -->
+<UnifiedOnboardingModal />
+<UnifiedAddressModal />
+<UnifiedTemplateModal bind:this={templateModal} />
 

@@ -9,7 +9,7 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	
 	// Connect to modal system
 	const modalStore = createModalStore('onboarding-modal', 'onboarding');
-	let modal: UnifiedModal = $state();
+	let modal: UnifiedModal | undefined = $state();
 	
 	// Open/close functions for external use
 	export function open(data: {
@@ -22,11 +22,11 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 		};
 		source?: 'social-link' | 'direct-link' | 'share';
 	}) {
-		modal.open(data);
+		modal?.open(data);
 	}
 	
 	export function close() {
-		modal.close();
+		modal?.close();
 	}
 
 	// Extract data from modal store
@@ -62,7 +62,7 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 				template={data.template}
 				source={data.source || 'direct-link'}
 				onauth={handleAuth}
-				onclose={modal.close}
+				onclose={() => modal?.close()}
 			/>
 		{/if}
 	{/snippet}

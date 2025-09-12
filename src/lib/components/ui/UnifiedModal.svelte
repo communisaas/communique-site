@@ -55,9 +55,7 @@ backdrop handling, and keyboard navigation.
 {#if modal.isOpen}
 	<!-- Modal Backdrop -->
 	<div
-		class="modal-backdrop fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center pt-4 px-4"
-		class:items-center={size === 'full'}
-		class:items-start={size !== 'full'}
+		class="modal-backdrop fixed inset-0 bg-black/40 backdrop-blur-sm flex justify-center items-center px-4"
 		style="z-index: {modal.zIndex}"
 		in:fade={{ duration: 200 }}
 		out:fade={{ duration: 200 }}
@@ -73,27 +71,22 @@ backdrop handling, and keyboard navigation.
 	>
 		<!-- Modal Container -->
 		<div
-			class="bg-white rounded-2xl shadow-2xl w-full {sizeClasses[size]} max-h-[calc(100vh-2rem)] mb-4"
+			class="relative bg-white rounded-2xl shadow-2xl w-full {sizeClasses[size]} max-h-[calc(100vh-2rem)]"
 			class:flex={size === 'full'}
 			class:flex-col={size === 'full'}
 			class:overflow-hidden={size === 'full'}
 			class:max-h-none={size === 'full'}
 			class:h-full={size === 'full'}
-			class:mb-0={size === 'full'}
 			onclick={(e) => e.stopPropagation()}
 			in:scale={{ duration: 300, start: 0.9, easing: backOut }}
 			out:scale={{ duration: 200, start: 1, easing: quintOut }}
 		>
 			<!-- Modal Header -->
-			{#if title || showCloseButton}
+			{#if title}
 				<div class="flex items-center justify-between p-6 border-b border-slate-100">
-					{#if title}
-						<h2 id="{id}-title" class="text-xl font-semibold text-slate-900">
-							{title}
-						</h2>
-					{:else}
-						<div></div>
-					{/if}
+					<h2 id="{id}-title" class="text-xl font-semibold text-slate-900">
+						{title}
+					</h2>
 					
 					{#if showCloseButton}
 						<button
@@ -105,6 +98,17 @@ backdrop handling, and keyboard navigation.
 						</button>
 					{/if}
 				</div>
+			{/if}
+			
+			<!-- Standalone close button when no title -->
+			{#if !title && showCloseButton}
+				<button
+					onclick={modal.close}
+					class="absolute top-4 right-4 z-10 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200"
+					aria-label="Close modal"
+				>
+					<X class="h-5 w-5" />
+				</button>
 			{/if}
 
 			<!-- Modal Content -->

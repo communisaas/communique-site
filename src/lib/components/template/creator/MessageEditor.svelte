@@ -1,8 +1,10 @@
 <script lang="ts">
-	import { Plus } from '@lucide/svelte';
+	import { Plus, Check } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import { templateValidationRules } from '$lib/utils/validation';
 	import ValidatedInput from '$lib/components/ui/ValidatedInput.svelte';
+	import { spring } from 'svelte/motion';
+	import { onMount } from 'svelte';
 
 	const placeholderText = $derived(() => {
 		if (isCongressional) {
@@ -25,6 +27,9 @@
 
 	let includeAddress = $state(false);
 
+	// Spring animations for micro-interactions
+	const buttonScale = spring(1, { stiffness: 0.4, damping: 0.7 });
+
 	// Core variables that auto-fill from user profile
 	const coreVariables = ['[Name]', '[Personal Connection]'];
 	// Address is optional - useful but not required for all advocacy messages  
@@ -32,7 +37,7 @@
 	const congressionalVariables = ['[Representative Name]'];
 
 	const isCongressional = $derived(context.channelId === 'certified');
-	const availableVariables = $derived(() => {
+	const availableVariables = $derived.by(() => {
 		const vars = [...coreVariables, ...optionalVariables];
 		if (isCongressional) vars.push(...congressionalVariables);
 		return vars;
@@ -99,6 +104,11 @@
 		const textarea = document.querySelector('textarea');
 		if (!textarea) return;
 
+		// Micro-interaction: button scale animation
+		buttonScale.set(0.9);
+		setTimeout(() => buttonScale.set(1.05), 100);
+		setTimeout(() => buttonScale.set(1), 200);
+
 		const start = textarea.selectionStart;
 		const end = textarea.selectionEnd;
 		const text = textarea.value;
@@ -131,35 +141,37 @@
 		return withoutVars.split(/\s+/).length;
 	});
 
-	// Sample data for preview
-	const sampleData = {
-		'[Name]': 'Alex Johnson',
-		'[Personal Connection]': 'As a working parent of two children in local public schools',
-		'[Address]': '123 Oak Street, Springfield, CA 94102',
-		'[Representative Name]': 'Representative Sarah Wilson'
-	};
+	// Character count for space awareness
+	const charCount = $derived(data.preview.length);
 
-	// Generate preview with sample data
-	const previewWithSamples = $derived.by(() => {
-		if (!data.preview.trim()) return '';
-		let preview = data.preview;
-		Object.entries(sampleData).forEach(([variable, value]) => {
-			const regex = new RegExp(variable.replace(/[[\]]/g, '\\$&'), 'g');
-			preview = preview.replace(regex, value);
-		});
-		return preview;
+	// Auto-resize textarea
+	onMount(() => {
+		const textarea = document.querySelector('textarea');
+		if (textarea) {
+			const adjustHeight = () => {
+				textarea.style.height = 'auto';
+				textarea.style.height = Math.min(textarea.scrollHeight, window.innerHeight * 0.6) + 'px';
+			};
+			textarea.addEventListener('input', adjustHeight);
+			adjustHeight();
+			
+			return () => {
+				textarea.removeEventListener('input', adjustHeight);
+			};
+		}
 	});
 </script>
 
-<div class="space-y-4">
-	<!-- Variable Status -->
-	<div class="rounded-lg border border-slate-200 bg-slate-50 p-3 md:p-4">
-		<h3 class="text-sm font-medium text-slate-700 mb-3">
-			Template Variables
-		</h3>
-
-		<!-- Mobile: Simplified Variable Display -->
-		<div class="sm:hidden space-y-3">
+<div class="flex flex-col h-full">
+	<!-- Compact Variable Pills Row -->
+	<div class="flex-shrink-0 mb-3">
+		<div class="flex items-center justify-between mb-2">
+			<label class="text-xs font-medium text-slate-600">Click to insert variables:</label>
+			<span class="text-xs text-slate-500">Auto-adds as you type</span>
+		</div>
+		
+		<!-- Mobile: Horizontal scrollable pills -->
+		<div class="sm:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
 				{@const isCore = coreVariables.includes(variable)}
@@ -167,72 +179,55 @@
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
 				
 				{#if !isAddress}
-					<div class="flex items-center justify-between rounded-md border p-2"
-						 class:bg-emerald-50={isUsed}
-						 class:border-emerald-200={isUsed}
-						 class:bg-purple-50={isPersonalConnection && !isUsed}
-						 class:border-purple-200={isPersonalConnection && !isUsed}
-						 class:bg-slate-100={!isUsed && !isPersonalConnection}
-						 class:border-slate-200={!isUsed && !isPersonalConnection}>
-						<div class="flex-1">
-							<p class="text-sm font-medium"
-							   class:text-emerald-700={isUsed}
-							   class:text-purple-700={isPersonalConnection && !isUsed}
-							   class:text-slate-700={!isUsed && !isPersonalConnection}>
-								{variable.replace(/[\[\]]/g, '')}
-							</p>
-							{#if isPersonalConnection && !isUsed}
-								<p class="text-xs text-purple-600 mt-0.5">Adding personal experience increases message impact ✨</p>
-							{/if}
-						</div>
-						<button
-							type="button"
-							class="flex items-center justify-center h-8 w-8 rounded-full"
-							class:bg-emerald-100={isUsed}
-							class:text-emerald-600={isUsed}
-							class:bg-purple-100={isPersonalConnection && !isUsed}
-							class:text-purple-600={isPersonalConnection && !isUsed}
-							class:bg-slate-200={!isUsed && !isPersonalConnection}
-							class:text-slate-600={!isUsed && !isPersonalConnection}
-							onclick={() => insertVariable(variable)}
-							disabled={isCore && isUsed}
-						>
-							{#if isUsed}
-								<span class="text-sm">✓</span>
-							{:else}
-								<Plus class="h-4 w-4" />
-							{/if}
-						</button>
-					</div>
+					<button
+						type="button"
+						class="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border transition-all active:scale-95"
+						class:bg-emerald-50={isUsed}
+						class:border-emerald-200={isUsed}
+						class:text-emerald-700={isUsed}
+						class:bg-purple-50={isPersonalConnection && !isUsed}
+						class:border-purple-200={isPersonalConnection && !isUsed}
+						class:text-purple-700={isPersonalConnection && !isUsed}
+						class:bg-slate-50={!isUsed && !isPersonalConnection}
+						class:border-slate-200={!isUsed && !isPersonalConnection}
+						class:text-slate-600={!isUsed && !isPersonalConnection}
+						onclick={() => insertVariable(variable)}
+						disabled={isCore && isUsed}
+						style="transform: scale({$buttonScale})"
+					>
+						{#if isUsed}
+							<Check class="h-3 w-3" />
+						{:else}
+							<Plus class="h-3 w-3" />
+						{/if}
+						{variable.replace(/[\[\]]/g, '')}
+						{#if isPersonalConnection && !isUsed}
+							<span class="text-xs">✨</span>
+						{/if}
+					</button>
 				{/if}
 			{/each}
 			
 			<!-- Address toggle for mobile -->
-			<label class="flex items-center justify-between rounded-md border p-2 cursor-pointer"
+			<label class="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border cursor-pointer transition-all active:scale-95"
 				   class:bg-blue-50={includeAddress}
 				   class:border-blue-200={includeAddress}
-				   class:bg-slate-100={!includeAddress}
-				   class:border-slate-200={!includeAddress}>
-				<div class="flex items-center gap-2">
-					<span class="text-sm">📍</span>
-					<span class="text-sm font-medium"
-						  class:text-blue-700={includeAddress}
-						  class:text-slate-600={!includeAddress}>Address</span>
-				</div>
+				   class:text-blue-700={includeAddress}
+				   class:bg-slate-50={!includeAddress}
+				   class:border-slate-200={!includeAddress}
+				   class:text-slate-600={!includeAddress}>
 				<input type="checkbox" bind:checked={includeAddress} class="sr-only" />
-				<div class="h-5 w-5 rounded border-2 flex items-center justify-center"
-					 class:bg-blue-600={includeAddress}
-					 class:border-blue-600={includeAddress}
-					 class:border-slate-300={!includeAddress}>
-					{#if includeAddress}
-						<span class="text-white text-xs">✓</span>
-					{/if}
-				</div>
+				{#if includeAddress}
+					<Check class="h-3 w-3" />
+				{:else}
+					<span class="text-xs">📍</span>
+				{/if}
+				Address
 			</label>
 		</div>
 
-		<!-- Desktop: Compact Button Layout -->
-		<div class="hidden sm:flex flex-wrap items-center gap-2">
+		<!-- Desktop: Compact Pill Layout -->
+		<div class="hidden sm:flex items-center gap-1.5">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
 				{@const isCore = coreVariables.includes(variable)}
@@ -241,137 +236,101 @@
 				
 				{#if isAddress}
 					<!-- Address toggle -->
-					<label class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition-colors cursor-pointer"
+					<label class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border transition-all cursor-pointer hover:scale-105"
 						   class:bg-blue-50={includeAddress}
 						   class:border-blue-200={includeAddress}
 						   class:text-blue-700={includeAddress}
-						   class:bg-slate-100={!includeAddress}
+						   class:bg-slate-50={!includeAddress}
 						   class:border-slate-200={!includeAddress}
 						   class:text-slate-600={!includeAddress}>
 						<input type="checkbox" bind:checked={includeAddress} class="sr-only" />
-						<span class="text-xs">📍</span>
+						{#if includeAddress}
+							<Check class="h-3 w-3" />
+						{:else}
+							<span class="text-xs">📍</span>
+						{/if}
 						Address
 					</label>
 				{:else}
-					<!-- Variable status button -->
-					<div class="relative">
-						<button
-							type="button"
-							class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border transition-colors"
-							class:bg-emerald-50={isUsed}
-							class:border-emerald-200={isUsed}
-							class:text-emerald-700={isUsed}
-							class:bg-slate-100={!isUsed}
-							class:border-slate-200={!isUsed}
-							class:text-slate-600={!isUsed}
-							class:hover:bg-emerald-100={!isUsed}
-							class:ring-2={isPersonalConnection && !isUsed}
-							class:ring-purple-200={isPersonalConnection && !isUsed}
-							class:bg-purple-50={isPersonalConnection && !isUsed}
-							class:border-purple-200={isPersonalConnection && !isUsed}
-							class:text-purple-700={isPersonalConnection && !isUsed}
-							onclick={() => insertVariable(variable)}
-							disabled={isCore && isUsed}
-						>
-							{#if isUsed}
-								<span class="text-xs">✓</span>
-							{:else}
-								<Plus class="h-3 w-3" />
-							{/if}
-							{variable.replace(/[\[\]]/g, '')}
-							{#if isPersonalConnection && !isUsed}
-								<span class="text-xs">✨</span>
-							{/if}
-						</button>
-						
-						<!-- Contextual tip for Personal Connection -->
-						{#if isPersonalConnection && !isUsed}
-							<div class="absolute -top-8 left-1/2 z-10 -translate-x-1/2 rounded-md bg-purple-600 px-2 py-1 text-xs text-white shadow-lg">
-								Adding personal experience increases message impact
-								<div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 bg-purple-600"></div>
-							</div>
+					<!-- Variable pill button -->
+					<button
+						type="button"
+						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border transition-all hover:scale-105 active:scale-95"
+						class:bg-emerald-50={isUsed}
+						class:border-emerald-200={isUsed}
+						class:text-emerald-700={isUsed}
+						class:bg-purple-50={isPersonalConnection && !isUsed}
+						class:border-purple-200={isPersonalConnection && !isUsed}
+						class:text-purple-700={isPersonalConnection && !isUsed}
+						class:shadow-sm={isPersonalConnection && !isUsed}
+						class:shadow-purple-200={isPersonalConnection && !isUsed}
+						class:bg-slate-50={!isUsed && !isPersonalConnection}
+						class:border-slate-200={!isUsed && !isPersonalConnection}
+						class:text-slate-600={!isUsed && !isPersonalConnection}
+						class:hover:bg-slate-100={!isUsed && !isPersonalConnection}
+						onclick={() => insertVariable(variable)}
+						disabled={isCore && isUsed}
+					>
+						{#if isUsed}
+							<Check class="h-3 w-3" />
+						{:else}
+							<Plus class="h-3 w-3" />
 						{/if}
-					</div>
+						{variable.replace(/[\[\]]/g, '')}
+						{#if isPersonalConnection && !isUsed}
+							<span class="text-xs">✨</span>
+						{/if}
+					</button>
 				{/if}
 			{/each}
 		</div>
-		
-		<p class="mt-3 text-xs text-slate-500">
-			Core variables auto-add as you write. <span class="hidden sm:inline">Click to re-add if removed.</span>
-		</p>
 	</div>
 
-	<!-- Message Template Editor -->
-	<div class="space-y-3">
-		<div class="flex items-center justify-between">
-			<label for="message-template" class="text-sm font-medium text-slate-700">
-				Your Message
-			</label>
-			<span class="text-sm text-slate-500">{wordCount} words</span>
-		</div>
-
+	<!-- Message Composer with Floating Action Bar -->
+	<div class="flex-1 flex flex-col min-h-0">
 		<!-- Enhanced editor with variable highlighting -->
-		<div class="relative">
+		<div class="relative flex-1">
 			<ValidatedInput
 				bind:value={data.preview}
 				type="textarea"
 				placeholder={placeholderText()}
 				rules={templateValidationRules.message_body}
-				rows={10}
-				class="font-mono text-sm leading-relaxed"
+				rows={12}
+				class="font-mono text-sm leading-relaxed h-full resize-none composer-textarea"
+				style="min-height: 250px; max-height: 60vh;"
 			/>
 			
-			<!-- Variable preview overlay -->
-			{#if data.variables.length > 0}
-				<div class="mt-2 rounded-md bg-slate-50 p-2">
-					<p class="text-xs font-medium text-slate-600 mb-1">Variables in your message:</p>
-					<div class="flex flex-wrap gap-1">
-						{#each data.variables as variable}
-							<span class="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
-								<span class="h-1.5 w-1.5 rounded-full bg-blue-500"></span>
-								{variable}
-							</span>
-						{/each}
+			<!-- Floating Action Bar -->
+			<div class="absolute bottom-2 right-2 left-2 flex items-center justify-between pointer-events-none">
+				<!-- Personal Connection Helper (appears contextually) -->
+				{#if data.variables.includes('[Personal Connection]') && data.preview.includes('[Personal Connection]')}
+					<div class="pointer-events-auto bg-purple-50/95 backdrop-blur-sm border border-purple-200 rounded-lg px-2 py-1 text-xs text-purple-700 max-w-xs animate-fade-in">
+						<span class="font-medium">💡 Examples:</span>
+						<span class="text-purple-600">"As a parent..." "Living here 15 years..."</span>
 					</div>
-				</div>
-			{/if}
-		</div>
-
-		<!-- Variable example showcase -->
-		{#if data.variables.includes('[Personal Connection]') && data.preview.includes('[Personal Connection]')}
-			<div class="rounded-lg border border-purple-200 bg-purple-50 p-3">
-				<p class="text-xs font-medium text-purple-700 mb-2">💡 Personal Connection Examples:</p>
-				<div class="space-y-1 text-xs text-purple-600">
-					<p>• "As a parent of two school-age children..."</p>
-					<p>• "My family has lived in this district for 15 years..."</p>
-					<p>• "I work downtown and see this issue daily..."</p>
+				{:else}
+					<div></div>
+				{/if}
+				
+				<!-- Word/Character Count Badge -->
+				<div class="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-full px-2 py-1 text-xs border shadow-sm"
+					class:border-slate-200={wordCount < 50}
+					class:border-emerald-200={wordCount >= 50 && wordCount <= 150}
+					class:border-amber-200={wordCount > 150 && wordCount <= 200}
+					class:border-red-200={wordCount > 200}>
+					<span class="font-medium transition-colors"
+						class:text-slate-500={wordCount < 50}
+						class:text-emerald-600={wordCount >= 50 && wordCount <= 150}
+						class:text-amber-600={wordCount > 150 && wordCount <= 200}
+						class:text-red-600={wordCount > 200}>
+						{wordCount} words
+					</span>
+					<span class="text-slate-400">•</span>
+					<span class="text-slate-400">{charCount} chars</span>
 				</div>
 			</div>
-		{/if}
+		</div>
 	</div>
-
-	<!-- Live Preview -->
-	{#if data.preview.trim() && data.variables.length > 0}
-		<div class="space-y-3">
-			<div class="flex items-center justify-between">
-				<h4 class="text-sm font-medium text-slate-700">Preview with Sample Data</h4>
-				<span class="text-xs text-slate-500">How your message will look</span>
-			</div>
-			
-			<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-				<div class="prose prose-sm max-w-none">
-					<div class="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">
-						{previewWithSamples}
-					</div>
-				</div>
-			</div>
-			
-			<p class="text-xs text-slate-500">
-				Variables will be automatically filled with real user data when sent.
-			</p>
-		</div>
-	{/if}
-
 </div>
 
 <style>
@@ -387,31 +346,31 @@
 		border: 0;
 	}
 
-	.editor-textarea {
-		min-height: 200px;
-		width: 100%;
-		resize: vertical;
-		border-radius: 0.5rem;
-		padding: 0.5rem 0.75rem;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-		font-size: 0.875rem;
-		line-height: 1.25rem;
-		white-space: pre-wrap;
-		word-wrap: break-word;
-		border: 1px solid #d1d5db; /* border-slate-300 */
-		box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* shadow-sm */
-		background-color: white;
+	.composer-textarea {
+		padding-bottom: 3rem; /* Space for floating action bar */
 	}
 
-	.editor-textarea:focus {
-		border-color: #3b82f6; /* focus:border-blue-500 */
-		outline: 2px solid transparent;
-		outline-offset: 2px;
-		--tw-ring-color: #3b82f6; /* focus:ring-blue-500 */
-		--tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width)
-			var(--tw-ring-offset-color);
-		--tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(1px + var(--tw-ring-offset-width))
-			var(--tw-ring-color);
-		box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+	.scrollbar-hide {
+		-ms-overflow-style: none;
+		scrollbar-width: none;
+	}
+
+	.scrollbar-hide::-webkit-scrollbar {
+		display: none;
+	}
+
+	@keyframes fade-in {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.animate-fade-in {
+		animation: fade-in 0.2s ease-out;
 	}
 </style>

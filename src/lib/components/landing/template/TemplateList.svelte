@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { ChevronRight } from '@lucide/svelte';
 	import { spring } from 'svelte/motion';
+	import { preloadData } from '$app/navigation';
 	import type { Template } from '$lib/types/template';
 	import ChannelBadge from '$lib/components/ui/ChannelBadge.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -20,6 +21,14 @@
 	
 	function handleTemplateHover(templateId: string, isHovering: boolean) {
 		hoveredTemplate = isHovering ? templateId : null;
+		
+		// Preload template page on hover
+		if (isHovering) {
+			const template = templates.find(t => t.id === templateId);
+			if (template?.slug) {
+				preloadData(`/s/${template.slug}`);
+			}
+		}
 	}
 	
 

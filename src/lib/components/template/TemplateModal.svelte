@@ -18,7 +18,6 @@
 		ExternalLink,
 		Sparkles,
 		ArrowRight,
-		Zap,
 		Heart,
 		Trophy,
 		Flame
@@ -59,8 +58,8 @@
 	// Component ID for timer coordination
 	const componentId = 'template-modal-' + Math.random().toString(36).substring(2, 15);
 
-	// Modal States - use persistent store
-	const currentState = $derived($modalState);
+	// Modal States - access from modalActions (not a store, just a getter)
+	const currentState = $derived(modalActions.modalState);
 
 	let showCopied = $state(false);
 	let showShareMenu = $state(false);
@@ -75,38 +74,51 @@
 
 	// Generate share URL for template
 	const shareUrl = $derived(`${$page.url.origin}/s/${template.slug}`);
+	
+	// Store event handlers for proper cleanup
+	let mailAppBlurHandler: (() => void) | null = null;
+	let mailAppVisibilityHandler: (() => void) | null = null;
 
-	// Initialize modal state and auto-trigger mailto for authenticated users
+	// Initialize modal and auto-trigger mailto for authenticated users
 	onMount(() => {
-		if (browser) {
-			document.body.style.overflow = 'hidden';
-		}
-
-		// Initialize the modal state
-		modalActions.open(template, user);
-
+		// Don't manipulate scroll here - UnifiedModal handles it
+		// Don't call modalActions.open - parent component handles it
+		
 		if (user) {
 			// For authenticated users, immediately start the mailto flow
 			handleUnifiedEmailFlow();
 		}
-
-		
 	});
 
 	onDestroy(() => {
-		if (browser) {
-			document.body.style.overflow = 'auto';
-		}
+		// Don't manipulate scroll here - UnifiedModal handles it
 		useTimerCleanup(componentId)();
+		
+		// Clean up event listeners
+		if (mailAppBlurHandler) {
+			window.removeEventListener('blur', mailAppBlurHandler);
+			mailAppBlurHandler = null;
+		}
+		if (mailAppVisibilityHandler) {
+			document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
+			mailAppVisibilityHandler = null;
+		}
 	});
 
 	function handleClose() {
 		dispatch('close');
 	}
 
-	async function handleUnifiedEmailFlow() {
+	async function handleUnifiedEmailFlow(skipNavigation = false) {
 		modalActions.setState('loading');
-		actionProgress.set(1);
+		
+		// Reset and animate progress bar
+		actionProgress.set(0);
+		
+		// Delay setting to 1 to allow animation
+		coordinated.setTimeout(() => {
+			actionProgress.set(1);
+		}, 50, 'progress', componentId);
 
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
@@ -117,15 +129,8 @@
 			modalActions.setMailtoUrl(flow.mailtoUrl);
 		}
 
-		// Navigate to template page in background (seamless transition)
-		coordinated.setTimeout(
-			async () => {
-				await goto(`/s/${template.slug}`, { replaceState: true });
-			},
-			500,
-			'navigation',
-			componentId
-		);
+		// NOTE: Navigation removed from here - now happens after user confirms send
+		// This prevents the race condition where navigation interrupts mailto
 
 		// Show loading state briefly to let user understand what's happening
 		coordinated.setTimeout(
@@ -139,72 +144,105 @@
 					// Dispatch for analytics
 					dispatch('used', { templateId: template.id, action: 'mailto_opened' });
 
-					// Set up mail app detection
-					setupMailAppDetection();
+					// Set up enhanced mail app detection
+					setupEnhancedMailAppDetection();
 				}
 			},
-			1200,
+			800,
 			'modal',
 			componentId
-		); // Brief loading to show intent
+		); // Shorter delay since we're not navigating
 	}
 
-	function setupMailAppDetection() {
+	function setupEnhancedMailAppDetection() {
+		// Clean up any existing handlers first
+		if (mailAppBlurHandler) {
+			window.removeEventListener('blur', mailAppBlurHandler);
+			mailAppBlurHandler = null;
+		}
+		if (mailAppVisibilityHandler) {
+			document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
+			mailAppVisibilityHandler = null;
+		}
+		
 		let hasDetectedSwitch = false;
+		const detectionStartTime = Date.now();
 
-		// Detect when user leaves browser (mail app opens)
-		const handleBlur = () => {
+		// Helper to transition to appropriate state
+		const handleDetection = (detected: boolean) => {
 			if (!hasDetectedSwitch) {
 				hasDetectedSwitch = true;
-				// Transition to confirmation state when mail app opens
-				coordinated.setTimeout(
-					() => {
-						modalActions.setState('confirmation');
-					},
-					100,
-					'detection',
-					componentId
-				);
+				
+				// Remove listeners immediately
+				if (mailAppBlurHandler) {
+					window.removeEventListener('blur', mailAppBlurHandler);
+					mailAppBlurHandler = null;
+				}
+				if (mailAppVisibilityHandler) {
+					document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
+					mailAppVisibilityHandler = null;
+				}
+				
+				if (detected) {
+					// Email client likely opened - show confirmation
+					modalActions.setState('confirmation');
+				} else {
+					// No detection - show retry option
+					modalActions.setState('retry_needed');
+				}
 			}
 		};
 
-		const handleVisibilityChange = () => {
-			if (document.hidden && !hasDetectedSwitch) {
-				hasDetectedSwitch = true;
-				coordinated.setTimeout(
-					() => {
-						modalActions.setState('confirmation');
-					},
-					100,
-					'detection',
-					componentId
-				);
+		// Detect when user leaves browser (mail app opens)
+		mailAppBlurHandler = () => {
+			// Quick detection means email client opened
+			if (Date.now() - detectionStartTime < 2000) {
+				handleDetection(true);
+			}
+		};
+
+		mailAppVisibilityHandler = () => {
+			if (document.hidden && Date.now() - detectionStartTime < 2000) {
+				handleDetection(true);
 			}
 		};
 
 		// Add event listeners
-		window.addEventListener('blur', handleBlur);
-		document.addEventListener('visibilitychange', handleVisibilityChange);
+		window.addEventListener('blur', mailAppBlurHandler);
+		document.addEventListener('visibilitychange', mailAppVisibilityHandler);
 
-		// Fallback timeout if no detection
+		// Shorter timeout for detection (1 second)
+		// If no blur/visibility change detected, email client probably didn't open
 		coordinated.setTimeout(
 			() => {
 				if (!hasDetectedSwitch) {
-					modalActions.setState('confirmation');
+					// Check one more time if window is not focused
+					if (!document.hasFocus() || document.hidden) {
+						handleDetection(true);
+					} else {
+						// No detection - likely means email client didn't open
+						handleDetection(false);
+					}
 				}
 			},
-			3000,
-			'fallback',
+			1000,
+			'detection-timeout',
 			componentId
 		);
 
-		// Cleanup function
+		// Final cleanup after reasonable time
 		coordinated.setTimeout(
 			() => {
-				window.removeEventListener('blur', handleBlur);
-				document.removeEventListener('visibilitychange', handleVisibilityChange);
+				if (mailAppBlurHandler) {
+					window.removeEventListener('blur', mailAppBlurHandler);
+					mailAppBlurHandler = null;
+				}
+				if (mailAppVisibilityHandler) {
+					document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
+					mailAppVisibilityHandler = null;
+				}
 			},
-			10000,
+			5000,
 			'cleanup',
 			componentId
 		);
@@ -219,23 +257,38 @@
 
 			// Celebration animation
 			celebrationScale.set(1.05).then(() => celebrationScale.set(1));
+			
+			// NOW navigate to the template page after user confirms send
+			// This ensures the mailto action completed before navigation
+			coordinated.setTimeout(
+				async () => {
+					await goto(`/s/${template.slug}`, { replaceState: true });
+				},
+				500,
+				'navigation-after-confirm',
+				componentId
+			);
 		} else {
-			// User didn't send, return to loading
+			// User didn't send, retry the flow
 			modalActions.setState('loading');
-			// Could retry the flow here if needed
+			
+			// Clean up existing event listeners before retry
+			if (mailAppBlurHandler) {
+				window.removeEventListener('blur', mailAppBlurHandler);
+				mailAppBlurHandler = null;
+			}
+			if (mailAppVisibilityHandler) {
+				document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
+				mailAppVisibilityHandler = null;
+			}
+			
+			// Re-trigger the entire email flow with skipNavigation=true
+			coordinated.setTimeout(() => {
+				handleUnifiedEmailFlow(true); // Skip navigation on retry
+			}, 100, 'retry', componentId);
 		}
 	}
 
-	function handleAuth() {
-		// Prepare secure return cookie then redirect to Google OAuth
-		fetch('/auth/prepare', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ returnTo: window.location.pathname })
-		}).finally(() => {
-			window.location.href = `/auth/google`;
-		});
-	}
 
 	async function copyTemplateUrl() {
 		try {
@@ -310,73 +363,31 @@
 	
 </script>
 
-<!-- Modal Backdrop -->
+<!-- Modal Content (no backdrop - UnifiedModal handles that) -->
 <div
-	class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-	onclick={handleClose}
-	onkeydown={(e) => {
-		if (e.key === 'Escape') handleClose();
+	class="flex max-h-[90vh] w-full flex-col overflow-hidden"
+	onclick={(e) => {
+		e.stopPropagation();
 	}}
-	role="dialog"
-	aria-modal="true"
-	aria-label="Template modal"
-	tabindex="0"
-	in:fade={{ duration: 200 }}
-	out:fade={{ duration: 200 }}
->
-	<!-- Modal Container -->
-	<div
-		class="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
-		onclick={(e) => {
-			e.stopPropagation();
-		}}
-		onkeydown={(e) => {
-			e.stopPropagation();
-		}}
+	onkeydown={(e) => {
+		e.stopPropagation();
+	}}
 		role="document"
 		in:scale={{ duration: 300, start: 0.9, easing: backOut }}
 		out:scale={{ duration: 200, start: 1, easing: quintOut }}
 	>
 		<!-- Dynamic Content Based on State -->
-		{#if currentState === 'auth_required'}
-			<!-- Auth Required State -->
-			<div class="p-8 text-center">
-				<div class="mb-6">
-					<div
-						class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-blue-100"
-					>
-						<Zap class="h-8 w-8 text-blue-600" />
-					</div>
-					<h2 class="mb-2 text-2xl font-bold text-slate-900">Ready to make your voice heard?</h2>
-					<p class="mb-6 text-slate-600">
-						Sign in to auto-fill your information and join {(
-							template.metrics.sent || 0
-						).toLocaleString()} others taking action.
-					</p>
-				</div>
-
-				<div class="space-y-4">
-					<Button variant="primary" size="lg" classNames="w-full" onclick={handleAuth}>
-						<Send class="mr-2 h-5 w-5" />
-						Sign In & Send Message
-					</Button>
-
-					<button onclick={handleClose} class="text-sm text-slate-500 hover:text-slate-700">
-						Maybe later
-					</button>
-				</div>
-			</div>
-		{:else if currentState === 'loading'}
+		{#if currentState === 'loading'}
 			<!-- Loading State - mailto is being resolved -->
-			<div class="p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
+			<div class="p-6 sm:p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
 				<div
-					class="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-blue-100"
+					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-blue-100"
 					style="transform: scale({$celebrationScale})"
 				>
-					<Send class="h-10 w-10 text-blue-600" />
+					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
 				</div>
-				<h3 class="mb-2 text-2xl font-bold text-slate-900">Opening your email app...</h3>
-				<p class="mb-6 text-slate-600">Your message is ready with your information pre-filled.</p>
+				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Opening your email app...</h3>
+				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">Your message is ready with your information pre-filled.</p>
 
 				<!-- Animated progress indicator -->
 				<div class="mx-auto h-2 w-32 overflow-hidden rounded-full bg-slate-200">
@@ -388,34 +399,86 @@
 			</div>
 		{:else if currentState === 'confirmation'}
 			<!-- Send Confirmation State - Did user actually send? -->
-			<div class="p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
-				<div
-					class="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-blue-100"
+			<div class="relative p-6 sm:p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
+				<!-- Close Button -->
+				<button
+					onclick={handleClose}
+					class="absolute top-4 right-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
 				>
-					<Send class="h-10 w-10 text-blue-600" />
+					<X class="h-5 w-5" />
+				</button>
+				
+				<div
+					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-blue-100"
+				>
+					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
 				</div>
-				<h3 class="mb-2 text-2xl font-bold text-slate-900">Did you send your message?</h3>
-				<p class="mb-6 text-slate-600">Help us track real impact by confirming your send.</p>
+				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Did you send your message?</h3>
+				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">Help us track real impact by confirming your send.</p>
 
-				<div class="flex justify-center gap-3">
+				<div class="flex justify-center gap-2 sm:gap-3">
 					<Button
 						variant="primary"
 						size="lg"
-						classNames="flex-1 max-w-40"
+						classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
 						onclick={() => handleSendConfirmation(true)}
 					>
-						<CheckCircle2 class="mr-2 h-5 w-5" />
+						<CheckCircle2 class="mr-2 h-5 w-5 shrink-0" />
 						Yes, sent
 					</Button>
 					<Button
 						variant="secondary"
 						size="lg"
-						classNames="flex-1 max-w-40"
+						classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
 						onclick={() => handleSendConfirmation(false)}
 					>
-						<ArrowRight class="mr-2 h-5 w-5 rotate-180" />
-						No, try again
+						<ArrowRight class="mr-2 h-5 w-5 rotate-180 shrink-0" />
+						Try again
 					</Button>
+				</div>
+			</div>
+		{:else if currentState === 'retry_needed'}
+			<!-- Retry Needed State - Email client didn't open -->
+			<div class="relative p-6 sm:p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
+				<!-- Close Button -->
+				<button
+					onclick={handleClose}
+					class="absolute top-4 right-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+				>
+					<X class="h-5 w-5" />
+				</button>
+				
+				<div
+					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-amber-100"
+				>
+					<ExternalLink class="h-8 w-8 sm:h-10 sm:w-10 text-amber-600" />
+				</div>
+				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Email client didn't open</h3>
+				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">
+					Your email app may not be configured. Would you like to try again or copy the message instead?
+				</p>
+
+				<div class="flex flex-col gap-3">
+					<Button
+						variant="primary"
+						size="lg"
+						classNames="w-full"
+						onclick={() => handleUnifiedEmailFlow(true)}
+					>
+						<Send class="mr-2 h-5 w-5" />
+						Try opening email again
+					</Button>
+					
+					<button
+						onclick={() => {
+							// Navigate to template page where they can see/copy the message
+							goto(`/s/${template.slug}`);
+							handleClose();
+						}}
+						class="text-sm text-slate-600 hover:text-slate-800 underline"
+					>
+						View template to copy message manually
+					</button>
 				</div>
 			</div>
 		{:else if currentState === 'celebration'}
@@ -513,4 +576,3 @@
 			</div>
 		{/if}
 	</div>
-</div>

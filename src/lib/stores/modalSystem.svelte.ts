@@ -35,7 +35,7 @@ interface ModalState {
 
 // Central Modal Store
 interface ModalSystemState {
-	activeModals: Map<string, ModalState>;
+	activeModals: Record<string, ModalState>; // Use object instead of Map for Svelte 5 reactivity
 	modalStack: string[]; // Z-index management
 	baseZIndex: number;
 }
@@ -55,7 +55,7 @@ interface LegacyModalContext {
 function createModalSystem() {
 	// Core modal system state
 	let modalSystemState = $state<ModalSystemState>({
-		activeModals: new Map(),
+		activeModals: {}, // Plain object for Svelte 5 reactivity
 		modalStack: [],
 		baseZIndex: 1000
 	});
@@ -96,7 +96,7 @@ function createModalSystem() {
 				closeOnEscape: options?.closeOnEscape ?? true
 			};
 
-			modalSystemState.activeModals.set(id, modalState);
+			modalSystemState.activeModals[id] = modalState; // Object assignment triggers reactivity
 			modalSystemState.modalStack.push(id);
 
 			// DOM body scroll lock using unified utility
@@ -114,10 +114,10 @@ function createModalSystem() {
 		 * Close specific modal
 		 */
 		close(id: string) {
-			const modal = modalSystemState.activeModals.get(id);
+			const modal = modalSystemState.activeModals[id];
 			if (!modal) return;
 
-			modalSystemState.activeModals.delete(id);
+			delete modalSystemState.activeModals[id]; // Delete property triggers reactivity
 			modalSystemState.modalStack = modalSystemState.modalStack.filter(stackId => stackId !== id);
 
 			// Restore body scroll if no modals remain
@@ -130,7 +130,7 @@ function createModalSystem() {
 		 * Close all modals
 		 */
 		closeAll() {
-			modalSystemState.activeModals.clear();
+			modalSystemState.activeModals = {}; // Reset object triggers reactivity
 			modalSystemState.modalStack = [];
 			
 			toggleBodyScroll(false);
@@ -150,7 +150,7 @@ function createModalSystem() {
 		 * Find modal ID by type
 		 */
 		findModalByType(type: ModalType): string | null {
-			for (const [id, modal] of modalSystemState.activeModals) {
+			for (const [id, modal] of Object.entries(modalSystemState.activeModals)) {
 				if (modal.type === type) {
 					return id;
 				}
@@ -162,7 +162,7 @@ function createModalSystem() {
 		 * Check if modal is open
 		 */
 		isOpen(id: string): boolean {
-			const modal = modalSystemState.activeModals.get(id);
+			const modal = modalSystemState.activeModals[id];
 			return modal?.isOpen ?? false;
 		},
 
@@ -170,7 +170,7 @@ function createModalSystem() {
 		 * Get modal data
 		 */
 		getData(id: string): unknown {
-			const modal = modalSystemState.activeModals.get(id);
+			const modal = modalSystemState.activeModals[id];
 			return modal?.data ?? null;
 		}
 	};
@@ -272,7 +272,7 @@ function createModalSystem() {
 		get modalStack() { return modalSystemState.modalStack; },
 		get topModal() {
 			const topId = modalSystemState.modalStack[modalSystemState.modalStack.length - 1];
-			return topId ? modalSystemState.activeModals.get(topId) : null;
+			return topId ? modalSystemState.activeModals[topId] : null;
 		},
 		get hasActiveModal() { return modalSystemState.modalStack.length > 0; },
 
@@ -311,25 +311,31 @@ export const modalState = {
 	get modalState() { return modalSystem.modalState; }
 };
 
-// Direct exports for Svelte 5 compatibility - export the reactive properties
-export const { isModalOpen, currentTemplate } = modalSystem;
-
-// Export the main actions
+// Export the main modal system - access properties directly for reactivity
 export const modalActions = modalSystem;
+
+// For backwards compatibility, export getter functions that maintain reactivity
+export function isModalOpen() {
+	return modalSystem.isModalOpen;
+}
+
+export function currentTemplate() {
+	return modalSystem.currentTemplate;
+}
 
 // Modal Component Utilities
 export function createModalStore(id: string, type: ModalType) {
 	return {
 		get isOpen() {
-			const modal = modalSystem.activeModals.get(id);
+			const modal = modalSystem.activeModals[id];
 			return modal?.isOpen ?? false;
 		},
 		get data() {
-			const modal = modalSystem.activeModals.get(id);
+			const modal = modalSystem.activeModals[id];
 			return modal?.data ?? null;
 		},
 		get zIndex() {
-			const modal = modalSystem.activeModals.get(id);
+			const modal = modalSystem.activeModals[id];
 			return modal?.zIndex ?? 1000;
 		},
 		open: (data?: unknown, options?: { closeOnBackdrop?: boolean; closeOnEscape?: boolean; autoClose?: number }) =>
