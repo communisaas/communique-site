@@ -15,7 +15,7 @@
 		</h1>
 
 		<p class="mb-8 text-base text-gray-600 sm:text-lg leading-relaxed">
-			Your rep tracks every email from their district. Companies count customer complaints. The school board knows exactly how many parents are angry. Messages matter when they add up.
+			Congress tracks millions of messages each year. Companies monitor customer sentiment. School boards count angry parents. The pattern is simple—coordinated messages get meetings. Scattered complaints get filed.
 		</p>
 	</div>
 
