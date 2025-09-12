@@ -56,8 +56,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 export const PUT: RequestHandler = async ({ params, request, locals }) => {
 	try {
-		const session = await locals.auth.validate();
-		if (!session?.user) {
+		if (!locals.user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -66,7 +65,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 		// Ensure the user owns this template before updating
 		const template = await db.template.findFirst({
-			where: { id: templateId, userId: session.user.id }
+			where: { id: templateId, userId: locals.user.id }
 		});
 
 		if (!template) {
@@ -94,8 +93,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 
 export const DELETE: RequestHandler = async ({ params, locals }) => {
 	try {
-		const session = await locals.auth.validate();
-		if (!session?.user) {
+		if (!locals.user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
@@ -103,7 +101,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 
 		// Ensure the user owns this template before deleting
 		const template = await db.template.findFirst({
-			where: { id: templateId, userId: session.user.id }
+			where: { id: templateId, userId: locals.user.id }
 		});
 
 		if (!template) {

@@ -61,7 +61,7 @@ export async function getOverlappingInformationSources(
   const templates = await db.template.findMany({
     where: {
       category: category,
-      created_at: { gte: cutoffDate }
+      createdAt: { gte: cutoffDate }
     },
     include: {
       user: {
@@ -83,7 +83,7 @@ export async function getOverlappingInformationSources(
         },
         select: {
           status: true,
-          created_at: true
+          createdAt: true
         }
       }
     }
@@ -107,7 +107,7 @@ export async function getOverlappingInformationSources(
       category: template.category,
       geographic_region: region,
       confidence,
-      timestamp: template.created_at,
+      timestamp: template.createdAt,
       community_context: communityContext
     };
   });

@@ -16,8 +16,8 @@
     let { open = $bindable(false), id = `popover-${Math.random().toString(36).substr(2, 9)}`, trigger, children }: Props = $props();
     
     const dispatch = createEventDispatcher();
-    let popoverElement: HTMLDivElement = $state();
-    let containerElement: HTMLDivElement = $state();
+    let popoverElement: HTMLDivElement | undefined = $state();
+    let containerElement: HTMLDivElement | undefined = $state();
     
     interface $$Slots extends PopoverSlots {}
 

@@ -16,9 +16,9 @@
 	const { id, animationStyle = 'expand', duration = 200 }: Props = $props();
 
 	const dispatch = createEventDispatcher();
-	let popoverElement: HTMLDivElement = $state();
+	let popoverElement: HTMLDivElement | undefined = $state();
 	let containerElement: HTMLDivElement;
-	let contentElement: HTMLDivElement = $state();
+	let contentElement: HTMLDivElement | undefined = $state();
 	let isAnimating = false;
 	let position = 'bottom';
 	let isPositioned = $state(false);

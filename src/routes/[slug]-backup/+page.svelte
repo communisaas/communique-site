@@ -100,7 +100,7 @@
 		switch (flow.nextAction) {
 			case 'auth':
 				// User needs to authenticate first
-				modalActions.open('auth-modal', 'auth', { 
+				modalActions.openModal('auth-modal', 'auth', { 
 					template, 
 					source: shareSource,
 					autoSend: true 
@@ -110,7 +110,7 @@
 				
 			case 'address':
 				// User needs to provide address for congressional delivery
-				modalActions.open('address-modal', 'address', { 
+				modalActions.openModal('address-modal', 'address', { 
 					template, 
 					source: shareSource,
 					user: data.user,
@@ -139,7 +139,7 @@
 
 		if (flow.nextAction === 'address') {
 			// Need address collection
-			modalActions.open('address-modal', 'address', { template, source });
+			modalActions.openModal('address-modal', 'address', { template, source });
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 			// Ready to send email - show loading modal
 			showEmailLoadingModal = true;
@@ -301,7 +301,7 @@
 					{personalConnectionValue}
 					onSendMessage={() => {
 						if (!data.user) {
-							modalActions.open('auth-modal', 'auth', { template, source });
+							modalActions.openModal('auth-modal', 'auth', { template, source });
 							funnelAnalytics.trackOnboardingStarted(
 								template.id,
 								source as 'social-link' | 'direct-link' | 'share'
@@ -343,7 +343,7 @@
 					</div>
 					<Button
 						variant="secondary"
-						onclick={() => modalActions.open('address-modal', 'address', { template, source })}
+						onclick={() => modalActions.openModal('address-modal', 'address', { template, source })}
 						classNames="ml-auto"
 					>
 						Add Address
@@ -362,16 +362,16 @@
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 				if (isMobile) {
-					modalActions.open('mobile-preview', 'mobile_preview', { template, user: data.user });
+					modalActions.openModal('mobile-preview', 'mobile_preview', { template, user: data.user });
 				}
 			}}
 			onSendMessage={async () => {
 				if (channel?.access_tier === 1) {
 					const flow = analyzeEmailFlow(template, data.user);
 					if (flow.nextAction === 'auth') {
-						modalActions.open('auth-modal', 'auth', { template, source });
+						modalActions.openModal('auth-modal', 'auth', { template, source });
 					} else if (flow.nextAction === 'address') {
-						modalActions.open('address-modal', 'address', { template, source });
+						modalActions.openModal('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 						// The modal is already shown by TemplatePreview when button clicked
 						setTimeout(() => {
@@ -389,7 +389,7 @@
 				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'both')) {
 					const flow = analyzeEmailFlow(template, data.user);
 					if (flow.nextAction === 'address') {
-						modalActions.open('address-modal', 'address', { template, source });
+						modalActions.openModal('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
 						// The modal is already shown by TemplatePreview when button clicked
 						setTimeout(() => {
@@ -400,13 +400,13 @@
 							}, 1500);
 						}, 100);
 					} else {
-						modalActions.open('auth-modal', 'auth', { template, source });
+						modalActions.openModal('auth-modal', 'auth', { template, source });
 					}
 					return;
 				}
 
 				// Default: prompt share (no modal implementation yet)
-				modalActions.open('share-menu', 'share_menu', { template });
+				modalActions.openModal('share-menu', 'share_menu', { template });
 			}}
 		/>
 	</div>

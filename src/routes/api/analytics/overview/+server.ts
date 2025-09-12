@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Get real-time analytics data from our new system
 		const userSessions = await db.user_session.findMany({
 			where: {
-				user_id: userId,
+				userId: userId,
 				session_start: {
 					gte: startDate
 				}
@@ -41,15 +41,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Get user's templates with analytics
 		const userTemplates = await db.template.findMany({
 			where: {
-				user_id: userId,
-				created_at: {
+				userId: userId,
+				createdAt: {
 					gte: startDate
 				}
 			},
 			include: {
 				template_campaign: {
 					where: {
-						created_at: {
+						createdAt: {
 							gte: startDate
 						}
 					}
@@ -146,7 +146,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Generate recent activity from real analytics events
 		const recentEvents = await db.analytics_event.findMany({
 			where: {
-				user_id: userId,
+				userId: userId,
 				timestamp: {
 					gte: startDate
 				},

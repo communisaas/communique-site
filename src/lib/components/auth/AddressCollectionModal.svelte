@@ -46,7 +46,7 @@
 	// Address form data
 	let streetAddress = $state('');
 	let city = $state('');
-	let state = $state('');
+	let stateCode = $state('');
 	let zipCode = $state('');
 	let addressError = $state('');
 	let isVerifying = $state(false);
@@ -68,7 +68,7 @@
 			addressError = 'Please enter your city';
 			return false;
 		}
-		if (!state.trim()) {
+		if (!stateCode.trim()) {
 			addressError = 'Please enter your state';
 			return false;
 		}
@@ -87,7 +87,7 @@
 		addressError = '';
 		
 		try {
-			const fullAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`;
+			const fullAddress = `${streetAddress}, ${city}, ${stateCode} ${zipCode}`;
 			
 			// Call real address verification API (Census Bureau + ZIP lookup)
 			const { api } = await import('$lib/core/api/client');
@@ -126,7 +126,7 @@
 	}
 	
 	function skipVerification() {
-		const fullAddress = `${streetAddress}, ${city}, ${state} ${zipCode}`;
+		const fullAddress = `${streetAddress}, ${city}, ${stateCode} ${zipCode}`;
 		dispatch('complete', {
 			address: fullAddress,
 			verified: false
@@ -263,7 +263,7 @@
 									<input
 										id="state"
 										type="text"
-										bind:value={state}
+										bind:value={stateCode}
 										placeholder="CA"
 										maxlength="2"
 										class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -299,7 +299,7 @@
 								size="sm" 
 								classNames="w-full"
 								onclick={verifyAddress}
-								disabled={isVerifying || !streetAddress.trim() || !city.trim() || !state.trim() || !zipCode.trim()}
+								disabled={isVerifying || !streetAddress.trim() || !city.trim() || !stateCode.trim() || !zipCode.trim()}
 							>
 								{#if isVerifying}
 									<Search class="mr-2 h-4 w-4 animate-spin" />
