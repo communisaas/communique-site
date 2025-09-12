@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Shield, AtSign, ArrowRight, MapPin, ShieldCheck, Trophy, Target, Globe, Zap } from 'lucide-svelte';
+    import { Shield, AtSign, ArrowRight, Network, MapPin, ShieldCheck, Trophy, Target, Globe, Zap } from 'lucide-svelte';
     import { flip } from 'svelte/animate';
     import { fade } from 'svelte/transition';
     
