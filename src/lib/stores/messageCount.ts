@@ -3,7 +3,7 @@ import { writable } from 'svelte/store';
 function createMessageCounter() {
     const { subscribe, set, update } = writable(0);
     
-    let interval: number;
+    let interval: NodeJS.Timeout;
     
     return {
         subscribe,

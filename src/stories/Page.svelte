@@ -1,4 +1,4 @@
-<script>
+<script lang="js">
   import './page.css';
   import Header from './Header.svelte';
 
@@ -6,6 +6,7 @@
 </script>
 
 <article>
+  <!-- @ts-ignore - Storybook demo code -->
   <Header
     {user}
     onLogin={() => (user = { name: 'Jane Doe' })}
