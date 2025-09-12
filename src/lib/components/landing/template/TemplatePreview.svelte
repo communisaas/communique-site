@@ -19,7 +19,8 @@
 		onOpenModal = null,
 		onSendMessage = null,
 		showEmailModal: externalShowEmailModal = false,
-		onEmailModalClose = () => {}
+		onEmailModalClose = () => {},
+		expandToContent = false
 	}: {
 		template: Template;
 		inModal?: boolean;
@@ -30,6 +31,7 @@
 		onSendMessage?: (() => void) | null;
 		showEmailModal?: boolean;
 		onEmailModalClose?: () => void;
+		expandToContent?: boolean;
 	} = $props();
 
 	let localShowEmailModal = $state(false);
@@ -235,10 +237,10 @@
 	class="border-slate-200 bg-white
                {inModal ? 'h-full border-0' : 'rounded-xl border'} 
                {inModal ? 'p-4 sm:p-6' : 'p-3 sm:p-4 md:p-6 lg:p-8'} 
-               {inModal ? '' : 'sm:sticky sm:top-8'}
-               {inModal ? '' : 'h-[calc(100vh-4rem)]'}
+               {inModal ? '' : expandToContent ? '' : 'sm:sticky sm:top-8'}
+               {inModal ? '' : expandToContent ? '' : 'h-[calc(100vh-4rem)]'}
                {!inModal && onOpenModal ? 'cursor-pointer md:cursor-default' : ''}
-               flex flex-col overflow-hidden"
+               flex flex-col {expandToContent ? '' : 'overflow-hidden'}"
 	onclick={handleMobileClick}
 	role={!inModal && onOpenModal ? 'button' : 'region'}
 	{...!inModal && onOpenModal ? { tabindex: 0 } : {}}
@@ -262,6 +264,7 @@
 				onScrollStateChange={handleScrollStateChange}
 				onTouchStateChange={handleTouchStateChange}
 				{componentId}
+				{expandToContent}
 			/>
 			
 			<!-- Only show ActionBar in list/modal contexts, not on page -->

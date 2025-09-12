@@ -34,7 +34,7 @@
 			id: 'certified',
 			title: 'Certified Delivery',
 			icon: Shield,
-			description: 'Send messages through official Congressional channels',
+			description: 'Straight to Congress. Every message from your district gets counted. It\'s how they decide.',
 			features: [
 				{
 					icon: Landmark,
@@ -55,7 +55,7 @@
 			id: 'direct',
 			title: 'Direct Outreach',
 			icon: AtSign,
-			description: 'Join coordinated email campaigns to organizational leaders',
+			description: 'CEOs, school boards, HOAs - when inboxes flood with the same message, calendars clear.',
 			features: [
 				{
 					icon: Building2,
@@ -88,7 +88,7 @@
 		<div class="mb-2 flex items-center justify-center gap-3">
 			<Network class="h-5 w-5 text-slate-600" />
 			<h2 class="text-xs uppercase tracking-widest text-gray-500 sm:text-sm">
-				We Write to Make Impact
+				Messages That Move Decisions
 			</h2>
 		</div>
 		<div class="flex items-center justify-center">

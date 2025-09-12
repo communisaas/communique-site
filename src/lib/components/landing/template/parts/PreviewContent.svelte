@@ -18,7 +18,8 @@
 		personalConnectionValue = $bindable(),
 		onScrollStateChange,
 		onTouchStateChange,
-		componentId
+		componentId,
+		expandToContent = false
 	}: {
 		template: Template;
 		inModal: boolean;
@@ -29,6 +30,7 @@
 		onScrollStateChange: (scrollState: unknown) => void;
 		onTouchStateChange: (touchState: unknown) => void;
 		componentId: string;
+		expandToContent?: boolean;
 	} = $props();
 	
 	const recipients = $derived(extractRecipientEmails(template?.recipient_config));
@@ -195,5 +197,6 @@
 				personalConnectionValue = e.value ?? '';
 			}
 		}}
+		{expandToContent}
 	/>
 </div>

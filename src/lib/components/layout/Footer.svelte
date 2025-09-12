@@ -9,7 +9,7 @@
 			<div>
 				<h3 class="mb-3 text-sm font-semibold text-slate-900">About Communiqué</h3>
 				<p class="text-sm text-slate-600">
-					Message templates and delivery tools for effective civic engagement campaigns.
+					When communities coordinate, decisions change. We make coordination simple.
 				</p>
 			</div>
 

@@ -40,18 +40,18 @@
 		if (congressional) {
 			return {
 				'social-link': {
-					headline: 'Your voice can drive change',
-					subtext: 'Someone shared this because they know your voice matters to Congress.',
+					headline: `You're joining ${template.metrics?.sent || 0} others on this`,
+					subtext: 'They shared this because groups move decisions.',
 					cta: 'Add your voice'
 				},
 				'direct-link': {
-					headline: 'Representatives need to hear from you',
-					subtext: 'Congressional offices count every message from constituents.',
+					headline: 'They count every message',
+					subtext: 'Your district matters to their next vote.',
 					cta: 'Speak up'
 				},
 				share: {
-					headline: 'Join the pressure campaign',
-					subtext: 'Your voice adds to the growing momentum on this issue.',
+					headline: 'The campaign is building',
+					subtext: `Add your pressure to ${template.metrics?.sent || 0} others.`,
 					cta: 'Join them'
 				}
 			};
@@ -99,18 +99,18 @@
 			return [
 				{
 					icon: Mail,
-					title: 'Direct delivery to congressional office',
-					desc: "Your message goes straight to your representative's staff"
+					title: 'Hits their tracking system',
+					desc: "Goes straight into the official congressional database"
 				},
 				{
 					icon: Users,
-					title: 'Counted as constituent feedback',
-					desc: 'Congressional offices track messages by issue and district'
+					title: 'Gets logged with your district',
+					desc: 'They track exactly how many constituents care about each issue'
 				},
 				{
 					icon: CheckCircle2,
-					title: 'Influences their position',
-					desc: 'Representatives consider constituent input when voting'
+					title: 'Moves their decision calculus',
+					desc: 'When the numbers shift, so do the votes'
 				}
 			];
 		} else if (directOutreach) {

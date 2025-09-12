@@ -221,12 +221,12 @@
 							<User class="h-6 w-6 text-blue-600" />
 						</div>
 						<h2 class="text-xl font-bold text-slate-900 mb-2">
-							{isAuthFlow ? 'Create Your Account' : 'Let\'s get started'}
+							{isAuthFlow ? 'Create Your Account' : 'Quick setup to send'}
 						</h2>
 						<p class="text-slate-600">
 							{isAuthFlow 
 								? 'Save your template and track its impact over time'
-								: `Tell us your name to personalize "${template.title}"`
+								: `Your name makes this message yours, not generic`
 							}
 						</p>
 					</div>
@@ -274,10 +274,10 @@
 							<MapPin class="h-6 w-6 text-green-600" />
 						</div>
 						<h2 class="text-xl font-bold text-slate-900 mb-2">
-							Where should we send this?
+							Which representatives get this?
 						</h2>
 						<p class="text-slate-600">
-							We'll find your congressional representatives and deliver "{template.title}"
+							Your address determines which offices see this - they only count messages from their district
 						</p>
 					</div>
 
@@ -306,7 +306,7 @@
 							<Send class="h-6 w-6 text-green-600" />
 						</div>
 						<h2 class="text-xl font-bold text-slate-900 mb-2">
-							{isAuthFlow ? 'Save Your Template' : 'Ready to send!'}
+							{isAuthFlow ? 'Save Your Template' : 'All set - this goes out now'}
 						</h2>
 						<p class="text-slate-600">
 							{isAuthFlow 

@@ -207,7 +207,7 @@
 				<div class="flex items-center gap-6 text-sm text-slate-500">
 					<div class="flex items-center gap-1.5">
 						<Users class="h-4 w-4" />
-						<span>{(template.metrics?.sent || 0).toLocaleString()} supporters</span>
+						<span>{(template.metrics?.sent || 0).toLocaleString()} sent this</span>
 					</div>
 					<div class="flex items-center gap-1.5">
 						<Eye class="h-4 w-4" />
@@ -222,7 +222,7 @@
 			{#if data.user}
 				<div class="flex items-center gap-2">
 					<span class="text-sm text-slate-600">
-						Hi {data.user.name?.split(' ')[0]}! Ready to send
+						Hi {data.user.name?.split(' ')[0]} - join the {(template.metrics?.sent || 0).toLocaleString()} who sent this
 					</span>
 					{#if data.user.is_verified}
 						<VerificationBadge />
@@ -262,7 +262,7 @@
 	</div>
 
 	<!-- Template Preview -->
-	<div class="min-h-[600px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+	<div class="rounded-xl border border-slate-200 bg-white shadow-sm">
 		{#if addressRequired}
 			<!-- Address Required Notice -->
 			<div class="border-b border-amber-200 bg-amber-50 px-6 py-4">
@@ -279,8 +279,7 @@
 					<div>
 						<h3 class="text-sm font-semibold text-amber-900">Address Required</h3>
 						<p class="text-xs text-amber-700">
-							Congressional templates need your address to route messages to the correct
-							representatives.
+							They only count messages from their district. No address = no impact.
 						</p>
 					</div>
 					<Button
@@ -301,6 +300,7 @@
 			showEmailModal={false}
 			onEmailModalClose={() => {}}
 			onScroll={() => {}}
+			expandToContent={true}
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 				if (isMobile) {

@@ -18,7 +18,8 @@
 		onscrollStateChange,
 		ontouchStateChange,
 		onvariableSelect,
-		onvariableChange
+		onvariableChange,
+		expandToContent = false
 	}: {
 		preview: string;
 		template?: Template | undefined;
@@ -38,6 +39,7 @@
 		ontouchStateChange?: (touchState: unknown) => void;
 		onvariableSelect?: (event: { variableName: string; active: boolean }) => void;
 		onvariableChange?: (event: { name: string; value: string }) => void;
+		expandToContent?: boolean;
 	} = $props();
 	let scrollContainer: HTMLDivElement;
 	let isAtTop = $state(true);
@@ -392,15 +394,15 @@
 	{/if}
 
 
-	<div class="relative flex-1 min-h-[16rem]">
+	<div class="relative {expandToContent ? '' : 'flex-1'} min-h-[16rem]">
 		<div
-			class="styled-scrollbar-track scrollbar-thumb-slate-300 scrollbar-track-slate-100/10 absolute inset-0 overflow-y-auto whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
+			class="styled-scrollbar-track scrollbar-thumb-slate-300 scrollbar-track-slate-100/10 {expandToContent ? '' : 'absolute inset-0 overflow-y-auto'} {expandToContent ? 'overflow-visible' : ''} whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
 			bind:this={scrollContainer}
-			onscroll={handleScroll}
-			ontouchstart={handleTouchStart}
-			ontouchmove={handleTouch}
-			ontouchend={handleTouchEnd}
-			data-scrollable={isScrollable}
+			onscroll={expandToContent ? undefined : handleScroll}
+			ontouchstart={expandToContent ? undefined : handleTouchStart}
+			ontouchmove={expandToContent ? undefined : handleTouch}
+			ontouchend={expandToContent ? undefined : handleTouchEnd}
+			data-scrollable={expandToContent ? false : isScrollable}
 		>
 			<div class="min-h-[12rem] font-mono text-sm leading-normal text-slate-600">
 				{#each templateSegments as segment}

@@ -15,8 +15,7 @@
 		</h1>
 
 		<p class="mb-8 text-base text-gray-600 sm:text-lg leading-relaxed">
-			Reach and influence decision makers at every level. From Congress to corporate leaders, make
-			your voice heard where it matters most.
+			Your rep tracks every email from their district. Companies count customer complaints. The school board knows exactly how many parents are angry. Messages matter when they add up.
 		</p>
 	</div>
 

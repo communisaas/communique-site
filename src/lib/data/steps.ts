@@ -10,17 +10,17 @@ interface Step {
 export const steps: Step[] = [
     {
         icon: Users,
-        title: "Choose Your Audience",
-        desc: "Connect with Congress, local officials, or other decision makers"
+        title: "Pick the Decision-Maker",
+        desc: "Who actually controls this? Congress, CEO, principal?"
     },
     {
         icon: Mail,
-        title: "Customize Your Message", 
-        desc: "Use proven templates or write your own"
+        title: "Load the Message", 
+        desc: "Templates that already worked, or write your own"
     },
     {
         icon: Globe,
-        title: "Be Heard",
-        desc: "Send through verified channels or direct email"
+        title: "Watch It Work",
+        desc: "Track opens, responses, and what changes"
     }
 ];

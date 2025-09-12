@@ -231,7 +231,7 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 
 <svelte:head>
 	<title>Communiqué</title>
-	<meta name="description" content="Reach and influence decision makers at every level" />
+	<meta name="description" content="Coordinate campaigns that actually move decisions" />
 </svelte:head>
 
 <!-- Hero Section - Simple Badge -->
@@ -253,7 +253,7 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 	>
 		<div class="md:col-span-1">
 			<h2 class="mb-3 text-xl font-semibold text-gray-900" data-testid="templates-heading">
-				Message Templates
+				Active Campaigns
 			</h2>
 			<TemplateList
 				templates={filteredTemplates}
@@ -350,9 +350,9 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 							/>
 						</svg>
 					</div>
-					<h3 class="mb-2 text-lg font-medium text-slate-900">No templates available</h3>
+					<h3 class="mb-2 text-lg font-medium text-slate-900">No campaigns running yet</h3>
 					<p class="text-slate-600">
-						Create your first template to get started with advocacy campaigns.
+						Someone has to move first. Start one.
 					</p>
 				</div>
 			{/if}
