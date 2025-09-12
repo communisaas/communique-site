@@ -1,4 +1,4 @@
-<script lang="js">
+<script>
   import './page.css';
   import Header from './Header.svelte';
 
