@@ -98,7 +98,7 @@ export async function getOverlappingInformationSources(
     const communityContext = (sheaves?.memberships as Array<{community_id: string}> | undefined)?.map(m => m.community_id) || [];
     
     // Calculate confidence from campaign success rate
-    const totalCampaigns = template.template_campaign.length;
+    const totalCampaigns = (template as any).template_campaign?.length || 0;
     const confidence = totalCampaigns > 0 ? 1.0 : 0.5; // Basic confidence model
     
     return {

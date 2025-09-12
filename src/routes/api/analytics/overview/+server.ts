@@ -67,11 +67,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Calculate enhanced overview metrics
 		const totalTemplates = userTemplates.length;
 		const activeCampaigns = userTemplates.filter(t => 
-			t.template_campaign.some(c => c.status === 'delivered' || c.status === 'pending')
+			(t as any).template_campaign?.some((c: any) => c.status === 'delivered' || c.status === 'pending')
 		).length;
 		
 		const totalActivations = userTemplates.reduce((sum, template) => 
-			sum + template.template_campaign.filter(c => c.status === 'delivered').length, 0
+			sum + ((template as any).template_campaign?.filter((c: any) => c.status === 'delivered').length || 0), 0
 		);
 		
 		// Calculate analytics metrics
