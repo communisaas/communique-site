@@ -79,7 +79,7 @@ describe('Analytics API Integration', () => {
 				landing_page: 'https://localhost:5173/'
 			};
 
-			const events: AnalyticsEvent[] = [
+			const events = [
 				{
 					session_id: 'sess_123_abc',
 					event_type: 'navigation',

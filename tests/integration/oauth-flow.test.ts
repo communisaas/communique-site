@@ -148,8 +148,8 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: 'verifier'
 			});
 
-			expect(result.success).toBe(true);
-			expect(result.user).toEqual(existingUser);
+			expect((result as any).success).toBe(true);
+			expect((result as any).user).toEqual(existingUser);
 			
 			// Should not create new user
 			expect(mockDb.user.create).not.toHaveBeenCalled();
@@ -172,7 +172,7 @@ describe('OAuth Flow Integration', () => {
 				state: 'valid-state'
 			});
 
-			expect(result.success).toBe(true);
+			expect((result as any).success).toBe(true);
 			
 			// Should link new provider to existing user
 			expect(mockDb.account.create).toHaveBeenCalledWith({
@@ -195,8 +195,8 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: 'verifier'
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.error).toBe('Invalid authorization code');
+			expect((result as any).success).toBe(false);
+			expect((result as any).error).toBe('Invalid authorization code');
 			
 			// Should not create user or session
 			expect(mockDb.user.create).not.toHaveBeenCalled();
@@ -215,8 +215,8 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: 'verifier'
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('Failed to fetch user info');
+			expect((result as any).success).toBe(false);
+			expect((result as any).error).toContain('Failed to fetch user info');
 			
 			// Should not create user
 			expect(mockDb.user.create).not.toHaveBeenCalled();
@@ -230,8 +230,8 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: 'verifier'
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('Invalid state');
+			expect((result as any).success).toBe(false);
+			expect((result as any).error).toContain('Invalid state');
 		});
 
 		it('should handle database errors gracefully', async () => {
@@ -244,8 +244,8 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: 'verifier'
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('Database error');
+			expect((result as any).success).toBe(false);
+			expect((result as any).error).toContain('Database error');
 			
 			// Should not create session if user creation fails
 			expect(mockAuth.createSession).not.toHaveBeenCalled();
@@ -273,7 +273,7 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: config.hasRefreshToken ? 'verifier' : undefined
 			});
 
-			expect(result.success).toBe(true);
+			expect((result as any).success).toBe(true);
 			
 			// Verify provider-specific token handling
 			if (config.hasRefreshToken) {
@@ -297,7 +297,7 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: 'verifier'
 			}, { setCookie: mockSetCookie });
 
-			expect(result.success).toBe(true);
+			expect((result as any).success).toBe(true);
 			
 			// Verify session cookie settings
 			expect(mockSetCookie).toHaveBeenCalledWith(
@@ -323,8 +323,8 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: 'verifier'
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('Session creation failed');
+			expect((result as any).success).toBe(false);
+			expect((result as any).error).toContain('Session creation failed');
 		});
 	});
 
@@ -338,8 +338,8 @@ describe('OAuth Flow Integration', () => {
 				expectedState: 'different-state' // CSRF mismatch
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('state mismatch');
+			expect((result as any).success).toBe(false);
+			expect((result as any).error).toContain('state mismatch');
 		});
 
 		it('should enforce PKCE for providers that support it', async () => {
@@ -350,8 +350,8 @@ describe('OAuth Flow Integration', () => {
 				codeVerifier: null // Missing PKCE verifier
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.error).toContain('Missing code verifier');
+			expect((result as any).success).toBe(false);
+			expect((result as any).error).toContain('Missing code verifier');
 		});
 
 		it('should sanitize user input data', async () => {

@@ -76,7 +76,7 @@ describe('User API Integration', () => {
 				mocks.db.user.findUnique.mockResolvedValueOnce(mockUser);
 
 				const response = await ProfileGET({ 
-					locals: { user: { id: 'user-123' } }
+					locals: { user: { id: 'user-123' } as any } as any
 				});
 				const data = await response.json();
 

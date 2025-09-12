@@ -89,7 +89,7 @@ describe('Template API Integration', () => {
         user: { id: 'user-creator-123' }
       };
 
-      const response = await TemplatesPOST({ request: mockRequest, locals: mockLocals });
+      const response = await TemplatesPOST({ request: mockRequest, locals: mockLocals } as any);
       const responseData = await response.json();
 
       expect(mocks.db.template.create).toHaveBeenCalledWith({
@@ -223,7 +223,7 @@ describe('Template API Integration', () => {
       mocks.db.template.findMany.mockResolvedValueOnce(publicTemplates);
 
       const mockUrl = new URL('http://localhost:5173/api/templates');
-      const response = await TemplatesGET({ url: mockUrl, locals: {} });
+      const response = await TemplatesGET({ url: mockUrl, locals: {} } as any);
       const responseData = await response.json();
 
       expect(mocks.db.template.findMany).toHaveBeenCalledWith(
@@ -354,7 +354,7 @@ describe('Template API Integration', () => {
       mocks.db.template.findMany.mockRejectedValueOnce(new Error('Query timeout'));
 
       const mockUrl = new URL('http://localhost:5173/api/templates');
-      const response = await TemplatesGET({ url: mockUrl, locals: {} });
+      const response = await TemplatesGET({ url: mockUrl, locals: {} } as any);
 
       expect(response.status).toBe(500);
       const errorData = await response.json();

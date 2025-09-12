@@ -33,7 +33,7 @@ export async function certifyEmailDelivery(
 	context: EmailDeliveryContext
 ): Promise<CertificationResult> {
 	// Only run in browser and if user is authenticated
-	if (!browser || !context.user?.address) {
+	if (!browser || !context.user?.street) {
 		return { success: false, error: 'User not authenticated' };
 	}
 
@@ -67,7 +67,7 @@ export async function certifyEmailDelivery(
 
 		// Submit to VOTER Protocol
 		const result = await certification.certifyAction(
-			context.user.address,
+			context.user.street || '',
 			{
 				actionType: actionType as 'direct_email' | 'cwc_message',
 				deliveryReceipt,
@@ -79,8 +79,8 @@ export async function certifyEmailDelivery(
 				metadata: {
 					templateId: context.template.id,
 					templateTitle: context.template.title,
-					district: context.user.location?.district,
-					jurisdiction: context.user.location?.jurisdiction
+					district: context.user.congressional_district,
+					jurisdiction: context.user.state
 				}
 			}
 		);

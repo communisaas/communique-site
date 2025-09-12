@@ -40,7 +40,7 @@ class VOTERIntegration {
 		mailtoUrl: string;
 		recipients: string[];
 	}): Promise<void> {
-		if (!this.config.enabled || !browser || !params.user?.address) {
+		if (!this.config.enabled || !browser || !params.user?.street) {
 			return;
 		}
 
@@ -77,7 +77,7 @@ class VOTERIntegration {
 					metadata: {
 						templateId: params.template.id,
 						templateTitle: params.template.title,
-						district: params.user.location?.district
+						district: params.user.congressional_district
 					}
 				}
 			);
