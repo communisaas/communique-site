@@ -22,8 +22,9 @@
         </h1>
 
         <p class="sm:text-xl text-base text-slate-600 mb-8">
-            Reach and influence decision makers at every level. From Congress to corporate 
-            leaders, make your voice heard where it matters most.
+            Congressional offices track 81 million messages a year. Companies monitor customer sentiment. 
+            School boards count angry parents. The pattern is simple—coordinated messages get meetings. 
+            Scattered complaints get filed.
         </p>
     </div>
 

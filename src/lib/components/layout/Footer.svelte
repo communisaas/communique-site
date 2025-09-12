@@ -9,7 +9,7 @@
             <div>
                 <h3 class="text-sm font-semibold text-slate-900 mb-3">About Communiqué</h3>
                 <p class="text-sm text-slate-600">
-                    Message templates and delivery tools for effective civic engagement campaigns.
+                    Every decision-maker counts messages. Coordination turns counting into pressure.
                 </p>
             </div>
 
@@ -21,7 +21,7 @@
                     class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600"
                 >
                     <Mail class="w-4 h-4" />
-                    hello@communi.email
+                    support@communique.com
                 </a>
             </div>
         </div>

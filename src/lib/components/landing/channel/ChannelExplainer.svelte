@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { Shield, AtSign, ArrowRight, Network, Route, CheckCircle2, Building2, Landmark, UsersRound } from 'lucide-svelte';
+    import { Shield, AtSign, ArrowRight, MapPin, ShieldCheck, Trophy, Target, Globe, Zap } from 'lucide-svelte';
     import { flip } from 'svelte/animate';
     import { fade } from 'svelte/transition';
     
@@ -10,19 +10,19 @@
             id: 'certified',
             title: 'Certified Delivery',
             icon: Shield,
-            description: 'Send messages through official Congressional channels',
+            description: 'Messages go straight into congressional tracking systems',
             features: [
                 {
-                    icon: Landmark,
-                    text: "Congress's mail system (CWC)"
+                    icon: MapPin,
+                    text: 'Automatic rep lookup from any address'
                 },
                 {
-                    icon: CheckCircle2, 
-                    text: 'Permanent blockchain record'
+                    icon: ShieldCheck, 
+                    text: "Verified through Congress's own system"
                 },
                 {
-                    icon: UsersRound,
-                    text: 'District-based routing'
+                    icon: Trophy,
+                    text: 'Participation tracked and rewarded'
                 }
             ],
             color: 'emerald'
@@ -31,19 +31,19 @@
             id: 'direct',
             title: 'Direct Outreach',
             icon: AtSign,
-            description: 'Join coordinated email campaigns to organizational leaders',
+            description: 'Target any inbox with coordinated campaigns',
             features: [
                 {
-                    icon: Building2,
-                    text: 'Message key decision makers'
+                    icon: Target,
+                    text: 'Reach any decision-maker instantly'
                 },
                 {
-                    icon: Network,
-                    text: 'Add your verified voice'
+                    icon: Globe,
+                    text: 'Works for any cause, anywhere'
                 },
                 {
-                    icon: Route,
-                    text: 'Send via your email client'
+                    icon: Zap,
+                    text: 'No constituency required'
                 }
             ],
             color: 'blue'
@@ -55,10 +55,10 @@
     <div class="mb-8 text-center">
         <div class="flex items-center gap-3 mb-2 justify-center">
             <Network class="w-5 h-5 text-slate-600" />
-            <h2 class="font-mono text-xs sm:text-sm tracking-wide uppercase text-slate-600">Two Ways to Make Impact</h2>
+            <h2 class="font-mono text-xs sm:text-sm tracking-wide uppercase text-slate-600">How Messages Become Pressure</h2>
         </div>
         <div class="flex justify-center items-center">
-            <h3 class="sm:text-3xl text-2xl font-light">Choose Your Outreach Channel</h3>
+            <h3 class="sm:text-3xl text-2xl font-light">Pick Your Delivery Path</h3>
         </div>
     </div>
 
