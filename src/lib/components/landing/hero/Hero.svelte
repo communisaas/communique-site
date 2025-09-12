@@ -19,9 +19,9 @@
 		</h1>
 
 		<p class="mb-8 text-base text-slate-600 sm:text-xl">
-			Congressional offices track 81 million messages a year. Companies monitor customer sentiment.
-			School boards count angry parents. The pattern is simple—coordinated messages get meetings.
-			Scattered complaints get filed.
+			Congress tracks millions of messages each year. Companies monitor customer sentiment. School
+			boards count angry parents. The pattern is simple—coordinated messages get meetings. Scattered
+			complaints get filed.
 		</p>
 	</div>
 
