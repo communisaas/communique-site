@@ -21,7 +21,7 @@
 			id: 'certified',
 			title: 'Certified Delivery',
 			icon: Shield,
-			description: 'Messages go straight into congressional tracking systems',
+			description: 'Straight to congressional tracking',
 			features: [
 				{
 					icon: MapPin,
