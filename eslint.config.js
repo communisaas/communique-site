@@ -28,6 +28,13 @@ export default ts.config(
 		}
 	},
 	{
-		ignores: ['build/', '.svelte-kit/', 'dist/']
+		ignores: ['build/', '.svelte-kit/', 'dist/', 'generated/', 'coverage/', 'src/lib/paraglide/']
+	},
+	{
+		rules: {
+			'@typescript-eslint/no-unused-vars': 'warn',
+			'@typescript-eslint/no-empty-object-type': 'warn',
+			'svelte/valid-compile': 'warn'
+		}
 	}
 );

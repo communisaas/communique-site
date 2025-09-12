@@ -1,49 +1,50 @@
 <script lang="ts">
-    import { Github, ArrowRight } from 'lucide-svelte';
-    import Button from '../../ui/Button.svelte';
-    import HowItWorks from './HowItWorks.svelte';
-    import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
-
+	import { Github, ArrowRight } from 'lucide-svelte';
+	import Button from '../../ui/Button.svelte';
+	import HowItWorks from './HowItWorks.svelte';
+	import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
 </script>
 
 <!-- New subheader above hero -->
-<div class="flex justify-end mb-4">
-    <IdentityBadge />
+<div class="mb-4 flex justify-end">
+	<IdentityBadge />
 </div>
 
 <div class="space-y-6 sm:space-y-8">
-    <div>
-        <h1 class="sm:text-5xl text-3xl font-bold tracking-tight text-slate-900 mb-6">
-            Make Your Voice 
-            <span class="text-blue-600">Count</span>
-            <span class="block sm:text-3xl text-2xl font-normal text-slate-600 mt-2">
-                On record.
-            </span>
-        </h1>
+	<div>
+		<h1 class="mb-6 text-3xl font-bold tracking-tight text-slate-900 sm:text-5xl">
+			Make Your Voice
+			<span class="text-blue-600">Count</span>
+			<span class="mt-2 block text-2xl font-normal text-slate-600 sm:text-3xl"> On record. </span>
+		</h1>
 
-        <p class="sm:text-xl text-base text-slate-600 mb-8">
-            Your rep tracks every email from their district. Companies count customer complaints. 
-            The school board knows exactly how many parents are angry. Messages matter when they add up.
-        </p>
-    </div>
+		<p class="mb-8 text-base text-slate-600 sm:text-xl">
+			Your rep tracks every email from their district. Companies count customer complaints. The
+			school board knows exactly how many parents are angry. Messages matter when they add up.
+		</p>
+	</div>
 
-    <div class="flex flex-col gap-3 sm:gap-4 sm:items-start items-stretch">
-        <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
-            <Button variant="primary" href="https://github.com/communisaas/communique-site">
-                <Github class="w-4 h-4" />
-                Follow Our Progress
-            </Button>
-            <HowItWorks />
-        </div>
-        
-        <a 
-            href="https://github.com/communisaas/communique-site/discussions"
-            class="group inline-flex items-center gap-2 text-slate-600 hover:text-blue-600 transition-colors duration-200 sm:text-base text-sm"
-            target="_blank"
-        >
-            Join the discussion
-            <ArrowRight class="w-4 h-4 transform transition-transform duration-200 group-hover:translate-x-1" />
-            <span class="block max-w-0 group-hover:max-w-full transition-all duration-500 h-0.5 bg-blue-600"></span>
-        </a>
-    </div>
+	<div class="flex flex-col items-stretch gap-3 sm:items-start sm:gap-4">
+		<div class="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:gap-4">
+			<Button variant="primary" href="https://github.com/communisaas/communique-site">
+				<Github class="h-4 w-4" />
+				Follow Our Progress
+			</Button>
+			<HowItWorks />
+		</div>
+
+		<a
+			href="https://github.com/communisaas/communique-site/discussions"
+			class="group inline-flex items-center gap-2 text-sm text-slate-600 transition-colors duration-200 hover:text-blue-600 sm:text-base"
+			target="_blank"
+		>
+			Join the discussion
+			<ArrowRight
+				class="h-4 w-4 transform transition-transform duration-200 group-hover:translate-x-1"
+			/>
+			<span
+				class="block h-0.5 max-w-0 bg-blue-600 transition-all duration-500 group-hover:max-w-full"
+			></span>
+		</a>
+	</div>
 </div>

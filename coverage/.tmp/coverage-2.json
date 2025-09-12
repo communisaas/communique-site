@@ -1,1 +1,437 @@
-{"/Users/noot/Documents/communique/src/routes/api/analytics/events/+server.ts":{"path":"/Users/noot/Documents/communique/src/routes/api/analytics/events/+server.ts","statementMap":{"0":{"start":{"line":3,"column":20},"end":{"line":103,"column":1}},"1":{"start":{"line":4,"column":2},"end":{"line":102,"column":3}},"2":{"start":{"line":5,"column":37},"end":{"line":5,"column":57}},"3":{"start":{"line":6,"column":4},"end":{"line":11,"column":5}},"4":{"start":{"line":7,"column":6},"end":{"line":10,"column":26}},"5":{"start":{"line":12,"column":21},"end":{"line":12,"column":66}},"6":{"start":{"line":13,"column":26},"end":{"line":13,"column":30}},"7":{"start":{"line":14,"column":4},"end":{"line":20,"column":5}},"8":{"start":{"line":15,"column":25},"end":{"line":18,"column":8}},"9":{"start":{"line":19,"column":6},"end":{"line":19,"column":65}},"10":{"start":{"line":21,"column":4},"end":{"line":49,"column":7}},"11":{"start":{"line":37,"column":41},"end":{"line":37,"column":69}},"12":{"start":{"line":45,"column":42},"end":{"line":45,"column":70}},"13":{"start":{"line":50,"column":24},"end":{"line":50,"column":86}},"14":{"start":{"line":50,"column":54},"end":{"line":50,"column":67}},"15":{"start":{"line":51,"column":45},"end":{"line":51,"column":54}},"16":{"start":{"line":52,"column":4},"end":{"line":58,"column":5}},"17":{"start":{"line":53,"column":32},"end":{"line":56,"column":8}},"18":{"start":{"line":57,"column":6},"end":{"line":57,"column":67}},"19":{"start":{"line":57,"column":39},"end":{"line":57,"column":65}},"20":{"start":{"line":59,"column":27},"end":{"line":72,"column":7}},"21":{"start":{"line":59,"column":50},"end":{"line":72,"column":5}},"22":{"start":{"line":73,"column":4},"end":{"line":76,"column":7}},"23":{"start":{"line":77,"column":26},"end":{"line":79,"column":5}},"24":{"start":{"line":78,"column":13},"end":{"line":78,"column":82}},"25":{"start":{"line":80,"column":4},"end":{"line":90,"column":5}},"26":{"start":{"line":81,"column":6},"end":{"line":89,"column":9}},"27":{"start":{"line":87,"column":46},"end":{"line":87,"column":78}},"28":{"start":{"line":91,"column":4},"end":{"line":95,"column":7}},"29":{"start":{"line":97,"column":4},"end":{"line":97,"column":64}},"30":{"start":{"line":98,"column":4},"end":{"line":101,"column":24}},"31":{"start":{"line":104,"column":19},"end":{"line":140,"column":1}},"32":{"start":{"line":105,"column":20},"end":{"line":105,"column":54}},"33":{"start":{"line":106,"column":2},"end":{"line":111,"column":3}},"34":{"start":{"line":107,"column":4},"end":{"line":110,"column":24}},"35":{"start":{"line":112,"column":2},"end":{"line":139,"column":3}},"36":{"start":{"line":113,"column":20},"end":{"line":121,"column":6}},"37":{"start":{"line":122,"column":4},"end":{"line":127,"column":5}},"38":{"start":{"line":123,"column":6},"end":{"line":126,"column":26}},"39":{"start":{"line":128,"column":4},"end":{"line":132,"column":7}},"40":{"start":{"line":134,"column":4},"end":{"line":134,"column":58}},"41":{"start":{"line":135,"column":4},"end":{"line":138,"column":24}}},"fnMap":{"0":{"name":"(anonymous_0)","decl":{"start":{"line":3,"column":20},"end":{"line":3,"column":21}},"loc":{"start":{"line":3,"column":61},"end":{"line":103,"column":1}},"line":3},"1":{"name":"(anonymous_1)","decl":{"start":{"line":37,"column":34},"end":{"line":37,"column":35}},"loc":{"start":{"line":37,"column":41},"end":{"line":37,"column":69}},"line":37},"2":{"name":"(anonymous_2)","decl":{"start":{"line":45,"column":35},"end":{"line":45,"column":36}},"loc":{"start":{"line":45,"column":42},"end":{"line":45,"column":70}},"line":45},"3":{"name":"(anonymous_3)","decl":{"start":{"line":50,"column":47},"end":{"line":50,"column":48}},"loc":{"start":{"line":50,"column":54},"end":{"line":50,"column":67}},"line":50},"4":{"name":"(anonymous_4)","decl":{"start":{"line":57,"column":32},"end":{"line":57,"column":33}},"loc":{"start":{"line":57,"column":39},"end":{"line":57,"column":65}},"line":57},"5":{"name":"(anonymous_5)","decl":{"start":{"line":59,"column":38},"end":{"line":59,"column":39}},"loc":{"start":{"line":59,"column":50},"end":{"line":72,"column":5}},"line":59},"6":{"name":"(anonymous_6)","decl":{"start":{"line":78,"column":6},"end":{"line":78,"column":7}},"loc":{"start":{"line":78,"column":13},"end":{"line":78,"column":82}},"line":78},"7":{"name":"(anonymous_7)","decl":{"start":{"line":87,"column":39},"end":{"line":87,"column":40}},"loc":{"start":{"line":87,"column":46},"end":{"line":87,"column":78}},"line":87},"8":{"name":"(anonymous_8)","decl":{"start":{"line":104,"column":19},"end":{"line":104,"column":20}},"loc":{"start":{"line":104,"column":38},"end":{"line":140,"column":1}},"line":104}},"branchMap":{"0":{"loc":{"start":{"line":6,"column":4},"end":{"line":11,"column":5}},"type":"if","locations":[{"start":{"line":6,"column":4},"end":{"line":11,"column":5}},{"start":{},"end":{}}],"line":6},"1":{"loc":{"start":{"line":6,"column":8},"end":{"line":6,"column":59}},"type":"binary-expr","locations":[{"start":{"line":6,"column":8},"end":{"line":6,"column":33}},{"start":{"line":6,"column":37},"end":{"line":6,"column":59}}],"line":6},"2":{"loc":{"start":{"line":12,"column":21},"end":{"line":12,"column":66}},"type":"binary-expr","locations":[{"start":{"line":12,"column":21},"end":{"line":12,"column":44}},{"start":{"line":12,"column":48},"end":{"line":12,"column":66}}],"line":12},"3":{"loc":{"start":{"line":14,"column":4},"end":{"line":20,"column":5}},"type":"if","locations":[{"start":{"line":14,"column":4},"end":{"line":20,"column":5}},{"start":{},"end":{}}],"line":14},"4":{"loc":{"start":{"line":19,"column":24},"end":{"line":19,"column":64}},"type":"cond-expr","locations":[{"start":{"line":19,"column":37},"end":{"line":19,"column":57}},{"start":{"line":19,"column":60},"end":{"line":19,"column":64}}],"line":19},"5":{"loc":{"start":{"line":28,"column":21},"end":{"line":28,"column":53}},"type":"binary-expr","locations":[{"start":{"line":28,"column":21},"end":{"line":28,"column":45}},{"start":{"line":28,"column":49},"end":{"line":28,"column":53}}],"line":28},"6":{"loc":{"start":{"line":30,"column":20},"end":{"line":30,"column":51}},"type":"binary-expr","locations":[{"start":{"line":30,"column":20},"end":{"line":30,"column":43}},{"start":{"line":30,"column":47},"end":{"line":30,"column":51}}],"line":30},"7":{"loc":{"start":{"line":31,"column":18},"end":{"line":31,"column":47}},"type":"binary-expr","locations":[{"start":{"line":31,"column":18},"end":{"line":31,"column":39}},{"start":{"line":31,"column":43},"end":{"line":31,"column":47}}],"line":31},"8":{"loc":{"start":{"line":32,"column":20},"end":{"line":32,"column":51}},"type":"binary-expr","locations":[{"start":{"line":32,"column":20},"end":{"line":32,"column":43}},{"start":{"line":32,"column":47},"end":{"line":32,"column":51}}],"line":32},"9":{"loc":{"start":{"line":33,"column":20},"end":{"line":33,"column":51}},"type":"binary-expr","locations":[{"start":{"line":33,"column":20},"end":{"line":33,"column":43}},{"start":{"line":33,"column":47},"end":{"line":33,"column":51}}],"line":33},"10":{"loc":{"start":{"line":34,"column":22},"end":{"line":34,"column":55}},"type":"binary-expr","locations":[{"start":{"line":34,"column":22},"end":{"line":34,"column":47}},{"start":{"line":34,"column":51},"end":{"line":34,"column":55}}],"line":34},"11":{"loc":{"start":{"line":35,"column":22},"end":{"line":35,"column":55}},"type":"binary-expr","locations":[{"start":{"line":35,"column":22},"end":{"line":35,"column":47}},{"start":{"line":35,"column":51},"end":{"line":35,"column":55}}],"line":35},"12":{"loc":{"start":{"line":40,"column":17},"end":{"line":40,"column":42}},"type":"binary-expr","locations":[{"start":{"line":40,"column":17},"end":{"line":40,"column":32}},{"start":{"line":40,"column":36},"end":{"line":40,"column":42}}],"line":40},"13":{"loc":{"start":{"line":52,"column":4},"end":{"line":58,"column":5}},"type":"if","locations":[{"start":{"line":52,"column":4},"end":{"line":58,"column":5}},{"start":{},"end":{}}],"line":52},"14":{"loc":{"start":{"line":61,"column":15},"end":{"line":61,"column":55}},"type":"binary-expr","locations":[{"start":{"line":61,"column":15},"end":{"line":61,"column":28}},{"start":{"line":61,"column":32},"end":{"line":61,"column":47}},{"start":{"line":61,"column":51},"end":{"line":61,"column":55}}],"line":61},"15":{"loc":{"start":{"line":62,"column":19},"end":{"line":62,"column":106}},"type":"cond-expr","locations":[{"start":{"line":62,"column":82},"end":{"line":62,"column":99}},{"start":{"line":62,"column":102},"end":{"line":62,"column":106}}],"line":62},"16":{"loc":{"start":{"line":62,"column":19},"end":{"line":62,"column":79}},"type":"binary-expr","locations":[{"start":{"line":62,"column":19},"end":{"line":62,"column":36}},{"start":{"line":62,"column":40},"end":{"line":62,"column":79}}],"line":62},"17":{"loc":{"start":{"line":65,"column":24},"end":{"line":65,"column":54}},"type":"binary-expr","locations":[{"start":{"line":65,"column":24},"end":{"line":65,"column":46}},{"start":{"line":65,"column":50},"end":{"line":65,"column":54}}],"line":65},"18":{"loc":{"start":{"line":66,"column":16},"end":{"line":66,"column":38}},"type":"binary-expr","locations":[{"start":{"line":66,"column":16},"end":{"line":66,"column":30}},{"start":{"line":66,"column":34},"end":{"line":66,"column":38}}],"line":66},"19":{"loc":{"start":{"line":67,"column":16},"end":{"line":67,"column":63}},"type":"binary-expr","locations":[{"start":{"line":67,"column":16},"end":{"line":67,"column":30}},{"start":{"line":67,"column":34},"end":{"line":67,"column":55}},{"start":{"line":67,"column":59},"end":{"line":67,"column":63}}],"line":67},"20":{"loc":{"start":{"line":68,"column":18},"end":{"line":68,"column":49}},"type":"binary-expr","locations":[{"start":{"line":68,"column":18},"end":{"line":68,"column":41}},{"start":{"line":68,"column":45},"end":{"line":68,"column":49}}],"line":68},"21":{"loc":{"start":{"line":70,"column":17},"end":{"line":70,"column":62}},"type":"binary-expr","locations":[{"start":{"line":70,"column":17},"end":{"line":70,"column":32}},{"start":{"line":70,"column":52},"end":{"line":70,"column":62}}],"line":70},"22":{"loc":{"start":{"line":78,"column":13},"end":{"line":78,"column":82}},"type":"binary-expr","locations":[{"start":{"line":78,"column":13},"end":{"line":78,"column":45}},{"start":{"line":78,"column":49},"end":{"line":78,"column":82}}],"line":78},"23":{"loc":{"start":{"line":80,"column":4},"end":{"line":90,"column":5}},"type":"if","locations":[{"start":{"line":80,"column":4},"end":{"line":90,"column":5}},{"start":{},"end":{}}],"line":80},"24":{"loc":{"start":{"line":87,"column":27},"end":{"line":87,"column":120}},"type":"cond-expr","locations":[{"start":{"line":87,"column":82},"end":{"line":87,"column":98}},{"start":{"line":87,"column":101},"end":{"line":87,"column":120}}],"line":87},"25":{"loc":{"start":{"line":106,"column":2},"end":{"line":111,"column":3}},"type":"if","locations":[{"start":{"line":106,"column":2},"end":{"line":111,"column":3}},{"start":{},"end":{}}],"line":106},"26":{"loc":{"start":{"line":122,"column":4},"end":{"line":127,"column":5}},"type":"if","locations":[{"start":{"line":122,"column":4},"end":{"line":127,"column":5}},{"start":{},"end":{}}],"line":122}},"s":{"0":1,"1":9,"2":9,"3":9,"4":2,"5":7,"6":7,"7":7,"8":2,"9":2,"10":7,"11":59,"12":59,"13":6,"14":58,"15":6,"16":6,"17":2,"18":2,"19":2,"20":6,"21":58,"22":6,"23":6,"24":57,"25":6,"26":2,"27":3,"28":6,"29":1,"30":1,"31":1,"32":0,"33":0,"34":0,"35":0,"36":0,"37":0,"38":0,"39":0,"40":0,"41":0},"f":{"0":9,"1":59,"2":59,"3":58,"4":2,"5":58,"6":57,"7":3,"8":0},"b":{"0":[2,7],"1":[9,7],"2":[7,7],"3":[2,5],"4":[2,0],"5":[7,7],"6":[7,6],"7":[7,6],"8":[7,6],"9":[7,7],"10":[7,7],"11":[7,6],"12":[7,5],"13":[2,4],"14":[58,55,52],"15":[1,57],"16":[58,3],"17":[58,53],"18":[58,57],"19":[58,58,55],"20":[58,55],"21":[58,5],"22":[57,57],"23":[2,4],"24":[1,1],"25":[0,0],"26":[0,0]},"inputSourceMap":{"version":3,"sources":["/Users/noot/Documents/communique/src/routes/api/analytics/events/+server.ts"],"sourcesContent":["/**\n * Analytics Events API Endpoint\n * \n * Receives batched analytics events from the client and stores them in the database.\n * Handles session management and user identification.\n */\n\nimport { json } from '@sveltejs/kit';\nimport type { RequestHandler } from './$types';\nimport { db } from '$lib/core/db';\nimport type { AnalyticsEvent, SessionData } from '$lib/core/analytics/database';\n\ninterface EventBatch {\n\tsession_data: SessionData;\n\tevents: AnalyticsEvent[];\n}\n\nexport const POST: RequestHandler = async ({ request, getClientAddress }) => {\n\ttry {\n\t\tconst { session_data, events }: EventBatch = await request.json();\n\t\t\n\t\tif (!session_data?.session_id || !Array.isArray(events)) {\n\t\t\treturn json({\n\t\t\t\tsuccess: false,\n\t\t\t\terror: 'Invalid request format'\n\t\t\t}, { status: 400 });\n\t\t}\n\n\t\t// Get client IP for geolocation (if not provided)\n\t\tconst clientIP = session_data.ip_address || getClientAddress();\n\n\t\t// Validate user_id exists if provided\n\t\tlet validatedUserId: string | null = null;\n\t\tif (session_data.user_id) {\n\t\t\tconst userExists = await db.user.findUnique({ \n\t\t\t\twhere: { id: session_data.user_id },\n\t\t\t\tselect: { id: true }\n\t\t\t});\n\t\t\tvalidatedUserId = userExists ? session_data.user_id : null;\n\t\t}\n\n\t\t// Ensure session exists\n\t\tawait db.user_session.upsert({\n\t\t\twhere: {\n\t\t\t\tsession_id: session_data.session_id\n\t\t\t},\n\t\t\tcreate: {\n\t\t\t\tsession_id: session_data.session_id,\n\t\t\t\tuser_id: validatedUserId,\n\t\t\t\tfingerprint: session_data.fingerprint || null,\n\t\t\t\tip_address: clientIP,\n\t\t\t\tuser_agent: session_data.user_agent || null,\n\t\t\t\treferrer: session_data.referrer || null,\n\t\t\t\tutm_source: session_data.utm_source || null,\n\t\t\t\tutm_medium: session_data.utm_medium || null,\n\t\t\t\tutm_campaign: session_data.utm_campaign || null,\n\t\t\t\tlanding_page: session_data.landing_page || null,\n\t\t\t\tevents_count: events.length,\n\t\t\t\tpage_views: events.filter(e => e.event_name === 'page_view').length\n\t\t\t},\n\t\t\tupdate: {\n\t\t\t\tuser_id: validatedUserId || undefined,\n\t\t\t\tevents_count: {\n\t\t\t\t\tincrement: events.length\n\t\t\t\t},\n\t\t\t\tpage_views: {\n\t\t\t\t\tincrement: events.filter(e => e.event_name === 'page_view').length\n\t\t\t\t},\n\t\t\t\tupdated_at: new Date()\n\t\t\t}\n\t\t});\n\n\t\t// Validate template_ids exist if provided\n\t\tconst templateIds = [...new Set(events.map(e => e.template_id).filter(Boolean))];\n\t\tconst validTemplateIds = new Set();\n\t\tif (templateIds.length > 0) {\n\t\t\tconst existingTemplates = await db.template.findMany({\n\t\t\t\twhere: { id: { in: templateIds } },\n\t\t\t\tselect: { id: true }\n\t\t\t});\n\t\t\texistingTemplates.forEach(t => validTemplateIds.add(t.id));\n\t\t}\n\n\t\t// Process and store events\n\t\tconst eventsToCreate = events.map(event => ({\n\t\t\tsession_id: session_data.session_id,\n\t\t\tuser_id: event.user_id || validatedUserId || null,\n\t\t\ttemplate_id: event.template_id && validTemplateIds.has(event.template_id) ? event.template_id : null,\n\t\t\tevent_type: event.event_type,\n\t\t\tevent_name: event.event_name,\n\t\t\tevent_properties: event.event_properties || null,\n\t\t\tpage_url: event.page_url || null,\n\t\t\treferrer: event.referrer || session_data.referrer || null,\n\t\t\tuser_agent: session_data.user_agent || null,\n\t\t\tip_address: clientIP,\n\t\t\ttimestamp: event.timestamp || new Date(),\n\t\t\tcreated_at: new Date()\n\t\t}));\n\n\t\t// Batch insert events\n\t\tawait db.analytics_event.createMany({\n\t\t\tdata: eventsToCreate,\n\t\t\tskipDuplicates: true\n\t\t});\n\n\t\t// Update session end time and check for conversions\n\t\tconst hasConversion = events.some(e => \n\t\t\te.event_name === 'template_used' || \n\t\t\te.event_name === 'auth_completed'\n\t\t);\n\n\t\tif (hasConversion) {\n\t\t\tawait db.user_session.update({\n\t\t\t\twhere: {\n\t\t\t\t\tsession_id: session_data.session_id\n\t\t\t\t},\n\t\t\t\tdata: {\n\t\t\t\t\tconverted: true,\n\t\t\t\t\tconversion_type: events.find(e => e.event_name === 'template_used') ? 'template_usage' : 'user_registration'\n\t\t\t\t}\n\t\t\t});\n\t\t}\n\n\t\treturn json({\n\t\t\tsuccess: true,\n\t\t\tevents_processed: events.length,\n\t\t\tsession_id: session_data.session_id\n\t\t});\n\n\t} catch (error) {\n\t\tconsole.error('Analytics events processing failed:', error);\n\t\t\n\t\treturn json({\n\t\t\tsuccess: false,\n\t\t\terror: 'Failed to process analytics events'\n\t\t}, { status: 500 });\n\t}\n};\n\n// Optional: GET endpoint for debugging (remove in production)\nexport const GET: RequestHandler = async ({ url }) => {\n\tconst sessionId = url.searchParams.get('session_id');\n\t\n\tif (!sessionId) {\n\t\treturn json({\n\t\t\tsuccess: false,\n\t\t\terror: 'session_id required'\n\t\t}, { status: 400 });\n\t}\n\n\ttry {\n\t\tconst session = await db.user_session.findUnique({\n\t\t\twhere: { session_id: sessionId },\n\t\t\tinclude: {\n\t\t\t\tanalytics_events: {\n\t\t\t\t\torderBy: { timestamp: 'desc' },\n\t\t\t\t\ttake: 50\n\t\t\t\t}\n\t\t\t}\n\t\t});\n\n\t\tif (!session) {\n\t\t\treturn json({\n\t\t\t\tsuccess: false,\n\t\t\t\terror: 'Session not found'\n\t\t\t}, { status: 404 });\n\t\t}\n\n\t\treturn json({\n\t\t\tsuccess: true,\n\t\t\tsession,\n\t\t\tevents_count: session.analytics_events.length\n\t\t});\n\n\t} catch (error) {\n\t\tconsole.error('Failed to fetch session data:', error);\n\t\t\n\t\treturn json({\n\t\t\tsuccess: false,\n\t\t\terror: 'Failed to fetch session data'\n\t\t}, { status: 500 });\n\t}\n};"],"mappings":"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","names":[]},"_coverageSchema":"1a1c01bbd47fc00a2c39e90264f33305004495a9","hash":"a5daba7e9c907fa32373c05f549b7ff7dfd3f465"}}
+{
+	"/Users/noot/Documents/communique/src/routes/api/analytics/events/+server.ts": {
+		"path": "/Users/noot/Documents/communique/src/routes/api/analytics/events/+server.ts",
+		"statementMap": {
+			"0": { "start": { "line": 3, "column": 20 }, "end": { "line": 103, "column": 1 } },
+			"1": { "start": { "line": 4, "column": 2 }, "end": { "line": 102, "column": 3 } },
+			"2": { "start": { "line": 5, "column": 37 }, "end": { "line": 5, "column": 57 } },
+			"3": { "start": { "line": 6, "column": 4 }, "end": { "line": 11, "column": 5 } },
+			"4": { "start": { "line": 7, "column": 6 }, "end": { "line": 10, "column": 26 } },
+			"5": { "start": { "line": 12, "column": 21 }, "end": { "line": 12, "column": 66 } },
+			"6": { "start": { "line": 13, "column": 26 }, "end": { "line": 13, "column": 30 } },
+			"7": { "start": { "line": 14, "column": 4 }, "end": { "line": 20, "column": 5 } },
+			"8": { "start": { "line": 15, "column": 25 }, "end": { "line": 18, "column": 8 } },
+			"9": { "start": { "line": 19, "column": 6 }, "end": { "line": 19, "column": 65 } },
+			"10": { "start": { "line": 21, "column": 4 }, "end": { "line": 49, "column": 7 } },
+			"11": { "start": { "line": 37, "column": 41 }, "end": { "line": 37, "column": 69 } },
+			"12": { "start": { "line": 45, "column": 42 }, "end": { "line": 45, "column": 70 } },
+			"13": { "start": { "line": 50, "column": 24 }, "end": { "line": 50, "column": 86 } },
+			"14": { "start": { "line": 50, "column": 54 }, "end": { "line": 50, "column": 67 } },
+			"15": { "start": { "line": 51, "column": 45 }, "end": { "line": 51, "column": 54 } },
+			"16": { "start": { "line": 52, "column": 4 }, "end": { "line": 58, "column": 5 } },
+			"17": { "start": { "line": 53, "column": 32 }, "end": { "line": 56, "column": 8 } },
+			"18": { "start": { "line": 57, "column": 6 }, "end": { "line": 57, "column": 67 } },
+			"19": { "start": { "line": 57, "column": 39 }, "end": { "line": 57, "column": 65 } },
+			"20": { "start": { "line": 59, "column": 27 }, "end": { "line": 72, "column": 7 } },
+			"21": { "start": { "line": 59, "column": 50 }, "end": { "line": 72, "column": 5 } },
+			"22": { "start": { "line": 73, "column": 4 }, "end": { "line": 76, "column": 7 } },
+			"23": { "start": { "line": 77, "column": 26 }, "end": { "line": 79, "column": 5 } },
+			"24": { "start": { "line": 78, "column": 13 }, "end": { "line": 78, "column": 82 } },
+			"25": { "start": { "line": 80, "column": 4 }, "end": { "line": 90, "column": 5 } },
+			"26": { "start": { "line": 81, "column": 6 }, "end": { "line": 89, "column": 9 } },
+			"27": { "start": { "line": 87, "column": 46 }, "end": { "line": 87, "column": 78 } },
+			"28": { "start": { "line": 91, "column": 4 }, "end": { "line": 95, "column": 7 } },
+			"29": { "start": { "line": 97, "column": 4 }, "end": { "line": 97, "column": 64 } },
+			"30": { "start": { "line": 98, "column": 4 }, "end": { "line": 101, "column": 24 } },
+			"31": { "start": { "line": 104, "column": 19 }, "end": { "line": 140, "column": 1 } },
+			"32": { "start": { "line": 105, "column": 20 }, "end": { "line": 105, "column": 54 } },
+			"33": { "start": { "line": 106, "column": 2 }, "end": { "line": 111, "column": 3 } },
+			"34": { "start": { "line": 107, "column": 4 }, "end": { "line": 110, "column": 24 } },
+			"35": { "start": { "line": 112, "column": 2 }, "end": { "line": 139, "column": 3 } },
+			"36": { "start": { "line": 113, "column": 20 }, "end": { "line": 121, "column": 6 } },
+			"37": { "start": { "line": 122, "column": 4 }, "end": { "line": 127, "column": 5 } },
+			"38": { "start": { "line": 123, "column": 6 }, "end": { "line": 126, "column": 26 } },
+			"39": { "start": { "line": 128, "column": 4 }, "end": { "line": 132, "column": 7 } },
+			"40": { "start": { "line": 134, "column": 4 }, "end": { "line": 134, "column": 58 } },
+			"41": { "start": { "line": 135, "column": 4 }, "end": { "line": 138, "column": 24 } }
+		},
+		"fnMap": {
+			"0": {
+				"name": "(anonymous_0)",
+				"decl": { "start": { "line": 3, "column": 20 }, "end": { "line": 3, "column": 21 } },
+				"loc": { "start": { "line": 3, "column": 61 }, "end": { "line": 103, "column": 1 } },
+				"line": 3
+			},
+			"1": {
+				"name": "(anonymous_1)",
+				"decl": { "start": { "line": 37, "column": 34 }, "end": { "line": 37, "column": 35 } },
+				"loc": { "start": { "line": 37, "column": 41 }, "end": { "line": 37, "column": 69 } },
+				"line": 37
+			},
+			"2": {
+				"name": "(anonymous_2)",
+				"decl": { "start": { "line": 45, "column": 35 }, "end": { "line": 45, "column": 36 } },
+				"loc": { "start": { "line": 45, "column": 42 }, "end": { "line": 45, "column": 70 } },
+				"line": 45
+			},
+			"3": {
+				"name": "(anonymous_3)",
+				"decl": { "start": { "line": 50, "column": 47 }, "end": { "line": 50, "column": 48 } },
+				"loc": { "start": { "line": 50, "column": 54 }, "end": { "line": 50, "column": 67 } },
+				"line": 50
+			},
+			"4": {
+				"name": "(anonymous_4)",
+				"decl": { "start": { "line": 57, "column": 32 }, "end": { "line": 57, "column": 33 } },
+				"loc": { "start": { "line": 57, "column": 39 }, "end": { "line": 57, "column": 65 } },
+				"line": 57
+			},
+			"5": {
+				"name": "(anonymous_5)",
+				"decl": { "start": { "line": 59, "column": 38 }, "end": { "line": 59, "column": 39 } },
+				"loc": { "start": { "line": 59, "column": 50 }, "end": { "line": 72, "column": 5 } },
+				"line": 59
+			},
+			"6": {
+				"name": "(anonymous_6)",
+				"decl": { "start": { "line": 78, "column": 6 }, "end": { "line": 78, "column": 7 } },
+				"loc": { "start": { "line": 78, "column": 13 }, "end": { "line": 78, "column": 82 } },
+				"line": 78
+			},
+			"7": {
+				"name": "(anonymous_7)",
+				"decl": { "start": { "line": 87, "column": 39 }, "end": { "line": 87, "column": 40 } },
+				"loc": { "start": { "line": 87, "column": 46 }, "end": { "line": 87, "column": 78 } },
+				"line": 87
+			},
+			"8": {
+				"name": "(anonymous_8)",
+				"decl": { "start": { "line": 104, "column": 19 }, "end": { "line": 104, "column": 20 } },
+				"loc": { "start": { "line": 104, "column": 38 }, "end": { "line": 140, "column": 1 } },
+				"line": 104
+			}
+		},
+		"branchMap": {
+			"0": {
+				"loc": { "start": { "line": 6, "column": 4 }, "end": { "line": 11, "column": 5 } },
+				"type": "if",
+				"locations": [
+					{ "start": { "line": 6, "column": 4 }, "end": { "line": 11, "column": 5 } },
+					{ "start": {}, "end": {} }
+				],
+				"line": 6
+			},
+			"1": {
+				"loc": { "start": { "line": 6, "column": 8 }, "end": { "line": 6, "column": 59 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 6, "column": 8 }, "end": { "line": 6, "column": 33 } },
+					{ "start": { "line": 6, "column": 37 }, "end": { "line": 6, "column": 59 } }
+				],
+				"line": 6
+			},
+			"2": {
+				"loc": { "start": { "line": 12, "column": 21 }, "end": { "line": 12, "column": 66 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 12, "column": 21 }, "end": { "line": 12, "column": 44 } },
+					{ "start": { "line": 12, "column": 48 }, "end": { "line": 12, "column": 66 } }
+				],
+				"line": 12
+			},
+			"3": {
+				"loc": { "start": { "line": 14, "column": 4 }, "end": { "line": 20, "column": 5 } },
+				"type": "if",
+				"locations": [
+					{ "start": { "line": 14, "column": 4 }, "end": { "line": 20, "column": 5 } },
+					{ "start": {}, "end": {} }
+				],
+				"line": 14
+			},
+			"4": {
+				"loc": { "start": { "line": 19, "column": 24 }, "end": { "line": 19, "column": 64 } },
+				"type": "cond-expr",
+				"locations": [
+					{ "start": { "line": 19, "column": 37 }, "end": { "line": 19, "column": 57 } },
+					{ "start": { "line": 19, "column": 60 }, "end": { "line": 19, "column": 64 } }
+				],
+				"line": 19
+			},
+			"5": {
+				"loc": { "start": { "line": 28, "column": 21 }, "end": { "line": 28, "column": 53 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 28, "column": 21 }, "end": { "line": 28, "column": 45 } },
+					{ "start": { "line": 28, "column": 49 }, "end": { "line": 28, "column": 53 } }
+				],
+				"line": 28
+			},
+			"6": {
+				"loc": { "start": { "line": 30, "column": 20 }, "end": { "line": 30, "column": 51 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 30, "column": 20 }, "end": { "line": 30, "column": 43 } },
+					{ "start": { "line": 30, "column": 47 }, "end": { "line": 30, "column": 51 } }
+				],
+				"line": 30
+			},
+			"7": {
+				"loc": { "start": { "line": 31, "column": 18 }, "end": { "line": 31, "column": 47 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 31, "column": 18 }, "end": { "line": 31, "column": 39 } },
+					{ "start": { "line": 31, "column": 43 }, "end": { "line": 31, "column": 47 } }
+				],
+				"line": 31
+			},
+			"8": {
+				"loc": { "start": { "line": 32, "column": 20 }, "end": { "line": 32, "column": 51 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 32, "column": 20 }, "end": { "line": 32, "column": 43 } },
+					{ "start": { "line": 32, "column": 47 }, "end": { "line": 32, "column": 51 } }
+				],
+				"line": 32
+			},
+			"9": {
+				"loc": { "start": { "line": 33, "column": 20 }, "end": { "line": 33, "column": 51 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 33, "column": 20 }, "end": { "line": 33, "column": 43 } },
+					{ "start": { "line": 33, "column": 47 }, "end": { "line": 33, "column": 51 } }
+				],
+				"line": 33
+			},
+			"10": {
+				"loc": { "start": { "line": 34, "column": 22 }, "end": { "line": 34, "column": 55 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 34, "column": 22 }, "end": { "line": 34, "column": 47 } },
+					{ "start": { "line": 34, "column": 51 }, "end": { "line": 34, "column": 55 } }
+				],
+				"line": 34
+			},
+			"11": {
+				"loc": { "start": { "line": 35, "column": 22 }, "end": { "line": 35, "column": 55 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 35, "column": 22 }, "end": { "line": 35, "column": 47 } },
+					{ "start": { "line": 35, "column": 51 }, "end": { "line": 35, "column": 55 } }
+				],
+				"line": 35
+			},
+			"12": {
+				"loc": { "start": { "line": 40, "column": 17 }, "end": { "line": 40, "column": 42 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 40, "column": 17 }, "end": { "line": 40, "column": 32 } },
+					{ "start": { "line": 40, "column": 36 }, "end": { "line": 40, "column": 42 } }
+				],
+				"line": 40
+			},
+			"13": {
+				"loc": { "start": { "line": 52, "column": 4 }, "end": { "line": 58, "column": 5 } },
+				"type": "if",
+				"locations": [
+					{ "start": { "line": 52, "column": 4 }, "end": { "line": 58, "column": 5 } },
+					{ "start": {}, "end": {} }
+				],
+				"line": 52
+			},
+			"14": {
+				"loc": { "start": { "line": 61, "column": 15 }, "end": { "line": 61, "column": 55 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 61, "column": 15 }, "end": { "line": 61, "column": 28 } },
+					{ "start": { "line": 61, "column": 32 }, "end": { "line": 61, "column": 47 } },
+					{ "start": { "line": 61, "column": 51 }, "end": { "line": 61, "column": 55 } }
+				],
+				"line": 61
+			},
+			"15": {
+				"loc": { "start": { "line": 62, "column": 19 }, "end": { "line": 62, "column": 106 } },
+				"type": "cond-expr",
+				"locations": [
+					{ "start": { "line": 62, "column": 82 }, "end": { "line": 62, "column": 99 } },
+					{ "start": { "line": 62, "column": 102 }, "end": { "line": 62, "column": 106 } }
+				],
+				"line": 62
+			},
+			"16": {
+				"loc": { "start": { "line": 62, "column": 19 }, "end": { "line": 62, "column": 79 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 62, "column": 19 }, "end": { "line": 62, "column": 36 } },
+					{ "start": { "line": 62, "column": 40 }, "end": { "line": 62, "column": 79 } }
+				],
+				"line": 62
+			},
+			"17": {
+				"loc": { "start": { "line": 65, "column": 24 }, "end": { "line": 65, "column": 54 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 65, "column": 24 }, "end": { "line": 65, "column": 46 } },
+					{ "start": { "line": 65, "column": 50 }, "end": { "line": 65, "column": 54 } }
+				],
+				"line": 65
+			},
+			"18": {
+				"loc": { "start": { "line": 66, "column": 16 }, "end": { "line": 66, "column": 38 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 66, "column": 16 }, "end": { "line": 66, "column": 30 } },
+					{ "start": { "line": 66, "column": 34 }, "end": { "line": 66, "column": 38 } }
+				],
+				"line": 66
+			},
+			"19": {
+				"loc": { "start": { "line": 67, "column": 16 }, "end": { "line": 67, "column": 63 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 67, "column": 16 }, "end": { "line": 67, "column": 30 } },
+					{ "start": { "line": 67, "column": 34 }, "end": { "line": 67, "column": 55 } },
+					{ "start": { "line": 67, "column": 59 }, "end": { "line": 67, "column": 63 } }
+				],
+				"line": 67
+			},
+			"20": {
+				"loc": { "start": { "line": 68, "column": 18 }, "end": { "line": 68, "column": 49 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 68, "column": 18 }, "end": { "line": 68, "column": 41 } },
+					{ "start": { "line": 68, "column": 45 }, "end": { "line": 68, "column": 49 } }
+				],
+				"line": 68
+			},
+			"21": {
+				"loc": { "start": { "line": 70, "column": 17 }, "end": { "line": 70, "column": 62 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 70, "column": 17 }, "end": { "line": 70, "column": 32 } },
+					{ "start": { "line": 70, "column": 52 }, "end": { "line": 70, "column": 62 } }
+				],
+				"line": 70
+			},
+			"22": {
+				"loc": { "start": { "line": 78, "column": 13 }, "end": { "line": 78, "column": 82 } },
+				"type": "binary-expr",
+				"locations": [
+					{ "start": { "line": 78, "column": 13 }, "end": { "line": 78, "column": 45 } },
+					{ "start": { "line": 78, "column": 49 }, "end": { "line": 78, "column": 82 } }
+				],
+				"line": 78
+			},
+			"23": {
+				"loc": { "start": { "line": 80, "column": 4 }, "end": { "line": 90, "column": 5 } },
+				"type": "if",
+				"locations": [
+					{ "start": { "line": 80, "column": 4 }, "end": { "line": 90, "column": 5 } },
+					{ "start": {}, "end": {} }
+				],
+				"line": 80
+			},
+			"24": {
+				"loc": { "start": { "line": 87, "column": 27 }, "end": { "line": 87, "column": 120 } },
+				"type": "cond-expr",
+				"locations": [
+					{ "start": { "line": 87, "column": 82 }, "end": { "line": 87, "column": 98 } },
+					{ "start": { "line": 87, "column": 101 }, "end": { "line": 87, "column": 120 } }
+				],
+				"line": 87
+			},
+			"25": {
+				"loc": { "start": { "line": 106, "column": 2 }, "end": { "line": 111, "column": 3 } },
+				"type": "if",
+				"locations": [
+					{ "start": { "line": 106, "column": 2 }, "end": { "line": 111, "column": 3 } },
+					{ "start": {}, "end": {} }
+				],
+				"line": 106
+			},
+			"26": {
+				"loc": { "start": { "line": 122, "column": 4 }, "end": { "line": 127, "column": 5 } },
+				"type": "if",
+				"locations": [
+					{ "start": { "line": 122, "column": 4 }, "end": { "line": 127, "column": 5 } },
+					{ "start": {}, "end": {} }
+				],
+				"line": 122
+			}
+		},
+		"s": {
+			"0": 1,
+			"1": 9,
+			"2": 9,
+			"3": 9,
+			"4": 2,
+			"5": 7,
+			"6": 7,
+			"7": 7,
+			"8": 2,
+			"9": 2,
+			"10": 7,
+			"11": 59,
+			"12": 59,
+			"13": 6,
+			"14": 58,
+			"15": 6,
+			"16": 6,
+			"17": 2,
+			"18": 2,
+			"19": 2,
+			"20": 6,
+			"21": 58,
+			"22": 6,
+			"23": 6,
+			"24": 57,
+			"25": 6,
+			"26": 2,
+			"27": 3,
+			"28": 6,
+			"29": 1,
+			"30": 1,
+			"31": 1,
+			"32": 0,
+			"33": 0,
+			"34": 0,
+			"35": 0,
+			"36": 0,
+			"37": 0,
+			"38": 0,
+			"39": 0,
+			"40": 0,
+			"41": 0
+		},
+		"f": { "0": 9, "1": 59, "2": 59, "3": 58, "4": 2, "5": 58, "6": 57, "7": 3, "8": 0 },
+		"b": {
+			"0": [2, 7],
+			"1": [9, 7],
+			"2": [7, 7],
+			"3": [2, 5],
+			"4": [2, 0],
+			"5": [7, 7],
+			"6": [7, 6],
+			"7": [7, 6],
+			"8": [7, 6],
+			"9": [7, 7],
+			"10": [7, 7],
+			"11": [7, 6],
+			"12": [7, 5],
+			"13": [2, 4],
+			"14": [58, 55, 52],
+			"15": [1, 57],
+			"16": [58, 3],
+			"17": [58, 53],
+			"18": [58, 57],
+			"19": [58, 58, 55],
+			"20": [58, 55],
+			"21": [58, 5],
+			"22": [57, 57],
+			"23": [2, 4],
+			"24": [1, 1],
+			"25": [0, 0],
+			"26": [0, 0]
+		},
+		"inputSourceMap": {
+			"version": 3,
+			"sources": ["/Users/noot/Documents/communique/src/routes/api/analytics/events/+server.ts"],
+			"sourcesContent": [
+				"/**\n * Analytics Events API Endpoint\n * \n * Receives batched analytics events from the client and stores them in the database.\n * Handles session management and user identification.\n */\n\nimport { json } from '@sveltejs/kit';\nimport type { RequestHandler } from './$types';\nimport { db } from '$lib/core/db';\nimport type { AnalyticsEvent, SessionData } from '$lib/core/analytics/database';\n\ninterface EventBatch {\n\tsession_data: SessionData;\n\tevents: AnalyticsEvent[];\n}\n\nexport const POST: RequestHandler = async ({ request, getClientAddress }) => {\n\ttry {\n\t\tconst { session_data, events }: EventBatch = await request.json();\n\t\t\n\t\tif (!session_data?.session_id || !Array.isArray(events)) {\n\t\t\treturn json({\n\t\t\t\tsuccess: false,\n\t\t\t\terror: 'Invalid request format'\n\t\t\t}, { status: 400 });\n\t\t}\n\n\t\t// Get client IP for geolocation (if not provided)\n\t\tconst clientIP = session_data.ip_address || getClientAddress();\n\n\t\t// Validate user_id exists if provided\n\t\tlet validatedUserId: string | null = null;\n\t\tif (session_data.user_id) {\n\t\t\tconst userExists = await db.user.findUnique({ \n\t\t\t\twhere: { id: session_data.user_id },\n\t\t\t\tselect: { id: true }\n\t\t\t});\n\t\t\tvalidatedUserId = userExists ? session_data.user_id : null;\n\t\t}\n\n\t\t// Ensure session exists\n\t\tawait db.user_session.upsert({\n\t\t\twhere: {\n\t\t\t\tsession_id: session_data.session_id\n\t\t\t},\n\t\t\tcreate: {\n\t\t\t\tsession_id: session_data.session_id,\n\t\t\t\tuser_id: validatedUserId,\n\t\t\t\tfingerprint: session_data.fingerprint || null,\n\t\t\t\tip_address: clientIP,\n\t\t\t\tuser_agent: session_data.user_agent || null,\n\t\t\t\treferrer: session_data.referrer || null,\n\t\t\t\tutm_source: session_data.utm_source || null,\n\t\t\t\tutm_medium: session_data.utm_medium || null,\n\t\t\t\tutm_campaign: session_data.utm_campaign || null,\n\t\t\t\tlanding_page: session_data.landing_page || null,\n\t\t\t\tevents_count: events.length,\n\t\t\t\tpage_views: events.filter(e => e.event_name === 'page_view').length\n\t\t\t},\n\t\t\tupdate: {\n\t\t\t\tuser_id: validatedUserId || undefined,\n\t\t\t\tevents_count: {\n\t\t\t\t\tincrement: events.length\n\t\t\t\t},\n\t\t\t\tpage_views: {\n\t\t\t\t\tincrement: events.filter(e => e.event_name === 'page_view').length\n\t\t\t\t},\n\t\t\t\tupdated_at: new Date()\n\t\t\t}\n\t\t});\n\n\t\t// Validate template_ids exist if provided\n\t\tconst templateIds = [...new Set(events.map(e => e.template_id).filter(Boolean))];\n\t\tconst validTemplateIds = new Set();\n\t\tif (templateIds.length > 0) {\n\t\t\tconst existingTemplates = await db.template.findMany({\n\t\t\t\twhere: { id: { in: templateIds } },\n\t\t\t\tselect: { id: true }\n\t\t\t});\n\t\t\texistingTemplates.forEach(t => validTemplateIds.add(t.id));\n\t\t}\n\n\t\t// Process and store events\n\t\tconst eventsToCreate = events.map(event => ({\n\t\t\tsession_id: session_data.session_id,\n\t\t\tuser_id: event.user_id || validatedUserId || null,\n\t\t\ttemplate_id: event.template_id && validTemplateIds.has(event.template_id) ? event.template_id : null,\n\t\t\tevent_type: event.event_type,\n\t\t\tevent_name: event.event_name,\n\t\t\tevent_properties: event.event_properties || null,\n\t\t\tpage_url: event.page_url || null,\n\t\t\treferrer: event.referrer || session_data.referrer || null,\n\t\t\tuser_agent: session_data.user_agent || null,\n\t\t\tip_address: clientIP,\n\t\t\ttimestamp: event.timestamp || new Date(),\n\t\t\tcreated_at: new Date()\n\t\t}));\n\n\t\t// Batch insert events\n\t\tawait db.analytics_event.createMany({\n\t\t\tdata: eventsToCreate,\n\t\t\tskipDuplicates: true\n\t\t});\n\n\t\t// Update session end time and check for conversions\n\t\tconst hasConversion = events.some(e => \n\t\t\te.event_name === 'template_used' || \n\t\t\te.event_name === 'auth_completed'\n\t\t);\n\n\t\tif (hasConversion) {\n\t\t\tawait db.user_session.update({\n\t\t\t\twhere: {\n\t\t\t\t\tsession_id: session_data.session_id\n\t\t\t\t},\n\t\t\t\tdata: {\n\t\t\t\t\tconverted: true,\n\t\t\t\t\tconversion_type: events.find(e => e.event_name === 'template_used') ? 'template_usage' : 'user_registration'\n\t\t\t\t}\n\t\t\t});\n\t\t}\n\n\t\treturn json({\n\t\t\tsuccess: true,\n\t\t\tevents_processed: events.length,\n\t\t\tsession_id: session_data.session_id\n\t\t});\n\n\t} catch (error) {\n\t\tconsole.error('Analytics events processing failed:', error);\n\t\t\n\t\treturn json({\n\t\t\tsuccess: false,\n\t\t\terror: 'Failed to process analytics events'\n\t\t}, { status: 500 });\n\t}\n};\n\n// Optional: GET endpoint for debugging (remove in production)\nexport const GET: RequestHandler = async ({ url }) => {\n\tconst sessionId = url.searchParams.get('session_id');\n\t\n\tif (!sessionId) {\n\t\treturn json({\n\t\t\tsuccess: false,\n\t\t\terror: 'session_id required'\n\t\t}, { status: 400 });\n\t}\n\n\ttry {\n\t\tconst session = await db.user_session.findUnique({\n\t\t\twhere: { session_id: sessionId },\n\t\t\tinclude: {\n\t\t\t\tanalytics_events: {\n\t\t\t\t\torderBy: { timestamp: 'desc' },\n\t\t\t\t\ttake: 50\n\t\t\t\t}\n\t\t\t}\n\t\t});\n\n\t\tif (!session) {\n\t\t\treturn json({\n\t\t\t\tsuccess: false,\n\t\t\t\terror: 'Session not found'\n\t\t\t}, { status: 404 });\n\t\t}\n\n\t\treturn json({\n\t\t\tsuccess: true,\n\t\t\tsession,\n\t\t\tevents_count: session.analytics_events.length\n\t\t});\n\n\t} catch (error) {\n\t\tconsole.error('Failed to fetch session data:', error);\n\t\t\n\t\treturn json({\n\t\t\tsuccess: false,\n\t\t\terror: 'Failed to fetch session data'\n\t\t}, { status: 500 });\n\t}\n};"
+			],
+			"mappings": "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",
+			"names": []
+		},
+		"_coverageSchema": "1a1c01bbd47fc00a2c39e90264f33305004495a9",
+		"hash": "a5daba7e9c907fa32373c05f549b7ff7dfd3f465"
+	}
+}

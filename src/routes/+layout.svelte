@@ -36,7 +36,7 @@
 </script>
 
 <ParaglideJS {i18n}>
-	<div class="md:p-10 p-6 min-h-screen bg-gradient-to-b from-slate-50 to-white">
+	<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white p-6 md:p-10">
 		{@render children()}
 		<Footer />
 	</div>
