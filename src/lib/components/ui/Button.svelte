@@ -82,36 +82,46 @@
 		
 		// Find the channel cards by looking for their identifying content
 		const channelCards = document.querySelectorAll('[role="button"]');
-		let certifiedCard = null;
-		let directCard = null;
+		let certifiedCard: HTMLElement | null = null;
+		let directCard: HTMLElement | null = null;
 		
 		channelCards.forEach(card => {
 			const text = card.textContent || '';
 			if (text.includes('Certified Delivery')) {
-				certifiedCard = card;
+				certifiedCard = card as HTMLElement;
 			} else if (text.includes('Direct Outreach')) {
-				directCard = card;
+				directCard = card as HTMLElement;
 			}
 		});
 		
 		const buttonRect = buttonElement?.getBoundingClientRect();
 		if (!buttonRect) return { certified: null, direct: null };
 		
-		const certified = certifiedCard ? {
-			element: certifiedCard.getBoundingClientRect(),
-			target: {
-				x: certifiedCard.getBoundingClientRect().left + certifiedCard.getBoundingClientRect().width * 0.25,
-				y: certifiedCard.getBoundingClientRect().top + certifiedCard.getBoundingClientRect().height * 0.3
-			}
-		} : null;
+		let certified = null;
+		if (certifiedCard !== null) {
+			const card = certifiedCard as HTMLElement;
+			const rect = card.getBoundingClientRect();
+			certified = {
+				element: rect,
+				target: {
+					x: rect.left + rect.width * 0.25,
+					y: rect.top + rect.height * 0.3
+				}
+			};
+		}
 		
-		const direct = directCard ? {
-			element: directCard.getBoundingClientRect(),
-			target: {
-				x: directCard.getBoundingClientRect().left + directCard.getBoundingClientRect().width * 0.25,
-				y: directCard.getBoundingClientRect().top + directCard.getBoundingClientRect().height * 0.3
-			}
-		} : null;
+		let direct = null;
+		if (directCard !== null) {
+			const card = directCard as HTMLElement;
+			const rect = card.getBoundingClientRect();
+			direct = {
+				element: rect,
+				target: {
+					x: rect.left + rect.width * 0.25,
+					y: rect.top + rect.height * 0.3
+				}
+			};
+		}
 		
 		return { certified, direct, buttonRect };
 	}
