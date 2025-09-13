@@ -142,8 +142,8 @@
 		</div>
 	{/if}
 
-	<!-- Character count for fields with maxLength -->
-	{#if rules.maxLength && isFocused}
+	<!-- Character count for fields with maxLength (disabled for textarea) -->
+	{#if rules.maxLength && isFocused && type !== 'textarea'}
 		<div class="text-xs text-gray-500 text-right">
 			{value.length} / {rules.maxLength} characters
 		</div>

@@ -187,6 +187,9 @@ function createTemplateDraftStore() {
 
 export const templateDraftStore = createTemplateDraftStore();
 
+// Export alias for backwards compatibility
+export const templateDraft = templateDraftStore;
+
 // Helper function to generate a draft ID for a new template
 export function generateDraftId(): string {
 	return `draft_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

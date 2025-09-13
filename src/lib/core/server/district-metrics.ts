@@ -115,6 +115,9 @@ export async function updateTemplateDistrictMetrics(templateId: string): Promise
     }
 }
 
+// Export alias for backwards compatibility
+export const getDistrictMetrics = calculateUserGeographicSpread;
+
 /**
  * Batch update district metrics for all congressional templates
  */

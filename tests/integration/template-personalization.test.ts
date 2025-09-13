@@ -15,7 +15,7 @@ describe('Template Personalization Integration', () => {
 
     const template = 'Dear Representative, I am [Name] from [City], [State] [Zip]. Thank you.';
     
-    const resolved = resolveVariables(template, user, null);
+    const resolved = resolveVariables(template, user, undefined);
     
     expect(resolved).toBe('Dear Representative, I am Jane Smith from San Francisco, CA 94102. Thank you.');
   });
@@ -95,7 +95,7 @@ Sincerely,
 
     const template = 'I am [Name] from [City], [State].';
     
-    const resolved = resolveVariables(template, user, null);
+    const resolved = resolveVariables(template, user, undefined);
     
     // Should handle missing city gracefully
     expect(resolved).toContain('I am Test User from');
@@ -146,7 +146,7 @@ Alice Johnson`);
 
     const template = 'I am [Name] from [City].';
     
-    const resolved = resolveVariables(template, user, null);
+    const resolved = resolveVariables(template, user, undefined);
     
     expect(resolved).toBe("I am O'Connor-Smith from São Paulo.");
   });
@@ -161,7 +161,7 @@ Alice Johnson`);
     // Template with brackets that aren't variables
     const template = 'Dear Representative, I am [Name]. Please consider [this important issue].';
     
-    const resolved = resolveVariables(template, user, null);
+    const resolved = resolveVariables(template, user, undefined);
     
     expect(resolved).toBe('Dear Representative, I am Test User. Please consider [this important issue].');
   });
@@ -175,7 +175,7 @@ Alice Johnson`);
 
     const template = 'I am [Name] and [name] and [NAME].';
     
-    const resolved = resolveVariables(template, user, null);
+    const resolved = resolveVariables(template, user, undefined);
     
     // Only exact case matches should be replaced
     expect(resolved).toBe('I am Jane Doe and [name] and [NAME].');

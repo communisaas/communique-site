@@ -171,7 +171,7 @@
 		</div>
 		
 		<!-- Mobile: Horizontal scrollable pills -->
-		<div class="sm:hidden flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+		<div class="sm:hidden flex gap-3 overflow-x-auto pb-2 px-1 scrollbar-hide">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
 				{@const isCore = coreVariables.includes(variable)}
@@ -227,7 +227,7 @@
 		</div>
 
 		<!-- Desktop: Compact Pill Layout -->
-		<div class="hidden sm:flex items-center gap-1.5">
+		<div class="hidden sm:flex items-center gap-2 flex-wrap">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
 				{@const isCore = coreVariables.includes(variable)}
@@ -301,7 +301,7 @@
 			/>
 			
 			<!-- Floating Action Bar -->
-			<div class="absolute bottom-2 right-2 left-2 flex items-center justify-between pointer-events-none">
+			<div class="absolute bottom-3 right-3 left-3 flex items-center justify-between pointer-events-none">
 				<!-- Personal Connection Helper (appears contextually) -->
 				{#if data.variables.includes('[Personal Connection]') && data.preview.includes('[Personal Connection]')}
 					<div class="pointer-events-auto bg-purple-50/95 backdrop-blur-sm border border-purple-200 rounded-lg px-2 py-1 text-xs text-purple-700 max-w-xs animate-fade-in">
@@ -347,7 +347,7 @@
 	}
 
 	.composer-textarea {
-		padding-bottom: 3rem; /* Space for floating action bar */
+		padding-bottom: 4rem; /* Extra space for floating action bar */
 	}
 
 	.scrollbar-hide {

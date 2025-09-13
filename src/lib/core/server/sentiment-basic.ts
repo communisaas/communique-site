@@ -154,6 +154,9 @@ export async function testOnRealData(): Promise<void> {
   });
 }
 
+// Export alias for backwards compatibility
+export const analyzeSentimentBasic = classifyBasicSentiment;
+
 /**
  * SAFE startup function - just runs tests, doesn't modify anything
  */

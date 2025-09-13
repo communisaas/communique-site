@@ -88,13 +88,15 @@
 				classNames="w-full sm:w-auto shrink-0 {ctaConfig()?.colors}"
 				onclick={handleUseTemplate}
 			>
-				<ctaConfig.icon class="h-4 w-4" />
+				{#if ctaConfig()?.icon}
+					<ctaConfig().icon class="h-4 w-4" />
+				{/if}
 				
 				<span class="hidden sm:inline">
-					{ctaConfig.desktop}
+					{ctaConfig()?.desktop}
 				</span>
 				<span class="sm:hidden">
-					{ctaConfig.mobile}
+					{ctaConfig()?.mobile}
 				</span>
 			</Button>
 		</div>

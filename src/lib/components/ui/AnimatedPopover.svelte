@@ -196,7 +196,7 @@
 		const tagName = target.tagName.toLowerCase();
 		
 		return formTags.includes(tagName) || 
-			   target.contentEditable === 'true' ||
+			   (target as HTMLElement).contentEditable === 'true' ||
 			   target.closest('input, textarea, select, button') !== null;
 	}
 

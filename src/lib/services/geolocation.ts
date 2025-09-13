@@ -262,3 +262,26 @@ export class GeolocationService {
 
 // Export singleton instance
 export const geolocation = GeolocationService.getInstance();
+
+// Export alias for backwards compatibility
+export async function geolocateFromAddress(address: UserAddress): Promise<GeolocationData> {
+    const geoService = GeolocationService.getInstance();
+    
+    if (address.zip) {
+        const district = await geoService.zipToDistrict(address.zip);
+        return {
+            source: 'manual_address',
+            address: {
+                zip: address.zip,
+                city: address.city || undefined,
+                state: address.state || undefined,
+                street: address.street || undefined
+            },
+            district,
+            timestamp: Date.now(),
+            confidence: 0.8 // Manual address is fairly reliable
+        };
+    }
+    
+    throw new Error('ZIP code required for address geolocation');
+}

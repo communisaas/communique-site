@@ -109,9 +109,9 @@ describe('User API Integration', () => {
 			it('returns 404 for non-existent user', async () => {
 				mocks.db.user.findUnique.mockResolvedValueOnce(null);
 
-				const response = await ProfileGET({ 
-					locals: { user: createMockUser({ id: 'nonexistent' }), session: null }
-				});
+				const response = await ProfileGET(asRequestEvent({}, { 
+					user: createMockUser({ id: 'nonexistent' }), session: null
+				}));
 
 				expect(response.status).toBe(404);
 				expect(await response.json()).toEqual({
@@ -175,10 +175,10 @@ describe('User API Integration', () => {
 					})
 				};
 
-				const response = await ProfilePOST({ 
-					request: mockRequest, 
-					locals: { user: createMockUser({ id: 'user-789' }), session: null }
-				});
+				const response = await ProfilePOST(asRequestEvent(
+					mockRequest, 
+					{ user: createMockUser({ id: 'user-789' }), session: null }
+				));
 
 				expect(response.status).toBe(400);
 				expect(await response.json()).toEqual({
@@ -224,10 +224,10 @@ describe('User API Integration', () => {
 					...addressData
 				});
 
-				const response = await AddressPOST({ 
-					request: mockRequest, 
-					locals: { user: createMockUser({ id: 'user-address' }), session: null }
-				});
+				const response = await AddressPOST(asRequestEvent( 
+					mockRequest, 
+					{ user: createMockUser({ id: 'user-address' }), session: null }
+				));
 				const data = await response.json();
 
 				expect(mocks.db.user.update).toHaveBeenCalledWith({
@@ -258,10 +258,10 @@ describe('User API Integration', () => {
 					zip: '94612'
 				});
 
-				const response = await AddressPOST({ 
-					request: mockRequest, 
-					locals: { user: createMockUser({ id: 'user-parse' }), session: null }
-				});
+				const response = await AddressPOST(asRequestEvent( 
+					mockRequest, 
+					{ user: createMockUser({ id: 'user-parse' }), session: null }
+				));
 				const data = await response.json();
 
 				expect(data.success).toBe(true);
@@ -304,10 +304,10 @@ describe('User API Integration', () => {
 					Promise.resolve({ id: `rep-${data.bioguide_id}`, ...data })
 				);
 
-				const response = await AddressPOST({ 
-					request: mockRequest, 
-					locals: { user: createMockUser({ id: 'user-reps' }), session: null }
-				});
+				const response = await AddressPOST(asRequestEvent( 
+					mockRequest, 
+					{ user: createMockUser({ id: 'user-reps' }), session: null }
+				));
 				const data = await response.json();
 
 				expect(mocks.db.user_representatives.deleteMany).toHaveBeenCalledWith({
@@ -323,10 +323,10 @@ describe('User API Integration', () => {
 					json: vi.fn().mockResolvedValue({})
 				};
 
-				const response = await AddressPOST({ 
-					request: mockRequest, 
-					locals: { user: createMockUser({ id: 'user-no-address' }), session: null }
-				});
+				const response = await AddressPOST(asRequestEvent( 
+					mockRequest, 
+					{ user: createMockUser({ id: 'user-no-address' }), session: null }
+				));
 
 				expect(response.status).toBe(400);
 				expect(await response.json()).toEqual({
@@ -364,10 +364,10 @@ describe('User API Integration', () => {
 
 				mocks.db.user.update.mockRejectedValueOnce(new Error('Database error'));
 
-				const response = await AddressPOST({ 
-					request: mockRequest, 
-					locals: { user: createMockUser({ id: 'user-error' }), session: null }
-				});
+				const response = await AddressPOST(asRequestEvent( 
+					mockRequest, 
+					{ user: createMockUser({ id: 'user-error' }), session: null }
+				));
 
 				expect(response.status).toBe(500);
 				const data = await response.json();
@@ -379,9 +379,9 @@ describe('User API Integration', () => {
 	describe('Security Checks', () => {
 		it('enforces user data ownership', async () => {
 			// User can only access their own data
-			const response = await ProfileGET({ 
-				locals: { user: createMockUser({ id: 'user-123' }), session: null }
-			});
+			const response = await ProfileGET(asRequestEvent({}, { 
+				user: createMockUser({ id: 'user-123' }), session: null
+			}));
 
 			expect(mocks.db.user.findUnique).toHaveBeenCalledWith({
 				where: { id: 'user-123' }, // Same as authenticated user

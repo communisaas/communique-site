@@ -292,10 +292,10 @@
 							{/if}
 							
 							<span class="hidden sm:inline">
-								{ctaConfig.desktop}
+								{ctaConfig()?.desktop}
 							</span>
 							<span class="sm:hidden">
-								{ctaConfig.mobile}
+								{ctaConfig()?.mobile}
 							</span>
 						</button>
 					</div>
