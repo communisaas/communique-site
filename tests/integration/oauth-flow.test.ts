@@ -56,6 +56,33 @@ vi.mock('$lib/core/auth/providers', () => ({
 // Import after mocking
 import { oauthCallbackHandler } from '$lib/core/auth/oauth-callback-handler';
 
+// Helper to create mock config for testing
+function createMockOAuthConfig(provider: string) {
+	const mockUrl = new URL(`http://localhost:3000/auth/${provider}/callback?code=valid-code&state=valid-state`);
+	const mockCookies = {
+		get: vi.fn().mockReturnValue('verifier'),
+		set: vi.fn(),
+		delete: vi.fn()
+	} as any;
+	
+	const mockConfig = {
+		provider: provider as any,
+		clientId: 'test-client-id',
+		clientSecret: 'test-client-secret',
+		redirectUrl: `http://localhost:3000/auth/${provider}/callback`,
+		userInfoUrl: `https://${provider}.com/api/user`,
+		requiresCodeVerifier: true,
+		scope: 'email profile',
+		createOAuthClient: vi.fn(),
+		exchangeTokens: vi.fn().mockResolvedValue(mockOAuthProvider.validateAuthorizationCode()),
+		getUserInfo: mockOAuthProvider.getUserInfo,
+		mapUserData: (data: any) => data,
+		extractTokenData: (tokens: any) => tokens
+	};
+	
+	return { mockConfig, mockUrl, mockCookies };
+}
+
 describe('OAuth Flow Integration', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -141,12 +168,8 @@ describe('OAuth Flow Integration', () => {
 				user: existingUser
 			});
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'discord',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('discord');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(true);
 			expect((result as any).user).toEqual(existingUser);
@@ -166,11 +189,8 @@ describe('OAuth Flow Integration', () => {
 				name: 'Existing User'
 			});
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'facebook',
-				code: 'valid-code',
-				state: 'valid-state'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('facebook');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(true);
 			
@@ -208,12 +228,8 @@ describe('OAuth Flow Integration', () => {
 				new Error('Failed to fetch user info')
 			);
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('google');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('Failed to fetch user info');
@@ -237,12 +253,8 @@ describe('OAuth Flow Integration', () => {
 		it('should handle database errors gracefully', async () => {
 			mockDb.user.create.mockRejectedValue(new Error('Database error'));
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('google');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('Database error');
@@ -316,12 +328,8 @@ describe('OAuth Flow Integration', () => {
 		it('should handle session creation failure', async () => {
 			mockAuth.createSession.mockRejectedValue(new Error('Session creation failed'));
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('google');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('Session creation failed');
@@ -362,12 +370,8 @@ describe('OAuth Flow Integration', () => {
 				avatar: 'javascript:alert("xss")'
 			});
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('google');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			// Should sanitize malicious input
 			expect(mockDb.user.create).toHaveBeenCalledWith({

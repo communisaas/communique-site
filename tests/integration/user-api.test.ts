@@ -98,7 +98,7 @@ describe('User API Integration', () => {
 			});
 
 			it('returns 401 for unauthenticated user', async () => {
-				const response = await ProfileGET({ locals: {} });
+				const response = await ProfileGET(asRequestEvent({} as any, { user: null, session: null }));
 				
 				expect(response.status).toBe(401);
 				expect(await response.json()).toEqual({
@@ -194,10 +194,10 @@ describe('User API Integration', () => {
 					})
 				};
 
-				const response = await ProfilePOST({ 
-					request: mockRequest, 
-					locals: {} 
-				});
+				const response = await ProfilePOST(asRequestEvent(
+					mockRequest, 
+					{ user: null, session: null }
+				));
 
 				expect(response.status).toBe(401);
 			});
@@ -344,10 +344,10 @@ describe('User API Integration', () => {
 					})
 				};
 
-				const response = await AddressPOST({ 
-					request: mockRequest, 
-					locals: {} 
-				});
+				const response = await AddressPOST(asRequestEvent(
+					mockRequest, 
+					{ user: null, session: null }
+				));
 
 				expect(response.status).toBe(401);
 			});

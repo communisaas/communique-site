@@ -203,10 +203,10 @@ describe('Template API Integration', () => {
         json: vi.fn().mockResolvedValue(templateData)
       };
 
-      const response = await TemplatesPOST({ 
-        request: mockRequest, 
-        locals: {} // No authenticated user
-      });
+      const response = await TemplatesPOST(asRequestEvent(
+        mockRequest,
+        { user: null, session: null } // No authenticated user
+      ));
 
       expect(response.status).toBe(200);
       const responseData = await response.json();
