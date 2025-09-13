@@ -275,17 +275,17 @@
 				{/if}
 				
 				<!-- Primary CTA for template actions -->
-				{#if ctaConfig}
+				{#if ctaConfig()}
 					<div class="flex flex-col items-end gap-1">
-						{#if ctaConfig.subtitle}
+						{#if ctaConfig()?.subtitle}
 							<span class="hidden sm:block text-xs text-slate-500">
-								{ctaConfig.subtitle}
+								{ctaConfig()?.subtitle}
 							</span>
 						{/if}
 						
 						<button
 							onclick={handleTemplateUse}
-							class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white rounded-lg transition-colors {ctaConfig.colors}"
+							class="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white rounded-lg transition-colors {ctaConfig()?.colors}"
 						>
 							{#if CtaIcon}
 								<CtaIcon class="h-4 w-4" />

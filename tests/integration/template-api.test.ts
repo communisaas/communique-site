@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { asRequestEvent } from '../types/test-helpers';
+import { asRequestEvent, createMockUser } from '../types/test-helpers';
 
 // Use vi.hoisted for all mocks to fix initialization order
 const mocks = vi.hoisted(() => ({

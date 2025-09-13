@@ -110,7 +110,7 @@ describe('User API Integration', () => {
 				mocks.db.user.findUnique.mockResolvedValueOnce(null);
 
 				const response = await ProfileGET({ 
-					locals: { user: { id: 'nonexistent' } }
+					locals: { user: createMockUser({ id: 'nonexistent' }), session: null }
 				});
 
 				expect(response.status).toBe(404);
@@ -141,10 +141,10 @@ describe('User API Integration', () => {
 					profile_completed_at: new Date()
 				});
 
-				const response = await ProfilePOST({ 
-					request: mockRequest, 
-					locals: { user: { id: 'user-456' } }
-				});
+				const response = await ProfilePOST(asRequestEvent(
+					mockRequest, 
+					{ user: createMockUser({ id: 'user-456' }), session: null }
+				));
 				const data = await response.json();
 
 				expect(mocks.db.user.update).toHaveBeenCalledWith({
@@ -177,7 +177,7 @@ describe('User API Integration', () => {
 
 				const response = await ProfilePOST({ 
 					request: mockRequest, 
-					locals: { user: { id: 'user-789' } }
+					locals: { user: createMockUser({ id: 'user-789' }), session: null }
 				});
 
 				expect(response.status).toBe(400);
@@ -226,7 +226,7 @@ describe('User API Integration', () => {
 
 				const response = await AddressPOST({ 
 					request: mockRequest, 
-					locals: { user: { id: 'user-address' } }
+					locals: { user: createMockUser({ id: 'user-address' }), session: null }
 				});
 				const data = await response.json();
 
@@ -260,7 +260,7 @@ describe('User API Integration', () => {
 
 				const response = await AddressPOST({ 
 					request: mockRequest, 
-					locals: { user: { id: 'user-parse' } }
+					locals: { user: createMockUser({ id: 'user-parse' }), session: null }
 				});
 				const data = await response.json();
 
@@ -306,7 +306,7 @@ describe('User API Integration', () => {
 
 				const response = await AddressPOST({ 
 					request: mockRequest, 
-					locals: { user: { id: 'user-reps' } }
+					locals: { user: createMockUser({ id: 'user-reps' }), session: null }
 				});
 				const data = await response.json();
 
@@ -325,7 +325,7 @@ describe('User API Integration', () => {
 
 				const response = await AddressPOST({ 
 					request: mockRequest, 
-					locals: { user: { id: 'user-no-address' } }
+					locals: { user: createMockUser({ id: 'user-no-address' }), session: null }
 				});
 
 				expect(response.status).toBe(400);
@@ -366,7 +366,7 @@ describe('User API Integration', () => {
 
 				const response = await AddressPOST({ 
 					request: mockRequest, 
-					locals: { user: { id: 'user-error' } }
+					locals: { user: createMockUser({ id: 'user-error' }), session: null }
 				});
 
 				expect(response.status).toBe(500);
@@ -380,7 +380,7 @@ describe('User API Integration', () => {
 		it('enforces user data ownership', async () => {
 			// User can only access their own data
 			const response = await ProfileGET({ 
-				locals: { user: { id: 'user-123' } }
+				locals: { user: createMockUser({ id: 'user-123' }), session: null }
 			});
 
 			expect(mocks.db.user.findUnique).toHaveBeenCalledWith({

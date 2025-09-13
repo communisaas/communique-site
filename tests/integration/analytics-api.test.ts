@@ -476,10 +476,7 @@ describe('Analytics API Integration', () => {
 			};
 
 			// Should not throw error when processing circular references
-			await expect(POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			})).resolves.toBeDefined();
+			await expect(POST(asRequestEvent(mockRequest, {}))).resolves.toBeDefined();
 		});
 
 		it('should limit event property size', async () => {

@@ -350,10 +350,10 @@
 							<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
 								<p class="font-medium text-slate-900 mb-2">Your Representatives:</p>
 								<div class="space-y-2">
-									{#each verificationResult.representatives as rep}
+									{#each verificationResult.representatives as rep: any}
 										<div class="flex items-center gap-2 text-sm">
 											<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
-											<span class="text-slate-700">{rep.name} ({rep.office})</span>
+											<span class="text-slate-700">{(rep as any).name} ({(rep as any).office})</span>
 										</div>
 									{/each}
 								</div>

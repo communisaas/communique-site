@@ -77,15 +77,15 @@
 		{/if}
 		
 		<div class="flex flex-col items-end gap-2">
-			{#if ctaConfig.subtitle}
+			{#if ctaConfig()?.subtitle}
 				<span class="hidden sm:block text-xs text-slate-500">
-					{ctaConfig.subtitle}
+					{ctaConfig()?.subtitle}
 				</span>
 			{/if}
 			
 			<Button
 				variant="primary"
-				classNames="w-full sm:w-auto shrink-0 {ctaConfig.colors}"
+				classNames="w-full sm:w-auto shrink-0 {ctaConfig()?.colors}"
 				onclick={handleUseTemplate}
 			>
 				<ctaConfig.icon class="h-4 w-4" />

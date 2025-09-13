@@ -208,12 +208,8 @@ describe('OAuth Flow Integration', () => {
 				new Error('Invalid authorization code')
 			);
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'invalid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('google');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toBe('Invalid authorization code');
@@ -239,12 +235,8 @@ describe('OAuth Flow Integration', () => {
 		});
 
 		it('should validate state parameter', async () => {
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: null, // Invalid state
-				codeVerifier: 'verifier'
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('google');
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('Invalid state');
@@ -278,12 +270,8 @@ describe('OAuth Flow Integration', () => {
 			
 			mockOAuthProvider.validateAuthorizationCode.mockResolvedValue(tokens);
 
-			const result = await oauthCallbackHandler.handleCallback({
-				provider,
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: config.hasRefreshToken ? 'verifier' : undefined
-			});
+			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig(provider);
+			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(true);
 			
