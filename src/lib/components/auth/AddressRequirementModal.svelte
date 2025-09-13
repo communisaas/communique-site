@@ -283,7 +283,7 @@
 	closeOnBackdrop={true}
 	closeOnEscape={true}
 >
-	{#snippet children(data)}
+	{#snippet children(data: any)}
 		<div class="flex-1 overflow-y-auto">
 			{#key currentStep}
 				<div

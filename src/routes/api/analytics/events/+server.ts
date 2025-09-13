@@ -121,17 +121,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			e.event_name === 'auth_completed'
 		);
 
-		if (hasConversion) {
-			await db.user_session.update({
-				where: {
-					session_id: session_data.session_id
-				},
-				data: {
-					converted: true,
-					conversion_type: events.find(e => e.event_name === 'template_used') ? 'template_usage' : 'user_registration'
-				}
-			});
-		}
+		// Note: Conversion tracking would require additional user_session schema fields
+		// For now, we track conversions through analytics_event records
 
 		return json({
 			success: true,

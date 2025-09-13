@@ -20,30 +20,39 @@ export interface MockUser {
 	id: string;
 	email: string;
 	name: string | null;
-	avatar: string | null;
-	createdAt: Date;
-	updatedAt: Date;
-	city: string | null;
-	congressional_district: string | null;
-	phone: string | null;
 	street: string | null;
+	city: string | null;
 	state: string | null;
 	zip: string | null;
+	congressional_district: string | null;
 	is_verified: boolean;
-	verification_method: string | null;
-	verified_at: Date | null;
+	createdAt: Date;
+	updatedAt: Date;
+	is_active: boolean;
+	is_banned: boolean;
+	is_admin: boolean;
+	profile_picture: string | null;
+	login_count: number;
+	political_party: string | null;
+	interests: string[];
+	political_affiliation: string | null;
+	profile_metadata: any;
+	profile_visibility: string;
+	// Additional fields for backwards compat
+	avatar?: string | null;
+	phone?: string | null;
+	verification_method?: string | null;
+	verified_at?: Date | null;
 	coordinates?: any;
 	preferences?: any;
-	phone_verified: boolean;
-	email_verified: boolean;
-	last_active: Date | null;
-	login_count: number;
-	failed_login_attempts: number;
-	last_failed_login: Date | null;
-	account_locked: boolean;
-	lock_reason: string | null;
-	locked_until: Date | null;
-	profile_visibility: string;
+	phone_verified?: boolean;
+	email_verified?: boolean;
+	last_active?: Date | null;
+	failed_login_attempts?: number;
+	last_failed_login?: Date | null;
+	account_locked?: boolean;
+	lock_reason?: string | null;
+	locked_until?: Date | null;
 }
 
 /**
@@ -87,27 +96,23 @@ export function createMockUser(overrides: Partial<MockUser> = {}): MockUser {
 		id: 'user-123',
 		email: 'test@example.com',
 		name: 'Test User',
-		avatar: null,
-		createdAt: now,
-		updatedAt: now,
-		city: null,
-		congressional_district: null,
-		phone: null,
 		street: null,
+		city: null,
 		state: null,
 		zip: null,
+		congressional_district: null,
 		is_verified: false,
-		verification_method: null,
-		verified_at: null,
-		phone_verified: false,
-		email_verified: false,
-		last_active: null,
+		createdAt: now,
+		updatedAt: now,
+		is_active: true,
+		is_banned: false,
+		is_admin: false,
+		profile_picture: null,
 		login_count: 0,
-		failed_login_attempts: 0,
-		last_failed_login: null,
-		account_locked: false,
-		lock_reason: null,
-		locked_until: null,
+		political_party: null,
+		interests: [],
+		political_affiliation: null,
+		profile_metadata: {},
 		profile_visibility: 'public',
 		...overrides
 	};

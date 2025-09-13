@@ -119,10 +119,10 @@ describe('Template API Integration', () => {
         json: vi.fn().mockResolvedValue(incompleteData)
       };
 
-      const response = await TemplatesPOST({ 
-        request: mockRequest, 
-        locals: { user: { id: 'user-123' } }
-      });
+      const response = await TemplatesPOST(asRequestEvent(
+        mockRequest, 
+        { user: createMockUser({ id: 'user-123' }), session: null }
+      ));
 
       expect(response.status).toBe(400);
       const errorData = await response.json();
@@ -140,10 +140,10 @@ describe('Template API Integration', () => {
         json: vi.fn().mockResolvedValue(oversizedData)
       };
 
-      const response = await TemplatesPOST({ 
-        request: mockRequest, 
-        locals: { user: { id: 'user-123' } }
-      });
+      const response = await TemplatesPOST(asRequestEvent(
+        mockRequest, 
+        { user: createMockUser({ id: 'user-123' }), session: null }
+      ));
 
       expect(response.status).toBe(400);
       const errorData = await response.json();
@@ -175,10 +175,10 @@ describe('Template API Integration', () => {
         json: vi.fn().mockResolvedValue(templateData)
       };
 
-      const response = await TemplatesPOST({ 
-        request: mockRequest, 
-        locals: { user: { id: 'user-123' } }
-      });
+      const response = await TemplatesPOST(asRequestEvent(
+        mockRequest, 
+        { user: createMockUser({ id: 'user-123' }), session: null }
+      ));
 
       const responseData = await response.json();
       expect(responseData.template.slug).toBe('template-with-duplicate-title-2');
@@ -341,10 +341,10 @@ describe('Template API Integration', () => {
         })
       };
 
-      const response = await TemplatesPOST({ 
-        request: mockRequest, 
-        locals: { user: { id: 'user-123' } }
-      });
+      const response = await TemplatesPOST(asRequestEvent(
+        mockRequest, 
+        { user: createMockUser({ id: 'user-123' }), session: null }
+      ));
 
       expect(response.status).toBe(500);
       const errorData = await response.json();

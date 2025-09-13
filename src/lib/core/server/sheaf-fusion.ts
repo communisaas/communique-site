@@ -83,7 +83,7 @@ export async function getOverlappingInformationSources(
         },
         select: {
           status: true,
-          createdAt: true
+          created_at: true
         }
       }
     }

@@ -74,7 +74,7 @@
 			const result = await api.post('/address/verify', {
 				street: streetAddress,
 				city,
-				state,
+				state: stateCode,
 				zipCode
 			});
 			
@@ -102,7 +102,7 @@
 			district: verificationResult?.district,
 			streetAddress,
 			city, 
-			state,
+			state: stateCode,
 			zipCode
 		});
 	}

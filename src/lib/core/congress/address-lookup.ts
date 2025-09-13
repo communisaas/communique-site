@@ -323,7 +323,7 @@ export class AddressLookupService {
         // Format name from "Last, First Middle" to "First Middle Last"
         let formattedName = member.name || '';
         if (formattedName.includes(',')) {
-            const [last, firstMiddle] = formattedName.split(',').map(s => s.trim());
+            const [last, firstMiddle] = formattedName.split(',').map((s: string) => s.trim());
             formattedName = `${firstMiddle} ${last}`;
         } else if (member.firstName || member.lastName) {
             formattedName = `${member.firstName || ''} ${member.lastName || ''}`.trim();

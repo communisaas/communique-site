@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const deliveries = await db.template_campaign.findMany({
 			where: {
 				template: {
-					user_id: userId
+					userId: userId
 				}
 			},
 			include: {
@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					select: {
 						id: true,
 						title: true,
-						user_id: true
+						userId: true
 					}
 				}
 			},

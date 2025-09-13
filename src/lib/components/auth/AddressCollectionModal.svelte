@@ -94,7 +94,7 @@
 			const result = await api.post('/api/address/verify', {
 				street: streetAddress,
 				city,
-				state,
+				state: stateCode,
 				zipCode
 			});
 			

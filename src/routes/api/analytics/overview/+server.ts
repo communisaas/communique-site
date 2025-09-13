@@ -84,11 +84,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		
 		// Template interaction analytics
 		const templateViews = userTemplates.reduce((sum, template) => 
-			sum + template.analytics_events.filter(e => e.event_name === 'template_viewed').length, 0
+			sum + template.analytics_events.filter((e: any) => e.event_name === 'template_viewed').length, 0
 		);
 		
 		const templateShares = userTemplates.reduce((sum, template) => 
-			sum + template.analytics_events.filter(e => e.event_name === 'template_shared').length, 0
+			sum + template.analytics_events.filter((e: any) => e.event_name === 'template_shared').length, 0
 		);
 		
 		// Calculate viral coefficients for each template (sample calculation)
