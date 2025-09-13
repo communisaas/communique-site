@@ -27,11 +27,11 @@ vi.mock('$lib/services/certification', () => ({
 
 // Partially mock analytics to preserve the actual implementation
 vi.mock('$lib/core/analytics/funnel', async (importOriginal) => {
-  const actual = await importOriginal();
+  const actual = await importOriginal() as any;
   return {
     ...actual,
     funnelAnalytics: {
-      ...actual.funnelAnalytics,
+      ...(actual.funnelAnalytics || {}),
       trackCertificationAttempted: vi.fn(),
       trackCertificationSuccess: vi.fn(),
       trackRewardEarned: vi.fn(),

@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { AnalyticsEvent, SessionData } from '$lib/core/analytics/database';
+import { asRequestEvent } from '../types/test-helpers';
 
 // Setup all mocks using vi.hoisted to fix initialization order
 const mocks = vi.hoisted(() => ({
@@ -109,10 +110,7 @@ describe('Analytics API Integration', () => {
 				events
 			});
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -250,10 +248,7 @@ describe('Analytics API Integration', () => {
 				invalid: 'data'
 			});
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -272,10 +267,7 @@ describe('Analytics API Integration', () => {
 				events: []
 			});
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -301,10 +293,7 @@ describe('Analytics API Integration', () => {
 				]
 			});
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -396,10 +385,7 @@ describe('Analytics API Integration', () => {
 				events: largeEventBatch
 			});
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -440,10 +426,7 @@ describe('Analytics API Integration', () => {
 			// Mock database error
 			mocks.db.analytics_event.createMany.mockRejectedValue(new Error('Network error'));
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			const result = await response.json();
 
@@ -470,10 +453,7 @@ describe('Analytics API Integration', () => {
 				})
 			};
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			const result = await response.json();
 
@@ -518,10 +498,7 @@ describe('Analytics API Integration', () => {
 				})
 			};
 
-			const response = await POST({ 
-				request: mockRequest, 
-				getClientAddress: mockGetClientAddress 
-			});
+			const response = await POST(asRequestEvent(mockRequest, {}));
 			
 			// Should handle large payloads (size limiting happens server-side)
 			expect(response).toBeDefined();

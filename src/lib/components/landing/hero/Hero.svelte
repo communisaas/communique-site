@@ -3,7 +3,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import HowItWorks from './HowItWorks.svelte';
 	
-	let heroFlightState = $state('ready');
+	let heroFlightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined>('ready');
 </script>
 
 <div class="space-y-8">

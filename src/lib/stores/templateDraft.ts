@@ -58,7 +58,7 @@ function createTemplateDraftStore() {
 	set(initialDrafts);
 
 	// Auto-save timer registry
-	const autoSaveTimers = new Map<string, number>();
+	const autoSaveTimers = new Map<string, ReturnType<typeof setInterval>>();
 
 
 	function toPlainTemplateFormData(data: TemplateFormData): TemplateFormData {

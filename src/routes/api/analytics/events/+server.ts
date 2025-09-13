@@ -8,11 +8,28 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
-import type { AnalyticsEvent, SessionData } from '$lib/core/analytics/database';
+import type { SessionData } from '$lib/core/analytics/database';
+
+// Incoming event structure from client (flexible)
+interface ClientAnalyticsEvent {
+	session_id: string;
+	event_name?: string;
+	name?: string;
+	event_type?: string;
+	user_id?: string;
+	template_id?: string;
+	funnel_id?: string;
+	campaign_id?: string;
+	variation_id?: string;
+	timestamp?: Date | string;
+	page_url?: string;
+	event_properties?: Record<string, any>;
+	properties?: Record<string, any>;
+}
 
 interface EventBatch {
 	session_data: SessionData;
-	events: AnalyticsEvent[];
+	events: ClientAnalyticsEvent[];
 }
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
@@ -56,7 +73,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				utm_campaign: session_data.utm_campaign || null,
 				landing_page: session_data.landing_page || null,
 				events_count: events.length,
-				page_views: events.filter(e => e.event_name === 'page_view').length
+				page_views: events.filter(e => (e.event_name || e.name) === 'page_view').length
 			},
 			update: {
 				user_id: validatedUserId || undefined,
@@ -64,7 +81,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 					increment: events.length
 				},
 				page_views: {
-					increment: events.filter(e => e.event_name === 'page_view').length
+					increment: events.filter(e => (e.event_name || e.name) === 'page_view').length
 				},
 				updated_at: new Date()
 			}

@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { asRequestEvent, createMockUser } from '../types/test-helpers';
 
 // Use vi.hoisted for all mocks to fix initialization order
 const mocks = vi.hoisted(() => ({
@@ -75,9 +76,7 @@ describe('User API Integration', () => {
 
 				mocks.db.user.findUnique.mockResolvedValueOnce(mockUser);
 
-				const response = await ProfileGET({ 
-					locals: { user: { id: 'user-123' } as any } as any
-				});
+				const response = await ProfileGET(asRequestEvent({}, { user: createMockUser() }));
 				const data = await response.json();
 
 				expect(mocks.db.user.findUnique).toHaveBeenCalledWith({
@@ -402,10 +401,10 @@ describe('User API Integration', () => {
 
 			mocks.db.user.update.mockResolvedValueOnce({ id: 'user-xss' });
 
-			await ProfilePOST({ 
-				request: mockRequest, 
-				locals: { user: { id: 'user-xss' } }
-			});
+			await ProfilePOST(asRequestEvent(
+				mockRequest,
+				{ user: createMockUser({ id: 'user-xss' }) }
+			));
 
 			// The actual sanitization would happen in the API handler
 			// Here we just verify the handler was called

@@ -25,7 +25,7 @@
 		componentId: string;
 	} = $props();
 	
-	let flightState = $state('ready');
+	let flightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined>('ready');
 	
 	function handleSendClick() {
 		// Apply Personal Connection into the template body in JS-land

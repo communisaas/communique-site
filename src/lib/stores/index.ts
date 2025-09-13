@@ -10,6 +10,6 @@ export * from './tooltip';
 // Convenience exports
 export { guestState } from './guestState.svelte';
 export { modalActions, modalState, isModalOpen } from './modalSystem.svelte';
-export { templates } from './templates.svelte';
+export { templateStore as templates } from './templates.svelte';
 export { toast } from './toast.svelte';
 export { templateDraft } from './templateDraft';

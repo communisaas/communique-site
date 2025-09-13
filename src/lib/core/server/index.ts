@@ -26,7 +26,7 @@ export * from './selfxyz-config';
 
 // Convenience exports
 export { analyzeCivicInformationCascades, storeCascadeAnalysis } from './percolation-engine';
-export { apiSecurityMiddleware, validateApiKey } from './api-security';
-export { processDistrictMetrics } from './district-metrics';
-export { analyzeSentiment, classifyPoliticalSentiment } from './sentiment-basic';
+export { createSecurityMiddleware as apiSecurityMiddleware, validateApiKey } from './api-security';
+export { getDistrictMetrics as processDistrictMetrics } from './district-metrics';
+export { analyzeSentimentBasic as analyzeSentiment, classifyBasicSentiment as classifyPoliticalSentiment } from './sentiment-basic';
 export { storeSingleUserSentiment } from './sentiment-storage';

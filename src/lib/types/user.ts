@@ -65,6 +65,10 @@ export interface EmailServiceUser {
 	city?: string | null;
 	state?: string | null;
 	zip?: string | null;
+	congressional_district?: string | null;
+	
+	/** Legacy address field for backward compatibility */
+	address?: string | null;
 	
 	/** Congressional representatives for template variable resolution */
 	representatives?: Array<{
