@@ -421,6 +421,8 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 							showTemplateSuccess = true;
 						} catch (error) {
 							// Template save failed - user can retry
+							console.error('Failed to save template:', error);
+							// You could add a toast notification here
 						}
 					} else {
 						// Guest user - show progressive auth modal

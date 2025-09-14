@@ -122,15 +122,29 @@
 	function handleSave() {
 		if (!validateCurrentStep()) return;
 
+		// Additional validation for required fields
+		if (!formData.objective.title?.trim()) {
+			formErrors = ['Template title is required'];
+			return;
+		}
+		if (!formData.content.preview?.trim()) {
+			formErrors = ['Message content is required'];
+			return;
+		}
+		if (!formData.audience.recipientEmails || formData.audience.recipientEmails.length === 0) {
+			formErrors = ['At least one recipient email is required'];
+			return;
+		}
+
 		const template = {
 			title: formData.objective.title,
 			description: formData.content.preview.substring(0, 160),
 			category: formData.objective.category || 'General',
-			type: context.channelId,
-			deliveryMethod: (context.channelId === 'certified' ? 'both' : 'email') as 'both' | 'email',
-			subject: `Regarding: ${formData.objective.title}`,
+			type: context.channelId === 'certified' ? 'certified' : 'direct',
+			delivery_method: context.channelId === 'certified' ? 'both' : 'email',
+			subject: formData.objective.title || `Regarding: ${formData.objective.title}`,
 			message_body: formData.content.preview,
-			preview: formData.content.preview.substring(0, 100),
+			preview: formData.content.preview.substring(0, 500),
 			slug: formData.objective.slug,
 			delivery_config: {},
 			cwc_config: {},
