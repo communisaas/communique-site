@@ -366,9 +366,9 @@
 						<div
 							class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent md:h-4 md:w-4"
 						></div>
-						Saving...
+						Launching...
 					{:else}
-						Save Draft
+						Launch Campaign
 						<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
 					{/if}
 				</button>

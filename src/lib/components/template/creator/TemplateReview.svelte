@@ -27,8 +27,8 @@
 		<div class="flex items-start gap-3">
 			<CheckCircle2 class="mt-0.5 h-4 md:h-5 w-4 md:w-5 shrink-0 text-green-600" />
 			<div>
-				<h4 class="text-sm md:text-base font-medium text-green-900">Template Ready</h4>
-				<p class="mt-1 text-xs md:text-sm text-green-700">Review your template details below before saving.</p>
+				<h4 class="text-sm md:text-base font-medium text-green-900">Ready to Launch</h4>
+				<p class="mt-1 text-xs md:text-sm text-green-700">Your campaign is ready to go live and start making an impact.</p>
 			</div>
 		</div>
 	</div>
