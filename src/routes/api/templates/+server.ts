@@ -10,7 +10,7 @@ interface CreateTemplateRequest {
 	message_body: string;
 	category?: string;
 	type: string;
-	delivery_method: string;
+	deliveryMethod: string;
 	preview: string;
 	description?: string;
 	status?: string;
@@ -62,13 +62,13 @@ function validateTemplateData(data: unknown): { isValid: boolean; errors: any[];
 		return { isValid: false, errors };
 	}
 	
-	// Return valid data with defaults
+	// Return valid data with defaults (map delivery_method to deliveryMethod for Prisma)
 	const validData: CreateTemplateRequest = {
 		title: templateData.title as string,
 		message_body: templateData.message_body as string,
 		preview: templateData.preview as string,
 		type: templateData.type as string,
-		delivery_method: templateData.delivery_method as string,
+		deliveryMethod: templateData.delivery_method as string,
 		subject: templateData.subject as string || `Regarding: ${templateData.title}`,
 		category: templateData.category as string || 'General',
 		description: templateData.description as string || templateData.preview.substring(0, 160),
