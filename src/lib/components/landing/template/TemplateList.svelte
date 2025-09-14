@@ -82,7 +82,7 @@
 		{/each}
 	{:else}
 		{#each templates as template, index (template.id)}
-			{@const isCongressional = template.deliveryMethod === 'both'}
+			{@const isCongressional = template.deliveryMethod === 'certified'}
 			{@const isHovered = hoveredTemplate === template.id}
 			<button
 				type="button"

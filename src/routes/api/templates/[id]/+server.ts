@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		// Update district metrics for congressional templates
-		if (template.deliveryMethod === 'both') {
+		if (template.deliveryMethod === 'certified') {
 			await updateTemplateDistrictMetrics(templateId);
 			
 			// Refetch template to get updated metrics

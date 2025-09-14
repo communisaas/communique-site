@@ -13,7 +13,7 @@ export interface BlockchainUser {
 	derivedAddress?: string;      // Generated deterministic address
 	connectedAddress?: string;    // Real wallet if connected
 	activeAddress: string;        // Which address to use
-	addressType: 'derived' | 'connected' | 'both';
+	addressType: 'derived' | 'connected' | 'certified';
 	
 	// VOTER Protocol state
 	voterBalance: bigint;         // VOTER token balance (virtual or real)
@@ -259,7 +259,7 @@ export function getReputationTier(score: number): ReputationTier {
  * Helper to check if address is derived or connected
  */
 export function isConnectedWallet(addressType: string): boolean {
-	return addressType === 'connected' || addressType === 'both';
+	return addressType === 'connected' || addressType === 'certified';
 }
 
 /**

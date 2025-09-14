@@ -82,7 +82,7 @@ describe('VOTER Protocol Certification Integration', () => {
         id: 'template123',
         slug: 'climate-action',
         title: 'Climate Action Now',
-        deliveryMethod: 'both'
+        deliveryMethod: 'certified'
       };
 
       // Launch email with certification

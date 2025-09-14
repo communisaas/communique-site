@@ -38,7 +38,7 @@
 
 	<div class="space-y-4">
 		{#each templates.slice(0, itemsToShow) as template (template.id)}
-			{@const badgeType = template.deliveryMethod === 'both' ? 'certified' : 'direct'}
+			{@const badgeType = template.deliveryMethod === 'certified' ? 'certified' : 'direct'}
 			{@const activity = activityTypes[badgeType]}
 			<div
 				class="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs sm:text-sm"

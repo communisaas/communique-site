@@ -5,7 +5,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("SUPABASE_DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -50,6 +50,7 @@ model User {
   coordinates               user_coordinates?
   representatives           user_representatives[]
   writing_style             user_writing_style?
+  template_verifications    TemplateVerification[]
   
 
   @@map("user")
@@ -72,7 +73,7 @@ model Template {
   description               String
   category                  String
   type                      String
-  deliveryMethod            String                     @map("delivery_method")
+  deliveryMethod            String                     @map("delivery_method") // 'direct' | 'certified'
   subject                   String?
   preview                   String
   message_body              String
@@ -100,6 +101,7 @@ model Template {
   target_morphisms          template_morphism[]        @relation("TargetMorphisms")
   template_personalizations template_personalization[]
   activations               user_activation[]
+  verification              TemplateVerification?
 
   @@map("template")
 }
@@ -481,6 +483,7 @@ model legislative_channel {
   updated_at            DateTime              @updatedAt @map("updated_at")
   legislative_bodies    legislative_body[]
   template_adaptations  template_adaptation[]
+  template_verifications TemplateVerification[]
 
   @@index([access_tier, is_active])
   @@index([country_code])
@@ -654,4 +657,48 @@ model CertificationLog {
   @@index([certification_hash])
   @@index([created_at])
   @@map("certification_log")
+}
+
+model TemplateVerification {
+  id                    String    @id @default(cuid())
+  template_id           String    @unique @map("template_id")
+  user_id               String    @map("user_id")
+  country_code          String    @default("US") @map("country_code")
+  
+  // Stage 1: Auto-correction
+  correction_log        Json?     @map("correction_log") // Grammar, clarity fixes applied
+  original_content      Json?     @map("original_content") // Before corrections
+  
+  // Stage 2: Moderation  
+  moderation_status     String    @default("pending") @map("moderation_status") // pending, reviewing, approved, rejected
+  severity_level        Int?      @map("severity_level") // 1-10 scale
+  
+  // Multi-agent consensus
+  agent_votes           Json?     @map("agent_votes") // {openai: 0.8, gemini: 0.7}
+  consensus_score       Float?    @map("consensus_score") // Weighted average
+  
+  // Quality metrics
+  quality_score         Int       @default(50) @map("quality_score") // 0-100
+  grammar_score         Int?      @map("grammar_score")
+  clarity_score         Int?      @map("clarity_score")
+  completeness_score    Int?      @map("completeness_score")
+  
+  // Reputation impact (quadratic)
+  reputation_delta      Float     @default(0) @map("reputation_delta")
+  reputation_applied    Boolean   @default(false) @map("reputation_applied")
+  
+  // Timestamps
+  submitted_at          DateTime  @default(now()) @map("submitted_at")
+  corrected_at          DateTime? @map("corrected_at")
+  reviewed_at           DateTime? @map("reviewed_at")
+  
+  // Relations
+  template              Template  @relation(fields: [template_id], references: [id])
+  user                  User      @relation(fields: [user_id], references: [id])
+  legislative_channel   legislative_channel? @relation(fields: [country_code], references: [country_code])
+  
+  @@index([template_id])
+  @@index([user_id])
+  @@index([moderation_status])
+  @@map("template_verification")
 }

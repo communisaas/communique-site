@@ -150,7 +150,7 @@ export function resolveTemplate(template: Template, user: EmailServiceUser | nul
 	}
 	
 	// Determine delivery method and routing
-	const isCongressional = template.deliveryMethod === 'both';
+	const isCongressional = template.deliveryMethod === 'certified';
 	// Parse recipient_config safely
 	let recipientConfig: unknown = template.recipient_config;
 	if (typeof template.recipient_config === 'string') {

@@ -112,7 +112,7 @@ export function generateActionSlug(title: string, deliveryMethod: string): strin
 	// Choose action prefix based on delivery method and content
 	let actionPrefix: string;
 	
-	if (deliveryMethod === 'both') {
+	if (deliveryMethod === 'certified') {
 		// Congressional delivery
 		actionPrefix = 'tell-congress';
 	} else {
@@ -241,7 +241,7 @@ export async function suggestAvailableAlternatives(originalSlug: string, title: 
 export function generateUrgentVariations(baseSlug: string, deliveryMethod: string): string[] {
 	const variations: string[] = [];
 	
-	if (deliveryMethod === 'both') {
+	if (deliveryMethod === 'certified') {
 		// Congressional variations
 		variations.push(
 			`tell-congress-${baseSlug}`,

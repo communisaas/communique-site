@@ -1,15 +1,15 @@
 <script lang="ts">
-	import { Shield, AtSign, Wrench } from '@lucide/svelte';
+	import { Shield, AtSign } from '@lucide/svelte';
 	import Tooltip from './Tooltip.svelte';
 
 	let { type }: { type: 'certified' | 'direct' } = $props();
 
 	const badges = {
 		certified: {
-			tooltip: 'Congressional delivery under construction - available soon!',
-			class: 'bg-amber-100 text-amber-700',
-			icon: Wrench,
-			text: 'Under Construction'
+			tooltip: 'Verified delivery to Congressional offices',
+			class: 'bg-blue-100 text-blue-700',
+			icon: Shield,
+			text: 'Congressional Delivery'
 		},
 		direct: {
 			tooltip: 'Direct email outreach to decision makers',

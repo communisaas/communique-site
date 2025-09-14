@@ -157,7 +157,7 @@
 	}
 
 	// Detect template type for customized messaging
-	const isCongressional = $derived(template.deliveryMethod === 'both');
+	const isCongressional = $derived(template.deliveryMethod === 'certified');
 	const isDirectOutreach = $derived(template.deliveryMethod === 'email');
 
 	const message = $derived(sourceMessages[source]);

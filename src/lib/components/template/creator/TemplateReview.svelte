@@ -85,7 +85,7 @@
 				<h3 class="text-sm md:text-base font-medium text-slate-900">Target Audience</h3>
 			</div>
 			<div class="flex items-center gap-3">
-				<Badge type={context.channelId} />
+				<Badge variant={context.channelId === 'certified' ? 'congressional' : 'direct'} />
 				<span class="text-xs md:text-sm text-slate-700">{recipientDisplay}</span>
 			</div>
 			{#if data.audience.recipientEmails.length > 0}

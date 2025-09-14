@@ -207,6 +207,27 @@ export async function POST({ request, locals }) {
 						}
 					});
 
+					// Create verification record for congressional templates (deliveryMethod === 'certified')
+					if (validData.deliveryMethod === 'certified') {
+						try {
+							const verification = await db.templateVerification.create({
+								data: {
+									template_id: newTemplate.id,
+									user_id: user.id,
+									country_code: 'US', // TODO: Extract from user profile
+									moderation_status: 'pending'
+								}
+							});
+							
+							// Trigger moderation pipeline via webhook
+							await triggerModerationPipeline(verification.id);
+							console.log(`Created verification for congressional template ${newTemplate.id}`);
+						} catch (verificationError) {
+							console.error('Failed to create template verification:', verificationError);
+							// Don't fail the template creation, just log the error
+						}
+					}
+
 					const response: ApiResponse = {
 						success: true,
 						data: { template: newTemplate }
@@ -253,5 +274,39 @@ export async function POST({ request, locals }) {
 		};
 
 		return json(response, { status: 500 });
+	}
+}
+
+/**
+ * Trigger moderation pipeline for a verification record
+ */
+async function triggerModerationPipeline(verificationId: string) {
+	try {
+		// Call our own moderation webhook with the verification ID
+		const response = await fetch(`${process.env.ORIGIN || 'http://localhost:5173'}/api/webhooks/template-moderation`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET || 'demo-secret'
+			},
+			body: JSON.stringify({
+				verificationId,
+				source: 'template-creation',
+				timestamp: new Date().toISOString()
+			})
+		});
+
+		if (!response.ok) {
+			throw new Error(`Webhook failed with status ${response.status}`);
+		}
+
+		const result = await response.json();
+		console.log(`Moderation pipeline triggered for verification ${verificationId}:`, result);
+		
+		return result;
+	} catch (error) {
+		console.error(`Failed to trigger moderation pipeline for ${verificationId}:`, error);
+		// Don't throw - we don't want to fail template creation if moderation fails to trigger
+		return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
 	}
 } 

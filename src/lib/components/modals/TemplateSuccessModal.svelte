@@ -122,7 +122,7 @@
 						{template.category || 'General'}
 					</span>
 					<span class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-						{template.deliveryMethod === 'both' ? 'Congressional' : 'Direct'}
+						{template.deliveryMethod === 'certified' ? 'Congressional' : 'Direct'}
 					</span>
 				</div>
 			</div>

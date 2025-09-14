@@ -116,7 +116,7 @@ export interface TypedTemplate {
 	description: string;
 	category: string;
 	type: string;
-	deliveryMethod: 'email' | 'both';
+	deliveryMethod: 'email' | 'certified';
 	subject?: string;
 	message_body: string;
 	preview: string;

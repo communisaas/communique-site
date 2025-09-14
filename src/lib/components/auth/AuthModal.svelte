@@ -17,7 +17,7 @@
 
 	const authConfig = $derived(() => {
 		if (!template) return null;
-		const isCongressional = template.deliveryMethod === 'both';
+		const isCongressional = template.deliveryMethod === 'certified';
 		return isCongressional
 			? {
 					icon: Shield,

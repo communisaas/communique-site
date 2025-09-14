@@ -94,7 +94,7 @@
 		if (!template || !headerConfig.showCTA) return null;
 		
 		const emailFlow = analyzeEmailFlow(template, user);
-		const isCongressional = template.deliveryMethod === 'both';
+		const isCongressional = template.deliveryMethod === 'certified';
 		
 		if (isCongressional) {
 			return {

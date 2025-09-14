@@ -62,7 +62,7 @@
 
 	// Determine badge type based on delivery method
 	const badgeType = $derived(
-		template.deliveryMethod === 'both' ? 'certified' : ('direct' as 'certified' | 'direct')
+		template.deliveryMethod === 'certified' ? 'certified' : ('direct' as 'certified' | 'direct')
 	);
 	
 	// For templates with recipients, always show recipient count regardless of delivery method

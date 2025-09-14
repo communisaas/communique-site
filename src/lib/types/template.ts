@@ -7,7 +7,7 @@ export interface Template {
     description: string;
     category: string;
     type: string;
-    deliveryMethod: 'email' | 'both' | 'direct';
+    deliveryMethod: 'email' | 'certified' | 'direct';
     subject?: string;
     message_body: string;
     metrics: {

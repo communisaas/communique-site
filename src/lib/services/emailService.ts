@@ -141,7 +141,7 @@ export function analyzeEmailFlow(template: Template, user: EmailServiceUser | nu
 		}
 
 		// Enforce address gating for congressional delivery
-		const isCongressional = template.deliveryMethod === 'both';
+		const isCongressional = template.deliveryMethod === 'certified';
 		const hasCompleteAddress = Boolean(
 			user.street && user.city && user.state && user.zip
 		);
@@ -340,7 +340,7 @@ export function validateEmailFlow(
 	}
 	
 	// User validation for congressional templates
-	if (template.deliveryMethod === 'both' && user) {
+	if (template.deliveryMethod === 'certified' && user) {
 		if (!user.street) errors.push({ code: 'MISSING_STREET', message: 'Street address required for congressional delivery', field: 'user.street' });
 		if (!user.city) errors.push({ code: 'MISSING_CITY', message: 'City required for congressional delivery', field: 'user.city' });
 		if (!user.state) errors.push({ code: 'MISSING_STATE', message: 'State required for congressional delivery', field: 'user.state' });
@@ -373,7 +373,7 @@ export function getEmailFlowAnalytics(
 	if (!user) {
 		flowStage = 'authentication_required';
 		blockers.push('user_not_authenticated');
-	} else if (template.deliveryMethod === 'both' && !Boolean(user.street && user.city && user.state && user.zip)) {
+	} else if (template.deliveryMethod === 'certified' && !Boolean(user.street && user.city && user.state && user.zip)) {
 		flowStage = 'address_collection_required';
 		blockers.push('incomplete_address');
 	} else {

@@ -126,7 +126,7 @@ export async function updateAllCongressionalTemplateMetrics(): Promise<void> {
         // Get all congressional templates
         const templates = await db.template.findMany({
             where: {
-                deliveryMethod: 'both' // Congressional templates use 'both'
+                deliveryMethod: 'certified' // Congressional templates use 'certified'
             },
             select: { id: true }
         });

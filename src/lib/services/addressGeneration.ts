@@ -125,7 +125,7 @@ export function isValidAddress(address: string): boolean {
 export function getUserAddressInfo(user: {
 	derived_address?: string;
 	connected_address?: string;
-	address_type?: 'derived' | 'connected' | 'both';
+	address_type?: 'derived' | 'connected' | 'certified';
 }): {
 	type: 'derived' | 'connected' | 'none';
 	address: string | null;
