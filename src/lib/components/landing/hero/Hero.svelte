@@ -4,6 +4,17 @@
 	import HowItWorks from './HowItWorks.svelte';
 	
 	let heroFlightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined>('ready');
+	
+	// Check if element is in viewport
+	function isInViewport(element: Element): boolean {
+		const rect = element.getBoundingClientRect();
+		const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+		const verticalCenter = windowHeight / 2;
+		
+		// Check if element's center is near viewport center (within 100px tolerance)
+		const elementCenter = rect.top + rect.height / 2;
+		return Math.abs(elementCenter - verticalCenter) < 100;
+	}
 </script>
 
 <div class="space-y-8">
@@ -29,10 +40,17 @@
 			onclick={() => {
 				const channelSection = document.querySelector('.w-full.max-w-4xl');
 				if (channelSection) {
-					channelSection.scrollIntoView({
-						behavior: 'smooth',
-						block: 'center'
-					});
+					// Check if already at the channel section
+					if (isInViewport(channelSection)) {
+						// Already there - trigger attention animation on channels
+						window.dispatchEvent(new CustomEvent('drawAttentionToChannels'));
+					} else {
+						// Scroll to channel section
+						channelSection.scrollIntoView({
+							behavior: 'smooth',
+							block: 'center'
+						});
+					}
 				}
 			}}
 			text="Start Writing"

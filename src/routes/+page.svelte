@@ -329,11 +329,11 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 							const templateUrl = `/s/${selectedTemplate.slug}`;
 							preloadData(templateUrl);
 							
-							// Let button animation play until plane is off-screen (1200ms)
-							// This avoids showing the reset animation
+							// Let button animation play briefly - just the takeoff (500ms)
+							// This shows the plane launching without the full flight path
 							setTimeout(() => {
 								goto(templateUrl);
-							}, 1200);
+							}, 500);
 						}
 					}}
 				/>

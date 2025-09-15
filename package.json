@@ -82,9 +82,13 @@
 		"@selfxyz/qrcode": "^1.0.11",
 		"@types/qrcode": "^1.5.5",
 		"arctic": "^3.7.0",
+		"axios": "^1.7.2",
+		"ethers": "^6.13.4",
+		"mailparser": "^3.7.1",
 		"ncu": "^0.2.1",
 		"postgres": "^3.4.7",
 		"qrcode": "^1.5.4",
+		"smtp-server": "^3.14.0",
 		"uuid": "^11.1.0"
 	}
 }

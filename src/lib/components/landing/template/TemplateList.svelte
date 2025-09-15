@@ -17,7 +17,7 @@
 
 	const { templates, selectedId, onSelect, loading = false }: Props = $props();
 	
-	let hoveredTemplate: string | null = null;
+	let hoveredTemplate = $state<string | null>(null);
 	
 	function handleTemplateHover(templateId: string, isHovering: boolean) {
 		hoveredTemplate = isHovering ? templateId : null;

@@ -3,7 +3,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { browser } from '$app/environment';
 	import { coordinated } from '$lib/utils/timerCoordinator';
-	import { spring } from 'svelte/motion';
+	import { spring, type Spring } from 'svelte/motion';
 	
 	let {
 		template,
@@ -20,7 +20,7 @@
 		personalConnectionValue: string;
 		onSendMessage: (() => void) | null;
 		localShowEmailModal: boolean;
-		actionProgress: typeof spring;
+		actionProgress: Spring<number>;
 		onEmailModalClose: () => void;
 		componentId: string;
 	} = $props();
@@ -68,7 +68,7 @@
 				enableFlight={!!user}
 				bind:flightState
 				onclick={handleSendClick}
-				text={user ? 'Contact Your Representatives' : 'Sign in to Contact Congress'}
+				text={user ? 'Send to Congress' : 'Sign in to Contact Congress'}
 			/>
 		{:else}
 			<Button
@@ -79,7 +79,7 @@
 				enableFlight={!!user}
 				bind:flightState
 				onclick={handleSendClick}
-				text={user ? 'Send This Message' : 'Sign in to Send'}
+				text={user ? 'Join & Send' : 'Sign in to Send'}
 			/>
 		{/if}
 	</div>

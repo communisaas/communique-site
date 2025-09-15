@@ -29,6 +29,7 @@
 	import { modalActions, modalState, isModalOpen } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
+	import SubmissionStatus from '$lib/components/submission/SubmissionStatus.svelte';
 
 	let {
 		template,
@@ -65,6 +66,7 @@
 	let showShareMenu = $state(false);
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 	let celebrationScale = spring(1, { stiffness: 0.3, damping: 0.6 });
+	let submissionId = $state<string | null>(null);
 
 	// Enhanced URL copy component state
 	let copyButtonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
@@ -248,26 +250,58 @@
 		);
 	}
 
-	function handleSendConfirmation(sent: boolean) {
+	async function handleSendConfirmation(sent: boolean) {
 		if (sent) {
-			// User confirmed they sent the message
-			modalActions.confirmSend();
-
+			// Check delivery method to determine flow
+			const isCertifiedDelivery = template.deliveryMethod === 'certified' || template.deliveryMethod === 'both';
 			
+			if (isCertifiedDelivery) {
+				// Congressional delivery - use full agent processing pipeline
+				modalActions.setState('tracking');
 
-			// Celebration animation
+				// Generate submission ID and trigger agent processing
+				try {
+					const response = await fetch('/api/n8n/process-template', {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							templateId: template.id,
+							userId: user?.id,
+							actionType: 'cwc_message',
+							stage: 'submitted'
+						})
+					});
+
+					const result = await response.json();
+					if (result.success && result.data?.submissionId) {
+						submissionId = result.data.submissionId;
+					} else {
+						// Fallback - generate client-side ID
+						submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+					}
+				} catch (error) {
+					console.error('Failed to start agent processing:', error);
+					// Fallback - generate client-side ID
+					submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+				}
+			} else {
+				// Direct outreach - skip agent processing, go straight to celebration
+				modalActions.confirmSend();
+
+				// Navigate to template page after brief celebration
+				coordinated.setTimeout(
+					async () => {
+						await goto(`/s/${template.slug}`, { replaceState: true });
+					},
+					1500,
+					'direct-navigation',
+					componentId
+				);
+			}
+
+			// Celebration animation for both paths
 			celebrationScale.set(1.05).then(() => celebrationScale.set(1));
 			
-			// NOW navigate to the template page after user confirms send
-			// This ensures the mailto action completed before navigation
-			coordinated.setTimeout(
-				async () => {
-					await goto(`/s/${template.slug}`, { replaceState: true });
-				},
-				500,
-				'navigation-after-confirm',
-				componentId
-			);
 		} else {
 			// User didn't send, retry the flow
 			modalActions.setState('loading');
@@ -572,6 +606,67 @@
 							</button>
 						</div>
 					</div>
+				</div>
+			</div>
+		{:else if currentState === 'tracking'}
+			<!-- Agent Processing Tracking State -->
+			<div class="flex h-full flex-col">
+				<!-- Header -->
+				<div class="border-b border-slate-100 p-6">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-3">
+							<div
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100"
+								style="transform: scale({$celebrationScale})"
+							>
+								<Send class="h-5 w-5 text-blue-600" />
+							</div>
+							<div>
+								<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
+								<p class="text-sm text-slate-600">Tracking delivery and impact</p>
+							</div>
+						</div>
+						<button
+							onclick={() => {
+								// Navigate to template page when closing tracking
+								goto(`/s/${template.slug}`, { replaceState: true });
+								handleClose();
+							}}
+							class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+						>
+							<X class="h-5 w-5" />
+						</button>
+					</div>
+				</div>
+
+				<!-- Submission Status -->
+				<div class="flex-1 p-6">
+					{#if submissionId}
+						<SubmissionStatus 
+							{submissionId}
+							initialStatus="sending"
+							onOverride={() => {
+								// Allow user to bypass agent processing
+								modalActions.setState('celebration');
+								
+								// Still navigate after a delay
+								coordinated.setTimeout(
+									async () => {
+										await goto(`/s/${template.slug}`, { replaceState: true });
+									},
+									2000,
+									'override-navigation',
+									componentId
+								);
+							}}
+						/>
+					{:else}
+						<!-- Fallback if no submission ID -->
+						<div class="rounded-lg border border-slate-200 bg-white p-4 text-center">
+							<Send class="mx-auto h-8 w-8 text-blue-600 mb-3" />
+							<p class="text-slate-600">Message processing started</p>
+						</div>
+					{/if}
 				</div>
 			</div>
 		{/if}

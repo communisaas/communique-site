@@ -1,13 +1,17 @@
 /**
- * VOTER Protocol API Client
+ * VOTER Protocol Integration (Deprecated - Use blockchain client)
  * 
- * Handles communication with VOTER Protocol backend
- * for certification, rewards, and reputation
+ * This file now redirects to the direct blockchain client
+ * Keeping for backward compatibility during transition
  */
 
-import { browser } from '$app/environment';
-import { env } from '$env/dynamic/private';
-import type { ApiResponse } from './client';
+// Re-export from the new blockchain client
+export { 
+	certifyEmailDelivery, 
+	voterBlockchainClient,
+	type VOTERAction,
+	type VOTERActionResult 
+} from '../blockchain/voter-client.js';
 
 export interface VOTERAction {
 	actionType: string;

@@ -7,7 +7,7 @@
 	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
 	import AudienceSelector from './creator/AudienceSelector.svelte';
 	import MessageEditor from './creator/MessageEditor.svelte';
-	import TemplateReview from './creator/TemplateReview.svelte';
+	import SmartReview from './creator/SmartReview.svelte';
 
 	const dispatch = createEventDispatcher<{
 		close: void;
@@ -179,19 +179,19 @@
 			description: 'What issue do you want decision-makers to address?'
 		},
 		audience: {
-			title: 'Identify Your Audience',
+			title: 'Who Controls This?',
 			icon: Users,
-			description: 'Who are the key decision makers you want to reach?'
+			description: 'Congress, CEO, school board—who makes the call?'
 		},
 		content: {
-			title: 'Compose Your Message',
+			title: 'Load Your Message',
 			icon: Mail,
-			description: 'Craft your message with personalized variables'
+			description: 'What gets their attention and moves the needle?'
 		},
 		review: {
-			title: 'Review & Finalize',
+			title: 'Make It Count',
 			icon: Building2,
-			description: 'Review your template before creation'
+			description: 'Quick check before your message hits the target'
 		}
 	};
 
@@ -339,7 +339,7 @@
 			{:else if currentStep === 'content'}
 				<MessageEditor data={formData.content} {context} />
 			{:else}
-				<TemplateReview data={formData} {context} />
+				<SmartReview data={formData} {context} />
 			{/if}
 		</div>
 	</div>
@@ -379,11 +379,11 @@
 					disabled={!isCurrentStepValid || isSubmitting}
 				>
 					{#if currentStep === 'objective'}
-						Choose Recipients
+						Pick Decision-Makers
 					{:else if currentStep === 'audience'}
-						Write Your Message
+						Load Your Message
 					{:else if currentStep === 'content'}
-						Review Template
+						Make It Count
 					{:else}
 						Continue
 					{/if}

@@ -427,7 +427,7 @@
 	}
 </style>
 
-<div class="relative inline-block" style="transform: scale({$buttonScale}); transform-origin: center;">
+<div class="relative inline-block">
 	<!-- Glow effect for magical variant -->
 	{#if variant === 'magical'}
 		<div 
@@ -473,7 +473,8 @@
 			class:opacity-50={disabled}
 			class:cursor-not-allowed={disabled}
 			style="
-				transform: scale({1 / $buttonScale});
+				transform: scale({$buttonScale});
+				transform-origin: center;
 				box-shadow: 
 					0 4px 6px -1px rgba(0, 0, 0, 0.1), 
 					0 2px 4px -1px rgba(0, 0, 0, 0.06),
@@ -533,7 +534,8 @@
 			class:cursor-not-allowed={disabled}
 			class:cursor-pointer={!disabled}
 			style="
-				transform: scale({1 / $buttonScale});
+				transform: scale({$buttonScale});
+				transform-origin: center;
 				box-shadow: 
 					0 4px 6px -1px rgba(0, 0, 0, 0.1), 
 					0 2px 4px -1px rgba(0, 0, 0, 0.06),

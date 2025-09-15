@@ -51,6 +51,7 @@ model User {
   representatives           user_representatives[]
   writing_style             user_writing_style?
   template_verifications    TemplateVerification[]
+  secondary_emails          UserEmail[]
   
 
   @@map("user")
@@ -64,6 +65,22 @@ model Session {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
+}
+
+model UserEmail {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  email      String    @unique
+  isPrimary  Boolean   @default(false) @map("is_primary")
+  isVerified Boolean   @default(false) @map("is_verified")
+  verifiedAt DateTime? @map("verified_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([email])
+  @@index([userId])
+  @@map("user_emails")
 }
 
 model Template {
@@ -701,4 +718,36 @@ model TemplateVerification {
   @@index([user_id])
   @@index([moderation_status])
   @@map("template_verification")
+}
+
+model DeliveryLog {
+  id              String   @id @default(cuid())
+  template_id     String   @map("template_id")
+  user_id         String   @map("user_id")
+  delivery_method String   @map("delivery_method") // 'certified' | 'direct'
+  success         Boolean
+  submission_id   String?  @map("submission_id")
+  error_message   String?  @map("error_message")
+  metadata        Json     @default("{}")
+  delivered_at    DateTime @default(now()) @map("delivered_at")
+  
+  @@index([template_id])
+  @@index([user_id])
+  @@index([delivery_method])
+  @@map("delivery_logs")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  user_id    String   @map("user_id")
+  action     String
+  metadata   Json     @default("{}")
+  ip_address String?  @map("ip_address")
+  user_agent String?  @map("user_agent")
+  created_at DateTime @default(now()) @map("created_at")
+  
+  @@index([user_id])
+  @@index([action])
+  @@index([created_at])
+  @@map("audit_logs")
 }

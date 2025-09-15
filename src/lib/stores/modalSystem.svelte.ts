@@ -41,7 +41,7 @@ interface ModalSystemState {
 }
 
 // Legacy modal state types from modalState.ts
-export type LegacyModalState = 'closed' | 'auth_required' | 'loading' | 'confirmation' | 'celebration';
+export type LegacyModalState = 'closed' | 'auth_required' | 'loading' | 'confirmation' | 'celebration' | 'tracking' | 'retry_needed';
 
 interface LegacyModalContext {
 	template: Template | null;

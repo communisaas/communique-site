@@ -28,7 +28,7 @@
 	
 	// ActionBar state
 	let personalConnectionValue = $state('');
-	let actionProgress = $state(spring(0));
+	let actionProgress = spring(0);
 	
 	// Template modal reference
 	let templateModal: UnifiedTemplateModal;
@@ -194,7 +194,9 @@
 
 			<!-- Template metadata -->
 			<div class="flex flex-wrap items-center gap-3">
-				<Badge type={template.deliveryMethod === 'certified' ? 'certified' : 'direct'} />
+				<Badge variant={template.deliveryMethod === 'certified' ? 'congressional' : 'direct'}>
+					{template.deliveryMethod === 'certified' ? 'Certified Delivery' : 'Direct Outreach'}
+				</Badge>
 				<span class="rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
 					{template.category}
 				</span>

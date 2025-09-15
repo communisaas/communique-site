@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import {
 		Shield,
 		AtSign,
@@ -16,18 +16,70 @@
 	import { spring } from 'svelte/motion';
 	import IdentityBadge from '$lib/components/verification/IdentityBadge.svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
+	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
 	const dispatch = createEventDispatcher<{
 		createTemplate: TemplateCreationContext;
 		channelSelect: string;
 	}>();
 
-	let selectedChannel: string | null = null;
-	let hoveredChannel: string | null = null;
+	let selectedChannel = $state<string | null>(null);
+	let hoveredChannel = $state<string | null>(null);
+	let attentionMode = $state(false);
+	
+	// Create spring stores for animation
+	const certifiedScale = spring(1, { stiffness: 0.3, damping: 0.4 });
+	const directScale = spring(1, { stiffness: 0.3, damping: 0.4 });
+	const certifiedGlow = spring(0, { stiffness: 0.4, damping: 0.6 });
+	const directGlow = spring(0, { stiffness: 0.4, damping: 0.6 });
 	
 	function handleChannelHover(channelId: string, isHovering: boolean) {
 		hoveredChannel = isHovering ? channelId : null;
 	}
+	
+	function triggerAttentionAnimation() {
+		attentionMode = true;
+		
+		// Staggered pulse animation for certified channel
+		certifiedScale.set(1.04);
+		certifiedGlow.set(1);
+		
+		coordinated.setTimeout(() => {
+			certifiedScale.set(1);
+			certifiedGlow.set(0.5);
+			
+			// Then animate direct channel
+			directScale.set(1.04);
+			directGlow.set(1);
+		}, 300, 'attention-stagger', 'channel-explainer');
+		
+		coordinated.setTimeout(() => {
+			directScale.set(1);
+			directGlow.set(0.5);
+		}, 600, 'attention-settle', 'channel-explainer');
+		
+		// Gentle ongoing pulse
+		coordinated.setTimeout(() => {
+			certifiedGlow.set(0);
+			directGlow.set(0);
+			attentionMode = false;
+		}, 1500, 'attention-end', 'channel-explainer');
+	}
+	
+	onMount(() => {
+		// Listen for attention trigger from Hero button
+		const handleDrawAttention = () => triggerAttentionAnimation();
+		window.addEventListener('drawAttentionToChannels', handleDrawAttention);
+		
+		return () => {
+			window.removeEventListener('drawAttentionToChannels', handleDrawAttention);
+		};
+	});
+	
+	onDestroy(() => {
+		// Clean up timers
+		useTimerCleanup('channel-explainer')();
+	});
 
 	const channels = [
 		{
@@ -100,6 +152,8 @@
 		{#each channels as channel}
 			{@const isSelected = selectedChannel === channel.id}
 			{@const isHovered = hoveredChannel === channel.id}
+			{@const scaleValue = channel.id === 'certified' ? $certifiedScale : $directScale}
+			{@const glowValue = channel.id === 'certified' ? $certifiedGlow : $directGlow}
 			<div
 				role="button"
 				tabindex="0"
@@ -108,9 +162,17 @@
 				class:border-direct-500={isSelected && channel.id === 'direct'}
 				class:bg-congressional-50={isSelected && channel.id === 'certified'}
 				class:bg-direct-50={isSelected && channel.id === 'direct'}
-				class:border-slate-200={!isSelected && !isHovered}
-				class:border-slate-300={!isSelected && isHovered}
+				class:border-slate-200={!isSelected && !isHovered && !attentionMode}
+				class:border-slate-300={!isSelected && (isHovered || attentionMode)}
 				class:cursor-default={isSelected}
+				style="
+					transform: scale({scaleValue});
+					box-shadow: 
+						0 4px 6px -1px rgba(0, 0, 0, 0.1),
+						0 2px 4px -1px rgba(0, 0, 0, 0.06),
+						0 0 {20 * glowValue}px rgba({channel.id === 'certified' ? '16, 185, 129' : '59, 130, 246'}, {0.2 * glowValue}),
+						0 0 {40 * glowValue}px rgba({channel.id === 'certified' ? '16, 185, 129' : '59, 130, 246'}, {0.1 * glowValue});
+				"
 				onmouseenter={() => handleChannelHover(channel.id, true)}
 				onmouseleave={() => handleChannelHover(channel.id, false)}
 				onclick={(event) => {
@@ -179,35 +241,33 @@
 						{#if isSelected}
 							<div transition:fade={{ duration: 200 }} class="space-y-3 pt-4">
 								{#if channel.id === 'certified'}
-									<div class="space-y-3">
-										<div
-											class="flex w-full flex-wrap items-center justify-between gap-4 rounded-lg px-4 py-3"
+									<div class="flex flex-col gap-3">
+										<button
+											class="flex w-full items-center justify-center gap-2 rounded-md bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 transform-gpu hover:scale-[1.02]"
+											onclick={(e) => { e.stopPropagation(); handleCreateTemplate(channel); }}
 										>
-											<span
-												class="inline-flex items-center gap-2 whitespace-nowrap text-sm text-slate-600"
-											>
-												<span class="relative flex h-2 w-2">
-													<span
-														class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"
-													></span>
-													<span class="relative inline-flex h-2 w-2 rounded-full bg-blue-500"
-													></span>
-												</span>
-												<span>In Development</span>
-											</span>
-											<a
-												href="https://github.com/communisaas/communique-site"
-												class="group/link flex items-center px-2 text-sm text-gray-600 hover:text-gray-900"
-											>
-												<span class="mr-1.5">Follow Progress</span>
-												<ArrowRight
-													class="h-4 w-4 transform transition-transform duration-200 group-hover/link:translate-x-1"
-												/>
-											</a>
-										</div>
-										<p class="text-center text-sm text-gray-500">
-											Congressional delivery integration in progress
-										</p>
+											Write to Congress
+											<ArrowRight class="h-4 w-4" />
+										</button>
+
+										<button
+											class="flex w-full items-center justify-center gap-2 rounded-md border border-emerald-200 hover:border-emerald-300 px-4 py-2 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 shadow-md hover:shadow-lg transition-all duration-200 transform-gpu hover:scale-[1.02]"
+											onclick={(e) => { e.stopPropagation(); 
+												document.getElementById('template-section')?.scrollIntoView({
+													behavior: 'smooth',
+													block: 'center'
+												});
+												dispatchEvent(
+													new CustomEvent('channelSelect', {
+														detail: channel.id,
+														bubbles: true
+													})
+												);
+											}}
+										>
+											Join a Campaign
+											<ArrowRight class="h-4 w-4" />
+										</button>
 									</div>
 								{:else}
 									<div class="flex flex-col gap-3">
@@ -215,7 +275,7 @@
 											class="flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 hover:bg-blue-700 px-4 py-2 text-white shadow-lg shadow-blue-600/20 transition-all duration-200 transform-gpu hover:scale-[1.02]"
 											onclick={(e) => { e.stopPropagation(); handleCreateTemplate(channel); }}
 										>
-											Create New Template
+											Start a Campaign
 											<ArrowRight class="h-4 w-4" />
 										</button>
 
@@ -234,7 +294,7 @@
 												);
 											}}
 										>
-											Browse Existing Templates
+											Join the Movement
 											<ArrowRight class="h-4 w-4" />
 										</button>
 									</div>

@@ -1,0 +1,179 @@
+/**
+ * Direct Blockchain Certification Handler
+ * 
+ * Handles certification of civic actions through direct smart contract calls
+ * Eliminates circular dependency on VOTER Protocol API
+ */
+
+const { ethers } = require('ethers');
+
+// Smart contract ABIs (simplified - only functions we need)
+const COMMUNIQUE_CORE_ABI = [
+	"function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string memory metadataUri, uint256 rewardOverride) external"
+];
+
+const VOTER_REGISTRY_ABI = [
+	"function ActionType() view returns (uint8)",
+	"function CWC_MESSAGE() view returns (uint8)",
+	"function LOCAL_ACTION() view returns (uint8)", 
+	"function DIRECT_ACTION() view returns (uint8)"
+];
+
+class BlockchainCertification {
+	constructor() {
+		// Initialize blockchain connection
+		this.provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');
+		this.wallet = new ethers.Wallet(process.env.CERTIFIER_PRIVATE_KEY || '0x0', this.provider);
+		
+		// Contract addresses (from environment)
+		this.communiqueCoreAddress = process.env.COMMUNIQUE_CORE_ADDRESS;
+		this.voterRegistryAddress = process.env.VOTER_REGISTRY_ADDRESS;
+		
+		// Initialize contracts
+		if (this.communiqueCoreAddress) {
+			this.communiqueCore = new ethers.Contract(
+				this.communiqueCoreAddress,
+				COMMUNIQUE_CORE_ABI,
+				this.wallet
+			);
+		}
+	}
+
+	/**
+	 * Get action type enum value based on template properties
+	 */
+	getActionType(templateData) {
+		const title = (templateData.title || '').toLowerCase();
+		const method = (templateData.deliveryMethod || '').toLowerCase();
+		
+		// Congressional messages (corresponds to CWC_MESSAGE enum)
+		if (method === 'certified' || 
+		    title.includes('congress') || 
+		    title.includes('representative') || 
+		    title.includes('senator')) {
+			return 0; // CWC_MESSAGE
+		}
+		
+		// Local government (corresponds to LOCAL_ACTION enum)
+		if (title.includes('local') || 
+		    title.includes('mayor') || 
+		    title.includes('council')) {
+			return 1; // LOCAL_ACTION
+		}
+		
+		// Default to direct action
+		return 2; // DIRECT_ACTION
+	}
+
+	/**
+	 * Generate deterministic hash for the civic action
+	 */
+	generateActionHash(userAddress, templateId, deliveryConfirmation) {
+		const data = ethers.solidityPacked(
+			['address', 'string', 'string', 'uint256'],
+			[userAddress, templateId, deliveryConfirmation, Date.now()]
+		);
+		return ethers.keccak256(data);
+	}
+
+	/**
+	 * Certify email delivery directly on blockchain
+	 */
+	async certifyDelivery({ userAddress, templateData, deliveryConfirmation }) {
+		try {
+			console.log('🔗 Certifying delivery on blockchain...');
+			
+			if (!this.communiqueCore) {
+				throw new Error('CommuniqueCore contract not initialized');
+			}
+
+			// Prepare transaction data
+			const actionType = this.getActionType(templateData);
+			const actionHash = this.generateActionHash(userAddress, templateData.id, deliveryConfirmation);
+			const metadataUri = `ipfs://delivery/${deliveryConfirmation}`; // Store delivery data on IPFS
+			
+			// Call smart contract directly
+			const tx = await this.communiqueCore.processCivicAction(
+				userAddress,
+				actionType,
+				actionHash,
+				metadataUri,
+				0 // No reward override
+			);
+
+			console.log('📝 Certification transaction sent:', tx.hash);
+			
+			// Wait for confirmation
+			const receipt = await tx.wait();
+			
+			console.log('✅ Certification confirmed in block:', receipt.blockNumber);
+			
+			return {
+				success: true,
+				transactionHash: tx.hash,
+				blockNumber: receipt.blockNumber,
+				actionHash: actionHash,
+				gasUsed: receipt.gasUsed.toString()
+			};
+
+		} catch (error) {
+			console.error('❌ Blockchain certification failed:', error);
+			
+			return {
+				success: false,
+				error: error.message,
+				details: error
+			};
+		}
+	}
+
+	/**
+	 * Check if certification is enabled and properly configured
+	 */
+	isConfigured() {
+		return !!(
+			process.env.ENABLE_CERTIFICATION === 'true' &&
+			this.communiqueCoreAddress &&
+			process.env.CERTIFIER_PRIVATE_KEY &&
+			process.env.RPC_URL
+		);
+	}
+
+	/**
+	 * Get current configuration status
+	 */
+	getStatus() {
+		return {
+			enabled: process.env.ENABLE_CERTIFICATION === 'true',
+			configured: this.isConfigured(),
+			contracts: {
+				communiqueCore: this.communiqueCoreAddress || 'not set',
+				voterRegistry: this.voterRegistryAddress || 'not set'
+			},
+			network: {
+				rpcUrl: process.env.RPC_URL || 'not set',
+				hasPrivateKey: !!process.env.CERTIFIER_PRIVATE_KEY
+			}
+		};
+	}
+}
+
+// Export singleton instance
+const blockchainCertification = new BlockchainCertification();
+
+/**
+ * Main export function for backward compatibility
+ */
+async function certifyEmailDelivery(certificationData) {
+	if (!blockchainCertification.isConfigured()) {
+		console.log('ℹ️ Blockchain certification not configured, skipping...');
+		return { success: true, message: 'Certification disabled' };
+	}
+
+	return await blockchainCertification.certifyDelivery(certificationData);
+}
+
+module.exports = {
+	certifyEmailDelivery,
+	blockchainCertification
+};

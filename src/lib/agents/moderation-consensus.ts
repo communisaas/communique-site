@@ -391,7 +391,7 @@ Return JSON with:
 			return false;
 		}
 		
-		const votes = verification.agent_votes as Record<string, AgentVote>;
+		const votes = (verification.agent_votes as unknown) as Record<string, AgentVote>;
 		
 		// Check if any agent detected this specific violation
 		for (const vote of Object.values(votes)) {

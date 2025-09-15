@@ -36,7 +36,7 @@
 
 	let localShowEmailModal = $state(false);
 	const showEmailModal = $derived(externalShowEmailModal || localShowEmailModal);
-	let actionProgress = $state(spring(0, { stiffness: 0.2, damping: 0.8 }));
+	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 
 	// Capture user-provided Personal Connection to apply in JS-land before mailto
 	let personalConnectionValue: string = $state('');
