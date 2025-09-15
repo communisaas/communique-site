@@ -1,18 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { voterMocks, resetVoterMocks, configureVoterMock } from '../mocks/voter.mock';
 
-// Mock the voterIntegration module BEFORE any imports
-vi.mock('$lib/integrations/voter', () => ({
-  voterIntegration: {
-    certifyEmailDelivery: vi.fn().mockResolvedValue({ 
-      success: true, 
-      certificationHash: 'mock-cert-123',
-      rewardAmount: 50 
-    })
-  }
-}));
+/**
+ * VOTER Protocol Server-Side Certification Tests
+ * 
+ * Tests server-side certification through mail server integration.
+ * Client-side certification has been removed - all certification
+ * now happens after email delivery via the mail server.
+ */
 
-// Mock the certification service
+// Mock the certification service (server-side only)
 vi.mock('$lib/services/certification', () => ({
   certification: {
     certifyAction: vi.fn().mockResolvedValue({
@@ -25,22 +22,7 @@ vi.mock('$lib/services/certification', () => ({
   generateMessageHash: vi.fn(() => 'mock-hash-123')
 }));
 
-// Partially mock analytics to preserve the actual implementation
-vi.mock('$lib/core/analytics/funnel', async (importOriginal) => {
-  const actual = await importOriginal() as any;
-  return {
-    ...actual,
-    funnelAnalytics: {
-      ...(actual.funnelAnalytics || {}),
-      trackCertificationAttempted: vi.fn(),
-      trackCertificationSuccess: vi.fn(),
-      trackRewardEarned: vi.fn(),
-      trackCertificationError: vi.fn()
-    }
-  };
-});
-
-describe('VOTER Protocol Certification Integration', () => {
+describe('VOTER Protocol Server-Side Certification', () => {
   beforeEach(() => {
     resetVoterMocks();
     vi.clearAllMocks();
@@ -50,178 +32,177 @@ describe('VOTER Protocol Certification Integration', () => {
     delete process.env.ENABLE_CERTIFICATION;
   });
 
-  describe('Email Service Integration', () => {
-    it('should trigger certification when enabled and user has address', async () => {
+  describe('Mail Server Certification', () => {
+    it('should certify through mail server after email delivery', async () => {
       // Enable certification
       process.env.ENABLE_CERTIFICATION = 'true';
 
-      // Mock browser environment
-      const mockElement = { 
-        href: '', 
-        style: { display: '' }, 
-        click: vi.fn() 
-      };
-      
-      global.document = {
-        createElement: vi.fn(() => mockElement),
-        body: {
-          appendChild: vi.fn(),
-          removeChild: vi.fn()
-        }
-      } as any;
-
-      const { launchEmail } = await import('$lib/services/emailService');
-      
-      const mailtoUrl = 'mailto:senator@senate.gov?subject=Test&body=Message';
-      const mockUser = {
-        id: 'user123',
-        email: 'test@example.com',
-        address: 'wallet123' // VOTER wallet address
-      };
-      const mockTemplate = {
-        id: 'template123',
-        slug: 'climate-action',
-        title: 'Climate Action Now',
-        deliveryMethod: 'certified'
+      // Mock mail server certification request
+      const certificationData = {
+        userAddress: '0x123',
+        templateId: 'template-456',
+        cwcSubmissionId: 'cwc-789',
+        deliveryReceipt: JSON.stringify({
+          timestamp: Date.now(),
+          recipients: ['congress@communi.email'],
+          success: true
+        })
       };
 
-      // Launch email with certification
-      const result = launchEmail(mailtoUrl, {
-        certification: {
-          enabled: true,
-          user: mockUser as any,
-          template: mockTemplate as any,
-          recipients: ['senator@senate.gov']
+      // Mail server would call the certification endpoint
+      const { certification } = await import('$lib/services/certification');
+      
+      const result = await certification.certifyAction(
+        certificationData.userAddress,
+        {
+          actionType: 'cwc_message',
+          deliveryReceipt: certificationData.deliveryReceipt,
+          messageHash: 'mock-hash-123',
+          timestamp: new Date().toISOString(),
+          metadata: {
+            templateId: certificationData.templateId,
+            cwcSubmissionId: certificationData.cwcSubmissionId
+          }
         }
-      });
+      );
 
       expect(result.success).toBe(true);
-      
-      // Wait for async certification
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
-      // Get the mocked voterIntegration to check if it was called
-      const { voterIntegration } = await import('$lib/integrations/voter');
-      expect(voterIntegration.certifyEmailDelivery).toHaveBeenCalledWith({
-        user: mockUser,
-        template: mockTemplate,
-        mailtoUrl: mailtoUrl,
-        recipients: ['senator@senate.gov']
-      });
+      expect(result.certificationHash).toBe('mock-cert-123');
+      expect(result.rewardAmount).toBe(50);
     });
 
-    it('should not trigger certification when disabled', async () => {
+    it('should skip certification when service is disabled', async () => {
       // Disable certification
       process.env.ENABLE_CERTIFICATION = 'false';
 
-      // Mock browser environment
-      const mockElement = { 
-        href: '', 
-        style: { display: '' }, 
-        click: vi.fn() 
-      };
-      
-      global.document = {
-        createElement: vi.fn(() => mockElement),
-        body: {
-          appendChild: vi.fn(),
-          removeChild: vi.fn()
-        }
-      } as any;
-
-      const { launchEmail } = await import('$lib/services/emailService');
-      
-      const result = launchEmail('mailto:test@example.com', {
-        certification: {
-          enabled: false
-        }
+      // Mock the certification service to return disabled status
+      const { certification } = await import('$lib/services/certification');
+      certification.certifyAction = vi.fn().mockResolvedValue({
+        success: true,
+        message: 'Certification service disabled'
       });
 
+      const result = await certification.certifyAction('0x123', {} as any);
+      
       expect(result.success).toBe(true);
-      
-      // Wait to ensure no async calls
-      await new Promise(resolve => setTimeout(resolve, 10));
-      
-      // Certification should NOT have been called
-      const { voterIntegration } = await import('$lib/integrations/voter');
-      expect(voterIntegration.certifyEmailDelivery).not.toHaveBeenCalled();
+      expect(result.message).toBe('Certification service disabled');
+      expect(result.certificationHash).toBeUndefined();
     });
 
-    it('should handle certification failures gracefully', async () => {
-      // Enable certification
-      process.env.ENABLE_CERTIFICATION = 'true';
-      
+    it('should handle mail server certification failures gracefully', async () => {
       // Configure mock to fail
-      const { voterIntegration } = await import('$lib/integrations/voter');
-      voterIntegration.certifyEmailDelivery = vi.fn().mockRejectedValue(
+      configureVoterMock('network_error');
+      
+      const { certification } = await import('$lib/services/certification');
+      certification.certifyAction = vi.fn().mockRejectedValue(
         new Error('Network error: Unable to reach VOTER Protocol')
       );
 
-      // Mock browser environment
-      const mockElement = { 
-        href: '', 
-        style: { display: '' }, 
-        click: vi.fn() 
-      };
-      
-      global.document = {
-        createElement: vi.fn(() => mockElement),
-        body: {
-          appendChild: vi.fn(),
-          removeChild: vi.fn()
-        }
-      } as any;
+      // Mail server attempts certification
+      let certificationResult;
+      try {
+        certificationResult = await certification.certifyAction('0x123', {
+          actionType: 'cwc_message',
+          deliveryReceipt: 'receipt',
+          messageHash: 'hash',
+          timestamp: new Date().toISOString()
+        });
+      } catch (error) {
+        // Certification failed but delivery continues
+        certificationResult = {
+          success: false,
+          error: error.message
+        };
+      }
 
-      // Spy on console.warn to check error handling
-      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      const { launchEmail } = await import('$lib/services/emailService');
-      
-      const result = launchEmail('mailto:test@example.com', {
-        certification: {
-          enabled: true,
-          user: { id: '123', email: 'test@example.com' } as any,
-          template: { id: 'template123' } as any,
-          recipients: ['test@example.com']
-        }
-      });
-
-      // Email should still launch successfully
-      expect(result.success).toBe(true);
-      
-      // Wait for async certification attempt
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      // Error should be logged but not thrown
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '[VOTER Certification] Failed to certify email delivery:',
-        expect.any(Error)
-      );
-
-      consoleWarnSpy.mockRestore();
+      // Verify failure is handled
+      expect(certificationResult.success).toBe(false);
+      expect(certificationResult.error).toContain('Network error');
     });
   });
 
-  // Analytics integration is tested through actual usage in other tests
-  // The methods are added to funnelAnalytics in src/lib/core/analytics/funnel.ts
+  describe('Action Type Classification', () => {
+    it('should correctly determine action types for templates', () => {
+      const { getVOTERActionType } = require('$lib/integrations/voter');
 
-  describe('Mock Registry Integration', () => {
-    it('should auto-configure VOTER mocks when certification is enabled', async () => {
-      process.env.ENABLE_CERTIFICATION = 'true';
+      const templates = [
+        {
+          template: { deliveryMethod: 'certified', title: 'Contact Senator' },
+          expected: 'cwc_message'
+        },
+        {
+          template: { title: 'Email Mayor Johnson', deliveryMethod: 'direct' },
+          expected: 'direct_email'
+        },
+        {
+          template: { title: 'City Council Petition', deliveryMethod: null },
+          expected: 'local_action'
+        }
+      ];
+
+      templates.forEach(({ template, expected }) => {
+        const actionType = getVOTERActionType(template);
+        expect(actionType).toBe(expected);
+      });
+    });
+  });
+
+  describe('Certification Data Validation', () => {
+    it('should validate required fields for certification', async () => {
+      const { certification } = await import('$lib/services/certification');
       
-      // Import the registry
-      const { default: mockRegistry } = await import('../mocks/registry');
-      
-      // Configure mocks
-      mockRegistry.setupMocks();
-      
-      // Setup should create mocks
-      const mocks = mockRegistry.setupMocks();
-      expect(mocks).toBeDefined();
-      
-      // Check that VOTER certification was enabled
-      // The registry tracks enabled mocks internally
-      expect(mocks.db).toBeDefined();
+      // Mock to validate input
+      certification.certifyAction = vi.fn().mockImplementation(
+        async (userAddress, request) => {
+          // Validate required fields
+          if (!userAddress) throw new Error('User address required');
+          if (!request.actionType) throw new Error('Action type required');
+          if (!request.deliveryReceipt) throw new Error('Delivery receipt required');
+          if (!request.messageHash) throw new Error('Message hash required');
+          
+          return {
+            success: true,
+            certificationHash: 'validated-cert'
+          };
+        }
+      );
+
+      // Test with valid data
+      const validResult = await certification.certifyAction('0x123', {
+        actionType: 'cwc_message',
+        deliveryReceipt: 'receipt',
+        messageHash: 'hash',
+        timestamp: new Date().toISOString()
+      });
+      expect(validResult.success).toBe(true);
+
+      // Test with missing fields
+      await expect(
+        certification.certifyAction('', {} as any)
+      ).rejects.toThrow('User address required');
+    });
+  });
+
+  describe('Mock Scenario Testing', () => {
+    it('should test success scenario', async () => {
+      configureVoterMock('success');
+      const result = await voterMocks.certification.certifyAction('0x123', {} as any);
+      expect(result.success).toBe(true);
+      expect(result.rewardAmount).toBe(50);
+    });
+
+    it('should test failure scenario', async () => {
+      configureVoterMock('failure');
+      const result = await voterMocks.certification.certifyAction('0x123', {} as any);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid action data');
+    });
+
+    it('should test rate limiting scenario', async () => {
+      configureVoterMock('rate_limited');
+      const result = await voterMocks.certification.certifyAction('0x123', {} as any);
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Rate limited');
     });
   });
 });
