@@ -57,3 +57,83 @@ export interface ApiResponse<T = unknown> {
 	error?: string;
 	timestamp: string;
 }
+
+// VOTER Protocol API Types
+export interface VOTERApiRequest {
+	action: string;
+	[key: string]: unknown;
+}
+
+export interface IdentityVerificationRequest {
+	userId: string;
+	walletAddress?: string;
+	zkProof?: string;
+	publicInputs?: string;
+}
+
+export interface IdentityVerificationResponse {
+	success: boolean;
+	userId: string;
+	walletAddress?: string;
+	verification: {
+		status: string;
+		trust_score: number;
+		congressional_district?: string;
+		district_hash?: string;
+		verified_at: string;
+	};
+	permissions: {
+		can_submit_templates: boolean;
+		can_create_challenges: boolean;
+		can_vote_challenges: boolean;
+		daily_action_limit: number;
+		max_stake: number;
+	};
+	message: string;
+}
+
+export interface ChallengeRequest {
+	challengerId: string;
+	defenderId: string;
+	title: string;
+	description: string;
+	evidence: string;
+	stakeAmount: string;
+	category: string;
+}
+
+export interface ChallengeVoteRequest {
+	challengeId: string;
+	userId: string;
+	vote: 'support' | 'oppose';
+	stakeAmount: string;
+}
+
+export interface RewardCalculationRequest {
+	userAddress: string;
+	actionType: string;
+	templateId?: string;
+	timestamp?: string;
+}
+
+export interface RewardCalculationResponse {
+	success: boolean;
+	action: string;
+	user: string;
+	base_reward_usd: number;
+	multipliers: {
+		activity: number;
+		action: number;
+		reputation: number;
+		complexity: number;
+		time: number;
+	};
+	total_multiplier: number;
+	reward_usd: number;
+	reward_eth: number;
+	reward_wei: string;
+	eth_price: number;
+	network_activity: number;
+	user_reputation: number;
+	calculation_timestamp: string;
+}

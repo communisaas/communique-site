@@ -147,9 +147,9 @@
 								e.stopPropagation();
 								copyToClipboard();
 							}}
-							class="shrink-0 cursor-pointer rounded-lg bg-blue-50 p-2 transition-all
-                                   duration-200 hover:bg-blue-100 focus:outline-none focus:ring-2
-                                   focus:ring-blue-200 focus:ring-offset-2 active:bg-blue-200"
+							class="shrink-0 cursor-pointer rounded-lg bg-participation-primary-50 p-2 transition-all
+                                   duration-200 hover:bg-participation-primary-100 focus:outline-none focus:ring-2
+                                   focus:ring-participation-primary-200 focus:ring-offset-2 active:bg-participation-primary-200"
 							aria-label="Copy all recipient emails to clipboard"
 						>
 							{#if copied}
@@ -158,7 +158,7 @@
 								</div>
 							{:else}
 								<div in:fade={{ duration: 200 }}>
-									<ClipboardCopy class="h-6 w-6 text-blue-400" />
+									<ClipboardCopy class="h-6 w-6 text-participation-primary-400" />
 								</div>
 							{/if}
 						</button>

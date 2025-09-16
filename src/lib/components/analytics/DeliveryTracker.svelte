@@ -86,7 +86,7 @@
 	function getStatusColor(status: string): string {
 		switch (status) {
 			case 'delivered': return 'text-green-600 bg-green-50';
-			case 'processing': return 'text-blue-600 bg-blue-50';
+			case 'processing': return 'text-participation-primary-600 bg-participation-primary-50';
 			case 'pending': return 'text-yellow-600 bg-yellow-50';
 			case 'failed': return 'text-red-600 bg-red-50';
 			case 'bounced': return 'text-orange-600 bg-orange-50';
@@ -196,9 +196,9 @@
 					<div class="text-2xl font-bold text-red-700">{metrics.total_failed}</div>
 					<div class="text-sm text-red-600">Failed</div>
 				</div>
-				<div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
-					<div class="text-2xl font-bold text-blue-700">{(metrics.success_rate * 100).toFixed(1)}%</div>
-					<div class="text-sm text-blue-600">Success Rate</div>
+				<div class="bg-gradient-to-br from-participation-primary-50 to-participation-primary-100 rounded-lg p-4">
+					<div class="text-2xl font-bold text-participation-primary-700">{(metrics.success_rate * 100).toFixed(1)}%</div>
+					<div class="text-sm text-participation-primary-600">Success Rate</div>
 				</div>
 			</div>
 		{/if}
@@ -263,7 +263,7 @@
 								{#if delivery.status === 'failed'}
 									<button
 										onclick={() => retryDelivery(delivery.campaign_id)}
-										class="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+										class="text-xs px-2 py-1 bg-participation-primary-600 text-white rounded hover:bg-participation-primary-700 transition-colors"
 									>
 										Retry
 									</button>
@@ -281,7 +281,7 @@
 				
 				{#if deliveries.length > 20}
 					<div class="text-center py-4">
-						<button class="text-sm text-blue-600 hover:text-blue-700 font-medium">
+						<button class="text-sm text-participation-primary-600 hover:text-participation-primary-700 font-medium">
 							Show All {deliveries.length} Deliveries
 						</button>
 					</div>

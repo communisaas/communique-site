@@ -160,7 +160,7 @@
 		<div class="flex items-center mb-6">
 			{#snippet iconSnippet()}
 				{@const IconComponent = sectionIcons[section]}
-				<IconComponent class="w-5 h-5 text-blue-600 mr-2" />
+				<IconComponent class="w-5 h-5 text-participation-primary-600 mr-2" />
 			{/snippet}
 			{@render iconSnippet()}
 			<h3 class="text-lg font-semibold text-slate-900">{sectionTitles[section]}</h3>
@@ -184,7 +184,7 @@
 						id="name"
 						type="text"
 						bind:value={formData.name}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.name ? 'border-red-300' : ''}"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.name ? 'border-red-300' : ''}"
 						placeholder="Enter your full name"
 					/>
 					{#if errors.name}
@@ -200,7 +200,7 @@
 						id="email"
 						type="email"
 						bind:value={formData.email}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.email ? 'border-red-300' : ''}"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.email ? 'border-red-300' : ''}"
 						placeholder="your@email.com"
 					/>
 					{#if errors.email}
@@ -216,7 +216,7 @@
 						id="phone"
 						type="tel"
 						bind:value={formData.phone}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 						placeholder="(555) 123-4567"
 					/>
 				</div>
@@ -230,7 +230,7 @@
 						id="role"
 						type="text"
 						bind:value={formData.role}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.role ? 'border-red-300' : ''}"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.role ? 'border-red-300' : ''}"
 						placeholder="e.g., Teacher, Student, Parent, etc."
 					/>
 					{#if errors.role}
@@ -246,7 +246,7 @@
 						id="organization"
 						type="text"
 						bind:value={formData.organization}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 						placeholder="Company, school, nonprofit, etc."
 					/>
 				</div>
@@ -259,7 +259,7 @@
 						id="location"
 						type="text"
 						bind:value={formData.location}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 						placeholder="e.g., San Francisco Bay Area"
 					/>
 				</div>
@@ -271,7 +271,7 @@
 					<select
 						id="connection"
 						bind:value={formData.connection}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.connection ? 'border-red-300' : ''}"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.connection ? 'border-red-300' : ''}"
 					>
 						<option value="">Select your connection...</option>
 						<option value="directly_affected">Directly affected by this issue</option>
@@ -293,7 +293,7 @@
 						id="connection_details"
 						bind:value={formData.connection_details}
 						rows="3"
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 resize-none"
 						placeholder="Tell us more about your connection to the issues you care about..."
 					></textarea>
 				</div>
@@ -305,7 +305,7 @@
 					<select
 						id="visibility"
 						bind:value={formData.profile_visibility}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 					>
 						<option value="private">Private - Only visible to me</option>
 						<option value="limited">Limited - Visible to template users</option>
@@ -322,7 +322,7 @@
 						id="street"
 						type="text"
 						bind:value={formData.street}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.street ? 'border-red-300' : ''}"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.street ? 'border-red-300' : ''}"
 						placeholder="123 Main Street"
 					/>
 					{#if errors.street}
@@ -339,7 +339,7 @@
 							id="city"
 							type="text"
 							bind:value={formData.city}
-							class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.city ? 'border-red-300' : ''}"
+							class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.city ? 'border-red-300' : ''}"
 							placeholder="San Francisco"
 						/>
 						{#if errors.city}
@@ -355,7 +355,7 @@
 							id="state"
 							type="text"
 							bind:value={formData.state}
-							class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.state ? 'border-red-300' : ''}"
+							class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.state ? 'border-red-300' : ''}"
 							placeholder="CA"
 							maxlength="2"
 						/>
@@ -373,7 +373,7 @@
 						id="zip"
 						type="text"
 						bind:value={formData.zip}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {errors.zip ? 'border-red-300' : ''}"
+						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.zip ? 'border-red-300' : ''}"
 						placeholder="94102"
 						maxlength="10"
 					/>
@@ -382,7 +382,7 @@
 					{/if}
 				</div>
 
-				<div class="text-sm text-slate-600 bg-blue-50 p-3 rounded-lg">
+				<div class="text-sm text-slate-600 bg-participation-primary-50 p-3 rounded-lg">
 					<p>Your address helps us identify your congressional representatives for advocacy messaging.</p>
 				</div>
 			{/if}

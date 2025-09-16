@@ -23,7 +23,7 @@ Instead of rigid, hardcoded rules, we deploy **intelligent agents** that learn, 
 - No arbitrary caps, but intelligent equilibrium enforced by auditable safety rails.
 
 **VerificationAgent**: Coordinates action validation with resilient mechanisms
-- Orchestrates Self Protocol + CWC API integration, with fallback options.
+- Orchestrates Didit.me zero-knowledge verification + CWC API integration, with fallback options.
 - Learns from verification patterns to improve accuracy, adapting to new attack vectors.
 - Distributes trust across multiple verification sources, enhancing resilience against single points of failure.
 - Adapts to new attack vectors automatically, while adhering to predefined thresholds and circuit breakers.
@@ -70,30 +70,32 @@ Multi-agent consensus replaces single operators. No god modes, no central contro
 ### 4. Continuous Learning for Resilience 
 Agents remember what works and what doesn't, and the system gets smarter over time. This continuous learning enhances protocol resilience and adaptability to changing political and social conditions, including unforeseen attack vectors. Information quality markets provide consensus tools for resolving disputes and incentivizing quality discourse among participants.
 
-## Templates That Move Mountains Get Funded
+## Templates That Move Mountains Trigger Algorithms
 
-The credibility infrastructure closes the loop on templates. When the ImpactAgent identifies template influence on legislative positions, that template creator earns massive credibility. When legislators learn from constituent information, they earn campaign support from the citizen treasury.
+The credibility infrastructure closes the loop through cryptographic execution. When the ImpactAgent identifies template influence on legislative positions, that template creator earns massive credibility. When legislators learn from constituent information, smart contracts automatically execute treasury allocation based on algorithmic responsiveness scores.
 
-**Impact Verification Creates Electoral Consequences:**
+**Algorithmic Verification Creates Electoral Consequences:**
 - Template introduces new economic data that appears in floor speeches
 - Mass campaign surfaces constituent impacts that change committee votes
 - Citizen expertise shapes amendment language that passes
-- Legislators who evolve based on quality information get treasury support
-- Democracy starts rewarding learning over ideology
+- Smart contracts automatically reward legislators who evolve based on quality information
+- Democracy starts rewarding learning over ideology through cryptographic execution
 
-**From Credibility to Electoral Power:**
+**From Credibility to Algorithmic Power:**
 
-High-credibility participants don't just get priority routing—they shape where millions in electoral funding goes. The treasury accumulates value through token economics. Through a 501(c)(4) social welfare organization, funds flow to support legislators based on verified responsiveness.
+High-credibility participants don't just get priority routing—they govern algorithmic fund allocation through cryptographic voting weight. The treasury accumulates value through token economics. Smart contracts automatically execute fund distribution based on mathematically verified responsiveness patterns.
 
-**Challenge Markets Determine Funding Priorities:**
-- Template impact claims face market verification
-- Winners of impact challenges gain electoral influence weight
-- High-credibility creators vote on treasury allocation
-- Proven mind-changers direct campaign support
-- Bad faith actors lose both stakes and electoral influence
+**Challenge Markets Trigger Algorithmic Execution:**
+- Template impact claims face cryptographic market verification
+- Winners of impact challenges gain algorithmic influence weight
+- High-credibility creators govern smart contract parameters
+- Proven mind-changers direct autonomous fund distribution
+- Bad faith actors lose both stakes and algorithmic influence
 
 **Concrete Example:**
-Your template claims "Policy X costs rural families $3K/year." Ten thousand constituents use it. Senator cites that exact figure in committee. Vote flips. Challenge market verifies your influence claim. You win challenger stakes. Your credibility score jumps. Treasury allocates $50K to Senator's campaign through 501(c)(4). The loop closes: information changed position, changed position got funded.
+Your template claims "Policy X costs rural families $3K/year." Ten thousand constituents use it. Senator cites that exact figure in committee. Vote flips. Challenge market cryptographically verifies your influence claim. You win challenger stakes. Your credibility score jumps. Smart contract automatically allocates funds to Senator's campaign based on algorithmic responsiveness score. The loop closes: information changed position, algorithm executed fund allocation.
+
+**Not political coordination. Cryptographic causation.**
 
 ## Credibility Infrastructure and Challenge Markets
 
@@ -232,9 +234,13 @@ The system develops capabilities we didn't explicitly program, but always within
 
 ## Conclusion
 
-Democracy is too important to be constrained by the limitations of 2024 thinking. Smart contracts should be intelligent and resilient, not just immutable. Economic systems should adapt within safe bounds, not stagnate. 
+Democracy transcends regulatory categories built for 20th-century political processes. Smart contracts should execute cryptographic proofs, not just enforce immutable rules. Democratic systems should coordinate through algorithmic consensus, not political meetings.
 
-Agent democracy doesn't replace human democratic participation - it optimizes the infrastructure to make that participation more effective, more accessible, and more impactful, while ensuring the system's long-term stability and trustworthiness.
+Algorithmic democracy doesn't replace human democratic participation - it creates cryptographic infrastructure that makes participation more transparent, more verifiable, and more impactful through mathematical consensus rather than political gatekeeping.
 
-The future of civic technology is agentic and robust: systems that learn, adapt, and serve rather than constrain human democratic potential, and are built to withstand the complexities of the real world.
+**We don't build compliance—we build transcendence.**
+
+The future of civic technology is cryptographic and autonomous: systems that execute mathematical proofs rather than enforce human biases, and transcend regulatory capture through code-as-constitutional law.
+
+**Quality discourse pays. Bad faith costs. Algorithms execute what humans coordinate.**
 

@@ -29,16 +29,30 @@ model User {
   
   // Verification status
   is_verified            Boolean                @default(false) @map("is_verified")
-  verification_method    String?                @map("verification_method") // 'self_xyz', 'manual', etc.
+  verification_method    String?                @map("verification_method") // 'didit', 'government_id', 'email'
   verification_data      Json?                  @map("verification_data") // Store verification details
   verified_at            DateTime?              @map("verified_at")
   
-  // Core relations only
+  // VOTER Protocol blockchain identity
+  wallet_address         String?                @unique @map("wallet_address")
+  district_hash          String?                @map("district_hash")       // Privacy-preserving district ID
+  trust_score            Int                    @default(0) @map("trust_score")
+  reputation_tier        String                 @default("novice") @map("reputation_tier") // 'expert', 'verified', 'novice'
+  
+  // Core relations
   account                account[]
   sessions               Session[]
   templates              Template[]
   representatives        user_representatives[]
   campaigns              template_campaign[] @relation("UserCampaigns")
+  
+  // VOTER Protocol relations
+  civic_actions          CivicAction[]
+  reputation_logs        ReputationLog[]
+  challenger_challenges  Challenge[]            @relation("ChallengerChallenges")
+  defender_challenges    Challenge[]            @relation("DefenderChallenges") 
+  won_challenges         Challenge[]            @relation("WonChallenges")
+  challenge_stakes       ChallengeStake[]
 
   @@map("user")
 }
@@ -104,8 +118,9 @@ model Template {
   userId            String?             @map("user_id")
   user              User?               @relation(fields: [userId], references: [id])
   
-  // Core relations only
+  // Core relations
   template_campaign template_campaign[]
+  civic_actions     CivicAction[]
 
   @@map("template")
 }
@@ -205,4 +220,246 @@ model legislative_body {
   created_at        DateTime @default(now()) @map("created_at")
 
   @@map("legislative_body")
+}
+
+// ============= VOTER PROTOCOL EXTENSIONS =============
+// Blockchain identity and civic action tracking
+
+model CivicAction {
+  id              String    @id @default(cuid())
+  user_id         String    @map("user_id")
+  template_id     String?   @map("template_id")
+  action_type     String    @map("action_type")    // 'cwc_message', 'template_submit', 'challenge_create'
+  
+  // Blockchain integration
+  tx_hash         String?   @map("tx_hash")        // Ethereum/Ronin transaction
+  reward_wei      String?   @map("reward_wei")     // BigInt as string
+  status          String    @default("pending")    // 'pending', 'completed', 'failed'
+  
+  // Provenance data from AI agents
+  agent_decisions Json?     @map("agent_decisions") // AI decision trail
+  consensus_data  Json?     @map("consensus_data")  // Multi-model voting results
+  
+  // Metadata for extensibility
+  metadata        Json?     @default("{}")
+  
+  created_at      DateTime  @default(now()) @map("created_at")
+  completed_at    DateTime? @map("completed_at")
+  
+  // Relations  
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  template        Template? @relation(fields: [template_id], references: [id])
+  
+  @@map("civic_action")
+  @@index([user_id])
+  @@index([action_type])
+  @@index([status])
+  @@index([created_at])
+}
+
+model ReputationLog {
+  id              String    @id @default(cuid())
+  user_id         String    @map("user_id")
+  
+  // Score changes for ERC-8004 compliance
+  score_before    Int       @map("score_before")
+  score_after     Int       @map("score_after")
+  change_amount   Int       @map("change_amount")
+  change_reason   String    @map("change_reason")
+  
+  // Blockchain proof
+  tx_hash         String?   @map("tx_hash")
+  block_number    Int?      @map("block_number")
+  
+  // Agent provenance
+  agent_source    String?   @map("agent_source")    // Which agent made change
+  evidence_hash   String?   @map("evidence_hash")   // IPFS hash of evidence
+  confidence      Float?    @map("confidence")      // Agent confidence 0-1
+  
+  created_at      DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@map("reputation_log")
+  @@index([user_id])
+  @@index([created_at])
+  @@index([change_reason])
+}
+
+model Challenge {
+  id                String    @id @default(cuid())
+  
+  // Participants (using existing user IDs)
+  challenger_id     String    @map("challenger_id")
+  defender_id       String    @map("defender_id")
+  
+  // Challenge data
+  claim_hash        String    @unique @map("claim_hash")
+  evidence_ipfs     String    @map("evidence_ipfs")
+  stake_amount      String    @map("stake_amount")      // BigInt as string (VOTER tokens)
+  
+  // Status tracking
+  status            String    @default("active")        // 'active', 'resolved', 'cancelled'
+  resolution        String?   @map("resolution")        // 'challenger_wins', 'defender_wins'
+  winner_id         String?   @map("winner_id")
+  
+  // Voting period
+  voting_deadline   DateTime  @map("voting_deadline")
+  
+  // Timing
+  created_at        DateTime  @default(now()) @map("created_at")
+  resolved_at       DateTime? @map("resolved_at")
+  
+  // Blockchain proof
+  creation_tx       String?   @map("creation_tx")
+  resolution_tx     String?   @map("resolution_tx")
+  
+  // Challenge description
+  title             String
+  description       String
+  category          String?
+  
+  // Relations
+  challenger        User      @relation("ChallengerChallenges", fields: [challenger_id], references: [id])
+  defender          User      @relation("DefenderChallenges", fields: [defender_id], references: [id])
+  winner            User?     @relation("WonChallenges", fields: [winner_id], references: [id])
+  stakes            ChallengeStake[]
+  
+  @@map("challenge")
+  @@index([status])
+  @@index([created_at])
+  @@index([voting_deadline])
+}
+
+model ChallengeStake {
+  id             String    @id @default(cuid())
+  challenge_id   String    @map("challenge_id")
+  user_id        String    @map("user_id")
+  
+  // Stake details
+  amount         String    @map("amount")           // BigInt as string
+  side           String    @map("side")             // 'support', 'oppose'
+  claimed        Boolean   @default(false)
+  
+  // Quadratic voting power calculation
+  voting_power   Float     @map("voting_power")     // sqrt(amount)
+  
+  // Blockchain proof
+  stake_tx       String?   @map("stake_tx")
+  claim_tx       String?   @map("claim_tx")
+  
+  created_at     DateTime  @default(now()) @map("created_at")
+  claimed_at     DateTime? @map("claimed_at")
+  
+  // Relations
+  challenge      Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+  user           User      @relation(fields: [user_id], references: [id])
+  
+  @@map("challenge_stake")
+  @@unique([challenge_id, user_id])  // One stake per user per challenge
+  @@index([challenge_id])
+  @@index([user_id])
+}
+
+// ============= N8N WORKFLOW OPERATIONAL TABLES =============
+// Tables for workflow execution state and caching
+
+model WorkflowExecution {
+  id                String    @id @default(cuid())
+  execution_id      String    @unique @map("execution_id")    // N8N execution ID
+  workflow_name     String    @map("workflow_name")
+  
+  // Execution tracking
+  started_at        DateTime  @default(now()) @map("started_at")
+  completed_at      DateTime? @map("completed_at")
+  status            String    @default("running")            // 'running', 'success', 'failed'
+  error_message     String?   @map("error_message")
+  
+  // Data payload
+  input_data        Json?     @map("input_data")
+  output_data       Json?     @map("output_data")
+  execution_time_ms Int?      @map("execution_time_ms")
+  
+  // Workflow steps for debugging
+  checkpoints       WorkflowCheckpoint[]
+  
+  @@map("workflow_execution")
+  @@index([workflow_name])
+  @@index([started_at])
+  @@index([status])
+}
+
+model WorkflowCheckpoint {
+  id             String    @id @default(cuid())
+  execution_id   String    @map("execution_id")
+  step_name      String    @map("step_name")
+  step_data      Json      @map("step_data")
+  created_at     DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  execution      WorkflowExecution @relation(fields: [execution_id], references: [execution_id], onDelete: Cascade)
+  
+  @@map("workflow_checkpoint")
+  @@index([execution_id])
+}
+
+model AgentDecisionCache {
+  id             String    @id @default(cuid())
+  cache_key      String    @unique @map("cache_key")
+  agent_type     String    @map("agent_type")        // 'template_verifier', 'consensus_voter'
+  input_hash     String    @map("input_hash")        // Hash of input for deduplication
+  
+  // Decision data
+  decision       Json      @map("decision")
+  confidence     Float?    @map("confidence")
+  reasoning      String?   @map("reasoning")
+  
+  // Cache management
+  created_at     DateTime  @default(now()) @map("created_at")
+  expires_at     DateTime  @map("expires_at")
+  hit_count      Int       @default(1) @map("hit_count")
+  
+  @@map("agent_decision_cache")
+  @@index([agent_type])
+  @@index([expires_at])
+  @@index([created_at])
+}
+
+model ConsensusVotingSession {
+  id               String    @id @default(cuid())
+  session_id       String    @unique @map("session_id")
+  template_id      String    @map("template_id")
+  
+  // Voting progress
+  agents_expected  Int       @map("agents_expected")
+  agents_responded Int       @default(0) @map("agents_responded")
+  votes            Json      @default("{}") @map("votes")    // Individual agent votes
+  
+  // Results
+  final_consensus  String?   @map("final_consensus")        // 'APPROVE', 'REJECT', 'NEEDS_REVIEW'
+  confidence       Float?    @map("confidence")
+  unanimous        Boolean   @default(false)
+  
+  created_at       DateTime  @default(now()) @map("created_at")
+  completed_at     DateTime? @map("completed_at")
+  
+  @@map("consensus_voting_session")
+  @@index([template_id])
+  @@index([created_at])
+}
+
+model PerformanceMetric {
+  id             String    @id @default(cuid())
+  metric_name    String    @map("metric_name")        // 'template_verify_time', 'consensus_accuracy'
+  metric_value   Float     @map("metric_value")
+  
+  // Dimensions for filtering
+  tags           Json      @default("{}") @map("tags")
+  
+  recorded_at    DateTime  @default(now()) @map("recorded_at")
+  
+  @@map("performance_metric")
+  @@index([metric_name])
+  @@index([recorded_at])
 }

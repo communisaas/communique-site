@@ -21,7 +21,7 @@
 	<div>
 		<h1 class="mb-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
 			Make Your Voice
-			<span class="text-blue-600">Count</span>
+			<span class="text-participation-accent-600">Count</span>
 			<span class="mt-2 block text-xl font-normal text-gray-600 sm:text-2xl">On record.</span>
 		</h1>
 

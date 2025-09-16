@@ -104,12 +104,12 @@
 <div class="space-y-6">
 	{#if analysisState === 'checking'}
 		<!-- Checking state -->
-		<div class="rounded-lg border border-blue-200 bg-blue-50 p-4">
+		<div class="rounded-lg border border-participation-primary-200 bg-participation-primary-50 p-4">
 			<div class="flex items-center gap-3">
-				<Loader2 class="h-5 w-5 animate-spin text-blue-600" />
+				<Loader2 class="h-5 w-5 animate-spin text-participation-primary-600" />
 				<div>
-					<h4 class="text-base font-medium text-blue-900">Checking your message...</h4>
-					<p class="mt-1 text-sm text-blue-700">Quick scan for what works and what doesn't</p>
+					<h4 class="text-base font-medium text-participation-primary-900">Checking your message...</h4>
+					<p class="mt-1 text-sm text-participation-primary-700">Quick scan for what works and what doesn't</p>
 				</div>
 			</div>
 		</div>
@@ -195,7 +195,7 @@
 			<div class="flex gap-3">
 				<button
 					onclick={applyQuickFixes}
-					class="flex items-center gap-2 rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+					class="flex items-center gap-2 rounded bg-participation-primary-600 px-4 py-2 text-sm text-white hover:bg-participation-primary-700"
 				>
 					Apply Fixes
 				</button>
@@ -295,10 +295,10 @@
 
 	<!-- Readiness indicator -->
 	{#if isReady}
-		<div class="rounded-md bg-blue-50 p-3">
+		<div class="rounded-md bg-participation-primary-50 p-3">
 			<div class="flex items-center gap-2">
-				<CheckCircle2 class="h-4 w-4 text-blue-600" />
-				<span class="text-sm font-medium text-blue-900">
+				<CheckCircle2 class="h-4 w-4 text-participation-primary-600" />
+				<span class="text-sm font-medium text-participation-primary-900">
 					{isCertifiedDelivery ? 'Ready for Congress' : 'Ready to send'}
 				</span>
 			</div>

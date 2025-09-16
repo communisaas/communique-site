@@ -1,150 +1,279 @@
 /**
- * Supply Agent
+ * SupplyAgent - Dynamic Reward Calculation
  * 
- * Handles dynamic token supply calculations and reward optimization
- * Balances economic incentives with sustainable tokenomics
+ * Replaces hardcoded reward amounts with intelligent supply optimization.
+ * Monitors network participation, adapts to political calendar, prevents inflation.
+ * 
+ * Vision: "Resilient abundance through intelligence within auditable bounds"
  */
 
-import { BaseAgent, type AgentConfig, type AgentDecision } from './base-agent';
+import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent.js';
+import { prisma } from '$lib/core/db.js';
 
-export interface SupplyInput {
-	actionType: 'cwc_message' | 'direct_action' | 'challenge_market';
-	userAddress: string;
-	verificationScore?: number;
-	currentSupply?: bigint;
-	currentParticipation?: number;
-}
-
-export interface SupplyDecision extends AgentDecision {
-	rewardAmount: bigint;
-	supplyImpact: number; // Percentage impact on total supply
-	economicRationale: string;
+export interface RewardParameters {
+	baseRewardUSD: number;
+	multipliers: {
+		activity: number;        // Network effect multiplier
+		action: number;          // Action type multiplier  
+		reputation: number;      // User reputation multiplier
+		complexity: number;      // Template complexity multiplier
+		time: number;           // Time decay multiplier
+		urgency: number;        // Political calendar urgency
+	};
+	totalMultiplier: number;
+	ethPrice: number;
+	finalRewardETH: number;
+	finalRewardWei: string;
 }
 
 export class SupplyAgent extends BaseAgent {
-	// Base rewards by action type (in wei)
-	private readonly BASE_REWARDS = {
-		cwc_message: 10n * 10n ** 18n, // 10 VOTER
-		direct_action: 5n * 10n ** 18n, // 5 VOTER
-		challenge_market: 15n * 10n ** 18n // 15 VOTER
-	};
-	
-	// Supply constraints
-	private readonly MAX_SUPPLY = 1_000_000_000n * 10n ** 18n; // 1B tokens
-	private readonly DAILY_MINT_CAP = 1_000_000n * 10n ** 18n; // 1M tokens/day
-	
 	constructor() {
-		super({
-			name: 'supply_agent',
-			temperature: 0.3,
-			maxTokens: 1000,
-			capabilities: ['supply_calculation', 'mint_optimization', 'economic_modeling']
+		super('supply-agent-v1', AgentType.SUPPLY, {
+			baseRewardUSD: [0.01, 1.00],      // $0.01 - $1.00 base reward range
+			maxDailyInflation: [1, 10],       // 1% - 10% max daily inflation
+			participationThreshold: [10, 1000], // 10-1000 daily active users trigger
+			urgencyMultiplier: [1, 5]         // 1x - 5x urgency multiplier
 		});
 	}
-	
-	async process(input: SupplyInput): Promise<SupplyDecision> {
-		const { actionType, verificationScore = 1.0, currentSupply = 0n, currentParticipation = 0 } = input;
+	async makeDecision(context: AgentContext): Promise<AgentDecision> {
+		try {
+			// Get network activity data
+			const networkData = await this.getNetworkActivity();
+			
+			// Get user reputation data
+			const userReputation = await this.getUserReputation(context.userId);
+			
+			// Get template complexity if provided
+			const templateComplexity = await this.getTemplateComplexity(context.templateId);
+			
+			// Calculate political calendar urgency
+			const urgencyMultiplier = this.calculateUrgencyMultiplier(context.timestamp);
+			
+			// Calculate base reward with safety bounds
+			const baseRewardUSD = this.applySafetyBounds(
+				this.calculateBaseReward(networkData),
+				'baseRewardUSD'
+			);
+			
+			// Calculate all multipliers
+			const multipliers = {
+				activity: this.calculateActivityMultiplier(networkData),
+				action: this.getActionTypeMultiplier(context.actionType || 'unknown'),
+				reputation: this.calculateReputationMultiplier(userReputation),
+				complexity: templateComplexity,
+				time: this.calculateTimeDecay(context.timestamp),
+				urgency: this.applySafetyBounds(urgencyMultiplier, 'urgencyMultiplier')
+			};
+			
+			// Apply total multiplier
+			const totalMultiplier = Object.values(multipliers).reduce((a, b) => a * b, 1);
+			
+			// Get ETH price (mock for now - would use oracle in production)
+			const ethPrice = await this.getETHPrice();
+			
+			// Calculate final reward
+			const finalRewardUSD = baseRewardUSD * totalMultiplier;
+			const finalRewardETH = finalRewardUSD / ethPrice;
+			const finalRewardWei = Math.floor(finalRewardETH * 1e18);
+			
+			const rewardParams: RewardParameters = {
+				baseRewardUSD,
+				multipliers,
+				totalMultiplier: parseFloat(totalMultiplier.toFixed(3)),
+				ethPrice,
+				finalRewardETH: parseFloat(finalRewardETH.toFixed(8)),
+				finalRewardWei: finalRewardWei.toString()
+			};
+			
+			const confidence = this.calculateConfidence(networkData, userReputation, context);
+			
+			return this.createDecision(
+				rewardParams,
+				confidence,
+				this.generateReasoning(rewardParams, networkData, context),
+				{ actionType: context.actionType, networkActivity: networkData.dailyActiveUsers }
+			);
+			
+		} catch (error) {
+			console.error('SupplyAgent decision error:', error);
+			// Fallback to conservative values
+			return this.createDecision(
+				{ baseRewardUSD: 0.10, finalRewardWei: "100000000000000000" }, // 0.1 ETH as fallback
+				0.3,
+				`Error in supply calculation, using conservative fallback: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				{ error: true }
+			);
+		}
+	}
+
+	private async getNetworkActivity(): Promise<{
+		dailyActiveUsers: number;
+		totalActions: number;
+		cwcActions: number;
+		avgActionsPerUser: number;
+	}> {
+		const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 		
-		// Calculate base reward
-		const baseReward = this.BASE_REWARDS[actionType] || 5n * 10n ** 18n;
+		// Get activity from last 24 hours
+		const activityData = await prisma.civicAction.aggregateRaw({
+			pipeline: [
+				{
+					$match: {
+						created_at: { $gte: oneDayAgo }
+					}
+				},
+				{
+					$group: {
+						_id: null,
+						daily_active: { $addToSet: '$user_id' },
+						total_actions: { $sum: 1 },
+						cwc_actions: {
+							$sum: {
+								$cond: [{ $eq: ['$action_type', 'cwc_message'] }, 1, 0]
+							}
+						}
+					}
+				}
+			]
+		});
 		
-		// Apply verification score multiplier
-		const verificationMultiplier = Math.max(0.5, Math.min(1.5, verificationScore));
-		
-		// Calculate participation multiplier (higher participation = lower rewards)
-		const participationMultiplier = this.calculateParticipationMultiplier(currentParticipation);
-		
-		// Calculate supply multiplier (more supply = lower rewards)
-		const supplyMultiplier = this.calculateSupplyMultiplier(currentSupply);
-		
-		// Calculate final reward
-		const finalMultiplier = verificationMultiplier * participationMultiplier * supplyMultiplier;
-		const rewardAmount = BigInt(Math.floor(Number(baseReward) * finalMultiplier));
-		
-		// Calculate supply impact
-		const supplyImpact = currentSupply > 0n 
-			? Number(rewardAmount * 100n / currentSupply) / 100
-			: 0;
+		const activity = activityData[0] || { daily_active: [], total_actions: 0, cwc_actions: 0 };
+		const dailyActiveUsers = activity.daily_active.length;
 		
 		return {
-			decision: 'mint_tokens',
-			confidence: 0.9,
-			reasoning: [
-				`Base reward for ${actionType}: ${Number(baseReward) / 10**18} VOTER`,
-				`Verification score multiplier: ${verificationMultiplier.toFixed(2)}`,
-				`Participation multiplier: ${participationMultiplier.toFixed(2)}`,
-				`Supply multiplier: ${supplyMultiplier.toFixed(2)}`,
-				`Final reward: ${Number(rewardAmount) / 10**18} VOTER`
-			],
-			rewardAmount,
-			supplyImpact,
-			economicRationale: this.generateEconomicRationale(actionType, finalMultiplier)
+			dailyActiveUsers,
+			totalActions: activity.total_actions,
+			cwcActions: activity.cwc_actions,
+			avgActionsPerUser: dailyActiveUsers > 0 ? activity.total_actions / dailyActiveUsers : 0
 		};
 	}
-	
-	async validate(input: any): Promise<boolean> {
-		return input?.actionType && input?.userAddress;
-	}
-	
-	/**
-	 * Calculate participation multiplier
-	 * Higher participation = lower individual rewards
-	 */
-	private calculateParticipationMultiplier(participation: number): number {
-		if (participation < 100) return 1.5; // Early adopter bonus
-		if (participation < 1000) return 1.2;
-		if (participation < 10000) return 1.0;
-		if (participation < 100000) return 0.8;
-		return 0.6; // Mature network
-	}
-	
-	/**
-	 * Calculate supply multiplier
-	 * More tokens in circulation = lower rewards
-	 */
-	private calculateSupplyMultiplier(currentSupply: bigint): number {
-		const supplyPercentage = Number(currentSupply * 100n / this.MAX_SUPPLY);
+
+	private async getUserReputation(userId?: string): Promise<{ trust_score: number; reputation_tier: string } | null> {
+		if (!userId) return null;
 		
-		if (supplyPercentage < 1) return 2.0; // Very early stage
-		if (supplyPercentage < 5) return 1.5;
-		if (supplyPercentage < 10) return 1.2;
-		if (supplyPercentage < 25) return 1.0;
-		if (supplyPercentage < 50) return 0.8;
-		if (supplyPercentage < 75) return 0.6;
-		return 0.4; // Near max supply
+		return await prisma.user.findUnique({
+			where: { id: userId },
+			select: { trust_score: true, reputation_tier: true }
+		});
 	}
-	
-	/**
-	 * Generate economic rationale for the decision
-	 */
-	private generateEconomicRationale(actionType: string, multiplier: number): string {
-		if (multiplier > 1.2) {
-			return `High reward multiplier (${multiplier.toFixed(2)}x) due to early participation and low supply. Encouraging growth phase.`;
-		} else if (multiplier > 0.8) {
-			return `Standard reward multiplier (${multiplier.toFixed(2)}x) reflecting balanced network growth and sustainable tokenomics.`;
-		} else {
-			return `Conservative reward multiplier (${multiplier.toFixed(2)}x) to maintain supply stability as network matures.`;
+
+	private async getTemplateComplexity(templateId?: string): Promise<number> {
+		if (!templateId) return 1.0;
+		
+		const template = await prisma.template.findUnique({
+			where: { id: templateId },
+			select: { message_body: true }
+		});
+		
+		// Simple complexity metric based on message length
+		return template?.message_body?.length ? 
+			Math.min(2.0, 1.0 + (template.message_body.length / 1000)) : 1.0;
+	}
+
+	private calculateBaseReward(networkData: { dailyActiveUsers: number; totalActions: number }): number {
+		// Dynamic base reward based on network activity
+		const { dailyActiveUsers, totalActions } = networkData;
+		
+		// More users = lower per-action reward to prevent inflation
+		// Fewer users = higher reward to incentivize participation
+		const activityFactor = Math.max(0.1, 1 - (dailyActiveUsers / 10000));
+		
+		// Base of $0.10, adjusted by activity
+		return 0.10 * (0.5 + 1.5 * activityFactor);
+	}
+
+	private calculateActivityMultiplier(networkData: { dailyActiveUsers: number }): number {
+		// Network effect multiplier - more engagement creates more value
+		const { dailyActiveUsers } = networkData;
+		return Math.min(2.0, 1.0 + dailyActiveUsers / 10000);
+	}
+
+	private getActionTypeMultiplier(actionType: string): number {
+		const multipliers: Record<string, number> = {
+			cwc_message: 1.5,        // CWC messages are high-value
+			direct_action: 1.2,      // Direct actions are valuable
+			template_creation: 2.0,   // Template creation is highly valuable
+			challenge_participation: 1.3, // Challenge market participation
+			unknown: 1.0
+		};
+		
+		return multipliers[actionType] || 1.0;
+	}
+
+	private calculateReputationMultiplier(userRep: { trust_score: number } | null): number {
+		if (!userRep) return 1.0;
+		
+		// Higher trust score users get bonus rewards (max 3x)
+		return Math.min(3.0, 1.0 + (userRep.trust_score / 1000));
+	}
+
+	private calculateTimeDecay(timestamp?: string): number {
+		if (!timestamp) return 1.0;
+		
+		const actionTime = new Date(timestamp).getTime();
+		const now = Date.now();
+		const daysSince = (now - actionTime) / (24 * 60 * 60 * 1000);
+		
+		// Actions lose value over time (7 day half-life)
+		return Math.max(0.1, Math.pow(0.5, daysSince / 7));
+	}
+
+	private calculateUrgencyMultiplier(timestamp?: string): number {
+		// This would integrate with political calendar APIs in production
+		// For now, simulate urgency based on day of week and time patterns
+		
+		const now = new Date(timestamp || Date.now());
+		const dayOfWeek = now.getDay();
+		const hour = now.getHours();
+		
+		// Higher multiplier during typical legislative activity
+		// Monday-Thursday, business hours
+		if (dayOfWeek >= 1 && dayOfWeek <= 4 && hour >= 9 && hour <= 17) {
+			return 1.2;
 		}
+		
+		// Lower multiplier during weekends and off-hours
+		return 0.9;
 	}
-	
-	/**
-	 * Check if minting is within daily limits
-	 */
-	async checkDailyLimits(todaysMinted: bigint, requestedAmount: bigint): Promise<boolean> {
-		return todaysMinted + requestedAmount <= this.DAILY_MINT_CAP;
+
+	private async getETHPrice(): Promise<number> {
+		// Mock price - in production would use Chainlink or other oracles
+		// With circuit breakers to prevent manipulation
+		return 2000; // $2000 USD per ETH
 	}
-	
-	/**
-	 * Calculate optimal staking APR based on current conditions
-	 */
-	async calculateStakingAPR(stakedPercentage: number): Promise<number> {
-		// Target 30-50% staked
-		if (stakedPercentage < 30) {
-			return 15; // 15% APR to encourage staking
-		} else if (stakedPercentage < 50) {
-			return 10; // 10% APR at optimal range
-		} else {
-			return 7; // 7% APR when over-staked
-		}
+
+	private calculateConfidence(
+		networkData: { dailyActiveUsers: number }, 
+		userRep: any, 
+		context: AgentContext
+	): number {
+		let confidence = 0.8; // Base confidence
+		
+		// Higher confidence with more network data
+		if (networkData.dailyActiveUsers > 100) confidence += 0.1;
+		if (networkData.dailyActiveUsers > 1000) confidence += 0.1;
+		
+		// Higher confidence with user reputation data
+		if (userRep && userRep.trust_score > 50) confidence += 0.05;
+		
+		// Lower confidence for edge cases
+		if (!context.userId) confidence -= 0.2;
+		if (!context.actionType) confidence -= 0.1;
+		
+		return Math.min(1.0, Math.max(0.1, confidence));
+	}
+
+	private generateReasoning(
+		params: RewardParameters, 
+		networkData: { dailyActiveUsers: number; totalActions: number }, 
+		context: AgentContext
+	): string {
+		const { baseRewardUSD, multipliers, totalMultiplier } = params;
+		
+		return `Dynamic reward calculation: Base $${baseRewardUSD.toFixed(4)} × ${totalMultiplier.toFixed(2)} = $${(baseRewardUSD * totalMultiplier).toFixed(4)}. ` +
+			   `Network: ${networkData.dailyActiveUsers} active users, ${networkData.totalActions} daily actions. ` +
+			   `Multipliers: activity ${multipliers.activity.toFixed(2)}, action ${multipliers.action.toFixed(2)}, ` +
+			   `reputation ${multipliers.reputation.toFixed(2)}, urgency ${multipliers.urgency.toFixed(2)}. ` +
+			   `Action type: ${context.actionType}`;
 	}
 }

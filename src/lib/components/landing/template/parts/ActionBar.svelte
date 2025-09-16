@@ -61,25 +61,25 @@
 	<div class="mt-4 flex justify-center">
 		{#if template.deliveryMethod === 'certified'}
 			<Button
-				variant="certified"
+				variant="verified"
 				size="lg"
 				testId="contact-congress-button"
 				classNames="w-full"
-				enableFlight={!!user}
+				enableFlight={true}
 				bind:flightState
 				onclick={handleSendClick}
-				text={user ? 'Send to Congress' : 'Sign in to Contact Congress'}
+				text={user ? 'Send to Congress' : 'Send to Congress'}
 			/>
 		{:else}
 			<Button
-				variant="direct"
+				variant="magical"
 				size="lg"
 				testId="send-email-button"
 				classNames="w-full"
-				enableFlight={!!user}
+				enableFlight={true}
 				bind:flightState
 				onclick={handleSendClick}
-				text={user ? 'Join & Send' : 'Sign in to Send'}
+				text={user ? 'Send to Leaders' : 'Send to Leaders'}
 			/>
 		{/if}
 	</div>

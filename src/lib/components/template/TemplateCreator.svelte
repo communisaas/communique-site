@@ -266,7 +266,7 @@
 <div class="flex h-full flex-col">
 	<!-- Progress bar -->
 	<div class="h-1 bg-slate-100">
-		<div class="h-full bg-blue-600 transition-all duration-300" style="width: {progress}%"></div>
+		<div class="h-full bg-participation-primary-600 transition-all duration-300" style="width: {progress}%"></div>
 	</div>
 
 	<!-- Step Header -->
@@ -276,7 +276,7 @@
 				<div class="flex items-center gap-1.5 md:gap-3">
 					{#snippet iconSnippet()}
 						{@const IconComponent = stepInfo[currentStep].icon}
-						<IconComponent class="h-4 w-4 text-blue-600 md:h-5 md:w-5" />
+						<IconComponent class="h-4 w-4 text-participation-primary-600 md:h-5 md:w-5" />
 					{/snippet}
 					{@render iconSnippet()}
 					<h2 class="text-base font-semibold text-slate-900 md:text-xl">
@@ -358,7 +358,7 @@
 
 			{#if currentStep === 'review'}
 				<button
-					class="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+					class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 					onclick={handleSave}
 					disabled={!isCurrentStepValid || isSubmitting}
 				>
@@ -374,7 +374,7 @@
 				</button>
 			{:else}
 				<button
-					class="flex items-center gap-1.5 rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+					class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 					onclick={handleNext}
 					disabled={!isCurrentStepValid || isSubmitting}
 				>
@@ -413,7 +413,7 @@
 						Start Fresh
 					</button>
 					<button
-						class="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+						class="rounded bg-participation-primary-600 px-4 py-2 text-sm text-white hover:bg-participation-primary-700"
 						onclick={recoverDraft}
 					>
 						Recover Draft

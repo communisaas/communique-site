@@ -17,12 +17,12 @@ All VOTER Protocol agents now use N8N workflows for LLM orchestration instead of
 ```
 
 Examples:
-- `verification-comprehensive` - Complete template verification
-- `verification-grammar` - Grammar-only checking
-- `moderation-openai` - OpenAI-based content moderation
-- `moderation-gemini` - Gemini-based content moderation
-- `supply-calculation` - Token supply optimization
-- `impact-assessment` - Civic impact prediction
+- `verification-comprehensive`: Complete template verification
+- `verification-grammar`: Grammar-only checking
+- `moderation-openai`: OpenAI-based content moderation
+- `moderation-gemini`: Gemini-based content moderation
+- `supply-calculation`: Token supply optimization
+- `impact-assessment`: Civic impact prediction
 
 ## Standard Workflow Input Schema
 

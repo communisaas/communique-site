@@ -4,7 +4,7 @@
 
 Turn-key email delivery to Congress via Communicating With Congress (CWC) API, plus direct email campaigns with OAuth-powered user acquisition.
 
-**Self-sustaining civic infrastructure funded by blockchain protocol economics - users never pay, data never sold.**
+**Self-sustaining civic infrastructure funded by cryptographic proof-of-work.**
 
 *Let the collective voice rise.*
 
@@ -141,27 +141,27 @@ fly deploy
 - US certified delivery (web forms) gated; Tier 1 countries use direct email
 
 ### 📧 Congressional Advocacy
-- **Address-based representative lookup** - Find user's Congress members
-- **CWC API integration** - Direct delivery to congressional offices
-- **Template system** - Pre-built advocacy messages
-- **Personalization** - Custom user details injection
+- **Address-based representative lookup**: Find user's Congress members
+- **CWC API integration**: Direct delivery to congressional offices
+- **Template system**: Pre-built advocacy messages
+- **Personalization**: Custom user details injection
 
 ### 🎯 Direct Email Campaigns
-- **mailto-based delivery** - Opens the user’s email client with pre-filled content
-- **Template engine** - Customizable message templates
-- **Campaign tracking** - Delivery analytics
+- **mailto-based delivery**: Opens the user's email client with pre-filled content
+- **Template engine**: Customizable message templates
+- **Campaign tracking**: Delivery analytics
 
 ### 🔐 Authentication & Onboarding
-- **OAuth providers** - Google, Facebook, Twitter, LinkedIn, Discord
-- **Address collection** - For congressional campaigns
-- **Profile completion** - For direct outreach
-- **Extended sessions** - 90-day cookies for template-action deep-link flows (e.g., `template-modal`, `auth=required`, `action=complete`)
+- **OAuth providers**: Google, Facebook, Twitter, LinkedIn, Discord
+- **Address collection**: For congressional campaigns
+- **Profile completion**: For direct outreach
+- **Extended sessions**: 90-day cookies for template-action deep-link flows (e.g., `template-modal`, `auth=required`, `action=complete`)
 
 ### 📱 User Experience
-- **Responsive design** - Mobile-first interface
-- **Template modal** - Streamlined sharing flow
-- **mailto: integration** - One-click email client launch (Tier 1 countries)
-- **Social amplification** - Built-in viral pattern generator and share flow
+- **Responsive design**: Mobile-first interface
+- **Template modal**: Streamlined sharing flow
+- **mailto: integration**: One-click email client launch (Tier 1 countries)
+- **Social amplification**: Built-in viral pattern generator and share flow
 
 ## 📁 Project Structure
 
@@ -197,11 +197,12 @@ static/               # Static assets
 - Census Bureau Geocoding API (primary)
 - ZIP→District fallback (OpenSourceActivismTech, 119th)
 
-### Blockchain (Anchoring & Attestations)
-- Anchoring: Monad (cheap EVM) as source-of-truth; batch Merkle roots and minimal on-chain fields (status, root, hash, timestamp)
-- Optional L2 mirror: ERC-8004 registries (Identity/Validation/Reputation) on a major L2 when ETH-native consumers need on-chain reads
-- Attestations: EAS optional for partner integrations
-- Storage: off-chain payloads (e.g., IPFS) with on-chain hashes
+### Cryptographic Infrastructure (Algorithmic Coordination)
+- Anchoring: Monad (cheap EVM) for cryptographic proof verification; batch Merkle roots and deterministic execution logs
+- Algorithmic Treasury: Smart contracts automatically execute fund allocation based on mathematical correlation scores
+- ERC-8004 Reputation: Portable democratic credibility across platforms - built for AI agents, extended to human civic participants
+- Zero-Knowledge Verification: Didit.me integration for privacy-preserving identity proofs
+- Autonomous Execution: Code-as-constitution eliminating human discretion from democratic coordination
 
 ## 🚨 Common Issues
 
@@ -225,9 +226,9 @@ Ensure redirect URIs in OAuth provider consoles match exactly:
 
 See **[docs/](./docs/)** for comprehensive documentation:
 
-- **[Claude guide](./CLAUDE.md)** - Single authoritative development guide
-- **[Architecture](./docs/architecture.md)** - System design & flows
-- **[Integrations](./docs/integrations.md)** - External services
+- **[Claude guide](./CLAUDE.md)**: Single authoritative development guide
+- **[Architecture](./docs/architecture.md)**: System design & flows
+- **[Integrations](./docs/integrations.md)**: External services
 
 ## 🤝 Contributing
 

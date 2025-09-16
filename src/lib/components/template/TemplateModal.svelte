@@ -415,10 +415,10 @@
 			<!-- Loading State - mailto is being resolved -->
 			<div class="p-6 sm:p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
 				<div
-					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-blue-100"
+					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-participation-primary-100"
 					style="transform: scale({$celebrationScale})"
 				>
-					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
+					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-participation-primary-600" />
 				</div>
 				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Opening your email app...</h3>
 				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">Your message is ready with your information pre-filled.</p>
@@ -426,7 +426,7 @@
 				<!-- Animated progress indicator -->
 				<div class="mx-auto h-2 w-32 overflow-hidden rounded-full bg-slate-200">
 					<div
-						class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 ease-out"
+						class="h-full rounded-full bg-gradient-to-r from-participation-primary-500 to-participation-primary-700 transition-all duration-1000 ease-out"
 						style="width: {$actionProgress * 100}%"
 					></div>
 				</div>
@@ -443,9 +443,9 @@
 				</button>
 				
 				<div
-					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-blue-100"
+					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-participation-primary-100"
 				>
-					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-blue-600" />
+					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-participation-primary-600" />
 				</div>
 				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Did you send your message?</h3>
 				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">Help us track real impact by confirming your send.</p>
@@ -570,7 +570,7 @@
 								<button
 									onclick={copyTemplateUrl}
 									class="flex items-center gap-2 rounded-lg border px-4 py-2 transition-all duration-200 {copyButtonGlow
-										? 'border-blue-400 bg-blue-50'
+										? 'border-participation-primary-400 bg-participation-primary-50'
 										: 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'}"
 									style="transform: scale({$copyButtonScale}) rotate({$copyButtonRotation}deg)"
 								>
@@ -616,10 +616,10 @@
 					<div class="flex items-center justify-between">
 						<div class="flex items-center gap-3">
 							<div
-								class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100"
+								class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-participation-primary-100"
 								style="transform: scale({$celebrationScale})"
 							>
-								<Send class="h-5 w-5 text-blue-600" />
+								<Send class="h-5 w-5 text-participation-primary-600" />
 							</div>
 							<div>
 								<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
@@ -663,7 +663,7 @@
 					{:else}
 						<!-- Fallback if no submission ID -->
 						<div class="rounded-lg border border-slate-200 bg-white p-4 text-center">
-							<Send class="mx-auto h-8 w-8 text-blue-600 mb-3" />
+							<Send class="mx-auto h-8 w-8 text-participation-primary-600 mb-3" />
 							<p class="text-slate-600">Message processing started</p>
 						</div>
 					{/if}

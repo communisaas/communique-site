@@ -40,8 +40,8 @@
 						class="flex items-start gap-4 text-sm tracking-normal sm:text-base"
 						class:opacity-0={!open}
 					>
-						<div class="rounded-lg bg-blue-50 p-2">
-							<svelte:component this={check.icon} class="h-6 w-6 text-blue-400" />
+						<div class="rounded-lg bg-participation-primary-50 p-2">
+							<svelte:component this={check.icon} class="h-6 w-6 text-participation-primary-400" />
 						</div>
 						<div>
 							<h3 class="mb-1 font-medium text-slate-900">

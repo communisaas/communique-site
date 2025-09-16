@@ -4,87 +4,432 @@
 
 /* Import monospace fonts */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @layer base {
 	:root {
-		/* Monospace aesthetic with violet accent */
-		--color-accent: theme('colors.violet.500');
-		--color-accent-hover: theme('colors.violet.600');
-		--color-accent-light: theme('colors.violet.50');
-		--color-accent-border: theme('colors.violet.200');
+		/* 
+		=== COMMUNIQUE DESIGN SYSTEM ===
+		Infrastructure for consequential participation in any governance system
+		Designed for global accessibility and future governance forms
+		*/
 		
-		/* Delivery channels */
-		--color-congressional: theme('colors.congressional.500');
-		--color-congressional-light: theme('colors.congressional.50');
-		--color-congressional-border: theme('colors.congressional.200');
-		--color-direct: theme('colors.direct.500');
-		--color-direct-light: theme('colors.direct.50');
-		--color-direct-border: theme('colors.direct.200');
-		
-		/* Status indicators */
-		--color-status-saving: theme('colors.status.pending');
-		--color-status-saved: theme('colors.status.active');
-		--color-status-error: theme('colors.status.error');
-		--color-status-neutral: theme('colors.status.neutral');
-		
-		/* Surface colors */
-		--color-surface-base: theme('colors.surface.base');
-		--color-surface-raised: theme('colors.surface.raised');
-		--color-surface-overlay: theme('colors.surface.overlay');
-		--color-surface-inverted: theme('colors.surface.inverted');
+		/* Core Brand Colors—Vibrant Trust */
+		--participation-primary-50: #eef2ff;
+		--participation-primary-100: #e0e7ff;
+		--participation-primary-200: #c7d2fe;
+		--participation-primary-300: #a5b4fc;
+		--participation-primary-400: #818cf8;
+		--participation-primary-500: #6366f1;  /* Indigo-500: vibrant, trustworthy */
+		--participation-primary-600: #4f46e5;  /* Indigo-600: primary brand */
+		--participation-primary-700: #4338ca;  /* Indigo-700: hover states */
+		--participation-primary-800: #3730a3;  /* Indigo-800: pressed states */
+		--participation-primary-900: #312e81;  /* Indigo-900: dark text */
+		--participation-primary-950: #1e1b4b;  /* Indigo-950: darkest */
+
+		/* Accent Colors—Distinctive Voice */
+		--participation-accent-50: #faf5ff;
+		--participation-accent-100: #f3e8ff;
+		--participation-accent-200: #e9d5ff;
+		--participation-accent-300: #d8b4fe;
+		--participation-accent-400: #c084fc;
+		--participation-accent-500: #a855f7;  /* Violet-500: accent */
+		--participation-accent-600: #9333ea;  /* Violet-600: "Count" color */
+		--participation-accent-700: #7c3aed;  /* Violet-700: hover */
+		--participation-accent-800: #6b21a8;  /* Violet-800: pressed */
+		--participation-accent-900: #581c87;  /* Violet-900: dark */
+		--participation-accent-950: #3b0764;  /* Violet-950: darkest */
+
+		/* Delivery Channel Colors—Clear Differentiation */
+		--channel-verified-50: #ecfdf5;
+		--channel-verified-100: #d1fae5;
+		--channel-verified-200: #a7f3d0;
+		--channel-verified-300: #6ee7b7;
+		--channel-verified-400: #34d399;
+		--channel-verified-500: #10b981;  /* Verified delivery green */
+		--channel-verified-600: #059669;
+		--channel-verified-700: #047857;
+		--channel-verified-800: #065f46;
+		--channel-verified-900: #064e3b;
+
+		--channel-community-50: #f0f9ff;
+		--channel-community-100: #e0f2fe;
+		--channel-community-200: #bae6fd;
+		--channel-community-300: #7dd3fc;
+		--channel-community-400: #38bdf8;
+		--channel-community-500: #0ea5e9;  /* Sky-500: Community outreach */
+		--channel-community-600: #0284c7;  /* Sky-600: Primary community */
+		--channel-community-700: #0369a1;  /* Sky-700: Hover state */
+		--channel-community-800: #075985;  /* Sky-800: Pressed state */
+		--channel-community-900: #0c4a6e;  /* Sky-900: Dark text */
+
+		/* Participation Status Colors—Clear Communication */
+		--status-success-50: #f0fdf4;
+		--status-success-500: #22c55e;  /* Message delivered */
+		--status-success-700: #15803d;
+
+		--status-warning-50: #fffbeb;
+		--status-warning-500: #f59e0b;  /* Verification pending */
+		--status-warning-700: #a16207;
+
+		--status-error-50: #fef2f2;
+		--status-error-500: #ef4444;   /* Failed delivery */
+		--status-error-700: #b91c1c;
+
+		--status-info-50: #eef2ff;
+		--status-info-500: #6366f1;    /* Information: Indigo-500 */
+		--status-info-700: #4338ca;
+
+		--status-neutral-50: #f9fafb;
+		--status-neutral-500: #6b7280;  /* Draft, inactive */
+		--status-neutral-700: #374151;
+
+		/* Surface Colors—Infrastructure Gravitas */
+		--surface-base: #ffffff;          /* Clean, trustworthy white */
+		--surface-raised: #f9fafb;        /* Slightly elevated surfaces */
+		--surface-overlay: #f3f4f6;       /* Modals, overlays */
+		--surface-inverted: #111827;      /* Dark mode, headers */
+		--surface-accent: #f8fafc;        /* Subtle emphasis */
+		--surface-border: #e5e7eb;        /* Clean separation */
+		--surface-border-strong: #d1d5db; /* Defined sections */
+
+		/* Text Colors—Clear Hierarchy */
+		--text-primary: #111827;    /* Headings, important content */
+		--text-secondary: #374151;  /* Body text, descriptions */
+		--text-tertiary: #6b7280;   /* Supporting text, captions */
+		--text-quaternary: #9ca3af; /* Placeholders, disabled */
+		--text-inverse: #ffffff;    /* Text on dark backgrounds */
+		--text-accent: #4f46e5;     /* Links, interactive elements: Indigo-600 */
+
+		/* Shadows—Subtle Depth */
+		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+		--shadow-participation: 0 4px 14px 0 rgb(79 70 229 / 0.15);  /* Indigo branded shadow */
+
+		/* Interactive States */
+		--focus-ring: 0 0 0 3px rgb(79 70 229 / 0.1);  /* Indigo-600 focus */
+		--focus-ring-verified: 0 0 0 3px rgb(16 185 129 / 0.1);  /* Emerald focus */
+		--focus-ring-community: 0 0 0 3px rgb(14 165 233 / 0.1);  /* Sky focus */
+		--focus-ring-accent: 0 0 0 3px rgb(147 51 234 / 0.1);  /* Violet accent focus */
 	}
+
 }
 
 @layer components {
-	/* Interactive element base styles */
-	.interactive-element {
-		@apply transition-colors duration-150;
-		@apply hover:bg-surface-overlay;
-		@apply active:scale-[0.98];
+	/* 
+	=== COMPONENT DESIGN SYSTEM ===
+	Participation interaction patterns with global accessibility
+	*/
+
+	/* Typography Hierarchy—Clear Information Architecture */
+	.text-primary { 
+		color: var(--text-primary); 
+		font-weight: 600;
+	}
+	
+	.text-secondary { 
+		color: var(--text-secondary); 
+		font-weight: 400;
+	}
+	
+	.text-tertiary { 
+		color: var(--text-tertiary); 
+		font-weight: 400;
+	}
+	
+	.text-quaternary { 
+		color: var(--text-quaternary); 
+		font-weight: 400;
+	}
+	
+	.text-inverse { 
+		color: var(--text-inverse); 
+		font-weight: 500;
+	}
+	
+	.text-accent { 
+		color: var(--text-accent); 
+		font-weight: 500;
+	}
+
+	/* Interactive Elements—Participation Interaction Standards */
+	.participation-interactive {
+		@apply transition-all duration-200 ease-out;
+		@apply focus:outline-none;
+		@apply focus-visible:ring-2 focus-visible:ring-offset-2;
+		box-shadow: var(--focus-ring);
+		border-radius: 0.375rem; /* 6px: consistent with participation aesthetic */
+	}
+
+	.participation-interactive:hover {
+		background-color: var(--surface-raised);
+		transform: translateY(-1px);
+		box-shadow: var(--shadow-md);
+	}
+
+	.participation-interactive:active {
+		transform: translateY(0);
+		box-shadow: var(--shadow-sm);
+	}
+
+	.participation-interactive:focus-visible {
+		box-shadow: var(--focus-ring);
+	}
+
+	/* Channel-Specific Interactive States */
+	.participation-interactive-verified:focus-visible {
+		box-shadow: var(--focus-ring-verified);
+	}
+
+	.participation-interactive-community:focus-visible {
+		box-shadow: var(--focus-ring-community);
+	}
+
+	/* Participation Badge System—Clear Status Communication */
+	.participation-badge {
+		@apply inline-flex items-center gap-1.5;
+		@apply border rounded-full font-medium;
+		@apply px-3 py-1 text-xs;
+		@apply transition-all duration-150;
+		font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+		letter-spacing: 0.025em;
+	}
+
+	.participation-badge-sm {
+		@apply px-2 py-0.5 text-xs;
+	}
+
+	.participation-badge-md {
+		@apply px-3 py-1 text-sm;
+	}
+
+	/* Channel Badges */
+	.participation-badge-verified {
+		background-color: var(--channel-verified-50);
+		color: var(--channel-verified-700);
+		border-color: var(--channel-verified-200);
+	}
+
+	.participation-badge-community {
+		background-color: var(--channel-community-50);
+		color: var(--channel-community-700);
+		border-color: var(--channel-community-200);
+	}
+
+	/* Status Badges */
+	.participation-badge-success {
+		background-color: var(--status-success-50);
+		color: var(--status-success-700);
+		border-color: var(--status-success-500);
+	}
+
+	.participation-badge-warning {
+		background-color: var(--status-warning-50);
+		color: var(--status-warning-700);
+		border-color: var(--status-warning-500);
+	}
+
+	.participation-badge-error {
+		background-color: var(--status-error-50);
+		color: var(--status-error-700);
+		border-color: var(--status-error-500);
+	}
+
+	.participation-badge-info {
+		background-color: var(--status-info-50);
+		color: var(--status-info-700);
+		border-color: var(--status-info-500);
+	}
+
+	.participation-badge-neutral {
+		background-color: var(--status-neutral-50);
+		color: var(--status-neutral-700);
+		border-color: var(--surface-border);
+	}
+
+	/* Participation Surface System—Infrastructure Depth */
+	.participation-surface {
+		background-color: var(--surface-base);
+		border: 1px solid var(--surface-border);
+		border-radius: 0.75rem; /* 12px: participation roundness */
+		box-shadow: var(--shadow-sm);
+	}
+
+	.participation-surface-raised {
+		background-color: var(--surface-raised);
+		border: 1px solid var(--surface-border);
+		border-radius: 0.75rem;
+		box-shadow: var(--shadow-md);
+	}
+
+	.participation-surface-overlay {
+		background-color: var(--surface-overlay);
+		border: 1px solid var(--surface-border-strong);
+		border-radius: 0.75rem;
+		box-shadow: var(--shadow-lg);
+	}
+
+	/* Form Elements—Accessible Participation Input */
+	.participation-input {
+		@apply w-full px-4 py-3 border rounded-lg;
+		@apply transition-all duration-200;
+		@apply focus:outline-none focus:ring-2 focus:ring-offset-1;
+		background-color: var(--surface-base);
+		border-color: var(--surface-border);
+		color: var(--text-primary);
+		font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+		font-size: 1rem; /* 16px: prevents zoom on iOS */
+	}
+
+	.participation-input:hover {
+		border-color: var(--surface-border-strong);
+	}
+
+	.participation-input:focus {
+		border-color: var(--participation-primary-500);
+		box-shadow: var(--focus-ring);
+	}
+
+	.participation-input::placeholder {
+		color: var(--text-quaternary);
+	}
+
+	/* Verified vs Community Input Variants */
+	.participation-input-verified:focus {
+		border-color: var(--channel-verified-500);
+		box-shadow: var(--focus-ring-verified);
+	}
+
+	.participation-input-community:focus {
+		border-color: var(--channel-community-500);
+		box-shadow: var(--focus-ring-community);
+	}
+
+	/* Button System—Participation Action Patterns */
+	.participation-btn {
+		@apply inline-flex items-center justify-center gap-2;
+		@apply px-6 py-3 rounded-lg font-medium;
+		@apply transition-all duration-200 ease-out;
 		@apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+		@apply disabled:opacity-50 disabled:cursor-not-allowed;
+		font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+		font-size: 1rem;
+		line-height: 1.5;
+		min-height: 44px; /* iOS touch target minimum */
 	}
 
-	.interactive-congressional {
-		@apply focus:ring-congressional-500;
+	.participation-btn-sm {
+		@apply px-4 py-2 text-sm;
+		min-height: 36px;
 	}
 
-	.interactive-direct {
-		@apply focus:ring-direct-500;
+	.participation-btn-lg {
+		@apply px-8 py-4 text-lg;
+		min-height: 52px;
 	}
 
-	/* Typography hierarchy */
-	.text-primary { @apply text-gray-900; }
-	.text-secondary { @apply text-gray-600; }
-	.text-tertiary { @apply text-gray-500; }
-	.text-inverse { @apply text-white; }
-
-	/* Badge styles */
-	.badge {
-		@apply inline-flex items-center border rounded-full font-medium;
-		@apply px-badge-x py-badge-y text-xs;
+	/* Primary Participation Action */
+	.participation-btn-primary {
+		background-color: var(--participation-primary-500);
+		color: var(--text-inverse);
+		border: 1px solid var(--participation-primary-600);
+		box-shadow: var(--shadow-sm);
 	}
 
-	.badge-congressional {
-		@apply bg-congressional-50 text-congressional-700 border-congressional-200;
+	.participation-btn-primary:hover {
+		background-color: var(--participation-primary-600);
+		box-shadow: var(--shadow-md);
+		transform: translateY(-1px);
 	}
 
-	.badge-direct {
-		@apply bg-direct-50 text-direct-700 border-direct-200;
+	.participation-btn-primary:focus {
+		box-shadow: var(--focus-ring);
 	}
 
-	.badge-success {
-		@apply bg-emerald-50 text-emerald-700 border-emerald-200;
+	/* Secondary Participation Action */
+	.participation-btn-secondary {
+		background-color: var(--surface-base);
+		color: var(--text-primary);
+		border: 1px solid var(--surface-border-strong);
+		box-shadow: var(--shadow-sm);
 	}
 
-	.badge-warning {
-		@apply bg-amber-50 text-amber-700 border-amber-200;
+	.participation-btn-secondary:hover {
+		background-color: var(--surface-raised);
+		border-color: var(--participation-primary-300);
+		box-shadow: var(--shadow-md);
+		transform: translateY(-1px);
 	}
 
-	.badge-error {
-		@apply bg-red-50 text-red-700 border-red-200;
+	/* Channel-Specific Buttons */
+	.participation-btn-verified {
+		background-color: var(--channel-verified-500);
+		color: var(--text-inverse);
+		border: 1px solid var(--channel-verified-600);
 	}
 
-	.badge-neutral {
-		@apply bg-gray-50 text-gray-700 border-gray-200;
+	.participation-btn-verified:hover {
+		background-color: var(--channel-verified-600);
+	}
+
+	.participation-btn-verified:focus {
+		box-shadow: var(--focus-ring-verified);
+	}
+
+	.participation-btn-community {
+		background-color: var(--channel-community-500);
+		color: var(--text-inverse);
+		border: 1px solid var(--channel-community-600);
+	}
+
+	.participation-btn-community:hover {
+		background-color: var(--channel-community-600);
+	}
+
+	.participation-btn-community:focus {
+		box-shadow: var(--focus-ring-community);
+	}
+
+	/* Utility Classes */
+	.participation-text-gradient {
+		background: linear-gradient(135deg, var(--participation-primary-600), var(--participation-primary-400));
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+	}
+
+	/* Animations for Participation Feedback */
+	.participation-pulse {
+		animation: participation-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+	}
+
+	@keyframes participation-pulse {
+		0%, 100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.7;
+		}
+	}
+
+	.participation-bounce {
+		animation: participation-bounce 1s ease-in-out;
+	}
+
+	@keyframes participation-bounce {
+		0%, 20%, 53%, 80%, 100% {
+			transform: translateY(0);
+		}
+		40%, 43% {
+			transform: translateY(-8px);
+		}
+		70% {
+			transform: translateY(-4px);
+		}
+		90% {
+			transform: translateY(-2px);
+		}
 	}
 }
+

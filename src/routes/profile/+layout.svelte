@@ -93,7 +93,7 @@
 						{#if user.avatar}
 							<img src={user.avatar} alt={user.name} class="h-16 w-16 rounded-full" />
 						{:else}
-							<div class="h-16 w-16 rounded-full bg-blue-600 flex items-center justify-center">
+							<div class="h-16 w-16 rounded-full bg-participation-primary-600 flex items-center justify-center">
 								<User class="h-8 w-8 text-white" />
 							</div>
 						{/if}
@@ -108,7 +108,7 @@
 							<div class="flex items-center space-x-2">
 								<div class="w-20 h-2 bg-slate-200 rounded-full">
 									<div 
-										class="h-2 bg-blue-600 rounded-full transition-all duration-300" 
+										class="h-2 bg-participation-primary-600 rounded-full transition-all duration-300" 
 										style="width: {completion.percentage}%"
 									></div>
 								</div>
@@ -130,7 +130,7 @@
 						href="/profile?tab={tab.id}"
 						class="flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors {
 							activeTab === tab.id
-								? 'border-blue-500 text-blue-600'
+								? 'border-participation-primary-500 text-participation-primary-600'
 								: 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
 						}"
 					>

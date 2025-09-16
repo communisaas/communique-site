@@ -346,7 +346,7 @@
 			} else {
 				return (
 					baseClasses +
-					' bg-blue-50 text-blue-700 ring-1 ring-blue-200 hover:bg-blue-100 hover:ring-blue-300'
+					' bg-participation-primary-50 text-participation-primary-700 ring-1 ring-participation-primary-200 hover:bg-participation-primary-100 hover:ring-participation-primary-300'
 				);
 			}
 		} else {
@@ -367,9 +367,9 @@
 	<!-- Subject/Title Header - Hide on template page to avoid duplication -->
 	{#if context !== 'page'}
 		{#if template?.subject || template?.title}
-			<div class="mb-3 rounded-md bg-blue-50 border border-blue-200 px-3 py-2">
+			<div class="mb-3 rounded-md bg-participation-primary-50 border border-participation-primary-200 px-3 py-2">
 				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-2 text-xs font-medium text-blue-700 mb-1">
+					<div class="flex items-center gap-2 text-xs font-medium text-participation-primary-700 mb-1">
 						<Mail class="h-3 w-3" />
 						Subject Line
 					</div>
@@ -377,7 +377,7 @@
 						<VerificationBadge size="sm" />
 					{/if}
 				</div>
-				<div class="font-medium text-blue-900 text-sm">
+				<div class="font-medium text-participation-primary-900 text-sm">
 					{template.subject || template.title}
 				</div>
 			</div>
@@ -426,7 +426,7 @@
 										{:else if userEditableVariables.has(segment.name) && (!variableValues[segment.name] || variableValues[segment.name].trim() === '')}
 											<Sparkles class="h-2.5 w-2.5 text-purple-600" />
 										{:else if userEditableVariables.has(segment.name)}
-											<Edit3 class="h-2.5 w-2.5 text-blue-600" />
+											<Edit3 class="h-2.5 w-2.5 text-participation-primary-600" />
 										{/if}
 										{variableValues[segment.name] || segment.name}
 										{#if segment.name === 'Personal Connection' && (variableValues[segment.name] || '').trim().length > 0}

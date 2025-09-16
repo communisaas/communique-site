@@ -61,7 +61,7 @@
 		<p class="text-slate-600 mb-6">Loading your campaign action...</p>
 		<a 
 			href="/{data.template.slug}" 
-			class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+			class="inline-flex items-center px-4 py-2 bg-participation-primary-600 text-white rounded-lg hover:bg-participation-primary-700 transition-colors"
 		>
 			View full campaign
 		</a>

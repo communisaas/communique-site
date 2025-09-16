@@ -24,23 +24,25 @@ ENABLE_CERTIFICATION=true
 
 ## Technical Implementation
 
-**Certification Service:** Client-safe service using server-side proxy endpoints. No sensitive configuration exposed to browsers.
+**Cryptographic Certification:** Client-safe service using server-side proxy endpoints with Didit.me zero-knowledge verification. No sensitive configuration exposed to browsers.
 
-**Address Generation:** Deterministic addresses created from user IDs. Same user always gets same address.
+**Deterministic Address Generation:** Cryptographically generated addresses from user IDs. Same user always gets same address through mathematical proof.
 
-**Server Proxies:** SvelteKit API routes handle VOTER Protocol communication securely.
+**Server Proxies:** SvelteKit API routes handle VOTER Protocol communication with algorithmic verification.
 
 ## Development Flow
 
-**User sends email** → **Communiqué opens mail client** → **Server proxy certifies action** → **VOTER Protocol agents verify** → **Virtual rewards accumulate** → **User can connect wallet to claim**
+**User sends email** → **Communiqué opens mail client** → **Server proxy certifies action** → **Didit.me verifies identity** → **Algorithms calculate rewards** → **Smart contracts execute allocation** → **User can connect wallet to claim**
 
 ## Key Features
 
-**Deterministic addresses** from user IDs. No private keys generated or stored. Connect real wallet anytime.
+**Cryptographic addresses** from user IDs. No private keys generated or stored. Connect real wallet anytime.
+
+**Zero-knowledge verification** through Didit.me integration. Privacy-preserving identity proofs without PII exposure.
 
 **Server-side proxies** handle all VOTER Protocol communication. API keys never exposed to browsers.
 
-**Virtual rewards** accumulate off-chain. Claim on-chain when ready.
+**Algorithmic reward calculation** based on verified civic labor. Smart contracts execute allocation automatically.
 
 ## Database Schema Updates
 
@@ -48,9 +50,9 @@ User addresses, VOTER balances, reputation scores, and virtual reward tracking i
 
 ## Certification Flow
 
-**Automatic certification** happens invisibly after email delivery. Multi-agent consensus verifies civic actions and calculates rewards based on impact and quality.
+**Algorithmic certification** happens invisibly after email delivery. Multi-agent consensus verifies civic actions through Didit.me zero-knowledge proofs and calculates rewards based on cryptographic impact verification.
 
-**Progressive decentralization** lets users start immediately with deterministic addresses, then connect wallets when ready to claim rewards on-chain.
+**Progressive decentralization** lets users start immediately with cryptographic addresses, then connect wallets when ready to claim algorithmically-calculated rewards on-chain.
 
 **Quality discourse pays.** Carroll Mechanisms reward good-faith engagement and penalize bad-faith participation through reputation scoring.
 
@@ -88,4 +90,4 @@ User addresses, VOTER balances, reputation scores, and virtual reward tracking i
 
 ---
 
-**The UX stays the same. The backend gets smart. Democracy pays.**
+**The UX stays the same. The algorithms execute. Democracy transcends.**

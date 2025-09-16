@@ -18,7 +18,7 @@
 				<h3 class="mb-3 text-sm font-semibold text-slate-900">Contact</h3>
 				<a
 					href="mailto:hello@communique.com"
-					class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600"
+					class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-participation-primary-600"
 				>
 					<Mail class="h-4 w-4" />
 					hello@communique.com

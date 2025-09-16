@@ -85,9 +85,9 @@
 		</button>
 
 		<!-- Header -->
-		<div class="bg-gradient-to-br from-blue-50 to-slate-50 px-8 pt-8 pb-6 text-center">
+		<div class="bg-gradient-to-br from-participation-primary-50 to-slate-50 px-8 pt-8 pb-6 text-center">
 			<div class="inline-flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-lg mb-4">
-				<User class="h-8 w-8 text-blue-600" />
+				<User class="h-8 w-8 text-participation-primary-600" />
 			</div>
 			<h2 class="text-2xl font-bold text-slate-900 mb-2">
 				Welcome to Communiqué
@@ -172,19 +172,19 @@
 			<h3 class="text-sm font-semibold text-slate-900 mb-3">What you get:</h3>
 			<div class="space-y-2 text-sm text-slate-600">
 				<div class="flex items-center">
-					<ArrowRight class="w-3 h-3 mr-2 text-blue-600 flex-shrink-0" />
+					<ArrowRight class="w-3 h-3 mr-2 text-participation-primary-600 flex-shrink-0" />
 					<span>Access your personalized profile</span>
 				</div>
 				<div class="flex items-center">
-					<ArrowRight class="w-3 h-3 mr-2 text-blue-600 flex-shrink-0" />
+					<ArrowRight class="w-3 h-3 mr-2 text-participation-primary-600 flex-shrink-0" />
 					<span>Create and manage advocacy templates</span>
 				</div>
 				<div class="flex items-center">
-					<ArrowRight class="w-3 h-3 mr-2 text-blue-600 flex-shrink-0" />
+					<ArrowRight class="w-3 h-3 mr-2 text-participation-primary-600 flex-shrink-0" />
 					<span>Track your advocacy impact</span>
 				</div>
 				<div class="flex items-center">
-					<ArrowRight class="w-3 h-3 mr-2 text-blue-600 flex-shrink-0" />
+					<ArrowRight class="w-3 h-3 mr-2 text-participation-primary-600 flex-shrink-0" />
 					<span>Connect with your representatives</span>
 				</div>
 			</div>

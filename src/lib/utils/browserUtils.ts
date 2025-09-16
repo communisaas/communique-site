@@ -182,6 +182,49 @@ export function supportsClipboard(): boolean {
 	return !!(nav?.clipboard && window.isSecureContext);
 }
 
+export function supportsWebShare(): boolean {
+	const nav = getNavigator();
+	if (!nav?.share || !window.isSecureContext) return false;
+	
+	// Check for platforms where Web Share API has poor UX
+	// macOS Safari doesn't include "Copy" in share menu
+	const isMacOSSafari = /Mac OS X/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+	if (isMacOSSafari) return false;
+	
+	// Firefox has inconsistent support
+	const isFirefox = /Firefox/.test(navigator.userAgent);
+	if (isFirefox) return false;
+	
+	return true;
+}
+
+export function canShareData(data: { title?: string; text?: string; url?: string; files?: File[] }): boolean {
+	if (!supportsWebShare()) return false;
+	const nav = getNavigator();
+	return !!(nav?.canShare?.(data));
+}
+
+export async function shareData(data: { title?: string; text?: string; url?: string; files?: File[] }): Promise<boolean> {
+	if (!supportsWebShare()) return false;
+	
+	const nav = getNavigator();
+	if (!nav?.share) return false;
+	
+	try {
+		// Validate data before sharing
+		if (nav.canShare && !nav.canShare(data)) {
+			return false;
+		}
+		
+		await nav.share(data);
+		return true;
+	} catch (error) {
+		// User cancelled or sharing failed
+		console.debug('Web Share cancelled or failed:', error);
+		return false;
+	}
+}
+
 export function supportsTouch(): boolean {
 	if (!isBrowser) return false;
 	return 'ontouchstart' in window || navigator.maxTouchPoints > 0;

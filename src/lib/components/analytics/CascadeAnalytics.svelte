@@ -104,7 +104,7 @@
 		<button 
 			onclick={loadCascadeAnalysis}
 			disabled={loading}
-			class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+			class="px-4 py-2 bg-participation-primary-600 text-white rounded-lg hover:bg-participation-primary-700 disabled:opacity-50 transition-colors"
 		>
 			{loading ? 'Loading...' : 'Refresh'}
 		</button>
@@ -128,10 +128,10 @@
 	{:else if metrics && summary}
 		<!-- Key Performance Indicators -->
 		<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-			<div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
-				<div class="text-2xl font-bold text-blue-700">{metrics.r0.toFixed(2)}</div>
-				<div class="text-sm text-blue-600 font-medium">R₀ (Reproduction Rate)</div>
-				<div class="text-xs text-blue-500 mt-1">
+			<div class="bg-gradient-to-br from-participation-primary-50 to-participation-primary-100 rounded-lg p-4">
+				<div class="text-2xl font-bold text-participation-primary-700">{metrics.r0.toFixed(2)}</div>
+				<div class="text-sm text-participation-primary-600 font-medium">R₀ (Reproduction Rate)</div>
+				<div class="text-xs text-participation-primary-500 mt-1">
 					{metrics.r0 > 1 ? 'Exponential growth' : 'Declining spread'}
 				</div>
 			</div>
@@ -239,7 +239,7 @@
 						{#each timeline.slice(0, 20) as event}
 							<div class="flex items-center justify-between bg-white rounded p-3 text-sm">
 								<div class="flex items-center">
-									<div class="w-2 h-2 bg-blue-400 rounded-full mr-3"></div>
+									<div class="w-2 h-2 bg-participation-primary-400 rounded-full mr-3"></div>
 									<span class="font-mono text-gray-600">Gen {event.generation}</span>
 								</div>
 								<div class="flex items-center space-x-4 text-gray-500">

@@ -89,7 +89,7 @@
 	function getActivityColor(event: string): string {
 		switch (event) {
 			case 'viral_threshold': return 'text-green-600 bg-green-50';
-			case 'activation_spike': return 'text-blue-600 bg-blue-50';
+			case 'activation_spike': return 'text-participation-primary-600 bg-participation-primary-50';
 			case 'campaign_launched': return 'text-purple-600 bg-purple-50';
 			default: return 'text-gray-600 bg-gray-50';
 		}
@@ -108,7 +108,7 @@
 				onclick={() => handleTimeframeChange('24h')}
 				class={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
 					selectedTimeframe === '24h' 
-					? 'bg-white text-blue-700 shadow-sm' 
+					? 'bg-white text-participation-primary-700 shadow-sm' 
 					: 'text-gray-500 hover:text-gray-700'
 				}`}
 			>
@@ -118,7 +118,7 @@
 				onclick={() => handleTimeframeChange('7d')}
 				class={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
 					selectedTimeframe === '7d' 
-					? 'bg-white text-blue-700 shadow-sm' 
+					? 'bg-white text-participation-primary-700 shadow-sm' 
 					: 'text-gray-500 hover:text-gray-700'
 				}`}
 			>
@@ -128,7 +128,7 @@
 				onclick={() => handleTimeframeChange('30d')}
 				class={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
 					selectedTimeframe === '30d' 
-					? 'bg-white text-blue-700 shadow-sm' 
+					? 'bg-white text-participation-primary-700 shadow-sm' 
 					: 'text-gray-500 hover:text-gray-700'
 				}`}
 			>
@@ -162,19 +162,19 @@
 		<!-- Overview Cards -->
 		{#if overview}
 			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-				<div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6">
+				<div class="bg-gradient-to-br from-participation-primary-50 to-participation-primary-100 rounded-xl p-6">
 					<div class="flex items-center justify-between">
 						<div>
-							<p class="text-sm font-medium text-blue-600">Templates</p>
-							<p class="text-3xl font-bold text-blue-900">{overview.total_templates}</p>
+							<p class="text-sm font-medium text-participation-primary-600">Templates</p>
+							<p class="text-3xl font-bold text-participation-primary-900">{overview.total_templates}</p>
 						</div>
-						<div class="p-3 bg-blue-500 rounded-full">
+						<div class="p-3 bg-participation-primary-500 rounded-full">
 							<svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
 							</svg>
 						</div>
 					</div>
-					<p class="text-xs text-blue-600 mt-2">{overview.active_campaigns} active campaigns</p>
+					<p class="text-xs text-participation-primary-600 mt-2">{overview.active_campaigns} active campaigns</p>
 				</div>
 				
 				<div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-6">
@@ -234,7 +234,7 @@
 				<h2 class="text-xl font-semibold text-gray-900">Template Performance</h2>
 				<a 
 					href="/"
-					class="text-sm text-blue-600 hover:text-blue-700 font-medium"
+					class="text-sm text-participation-primary-600 hover:text-participation-primary-700 font-medium"
 				>
 					Create New Template →
 				</a>
@@ -267,7 +267,7 @@
 					<p class="text-gray-500 mb-4">Create your first template to start tracking performance metrics</p>
 					<a 
 						href="/"
-						class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+						class="inline-flex items-center px-4 py-2 bg-participation-primary-600 text-white rounded-lg hover:bg-participation-primary-700 transition-colors"
 					>
 						Create First Template
 					</a>
@@ -324,7 +324,7 @@
 									index === 0 ? 'bg-yellow-100 text-yellow-800' :
 									index === 1 ? 'bg-gray-100 text-gray-600' :
 									index === 2 ? 'bg-orange-100 text-orange-600' :
-									'bg-blue-50 text-blue-600'
+									'bg-participation-primary-50 text-participation-primary-600'
 								}`}>
 									{index + 1}
 								</div>

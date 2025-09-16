@@ -141,8 +141,7 @@
 			{#if config}
 				{@const IconComponent = config.icon}
 				<IconComponent 
-					class="mt-0.5 h-5 w-5 shrink-0 {config.color === 'blue' ? 'text-blue-600' : config.color === 'green' ? 'text-green-600' : 'text-red-600'}"
-					class:animate-pulse={status === 'sending' || status === 'routing'}
+					class="mt-0.5 h-5 w-5 shrink-0 {config.color === 'blue' ? 'text-participation-primary-600' : config.color === 'green' ? 'text-green-600' : 'text-red-600'} {(status === 'sending' || status === 'routing') ? 'animate-pulse' : ''}"
 				/>
 			{/if}
 			
@@ -180,7 +179,7 @@
 					// Trigger retry - would need to be implemented
 					status = 'sending';
 				}}
-				class="rounded bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700"
+				class="rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700"
 			>
 				Fix and retry
 			</button>

@@ -112,7 +112,7 @@
 			case 'error':
 				return 'bg-red-100 text-red-700';
 			default:
-				return 'bg-blue-100 text-blue-700';
+				return 'bg-participation-primary-100 text-participation-primary-700';
 		}
 	}
 </script>
@@ -129,7 +129,7 @@
 		<button
 			onclick={refreshAnalysis}
 			disabled={loading}
-			class="rounded-lg bg-blue-600 px-4 py-2 text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+			class="rounded-lg bg-participation-primary-600 px-4 py-2 text-white transition-colors hover:bg-participation-primary-700 disabled:opacity-50"
 		>
 			{loading ? 'Analyzing...' : 'Refresh Analysis'}
 		</button>
@@ -157,7 +157,7 @@
 	{:else if analysis && interpretation}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<!-- Network Status Overview -->
-			<div class="rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
+			<div class="rounded-lg bg-gradient-to-br from-participation-primary-50 to-indigo-50 p-6">
 				<h3 class="mb-4 text-lg font-semibold text-gray-900">Network Status</h3>
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">

@@ -130,7 +130,7 @@
 		<!-- Key Metrics Grid -->
 		<div class={`grid ${compact ? 'grid-cols-2 gap-3' : 'grid-cols-2 lg:grid-cols-4 gap-4'} mb-4`}>
 			<div class="text-center">
-				<div class={`font-bold text-blue-700 ${compact ? 'text-lg' : 'text-2xl'}`}>
+				<div class={`font-bold text-participation-primary-700 ${compact ? 'text-lg' : 'text-2xl'}`}>
 					{performance.metrics.total_activations}
 				</div>
 				<div class={`text-gray-600 ${compact ? 'text-xs' : 'text-sm'}`}>Activations</div>
@@ -188,7 +188,7 @@
 		<div class={`flex ${compact ? 'space-x-2' : 'space-x-3'} pt-3 border-t border-gray-100`}>
 			<button 
 				onclick={() => window.location.href = `/analytics?template=${performance.template_id}`}
-				class={`flex-1 text-center ${compact ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-sm'} bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors`}
+				class={`flex-1 text-center ${compact ? 'py-1 px-2 text-xs' : 'py-2 px-3 text-sm'} bg-participation-primary-50 text-participation-primary-700 rounded hover:bg-participation-primary-100 transition-colors`}
 			>
 				Full Analysis
 			</button>

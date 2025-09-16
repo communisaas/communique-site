@@ -140,9 +140,9 @@
 				<div 
 					class="h-2 rounded-full transition-all duration-500 ease-out {
 						currentStep === step 
-							? 'w-12 bg-blue-600 shadow-lg shadow-blue-200' 
+							? 'w-12 bg-participation-primary-600 shadow-lg shadow-participation-primary-200' 
 							: ['collect', 'verify', 'complete'].indexOf(currentStep) > i 
-								? 'w-8 bg-blue-300' 
+								? 'w-8 bg-participation-primary-300' 
 								: 'w-8 bg-slate-200'
 					}"
 				></div>
@@ -179,7 +179,7 @@
 								type="text"
 								bind:value={streetAddress}
 								placeholder="123 Main Street"
-								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 							/>
 						</div>
 						
@@ -192,7 +192,7 @@
 								type="text"
 								bind:value={city}
 								placeholder="City"
-								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 							/>
 						</div>
 						
@@ -207,7 +207,7 @@
 									bind:value={stateCode}
 									placeholder="CA"
 									maxlength="2"
-									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 								/>
 							</div>
 							<div>
@@ -220,7 +220,7 @@
 									bind:value={zipCode}
 									placeholder="12345"
 									maxlength="10"
-									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
 								/>
 							</div>
 						</div>
@@ -292,12 +292,12 @@
 					
 					<!-- Representatives Found -->
 					{#if verificationResult?.representatives}
-						<div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+						<div class="bg-participation-primary-50 border border-participation-primary-200 rounded-lg p-4 mb-6">
 							<p class="font-medium text-slate-900 mb-2">Your Representatives:</p>
 							<div class="space-y-2">
 								{#each verificationResult.representatives as rep: any}
 									<div class="flex items-center gap-2 text-sm">
-										<div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+										<div class="w-2 h-2 bg-participation-primary-500 rounded-full"></div>
 										<span class="text-slate-700">{(rep as any).name} ({(rep as any).office})</span>
 									</div>
 								{/each}

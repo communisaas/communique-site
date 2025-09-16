@@ -296,7 +296,7 @@
 				<!-- Animated mail icon -->
 				<div class="relative mb-4">
 					<svg
-						class="mx-auto h-16 w-16 animate-pulse text-blue-600"
+						class="mx-auto h-16 w-16 animate-pulse text-participation-primary-600"
 						fill="none"
 						stroke="currentColor"
 						viewBox="0 0 24 24"
@@ -309,7 +309,7 @@
 						/>
 					</svg>
 					<!-- Flying papers animation -->
-					<div class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-blue-400"></div>
+					<div class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-participation-primary-400"></div>
 				</div>
 
 				<h3 class="mb-2 text-lg font-semibold text-slate-900">Opening your email app...</h3>
@@ -320,7 +320,7 @@
 				<!-- Animated progress bar -->
 				<div class="mx-auto h-2 w-32 overflow-hidden rounded-full bg-slate-200">
 					<div
-						class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-1000 ease-out"
+						class="h-full rounded-full bg-gradient-to-r from-participation-primary-500 to-participation-primary-600 transition-all duration-1000 ease-out"
 						style="width: {$actionProgress * 100}%"
 					></div>
 				</div>

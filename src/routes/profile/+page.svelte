@@ -116,7 +116,7 @@
 								<h3 class="text-lg font-semibold text-slate-900 mb-4">Template Activity</h3>
 								<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
 									<div class="text-center">
-										<div class="text-2xl font-bold text-blue-600">{templatesData.templateStats.total}</div>
+										<div class="text-2xl font-bold text-participation-primary-600">{templatesData.templateStats.total}</div>
 										<div class="text-xs text-slate-600">Templates</div>
 									</div>
 									<div class="text-center">
@@ -401,7 +401,7 @@
 						<div class="space-y-4">
 							<div>
 								<label class="block text-sm font-medium text-slate-700 mb-2">Profile Visibility</label>
-								<select class="block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+								<select class="block w-full rounded-md border-slate-300 shadow-sm focus:border-participation-primary-500 focus:ring-participation-primary-500 sm:text-sm">
 									<option value="private" selected={userDetails?.profile?.visibility === 'private'}>Private</option>
 									<option value="limited" selected={userDetails?.profile?.visibility === 'limited'}>Limited</option>
 									<option value="public" selected={userDetails?.profile?.visibility === 'public'}>Public</option>

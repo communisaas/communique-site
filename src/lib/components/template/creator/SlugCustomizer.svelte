@@ -199,7 +199,7 @@
 					<button
 						type="button"
 						onclick={() => selectSuggestion(suggestion)}
-						class="inline-flex items-center gap-1 md:gap-1 rounded-full bg-blue-50 px-2 md:px-3 py-1 md:py-1 text-xs md:text-xs font-medium text-blue-700 transition-colors hover:bg-blue-100"
+						class="inline-flex items-center gap-1 md:gap-1 rounded-full bg-participation-primary-50 px-2 md:px-3 py-1 md:py-1 text-xs md:text-xs font-medium text-participation-primary-700 transition-colors hover:bg-participation-primary-100"
 					>
 						<Sparkles class="h-3 md:h-3 w-3 md:w-3" />
 						{suggestion}
@@ -225,12 +225,12 @@
 				bind:value={customSlug}
 				onkeydown={(e) => e.key === 'Enter' && handleCustomSlug()}
 				placeholder="enter-custom-link"
-				class="flex-1 rounded border-slate-300 text-xs md:text-sm shadow-sm focus:border-blue-500 focus:ring-blue-500 py-1 px-2"
+				class="flex-1 rounded border-slate-300 text-xs md:text-sm shadow-sm focus:border-participation-primary-500 focus:ring-participation-primary-500 py-1 px-2"
 			/>
 			<button
 				type="button"
 				onclick={handleCustomSlug}
-				class="rounded bg-blue-600 px-2 md:px-3 py-1 text-xs md:text-sm text-white hover:bg-blue-700"
+				class="rounded bg-participation-primary-600 px-2 md:px-3 py-1 text-xs md:text-sm text-white hover:bg-participation-primary-700"
 			>
 				Set
 			</button>
@@ -247,15 +247,15 @@
 			type="button"
 			onclick={() => (showCustomInput = true)}
 			class="{isAvailable === false 
-				? 'rounded bg-blue-600 px-3 py-1.5 text-xs text-white hover:bg-blue-700' 
-				: 'text-xs md:text-xs text-blue-600 hover:text-blue-700'}"
+				? 'rounded bg-participation-primary-600 px-3 py-1.5 text-xs text-white hover:bg-participation-primary-700' 
+				: 'text-xs md:text-xs text-participation-primary-600 hover:text-participation-primary-700'}"
 		>
 			{isAvailable === false ? 'Create Custom Link' : 'Customize link'}
 		</button>
 	{/if}
 
 	<!-- Share Context -->
-	<div class="rounded bg-blue-50 p-2 md:p-3 text-xs text-blue-700">
+	<div class="rounded bg-participation-primary-50 p-2 md:p-3 text-xs text-participation-primary-700">
 		<p>Anyone with this link can instantly use your template. Share it.</p>
 	</div>
 </div>

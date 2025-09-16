@@ -86,7 +86,7 @@
 								}}
 								class={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
 									activeTab === 'network'
-										? 'bg-white text-blue-700 shadow-sm'
+										? 'bg-white text-participation-primary-700 shadow-sm'
 										: 'text-gray-500 hover:text-gray-700'
 								}`}
 							>
@@ -96,7 +96,7 @@
 								onclick={() => (activeTab = 'template')}
 								class={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
 									activeTab === 'template'
-										? 'bg-white text-blue-700 shadow-sm'
+										? 'bg-white text-participation-primary-700 shadow-sm'
 										: 'text-gray-500 hover:text-gray-700'
 								}`}
 							>
@@ -129,17 +129,17 @@
 							<div class="space-y-3">
 								<div class="flex items-center justify-between">
 									<span class="text-gray-600">Algorithm</span>
-									<span class="font-semibold text-blue-600">Edmonds–Karp (Ford–Fulkerson BFS)</span>
+									<span class="font-semibold text-participation-primary-600">Edmonds–Karp (Ford–Fulkerson BFS)</span>
 								</div>
 								<div class="flex items-center justify-between">
 									<span class="text-gray-600">Analysis Type</span>
-									<span class="font-semibold text-blue-600"
+									<span class="font-semibold text-participation-primary-600"
 										>Percolation-style connectivity (heuristic)</span
 									>
 								</div>
 								<div class="flex items-center justify-between">
 									<span class="text-gray-600">Complexity</span>
-									<span class="font-semibold text-blue-600">O(E²V)</span>
+									<span class="font-semibold text-participation-primary-600">O(E²V)</span>
 								</div>
 							</div>
 						</div>
@@ -184,7 +184,7 @@
 								{#each templates as template}
 									<button
 										onclick={() => selectTemplate(template.id)}
-										class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-left transition-colors hover:border-blue-300 hover:bg-gray-100"
+										class="rounded-lg border border-gray-200 bg-gray-50 p-4 text-left transition-colors hover:border-participation-primary-300 hover:bg-gray-100"
 									>
 										<h3 class="mb-1 font-medium text-gray-900">{template.title}</h3>
 										<p class="line-clamp-2 text-sm text-gray-600">

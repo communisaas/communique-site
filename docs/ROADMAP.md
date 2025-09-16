@@ -14,15 +14,15 @@ These aren't simple string replacements. They require agent-orchestrated data pi
 
 ### Variables in Production Templates:
 ```
-[Hospital System] - Major healthcare provider by location
-[Local Rent Data] - Median 1BR rent for user's area  
-[Current Calculation] - Minimum wage × hours calculation
-[Living Wage Calculation] - MIT calculator for family size
-[Company] - Corporate entity from context
-[Platform] - Tech company identification
-[University] - Educational institution
-[Mayor Name] - City-specific elected official
-[Your Connection to the University] - User-specific context
+[Hospital System]—Major healthcare provider by location
+[Local Rent Data]—Median 1BR rent for user's area  
+[Current Calculation]—Minimum wage × hours calculation
+[Living Wage Calculation]—MIT calculator for family size
+[Company]—Corporate entity from context
+[Platform]—Tech company identification
+[University]—Educational institution
+[Mayor Name]—City-specific elected official
+[Your Connection to the University]—User-specific context
 ```
 
 ### Resolution Challenge:
@@ -137,17 +137,17 @@ Source: HUD Fair Market Rent, San Francisco MSA, 2024
 ### Core Infrastructure
 **Files to create:**
 - `src/lib/server/data-providers/`
-  - `census.ts` - Census/ACS API
-  - `bls.ts` - Bureau of Labor Statistics
-  - `hud.ts` - HUD housing data
-  - `civic.ts` - Google Civic Information
-  - `cms.ts` - Healthcare provider data
-  - `sec.ts` - Corporate information
-  - `mit-living-wage.ts` - Living wage calculator
+  - `census.ts`—Census/ACS API
+  - `bls.ts`—Bureau of Labor Statistics
+  - `hud.ts`—HUD housing data
+  - `civic.ts`—Google Civic Information
+  - `cms.ts`—Healthcare provider data
+  - `sec.ts`—Corporate information
+  - `mit-living-wage.ts`: Living wage calculator
 
-- `src/lib/server/variable-resolver.ts` - Main resolution engine
-- `src/lib/server/agent-resolver.ts` - AI orchestration layer
-- `src/lib/server/resolution-cache.ts` - Cache expensive API calls
+- `src/lib/server/variable-resolver.ts`: Main resolution engine
+- `src/lib/server/agent-resolver.ts`: AI orchestration layer
+- `src/lib/server/resolution-cache.ts`: Cache expensive API calls
 
 ### Database Schema Updates
 ```prisma
@@ -175,14 +175,14 @@ model ResolvedVariable {
 
 ## Priority Order
 
-1. **Census/BLS integration** - Core economic data
-2. **Google Civic API** - Elected officials
-3. **HUD data** - Housing costs
-4. **Healthcare providers** - CMS integration
-5. **Corporate data** - SEC EDGAR
-6. **University data** - IPEDS
-7. **Living wage** - MIT calculator API
-8. **Agent orchestration** - Tie it all together
+1. **Census/BLS integration**—Core economic data
+2. **Google Civic API**—Elected officials
+3. **HUD data**—Housing costs
+4. **Healthcare providers**—CMS integration
+5. **Corporate data**—SEC EDGAR
+6. **University data**—IPEDS
+7. **Living wage**—MIT calculator API
+8. **Agent orchestration**—Tie it all together
 
 ## Success Metrics
 

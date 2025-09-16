@@ -78,24 +78,7 @@
 	});
 	
 	async function handleShare() {
-		// Try native share first
-		if (navigator.share && /mobile/i.test(navigator.userAgent)) {
-			try {
-				await navigator.share({
-					title: title,
-					url: url
-				});
-				// Trigger success animation
-				buttonScale.set(0.9);
-				setTimeout(() => buttonScale.set(1.1), 100);
-				setTimeout(() => buttonScale.set(1), 200);
-				return;
-			} catch (err) {
-				// User cancelled or error, fall through to copy
-			}
-		}
-		
-		// Copy to clipboard as fallback
+		// Copy to clipboard
 		await copyToClipboard();
 	}
 	
@@ -148,9 +131,9 @@
 	// Variant classes - base styles without hover (we control hover via state)
 	const variantClasses = {
 		primary: `
-			bg-gradient-to-r from-blue-500 to-blue-600 
-			text-white shadow-lg shadow-blue-500/25
-			border border-blue-400/20
+			bg-gradient-to-r from-participation-primary-500 to-participation-primary-600 
+			text-white shadow-lg shadow-participation-primary-500/25
+			border border-participation-primary-400/20
 		`,
 		secondary: `
 			bg-white
@@ -159,9 +142,9 @@
 			shadow-md
 		`,
 		magical: `
-			bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600
+			bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600
 			text-white shadow-xl
-			shadow-blue-500/30
+			shadow-purple-500/30
 			relative overflow-hidden
 			border border-white/20
 		`
@@ -170,7 +153,7 @@
 	// Hover variant classes - only applied when not animating
 	const hoverClasses = {
 		primary: `
-			hover:from-blue-600 hover:to-blue-700
+			hover:from-participation-primary-600 hover:to-participation-primary-700
 		`,
 		secondary: `
 			hover:bg-slate-50
@@ -179,8 +162,8 @@
 			hover:shadow-lg
 		`,
 		magical: `
-			hover:from-blue-600 hover:via-blue-700 hover:to-indigo-700
-			hover:shadow-blue-500/40
+			hover:from-indigo-700 hover:via-blue-700 hover:to-purple-700
+			hover:shadow-purple-500/40
 		`
 	};
 </script>
@@ -189,7 +172,7 @@
 	<!-- Glow effect for magical variant -->
 	{#if variant === 'magical'}
 		<div 
-			class="absolute inset-0 rounded-full blur-xl opacity-50 bg-gradient-to-r from-purple-400 via-pink-400 to-rose-400"
+			class="absolute inset-0 rounded-full blur-xl opacity-50 bg-gradient-to-r from-indigo-400 via-blue-400 to-purple-400"
 			style="transform: scale({1 + $glowIntensity * 0.3}); opacity: {0.3 + $glowIntensity * 0.4}"
 		></div>
 	{/if}
@@ -238,7 +221,7 @@
 			box-shadow: 
 				0 4px 6px -1px rgba(0, 0, 0, 0.1), 
 				0 2px 4px -1px rgba(0, 0, 0, 0.06),
-				0 0 {20 * $glowIntensity}px rgba(59, 130, 246, {0.5 * $glowIntensity}),
+				0 0 {20 * $glowIntensity}px rgba(79, 70, 229, {0.5 * $glowIntensity}),
 				0 0 {30 * $copiedGlow}px rgba(34, 197, 94, {0.3 * $copiedGlow});
 			filter: brightness({1 + $copiedGlow * 0.1});
 		"
@@ -247,7 +230,7 @@
 		<!-- Animated background gradient for primary -->
 		{#if variant === 'primary'}
 			<div 
-				class="absolute inset-0 rounded-full bg-gradient-to-r from-blue-400/20 to-cyan-400/20 animate-pulse"
+				class="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-400/20 to-purple-400/20 animate-pulse"
 				style="opacity: {$glowIntensity * 0.5}"
 			></div>
 		{/if}
@@ -305,7 +288,7 @@
 				in:scale={{ duration: 400, easing: backOut, start: 0.8, opacity: 0.3 }}
 				out:fade={{ duration: 600 }}
 			>
-				<div class="absolute inset-0 rounded-full bg-gradient-to-r from-white/20 to-blue-200/20"></div>
+				<div class="absolute inset-0 rounded-full bg-gradient-to-r from-white/20 to-indigo-200/20"></div>
 			</div>
 		{/if}
 	</button>
@@ -318,7 +301,7 @@
 			out:fade={{ duration: 150 }}
 		>
 			<div class="bg-slate-900 text-white text-xs px-2 py-1 rounded-md whitespace-nowrap shadow-lg">
-				Click to share
+				Copy link
 				<div class="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-slate-900 rotate-45"></div>
 			</div>
 		</div>

@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-Authoritative guide for Claude Code in this repo. Single source of truth.
+Authoritative guide for Claude Code in this repo. Single source of truth for cryptographic democratic infrastructure.
 
 ## Quick start
 ```bash
@@ -32,17 +32,19 @@ ENABLE_RESEARCH=true    # Enable research features (dev only)
 
 Optional OAuth keys as needed.
 
-## Architecture (at a glance)
-- SvelteKit 5 + TypeScript + Tailwind + Feature Flags
-- Supabase (Postgres) via Prisma; sessions via `@oslojs/crypto`
+## Architecture (Cypherpunk Democratic Infrastructure)
+- SvelteKit 5 + TypeScript + Tailwind + Algorithmic Coordination
+- Supabase (Postgres) via Prisma; cryptographic sessions via `@oslojs/crypto`
+- VOTER Protocol integration: Didit.me zero-knowledge verification + algorithmic treasury execution
 - International legislative abstraction (US Congress + UK Parliament + generic)
 - Integration-first testing (53→6 tests, smart mocks, fixtures)
-- Legislative flow: address verify → adapter selection → country-specific delivery
+- Cryptographic flow: identity verify → algorithmic certification → autonomous reward distribution
 
 Code map:
 - Routes/API: `src/routes/`
 - UI: `src/lib/components/`
 - Core production: `src/lib/core/` (auth, db, legislative)
+- Agent Infrastructure: `src/lib/agents/` (cryptographic coordination, algorithmic verification)
 - Feature-flagged: `src/lib/features/` (OFF/BETA/ROADMAP)
 - Research/experimental: `src/lib/experimental/` (political field, sheaf theory)
 - Tests: `tests/` (integration, unit, e2e, mocks, fixtures)

@@ -27,7 +27,7 @@
 		onblur,
 		children
 	}: {
-		variant?: 'primary' | 'secondary' | 'magical' | 'certified' | 'direct';
+		variant?: 'primary' | 'secondary' | 'magical' | 'verified' | 'community';
 		size?: 'sm' | 'default' | 'lg';
 		type?: 'button' | 'submit';
 		cursor?: 'default' | 'help' | 'alias' | 'pointer';
@@ -87,9 +87,9 @@
 		
 		channelCards.forEach(card => {
 			const text = card.textContent || '';
-			if (text.includes('Certified Delivery')) {
+			if (text.includes('Verified Delivery')) {
 				certifiedCard = card as HTMLElement;
-			} else if (text.includes('Direct Outreach')) {
+			} else if (text.includes('Community Outreach')) {
 				directCard = card as HTMLElement;
 			}
 		});
@@ -377,19 +377,19 @@
 		lg: 'px-6 py-3 text-base gap-2.5'
 	};
 
-	// Variant classes - matching monospace aesthetic with purple accent
+	// Variant classes - governance-neutral participation aesthetic
 	const variantClasses = {
 		primary: `
-			bg-blue-500 hover:bg-blue-600
+			bg-participation-primary-500 hover:bg-participation-primary-600
 			text-white
-			border border-blue-600
+			border border-participation-primary-600
 			shadow-sm hover:shadow-md
 			transition-all duration-200
 		`,
 		secondary: `
-			bg-blue-50 hover:bg-blue-100
-			text-blue-700 hover:text-blue-800
-			border border-blue-200 hover:border-blue-300
+			bg-participation-primary-50 hover:bg-participation-primary-100
+			text-participation-primary-700 hover:text-participation-primary-800
+			border border-participation-primary-200 hover:border-participation-primary-300
 			shadow-sm
 		`,
 		magical: `
@@ -397,19 +397,19 @@
 			hover:from-indigo-700 hover:via-blue-700 hover:to-purple-700
 			text-white font-semibold
 			border border-indigo-400/40
-			shadow-xl shadow-indigo-900/20
+			shadow-xl shadow-purple-900/20
 			relative overflow-hidden
 		`,
-		certified: `
-			bg-emerald-500 hover:bg-emerald-600
+		verified: `
+			bg-verified-500 hover:bg-verified-600
 			text-white
-			border border-emerald-600
+			border border-verified-600
 			shadow-sm hover:shadow-md
 		`,
-		direct: `
-			bg-blue-50 hover:bg-blue-100
-			text-blue-700 hover:text-blue-800
-			border border-blue-200
+		community: `
+			bg-community-50 hover:bg-community-100
+			text-community-700 hover:text-community-800
+			border border-community-200
 			shadow-sm
 		`
 	};
@@ -425,13 +425,14 @@
 			opacity: 0;
 		}
 	}
+	
 </style>
 
 <div class="relative inline-block">
 	<!-- Glow effect for magical variant -->
 	{#if variant === 'magical'}
 		<div 
-			class="absolute inset-0 rounded-md blur-xl opacity-50 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-400 pointer-events-none"
+			class="absolute inset-0 rounded-md blur-xl opacity-50 bg-gradient-to-r from-indigo-400 via-blue-400 to-purple-400 pointer-events-none"
 			style="transform: scale({1 + $glowIntensity * 0.2}); opacity: {0.2 + $glowIntensity * 0.3}"
 		></div>
 	{/if}
@@ -461,10 +462,11 @@
 			target={href.startsWith('mailto:') ? undefined : '_blank'}
 			data-testid={testId}
 			class="
-				relative inline-flex items-center justify-center
-				font-mono rounded-md
-				transition-all duration-200 ease-out
-				transform-gpu cursor-{cursor}
+				inline-flex items-center justify-center rounded-md font-medium
+				transition-all duration-200 ease-out transform-gpu
+				focus:outline-none focus:ring-2 focus:ring-offset-2
+				disabled:opacity-50 disabled:cursor-not-allowed
+				cursor-{cursor}
 				select-none no-underline
 				{sizeClasses[size]}
 				{variantClasses[variant]}
@@ -522,10 +524,10 @@
 			{disabled}
 			data-testid={testId}
 			class="
-				relative inline-flex items-center justify-center
-				font-mono rounded-md
-				transition-all duration-200 ease-out
-				transform-gpu
+				inline-flex items-center justify-center rounded-md font-medium
+				transition-all duration-200 ease-out transform-gpu
+				focus:outline-none focus:ring-2 focus:ring-offset-2
+				disabled:opacity-50 disabled:cursor-not-allowed
 				{sizeClasses[size]}
 				{variantClasses[variant]}
 				{classNames}
