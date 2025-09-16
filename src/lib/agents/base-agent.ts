@@ -2,8 +2,10 @@
  * Base Agent Class
  * 
  * Abstract base for all VOTER Protocol agents implemented in TypeScript
- * Provides common functionality for LLM-based agents
+ * Provides common functionality for N8N-orchestrated LLM agents
  */
+
+import { N8NClient } from '$lib/services/delivery/integrations/n8n';
 
 export interface AgentConfig {
 	name: string;
@@ -11,6 +13,7 @@ export interface AgentConfig {
 	temperature?: number;
 	maxTokens?: number;
 	capabilities?: string[];
+	workflowPrefix?: string; // e.g., 'llm-verification', 'llm-supply'
 }
 
 export interface AgentDecision {
@@ -22,9 +25,11 @@ export interface AgentDecision {
 
 export abstract class BaseAgent {
 	protected config: AgentConfig;
+	protected n8nClient: N8NClient;
 	
 	constructor(config: AgentConfig) {
 		this.config = config;
+		this.n8nClient = new N8NClient();
 	}
 	
 	/**
@@ -62,5 +67,77 @@ export abstract class BaseAgent {
 	 */
 	getCapabilities(): string[] {
 		return this.config.capabilities || [];
+	}
+	
+	/**
+	 * Call LLM workflow via N8N
+	 */
+	protected async callLLMWorkflow(
+		workflowType: string,
+		input: any,
+		model?: string
+	): Promise<any> {
+		const workflowName = `${this.config.workflowPrefix || 'llm'}-${workflowType}`;
+		
+		try {
+			const result = await this.n8nClient.triggerWorkflow(workflowName, {
+				agent_name: this.config.name,
+				model: model || this.config.model,
+				temperature: this.config.temperature || 0.7,
+				max_tokens: this.config.maxTokens || 1000,
+				input,
+				timestamp: new Date().toISOString()
+			});
+			
+			if (!result.success) {
+				throw new Error(`N8N workflow ${workflowName} failed: ${result.error}`);
+			}
+			
+			return result.data;
+		} catch (error) {
+			console.error(`LLM workflow ${workflowName} error:`, error);
+			throw error;
+		}
+	}
+	
+	/**
+	 * Wait for long-running LLM workflow completion
+	 */
+	protected async waitForLLMWorkflow(
+		workflowType: string,
+		input: any,
+		maxWaitMs: number = 30000
+	): Promise<any> {
+		const workflowName = `${this.config.workflowPrefix || 'llm'}-${workflowType}`;
+		
+		try {
+			const result = await this.n8nClient.triggerWorkflow(workflowName, {
+				agent_name: this.config.name,
+				model: this.config.model,
+				temperature: this.config.temperature || 0.7,
+				max_tokens: this.config.maxTokens || 1000,
+				input,
+				timestamp: new Date().toISOString()
+			});
+			
+			if (!result.success) {
+				throw new Error(`N8N workflow ${workflowName} failed: ${result.error}`);
+			}
+			
+			// Wait for completion
+			const completion = await this.n8nClient.waitForCompletion(
+				result.executionId!,
+				maxWaitMs
+			);
+			
+			if (!completion.success) {
+				throw new Error(`N8N workflow ${workflowName} timeout or error: ${completion.error}`);
+			}
+			
+			return completion.data;
+		} catch (error) {
+			console.error(`Long-running LLM workflow ${workflowName} error:`, error);
+			throw error;
+		}
 	}
 }

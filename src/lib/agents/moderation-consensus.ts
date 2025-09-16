@@ -8,6 +8,7 @@
  */
 
 import { db } from '$lib/core/db';
+import { N8NClient } from '$lib/services/delivery/integrations/n8n';
 import type { Template, TemplateVerification } from '@prisma/client';
 
 interface AgentVote {
@@ -33,6 +34,9 @@ type ViolationType =
 	| 'misinformation';
 
 export class ModerationConsensus {
+	// N8N client for workflow orchestration
+	private n8nClient: N8NClient;
+	
 	// Agent configuration with weights
 	private agents = {
 		openai: { 
@@ -59,6 +63,10 @@ export class ModerationConsensus {
 	
 	// Approval threshold (can be agent-optimized later)
 	private readonly APPROVAL_THRESHOLD = 0.3; // Low threshold for demo (only blocking severe violations)
+	
+	constructor() {
+		this.n8nClient = new N8NClient();
+	}
 	
 	/**
 	 * Evaluate a template using multi-agent consensus
@@ -118,52 +126,38 @@ export class ModerationConsensus {
 	}
 	
 	/**
-	 * Check template with OpenAI
+	 * Check template with OpenAI via N8N workflow
 	 */
 	private async checkWithOpenAI(template: Template): Promise<AgentVote> {
-		const apiKey = process.env.OPENAI_API_KEY;
-		
-		if (!apiKey) {
-			console.warn('OpenAI API key not configured, using mock response');
-			return this.getMockVote('openai');
-		}
-		
 		try {
-			const prompt = this.buildModerationPrompt(template);
-			
-			const response = await fetch('https://api.openai.com/v1/chat/completions', {
-				method: 'POST',
-				headers: {
-					'Authorization': `Bearer ${apiKey}`,
-					'Content-Type': 'application/json'
+			const workflowResult = await this.n8nClient.triggerWorkflow('llm-moderation-openai', {
+				template: {
+					id: template.id,
+					subject: template.subject,
+					message_body: template.message_body
 				},
-				body: JSON.stringify({
-					model: this.agents.openai.model,
-					messages: [
-						{
-							role: 'system',
-							content: `You are a content moderator for congressional communications. 
-								Evaluate messages ONLY for severe violations (hate speech, threats, malicious content).
-								Be lenient - we want to allow most political speech through.
-								Only flag content with severity 7+ on a 1-10 scale.`
-						},
-						{
-							role: 'user',
-							content: prompt
-						}
-					],
-					temperature: 0.3, // Lower temperature for consistency
-					response_format: { type: "json_object" }
-				})
+				agent_config: this.agents.openai,
+				prompt_context: {
+					system_message: `You are a content moderator for congressional communications. 
+						Evaluate messages ONLY for severe violations (hate speech, threats, malicious content).
+						Be lenient - we want to allow most political speech through.
+						Only flag content with severity 7+ on a 1-10 scale.`,
+					evaluation_criteria: [
+						'hate_speech',
+						'threats',
+						'malicious_content',
+						'impersonation',
+						'spam_patterns'
+					]
+				}
 			});
 			
-			if (!response.ok) {
-				throw new Error(`OpenAI API error: ${response.status}`);
+			if (!workflowResult.success || !workflowResult.data) {
+				console.warn('OpenAI N8N workflow failed, using mock response');
+				return this.getMockVote('openai');
 			}
 			
-			const data = await response.json();
-			const result = JSON.parse(data.choices[0].message.content);
-			
+			const result = workflowResult.data as any;
 			return {
 				approved: !result.contains_violations,
 				confidence: result.confidence || 0.8,
@@ -172,79 +166,57 @@ export class ModerationConsensus {
 			};
 			
 		} catch (error) {
-			console.error('OpenAI moderation error:', error);
+			console.error('OpenAI N8N workflow error:', error);
 			// Default to approval on error (fail open)
 			return {
 				approved: true,
 				confidence: 0.5,
-				reasons: ['Error during moderation, defaulting to approval']
+				reasons: ['N8N workflow error, defaulting to approval']
 			};
 		}
 	}
 	
 	/**
-	 * Check template with Google Gemini
+	 * Check template with Google Gemini via N8N workflow
 	 */
 	private async checkWithGemini(template: Template): Promise<AgentVote> {
-		const apiKey = process.env.GEMINI_API_KEY;
-		
-		if (!apiKey) {
-			console.warn('Gemini API key not configured, using mock response');
-			return this.getMockVote('gemini');
-		}
-		
 		try {
-			const prompt = this.buildModerationPrompt(template);
-			
-			const response = await fetch(
-				`https://generativelanguage.googleapis.com/v1beta/models/${this.agents.gemini.model}:generateContent?key=${apiKey}`,
-				{
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						contents: [{
-							parts: [{
-								text: `As a content moderator for congressional communications, evaluate this message.
-									Focus ONLY on severe violations (hate speech, threats, malicious content).
-									Most political speech should be allowed through.
-									
-									${prompt}
-									
-									Respond with JSON: {
-										"contains_violations": boolean,
-										"confidence": number (0-1),
-										"violations": string[],
-										"reasons": string[]
-									}`
-							}]
-						}],
-						generationConfig: {
-							temperature: 0.3,
-							topK: 1,
-							topP: 1,
-							maxOutputTokens: 1024
+			const workflowResult = await this.n8nClient.triggerWorkflow('llm-moderation-gemini', {
+				template: {
+					id: template.id,
+					subject: template.subject,
+					message_body: template.message_body
+				},
+				agent_config: this.agents.gemini,
+				prompt_context: {
+					system_message: `As a content moderator for congressional communications, evaluate this message.
+						Focus ONLY on severe violations (hate speech, threats, malicious content).
+						Most political speech should be allowed through.`,
+					evaluation_criteria: [
+						'hate_speech',
+						'threats',
+						'malicious_content',
+						'impersonation',
+						'spam_patterns'
+					],
+					response_format: {
+						type: 'json',
+						schema: {
+							contains_violations: 'boolean',
+							confidence: 'number (0-1)',
+							violations: 'string[]',
+							reasons: 'string[]'
 						}
-					})
+					}
 				}
-			);
+			});
 			
-			if (!response.ok) {
-				throw new Error(`Gemini API error: ${response.status}`);
+			if (!workflowResult.success || !workflowResult.data) {
+				console.warn('Gemini N8N workflow failed, using mock response');
+				return this.getMockVote('gemini');
 			}
 			
-			const data = await response.json();
-			const text = data.candidates[0].content.parts[0].text;
-			
-			// Extract JSON from response
-			const jsonMatch = text.match(/\{[\s\S]*\}/);
-			if (!jsonMatch) {
-				throw new Error('Could not parse Gemini response');
-			}
-			
-			const result = JSON.parse(jsonMatch[0]);
-			
+			const result = workflowResult.data as any;
 			return {
 				approved: !result.contains_violations,
 				confidence: result.confidence || 0.7,
@@ -253,43 +225,16 @@ export class ModerationConsensus {
 			};
 			
 		} catch (error) {
-			console.error('Gemini moderation error:', error);
+			console.error('Gemini N8N workflow error:', error);
 			// Default to approval on error (fail open)
 			return {
 				approved: true,
 				confidence: 0.5,
-				reasons: ['Error during moderation, defaulting to approval']
+				reasons: ['N8N workflow error, defaulting to approval']
 			};
 		}
 	}
 	
-	/**
-	 * Build moderation prompt
-	 */
-	private buildModerationPrompt(template: Template): string {
-		return `Evaluate this congressional message template for severe violations ONLY:
-
-Subject: ${template.subject || 'No subject'}
-
-Message:
-${template.message_body}
-
-Check for:
-1. Hate speech or discrimination (severity 8-9)
-2. Threats or calls to violence (severity 9-10)
-3. Malicious links or scams (severity 8)
-4. Impersonation of officials (severity 9)
-5. Severe spam patterns (severity 7)
-
-Remember: We want to allow most political speech, even if controversial.
-Only flag truly severe violations that would be illegal or extremely harmful.
-
-Return JSON with:
-- contains_violations: true/false
-- confidence: 0-1 (how confident in the assessment)
-- violations: array of violation types found
-- reasons: array of explanations`;
-	}
 	
 	/**
 	 * Calculate weighted consensus from agent votes

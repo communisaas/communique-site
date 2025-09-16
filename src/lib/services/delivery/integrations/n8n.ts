@@ -288,6 +288,92 @@ export class N8NClient {
   }
 
   /**
+   * Get workflow execution metrics
+   */
+  public async getWorkflowMetrics(workflowId?: string): Promise<{
+    total_executions: number;
+    successful_executions: number;
+    failed_executions: number;
+    average_execution_time: number;
+    last_24h_executions: number;
+  }> {
+    try {
+      const response = await this.client.get<{
+        metrics: {
+          total_executions: number;
+          successful_executions: number;
+          failed_executions: number;
+          average_execution_time: number;
+          last_24h_executions: number;
+        };
+      }>(`/metrics${workflowId ? `?workflow=${workflowId}` : ''}`);
+      
+      return response.data.metrics;
+    } catch (error) {
+      console.error('[N8N] Failed to get workflow metrics:', error);
+      return {
+        total_executions: 0,
+        successful_executions: 0,
+        failed_executions: 0,
+        average_execution_time: 0,
+        last_24h_executions: 0
+      };
+    }
+  }
+
+  /**
+   * Monitor workflow performance
+   */
+  public async monitorWorkflowPerformance(workflowName: string): Promise<{
+    status: 'healthy' | 'degraded' | 'failing';
+    success_rate: number;
+    avg_response_time: number;
+    recommendations: string[];
+  }> {
+    try {
+      const metrics = await this.getWorkflowMetrics(workflowName);
+      const successRate = metrics.total_executions > 0 
+        ? metrics.successful_executions / metrics.total_executions 
+        : 1;
+      
+      let status: 'healthy' | 'degraded' | 'failing' = 'healthy';
+      const recommendations: string[] = [];
+      
+      if (successRate < 0.5) {
+        status = 'failing';
+        recommendations.push('High failure rate - check workflow configuration');
+      } else if (successRate < 0.8) {
+        status = 'degraded';
+        recommendations.push('Moderate failure rate - monitor closely');
+      }
+      
+      if (metrics.average_execution_time > 30000) {
+        status = status === 'healthy' ? 'degraded' : status;
+        recommendations.push('High execution time - optimize workflow');
+      }
+      
+      if (metrics.last_24h_executions === 0) {
+        recommendations.push('No recent executions - check workflow triggers');
+      }
+      
+      return {
+        status,
+        success_rate: successRate,
+        avg_response_time: metrics.average_execution_time,
+        recommendations
+      };
+    } catch (error) {
+      console.error(`[N8N] Failed to monitor workflow ${workflowName}:`, error);
+      return {
+        status: 'failing',
+        success_rate: 0,
+        avg_response_time: 0,
+        recommendations: ['Unable to fetch monitoring data']
+      };
+    }
+  }
+
+  /**
    * List available workflows
    */
   public async listWorkflows(): Promise<Array<{

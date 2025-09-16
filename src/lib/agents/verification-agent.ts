@@ -31,11 +31,59 @@ export class VerificationAgent extends BaseAgent {
 			name: 'verification_agent',
 			temperature: 0.1, // Low temperature for accuracy
 			maxTokens: 500,
-			capabilities: ['identity_verification', 'action_validation', 'fraud_detection']
+			capabilities: ['identity_verification', 'action_validation', 'fraud_detection'],
+			workflowPrefix: 'verification'
 		});
 	}
 	
 	async process(input: VerificationInput): Promise<VerificationResult> {
+		const { template, checkGrammar = true, checkPolicy = true } = input;
+		
+		try {
+			// Use N8N workflow for comprehensive verification
+			const verificationResult = await this.callLLMWorkflow('comprehensive', {
+				template: {
+					id: template.id,
+					subject: template.subject,
+					message_body: template.message_body
+				},
+				checks: {
+					grammar: checkGrammar,
+					policy: checkPolicy,
+					factuality: input.checkFactuality || false
+				},
+				criteria: {
+					grammar_threshold: 3,
+					policy_threshold: 7,
+					auto_approve_below: 7
+				}
+			});
+			
+			return {
+				decision: verificationResult.approved ? 'approved' : 'requires_review',
+				confidence: verificationResult.confidence || 0.85,
+				reasoning: verificationResult.reasoning || [],
+				approved: verificationResult.approved,
+				corrections: verificationResult.corrections,
+				severityLevel: verificationResult.severity_level || 1,
+				violations: verificationResult.violations
+			};
+			
+		} catch (error) {
+			console.error('Verification workflow error:', error);
+			// Fallback to local verification
+			return this.fallbackVerification(input);
+		}
+	}
+	
+	async validate(input: any): Promise<boolean> {
+		return input?.template && typeof input.template === 'object';
+	}
+	
+	/**
+	 * Fallback verification when N8N workflows are unavailable
+	 */
+	private async fallbackVerification(input: VerificationInput): Promise<VerificationResult> {
 		const { template, checkGrammar = true, checkPolicy = true } = input;
 		
 		// Stage 1: Grammar and clarity check
@@ -67,17 +115,14 @@ export class VerificationAgent extends BaseAgent {
 			confidence: 0.85,
 			reasoning: [
 				`Template severity level: ${severityLevel}`,
-				violations.length > 0 ? `Violations found: ${violations.join(', ')}` : 'No violations found'
+				violations.length > 0 ? `Violations found: ${violations.join(', ')}` : 'No violations found',
+				'[Fallback verification used]'
 			],
 			approved,
 			corrections: Object.keys(corrections).length > 0 ? corrections : undefined,
 			severityLevel,
 			violations: violations.length > 0 ? violations : undefined
 		};
-	}
-	
-	async validate(input: any): Promise<boolean> {
-		return input?.template && typeof input.template === 'object';
 	}
 	
 	private async checkGrammar(template: Template): Promise<{
