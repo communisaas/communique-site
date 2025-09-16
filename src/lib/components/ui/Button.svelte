@@ -175,10 +175,24 @@
 			if (variant === 'magical') {
 				glowIntensity.set(1);
 			}
+			// Subtle plane movement on hover - breathes life into the button
+			if (enableFlight && flightState === 'ready') {
+				planeX.set(3);
+				planeY.set(-2);
+				planeRotation.set(-5);
+				planeScale.set(1.05);
+			}
 		} else {
 			buttonScale.set(1);
 			shadowIntensity.set(0);
 			glowIntensity.set(0);
+			// Reset plane position when not hovering
+			if (enableFlight && flightState === 'ready') {
+				planeX.set(0);
+				planeY.set(0);
+				planeRotation.set(0);
+				planeScale.set(1);
+			}
 		}
 	});
 	
