@@ -19,7 +19,7 @@ export interface PercolationData {
 	processing_time_ms: number;
 }
 
-// Sheaf Fusion Response  
+// Sheaf Fusion Response
 export interface FusionData {
 	success: boolean;
 	data: {

@@ -17,22 +17,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	try {
 		const body = await request.json();
-		const {
-			templateId,
-			userId,
-			deliveryMethod,
-			success,
-			submissionId,
-			error,
-			metadata
-		} = body;
+		const { templateId, userId, deliveryMethod, success, submissionId, error, metadata } = body;
 
 		// Validate required fields
 		if (!templateId || !userId || deliveryMethod === undefined || success === undefined) {
-			return json(
-				{ error: 'Missing required fields' },
-				{ status: 400 }
-			);
+			return json({ error: 'Missing required fields' }, { status: 400 });
 		}
 
 		// Create delivery log entry
@@ -78,12 +67,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		return json({ success: true, message: 'Delivery result recorded' });
-
 	} catch (error) {
 		console.error('Error recording delivery result:', error);
-		return json(
-			{ error: 'Failed to record delivery result' },
-			{ status: 500 }
-		);
+		return json({ error: 'Failed to record delivery result' }, { status: 500 });
 	}
 };

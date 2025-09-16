@@ -1,4 +1,4 @@
-import type { 
+import type {
 	template_campaign as TemplateCampaign,
 	analytics_event as AnalyticsEvent,
 	user_session as UserSession,

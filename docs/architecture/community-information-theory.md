@@ -1,14 +1,14 @@
 # Civic Information Dynamics: Engineering Real Democracy
 
-*For engineers who've watched DeFi protocols collapse while democracy crumbles*
+_For engineers who've watched DeFi protocols collapse while democracy crumbles_
 
 You've built smart contracts that locked up billions. You've optimized for engagement that radicalized millions. You've seen your code weaponized by grifters and your idealism exploited by VCs who wouldn't know decentralization if it bit them.
 
 Now build something that actually matters.
 
-Sarah, 34, union electrician in Ohio. Got laid off when the plant moved to Mexico. Now she gets her news from Facebook groups where every post about "job training programs" gets translated into "elites want to retrain us for jobs that don't exist." 
+Sarah, 34, union electrician in Ohio. Got laid off when the plant moved to Mexico. Now she gets her news from Facebook groups where every post about "job training programs" gets translated into "elites want to retrain us for jobs that don't exist."
 
-Meanwhile, David, 41, small business owner in the same town, sees the exact same job training proposal as "finally, government that understands we need skilled workers." 
+Meanwhile, David, 41, small business owner in the same town, sees the exact same job training proposal as "finally, government that understands we need skilled workers."
 
 Same information. Same zip code. Completely different realities.
 
@@ -17,6 +17,7 @@ You've built recommendation algorithms that fragment people into echo chambers. 
 ## Why Your Web3 Experience Actually Matters
 
 ### You Understand Consensus Mechanisms
+
 Sarah's electrician union has a consensus mechanism for evaluating policy: "Does this protect our jobs and give us fair wages?" David's small business network has a different one: "Does this reduce regulatory burden and help us compete?"
 
 These aren't bugs to be fixed. They're legitimate community validation systems that have kept people alive and fed for decades.
@@ -25,7 +26,8 @@ These aren't bugs to be fixed. They're legitimate community validation systems t
 Production: respect existing validation systems and translate policy into their decision language. Research: formalize these as local validation rules on a network (see sheaf-inspired consistency proxy in the math foundations).
 
 ### You Know How Networks Fragment Under Load
-Remember Terra Luna? $60 billion to zero because the network couldn't handle coordinated selling pressure. 
+
+Remember Terra Luna? $60 billion to zero because the network couldn't handle coordinated selling pressure.
 
 American democracy is having its Terra Luna moment. Information networks that held communities together for generations are fragmenting under the load of social media, economic inequality, and political polarization.
 
@@ -35,6 +37,7 @@ American democracy is having its Terra Luna moment. Information networks that he
 Production: degrade gracefully to on-device rendering and `mailto:` delivery with transparent error reporting; avoid brittle dependencies.
 
 ### You've Seen What Happens When Incentives Misalign
+
 DeFi summer taught you that when financial incentives don't align with system health, everything goes to shit fast. Yield farming extracted value instead of creating it. Governance tokens got captured by whales.
 
 **American civic engagement has the same misalignment**:
@@ -57,7 +60,7 @@ Production: discover trusted sources and processing patterns via observed respon
 
 ### Community Boundary Effects
 
-**Linda, 45, suburban mom and part-time nurse**: Lives at the intersection of healthcare worker community and parent community. When school mask mandates come up, her healthcare training says "masks work" but her parent network says "let kids be kids." 
+**Linda, 45, suburban mom and part-time nurse**: Lives at the intersection of healthcare worker community and parent community. When school mask mandates come up, her healthcare training says "masks work" but her parent network says "let kids be kids."
 
 She's not confused or hypocritical. She's processing the same information through two different community validation systems.
 
@@ -78,8 +81,9 @@ Not another social network. Not another political app. Not another blockchain so
 **You're building immune systems for democracy.**
 
 Systems that:
+
 - Help communities process civic information without losing their identity
-- Enable cooperation across community boundaries without forcing assimilation  
+- Enable cooperation across community boundaries without forcing assimilation
 - Make democratic participation more effective, not just more frequent
 - Strengthen community information networks instead of fragmenting them
 
@@ -129,16 +133,19 @@ We avoid paywalls and surveillance economics. Production: on-device rendering, `
 ## Democratic Theory Implications
 
 ### 1. Information Equality ≠ Democratic Equality
+
 Simply providing the same information to all communities doesn't create democratic equality - it creates information inequality because communities have different information processing capabilities.
 
 **True democratic equality requires community-contextual information design.**
 
 ### 2. Community Autonomy vs Collective Action
+
 Communities need autonomy to process information according to their own patterns, but collective democratic action requires some shared information processing protocols.
 
 **The challenge is creating shared protocols without destroying community autonomy.**
 
 ### 3. Information Attack Resistance
+
 Democratic systems must be robust against coordinated information attacks that exploit community information processing vulnerabilities.
 
 **Community information networks need immune systems that detect and neutralize hostile information.**
@@ -150,15 +157,19 @@ We use theory to guide translation and coalition-building, not to profile indivi
 ## Ethical Framework
 
 ### 1. Community Consent
+
 Communities have the right to control how their information processing patterns are studied and influenced.
 
 ### 2. Information Sovereignty
+
 Communities should maintain sovereignty over their internal information processing while participating in larger democratic networks.
 
 ### 3. Manipulation vs Optimization
+
 There's a ethical line between optimizing information for better democratic outcomes vs manipulating communities for external goals.
 
 ### 4. Transparency and Auditability
+
 All community information processing interventions should be transparent and auditable by the communities themselves.
 
 ---
@@ -166,6 +177,7 @@ All community information processing interventions should be transparent and aud
 We synthesize established tools from network science, social choice, and topology to enable communities to act together. The goal isn't control; it's effective, accountable action across boundaries.
 
 ### References (see math foundations for detail)
+
 - Watts & Strogatz (1998); Barabási & Albert (1999) — network clustering and scale-free structure
 - Rogers (1962); Bass (1969) — diffusion and adoption curves (p,q)
 - Arrow (1951); Gibbard–Satterthwaite (1973) — constraints on collective choice

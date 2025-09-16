@@ -21,47 +21,85 @@ interface CreateTemplateRequest {
 	metrics?: Record<string, unknown>;
 }
 
-function validateTemplateData(data: unknown): { isValid: boolean; errors: any[]; validData?: CreateTemplateRequest } {
+function validateTemplateData(data: unknown): {
+	isValid: boolean;
+	errors: any[];
+	validData?: CreateTemplateRequest;
+} {
 	const errors: any[] = [];
-	
+
 	if (!data || typeof data !== 'object') {
 		errors.push(createValidationError('body', 'VALIDATION_REQUIRED', 'Invalid request body'));
 		return { isValid: false, errors };
 	}
-	
+
 	const templateData = data as Record<string, unknown>;
-	
+
 	// Required fields validation
 	if (!templateData.title || typeof templateData.title !== 'string' || !templateData.title.trim()) {
-		errors.push(createValidationError('title', 'VALIDATION_REQUIRED', 'Template title is required'));
+		errors.push(
+			createValidationError('title', 'VALIDATION_REQUIRED', 'Template title is required')
+		);
 	} else if (templateData.title.length > 200) {
-		errors.push(createValidationError('title', 'VALIDATION_TOO_LONG', 'Title must be less than 200 characters'));
+		errors.push(
+			createValidationError(
+				'title',
+				'VALIDATION_TOO_LONG',
+				'Title must be less than 200 characters'
+			)
+		);
 	}
-	
-	if (!templateData.message_body || typeof templateData.message_body !== 'string' || !templateData.message_body.trim()) {
-		errors.push(createValidationError('message_body', 'VALIDATION_REQUIRED', 'Message content is required'));
+
+	if (
+		!templateData.message_body ||
+		typeof templateData.message_body !== 'string' ||
+		!templateData.message_body.trim()
+	) {
+		errors.push(
+			createValidationError('message_body', 'VALIDATION_REQUIRED', 'Message content is required')
+		);
 	} else if (templateData.message_body.length > 10000) {
-		errors.push(createValidationError('message_body', 'VALIDATION_TOO_LONG', 'Message must be less than 10,000 characters'));
+		errors.push(
+			createValidationError(
+				'message_body',
+				'VALIDATION_TOO_LONG',
+				'Message must be less than 10,000 characters'
+			)
+		);
 	}
-	
-	if (!templateData.preview || typeof templateData.preview !== 'string' || !templateData.preview.trim()) {
-		errors.push(createValidationError('preview', 'VALIDATION_REQUIRED', 'Preview text is required'));
+
+	if (
+		!templateData.preview ||
+		typeof templateData.preview !== 'string' ||
+		!templateData.preview.trim()
+	) {
+		errors.push(
+			createValidationError('preview', 'VALIDATION_REQUIRED', 'Preview text is required')
+		);
 	} else if (templateData.preview.length > 500) {
-		errors.push(createValidationError('preview', 'VALIDATION_TOO_LONG', 'Preview must be less than 500 characters'));
+		errors.push(
+			createValidationError(
+				'preview',
+				'VALIDATION_TOO_LONG',
+				'Preview must be less than 500 characters'
+			)
+		);
 	}
-	
+
 	if (!templateData.type || typeof templateData.type !== 'string') {
 		errors.push(createValidationError('type', 'VALIDATION_REQUIRED', 'Template type is required'));
 	}
-	
+
 	if (!templateData.delivery_method || typeof templateData.delivery_method !== 'string') {
-		errors.push(createValidationError('delivery_method', 'VALIDATION_REQUIRED', 'Delivery method is required'));
+		errors.push(
+			createValidationError('delivery_method', 'VALIDATION_REQUIRED', 'Delivery method is required')
+		);
 	}
-	
+
 	if (errors.length > 0) {
 		return { isValid: false, errors };
 	}
-	
+
 	// Return valid data with defaults (map delivery_method to deliveryMethod for Prisma)
 	const validData: CreateTemplateRequest = {
 		title: templateData.title as string,
@@ -69,17 +107,22 @@ function validateTemplateData(data: unknown): { isValid: boolean; errors: any[];
 		preview: templateData.preview as string,
 		type: templateData.type as string,
 		deliveryMethod: templateData.delivery_method as string,
-		subject: templateData.subject as string || `Regarding: ${templateData.title}`,
-		category: templateData.category as string || 'General',
-		description: templateData.description as string || templateData.preview.substring(0, 160),
-		status: templateData.status as string || 'draft',
+		subject: (templateData.subject as string) || `Regarding: ${templateData.title}`,
+		category: (templateData.category as string) || 'General',
+		description: (templateData.description as string) || templateData.preview.substring(0, 160),
+		status: (templateData.status as string) || 'draft',
 		is_public: Boolean(templateData.is_public) || false,
-		delivery_config: templateData.delivery_config as Record<string, unknown> || {},
-		cwc_config: templateData.cwc_config as Record<string, unknown> || {},
-		recipient_config: templateData.recipient_config as Record<string, unknown> || {},
-		metrics: templateData.metrics as Record<string, unknown> || { sends: 0, opens: 0, clicks: 0, views: 0 }
+		delivery_config: (templateData.delivery_config as Record<string, unknown>) || {},
+		cwc_config: (templateData.cwc_config as Record<string, unknown>) || {},
+		recipient_config: (templateData.recipient_config as Record<string, unknown>) || {},
+		metrics: (templateData.metrics as Record<string, unknown>) || {
+			sends: 0,
+			opens: 0,
+			clicks: 0,
+			views: 0
+		}
 	};
-	
+
 	return { isValid: true, errors: [], validData };
 }
 
@@ -97,14 +140,15 @@ export async function GET() {
 		// Include template scopes - handle if table doesn't exist
 		let scopes: any[] = [];
 		try {
-			scopes = await db.template_scope?.findMany({
-				where: { template_id: { in: dbTemplates.map((t) => t.id) } }
-			}) || [];
+			scopes =
+				(await db.template_scope?.findMany({
+					where: { template_id: { in: dbTemplates.map((t) => t.id) } }
+				})) || [];
 		} catch (scopeError) {
 			// template_scope table might not exist, continue without scopes
 			console.warn('template_scope table not found, continuing without scopes');
 		}
-		
+
 		const idToScope = new Map(scopes.map((s) => [s.template_id, s]));
 
 		const formattedTemplates = dbTemplates.map((template) => ({
@@ -124,8 +168,8 @@ export async function GET() {
 			is_public: template.is_public,
 			scope: idToScope.get(template.id) || null,
 			recipientEmails: extractRecipientEmails(
-				typeof template.recipient_config === 'string' 
-					? JSON.parse(template.recipient_config) 
+				typeof template.recipient_config === 'string'
+					? JSON.parse(template.recipient_config)
 					: template.recipient_config
 			)
 		}));
@@ -136,10 +180,9 @@ export async function GET() {
 		};
 
 		return json(response);
-
 	} catch (error) {
 		console.error('Failed to fetch templates:', error);
-		
+
 		const response: ApiResponse = {
 			success: false,
 			error: createApiError('server', 'SERVER_DATABASE', 'Failed to fetch templates')
@@ -158,7 +201,11 @@ export async function POST({ request, locals }) {
 		} catch (parseError) {
 			const response: ApiResponse = {
 				success: false,
-				error: createApiError('validation', 'VALIDATION_INVALID_FORMAT', 'Invalid JSON in request body')
+				error: createApiError(
+					'validation',
+					'VALIDATION_INVALID_FORMAT',
+					'Invalid JSON in request body'
+				)
 			};
 			return json(response, { status: 400 });
 		}
@@ -175,26 +222,30 @@ export async function POST({ request, locals }) {
 
 		const validData = validation.validData!;
 		const user = locals.user;
-		
+
 		if (user) {
 			// Authenticated user - save to database
 			try {
 				// Check for duplicate slug
 				if (validData.title) {
-					const slug = validData.title.toLowerCase()
+					const slug = validData.title
+						.toLowerCase()
 						.replace(/[^a-z0-9\s-]/g, '')
 						.replace(/\s+/g, '-')
 						.substring(0, 50);
-					
+
 					const existingTemplate = await db.template.findUnique({
 						where: { slug }
 					});
-					
+
 					if (existingTemplate) {
 						const response: ApiResponse = {
 							success: false,
-							error: createValidationError('title', 'VALIDATION_DUPLICATE', 
-								'A template with a similar title already exists. Please choose a different title.')
+							error: createValidationError(
+								'title',
+								'VALIDATION_DUPLICATE',
+								'A template with a similar title already exists. Please choose a different title.'
+							)
 						};
 						return json(response, { status: 400 });
 					}
@@ -218,7 +269,7 @@ export async function POST({ request, locals }) {
 									moderation_status: 'pending'
 								}
 							});
-							
+
 							// Trigger moderation pipeline via webhook
 							await triggerModerationPipeline(verification.id);
 							console.log(`Created verification for congressional template ${newTemplate.id}`);
@@ -237,7 +288,7 @@ export async function POST({ request, locals }) {
 				}
 			} catch (dbError) {
 				console.error('Database error creating template:', dbError);
-				
+
 				const response: ApiResponse = {
 					success: false,
 					error: createApiError('server', 'SERVER_DATABASE', 'Failed to save template to database')
@@ -250,7 +301,8 @@ export async function POST({ request, locals }) {
 			const guestTemplate = {
 				...validData,
 				id: `guest-${Date.now()}`,
-				slug: validData.title.toLowerCase()
+				slug: validData.title
+					.toLowerCase()
 					.replace(/[^a-z0-9\s-]/g, '')
 					.replace(/\s+/g, '-')
 					.substring(0, 50),
@@ -267,7 +319,7 @@ export async function POST({ request, locals }) {
 		}
 	} catch (error) {
 		console.error('Unexpected error in template creation:', error);
-		
+
 		const response: ApiResponse = {
 			success: false,
 			error: createApiError('server', 'SERVER_INTERNAL', 'An unexpected error occurred')
@@ -283,18 +335,21 @@ export async function POST({ request, locals }) {
 async function triggerModerationPipeline(verificationId: string) {
 	try {
 		// Call our own moderation webhook with the verification ID
-		const response = await fetch(`${process.env.ORIGIN || 'http://localhost:5173'}/api/webhooks/template-moderation`, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET || 'demo-secret'
-			},
-			body: JSON.stringify({
-				verificationId,
-				source: 'template-creation',
-				timestamp: new Date().toISOString()
-			})
-		});
+		const response = await fetch(
+			`${process.env.ORIGIN || 'http://localhost:5173'}/api/webhooks/template-moderation`,
+			{
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET || 'demo-secret'
+				},
+				body: JSON.stringify({
+					verificationId,
+					source: 'template-creation',
+					timestamp: new Date().toISOString()
+				})
+			}
+		);
 
 		if (!response.ok) {
 			throw new Error(`Webhook failed with status ${response.status}`);
@@ -302,11 +357,11 @@ async function triggerModerationPipeline(verificationId: string) {
 
 		const result = await response.json();
 		console.log(`Moderation pipeline triggered for verification ${verificationId}:`, result);
-		
+
 		return result;
 	} catch (error) {
 		console.error(`Failed to trigger moderation pipeline for ${verificationId}:`, error);
 		// Don't throw - we don't want to fail template creation if moderation fails to trigger
 		return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
 	}
-} 
+}

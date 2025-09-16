@@ -24,7 +24,7 @@ The seeding system was completely rewritten to:
 ✅ **Respect Feature Flags**: Only seed data for enabled features  
 ✅ **Handle Dependencies**: Seed in correct order (users before activations, etc.)  
 ✅ **Support Development**: Different data for different stages  
-✅ **Be Production-Safe**: Clear separation of test vs production data  
+✅ **Be Production-Safe**: Clear separation of test vs production data
 
 ## Seeding Scripts
 
@@ -32,13 +32,14 @@ The seeding system was completely rewritten to:
 
 **Purpose**: Essential production data  
 **Models**: Templates, Users, Representatives, Congressional Offices  
-**Always runs**: Yes  
+**Always runs**: Yes
 
 ```bash
 npm run db:seed:core
 ```
 
 **Seeds**:
+
 - 5 high-impact advocacy templates
 - Sample congressional representatives
 - Congressional office records
@@ -48,15 +49,16 @@ npm run db:seed:core
 
 **Purpose**: Global legislative delivery system  
 **Models**: `legislative_channel`, `legislative_body`  
-**Requires**: `ENABLE_BETA=true`  
+**Requires**: `ENABLE_BETA=true`
 
 ```bash
 ENABLE_BETA=true npm run db:seed:channels
 ```
 
 **Seeds**:
+
 - Email channels: Canada, UK, France, US states
-- Form channels: Germany, some US states  
+- Form channels: Germany, some US states
 - API channels: US Congress (CWC)
 - Legislative body definitions
 
@@ -64,7 +66,7 @@ ENABLE_BETA=true npm run db:seed:channels
 
 **Purpose**: Data for feature-flagged models  
 **Models**: Various feature-flagged models  
-**Requires**: Specific feature flags  
+**Requires**: Specific feature flags
 
 ```bash
 # Enable beta features first
@@ -75,21 +77,23 @@ ENABLE_AI_FEATURES=true npm run db:seed:features
 ```
 
 **Seeds**:
+
 - User activation cascades (CASCADE_ANALYTICS)
-- AI suggestions (AI_SUGGESTIONS)  
+- AI suggestions (AI_SUGGESTIONS)
 - Template personalizations (TEMPLATE_PERSONALIZATION)
 - Template analytics (CASCADE_ANALYTICS)
 
 ### 4. Orchestrator (`seed-all.ts`)
 
 **Purpose**: Run all scripts in correct order  
-**Intelligence**: Checks flags, handles dependencies  
+**Intelligence**: Checks flags, handles dependencies
 
 ```bash
 npm run db:seed
 ```
 
 **Features**:
+
 - Pre-flight database connectivity check
 - Feature flag status report
 - Dependency resolution
@@ -173,7 +177,7 @@ model template_analytics { ... }
 Old seed scripts reference non-existent models:
 
 - `template_scope` (not in current schema)
-- `jurisdiction` (not in current schema)  
+- `jurisdiction` (not in current schema)
 - `office` (renamed to `congressional_office`)
 
 **Solution**: Use new scripts (`*-updated.ts`) or `npm run db:seed`
@@ -183,12 +187,14 @@ Old seed scripts reference non-existent models:
 ### Development Setup
 
 1. **Fresh Database**:
+
    ```bash
    npm run db:push  # Sync schema
    npm run db:seed  # Seed all compatible data
    ```
 
 2. **Enable Beta Features**:
+
    ```bash
    ENABLE_BETA=true npm run db:seed
    ```
@@ -202,11 +208,13 @@ Old seed scripts reference non-existent models:
 ### Production Setup
 
 1. **Schema Migration**:
+
    ```bash
    npm run db:migrate
    ```
 
 2. **Core Data Only**:
+
    ```bash
    npm run db:seed:core
    ```
@@ -224,18 +232,18 @@ Edit `scripts/seed-db-updated.ts`:
 
 ```typescript
 const seedTemplates = [
-  // Add your template here
-  {
-    title: 'Your Template Title',
-    description: 'Template description',
-    category: 'Environment|Housing|Education|etc',
-    type: 'advocacy',
-    deliveryMethod: 'email|cwc|both',
-    // ... rest of template data
-    applicable_countries: ['US'],
-    jurisdiction_level: 'federal|state|municipal',
-    is_public: true
-  }
+	// Add your template here
+	{
+		title: 'Your Template Title',
+		description: 'Template description',
+		category: 'Environment|Housing|Education|etc',
+		type: 'advocacy',
+		deliveryMethod: 'email|cwc|both',
+		// ... rest of template data
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal|state|municipal',
+		is_public: true
+	}
 ];
 ```
 
@@ -245,16 +253,16 @@ Edit `scripts/seed-legislative-channels-updated.ts`:
 
 ```typescript
 const legislativeChannelsData = [
-  {
-    channel_id: 'country-parliament',
-    name: 'Parliament Name',
-    type: 'email|form|cwc',
-    jurisdiction_level: 'federal|state|municipal',
-    country_code: 'ISO_CODE',
-    delivery_config: {
-      // Channel-specific configuration
-    }
-  }
+	{
+		channel_id: 'country-parliament',
+		name: 'Parliament Name',
+		type: 'email|form|cwc',
+		jurisdiction_level: 'federal|state|municipal',
+		country_code: 'ISO_CODE',
+		delivery_config: {
+			// Channel-specific configuration
+		}
+	}
 ];
 ```
 
@@ -266,38 +274,48 @@ Edit `scripts/seed-features.ts` and add data for your feature flag.
 
 ### Common Issues
 
-**❌ "template_scope does not exist"**  
+**❌ "template_scope does not exist"**
+
 ```
 Error: Unknown argument `template_scope`. Available fields: ...
 ```
+
 **Solution**: Use updated scripts: `npm run db:seed` instead of old scripts
 
-**❌ "Feature not enabled"**  
+**❌ "Feature not enabled"**
+
 ```
 ⚠️ CASCADE_ANALYTICS not enabled, skipping user activation seeding
 ```
+
 **Solution**: Set appropriate environment variables: `ENABLE_BETA=true`
 
-**❌ "Database connection failed"**  
+**❌ "Database connection failed"**
+
 ```
 ❌ Database connection failed: getaddrinfo ENOTFOUND ...
 ```
+
 **Solution**: Check `SUPABASE_DATABASE_URL` or `DATABASE_URL`
 
-**❌ "Schema out of sync"**  
+**❌ "Schema out of sync"**
+
 ```
 ❌ Schema sync issue detected: Unknown argument `some_field`
 ```
+
 **Solution**: Run `npm run db:push` to sync schema
 
 ### Debugging
 
 1. **Check Feature Status**:
+
    ```bash
    npm run db:seed  # Shows feature flag status
    ```
 
 2. **Run Individual Scripts**:
+
    ```bash
    npm run db:seed:core     # Test core data
    npm run db:seed:channels # Test legislative channels
@@ -327,21 +345,23 @@ npm run db:seed
 
 ### Old → New Script Mapping
 
-| Old Script | New Script | Status |
-|------------|------------|---------|
-| `seed-db.ts` | `seed-db-updated.ts` | ✅ Replaced |
-| `seed-legislative-channels.ts` | `seed-legislative-channels-updated.ts` | ✅ Replaced |
-| `seed-jurisdictions.ts` | *Deprecated* | ❌ Models removed |
-| `seed-test-templates.ts` | *Merged into core* | ✅ Integrated |
+| Old Script                     | New Script                             | Status            |
+| ------------------------------ | -------------------------------------- | ----------------- |
+| `seed-db.ts`                   | `seed-db-updated.ts`                   | ✅ Replaced       |
+| `seed-legislative-channels.ts` | `seed-legislative-channels-updated.ts` | ✅ Replaced       |
+| `seed-jurisdictions.ts`        | _Deprecated_                           | ❌ Models removed |
+| `seed-test-templates.ts`       | _Merged into core_                     | ✅ Integrated     |
 
 ### Migration Steps
 
 1. **Backup existing data** (if needed):
+
    ```bash
    npx prisma db pull
    ```
 
 2. **Clear problematic data**:
+
    ```sql
    -- Remove references to deleted models
    -- Run via Prisma Studio or direct SQL
@@ -355,17 +375,20 @@ npm run db:seed
 ## Best Practices
 
 ### For Development
+
 - Always run `npm run db:seed` for comprehensive setup
 - Use feature flags to test specific functionality
 - Keep seed data representative but not overwhelming
 
 ### For Production
+
 - Only seed core data initially
 - Enable features incrementally with appropriate flags
 - Monitor seeding performance and data integrity
 - Use production-appropriate data volumes
 
 ### For Testing
+
 - Create isolated test data sets
 - Use feature flags to test specific scenarios
 - Clean up test data between runs
@@ -373,12 +396,14 @@ npm run db:seed
 ## Future Improvements
 
 ### Planned Features
+
 - **Incremental seeding**: Only seed changed data
 - **Environment-specific data**: Different data per environment
 - **Data versioning**: Track seed data changes
 - **Performance optimization**: Batch operations for large datasets
 
 ### Contributing
+
 - Add new seed data by editing appropriate scripts
 - Ensure new data respects feature flags
 - Test scripts in isolation before integration
@@ -391,7 +416,7 @@ npm run db:seed
 ```bash
 # Essential commands
 npm run db:seed              # Seed everything
-npm run db:seed:core         # Core data only  
+npm run db:seed:core         # Core data only
 npm run db:seed:channels     # Legislative channels (beta)
 npm run db:seed:features     # Feature-flagged data
 

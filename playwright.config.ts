@@ -7,5 +7,5 @@ export default defineConfig({
 		reuseExistingServer: true
 	},
 
-  testDir: 'tests/e2e'
+	testDir: 'tests/e2e'
 });

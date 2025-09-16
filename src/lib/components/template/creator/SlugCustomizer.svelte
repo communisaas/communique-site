@@ -158,18 +158,18 @@
 <div class="space-y-2 md:space-y-4">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
-		<label class="flex items-center gap-1 md:gap-2 text-xs md:text-sm font-medium text-slate-700">
-			<Link2 class="h-3 md:h-4 w-3 md:w-4" />
+		<label class="flex items-center gap-1 text-xs font-medium text-slate-700 md:gap-2 md:text-sm">
+			<Link2 class="h-3 w-3 md:h-4 md:w-4" />
 			Campaign Link
 		</label>
 		{#if isAvailable === true}
-			<span class="flex items-center gap-1 text-xs md:text-xs text-green-600" in:fade>
-				<CheckCircle2 class="h-3 md:h-3 w-3 md:w-3" />
+			<span class="flex items-center gap-1 text-xs text-green-600 md:text-xs" in:fade>
+				<CheckCircle2 class="h-3 w-3 md:h-3 md:w-3" />
 				Available
 			</span>
 		{:else if isAvailable === false}
-			<span class="flex items-center gap-1 text-xs md:text-xs text-amber-600" in:fade>
-				<AlertCircle class="h-3 md:h-3 w-3 md:w-3" />
+			<span class="flex items-center gap-1 text-xs text-amber-600 md:text-xs" in:fade>
+				<AlertCircle class="h-3 w-3 md:h-3 md:w-3" />
 				Already taken
 			</span>
 		{/if}
@@ -177,15 +177,15 @@
 
 	<!-- URL Preview -->
 	<div class="rounded border border-slate-200 bg-slate-50 p-1.5 md:p-3">
-		<div class="flex items-center gap-1 md:gap-2 font-mono text-xs md:text-sm">
-			<span class="text-slate-500 break-all">{$page.url.origin}/</span>
+		<div class="flex items-center gap-1 font-mono text-xs md:gap-2 md:text-sm">
+			<span class="break-all text-slate-500">{$page.url.origin}/</span>
 			<span class="font-semibold text-slate-900">{slug || 'your-campaign'}</span>
 		</div>
 	</div>
 
 	<!-- Validation Messages -->
 	{#if slug && !isValidSlug}
-		<p class="text-xs md:text-xs text-red-600">
+		<p class="text-xs text-red-600 md:text-xs">
 			Links can only contain lowercase letters, numbers, and hyphens
 		</p>
 	{/if}
@@ -193,24 +193,24 @@
 	<!-- Suggestions when slug is taken -->
 	{#if isAvailable === false && suggestions.length > 0}
 		<div class="space-y-1 md:space-y-2" in:fly={{ y: 10, duration: 200 }}>
-			<p class="text-xs md:text-xs text-slate-600">Try one of these alternatives:</p>
+			<p class="text-xs text-slate-600 md:text-xs">Try one of these alternatives:</p>
 			<div class="flex flex-wrap gap-1 md:gap-2">
 				{#each suggestions as suggestion}
 					<button
 						type="button"
 						onclick={() => selectSuggestion(suggestion)}
-						class="inline-flex items-center gap-1 md:gap-1 rounded-full bg-participation-primary-50 px-2 md:px-3 py-1 md:py-1 text-xs md:text-xs font-medium text-participation-primary-700 transition-colors hover:bg-participation-primary-100"
+						class="inline-flex items-center gap-1 rounded-full bg-participation-primary-50 px-2 py-1 text-xs font-medium text-participation-primary-700 transition-colors hover:bg-participation-primary-100 md:gap-1 md:px-3 md:py-1 md:text-xs"
 					>
-						<Sparkles class="h-3 md:h-3 w-3 md:w-3" />
+						<Sparkles class="h-3 w-3 md:h-3 md:w-3" />
 						{suggestion}
 					</button>
 				{/each}
 				<button
 					type="button"
 					onclick={regenerateSuggestions}
-					class="inline-flex items-center gap-1 md:gap-1 rounded-full bg-slate-100 px-2 md:px-3 py-1 md:py-1 text-xs md:text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200"
+					class="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-200 md:gap-1 md:px-3 md:py-1 md:text-xs"
 				>
-					<RefreshCw class="h-3 md:h-3 w-3 md:w-3" />
+					<RefreshCw class="h-3 w-3 md:h-3 md:w-3" />
 					More
 				</button>
 			</div>
@@ -225,19 +225,19 @@
 				bind:value={customSlug}
 				onkeydown={(e) => e.key === 'Enter' && handleCustomSlug()}
 				placeholder="enter-custom-link"
-				class="flex-1 rounded border-slate-300 text-xs md:text-sm shadow-sm focus:border-participation-primary-500 focus:ring-participation-primary-500 py-1 px-2"
+				class="flex-1 rounded border-slate-300 px-2 py-1 text-xs shadow-sm focus:border-participation-primary-500 focus:ring-participation-primary-500 md:text-sm"
 			/>
 			<button
 				type="button"
 				onclick={handleCustomSlug}
-				class="rounded bg-participation-primary-600 px-2 md:px-3 py-1 text-xs md:text-sm text-white hover:bg-participation-primary-700"
+				class="rounded bg-participation-primary-600 px-2 py-1 text-xs text-white hover:bg-participation-primary-700 md:px-3 md:text-sm"
 			>
 				Set
 			</button>
 			<button
 				type="button"
 				onclick={() => (showCustomInput = false)}
-				class="rounded border border-slate-300 bg-white px-2 md:px-3 py-1 text-xs md:text-sm text-slate-600 hover:bg-slate-50"
+				class="rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-600 hover:bg-slate-50 md:px-3 md:text-sm"
 			>
 				Cancel
 			</button>
@@ -246,16 +246,18 @@
 		<button
 			type="button"
 			onclick={() => (showCustomInput = true)}
-			class="{isAvailable === false 
-				? 'rounded bg-participation-primary-600 px-3 py-1.5 text-xs text-white hover:bg-participation-primary-700' 
-				: 'text-xs md:text-xs text-participation-primary-600 hover:text-participation-primary-700'}"
+			class={isAvailable === false
+				? 'rounded bg-participation-primary-600 px-3 py-1.5 text-xs text-white hover:bg-participation-primary-700'
+				: 'text-xs text-participation-primary-600 hover:text-participation-primary-700 md:text-xs'}
 		>
 			{isAvailable === false ? 'Create Custom Link' : 'Customize link'}
 		</button>
 	{/if}
 
 	<!-- Share Context -->
-	<div class="rounded bg-participation-primary-50 p-2 md:p-3 text-xs text-participation-primary-700">
+	<div
+		class="rounded bg-participation-primary-50 p-2 text-xs text-participation-primary-700 md:p-3"
+	>
 		<p>Anyone with this link can instantly use your template. Share it.</p>
 	</div>
 </div>

@@ -1,6 +1,6 @@
 /**
  * Reputation Update API Endpoint
- * 
+ *
  * Updates user reputation based on actions
  */
 
@@ -14,20 +14,12 @@ const reputationAgent = new ReputationAgent();
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const {
-			userAddress,
-			actionType,
-			qualityScore,
-			userId
-		} = body;
-		
+		const { userAddress, actionType, qualityScore, userId } = body;
+
 		if (!userAddress || !actionType || qualityScore === undefined) {
-			return json(
-				{ error: 'userAddress, actionType, and qualityScore required' },
-				{ status: 400 }
-			);
+			return json({ error: 'userAddress, actionType, and qualityScore required' }, { status: 400 });
 		}
-		
+
 		// Fetch current reputation if userId provided
 		let currentReputation = undefined;
 		if (userId) {
@@ -40,7 +32,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					total_reputation: true
 				}
 			});
-			
+
 			if (user) {
 				currentReputation = {
 					challenge: user.challenge_score || 50,
@@ -50,7 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				};
 			}
 		}
-		
+
 		// Process reputation update
 		const result = await reputationAgent.process({
 			userAddress,
@@ -58,7 +50,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			qualityScore,
 			currentReputation
 		});
-		
+
 		// Update user record if userId provided
 		if (userId) {
 			const newScores = {
@@ -66,33 +58,31 @@ export const POST: RequestHandler = async ({ request }) => {
 				civic: (currentReputation?.civic || 50) + result.reputationChanges.civic,
 				discourse: (currentReputation?.discourse || 50) + result.reputationChanges.discourse
 			};
-			
+
 			await db.user.update({
 				where: { id: userId },
 				data: {
 					challenge_score: Math.max(0, Math.min(100, newScores.challenge)),
 					civic_score: Math.max(0, Math.min(100, newScores.civic)),
 					discourse_score: Math.max(0, Math.min(100, newScores.discourse)),
-					total_reputation: Math.max(0, Math.min(100, 
-						newScores.challenge * 0.4 + 
-						newScores.civic * 0.4 + 
-						newScores.discourse * 0.2
-					)),
+					total_reputation: Math.max(
+						0,
+						Math.min(
+							100,
+							newScores.challenge * 0.4 + newScores.civic * 0.4 + newScores.discourse * 0.2
+						)
+					),
 					reputation_tier: result.newTier
 				}
 			});
 		}
-		
+
 		return json({
 			success: true,
 			...result
 		});
-		
 	} catch (error) {
 		console.error('Reputation update error:', error);
-		return json(
-			{ error: 'Reputation update failed', details: error.message },
-			{ status: 500 }
-		);
+		return json({ error: 'Reputation update failed', details: error.message }, { status: 500 });
 	}
 };

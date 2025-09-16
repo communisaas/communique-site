@@ -13,19 +13,19 @@
 		Infrastructure for consequential participation in any governance system
 		Designed for global accessibility and future governance forms
 		*/
-		
+
 		/* Core Brand Colors—Vibrant Trust */
 		--participation-primary-50: #eef2ff;
 		--participation-primary-100: #e0e7ff;
 		--participation-primary-200: #c7d2fe;
 		--participation-primary-300: #a5b4fc;
 		--participation-primary-400: #818cf8;
-		--participation-primary-500: #6366f1;  /* Indigo-500: vibrant, trustworthy */
-		--participation-primary-600: #4f46e5;  /* Indigo-600: primary brand */
-		--participation-primary-700: #4338ca;  /* Indigo-700: hover states */
-		--participation-primary-800: #3730a3;  /* Indigo-800: pressed states */
-		--participation-primary-900: #312e81;  /* Indigo-900: dark text */
-		--participation-primary-950: #1e1b4b;  /* Indigo-950: darkest */
+		--participation-primary-500: #6366f1; /* Indigo-500: vibrant, trustworthy */
+		--participation-primary-600: #4f46e5; /* Indigo-600: primary brand */
+		--participation-primary-700: #4338ca; /* Indigo-700: hover states */
+		--participation-primary-800: #3730a3; /* Indigo-800: pressed states */
+		--participation-primary-900: #312e81; /* Indigo-900: dark text */
+		--participation-primary-950: #1e1b4b; /* Indigo-950: darkest */
 
 		/* Accent Colors—Distinctive Voice */
 		--participation-accent-50: #faf5ff;
@@ -33,12 +33,12 @@
 		--participation-accent-200: #e9d5ff;
 		--participation-accent-300: #d8b4fe;
 		--participation-accent-400: #c084fc;
-		--participation-accent-500: #a855f7;  /* Violet-500: accent */
-		--participation-accent-600: #9333ea;  /* Violet-600: "Count" color */
-		--participation-accent-700: #7c3aed;  /* Violet-700: hover */
-		--participation-accent-800: #6b21a8;  /* Violet-800: pressed */
-		--participation-accent-900: #581c87;  /* Violet-900: dark */
-		--participation-accent-950: #3b0764;  /* Violet-950: darkest */
+		--participation-accent-500: #a855f7; /* Violet-500: accent */
+		--participation-accent-600: #9333ea; /* Violet-600: "Count" color */
+		--participation-accent-700: #7c3aed; /* Violet-700: hover */
+		--participation-accent-800: #6b21a8; /* Violet-800: pressed */
+		--participation-accent-900: #581c87; /* Violet-900: dark */
+		--participation-accent-950: #3b0764; /* Violet-950: darkest */
 
 		/* Delivery Channel Colors—Clear Differentiation */
 		--channel-verified-50: #ecfdf5;
@@ -46,7 +46,7 @@
 		--channel-verified-200: #a7f3d0;
 		--channel-verified-300: #6ee7b7;
 		--channel-verified-400: #34d399;
-		--channel-verified-500: #10b981;  /* Verified delivery green */
+		--channel-verified-500: #10b981; /* Verified delivery green */
 		--channel-verified-600: #059669;
 		--channel-verified-700: #047857;
 		--channel-verified-800: #065f46;
@@ -57,63 +57,62 @@
 		--channel-community-200: #bae6fd;
 		--channel-community-300: #7dd3fc;
 		--channel-community-400: #38bdf8;
-		--channel-community-500: #0ea5e9;  /* Sky-500: Community outreach */
-		--channel-community-600: #0284c7;  /* Sky-600: Primary community */
-		--channel-community-700: #0369a1;  /* Sky-700: Hover state */
-		--channel-community-800: #075985;  /* Sky-800: Pressed state */
-		--channel-community-900: #0c4a6e;  /* Sky-900: Dark text */
+		--channel-community-500: #0ea5e9; /* Sky-500: Community outreach */
+		--channel-community-600: #0284c7; /* Sky-600: Primary community */
+		--channel-community-700: #0369a1; /* Sky-700: Hover state */
+		--channel-community-800: #075985; /* Sky-800: Pressed state */
+		--channel-community-900: #0c4a6e; /* Sky-900: Dark text */
 
 		/* Participation Status Colors—Clear Communication */
 		--status-success-50: #f0fdf4;
-		--status-success-500: #22c55e;  /* Message delivered */
+		--status-success-500: #22c55e; /* Message delivered */
 		--status-success-700: #15803d;
 
 		--status-warning-50: #fffbeb;
-		--status-warning-500: #f59e0b;  /* Verification pending */
+		--status-warning-500: #f59e0b; /* Verification pending */
 		--status-warning-700: #a16207;
 
 		--status-error-50: #fef2f2;
-		--status-error-500: #ef4444;   /* Failed delivery */
+		--status-error-500: #ef4444; /* Failed delivery */
 		--status-error-700: #b91c1c;
 
 		--status-info-50: #eef2ff;
-		--status-info-500: #6366f1;    /* Information: Indigo-500 */
+		--status-info-500: #6366f1; /* Information: Indigo-500 */
 		--status-info-700: #4338ca;
 
 		--status-neutral-50: #f9fafb;
-		--status-neutral-500: #6b7280;  /* Draft, inactive */
+		--status-neutral-500: #6b7280; /* Draft, inactive */
 		--status-neutral-700: #374151;
 
 		/* Surface Colors—Infrastructure Gravitas */
-		--surface-base: #ffffff;          /* Clean, trustworthy white */
-		--surface-raised: #f9fafb;        /* Slightly elevated surfaces */
-		--surface-overlay: #f3f4f6;       /* Modals, overlays */
-		--surface-inverted: #111827;      /* Dark mode, headers */
-		--surface-accent: #f8fafc;        /* Subtle emphasis */
-		--surface-border: #e5e7eb;        /* Clean separation */
+		--surface-base: #ffffff; /* Clean, trustworthy white */
+		--surface-raised: #f9fafb; /* Slightly elevated surfaces */
+		--surface-overlay: #f3f4f6; /* Modals, overlays */
+		--surface-inverted: #111827; /* Dark mode, headers */
+		--surface-accent: #f8fafc; /* Subtle emphasis */
+		--surface-border: #e5e7eb; /* Clean separation */
 		--surface-border-strong: #d1d5db; /* Defined sections */
 
 		/* Text Colors—Clear Hierarchy */
-		--text-primary: #111827;    /* Headings, important content */
-		--text-secondary: #374151;  /* Body text, descriptions */
-		--text-tertiary: #6b7280;   /* Supporting text, captions */
+		--text-primary: #111827; /* Headings, important content */
+		--text-secondary: #374151; /* Body text, descriptions */
+		--text-tertiary: #6b7280; /* Supporting text, captions */
 		--text-quaternary: #9ca3af; /* Placeholders, disabled */
-		--text-inverse: #ffffff;    /* Text on dark backgrounds */
-		--text-accent: #4f46e5;     /* Links, interactive elements: Indigo-600 */
+		--text-inverse: #ffffff; /* Text on dark backgrounds */
+		--text-accent: #4f46e5; /* Links, interactive elements: Indigo-600 */
 
 		/* Shadows—Subtle Depth */
 		--shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 		--shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 		--shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-		--shadow-participation: 0 4px 14px 0 rgb(79 70 229 / 0.15);  /* Indigo branded shadow */
+		--shadow-participation: 0 4px 14px 0 rgb(79 70 229 / 0.15); /* Indigo branded shadow */
 
 		/* Interactive States */
-		--focus-ring: 0 0 0 3px rgb(79 70 229 / 0.1);  /* Indigo-600 focus */
-		--focus-ring-verified: 0 0 0 3px rgb(16 185 129 / 0.1);  /* Emerald focus */
-		--focus-ring-community: 0 0 0 3px rgb(14 165 233 / 0.1);  /* Sky focus */
-		--focus-ring-accent: 0 0 0 3px rgb(147 51 234 / 0.1);  /* Violet accent focus */
+		--focus-ring: 0 0 0 3px rgb(79 70 229 / 0.1); /* Indigo-600 focus */
+		--focus-ring-verified: 0 0 0 3px rgb(16 185 129 / 0.1); /* Emerald focus */
+		--focus-ring-community: 0 0 0 3px rgb(14 165 233 / 0.1); /* Sky focus */
+		--focus-ring-accent: 0 0 0 3px rgb(147 51 234 / 0.1); /* Violet accent focus */
 	}
-
 }
 
 @layer components {
@@ -123,33 +122,33 @@
 	*/
 
 	/* Typography Hierarchy—Clear Information Architecture */
-	.text-primary { 
-		color: var(--text-primary); 
+	.text-primary {
+		color: var(--text-primary);
 		font-weight: 600;
 	}
-	
-	.text-secondary { 
-		color: var(--text-secondary); 
+
+	.text-secondary {
+		color: var(--text-secondary);
 		font-weight: 400;
 	}
-	
-	.text-tertiary { 
-		color: var(--text-tertiary); 
+
+	.text-tertiary {
+		color: var(--text-tertiary);
 		font-weight: 400;
 	}
-	
-	.text-quaternary { 
-		color: var(--text-quaternary); 
+
+	.text-quaternary {
+		color: var(--text-quaternary);
 		font-weight: 400;
 	}
-	
-	.text-inverse { 
-		color: var(--text-inverse); 
+
+	.text-inverse {
+		color: var(--text-inverse);
 		font-weight: 500;
 	}
-	
-	.text-accent { 
-		color: var(--text-accent); 
+
+	.text-accent {
+		color: var(--text-accent);
 		font-weight: 500;
 	}
 
@@ -189,10 +188,15 @@
 	/* Participation Badge System—Clear Status Communication */
 	.participation-badge {
 		@apply inline-flex items-center gap-1.5;
-		@apply border rounded-full font-medium;
+		@apply rounded-full border font-medium;
 		@apply px-3 py-1 text-xs;
 		@apply transition-all duration-150;
-		font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+		font-family:
+			'Inter',
+			ui-sans-serif,
+			system-ui,
+			-apple-system,
+			sans-serif;
 		letter-spacing: 0.025em;
 	}
 
@@ -272,13 +276,18 @@
 
 	/* Form Elements—Accessible Participation Input */
 	.participation-input {
-		@apply w-full px-4 py-3 border rounded-lg;
+		@apply w-full rounded-lg border px-4 py-3;
 		@apply transition-all duration-200;
 		@apply focus:outline-none focus:ring-2 focus:ring-offset-1;
 		background-color: var(--surface-base);
 		border-color: var(--surface-border);
 		color: var(--text-primary);
-		font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+		font-family:
+			'Inter',
+			ui-sans-serif,
+			system-ui,
+			-apple-system,
+			sans-serif;
 		font-size: 1rem; /* 16px: prevents zoom on iOS */
 	}
 
@@ -309,11 +318,16 @@
 	/* Button System—Participation Action Patterns */
 	.participation-btn {
 		@apply inline-flex items-center justify-center gap-2;
-		@apply px-6 py-3 rounded-lg font-medium;
+		@apply rounded-lg px-6 py-3 font-medium;
 		@apply transition-all duration-200 ease-out;
 		@apply focus:outline-none focus:ring-2 focus:ring-offset-2;
-		@apply disabled:opacity-50 disabled:cursor-not-allowed;
-		font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+		@apply disabled:cursor-not-allowed disabled:opacity-50;
+		font-family:
+			'Inter',
+			ui-sans-serif,
+			system-ui,
+			-apple-system,
+			sans-serif;
 		font-size: 1rem;
 		line-height: 1.5;
 		min-height: 44px; /* iOS touch target minimum */
@@ -393,7 +407,11 @@
 
 	/* Utility Classes */
 	.participation-text-gradient {
-		background: linear-gradient(135deg, var(--participation-primary-600), var(--participation-primary-400));
+		background: linear-gradient(
+			135deg,
+			var(--participation-primary-600),
+			var(--participation-primary-400)
+		);
 		-webkit-background-clip: text;
 		-webkit-text-fill-color: transparent;
 		background-clip: text;
@@ -405,7 +423,8 @@
 	}
 
 	@keyframes participation-pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 		}
 		50% {
@@ -418,10 +437,15 @@
 	}
 
 	@keyframes participation-bounce {
-		0%, 20%, 53%, 80%, 100% {
+		0%,
+		20%,
+		53%,
+		80%,
+		100% {
 			transform: translateY(0);
 		}
-		40%, 43% {
+		40%,
+		43% {
 			transform: translateY(-8px);
 		}
 		70% {
@@ -432,4 +456,3 @@
 		}
 	}
 }
-

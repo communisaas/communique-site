@@ -247,7 +247,10 @@
 	onmouseleave={handleMouseLeave}
 	onclick={handleTouch}
 	ontouchstart={handleTouch}
-	ontouchend={(e) => { e.preventDefault(); handleTouch(e); }}
+	ontouchend={(e) => {
+		e.preventDefault();
+		handleTouch(e);
+	}}
 	onkeydown={handleKeyDown}
 >
 	<div class="min-w-0 truncate">

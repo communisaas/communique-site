@@ -1,6 +1,6 @@
 /**
  * TIMER COORDINATION SYSTEM
- * 
+ *
  * Centralized management for all setTimeout/setInterval calls
  * Prevents memory leaks, race conditions, and provides cleanup
  */
@@ -137,7 +137,7 @@ class TimerCoordinator {
 		const timerIds = this.componentTimers.get(componentId);
 		if (!timerIds) return;
 
-		timerIds.forEach(id => this.clearTimer(id));
+		timerIds.forEach((id) => this.clearTimer(id));
 		this.componentTimers.delete(componentId);
 	}
 
@@ -151,7 +151,7 @@ class TimerCoordinator {
 				toDelete.push(id);
 			}
 		});
-		toDelete.forEach(id => this.clearTimer(id));
+		toDelete.forEach((id) => this.clearTimer(id));
 	}
 
 	/**
@@ -181,7 +181,7 @@ class TimerCoordinator {
 	 */
 	getStats(): Record<TimerType, number> {
 		const stats: Record<string, number> = {};
-		this.timers.forEach(timer => {
+		this.timers.forEach((timer) => {
 			stats[timer.type] = (stats[timer.type] || 0) + 1;
 		});
 		return stats as Record<TimerType, number>;
@@ -196,14 +196,24 @@ export const coordinated = {
 	/**
 	 * setTimeout with automatic tracking
 	 */
-	setTimeout(callback: () => void, duration: number, type: TimerType = 'dom', componentId?: string): string {
+	setTimeout(
+		callback: () => void,
+		duration: number,
+		type: TimerType = 'dom',
+		componentId?: string
+	): string {
 		return timerCoordinator.setTimeout(callback, duration, type, componentId);
 	},
 
 	/**
 	 * setInterval with automatic tracking
 	 */
-	setInterval(callback: () => void, duration: number, type: TimerType = 'polling', componentId?: string): string {
+	setInterval(
+		callback: () => void,
+		duration: number,
+		type: TimerType = 'polling',
+		componentId?: string
+	): string {
 		return timerCoordinator.setInterval(callback, duration, type, componentId);
 	},
 
@@ -263,10 +273,15 @@ export const coordinated = {
 			if (timerId) {
 				timerCoordinator.clearTimer(timerId);
 			}
-			timerId = timerCoordinator.setTimeout(() => {
-				func(...args);
-				timerId = null;
-			}, delay, 'debounce', componentId);
+			timerId = timerCoordinator.setTimeout(
+				() => {
+					func(...args);
+					timerId = null;
+				},
+				delay,
+				'debounce',
+				componentId
+			);
 		};
 	}
 };
@@ -296,7 +311,7 @@ export const serverSafeTimers = {
 			return `server_${id}`;
 		}
 	},
-	
+
 	clearTimeout: (id: string): void => {
 		if (browser) {
 			timerCoordinator.clearTimer(id);

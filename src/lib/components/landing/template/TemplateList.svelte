@@ -16,21 +16,20 @@
 	}
 
 	const { templates, selectedId, onSelect, loading = false }: Props = $props();
-	
+
 	let hoveredTemplate = $state<string | null>(null);
-	
+
 	function handleTemplateHover(templateId: string, isHovering: boolean) {
 		hoveredTemplate = isHovering ? templateId : null;
-		
+
 		// Preload template page on hover
 		if (isHovering) {
-			const template = templates.find(t => t.id === templateId);
+			const template = templates.find((t) => t.id === templateId);
 			if (template?.slug) {
 				preloadData(`/s/${template.slug}`);
 			}
 		}
 	}
-	
 
 	function handleKeydown(event: KeyboardEvent, templateId: string, index: number) {
 		if (event.key === 'Enter' || event.key === ' ') {
@@ -74,11 +73,7 @@
 	{#if loading}
 		<!-- Loading State using SkeletonTemplate -->
 		{#each Array(3) as _, index}
-			<SkeletonTemplate 
-				variant="list" 
-				animate={true}
-				classNames="template-loading-{index}"
-			/>
+			<SkeletonTemplate variant="list" animate={true} classNames="template-loading-{index}" />
 		{/each}
 	{:else}
 		{#each templates as template, index (template.id)}
@@ -89,7 +84,7 @@
 				data-template-button
 				data-template-id={template.id}
 				data-testid="template-button-{template.id}"
-				class="relative flex w-full items-start justify-between gap-3 rounded-md border-2 border-l-4 p-3 text-left transition-all duration-200 md:p-4 transform-gpu hover:scale-[1.02] hover:shadow-lg"
+				class="relative flex w-full transform-gpu items-start justify-between gap-3 rounded-md border-2 border-l-4 p-3 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg md:p-4"
 				class:cursor-pointer={selectedId !== template.id}
 				class:cursor-default={selectedId === template.id}
 				class:border-direct-400={selectedId === template.id && !isCongressional}
@@ -107,10 +102,7 @@
 			>
 				<div class="min-w-0 flex-1">
 					<div class="flex flex-wrap items-center gap-2">
-						<Badge
-							variant={isCongressional ? 'congressional' : 'direct'}
-							size="sm"
-						>
+						<Badge variant={isCongressional ? 'congressional' : 'direct'} size="sm">
 							{isCongressional ? 'Certified Delivery' : 'Direct Outreach'}
 						</Badge>
 						<span class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 md:text-sm">

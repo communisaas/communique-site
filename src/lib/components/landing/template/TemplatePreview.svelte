@@ -40,7 +40,7 @@
 
 	// Capture user-provided Personal Connection to apply in JS-land before mailto
 	let personalConnectionValue: string = $state('');
-	
+
 	// Set actionProgress when modal is externally controlled
 	$effect(() => {
 		if (externalShowEmailModal) {
@@ -49,15 +49,18 @@
 			actionProgress.set(0);
 		}
 	});
-	
+
 	// Persist and restore personalization data across OAuth flow
 	$effect(() => {
 		if (browser && personalConnectionValue) {
 			// Save to session storage whenever it changes
-			sessionStorage.setItem(`template_${template.id}_personalization`, JSON.stringify({
-				personalConnection: personalConnectionValue,
-				timestamp: Date.now()
-			}));
+			sessionStorage.setItem(
+				`template_${template.id}_personalization`,
+				JSON.stringify({
+					personalConnection: personalConnectionValue,
+					timestamp: Date.now()
+				})
+			);
 		}
 	});
 
@@ -110,16 +113,16 @@
 				hasUser: !!user,
 				userState: user ? 'loaded' : 'not loaded'
 			});
-			
+
 			const savedData = sessionStorage.getItem(`template_${template.id}_personalization`);
 			const pendingSend = sessionStorage.getItem(`template_${template.id}_pending_send`);
-			
+
 			console.log('💾 Session data:', {
 				hasSavedData: !!savedData,
 				pendingSend,
 				savedDataPreview: savedData ? savedData.substring(0, 50) + '...' : 'none'
 			});
-			
+
 			if (savedData) {
 				try {
 					const parsed = JSON.parse(savedData);
@@ -127,31 +130,36 @@
 					if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 60 * 1000) {
 						personalConnectionValue = parsed.personalConnection || '';
 						console.log('✅ Restored personalization:', parsed.personalConnection);
-						
+
 						// Check if we should auto-trigger send flow
 						if (pendingSend === 'true' && user) {
 							// Clear the pending flag
 							sessionStorage.removeItem(`template_${template.id}_pending_send`);
 							// Auto-trigger send flow after a brief delay
-							coordinated.setTimeout(() => {
-								// Apply Personal Connection to template if available
-								const pc = personalConnectionValue?.trim();
-								if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
-									console.log('📝 Applying Personal Connection:', pc);
-									template.message_body = template.message_body.replace(
-										/\[Personal Connection\]/g,
-										pc
-									);
-								}
-								
-								// Let parent handle the full flow (modal + email launch)
-								console.log('📧 Auto-triggering send message...');
-								if (onSendMessage) {
-									onSendMessage();
-								} else {
-									console.error('❌ No onSendMessage callback available');
-								}
-							}, 500, 'auto-send', componentId);
+							coordinated.setTimeout(
+								() => {
+									// Apply Personal Connection to template if available
+									const pc = personalConnectionValue?.trim();
+									if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
+										console.log('📝 Applying Personal Connection:', pc);
+										template.message_body = template.message_body.replace(
+											/\[Personal Connection\]/g,
+											pc
+										);
+									}
+
+									// Let parent handle the full flow (modal + email launch)
+									console.log('📧 Auto-triggering send message...');
+									if (onSendMessage) {
+										onSendMessage();
+									} else {
+										console.error('❌ No onSendMessage callback available');
+									}
+								},
+								500,
+								'auto-send',
+								componentId
+							);
 						}
 					} else {
 						// Data is too old, clean it up
@@ -162,7 +170,7 @@
 				}
 			}
 		}
-		
+
 		const handleMovePreviewFocus = () => {
 			if (firstFocusableElement) {
 				firstFocusableElement.focus();
@@ -182,7 +190,7 @@
 			tick().then(() => {
 				// Re-check previewContainer as it might have become null during async operation
 				if (!previewContainer) return;
-				
+
 				const focusableElements = previewContainer.querySelectorAll(
 					'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
 				);
@@ -200,7 +208,6 @@
 			});
 		}
 	});
-
 
 	onDestroy(() => {
 		useTimerCleanup(componentId)();
@@ -254,7 +261,7 @@
 			onkeydown={handleKeyboardNav}
 			class="flex flex-1 cursor-default flex-col overflow-visible border-0 bg-transparent text-left outline-none"
 		>
-				<PreviewContent 
+			<PreviewContent
 				{template}
 				{inModal}
 				{context}
@@ -266,10 +273,10 @@
 				{componentId}
 				{expandToContent}
 			/>
-			
+
 			<!-- Only show ActionBar in list/modal contexts, not on page -->
 			{#if context !== 'page'}
-				<ActionBar 
+				<ActionBar
 					{template}
 					{user}
 					{personalConnectionValue}
@@ -309,7 +316,9 @@
 						/>
 					</svg>
 					<!-- Flying papers animation -->
-					<div class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-participation-primary-400"></div>
+					<div
+						class="absolute -right-1 -top-1 h-3 w-3 animate-ping rounded-full bg-participation-primary-400"
+					></div>
 				</div>
 
 				<h3 class="mb-2 text-lg font-semibold text-slate-900">Opening your email app...</h3>

@@ -30,8 +30,8 @@ class FunnelAnalytics {
 		if (stored) {
 			try {
 				const events = JSON.parse(stored);
-				this.events = events.filter((e: FunnelEvent) =>
-					Date.now() - e.timestamp < 24 * 60 * 60 * 1000 // Keep events for 24 hours
+				this.events = events.filter(
+					(e: FunnelEvent) => Date.now() - e.timestamp < 24 * 60 * 60 * 1000 // Keep events for 24 hours
 				);
 			} catch {
 				localStorage.removeItem('communique_funnel_events');
@@ -59,7 +59,6 @@ class FunnelAnalytics {
 
 		// Send to analytics service
 		this.sendToAnalytics(funnelEvent);
-
 	}
 
 	private async sendToAnalytics(event: FunnelEvent) {
@@ -77,7 +76,10 @@ class FunnelAnalytics {
 	}
 
 	// Track funnel progression
-	trackTemplateView(templateId: string, source: 'social-link' | 'direct-link' | 'share' = 'direct-link') {
+	trackTemplateView(
+		templateId: string,
+		source: 'social-link' | 'direct-link' | 'share' = 'direct-link'
+	) {
 		this.track('template_viewed', {
 			template_id: templateId,
 			source,
@@ -129,7 +131,12 @@ class FunnelAnalytics {
 		});
 	}
 
-	trackCertificationSuccess(templateId: string, rewardAmount: number, userId?: string, certificationHash?: string) {
+	trackCertificationSuccess(
+		templateId: string,
+		rewardAmount: number,
+		userId?: string,
+		certificationHash?: string
+	) {
 		this.track('certification_success', {
 			template_id: templateId,
 			reward_amount: rewardAmount,
@@ -161,21 +168,24 @@ class FunnelAnalytics {
 	getFunnelMetrics() {
 		const metrics = {
 			total_events: this.events.length,
-			unique_templates: new Set(this.events.map(e => e.template_id).filter(Boolean)).size,
+			unique_templates: new Set(this.events.map((e) => e.template_id).filter(Boolean)).size,
 			conversion_rate: 0,
 			funnel_steps: {
-				template_viewed: this.events.filter(e => e.event === 'template_viewed').length,
-				onboarding_started: this.events.filter(e => e.event === 'onboarding_started').length,
-				auth_completed: this.events.filter(e => e.event === 'auth_completed').length,
-				template_used: this.events.filter(e => e.event === 'template_used').length,
-				certification_attempted: this.events.filter(e => e.event === 'certification_attempted').length,
-				certification_success: this.events.filter(e => e.event === 'certification_success').length,
-				reward_earned: this.events.filter(e => e.event === 'reward_earned').length
+				template_viewed: this.events.filter((e) => e.event === 'template_viewed').length,
+				onboarding_started: this.events.filter((e) => e.event === 'onboarding_started').length,
+				auth_completed: this.events.filter((e) => e.event === 'auth_completed').length,
+				template_used: this.events.filter((e) => e.event === 'template_used').length,
+				certification_attempted: this.events.filter((e) => e.event === 'certification_attempted')
+					.length,
+				certification_success: this.events.filter((e) => e.event === 'certification_success')
+					.length,
+				reward_earned: this.events.filter((e) => e.event === 'reward_earned').length
 			}
 		};
 
 		if (metrics.funnel_steps.template_viewed > 0) {
-			metrics.conversion_rate = metrics.funnel_steps.template_used / metrics.funnel_steps.template_viewed;
+			metrics.conversion_rate =
+				metrics.funnel_steps.template_used / metrics.funnel_steps.template_viewed;
 		}
 
 		return metrics;

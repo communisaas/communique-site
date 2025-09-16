@@ -1,6 +1,6 @@
 # Civic Information Dynamics: Mathematical Foundations for Computational Democracy
 
-*For data scientists who've seen enough correlation/causation confusion to last a lifetime*
+_For data scientists who've seen enough correlation/causation confusion to last a lifetime_
 
 You've trained models that predict everything except what actually matters. You've A/B tested engagement algorithms that optimized society into tribal warfare. You've built recommendation systems that fed people exactly what they wanted to hear until they couldn't hear anything else.
 
@@ -52,6 +52,7 @@ Information flows through community networks like fluid through porous media. Th
 **Network Diffusion**: Modern research (Jackson & Yariv, 2007) extends diffusion models to arbitrary network topologies. Information spread depends on **network structure, not just content quality**.
 
 No PDEs. We use descriptive analytics, basic clustering, and simple heuristics. Instrumentation includes:
+
 - Data flow: template → on-device features; `user_activation` for cascades; district summaries from `user_coordinates`
 - Metrics: delivery success, open→action conversion, time-to-action, retention, co‑signs across segments
 - Optional (research): aggregate p,q estimation; field gradients across adjacent segments; sheaf consistency on overlaps
@@ -99,14 +100,14 @@ Not another token. Not another DeFi protocol. Not another DAO that gets captured
 
 ## Current implementation status (production vs research)
 
-| Framework | What we ship today | Notes |
-| --- | --- | --- |
-| Percolation/Max-Flow | Implemented: Edmonds–Karp max-flow/min-cut; percolation-style connectivity threshold heuristic with giant-component check | Threshold is a practical proxy; no exponent/universality claims |
-| Epidemiology (R0, decay) | Implemented: R0, activation velocity/decay from real cascade data | Uses `user_activation` generations and timestamps |
-| Sheaf consistency | Implemented: Čech-inspired proxy for global agreement and pairwise conflicts | Not full cohomology; H2 not computed; confidence bound is heuristic |
-| Population genetics (FST) | Roadmap | Not implemented in code |
-| Information geometry | Roadmap | Not implemented in code |
-| Fiber bundles | Roadmap | Not implemented in code |
+| Framework                 | What we ship today                                                                                                        | Notes                                                               |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Percolation/Max-Flow      | Implemented: Edmonds–Karp max-flow/min-cut; percolation-style connectivity threshold heuristic with giant-component check | Threshold is a practical proxy; no exponent/universality claims     |
+| Epidemiology (R0, decay)  | Implemented: R0, activation velocity/decay from real cascade data                                                         | Uses `user_activation` generations and timestamps                   |
+| Sheaf consistency         | Implemented: Čech-inspired proxy for global agreement and pairwise conflicts                                              | Not full cohomology; H2 not computed; confidence bound is heuristic |
+| Population genetics (FST) | Roadmap                                                                                                                   | Not implemented in code                                             |
+| Information geometry      | Roadmap                                                                                                                   | Not implemented in code                                             |
+| Fiber bundles             | Roadmap                                                                                                                   | Not implemented in code                                             |
 
 We keep production claims modest; advanced theory is used to inform research and future work.
 
@@ -124,27 +125,32 @@ SHEAF_CONFLICT_PENALTY_WEIGHT=0.1
 ## The Mathematical Lineage: Standing on Giants' Shoulders
 
 **Network Science Foundations (1998-2000)**:
+
 - Watts & Strogatz (1998): Small-world networks → Community information clustering
-- Barabási & Albert (1999): Scale-free networks → Political influence distributions  
+- Barabási & Albert (1999): Scale-free networks → Political influence distributions
 - Callaway et al. (2000): Network connectivity thresholds → Trust network fragility
 
 **Information Dynamics (1960s-1990s)**:
+
 - Rogers (1962): Diffusion of innovations → Template viral coefficients
 - Bass (1969): Mathematical adoption curves → Political information spread
 - Bikhchandani et al. (1992): Information cascades → Community validation failures
 
 **Social Choice & Mechanism Design (1950s-2010s)**:
+
 - Arrow (1951): Impossibility theorem → Why pure democracy fails
 - Gibbard-Satterthwaite (1973): Manipulation impossibility → Design constraints
 - Myerson (1991): Mechanism design → Incentive-compatible civic systems
 - Weyl (2017): Quadratic voting → Welfare-maximizing democratic mechanisms
 
 **Complex Systems & Critical Transitions (1990s-2010s)**:
+
 - Scheffer (2009): Critical transitions → Early warning for democratic collapse
 - Castellano et al. (2009): Opinion dynamics → Mathematical models for political behavior
 - Jackson & Yariv (2007): Network diffusion → Information spread on arbitrary topologies
 
 **Computational Social Choice (2000s-2020s)**:
+
 - Kahng et al. (2018): Liquid democracy algorithms → Transitive delegation systems
 - Bond et al. (2012): Facebook voting experiment → Empirical network effects on democracy
 

@@ -6,11 +6,11 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
 	import { OnboardingContent } from '$lib/components/auth/parts';
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
-	
+
 	// Connect to modal system
 	const modalStore = createModalStore('onboarding-modal', 'onboarding');
 	let modal: UnifiedModal | undefined = $state();
-	
+
 	// Open/close functions for external use
 	export function open(data: {
 		template: {
@@ -24,22 +24,24 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	}) {
 		modal?.open(data);
 	}
-	
+
 	export function close() {
 		modal?.close();
 	}
 
 	// Extract data from modal store
-	const modalData = $derived(modalStore.data as {
-		template: {
-			title: string;
-			description: string;
-			slug: string;
-			deliveryMethod?: string;
-			metrics: { sent: number; views?: number };
-		};
-		source?: 'social-link' | 'direct-link' | 'share';
-	} | null);
+	const modalData = $derived(
+		modalStore.data as {
+			template: {
+				title: string;
+				description: string;
+				slug: string;
+				deliveryMethod?: string;
+				metrics: { sent: number; views?: number };
+			};
+			source?: 'social-link' | 'direct-link' | 'share';
+		} | null
+	);
 
 	function handleAuth(provider: string) {
 		// Redirect to OAuth provider

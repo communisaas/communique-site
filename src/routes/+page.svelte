@@ -6,8 +6,8 @@
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import TouchModal from '$lib/components/ui/TouchModal.svelte';
-import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
-import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.svelte';
+	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
+	import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.svelte';
 	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import UnifiedProgressiveFormModal from '$lib/components/modals/UnifiedProgressiveFormModal.svelte';
@@ -28,9 +28,11 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 	let { data }: { data: PageData } = $props();
 
 	const componentId = 'HomePage_' + Math.random().toString(36).substr(2, 9);
-	
+
 	// Create derived values from the store using Svelte 5 runes
-	const selectedTemplate = $derived(templateStore.templates.find((t) => t.id === templateStore.selectedId));
+	const selectedTemplate = $derived(
+		templateStore.templates.find((t) => t.id === templateStore.selectedId)
+	);
 	const isLoading = $derived(templateStore.loading);
 	const hasError = $derived(!!templateStore.error);
 
@@ -111,7 +113,6 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 			);
 		}
 
-
 		// Mark initial load as complete after a short delay
 		coordinated.setTimeout(
 			() => {
@@ -129,7 +130,7 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 		if (!document.startViewTransition || !navigation.to?.url.pathname.includes('/s/')) {
 			return;
 		}
-		
+
 		return new Promise((resolve) => {
 			document.startViewTransition(async () => {
 				resolve();
@@ -169,7 +170,6 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 		creationContext = event.detail;
 		showTemplateCreator = true;
 	}
-
 
 	function handleTemplateCreatorAuth(event: CustomEvent) {
 		const { name, email } = event.detail;
@@ -321,14 +321,21 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 						const flow = analyzeEmailFlow(selectedTemplate, data.user);
 
 						if (flow.nextAction === 'auth') {
-							modalActions.openModal('onboarding-modal', 'onboarding', { template: selectedTemplate, source: 'featured' });
+							modalActions.openModal('onboarding-modal', 'onboarding', {
+								template: selectedTemplate,
+								source: 'featured'
+							});
 						} else if (flow.nextAction === 'address') {
-							modalActions.openModal('address-modal', 'address', { template: selectedTemplate, source: 'featured', user: data.user });
+							modalActions.openModal('address-modal', 'address', {
+								template: selectedTemplate,
+								source: 'featured',
+								user: data.user
+							});
 						} else {
 							// Preload the template page data immediately
 							const templateUrl = `/s/${selectedTemplate.slug}`;
 							preloadData(templateUrl);
-							
+
 							// Let button animation play briefly - just the takeoff (500ms)
 							// This shows the plane launching without the full flight path
 							setTimeout(() => {
@@ -351,9 +358,7 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 						</svg>
 					</div>
 					<h3 class="mb-2 text-lg font-medium text-slate-900">No campaigns running yet</h3>
-					<p class="text-slate-600">
-						Someone has to move first. Start one.
-					</p>
+					<p class="text-slate-600">Someone has to move first. Start one.</p>
 				</div>
 			{/if}
 		</div>
@@ -361,7 +366,11 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 
 	<!-- Mobile Preview Modal -->
 	{#if showMobilePreview && selectedTemplate}
-		<TouchModal bind:this={modalComponent} on:close={() => (showMobilePreview = false)} inModal={true}>
+		<TouchModal
+			bind:this={modalComponent}
+			on:close={() => (showMobilePreview = false)}
+			inModal={true}
+		>
 			<div class="h-full">
 				<TemplatePreview
 					template={selectedTemplate}
@@ -369,18 +378,25 @@ import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.sv
 					user={data.user}
 					onSendMessage={async () => {
 						const flow = analyzeEmailFlow(selectedTemplate, data.user);
-						
+
 						if (flow.nextAction === 'auth') {
-							modalActions.openModal('onboarding-modal', 'onboarding', { template: selectedTemplate, source: 'mobile' });
+							modalActions.openModal('onboarding-modal', 'onboarding', {
+								template: selectedTemplate,
+								source: 'mobile'
+							});
 							showMobilePreview = false;
 						} else if (flow.nextAction === 'address') {
-							modalActions.openModal('address-modal', 'address', { template: selectedTemplate, source: 'mobile', user: data.user });
+							modalActions.openModal('address-modal', 'address', {
+								template: selectedTemplate,
+								source: 'mobile',
+								user: data.user
+							});
 							showMobilePreview = false;
 						} else {
 							// Preload the template page
 							const templateUrl = `/s/${selectedTemplate.slug}`;
 							preloadData(templateUrl);
-							
+
 							// Let button animation play until plane is off-screen (1200ms)
 							// This avoids showing the reset animation
 							setTimeout(() => {

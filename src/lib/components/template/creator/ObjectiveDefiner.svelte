@@ -48,13 +48,19 @@
 	<!-- Reference Tips - Available When Needed -->
 	<div class="space-y-3 border-t border-slate-100 pt-4">
 		<details class="group">
-			<summary class="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900">
-				<Lightbulb class="h-4 w-4 text-participation-primary-600 group-open:text-participation-primary-700" />
+			<summary
+				class="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+			>
+				<Lightbulb
+					class="h-4 w-4 text-participation-primary-600 group-open:text-participation-primary-700"
+				/>
 				Tips for Effective Advocacy
 				<span class="ml-auto text-xs text-slate-500 group-open:hidden">Click to expand</span>
 			</summary>
-			<div class="mt-3 rounded-lg border border-participation-primary-100 bg-participation-primary-50 p-3">
-				<ul class="space-y-1.5 text-xs md:text-sm text-participation-primary-700 leading-relaxed">
+			<div
+				class="mt-3 rounded-lg border border-participation-primary-100 bg-participation-primary-50 p-3"
+			>
+				<ul class="space-y-1.5 text-xs leading-relaxed text-participation-primary-700 md:text-sm">
 					<li>• Be specific about the issue or bill you're addressing</li>
 					<li>• Clear subject lines get opened - save emotion for the message</li>
 					<li>• Officials need to quickly understand what action you want</li>

@@ -19,12 +19,16 @@
 
 	const iconSizes = {
 		xs: 'h-2.5 w-2.5',
-		sm: 'h-3 w-3', 
+		sm: 'h-3 w-3',
 		md: 'h-4 w-4'
 	};
 </script>
 
-<div class="inline-flex items-center gap-1 rounded-full bg-green-100 font-medium text-green-700 {sizeClasses[size]}">
+<div
+	class="inline-flex items-center gap-1 rounded-full bg-green-100 font-medium text-green-700 {sizeClasses[
+		size
+	]}"
+>
 	<Shield class={iconSizes[size]} />
 	{#if showText}
 		<span>Verified</span>

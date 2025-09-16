@@ -17,7 +17,7 @@ async function resolveUserByEmail(email) {
 			{
 				params: { email },
 				headers: {
-					'Authorization': `Bearer ${config.communique.apiKey}`,
+					Authorization: `Bearer ${config.communique.apiKey}`,
 					'Content-Type': 'application/json'
 				},
 				timeout: 10000
@@ -36,16 +36,13 @@ async function resolveUserByEmail(email) {
  */
 async function fetchUserById(userId) {
 	try {
-		const response = await axios.get(
-			`${config.communique.apiUrl}/users/${userId}`,
-			{
-				headers: {
-					'Authorization': `Bearer ${config.communique.apiKey}`,
-					'Content-Type': 'application/json'
-				},
-				timeout: 10000
-			}
-		);
+		const response = await axios.get(`${config.communique.apiUrl}/users/${userId}`, {
+			headers: {
+				Authorization: `Bearer ${config.communique.apiKey}`,
+				'Content-Type': 'application/json'
+			},
+			timeout: 10000
+		});
 
 		return response.data.user;
 	} catch (error) {
@@ -59,17 +56,14 @@ async function fetchUserById(userId) {
  */
 async function fetchTemplateBySlug(slug) {
 	try {
-		const response = await axios.get(
-			`${config.communique.apiUrl}/delivery-platform/template`,
-			{
-				params: { slug },
-				headers: {
-					'Authorization': `Bearer ${config.communique.apiKey}`,
-					'Content-Type': 'application/json'
-				},
-				timeout: 10000
-			}
-		);
+		const response = await axios.get(`${config.communique.apiUrl}/delivery-platform/template`, {
+			params: { slug },
+			headers: {
+				Authorization: `Bearer ${config.communique.apiKey}`,
+				'Content-Type': 'application/json'
+			},
+			timeout: 10000
+		});
 
 		return response.data.template;
 	} catch (error) {
@@ -100,7 +94,7 @@ async function detectPotentialUser(parsedMessage, templateSlug) {
 	if (emailParts) {
 		// Clean up common email patterns (john.doe, john_doe, johndoe)
 		const nameParts = emailParts.replace(/[._-]/g, ' ').split(' ');
-		
+
 		// TODO: Implement fuzzy user search by name parts
 		// This would require a new API endpoint
 		console.log(`Could search for user with name parts: ${nameParts.join(' ')}`);
@@ -122,7 +116,7 @@ async function detectPotentialUser(parsedMessage, templateSlug) {
  */
 function extractNameFromMessage(parsedMessage) {
 	const text = parsedMessage.text || '';
-	
+
 	// Look for common signature patterns
 	const patterns = [
 		/Sincerely,?\s+([A-Z][a-z]+ [A-Z][a-z]+)/,
@@ -163,7 +157,7 @@ async function notifyDeliveryResult(templateId, userId, result) {
 			},
 			{
 				headers: {
-					'Authorization': `Bearer ${config.communique.apiKey}`,
+					Authorization: `Bearer ${config.communique.apiKey}`,
 					'Content-Type': 'application/json'
 				},
 				timeout: 10000

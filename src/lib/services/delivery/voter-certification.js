@@ -1,9 +1,9 @@
 /**
  * VOTER Protocol Certification Handler
- * 
+ *
  * Handles certification of civic actions through VOTER Protocol
  * after successful email delivery to congressional offices.
- * 
+ *
  * This runs server-side only, keeping API keys secure.
  */
 
@@ -17,29 +17,33 @@ function getVOTERActionType(templateData) {
 	const title = (templateData.title || '').toLowerCase();
 	const id = (templateData.id || '').toLowerCase();
 	const method = (templateData.deliveryMethod || '').toLowerCase();
-	
+
 	// Congressional messages
-	if (method === 'certified' || 
-	    title.includes('congress') || 
-	    title.includes('representative') || 
-	    title.includes('senator') || 
-	    id.includes('cwc')) {
+	if (
+		method === 'certified' ||
+		title.includes('congress') ||
+		title.includes('representative') ||
+		title.includes('senator') ||
+		id.includes('cwc')
+	) {
 		return 'cwc_message';
 	}
-	
+
 	// Local government
-	if (title.includes('local') || 
-	    title.includes('mayor') || 
-	    title.includes('council') || 
-	    title.includes('city')) {
+	if (
+		title.includes('local') ||
+		title.includes('mayor') ||
+		title.includes('council') ||
+		title.includes('city')
+	) {
 		return 'local_action';
 	}
-	
+
 	// Direct email to officials
 	if (method === 'direct') {
 		return 'direct_email';
 	}
-	
+
 	return 'direct_action'; // Default
 }
 
@@ -52,7 +56,7 @@ function generateMessageHash(recipient, subject, body) {
 	let hash = 0;
 	for (let i = 0; i < content.length; i++) {
 		const char = content.charCodeAt(i);
-		hash = ((hash << 5) - hash) + char;
+		hash = (hash << 5) - hash + char;
 		hash = hash & hash;
 	}
 	return Math.abs(hash).toString(16).padStart(16, '0');
@@ -63,25 +67,20 @@ function generateMessageHash(recipient, subject, body) {
  * Called after successful CWC submission
  */
 async function certifyEmailDelivery(params) {
-	const {
-		userProfile,
-		templateData,
-		cwcResult,
-		recipients = []
-	} = params;
-	
+	const { userProfile, templateData, cwcResult, recipients = [] } = params;
+
 	// Skip if certification is disabled
 	if (!config.voter?.enabled) {
 		console.log('[VOTER] Certification disabled');
 		return null;
 	}
-	
+
 	// Skip if no user address (required for VOTER)
 	if (!userProfile.street || !userProfile.zip) {
 		console.log('[VOTER] Skipping certification - incomplete address');
 		return null;
 	}
-	
+
 	try {
 		const actionType = getVOTERActionType(templateData);
 		const messageHash = generateMessageHash(
@@ -89,7 +88,7 @@ async function certifyEmailDelivery(params) {
 			templateData.subject || templateData.title || '',
 			templateData.message_body || ''
 		);
-		
+
 		const certificationData = {
 			action_type: actionType,
 			delivery_receipt: JSON.stringify({
@@ -110,7 +109,7 @@ async function certifyEmailDelivery(params) {
 				cwc_tracking: cwcResult.trackingNumber
 			}
 		};
-		
+
 		// Call VOTER Protocol API through Communiqué proxy
 		const response = await fetch(`${config.communique.apiUrl}/api/voter-proxy/certify`, {
 			method: 'POST',
@@ -119,26 +118,27 @@ async function certifyEmailDelivery(params) {
 				'X-Mail-Server-Key': config.communique.mailServerKey || ''
 			},
 			body: JSON.stringify({
-				userAddress: userProfile.address || `${userProfile.street}, ${userProfile.city}, ${userProfile.state} ${userProfile.zip}`,
+				userAddress:
+					userProfile.address ||
+					`${userProfile.street}, ${userProfile.city}, ${userProfile.state} ${userProfile.zip}`,
 				...certificationData
 			})
 		});
-		
+
 		if (!response.ok) {
 			const errorText = await response.text();
 			console.error('[VOTER] Certification failed:', errorText);
 			return null;
 		}
-		
+
 		const result = await response.json();
 		console.log('[VOTER] Certification successful:', {
 			hash: result.certificationHash,
 			reward: result.rewardAmount,
 			reputation: result.reputationChange
 		});
-		
+
 		return result;
-		
 	} catch (error) {
 		console.error('[VOTER] Certification error:', error);
 		// Don't throw - certification failure shouldn't break delivery

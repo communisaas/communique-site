@@ -1,6 +1,6 @@
 /**
  * CENTRALIZED MODAL STATE MANAGEMENT SYSTEM (Svelte 5)
- * 
+ *
  * Eliminates scattered modal states across 12+ components.
  * Single source of truth for all modal coordination.
  */
@@ -10,9 +10,9 @@ import { coordinated } from '$lib/utils/timerCoordinator';
 import type { Template } from '$lib/types/template';
 
 // Modal Type Registry - All possible modals in the system
-export type ModalType = 
+export type ModalType =
 	| 'auth'
-	| 'address' 
+	| 'address'
 	| 'email_loading'
 	| 'mobile_preview'
 	| 'template_creator'
@@ -41,7 +41,14 @@ interface ModalSystemState {
 }
 
 // Legacy modal state types from modalState.ts
-export type LegacyModalState = 'closed' | 'auth_required' | 'loading' | 'confirmation' | 'celebration' | 'tracking' | 'retry_needed';
+export type LegacyModalState =
+	| 'closed'
+	| 'auth_required'
+	| 'loading'
+	| 'confirmation'
+	| 'celebration'
+	| 'tracking'
+	| 'retry_needed';
 
 interface LegacyModalContext {
 	template: Template | null;
@@ -74,11 +81,16 @@ function createModalSystem() {
 		/**
 		 * Open a modal with proper z-index management
 		 */
-		open(id: string, type: ModalType, data?: unknown, options?: {
-			closeOnBackdrop?: boolean;
-			closeOnEscape?: boolean;
-			autoClose?: number; // Auto-close after N milliseconds
-		}) {
+		open(
+			id: string,
+			type: ModalType,
+			data?: unknown,
+			options?: {
+				closeOnBackdrop?: boolean;
+				closeOnEscape?: boolean;
+				autoClose?: number; // Auto-close after N milliseconds
+			}
+		) {
 			// Close existing modal of same type to prevent conflicts
 			const existingId = this.findModalByType(type);
 			if (existingId && existingId !== id) {
@@ -86,7 +98,7 @@ function createModalSystem() {
 			}
 
 			const zIndex = modalSystemState.baseZIndex + modalSystemState.modalStack.length;
-			
+
 			const modalState: ModalState = {
 				type,
 				isOpen: true,
@@ -104,9 +116,13 @@ function createModalSystem() {
 
 			// Auto-close timer
 			if (options?.autoClose) {
-				coordinated.autoClose(() => {
-					this.close(id);
-				}, options.autoClose, `modal_${id}`);
+				coordinated.autoClose(
+					() => {
+						this.close(id);
+					},
+					options.autoClose,
+					`modal_${id}`
+				);
 			}
 		},
 
@@ -118,7 +134,7 @@ function createModalSystem() {
 			if (!modal) return;
 
 			delete modalSystemState.activeModals[id]; // Delete property triggers reactivity
-			modalSystemState.modalStack = modalSystemState.modalStack.filter(stackId => stackId !== id);
+			modalSystemState.modalStack = modalSystemState.modalStack.filter((stackId) => stackId !== id);
 
 			// Restore body scroll if no modals remain
 			if (modalSystemState.modalStack.length === 0) {
@@ -132,7 +148,7 @@ function createModalSystem() {
 		closeAll() {
 			modalSystemState.activeModals = {}; // Reset object triggers reactivity
 			modalSystemState.modalStack = [];
-			
+
 			toggleBodyScroll(false);
 		},
 
@@ -180,12 +196,17 @@ function createModalSystem() {
 		// =========================================================================
 		// NEW UNIFIED API (from original modalSystem.ts)
 		// =========================================================================
-		
-		openModal(id: string, type: ModalType, data?: unknown, options?: {
-			closeOnBackdrop?: boolean;
-			closeOnEscape?: boolean;
-			autoClose?: number;
-		}) {
+
+		openModal(
+			id: string,
+			type: ModalType,
+			data?: unknown,
+			options?: {
+				closeOnBackdrop?: boolean;
+				closeOnEscape?: boolean;
+				autoClose?: number;
+			}
+		) {
 			return originalModalActions.open(id, type, data, options);
 		},
 
@@ -249,7 +270,7 @@ function createModalSystem() {
 			// Legacy template modal close
 			legacyModalState.showModal = false;
 			legacyModalState.state = 'closed';
-			
+
 			// Also close in unified system
 			originalModalActions.close('legacy-template-modal');
 		},
@@ -261,26 +282,40 @@ function createModalSystem() {
 			legacyModalState.sendConfirmed = false;
 			legacyModalState.showModal = false;
 			legacyModalState.mailtoUrl = undefined;
-			
+
 			originalModalActions.closeAll();
 		}
 	};
 
 	return {
 		// Core system getters
-		get activeModals() { return modalSystemState.activeModals; },
-		get modalStack() { return modalSystemState.modalStack; },
+		get activeModals() {
+			return modalSystemState.activeModals;
+		},
+		get modalStack() {
+			return modalSystemState.modalStack;
+		},
 		get topModal() {
 			const topId = modalSystemState.modalStack[modalSystemState.modalStack.length - 1];
 			return topId ? modalSystemState.activeModals[topId] : null;
 		},
-		get hasActiveModal() { return modalSystemState.modalStack.length > 0; },
+		get hasActiveModal() {
+			return modalSystemState.modalStack.length > 0;
+		},
 
 		// Legacy compatibility getters
-		get modalContext() { return legacyModalState; },
-		get modalState() { return legacyModalState.state; },
-		get isModalOpen() { return legacyModalState.showModal; },
-		get currentTemplate() { return legacyModalState.template; },
+		get modalContext() {
+			return legacyModalState;
+		},
+		get modalState() {
+			return legacyModalState.state;
+		},
+		get isModalOpen() {
+			return legacyModalState.showModal;
+		},
+		get currentTemplate() {
+			return legacyModalState.template;
+		},
 
 		// Actions
 		...modalActions
@@ -292,23 +327,33 @@ export const modalSystem = createModalSystem();
 
 // Export individual stores for backward compatibility
 export const activeModals = {
-	get activeModals() { return modalSystem.activeModals; }
+	get activeModals() {
+		return modalSystem.activeModals;
+	}
 };
 
 export const topModal = {
-	get topModal() { return modalSystem.topModal; }
+	get topModal() {
+		return modalSystem.topModal;
+	}
 };
 
 export const hasActiveModal = {
-	get hasActiveModal() { return modalSystem.hasActiveModal; }
+	get hasActiveModal() {
+		return modalSystem.hasActiveModal;
+	}
 };
 
 export const modalContext = {
-	get modalContext() { return modalSystem.modalContext; }
+	get modalContext() {
+		return modalSystem.modalContext;
+	}
 };
 
 export const modalState = {
-	get modalState() { return modalSystem.modalState; }
+	get modalState() {
+		return modalSystem.modalState;
+	}
 };
 
 // Export the main modal system - access properties directly for reactivity
@@ -338,8 +383,10 @@ export function createModalStore(id: string, type: ModalType) {
 			const modal = modalSystem.activeModals[id];
 			return modal?.zIndex ?? 1000;
 		},
-		open: (data?: unknown, options?: { closeOnBackdrop?: boolean; closeOnEscape?: boolean; autoClose?: number }) =>
-			modalSystem.openModal(id, type, data, options),
+		open: (
+			data?: unknown,
+			options?: { closeOnBackdrop?: boolean; closeOnEscape?: boolean; autoClose?: number }
+		) => modalSystem.openModal(id, type, data, options),
 		close: () => modalSystem.closeModal(id)
 	};
 }

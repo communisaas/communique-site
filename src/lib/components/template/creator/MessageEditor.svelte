@@ -32,7 +32,7 @@
 
 	// Core variables that auto-fill from user profile
 	const coreVariables = ['[Name]', '[Personal Connection]'];
-	// Address is optional - useful but not required for all advocacy messages  
+	// Address is optional - useful but not required for all advocacy messages
 	const optionalVariables = ['[Address]'];
 	const congressionalVariables = ['[Representative Name]'];
 
@@ -48,40 +48,47 @@
 		data.variables.includes('[Name]') || data.variables.includes('[Address]')
 	);
 
-
 	function ensureRequiredVariables(currentPreview: string) {
 		// Auto-include Name and Personal Connection as user types
 		let updatedPreview = currentPreview;
 		const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
 		const cursorPosition = textarea?.selectionStart || 0;
-		
+
 		// Auto-add required blocks after first character
 		if (currentPreview.trim().length >= 1) {
 			const needsName = !updatedPreview.includes('[Name]');
 			const needsPersonal = !updatedPreview.includes('[Personal Connection]');
-			
+
 			// Add Personal Connection block if missing
 			if (needsPersonal) {
 				// Insert before any existing signature
 				if (updatedPreview.match(/\n\n(Sincerely|Best regards|Thank you)/)) {
-					updatedPreview = updatedPreview.replace(/(\n\n(?:Sincerely|Best regards|Thank you))/m, '\n\n[Personal Connection]$1');
+					updatedPreview = updatedPreview.replace(
+						/(\n\n(?:Sincerely|Best regards|Thank you))/m,
+						'\n\n[Personal Connection]$1'
+					);
 				} else {
 					updatedPreview += '\n\n[Personal Connection]';
 				}
 			}
-			
+
 			// Add signature with Name if missing
 			if (needsName) {
-				const signatureText = includeAddress ? 'Sincerely,\n[Name]\n[Address]' : 'Sincerely,\n[Name]';
+				const signatureText = includeAddress
+					? 'Sincerely,\n[Name]\n[Address]'
+					: 'Sincerely,\n[Name]';
 				if (!updatedPreview.match(/\n\n(?:Sincerely|Best regards|Thank you)/)) {
 					updatedPreview += `\n\n${signatureText}`;
 				} else if (!updatedPreview.includes('[Name]')) {
 					// Add Name to existing signature
 					const addressText = includeAddress ? '\n[Address]' : '';
-					updatedPreview = updatedPreview.replace(/(\n\n(?:Sincerely|Best regards|Thank you),?\s*)$/m, `$1\n[Name]${addressText}`);
+					updatedPreview = updatedPreview.replace(
+						/(\n\n(?:Sincerely|Best regards|Thank you),?\s*)$/m,
+						`$1\n[Name]${addressText}`
+					);
 				}
 			}
-			
+
 			if (updatedPreview !== currentPreview) {
 				data.preview = updatedPreview;
 				// Preserve cursor position after auto-add
@@ -99,7 +106,6 @@
 		data.variables = [...new Set(allVariables)];
 	}
 
-
 	function insertVariable(variable: string) {
 		const textarea = document.querySelector('textarea');
 		if (!textarea) return;
@@ -114,7 +120,7 @@
 		const text = textarea.value;
 
 		data.preview = text.substring(0, start) + variable + text.substring(end);
-		
+
 		// Keep variables array in sync
 		const allVariables = data.preview.match(/\[.*?\]/g) || [];
 		data.variables = [...new Set(allVariables)];
@@ -154,7 +160,7 @@
 			};
 			textarea.addEventListener('input', adjustHeight);
 			adjustHeight();
-			
+
 			return () => {
 				textarea.removeEventListener('input', adjustHeight);
 			};
@@ -162,26 +168,26 @@
 	});
 </script>
 
-<div class="flex flex-col h-full">
+<div class="flex h-full flex-col">
 	<!-- Compact Variable Pills Row -->
-	<div class="flex-shrink-0 mb-3">
-		<div class="flex items-center justify-between mb-2">
+	<div class="mb-3 flex-shrink-0">
+		<div class="mb-2 flex items-center justify-between">
 			<label class="text-xs font-medium text-slate-600">Click to insert variables:</label>
 			<span class="text-xs text-slate-500">Auto-adds as you type</span>
 		</div>
-		
+
 		<!-- Mobile: Horizontal scrollable pills -->
-		<div class="sm:hidden flex gap-3 overflow-x-auto pb-2 px-1 scrollbar-hide">
+		<div class="scrollbar-hide flex gap-3 overflow-x-auto px-1 pb-2 sm:hidden">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
 				{@const isCore = coreVariables.includes(variable)}
 				{@const isAddress = variable === '[Address]'}
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
-				
+
 				{#if !isAddress}
 					<button
 						type="button"
-						class="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border transition-all active:scale-95"
+						class="inline-flex flex-shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all active:scale-95"
 						class:bg-emerald-50={isUsed}
 						class:border-emerald-200={isUsed}
 						class:text-emerald-700={isUsed}
@@ -207,15 +213,17 @@
 					</button>
 				{/if}
 			{/each}
-			
+
 			<!-- Address toggle for mobile -->
-			<label class="flex-shrink-0 inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border cursor-pointer transition-all active:scale-95"
-				   class:bg-blue-50={includeAddress}
-				   class:border-blue-200={includeAddress}
-				   class:text-blue-700={includeAddress}
-				   class:bg-slate-50={!includeAddress}
-				   class:border-slate-200={!includeAddress}
-				   class:text-slate-600={!includeAddress}>
+			<label
+				class="inline-flex flex-shrink-0 cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all active:scale-95"
+				class:bg-blue-50={includeAddress}
+				class:border-blue-200={includeAddress}
+				class:text-blue-700={includeAddress}
+				class:bg-slate-50={!includeAddress}
+				class:border-slate-200={!includeAddress}
+				class:text-slate-600={!includeAddress}
+			>
 				<input type="checkbox" bind:checked={includeAddress} class="sr-only" />
 				{#if includeAddress}
 					<Check class="h-3 w-3" />
@@ -227,22 +235,24 @@
 		</div>
 
 		<!-- Desktop: Compact Pill Layout -->
-		<div class="hidden sm:flex items-center gap-2 flex-wrap">
+		<div class="hidden flex-wrap items-center gap-2 sm:flex">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
 				{@const isCore = coreVariables.includes(variable)}
 				{@const isAddress = variable === '[Address]'}
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
-				
+
 				{#if isAddress}
 					<!-- Address toggle -->
-					<label class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border transition-all cursor-pointer hover:scale-105"
-						   class:bg-blue-50={includeAddress}
-						   class:border-blue-200={includeAddress}
-						   class:text-blue-700={includeAddress}
-						   class:bg-slate-50={!includeAddress}
-						   class:border-slate-200={!includeAddress}
-						   class:text-slate-600={!includeAddress}>
+					<label
+						class="inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all hover:scale-105"
+						class:bg-blue-50={includeAddress}
+						class:border-blue-200={includeAddress}
+						class:text-blue-700={includeAddress}
+						class:bg-slate-50={!includeAddress}
+						class:border-slate-200={!includeAddress}
+						class:text-slate-600={!includeAddress}
+					>
 						<input type="checkbox" bind:checked={includeAddress} class="sr-only" />
 						{#if includeAddress}
 							<Check class="h-3 w-3" />
@@ -255,7 +265,7 @@
 					<!-- Variable pill button -->
 					<button
 						type="button"
-						class="inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-full border transition-all hover:scale-105 active:scale-95"
+						class="inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all hover:scale-105 active:scale-95"
 						class:bg-emerald-50={isUsed}
 						class:border-emerald-200={isUsed}
 						class:text-emerald-700={isUsed}
@@ -287,7 +297,7 @@
 	</div>
 
 	<!-- Message Composer with Floating Action Bar -->
-	<div class="flex-1 flex flex-col min-h-0">
+	<div class="flex min-h-0 flex-1 flex-col">
 		<!-- Enhanced editor with variable highlighting -->
 		<div class="relative flex-1">
 			<ValidatedInput
@@ -296,33 +306,41 @@
 				placeholder={placeholderText()}
 				rules={templateValidationRules.message_body}
 				rows={12}
-				class="font-mono text-sm leading-relaxed h-full resize-none composer-textarea"
+				class="composer-textarea h-full resize-none font-mono text-sm leading-relaxed"
 				style="min-height: 250px; max-height: 60vh;"
 			/>
-			
+
 			<!-- Floating Action Bar -->
-			<div class="absolute bottom-3 right-3 left-3 flex items-center justify-between pointer-events-none">
+			<div
+				class="pointer-events-none absolute bottom-3 left-3 right-3 flex items-center justify-between"
+			>
 				<!-- Personal Connection Helper (appears contextually) -->
 				{#if data.variables.includes('[Personal Connection]') && data.preview.includes('[Personal Connection]')}
-					<div class="pointer-events-auto bg-purple-50/95 backdrop-blur-sm border border-purple-200 rounded-lg px-2 py-1 text-xs text-purple-700 max-w-xs animate-fade-in">
+					<div
+						class="animate-fade-in pointer-events-auto max-w-xs rounded-lg border border-purple-200 bg-purple-50/95 px-2 py-1 text-xs text-purple-700 backdrop-blur-sm"
+					>
 						<span class="font-medium">💡 Examples:</span>
 						<span class="text-purple-600">"As a parent..." "Living here 15 years..."</span>
 					</div>
 				{:else}
 					<div></div>
 				{/if}
-				
+
 				<!-- Word/Character Count Badge -->
-				<div class="pointer-events-auto flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-full px-2 py-1 text-xs border shadow-sm"
+				<div
+					class="pointer-events-auto flex items-center gap-2 rounded-full border bg-white/95 px-2 py-1 text-xs shadow-sm backdrop-blur-sm"
 					class:border-slate-200={wordCount < 50}
 					class:border-emerald-200={wordCount >= 50 && wordCount <= 150}
 					class:border-amber-200={wordCount > 150 && wordCount <= 200}
-					class:border-red-200={wordCount > 200}>
-					<span class="font-medium transition-colors"
+					class:border-red-200={wordCount > 200}
+				>
+					<span
+						class="font-medium transition-colors"
 						class:text-slate-500={wordCount < 50}
 						class:text-emerald-600={wordCount >= 50 && wordCount <= 150}
 						class:text-amber-600={wordCount > 150 && wordCount <= 200}
-						class:text-red-600={wordCount > 200}>
+						class:text-red-600={wordCount > 200}
+					>
 						{wordCount} words
 					</span>
 					<span class="text-slate-400">•</span>

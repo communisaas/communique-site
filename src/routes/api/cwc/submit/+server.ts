@@ -1,6 +1,6 @@
 /**
  * CWC (Communicating With Congress) Submission Endpoint
- * 
+ *
  * Handles verified template submission to Congressional offices
  * Called by N8N workflow after verification and consensus stages
  */
@@ -16,11 +16,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// Verify webhook secret if provided
 		const webhookSecret = request.headers.get('x-webhook-secret');
 		const expectedSecret = process.env.N8N_WEBHOOK_SECRET;
-		
+
 		if (expectedSecret && webhookSecret !== expectedSecret) {
 			return json({ error: 'Invalid webhook secret' }, { status: 401 });
 		}
-		
+
 		const body = await request.json();
 		const {
 			templateId,
@@ -29,15 +29,18 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			user: userData,
 			recipients = []
 		} = body;
-		
+
 		// Validate required fields
 		if (!templateId || !templateData || !userData) {
-			return json({ 
-				error: 'Missing required fields',
-				required: ['templateId', 'template', 'user']
-			}, { status: 400 });
+			return json(
+				{
+					error: 'Missing required fields',
+					required: ['templateId', 'template', 'user']
+				},
+				{ status: 400 }
+			);
 		}
-		
+
 		// Fetch template from database if not provided fully
 		let template = templateData;
 		if (templateId && (!template.subject || !template.body)) {
@@ -48,11 +51,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					verification: true
 				}
 			});
-			
+
 			if (!dbTemplate) {
 				return json({ error: 'Template not found' }, { status: 404 });
 			}
-			
+
 			template = {
 				...dbTemplate,
 				...template,
@@ -61,7 +64,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				body: verification?.corrections?.body || template.body || dbTemplate.message_body
 			};
 		}
-		
+
 		// Prepare user data
 		const user = {
 			id: userData.id || 'n8n-user',
@@ -73,14 +76,14 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			state: userData.state || '',
 			zip: userData.zip || userData.userZip || ''
 		};
-		
+
 		// If recipients not provided, look them up based on user address
 		let targetRecipients = recipients;
 		if (targetRecipients.length === 0 && user.zip) {
 			// Look up representatives based on zip code
 			const { addressLookup } = await import('$lib/core/congress/address-lookup');
 			const reps = await addressLookup(user.zip);
-			targetRecipients = reps.map(rep => ({
+			targetRecipients = reps.map((rep) => ({
 				bioguideId: rep.bioguideId,
 				name: rep.name,
 				chamber: rep.role.includes('Senator') ? 'senate' : 'house',
@@ -90,39 +93,32 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				party: rep.party
 			}));
 		}
-		
+
 		if (targetRecipients.length === 0) {
-			return json({ 
-				error: 'No recipients specified and unable to determine from address',
-				hint: 'Provide recipients array or valid user address/zip'
-			}, { status: 400 });
+			return json(
+				{
+					error: 'No recipients specified and unable to determine from address',
+					hint: 'Provide recipients array or valid user address/zip'
+				},
+				{ status: 400 }
+			);
 		}
-		
+
 		// Track submissions
 		const submissions = [];
 		const errors = [];
-		
+
 		// Submit to each recipient
 		for (const recipient of targetRecipients) {
 			try {
 				let result;
-				
+
 				if (recipient.chamber === 'senate') {
-					result = await cwcClient.submitToSenate(
-						template,
-						user,
-						recipient,
-						template.body
-					);
+					result = await cwcClient.submitToSenate(template, user, recipient, template.body);
 				} else {
-					result = await cwcClient.submitToHouse(
-						template,
-						user,
-						recipient,
-						template.body
-					);
+					result = await cwcClient.submitToHouse(template, user, recipient, template.body);
 				}
-				
+
 				if (result.success) {
 					submissions.push({
 						recipient: recipient.name,
@@ -131,7 +127,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						confirmationNumber: result.confirmationNumber,
 						status: result.status
 					});
-					
+
 					// Store delivery record
 					await db.templateDelivery.create({
 						data: {
@@ -153,7 +149,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						error: result.error || 'Submission failed'
 					});
 				}
-				
 			} catch (error) {
 				console.error(`CWC submission error for ${recipient.name}:`, error);
 				errors.push({
@@ -162,7 +157,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				});
 			}
 		}
-		
+
 		// Update template status
 		if (submissions.length > 0) {
 			await db.template.update({
@@ -175,7 +170,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				}
 			});
 		}
-		
+
 		// Prepare response
 		const response = {
 			success: submissions.length > 0,
@@ -186,25 +181,30 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			confirmationNumber: submissions[0]?.confirmationNumber, // Primary confirmation for N8N
 			timestamp: new Date().toISOString()
 		};
-		
+
 		// If all submissions failed, return error
 		if (submissions.length === 0 && errors.length > 0) {
-			return json({
-				...response,
-				error: 'All submissions failed',
-				details: errors
-			}, { status: 500 });
+			return json(
+				{
+					...response,
+					error: 'All submissions failed',
+					details: errors
+				},
+				{ status: 500 }
+			);
 		}
-		
+
 		return json(response);
-		
 	} catch (error) {
 		console.error('CWC submission endpoint error:', error);
-		return json({
-			success: false,
-			error: 'CWC submission failed',
-			details: error.message
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: 'CWC submission failed',
+				details: error.message
+			},
+			{ status: 500 }
+		);
 	}
 };
 
@@ -212,12 +212,12 @@ export const POST: RequestHandler = async ({ request, url }) => {
 export const GET: RequestHandler = async () => {
 	const configured = !!process.env.CWC_API_KEY;
 	const baseUrl = process.env.CWC_API_BASE_URL || 'https://www.house.gov/htbin/formproc';
-	
+
 	return json({
 		status: configured ? 'configured' : 'not_configured',
 		configured,
 		baseUrl,
-		message: configured 
+		message: configured
 			? 'CWC integration is configured and ready'
 			: 'CWC_API_KEY environment variable not set',
 		timestamp: new Date().toISOString()

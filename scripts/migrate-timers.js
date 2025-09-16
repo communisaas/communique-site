@@ -44,29 +44,27 @@ const replacements = [
 ];
 
 // Files to add imports to
-const componentImport = "import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';";
+const componentImport =
+	"import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';";
 const storeImport = "import { coordinated } from '$lib/utils/timerCoordinator';";
 
 async function processFile(filePath) {
 	let content = await fs.readFile(filePath, 'utf8');
 	let modified = false;
-	
+
 	// Check if file uses timers
 	if (!content.includes('setTimeout') && !content.includes('setInterval')) {
 		return false;
 	}
-	
+
 	// Add import if needed
 	const isComponent = filePath.endsWith('.svelte');
 	const importToAdd = isComponent ? componentImport : storeImport;
-	
+
 	if (!content.includes('timerCoordinator')) {
 		// Add import after script tag or at beginning
 		if (isComponent) {
-			content = content.replace(
-				/<script([^>]*)>/,
-				`<script$1>\n\t${importToAdd}`
-			);
+			content = content.replace(/<script([^>]*)>/, `<script$1>\n\t${importToAdd}`);
 		} else {
 			// Add after other imports
 			const importMatch = content.match(/import[^;]+;/g);
@@ -79,20 +77,20 @@ async function processFile(filePath) {
 		}
 		modified = true;
 	}
-	
+
 	// Apply replacements
 	for (const { pattern, replacement } of replacements) {
 		const before = content;
 		content = content.replace(pattern, replacement);
 		if (before !== content) modified = true;
 	}
-	
+
 	// Add component ID for Svelte components
 	if (isComponent && modified && content.includes('coordinated.')) {
 		// Generate component ID from filename
 		const componentName = path.basename(filePath, '.svelte');
 		const componentId = `const componentId = '${componentName}_' + Math.random().toString(36).substr(2, 9);`;
-		
+
 		// Add after imports
 		if (!content.includes('const componentId =')) {
 			content = content.replace(
@@ -100,7 +98,7 @@ async function processFile(filePath) {
 				`$1\n\t${componentId}\n$2`
 			);
 		}
-		
+
 		// Add cleanup in onDestroy
 		if (!content.includes('useTimerCleanup')) {
 			const hasOnDestroy = content.includes('onDestroy');
@@ -111,10 +109,7 @@ async function processFile(filePath) {
 				);
 			} else {
 				// Add onDestroy
-				content = content.replace(
-					/(import \{[^}]*)\}/,
-					'$1, onDestroy }'
-				);
+				content = content.replace(/(import \{[^}]*)\}/, '$1, onDestroy }');
 				content = content.replace(
 					/(const componentId[^;]+;)/,
 					'$1\n\n\tonDestroy(useTimerCleanup(componentId));'
@@ -122,33 +117,33 @@ async function processFile(filePath) {
 			}
 		}
 	}
-	
+
 	if (modified) {
 		await fs.writeFile(filePath, content);
 		console.log(`✅ Migrated: ${filePath}`);
 		return true;
 	}
-	
+
 	return false;
 }
 
 async function main() {
 	console.log('🔄 Starting timer migration...\n');
-	
+
 	// Find all TypeScript and Svelte files
 	const files = [
 		...glob('src/**/*.ts', { ignore: ['**/node_modules/**', '**/timerCoordinator.ts'] }),
 		...glob('src/**/*.svelte', { ignore: '**/node_modules/**' })
 	];
-	
+
 	let migrated = 0;
-	
+
 	for (const file of files) {
 		if (await processFile(file)) {
 			migrated++;
 		}
 	}
-	
+
 	console.log(`\n✅ Migration complete! ${migrated} files updated.`);
 }
 

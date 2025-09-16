@@ -63,7 +63,9 @@ ${this.buildCampaignXML(messageData.Campaign)}
 			optionalFields.push(`		<Title>${this.escapeXML(constituent.Title)}</Title>`);
 		}
 		if (constituent.OrganizationName) {
-			optionalFields.push(`		<OrganizationName>${this.escapeXML(constituent.OrganizationName)}</OrganizationName>`);
+			optionalFields.push(
+				`		<OrganizationName>${this.escapeXML(constituent.OrganizationName)}</OrganizationName>`
+			);
 		}
 		if (constituent.Address2) {
 			optionalFields.push(`		<Address2>${this.escapeXML(constituent.Address2)}</Address2>`);

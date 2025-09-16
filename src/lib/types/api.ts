@@ -4,7 +4,12 @@
 
 // Analytics Event Types
 export interface AnalyticsEvent {
-	event: 'template_viewed' | 'onboarding_started' | 'auth_completed' | 'template_used' | 'template_shared';
+	event:
+		| 'template_viewed'
+		| 'onboarding_started'
+		| 'auth_completed'
+		| 'template_used'
+		| 'template_shared';
 	template_id: string;
 	user_id?: string;
 	session_id?: string;

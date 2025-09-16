@@ -1,6 +1,6 @@
 /**
  * VOTER Protocol API Endpoints
- * 
+ *
  * Unified API for N8N workflow integration with Communiqué
  * Handles civic actions, identity verification, and blockchain operations
  */
@@ -18,11 +18,11 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, url }) => {
 	try {
 		const { action, ...data } = await request.json();
-		
+
 		switch (action) {
 			case 'submit_cwc_message':
 				return await handleCWCSubmission(data);
-			case 'record_civic_action':  
+			case 'record_civic_action':
 				return await recordCivicAction(data);
 			case 'update_reputation':
 				return await updateReputation(data);
@@ -39,7 +39,6 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			default:
 				throw error(400, `Invalid action: ${action}`);
 		}
-		
 	} catch (err) {
 		console.error('VOTER API error:', err);
 		throw error(500, err instanceof Error ? err.message : 'Internal server error');
@@ -49,13 +48,19 @@ export const POST: RequestHandler = async ({ request, url }) => {
 /**
  * Handle CWC message submission using existing mature CWC client
  */
-async function handleCWCSubmission({ userId, templateId, message, representatives, metadata = {} }) {
+async function handleCWCSubmission({
+	userId,
+	templateId,
+	message,
+	representatives,
+	metadata = {}
+}) {
 	if (!userId || !templateId || !message) {
 		throw error(400, 'Missing required fields: userId, templateId, message');
 	}
-	
+
 	// Get user and template from database
-	const user = await prisma.user.findUnique({ 
+	const user = await prisma.user.findUnique({
 		where: { id: userId },
 		select: {
 			id: true,
@@ -69,12 +74,12 @@ async function handleCWCSubmission({ userId, templateId, message, representative
 			congressional_district: true
 		}
 	});
-	
+
 	if (!user) {
 		throw error(404, 'User not found');
 	}
-	
-	const template = await prisma.template.findUnique({ 
+
+	const template = await prisma.template.findUnique({
 		where: { id: templateId },
 		select: {
 			id: true,
@@ -85,19 +90,19 @@ async function handleCWCSubmission({ userId, templateId, message, representative
 			cwc_config: true
 		}
 	});
-	
+
 	if (!template) {
 		throw error(404, 'Template not found');
 	}
-	
+
 	// Submit via existing mature CWC infrastructure
 	const results = await cwcClient.submitToAllRepresentatives(
-		template as any, 
-		user as any, 
-		representatives, 
+		template as any,
+		user as any,
+		representatives,
 		message
 	);
-	
+
 	// Initialize impact tracking with agent orchestration
 	const coordinator = new AgentCoordinator();
 	const impactAgent = new ImpactAgent();
@@ -125,18 +130,20 @@ async function handleCWCSubmission({ userId, templateId, message, representative
 			user_id: userId,
 			template_id: templateId,
 			action_type: 'cwc_message',
-			status: results.every(r => r.success) ? 'completed' : 'failed',
+			status: results.every((r) => r.success) ? 'completed' : 'failed',
 			agent_decisions: {
 				cwc_results: results,
 				submitted_at: new Date().toISOString(),
 				message_preview: message.substring(0, 100) + '...',
-				impact_assessment: impactDecision ? {
-					agentId: impactDecision.agentId,
-					confidence: impactDecision.confidence,
-					reasoning: impactDecision.reasoning,
-					impactScore: impactDecision.decision?.impactScore || 0,
-					legislativeOutcomes: impactDecision.decision?.legislativeOutcomes || []
-				} : { error: 'Impact assessment failed' }
+				impact_assessment: impactDecision
+					? {
+							agentId: impactDecision.agentId,
+							confidence: impactDecision.confidence,
+							reasoning: impactDecision.reasoning,
+							impactScore: impactDecision.decision?.impactScore || 0,
+							legislativeOutcomes: impactDecision.decision?.legislativeOutcomes || []
+						}
+					: { error: 'Impact assessment failed' }
 			},
 			metadata: {
 				...metadata,
@@ -147,29 +154,31 @@ async function handleCWCSubmission({ userId, templateId, message, representative
 			completed_at: new Date()
 		}
 	});
-	
-	return json({ 
-		success: true, 
-		actionId: civicAction.id, 
+
+	return json({
+		success: true,
+		actionId: civicAction.id,
 		results,
-		impact_assessment: impactDecision ? {
-			impactScore: impactDecision.decision?.impactScore || 0,
-			confidence: impactDecision.confidence,
-			reasoning: impactDecision.reasoning
-		} : null,
-		message: `Successfully submitted to ${results.filter(r => r.success).length}/${results.length} representatives`
+		impact_assessment: impactDecision
+			? {
+					impactScore: impactDecision.decision?.impactScore || 0,
+					confidence: impactDecision.confidence,
+					reasoning: impactDecision.reasoning
+				}
+			: null,
+		message: `Successfully submitted to ${results.filter((r) => r.success).length}/${results.length} representatives`
 	});
 }
 
 /**
  * Record civic action with blockchain integration
  */
-async function recordCivicAction({ 
-	userId, 
-	actionType, 
-	templateId, 
-	txHash, 
-	rewardWei, 
+async function recordCivicAction({
+	userId,
+	actionType,
+	templateId,
+	txHash,
+	rewardWei,
 	agentDecisions = {},
 	metadata = {},
 	status = 'completed'
@@ -177,7 +186,7 @@ async function recordCivicAction({
 	if (!userId || !actionType) {
 		throw error(400, 'Missing required fields: userId, actionType');
 	}
-	
+
 	const action = await prisma.civicAction.create({
 		data: {
 			user_id: userId,
@@ -191,9 +200,9 @@ async function recordCivicAction({
 			completed_at: status === 'completed' ? new Date() : null
 		}
 	});
-	
-	return json({ 
-		success: true, 
+
+	return json({
+		success: true,
 		actionId: action.id,
 		message: `Civic action ${actionType} recorded`
 	});
@@ -203,22 +212,22 @@ async function recordCivicAction({
  * Agent-orchestrated reputation assessment with ERC-8004 compliance
  * Replaces static reputation updates with comprehensive credibility analysis
  */
-async function updateReputation({ 
-	userId, 
-	scoreChange, 
-	reason, 
-	txHash, 
+async function updateReputation({
+	userId,
+	scoreChange,
+	reason,
+	txHash,
 	agentSource,
 	evidence,
-	confidence 
+	confidence
 }) {
 	if (!userId) {
 		throw error(400, 'Missing required field: userId');
 	}
-	
+
 	// Initialize ReputationAgent for comprehensive assessment
 	const reputationAgent = new ReputationAgent();
-	
+
 	const reputationContext: AgentContext = {
 		userId,
 		actionType: 'reputation_update',
@@ -231,23 +240,23 @@ async function updateReputation({
 		reputationDecision = await reputationAgent.makeDecision(reputationContext);
 	} catch (reputationError) {
 		console.error('Reputation agent failed:', reputationError);
-		
+
 		// Fallback to legacy reputation update
-		const user = await prisma.user.findUnique({ 
+		const user = await prisma.user.findUnique({
 			where: { id: userId },
 			select: { trust_score: true, reputation_tier: true }
 		});
-		
+
 		if (!user) {
 			throw error(404, 'User not found');
 		}
-		
+
 		const oldScore = user.trust_score;
 		const newScore = Math.max(0, oldScore + (scoreChange || 0));
-		
-		return json({ 
-			success: true, 
-			oldScore, 
+
+		return json({
+			success: true,
+			oldScore,
 			newScore,
 			newTier: user.reputation_tier,
 			warning: 'Used fallback reputation calculation',
@@ -256,29 +265,29 @@ async function updateReputation({
 	}
 
 	const credibilityAssessment = reputationDecision.decision;
-	
+
 	// Get current user state for comparison
-	const user = await prisma.user.findUnique({ 
+	const user = await prisma.user.findUnique({
 		where: { id: userId },
 		select: { trust_score: true, reputation_tier: true }
 	});
-	
+
 	if (!user) {
 		throw error(404, 'User not found');
 	}
 
 	const oldScore = user.trust_score;
 	const newScore = credibilityAssessment.credibilityScore;
-	
+
 	// Update user with agent-determined credibility score and tier
 	await prisma.user.update({
 		where: { id: userId },
-		data: { 
+		data: {
 			trust_score: newScore,
 			reputation_tier: credibilityAssessment.tier
 		}
 	});
-	
+
 	// Log comprehensive reputation assessment
 	await prisma.reputationLog.create({
 		data: {
@@ -298,10 +307,10 @@ async function updateReputation({
 			confidence: reputationDecision.confidence
 		}
 	});
-	
-	return json({ 
-		success: true, 
-		oldScore, 
+
+	return json({
+		success: true,
+		oldScore,
 		newScore,
 		newTier: credibilityAssessment.tier,
 		credibility_assessment: {
@@ -323,17 +332,11 @@ async function updateReputation({
  * Agent-orchestrated identity verification
  * Replaces static verification with intelligent multi-source analysis
  */
-async function verifyIdentity({
-	userId,
-	walletAddress,
-	kycResult,
-	trustScore,
-	districtHash
-}) {
+async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, districtHash }) {
 	if (!userId) {
 		throw error(400, 'Missing required field: userId');
 	}
-	
+
 	// First update user data from external verification
 	const updatedUser = await prisma.user.update({
 		where: { id: userId },
@@ -349,7 +352,7 @@ async function verifyIdentity({
 
 	// Initialize verification agent for comprehensive assessment
 	const verificationAgent = new VerificationAgent();
-	
+
 	const verificationContext: AgentContext = {
 		userId,
 		actionType: 'identity_verification'
@@ -375,18 +378,22 @@ async function verifyIdentity({
 	}
 
 	const assessment = verificationDecision.decision;
-	
+
 	// Update user with agent-determined trust score and verification status
 	await prisma.user.update({
 		where: { id: userId },
 		data: {
 			trust_score: assessment.trustScore,
 			is_verified: ['verified', 'high_assurance'].includes(assessment.verificationLevel),
-			reputation_tier: assessment.trustScore >= 500 ? 'expert' : 
-							 assessment.trustScore >= 100 ? 'verified' : 'novice'
+			reputation_tier:
+				assessment.trustScore >= 500
+					? 'expert'
+					: assessment.trustScore >= 100
+						? 'verified'
+						: 'novice'
 		}
 	});
-	
+
 	// Log verification change with agent reasoning
 	await prisma.reputationLog.create({
 		data: {
@@ -404,9 +411,9 @@ async function verifyIdentity({
 			})
 		}
 	});
-	
-	return json({ 
-		success: true, 
+
+	return json({
+		success: true,
 		userId,
 		trustScore: assessment.trustScore,
 		verificationLevel: assessment.verificationLevel,
@@ -429,7 +436,7 @@ async function getUserProfile({ userId, walletAddress }) {
 	if (!userId && !walletAddress) {
 		throw error(400, 'Must provide either userId or walletAddress');
 	}
-	
+
 	const user = await prisma.user.findFirst({
 		where: userId ? { id: userId } : { wallet_address: walletAddress },
 		include: {
@@ -456,11 +463,11 @@ async function getUserProfile({ userId, walletAddress }) {
 			}
 		}
 	});
-	
+
 	if (!user) {
 		throw error(404, 'User not found');
 	}
-	
+
 	return json({
 		success: true,
 		user: {
@@ -481,7 +488,7 @@ async function getUserProfile({ userId, walletAddress }) {
 			challenges_defended: user._count.defender_challenges,
 			challenges_won: user._count.won_challenges
 		},
-		recent_actions: user.civic_actions.map(action => ({
+		recent_actions: user.civic_actions.map((action) => ({
 			id: action.id,
 			type: action.action_type,
 			template_title: action.template?.title,
@@ -489,7 +496,7 @@ async function getUserProfile({ userId, walletAddress }) {
 			reward_wei: action.reward_wei,
 			created_at: action.created_at
 		})),
-		reputation_history: user.reputation_logs.map(log => ({
+		reputation_history: user.reputation_logs.map((log) => ({
 			score_change: log.change_amount,
 			reason: log.change_reason,
 			created_at: log.created_at
@@ -512,14 +519,14 @@ async function createChallenge({
 	if (!challengerId || !defenderId || !title || !evidenceIPFS || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge creation');
 	}
-	
+
 	// Calculate voting deadline (72 hours from now)
 	const votingDeadline = new Date();
 	votingDeadline.setHours(votingDeadline.getHours() + 72);
-	
+
 	// Generate unique claim hash
 	const claimHash = `0x${Date.now().toString(16)}${Math.random().toString(16).substring(2)}`;
-	
+
 	const challenge = await prisma.challenge.create({
 		data: {
 			challenger_id: challengerId,
@@ -534,7 +541,7 @@ async function createChallenge({
 			status: 'active'
 		}
 	});
-	
+
 	return json({
 		success: true,
 		challengeId: challenge.id,
@@ -547,19 +554,14 @@ async function createChallenge({
 /**
  * Process challenge vote with quadratic voting
  */
-async function processChallengeVote({
-	challengeId,
-	userId,
-	side,
-	stakeAmount
-}) {
+async function processChallengeVote({ challengeId, userId, side, stakeAmount }) {
 	if (!challengeId || !userId || !side || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge vote');
 	}
-	
+
 	// Calculate quadratic voting power
 	const votingPower = Math.sqrt(parseFloat(stakeAmount));
-	
+
 	const stake = await prisma.challengeStake.upsert({
 		where: {
 			challenge_id_user_id: {
@@ -580,7 +582,7 @@ async function processChallengeVote({
 			voting_power: votingPower
 		}
 	});
-	
+
 	return json({
 		success: true,
 		stakeId: stake.id,
@@ -593,12 +595,7 @@ async function processChallengeVote({
  * Agent-orchestrated reward calculation
  * Replaces static logic with intelligent agents
  */
-async function calculateReward({
-	userAddress,
-	actionType,
-	templateId,
-	timestamp
-}) {
+async function calculateReward({ userAddress, actionType, templateId, timestamp }) {
 	if (!userAddress || !actionType) {
 		throw error(400, 'Missing required fields: userAddress, actionType');
 	}
@@ -613,7 +610,7 @@ async function calculateReward({
 	const coordinator = new AgentCoordinator();
 	const supplyAgent = new SupplyAgent();
 	const impactAgent = new ImpactAgent();
-	
+
 	coordinator.registerAgent(supplyAgent);
 	coordinator.registerAgent(impactAgent);
 
@@ -626,17 +623,17 @@ async function calculateReward({
 	};
 
 	// Get agent decisions for reward calculation
-	const consensus = await coordinator.coordinateDecision(
-		context, 
-		[AgentType.SUPPLY, AgentType.IMPACT]
-	);
+	const consensus = await coordinator.coordinateDecision(context, [
+		AgentType.SUPPLY,
+		AgentType.IMPACT
+	]);
 
 	if (!consensus.consensusReached) {
 		console.warn('Agent consensus failed, using fallback calculation');
-		
+
 		// Fallback to simple calculation
-		const fallbackRewardWei = "100000000000000000"; // 0.1 ETH
-		
+		const fallbackRewardWei = '100000000000000000'; // 0.1 ETH
+
 		return json({
 			success: true,
 			action: actionType,
@@ -649,25 +646,27 @@ async function calculateReward({
 	}
 
 	// Extract supply agent decision (contains reward parameters)
-	const supplyDecision = consensus.decisions.find(d => d.agentType === AgentType.SUPPLY);
-	const impactDecision = consensus.decisions.find(d => d.agentType === AgentType.IMPACT);
-	
+	const supplyDecision = consensus.decisions.find((d) => d.agentType === AgentType.SUPPLY);
+	const impactDecision = consensus.decisions.find((d) => d.agentType === AgentType.IMPACT);
+
 	if (!supplyDecision) {
 		throw error(500, 'Supply agent decision missing from consensus');
 	}
 
 	const rewardParams = supplyDecision.decision;
-	
+
 	// Save agent decisions for audit trail
 	await prisma.rewardCalculation.create({
 		data: {
 			user_address: userAddress,
 			action_type: actionType,
-			base_reward_usd: rewardParams.baseRewardUSD?.toString() || "0.10",
-			total_multiplier: rewardParams.totalMultiplier?.toString() || "1.0",
-			reward_usd: ((rewardParams.baseRewardUSD || 0.10) * (rewardParams.totalMultiplier || 1.0)).toString(),
-			reward_wei: rewardParams.finalRewardWei || "100000000000000000",
-			eth_price: rewardParams.ethPrice?.toString() || "2000",
+			base_reward_usd: rewardParams.baseRewardUSD?.toString() || '0.10',
+			total_multiplier: rewardParams.totalMultiplier?.toString() || '1.0',
+			reward_usd: (
+				(rewardParams.baseRewardUSD || 0.1) * (rewardParams.totalMultiplier || 1.0)
+			).toString(),
+			reward_wei: rewardParams.finalRewardWei || '100000000000000000',
+			eth_price: rewardParams.ethPrice?.toString() || '2000',
 			multipliers: rewardParams.multipliers || {},
 			network_activity: {
 				daily_active_users: supplyDecision.parameters?.networkActivity || 0
@@ -678,12 +677,14 @@ async function calculateReward({
 					confidence: supplyDecision.confidence,
 					reasoning: supplyDecision.reasoning
 				},
-				impact: impactDecision ? {
-					agentId: impactDecision.agentId,
-					confidence: impactDecision.confidence,
-					reasoning: impactDecision.reasoning,
-					impactScore: impactDecision.decision?.impactScore || 0
-				} : null
+				impact: impactDecision
+					? {
+							agentId: impactDecision.agentId,
+							confidence: impactDecision.confidence,
+							reasoning: impactDecision.reasoning,
+							impactScore: impactDecision.decision?.impactScore || 0
+						}
+					: null
 			}
 		}
 	});
@@ -692,12 +693,12 @@ async function calculateReward({
 		success: true,
 		action: actionType,
 		user: userAddress,
-		base_reward_usd: rewardParams.baseRewardUSD || 0.10,
+		base_reward_usd: rewardParams.baseRewardUSD || 0.1,
 		multipliers: rewardParams.multipliers || {},
 		total_multiplier: rewardParams.totalMultiplier || 1.0,
-		reward_usd: (rewardParams.baseRewardUSD || 0.10) * (rewardParams.totalMultiplier || 1.0),
+		reward_usd: (rewardParams.baseRewardUSD || 0.1) * (rewardParams.totalMultiplier || 1.0),
 		reward_eth: rewardParams.finalRewardETH || 0.05,
-		reward_wei: rewardParams.finalRewardWei || "100000000000000000",
+		reward_wei: rewardParams.finalRewardWei || '100000000000000000',
 		eth_price: rewardParams.ethPrice || 2000,
 		network_activity: supplyDecision.parameters?.networkActivity || 0,
 		user_reputation: user?.trust_score || 0,

@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { 
+	let {
 		size = 'md',
 		shape = 'circle',
 		animate = true,
@@ -26,8 +26,10 @@
 	};
 </script>
 
-<div 
-	class="skeleton-avatar bg-slate-200 {sizeClasses[size]} {shapeClasses[shape]} {animate ? 'animate-pulse' : ''} {classNames}"
+<div
+	class="skeleton-avatar bg-slate-200 {sizeClasses[size]} {shapeClasses[shape]} {animate
+		? 'animate-pulse'
+		: ''} {classNames}"
 ></div>
 
 <style>

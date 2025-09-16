@@ -8,7 +8,7 @@
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import { fade } from 'svelte/transition';
 	import { coordinated } from '$lib/utils/timerCoordinator';
-	
+
 	let {
 		template,
 		inModal,
@@ -32,17 +32,17 @@
 		componentId: string;
 		expandToContent?: boolean;
 	} = $props();
-	
+
 	const recipients = $derived(extractRecipientEmails(template?.recipient_config));
 	const recipientCount = $derived(recipients.length);
 	const recipientPreview = $derived(recipients.slice(0, inModal ? 1 : 2).join(' • '));
-	
+
 	let copied = $state(false);
 	let copyTimeout: string | null = null;
-	
+
 	async function copyToClipboard() {
 		const csvEmails = recipients.join(', ');
-		
+
 		try {
 			if (navigator.clipboard && window.isSecureContext) {
 				await navigator.clipboard.writeText(csvEmails);
@@ -59,15 +59,15 @@
 				document.execCommand('copy');
 				textArea.remove();
 			}
-			
+
 			// Show success feedback
 			copied = true;
-			
+
 			// Clear any existing timeout
 			if (copyTimeout) {
 				coordinated.autoClose(() => {}, 0, componentId);
 			}
-			
+
 			// Reset after 2 seconds
 			copyTimeout = coordinated.feedback(
 				() => {
@@ -80,14 +80,14 @@
 	}
 </script>
 
-<div class="mb-4 shrink-0 space-y-4 relative overflow-visible">
+<div class="relative mb-4 shrink-0 space-y-4 overflow-visible">
 	<TemplateTips isCertified={template.type === 'certified'} />
-	
+
 	<!-- Prominent Share Button - Context aware positioning -->
 	{#if context === 'page'}
 		<!-- On template page, show larger, more prominent share button -->
 		<div class="flex items-center gap-3">
-			<ShareButton 
+			<ShareButton
 				url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
 				title={template.subject || template.title}
 				variant="magical"
@@ -100,7 +100,7 @@
 		</div>
 	{:else}
 		<!-- In list/modal context, show smaller share button -->
-		<ShareButton 
+		<ShareButton
 			url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
 			title={template.subject || template.title}
 			variant="primary"

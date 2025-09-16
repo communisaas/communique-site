@@ -6,92 +6,77 @@ import type { ParsedIncomingMessage } from '@/types';
 import { getConfig } from '@/utils/config';
 
 export class BounceHandler {
-  private config = getConfig();
+	private config = getConfig();
 
-  /**
-   * Handle unmatched sender (no user found)
-   */
-  public async handleUnmatchedSender(
-    parsedMessage: ParsedIncomingMessage,
-    senderEmail: string,
-    templateIdentifier: string
-  ): Promise<void> {
-    console.log(`[Bounce] Handling unmatched sender: ${senderEmail}`);
-    
-    // In a real implementation, this would send a bounce email
-    // For now, we'll log the attempt and potentially notify the main app
-    
-    const bounceMessage = this.createUnmatchedSenderMessage(
-      senderEmail,
-      templateIdentifier
-    );
-    
-    await this.logBounceAttempt('unmatched_sender', {
-      senderEmail,
-      templateIdentifier,
-      message: bounceMessage
-    });
-    
-    // TODO: Send actual bounce email
-    // await this.sendBounceEmail(senderEmail, bounceMessage);
-  }
+	/**
+	 * Handle unmatched sender (no user found)
+	 */
+	public async handleUnmatchedSender(
+		parsedMessage: ParsedIncomingMessage,
+		senderEmail: string,
+		templateIdentifier: string
+	): Promise<void> {
+		console.log(`[Bounce] Handling unmatched sender: ${senderEmail}`);
 
-  /**
-   * Send verification required bounce
-   */
-  public async sendVerificationRequiredBounce(
-    senderEmail: string,
-    templateIdentifier: string
-  ): Promise<void> {
-    console.log(`[Bounce] Sending verification required bounce to: ${senderEmail}`);
-    
-    const bounceMessage = this.createVerificationRequiredMessage(
-      senderEmail,
-      templateIdentifier
-    );
-    
-    await this.logBounceAttempt('verification_required', {
-      senderEmail,
-      templateIdentifier,
-      message: bounceMessage
-    });
-    
-    // TODO: Send actual bounce email
-    // await this.sendBounceEmail(senderEmail, bounceMessage);
-  }
+		// In a real implementation, this would send a bounce email
+		// For now, we'll log the attempt and potentially notify the main app
 
-  /**
-   * Send generic bounce
-   */
-  public async sendGenericBounce(
-    senderEmail: string,
-    templateIdentifier: string
-  ): Promise<void> {
-    console.log(`[Bounce] Sending generic bounce to: ${senderEmail}`);
-    
-    const bounceMessage = this.createGenericBounceMessage(
-      senderEmail,
-      templateIdentifier
-    );
-    
-    await this.logBounceAttempt('generic_bounce', {
-      senderEmail,
-      templateIdentifier,
-      message: bounceMessage
-    });
-    
-    // TODO: Send actual bounce email
-    // await this.sendBounceEmail(senderEmail, bounceMessage);
-  }
+		const bounceMessage = this.createUnmatchedSenderMessage(senderEmail, templateIdentifier);
 
-  /**
-   * Create unmatched sender message
-   */
-  private createUnmatchedSenderMessage(
-    senderEmail: string,
-    templateIdentifier: string
-  ): string {
-    return `
+		await this.logBounceAttempt('unmatched_sender', {
+			senderEmail,
+			templateIdentifier,
+			message: bounceMessage
+		});
+
+		// TODO: Send actual bounce email
+		// await this.sendBounceEmail(senderEmail, bounceMessage);
+	}
+
+	/**
+	 * Send verification required bounce
+	 */
+	public async sendVerificationRequiredBounce(
+		senderEmail: string,
+		templateIdentifier: string
+	): Promise<void> {
+		console.log(`[Bounce] Sending verification required bounce to: ${senderEmail}`);
+
+		const bounceMessage = this.createVerificationRequiredMessage(senderEmail, templateIdentifier);
+
+		await this.logBounceAttempt('verification_required', {
+			senderEmail,
+			templateIdentifier,
+			message: bounceMessage
+		});
+
+		// TODO: Send actual bounce email
+		// await this.sendBounceEmail(senderEmail, bounceMessage);
+	}
+
+	/**
+	 * Send generic bounce
+	 */
+	public async sendGenericBounce(senderEmail: string, templateIdentifier: string): Promise<void> {
+		console.log(`[Bounce] Sending generic bounce to: ${senderEmail}`);
+
+		const bounceMessage = this.createGenericBounceMessage(senderEmail, templateIdentifier);
+
+		await this.logBounceAttempt('generic_bounce', {
+			senderEmail,
+			templateIdentifier,
+			message: bounceMessage
+		});
+
+		// TODO: Send actual bounce email
+		// await this.sendBounceEmail(senderEmail, bounceMessage);
+	}
+
+	/**
+	 * Create unmatched sender message
+	 */
+	private createUnmatchedSenderMessage(senderEmail: string, templateIdentifier: string): string {
+		return `
 Subject: Unable to Process Your Congressional Message
 
 Dear Sender,
@@ -114,16 +99,16 @@ If you believe this is an error, please contact support.
 Best regards,
 Communiqué Delivery Platform
 `.trim();
-  }
+	}
 
-  /**
-   * Create verification required message
-   */
-  private createVerificationRequiredMessage(
-    senderEmail: string,
-    templateIdentifier: string
-  ): string {
-    return `
+	/**
+	 * Create verification required message
+	 */
+	private createVerificationRequiredMessage(
+		senderEmail: string,
+		templateIdentifier: string
+	): string {
+		return `
 Subject: Email Verification Required for Congressional Delivery
 
 Dear Sender,
@@ -144,16 +129,13 @@ For security and authenticity, we require all email addresses used for congressi
 Best regards,
 Communiqué Delivery Platform
 `.trim();
-  }
+	}
 
-  /**
-   * Create generic bounce message
-   */
-  private createGenericBounceMessage(
-    senderEmail: string,
-    templateIdentifier: string
-  ): string {
-    return `
+	/**
+	 * Create generic bounce message
+	 */
+	private createGenericBounceMessage(senderEmail: string, templateIdentifier: string): string {
+		return `
 Subject: Unable to Process Your Congressional Message
 
 Dear Sender,
@@ -175,45 +157,42 @@ You can also access your templates directly at ${this.config.api.communiqueUrl}
 Best regards,
 Communiqué Delivery Platform
 `.trim();
-  }
+	}
 
-  /**
-   * Log bounce attempt for monitoring
-   */
-  private async logBounceAttempt(
-    type: 'unmatched_sender' | 'verification_required' | 'generic_bounce',
-    details: {
-      senderEmail: string;
-      templateIdentifier: string;
-      message: string;
-    }
-  ): Promise<void> {
-    // Log to console for now
-    console.log(`[Bounce] ${type.toUpperCase()}:`, {
-      email: details.senderEmail,
-      template: details.templateIdentifier,
-      timestamp: new Date().toISOString()
-    });
-    
-    // TODO: Log to monitoring service or database
-    // This would help track bounce rates and identify issues
-  }
+	/**
+	 * Log bounce attempt for monitoring
+	 */
+	private async logBounceAttempt(
+		type: 'unmatched_sender' | 'verification_required' | 'generic_bounce',
+		details: {
+			senderEmail: string;
+			templateIdentifier: string;
+			message: string;
+		}
+	): Promise<void> {
+		// Log to console for now
+		console.log(`[Bounce] ${type.toUpperCase()}:`, {
+			email: details.senderEmail,
+			template: details.templateIdentifier,
+			timestamp: new Date().toISOString()
+		});
 
-  /**
-   * Send bounce email (placeholder implementation)
-   */
-  private async sendBounceEmail(
-    recipientEmail: string,
-    message: string
-  ): Promise<void> {
-    // TODO: Implement actual email sending
-    // This would use a separate email service (not SMTP server)
-    // Options:
-    // - Nodemailer with external SMTP
-    // - SendGrid/Mailgun API
-    // - AWS SES
-    
-    console.log(`[Bounce] Would send bounce email to: ${recipientEmail}`);
-    console.log(`[Bounce] Message: ${message.substring(0, 100)}...`);
-  }
+		// TODO: Log to monitoring service or database
+		// This would help track bounce rates and identify issues
+	}
+
+	/**
+	 * Send bounce email (placeholder implementation)
+	 */
+	private async sendBounceEmail(recipientEmail: string, message: string): Promise<void> {
+		// TODO: Implement actual email sending
+		// This would use a separate email service (not SMTP server)
+		// Options:
+		// - Nodemailer with external SMTP
+		// - SendGrid/Mailgun API
+		// - AWS SES
+
+		console.log(`[Bounce] Would send bounce email to: ${recipientEmail}`);
+		console.log(`[Bounce] Message: ${message.substring(0, 100)}...`);
+	}
 }

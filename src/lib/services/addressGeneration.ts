@@ -1,6 +1,6 @@
 /**
  * Deterministic Address Generation Service
- * 
+ *
  * Generates Ethereum-compatible addresses from user IDs without storing private keys.
  * These addresses are used for tracking civic engagement in VOTER Protocol.
  * Users can later connect real wallets to claim accumulated rewards.
@@ -22,47 +22,44 @@ export interface AddressGenerationResult {
 
 /**
  * Generate a deterministic Ethereum address from a user ID
- * 
+ *
  * Uses keccak256 hash to create a valid Ethereum address without private keys.
  * The address is deterministic - same userId always generates same address.
- * 
+ *
  * @param userId - Unique user identifier (from database)
  * @param customSalt - Optional custom salt for additional entropy
  * @returns Ethereum address (0x prefixed, checksummed)
  */
-export function generateDeterministicAddress(
-	userId: string,
-	customSalt?: string
-): string {
+export function generateDeterministicAddress(userId: string, customSalt?: string): string {
 	// Combine inputs for maximum entropy
 	const input = `${userId}-${PLATFORM_SALT}-${CHAIN_ID}${customSalt ? `-${customSalt}` : ''}`;
-	
+
 	// Create keccak256 hash (Ethereum uses keccak, not SHA3)
 	// Using createHash with sha256 for now, in production use keccak256
 	const hash = createHash('sha256').update(input).digest('hex');
-	
+
 	// Take last 20 bytes (40 hex chars) for Ethereum address
 	const addressBytes = hash.slice(-40);
-	
+
 	// Add 0x prefix and apply checksum
 	const address = toChecksumAddress(`0x${addressBytes}`);
-	
+
 	return address;
 }
 
 /**
  * Apply EIP-55 checksum to Ethereum address
- * 
+ *
  * @param address - Ethereum address to checksum
  * @returns Checksummed address
  */
 function toChecksumAddress(address: string): string {
 	// Remove 0x prefix for hashing
 	const addr = address.toLowerCase().replace('0x', '');
-	
+
 	// Hash the lowercase address
 	const hash = createHash('sha256').update(addr).digest('hex');
-	
+
 	let checksummed = '0x';
 	for (let i = 0; i < addr.length; i++) {
 		if (parseInt(hash[i], 16) >= 8) {
@@ -71,13 +68,13 @@ function toChecksumAddress(address: string): string {
 			checksummed += addr[i];
 		}
 	}
-	
+
 	return checksummed;
 }
 
 /**
  * Generate address with additional metadata
- * 
+ *
  * @param userId - User ID to generate address for
  * @param userEmail - User email for additional entropy
  * @returns Full address generation result with metadata
@@ -87,12 +84,12 @@ export function generateAddressWithMetadata(
 	userEmail?: string
 ): AddressGenerationResult {
 	// Use email hash as additional salt if provided
-	const emailSalt = userEmail 
+	const emailSalt = userEmail
 		? createHash('sha256').update(userEmail).digest('hex').slice(0, 8)
 		: undefined;
-	
+
 	const address = generateDeterministicAddress(userId, emailSalt);
-	
+
 	return {
 		address,
 		derivationPath: `communique/${userId}`,
@@ -103,7 +100,7 @@ export function generateAddressWithMetadata(
 
 /**
  * Validate if an address is properly formatted
- * 
+ *
  * @param address - Address to validate
  * @returns True if valid Ethereum address
  */
@@ -111,14 +108,14 @@ export function isValidAddress(address: string): boolean {
 	if (!address || typeof address !== 'string') {
 		return false;
 	}
-	
+
 	// Check basic format: 0x + 40 hex characters
 	return /^0x[a-fA-F0-9]{40}$/.test(address);
 }
 
 /**
  * Check if user has a connected wallet or just derived address
- * 
+ *
  * @param user - User object with address fields
  * @returns Address type and which address to use
  */
@@ -138,7 +135,7 @@ export function getUserAddressInfo(user: {
 			canUpgrade: false // Already has wallet
 		};
 	}
-	
+
 	if (user.derived_address && isValidAddress(user.derived_address)) {
 		return {
 			type: 'derived',
@@ -146,7 +143,7 @@ export function getUserAddressInfo(user: {
 			canUpgrade: true // Can connect wallet
 		};
 	}
-	
+
 	return {
 		type: 'none',
 		address: null,
@@ -156,7 +153,7 @@ export function getUserAddressInfo(user: {
 
 /**
  * Get or create address for user
- * 
+ *
  * @param userId - User ID
  * @param existingAddress - Existing address if any
  * @param userEmail - User email for generation
@@ -171,7 +168,7 @@ export function getOrCreateUserAddress(
 	if (existingAddress && isValidAddress(existingAddress)) {
 		return existingAddress;
 	}
-	
+
 	// Generate new deterministic address
 	const result = generateAddressWithMetadata(userId, userEmail);
 	return result.address;
@@ -180,7 +177,7 @@ export function getOrCreateUserAddress(
 /**
  * Batch generate addresses for multiple users
  * Useful for migrating existing users
- * 
+ *
  * @param users - Array of users to generate addresses for
  * @returns Map of userId to address
  */
@@ -188,12 +185,12 @@ export function batchGenerateAddresses(
 	users: Array<{ id: string; email?: string }>
 ): Map<string, string> {
 	const addressMap = new Map<string, string>();
-	
+
 	for (const user of users) {
 		const result = generateAddressWithMetadata(user.id, user.email);
 		addressMap.set(user.id, result.address);
 	}
-	
+
 	return addressMap;
 }
 

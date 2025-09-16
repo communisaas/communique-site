@@ -66,7 +66,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 			// Check secondary emails of other users
 			const secondaryInUse = await db.userEmail.findFirst({
-				where: { 
+				where: {
 					email: payload.email.toLowerCase(),
 					NOT: { userId: payload.userId }
 				}
@@ -103,19 +103,21 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 
 		// Redirect to the appropriate location
-		const destination = redirectPath 
-			|| (payload.templateSlug ? `/s/${payload.templateSlug}?email_added=true` : '/settings/emails?success=email_added');
-		
-		throw redirect(302, destination);
+		const destination =
+			redirectPath ||
+			(payload.templateSlug
+				? `/s/${payload.templateSlug}?email_added=true`
+				: '/settings/emails?success=email_added');
 
+		throw redirect(302, destination);
 	} catch (error) {
 		console.error('Email verification error:', error);
-		
+
 		// If it's already a redirect, pass it through
 		if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
 			throw error;
 		}
-		
+
 		// Otherwise redirect to error page
 		throw redirect(302, '/settings/emails?error=invalid_token');
 	}

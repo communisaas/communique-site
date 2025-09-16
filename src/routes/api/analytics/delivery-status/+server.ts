@@ -5,14 +5,17 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ url, locals }) => {
 	const userId = url.searchParams.get('userId') || locals.user?.id;
 	const limit = parseInt(url.searchParams.get('limit') || '50');
-	
+
 	if (!userId) {
-		return json({
-			success: false,
-			error: 'User ID required'
-		}, { status: 400 });
+		return json(
+			{
+				success: false,
+				error: 'User ID required'
+			},
+			{ status: 400 }
+		);
 	}
-	
+
 	try {
 		// Get recent delivery statuses for user's templates
 		const deliveries = await db.template_campaign.findMany({
@@ -35,24 +38,29 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			},
 			take: limit
 		});
-		
+
 		// Transform to delivery status format
-		const deliveryStatuses = deliveries.map(campaign => {
+		const deliveryStatuses = deliveries.map((campaign) => {
 			// Mock recipient info - in real implementation, this would come from representative lookup
 			const recipientInfo = {
 				representative_name: getRepresentativeName(campaign.id),
-				office_type: Math.random() > 0.5 ? 'house' : 'senate' as 'house' | 'senate',
+				office_type: Math.random() > 0.5 ? 'house' : ('senate' as 'house' | 'senate'),
 				district: Math.random() > 0.3 ? Math.floor(Math.random() * 50 + 1).toString() : undefined,
 				state: getRandomState()
 			};
-			
+
 			// Mock tracking data based on status
-			const trackingData = campaign.status === 'delivered' ? {
-				delivery_time: new Date(campaign.updated_at.getTime() + Math.random() * 60 * 60 * 1000).toISOString(),
-				response_received: Math.random() > 0.7,
-				response_type: Math.random() > 0.5 ? 'Acknowledged' : 'Read Receipt'
-			} : undefined;
-			
+			const trackingData =
+				campaign.status === 'delivered'
+					? {
+							delivery_time: new Date(
+								campaign.updated_at.getTime() + Math.random() * 60 * 60 * 1000
+							).toISOString(),
+							response_received: Math.random() > 0.7,
+							response_type: Math.random() > 0.5 ? 'Acknowledged' : 'Read Receipt'
+						}
+					: undefined;
+
 			return {
 				campaign_id: campaign.id,
 				template_id: campaign.template_id,
@@ -66,13 +74,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				tracking_data: trackingData
 			};
 		});
-		
+
 		// Calculate metrics
 		const totalDeliveries = deliveryStatuses.length;
-		const delivered = deliveryStatuses.filter(d => d.status === 'delivered').length;
-		const pending = deliveryStatuses.filter(d => d.status === 'pending').length;
-		const failed = deliveryStatuses.filter(d => d.status === 'failed').length;
-		
+		const delivered = deliveryStatuses.filter((d) => d.status === 'delivered').length;
+		const pending = deliveryStatuses.filter((d) => d.status === 'pending').length;
+		const failed = deliveryStatuses.filter((d) => d.status === 'failed').length;
+
 		const metrics = {
 			total_pending: pending,
 			total_delivered: delivered,
@@ -80,7 +88,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			success_rate: totalDeliveries > 0 ? delivered / totalDeliveries : 0,
 			avg_delivery_time: calculateAverageDeliveryTime(deliveryStatuses)
 		};
-		
+
 		return json({
 			success: true,
 			deliveries: deliveryStatuses,
@@ -88,15 +96,17 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			total_count: totalDeliveries,
 			timestamp: new Date().toISOString()
 		});
-		
 	} catch (error) {
 		console.error('Delivery status lookup failed:', error);
-		
-		return json({
-			success: false,
-			error: 'Failed to load delivery status',
-			details: error instanceof Error ? error.message : 'Unknown error'
-		}, { status: 500 });
+
+		return json(
+			{
+				success: false,
+				error: 'Failed to load delivery status',
+				details: error instanceof Error ? error.message : 'Unknown error'
+			},
+			{ status: 500 }
+		);
 	}
 };
 
@@ -114,13 +124,13 @@ function getRepresentativeName(campaignId: string): string {
 		'Rep. AOC',
 		'Sen. Ted Cruz'
 	];
-	
+
 	// Deterministic selection based on campaign ID
 	const hash = campaignId.split('').reduce((a, b) => {
-		a = ((a << 5) - a) + b.charCodeAt(0);
+		a = (a << 5) - a + b.charCodeAt(0);
 		return a & a;
 	}, 0);
-	
+
 	return names[Math.abs(hash) % names.length];
 }
 
@@ -141,17 +151,17 @@ function getRandomErrorMessage(): string {
 }
 
 function calculateAverageDeliveryTime(deliveries: any[]): number {
-	const deliveredItems = deliveries.filter(d => 
-		d.status === 'delivered' && d.tracking_data?.delivery_time
+	const deliveredItems = deliveries.filter(
+		(d) => d.status === 'delivered' && d.tracking_data?.delivery_time
 	);
-	
+
 	if (deliveredItems.length === 0) return 0;
-	
+
 	const totalTime = deliveredItems.reduce((sum, delivery) => {
 		const created = new Date(delivery.created_at).getTime();
 		const delivered = new Date(delivery.tracking_data.delivery_time).getTime();
 		return sum + (delivered - created);
 	}, 0);
-	
+
 	return totalTime / deliveredItems.length / (1000 * 60 * 60); // Convert to hours
 }

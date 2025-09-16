@@ -26,25 +26,25 @@ export function validateField(value: string, rules: ValidationRule): ValidationR
 
 	// Min length check
 	if (rules.minLength && trimmedValue.length < rules.minLength) {
-		return { 
-			isValid: false, 
-			error: `Must be at least ${rules.minLength} character${rules.minLength === 1 ? '' : 's'}` 
+		return {
+			isValid: false,
+			error: `Must be at least ${rules.minLength} character${rules.minLength === 1 ? '' : 's'}`
 		};
 	}
 
 	// Max length check
 	if (rules.maxLength && trimmedValue.length > rules.maxLength) {
-		return { 
-			isValid: false, 
-			error: `Must be no more than ${rules.maxLength} character${rules.maxLength === 1 ? '' : 's'}` 
+		return {
+			isValid: false,
+			error: `Must be no more than ${rules.maxLength} character${rules.maxLength === 1 ? '' : 's'}`
 		};
 	}
 
 	// Pattern check
 	if (rules.pattern && !rules.pattern.test(trimmedValue)) {
-		return { 
-			isValid: false, 
-			error: 'Invalid format' 
+		return {
+			isValid: false,
+			error: 'Invalid format'
 		};
 	}
 
@@ -65,7 +65,7 @@ export function debounce<T extends (...args: any[]) => void>(
 	wait: number
 ): (...args: Parameters<T>) => void {
 	let timeout: ReturnType<typeof setTimeout>;
-	
+
 	return (...args: Parameters<T>) => {
 		clearTimeout(timeout);
 		timeout = setTimeout(() => func(...args), wait);
@@ -139,7 +139,7 @@ export class ValidationManager {
 
 	validateField(fieldName: string, value: string, rules: ValidationRule) {
 		const result = validateField(value, rules);
-		
+
 		if (result.isValid) {
 			this.validationErrors.delete(fieldName);
 		} else {
@@ -169,6 +169,6 @@ export class ValidationManager {
 
 	private notifyCallbacks() {
 		const errors = this.getErrors();
-		this.validationCallbacks.forEach(callback => callback(errors));
+		this.validationCallbacks.forEach((callback) => callback(errors));
 	}
 }

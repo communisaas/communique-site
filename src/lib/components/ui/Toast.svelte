@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { CheckCircle, XCircle, AlertTriangle, Info, X } from '@lucide/svelte';
-	
+
 	interface Props {
 		type?: 'success' | 'error' | 'warning' | 'info';
 		title?: string;
@@ -11,18 +11,18 @@
 		dismissible?: boolean;
 		onDismiss?: () => void;
 	}
-	
-	const { 
-		type = 'info', 
-		title, 
-		message, 
-		duration = 5000, 
-		dismissible = true, 
-		onDismiss 
+
+	const {
+		type = 'info',
+		title,
+		message,
+		duration = 5000,
+		dismissible = true,
+		onDismiss
 	}: Props = $props();
-	
+
 	let visible = $state(true);
-	
+
 	const typeConfig = {
 		success: {
 			icon: CheckCircle,
@@ -57,17 +57,17 @@
 			messageColor: 'text-blue-700'
 		}
 	};
-	
+
 	const config = typeConfig[type];
 	const IconComponent = $derived(config.icon);
-	
+
 	function dismiss() {
 		visible = false;
 		setTimeout(() => {
 			onDismiss?.();
 		}, 150); // Match fade out duration
 	}
-	
+
 	onMount(() => {
 		if (duration > 0) {
 			const timer = setTimeout(dismiss, duration);
@@ -82,8 +82,8 @@
 		transition:fly={{ y: -20, duration: 200 }}
 	>
 		<IconComponent class="h-5 w-5 flex-shrink-0 {config.iconColor}" />
-		
-		<div class="flex-1 min-w-0">
+
+		<div class="min-w-0 flex-1">
 			{#if title}
 				<h4 class="text-sm font-medium {config.titleColor}">
 					{title}
@@ -93,11 +93,11 @@
 				{message}
 			</p>
 		</div>
-		
+
 		{#if dismissible}
 			<button
 				type="button"
-				class="flex-shrink-0 rounded-md p-1 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+				class="flex-shrink-0 rounded-md p-1 hover:bg-black/5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 				onclick={dismiss}
 			>
 				<X class="h-4 w-4 {config.iconColor}" />

@@ -8,6 +8,7 @@ This document outlines the comprehensive reorganization of the Communique codeba
 ## Overview
 
 The codebase was reorganized to address several key challenges:
+
 - **Complexity vs Clarity**: Balance ambitious research with maintainable production code
 - **Feature Management**: Clear boundaries between production, beta, and experimental features
 - **Developer Onboarding**: Make the codebase immediately understandable
@@ -49,18 +50,18 @@ New configuration system at `src/lib/features/config.ts`:
 
 ```typescript
 export enum FeatureStatus {
-  OFF = 'off',           // Not available
-  BETA = 'beta',         // Available for testing
-  ON = 'on',             // Production ready
-  RESEARCH = 'research', // Research only
-  ROADMAP = 'roadmap'    // Planned
+	OFF = 'off', // Not available
+	BETA = 'beta', // Available for testing
+	ON = 'on', // Production ready
+	RESEARCH = 'research', // Research only
+	ROADMAP = 'roadmap' // Planned
 }
 
 // Usage
 import { isFeatureEnabled } from '$lib/features/config';
 
 if (isFeatureEnabled('AI_SUGGESTIONS')) {
-  // Use AI features
+	// Use AI features
 }
 ```
 
@@ -69,18 +70,21 @@ if (isFeatureEnabled('AI_SUGGESTIONS')) {
 Schemas split across files by maturity:
 
 #### `prisma/core.prisma` (Production)
+
 - User authentication & sessions
-- Template creation & delivery  
+- Template creation & delivery
 - Congressional routing
 - Legislative channels
 
 #### `prisma/features.prisma` (Feature-Flagged)
+
 - AI suggestions (ROADMAP)
 - Template personalization (ROADMAP)
 - User activation tracking (BETA)
 - Variable resolution (ROADMAP)
 
 #### `prisma/experimental.prisma` (Research)
+
 - Political field theory models
 - Community intersection analysis
 - Sheaf fusion theory
@@ -91,10 +95,12 @@ Schemas split across files by maturity:
 Consolidated from 2 implementations to 1 unified client:
 
 **Before**:
+
 - `src/lib/utils/apiClient.ts` (comprehensive)
 - `src/lib/services/apiClient.ts` (toast-integrated)
 
 **After**:
+
 - `src/lib/core/api/client.ts` (unified best features)
 
 ### 5. Documentation Structure
@@ -116,6 +122,7 @@ docs/
 ### For Developers
 
 #### Imports
+
 Most imports have been automatically updated. Key changes:
 
 ```typescript
@@ -123,11 +130,12 @@ Most imports have been automatically updated. Key changes:
 import { api } from '$lib/utils/apiClient';
 import { analyticsApi } from '$lib/services/apiClient';
 
-// NEW  
+// NEW
 import { api } from '$lib/core/api/client';
 ```
 
 #### Feature Flags
+
 New features should use the feature flag system:
 
 ```typescript
@@ -135,11 +143,12 @@ New features should use the feature flag system:
 import { isFeatureEnabled } from '$lib/features/config';
 
 if (isFeatureEnabled('NEW_FEATURE')) {
-  // Feature implementation
+	// Feature implementation
 }
 ```
 
 #### Research Code
+
 Research code is preserved in `/experimental/` with clear documentation about its purpose and academic context.
 
 ### For Database Changes
@@ -147,6 +156,7 @@ Research code is preserved in `/experimental/` with clear documentation about it
 The main schema remains unchanged for now. Migration to split schemas planned for next quarter.
 
 Current approach:
+
 - Production code uses existing `schema.prisma`
 - Research models are documented but not removed yet
 - Feature-flagged models are available but gated
@@ -154,18 +164,21 @@ Current approach:
 ## Benefits Achieved
 
 ### Development
+
 - **Clear boundaries**: 78% reduction in "what is this?" questions
 - **Faster onboarding**: New developers productive in <2 days
 - **Better debugging**: Issues isolated to specific layers
 - **Reduced complexity**: 3,000+ lines of unused code identified
 
 ### Research
+
 - **Preserved ambition**: All research code accessible in `/experimental/`
 - **Academic credibility**: Clean separation allows proper documentation
 - **Progressive rollout**: Clear path from research → beta → production
 - **Clean experimentation**: Try ideas without affecting production
 
 ### Production
+
 - **Smaller bundle**: 20-30% reduction in JavaScript bundle size
 - **Faster builds**: 15-20% faster build times
 - **Better performance**: Focus on core features
@@ -174,22 +187,26 @@ Current approach:
 ## Feature Status at Reorganization
 
 ### Production Features ✅
+
 - Template Creation & Delivery
 - Congressional Routing (US)
 - OAuth Authentication
 - Session Management
 
 ### Beta Features 🧪
+
 - Cascade Analytics
 - Legislative Channels
 - Viral Pattern Generator
 
 ### Roadmap Features 📋
+
 - AI Suggestions (Q2 2025)
 - Variable Resolution (Q3 2025)
 - Template Personalization (Q3 2025)
 
 ### Research Features 🔬
+
 - Political Field Theory
 - Sheaf Fusion
 - Percolation Engine
@@ -211,18 +228,21 @@ ENABLE_RESEARCH=true
 ## Next Steps
 
 ### Phase 1: Stabilization (Week 1-2)
+
 - [ ] Monitor production for any import issues
 - [ ] Update remaining hardcoded imports
 - [ ] Add feature flag guards to experimental features
 - [ ] Update CI/CD for new structure
 
 ### Phase 2: Schema Migration (Month 2)
+
 - [ ] Migrate to `schema-production.prisma`
 - [ ] Move experimental models to separate database
 - [ ] Update Prisma configuration
 - [ ] Create migration scripts
 
 ### Phase 3: Feature Development (Month 3-6)
+
 - [ ] Implement AI suggestions system
 - [ ] Build variable resolution engine
 - [ ] Graduate beta features to production
@@ -231,12 +251,14 @@ ENABLE_RESEARCH=true
 ## Monitoring & Metrics
 
 ### Success Metrics
+
 - **Bundle Size**: Target 25% reduction ✅ (30% achieved)
-- **Build Time**: Target 20% improvement ✅ (22% achieved)  
+- **Build Time**: Target 20% improvement ✅ (22% achieved)
 - **Code Volume**: Target 2,500 line reduction ✅ (3,000+ identified)
 - **Developer Velocity**: Target 30% faster feature delivery 🔄 (measuring)
 
 ### Health Checks
+
 - All production features working ✅
 - No broken imports ✅
 - Feature flags functioning ✅
@@ -246,21 +268,27 @@ ENABLE_RESEARCH=true
 ## Frequently Asked Questions
 
 ### Q: Will this break existing functionality?
+
 A: No. All production features continue to work. Research features are preserved but moved to clear locations.
 
 ### Q: How do I add a new feature?
-A: 
+
+A:
+
 1. Experimental/Research: Add to `/experimental/` with clear documentation
 2. Beta: Add to `/features/` with feature flag
 3. Production: Add to `/core/` after thorough testing
 
 ### Q: What happened to the research code?
+
 A: All research code is preserved in `/experimental/` with proper documentation. It can be enabled with `ENABLE_RESEARCH=true`.
 
 ### Q: How do feature flags work?
+
 A: See `src/lib/features/config.ts`. Features have statuses: OFF, BETA, ON, RESEARCH, ROADMAP.
 
 ### Q: Can I still access experimental features?
+
 A: Yes, set `ENABLE_RESEARCH=true` in your environment. Note: these are for research only.
 
 ## Contributing
@@ -281,7 +309,7 @@ When contributing new code:
 ## Resources
 
 - **Feature Status**: [docs/FEATURES.md](./FEATURES.md)
-- **Architecture**: [docs/architecture.md](./architecture.md)  
+- **Architecture**: [docs/architecture.md](./architecture.md)
 - **Database Schema**: [prisma/README.md](../prisma/README.md)
 - **API Documentation**: [docs/api/](./api/)
 

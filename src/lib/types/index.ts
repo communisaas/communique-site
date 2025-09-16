@@ -1,6 +1,6 @@
 /**
  * TYPES MODULE - Centralized Type System
- * 
+ *
  * Single source of truth for all application types.
  * Organized by domain with clear separation of concerns.
  */
@@ -26,7 +26,12 @@ export * from './modal';
 export * from './popover';
 
 // Convenience re-exports for commonly used types
-export type { ApiResponse, AnalyticsEvent, AddressUpdateRequest, ProfileUpdateRequest } from './api';
+export type {
+	ApiResponse,
+	AnalyticsEvent,
+	AddressUpdateRequest,
+	ProfileUpdateRequest
+} from './api';
 export type { ApiError, ErrorType, AppError } from './errors';
 export type { PercolationData, FusionData, AnalyticsError } from './analytics';
 export type { Template, TemplateFormData, MinimalUser } from './template';

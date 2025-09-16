@@ -3,7 +3,7 @@
 	import Toast from './Toast.svelte';
 </script>
 
-<div class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+<div class="fixed right-4 top-4 z-50 flex max-w-sm flex-col gap-2">
 	{#each toast.toasts as toastData (toastData.id)}
 		<Toast
 			type={toastData.type}

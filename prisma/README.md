@@ -5,10 +5,13 @@ This directory contains multiple Prisma schema files organized by feature maturi
 ## Schema Files
 
 ### `schema.prisma` (Current Production)
+
 The existing schema with all models. **This will be replaced** with `schema-production.prisma` in the next migration.
 
 ### `schema-production.prisma` (Recommended Production)
+
 Clean schema containing only core production models:
+
 - User authentication & sessions
 - Template creation & delivery
 - Congressional routing
@@ -17,9 +20,11 @@ Clean schema containing only core production models:
 **Models**: 9 core production models only
 
 ### `features.prisma` (Feature-Flagged Models)
+
 Models for features that can be enabled/disabled:
+
 - AI suggestions (ROADMAP)
-- Template personalization (ROADMAP) 
+- Template personalization (ROADMAP)
 - User activation tracking (BETA)
 - Variable resolution (ROADMAP)
 - Advanced analytics (BETA)
@@ -27,7 +32,9 @@ Models for features that can be enabled/disabled:
 **Models**: 12 feature-flagged models
 
 ### `experimental.prisma` (Research Models)
+
 Research and experimental models:
+
 - Political field theory
 - Community intersection analysis
 - Sheaf fusion theory
@@ -36,16 +43,19 @@ Research and experimental models:
 **Models**: 12+ research models
 
 ### `core.prisma` (Alternative Core)
+
 Alternative organization of core models (similar to schema-production.prisma).
 
 ## Migration Strategy
 
 ### Current State
+
 ```
 schema.prisma (all models) → Prisma Client
 ```
 
 ### Target State
+
 ```
 schema-production.prisma (core only) → Prisma Client
 features.prisma (feature flags) → Feature Client (conditional)
@@ -79,8 +89,9 @@ ENABLE_RESEARCH=true
 ## Model Categories
 
 ### Core Production (Always Available)
+
 - `User` - User accounts and profiles
-- `Session` - Authentication sessions  
+- `Session` - Authentication sessions
 - `account` - OAuth account linking
 - `Template` - Template definitions
 - `template_campaign` - Template usage tracking
@@ -91,11 +102,13 @@ ENABLE_RESEARCH=true
 - `legislative_body` - Legislative body definitions
 
 ### Beta Features (ENABLE_BETA=true)
+
 - `user_activation` - Viral cascade tracking
 - `user_coordinates` - User location data
 - `cascade_event` - Cascade analytics events
 
 ### Roadmap Features (Planned Implementation)
+
 - `ai_suggestions` - AI-powered template suggestions
 - `user_writing_style` - User writing style analysis
 - `template_analytics` - Template performance analytics
@@ -105,6 +118,7 @@ ENABLE_RESEARCH=true
 - `data_source_config` - External data source configs
 
 ### Research Models (ENABLE_RESEARCH=true)
+
 - `political_field_state` - Political field vector states
 - `political_flow` - Information flow modeling
 - `political_uncertainty` - Uncertainty quantification
@@ -122,7 +136,7 @@ ENABLE_RESEARCH=true
 # Generate client for current schema
 npm run db:generate
 
-# Push current schema to database  
+# Push current schema to database
 npm run db:push
 
 # Migrate to production schema (future)
@@ -150,19 +164,21 @@ npx prisma validate --schema=prisma/schema-production.prisma
 # Validate features schema
 npx prisma validate --schema=prisma/features.prisma
 
-# Validate experimental schema  
+# Validate experimental schema
 npx prisma validate --schema=prisma/experimental.prisma
 ```
 
 ## Performance Considerations
 
 ### Production Benefits
+
 - **Smaller client**: Only core models compiled
 - **Faster queries**: Fewer indexes and relations
 - **Better caching**: Focused on high-traffic queries
 - **Cleaner migrations**: No experimental schema changes
 
 ### Development Benefits
+
 - **Clear boundaries**: Know what's production vs research
 - **Safe experimentation**: Research won't break production
 - **Progressive rollout**: Beta → Production pathway

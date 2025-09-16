@@ -1,16 +1,16 @@
 /**
  * VOTER Protocol Integration (Deprecated - Use blockchain client)
- * 
+ *
  * This file now redirects to the direct blockchain client
  * Keeping for backward compatibility during transition
  */
 
 // Re-export from the new blockchain client
-export { 
-	certifyEmailDelivery, 
+export {
+	certifyEmailDelivery,
 	voterBlockchainClient,
 	type VOTERAction,
-	type VOTERActionResult 
+	type VOTERActionResult
 } from '../blockchain/voter-client.js';
 
 export interface VOTERAction {
@@ -99,7 +99,6 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-
 		} catch (error) {
 			console.error('[VOTER API] Process action error:', error);
 			return {
@@ -114,14 +113,11 @@ class VOTERProtocolAPI {
 	 */
 	async getReputation(userAddress: string): Promise<ApiResponse<VOTERReputation>> {
 		try {
-			const response = await fetch(
-				`${this.baseURL}/api/v1/reputation/${userAddress}`,
-				{
-					headers: {
-						'X-API-Key': this.apiKey
-					}
+			const response = await fetch(`${this.baseURL}/api/v1/reputation/${userAddress}`, {
+				headers: {
+					'X-API-Key': this.apiKey
 				}
-			);
+			});
 
 			if (!response.ok) {
 				return {
@@ -137,7 +133,6 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-
 		} catch (error) {
 			console.error('[VOTER API] Get reputation error:', error);
 			return {
@@ -152,14 +147,11 @@ class VOTERProtocolAPI {
 	 */
 	async getTokenStats(): Promise<ApiResponse<VOTERTokenStats>> {
 		try {
-			const response = await fetch(
-				`${this.baseURL}/api/v1/tokens/stats`,
-				{
-					headers: {
-						'X-API-Key': this.apiKey
-					}
+			const response = await fetch(`${this.baseURL}/api/v1/tokens/stats`, {
+				headers: {
+					'X-API-Key': this.apiKey
 				}
-			);
+			});
 
 			if (!response.ok) {
 				return {
@@ -175,7 +167,6 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-
 		} catch (error) {
 			console.error('[VOTER API] Get token stats error:', error);
 			return {
@@ -223,7 +214,6 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-
 		} catch (error) {
 			console.error('[VOTER API] Certify message error:', error);
 			return {

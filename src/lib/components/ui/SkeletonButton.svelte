@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { 
+	let {
 		width = 'w-24',
 		height = 'h-10',
 		rounded = 'rounded-lg',
@@ -14,8 +14,10 @@
 	} = $props();
 </script>
 
-<div 
-	class="skeleton-button bg-slate-200 {width} {height} {rounded} {animate ? 'animate-pulse' : ''} {classNames}"
+<div
+	class="skeleton-button bg-slate-200 {width} {height} {rounded} {animate
+		? 'animate-pulse'
+		: ''} {classNames}"
 ></div>
 
 <style>

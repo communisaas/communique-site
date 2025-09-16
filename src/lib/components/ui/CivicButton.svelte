@@ -40,7 +40,7 @@
 	// Enhanced micro-interactions with spring physics
 	let pressed = $state(false);
 	let hovered = $state(false);
-	
+
 	// Smooth scale animation for civic interactions
 	let scale = spring(1, { stiffness: 0.4, damping: 0.8 });
 	let shadowIntensity = spring(0, { stiffness: 0.3, damping: 0.9 });
@@ -64,7 +64,7 @@
 		const variantClass = `participation-btn-${variant}`;
 		const sizeClass = `participation-btn-${size}`;
 		const widthClass = fullWidth ? 'w-full' : '';
-		
+
 		return `${baseClasses} ${variantClass} ${sizeClass} ${widthClass}`.trim();
 	});
 
@@ -72,17 +72,17 @@
 	function handleClick(event: MouseEvent) {
 		if (!disabled && !loading) {
 			pressed = true;
-			
+
 			// Provide haptic feedback on supported devices
 			if ('vibrate' in navigator && variant === 'primary') {
 				navigator.vibrate(10); // Subtle feedback for primary actions
 			}
-			
+
 			// Reset pressed state after animation
 			setTimeout(() => {
 				pressed = false;
 			}, 150);
-			
+
 			onclick?.(event);
 		}
 	}
@@ -100,7 +100,7 @@
 	// Determine if we should show an icon
 	const showIcon = icon || (variant === 'primary' && !loading);
 	const IconComponent = icon || Send;
-	
+
 	// Screen reader text for loading state
 	let loadingText = $derived(() => {
 		if (loading) {
@@ -154,21 +154,21 @@ Accessibility:
 	>
 		<span class="flex items-center justify-center gap-2">
 			{#if loading}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="h-4 w-4 animate-spin" />
 				<span class="sr-only">{loadingText}</span>
 			{:else}
 				{#if showIcon && iconPosition === 'left'}
-					<IconComponent class="w-4 h-4 flex-shrink-0" />
+					<IconComponent class="h-4 w-4 flex-shrink-0" />
 				{/if}
-				
+
 				{#if children}
 					{@render children()}
 				{:else if text}
 					{text}
 				{/if}
-				
+
 				{#if showIcon && iconPosition === 'right'}
-					<IconComponent class="w-4 h-4 flex-shrink-0" />
+					<IconComponent class="h-4 w-4 flex-shrink-0" />
 				{/if}
 			{/if}
 		</span>
@@ -193,21 +193,21 @@ Accessibility:
 	>
 		<span class="flex items-center justify-center gap-2">
 			{#if loading}
-				<Loader2 class="w-4 h-4 animate-spin" />
+				<Loader2 class="h-4 w-4 animate-spin" />
 				<span class="sr-only">{loadingText}</span>
 			{:else}
 				{#if showIcon && iconPosition === 'left'}
-					<IconComponent class="w-4 h-4 flex-shrink-0" />
+					<IconComponent class="h-4 w-4 flex-shrink-0" />
 				{/if}
-				
+
 				{#if children}
 					{@render children()}
 				{:else if text}
 					{text}
 				{/if}
-				
+
 				{#if showIcon && iconPosition === 'right'}
-					<IconComponent class="w-4 h-4 flex-shrink-0" />
+					<IconComponent class="h-4 w-4 flex-shrink-0" />
 				{/if}
 			{/if}
 		</span>
@@ -244,21 +244,23 @@ Usage Examples:
 <style>
 	/* Respect reduced motion preferences for participation accessibility */
 	@media (prefers-reduced-motion: reduce) {
-		button, a {
+		button,
+		a {
 			transition: none !important;
 		}
 	}
-	
+
 	/* Enhanced focus indicators for keyboard navigation */
 	button:focus-visible,
 	a:focus-visible {
 		outline: 2px solid transparent;
 		outline-offset: 2px;
 	}
-	
+
 	/* High contrast mode support */
 	@media (prefers-contrast: high) {
-		button, a {
+		button,
+		a {
 			border-width: 2px;
 		}
 	}

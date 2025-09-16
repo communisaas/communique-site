@@ -1,6 +1,6 @@
 /**
  * Component-specific type definitions
- * 
+ *
  * These interfaces define the shape of props expected by UI components,
  * which may be simpler than the full database models.
  */
@@ -19,13 +19,14 @@ export interface ComponentUser {
  */
 export function toComponentUser(user: any): ComponentUser | null {
 	if (!user) return null;
-	
+
 	return {
 		id: user.id,
 		name: user.name || 'Anonymous',
-		address: user.street && user.city && user.state && user.zip
-			? `${user.street}, ${user.city}, ${user.state} ${user.zip}`
-			: undefined
+		address:
+			user.street && user.city && user.state && user.zip
+				? `${user.street}, ${user.city}, ${user.state} ${user.zip}`
+				: undefined
 	};
 }
 
@@ -33,9 +34,7 @@ export function toComponentUser(user: any): ComponentUser | null {
  * Type guard to check if an object is a ComponentUser
  */
 export function isComponentUser(obj: any): obj is ComponentUser {
-	return obj && 
-		typeof obj.id === 'string' && 
-		typeof obj.name === 'string';
+	return obj && typeof obj.id === 'string' && typeof obj.name === 'string';
 }
 
 /**
@@ -46,7 +45,14 @@ export type BadgeVariant = 'default' | 'secondary' | 'success' | 'warning' | 'er
 /**
  * Button component variants
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'link' | 'magical' | 'direct';
+export type ButtonVariant =
+	| 'primary'
+	| 'secondary'
+	| 'outline'
+	| 'ghost'
+	| 'link'
+	| 'magical'
+	| 'direct';
 
 /**
  * Animation states for flight animations

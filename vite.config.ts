@@ -2,9 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 
 export default defineConfig({
-	plugins: [
-		sveltekit()
-	],
+	plugins: [sveltekit()],
 
 	optimizeDeps: {
 		exclude: ['chunk-PCGYAOMB.js']
@@ -30,9 +28,7 @@ export default defineConfig({
 				'**/*.spec.ts',
 				'**/*.test.ts'
 			],
-			include: [
-				'src/**/*.{js,ts,svelte}'
-			],
+			include: ['src/**/*.{js,ts,svelte}'],
 			thresholds: {
 				global: {
 					branches: 70,
@@ -46,7 +42,7 @@ export default defineConfig({
 
 	// Separate configuration for Svelte component tests
 	define: {
-		'import.meta.vitest': undefined,
+		'import.meta.vitest': undefined
 	},
 
 	server: {

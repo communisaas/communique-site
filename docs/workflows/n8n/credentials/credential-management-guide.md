@@ -14,12 +14,13 @@ This guide outlines best practices for managing credentials in our N8N workflows
 
 ```json
 {
-  "name": "x-webhook-secret",
-  "value": "{{$env.AGENT_API_SECRET}}"
+	"name": "x-webhook-secret",
+	"value": "{{$env.AGENT_API_SECRET}}"
 }
 ```
 
 **Environment Variables Required**:
+
 - `AGENT_API_SECRET`: Secret key for agent API authentication
 
 ### 2. PostgreSQL Database
@@ -30,16 +31,17 @@ This guide outlines best practices for managing credentials in our N8N workflows
 
 ```json
 {
-  "host": "{{$env.DB_HOST}}",
-  "port": "{{$env.DB_PORT}}",
-  "database": "{{$env.DB_NAME}}",
-  "user": "{{$env.DB_USER}}",
-  "password": "{{$env.DB_PASSWORD}}",
-  "ssl": "require"
+	"host": "{{$env.DB_HOST}}",
+	"port": "{{$env.DB_PORT}}",
+	"database": "{{$env.DB_NAME}}",
+	"user": "{{$env.DB_USER}}",
+	"password": "{{$env.DB_PASSWORD}}",
+	"ssl": "require"
 }
 ```
 
 **Environment Variables Required**:
+
 - `DB_HOST`: Database hostname
 - `DB_PORT`: Database port (default: 5432)
 - `DB_NAME`: Database name
@@ -54,14 +56,15 @@ This guide outlines best practices for managing credentials in our N8N workflows
 
 ```json
 {
-  "host": "{{$env.REDIS_HOST}}",
-  "port": "{{$env.REDIS_PORT}}",
-  "password": "{{$env.REDIS_PASSWORD}}",
-  "database": "{{$env.REDIS_DB}}"
+	"host": "{{$env.REDIS_HOST}}",
+	"port": "{{$env.REDIS_PORT}}",
+	"password": "{{$env.REDIS_PASSWORD}}",
+	"database": "{{$env.REDIS_DB}}"
 }
 ```
 
 **Environment Variables Required**:
+
 - `REDIS_HOST`: Redis hostname
 - `REDIS_PORT`: Redis port (default: 6379)
 - `REDIS_PASSWORD`: Redis password
@@ -75,11 +78,12 @@ This guide outlines best practices for managing credentials in our N8N workflows
 
 ```json
 {
-  "accessToken": "{{$env.SLACK_BOT_TOKEN}}"
+	"accessToken": "{{$env.SLACK_BOT_TOKEN}}"
 }
 ```
 
 **Environment Variables Required**:
+
 - `SLACK_BOT_TOKEN`: Slack bot token (starts with `xoxb-`)
 
 ### 5. Slack Alerts
@@ -90,11 +94,12 @@ This guide outlines best practices for managing credentials in our N8N workflows
 
 ```json
 {
-  "accessToken": "{{$env.SLACK_ALERT_TOKEN}}"
+	"accessToken": "{{$env.SLACK_ALERT_TOKEN}}"
 }
 ```
 
 **Environment Variables Required**:
+
 - `SLACK_ALERT_TOKEN`: Slack bot token for alerts (can be same as notifications)
 
 ### 6. Webhook Secrets
@@ -105,12 +110,13 @@ This guide outlines best practices for managing credentials in our N8N workflows
 
 ```json
 {
-  "name": "x-webhook-secret",
-  "value": "{{$env.N8N_WEBHOOK_SECRET}}"
+	"name": "x-webhook-secret",
+	"value": "{{$env.N8N_WEBHOOK_SECRET}}"
 }
 ```
 
 **Environment Variables Required**:
+
 - `N8N_WEBHOOK_SECRET`: Secret for webhook signature validation
 
 ## Security Best Practices
@@ -175,13 +181,9 @@ export REDIS_DB="0"
 
 ```json
 {
-  "alert_name": "credential_authentication_failure",
-  "condition": "authentication_failures > 5 in 5 minutes",
-  "actions": [
-    "slack_alert_critical",
-    "email_security_team",
-    "temporarily_disable_credential"
-  ]
+	"alert_name": "credential_authentication_failure",
+	"condition": "authentication_failures > 5 in 5 minutes",
+	"actions": ["slack_alert_critical", "email_security_team", "temporarily_disable_credential"]
 }
 ```
 
@@ -242,7 +244,7 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
     ports:
-      - "5678:5678"
+      - '5678:5678'
     depends_on:
       - postgres
       - redis
@@ -320,18 +322,22 @@ All credential-related events are logged and can be integrated with the VOTER Pr
 ## Maintenance Schedule
 
 ### Daily
+
 - Monitor authentication failure alerts
 - Check credential usage logs
 
 ### Weekly
+
 - Review access patterns
 - Update credential documentation
 
 ### Monthly
+
 - Test credential backup/restore procedures
 - Review and update access controls
 
 ### Quarterly
+
 - Rotate all credentials
 - Security audit of credential management
 - Update this documentation

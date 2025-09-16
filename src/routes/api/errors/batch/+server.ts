@@ -5,7 +5,7 @@ import type { ErrorReport } from '$lib/utils/errorBoundary';
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const { errors } = await request.json();
-		
+
 		// Validate batch
 		if (!Array.isArray(errors) || errors.length === 0) {
 			return json({ success: false, error: 'Invalid errors array' }, { status: 400 });
@@ -42,16 +42,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// TODO: Batch insert to database
 		// await db.error_reports.createMany({ data: processedErrors });
 
-		return json({ 
-			success: true, 
-			message: `${processedErrors.length} errors reported successfully` 
+		return json({
+			success: true,
+			message: `${processedErrors.length} errors reported successfully`
 		});
-
 	} catch (err) {
 		console.error('Failed to process batch error report:', err);
-		return json({ 
-			success: false, 
-			error: 'Failed to process batch error report' 
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: 'Failed to process batch error report'
+			},
+			{ status: 500 }
+		);
 	}
 };

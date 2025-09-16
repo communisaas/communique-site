@@ -6,7 +6,7 @@ interface DraftStorage {
 		data: TemplateFormData;
 		lastSaved: number;
 		currentStep: string;
-	}
+	};
 }
 
 // Storage key for localStorage
@@ -21,31 +21,29 @@ function createTemplateDraftStore() {
 	// Load drafts from localStorage on initialization
 	function loadDrafts(): DraftStorage {
 		if (typeof localStorage === 'undefined') return {};
-		
+
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY);
 			if (stored) {
 				const parsed = JSON.parse(stored);
 				// Clean up old drafts (older than 7 days)
-				const cutoff = Date.now() - (7 * 24 * 60 * 60 * 1000);
+				const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
 				const cleaned = Object.fromEntries(
-					Object.entries(parsed).filter(([_, draft]: [string, any]) => 
-						draft.lastSaved > cutoff
-					)
+					Object.entries(parsed).filter(([_, draft]: [string, any]) => draft.lastSaved > cutoff)
 				);
 				return cleaned;
 			}
 		} catch (error) {
 			console.warn('Failed to load template drafts from storage:', error);
 		}
-		
+
 		return {};
 	}
 
 	// Save drafts to localStorage
 	function saveDrafts(drafts: DraftStorage) {
 		if (typeof localStorage === 'undefined') return;
-		
+
 		try {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
 		} catch (error) {
@@ -59,7 +57,6 @@ function createTemplateDraftStore() {
 
 	// Auto-save timer registry
 	const autoSaveTimers = new Map<string, ReturnType<typeof setInterval>>();
-
 
 	function toPlainTemplateFormData(data: TemplateFormData): TemplateFormData {
 		// Create a plain, serializable copy detached from any reactive proxies
@@ -101,36 +98,42 @@ function createTemplateDraftStore() {
 			currentStep
 		};
 
-		update(drafts => {
+		update((drafts) => {
 			const updated = { ...drafts, [draftId]: draft };
 			saveDrafts(updated);
 			return updated;
 		});
 	}
 
-	function getDraft(draftId: string): { data: TemplateFormData; lastSaved: number; currentStep: string } | null {
+	function getDraft(
+		draftId: string
+	): { data: TemplateFormData; lastSaved: number; currentStep: string } | null {
 		const drafts = loadDrafts();
 		return drafts[draftId] || null;
 	}
 
 	function deleteDraft(draftId: string) {
-		update(drafts => {
+		update((drafts) => {
 			const updated = { ...drafts };
 			delete updated[draftId];
 			saveDrafts(updated);
-			
+
 			// Clear any auto-save timer
 			const timerId = autoSaveTimers.get(draftId);
 			if (timerId) {
 				clearInterval(timerId);
 				autoSaveTimers.delete(draftId);
 			}
-			
+
 			return updated;
 		});
 	}
 
-	function startAutoSave(draftId: string, getFormData: () => TemplateFormData, getCurrentStep: () => string) {
+	function startAutoSave(
+		draftId: string,
+		getFormData: () => TemplateFormData,
+		getCurrentStep: () => string
+	) {
 		// Clear existing timer
 		const existingTimer = autoSaveTimers.get(draftId);
 		if (existingTimer) {
@@ -141,7 +144,7 @@ function createTemplateDraftStore() {
 		const timerId = setInterval(() => {
 			const formData = getFormData();
 			const currentStep = getCurrentStep();
-			
+
 			// Only save if there's actual content
 			if (formData.objective.title.trim() || formData.content.preview.trim()) {
 				saveDraft(draftId, formData, currentStep);
@@ -149,7 +152,7 @@ function createTemplateDraftStore() {
 		}, AUTO_SAVE_INTERVAL);
 
 		autoSaveTimers.set(draftId, timerId);
-		
+
 		// Cleanup function
 		return () => {
 			clearInterval(timerId);

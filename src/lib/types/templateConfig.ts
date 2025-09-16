@@ -1,6 +1,6 @@
 /**
  * Template Configuration Types - COMPLETE KOLMOGOROV COMPRESSED TYPE SYSTEM
- * 
+ *
  * This module eliminates ALL 'as any' cancer with mathematically minimal type definitions
  * that capture the complete template ecosystem with zero redundancy.
  */
@@ -47,29 +47,29 @@ export interface WritingStyleProfile {
 // COMPLETE METRICS TYPE SYSTEM - All JSON fields typed
 export interface TemplateMetrics {
 	sent: number;
-	opened: number;          // Deprecated - not trackable for direct email
-	clicked: number;         // For direct: recipient count; for congressional: not used
-	responded: number;       // For congressional: delivery confirmations; for direct: not used
-	views?: number;          // Deep link views
-	
+	opened: number; // Deprecated - not trackable for direct email
+	clicked: number; // For direct: recipient count; for congressional: not used
+	responded: number; // For congressional: delivery confirmations; for direct: not used
+	views?: number; // Deep link views
+
 	// Congressional-specific metrics
 	districts_covered?: number;
 	total_districts?: number;
 	district_coverage_percent?: number;
-	
+
 	// AI/Analytics metrics from schema
 	personalization_rate?: number;
 	effectiveness_score?: number; // ML-derived
 	cascade_depth?: number; // User activation chain length
 	viral_coefficient?: number; // Sharing rate
-	
+
 	// Funnel tracking metrics
-	funnel_views?: number;       // Template page views
-	modal_views?: number;        // Modal popup views  
-	onboarding_starts?: number;  // Users who started onboarding
+	funnel_views?: number; // Template page views
+	modal_views?: number; // Modal popup views
+	onboarding_starts?: number; // Users who started onboarding
 	onboarding_completes?: number; // Users who completed onboarding
-	auth_completions?: number;   // Users who completed authentication
-	shares?: number;             // Template shares
+	auth_completions?: number; // Users who completed authentication
+	shares?: number; // Template shares
 }
 
 // TEMPLATE ECOSYSTEM TYPES - Complete schema coverage
@@ -121,18 +121,18 @@ export interface TypedTemplate {
 	message_body: string;
 	preview: string;
 	is_public: boolean;
-	
+
 	delivery_config: DeliveryConfig;
 	recipient_config: RecipientConfig;
 	cwc_config?: CwcConfig;
 	metrics: TemplateMetrics;
-	
+
 	campaign_id?: string;
 	status: 'draft' | 'active' | 'archived';
 	createdAt: Date;
 	updatedAt: Date;
 	userId?: string;
-	
+
 	personalizations?: TemplatePersonalization[];
 	ai_suggestions?: AISuggestion[];
 	analytics?: TemplateAnalytics[];
@@ -154,20 +154,27 @@ export interface ResolvedTemplate {
  */
 export function isValidRecipientConfig(obj: unknown): obj is RecipientConfig {
 	if (!obj || typeof obj !== 'object' || obj === null) return false;
-	
+
 	const record = obj as Record<string, unknown>;
-	return 'emails' in record && Array.isArray(record.emails) && 
-		   record.emails.length > 0 &&
-		   record.emails.every((email: unknown) => typeof email === 'string');
+	return (
+		'emails' in record &&
+		Array.isArray(record.emails) &&
+		record.emails.length > 0 &&
+		record.emails.every((email: unknown) => typeof email === 'string')
+	);
 }
 
 export function isValidDeliveryConfig(obj: unknown): obj is DeliveryConfig {
 	if (!obj || typeof obj !== 'object' || obj === null) return false;
-	
+
 	const record = obj as Record<string, unknown>;
-	return 'timing' in record && typeof record.timing === 'string' && 
-		   ['immediate', 'scheduled'].includes(record.timing) &&
-		   'followUp' in record && typeof record.followUp === 'boolean';
+	return (
+		'timing' in record &&
+		typeof record.timing === 'string' &&
+		['immediate', 'scheduled'].includes(record.timing) &&
+		'followUp' in record &&
+		typeof record.followUp === 'boolean'
+	);
 }
 
 /**
@@ -195,18 +202,21 @@ export function extractTemplateMetrics(metrics: unknown): TemplateMetrics {
 		return metrics;
 	}
 	// Default metrics if invalid/null
-	return { 
-		sent: 0, 
-		opened: 0, 
-		clicked: 0, 
-		responded: 0 
+	return {
+		sent: 0,
+		opened: 0,
+		clicked: 0,
+		responded: 0
 	};
 }
 
 function isValidTemplateMetrics(obj: unknown): obj is TemplateMetrics {
-	return obj !== null && 
-		   typeof obj === 'object' && 
-		   'sent' in obj && typeof (obj as Record<string, unknown>).sent === 'number';
+	return (
+		obj !== null &&
+		typeof obj === 'object' &&
+		'sent' in obj &&
+		typeof (obj as Record<string, unknown>).sent === 'number'
+	);
 }
 
 /**

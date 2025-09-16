@@ -3,18 +3,10 @@
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
-	import { 
-		X, 
-		ArrowRight,
-		ArrowLeft,
-		User,
-		MapPin,
-		Send,
-		CheckCircle2
-	} from '@lucide/svelte';
+	import { X, ArrowRight, ArrowLeft, User, MapPin, Send, CheckCircle2 } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
-	
+
 	let {
 		template,
 		user = null
@@ -29,39 +21,39 @@
 		};
 		user?: { id: string; name: string; address?: string } | null;
 	} = $props();
-	
-	const dispatch = createEventDispatcher<{ 
-		close: void; 
+
+	const dispatch = createEventDispatcher<{
+		close: void;
 		send: { name: string; address?: string; email?: string };
 	}>();
-	
+
 	// Component ID for timer coordination
 	const componentId = 'progressive-form-modal-' + Math.random().toString(36).substring(2, 15);
-	
+
 	type Step = 'name' | 'address' | 'send';
 	let currentStep: Step = $state('name');
 	let isTransitioning = $state(false);
-	
+
 	// Form data
 	let name = $state(user?.name || '');
 	let address = $state(user?.address || '');
 	let email = $state('');
-	
+
 	// Validation states
 	let nameError = $state('');
 	let addressError = $state('');
 	let emailError = $state('');
-	
+
 	const isCongressional = $derived(template.deliveryMethod === 'certified');
 	const isAuthFlow = $derived(template.deliveryMethod === 'auth');
 	const requiresAddress = $derived(isCongressional && !isAuthFlow);
 	const requiresEmail = $derived(!user || isAuthFlow); // Always need email for auth flow
-	
+
 	// Determine the flow based on template type and user status
 	const steps = $derived(getSteps());
 	const currentStepIndex = $derived(steps.indexOf(currentStep));
 	const isLastStep = $derived(currentStepIndex === steps.length - 1);
-	
+
 	function getSteps(): Step[] {
 		if (isAuthFlow) {
 			// Auth flow for template creators - always need name/email
@@ -84,13 +76,13 @@
 			}
 		}
 	}
-	
+
 	onMount(() => {
 		// Prevent background scrolling when modal is open
 		if (browser) {
 			document.body.style.overflow = 'hidden';
 		}
-		
+
 		// If user is authenticated and has address, skip to send step
 		if (user?.address && isCongressional) {
 			currentStep = 'send';
@@ -98,14 +90,14 @@
 			currentStep = 'send';
 		}
 	});
-	
+
 	onDestroy(() => {
 		if (browser) {
 			document.body.style.overflow = '';
 		}
 		useTimerCleanup(componentId)();
 	});
-	
+
 	function validateName(): boolean {
 		nameError = '';
 		if (!name.trim()) {
@@ -118,7 +110,7 @@
 		}
 		return true;
 	}
-	
+
 	function validateAddress(): boolean {
 		addressError = '';
 		if (!address.trim()) {
@@ -133,7 +125,7 @@
 		}
 		return true;
 	}
-	
+
 	function validateEmail(): boolean {
 		emailError = '';
 		if ((requiresEmail || isAuthFlow) && !email.trim()) {
@@ -146,10 +138,10 @@
 		}
 		return true;
 	}
-	
+
 	function nextStep() {
 		if (isTransitioning) return;
-		
+
 		// Validate current step
 		let isValid = true;
 		if (currentStep === 'name') {
@@ -157,32 +149,32 @@
 		} else if (currentStep === 'address') {
 			isValid = validateAddress();
 		}
-		
+
 		if (!isValid) return;
-		
+
 		isTransitioning = true;
-		
+
 		const nextIndex = currentStepIndex + 1;
 		if (nextIndex < steps.length) {
 			currentStep = steps[nextIndex];
 		}
-		
-		coordinated.setTimeout(() => isTransitioning = false, 300, 'transition', componentId);
+
+		coordinated.setTimeout(() => (isTransitioning = false), 300, 'transition', componentId);
 	}
-	
+
 	function prevStep() {
 		if (isTransitioning) return;
-		
+
 		isTransitioning = true;
-		
+
 		const prevIndex = currentStepIndex - 1;
 		if (prevIndex >= 0) {
 			currentStep = steps[prevIndex];
 		}
-		
-		coordinated.setTimeout(() => isTransitioning = false, 300, 'transition', componentId);
+
+		coordinated.setTimeout(() => (isTransitioning = false), 300, 'transition', componentId);
 	}
-	
+
 	function handleSend() {
 		// Final validation
 		let isValid = true;
@@ -192,20 +184,20 @@
 		if (requiresAddress && !user?.address) {
 			isValid = isValid && validateAddress();
 		}
-		
+
 		if (!isValid) return;
-		
+
 		dispatch('send', {
 			name: user?.name || name,
 			address: user?.address || (requiresAddress ? address : undefined),
 			email: user ? undefined : email
 		});
 	}
-	
+
 	function handleClose() {
 		dispatch('close');
 	}
-	
+
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey) {
 			event.preventDefault();
@@ -218,10 +210,12 @@
 	}
 </script>
 
-<div 
+<div
 	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
 	onclick={handleClose}
-	onkeydown={(e) => { if (e.key === 'Escape') handleClose(); }}
+	onkeydown={(e) => {
+		if (e.key === 'Escape') handleClose();
+	}}
 	role="dialog"
 	aria-modal="true"
 	aria-label="Progressive form modal"
@@ -229,19 +223,23 @@
 	in:fade={{ duration: 300, easing: quintOut }}
 	out:fade={{ duration: 200 }}
 >
-	<div 
-		class="fixed inset-x-4 top-1/2 max-w-md mx-auto transform -translate-y-1/2 bg-white rounded-2xl shadow-2xl overflow-hidden"
-		onclick={(e) => { e.stopPropagation(); }}
-		onkeydown={(e) => { e.stopPropagation(); }}
+	<div
+		class="fixed inset-x-4 top-1/2 mx-auto max-w-md -translate-y-1/2 transform overflow-hidden rounded-2xl bg-white shadow-2xl"
+		onclick={(e) => {
+			e.stopPropagation();
+		}}
+		onkeydown={(e) => {
+			e.stopPropagation();
+		}}
 		role="document"
-		in:scale={{ 
-			duration: 400, 
+		in:scale={{
+			duration: 400,
 			easing: backOut,
 			start: 0.9,
 			opacity: 0.5
 		}}
-		out:scale={{ 
-			duration: 200, 
+		out:scale={{
+			duration: 200,
 			easing: quintOut,
 			start: 0.95
 		}}
@@ -249,32 +247,30 @@
 		<!-- Close Button -->
 		<button
 			onclick={handleClose}
-			class="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+			class="absolute right-4 top-4 z-10 rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
 		>
 			<X class="h-5 w-5" />
 		</button>
-		
+
 		<!-- Progress Indicator -->
 		{#if steps.length > 1}
-			<div class="flex justify-center pt-6 pb-4">
+			<div class="flex justify-center pb-4 pt-6">
 				<div class="flex gap-2">
 					{#each steps as step, i}
-						<div 
-							class="h-2 rounded-full transition-all duration-500 ease-out {
-								i <= currentStepIndex
-									? 'w-12 bg-blue-600 shadow-lg shadow-blue-200' 
-									: 'w-8 bg-slate-200'
-							}"
+						<div
+							class="h-2 rounded-full transition-all duration-500 ease-out {i <= currentStepIndex
+								? 'w-12 bg-blue-600 shadow-lg shadow-blue-200'
+								: 'w-8 bg-slate-200'}"
 						></div>
 					{/each}
 				</div>
 			</div>
 		{/if}
-		
+
 		<!-- Content -->
-		<div class="relative overflow-hidden min-h-[400px]">
+		<div class="relative min-h-[400px] overflow-hidden">
 			{#key currentStep}
-				<div 
+				<div
 					class="absolute inset-0 p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
@@ -284,21 +280,19 @@
 				>
 					{#if currentStep === 'name'}
 						<!-- Name Collection Step -->
-						<div class="text-center mb-6">
-							<div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+						<div class="mb-6 text-center">
+							<div
+								class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-100"
+							>
 								<User class="h-6 w-6 text-blue-600" />
 							</div>
-							<h2 class="text-xl font-bold text-slate-900 mb-2">
-								Let's get started
-							</h2>
-							<p class="text-slate-600">
-								We need your name to personalize your message
-							</p>
+							<h2 class="mb-2 text-xl font-bold text-slate-900">Let's get started</h2>
+							<p class="text-slate-600">We need your name to personalize your message</p>
 						</div>
-						
-						<div class="space-y-4 mb-6">
+
+						<div class="mb-6 space-y-4">
 							<div>
-								<label for="name" class="block text-sm font-medium text-slate-700 mb-2">
+								<label for="name" class="mb-2 block text-sm font-medium text-slate-700">
 									Your name
 								</label>
 								<input
@@ -307,16 +301,18 @@
 									bind:value={name}
 									onblur={validateName}
 									placeholder="Enter your full name"
-									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {nameError ? 'border-red-300' : ''}"
+									class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 {nameError
+										? 'border-red-300'
+										: ''}"
 								/>
 								{#if nameError}
 									<p class="mt-1 text-sm text-red-600">{nameError}</p>
 								{/if}
 							</div>
-							
+
 							{#if requiresEmail}
 								<div>
-									<label for="email" class="block text-sm font-medium text-slate-700 mb-2">
+									<label for="email" class="mb-2 block text-sm font-medium text-slate-700">
 										Email address {isAuthFlow ? '(required)' : '(optional)'}
 									</label>
 									<input
@@ -325,7 +321,9 @@
 										bind:value={email}
 										onblur={validateEmail}
 										placeholder="your@email.com"
-										class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 {emailError ? 'border-red-300' : ''}"
+										class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 {emailError
+											? 'border-red-300'
+											: ''}"
 									/>
 									{#if emailError}
 										<p class="mt-1 text-sm text-red-600">{emailError}</p>
@@ -340,20 +338,20 @@
 								</div>
 							{/if}
 						</div>
-						
+
 						<div class="flex gap-3">
-							<Button 
-								variant="secondary" 
-								size="sm" 
+							<Button
+								variant="secondary"
+								size="sm"
 								classNames="flex-1"
 								onclick={handleClose}
 								disabled={isTransitioning}
 							>
 								Cancel
 							</Button>
-							<Button 
-								variant="primary" 
-								size="sm" 
+							<Button
+								variant="primary"
+								size="sm"
 								classNames="flex-1"
 								onclick={nextStep}
 								disabled={isTransitioning || !name.trim() || (isAuthFlow && !email.trim())}
@@ -362,24 +360,21 @@
 								<ArrowRight class="ml-1 h-4 w-4" />
 							</Button>
 						</div>
-						
 					{:else if currentStep === 'address'}
 						<!-- Address Collection Step -->
-						<div class="text-center mb-6">
-							<div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+						<div class="mb-6 text-center">
+							<div
+								class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-100"
+							>
 								<MapPin class="h-6 w-6 text-blue-600" />
 							</div>
-							<h2 class="text-xl font-bold text-slate-900 mb-2">
-								Where are you located?
-							</h2>
-							<p class="text-slate-600">
-								We need your address to identify your representatives
-							</p>
+							<h2 class="mb-2 text-xl font-bold text-slate-900">Where are you located?</h2>
+							<p class="text-slate-600">We need your address to identify your representatives</p>
 						</div>
-						
-						<div class="space-y-4 mb-6">
+
+						<div class="mb-6 space-y-4">
 							<div>
-								<label for="address" class="block text-sm font-medium text-slate-700 mb-2">
+								<label for="address" class="mb-2 block text-sm font-medium text-slate-700">
 									Your address
 								</label>
 								<textarea
@@ -388,7 +383,9 @@
 									onblur={validateAddress}
 									placeholder="123 Main Street, City, State, ZIP"
 									rows="3"
-									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none {addressError ? 'border-red-300' : ''}"
+									class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 {addressError
+										? 'border-red-300'
+										: ''}"
 								></textarea>
 								{#if addressError}
 									<p class="mt-1 text-sm text-red-600">{addressError}</p>
@@ -398,11 +395,11 @@
 								</p>
 							</div>
 						</div>
-						
+
 						<div class="flex gap-3">
-							<Button 
-								variant="secondary" 
-								size="sm" 
+							<Button
+								variant="secondary"
+								size="sm"
 								classNames="flex-1"
 								onclick={prevStep}
 								disabled={isTransitioning}
@@ -410,9 +407,9 @@
 								<ArrowLeft class="mr-1 h-4 w-4" />
 								Back
 							</Button>
-							<Button 
-								variant="primary" 
-								size="sm" 
+							<Button
+								variant="primary"
+								size="sm"
 								classNames="flex-1"
 								onclick={nextStep}
 								disabled={isTransitioning || !address.trim()}
@@ -421,14 +418,15 @@
 								<ArrowRight class="ml-1 h-4 w-4" />
 							</Button>
 						</div>
-						
 					{:else}
 						<!-- Send Step -->
-						<div class="text-center mb-6">
-							<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+						<div class="mb-6 text-center">
+							<div
+								class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100"
+							>
 								<Send class="h-6 w-6 text-green-600" />
 							</div>
-							<h2 class="text-xl font-bold text-slate-900 mb-2">
+							<h2 class="mb-2 text-xl font-bold text-slate-900">
 								{#if isAuthFlow}
 									Ready to save your template!
 								{:else}
@@ -445,9 +443,9 @@
 								{/if}
 							</p>
 						</div>
-						
+
 						<!-- Summary -->
-						<div class="bg-slate-50 rounded-lg p-4 mb-6 space-y-2">
+						<div class="mb-6 space-y-2 rounded-lg bg-slate-50 p-4">
 							<div class="flex items-center justify-between">
 								<span class="text-sm text-slate-600">Template:</span>
 								<span class="text-sm font-medium text-slate-900">{template.title}</span>
@@ -459,7 +457,7 @@
 							{#if requiresAddress}
 								<div class="flex items-start justify-between">
 									<span class="text-sm text-slate-600">Address:</span>
-									<span class="text-sm font-medium text-slate-900 text-right max-w-[60%]">
+									<span class="max-w-[60%] text-right text-sm font-medium text-slate-900">
 										{user?.address || address}
 									</span>
 								</div>
@@ -471,12 +469,12 @@
 								</div>
 							{/if}
 						</div>
-						
+
 						<div class="flex gap-3">
 							{#if steps.length > 1}
-								<Button 
-									variant="secondary" 
-									size="sm" 
+								<Button
+									variant="secondary"
+									size="sm"
 									classNames="flex-1"
 									onclick={prevStep}
 									disabled={isTransitioning}
@@ -485,9 +483,9 @@
 									Back
 								</Button>
 							{:else}
-								<Button 
-									variant="secondary" 
-									size="sm" 
+								<Button
+									variant="secondary"
+									size="sm"
 									classNames="flex-1"
 									onclick={handleClose}
 									disabled={isTransitioning}
@@ -495,9 +493,9 @@
 									Cancel
 								</Button>
 							{/if}
-							<Button 
-								variant="primary" 
-								size="sm" 
+							<Button
+								variant="primary"
+								size="sm"
 								classNames="flex-1"
 								onclick={handleSend}
 								disabled={isTransitioning}

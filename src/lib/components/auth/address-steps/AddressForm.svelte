@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Info, AlertCircle, Search } from '@lucide/svelte';
-	
+
 	let {
 		template,
 		streetAddress = $bindable(),
@@ -35,9 +35,7 @@
 <div class="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3">
 	<div class="flex items-center gap-2">
 		<Info class="h-4 w-4 text-slate-500" />
-		<span class="text-sm text-slate-700"
-			>You're sending: <strong>{template.title}</strong></span
-		>
+		<span class="text-sm text-slate-700">You're sending: <strong>{template.title}</strong></span>
 	</div>
 </div>
 
@@ -58,9 +56,7 @@
 
 	<div class="grid grid-cols-2 gap-3">
 		<div>
-			<label for="city" class="mb-2 block text-sm font-medium text-slate-700">
-				City
-			</label>
+			<label for="city" class="mb-2 block text-sm font-medium text-slate-700"> City </label>
 			<input
 				id="city"
 				type="text"
@@ -71,9 +67,7 @@
 			/>
 		</div>
 		<div>
-			<label for="state" class="mb-2 block text-sm font-medium text-slate-700">
-				State
-			</label>
+			<label for="state" class="mb-2 block text-sm font-medium text-slate-700"> State </label>
 			<input
 				id="state"
 				type="text"
@@ -87,9 +81,7 @@
 	</div>
 
 	<div>
-		<label for="zip" class="mb-2 block text-sm font-medium text-slate-700">
-			ZIP Code
-		</label>
+		<label for="zip" class="mb-2 block text-sm font-medium text-slate-700"> ZIP Code </label>
 		<input
 			id="zip"
 			type="text"
@@ -102,9 +94,7 @@
 	</div>
 
 	{#if addressError}
-		<div
-			class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3"
-		>
+		<div class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
 			<AlertCircle class="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
 			<p class="text-sm text-red-700">{addressError}</p>
 		</div>
@@ -114,7 +104,7 @@
 <div class="space-y-3">
 	<button
 		type="button"
-		class="w-full flex items-center justify-center gap-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg px-6 py-3 text-sm font-medium transition-all disabled:opacity-50"
+		class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-blue-700 disabled:opacity-50"
 		onclick={onVerifyAddress}
 		disabled={isVerifying ||
 			!streetAddress.trim() ||

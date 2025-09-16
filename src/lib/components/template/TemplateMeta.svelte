@@ -7,7 +7,7 @@
 	import { page } from '$app/stores';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 
-	let { 
+	let {
 		template,
 		user = null,
 		onuseTemplate
@@ -20,11 +20,10 @@
 	// Use unified email service to determine flow
 	const emailFlow = $derived(analyzeEmailFlow(template, user));
 
-	
 	// Smart CTA configuration based on template type and user state
 	const ctaConfig = $derived(() => {
 		const isCongressional = template.deliveryMethod === 'certified';
-		
+
 		if (isCongressional) {
 			return {
 				icon: Shield,
@@ -46,8 +45,8 @@
 
 	function handleUseTemplate() {
 		// Use unified email flow analysis
-		onuseTemplate({ 
-			template, 
+		onuseTemplate({
+			template,
 			requiresAuth: emailFlow.requiresAuth
 		});
 	}
@@ -71,18 +70,18 @@
 	</div>
 	<div class="flex items-center gap-3">
 		{#if user}
-			<span class="hidden sm:block text-sm text-slate-600">
+			<span class="hidden text-sm text-slate-600 sm:block">
 				Hi {user.name?.split(' ')[0]}!
 			</span>
 		{/if}
-		
+
 		<div class="flex flex-col items-end gap-2">
 			{#if ctaConfig()?.subtitle}
-				<span class="hidden sm:block text-xs text-slate-500">
+				<span class="hidden text-xs text-slate-500 sm:block">
 					{ctaConfig()?.subtitle}
 				</span>
 			{/if}
-			
+
 			<Button
 				variant="primary"
 				classNames="w-full sm:w-auto shrink-0 {ctaConfig()?.colors}"
@@ -92,7 +91,7 @@
 					{@const IconComponent = ctaConfig().icon}
 					<IconComponent class="h-4 w-4" />
 				{/if}
-				
+
 				<span class="hidden sm:inline">
 					{ctaConfig()?.desktop}
 				</span>
@@ -101,6 +100,5 @@
 				</span>
 			</Button>
 		</div>
-		
 	</div>
 </div>

@@ -1,6 +1,6 @@
 /**
  * VOTER Protocol Identity Verification API
- * 
+ *
  * Handles Didit KYC integration and trust score calculation
  * Called by N8N identity verification workflow
  */
@@ -13,12 +13,12 @@ import type { RequestHandler } from './$types';
 class DiditClient {
 	private apiKey: string;
 	private baseUrl: string;
-	
+
 	constructor() {
 		this.apiKey = process.env.DIDIT_API_KEY || '';
 		this.baseUrl = 'https://api.didit.me/v1';
 	}
-	
+
 	async verify({ userAddress, verificationType = 'kyc_basic' }) {
 		if (!this.apiKey) {
 			// Simulation mode for development
@@ -37,7 +37,7 @@ class DiditClient {
 				}
 			};
 		}
-		
+
 		// Real Didit API call
 		const response = await fetch(`${this.baseUrl}/verify`, {
 			method: 'POST',
@@ -51,11 +51,11 @@ class DiditClient {
 				includeProof: true
 			})
 		});
-		
+
 		if (!response.ok) {
 			throw new Error(`Didit API error: ${response.status}`);
 		}
-		
+
 		return await response.json();
 	}
 }
@@ -65,38 +65,41 @@ const diditClient = new DiditClient();
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const { userId, walletAddress, zkProof, publicInputs } = await request.json();
-		
+
 		if (!userId) {
 			throw error(400, 'Missing required field: userId');
 		}
-		
+
 		// Perform Didit KYC verification
 		const kycResult = await diditClient.verify({
 			userAddress: walletAddress || userId,
 			verificationType: 'kyc_basic'
 		});
-		
+
 		// Calculate trust score based on Didit checks
 		let trustScore = 0;
 		const checks = kycResult?.checks || {};
-		
-		if (checks.idDocument === 'pass') trustScore += 40;  // Government ID is most important
-		if (checks.faceMatch === 'pass') trustScore += 30;   // Face match confirms identity  
-		if (checks.liveness === 'pass') trustScore += 20;    // Liveness prevents spoofing
+
+		if (checks.idDocument === 'pass') trustScore += 40; // Government ID is most important
+		if (checks.faceMatch === 'pass') trustScore += 30; // Face match confirms identity
+		if (checks.liveness === 'pass') trustScore += 20; // Liveness prevents spoofing
 		if (kycResult?.addressData?.congressionalDistrict) trustScore += 10; // Address verification
-		
+
 		// Create privacy-preserving district hash
-		const districtHash = kycResult?.addressData?.congressionalDistrict 
+		const districtHash = kycResult?.addressData?.congressionalDistrict
 			? `hash_${Buffer.from(kycResult.addressData.congressionalDistrict).toString('base64').substring(0, 8)}`
 			: null;
-		
+
 		// Determine verification level
-		const verificationLevel = 
-			trustScore >= 90 ? 'fully_verified' :
-			trustScore >= 60 ? 'verified' :
-			trustScore >= 30 ? 'partially_verified' :
-			'unverified';
-		
+		const verificationLevel =
+			trustScore >= 90
+				? 'fully_verified'
+				: trustScore >= 60
+					? 'verified'
+					: trustScore >= 30
+						? 'partially_verified'
+						: 'unverified';
+
 		// Update user in database via main API endpoint
 		const updateResponse = await fetch(`${request.url.origin}/api/voter`, {
 			method: 'POST',
@@ -110,13 +113,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				districtHash
 			})
 		});
-		
+
 		if (!updateResponse.ok) {
 			throw error(500, 'Failed to update user verification status');
 		}
-		
+
 		const updateResult = await updateResponse.json();
-		
+
 		return json({
 			success: true,
 			userId,
@@ -140,11 +143,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				can_create_challenges: trustScore >= 60,
 				can_vote_challenges: trustScore >= 40,
 				daily_action_limit: Math.floor(trustScore / 10),
-				max_stake: trustScore * 100  // Max VOTER tokens for staking
+				max_stake: trustScore * 100 // Max VOTER tokens for staking
 			},
 			message: `Identity verification completed - ${verificationLevel}`
 		});
-		
 	} catch (err) {
 		console.error('Identity verification error:', err);
 		throw error(500, err instanceof Error ? err.message : 'Identity verification failed');
@@ -155,11 +157,11 @@ export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const userId = url.searchParams.get('userId');
 		const walletAddress = url.searchParams.get('walletAddress');
-		
+
 		if (!userId && !walletAddress) {
 			throw error(400, 'Must provide either userId or walletAddress parameter');
 		}
-		
+
 		// Get user verification status via main API
 		const profileResponse = await fetch(`${url.origin}/api/voter`, {
 			method: 'POST',
@@ -170,13 +172,13 @@ export const GET: RequestHandler = async ({ url }) => {
 				walletAddress
 			})
 		});
-		
+
 		if (!profileResponse.ok) {
 			throw error(404, 'User not found');
 		}
-		
+
 		const profile = await profileResponse.json();
-		
+
 		return json({
 			success: true,
 			verification_status: {
@@ -194,7 +196,6 @@ export const GET: RequestHandler = async ({ url }) => {
 				max_stake: profile.user.trust_score * 100
 			}
 		});
-		
 	} catch (err) {
 		console.error('Get identity verification error:', err);
 		throw error(500, err instanceof Error ? err.message : 'Failed to get verification status');

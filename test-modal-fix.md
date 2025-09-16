@@ -3,14 +3,17 @@
 ## Changes Made
 
 ### 1. UnifiedTemplateModal Component
+
 - Modified `open()` method to use `modalStore.open()` directly instead of waiting for component reference
 - This fixes the chicken-egg problem where the modal component only renders when `isOpen`, but we needed the component to call `open()`
 
 ### 2. Share Link Page (`/src/routes/s/[slug]/+page.svelte`)
+
 - Updated all instances of `modalActions.open(template, data.user)` to use `templateModalStore.open({ template, user: data.user })`
 - This ensures we're using the reactive store pattern consistently
 
 ### 3. Locations Fixed
+
 - Line 83: `onMount` handler for authenticated users
 - Line 96: `handlePostAuthFlow` function
 - Line 136: `handleAddressSubmit` success path
@@ -37,4 +40,5 @@
    - Expected: Same modal behavior as share link
 
 ## Key Fix
+
 The main issue was that `templateModal?.open()` was being called before the component mounted. By using `templateModalStore.open()` directly, we bypass the component reference and work directly with the reactive store, which can queue the modal to open even before the component exists.

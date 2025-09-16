@@ -7,7 +7,7 @@ import type { RequestHandler } from './$types';
 
 /**
  * N8N Webhook Handler for Template Moderation Pipeline
- * 
+ *
  * Orchestrates the complete moderation flow:
  * 1. Auto-correction for minor issues
  * 2. Multi-agent consensus for severe violations
@@ -25,40 +25,31 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		// Verify webhook authentication
 		if (!verifyWebhookAuth(request)) {
-			return json(
-				{ error: 'Unauthorized' },
-				{ status: 401 }
-			);
+			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
-		
+
 		// Parse webhook payload
 		const payload = await request.json();
-		
+
 		// Validate required fields
 		if (!payload.verificationId && !payload.templateId) {
-			return json(
-				{ error: 'Missing verificationId or templateId' },
-				{ status: 400 }
-			);
+			return json({ error: 'Missing verificationId or templateId' }, { status: 400 });
 		}
-		
+
 		// Get or create verification record
 		let verificationId = payload.verificationId;
-		
+
 		if (!verificationId && payload.templateId) {
 			// Create verification if it doesn't exist
 			const template = await db.template.findUnique({
 				where: { id: payload.templateId },
 				include: { user: true }
 			});
-			
+
 			if (!template) {
-				return json(
-					{ error: 'Template not found' },
-					{ status: 404 }
-				);
+				return json({ error: 'Template not found' }, { status: 404 });
 			}
-			
+
 			// Check if congressional template
 			if (template.deliveryMethod !== 'certified') {
 				return json({
@@ -66,7 +57,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					templateId: template.id
 				});
 			}
-			
+
 			// Create verification record
 			const verification = await db.templateVerification.create({
 				data: {
@@ -76,23 +67,22 @@ export const POST: RequestHandler = async ({ request }) => {
 					moderation_status: 'pending'
 				}
 			});
-			
+
 			verificationId = verification.id;
 		}
-		
+
 		// Execute moderation pipeline
 		const result = await executeModerationPipeline(verificationId);
-		
+
 		return json({
 			success: true,
 			verificationId,
 			result
 		});
-		
 	} catch (error) {
 		console.error('Webhook processing error:', error);
 		return json(
-			{ 
+			{
 				error: 'Failed to process moderation webhook',
 				details: error instanceof Error ? error.message : 'Unknown error'
 			},
@@ -110,58 +100,59 @@ async function executeModerationPipeline(verificationId: string) {
 		moderation: null as any,
 		reputation: null as any
 	};
-	
+
 	try {
 		// Stage 1: Auto-correction
 		console.log(`[Moderation] Stage 1: Auto-correction for ${verificationId}`);
 		const correctionResult = await templateCorrector.processVerification(verificationId);
 		stages.correction = correctionResult;
-		
+
 		// If severity is low and corrections applied, we're done
 		if (correctionResult.severity <= 6 && !correctionResult.proceed) {
 			console.log(`[Moderation] Template auto-corrected and approved`);
-			
+
 			// Apply small reputation boost for clean submission
 			await reputationCalculator.applyVerificationResult(verificationId);
 			stages.reputation = { applied: true, reason: 'auto-approved after correction' };
-			
+
 			return {
 				status: 'approved',
 				stages,
 				message: 'Template auto-corrected and approved'
 			};
 		}
-		
+
 		// Stage 2: Multi-agent moderation for high severity
 		if (correctionResult.severity >= 7) {
-			console.log(`[Moderation] Stage 2: Multi-agent consensus for severity ${correctionResult.severity}`);
+			console.log(
+				`[Moderation] Stage 2: Multi-agent consensus for severity ${correctionResult.severity}`
+			);
 			const consensusResult = await moderationConsensus.evaluateTemplate(verificationId);
 			stages.moderation = consensusResult;
-			
+
 			// Stage 3: Apply reputation changes
 			console.log(`[Moderation] Stage 3: Applying reputation changes`);
 			const reputationUpdate = await reputationCalculator.applyVerificationResult(verificationId);
 			stages.reputation = reputationUpdate;
-			
+
 			return {
 				status: consensusResult.approved ? 'approved' : 'rejected',
 				stages,
-				message: consensusResult.approved 
+				message: consensusResult.approved
 					? 'Template approved by agent consensus'
 					: `Template rejected (severity ${correctionResult.severity})`
 			};
 		}
-		
+
 		// Shouldn't reach here, but handle edge case
 		return {
 			status: 'pending',
 			stages,
 			message: 'Moderation incomplete - manual review required'
 		};
-		
 	} catch (error) {
 		console.error('Pipeline execution error:', error);
-		
+
 		// Update verification status to indicate error
 		await db.templateVerification.update({
 			where: { id: verificationId },
@@ -173,7 +164,7 @@ async function executeModerationPipeline(verificationId: string) {
 				}
 			}
 		});
-		
+
 		throw error;
 	}
 }

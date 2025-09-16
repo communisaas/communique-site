@@ -3,8 +3,9 @@
 ## The Problem with Hardcoded Governance
 
 Traditional smart contracts are digital dictatorships:
+
 - Fixed parameters that never adapt
-- Centralized operators with god-mode powers  
+- Centralized operators with god-mode powers
 - Artificial scarcity enforced through code
 - Human behavior constrained by machine logic
 
@@ -17,23 +18,27 @@ Instead of rigid, hardcoded rules, we deploy **intelligent agents** that learn, 
 ### Specialized Agent Roles
 
 **SupplyAgent**: Calculates optimal token supply within defined bounds
+
 - Monitors network participation patterns
 - Adjusts supply based on civic engagement levels
 - Prevents both inflation and artificial scarcity, operating within on-chain mint caps.
 - No arbitrary caps, but intelligent equilibrium enforced by auditable safety rails.
 
 **VerificationAgent**: Coordinates action validation with resilient mechanisms
+
 - Orchestrates Didit.me zero-knowledge verification + CWC API integration, with fallback options.
 - Learns from verification patterns to improve accuracy, adapting to new attack vectors.
 - Distributes trust across multiple verification sources, enhancing resilience against single points of failure.
 - Adapts to new attack vectors automatically, while adhering to predefined thresholds and circuit breakers.
 
 **MarketAgent**: Optimizes economic incentives within auditable ranges
+
 - Adjusts reward amounts based on impact measurement, clamped by on-chain min/max values.
 - Balances token distribution for maximum participation, preventing gaming through pattern recognition.
 - Creates sustainable civic economy, with economic parameters bounded for stability.
 
 **ImpactAgent**: Tracks observable influence patterns
+
 - Tracks template talking points appearing in floor speeches and committee testimony
 - Monitors voting pattern shifts after coordinated template campaigns
 - Identifies when citizen expertise shapes legislative amendments
@@ -43,6 +48,7 @@ Instead of rigid, hardcoded rules, we deploy **intelligent agents** that learn, 
 **We don't count messages. We count minds changed.**
 
 **ReputationAgent**: Builds credibility scores from discourse quality and challenge market participation
+
 - Tracks challenge market participation quality and information sourcing standards
 - Coordinates with other agents to prioritize high-reputation participants in congressional routing
 - Writes credibility scores to ERC-8004 Reputation Registry for portable democratic reputation
@@ -59,15 +65,19 @@ Consensus mechanisms handle incomplete information robustly. When agents achieve
 ## Core Principles: Intelligent Governance Frameworks
 
 ### 1. Resilient Abundance
+
 Agents calculate optimal supply based on actual demand and participation, but always within auditable, on-chain minimum and maximum bounds. This ensures stability and prevents runaway issuance.
 
 ### 2. Adaptive Parameters with Safety Rails
+
 Every parameter becomes dynamically calibrated, but operates within predefined, auditable safety rails. Reward amounts, verification thresholds, governance rules - all evolve based on observed outcomes, while preventing extreme deviations.
 
 ### 3. Distributed Authority with Circuit Breakers
+
 Multi-agent consensus replaces single operators. No god modes, no central control, just distributed intelligence serving human needs, complemented by human-governed emergency circuit breakers for ultimate safety.
 
-### 4. Continuous Learning for Resilience 
+### 4. Continuous Learning for Resilience
+
 Agents remember what works and what doesn't, and the system gets smarter over time. This continuous learning enhances protocol resilience and adaptability to changing political and social conditions, including unforeseen attack vectors. Information quality markets provide consensus tools for resolving disputes and incentivizing quality discourse among participants.
 
 ## Templates That Move Mountains Trigger Algorithms
@@ -75,6 +85,7 @@ Agents remember what works and what doesn't, and the system gets smarter over ti
 The credibility infrastructure closes the loop through cryptographic execution. When the ImpactAgent identifies template influence on legislative positions, that template creator earns massive credibility. When legislators learn from constituent information, smart contracts automatically execute treasury allocation based on algorithmic responsiveness scores.
 
 **Algorithmic Verification Creates Electoral Consequences:**
+
 - Template introduces new economic data that appears in floor speeches
 - Mass campaign surfaces constituent impacts that change committee votes
 - Citizen expertise shapes amendment language that passes
@@ -86,6 +97,7 @@ The credibility infrastructure closes the loop through cryptographic execution. 
 High-credibility participants don't just get priority routing—they govern algorithmic fund allocation through cryptographic voting weight. The treasury accumulates value through token economics. Smart contracts automatically execute fund distribution based on mathematically verified responsiveness patterns.
 
 **Challenge Markets Trigger Algorithmic Execution:**
+
 - Template impact claims face cryptographic market verification
 - Winners of impact challenges gain algorithmic influence weight
 - High-credibility creators govern smart contract parameters
@@ -102,26 +114,31 @@ Your template claims "Policy X costs rural families $3K/year." Ten thousand cons
 Information quality markets solve democracy's core problem: how do we reward good information without becoming truth police? Market-based consensus beats centralized fact-checking. The system builds portable credibility that follows participants across platforms:
 
 ### Advanced Challenge Market Governance
-* **Dispute Escalation Pathways:** Complex challenges route through specialized agent committees with domain expertise
-* **Meta-Market Resolution:** Challenges to challenge market outcomes create recursive quality assurance
-* **Governance Evolution Triggers:** Challenge market patterns inform automatic governance parameter adjustments
-* **Cross-Platform Reputation Impact:** Challenge outcomes affect credibility scores across all ERC-8004 integrated platforms
+
+- **Dispute Escalation Pathways:** Complex challenges route through specialized agent committees with domain expertise
+- **Meta-Market Resolution:** Challenges to challenge market outcomes create recursive quality assurance
+- **Governance Evolution Triggers:** Challenge market patterns inform automatic governance parameter adjustments
+- **Cross-Platform Reputation Impact:** Challenge outcomes affect credibility scores across all ERC-8004 integrated platforms
 
 ### ERC-8004 Reputation Registry Integration
+
 The ReputationAgent coordinates with other agents to build credibility scores based on:
-* Challenge market participation quality
-* Information sourcing standards  
-* Constructive discourse contribution
-* Historical engagement patterns
+
+- Challenge market participation quality
+- Information sourcing standards
+- Constructive discourse contribution
+- Historical engagement patterns
 
 High-reputation participants get priority congressional routing. Low-reputation claims require additional verification stakes. Reputation becomes portable political capital across democratic platforms.
 
-### Market Resolution Mechanisms  
+### Market Resolution Mechanisms
+
 Rather than determining truth, challenge markets evaluate:
-* Quality of sources cited
-* Reasoning and evidence provided
-* Good faith engagement with counterarguments
-* Constructive contribution to democratic discourse
+
+- Quality of sources cited
+- Reasoning and evidence provided
+- Good faith engagement with counterarguments
+- Constructive contribution to democratic discourse
 
 When challenge markets verify template impact claims, creators build credibility that determines future reward multipliers. High-impact templates that demonstrably change legislative positions earn creators privileged platform access and increased treasury allocation influence.
 
@@ -144,6 +161,7 @@ The mechanism is simple: prove your template changed a mind, earn the right to f
 ## Technical Implementation
 
 ### Memory System
+
 **ChromaDB Vector Memory System:**
 
 Agent memory operates through vector-based storage that embeds decisions with contextual metadata including effectiveness scores and timestamps. When agents encounter new situations, they query similar historical contexts using vector embeddings to inform better decisions.
@@ -151,6 +169,7 @@ Agent memory operates through vector-based storage that embeds decisions with co
 This creates continuous learning where decision effectiveness guides future parameter adjustments. Memory persistence ensures agents retain learning across system restarts and upgrades. Historical patterns enable sophisticated pattern matching for improved civic action verification and reward calculation.
 
 ### Workflow Orchestration
+
 **Temporal Workflow Orchestration:**
 
 Continuous optimization runs through hourly cycles that measure current performance against targets. When performance falls below thresholds, the system coordinates agents to generate improvements and deploys beneficial optimizations automatically.
@@ -158,6 +177,7 @@ Continuous optimization runs through hourly cycles that measure current performa
 This creates adaptive systems that evolve based on observed outcomes rather than static rules. Temporal workflows provide reliability and failure recovery for long-running agent coordination processes.
 
 ### N8N Automation
+
 **N8N Automation Pipeline:**
 
 Civic actions trigger webhook endpoints that activate multi-agent verification workflows. The pipeline orchestrates verification through distributed agents, calculates dynamic reward optimization, executes smart contract interactions, and updates agent memory with learned outcomes.
@@ -167,14 +187,18 @@ Automated workflows handle the complete civic action lifecycle from submission t
 ## Economic Model: Robust & Resilient
 
 ### Resilient Civic Engagement
+
 Agents create natural equilibrium, but always within auditable, on-chain safety rails:
+
 - High participation → Lower per-action rewards (clamped by min) → Economic balance
-- Low participation → Higher incentives (clamped by max) → Increased engagement  
+- Low participation → Higher incentives (clamped by max) → Increased engagement
 - Dynamic supply within defined caps → Natural market dynamics within auditable limits
 - Optimal distribution → Maximum civic impact, while preventing gaming.
 
 ### Emergent Governance with Safeguards
+
 Instead of fixed voting rules, governance evolves, but with built-in safeguards:
+
 - Agents adjust voting periods based on issue urgency, within predefined ranges.
 - Participation requirements adapt to community size, with minimum thresholds for legitimacy.
 - Proposal thresholds optimize for quality vs accessibility, with mechanisms to prevent spam.
@@ -183,22 +207,26 @@ Instead of fixed voting rules, governance evolves, but with built-in safeguards:
 ## Examples in Action
 
 ### Scenario: Major Legislative Vote
+
 Traditional system: Fixed rewards per message, regardless of importance
 Agent system: ImpactAgent recognizes critical vote, MarketAgent significantly increases rewards, SupplyAgent adjusts total allocation, VerificationAgent tightens validation
 
-### Scenario: Low Civic Engagement Period  
+### Scenario: Low Civic Engagement Period
+
 Traditional system: Same rewards, participation drops
 Agent system: MarketAgent increases incentives, SupplyAgent loosens constraints, ImpactAgent identifies engagement barriers, system adapts
 
 ### Scenario: Spam Attack
+
 Traditional system: Fixed rate limits may block legitimate users
 Agent system: VerificationAgent recognizes patterns, adapts thresholds in real-time, SecurityAgent implements targeted countermeasures, system learns from attack
 
 ## The Future of Democratic Technology: Robust & Resilient Systems
 
 Agent democracy represents the evolution from:
+
 - **Authoritarian code** → **Intelligent, resilient infrastructure**
-- **Fixed rules** → **Adaptive systems with robust safeguards**  
+- **Fixed rules** → **Adaptive systems with robust safeguards**
 - **Human constraints** → **Human empowerment within auditable frameworks**
 - **Artificial scarcity** → **Abundant participation within sustainable bounds**
 
@@ -207,15 +235,19 @@ The goal isn't to replace human judgment with machine logic, but to create syste
 ## Implementation Strategy
 
 ### Phase 1: Agent Foundation
+
 Deploy basic agent infrastructure alongside existing contracts. Agents monitor and recommend but don't control yet.
 
-### Phase 2: Gradual Transition with Robustness Testing  
+### Phase 2: Gradual Transition with Robustness Testing
+
 Replace hardcoded parameters with agent-calculated values, always within predefined min/max bounds. Test extensively in low-stakes scenarios, focusing on system resilience and stability under stress.
 
 ### Phase 3: Controlled Autonomy
+
 Agents manage aspects of the protocol within robust safety rails. Humans provide oversight and adjustment, and retain emergency override capabilities. Day-to-day optimization is automated, but critical functions remain protected.
 
 ### Phase 4: Resilient Emergence
+
 The system develops capabilities we didn't explicitly program, but always within a framework designed for safety and stability. Democratic participation becomes more effective and engaging, and the system is robust enough to handle unexpected outcomes.
 
 ## Honest Complexity
@@ -243,4 +275,3 @@ Algorithmic democracy doesn't replace human democratic participation - it create
 The future of civic technology is cryptographic and autonomous: systems that execute mathematical proofs rather than enforce human biases, and transcend regulatory capture through code-as-constitutional law.
 
 **Quality discourse pays. Bad faith costs. Algorithms execute what humans coordinate.**
-

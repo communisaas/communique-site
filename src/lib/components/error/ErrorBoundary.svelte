@@ -66,7 +66,8 @@ Catches and handles component failures gracefully
 		// Capture unhandled promise rejections
 		window.onunhandledrejection = (event) => {
 			if (!hasError) {
-				const error = event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+				const error =
+					event.reason instanceof Error ? event.reason : new Error(String(event.reason));
 				handleError(error);
 			}
 			return originalUnhandledRejection?.call(window, event);
@@ -103,20 +104,29 @@ Catches and handles component failures gracefully
 
 		// Auto-retry if configured
 		if (autoRetryDelay > 0 && retryCount < maxRetries) {
-			coordinated.setTimeout(() => {
-				retry();
-			}, autoRetryDelay, 'feedback', componentId);
+			coordinated.setTimeout(
+				() => {
+					retry();
+				},
+				autoRetryDelay,
+				'feedback',
+				componentId
+			);
 		}
 	}
 
 	async function reportError(info: ErrorInfo) {
 		try {
 			const { api } = await import('$lib/core/api/client');
-			await api.post('/api/errors/report', {
-				error: info,
-				context: 'ErrorBoundary',
-				retryCount
-			}, { skipErrorLogging: true });
+			await api.post(
+				'/api/errors/report',
+				{
+					error: info,
+					context: 'ErrorBoundary',
+					retryCount
+				},
+				{ skipErrorLogging: true }
+			);
 		} catch {
 			// Silent fail - don't create error loops
 		}
@@ -124,26 +134,32 @@ Catches and handles component failures gracefully
 
 	function retry() {
 		if (retryCount >= maxRetries) return;
-		
+
 		isRetrying = true;
 		retryCount++;
-		
+
 		// Clear error state after brief delay
-		coordinated.setTimeout(() => {
-			hasError = false;
-			errorInfo = null;
-			isRetrying = false;
-			dispatch('retry');
-		}, 100, 'feedback', componentId);
+		coordinated.setTimeout(
+			() => {
+				hasError = false;
+				errorInfo = null;
+				isRetrying = false;
+				dispatch('retry');
+			},
+			100,
+			'feedback',
+			componentId
+		);
 	}
 
 	function reportBug() {
 		if (errorInfo) {
 			dispatch('report', errorInfo);
-			
+
 			// Default behavior: mailto with error details
 			const subject = encodeURIComponent(`Bug Report: ${errorInfo.message}`);
-			const body = encodeURIComponent(`
+			const body = encodeURIComponent(
+				`
 Error Details:
 - Message: ${errorInfo.message}
 - URL: ${errorInfo.url}
@@ -152,8 +168,9 @@ Error Details:
 
 Stack Trace:
 ${errorInfo.stack || 'Not available'}
-			`.trim());
-			
+			`.trim()
+			);
+
 			window.location.href = `mailto:support@example.com?subject=${subject}&body=${body}`;
 		}
 	}
@@ -172,22 +189,17 @@ ${errorInfo.stack || 'Not available'}
 
 {#if hasError && errorInfo}
 	<!-- Error Boundary UI -->
-	<div class="min-h-[400px] flex items-center justify-center p-8">
-		<div class="max-w-md w-full text-center space-y-6">
+	<div class="flex min-h-[400px] items-center justify-center p-8">
+		<div class="w-full max-w-md space-y-6 text-center">
 			{#if fallback === 'minimal'}
 				<!-- Minimal error display -->
 				<div class="space-y-3">
-					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto" />
+					<AlertTriangle class="mx-auto h-8 w-8 text-red-500" />
 					<p class="text-sm text-slate-600">Something went wrong.</p>
 					{#if showRetry && retryCount < maxRetries}
-						<Button 
-							variant="secondary" 
-							size="sm"
-							onclick={retry}
-							disabled={isRetrying}
-						>
+						<Button variant="secondary" size="sm" onclick={retry} disabled={isRetrying}>
 							{#if isRetrying}
-								<RefreshCw class="h-4 w-4 animate-spin mr-2" />
+								<RefreshCw class="mr-2 h-4 w-4 animate-spin" />
 								Retrying...
 							{:else}
 								Try Again
@@ -199,10 +211,8 @@ ${errorInfo.stack || 'Not available'}
 				<!-- Detailed error display -->
 				<div class="space-y-4">
 					<div class="space-y-2">
-						<AlertTriangle class="h-12 w-12 text-red-500 mx-auto" />
-						<h3 class="text-lg font-semibold text-slate-900">
-							Oops! Something went wrong
-						</h3>
+						<AlertTriangle class="mx-auto h-12 w-12 text-red-500" />
+						<h3 class="text-lg font-semibold text-slate-900">Oops! Something went wrong</h3>
 						<p class="text-sm text-slate-600">
 							We encountered an unexpected error. This has been reported to our team.
 						</p>
@@ -210,47 +220,43 @@ ${errorInfo.stack || 'Not available'}
 
 					<!-- Error details (development) -->
 					{#if import.meta.env.DEV}
-						<details class="text-left bg-red-50 rounded-lg p-3">
-							<summary class="text-xs font-medium text-red-700 cursor-pointer">
+						<details class="rounded-lg bg-red-50 p-3 text-left">
+							<summary class="cursor-pointer text-xs font-medium text-red-700">
 								Error Details
 							</summary>
-							<div class="mt-2 text-xs text-red-600 space-y-1">
+							<div class="mt-2 space-y-1 text-xs text-red-600">
 								<div><strong>Message:</strong> {errorInfo.message}</div>
 								<div><strong>Time:</strong> {new Date(errorInfo.timestamp).toLocaleString()}</div>
 								{#if errorInfo.stack}
 									<div><strong>Stack:</strong></div>
-									<pre class="text-xs overflow-x-auto whitespace-pre-wrap">{errorInfo.stack}</pre>
+									<pre class="overflow-x-auto whitespace-pre-wrap text-xs">{errorInfo.stack}</pre>
 								{/if}
 							</div>
 						</details>
 					{/if}
 
 					<!-- Action buttons -->
-					<div class="flex gap-3 justify-center">
+					<div class="flex justify-center gap-3">
 						{#if showRetry && retryCount < maxRetries}
-							<Button 
-								variant="primary"
-								onclick={retry}
-								disabled={isRetrying}
-							>
+							<Button variant="primary" onclick={retry} disabled={isRetrying}>
 								{#if isRetrying}
-									<RefreshCw class="h-4 w-4 animate-spin mr-2" />
+									<RefreshCw class="mr-2 h-4 w-4 animate-spin" />
 									Retrying...
 								{:else}
-									<RefreshCw class="h-4 w-4 mr-2" />
+									<RefreshCw class="mr-2 h-4 w-4" />
 									Try Again
 								{/if}
 							</Button>
 						{/if}
-						
+
 						<Button variant="secondary" onclick={goHome}>
-							<Home class="h-4 w-4 mr-2" />
+							<Home class="mr-2 h-4 w-4" />
 							Go Home
 						</Button>
-						
+
 						{#if showReportBug}
 							<Button variant="outline" onclick={reportBug}>
-								<Bug class="h-4 w-4 mr-2" />
+								<Bug class="mr-2 h-4 w-4" />
 								Report Bug
 							</Button>
 						{/if}
@@ -265,7 +271,7 @@ ${errorInfo.stack || 'Not available'}
 			{:else}
 				<!-- Redirect fallback -->
 				<div class="space-y-3">
-					<AlertTriangle class="h-8 w-8 text-red-500 mx-auto" />
+					<AlertTriangle class="mx-auto h-8 w-8 text-red-500" />
 					<p class="text-sm text-slate-600">Redirecting to safety...</p>
 				</div>
 				{#if typeof window !== 'undefined'}

@@ -5,10 +5,10 @@ import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals, url }) => {
 	const { slug } = params;
-	
+
 	// Look up template by slug
 	const template = await db.template.findUnique({
-		where: { 
+		where: {
 			slug,
 			is_public: true // Only show public templates via deep links
 		},
@@ -21,11 +21,11 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 			}
 		}
 	});
-	
+
 	if (!template) {
 		throw error(404, 'Template not found');
 	}
-	
+
 	// Track template modal view
 	await db.template.update({
 		where: { id: template.id },
@@ -37,13 +37,13 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 			}
 		}
 	});
-	
+
 	// Check if user is authenticated
 	if (!locals.user) {
 		// Redirect to main template page with auth prompt
 		throw redirect(302, `/${slug}?auth=required&source=modal`);
 	}
-	
+
 	// Format template for client
 	const formattedTemplate = {
 		id: template.id,
@@ -60,13 +60,15 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 		delivery_config: template.delivery_config,
 		recipient_config: template.recipient_config,
 		recipientEmails: extractRecipientEmails(template.recipient_config),
-		author: template.user ? {
-			name: template.user.name,
-			avatar: template.user.avatar
-		} : null,
+		author: template.user
+			? {
+					name: template.user.name,
+					avatar: template.user.avatar
+				}
+			: null,
 		createdAt: template.createdAt.toISOString()
 	};
-	
+
 	return {
 		template: formattedTemplate,
 		user: locals.user,

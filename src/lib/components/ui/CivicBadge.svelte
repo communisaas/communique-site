@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Check, Clock, AlertTriangle, Info, Shield, Mail } from '@lucide/svelte';
-	
+
 	interface Props {
 		variant?: 'verified' | 'community' | 'success' | 'warning' | 'error' | 'info' | 'neutral';
 		size?: 'sm' | 'md';
@@ -8,15 +8,9 @@
 		icon?: boolean;
 		children?: import('svelte').Snippet;
 	}
-	
-	let { 
-		variant = 'neutral', 
-		size = 'sm', 
-		pulse = false, 
-		icon = true,
-		children 
-	}: Props = $props();
-	
+
+	let { variant = 'neutral', size = 'sm', pulse = false, icon = true, children }: Props = $props();
+
 	// Icon mapping based on variant
 	const iconMap = {
 		verified: Shield,
@@ -27,16 +21,16 @@
 		info: Info,
 		neutral: Info
 	};
-	
+
 	const IconComponent = iconMap[variant];
-	
+
 	// Build CSS classes using design system
 	let badgeClasses = $derived(() => {
 		const baseClasses = 'participation-badge';
 		const sizeClass = `participation-badge-${size}`;
 		const variantClass = `participation-badge-${variant}`;
 		const pulseClass = pulse ? 'participation-pulse' : '';
-		
+
 		return `${baseClasses} ${sizeClass} ${variantClass} ${pulseClass}`.trim();
 	});
 </script>
@@ -60,9 +54,9 @@ Accessibility:
 
 <span class={badgeClasses} role="status">
 	{#if icon && IconComponent}
-		<IconComponent class="w-3 h-3 flex-shrink-0" />
+		<IconComponent class="h-3 w-3 flex-shrink-0" />
 	{/if}
-	
+
 	{#if children}
 		{@render children()}
 	{/if}

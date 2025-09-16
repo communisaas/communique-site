@@ -6,7 +6,7 @@ Turn-key email delivery to Congress via Communicating With Congress (CWC) API, p
 
 **Self-sustaining civic infrastructure funded by cryptographic proof-of-work.**
 
-*Let the collective voice rise.*
+_Let the collective voice rise._
 
 ## 🚀 Live Deployment
 
@@ -22,10 +22,10 @@ Turn-key email delivery to Congress via Communicating With Congress (CWC) API, p
 - **Address Validation**: Census Bureau Geocoding API
 - **Deployment**: Fly.io
 
-
 ## ⚡ Quick Start
 
 ### 1. Clone & Install
+
 ```bash
 git clone https://github.com/communisaas/communique-site.git
 cd communique-site
@@ -33,6 +33,7 @@ npm install
 ```
 
 ### 2. Environment Setup
+
 Create `.env` with required variables:
 
 ```bash
@@ -63,6 +64,7 @@ CWC_API_BASE_URL="https://cwc.api.url"
 ```
 
 ### 3. Database Setup
+
 ```bash
 # Generate Prisma client
 npm run db:generate
@@ -76,6 +78,7 @@ npm run db:seed:channels
 ```
 
 ### 4. Start Development
+
 ```bash
 npm run dev
 ```
@@ -85,6 +88,7 @@ App available at `http://localhost:5173`
 ## 🔑 OAuth Provider Setup
 
 ### Google OAuth
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
 2. Create/select project
 3. Enable Google+ API
@@ -95,6 +99,7 @@ App available at `http://localhost:5173`
    - `https://communi.email/auth/google/callback` (prod)
 
 ### Facebook, Twitter, LinkedIn, Discord
+
 Similar setup - create apps in respective developer consoles and configure redirect URIs following the same pattern: `{BASE_URL}/auth/{provider}/callback`
 
 ## 📊 Database Commands
@@ -125,39 +130,45 @@ npm run lint
 ```
 
 ### Fly.io Deployment
+
 ```bash
 # Deploy to staging
 fly deploy --config fly.staging.toml
 
-# Deploy to production  
+# Deploy to production
 fly deploy
 ```
 
 ## ✨ Features
 
 ### 🌍 Global Legislative Channels
+
 - Tiered access by country (email, api/form, social-only)
 - Dynamic channel resolution in SSR via `channelResolver`
 - US certified delivery (web forms) gated; Tier 1 countries use direct email
 
 ### 📧 Congressional Advocacy
+
 - **Address-based representative lookup**: Find user's Congress members
 - **CWC API integration**: Direct delivery to congressional offices
 - **Template system**: Pre-built advocacy messages
 - **Personalization**: Custom user details injection
 
 ### 🎯 Direct Email Campaigns
+
 - **mailto-based delivery**: Opens the user's email client with pre-filled content
 - **Template engine**: Customizable message templates
 - **Campaign tracking**: Delivery analytics
 
 ### 🔐 Authentication & Onboarding
+
 - **OAuth providers**: Google, Facebook, Twitter, LinkedIn, Discord
 - **Address collection**: For congressional campaigns
 - **Profile completion**: For direct outreach
 - **Extended sessions**: 90-day cookies for template-action deep-link flows (e.g., `template-modal`, `auth=required`, `action=complete`)
 
 ### 📱 User Experience
+
 - **Responsive design**: Mobile-first interface
 - **Template modal**: Streamlined sharing flow
 - **mailto: integration**: One-click email client launch (Tier 1 countries)
@@ -189,15 +200,18 @@ static/               # Static assets
 ## 🔗 Key Integrations
 
 ### Communicating With Congress (CWC)
+
 - Validates messages against CWC requirements
 - Handles delivery to congressional offices
 - Provides delivery confirmation
 
 ### Address Validation
+
 - Census Bureau Geocoding API (primary)
 - ZIP→District fallback (OpenSourceActivismTech, 119th)
 
 ### Cryptographic Infrastructure (Algorithmic Coordination)
+
 - Anchoring: Monad (cheap EVM) for cryptographic proof verification; batch Merkle roots and deterministic execution logs
 - Algorithmic Treasury: Smart contracts automatically execute fund allocation based on mathematical correlation scores
 - ERC-8004 Reputation: Portable democratic credibility across platforms - built for AI agents, extended to human civic participants
@@ -207,17 +221,21 @@ static/               # Static assets
 ## 🚨 Common Issues
 
 ### OAuth Redirect Mismatches
+
 Ensure redirect URIs in OAuth provider consoles match exactly:
+
 - `http://localhost:5173/auth/{provider}/callback` (dev)
-- `https://staging.communi.email/auth/{provider}/callback` (staging)  
+- `https://staging.communi.email/auth/{provider}/callback` (staging)
 - `https://communi.email/auth/{provider}/callback` (prod)
 
 ### Database Connection Issues
+
 - Check Supabase Postgres connection string format
 - Ensure database exists and is accessible
 - Run `npm run db:generate` after schema changes
 
 ### Missing Environment Variables
+
 - All OAuth provider keys must be set
 - CWC API credentials required for congressional delivery
 - Check `.env` against the example above

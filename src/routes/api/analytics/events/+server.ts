@@ -1,6 +1,6 @@
 /**
  * Analytics Events API Endpoint
- * 
+ *
  * Receives batched analytics events from the client and stores them in the database.
  * Handles session management and user identification.
  */
@@ -35,12 +35,15 @@ interface EventBatch {
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
 		const { session_data, events }: EventBatch = await request.json();
-		
+
 		if (!session_data?.session_id || !Array.isArray(events)) {
-			return json({
-				success: false,
-				error: 'Invalid request format'
-			}, { status: 400 });
+			return json(
+				{
+					success: false,
+					error: 'Invalid request format'
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Get client IP for geolocation (if not provided)
@@ -49,7 +52,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		// Validate user_id exists if provided
 		let validatedUserId: string | null = null;
 		if (session_data.user_id) {
-			const userExists = await db.user.findUnique({ 
+			const userExists = await db.user.findUnique({
 				where: { id: session_data.user_id },
 				select: { id: true }
 			});
@@ -73,7 +76,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				utm_campaign: session_data.utm_campaign || null,
 				landing_page: session_data.landing_page || null,
 				events_count: events.length,
-				page_views: events.filter(e => (e.event_name || e.name) === 'page_view').length
+				page_views: events.filter((e) => (e.event_name || e.name) === 'page_view').length
 			},
 			update: {
 				user_id: validatedUserId || undefined,
@@ -81,25 +84,25 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 					increment: events.length
 				},
 				page_views: {
-					increment: events.filter(e => (e.event_name || e.name) === 'page_view').length
+					increment: events.filter((e) => (e.event_name || e.name) === 'page_view').length
 				},
 				updated_at: new Date()
 			}
 		});
 
 		// Validate template_ids exist if provided
-		const templateIds = [...new Set(events.map(e => e.template_id).filter(Boolean))];
+		const templateIds = [...new Set(events.map((e) => e.template_id).filter(Boolean))];
 		const validTemplateIds = new Set();
 		if (templateIds.length > 0) {
 			const existingTemplates = await db.template.findMany({
 				where: { id: { in: templateIds } },
 				select: { id: true }
 			});
-			existingTemplates.forEach(t => validTemplateIds.add(t.id));
+			existingTemplates.forEach((t) => validTemplateIds.add(t.id));
 		}
 
 		// Process and store events
-		const eventsToCreate = events.map(event => ({
+		const eventsToCreate = events.map((event) => ({
 			session_id: session_data.session_id,
 			user_id: event.user_id || validatedUserId || null,
 			timestamp: event.timestamp || new Date(),
@@ -116,9 +119,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		});
 
 		// Update session end time and check for conversions
-		const hasConversion = events.some(e => 
-			e.event_name === 'template_used' || 
-			e.event_name === 'auth_completed'
+		const hasConversion = events.some(
+			(e) => e.event_name === 'template_used' || e.event_name === 'auth_completed'
 		);
 
 		// Note: Conversion tracking would require additional user_session schema fields
@@ -129,26 +131,31 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			events_processed: events.length,
 			session_id: session_data.session_id
 		});
-
 	} catch (error) {
 		console.error('Analytics events processing failed:', error);
-		
-		return json({
-			success: false,
-			error: 'Failed to process analytics events'
-		}, { status: 500 });
+
+		return json(
+			{
+				success: false,
+				error: 'Failed to process analytics events'
+			},
+			{ status: 500 }
+		);
 	}
 };
 
 // Optional: GET endpoint for debugging (remove in production)
 export const GET: RequestHandler = async ({ url }) => {
 	const sessionId = url.searchParams.get('session_id');
-	
+
 	if (!sessionId) {
-		return json({
-			success: false,
-			error: 'session_id required'
-		}, { status: 400 });
+		return json(
+			{
+				success: false,
+				error: 'session_id required'
+			},
+			{ status: 400 }
+		);
 	}
 
 	try {
@@ -163,10 +170,13 @@ export const GET: RequestHandler = async ({ url }) => {
 		});
 
 		if (!session) {
-			return json({
-				success: false,
-				error: 'Session not found'
-			}, { status: 404 });
+			return json(
+				{
+					success: false,
+					error: 'Session not found'
+				},
+				{ status: 404 }
+			);
 		}
 
 		return json({
@@ -174,13 +184,15 @@ export const GET: RequestHandler = async ({ url }) => {
 			session,
 			events_count: session.analytics_events.length
 		});
-
 	} catch (error) {
 		console.error('Failed to fetch session data:', error);
-		
-		return json({
-			success: false,
-			error: 'Failed to fetch session data'
-		}, { status: 500 });
+
+		return json(
+			{
+				success: false,
+				error: 'Failed to fetch session data'
+			},
+			{ status: 500 }
+		);
 	}
 };

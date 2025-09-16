@@ -9,17 +9,20 @@ N8N workflows for orchestrating Communiqué agents with VOTER Protocol smart con
 ## Architecture
 
 ### **Modular Components**
+
 - **Sub-workflows**: Reusable components for agent communication and database operations
 - **Template system**: Standardized patterns for common workflow types
 - **Centralized error handling**: Global error handler with retry logic and monitoring
 
 ### **UI Organization**
+
 - Consistent 200px node spacing
 - Emoji labels for visual identification
 - Sticky notes for documentation
 - Visual grouping of related operations
 
 ### **Features**
+
 - Retry logic with exponential backoff
 - Circuit breakers for failure detection
 - Monitoring and alerting
@@ -53,6 +56,7 @@ workflows/n8n/
 **Purpose**: Centralized error handling for all workflows with automatic categorization, retry logic, and monitoring.
 
 **Features**:
+
 - 🚨 **Critical Alerting**: Immediate Slack notifications for critical errors
 - 🔄 **Smart Retry Logic**: Exponential backoff with jitter for retryable errors
 - 📊 **Error Categorization**: Automatic classification by severity and type
@@ -61,8 +65,9 @@ workflows/n8n/
 - 🗄️ **Dead Letter Queue**: Failed items stored for manual investigation
 
 **Error Categories**:
+
 - **Critical**: Database connection lost, auth failures
-- **High**: Timeouts, verification failures  
+- **High**: Timeouts, verification failures
 - **Medium**: Retry limits, partial failures
 - **Low**: General errors, validation issues
 
@@ -71,6 +76,7 @@ workflows/n8n/
 **Purpose**: Processes and certifies civic actions through multi-agent verification with dynamic rewards.
 
 **Improvements**:
+
 - Uses agent communication sub-workflow for all API calls
 - Uses database operations sub-workflow for storage
 - Error handling with the global error handler
@@ -78,6 +84,7 @@ workflows/n8n/
 - Parallel agent processing for better performance
 
 **Flow**:
+
 1. 📧 **Webhook Trigger**: Receives civic action data
 2. ⚙️ **Data Preparation**: Validates and enriches action data
 3. 🔍 **Agent Verification**: Parallel verification, reward calculation, reputation update
@@ -91,6 +98,7 @@ workflows/n8n/
 **Purpose**: Implements Carroll Mechanisms for information quality markets with quadratic economics.
 
 **Improvements**:
+
 - Severity calculation based on multiple factors
 - Multi-agent consensus for critical challenges
 - Quadratic staking with reputation-based scaling
@@ -98,6 +106,7 @@ workflows/n8n/
 - Integrated treasury fee collection
 
 **Flow**:
+
 1. ⚔️ **Challenge Created**: Webhook receives challenge data
 2. ⚙️ **Data Preparation**: Calculates severity and risk factors
 3. 🔍 **Dual Verification**: Verifies both original claim and challenge
@@ -113,6 +122,7 @@ workflows/n8n/
 **Purpose**: Centralized agent API communication with built-in error handling and retry logic.
 
 **Features**:
+
 - ✅ Automatic retry with exponential backoff
 - ✅ Standardized error handling
 - ✅ Response parsing based on agent type
@@ -120,6 +130,7 @@ workflows/n8n/
 - ✅ Credential management
 
 **Supported Agents**:
+
 - `verification`: Template and claim verification
 - `market`: Reward calculation and economic optimization
 - `reputation`: User reputation updates
@@ -132,6 +143,7 @@ workflows/n8n/
 **Purpose**: Centralized database operations with connection pooling and caching.
 
 **Supported Operations**:
+
 - `query`: Execute SELECT queries with caching
 - `insert`: Insert new records with validation
 - `update`: Update existing records
@@ -139,6 +151,7 @@ workflows/n8n/
 - `batch`: Batch insert/update operations
 
 **Features**:
+
 - ✅ Connection pooling
 - ✅ Automatic retry for connection errors
 - ✅ Result caching for read operations
@@ -153,6 +166,7 @@ workflows/n8n/
 **Purpose**: Standard template for webhook-driven civic engagement workflows.
 
 **Pattern**:
+
 1. 🌐 Webhook trigger
 2. ✅ Input validation
 3. 🔍 Agent verification
@@ -165,6 +179,7 @@ workflows/n8n/
 **Purpose**: Template for scheduled workflows that monitor metrics and trigger optimizations.
 
 **Pattern**:
+
 1. ⏰ Schedule trigger
 2. 📊 Metrics collection
 3. 🎯 Threshold analysis
@@ -215,7 +230,7 @@ workflows/n8n/
 The workflows integrate Communiqué's agent network with VOTER Protocol's blockchain infrastructure:
 
 - **VerificationAgent**: Validates civic actions and templates
-- **MarketAgent**: Calculates dynamic rewards and economic parameters  
+- **MarketAgent**: Calculates dynamic rewards and economic parameters
 - **ReputationAgent**: Updates ERC-8004 reputation scores
 - **ImpactAgent**: Tracks causal chains from templates to legislative outcomes
 - **SupplyAgent**: Optimizes token supply based on network conditions
@@ -235,7 +250,7 @@ Workflows interact with the VOTER Protocol database:
 All workflows generate metrics compatible with the VOTER Protocol monitoring infrastructure:
 
 - Request/response latencies
-- Success/failure rates  
+- Success/failure rates
 - Agent performance metrics
 - Database operation statistics
 - Error categorization and trends
@@ -301,6 +316,7 @@ All workflows generate metrics compatible with the VOTER Protocol monitoring inf
 ### Support
 
 For technical support:
+
 1. Check the global error handler logs
 2. Review workflow execution history
 3. Contact the development team with error IDs

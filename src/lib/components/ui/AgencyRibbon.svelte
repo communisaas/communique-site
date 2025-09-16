@@ -21,4 +21,3 @@
 		<span>{message}</span>
 	</div>
 </div>
-

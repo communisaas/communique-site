@@ -17,8 +17,9 @@ Sources: docs.monad.xyz (throughput/cost), [ERC‑8004: Trustless Agents](https:
 Traditional electoral finance assumes centralized actors making coordinated decisions. But coordination through **algorithmic consensus** and **cryptographic execution** transcends regulatory categories built for human-centric systems.
 
 **Revolutionary Framework:**
+
 - **Cryptographic proofs** of democratic participation, not political contributions
-- **Algorithmic treasury management** via deterministic smart contract execution  
+- **Algorithmic treasury management** via deterministic smart contract execution
 - **Mathematical correlation verification** replacing subjective responsiveness judgments
 - **Code-as-constitution** eliminating human discretion from fund allocation
 
@@ -33,6 +34,7 @@ When legislators debate this platform, they see: unprecedented transparency, alg
 Agents calculate optimal supply based on real demand and participation patterns. No hardcoded maximums. No artificial scarcity. The SupplyAgent monitors network health and adjusts token issuance within auditable bounds set by on-chain parameters. Economic abundance serves democratic participation rather than early-adopter speculation.
 
 **Why artificial scarcity fails:**
+
 - Creates exclusion by design
 - Benefits early adopters at expense of participants
 - Turns civic engagement into speculation
@@ -41,7 +43,9 @@ Agents calculate optimal supply based on real demand and participation patterns.
 **Robustness Principle:** While agents optimize for abundance, the protocol enforces explicit, auditable minimum and maximum bounds on key parameters, ensuring stability and preventing runaway issuance even under extreme conditions or agent misbehavior.
 
 ### 2. Adaptive Parameters (Beyond Hardcoded Constants)
+
 Every parameter becomes dynamically calibrated, but always within predefined, auditable safety rails:
+
 - Token rewards per action (clamped by min/max)
 - Verification thresholds (with defined ranges)
 - Economic incentives (bounded for stability)
@@ -50,7 +54,9 @@ Every parameter becomes dynamically calibrated, but always within predefined, au
 **Robustness Principle:** Agents dynamically adjust parameters, but the system maintains auditable, transparent guardrails. This prevents unintended consequences from emergent agent behavior and ensures predictable system behavior.
 
 ### 3. Distributed Consensus (Beyond Central Operators)
+
 Instead of `OPERATOR_ROLE`, we implement multi-agent consensus, complemented by human-governed circuit breakers:
+
 - Multiple specialized agents
 - Distributed decision making
 - Consensus-based execution
@@ -84,6 +90,7 @@ High-impact templates by proven creators require serious commitment to challenge
 
 **Concrete Stake Calculations:**
 Agent calculates based on:
+
 - Earned vs purchased tokens: Higher stakes for market-bought tokens
 - Reputation score: Built credibility can substitute for token stakes
 - Creator track record: Proven creators require higher challenge commitment
@@ -94,7 +101,7 @@ Economic parameters evolve through observation rather than arbitrary constants. 
 
 **4. Impact Measurement Agent**
 
-The ImpactAgent tracks which templates actually change reality. It monitors legislative floor speeches for template talking points, tracks voting pattern changes after mass campaigns, identifies when citizen expertise shapes amendments, and measures media pickup of template arguments. 
+The ImpactAgent tracks which templates actually change reality. It monitors legislative floor speeches for template talking points, tracks voting pattern changes after mass campaigns, identifies when citizen expertise shapes amendments, and measures media pickup of template arguments.
 
 The agent builds causal models of civic influence on political outcomes. When template language appears verbatim in testimony—that's proven causation. When voting patterns shift after coordinated campaigns—that's measurable causal influence. When amendments adopt citizen proposals—that's direct causal impact. The ImpactAgent captures these causal chains to drive creator rewards and treasury allocation.
 
@@ -104,6 +111,7 @@ The ImpactAgent's impact scores—from proven causation to strong correlations�
 **Code executes what humans coordinate.**
 
 **Concrete Correlation Tracking:**
+
 - Template: "Policy reduces veteran wait times by 40%"
 - Observable: 10K constituents send this message via CWC
 - Observable: Senator cites "40% reduction" in committee hearing
@@ -120,6 +128,7 @@ The ReputationAgent builds credibility scores by tracking challenge market parti
 
 **Concrete Reputation Scoring:**
 Agent-calculated based on context:
+
 - Challenge market victories build credibility
 - Failed challenges reduce reputation proportionally
 - Template influence scores multiply reputation gains
@@ -138,35 +147,35 @@ flowchart LR
     subgraph SA["Civic Action"]
         A[User sends<br/>message]
     end
-    
+
     subgraph SB["Agent Swarm"]
         B[VerificationAgent<br/>validates action]
         C[SupplyAgent<br/>calculates reward]
-        D[MarketAgent<br/>checks economics] 
+        D[MarketAgent<br/>checks economics]
         E[ReputationAgent<br/>updates credibility]
         F[ImpactAgent<br/>measures effect]
     end
-    
+
     subgraph SC["Consensus"]
         G{{Multi-Agent<br/>Agreement}}
     end
-    
+
     subgraph SD["Outcomes"]
         H[Monad<br/>anchoring]
         I[ERC-8004<br/>reputation]
         J[VOTER<br/>tokens]
     end
-    
+
     A -.->|triggers| B & C & D & E & F
     B & C & D & E & F -->|scores| G
     G -->|if consensus| H & I & J
     G -.->|no consensus| A
-    
+
     style SA fill:#1e293b,stroke:#60a5fa,stroke-width:2px,color:#f1f5f9
     style SB fill:#1e293b,stroke:#a78bfa,stroke-width:2px,color:#f1f5f9
     style SC fill:#1e293b,stroke:#fbbf24,stroke-width:2px,color:#f1f5f9
     style SD fill:#1e293b,stroke:#34d399,stroke-width:2px,color:#f1f5f9
-    
+
     style A fill:#1e3a8a,stroke:#60a5fa,stroke-width:2px,color:#f1f5f9
     style B fill:#4c1d95,stroke:#a78bfa,stroke-width:2px,color:#f1f5f9
     style C fill:#4c1d95,stroke:#a78bfa,stroke-width:2px,color:#f1f5f9
@@ -216,7 +225,7 @@ These mechanisms enhance agent coordination for information quality assessment w
 **The Echo Chamber Problem:**
 Similar models produce similar biases. We address this through:
 
-1. **Model Diversity**: 
+1. **Model Diversity**:
    - VerificationAgent: Claude-based
    - SupplyAgent: GPT-based
    - MarketAgent: Open source model
@@ -249,13 +258,13 @@ The AgentConsensusGateway validates multi-agent agreement before executing param
 
 **N8N Workflow Engine (off-chain):**
 
-Civic actions trigger webhook endpoints that activate parallel agent verification. The VerificationAgent, IdentityAgent, and ImpactAgent analyze submissions simultaneously rather than sequentially. The coordinator calculates consensus scores from agent outputs through multi-agent agreement. High-confidence decisions automatically anchor hash receipts to Monad through the attest contract. 
+Civic actions trigger webhook endpoints that activate parallel agent verification. The VerificationAgent, IdentityAgent, and ImpactAgent analyze submissions simultaneously rather than sequentially. The coordinator calculates consensus scores from agent outputs through multi-agent agreement. High-confidence decisions automatically anchor hash receipts to Monad through the attest contract.
 
 The workflow orchestrator manages agent coordination, failure recovery, and result persistence. No single point of failure disrupts the civic action pipeline.
 
 **ChromaDB Vector Memory System:**
 
-Agents learn from every decision through vector-based memory storage. The system maintains separate collections for agent decisions and civic outcomes, enabling sophisticated pattern matching across historical contexts. 
+Agents learn from every decision through vector-based memory storage. The system maintains separate collections for agent decisions and civic outcomes, enabling sophisticated pattern matching across historical contexts.
 
 When agents encounter new situations, they query similar historical contexts using vector embeddings. Decision effectiveness scores inform future parameter adjustments. Agent memory enables continuous improvement rather than static rule enforcement.
 
@@ -275,8 +284,9 @@ Optimal amounts get clamped by smart contract minimums and maximums, ensuring ec
 ### Self-Regulating Supply within Safety Rails
 
 The system maintains health through feedback loops, with protocol-enforced safety rails preventing extreme deviations:
+
 - High participation: lower per-action rewards (clamped by min) create economic balance
-- Low participation: higher incentives (clamped by max) drive increased engagement  
+- Low participation: higher incentives (clamped by max) drive increased engagement
 - Dynamic supply within defined caps: natural market equilibrium within auditable limits
 
 ## Governance Evolution
@@ -302,19 +312,22 @@ The protocol evolves based on usage patterns: Agents identify inefficiencies, pr
 ### What Exists in Repo
 
 **Smart Contracts (Complete):**
+
 - `VOTERRegistry`, `VOTERToken`, `CommuniqueCore` - Core system
-- `AgentParameters`, `AgentConsensusGateway` - Agent infrastructure  
+- `AgentParameters`, `AgentConsensusGateway` - Agent infrastructure
 - `ChallengeMarket`, `StakedVOTER` - Economic mechanisms
 - Parameter safety rails (min/max clamps) enforced in contracts
 - Forge tests passing
 
 **Agent Code (Complete):**
+
 - Five specialized agents with full business logic
 - LangGraph coordinator and state management
 - Complete workflows and FastAPI server
 - Not deployed or running
 
 ### To build next
+
 - CWC verification workflow (n8n) writing to `AgentConsensusGateway`
 - Telemetry, anomaly auto-tightening
 - Timelock and guardian pause; minimal admin UI & public endpoints
@@ -324,6 +337,7 @@ The protocol evolves based on usage patterns: Agents identify inefficiencies, pr
 ### Traditional Web3 & Electoral Finance Mistakes
 
 **Authoritarian Patterns to Avoid:**
+
 - Hardcoded limits that never adapt to changing conditions
 - Central operators with god-mode powers over user funds
 - Fixed economic parameters that ignore market dynamics
@@ -333,6 +347,7 @@ The protocol evolves based on usage patterns: Agents identify inefficiencies, pr
 ### Cypherpunk Alternatives (Cryptographic Transcendence)
 
 **Revolutionary Patterns We Implement:**
+
 - Agent-determined parameters within auditable minimum and maximum bounds
 - Distributed algorithmic consensus eliminating human coordination vulnerabilities
 - Dynamic economics that respond to real civic engagement patterns while maintaining cryptographic integrity

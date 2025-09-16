@@ -5,7 +5,7 @@ import { CWCGenerator } from '$lib/core/congress/cwc-generator';
 
 /**
  * Test CWC integration
- * 
+ *
  * This endpoint tests the CWC API client and XML generation
  * for congressional message delivery.
  */
@@ -18,7 +18,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			id: 'test-template-1',
 			title: 'Test Congressional Message',
 			subject: 'Urgent: Support Climate Action',
-			message_body: 'Dear [Representative Name],\n\nAs your constituent from [Address], I urge you to support climate action legislation. [Personal Connection]\n\nThank you for your service.\n\nSincerely,\n[Name]',
+			message_body:
+				'Dear [Representative Name],\n\nAs your constituent from [Address], I urge you to support climate action legislation. [Personal Connection]\n\nThank you for your service.\n\nSincerely,\n[Name]',
 			delivery_config: {},
 			cwc_config: {}
 		};
@@ -56,7 +57,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			// Test 1: XML Generation
 			const previewXML = CWCGenerator.generatePreviewXML(testTemplate as any);
 			const validation = CWCGenerator.validateXML(previewXML);
-			
+
 			results.xmlGeneration = {
 				success: validation.valid,
 				errors: validation.errors,
@@ -79,7 +80,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				testSenator,
 				'This is a test message for congressional delivery.'
 			);
-			
+
 			results.senateSubmission = {
 				success: senateResult.success,
 				status: senateResult.status,
@@ -103,14 +104,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			results,
 			message: 'CWC integration test completed'
 		});
-
 	} catch (error) {
 		console.error('CWC test error:', error);
-		return json({
-			success: false,
-			error: error instanceof Error ? error.message : 'Test failed',
-			message: 'CWC integration test failed'
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: error instanceof Error ? error.message : 'Test failed',
+				message: 'CWC integration test failed'
+			},
+			{ status: 500 }
+		);
 	}
 };
 

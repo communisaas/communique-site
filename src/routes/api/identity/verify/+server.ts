@@ -8,15 +8,17 @@ import { SELF_XYZ_SCOPE, SELF_XYZ_ENDPOINT } from '$lib/core/server/selfxyz-conf
 import { verificationSessions } from '$lib/core/server/verification-sessions';
 
 // Initialize configuration store for Self.xyz
-const configStore = new InMemoryConfigStore(async (userIdentifier: string, userDefinedData: string) => {
-	// Generate a consistent action ID based on user identifier and data
-	return `${userIdentifier}-${Buffer.from(userDefinedData).toString('hex').slice(0, 16)}`;
-});
+const configStore = new InMemoryConfigStore(
+	async (userIdentifier: string, userDefinedData: string) => {
+		// Generate a consistent action ID based on user identifier and data
+		return `${userIdentifier}-${Buffer.from(userDefinedData).toString('hex').slice(0, 16)}`;
+	}
+);
 
 // Allowed attestation IDs (1 = passport, 2 = EU ID card)
 const allowedIds = new Map<1 | 2, boolean>([
 	[1, true], // passport allowed
-	[2, true]  // EU ID card allowed
+	[2, true] // EU ID card allowed
 ]);
 
 // Initialize the Self.xyz backend verifier
@@ -44,7 +46,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		// Store configuration for this verification (required by SDK)
 		const contextData = userContextData ? JSON.parse(userContextData) : {};
 		const { userId, templateSlug } = contextData;
-		
+
 		// Store verification config in the config store
 		const configId = await configStore.getActionId(userId, userContextData);
 		await configStore.setConfig(configId, {
@@ -62,9 +64,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		);
 
 		// Check if verification was successful
-		const isValid = verificationResult.isValidDetails.isValid && 
-						verificationResult.isValidDetails.isMinimumAgeValid && 
-						verificationResult.isValidDetails.isOfacValid;
+		const isValid =
+			verificationResult.isValidDetails.isValid &&
+			verificationResult.isValidDetails.isMinimumAgeValid &&
+			verificationResult.isValidDetails.isOfacValid;
 
 		if (!isValid) {
 			console.error('Self.xyz verification failed:', {
@@ -72,11 +75,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 				isMinimumAgeValid: verificationResult.isValidDetails.isMinimumAgeValid,
 				isOfacValid: verificationResult.isValidDetails.isOfacValid
 			});
-			return json({
-				status: 'error',
-				result: false,
-				message: 'Identity verification failed - invalid proof or requirements not met'
-			}, { status: 400 });
+			return json(
+				{
+					status: 'error',
+					result: false,
+					message: 'Identity verification failed - invalid proof or requirements not met'
+				},
+				{ status: 400 }
+			);
 		}
 
 		// Extract credential data from the disclosed output
@@ -94,7 +100,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		const issuingState = discloseOutput.issuingState;
 		const name = discloseOutput.name;
 		const ageVerified = parseInt(discloseOutput.minimumAge) >= 18;
-		const ofacPassed = discloseOutput.ofac.every(check => check === true);
+		const ofacPassed = discloseOutput.ofac.every((check) => check === true);
 
 		// Create verification metadata
 		const verificationData = {
@@ -135,7 +141,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 				// Continue processing - verification still succeeded
 			}
 		}
-		
+
 		console.log('Self.xyz verification successful:', {
 			userId,
 			nationality,
@@ -153,10 +159,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 			userUpdated: !!locals.user,
 			message: 'Identity verification completed successfully'
 		});
-
 	} catch (error) {
 		console.error('Self.xyz verification error:', error);
-		
+
 		// Log detailed error information for debugging
 		if (error instanceof Error) {
 			console.error('Error details:', {
@@ -166,10 +171,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 			});
 		}
 
-		return json({
-			status: 'error',
-			result: false,
-			message: 'Internal verification error'
-		}, { status: 500 });
+		return json(
+			{
+				status: 'error',
+				result: false,
+				message: 'Internal verification error'
+			},
+			{ status: 500 }
+		);
 	}
 };

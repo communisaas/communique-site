@@ -7,13 +7,13 @@ export async function POST({ request, locals }) {
 		if (!locals.user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
-		
+
 		const { role, organization, location, connection, connectionDetails } = await request.json();
-		
+
 		if (!role || !connection) {
 			return json({ error: 'Role and connection are required' }, { status: 400 });
 		}
-		
+
 		// Update user with profile information using proper fields
 		const updatedUser = await db.user.update({
 			where: { id: locals.user.id },
@@ -27,20 +27,22 @@ export async function POST({ request, locals }) {
 				updatedAt: new Date()
 			}
 		});
-		
-		return json({ 
-			success: true, 
+
+		return json({
+			success: true,
 			message: 'Profile saved successfully',
 			user: {
 				id: updatedUser.id,
 				profileComplete: true
 			}
 		});
-		
 	} catch (error) {
-		return json({ 
-			error: 'Failed to save profile' 
-		}, { status: 500 });
+		return json(
+			{
+				error: 'Failed to save profile'
+			},
+			{ status: 500 }
+		);
 	}
 }
 
@@ -50,7 +52,7 @@ export async function GET({ locals }) {
 		if (!locals.user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
-		
+
 		// Get user's profile information
 		const user = await db.user.findUnique({
 			where: { id: locals.user.id },
@@ -77,11 +79,11 @@ export async function GET({ locals }) {
 				updatedAt: true
 			}
 		});
-		
+
 		if (!user) {
 			return json({ error: 'User not found' }, { status: 404 });
 		}
-		
+
 		return json({
 			user: {
 				id: user.id,
@@ -114,10 +116,12 @@ export async function GET({ locals }) {
 				}
 			}
 		});
-		
 	} catch (error) {
-		return json({ 
-			error: 'Failed to fetch profile' 
-		}, { status: 500 });
+		return json(
+			{
+				error: 'Failed to fetch profile'
+			},
+			{ status: 500 }
+		);
 	}
 }

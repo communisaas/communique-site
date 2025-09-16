@@ -1,9 +1,9 @@
 /**
  * CWC (Communicating With Congress) API Client
- * 
+ *
  * Handles submission of citizen messages to congressional offices
  * via the official CWC system.
- * 
+ *
  * Senate: Direct API access with API key
  * House: Requires proxy server with whitelisted IPs (not implemented)
  */
@@ -45,11 +45,11 @@ interface CWCSubmissionResult {
 export class CWCClient {
 	private apiKey: string;
 	private baseUrl: string;
-	
+
 	constructor() {
 		this.apiKey = process.env.CWC_API_KEY || '';
 		this.baseUrl = process.env.CWC_API_BASE_URL || 'https://soapbox.senate.gov/api';
-		
+
 		if (!this.apiKey) {
 			console.warn('CWC_API_KEY not configured - congressional submissions will be simulated');
 		}
@@ -109,7 +109,7 @@ export class CWCClient {
 
 			// Submit to Senate CWC endpoint (testing for now)
 			const endpoint = `${this.baseUrl}/testing-messages/?apikey=${this.apiKey}`;
-			
+
 			const response = await fetch(endpoint, {
 				method: 'POST',
 				headers: {
@@ -120,7 +120,7 @@ export class CWCClient {
 			});
 
 			const result = await this.parseResponse(response, senator);
-			
+
 			// Log submission for debugging
 			console.log('Senate CWC submission:', {
 				office: senator.name,
@@ -131,7 +131,6 @@ export class CWCClient {
 			});
 
 			return result;
-
 		} catch (error) {
 			console.error('Senate CWC submission error:', error);
 			return {
@@ -201,7 +200,6 @@ export class CWCClient {
 
 				// Add delay between submissions to avoid rate limiting
 				await this.delay(1000);
-
 			} catch (error) {
 				console.error(`Failed to submit to ${rep.name}:`, error);
 				results.push({
@@ -220,7 +218,10 @@ export class CWCClient {
 	/**
 	 * Parse CWC API response
 	 */
-	private async parseResponse(response: Response, office: CongressionalOffice): Promise<CWCSubmissionResult> {
+	private async parseResponse(
+		response: Response,
+		office: CongressionalOffice
+	): Promise<CWCSubmissionResult> {
 		const timestamp = new Date().toISOString();
 		const baseResult = {
 			office: office.name,
@@ -262,7 +263,6 @@ export class CWCClient {
 				messageId,
 				cwcResponse
 			};
-
 		} catch (error) {
 			console.error('Failed to parse CWC response:', error);
 			return {
@@ -292,7 +292,7 @@ export class CWCClient {
 	 * Add delay between API calls
 	 */
 	private delay(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 
 	/**
@@ -306,7 +306,7 @@ export class CWCClient {
 
 		try {
 			const response = await fetch(`${this.baseUrl}/active_offices?apikey=${this.apiKey}`);
-			
+
 			if (!response.ok) {
 				return {
 					success: false,
@@ -315,7 +315,7 @@ export class CWCClient {
 			}
 
 			const offices = await response.json();
-			
+
 			console.log('Active Senate offices retrieved:', {
 				count: Array.isArray(offices) ? offices.length : 'unknown',
 				timestamp: new Date().toISOString()
@@ -325,7 +325,6 @@ export class CWCClient {
 				success: true,
 				offices: Array.isArray(offices) ? offices : [offices]
 			};
-
 		} catch (error) {
 			return {
 				success: false,
@@ -349,7 +348,6 @@ export class CWCClient {
 				connected: result.success,
 				error: result.error
 			};
-
 		} catch (error) {
 			return {
 				connected: false,

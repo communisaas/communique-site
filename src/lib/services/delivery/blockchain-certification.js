@@ -1,6 +1,6 @@
 /**
  * Direct Blockchain Certification Handler
- * 
+ *
  * Handles certification of civic actions through direct smart contract calls
  * Eliminates circular dependency on VOTER Protocol API
  */
@@ -9,14 +9,14 @@ const { ethers } = require('ethers');
 
 // Smart contract ABIs (simplified - only functions we need)
 const COMMUNIQUE_CORE_ABI = [
-	"function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string memory metadataUri, uint256 rewardOverride) external"
+	'function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string memory metadataUri, uint256 rewardOverride) external'
 ];
 
 const VOTER_REGISTRY_ABI = [
-	"function ActionType() view returns (uint8)",
-	"function CWC_MESSAGE() view returns (uint8)",
-	"function LOCAL_ACTION() view returns (uint8)", 
-	"function DIRECT_ACTION() view returns (uint8)"
+	'function ActionType() view returns (uint8)',
+	'function CWC_MESSAGE() view returns (uint8)',
+	'function LOCAL_ACTION() view returns (uint8)',
+	'function DIRECT_ACTION() view returns (uint8)'
 ];
 
 class BlockchainCertification {
@@ -24,11 +24,11 @@ class BlockchainCertification {
 		// Initialize blockchain connection
 		this.provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');
 		this.wallet = new ethers.Wallet(process.env.CERTIFIER_PRIVATE_KEY || '0x0', this.provider);
-		
+
 		// Contract addresses (from environment)
 		this.communiqueCoreAddress = process.env.COMMUNIQUE_CORE_ADDRESS;
 		this.voterRegistryAddress = process.env.VOTER_REGISTRY_ADDRESS;
-		
+
 		// Initialize contracts
 		if (this.communiqueCoreAddress) {
 			this.communiqueCore = new ethers.Contract(
@@ -45,22 +45,22 @@ class BlockchainCertification {
 	getActionType(templateData) {
 		const title = (templateData.title || '').toLowerCase();
 		const method = (templateData.deliveryMethod || '').toLowerCase();
-		
+
 		// Congressional messages (corresponds to CWC_MESSAGE enum)
-		if (method === 'certified' || 
-		    title.includes('congress') || 
-		    title.includes('representative') || 
-		    title.includes('senator')) {
+		if (
+			method === 'certified' ||
+			title.includes('congress') ||
+			title.includes('representative') ||
+			title.includes('senator')
+		) {
 			return 0; // CWC_MESSAGE
 		}
-		
+
 		// Local government (corresponds to LOCAL_ACTION enum)
-		if (title.includes('local') || 
-		    title.includes('mayor') || 
-		    title.includes('council')) {
+		if (title.includes('local') || title.includes('mayor') || title.includes('council')) {
 			return 1; // LOCAL_ACTION
 		}
-		
+
 		// Default to direct action
 		return 2; // DIRECT_ACTION
 	}
@@ -82,16 +82,20 @@ class BlockchainCertification {
 	async certifyDelivery({ userAddress, templateData, deliveryConfirmation }) {
 		try {
 			console.log('🔗 Certifying delivery on blockchain...');
-			
+
 			if (!this.communiqueCore) {
 				throw new Error('CommuniqueCore contract not initialized');
 			}
 
 			// Prepare transaction data
 			const actionType = this.getActionType(templateData);
-			const actionHash = this.generateActionHash(userAddress, templateData.id, deliveryConfirmation);
+			const actionHash = this.generateActionHash(
+				userAddress,
+				templateData.id,
+				deliveryConfirmation
+			);
 			const metadataUri = `ipfs://delivery/${deliveryConfirmation}`; // Store delivery data on IPFS
-			
+
 			// Call smart contract directly
 			const tx = await this.communiqueCore.processCivicAction(
 				userAddress,
@@ -102,12 +106,12 @@ class BlockchainCertification {
 			);
 
 			console.log('📝 Certification transaction sent:', tx.hash);
-			
+
 			// Wait for confirmation
 			const receipt = await tx.wait();
-			
+
 			console.log('✅ Certification confirmed in block:', receipt.blockNumber);
-			
+
 			return {
 				success: true,
 				transactionHash: tx.hash,
@@ -115,10 +119,9 @@ class BlockchainCertification {
 				actionHash: actionHash,
 				gasUsed: receipt.gasUsed.toString()
 			};
-
 		} catch (error) {
 			console.error('❌ Blockchain certification failed:', error);
-			
+
 			return {
 				success: false,
 				error: error.message,

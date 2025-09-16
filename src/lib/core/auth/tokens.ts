@@ -84,7 +84,7 @@ export function generateOneTimeToken(data: any, expiresIn = '1h'): string {
 	};
 
 	const secret = env.JWT_SECRET || 'development-secret';
-	
+
 	return jwt.sign(payload, secret, {
 		expiresIn,
 		issuer: 'communique.app'

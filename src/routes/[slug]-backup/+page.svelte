@@ -23,7 +23,7 @@
 	// Simple modal state
 	let isUpdatingAddress = $state(false);
 	let showEmailLoadingModal = $state(false);
-	
+
 	// ActionBar state
 	let personalConnectionValue = $state('');
 	let localShowEmailModal = $state(false);
@@ -52,24 +52,25 @@
 
 	onMount(() => {
 		// Check if this is a share link flow
-		const isShareFlow = browser && sessionStorage.getItem(`template_${template.id}_share_flow`) === 'true';
-		
+		const isShareFlow =
+			browser && sessionStorage.getItem(`template_${template.id}_share_flow`) === 'true';
+
 		if (isShareFlow) {
 			// Clean up the share flow flag
 			sessionStorage.removeItem(`template_${template.id}_share_flow`);
-			
+
 			// Override source for share flows
 			const shareSource = 'share';
-			
+
 			// Track template view with share source
 			funnelAnalytics.trackTemplateView(template.id, shareSource);
-			
+
 			// Store template context for guest users with share source
 			if (!data.user) {
 				const safeSlug = (template.slug ?? template.id) as string;
 				guestState.setTemplate(safeSlug, template.title, shareSource);
 			}
-			
+
 			// Trigger the share flow immediately
 			handleShareFlow();
 		} else {
@@ -78,7 +79,7 @@
 				template.id,
 				source as 'social-link' | 'direct-link' | 'share'
 			);
-			
+
 			// Store template context for guest users
 			if (!data.user) {
 				const safeSlug = (template.slug ?? template.id) as string;
@@ -100,24 +101,24 @@
 		switch (flow.nextAction) {
 			case 'auth':
 				// User needs to authenticate first
-				modalActions.openModal('auth-modal', 'auth', { 
-					template, 
+				modalActions.openModal('auth-modal', 'auth', {
+					template,
 					source: shareSource,
-					autoSend: true 
+					autoSend: true
 				});
 				funnelAnalytics.trackOnboardingStarted(template.id, shareSource);
 				break;
-				
+
 			case 'address':
 				// User needs to provide address for congressional delivery
-				modalActions.openModal('address-modal', 'address', { 
-					template, 
+				modalActions.openModal('address-modal', 'address', {
+					template,
 					source: shareSource,
 					user: data.user,
-					autoSend: true 
+					autoSend: true
 				});
 				break;
-				
+
 			case 'email':
 				// Ready to send - show the cool loading modal and launch email
 				if (flow.mailtoUrl) {
@@ -182,10 +183,10 @@
 
 			// Close address modal and proceed to email generation
 			modalActions.close('address-modal');
-			
+
 			// Clear any stored intent after successful address submission
 			sessionStorage.removeItem(`template_${template.id}_intent`);
-			
+
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				showEmailLoadingModal = true;
@@ -201,10 +202,10 @@
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
 			modalActions.close('address-modal');
-			
+
 			// Clear any stored intent even on error
 			sessionStorage.removeItem(`template_${template.id}_intent`);
-			
+
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				showEmailLoadingModal = true;
@@ -292,10 +293,10 @@
 					{/if}
 				</div>
 			{/if}
-			
+
 			<!-- ActionBar positioned in header -->
 			<div class="w-full sm:w-auto [&>div]:mt-0">
-				<ActionBar 
+				<ActionBar
 					{template}
 					user={data.user as { id: string; name: string | null } | null}
 					{personalConnectionValue}
@@ -312,7 +313,7 @@
 					}}
 					bind:localShowEmailModal
 					bind:actionProgress
-					onEmailModalClose={() => showEmailLoadingModal = false}
+					onEmailModalClose={() => (showEmailLoadingModal = false)}
 					componentId="template-page-action"
 				/>
 			</div>
@@ -357,7 +358,7 @@
 			context="page"
 			user={data.user as { id: string; name: string | null } | null}
 			showEmailModal={showEmailLoadingModal}
-			onEmailModalClose={() => showEmailLoadingModal = false}
+			onEmailModalClose={() => (showEmailLoadingModal = false)}
 			onScroll={() => {}}
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
@@ -386,7 +387,10 @@
 				}
 
 				// For now, treat US or certified templates as existing path
-				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'certified')) {
+				if (
+					data.user &&
+					(channel?.country_code === 'US' || template.deliveryMethod === 'certified')
+				) {
 					const flow = analyzeEmailFlow(template, data.user);
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', { template, source });
@@ -411,4 +415,3 @@
 		/>
 	</div>
 </div>
-

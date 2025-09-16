@@ -62,7 +62,9 @@ function mapWorkflowToStatus(update: N8NStatusUpdate): {
 			if (status === 'completed') {
 				return {
 					status: 'delivered',
-					details: data?.cwcConfirmation ? 'Via CWC confirmation: ' + data.cwcConfirmation : 'Delivered to Congress',
+					details: data?.cwcConfirmation
+						? 'Via CWC confirmation: ' + data.cwcConfirmation
+						: 'Delivered to Congress',
 					deliveryCount: data?.deliveryCount,
 					canOverride: false
 				};
@@ -104,7 +106,7 @@ function broadcastStatusUpdate(submissionId: string, statusUpdate: any) {
 	const connections = activeConnections.get(submissionId);
 	if (connections) {
 		const message = JSON.stringify(statusUpdate);
-		connections.forEach(ws => {
+		connections.forEach((ws) => {
 			if (ws.readyState === WebSocket.OPEN) {
 				try {
 					ws.send(message);
@@ -130,7 +132,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const update: N8NStatusUpdate = await request.json();
-		
+
 		if (!update.submissionId || !update.workflowStage || !update.status) {
 			const response: ApiResponse = {
 				success: false,
@@ -161,10 +163,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		return json(response);
-
 	} catch (error) {
 		console.error('N8N webhook error:', error);
-		
+
 		const response: ApiResponse = {
 			success: false,
 			error: createApiError('server', 'SERVER_INTERNAL', 'Failed to process webhook')
@@ -179,11 +180,11 @@ export const GET: RequestHandler = async ({ url, request }) => {
 	// This would be implemented with your WebSocket server
 	// For SvelteKit, you might use a different approach like Server-Sent Events
 	// or integrate with a WebSocket library
-	
+
 	const response: ApiResponse = {
 		success: false,
 		error: createApiError('server', 'SERVER_NOT_IMPLEMENTED', 'WebSocket endpoint not implemented')
 	};
-	
+
 	return json(response, { status: 501 });
 };

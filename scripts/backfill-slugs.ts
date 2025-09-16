@@ -55,4 +55,4 @@ backfillTemplateSlugs()
 	})
 	.finally(async () => {
 		await db.$disconnect();
-	}); 
+	});

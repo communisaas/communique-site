@@ -17,7 +17,7 @@ async function getSubmissionStatus(submissionId: string): Promise<SubmissionStat
 	try {
 		// This would query your database for the actual submission
 		// For now, simulate status based on time since submission
-		
+
 		// Mock data - replace with actual database queries
 		const submission = {
 			id: submissionId,
@@ -29,7 +29,7 @@ async function getSubmissionStatus(submissionId: string): Promise<SubmissionStat
 
 		// Simulate progression through N8N workflow stages
 		const minutesSinceSubmission = (Date.now() - submission.createdAt.getTime()) / 1000 / 60;
-		
+
 		if (minutesSinceSubmission < 1) {
 			return {
 				status: 'sending',
@@ -67,7 +67,7 @@ async function getSubmissionStatus(submissionId: string): Promise<SubmissionStat
 export const GET: RequestHandler = async ({ params }) => {
 	try {
 		const submissionId = params.id;
-		
+
 		if (!submissionId) {
 			const response: ApiResponse = {
 				success: false,
@@ -77,7 +77,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		const status = await getSubmissionStatus(submissionId);
-		
+
 		if (!status) {
 			const response: ApiResponse = {
 				success: false,
@@ -92,10 +92,9 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(response);
-
 	} catch (error) {
 		console.error('Submission status error:', error);
-		
+
 		const response: ApiResponse = {
 			success: false,
 			error: createApiError('server', 'SERVER_INTERNAL', 'Failed to get submission status')

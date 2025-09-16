@@ -83,12 +83,12 @@ export async function POST({ request }) {
 				}
 			};
 		}
-		
+
 		// Transform corrections into quick fixes
 		const quickFixes: QuickFix[] = corrections.changes.map((change: any) => {
 			let fixMessage = '';
 			let reason = change.reason;
-			
+
 			switch (change.type) {
 				case 'grammar':
 					fixMessage = `Fix: "${change.original}" → "${change.corrected}"`;
@@ -136,10 +136,13 @@ export async function POST({ request }) {
 			status,
 			quickFixes,
 			scores: corrections.scores,
-			suggestions: status === 'needs_work' ? {
-				aiNeeded: true,
-				focusAreas: quickFixes.map(f => f.type)
-			} : undefined
+			suggestions:
+				status === 'needs_work'
+					? {
+							aiNeeded: true,
+							focusAreas: quickFixes.map((f) => f.type)
+						}
+					: undefined
 		};
 
 		const response: ApiResponse = {
@@ -148,10 +151,9 @@ export async function POST({ request }) {
 		};
 
 		return json(response);
-
 	} catch (error) {
 		console.error('Template analysis error:', error);
-		
+
 		const response: ApiResponse = {
 			success: false,
 			error: createApiError('server', 'SERVER_INTERNAL', 'Analysis failed')
@@ -189,9 +191,14 @@ function checkCommonIssues(content: string, isCertified: boolean = false): Quick
 	// Additional checks only for certified congressional templates
 	if (isCertified) {
 		// Check for missing specific ask (congressional requirement)
-		if (!lowerContent.includes('vote') && !lowerContent.includes('support') && 
-			!lowerContent.includes('oppose') && !lowerContent.includes('fund') && 
-			!lowerContent.includes('pass') && !lowerContent.includes('reject')) {
+		if (
+			!lowerContent.includes('vote') &&
+			!lowerContent.includes('support') &&
+			!lowerContent.includes('oppose') &&
+			!lowerContent.includes('fund') &&
+			!lowerContent.includes('pass') &&
+			!lowerContent.includes('reject')
+		) {
 			fixes.push({
 				type: 'ask',
 				fix: 'Add specific ask—what exactly should they do?',
@@ -201,8 +208,11 @@ function checkCommonIssues(content: string, isCertified: boolean = false): Quick
 		}
 
 		// Check for vague language (more critical for congressional)
-		if (lowerContent.includes('this issue') || lowerContent.includes('this matter') || 
-			lowerContent.includes('this problem')) {
+		if (
+			lowerContent.includes('this issue') ||
+			lowerContent.includes('this matter') ||
+			lowerContent.includes('this problem')
+		) {
 			fixes.push({
 				type: 'clarity',
 				fix: 'Name the issue specifically—what exactly are you talking about?',
@@ -222,8 +232,12 @@ function checkCommonIssues(content: string, isCertified: boolean = false): Quick
 		}
 
 		// Check for personal story hook (important for congressional credibility)
-		if (!lowerContent.includes('my') && !lowerContent.includes('our') && 
-			!lowerContent.includes('local') && !lowerContent.includes('community')) {
+		if (
+			!lowerContent.includes('my') &&
+			!lowerContent.includes('our') &&
+			!lowerContent.includes('local') &&
+			!lowerContent.includes('community')
+		) {
 			fixes.push({
 				type: 'structure',
 				fix: 'Add personal connection—why does this matter to you?',

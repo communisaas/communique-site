@@ -2,15 +2,17 @@
 	import { Send } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import HowItWorks from './HowItWorks.svelte';
-	
-	let heroFlightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined>('ready');
-	
+
+	let heroFlightState = $state<
+		'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined
+	>('ready');
+
 	// Check if element is in viewport
 	function isInViewport(element: Element): boolean {
 		const rect = element.getBoundingClientRect();
 		const windowHeight = window.innerHeight || document.documentElement.clientHeight;
 		const verticalCenter = windowHeight / 2;
-		
+
 		// Check if element's center is near viewport center (within 100px tolerance)
 		const elementCenter = rect.top + rect.height / 2;
 		return Math.abs(elementCenter - verticalCenter) < 100;
@@ -25,8 +27,10 @@
 			<span class="mt-2 block text-xl font-normal text-gray-600 sm:text-2xl">On record.</span>
 		</h1>
 
-		<p class="mb-8 text-base text-gray-600 sm:text-lg leading-relaxed">
-			Congress tracks millions of messages each year. Companies monitor customer sentiment. School boards count angry parents. The pattern is simple—coordinated messages get meetings. Scattered complaints get filed.
+		<p class="mb-8 text-base leading-relaxed text-gray-600 sm:text-lg">
+			Congress tracks millions of messages each year. Companies monitor customer sentiment. School
+			boards count angry parents. The pattern is simple—coordinated messages get meetings. Scattered
+			complaints get filed.
 		</p>
 	</div>
 

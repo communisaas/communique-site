@@ -14,7 +14,7 @@
 		rows?: number; // For textarea
 	}
 
-	let { 
+	let {
 		value = $bindable(),
 		label,
 		placeholder,
@@ -54,7 +54,7 @@
 		if (serverError) {
 			serverError = undefined;
 		}
-		
+
 		debouncedValidate(value);
 	}
 
@@ -70,8 +70,9 @@
 
 	// Input classes based on state
 	const inputClasses = $derived(() => {
-		const base = 'block w-full rounded-md border px-3 md:px-3 py-2 md:py-2 text-sm md:text-sm transition-colors focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-offset-1 md:focus:ring-offset-2';
-		
+		const base =
+			'block w-full rounded-md border px-3 md:px-3 py-2 md:py-2 text-sm md:text-sm transition-colors focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-offset-1 md:focus:ring-offset-2';
+
 		if (hasError) {
 			return `${base} border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500`;
 		} else if (isValid) {
@@ -127,16 +128,24 @@
 
 	<!-- Error message -->
 	{#if displayError}
-		<div class="flex items-center gap-1 text-xs md:text-sm text-red-600" role="alert">
-			<svg class="h-3 md:h-4 w-3 md:w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-				<path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+		<div class="flex items-center gap-1 text-xs text-red-600 md:text-sm" role="alert">
+			<svg class="h-3 w-3 flex-shrink-0 md:h-4 md:w-4" viewBox="0 0 20 20" fill="currentColor">
+				<path
+					fill-rule="evenodd"
+					d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z"
+					clip-rule="evenodd"
+				/>
 			</svg>
 			<span>{displayError}</span>
 		</div>
 	{:else if isValid && rules.required}
-		<div class="flex items-center gap-1 text-xs md:text-sm text-green-600">
-			<svg class="h-3 md:h-4 w-3 md:w-4 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
-				<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+		<div class="flex items-center gap-1 text-xs text-green-600 md:text-sm">
+			<svg class="h-3 w-3 flex-shrink-0 md:h-4 md:w-4" viewBox="0 0 20 20" fill="currentColor">
+				<path
+					fill-rule="evenodd"
+					d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+					clip-rule="evenodd"
+				/>
 			</svg>
 			<span>Looks good!</span>
 		</div>
@@ -144,7 +153,7 @@
 
 	<!-- Character count for fields with maxLength (disabled for textarea) -->
 	{#if rules.maxLength && isFocused && type !== 'textarea'}
-		<div class="text-xs text-gray-500 text-right">
+		<div class="text-right text-xs text-gray-500">
 			{value.length} / {rules.maxLength} characters
 		</div>
 	{/if}

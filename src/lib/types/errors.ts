@@ -23,21 +23,21 @@ export const ERROR_CODES = {
 	VALIDATION_TOO_LONG: 'VALIDATION_TOO_LONG',
 	VALIDATION_TOO_SHORT: 'VALIDATION_TOO_SHORT',
 	VALIDATION_DUPLICATE: 'VALIDATION_DUPLICATE',
-	
+
 	// Network errors
 	NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
 	NETWORK_OFFLINE: 'NETWORK_OFFLINE',
 	NETWORK_CONNECTION: 'NETWORK_CONNECTION',
-	
+
 	// Server errors
 	SERVER_INTERNAL: 'SERVER_INTERNAL',
 	SERVER_DATABASE: 'SERVER_DATABASE',
 	SERVER_RATE_LIMIT: 'SERVER_RATE_LIMIT',
-	
+
 	// Auth errors
 	AUTH_REQUIRED: 'AUTH_REQUIRED',
 	AUTH_INVALID_TOKEN: 'AUTH_INVALID_TOKEN',
-	AUTH_INSUFFICIENT_PERMISSIONS: 'AUTH_INSUFFICIENT_PERMISSIONS',
+	AUTH_INSUFFICIENT_PERMISSIONS: 'AUTH_INSUFFICIENT_PERMISSIONS'
 } as const;
 
 export const ERROR_MESSAGES = {
@@ -46,18 +46,18 @@ export const ERROR_MESSAGES = {
 	[ERROR_CODES.VALIDATION_TOO_LONG]: 'Text is too long',
 	[ERROR_CODES.VALIDATION_TOO_SHORT]: 'Text is too short',
 	[ERROR_CODES.VALIDATION_DUPLICATE]: 'This value already exists',
-	
+
 	[ERROR_CODES.NETWORK_TIMEOUT]: 'Request timed out. Please try again.',
 	[ERROR_CODES.NETWORK_OFFLINE]: 'You appear to be offline. Please check your connection.',
 	[ERROR_CODES.NETWORK_CONNECTION]: 'Connection error. Please try again.',
-	
+
 	[ERROR_CODES.SERVER_INTERNAL]: 'Something went wrong on our end. Please try again.',
 	[ERROR_CODES.SERVER_DATABASE]: 'Database error. Please try again later.',
 	[ERROR_CODES.SERVER_RATE_LIMIT]: 'Too many requests. Please wait a moment and try again.',
-	
+
 	[ERROR_CODES.AUTH_REQUIRED]: 'Please sign in to continue',
 	[ERROR_CODES.AUTH_INVALID_TOKEN]: 'Your session has expired. Please sign in again.',
-	[ERROR_CODES.AUTH_INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action',
+	[ERROR_CODES.AUTH_INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action'
 } as const;
 
 // Helper functions for creating errors
@@ -86,9 +86,7 @@ export function createValidationError(
 }
 
 export class AppError extends Error {
-	constructor(
-		public readonly apiError: ApiError
-	) {
+	constructor(public readonly apiError: ApiError) {
 		super(apiError.message);
 		this.name = 'AppError';
 	}

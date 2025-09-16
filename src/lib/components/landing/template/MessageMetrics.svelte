@@ -23,10 +23,10 @@
 		district_coverage_percent?: number;
 	} {
 		if (!rawMetrics) return {};
-		
+
 		// If it's already an object, return it
 		if (typeof rawMetrics === 'object') return rawMetrics;
-		
+
 		// If it's a JSON string, parse it
 		try {
 			return JSON.parse(rawMetrics);
@@ -38,18 +38,18 @@
 
 	// Get normalized metrics
 	const metrics = $derived(normalizeMetrics(template.metrics));
-	
+
 	// Calculate recipient count for direct email templates
 	const recipientCount = $derived(
 		// Use pre-computed recipientEmails from API if available
 		template.recipientEmails && Array.isArray(template.recipientEmails)
 			? template.recipientEmails.length
-			// Fallback to parsing recipient_config
-			: extractRecipientEmails(
-				typeof template.recipient_config === 'string' 
-					? JSON.parse(template.recipient_config) 
-					: template.recipient_config
-			).length
+			: // Fallback to parsing recipient_config
+				extractRecipientEmails(
+					typeof template.recipient_config === 'string'
+						? JSON.parse(template.recipient_config)
+						: template.recipient_config
+				).length
 	);
 
 	// Format numbers with commas, handle undefined/null values
@@ -64,7 +64,7 @@
 	const badgeType = $derived(
 		template.deliveryMethod === 'certified' ? 'certified' : ('direct' as 'certified' | 'direct')
 	);
-	
+
 	// For templates with recipients, always show recipient count regardless of delivery method
 	const shouldShowRecipients = $derived(recipientCount > 0);
 
@@ -96,8 +96,12 @@
 			tooltip: 'Delivered through Congressional Web Communication system',
 			value: `${formatNumber(metrics.sent)} sent`,
 			secondaryIcon: shouldShowRecipients ? (recipientCount > 1 ? Users : User) : MapPin,
-			secondaryTooltip: shouldShowRecipients ? 'Total recipient addresses targeted' : 'Percentage of congressional districts covered by this campaign',
-			secondaryValue: shouldShowRecipients ? `${formatNumber(recipientCount)} recipients` : `${getDistrictCoverage(metrics)} districts covered`
+			secondaryTooltip: shouldShowRecipients
+				? 'Total recipient addresses targeted'
+				: 'Percentage of congressional districts covered by this campaign',
+			secondaryValue: shouldShowRecipients
+				? `${formatNumber(recipientCount)} recipients`
+				: `${getDistrictCoverage(metrics)} districts covered`
 		},
 		direct: {
 			icon: Building2,

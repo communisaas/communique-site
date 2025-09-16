@@ -1,6 +1,6 @@
 /**
  * OAuth Flow Integration Tests
- * 
+ *
  * Tests OAuth authentication handler logic for all providers
  * Uses simplified mocks to test business logic, not provider internals
  */
@@ -58,13 +58,15 @@ import { oauthCallbackHandler } from '$lib/core/auth/oauth-callback-handler';
 
 // Helper to create mock config for testing
 function createMockOAuthConfig(provider: string) {
-	const mockUrl = new URL(`http://localhost:3000/auth/${provider}/callback?code=valid-code&state=valid-state`);
+	const mockUrl = new URL(
+		`http://localhost:3000/auth/${provider}/callback?code=valid-code&state=valid-state`
+	);
 	const mockCookies = {
 		get: vi.fn().mockReturnValue('verifier'),
 		set: vi.fn(),
 		delete: vi.fn()
 	} as any;
-	
+
 	const mockConfig = {
 		provider: provider as any,
 		clientId: 'test-client-id',
@@ -79,28 +81,28 @@ function createMockOAuthConfig(provider: string) {
 		mapUserData: (data: any) => data,
 		extractTokenData: (tokens: any) => tokens
 	};
-	
+
 	return { mockConfig, mockUrl, mockCookies };
 }
 
 describe('OAuth Flow Integration', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		
+
 		// Setup default successful responses
 		mockOAuthProvider.validateAuthorizationCode.mockResolvedValue({
 			accessToken: 'mock-access-token',
 			refreshToken: 'mock-refresh-token',
 			expiresAt: Date.now() + 3600000
 		});
-		
+
 		mockOAuthProvider.getUserInfo.mockResolvedValue({
 			id: 'oauth-user-123',
 			email: 'user@example.com',
 			name: 'Test User',
 			avatar: 'https://example.com/avatar.jpg'
 		});
-		
+
 		mockDb.account.findUnique.mockResolvedValue(null);
 		mockDb.user.findUnique.mockResolvedValue(null);
 		mockDb.user.create.mockResolvedValue({
@@ -119,21 +121,21 @@ describe('OAuth Flow Integration', () => {
 		it('should handle new user registration', async () => {
 			const config = { provider: 'google', requiresCodeVerifier: true };
 			const url = new URL('https://example.com/callback?code=valid-code&state=valid-state');
-			const cookies = { 
+			const cookies = {
 				get: vi.fn().mockImplementation((key) => {
 					if (key === 'oauth_state') return 'valid-state';
 					if (key === 'oauth_code_verifier') return 'verifier';
 					if (key === 'oauth_return_to') return '/profile';
 					return null;
 				}),
-				set: vi.fn() 
+				set: vi.fn()
 			} as any;
-			
+
 			const result = await oauthCallbackHandler.handleCallback(config, url, cookies);
 
 			expect(result.status).toBe(302);
 			expect(result.headers.get('location')).toBeTruthy();
-			
+
 			// Verify user creation
 			expect(mockDb.user.create).toHaveBeenCalledWith({
 				data: expect.objectContaining({
@@ -141,7 +143,7 @@ describe('OAuth Flow Integration', () => {
 					name: 'Test User'
 				})
 			});
-			
+
 			// Verify account linking
 			expect(mockDb.account.create).toHaveBeenCalledWith({
 				data: expect.objectContaining({
@@ -149,7 +151,7 @@ describe('OAuth Flow Integration', () => {
 					provider_user_id: 'oauth-user-123'
 				})
 			});
-			
+
 			// Verify session creation
 			expect(mockAuth.createSession).toHaveBeenCalledWith('user-123');
 		});
@@ -161,7 +163,7 @@ describe('OAuth Flow Integration', () => {
 				email: 'existing@example.com',
 				name: 'Existing User'
 			};
-			
+
 			mockDb.account.findUnique.mockResolvedValue({
 				id: 'account-456',
 				user_id: 'existing-user-456',
@@ -173,10 +175,10 @@ describe('OAuth Flow Integration', () => {
 
 			expect((result as any).success).toBe(true);
 			expect((result as any).user).toEqual(existingUser);
-			
+
 			// Should not create new user
 			expect(mockDb.user.create).not.toHaveBeenCalled();
-			
+
 			// Should create session for existing user
 			expect(mockAuth.createSession).toHaveBeenCalledWith('existing-user-456');
 		});
@@ -193,7 +195,7 @@ describe('OAuth Flow Integration', () => {
 			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(true);
-			
+
 			// Should link new provider to existing user
 			expect(mockDb.account.create).toHaveBeenCalledWith({
 				data: expect.objectContaining({
@@ -213,23 +215,21 @@ describe('OAuth Flow Integration', () => {
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toBe('Invalid authorization code');
-			
+
 			// Should not create user or session
 			expect(mockDb.user.create).not.toHaveBeenCalled();
 			expect(mockAuth.createSession).not.toHaveBeenCalled();
 		});
 
 		it('should handle user info fetch failure', async () => {
-			mockOAuthProvider.getUserInfo.mockRejectedValue(
-				new Error('Failed to fetch user info')
-			);
+			mockOAuthProvider.getUserInfo.mockRejectedValue(new Error('Failed to fetch user info'));
 
 			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig('google');
 			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('Failed to fetch user info');
-			
+
 			// Should not create user
 			expect(mockDb.user.create).not.toHaveBeenCalled();
 		});
@@ -250,7 +250,7 @@ describe('OAuth Flow Integration', () => {
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('Database error');
-			
+
 			// Should not create session if user creation fails
 			expect(mockAuth.createSession).not.toHaveBeenCalled();
 		});
@@ -267,14 +267,14 @@ describe('OAuth Flow Integration', () => {
 				refreshToken: config.hasRefreshToken ? `${provider}-refresh-token` : null,
 				expiresAt: Date.now() + 3600000
 			};
-			
+
 			mockOAuthProvider.validateAuthorizationCode.mockResolvedValue(tokens);
 
 			const { mockConfig, mockUrl, mockCookies } = createMockOAuthConfig(provider);
 			const result = await oauthCallbackHandler.handleCallback(mockConfig, mockUrl, mockCookies);
 
 			expect((result as any).success).toBe(true);
-			
+
 			// Verify provider-specific token handling
 			if (config.hasRefreshToken) {
 				expect(mockDb.account.create).toHaveBeenCalledWith({
@@ -289,16 +289,19 @@ describe('OAuth Flow Integration', () => {
 	describe('Session Management', () => {
 		it('should create secure session cookies', async () => {
 			const mockSetCookie = vi.fn();
-			
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier'
-			}, { setCookie: mockSetCookie });
+
+			const result = await oauthCallbackHandler.handleCallback(
+				{
+					provider: 'google',
+					code: 'valid-code',
+					state: 'valid-state',
+					codeVerifier: 'verifier'
+				},
+				{ setCookie: mockSetCookie }
+			);
 
 			expect((result as any).success).toBe(true);
-			
+
 			// Verify session cookie settings
 			expect(mockSetCookie).toHaveBeenCalledWith(
 				'auth_session',

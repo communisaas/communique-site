@@ -15,13 +15,13 @@ import { launchEmail } from '$lib/services/emailService';
 const launchResult = launchEmail(mailtoUrl);
 
 if (launchResult.success) {
-  // Certify with VOTER Protocol (runs in background)
-  voterIntegration.certifyEmailDelivery({
-    user: $user,
-    template: template,
-    mailtoUrl: mailtoUrl,
-    recipients: recipients
-  });
+	// Certify with VOTER Protocol (runs in background)
+	voterIntegration.certifyEmailDelivery({
+		user: $user,
+		template: template,
+		mailtoUrl: mailtoUrl,
+		recipients: recipients
+	});
 }
 ```
 
@@ -31,15 +31,12 @@ if (launchResult.success) {
 import { withVOTERCertification } from '$lib/integrations/voter';
 
 // Wrap existing email launch
-const result = await withVOTERCertification(
-  () => launchEmail(mailtoUrl),
-  {
-    user: $user,
-    template: template,
-    mailtoUrl: mailtoUrl,
-    recipients: recipients
-  }
-);
+const result = await withVOTERCertification(() => launchEmail(mailtoUrl), {
+	user: $user,
+	template: template,
+	mailtoUrl: mailtoUrl,
+	recipients: recipients
+});
 ```
 
 ### Method 3: Direct Certification Service
@@ -48,16 +45,15 @@ const result = await withVOTERCertification(
 import { certification } from '$lib/services/certification';
 
 // For more control
-const certResult = await certification.certifyAction(
-  userAddress,
-  {
-    actionType: 'direct_action',
-    deliveryReceipt: JSON.stringify({ /* receipt data */ }),
-    messageHash: 'generated-hash',
-    timestamp: new Date().toISOString(),
-    // ... other fields
-  }
-);
+const certResult = await certification.certifyAction(userAddress, {
+	actionType: 'direct_action',
+	deliveryReceipt: JSON.stringify({
+		/* receipt data */
+	}),
+	messageHash: 'generated-hash',
+	timestamp: new Date().toISOString()
+	// ... other fields
+});
 ```
 
 ## Integration Points
@@ -68,21 +64,21 @@ In `TemplateModal.svelte`, after email launch:
 
 ```svelte
 <script>
-  import { voterIntegration } from '$lib/integrations/voter';
+	import { voterIntegration } from '$lib/integrations/voter';
 
-  async function handleSend() {
-    const result = launchEmail(mailtoUrl);
-    
-    if (result.success) {
-      // Add VOTER certification
-      voterIntegration.certifyEmailDelivery({
-        user: $authStore.user,
-        template: template,
-        mailtoUrl: mailtoUrl,
-        recipients: recipientEmails
-      });
-    }
-  }
+	async function handleSend() {
+		const result = launchEmail(mailtoUrl);
+
+		if (result.success) {
+			// Add VOTER certification
+			voterIntegration.certifyEmailDelivery({
+				user: $authStore.user,
+				template: template,
+				mailtoUrl: mailtoUrl,
+				recipients: recipientEmails
+			});
+		}
+	}
 </script>
 ```
 
@@ -92,23 +88,23 @@ In route pages, after `launchEmail()`:
 
 ```svelte
 <script>
-  import { voterIntegration } from '$lib/integrations/voter';
+	import { voterIntegration } from '$lib/integrations/voter';
 
-  function handleEmailLaunch() {
-    if (flow.mailtoUrl) {
-      const result = launchEmail(flow.mailtoUrl);
-      
-      // Certify if user is authenticated
-      if (result.success && $authStore.user) {
-        voterIntegration.certifyEmailDelivery({
-          user: $authStore.user,
-          template: template,
-          mailtoUrl: flow.mailtoUrl,
-          recipients: extractRecipientEmails(template)
-        });
-      }
-    }
-  }
+	function handleEmailLaunch() {
+		if (flow.mailtoUrl) {
+			const result = launchEmail(flow.mailtoUrl);
+
+			// Certify if user is authenticated
+			if (result.success && $authStore.user) {
+				voterIntegration.certifyEmailDelivery({
+					user: $authStore.user,
+					template: template,
+					mailtoUrl: flow.mailtoUrl,
+					recipients: extractRecipientEmails(template)
+				});
+			}
+		}
+	}
 </script>
 ```
 
@@ -125,12 +121,14 @@ ENABLE_CERTIFICATION=true
 ## Testing the Integration
 
 1. **Start VOTER Protocol backend:**
+
    ```bash
    cd voter-protocol
    python api/server.py
    ```
 
 2. **Start Communiqué:**
+
    ```bash
    cd communique
    npm run dev

@@ -1,6 +1,6 @@
 /**
  * Direct VOTER Protocol Blockchain Client
- * 
+ *
  * Handles direct smart contract interactions with VOTER Protocol
  * Eliminates API proxy layers for better performance and reliability
  */
@@ -10,21 +10,21 @@ import { env } from '$env/dynamic/private';
 
 // Smart contract ABIs (only the functions we use)
 const COMMUNIQUE_CORE_ABI = [
-	"function registerUser(address user, bytes32 phoneHash, bytes memory selfProof) external",
-	"function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string memory metadataUri, uint256 rewardOverride) external",
-	"function getUserStats(address user) view returns (uint256 actionCount, uint256 civicEarned, uint256 lastActionTime)",
-	"function getPlatformStats() view returns (uint256 totalUsers, uint256 totalActions, uint256 totalCivicMinted, uint256 avgActionsPerUser, uint256 activeUsersLast30Days)"
+	'function registerUser(address user, bytes32 phoneHash, bytes memory selfProof) external',
+	'function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string memory metadataUri, uint256 rewardOverride) external',
+	'function getUserStats(address user) view returns (uint256 actionCount, uint256 civicEarned, uint256 lastActionTime)',
+	'function getPlatformStats() view returns (uint256 totalUsers, uint256 totalActions, uint256 totalCivicMinted, uint256 avgActionsPerUser, uint256 activeUsersLast30Days)'
 ];
 
 const VOTER_TOKEN_ABI = [
-	"function balanceOf(address account) view returns (uint256)",
-	"function totalSupply() view returns (uint256)",
-	"function transfer(address to, uint256 amount) returns (bool)"
+	'function balanceOf(address account) view returns (uint256)',
+	'function totalSupply() view returns (uint256)',
+	'function transfer(address to, uint256 amount) returns (bool)'
 ];
 
 const VOTER_REGISTRY_ABI = [
-	"function getCitizenRecords(address citizen) view returns (tuple(address participant, uint8 actionType, bytes32 actionHash, string metadataUri, uint256 timestamp, uint256 rewardAmount)[])",
-	"function isVerifiedCitizen(address citizen) view returns (bool)"
+	'function getCitizenRecords(address citizen) view returns (tuple(address participant, uint8 actionType, bytes32 actionHash, string metadataUri, uint256 timestamp, uint256 rewardAmount)[])',
+	'function isVerifiedCitizen(address citizen) view returns (bool)'
 ];
 
 export interface VOTERAction {
@@ -98,11 +98,11 @@ class VOTERBlockchainClient {
 	 */
 	private getActionTypeEnum(actionType: string): number {
 		const types: Record<string, number> = {
-			'CWC_MESSAGE': 0,
-			'LOCAL_ACTION': 1,
-			'DIRECT_ACTION': 2,
-			'TOWN_HALL': 3,
-			'PUBLIC_COMMENT': 4
+			CWC_MESSAGE: 0,
+			LOCAL_ACTION: 1,
+			DIRECT_ACTION: 2,
+			TOWN_HALL: 3,
+			PUBLIC_COMMENT: 4
 		};
 		return types[actionType] || 2; // Default to DIRECT_ACTION
 	}
@@ -134,7 +134,7 @@ class VOTERBlockchainClient {
 
 			const actionType = this.getActionTypeEnum(action.actionType);
 			const actionHash = this.generateActionHash(action);
-			
+
 			// Create metadata URI (could be IPFS in production)
 			const metadata = {
 				templateId: action.templateId,
@@ -161,7 +161,6 @@ class VOTERBlockchainClient {
 				blockNumber: receipt.blockNumber,
 				actionHash: actionHash
 			};
-
 		} catch (error: any) {
 			console.error('Blockchain certification failed:', error);
 			return {
@@ -174,17 +173,17 @@ class VOTERBlockchainClient {
 	/**
 	 * Register a new user on blockchain
 	 */
-	async registerUser(userAddress: string, phoneHash: string, selfProof: string): Promise<VOTERActionResult> {
+	async registerUser(
+		userAddress: string,
+		phoneHash: string,
+		selfProof: string
+	): Promise<VOTERActionResult> {
 		try {
 			if (!this.communiqueCore) {
 				throw new Error('CommuniqueCore contract not initialized');
 			}
 
-			const tx = await this.communiqueCore.registerUser(
-				userAddress,
-				phoneHash,
-				selfProof
-			);
+			const tx = await this.communiqueCore.registerUser(userAddress, phoneHash, selfProof);
 
 			const receipt = await tx.wait();
 
@@ -193,7 +192,6 @@ class VOTERBlockchainClient {
 				transactionHash: tx.hash,
 				blockNumber: receipt.blockNumber
 			};
-
 		} catch (error: any) {
 			return {
 				success: false,
@@ -222,7 +220,6 @@ class VOTERBlockchainClient {
 				lastActionTime: Number(stats[2]),
 				voterTokenBalance: balance.toString()
 			};
-
 		} catch (error) {
 			console.error('Failed to get user stats:', error);
 			return null;
@@ -233,11 +230,7 @@ class VOTERBlockchainClient {
 	 * Check if blockchain client is properly configured
 	 */
 	isConfigured(): boolean {
-		return !!(
-			this.communiqueCore &&
-			this.voterToken &&
-			this.signer
-		);
+		return !!(this.communiqueCore && this.voterToken && this.signer);
 	}
 
 	/**

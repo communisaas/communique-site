@@ -75,7 +75,7 @@
 {#if isOpen}
 	<div
 		bind:this={dialogElement}
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
 		onclick={handleBackdropClick}
 		role="dialog"
 		aria-modal="true"
@@ -85,11 +85,11 @@
 		out:fade={{ duration: 150 }}
 	>
 		<div
-			class="relative w-full {maxWidth} bg-white rounded-lg shadow-xl overflow-hidden max-h-[90vh] flex flex-col"
+			class="relative w-full {maxWidth} flex max-h-[90vh] flex-col overflow-hidden rounded-lg bg-white shadow-xl"
 			onclick={(e) => e.stopPropagation()}
 		>
 			{#if title || showClose}
-				<div class="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+				<div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">
 					{#if title}
 						<h2 class="text-lg font-semibold text-slate-900">{title}</h2>
 					{:else}
@@ -98,7 +98,7 @@
 					{#if showClose}
 						<button
 							onclick={handleClose}
-							class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+							class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
 							aria-label="Close modal"
 						>
 							<X class="h-5 w-5" />

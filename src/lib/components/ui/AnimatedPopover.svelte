@@ -105,16 +105,16 @@
 		const handleGlobalClick = (event: MouseEvent) => {
 			// Don't handle if this was a touch interaction
 			if (isTouch) return;
-			
+
 			if (!containerElement || !popoverElement) return;
 
 			const target = event.target as Node;
-			
+
 			// Don't close if clicking a form element inside the popover
 			if (popoverElement.contains(target) && isFormElement(event.target)) {
 				return;
 			}
-			
+
 			// Close if clicking outside both container and popover
 			if (!containerElement.contains(target) && !popoverElement.contains(target)) {
 				if (popoverStore.popover?.id === id) {
@@ -124,18 +124,18 @@
 		};
 
 		const clickCleanup = addDocumentEventListener('click', handleGlobalClick, true);
-		
+
 		// Global touch handler to close popover when tapping outside
 		const handleGlobalTouch = (event: TouchEvent) => {
 			if (!isTouch || !containerElement || !popoverElement) return;
-			
+
 			const target = event.target as Node;
-			
+
 			// Don't close if touching a form element inside the popover
 			if (popoverElement.contains(target) && isFormElement(event.target)) {
 				return;
 			}
-			
+
 			// Close if touching outside both container and popover
 			if (!containerElement.contains(target) && !popoverElement.contains(target)) {
 				if (popoverStore.popover?.id === id) {
@@ -143,20 +143,25 @@
 				}
 			}
 		};
-		
-		const touchCleanup = addDocumentEventListener('touchstart', handleGlobalTouch, { capture: true, passive: false });
+
+		const touchCleanup = addDocumentEventListener('touchstart', handleGlobalTouch, {
+			capture: true,
+			passive: false
+		});
 
 		// Store cleanup functions
-		cleanupFunctions = [scrollCleanup, resizeCleanup, clickCleanup, touchCleanup].filter(Boolean) as (() => void)[];
+		cleanupFunctions = [scrollCleanup, resizeCleanup, clickCleanup, touchCleanup].filter(
+			Boolean
+		) as (() => void)[];
 
 		return () => {
-			cleanupFunctions.forEach(cleanup => cleanup());
+			cleanupFunctions.forEach((cleanup) => cleanup());
 		};
 	});
 
 	onDestroy(() => {
 		// Cleanup any remaining event listeners
-		cleanupFunctions.forEach(cleanup => cleanup());
+		cleanupFunctions.forEach((cleanup) => cleanup());
 	});
 
 	let isTouch = false;
@@ -191,18 +196,20 @@
 	// Helper function to check if target is a form element
 	function isFormElement(target: EventTarget | null): boolean {
 		if (!target || !(target instanceof Element)) return false;
-		
+
 		const formTags = ['input', 'textarea', 'select', 'button'];
 		const tagName = target.tagName.toLowerCase();
-		
-		return formTags.includes(tagName) || 
-			   (target as HTMLElement).contentEditable === 'true' ||
-			   target.closest('input, textarea, select, button') !== null;
+
+		return (
+			formTags.includes(tagName) ||
+			(target as HTMLElement).contentEditable === 'true' ||
+			target.closest('input, textarea, select, button') !== null
+		);
 	}
 
 	function handleTouchStart(event: TouchEvent) {
 		isTouch = true;
-		
+
 		// Check if the touch is on a form element INSIDE the popover content
 		// (not the trigger button itself)
 		const target = event.target as Element;
@@ -210,21 +217,21 @@
 			// Don't close popover when interacting with form elements inside it
 			return;
 		}
-		
+
 		event.stopPropagation();
-		
+
 		// Clear any existing timeout
 		if (touchTimeout) {
 			clearTimeout(touchTimeout);
 		}
-		
+
 		// Toggle popover on tap
 		if (popoverStore.popover?.id === id) {
 			popoverStore.close(id);
 		} else {
 			popoverStore.open(id);
 		}
-		
+
 		// Reset touch flag after a longer delay to prevent immediate closure
 		touchTimeout = setTimeout(() => {
 			isTouch = false;

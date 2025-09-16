@@ -1,6 +1,6 @@
 /**
  * Database-First Analytics System
- * 
+ *
  * Custom analytics implementation using our existing Supabase/Prisma infrastructure.
  * Replaces third-party analytics with privacy-first, civic engagement focused tracking.
  */
@@ -83,7 +83,6 @@ class DatabaseAnalytics {
 					}
 				}
 			});
-
 		} catch (error) {
 			console.error('Failed to initialize analytics session:', error);
 		}
@@ -223,7 +222,10 @@ class DatabaseAnalytics {
 		});
 	}
 
-	async trackTemplateView(templateId: string, source: 'social-link' | 'direct-link' | 'share' = 'direct-link'): Promise<void> {
+	async trackTemplateView(
+		templateId: string,
+		source: 'social-link' | 'direct-link' | 'share' = 'direct-link'
+	): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: 'template_viewed',
@@ -235,7 +237,10 @@ class DatabaseAnalytics {
 		});
 	}
 
-	async trackOnboardingStarted(templateId: string, source: 'social-link' | 'direct-link' | 'share'): Promise<void> {
+	async trackOnboardingStarted(
+		templateId: string,
+		source: 'social-link' | 'direct-link' | 'share'
+	): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: 'onboarding_started',
@@ -262,7 +267,11 @@ class DatabaseAnalytics {
 		});
 	}
 
-	async trackTemplateUsed(templateId: string, deliveryMethod: string, userId?: string): Promise<void> {
+	async trackTemplateUsed(
+		templateId: string,
+		deliveryMethod: string,
+		userId?: string
+	): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			user_id: userId,
@@ -298,7 +307,11 @@ class DatabaseAnalytics {
 		});
 	}
 
-	async trackInteraction(element: string, action: string, properties: Record<string, any> = {}): Promise<void> {
+	async trackInteraction(
+		element: string,
+		action: string,
+		properties: Record<string, any> = {}
+	): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: `${element}_${action}`,

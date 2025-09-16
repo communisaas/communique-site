@@ -11,7 +11,9 @@
 </script>
 
 <Tooltip content="{feature} {message}. Available soon!" showInfoIcon={false}>
-	<span class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm bg-amber-100 text-amber-700">
+	<span
+		class="inline-flex items-center gap-1 rounded bg-amber-100 px-2 py-1 text-xs text-amber-700 md:text-sm"
+	>
 		<Wrench class="h-3 w-3 md:h-4 md:w-4" />
 		Under Construction
 	</span>

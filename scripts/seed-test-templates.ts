@@ -9,12 +9,14 @@ async function main() {
 			id: 'gun-safety-legislation',
 			slug: 'support-gun-safety-reforms',
 			title: 'Gun Safety Legislation',
-			description: 'Urge Congress to pass comprehensive gun safety measures that protect communities while respecting constitutional rights.',
+			description:
+				'Urge Congress to pass comprehensive gun safety measures that protect communities while respecting constitutional rights.',
 			category: 'Gun Safety',
 			type: 'advocacy',
 			deliveryMethod: 'certified',
 			subject: 'Support Comprehensive Gun Safety Legislation',
-			preview: 'Dear [Representative Name], I am writing to urge your support for common-sense gun safety measures.',
+			preview:
+				'Dear [Representative Name], I am writing to urge your support for common-sense gun safety measures.',
 			message_body: `Dear [Representative Name],
 
 I am writing as your constituent to urge your support for comprehensive gun safety legislation that will help protect our communities.
@@ -53,15 +55,17 @@ Sincerely,
 			status: 'published'
 		},
 		{
-			id: 'reproductive-healthcare-access', 
+			id: 'reproductive-healthcare-access',
 			slug: 'protect-reproductive-rights',
 			title: 'Reproductive Healthcare Access',
-			description: 'Advocate for protecting access to comprehensive reproductive healthcare services.',
+			description:
+				'Advocate for protecting access to comprehensive reproductive healthcare services.',
 			category: 'Reproductive Rights',
 			type: 'advocacy',
 			deliveryMethod: 'certified',
 			subject: 'Protect Access to Reproductive Healthcare',
-			preview: 'Dear [Representative Name], I am writing to urge protection of reproductive healthcare access.',
+			preview:
+				'Dear [Representative Name], I am writing to urge protection of reproductive healthcare access.',
 			message_body: `Dear [Representative Name],
 
 I am writing to urge your support for protecting access to comprehensive reproductive healthcare services.
@@ -101,14 +105,16 @@ Sincerely,
 		},
 		{
 			id: 'affordable-housing-initiative',
-			slug: 'support-affordable-housing', 
+			slug: 'support-affordable-housing',
 			title: 'Affordable Housing Initiative',
-			description: 'Advocate for policies that address the housing affordability crisis and expand access to safe, affordable homes.',
+			description:
+				'Advocate for policies that address the housing affordability crisis and expand access to safe, affordable homes.',
 			category: 'Housing',
 			type: 'advocacy',
 			deliveryMethod: 'certified',
 			subject: 'Support Affordable Housing Solutions',
-			preview: 'Dear [Representative Name], I am writing to urge support for affordable housing initiatives.',
+			preview:
+				'Dear [Representative Name], I am writing to urge support for affordable housing initiatives.',
 			message_body: `Dear [Representative Name],
 
 I am writing to urge your support for policies that address the housing affordability crisis affecting communities across our district.
@@ -161,7 +167,7 @@ Sincerely,
 				updatedAt: new Date()
 			}
 		});
-		
+
 		console.log(`✓ Created/updated template: ${template.title}`);
 	}
 

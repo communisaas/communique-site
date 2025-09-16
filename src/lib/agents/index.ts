@@ -1,6 +1,6 @@
 /**
  * VOTER Protocol Agents
- * 
+ *
  * Export all agent implementations for use in Communiqué
  */
 
@@ -42,7 +42,7 @@ export class AgentCoordinator {
 	readonly market = new MarketAgent();
 	readonly impact = new ImpactAgent();
 	readonly reputation = new ReputationAgent();
-	
+
 	/**
 	 * Process civic action through all agents
 	 */
@@ -56,50 +56,46 @@ export class AgentCoordinator {
 		const verification = await this.verification.process({
 			template: params.template
 		});
-		
+
 		if (!verification.approved) {
 			return {
 				approved: false,
 				reason: verification.reasoning?.join(', ')
 			};
 		}
-		
+
 		// Calculate supply impact
 		const supply = await this.supply.process({
 			actionType: params.actionType,
 			userAddress: params.userAddress,
 			verificationScore: verification.confidence
 		});
-		
+
 		// Analyze market conditions
 		const market = await this.market.process({
 			baseReward: supply.rewardAmount,
 			actionType: params.actionType
 		});
-		
+
 		// Measure impact
 		const impact = await this.impact.process({
 			actionType: params.actionType,
 			recipients: params.recipients,
 			templateId: params.template.id
 		});
-		
+
 		// Update reputation
 		const reputation = await this.reputation.process({
 			userAddress: params.userAddress,
 			actionType: params.actionType,
 			qualityScore: verification.confidence * 100
 		});
-		
+
 		// Calculate final reward
 		const finalReward = BigInt(
-			Math.floor(
-				Number(supply.rewardAmount) * 
-				market.rewardMultiplier * 
-				impact.impactMultiplier
-			)
+			Math.floor(Number(supply.rewardAmount) * market.rewardMultiplier * impact.impactMultiplier)
 		);
-		
+
 		return {
 			approved: true,
 			reward: finalReward,

@@ -11,12 +11,12 @@ const { simpleParser } = require('mailparser');
 async function parseIncomingMessage(stream) {
 	try {
 		const parsed = await simpleParser(stream);
-		
+
 		// Extract template metadata from headers or subject
 		const templateId = extractTemplateId(parsed);
 		const userId = extractUserId(parsed);
 		const personalConnection = extractPersonalConnection(parsed);
-		
+
 		return {
 			templateId,
 			userId,
@@ -45,21 +45,21 @@ function extractTemplateId(parsed) {
 	if (headerTemplateId) {
 		return headerTemplateId;
 	}
-	
+
 	// Try to extract from subject line
 	// Expected format: [TEMPLATE:template-id] Subject
 	const subjectMatch = parsed.subject?.match(/\[TEMPLATE:([^\]]+)\]/);
 	if (subjectMatch) {
 		return subjectMatch[1];
 	}
-	
+
 	// Try to extract from message-id
 	// Expected format: template-id.user-id.timestamp@communi.email
 	const messageIdMatch = parsed.messageId?.match(/^([^.]+)\.([^.]+)\.(\d+)@/);
 	if (messageIdMatch) {
 		return messageIdMatch[1];
 	}
-	
+
 	return null;
 }
 
@@ -72,13 +72,13 @@ function extractUserId(parsed) {
 	if (headerUserId) {
 		return headerUserId;
 	}
-	
+
 	// Extract from message-id
 	const messageIdMatch = parsed.messageId?.match(/^([^.]+)\.([^.]+)\.(\d+)@/);
 	if (messageIdMatch) {
 		return messageIdMatch[2];
 	}
-	
+
 	return null;
 }
 
@@ -87,21 +87,23 @@ function extractUserId(parsed) {
  */
 function extractPersonalConnection(parsed) {
 	const text = parsed.text || '';
-	
+
 	// Look for personal connection marker
 	// Expected format: [PERSONAL_CONNECTION_START]content[PERSONAL_CONNECTION_END]
-	const personalConnectionMatch = text.match(/\[PERSONAL_CONNECTION_START\](.*?)\[PERSONAL_CONNECTION_END\]/s);
+	const personalConnectionMatch = text.match(
+		/\[PERSONAL_CONNECTION_START\](.*?)\[PERSONAL_CONNECTION_END\]/s
+	);
 	if (personalConnectionMatch) {
 		return personalConnectionMatch[1].trim();
 	}
-	
+
 	// If no markers, assume the first paragraph is personal connection
 	// This is a fallback for simple mailto: links
 	const paragraphs = text.split('\n\n');
 	if (paragraphs.length > 1) {
 		return paragraphs[0].trim();
 	}
-	
+
 	return null;
 }
 
@@ -110,23 +112,23 @@ function extractPersonalConnection(parsed) {
  */
 function validateMessage(parsedMessage) {
 	const errors = [];
-	
+
 	if (!parsedMessage.templateId) {
 		errors.push('Template ID not found in message headers or subject');
 	}
-	
+
 	if (!parsedMessage.userId) {
 		errors.push('User ID not found in message headers');
 	}
-	
+
 	if (!parsedMessage.subject) {
 		errors.push('Message subject is required');
 	}
-	
+
 	if (!parsedMessage.text && !parsedMessage.html) {
 		errors.push('Message content is required');
 	}
-	
+
 	return {
 		isValid: errors.length === 0,
 		errors

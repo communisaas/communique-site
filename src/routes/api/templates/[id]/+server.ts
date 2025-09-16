@@ -20,12 +20,12 @@ export const GET: RequestHandler = async ({ params }) => {
 		// Update district metrics for congressional templates
 		if (template.deliveryMethod === 'certified') {
 			await updateTemplateDistrictMetrics(templateId);
-			
+
 			// Refetch template to get updated metrics
 			const updatedTemplate = await db.template.findUnique({
 				where: { id: templateId }
 			});
-			
+
 			if (updatedTemplate) {
 				template.metrics = updatedTemplate.metrics;
 			}
@@ -116,4 +116,4 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 	} catch (err) {
 		return error(500, 'Failed to delete template');
 	}
-}; 
+};

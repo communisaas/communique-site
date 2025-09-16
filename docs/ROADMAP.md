@@ -3,7 +3,8 @@
 ## The Demon We Face
 
 Our templates contain aspirational variables that require:
-- **Geographic intelligence**: `[Hospital System]`, `[Mayor Name]` 
+
+- **Geographic intelligence**: `[Hospital System]`, `[Mayor Name]`
 - **Real-time economic data**: `[Local Rent Data]`, `[Living Wage Calculation]`
 - **Entity resolution**: `[Company]`, `[Platform]`, `[University]`
 - **Dynamic calculations**: `[Current Calculation]` based on context
@@ -13,9 +14,10 @@ These aren't simple string replacements. They require agent-orchestrated data pi
 ## Current Reality
 
 ### Variables in Production Templates:
+
 ```
 [Hospital System]—Major healthcare provider by location
-[Local Rent Data]—Median 1BR rent for user's area  
+[Local Rent Data]—Median 1BR rent for user's area
 [Current Calculation]—Minimum wage × hours calculation
 [Living Wage Calculation]—MIT calculator for family size
 [Company]—Corporate entity from context
@@ -26,7 +28,9 @@ These aren't simple string replacements. They require agent-orchestrated data pi
 ```
 
 ### Resolution Challenge:
+
 Each variable requires:
+
 1. **Context extraction** (where is user? what company?)
 2. **Data source query** (trusted APIs only)
 3. **Fallback strategy** (when data unavailable)
@@ -35,21 +39,23 @@ Each variable requires:
 ## Architecture
 
 ### Phase 1: Data Provider Registry
+
 Create extensible system for verified data sources:
 
 ```typescript
 interface DataProvider {
-  id: string
-  type: 'api' | 'database' | 'agent'
-  trustScore: number
-  capabilities: string[]
-  rateLimit: RateLimitConfig
-  authenticate(): Promise<void>
-  query(params: QueryParams): Promise<DataResult>
+	id: string;
+	type: 'api' | 'database' | 'agent';
+	trustScore: number;
+	capabilities: string[];
+	rateLimit: RateLimitConfig;
+	authenticate(): Promise<void>;
+	query(params: QueryParams): Promise<DataResult>;
 }
 ```
 
 **Providers needed:**
+
 - Census/ACS (demographics, income)
 - BLS (wages, employment)
 - HUD (housing costs)
@@ -66,7 +72,7 @@ interface VariableResolver {
   pattern: RegExp
   requiredContext: string[]
   dataProviders: DataProvider[]
-  
+
   async resolve(context: UserContext): Promise<{
     value: string | null
     source: string
@@ -77,6 +83,7 @@ interface VariableResolver {
 ```
 
 **Resolution pipeline:**
+
 1. Parse template → identify variables
 2. Extract user context (location, target entity)
 3. Query appropriate data providers
@@ -86,6 +93,7 @@ interface VariableResolver {
 ### Phase 3: Agent-Safe Orchestration
 
 Agent can:
+
 - **Analyze** template to identify data needs
 - **Query** verified providers only
 - **Compose** multiple data points
@@ -93,24 +101,23 @@ Agent can:
 
 ```typescript
 class AgentResolver {
-  async resolveTemplate(template: Template, user: User) {
-    // Agent identifies needed data
-    const variables = this.extractVariables(template)
-    
-    // Query trusted sources only
-    const resolved = await Promise.all(
-      variables.map(v => this.resolveVariable(v, user))
-    )
-    
-    // No hallucination - only real data or explicit "unavailable"
-    return this.applyResolutions(template, resolved)
-  }
+	async resolveTemplate(template: Template, user: User) {
+		// Agent identifies needed data
+		const variables = this.extractVariables(template);
+
+		// Query trusted sources only
+		const resolved = await Promise.all(variables.map((v) => this.resolveVariable(v, user)));
+
+		// No hallucination - only real data or explicit "unavailable"
+		return this.applyResolutions(template, resolved);
+	}
 }
 ```
 
 ### Phase 4: Trust & Verification
 
 Every resolved value includes:
+
 ```typescript
 interface ResolvedValue {
   variable: string
@@ -126,6 +133,7 @@ interface ResolvedValue {
 ```
 
 UI shows sources:
+
 ```
 Average rent: $2,850/month
 Source: HUD Fair Market Rent, San Francisco MSA, 2024
@@ -135,7 +143,9 @@ Source: HUD Fair Market Rent, San Francisco MSA, 2024
 ## Implementation Strategy
 
 ### Core Infrastructure
+
 **Files to create:**
+
 - `src/lib/server/data-providers/`
   - `census.ts`—Census/ACS API
   - `bls.ts`—Bureau of Labor Statistics
@@ -150,6 +160,7 @@ Source: HUD Fair Market Rent, San Francisco MSA, 2024
 - `src/lib/server/resolution-cache.ts`: Cache expensive API calls
 
 ### Database Schema Updates
+
 ```prisma
 model ResolvedVariable {
   id            String   @id @default(cuid())
@@ -161,13 +172,14 @@ model ResolvedVariable {
   confidence    Float
   resolvedAt    DateTime @default(now())
   expiresAt     DateTime
-  
+
   @@index([templateId, userId, variable])
   @@map("resolved_variable")
 }
 ```
 
 ### Testing Strategy
+
 - Mock data providers for unit tests
 - Integration tests with real APIs (rate limited)
 - Agent safety tests (no hallucination)
@@ -195,6 +207,7 @@ model ResolvedVariable {
 ## The Vision
 
 User clicks "Send Message" and in milliseconds:
+
 - Location determines relevant data sources
 - Real rent prices, real wages, real officials
 - Every number cited and verified
@@ -208,18 +221,17 @@ This is how we transform templates from aspirational placeholders into weapons o
 The resolution system follows functional programming principles inspired by Clojure:
 
 ### Pure Functions
+
 Each resolver is a pure function with no side effects:
+
 ```typescript
-const rentResolver = compose(
-  extractLocation,
-  queryHUDData,
-  formatCurrency,
-  addSourceAttribution
-)
+const rentResolver = compose(extractLocation, queryHUDData, formatCurrency, addSourceAttribution);
 ```
 
 ### Immutable Data Flow
+
 Template resolution creates new data structures, never mutates:
+
 ```typescript
 const resolved = template
   |> parseVariables
@@ -229,26 +241,29 @@ const resolved = template
 ```
 
 ### Lazy Evaluation
+
 Variables resolve on-demand, not eagerly:
+
 ```typescript
-const lazyResolvers = new Map(
-  variables.map(v => [v, () => resolveVariable(v)])
-)
+const lazyResolvers = new Map(variables.map((v) => [v, () => resolveVariable(v)]));
 ```
 
 ### Composable Transformations
+
 Complex resolutions built from simple functions:
+
 ```typescript
 const livingWageResolver = pipe(
-  getUserLocation,
-  getFamilySize,
-  queryMITCalculator,
-  adjustForLocalCost,
-  formatWithSource
-)
+	getUserLocation,
+	getFamilySize,
+	queryMITCalculator,
+	adjustForLocalCost,
+	formatWithSource
+);
 ```
 
 This functional approach ensures:
+
 - Predictable resolution behavior
 - Easy testing of individual components
 - Safe agent composition

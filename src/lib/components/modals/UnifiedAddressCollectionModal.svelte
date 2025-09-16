@@ -6,11 +6,11 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
 	import { AddressCollectionContent } from '$lib/components/auth/parts';
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
-	
+
 	// Connect to modal system
 	const modalStore = createModalStore('address-collection-modal', 'address');
 	let modal: UnifiedModal;
-	
+
 	// Open/close functions for external use
 	export function open(data: {
 		template: {
@@ -20,7 +20,7 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	}) {
 		modal.open(data);
 	}
-	
+
 	export function close() {
 		modal.close();
 	}
@@ -33,12 +33,16 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 		};
 	} | null;
 
-	function handleComplete(data: { address: string; verified: boolean; representatives?: Array<Record<string, unknown>> }) {
+	function handleComplete(data: {
+		address: string;
+		verified: boolean;
+		representatives?: Array<Record<string, unknown>>;
+	}) {
 		// Call completion callback if provided
 		if (modalStore.data?.onComplete) {
 			modalStore.data.onComplete(data);
 		}
-		
+
 		// Close modal
 		modal.close();
 	}

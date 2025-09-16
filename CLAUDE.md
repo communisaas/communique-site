@@ -3,12 +3,14 @@
 Authoritative guide for Claude Code in this repo. Single source of truth for cryptographic democratic infrastructure.
 
 ## Quick start
+
 ```bash
 npm install
 npm run dev        # http://localhost:5173
 ```
 
 Common:
+
 ```bash
 npm run build    # prod build
 npm run preview  # preview
@@ -18,13 +20,16 @@ npm run test     # integration-first test suite
 ```
 
 ## Environment
+
 Required:
+
 ```bash
 SUPABASE_DATABASE_URL=...
 CWC_API_KEY=...
 ```
 
 Feature flags (optional):
+
 ```bash
 ENABLE_BETA=true        # Enable beta features
 ENABLE_RESEARCH=true    # Enable research features (dev only)
@@ -33,6 +38,7 @@ ENABLE_RESEARCH=true    # Enable research features (dev only)
 Optional OAuth keys as needed.
 
 ## Architecture (Cypherpunk Democratic Infrastructure)
+
 - SvelteKit 5 + TypeScript + Tailwind + Algorithmic Coordination
 - Supabase (Postgres) via Prisma; cryptographic sessions via `@oslojs/crypto`
 - VOTER Protocol integration: Didit.me zero-knowledge verification + algorithmic treasury execution
@@ -41,6 +47,7 @@ Optional OAuth keys as needed.
 - Cryptographic flow: identity verify → algorithmic certification → autonomous reward distribution
 
 Code map:
+
 - Routes/API: `src/routes/`
 - UI: `src/lib/components/`
 - Core production: `src/lib/core/` (auth, db, legislative)
@@ -50,6 +57,7 @@ Code map:
 - Tests: `tests/` (integration, unit, e2e, mocks, fixtures)
 
 ## Testing (Revolution: 53→6 files)
+
 ```bash
 npm run test:run         # All tests (production focused)
 npm run test:integration # Integration tests (primary)
@@ -61,6 +69,7 @@ npm run test:coverage    # With coverage report
 ```
 
 ## Database & Seeding
+
 ```bash
 npm run db:generate
 npm run db:push
@@ -72,6 +81,7 @@ npm run db:seed:channels # Legislative channels
 ```
 
 ## Feature Development
+
 ```bash
 # Check feature status
 npm run dev  # See FEATURES.md dashboard
@@ -79,14 +89,15 @@ npm run dev  # See FEATURES.md dashboard
 # Enable beta features in development
 ENABLE_BETA=true npm run dev
 
-# Enable research features (experimental)  
+# Enable research features (experimental)
 ENABLE_RESEARCH=true npm run dev
 ```
 
 ## Where to read more
+
 - **Feature Status**: `docs/FEATURES.md`
 - **Reorganization Guide**: `docs/REORGANIZATION.md`
-- **Test Suite**: `tests/README.md` 
+- **Test Suite**: `tests/README.md`
 - **Database Seeding**: `docs/DATABASE-SEEDING.md`
 - Architecture: `docs/architecture.md`
 - Integrations: `docs/integrations.md`

@@ -6,11 +6,11 @@ export default defineConfig({
 	resolve: {
 		conditions: ['browser']
 	},
-    test: {
-        include: ['tests/**/*.{test,spec}.{js,ts}'],
-        exclude: ['tests/e2e/**/*'], 
+	test: {
+		include: ['tests/**/*.{test,spec}.{js,ts}'],
+		exclude: ['tests/e2e/**/*'],
 		environment: 'jsdom',
-        setupFiles: ['tests/config/setup.ts'],
+		setupFiles: ['tests/config/setup.ts'],
 		globals: true,
 		coverage: {
 			provider: 'istanbul',
@@ -31,9 +31,7 @@ export default defineConfig({
 				'build/',
 				'.svelte-kit/'
 			],
-			include: [
-                'src/**/*.{js,ts,svelte}'
-			],
+			include: ['src/**/*.{js,ts,svelte}'],
 			thresholds: {
 				global: {
 					branches: 70,
@@ -49,5 +47,5 @@ export default defineConfig({
 				singleFork: true
 			}
 		}
-	},
+	}
 });

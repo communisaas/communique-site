@@ -55,16 +55,17 @@ beforeAll(() => {
 	// Polyfill matchMedia for jsdom
 	if (typeof window !== 'undefined' && !window.matchMedia) {
 		// @ts-ignore
-		window.matchMedia = (query: string) => ({
-			matches: false,
-			media: query,
-			onchange: null,
-			addListener: () => {},
-			removeListener: () => {},
-			addEventListener: () => {},
-			removeEventListener: () => {},
-			dispatchEvent: () => false
-		}) as any;
+		window.matchMedia = (query: string) =>
+			({
+				matches: false,
+				media: query,
+				onchange: null,
+				addListener: () => {},
+				removeListener: () => {},
+				addEventListener: () => {},
+				removeEventListener: () => {},
+				dispatchEvent: () => false
+			}) as any;
 	}
 });
 

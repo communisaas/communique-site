@@ -18,18 +18,18 @@
 	onMount(() => {
 		templateStore.fetchTemplates();
 	});
-	
+
 	// Handle template use from header
 	function handleTemplateUse(event: { template: Template; requiresAuth: boolean }) {
 		const { template, requiresAuth } = event;
-		
+
 		const flow = analyzeEmailFlow(template, data.user);
-		
+
 		if (flow.nextAction === 'auth') {
 			// Navigate to auth or show modal
 			window.location.href = `/auth/google?returnTo=${encodeURIComponent($page.url.pathname)}`;
 		} else if (flow.nextAction === 'address') {
-			// Handle address requirement 
+			// Handle address requirement
 			// For now, redirect to auth flow which will handle address collection
 			window.location.href = `/auth/google?returnTo=${encodeURIComponent($page.url.pathname)}`;
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {

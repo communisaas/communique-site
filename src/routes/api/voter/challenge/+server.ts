@@ -1,6 +1,6 @@
 /**
  * VOTER Protocol Challenge Market API
- * 
+ *
  * Handles challenge creation, voting, and resolution
  * Called by N8N challenge market workflow
  */
@@ -12,7 +12,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const { action, ...data } = await request.json();
-		
+
 		switch (action) {
 			case 'create':
 				return await createChallenge(data);
@@ -25,7 +25,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			default:
 				throw error(400, `Invalid challenge action: ${action}`);
 		}
-		
 	} catch (err) {
 		console.error('Challenge API error:', err);
 		throw error(500, err instanceof Error ? err.message : 'Challenge operation failed');
@@ -37,7 +36,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const challengeId = url.searchParams.get('id');
 		const status = url.searchParams.get('status');
 		const userId = url.searchParams.get('userId');
-		
+
 		if (challengeId) {
 			// Get specific challenge with vote tallies
 			const challenge = await prisma.challenge.findUnique({
@@ -61,20 +60,20 @@ export const GET: RequestHandler = async ({ url }) => {
 					}
 				}
 			});
-			
+
 			if (!challenge) {
 				throw error(404, 'Challenge not found');
 			}
-			
+
 			// Calculate vote tallies
 			const supportPower = challenge.stakes
-				.filter(s => s.side === 'support')
+				.filter((s) => s.side === 'support')
 				.reduce((sum, s) => sum + s.voting_power, 0);
-				
+
 			const opposePower = challenge.stakes
-				.filter(s => s.side === 'oppose')
+				.filter((s) => s.side === 'oppose')
 				.reduce((sum, s) => sum + s.voting_power, 0);
-			
+
 			return json({
 				success: true,
 				challenge: {
@@ -88,7 +87,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				}
 			});
 		}
-		
+
 		// List challenges with filters
 		const where: any = {};
 		if (status) where.status = status;
@@ -99,7 +98,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				{ stakes: { some: { user_id: userId } } }
 			];
 		}
-		
+
 		const challenges = await prisma.challenge.findMany({
 			where,
 			include: {
@@ -110,10 +109,10 @@ export const GET: RequestHandler = async ({ url }) => {
 			orderBy: { created_at: 'desc' },
 			take: 50
 		});
-		
+
 		return json({
 			success: true,
-			challenges: challenges.map(c => ({
+			challenges: challenges.map((c) => ({
 				id: c.id,
 				title: c.title,
 				status: c.status,
@@ -125,7 +124,6 @@ export const GET: RequestHandler = async ({ url }) => {
 				created_at: c.created_at
 			}))
 		});
-		
 	} catch (err) {
 		console.error('Get challenges error:', err);
 		throw error(500, err instanceof Error ? err.message : 'Failed to get challenges');
@@ -135,48 +133,48 @@ export const GET: RequestHandler = async ({ url }) => {
 /**
  * Create new challenge
  */
-async function createChallenge({ 
-	challengerId, 
-	defenderId, 
-	title, 
-	description, 
-	evidence, 
+async function createChallenge({
+	challengerId,
+	defenderId,
+	title,
+	description,
+	evidence,
 	stakeAmount,
-	category 
+	category
 }) {
 	if (!challengerId || !defenderId || !title || !evidence || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge creation');
 	}
-	
+
 	// Validate stake amount (10-10,000 VOTER tokens)
 	const stake = parseFloat(stakeAmount);
 	if (stake < 10 || stake > 10000) {
 		throw error(400, 'Stake amount must be between 10 and 10,000 VOTER tokens');
 	}
-	
+
 	// Verify users exist
 	const [challenger, defender] = await Promise.all([
 		prisma.user.findUnique({ where: { id: challengerId } }),
 		prisma.user.findUnique({ where: { id: defenderId } })
 	]);
-	
+
 	if (!challenger || !defender) {
 		throw error(404, 'Challenger or defender not found');
 	}
-	
+
 	// Check challenger has sufficient trust score to create challenges
 	if (challenger.trust_score < 60) {
 		throw error(403, 'Insufficient trust score to create challenges (minimum 60 required)');
 	}
-	
+
 	// Generate challenge ID and claim hash
 	const challengeId = `ch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 	const claimHash = `0x${Buffer.from(challengeId).toString('hex')}`;
-	
+
 	// Set voting deadline (72 hours from now)
 	const votingDeadline = new Date();
 	votingDeadline.setHours(votingDeadline.getHours() + 72);
-	
+
 	// Create challenge in database via main API
 	const response = await fetch(`${process.env.ORIGIN}/api/voter`, {
 		method: 'POST',
@@ -192,13 +190,13 @@ async function createChallenge({
 			category
 		})
 	});
-	
+
 	if (!response.ok) {
 		throw error(500, 'Failed to create challenge');
 	}
-	
+
 	const result = await response.json();
-	
+
 	return json({
 		success: true,
 		challengeId: result.challengeId,
@@ -214,55 +212,50 @@ async function createChallenge({
 /**
  * Vote on challenge with quadratic voting
  */
-async function voteOnChallenge({
-	challengeId,
-	userId,
-	vote,
-	stakeAmount
-}) {
+async function voteOnChallenge({ challengeId, userId, vote, stakeAmount }) {
 	if (!challengeId || !userId || !vote || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge vote');
 	}
-	
+
 	// Validate vote
 	if (!['support', 'oppose'].includes(vote)) {
 		throw error(400, 'Vote must be either "support" or "oppose"');
 	}
-	
+
 	// Validate stake amount
 	const stake = parseFloat(stakeAmount);
 	if (stake < 1) {
 		throw error(400, 'Minimum stake is 1 VOTER token');
 	}
-	
+
 	// Check challenge exists and is still active
 	const challenge = await prisma.challenge.findUnique({
 		where: { id: challengeId },
-		select: { 
-			status: true, 
+		select: {
+			status: true,
 			voting_deadline: true,
 			challenger_id: true,
 			defender_id: true
 		}
 	});
-	
+
 	if (!challenge) {
 		throw error(404, 'Challenge not found');
 	}
-	
+
 	if (challenge.status !== 'active') {
 		throw error(400, 'Challenge is no longer active');
 	}
-	
+
 	if (new Date() > challenge.voting_deadline) {
 		throw error(400, 'Voting deadline has passed');
 	}
-	
+
 	// Prevent self-voting
 	if (userId === challenge.challenger_id || userId === challenge.defender_id) {
 		throw error(403, 'Challenge participants cannot vote on their own challenge');
 	}
-	
+
 	// Record vote via main API
 	const response = await fetch(`${process.env.ORIGIN}/api/voter`, {
 		method: 'POST',
@@ -275,13 +268,13 @@ async function voteOnChallenge({
 			stakeAmount: stakeAmount.toString()
 		})
 	});
-	
+
 	if (!response.ok) {
 		throw error(500, 'Failed to record vote');
 	}
-	
+
 	const result = await response.json();
-	
+
 	return json({
 		success: true,
 		challengeId,
@@ -301,7 +294,7 @@ async function resolveChallenge({ challengeId }) {
 	if (!challengeId) {
 		throw error(400, 'Missing challengeId');
 	}
-	
+
 	const challenge = await prisma.challenge.findUnique({
 		where: { id: challengeId },
 		include: {
@@ -310,44 +303,44 @@ async function resolveChallenge({ challengeId }) {
 			defender: { select: { name: true } }
 		}
 	});
-	
+
 	if (!challenge) {
 		throw error(404, 'Challenge not found');
 	}
-	
+
 	// Check if voting period has ended
 	const votingEnded = new Date() > challenge.voting_deadline;
 	if (!votingEnded) {
 		throw error(400, 'Voting period has not ended');
 	}
-	
+
 	if (challenge.status !== 'active') {
 		throw error(400, 'Challenge is not in active status');
 	}
-	
+
 	// Calculate vote tallies
 	const supportPower = challenge.stakes
-		.filter(s => s.side === 'support')
+		.filter((s) => s.side === 'support')
 		.reduce((sum, s) => sum + s.voting_power, 0);
-		
+
 	const opposePower = challenge.stakes
-		.filter(s => s.side === 'oppose')
+		.filter((s) => s.side === 'oppose')
 		.reduce((sum, s) => sum + s.voting_power, 0);
-		
+
 	const totalVoters = challenge.stakes.length;
 	const totalPower = supportPower + opposePower;
-	
+
 	// Require minimum participation (5 voters)
 	if (totalVoters < 5) {
 		await prisma.challenge.update({
 			where: { id: challengeId },
-			data: { 
+			data: {
 				status: 'cancelled',
 				resolved_at: new Date(),
 				resolution: 'insufficient_participation'
 			}
 		});
-		
+
 		return json({
 			success: true,
 			status: 'cancelled',
@@ -358,12 +351,12 @@ async function resolveChallenge({ challengeId }) {
 			message: 'Challenge cancelled due to insufficient participation'
 		});
 	}
-	
+
 	// Determine outcome (60% threshold for challenge to succeed)
 	const challengeSucceeds = supportPower > opposePower * 1.5;
 	const resolution = challengeSucceeds ? 'challenger_wins' : 'defender_wins';
 	const winnerId = challengeSucceeds ? challenge.challenger_id : challenge.defender_id;
-	
+
 	// Update challenge status
 	await prisma.challenge.update({
 		where: { id: challengeId },
@@ -374,11 +367,11 @@ async function resolveChallenge({ challengeId }) {
 			resolved_at: new Date()
 		}
 	});
-	
+
 	// Calculate reward distribution
 	const challengerStake = parseFloat(challenge.stake_amount);
 	let rewards = {};
-	
+
 	if (challengeSucceeds) {
 		// Challenge succeeded - distribute stakes to supporters
 		rewards = {
@@ -394,7 +387,7 @@ async function resolveChallenge({ challengeId }) {
 			treasury: challengerStake * 0.1
 		};
 	}
-	
+
 	return json({
 		success: true,
 		challengeId,
@@ -405,7 +398,7 @@ async function resolveChallenge({ challengeId }) {
 		opposePower,
 		totalPower,
 		totalVoters,
-		unanimous: (supportPower === 0) || (opposePower === 0),
+		unanimous: supportPower === 0 || opposePower === 0,
 		rewards,
 		resolved_at: new Date().toISOString(),
 		message: `Challenge resolved: ${resolution}`
@@ -419,7 +412,7 @@ async function claimRewards({ challengeId, userId }) {
 	if (!challengeId || !userId) {
 		throw error(400, 'Missing challengeId or userId');
 	}
-	
+
 	const challenge = await prisma.challenge.findUnique({
 		where: { id: challengeId },
 		include: {
@@ -429,55 +422,56 @@ async function claimRewards({ challengeId, userId }) {
 			}
 		}
 	});
-	
+
 	if (!challenge) {
 		throw error(404, 'Challenge not found');
 	}
-	
+
 	if (challenge.status !== 'resolved') {
 		throw error(400, 'Challenge is not resolved yet');
 	}
-	
+
 	const userStake = challenge.stakes[0];
 	if (!userStake) {
 		throw error(404, 'User did not participate in this challenge');
 	}
-	
+
 	if (userStake.claimed) {
 		throw error(400, 'Rewards already claimed');
 	}
-	
+
 	// Check if user was on winning side
-	const wasWinner = 
+	const wasWinner =
 		(challenge.resolution === 'challenger_wins' && userStake.side === 'support') ||
 		(challenge.resolution === 'defender_wins' && userStake.side === 'oppose');
-	
+
 	if (!wasWinner) {
 		throw error(400, 'User was not on winning side');
 	}
-	
+
 	// Calculate individual reward (proportional to voting power)
 	// This is a simplified calculation - in production would need more complex logic
 	const totalWinningPower = challenge.stakes
-		.filter(s => 
-			(challenge.resolution === 'challenger_wins' && s.side === 'support') ||
-			(challenge.resolution === 'defender_wins' && s.side === 'oppose')
+		.filter(
+			(s) =>
+				(challenge.resolution === 'challenger_wins' && s.side === 'support') ||
+				(challenge.resolution === 'defender_wins' && s.side === 'oppose')
 		)
 		.reduce((sum, s) => sum + s.voting_power, 0);
-	
+
 	const challengerStake = parseFloat(challenge.stake_amount);
 	const rewardPool = challengerStake * 0.6; // 60% goes to winning voters
 	const individualReward = (userStake.voting_power / totalWinningPower) * rewardPool;
-	
+
 	// Mark stake as claimed
 	await prisma.challengeStake.update({
 		where: { id: userStake.id },
-		data: { 
+		data: {
 			claimed: true,
 			claimed_at: new Date()
 		}
 	});
-	
+
 	return json({
 		success: true,
 		challengeId,

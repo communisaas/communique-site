@@ -1,6 +1,6 @@
 /**
  * Verification Agent API Endpoint
- * 
+ *
  * Provides template verification and correction services
  */
 
@@ -15,30 +15,30 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
 		const { templateId, template, checkGrammar = true, checkPolicy = true } = body;
-		
+
 		// If templateId provided, fetch from database
 		let templateData = template;
 		if (templateId && !template) {
 			templateData = await db.template.findUnique({
 				where: { id: templateId }
 			});
-			
+
 			if (!templateData) {
 				return json({ error: 'Template not found' }, { status: 404 });
 			}
 		}
-		
+
 		if (!templateData) {
 			return json({ error: 'Template or templateId required' }, { status: 400 });
 		}
-		
+
 		// Process through verification agent
 		const result = await verificationAgent.process({
 			template: templateData,
 			checkGrammar,
 			checkPolicy
 		});
-		
+
 		// Store verification result if templateId provided
 		if (templateId) {
 			await db.templateVerification.upsert({
@@ -63,17 +63,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			});
 		}
-		
+
 		return json({
 			success: true,
 			...result
 		});
-		
 	} catch (error) {
 		console.error('Verification agent error:', error);
-		return json(
-			{ error: 'Verification failed', details: error.message },
-			{ status: 500 }
-		);
+		return json({ error: 'Verification failed', details: error.message }, { status: 500 });
 	}
 };

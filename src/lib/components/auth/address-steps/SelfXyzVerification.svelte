@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Shield, QrCode, Smartphone } from '@lucide/svelte';
-	
+
 	let {
 		selfXyzQrCode
 	}: {
@@ -16,18 +16,14 @@
 </div>
 
 <!-- Enhanced Credibility Explanation -->
-<div
-	class="mb-4 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3"
->
+<div class="mb-4 rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-3">
 	<div class="flex items-start gap-3">
 		<Shield class="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
 		<div class="flex-1">
-			<h3 class="mb-1 text-sm font-semibold text-blue-900">
-				Enhanced Credibility Available
-			</h3>
+			<h3 class="mb-1 text-sm font-semibold text-blue-900">Enhanced Credibility Available</h3>
 			<p class="text-xs text-blue-700">
-				Passport verification through Self.xyz adds significant weight to your message
-				with congressional offices.
+				Passport verification through Self.xyz adds significant weight to your message with
+				congressional offices.
 			</p>
 		</div>
 	</div>

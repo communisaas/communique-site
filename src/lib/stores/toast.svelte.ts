@@ -24,7 +24,7 @@ function createToastStore() {
 	}
 
 	function removeToast(id: string) {
-		toasts = toasts.filter(toast => toast.id !== id);
+		toasts = toasts.filter((toast) => toast.id !== id);
 	}
 
 	function clearAll() {
@@ -49,7 +49,9 @@ function createToastStore() {
 	}
 
 	return {
-		get toasts() { return toasts; },
+		get toasts() {
+			return toasts;
+		},
 		addToast,
 		removeToast,
 		clearAll,

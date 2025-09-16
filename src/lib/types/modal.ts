@@ -1,5 +1,5 @@
 export interface ModalScrollState {
-    canDismissTop: boolean;
-    canDismissBottom: boolean;
-    scrollProgress: number;
-} 
+	canDismissTop: boolean;
+	canDismissBottom: boolean;
+	scrollProgress: number;
+}

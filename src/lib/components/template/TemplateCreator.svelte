@@ -239,7 +239,6 @@
 		showDraftRecovery = false;
 	}
 
-
 	function discardDraft() {
 		templateDraftStore.deleteDraft(draftId);
 		showDraftRecovery = false;
@@ -266,11 +265,14 @@
 <div class="flex h-full flex-col">
 	<!-- Progress bar -->
 	<div class="h-1 bg-slate-100">
-		<div class="h-full bg-participation-primary-600 transition-all duration-300" style="width: {progress}%"></div>
+		<div
+			class="h-full bg-participation-primary-600 transition-all duration-300"
+			style="width: {progress}%"
+		></div>
 	</div>
 
 	<!-- Step Header -->
-	<div class="border-b border-slate-200 px-4 md:px-6 py-3 md:py-4">
+	<div class="border-b border-slate-200 px-4 py-3 md:px-6 md:py-4">
 		<div class="flex flex-col gap-1 md:gap-1">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-1.5 md:gap-3">
@@ -293,7 +295,9 @@
 						            py-0.5 text-xs text-emerald-600 md:px-2
 						            md:text-xs"
 						>
-							<div class="animate-save-pulse h-0.5 w-0.5 rounded-full bg-emerald-500 md:h-1 md:w-1"></div>
+							<div
+								class="h-0.5 w-0.5 animate-save-pulse rounded-full bg-emerald-500 md:h-1 md:w-1"
+							></div>
 							saved {formatTimeAgo(lastSaved).toLowerCase()}
 						</div>
 					{/if}
@@ -302,7 +306,7 @@
 					<button
 						type="button"
 						onclick={() => dispatch('close')}
-						class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-colors"
+						class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
 						aria-label="Close"
 					>
 						<X class="h-5 w-5" />

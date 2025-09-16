@@ -1,6 +1,6 @@
 /**
  * Root layout JavaScript - handles global client-side initialization
- * 
+ *
  * This runs on every page load and handles:
  * - Analytics initialization
  * - Global client-side setup
@@ -18,7 +18,7 @@ if (browser) {
 			analytics.trackPageView($page.url.href);
 		}
 	});
-	
+
 	// Track errors automatically
 	window.addEventListener('error', (event) => {
 		analytics.trackError(event.error, {
@@ -27,7 +27,7 @@ if (browser) {
 			colno: event.colno
 		});
 	});
-	
+
 	// Track unhandled promise rejections
 	window.addEventListener('unhandledrejection', (event) => {
 		analytics.trackError(new Error(event.reason), {

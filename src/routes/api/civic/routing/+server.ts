@@ -5,11 +5,11 @@ import { deliveryPipeline } from '$lib/core/legislative';
 
 /**
  * Congressional Email Routing Handler
- * 
+ *
  * This endpoint processes emails sent to congressional routing addresses:
  * - congress.{templateId}.{userId}@communique.org (authenticated users)
  * - congress.{templateId}.guest.{sessionToken}@communique.org (anonymous users)
- * 
+ *
  * Flow:
  * 1. Parse routing email to extract template ID and user info
  * 2. Look up user's address to determine their representatives
@@ -20,7 +20,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const emailData = await request.json();
 		const { to, from, subject, body } = emailData;
-		
+
 		// Parse the routing address
 		const routingInfo = parseCongressionalRoutingAddress(to);
 		if (!routingInfo) {
@@ -28,7 +28,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		const { templateId, userId, isGuest, sessionToken } = routingInfo;
-		
+
 		if (!templateId) {
 			return error(400, 'Template ID is required');
 		}
@@ -57,7 +57,6 @@ export const POST: RequestHandler = async ({ request }) => {
 				body
 			});
 		}
-
 	} catch (err) {
 		return error(500, 'Failed to process congressional routing');
 	}
@@ -161,12 +160,13 @@ async function handleAuthenticatedCongressionalRequest({
 
 	return json({
 		success: result.successful_deliveries > 0,
-		message: result.successful_deliveries > 0 
-			? 'Congressional messages queued for delivery' 
-			: 'Failed to deliver messages',
+		message:
+			result.successful_deliveries > 0
+				? 'Congressional messages queued for delivery'
+				: 'Failed to deliver messages',
 		deliveryCount: result.successful_deliveries,
 		totalRecipients: result.total_recipients,
-		results: result.results.map(r => ({
+		results: result.results.map((r) => ({
 			success: r.success,
 			error: r.error,
 			representative: r.metadata?.representative
@@ -218,4 +218,4 @@ async function storeGuestCongressionalRequest(params: Record<string, unknown>) {
 
 async function sendOnboardingEmail(params: Record<string, unknown>) {
 	// TODO: Send onboarding email with account creation link
-} 
+}

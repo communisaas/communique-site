@@ -16,9 +16,13 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 		};
 	} = $props();
 
-	const dispatch = createEventDispatcher<{ 
-		close: void; 
-		complete: { address: string; verified: boolean; representatives?: Array<Record<string, unknown>> };
+	const dispatch = createEventDispatcher<{
+		close: void;
+		complete: {
+			address: string;
+			verified: boolean;
+			representatives?: Array<Record<string, unknown>>;
+		};
 	}>();
 
 	let modal: UnifiedModal;
@@ -35,7 +39,11 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 		dispatch('close');
 	}
 
-	function handleComplete(data: { address: string; verified: boolean; representatives?: Array<Record<string, unknown>> }) {
+	function handleComplete(data: {
+		address: string;
+		verified: boolean;
+		representatives?: Array<Record<string, unknown>>;
+	}) {
 		dispatch('complete', data);
 	}
 </script>

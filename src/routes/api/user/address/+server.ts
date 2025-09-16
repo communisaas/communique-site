@@ -4,18 +4,31 @@ import { db } from '$lib/core/db';
 export async function POST({ request, locals }) {
 	try {
 		console.log('Address API called, user:', locals.user?.id);
-		
+
 		// Ensure user is authenticated
 		if (!locals.user) {
 			console.log('No user in locals');
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
-		
-		const { address, verified, representatives, street, city, state, zip, zipCode, countryCode, latitude, longitude, congressional_district } = await request.json();
-		
+
+		const {
+			address,
+			verified,
+			representatives,
+			street,
+			city,
+			state,
+			zip,
+			zipCode,
+			countryCode,
+			latitude,
+			longitude,
+			congressional_district
+		} = await request.json();
+
 		// Address can be provided as a single string or as separate components
 		let addressComponents = { street: '', city: '', state: '', zip: '' };
-		
+
 		if (street && city && state && (zipCode || zip)) {
 			// Separate components provided
 			addressComponents = { street, city, state, zip: zipCode || zip };
@@ -25,7 +38,7 @@ export async function POST({ request, locals }) {
 		} else {
 			return json({ error: 'Address information is required' }, { status: 400 });
 		}
-		
+
 		// Update user with address components
 		console.log('Updating user with address:', {
 			street: addressComponents.street,
@@ -34,7 +47,7 @@ export async function POST({ request, locals }) {
 			zip: addressComponents.zip,
 			congressional_district: congressional_district || undefined
 		});
-		
+
 		const updatedUser = await db.user.update({
 			where: { id: locals.user.id },
 			data: {
@@ -46,16 +59,16 @@ export async function POST({ request, locals }) {
 				updatedAt: new Date()
 			}
 		});
-		
+
 		console.log('User updated successfully:', updatedUser.id);
-		
+
 		// If representatives were found, store them for this user
 		if (representatives && representatives.length > 0) {
 			// First, clear any existing representatives for this user
 			await db.user_representatives.deleteMany({
 				where: { user_id: locals.user.id }
 			});
-			
+
 			// Store new representatives
 			for (const rep of representatives) {
 				// First, ensure the representative exists in the database
@@ -66,9 +79,9 @@ export async function POST({ request, locals }) {
 						chamber: rep.chamber
 					}
 				});
-				
+
 				let representativeId;
-				
+
 				if (existingRep) {
 					representativeId = existingRep.id;
 				} else {
@@ -88,7 +101,7 @@ export async function POST({ request, locals }) {
 					});
 					representativeId = newRep.id;
 				}
-				
+
 				// Link representative to user
 				await db.user_representatives.create({
 					data: {
@@ -98,9 +111,9 @@ export async function POST({ request, locals }) {
 				});
 			}
 		}
-		
-		return json({ 
-			success: true, 
+
+		return json({
+			success: true,
 			message: 'Address saved successfully',
 			user: {
 				id: updatedUser.id,
@@ -111,25 +124,32 @@ export async function POST({ request, locals }) {
 				congressional_district: updatedUser.congressional_district
 			}
 		});
-		
 	} catch (error) {
 		console.error('Address save error:', error);
-		return json({ 
-			error: 'Failed to save address',
-			details: error instanceof Error ? error.message : 'Unknown error'
-		}, { status: 500 });
+		return json(
+			{
+				error: 'Failed to save address',
+				details: error instanceof Error ? error.message : 'Unknown error'
+			},
+			{ status: 500 }
+		);
 	}
 }
 
-function parseAddressString(address: string): { street: string; city: string; state: string; zip: string } {
+function parseAddressString(address: string): {
+	street: string;
+	city: string;
+	state: string;
+	zip: string;
+} {
 	// Basic address parsing - in production you'd want more robust parsing
-	const parts = address.split(',').map(part => part.trim());
-	
+	const parts = address.split(',').map((part) => part.trim());
+
 	if (parts.length >= 3) {
 		const street = parts[0];
 		const city = parts[1];
 		const stateZip = parts[2];
-		
+
 		// Extract state and ZIP from "STATE ZIP" format
 		const stateZipMatch = stateZip.match(/^([A-Z]{2})\s+(\d{5}(-\d{4})?)$/);
 		if (stateZipMatch) {
@@ -141,7 +161,7 @@ function parseAddressString(address: string): { street: string; city: string; st
 			};
 		}
 	}
-	
+
 	// Fallback - return the address as street with empty other fields
 	return {
 		street: address,

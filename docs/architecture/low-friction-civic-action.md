@@ -91,5 +91,3 @@ Link → Recognized session → Template modal → mailto open → Done
 - Guest state, quick action modal, extended sessions, sharing: implemented
 - Event model and API exist; broader adoption can wire through `funnelAnalytics`
 - Claims are grounded in shipped code; additional analytics visualization and A/B testing are optional follow‑ups
-
-

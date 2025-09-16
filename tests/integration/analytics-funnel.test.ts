@@ -1,7 +1,7 @@
 /**
  * OAuth Funnel Analytics Integration Tests
- * 
- * Tests the specific OAuth funnel flow that was broken: template_viewed → 
+ *
+ * Tests the specific OAuth funnel flow that was broken: template_viewed →
  * onboarding_started → auth_completed → template_used. This validates the
  * fix for the "api.track is not a function" error.
  */
@@ -15,7 +15,7 @@ const mockFunnelAnalytics = vi.hoisted(() => ({
 	trackAuthCompleted: vi.fn().mockResolvedValue(undefined),
 	trackTemplateUsed: vi.fn().mockResolvedValue(undefined),
 	trackSocialShare: vi.fn().mockResolvedValue(undefined),
-	getFunnelMetrics: vi.fn().mockReturnValue({ 
+	getFunnelMetrics: vi.fn().mockReturnValue({
 		events: [],
 		conversions: {
 			template_viewed: 100,
@@ -37,7 +37,6 @@ vi.mock('$lib/core/analytics/funnel', () => ({
 import { funnelAnalytics } from '$lib/core/analytics/funnel';
 
 describe('OAuth Funnel Analytics Integration', () => {
-
 	beforeEach(() => {
 		// Setup localStorage mock
 		const mockLocalStorage = {
@@ -51,7 +50,7 @@ describe('OAuth Funnel Analytics Integration', () => {
 			value: mockLocalStorage,
 			writable: true
 		});
-		
+
 		// Reset all mocks
 		vi.clearAllMocks();
 	});
@@ -64,7 +63,7 @@ describe('OAuth Funnel Analytics Integration', () => {
 			// Step 1: User views template (landing page)
 			await funnelAnalytics.trackTemplateView(templateId, 'direct-link');
 
-			// Step 2: User starts onboarding (clicks "Sign in to Send")  
+			// Step 2: User starts onboarding (clicks "Sign in to Send")
 			await funnelAnalytics.trackOnboardingStarted(templateId, 'direct-link');
 
 			// Step 3: User completes OAuth (Google)
@@ -75,9 +74,20 @@ describe('OAuth Funnel Analytics Integration', () => {
 
 			// Verify complete funnel was tracked
 			expect(mockFunnelAnalytics.trackTemplateView).toHaveBeenCalledWith(templateId, 'direct-link');
-			expect(mockFunnelAnalytics.trackOnboardingStarted).toHaveBeenCalledWith(templateId, 'direct-link');
-			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(templateId, 'google', userId);
-			expect(mockFunnelAnalytics.trackTemplateUsed).toHaveBeenCalledWith(templateId, 'email', userId);
+			expect(mockFunnelAnalytics.trackOnboardingStarted).toHaveBeenCalledWith(
+				templateId,
+				'direct-link'
+			);
+			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(
+				templateId,
+				'google',
+				userId
+			);
+			expect(mockFunnelAnalytics.trackTemplateUsed).toHaveBeenCalledWith(
+				templateId,
+				'email',
+				userId
+			);
 		});
 
 		it('should handle different OAuth providers', async () => {
@@ -89,9 +99,21 @@ describe('OAuth Funnel Analytics Integration', () => {
 			}
 
 			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledTimes(3);
-			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(templateId, 'google', 'user-google');
-			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(templateId, 'github', 'user-github');
-			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(templateId, 'discord', 'user-discord');
+			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(
+				templateId,
+				'google',
+				'user-google'
+			);
+			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(
+				templateId,
+				'github',
+				'user-github'
+			);
+			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(
+				templateId,
+				'discord',
+				'user-discord'
+			);
 		});
 
 		it('should handle different traffic sources', async () => {
@@ -109,7 +131,9 @@ describe('OAuth Funnel Analytics Integration', () => {
 	describe('Error Handling & Resilience', () => {
 		it('should handle analytics service failures gracefully', async () => {
 			// Mock analytics to fail
-			mockFunnelAnalytics.trackTemplateView.mockRejectedValueOnce(new Error('Analytics service unavailable'));
+			mockFunnelAnalytics.trackTemplateView.mockRejectedValueOnce(
+				new Error('Analytics service unavailable')
+			);
 
 			// Track event - should not throw error but might reject silently
 			try {
@@ -119,7 +143,10 @@ describe('OAuth Funnel Analytics Integration', () => {
 			}
 
 			// Verify it still attempted to track
-			expect(mockFunnelAnalytics.trackTemplateView).toHaveBeenCalledWith('test-template', 'direct-link');
+			expect(mockFunnelAnalytics.trackTemplateView).toHaveBeenCalledWith(
+				'test-template',
+				'direct-link'
+			);
 		});
 
 		it('should store failed events for retry in localStorage', async () => {
@@ -139,7 +166,10 @@ describe('OAuth Funnel Analytics Integration', () => {
 			await funnelAnalytics.trackTemplateView('failed-template', 'direct-link');
 
 			// Verify the event was tracked (this tests our mock works correctly)
-			expect(mockFunnelAnalytics.trackTemplateView).toHaveBeenCalledWith('failed-template', 'direct-link');
+			expect(mockFunnelAnalytics.trackTemplateView).toHaveBeenCalledWith(
+				'failed-template',
+				'direct-link'
+			);
 		});
 	});
 
@@ -150,19 +180,30 @@ describe('OAuth Funnel Analytics Integration', () => {
 
 			// Simulate realistic funnel progression with timing
 			await funnelAnalytics.trackTemplateView(templateId, 'social-link');
-			
+
 			// Wait a bit (simulate user thinking)
-			await new Promise(resolve => setTimeout(resolve, 10));
-			
+			await new Promise((resolve) => setTimeout(resolve, 10));
+
 			await funnelAnalytics.trackOnboardingStarted(templateId, 'social-link');
 			await funnelAnalytics.trackAuthCompleted(templateId, 'github', userId);
 			await funnelAnalytics.trackTemplateUsed(templateId, 'email', userId);
 
 			// Verify progression tracking
 			expect(mockFunnelAnalytics.trackTemplateView).toHaveBeenCalledWith(templateId, 'social-link');
-			expect(mockFunnelAnalytics.trackOnboardingStarted).toHaveBeenCalledWith(templateId, 'social-link');
-			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(templateId, 'github', userId);
-			expect(mockFunnelAnalytics.trackTemplateUsed).toHaveBeenCalledWith(templateId, 'email', userId);
+			expect(mockFunnelAnalytics.trackOnboardingStarted).toHaveBeenCalledWith(
+				templateId,
+				'social-link'
+			);
+			expect(mockFunnelAnalytics.trackAuthCompleted).toHaveBeenCalledWith(
+				templateId,
+				'github',
+				userId
+			);
+			expect(mockFunnelAnalytics.trackTemplateUsed).toHaveBeenCalledWith(
+				templateId,
+				'email',
+				userId
+			);
 		});
 	});
 
@@ -184,7 +225,7 @@ describe('OAuth Funnel Analytics Integration', () => {
 
 			expect(mockFunnelAnalytics.trackSocialShare).toHaveBeenCalledWith(
 				'anonymous-template',
-				'twitter', 
+				'twitter',
 				undefined
 			);
 		});
@@ -203,7 +244,7 @@ describe('OAuth Funnel Analytics Integration', () => {
 		});
 
 		it('should calculate conversion rate correctly', async () => {
-			// Track a complete funnel  
+			// Track a complete funnel
 			const templateId = 'conversion-test-template';
 			await funnelAnalytics.trackTemplateView(templateId);
 			await funnelAnalytics.trackOnboardingStarted(templateId, 'direct-link');
@@ -218,10 +259,10 @@ describe('OAuth Funnel Analytics Integration', () => {
 		it('should clear events for testing', () => {
 			// Add some events
 			funnelAnalytics.trackTemplateView('test-template');
-			
+
 			// Clear
 			funnelAnalytics.clearEvents();
-			
+
 			expect(mockFunnelAnalytics.clearEvents).toHaveBeenCalled();
 		});
 	});

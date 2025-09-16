@@ -51,8 +51,8 @@
 			// Check for return URL from OAuth cookie (fallback to query params for compatibility)
 			const oauthReturnCookie = document.cookie
 				.split('; ')
-				.find(row => row.startsWith('oauth_return_to='));
-			
+				.find((row) => row.startsWith('oauth_return_to='));
+
 			if (oauthReturnCookie) {
 				finalReturnUrl = decodeURIComponent(oauthReturnCookie.split('=')[1]);
 				// Clean up the cookie after use
@@ -94,20 +94,20 @@
 				}
 
 				// Set OAuth completion info in cookie for client-side detection
-				document.cookie = `oauth_completion=${JSON.stringify({ 
+				document.cookie = `oauth_completion=${JSON.stringify({
 					provider: 'unknown',
-					completed: true, 
-					timestamp: Date.now() 
+					completed: true,
+					timestamp: Date.now()
 				})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
 
 				// Clean redirect without query parameters
 				window.location.href = finalReturnUrl;
 			} else {
 				// Set OAuth completion info even on error for clean redirect
-				document.cookie = `oauth_completion=${JSON.stringify({ 
+				document.cookie = `oauth_completion=${JSON.stringify({
 					provider: 'unknown',
-					completed: true, 
-					timestamp: Date.now() 
+					completed: true,
+					timestamp: Date.now()
 				})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
 
 				// Clean redirect without query parameters
@@ -115,10 +115,10 @@
 			}
 		} catch (error) {
 			// Set OAuth completion info even on error for clean redirect
-			document.cookie = `oauth_completion=${JSON.stringify({ 
+			document.cookie = `oauth_completion=${JSON.stringify({
 				provider: 'unknown',
-				completed: true, 
-				timestamp: Date.now() 
+				completed: true,
+				timestamp: Date.now()
 			})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
 
 			// Clean redirect without query parameters
@@ -131,12 +131,12 @@
 		if (browser) {
 			sessionStorage.removeItem('pending_template_action');
 		}
-		
+
 		// Set OAuth completion info in cookie for client-side detection
-		document.cookie = `oauth_completion=${JSON.stringify({ 
+		document.cookie = `oauth_completion=${JSON.stringify({
 			provider: 'unknown',
-			completed: true, 
-			timestamp: Date.now() 
+			completed: true,
+			timestamp: Date.now()
 		})}; path=/; max-age=300; SameSite=lax`; // 5 minutes
 
 		// Clean redirect without query parameters

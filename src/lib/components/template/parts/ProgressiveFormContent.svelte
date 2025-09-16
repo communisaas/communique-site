@@ -1,14 +1,7 @@
 <script lang="ts">
 	import { fade, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { 
-		ArrowRight,
-		ArrowLeft,
-		User,
-		MapPin,
-		Send,
-		CheckCircle2
-	} from '@lucide/svelte';
+	import { ArrowRight, ArrowLeft, User, MapPin, Send, CheckCircle2 } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
@@ -139,26 +132,34 @@
 		if (!validateCurrentStep()) return;
 
 		isTransitioning = true;
-		
-		coordinated.transition(() => {
-			const nextIndex = currentStepIndex + 1;
-			if (nextIndex < steps.length) {
-				currentStep = steps[nextIndex];
-			}
-			isTransitioning = false;
-		}, 200, componentId);
+
+		coordinated.transition(
+			() => {
+				const nextIndex = currentStepIndex + 1;
+				if (nextIndex < steps.length) {
+					currentStep = steps[nextIndex];
+				}
+				isTransitioning = false;
+			},
+			200,
+			componentId
+		);
 	}
 
 	function prevStep() {
 		isTransitioning = true;
-		
-		coordinated.transition(() => {
-			const prevIndex = currentStepIndex - 1;
-			if (prevIndex >= 0) {
-				currentStep = steps[prevIndex];
-			}
-			isTransitioning = false;
-		}, 200, componentId);
+
+		coordinated.transition(
+			() => {
+				const prevIndex = currentStepIndex - 1;
+				if (prevIndex >= 0) {
+					currentStep = steps[prevIndex];
+				}
+				isTransitioning = false;
+			},
+			200,
+			componentId
+		);
 	}
 
 	function handleSend() {
@@ -167,7 +168,7 @@
 		onsend({
 			name: name.trim(),
 			address: requiresAddress ? address.trim() : undefined,
-			email: (requiresEmail || isAuthFlow) ? email.trim() : undefined
+			email: requiresEmail || isAuthFlow ? email.trim() : undefined
 		});
 	}
 
@@ -190,50 +191,49 @@
 
 <div class="p-6">
 	<!-- Progress Indicator -->
-	<div class="flex justify-center pb-6 -mt-2">
+	<div class="-mt-2 flex justify-center pb-6">
 		<div class="flex gap-2">
 			{#each steps as step, i}
-				<div 
-					class="h-2 rounded-full transition-all duration-500 ease-out {
-						currentStepIndex === i
-							? 'w-12 bg-blue-600 shadow-lg shadow-blue-200' 
-							: currentStepIndex > i 
-								? 'w-8 bg-blue-300' 
-								: 'w-8 bg-slate-200'
-					}"
+				<div
+					class="h-2 rounded-full transition-all duration-500 ease-out {currentStepIndex === i
+						? 'w-12 bg-blue-600 shadow-lg shadow-blue-200'
+						: currentStepIndex > i
+							? 'w-8 bg-blue-300'
+							: 'w-8 bg-slate-200'}"
 				></div>
 			{/each}
 		</div>
 	</div>
 
 	<!-- Content -->
-	<div class="relative overflow-hidden min-h-[400px]">
+	<div class="relative min-h-[400px] overflow-hidden">
 		{#key currentStep}
-			<div 
+			<div
 				class="absolute inset-0"
 				in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 				out:fly={{ x: -20, duration: 300, easing: quintOut }}
 			>
 				{#if currentStep === 'name'}
 					<!-- Name Step -->
-					<div class="text-center mb-6">
-						<div class="inline-flex items-center justify-center w-12 h-12 bg-blue-100 rounded-full mb-4">
+					<div class="mb-6 text-center">
+						<div
+							class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-blue-100"
+						>
 							<User class="h-6 w-6 text-blue-600" />
 						</div>
-						<h2 class="text-xl font-bold text-slate-900 mb-2">
+						<h2 class="mb-2 text-xl font-bold text-slate-900">
 							{isAuthFlow ? 'Create Your Account' : 'Quick setup to send'}
 						</h2>
 						<p class="text-slate-600">
-							{isAuthFlow 
+							{isAuthFlow
 								? 'Save your template and track its impact over time'
-								: `Your name makes this message yours, not generic`
-							}
+								: `Your name makes this message yours, not generic`}
 						</p>
 					</div>
 
-					<div class="space-y-4 mb-6">
+					<div class="mb-6 space-y-4">
 						<div>
-							<label for="name" class="block text-sm font-medium text-slate-700 mb-2">
+							<label for="name" class="mb-2 block text-sm font-medium text-slate-700">
 								Full Name
 							</label>
 							<input
@@ -241,7 +241,7 @@
 								type="text"
 								bind:value={name}
 								placeholder="Enter your full name"
-								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+								class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
 							/>
 							{#if nameError}
 								<p class="mt-1 text-sm text-red-600">{nameError}</p>
@@ -250,7 +250,7 @@
 
 						{#if requiresEmail || isAuthFlow}
 							<div>
-								<label for="email" class="block text-sm font-medium text-slate-700 mb-2">
+								<label for="email" class="mb-2 block text-sm font-medium text-slate-700">
 									Email Address
 								</label>
 								<input
@@ -258,7 +258,7 @@
 									type="email"
 									bind:value={email}
 									placeholder="Enter your email address"
-									class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+									class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
 								/>
 								{#if emailError}
 									<p class="mt-1 text-sm text-red-600">{emailError}</p>
@@ -266,24 +266,24 @@
 							</div>
 						{/if}
 					</div>
-
 				{:else if currentStep === 'address'}
 					<!-- Address Step -->
-					<div class="text-center mb-6">
-						<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+					<div class="mb-6 text-center">
+						<div
+							class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100"
+						>
 							<MapPin class="h-6 w-6 text-green-600" />
 						</div>
-						<h2 class="text-xl font-bold text-slate-900 mb-2">
-							Which representatives get this?
-						</h2>
+						<h2 class="mb-2 text-xl font-bold text-slate-900">Which representatives get this?</h2>
 						<p class="text-slate-600">
-							Your address determines which offices see this - they only count messages from their district
+							Your address determines which offices see this - they only count messages from their
+							district
 						</p>
 					</div>
 
-					<div class="space-y-4 mb-6">
+					<div class="mb-6 space-y-4">
 						<div>
-							<label for="address" class="block text-sm font-medium text-slate-700 mb-2">
+							<label for="address" class="mb-2 block text-sm font-medium text-slate-700">
 								Address
 							</label>
 							<textarea
@@ -291,33 +291,33 @@
 								bind:value={address}
 								placeholder="123 Main Street, City, State 12345"
 								rows="3"
-								class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+								class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
 							></textarea>
 							{#if addressError}
 								<p class="mt-1 text-sm text-red-600">{addressError}</p>
 							{/if}
 						</div>
 					</div>
-
 				{:else if currentStep === 'send'}
 					<!-- Send Step -->
-					<div class="text-center mb-6">
-						<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+					<div class="mb-6 text-center">
+						<div
+							class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100"
+						>
 							<Send class="h-6 w-6 text-green-600" />
 						</div>
-						<h2 class="text-xl font-bold text-slate-900 mb-2">
+						<h2 class="mb-2 text-xl font-bold text-slate-900">
 							{isAuthFlow ? 'Save Your Template' : 'All set - this goes out now'}
 						</h2>
 						<p class="text-slate-600">
-							{isAuthFlow 
+							{isAuthFlow
 								? 'Your template will be saved and you can track its impact'
-								: `"${template.title}" will be sent ${isCongressional ? 'to your representatives' : 'via email'}`
-							}
+								: `"${template.title}" will be sent ${isCongressional ? 'to your representatives' : 'via email'}`}
 						</p>
 					</div>
 
 					{#if template.preview}
-						<div class="bg-slate-50 border border-slate-200 rounded-lg p-4 mb-6">
+						<div class="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-4">
 							<p class="text-sm text-slate-700">{template.preview}</p>
 						</div>
 					{/if}
@@ -326,9 +326,9 @@
 				<!-- Navigation -->
 				<div class="flex gap-3">
 					{#if currentStepIndex > 0}
-						<Button 
-							variant="secondary" 
-							size="sm" 
+						<Button
+							variant="secondary"
+							size="sm"
 							classNames="flex-1"
 							onclick={prevStep}
 							disabled={isTransitioning}
@@ -339,9 +339,9 @@
 					{/if}
 
 					{#if isLastStep}
-						<Button 
-							variant="primary" 
-							size="sm" 
+						<Button
+							variant="primary"
+							size="sm"
 							classNames={currentStepIndex === 0 ? 'w-full' : 'flex-1'}
 							onclick={handleSend}
 							disabled={isTransitioning}
@@ -350,9 +350,9 @@
 							{isAuthFlow ? 'Save Template' : 'Send Message'}
 						</Button>
 					{:else}
-						<Button 
-							variant="primary" 
-							size="sm" 
+						<Button
+							variant="primary"
+							size="sm"
 							classNames={currentStepIndex === 0 ? 'w-full' : 'flex-1'}
 							onclick={nextStep}
 							disabled={isTransitioning}

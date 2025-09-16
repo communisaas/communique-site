@@ -22,8 +22,8 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 		user?: { id: string; name: string; address?: string } | null;
 	} = $props();
 
-	const dispatch = createEventDispatcher<{ 
-		close: void; 
+	const dispatch = createEventDispatcher<{
+		close: void;
 		send: { name: string; address?: string; email?: string };
 	}>();
 

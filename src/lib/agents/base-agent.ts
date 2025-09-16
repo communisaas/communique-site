@@ -1,9 +1,9 @@
 /**
  * Base Agent Architecture for VOTER Protocol
- * 
+ *
  * Implements the foundational agent system that replaces hardcoded parameters
  * with intelligent, adaptive decision-making within auditable safety rails.
- * 
+ *
  * "Death to hardcoded tyranny" - agents optimize for human flourishing
  */
 
@@ -33,7 +33,7 @@ export interface AgentConsensus {
 
 export enum AgentType {
 	SUPPLY = 'supply',
-	VERIFICATION = 'verification', 
+	VERIFICATION = 'verification',
 	MARKET = 'market',
 	IMPACT = 'impact',
 	REPUTATION = 'reputation',
@@ -58,8 +58,12 @@ export abstract class BaseAgent {
 	protected agentId: string;
 	protected agentType: AgentType;
 	protected safetyBounds: Record<string, [number, number]>;
-	
-	constructor(agentId: string, agentType: AgentType, safetyBounds: Record<string, [number, number]> = {}) {
+
+	constructor(
+		agentId: string,
+		agentType: AgentType,
+		safetyBounds: Record<string, [number, number]> = {}
+	) {
 		this.agentId = agentId;
 		this.agentType = agentType;
 		this.safetyBounds = safetyBounds;
@@ -76,9 +80,9 @@ export abstract class BaseAgent {
 	}
 
 	protected createDecision(
-		decision: any, 
-		confidence: number, 
-		reasoning: string, 
+		decision: any,
+		confidence: number,
+		reasoning: string,
 		parameters: Record<string, any> = {}
 	): AgentDecision {
 		return {
@@ -89,10 +93,12 @@ export abstract class BaseAgent {
 			reasoning,
 			parameters,
 			timestamp: new Date(),
-			safetyBounds: parameters.parameterName ? {
-				min: this.safetyBounds[parameters.parameterName]?.[0],
-				max: this.safetyBounds[parameters.parameterName]?.[1]
-			} : undefined
+			safetyBounds: parameters.parameterName
+				? {
+						min: this.safetyBounds[parameters.parameterName]?.[0],
+						max: this.safetyBounds[parameters.parameterName]?.[1]
+					}
+				: undefined
 		};
 	}
 }
@@ -106,39 +112,40 @@ export class AgentCoordinator {
 	}
 
 	async coordinateDecision(
-		context: AgentContext, 
+		context: AgentContext,
 		requiredAgents: AgentType[]
 	): Promise<AgentConsensus> {
 		const decisions: AgentDecision[] = [];
-		
+
 		// Collect decisions from required agents
 		for (const agentType of requiredAgents) {
 			const agent = this.agents.get(agentType);
 			if (!agent) {
 				throw new Error(`Required agent ${agentType} not registered`);
 			}
-			
+
 			const decision = await agent.makeDecision(context);
 			decisions.push(decision);
 		}
 
 		// Calculate consensus
-		const averageConfidence = decisions.reduce((sum, d) => sum + d.confidence, 0) / decisions.length;
+		const averageConfidence =
+			decisions.reduce((sum, d) => sum + d.confidence, 0) / decisions.length;
 		const consensusReached = averageConfidence >= this.consensusThreshold;
 
 		// Simple consensus - in production this would be more sophisticated
-		const finalDecision = consensusReached 
-			? this.calculateConsensusDecision(decisions)
-			: null;
+		const finalDecision = consensusReached ? this.calculateConsensusDecision(decisions) : null;
 
 		return {
 			decisions,
 			consensusReached,
 			consensusConfidence: averageConfidence,
 			finalDecision,
-			dissent: consensusReached ? undefined : decisions
-				.filter(d => d.confidence < this.consensusThreshold)
-				.map(d => `${d.agentId}: ${d.reasoning}`),
+			dissent: consensusReached
+				? undefined
+				: decisions
+						.filter((d) => d.confidence < this.consensusThreshold)
+						.map((d) => `${d.agentId}: ${d.reasoning}`),
 			timestamp: new Date()
 		};
 	}
@@ -147,11 +154,11 @@ export class AgentCoordinator {
 		// This is a simplified consensus mechanism
 		// In production, this would be much more sophisticated
 		// and specific to the type of decision being made
-		
+
 		if (decisions.length === 0) return null;
-		
+
 		// For now, take the decision from the highest confidence agent
-		return decisions.reduce((highest, current) => 
+		return decisions.reduce((highest, current) =>
 			current.confidence > highest.confidence ? current : highest
 		).decision;
 	}
@@ -186,7 +193,7 @@ export class VectorAgentMemory implements AgentMemory {
 	async queryHistory(context: AgentContext, limit: number = 10): Promise<AgentDecision[]> {
 		// Simplified - in production would use vector similarity
 		return Array.from(this.decisions.values())
-			.filter(d => this.isRelevantContext(d, context))
+			.filter((d) => this.isRelevantContext(d, context))
 			.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 			.slice(0, limit);
 	}
@@ -197,7 +204,9 @@ export class VectorAgentMemory implements AgentMemory {
 
 	private isRelevantContext(decision: AgentDecision, context: AgentContext): boolean {
 		// Simplified context matching - would be vector similarity in production
-		return decision.parameters.actionType === context.actionType ||
-			   decision.parameters.userId === context.userId;
+		return (
+			decision.parameters.actionType === context.actionType ||
+			decision.parameters.userId === context.userId
+		);
 	}
 }

@@ -13,7 +13,7 @@
 		fadeIn?: boolean;
 	}
 
-	let { 
+	let {
 		loading,
 		error = null,
 		skeleton,
@@ -34,7 +34,7 @@
 			const timer = setTimeout(() => {
 				minLoadTimeElapsed = true;
 			}, minLoadTime);
-			
+
 			return () => clearTimeout(timer);
 		} else {
 			minLoadTimeElapsed = true;
@@ -55,7 +55,14 @@
 		<div class="flex items-center justify-center py-8">
 			<div class="h-8 w-8 text-blue-600">
 				<svg class="animate-spin" fill="none" viewBox="0 0 24 24">
-					<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" />
+					<circle
+						class="opacity-25"
+						cx="12"
+						cy="12"
+						r="10"
+						stroke="currentColor"
+						stroke-width="2"
+					/>
 					<path
 						class="opacity-75"
 						fill="currentColor"
@@ -68,18 +75,18 @@
 	{/if}
 {:else if error}
 	<!-- Error state -->
-	<div class="bg-red-50 border border-red-200 rounded-lg p-6">
+	<div class="rounded-lg border border-red-200 bg-red-50 p-6">
 		<div class="flex items-start gap-3">
-			<AlertCircle class="h-5 w-5 text-red-500 mt-0.5 shrink-0" />
+			<AlertCircle class="mt-0.5 h-5 w-5 shrink-0 text-red-500" />
 			<div class="flex-1">
 				<h3 class="font-semibold text-red-900">{errorMessage}</h3>
 				{#if error !== errorMessage}
 					<p class="mt-1 text-sm text-red-700">{error}</p>
 				{/if}
 				{#if retryAction}
-					<button 
+					<button
 						onclick={retryAction}
-						class="mt-3 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+						class="mt-3 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-red-700"
 					>
 						Try Again
 					</button>

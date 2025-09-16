@@ -1,9 +1,9 @@
 /**
  * UNIFIED OAUTH CALLBACK HANDLER
- * 
+ *
  * Consolidates 85% of duplicate OAuth callback logic across 5 providers
  * while maintaining provider-specific customizations.
- * 
+ *
  * Features:
  * - Unified token exchange and validation
  * - Common user creation/update logic
@@ -49,7 +49,7 @@ export interface OAuthCallbackConfig {
 	userInfoUrl: string;
 	requiresCodeVerifier: boolean;
 	scope: string;
-	
+
 	// Provider-specific functions
 	createOAuthClient: () => any;
 	exchangeTokens: (client: any, code: string, codeVerifier?: string) => Promise<any>;
@@ -66,11 +66,7 @@ export class OAuthCallbackHandler {
 	/**
 	 * Main entry point for handling OAuth callbacks
 	 */
-	async handleCallback(
-		config: OAuthCallbackConfig,
-		url: URL,
-		cookies: Cookies
-	): Promise<Response> {
+	async handleCallback(config: OAuthCallbackConfig, url: URL, cookies: Cookies): Promise<Response> {
 		try {
 			// Step 1: Validate OAuth parameters
 			const { code, state, codeVerifier, returnTo } = this.validateParameters(
@@ -85,27 +81,14 @@ export class OAuthCallbackHandler {
 			const tokenData = config.extractTokenData(tokens);
 
 			// Step 3: Fetch user information from provider
-			const rawUserData = await config.getUserInfo(
-				tokenData.accessToken,
-				config.clientSecret
-			);
+			const rawUserData = await config.getUserInfo(tokenData.accessToken, config.clientSecret);
 			const userData = config.mapUserData(rawUserData);
 
 			// Step 4: Find or create user in database
-			const user = await this.findOrCreateUser(
-				config,
-				userData,
-				tokenData
-			);
+			const user = await this.findOrCreateUser(config, userData, tokenData);
 
 			// Step 5: Create session and handle redirects
-			return await this.handleSessionAndRedirect(
-				user,
-				returnTo,
-				config.provider,
-				cookies
-			);
-
+			return await this.handleSessionAndRedirect(user, returnTo, config.provider, cookies);
 		} catch (err) {
 			return this.handleError(err, config.provider);
 		}
@@ -210,7 +193,7 @@ export class OAuthCallbackHandler {
 			return existingUser;
 		}
 
-		// Create new user with OAuth account  
+		// Create new user with OAuth account
 		const newUser = await db.user.create({
 			data: {
 				email: userData.email,
@@ -245,14 +228,13 @@ export class OAuthCallbackHandler {
 		cookies: Cookies
 	): Promise<Response> {
 		// Determine session type based on funnel
-		const isFromSocialFunnel = 
-			returnTo.includes('template-modal') || 
-			returnTo.includes('auth=required');
-			
+		const isFromSocialFunnel =
+			returnTo.includes('template-modal') || returnTo.includes('auth=required');
+
 		// Create session with appropriate duration
 		const session = await createSession(user.id, isFromSocialFunnel);
-		const cookieMaxAge = isFromSocialFunnel 
-			? 60 * 60 * 24 * 90  // 90 days for social funnel
+		const cookieMaxAge = isFromSocialFunnel
+			? 60 * 60 * 24 * 90 // 90 days for social funnel
 			: 60 * 60 * 24 * 30; // 30 days standard
 
 		// Set session cookie
@@ -265,37 +247,37 @@ export class OAuthCallbackHandler {
 		});
 
 		// Check address requirements
-		const hasAddress = Boolean(
-			user.street && user.city && user.state && user.zip
-		);
-		
-		const needsAddressCollection = !hasAddress && (
-			returnTo.includes('template-modal') ||
-			returnTo.includes('/template/') ||
-			isFromSocialFunnel ||
-			returnTo !== '/profile'
-		);
+		const hasAddress = Boolean(user.street && user.city && user.state && user.zip);
+
+		const needsAddressCollection =
+			!hasAddress &&
+			(returnTo.includes('template-modal') ||
+				returnTo.includes('/template/') ||
+				isFromSocialFunnel ||
+				returnTo !== '/profile');
 
 		// Check profile requirements for direct outreach
-		const isDirectOutreach = 
-			returnTo.includes('template-modal') && 
-			returnTo.includes('direct');
-			
+		const isDirectOutreach = returnTo.includes('template-modal') && returnTo.includes('direct');
+
 		const hasProfile = user.phone && user.phone.startsWith('{');
 
 		// Store OAuth completion info in session storage-accessible cookie for client-side access
-		cookies.set('oauth_completion', JSON.stringify({ 
-			provider,
-			returnTo,
-			completed: true,
-			timestamp: Date.now()
-		}), {
-			path: '/',
-			secure: false, // Allow client-side access
-			httpOnly: false, // Allow client-side access
-			maxAge: 60 * 5, // 5 minutes
-			sameSite: 'lax'
-		});
+		cookies.set(
+			'oauth_completion',
+			JSON.stringify({
+				provider,
+				returnTo,
+				completed: true,
+				timestamp: Date.now()
+			}),
+			{
+				path: '/',
+				secure: false, // Allow client-side access
+				httpOnly: false, // Allow client-side access
+				maxAge: 60 * 5, // 5 minutes
+				sameSite: 'lax'
+			}
+		);
 
 		// Determine redirect path - clean URLs without query params
 		if (needsAddressCollection) {
@@ -311,7 +293,7 @@ export class OAuthCallbackHandler {
 		}
 
 		if (isDirectOutreach && !hasProfile) {
-			// Store return URL in session-accessible cookie  
+			// Store return URL in session-accessible cookie
 			cookies.set('oauth_return_to', returnTo, {
 				path: '/',
 				secure: false,
@@ -334,7 +316,7 @@ export class OAuthCallbackHandler {
 		if (err instanceof Response && err.status >= 300 && err.status < 400) {
 			throw err;
 		}
-		
+
 		if (err && typeof err === 'object' && 'status' in err && 'location' in err) {
 			const status = err.status as number;
 			if (status >= 300 && status < 400) {
@@ -356,9 +338,10 @@ export class OAuthCallbackHandler {
 		});
 
 		// Return appropriate error message
-		const errorMessage = process.env.NODE_ENV === 'production'
-			? 'Authentication failed'
-			: `Authentication failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
+		const errorMessage =
+			process.env.NODE_ENV === 'production'
+				? 'Authentication failed'
+				: `Authentication failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
 
 		return error(500, errorMessage);
 	}

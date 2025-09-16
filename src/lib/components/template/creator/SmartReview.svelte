@@ -7,8 +7,16 @@
 
 	// State for AI analysis
 	let analysisState: 'checking' | 'ready' | 'suggestions' | 'ai-help' = $state('checking');
-	let quickFixes: Array<{ type: string; fix: string; reason: string; severity: number }> = $state([]);
-	let aiSuggestions: Array<{ id: string; original: string; suggested: string; reason: string; accepted?: boolean }> = $state([]);
+	let quickFixes: Array<{ type: string; fix: string; reason: string; severity: number }> = $state(
+		[]
+	);
+	let aiSuggestions: Array<{
+		id: string;
+		original: string;
+		suggested: string;
+		reason: string;
+		accepted?: boolean;
+	}> = $state([]);
 	let needsWork = $state(false);
 	let scores = $state({ grammar: 100, clarity: 100, completeness: 100 });
 
@@ -33,13 +41,13 @@
 			});
 
 			const result = await response.json();
-			
+
 			if (result.success) {
 				const analysis = result.data;
 				quickFixes = analysis.quickFixes || [];
 				scores = analysis.scores;
 				needsWork = analysis.status === 'needs_work';
-				
+
 				if (analysis.status === 'ready') {
 					analysisState = 'ready';
 				} else {
@@ -55,7 +63,6 @@
 		}
 	}
 
-
 	function applyQuickFixes() {
 		// Simulate applying fixes
 		quickFixes = [];
@@ -64,7 +71,7 @@
 
 	async function getAIHelp() {
 		analysisState = 'ai-help';
-		
+
 		// Simulate AI analysis
 		setTimeout(() => {
 			aiSuggestions = [
@@ -75,7 +82,7 @@
 					reason: 'Specific data beats opinions'
 				},
 				{
-					id: '2', 
+					id: '2',
 					original: 'Please consider my request',
 					suggested: 'Vote NO on H.R. 1234 when it comes to committee',
 					reason: 'Clear ask with bill number'
@@ -85,7 +92,7 @@
 	}
 
 	function acceptSuggestion(id: string) {
-		const suggestion = aiSuggestions.find(s => s.id === id);
+		const suggestion = aiSuggestions.find((s) => s.id === id);
 		if (suggestion) {
 			suggestion.accepted = true;
 			// In real implementation, update the actual message content
@@ -93,12 +100,14 @@
 	}
 
 	function rejectSuggestion(id: string) {
-		aiSuggestions = aiSuggestions.filter(s => s.id !== id);
+		aiSuggestions = aiSuggestions.filter((s) => s.id !== id);
 	}
 
 	// Derived state
-	const allSuggestionsHandled = $derived(aiSuggestions.every(s => s.accepted !== undefined));
-	const isReady = $derived(analysisState === 'ready' || (analysisState === 'ai-help' && allSuggestionsHandled));
+	const allSuggestionsHandled = $derived(aiSuggestions.every((s) => s.accepted !== undefined));
+	const isReady = $derived(
+		analysisState === 'ready' || (analysisState === 'ai-help' && allSuggestionsHandled)
+	);
 </script>
 
 <div class="space-y-6">
@@ -108,8 +117,12 @@
 			<div class="flex items-center gap-3">
 				<Loader2 class="h-5 w-5 animate-spin text-participation-primary-600" />
 				<div>
-					<h4 class="text-base font-medium text-participation-primary-900">Checking your message...</h4>
-					<p class="mt-1 text-sm text-participation-primary-700">Quick scan for what works and what doesn't</p>
+					<h4 class="text-base font-medium text-participation-primary-900">
+						Checking your message...
+					</h4>
+					<p class="mt-1 text-sm text-participation-primary-700">
+						Quick scan for what works and what doesn't
+					</p>
 				</div>
 			</div>
 		</div>
@@ -121,10 +134,9 @@
 				<div>
 					<h4 class="text-base font-medium text-green-900">Ready to send</h4>
 					<p class="mt-1 text-sm text-green-700">
-						{isCertifiedDelivery 
-							? 'Congressional standards met—clear ask, solid structure' 
-							: 'Message looks good—structure works, ask is clear'
-						}
+						{isCertifiedDelivery
+							? 'Congressional standards met—clear ask, solid structure'
+							: 'Message looks good—structure works, ask is clear'}
 					</p>
 				</div>
 			</div>
@@ -140,10 +152,13 @@
 							{needsWork ? 'Found ways to strengthen this' : 'Quick fixes available'}
 						</h4>
 						<p class="mt-1 text-sm text-amber-700">
-							{isCertifiedDelivery 
-								? (needsWork ? 'Congressional staff notice quality—make it count' : 'Small tweaks, bigger congressional impact')
-								: (needsWork ? 'Messages that hit harder get better responses' : 'Small changes, bigger impact')
-							}
+							{isCertifiedDelivery
+								? needsWork
+									? 'Congressional staff notice quality—make it count'
+									: 'Small tweaks, bigger congressional impact'
+								: needsWork
+									? 'Messages that hit harder get better responses'
+									: 'Small changes, bigger impact'}
 						</p>
 					</div>
 				</div>
@@ -170,19 +185,34 @@
 					<h4 class="mb-2 text-sm font-medium text-slate-900">Message Quality</h4>
 					<div class="grid grid-cols-3 gap-3 text-xs">
 						<div class="text-center">
-							<div class="text-lg font-bold" class:text-green-600={scores.grammar >= 90} class:text-amber-600={scores.grammar >= 70 && scores.grammar < 90} class:text-red-600={scores.grammar < 70}>
+							<div
+								class="text-lg font-bold"
+								class:text-green-600={scores.grammar >= 90}
+								class:text-amber-600={scores.grammar >= 70 && scores.grammar < 90}
+								class:text-red-600={scores.grammar < 70}
+							>
 								{scores.grammar}
 							</div>
 							<div class="text-slate-600">Grammar</div>
 						</div>
 						<div class="text-center">
-							<div class="text-lg font-bold" class:text-green-600={scores.clarity >= 90} class:text-amber-600={scores.clarity >= 70 && scores.clarity < 90} class:text-red-600={scores.clarity < 70}>
+							<div
+								class="text-lg font-bold"
+								class:text-green-600={scores.clarity >= 90}
+								class:text-amber-600={scores.clarity >= 70 && scores.clarity < 90}
+								class:text-red-600={scores.clarity < 70}
+							>
 								{scores.clarity}
 							</div>
 							<div class="text-slate-600">Clarity</div>
 						</div>
 						<div class="text-center">
-							<div class="text-lg font-bold" class:text-green-600={scores.completeness >= 90} class:text-amber-600={scores.completeness >= 70 && scores.completeness < 90} class:text-red-600={scores.completeness < 70}>
+							<div
+								class="text-lg font-bold"
+								class:text-green-600={scores.completeness >= 90}
+								class:text-amber-600={scores.completeness >= 70 && scores.completeness < 90}
+								class:text-red-600={scores.completeness < 70}
+							>
 								{scores.completeness}
 							</div>
 							<div class="text-slate-600">Complete</div>
@@ -209,10 +239,10 @@
 					</button>
 				{/if}
 				<button
-					onclick={() => analysisState = 'ready'}
+					onclick={() => (analysisState = 'ready')}
 					class="text-sm text-slate-600 hover:text-slate-900"
 				>
-					{isCertifiedDelivery ? 'I\'ll handle it' : 'Looks good'}
+					{isCertifiedDelivery ? "I'll handle it" : 'Looks good'}
 				</button>
 			</div>
 		</div>
@@ -221,7 +251,9 @@
 		<div class="space-y-4">
 			<div class="rounded-lg border border-purple-200 bg-purple-50 p-4">
 				<div class="flex items-start gap-3">
-					<div class="h-5 w-5 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-bold mt-0.5">
+					<div
+						class="mt-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-purple-600 text-xs font-bold text-white"
+					>
 						AI
 					</div>
 					<div>

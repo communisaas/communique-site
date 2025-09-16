@@ -6,54 +6,63 @@ import { addressLookup } from '$lib/core/congress/address-lookup';
 export async function POST({ request }) {
 	try {
 		const { street, city, state, zipCode } = await request.json();
-		
+
 		// Basic validation
 		if (!street || !city || !state || !zipCode) {
-			return json({ 
-				verified: false, 
-				error: 'All address fields are required' 
-			}, { status: 400 });
+			return json(
+				{
+					verified: false,
+					error: 'All address fields are required'
+				},
+				{ status: 400 }
+			);
 		}
-		
+
 		// Validate ZIP code format
 		const zipRegex = /^\d{5}(-\d{4})?$/;
 		if (!zipRegex.test(zipCode)) {
-			return json({ 
-				verified: false, 
-				error: 'Invalid ZIP code format' 
-			}, { status: 400 });
+			return json(
+				{
+					verified: false,
+					error: 'Invalid ZIP code format'
+				},
+				{ status: 400 }
+			);
 		}
-		
+
 		// Format address for Google Civic API
 		const fullAddress = `${street}, ${city}, ${state} ${zipCode}`;
-		
+
 		// Use Census Bureau Geocoding API for address validation and district lookup
 		const censusUrl = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=4&vintage=4&format=json`;
-		
+
 		const response = await fetch(censusUrl);
-		
+
 		if (!response.ok) {
 			throw new Error(`Census geocoding API error: ${response.status}`);
 		}
-		
+
 		const censusData = await response.json();
-		
+
 		// Check if address was found
 		if (!censusData.result?.addressMatches?.length) {
-			return json({ 
-				verified: false, 
-				error: 'Address not found. Please check and try again.' 
-			}, { status: 400 });
+			return json(
+				{
+					verified: false,
+					error: 'Address not found. Please check and try again.'
+				},
+				{ status: 400 }
+			);
 		}
-		
+
 		const match = censusData.result.addressMatches[0];
-		
+
 		// Extract normalized address
 		const correctedAddress = match.matchedAddress || fullAddress;
-		
+
 		// Extract congressional district
 		const district = extractCongressionalDistrictFromCensus(match.geographies, state);
-		
+
 		// Get real representatives using Congress.gov API
 		let representatives = [];
 		try {
@@ -63,7 +72,7 @@ export async function POST({ request }) {
 				state: state,
 				zip: zipCode
 			});
-			
+
 			// Format representatives for frontend
 			representatives = [
 				{
@@ -74,7 +83,7 @@ export async function POST({ request }) {
 					district: `${userReps.house.state}-${userReps.house.district}`,
 					bioguideId: userReps.house.bioguideId
 				},
-				...userReps.senate.map(senator => ({
+				...userReps.senate.map((senator) => ({
 					name: senator.name,
 					office: `Senator, ${senator.state}`,
 					chamber: 'senate',
@@ -89,7 +98,7 @@ export async function POST({ request }) {
 			// Fallback to placeholders if Congress API fails
 			representatives = createRepresentativesFromDistrict(district, state);
 		}
-		
+
 		return json({
 			verified: true,
 			corrected: correctedAddress !== fullAddress,
@@ -99,13 +108,15 @@ export async function POST({ request }) {
 			district,
 			message: 'Address verified successfully'
 		});
-		
 	} catch (error) {
 		console.error('Address verification error:', error);
-		return json({ 
-			verified: false, 
-			error: 'Address verification service temporarily unavailable' 
-		}, { status: 500 });
+		return json(
+			{
+				verified: false,
+				error: 'Address verification service temporarily unavailable'
+			},
+			{ status: 500 }
+		);
 	}
 }
 
@@ -124,10 +135,9 @@ function extractCongressionalDistrictFromCensus(geographies: any, state: string)
 			}
 			return `${state.toUpperCase()}-${cd.padStart(2, '0')}`;
 		}
-		
+
 		// Fallback to at-large
 		return `${state.toUpperCase()}-AL`;
-		
 	} catch (error) {
 		return `${state.toUpperCase()}-01`;
 	}
@@ -164,4 +174,3 @@ function createRepresentativesFromDistrict(district: string, state: string) {
 		}
 	];
 }
-

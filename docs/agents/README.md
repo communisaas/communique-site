@@ -23,7 +23,7 @@ Communiqué agents integrate with VOTER Protocol smart contracts to provide:
 Agent implementations are located in `/src/lib/agents/`:
 
 - `verification-agent.ts` - Template verification and correction
-- `supply-agent.ts` - Token supply and reward calculations  
+- `supply-agent.ts` - Token supply and reward calculations
 - `market-agent.ts` - Market dynamics and incentive optimization
 - `impact-agent.ts` - Civic impact measurement
 - `reputation-agent.ts` - ERC-8004 portable reputation

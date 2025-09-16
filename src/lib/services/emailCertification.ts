@@ -1,6 +1,6 @@
 /**
  * Email Certification Integration
- * 
+ *
  * Integrates email delivery with VOTER Protocol certification
  * Called after successful email launches to earn civic rewards
  */
@@ -40,7 +40,7 @@ export async function certifyEmailDelivery(
 	try {
 		// Extract email details from mailto URL
 		const emailDetails = parseMailtoUrl(context.mailtoUrl);
-		
+
 		// Generate message hash for deduplication
 		const messageHash = generateMessageHash(
 			emailDetails.to,
@@ -60,30 +60,29 @@ export async function certifyEmailDelivery(
 
 		// Determine action type based on template
 		let actionType = 'direct_action';
-		if (context.template.id?.includes('cwc') || 
-			context.template.title?.toLowerCase().includes('congress')) {
+		if (
+			context.template.id?.includes('cwc') ||
+			context.template.title?.toLowerCase().includes('congress')
+		) {
 			actionType = 'cwc_message';
 		}
 
 		// Submit to VOTER Protocol
-		const result = await certification.certifyAction(
-			context.user.street || '',
-			{
-				actionType: actionType as 'direct_email' | 'cwc_message',
-				deliveryReceipt,
-				recipientEmail: emailDetails.to,
-				recipientName: context.recipients[0] || emailDetails.to,
-				subject: emailDetails.subject,
-				messageHash,
-				timestamp: new Date(context.timestamp).toISOString(),
-				metadata: {
-					templateId: context.template.id,
-					templateTitle: context.template.title,
-					district: context.user.congressional_district,
-					jurisdiction: context.user.state
-				}
+		const result = await certification.certifyAction(context.user.street || '', {
+			actionType: actionType as 'direct_email' | 'cwc_message',
+			deliveryReceipt,
+			recipientEmail: emailDetails.to,
+			recipientName: context.recipients[0] || emailDetails.to,
+			subject: emailDetails.subject,
+			messageHash,
+			timestamp: new Date(context.timestamp).toISOString(),
+			metadata: {
+				templateId: context.template.id,
+				templateTitle: context.template.title,
+				district: context.user.congressional_district,
+				jurisdiction: context.user.state
 			}
-		);
+		});
 
 		if (result.success) {
 			console.log('[Email Certification] Success:', {
@@ -95,7 +94,6 @@ export async function certifyEmailDelivery(
 		}
 
 		return result;
-
 	} catch (error) {
 		console.error('[Email Certification] Error:', error);
 		return {
@@ -141,13 +139,13 @@ function generateLaunchId(): string {
 export async function launchEmailWithCertification(
 	mailtoUrl: string,
 	context: Omit<EmailDeliveryContext, 'mailtoUrl' | 'timestamp'>
-): Promise<{ 
-	launch: any; 
-	certification?: CertificationResult 
+): Promise<{
+	launch: any;
+	certification?: CertificationResult;
 }> {
 	// Import the original launch function to avoid circular dependencies
 	const { launchEmail } = await import('./emailService');
-	
+
 	// Launch email first
 	const launch = launchEmail(mailtoUrl, {
 		analytics: true,
@@ -156,14 +154,14 @@ export async function launchEmailWithCertification(
 
 	// If launch successful, attempt certification
 	let certification: CertificationResult | undefined;
-	
+
 	if (launch.success) {
 		certification = await certifyEmailDelivery({
 			...context,
 			mailtoUrl,
 			timestamp: Date.now()
 		});
-		
+
 		// Show success notification if certification worked
 		if (certification.success && certification.rewardAmount) {
 			// TODO: Show toast notification about earned rewards

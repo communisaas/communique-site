@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { 
+	let {
 		rows = 5,
 		columns = 4,
 		showHeader = true,
@@ -19,15 +19,17 @@
 	}
 </script>
 
-<div class="skeleton-table bg-white rounded-lg border border-slate-200 overflow-hidden {classNames}">
+<div
+	class="skeleton-table overflow-hidden rounded-lg border border-slate-200 bg-white {classNames}"
+>
 	<table class="w-full">
 		{#if showHeader}
-			<thead class="bg-slate-50 border-b border-slate-200">
+			<thead class="border-b border-slate-200 bg-slate-50">
 				<tr>
 					{#each Array(columns) as _, col}
 						<th class="px-4 py-3">
-							<div 
-								class="h-4 bg-slate-300 rounded {animate ? 'animate-pulse' : ''}"
+							<div
+								class="h-4 rounded bg-slate-300 {animate ? 'animate-pulse' : ''}"
 								style="width: {getRandomWidth(40, 80)}"
 							></div>
 						</th>
@@ -35,15 +37,16 @@
 				</tr>
 			</thead>
 		{/if}
-		
+
 		<tbody>
 			{#each Array(rows) as _, row}
 				<tr class="border-b border-slate-100 last:border-0">
 					{#each Array(columns) as _, col}
 						<td class="px-4 py-3">
-							<div 
-								class="h-3 bg-slate-200 rounded {animate ? 'animate-pulse' : ''}"
-								style="width: {getRandomWidth(30, 90)}; animation-delay: {(row * columns + col) * 50}ms"
+							<div
+								class="h-3 rounded bg-slate-200 {animate ? 'animate-pulse' : ''}"
+								style="width: {getRandomWidth(30, 90)}; animation-delay: {(row * columns + col) *
+									50}ms"
 							></div>
 						</td>
 					{/each}

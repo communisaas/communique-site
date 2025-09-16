@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { CheckCircle2, Send, AlertCircle, ExternalLink } from '@lucide/svelte';
 	import { onMount, onDestroy } from 'svelte';
-	
-	let { 
+
+	let {
 		submissionId,
 		initialStatus = 'sending',
 		onOverride
@@ -24,10 +24,10 @@
 			// Connect to WebSocket for real-time updates
 			const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 			const wsUrl = `${protocol}//${window.location.host}/ws/submissions/${submissionId}`;
-			
+
 			try {
 				websocket = new WebSocket(wsUrl);
-				
+
 				websocket.onmessage = (event) => {
 					const update = JSON.parse(event.data);
 					if (update.status) {
@@ -63,15 +63,15 @@
 
 	// Fallback polling for status updates
 	let pollInterval: number | null = null;
-	
+
 	function startPolling() {
 		if (pollInterval) return;
-		
+
 		pollInterval = setInterval(async () => {
 			try {
 				const response = await fetch(`/api/submissions/${submissionId}/status`);
 				const data = await response.json();
-				
+
 				if (data.status) {
 					status = data.status;
 				}
@@ -140,11 +140,17 @@
 		<div class="flex items-start gap-3">
 			{#if config}
 				{@const IconComponent = config.icon}
-				<IconComponent 
-					class="mt-0.5 h-5 w-5 shrink-0 {config.color === 'blue' ? 'text-participation-primary-600' : config.color === 'green' ? 'text-green-600' : 'text-red-600'} {(status === 'sending' || status === 'routing') ? 'animate-pulse' : ''}"
+				<IconComponent
+					class="mt-0.5 h-5 w-5 shrink-0 {config.color === 'blue'
+						? 'text-participation-primary-600'
+						: config.color === 'green'
+							? 'text-green-600'
+							: 'text-red-600'} {status === 'sending' || status === 'routing'
+						? 'animate-pulse'
+						: ''}"
 				/>
 			{/if}
-			
+
 			<div>
 				<h4 class="text-base font-medium text-slate-900">
 					{config?.text || 'Processing'}
@@ -152,7 +158,7 @@
 				<p class="mt-1 text-sm text-slate-600">
 					{config?.description || ''}
 				</p>
-				
+
 				{#if status === 'delivered' && details}
 					<p class="mt-2 text-xs text-slate-500">
 						{details}
@@ -183,7 +189,7 @@
 			>
 				Fix and retry
 			</button>
-			
+
 			{#if onOverride}
 				<button
 					onclick={onOverride}

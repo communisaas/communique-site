@@ -13,10 +13,16 @@ function createGuestState() {
 	let state = $state<GuestTemplateState | null>(null);
 
 	return {
-		get state() { return state; },
-		
+		get state() {
+			return state;
+		},
+
 		// Store template interaction for guest users
-		setTemplate: (slug: string, title: string, source: GuestTemplateState['source'] = 'direct-link') => {
+		setTemplate: (
+			slug: string,
+			title: string,
+			source: GuestTemplateState['source'] = 'direct-link'
+		) => {
 			const newState: GuestTemplateState = {
 				templateSlug: slug,
 				templateTitle: title,
@@ -24,27 +30,27 @@ function createGuestState() {
 				timestamp: Date.now(),
 				viewCount: 1
 			};
-			
+
 			state = newState;
-			
+
 			// Persist to localStorage for cross-session continuity
 			if (browser) {
 				localStorage.setItem('communique_guest_template', JSON.stringify(newState));
 			}
 		},
-		
+
 		// Track repeat views for engagement scoring
 		incrementView: () => {
 			if (!state) return;
-			
+
 			const updated = { ...state, viewCount: state.viewCount + 1 };
 			state = updated;
-			
+
 			if (browser) {
 				localStorage.setItem('communique_guest_template', JSON.stringify(updated));
 			}
 		},
-		
+
 		// Clear after successful conversion
 		clear: () => {
 			state = null;
@@ -52,7 +58,7 @@ function createGuestState() {
 				localStorage.removeItem('communique_guest_template');
 			}
 		},
-		
+
 		// Restore from localStorage on app load
 		restore: () => {
 			if (browser) {

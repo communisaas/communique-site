@@ -1,16 +1,16 @@
 /**
  * Self.xyz Configuration
- * 
+ *
  * Centralized configuration for Self.xyz identity verification.
- * This must be identical between the QR code generation (frontend) 
+ * This must be identical between the QR code generation (frontend)
  * and the backend verification to ensure proper verification.
  */
 
-export const SELF_XYZ_SCOPE = "communique-congressional";
+export const SELF_XYZ_SCOPE = 'communique-congressional';
 export const SELF_XYZ_ENDPOINT = `${process.env.ORIGIN || 'http://localhost:5173'}/api/identity/verify`;
 
 export const SELF_XYZ_CONFIG = {
-	appName: "Communiqué",
+	appName: 'Communiqué',
 	scope: SELF_XYZ_SCOPE,
 	endpoint: SELF_XYZ_ENDPOINT,
 	version: 2,

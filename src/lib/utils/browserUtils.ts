@@ -1,6 +1,6 @@
 /**
  * UNIFIED BROWSER DETECTION & CLIENT/SERVER BOUNDARY UTILITIES
- * 
+ *
  * Eliminates mixed patterns: `typeof window`, `browser`, direct window access
  * Single source of truth for SSR-safe browser interactions
  */
@@ -87,7 +87,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 			await nav.clipboard.writeText(text);
 			return true;
 		}
-		
+
 		// Fallback for older browsers
 		const textArea = document.createElement('textarea');
 		textArea.value = text;
@@ -97,7 +97,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		document.body.appendChild(textArea);
 		textArea.focus();
 		textArea.select();
-		
+
 		const success = document.execCommand('copy');
 		textArea.remove();
 		return success;
@@ -113,19 +113,19 @@ export function matchesMediaQuery(query: string): boolean {
 }
 
 export function createMediaQueryWatcher(
-	query: string, 
+	query: string,
 	callback: (matches: boolean) => void
 ): (() => void) | null {
 	if (!isBrowser) return null;
-	
+
 	const mediaQuery = window.matchMedia(query);
 	const handler = (e: MediaQueryListEvent) => callback(e.matches);
-	
+
 	mediaQuery.addEventListener('change', handler);
-	
+
 	// Initial call
 	callback(mediaQuery.matches);
-	
+
 	// Return cleanup function
 	return () => mediaQuery.removeEventListener('change', handler);
 }
@@ -141,7 +141,7 @@ export function getScrollPosition(): { x: number; y: number } {
 
 export function scrollTo(x: number, y: number, smooth: boolean = true): void {
 	if (!isBrowser) return;
-	
+
 	window.scrollTo({
 		left: x,
 		top: y,
@@ -151,7 +151,7 @@ export function scrollTo(x: number, y: number, smooth: boolean = true): void {
 
 export function isScrolledToBottom(threshold: number = 100): boolean {
 	if (!isBrowser) return false;
-	
+
 	const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
 	return scrollTop + clientHeight >= scrollHeight - threshold;
 }
@@ -185,37 +185,50 @@ export function supportsClipboard(): boolean {
 export function supportsWebShare(): boolean {
 	const nav = getNavigator();
 	if (!nav?.share || !window.isSecureContext) return false;
-	
+
 	// Check for platforms where Web Share API has poor UX
 	// macOS Safari doesn't include "Copy" in share menu
-	const isMacOSSafari = /Mac OS X/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
+	const isMacOSSafari =
+		/Mac OS X/.test(navigator.userAgent) &&
+		/Safari/.test(navigator.userAgent) &&
+		!/Chrome/.test(navigator.userAgent);
 	if (isMacOSSafari) return false;
-	
+
 	// Firefox has inconsistent support
 	const isFirefox = /Firefox/.test(navigator.userAgent);
 	if (isFirefox) return false;
-	
+
 	return true;
 }
 
-export function canShareData(data: { title?: string; text?: string; url?: string; files?: File[] }): boolean {
+export function canShareData(data: {
+	title?: string;
+	text?: string;
+	url?: string;
+	files?: File[];
+}): boolean {
 	if (!supportsWebShare()) return false;
 	const nav = getNavigator();
-	return !!(nav?.canShare?.(data));
+	return !!nav?.canShare?.(data);
 }
 
-export async function shareData(data: { title?: string; text?: string; url?: string; files?: File[] }): Promise<boolean> {
+export async function shareData(data: {
+	title?: string;
+	text?: string;
+	url?: string;
+	files?: File[];
+}): Promise<boolean> {
 	if (!supportsWebShare()) return false;
-	
+
 	const nav = getNavigator();
 	if (!nav?.share) return false;
-	
+
 	try {
 		// Validate data before sharing
 		if (nav.canShare && !nav.canShare(data)) {
 			return false;
 		}
-		
+
 		await nav.share(data);
 		return true;
 	} catch (error) {
@@ -241,7 +254,7 @@ export function requestIdleCallback(callback: () => void, timeout: number = 5000
 		callback();
 		return;
 	}
-	
+
 	if ('requestIdleCallback' in window) {
 		window.requestIdleCallback(callback, { timeout });
 	} else {
@@ -255,7 +268,7 @@ export function requestAnimationFrame(callback: () => void): void {
 		callback();
 		return;
 	}
-	
+
 	window.requestAnimationFrame(callback);
 }
 
@@ -267,9 +280,9 @@ export function addEventListener<K extends keyof WindowEventMap>(
 ): (() => void) | null {
 	const win = getWindow();
 	if (!win) return null;
-	
+
 	win.addEventListener(type, listener, options);
-	
+
 	// Return cleanup function
 	return () => win.removeEventListener(type, listener, options);
 }
@@ -281,9 +294,9 @@ export function addDocumentEventListener<K extends keyof DocumentEventMap>(
 ): (() => void) | null {
 	const doc = getDocument();
 	if (!doc) return null;
-	
+
 	doc.addEventListener(type, listener, options);
-	
+
 	// Return cleanup function
 	return () => doc.removeEventListener(type, listener, options);
 }

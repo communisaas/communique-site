@@ -1,6 +1,6 @@
 /**
  * Challenge Verification Endpoint
- * 
+ *
  * Verifies claims in Carroll Mechanism challenge markets
  * Different from template verification - focuses on factual accuracy
  */
@@ -26,20 +26,26 @@ export const POST: RequestHandler = async ({ request }) => {
 			evidenceUrls = [],
 			stakeAmount
 		} = body;
-		
+
 		// Validate required fields
 		if (!claimContent && !claimId) {
-			return json({ 
-				error: 'Either claimContent or claimId required'
-			}, { status: 400 });
+			return json(
+				{
+					error: 'Either claimContent or claimId required'
+				},
+				{ status: 400 }
+			);
 		}
-		
+
 		if (!challengerAddress) {
-			return json({ 
-				error: 'challengerAddress required for challenge verification'
-			}, { status: 400 });
+			return json(
+				{
+					error: 'challengerAddress required for challenge verification'
+				},
+				{ status: 400 }
+			);
 		}
-		
+
 		// Fetch claim from database if ID provided
 		let claim = { content: claimContent };
 		if (claimId) {
@@ -50,7 +56,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					creator: true
 				}
 			});
-			
+
 			if (dbClaim) {
 				claim = {
 					...dbClaim,
@@ -58,7 +64,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				};
 			}
 		}
-		
+
 		// Verify the claim using specialized challenge verification
 		const verificationResult = await verificationAgent.process({
 			template: {
@@ -70,17 +76,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			checkFactuality: true, // This would be a new parameter
 			evidenceUrls
 		});
-		
+
 		// Get challenger reputation
 		const challengerRep = await reputationAgent.process({
 			userAddress: challengerAddress,
 			actionType: 'challenge_market',
 			qualityScore: 0 // Not scoring yet, just getting current rep
 		});
-		
+
 		// Calculate required stake based on:
 		// 1. Claim creator's reputation
-		// 2. Challenger's reputation  
+		// 2. Challenger's reputation
 		// 3. Claim impact/reach
 		// 4. Network conditions
 		const marketConditions = await marketAgent.process({
@@ -90,15 +96,15 @@ export const POST: RequestHandler = async ({ request }) => {
 			claimCreatorReputation: claim.creator?.reputation_score || 50,
 			claimImpact: claim.template?.send_count || 1
 		});
-		
+
 		// Determine verification outcome
 		const factualityScore = verificationResult.confidence * 100;
 		const challengeValid = factualityScore < 50; // Claim is false if low factuality
-		
+
 		// Calculate stake requirements
-		const baseStake = BigInt(1000 * 10**18); // 1000 VOTER base
+		const baseStake = BigInt(1000 * 10 ** 18); // 1000 VOTER base
 		let requiredStake = baseStake;
-		
+
 		// Adjust stake based on reputation differential
 		const repDiff = (claim.creator?.reputation_score || 50) - challengerRep.currentScore;
 		if (repDiff > 20) {
@@ -108,17 +114,15 @@ export const POST: RequestHandler = async ({ request }) => {
 			// High-rep challenger needs less stake
 			requiredStake = requiredStake / BigInt(2);
 		}
-		
+
 		// Adjust for claim impact
 		if (claim.template?.send_count > 1000) {
 			requiredStake = requiredStake * BigInt(Math.min(10, claim.template.send_count / 1000));
 		}
-		
+
 		// Apply market multiplier
-		requiredStake = BigInt(Math.floor(
-			Number(requiredStake) * marketConditions.rewardMultiplier
-		));
-		
+		requiredStake = BigInt(Math.floor(Number(requiredStake) * marketConditions.rewardMultiplier));
+
 		// Store challenge verification if challengeId provided
 		if (challengeId) {
 			await db.challengeVerification?.upsert({
@@ -140,7 +144,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			});
 		}
-		
+
 		return json({
 			success: true,
 			challengeId,
@@ -153,7 +157,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			staking: {
 				requiredStake: requiredStake.toString(),
-				requiredStakeFormatted: `${Number(requiredStake) / 10**18} VOTER`,
+				requiredStakeFormatted: `${Number(requiredStake) / 10 ** 18} VOTER`,
 				providedStake: stakeAmount?.toString(),
 				sufficient: stakeAmount ? BigInt(stakeAmount) >= requiredStake : false,
 				factors: {
@@ -175,21 +179,23 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			}
 		});
-		
 	} catch (error) {
 		console.error('Challenge verification error:', error);
-		return json({
-			success: false,
-			error: 'Challenge verification failed',
-			details: error.message
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: 'Challenge verification failed',
+				details: error.message
+			},
+			{ status: 500 }
+		);
 	}
 };
 
 // GET endpoint for challenge market status
 export const GET: RequestHandler = async ({ url }) => {
 	const challengeId = url.searchParams.get('challengeId');
-	
+
 	if (challengeId) {
 		const challenge = await db.challengeVerification?.findUnique({
 			where: { challenge_id: challengeId },
@@ -198,11 +204,11 @@ export const GET: RequestHandler = async ({ url }) => {
 				claim: true
 			}
 		});
-		
+
 		if (!challenge) {
 			return json({ error: 'Challenge not found' }, { status: 404 });
 		}
-		
+
 		return json({
 			challengeId,
 			status: challenge.challenge?.status || 'pending',
@@ -212,17 +218,17 @@ export const GET: RequestHandler = async ({ url }) => {
 			verifiedAt: challenge.verified_at
 		});
 	}
-	
+
 	// Return general market stats
 	const activeCount = await db.challenge?.count({
 		where: { status: 'active' }
 	});
-	
+
 	const totalStaked = await db.challenge?.aggregate({
 		where: { status: 'active' },
 		_sum: { stake_amount: true }
 	});
-	
+
 	return json({
 		marketStatus: 'active',
 		activeChallenges: activeCount || 0,

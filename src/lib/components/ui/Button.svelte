@@ -53,12 +53,12 @@
 
 	let hovered = $state(false);
 	let clicked = $state(false);
-	
+
 	// Elegant spring animations for smooth interactions
 	let buttonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
 	let shadowIntensity = spring(0, { stiffness: 0.3, damping: 0.9 });
 	let glowIntensity = spring(0, { stiffness: 0.4, damping: 0.8 }); // For magical variant glow
-	
+
 	// Dynamic paper plane flight animation with realistic physics
 	// All animations use springs for natural paper plane movement
 	let planeX = spring(0, { stiffness: 0.3, damping: 0.7 });
@@ -67,7 +67,7 @@
 	let planeRotation = spring(0, { stiffness: 0.35, damping: 0.6 });
 	let planeScale = spring(1, { stiffness: 0.3, damping: 0.7 });
 	let planeBlur = spring(0, { stiffness: 0.4, damping: 0.8 });
-	
+
 	// Second plane for diverging animation (Hero button only)
 	let plane2X = $state(0);
 	let plane2Y = $state(0);
@@ -75,17 +75,17 @@
 	let plane2Rotation = spring(0, { stiffness: 0.35, damping: 0.6 });
 	let plane2Scale = spring(0, { stiffness: 0.3, damping: 0.7 });
 	let showSecondPlane = $state(false);
-	
+
 	// Target calculation for sublime flight paths
 	function calculateTargetPositions() {
 		if (typeof window === 'undefined') return { certified: null, direct: null };
-		
+
 		// Find the channel cards by looking for their identifying content
 		const channelCards = document.querySelectorAll('[role="button"]');
 		let certifiedCard: HTMLElement | null = null;
 		let directCard: HTMLElement | null = null;
-		
-		channelCards.forEach(card => {
+
+		channelCards.forEach((card) => {
 			const text = card.textContent || '';
 			if (text.includes('Verified Delivery')) {
 				certifiedCard = card as HTMLElement;
@@ -93,10 +93,10 @@
 				directCard = card as HTMLElement;
 			}
 		});
-		
+
 		const buttonRect = buttonElement?.getBoundingClientRect();
 		if (!buttonRect) return { certified: null, direct: null };
-		
+
 		let certified = null;
 		if (certifiedCard !== null) {
 			const card = certifiedCard as HTMLElement;
@@ -109,7 +109,7 @@
 				}
 			};
 		}
-		
+
 		let direct = null;
 		if (directCard !== null) {
 			const card = directCard as HTMLElement;
@@ -122,25 +122,29 @@
 				}
 			};
 		}
-		
+
 		return { certified, direct, buttonRect };
 	}
-	
+
 	// Calculate parabolic trajectory for sublime flight paths
-	function calculateFlightPath(target: {x: number, y: number}, buttonRect: DOMRect, progress: number) {
+	function calculateFlightPath(
+		target: { x: number; y: number },
+		buttonRect: DOMRect,
+		progress: number
+	) {
 		const startX = buttonRect.right - 20; // Start from icon position
 		const startY = buttonRect.top + buttonRect.height / 2;
-		
+
 		// Calculate relative position from button
 		const deltaX = target.x - startX;
 		const deltaY = target.y - startY;
-		
+
 		// Create a true parabolic arc that goes up then down
 		const arcHeight = Math.max(Math.abs(deltaY), 100) + 60; // Ensure sufficient upward arc
 		const peakProgress = 0.35; // Peak slightly earlier for more natural descent
-		
+
 		let x, y;
-		
+
 		if (progress <= peakProgress) {
 			// Rising arc - elegant upward motion
 			const t = progress / peakProgress;
@@ -152,7 +156,7 @@
 			x = deltaX * (0.25 + 0.75 * t); // Accelerated horizontal movement
 			y = deltaY * (0.1 + 0.9 * t) - arcHeight * (1 - t) * (1 - t); // True parabolic descent
 		}
-		
+
 		// Calculate rotation for natural banking during arc
 		let rotation;
 		if (progress <= peakProgress) {
@@ -161,13 +165,13 @@
 		} else {
 			// During descent - diving angle
 			const t = (progress - peakProgress) / (1 - peakProgress);
-			const diveAngle = Math.atan2(deltaY * 0.9, deltaX * 0.75) * 180 / Math.PI;
+			const diveAngle = (Math.atan2(deltaY * 0.9, deltaX * 0.75) * 180) / Math.PI;
 			rotation = 10 + diveAngle * t;
 		}
-		
+
 		return { x, y, rotation };
 	}
-	
+
 	$effect(() => {
 		if (hovered && !disabled) {
 			buttonScale.set(1.02);
@@ -195,14 +199,14 @@
 			}
 		}
 	});
-	
+
 	// Engaging paper plane flight animation with realistic physics and visual flair
 	$effect(() => {
 		if (enableFlight) {
 			if (flightDirection === 'down-right') {
 				// Special animation for Hero "Start Writing" button with dynamic targeting
 				const targets = calculateTargetPositions();
-				
+
 				switch (flightState) {
 					case 'taking-off':
 						// Elegant launch - natural paper plane physics
@@ -306,25 +310,24 @@
 	function handleClick(event: MouseEvent) {
 		if (!disabled && !loading) {
 			clicked = true;
-			
-			
+
 			if (enableFlight && flightState === 'ready') {
 				// Start flight sequence with anticipation
 				flightState = 'taking-off';
 				buttonScale.set(0.96); // Stronger press feedback
-				
+
 				// Clear clicked state quickly for flight buttons
 				setTimeout(() => {
 					clicked = false;
 				}, 150);
-				
+
 				// Takeoff phase - longer to show the banking turn
 				setTimeout(() => {
 					if (flightState === 'taking-off') {
-							flightState = 'flying';
+						flightState = 'flying';
 					}
 				}, 400);
-				
+
 				// Flight phase - dramatic arc with scale and blur
 				setTimeout(() => {
 					if (flightState === 'flying') {
@@ -332,19 +335,19 @@
 						buttonScale.set(1.03); // Slight success bounce
 					}
 				}, 800);
-				
+
 				// Continue off screen
 				setTimeout(() => {
 					if (flightState === 'sent') {
 						flightState = 'departing';
 					}
 				}, 1200);
-				
+
 				// Button settle
 				setTimeout(() => {
 					buttonScale.set(1);
 				}, 1100);
-				
+
 				// Reset to ready - timed to minimize gap after plane fades
 				setTimeout(() => {
 					if (flightState === 'departing') {
@@ -352,19 +355,19 @@
 					}
 				}, 1900);
 			} else {
-					// Standard click animation
+				// Standard click animation
 				buttonScale.set(0.98);
-				
+
 				setTimeout(() => {
 					buttonScale.set(1.02);
 				}, 120);
-				
+
 				setTimeout(() => {
 					buttonScale.set(1);
 					clicked = false;
 				}, 200);
 			}
-			
+
 			// Call the onclick handler AFTER setting up the flight animation
 			onclick?.(event);
 		}
@@ -427,42 +430,43 @@
 			shadow-sm
 		`
 	};
-
 </script>
-
-<style>
-	@keyframes fadeOut {
-		from {
-			opacity: 0.2;
-		}
-		to {
-			opacity: 0;
-		}
-	}
-	
-</style>
 
 <div class="relative inline-block">
 	<!-- Glow effect for magical variant -->
 	{#if variant === 'magical'}
-		<div 
-			class="absolute inset-0 rounded-md blur-xl opacity-50 bg-gradient-to-r from-indigo-400 via-blue-400 to-purple-400 pointer-events-none"
+		<div
+			class="pointer-events-none absolute inset-0 rounded-md bg-gradient-to-r from-indigo-400 via-blue-400 to-purple-400 opacity-50 blur-xl"
 			style="transform: scale({1 + $glowIntensity * 0.2}); opacity: {0.2 + $glowIntensity * 0.3}"
 		></div>
 	{/if}
-	
+
 	<!-- Single plane element - always rendered for perfect continuity -->
 	{#if enableFlight}
-		<span 
-			class="absolute z-50 pointer-events-none {flightState !== 'ready' ? 'transition-all duration-500 ease-out' : ''}"
+		<span
+			class="pointer-events-none absolute z-50 {flightState !== 'ready'
+				? 'transition-all duration-500 ease-out'
+				: ''}"
 			style="
 				top: 50%;
 				right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
 				transform: translate({$planeX}px, calc(-50% + {$planeY}px)) rotate({$planeRotation}deg) scale({$planeScale});
 				opacity: {$planeOpacity};
-				filter: blur({$planeBlur}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {flightState === 'ready' ? 0 : 0.6}));
+				filter: blur({$planeBlur}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {flightState === 'ready'
+				? 0
+				: 0.6}));
 				transform-origin: center;
-				color: {variant === 'magical' ? (flightState === 'ready' ? 'white' : flightState === 'taking-off' ? 'rgb(100, 116, 139)' : 'rgb(51, 65, 85)') : (flightState === 'ready' ? 'currentColor' : flightState === 'taking-off' ? 'rgb(100, 116, 139)' : 'rgb(51, 65, 85)')};
+				color: {variant === 'magical'
+				? flightState === 'ready'
+					? 'white'
+					: flightState === 'taking-off'
+						? 'rgb(100, 116, 139)'
+						: 'rgb(51, 65, 85)'
+				: flightState === 'ready'
+					? 'currentColor'
+					: flightState === 'taking-off'
+						? 'rgb(100, 116, 139)'
+						: 'rgb(51, 65, 85)'};
 			"
 		>
 			<Send class="h-4 w-4" />
@@ -476,10 +480,10 @@
 			target={href.startsWith('mailto:') ? undefined : '_blank'}
 			data-testid={testId}
 			class="
-				inline-flex items-center justify-center rounded-md font-medium
-				transition-all duration-200 ease-out transform-gpu
+				inline-flex transform-gpu items-center justify-center rounded-md
+				font-medium transition-all duration-200 ease-out
 				focus:outline-none focus:ring-2 focus:ring-offset-2
-				disabled:opacity-50 disabled:cursor-not-allowed
+				disabled:cursor-not-allowed disabled:opacity-50
 				cursor-{cursor}
 				select-none no-underline
 				{sizeClasses[size]}
@@ -504,29 +508,30 @@
 			{onfocus}
 			{onblur}
 		>
-			
 			<!-- Content -->
 			<span class="relative flex items-center gap-2">
 				{#if loading}
-					<div class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+					<div
+						class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+					></div>
 				{:else}
 					<!-- Static text content - never changes -->
 					{@render children?.()}
 					{#if !children && text}{text}{/if}
-					
+
 					<!-- Paper plane placeholder - actual plane always at root level -->
 					{#if enableFlight}
-						<span class="relative inline-block w-4 h-4">
+						<span class="relative inline-block h-4 w-4">
 							<!-- Empty space - plane rendered at root for continuity -->
 						</span>
 					{/if}
 				{/if}
 			</span>
-			
+
 			<!-- Clean click feedback -->
 			{#if clicked && !enableFlight}
-				<div 
-					class="absolute inset-0 rounded-md bg-white/10 pointer-events-none"
+				<div
+					class="pointer-events-none absolute inset-0 rounded-md bg-white/10"
 					style="animation: fadeOut 0.3s ease-out forwards"
 				></div>
 			{/if}
@@ -538,10 +543,10 @@
 			{disabled}
 			data-testid={testId}
 			class="
-				inline-flex items-center justify-center rounded-md font-medium
-				transition-all duration-200 ease-out transform-gpu
+				inline-flex transform-gpu items-center justify-center rounded-md
+				font-medium transition-all duration-200 ease-out
 				focus:outline-none focus:ring-2 focus:ring-offset-2
-				disabled:opacity-50 disabled:cursor-not-allowed
+				disabled:cursor-not-allowed disabled:opacity-50
 				{sizeClasses[size]}
 				{variantClasses[variant]}
 				{classNames}
@@ -565,32 +570,44 @@
 			{onfocus}
 			{onblur}
 		>
-			
 			<!-- Content -->
 			<span class="relative flex items-center gap-2">
 				{#if loading}
-					<div class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+					<div
+						class="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"
+					></div>
 				{:else}
 					<!-- Static text content - never changes -->
 					{@render children?.()}
 					{#if !children && text}{text}{/if}
-					
+
 					<!-- Paper plane placeholder - actual plane always at root level -->
 					{#if enableFlight}
-						<span class="relative inline-block w-4 h-4">
+						<span class="relative inline-block h-4 w-4">
 							<!-- Empty space - plane rendered at root for continuity -->
 						</span>
 					{/if}
 				{/if}
 			</span>
-			
+
 			<!-- Clean click feedback -->
 			{#if clicked && !enableFlight}
-				<div 
-					class="absolute inset-0 rounded-md bg-white/10 pointer-events-none"
+				<div
+					class="pointer-events-none absolute inset-0 rounded-md bg-white/10"
 					style="animation: fadeOut 0.3s ease-out forwards"
 				></div>
 			{/if}
 		</button>
 	{/if}
 </div>
+
+<style>
+	@keyframes fadeOut {
+		from {
+			opacity: 0.2;
+		}
+		to {
+			opacity: 0;
+		}
+	}
+</style>

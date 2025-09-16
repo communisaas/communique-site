@@ -33,6 +33,7 @@ User‑centric legislative delivery across jurisdictions. The user interaction i
 ### Request/Response examples
 
 Address lookup
+
 ```http
 POST /api/address/lookup
 Content-Type: application/json
@@ -46,6 +47,7 @@ Content-Type: application/json
 ```
 
 Store representatives (optional)
+
 ```http
 POST /api/user/representatives
 Content-Type: application/json
@@ -58,6 +60,7 @@ Content-Type: application/json
 ```
 
 Fetch representatives
+
 ```http
 GET /api/user/representatives?userId=user_123
 ```
@@ -75,9 +78,9 @@ See `prisma/schema.prisma` models for current US implementation; other jurisdict
 import { CWCGenerator } from '$lib/core/congress/cwc-generator';
 
 const xml = CWCGenerator.generateUserAdvocacyXML({
-  template,
-  user,
-  targetRep: representatives.house
+	template,
+	user,
+	targetRep: representatives.house
 });
 ```
 
@@ -94,5 +97,3 @@ SUPABASE_DATABASE_URL=...
 CWC_API_KEY=...
 LEGISLATIVE_API_BASE_URL=...
 ```
-
-

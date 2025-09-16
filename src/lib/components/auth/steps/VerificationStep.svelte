@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { CheckCircle2 } from '@lucide/svelte';
-	
+
 	let {
 		template,
 		selectedRole,
@@ -26,32 +26,28 @@
 	} = $props();
 </script>
 
-<div class="text-center mb-6">
-	<div class="inline-flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mb-4">
+<div class="mb-6 text-center">
+	<div class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
 		<CheckCircle2 class="h-6 w-6 text-green-600" />
 	</div>
-	<h2 class="text-xl font-bold text-slate-900 mb-2">
-		Ready to send
-	</h2>
-	<p class="text-slate-600">
-		Your credentials strengthen your message's impact
-	</p>
+	<h2 class="mb-2 text-xl font-bold text-slate-900">Ready to send</h2>
+	<p class="text-slate-600">Your credentials strengthen your message's impact</p>
 </div>
 
 <!-- Summary Card -->
-<div class="bg-slate-50 rounded-lg p-4 mb-6 space-y-3">
+<div class="mb-6 space-y-3 rounded-lg bg-slate-50 p-4">
 	<div class="flex items-start justify-between">
 		<span class="text-sm text-slate-600">Role:</span>
-		<span class="text-sm font-medium text-slate-900 text-right max-w-[60%]">
+		<span class="max-w-[60%] text-right text-sm font-medium text-slate-900">
 			{selectedRole === 'other' ? customRole : selectedRole.replace(/-/g, ' ')}
 			{#if organization}
-				<br><span class="text-slate-600">at {organization}</span>
+				<br /><span class="text-slate-600">at {organization}</span>
 			{/if}
 		</span>
 	</div>
 	<div class="flex items-start justify-between">
 		<span class="text-sm text-slate-600">Connection:</span>
-		<span class="text-sm font-medium text-slate-900 text-right max-w-[60%]">
+		<span class="max-w-[60%] text-right text-sm font-medium text-slate-900">
 			{selectedConnection === 'other' ? connectionDetails : selectedConnection.replace(/-/g, ' ')}
 		</span>
 	</div>
@@ -63,20 +59,21 @@
 	{/if}
 	<div class="flex items-start justify-between">
 		<span class="text-sm text-slate-600">Template:</span>
-		<span class="text-sm font-medium text-slate-900 text-right max-w-[60%]">{template.title}</span>
+		<span class="max-w-[60%] text-right text-sm font-medium text-slate-900">{template.title}</span>
 	</div>
 </div>
 
-<div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-6">
+<div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-3">
 	<p class="text-sm text-blue-800">
-		💡 These details help decision-makers understand why your voice matters and increases the likelihood of a response.
+		💡 These details help decision-makers understand why your voice matters and increases the
+		likelihood of a response.
 	</p>
 </div>
 
 <div class="flex gap-3">
 	<button
 		type="button"
-		class="flex-1 bg-white text-blue-600 border border-blue-200 hover:border-blue-300 rounded-lg px-6 py-3 text-sm font-medium transition-all disabled:opacity-50"
+		class="flex-1 rounded-lg border border-blue-200 bg-white px-6 py-3 text-sm font-medium text-blue-600 transition-all hover:border-blue-300 disabled:opacity-50"
 		onclick={onPrev}
 		disabled={isTransitioning}
 	>
@@ -84,7 +81,7 @@
 	</button>
 	<button
 		type="button"
-		class="flex items-center justify-center gap-1 flex-1 bg-blue-600 text-white hover:bg-blue-700 rounded-lg px-6 py-3 text-sm font-medium transition-all disabled:opacity-50"
+		class="flex flex-1 items-center justify-center gap-1 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-blue-700 disabled:opacity-50"
 		onclick={onComplete}
 		disabled={isTransitioning}
 	>

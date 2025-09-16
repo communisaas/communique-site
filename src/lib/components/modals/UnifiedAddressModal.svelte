@@ -3,9 +3,9 @@
 	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
 	import UnifiedAddressCollectionWrapper from '$lib/components/modals/UnifiedAddressCollectionWrapper.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
-	
+
 	const modalStore = createModalStore('address-modal', 'address');
-	
+
 	// Extract data from modal store
 	$: modalData = modalStore.data as {
 		template: any;
@@ -13,10 +13,10 @@
 		user?: any;
 		mode?: 'requirement' | 'collection';
 	} | null;
-	
+
 	function handleComplete(event: CustomEvent) {
 		const { address, verified, enhancedCredibility, representatives } = event.detail;
-		
+
 		// Save address to backend
 		const saveAddress = async () => {
 			if (modalData?.mode === 'collection' || (!enhancedCredibility && modalData?.user)) {
@@ -24,19 +24,20 @@
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
 					body: JSON.stringify({ address, verified, representatives })
-				}).then(response => response.json())
-				.then(result => {
-					// Update local user data
-					if (modalData?.user && result.user) {
-						Object.assign(modalData.user, result.user);
-					}
-				});
+				})
+					.then((response) => response.json())
+					.then((result) => {
+						// Update local user data
+						if (modalData?.user && result.user) {
+							Object.assign(modalData.user, result.user);
+						}
+					});
 			}
 		};
-		
+
 		// Close modal
 		modalStore.close();
-		
+
 		// Handle different completion flows
 		if (modalData?.source === 'onboarding') {
 			// For onboarding flow - save address and redirect
@@ -44,7 +45,8 @@
 				// Clear any pending template action
 				sessionStorage.removeItem('pending_template_action');
 				// Redirect to return URL with completion signal
-				const finalReturnUrl = new URLSearchParams(window.location.search).get('returnTo') || '/profile';
+				const finalReturnUrl =
+					new URLSearchParams(window.location.search).get('returnTo') || '/profile';
 				const separator = finalReturnUrl.includes('?') ? '&' : '?';
 				window.location.href = `${finalReturnUrl}${separator}action=complete`;
 			});
@@ -63,13 +65,13 @@
 
 {#if modalStore.isOpen && modalData}
 	{#if modalData.mode === 'collection'}
-		<UnifiedAddressCollectionWrapper 
+		<UnifiedAddressCollectionWrapper
 			template={modalData.template}
 			on:close={modalStore.close}
 			on:complete={handleComplete}
 		/>
 	{:else}
-		<AddressRequirementModal 
+		<AddressRequirementModal
 			template={modalData.template}
 			user={modalData.user}
 			isOpen={modalStore.isOpen}

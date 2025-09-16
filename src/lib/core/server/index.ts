@@ -1,6 +1,6 @@
 /**
  * Server Module - Barrel Export
- * 
+ *
  * Server-side utilities and services consolidated under core/server.
  * Provides a clean API boundary for backend functionality.
  */
@@ -28,5 +28,8 @@ export * from './selfxyz-config';
 export { analyzeCivicInformationCascades, storeCascadeAnalysis } from './percolation-engine';
 export { createSecurityMiddleware as apiSecurityMiddleware, validateApiKey } from './api-security';
 export { getDistrictMetrics as processDistrictMetrics } from './district-metrics';
-export { analyzeSentimentBasic as analyzeSentiment, classifyBasicSentiment as classifyPoliticalSentiment } from './sentiment-basic';
+export {
+	analyzeSentimentBasic as analyzeSentiment,
+	classifyBasicSentiment as classifyPoliticalSentiment
+} from './sentiment-basic';
 export { storeSingleUserSentiment } from './sentiment-storage';

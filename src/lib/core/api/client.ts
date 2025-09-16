@@ -1,6 +1,6 @@
 /**
  * Unified API Client for Communique
- * 
+ *
  * Consolidated API client combining the best features from both implementations:
  * - Comprehensive error handling with typed errors
  * - Automatic retries with exponential backoff
@@ -56,10 +56,7 @@ class UnifiedApiClient {
 	/**
 	 * Make an API request with automatic error handling and retries
 	 */
-	async request<T = any>(
-		endpoint: string,
-		options: ApiOptions = {}
-	): Promise<ApiResponse<T>> {
+	async request<T = any>(endpoint: string, options: ApiOptions = {}): Promise<ApiResponse<T>> {
 		const {
 			timeout = this.defaultTimeout,
 			retries = this.defaultRetries,
@@ -85,18 +82,18 @@ class UnifiedApiClient {
 		const config: RequestInit = {
 			...fetchOptions,
 			headers,
-			body: fetchOptions.body ? 
-				(typeof fetchOptions.body === 'string' ? 
-					fetchOptions.body : 
-					JSON.stringify(fetchOptions.body)
-				) : undefined
+			body: fetchOptions.body
+				? typeof fetchOptions.body === 'string'
+					? fetchOptions.body
+					: JSON.stringify(fetchOptions.body)
+				: undefined
 		};
 
 		// Start loading
 		onLoadingChange?.(true);
 
 		let lastError: Error | null = null;
-		
+
 		for (let attempt = 0; attempt <= retries; attempt++) {
 			try {
 				// Create abort controller for timeout
@@ -114,14 +111,17 @@ class UnifiedApiClient {
 				const result = await this.handleResponse<T>(response);
 
 				// Show success toast if enabled
-				if (showToast && result.success && fetchOptions.method && 
-					['POST', 'PUT', 'DELETE'].includes(fetchOptions.method)) {
+				if (
+					showToast &&
+					result.success &&
+					fetchOptions.method &&
+					['POST', 'PUT', 'DELETE'].includes(fetchOptions.method)
+				) {
 					toast.success('Operation completed successfully');
 				}
 
 				onLoadingChange?.(false);
 				return result;
-
 			} catch (error) {
 				lastError = error as Error;
 
@@ -141,7 +141,7 @@ class UnifiedApiClient {
 		onLoadingChange?.(false);
 
 		const errorMessage = lastError?.message || 'Request failed';
-		
+
 		if (!skipErrorLogging && browser) {
 			console.error(`API Error: ${errorMessage}`, { url, error: lastError });
 		}
@@ -179,12 +179,7 @@ class UnifiedApiClient {
 			const error = data?.error || data?.message || `HTTP ${response.status}`;
 			const errors = data?.errors;
 
-			throw new ApiClientError(
-				error,
-				response.status,
-				response,
-				errors
-			);
+			throw new ApiClientError(error, response.status, response, errors);
 		}
 
 		// Check if response has standard format
@@ -203,23 +198,41 @@ class UnifiedApiClient {
 	/**
 	 * Convenience methods
 	 */
-	async get<T = any>(endpoint: string, options?: Omit<ApiOptions, 'method'>): Promise<ApiResponse<T>> {
+	async get<T = any>(
+		endpoint: string,
+		options?: Omit<ApiOptions, 'method'>
+	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'GET' });
 	}
 
-	async post<T = any>(endpoint: string, body?: any, options?: Omit<ApiOptions, 'method' | 'body'>): Promise<ApiResponse<T>> {
+	async post<T = any>(
+		endpoint: string,
+		body?: any,
+		options?: Omit<ApiOptions, 'method' | 'body'>
+	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'POST', body });
 	}
 
-	async put<T = any>(endpoint: string, body?: any, options?: Omit<ApiOptions, 'method' | 'body'>): Promise<ApiResponse<T>> {
+	async put<T = any>(
+		endpoint: string,
+		body?: any,
+		options?: Omit<ApiOptions, 'method' | 'body'>
+	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'PUT', body });
 	}
 
-	async patch<T = any>(endpoint: string, body?: any, options?: Omit<ApiOptions, 'method' | 'body'>): Promise<ApiResponse<T>> {
+	async patch<T = any>(
+		endpoint: string,
+		body?: any,
+		options?: Omit<ApiOptions, 'method' | 'body'>
+	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'PATCH', body });
 	}
 
-	async delete<T = any>(endpoint: string, options?: Omit<ApiOptions, 'method'>): Promise<ApiResponse<T>> {
+	async delete<T = any>(
+		endpoint: string,
+		options?: Omit<ApiOptions, 'method'>
+	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'DELETE' });
 	}
 
@@ -227,7 +240,7 @@ class UnifiedApiClient {
 	 * Utility: Sleep for specified milliseconds
 	 */
 	private sleep(ms: number): Promise<void> {
-		return new Promise(resolve => setTimeout(resolve, ms));
+		return new Promise((resolve) => setTimeout(resolve, ms));
 	}
 }
 

@@ -1,12 +1,12 @@
 export type TriggerAction = (node: HTMLElement) => {
-    destroy: () => void;
+	destroy: () => void;
 };
 
 export interface PopoverSlots {
-    trigger: {
-        triggerAction: TriggerAction;
-    };
-    default: {
-        open: boolean;
-    };
-} 
+	trigger: {
+		triggerAction: TriggerAction;
+	};
+	default: {
+		open: boolean;
+	};
+}

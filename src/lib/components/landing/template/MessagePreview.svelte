@@ -283,7 +283,6 @@
 		}
 	}
 
-
 	function handleInput(e: Event, name: string) {
 		const target = e.target as HTMLInputElement | HTMLTextAreaElement;
 		variableValues[name] = target.value;
@@ -299,7 +298,6 @@
 
 		// No heuristics here – personalization is purely user-driven.
 	}
-
 
 	$effect(() => {
 		if (browser && preview) {
@@ -367,9 +365,13 @@
 	<!-- Subject/Title Header - Hide on template page to avoid duplication -->
 	{#if context !== 'page'}
 		{#if template?.subject || template?.title}
-			<div class="mb-3 rounded-md bg-participation-primary-50 border border-participation-primary-200 px-3 py-2">
+			<div
+				class="mb-3 rounded-md border border-participation-primary-200 bg-participation-primary-50 px-3 py-2"
+			>
 				<div class="flex items-center justify-between">
-					<div class="flex items-center gap-2 text-xs font-medium text-participation-primary-700 mb-1">
+					<div
+						class="mb-1 flex items-center gap-2 text-xs font-medium text-participation-primary-700"
+					>
 						<Mail class="h-3 w-3" />
 						Subject Line
 					</div>
@@ -377,7 +379,7 @@
 						<VerificationBadge size="sm" />
 					{/if}
 				</div>
-				<div class="font-medium text-participation-primary-900 text-sm">
+				<div class="text-sm font-medium text-participation-primary-900">
 					{template.subject || template.title}
 				</div>
 			</div>
@@ -393,10 +395,13 @@
 		{/if}
 	{/if}
 
-
 	<div class="relative {expandToContent ? '' : 'flex-1'} min-h-[16rem]">
 		<div
-			class="styled-scrollbar-track scrollbar-thumb-slate-300 scrollbar-track-slate-100/10 {expandToContent ? '' : 'absolute inset-0 overflow-y-auto'} {expandToContent ? 'overflow-visible' : ''} whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
+			class="styled-scrollbar-track scrollbar-thumb-slate-300 scrollbar-track-slate-100/10 {expandToContent
+				? ''
+				: 'absolute inset-0 overflow-y-auto'} {expandToContent
+				? 'overflow-visible'
+				: ''} whitespace-pre-wrap rounded-lg bg-slate-50/70 p-4"
 			bind:this={scrollContainer}
 			onscroll={expandToContent ? undefined : handleScroll}
 			ontouchstart={expandToContent ? undefined : handleTouchStart}
@@ -446,12 +451,15 @@
 											{variableHints[segment.name]?.prompt || segment.name}
 										</span>
 									</div>
-									
-									{#if segment.name.toLowerCase().includes('connection') || segment.name.toLowerCase().includes('story') || segment.name.toLowerCase().includes('reasoning')}
+
+									{#if segment.name.toLowerCase().includes('connection') || segment.name
+											.toLowerCase()
+											.includes('story') || segment.name.toLowerCase().includes('reasoning')}
 										<textarea
 											value={variableValues[segment.name]}
 											oninput={(e) => handleInput(e, segment.name ?? '')}
-											placeholder={variableHints[segment.name]?.placeholder || `Enter your ${segment.name}...`}
+											placeholder={variableHints[segment.name]?.placeholder ||
+												`Enter your ${segment.name}...`}
 											class="w-full min-w-[280px] resize-none rounded-lg border border-slate-300 bg-white p-3
 													font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
 											rows="4"

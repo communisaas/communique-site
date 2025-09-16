@@ -25,11 +25,11 @@
 
 	// Simple modal state
 	let isUpdatingAddress = $state(false);
-	
+
 	// ActionBar state
 	let personalConnectionValue = $state('');
 	let actionProgress = spring(0);
-	
+
 	// Template modal reference
 	let templateModal: UnifiedTemplateModal;
 
@@ -59,14 +59,14 @@
 		if (browser && window.location.hash === '#_=_') {
 			history.replaceState(null, '', window.location.pathname + window.location.search);
 		}
-		
-		// Normal template view - track with default source  
+
+		// Normal template view - track with default source
 		// Share links now land here directly, no redirect needed
 		funnelAnalytics.trackTemplateView(
 			template.id,
 			source as 'social-link' | 'direct-link' | 'share'
 		);
-		
+
 		// Store template context for guest users
 		if (!data.user) {
 			const safeSlug = (template.slug ?? template.id) as string;
@@ -79,7 +79,7 @@
 			// For authenticated users, immediately trigger email flow on share link landing
 			// Use the same TemplateModal as homepage for consistency
 			const flow = analyzeEmailFlow(template, data.user);
-			
+
 			if (flow.nextAction === 'address') {
 				// Need address - show modal
 				modalActions.openModal('address-modal', 'address', { template, source });
@@ -131,10 +131,10 @@
 
 			// Close address modal and proceed to email generation
 			modalActions.close('address-modal');
-			
+
 			// Clear any stored intent after successful address submission
 			sessionStorage.removeItem(`template_${template.id}_intent`);
-			
+
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				// Open TemplateModal using component method for consistency
@@ -144,10 +144,10 @@
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
 			modalActions.close('address-modal');
-			
+
 			// Clear any stored intent even on error
 			sessionStorage.removeItem(`template_${template.id}_intent`);
-			
+
 			const flow = analyzeEmailFlow(template, data.user);
 			if (flow.mailtoUrl) {
 				// Open TemplateModal using component method for consistency
@@ -224,26 +224,28 @@
 			{#if data.user}
 				<div class="flex items-center gap-2">
 					<span class="text-sm text-slate-600">
-						Hi {data.user.name?.split(' ')[0]} - join the {(template.metrics?.sent || 0).toLocaleString()} who sent this
+						Hi {data.user.name?.split(' ')[0]} - join the {(
+							template.metrics?.sent || 0
+						).toLocaleString()} who sent this
 					</span>
 					{#if data.user.is_verified}
 						<VerificationBadge />
 					{/if}
 				</div>
 			{/if}
-			
+
 			<!-- ActionBar positioned in header -->
 			<div class="w-full sm:w-auto [&>div]:mt-0">
-				<ActionBar 
+				<ActionBar
 					{template}
 					user={data.user as { id: string; name: string | null } | null}
 					{personalConnectionValue}
 					onSendMessage={() => {
 						if (!data.user) {
 							// Use UnifiedOnboardingModal for consistency with landing page
-							modalActions.openModal('onboarding-modal', 'onboarding', { 
-								template, 
-								source: source as 'social-link' | 'direct-link' | 'share' 
+							modalActions.openModal('onboarding-modal', 'onboarding', {
+								template,
+								source: source as 'social-link' | 'direct-link' | 'share'
 							});
 							funnelAnalytics.trackOnboardingStarted(
 								template.id,
@@ -324,7 +326,10 @@
 				}
 
 				// For now, treat US or certified templates as existing path
-				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'certified')) {
+				if (
+					data.user &&
+					(channel?.country_code === 'US' || template.deliveryMethod === 'certified')
+				) {
 					const flow = analyzeEmailFlow(template, data.user);
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', { template, source });
@@ -348,4 +353,3 @@
 <UnifiedOnboardingModal />
 <UnifiedAddressModal />
 <UnifiedTemplateModal bind:this={templateModal} />
-

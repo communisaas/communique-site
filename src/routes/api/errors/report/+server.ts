@@ -5,7 +5,7 @@ import type { ErrorReport } from '$lib/utils/errorBoundary';
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const { error, context, retryCount } = await request.json();
-		
+
 		// Basic validation
 		if (!error || typeof error !== 'object') {
 			return json({ success: false, error: 'Invalid error data' }, { status: 400 });
@@ -36,16 +36,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// TODO: Store in database for analysis
 		// await db.error_reports.create({ data: errorReport });
 
-		return json({ 
-			success: true, 
-			message: 'Error reported successfully' 
+		return json({
+			success: true,
+			message: 'Error reported successfully'
 		});
-
 	} catch (err) {
 		console.error('Failed to process error report:', err);
-		return json({ 
-			success: false, 
-			error: 'Failed to process error report' 
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: 'Failed to process error report'
+			},
+			{ status: 500 }
+		);
 	}
 };

@@ -25,10 +25,12 @@
 	<!-- Success Header -->
 	<div class="rounded-lg border border-green-200 bg-green-50 p-3 md:p-4">
 		<div class="flex items-start gap-3">
-			<CheckCircle2 class="mt-0.5 h-4 md:h-5 w-4 md:w-5 shrink-0 text-green-600" />
+			<CheckCircle2 class="mt-0.5 h-4 w-4 shrink-0 text-green-600 md:h-5 md:w-5" />
 			<div>
-				<h4 class="text-sm md:text-base font-medium text-green-900">Ready to Launch</h4>
-				<p class="mt-1 text-xs md:text-sm text-green-700">Your campaign is ready to go live and start making an impact.</p>
+				<h4 class="text-sm font-medium text-green-900 md:text-base">Ready to Launch</h4>
+				<p class="mt-1 text-xs text-green-700 md:text-sm">
+					Your campaign is ready to go live and start making an impact.
+				</p>
 			</div>
 		</div>
 	</div>
@@ -38,8 +40,8 @@
 		<!-- Objective Section -->
 		<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 			<div class="mb-3 flex items-center gap-2">
-				<Target class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
-				<h3 class="text-sm md:text-base font-medium text-slate-900">Campaign Objective</h3>
+				<Target class="h-3 w-3 text-slate-400 md:h-4 md:w-4" />
+				<h3 class="text-sm font-medium text-slate-900 md:text-base">Campaign Objective</h3>
 			</div>
 			<dl class="space-y-2 text-xs md:text-sm">
 				<div>
@@ -53,14 +55,18 @@
 		{#if previewUrl}
 			<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 				<div class="mb-3 flex items-center gap-2">
-					<Link2 class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
-					<h3 class="text-sm md:text-base font-medium text-slate-900">Campaign Link</h3>
+					<Link2 class="h-3 w-3 text-slate-400 md:h-4 md:w-4" />
+					<h3 class="text-sm font-medium text-slate-900 md:text-base">Campaign Link</h3>
 				</div>
 				<div class="space-y-3">
-					<div class="rounded-md bg-slate-50 p-2 md:p-2.5 font-mono text-xs md:text-sm text-slate-700 break-all">
+					<div
+						class="break-all rounded-md bg-slate-50 p-2 font-mono text-xs text-slate-700 md:p-2.5 md:text-sm"
+					>
 						{previewUrl}
 					</div>
-					<div class="flex flex-col md:flex-row md:items-center gap-1 md:gap-4 text-xs text-slate-600">
+					<div
+						class="flex flex-col gap-1 text-xs text-slate-600 md:flex-row md:items-center md:gap-4"
+					>
 						<span>✓ Shareable on social media</span>
 						<span>✓ Tracks campaign views</span>
 						<span>✓ Mobile-friendly</span>
@@ -81,12 +87,12 @@
 		<!-- Audience Section -->
 		<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 			<div class="mb-3 flex items-center gap-2">
-				<Users class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
-				<h3 class="text-sm md:text-base font-medium text-slate-900">Target Audience</h3>
+				<Users class="h-3 w-3 text-slate-400 md:h-4 md:w-4" />
+				<h3 class="text-sm font-medium text-slate-900 md:text-base">Target Audience</h3>
 			</div>
 			<div class="flex items-center gap-3">
 				<Badge variant={context.channelId === 'certified' ? 'congressional' : 'direct'} />
-				<span class="text-xs md:text-sm text-slate-700">{recipientDisplay}</span>
+				<span class="text-xs text-slate-700 md:text-sm">{recipientDisplay}</span>
 			</div>
 			{#if data.audience.recipientEmails.length > 0}
 				<div class="mt-2 text-xs text-slate-500">
@@ -98,11 +104,11 @@
 		<!-- Message Preview Section -->
 		<div class="rounded-lg border border-slate-200 bg-white p-3 md:p-4">
 			<div class="mb-3 flex items-center gap-2">
-				<Mail class="h-3 md:h-4 w-3 md:w-4 text-slate-400" />
-				<h3 class="text-sm md:text-base font-medium text-slate-900">Message Preview</h3>
+				<Mail class="h-3 w-3 text-slate-400 md:h-4 md:w-4" />
+				<h3 class="text-sm font-medium text-slate-900 md:text-base">Message Preview</h3>
 			</div>
 			<div class="rounded-md bg-slate-50 p-2 md:p-3">
-				<p class="whitespace-pre-wrap text-xs md:text-sm text-slate-700">
+				<p class="whitespace-pre-wrap text-xs text-slate-700 md:text-sm">
 					{data.content.preview.substring(0, 200)}
 					{data.content.preview.length > 200 ? '...' : ''}
 				</p>
@@ -120,8 +126,8 @@
 
 	<!-- Next Steps -->
 	<div class="rounded-md bg-blue-50 p-3 md:p-4">
-		<h4 class="mb-2 text-xs md:text-sm font-medium text-blue-900">What happens next?</h4>
-		<ul class="space-y-1 text-xs md:text-sm text-blue-700">
+		<h4 class="mb-2 text-xs font-medium text-blue-900 md:text-sm">What happens next?</h4>
+		<ul class="space-y-1 text-xs text-blue-700 md:text-sm">
 			<li>• Your template will be saved as a draft</li>
 			{#if previewUrl}
 				<li>• Share your campaign link to start gathering support</li>

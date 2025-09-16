@@ -1,15 +1,18 @@
 import { json } from '@sveltejs/kit';
-import { analyzeCivicInformationCascades, storeCascadeAnalysis } from '$lib/core/server/percolation-engine';
+import {
+	analyzeCivicInformationCascades,
+	storeCascadeAnalysis
+} from '$lib/core/server/percolation-engine';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
 		// Run percolation-style connectivity analysis on the civic information network
 		const analysis = await analyzeCivicInformationCascades();
-		
+
 		// Store results for historical tracking
 		await storeCascadeAnalysis(analysis);
-		
+
 		return json({
 			success: true,
 			analysis,
@@ -22,15 +25,17 @@ export const GET: RequestHandler = async ({ url }) => {
 				recommendation: getRecommendation(analysis)
 			}
 		});
-		
 	} catch (error) {
 		console.error('Percolation analysis failed:', error);
-		
-		return json({
-			success: false,
-			error: 'Failed to analyze information cascades',
-			details: error instanceof Error ? error.message : 'Unknown error'
-		}, { status: 500 });
+
+		return json(
+			{
+				success: false,
+				error: 'Failed to analyze information cascades',
+				details: error instanceof Error ? error.message : 'Unknown error'
+			},
+			{ status: 500 }
+		);
 	}
 };
 
@@ -47,28 +52,33 @@ function getRecommendation(analysis: any): string {
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const { action, parameters } = await request.json();
-		
+
 		if (action === 'refresh') {
 			// Force refresh of network analysis
 			const analysis = await analyzeCivicInformationCascades();
 			await storeCascadeAnalysis(analysis);
-			
+
 			return json({
 				success: true,
 				message: 'Network analysis refreshed',
 				analysis
 			});
 		}
-		
-		return json({
-			success: false,
-			error: 'Invalid action'
-		}, { status: 400 });
-		
+
+		return json(
+			{
+				success: false,
+				error: 'Invalid action'
+			},
+			{ status: 400 }
+		);
 	} catch (error) {
-		return json({
-			success: false,
-			error: 'Failed to process request'
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: 'Failed to process request'
+			},
+			{ status: 500 }
+		);
 	}
 };

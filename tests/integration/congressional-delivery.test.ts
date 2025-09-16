@@ -1,6 +1,6 @@
 /**
  * Congressional Delivery Integration Tests
- * 
+ *
  * Consolidated tests for congressional message delivery pipeline
  */
 
@@ -9,313 +9,317 @@ import { userFactory, templateFactory, testScenarios } from '../fixtures/factori
 
 // Setup mocks using vi.hoisted
 const mocks = vi.hoisted(() => ({
-  db: {
-    user: {
-      findUnique: vi.fn(),
-      update: vi.fn()
-    },
-    template: {
-      findUnique: vi.fn()
-    },
-    user_representatives: {
-      findMany: vi.fn(),
-      deleteMany: vi.fn(),
-      createMany: vi.fn()
-    },
-    representative: {
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-      create: vi.fn()
-    }
-  },
-  addressLookup: {
-    lookupRepsByAddress: vi.fn()
-  },
-  cwcClient: {
-    submitToHouse: vi.fn(),
-    submitToSenate: vi.fn()
-  },
-  resolveVariables: vi.fn(),
-  deliveryPipeline: {
-    deliverToRepresentatives: vi.fn()
-  }
+	db: {
+		user: {
+			findUnique: vi.fn(),
+			update: vi.fn()
+		},
+		template: {
+			findUnique: vi.fn()
+		},
+		user_representatives: {
+			findMany: vi.fn(),
+			deleteMany: vi.fn(),
+			createMany: vi.fn()
+		},
+		representative: {
+			findFirst: vi.fn(),
+			findMany: vi.fn(),
+			create: vi.fn()
+		}
+	},
+	addressLookup: {
+		lookupRepsByAddress: vi.fn()
+	},
+	cwcClient: {
+		submitToHouse: vi.fn(),
+		submitToSenate: vi.fn()
+	},
+	resolveVariables: vi.fn(),
+	deliveryPipeline: {
+		deliverToRepresentatives: vi.fn()
+	}
 }));
 
 // Mock SvelteKit utilities
 vi.mock('@sveltejs/kit', () => ({
-  json: (data: any, init?: ResponseInit) => {
-    return new Response(JSON.stringify(data), {
-      ...init,
-      headers: {
-        'content-type': 'application/json',
-        ...(init?.headers || {})
-      }
-    });
-  },
-  error: (status: number, message: string) => {
-    return new Response(JSON.stringify({ error: message }), {
-      status,
-      headers: {
-        'content-type': 'application/json'
-      }
-    });
-  }
+	json: (data: any, init?: ResponseInit) => {
+		return new Response(JSON.stringify(data), {
+			...init,
+			headers: {
+				'content-type': 'application/json',
+				...(init?.headers || {})
+			}
+		});
+	},
+	error: (status: number, message: string) => {
+		return new Response(JSON.stringify({ error: message }), {
+			status,
+			headers: {
+				'content-type': 'application/json'
+			}
+		});
+	}
 }));
 
 // Apply mocks
 vi.mock('$lib/core/db', () => ({
-  db: mocks.db
+	db: mocks.db
 }));
 
 vi.mock('$lib/core/congress/address-lookup', () => ({
-  addressLookup: mocks.addressLookup
+	addressLookup: mocks.addressLookup
 }));
 
 vi.mock('$lib/core/congress/cwc-client', () => ({
-  cwcClient: mocks.cwcClient
+	cwcClient: mocks.cwcClient
 }));
 
 vi.mock('$lib/services/personalization', () => ({
-  resolveVariables: mocks.resolveVariables
+	resolveVariables: mocks.resolveVariables
 }));
 
 vi.mock('$lib/core/legislative', () => ({
-  deliveryPipeline: mocks.deliveryPipeline
+	deliveryPipeline: mocks.deliveryPipeline
 }));
 
 // Import handler after mocks
 import { POST } from '../../src/routes/api/civic/routing/+server';
 
 describe('Congressional Delivery Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    
-    // Setup default successful responses
-    mocks.deliveryPipeline.deliverToRepresentatives.mockResolvedValue({
-      job_id: 'test-job-123',
-      total_recipients: 3,
-      successful_deliveries: 3,
-      failed_deliveries: 0,
-      results: [
-        { success: true, message_id: 'house-msg-123', metadata: { representative: 'Rep. Pelosi' } },
-        { success: true, message_id: 'senate-msg-456', metadata: { representative: 'Sen. Padilla' } },
-        { success: true, message_id: 'senate-msg-789', metadata: { representative: 'Sen. Butler' } }
-      ],
-      duration_ms: 1500
-    });
-    
-    mocks.addressLookup.lookupRepsByAddress.mockResolvedValue([
-      { name: 'Rep. Pelosi', chamber: 'house', bioguide_id: 'P000197' },
-      { name: 'Sen. Padilla', chamber: 'senate', bioguide_id: 'P000145' },
-      { name: 'Sen. Butler', chamber: 'senate', bioguide_id: 'B000001' }
-    ]);
-    
-    mocks.cwcClient.submitToHouse.mockResolvedValue({
-      success: true,
-      message_id: 'house-msg-123'
-    });
-    
-    mocks.cwcClient.submitToSenate.mockResolvedValue({
-      success: true,
-      message_id: 'senate-msg-456'
-    });
-    
-    mocks.resolveVariables.mockImplementation((template, context) => {
-      return template.replace('[user.name]', context.user?.name || 'Guest');
-    });
-  });
+	beforeEach(() => {
+		vi.clearAllMocks();
 
-  describe('Authenticated User Flow', () => {
-    it('delivers message from template selection to congressional offices', async () => {
-      const user = testScenarios.californiaUser();
-      const template = testScenarios.climateTemplate();
-      const routingEmail = testScenarios.routingEmail();
+		// Setup default successful responses
+		mocks.deliveryPipeline.deliverToRepresentatives.mockResolvedValue({
+			job_id: 'test-job-123',
+			total_recipients: 3,
+			successful_deliveries: 3,
+			failed_deliveries: 0,
+			results: [
+				{ success: true, message_id: 'house-msg-123', metadata: { representative: 'Rep. Pelosi' } },
+				{
+					success: true,
+					message_id: 'senate-msg-456',
+					metadata: { representative: 'Sen. Padilla' }
+				},
+				{ success: true, message_id: 'senate-msg-789', metadata: { representative: 'Sen. Butler' } }
+			],
+			duration_ms: 1500
+		});
 
-      mocks.db.user.findUnique.mockResolvedValue(user);
-      mocks.db.template.findUnique.mockResolvedValue(template);
+		mocks.addressLookup.lookupRepsByAddress.mockResolvedValue([
+			{ name: 'Rep. Pelosi', chamber: 'house', bioguide_id: 'P000197' },
+			{ name: 'Sen. Padilla', chamber: 'senate', bioguide_id: 'P000145' },
+			{ name: 'Sen. Butler', chamber: 'senate', bioguide_id: 'B000001' }
+		]);
 
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(routingEmail)
-      };
+		mocks.cwcClient.submitToHouse.mockResolvedValue({
+			success: true,
+			message_id: 'house-msg-123'
+		});
 
-      const response = await POST({ request: mockRequest } as any);
-      const responseData = JSON.parse(await response.text());
+		mocks.cwcClient.submitToSenate.mockResolvedValue({
+			success: true,
+			message_id: 'senate-msg-456'
+		});
 
-      expect(response.status).toBe(200);
-      expect(responseData.success).toBe(true);
-      expect(responseData.deliveryCount).toBe(3);
+		mocks.resolveVariables.mockImplementation((template, context) => {
+			return template.replace('[user.name]', context.user?.name || 'Guest');
+		});
+	});
 
-      // Verify database queries
-      expect(mocks.db.user.findUnique).toHaveBeenCalledWith({
-        where: { id: 'action-user123' }
-      });
-      expect(mocks.db.template.findUnique).toHaveBeenCalledWith({
-        where: { id: 'climate' }
-      });
+	describe('Authenticated User Flow', () => {
+		it('delivers message from template selection to congressional offices', async () => {
+			const user = testScenarios.californiaUser();
+			const template = testScenarios.climateTemplate();
+			const routingEmail = testScenarios.routingEmail();
 
-      // Verify delivery pipeline called
-      expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalled();
-    });
+			mocks.db.user.findUnique.mockResolvedValue(user);
+			mocks.db.template.findUnique.mockResolvedValue(template);
 
-    it('processes authenticated user successfully', async () => {
-      const user = testScenarios.californiaUser();
-      const template = testScenarios.climateTemplate();
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue(routingEmail)
+			};
 
-      mocks.db.user.findUnique.mockResolvedValue(user);
-      mocks.db.template.findUnique.mockResolvedValue(template);
+			const response = await POST({ request: mockRequest } as any);
+			const responseData = JSON.parse(await response.text());
 
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
-      };
+			expect(response.status).toBe(200);
+			expect(responseData.success).toBe(true);
+			expect(responseData.deliveryCount).toBe(3);
 
-      const response = await POST({ request: mockRequest } as any);
-      const responseData = JSON.parse(await response.text());
+			// Verify database queries
+			expect(mocks.db.user.findUnique).toHaveBeenCalledWith({
+				where: { id: 'action-user123' }
+			});
+			expect(mocks.db.template.findUnique).toHaveBeenCalledWith({
+				where: { id: 'climate' }
+			});
 
-      expect(response.status).toBe(200);
-      expect(responseData.success).toBe(true);
-      expect(responseData.deliveryCount).toBe(3);
-      expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalled();
-    });
-  });
+			// Verify delivery pipeline called
+			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalled();
+		});
 
-  describe('Guest User Flow', () => {
-    it('handles guest users with onboarding flow', async () => {
-      const template = testScenarios.climateTemplate();
-      const guestEmail = testScenarios.guestRoutingEmail();
+		it('processes authenticated user successfully', async () => {
+			const user = testScenarios.californiaUser();
+			const template = testScenarios.climateTemplate();
 
-      mocks.db.template.findUnique.mockResolvedValue(template);
+			mocks.db.user.findUnique.mockResolvedValue(user);
+			mocks.db.template.findUnique.mockResolvedValue(template);
 
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(guestEmail)
-      };
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
+			};
 
-      const response = await POST({ request: mockRequest } as any);
-      const responseData = JSON.parse(await response.text());
+			const response = await POST({ request: mockRequest } as any);
+			const responseData = JSON.parse(await response.text());
 
-      expect(response.status).toBe(200);
-      expect(responseData.success).toBe(true);
-      expect(responseData.message).toContain('Onboarding');
-    });
-  });
+			expect(response.status).toBe(200);
+			expect(responseData.success).toBe(true);
+			expect(responseData.deliveryCount).toBe(3);
+			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalled();
+		});
+	});
 
-  describe('Error Handling', () => {
-    it('gracefully handles address lookup failures', async () => {
-      const user = testScenarios.californiaUser();
-      const template = testScenarios.climateTemplate();
+	describe('Guest User Flow', () => {
+		it('handles guest users with onboarding flow', async () => {
+			const template = testScenarios.climateTemplate();
+			const guestEmail = testScenarios.guestRoutingEmail();
 
-      mocks.db.user.findUnique.mockResolvedValue(user);
-      mocks.db.template.findUnique.mockResolvedValue(template);
-      
-      // Make delivery pipeline fail
-      mocks.deliveryPipeline.deliverToRepresentatives.mockRejectedValue(
-        new Error('Address service unavailable')
-      );
+			mocks.db.template.findUnique.mockResolvedValue(template);
 
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
-      };
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue(guestEmail)
+			};
 
-      const response = await POST({ request: mockRequest } as any);
-      
-      expect(response.status).toBe(500);
-      const errorData = JSON.parse(await response.text());
-      expect(errorData.error).toContain('Failed to process congressional routing');
-    });
+			const response = await POST({ request: mockRequest } as any);
+			const responseData = JSON.parse(await response.text());
 
-    it('continues delivery even if some CWC submissions fail', async () => {
-      const user = testScenarios.californiaUser();
-      const template = testScenarios.climateTemplate();
+			expect(response.status).toBe(200);
+			expect(responseData.success).toBe(true);
+			expect(responseData.message).toContain('Onboarding');
+		});
+	});
 
-      mocks.db.user.findUnique.mockResolvedValue(user);
-      mocks.db.template.findUnique.mockResolvedValue(template);
+	describe('Error Handling', () => {
+		it('gracefully handles address lookup failures', async () => {
+			const user = testScenarios.californiaUser();
+			const template = testScenarios.climateTemplate();
 
-      // One submission fails
-      mocks.deliveryPipeline.deliverToRepresentatives.mockResolvedValue({
-        job_id: 'partial-job-123',
-        total_recipients: 3,
-        successful_deliveries: 2,
-        failed_deliveries: 1,
-        results: [
-          { success: true, message_id: 'house-msg-123' },
-          { success: false, error: 'CWC API error' },
-          { success: true, message_id: 'senate-msg-789' }
-        ],
-        duration_ms: 2000
-      });
+			mocks.db.user.findUnique.mockResolvedValue(user);
+			mocks.db.template.findUnique.mockResolvedValue(template);
 
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
-      };
+			// Make delivery pipeline fail
+			mocks.deliveryPipeline.deliverToRepresentatives.mockRejectedValue(
+				new Error('Address service unavailable')
+			);
 
-      const response = await POST({ request: mockRequest } as any);
-      const responseData = JSON.parse(await response.text());
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
+			};
 
-      expect(response.status).toBe(200);
-      expect(responseData.deliveryCount).toBe(2);
-      expect(responseData.totalRecipients).toBe(3);
-    });
+			const response = await POST({ request: mockRequest } as any);
 
-    it('validates routing address format', async () => {
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue({
-          to: 'invalid-address@example.com', // Bad routing format
-          from: 'user@example.com',
-          subject: 'Test',
-          body: 'Test'
-        })
-      };
+			expect(response.status).toBe(500);
+			const errorData = JSON.parse(await response.text());
+			expect(errorData.error).toContain('Failed to process congressional routing');
+		});
 
-      const response = await POST({ request: mockRequest } as any);
-      
-      expect(response.status).toBe(400);
-      const errorData = JSON.parse(await response.text());
-      expect(errorData.error).toContain('Invalid routing address format');
-    });
+		it('continues delivery even if some CWC submissions fail', async () => {
+			const user = testScenarios.californiaUser();
+			const template = testScenarios.climateTemplate();
 
-    it('handles missing template gracefully', async () => {
-      mocks.db.template.findUnique.mockResolvedValue(null);
+			mocks.db.user.findUnique.mockResolvedValue(user);
+			mocks.db.template.findUnique.mockResolvedValue(template);
 
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
-      };
+			// One submission fails
+			mocks.deliveryPipeline.deliverToRepresentatives.mockResolvedValue({
+				job_id: 'partial-job-123',
+				total_recipients: 3,
+				successful_deliveries: 2,
+				failed_deliveries: 1,
+				results: [
+					{ success: true, message_id: 'house-msg-123' },
+					{ success: false, error: 'CWC API error' },
+					{ success: true, message_id: 'senate-msg-789' }
+				],
+				duration_ms: 2000
+			});
 
-      const response = await POST({ request: mockRequest } as any);
-      
-      expect(response.status).toBe(404);
-      const errorData = JSON.parse(await response.text());
-      expect(errorData.error).toContain('Template not found');
-    });
-  });
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
+			};
 
-  describe('Template Variable Resolution', () => {
-    it('passes template and user data to delivery pipeline', async () => {
-      const user = testScenarios.californiaUser();
-      const template = {
-        ...testScenarios.climateTemplate(),
-        message_body: 'Dear [representative.title], I am [user.name] from [user.city].'
-      };
+			const response = await POST({ request: mockRequest } as any);
+			const responseData = JSON.parse(await response.text());
 
-      mocks.db.user.findUnique.mockResolvedValue(user);
-      mocks.db.template.findUnique.mockResolvedValue(template);
+			expect(response.status).toBe(200);
+			expect(responseData.deliveryCount).toBe(2);
+			expect(responseData.totalRecipients).toBe(3);
+		});
 
-      const mockRequest = {
-        json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
-      };
+		it('validates routing address format', async () => {
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue({
+					to: 'invalid-address@example.com', // Bad routing format
+					from: 'user@example.com',
+					subject: 'Test',
+					body: 'Test'
+				})
+			};
 
-      await POST({ request: mockRequest } as any);
+			const response = await POST({ request: mockRequest } as any);
 
-      expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalledWith(
-        expect.objectContaining({
-          template: expect.objectContaining({
-            id: template.id,
-            message_body: template.message_body
-          }),
-          user: expect.objectContaining({
-            id: user.id,
-            name: user.name
-          })
-        })
-      );
-    });
-  });
+			expect(response.status).toBe(400);
+			const errorData = JSON.parse(await response.text());
+			expect(errorData.error).toContain('Invalid routing address format');
+		});
+
+		it('handles missing template gracefully', async () => {
+			mocks.db.template.findUnique.mockResolvedValue(null);
+
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
+			};
+
+			const response = await POST({ request: mockRequest } as any);
+
+			expect(response.status).toBe(404);
+			const errorData = JSON.parse(await response.text());
+			expect(errorData.error).toContain('Template not found');
+		});
+	});
+
+	describe('Template Variable Resolution', () => {
+		it('passes template and user data to delivery pipeline', async () => {
+			const user = testScenarios.californiaUser();
+			const template = {
+				...testScenarios.climateTemplate(),
+				message_body: 'Dear [representative.title], I am [user.name] from [user.city].'
+			};
+
+			mocks.db.user.findUnique.mockResolvedValue(user);
+			mocks.db.template.findUnique.mockResolvedValue(template);
+
+			const mockRequest = {
+				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
+			};
+
+			await POST({ request: mockRequest } as any);
+
+			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalledWith(
+				expect.objectContaining({
+					template: expect.objectContaining({
+						id: template.id,
+						message_body: template.message_body
+					}),
+					user: expect.objectContaining({
+						id: user.id,
+						name: user.name
+					})
+				})
+			);
+		});
+	});
 });

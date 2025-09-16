@@ -1,6 +1,6 @@
 /**
  * OAUTH PROVIDER CONFIGURATIONS
- * 
+ *
  * Provider-specific configurations for OAuth callback handling.
  * Each configuration encapsulates the unique aspects of each provider
  * while using the common OAuth callback handler.
@@ -23,7 +23,7 @@ export const googleConfig: OAuthCallbackConfig = {
 	userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
 	requiresCodeVerifier: true,
 	scope: 'profile email',
-	
+
 	createOAuthClient: () => {
 		return new Google(
 			process.env.GOOGLE_CLIENT_ID!,
@@ -31,42 +31,43 @@ export const googleConfig: OAuthCallbackConfig = {
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`
 		);
 	},
-	
+
 	exchangeTokens: async (client, code, codeVerifier) => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
-	
+
 	getUserInfo: async (accessToken) => {
 		const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
 			headers: {
 				Authorization: `Bearer ${accessToken}`
 			}
 		});
-		
+
 		if (!response.ok) {
 			throw new Error(`Failed to fetch user info: ${response.statusText}`);
 		}
-		
+
 		return await response.json();
 	},
-	
+
 	mapUserData: (rawUser) => ({
 		id: rawUser.id,
 		email: rawUser.email,
 		name: rawUser.name,
 		avatar: rawUser.picture
 	}),
-	
+
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
 		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
-		expiresAt: tokens.accessTokenExpiresAt() ? 
-			Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null
+		expiresAt: tokens.accessTokenExpiresAt()
+			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			: null
 	})
 };
 
 // =============================================================================
-// FACEBOOK CONFIGURATION  
+// FACEBOOK CONFIGURATION
 // =============================================================================
 
 export const facebookConfig: OAuthCallbackConfig = {
@@ -77,7 +78,7 @@ export const facebookConfig: OAuthCallbackConfig = {
 	userInfoUrl: 'https://graph.facebook.com/me',
 	requiresCodeVerifier: false,
 	scope: 'email public_profile',
-	
+
 	createOAuthClient: () => {
 		return new Facebook(
 			process.env.FACEBOOK_CLIENT_ID!,
@@ -85,41 +86,42 @@ export const facebookConfig: OAuthCallbackConfig = {
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`
 		);
 	},
-	
+
 	exchangeTokens: async (client, code) => {
 		return await client.validateAuthorizationCode(code);
 	},
-	
+
 	getUserInfo: async (accessToken, clientSecret) => {
 		// Facebook requires appsecret_proof for enhanced security
 		const appsecretProof = crypto
 			.createHmac('sha256', clientSecret!)
 			.update(accessToken)
 			.digest('hex');
-			
+
 		const response = await fetch(
 			`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}&appsecret_proof=${appsecretProof}`
 		);
-		
+
 		if (!response.ok) {
 			throw new Error(`Failed to fetch user info: ${response.statusText}`);
 		}
-		
+
 		return await response.json();
 	},
-	
+
 	mapUserData: (rawUser) => ({
 		id: rawUser.id,
 		email: rawUser.email,
 		name: rawUser.name,
 		avatar: rawUser.picture?.data?.url
 	}),
-	
+
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
 		refreshToken: null,
-		expiresAt: tokens.accessTokenExpiresAt() ?
-			Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null
+		expiresAt: tokens.accessTokenExpiresAt()
+			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			: null
 	})
 };
 
@@ -135,7 +137,7 @@ export const linkedinConfig: OAuthCallbackConfig = {
 	userInfoUrl: 'https://api.linkedin.com/v2/userinfo',
 	requiresCodeVerifier: true,
 	scope: 'openid profile email',
-	
+
 	createOAuthClient: () => {
 		return new LinkedIn(
 			process.env.LINKEDIN_CLIENT_ID!,
@@ -143,11 +145,11 @@ export const linkedinConfig: OAuthCallbackConfig = {
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`
 		);
 	},
-	
+
 	exchangeTokens: async (client, code, codeVerifier) => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
-	
+
 	getUserInfo: async (accessToken) => {
 		const response = await fetch('https://api.linkedin.com/v2/userinfo', {
 			headers: {
@@ -155,26 +157,27 @@ export const linkedinConfig: OAuthCallbackConfig = {
 				'X-RestLi-Protocol-Version': '2.0.0'
 			}
 		});
-		
+
 		if (!response.ok) {
 			throw new Error(`Failed to fetch user info: ${response.statusText}`);
 		}
-		
+
 		return await response.json();
 	},
-	
+
 	mapUserData: (rawUser) => ({
 		id: rawUser.sub, // LinkedIn uses 'sub' as the user ID
 		email: rawUser.email,
 		name: rawUser.name,
 		avatar: rawUser.picture
 	}),
-	
+
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
 		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
-		expiresAt: tokens.accessTokenExpiresAt() ?
-			Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null
+		expiresAt: tokens.accessTokenExpiresAt()
+			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			: null
 	})
 };
 
@@ -190,7 +193,7 @@ export const twitterConfig: OAuthCallbackConfig = {
 	userInfoUrl: 'https://api.twitter.com/2/users/me',
 	requiresCodeVerifier: true,
 	scope: 'users.read tweet.read offline.access',
-	
+
 	createOAuthClient: () => {
 		return new Twitter(
 			process.env.TWITTER_CLIENT_ID!,
@@ -198,11 +201,11 @@ export const twitterConfig: OAuthCallbackConfig = {
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`
 		);
 	},
-	
+
 	exchangeTokens: async (client, code, codeVerifier) => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
-	
+
 	getUserInfo: async (accessToken) => {
 		const response = await fetch(
 			'https://api.twitter.com/2/users/me?user.fields=profile_image_url',
@@ -212,14 +215,14 @@ export const twitterConfig: OAuthCallbackConfig = {
 				}
 			}
 		);
-		
+
 		if (!response.ok) {
 			throw new Error(`Failed to fetch user info: ${response.statusText}`);
 		}
-		
+
 		return await response.json();
 	},
-	
+
 	mapUserData: (rawUser) => ({
 		id: rawUser.data.id,
 		// Twitter doesn't always provide email, generate placeholder
@@ -228,12 +231,13 @@ export const twitterConfig: OAuthCallbackConfig = {
 		avatar: rawUser.data.profile_image_url,
 		username: rawUser.data.username
 	}),
-	
+
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
 		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
-		expiresAt: tokens.accessTokenExpiresAt() ?
-			Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null
+		expiresAt: tokens.accessTokenExpiresAt()
+			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			: null
 	})
 };
 
@@ -249,7 +253,7 @@ export const discordConfig: OAuthCallbackConfig = {
 	userInfoUrl: 'https://discord.com/api/users/@me',
 	requiresCodeVerifier: true,
 	scope: 'identify email',
-	
+
 	createOAuthClient: () => {
 		return new Discord(
 			process.env.DISCORD_CLIENT_ID!,
@@ -257,25 +261,25 @@ export const discordConfig: OAuthCallbackConfig = {
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`
 		);
 	},
-	
+
 	exchangeTokens: async (client, code, codeVerifier) => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
-	
+
 	getUserInfo: async (accessToken) => {
 		const response = await fetch('https://discord.com/api/users/@me', {
 			headers: {
 				Authorization: `Bearer ${accessToken}`
 			}
 		});
-		
+
 		if (!response.ok) {
 			throw new Error(`Failed to fetch user info: ${response.statusText}`);
 		}
-		
+
 		return await response.json();
 	},
-	
+
 	mapUserData: (rawUser) => {
 		// Discord avatar URL construction
 		let avatar: string | undefined;
@@ -283,13 +287,14 @@ export const discordConfig: OAuthCallbackConfig = {
 			const format = rawUser.avatar.startsWith('a_') ? 'gif' : 'png';
 			avatar = `https://cdn.discordapp.com/avatars/${rawUser.id}/${rawUser.avatar}.${format}`;
 		}
-		
+
 		// Discord name handling (global_name > username#discriminator)
-		const name = rawUser.global_name || 
-			(rawUser.discriminator && rawUser.discriminator !== '0' 
+		const name =
+			rawUser.global_name ||
+			(rawUser.discriminator && rawUser.discriminator !== '0'
 				? `${rawUser.username}#${rawUser.discriminator}`
 				: rawUser.username);
-		
+
 		return {
 			id: rawUser.id,
 			email: rawUser.email,
@@ -299,12 +304,13 @@ export const discordConfig: OAuthCallbackConfig = {
 			discriminator: rawUser.discriminator
 		};
 	},
-	
+
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
 		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
-		expiresAt: tokens.accessTokenExpiresAt() ?
-			Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000) : null
+		expiresAt: tokens.accessTokenExpiresAt()
+			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			: null
 	})
 };
 

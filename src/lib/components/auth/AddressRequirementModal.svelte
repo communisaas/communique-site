@@ -5,7 +5,12 @@
 	import { quintOut } from 'svelte/easing';
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
-	import { AddressForm, AddressVerification, SelfXyzVerification, CompletionStep } from './address-steps';
+	import {
+		AddressForm,
+		AddressVerification,
+		SelfXyzVerification,
+		CompletionStep
+	} from './address-steps';
 
 	let {
 		template,
@@ -36,7 +41,7 @@
 		close: void;
 		complete: { address: string; verified: boolean; enhancedCredibility?: boolean };
 	}>();
-	
+
 	// Modal system integration
 	const modalStore = createModalStore('address-requirement-modal', 'address');
 

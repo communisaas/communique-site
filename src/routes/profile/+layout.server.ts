@@ -6,7 +6,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	if (!locals.user) {
 		throw redirect(302, '/');
 	}
-	
+
 	// Pass minimal user data for immediate rendering
 	return {
 		user: {

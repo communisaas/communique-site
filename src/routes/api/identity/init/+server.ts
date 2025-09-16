@@ -8,15 +8,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { userId, templateSlug, requireAddress, disclosures } = await request.json();
 
 		if (!userId || !templateSlug) {
-			return json(
-				{ success: false, error: 'Missing required fields' },
-				{ status: 400 }
-			);
+			return json({ success: false, error: 'Missing required fields' }, { status: 400 });
 		}
 
 		// Generate Self.xyz app configuration with user context
 		const appConfig = createUserConfig(userId, templateSlug, requireAddress);
-		
+
 		// Merge any additional disclosures
 		if (disclosures) {
 			appConfig.disclosures = {
@@ -33,7 +30,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			version: appConfig.version || 2,
 			userIdType: 'uuid'
 		};
-		
+
 		// Create QR code data string (the app will read this)
 		const qrCodeData = JSON.stringify(builtConfig);
 
@@ -63,10 +60,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			sessionId: userId,
 			config: appConfig
 		});
-
 	} catch (error) {
 		console.error('Self.xyz init error:', error);
-		
+
 		// Log detailed error for debugging
 		if (error instanceof Error) {
 			console.error('Initialization error details:', {

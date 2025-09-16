@@ -47,5 +47,3 @@ Layout Header (sticky navigation + user + share)
 2. Template-aware CTAs clarify next actions
 3. Avoids spacing/margin conflicts across components
 4. Keeps content components focused on content, not header UI
-
-

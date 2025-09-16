@@ -26,56 +26,71 @@
 	let selectedChannel = $state<string | null>(null);
 	let hoveredChannel = $state<string | null>(null);
 	let attentionMode = $state(false);
-	
+
 	// Create spring stores for animation
 	const certifiedScale = spring(1, { stiffness: 0.3, damping: 0.4 });
 	const directScale = spring(1, { stiffness: 0.3, damping: 0.4 });
 	const certifiedGlow = spring(0, { stiffness: 0.4, damping: 0.6 });
 	const directGlow = spring(0, { stiffness: 0.4, damping: 0.6 });
-	
+
 	function handleChannelHover(channelId: string, isHovering: boolean) {
 		hoveredChannel = isHovering ? channelId : null;
 	}
-	
+
 	function triggerAttentionAnimation() {
 		attentionMode = true;
-		
+
 		// Staggered pulse animation for certified channel
 		certifiedScale.set(1.04);
 		certifiedGlow.set(1);
-		
-		coordinated.setTimeout(() => {
-			certifiedScale.set(1);
-			certifiedGlow.set(0.5);
-			
-			// Then animate direct channel
-			directScale.set(1.04);
-			directGlow.set(1);
-		}, 300, 'attention-stagger', 'channel-explainer');
-		
-		coordinated.setTimeout(() => {
-			directScale.set(1);
-			directGlow.set(0.5);
-		}, 600, 'attention-settle', 'channel-explainer');
-		
+
+		coordinated.setTimeout(
+			() => {
+				certifiedScale.set(1);
+				certifiedGlow.set(0.5);
+
+				// Then animate direct channel
+				directScale.set(1.04);
+				directGlow.set(1);
+			},
+			300,
+			'attention-stagger',
+			'channel-explainer'
+		);
+
+		coordinated.setTimeout(
+			() => {
+				directScale.set(1);
+				directGlow.set(0.5);
+			},
+			600,
+			'attention-settle',
+			'channel-explainer'
+		);
+
 		// Gentle ongoing pulse
-		coordinated.setTimeout(() => {
-			certifiedGlow.set(0);
-			directGlow.set(0);
-			attentionMode = false;
-		}, 1500, 'attention-end', 'channel-explainer');
+		coordinated.setTimeout(
+			() => {
+				certifiedGlow.set(0);
+				directGlow.set(0);
+				attentionMode = false;
+			},
+			1500,
+			'attention-end',
+			'channel-explainer'
+		);
 	}
-	
+
 	onMount(() => {
 		// Listen for attention trigger from Hero button
 		const handleDrawAttention = () => triggerAttentionAnimation();
 		window.addEventListener('drawAttentionToChannels', handleDrawAttention);
-		
+
 		return () => {
 			window.removeEventListener('drawAttentionToChannels', handleDrawAttention);
 		};
 	});
-	
+
 	onDestroy(() => {
 		// Clean up timers
 		useTimerCleanup('channel-explainer')();
@@ -86,7 +101,8 @@
 			id: 'certified',
 			title: 'Certified Delivery',
 			icon: Shield,
-			description: 'Straight to Congress. Every message from your district gets counted. It\'s how they decide.',
+			description:
+				"Straight to Congress. Every message from your district gets counted. It's how they decide.",
 			features: [
 				{
 					icon: Landmark,
@@ -107,7 +123,8 @@
 			id: 'direct',
 			title: 'Direct Outreach',
 			icon: AtSign,
-			description: 'CEOs, school boards, HOAs - when inboxes flood with the same message, calendars clear.',
+			description:
+				'CEOs, school boards, HOAs - when inboxes flood with the same message, calendars clear.',
 			features: [
 				{
 					icon: Building2,
@@ -157,7 +174,7 @@
 			<div
 				role="button"
 				tabindex="0"
-				class="group relative cursor-pointer rounded-md border-2 transition-all duration-300 transform-gpu hover:scale-[1.02] hover:shadow-lg"
+				class="group relative transform-gpu cursor-pointer rounded-md border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
 				class:border-verified-500={isSelected && channel.id === 'certified'}
 				class:border-participation-primary-500={isSelected && channel.id === 'direct'}
 				class:bg-verified-50={isSelected && channel.id === 'certified'}
@@ -170,8 +187,10 @@
 					box-shadow: 
 						0 4px 6px -1px rgba(0, 0, 0, 0.1),
 						0 2px 4px -1px rgba(0, 0, 0, 0.06),
-						0 0 {20 * glowValue}px rgba({channel.id === 'certified' ? '16, 185, 129' : '79, 70, 229'}, {0.2 * glowValue}),
-						0 0 {40 * glowValue}px rgba({channel.id === 'certified' ? '16, 185, 129' : '79, 70, 229'}, {0.1 * glowValue});
+						0 0 {20 * glowValue}px rgba({channel.id === 'certified' ? '16, 185, 129' : '79, 70, 229'}, {0.2 *
+					glowValue}),
+						0 0 {40 * glowValue}px rgba({channel.id === 'certified' ? '16, 185, 129' : '79, 70, 229'}, {0.1 *
+					glowValue});
 				"
 				onmouseenter={() => handleChannelHover(channel.id, true)}
 				onmouseleave={() => handleChannelHover(channel.id, false)}
@@ -245,16 +264,20 @@
 								{#if channel.id === 'certified'}
 									<div class="flex flex-col gap-3">
 										<button
-											class="flex w-full items-center justify-center gap-2 rounded-md bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 transform-gpu hover:scale-[1.02]"
-											onclick={(e) => { e.stopPropagation(); handleCreateTemplate(channel); }}
+											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700"
+											onclick={(e) => {
+												e.stopPropagation();
+												handleCreateTemplate(channel);
+											}}
 										>
 											Write to Congress
 											<ArrowRight class="h-4 w-4" />
 										</button>
 
 										<button
-											class="flex w-full items-center justify-center gap-2 rounded-md border border-emerald-200 hover:border-emerald-300 px-4 py-2 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 shadow-md hover:shadow-lg transition-all duration-200 transform-gpu hover:scale-[1.02]"
-											onclick={(e) => { e.stopPropagation(); 
+											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md border border-emerald-200 px-4 py-2 text-emerald-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 hover:shadow-lg"
+											onclick={(e) => {
+												e.stopPropagation();
 												document.getElementById('template-section')?.scrollIntoView({
 													behavior: 'smooth',
 													block: 'center'
@@ -274,16 +297,20 @@
 								{:else}
 									<div class="flex flex-col gap-3">
 										<button
-											class="flex w-full items-center justify-center gap-2 rounded-md bg-participation-primary-600 hover:bg-participation-primary-700 px-4 py-2 text-white shadow-lg shadow-participation-primary-600/20 transition-all duration-200 transform-gpu hover:scale-[1.02]"
-											onclick={(e) => { e.stopPropagation(); handleCreateTemplate(channel); }}
+											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md bg-participation-primary-600 px-4 py-2 text-white shadow-lg shadow-participation-primary-600/20 transition-all duration-200 hover:scale-[1.02] hover:bg-participation-primary-700"
+											onclick={(e) => {
+												e.stopPropagation();
+												handleCreateTemplate(channel);
+											}}
 										>
 											Start a Campaign
 											<ArrowRight class="h-4 w-4" />
 										</button>
 
 										<button
-											class="flex w-full items-center justify-center gap-2 rounded-md border border-participation-primary-200 hover:border-participation-primary-300 px-4 py-2 text-participation-primary-700 hover:text-participation-primary-800 hover:bg-participation-primary-50 shadow-md hover:shadow-lg transition-all duration-200 transform-gpu hover:scale-[1.02]"
-											onclick={(e) => { e.stopPropagation(); 
+											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md border border-participation-primary-200 px-4 py-2 text-participation-primary-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-participation-primary-300 hover:bg-participation-primary-50 hover:text-participation-primary-800 hover:shadow-lg"
+											onclick={(e) => {
+												e.stopPropagation();
 												document.getElementById('template-section')?.scrollIntoView({
 													behavior: 'smooth',
 													block: 'center'
@@ -308,7 +335,8 @@
 						<div
 							class="absolute bottom-0 left-0 h-1 w-full transform transition-all duration-300"
 							class:bg-verified-500={channel.id === 'certified' && (isSelected || isHovered)}
-							class:bg-participation-primary-500={channel.id === 'direct' && (isSelected || isHovered)}
+							class:bg-participation-primary-500={channel.id === 'direct' &&
+								(isSelected || isHovered)}
 							class:bg-slate-200={!isSelected && !isHovered}
 							class:scale-x-100={isSelected || isHovered}
 							class:scale-x-0={!isSelected && !isHovered}

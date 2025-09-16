@@ -14,7 +14,7 @@
 		onclose?: () => void;
 	} = $props();
 
-	const dispatch = createEventDispatcher<{ 
+	const dispatch = createEventDispatcher<{
 		close: void;
 		save: { section: string; data: any };
 	}>();
@@ -106,7 +106,7 @@
 		if (!validateForm()) return;
 
 		isSubmitting = true;
-		
+
 		try {
 			// Call the appropriate API endpoint
 			let endpoint = '/api/user/profile';
@@ -139,7 +139,7 @@
 
 	const sectionTitles = {
 		basic: 'Basic Information',
-		profile: 'Profile Details', 
+		profile: 'Profile Details',
 		address: 'Address Information'
 	};
 
@@ -150,17 +150,13 @@
 	};
 </script>
 
-<SimpleModal 
-	title={sectionTitles[section]}
-	maxWidth="max-w-lg"
-	onclose={handleClose}
->
+<SimpleModal title={sectionTitles[section]} maxWidth="max-w-lg" onclose={handleClose}>
 	<div class="p-6">
 		<!-- Section Icon -->
-		<div class="flex items-center mb-6">
+		<div class="mb-6 flex items-center">
 			{#snippet iconSnippet()}
 				{@const IconComponent = sectionIcons[section]}
-				<IconComponent class="w-5 h-5 text-participation-primary-600 mr-2" />
+				<IconComponent class="mr-2 h-5 w-5 text-participation-primary-600" />
 			{/snippet}
 			{@render iconSnippet()}
 			<h3 class="text-lg font-semibold text-slate-900">{sectionTitles[section]}</h3>
@@ -168,7 +164,7 @@
 
 		<!-- Error Display -->
 		{#if errors.general}
-			<div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+			<div class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3">
 				<p class="text-sm text-red-600">{errors.general}</p>
 			</div>
 		{/if}
@@ -177,14 +173,14 @@
 		<div class="space-y-4">
 			{#if section === 'basic'}
 				<div>
-					<label for="name" class="block text-sm font-medium text-slate-700 mb-1">
-						Name *
-					</label>
+					<label for="name" class="mb-1 block text-sm font-medium text-slate-700"> Name * </label>
 					<input
 						id="name"
 						type="text"
 						bind:value={formData.name}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.name ? 'border-red-300' : ''}"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.name
+							? 'border-red-300'
+							: ''}"
 						placeholder="Enter your full name"
 					/>
 					{#if errors.name}
@@ -193,14 +189,14 @@
 				</div>
 
 				<div>
-					<label for="email" class="block text-sm font-medium text-slate-700 mb-1">
-						Email *
-					</label>
+					<label for="email" class="mb-1 block text-sm font-medium text-slate-700"> Email * </label>
 					<input
 						id="email"
 						type="email"
 						bind:value={formData.email}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.email ? 'border-red-300' : ''}"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.email
+							? 'border-red-300'
+							: ''}"
 						placeholder="your@email.com"
 					/>
 					{#if errors.email}
@@ -209,28 +205,27 @@
 				</div>
 
 				<div>
-					<label for="phone" class="block text-sm font-medium text-slate-700 mb-1">
-						Phone
-					</label>
+					<label for="phone" class="mb-1 block text-sm font-medium text-slate-700"> Phone </label>
 					<input
 						id="phone"
 						type="tel"
 						bind:value={formData.phone}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
 						placeholder="(555) 123-4567"
 					/>
 				</div>
-
 			{:else if section === 'profile'}
 				<div>
-					<label for="role" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="role" class="mb-1 block text-sm font-medium text-slate-700">
 						Role/Profession *
 					</label>
 					<input
 						id="role"
 						type="text"
 						bind:value={formData.role}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.role ? 'border-red-300' : ''}"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.role
+							? 'border-red-300'
+							: ''}"
 						placeholder="e.g., Teacher, Student, Parent, etc."
 					/>
 					{#if errors.role}
@@ -239,39 +234,41 @@
 				</div>
 
 				<div>
-					<label for="organization" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="organization" class="mb-1 block text-sm font-medium text-slate-700">
 						Organization
 					</label>
 					<input
 						id="organization"
 						type="text"
 						bind:value={formData.organization}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
 						placeholder="Company, school, nonprofit, etc."
 					/>
 				</div>
 
 				<div>
-					<label for="location" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="location" class="mb-1 block text-sm font-medium text-slate-700">
 						General Location
 					</label>
 					<input
 						id="location"
 						type="text"
 						bind:value={formData.location}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
 						placeholder="e.g., San Francisco Bay Area"
 					/>
 				</div>
 
 				<div>
-					<label for="connection" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="connection" class="mb-1 block text-sm font-medium text-slate-700">
 						Connection to Issues *
 					</label>
 					<select
 						id="connection"
 						bind:value={formData.connection}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.connection ? 'border-red-300' : ''}"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.connection
+							? 'border-red-300'
+							: ''}"
 					>
 						<option value="">Select your connection...</option>
 						<option value="directly_affected">Directly affected by this issue</option>
@@ -286,43 +283,44 @@
 				</div>
 
 				<div>
-					<label for="connection_details" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="connection_details" class="mb-1 block text-sm font-medium text-slate-700">
 						Additional Details
 					</label>
 					<textarea
 						id="connection_details"
 						bind:value={formData.connection_details}
 						rows="3"
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 resize-none"
+						class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
 						placeholder="Tell us more about your connection to the issues you care about..."
 					></textarea>
 				</div>
 
 				<div>
-					<label for="visibility" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="visibility" class="mb-1 block text-sm font-medium text-slate-700">
 						Profile Visibility
 					</label>
 					<select
 						id="visibility"
 						bind:value={formData.profile_visibility}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
 					>
 						<option value="private">Private - Only visible to me</option>
 						<option value="limited">Limited - Visible to template users</option>
 						<option value="public">Public - Visible to everyone</option>
 					</select>
 				</div>
-
 			{:else if section === 'address'}
 				<div>
-					<label for="street" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="street" class="mb-1 block text-sm font-medium text-slate-700">
 						Street Address *
 					</label>
 					<input
 						id="street"
 						type="text"
 						bind:value={formData.street}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.street ? 'border-red-300' : ''}"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.street
+							? 'border-red-300'
+							: ''}"
 						placeholder="123 Main Street"
 					/>
 					{#if errors.street}
@@ -332,14 +330,14 @@
 
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label for="city" class="block text-sm font-medium text-slate-700 mb-1">
-							City *
-						</label>
+						<label for="city" class="mb-1 block text-sm font-medium text-slate-700"> City * </label>
 						<input
 							id="city"
 							type="text"
 							bind:value={formData.city}
-							class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.city ? 'border-red-300' : ''}"
+							class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.city
+								? 'border-red-300'
+								: ''}"
 							placeholder="San Francisco"
 						/>
 						{#if errors.city}
@@ -348,14 +346,16 @@
 					</div>
 
 					<div>
-						<label for="state" class="block text-sm font-medium text-slate-700 mb-1">
+						<label for="state" class="mb-1 block text-sm font-medium text-slate-700">
 							State *
 						</label>
 						<input
 							id="state"
 							type="text"
 							bind:value={formData.state}
-							class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.state ? 'border-red-300' : ''}"
+							class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.state
+								? 'border-red-300'
+								: ''}"
 							placeholder="CA"
 							maxlength="2"
 						/>
@@ -366,14 +366,16 @@
 				</div>
 
 				<div class="w-1/2">
-					<label for="zip" class="block text-sm font-medium text-slate-700 mb-1">
+					<label for="zip" class="mb-1 block text-sm font-medium text-slate-700">
 						ZIP Code *
 					</label>
 					<input
 						id="zip"
 						type="text"
 						bind:value={formData.zip}
-						class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-participation-primary-500 focus:border-participation-primary-500 {errors.zip ? 'border-red-300' : ''}"
+						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.zip
+							? 'border-red-300'
+							: ''}"
 						placeholder="94102"
 						maxlength="10"
 					/>
@@ -382,23 +384,24 @@
 					{/if}
 				</div>
 
-				<div class="text-sm text-slate-600 bg-participation-primary-50 p-3 rounded-lg">
-					<p>Your address helps us identify your congressional representatives for advocacy messaging.</p>
+				<div class="rounded-lg bg-participation-primary-50 p-3 text-sm text-slate-600">
+					<p>
+						Your address helps us identify your congressional representatives for advocacy
+						messaging.
+					</p>
 				</div>
 			{/if}
 		</div>
 
 		<!-- Form Actions -->
-		<div class="flex justify-end space-x-3 mt-8 pt-6 border-t border-slate-200">
-			<Button variant="secondary" onclick={handleClose} disabled={isSubmitting}>
-				Cancel
-			</Button>
+		<div class="mt-8 flex justify-end space-x-3 border-t border-slate-200 pt-6">
+			<Button variant="secondary" onclick={handleClose} disabled={isSubmitting}>Cancel</Button>
 			<Button variant="primary" onclick={handleSave} disabled={isSubmitting}>
 				{#if isSubmitting}
-					<Loader2 class="w-4 h-4 mr-2 animate-spin" />
+					<Loader2 class="mr-2 h-4 w-4 animate-spin" />
 					Saving...
 				{:else}
-					<Save class="w-4 h-4 mr-2" />
+					<Save class="mr-2 h-4 w-4" />
 					Save Changes
 				{/if}
 			</Button>

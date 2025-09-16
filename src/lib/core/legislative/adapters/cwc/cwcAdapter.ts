@@ -4,9 +4,9 @@
  */
 
 import { LegislativeAdapter } from '../base.js';
-import type { 
-	DeliveryRequest, 
-	DeliveryResult, 
+import type {
+	DeliveryRequest,
+	DeliveryResult,
 	Address,
 	LegislativeSystem,
 	DeliveryCapability,
@@ -47,7 +47,7 @@ export class CWCAdapter extends LegislativeAdapter {
 				},
 				{
 					name: 'Senate',
-					code: 'SENATE', 
+					code: 'SENATE',
 					total_seats: 100
 				}
 			]
@@ -76,7 +76,9 @@ export class CWCAdapter extends LegislativeAdapter {
 		// TODO: Integrate with existing congressional district lookup system
 		// For now, this is a placeholder that would be implemented using
 		// the existing database and district mapping logic
-		throw new Error('Representative lookup not yet implemented - integrate with existing district lookup');
+		throw new Error(
+			'Representative lookup not yet implemented - integrate with existing district lookup'
+		);
 	}
 
 	/**
@@ -105,12 +107,14 @@ export class CWCAdapter extends LegislativeAdapter {
 					id: request.user.id,
 					name: request.user.name || '',
 					email: request.user.email,
-					address: request.user.address ? {
-						address1: request.user.address.street || '',
-						city: request.user.address.city || '',
-						state: request.user.address.state || '',
-						zip: request.user.address.postal_code || ''
-					} : undefined,
+					address: request.user.address
+						? {
+								address1: request.user.address.street || '',
+								city: request.user.address.city || '',
+								state: request.user.address.state || '',
+								zip: request.user.address.postal_code || ''
+							}
+						: undefined,
 					phone: undefined // TODO: Add phone field to base User interface
 				},
 				personalConnection: request.personalized_message,
@@ -119,13 +123,13 @@ export class CWCAdapter extends LegislativeAdapter {
 
 			// Map to CWC XML structure
 			const cwcMessage = this.fieldMapper.mapToCWCMessage(cwcInput);
-			
+
 			// Build XML
 			const xmlMessage = CWCXMLBuilder.buildXMLMessage(cwcMessage);
-			
+
 			// Submit to CWC API
 			const result = await this.submitToCWCAPI(xmlMessage);
-			
+
 			return {
 				success: result.success,
 				message_id: cwcMessage.Message.MessageId,
@@ -170,13 +174,15 @@ export class CWCAdapter extends LegislativeAdapter {
 	/**
 	 * Submit XML to CWC API
 	 */
-	private async submitToCWCAPI(xmlMessage: string): Promise<{ success: boolean; submissionId?: string }> {
+	private async submitToCWCAPI(
+		xmlMessage: string
+	): Promise<{ success: boolean; submissionId?: string }> {
 		// TODO: Implement actual CWC API submission
 		// This would make an HTTP request to the CWC API endpoint
 		// with proper authentication and error handling
-		
+
 		console.log('CWC XML Message:', xmlMessage);
-		
+
 		// Placeholder implementation
 		return {
 			success: true,
@@ -195,7 +201,8 @@ export function createCWCAdapter(): CWCAdapter {
 		CWC_DELIVERY_AGENT_ID: process.env.CWC_DELIVERY_AGENT_ID || '',
 		CWC_DELIVERY_AGENT_NAME: process.env.CWC_DELIVERY_AGENT_NAME || '',
 		CWC_DELIVERY_AGENT_CONTACT: process.env.CWC_DELIVERY_AGENT_CONTACT || '',
-		CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL: process.env.CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL || '',
+		CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL:
+			process.env.CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL || '',
 		CWC_DELIVERY_AGENT_ACK: (process.env.CWC_DELIVERY_AGENT_ACK as 'Y' | 'N') || 'Y'
 	};
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-	let { 
+	let {
 		lines = 1,
 		width = '100%',
 		lineHeight = 'h-4',
@@ -21,8 +21,10 @@
 
 <div class="skeleton-text {classNames}">
 	{#each Array(lines) as _, i}
-		<div 
-			class="skeleton-line {lineHeight} bg-slate-200 rounded {i < lines - 1 ? spacing : ''} {animate ? 'animate-pulse' : ''}"
+		<div
+			class="skeleton-line {lineHeight} rounded bg-slate-200 {i < lines - 1 ? spacing : ''} {animate
+				? 'animate-pulse'
+				: ''}"
 			style="width: {widths[i] || widths[0]}"
 		></div>
 	{/each}

@@ -1,8 +1,8 @@
 /**
  * VerificationAgent - Multi-Source Identity Verification
- * 
+ *
  * Core vision: "Authentic democracy through verifiable identity, not surveillance"
- * 
+ *
  * Coordinates identity verification across multiple sources to establish
  * democratic authenticity while preserving privacy. Integrates with Didit.me
  * for zero-knowledge identity verification and on-chain attestations.
@@ -38,11 +38,11 @@ export interface VerificationSource {
 export class VerificationAgent extends BaseAgent {
 	constructor() {
 		super('verification-agent-v1', AgentType.VERIFICATION, {
-			minTrustScore: [0, 100],        // Minimum trust score for basic verification
-			zkProofWeight: [0.3, 0.8],      // Weight given to ZK proofs
-			kycWeight: [0.4, 0.9],          // Weight given to KYC verification
-			behavioralWeight: [0.1, 0.5],   // Weight given to behavioral analysis
-			maxRiskTolerance: [0.2, 0.7]    // Maximum acceptable risk level
+			minTrustScore: [0, 100], // Minimum trust score for basic verification
+			zkProofWeight: [0.3, 0.8], // Weight given to ZK proofs
+			kycWeight: [0.4, 0.9], // Weight given to KYC verification
+			behavioralWeight: [0.1, 0.5], // Weight given to behavioral analysis
+			maxRiskTolerance: [0.2, 0.7] // Maximum acceptable risk level
 		});
 	}
 
@@ -50,26 +50,26 @@ export class VerificationAgent extends BaseAgent {
 		try {
 			// Get existing user verification data
 			const verificationData = await this.gatherVerificationData(context.userId!);
-			
+
 			// Analyze verification sources
 			const sourceAnalysis = this.analyzeVerificationSources(verificationData.sources);
-			
+
 			// Calculate trust score
 			const trustScore = this.calculateTrustScore(verificationData.sources);
-			
+
 			// Determine verification level
 			const verificationLevel = this.determineVerificationLevel(trustScore, sourceAnalysis);
-			
+
 			// Identify risk factors
 			const riskFactors = this.identifyRiskFactors(verificationData, sourceAnalysis);
-			
+
 			// Generate recommendations
 			const recommendedActions = this.generateRecommendations(
-				verificationLevel, 
-				riskFactors, 
+				verificationLevel,
+				riskFactors,
 				verificationData
 			);
-			
+
 			const assessment: VerificationAssessment = {
 				userId: context.userId!,
 				verificationLevel,
@@ -80,26 +80,25 @@ export class VerificationAgent extends BaseAgent {
 				zkProofHash: verificationData.zkProofHash,
 				districtVerification: verificationData.districtVerification
 			};
-			
+
 			const confidence = this.assessDecisionConfidence(assessment, sourceAnalysis);
-			
+
 			return this.createDecision(
 				assessment,
 				confidence,
 				this.generateVerificationReasoning(assessment, sourceAnalysis),
-				{ 
-					userId: context.userId, 
+				{
+					userId: context.userId,
 					sourcesCount: verificationData.sources.length,
-					verificationLevel 
+					verificationLevel
 				}
 			);
-			
 		} catch (error) {
 			console.error('VerificationAgent decision error:', error);
 			return this.createDecision(
-				{ 
-					userId: context.userId, 
-					verificationLevel: 'unverified', 
+				{
+					userId: context.userId,
+					verificationLevel: 'unverified',
 					trustScore: 0,
 					verificationSources: [],
 					riskFactors: ['verification_system_error'],
@@ -129,9 +128,9 @@ export class VerificationAgent extends BaseAgent {
 				civic_actions: {
 					take: 10,
 					orderBy: { created_at: 'desc' },
-					select: { 
-						action_type: true, 
-						status: true, 
+					select: {
+						action_type: true,
+						status: true,
 						created_at: true,
 						agent_decisions: true
 					}
@@ -197,11 +196,13 @@ export class VerificationAgent extends BaseAgent {
 
 		return {
 			sources,
-			districtVerification: user.congressional_district ? {
-				congressionalDistrict: user.congressional_district,
-				confidence: 0.8,
-				source: 'address_verification'
-			} : undefined
+			districtVerification: user.congressional_district
+				? {
+						congressionalDistrict: user.congressional_district,
+						confidence: 0.8,
+						source: 'address_verification'
+					}
+				: undefined
 		};
 	}
 
@@ -214,13 +215,13 @@ export class VerificationAgent extends BaseAgent {
 		highestScore: number;
 	} {
 		return {
-			kycPresent: sources.some(s => s.type === 'kyc'),
-			zkProofPresent: sources.some(s => s.type === 'zk_proof'),
-			behavioralDataPresent: sources.some(s => s.type === 'behavioral_analysis'),
+			kycPresent: sources.some((s) => s.type === 'kyc'),
+			zkProofPresent: sources.some((s) => s.type === 'zk_proof'),
+			behavioralDataPresent: sources.some((s) => s.type === 'behavioral_analysis'),
 			sourceCount: sources.length,
-			averageConfidence: sources.length > 0 ? 
-				sources.reduce((sum, s) => sum + s.confidence, 0) / sources.length : 0,
-			highestScore: sources.length > 0 ? Math.max(...sources.map(s => s.score)) : 0
+			averageConfidence:
+				sources.length > 0 ? sources.reduce((sum, s) => sum + s.confidence, 0) / sources.length : 0,
+			highestScore: sources.length > 0 ? Math.max(...sources.map((s) => s.score)) : 0
 		};
 	}
 
@@ -250,7 +251,7 @@ export class VerificationAgent extends BaseAgent {
 	}
 
 	private determineVerificationLevel(
-		trustScore: number, 
+		trustScore: number,
 		analysis: { kycPresent: boolean; zkProofPresent: boolean; behavioralDataPresent: boolean }
 	): 'unverified' | 'partial' | 'verified' | 'high_assurance' {
 		if (trustScore >= 800 && analysis.kycPresent && analysis.behavioralDataPresent) {
@@ -271,15 +272,11 @@ export class VerificationAgent extends BaseAgent {
 		if (!analysis.behavioralDataPresent) risks.push('insufficient_behavioral_data');
 		if (analysis.sourceCount < 2) risks.push('single_source_dependency');
 		if (analysis.averageConfidence < 0.5) risks.push('low_confidence_sources');
-		
+
 		return risks;
 	}
 
-	private generateRecommendations(
-		level: string, 
-		risks: string[], 
-		verificationData: any
-	): string[] {
+	private generateRecommendations(level: string, risks: string[], verificationData: any): string[] {
 		const recommendations: string[] = [];
 
 		if (level === 'unverified') {
@@ -306,9 +303,9 @@ export class VerificationAgent extends BaseAgent {
 		if (actions.length === 0) return 0;
 
 		let score = Math.min(50, actions.length * 5); // Base score from action count
-		
+
 		// Consistent action types indicate authentic engagement
-		const actionTypes = new Set(actions.map(a => a.action_type));
+		const actionTypes = new Set(actions.map((a) => a.action_type));
 		if (actionTypes.size > 1) score += 10;
 
 		// Regular activity over time
@@ -317,7 +314,7 @@ export class VerificationAgent extends BaseAgent {
 		if (timeSpan > 30) score += 10; // More than a month of activity
 
 		// Successful completions
-		const successfulActions = actions.filter(a => a.status === 'completed').length;
+		const successfulActions = actions.filter((a) => a.status === 'completed').length;
 		const successRate = successfulActions / actions.length;
 		score += Math.round(successRate * 20);
 
@@ -326,20 +323,20 @@ export class VerificationAgent extends BaseAgent {
 
 	private checkBehaviorConsistency(actions: any[]): boolean {
 		// Simple consistency check - more sophisticated logic would analyze patterns
-		return actions.filter(a => a.status === 'completed').length / actions.length > 0.8;
+		return actions.filter((a) => a.status === 'completed').length / actions.length > 0.8;
 	}
 
 	private calculateEngagementTimeSpan(actions: any[]): number {
 		if (actions.length < 2) return 0;
-		
-		const dates = actions.map(a => new Date(a.created_at).getTime()).sort();
+
+		const dates = actions.map((a) => new Date(a.created_at).getTime()).sort();
 		return Math.round((dates[dates.length - 1] - dates[0]) / (24 * 60 * 60 * 1000)); // Days
 	}
 
 	private async analyzeBlockchainHistory(walletAddress: string): Promise<number> {
 		// Mock blockchain analysis - in production would analyze on-chain behavior
 		// Look for: transaction history, contract interactions, token holdings, etc.
-		
+
 		// For now, return a modest score indicating some blockchain presence
 		return Math.random() > 0.5 ? 40 : 20;
 	}
@@ -365,10 +362,12 @@ export class VerificationAgent extends BaseAgent {
 	private generateVerificationReasoning(assessment: VerificationAssessment, analysis: any): string {
 		const { trustScore, verificationLevel, verificationSources, riskFactors } = assessment;
 
-		return `Verification assessment: ${verificationLevel} level with trust score ${trustScore}/1000. ` +
-			   `Analyzed ${verificationSources.length} sources: ${analysis.kycPresent ? 'KYC verified' : 'no KYC'}, ` +
-			   `${analysis.behavioralDataPresent ? 'behavioral data present' : 'limited behavioral data'}. ` +
-			   `${riskFactors.length > 0 ? `Risk factors: ${riskFactors.join(', ')}. ` : ''}` +
-			   `Average source confidence: ${(analysis.averageConfidence * 100).toFixed(1)}%.`;
+		return (
+			`Verification assessment: ${verificationLevel} level with trust score ${trustScore}/1000. ` +
+			`Analyzed ${verificationSources.length} sources: ${analysis.kycPresent ? 'KYC verified' : 'no KYC'}, ` +
+			`${analysis.behavioralDataPresent ? 'behavioral data present' : 'limited behavioral data'}. ` +
+			`${riskFactors.length > 0 ? `Risk factors: ${riskFactors.join(', ')}. ` : ''}` +
+			`Average source confidence: ${(analysis.averageConfidence * 100).toFixed(1)}%.`
+		);
 	}
 }

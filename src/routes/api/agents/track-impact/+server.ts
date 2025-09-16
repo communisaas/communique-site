@@ -1,6 +1,6 @@
 /**
  * Impact Tracking Endpoint
- * 
+ *
  * Tracks causal chains from templates to legislative outcomes
  * "We don't count messages sent. We count minds changed."
  */
@@ -23,18 +23,12 @@ interface ImpactObservation {
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const {
-			templateId,
-			observations = [],
-			legislatorId,
-			eventType,
-			eventDetails
-		} = body;
-		
+		const { templateId, observations = [], legislatorId, eventType, eventDetails } = body;
+
 		if (!templateId) {
 			return json({ error: 'templateId required' }, { status: 400 });
 		}
-		
+
 		// Fetch template and its history
 		const template = await db.template.findUnique({
 			where: { id: templateId },
@@ -44,11 +38,11 @@ export const POST: RequestHandler = async ({ request }) => {
 				verification: true
 			}
 		});
-		
+
 		if (!template) {
 			return json({ error: 'Template not found' }, { status: 404 });
 		}
-		
+
 		// Process single observation if provided
 		if (eventType && !observations.length) {
 			observations.push({
@@ -59,17 +53,17 @@ export const POST: RequestHandler = async ({ request }) => {
 				details: eventDetails
 			});
 		}
-		
+
 		// Track each observation
 		const trackedObservations = [];
 		let totalImpactScore = 0;
 		let maxConfidence = 0;
-		
+
 		for (const obs of observations) {
 			// Determine causal strength based on observation type
 			let causalStrength = 0;
 			let impactType = 'correlation';
-			
+
 			switch (obs.type) {
 				case 'speech':
 					// Direct quote in floor speech = strong causation
@@ -84,7 +78,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						impactType = 'temporal_correlation';
 					}
 					break;
-					
+
 				case 'vote':
 					// Vote change after campaign = moderate causation
 					if (obs.details?.previousPosition && obs.details?.newPosition) {
@@ -95,7 +89,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						impactType = 'vote_alignment';
 					}
 					break;
-					
+
 				case 'amendment':
 					// Amendment with template language = very strong causation
 					if (obs.details?.languageMatch > 80) {
@@ -106,13 +100,13 @@ export const POST: RequestHandler = async ({ request }) => {
 						impactType = 'conceptual_influence';
 					}
 					break;
-					
+
 				case 'media':
 					// Media coverage mentioning campaign
 					causalStrength = 40;
 					impactType = 'media_amplification';
 					break;
-					
+
 				case 'testimony':
 					// Committee testimony using template points
 					if (obs.details?.directReference) {
@@ -124,12 +118,12 @@ export const POST: RequestHandler = async ({ request }) => {
 					}
 					break;
 			}
-			
+
 			// Apply confidence modifier
 			const adjustedScore = Math.floor(causalStrength * (obs.confidence / 100));
 			totalImpactScore += adjustedScore;
 			maxConfidence = Math.max(maxConfidence, obs.confidence);
-			
+
 			// Store observation
 			const tracked = {
 				type: obs.type,
@@ -141,9 +135,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				timestamp: obs.timestamp,
 				details: obs.details
 			};
-			
+
 			trackedObservations.push(tracked);
-			
+
 			// Store in database
 			await db.impactObservation?.create({
 				data: {
@@ -159,44 +153,47 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			});
 		}
-		
+
 		// Calculate overall impact using ImpactAgent
 		const impactResult = await impactAgent.process({
 			actionType: 'cwc_message',
-			recipients: template.deliveries?.map(d => d.recipient_id) || [],
+			recipients: template.deliveries?.map((d) => d.recipient_id) || [],
 			templateId,
 			metadata: {
 				observationCount: trackedObservations.length,
-				maxCausalStrength: Math.max(...trackedObservations.map(o => o.causalStrength)),
+				maxCausalStrength: Math.max(...trackedObservations.map((o) => o.causalStrength)),
 				totalDeliveries: template.send_count || 0
 			}
 		});
-		
+
 		// Determine if we have proven causation or just correlation
-		const hasCausation = trackedObservations.some(o => 
-			o.impactType.includes('causation') || o.impactType.includes('adoption')
+		const hasCausation = trackedObservations.some(
+			(o) => o.impactType.includes('causation') || o.impactType.includes('adoption')
 		);
-		
+
 		// Calculate creator bonus based on impact
-		const creatorBonus = hasCausation 
-			? BigInt(10000 * 10**18) * BigInt(Math.floor(maxConfidence / 10)) // Up to 100k VOTER for proven causation
-			: BigInt(1000 * 10**18) * BigInt(Math.floor(totalImpactScore / 100)); // Up to 10k for correlations
-		
+		const creatorBonus = hasCausation
+			? BigInt(10000 * 10 ** 18) * BigInt(Math.floor(maxConfidence / 10)) // Up to 100k VOTER for proven causation
+			: BigInt(1000 * 10 ** 18) * BigInt(Math.floor(totalImpactScore / 100)); // Up to 10k for correlations
+
 		// Update template impact score
 		await db.template.update({
 			where: { id: templateId },
 			data: {
-				impact_score: Math.min(100, (template.impact_score || 0) + Math.floor(totalImpactScore / 10)),
+				impact_score: Math.min(
+					100,
+					(template.impact_score || 0) + Math.floor(totalImpactScore / 10)
+				),
 				last_impact_at: new Date()
 			}
 		});
-		
+
 		// Update creator rewards if causation proven
 		if (hasCausation && template.user_id) {
 			const user = await db.user.findUnique({
 				where: { id: template.user_id }
 			});
-			
+
 			if (user) {
 				await db.user.update({
 					where: { id: template.user_id },
@@ -208,7 +205,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				});
 			}
 		}
-		
+
 		// Determine treasury action (for 501c4 funding)
 		let treasuryAction = null;
 		if (hasCausation && legislatorId) {
@@ -217,10 +214,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				type: 'electoral_support',
 				legislatorId,
 				reason: 'Demonstrated responsiveness to constituent feedback',
-				amount: BigInt(100000 * 10**18), // 100k VOTER worth of electoral support
+				amount: BigInt(100000 * 10 ** 18), // 100k VOTER worth of electoral support
 				confidence: maxConfidence
 			};
-			
+
 			// Store treasury recommendation
 			await db.treasuryRecommendation?.create({
 				data: {
@@ -234,7 +231,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			});
 		}
-		
+
 		return json({
 			success: true,
 			templateId,
@@ -248,30 +245,32 @@ export const POST: RequestHandler = async ({ request }) => {
 			observations: trackedObservations,
 			rewards: {
 				creatorBonus: creatorBonus.toString(),
-				creatorBonusFormatted: `${Number(creatorBonus) / 10**18} VOTER`,
-				reason: hasCausation 
+				creatorBonusFormatted: `${Number(creatorBonus) / 10 ** 18} VOTER`,
+				reason: hasCausation
 					? 'Proven causal impact on legislative outcome'
 					: 'Correlated influence on political discourse'
 			},
 			treasuryAction,
 			causality: {
 				status: hasCausation ? 'proven' : 'correlation',
-				strength: Math.max(...trackedObservations.map(o => o.causalStrength)),
-				types: [...new Set(trackedObservations.map(o => o.impactType))],
+				strength: Math.max(...trackedObservations.map((o) => o.causalStrength)),
+				types: [...new Set(trackedObservations.map((o) => o.impactType))],
 				explanation: hasCausation
 					? 'Template language or concepts directly adopted in legislative action'
 					: 'Template correlated with political activity but causation not proven'
 			},
 			philosophy: "We don't count messages sent. We count minds changed."
 		});
-		
 	} catch (error) {
 		console.error('Impact tracking error:', error);
-		return json({
-			success: false,
-			error: 'Impact tracking failed',
-			details: error.message
-		}, { status: 500 });
+		return json(
+			{
+				success: false,
+				error: 'Impact tracking failed',
+				details: error.message
+			},
+			{ status: 500 }
+		);
 	}
 };
 
@@ -279,7 +278,7 @@ export const POST: RequestHandler = async ({ request }) => {
 export const GET: RequestHandler = async ({ url }) => {
 	const templateId = url.searchParams.get('templateId');
 	const legislatorId = url.searchParams.get('legislatorId');
-	
+
 	if (templateId) {
 		// Get impact observations for specific template
 		const observations = await db.impactObservation?.findMany({
@@ -287,7 +286,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			orderBy: { observed_at: 'desc' },
 			take: 50
 		});
-		
+
 		const template = await db.template.findUnique({
 			where: { id: templateId },
 			select: {
@@ -296,17 +295,20 @@ export const GET: RequestHandler = async ({ url }) => {
 				send_count: true
 			}
 		});
-		
+
 		// Categorize observations
-		const byType = observations?.reduce((acc, obs) => {
-			acc[obs.observation_type] = (acc[obs.observation_type] || 0) + 1;
-			return acc;
-		}, {} as Record<string, number>);
-		
-		const hasCausation = observations?.some(o => 
-			o.impact_type?.includes('causation') || o.impact_type?.includes('adoption')
+		const byType = observations?.reduce(
+			(acc, obs) => {
+				acc[obs.observation_type] = (acc[obs.observation_type] || 0) + 1;
+				return acc;
+			},
+			{} as Record<string, number>
 		);
-		
+
+		const hasCausation = observations?.some(
+			(o) => o.impact_type?.includes('causation') || o.impact_type?.includes('adoption')
+		);
+
 		return json({
 			templateId,
 			impactScore: template?.impact_score || 0,
@@ -318,43 +320,41 @@ export const GET: RequestHandler = async ({ url }) => {
 			recentObservations: observations?.slice(0, 10)
 		});
 	}
-	
+
 	if (legislatorId) {
 		// Get legislator responsiveness score
 		const observations = await db.impactObservation?.findMany({
 			where: { legislator_id: legislatorId },
 			orderBy: { observed_at: 'desc' }
 		});
-		
+
 		const recommendations = await db.treasuryRecommendation?.findMany({
 			where: { legislator_id: legislatorId }
 		});
-		
-		const totalSupport = recommendations?.reduce((sum, rec) => 
-			sum + BigInt(rec.amount || 0), BigInt(0)
+
+		const totalSupport = recommendations?.reduce(
+			(sum, rec) => sum + BigInt(rec.amount || 0),
+			BigInt(0)
 		);
-		
+
 		return json({
 			legislatorId,
 			responsivenessScore: Math.min(100, observations?.length * 10),
 			observationCount: observations?.length || 0,
 			treasurySupport: totalSupport?.toString() || '0',
-			supportFormatted: `${Number(totalSupport || 0) / 10**18} VOTER`,
+			supportFormatted: `${Number(totalSupport || 0) / 10 ** 18} VOTER`,
 			recommendationCount: recommendations?.length || 0
 		});
 	}
-	
+
 	// Return general impact stats
 	const totalObservations = await db.impactObservation?.count();
 	const causationCount = await db.impactObservation?.count({
 		where: {
-			OR: [
-				{ impact_type: { contains: 'causation' } },
-				{ impact_type: { contains: 'adoption' } }
-			]
+			OR: [{ impact_type: { contains: 'causation' } }, { impact_type: { contains: 'adoption' } }]
 		}
 	});
-	
+
 	return json({
 		status: 'active',
 		totalObservations: totalObservations || 0,

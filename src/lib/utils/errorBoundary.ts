@@ -1,6 +1,6 @@
 /**
  * ERROR BOUNDARY UTILITIES
- * 
+ *
  * Centralized error handling, reporting, and recovery patterns
  */
 
@@ -40,11 +40,7 @@ class ErrorBoundaryManager {
 	setup(config: ErrorBoundaryConfig = {}) {
 		if (!browser) return;
 
-		const {
-			enableReporting = true,
-			enableLogging = true,
-			onError
-		} = config;
+		const { enableReporting = true, enableLogging = true, onError } = config;
 
 		// Global error handler
 		window.addEventListener('error', (event) => {
@@ -116,7 +112,7 @@ class ErrorBoundaryManager {
 		// Deduplicate similar errors
 		const errorKey = `${error.context}:${error.message}`;
 		const count = this.errorCounts.get(errorKey) || 0;
-		
+
 		// Only report first occurrence and then every 10th occurrence
 		if (count === 0 || count % 10 === 0) {
 			this.reportQueue.push({
@@ -127,7 +123,7 @@ class ErrorBoundaryManager {
 				}
 			});
 		}
-		
+
 		this.errorCounts.set(errorKey, count + 1);
 
 		// Flush queue if it gets too large
@@ -148,10 +144,14 @@ class ErrorBoundaryManager {
 
 		try {
 			const { api } = await import('$lib/core/api/client');
-			await api.post('/api/errors/batch', { errors }, { 
-				skipErrorLogging: true,
-				timeout: 5000 
-			});
+			await api.post(
+				'/api/errors/batch',
+				{ errors },
+				{
+					skipErrorLogging: true,
+					timeout: 5000
+				}
+			);
 		} catch (reportingError) {
 			// Don't create error loops - just put errors back in queue
 			this.reportQueue.unshift(...errors);
@@ -184,7 +184,7 @@ export const errorBoundaryManager = new ErrorBoundaryManager();
 export function withErrorBoundary<T extends (...args: any[]) => any>(
 	fn: T,
 	context: string,
-	options: { 
+	options: {
 		silent?: boolean;
 		fallback?: any;
 		onError?: (error: Error) => void;
@@ -193,34 +193,34 @@ export function withErrorBoundary<T extends (...args: any[]) => any>(
 	return ((...args: any[]) => {
 		try {
 			const result = fn(...args);
-			
+
 			// Handle async functions
 			if (result instanceof Promise) {
 				return result.catch((error) => {
 					const errorReport = errorBoundaryManager.createErrorReport(error, context);
-					
+
 					if (!options.silent) {
 						console.error(`Error in ${context}:`, error);
 					}
-					
+
 					errorBoundaryManager.reportError(errorReport);
 					options.onError?.(error);
-					
+
 					return options.fallback;
 				});
 			}
-			
+
 			return result;
 		} catch (error) {
 			const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
-			
+
 			if (!options.silent) {
 				console.error(`Error in ${context}:`, error);
 			}
-			
+
 			errorBoundaryManager.reportError(errorReport);
 			options.onError?.(error as Error);
-			
+
 			return options.fallback;
 		}
 	}) as T;

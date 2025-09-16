@@ -7,14 +7,14 @@ interface Popover {
 
 function createPopoverStore() {
 	let currentPopover = $state<Popover | null>(null);
-	
+
 	// Track pending close timeouts
 	const pendingCloseTimeouts = new Map<string, number>();
 
 	const open = (id: string) => {
 		// Cancel any pending close for this popover
 		cancelClose(id);
-		
+
 		if (currentPopover && currentPopover.id !== id && currentPopover.state !== 'closing') {
 			// Close the current popover before opening the new one
 			currentPopover = { id: currentPopover.id, state: 'closing' };
@@ -23,18 +23,26 @@ function createPopoverStore() {
 		}
 
 		// A short delay to allow the closing animation of the previous popover
-		coordinated.transition(() => {
-			if (currentPopover?.id === id && currentPopover.state === 'opening') {
-				currentPopover = { id, state: 'open' };
-			}
-		}, 50, `popover_${id}`);
+		coordinated.transition(
+			() => {
+				if (currentPopover?.id === id && currentPopover.state === 'opening') {
+					currentPopover = { id, state: 'open' };
+				}
+			},
+			50,
+			`popover_${id}`
+		);
 	};
 
 	const close = (id: string) => {
 		// Cancel any pending close timeout first
 		cancelClose(id);
-		
-		if (currentPopover && currentPopover.id === id && (currentPopover.state === 'open' || currentPopover.state === 'opening')) {
+
+		if (
+			currentPopover &&
+			currentPopover.id === id &&
+			(currentPopover.state === 'open' || currentPopover.state === 'opening')
+		) {
 			currentPopover = { ...currentPopover, state: 'closing' };
 		}
 	};
@@ -42,13 +50,13 @@ function createPopoverStore() {
 	const closeWithDelay = (id: string, delay: number = 150) => {
 		// Cancel any existing timeout for this popover
 		cancelClose(id);
-		
+
 		// Set a new timeout
 		const timeoutId = setTimeout(() => {
 			pendingCloseTimeouts.delete(id);
 			close(id);
 		}, delay) as unknown as number;
-		
+
 		pendingCloseTimeouts.set(id, timeoutId);
 	};
 
@@ -67,7 +75,9 @@ function createPopoverStore() {
 	};
 
 	return {
-		get popover() { return currentPopover; },
+		get popover() {
+			return currentPopover;
+		},
 		open,
 		close,
 		closeWithDelay,

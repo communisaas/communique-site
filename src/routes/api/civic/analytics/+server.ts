@@ -7,13 +7,13 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, locals, getClientAddress }) => {
 	try {
 		const event: AnalyticsEvent = await request.json();
-		
+
 		// Add server-side context
 		const enrichedEvent: EnrichedAnalyticsEvent = {
 			...event,
 			ip_address: getClientAddress(),
 			user_agent: request.headers.get('user-agent') || undefined,
-			user_id: locals.user?.id || event.user_id,	
+			user_id: locals.user?.id || event.user_id,
 			server_timestamp: new Date().toISOString()
 		};
 
@@ -33,7 +33,7 @@ async function storeAnalyticsEvent(event: EnrichedAnalyticsEvent) {
 	try {
 		// Store in a simple analytics table (you might want to create this table)
 		// For now, we'll store in template metrics or create a separate analytics table
-		
+
 		if (event.template_id) {
 			// Update template-specific metrics
 			const template = await db.template.findUnique({
@@ -69,15 +69,13 @@ async function storeAnalyticsEvent(event: EnrichedAnalyticsEvent) {
 				});
 			}
 		}
-	} catch (error) {
-	}
+	} catch (error) {}
 }
 
 async function forwardToExternalAnalytics(event: EnrichedAnalyticsEvent) {
 	// TODO: Forward to your preferred analytics service
 	// Examples:
 
-	
 	//   distinctId: event.user_id || event.session_id,
 	//   event: event.event,
 	//   properties: event.properties
@@ -90,8 +88,8 @@ async function forwardToExternalAnalytics(event: EnrichedAnalyticsEvent) {
 	// });
 
 	// Google Analytics 4
-	// 
-	
+	//
+
 	// Placeholder for external analytics integration
 	console.log('Analytics event:', {
 		event: event.event,

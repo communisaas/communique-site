@@ -14,39 +14,39 @@ dotenvConfig();
 // ============================================================================
 
 const EnvSchema = z.object({
-  // Node environment
-  NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
-  
-  // SMTP Configuration
-  SMTP_HOST: z.string().default('0.0.0.0'),
-  SMTP_PORT: z.coerce.number().default(25),
-  SMTP_SECURE: z.coerce.boolean().default(false),
-  SMTP_AUTH_USER: z.string().optional(),
-  SMTP_AUTH_PASS: z.string().optional(),
-  
-  // API Configuration
-  COMMUNIQUE_API_URL: z.string().url().default('https://communi.app'),
-  COMMUNIQUE_API_KEY: z.string(),
-  
-  CWC_API_URL: z.string().url().default('https://api.house.gov/cwc/v1'),
-  CWC_API_KEY: z.string(),
-  
-  VOTER_API_URL: z.string().url().optional(),
-  VOTER_API_KEY: z.string().optional(),
-  
-  N8N_URL: z.string().url().default('http://localhost:5678'),
-  N8N_WEBHOOK_SECRET: z.string(),
-  
-  // Feature Flags
-  ENABLE_VOTER_CERTIFICATION: z.coerce.boolean().default(false),
-  ENABLE_N8N_WORKFLOWS: z.coerce.boolean().default(true),
-  ENABLE_BETA_FEATURES: z.coerce.boolean().default(false),
-  
-  // Optional configurations
-  LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
-  MAX_MESSAGE_SIZE: z.coerce.number().default(25 * 1024 * 1024), // 25MB
-  RATE_LIMIT_WINDOW: z.coerce.number().default(60000), // 1 minute
-  RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100),
+	// Node environment
+	NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+
+	// SMTP Configuration
+	SMTP_HOST: z.string().default('0.0.0.0'),
+	SMTP_PORT: z.coerce.number().default(25),
+	SMTP_SECURE: z.coerce.boolean().default(false),
+	SMTP_AUTH_USER: z.string().optional(),
+	SMTP_AUTH_PASS: z.string().optional(),
+
+	// API Configuration
+	COMMUNIQUE_API_URL: z.string().url().default('https://communi.app'),
+	COMMUNIQUE_API_KEY: z.string(),
+
+	CWC_API_URL: z.string().url().default('https://api.house.gov/cwc/v1'),
+	CWC_API_KEY: z.string(),
+
+	VOTER_API_URL: z.string().url().optional(),
+	VOTER_API_KEY: z.string().optional(),
+
+	N8N_URL: z.string().url().default('http://localhost:5678'),
+	N8N_WEBHOOK_SECRET: z.string(),
+
+	// Feature Flags
+	ENABLE_VOTER_CERTIFICATION: z.coerce.boolean().default(false),
+	ENABLE_N8N_WORKFLOWS: z.coerce.boolean().default(true),
+	ENABLE_BETA_FEATURES: z.coerce.boolean().default(false),
+
+	// Optional configurations
+	LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
+	MAX_MESSAGE_SIZE: z.coerce.number().default(25 * 1024 * 1024), // 25MB
+	RATE_LIMIT_WINDOW: z.coerce.number().default(60000), // 1 minute
+	RATE_LIMIT_MAX_REQUESTS: z.coerce.number().default(100)
 });
 
 type EnvConfig = z.infer<typeof EnvSchema>;
@@ -56,171 +56,172 @@ type EnvConfig = z.infer<typeof EnvSchema>;
 // ============================================================================
 
 class ConfigManager {
-  private config: EnvironmentConfig | null = null;
-  private envConfig: EnvConfig | null = null;
+	private config: EnvironmentConfig | null = null;
+	private envConfig: EnvConfig | null = null;
 
-  /**
-   * Get validated environment configuration
-   */
-  private getEnvConfig(): EnvConfig {
-    if (!this.envConfig) {
-      try {
-        this.envConfig = EnvSchema.parse(process.env);
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          console.error('Environment configuration error:');
-          error.errors.forEach(err => {
-            console.error(`  - ${err.path.join('.')}: ${err.message}`);
-          });
-          throw new Error('Invalid environment configuration');
-        }
-        throw error;
-      }
-    }
-    return this.envConfig;
-  }
+	/**
+	 * Get validated environment configuration
+	 */
+	private getEnvConfig(): EnvConfig {
+		if (!this.envConfig) {
+			try {
+				this.envConfig = EnvSchema.parse(process.env);
+			} catch (error) {
+				if (error instanceof z.ZodError) {
+					console.error('Environment configuration error:');
+					error.errors.forEach((err) => {
+						console.error(`  - ${err.path.join('.')}: ${err.message}`);
+					});
+					throw new Error('Invalid environment configuration');
+				}
+				throw error;
+			}
+		}
+		return this.envConfig;
+	}
 
-  /**
-   * Get full application configuration
-   */
-  public getConfig(): EnvironmentConfig {
-    if (!this.config) {
-      const env = this.getEnvConfig();
-      
-      this.config = {
-        nodeEnv: env.NODE_ENV,
-        
-        smtp: {
-          host: env.SMTP_HOST,
-          port: env.SMTP_PORT,
-          secure: env.SMTP_SECURE,
-          auth: env.SMTP_AUTH_USER && env.SMTP_AUTH_PASS
-            ? {
-                user: env.SMTP_AUTH_USER,
-                pass: env.SMTP_AUTH_PASS
-              }
-            : undefined
-        },
-        
-        api: {
-          communiqueUrl: env.COMMUNIQUE_API_URL,
-          communiqueApiKey: env.COMMUNIQUE_API_KEY,
-          cwcUrl: env.CWC_API_URL,
-          cwcApiKey: env.CWC_API_KEY,
-          voterUrl: env.VOTER_API_URL,
-          voterApiKey: env.VOTER_API_KEY,
-          n8nUrl: env.N8N_URL,
-          n8nWebhookSecret: env.N8N_WEBHOOK_SECRET
-        },
-        
-        features: {
-          enableVoterCertification: env.ENABLE_VOTER_CERTIFICATION,
-          enableN8NWorkflows: env.ENABLE_N8N_WORKFLOWS,
-          enableBetaFeatures: env.ENABLE_BETA_FEATURES
-        }
-      };
-    }
-    
-    return this.config;
-  }
+	/**
+	 * Get full application configuration
+	 */
+	public getConfig(): EnvironmentConfig {
+		if (!this.config) {
+			const env = this.getEnvConfig();
 
-  /**
-   * Get a specific configuration value
-   */
-  public get<K extends keyof EnvConfig>(key: K): EnvConfig[K] {
-    const env = this.getEnvConfig();
-    return env[key];
-  }
+			this.config = {
+				nodeEnv: env.NODE_ENV,
 
-  /**
-   * Check if running in production
-   */
-  public isProduction(): boolean {
-    return this.get('NODE_ENV') === 'production';
-  }
+				smtp: {
+					host: env.SMTP_HOST,
+					port: env.SMTP_PORT,
+					secure: env.SMTP_SECURE,
+					auth:
+						env.SMTP_AUTH_USER && env.SMTP_AUTH_PASS
+							? {
+									user: env.SMTP_AUTH_USER,
+									pass: env.SMTP_AUTH_PASS
+								}
+							: undefined
+				},
 
-  /**
-   * Check if running in development
-   */
-  public isDevelopment(): boolean {
-    return this.get('NODE_ENV') === 'development';
-  }
+				api: {
+					communiqueUrl: env.COMMUNIQUE_API_URL,
+					communiqueApiKey: env.COMMUNIQUE_API_KEY,
+					cwcUrl: env.CWC_API_URL,
+					cwcApiKey: env.CWC_API_KEY,
+					voterUrl: env.VOTER_API_URL,
+					voterApiKey: env.VOTER_API_KEY,
+					n8nUrl: env.N8N_URL,
+					n8nWebhookSecret: env.N8N_WEBHOOK_SECRET
+				},
 
-  /**
-   * Check if running in test
-   */
-  public isTest(): boolean {
-    return this.get('NODE_ENV') === 'test';
-  }
+				features: {
+					enableVoterCertification: env.ENABLE_VOTER_CERTIFICATION,
+					enableN8NWorkflows: env.ENABLE_N8N_WORKFLOWS,
+					enableBetaFeatures: env.ENABLE_BETA_FEATURES
+				}
+			};
+		}
 
-  /**
-   * Get log level
-   */
-  public getLogLevel(): 'error' | 'warn' | 'info' | 'debug' {
-    return this.get('LOG_LEVEL');
-  }
+		return this.config;
+	}
 
-  /**
-   * Check if a feature is enabled
-   */
-  public isFeatureEnabled(feature: 'voter' | 'n8n' | 'beta'): boolean {
-    switch (feature) {
-      case 'voter':
-        return this.get('ENABLE_VOTER_CERTIFICATION');
-      case 'n8n':
-        return this.get('ENABLE_N8N_WORKFLOWS');
-      case 'beta':
-        return this.get('ENABLE_BETA_FEATURES');
-      default:
-        return false;
-    }
-  }
+	/**
+	 * Get a specific configuration value
+	 */
+	public get<K extends keyof EnvConfig>(key: K): EnvConfig[K] {
+		const env = this.getEnvConfig();
+		return env[key];
+	}
 
-  /**
-   * Validate required API keys are present
-   */
-  public validateApiKeys(): void {
-    const config = this.getConfig();
-    const errors: string[] = [];
+	/**
+	 * Check if running in production
+	 */
+	public isProduction(): boolean {
+		return this.get('NODE_ENV') === 'production';
+	}
 
-    if (!config.api.communiqueApiKey) {
-      errors.push('COMMUNIQUE_API_KEY is required');
-    }
+	/**
+	 * Check if running in development
+	 */
+	public isDevelopment(): boolean {
+		return this.get('NODE_ENV') === 'development';
+	}
 
-    if (!config.api.cwcApiKey) {
-      errors.push('CWC_API_KEY is required');
-    }
+	/**
+	 * Check if running in test
+	 */
+	public isTest(): boolean {
+		return this.get('NODE_ENV') === 'test';
+	}
 
-    if (config.features.enableVoterCertification && !config.api.voterApiKey) {
-      errors.push('VOTER_API_KEY is required when VOTER certification is enabled');
-    }
+	/**
+	 * Get log level
+	 */
+	public getLogLevel(): 'error' | 'warn' | 'info' | 'debug' {
+		return this.get('LOG_LEVEL');
+	}
 
-    if (config.features.enableN8NWorkflows && !config.api.n8nWebhookSecret) {
-      errors.push('N8N_WEBHOOK_SECRET is required when N8N workflows are enabled');
-    }
+	/**
+	 * Check if a feature is enabled
+	 */
+	public isFeatureEnabled(feature: 'voter' | 'n8n' | 'beta'): boolean {
+		switch (feature) {
+			case 'voter':
+				return this.get('ENABLE_VOTER_CERTIFICATION');
+			case 'n8n':
+				return this.get('ENABLE_N8N_WORKFLOWS');
+			case 'beta':
+				return this.get('ENABLE_BETA_FEATURES');
+			default:
+				return false;
+		}
+	}
 
-    if (errors.length > 0) {
-      throw new Error(`Configuration errors:\n${errors.join('\n')}`);
-    }
-  }
+	/**
+	 * Validate required API keys are present
+	 */
+	public validateApiKeys(): void {
+		const config = this.getConfig();
+		const errors: string[] = [];
 
-  /**
-   * Get rate limiting configuration
-   */
-  public getRateLimitConfig(): { windowMs: number; maxRequests: number } {
-    return {
-      windowMs: this.get('RATE_LIMIT_WINDOW'),
-      maxRequests: this.get('RATE_LIMIT_MAX_REQUESTS')
-    };
-  }
+		if (!config.api.communiqueApiKey) {
+			errors.push('COMMUNIQUE_API_KEY is required');
+		}
 
-  /**
-   * Reset configuration (mainly for testing)
-   */
-  public reset(): void {
-    this.config = null;
-    this.envConfig = null;
-  }
+		if (!config.api.cwcApiKey) {
+			errors.push('CWC_API_KEY is required');
+		}
+
+		if (config.features.enableVoterCertification && !config.api.voterApiKey) {
+			errors.push('VOTER_API_KEY is required when VOTER certification is enabled');
+		}
+
+		if (config.features.enableN8NWorkflows && !config.api.n8nWebhookSecret) {
+			errors.push('N8N_WEBHOOK_SECRET is required when N8N workflows are enabled');
+		}
+
+		if (errors.length > 0) {
+			throw new Error(`Configuration errors:\n${errors.join('\n')}`);
+		}
+	}
+
+	/**
+	 * Get rate limiting configuration
+	 */
+	public getRateLimitConfig(): { windowMs: number; maxRequests: number } {
+		return {
+			windowMs: this.get('RATE_LIMIT_WINDOW'),
+			maxRequests: this.get('RATE_LIMIT_MAX_REQUESTS')
+		};
+	}
+
+	/**
+	 * Reset configuration (mainly for testing)
+	 */
+	public reset(): void {
+		this.config = null;
+		this.envConfig = null;
+	}
 }
 
 // ============================================================================
@@ -233,14 +234,14 @@ const configManager = new ConfigManager();
  * Get application configuration
  */
 export function getConfig(): EnvironmentConfig {
-  return configManager.getConfig();
+	return configManager.getConfig();
 }
 
 /**
  * Get specific configuration value
  */
 export function getConfigValue<K extends keyof EnvConfig>(key: K): EnvConfig[K] {
-  return configManager.get(key);
+	return configManager.get(key);
 }
 
 /**
@@ -253,8 +254,8 @@ export const isTest = (): boolean => configManager.isTest();
 /**
  * Check feature flags
  */
-export const isFeatureEnabled = (feature: 'voter' | 'n8n' | 'beta'): boolean => 
-  configManager.isFeatureEnabled(feature);
+export const isFeatureEnabled = (feature: 'voter' | 'n8n' | 'beta'): boolean =>
+	configManager.isFeatureEnabled(feature);
 
 /**
  * Validate configuration
@@ -271,11 +272,11 @@ export { configManager };
 // ============================================================================
 
 export default {
-  getConfig,
-  getConfigValue,
-  isProduction,
-  isDevelopment,
-  isTest,
-  isFeatureEnabled,
-  validateConfig
+	getConfig,
+	getConfigValue,
+	isProduction,
+	isDevelopment,
+	isTest,
+	isFeatureEnabled,
+	validateConfig
 };

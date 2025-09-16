@@ -6,20 +6,14 @@ export const GET: RequestHandler = async ({ params }) => {
 	const { userId } = params;
 
 	if (!userId) {
-		return json(
-			{ error: 'Missing user ID' },
-			{ status: 400 }
-		);
+		return json({ error: 'Missing user ID' }, { status: 400 });
 	}
 
 	// Check session status
 	const session = verificationSessions.get(userId);
-	
+
 	if (!session) {
-		return json(
-			{ error: 'Session not found' },
-			{ status: 404 }
-		);
+		return json({ error: 'Session not found' }, { status: 404 });
 	}
 
 	// Return current verification status

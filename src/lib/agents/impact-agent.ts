@@ -1,8 +1,8 @@
 /**
  * ImpactAgent - Legislative Influence Tracking
- * 
+ *
  * Core vision: "We don't count messages. We count minds changed."
- * 
+ *
  * Tracks template influence on legislative behavior, identifies causal chains
  * from civic information to political outcomes, enables treasury funding
  * of responsive legislators.
@@ -22,7 +22,12 @@ export interface ImpactAssessment {
 }
 
 export interface LegislativeOutcome {
-	type: 'floor_speech' | 'committee_testimony' | 'vote_change' | 'amendment_adoption' | 'position_evolution';
+	type:
+		| 'floor_speech'
+		| 'committee_testimony'
+		| 'vote_change'
+		| 'amendment_adoption'
+		| 'position_evolution';
 	legislator: {
 		name: string;
 		state: string;
@@ -45,10 +50,10 @@ export interface CausalChain {
 export class ImpactAgent extends BaseAgent {
 	constructor() {
 		super('impact-agent-v1', AgentType.IMPACT, {
-			minImpactScore: [0, 20],        // Minimum score for funding consideration
-			maxCorrelationAge: [7, 90],     // Max days to track correlations
+			minImpactScore: [0, 20], // Minimum score for funding consideration
+			maxCorrelationAge: [7, 90], // Max days to track correlations
 			confidenceThreshold: [0.6, 0.9], // Minimum confidence for action
-			fundingMultiplier: [100, 10000]  // USD per impact point
+			fundingMultiplier: [100, 10000] // USD per impact point
 		});
 	}
 
@@ -56,29 +61,29 @@ export class ImpactAgent extends BaseAgent {
 		try {
 			// Get template impact data
 			const impactAssessment = await this.assessTemplateImpact(
-				context.templateId!, 
+				context.templateId!,
 				context.timestamp
 			);
-			
+
 			// Track legislative outcomes
 			const outcomes = await this.trackLegislativeOutcomes(context.templateId!);
-			
+
 			// Build causal chains
 			const causalChains = await this.buildCausalChains(context.templateId!, outcomes);
-			
+
 			// Calculate impact score
 			const impactScore = this.calculateImpactScore(outcomes, causalChains);
-			
+
 			// Determine confidence level
 			const confidenceLevel = this.determineConfidenceLevel(outcomes, causalChains);
-			
+
 			// Calculate funding recommendation
 			const recommendedFunding = this.calculateFundingRecommendation(
-				impactScore, 
-				confidenceLevel, 
+				impactScore,
+				confidenceLevel,
 				outcomes
 			);
-			
+
 			const assessment: ImpactAssessment = {
 				templateId: context.templateId!,
 				legislativeOutcomes: outcomes,
@@ -88,16 +93,15 @@ export class ImpactAgent extends BaseAgent {
 				correlationStrength: this.calculateCorrelationStrength(outcomes),
 				recommendedFunding
 			};
-			
+
 			const confidence = this.assessDecisionConfidence(assessment, context);
-			
+
 			return this.createDecision(
 				assessment,
 				confidence,
 				this.generateImpactReasoning(assessment, outcomes),
 				{ templateId: context.templateId, impactDetected: impactScore > 0 }
 			);
-			
 		} catch (error) {
 			console.error('ImpactAgent decision error:', error);
 			return this.createDecision(
@@ -109,12 +113,15 @@ export class ImpactAgent extends BaseAgent {
 		}
 	}
 
-	private async assessTemplateImpact(templateId: string, timestamp?: string): Promise<ImpactAssessment> {
+	private async assessTemplateImpact(
+		templateId: string,
+		timestamp?: string
+	): Promise<ImpactAssessment> {
 		// Get template content for matching
 		const template = await prisma.template.findUnique({
 			where: { id: templateId },
-			select: { 
-				title: true, 
+			select: {
+				title: true,
 				message_body: true,
 				subject: true,
 				created_at: true
@@ -175,14 +182,17 @@ export class ImpactAgent extends BaseAgent {
 		return this.generateMockLegislativeOutcomes(keyPhrases);
 	}
 
-	private async buildCausalChains(templateId: string, outcomes: LegislativeOutcome[]): Promise<CausalChain[]> {
+	private async buildCausalChains(
+		templateId: string,
+		outcomes: LegislativeOutcome[]
+	): Promise<CausalChain[]> {
 		const chains: CausalChain[] = [];
 
 		// Get template usage timeline
 		const actions = await prisma.civicAction.findMany({
-			where: { 
+			where: {
 				template_id: templateId,
-				action_type: 'cwc_message' 
+				action_type: 'cwc_message'
 			},
 			orderBy: { created_at: 'asc' },
 			take: 100
@@ -192,9 +202,10 @@ export class ImpactAgent extends BaseAgent {
 
 		// Build causal chains based on timing and content
 		for (const outcome of outcomes) {
-			const relevantActions = actions.filter(action => 
-				outcome.timestamp > action.created_at &&
-				(outcome.timestamp.getTime() - action.created_at.getTime()) < (30 * 24 * 60 * 60 * 1000) // 30 days
+			const relevantActions = actions.filter(
+				(action) =>
+					outcome.timestamp > action.created_at &&
+					outcome.timestamp.getTime() - action.created_at.getTime() < 30 * 24 * 60 * 60 * 1000 // 30 days
 			);
 
 			if (relevantActions.length > 0) {
@@ -206,7 +217,7 @@ export class ImpactAgent extends BaseAgent {
 				];
 
 				const strength = this.determineCausalStrength(outcome, relevantActions.length);
-				
+
 				chains.push({
 					sequence,
 					strength,
@@ -219,16 +230,19 @@ export class ImpactAgent extends BaseAgent {
 		return chains;
 	}
 
-	private calculateImpactScore(outcomes: LegislativeOutcome[], causalChains: CausalChain[]): number {
+	private calculateImpactScore(
+		outcomes: LegislativeOutcome[],
+		causalChains: CausalChain[]
+	): number {
 		let score = 0;
 
 		// Score based on outcome types (weighted by importance)
 		const outcomeWeights = {
-			floor_speech: 20,      // High visibility
+			floor_speech: 20, // High visibility
 			committee_testimony: 15, // Formal record
-			vote_change: 40,       // Actual policy change
+			vote_change: 40, // Actual policy change
 			amendment_adoption: 35, // Direct policy influence
-			position_evolution: 25  // Measurable shift
+			position_evolution: 25 // Measurable shift
 		};
 
 		for (const outcome of outcomes) {
@@ -238,17 +252,22 @@ export class ImpactAgent extends BaseAgent {
 		}
 
 		// Bonus for strong causal chains
-		const strongChains = causalChains.filter(c => c.strength === 'proven' || c.strength === 'strong');
+		const strongChains = causalChains.filter(
+			(c) => c.strength === 'proven' || c.strength === 'strong'
+		);
 		score += strongChains.length * 15;
 
 		// Cap at 100 and apply safety bounds
 		return this.applySafetyBounds(Math.min(100, score), 'minImpactScore');
 	}
 
-	private determineConfidenceLevel(outcomes: LegislativeOutcome[], causalChains: CausalChain[]): 'high' | 'medium' | 'low' {
-		const provenChains = causalChains.filter(c => c.strength === 'proven').length;
-		const strongChains = causalChains.filter(c => c.strength === 'strong').length;
-		const highMatchOutcomes = outcomes.filter(o => o.matchStrength > 0.8).length;
+	private determineConfidenceLevel(
+		outcomes: LegislativeOutcome[],
+		causalChains: CausalChain[]
+	): 'high' | 'medium' | 'low' {
+		const provenChains = causalChains.filter((c) => c.strength === 'proven').length;
+		const strongChains = causalChains.filter((c) => c.strength === 'strong').length;
+		const highMatchOutcomes = outcomes.filter((o) => o.matchStrength > 0.8).length;
 
 		if (provenChains > 0 || (strongChains > 1 && highMatchOutcomes > 1)) {
 			return 'high';
@@ -260,23 +279,24 @@ export class ImpactAgent extends BaseAgent {
 	}
 
 	private calculateFundingRecommendation(
-		impactScore: number, 
+		impactScore: number,
 		confidenceLevel: 'high' | 'medium' | 'low',
 		outcomes: LegislativeOutcome[]
 	): number {
 		if (impactScore < 20 || confidenceLevel === 'low') return 0;
 
 		const baseMultiplier = this.applySafetyBounds(500, 'fundingMultiplier'); // $500 per impact point
-		const confidenceMultiplier = confidenceLevel === 'high' ? 1.5 : confidenceLevel === 'medium' ? 1.0 : 0.5;
-		
+		const confidenceMultiplier =
+			confidenceLevel === 'high' ? 1.5 : confidenceLevel === 'medium' ? 1.0 : 0.5;
+
 		// Bonus for responsive legislators who actually changed positions
-		const responsiveLegislators = outcomes.filter(o => 
-			o.type === 'vote_change' || o.type === 'position_evolution'
+		const responsiveLegislators = outcomes.filter(
+			(o) => o.type === 'vote_change' || o.type === 'position_evolution'
 		).length;
 
 		const responsiveBonus = responsiveLegislators * 1000; // $1000 per responsive legislator
 
-		return Math.round((impactScore * baseMultiplier * confidenceMultiplier) + responsiveBonus);
+		return Math.round(impactScore * baseMultiplier * confidenceMultiplier + responsiveBonus);
 	}
 
 	private calculateCorrelationStrength(outcomes: LegislativeOutcome[]): number {
@@ -292,8 +312,9 @@ export class ImpactAgent extends BaseAgent {
 		};
 
 		const totalWeight = outcomes.reduce((sum, o) => sum + (weights[o.type] || 0.5), 0);
-		const weightedScore = outcomes.reduce((sum, o) => 
-			sum + (o.matchStrength * (weights[o.type] || 0.5)), 0
+		const weightedScore = outcomes.reduce(
+			(sum, o) => sum + o.matchStrength * (weights[o.type] || 0.5),
+			0
 		);
 
 		return totalWeight > 0 ? weightedScore / totalWeight : 0;
@@ -303,19 +324,23 @@ export class ImpactAgent extends BaseAgent {
 		// Simple phrase extraction - in production would use NLP
 		const phrases = messageBody
 			.split(/[.!?]+/)
-			.map(s => s.trim())
-			.filter(s => s.length > 20 && s.length < 200)
+			.map((s) => s.trim())
+			.filter((s) => s.length > 20 && s.length < 200)
 			.slice(0, 5); // Top 5 key phrases
 
 		return phrases;
 	}
 
-	private async mockLegislativeTracking(keyPhrases: string[], templateId: string): Promise<LegislativeOutcome[]> {
+	private async mockLegislativeTracking(
+		keyPhrases: string[],
+		templateId: string
+	): Promise<LegislativeOutcome[]> {
 		// Mock legislative outcomes - in production would be real API calls
 		const outcomes: LegislativeOutcome[] = [];
 
 		// Simulate finding template phrases in legislative record
-		if (Math.random() > 0.7) { // 30% chance of finding outcomes
+		if (Math.random() > 0.7) {
+			// 30% chance of finding outcomes
 			outcomes.push({
 				type: 'floor_speech',
 				legislator: {
@@ -331,7 +356,8 @@ export class ImpactAgent extends BaseAgent {
 			});
 		}
 
-		if (Math.random() > 0.85) { // 15% chance of vote changes
+		if (Math.random() > 0.85) {
+			// 15% chance of vote changes
 			outcomes.push({
 				type: 'vote_change',
 				legislator: {
@@ -354,7 +380,10 @@ export class ImpactAgent extends BaseAgent {
 		return []; // Will be filled by mockLegislativeTracking
 	}
 
-	private determineCausalStrength(outcome: LegislativeOutcome, actionCount: number): 'proven' | 'strong' | 'moderate' | 'weak' {
+	private determineCausalStrength(
+		outcome: LegislativeOutcome,
+		actionCount: number
+	): 'proven' | 'strong' | 'moderate' | 'weak' {
 		if (outcome.matchStrength > 0.9 && actionCount > 100) return 'proven';
 		if (outcome.matchStrength > 0.8 && actionCount > 50) return 'strong';
 		if (outcome.matchStrength > 0.6 && actionCount > 10) return 'moderate';
@@ -362,14 +391,16 @@ export class ImpactAgent extends BaseAgent {
 	}
 
 	private describeCausalChain(outcome: LegislativeOutcome, actionCount: number): string {
-		return `${actionCount} template-based messages preceded ${outcome.legislator.name}'s ${outcome.type} ` +
-			   `with ${(outcome.matchStrength * 100).toFixed(1)}% content similarity`;
+		return (
+			`${actionCount} template-based messages preceded ${outcome.legislator.name}'s ${outcome.type} ` +
+			`with ${(outcome.matchStrength * 100).toFixed(1)}% content similarity`
+		);
 	}
 
 	private formatDateRange(actions: any[]): string {
 		if (actions.length === 0) return '';
-		const earliest = new Date(Math.min(...actions.map(a => a.created_at.getTime())));
-		const latest = new Date(Math.max(...actions.map(a => a.created_at.getTime())));
+		const earliest = new Date(Math.min(...actions.map((a) => a.created_at.getTime())));
+		const latest = new Date(Math.max(...actions.map((a) => a.created_at.getTime())));
 		return `${earliest.toLocaleDateString()} - ${latest.toLocaleDateString()}`;
 	}
 
@@ -381,33 +412,47 @@ export class ImpactAgent extends BaseAgent {
 		if (assessment.legislativeOutcomes.length > 2) confidence += 0.1;
 
 		// Higher confidence with strong causal chains
-		const strongChains = assessment.causalChains.filter(c => 
-			c.strength === 'proven' || c.strength === 'strong'
+		const strongChains = assessment.causalChains.filter(
+			(c) => c.strength === 'proven' || c.strength === 'strong'
 		).length;
 		confidence += strongChains * 0.1;
 
 		// Higher confidence with high match strength
-		const avgMatchStrength = assessment.legislativeOutcomes.length > 0 ?
-			assessment.legislativeOutcomes.reduce((sum, o) => sum + o.matchStrength, 0) / assessment.legislativeOutcomes.length : 0;
+		const avgMatchStrength =
+			assessment.legislativeOutcomes.length > 0
+				? assessment.legislativeOutcomes.reduce((sum, o) => sum + o.matchStrength, 0) /
+					assessment.legislativeOutcomes.length
+				: 0;
 		confidence += avgMatchStrength * 0.2;
 
 		return Math.min(1.0, Math.max(0.1, confidence));
 	}
 
-	private generateImpactReasoning(assessment: ImpactAssessment, outcomes: LegislativeOutcome[]): string {
+	private generateImpactReasoning(
+		assessment: ImpactAssessment,
+		outcomes: LegislativeOutcome[]
+	): string {
 		const { impactScore, confidenceLevel, causalChains } = assessment;
 
 		if (impactScore === 0) {
-			return `No legislative impact detected for template ${assessment.templateId}. ` +
-				   `Monitoring continues for future outcomes.`;
+			return (
+				`No legislative impact detected for template ${assessment.templateId}. ` +
+				`Monitoring continues for future outcomes.`
+			);
 		}
 
-		const strongChains = causalChains.filter(c => c.strength === 'proven' || c.strength === 'strong');
-		const responsiveOutcomes = outcomes.filter(o => o.type === 'vote_change' || o.type === 'position_evolution');
+		const strongChains = causalChains.filter(
+			(c) => c.strength === 'proven' || c.strength === 'strong'
+		);
+		const responsiveOutcomes = outcomes.filter(
+			(o) => o.type === 'vote_change' || o.type === 'position_evolution'
+		);
 
-		return `Impact detected: Score ${impactScore}/100 with ${confidenceLevel} confidence. ` +
-			   `Found ${outcomes.length} legislative outcomes, ${strongChains.length} strong causal chains. ` +
-			   `${responsiveOutcomes.length} legislators showed responsive position changes. ` +
-			   `${assessment.recommendedFunding ? `Recommended funding: $${assessment.recommendedFunding.toLocaleString()}` : 'No funding recommended.'}`;
+		return (
+			`Impact detected: Score ${impactScore}/100 with ${confidenceLevel} confidence. ` +
+			`Found ${outcomes.length} legislative outcomes, ${strongChains.length} strong causal chains. ` +
+			`${responsiveOutcomes.length} legislators showed responsive position changes. ` +
+			`${assessment.recommendedFunding ? `Recommended funding: $${assessment.recommendedFunding.toLocaleString()}` : 'No funding recommended.'}`
+		);
 	}
 }

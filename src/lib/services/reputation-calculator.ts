@@ -1,6 +1,6 @@
 /**
  * Quadratic Reputation Calculator
- * 
+ *
  * Implements quadratic scaling for reputation rewards and penalties
  * Based on template moderation outcomes and consensus strength
  * Aligns with VOTER Protocol's "quality discourse pays, bad faith costs" principle
@@ -20,18 +20,18 @@ interface ReputationUpdate {
 	};
 }
 
-type ReputationTier = 
-	| 'untrusted'   // 0-30
-	| 'novice'      // 31-50
-	| 'emerging'    // 51-70
+type ReputationTier =
+	| 'untrusted' // 0-30
+	| 'novice' // 31-50
+	| 'emerging' // 51-70
 	| 'established' // 71-90
-	| 'trusted';    // 91-100
+	| 'trusted'; // 91-100
 
 export class ReputationCalculator {
 	// Reputation bounds
 	private readonly MIN_REPUTATION = 0;
 	private readonly MAX_REPUTATION = 100;
-	
+
 	// Tier thresholds (using quadratic scaling)
 	private readonly TIER_THRESHOLDS = {
 		untrusted: 0,
@@ -40,7 +40,7 @@ export class ReputationCalculator {
 		established: 71,
 		trusted: 91
 	};
-	
+
 	/**
 	 * Apply verification result to user reputation
 	 */
@@ -49,11 +49,11 @@ export class ReputationCalculator {
 			where: { id: verificationId },
 			include: { user: true }
 		});
-		
+
 		if (!verification) {
 			throw new Error(`Verification ${verificationId} not found`);
 		}
-		
+
 		// Check if already applied
 		if (verification.reputation_applied) {
 			return {
@@ -63,17 +63,17 @@ export class ReputationCalculator {
 				breakdown: { base: 0, multiplier: 1, final: 0 }
 			};
 		}
-		
+
 		// Calculate reputation change
 		const update = this.calculateReputationDelta(verification);
-		
+
 		// Apply bounds checking
 		const currentRep = verification.user.voter_reputation || 50;
 		const newRep = Math.max(
 			this.MIN_REPUTATION,
 			Math.min(this.MAX_REPUTATION, currentRep + update.delta)
 		);
-		
+
 		// Update user reputation
 		await db.user.update({
 			where: { id: verification.user_id },
@@ -81,7 +81,7 @@ export class ReputationCalculator {
 				voter_reputation: Math.round(newRep)
 			}
 		});
-		
+
 		// Mark as applied
 		await db.templateVerification.update({
 			where: { id: verificationId },
@@ -90,7 +90,7 @@ export class ReputationCalculator {
 				reputation_applied: true
 			}
 		});
-		
+
 		// Log significant changes
 		if (Math.abs(update.delta) > 10) {
 			console.log(`Significant reputation change for user ${verification.user_id}:`, {
@@ -100,10 +100,10 @@ export class ReputationCalculator {
 				reason: update.reason
 			});
 		}
-		
+
 		return update;
 	}
-	
+
 	/**
 	 * Calculate reputation delta using quadratic scaling
 	 */
@@ -111,25 +111,29 @@ export class ReputationCalculator {
 		const consensusScore = verification.consensus_score || 0;
 		const severity = verification.severity_level || 1;
 		const currentRep = verification.user?.voter_reputation || 50;
-		
+
 		let baseDelta = 0;
 		let multiplier = 1;
 		let reason = '';
-		
+
 		// Strong approval (consensus >= 90%): Quadratic reward
 		if (consensusScore >= 0.9) {
 			baseDelta = Math.pow(consensusScore * 10, 2) / 10; // Max +10 points
 			reason = 'Strong consensus approval - quadratic reward';
-			
+
 			// Bonus for high-quality corrections
-			if (verification.correction_log && verification.quality_score && verification.quality_score > 80) {
+			if (
+				verification.correction_log &&
+				verification.quality_score &&
+				verification.quality_score > 80
+			) {
 				baseDelta *= 1.2;
 				reason += ' with quality bonus';
 			}
 		}
 		// Medium approval (70-89%): Linear reward
 		else if (consensusScore >= 0.7) {
-			baseDelta = consensusScore * 10 / 1.5; // Max +6 points
+			baseDelta = (consensusScore * 10) / 1.5; // Max +6 points
 			reason = 'Medium consensus approval - linear reward';
 		}
 		// Weak approval (30-69%): Small reward
@@ -141,11 +145,11 @@ export class ReputationCalculator {
 		else if (consensusScore < 0.3 && severity >= 7) {
 			// Quadratic penalty based on severity
 			baseDelta = -Math.pow(severity, 2);
-			
+
 			// Scale by current reputation (more to lose)
-			multiplier = 1 + (currentRep / 100);
+			multiplier = 1 + currentRep / 100;
 			reason = `Rejection at severity ${severity} - quadratic penalty`;
-			
+
 			// Extra penalty for severe violations
 			if (severity >= 9) {
 				baseDelta *= 1.5;
@@ -157,7 +161,7 @@ export class ReputationCalculator {
 			baseDelta = -severity;
 			reason = 'Soft rejection - linear penalty';
 		}
-		
+
 		// Apply exponential decay at extremes to prevent gaming
 		if (currentRep > 90) {
 			// Harder to gain at high reputation
@@ -172,9 +176,9 @@ export class ReputationCalculator {
 				reason += ' (low reputation floor)';
 			}
 		}
-		
+
 		const finalDelta = baseDelta * multiplier;
-		
+
 		return {
 			delta: finalDelta,
 			reason,
@@ -186,21 +190,21 @@ export class ReputationCalculator {
 			}
 		};
 	}
-	
+
 	/**
 	 * Get reputation tier using quadratic calculation
 	 */
 	getTier(reputation: number): ReputationTier {
 		// Quadratic tier calculation for more meaningful progression
 		const scaledRep = Math.floor(Math.sqrt(Math.max(0, reputation) / 10) * 31.6);
-		
+
 		if (scaledRep >= this.TIER_THRESHOLDS.trusted) return 'trusted';
 		if (scaledRep >= this.TIER_THRESHOLDS.established) return 'established';
 		if (scaledRep >= this.TIER_THRESHOLDS.emerging) return 'emerging';
 		if (scaledRep >= this.TIER_THRESHOLDS.novice) return 'novice';
 		return 'untrusted';
 	}
-	
+
 	/**
 	 * Get tier display information
 	 */
@@ -239,19 +243,24 @@ export class ReputationCalculator {
 				name: 'Trusted',
 				color: '#3b82f6', // blue
 				description: 'Elite civic participant',
-				privileges: ['Auto-approval for low severity', 'Maximum reward rates', 'Treasury voting rights', 'Congressional priority routing']
+				privileges: [
+					'Auto-approval for low severity',
+					'Maximum reward rates',
+					'Treasury voting rights',
+					'Congressional priority routing'
+				]
 			}
 		};
-		
+
 		return tiers[tier];
 	}
-	
+
 	/**
 	 * Calculate reputation-based reward multiplier
 	 */
 	getRewardMultiplier(reputation: number): number {
 		const tier = this.getTier(reputation);
-		
+
 		switch (tier) {
 			case 'trusted':
 				return 2.0; // 100% bonus
@@ -267,7 +276,7 @@ export class ReputationCalculator {
 				return 1.0;
 		}
 	}
-	
+
 	/**
 	 * Calculate challenge stake requirements based on reputation
 	 */
@@ -278,79 +287,83 @@ export class ReputationCalculator {
 	): number {
 		const challengerTier = this.getTier(challengerRep);
 		const targetTier = this.getTier(targetRep);
-		
+
 		// Lower stakes for higher reputation challengers
 		let stakeMultiplier = 1.0;
-		
+
 		if (challengerTier === 'trusted') {
 			stakeMultiplier *= 0.5; // 50% discount
 		} else if (challengerTier === 'established') {
 			stakeMultiplier *= 0.75; // 25% discount
 		}
-		
+
 		// Higher stakes when challenging higher reputation users
 		if (targetTier === 'trusted') {
 			stakeMultiplier *= 2.0; // Double stake required
 		} else if (targetTier === 'established') {
 			stakeMultiplier *= 1.5; // 50% more stake required
 		}
-		
+
 		return Math.round(baseStake * stakeMultiplier);
 	}
-	
+
 	/**
 	 * Detect reputation gaming attempts
 	 */
-	async detectGaming(userId: string, recentActions: any[]): Promise<{
+	async detectGaming(
+		userId: string,
+		recentActions: any[]
+	): Promise<{
 		suspicious: boolean;
 		penalty?: number;
 		reasons: string[];
 	}> {
 		const reasons: string[] = [];
 		let penalty = 0;
-		
+
 		// Check for rapid template farming
-		const actionsPerHour = recentActions.filter(a => {
+		const actionsPerHour = recentActions.filter((a) => {
 			const hourAgo = new Date(Date.now() - 3600000);
 			return new Date(a.created_at) > hourAgo;
 		}).length;
-		
+
 		if (actionsPerHour > 10) {
 			reasons.push('Excessive activity detected');
 			penalty += Math.pow(actionsPerHour - 10, 2); // Quadratic penalty for spam
 		}
-		
+
 		// Check for low quality pattern
-		const avgQuality = recentActions.reduce((sum, a) => sum + (a.quality_score || 50), 0) / recentActions.length;
+		const avgQuality =
+			recentActions.reduce((sum, a) => sum + (a.quality_score || 50), 0) / recentActions.length;
 		if (avgQuality < 30 && recentActions.length > 5) {
 			reasons.push('Pattern of low-quality submissions');
 			penalty += Math.pow((50 - avgQuality) / 10, 2) * 5;
 		}
-		
+
 		// Check for coordinated activity (similar templates in short time)
-		const templates = recentActions.map(a => a.message_body).filter(Boolean);
+		const templates = recentActions.map((a) => a.message_body).filter(Boolean);
 		const similarity = this.checkTemplateSimilarity(templates);
 		if (similarity > 0.9 && templates.length > 3) {
 			reasons.push('Potential template farming detected');
 			penalty += 25; // Flat penalty for obvious gaming
 		}
-		
+
 		return {
 			suspicious: reasons.length > 0,
 			penalty: penalty > 0 ? Math.round(penalty) : undefined,
 			reasons
 		};
 	}
-	
+
 	/**
 	 * Check similarity between templates (simple implementation)
 	 */
 	private checkTemplateSimilarity(templates: string[]): number {
 		if (templates.length < 2) return 0;
-		
+
 		let totalSimilarity = 0;
 		let comparisons = 0;
-		
+
 		for (let i = 0; i < templates.length - 1; i++) {
 			for (let j = i + 1; j < templates.length; j++) {
 				const similarity = this.calculateStringSimilarity(templates[i], templates[j]);
@@ -358,37 +371,37 @@ export class ReputationCalculator {
 				comparisons++;
 			}
 		}
-		
+
 		return comparisons > 0 ? totalSimilarity / comparisons : 0;
 	}
-	
+
 	/**
 	 * Simple string similarity calculation
 	 */
 	private calculateStringSimilarity(str1: string, str2: string): number {
 		const longer = str1.length > str2.length ? str1 : str2;
 		const shorter = str1.length > str2.length ? str2 : str1;
-		
+
 		if (longer.length === 0) return 1.0;
-		
+
 		const distance = this.levenshteinDistance(longer, shorter);
 		return (longer.length - distance) / longer.length;
 	}
-	
+
 	/**
 	 * Levenshtein distance for string comparison
 	 */
 	private levenshteinDistance(str1: string, str2: string): number {
 		const matrix: number[][] = [];
-		
+
 		for (let i = 0; i <= str2.length; i++) {
 			matrix[i] = [i];
 		}
-		
+
 		for (let j = 0; j <= str1.length; j++) {
 			matrix[0][j] = j;
 		}
-		
+
 		for (let i = 1; i <= str2.length; i++) {
 			for (let j = 1; j <= str1.length; j++) {
 				if (str2.charAt(i - 1) === str1.charAt(j - 1)) {
@@ -402,7 +415,7 @@ export class ReputationCalculator {
 				}
 			}
 		}
-		
+
 		return matrix[str2.length][str1.length];
 	}
 }

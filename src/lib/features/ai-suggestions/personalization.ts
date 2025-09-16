@@ -2,15 +2,16 @@ import type { User, representative } from '@prisma/client';
 
 // Define a map of variables and their resolution logic
 const variableMap: Record<string, (user: User, rep?: representative) => string> = {
-    '[Name]': (user) => user.name || '',
-    '[Address]': (user) => [user.street, user.city, user.state, user.zip].filter(Boolean).join(', ') || '',
-    '[Representative Name]': (user, rep) => rep?.name || '',
-    '[Personal Connection]': () => '' // This is user-defined and should be in the body already
+	'[Name]': (user) => user.name || '',
+	'[Address]': (user) =>
+		[user.street, user.city, user.state, user.zip].filter(Boolean).join(', ') || '',
+	'[Representative Name]': (user, rep) => rep?.name || '',
+	'[Personal Connection]': () => '' // This is user-defined and should be in the body already
 };
 
 /**
  * Resolves variables in the email body.
- * 
+ *
  * @param body The email body with unresolved variables
  * @param user The user sending the email
  * @param rep The representative receiving the email
@@ -53,7 +54,6 @@ export function resolveVariables(body: string, user: User, rep?: representative)
 	const unresolvedInlineRegex = new RegExp(`\\[.*?\\]`, 'g');
 	resolvedBody = resolvedBody.replace(unresolvedInlineRegex, '');
 
-
 	// Clean up any extra newlines that might result from empty variables
 	resolvedBody = resolvedBody.replace(/\n{3,}/g, '\n\n');
 
@@ -64,5 +64,5 @@ export function resolveVariables(body: string, user: User, rep?: representative)
  * Escapes special characters in a string for use in a regular expression.
  */
 function escapeRegExp(string: string): string {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
-} 
+	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
+}

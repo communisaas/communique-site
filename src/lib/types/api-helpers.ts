@@ -50,7 +50,9 @@ export type ApiRequestEvent<Params = Record<string, string>> = SvelteKitRequestE
 /**
  * Type guard to check if user is authenticated
  */
-export function isAuthenticated(locals: ApiLocals): locals is ApiLocals & { user: NonNullable<ApiLocals['user']> } {
+export function isAuthenticated(
+	locals: ApiLocals
+): locals is ApiLocals & { user: NonNullable<ApiLocals['user']> } {
 	return locals.user !== null && locals.user !== undefined;
 }
 

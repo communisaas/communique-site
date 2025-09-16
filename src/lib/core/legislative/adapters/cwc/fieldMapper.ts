@@ -3,11 +3,7 @@
  * Transforms Communiqué data structures to CWC XML format
  */
 
-import type { 
-	CWCXMLMessage, 
-	CommuniqueMessageInput, 
-	CWCEnvironmentConfig 
-} from './types.js';
+import type { CWCXMLMessage, CommuniqueMessageInput, CWCEnvironmentConfig } from './types.js';
 import { CWCXMLBuilder } from './xmlBuilder.js';
 
 export class CWCFieldMapper {
@@ -87,7 +83,7 @@ export class CWCFieldMapper {
 	private buildMessage(input: CommuniqueMessageInput): CWCXMLMessage['Message'] {
 		// Combine personal connection (constituent message) with template (organization message)
 		let messageText = input.template.message_body;
-		
+
 		if (input.personalConnection && input.personalConnection.trim()) {
 			// Personal connection as prefix, followed by organization message
 			messageText = `${input.personalConnection.trim()}\n\n---\n\n${input.template.message_body}`;
@@ -120,25 +116,25 @@ export class CWCFieldMapper {
 		lastName: string;
 	} {
 		const parts = fullName.trim().split(/\s+/);
-		
+
 		if (parts.length === 0) {
 			throw new Error('User name is required');
 		}
-		
+
 		if (parts.length === 1) {
 			return {
 				firstName: parts[0],
 				lastName: parts[0] // Use same name for both if only one provided
 			};
 		}
-		
+
 		if (parts.length === 2) {
 			return {
 				firstName: parts[0],
 				lastName: parts[1]
 			};
 		}
-		
+
 		// 3+ parts: first, middle(s), last
 		return {
 			firstName: parts[0],
@@ -152,23 +148,23 @@ export class CWCFieldMapper {
 	 */
 	private mapCategoryToTopic(category?: string): string | undefined {
 		if (!category) return undefined;
-		
+
 		const topicMap: Record<string, string> = {
-			'agriculture': 'AGRICULTURE',
-			'budget': 'BUDGET',
-			'defense': 'DEFENSE',
-			'economy': 'ECONOMY',
-			'education': 'EDUCATION',
-			'energy': 'ENERGY',
-			'environment': 'ENVIRONMENT',
-			'healthcare': 'HEALTH',
-			'immigration': 'IMMIGRATION',
-			'infrastructure': 'TRANSPORTATION',
-			'justice': 'CIVIL_RIGHTS',
-			'labor': 'LABOR',
-			'taxation': 'TAXATION',
-			'technology': 'TECHNOLOGY',
-			'trade': 'TRADE'
+			agriculture: 'AGRICULTURE',
+			budget: 'BUDGET',
+			defense: 'DEFENSE',
+			economy: 'ECONOMY',
+			education: 'EDUCATION',
+			energy: 'ENERGY',
+			environment: 'ENVIRONMENT',
+			healthcare: 'HEALTH',
+			immigration: 'IMMIGRATION',
+			infrastructure: 'TRANSPORTATION',
+			justice: 'CIVIL_RIGHTS',
+			labor: 'LABOR',
+			taxation: 'TAXATION',
+			technology: 'TECHNOLOGY',
+			trade: 'TRADE'
 		};
 
 		const normalizedCategory = category.toLowerCase().replace(/[^a-z]/g, '');

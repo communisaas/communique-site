@@ -1,9 +1,9 @@
 /**
  * Certification Service - VOTER Protocol Integration
- * 
+ *
  * Handles certification of civic actions through VOTER Protocol
  * Called AFTER successful delivery to certify and earn rewards
- * 
+ *
  * This is a client-safe service that communicates with server-side API endpoints
  */
 
@@ -47,7 +47,7 @@ class CertificationService {
 			const response = await fetch(this.endpoints.certify, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
+					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
 					userAddress,
@@ -66,7 +66,6 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-
 		} catch (error) {
 			console.error('[Certification] Network error:', error);
 			// Don't block delivery on certification failure
@@ -83,9 +82,7 @@ class CertificationService {
 	 */
 	async getStatus(certificationHash: string): Promise<any> {
 		try {
-			const response = await fetch(
-				`${this.endpoints.status}/${certificationHash}`
-			);
+			const response = await fetch(`${this.endpoints.status}/${certificationHash}`);
 
 			if (!response.ok) {
 				return null;
@@ -126,7 +123,6 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-
 		} catch (error) {
 			console.error('[Certification] Receipt submission error:', error);
 			return { verified: false };
@@ -140,17 +136,13 @@ export const certification = new CertificationService();
 /**
  * Helper to generate message hash
  */
-export function generateMessageHash(
-	recipient: string,
-	subject: string,
-	body: string
-): string {
+export function generateMessageHash(recipient: string, subject: string, body: string): string {
 	const content = `${recipient}:${subject}:${body}`;
 	// Simple hash for now - in production use crypto
 	let hash = 0;
 	for (let i = 0; i < content.length; i++) {
 		const char = content.charCodeAt(i);
-		hash = ((hash << 5) - hash) + char;
+		hash = (hash << 5) - hash + char;
 		hash = hash & hash;
 	}
 	return Math.abs(hash).toString(16).padStart(16, '0');

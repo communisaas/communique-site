@@ -23,6 +23,7 @@
 ```
 
 **Root Cause:** Svelte 5 supports both syntaxes but they have different semantics:
+
 - `onclick` = property assignment to DOM element
 - `on:click` = directive for event forwarding/listening
 
@@ -74,14 +75,10 @@
 
 ```svelte
 <!-- BROKEN - 'this' refers to DOM element -->
-<button onclick={todo.reset}>
-  reset
-</button>
+<button onclick={todo.reset}> reset </button>
 
 <!-- FIXED - Arrow function preserves context -->
-<button onclick={() => todo.reset()}>
-  reset
-</button>
+<button onclick={() => todo.reset()}> reset </button>
 ```
 
 **Root Cause:** Direct method references lose `this` context when called as event handlers.
@@ -117,7 +114,7 @@
 
 ```svelte
 <!-- Svelte 4 - Worked -->
-<Component prop=this{is}valid />
+<Component prop="this{is}valid" />
 
 <!-- Svelte 5 Runes Mode - REQUIRES QUOTES -->
 <Component prop="this{is}valid" />
@@ -134,10 +131,10 @@
 ```svelte
 <script>
   // Debug component props
-  console.log('Component props:', { 
-    templateId: template?.id, 
+  console.log('Component props:', {
+    templateId: template?.id,
     hasOnSendMessage: !!onSendMessage,
-    deliveryMethod: template?.deliveryMethod 
+    deliveryMethod: template?.deliveryMethod
   });
 </script>
 
@@ -158,11 +155,11 @@
 
 ```javascript
 // BROKEN - Race condition
-templateStore.initializeWithStaticData();  // Creates IDs like 'static-1'
-templateStore.fetchTemplates();            // Returns real DB IDs
+templateStore.initializeWithStaticData(); // Creates IDs like 'static-1'
+templateStore.fetchTemplates(); // Returns real DB IDs
 
 // FIXED - API-only approach
-templateStore.fetchTemplates();  // Single source of truth
+templateStore.fetchTemplates(); // Single source of truth
 ```
 
 **Problem:** Static data with fake IDs conflicts with real API data, breaking ID-based lookups.
@@ -177,7 +174,7 @@ templateStore.fetchTemplates();  // Single source of truth
 // Check platform before triggering mobile-specific UI
 const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 if (isMobile) {
-    showMobilePreview = true;
+	showMobilePreview = true;
 }
 ```
 
@@ -188,22 +185,26 @@ if (isMobile) {
 ## 🛠️ Migration Strategy
 
 ### 1. Identify Component Patterns
+
 - **Event Forwarders:** Use `on:click` syntax
-- **Prop Receivers:** Use `onclick` syntax  
+- **Prop Receivers:** Use `onclick` syntax
 - **Mixed Components:** Check each component individually
 
 ### 2. Debug Event Flow
+
 1. Add console logs to verify props exist
 2. Add console logs to verify events fire
 3. Check browser DevTools for event listeners
 4. Verify handler functions exist and are callable
 
 ### 3. Systematic Conversion
+
 - Convert one component type at a time
 - Test each conversion thoroughly
 - Document breaking changes for team
 
 ### 4. Remove Legacy Patterns
+
 - Eliminate `createEventDispatcher` usage
 - Replace `export let` with `$props()`
 - Convert `let` to `$state()` for reactive variables
@@ -213,12 +214,14 @@ if (isMobile) {
 ## 📋 Testing Checklist
 
 ### Before Migration
+
 - [ ] All buttons trigger expected actions
 - [ ] Event handlers receive correct data
 - [ ] Component communication works bidirectionally
 - [ ] No console errors in browser DevTools
 
-### After Migration  
+### After Migration
+
 - [ ] Verify same functionality with new syntax
 - [ ] Test edge cases (mobile/desktop, logged in/out)
 - [ ] Confirm performance hasn't degraded
@@ -229,12 +232,14 @@ if (isMobile) {
 ## 🔮 Future-Proofing
 
 ### Best Practices for New Components
+
 1. **Use Svelte 5 patterns exclusively** in new code
-2. **Callback props over event dispatching** for component communication  
+2. **Callback props over event dispatching** for component communication
 3. **Explicit reactivity** with `$state()` and `$derived()`
 4. **Consistent event syntax** - choose `onclick` or `on:click` per component pattern
 
 ### Legacy Component Handling
+
 1. **Document which pattern each component uses**
 2. **Gradual migration** rather than big-bang conversion
 3. **Maintain backwards compatibility** during transition period
@@ -245,7 +250,7 @@ if (isMobile) {
 ## 💀 Common Footguns
 
 1. **Silent event handler failures** - Handler exists but never fires
-2. **Context loss** - `this` becomes DOM element instead of class instance  
+2. **Context loss** - `this` becomes DOM element instead of class instance
 3. **ID mismatches** - Static vs API data using different ID formats
 4. **Platform assumptions** - Mobile logic triggering on desktop
 5. **Prop vs event confusion** - Mixing `onclick` prop with `on:click` forwarding
@@ -261,11 +266,13 @@ if (isMobile) {
 Our template resolution represents a fundamental transcendence of traditional MVC architecture:
 
 **TRADITIONAL MVC:**
+
 ```
 Model (Static) → Controller (Routes) → View (Rendered Once)
 ```
 
 **SVELTE 5 + COMMUNIQUE PARADIGM:**
+
 ```
 Reactive Model ($state) → Living View (Real-time Resolution) → OS Integration
 ```
@@ -275,13 +282,14 @@ Reactive Model ($state) → Living View (Real-time Resolution) → OS Integratio
 Located at `src/lib/utils/templateResolver.ts`, this represents the synthesis of:
 
 1. **Reactive State Management** - Svelte 5 `$state` runes
-2. **Real-time Context Injection** - User data resolved at interaction moment  
+2. **Real-time Context Injection** - User data resolved at interaction moment
 3. **Congressional District Resolution** - Live representative lookup
 4. **OS-level Integration** - Direct mailto bridging with resolved content
 
 ### The Interaction Design Revolution
 
 **Traditional Web Flow:**
+
 1. User clicks submit
 2. Form data POSTed to server
 3. Server processes and renders new page
@@ -289,6 +297,7 @@ Located at `src/lib/utils/templateResolver.ts`, this represents the synthesis of
 5. User manually copies to email
 
 **Communique Flow:**
+
 1. User clicks "Contact Congress"
 2. Template resolver runs with current user context (<50ms)
 3. Block variables resolve to real names, addresses, representatives
@@ -303,7 +312,7 @@ Located at `src/lib/utils/templateResolver.ts`, this represents the synthesis of
 "Dear [Representative Name], I am writing as your constituent..."
 
 // AFTER: Real-time resolution
-"Dear Rep. Alexandria Ocasio-Cortez, I am writing as your constituent 
+"Dear Rep. Alexandria Ocasio-Cortez, I am writing as your constituent
 from 123 Main St, Bronx, NY 10451..."
 ```
 
@@ -312,13 +321,13 @@ from 123 Main St, Bronx, NY 10451..."
 ```svelte
 <!-- Real-time template resolution at button click -->
 onSendMessage={() => {
-  // BLEEDING EDGE: Template resolution with user context
-  const resolved = resolveTemplate($selectedTemplate, data.user);
-  
-  if (resolved.isCongressional && resolved.routingEmail) {
-    // Congressional delivery via CWC API routing  
-    window.location.href = `mailto:${resolved.routingEmail}?subject=${subject}&body=${body}`;
-  }
+	// BLEEDING EDGE: Template resolution with user context
+	const resolved = resolveTemplate($selectedTemplate, data.user);
+
+	if (resolved.isCongressional && resolved.routingEmail) {
+		// Congressional delivery via CWC API routing
+		window.location.href = `mailto:${resolved.routingEmail}?subject=${subject}&body=${body}`;
+	}
 }}
 ```
 

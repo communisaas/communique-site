@@ -129,7 +129,9 @@
 							<div class="space-y-3">
 								<div class="flex items-center justify-between">
 									<span class="text-gray-600">Algorithm</span>
-									<span class="font-semibold text-participation-primary-600">Edmonds–Karp (Ford–Fulkerson BFS)</span>
+									<span class="font-semibold text-participation-primary-600"
+										>Edmonds–Karp (Ford–Fulkerson BFS)</span
+									>
 								</div>
 								<div class="flex items-center justify-between">
 									<span class="text-gray-600">Analysis Type</span>

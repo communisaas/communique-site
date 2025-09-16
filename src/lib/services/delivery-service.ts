@@ -36,7 +36,7 @@ export class DeliveryService {
 	 */
 	async start(): Promise<void> {
 		console.log('🚀 Starting Delivery Service...');
-		
+
 		// Set environment variables for the delivery service
 		const deliveryEnv = {
 			...process.env,
@@ -76,17 +76,20 @@ export class DeliveryService {
 		// Simple health check - verify SMTP port is listening
 		return new Promise((resolve) => {
 			const net = require('net');
-			const client = net.createConnection({ port: this.config.smtpPort, host: this.config.smtpHost });
-			
+			const client = net.createConnection({
+				port: this.config.smtpPort,
+				host: this.config.smtpHost
+			});
+
 			client.on('connect', () => {
 				client.end();
 				resolve(true);
 			});
-			
+
 			client.on('error', () => {
 				resolve(false);
 			});
-			
+
 			// Timeout after 5 seconds
 			setTimeout(() => {
 				client.destroy();

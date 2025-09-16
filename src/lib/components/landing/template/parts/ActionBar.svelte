@@ -4,7 +4,7 @@
 	import { browser } from '$app/environment';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { spring, type Spring } from 'svelte/motion';
-	
+
 	let {
 		template,
 		user,
@@ -24,32 +24,34 @@
 		onEmailModalClose: () => void;
 		componentId: string;
 	} = $props();
-	
-	let flightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined>('ready');
-	
+
+	let flightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined>(
+		'ready'
+	);
+
 	function handleSendClick() {
 		// Apply Personal Connection into the template body in JS-land
 		const pc = personalConnectionValue?.trim();
 		if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
-			template.message_body = template.message_body.replace(
-				/\[Personal Connection\]/g,
-				pc
-			);
+			template.message_body = template.message_body.replace(/\[Personal Connection\]/g, pc);
 		}
-		
+
 		// Save personalization for all users
 		if (browser && personalConnectionValue) {
-			sessionStorage.setItem(`template_${template.id}_personalization`, JSON.stringify({
-				personalConnection: personalConnectionValue,
-				timestamp: Date.now()
-			}));
+			sessionStorage.setItem(
+				`template_${template.id}_personalization`,
+				JSON.stringify({
+					personalConnection: personalConnectionValue,
+					timestamp: Date.now()
+				})
+			);
 		}
-		
+
 		// For unauthenticated users, set pending send flag
 		if (!user && browser) {
 			sessionStorage.setItem(`template_${template.id}_pending_send`, 'true');
 		}
-		
+
 		// Let parent handle the entire flow (auth, address, or email modal)
 		if (onSendMessage) {
 			onSendMessage();

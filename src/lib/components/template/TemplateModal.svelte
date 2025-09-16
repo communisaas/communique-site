@@ -76,7 +76,7 @@
 
 	// Generate share URL for template
 	const shareUrl = $derived(`${$page.url.origin}/s/${template.slug}`);
-	
+
 	// Store event handlers for proper cleanup
 	let mailAppBlurHandler: (() => void) | null = null;
 	let mailAppVisibilityHandler: (() => void) | null = null;
@@ -85,7 +85,7 @@
 	onMount(() => {
 		// Don't manipulate scroll here - UnifiedModal handles it
 		// Don't call modalActions.open - parent component handles it
-		
+
 		if (user) {
 			// For authenticated users, immediately start the mailto flow
 			handleUnifiedEmailFlow();
@@ -95,7 +95,7 @@
 	onDestroy(() => {
 		// Don't manipulate scroll here - UnifiedModal handles it
 		useTimerCleanup(componentId)();
-		
+
 		// Clean up event listeners
 		if (mailAppBlurHandler) {
 			window.removeEventListener('blur', mailAppBlurHandler);
@@ -113,14 +113,19 @@
 
 	async function handleUnifiedEmailFlow(skipNavigation = false) {
 		modalActions.setState('loading');
-		
+
 		// Reset and animate progress bar
 		actionProgress.set(0);
-		
+
 		// Delay setting to 1 to allow animation
-		coordinated.setTimeout(() => {
-			actionProgress.set(1);
-		}, 50, 'progress', componentId);
+		coordinated.setTimeout(
+			() => {
+				actionProgress.set(1);
+			},
+			50,
+			'progress',
+			componentId
+		);
 
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
@@ -140,8 +145,6 @@
 				if (flow.mailtoUrl) {
 					// Launch email using unified service
 					launchEmail(flow.mailtoUrl);
-
-					
 
 					// Dispatch for analytics
 					dispatch('used', { templateId: template.id, action: 'mailto_opened' });
@@ -166,7 +169,7 @@
 			document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
 			mailAppVisibilityHandler = null;
 		}
-		
+
 		let hasDetectedSwitch = false;
 		const detectionStartTime = Date.now();
 
@@ -174,7 +177,7 @@
 		const handleDetection = (detected: boolean) => {
 			if (!hasDetectedSwitch) {
 				hasDetectedSwitch = true;
-				
+
 				// Remove listeners immediately
 				if (mailAppBlurHandler) {
 					window.removeEventListener('blur', mailAppBlurHandler);
@@ -184,7 +187,7 @@
 					document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
 					mailAppVisibilityHandler = null;
 				}
-				
+
 				if (detected) {
 					// Email client likely opened - show confirmation
 					modalActions.setState('confirmation');
@@ -253,8 +256,9 @@
 	async function handleSendConfirmation(sent: boolean) {
 		if (sent) {
 			// Check delivery method to determine flow
-			const isCertifiedDelivery = template.deliveryMethod === 'certified' || template.deliveryMethod === 'both';
-			
+			const isCertifiedDelivery =
+				template.deliveryMethod === 'certified' || template.deliveryMethod === 'both';
+
 			if (isCertifiedDelivery) {
 				// Congressional delivery - use full agent processing pipeline
 				modalActions.setState('tracking');
@@ -301,11 +305,10 @@
 
 			// Celebration animation for both paths
 			celebrationScale.set(1.05).then(() => celebrationScale.set(1));
-			
 		} else {
 			// User didn't send, retry the flow
 			modalActions.setState('loading');
-			
+
 			// Clean up existing event listeners before retry
 			if (mailAppBlurHandler) {
 				window.removeEventListener('blur', mailAppBlurHandler);
@@ -315,14 +318,18 @@
 				document.removeEventListener('visibilitychange', mailAppVisibilityHandler);
 				mailAppVisibilityHandler = null;
 			}
-			
+
 			// Re-trigger the entire email flow with skipNavigation=true
-			coordinated.setTimeout(() => {
-				handleUnifiedEmailFlow(true); // Skip navigation on retry
-			}, 100, 'retry', componentId);
+			coordinated.setTimeout(
+				() => {
+					handleUnifiedEmailFlow(true); // Skip navigation on retry
+				},
+				100,
+				'retry',
+				componentId
+			);
 		}
 	}
-
 
 	async function copyTemplateUrl() {
 		try {
@@ -369,8 +376,6 @@
 				'copy-hide',
 				componentId
 			);
-
-			
 		} catch (err) {
 			console.warn('Copy failed:', err);
 		}
@@ -389,12 +394,8 @@
 
 		window.open(urls[platform], '_blank', 'width=600,height=400');
 
-		
-
 		showShareMenu = false;
 	}
-
-	
 </script>
 
 <!-- Modal Content (no backdrop - UnifiedModal handles that) -->
@@ -406,268 +407,273 @@
 	onkeydown={(e) => {
 		e.stopPropagation();
 	}}
-		role="document"
-		in:scale={{ duration: 300, start: 0.9, easing: backOut }}
-		out:scale={{ duration: 200, start: 1, easing: quintOut }}
-	>
-		<!-- Dynamic Content Based on State -->
-		{#if currentState === 'loading'}
-			<!-- Loading State - mailto is being resolved -->
-			<div class="p-6 sm:p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
-				<div
-					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-participation-primary-100"
-					style="transform: scale({$celebrationScale})"
-				>
-					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-participation-primary-600" />
-				</div>
-				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Opening your email app...</h3>
-				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">Your message is ready with your information pre-filled.</p>
-
-				<!-- Animated progress indicator -->
-				<div class="mx-auto h-2 w-32 overflow-hidden rounded-full bg-slate-200">
-					<div
-						class="h-full rounded-full bg-gradient-to-r from-participation-primary-500 to-participation-primary-700 transition-all duration-1000 ease-out"
-						style="width: {$actionProgress * 100}%"
-					></div>
-				</div>
+	role="document"
+	in:scale={{ duration: 300, start: 0.9, easing: backOut }}
+	out:scale={{ duration: 200, start: 1, easing: quintOut }}
+>
+	<!-- Dynamic Content Based on State -->
+	{#if currentState === 'loading'}
+		<!-- Loading State - mailto is being resolved -->
+		<div class="p-6 text-center sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
+			<div
+				class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-participation-primary-100 sm:mb-6 sm:h-20 sm:w-20"
+				style="transform: scale({$celebrationScale})"
+			>
+				<Send class="h-8 w-8 text-participation-primary-600 sm:h-10 sm:w-10" />
 			</div>
-		{:else if currentState === 'confirmation'}
-			<!-- Send Confirmation State - Did user actually send? -->
-			<div class="relative p-6 sm:p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
-				<!-- Close Button -->
-				<button
-					onclick={handleClose}
-					class="absolute top-4 right-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
-				>
-					<X class="h-5 w-5" />
-				</button>
-				
-				<div
-					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-participation-primary-100"
-				>
-					<Send class="h-8 w-8 sm:h-10 sm:w-10 text-participation-primary-600" />
-				</div>
-				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Did you send your message?</h3>
-				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">Help us track real impact by confirming your send.</p>
+			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Opening your email app...</h3>
+			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">
+				Your message is ready with your information pre-filled.
+			</p>
 
-				<div class="flex justify-center gap-2 sm:gap-3">
-					<Button
-						variant="primary"
-						size="lg"
-						classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
-						onclick={() => handleSendConfirmation(true)}
-					>
-						<CheckCircle2 class="mr-2 h-5 w-5 shrink-0" />
-						Yes, sent
-					</Button>
-					<Button
-						variant="secondary"
-						size="lg"
-						classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
-						onclick={() => handleSendConfirmation(false)}
-					>
-						<ArrowRight class="mr-2 h-5 w-5 rotate-180 shrink-0" />
-						Try again
-					</Button>
-				</div>
+			<!-- Animated progress indicator -->
+			<div class="mx-auto h-2 w-32 overflow-hidden rounded-full bg-slate-200">
+				<div
+					class="h-full rounded-full bg-gradient-to-r from-participation-primary-500 to-participation-primary-700 transition-all duration-1000 ease-out"
+					style="width: {$actionProgress * 100}%"
+				></div>
 			</div>
-		{:else if currentState === 'retry_needed'}
-			<!-- Retry Needed State - Email client didn't open -->
-			<div class="relative p-6 sm:p-8 text-center" in:scale={{ duration: 500, easing: backOut }}>
-				<!-- Close Button -->
-				<button
-					onclick={handleClose}
-					class="absolute top-4 right-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
-				>
-					<X class="h-5 w-5" />
-				</button>
-				
-				<div
-					class="mb-4 sm:mb-6 inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-amber-100"
-				>
-					<ExternalLink class="h-8 w-8 sm:h-10 sm:w-10 text-amber-600" />
-				</div>
-				<h3 class="mb-2 text-xl sm:text-2xl font-bold text-slate-900">Email client didn't open</h3>
-				<p class="mb-4 sm:mb-6 text-sm sm:text-base text-slate-600">
-					Your email app may not be configured. Would you like to try again or copy the message instead?
-				</p>
+		</div>
+	{:else if currentState === 'confirmation'}
+		<!-- Send Confirmation State - Did user actually send? -->
+		<div class="relative p-6 text-center sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
+			<!-- Close Button -->
+			<button
+				onclick={handleClose}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
 
-				<div class="flex flex-col gap-3">
-					<Button
-						variant="primary"
-						size="lg"
-						classNames="w-full"
-						onclick={() => handleUnifiedEmailFlow(true)}
-					>
-						<Send class="mr-2 h-5 w-5" />
-						Try opening email again
-					</Button>
-					
+			<div
+				class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-participation-primary-100 sm:mb-6 sm:h-20 sm:w-20"
+			>
+				<Send class="h-8 w-8 text-participation-primary-600 sm:h-10 sm:w-10" />
+			</div>
+			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Did you send your message?</h3>
+			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">
+				Help us track real impact by confirming your send.
+			</p>
+
+			<div class="flex justify-center gap-2 sm:gap-3">
+				<Button
+					variant="primary"
+					size="lg"
+					classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
+					onclick={() => handleSendConfirmation(true)}
+				>
+					<CheckCircle2 class="mr-2 h-5 w-5 shrink-0" />
+					Yes, sent
+				</Button>
+				<Button
+					variant="secondary"
+					size="lg"
+					classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
+					onclick={() => handleSendConfirmation(false)}
+				>
+					<ArrowRight class="mr-2 h-5 w-5 shrink-0 rotate-180" />
+					Try again
+				</Button>
+			</div>
+		</div>
+	{:else if currentState === 'retry_needed'}
+		<!-- Retry Needed State - Email client didn't open -->
+		<div class="relative p-6 text-center sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
+			<!-- Close Button -->
+			<button
+				onclick={handleClose}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
+
+			<div
+				class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-amber-100 sm:mb-6 sm:h-20 sm:w-20"
+			>
+				<ExternalLink class="h-8 w-8 text-amber-600 sm:h-10 sm:w-10" />
+			</div>
+			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Email client didn't open</h3>
+			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">
+				Your email app may not be configured. Would you like to try again or copy the message
+				instead?
+			</p>
+
+			<div class="flex flex-col gap-3">
+				<Button
+					variant="primary"
+					size="lg"
+					classNames="w-full"
+					onclick={() => handleUnifiedEmailFlow(true)}
+				>
+					<Send class="mr-2 h-5 w-5" />
+					Try opening email again
+				</Button>
+
+				<button
+					onclick={() => {
+						// Navigate to template page where they can see/copy the message
+						goto(`/s/${template.slug}`);
+						handleClose();
+					}}
+					class="text-sm text-slate-600 underline hover:text-slate-800"
+				>
+					View template to copy message manually
+				</button>
+			</div>
+		</div>
+	{:else if currentState === 'celebration'}
+		<!-- Professional Celebration State -->
+		<div class="flex h-full flex-col">
+			<!-- Clean Header -->
+			<div class="border-b border-slate-100 p-6">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div
+							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-100"
+							style="transform: scale({$celebrationScale})"
+						>
+							<CheckCircle2 class="h-5 w-5 text-green-600" />
+						</div>
+						<div>
+							<h2 class="text-lg font-semibold text-slate-900">Message sent successfully</h2>
+							<p class="text-sm text-slate-600">Your voice has been added to the campaign</p>
+						</div>
+					</div>
 					<button
-						onclick={() => {
-							// Navigate to template page where they can see/copy the message
-							goto(`/s/${template.slug}`);
-							handleClose();
-						}}
-						class="text-sm text-slate-600 hover:text-slate-800 underline"
+						onclick={handleClose}
+						class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
 					>
-						View template to copy message manually
+						<X class="h-5 w-5" />
 					</button>
 				</div>
 			</div>
-		{:else if currentState === 'celebration'}
-			<!-- Professional Celebration State -->
-			<div class="flex h-full flex-col">
-				<!-- Clean Header -->
-				<div class="border-b border-slate-100 p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
-							<div
-								class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-100"
-								style="transform: scale({$celebrationScale})"
-							>
-								<CheckCircle2 class="h-5 w-5 text-green-600" />
-							</div>
-							<div>
-								<h2 class="text-lg font-semibold text-slate-900">Message sent successfully</h2>
-								<p class="text-sm text-slate-600">Your voice has been added to the campaign</p>
-							</div>
-						</div>
-						<button
-							onclick={handleClose}
-							class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
-						>
-							<X class="h-5 w-5" />
-						</button>
+
+			<!-- Content -->
+			<div class="flex-1 space-y-6 p-6">
+				<!-- Impact Counter -->
+				<div class="text-center">
+					<div class="mb-1 text-3xl font-bold text-slate-900">
+						You + {(template.metrics.sent || 0).toLocaleString()} others
 					</div>
+					<p class="text-sm text-slate-600">Real voices creating real change</p>
 				</div>
 
-				<!-- Content -->
-				<div class="flex-1 space-y-6 p-6">
-					<!-- Impact Counter -->
-					<div class="text-center">
-						<div class="mb-1 text-3xl font-bold text-slate-900">
-							You + {(template.metrics.sent || 0).toLocaleString()} others
-						</div>
-						<p class="text-sm text-slate-600">Real voices creating real change</p>
+				<!-- Prominent URL Copy Section -->
+				<div class="rounded-xl border-2 border-slate-200 bg-slate-50 p-6">
+					<div class="mb-4 text-center">
+						<h3 class="mb-2 text-lg font-semibold text-slate-900">Share this campaign</h3>
+						<p class="text-sm text-slate-600">Help others join the movement</p>
 					</div>
 
-					<!-- Prominent URL Copy Section -->
-					<div class="rounded-xl border-2 border-slate-200 bg-slate-50 p-6">
-						<div class="mb-4 text-center">
-							<h3 class="mb-2 text-lg font-semibold text-slate-900">Share this campaign</h3>
-							<p class="text-sm text-slate-600">Help others join the movement</p>
-						</div>
-
-						<!-- The URL Display -->
-						<div class="mb-4 rounded-lg border border-slate-300 bg-white p-4">
-							<div class="flex items-center justify-between">
-								<div class="mr-3 flex-1">
-									<div class="truncate font-mono text-sm text-slate-600">
-										{shareUrl}
-									</div>
+					<!-- The URL Display -->
+					<div class="mb-4 rounded-lg border border-slate-300 bg-white p-4">
+						<div class="flex items-center justify-between">
+							<div class="mr-3 flex-1">
+								<div class="truncate font-mono text-sm text-slate-600">
+									{shareUrl}
 								</div>
-								<button
-									onclick={copyTemplateUrl}
-									class="flex items-center gap-2 rounded-lg border px-4 py-2 transition-all duration-200 {copyButtonGlow
-										? 'border-participation-primary-400 bg-participation-primary-50'
-										: 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'}"
-									style="transform: scale({$copyButtonScale}) rotate({$copyButtonRotation}deg)"
-								>
-									{#if showCopied}
-										<CheckCircle2 class="h-4 w-4 text-green-600" />
-										<span class="text-sm font-medium text-green-600">Copied!</span>
-									{:else}
-										<Copy class="h-4 w-4 text-slate-600" />
-										<span class="text-sm font-medium text-slate-700">Copy</span>
-									{/if}
-								</button>
 							</div>
-
-							<!-- Success Wave Animation -->
-							{#if copySuccessWave}
-								<div
-									class="pointer-events-none absolute inset-0 rounded-lg bg-green-100 opacity-30"
-									in:scale={{ duration: 300, start: 0.8 }}
-									out:fade={{ duration: 200 }}
-								></div>
-							{/if}
-						</div>
-
-						<!-- Social Share -->
-						<div class="flex justify-center gap-3">
 							<button
-								onclick={() => shareOnSocial('twitter')}
-								class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 transition-all duration-200 hover:border-slate-400 hover:bg-slate-50"
-								title="Share on X"
+								onclick={copyTemplateUrl}
+								class="flex items-center gap-2 rounded-lg border px-4 py-2 transition-all duration-200 {copyButtonGlow
+									? 'border-participation-primary-400 bg-participation-primary-50'
+									: 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'}"
+								style="transform: scale({$copyButtonScale}) rotate({$copyButtonRotation}deg)"
 							>
-								<span class="text-sm font-bold text-black">𝕏</span>
-								<span class="text-sm text-slate-700">Share</span>
+								{#if showCopied}
+									<CheckCircle2 class="h-4 w-4 text-green-600" />
+									<span class="text-sm font-medium text-green-600">Copied!</span>
+								{:else}
+									<Copy class="h-4 w-4 text-slate-600" />
+									<span class="text-sm font-medium text-slate-700">Copy</span>
+								{/if}
 							</button>
 						</div>
-					</div>
-				</div>
-			</div>
-		{:else if currentState === 'tracking'}
-			<!-- Agent Processing Tracking State -->
-			<div class="flex h-full flex-col">
-				<!-- Header -->
-				<div class="border-b border-slate-100 p-6">
-					<div class="flex items-center justify-between">
-						<div class="flex items-center gap-3">
+
+						<!-- Success Wave Animation -->
+						{#if copySuccessWave}
 							<div
-								class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-participation-primary-100"
-								style="transform: scale({$celebrationScale})"
-							>
-								<Send class="h-5 w-5 text-participation-primary-600" />
-							</div>
-							<div>
-								<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
-								<p class="text-sm text-slate-600">Tracking delivery and impact</p>
-							</div>
-						</div>
+								class="pointer-events-none absolute inset-0 rounded-lg bg-green-100 opacity-30"
+								in:scale={{ duration: 300, start: 0.8 }}
+								out:fade={{ duration: 200 }}
+							></div>
+						{/if}
+					</div>
+
+					<!-- Social Share -->
+					<div class="flex justify-center gap-3">
 						<button
-							onclick={() => {
-								// Navigate to template page when closing tracking
-								goto(`/s/${template.slug}`, { replaceState: true });
-								handleClose();
-							}}
-							class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+							onclick={() => shareOnSocial('twitter')}
+							class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 transition-all duration-200 hover:border-slate-400 hover:bg-slate-50"
+							title="Share on X"
 						>
-							<X class="h-5 w-5" />
+							<span class="text-sm font-bold text-black">𝕏</span>
+							<span class="text-sm text-slate-700">Share</span>
 						</button>
 					</div>
 				</div>
-
-				<!-- Submission Status -->
-				<div class="flex-1 p-6">
-					{#if submissionId}
-						<SubmissionStatus 
-							{submissionId}
-							initialStatus="sending"
-							onOverride={() => {
-								// Allow user to bypass agent processing
-								modalActions.setState('celebration');
-								
-								// Still navigate after a delay
-								coordinated.setTimeout(
-									async () => {
-										await goto(`/s/${template.slug}`, { replaceState: true });
-									},
-									2000,
-									'override-navigation',
-									componentId
-								);
-							}}
-						/>
-					{:else}
-						<!-- Fallback if no submission ID -->
-						<div class="rounded-lg border border-slate-200 bg-white p-4 text-center">
-							<Send class="mx-auto h-8 w-8 text-participation-primary-600 mb-3" />
-							<p class="text-slate-600">Message processing started</p>
+			</div>
+		</div>
+	{:else if currentState === 'tracking'}
+		<!-- Agent Processing Tracking State -->
+		<div class="flex h-full flex-col">
+			<!-- Header -->
+			<div class="border-b border-slate-100 p-6">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div
+							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-participation-primary-100"
+							style="transform: scale({$celebrationScale})"
+						>
+							<Send class="h-5 w-5 text-participation-primary-600" />
 						</div>
-					{/if}
+						<div>
+							<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
+							<p class="text-sm text-slate-600">Tracking delivery and impact</p>
+						</div>
+					</div>
+					<button
+						onclick={() => {
+							// Navigate to template page when closing tracking
+							goto(`/s/${template.slug}`, { replaceState: true });
+							handleClose();
+						}}
+						class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+					>
+						<X class="h-5 w-5" />
+					</button>
 				</div>
 			</div>
-		{/if}
-	</div>
+
+			<!-- Submission Status -->
+			<div class="flex-1 p-6">
+				{#if submissionId}
+					<SubmissionStatus
+						{submissionId}
+						initialStatus="sending"
+						onOverride={() => {
+							// Allow user to bypass agent processing
+							modalActions.setState('celebration');
+
+							// Still navigate after a delay
+							coordinated.setTimeout(
+								async () => {
+									await goto(`/s/${template.slug}`, { replaceState: true });
+								},
+								2000,
+								'override-navigation',
+								componentId
+							);
+						}}
+					/>
+				{:else}
+					<!-- Fallback if no submission ID -->
+					<div class="rounded-lg border border-slate-200 bg-white p-4 text-center">
+						<Send class="mx-auto mb-3 h-8 w-8 text-participation-primary-600" />
+						<p class="text-slate-600">Message processing started</p>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
+</div>

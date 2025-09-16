@@ -39,7 +39,7 @@ async function handleUnmatchedSender(parsedMessage, senderEmail, templateSlug) {
 	try {
 		// Try to detect potential user
 		const potentialUser = await detectPotentialUser(parsedMessage, templateSlug);
-		
+
 		if (potentialUser) {
 			// User likely exists - offer to add email
 			await sendAddEmailBounce(senderEmail, potentialUser.id, templateSlug);
@@ -60,10 +60,10 @@ async function handleUnmatchedSender(parsedMessage, senderEmail, templateSlug) {
 async function sendAddEmailBounce(senderEmail, userId, templateSlug) {
 	const token = generateVerificationToken(senderEmail, userId, templateSlug);
 	const addEmailUrl = `https://communique.app/api/user/emails/add-verified?token=${token}&redirect=/s/${templateSlug}`;
-	
+
 	const template = templateSlug ? await fetchTemplateBySlug(templateSlug) : null;
 	const templateName = template?.title || 'your message';
-	
+
 	const mailOptions = {
 		from: '"Communiqué" <noreply@communi.email>',
 		to: senderEmail,
@@ -143,7 +143,7 @@ Add this email to your account: ${addEmailUrl}
 This link expires in 24 hours.
 		`
 	};
-	
+
 	const transport = initTransporter();
 	await transport.sendMail(mailOptions);
 	console.log(`Sent add-email bounce to ${senderEmail}`);
@@ -154,11 +154,13 @@ This link expires in 24 hours.
  */
 async function sendNewUserBounce(senderEmail, templateSlug) {
 	const signupUrl = `https://communique.app/auth/signup?email=${encodeURIComponent(senderEmail)}&template=${templateSlug}`;
-	const templateUrl = templateSlug ? `https://communique.app/s/${templateSlug}` : 'https://communique.app';
-	
+	const templateUrl = templateSlug
+		? `https://communique.app/s/${templateSlug}`
+		: 'https://communique.app';
+
 	const template = templateSlug ? await fetchTemplateBySlug(templateSlug) : null;
 	const templateName = template?.title || 'your message';
-	
+
 	const mailOptions = {
 		from: '"Communiqué" <noreply@communi.email>',
 		to: senderEmail,
@@ -234,7 +236,7 @@ Or send from the website: ${templateUrl}
 Already have an account? You may have signed up with a different email address.
 		`
 	};
-	
+
 	const transport = initTransporter();
 	await transport.sendMail(mailOptions);
 	console.log(`Sent new-user bounce to ${senderEmail}`);
@@ -245,7 +247,7 @@ Already have an account? You may have signed up with a different email address.
  */
 async function sendVerificationRequiredBounce(senderEmail, templateSlug) {
 	const verifyUrl = `https://communique.app/settings/emails`;
-	
+
 	const mailOptions = {
 		from: '"Communiqué" <noreply@communi.email>',
 		to: senderEmail,
@@ -306,7 +308,7 @@ ${senderEmail} is added to your account but needs verification for certified del
 Verify your email: ${verifyUrl}
 		`
 	};
-	
+
 	const transport = initTransporter();
 	await transport.sendMail(mailOptions);
 	console.log(`Sent verification-required bounce to ${senderEmail}`);
@@ -316,10 +318,10 @@ Verify your email: ${verifyUrl}
  * Send generic bounce email
  */
 async function sendGenericBounce(senderEmail, templateSlug) {
-	const websiteUrl = templateSlug 
+	const websiteUrl = templateSlug
 		? `https://communique.app/s/${templateSlug}`
 		: 'https://communique.app';
-	
+
 	const mailOptions = {
 		from: '"Communiqué" <noreply@communi.email>',
 		to: senderEmail,
@@ -374,7 +376,7 @@ Please send your message directly from our website: ${websiteUrl}
 If you continue to have issues, please contact support@communique.app
 		`
 	};
-	
+
 	const transport = initTransporter();
 	await transport.sendMail(mailOptions);
 	console.log(`Sent generic bounce to ${senderEmail}`);
@@ -391,9 +393,10 @@ function generateVerificationToken(email, userId, templateSlug) {
 		timestamp: Date.now(),
 		purpose: 'email_verification'
 	};
-	
-	const secret = process.env.EMAIL_VERIFICATION_SECRET || process.env.JWT_SECRET || 'development-secret';
-	
+
+	const secret =
+		process.env.EMAIL_VERIFICATION_SECRET || process.env.JWT_SECRET || 'development-secret';
+
 	return jwt.sign(payload, secret, {
 		expiresIn: '24h',
 		issuer: 'communique.app',
