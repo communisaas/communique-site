@@ -23,10 +23,10 @@ interface CreateTemplateRequest {
 
 function validateTemplateData(data: unknown): {
 	isValid: boolean;
-	errors: any[];
+	errors: unknown[];
 	validData?: CreateTemplateRequest;
 } {
-	const errors: any[] = [];
+	const errors: unknown[] = [];
 
 	if (!data || typeof data !== 'object') {
 		errors.push(createValidationError('body', 'VALIDATION_REQUIRED', 'Invalid request body'));
@@ -138,7 +138,7 @@ export async function GET() {
 		});
 
 		// Include template scopes - handle if table doesn't exist
-		let scopes: any[] = [];
+		let scopes: unknown[] = [];
 		try {
 			scopes =
 				(await db.template_scope?.findMany({
@@ -180,7 +180,7 @@ export async function GET() {
 		};
 
 		return json(response);
-	} catch (error) {
+	} catch (_error) {
 		console.error('Failed to fetch templates:', error);
 
 		const response: ApiResponse = {
@@ -317,7 +317,7 @@ export async function POST({ request, locals }) {
 
 			return json(response);
 		}
-	} catch (error) {
+	} catch (_error) {
 		console.error('Unexpected error in template creation:', error);
 
 		const response: ApiResponse = {
@@ -359,9 +359,9 @@ async function triggerModerationPipeline(verificationId: string) {
 		console.log(`Moderation pipeline triggered for verification ${verificationId}:`, result);
 
 		return result;
-	} catch (error) {
+	} catch (_error) {
 		console.error(`Failed to trigger moderation pipeline for ${verificationId}:`, error);
 		// Don't throw - we don't want to fail template creation if moderation fails to trigger
-		return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+		return { success: false, error: _error instanceof Error ? _error.message : 'Unknown error' };
 	}
 }

@@ -79,12 +79,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			verificationId,
 			result
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Webhook processing error:', error);
 		return json(
 			{
 				error: 'Failed to process moderation webhook',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -150,7 +150,7 @@ async function executeModerationPipeline(verificationId: string) {
 			stages,
 			message: 'Moderation incomplete - manual review required'
 		};
-	} catch (error) {
+	} catch (_error) {
 		console.error('Pipeline execution error:', error);
 
 		// Update verification status to indicate error
@@ -159,13 +159,13 @@ async function executeModerationPipeline(verificationId: string) {
 			data: {
 				moderation_status: 'pending',
 				correction_log: {
-					error: error instanceof Error ? error.message : 'Unknown error',
+					error: _error instanceof Error ? _error.message : 'Unknown error',
 					timestamp: new Date().toISOString()
 				}
 			}
 		});
 
-		throw error;
+		throw _error;
 	}
 }
 

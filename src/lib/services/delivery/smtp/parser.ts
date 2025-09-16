@@ -63,11 +63,11 @@ export async function parseIncomingMessage(mail: ParsedMail): Promise<ParsedInco
 			...validatedData,
 			rawMessage: mail
 		};
-	} catch (error) {
-		if (error instanceof z.ZodError) {
-			throw new ValidationError('Invalid message format', error.errors);
+	} catch (_error) {
+		if (_error instanceof z.ZodError) {
+			throw new ValidationError('Invalid message format', _error.errors);
 		}
-		throw error;
+		throw _error;
 	}
 }
 

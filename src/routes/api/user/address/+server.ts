@@ -124,12 +124,12 @@ export async function POST({ request, locals }) {
 				congressional_district: updatedUser.congressional_district
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Address save error:', error);
 		return json(
 			{
 				error: 'Failed to save address',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

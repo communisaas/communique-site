@@ -13,8 +13,8 @@ declare module '@prisma/client' {
 	}
 
 	interface user {
-		coordinates?: any;
-		preferences?: any;
+		coordinates?: unknown;
+		preferences?: unknown;
 	}
 
 	interface user_session {

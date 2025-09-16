@@ -99,7 +99,8 @@
 	}
 
 	// Status display configuration
-	const statusConfig = {
+	// Status display configuration - use derived for reactive updates
+	const statusConfig = $derived({
 		sending: {
 			icon: Send,
 			text: 'Message sent',
@@ -130,7 +131,7 @@
 			description: details || 'Unable to deliver message',
 			color: 'red'
 		}
-	};
+	});
 
 	const config = $derived(statusConfig[status]);
 </script>

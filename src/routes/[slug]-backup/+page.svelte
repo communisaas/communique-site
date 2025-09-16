@@ -27,7 +27,7 @@
 	// ActionBar state
 	let personalConnectionValue = $state('');
 	let localShowEmailModal = $state(false);
-	let actionProgress = spring(0);
+	let actionProgress = $state(spring(0));
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);

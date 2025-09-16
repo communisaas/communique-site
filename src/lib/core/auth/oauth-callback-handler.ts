@@ -52,10 +52,10 @@ export interface OAuthCallbackConfig {
 
 	// Provider-specific functions
 	createOAuthClient: () => any;
-	exchangeTokens: (client: any, code: string, codeVerifier?: string) => Promise<any>;
+	exchangeTokens: (client: unknown, code: string, codeVerifier?: string) => Promise<any>;
 	getUserInfo: (accessToken: string, clientSecret?: string) => Promise<any>;
-	mapUserData: (rawUser: any) => UserData;
-	extractTokenData: (tokens: any) => TokenData;
+	mapUserData: (rawUser: unknown) => UserData;
+	extractTokenData: (tokens: unknown) => TokenData;
 }
 
 // =============================================================================
@@ -123,15 +123,15 @@ export class OAuthCallbackHandler {
 
 		// Validate required parameters
 		if (!code || !state || !storedState) {
-			throw error(400, 'Missing required OAuth parameters');
+			throw _error(400, 'Missing required OAuth parameters');
 		}
 
 		if (state !== storedState) {
-			throw error(400, 'Invalid OAuth state');
+			throw _error(400, 'Invalid OAuth state');
 		}
 
 		if (requiresCodeVerifier && !codeVerifier) {
-			throw error(400, 'Missing code verifier');
+			throw _error(400, 'Missing code verifier');
 		}
 
 		return { code, state, codeVerifier, returnTo };
@@ -222,7 +222,7 @@ export class OAuthCallbackHandler {
 	 * Create session and handle address collection or final redirect
 	 */
 	private async handleSessionAndRedirect(
-		user: any,
+		user: unknown,
 		returnTo: string,
 		provider: string,
 		cookies: Cookies
@@ -311,7 +311,7 @@ export class OAuthCallbackHandler {
 	/**
 	 * Handle errors consistently across all providers
 	 */
-	private handleError(err: any, provider: string): Response {
+	private handleError(err: unknown, provider: string): Response {
 		// Don't log SvelteKit redirects as errors
 		if (err instanceof Response && err.status >= 300 && err.status < 400) {
 			throw err;

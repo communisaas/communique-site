@@ -17,7 +17,7 @@ export interface ComponentUser {
 /**
  * Convert a full user object to component user format
  */
-export function toComponentUser(user: any): ComponentUser | null {
+export function toComponentUser(user: unknown): ComponentUser | null {
 	if (!user) return null;
 
 	return {
@@ -33,7 +33,7 @@ export function toComponentUser(user: any): ComponentUser | null {
 /**
  * Type guard to check if an object is a ComponentUser
  */
-export function isComponentUser(obj: any): obj is ComponentUser {
+export function isComponentUser(obj: unknown): obj is ComponentUser {
 	return obj && typeof obj.id === 'string' && typeof obj.name === 'string';
 }
 

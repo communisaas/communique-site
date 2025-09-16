@@ -161,11 +161,11 @@ class VOTERBlockchainClient {
 				blockNumber: receipt.blockNumber,
 				actionHash: actionHash
 			};
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error('Blockchain certification failed:', error);
 			return {
 				success: false,
-				error: error.message
+				error: _error.message
 			};
 		}
 	}
@@ -192,10 +192,10 @@ class VOTERBlockchainClient {
 				transactionHash: tx.hash,
 				blockNumber: receipt.blockNumber
 			};
-		} catch (error: any) {
+		} catch (error: unknown) {
 			return {
 				success: false,
-				error: error.message
+				error: _error.message
 			};
 		}
 	}
@@ -220,7 +220,7 @@ class VOTERBlockchainClient {
 				lastActionTime: Number(stats[2]),
 				voterTokenBalance: balance.toString()
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('Failed to get user stats:', error);
 			return null;
 		}

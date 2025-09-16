@@ -17,7 +17,7 @@ interface ImpactObservation {
 	source: string; // URL, transcript reference, etc.
 	confidence: number; // 0-100 correlation confidence
 	timestamp: Date;
-	details: any;
+	details: unknown;
 }
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -261,13 +261,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			philosophy: "We don't count messages sent. We count minds changed."
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Impact tracking error:', error);
 		return json(
 			{
 				success: false,
 				error: 'Impact tracking failed',
-				details: error.message
+				details: _error.message
 			},
 			{ status: 500 }
 		);

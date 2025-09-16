@@ -18,7 +18,7 @@ export interface AnalyticsEvent {
 	funnel_id?: string;
 	campaign_id?: string;
 	variation_id?: string;
-	properties?: Record<string, any>;
+	properties?: Record<string, unknown>;
 }
 
 export interface SessionData {
@@ -83,7 +83,7 @@ class DatabaseAnalytics {
 					}
 				}
 			});
-		} catch (error) {
+		} catch (_error) {
 			console.error('Failed to initialize analytics session:', error);
 		}
 	}
@@ -135,7 +135,7 @@ class DatabaseAnalytics {
 		}
 	}
 
-	private safeStringify(obj: any): string {
+	private safeStringify(obj: unknown): string {
 		const seen = new WeakSet();
 		return JSON.stringify(obj, (key, value) => {
 			// Skip DOM elements
@@ -187,14 +187,14 @@ class DatabaseAnalytics {
 				this.eventQueue.unshift(...events);
 				console.warn('Failed to flush analytics events:', response.status);
 			}
-		} catch (error) {
+		} catch (_error) {
 			// Put events back in queue for retry
 			this.eventQueue.unshift(...events);
 			console.error('Failed to flush analytics events:', error);
 		}
 	}
 
-	async identifyUser(userId: string, userProperties: Record<string, any> = {}): Promise<void> {
+	async identifyUser(userId: string, userProperties: Record<string, unknown> = {}): Promise<void> {
 		this.sessionData.user_id = userId;
 
 		await this.trackEvent({
@@ -310,7 +310,7 @@ class DatabaseAnalytics {
 	async trackInteraction(
 		element: string,
 		action: string,
-		properties: Record<string, any> = {}
+		properties: Record<string, unknown> = {}
 	): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
@@ -323,12 +323,12 @@ class DatabaseAnalytics {
 		});
 	}
 
-	async trackError(error: Error, context: Record<string, any> = {}): Promise<void> {
+	async trackError(error: Error, context: Record<string, unknown> = {}): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: 'javascript_error',
 			properties: {
-				error_message: error.message,
+				error_message: _error.message,
 				error_stack: error.stack,
 				error_name: error.name,
 				...context

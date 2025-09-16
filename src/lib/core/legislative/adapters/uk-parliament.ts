@@ -76,7 +76,7 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 					is_current: true
 				}
 			];
-		} catch (error) {
+		} catch (_error) {
 			console.error('UK Parliament lookup failed:', error);
 			return [];
 		}
@@ -104,10 +104,10 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 					representative: request.representative.name
 				}
 			};
-		} catch (error) {
+		} catch (_error) {
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'UK Parliament submission failed',
+				error: _error instanceof Error ? _error.message : 'UK Parliament submission failed',
 				metadata: {
 					provider: 'UK Parliament',
 					representative: request.representative.name

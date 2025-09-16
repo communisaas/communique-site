@@ -133,7 +133,7 @@ async function notifyServices(): Promise<void> {
 
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		console.log('✅ Services notified');
-	} catch (error) {
+	} catch (_error) {
 		console.error('❌ Failed to notify services:', error);
 	}
 }

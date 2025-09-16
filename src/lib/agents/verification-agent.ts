@@ -8,8 +8,8 @@
  * for zero-knowledge identity verification and on-chain attestations.
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent.js';
-import { prisma } from '$lib/core/db.js';
+import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { prisma } from '$lib/core/db';
 
 export interface VerificationAssessment {
 	userId: string;
@@ -32,7 +32,7 @@ export interface VerificationSource {
 	score: number; // 0-100
 	confidence: number; // 0-1
 	timestamp: Date;
-	metadata: any;
+	metadata: unknown;
 }
 
 export class VerificationAgent extends BaseAgent {
@@ -93,7 +93,7 @@ export class VerificationAgent extends BaseAgent {
 					verificationLevel
 				}
 			);
-		} catch (error) {
+		} catch (_error) {
 			console.error('VerificationAgent decision error:', error);
 			return this.createDecision(
 				{
@@ -105,7 +105,7 @@ export class VerificationAgent extends BaseAgent {
 					recommendedActions: ['retry_verification']
 				},
 				0.1,
-				`Error in verification assessment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				`Error in verification assessment: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
 				{ error: true }
 			);
 		}
@@ -114,7 +114,7 @@ export class VerificationAgent extends BaseAgent {
 	private async gatherVerificationData(userId: string): Promise<{
 		sources: VerificationSource[];
 		zkProofHash?: string;
-		districtVerification?: any;
+		districtVerification?: unknown;
 	}> {
 		const user = await prisma.user.findUnique({
 			where: { id: userId },
@@ -265,7 +265,7 @@ export class VerificationAgent extends BaseAgent {
 		}
 	}
 
-	private identifyRiskFactors(verificationData: any, analysis: any): string[] {
+	private identifyRiskFactors(verificationData: unknown, analysis: unknown): string[] {
 		const risks: string[] = [];
 
 		if (!analysis.kycPresent) risks.push('no_kyc_verification');
@@ -276,7 +276,11 @@ export class VerificationAgent extends BaseAgent {
 		return risks;
 	}
 
-	private generateRecommendations(level: string, risks: string[], verificationData: any): string[] {
+	private generateRecommendations(
+		level: string,
+		risks: string[],
+		verificationData: unknown
+	): string[] {
 		const recommendations: string[] = [];
 
 		if (level === 'unverified') {
@@ -299,7 +303,7 @@ export class VerificationAgent extends BaseAgent {
 		return recommendations;
 	}
 
-	private analyzeBehavioralPatterns(actions: any[]): number {
+	private analyzeBehavioralPatterns(actions: unknown[]): number {
 		if (actions.length === 0) return 0;
 
 		let score = Math.min(50, actions.length * 5); // Base score from action count
@@ -321,12 +325,12 @@ export class VerificationAgent extends BaseAgent {
 		return Math.min(100, score);
 	}
 
-	private checkBehaviorConsistency(actions: any[]): boolean {
+	private checkBehaviorConsistency(actions: unknown[]): boolean {
 		// Simple consistency check - more sophisticated logic would analyze patterns
 		return actions.filter((a) => a.status === 'completed').length / actions.length > 0.8;
 	}
 
-	private calculateEngagementTimeSpan(actions: any[]): number {
+	private calculateEngagementTimeSpan(actions: unknown[]): number {
 		if (actions.length < 2) return 0;
 
 		const dates = actions.map((a) => new Date(a.created_at).getTime()).sort();
@@ -341,7 +345,7 @@ export class VerificationAgent extends BaseAgent {
 		return Math.random() > 0.5 ? 40 : 20;
 	}
 
-	private assessDecisionConfidence(assessment: VerificationAssessment, analysis: any): number {
+	private assessDecisionConfidence(assessment: VerificationAssessment, analysis: unknown): number {
 		let confidence = 0.5; // Base confidence
 
 		// Higher confidence with more sources
@@ -359,7 +363,10 @@ export class VerificationAgent extends BaseAgent {
 		return Math.min(1.0, Math.max(0.1, confidence));
 	}
 
-	private generateVerificationReasoning(assessment: VerificationAssessment, analysis: any): string {
+	private generateVerificationReasoning(
+		assessment: VerificationAssessment,
+		analysis: unknown
+	): string {
 		const { trustScore, verificationLevel, verificationSources, riskFactors } = assessment;
 
 		return (

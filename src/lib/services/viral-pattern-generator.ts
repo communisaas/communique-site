@@ -407,7 +407,7 @@ export function generateImageText(pattern: ViralPattern): string {
 export async function adaptPatternForCountry(
 	pattern: ViralPattern,
 	country_code: string,
-	db: any // PrismaClient type
+	db: unknown // PrismaClient type
 ): Promise<ViralPattern> {
 	// Fetch legislative channel info
 	const channel = await db.legislative_channel.findUnique({

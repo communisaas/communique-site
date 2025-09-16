@@ -25,21 +25,21 @@ export const GET: RequestHandler = async ({ url }) => {
 				recommendation: getRecommendation(analysis)
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Percolation analysis failed:', error);
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to analyze information cascades',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
 	}
 };
 
-function getRecommendation(analysis: any): string {
+function getRecommendation(analysis: unknown): string {
 	if (analysis.cascade_potential === 'supercritical') {
 		return 'Network in optimal state for viral spread. Focus on quality content creation.';
 	} else if (analysis.cascade_potential === 'critical') {
@@ -72,7 +72,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			{ status: 400 }
 		);
-	} catch (error) {
+	} catch (_error) {
 		return json(
 			{
 				success: false,

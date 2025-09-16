@@ -30,11 +30,11 @@ export async function GET({ url }) {
 				}
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		return json(
 			{
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

@@ -60,14 +60,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			sessionId: userId,
 			config: appConfig
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Self.xyz init error:', error);
 
 		// Log detailed error for debugging
-		if (error instanceof Error) {
+		if (_error instanceof Error) {
 			console.error('Initialization error details:', {
 				name: error.name,
-				message: error.message,
+				message: _error.message,
 				stack: error.stack?.split('\n').slice(0, 3)
 			});
 		}

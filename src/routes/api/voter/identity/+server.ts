@@ -67,7 +67,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { userId, walletAddress, zkProof, publicInputs } = await request.json();
 
 		if (!userId) {
-			throw error(400, 'Missing required field: userId');
+			throw _error(400, 'Missing required field: userId');
 		}
 
 		// Perform Didit KYC verification
@@ -115,7 +115,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		if (!updateResponse.ok) {
-			throw error(500, 'Failed to update user verification status');
+			throw _error(500, 'Failed to update user verification status');
 		}
 
 		const updateResult = await updateResponse.json();
@@ -149,7 +149,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 	} catch (err) {
 		console.error('Identity verification error:', err);
-		throw error(500, err instanceof Error ? err.message : 'Identity verification failed');
+		throw _error(500, err instanceof Error ? err.message : 'Identity verification failed');
 	}
 };
 
@@ -159,7 +159,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const walletAddress = url.searchParams.get('walletAddress');
 
 		if (!userId && !walletAddress) {
-			throw error(400, 'Must provide either userId or walletAddress parameter');
+			throw _error(400, 'Must provide either userId or walletAddress parameter');
 		}
 
 		// Get user verification status via main API
@@ -174,7 +174,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		});
 
 		if (!profileResponse.ok) {
-			throw error(404, 'User not found');
+			throw _error(404, 'User not found');
 		}
 
 		const profile = await profileResponse.json();
@@ -198,6 +198,6 @@ export const GET: RequestHandler = async ({ url }) => {
 		});
 	} catch (err) {
 		console.error('Get identity verification error:', err);
-		throw error(500, err instanceof Error ? err.message : 'Failed to get verification status');
+		throw _error(500, err instanceof Error ? err.message : 'Failed to get verification status');
 	}
 };

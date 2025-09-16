@@ -8,8 +8,8 @@
  * of responsive legislators.
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent.js';
-import { prisma } from '$lib/core/db.js';
+import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { prisma } from '$lib/core/db';
 
 export interface ImpactAssessment {
 	templateId: string;
@@ -94,7 +94,7 @@ export class ImpactAgent extends BaseAgent {
 				recommendedFunding
 			};
 
-			const confidence = this.assessDecisionConfidence(assessment, context);
+			const confidence = this.assessDecisionConfidence(assessment, _context);
 
 			return this.createDecision(
 				assessment,
@@ -102,12 +102,12 @@ export class ImpactAgent extends BaseAgent {
 				this.generateImpactReasoning(assessment, outcomes),
 				{ templateId: context.templateId, impactDetected: impactScore > 0 }
 			);
-		} catch (error) {
+		} catch (_error) {
 			console.error('ImpactAgent decision error:', error);
 			return this.createDecision(
 				{ templateId: context.templateId, impactScore: 0, confidenceLevel: 'low' },
 				0.2,
-				`Error in impact assessment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				`Error in impact assessment: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
 				{ error: true }
 			);
 		}
@@ -148,7 +148,7 @@ export class ImpactAgent extends BaseAgent {
 		// - Committee transcript monitoring
 		// - Legislative tracking services
 		// - Media monitoring APIs
-		const outcomes = await this.mockLegislativeTracking(keyPhrases, templateId);
+		const outcomes = await this.mockLegislativeTracking(keyPhrases, _templateId);
 
 		return {
 			templateId,
@@ -397,7 +397,7 @@ export class ImpactAgent extends BaseAgent {
 		);
 	}
 
-	private formatDateRange(actions: any[]): string {
+	private formatDateRange(actions: unknown[]): string {
 		if (actions.length === 0) return '';
 		const earliest = new Date(Math.min(...actions.map((a) => a.created_at.getTime())));
 		const latest = new Date(Math.max(...actions.map((a) => a.created_at.getTime())));

@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const apiKey = request.headers.get('X-API-Key');
 
 		if (apiKey !== VOTER_API_KEY) {
-			throw error(401, 'Invalid API key');
+			throw _error(401, 'Invalid API key');
 		}
 
 		// TODO: Implement proper signature verification
@@ -68,11 +68,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw err;
 		}
 
-		throw error(500, 'Webhook processing failed');
+		throw _error(500, 'Webhook processing failed');
 	}
 };
 
-async function handleCertificationComplete(data: any) {
+async function handleCertificationComplete(data: unknown) {
 	console.log('[Webhook] Certification complete:', data.certification_hash);
 
 	// TODO: Update database with certification status
@@ -84,7 +84,7 @@ async function handleCertificationComplete(data: any) {
 	}
 }
 
-async function handleRewardIssued(data: any) {
+async function handleRewardIssued(data: unknown) {
 	console.log('[Webhook] Reward issued:', data.reward_amount);
 
 	// TODO: Update user's reward balance
@@ -94,7 +94,7 @@ async function handleRewardIssued(data: any) {
 	console.log(`Reward of ${data.reward_amount} issued to ${data.user_address}`);
 }
 
-async function handleReputationUpdated(data: any) {
+async function handleReputationUpdated(data: unknown) {
 	console.log('[Webhook] Reputation updated for:', data.user_address);
 
 	// TODO: Update user's reputation display

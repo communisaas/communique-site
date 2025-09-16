@@ -64,7 +64,7 @@ export class GeolocationService {
 				timestamp: Date.now(),
 				confidence: this.calculateLocationConfidence(coords.accuracy)
 			};
-		} catch (error) {}
+		} catch (_error) {}
 
 		// Fallback to IP-based location (lower accuracy)
 		if (fallbackToIP) {
@@ -76,7 +76,7 @@ export class GeolocationService {
 					timestamp: Date.now(),
 					confidence: 0.3 // IP location is rough
 				};
-			} catch (error) {}
+			} catch (_error) {}
 		}
 
 		throw new Error('All geolocation methods failed');
@@ -110,7 +110,7 @@ export class GeolocationService {
 				state_house: data.state_house_district,
 				state_senate: data.state_senate_district
 			};
-		} catch (error) {
+		} catch (_error) {
 			return undefined;
 		}
 	}
@@ -132,7 +132,7 @@ export class GeolocationService {
 			return {
 				congressional: data.congressional_district
 			};
-		} catch (error) {
+		} catch (_error) {
 			return undefined;
 		}
 	}
@@ -160,7 +160,7 @@ export class GeolocationService {
 					});
 				},
 				(error) => {
-					reject(new Error(`Geolocation error: ${error.message}`));
+					reject(new Error(`Geolocation error: ${_error.message}`));
 				},
 				options
 			);
@@ -187,8 +187,8 @@ export class GeolocationService {
 				city: data.city,
 				state: data.region_code
 			};
-		} catch (error) {
-			throw error;
+		} catch (_error) {
+			throw _error;
 		}
 	}
 
@@ -234,7 +234,7 @@ export class GeolocationService {
 			const confidence = valid ? location.confidence : location.confidence * 0.5;
 
 			return { valid, confidence };
-		} catch (error) {
+		} catch (_error) {
 			return { valid: false, confidence: 0 };
 		}
 	}

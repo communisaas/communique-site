@@ -94,11 +94,11 @@ export async function certifyEmailDelivery(
 		}
 
 		return result;
-	} catch (error) {
+	} catch (_error) {
 		console.error('[Email Certification] Error:', error);
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : 'Certification failed'
+			error: _error instanceof Error ? _error.message : 'Certification failed'
 		};
 	}
 }
@@ -140,7 +140,7 @@ export async function launchEmailWithCertification(
 	mailtoUrl: string,
 	context: Omit<EmailDeliveryContext, 'mailtoUrl' | 'timestamp'>
 ): Promise<{
-	launch: any;
+	launch: unknown;
 	certification?: CertificationResult;
 }> {
 	// Import the original launch function to avoid circular dependencies

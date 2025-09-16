@@ -159,14 +159,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 			userUpdated: !!locals.user,
 			message: 'Identity verification completed successfully'
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Self.xyz verification error:', error);
 
 		// Log detailed error information for debugging
-		if (error instanceof Error) {
+		if (_error instanceof Error) {
 			console.error('Error details:', {
 				name: error.name,
-				message: error.message,
+				message: _error.message,
 				stack: error.stack?.split('\n').slice(0, 5)
 			});
 		}

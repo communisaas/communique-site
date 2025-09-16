@@ -107,7 +107,7 @@ export class LegislativeDeliveryPipeline {
 				results,
 				duration_ms: Date.now() - startTime
 			};
-		} catch (error) {
+		} catch (_error) {
 			return {
 				job_id: job.id,
 				total_recipients: 0,
@@ -116,7 +116,7 @@ export class LegislativeDeliveryPipeline {
 				results: [
 					{
 						success: false,
-						error: error instanceof Error ? error.message : 'Pipeline delivery failed'
+						error: _error instanceof Error ? _error.message : 'Pipeline delivery failed'
 					}
 				],
 				duration_ms: Date.now() - startTime

@@ -61,14 +61,14 @@ export async function verifySignedToken<T = any>(
 		}) as T;
 
 		return decoded;
-	} catch (error) {
-		if (error instanceof jwt.TokenExpiredError) {
+	} catch (_error) {
+		if (_error instanceof jwt.TokenExpiredError) {
 			throw new Error('Token has expired');
 		}
-		if (error instanceof jwt.JsonWebTokenError) {
+		if (_error instanceof jwt.JsonWebTokenError) {
 			throw new Error('Invalid token');
 		}
-		throw error;
+		throw _error;
 	}
 }
 
@@ -76,7 +76,7 @@ export async function verifySignedToken<T = any>(
  * Generate a one-time use token for sensitive operations
  * Includes additional entropy for security
  */
-export function generateOneTimeToken(data: any, expiresIn = '1h'): string {
+export function generateOneTimeToken(data: unknown, expiresIn = '1h'): string {
 	const payload = {
 		...data,
 		nonce: crypto.randomUUID(),

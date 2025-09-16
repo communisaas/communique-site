@@ -28,7 +28,7 @@
 
 	// ActionBar state
 	let personalConnectionValue = $state('');
-	let actionProgress = spring(0);
+	let actionProgress = $state(spring(0));
 
 	// Template modal reference
 	let templateModal: UnifiedTemplateModal;

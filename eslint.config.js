@@ -28,7 +28,7 @@ export default ts.config(
 		}
 	},
 	{
-		// Strategic rule adjustments for deployment
+		// Standard rule configuration
 		rules: {
 			'@typescript-eslint/no-unused-vars': [
 				'error',
@@ -37,7 +37,7 @@ export default ts.config(
 					varsIgnorePattern: '^_'
 				}
 			],
-			'@typescript-eslint/no-explicit-any': 'warn' // Downgrade from error to warning
+			'@typescript-eslint/no-explicit-any': 'error'
 		}
 	},
 	{

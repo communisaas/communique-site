@@ -122,11 +122,11 @@ class UnifiedApiClient {
 
 				onLoadingChange?.(false);
 				return result;
-			} catch (error) {
+			} catch (_error) {
 				lastError = error as Error;
 
 				// Don't retry on abort errors
-				if (error instanceof Error && error.name === 'AbortError') {
+				if (_error instanceof Error && error.name === 'AbortError') {
 					break;
 				}
 
@@ -161,7 +161,7 @@ class UnifiedApiClient {
 	 * Handle API response and extract data
 	 */
 	private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-		let data: any;
+		let data: unknown;
 
 		try {
 			const contentType = response.headers.get('content-type');
@@ -207,7 +207,7 @@ class UnifiedApiClient {
 
 	async post<T = any>(
 		endpoint: string,
-		body?: any,
+		body?: unknown,
 		options?: Omit<ApiOptions, 'method' | 'body'>
 	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'POST', body });
@@ -215,7 +215,7 @@ class UnifiedApiClient {
 
 	async put<T = any>(
 		endpoint: string,
-		body?: any,
+		body?: unknown,
 		options?: Omit<ApiOptions, 'method' | 'body'>
 	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'PUT', body });
@@ -223,7 +223,7 @@ class UnifiedApiClient {
 
 	async patch<T = any>(
 		endpoint: string,
-		body?: any,
+		body?: unknown,
 		options?: Omit<ApiOptions, 'method' | 'body'>
 	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'PATCH', body });

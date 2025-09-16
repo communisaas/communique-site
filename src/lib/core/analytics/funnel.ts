@@ -9,7 +9,7 @@ export interface FunnelEvent {
 	source?: 'social-link' | 'direct-link' | 'share';
 	platform?: 'twitter' | 'facebook' | 'linkedin' | 'other';
 	timestamp: number;
-	properties?: Record<string, any>;
+	properties?: Record<string, unknown>;
 }
 
 class FunnelAnalytics {
@@ -45,7 +45,7 @@ class FunnelAnalytics {
 		}
 	}
 
-	track(event: string, properties: Record<string, any> = {}) {
+	track(event: string, properties: Record<string, unknown> = {}) {
 		const funnelEvent: FunnelEvent = {
 			event,
 			session_id: this.sessionId,
@@ -64,7 +64,7 @@ class FunnelAnalytics {
 	private async sendToAnalytics(event: FunnelEvent) {
 		try {
 			await analytics.trackFunnelEvent(event);
-		} catch (error) {
+		} catch (_error) {
 			// Fallback: Store failed events for retry
 			if (typeof window !== 'undefined') {
 				const failed = JSON.parse(localStorage.getItem('communique_failed_events') || '[]');

@@ -149,11 +149,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						error: result.error || 'Submission failed'
 					});
 				}
-			} catch (error) {
+			} catch (_error) {
 				console.error(`CWC submission error for ${recipient.name}:`, error);
 				errors.push({
 					recipient: recipient.name,
-					error: error.message
+					error: _error.message
 				});
 			}
 		}
@@ -195,13 +195,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		return json(response);
-	} catch (error) {
+	} catch (_error) {
 		console.error('CWC submission endpoint error:', error);
 		return json(
 			{
 				success: false,
 				error: 'CWC submission failed',
-				details: error.message
+				details: _error.message
 			},
 			{ status: 500 }
 		);

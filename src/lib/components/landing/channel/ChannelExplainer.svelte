@@ -234,7 +234,10 @@
 							class:bg-participation-primary-50={channel.id === 'direct' && !isSelected}
 							class:text-participation-primary-600={channel.id === 'direct' && !isSelected}
 						>
-							<svelte:component this={channel.icon} class="h-4 w-4" />
+							{#if channel.icon}
+								{@const IconComponent = channel.icon}
+								<IconComponent class="h-4 w-4" />
+							{/if}
 							{channel.title}
 						</div>
 						{#if channel.id === 'certified'}

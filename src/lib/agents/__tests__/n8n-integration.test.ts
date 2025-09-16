@@ -25,7 +25,7 @@ vi.mock('$lib/services/delivery/integrations/n8n', () => {
 describe('N8N Agent Integration', () => {
 	let verificationAgent: VerificationAgent;
 	let moderationConsensus: ModerationConsensus;
-	let mockN8NClient: any;
+	let mockN8NClient: unknown;
 
 	beforeEach(() => {
 		vi.clearAllMocks();

@@ -270,13 +270,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			timestamp: new Date().toISOString()
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Challenge resolution error:', error);
 		return json(
 			{
 				success: false,
 				error: 'Challenge resolution failed',
-				details: error.message
+				details: _error.message
 			},
 			{ status: 500 }
 		);

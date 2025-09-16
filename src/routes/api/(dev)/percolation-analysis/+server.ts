@@ -51,7 +51,7 @@ export async function GET({ request }) {
 				}
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		// Log failed usage
 		await logAnalyticsUsage(
 			security.user_id!,
@@ -63,7 +63,7 @@ export async function GET({ request }) {
 		return json(
 			{
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{
 				status: 500,

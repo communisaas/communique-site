@@ -15,7 +15,7 @@ export interface CertificationRequest {
 	subject?: string;
 	messageHash: string;
 	timestamp: string;
-	metadata?: Record<string, any>;
+	metadata?: Record<string, unknown>;
 }
 
 export interface CertificationResponse {
@@ -66,12 +66,12 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-		} catch (error) {
+		} catch (_error) {
 			console.error('[Certification] Network error:', error);
 			// Don't block delivery on certification failure
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Certification network error'
+				error: _error instanceof Error ? _error.message : 'Certification network error'
 			};
 		}
 	}
@@ -89,7 +89,7 @@ class CertificationService {
 			}
 
 			return await response.json();
-		} catch (error) {
+		} catch (_error) {
 			console.error('[Certification] Status check error:', error);
 			return null;
 		}
@@ -123,7 +123,7 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-		} catch (error) {
+		} catch (_error) {
 			console.error('[Certification] Receipt submission error:', error);
 			return { verified: false };
 		}

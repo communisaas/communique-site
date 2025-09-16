@@ -174,13 +174,13 @@ export function analyzeEmailFlow(
 			nextAction: 'email',
 			analytics: { ...analytics, step: 'ready_to_send' }
 		};
-	} catch (error) {
+	} catch (_error) {
 		return {
 			requiresAuth: false,
 			nextAction: 'email',
 			error: {
 				code: 'FLOW_ANALYSIS_ERROR',
-				message: error instanceof Error ? error.message : 'Unknown error analyzing email flow',
+				message: _error instanceof Error ? _error.message : 'Unknown error analyzing email flow',
 				details: { originalError: error }
 			}
 		};
@@ -213,7 +213,7 @@ interface MailtoUrlResult {
  * ```typescript
  * const result = generateMailtoUrl(template, user);
  * if (result.error) {
- *   console.error('Failed to generate mailto:', result.error.message);
+ *   console.error('Failed to generate mailto:', result._error.message);
  * } else {
  *   window.location.href = result.url;
  * }
@@ -296,11 +296,11 @@ export function generateMailtoUrl(
 		}
 
 		return { url };
-	} catch (error) {
+	} catch (_error) {
 		return {
 			error: {
 				code: 'MAILTO_GENERATION_ERROR',
-				message: error instanceof Error ? error.message : 'Unknown error generating mailto URL',
+				message: _error instanceof Error ? _error.message : 'Unknown error generating mailto URL',
 				details: { originalError: error }
 			}
 		};
@@ -534,12 +534,12 @@ export function launchEmail(
 			mailtoUrl,
 			analytics
 		};
-	} catch (error) {
+	} catch (_error) {
 		return {
 			success: false,
 			error: {
 				code: 'EMAIL_LAUNCH_ERROR',
-				message: error instanceof Error ? error.message : 'Unknown error launching email client',
+				message: _error instanceof Error ? _error.message : 'Unknown error launching email client',
 				details: { originalError: error }
 			}
 		};

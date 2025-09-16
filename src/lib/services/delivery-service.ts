@@ -17,7 +17,7 @@ export interface DeliveryServiceConfig {
 }
 
 export class DeliveryService {
-	private server: any;
+	private server: unknown;
 	private config: DeliveryServiceConfig;
 
 	constructor() {
@@ -55,9 +55,9 @@ export class DeliveryService {
 			const smtpServerModule = await import('./delivery/smtp-server.js');
 			// The delivery service will start automatically when imported
 			console.log(`📧 Delivery Service running on ${this.config.smtpHost}:${this.config.smtpPort}`);
-		} catch (error) {
+		} catch (_error) {
 			console.error('❌ Failed to start Delivery Service:', error);
-			throw error;
+			throw _error;
 		}
 	}
 

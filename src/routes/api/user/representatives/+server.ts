@@ -27,7 +27,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// TODO: Add authentication check
 		// const user = locals.user;
 		// if (!user) {
-		//     throw error(401, 'Authentication required');
+		//     throw _error(401, 'Authentication required');
 		// }
 
 		const data = await request.json();
@@ -35,11 +35,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Validate required fields
 		if (!userId) {
-			throw error(400, 'userId is required');
+			throw _error(400, 'userId is required');
 		}
 
 		if (!representatives || !representatives.house || !representatives.senate) {
-			throw error(400, 'Representatives data is required (house and senate)');
+			throw _error(400, 'Representatives data is required (house and senate)');
 		}
 
 		// Validate representatives data structure
@@ -146,7 +146,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw err;
 		}
 
-		throw error(500, 'Failed to store user representatives');
+		throw _error(500, 'Failed to store user representatives');
 	}
 };
 
@@ -156,13 +156,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// TODO: Add authentication check
 		// const user = locals.user;
 		// if (!user) {
-		//     throw error(401, 'Authentication required');
+		//     throw _error(401, 'Authentication required');
 		// }
 
 		const userId = url.searchParams.get('userId');
 
 		if (!userId) {
-			throw error(400, 'userId parameter is required');
+			throw _error(400, 'userId parameter is required');
 		}
 
 		// Fetch user with their representatives
@@ -182,7 +182,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		});
 
 		if (!user) {
-			throw error(404, 'User not found');
+			throw _error(404, 'User not found');
 		}
 
 		// Format response with proper types
@@ -244,7 +244,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			throw err;
 		}
 
-		throw error(500, 'Failed to fetch user representatives');
+		throw _error(500, 'Failed to fetch user representatives');
 	}
 };
 
@@ -254,14 +254,14 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		// TODO: Add authentication check
 		// const user = locals.user;
 		// if (!user) {
-		//     throw error(401, 'Authentication required');
+		//     throw _error(401, 'Authentication required');
 		// }
 
 		const data = await request.json();
 		const { userId } = data;
 
 		if (!userId) {
-			throw error(400, 'userId is required');
+			throw _error(400, 'userId is required');
 		}
 
 		// Get user's current address
@@ -276,7 +276,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		});
 
 		if (!user || !user.street || !user.city || !user.state || !user.zip) {
-			throw error(400, 'User address information is incomplete');
+			throw _error(400, 'User address information is incomplete');
 		}
 
 		// Re-lookup representatives using address lookup service
@@ -314,6 +314,6 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 			throw err;
 		}
 
-		throw error(500, 'Failed to refresh user representatives');
+		throw _error(500, 'Failed to refresh user representatives');
 	}
 };

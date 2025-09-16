@@ -60,7 +60,7 @@ export function validateField(value: string, rules: ValidationRule): ValidationR
 }
 
 // Debounce utility for real-time validation
-export function debounce<T extends (...args: any[]) => void>(
+export function debounce<T extends (...args: unknown[]) => void>(
 	func: T,
 	wait: number
 ): (...args: Parameters<T>) => void {

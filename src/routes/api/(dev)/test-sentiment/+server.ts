@@ -11,11 +11,11 @@ export async function GET() {
 			message: 'Sentiment analysis tests completed successfully',
 			note: 'Check server console for detailed results'
 		});
-	} catch (error) {
+	} catch (_error) {
 		return json(
 			{
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

@@ -81,8 +81,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			...result
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Reputation update error:', error);
-		return json({ error: 'Reputation update failed', details: error.message }, { status: 500 });
+		return json({ error: 'Reputation update failed', details: _error.message }, { status: 500 });
 	}
 };

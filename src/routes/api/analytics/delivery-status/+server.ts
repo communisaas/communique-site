@@ -96,14 +96,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			total_count: totalDeliveries,
 			timestamp: new Date().toISOString()
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Delivery status lookup failed:', error);
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to load delivery status',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -150,7 +150,7 @@ function getRandomErrorMessage(): string {
 	return errors[Math.floor(Math.random() * errors.length)];
 }
 
-function calculateAverageDeliveryTime(deliveries: any[]): number {
+function calculateAverageDeliveryTime(deliveries: unknown[]): number {
 	const deliveredItems = deliveries.filter(
 		(d) => d.status === 'delivered' && d.tracking_data?.delivery_time
 	);

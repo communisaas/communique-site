@@ -15,7 +15,7 @@ export interface ErrorReport {
 	url?: string;
 	userId?: string;
 	sessionId?: string;
-	additionalData?: Record<string, any>;
+	additionalData?: Record<string, unknown>;
 }
 
 export interface ErrorBoundaryConfig {
@@ -92,10 +92,10 @@ class ErrorBoundaryManager {
 	createErrorReport(
 		error: Error,
 		context: string,
-		additionalData?: Record<string, any>
+		additionalData?: Record<string, unknown>
 	): ErrorReport {
 		return {
-			message: error.message || 'Unknown error',
+			message: _error.message || 'Unknown error',
 			stack: error.stack,
 			context,
 			timestamp: Date.now(),
@@ -110,7 +110,7 @@ class ErrorBoundaryManager {
 	 */
 	reportError(error: ErrorReport) {
 		// Deduplicate similar errors
-		const errorKey = `${error.context}:${error.message}`;
+		const errorKey = `${error.context}:${_error.message}`;
 		const count = this.errorCounts.get(errorKey) || 0;
 
 		// Only report first occurrence and then every 10th occurrence
@@ -181,23 +181,23 @@ export const errorBoundaryManager = new ErrorBoundaryManager();
 /**
  * HOC function to wrap functions with error boundaries
  */
-export function withErrorBoundary<T extends (...args: any[]) => any>(
+export function withErrorBoundary<T extends (...args: unknown[]) => any>(
 	fn: T,
 	context: string,
 	options: {
 		silent?: boolean;
-		fallback?: any;
+		fallback?: unknown;
 		onError?: (error: Error) => void;
 	} = {}
 ): T {
-	return ((...args: any[]) => {
+	return ((...args: unknown[]) => {
 		try {
 			const result = fn(...args);
 
 			// Handle async functions
 			if (result instanceof Promise) {
 				return result.catch((error) => {
-					const errorReport = errorBoundaryManager.createErrorReport(error, context);
+					const errorReport = errorBoundaryManager.createErrorReport(error, _context);
 
 					if (!options.silent) {
 						console.error(`Error in ${context}:`, error);
@@ -211,8 +211,8 @@ export function withErrorBoundary<T extends (...args: any[]) => any>(
 			}
 
 			return result;
-		} catch (error) {
-			const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
+		} catch (_error) {
+			const errorReport = errorBoundaryManager.createErrorReport(error as Error, _context);
 
 			if (!options.silent) {
 				console.error(`Error in ${context}:`, error);
@@ -236,8 +236,8 @@ export async function safeAsync<T>(
 ): Promise<T | undefined> {
 	try {
 		return await operation();
-	} catch (error) {
-		const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
+	} catch (_error) {
+		const errorReport = errorBoundaryManager.createErrorReport(error as Error, _context);
 		errorBoundaryManager.reportError(errorReport);
 		console.error(`Safe async error in ${context}:`, error);
 		return fallback;

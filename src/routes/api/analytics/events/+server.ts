@@ -23,8 +23,8 @@ interface ClientAnalyticsEvent {
 	variation_id?: string;
 	timestamp?: Date | string;
 	page_url?: string;
-	event_properties?: Record<string, any>;
-	properties?: Record<string, any>;
+	event_properties?: Record<string, unknown>;
+	properties?: Record<string, unknown>;
 }
 
 interface EventBatch {
@@ -131,7 +131,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			events_processed: events.length,
 			session_id: session_data.session_id
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Analytics events processing failed:', error);
 
 		return json(
@@ -184,7 +184,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			session,
 			events_count: session.analytics_events.length
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Failed to fetch session data:', error);
 
 		return json(

@@ -4,10 +4,10 @@
 interface VerificationSession {
 	userId: string;
 	templateSlug: string;
-	disclosures: Record<string, any>;
+	disclosures: Record<string, unknown>;
 	qrCodeData: string;
 	status: 'pending' | 'verified' | 'failed';
-	credentialSubject?: any;
+	credentialSubject?: unknown;
 	createdAt: Date;
 }
 

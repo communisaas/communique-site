@@ -68,8 +68,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			...result
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Verification agent error:', error);
-		return json({ error: 'Verification failed', details: error.message }, { status: 500 });
+		return json({ error: 'Verification failed', details: _error.message }, { status: 500 });
 	}
 };

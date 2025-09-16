@@ -312,7 +312,7 @@ export class ReputationCalculator {
 	 */
 	async detectGaming(
 		userId: string,
-		recentActions: any[]
+		recentActions: unknown[]
 	): Promise<{
 		suspicious: boolean;
 		penalty?: number;

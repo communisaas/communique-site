@@ -52,7 +52,7 @@ export type LegacyModalState =
 
 interface LegacyModalContext {
 	template: Template | null;
-	user: any;
+	user: unknown;
 	state: LegacyModalState;
 	mailtoUrl?: string;
 	sendConfirmed: boolean;
@@ -239,7 +239,7 @@ function createModalSystem() {
 		// =========================================================================
 
 		// Legacy template modal API - preserves exact behavior
-		open(template: Template, user: any) {
+		open(template: Template, user: unknown) {
 			// Update legacy store to maintain backward compatibility
 			legacyModalState.template = template;
 			legacyModalState.user = user;

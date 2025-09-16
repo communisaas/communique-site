@@ -8,8 +8,8 @@
  * challenge markets, civic actions, and cross-platform reputation.
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent.js';
-import { prisma } from '$lib/core/db.js';
+import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { prisma } from '$lib/core/db';
 
 export interface CredibilityAssessment {
 	userId: string;
@@ -33,7 +33,7 @@ export interface ERC8004Attestation {
 	issuer: string;
 	subject: string;
 	claimType: string;
-	claimValue: any;
+	claimValue: unknown;
 	confidence: number;
 	timestamp: Date;
 	expirationDate?: Date;
@@ -102,7 +102,7 @@ export class ReputationAgent extends BaseAgent {
 					credibilityScore: assessment.credibilityScore
 				}
 			);
-		} catch (error) {
+		} catch (_error) {
 			console.error('ReputationAgent decision error:', error);
 			return this.createDecision(
 				{
@@ -122,17 +122,17 @@ export class ReputationAgent extends BaseAgent {
 					portabilityHash: ''
 				},
 				0.1,
-				`Error in reputation assessment: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				`Error in reputation assessment: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
 				{ error: true }
 			);
 		}
 	}
 
 	private async gatherReputationData(userId: string): Promise<{
-		user: any;
-		civicActions: any[];
-		challengeHistory: any[];
-		reputationLogs: any[];
+		user: unknown;
+		civicActions: unknown[];
+		challengeHistory: unknown[];
+		reputationLogs: unknown[];
 		verificationLevel: string;
 		walletAddress?: string;
 	}> {
@@ -242,7 +242,7 @@ export class ReputationAgent extends BaseAgent {
 		};
 	}
 
-	private calculateCivicEngagement(civicActions: any[], userCreatedAt: Date): number {
+	private calculateCivicEngagement(civicActions: unknown[], userCreatedAt: Date): number {
 		if (civicActions.length === 0) return 0;
 
 		// Base score from action count (0-100)
@@ -260,7 +260,7 @@ export class ReputationAgent extends BaseAgent {
 		return actionScore + consistencyScore + successBonus;
 	}
 
-	private calculateInformationQuality(challengeHistory: any[]): number {
+	private calculateInformationQuality(challengeHistory: unknown[]): number {
 		if (challengeHistory.length === 0) return 50; // Neutral score
 
 		// Success rate in challenges (0-120)
@@ -278,14 +278,15 @@ export class ReputationAgent extends BaseAgent {
 
 		// High-stakes accuracy bonus (0-40)
 		const highStakesChallenges = challengeHistory.filter(
-			(c) => c.challenge_stakes && c.challenge_stakes.some((s: any) => parseFloat(s.amount) > 1000)
+			(c) =>
+				c.challenge_stakes && c.challenge_stakes.some((s: unknown) => parseFloat(s.amount) > 1000)
 		);
 		const stakesBonus = Math.min(40, highStakesChallenges.length * 5);
 
 		return baseScore + participationBonus + stakesBonus;
 	}
 
-	private calculateCommunityTrust(reputationLogs: any[], civicActions: any[]): number {
+	private calculateCommunityTrust(reputationLogs: unknown[], civicActions: unknown[]): number {
 		// Base score from positive reputation changes (0-100)
 		const positiveChanges = reputationLogs.filter((log) => log.change_amount > 0);
 		const trustScore = Math.min(100, positiveChanges.length * 5);
@@ -305,7 +306,7 @@ export class ReputationAgent extends BaseAgent {
 		return trustScore + validationBonus + interactionBonus;
 	}
 
-	private calculateVerificationDepth(user: any): number {
+	private calculateVerificationDepth(user: unknown): number {
 		let score = 0;
 
 		// Basic verification (0-60)
@@ -325,8 +326,8 @@ export class ReputationAgent extends BaseAgent {
 	}
 
 	private calculateBehavioralIntegrity(
-		civicActions: any[],
-		reputationLogs: any[],
+		civicActions: unknown[],
+		reputationLogs: unknown[],
 		userCreatedAt: Date
 	): number {
 		// Consistency over time (0-80)
@@ -375,7 +376,7 @@ export class ReputationAgent extends BaseAgent {
 		return 'untrusted';
 	}
 
-	private generateBadges(reputationData: any, components: any): string[] {
+	private generateBadges(reputationData: unknown, components: unknown): string[] {
 		const badges: string[] = [];
 
 		// Civic Leader
@@ -396,7 +397,7 @@ export class ReputationAgent extends BaseAgent {
 		// Challenge Master (special conditions)
 		const challengeWinRate =
 			reputationData.challengeHistory.length > 5
-				? reputationData.challengeHistory.filter((c: any) => c.resolution === 'challenger_won')
+				? reputationData.challengeHistory.filter((c: unknown) => c.resolution === 'challenger_won')
 						.length / reputationData.challengeHistory.length
 				: 0;
 		if (challengeWinRate >= 0.8) badges.push('challenge_master');
@@ -444,14 +445,14 @@ export class ReputationAgent extends BaseAgent {
 		return attestations;
 	}
 
-	private identifyReputationRisks(reputationData: any, components: any): string[] {
+	private identifyReputationRisks(reputationData: unknown, components: unknown): string[] {
 		const risks: string[] = [];
 
 		if (components.verification_depth < 50) risks.push('low_verification');
 		if (components.behavioral_integrity < 50) risks.push('behavioral_inconsistency');
 		if (reputationData.challengeHistory.length > 5) {
 			const lossRate =
-				reputationData.challengeHistory.filter((c: any) => c.resolution === 'challenger_lost')
+				reputationData.challengeHistory.filter((c: unknown) => c.resolution === 'challenger_lost')
 					.length / reputationData.challengeHistory.length;
 			if (lossRate > 0.5) risks.push('high_challenge_loss_rate');
 		}
@@ -465,7 +466,7 @@ export class ReputationAgent extends BaseAgent {
 		return risks;
 	}
 
-	private generatePortabilityHash(credibilityScore: number, components: any): string {
+	private generatePortabilityHash(credibilityScore: number, components: unknown): string {
 		// Generate deterministic hash for cross-platform reputation portability
 		const data = `${credibilityScore}-${JSON.stringify(components)}-${Date.now()}`;
 		return `0x${Buffer.from(data).toString('hex').substring(0, 32)}`;
@@ -475,7 +476,10 @@ export class ReputationAgent extends BaseAgent {
 		return Math.floor((Date.now() - new Date(createdAt).getTime()) / (24 * 60 * 60 * 1000));
 	}
 
-	private assessDecisionConfidence(assessment: CredibilityAssessment, reputationData: any): number {
+	private assessDecisionConfidence(
+		assessment: CredibilityAssessment,
+		reputationData: unknown
+	): number {
 		let confidence = 0.6; // Base confidence
 
 		// Higher confidence with more data

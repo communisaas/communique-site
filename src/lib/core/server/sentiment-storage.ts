@@ -70,7 +70,7 @@ export async function storeSingleUserSentiment(
 			sentiment_result: sentiment,
 			stored_at: new Date()
 		};
-	} catch (error) {
+	} catch (_error) {
 		// Error storing sentiment (suppressed for production)
 		return null;
 	}
@@ -111,7 +111,7 @@ export async function processSingleCampaign(
 
 		// Process sentiment for this user
 		return await storeSingleUserSentiment(campaign.template.user.id, messageText, dryRun);
-	} catch (error) {
+	} catch (_error) {
 		return null;
 	}
 }
@@ -145,7 +145,7 @@ export async function testSingleCampaignProcessing(dryRun: boolean = true): Prom
 		if (result) {
 		} else {
 		}
-	} catch (error) {}
+	} catch (_error) {}
 }
 
 /**
@@ -167,10 +167,10 @@ export async function runSafeStorageTest(): Promise<{
 				note: 'This was a dry run - no data was actually stored'
 			}
 		};
-	} catch (error) {
+	} catch (_error) {
 		return {
 			success: false,
-			message: error instanceof Error ? error.message : 'Unknown error'
+			message: _error instanceof Error ? _error.message : 'Unknown error'
 		};
 	}
 }

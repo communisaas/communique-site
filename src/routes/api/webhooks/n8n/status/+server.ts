@@ -102,7 +102,7 @@ function mapWorkflowToStatus(update: N8NStatusUpdate): {
 const activeConnections = new Map<string, Set<WebSocket>>();
 
 // Broadcast status update to connected clients
-function broadcastStatusUpdate(submissionId: string, statusUpdate: any) {
+function broadcastStatusUpdate(submissionId: string, statusUpdate: unknown) {
 	const connections = activeConnections.get(submissionId);
 	if (connections) {
 		const message = JSON.stringify(statusUpdate);
@@ -110,7 +110,7 @@ function broadcastStatusUpdate(submissionId: string, statusUpdate: any) {
 			if (ws.readyState === WebSocket.OPEN) {
 				try {
 					ws.send(message);
-				} catch (error) {
+				} catch (_error) {
 					console.error('Failed to send WebSocket message:', error);
 					connections.delete(ws);
 				}
@@ -163,7 +163,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		return json(response);
-	} catch (error) {
+	} catch (_error) {
 		console.error('N8N webhook error:', error);
 
 		const response: ApiResponse = {

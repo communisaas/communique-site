@@ -50,7 +50,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// Generate submission ID for tracking
 		const submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 
-		const response: any = {
+		const response: unknown = {
 			success: true,
 			templateId,
 			submissionId,
@@ -231,13 +231,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		return json(response);
-	} catch (error) {
+	} catch (_error) {
 		console.error('N8N processing error:', error);
 		return json(
 			{
 				success: false,
 				error: 'Processing failed',
-				details: error.message
+				details: _error.message
 			},
 			{ status: 500 }
 		);

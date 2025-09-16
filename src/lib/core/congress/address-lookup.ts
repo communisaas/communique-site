@@ -37,7 +37,7 @@ export class AddressLookupService {
 	constructor() {
 		// Use CONGRESS_API_KEY which is the valid Congress.gov API key
 		this.congressApiKey = env.CONGRESS_API_KEY || env.CWC_API_KEY || '';
-		// Only throw error if we're in production and the key is missing
+		// Only throw _error if we're in production and the key is missing
 		if (!this.congressApiKey && env.NODE_ENV === 'production') {
 			console.warn(
 				'CONGRESS_API_KEY environment variable is missing - Congress features will be disabled'
@@ -99,7 +99,7 @@ export class AddressLookupService {
 	 * Extract congressional district from Census Bureau geocoding response
 	 */
 	private extractDistrictFromCensus(
-		geographies: Record<string, any>,
+		geographies: Record<string, unknown>,
 		state: string
 	): CongressionalDistrict {
 		try {
@@ -134,7 +134,7 @@ export class AddressLookupService {
 				state: result.state,
 				district: result.district
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('ZIP district lookup failed:', error);
 			return {
 				state: state.toUpperCase(),
@@ -161,7 +161,7 @@ export class AddressLookupService {
 				`Looking for representative: ${stateAbbr}/${stateFullName} district ${districtNumber}`
 			);
 
-			const houseRep = allMembers.find((member: any) => {
+			const houseRep = allMembers.find((member: unknown) => {
 				// District is at the top level, not in terms
 				const memberDistrict = member.district;
 				// State can be full name or abbreviation in the API response
@@ -182,7 +182,7 @@ export class AddressLookupService {
 			}
 
 			return this.formatRepresentative(houseRep, 'house');
-		} catch (error) {
+		} catch (_error) {
 			console.error('Failed to get House rep:', error);
 			// Return placeholder data
 			return {
@@ -212,13 +212,13 @@ export class AddressLookupService {
 
 			// Filter for senators from the specific state
 			const senators = allMembers
-				.filter((member: any) => {
+				.filter((member: unknown) => {
 					const latestTerm = member.terms?.item?.[0] || member.terms?.[0];
 					const isSenator = latestTerm?.chamber === 'Senate' || (!member.district && latestTerm); // Senators don't have districts
 					return isSenator && (member.state === stateAbbr || member.state === stateFullName);
 				})
 				.slice(0, 2) // Should be exactly 2 senators
-				.map((senator: any) => this.formatRepresentative(senator, 'senate'));
+				.map((senator: unknown) => this.formatRepresentative(senator, 'senate'));
 
 			if (senators.length === 0) {
 				// Return placeholder senators
@@ -245,7 +245,7 @@ export class AddressLookupService {
 			}
 
 			return senators;
-		} catch (error) {
+		} catch (_error) {
 			// Return placeholder senators
 			return [
 				{
@@ -277,7 +277,7 @@ export class AddressLookupService {
 	 * Fetch all members from Congress API with pagination
 	 */
 	private async fetchAllMembers(): Promise<any[]> {
-		const allMembers: any[] = [];
+		const allMembers: unknown[] = [];
 		let offset = 0;
 		const limit = 250; // Max allowed by API
 
@@ -321,7 +321,7 @@ export class AddressLookupService {
 		return allMembers;
 	}
 
-	private formatRepresentative(member: any, chamber: 'house' | 'senate'): Representative {
+	private formatRepresentative(member: unknown, chamber: 'house' | 'senate'): Representative {
 		// Handle both direct fields and nested term data
 		const currentTerm = member.terms?.item?.[0] || member.terms?.[0] || {};
 
@@ -373,7 +373,7 @@ export class AddressLookupService {
 					errors.push(`Representative ${rep.name} is no longer serving`);
 				}
 			}
-		} catch (error) {
+		} catch (_error) {
 			errors.push(`Validation failed: ${error}`);
 		}
 

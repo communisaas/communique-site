@@ -101,7 +101,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		const success = document.execCommand('copy');
 		textArea.remove();
 		return success;
-	} catch (error) {
+	} catch (_error) {
 		return false;
 	}
 }
@@ -231,7 +231,7 @@ export async function shareData(data: {
 
 		await nav.share(data);
 		return true;
-	} catch (error) {
+	} catch (_error) {
 		// User cancelled or sharing failed
 		console.debug('Web Share cancelled or failed:', error);
 		return false;

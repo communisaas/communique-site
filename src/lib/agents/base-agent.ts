@@ -10,10 +10,10 @@
 export interface AgentDecision {
 	agentId: string;
 	agentType: AgentType;
-	decision: any;
+	decision: unknown;
 	confidence: number; // 0-1 scale
 	reasoning: string;
-	parameters: Record<string, any>;
+	parameters: Record<string, unknown>;
 	timestamp: Date;
 	safetyBounds?: {
 		min?: number;
@@ -26,7 +26,7 @@ export interface AgentConsensus {
 	decisions: AgentDecision[];
 	consensusReached: boolean;
 	consensusConfidence: number;
-	finalDecision: any;
+	finalDecision: unknown;
 	dissent?: string[];
 	timestamp: Date;
 }
@@ -45,11 +45,11 @@ export interface AgentContext {
 	actionType?: string;
 	templateId?: string;
 	timestamp?: string;
-	historicalData?: any;
+	historicalData?: unknown;
 	networkConditions?: {
 		dailyActiveUsers: number;
 		totalActions: number;
-		recentActivity: any[];
+		recentActivity: unknown[];
 	};
 	safetyRails?: Record<string, [number, number]>; // [min, max] bounds
 }
@@ -80,10 +80,10 @@ export abstract class BaseAgent {
 	}
 
 	protected createDecision(
-		decision: any,
+		decision: unknown,
 		confidence: number,
 		reasoning: string,
-		parameters: Record<string, any> = {}
+		parameters: Record<string, unknown> = {}
 	): AgentDecision {
 		return {
 			agentId: this.agentId,
@@ -150,7 +150,7 @@ export class AgentCoordinator {
 		};
 	}
 
-	private calculateConsensusDecision(decisions: AgentDecision[]): any {
+	private calculateConsensusDecision(decisions: AgentDecision[]): unknown {
 		// This is a simplified consensus mechanism
 		// In production, this would be much more sophisticated
 		// and specific to the type of decision being made
@@ -168,9 +168,9 @@ export class AgentCoordinator {
  * Memory interface for agent learning
  */
 export interface AgentMemory {
-	storeDecision(decision: AgentDecision, outcome?: any): Promise<void>;
+	storeDecision(decision: AgentDecision, outcome?: unknown): Promise<void>;
 	queryHistory(context: AgentContext, limit?: number): Promise<AgentDecision[]>;
-	learnFromOutcome(decisionId: string, outcome: any, effectiveness: number): Promise<void>;
+	learnFromOutcome(decisionId: string, outcome: unknown, effectiveness: number): Promise<void>;
 }
 
 /**
@@ -182,7 +182,7 @@ export class VectorAgentMemory implements AgentMemory {
 	private decisions: Map<string, AgentDecision> = new Map();
 	private outcomes: Map<string, any> = new Map();
 
-	async storeDecision(decision: AgentDecision, outcome?: any): Promise<void> {
+	async storeDecision(decision: AgentDecision, outcome?: unknown): Promise<void> {
 		const decisionId = `${decision.agentId}-${decision.timestamp.getTime()}`;
 		this.decisions.set(decisionId, decision);
 		if (outcome) {
@@ -193,12 +193,16 @@ export class VectorAgentMemory implements AgentMemory {
 	async queryHistory(context: AgentContext, limit: number = 10): Promise<AgentDecision[]> {
 		// Simplified - in production would use vector similarity
 		return Array.from(this.decisions.values())
-			.filter((d) => this.isRelevantContext(d, context))
+			.filter((d) => this.isRelevantContext(d, _context))
 			.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 			.slice(0, limit);
 	}
 
-	async learnFromOutcome(decisionId: string, outcome: any, effectiveness: number): Promise<void> {
+	async learnFromOutcome(
+		decisionId: string,
+		outcome: unknown,
+		effectiveness: number
+	): Promise<void> {
 		this.outcomes.set(decisionId, { outcome, effectiveness });
 	}
 

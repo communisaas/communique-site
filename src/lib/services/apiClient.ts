@@ -22,7 +22,7 @@ export const templatesApi = {
 		return api.get('/templates');
 	},
 
-	async create<T = any>(template: any): Promise<ApiResponse<T>> {
+	async create<T = any>(template: unknown): Promise<ApiResponse<T>> {
 		const res = await api.post('/templates', template);
 		if (
 			res.success &&
@@ -35,7 +35,7 @@ export const templatesApi = {
 		return res as ApiResponse<T>;
 	},
 
-	async update<T = any>(id: string, template: any): Promise<ApiResponse<T>> {
+	async update<T = any>(id: string, template: unknown): Promise<ApiResponse<T>> {
 		const res = await api.put(`/templates/${id}`, template);
 		if (
 			res.success &&
@@ -55,7 +55,7 @@ export const templatesApi = {
 
 // Analytics API wrapper
 export const analyticsApi = {
-	async track<T = any>(event: string, data?: any): Promise<ApiResponse<T>> {
+	async track<T = any>(event: string, data?: unknown): Promise<ApiResponse<T>> {
 		return api.post('/civic/analytics', { event, ...data }, { skipErrorLogging: true });
 	}
 };

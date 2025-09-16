@@ -70,9 +70,9 @@ export type ViolationType =
 export interface ModerationResult {
 	status: 'approved' | 'rejected' | 'pending';
 	stages: {
-		correction?: any;
-		moderation?: any;
-		reputation?: any;
+		correction?: unknown;
+		moderation?: unknown;
+		reputation?: unknown;
 	};
 	message: string;
 }
@@ -91,7 +91,7 @@ export interface VerificationEvent {
 	timestamp: Date;
 	stage: string;
 	action: string;
-	details?: Record<string, any>;
+	details?: Record<string, unknown>;
 	agent?: string; // Which agent performed the action
 }
 

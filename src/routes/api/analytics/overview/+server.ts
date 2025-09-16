@@ -74,12 +74,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const totalTemplates = userTemplates.length;
 		const activeCampaigns = userTemplates.filter((t) => {
 			const campaigns = (t as any).template_campaign;
-			return campaigns?.some((c: any) => c.status === 'delivered' || c.status === 'pending');
+			return campaigns?.some((c: unknown) => c.status === 'delivered' || c.status === 'pending');
 		}).length;
 
 		const totalActivations = userTemplates.reduce((sum, template) => {
 			const campaigns = (template as any).template_campaign;
-			return sum + (campaigns?.filter((c: any) => c.status === 'delivered').length || 0);
+			return sum + (campaigns?.filter((c: unknown) => c.status === 'delivered').length || 0);
 		}, 0);
 
 		// Calculate analytics metrics
@@ -93,14 +93,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const templateViews = userTemplates.reduce(
 			(sum, template) =>
 				sum +
-				template.analytics_events.filter((e: any) => e.event_name === 'template_viewed').length,
+				template.analytics_events.filter((e: unknown) => e.event_name === 'template_viewed').length,
 			0
 		);
 
 		const templateShares = userTemplates.reduce(
 			(sum, template) =>
 				sum +
-				template.analytics_events.filter((e: any) => e.event_name === 'template_shared').length,
+				template.analytics_events.filter((e: unknown) => e.event_name === 'template_shared').length,
 			0
 		);
 
@@ -141,7 +141,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						has_cascade_data: false
 					});
 				}
-			} catch (error) {
+			} catch (_error) {
 				console.warn(`Could not analyze template ${template.id}:`, error);
 				topPerformers.push({
 					id: template.id,
@@ -216,14 +216,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			timeframe,
 			generated_at: new Date().toISOString()
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Overview analysis failed:', error);
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to generate campaign overview',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

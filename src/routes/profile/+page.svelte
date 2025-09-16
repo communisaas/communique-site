@@ -305,38 +305,38 @@
 						<!-- Basic Information -->
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div>
-								<label class="block text-sm font-medium text-slate-700">Name</label>
-								<div class="mt-1 text-sm text-slate-900">
+								<dt class="block text-sm font-medium text-slate-700">Name</dt>
+								<dd class="mt-1 text-sm text-slate-900">
 									{userDetails?.name || user.name || 'Not provided'}
-								</div>
+								</dd>
 							</div>
 							<div>
-								<label class="block text-sm font-medium text-slate-700">Email</label>
-								<div class="mt-1 text-sm text-slate-900">{userDetails?.email || user.email}</div>
+								<dt class="block text-sm font-medium text-slate-700">Email</dt>
+								<dd class="mt-1 text-sm text-slate-900">{userDetails?.email || user.email}</dd>
 							</div>
 						</div>
 
 						<!-- Profile Details -->
 						<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div>
-								<label class="block text-sm font-medium text-slate-700">Role</label>
-								<div class="mt-1 text-sm text-slate-900">
+								<dt class="block text-sm font-medium text-slate-700">Role</dt>
+								<dd class="mt-1 text-sm text-slate-900">
 									{userDetails?.profile?.role || 'Not provided'}
-								</div>
+								</dd>
 							</div>
 							<div>
-								<label class="block text-sm font-medium text-slate-700">Organization</label>
-								<div class="mt-1 text-sm text-slate-900">
+								<dt class="block text-sm font-medium text-slate-700">Organization</dt>
+								<dd class="mt-1 text-sm text-slate-900">
 									{userDetails?.profile?.organization || 'Not provided'}
-								</div>
+								</dd>
 							</div>
 						</div>
 
 						<div>
-							<label class="block text-sm font-medium text-slate-700">Connection to Issues</label>
-							<div class="mt-1 text-sm text-slate-900">
+							<dt class="block text-sm font-medium text-slate-700">Connection to Issues</dt>
+							<dd class="mt-1 text-sm text-slate-900">
 								{userDetails?.profile?.connection || 'Not provided'}
-							</div>
+							</dd>
 							{#if userDetails?.profile?.connection_details}
 								<div class="mt-2 text-sm text-slate-600">
 									{userDetails.profile.connection_details}
@@ -452,9 +452,11 @@
 					<h3 class="mb-4 text-lg font-semibold text-slate-900">Privacy Settings</h3>
 					<div class="space-y-4">
 						<div>
-							<label class="mb-2 block text-sm font-medium text-slate-700">Profile Visibility</label
+							<label for="profile-visibility" class="mb-2 block text-sm font-medium text-slate-700"
+								>Profile Visibility</label
 							>
 							<select
+								id="profile-visibility"
 								class="block w-full rounded-md border-slate-300 shadow-sm focus:border-participation-primary-500 focus:ring-participation-primary-500 sm:text-sm"
 							>
 								<option value="private" selected={userDetails?.profile?.visibility === 'private'}

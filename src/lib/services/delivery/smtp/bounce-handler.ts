@@ -3,7 +3,7 @@
  */
 
 import type { ParsedIncomingMessage } from '@/types';
-import { getConfig } from '@/utils/config';
+import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class BounceHandler {
 	private config = getConfig();

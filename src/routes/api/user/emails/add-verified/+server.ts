@@ -110,12 +110,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				: '/settings/emails?success=email_added');
 
 		throw redirect(302, destination);
-	} catch (error) {
+	} catch (_error) {
 		console.error('Email verification error:', error);
 
 		// If it's already a redirect, pass it through
 		if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
-			throw error;
+			throw _error;
 		}
 
 		// Otherwise redirect to error page

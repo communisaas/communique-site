@@ -7,8 +7,8 @@
  * Vision: "Resilient abundance through intelligence within auditable bounds"
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent.js';
-import { prisma } from '$lib/core/db.js';
+import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { prisma } from '$lib/core/db';
 
 export interface RewardParameters {
 	baseRewardUSD: number;
@@ -93,13 +93,13 @@ export class SupplyAgent extends BaseAgent {
 				this.generateReasoning(rewardParams, networkData, context),
 				{ actionType: context.actionType, networkActivity: networkData.dailyActiveUsers }
 			);
-		} catch (error) {
+		} catch (_error) {
 			console.error('SupplyAgent decision error:', error);
 			// Fallback to conservative values
 			return this.createDecision(
 				{ baseRewardUSD: 0.1, finalRewardWei: '100000000000000000' }, // 0.1 ETH as fallback
 				0.3,
-				`Error in supply calculation, using conservative fallback: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				`Error in supply calculation, using conservative fallback: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
 				{ error: true }
 			);
 		}
@@ -249,7 +249,7 @@ export class SupplyAgent extends BaseAgent {
 
 	private calculateConfidence(
 		networkData: { dailyActiveUsers: number },
-		userRep: any,
+		userRep: unknown,
 		context: AgentContext
 	): number {
 		let confidence = 0.8; // Base confidence

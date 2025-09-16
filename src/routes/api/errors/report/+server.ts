@@ -12,7 +12,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const errorReport: ErrorReport = {
-			message: error.message || 'Unknown error',
+			message: _error.message || 'Unknown error',
 			stack: error.stack,
 			context: context || 'unknown',
 			timestamp: error.timestamp || Date.now(),

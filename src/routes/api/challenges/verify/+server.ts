@@ -179,13 +179,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Challenge verification error:', error);
 		return json(
 			{
 				success: false,
 				error: 'Challenge verification failed',
-				details: error.message
+				details: _error.message
 			},
 			{ status: 500 }
 		);

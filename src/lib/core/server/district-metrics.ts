@@ -70,7 +70,7 @@ export async function calculateUserGeographicSpread(
 			states_covered: uniqueStates.size,
 			total_states: 50
 		};
-	} catch (error) {
+	} catch (_error) {
 		return {
 			districts_covered: 0,
 			total_districts: 435,
@@ -110,7 +110,7 @@ export async function updateTemplateDistrictMetrics(templateId: string): Promise
 			where: { id: templateId },
 			data: { metrics: updatedMetrics }
 		});
-	} catch (error) {}
+	} catch (_error) {}
 }
 
 // Export alias for backwards compatibility
@@ -133,5 +133,5 @@ export async function updateAllCongressionalTemplateMetrics(): Promise<void> {
 		for (const template of templates) {
 			await updateTemplateDistrictMetrics(template.id);
 		}
-	} catch (error) {}
+	} catch (_error) {}
 }

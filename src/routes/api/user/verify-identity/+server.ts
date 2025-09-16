@@ -15,7 +15,7 @@ class CommuniqueConfigStorage implements IConfigStorage {
 		};
 	}
 
-	async setConfig(configId: string, config: any) {
+	async setConfig(configId: string, config: unknown) {
 		// We use static configuration, so this is a no-op
 		// In a real implementation, you might store this in a database
 		return true;
@@ -117,7 +117,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ status: 400 }
 			);
 		}
-	} catch (error: any) {
+	} catch (error: unknown) {
 		if (error.name === 'ConfigMismatchError') {
 			console.error('Self.xyz configuration mismatch:', error.issues);
 			return json(
@@ -136,7 +136,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{
 				status: 'error',
 				result: false,
-				message: error instanceof Error ? error.message : 'Unknown verification error'
+				message: _error instanceof Error ? _error.message : 'Unknown verification error'
 			},
 			{ status: 500 }
 		);

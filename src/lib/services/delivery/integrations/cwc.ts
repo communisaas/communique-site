@@ -4,7 +4,7 @@
 
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { CWCSubmissionData, CWCSubmissionResult } from '@/types';
-import { getConfig } from '@/utils/config';
+import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class CWCClient {
 	private client: AxiosInstance;
@@ -74,11 +74,11 @@ export class CWCClient {
 				receiptHash: response.data.receipt_hash,
 				timestamp: new Date()
 			};
-		} catch (error) {
-			if (error instanceof IntegrationError) {
+		} catch (_error) {
+			if (_error instanceof IntegrationError) {
 				return {
 					success: false,
-					error: error.message,
+					error: _error.message,
 					timestamp: new Date()
 				};
 			}
@@ -86,7 +86,7 @@ export class CWCClient {
 			console.error('[CWC] Unexpected error:', error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: _error instanceof Error ? _error.message : 'Unknown error',
 				timestamp: new Date()
 			};
 		}
@@ -110,11 +110,11 @@ export class CWCClient {
 				status: this.mapStatus(response.data.status),
 				details: response.data
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[CWC] Failed to check status for ${submissionId}:`, error);
 			return {
 				status: 'failed',
-				details: { error: error instanceof Error ? error.message : 'Unknown error' }
+				details: { error: _error instanceof Error ? _error.message : 'Unknown error' }
 			};
 		}
 	}
@@ -142,7 +142,7 @@ export class CWCClient {
 				representative: response.data.representative,
 				officeCode: response.data.office_code
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[CWC] Failed to validate district ${state}-${district}:`, error);
 			return { valid: false };
 		}
@@ -172,7 +172,7 @@ export class CWCClient {
 				name: office.representative_name,
 				type: office.chamber === 'senate' ? 'senate' : 'house'
 			}));
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[CWC] Failed to get offices for ${state}:`, error);
 			return [];
 		}
@@ -321,7 +321,7 @@ export class CWCClient {
 			return 'No response from CWC API';
 		}
 
-		return error.message || 'Unknown error';
+		return _error.message || 'Unknown error';
 	}
 }
 

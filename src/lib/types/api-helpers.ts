@@ -20,8 +20,8 @@ export interface ApiLocals {
 		is_verified: boolean;
 		verification_method: string | null;
 		verified_at: Date | null;
-		coordinates?: any;
-		preferences?: any;
+		coordinates?: unknown;
+		preferences?: unknown;
 		phone_verified: boolean;
 		email_verified: boolean;
 		last_active: Date | null;

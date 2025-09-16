@@ -16,8 +16,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ success: false, error: 'Batch too large (max 50 errors)' }, { status: 400 });
 		}
 
-		const processedErrors: ErrorReport[] = errors.map((error: any) => ({
-			message: error.message || 'Unknown error',
+		const processedErrors: ErrorReport[] = errors.map((error: unknown) => ({
+			message: _error.message || 'Unknown error',
 			stack: error.stack,
 			context: error.context || 'unknown',
 			timestamp: error.timestamp || Date.now(),

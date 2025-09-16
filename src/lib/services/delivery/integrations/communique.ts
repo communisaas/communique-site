@@ -10,7 +10,7 @@ import type {
 	DeliveryNotification,
 	APIResponse
 } from '@/types';
-import { getConfig } from '@/utils/config';
+import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class CommuniqueClient {
 	private client: AxiosInstance;
@@ -56,7 +56,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[Communiqué] Failed to resolve user by email ${email}:`, error);
 			return null;
 		}
@@ -76,7 +76,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[Communiqué] Failed to fetch template ${slug}:`, error);
 			return null;
 		}
@@ -94,7 +94,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[Communiqué] Failed to fetch template ${id}:`, error);
 			return null;
 		}
@@ -109,7 +109,7 @@ export class CommuniqueClient {
 			console.log(
 				`[Communiqué] Delivery notification sent for template ${notification.templateId}`
 			);
-		} catch (error) {
+		} catch (_error) {
 			console.error('[Communiqué] Failed to send delivery notification:', error);
 			// Don't throw - this is a best-effort notification
 		}
@@ -153,7 +153,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[Communiqué] Failed to get district for user ${userId}:`, error);
 			return null;
 		}
@@ -178,7 +178,7 @@ export class CommuniqueClient {
 			);
 
 			return response.data.success && response.data.data?.verified === true;
-		} catch (error) {
+		} catch (_error) {
 			console.error('[Communiqué] Failed to verify secondary email:', error);
 			return false;
 		}
@@ -199,7 +199,7 @@ export class CommuniqueClient {
 				timestamp: new Date().toISOString(),
 				metadata
 			});
-		} catch (error) {
+		} catch (_error) {
 			console.error('[Communiqué] Failed to record template usage:', error);
 			// Don't throw - this is analytics, not critical
 		}
@@ -236,7 +236,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[Communiqué] Failed to get stats for template ${templateId}:`, error);
 			return null;
 		}
@@ -249,7 +249,7 @@ export class CommuniqueClient {
 		try {
 			const response = await this.client.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch (error) {
+		} catch (_error) {
 			console.error('[Communiqué] Health check failed:', error);
 			return false;
 		}
@@ -264,7 +264,7 @@ export class CommuniqueClient {
 			const apiResponse = data as APIResponse;
 
 			if (apiResponse?.error?.message) {
-				return apiResponse.error.message;
+				return apiResponse._error.message;
 			}
 
 			return (
@@ -278,6 +278,6 @@ export class CommuniqueClient {
 			return 'No response from Communiqué API';
 		}
 
-		return error.message || 'Unknown error';
+		return _error.message || 'Unknown error';
 	}
 }

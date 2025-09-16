@@ -77,7 +77,7 @@ export function checkRateLimit(
  */
 export function validateAndSanitizeInput(
 	input: unknown,
-	schema: Record<string, any>
+	schema: Record<string, unknown>
 ): {
 	valid: boolean;
 	sanitized?: Record<string, unknown>;
@@ -340,5 +340,5 @@ export async function logSecurityEvent(
 		// In production, log to proper security monitoring system
 		// Could store in database for analysis
 		// await db.security_log.create({ ... });
-	} catch (error) {}
+	} catch (_error) {}
 }

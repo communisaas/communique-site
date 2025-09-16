@@ -24,7 +24,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 		await forwardToExternalAnalytics(enrichedEvent);
 
 		return json({ success: true });
-	} catch (error) {
+	} catch (_error) {
 		return json({ error: 'Failed to track event' }, { status: 500 });
 	}
 };
@@ -69,7 +69,7 @@ async function storeAnalyticsEvent(event: EnrichedAnalyticsEvent) {
 				});
 			}
 		}
-	} catch (error) {}
+	} catch (_error) {}
 }
 
 async function forwardToExternalAnalytics(event: EnrichedAnalyticsEvent) {

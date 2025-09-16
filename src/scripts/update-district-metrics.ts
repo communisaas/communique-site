@@ -14,7 +14,7 @@ async function main() {
 	try {
 		await updateAllCongressionalTemplateMetrics();
 		process.exit(0);
-	} catch (error) {
+	} catch (_error) {
 		process.exit(1);
 	}
 }

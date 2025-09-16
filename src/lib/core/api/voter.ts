@@ -16,7 +16,7 @@ export {
 export interface VOTERAction {
 	actionType: string;
 	userAddress: string;
-	actionData: Record<string, any>;
+	actionData: Record<string, unknown>;
 	signature?: string;
 }
 
@@ -42,7 +42,7 @@ export interface VOTERReputation {
 	discourseScore: number;
 	totalScore: number;
 	tier: 'trusted' | 'established' | 'emerging' | 'novice' | 'untrusted';
-	recentActions: any[];
+	recentActions: unknown[];
 }
 
 export interface VOTERTokenStats {
@@ -99,11 +99,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER API] Process action error:', error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Network error'
+				error: _error instanceof Error ? _error.message : 'Network error'
 			};
 		}
 	}
@@ -133,11 +133,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER API] Get reputation error:', error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Network error'
+				error: _error instanceof Error ? _error.message : 'Network error'
 			};
 		}
 	}
@@ -167,11 +167,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER API] Get token stats error:', error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Network error'
+				error: _error instanceof Error ? _error.message : 'Network error'
 			};
 		}
 	}
@@ -214,11 +214,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER API] Certify message error:', error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Network error'
+				error: _error instanceof Error ? _error.message : 'Network error'
 			};
 		}
 	}

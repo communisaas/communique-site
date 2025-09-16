@@ -66,15 +66,15 @@ class ConfigManager {
 		if (!this.envConfig) {
 			try {
 				this.envConfig = EnvSchema.parse(process.env);
-			} catch (error) {
-				if (error instanceof z.ZodError) {
+			} catch (_error) {
+				if (_error instanceof z.ZodError) {
 					console.error('Environment configuration error:');
-					error.errors.forEach((err) => {
+					_error.errors.forEach((err) => {
 						console.error(`  - ${err.path.join('.')}: ${err.message}`);
 					});
 					throw new Error('Invalid environment configuration');
 				}
-				throw error;
+				throw _error;
 			}
 		}
 		return this.envConfig;

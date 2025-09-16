@@ -4,7 +4,7 @@
 
 import axios, { type AxiosInstance } from 'axios';
 import type { VOTERCertificationRequest, VOTERCertificationResult, VOTERActionType } from '@/types';
-import { getConfig } from '@/utils/config';
+import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class VOTERClient {
 	private client: AxiosInstance | null = null;
@@ -78,7 +78,7 @@ export class VOTERClient {
 				actionType: response.data.action_type,
 				timestamp: new Date(response.data.timestamp)
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER] Certification failed:', error);
 			return null;
 		}
@@ -138,7 +138,7 @@ export class VOTERClient {
 				diversityScore: response.data.diversity_score,
 				recommendation: response.data.recommendation
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER] Advanced consensus failed:', error);
 			return null;
 		}
@@ -181,7 +181,7 @@ export class VOTERClient {
 				tierChange: response.data.tier_change,
 				explanation: response.data.explanation
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER] Reputation calculation failed:', error);
 			return null;
 		}
@@ -217,7 +217,7 @@ export class VOTERClient {
 				reputation: response.data.services.reputation.available,
 				certification: response.data.services.certification.available
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER] Failed to get services status:', error);
 			return {
 				consensus: false,
@@ -238,7 +238,7 @@ export class VOTERClient {
 		try {
 			const response = await this.client!.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch (error) {
+		} catch (_error) {
 			console.error('[VOTER] Health check failed:', error);
 			return false;
 		}

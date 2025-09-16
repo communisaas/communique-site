@@ -70,8 +70,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				impact: impactDecision
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Reward calculation error:', error);
-		return json({ error: 'Reward calculation failed', details: error.message }, { status: 500 });
+		return json({ error: 'Reward calculation failed', details: _error.message }, { status: 500 });
 	}
 };

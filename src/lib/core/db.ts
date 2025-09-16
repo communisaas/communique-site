@@ -17,4 +17,7 @@ export const db: PrismaClient =
 		log: ['query']
 	});
 
+// Export prisma as alias for backwards compatibility
+export const prisma = db;
+
 if (env.NODE_ENV !== 'production') globalForPrisma.prisma = db;

@@ -10,7 +10,7 @@ import type {
 	ConsensusResult,
 	ReputationUpdate
 } from '@/types';
-import { getConfig } from '@/utils/config';
+import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class N8NClient {
 	private client: AxiosInstance;
@@ -56,13 +56,13 @@ export class N8NClient {
 				success: true,
 				data: response.data.data
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('[N8N] Template moderation workflow failed:', error);
 			return {
 				workflowId: 'template-moderation',
 				executionId: 'error',
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			};
 		}
 	}
@@ -82,7 +82,7 @@ export class N8NClient {
 			});
 
 			return response.data;
-		} catch (error) {
+		} catch (_error) {
 			console.error('[N8N] Verification workflow failed:', error);
 			return {
 				verified: false,
@@ -110,7 +110,7 @@ export class N8NClient {
 			});
 
 			return response.data;
-		} catch (error) {
+		} catch (_error) {
 			console.error('[N8N] Consensus workflow failed:', error);
 			return {
 				approved: false,
@@ -141,7 +141,7 @@ export class N8NClient {
 			});
 
 			return response.data;
-		} catch (error) {
+		} catch (_error) {
 			console.error('[N8N] Reputation workflow failed:', error);
 			return {
 				userId,
@@ -182,13 +182,13 @@ export class N8NClient {
 				success: response.data.status === 'success',
 				data: response.data.data
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[N8N] Workflow ${workflowName} failed:`, error);
 			return {
 				workflowId: workflowName,
 				executionId: 'error',
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			};
 		}
 	}
@@ -215,7 +215,7 @@ export class N8NClient {
 				status: response.data.status === 'success' ? 'success' : 'error',
 				data: response.data.data
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[N8N] Failed to check execution ${executionId}:`, error);
 			return { status: 'unknown' };
 		}
@@ -264,7 +264,7 @@ export class N8NClient {
 		try {
 			const response = await this.client.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch (error) {
+		} catch (_error) {
 			console.error('[N8N] Health check failed:', error);
 			return false;
 		}
@@ -292,7 +292,7 @@ export class N8NClient {
 			}>(`/metrics${workflowId ? `?workflow=${workflowId}` : ''}`);
 
 			return response.data.metrics;
-		} catch (error) {
+		} catch (_error) {
 			console.error('[N8N] Failed to get workflow metrics:', error);
 			return {
 				total_executions: 0,
@@ -344,7 +344,7 @@ export class N8NClient {
 				avg_response_time: metrics.average_execution_time,
 				recommendations
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error(`[N8N] Failed to monitor workflow ${workflowName}:`, error);
 			return {
 				status: 'failing',
@@ -389,7 +389,7 @@ export class N8NClient {
 					webhook: webhookNode?.webhookId
 				};
 			});
-		} catch (error) {
+		} catch (_error) {
 			console.error('[N8N] Failed to list workflows:', error);
 			return [];
 		}

@@ -21,7 +21,7 @@ import { CommuniqueClient } from '@/integrations/communique';
 import { VOTERClient } from '@/integrations/voter';
 import { N8NClient } from '@/integrations/n8n';
 import { BounceHandler } from './bounce-handler';
-import { getConfig } from '@/utils/config';
+import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class DeliveryPlatformSMTP {
 	private server: SMTPServer;
@@ -103,7 +103,7 @@ export class DeliveryPlatformSMTP {
 		try {
 			await this.processIncomingMail(stream, session);
 			callback();
-		} catch (error) {
+		} catch (_error) {
 			console.error('Mail handling error:', error);
 			callback(new Error('Message processing failed'));
 		}
@@ -161,7 +161,7 @@ export class DeliveryPlatformSMTP {
 
 			// Process certified delivery
 			await this.processCertifiedDelivery(parsedMessage, userResult.user, templateData);
-		} catch (error) {
+		} catch (_error) {
 			console.error('Error handling incoming mail:', error);
 			// Don't throw - we don't want to reject the SMTP connection
 			// Log the error and continue
@@ -272,7 +272,7 @@ export class DeliveryPlatformSMTP {
 				cwcResult: result,
 				timestamp: new Date()
 			});
-		} catch (error) {
+		} catch (_error) {
 			console.error('Error processing certified delivery:', error);
 
 			// Notify of the failure
@@ -280,7 +280,7 @@ export class DeliveryPlatformSMTP {
 				templateId: templateData.id,
 				userId: userProfile.id,
 				deliveryStatus: 'failed',
-				error: error instanceof Error ? error.message : 'Unknown error',
+				error: _error instanceof Error ? _error.message : 'Unknown error',
 				timestamp: new Date()
 			});
 		}

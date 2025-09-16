@@ -39,7 +39,7 @@ interface CWCSubmissionResult {
 	office: string;
 	timestamp: string;
 	error?: string;
-	cwcResponse?: any;
+	cwcResponse?: unknown;
 }
 
 export class CWCClient {
@@ -131,14 +131,14 @@ export class CWCClient {
 			});
 
 			return result;
-		} catch (error) {
+		} catch (_error) {
 			console.error('Senate CWC submission error:', error);
 			return {
 				success: false,
 				status: 'failed',
 				office: senator.name,
 				timestamp: new Date().toISOString(),
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			};
 		}
 	}
@@ -200,14 +200,14 @@ export class CWCClient {
 
 				// Add delay between submissions to avoid rate limiting
 				await this.delay(1000);
-			} catch (error) {
+			} catch (_error) {
 				console.error(`Failed to submit to ${rep.name}:`, error);
 				results.push({
 					success: false,
 					status: 'failed',
 					office: rep.name,
 					timestamp: new Date().toISOString(),
-					error: error instanceof Error ? error.message : 'Unknown error'
+					error: _error instanceof Error ? _error.message : 'Unknown error'
 				});
 			}
 		}
@@ -243,7 +243,7 @@ export class CWCClient {
 
 			// Try to parse JSON response
 			const contentType = response.headers.get('content-type');
-			let cwcResponse: any;
+			let cwcResponse: unknown;
 
 			if (contentType?.includes('application/json')) {
 				cwcResponse = await response.json();
@@ -263,7 +263,7 @@ export class CWCClient {
 				messageId,
 				cwcResponse
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('Failed to parse CWC response:', error);
 			return {
 				...baseResult,
@@ -299,7 +299,7 @@ export class CWCClient {
 	 * Get list of active Senate offices
 	 * This should be called regularly to ensure we only send to participating offices
 	 */
-	async getActiveOffices(): Promise<{ success: boolean; offices?: any[]; error?: string }> {
+	async getActiveOffices(): Promise<{ success: boolean; offices?: unknown[]; error?: string }> {
 		if (!this.apiKey) {
 			return { success: false, error: 'No API key configured' };
 		}
@@ -325,10 +325,10 @@ export class CWCClient {
 				success: true,
 				offices: Array.isArray(offices) ? offices : [offices]
 			};
-		} catch (error) {
+		} catch (_error) {
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Failed to retrieve offices'
+				error: _error instanceof Error ? _error.message : 'Failed to retrieve offices'
 			};
 		}
 	}
@@ -348,10 +348,10 @@ export class CWCClient {
 				connected: result.success,
 				error: result.error
 			};
-		} catch (error) {
+		} catch (_error) {
 			return {
 				connected: false,
-				error: error instanceof Error ? error.message : 'Connection failed'
+				error: _error instanceof Error ? _error.message : 'Connection failed'
 			};
 		}
 	}

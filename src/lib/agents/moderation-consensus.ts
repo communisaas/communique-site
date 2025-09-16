@@ -8,7 +8,7 @@
  */
 
 import { db } from '$lib/core/db';
-import { N8NClient } from '$lib/services/delivery/integrations/n8n';
+// import { N8NClient } from '$lib/services/delivery/integrations/n8n';
 import type { Template, TemplateVerification } from '@prisma/client';
 
 interface AgentVote {
@@ -35,7 +35,7 @@ type ViolationType =
 
 export class ModerationConsensus {
 	// N8N client for workflow orchestration
-	private n8nClient: N8NClient;
+	// private n8nClient: N8NClient;
 
 	// Agent configuration with weights
 	private agents = {
@@ -65,7 +65,7 @@ export class ModerationConsensus {
 	private readonly APPROVAL_THRESHOLD = 0.3; // Low threshold for demo (only blocking severe violations)
 
 	constructor() {
-		this.n8nClient = new N8NClient();
+		// this.n8nClient = new N8NClient();
 	}
 
 	/**
@@ -164,7 +164,7 @@ export class ModerationConsensus {
 				reasons: result.reasons || [],
 				violations: result.violations || []
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('OpenAI N8N workflow error:', error);
 			// Default to approval on error (fail open)
 			return {
@@ -222,7 +222,7 @@ export class ModerationConsensus {
 				reasons: result.reasons || [],
 				violations: result.violations || []
 			};
-		} catch (error) {
+		} catch (_error) {
 			console.error('Gemini N8N workflow error:', error);
 			// Default to approval on error (fail open)
 			return {

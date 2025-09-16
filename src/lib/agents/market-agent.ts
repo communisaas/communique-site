@@ -85,14 +85,14 @@ export class MarketAgent extends BaseAgent {
 		};
 	}
 
-	async validate(input: any): Promise<boolean> {
+	async validate(input: unknown): Promise<boolean> {
 		return input?.baseReward !== undefined && input?.actionType;
 	}
 
 	/**
 	 * Analyze market conditions to determine signal
 	 */
-	private analyzeMarketSignal(conditions: any): 'bullish' | 'neutral' | 'bearish' {
+	private analyzeMarketSignal(conditions: unknown): 'bullish' | 'neutral' | 'bearish' {
 		const { tokenPrice = 0, volume24h = 0, volatility = 0 } = conditions;
 
 		// Simple heuristic for market signal
@@ -125,7 +125,7 @@ export class MarketAgent extends BaseAgent {
 	/**
 	 * Calculate participation-based multiplier
 	 */
-	private calculateParticipationMultiplier(trends: any): number {
+	private calculateParticipationMultiplier(trends: unknown): number {
 		const { dailyActive = 0, weeklyActive = 0, growthRate = 0 } = trends;
 
 		// Growth phase: increase rewards
@@ -143,7 +143,7 @@ export class MarketAgent extends BaseAgent {
 	 */
 	private calculateIncentiveAdjustments(
 		actionType: string,
-		trends: any,
+		trends: unknown,
 		conditions: any
 	): MarketDecision['incentiveAdjustments'] {
 		const adjustments = {

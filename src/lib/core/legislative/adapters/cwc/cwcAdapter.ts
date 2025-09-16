@@ -139,10 +139,10 @@ export class CWCAdapter extends LegislativeAdapter {
 					recipient_office: cwcInput.recipientOffice
 				}
 			};
-		} catch (error) {
+		} catch (_error) {
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error occurred'
+				error: _error instanceof Error ? _error.message : 'Unknown error occurred'
 			};
 		}
 	}

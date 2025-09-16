@@ -178,7 +178,7 @@ export async function getRecentTemplateMessages(limit: number = 10): Promise<
 				created_at: campaign.created_at
 			}))
 			.filter((msg) => msg.text.length > 0);
-	} catch (error) {
+	} catch (_error) {
 		return [];
 	}
 }

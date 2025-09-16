@@ -85,7 +85,7 @@ export async function POST({ request }) {
 		}
 
 		// Transform corrections into quick fixes
-		const quickFixes: QuickFix[] = corrections.changes.map((change: any) => {
+		const quickFixes: QuickFix[] = corrections.changes.map((change: unknown) => {
 			let fixMessage = '';
 			let reason = change.reason;
 
@@ -151,7 +151,7 @@ export async function POST({ request }) {
 		};
 
 		return json(response);
-	} catch (error) {
+	} catch (_error) {
 		console.error('Template analysis error:', error);
 
 		const response: ApiResponse = {

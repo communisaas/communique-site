@@ -58,11 +58,11 @@ export async function POST() {
 			message: `Created ${results.length} test sentiment data points`,
 			data: results
 		});
-	} catch (error) {
+	} catch (_error) {
 		return json(
 			{
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

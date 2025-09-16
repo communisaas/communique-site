@@ -87,14 +87,14 @@ export const GET: RequestHandler = async ({ params }) => {
 			})),
 			recommendations: generateRecommendations(metrics, viralCoefficient)
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Cascade analysis failed:', error);
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to analyze template cascade',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -116,7 +116,7 @@ function getGeographicReach(jumpRate: number): string {
 	return 'local';
 }
 
-function generateRecommendations(metrics: any, viralCoefficient: number): string[] {
+function generateRecommendations(metrics: unknown, viralCoefficient: number): string[] {
 	const recommendations = [];
 
 	if (viralCoefficient < 1.0) {

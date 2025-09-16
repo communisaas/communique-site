@@ -49,7 +49,7 @@ export class AgentCoordinator {
 	async processCivicAction(params: {
 		userAddress: string;
 		actionType: 'cwc_message' | 'direct_action' | 'challenge_market';
-		template: any;
+		template: unknown;
 		recipients: string[];
 	}) {
 		// Run verification

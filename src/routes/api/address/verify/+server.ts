@@ -92,9 +92,9 @@ export async function POST({ request }) {
 					bioguideId: senator.bioguideId
 				}))
 			];
-		} catch (error) {
+		} catch (_error) {
 			console.error('Failed to get real representatives, using placeholders:', error);
-			console.error('Error details:', error instanceof Error ? error.stack : error);
+			console.error('Error details:', _error instanceof Error ? error.stack : error);
 			// Fallback to placeholders if Congress API fails
 			representatives = createRepresentativesFromDistrict(district, state);
 		}
@@ -108,7 +108,7 @@ export async function POST({ request }) {
 			district,
 			message: 'Address verified successfully'
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Address verification error:', error);
 		return json(
 			{
@@ -123,7 +123,7 @@ export async function POST({ request }) {
 /**
  * Extract congressional district from Census Bureau geocoding response
  */
-function extractCongressionalDistrictFromCensus(geographies: any, state: string): string {
+function extractCongressionalDistrictFromCensus(geographies: unknown, state: string): string {
 	try {
 		// Look for 119th Congressional Districts
 		const congressionalDistricts = geographies['119th Congressional Districts'];
@@ -138,7 +138,7 @@ function extractCongressionalDistrictFromCensus(geographies: any, state: string)
 
 		// Fallback to at-large
 		return `${state.toUpperCase()}-AL`;
-	} catch (error) {
+	} catch (_error) {
 		return `${state.toUpperCase()}-01`;
 	}
 }

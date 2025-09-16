@@ -10,7 +10,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Validate required fields
 		if (!street || !city || !state || !zip) {
-			throw error(400, 'Missing required address fields: street, city, state, zip');
+			throw _error(400, 'Missing required address fields: street, city, state, zip');
 		}
 
 		// Clean and validate inputs
@@ -23,12 +23,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Validate state code (should be 2 letters)
 		if (!/^[A-Z]{2}$/.test(address.state)) {
-			throw error(400, 'State must be a valid 2-letter state code (e.g., CA, NY, TX)');
+			throw _error(400, 'State must be a valid 2-letter state code (e.g., CA, NY, TX)');
 		}
 
 		// Validate ZIP code (should be 5 or 9 digits)
 		if (!/^\d{5}(-?\d{4})?$/.test(address.zip)) {
-			throw error(400, 'ZIP code must be in format 12345 or 12345-6789');
+			throw _error(400, 'ZIP code must be in format 12345 or 12345-6789');
 		}
 
 		// Perform the lookup
@@ -66,14 +66,14 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (err instanceof Error) {
 			if (err.message.includes('Congress API error')) {
-				throw error(503, 'Congressional data service is temporarily unavailable');
+				throw _error(503, 'Congressional data service is temporarily unavailable');
 			}
 			if (err.message.includes('Google Civic API error')) {
-				throw error(503, 'Address validation service is temporarily unavailable');
+				throw _error(503, 'Address validation service is temporarily unavailable');
 			}
 		}
 
-		throw error(500, 'Failed to lookup representatives for this address');
+		throw _error(500, 'Failed to lookup representatives for this address');
 	}
 };
 
@@ -84,11 +84,11 @@ export const GET: RequestHandler = async ({ url }) => {
 		const district = url.searchParams.get('district');
 
 		if (!state) {
-			throw error(400, 'state parameter is required');
+			throw _error(400, 'state parameter is required');
 		}
 
 		if (!district) {
-			throw error(400, 'district parameter is required');
+			throw _error(400, 'district parameter is required');
 		}
 
 		// Mock lookup for testing purposes
@@ -134,6 +134,6 @@ export const GET: RequestHandler = async ({ url }) => {
 			throw err;
 		}
 
-		throw error(500, 'Failed to lookup district information');
+		throw _error(500, 'Failed to lookup district information');
 	}
 };

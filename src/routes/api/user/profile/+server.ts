@@ -36,7 +36,7 @@ export async function POST({ request, locals }) {
 				profileComplete: true
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		return json(
 			{
 				error: 'Failed to save profile'
@@ -116,7 +116,7 @@ export async function GET({ locals }) {
 				}
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		return json(
 			{
 				error: 'Failed to fetch profile'
