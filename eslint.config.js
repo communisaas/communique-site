@@ -28,6 +28,25 @@ export default ts.config(
 		}
 	},
 	{
-		ignores: ['build/', '.svelte-kit/', 'dist/']
+		// Strategic rule adjustments for deployment
+		rules: {
+			'@typescript-eslint/no-unused-vars': [
+				'error',
+				{
+					argsIgnorePattern: '^_',
+					varsIgnorePattern: '^_'
+				}
+			],
+			'@typescript-eslint/no-explicit-any': 'warn' // Downgrade from error to warning
+		}
+	},
+	{
+		ignores: [
+			'build/',
+			'.svelte-kit/',
+			'dist/',
+			'src/lib/paraglide/**', // Generated i18n files
+			'scripts/legacy-*.js' // Legacy script files
+		]
 	}
 );

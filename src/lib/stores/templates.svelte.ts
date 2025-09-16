@@ -12,7 +12,7 @@ interface TemplateState {
 
 function createTemplateStore() {
 	// Convert writable store to $state rune
-	let state = $state<TemplateState>({
+	const state = $state<TemplateState>({
 		templates: [],
 		selectedId: null,
 		loading: false,

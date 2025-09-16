@@ -213,7 +213,7 @@ test.describe('Analytics Tracking E2E', () => {
 	});
 
 	test('should maintain session continuity across navigation', async ({ page }) => {
-		let sessionIds: string[] = [];
+		const sessionIds: string[] = [];
 
 		// Track session IDs from analytics calls
 		page.on('request', async (request) => {
@@ -242,7 +242,7 @@ test.describe('Analytics Tracking E2E', () => {
 	});
 
 	test('should respect privacy and not leak sensitive data', async ({ page }) => {
-		let analyticsPayloads: any[] = [];
+		const analyticsPayloads: any[] = [];
 
 		// Capture all analytics payloads
 		page.on('request', async (request) => {

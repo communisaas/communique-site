@@ -5,9 +5,9 @@
  * Migrates all setTimeout/setInterval to coordinated timer system
  */
 
-const fs = require('fs').promises;
-const path = require('path');
-const glob = require('glob').sync;
+import { promises as fs } from 'fs';
+import path from 'path';
+import { sync as glob } from 'glob';
 
 // Patterns to replace
 const replacements = [

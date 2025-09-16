@@ -22,7 +22,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 
 	try {
 		// First check primary email
-		let user = await db.user.findUnique({
+		const user = await db.user.findUnique({
 			where: { email: email.toLowerCase() },
 			select: {
 				id: true,

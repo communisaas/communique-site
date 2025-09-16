@@ -61,14 +61,14 @@ interface LegacyModalContext {
 
 function createModalSystem() {
 	// Core modal system state
-	let modalSystemState = $state<ModalSystemState>({
+	const modalSystemState = $state<ModalSystemState>({
 		activeModals: {}, // Plain object for Svelte 5 reactivity
 		modalStack: [],
 		baseZIndex: 1000
 	});
 
 	// Legacy modal context state
-	let legacyModalState = $state<LegacyModalContext>({
+	const legacyModalState = $state<LegacyModalContext>({
 		template: null,
 		user: null,
 		state: 'closed',

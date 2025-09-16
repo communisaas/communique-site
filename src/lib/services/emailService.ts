@@ -416,7 +416,7 @@ export function getEmailFlowAnalytics(
 		blockers.push('user_not_authenticated');
 	} else if (
 		template.deliveryMethod === 'certified' &&
-		!Boolean(user.street && user.city && user.state && user.zip)
+		!(user.street && user.city && user.state && user.zip)
 	) {
 		flowStage = 'address_collection_required';
 		blockers.push('incomplete_address');

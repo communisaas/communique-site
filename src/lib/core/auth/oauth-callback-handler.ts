@@ -146,7 +146,7 @@ export class OAuthCallbackHandler {
 		tokenData: TokenData
 	): Promise<any> {
 		// Check for existing OAuth account
-		let existingAccount = await db.account.findUnique({
+		const existingAccount = await db.account.findUnique({
 			where: {
 				provider_provider_account_id: {
 					provider: config.provider,

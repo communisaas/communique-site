@@ -11,6 +11,7 @@
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
+		"lint:strict": "prettier --check . && eslint . --max-warnings 0",
 		"test:unit": "vitest tests/unit --config=vitest.config.ts",
 		"test:integration": "vitest tests/integration --config=vitest.config.ts",
 		"test:all": "vitest --config=vitest.config.ts",

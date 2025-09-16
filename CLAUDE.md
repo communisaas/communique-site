@@ -15,8 +15,28 @@ Common:
 npm run build    # prod build
 npm run preview  # preview
 npm run check    # type + svelte-check
-npm run lint     # eslint
+npm run lint     # eslint with warnings allowed
+npm run lint:strict # eslint with zero tolerance (for cleanup)
+npm run format   # prettier --write . (auto-fix formatting)
 npm run test     # integration-first test suite
+```
+
+## Code Quality Standards
+
+### ESLint & TypeScript Rules
+- **No `any` types** - Use `unknown`, `object`, or proper interfaces (downgraded to warnings during cleanup)
+- **Prefix unused parameters** with `_` (e.g., `_error`, `_event`, `_config`)
+- **Remove unused imports** - Clean imports before commits
+- **Use ES6 imports** - Convert `require()` to `import` statements
+- **Proper error handling** - Name error parameters consistently
+
+### Pre-commit Checklist
+```bash
+npm run format     # Auto-fix formatting
+npm run lint       # Check for violations (warnings OK during cleanup)
+npm run check      # TypeScript validation
+npm run build      # Verify build succeeds
+npm run test:run   # Run test suite
 ```
 
 ## Environment

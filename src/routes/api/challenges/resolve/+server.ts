@@ -74,7 +74,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		let challengerPayout = BigInt(0);
 		let creatorPayout = BigInt(0);
-		let treasuryFee = totalPool / BigInt(20); // 5% to treasury
+		const treasuryFee = totalPool / BigInt(20); // 5% to treasury
 
 		// Apply quadratic scaling to prevent whale dominance
 		const applyQuadraticScaling = (amount: bigint, reputation: number): bigint => {

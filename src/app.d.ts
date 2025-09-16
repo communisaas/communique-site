@@ -42,16 +42,19 @@ declare global {
 				expiresAt: Date;
 			} | null;
 		}
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 		interface PageData {}
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 		interface PageState {}
+		// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 		interface Platform {}
 	}
 
 	interface Window {
 		analytics?: {
-			track: (event: string, properties?: Record<string, any>) => void;
-			identify: (userId: string, traits?: Record<string, any>) => void;
-			page: (name?: string, properties?: Record<string, any>) => void;
+			track: (event: string, properties?: Record<string, unknown>) => void;
+			identify: (userId: string, traits?: Record<string, unknown>) => void;
+			page: (name?: string, properties?: Record<string, unknown>) => void;
 		};
 	}
 }

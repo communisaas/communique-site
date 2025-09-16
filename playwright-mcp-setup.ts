@@ -1,6 +1,6 @@
 import { chromium, FullConfig } from '@playwright/test';
 
-async function globalSetup(config: FullConfig) {
+async function globalSetup(_config: FullConfig) {
 	console.log('🎭 Setting up Playwright MCP Integration...');
 
 	// Start the application server for testing
@@ -15,7 +15,7 @@ async function globalSetup(config: FullConfig) {
 		await page.waitForLoadState('networkidle');
 
 		console.log('✅ Application is ready for MCP-enhanced testing');
-	} catch (error) {
+	} catch (_error) {
 		console.log('⚠️  Application not yet ready, tests will handle startup');
 	} finally {
 		await context.close();

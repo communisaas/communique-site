@@ -4,7 +4,7 @@ import { generateActionSlug } from '../src/lib/server/reserved-slugs.js';
 const db: PrismaClient = new PrismaClient();
 
 // Congressional Policy Areas mapping for CWC API compatibility
-const policyAreaMap = {
+const _policyAreaMap = {
 	Environment: 'Environmental Protection',
 	Healthcare: 'Health',
 	Economy: 'Economics and Public Finance',

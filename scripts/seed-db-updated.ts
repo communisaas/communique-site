@@ -4,7 +4,7 @@ import { isFeatureEnabled } from '../src/lib/features/config.js';
 const db: PrismaClient = new PrismaClient();
 
 // Congressional Policy Areas mapping for CWC API compatibility
-const policyAreaMap = {
+const _policyAreaMap = {
 	Environment: 'Environmental Protection',
 	Healthcare: 'Health',
 	Economy: 'Economics and Public Finance',
