@@ -21,7 +21,7 @@ jobs:
       # - name: Lint check
       #   run: npm run lint
       - name: Build verification
-        run: npm run build
+        run: NODE_ENV=production npm run build
 
   deploy:
     needs: validate
