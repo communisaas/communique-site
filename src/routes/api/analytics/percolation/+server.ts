@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ url }) => {
 	}
 };
 
-function getRecommendation(analysis: unknown): string {
+function getRecommendation(analysis: any): string {
 	if (analysis.cascade_potential === 'supercritical') {
 		return 'Network in optimal state for viral spread. Focus on quality content creation.';
 	} else if (analysis.cascade_potential === 'critical') {

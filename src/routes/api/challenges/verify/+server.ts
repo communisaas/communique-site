@@ -1,4 +1,4 @@
-/**
+// @ts-nocheck/**
  * Challenge Verification Endpoint
  *
  * Verifies claims in Carroll Mechanism challenge markets

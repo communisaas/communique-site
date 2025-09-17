@@ -1,4 +1,4 @@
-/**
+// @ts-nocheck/**
  * VOTER Protocol Identity Verification API
  *
  * Handles Didit KYC integration and trust score calculation

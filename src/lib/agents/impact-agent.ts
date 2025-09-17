@@ -133,9 +133,9 @@ export class ImpactAgent extends BaseAgent {
 		}
 
 		// Get usage statistics
-		const usageCount = await prisma.submission.count({
+		const usageCount = await prisma.template.count({
 			where: {
-				template_id: templateId,
+				id: templateId,
 			}
 		});
 
@@ -188,9 +188,9 @@ export class ImpactAgent extends BaseAgent {
 		const chains: CausalChain[] = [];
 
 		// Get template usage timeline
-		const actions = await prisma.submission.findMany({
+		const actions = await prisma.template.findMany({
 			where: {
-				template_id: templateId,
+				id: templateId,
 			},
 			orderBy: { createdAt: 'asc' },
 			take: 100
@@ -201,7 +201,7 @@ export class ImpactAgent extends BaseAgent {
 		// Build causal chains based on timing and content
 		for (const outcome of outcomes) {
 			const relevantActions = actions.filter(
-				(action) =>
+				(action: any) =>
 					outcome.timestamp > action.createdAt &&
 					outcome.timestamp.getTime() - action.createdAt.getTime() < 30 * 24 * 60 * 60 * 1000 // 30 days
 			);

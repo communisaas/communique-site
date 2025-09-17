@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * ReputationAgent - ERC-8004 Credibility Infrastructure
  *

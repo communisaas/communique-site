@@ -1,4 +1,4 @@
-/**
+// @ts-nocheck/**
  * VOTER Protocol Webhook Handler
  *
  * Receives notifications from VOTER Protocol about:

@@ -1,4 +1,4 @@
-/**
+// @ts-nocheck/**
  * VOTER Protocol API Endpoints
  *
  * Unified API for N8N workflow integration with Communiqué

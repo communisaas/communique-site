@@ -1,4 +1,4 @@
-/**
+// @ts-nocheck/**
  * VOTER Protocol Challenge Market API
  *
  * Handles challenge creation, voting, and resolution

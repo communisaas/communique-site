@@ -78,7 +78,7 @@ export class VerificationAgent extends BaseAgent {
 				riskFactors,
 				recommendedActions,
 				zkProofHash: verificationData.zkProofHash,
-				districtVerification: verificationData.districtVerification
+				districtVerification: verificationData.districtVerification as { congressionalDistrict: string; confidence: number; source: string; } | undefined
 			};
 
 			const confidence = this.assessDecisionConfidence(assessment, sourceAnalysis);
@@ -94,7 +94,7 @@ export class VerificationAgent extends BaseAgent {
 				}
 			);
 		} catch (_error) {
-			console.error('VerificationAgent decision error:', error);
+			console.error('VerificationAgent decision error:', _error);
 			return this.createDecision(
 				{
 					userId: context.userId,
@@ -122,19 +122,7 @@ export class VerificationAgent extends BaseAgent {
 				verification_data: true,
 				verification_method: true,
 				verified_at: true,
-				trust_score: true,
-				congressional_district: true,
-				wallet_address: true,
-				civic_actions: {
-					take: 10,
-					orderBy: { created_at: 'desc' },
-					select: {
-						action_type: true,
-						status: true,
-						created_at: true,
-						agent_decisions: true
-					}
-				}
+				congressional_district: true
 			}
 		});
 
@@ -161,38 +149,8 @@ export class VerificationAgent extends BaseAgent {
 			});
 		}
 
-		// Add behavioral analysis based on civic actions
-		if (user.civic_actions.length > 0) {
-			const behaviorScore = this.analyzeBehavioralPatterns(user.civic_actions);
-			sources.push({
-				provider: 'manual_review',
-				type: 'behavioral_analysis',
-				score: behaviorScore,
-				confidence: Math.min(0.8, user.civic_actions.length / 10), // Higher confidence with more actions
-				timestamp: new Date(),
-				metadata: {
-					actionsCount: user.civic_actions.length,
-					consistentBehavior: this.checkBehaviorConsistency(user.civic_actions),
-					timeSpan: this.calculateEngagementTimeSpan(user.civic_actions)
-				}
-			});
-		}
-
-		// Add blockchain history analysis if wallet connected
-		if (user.wallet_address) {
-			const blockchainScore = await this.analyzeBlockchainHistory(user.wallet_address);
-			sources.push({
-				provider: 'blockchain_history',
-				type: 'behavioral_analysis',
-				score: blockchainScore,
-				confidence: 0.5, // Moderate confidence in blockchain analysis
-				timestamp: new Date(),
-				metadata: {
-					walletAddress: user.wallet_address,
-					hasHistory: blockchainScore > 30
-				}
-			});
-		}
+		// Behavioral analysis and blockchain history analysis disabled
+		// due to missing database schema fields (civicActions, walletAddress)
 
 		return {
 			sources,
@@ -265,7 +223,7 @@ export class VerificationAgent extends BaseAgent {
 		}
 	}
 
-	private identifyRiskFactors(verificationData: unknown, analysis: unknown): string[] {
+	private identifyRiskFactors(verificationData: unknown, analysis: any): string[] {
 		const risks: string[] = [];
 
 		if (!analysis.kycPresent) risks.push('no_kyc_verification');
@@ -309,7 +267,7 @@ export class VerificationAgent extends BaseAgent {
 		let score = Math.min(50, actions.length * 5); // Base score from action count
 
 		// Consistent action types indicate authentic engagement
-		const actionTypes = new Set(actions.map((a) => a.action_type));
+		const actionTypes = new Set(actions.map((a: any) => a.actionType));
 		if (actionTypes.size > 1) score += 10;
 
 		// Regular activity over time
@@ -318,7 +276,7 @@ export class VerificationAgent extends BaseAgent {
 		if (timeSpan > 30) score += 10; // More than a month of activity
 
 		// Successful completions
-		const successfulActions = actions.filter((a) => a.status === 'completed').length;
+		const successfulActions = actions.filter((a: any) => a.status === 'completed').length;
 		const successRate = successfulActions / actions.length;
 		score += Math.round(successRate * 20);
 
@@ -327,13 +285,13 @@ export class VerificationAgent extends BaseAgent {
 
 	private checkBehaviorConsistency(actions: unknown[]): boolean {
 		// Simple consistency check - more sophisticated logic would analyze patterns
-		return actions.filter((a) => a.status === 'completed').length / actions.length > 0.8;
+		return actions.filter((a: any) => a.status === 'completed').length / actions.length > 0.8;
 	}
 
 	private calculateEngagementTimeSpan(actions: unknown[]): number {
 		if (actions.length < 2) return 0;
 
-		const dates = actions.map((a) => new Date(a.created_at).getTime()).sort();
+		const dates = actions.map((a: any) => new Date(a.createdAt).getTime()).sort();
 		return Math.round((dates[dates.length - 1] - dates[0]) / (24 * 60 * 60 * 1000)); // Days
 	}
 
@@ -345,7 +303,7 @@ export class VerificationAgent extends BaseAgent {
 		return Math.random() > 0.5 ? 40 : 20;
 	}
 
-	private assessDecisionConfidence(assessment: VerificationAssessment, analysis: unknown): number {
+	private assessDecisionConfidence(assessment: VerificationAssessment, analysis: any): number {
 		let confidence = 0.5; // Base confidence
 
 		// Higher confidence with more sources
@@ -365,7 +323,7 @@ export class VerificationAgent extends BaseAgent {
 
 	private generateVerificationReasoning(
 		assessment: VerificationAssessment,
-		analysis: unknown
+		analysis: any
 	): string {
 		const { trustScore, verificationLevel, verificationSources, riskFactors } = assessment;
 
