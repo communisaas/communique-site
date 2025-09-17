@@ -100,7 +100,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 		// No user found
 		return json({ user: null, emailType: null });
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 		return json({ error: 'Failed to resolve user' }, { status: 500 });
 	}
 };

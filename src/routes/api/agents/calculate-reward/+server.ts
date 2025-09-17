@@ -51,13 +51,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		const baseReward = supplyDecision.decision?.rewardAmount || 0;
 		const marketMultiplier = marketDecision.decision?.rewardMultiplier || 1;
 		const impactMultiplier = impactDecision.decision?.impactMultiplier || 1;
-		
+
 		const finalReward = BigInt(
-			Math.floor(
-				Number(baseReward) *
-					marketMultiplier *
-					impactMultiplier
-			)
+			Math.floor(Number(baseReward) * marketMultiplier * impactMultiplier)
 		);
 
 		return json({
@@ -82,6 +78,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 	} catch (_error) {
 		console.error('Reward calculation error:', _error);
-		return json({ error: 'Reward calculation failed', details: _error instanceof Error ? _error.message : 'Unknown error' }, { status: 500 });
+		return json(
+			{
+				error: 'Reward calculation failed',
+				details: _error instanceof Error ? _error.message : 'Unknown error'
+			},
+			{ status: 500 }
+		);
 	}
 };

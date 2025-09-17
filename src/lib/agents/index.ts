@@ -71,7 +71,7 @@ export class AgentCoordinator {
 		const supply = await this.supply.makeDecision({
 			userId: params.userAddress,
 			actionType: params.actionType,
-			parameters: { 
+			parameters: {
 				verificationScore: verification.confidence,
 				baseReward: '1000000000000000000' // 1 token default
 			}
@@ -112,7 +112,7 @@ export class AgentCoordinator {
 		const baseReward = (supply.decision as any)?.finalRewardWei || '1000000000000000000';
 		const marketMultiplier = (market.decision as any)?.rewardMultiplier || 1.0;
 		const impactMultiplier = (impact.decision as any)?.impactMultiplier || 1.0;
-		
+
 		const finalReward = BigInt(
 			Math.floor(Number(baseReward) * marketMultiplier * impactMultiplier)
 		);

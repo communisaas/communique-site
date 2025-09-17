@@ -36,9 +36,13 @@ function isErrorResponseData(data: unknown): data is ErrorResponseData {
 
 // Type guard for success response data
 function isSuccessResponseData(data: unknown): data is { success: boolean } {
-	return typeof data === 'object' && data !== null && 'success' in data && typeof (data as any).success === 'boolean';
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		'success' in data &&
+		typeof (data as any).success === 'boolean'
+	);
 }
-
 
 export interface ApiOptions extends Omit<RequestInit, 'body'> {
 	timeout?: number;
@@ -102,8 +106,12 @@ class UnifiedApiClient {
 			...fetchOptions,
 			headers,
 			body: fetchOptions.body
-				? typeof fetchOptions.body === 'string' || fetchOptions.body instanceof FormData || fetchOptions.body instanceof URLSearchParams || fetchOptions.body instanceof Blob || fetchOptions.body instanceof ArrayBuffer
-					? fetchOptions.body as BodyInit
+				? typeof fetchOptions.body === 'string' ||
+					fetchOptions.body instanceof FormData ||
+					fetchOptions.body instanceof URLSearchParams ||
+					fetchOptions.body instanceof Blob ||
+					fetchOptions.body instanceof ArrayBuffer
+					? (fetchOptions.body as BodyInit)
 					: JSON.stringify(fetchOptions.body)
 				: undefined
 		};
@@ -195,7 +203,9 @@ class UnifiedApiClient {
 		}
 
 		// Type guard for objects with properties
-		const isErrorResponse = (obj: unknown): obj is { error?: string; message?: string; errors?: any[] } => {
+		const isErrorResponse = (
+			obj: unknown
+		): obj is { error?: string; message?: string; errors?: any[] } => {
 			return typeof obj === 'object' && obj !== null;
 		};
 

@@ -8,7 +8,8 @@
  * challenge markets, civic actions, and cross-platform reputation.
  */
 
-import { BaseAgent, AgentType } from './base-agent'; import type { AgentContext, AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent';
+import type { AgentContext, AgentDecision } from './base-agent';
 import { prisma } from '$lib/core/db';
 
 export interface CredibilityAssessment {
@@ -202,7 +203,10 @@ export class ReputationAgent extends BaseAgent {
 		return {
 			user,
 			civicActions: (user as any).civic_actions || [],
-			challengeHistory: [...((user as any).challenger_challenges || []), ...((user as any).defender_challenges || [])],
+			challengeHistory: [
+				...((user as any).challenger_challenges || []),
+				...((user as any).defender_challenges || [])
+			],
 			reputationLogs: (user as any).reputation_logs || [],
 			verificationLevel: user.is_verified ? 'verified' : 'unverified',
 			walletAddress: user.wallet_address ?? undefined
@@ -279,7 +283,8 @@ export class ReputationAgent extends BaseAgent {
 		// High-stakes accuracy bonus (0-40)
 		const highStakesChallenges = challengeHistory.filter(
 			(c: any) =>
-				c?.challenge_stakes && c.challenge_stakes.some((s: any) => parseFloat(s?.amount || '0') > 1000)
+				c?.challenge_stakes &&
+				c.challenge_stakes.some((s: any) => parseFloat(s?.amount || '0') > 1000)
 		);
 		const stakesBonus = Math.min(40, highStakesChallenges.length * 5);
 
@@ -476,10 +481,7 @@ export class ReputationAgent extends BaseAgent {
 		return Math.floor((Date.now() - new Date(createdAt).getTime()) / (24 * 60 * 60 * 1000));
 	}
 
-	private assessDecisionConfidence(
-		assessment: CredibilityAssessment,
-		reputationData: any
-	): number {
+	private assessDecisionConfidence(assessment: CredibilityAssessment, reputationData: any): number {
 		let confidence = 0.6; // Base confidence
 
 		// Higher confidence with more data

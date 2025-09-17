@@ -8,7 +8,8 @@
  * of responsive legislators.
  */
 
-import { BaseAgent, AgentType } from './base-agent'; import type { AgentContext, AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent';
+import type { AgentContext, AgentDecision } from './base-agent';
 import { prisma } from '$lib/core/db';
 
 export interface ImpactAssessment {
@@ -135,7 +136,7 @@ export class ImpactAgent extends BaseAgent {
 		// Get usage statistics
 		const usageCount = await prisma.template.count({
 			where: {
-				id: templateId,
+				id: templateId
 			}
 		});
 
@@ -190,7 +191,7 @@ export class ImpactAgent extends BaseAgent {
 		// Get template usage timeline
 		const actions = await prisma.template.findMany({
 			where: {
-				id: templateId,
+				id: templateId
 			},
 			orderBy: { createdAt: 'asc' },
 			take: 100

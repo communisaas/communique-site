@@ -63,12 +63,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		// If this was a certified delivery failure, we might want to notify the user
 		if (!success && deliveryMethod === 'certified' && error) {
 			// TODO: Send notification email to user about failed delivery
-			console.error('Error:' , _error);
+			console.error('Error:', _error);
 		}
 
 		return json({ success: true, message: 'Delivery result recorded' });
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 		return json({ error: 'Failed to record delivery result' }, { status: 500 });
 	}
 };

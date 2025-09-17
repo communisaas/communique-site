@@ -111,7 +111,7 @@ export type PrismaUserForEmail = {
 /**
  * Convert a User model or partial user object to EmailServiceUser interface
  * Handles type compatibility and filters only required fields
- * 
+ *
  * @param user - User object from Prisma query or partial user object (can be null)
  * @returns EmailServiceUser compatible object or null
  */

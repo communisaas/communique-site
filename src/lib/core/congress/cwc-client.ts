@@ -254,7 +254,7 @@ export class CWCClient {
 			let cwcResponse: CWCResponse;
 
 			if (contentType?.includes('application/json')) {
-				cwcResponse = await response.json() as CWCResponse;
+				cwcResponse = (await response.json()) as CWCResponse;
 			} else {
 				cwcResponse = { raw: await response.text() };
 			}

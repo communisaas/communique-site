@@ -219,7 +219,10 @@ class VOTERBlockchainClient {
 				details: {
 					reason: error instanceof Error && 'reason' in error ? (error as any).reason : undefined,
 					method: 'processCivicAction',
-					transaction: error instanceof Error && 'transaction' in error ? (error as any).transaction : undefined
+					transaction:
+						error instanceof Error && 'transaction' in error
+							? (error as any).transaction
+							: undefined
 				}
 			};
 		}
@@ -260,7 +263,10 @@ class VOTERBlockchainClient {
 				details: {
 					reason: error instanceof Error && 'reason' in error ? (error as any).reason : undefined,
 					method: 'registerUser',
-					transaction: error instanceof Error && 'transaction' in error ? (error as any).transaction : undefined
+					transaction:
+						error instanceof Error && 'transaction' in error
+							? (error as any).transaction
+							: undefined
 				}
 			};
 		}

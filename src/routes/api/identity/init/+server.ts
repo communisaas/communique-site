@@ -61,7 +61,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			config: appConfig
 		});
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 
 		// Log detailed error for debugging
 		if (_error instanceof Error) {

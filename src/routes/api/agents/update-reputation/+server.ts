@@ -57,17 +57,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			const changes = decision.reputationChanges || {};
 			const newReputation = Math.max(
 				0,
-				Math.min(
-					100,
-					(currentReputation?.total || 50) + (changes.total || 0)
-				)
+				Math.min(100, (currentReputation?.total || 50) + (changes.total || 0))
 			);
 
 			await db.user.update({
 				where: { id: userId },
 				data: {
 					voter_reputation: newReputation,
-					trust_score: Math.max(0, Math.min(100, (currentReputation?.total || 50) + (changes.trust || 0))),
+					trust_score: Math.max(
+						0,
+						Math.min(100, (currentReputation?.total || 50) + (changes.trust || 0))
+					),
 					reputation_tier: decision.newTier || 'novice'
 				}
 			});
@@ -79,6 +79,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 	} catch (_error) {
 		console.error('Reputation update error:', _error);
-		return json({ error: 'Reputation update failed', details: _error instanceof Error ? _error.message : 'Unknown error' }, { status: 500 });
+		return json(
+			{
+				error: 'Reputation update failed',
+				details: _error instanceof Error ? _error.message : 'Unknown error'
+			},
+			{ status: 500 }
+		);
 	}
 };

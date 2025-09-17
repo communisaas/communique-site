@@ -15,70 +15,103 @@ import crypto from 'crypto';
 // =============================================================================
 
 // Google OAuth response type guard
-function isGoogleUser(user: unknown): user is { id: string; email: string; name: string; picture?: string } {
-	return typeof user === 'object' && user !== null &&
-		'id' in user && typeof (user as any).id === 'string' &&
-		'email' in user && typeof (user as any).email === 'string' &&
-		'name' in user && typeof (user as any).name === 'string';
+function isGoogleUser(
+	user: unknown
+): user is { id: string; email: string; name: string; picture?: string } {
+	return (
+		typeof user === 'object' &&
+		user !== null &&
+		'id' in user &&
+		typeof (user as any).id === 'string' &&
+		'email' in user &&
+		typeof (user as any).email === 'string' &&
+		'name' in user &&
+		typeof (user as any).name === 'string'
+	);
 }
 
 // Facebook OAuth response type guard
-function isFacebookUser(user: unknown): user is { 
-	id: string; 
-	email: string; 
-	name: string; 
-	picture?: { data?: { url?: string } } 
+function isFacebookUser(user: unknown): user is {
+	id: string;
+	email: string;
+	name: string;
+	picture?: { data?: { url?: string } };
 } {
-	return typeof user === 'object' && user !== null &&
-		'id' in user && typeof (user as any).id === 'string' &&
-		'email' in user && typeof (user as any).email === 'string' &&
-		'name' in user && typeof (user as any).name === 'string';
+	return (
+		typeof user === 'object' &&
+		user !== null &&
+		'id' in user &&
+		typeof (user as any).id === 'string' &&
+		'email' in user &&
+		typeof (user as any).email === 'string' &&
+		'name' in user &&
+		typeof (user as any).name === 'string'
+	);
 }
 
 // LinkedIn OAuth response type guard
-function isLinkedInUser(user: unknown): user is { 
-	sub: string; 
-	email: string; 
-	name: string; 
-	picture?: string 
+function isLinkedInUser(user: unknown): user is {
+	sub: string;
+	email: string;
+	name: string;
+	picture?: string;
 } {
-	return typeof user === 'object' && user !== null &&
-		'sub' in user && typeof (user as any).sub === 'string' &&
-		'email' in user && typeof (user as any).email === 'string' &&
-		'name' in user && typeof (user as any).name === 'string';
+	return (
+		typeof user === 'object' &&
+		user !== null &&
+		'sub' in user &&
+		typeof (user as any).sub === 'string' &&
+		'email' in user &&
+		typeof (user as any).email === 'string' &&
+		'name' in user &&
+		typeof (user as any).name === 'string'
+	);
 }
 
 // Twitter OAuth response type guard
-function isTwitterUser(user: unknown): user is { 
-	data: { 
-		id: string; 
-		username: string; 
-		name: string; 
+function isTwitterUser(user: unknown): user is {
+	data: {
+		id: string;
+		username: string;
+		name: string;
 		email?: string;
 		profile_image_url?: string;
-	} 
+	};
 } {
-	return typeof user === 'object' && user !== null &&
-		'data' in user && typeof (user as any).data === 'object' &&
+	return (
+		typeof user === 'object' &&
+		user !== null &&
+		'data' in user &&
+		typeof (user as any).data === 'object' &&
 		(user as any).data !== null &&
-		'id' in (user as any).data && typeof (user as any).data.id === 'string' &&
-		'username' in (user as any).data && typeof (user as any).data.username === 'string' &&
-		'name' in (user as any).data && typeof (user as any).data.name === 'string';
+		'id' in (user as any).data &&
+		typeof (user as any).data.id === 'string' &&
+		'username' in (user as any).data &&
+		typeof (user as any).data.username === 'string' &&
+		'name' in (user as any).data &&
+		typeof (user as any).data.name === 'string'
+	);
 }
 
 // Discord OAuth response type guard
-function isDiscordUser(user: unknown): user is { 
-	id: string; 
-	email: string; 
-	username: string; 
-	global_name?: string; 
-	discriminator?: string; 
-	avatar?: string 
+function isDiscordUser(user: unknown): user is {
+	id: string;
+	email: string;
+	username: string;
+	global_name?: string;
+	discriminator?: string;
+	avatar?: string;
 } {
-	return typeof user === 'object' && user !== null &&
-		'id' in user && typeof (user as any).id === 'string' &&
-		'email' in user && typeof (user as any).email === 'string' &&
-		'username' in user && typeof (user as any).username === 'string';
+	return (
+		typeof user === 'object' &&
+		user !== null &&
+		'id' in user &&
+		typeof (user as any).id === 'string' &&
+		'email' in user &&
+		typeof (user as any).email === 'string' &&
+		'username' in user &&
+		typeof (user as any).username === 'string'
+	);
 }
 
 // =============================================================================

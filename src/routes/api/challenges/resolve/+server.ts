@@ -271,7 +271,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			timestamp: new Date().toISOString()
 		});
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 		return json(
 			{
 				success: false,

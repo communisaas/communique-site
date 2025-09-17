@@ -187,7 +187,7 @@ export async function GET() {
 
 		return json(response);
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 
 		const response: ApiResponse = {
 			success: false,
@@ -324,7 +324,7 @@ export async function POST({ request, locals }) {
 			return json(response);
 		}
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 
 		const response: ApiResponse = {
 			success: false,
@@ -366,7 +366,7 @@ async function triggerModerationPipeline(verificationId: string) {
 
 		return result;
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 		// Don't throw - we don't want to fail template creation if moderation fails to trigger
 		return { success: false, error: _error instanceof Error ? _error.message : 'Unknown error' };
 	}

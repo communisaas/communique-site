@@ -196,9 +196,4 @@ async function notifyDeliveryResult(templateId: any, userId: any, result: any) {
 	}
 }
 
-export {
-	CWCClient,
-	fetchUserProfile,
-	fetchTemplate,
-	notifyDeliveryResult
-};
+export { CWCClient, fetchUserProfile, fetchTemplate, notifyDeliveryResult };

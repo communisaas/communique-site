@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					where: { id: templateId },
 					select: { userId: true }
 				});
-				
+
 				if (!template || !template.userId) {
 					return json({ error: 'Template not found or missing user' }, { status: 404 });
 				}
@@ -61,6 +61,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 	} catch (_error) {
 		console.error('Consensus evaluation error:', _error);
-		return json({ error: 'Consensus evaluation failed', details: _error instanceof Error ? _error.message : 'Unknown error' }, { status: 500 });
+		return json(
+			{
+				error: 'Consensus evaluation failed',
+				details: _error instanceof Error ? _error.message : 'Unknown error'
+			},
+			{ status: 500 }
+		);
 	}
 };

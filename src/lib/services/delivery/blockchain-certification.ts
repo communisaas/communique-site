@@ -79,7 +79,15 @@ class BlockchainCertification {
 	/**
 	 * Certify email delivery directly on blockchain
 	 */
-	async certifyDelivery({ userAddress, templateData, deliveryConfirmation }: { userAddress: string; templateData: any; deliveryConfirmation: string }) {
+	async certifyDelivery({
+		userAddress,
+		templateData,
+		deliveryConfirmation
+	}: {
+		userAddress: string;
+		templateData: any;
+		deliveryConfirmation: string;
+	}) {
 		try {
 			console.log('🔗 Certifying delivery on blockchain...');
 
@@ -167,7 +175,11 @@ export const blockchainCertification = new BlockchainCertification();
 /**
  * Main export function for backward compatibility
  */
-export async function certifyEmailDelivery(certificationData: { userAddress: string; templateData: any; deliveryConfirmation: string }) {
+export async function certifyEmailDelivery(certificationData: {
+	userAddress: string;
+	templateData: any;
+	deliveryConfirmation: string;
+}) {
 	if (!blockchainCertification.isConfigured()) {
 		console.log('ℹ️ Blockchain certification not configured, skipping...');
 		return { success: true, message: 'Certification disabled' };

@@ -389,7 +389,10 @@
 									<div class="flex-1">
 										<div class="mb-2 flex items-center space-x-2">
 											<h4 class="font-semibold text-slate-900">{template.title}</h4>
-											<Badge variant={template.status === 'published' ? 'success' : 'warning'} size="sm">
+											<Badge
+												variant={template.status === 'published' ? 'success' : 'warning'}
+												size="sm"
+											>
 												{template.status}
 											</Badge>
 											{#if template.is_public}

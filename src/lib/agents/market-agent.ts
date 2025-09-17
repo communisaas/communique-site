@@ -51,15 +51,17 @@ export class MarketAgent extends BaseAgent {
 		try {
 			// Extract market input from context
 			const baseRewardParam = context.parameters?.baseReward;
-			const baseRewardValue = typeof baseRewardParam === 'string' || typeof baseRewardParam === 'number' 
-				? String(baseRewardParam) 
-				: '1000000000000000000';
-				
+			const baseRewardValue =
+				typeof baseRewardParam === 'string' || typeof baseRewardParam === 'number'
+					? String(baseRewardParam)
+					: '1000000000000000000';
+
 			const marketInput: MarketInput = {
 				baseReward: BigInt(baseRewardValue), // 1 token default
 				actionType: context.actionType || 'cwc_message',
 				marketConditions: context.parameters?.marketConditions as MarketInput['marketConditions'],
-				participationTrends: context.parameters?.participationTrends as MarketInput['participationTrends']
+				participationTrends: context.parameters
+					?.participationTrends as MarketInput['participationTrends']
 			};
 
 			// Use existing process logic
@@ -138,7 +140,7 @@ export class MarketAgent extends BaseAgent {
 	 * Analyze market conditions to determine signal
 	 */
 	private analyzeMarketSignal(conditions: unknown): 'bullish' | 'neutral' | 'bearish' {
-		const conditionsTyped = conditions as MarketInput['marketConditions'] || {};
+		const conditionsTyped = (conditions as MarketInput['marketConditions']) || {};
 		const { tokenPrice = 0, volume24h = 0, volatility = 0 } = conditionsTyped;
 
 		// Simple heuristic for market signal

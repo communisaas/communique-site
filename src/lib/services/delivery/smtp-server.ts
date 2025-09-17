@@ -238,4 +238,4 @@ if (require.main === module) {
 	startServer();
 }
 
-export {  server, startServer  };
+export { server, startServer };

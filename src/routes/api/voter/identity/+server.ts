@@ -197,6 +197,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		});
 	} catch (_error) {
 		console.error('Get identity verification error:', _error);
-		throw error(500, _error instanceof Error ? _error.message : 'Failed to get verification status');
+		throw error(
+			500,
+			_error instanceof Error ? _error.message : 'Failed to get verification status'
+		);
 	}
 };

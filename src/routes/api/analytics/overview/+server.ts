@@ -71,7 +71,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		}).length;
 
 		const totalActivations = userTemplates.reduce((sum, template) => {
-			return sum + (template.template_campaign?.filter((c) => c.status === 'delivered').length || 0);
+			return (
+				sum + (template.template_campaign?.filter((c) => c.status === 'delivered').length || 0)
+			);
 		}, 0);
 
 		// Calculate analytics metrics
@@ -191,7 +193,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			generated_at: new Date().toISOString()
 		});
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 
 		return json(
 			{

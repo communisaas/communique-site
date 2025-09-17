@@ -8,7 +8,8 @@
  * for zero-knowledge identity verification and on-chain attestations.
  */
 
-import { BaseAgent, AgentType } from './base-agent'; import type { AgentContext, AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent';
+import type { AgentContext, AgentDecision } from './base-agent';
 import { prisma } from '$lib/core/db';
 
 export interface VerificationAssessment {
@@ -78,7 +79,9 @@ export class VerificationAgent extends BaseAgent {
 				riskFactors,
 				recommendedActions,
 				zkProofHash: verificationData.zkProofHash,
-				districtVerification: verificationData.districtVerification as { congressionalDistrict: string; confidence: number; source: string; } | undefined
+				districtVerification: verificationData.districtVerification as
+					| { congressionalDistrict: string; confidence: number; source: string }
+					| undefined
 			};
 
 			const confidence = this.assessDecisionConfidence(assessment, sourceAnalysis);
@@ -321,10 +324,7 @@ export class VerificationAgent extends BaseAgent {
 		return Math.min(1.0, Math.max(0.1, confidence));
 	}
 
-	private generateVerificationReasoning(
-		assessment: VerificationAssessment,
-		analysis: any
-	): string {
+	private generateVerificationReasoning(assessment: VerificationAssessment, analysis: any): string {
 		const { trustScore, verificationLevel, verificationSources, riskFactors } = assessment;
 
 		return (

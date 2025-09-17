@@ -94,12 +94,13 @@ export abstract class BaseAgent {
 			reasoning,
 			parameters,
 			timestamp: new Date(),
-			safetyBounds: parameters?.parameterName && typeof parameters.parameterName === 'string'
-				? {
-						min: this.safetyBounds[parameters.parameterName]?.[0],
-						max: this.safetyBounds[parameters.parameterName]?.[1]
-					}
-				: undefined
+			safetyBounds:
+				parameters?.parameterName && typeof parameters.parameterName === 'string'
+					? {
+							min: this.safetyBounds[parameters.parameterName]?.[0],
+							max: this.safetyBounds[parameters.parameterName]?.[1]
+						}
+					: undefined
 		};
 	}
 }

@@ -146,8 +146,4 @@ async function certifyEmailDelivery(params: any) {
 	}
 }
 
-export {
-	certifyEmailDelivery,
-	getVOTERActionType,
-	generateMessageHash
-};
+export { certifyEmailDelivery, getVOTERActionType, generateMessageHash };

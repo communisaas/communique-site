@@ -232,7 +232,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		return json(response);
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 		return json(
 			{
 				success: false,

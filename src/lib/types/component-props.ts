@@ -19,9 +19,16 @@ export interface ComponentUser {
  */
 export function toComponentUser(user: unknown): ComponentUser | null {
 	if (!user || typeof user !== 'object') return null;
-	
-	const userObj = user as { id?: string; name?: string; street?: string; city?: string; state?: string; zip?: string };
-	
+
+	const userObj = user as {
+		id?: string;
+		name?: string;
+		street?: string;
+		city?: string;
+		state?: string;
+		zip?: string;
+	};
+
 	if (!userObj.id || typeof userObj.id !== 'string') return null;
 
 	return {

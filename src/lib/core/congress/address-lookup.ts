@@ -1,9 +1,5 @@
 import { normalizeState } from '$lib/utils/states';
-import { 
-	CONGRESS_API_KEY, 
-	CWC_API_KEY, 
-	NODE_ENV 
-} from '$env/static/private';
+import { CONGRESS_API_KEY, CWC_API_KEY, NODE_ENV } from '$env/static/private';
 
 interface Address {
 	street: string;

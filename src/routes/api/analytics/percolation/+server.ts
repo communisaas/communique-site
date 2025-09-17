@@ -26,7 +26,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			}
 		});
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 
 		return json(
 			{

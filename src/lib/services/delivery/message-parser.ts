@@ -135,7 +135,4 @@ function validateMessage(parsedMessage: any) {
 	};
 }
 
-export {
-	parseIncomingMessage,
-	validateMessage
-};
+export { parseIncomingMessage, validateMessage };

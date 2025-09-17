@@ -150,7 +150,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					});
 				}
 			} catch (_error) {
-				console.error('Error:' , _error);
+				console.error('Error:', _error);
 				errors.push({
 					recipient: recipient.name,
 					error: _error.message
@@ -196,7 +196,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		return json(response);
 	} catch (_error) {
-		console.error('Error:' , _error);
+		console.error('Error:', _error);
 		return json(
 			{
 				success: false,

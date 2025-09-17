@@ -65,7 +65,9 @@ export class ReputationCalculator {
 		}
 
 		// Calculate reputation change
-		const update = this.calculateReputationDelta(verification as TemplateVerification & { user: User });
+		const update = this.calculateReputationDelta(
+			verification as TemplateVerification & { user: User }
+		);
 
 		// Apply bounds checking
 		const currentRep = verification.user.voter_reputation || 50;
@@ -107,7 +109,9 @@ export class ReputationCalculator {
 	/**
 	 * Calculate reputation delta using quadratic scaling
 	 */
-	private calculateReputationDelta(verification: TemplateVerification & { user: User }): ReputationUpdate {
+	private calculateReputationDelta(
+		verification: TemplateVerification & { user: User }
+	): ReputationUpdate {
 		const consensusScore = verification.consensus_score || 0;
 		const severity = verification.severity_level || 1;
 		const currentRep = verification.user.voter_reputation || 50;
