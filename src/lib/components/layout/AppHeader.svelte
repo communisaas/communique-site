@@ -289,17 +289,17 @@
 				{/if}
 
 				<!-- Primary CTA for template actions -->
-				{#if ctaConfig()}
+				{#if ctaConfig}
 					<div class="flex flex-col items-end gap-1">
-						{#if ctaConfig()?.subtitle}
+						{#if ctaConfig?.subtitle}
 							<span class="hidden text-xs text-slate-500 sm:block">
-								{ctaConfig()?.subtitle}
+								{ctaConfig?.subtitle}
 							</span>
 						{/if}
 
 						<button
 							onclick={handleTemplateUse}
-							class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors {ctaConfig()
+							class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors {ctaConfig
 								?.colors}"
 						>
 							{#if CtaIcon}
@@ -307,10 +307,10 @@
 							{/if}
 
 							<span class="hidden sm:inline">
-								{ctaConfig()?.desktop}
+								{ctaConfig?.desktop}
 							</span>
 							<span class="sm:hidden">
-								{ctaConfig()?.mobile}
+								{ctaConfig?.mobile}
 							</span>
 						</button>
 					</div>
