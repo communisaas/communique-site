@@ -7,13 +7,13 @@
  * This runs server-side only, keeping API keys secure.
  */
 
-const config = require('./config');
+import config from './config';
 
 /**
  * Get action type based on template properties
  * Mirrors logic from main app for consistency
  */
-function getVOTERActionType(templateData) {
+function getVOTERActionType(templateData: any) {
 	const title = (templateData.title || '').toLowerCase();
 	const id = (templateData.id || '').toLowerCase();
 	const method = (templateData.deliveryMethod || '').toLowerCase();
@@ -50,7 +50,7 @@ function getVOTERActionType(templateData) {
 /**
  * Generate message hash for certification
  */
-function generateMessageHash(recipient, subject, body) {
+function generateMessageHash(recipient: any, subject: any, body: any) {
 	const content = `${recipient}:${subject}:${body}`;
 	// Simple hash for now - in production use crypto
 	let hash = 0;
@@ -66,7 +66,7 @@ function generateMessageHash(recipient, subject, body) {
  * Certify email delivery through VOTER Protocol
  * Called after successful CWC submission
  */
-async function certifyEmailDelivery(params) {
+async function certifyEmailDelivery(params: any) {
 	const { userProfile, templateData, cwcResult, recipients = [] } = params;
 
 	// Skip if certification is disabled
@@ -139,14 +139,14 @@ async function certifyEmailDelivery(params) {
 		});
 
 		return result;
-	} catch (error) {
+	} catch (error: any) {
 		console.error('[VOTER] Certification error:', error);
 		// Don't throw - certification failure shouldn't break delivery
 		return null;
 	}
 }
 
-module.exports = {
+export {
 	certifyEmailDelivery,
 	getVOTERActionType,
 	generateMessageHash

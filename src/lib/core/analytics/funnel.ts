@@ -71,7 +71,7 @@ class FunnelAnalytics {
 				failed.push(event);
 				localStorage.setItem('communique_failed_events', JSON.stringify(failed));
 			}
-			console.error('Failed to send analytics event:', error);
+			console.error('Failed to send analytics event:', _error);
 		}
 	}
 

@@ -3,8 +3,8 @@
  * Handles submission of messages to Congressional Web Contact API
  */
 
-const axios = require('axios');
-const config = require('./config');
+import axios from 'axios';
+import config from './config';
 
 /**
  * CWC API Client
@@ -39,7 +39,7 @@ class CWCClient {
 				messageId: messageData.messageId,
 				response: response.data
 			};
-		} catch (error) {
+		} catch (error: any) {
 			console.error('CWC API submission failed:', error.response?.data || error.message);
 
 			return {
@@ -123,7 +123,7 @@ class CWCClient {
 /**
  * Fetch user profile from API
  */
-async function fetchUserProfile(userId) {
+async function fetchUserProfile(userId: any) {
 	try {
 		const response = await axios.get(`${config.communique.apiUrl}/users/${userId}`, {
 			headers: {
@@ -134,7 +134,7 @@ async function fetchUserProfile(userId) {
 		});
 
 		return response.data.user;
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Failed to fetch user profile:', error.message);
 		return null;
 	}
@@ -143,7 +143,7 @@ async function fetchUserProfile(userId) {
 /**
  * Fetch template data from API
  */
-async function fetchTemplate(templateId) {
+async function fetchTemplate(templateId: any) {
 	try {
 		const response = await axios.get(`${config.communique.apiUrl}/templates/${templateId}`, {
 			headers: {
@@ -154,7 +154,7 @@ async function fetchTemplate(templateId) {
 		});
 
 		return response.data.template;
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Failed to fetch template:', error.message);
 		return null;
 	}
@@ -163,7 +163,7 @@ async function fetchTemplate(templateId) {
 /**
  * Notify API of delivery result
  */
-async function notifyDeliveryResult(templateId, userId, result) {
+async function notifyDeliveryResult(templateId: any, userId: any, result: any) {
 	try {
 		await axios.post(
 			`${config.communique.apiUrl}/delivery/notify`,
@@ -186,12 +186,12 @@ async function notifyDeliveryResult(templateId, userId, result) {
 		);
 
 		console.log('Delivery result notification sent successfully');
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Failed to notify delivery result:', error.message);
 	}
 }
 
-module.exports = {
+export {
 	CWCClient,
 	fetchUserProfile,
 	fetchTemplate,

@@ -3,17 +3,17 @@
  * Receives mailto: messages and routes certified delivery through CWC API
  */
 
-const { SMTPServer } = require('smtp-server');
-const config = require('./config');
-const { parseIncomingMessage, validateMessage } = require('./message-parser');
-const { CWCClient } = require('./cwc-integration');
+import { SMTPServer } from 'smtp-server';
+import config from './config';
+import { parseIncomingMessage, validateMessage } from './message-parser';
+import { CWCClient } from './cwc-integration';
 const {
 	resolveUserByEmail,
 	fetchTemplateBySlug,
 	notifyDeliveryResult
 } = require('./user-resolution');
-const { handleUnmatchedSender, sendVerificationRequiredBounce } = require('./bounce-handler');
-const { certifyEmailDelivery } = require('./blockchain-certification');
+import { handleUnmatchedSender, sendVerificationRequiredBounce } from './bounce-handler';
+import { certifyEmailDelivery } from './blockchain-certification';
 
 // Initialize CWC client
 const cwcClient = new CWCClient();
@@ -62,7 +62,7 @@ const server = new SMTPServer({
 /**
  * Handle incoming mail messages
  */
-async function handleIncomingMail(stream, session) {
+async function handleIncomingMail(stream: any, session: any) {
 	try {
 		console.log('Processing incoming message...');
 
@@ -101,14 +101,14 @@ async function handleIncomingMail(stream, session) {
 		if (!templateData) {
 			console.error(`Template not found: ${templateIdentifier}`);
 			// Send generic bounce since we can't identify the template
-			const { sendGenericBounce } = require('./bounce-handler');
+			import { sendGenericBounce } from './bounce-handler';
 			await sendGenericBounce(senderEmail, templateIdentifier);
 			return;
 		}
 
 		// Process certified delivery
 		await processCertifiedDelivery(parsedMessage, userResult.user, templateData);
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Error handling incoming mail:', error);
 		// Don't throw - we don't want to reject the SMTP connection
 		// Log the error and continue
@@ -118,7 +118,7 @@ async function handleIncomingMail(stream, session) {
 /**
  * Check if the recipient address indicates certified delivery
  */
-function isCertifiedDeliveryAddress(recipients) {
+function isCertifiedDeliveryAddress(recipients: any) {
 	const certifiedPatterns = [/^congress@/i, /^certified@/i, /^cwc@/i];
 
 	return recipients.some((recipient) =>
@@ -129,7 +129,7 @@ function isCertifiedDeliveryAddress(recipients) {
 /**
  * Process certified delivery through CWC API
  */
-async function processCertifiedDelivery(parsedMessage, userProfile, templateData) {
+async function processCertifiedDelivery(parsedMessage: any, userProfile: any, templateData: any) {
 	try {
 		console.log(
 			`Processing certified delivery for template: ${templateData.id}, user: ${userProfile.id}`
@@ -183,7 +183,7 @@ async function processCertifiedDelivery(parsedMessage, userProfile, templateData
 
 		// Notify Communiqué API of the result (including certification if successful)
 		await notifyDeliveryResult(templateData.id, userProfile.id, result);
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Error processing certified delivery:', error);
 
 		// Notify of the failure
@@ -198,7 +198,7 @@ async function processCertifiedDelivery(parsedMessage, userProfile, templateData
  * Determine recipient office based on user profile
  * This would integrate with congressional district lookup
  */
-function determineRecipientOffice(userProfile) {
+function determineRecipientOffice(userProfile: any) {
 	// TODO: Implement congressional district lookup based on address
 	// For now, return a placeholder that would be mapped to actual CWC office codes
 	return `DISTRICT_${userProfile.state}_AUTO`;
@@ -246,4 +246,4 @@ if (require.main === module) {
 	startServer();
 }
 
-module.exports = { server, startServer };
+export {  server, startServer  };

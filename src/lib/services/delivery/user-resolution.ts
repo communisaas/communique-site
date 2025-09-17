@@ -3,14 +3,14 @@
  * Resolves users by email via API
  */
 
-const axios = require('axios');
-const config = require('./config');
+import axios from 'axios';
+import config from './config';
 
 /**
  * Resolve user by email address
  * Checks both primary and secondary emails
  */
-async function resolveUserByEmail(email) {
+async function resolveUserByEmail(email: any) {
 	try {
 		const response = await axios.get(
 			`${config.communique.apiUrl}/delivery-platform/user-by-email`,
@@ -25,7 +25,7 @@ async function resolveUserByEmail(email) {
 		);
 
 		return response.data;
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Failed to resolve user by email:', error.message);
 		return { user: null, emailType: null };
 	}
@@ -34,7 +34,7 @@ async function resolveUserByEmail(email) {
 /**
  * Fetch user by ID
  */
-async function fetchUserById(userId) {
+async function fetchUserById(userId: any) {
 	try {
 		const response = await axios.get(`${config.communique.apiUrl}/users/${userId}`, {
 			headers: {
@@ -45,7 +45,7 @@ async function fetchUserById(userId) {
 		});
 
 		return response.data.user;
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Failed to fetch user by ID:', error.message);
 		return null;
 	}
@@ -54,7 +54,7 @@ async function fetchUserById(userId) {
 /**
  * Fetch template by slug
  */
-async function fetchTemplateBySlug(slug) {
+async function fetchTemplateBySlug(slug: any) {
 	try {
 		const response = await axios.get(`${config.communique.apiUrl}/delivery-platform/template`, {
 			params: { slug },
@@ -66,7 +66,7 @@ async function fetchTemplateBySlug(slug) {
 		});
 
 		return response.data.template;
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Failed to fetch template by slug:', error.message);
 		return null;
 	}
@@ -76,7 +76,7 @@ async function fetchTemplateBySlug(slug) {
  * Detect potential user from message content
  * Uses various heuristics to identify likely account owner
  */
-async function detectPotentialUser(parsedMessage, templateSlug) {
+async function detectPotentialUser(parsedMessage: any, templateSlug: any) {
 	// Strategy 1: Check if template has an owner
 	if (templateSlug) {
 		const template = await fetchTemplateBySlug(templateSlug);
@@ -114,7 +114,7 @@ async function detectPotentialUser(parsedMessage, templateSlug) {
  * Extract potential name from message content
  * Looks for common signature patterns
  */
-function extractNameFromMessage(parsedMessage) {
+function extractNameFromMessage(parsedMessage: any) {
 	const text = parsedMessage.text || '';
 
 	// Look for common signature patterns
@@ -139,7 +139,7 @@ function extractNameFromMessage(parsedMessage) {
 /**
  * Notify API of delivery result
  */
-async function notifyDeliveryResult(templateId, userId, result) {
+async function notifyDeliveryResult(templateId: any, userId: any, result: any) {
 	try {
 		await axios.post(
 			`${config.communique.apiUrl}/delivery-platform/delivery-result`,
@@ -165,12 +165,12 @@ async function notifyDeliveryResult(templateId, userId, result) {
 		);
 
 		console.log('Delivery result notification sent successfully');
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Failed to notify delivery result:', error.message);
 	}
 }
 
-module.exports = {
+export {
 	resolveUserByEmail,
 	fetchUserById,
 	fetchTemplateBySlug,

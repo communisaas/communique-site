@@ -3,10 +3,10 @@
  * Sends helpful bounce emails when messages can't be processed
  */
 
-const nodemailer = require('nodemailer');
-const jwt = require('jsonwebtoken');
-const config = require('./config');
-const { detectPotentialUser, fetchTemplateBySlug } = require('./user-resolution');
+import nodemailer from 'nodemailer';
+import jwt from 'jsonwebtoken';
+import config from './config';
+import { detectPotentialUser, fetchTemplateBySlug } from './user-resolution';
 
 // Create reusable transporter
 let transporter = null;
@@ -35,7 +35,7 @@ function initTransporter() {
  * Handle unmatched sender
  * Sends bounce email with actionable options
  */
-async function handleUnmatchedSender(parsedMessage, senderEmail, templateSlug) {
+async function handleUnmatchedSender(parsedMessage: any, senderEmail: any, templateSlug: any) {
 	try {
 		// Try to detect potential user
 		const potentialUser = await detectPotentialUser(parsedMessage, templateSlug);
@@ -47,7 +47,7 @@ async function handleUnmatchedSender(parsedMessage, senderEmail, templateSlug) {
 			// No user found - offer signup
 			await sendNewUserBounce(senderEmail, templateSlug);
 		}
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Error handling unmatched sender:', error);
 		// Send generic bounce as fallback
 		await sendGenericBounce(senderEmail, templateSlug);
@@ -57,7 +57,7 @@ async function handleUnmatchedSender(parsedMessage, senderEmail, templateSlug) {
 /**
  * Send bounce email for adding email to existing account
  */
-async function sendAddEmailBounce(senderEmail, userId, templateSlug) {
+async function sendAddEmailBounce(senderEmail: any, userId: any, templateSlug: any) {
 	const token = generateVerificationToken(senderEmail, userId, templateSlug);
 	const addEmailUrl = `https://communique.app/api/user/emails/add-verified?token=${token}&redirect=/s/${templateSlug}`;
 
@@ -152,7 +152,7 @@ This link expires in 24 hours.
 /**
  * Send bounce email for new user signup
  */
-async function sendNewUserBounce(senderEmail, templateSlug) {
+async function sendNewUserBounce(senderEmail: any, templateSlug: any) {
 	const signupUrl = `https://communique.app/auth/signup?email=${encodeURIComponent(senderEmail)}&template=${templateSlug}`;
 	const templateUrl = templateSlug
 		? `https://communique.app/s/${templateSlug}`
@@ -245,7 +245,7 @@ Already have an account? You may have signed up with a different email address.
 /**
  * Send bounce for unverified secondary email
  */
-async function sendVerificationRequiredBounce(senderEmail, templateSlug) {
+async function sendVerificationRequiredBounce(senderEmail: any, templateSlug: any) {
 	const verifyUrl = `https://communique.app/settings/emails`;
 
 	const mailOptions = {
@@ -317,7 +317,7 @@ Verify your email: ${verifyUrl}
 /**
  * Send generic bounce email
  */
-async function sendGenericBounce(senderEmail, templateSlug) {
+async function sendGenericBounce(senderEmail: any, templateSlug: any) {
 	const websiteUrl = templateSlug
 		? `https://communique.app/s/${templateSlug}`
 		: 'https://communique.app';
@@ -385,7 +385,7 @@ If you continue to have issues, please contact support@communique.app
 /**
  * Generate verification token for email addition
  */
-function generateVerificationToken(email, userId, templateSlug) {
+function generateVerificationToken(email: any, userId: any, templateSlug: any) {
 	const payload = {
 		email,
 		userId,
@@ -404,7 +404,7 @@ function generateVerificationToken(email, userId, templateSlug) {
 	});
 }
 
-module.exports = {
+export {
 	handleUnmatchedSender,
 	sendAddEmailBounce,
 	sendNewUserBounce,

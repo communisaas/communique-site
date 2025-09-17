@@ -84,7 +84,7 @@ class DatabaseAnalytics {
 				}
 			});
 		} catch (_error) {
-			console.error('Failed to initialize analytics session:', error);
+			console.error('Failed to initialize analytics session:', _error);
 		}
 	}
 
@@ -190,7 +190,7 @@ class DatabaseAnalytics {
 		} catch (_error) {
 			// Put events back in queue for retry
 			this.eventQueue.unshift(...events);
-			console.error('Failed to flush analytics events:', error);
+			console.error('Failed to flush analytics events:', _error);
 		}
 	}
 
@@ -328,7 +328,7 @@ class DatabaseAnalytics {
 			session_id: this.sessionId,
 			name: 'javascript_error',
 			properties: {
-				error_message: _error.message,
+				error_message: error.message,
 				error_stack: error.stack,
 				error_name: error.name,
 				...context

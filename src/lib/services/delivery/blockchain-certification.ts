@@ -5,7 +5,7 @@
  * Eliminates circular dependency on VOTER Protocol API
  */
 
-const { ethers } = require('ethers');
+import { ethers } from 'ethers';
 
 // Smart contract ABIs (simplified - only functions we need)
 const COMMUNIQUE_CORE_ABI = [
@@ -42,7 +42,7 @@ class BlockchainCertification {
 	/**
 	 * Get action type enum value based on template properties
 	 */
-	getActionType(templateData) {
+	getActionType(templateData: any) {
 		const title = (templateData.title || '').toLowerCase();
 		const method = (templateData.deliveryMethod || '').toLowerCase();
 
@@ -68,7 +68,7 @@ class BlockchainCertification {
 	/**
 	 * Generate deterministic hash for the civic action
 	 */
-	generateActionHash(userAddress, templateId, deliveryConfirmation) {
+	generateActionHash(userAddress: string, templateId: string, deliveryConfirmation: string) {
 		const data = ethers.solidityPacked(
 			['address', 'string', 'string', 'uint256'],
 			[userAddress, templateId, deliveryConfirmation, Date.now()]
@@ -79,7 +79,7 @@ class BlockchainCertification {
 	/**
 	 * Certify email delivery directly on blockchain
 	 */
-	async certifyDelivery({ userAddress, templateData, deliveryConfirmation }) {
+	async certifyDelivery({ userAddress, templateData, deliveryConfirmation }: { userAddress: string; templateData: any; deliveryConfirmation: string }) {
 		try {
 			console.log('🔗 Certifying delivery on blockchain...');
 
@@ -119,12 +119,12 @@ class BlockchainCertification {
 				actionHash: actionHash,
 				gasUsed: receipt.gasUsed.toString()
 			};
-		} catch (error) {
+		} catch (error: any) {
 			console.error('❌ Blockchain certification failed:', error);
 
 			return {
 				success: false,
-				error: error.message,
+				error: error instanceof Error ? error.message : String(error),
 				details: error
 			};
 		}
@@ -162,12 +162,12 @@ class BlockchainCertification {
 }
 
 // Export singleton instance
-const blockchainCertification = new BlockchainCertification();
+export const blockchainCertification = new BlockchainCertification();
 
 /**
  * Main export function for backward compatibility
  */
-async function certifyEmailDelivery(certificationData) {
+export async function certifyEmailDelivery(certificationData: { userAddress: string; templateData: any; deliveryConfirmation: string }) {
 	if (!blockchainCertification.isConfigured()) {
 		console.log('ℹ️ Blockchain certification not configured, skipping...');
 		return { success: true, message: 'Certification disabled' };
@@ -175,8 +175,3 @@ async function certifyEmailDelivery(certificationData) {
 
 	return await blockchainCertification.certifyDelivery(certificationData);
 }
-
-module.exports = {
-	certifyEmailDelivery,
-	blockchainCertification
-};

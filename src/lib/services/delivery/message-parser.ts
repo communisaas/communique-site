@@ -3,12 +3,12 @@
  * Extracts template metadata and content from incoming emails
  */
 
-const { simpleParser } = require('mailparser');
+import { simpleParser } from 'mailparser';
 
 /**
  * Parse incoming email to extract template data
  */
-async function parseIncomingMessage(stream) {
+async function parseIncomingMessage(stream: any) {
 	try {
 		const parsed = await simpleParser(stream);
 
@@ -30,7 +30,7 @@ async function parseIncomingMessage(stream) {
 			messageId: parsed.messageId,
 			date: parsed.date
 		};
-	} catch (error) {
+	} catch (error: any) {
 		console.error('Error parsing message:', error);
 		throw new Error('Failed to parse incoming email');
 	}
@@ -39,7 +39,7 @@ async function parseIncomingMessage(stream) {
 /**
  * Extract template ID from email headers or subject
  */
-function extractTemplateId(parsed) {
+function extractTemplateId(parsed: any) {
 	// Check for custom header first
 	const headerTemplateId = parsed.headers.get('x-template-id');
 	if (headerTemplateId) {
@@ -66,7 +66,7 @@ function extractTemplateId(parsed) {
 /**
  * Extract user ID from email headers or message ID
  */
-function extractUserId(parsed) {
+function extractUserId(parsed: any) {
 	// Check for custom header
 	const headerUserId = parsed.headers.get('x-user-id');
 	if (headerUserId) {
@@ -85,7 +85,7 @@ function extractUserId(parsed) {
 /**
  * Extract personal connection from email body
  */
-function extractPersonalConnection(parsed) {
+function extractPersonalConnection(parsed: any) {
 	const text = parsed.text || '';
 
 	// Look for personal connection marker
@@ -110,7 +110,7 @@ function extractPersonalConnection(parsed) {
 /**
  * Validate that message contains required metadata
  */
-function validateMessage(parsedMessage) {
+function validateMessage(parsedMessage: any) {
 	const errors = [];
 
 	if (!parsedMessage.templateId) {
@@ -135,7 +135,7 @@ function validateMessage(parsedMessage) {
 	};
 }
 
-module.exports = {
+export {
 	parseIncomingMessage,
 	validateMessage
 };

@@ -3,7 +3,8 @@
  * Loads and validates environment variables
  */
 
-require('dotenv').config();
+import dotenv from 'dotenv';
+dotenv.config();
 
 const config = {
 	smtp: {
@@ -77,4 +78,4 @@ if (process.env.NODE_ENV === 'production') {
 	validateConfig();
 }
 
-module.exports = config;
+export default config;
