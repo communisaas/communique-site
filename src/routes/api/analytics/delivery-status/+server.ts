@@ -97,7 +97,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			timestamp: new Date().toISOString()
 		});
 	} catch (_error) {
-		console.error('Delivery status lookup failed:', error);
+		console.error('Error:' , _error);
 
 		return json(
 			{

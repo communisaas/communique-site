@@ -29,7 +29,7 @@ export async function resolveChannel(
 		};
 	}
 
-	const channel = await db.legislative_channel.findUnique({ where: { country_code: code } });
+	const channel = await db.legislative_channel.findFirst({ where: { country_code: code } });
 	if (!channel) {
 		return {
 			country_code: code,

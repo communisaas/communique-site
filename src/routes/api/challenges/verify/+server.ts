@@ -65,7 +65,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Verify the claim using specialized challenge verification
-		const verificationResult = await verificationAgent.process({
+		const verificationResult = await verificationAgent.makeDecision({
 			template: {
 				message_body: claim.content,
 				subject: `Challenge: ${challengeReason || 'Factual accuracy dispute'}`
@@ -77,7 +77,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		// Get challenger reputation
-		const challengerRep = await reputationAgent.process({
+		const challengerRep = await reputationAgent.makeDecision({
 			userAddress: challengerAddress,
 			actionType: 'challenge_market',
 			qualityScore: 0 // Not scoring yet, just getting current rep
@@ -88,7 +88,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// 2. Challenger's reputation
 		// 3. Claim impact/reach
 		// 4. Network conditions
-		const marketConditions = await marketAgent.process({
+		const marketConditions = await marketAgent.makeDecision({
 			baseReward: BigInt(stakeAmount || 1000),
 			actionType: 'challenge_market',
 			challengerReputation: challengerRep.currentScore,
@@ -179,12 +179,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 	} catch (_error) {
-		console.error('Challenge verification error:', error);
+		console.error('Error:' , _error);
 		return json(
 			{
 				success: false,
 				error: 'Challenge verification failed',
-				details: _error.message
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

@@ -131,7 +131,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		console.error('Self.xyz verification error:', error);
+		console.error('Error:' , _error);
 		return json(
 			{
 				status: 'error',

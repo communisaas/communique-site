@@ -22,31 +22,41 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Calculate base reward with supply agent
-		const supplyDecision = await supplyAgent.process({
+		const supplyDecision = await supplyAgent.makeDecision({
 			actionType,
-			userAddress,
-			verificationScore
+			parameters: {
+				userAddress,
+				verificationScore
+			}
 		});
 
 		// Apply market conditions
-		const marketDecision = await marketAgent.process({
-			baseReward: supplyDecision.rewardAmount,
-			actionType
+		const marketDecision = await marketAgent.makeDecision({
+			actionType,
+			parameters: {
+				baseReward: supplyDecision.decision?.rewardAmount || 0
+			}
 		});
 
 		// Calculate impact multiplier
-		const impactDecision = await impactAgent.process({
+		const impactDecision = await impactAgent.makeDecision({
 			actionType,
-			recipients,
-			templateId: templateId || 'unknown'
+			templateId: templateId || 'unknown',
+			parameters: {
+				recipients
+			}
 		});
 
 		// Calculate final reward
+		const baseReward = supplyDecision.decision?.rewardAmount || 0;
+		const marketMultiplier = marketDecision.decision?.rewardMultiplier || 1;
+		const impactMultiplier = impactDecision.decision?.impactMultiplier || 1;
+		
 		const finalReward = BigInt(
 			Math.floor(
-				Number(supplyDecision.rewardAmount) *
-					marketDecision.rewardMultiplier *
-					impactDecision.impactMultiplier
+				Number(baseReward) *
+					marketMultiplier *
+					impactMultiplier
 			)
 		);
 
@@ -57,12 +67,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				formatted: `${Number(finalReward) / 10 ** 18} VOTER`
 			},
 			breakdown: {
-				base: supplyDecision.rewardAmount.toString(),
-				marketMultiplier: marketDecision.rewardMultiplier,
-				impactMultiplier: impactDecision.impactMultiplier,
-				supplyImpact: supplyDecision.supplyImpact,
-				impactScore: impactDecision.impactScore,
-				marketSignal: marketDecision.marketSignal
+				base: baseReward.toString(),
+				marketMultiplier,
+				impactMultiplier,
+				supplyImpact: supplyDecision.decision?.supplyImpact || 0,
+				impactScore: impactDecision.decision?.impactScore || 0,
+				marketSignal: marketDecision.decision?.marketSignal || 'neutral'
 			},
 			agents: {
 				supply: supplyDecision,
@@ -71,7 +81,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 	} catch (_error) {
-		console.error('Reward calculation error:', error);
-		return json({ error: 'Reward calculation failed', details: _error.message }, { status: 500 });
+		console.error('Reward calculation error:', _error);
+		return json({ error: 'Reward calculation failed', details: _error instanceof Error ? _error.message : 'Unknown error' }, { status: 500 });
 	}
 };

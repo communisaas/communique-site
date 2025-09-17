@@ -111,7 +111,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		throw redirect(302, destination);
 	} catch (_error) {
-		console.error('Email verification error:', error);
+		console.error('Error:' , _error);
 
 		// If it's already a redirect, pass it through
 		if (error && typeof error === 'object' && 'status' in error && error.status === 302) {

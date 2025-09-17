@@ -111,7 +111,7 @@ function broadcastStatusUpdate(submissionId: string, statusUpdate: unknown) {
 				try {
 					ws.send(message);
 				} catch (_error) {
-					console.error('Failed to send WebSocket message:', error);
+					console.error('Error:' , _error);
 					connections.delete(ws);
 				}
 			}
@@ -164,7 +164,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json(response);
 	} catch (_error) {
-		console.error('N8N webhook error:', error);
+		console.error('Error:' , _error);
 
 		const response: ApiResponse = {
 			success: false,

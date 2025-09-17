@@ -76,7 +76,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Stage 1: Verification
 		if (stage === 'verify' || stage === 'full') {
-			const verification = await agentCoordinator.verification.process({
+			const verification = await agentCoordinator.verification.makeDecision({
 				template
 			});
 
@@ -232,12 +232,12 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		return json(response);
 	} catch (_error) {
-		console.error('N8N processing error:', error);
+		console.error('Error:' , _error);
 		return json(
 			{
 				success: false,
 				error: 'Processing failed',
-				details: _error.message
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

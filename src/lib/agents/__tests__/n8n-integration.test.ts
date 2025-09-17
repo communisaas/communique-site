@@ -25,7 +25,7 @@ vi.mock('$lib/services/delivery/integrations/n8n', () => {
 describe('N8N Agent Integration', () => {
 	let verificationAgent: VerificationAgent;
 	let moderationConsensus: ModerationConsensus;
-	let mockN8NClient: unknown;
+	let mockN8NClient: any;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -39,7 +39,7 @@ describe('N8N Agent Integration', () => {
 	describe('VerificationAgent N8N Integration', () => {
 		it('should call N8N workflow for verification', async () => {
 			// Mock successful N8N response
-			mockN8NClient.triggerWorkflow.mockResolvedValue({
+			(mockN8NClient as any).triggerWorkflow.mockResolvedValue({
 				success: true,
 				data: {
 					approved: true,
@@ -56,9 +56,9 @@ describe('N8N Agent Integration', () => {
 				message_body: 'Test message body'
 			};
 
-			const result = await verificationAgent.process({ template });
+			const result = await (verificationAgent as any).process({ template });
 
-			expect(mockN8NClient.triggerWorkflow).toHaveBeenCalledWith(
+			expect((mockN8NClient as any).triggerWorkflow).toHaveBeenCalledWith(
 				'verification-comprehensive',
 				expect.objectContaining({
 					template: {
@@ -89,7 +89,7 @@ describe('N8N Agent Integration', () => {
 				message_body: 'Test message body'
 			};
 
-			const result = await verificationAgent.process({ template });
+			const result = await (verificationAgent as any).process({ template });
 
 			expect(result.reasoning).toContain('[Fallback verification used]');
 			expect(result.approved).toBeDefined();
@@ -142,7 +142,7 @@ describe('N8N Agent Integration', () => {
 
 			const result = await moderationConsensus.evaluateTemplate('verification-123');
 
-			expect(mockN8NClient.triggerWorkflow).toHaveBeenCalledWith(
+			expect((mockN8NClient as any).triggerWorkflow).toHaveBeenCalledWith(
 				'llm-moderation-openai',
 				expect.objectContaining({
 					template: expect.objectContaining({
@@ -151,7 +151,7 @@ describe('N8N Agent Integration', () => {
 				})
 			);
 
-			expect(mockN8NClient.triggerWorkflow).toHaveBeenCalledWith(
+			expect((mockN8NClient as any).triggerWorkflow).toHaveBeenCalledWith(
 				'llm-moderation-gemini',
 				expect.objectContaining({
 					template: expect.objectContaining({
@@ -207,7 +207,7 @@ describe('N8N Agent Integration', () => {
 			};
 
 			// Should not throw, should use fallback
-			const result = await verificationAgent.process({ template });
+			const result = await (verificationAgent as any).process({ template });
 			expect(result).toBeDefined();
 			expect(result.reasoning).toContain('[Fallback verification used]');
 		});
@@ -224,7 +224,7 @@ describe('N8N Agent Integration', () => {
 				message_body: 'Test content'
 			};
 
-			const result = await verificationAgent.process({ template });
+			const result = await (verificationAgent as any).process({ template });
 			expect(result.reasoning).toContain('[Fallback verification used]');
 		});
 	});
@@ -241,7 +241,7 @@ describe('N8N Workflow Pattern Compliance', () => {
 		const agent = new VerificationAgent();
 		(agent as any).n8nClient = mockN8NClient;
 
-		await agent.process({
+		await (agent as any).process({
 			template: {
 				id: 'test',
 				subject: 'Test',

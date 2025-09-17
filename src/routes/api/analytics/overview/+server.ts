@@ -216,7 +216,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			generated_at: new Date().toISOString()
 		});
 	} catch (_error) {
-		console.error('Overview analysis failed:', error);
+		console.error('Error:' , _error);
 
 		return json(
 			{

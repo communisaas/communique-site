@@ -50,8 +50,13 @@ export class MarketAgent extends BaseAgent {
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {
 		try {
 			// Extract market input from context
+			const baseRewardParam = context.parameters?.baseReward;
+			const baseRewardValue = typeof baseRewardParam === 'string' || typeof baseRewardParam === 'number' 
+				? String(baseRewardParam) 
+				: '1000000000000000000';
+				
 			const marketInput: MarketInput = {
-				baseReward: BigInt(context.parameters?.baseReward || '1000000000000000000'), // 1 token default
+				baseReward: BigInt(baseRewardValue), // 1 token default
 				actionType: context.actionType || 'cwc_message',
 				marketConditions: context.parameters?.marketConditions as MarketInput['marketConditions'],
 				participationTrends: context.parameters?.participationTrends as MarketInput['participationTrends']
@@ -167,7 +172,10 @@ export class MarketAgent extends BaseAgent {
 	 * Calculate participation-based multiplier
 	 */
 	private calculateParticipationMultiplier(trends: unknown): number {
-		const trendsTyped = trends as MarketInput['participationTrends'] || {};
+		const trendsTyped = trends as MarketInput['participationTrends'];
+		if (!trendsTyped) {
+			return 1.0; // Default multiplier
+		}
 		const { dailyActive = 0, weeklyActive = 0, growthRate = 0 } = trendsTyped;
 
 		// Growth phase: increase rewards

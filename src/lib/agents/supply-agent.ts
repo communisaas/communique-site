@@ -113,37 +113,46 @@ export class SupplyAgent extends BaseAgent {
 	}> {
 		const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-		// Get activity from last 24 hours
-		const activityData = await prisma.civicAction.aggregateRaw({
-			pipeline: [
-				{
-					$match: {
-						created_at: { $gte: oneDayAgo }
-					}
-				},
-				{
-					$group: {
-						_id: null,
-						daily_active: { $addToSet: '$user_id' },
-						total_actions: { $sum: 1 },
-						cwc_actions: {
-							$sum: {
-								$cond: [{ $eq: ['$action_type', 'cwc_message'] }, 1, 0]
-							}
-						}
+		// Get activity from last 24 hours using proper Prisma aggregate for PostgreSQL
+		const [totalActions, cwcActions, uniqueUsers] = await Promise.all([
+			// Total actions count
+			prisma.civicAction.count({
+				where: {
+					created_at: {
+						gte: oneDayAgo
 					}
 				}
-			]
-		});
+			}),
+			// CWC actions count
+			prisma.civicAction.count({
+				where: {
+					created_at: {
+						gte: oneDayAgo
+					},
+					action_type: 'cwc_message'
+				}
+			}),
+			// Count unique users
+			prisma.civicAction.findMany({
+				where: {
+					created_at: {
+						gte: oneDayAgo
+					}
+				},
+				select: {
+					user_id: true
+				},
+				distinct: ['user_id']
+			})
+		]);
 
-		const activity = activityData[0] || { daily_active: [], total_actions: 0, cwc_actions: 0 };
-		const dailyActiveUsers = activity.daily_active.length;
+		const dailyActiveUsers = uniqueUsers.length;
 
 		return {
 			dailyActiveUsers,
-			totalActions: activity.total_actions,
-			cwcActions: activity.cwc_actions,
-			avgActionsPerUser: dailyActiveUsers > 0 ? activity.total_actions / dailyActiveUsers : 0
+			totalActions,
+			cwcActions,
+			avgActionsPerUser: dailyActiveUsers > 0 ? totalActions / dailyActiveUsers : 0
 		};
 	}
 
@@ -249,7 +258,7 @@ export class SupplyAgent extends BaseAgent {
 
 	private calculateConfidence(
 		networkData: { dailyActiveUsers: number },
-		userRep: unknown,
+		userRep: { trust_score: number; reputation_tier: string } | null,
 		context: AgentContext
 	): number {
 		let confidence = 0.8; // Base confidence

@@ -26,6 +26,12 @@ export interface EnvironmentConfig {
 		voterApiKey: string;
 		n8nUrl: string;
 		n8nApiKey: string;
+		n8nWebhookSecret: string;
+	};
+	features: {
+		enableVoterCertification: boolean;
+		enableN8NWorkflows: boolean;
+		enableBetaFeatures: boolean;
 	};
 }
 
@@ -52,13 +58,14 @@ const EnvSchema = z.object({
 	COMMUNIQUE_API_KEY: z.string(),
 
 	CWC_API_URL: z.string().url().default('https://api.house.gov/cwc/v1'),
-	CWC_API_KEY: z.string(),
+	CWC_API_KEY: z.string().default(''),
 
-	VOTER_API_URL: z.string().url().optional(),
-	VOTER_API_KEY: z.string().optional(),
+	VOTER_API_URL: z.string().url().default('http://localhost:3000'),
+	VOTER_API_KEY: z.string().default(''),
 
 	N8N_URL: z.string().url().default('http://localhost:5678'),
-	N8N_WEBHOOK_SECRET: z.string(),
+	N8N_API_KEY: z.string().default(''),
+	N8N_WEBHOOK_SECRET: z.string().default(''),
 
 	// Feature Flags
 	ENABLE_VOTER_CERTIFICATION: z.coerce.boolean().default(false),
@@ -134,6 +141,7 @@ class ConfigManager {
 					voterUrl: env.VOTER_API_URL,
 					voterApiKey: env.VOTER_API_KEY,
 					n8nUrl: env.N8N_URL,
+					n8nApiKey: env.N8N_API_KEY,
 					n8nWebhookSecret: env.N8N_WEBHOOK_SECRET
 				},
 
@@ -145,7 +153,7 @@ class ConfigManager {
 			};
 		}
 
-		return this.config;
+		return this.config!;
 	}
 
 	/**

@@ -39,6 +39,15 @@ model User {
   trust_score            Int                    @default(0) @map("trust_score")
   reputation_tier        String                 @default("novice") @map("reputation_tier") // 'expert', 'verified', 'novice'
   
+  // Profile fields
+  role                   String?                // User's role/profession
+  organization           String?                // User's organization  
+  location               String?                // General location description
+  connection             String?                // Connection to issues they advocate for
+  connection_details     String?                @map("connection_details") // Additional connection context
+  profile_completed_at   DateTime?              @map("profile_completed_at") // When profile was completed
+  profile_visibility     String                 @default("private") @map("profile_visibility") // public, private, limited
+  
   // Core relations
   account                account[]
   sessions               Session[]
@@ -126,7 +135,7 @@ model Template {
 }
 
 model template_campaign {
-  id              String    @id @default(cuid())
+  id              String    @id
   template_id     String
   user_id         String    // WHO actually used this template
   delivery_type   String
@@ -192,20 +201,40 @@ model congressional_office {
 // LEGISLATIVE SYSTEM (BETA)
 
 model legislative_channel {
-  id                    String   @id @default(cuid())
-  channel_id            String   @unique @map("channel_id")
-  name                  String
-  type                  String   // "email", "form", "cwc"
-  jurisdiction_level    String   // "federal", "state", "municipal"
-  country_code          String   // ISO code
-  state_code            String?  // US state code
-  district              String?  // Congressional district
-  delivery_config       Json     // Channel-specific config
-  is_active             Boolean  @default(true)
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
+  id                    String                @id @default(cuid())
+  country_code          String                // ISO code - removed unique constraint
+  country_name          String
+  legislature_name      String
+  legislature_type      String
+  access_method         String
+  access_tier           Int                   @default(3)
+  email_pattern         String?
+  email_domain          String?
+  email_format_notes    String?
+  api_endpoint          String?
+  api_auth_type         String?
+  api_documentation_url String?
+  rate_limit_requests   Int?
+  rate_limit_daily      Int?
+  form_url              String?
+  form_requires_captcha Boolean               @default(false)
+  form_max_length       Int?
+  primary_language      String
+  supported_languages   String[]
+  requires_constituent  Boolean               @default(false)
+  requires_real_address Boolean               @default(false)
+  forbidden_words       String[]              @default([])
+  message_guidelines    String?
+  population            BigInt?
+  internet_penetration  Float?
+  democracy_index       Float?
+  is_active             Boolean               @default(true)
+  last_verified         DateTime?
+  created_at            DateTime              @default(now()) @map("created_at")
+  updated_at            DateTime              @updatedAt @map("updated_at")
 
-  @@index([country_code, state_code, jurisdiction_level])
+  @@index([access_tier, is_active])
+  @@index([country_code])
   @@map("legislative_channel")
 }
 

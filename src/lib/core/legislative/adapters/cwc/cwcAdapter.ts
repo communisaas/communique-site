@@ -151,7 +151,7 @@ export class CWCAdapter extends LegislativeAdapter {
 	 * Format representative name
 	 */
 	formatRepresentativeName(rep: Representative): string {
-		return `${rep.title || ''} ${rep.first_name} ${rep.last_name}`.trim();
+		return `${rep.title || ''} ${rep.name}`.trim();
 	}
 
 	/**
@@ -168,7 +168,7 @@ export class CWCAdapter extends LegislativeAdapter {
 		// TODO: Map office data to CWC office codes
 		// This would use the existing congressional office data to determine
 		// the appropriate CWC MemberOffice identifier
-		return office.external_id || `OFFICE_${office.id}`;
+		return office.cwc_office_code || `OFFICE_${office.id}`;
 	}
 
 	/**

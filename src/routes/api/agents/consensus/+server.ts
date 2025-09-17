@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			...result
 		});
 	} catch (_error) {
-		console.error('Consensus evaluation error:', error);
-		return json({ error: 'Consensus evaluation failed', details: _error.message }, { status: 500 });
+		console.error('Consensus evaluation error:', _error);
+		return json({ error: 'Consensus evaluation failed', details: _error instanceof Error ? _error.message : 'Unknown error' }, { status: 500 });
 	}
 };

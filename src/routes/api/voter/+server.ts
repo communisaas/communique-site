@@ -332,7 +332,7 @@ async function updateReputation({
  * Agent-orchestrated identity verification
  * Replaces static verification with intelligent multi-source analysis
  */
-async function verifyIdentity({ userId, _walletAddress, kycResult, trustScore, districtHash }) {
+async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, districtHash }) {
 	if (!userId) {
 		throw error(400, 'Missing required field: userId');
 	}

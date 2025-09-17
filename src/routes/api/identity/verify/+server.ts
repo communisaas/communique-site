@@ -160,7 +160,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 			message: 'Identity verification completed successfully'
 		});
 	} catch (_error) {
-		console.error('Self.xyz verification error:', error);
+		console.error('Error:' , _error);
 
 		// Log detailed error information for debugging
 		if (_error instanceof Error) {

@@ -152,7 +152,7 @@ export async function POST({ request }) {
 
 		return json(response);
 	} catch (_error) {
-		console.error('Template analysis error:', error);
+		console.error('Error:' , _error);
 
 		const response: ApiResponse = {
 			success: false,

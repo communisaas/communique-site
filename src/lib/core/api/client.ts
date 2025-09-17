@@ -123,10 +123,10 @@ class UnifiedApiClient {
 				onLoadingChange?.(false);
 				return result;
 			} catch (_error) {
-				lastError = error as Error;
+				lastError = _error as Error;
 
 				// Don't retry on abort errors
-				if (_error instanceof Error && error.name === 'AbortError') {
+				if (_error instanceof Error && _error.name === 'AbortError') {
 					break;
 				}
 

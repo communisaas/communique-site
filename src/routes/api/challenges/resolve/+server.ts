@@ -123,7 +123,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			// Update challenger reputation
 			if (challenge.challenger_address) {
-				await reputationAgent.process({
+				await reputationAgent.makeDecision({
 					userAddress: challenge.challenger_address,
 					actionType: 'challenge_market',
 					qualityScore: consensusScore,
@@ -133,7 +133,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			// Update creator reputation
 			if (challenge.claim?.creator?.address) {
-				await reputationAgent.process({
+				await reputationAgent.makeDecision({
 					userAddress: challenge.claim.creator.address,
 					actionType: 'challenge_market',
 					qualityScore: 100 - consensusScore,
@@ -147,7 +147,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			// Update reputations (opposite of above)
 			if (challenge.challenger_address) {
-				await reputationAgent.process({
+				await reputationAgent.makeDecision({
 					userAddress: challenge.challenger_address,
 					actionType: 'challenge_market',
 					qualityScore: 100 - consensusScore,
@@ -156,7 +156,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 
 			if (challenge.claim?.creator?.address) {
-				await reputationAgent.process({
+				await reputationAgent.makeDecision({
 					userAddress: challenge.claim.creator.address,
 					actionType: 'challenge_market',
 					qualityScore: consensusScore,
@@ -166,7 +166,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Measure impact of the resolution
-		const impactResult = await impactAgent.process({
+		const impactResult = await impactAgent.makeDecision({
 			actionType: 'challenge_market',
 			recipients: [], // No direct recipients
 			templateId: challenge.claim?.template_id,
@@ -271,12 +271,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			timestamp: new Date().toISOString()
 		});
 	} catch (_error) {
-		console.error('Challenge resolution error:', error);
+		console.error('Error:' , _error);
 		return json(
 			{
 				success: false,
 				error: 'Challenge resolution failed',
-				details: _error.message
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

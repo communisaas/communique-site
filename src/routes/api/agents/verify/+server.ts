@@ -33,7 +33,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Process through verification agent
-		const result = await verificationAgent.process({
+		const result = await verificationAgent.makeDecision({
 			template: templateData,
 			checkGrammar,
 			checkPolicy
@@ -69,7 +69,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			...result
 		});
 	} catch (_error) {
-		console.error('Verification agent error:', error);
-		return json({ error: 'Verification failed', details: _error.message }, { status: 500 });
+		console.error('Error:' , _error);
+		return json({ error: 'Verification failed', details: _error instanceof Error ? _error.message : 'Unknown error' }, { status: 500 });
 	}
 };

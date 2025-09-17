@@ -55,7 +55,7 @@ export class AgentCoordinator {
 		// Run verification
 		const verification = await this.verification.makeDecision({
 			userId: params.userAddress,
-			templateId: params.template?.id,
+			templateId: (params.template as { id?: string })?.id,
 			actionType: params.actionType,
 			parameters: { template: params.template }
 		});
@@ -92,10 +92,10 @@ export class AgentCoordinator {
 		const impact = await this.impact.makeDecision({
 			userId: params.userAddress,
 			actionType: params.actionType,
-			templateId: (params.template as any)?.id,
+			templateId: (params.template as { id?: string })?.id,
 			parameters: {
 				recipients: params.recipients,
-				templateId: (params.template as any)?.id
+				templateId: (params.template as { id?: string })?.id
 			}
 		});
 

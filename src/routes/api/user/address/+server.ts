@@ -125,7 +125,7 @@ export async function POST({ request, locals }) {
 			}
 		});
 	} catch (_error) {
-		console.error('Address save error:', error);
+		console.error('Error:' , _error);
 		return json(
 			{
 				error: 'Failed to save address',

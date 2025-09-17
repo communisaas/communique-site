@@ -129,10 +129,10 @@ export class ReputationAgent extends BaseAgent {
 	}
 
 	private async gatherReputationData(userId: string): Promise<{
-		user: unknown;
-		civicActions: unknown[];
-		challengeHistory: unknown[];
-		reputationLogs: unknown[];
+		user: any;
+		civicActions: any[];
+		challengeHistory: any[];
+		reputationLogs: any[];
 		verificationLevel: string;
 		walletAddress?: string;
 	}> {
@@ -145,7 +145,7 @@ export class ReputationAgent extends BaseAgent {
 				reputation_tier: true,
 				is_verified: true,
 				verification_method: true,
-				created_at: true,
+				createdAt: true,
 				civic_actions: {
 					orderBy: { created_at: 'desc' },
 					take: 50,
@@ -167,7 +167,7 @@ export class ReputationAgent extends BaseAgent {
 						resolution: true,
 						created_at: true,
 						voting_deadline: true,
-						challenge_stakes: {
+						stakes: {
 							select: {
 								side: true,
 								amount: true,
@@ -201,11 +201,11 @@ export class ReputationAgent extends BaseAgent {
 
 		return {
 			user,
-			civicActions: user.civic_actions,
-			challengeHistory: [...user.challenger_challenges, ...user.defender_challenges],
-			reputationLogs: user.reputation_logs,
+			civicActions: (user as any).civic_actions || [],
+			challengeHistory: [...((user as any).challenger_challenges || []), ...((user as any).defender_challenges || [])],
+			reputationLogs: (user as any).reputation_logs || [],
 			verificationLevel: user.is_verified ? 'verified' : 'unverified',
-			walletAddress: user.wallet_address
+			walletAddress: user.wallet_address ?? undefined
 		};
 	}
 
@@ -253,7 +253,7 @@ export class ReputationAgent extends BaseAgent {
 		const consistencyScore = Math.min(50, (civicActions.length / Math.max(1, timeSpan / 30)) * 10);
 
 		// Success rate bonus (0-50)
-		const successfulActions = civicActions.filter((a) => a.status === 'completed').length;
+		const successfulActions = civicActions.filter((a: any) => a?.status === 'completed').length;
 		const successRate = successfulActions / civicActions.length;
 		const successBonus = successRate * 50;
 
@@ -264,11 +264,11 @@ export class ReputationAgent extends BaseAgent {
 		if (challengeHistory.length === 0) return 50; // Neutral score
 
 		// Success rate in challenges (0-120)
-		const resolvedChallenges = challengeHistory.filter((c) => c.resolution);
+		const resolvedChallenges = challengeHistory.filter((c: any) => c?.resolution);
 		if (resolvedChallenges.length === 0) return 50;
 
 		const wonChallenges = resolvedChallenges.filter(
-			(c) => c.resolution === 'challenger_won'
+			(c: any) => c?.resolution === 'challenger_won'
 		).length;
 		const successRate = wonChallenges / resolvedChallenges.length;
 		const baseScore = successRate * 120;
@@ -278,8 +278,8 @@ export class ReputationAgent extends BaseAgent {
 
 		// High-stakes accuracy bonus (0-40)
 		const highStakesChallenges = challengeHistory.filter(
-			(c) =>
-				c.challenge_stakes && c.challenge_stakes.some((s: unknown) => parseFloat(s.amount) > 1000)
+			(c: any) =>
+				c?.challenge_stakes && c.challenge_stakes.some((s: any) => parseFloat(s?.amount || '0') > 1000)
 		);
 		const stakesBonus = Math.min(40, highStakesChallenges.length * 5);
 
@@ -288,15 +288,15 @@ export class ReputationAgent extends BaseAgent {
 
 	private calculateCommunityTrust(reputationLogs: unknown[], civicActions: unknown[]): number {
 		// Base score from positive reputation changes (0-100)
-		const positiveChanges = reputationLogs.filter((log) => log.change_amount > 0);
+		const positiveChanges = reputationLogs.filter((log: any) => log.change_amount > 0);
 		const trustScore = Math.min(100, positiveChanges.length * 5);
 
 		// Peer validation bonus from high-confidence reputation changes (0-60)
-		const highConfidenceChanges = reputationLogs.filter((log) => (log.confidence || 0) > 0.8);
+		const highConfidenceChanges = reputationLogs.filter((log: any) => (log.confidence || 0) > 0.8);
 		const validationBonus = Math.min(60, highConfidenceChanges.length * 10);
 
 		// Community interaction bonus (0-40)
-		const communityActions = civicActions.filter((a) =>
+		const communityActions = civicActions.filter((a: any) =>
 			['challenge_participation', 'template_creation', 'community_moderation'].includes(
 				a.action_type
 			)
@@ -306,7 +306,7 @@ export class ReputationAgent extends BaseAgent {
 		return trustScore + validationBonus + interactionBonus;
 	}
 
-	private calculateVerificationDepth(user: unknown): number {
+	private calculateVerificationDepth(user: any): number {
 		let score = 0;
 
 		// Basic verification (0-60)
@@ -336,7 +336,7 @@ export class ReputationAgent extends BaseAgent {
 		const consistencyScore = Math.min(80, regularActivity * 15);
 
 		// No negative reputation events (0-60)
-		const negativeEvents = reputationLogs.filter((log) => log.change_amount < -50).length;
+		const negativeEvents = reputationLogs.filter((log: any) => log.change_amount < -50).length;
 		const integrityScore = Math.max(0, 60 - negativeEvents * 20);
 
 		// Long-term engagement (0-60)
@@ -376,7 +376,7 @@ export class ReputationAgent extends BaseAgent {
 		return 'untrusted';
 	}
 
-	private generateBadges(reputationData: unknown, components: unknown): string[] {
+	private generateBadges(reputationData: any, components: any): string[] {
 		const badges: string[] = [];
 
 		// Civic Leader
@@ -397,7 +397,7 @@ export class ReputationAgent extends BaseAgent {
 		// Challenge Master (special conditions)
 		const challengeWinRate =
 			reputationData.challengeHistory.length > 5
-				? reputationData.challengeHistory.filter((c: unknown) => c.resolution === 'challenger_won')
+				? reputationData.challengeHistory.filter((c: any) => c.resolution === 'challenger_won')
 						.length / reputationData.challengeHistory.length
 				: 0;
 		if (challengeWinRate >= 0.8) badges.push('challenge_master');
@@ -445,14 +445,14 @@ export class ReputationAgent extends BaseAgent {
 		return attestations;
 	}
 
-	private identifyReputationRisks(reputationData: unknown, components: unknown): string[] {
+	private identifyReputationRisks(reputationData: any, components: any): string[] {
 		const risks: string[] = [];
 
 		if (components.verification_depth < 50) risks.push('low_verification');
 		if (components.behavioral_integrity < 50) risks.push('behavioral_inconsistency');
 		if (reputationData.challengeHistory.length > 5) {
 			const lossRate =
-				reputationData.challengeHistory.filter((c: unknown) => c.resolution === 'challenger_lost')
+				reputationData.challengeHistory.filter((c: any) => c.resolution === 'challenger_lost')
 					.length / reputationData.challengeHistory.length;
 			if (lossRate > 0.5) risks.push('high_challenge_loss_rate');
 		}
@@ -466,7 +466,7 @@ export class ReputationAgent extends BaseAgent {
 		return risks;
 	}
 
-	private generatePortabilityHash(credibilityScore: number, components: unknown): string {
+	private generatePortabilityHash(credibilityScore: number, components: any): string {
 		// Generate deterministic hash for cross-platform reputation portability
 		const data = `${credibilityScore}-${JSON.stringify(components)}-${Date.now()}`;
 		return `0x${Buffer.from(data).toString('hex').substring(0, 32)}`;
@@ -478,7 +478,7 @@ export class ReputationAgent extends BaseAgent {
 
 	private assessDecisionConfidence(
 		assessment: CredibilityAssessment,
-		reputationData: unknown
+		reputationData: any
 	): number {
 		let confidence = 0.6; // Base confidence
 

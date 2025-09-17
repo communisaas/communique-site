@@ -132,7 +132,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			session_id: session_data.session_id
 		});
 	} catch (_error) {
-		console.error('Analytics events processing failed:', error);
+		console.error('Error:' , _error);
 
 		return json(
 			{
@@ -185,7 +185,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			events_count: session.analytics_events.length
 		});
 	} catch (_error) {
-		console.error('Failed to fetch session data:', error);
+		console.error('Error:' , _error);
 
 		return json(
 			{

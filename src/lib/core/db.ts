@@ -7,7 +7,7 @@ const globalForPrisma = globalThis as unknown as {
 
 // Ensure Prisma has DATABASE_URL available (map from SUPABASE_DATABASE_URL if needed)
 if (!env.DATABASE_URL && env.SUPABASE_DATABASE_URL) {
-	// @ts-ignore - set at process level for Prisma
+	// Set at process level for Prisma
 	process.env.DATABASE_URL = env.SUPABASE_DATABASE_URL;
 }
 

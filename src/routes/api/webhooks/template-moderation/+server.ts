@@ -80,7 +80,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			result
 		});
 	} catch (_error) {
-		console.error('Webhook processing error:', error);
+		console.error('Error:' , _error);
 		return json(
 			{
 				error: 'Failed to process moderation webhook',
@@ -151,7 +151,7 @@ async function executeModerationPipeline(verificationId: string) {
 			message: 'Moderation incomplete - manual review required'
 		};
 	} catch (_error) {
-		console.error('Pipeline execution error:', error);
+		console.error('Error:' , _error);
 
 		// Update verification status to indicate error
 		await db.templateVerification.update({

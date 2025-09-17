@@ -54,7 +54,6 @@ beforeAll(() => {
 
 	// Polyfill matchMedia for jsdom
 	if (typeof window !== 'undefined' && !window.matchMedia) {
-		// @ts-ignore
 		window.matchMedia = (query: string) =>
 			({
 				matches: false,

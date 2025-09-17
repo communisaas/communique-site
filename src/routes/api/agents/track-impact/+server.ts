@@ -155,7 +155,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Calculate overall impact using ImpactAgent
-		const impactResult = await impactAgent.process({
+		const impactResult = await impactAgent.makeDecision({
 			actionType: 'cwc_message',
 			recipients: template.deliveries?.map((d) => d.recipient_id) || [],
 			templateId,
@@ -237,7 +237,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			templateId,
 			impact: {
 				score: totalImpactScore,
-				multiplier: impactResult.impactMultiplier,
+				multiplier: impactResult.decision?.impactMultiplier || 1,
 				hasCausation,
 				highestConfidence: maxConfidence,
 				observationCount: trackedObservations.length
@@ -262,12 +262,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			philosophy: "We don't count messages sent. We count minds changed."
 		});
 	} catch (_error) {
-		console.error('Impact tracking error:', error);
+		console.error('Impact tracking error:', _error);
 		return json(
 			{
 				success: false,
 				error: 'Impact tracking failed',
-				details: _error.message
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

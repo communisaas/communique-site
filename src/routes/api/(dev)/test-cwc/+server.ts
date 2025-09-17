@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			party: 'Democratic'
 		};
 
-		const results: unknown = {
+		const results: any = {
 			testType,
 			timestamp: new Date().toISOString(),
 			cwcConfigured: !!process.env.CWC_API_KEY
@@ -105,7 +105,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			message: 'CWC integration test completed'
 		});
 	} catch (_error) {
-		console.error('CWC test error:', error);
+		console.error('CWC test error:', _error);
 		return json(
 			{
 				success: false,

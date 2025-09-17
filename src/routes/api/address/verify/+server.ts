@@ -1,4 +1,4 @@
-import { json } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
 import { addressLookup } from '$lib/core/congress/address-lookup';
 
@@ -93,8 +93,8 @@ export async function POST({ request }) {
 				}))
 			];
 		} catch (_error) {
-			console.error('Failed to get real representatives, using placeholders:', error);
-			console.error('Error details:', _error instanceof Error ? error.stack : error);
+			console.error('Failed to get real representatives, using placeholders:', _error);
+			console.error('Error details:', _error instanceof Error ? _error.stack : _error);
 			// Fallback to placeholders if Congress API fails
 			representatives = createRepresentativesFromDistrict(district, state);
 		}
@@ -109,7 +109,7 @@ export async function POST({ request }) {
 			message: 'Address verified successfully'
 		});
 	} catch (_error) {
-		console.error('Address verification error:', error);
+		console.error('Address verification error:', _error);
 		return json(
 			{
 				verified: false,
@@ -123,7 +123,7 @@ export async function POST({ request }) {
 /**
  * Extract congressional district from Census Bureau geocoding response
  */
-function extractCongressionalDistrictFromCensus(geographies: unknown, state: string): string {
+function extractCongressionalDistrictFromCensus(geographies: any, state: string): string {
 	try {
 		// Look for 119th Congressional Districts
 		const congressionalDistricts = geographies['119th Congressional Districts'];

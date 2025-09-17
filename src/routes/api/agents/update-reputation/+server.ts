@@ -44,7 +44,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Process reputation update
-		const result = await reputationAgent.process({
+		const result = await reputationAgent.makeDecision({
 			userAddress,
 			actionType,
 			qualityScore,
@@ -52,11 +52,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		// Update user record if userId provided
-		if (userId) {
+		if (userId && result.decision) {
+			const changes = result.decision.reputationChanges || {};
 			const newScores = {
-				challenge: (currentReputation?.challenge || 50) + result.reputationChanges.challenge,
-				civic: (currentReputation?.civic || 50) + result.reputationChanges.civic,
-				discourse: (currentReputation?.discourse || 50) + result.reputationChanges.discourse
+				challenge: (currentReputation?.challenge || 50) + (changes.challenge || 0),
+				civic: (currentReputation?.civic || 50) + (changes.civic || 0),
+				discourse: (currentReputation?.discourse || 50) + (changes.discourse || 0)
 			};
 
 			await db.user.update({
@@ -72,7 +73,7 @@ export const POST: RequestHandler = async ({ request }) => {
 							newScores.challenge * 0.4 + newScores.civic * 0.4 + newScores.discourse * 0.2
 						)
 					),
-					reputation_tier: result.newTier
+					reputation_tier: result.decision.newTier || 'novice'
 				}
 			});
 		}
@@ -82,7 +83,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			...result
 		});
 	} catch (_error) {
-		console.error('Reputation update error:', error);
-		return json({ error: 'Reputation update failed', details: _error.message }, { status: 500 });
+		console.error('Reputation update error:', _error);
+		return json({ error: 'Reputation update failed', details: _error instanceof Error ? _error.message : 'Unknown error' }, { status: 500 });
 	}
 };

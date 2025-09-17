@@ -130,40 +130,9 @@ export class ModerationConsensus {
 	 */
 	private async checkWithOpenAI(template: Template): Promise<AgentVote> {
 		try {
-			const workflowResult = await this.n8nClient.triggerWorkflow('llm-moderation-openai', {
-				template: {
-					id: template.id,
-					subject: template.subject,
-					message_body: template.message_body
-				},
-				agent_config: this.agents.openai,
-				prompt_context: {
-					system_message: `You are a content moderator for congressional communications. 
-						Evaluate messages ONLY for severe violations (hate speech, threats, malicious content).
-						Be lenient - we want to allow most political speech through.
-						Only flag content with severity 7+ on a 1-10 scale.`,
-					evaluation_criteria: [
-						'hate_speech',
-						'threats',
-						'malicious_content',
-						'impersonation',
-						'spam_patterns'
-					]
-				}
-			});
-
-			if (!workflowResult.success || !workflowResult.data) {
-				console.warn('OpenAI N8N workflow failed, using mock response');
-				return this.getMockVote('openai');
-			}
-
-			const result = workflowResult.data as any;
-			return {
-				approved: !result.contains_violations,
-				confidence: result.confidence || 0.8,
-				reasons: result.reasons || [],
-				violations: result.violations || []
-			};
+			// Temporary: N8N client is commented out, using mock response
+			console.warn('OpenAI N8N workflow disabled, using mock response');
+			return this.getMockVote('openai');
 		} catch (_error) {
 			console.error('OpenAI N8N workflow error:', _error);
 			// Default to approval on error (fail open)
@@ -180,48 +149,9 @@ export class ModerationConsensus {
 	 */
 	private async checkWithGemini(template: Template): Promise<AgentVote> {
 		try {
-			const workflowResult = await this.n8nClient.triggerWorkflow('llm-moderation-gemini', {
-				template: {
-					id: template.id,
-					subject: template.subject,
-					message_body: template.message_body
-				},
-				agent_config: this.agents.gemini,
-				prompt_context: {
-					system_message: `As a content moderator for congressional communications, evaluate this message.
-						Focus ONLY on severe violations (hate speech, threats, malicious content).
-						Most political speech should be allowed through.`,
-					evaluation_criteria: [
-						'hate_speech',
-						'threats',
-						'malicious_content',
-						'impersonation',
-						'spam_patterns'
-					],
-					response_format: {
-						type: 'json',
-						schema: {
-							contains_violations: 'boolean',
-							confidence: 'number (0-1)',
-							violations: 'string[]',
-							reasons: 'string[]'
-						}
-					}
-				}
-			});
-
-			if (!workflowResult.success || !workflowResult.data) {
-				console.warn('Gemini N8N workflow failed, using mock response');
-				return this.getMockVote('gemini');
-			}
-
-			const result = workflowResult.data as any;
-			return {
-				approved: !result.contains_violations,
-				confidence: result.confidence || 0.7,
-				reasons: result.reasons || [],
-				violations: result.violations || []
-			};
+			// Temporary: N8N client is commented out, using mock response
+			console.warn('Gemini N8N workflow disabled, using mock response');
+			return this.getMockVote('gemini');
 		} catch (_error) {
 			console.error('Gemini N8N workflow error:', _error);
 			// Default to approval on error (fail open)

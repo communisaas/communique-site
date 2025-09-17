@@ -57,7 +57,7 @@ export class N8NClient {
 				data: response.data.data
 			};
 		} catch (_error) {
-			console.error('[N8N] Template moderation workflow failed:', __error);
+			console.error('[N8N] Template moderation workflow failed:', _error);
 			return {
 				workflowId: 'template-moderation',
 				executionId: 'error',

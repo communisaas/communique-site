@@ -150,7 +150,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					});
 				}
 			} catch (_error) {
-				console.error(`CWC submission error for ${recipient.name}:`, error);
+				console.error('Error:' , _error);
 				errors.push({
 					recipient: recipient.name,
 					error: _error.message
@@ -196,12 +196,12 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		return json(response);
 	} catch (_error) {
-		console.error('CWC submission endpoint error:', error);
+		console.error('Error:' , _error);
 		return json(
 			{
 				success: false,
 				error: 'CWC submission failed',
-				details: _error.message
+				details: _error instanceof Error ? _error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
