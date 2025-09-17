@@ -1,5 +1,5 @@
 import { normalizeState } from '$lib/utils/states';
-import { CONGRESS_API_KEY, CWC_API_KEY, NODE_ENV } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 interface Address {
 	street: string;
@@ -36,9 +36,9 @@ export class AddressLookupService {
 
 	constructor() {
 		// Use CONGRESS_API_KEY which is the valid Congress.gov API key
-		this.congressApiKey = CONGRESS_API_KEY || CWC_API_KEY || '';
-		// Only throw _error if we're in production and the key is missing
-		if (!this.congressApiKey && NODE_ENV === 'production') {
+		this.congressApiKey = env.CONGRESS_API_KEY || env.CWC_API_KEY || '';
+		// Only warn if we're in production and the key is missing
+		if (!this.congressApiKey && env.NODE_ENV === 'production') {
 			console.warn(
 				'CONGRESS_API_KEY environment variable is missing - Congress features will be disabled'
 			);
