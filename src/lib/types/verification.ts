@@ -113,6 +113,36 @@ export interface ReputationUpdate {
 	};
 }
 
+export interface VerificationResult {
+	approved: boolean;
+	confidence: number;
+	reasoning: string[];
+	violations?: ViolationType[];
+}
+
+export interface ConsensusResult {
+	decision: 'APPROVE' | 'REJECT' | 'NEEDS_REVIEW';
+	confidence: number;
+	votes: Record<string, AgentVote>;
+	reasoning: string[];
+}
+
+export interface N8NWorkflowResult {
+	workflowId: string;
+	executionId: string;
+	success: boolean;
+	data?: unknown;
+	error?: string;
+}
+
+export interface N8NWebhookPayload {
+	template?: unknown;
+	userId?: string;
+	userAddress?: string;
+	action?: string;
+	metadata?: Record<string, unknown>;
+}
+
 // Type guards for runtime validation
 export function isValidTemplateVerification(obj: unknown): obj is TemplateVerification {
 	if (!obj || typeof obj !== 'object') return false;

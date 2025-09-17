@@ -5,7 +5,8 @@
  * Analyzes participation patterns and adjusts rewards dynamically
  */
 
-import { BaseAgent, type AgentConfig, type AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent';
+import type { AgentContext, AgentDecision } from './base-agent';
 
 export interface MarketInput {
 	baseReward: bigint;
@@ -23,7 +24,10 @@ export interface MarketInput {
 	};
 }
 
-export interface MarketDecision extends AgentDecision {
+export interface MarketDecision {
+	decision: string;
+	confidence: number;
+	reasoning?: string[];
 	rewardMultiplier: number;
 	incentiveAdjustments: {
 		urgencyBonus: number;
@@ -35,12 +39,47 @@ export interface MarketDecision extends AgentDecision {
 
 export class MarketAgent extends BaseAgent {
 	constructor() {
-		super({
-			name: 'market_agent',
-			temperature: 0.5,
-			maxTokens: 800,
-			capabilities: ['reward_optimization', 'incentive_design', 'market_dynamics']
+		super('market-agent-v1', AgentType.MARKET, {
+			rewardMultiplier: [0.5, 2.0], // Min/max reward multipliers
+			marketVolatility: [0, 100], // Volatility tolerance
+			participationBonus: [0, 0.5], // Max participation bonus
+			urgencyBonus: [0, 0.2] // Max urgency bonus
 		});
+	}
+
+	async makeDecision(context: AgentContext): Promise<AgentDecision> {
+		try {
+			// Extract market input from context
+			const marketInput: MarketInput = {
+				baseReward: BigInt(context.parameters?.baseReward || '1000000000000000000'), // 1 token default
+				actionType: context.actionType || 'cwc_message',
+				marketConditions: context.parameters?.marketConditions as MarketInput['marketConditions'],
+				participationTrends: context.parameters?.participationTrends as MarketInput['participationTrends']
+			};
+
+			// Use existing process logic
+			const marketDecision = await this.process(marketInput);
+
+			// Convert to AgentDecision format
+			return this.createDecision(
+				marketDecision,
+				marketDecision.confidence,
+				marketDecision.reasoning?.join('; ') || 'Market analysis completed',
+				{
+					rewardMultiplier: marketDecision.rewardMultiplier,
+					marketSignal: marketDecision.marketSignal,
+					incentiveAdjustments: marketDecision.incentiveAdjustments
+				}
+			);
+		} catch (_error) {
+			console.error('MarketAgent decision error:', _error);
+			return this.createDecision(
+				{ decision: 'error', rewardMultiplier: 1.0 },
+				0.1,
+				`Market analysis failed: ${_error}`,
+				{ error: true }
+			);
+		}
 	}
 
 	async process(input: MarketInput): Promise<MarketDecision> {
@@ -86,14 +125,16 @@ export class MarketAgent extends BaseAgent {
 	}
 
 	async validate(input: unknown): Promise<boolean> {
-		return input?.baseReward !== undefined && input?.actionType;
+		const typedInput = input as MarketInput;
+		return typedInput?.baseReward !== undefined && typedInput?.actionType !== undefined;
 	}
 
 	/**
 	 * Analyze market conditions to determine signal
 	 */
 	private analyzeMarketSignal(conditions: unknown): 'bullish' | 'neutral' | 'bearish' {
-		const { tokenPrice = 0, volume24h = 0, volatility = 0 } = conditions;
+		const conditionsTyped = conditions as MarketInput['marketConditions'] || {};
+		const { tokenPrice = 0, volume24h = 0, volatility = 0 } = conditionsTyped;
 
 		// Simple heuristic for market signal
 		if (volatility > 50) return 'bearish'; // High volatility = bearish
@@ -126,7 +167,8 @@ export class MarketAgent extends BaseAgent {
 	 * Calculate participation-based multiplier
 	 */
 	private calculateParticipationMultiplier(trends: unknown): number {
-		const { dailyActive = 0, weeklyActive = 0, growthRate = 0 } = trends;
+		const trendsTyped = trends as MarketInput['participationTrends'] || {};
+		const { dailyActive = 0, weeklyActive = 0, growthRate = 0 } = trendsTyped;
 
 		// Growth phase: increase rewards
 		if (growthRate > 20) return 1.2;

@@ -1,5 +1,4 @@
-// @ts-nocheck/**
- * VOTER Protocol Challenge Market API
+/** VOTER Protocol Challenge Market API
  *
  * Handles challenge creation, voting, and resolution
  * Called by N8N challenge market workflow
@@ -23,11 +22,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			case 'claim':
 				return await claimRewards(data);
 			default:
-				throw _error(400, `Invalid challenge action: ${action}`);
+				throw error(400, `Invalid challenge action: ${action}`);
 		}
 	} catch (err) {
 		console.error('Challenge API error:', err);
-		throw _error(500, err instanceof Error ? err.message : 'Challenge operation failed');
+		throw error(500, err instanceof Error ? err.message : 'Challenge operation failed');
 	}
 };
 
@@ -62,7 +61,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			});
 
 			if (!challenge) {
-				throw _error(404, 'Challenge not found');
+				throw error(404, 'Challenge not found');
 			}
 
 			// Calculate vote tallies
@@ -126,7 +125,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		});
 	} catch (err) {
 		console.error('Get challenges error:', err);
-		throw _error(500, err instanceof Error ? err.message : 'Failed to get challenges');
+		throw error(500, err instanceof Error ? err.message : 'Failed to get challenges');
 	}
 };
 
@@ -143,13 +142,13 @@ async function createChallenge({
 	category
 }) {
 	if (!challengerId || !defenderId || !title || !evidence || !stakeAmount) {
-		throw _error(400, 'Missing required fields for challenge creation');
+		throw error(400, 'Missing required fields for challenge creation');
 	}
 
 	// Validate stake amount (10-10,000 VOTER tokens)
 	const stake = parseFloat(stakeAmount);
 	if (stake < 10 || stake > 10000) {
-		throw _error(400, 'Stake amount must be between 10 and 10,000 VOTER tokens');
+		throw error(400, 'Stake amount must be between 10 and 10,000 VOTER tokens');
 	}
 
 	// Verify users exist
@@ -159,12 +158,12 @@ async function createChallenge({
 	]);
 
 	if (!challenger || !defender) {
-		throw _error(404, 'Challenger or defender not found');
+		throw error(404, 'Challenger or defender not found');
 	}
 
 	// Check challenger has sufficient trust score to create challenges
 	if (challenger.trust_score < 60) {
-		throw _error(403, 'Insufficient trust score to create challenges (minimum 60 required)');
+		throw error(403, 'Insufficient trust score to create challenges (minimum 60 required)');
 	}
 
 	// Generate challenge ID and claim hash
@@ -192,7 +191,7 @@ async function createChallenge({
 	});
 
 	if (!response.ok) {
-		throw _error(500, 'Failed to create challenge');
+		throw error(500, 'Failed to create challenge');
 	}
 
 	const result = await response.json();
@@ -214,18 +213,18 @@ async function createChallenge({
  */
 async function voteOnChallenge({ challengeId, userId, vote, stakeAmount }) {
 	if (!challengeId || !userId || !vote || !stakeAmount) {
-		throw _error(400, 'Missing required fields for challenge vote');
+		throw error(400, 'Missing required fields for challenge vote');
 	}
 
 	// Validate vote
 	if (!['support', 'oppose'].includes(vote)) {
-		throw _error(400, 'Vote must be either "support" or "oppose"');
+		throw error(400, 'Vote must be either "support" or "oppose"');
 	}
 
 	// Validate stake amount
 	const stake = parseFloat(stakeAmount);
 	if (stake < 1) {
-		throw _error(400, 'Minimum stake is 1 VOTER token');
+		throw error(400, 'Minimum stake is 1 VOTER token');
 	}
 
 	// Check challenge exists and is still active
@@ -240,20 +239,20 @@ async function voteOnChallenge({ challengeId, userId, vote, stakeAmount }) {
 	});
 
 	if (!challenge) {
-		throw _error(404, 'Challenge not found');
+		throw error(404, 'Challenge not found');
 	}
 
 	if (challenge.status !== 'active') {
-		throw _error(400, 'Challenge is no longer active');
+		throw error(400, 'Challenge is no longer active');
 	}
 
 	if (new Date() > challenge.voting_deadline) {
-		throw _error(400, 'Voting deadline has passed');
+		throw error(400, 'Voting deadline has passed');
 	}
 
 	// Prevent self-voting
 	if (userId === challenge.challenger_id || userId === challenge.defender_id) {
-		throw _error(403, 'Challenge participants cannot vote on their own challenge');
+		throw error(403, 'Challenge participants cannot vote on their own challenge');
 	}
 
 	// Record vote via main API
@@ -270,7 +269,7 @@ async function voteOnChallenge({ challengeId, userId, vote, stakeAmount }) {
 	});
 
 	if (!response.ok) {
-		throw _error(500, 'Failed to record vote');
+		throw error(500, 'Failed to record vote');
 	}
 
 	const result = await response.json();
@@ -292,7 +291,7 @@ async function voteOnChallenge({ challengeId, userId, vote, stakeAmount }) {
  */
 async function resolveChallenge({ challengeId }) {
 	if (!challengeId) {
-		throw _error(400, 'Missing challengeId');
+		throw error(400, 'Missing challengeId');
 	}
 
 	const challenge = await prisma.challenge.findUnique({
@@ -305,17 +304,17 @@ async function resolveChallenge({ challengeId }) {
 	});
 
 	if (!challenge) {
-		throw _error(404, 'Challenge not found');
+		throw error(404, 'Challenge not found');
 	}
 
 	// Check if voting period has ended
 	const votingEnded = new Date() > challenge.voting_deadline;
 	if (!votingEnded) {
-		throw _error(400, 'Voting period has not ended');
+		throw error(400, 'Voting period has not ended');
 	}
 
 	if (challenge.status !== 'active') {
-		throw _error(400, 'Challenge is not in active status');
+		throw error(400, 'Challenge is not in active status');
 	}
 
 	// Calculate vote tallies
@@ -410,7 +409,7 @@ async function resolveChallenge({ challengeId }) {
  */
 async function claimRewards({ challengeId, userId }) {
 	if (!challengeId || !userId) {
-		throw _error(400, 'Missing challengeId or userId');
+		throw error(400, 'Missing challengeId or userId');
 	}
 
 	const challenge = await prisma.challenge.findUnique({
@@ -424,20 +423,20 @@ async function claimRewards({ challengeId, userId }) {
 	});
 
 	if (!challenge) {
-		throw _error(404, 'Challenge not found');
+		throw error(404, 'Challenge not found');
 	}
 
 	if (challenge.status !== 'resolved') {
-		throw _error(400, 'Challenge is not resolved yet');
+		throw error(400, 'Challenge is not resolved yet');
 	}
 
 	const userStake = challenge.stakes[0];
 	if (!userStake) {
-		throw _error(404, 'User did not participate in this challenge');
+		throw error(404, 'User did not participate in this challenge');
 	}
 
 	if (userStake.claimed) {
-		throw _error(400, 'Rewards already claimed');
+		throw error(400, 'Rewards already claimed');
 	}
 
 	// Check if user was on winning side
@@ -446,7 +445,7 @@ async function claimRewards({ challengeId, userId }) {
 		(challenge.resolution === 'defender_wins' && userStake.side === 'oppose');
 
 	if (!wasWinner) {
-		throw _error(400, 'User was not on winning side');
+		throw error(400, 'User was not on winning side');
 	}
 
 	// Calculate individual reward (proportional to voting power)

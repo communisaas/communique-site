@@ -1,5 +1,4 @@
-// @ts-nocheck/**
- * Challenge Verification Endpoint
+/** Challenge Verification Endpoint
  *
  * Verifies claims in Carroll Mechanism challenge markets
  * Different from template verification - focuses on factual accuracy

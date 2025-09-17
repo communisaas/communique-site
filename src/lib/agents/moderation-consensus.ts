@@ -165,7 +165,7 @@ export class ModerationConsensus {
 				violations: result.violations || []
 			};
 		} catch (_error) {
-			console.error('OpenAI N8N workflow error:', error);
+			console.error('OpenAI N8N workflow error:', _error);
 			// Default to approval on error (fail open)
 			return {
 				approved: true,
@@ -223,7 +223,7 @@ export class ModerationConsensus {
 				violations: result.violations || []
 			};
 		} catch (_error) {
-			console.error('Gemini N8N workflow error:', error);
+			console.error('Gemini N8N workflow error:', _error);
 			// Default to approval on error (fail open)
 			return {
 				approved: true,

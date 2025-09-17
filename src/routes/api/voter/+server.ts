@@ -1,4 +1,4 @@
-// @ts-nocheck/**
+/**
  * VOTER Protocol API Endpoints
  *
  * Unified API for N8N workflow integration with Communiqué
@@ -37,11 +37,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			case 'calculate_reward':
 				return await calculateReward(data);
 			default:
-				throw _error(400, `Invalid action: ${action}`);
+				throw error(400, `Invalid action: ${action}`);
 		}
 	} catch (err) {
 		console.error('VOTER API error:', err);
-		throw _error(500, err instanceof Error ? err.message : 'Internal server error');
+		throw error(500, err instanceof Error ? err.message : 'Internal server error');
 	}
 };
 
@@ -56,7 +56,7 @@ async function handleCWCSubmission({
 	metadata = {}
 }) {
 	if (!userId || !templateId || !message) {
-		throw _error(400, 'Missing required fields: userId, templateId, message');
+		throw error(400, 'Missing required fields: userId, templateId, message');
 	}
 
 	// Get user and template from database
@@ -76,7 +76,7 @@ async function handleCWCSubmission({
 	});
 
 	if (!user) {
-		throw _error(404, 'User not found');
+		throw error(404, 'User not found');
 	}
 
 	const template = await prisma.template.findUnique({
@@ -92,7 +92,7 @@ async function handleCWCSubmission({
 	});
 
 	if (!template) {
-		throw _error(404, 'Template not found');
+		throw error(404, 'Template not found');
 	}
 
 	// Submit via existing mature CWC infrastructure
@@ -125,7 +125,7 @@ async function handleCWCSubmission({
 	}
 
 	// Record civic action with agent decisions
-	const civicAction = await prisma.civicAction.create({
+	const civicAction = await prisma.CivicAction.create({
 		data: {
 			user_id: userId,
 			template_id: templateId,
@@ -184,10 +184,10 @@ async function recordCivicAction({
 	status = 'completed'
 }) {
 	if (!userId || !actionType) {
-		throw _error(400, 'Missing required fields: userId, actionType');
+		throw error(400, 'Missing required fields: userId, actionType');
 	}
 
-	const action = await prisma.civicAction.create({
+	const action = await prisma.CivicAction.create({
 		data: {
 			user_id: userId,
 			template_id: templateId,
@@ -222,7 +222,7 @@ async function updateReputation({
 	confidence
 }) {
 	if (!userId) {
-		throw _error(400, 'Missing required field: userId');
+		throw error(400, 'Missing required field: userId');
 	}
 
 	// Initialize ReputationAgent for comprehensive assessment
@@ -248,7 +248,7 @@ async function updateReputation({
 		});
 
 		if (!user) {
-			throw _error(404, 'User not found');
+			throw error(404, 'User not found');
 		}
 
 		const oldScore = user.trust_score;
@@ -273,7 +273,7 @@ async function updateReputation({
 	});
 
 	if (!user) {
-		throw _error(404, 'User not found');
+		throw error(404, 'User not found');
 	}
 
 	const oldScore = user.trust_score;
@@ -334,7 +334,7 @@ async function updateReputation({
  */
 async function verifyIdentity({ userId, _walletAddress, kycResult, trustScore, districtHash }) {
 	if (!userId) {
-		throw _error(400, 'Missing required field: userId');
+		throw error(400, 'Missing required field: userId');
 	}
 
 	// First update user data from external verification
@@ -434,7 +434,7 @@ async function verifyIdentity({ userId, _walletAddress, kycResult, trustScore, d
  */
 async function getUserProfile({ userId, walletAddress }) {
 	if (!userId && !walletAddress) {
-		throw _error(400, 'Must provide either userId or walletAddress');
+		throw error(400, 'Must provide either userId or walletAddress');
 	}
 
 	const user = await prisma.user.findFirst({
@@ -465,7 +465,7 @@ async function getUserProfile({ userId, walletAddress }) {
 	});
 
 	if (!user) {
-		throw _error(404, 'User not found');
+		throw error(404, 'User not found');
 	}
 
 	return json({
@@ -517,7 +517,7 @@ async function createChallenge({
 	category
 }) {
 	if (!challengerId || !defenderId || !title || !evidenceIPFS || !stakeAmount) {
-		throw _error(400, 'Missing required fields for challenge creation');
+		throw error(400, 'Missing required fields for challenge creation');
 	}
 
 	// Calculate voting deadline (72 hours from now)
@@ -556,7 +556,7 @@ async function createChallenge({
  */
 async function processChallengeVote({ challengeId, userId, side, stakeAmount }) {
 	if (!challengeId || !userId || !side || !stakeAmount) {
-		throw _error(400, 'Missing required fields for challenge vote');
+		throw error(400, 'Missing required fields for challenge vote');
 	}
 
 	// Calculate quadratic voting power
@@ -597,7 +597,7 @@ async function processChallengeVote({ challengeId, userId, side, stakeAmount }) 
  */
 async function calculateReward({ userAddress, actionType, templateId, timestamp }) {
 	if (!userAddress || !actionType) {
-		throw _error(400, 'Missing required fields: userAddress, actionType');
+		throw error(400, 'Missing required fields: userAddress, actionType');
 	}
 
 	// Get user for context
@@ -650,7 +650,7 @@ async function calculateReward({ userAddress, actionType, templateId, timestamp 
 	const impactDecision = consensus.decisions.find((d) => d.agentType === AgentType.IMPACT);
 
 	if (!supplyDecision) {
-		throw _error(500, 'Supply agent decision missing from consensus');
+		throw error(500, 'Supply agent decision missing from consensus');
 	}
 
 	const rewardParams = supplyDecision.decision;

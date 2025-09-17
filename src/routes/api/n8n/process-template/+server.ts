@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * N8N Workflow Integration Endpoint
  *

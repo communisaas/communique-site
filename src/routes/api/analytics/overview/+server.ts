@@ -1,4 +1,3 @@
-// @ts-nocheckimport { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import {
 	analyzeCascade,

@@ -1,5 +1,4 @@
-// @ts-nocheck/**
- * VOTER Protocol Webhook Handler
+/** VOTER Protocol Webhook Handler
  *
  * Receives notifications from VOTER Protocol about:
  * - Certification complete
@@ -32,7 +31,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const apiKey = request.headers.get('X-API-Key');
 
 		if (apiKey !== VOTER_API_KEY) {
-			throw _error(401, 'Invalid API key');
+			throw error(401, 'Invalid API key');
 		}
 
 		// TODO: Implement proper signature verification
@@ -68,7 +67,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw err;
 		}
 
-		throw _error(500, 'Webhook processing failed');
+		throw error(500, 'Webhook processing failed');
 	}
 };
 

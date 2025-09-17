@@ -46,6 +46,7 @@ export interface AgentContext {
 	templateId?: string;
 	timestamp?: string;
 	historicalData?: unknown;
+	parameters?: Record<string, unknown>; // Additional parameters for agent processing
 	networkConditions?: {
 		dailyActiveUsers: number;
 		totalActions: number;

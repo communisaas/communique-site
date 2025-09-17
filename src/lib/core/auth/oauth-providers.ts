@@ -1,5 +1,4 @@
-// @ts-nocheck/**
- * OAUTH PROVIDER CONFIGURATIONS
+/** OAUTH PROVIDER CONFIGURATIONS
  *
  * Provider-specific configurations for OAuth callback handling.
  * Each configuration encapsulates the unique aspects of each provider

@@ -1,4 +1,3 @@
-// @ts-nocheckimport { env } from '$env/dynamic/private';
 import { normalizeState } from '$lib/utils/states';
 
 interface Address {

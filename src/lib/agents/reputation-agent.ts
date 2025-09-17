@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * ReputationAgent - ERC-8004 Credibility Infrastructure
  *
@@ -104,7 +103,7 @@ export class ReputationAgent extends BaseAgent {
 				}
 			);
 		} catch (_error) {
-			console.error('ReputationAgent decision error:', error);
+			console.error('ReputationAgent decision error:', _error);
 			return this.createDecision(
 				{
 					userId: context.userId,

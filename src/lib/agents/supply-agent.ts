@@ -94,7 +94,7 @@ export class SupplyAgent extends BaseAgent {
 				{ actionType: context.actionType, networkActivity: networkData.dailyActiveUsers }
 			);
 		} catch (_error) {
-			console.error('SupplyAgent decision error:', error);
+			console.error('SupplyAgent decision error:', _error);
 			// Fallback to conservative values
 			return this.createDecision(
 				{ baseRewardUSD: 0.1, finalRewardWei: '100000000000000000' }, // 0.1 ETH as fallback

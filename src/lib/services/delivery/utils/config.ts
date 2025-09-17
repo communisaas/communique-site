@@ -4,7 +4,30 @@
 
 import { config as dotenvConfig } from 'dotenv';
 import { z } from 'zod';
-import type { EnvironmentConfig } from '@/types';
+
+// Define the EnvironmentConfig type locally
+export interface EnvironmentConfig {
+	nodeEnv: string;
+	smtp: {
+		host: string;
+		port: number;
+		secure: boolean;
+		auth?: {
+			user: string;
+			pass: string;
+		};
+	};
+	api: {
+		communiqueUrl: string;
+		communiqueApiKey: string;
+		cwcUrl: string;
+		cwcApiKey: string;
+		voterUrl: string;
+		voterApiKey: string;
+		n8nUrl: string;
+		n8nApiKey: string;
+	};
+}
 
 // Load environment variables
 dotenvConfig();
