@@ -93,7 +93,7 @@ export abstract class BaseAgent {
 			reasoning,
 			parameters,
 			timestamp: new Date(),
-			safetyBounds: parameters.parameterName
+			safetyBounds: parameters?.parameterName && typeof parameters.parameterName === 'string'
 				? {
 						min: this.safetyBounds[parameters.parameterName]?.[0],
 						max: this.safetyBounds[parameters.parameterName]?.[1]
@@ -193,7 +193,7 @@ export class VectorAgentMemory implements AgentMemory {
 	async queryHistory(context: AgentContext, limit: number = 10): Promise<AgentDecision[]> {
 		// Simplified - in production would use vector similarity
 		return Array.from(this.decisions.values())
-			.filter((d) => this.isRelevantContext(d, _context))
+			.filter((d) => this.isRelevantContext(d, context))
 			.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
 			.slice(0, limit);
 	}

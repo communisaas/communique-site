@@ -8,7 +8,7 @@
  * challenge markets, civic actions, and cross-platform reputation.
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent'; import type { AgentContext, AgentDecision } from './base-agent';
 import { prisma } from '$lib/core/db';
 
 export interface CredibilityAssessment {

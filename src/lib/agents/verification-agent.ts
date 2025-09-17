@@ -8,7 +8,7 @@
  * for zero-knowledge identity verification and on-chain attestations.
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent'; import type { AgentContext, AgentDecision } from './base-agent';
 import { prisma } from '$lib/core/db';
 
 export interface VerificationAssessment {

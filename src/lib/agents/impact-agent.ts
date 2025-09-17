@@ -8,7 +8,7 @@
  * of responsive legislators.
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent'; import type { AgentContext, AgentDecision } from './base-agent';
 import { prisma } from '$lib/core/db';
 
 export interface ImpactAssessment {
@@ -94,7 +94,7 @@ export class ImpactAgent extends BaseAgent {
 				recommendedFunding
 			};
 
-			const confidence = this.assessDecisionConfidence(assessment, _context);
+			const confidence = this.assessDecisionConfidence(assessment, context);
 
 			return this.createDecision(
 				assessment,
@@ -103,7 +103,7 @@ export class ImpactAgent extends BaseAgent {
 				{ templateId: context.templateId, impactDetected: impactScore > 0 }
 			);
 		} catch (_error) {
-			console.error('ImpactAgent decision error:', error);
+			console.error('ImpactAgent decision error:', _error);
 			return this.createDecision(
 				{ templateId: context.templateId, impactScore: 0, confidenceLevel: 'low' },
 				0.2,
@@ -124,7 +124,7 @@ export class ImpactAgent extends BaseAgent {
 				title: true,
 				message_body: true,
 				subject: true,
-				created_at: true
+				createdAt: true
 			}
 		});
 
@@ -133,10 +133,9 @@ export class ImpactAgent extends BaseAgent {
 		}
 
 		// Get usage statistics
-		const usageCount = await prisma.civicAction.count({
+		const usageCount = await prisma.submission.count({
 			where: {
 				template_id: templateId,
-				action_type: 'cwc_message'
 			}
 		});
 
@@ -148,7 +147,7 @@ export class ImpactAgent extends BaseAgent {
 		// - Committee transcript monitoring
 		// - Legislative tracking services
 		// - Media monitoring APIs
-		const outcomes = await this.mockLegislativeTracking(keyPhrases, _templateId);
+		const outcomes = await this.mockLegislativeTracking(keyPhrases, templateId);
 
 		return {
 			templateId,
@@ -189,12 +188,11 @@ export class ImpactAgent extends BaseAgent {
 		const chains: CausalChain[] = [];
 
 		// Get template usage timeline
-		const actions = await prisma.civicAction.findMany({
+		const actions = await prisma.submission.findMany({
 			where: {
 				template_id: templateId,
-				action_type: 'cwc_message'
 			},
-			orderBy: { created_at: 'asc' },
+			orderBy: { createdAt: 'asc' },
 			take: 100
 		});
 
@@ -204,8 +202,8 @@ export class ImpactAgent extends BaseAgent {
 		for (const outcome of outcomes) {
 			const relevantActions = actions.filter(
 				(action) =>
-					outcome.timestamp > action.created_at &&
-					outcome.timestamp.getTime() - action.created_at.getTime() < 30 * 24 * 60 * 60 * 1000 // 30 days
+					outcome.timestamp > action.createdAt &&
+					outcome.timestamp.getTime() - action.createdAt.getTime() < 30 * 24 * 60 * 60 * 1000 // 30 days
 			);
 
 			if (relevantActions.length > 0) {
@@ -397,10 +395,10 @@ export class ImpactAgent extends BaseAgent {
 		);
 	}
 
-	private formatDateRange(actions: unknown[]): string {
+	private formatDateRange(actions: any[]): string {
 		if (actions.length === 0) return '';
-		const earliest = new Date(Math.min(...actions.map((a) => a.created_at.getTime())));
-		const latest = new Date(Math.max(...actions.map((a) => a.created_at.getTime())));
+		const earliest = new Date(Math.min(...actions.map((a) => a.createdAt.getTime())));
+		const latest = new Date(Math.max(...actions.map((a) => a.createdAt.getTime())));
 		return `${earliest.toLocaleDateString()} - ${latest.toLocaleDateString()}`;
 	}
 

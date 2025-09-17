@@ -7,7 +7,7 @@
  * Vision: "Resilient abundance through intelligence within auditable bounds"
  */
 
-import { BaseAgent, AgentType, AgentContext, AgentDecision } from './base-agent';
+import { BaseAgent, AgentType } from './base-agent'; import type { AgentContext, AgentDecision } from './base-agent';
 import { prisma } from '$lib/core/db';
 
 export interface RewardParameters {
