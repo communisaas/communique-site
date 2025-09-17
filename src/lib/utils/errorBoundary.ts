@@ -18,15 +18,39 @@ export interface ErrorReport {
 	additionalData?: Record<string, unknown>;
 }
 
+// Type for error boundary fallback strategies
+export type ErrorFallbackStrategy = 'minimal' | 'detailed' | 'redirect';
+
+// Type for error callbacks
+export type ErrorCallback = (error: ErrorReport) => void;
+export type RetryCallback = () => void;
+
 export interface ErrorBoundaryConfig {
-	fallback?: 'minimal' | 'detailed' | 'redirect';
+	fallback?: ErrorFallbackStrategy;
 	enableRetry?: boolean;
 	maxRetries?: number;
 	autoRetryDelay?: number;
 	enableReporting?: boolean;
 	enableLogging?: boolean;
-	onError?: (error: ErrorReport) => void;
-	onRetry?: () => void;
+	onError?: ErrorCallback;
+	onRetry?: RetryCallback;
+}
+
+// Type guard for ErrorBoundaryConfig
+export function isValidErrorBoundaryConfig(config: unknown): config is ErrorBoundaryConfig {
+	if (typeof config !== 'object' || config === null) return false;
+	const cfg = config as Record<string, unknown>;
+	
+	return (
+		(cfg.fallback === undefined || ['minimal', 'detailed', 'redirect'].includes(cfg.fallback as string)) &&
+		(cfg.enableRetry === undefined || typeof cfg.enableRetry === 'boolean') &&
+		(cfg.maxRetries === undefined || typeof cfg.maxRetries === 'number') &&
+		(cfg.autoRetryDelay === undefined || typeof cfg.autoRetryDelay === 'number') &&
+		(cfg.enableReporting === undefined || typeof cfg.enableReporting === 'boolean') &&
+		(cfg.enableLogging === undefined || typeof cfg.enableLogging === 'boolean') &&
+		(cfg.onError === undefined || typeof cfg.onError === 'function') &&
+		(cfg.onRetry === undefined || typeof cfg.onRetry === 'function')
+	);
 }
 
 class ErrorBoundaryManager {
@@ -37,8 +61,14 @@ class ErrorBoundaryManager {
 	/**
 	 * Global error handler setup
 	 */
-	setup(config: ErrorBoundaryConfig = {}) {
+	public setup(config: ErrorBoundaryConfig = {}): void {
 		if (!browser) return;
+
+		// Validate config
+		if (!isValidErrorBoundaryConfig(config)) {
+			console.warn('Invalid error boundary config provided, using defaults');
+			config = {};
+		}
 
 		const { enableReporting = true, enableLogging = true, onError } = config;
 
@@ -89,15 +119,30 @@ class ErrorBoundaryManager {
 	/**
 	 * Create standardized error report
 	 */
-	createErrorReport(
-		error: Error,
+	public createErrorReport(
+		error: Error | string | unknown,
 		context: string,
 		additionalData?: Record<string, unknown>
 	): ErrorReport {
+		// Handle different types of errors
+		let errorObj: Error;
+		if (error instanceof Error) {
+			errorObj = error;
+		} else if (typeof error === 'string') {
+			errorObj = new Error(error);
+		} else {
+			errorObj = new Error(`Unknown error: ${String(error)}`);
+		}
+
+		// Validate context
+		if (typeof context !== 'string' || context.trim() === '') {
+			context = 'unknown_context';
+		}
+
 		return {
-			message: error.message || 'Unknown error',
-			stack: error.stack,
-			context,
+			message: errorObj.message || 'Unknown error',
+			stack: errorObj.stack,
+			context: context.trim(),
 			timestamp: Date.now(),
 			userAgent: browser ? navigator.userAgent : undefined,
 			url: browser ? window.location.href : undefined,
@@ -108,27 +153,36 @@ class ErrorBoundaryManager {
 	/**
 	 * Report error with deduplication and batching
 	 */
-	reportError(error: ErrorReport) {
-		// Deduplicate similar errors
-		const errorKey = `${error.context}:${error.message}`;
-		const count = this.errorCounts.get(errorKey) || 0;
-
-		// Only report first occurrence and then every 10th occurrence
-		if (count === 0 || count % 10 === 0) {
-			this.reportQueue.push({
-				...error,
-				additionalData: {
-					...error.additionalData,
-					occurrenceCount: count + 1
-				}
-			});
+	public reportError(error: ErrorReport): void {
+		if (!error || typeof error !== 'object') {
+			console.warn('Invalid error report provided');
+			return;
 		}
 
-		this.errorCounts.set(errorKey, count + 1);
+		try {
+			// Deduplicate similar errors
+			const errorKey = `${error.context}:${error.message}`;
+			const count = this.errorCounts.get(errorKey) || 0;
 
-		// Flush queue if it gets too large
-		if (this.reportQueue.length >= 10) {
-			this.flushReportQueue();
+			// Only report first occurrence and then every 10th occurrence
+			if (count === 0 || count % 10 === 0) {
+				this.reportQueue.push({
+					...error,
+					additionalData: {
+						...error.additionalData,
+						occurrenceCount: count + 1
+					}
+				});
+			}
+
+			this.errorCounts.set(errorKey, count + 1);
+
+			// Flush queue if it gets too large
+			if (this.reportQueue.length >= 10) {
+				this.flushReportQueue();
+			}
+		} catch (reportingError) {
+			console.error('Error while reporting error:', reportingError);
 		}
 	}
 
@@ -163,14 +217,14 @@ class ErrorBoundaryManager {
 	/**
 	 * Get error statistics
 	 */
-	getErrorStats(): Record<string, number> {
+	public getErrorStats(): Record<string, number> {
 		return Object.fromEntries(this.errorCounts);
 	}
 
 	/**
 	 * Clear error counts (useful for testing)
 	 */
-	clearErrorCounts() {
+	public clearErrorCounts(): void {
 		this.errorCounts.clear();
 	}
 }

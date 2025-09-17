@@ -8,8 +8,8 @@
  */
 
 import { BaseAgent, AgentType } from './base-agent';
-import type { AgentContext, AgentDecision } from './base-agent';
-import { prisma } from '$lib/core/db';
+import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import { db, prisma } from '$lib/core/db';
 
 export interface RewardParameters {
 	baseRewardUSD: number;
@@ -36,6 +36,22 @@ export class SupplyAgent extends BaseAgent {
 			urgencyMultiplier: [1, 5] // 1x - 5x urgency multiplier
 		});
 	}
+
+	getCapabilities(): AgentCapability {
+		return {
+			type: AgentType.SUPPLY,
+			description: 'Dynamic reward calculation with intelligent supply optimization',
+			capabilities: [
+				'dynamic_reward_calculation',
+				'network_activity_monitoring',
+				'inflation_prevention',
+				'reputation_multipliers'
+			],
+			decisionTypes: ['reward_calculation', 'supply_optimization'],
+			requiredContext: ['actionType']
+		};
+	}
+
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {
 		try {
 			// Get network activity data
@@ -117,7 +133,7 @@ export class SupplyAgent extends BaseAgent {
 		// Get activity from last 24 hours using proper Prisma aggregate for PostgreSQL
 		const [totalActions, cwcActions, uniqueUsers] = await Promise.all([
 			// Total actions count
-			prisma.civicAction.count({
+			db.civicAction.count({
 				where: {
 					created_at: {
 						gte: oneDayAgo
@@ -125,7 +141,7 @@ export class SupplyAgent extends BaseAgent {
 				}
 			}),
 			// CWC actions count
-			prisma.civicAction.count({
+			db.civicAction.count({
 				where: {
 					created_at: {
 						gte: oneDayAgo
@@ -134,7 +150,7 @@ export class SupplyAgent extends BaseAgent {
 				}
 			}),
 			// Count unique users
-			prisma.civicAction.findMany({
+			db.civicAction.findMany({
 				where: {
 					created_at: {
 						gte: oneDayAgo
@@ -162,7 +178,7 @@ export class SupplyAgent extends BaseAgent {
 	): Promise<{ trust_score: number; reputation_tier: string } | null> {
 		if (!userId) return null;
 
-		return await prisma.user.findUnique({
+		return await db.user.findUnique({
 			where: { id: userId },
 			select: { trust_score: true, reputation_tier: true }
 		});
@@ -171,7 +187,7 @@ export class SupplyAgent extends BaseAgent {
 	private async getTemplateComplexity(templateId?: string): Promise<number> {
 		if (!templateId) return 1.0;
 
-		const template = await prisma.template.findUnique({
+		const template = await db.template.findUnique({
 			where: { id: templateId },
 			select: { message_body: true }
 		});

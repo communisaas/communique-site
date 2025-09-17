@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Template } from '$lib/types/template';
-import type { EmailServiceUser } from '$lib/types/user';
+import type { Template } from '../../src/lib/types/template.js';
+import type { EmailServiceUser } from '../../src/lib/types/user.js';
 
 /**
  * VOTER Protocol Certification Flow Tests

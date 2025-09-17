@@ -11,7 +11,7 @@ function createPopoverStore() {
 	// Track pending close timeouts
 	const pendingCloseTimeouts = new Map<string, number>();
 
-	const open = (id: string) => {
+	const open = (id: string): void => {
 		// Cancel any pending close for this popover
 		cancelClose(id);
 
@@ -34,7 +34,7 @@ function createPopoverStore() {
 		);
 	};
 
-	const close = (id: string) => {
+	const close = (id: string): void => {
 		// Cancel any pending close timeout first
 		cancelClose(id);
 
@@ -47,7 +47,7 @@ function createPopoverStore() {
 		}
 	};
 
-	const closeWithDelay = (id: string, delay: number = 150) => {
+	const closeWithDelay = (id: string, delay: number = 150): void => {
 		// Cancel any existing timeout for this popover
 		cancelClose(id);
 
@@ -60,7 +60,7 @@ function createPopoverStore() {
 		pendingCloseTimeouts.set(id, timeoutId);
 	};
 
-	const cancelClose = (id: string) => {
+	const cancelClose = (id: string): void => {
 		const timeoutId = pendingCloseTimeouts.get(id);
 		if (timeoutId) {
 			clearTimeout(timeoutId);
@@ -68,7 +68,7 @@ function createPopoverStore() {
 		}
 	};
 
-	const closed = (id: string) => {
+	const closed = (id: string): void => {
 		if (currentPopover && currentPopover.id === id && currentPopover.state === 'closing') {
 			currentPopover = null;
 		}

@@ -6,12 +6,34 @@ export interface ValidationRule {
 	custom?: (value: string) => string | null;
 }
 
+// Type guard for ValidationRule
+export function isValidationRule(obj: unknown): obj is ValidationRule {
+	if (typeof obj !== 'object' || obj === null) return false;
+	const rule = obj as Record<string, unknown>;
+	
+	return (
+		(rule.required === undefined || typeof rule.required === 'boolean') &&
+		(rule.minLength === undefined || typeof rule.minLength === 'number') &&
+		(rule.maxLength === undefined || typeof rule.maxLength === 'number') &&
+		(rule.pattern === undefined || rule.pattern instanceof RegExp) &&
+		(rule.custom === undefined || typeof rule.custom === 'function')
+	);
+}
+
 export interface ValidationResult {
 	isValid: boolean;
 	error?: string;
 }
 
 export function validateField(value: string, rules: ValidationRule): ValidationResult {
+	// Input validation
+	if (typeof value !== 'string') {
+		return { isValid: false, error: 'Value must be a string' };
+	}
+	
+	if (!isValidationRule(rules)) {
+		return { isValid: false, error: 'Invalid validation rules' };
+	}
 	// Required check
 	if (rules.required && (!value || value.trim() === '')) {
 		return { isValid: false, error: 'This field is required' };
@@ -114,51 +136,71 @@ export const templateValidationRules = {
 	} as ValidationRule
 };
 
+// Type for error callback functions
+export type ValidationErrorCallback = (errors: Record<string, string>) => void;
+
 // Real-time validation state manager
 export class ValidationManager {
 	private validationErrors = new Map<string, string>();
-	private validationCallbacks = new Set<(errors: Record<string, string>) => void>();
+	private validationCallbacks = new Set<ValidationErrorCallback>();
 
-	addCallback(callback: (errors: Record<string, string>) => void) {
+	public addCallback(callback: ValidationErrorCallback): void {
+		if (typeof callback !== 'function') {
+			throw new Error('Callback must be a function');
+		}
 		this.validationCallbacks.add(callback);
 	}
 
-	removeCallback(callback: (errors: Record<string, string>) => void) {
+	public removeCallback(callback: ValidationErrorCallback): void {
 		this.validationCallbacks.delete(callback);
 	}
 
-	validateField(fieldName: string, value: string, rules: ValidationRule) {
+	public validateField(fieldName: string, value: string, rules: ValidationRule): void {
+		if (typeof fieldName !== 'string' || fieldName.trim() === '') {
+			throw new Error('Field name must be a non-empty string');
+		}
+
 		const result = validateField(value, rules);
 
 		if (result.isValid) {
 			this.validationErrors.delete(fieldName);
 		} else {
+			// result.error is guaranteed to exist when isValid is false
 			this.validationErrors.set(fieldName, result.error!);
 		}
 
 		this.notifyCallbacks();
 	}
 
-	getErrors(): Record<string, string> {
+	public getErrors(): Record<string, string> {
 		return Object.fromEntries(this.validationErrors);
 	}
 
-	hasErrors(): boolean {
+	public hasErrors(): boolean {
 		return this.validationErrors.size > 0;
 	}
 
-	clearErrors() {
+	public clearErrors(): void {
 		this.validationErrors.clear();
 		this.notifyCallbacks();
 	}
 
-	clearField(fieldName: string) {
+	public clearField(fieldName: string): void {
+		if (typeof fieldName !== 'string') {
+			throw new Error('Field name must be a string');
+		}
 		this.validationErrors.delete(fieldName);
 		this.notifyCallbacks();
 	}
 
-	private notifyCallbacks() {
+	private notifyCallbacks(): void {
 		const errors = this.getErrors();
-		this.validationCallbacks.forEach((callback) => callback(errors));
+		this.validationCallbacks.forEach((callback) => {
+			try {
+				callback(errors);
+			} catch (error) {
+				console.error('Error in validation callback:', error);
+			}
+		});
 	}
 }

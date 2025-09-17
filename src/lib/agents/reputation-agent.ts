@@ -9,8 +9,8 @@
  */
 
 import { BaseAgent, AgentType } from './base-agent';
-import type { AgentContext, AgentDecision } from './base-agent';
-import { prisma } from '$lib/core/db';
+import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import { db, prisma } from '$lib/core/db';
 
 export interface CredibilityAssessment {
 	userId: string;
@@ -51,6 +51,21 @@ export class ReputationAgent extends BaseAgent {
 			verificationWeight: [0.1, 0.4], // Identity verification importance
 			challengeWeight: [0.2, 0.5] // Challenge market performance weight
 		});
+	}
+
+	getCapabilities(): AgentCapability {
+		return {
+			type: AgentType.REPUTATION,
+			description: 'Implements ERC-8004 compliant reputation system for democratic credibility',
+			capabilities: [
+				'credibility_assessment',
+				'trust_score_calculation',
+				'erc8004_attestations',
+				'reputation_risk_analysis'
+			],
+			decisionTypes: ['credibility_assessment', 'reputation_scoring'],
+			requiredContext: ['userId']
+		};
 	}
 
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {
@@ -137,7 +152,7 @@ export class ReputationAgent extends BaseAgent {
 		verificationLevel: string;
 		walletAddress?: string;
 	}> {
-		const user = await prisma.user.findUnique({
+		const user = await db.user.findUnique({
 			where: { id: userId },
 			select: {
 				id: true,

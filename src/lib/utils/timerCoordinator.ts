@@ -7,17 +7,43 @@
 
 import { browser } from '$app/environment';
 
-type TimerType = 'modal' | 'transition' | 'feedback' | 'dom' | 'gesture' | 'polling' | 'debounce';
+// Enhanced timer type definition
+export type TimerType = 'modal' | 'transition' | 'feedback' | 'dom' | 'gesture' | 'polling' | 'debounce';
 
-interface TimerRecord {
+// Type guard for TimerType
+export function isValidTimerType(type: unknown): type is TimerType {
+	return typeof type === 'string' && 
+		['modal', 'transition', 'feedback', 'dom', 'gesture', 'polling', 'debounce'].includes(type);
+}
+
+// Type for timer callback functions
+export type TimerCallback = () => void;
+
+// Enhanced timer record interface
+export interface TimerRecord {
 	id: string;
 	type: TimerType;
 	timeoutId: ReturnType<typeof setTimeout> | ReturnType<typeof setInterval>;
 	duration: number;
-	callback: () => void;
+	callback: TimerCallback;
 	createdAt: number;
 	isInterval: boolean;
 	componentId?: string;
+}
+
+// Type guard for TimerRecord
+export function isValidTimerRecord(record: unknown): record is TimerRecord {
+	if (typeof record !== 'object' || record === null) return false;
+	const r = record as Record<string, unknown>;
+	
+	return (
+		typeof r.id === 'string' &&
+		isValidTimerType(r.type) &&
+		typeof r.duration === 'number' &&
+		typeof r.callback === 'function' &&
+		typeof r.createdAt === 'number' &&
+		typeof r.isInterval === 'boolean'
+	);
 }
 
 class TimerCoordinator {
@@ -28,18 +54,40 @@ class TimerCoordinator {
 	/**
 	 * Set a timeout with automatic tracking and cleanup
 	 */
-	setTimeout(
-		callback: () => void,
+	public setTimeout(
+		callback: TimerCallback,
 		duration: number,
 		type: TimerType = 'dom',
 		componentId?: string
 	): string {
+		// Input validation
+		if (typeof callback !== 'function') {
+			throw new Error('Timer callback must be a function');
+		}
+		
+		if (typeof duration !== 'number' || duration < 0) {
+			throw new Error('Timer duration must be a non-negative number');
+		}
+		
+		if (!isValidTimerType(type)) {
+			throw new Error(`Invalid timer type: ${type}`);
+		}
+		
+		if (componentId !== undefined && typeof componentId !== 'string') {
+			throw new Error('Component ID must be a string');
+		}
+
 		if (!browser) return '';
 
 		const id = `timer_${++this.nextId}`;
 		const timeoutId = setTimeout(() => {
-			callback();
-			this.clearTimer(id);
+			try {
+				callback();
+			} catch (error) {
+				console.error('Error in timer callback:', error);
+			} finally {
+				this.clearTimer(id);
+			}
 		}, duration);
 
 		const record: TimerRecord = {
@@ -69,16 +117,39 @@ class TimerCoordinator {
 	/**
 	 * Set an interval with automatic tracking
 	 */
-	setInterval(
-		callback: () => void,
+	public setInterval(
+		callback: TimerCallback,
 		duration: number,
 		type: TimerType = 'polling',
 		componentId?: string
 	): string {
+		// Input validation (same as setTimeout)
+		if (typeof callback !== 'function') {
+			throw new Error('Timer callback must be a function');
+		}
+		
+		if (typeof duration !== 'number' || duration < 0) {
+			throw new Error('Timer duration must be a non-negative number');
+		}
+		
+		if (!isValidTimerType(type)) {
+			throw new Error(`Invalid timer type: ${type}`);
+		}
+		
+		if (componentId !== undefined && typeof componentId !== 'string') {
+			throw new Error('Component ID must be a string');
+		}
+
 		if (!browser) return '';
 
 		const id = `interval_${++this.nextId}`;
-		const intervalId = setInterval(callback, duration);
+		const intervalId = setInterval(() => {
+			try {
+				callback();
+			} catch (error) {
+				console.error('Error in interval callback:', error);
+			}
+		}, duration);
 
 		const record: TimerRecord = {
 			id,
@@ -106,14 +177,23 @@ class TimerCoordinator {
 	/**
 	 * Clear a specific timer
 	 */
-	clearTimer(id: string): void {
+	public clearTimer(id: string): void {
+		if (typeof id !== 'string') {
+			console.warn('Timer ID must be a string');
+			return;
+		}
+
 		const timer = this.timers.get(id);
 		if (!timer) return;
 
-		if (timer.isInterval) {
-			clearInterval(timer.timeoutId);
-		} else {
-			clearTimeout(timer.timeoutId);
+		try {
+			if (timer.isInterval) {
+				clearInterval(timer.timeoutId);
+			} else {
+				clearTimeout(timer.timeoutId);
+			}
+		} catch (error) {
+			console.error('Error clearing timer:', error);
 		}
 
 		this.timers.delete(id);

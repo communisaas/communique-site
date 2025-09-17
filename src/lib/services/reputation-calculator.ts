@@ -57,9 +57,9 @@ export class ReputationCalculator {
 		// Check if already applied
 		if (verification.reputation_applied) {
 			return {
-				delta: verification.reputation_delta,
+				delta: verification.reputation_delta || 0,
 				reason: 'Already applied',
-				tier: this.getTier(verification.user.voter_reputation || 50),
+				tier: this.getTier(verification.user?.trust_score || 50),
 				breakdown: { base: 0, multiplier: 1, final: 0 }
 			};
 		}
@@ -70,7 +70,7 @@ export class ReputationCalculator {
 		);
 
 		// Apply bounds checking
-		const currentRep = verification.user.voter_reputation || 50;
+		const currentRep = verification.user?.trust_score || 50;
 		const newRep = Math.max(
 			this.MIN_REPUTATION,
 			Math.min(this.MAX_REPUTATION, currentRep + update.delta)
@@ -78,9 +78,9 @@ export class ReputationCalculator {
 
 		// Update user reputation
 		await db.user.update({
-			where: { id: verification.user_id },
+			where: { id: verification.user_id || '' },
 			data: {
-				voter_reputation: Math.round(newRep)
+				trust_score: Math.round(newRep)
 			}
 		});
 
@@ -114,7 +114,7 @@ export class ReputationCalculator {
 	): ReputationUpdate {
 		const consensusScore = verification.consensus_score || 0;
 		const severity = verification.severity_level || 1;
-		const currentRep = verification.user.voter_reputation || 50;
+		const currentRep = verification.user?.trust_score || 50;
 
 		let baseDelta = 0;
 		let multiplier = 1;

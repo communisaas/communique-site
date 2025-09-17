@@ -7,8 +7,8 @@
 
 import { Google, Facebook, LinkedIn, Discord } from 'arctic';
 import { Twitter } from 'arctic';
-import type { OAuthCallbackConfig, OAuthProvider } from './oauth-callback-handler';
-import crypto from 'crypto';
+import type { OAuthCallbackConfig, OAuthProvider, OAuthClient, OAuthTokens, TokenData, UserData } from './oauth-callback-handler';
+import * as crypto from 'crypto';
 
 // =============================================================================
 // TYPE GUARDS FOR OAUTH PROVIDER RESPONSES
@@ -127,19 +127,19 @@ export const googleConfig: OAuthCallbackConfig = {
 	requiresCodeVerifier: true,
 	scope: 'profile email',
 
-	createOAuthClient: () => {
+	createOAuthClient: (): OAuthClient => {
 		return new Google(
 			process.env.GOOGLE_CLIENT_ID!,
 			process.env.GOOGLE_CLIENT_SECRET!,
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`
-		);
+		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client, code, codeVerifier) => {
+	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 
-	getUserInfo: async (accessToken) => {
+	getUserInfo: async (accessToken: string): Promise<unknown> => {
 		const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
 			headers: {
 				Authorization: `Bearer ${accessToken}`
@@ -153,7 +153,7 @@ export const googleConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => {
+	mapUserData: (rawUser: unknown): UserData => {
 		if (!isGoogleUser(rawUser)) {
 			throw new Error('Invalid Google user data format');
 		}
@@ -165,11 +165,11 @@ export const googleConfig: OAuthCallbackConfig = {
 		};
 	},
 
-	extractTokenData: (tokens) => ({
+	extractTokenData: (tokens: OAuthTokens): TokenData => ({
 		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
+		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
 		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
 			: null
 	})
 };
@@ -187,19 +187,19 @@ export const facebookConfig: OAuthCallbackConfig = {
 	requiresCodeVerifier: false,
 	scope: 'email public_profile',
 
-	createOAuthClient: () => {
+	createOAuthClient: (): OAuthClient => {
 		return new Facebook(
 			process.env.FACEBOOK_CLIENT_ID!,
 			process.env.FACEBOOK_CLIENT_SECRET!,
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`
-		);
+		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client, code) => {
+	exchangeTokens: async (client: OAuthClient, code: string): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code);
 	},
 
-	getUserInfo: async (accessToken, clientSecret) => {
+	getUserInfo: async (accessToken: string, clientSecret?: string): Promise<unknown> => {
 		// Facebook requires appsecret_proof for enhanced security
 		const appsecretProof = crypto
 			.createHmac('sha256', clientSecret!)
@@ -217,7 +217,7 @@ export const facebookConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => {
+	mapUserData: (rawUser: unknown): UserData => {
 		if (!isFacebookUser(rawUser)) {
 			throw new Error('Invalid Facebook user data format');
 		}
@@ -229,11 +229,11 @@ export const facebookConfig: OAuthCallbackConfig = {
 		};
 	},
 
-	extractTokenData: (tokens) => ({
+	extractTokenData: (tokens: OAuthTokens): TokenData => ({
 		accessToken: tokens.accessToken(),
 		refreshToken: null,
 		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
 			: null
 	})
 };
@@ -251,19 +251,19 @@ export const linkedinConfig: OAuthCallbackConfig = {
 	requiresCodeVerifier: true,
 	scope: 'openid profile email',
 
-	createOAuthClient: () => {
+	createOAuthClient: (): OAuthClient => {
 		return new LinkedIn(
 			process.env.LINKEDIN_CLIENT_ID!,
 			process.env.LINKEDIN_CLIENT_SECRET!,
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`
-		);
+		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client, code, codeVerifier) => {
+	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 
-	getUserInfo: async (accessToken) => {
+	getUserInfo: async (accessToken: string): Promise<unknown> => {
 		const response = await fetch('https://api.linkedin.com/v2/userinfo', {
 			headers: {
 				Authorization: `Bearer ${accessToken}`,
@@ -278,7 +278,7 @@ export const linkedinConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => {
+	mapUserData: (rawUser: unknown): UserData => {
 		if (!isLinkedInUser(rawUser)) {
 			throw new Error('Invalid LinkedIn user data format');
 		}
@@ -290,11 +290,11 @@ export const linkedinConfig: OAuthCallbackConfig = {
 		};
 	},
 
-	extractTokenData: (tokens) => ({
+	extractTokenData: (tokens: OAuthTokens): TokenData => ({
 		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
+		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
 		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
 			: null
 	})
 };
@@ -312,19 +312,19 @@ export const twitterConfig: OAuthCallbackConfig = {
 	requiresCodeVerifier: true,
 	scope: 'users.read tweet.read offline.access',
 
-	createOAuthClient: () => {
+	createOAuthClient: (): OAuthClient => {
 		return new Twitter(
 			process.env.TWITTER_CLIENT_ID!,
 			process.env.TWITTER_CLIENT_SECRET!,
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`
-		);
+		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client, code, codeVerifier) => {
+	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 
-	getUserInfo: async (accessToken) => {
+	getUserInfo: async (accessToken: string): Promise<unknown> => {
 		const response = await fetch(
 			'https://api.twitter.com/2/users/me?user.fields=profile_image_url',
 			{
@@ -341,7 +341,7 @@ export const twitterConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => {
+	mapUserData: (rawUser: unknown): UserData => {
 		if (!isTwitterUser(rawUser)) {
 			throw new Error('Invalid Twitter user data format');
 		}
@@ -355,11 +355,11 @@ export const twitterConfig: OAuthCallbackConfig = {
 		};
 	},
 
-	extractTokenData: (tokens) => ({
+	extractTokenData: (tokens: OAuthTokens): TokenData => ({
 		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
+		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
 		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
 			: null
 	})
 };
@@ -377,19 +377,19 @@ export const discordConfig: OAuthCallbackConfig = {
 	requiresCodeVerifier: true,
 	scope: 'identify email',
 
-	createOAuthClient: () => {
+	createOAuthClient: (): OAuthClient => {
 		return new Discord(
 			process.env.DISCORD_CLIENT_ID!,
 			process.env.DISCORD_CLIENT_SECRET!,
 			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`
-		);
+		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client, code, codeVerifier) => {
+	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 
-	getUserInfo: async (accessToken) => {
+	getUserInfo: async (accessToken: string): Promise<unknown> => {
 		const response = await fetch('https://discord.com/api/users/@me', {
 			headers: {
 				Authorization: `Bearer ${accessToken}`
@@ -403,7 +403,7 @@ export const discordConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => {
+	mapUserData: (rawUser: unknown): UserData => {
 		if (!isDiscordUser(rawUser)) {
 			throw new Error('Invalid Discord user data format');
 		}
@@ -432,11 +432,11 @@ export const discordConfig: OAuthCallbackConfig = {
 		};
 	},
 
-	extractTokenData: (tokens) => ({
+	extractTokenData: (tokens: OAuthTokens): TokenData => ({
 		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken() : null,
+		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
 		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt().getTime() / 1000)
+			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
 			: null
 	})
 };
@@ -451,7 +451,7 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthCallbackConfig> = {
 	linkedin: linkedinConfig,
 	twitter: twitterConfig,
 	discord: discordConfig
-};
+} as const;
 
 /**
  * Get configuration for a specific provider

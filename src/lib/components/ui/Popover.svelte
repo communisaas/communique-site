@@ -10,7 +10,7 @@
 		open?: boolean;
 		id?: string;
 		trigger?: (props: { trigger: TriggerAction; 'aria-controls': string }) => any;
-		children?: unknown;
+		children?: (props: { open: boolean }) => any;
 	}
 
 	let {

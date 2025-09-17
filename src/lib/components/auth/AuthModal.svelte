@@ -15,7 +15,7 @@
 	const template = $derived(modalData?.template);
 	const source = $derived(modalData?.source || 'direct-link');
 
-	const authConfig = $derived(() => {
+	const authConfig = $derived.by(() => {
 		if (!template) return null;
 		const isCongressional = template.deliveryMethod === 'certified';
 		return isCongressional
@@ -82,11 +82,11 @@
 		>
 			<div class="flex items-center justify-between p-6 pb-4">
 				<div class="flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-full {authConfig.bgColor}">
-						<svelte:component this={authConfig.icon} class="h-5 w-5 {authConfig.iconColor}" />
+					<div class="flex h-10 w-10 items-center justify-center rounded-full {authConfig?.bgColor}">
+						<svelte:component this={authConfig?.icon} class="h-5 w-5 {authConfig?.iconColor}" />
 					</div>
 					<div>
-						<h2 class="text-lg font-semibold text-slate-900">{authConfig.headline}</h2>
+						<h2 class="text-lg font-semibold text-slate-900">{authConfig?.headline}</h2>
 					</div>
 				</div>
 				<button onclick={handleClose} class="text-slate-400 transition-colors hover:text-slate-600">
@@ -94,11 +94,11 @@
 				</button>
 			</div>
 			<div class="px-6 pb-6">
-				<p class="mb-6 text-slate-600">{authConfig.subtext}</p>
+				<p class="mb-6 text-slate-600">{authConfig?.subtext}</p>
 				<div class="space-y-3">
 					<Button
 						onclick={() => handleAuth('google')}
-						classNames="w-full {authConfig.buttonColor} text-white"
+						classNames="w-full {authConfig?.buttonColor} text-white"
 					>
 						<svg class="h-4 w-4" viewBox="0 0 24 24">
 							<path
@@ -135,7 +135,7 @@
 				<div class="mt-4 rounded-lg bg-slate-50 p-3">
 					<div class="flex items-center gap-2 text-sm text-slate-600">
 						<ArrowRight class="h-3 w-3" />
-						<span>{authConfig.nextStep}</span>
+						<span>{authConfig?.nextStep}</span>
 					</div>
 				</div>
 			</div>

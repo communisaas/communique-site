@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const marketDecision = await marketAgent.makeDecision({
 			actionType,
 			parameters: {
-				baseReward: supplyDecision.decision?.rewardAmount || 0
+				baseReward: (supplyDecision.decision as any)?.rewardAmount || 0
 			}
 		});
 
@@ -48,9 +48,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		// Calculate final reward
-		const baseReward = supplyDecision.decision?.rewardAmount || 0;
-		const marketMultiplier = marketDecision.decision?.rewardMultiplier || 1;
-		const impactMultiplier = impactDecision.decision?.impactMultiplier || 1;
+		const baseReward = (supplyDecision.decision as any)?.rewardAmount || 0;
+		const marketMultiplier = (marketDecision.decision as any)?.rewardMultiplier || 1;
+		const impactMultiplier = (impactDecision.decision as any)?.impactMultiplier || 1;
 
 		const finalReward = BigInt(
 			Math.floor(Number(baseReward) * marketMultiplier * impactMultiplier)
@@ -66,9 +66,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				base: baseReward.toString(),
 				marketMultiplier,
 				impactMultiplier,
-				supplyImpact: supplyDecision.decision?.supplyImpact || 0,
-				impactScore: impactDecision.decision?.impactScore || 0,
-				marketSignal: marketDecision.decision?.marketSignal || 'neutral'
+				supplyImpact: (supplyDecision.decision as any)?.supplyImpact || 0,
+				impactScore: (impactDecision.decision as any)?.impactScore || 0,
+				marketSignal: (marketDecision.decision as any)?.marketSignal || 'neutral'
 			},
 			agents: {
 				supply: supplyDecision,

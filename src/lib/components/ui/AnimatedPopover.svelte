@@ -11,9 +11,11 @@
 		id: string;
 		animationStyle?: 'scale' | 'fly' | 'expand';
 		duration?: number;
+		trigger?: (params: { triggerAction: TriggerAction }) => any;
+		children?: (params: { open: boolean }) => any;
 	}
 
-	const { id, animationStyle = 'expand', duration = 200 }: Props = $props();
+	const { id, animationStyle = 'expand', duration = 200, trigger, children }: Props = $props();
 
 	const dispatch = createEventDispatcher();
 	let popoverElement: HTMLDivElement | undefined = $state();
@@ -329,7 +331,7 @@
 	aria-haspopup="true"
 	aria-expanded={open}
 >
-	<slot name="trigger" {triggerAction}></slot>
+	{@render trigger?.({ triggerAction })}
 
 	{#if open}
 		<div
@@ -364,7 +366,7 @@
 			onoutroend={handleAnimationOut}
 		>
 			<div bind:this={contentElement} class="px-3 py-2 text-sm">
-				<slot {open}></slot>
+				{@render children?.({ open })}
 			</div>
 		</div>
 	{/if}

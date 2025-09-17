@@ -3,7 +3,8 @@
  * Secure token handling for email verification and other auth flows
  */
 
-import jwt from 'jsonwebtoken';
+import pkg from 'jsonwebtoken';
+const { sign, verify, TokenExpiredError, JsonWebTokenError } = pkg;
 import { env } from '$env/dynamic/private';
 
 interface EmailVerificationPayload {
@@ -39,7 +40,7 @@ export function generateEmailVerificationToken(
 	// Use environment secret or fall back to a configured secret
 	const secret = env.EMAIL_VERIFICATION_SECRET || env.JWT_SECRET || 'development-secret';
 
-	return jwt.sign(payload, secret, {
+	return sign(payload, secret, {
 		expiresIn: '24h',
 		issuer: 'communique.app',
 		audience: 'email-verification'
@@ -54,7 +55,7 @@ export async function verifySignedToken<T = any>(
 	options: TokenVerificationOptions
 ): Promise<T> {
 	try {
-		const decoded = jwt.verify(token, options.secret, {
+		const decoded = verify(token, options.secret, {
 			issuer: 'communique.app',
 			audience: 'email-verification',
 			maxAge: options.maxAge ? `${options.maxAge}s` : undefined
@@ -62,10 +63,10 @@ export async function verifySignedToken<T = any>(
 
 		return decoded;
 	} catch (_error) {
-		if (_error instanceof jwt.TokenExpiredError) {
+		if (_error instanceof TokenExpiredError) {
 			throw new Error('Token has expired');
 		}
-		if (_error instanceof jwt.JsonWebTokenError) {
+		if (_error instanceof JsonWebTokenError) {
 			throw new Error('Invalid token');
 		}
 		throw _error;
@@ -85,10 +86,10 @@ export function generateOneTimeToken(data: Record<string, any>, expiresIn = '1h'
 
 	const secret = env.JWT_SECRET || 'development-secret';
 
-	return jwt.sign(payload, secret, {
+	return sign(payload, secret, {
 		expiresIn,
 		issuer: 'communique.app'
-	});
+	} as any);
 }
 
 /**

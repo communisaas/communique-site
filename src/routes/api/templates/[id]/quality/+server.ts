@@ -44,8 +44,8 @@ export const GET: RequestHandler = async ({ params }) => {
 				author: template.user
 					? {
 							user_id: template.userId,
-							voter_reputation: template.user.voter_reputation || 50,
-							tier: reputationCalculator.getTier(template.user.voter_reputation || 50)
+							voter_reputation: template.user.trust_score || 50,
+							tier: reputationCalculator.getTier(template.user.trust_score || 50)
 						}
 					: null
 			});
@@ -104,7 +104,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		// Get tier information
 		const tierInfo = verification.user
 			? reputationCalculator.getTierInfo(
-					reputationCalculator.getTier(verification.user.voter_reputation || 50)
+					reputationCalculator.getTier(verification.user.trust_score || 50)
 				)
 			: null;
 
@@ -140,8 +140,8 @@ export const GET: RequestHandler = async ({ params }) => {
 			author: verification.user
 				? {
 						user_id: verification.user_id,
-						voter_reputation: verification.user.voter_reputation || 50,
-						tier: reputationCalculator.getTier(verification.user.voter_reputation || 50),
+						voter_reputation: verification.user.trust_score || 50,
+						tier: reputationCalculator.getTier(verification.user.trust_score || 50),
 						tier_info: tierInfo,
 						...authorMetrics
 					}

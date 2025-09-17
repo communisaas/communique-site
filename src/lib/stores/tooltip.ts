@@ -1,3 +1,3 @@
-import { writable } from 'svelte/store';
+import { writable, type Writable } from 'svelte/store';
 
-export const activeTooltipId = writable<string | null>(null);
+export const activeTooltipId: Writable<string | null> = writable<string | null>(null);

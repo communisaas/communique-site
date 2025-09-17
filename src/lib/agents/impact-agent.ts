@@ -9,8 +9,8 @@
  */
 
 import { BaseAgent, AgentType } from './base-agent';
-import type { AgentContext, AgentDecision } from './base-agent';
-import { prisma } from '$lib/core/db';
+import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import { db, prisma } from '$lib/core/db';
 
 export interface ImpactAssessment {
 	templateId: string;
@@ -56,6 +56,21 @@ export class ImpactAgent extends BaseAgent {
 			confidenceThreshold: [0.6, 0.9], // Minimum confidence for action
 			fundingMultiplier: [100, 10000] // USD per impact point
 		});
+	}
+
+	getCapabilities(): AgentCapability {
+		return {
+			type: AgentType.IMPACT,
+			description: 'Tracks template influence on legislative behavior and calculates impact scores',
+			capabilities: [
+				'legislative_outcome_tracking',
+				'causal_chain_analysis',
+				'impact_score_calculation',
+				'funding_recommendations'
+			],
+			decisionTypes: ['impact_assessment', 'funding_calculation'],
+			requiredContext: ['templateId', 'timestamp']
+		};
 	}
 
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {
@@ -119,7 +134,7 @@ export class ImpactAgent extends BaseAgent {
 		timestamp?: string
 	): Promise<ImpactAssessment> {
 		// Get template content for matching
-		const template = await prisma.template.findUnique({
+		const template = await db.template.findUnique({
 			where: { id: templateId },
 			select: {
 				title: true,
@@ -134,7 +149,7 @@ export class ImpactAgent extends BaseAgent {
 		}
 
 		// Get usage statistics
-		const usageCount = await prisma.template.count({
+		const usageCount = await db.template.count({
 			where: {
 				id: templateId
 			}
@@ -168,7 +183,7 @@ export class ImpactAgent extends BaseAgent {
 		// - Congressional Record parsing
 
 		// For now, simulate with database queries and mock data
-		const template = await prisma.template.findUnique({
+		const template = await db.template.findUnique({
 			where: { id: templateId },
 			select: { message_body: true, title: true }
 		});
@@ -189,7 +204,7 @@ export class ImpactAgent extends BaseAgent {
 		const chains: CausalChain[] = [];
 
 		// Get template usage timeline
-		const actions = await prisma.template.findMany({
+		const actions = await db.template.findMany({
 			where: {
 				id: templateId
 			},

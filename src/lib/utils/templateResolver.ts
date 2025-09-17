@@ -17,12 +17,58 @@ import type { Template } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 
-interface ResolvedTemplate {
+// Enhanced interface with better type safety
+export interface ResolvedTemplate {
 	subject: string;
 	body: string;
 	recipients: string[];
 	isCongressional: boolean;
 	routingEmail?: string;
+}
+
+// Type guards for template validation
+export function isValidTemplate(template: unknown): template is Template {
+	if (typeof template !== 'object' || template === null) return false;
+	const t = template as Record<string, unknown>;
+	
+	return (
+		typeof t.id === 'string' &&
+		typeof t.title === 'string' &&
+		typeof t.deliveryMethod === 'string' &&
+		['email', 'certified', 'direct'].includes(t.deliveryMethod as string) &&
+		(typeof t.message_body === 'string' || typeof t.preview === 'string')
+	);
+}
+
+export function isValidEmailServiceUser(user: unknown): user is EmailServiceUser {
+	if (typeof user !== 'object' || user === null) return false;
+	const u = user as Record<string, unknown>;
+	
+	return (
+		typeof u.id === 'string' &&
+		typeof u.email === 'string' &&
+		(u.name === undefined || u.name === null || typeof u.name === 'string')
+	);
+}
+
+// Type for representative objects
+interface Representative {
+	name: string;
+	party: string;
+	chamber: string;
+	state: string;
+	district: string;
+}
+
+// Type guard for representatives array
+function isValidRepresentativesArray(reps: unknown): reps is Representative[] {
+	if (!Array.isArray(reps)) return false;
+	return reps.every(rep => 
+		typeof rep === 'object' && 
+		rep !== null &&
+		typeof rep.name === 'string' &&
+		typeof rep.chamber === 'string'
+	);
 }
 
 /**
@@ -42,6 +88,14 @@ export function resolveTemplate(
 	template: Template,
 	user: EmailServiceUser | null
 ): ResolvedTemplate {
+	// Input validation
+	if (!isValidTemplate(template)) {
+		throw new Error('Invalid template provided to resolveTemplate');
+	}
+	
+	if (user !== null && !isValidEmailServiceUser(user)) {
+		throw new Error('Invalid user provided to resolveTemplate');
+	}
 	// Get the base message content - prefer message_body over preview
 	const baseMessage = template.message_body || template.preview || '';
 
@@ -70,11 +124,10 @@ export function resolveTemplate(
 			'[Zip Code]': user.zip || null
 		};
 
-		// Congressional representative resolution
-		if (user.representatives && user.representatives.length > 0) {
+		// Congressional representative resolution with type safety
+		if (user.representatives && isValidRepresentativesArray(user.representatives)) {
 			// Primary representative (House member or first in list)
-			const primaryRep =
-				user.representatives.find((r: any) => r.chamber === 'house') || user.representatives[0];
+			const primaryRep = user.representatives.find(r => r.chamber === 'house') || user.representatives[0];
 			if (primaryRep) {
 				replacements['[Representative Name]'] = primaryRep.name;
 				replacements['[Rep Name]'] = primaryRep.name;
@@ -86,7 +139,7 @@ export function resolveTemplate(
 			}
 
 			// Senate representatives
-			const senators = user.representatives.filter((r: any) => r.chamber === 'senate');
+			const senators = user.representatives.filter(r => r.chamber === 'senate');
 			if (senators.length > 0) {
 				replacements['[Senator Name]'] = senators[0].name;
 				replacements['[Senator]'] = `Sen. ${senators[0].name}`;
@@ -158,16 +211,24 @@ export function resolveTemplate(
 
 	// Determine delivery method and routing
 	const isCongressional = template.deliveryMethod === 'certified';
-	// Parse recipient_config safely
+	// Parse recipient_config safely with error handling
 	let recipientConfig: unknown = template.recipient_config;
 	if (typeof template.recipient_config === 'string') {
 		try {
 			recipientConfig = JSON.parse(template.recipient_config);
-		} catch (_e) {
+		} catch (error) {
+			console.warn('Failed to parse recipient_config JSON:', error);
 			recipientConfig = undefined; // allow downstream defaulting
 		}
 	}
-	const recipients = extractRecipientEmails(recipientConfig);
+	
+	let recipients: string[] = [];
+	try {
+		recipients = extractRecipientEmails(recipientConfig);
+	} catch (error) {
+		console.error('Failed to extract recipient emails:', error);
+		recipients = [];
+	}
 
 	let routingEmail: string | undefined;
 	if (isCongressional) {
@@ -186,20 +247,34 @@ export function resolveTemplate(
 }
 
 /**
- * Build complete user address string
+ * Build complete user address string with type safety
  */
 function buildUserAddress(user: EmailServiceUser): string {
-	// Only return address if ALL parts are present
-	if (user.street && user.city && user.state && user.zip) {
-		return `${user.street}, ${user.city}, ${user.state} ${user.zip}`;
+	// Input validation
+	if (!user || typeof user !== 'object') {
+		return '';
+	}
+	
+	// Only return address if ALL parts are present and valid
+	if (
+		typeof user.street === 'string' && user.street.trim() !== '' &&
+		typeof user.city === 'string' && user.city.trim() !== '' &&
+		typeof user.state === 'string' && user.state.trim() !== '' &&
+		typeof user.zip === 'string' && user.zip.trim() !== ''
+	) {
+		return `${user.street.trim()}, ${user.city.trim()}, ${user.state.trim()} ${user.zip.trim()}`;
 	}
 	return ''; // Return empty if incomplete - will be removed from template
 }
 
 /**
- * Escape string for use in regex
+ * Escape string for use in regex with error handling
  */
 function escapeRegex(string: string): string {
+	if (typeof string !== 'string') {
+		console.warn('escapeRegex received non-string input:', typeof string);
+		return String(string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	}
 	return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

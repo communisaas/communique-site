@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ params, locals, request }) => {
 	});
 
 	if (!template) {
-		throw _error(404, 'Template not found');
+		throw error(404, 'Template not found');
 	}
 
 	// Track template view (increment metrics)

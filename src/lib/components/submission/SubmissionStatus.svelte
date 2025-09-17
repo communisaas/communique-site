@@ -62,7 +62,7 @@
 	});
 
 	// Fallback polling for status updates
-	let pollInterval: number | null = null;
+	let pollInterval: ReturnType<typeof setInterval> | null = null;
 
 	function startPolling() {
 		if (pollInterval) return;

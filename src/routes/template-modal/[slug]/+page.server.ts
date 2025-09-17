@@ -23,7 +23,7 @@ export const load: PageServerLoad = async ({ params, locals, url }) => {
 	});
 
 	if (!template) {
-		throw _error(404, 'Template not found');
+		throw error(404, 'Template not found');
 	}
 
 	// Track template modal view

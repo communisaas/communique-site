@@ -39,7 +39,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Fetch challenge and verification data
-		const challenge = await db.challenge?.findUnique({
+		const challenge = await db.challenge.findUnique({
 			where: { id: challengeId },
 			include: {
 				verification: true,
@@ -179,7 +179,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		// Update challenge status in database
-		await db.challenge?.update({
+		await db.challenge.update({
 			where: { id: challengeId },
 			data: {
 				status: 'resolved',
@@ -196,36 +196,36 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Update user balances
 		if (challengerPayout > 0 && challenge.challenger_address) {
 			const challenger = await db.user.findFirst({
-				where: { address: challenge.challenger_address }
+				where: { wallet_address: challenge.challenger_id }
 			});
 
 			if (challenger) {
 				await db.user.update({
 					where: { id: challenger.id },
 					data: {
-						pending_rewards: (challenger.pending_rewards || 0) + Number(challengerPayout),
-						challenge_score: Math.max(
+						// Note: pending_rewards field doesn't exist in current schema
+						trust_score: Math.max(
 							0,
-							Math.min(100, (challenger.challenge_score || 50) + reputationChanges.challenger)
+							Math.min(100, (challenger.trust_score || 50) + reputationChanges.challenger)
 						)
 					}
 				});
 			}
 		}
 
-		if (creatorPayout > 0 && challenge.claim?.creator?.address) {
+		if (creatorPayout > 0 && challenge.defender_id) {
 			const creator = await db.user.findFirst({
-				where: { address: challenge.claim.creator.address }
+				where: { wallet_address: challenge.defender_id }
 			});
 
 			if (creator) {
 				await db.user.update({
 					where: { id: creator.id },
 					data: {
-						pending_rewards: (creator.pending_rewards || 0) + Number(creatorPayout),
-						discourse_score: Math.max(
+						// Note: pending_rewards field doesn't exist in current schema  
+						trust_score: Math.max(
 							0,
-							Math.min(100, (creator.discourse_score || 50) + reputationChanges.creator)
+							Math.min(100, (creator.trust_score || 50) + reputationChanges.creator)
 						)
 					}
 				});

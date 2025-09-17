@@ -276,7 +276,8 @@ export class ModerationConsensus {
 
 		// Check if any agent detected this specific violation
 		for (const vote of Object.values(votes)) {
-			if (vote && vote.violations?.includes(violationType)) {
+			const typedVote = vote as AgentVote;
+			if (typedVote && Array.isArray(typedVote.violations) && typedVote.violations.includes(violationType)) {
 				return true;
 			}
 		}

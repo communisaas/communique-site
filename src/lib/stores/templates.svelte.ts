@@ -42,11 +42,11 @@ function createTemplateStore() {
 		},
 
 		// Core template management
-		selectTemplate: (id: string) => {
+		selectTemplate(id: string): void {
 			state.selectedId = id;
 		},
 
-		selectTemplateBySlug: (slug: string) => {
+		selectTemplateBySlug(slug: string): void {
 			const template = state.templates.find((t) => t.slug === slug);
 			if (template) {
 				state.selectedId = template.id;
@@ -54,14 +54,14 @@ function createTemplateStore() {
 		},
 
 		// Auto-select first template when templates change
-		autoSelectFirst() {
+		autoSelectFirst(): void {
 			if (state.templates.length > 0 && !state.selectedId) {
 				state.selectedId = state.templates[0].id;
 			}
 		},
 
 		// API Integration with progressive enhancement
-		async fetchTemplates() {
+		async fetchTemplates(): Promise<void> {
 			state.loading = true;
 			state.error = null;
 
@@ -96,7 +96,7 @@ function createTemplateStore() {
 		},
 
 		// Template CRUD operations
-		async addTemplate(template: Omit<Template, 'id'>) {
+		async addTemplate(template: Omit<Template, 'id'>): Promise<Template> {
 			try {
 				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.create(template);
@@ -119,7 +119,7 @@ function createTemplateStore() {
 			}
 		},
 
-		async updateTemplate(id: string, updates: Partial<Template>) {
+		async updateTemplate(id: string, updates: Partial<Template>): Promise<Template> {
 			try {
 				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.update(id, updates);
@@ -141,7 +141,7 @@ function createTemplateStore() {
 			}
 		},
 
-		async deleteTemplate(id: string) {
+		async deleteTemplate(id: string): Promise<void> {
 			try {
 				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.delete(id);
@@ -165,7 +165,7 @@ function createTemplateStore() {
 		},
 
 		// Development helpers
-		reset: () => {
+		reset(): void {
 			state.templates = [];
 			state.selectedId = null;
 			state.loading = false;

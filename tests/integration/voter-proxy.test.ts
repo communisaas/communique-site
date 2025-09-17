@@ -40,7 +40,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			const { POST } = await import('../../src/routes/api/voter-proxy/certify/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/certify', {
+			const request = new Request('http://localhost/api/voter/certify', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -92,7 +92,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			const { POST } = await import('../../src/routes/api/voter-proxy/certify/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/certify', {
+			const request = new Request('http://localhost/api/voter/certify', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -118,7 +118,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			const { POST } = await import('../../src/routes/api/voter-proxy/certify/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/certify', {
+			const request = new Request('http://localhost/api/voter/certify', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -147,7 +147,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			const { POST } = await import('../../src/routes/api/voter-proxy/certify/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/certify', {
+			const request = new Request('http://localhost/api/voter/certify', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -177,9 +177,9 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const { GET } = await import('../../src/routes/api/voter-proxy/+server');
+			const { GET } = await import('../../src/routes/api/voter/+server');
 
-			const url = new URL('http://localhost/api/voter-proxy/reputation/0x123');
+			const url = new URL('http://localhost/api/voter/reputation/0x123');
 			const response = await GET({ url });
 			const data = await response.json();
 
@@ -208,9 +208,9 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const { POST } = await import('../../src/routes/api/voter-proxy/+server');
+			const { POST } = await import('../../src/routes/api/voter/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/consensus', {
+			const request = new Request('http://localhost/api/voter/consensus', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -221,7 +221,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const url = new URL('http://localhost/api/voter-proxy/consensus');
+			const url = new URL('http://localhost/api/voter/consensus');
 			const response = await POST({ request, url });
 			const data = await response.json();
 
@@ -246,9 +246,9 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				text: async () => 'Rate limit exceeded'
 			});
 
-			const { POST } = await import('../../src/routes/api/voter-proxy/+server');
+			const { POST } = await import('../../src/routes/api/voter/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/verify', {
+			const request = new Request('http://localhost/api/voter/verify', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -256,7 +256,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				body: JSON.stringify({ test: 'data' })
 			});
 
-			const url = new URL('http://localhost/api/voter-proxy/verify');
+			const url = new URL('http://localhost/api/voter/verify');
 
 			await expect(POST({ request, url })).rejects.toMatchObject({
 				status: 429
@@ -275,9 +275,9 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const { GET } = await import('../../src/routes/api/voter-proxy/+server');
+			const { GET } = await import('../../src/routes/api/voter/+server');
 
-			const url = new URL('http://localhost/api/voter-proxy/test');
+			const url = new URL('http://localhost/api/voter/test');
 			const response = await GET({ url });
 			const data = await response.json();
 
@@ -294,9 +294,9 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				json: async () => ({ success: true })
 			});
 
-			const { POST } = await import('../../src/routes/api/voter-proxy/+server');
+			const { POST } = await import('../../src/routes/api/voter/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/test', {
+			const request = new Request('http://localhost/api/voter/test', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -305,7 +305,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				body: JSON.stringify({ test: 'data' })
 			});
 
-			const url = new URL('http://localhost/api/voter-proxy/test');
+			const url = new URL('http://localhost/api/voter/test');
 			const response = await POST({ request, url });
 
 			// Should still process but CORS headers would block in browser
@@ -323,15 +323,15 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			// Note: Retry logic would be in the actual implementation
 			// This test verifies the pattern
-			const { POST } = await import('../../src/routes/api/voter-proxy/+server');
+			const { POST } = await import('../../src/routes/api/voter/+server');
 
-			const request = new Request('http://localhost/api/voter-proxy/test', {
+			const request = new Request('http://localhost/api/voter/test', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ test: 'data' })
 			});
 
-			const url = new URL('http://localhost/api/voter-proxy/test');
+			const url = new URL('http://localhost/api/voter/test');
 
 			// First attempt fails
 			await expect(POST({ request, url })).rejects.toThrow();
@@ -350,9 +350,9 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				text: async () => 'Not JSON'
 			});
 
-			const { GET } = await import('../../src/routes/api/voter-proxy/+server');
+			const { GET } = await import('../../src/routes/api/voter/+server');
 
-			const url = new URL('http://localhost/api/voter-proxy/test');
+			const url = new URL('http://localhost/api/voter/test');
 
 			await expect(GET({ url })).rejects.toMatchObject({
 				status: 500

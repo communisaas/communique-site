@@ -17,7 +17,7 @@ import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -66,6 +66,17 @@ export interface DatabaseUser {
 	updatedAt: Date;
 }
 
+export interface OAuthTokens {
+	accessToken: () => string;
+	refreshToken?: () => string | null;
+	hasRefreshToken: () => boolean;
+	accessTokenExpiresAt: () => Date | null;
+}
+
+export interface OAuthClient {
+	validateAuthorizationCode: (code: string, codeVerifier?: string) => Promise<OAuthTokens>;
+}
+
 export interface OAuthCallbackConfig {
 	provider: OAuthProvider;
 	clientId: string;
@@ -75,12 +86,12 @@ export interface OAuthCallbackConfig {
 	requiresCodeVerifier: boolean;
 	scope: string;
 
-	// Provider-specific functions
-	createOAuthClient: () => any;
-	exchangeTokens: (client: any, code: string, codeVerifier?: string) => Promise<any>;
-	getUserInfo: (accessToken: string, clientSecret?: string) => Promise<any>;
-	mapUserData: (rawUser: Record<string, any>) => UserData;
-	extractTokenData: (tokens: Record<string, any>) => TokenData;
+	// Provider-specific functions with proper typing
+	createOAuthClient: () => OAuthClient;
+	exchangeTokens: (client: OAuthClient, code: string, codeVerifier?: string) => Promise<OAuthTokens>;
+	getUserInfo: (accessToken: string, clientSecret?: string) => Promise<unknown>;
+	mapUserData: (rawUser: unknown) => UserData;
+	extractTokenData: (tokens: OAuthTokens) => TokenData;
 }
 
 // =============================================================================
@@ -376,7 +387,7 @@ export class OAuthCallbackHandler {
 	 */
 	private generateAccountId(): string {
 		const bytes = crypto.getRandomValues(new Uint8Array(20));
-		return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+		return Array.from(bytes, (byte: number) => byte.toString(16).padStart(2, '0')).join('');
 	}
 }
 

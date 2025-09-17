@@ -56,7 +56,7 @@ export class DeliveryService {
 			// The delivery service will start automatically when imported
 			console.log(`📧 Delivery Service running on ${this.config.smtpHost}:${this.config.smtpPort}`);
 		} catch (_error) {
-			console.error('❌ Failed to start Delivery Service:', error);
+			console.error('❌ Failed to start Delivery Service:', _error);
 			throw _error;
 		}
 	}

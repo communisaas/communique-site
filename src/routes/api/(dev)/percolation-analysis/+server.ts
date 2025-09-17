@@ -1,11 +1,12 @@
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import {
 	analyzeCivicInformationCascades,
 	storeCascadeAnalysis
 } from '$lib/core/server/percolation-engine';
 import { oauthSecurityMiddleware, logAnalyticsUsage } from '$lib/core/auth/oauth-security';
 
-export async function GET({ request }) {
+export const GET: RequestHandler = async ({ request }) => {
 	const startTime = Date.now();
 
 	// OAuth security check

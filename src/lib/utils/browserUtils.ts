@@ -11,6 +11,19 @@ import { coordinated } from './timerCoordinator';
 // CORE BROWSER DETECTION
 export const isBrowser = browser;
 
+// Type guards for browser objects
+export function isWindow(obj: unknown): obj is Window {
+	return isBrowser && typeof obj === 'object' && obj === window;
+}
+
+export function isDocument(obj: unknown): obj is Document {
+	return isBrowser && typeof obj === 'object' && obj === document;
+}
+
+export function isNavigator(obj: unknown): obj is Navigator {
+	return isBrowser && typeof obj === 'object' && obj === navigator;
+}
+
 // SSR-SAFE WINDOW ACCESS
 export function getWindow(): Window | null {
 	return isBrowser ? window : null;
@@ -63,21 +76,44 @@ export function isBreakpoint(bp: keyof typeof breakpoints): boolean {
 
 // NAVIGATION UTILITIES - SSR-safe
 export function navigateTo(url: string): void {
+	if (typeof url !== 'string' || url.trim() === '') {
+		console.warn('Invalid URL provided to navigateTo');
+		return;
+	}
+	
 	const win = getWindow();
 	if (win) {
-		win.location.href = url;
+		try {
+			win.location.href = url;
+		} catch (error) {
+			console.error('Failed to navigate to URL:', error);
+		}
 	}
 }
 
 export function openInNewTab(url: string): void {
+	if (typeof url !== 'string' || url.trim() === '') {
+		console.warn('Invalid URL provided to openInNewTab');
+		return;
+	}
+	
 	const win = getWindow();
 	if (win) {
-		win.open(url, '_blank', 'noopener,noreferrer');
+		try {
+			win.open(url, '_blank', 'noopener,noreferrer');
+		} catch (error) {
+			console.error('Failed to open URL in new tab:', error);
+		}
 	}
 }
 
 // CLIPBOARD UTILITIES - Graceful fallback
 export async function copyToClipboard(text: string): Promise<boolean> {
+	if (typeof text !== 'string') {
+		console.warn('Text to copy must be a string');
+		return false;
+	}
+	
 	const nav = getNavigator();
 	if (!nav) return false;
 
@@ -89,45 +125,81 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		}
 
 		// Fallback for older browsers
-		const textArea = document.createElement('textarea');
+		const doc = getDocument();
+		if (!doc) return false;
+		
+		const textArea = doc.createElement('textarea');
 		textArea.value = text;
 		textArea.style.position = 'fixed';
 		textArea.style.left = '-999999px';
 		textArea.style.top = '-999999px';
-		document.body.appendChild(textArea);
+		doc.body.appendChild(textArea);
 		textArea.focus();
 		textArea.select();
 
-		const success = document.execCommand('copy');
+		const success = doc.execCommand('copy');
 		textArea.remove();
 		return success;
 	} catch (error) {
+		console.error('Failed to copy to clipboard:', error);
 		return false;
 	}
 }
 
+// Type definition for media query callback
+export type MediaQueryCallback = (matches: boolean) => void;
+
 // MEDIA QUERY UTILITIES - Event-driven responsive detection
 export function matchesMediaQuery(query: string): boolean {
-	if (!isBrowser) return false;
-	return window.matchMedia(query).matches;
+	if (!isBrowser || typeof query !== 'string') return false;
+	
+	try {
+		return window.matchMedia(query).matches;
+	} catch (error) {
+		console.error('Invalid media query:', query, error);
+		return false;
+	}
 }
 
 export function createMediaQueryWatcher(
 	query: string,
-	callback: (matches: boolean) => void
+	callback: MediaQueryCallback
 ): (() => void) | null {
-	if (!isBrowser) return null;
+	if (!isBrowser || typeof query !== 'string' || typeof callback !== 'function') {
+		return null;
+	}
 
-	const mediaQuery = window.matchMedia(query);
-	const handler = (e: MediaQueryListEvent) => callback(e.matches);
+	try {
+		const mediaQuery = window.matchMedia(query);
+		const handler = (e: MediaQueryListEvent): void => {
+			try {
+				callback(e.matches);
+			} catch (error) {
+				console.error('Error in media query callback:', error);
+			}
+		};
 
-	mediaQuery.addEventListener('change', handler);
+		mediaQuery.addEventListener('change', handler);
 
-	// Initial call
-	callback(mediaQuery.matches);
+		// Initial call with error handling
+		try {
+			callback(mediaQuery.matches);
+		} catch (error) {
+			console.error('Error in initial media query callback:', error);
+		}
 
-	// Return cleanup function
-	return () => mediaQuery.removeEventListener('change', handler);
+		// Return cleanup function
+		return (): void => {
+			try {
+				mediaQuery.removeEventListener('change', handler);
+			} catch (error) {
+				console.error('Error removing media query listener:', error);
+			}
+		};
+	} catch (error) {
+		console.error('Error creating media query watcher:', error);
+		return null;
+	}
 }
 
 // SCROLL UTILITIES - SSR-safe
@@ -201,24 +273,43 @@ export function supportsWebShare(): boolean {
 	return true;
 }
 
-export function canShareData(data: {
+// Type definition for share data
+export interface ShareData {
 	title?: string;
 	text?: string;
 	url?: string;
 	files?: File[];
-}): boolean {
-	if (!supportsWebShare()) return false;
-	const nav = getNavigator();
-	return !!nav?.canShare?.(data);
 }
 
-export async function shareData(data: {
-	title?: string;
-	text?: string;
-	url?: string;
-	files?: File[];
-}): Promise<boolean> {
-	if (!supportsWebShare()) return false;
+// Type guard for ShareData
+export function isValidShareData(data: unknown): data is ShareData {
+	if (typeof data !== 'object' || data === null) return false;
+	const shareData = data as Record<string, unknown>;
+	
+	return (
+		(shareData.title === undefined || typeof shareData.title === 'string') &&
+		(shareData.text === undefined || typeof shareData.text === 'string') &&
+		(shareData.url === undefined || typeof shareData.url === 'string') &&
+		(shareData.files === undefined || Array.isArray(shareData.files))
+	);
+}
+
+export function canShareData(data: ShareData): boolean {
+	if (!supportsWebShare() || !isValidShareData(data)) return false;
+	
+	const nav = getNavigator();
+	if (!nav?.canShare) return false;
+	
+	try {
+		return nav.canShare(data);
+	} catch (error) {
+		console.error('Error checking if data can be shared:', error);
+		return false;
+	}
+}
+
+export async function shareData(data: ShareData): Promise<boolean> {
+	if (!supportsWebShare() || !isValidShareData(data)) return false;
 
 	const nav = getNavigator();
 	if (!nav?.share) return false;

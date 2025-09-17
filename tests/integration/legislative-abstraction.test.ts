@@ -11,11 +11,11 @@ const { mockAdapterRegistry } = vi.hoisted(() => {
 	};
 });
 
-vi.mock('$lib/core/legislative/adapters/registry', () => ({
+vi.mock('../../src/lib/core/legislative/adapters/registry.js', () => ({
 	adapterRegistry: mockAdapterRegistry
 }));
 
-import { deliveryPipeline } from '$lib/core/legislative';
+import { deliveryPipeline } from '../../src/lib/core/legislative/index.js';
 const adapterRegistry = mockAdapterRegistry;
 import {
 	userFactory,

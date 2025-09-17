@@ -1,4 +1,5 @@
 import { beforeEach, afterEach, vi } from 'vitest';
+/// <reference path="../types/global.d.ts" />
 
 /**
  * Global test setup that runs before each test

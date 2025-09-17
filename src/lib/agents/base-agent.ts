@@ -40,6 +40,14 @@ export enum AgentType {
 	COORDINATOR = 'coordinator'
 }
 
+export interface AgentCapability {
+	type: AgentType;
+	description: string;
+	capabilities: string[];
+	decisionTypes: string[];
+	requiredContext: (keyof AgentContext)[];
+}
+
 export interface AgentContext {
 	userId?: string;
 	actionType?: string;
@@ -71,6 +79,12 @@ export abstract class BaseAgent {
 	}
 
 	abstract makeDecision(context: AgentContext): Promise<AgentDecision>;
+
+	getAgentType(): AgentType {
+		return this.agentType;
+	}
+
+	abstract getCapabilities(): AgentCapability;
 
 	protected applySafetyBounds(value: number, parameterName: string): number {
 		const bounds = this.safetyBounds[parameterName];
@@ -110,7 +124,7 @@ export class AgentCoordinator {
 	private consensusThreshold: number = 0.7;
 
 	registerAgent(agent: BaseAgent): void {
-		this.agents.set(agent['agentType'], agent);
+		this.agents.set(agent.getAgentType(), agent);
 	}
 
 	async coordinateDecision(

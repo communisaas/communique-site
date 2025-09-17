@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { AnalyticsEvent, SessionData } from '$lib/core/analytics/database';
+import type { AnalyticsEvent, SessionData } from '../../src/lib/core/analytics/database.js';
 import { asRequestEvent } from '../types/test-helpers';
 
 // Setup all mocks using vi.hoisted to fix initialization order

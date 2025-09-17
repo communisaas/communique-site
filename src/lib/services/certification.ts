@@ -67,7 +67,7 @@ class CertificationService {
 			const data = await response.json();
 			return data;
 		} catch (_error) {
-			console.error('[Certification] Network error:', error);
+			console.error('[Certification] Network error:', _error);
 			// Don't block delivery on certification failure
 			return {
 				success: false,
@@ -90,7 +90,7 @@ class CertificationService {
 
 			return await response.json();
 		} catch (_error) {
-			console.error('[Certification] Status check error:', error);
+			console.error('[Certification] Status check error:', _error);
 			return null;
 		}
 	}
@@ -124,7 +124,7 @@ class CertificationService {
 			const data = await response.json();
 			return data;
 		} catch (_error) {
-			console.error('[Certification] Receipt submission error:', error);
+			console.error('[Certification] Receipt submission error:', _error);
 			return { verified: false };
 		}
 	}

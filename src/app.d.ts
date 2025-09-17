@@ -21,7 +21,7 @@ declare global {
 				is_active: boolean;
 				is_banned: boolean;
 				is_admin: boolean;
-				profile_picture: string | null;
+				avatar: string | null;
 				phone: string | null;
 				role: string | null;
 				organization: string | null;

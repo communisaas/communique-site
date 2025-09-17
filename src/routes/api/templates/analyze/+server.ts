@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { templateCorrector } from '$lib/services/template-correction';
 import { createApiError, type ApiResponse } from '$lib/types/errors';
 
@@ -29,7 +30,7 @@ interface AnalyzeResponse {
 	};
 }
 
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const { title, content, deliveryMethod }: AnalyzeRequest = await request.json();
 

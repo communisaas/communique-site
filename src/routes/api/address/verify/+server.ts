@@ -1,11 +1,13 @@
 import { json, error } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { addressLookup } from '$lib/core/congress/address-lookup';
 
 // Real address verification using Census Bureau Geocoding API (primary)
-export async function POST({ request }) {
+export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { street, city, state, zipCode } = await request.json();
+		const body = await request.json();
+		const { street, city, state, zipCode }: { street: string; city: string; state: string; zipCode: string } = body;
 
 		// Basic validation
 		if (!street || !city || !state || !zipCode) {
@@ -123,7 +125,7 @@ export async function POST({ request }) {
 /**
  * Extract congressional district from Census Bureau geocoding response
  */
-function extractCongressionalDistrictFromCensus(geographies: any, state: string): string {
+function extractCongressionalDistrictFromCensus(geographies: Record<string, any>, state: string): string {
 	try {
 		// Look for 119th Congressional Districts
 		const congressionalDistricts = geographies['119th Congressional Districts'];

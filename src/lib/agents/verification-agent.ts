@@ -9,8 +9,8 @@
  */
 
 import { BaseAgent, AgentType } from './base-agent';
-import type { AgentContext, AgentDecision } from './base-agent';
-import { prisma } from '$lib/core/db';
+import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import { db, prisma } from '$lib/core/db';
 
 export interface VerificationAssessment {
 	userId: string;
@@ -45,6 +45,21 @@ export class VerificationAgent extends BaseAgent {
 			behavioralWeight: [0.1, 0.5], // Weight given to behavioral analysis
 			maxRiskTolerance: [0.2, 0.7] // Maximum acceptable risk level
 		});
+	}
+
+	getCapabilities(): AgentCapability {
+		return {
+			type: AgentType.VERIFICATION,
+			description: 'Multi-source identity verification for democratic authenticity',
+			capabilities: [
+				'identity_verification',
+				'trust_score_calculation',
+				'risk_assessment',
+				'zk_proof_validation'
+			],
+			decisionTypes: ['verification_assessment', 'trust_scoring'],
+			requiredContext: ['userId']
+		};
 	}
 
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {
@@ -119,7 +134,7 @@ export class VerificationAgent extends BaseAgent {
 		zkProofHash?: string;
 		districtVerification?: unknown;
 	}> {
-		const user = await prisma.user.findUnique({
+		const user = await db.user.findUnique({
 			where: { id: userId },
 			select: {
 				verification_data: true,

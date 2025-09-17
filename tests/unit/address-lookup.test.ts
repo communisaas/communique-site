@@ -1,11 +1,39 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { addressFactory } from '../fixtures/factories';
-import mockRegistry from '../mocks/registry';
+
+// Mock the address lookup module
+const mockAddressLookup = {
+	lookupRepsByAddress: vi.fn()
+};
+
+vi.mock('../../src/lib/core/congress/address-lookup.js', () => ({
+	default: mockAddressLookup
+}));
 
 describe('Address Lookup Unit Tests', () => {
 	it('should lookup representatives by address', async () => {
-		const mocks = mockRegistry.setupMocks();
-		const { addressLookup } = mocks['$lib/core/congress/address-lookup'];
+		// Configure the mock response
+		mockAddressLookup.lookupRepsByAddress.mockResolvedValue({
+			house: {
+				name: 'Rep. Jane Smith',
+				chamber: 'house',
+				district: '12',
+				state: 'CA'
+			},
+			senate: [
+				{
+					name: 'Sen. Alex Padilla',
+					chamber: 'senate',
+					state: 'CA'
+				},
+				{
+					name: 'Sen. Laphonza Butler',
+					chamber: 'senate',
+					state: 'CA'
+				}
+			],
+			district: { state: 'CA', district: '12' }
+		});
 
 		const address = addressFactory.build({
 			overrides: {
@@ -23,7 +51,7 @@ describe('Address Lookup Unit Tests', () => {
 			zip: address.postal_code
 		};
 
-		const result = await addressLookup.lookupRepsByAddress(properAddress);
+		const result = await mockAddressLookup.lookupRepsByAddress(properAddress);
 
 		expect(result).toEqual({
 			house: expect.objectContaining({
@@ -47,34 +75,34 @@ describe('Address Lookup Unit Tests', () => {
 			district: { state: 'CA', district: '12' }
 		});
 
-		expect(addressLookup.lookupRepsByAddress).toHaveBeenCalledWith(properAddress);
+		expect(mockAddressLookup.lookupRepsByAddress).toHaveBeenCalledWith(properAddress);
 	});
 
 	it('should validate representatives', async () => {
-		const mocks = mockRegistry.setupMocks();
-		const { addressLookup } = mocks['$lib/core/congress/address-lookup'];
+		// Add validateReps method to mock
+		mockAddressLookup.validateReps = vi.fn().mockResolvedValue({
+			valid: true,
+			errors: []
+		});
 
 		const userReps = {
 			house: { bioguideId: 'S001234', name: 'Rep. Smith' },
 			senate: [{ bioguideId: 'P000145', name: 'Sen. Padilla' }]
 		};
 
-		const result = await addressLookup.validateReps(userReps);
+		const result = await mockAddressLookup.validateReps(userReps);
 
 		expect(result).toEqual({
 			valid: true,
 			errors: []
 		});
 
-		expect(addressLookup.validateReps).toHaveBeenCalledWith(userReps);
+		expect(mockAddressLookup.validateReps).toHaveBeenCalledWith(userReps);
 	});
 
 	it('should handle address lookup errors gracefully', async () => {
-		const mocks = mockRegistry.setupMocks();
-		const { addressLookup } = mocks['$lib/core/congress/address-lookup'];
-
 		// Override mock to simulate error
-		addressLookup.lookupRepsByAddress.mockRejectedValue(new Error('Census API error'));
+		mockAddressLookup.lookupRepsByAddress.mockRejectedValue(new Error('Census API error'));
 
 		const address = {
 			street: 'Invalid Address',
@@ -83,6 +111,6 @@ describe('Address Lookup Unit Tests', () => {
 			zip: '00000'
 		};
 
-		await expect(addressLookup.lookupRepsByAddress(address)).rejects.toThrow('Census API error');
+		await expect(mockAddressLookup.lookupRepsByAddress(address)).rejects.toThrow('Census API error');
 	});
 });

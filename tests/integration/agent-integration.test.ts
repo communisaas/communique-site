@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import type { Template } from '$lib/types/template';
+import { createMockTemplate } from '../types/test-helpers.js';
+import type { MockTemplate } from '../types/test-helpers.js';
 
 /**
  * VOTER Protocol Agent Integration Tests
@@ -23,20 +24,20 @@ describe('VOTER Protocol Agent Integration', () => {
 
 	describe('Verification Agent', () => {
 		it('should verify template content for congressional standards', async () => {
-			const template: Template = {
+			const template: MockTemplate = createMockTemplate({
 				id: 'template-123',
 				slug: 'healthcare-reform',
 				title: 'Support Healthcare Reform',
+				description: 'Healthcare reform template',
+				category: 'healthcare',
+				type: 'advocacy',
 				subject: 'Healthcare Bill HR 5678',
 				message_body: 'Please support HR 5678 for affordable healthcare.',
 				deliveryMethod: 'certified',
 				channel_id: 'us-congress',
-				created_at: new Date(),
-				updated_at: new Date(),
 				creator_id: 'user-456',
-				is_public: true,
-				metrics: { sent: 0, opened: 0, clicked: 0 }
-			};
+				preview: 'Support Healthcare Reform'
+			});
 
 			// Mock verification agent response
 			mockFetch.mockResolvedValueOnce({

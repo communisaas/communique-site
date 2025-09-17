@@ -26,7 +26,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			const user = await db.user.findUnique({
 				where: { id: userId },
 				select: {
-					voter_reputation: true,
 					trust_score: true,
 					reputation_tier: true
 				}
@@ -37,7 +36,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					challenge: 50, // Default values since individual scores aren't stored
 					civic: 50,
 					discourse: 50,
-					total: user.voter_reputation || 50
+					total: user.trust_score || 50
 				};
 			}
 		}
@@ -63,11 +62,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			await db.user.update({
 				where: { id: userId },
 				data: {
-					voter_reputation: newReputation,
-					trust_score: Math.max(
-						0,
-						Math.min(100, (currentReputation?.total || 50) + (changes.trust || 0))
-					),
+					trust_score: newReputation,
 					reputation_tier: decision.newTier || 'novice'
 				}
 			});

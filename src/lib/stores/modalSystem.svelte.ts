@@ -90,7 +90,7 @@ function createModalSystem() {
 				closeOnEscape?: boolean;
 				autoClose?: number; // Auto-close after N milliseconds
 			}
-		) {
+		): void {
 			// Close existing modal of same type to prevent conflicts
 			const existingId = this.findModalByType(type);
 			if (existingId && existingId !== id) {
@@ -129,7 +129,7 @@ function createModalSystem() {
 		/**
 		 * Close specific modal
 		 */
-		close(id: string) {
+		close(id: string): void {
 			const modal = modalSystemState.activeModals[id];
 			if (!modal) return;
 
@@ -145,7 +145,7 @@ function createModalSystem() {
 		/**
 		 * Close all modals
 		 */
-		closeAll() {
+		closeAll(): void {
 			modalSystemState.activeModals = {}; // Reset object triggers reactivity
 			modalSystemState.modalStack = [];
 
@@ -155,7 +155,7 @@ function createModalSystem() {
 		/**
 		 * Close top modal (ESC key behavior)
 		 */
-		closeTop() {
+		closeTop(): void {
 			const topId = modalSystemState.modalStack[modalSystemState.modalStack.length - 1];
 			if (topId) {
 				this.close(topId);
@@ -239,7 +239,7 @@ function createModalSystem() {
 		// =========================================================================
 
 		// Legacy template modal API - preserves exact behavior
-		open(template: Template, user: unknown) {
+		open(template: Template, user: unknown): void {
 			// Update legacy store to maintain backward compatibility
 			legacyModalState.template = template;
 			legacyModalState.user = user;
@@ -252,21 +252,21 @@ function createModalSystem() {
 		},
 
 		// Legacy template modal state management
-		setState(state: LegacyModalState) {
+		setState(state: LegacyModalState): void {
 			legacyModalState.state = state;
 		},
 
-		setMailtoUrl(url: string) {
+		setMailtoUrl(url: string): void {
 			legacyModalState.mailtoUrl = url;
 		},
 
-		confirmSend() {
+		confirmSend(): void {
 			legacyModalState.sendConfirmed = true;
 			legacyModalState.state = 'celebration';
 		},
 
 		// Legacy close method
-		close() {
+		close(): void {
 			// Legacy template modal close
 			legacyModalState.showModal = false;
 			legacyModalState.state = 'closed';
@@ -275,7 +275,7 @@ function createModalSystem() {
 			originalModalActions.close('legacy-template-modal');
 		},
 
-		reset() {
+		reset(): void {
 			legacyModalState.template = null;
 			legacyModalState.user = null;
 			legacyModalState.state = 'closed';

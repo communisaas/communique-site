@@ -41,8 +41,7 @@
 	const shareUrl = $derived($page.url.href);
 
 	// Context-aware header configuration
-	const headerConfig = $derived(
-		(() => {
+	const headerConfig = $derived.by(() => {
 			const isTemplate = $page.route.id === '/[slug]';
 			const isHomepage = $page.route.id === '/';
 			const isProfile = $page.route.id?.startsWith('/profile');
@@ -100,11 +99,10 @@
 				backText: null,
 				backHref: null
 			};
-		})()
-	);
+	});
 
 	// Smart CTA configuration for template actions
-	const ctaConfig = $derived(() => {
+	const ctaConfig = $derived.by(() => {
 		if (!template || !headerConfig.showCTA) return null;
 
 		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
@@ -133,7 +131,7 @@
 	const CtaIcon = $derived(ctaConfig?.icon);
 
 	// Progressive user identity representation
-	const userRepresentation = $derived(() => {
+	const userRepresentation = $derived.by(() => {
 		if (!user || !user.name) return null;
 
 		const firstName = user.name.split(' ')[0] || 'User';

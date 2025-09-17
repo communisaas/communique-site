@@ -45,6 +45,10 @@
 		}
 	});
 
+	// Template delivery method checks
+	const isCongressional = $derived(template.deliveryMethod === 'certified');
+	const isDirectOutreach = $derived(template.deliveryMethod === 'email');
+
 	// Dynamic messaging based on source and template type
 	const sourceMessages = $derived(getSourceMessages(isCongressional, isDirectOutreach));
 
@@ -156,9 +160,7 @@
 		}
 	}
 
-	// Detect template type for customized messaging
-	const isCongressional = $derived(template.deliveryMethod === 'certified');
-	const isDirectOutreach = $derived(template.deliveryMethod === 'email');
+	// Detect template type for customized messaging - already defined above
 
 	const message = $derived(sourceMessages[source]);
 	async function prepareReturn() {

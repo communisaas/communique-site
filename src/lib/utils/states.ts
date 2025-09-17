@@ -61,17 +61,57 @@ export const STATE_NAMES: Record<string, string> = Object.fromEntries(
 	Object.entries(STATE_ABBREVIATIONS).map(([abbr, name]) => [name, abbr])
 );
 
+// Type for normalized state result
+export interface NormalizedState {
+	abbreviation: string;
+	fullName: string;
+}
+
+// Type guards
+export function isValidStateAbbreviation(abbr: string): boolean {
+	return typeof abbr === 'string' && abbr.length === 2 && STATE_ABBREVIATIONS[abbr.toUpperCase()] !== undefined;
+}
+
+export function isValidStateName(name: string): boolean {
+	return typeof name === 'string' && STATE_NAMES[name] !== undefined;
+}
+
+export function isValidState(state: string): boolean {
+	if (typeof state !== 'string' || state.trim() === '') return false;
+	return isValidStateAbbreviation(state) || isValidStateName(state);
+}
+
 export function getStateFullName(stateAbbr: string): string {
-	return STATE_ABBREVIATIONS[stateAbbr.toUpperCase()] || stateAbbr;
+	if (typeof stateAbbr !== 'string') {
+		console.warn('State abbreviation must be a string');
+		return stateAbbr;
+	}
+	
+	const upperAbbr = stateAbbr.toUpperCase();
+	return STATE_ABBREVIATIONS[upperAbbr] || stateAbbr;
 }
 
 export function getStateAbbreviation(stateName: string): string {
-	return STATE_NAMES[stateName] || stateName.toUpperCase();
+	if (typeof stateName !== 'string') {
+		console.warn('State name must be a string');
+		return stateName;
+	}
+	
+	return STATE_NAMES[stateName] || stateName.toUpperCase().substring(0, 2);
 }
 
-export function normalizeState(state: string): { abbreviation: string; fullName: string } {
-	const upperState = state.toUpperCase();
+export function normalizeState(state: string): NormalizedState {
+	if (typeof state !== 'string' || state.trim() === '') {
+		return {
+			abbreviation: '',
+			fullName: ''
+		};
+	}
+	
+	const trimmedState = state.trim();
+	const upperState = trimmedState.toUpperCase();
 
+	// Check if it's a valid 2-letter abbreviation
 	if (upperState.length === 2 && STATE_ABBREVIATIONS[upperState]) {
 		return {
 			abbreviation: upperState,
@@ -79,15 +119,17 @@ export function normalizeState(state: string): { abbreviation: string; fullName:
 		};
 	}
 
-	if (STATE_NAMES[state]) {
+	// Check if it's a valid full state name
+	if (STATE_NAMES[trimmedState]) {
 		return {
-			abbreviation: STATE_NAMES[state],
-			fullName: state
+			abbreviation: STATE_NAMES[trimmedState],
+			fullName: trimmedState
 		};
 	}
 
+	// Fallback for unrecognized input
 	return {
 		abbreviation: upperState.substring(0, 2),
-		fullName: state
+		fullName: trimmedState
 	};
 }

@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { writable, type Writable } from 'svelte/store';
 import type { TemplateFormData } from '$lib/types/template';
 
 interface DraftStorage {
@@ -15,7 +15,18 @@ const STORAGE_KEY = 'communique_template_drafts';
 // Auto-save interval (30 seconds)
 const AUTO_SAVE_INTERVAL = 30 * 1000;
 
-function createTemplateDraftStore() {
+interface TemplateDraftStore {
+	subscribe: Writable<DraftStorage>['subscribe'];
+	saveDraft: (draftId: string, data: TemplateFormData, currentStep: string) => void;
+	getDraft: (draftId: string) => { data: TemplateFormData; lastSaved: number; currentStep: string } | null;
+	deleteDraft: (draftId: string) => void;
+	startAutoSave: (draftId: string, getFormData: () => TemplateFormData, getCurrentStep: () => string) => () => void;
+	hasDraft: (draftId: string) => boolean;
+	getDraftAge: (draftId: string) => number | null;
+	getAllDraftIds: () => string[];
+}
+
+function createTemplateDraftStore(): TemplateDraftStore {
 	const { subscribe, set, update } = writable<DraftStorage>({});
 
 	// Load drafts from localStorage on initialization
@@ -25,12 +36,17 @@ function createTemplateDraftStore() {
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY);
 			if (stored) {
-				const parsed = JSON.parse(stored);
+				const parsed = JSON.parse(stored) as Record<string, any>;
 				// Clean up old drafts (older than 7 days)
 				const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-				const cleaned = Object.fromEntries(
-					Object.entries(parsed).filter(([_, draft]: [string, any]) => draft.lastSaved > cutoff)
-				);
+				const cleaned: DraftStorage = {};
+				
+				for (const [key, draft] of Object.entries(parsed)) {
+					if (draft && typeof draft === 'object' && typeof draft.lastSaved === 'number' && draft.lastSaved > cutoff) {
+						cleaned[key] = draft as DraftStorage[string];
+					}
+				}
+				
 				return cleaned;
 			}
 		} catch (_error) {

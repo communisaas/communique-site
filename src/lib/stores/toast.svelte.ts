@@ -23,11 +23,11 @@ function createToastStore() {
 		return id;
 	}
 
-	function removeToast(id: string) {
+	function removeToast(id: string): void {
 		toasts = toasts.filter((toast) => toast.id !== id);
 	}
 
-	function clearAll() {
+	function clearAll(): void {
 		toasts = [];
 	}
 

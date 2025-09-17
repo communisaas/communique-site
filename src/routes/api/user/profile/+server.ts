@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 
-export async function POST({ request, locals }) {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Ensure user is authenticated
 		if (!locals.user) {
@@ -46,7 +47,7 @@ export async function POST({ request, locals }) {
 	}
 }
 
-export async function GET({ locals }) {
+export const GET: RequestHandler = async ({ locals }) => {
 	try {
 		// Ensure user is authenticated
 		if (!locals.user) {

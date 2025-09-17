@@ -34,7 +34,7 @@ abstract class Factory<T> {
 /**
  * User factory
  */
-export class UserFactory extends Factory<{
+export interface UserFactoryData {
 	id: string;
 	name: string;
 	email: string;
@@ -46,8 +46,10 @@ export class UserFactory extends Factory<{
 	phone?: string;
 	created_at: Date;
 	updated_at: Date;
-}> {
-	build(options?: FactoryOptions<any>) {
+}
+
+export class UserFactory extends Factory<UserFactoryData> {
+	build(options?: FactoryOptions<UserFactoryData>): UserFactoryData {
 		const id = snowflake().toString();
 		const baseUser = {
 			id,
@@ -73,7 +75,7 @@ export class UserFactory extends Factory<{
 /**
  * Template factory
  */
-export class TemplateFactory extends Factory<{
+export interface TemplateFactoryData {
 	id: string;
 	title: string;
 	subject: string;
@@ -84,8 +86,10 @@ export class TemplateFactory extends Factory<{
 	created_by: string;
 	created_at: Date;
 	updated_at: Date;
-}> {
-	build(options?: FactoryOptions<any>) {
+}
+
+export class TemplateFactory extends Factory<TemplateFactoryData> {
+	build(options?: FactoryOptions<TemplateFactoryData>): TemplateFactoryData {
 		const id = snowflake().toString();
 		const baseTemplate = {
 			id,
@@ -111,7 +115,7 @@ export class TemplateFactory extends Factory<{
 /**
  * Representative factory
  */
-export class RepresentativeFactory extends Factory<{
+export interface RepresentativeFactoryData {
 	id: string;
 	name: string;
 	bioguide_id: string;
@@ -122,8 +126,10 @@ export class RepresentativeFactory extends Factory<{
 	office_code: string;
 	phone?: string;
 	email?: string;
-}> {
-	build(options?: FactoryOptions<any>) {
+}
+
+export class RepresentativeFactory extends Factory<RepresentativeFactoryData> {
+	build(options?: FactoryOptions<RepresentativeFactoryData>): RepresentativeFactoryData {
 		const id = snowflake().toString();
 		const chamber = options?.overrides?.chamber || 'house';
 		const state = options?.overrides?.state || 'CA';
@@ -155,14 +161,16 @@ export class RepresentativeFactory extends Factory<{
 /**
  * Address factory
  */
-export class AddressFactory extends Factory<{
+export interface AddressFactoryData {
 	street: string;
 	city: string;
 	state: string;
 	postal_code: string;
 	country_code: string;
-}> {
-	build(options?: FactoryOptions<any>) {
+}
+
+export class AddressFactory extends Factory<AddressFactoryData> {
+	build(options?: FactoryOptions<AddressFactoryData>): AddressFactoryData {
 		const baseAddress = {
 			street: '123 Main Street',
 			city: 'San Francisco',
@@ -181,7 +189,7 @@ export class AddressFactory extends Factory<{
 /**
  * Congressional office factory
  */
-export class CongressionalOfficeFactory extends Factory<{
+export interface CongressionalOfficeFactoryData {
 	bioguideId: string;
 	name: string;
 	chamber: 'house' | 'senate';
@@ -189,8 +197,10 @@ export class CongressionalOfficeFactory extends Factory<{
 	state: string;
 	district?: string;
 	party: string;
-}> {
-	build(options?: FactoryOptions<any>) {
+}
+
+export class CongressionalOfficeFactory extends Factory<CongressionalOfficeFactoryData> {
+	build(options?: FactoryOptions<CongressionalOfficeFactoryData>): CongressionalOfficeFactoryData {
 		const chamber = options?.overrides?.chamber || 'house';
 		const state = options?.overrides?.state || 'CA';
 		const bioguideId = options?.overrides?.bioguideId || 'T123456';
@@ -215,15 +225,17 @@ export class CongressionalOfficeFactory extends Factory<{
 /**
  * Delivery job factory
  */
-export class DeliveryJobFactory extends Factory<{
+export interface DeliveryJobFactoryData {
 	id: string;
-	template: any;
-	user: any;
+	template: TemplateFactoryData;
+	user: UserFactoryData;
 	target_country?: string;
 	custom_message?: string;
 	created_at: Date;
-}> {
-	build(options?: FactoryOptions<any>) {
+}
+
+export class DeliveryJobFactory extends Factory<DeliveryJobFactoryData> {
+	build(options?: FactoryOptions<DeliveryJobFactoryData>): DeliveryJobFactoryData {
 		const id = `job-${snowflake().toString()}`;
 
 		const baseJob = {
@@ -245,13 +257,15 @@ export class DeliveryJobFactory extends Factory<{
 /**
  * Mock request factory for API tests
  */
-export class MockRequestFactory extends Factory<{
+export interface MockRequestFactoryData {
 	json: () => Promise<any>;
 	headers: Map<string, string>;
 	url: URL;
 	method: string;
-}> {
-	build(options?: FactoryOptions<any>) {
+}
+
+export class MockRequestFactory extends Factory<MockRequestFactoryData> {
+	build(options?: FactoryOptions<MockRequestFactoryData>): MockRequestFactoryData {
 		const baseRequest = {
 			json: async () => ({}),
 			headers: new Map(),

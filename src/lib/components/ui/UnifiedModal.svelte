@@ -27,7 +27,7 @@ backdrop handling, and keyboard navigation.
 		showCloseButton?: boolean;
 		closeOnBackdrop?: boolean;
 		closeOnEscape?: boolean;
-		children: unknown;
+		children: (data: any) => any;
 	} = $props();
 
 	// Connect to modal system

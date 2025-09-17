@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import { createApiError, createValidationError, type ApiResponse } from '$lib/types/errors';
@@ -132,7 +133,7 @@ function validateTemplateData(data: unknown): {
 	return { isValid: true, errors: [], validData };
 }
 
-export async function GET() {
+export const GET: RequestHandler = async () => {
 	try {
 		const dbTemplates = await db.template.findMany({
 			where: {
@@ -144,12 +145,14 @@ export async function GET() {
 		});
 
 		// Include template scopes - handle if table doesn't exist
-		let scopes: unknown[] = [];
+		let scopes: any[] = [];
 		try {
-			scopes =
-				(await db.template_scope?.findMany({
+			// Check if template_scope table exists in the db schema
+			if ('template_scope' in db) {
+				scopes = await (db as any).template_scope.findMany({
 					where: { template_id: { in: dbTemplates.map((t) => t.id) } }
-				})) || [];
+				});
+			}
 		} catch (scopeError) {
 			// template_scope table might not exist, continue without scopes
 			console.warn('template_scope table not found, continuing without scopes');
@@ -198,7 +201,7 @@ export async function GET() {
 	}
 }
 
-export async function POST({ request, locals }) {
+export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		// Parse request body
 		let requestData: unknown;

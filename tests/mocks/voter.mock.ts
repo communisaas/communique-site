@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { CertificationRequest, CertificationResponse } from '$lib/services/certification';
+import type { CertificationRequest, CertificationResponse } from '../../src/lib/services/certification.js';
 
 /**
  * VOTER Protocol API Mocks - Enhanced

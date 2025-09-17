@@ -6,7 +6,7 @@
  */
 
 import { BaseAgent, AgentType } from './base-agent';
-import type { AgentContext, AgentDecision } from './base-agent';
+import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
 
 export interface MarketInput {
 	baseReward: bigint;
@@ -45,6 +45,21 @@ export class MarketAgent extends BaseAgent {
 			participationBonus: [0, 0.5], // Max participation bonus
 			urgencyBonus: [0, 0.2] // Max urgency bonus
 		});
+	}
+
+	getCapabilities(): AgentCapability {
+		return {
+			type: AgentType.MARKET,
+			description: 'Handles reward optimization and incentive design based on market conditions',
+			capabilities: [
+				'reward_optimization',
+				'market_analysis',
+				'incentive_adjustment',
+				'participation_prediction'
+			],
+			decisionTypes: ['reward_optimization', 'incentive_design'],
+			requiredContext: ['actionType']
+		};
 	}
 
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {

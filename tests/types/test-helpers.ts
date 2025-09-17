@@ -1,4 +1,5 @@
 import type { RequestEvent } from '@sveltejs/kit';
+import type { Template } from '../../src/lib/types/template.js';
 import { vi } from 'vitest';
 
 /**
@@ -84,6 +85,54 @@ export function asRequestEvent(
 		setHeaders: () => {},
 		isDataRequest: false,
 		isSubRequest: false
+	};
+}
+
+/**
+ * Mock Template object for tests - extends Template with additional test fields
+ */
+export interface MockTemplate extends Omit<Template, 'metrics'> {
+	// Additional fields that may exist in tests
+	channel_id?: string;
+	created_at?: Date;
+	updated_at?: Date;
+	creator_id?: string;
+	severity_level?: number;
+	metrics?: {
+		sent?: number;
+		opened?: number;
+		clicked?: number;
+		responded?: number;
+		views?: number;
+		responses?: number;
+		districts_covered?: number;
+		total_districts?: number;
+		district_coverage_percent?: number;
+	} | null;
+}
+
+/**
+ * Create a minimal mock template
+ */
+export function createMockTemplate(overrides: Partial<MockTemplate> = {}): MockTemplate {
+	const now = new Date();
+	return {
+		id: 'template-123',
+		slug: 'test-template',
+		title: 'Test Template',
+		description: 'A test template',
+		category: 'test',
+		type: 'advocacy',
+		deliveryMethod: 'email',
+		message_body: 'This is a test message.',
+		delivery_config: {},
+		recipient_config: {},
+		preview: 'Test Template',
+		is_public: true,
+		metrics: { sent: 0, opened: 0, clicked: 0 },
+		created_at: now,
+		updated_at: now,
+		...overrides
 	};
 }
 

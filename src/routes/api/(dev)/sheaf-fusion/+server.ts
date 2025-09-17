@@ -1,7 +1,8 @@
 import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
 import { fuseInformationSources, storeFusionResults } from '$lib/core/server/sheaf-fusion';
 
-export async function GET({ url }) {
+export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const category = url.searchParams.get('category') || 'education';
 		const timeWindow = parseInt(url.searchParams.get('days') || '7');

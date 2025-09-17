@@ -29,12 +29,12 @@ const mockFunnelAnalytics = vi.hoisted(() => ({
 }));
 
 // Mock the funnel module itself to export the funnelAnalytics
-vi.mock('$lib/core/analytics/funnel', () => ({
+vi.mock('../../src/lib/core/analytics/funnel.js', () => ({
 	funnelAnalytics: mockFunnelAnalytics
 }));
 
 // Import after mocking
-import { funnelAnalytics } from '$lib/core/analytics/funnel';
+import { funnelAnalytics } from '../../src/lib/core/analytics/funnel.js';
 
 describe('OAuth Funnel Analytics Integration', () => {
 	beforeEach(() => {
