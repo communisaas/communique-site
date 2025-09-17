@@ -22,6 +22,7 @@
 	import type { PageData } from './$types';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import { toEmailServiceUser } from '$lib/types/user';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
 
@@ -318,7 +319,7 @@
 							return;
 						}
 
-						const flow = analyzeEmailFlow(selectedTemplate, data.user);
+						const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user));
 
 						if (flow.nextAction === 'auth') {
 							modalActions.openModal('onboarding-modal', 'onboarding', {
@@ -377,7 +378,7 @@
 					inModal={true}
 					user={data.user}
 					onSendMessage={async () => {
-						const flow = analyzeEmailFlow(selectedTemplate, data.user);
+						const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user));
 
 						if (flow.nextAction === 'auth') {
 							modalActions.openModal('onboarding-modal', 'onboarding', {

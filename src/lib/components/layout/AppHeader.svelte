@@ -15,6 +15,7 @@
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { createEventDispatcher } from 'svelte';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
+	import { toEmailServiceUser } from '$lib/types/user';
 	import SignInModal from '$lib/components/modals/SignInModal.svelte';
 
 	const dispatch = createEventDispatcher();
@@ -106,7 +107,7 @@
 	const ctaConfig = $derived(() => {
 		if (!template || !headerConfig.showCTA) return null;
 
-		const emailFlow = analyzeEmailFlow(template, user);
+		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
 		const isCongressional = template.deliveryMethod === 'certified';
 
 		if (isCongressional) {
@@ -187,7 +188,7 @@
 	function handleTemplateUse() {
 		if (!template || !onTemplateUse) return;
 
-		const emailFlow = analyzeEmailFlow(template, user);
+		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
 		onTemplateUse({
 			template,
 			requiresAuth: emailFlow.requiresAuth

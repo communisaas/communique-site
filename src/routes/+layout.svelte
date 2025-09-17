@@ -10,6 +10,7 @@
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import { toEmailServiceUser } from '$lib/types/user';
 	import type { Template } from '$lib/types/template';
 
 	let { children, data } = $props();
@@ -23,7 +24,7 @@
 	function handleTemplateUse(event: { template: Template; requiresAuth: boolean }) {
 		const { template, requiresAuth } = event;
 
-		const flow = analyzeEmailFlow(template, data.user);
+		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 
 		if (flow.nextAction === 'auth') {
 			// Navigate to auth or show modal

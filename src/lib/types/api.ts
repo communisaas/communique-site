@@ -142,3 +142,69 @@ export interface RewardCalculationResponse {
 	user_reputation: number;
 	calculation_timestamp: string;
 }
+
+// Blockchain Transaction Types for VOTER Protocol
+export interface BlockchainTransactionLog {
+	address: string;
+	topics: string[];
+	data: string;
+	blockNumber: number;
+	transactionHash: string;
+	transactionIndex: number;
+	blockHash: string;
+	logIndex: number;
+}
+
+export interface BlockchainTransactionReceipt {
+	blockHash: string;
+	blockNumber: number;
+	transactionHash: string;
+	transactionIndex: number;
+	from: string;
+	to: string | null;
+	gasUsed: string; // BigInt as string
+	gasPrice?: string; // BigInt as string
+	effectiveGasPrice?: string; // BigInt as string
+	cumulativeGasUsed: string; // BigInt as string
+	status: number;
+	type: number;
+	logs: BlockchainTransactionLog[];
+}
+
+export interface VOTERTransactionSuccess {
+	success: true;
+	transactionHash: string;
+	blockNumber: number;
+	gasUsed: string;
+	gasPrice?: string;
+	effectiveGasPrice?: string;
+	actionHash?: string;
+	receipt: BlockchainTransactionReceipt;
+}
+
+export interface VOTERTransactionError {
+	success: false;
+	error: string;
+	code?: string;
+	details?: {
+		reason?: string;
+		method?: string;
+		transaction?: any;
+	};
+}
+
+export type VOTERTransactionResult = VOTERTransactionSuccess | VOTERTransactionError;
+
+export interface CivicActionCertificationRequest {
+	userAddress: string;
+	actionType: 'CWC_MESSAGE' | 'LOCAL_ACTION' | 'DIRECT_ACTION' | 'TOWN_HALL' | 'PUBLIC_COMMENT';
+	templateId?: string;
+	deliveryConfirmation?: string;
+	personalConnection?: string;
+}
+
+export interface UserRegistrationRequest {
+	userAddress: string;
+	phoneHash: string;
+	selfProof: string;
+}

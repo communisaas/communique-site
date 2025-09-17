@@ -283,8 +283,8 @@
 						// Fallback - generate client-side ID
 						submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 					}
-				} catch (error) {
-					console.error('Failed to start agent processing:', error);
+				} catch (_error) {
+					console.error('Failed to start agent processing:', _error);
 					// Fallback - generate client-side ID
 					submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 				}
@@ -376,8 +376,8 @@
 				'copy-hide',
 				componentId
 			);
-		} catch (err) {
-			console.warn('Copy failed:', err);
+		} catch (_error) {
+			console.warn('Copy failed:', _error);
 		}
 	}
 

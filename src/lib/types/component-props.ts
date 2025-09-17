@@ -18,14 +18,18 @@ export interface ComponentUser {
  * Convert a full user object to component user format
  */
 export function toComponentUser(user: unknown): ComponentUser | null {
-	if (!user) return null;
+	if (!user || typeof user !== 'object') return null;
+	
+	const userObj = user as { id?: string; name?: string; street?: string; city?: string; state?: string; zip?: string };
+	
+	if (!userObj.id || typeof userObj.id !== 'string') return null;
 
 	return {
-		id: user.id,
-		name: user.name || 'Anonymous',
+		id: userObj.id,
+		name: userObj.name || 'Anonymous',
 		address:
-			user.street && user.city && user.state && user.zip
-				? `${user.street}, ${user.city}, ${user.state} ${user.zip}`
+			userObj.street && userObj.city && userObj.state && userObj.zip
+				? `${userObj.street}, ${userObj.city}, ${userObj.state} ${userObj.zip}`
 				: undefined
 	};
 }
@@ -34,7 +38,14 @@ export function toComponentUser(user: unknown): ComponentUser | null {
  * Type guard to check if an object is a ComponentUser
  */
 export function isComponentUser(obj: unknown): obj is ComponentUser {
-	return obj && typeof obj.id === 'string' && typeof obj.name === 'string';
+	return (
+		obj !== null &&
+		typeof obj === 'object' &&
+		'id' in obj &&
+		'name' in obj &&
+		typeof (obj as any).id === 'string' &&
+		typeof (obj as any).name === 'string'
+	);
 }
 
 /**

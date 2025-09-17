@@ -46,8 +46,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			success: true,
 			message: `${processedErrors.length} errors reported successfully`
 		});
-	} catch (err) {
-		console.error('Failed to process batch error report:', err);
+	} catch (_error) {
+		console.error('Failed to process batch error report:', _error);
 		return json(
 			{
 				success: false,

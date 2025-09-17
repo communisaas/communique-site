@@ -78,9 +78,9 @@
 			} else {
 				error = data.error || 'Failed to load delivery status';
 			}
-		} catch (err) {
+		} catch (_error) {
 			error = 'Network error loading delivery status';
-			console.error('Delivery status error:', err);
+			console.error('Delivery status error:', _error);
 		} finally {
 			loading = false;
 		}
@@ -146,8 +146,8 @@
 			if (response.ok) {
 				await loadDeliveryStatus(); // Refresh status
 			}
-		} catch (err) {
-			console.error('Retry failed:', err);
+		} catch (_error) {
+			console.error('Retry failed:', _error);
 		}
 	}
 </script>

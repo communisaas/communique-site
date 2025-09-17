@@ -59,9 +59,9 @@
 			} else {
 				error = data.error || 'Failed to load cascade analysis';
 			}
-		} catch (err) {
+		} catch (_error) {
 			error = 'Network error loading cascade analysis';
-			console.error('Cascade analysis error:', err);
+			console.error('Cascade analysis error:', _error);
 		} finally {
 			loading = false;
 		}

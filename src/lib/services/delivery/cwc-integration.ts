@@ -10,6 +10,11 @@ import config from './config';
  * CWC API Client
  */
 class CWCClient {
+	private apiKey: string;
+	private apiUrl: string;
+	private deliveryAgent: any;
+	private campaignId: string;
+
 	constructor() {
 		this.apiKey = config.cwc.apiKey;
 		this.apiUrl = config.cwc.apiUrl;
@@ -20,7 +25,7 @@ class CWCClient {
 	/**
 	 * Submit message to CWC API
 	 */
-	async submitMessage(messageData) {
+	async submitMessage(messageData: any) {
 		try {
 			const xmlMessage = this.buildCWCXML(messageData);
 
@@ -54,7 +59,7 @@ class CWCClient {
 	/**
 	 * Build CWC XML from parsed message data
 	 */
-	buildCWCXML(messageData) {
+	buildCWCXML(messageData: any) {
 		const { templateId, userId, subject, text, personalConnection, userProfile, recipientOffice } =
 			messageData;
 

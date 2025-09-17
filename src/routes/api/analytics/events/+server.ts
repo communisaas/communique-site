@@ -91,7 +91,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		});
 
 		// Validate template_ids exist if provided
-		const templateIds = [...new Set(events.map((e) => e.template_id).filter(Boolean))];
+		const templateIds = [...new Set(events.map((e) => e.template_id).filter((id): id is string => Boolean(id)))];
 		const validTemplateIds = new Set();
 		if (templateIds.length > 0) {
 			const existingTemplates = await db.template.findMany({
@@ -160,13 +160,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	try {
 		const session = await db.user_session.findUnique({
-			where: { session_id: sessionId },
-			include: {
-				analytics_events: {
-					orderBy: { timestamp: 'desc' },
-					take: 50
-				}
-			}
+			where: { session_id: sessionId }
 		});
 
 		if (!session) {
@@ -179,10 +173,18 @@ export const GET: RequestHandler = async ({ url }) => {
 			);
 		}
 
+		// Get analytics events for this session separately
+		const analyticsEvents = await db.analytics_event.findMany({
+			where: { session_id: sessionId },
+			orderBy: { timestamp: 'desc' },
+			take: 50
+		});
+
 		return json({
 			success: true,
 			session,
-			events_count: session.analytics_events.length
+			analytics_events: analyticsEvents,
+			events_count: analyticsEvents.length
 		});
 	} catch (_error) {
 		console.error('Error:' , _error);

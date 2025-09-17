@@ -158,7 +158,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			}
 		}
 
-		// Update template status
+		// Update template usage tracking
 		if (submissions.length > 0) {
 			await db.template.update({
 				where: { id: templateId },

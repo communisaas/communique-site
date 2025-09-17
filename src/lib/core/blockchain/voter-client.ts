@@ -35,13 +35,58 @@ export interface VOTERAction {
 	personalConnection?: string;
 }
 
-export interface VOTERActionResult {
-	success: boolean;
-	transactionHash?: string;
-	blockNumber?: number;
-	actionHash?: string;
-	error?: string;
+// Ethers.js transaction receipt types
+export interface TransactionReceipt {
+	blockHash: string;
+	blockNumber: number;
+	transactionHash: string;
+	transactionIndex: number;
+	from: string;
+	to: string | null;
+	gasUsed: bigint;
+	gasPrice?: bigint;
+	effectiveGasPrice?: bigint;
+	cumulativeGasUsed: bigint;
+	status: number;
+	type: number;
+	logs: Array<{
+		address: string;
+		topics: string[];
+		data: string;
+		blockNumber: number;
+		transactionHash: string;
+		transactionIndex: number;
+		blockHash: string;
+		logIndex: number;
+	}>;
 }
+
+// Success result type for blockchain transactions
+export interface VOTERActionSuccess {
+	success: true;
+	transactionHash: string;
+	blockNumber: number;
+	gasUsed: string; // BigInt as string
+	gasPrice?: string; // BigInt as string
+	effectiveGasPrice?: string; // BigInt as string
+	actionHash?: string;
+	receipt: TransactionReceipt;
+}
+
+// Error result type for blockchain transactions
+export interface VOTERActionError {
+	success: false;
+	error: string;
+	code?: string;
+	details?: {
+		reason?: string;
+		method?: string;
+		transaction?: any;
+	};
+}
+
+// Discriminated union type for VOTER action results
+export type VOTERActionResult = VOTERActionSuccess | VOTERActionError;
 
 export interface UserStats {
 	actionCount: number;
@@ -159,13 +204,23 @@ class VOTERBlockchainClient {
 				success: true,
 				transactionHash: tx.hash,
 				blockNumber: receipt.blockNumber,
-				actionHash: actionHash
+				gasUsed: receipt.gasUsed.toString(),
+				gasPrice: receipt.gasPrice?.toString(),
+				effectiveGasPrice: receipt.effectiveGasPrice?.toString(),
+				actionHash: actionHash,
+				receipt: receipt as TransactionReceipt
 			};
 		} catch (error: unknown) {
 			console.error('Blockchain certification failed:', error);
 			return {
 				success: false,
-				error: _error.message
+				error: error instanceof Error ? error.message : 'Unknown error',
+				code: error instanceof Error && 'code' in error ? (error as any).code : undefined,
+				details: {
+					reason: error instanceof Error && 'reason' in error ? (error as any).reason : undefined,
+					method: 'processCivicAction',
+					transaction: error instanceof Error && 'transaction' in error ? (error as any).transaction : undefined
+				}
 			};
 		}
 	}
@@ -190,12 +245,23 @@ class VOTERBlockchainClient {
 			return {
 				success: true,
 				transactionHash: tx.hash,
-				blockNumber: receipt.blockNumber
+				blockNumber: receipt.blockNumber,
+				gasUsed: receipt.gasUsed.toString(),
+				gasPrice: receipt.gasPrice?.toString(),
+				effectiveGasPrice: receipt.effectiveGasPrice?.toString(),
+				receipt: receipt as TransactionReceipt
 			};
 		} catch (error: unknown) {
+			console.error('User registration failed:', error);
 			return {
 				success: false,
-				error: _error.message
+				error: error instanceof Error ? error.message : 'Unknown error',
+				code: error instanceof Error && 'code' in error ? (error as any).code : undefined,
+				details: {
+					reason: error instanceof Error && 'reason' in error ? (error as any).reason : undefined,
+					method: 'registerUser',
+					transaction: error instanceof Error && 'transaction' in error ? (error as any).transaction : undefined
+				}
 			};
 		}
 	}
@@ -220,7 +286,7 @@ class VOTERBlockchainClient {
 				lastActionTime: Number(stats[2]),
 				voterTokenBalance: balance.toString()
 			};
-		} catch (_error) {
+		} catch (error) {
 			console.error('Failed to get user stats:', error);
 			return null;
 		}

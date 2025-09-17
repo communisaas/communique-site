@@ -34,7 +34,7 @@ function createTemplateDraftStore() {
 				return cleaned;
 			}
 		} catch (_error) {
-			console.warn('Failed to load template drafts from storage:', error);
+			console.warn('Failed to load template drafts from storage:', _error);
 		}
 
 		return {};
@@ -47,7 +47,7 @@ function createTemplateDraftStore() {
 		try {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
 		} catch (_error) {
-			console.warn('Failed to save template drafts to storage:', error);
+			console.warn('Failed to save template drafts to storage:', _error);
 		}
 	}
 

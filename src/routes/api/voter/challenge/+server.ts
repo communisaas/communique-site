@@ -24,9 +24,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			default:
 				throw error(400, `Invalid challenge action: ${action}`);
 		}
-	} catch (err) {
-		console.error('Challenge API error:', err);
-		throw error(500, err instanceof Error ? err.message : 'Challenge operation failed');
+	} catch (_error) {
+		console.error('Challenge API error:', _error);
+		throw error(500, _error instanceof Error ? _error.message : 'Challenge operation failed');
 	}
 };
 
@@ -123,9 +123,9 @@ export const GET: RequestHandler = async ({ url }) => {
 				created_at: c.created_at
 			}))
 		});
-	} catch (err) {
-		console.error('Get challenges error:', err);
-		throw error(500, err instanceof Error ? err.message : 'Failed to get challenges');
+	} catch (_error) {
+		console.error('Get challenges error:', _error);
+		throw error(500, _error instanceof Error ? _error.message : 'Failed to get challenges');
 	}
 };
 

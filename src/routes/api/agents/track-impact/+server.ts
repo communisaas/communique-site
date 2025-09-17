@@ -33,9 +33,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		const template = await db.template.findUnique({
 			where: { id: templateId },
 			include: {
-				deliveries: true,
 				user: true,
-				verification: true
+				verification: true,
+				template_campaign: true
 			}
 		});
 
@@ -157,12 +157,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Calculate overall impact using ImpactAgent
 		const impactResult = await impactAgent.makeDecision({
 			actionType: 'cwc_message',
-			recipients: template.deliveries?.map((d) => d.recipient_id) || [],
+			recipients: template.template_campaign?.map((c) => c.recipient_id).filter(Boolean) || [],
 			templateId,
 			metadata: {
 				observationCount: trackedObservations.length,
 				maxCausalStrength: Math.max(...trackedObservations.map((o) => o.causalStrength)),
-				totalDeliveries: template.send_count || 0
+				totalDeliveries: (template.metrics as any)?.sends || 0
 			}
 		});
 
@@ -176,31 +176,35 @@ export const POST: RequestHandler = async ({ request }) => {
 			? BigInt(10000 * 10 ** 18) * BigInt(Math.floor(maxConfidence / 10)) // Up to 100k VOTER for proven causation
 			: BigInt(1000 * 10 ** 18) * BigInt(Math.floor(totalImpactScore / 100)); // Up to 10k for correlations
 
-		// Update template impact score
+		// Update template metrics with impact score
+		const currentMetrics = (template.metrics as any) || {};
 		await db.template.update({
 			where: { id: templateId },
 			data: {
-				impact_score: Math.min(
-					100,
-					(template.impact_score || 0) + Math.floor(totalImpactScore / 10)
-				),
-				last_impact_at: new Date()
+				metrics: {
+					...currentMetrics,
+					impact_score: Math.min(
+						100,
+						(currentMetrics.impact_score || 0) + Math.floor(totalImpactScore / 10)
+					),
+					last_impact_at: new Date()
+				}
 			}
 		});
 
 		// Update creator rewards if causation proven
-		if (hasCausation && template.user_id) {
+		if (hasCausation && template.userId) {
 			const user = await db.user.findUnique({
-				where: { id: template.user_id }
+				where: { id: template.userId }
 			});
 
 			if (user) {
 				await db.user.update({
-					where: { id: template.user_id },
+					where: { id: template.userId },
 					data: {
-						pending_rewards: (user.pending_rewards || 0) + Number(creatorBonus),
-						impact_score: Math.min(100, (user.impact_score || 0) + 10),
-						civic_score: Math.min(100, (user.civic_score || 0) + 5)
+						// Note: User model doesn't have pending_rewards, impact_score, civic_score
+						// These would need to be added to the schema or tracked in a separate table
+						trust_score: Math.min(100, (user.trust_score || 0) + 10)
 					}
 				});
 			}
@@ -290,9 +294,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		const template = await db.template.findUnique({
 			where: { id: templateId },
 			select: {
-				impact_score: true,
-				last_impact_at: true,
-				send_count: true
+				metrics: true
 			}
 		});
 
@@ -311,9 +313,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({
 			templateId,
-			impactScore: template?.impact_score || 0,
-			lastTracked: template?.last_impact_at,
-			messagesSent: template?.send_count || 0,
+			impactScore: (template?.metrics as any)?.impact_score || 0,
+			lastTracked: (template?.metrics as any)?.last_impact_at,
+			messagesSent: (template?.metrics as any)?.sends || 0,
 			observations: observations?.length || 0,
 			observationTypes: byType,
 			hasCausation,

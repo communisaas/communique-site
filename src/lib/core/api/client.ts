@@ -14,7 +14,7 @@ import { browser } from '$app/environment';
 import { toast } from '$lib/stores/toast.svelte';
 import type { ApiError } from '$lib/types/errors';
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
 	success: boolean;
 	data?: T;
 	error?: string;
@@ -22,13 +22,32 @@ export interface ApiResponse<T = any> {
 	status?: number;
 }
 
-export interface ApiOptions extends RequestInit {
+// Type guard for error response data
+interface ErrorResponseData {
+	error?: string;
+	message?: string;
+	errors?: ApiError[];
+}
+
+// Type guard function
+function isErrorResponseData(data: unknown): data is ErrorResponseData {
+	return typeof data === 'object' && data !== null;
+}
+
+// Type guard for success response data
+function isSuccessResponseData(data: unknown): data is { success: boolean } {
+	return typeof data === 'object' && data !== null && 'success' in data && typeof (data as any).success === 'boolean';
+}
+
+
+export interface ApiOptions extends Omit<RequestInit, 'body'> {
 	timeout?: number;
 	retries?: number;
 	retryDelay?: number;
 	showToast?: boolean;
 	skipErrorLogging?: boolean;
 	onLoadingChange?: (loading: boolean) => void;
+	body?: unknown;
 }
 
 export class ApiClientError extends Error {
@@ -56,7 +75,7 @@ class UnifiedApiClient {
 	/**
 	 * Make an API request with automatic error handling and retries
 	 */
-	async request<T = any>(endpoint: string, options: ApiOptions = {}): Promise<ApiResponse<T>> {
+	async request<T = unknown>(endpoint: string, options: ApiOptions = {}): Promise<ApiResponse<T>> {
 		const {
 			timeout = this.defaultTimeout,
 			retries = this.defaultRetries,
@@ -83,8 +102,8 @@ class UnifiedApiClient {
 			...fetchOptions,
 			headers,
 			body: fetchOptions.body
-				? typeof fetchOptions.body === 'string'
-					? fetchOptions.body
+				? typeof fetchOptions.body === 'string' || fetchOptions.body instanceof FormData || fetchOptions.body instanceof URLSearchParams || fetchOptions.body instanceof Blob || fetchOptions.body instanceof ArrayBuffer
+					? fetchOptions.body as BodyInit
 					: JSON.stringify(fetchOptions.body)
 				: undefined
 		};
@@ -170,27 +189,38 @@ class UnifiedApiClient {
 			} else {
 				data = await response.text();
 			}
-		} catch (e) {
+		} catch (_error) {
 			// Response might be empty
 			data = null;
 		}
 
+		// Type guard for objects with properties
+		const isErrorResponse = (obj: unknown): obj is { error?: string; message?: string; errors?: any[] } => {
+			return typeof obj === 'object' && obj !== null;
+		};
+
 		if (!response.ok) {
-			const error = data?.error || data?.message || `HTTP ${response.status}`;
-			const errors = data?.errors;
+			const errorData = isErrorResponse(data) ? data : {};
+			const error = errorData.error || errorData.message || `HTTP ${response.status}`;
+			const errors = errorData.errors;
 
 			throw new ApiClientError(error, response.status, response, errors);
 		}
 
+		// Type guard for standard API response format
+		const isStandardResponse = (obj: unknown): obj is ApiResponse<T> => {
+			return typeof obj === 'object' && obj !== null && 'success' in obj;
+		};
+
 		// Check if response has standard format
-		if (data && typeof data === 'object' && 'success' in data) {
+		if (isStandardResponse(data)) {
 			return data;
 		}
 
 		// Wrap non-standard responses
 		return {
 			success: true,
-			data,
+			data: data as T,
 			status: response.status
 		};
 	}
@@ -207,7 +237,7 @@ class UnifiedApiClient {
 
 	async post<T = any>(
 		endpoint: string,
-		body?: unknown,
+		body?: string | object | FormData | URLSearchParams | null,
 		options?: Omit<ApiOptions, 'method' | 'body'>
 	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'POST', body });
@@ -215,7 +245,7 @@ class UnifiedApiClient {
 
 	async put<T = any>(
 		endpoint: string,
-		body?: unknown,
+		body?: string | object | FormData | URLSearchParams | null,
 		options?: Omit<ApiOptions, 'method' | 'body'>
 	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'PUT', body });
@@ -223,7 +253,7 @@ class UnifiedApiClient {
 
 	async patch<T = any>(
 		endpoint: string,
-		body?: unknown,
+		body?: string | object | FormData | URLSearchParams | null,
 		options?: Omit<ApiOptions, 'method' | 'body'>
 	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'PATCH', body });

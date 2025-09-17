@@ -98,6 +98,8 @@ export interface CWCSubmissionResult {
 	timestamp: Date;
 	certificationHash?: string;
 	rewardAmount?: number;
+	confirmationNumber?: string; // For CWC API compatibility
+	messageId?: string; // For message tracking
 }
 
 // ============================================================================

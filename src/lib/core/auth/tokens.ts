@@ -76,7 +76,7 @@ export async function verifySignedToken<T = any>(
  * Generate a one-time use token for sensitive operations
  * Includes additional entropy for security
  */
-export function generateOneTimeToken(data: unknown, expiresIn = '1h'): string {
+export function generateOneTimeToken(data: Record<string, any>, expiresIn = '1h'): string {
 	const payload = {
 		...data,
 		nonce: crypto.randomUUID(),

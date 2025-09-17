@@ -389,11 +389,11 @@
 									<div class="flex-1">
 										<div class="mb-2 flex items-center space-x-2">
 											<h4 class="font-semibold text-slate-900">{template.title}</h4>
-											<Badge color={template.status === 'published' ? 'green' : 'yellow'} size="sm">
+											<Badge variant={template.status === 'published' ? 'success' : 'warning'} size="sm">
 												{template.status}
 											</Badge>
 											{#if template.is_public}
-												<Badge color="blue" size="sm">Public</Badge>
+												<Badge variant="neutral" size="sm">Public</Badge>
 											{/if}
 										</div>
 										<p class="mb-2 text-sm text-slate-600">{template.description}</p>

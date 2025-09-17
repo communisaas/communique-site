@@ -49,7 +49,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(formattedTemplate);
-	} catch (err) {
+	} catch (_error) {
 		return error(500, 'Failed to fetch template');
 	}
 };
@@ -86,7 +86,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		return json(updatedTemplate);
-	} catch (err) {
+	} catch (_error) {
 		return error(500, 'Failed to update template');
 	}
 };
@@ -113,7 +113,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		});
 
 		return json({ success: true, id: templateId });
-	} catch (err) {
+	} catch (_error) {
 		return error(500, 'Failed to delete template');
 	}
 };

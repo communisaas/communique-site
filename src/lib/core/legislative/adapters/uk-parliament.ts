@@ -77,7 +77,7 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 				}
 			];
 		} catch (_error) {
-			console.error('UK Parliament lookup failed:', error);
+			console.error('UK Parliament lookup failed:', _error);
 			return [];
 		}
 	}

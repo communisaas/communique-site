@@ -54,7 +54,7 @@ class ZipDistrictLookupService {
 			this.isLoaded = true;
 			console.log(`Loaded ${this.lookupTable.size} ZIP codes with district mappings`);
 		} catch (_error) {
-			console.error('Failed to load ZIP-district data:', error);
+			console.error('Failed to load ZIP-district data:', _error);
 			throw _error;
 		}
 	}

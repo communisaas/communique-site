@@ -44,9 +44,9 @@
 			} else {
 				error = data.error || 'Failed to load analysis';
 			}
-		} catch (err) {
+		} catch (_error) {
 			error = 'Network error loading analysis';
-			console.error('Percolation analysis error:', err);
+			console.error('Percolation analysis error:', _error);
 		} finally {
 			loading = false;
 		}
@@ -70,7 +70,7 @@
 			} else {
 				error = data.error || 'Failed to refresh analysis';
 			}
-		} catch (err) {
+		} catch (_error) {
 			error = 'Network error refreshing analysis';
 		} finally {
 			loading = false;

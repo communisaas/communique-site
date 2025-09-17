@@ -48,8 +48,8 @@
 			if (data.success) {
 				overview = data.overview;
 			}
-		} catch (err) {
-			console.error('Failed to load overview:', err);
+		} catch (_error) {
+			console.error('Failed to load overview:', _error);
 		}
 	}
 
@@ -61,8 +61,8 @@
 			if (data.success) {
 				userTemplates = data.templates || [];
 			}
-		} catch (err) {
-			console.error('Failed to load templates:', err);
+		} catch (_error) {
+			console.error('Failed to load templates:', _error);
 		}
 	}
 
@@ -393,7 +393,7 @@
 										<span class="text-xs text-gray-500">
 											{performer.activations} activations
 										</span>
-										<Badge variant="info" size="sm">
+										<Badge variant="neutral" size="sm">
 											{performer.viral_status}
 										</Badge>
 									</div>

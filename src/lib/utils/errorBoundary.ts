@@ -95,7 +95,7 @@ class ErrorBoundaryManager {
 		additionalData?: Record<string, unknown>
 	): ErrorReport {
 		return {
-			message: _error.message || 'Unknown error',
+			message: error.message || 'Unknown error',
 			stack: error.stack,
 			context,
 			timestamp: Date.now(),
@@ -110,7 +110,7 @@ class ErrorBoundaryManager {
 	 */
 	reportError(error: ErrorReport) {
 		// Deduplicate similar errors
-		const errorKey = `${error.context}:${_error.message}`;
+		const errorKey = `${error.context}:${error.message}`;
 		const count = this.errorCounts.get(errorKey) || 0;
 
 		// Only report first occurrence and then every 10th occurrence
@@ -197,7 +197,7 @@ export function withErrorBoundary<T extends (...args: unknown[]) => any>(
 			// Handle async functions
 			if (result instanceof Promise) {
 				return result.catch((error) => {
-					const errorReport = errorBoundaryManager.createErrorReport(error, _context);
+					const errorReport = errorBoundaryManager.createErrorReport(error, context);
 
 					if (!options.silent) {
 						console.error(`Error in ${context}:`, error);
@@ -211,8 +211,8 @@ export function withErrorBoundary<T extends (...args: unknown[]) => any>(
 			}
 
 			return result;
-		} catch (_error) {
-			const errorReport = errorBoundaryManager.createErrorReport(error as Error, _context);
+		} catch (error) {
+			const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
 
 			if (!options.silent) {
 				console.error(`Error in ${context}:`, error);
@@ -236,8 +236,8 @@ export async function safeAsync<T>(
 ): Promise<T | undefined> {
 	try {
 		return await operation();
-	} catch (_error) {
-		const errorReport = errorBoundaryManager.createErrorReport(error as Error, _context);
+	} catch (error) {
+		const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
 		errorBoundaryManager.reportError(errorReport);
 		console.error(`Safe async error in ${context}:`, error);
 		return fallback;

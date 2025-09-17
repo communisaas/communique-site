@@ -65,7 +65,7 @@
 			} else {
 				error = data.error || 'Failed to load performance metrics';
 			}
-		} catch (err) {
+		} catch (_error) {
 			error = 'Network error loading performance data';
 		} finally {
 			loading = false;
@@ -212,7 +212,7 @@
 			<div class="mb-4 flex items-center justify-between text-sm">
 				<span class="text-gray-600">Geographic Reach:</span>
 				<div class="flex items-center">
-					<Badge variant={performance.metrics.geographic_reach === 'national' ? 'success' : 'info'}>
+					<Badge variant={performance.metrics.geographic_reach === 'national' ? 'success' : 'neutral'}>
 						{performance.metrics.geographic_reach.toUpperCase()}
 					</Badge>
 					<span class="ml-2 text-gray-500">{performance.metrics.geographic_spread} districts</span>

@@ -62,6 +62,7 @@ model User {
   defender_challenges    Challenge[]            @relation("DefenderChallenges") 
   won_challenges         Challenge[]            @relation("WonChallenges")
   challenge_stakes       ChallengeStake[]
+  template_verifications TemplateVerification[]
 
   @@map("user")
 }
@@ -117,6 +118,10 @@ model Template {
   status            String              @default("draft")
   is_public         Boolean             @default(false)
   
+  // Usage tracking
+  send_count        Int                 @default(0) @map("send_count")
+  last_sent_at      DateTime?           @map("last_sent_at")
+  
   // Geographic scope
   applicable_countries String[]          @default([]) // ISO country codes ["US", "CA", "UK"]
   jurisdiction_level   String?           // "municipal", "state", "federal", "international"
@@ -130,6 +135,7 @@ model Template {
   // Core relations
   template_campaign template_campaign[]
   civic_actions     CivicAction[]
+  verification      TemplateVerification?
 
   @@map("template")
 }
@@ -391,6 +397,56 @@ model ChallengeStake {
   @@index([user_id])
 }
 
+// ============= TEMPLATE VERIFICATION SYSTEM =============
+// AI-powered template moderation and verification system
+
+model TemplateVerification {
+  id                  String    @id @default(cuid())
+  template_id         String    @unique @map("template_id")
+  user_id             String?   @map("user_id")
+  country_code        String?   @map("country_code")
+  
+  // Moderation status
+  moderation_status   String    @default("pending") @map("moderation_status") // 'pending', 'approved', 'rejected', 'reviewing'
+  severity_level      Int?      @map("severity_level")
+  
+  // Original content backup
+  original_content    Json?     @map("original_content")
+  
+  // Correction tracking
+  correction_log      Json?     @map("correction_log")
+  corrected_subject   String?   @map("corrected_subject")
+  corrected_body      String?   @map("corrected_body")
+  
+  // Quality scores
+  grammar_score       Float?    @map("grammar_score")
+  clarity_score       Float?    @map("clarity_score")
+  completeness_score  Float?    @map("completeness_score")
+  quality_score       Float?    @map("quality_score")
+  
+  // AI agent decisions
+  agent_votes         Json?     @map("agent_votes")
+  consensus_score     Float?    @map("consensus_score")
+  
+  // Reputation system integration
+  reputation_delta    Int?      @map("reputation_delta")
+  reputation_applied  Boolean   @default(false) @map("reputation_applied")
+  
+  // Timestamps
+  created_at          DateTime  @default(now()) @map("created_at")
+  reviewed_at         DateTime? @map("reviewed_at")
+  
+  // Relations
+  template            Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user                User?     @relation(fields: [user_id], references: [id])
+
+  @@map("template_verification")
+  @@index([moderation_status])
+  @@index([template_id])
+  @@index([user_id])
+  @@index([created_at])
+}
+
 // ============= N8N WORKFLOW OPERATIONAL TABLES =============
 // Tables for workflow execution state and caching
 
@@ -491,4 +547,29 @@ model PerformanceMetric {
   @@map("performance_metric")
   @@index([metric_name])
   @@index([recorded_at])
+}
+
+model RewardCalculation {
+  id                String    @id @default(cuid())
+  user_address      String    @map("user_address")
+  action_type       String    @map("action_type")
+  
+  // Reward calculation details
+  base_reward_usd   String    @map("base_reward_usd")
+  total_multiplier  String    @map("total_multiplier")
+  reward_usd        String    @map("reward_usd")
+  reward_wei        String    @map("reward_wei")
+  eth_price         String    @map("eth_price")
+  
+  // Agent decision data
+  multipliers       Json      @default("{}") @map("multipliers")
+  network_activity  Json      @default("{}") @map("network_activity")
+  agent_decisions   Json      @default("{}") @map("agent_decisions")
+  
+  created_at        DateTime  @default(now()) @map("created_at")
+  
+  @@map("reward_calculation")
+  @@index([user_address])
+  @@index([action_type])
+  @@index([created_at])
 }

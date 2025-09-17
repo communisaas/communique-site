@@ -146,9 +146,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			message: `Identity verification completed - ${verificationLevel}`
 		});
-	} catch (err) {
-		console.error('Identity verification error:', err);
-		throw error(500, err instanceof Error ? err.message : 'Identity verification failed');
+	} catch (_error) {
+		console.error('Identity verification error:', _error);
+		throw error(500, _error instanceof Error ? _error.message : 'Identity verification failed');
 	}
 };
 
@@ -195,8 +195,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				max_stake: profile.user.trust_score * 100
 			}
 		});
-	} catch (err) {
-		console.error('Get identity verification error:', err);
-		throw error(500, err instanceof Error ? err.message : 'Failed to get verification status');
+	} catch (_error) {
+		console.error('Get identity verification error:', _error);
+		throw error(500, _error instanceof Error ? _error.message : 'Failed to get verification status');
 	}
 };

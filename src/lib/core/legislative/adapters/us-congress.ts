@@ -103,7 +103,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 				}))
 			];
 		} catch (_error) {
-			console.error('US Congressional lookup failed:', error);
+			console.error('US Congressional lookup failed:', _error);
 			return [];
 		}
 	}

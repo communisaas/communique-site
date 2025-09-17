@@ -11,6 +11,77 @@ import type { OAuthCallbackConfig, OAuthProvider } from './oauth-callback-handle
 import crypto from 'crypto';
 
 // =============================================================================
+// TYPE GUARDS FOR OAUTH PROVIDER RESPONSES
+// =============================================================================
+
+// Google OAuth response type guard
+function isGoogleUser(user: unknown): user is { id: string; email: string; name: string; picture?: string } {
+	return typeof user === 'object' && user !== null &&
+		'id' in user && typeof (user as any).id === 'string' &&
+		'email' in user && typeof (user as any).email === 'string' &&
+		'name' in user && typeof (user as any).name === 'string';
+}
+
+// Facebook OAuth response type guard
+function isFacebookUser(user: unknown): user is { 
+	id: string; 
+	email: string; 
+	name: string; 
+	picture?: { data?: { url?: string } } 
+} {
+	return typeof user === 'object' && user !== null &&
+		'id' in user && typeof (user as any).id === 'string' &&
+		'email' in user && typeof (user as any).email === 'string' &&
+		'name' in user && typeof (user as any).name === 'string';
+}
+
+// LinkedIn OAuth response type guard
+function isLinkedInUser(user: unknown): user is { 
+	sub: string; 
+	email: string; 
+	name: string; 
+	picture?: string 
+} {
+	return typeof user === 'object' && user !== null &&
+		'sub' in user && typeof (user as any).sub === 'string' &&
+		'email' in user && typeof (user as any).email === 'string' &&
+		'name' in user && typeof (user as any).name === 'string';
+}
+
+// Twitter OAuth response type guard
+function isTwitterUser(user: unknown): user is { 
+	data: { 
+		id: string; 
+		username: string; 
+		name: string; 
+		email?: string;
+		profile_image_url?: string;
+	} 
+} {
+	return typeof user === 'object' && user !== null &&
+		'data' in user && typeof (user as any).data === 'object' &&
+		(user as any).data !== null &&
+		'id' in (user as any).data && typeof (user as any).data.id === 'string' &&
+		'username' in (user as any).data && typeof (user as any).data.username === 'string' &&
+		'name' in (user as any).data && typeof (user as any).data.name === 'string';
+}
+
+// Discord OAuth response type guard
+function isDiscordUser(user: unknown): user is { 
+	id: string; 
+	email: string; 
+	username: string; 
+	global_name?: string; 
+	discriminator?: string; 
+	avatar?: string 
+} {
+	return typeof user === 'object' && user !== null &&
+		'id' in user && typeof (user as any).id === 'string' &&
+		'email' in user && typeof (user as any).email === 'string' &&
+		'username' in user && typeof (user as any).username === 'string';
+}
+
+// =============================================================================
 // GOOGLE CONFIGURATION
 // =============================================================================
 
@@ -49,12 +120,17 @@ export const googleConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => ({
-		id: rawUser.id,
-		email: rawUser.email,
-		name: rawUser.name,
-		avatar: rawUser.picture
-	}),
+	mapUserData: (rawUser) => {
+		if (!isGoogleUser(rawUser)) {
+			throw new Error('Invalid Google user data format');
+		}
+		return {
+			id: rawUser.id,
+			email: rawUser.email,
+			name: rawUser.name,
+			avatar: rawUser.picture
+		};
+	},
 
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
@@ -108,12 +184,17 @@ export const facebookConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => ({
-		id: rawUser.id,
-		email: rawUser.email,
-		name: rawUser.name,
-		avatar: rawUser.picture?.data?.url
-	}),
+	mapUserData: (rawUser) => {
+		if (!isFacebookUser(rawUser)) {
+			throw new Error('Invalid Facebook user data format');
+		}
+		return {
+			id: rawUser.id,
+			email: rawUser.email,
+			name: rawUser.name,
+			avatar: rawUser.picture?.data?.url
+		};
+	},
 
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
@@ -164,12 +245,17 @@ export const linkedinConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => ({
-		id: rawUser.sub, // LinkedIn uses 'sub' as the user ID
-		email: rawUser.email,
-		name: rawUser.name,
-		avatar: rawUser.picture
-	}),
+	mapUserData: (rawUser) => {
+		if (!isLinkedInUser(rawUser)) {
+			throw new Error('Invalid LinkedIn user data format');
+		}
+		return {
+			id: rawUser.sub, // LinkedIn uses 'sub' as the user ID
+			email: rawUser.email,
+			name: rawUser.name,
+			avatar: rawUser.picture
+		};
+	},
 
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
@@ -222,14 +308,19 @@ export const twitterConfig: OAuthCallbackConfig = {
 		return await response.json();
 	},
 
-	mapUserData: (rawUser) => ({
-		id: rawUser.data.id,
-		// Twitter doesn't always provide email, generate placeholder
-		email: rawUser.data.email || `${rawUser.data.username}@twitter.local`,
-		name: rawUser.data.name,
-		avatar: rawUser.data.profile_image_url,
-		username: rawUser.data.username
-	}),
+	mapUserData: (rawUser) => {
+		if (!isTwitterUser(rawUser)) {
+			throw new Error('Invalid Twitter user data format');
+		}
+		return {
+			id: rawUser.data.id,
+			// Twitter doesn't always provide email, generate placeholder
+			email: rawUser.data.email || `${rawUser.data.username}@twitter.local`,
+			name: rawUser.data.name,
+			avatar: rawUser.data.profile_image_url,
+			username: rawUser.data.username
+		};
+	},
 
 	extractTokenData: (tokens) => ({
 		accessToken: tokens.accessToken(),
@@ -280,6 +371,10 @@ export const discordConfig: OAuthCallbackConfig = {
 	},
 
 	mapUserData: (rawUser) => {
+		if (!isDiscordUser(rawUser)) {
+			throw new Error('Invalid Discord user data format');
+		}
+
 		// Discord avatar URL construction
 		let avatar: string | undefined;
 		if (rawUser.avatar) {

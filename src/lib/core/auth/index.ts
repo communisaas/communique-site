@@ -7,6 +7,13 @@ export * from './oauth-security';
 
 // Convenience exports
 export { createSession, validateSession, invalidateSession, sessionCookieName } from './auth';
-export { oauthCallbackHandler, type OAuthProvider } from './oauth-callback-handler';
+export { 
+	oauthCallbackHandler, 
+	type OAuthProvider, 
+	type UserData, 
+	type TokenData, 
+	type DatabaseUser,
+	type OAuthCallbackConfig 
+} from './oauth-callback-handler';
 export { generateState, generateCodeVerifier } from './oauth';
 export { validateOAuthSession, checkAnalyticsPermission } from './oauth-security';

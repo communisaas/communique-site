@@ -34,9 +34,13 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Process through verification agent
 		const result = await verificationAgent.makeDecision({
-			template: templateData,
-			checkGrammar,
-			checkPolicy
+			templateId: templateData.id,
+			actionType: 'verify',
+			parameters: {
+				template: templateData,
+				checkGrammar,
+				checkPolicy
+			}
 		});
 
 		// Store verification result if templateId provided
@@ -44,22 +48,22 @@ export const POST: RequestHandler = async ({ request }) => {
 			await db.templateVerification.upsert({
 				where: { template_id: templateId },
 				update: {
-					corrected_subject: result.corrections?.subject,
-					corrected_body: result.corrections?.body,
-					severity_level: result.severityLevel,
+					correction_log: (result.decision as any)?.corrections || {},
+					severity_level: (result.decision as any)?.severityLevel || 1,
 					moderation_status: result.approved ? 'approved' : 'pending',
 					agent_votes: { verification: result } as any,
-					consensus_score: result.confidence,
+					consensus_score: result.confidence || 0.5,
 					reviewed_at: new Date()
 				},
 				create: {
 					template_id: templateId,
-					corrected_subject: result.corrections?.subject,
-					corrected_body: result.corrections?.body,
-					severity_level: result.severityLevel,
+					user_id: 'system', // Default user for automated verification
+					correction_log: (result.decision as any)?.corrections || {},
+					original_content: { subject: templateData.subject, body: templateData.message_body },
+					severity_level: (result.decision as any)?.severityLevel || 1,
 					moderation_status: result.approved ? 'approved' : 'pending',
 					agent_votes: { verification: result } as any,
-					consensus_score: result.confidence
+					consensus_score: result.confidence || 0.5
 				}
 			});
 		}

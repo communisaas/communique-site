@@ -59,18 +59,8 @@ export function validateField(value: string, rules: ValidationRule): ValidationR
 	return { isValid: true };
 }
 
-// Debounce utility for real-time validation
-export function debounce<T extends (...args: unknown[]) => void>(
-	func: T,
-	wait: number
-): (...args: Parameters<T>) => void {
-	let timeout: ReturnType<typeof setTimeout>;
-
-	return (...args: Parameters<T>) => {
-		clearTimeout(timeout);
-		timeout = setTimeout(() => func(...args), wait);
-	};
-}
+// Export debounce from the dedicated utility file for backward compatibility
+export { debounce } from './debounce';
 
 // Template-specific validation rules
 export const templateValidationRules = {

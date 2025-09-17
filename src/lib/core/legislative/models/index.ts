@@ -1,7 +1,9 @@
+import type { JurisdictionType } from '../../../types/jurisdiction';
+
 export interface Jurisdiction {
 	id: string;
 	country_code: string;
-	type: 'country' | 'state' | 'province' | 'region' | 'municipality' | 'district' | 'custom';
+	type: JurisdictionType;
 	name: string;
 	parent_id?: string;
 	external_ids?: Record<string, string>;
@@ -18,6 +20,9 @@ export interface Office {
 	contact_methods: ContactMethod[];
 	delivery_config?: Record<string, unknown>;
 	is_active: boolean;
+	cwc_office_code?: string; // For CWC compatibility
+	contact_emails?: string[]; // Legacy compatibility
+	contact_phone?: string; // Legacy compatibility
 }
 
 export interface ContactMethod {
@@ -36,6 +41,7 @@ export interface Representative {
 	term_start?: Date;
 	term_end?: Date;
 	is_current: boolean;
+	title?: string; // For CWC adapter compatibility
 }
 
 export interface Chamber {
@@ -46,6 +52,8 @@ export interface Chamber {
 	seat_count?: number;
 	term_length?: number;
 	external_ids?: Record<string, string>;
+	code?: string; // For CWC adapter compatibility
+	total_seats?: number; // For CWC adapter compatibility
 }
 
 export interface LegislativeSystem {
@@ -53,14 +61,22 @@ export interface LegislativeSystem {
 	name: string;
 	type: 'parliamentary' | 'congressional' | 'hybrid' | 'other';
 	chambers: Chamber[];
-	primary_language: string;
-	supported_languages: string[];
+	primary_language?: string; // Make optional for compatibility
+	supported_languages?: string[]; // Make optional for compatibility
+	description?: string; // For CWC adapter compatibility
 }
 
 export interface DeliveryCapability {
-	country_code: string;
-	methods: ('email' | 'form' | 'api' | 'postal')[];
-	tier: number; // 1=direct email, 2=form/api, 3=limited
+	country_code?: string; // Make optional for compatibility
+	methods?: ('email' | 'form' | 'api' | 'postal')[]; // Make optional for compatibility
+	tier?: number; // 1=direct email, 2=form/api, 3=limited
 	provider?: string;
 	config?: Record<string, unknown>;
+	// CWC-specific capabilities
+	certified_delivery?: boolean;
+	delivery_receipt?: boolean;
+	bulk_delivery?: boolean;
+	message_formatting?: string[];
+	address_validation?: boolean;
+	personalization?: boolean;
 }

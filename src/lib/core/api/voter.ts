@@ -5,22 +5,31 @@
  * Keeping for backward compatibility during transition
  */
 
+// Import required dependencies
+import { browser } from '$app/environment';
+import { env } from '$env/dynamic/private';
+import type { ApiResponse } from './client.js';
+
 // Re-export from the new blockchain client
 export {
 	certifyEmailDelivery,
 	voterBlockchainClient,
 	type VOTERAction,
-	type VOTERActionResult
+	type VOTERActionResult,
+	type TransactionReceipt,
+	type VOTERActionSuccess,
+	type VOTERActionError
 } from '../blockchain/voter-client.js';
 
-export interface VOTERAction {
+// Legacy interfaces for backward compatibility (deprecated)
+export interface LegacyVOTERAction {
 	actionType: string;
 	userAddress: string;
 	actionData: Record<string, unknown>;
 	signature?: string;
 }
 
-export interface VOTERActionResult {
+export interface LegacyVOTERActionResult {
 	success: boolean;
 	actionHash: string;
 	rewardAmount: number;
@@ -69,7 +78,7 @@ class VOTERProtocolAPI {
 	/**
 	 * Process a civic action through VOTER Protocol
 	 */
-	async processAction(action: VOTERAction): Promise<ApiResponse<VOTERActionResult>> {
+	async processAction(action: LegacyVOTERAction): Promise<ApiResponse<LegacyVOTERActionResult>> {
 		try {
 			const response = await fetch(`${this.baseURL}/api/v1/action`, {
 				method: 'POST',
@@ -100,7 +109,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (_error) {
-			console.error('[VOTER API] Process action error:', error);
+			console.error('[VOTER API] Process action error:', _error);
 			return {
 				success: false,
 				error: _error instanceof Error ? _error.message : 'Network error'
@@ -134,7 +143,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (_error) {
-			console.error('[VOTER API] Get reputation error:', error);
+			console.error('[VOTER API] Get reputation error:', _error);
 			return {
 				success: false,
 				error: _error instanceof Error ? _error.message : 'Network error'
@@ -168,7 +177,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (_error) {
-			console.error('[VOTER API] Get token stats error:', error);
+			console.error('[VOTER API] Get token stats error:', _error);
 			return {
 				success: false,
 				error: _error instanceof Error ? _error.message : 'Network error'
@@ -215,7 +224,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (_error) {
-			console.error('[VOTER API] Certify message error:', error);
+			console.error('[VOTER API] Certify message error:', _error);
 			return {
 				success: false,
 				error: _error instanceof Error ? _error.message : 'Network error'

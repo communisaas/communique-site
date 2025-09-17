@@ -60,11 +60,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		return json({ received: true });
-	} catch (err) {
-		console.error('[VOTER Webhook] Error:', err);
+	} catch (_error) {
+		console.error('[VOTER Webhook] Error:', _error);
 
-		if (err instanceof Response) {
-			throw err;
+		if (_error instanceof Response) {
+			throw _error;
 		}
 
 		throw error(500, 'Webhook processing failed');

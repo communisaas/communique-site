@@ -74,7 +74,7 @@ export function resolveTemplate(
 		if (user.representatives && user.representatives.length > 0) {
 			// Primary representative (House member or first in list)
 			const primaryRep =
-				user.representatives.find((r) => r.chamber === 'house') || user.representatives[0];
+				user.representatives.find((r: any) => r.chamber === 'house') || user.representatives[0];
 			if (primaryRep) {
 				replacements['[Representative Name]'] = primaryRep.name;
 				replacements['[Rep Name]'] = primaryRep.name;
@@ -86,7 +86,7 @@ export function resolveTemplate(
 			}
 
 			// Senate representatives
-			const senators = user.representatives.filter((r) => r.chamber === 'senate');
+			const senators = user.representatives.filter((r: any) => r.chamber === 'senate');
 			if (senators.length > 0) {
 				replacements['[Senator Name]'] = senators[0].name;
 				replacements['[Senator]'] = `Sen. ${senators[0].name}`;

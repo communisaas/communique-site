@@ -4,7 +4,8 @@ import {
 	calculateTemplateR0,
 	calculateActivationVelocity,
 	getTemplateActivationChain,
-	hasActivationData
+	hasActivationData,
+	type CascadeMetrics
 } from '$lib/experimental/cascade/cascade-analytics-fixed';
 import type { RequestHandler } from './$types';
 
@@ -88,7 +89,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			recommendations: generateRecommendations(metrics, viralCoefficient)
 		});
 	} catch (_error) {
-		console.error('Cascade analysis failed:', error);
+		console.error('Cascade analysis failed:', _error);
 
 		return json(
 			{
@@ -116,7 +117,7 @@ function getGeographicReach(jumpRate: number): string {
 	return 'local';
 }
 
-function generateRecommendations(metrics: unknown, viralCoefficient: number): string[] {
+function generateRecommendations(metrics: CascadeMetrics, viralCoefficient: number): string[] {
 	const recommendations = [];
 
 	if (viralCoefficient < 1.0) {

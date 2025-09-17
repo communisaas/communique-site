@@ -39,9 +39,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			default:
 				throw error(400, `Invalid action: ${action}`);
 		}
-	} catch (err) {
-		console.error('VOTER API error:', err);
-		throw error(500, err instanceof Error ? err.message : 'Internal server error');
+	} catch (_error) {
+		console.error('VOTER API error:', _error);
+		throw error(500, _error instanceof Error ? _error.message : 'Internal server error');
 	}
 };
 
@@ -54,6 +54,12 @@ async function handleCWCSubmission({
 	message,
 	representatives,
 	metadata = {}
+}: {
+	userId: string;
+	templateId: string;
+	message: string;
+	representatives: any[];
+	metadata?: Record<string, any>;
 }) {
 	if (!userId || !templateId || !message) {
 		throw error(400, 'Missing required fields: userId, templateId, message');
@@ -125,7 +131,7 @@ async function handleCWCSubmission({
 	}
 
 	// Record civic action with agent decisions
-	const civicAction = await prisma.CivicAction.create({
+	const civicAction = await prisma.civicAction.create({
 		data: {
 			user_id: userId,
 			template_id: templateId,
@@ -140,11 +146,11 @@ async function handleCWCSubmission({
 							agentId: impactDecision.agentId,
 							confidence: impactDecision.confidence,
 							reasoning: impactDecision.reasoning,
-							impactScore: impactDecision.decision?.impactScore || 0,
-							legislativeOutcomes: impactDecision.decision?.legislativeOutcomes || []
+							impactScore: (impactDecision.decision as any)?.impactScore || 0,
+							legislativeOutcomes: (impactDecision.decision as any)?.legislativeOutcomes || []
 						}
 					: { error: 'Impact assessment failed' }
-			},
+			} as any,
 			metadata: {
 				...metadata,
 				representatives_count: representatives.length,
@@ -161,7 +167,7 @@ async function handleCWCSubmission({
 		results,
 		impact_assessment: impactDecision
 			? {
-					impactScore: impactDecision.decision?.impactScore || 0,
+					impactScore: (impactDecision.decision as any)?.impactScore || 0,
 					confidence: impactDecision.confidence,
 					reasoning: impactDecision.reasoning
 				}
@@ -182,12 +188,21 @@ async function recordCivicAction({
 	agentDecisions = {},
 	metadata = {},
 	status = 'completed'
+}: {
+	userId: string;
+	actionType: string;
+	templateId?: string;
+	txHash?: string;
+	rewardWei?: string;
+	agentDecisions?: Record<string, any>;
+	metadata?: Record<string, any>;
+	status?: string;
 }) {
 	if (!userId || !actionType) {
 		throw error(400, 'Missing required fields: userId, actionType');
 	}
 
-	const action = await prisma.CivicAction.create({
+	const action = await prisma.civicAction.create({
 		data: {
 			user_id: userId,
 			template_id: templateId,
@@ -220,6 +235,14 @@ async function updateReputation({
 	agentSource,
 	evidence,
 	confidence
+}: {
+	userId: string;
+	scoreChange?: number;
+	reason?: string;
+	txHash?: string;
+	agentSource?: string;
+	evidence?: any;
+	confidence?: number;
 }) {
 	if (!userId) {
 		throw error(400, 'Missing required field: userId');

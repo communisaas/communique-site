@@ -104,7 +104,7 @@ export class DeliveryPlatformSMTP {
 			await this.processIncomingMail(stream, session);
 			callback();
 		} catch (_error) {
-			console.error('Mail handling error:', error);
+			console.error('Mail handling error:', _error);
 			callback(new Error('Message processing failed'));
 		}
 	}
@@ -162,7 +162,7 @@ export class DeliveryPlatformSMTP {
 			// Process certified delivery
 			await this.processCertifiedDelivery(parsedMessage, userResult.user, templateData);
 		} catch (_error) {
-			console.error('Error handling incoming mail:', error);
+			console.error('Error handling incoming mail:', _error);
 			// Don't throw - we don't want to reject the SMTP connection
 			// Log the error and continue
 		}
@@ -273,7 +273,7 @@ export class DeliveryPlatformSMTP {
 				timestamp: new Date()
 			});
 		} catch (_error) {
-			console.error('Error processing certified delivery:', error);
+			console.error('Error processing certified delivery:', _error);
 
 			// Notify of the failure
 			await this.communiqueClient.notifyDeliveryResult({

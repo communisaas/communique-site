@@ -26,10 +26,22 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 
 			if (!verification) {
+				// Get template to find user_id
+				const template = await db.template.findUnique({
+					where: { id: templateId },
+					select: { userId: true }
+				});
+				
+				if (!template || !template.userId) {
+					return json({ error: 'Template not found or missing user' }, { status: 404 });
+				}
+
 				// Create verification record
 				const created = await db.templateVerification.create({
 					data: {
 						template_id: templateId,
+						user_id: template.userId,
+						country_code: 'US', // Default to US, could be extracted from user profile
 						severity_level: 7, // Default for consensus review
 						moderation_status: 'pending'
 					}

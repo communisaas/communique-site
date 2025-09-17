@@ -263,11 +263,20 @@ export class ModerationConsensus {
 			return false;
 		}
 
-		const votes = verification.agent_votes as unknown as Record<string, AgentVote>;
+		// Type guard to ensure agent_votes is the expected format
+		const isValidAgentVotes = (data: any): data is Record<string, AgentVote> => {
+			return typeof data === 'object' && data !== null && !Array.isArray(data);
+		};
+
+		if (!isValidAgentVotes(verification.agent_votes)) {
+			return false;
+		}
+
+		const votes = verification.agent_votes;
 
 		// Check if any agent detected this specific violation
 		for (const vote of Object.values(votes)) {
-			if (vote.violations?.includes(violationType)) {
+			if (vote && vote.violations?.includes(violationType)) {
 				return true;
 			}
 		}

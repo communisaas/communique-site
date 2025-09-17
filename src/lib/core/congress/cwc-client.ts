@@ -32,6 +32,14 @@ interface User {
 	zip?: string;
 }
 
+interface CWCResponse {
+	messageId?: string;
+	id?: string;
+	status?: string;
+	raw?: string;
+	[key: string]: unknown;
+}
+
 interface CWCSubmissionResult {
 	success: boolean;
 	messageId?: string;
@@ -39,7 +47,7 @@ interface CWCSubmissionResult {
 	office: string;
 	timestamp: string;
 	error?: string;
-	cwcResponse?: unknown;
+	cwcResponse?: CWCResponse;
 }
 
 export class CWCClient {
@@ -132,7 +140,7 @@ export class CWCClient {
 
 			return result;
 		} catch (_error) {
-			console.error('Senate CWC submission error:', error);
+			console.error('Senate CWC submission error:', _error);
 			return {
 				success: false,
 				status: 'failed',
@@ -201,7 +209,7 @@ export class CWCClient {
 				// Add delay between submissions to avoid rate limiting
 				await this.delay(1000);
 			} catch (_error) {
-				console.error(`Failed to submit to ${rep.name}:`, error);
+				console.error(`Failed to submit to ${rep.name}:`, _error);
 				results.push({
 					success: false,
 					status: 'failed',
@@ -243,10 +251,10 @@ export class CWCClient {
 
 			// Try to parse JSON response
 			const contentType = response.headers.get('content-type');
-			let cwcResponse: unknown;
+			let cwcResponse: CWCResponse;
 
 			if (contentType?.includes('application/json')) {
-				cwcResponse = await response.json();
+				cwcResponse = await response.json() as CWCResponse;
 			} else {
 				cwcResponse = { raw: await response.text() };
 			}
@@ -264,7 +272,7 @@ export class CWCClient {
 				cwcResponse
 			};
 		} catch (_error) {
-			console.error('Failed to parse CWC response:', error);
+			console.error('Failed to parse CWC response:', _error);
 			return {
 				...baseResult,
 				success: false,

@@ -6,6 +6,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import { page } from '$app/stores';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
+	import { toEmailServiceUser } from '$lib/types/user';
 
 	let {
 		template,
@@ -18,7 +19,7 @@
 	} = $props();
 
 	// Use unified email service to determine flow
-	const emailFlow = $derived(analyzeEmailFlow(template, user));
+	const emailFlow = $derived(analyzeEmailFlow(template, toEmailServiceUser(user)));
 
 	// Smart CTA configuration based on template type and user state
 	const ctaConfig = $derived(() => {

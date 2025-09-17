@@ -10,6 +10,7 @@
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import { toEmailServiceUser } from '$lib/types/user';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/landing/template/parts/ActionBar.svelte';
@@ -94,7 +95,7 @@
 
 	function handleShareFlow() {
 		// Analyze what flow is needed for this template and user
-		const flow = analyzeEmailFlow(template, data.user);
+		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 		const shareSource = 'share';
 
 		// Execute the appropriate flow
@@ -136,7 +137,7 @@
 	}
 
 	function handlePostAuthFlow() {
-		const flow = analyzeEmailFlow(template, data.user);
+		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 
 		if (flow.nextAction === 'address') {
 			// Need address collection
@@ -187,7 +188,7 @@
 			// Clear any stored intent after successful address submission
 			sessionStorage.removeItem(`template_${template.id}_intent`);
 
-			const flow = analyzeEmailFlow(template, data.user);
+			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 			if (flow.mailtoUrl) {
 				showEmailLoadingModal = true;
 				setTimeout(() => {
@@ -206,7 +207,7 @@
 			// Clear any stored intent even on error
 			sessionStorage.removeItem(`template_${template.id}_intent`);
 
-			const flow = analyzeEmailFlow(template, data.user);
+			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 			if (flow.mailtoUrl) {
 				showEmailLoadingModal = true;
 				setTimeout(() => {
@@ -368,7 +369,7 @@
 			}}
 			onSendMessage={async () => {
 				if (channel?.access_tier === 1) {
-					const flow = analyzeEmailFlow(template, data.user);
+					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 					if (flow.nextAction === 'auth') {
 						modalActions.openModal('auth-modal', 'auth', { template, source });
 					} else if (flow.nextAction === 'address') {
@@ -391,7 +392,7 @@
 					data.user &&
 					(channel?.country_code === 'US' || template.deliveryMethod === 'certified')
 				) {
-					const flow = analyzeEmailFlow(template, data.user);
+					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', { template, source });
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {

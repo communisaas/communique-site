@@ -181,7 +181,7 @@ export function analyzeEmailFlow(
 			error: {
 				code: 'FLOW_ANALYSIS_ERROR',
 				message: _error instanceof Error ? _error.message : 'Unknown error analyzing email flow',
-				details: { originalError: error }
+				details: { originalError: _error }
 			}
 		};
 	}
@@ -301,7 +301,7 @@ export function generateMailtoUrl(
 			error: {
 				code: 'MAILTO_GENERATION_ERROR',
 				message: _error instanceof Error ? _error.message : 'Unknown error generating mailto URL',
-				details: { originalError: error }
+				details: { originalError: _error }
 			}
 		};
 	}

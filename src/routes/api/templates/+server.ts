@@ -15,18 +15,24 @@ interface CreateTemplateRequest {
 	description?: string;
 	status?: string;
 	is_public?: boolean;
-	delivery_config?: Record<string, unknown>;
-	cwc_config?: Record<string, unknown>;
-	recipient_config?: Record<string, unknown>;
-	metrics?: Record<string, unknown>;
+	delivery_config?: Record<string, any>;
+	cwc_config?: Record<string, any>;
+	recipient_config?: Record<string, any>;
+	metrics?: Record<string, any>;
+}
+
+interface ValidationError {
+	field: string;
+	type: string;
+	message: string;
 }
 
 function validateTemplateData(data: unknown): {
 	isValid: boolean;
-	errors: unknown[];
+	errors: ValidationError[];
 	validData?: CreateTemplateRequest;
 } {
-	const errors: unknown[] = [];
+	const errors: ValidationError[] = [];
 
 	if (!data || typeof data !== 'object') {
 		errors.push(createValidationError('body', 'VALIDATION_REQUIRED', 'Invalid request body'));
@@ -112,10 +118,10 @@ function validateTemplateData(data: unknown): {
 		description: (templateData.description as string) || templateData.preview.substring(0, 160),
 		status: (templateData.status as string) || 'draft',
 		is_public: Boolean(templateData.is_public) || false,
-		delivery_config: (templateData.delivery_config as Record<string, unknown>) || {},
-		cwc_config: (templateData.cwc_config as Record<string, unknown>) || {},
-		recipient_config: (templateData.recipient_config as Record<string, unknown>) || {},
-		metrics: (templateData.metrics as Record<string, unknown>) || {
+		delivery_config: (templateData.delivery_config as Record<string, any>) || {},
+		cwc_config: (templateData.cwc_config as Record<string, any>) || {},
+		recipient_config: (templateData.recipient_config as Record<string, any>) || {},
+		metrics: (templateData.metrics as Record<string, any>) || {
 			sends: 0,
 			opens: 0,
 			clicks: 0,

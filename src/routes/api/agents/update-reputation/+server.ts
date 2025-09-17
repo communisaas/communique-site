@@ -26,54 +26,49 @@ export const POST: RequestHandler = async ({ request }) => {
 			const user = await db.user.findUnique({
 				where: { id: userId },
 				select: {
-					challenge_score: true,
-					civic_score: true,
-					discourse_score: true,
-					total_reputation: true
+					voter_reputation: true,
+					trust_score: true,
+					reputation_tier: true
 				}
 			});
 
 			if (user) {
 				currentReputation = {
-					challenge: user.challenge_score || 50,
-					civic: user.civic_score || 50,
-					discourse: user.discourse_score || 50,
-					total: user.total_reputation || 50
+					challenge: 50, // Default values since individual scores aren't stored
+					civic: 50,
+					discourse: 50,
+					total: user.voter_reputation || 50
 				};
 			}
 		}
 
 		// Process reputation update
 		const result = await reputationAgent.makeDecision({
-			userAddress,
+			userId,
 			actionType,
 			qualityScore,
-			currentReputation
+			currentReputation,
+			parameters: { userAddress }
 		});
 
 		// Update user record if userId provided
 		if (userId && result.decision) {
-			const changes = result.decision.reputationChanges || {};
-			const newScores = {
-				challenge: (currentReputation?.challenge || 50) + (changes.challenge || 0),
-				civic: (currentReputation?.civic || 50) + (changes.civic || 0),
-				discourse: (currentReputation?.discourse || 50) + (changes.discourse || 0)
-			};
+			const decision = result.decision as any; // Type assertion for agent decision
+			const changes = decision.reputationChanges || {};
+			const newReputation = Math.max(
+				0,
+				Math.min(
+					100,
+					(currentReputation?.total || 50) + (changes.total || 0)
+				)
+			);
 
 			await db.user.update({
 				where: { id: userId },
 				data: {
-					challenge_score: Math.max(0, Math.min(100, newScores.challenge)),
-					civic_score: Math.max(0, Math.min(100, newScores.civic)),
-					discourse_score: Math.max(0, Math.min(100, newScores.discourse)),
-					total_reputation: Math.max(
-						0,
-						Math.min(
-							100,
-							newScores.challenge * 0.4 + newScores.civic * 0.4 + newScores.discourse * 0.2
-						)
-					),
-					reputation_tier: result.decision.newTier || 'novice'
+					voter_reputation: newReputation,
+					trust_score: Math.max(0, Math.min(100, (currentReputation?.total || 50) + (changes.trust || 0))),
+					reputation_tier: decision.newTier || 'novice'
 				}
 			});
 		}

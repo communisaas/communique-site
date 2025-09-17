@@ -38,7 +38,8 @@ export type {
 export type { ApiError, ErrorType, AppError } from './errors';
 export type { PercolationData, FusionData, AnalyticsError } from './analytics';
 export type { Template, TemplateFormData, MinimalUser } from './template';
-export type { EmailServiceUser, UserProfile, UserAddress, Representative } from './user';
+export type { EmailServiceUser, UserProfile, UserAddress, Representative, PrismaUserForEmail } from './user';
+export { toEmailServiceUser } from './user';
 export type { Jurisdiction, Office, JurisdictionType, TemplateScope } from './jurisdiction';
 export type { NormalizedAddress, GeoFence } from './location';
 export type { ModalScrollState } from './modal';

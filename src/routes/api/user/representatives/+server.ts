@@ -140,10 +140,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			message: `Successfully stored ${result.representativesCount} representatives for user`,
 			...result
 		});
-	} catch (err) {
+	} catch (_error) {
 		// Re-throw SvelteKit errors
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
+		if (_error && typeof _error === 'object' && 'status' in _error) {
+			throw _error;
 		}
 
 		throw error(500, 'Failed to store user representatives');
@@ -210,6 +210,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				bioguideId: userRep.representative.bioguide_id,
 				name: userRep.representative.name,
 				party: userRep.representative.party,
+				type: userRep.representative.chamber || 'representative', // Add required type property
 				state: userRep.representative.state,
 				district: userRep.representative.district,
 				chamber: userRep.representative.chamber,
@@ -239,9 +240,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			representatives,
 			totalReps: user.representatives.length
 		});
-	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
+	} catch (_error) {
+		if (_error && typeof _error === 'object' && 'status' in _error) {
+			throw _error;
 		}
 
 		throw error(500, 'Failed to fetch user representatives');
@@ -309,9 +310,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		return await postHandler({ request: updateRequest, locals } as Parameters<
 			typeof postHandler
 		>[0]);
-	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
+	} catch (_error) {
+		if (_error && typeof _error === 'object' && 'status' in _error) {
+			throw _error;
 		}
 
 		throw error(500, 'Failed to refresh user representatives');

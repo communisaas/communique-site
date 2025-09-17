@@ -68,8 +68,8 @@ async function handleIncomingMail(stream: any, session: any) {
 
 		// Parse the incoming message
 		const parsedMessage = await parseIncomingMessage(stream);
-		const senderEmail = parsedMessage.senderEmail;
-		const templateIdentifier = parsedMessage.templateIdentifier;
+		const senderEmail = (parsedMessage.from as any)?.text || parsedMessage.from;
+		const templateIdentifier = parsedMessage.templateId;
 
 		console.log(`Message from: ${senderEmail}, Template: ${templateIdentifier}`);
 
@@ -142,16 +142,8 @@ async function processCertifiedDelivery(parsedMessage: any, userProfile: any, te
 			subject: templateData.subject || templateData.title,
 			text: templateData.message_body,
 			personalConnection: parsedMessage.personalConnection,
-			userProfile: {
-				firstName: userProfile.name?.split(' ')[0] || '',
-				lastName: userProfile.name?.split(' ').slice(1).join(' ') || '',
-				email: userProfile.email,
-				address1: userProfile.street || '',
-				address2: '', // TODO: Add address2 field to user model
-				city: userProfile.city || '',
-				state: userProfile.state || '',
-				zip: userProfile.zip || ''
-			},
+			// Note: Removed userProfile nested object since it's not expected by the CWC API type
+			// User data should be passed directly in the main payload
 			recipientOffice: determineRecipientOffice(userProfile),
 			messageId: `${templateData.id}_${userProfile.id}_${Date.now()}`
 		};

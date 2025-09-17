@@ -58,17 +58,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			district: userReps.district,
 			message: `Found ${userReps.senate.length + 1} representatives for ${address.city}, ${address.state}`
 		});
-	} catch (err) {
+	} catch (_error) {
 		// Handle specific error types
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err; // Re-throw SvelteKit errors
+		if (_error && typeof _error === 'object' && 'status' in _error) {
+			throw _error; // Re-throw SvelteKit errors
 		}
 
-		if (err instanceof Error) {
-			if (err.message.includes('Congress API error')) {
+		if (_error instanceof Error) {
+			if (_error.message.includes('Congress API error')) {
 				throw error(503, 'Congressional data service is temporarily unavailable');
 			}
-			if (err.message.includes('Google Civic API error')) {
+			if (_error.message.includes('Google Civic API error')) {
 				throw error(503, 'Address validation service is temporarily unavailable');
 			}
 		}
@@ -129,9 +129,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			},
 			message: `Mock representatives for ${state.toUpperCase()}-${district}`
 		});
-	} catch (err) {
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
+	} catch (_error) {
+		if (_error && typeof _error === 'object' && 'status' in _error) {
+			throw _error;
 		}
 
 		throw error(500, 'Failed to lookup district information');

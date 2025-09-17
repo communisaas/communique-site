@@ -8,7 +8,7 @@ export function debounce<T extends (...args: unknown[]) => any>(
 ): (...args: Parameters<T>) => void {
 	let timeout: NodeJS.Timeout | null = null;
 
-	return function executedFunction(...args: Parameters<T>) {
+	return function executedFunction(this: unknown, ...args: Parameters<T>) {
 		const later = () => {
 			timeout = null;
 			if (!immediate) func(...args);
@@ -32,7 +32,7 @@ export function throttle<T extends (...args: unknown[]) => any>(
 ): (...args: Parameters<T>) => void {
 	let inThrottle: boolean;
 
-	return function executedFunction(...args: Parameters<T>) {
+	return function executedFunction(this: unknown, ...args: Parameters<T>) {
 		if (!inThrottle) {
 			func.apply(this, args);
 			inThrottle = true;

@@ -41,6 +41,31 @@ export interface TokenData {
 	expiresAt?: number | null;
 }
 
+export interface DatabaseUser {
+	id: string;
+	email: string;
+	name: string | null;
+	avatar: string | null;
+	street?: string | null;
+	city?: string | null;
+	state?: string | null;
+	zip?: string | null;
+	phone?: string | null;
+	congressional_district?: string | null;
+	is_verified?: boolean;
+	role?: string | null;
+	organization?: string | null;
+	location?: string | null;
+	connection?: string | null;
+	connection_details?: string | null;
+	profile_completed_at?: Date | null;
+	profile_visibility?: string;
+	verification_method?: string | null;
+	verified_at?: Date | null;
+	createdAt: Date;
+	updatedAt: Date;
+}
+
 export interface OAuthCallbackConfig {
 	provider: OAuthProvider;
 	clientId: string;
@@ -52,10 +77,10 @@ export interface OAuthCallbackConfig {
 
 	// Provider-specific functions
 	createOAuthClient: () => any;
-	exchangeTokens: (client: unknown, code: string, codeVerifier?: string) => Promise<any>;
+	exchangeTokens: (client: any, code: string, codeVerifier?: string) => Promise<any>;
 	getUserInfo: (accessToken: string, clientSecret?: string) => Promise<any>;
-	mapUserData: (rawUser: unknown) => UserData;
-	extractTokenData: (tokens: unknown) => TokenData;
+	mapUserData: (rawUser: Record<string, any>) => UserData;
+	extractTokenData: (tokens: Record<string, any>) => TokenData;
 }
 
 // =============================================================================
@@ -89,8 +114,8 @@ export class OAuthCallbackHandler {
 
 			// Step 5: Create session and handle redirects
 			return await this.handleSessionAndRedirect(user, returnTo, config.provider, cookies);
-		} catch (err) {
-			return this.handleError(err, config.provider);
+		} catch (_error) {
+			return this.handleError(_error, config.provider);
 		}
 	}
 
@@ -123,15 +148,15 @@ export class OAuthCallbackHandler {
 
 		// Validate required parameters
 		if (!code || !state || !storedState) {
-			throw _error(400, 'Missing required OAuth parameters');
+			throw error(400, 'Missing required OAuth parameters');
 		}
 
 		if (state !== storedState) {
-			throw _error(400, 'Invalid OAuth state');
+			throw error(400, 'Invalid OAuth state');
 		}
 
 		if (requiresCodeVerifier && !codeVerifier) {
-			throw _error(400, 'Missing code verifier');
+			throw error(400, 'Missing code verifier');
 		}
 
 		return { code, state, codeVerifier, returnTo };
@@ -144,7 +169,7 @@ export class OAuthCallbackHandler {
 		config: OAuthCallbackConfig,
 		userData: UserData,
 		tokenData: TokenData
-	): Promise<any> {
+	): Promise<DatabaseUser> {
 		// Check for existing OAuth account
 		const existingAccount = await db.account.findUnique({
 			where: {
@@ -222,7 +247,7 @@ export class OAuthCallbackHandler {
 	 * Create session and handle address collection or final redirect
 	 */
 	private async handleSessionAndRedirect(
-		user: unknown,
+		user: DatabaseUser,
 		returnTo: string,
 		provider: string,
 		cookies: Cookies

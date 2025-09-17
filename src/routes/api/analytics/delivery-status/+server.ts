@@ -2,6 +2,29 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import type { RequestHandler } from './$types';
 
+// Define proper types for delivery status
+interface DeliveryStatus {
+	campaign_id: string;
+	template_id: string;
+	template_title: string;
+	status: string;
+	created_at: string;
+	updated_at: string;
+	delivery_attempts: number;
+	error_message?: string;
+	recipient_info: {
+		representative_name: string;
+		office_type: 'house' | 'senate';
+		district?: string;
+		state: string;
+	};
+	tracking_data?: {
+		delivery_time: string;
+		response_received: boolean;
+		response_type: string;
+	};
+}
+
 export const GET: RequestHandler = async ({ url, locals }) => {
 	const userId = url.searchParams.get('userId') || locals.user?.id;
 	const limit = parseInt(url.searchParams.get('limit') || '50');
@@ -68,7 +91,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				status: campaign.status,
 				created_at: campaign.created_at.toISOString(),
 				updated_at: campaign.updated_at.toISOString(),
-				delivery_attempts: campaign.delivery_attempts || 1,
+				delivery_attempts: 1, // Currently not tracked in schema
 				error_message: campaign.status === 'failed' ? getRandomErrorMessage() : undefined,
 				recipient_info: recipientInfo,
 				tracking_data: trackingData
@@ -150,7 +173,7 @@ function getRandomErrorMessage(): string {
 	return errors[Math.floor(Math.random() * errors.length)];
 }
 
-function calculateAverageDeliveryTime(deliveries: unknown[]): number {
+function calculateAverageDeliveryTime(deliveries: DeliveryStatus[]): number {
 	const deliveredItems = deliveries.filter(
 		(d) => d.status === 'delivered' && d.tracking_data?.delivery_time
 	);
@@ -159,7 +182,7 @@ function calculateAverageDeliveryTime(deliveries: unknown[]): number {
 
 	const totalTime = deliveredItems.reduce((sum, delivery) => {
 		const created = new Date(delivery.created_at).getTime();
-		const delivered = new Date(delivery.tracking_data.delivery_time).getTime();
+		const delivered = new Date(delivery.tracking_data!.delivery_time).getTime();
 		return sum + (delivered - created);
 	}, 0);
 

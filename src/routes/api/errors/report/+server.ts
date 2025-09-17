@@ -40,8 +40,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			success: true,
 			message: 'Error reported successfully'
 		});
-	} catch (err) {
-		console.error('Failed to process error report:', err);
+	} catch (_error) {
+		console.error('Failed to process error report:', _error);
 		return json(
 			{
 				success: false,
