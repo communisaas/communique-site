@@ -12,7 +12,7 @@ const {
 	fetchTemplateBySlug,
 	notifyDeliveryResult
 } = require('./user-resolution');
-import { handleUnmatchedSender, sendVerificationRequiredBounce } from './bounce-handler';
+import { handleUnmatchedSender, sendVerificationRequiredBounce, sendGenericBounce } from './bounce-handler';
 import { certifyEmailDelivery } from './blockchain-certification';
 
 // Initialize CWC client
@@ -32,13 +32,13 @@ const server = new SMTPServer({
 	secure: config.smtp.secure,
 
 	// Connection handling
-	onConnect(session, callback) {
+	onConnect(session: { remoteAddress: string }, callback: () => void) {
 		console.log(`New connection from ${session.remoteAddress}`);
 		return callback(); // Accept all connections
 	},
 
 	// Authentication handler (if auth is enabled)
-	onAuth(auth, session, callback) {
+	onAuth(auth: { username: string; password: string }, session: object, callback: (error?: Error | null, result?: { user: string }) => void) {
 		if (config.smtp.auth.user && config.smtp.auth.pass) {
 			if (auth.username === config.smtp.auth.user && auth.password === config.smtp.auth.pass) {
 				return callback(null, { user: auth.username });
@@ -49,7 +49,7 @@ const server = new SMTPServer({
 	},
 
 	// Mail handler - this is where the magic happens
-	onData(stream, session, callback) {
+	onData(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: string[] } }, callback: (error?: Error) => void) {
 		handleIncomingMail(stream, session)
 			.then(() => callback())
 			.catch((error) => {
@@ -62,7 +62,7 @@ const server = new SMTPServer({
 /**
  * Handle incoming mail messages
  */
-async function handleIncomingMail(stream: any, session: any) {
+async function handleIncomingMail(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: string[] } }): Promise<void> {
 	try {
 		console.log('Processing incoming message...');
 
@@ -101,7 +101,6 @@ async function handleIncomingMail(stream: any, session: any) {
 		if (!templateData) {
 			console.error(`Template not found: ${templateIdentifier}`);
 			// Send generic bounce since we can't identify the template
-			import { sendGenericBounce } from './bounce-handler';
 			await sendGenericBounce(senderEmail, templateIdentifier);
 			return;
 		}
@@ -118,10 +117,10 @@ async function handleIncomingMail(stream: any, session: any) {
 /**
  * Check if the recipient address indicates certified delivery
  */
-function isCertifiedDeliveryAddress(recipients: any) {
+function isCertifiedDeliveryAddress(recipients: any): boolean {
 	const certifiedPatterns = [/^congress@/i, /^certified@/i, /^cwc@/i];
 
-	return recipients.some((recipient) =>
+	return recipients.some((recipient: any) =>
 		certifiedPatterns.some((pattern) => pattern.test(recipient.address))
 	);
 }
@@ -129,7 +128,7 @@ function isCertifiedDeliveryAddress(recipients: any) {
 /**
  * Process certified delivery through CWC API
  */
-async function processCertifiedDelivery(parsedMessage: any, userProfile: any, templateData: any) {
+async function processCertifiedDelivery(parsedMessage: any, userProfile: any, templateData: any): Promise<void> {
 	try {
 		console.log(
 			`Processing certified delivery for template: ${templateData.id}, user: ${userProfile.id}`
@@ -157,17 +156,16 @@ async function processCertifiedDelivery(parsedMessage: any, userProfile: any, te
 
 			// Certify the delivery through VOTER Protocol
 			const certificationResult = await certifyEmailDelivery({
-				userProfile,
+				userAddress: userProfile.id,
 				templateData,
-				cwcResult: result,
-				recipients: ['congress@communi.email']
+				deliveryConfirmation: JSON.stringify(result)
 			});
 
 			if (certificationResult) {
 				console.log(`VOTER certification successful: ${certificationResult.certificationHash}`);
 				// Include certification in the delivery result
-				result.certificationHash = certificationResult.certificationHash;
-				result.rewardAmount = certificationResult.rewardAmount;
+				(result as any).certificationHash = certificationResult.certificationHash;
+				(result as any).rewardAmount = certificationResult.rewardAmount;
 			}
 		} else {
 			console.error(`CWC submission failed: ${result.error}`);
@@ -203,7 +201,7 @@ function startServer() {
 	const port = config.smtp.port;
 	const host = config.smtp.host;
 
-	server.listen(port, host, (err) => {
+	server.listen(port, host, (err: any) => {
 		if (err) {
 			console.error('Failed to start SMTP server:', err);
 			process.exit(1);

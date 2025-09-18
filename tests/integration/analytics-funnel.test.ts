@@ -118,7 +118,7 @@ describe('OAuth Funnel Analytics Integration', () => {
 
 		it('should handle different traffic sources', async () => {
 			const templateId = 'voting-rights-template';
-			const sources = ['direct-link', 'social-link', 'share'];
+			const sources: ('direct-link' | 'social-link' | 'share')[] = ['direct-link', 'social-link', 'share'];
 
 			for (const source of sources) {
 				await funnelAnalytics.trackTemplateView(templateId, source);
@@ -251,7 +251,7 @@ describe('OAuth Funnel Analytics Integration', () => {
 			await funnelAnalytics.trackAuthCompleted(templateId, 'google', 'user123');
 			await funnelAnalytics.trackTemplateUsed(templateId, 'email', 'user123');
 
-			const conversionRate = funnelAnalytics.calculateConversionRate();
+			const conversionRate = mockFunnelAnalytics.calculateConversionRate();
 			expect(conversionRate).toBeGreaterThan(0);
 			expect(conversionRate).toBeLessThanOrEqual(1);
 		});
@@ -261,7 +261,7 @@ describe('OAuth Funnel Analytics Integration', () => {
 			funnelAnalytics.trackTemplateView('test-template');
 
 			// Clear
-			funnelAnalytics.clearEvents();
+			mockFunnelAnalytics.clearEvents();
 
 			expect(mockFunnelAnalytics.clearEvents).toHaveBeenCalled();
 		});

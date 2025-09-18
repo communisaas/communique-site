@@ -43,7 +43,7 @@ export interface ApiLocals {
 /**
  * Properly typed RequestEvent for API routes
  */
-export type ApiRequestEvent<Params = Record<string, string>> = SvelteKitRequestEvent<Params> & {
+export type ApiRequestEvent<Params extends Record<string, string> = Record<string, string>> = SvelteKitRequestEvent<Params> & {
 	locals: ApiLocals;
 };
 

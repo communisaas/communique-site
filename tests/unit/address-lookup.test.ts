@@ -3,7 +3,8 @@ import { addressFactory } from '../fixtures/factories';
 
 // Mock the address lookup module
 const mockAddressLookup = {
-	lookupRepsByAddress: vi.fn()
+	lookupRepsByAddress: vi.fn(),
+	validateReps: vi.fn()
 };
 
 vi.mock('../../src/lib/core/congress/address-lookup.js', () => ({
@@ -79,8 +80,8 @@ describe('Address Lookup Unit Tests', () => {
 	});
 
 	it('should validate representatives', async () => {
-		// Add validateReps method to mock
-		mockAddressLookup.validateReps = vi.fn().mockResolvedValue({
+		// Configure the mock response
+		mockAddressLookup.validateReps.mockResolvedValue({
 			valid: true,
 			errors: []
 		});

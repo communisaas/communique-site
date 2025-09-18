@@ -18,51 +18,55 @@ export { toast } from '$lib/stores/toast.svelte';
 
 // Templates API wrapper
 export const templatesApi = {
-	async list<T = any>(): Promise<ApiResponse<T>> {
+	async list<T = unknown>(): Promise<ApiResponse<T>> {
 		return api.get('/templates');
 	},
 
-	async create<T = any>(template: unknown): Promise<ApiResponse<T>> {
+	async create<T = unknown>(template: Record<string, unknown>): Promise<ApiResponse<T>> {
 		const res = await api.post('/templates', template);
 		if (
 			res.success &&
 			res.data &&
 			typeof res.data === 'object' &&
-			'template' in (res.data as any)
+			res.data !== null &&
+			'template' in res.data
 		) {
-			return { success: true, data: (res.data as any).template as T, status: res.status };
+			const templateData = (res.data as { template: T }).template;
+			return { success: true, data: templateData, status: res.status };
 		}
 		return res as ApiResponse<T>;
 	},
 
-	async update<T = any>(id: string, template: unknown): Promise<ApiResponse<T>> {
+	async update<T = unknown>(id: string, template: Record<string, unknown>): Promise<ApiResponse<T>> {
 		const res = await api.put(`/templates/${id}`, template);
 		if (
 			res.success &&
 			res.data &&
 			typeof res.data === 'object' &&
-			'template' in (res.data as any)
+			res.data !== null &&
+			'template' in res.data
 		) {
-			return { success: true, data: (res.data as any).template as T, status: res.status };
+			const templateData = (res.data as { template: T }).template;
+			return { success: true, data: templateData, status: res.status };
 		}
 		return res as ApiResponse<T>;
 	},
 
-	async delete<T = any>(id: string): Promise<ApiResponse<T>> {
+	async delete<T = unknown>(id: string): Promise<ApiResponse<T>> {
 		return api.delete(`/templates/${id}`);
 	}
 };
 
 // Analytics API wrapper
 export const analyticsApi = {
-	async track<T = any>(event: string, data?: unknown): Promise<ApiResponse<T>> {
-		return api.post('/civic/analytics', { event, ...data }, { skipErrorLogging: true });
+	async track<T = unknown>(event: string, data?: Record<string, unknown>): Promise<ApiResponse<T>> {
+		return api.post('/civic/analytics', { event, ...(data ?? {}) }, { skipErrorLogging: true });
 	}
 };
 
 // Congress API wrapper
 export const congressApi = {
-	async lookup<T = any>(address: string): Promise<ApiResponse<T>> {
+	async lookup<T = unknown>(address: string): Promise<ApiResponse<T>> {
 		return api.post('/address/lookup', { address });
 	}
 };

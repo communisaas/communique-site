@@ -3,7 +3,7 @@
  */
 
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
-import type { CWCSubmissionData, CWCSubmissionResult } from '@/types';
+import type { CWCSubmissionData, CWCSubmissionResult } from '$lib/services/delivery/types';
 import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class CWCClient {
@@ -83,7 +83,7 @@ export class CWCClient {
 				};
 			}
 
-			console.error('[CWC] Unexpected error:', error);
+			console.error('[CWC] Unexpected error:', _error);
 			return {
 				success: false,
 				error: _error instanceof Error ? _error.message : 'Unknown error',
@@ -111,7 +111,7 @@ export class CWCClient {
 				details: response.data
 			};
 		} catch (_error) {
-			console.error(`[CWC] Failed to check status for ${submissionId}:`, error);
+			console.error(`[CWC] Failed to check status for ${submissionId}:`, _error);
 			return {
 				status: 'failed',
 				details: { error: _error instanceof Error ? _error.message : 'Unknown error' }
@@ -143,7 +143,7 @@ export class CWCClient {
 				officeCode: response.data.office_code
 			};
 		} catch (_error) {
-			console.error(`[CWC] Failed to validate district ${state}-${district}:`, error);
+			console.error(`[CWC] Failed to validate district ${state}-${district}:`, _error);
 			return { valid: false };
 		}
 	}
@@ -173,7 +173,7 @@ export class CWCClient {
 				type: office.chamber === 'senate' ? 'senate' : 'house'
 			}));
 		} catch (_error) {
-			console.error(`[CWC] Failed to get offices for ${state}:`, error);
+			console.error(`[CWC] Failed to get offices for ${state}:`, _error);
 			return [];
 		}
 	}
@@ -321,7 +321,7 @@ export class CWCClient {
 			return 'No response from CWC API';
 		}
 
-		return _error.message || 'Unknown error';
+		return error.message || 'Unknown error';
 	}
 }
 

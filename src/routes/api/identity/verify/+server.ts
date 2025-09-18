@@ -165,9 +165,9 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		// Log detailed error information for debugging
 		if (_error instanceof Error) {
 			console.error('Error details:', {
-				name: error.name,
+				name: _error.name,
 				message: _error.message,
-				stack: error.stack?.split('\n').slice(0, 5)
+				stack: _error.stack?.split('\n').slice(0, 5)
 			});
 		}
 

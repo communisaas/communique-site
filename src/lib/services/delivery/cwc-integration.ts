@@ -113,7 +113,7 @@ class CWCClient {
 	/**
 	 * Escape XML special characters
 	 */
-	escapeXML(text) {
+	escapeXML(text: string) {
 		if (typeof text !== 'string') return '';
 
 		return text

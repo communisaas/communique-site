@@ -69,7 +69,7 @@
 	}
 
 	// Input classes based on state
-	const inputClasses = $derived(() => {
+	const inputClasses = $derived.by(() => {
 		const base =
 			'block w-full rounded-md border px-3 md:px-3 py-2 md:py-2 text-sm md:text-sm transition-colors focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-offset-1 md:focus:ring-offset-2';
 
@@ -82,7 +82,7 @@
 		}
 	});
 
-	const labelClasses = $derived(() => {
+	const labelClasses = $derived.by(() => {
 		const base = 'block text-sm md:text-sm font-medium mb-1 md:mb-1';
 		if (hasError) {
 			return `${base} text-red-700`;

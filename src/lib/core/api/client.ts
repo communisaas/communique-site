@@ -40,7 +40,7 @@ function isSuccessResponseData(data: unknown): data is { success: boolean } {
 		typeof data === 'object' &&
 		data !== null &&
 		'success' in data &&
-		typeof (data as any).success === 'boolean'
+		typeof (data as { success: unknown }).success === 'boolean'
 	);
 }
 
@@ -238,14 +238,14 @@ class UnifiedApiClient {
 	/**
 	 * Convenience methods
 	 */
-	async get<T = any>(
+	async get<T = unknown>(
 		endpoint: string,
 		options?: Omit<ApiOptions, 'method'>
 	): Promise<ApiResponse<T>> {
 		return this.request<T>(endpoint, { ...options, method: 'GET' });
 	}
 
-	async post<T = any>(
+	async post<T = unknown>(
 		endpoint: string,
 		body?: string | object | FormData | URLSearchParams | null,
 		options?: Omit<ApiOptions, 'method' | 'body'>
@@ -253,7 +253,7 @@ class UnifiedApiClient {
 		return this.request<T>(endpoint, { ...options, method: 'POST', body });
 	}
 
-	async put<T = any>(
+	async put<T = unknown>(
 		endpoint: string,
 		body?: string | object | FormData | URLSearchParams | null,
 		options?: Omit<ApiOptions, 'method' | 'body'>
@@ -261,7 +261,7 @@ class UnifiedApiClient {
 		return this.request<T>(endpoint, { ...options, method: 'PUT', body });
 	}
 
-	async patch<T = any>(
+	async patch<T = unknown>(
 		endpoint: string,
 		body?: string | object | FormData | URLSearchParams | null,
 		options?: Omit<ApiOptions, 'method' | 'body'>
@@ -269,7 +269,7 @@ class UnifiedApiClient {
 		return this.request<T>(endpoint, { ...options, method: 'PATCH', body });
 	}
 
-	async delete<T = any>(
+	async delete<T = unknown>(
 		endpoint: string,
 		options?: Omit<ApiOptions, 'method'>
 	): Promise<ApiResponse<T>> {

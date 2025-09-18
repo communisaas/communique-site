@@ -4,7 +4,7 @@
 
 import { type ParsedMail } from 'mailparser';
 import { z } from 'zod';
-import type { ParsedIncomingMessage } from '@/types';
+import type { ParsedIncomingMessage } from '$lib/services/delivery/types';
 
 // ============================================================================
 // Validation Schemas
@@ -75,14 +75,19 @@ export async function parseIncomingMessage(mail: ParsedMail): Promise<ParsedInco
  * Extract sender email address from parsed mail
  */
 function extractSenderEmail(mail: ParsedMail): string {
-	// Check 'from' field
-	if (mail.from?.value?.[0]?.address) {
+	// Check 'from' field - handling both array and object with value property
+	if (Array.isArray(mail.from) && mail.from[0]?.address) {
+		return mail.from[0].address.toLowerCase();
+	} else if (mail.from && 'value' in mail.from && Array.isArray(mail.from.value) && mail.from.value[0]?.address) {
 		return mail.from.value[0].address.toLowerCase();
 	}
 
-	// Check reply-to field as fallback
-	if (mail.replyTo?.value?.[0]?.address) {
-		return mail.replyTo.value[0].address.toLowerCase();
+	// Check reply-to field as fallback (if it exists)
+	const replyTo = (mail as any).replyTo;
+	if (Array.isArray(replyTo) && replyTo[0]?.address) {
+		return replyTo[0].address.toLowerCase();
+	} else if (replyTo && 'value' in replyTo && Array.isArray(replyTo.value) && replyTo.value[0]?.address) {
+		return replyTo.value[0].address.toLowerCase();
 	}
 
 	throw new ValidationError('No sender email address found');
@@ -176,7 +181,16 @@ function isCertifiedDelivery(mail: ParsedMail): boolean {
 	// Check To addresses
 	const toValue = Array.isArray(mail.to) ? mail.to : mail.to ? [mail.to] : [];
 	const toAddresses = toValue.flatMap(
-		(to) => to.value?.map((addr) => addr.address?.toLowerCase()).filter(Boolean) || []
+		(to) => {
+			// Handle both Address directly and AddressObject with value property
+			if (to && 'address' in to && typeof to.address === 'string') {
+				return [to.address.toLowerCase()];
+			}
+			if (to && 'value' in to && Array.isArray(to.value)) {
+				return to.value.map((addr: any) => addr.address?.toLowerCase()).filter(Boolean) || [];
+			}
+			return [];
+		}
 	);
 	const certifiedPatterns = ['congress@', 'certified@', 'cwc@', 'delivery@'];
 

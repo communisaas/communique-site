@@ -6,7 +6,7 @@
 	import { spring } from 'svelte/motion';
 	import { onMount } from 'svelte';
 
-	const placeholderText = $derived(() => {
+	const placeholderText = $derived.by(() => {
 		if (isCongressional) {
 			return `Dear [Representative Name],\n\nI'm writing about the urgent need for action on housing affordability in our district. Rent increases have outpaced wages by 40% over the past five years, forcing families to choose between housing and basic needs.\n\n[Personal Connection]\n\nI urge you to support policies that address this crisis through zoning reform and affordable housing development.\n\nSincerely,\n[Name]\n[Address]`;
 		} else {

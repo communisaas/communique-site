@@ -78,28 +78,21 @@ describe('Analytics API Integration', () => {
 				landing_page: 'https://localhost:5173/'
 			};
 
-			const events = [
+			const events: AnalyticsEvent[] = [
 				{
 					session_id: 'sess_123_abc',
-					event_type: 'navigation',
-					event_name: 'page_view',
-					page_url: 'https://localhost:5173/',
-					timestamp: new Date()
+					name: 'page_view',
+					properties: { page_url: 'https://localhost:5173/', timestamp: new Date() }
 				},
 				{
 					session_id: 'sess_123_abc',
-					event_type: 'funnel',
-					event_name: 'template_viewed',
-					template_id: 'template-789',
-					event_properties: { source: 'direct-link' },
-					timestamp: new Date()
+					name: 'template_viewed',
+					properties: { template_id: 'template-789', source: 'direct-link', timestamp: new Date() }
 				},
 				{
 					session_id: 'sess_123_abc',
-					event_type: 'interaction',
-					event_name: 'button_click',
-					event_properties: { element: 'share_link' },
-					timestamp: new Date()
+					name: 'button_click',
+					properties: { element: 'share_link', timestamp: new Date() }
 				}
 			];
 
@@ -168,19 +161,15 @@ describe('Analytics API Integration', () => {
 			const conversionEvents: AnalyticsEvent[] = [
 				{
 					session_id: 'sess_conversion_test',
-					event_type: 'funnel',
-					event_name: 'auth_completed',
+					name: 'auth_completed',
 					user_id: 'user-converter',
-					template_id: 'template-oauth-test',
-					event_properties: { provider: 'facebook' }
+					properties: { template_id: 'template-oauth-test', provider: 'facebook' }
 				},
 				{
 					session_id: 'sess_conversion_test',
-					event_type: 'funnel',
-					event_name: 'template_used',
+					name: 'template_used',
 					user_id: 'user-converter',
-					template_id: 'template-oauth-test',
-					event_properties: { delivery_method: 'certified' }
+					properties: { template_id: 'template-oauth-test', delivery_method: 'certified' }
 				}
 			];
 

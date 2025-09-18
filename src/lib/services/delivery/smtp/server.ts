@@ -14,12 +14,12 @@ import type {
 	CWCSubmissionData,
 	CWCSubmissionResult,
 	SMTPError
-} from '@/types';
+} from '$lib/services/delivery/types';
 import { parseIncomingMessage, validateMessage } from './parser';
-import { CWCClient } from '@/integrations/cwc';
-import { CommuniqueClient } from '@/integrations/communique';
-import { VOTERClient } from '@/integrations/voter';
-import { N8NClient } from '@/integrations/n8n';
+import { CWCClient } from '$lib/services/delivery/integrations/cwc';
+import { CommuniqueClient } from '$lib/services/delivery/integrations/communique';
+import { VOTERClient } from '$lib/services/delivery/integrations/voter';
+import { N8NClient } from '$lib/services/delivery/integrations/n8n';
 import { BounceHandler } from './bounce-handler';
 import { getConfig } from '$lib/services/delivery/utils/config';
 
@@ -95,18 +95,19 @@ export class DeliveryPlatformSMTP {
 	/**
 	 * Handle incoming mail data
 	 */
-	private async handleData(
+	private handleData(
 		stream: Readable,
 		session: SMTPServerSession,
 		callback: (err?: Error | null) => void
-	): Promise<void> {
-		try {
-			await this.processIncomingMail(stream, session);
-			callback();
-		} catch (_error) {
-			console.error('Mail handling error:', _error);
-			callback(new Error('Message processing failed'));
-		}
+	): void {
+		this.processIncomingMail(stream, session)
+			.then(() => {
+				callback();
+			})
+			.catch((_error) => {
+				console.error('Mail handling error:', _error);
+				callback(new Error('Message processing failed'));
+			});
 	}
 
 	/**

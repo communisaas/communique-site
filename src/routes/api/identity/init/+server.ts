@@ -66,9 +66,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Log detailed error for debugging
 		if (_error instanceof Error) {
 			console.error('Initialization error details:', {
-				name: error.name,
+				name: _error.name,
 				message: _error.message,
-				stack: error.stack?.split('\n').slice(0, 3)
+				stack: _error.stack?.split('\n').slice(0, 3)
 			});
 		}
 

@@ -235,16 +235,16 @@ export const errorBoundaryManager = new ErrorBoundaryManager();
 /**
  * HOC function to wrap functions with error boundaries
  */
-export function withErrorBoundary<T extends (...args: unknown[]) => any>(
+export function withErrorBoundary<T extends (...args: any[]) => any>(
 	fn: T,
 	context: string,
 	options: {
 		silent?: boolean;
-		fallback?: unknown;
+		fallback?: ReturnType<T>;
 		onError?: (error: Error) => void;
 	} = {}
-): T {
-	return ((...args: unknown[]) => {
+): (...args: Parameters<T>) => ReturnType<T> | undefined {
+	return ((...args: Parameters<T>): ReturnType<T> | undefined => {
 		try {
 			const result = fn(...args);
 
@@ -261,7 +261,7 @@ export function withErrorBoundary<T extends (...args: unknown[]) => any>(
 					options.onError?.(error);
 
 					return options.fallback;
-				});
+				}) as ReturnType<T>;
 			}
 
 			return result;
@@ -277,7 +277,7 @@ export function withErrorBoundary<T extends (...args: unknown[]) => any>(
 
 			return options.fallback;
 		}
-	}) as T;
+	});
 }
 
 /**

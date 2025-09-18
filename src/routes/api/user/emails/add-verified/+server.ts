@@ -114,7 +114,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		console.error('Error:', _error);
 
 		// If it's already a redirect, pass it through
-		if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
+		if (_error && typeof _error === 'object' && 'status' in _error && _error.status === 302) {
 			throw _error;
 		}
 

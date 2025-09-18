@@ -10,6 +10,8 @@
 	};
 
 	type VerificationResult = {
+		verified?: boolean;
+		correctedAddress?: string;
 		representatives?: Representative[];
 		[key: string]: any;
 	};
@@ -84,9 +86,9 @@
 				zipCode
 			});
 
-			if (result.success && result.data?.verified) {
-				verificationResult = result.data;
-				selectedAddress = result.data.correctedAddress || fullAddress;
+			if (result.success && (result.data as VerificationResult)?.verified) {
+				verificationResult = result.data as VerificationResult;
+				selectedAddress = (result.data as VerificationResult).correctedAddress || fullAddress;
 				currentStep = 'verify';
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';

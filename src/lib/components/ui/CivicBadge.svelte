@@ -25,7 +25,7 @@
 	const IconComponent = iconMap[variant];
 
 	// Build CSS classes using design system
-	let badgeClasses = $derived(() => {
+	let badgeClasses = $derived.by(() => {
 		const baseClasses = 'participation-badge';
 		const sizeClass = `participation-badge-${size}`;
 		const variantClass = `participation-badge-${variant}`;

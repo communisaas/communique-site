@@ -59,9 +59,9 @@ export const load: PageServerLoad = async ({ params, locals, request }) => {
 		delivery_config: template.delivery_config,
 		recipient_config: template.recipient_config,
 		recipientEmails: extractRecipientEmails(template.recipient_config),
-		applicable_countries: (template as any).applicable_countries ?? [],
-		jurisdiction_level: (template as any).jurisdiction_level ?? null,
-		specific_locations: (template as any).specific_locations ?? [],
+		applicable_countries: template.applicable_countries ?? [],
+		jurisdiction_level: template.jurisdiction_level ?? null,
+		specific_locations: template.specific_locations ?? [],
 		author: template.user
 			? {
 					name: template.user.name,

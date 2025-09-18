@@ -46,13 +46,18 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 
 			if (template) {
-				const currentMetrics = (template.metrics as any) || {};
+				// Type guard for metrics
+				const isMetricsObject = (obj: unknown): obj is Record<string, unknown> => {
+					return typeof obj === 'object' && obj !== null;
+				};
+				
+				const currentMetrics = isMetricsObject(template.metrics) ? template.metrics : {};
 				await db.template.update({
 					where: { id: templateId },
 					data: {
 						metrics: {
 							...currentMetrics,
-							sends: (currentMetrics.sends || 0) + 1,
+							sends: (typeof currentMetrics.sends === 'number' ? currentMetrics.sends : 0) + 1,
 							lastSentAt: new Date().toISOString()
 						}
 					}
@@ -63,7 +68,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// If this was a certified delivery failure, we might want to notify the user
 		if (!success && deliveryMethod === 'certified' && error) {
 			// TODO: Send notification email to user about failed delivery
-			console.error('Error:', _error);
+			console.error('Error:', error);
 		}
 
 		return json({ success: true, message: 'Delivery result recorded' });

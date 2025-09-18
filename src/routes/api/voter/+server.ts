@@ -15,6 +15,10 @@ import { ReputationAgent } from '$lib/agents/reputation-agent.js';
 import { AgentCoordinator, AgentType, type AgentContext } from '$lib/agents/base-agent.js';
 import type { RequestHandler } from './$types';
 
+export const GET: RequestHandler = async ({ url }) => {
+	return json({ message: 'VOTER Protocol API - Use POST for actions' });
+};
+
 export const POST: RequestHandler = async ({ request, url }) => {
 	try {
 		const { action, ...data } = await request.json();

@@ -3,7 +3,7 @@ import type {
 	DeliveryRequest,
 	DeliveryResult,
 	Address,
-	User,
+	LegislativeUser,
 	Template
 } from '../adapters/base';
 import type { Representative } from '../models';
@@ -14,7 +14,7 @@ import { adapterRegistry } from '../adapters/registry';
 export interface DeliveryJob {
 	id: string;
 	template: Template;
-	user: User;
+	user: LegislativeUser;
 	target_country?: string;
 	custom_message?: string;
 	created_at: Date;
@@ -126,7 +126,7 @@ export class LegislativeDeliveryPipeline {
 
 	private async lookupRepresentatives(
 		adapter: LegislativeAdapter,
-		user: User
+		user: LegislativeUser
 	): Promise<Representative[]> {
 		if (!user.address) return [];
 
@@ -159,7 +159,7 @@ export class LegislativeDeliveryPipeline {
 
 	private personalizeMessage(
 		template: Template,
-		user: User,
+		user: LegislativeUser,
 		rep: Representative,
 		customMessage?: string
 	): string {
@@ -175,7 +175,7 @@ export class LegislativeDeliveryPipeline {
 		return this.basicVariableResolution(messageWithCustom, user, rep);
 	}
 
-	private basicVariableResolution(text: string, user: User, rep: Representative): string {
+	private basicVariableResolution(text: string, user: LegislativeUser, rep: Representative): string {
 		return text
 			.replace(/\[user\.name\]/g, user.name || 'Constituent')
 			.replace(/\[user\.first_name\]/g, (user.name || '').split(' ')[0] || 'Constituent')

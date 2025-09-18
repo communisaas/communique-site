@@ -1,34 +1,16 @@
 // Core Module - Barrel Export
 export * from './analytics';
 export * from './api';
+export * from './auth';
 export * from './congress';
 export * from './legislative';
 export * from './server';
-
-// Auth exports (selective to avoid User type conflicts)
-export {
-	createSession,
-	validateSession,
-	invalidateSession,
-	sessionCookieName,
-	type Session,
-	type User
-} from './auth/auth';
-export {
-	oauthCallbackHandler,
-	type OAuthProvider,
-	type UserData,
-	type TokenData,
-	type DatabaseUser,
-	type OAuthCallbackConfig
-} from './auth/oauth-callback-handler';
-export { generateState, generateCodeVerifier } from './auth/oauth';
-export { validateOAuthSession, checkAnalyticsPermission } from './auth/oauth-security';
 
 // Direct exports for commonly used items
 export { db } from './db';
 
 // Convenience re-exports
+export { oauthCallbackHandler } from './auth';
 export { funnelAnalytics } from './analytics';
 export { addressLookup, cwcClient } from './congress';
 export { adapterRegistry, deliveryPipeline } from './legislative';

@@ -26,12 +26,12 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	}
 
 	// Extract data from modal store
-	$: modalData = modalStore.data as {
+	const modalData = $derived(modalStore.data as {
 		template: {
 			title: string;
 			deliveryMethod: string;
 		};
-	} | null;
+	} | null);
 
 	function handleComplete(data: {
 		address: string;

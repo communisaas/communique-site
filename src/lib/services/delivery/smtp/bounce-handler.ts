@@ -2,7 +2,7 @@
  * Email bounce handling and user notifications
  */
 
-import type { ParsedIncomingMessage } from '@/types';
+import type { ParsedIncomingMessage } from '$lib/services/delivery/types';
 import { getConfig } from '$lib/services/delivery/utils/config';
 
 export class BounceHandler {

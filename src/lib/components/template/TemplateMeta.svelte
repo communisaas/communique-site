@@ -22,7 +22,7 @@
 	const emailFlow = $derived(analyzeEmailFlow(template, toEmailServiceUser(user)));
 
 	// Smart CTA configuration based on template type and user state
-	const ctaConfig = $derived(() => {
+	const ctaConfig = $derived.by(() => {
 		const isCongressional = template.deliveryMethod === 'certified';
 
 		if (isCongressional) {

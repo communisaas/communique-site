@@ -9,6 +9,16 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ImpactAgent } from '$lib/agents';
 import { db } from '$lib/core/db';
+import { extractImpactDecision } from '$lib/agents/type-guards';
+
+// Helper function to safely access metrics properties
+function getMetricsValue<T>(metrics: unknown, key: string, defaultValue: T): T {
+	if (typeof metrics === 'object' && metrics !== null && key in metrics) {
+		const value = (metrics as Record<string, unknown>)[key];
+		return value !== undefined && value !== null ? (value as T) : defaultValue;
+	}
+	return defaultValue;
+}
 
 const impactAgent = new ImpactAgent();
 
@@ -162,7 +172,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			metadata: {
 				observationCount: trackedObservations.length,
 				maxCausalStrength: Math.max(...trackedObservations.map((o) => o.causalStrength)),
-				totalDeliveries: (template.metrics as any)?.sends || 0,
+				totalDeliveries: typeof template.metrics === 'object' && template.metrics !== null && 'sends' in template.metrics && typeof (template.metrics as { sends: unknown }).sends === 'number' ? (template.metrics as { sends: number }).sends : 0,
 				recipients: template.template_campaign?.map((c) => c.recipient_id).filter(Boolean) || []
 			}
 		});
@@ -178,7 +188,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			: BigInt(1000 * 10 ** 18) * BigInt(Math.floor(totalImpactScore / 100)); // Up to 10k for correlations
 
 		// Update template metrics with impact score
-		const currentMetrics = (template.metrics as any) || {};
+		const isMetricsObject = (obj: unknown): obj is Record<string, unknown> => {
+			return typeof obj === 'object' && obj !== null;
+		};
+		const currentMetrics = isMetricsObject(template.metrics) ? template.metrics : {};
 		await db.template.update({
 			where: { id: templateId },
 			data: {
@@ -243,7 +256,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			templateId,
 			impact: {
 				score: totalImpactScore,
-				multiplier: (impactResult.decision as any)?.impactMultiplier || 1,
+				multiplier: extractImpactDecision(impactResult.decision).impactMultiplier,
 				hasCausation,
 				highestConfidence: maxConfidence,
 				observationCount: trackedObservations.length
@@ -316,9 +329,9 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({
 			templateId,
-			impactScore: (template?.metrics as any)?.impact_score || 0,
-			lastTracked: (template?.metrics as any)?.last_impact_at,
-			messagesSent: (template?.metrics as any)?.sends || 0,
+			impactScore: getMetricsValue(template?.metrics, 'impact_score', 0),
+			lastTracked: getMetricsValue(template?.metrics, 'last_impact_at', null),
+			messagesSent: getMetricsValue(template?.metrics, 'sends', 0),
 			observations: observations?.length || 0,
 			observationTypes: byType,
 			hasCausation,

@@ -1,9 +1,9 @@
 import type { Representative } from '../models';
-import type { User } from '../adapters/base';
+import type { LegislativeUser } from '../adapters/base';
 import { adapterRegistry } from '../adapters/registry';
 
 export interface VariableContext {
-	user: User;
+	user: LegislativeUser;
 	representative: Representative;
 	country_code: string;
 }

@@ -56,7 +56,7 @@ export interface ProfileUpdateRequest {
 }
 
 // API Response Base
-export interface ApiResponse<T = unknown> {
+export interface ApiResponse<T = Record<string, any>> {
 	success: boolean;
 	data?: T;
 	error?: string;

@@ -7,12 +7,12 @@
 	const modalStore = createModalStore('address-modal', 'address');
 
 	// Extract data from modal store
-	$: modalData = modalStore.data as {
+	const modalData = $derived(modalStore.data as {
 		template: any;
 		source: string;
 		user?: any;
 		mode?: 'requirement' | 'collection';
-	} | null;
+	} | null);
 
 	function handleComplete(event: CustomEvent) {
 		const { address, verified, enhancedCredibility, representatives } = event.detail;

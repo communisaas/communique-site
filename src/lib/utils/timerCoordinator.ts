@@ -342,7 +342,7 @@ export const coordinated = {
 	/**
 	 * Debounced function
 	 */
-	debounce<T extends (...args: unknown[]) => void>(
+	debounce<T extends (...args: any[]) => void>(
 		func: T,
 		delay: number,
 		componentId?: string

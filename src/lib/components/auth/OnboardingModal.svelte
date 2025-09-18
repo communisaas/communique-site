@@ -27,7 +27,7 @@
 	let showDetails = $state(false);
 
 	// Check if user has seen onboarding before
-	const hasSeenOnboarding = $derived(() => {
+	const hasSeenOnboarding = $derived.by(() => {
 		if (typeof window === 'undefined') return false;
 		return localStorage.getItem('communique_has_seen_onboarding') === 'true';
 	});

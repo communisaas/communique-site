@@ -78,9 +78,9 @@ export type ButtonVariant =
 export type FlightState = 'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined;
 
 /**
- * Spring animation type (from svelte/motion)
+ * Spring animation type (from svelte/motion) with proper generic constraint
  */
-export interface SpringValue<T = number> {
+export interface SpringValue<T extends number | string | object = number> {
 	set: (value: T) => void;
 	update: (fn: (value: T) => T) => void;
 	subscribe: (fn: (value: T) => void) => () => void;

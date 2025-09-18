@@ -17,7 +17,7 @@ export interface Address {
 	country_code: string;
 }
 
-export interface User {
+export interface LegislativeUser {
 	id: string;
 	name?: string;
 	email: string;
@@ -33,7 +33,7 @@ export interface Template {
 
 export interface DeliveryRequest {
 	template: Template;
-	user: User;
+	user: LegislativeUser;
 	representative: Representative;
 	office: Office;
 	personalized_message: string;

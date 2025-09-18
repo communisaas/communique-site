@@ -235,13 +235,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (user) {
 			// Authenticated user - save to database
 			try {
-				// Check for duplicate slug
-				if (validData.title) {
-					const slug = validData.title
-						.toLowerCase()
-						.replace(/[^a-z0-9\s-]/g, '')
-						.replace(/\s+/g, '-')
-						.substring(0, 50);
+				// Check for duplicate slug - validData.title is guaranteed to exist from validation
+				const slug = validData.title
+					.toLowerCase()
+					.replace(/[^a-z0-9\s-]/g, '')
+					.replace(/\s+/g, '-')
+					.substring(0, 50);
 
 					const existingTemplate = await db.template.findUnique({
 						where: { slug }
@@ -294,7 +293,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					};
 
 					return json(response);
-				}
 			} catch (dbError) {
 				console.error('Database error creating template:', dbError);
 

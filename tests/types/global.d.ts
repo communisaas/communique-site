@@ -11,6 +11,7 @@ declare global {
 			trackTemplateView?: (templateId: string, source?: string) => void;
 			trackOnboardingStarted?: (templateId: string) => void;
 			trackSocialShare?: (templateId: string, platform: string) => void;
+			trackInteraction?: (element: string, action: string, properties?: Record<string, unknown>) => void;
 		};
 	}
 

@@ -21,6 +21,18 @@ interface SecurityConfig {
 	allowed_ips?: string[];
 }
 
+interface ValidationFieldSchema {
+	type: 'string' | 'number' | 'boolean';
+	required?: boolean;
+	maxLength?: number;
+	min?: number;
+	max?: number;
+}
+
+interface ValidationSchema {
+	[key: string]: ValidationFieldSchema;
+}
+
 // In-memory rate limiting (use Redis in production)
 const rateLimitStore = new Map<string, RateLimitRecord>();
 
@@ -77,7 +89,7 @@ export function checkRateLimit(
  */
 export function validateAndSanitizeInput(
 	input: unknown,
-	schema: Record<string, unknown>
+	schema: ValidationSchema
 ): {
 	valid: boolean;
 	sanitized?: Record<string, unknown>;
@@ -87,10 +99,18 @@ export function validateAndSanitizeInput(
 	const sanitized: Record<string, unknown> = {};
 
 	// Basic type checking and sanitization
+	if (typeof input !== 'object' || input === null) {
+		return {
+			valid: false,
+			errors: ['Input must be an object']
+		};
+	}
+
 	Object.keys(schema).forEach((key) => {
-		const expectedType = schema[key].type;
-		const required = schema[key].required || false;
-		const maxLength = schema[key].maxLength || 1000;
+		const fieldSchema = schema[key];
+		const expectedType = fieldSchema.type;
+		const required = fieldSchema.required || false;
+		const maxLength = fieldSchema.maxLength || 1000;
 
 		const value = (input as Record<string, unknown>)[key];
 
@@ -110,8 +130,8 @@ export function validateAndSanitizeInput(
 					break;
 				}
 
-				// Sanitize string
-				const sanitizedString = value
+				// Sanitize string - we know value is string due to type check above
+				const sanitizedString = (value as string)
 					.replace(/[<>]/g, '') // Remove HTML tags
 					.replace(/['"]/g, '') // Remove quotes
 					.substring(0, maxLength); // Limit length
@@ -126,8 +146,8 @@ export function validateAndSanitizeInput(
 					break;
 				}
 
-				const min = schema[key].min || -Infinity;
-				const max = schema[key].max || Infinity;
+				const min = fieldSchema.min ?? -Infinity;
+				const max = fieldSchema.max ?? Infinity;
 
 				if (num < min || num > max) {
 					errors.push(`Field ${key} must be between ${min} and ${max}`);

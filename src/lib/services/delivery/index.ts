@@ -68,7 +68,7 @@ async function main(): Promise<void> {
 			console.log('📊 Production mode - monitoring enabled');
 		}
 	} catch (_error) {
-		console.error('❌ Failed to start Delivery Platform:', error);
+		console.error('❌ Failed to start Delivery Platform:', _error);
 		process.exit(1);
 	}
 }

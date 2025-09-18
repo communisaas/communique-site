@@ -540,7 +540,7 @@ export function launchEmail(
 			error: {
 				code: 'EMAIL_LAUNCH_ERROR',
 				message: _error instanceof Error ? _error.message : 'Unknown error launching email client',
-				details: { originalError: error }
+				details: { originalError: _error }
 			}
 		};
 	}

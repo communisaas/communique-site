@@ -1,3 +1,4 @@
+import { createMockRequestEvent } from "../helpers/request-event";
 /**
  * Congressional Delivery Integration Tests
  *
@@ -142,7 +143,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(routingEmail)
 			};
 
-			const response = await POST({ request: mockRequest } as any);
+			const response = await POST(createMockRequestEvent(mockRequest));
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -172,7 +173,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST({ request: mockRequest } as any);
+			const response = await POST(createMockRequestEvent(mockRequest));
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -193,7 +194,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(guestEmail)
 			};
 
-			const response = await POST({ request: mockRequest } as any);
+			const response = await POST(createMockRequestEvent(mockRequest));
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -219,7 +220,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST({ request: mockRequest } as any);
+			const response = await POST(createMockRequestEvent(mockRequest));
 
 			expect(response.status).toBe(500);
 			const errorData = JSON.parse(await response.text());
@@ -251,7 +252,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST({ request: mockRequest } as any);
+			const response = await POST(createMockRequestEvent(mockRequest));
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -269,7 +270,7 @@ describe('Congressional Delivery Integration', () => {
 				})
 			};
 
-			const response = await POST({ request: mockRequest } as any);
+			const response = await POST(createMockRequestEvent(mockRequest));
 
 			expect(response.status).toBe(400);
 			const errorData = JSON.parse(await response.text());
@@ -283,7 +284,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST({ request: mockRequest } as any);
+			const response = await POST(createMockRequestEvent(mockRequest));
 
 			expect(response.status).toBe(404);
 			const errorData = JSON.parse(await response.text());
@@ -306,7 +307,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			await POST({ request: mockRequest } as any);
+			await POST(createMockRequestEvent(mockRequest));
 
 			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalledWith(
 				expect.objectContaining({

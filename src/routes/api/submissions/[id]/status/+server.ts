@@ -59,7 +59,7 @@ async function getSubmissionStatus(submissionId: string): Promise<SubmissionStat
 			};
 		}
 	} catch (_error) {
-		console.error('Failed to get submission status:', error);
+		console.error('Failed to get submission status:', _error);
 		return null;
 	}
 }
@@ -93,7 +93,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 		return json(response);
 	} catch (_error) {
-		console.error('Submission status error:', error);
+		console.error('Submission status error:', _error);
 
 		const response: ApiResponse = {
 			success: false,

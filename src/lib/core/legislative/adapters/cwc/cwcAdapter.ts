@@ -38,16 +38,25 @@ export class CWCAdapter extends LegislativeAdapter {
 		return {
 			country_code: 'US',
 			name: 'United States Congress',
+			type: 'congressional',
 			description: 'US Congressional Web Contact System for certified message delivery',
 			chambers: [
 				{
+					id: 'us-house',
+					jurisdiction_id: 'us-federal',
 					name: 'House of Representatives',
+					type: 'lower',
 					code: 'HOUSE',
+					seat_count: 435,
 					total_seats: 435
 				},
 				{
+					id: 'us-senate',
+					jurisdiction_id: 'us-federal',
 					name: 'Senate',
+					type: 'upper',
 					code: 'SENATE',
+					seat_count: 100,
 					total_seats: 100
 				}
 			]

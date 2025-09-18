@@ -20,6 +20,12 @@ const VOTER_REGISTRY_ABI = [
 ];
 
 class BlockchainCertification {
+	private provider: ethers.JsonRpcProvider;
+	private wallet: ethers.Wallet;
+	private communiqueCoreAddress: string | undefined;
+	private voterRegistryAddress: string | undefined;
+	private communiqueCore?: ethers.Contract;
+
 	constructor() {
 		// Initialize blockchain connection
 		this.provider = new ethers.JsonRpcProvider(process.env.RPC_URL || 'http://localhost:8545');

@@ -134,7 +134,7 @@ async function notifyServices(): Promise<void> {
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		console.log('✅ Services notified');
 	} catch (_error) {
-		console.error('❌ Failed to notify services:', error);
+		console.error('❌ Failed to notify services:', _error);
 	}
 }
 

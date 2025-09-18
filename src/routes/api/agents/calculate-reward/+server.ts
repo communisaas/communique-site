@@ -7,6 +7,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { SupplyAgent, MarketAgent, ImpactAgent } from '$lib/agents';
+import { extractSupplyDecision, extractMarketDecision, extractImpactDecision } from '$lib/agents/type-guards';
 
 const supplyAgent = new SupplyAgent();
 const marketAgent = new MarketAgent();
@@ -34,7 +35,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const marketDecision = await marketAgent.makeDecision({
 			actionType,
 			parameters: {
-				baseReward: (supplyDecision.decision as any)?.rewardAmount || 0
+				baseReward: extractSupplyDecision(supplyDecision.decision).rewardAmount
 			}
 		});
 
@@ -48,9 +49,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		// Calculate final reward
-		const baseReward = (supplyDecision.decision as any)?.rewardAmount || 0;
-		const marketMultiplier = (marketDecision.decision as any)?.rewardMultiplier || 1;
-		const impactMultiplier = (impactDecision.decision as any)?.impactMultiplier || 1;
+		const supplyData = extractSupplyDecision(supplyDecision.decision);
+		const marketData = extractMarketDecision(marketDecision.decision);
+		const impactData = extractImpactDecision(impactDecision.decision);
+		
+		const baseReward = supplyData.rewardAmount;
+		const marketMultiplier = marketData.rewardMultiplier;
+		const impactMultiplier = impactData.impactMultiplier;
 
 		const finalReward = BigInt(
 			Math.floor(Number(baseReward) * marketMultiplier * impactMultiplier)
@@ -66,9 +71,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				base: baseReward.toString(),
 				marketMultiplier,
 				impactMultiplier,
-				supplyImpact: (supplyDecision.decision as any)?.supplyImpact || 0,
-				impactScore: (impactDecision.decision as any)?.impactScore || 0,
-				marketSignal: (marketDecision.decision as any)?.marketSignal || 'neutral'
+				supplyImpact: supplyData.supplyImpact,
+				impactScore: impactData.impactScore,
+				marketSignal: marketData.marketSignal
 			},
 			agents: {
 				supply: supplyDecision,

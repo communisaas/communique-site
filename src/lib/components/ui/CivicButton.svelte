@@ -59,7 +59,7 @@
 	});
 
 	// Build CSS classes using design system
-	let buttonClasses = $derived(() => {
+	let buttonClasses = $derived.by(() => {
 		const baseClasses = 'participation-btn';
 		const variantClass = `participation-btn-${variant}`;
 		const sizeClass = `participation-btn-${size}`;
@@ -102,7 +102,7 @@
 	const IconComponent = icon || Send;
 
 	// Screen reader text for loading state
-	let loadingText = $derived(() => {
+	let loadingText = $derived.by(() => {
 		if (loading) {
 			if (variant === 'verified') return 'Sending verified delivery, please wait';
 			if (variant === 'community') return 'Sending community outreach, please wait';

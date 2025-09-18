@@ -8,6 +8,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { VerificationAgent } from '$lib/agents';
 import { db } from '$lib/core/db';
+import { extractVerificationDecision } from '$lib/agents/type-guards';
 
 const verificationAgent = new VerificationAgent();
 
@@ -48,8 +49,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			await db.templateVerification.upsert({
 				where: { template_id: templateId },
 				update: {
-					correction_log: (result.decision as any)?.corrections || {},
-					severity_level: (result.decision as any)?.severityLevel || 1,
+					correction_log: extractVerificationDecision(result.decision).corrections,
+					severity_level: extractVerificationDecision(result.decision).severityLevel,
 					moderation_status: result.approved ? 'approved' : 'pending',
 					agent_votes: { verification: result } as any,
 					consensus_score: result.confidence || 0.5,
@@ -58,9 +59,9 @@ export const POST: RequestHandler = async ({ request }) => {
 				create: {
 					template_id: templateId,
 					user_id: 'system', // Default user for automated verification
-					correction_log: (result.decision as any)?.corrections || {},
+					correction_log: extractVerificationDecision(result.decision).corrections,
 					original_content: { subject: templateData.subject, body: templateData.message_body },
-					severity_level: (result.decision as any)?.severityLevel || 1,
+					severity_level: extractVerificationDecision(result.decision).severityLevel,
 					moderation_status: result.approved ? 'approved' : 'pending',
 					agent_votes: { verification: result } as any,
 					consensus_score: result.confidence || 0.5

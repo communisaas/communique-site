@@ -9,18 +9,18 @@ import config from './config';
 import { detectPotentialUser, fetchTemplateBySlug } from './user-resolution';
 
 // Create reusable transporter
-let transporter = null;
+let transporter: nodemailer.Transporter;
 
 /**
  * Initialize email transporter
  */
-function initTransporter() {
+function initTransporter(): nodemailer.Transporter {
 	if (!transporter) {
 		// Use SendGrid, AWS SES, or another service in production
 		// For now, using generic SMTP configuration
 		transporter = nodemailer.createTransport({
 			host: process.env.SMTP_RELAY_HOST || 'smtp.sendgrid.net',
-			port: process.env.SMTP_RELAY_PORT || 587,
+			port: parseInt(process.env.SMTP_RELAY_PORT || '587'),
 			secure: false,
 			auth: {
 				user: process.env.SMTP_RELAY_USER || 'apikey',
@@ -35,7 +35,11 @@ function initTransporter() {
  * Handle unmatched sender
  * Sends bounce email with actionable options
  */
-async function handleUnmatchedSender(parsedMessage: any, senderEmail: any, templateSlug: any) {
+async function handleUnmatchedSender(
+	parsedMessage: Record<string, unknown>, 
+	senderEmail: string, 
+	templateSlug: string
+) {
 	try {
 		// Try to detect potential user
 		const potentialUser = await detectPotentialUser(parsedMessage, templateSlug);
@@ -47,7 +51,7 @@ async function handleUnmatchedSender(parsedMessage: any, senderEmail: any, templ
 			// No user found - offer signup
 			await sendNewUserBounce(senderEmail, templateSlug);
 		}
-	} catch (error: any) {
+	} catch (error: unknown) {
 		console.error('Error handling unmatched sender:', error);
 		// Send generic bounce as fallback
 		await sendGenericBounce(senderEmail, templateSlug);
@@ -57,7 +61,7 @@ async function handleUnmatchedSender(parsedMessage: any, senderEmail: any, templ
 /**
  * Send bounce email for adding email to existing account
  */
-async function sendAddEmailBounce(senderEmail: any, userId: any, templateSlug: any) {
+async function sendAddEmailBounce(senderEmail: string, userId: string, templateSlug: string) {
 	const token = generateVerificationToken(senderEmail, userId, templateSlug);
 	const addEmailUrl = `https://communique.app/api/user/emails/add-verified?token=${token}&redirect=/s/${templateSlug}`;
 
@@ -152,7 +156,7 @@ This link expires in 24 hours.
 /**
  * Send bounce email for new user signup
  */
-async function sendNewUserBounce(senderEmail: any, templateSlug: any) {
+async function sendNewUserBounce(senderEmail: string, templateSlug: string) {
 	const signupUrl = `https://communique.app/auth/signup?email=${encodeURIComponent(senderEmail)}&template=${templateSlug}`;
 	const templateUrl = templateSlug
 		? `https://communique.app/s/${templateSlug}`
@@ -245,7 +249,7 @@ Already have an account? You may have signed up with a different email address.
 /**
  * Send bounce for unverified secondary email
  */
-async function sendVerificationRequiredBounce(senderEmail: any, templateSlug: any) {
+async function sendVerificationRequiredBounce(senderEmail: string, templateSlug: string) {
 	const verifyUrl = `https://communique.app/settings/emails`;
 
 	const mailOptions = {
@@ -317,7 +321,7 @@ Verify your email: ${verifyUrl}
 /**
  * Send generic bounce email
  */
-async function sendGenericBounce(senderEmail: any, templateSlug: any) {
+async function sendGenericBounce(senderEmail: string, templateSlug: string) {
 	const websiteUrl = templateSlug
 		? `https://communique.app/s/${templateSlug}`
 		: 'https://communique.app';
@@ -385,7 +389,7 @@ If you continue to have issues, please contact support@communique.app
 /**
  * Generate verification token for email addition
  */
-function generateVerificationToken(email: any, userId: any, templateSlug: any) {
+function generateVerificationToken(email: string, userId: string, templateSlug: string) {
 	const payload = {
 		email,
 		userId,

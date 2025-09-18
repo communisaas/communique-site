@@ -1,6 +1,21 @@
 // Svelte 5 Templates Store - migrated from Svelte 4 store patterns
 import type { Template } from '$lib/types/template';
 
+// Type guard for Template
+function isTemplate(obj: unknown): obj is Template {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		typeof (obj as Template).id === 'string' &&
+		typeof (obj as Template).title === 'string'
+	);
+}
+
+// Type guard for Template array
+function isTemplateArray(obj: unknown): obj is Template[] {
+	return Array.isArray(obj) && obj.every(isTemplate);
+}
+
 interface TemplateState {
 	templates: Template[];
 	selectedId: string | null;
@@ -67,7 +82,7 @@ function createTemplateStore() {
 
 			try {
 				const { templatesApi } = await import('$lib/services/apiClient');
-				const result = await templatesApi.list();
+				const result = await templatesApi.list<Template[]>();
 				console.log('Templates API result:', result);
 
 				if (!result.success) {
@@ -76,6 +91,11 @@ function createTemplateStore() {
 				}
 
 				const data = result.data;
+				
+				// Type guard validation
+				if (!isTemplateArray(data)) {
+					throw new Error('Invalid template data received from API');
+				}
 
 				// Update state directly with $state
 				state.templates = data;
@@ -85,7 +105,7 @@ function createTemplateStore() {
 				state.initialized = true;
 
 				// Auto-select first template if none selected or selected template no longer exists
-				if (!state.selectedId || !data.find((t: Template) => t.id === state.selectedId)) {
+				if (!state.selectedId || !data.find((t) => t.id === state.selectedId)) {
 					state.selectedId = data[0]?.id || null;
 				}
 			} catch (err) {

@@ -25,6 +25,40 @@ interface Representative {
 	officeCode: string; // For CWC submissions
 }
 
+// Congress.gov API types
+interface CongressMemberTerm {
+	chamber?: string;
+	party?: string;
+	state?: string;
+	startYear?: number;
+	endYear?: number;
+}
+
+interface CongressMember {
+	bioguideId?: string;
+	name?: string;
+	partyName?: string;
+	firstName?: string;
+	lastName?: string;
+	state?: string;
+	district?: number;
+	currentMember?: boolean;
+	terms?: {
+		item?: CongressMemberTerm[];
+	} | CongressMemberTerm[];
+}
+
+// Type guard for CongressMember
+function isCongressMember(obj: unknown): obj is CongressMember {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		(typeof (obj as CongressMember).bioguideId === 'string' ||
+			typeof (obj as CongressMember).name === 'string')
+	);
+}
+
+
 interface UserReps {
 	house: Representative;
 	senate: Representative[]; // Always 2 senators per state
@@ -161,7 +195,7 @@ export class AddressLookupService {
 				`Looking for representative: ${stateAbbr}/${stateFullName} district ${districtNumber}`
 			);
 
-			const houseRep = allMembers.find((member: unknown) => {
+			const houseRep = allMembers.find((member: CongressMember) => {
 				// District is at the top level, not in terms
 				const memberDistrict = member.district;
 				// State can be full name or abbreviation in the API response
@@ -212,13 +246,14 @@ export class AddressLookupService {
 
 			// Filter for senators from the specific state
 			const senators = allMembers
-				.filter((member: unknown) => {
-					const latestTerm = member.terms?.item?.[0] || member.terms?.[0];
+				.filter((member: CongressMember) => {
+					const termsArray = Array.isArray(member.terms) ? member.terms : member.terms?.item;
+					const latestTerm = termsArray?.[0];
 					const isSenator = latestTerm?.chamber === 'Senate' || (!member.district && latestTerm); // Senators don't have districts
 					return isSenator && (member.state === stateAbbr || member.state === stateFullName);
 				})
 				.slice(0, 2) // Should be exactly 2 senators
-				.map((senator: unknown) => this.formatRepresentative(senator, 'senate'));
+				.map((senator: CongressMember) => this.formatRepresentative(senator, 'senate'));
 
 			if (senators.length === 0) {
 				// Return placeholder senators
@@ -276,8 +311,8 @@ export class AddressLookupService {
 	/**
 	 * Fetch all members from Congress API with pagination
 	 */
-	private async fetchAllMembers(): Promise<any[]> {
-		const allMembers: unknown[] = [];
+	private async fetchAllMembers(): Promise<CongressMember[]> {
+		const allMembers: CongressMember[] = [];
 		let offset = 0;
 		const limit = 250; // Max allowed by API
 
@@ -300,12 +335,15 @@ export class AddressLookupService {
 			}
 
 			const data = await response.json();
-			const members = data.members || [];
+			const members = (data.members || []) as unknown[];
 			console.log(`Fetched ${members.length} members at offset ${offset}`);
-			allMembers.push(...members);
+			
+			// Filter and validate members before adding
+			const validMembers = members.filter(isCongressMember);
+			allMembers.push(...validMembers);
 
 			// Check if we've fetched all members
-			if (members.length < limit) {
+			if (validMembers.length < limit) {
 				break; // No more members to fetch
 			}
 
@@ -321,9 +359,10 @@ export class AddressLookupService {
 		return allMembers;
 	}
 
-	private formatRepresentative(member: unknown, chamber: 'house' | 'senate'): Representative {
+	private formatRepresentative(member: CongressMember, chamber: 'house' | 'senate'): Representative {
 		// Handle both direct fields and nested term data
-		const currentTerm = member.terms?.item?.[0] || member.terms?.[0] || {};
+		const termsArray = Array.isArray(member.terms) ? member.terms : member.terms?.item;
+		const currentTerm = termsArray?.[0] || {};
 
 		// Format name from "Last, First Middle" to "First Middle Last"
 		let formattedName = member.name || '';
@@ -338,8 +377,8 @@ export class AddressLookupService {
 		return {
 			bioguideId: member.bioguideId || '',
 			name: formattedName,
-			party: member.partyName || currentTerm.party || 'Unknown',
-			state: member.state || currentTerm.state || '',
+			party: member.partyName || currentTerm?.party || 'Unknown',
+			state: member.state || currentTerm?.state || '',
 			district: chamber === 'senate' ? '00' : String(member.district || '01').padStart(2, '0'),
 			chamber,
 			officeCode: member.bioguideId || ''
