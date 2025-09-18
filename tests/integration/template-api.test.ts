@@ -5,7 +5,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { asRequestEvent, createMockUser, createMockRequestEventWithParams } from '../types/test-helpers';
+import { asRequestEvent, createMockUser } from '../types/test-helpers';
+import { createMockRequestEventWithParams } from '../helpers/request-event';
 
 // Use vi.hoisted for all mocks to fix initialization order
 const mocks = vi.hoisted(() => ({
@@ -92,7 +93,7 @@ describe('Template API Integration', () => {
 				user: { id: 'user-creator-123' }
 			};
 
-			const response = await TemplatesPOST(asRequestEvent(mockRequest, mockLocals) as any);
+			const response = await TemplatesPOST(asRequestEvent(mockRequest, mockLocals));
 			const responseData = await response.json();
 
 			expect(mocks.db.template.create).toHaveBeenCalledWith({
@@ -122,7 +123,7 @@ describe('Template API Integration', () => {
 			};
 
 			const response = await TemplatesPOST(
-				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }) as any, session: null })
+				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }), session: null })
 			);
 
 			expect(response.status).toBe(400);
@@ -142,7 +143,7 @@ describe('Template API Integration', () => {
 			};
 
 			const response = await TemplatesPOST(
-				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }) as any, session: null })
+				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }), session: null })
 			);
 
 			expect(response.status).toBe(400);
@@ -176,7 +177,7 @@ describe('Template API Integration', () => {
 			};
 
 			const response = await TemplatesPOST(
-				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }) as any, session: null })
+				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }), session: null })
 			);
 
 			const responseData = await response.json();
@@ -206,7 +207,7 @@ describe('Template API Integration', () => {
 				asRequestEvent(
 					mockRequest,
 					{ user: null, session: null } // No authenticated user
-				) as any
+				)
 			);
 
 			expect(response.status).toBe(200);
@@ -225,7 +226,7 @@ describe('Template API Integration', () => {
 			mocks.db.template.findMany.mockResolvedValueOnce(publicTemplates);
 
 			const mockUrl = new URL('http://localhost:5173/api/templates');
-			const response = await TemplatesGET(asRequestEvent({ url: mockUrl }, {}) as any);
+			const response = await TemplatesGET(asRequestEvent({ url: mockUrl }, {}));
 			const responseData = await response.json();
 
 			expect(mocks.db.template.findMany).toHaveBeenCalledWith(
@@ -247,39 +248,36 @@ describe('Template API Integration', () => {
 			mocks.db.template.findMany.mockResolvedValueOnce(mixedTemplates);
 
 			const mockUrl = new URL('http://localhost:5173/api/templates');
-			const response = await TemplatesGET({
-				url: mockUrl,
-				locals: { 
-					user: { 
-						id: 'user-123',
-						email: 'test@example.com',
-						name: 'Test User',
-						street: null,
-						city: null,
-						state: null,
-						zip: null,
-						congressional_district: null,
-						is_verified: false,
-						is_active: true,
-						is_banned: false,
-						is_admin: false,
-						avatar: null,
-						phone: null,
-						role: null,
-						organization: null,
-						location: null,
-						connection: null,
-						connection_details: null,
-						profile_completed_at: null,
-						profile_visibility: 'public',
-						verification_method: null,
-						verified_at: null,
-						createdAt: new Date(),
-						updatedAt: new Date()
-					},
-					session: null
-				}
-			});
+			const response = await TemplatesGET(asRequestEvent({ url: mockUrl }, { 
+				user: { 
+					id: 'user-123',
+					email: 'test@example.com',
+					name: 'Test User',
+					street: null,
+					city: null,
+					state: null,
+					zip: null,
+					congressional_district: null,
+					is_verified: false,
+					is_active: true,
+					is_banned: false,
+					is_admin: false,
+					avatar: null,
+					phone: null,
+					role: null,
+					organization: null,
+					location: null,
+					connection: null,
+					connection_details: null,
+					profile_completed_at: null,
+					profile_visibility: 'public',
+					verification_method: null,
+					verified_at: null,
+					createdAt: new Date(),
+					updatedAt: new Date()
+				},
+				session: null
+			}));
 			const responseData = await response.json();
 
 			expect(mocks.db.template.findMany).toHaveBeenCalledWith(
@@ -371,7 +369,7 @@ describe('Template API Integration', () => {
 			};
 
 			const response = await TemplatesPOST(
-				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }) as any, session: null })
+				asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-123' }), session: null })
 			);
 
 			expect(response.status).toBe(500);
@@ -383,7 +381,7 @@ describe('Template API Integration', () => {
 			mocks.db.template.findMany.mockRejectedValueOnce(new Error('Query timeout'));
 
 			const mockUrl = new URL('http://localhost:5173/api/templates');
-			const response = await TemplatesGET(asRequestEvent({ url: mockUrl }, {}) as any);
+			const response = await TemplatesGET(asRequestEvent({ url: mockUrl }, {}));
 
 			expect(response.status).toBe(500);
 			const errorData = await response.json();

@@ -36,14 +36,15 @@ export function createMockRequestEvent(
 
 /**
  * Create a mock RequestEvent with additional properties
+ * Note: Returns 'any' type to avoid route-specific type conflicts in tests
  */
 export function createMockRequestEventWithParams<Params extends Record<string, string> = Record<string, string>>(
   request: Request, 
   params: Params = {} as Params,
   locals: Partial<App.Locals> = {},
   routeId: string = '/'
-): RequestEvent<Params> {
-  const baseEvent = createMockRequestEvent<Params>(request, routeId);
+): any {
+  const baseEvent = createMockRequestEvent(request, routeId);
   return {
     ...baseEvent,
     params,

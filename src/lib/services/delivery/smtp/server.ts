@@ -78,7 +78,7 @@ export class DeliveryPlatformSMTP {
 		session: SMTPServerSession,
 		callback: (err: Error | null | undefined, response?: { user: string }) => void
 	): void {
-		if (this.config.smtp.auth?.user && this.config.smtp.auth?.pass) {
+		if (this.config.smtp.auth && this.config.smtp.auth.user && this.config.smtp.auth.pass) {
 			if (
 				auth.username === this.config.smtp.auth.user &&
 				auth.password === this.config.smtp.auth.pass

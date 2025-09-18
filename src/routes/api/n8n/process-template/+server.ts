@@ -153,19 +153,19 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 			if (result.approved) {
 				response.stages.reward = {
-					amount: result.reward.toString(),
-					formatted: `${Number(result.reward) / 10 ** 18} VOTER`,
+					amount: (result.reward ?? 0).toString(),
+					formatted: `${Number(result.reward ?? 0) / 10 ** 18} VOTER`,
 					breakdown: {
-						supply: result.supply.rewardAmount.toString(),
-						marketMultiplier: result.market.rewardMultiplier,
-						impactMultiplier: result.impact.impactMultiplier
+						supply: (result.supply?.rewardAmount ?? 0).toString(),
+						marketMultiplier: result.market?.rewardMultiplier ?? 1,
+						impactMultiplier: result.impact?.impactMultiplier ?? 1
 					}
 				};
 
 				response.stages.reputation = {
-					changes: result.reputation.reputationChanges,
-					newTier: result.reputation.newTier,
-					badges: result.reputation.badges
+					changes: result.reputation?.reputationChanges ?? [],
+					newTier: result.reputation?.newTier ?? 'unknown',
+					badges: result.reputation?.badges ?? []
 				};
 
 				// Update user if userId provided
@@ -185,24 +185,24 @@ export const POST: RequestHandler = async ({ request, url }) => {
 									0,
 									Math.min(
 										100,
-										(user.challenge_score || 50) + result.reputation.reputationChanges.challenge
+										(user.challenge_score || 50) + (result.reputation?.reputationChanges?.challenge ?? 0)
 									)
 								),
 								civic_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.civic_score || 50) + result.reputation.reputationChanges.civic
+										(user.civic_score || 50) + (result.reputation?.reputationChanges?.civic ?? 0)
 									)
 								),
 								discourse_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.discourse_score || 50) + result.reputation.reputationChanges.discourse
+										(user.discourse_score || 50) + (result.reputation?.reputationChanges?.discourse ?? 0)
 									)
 								),
-								reputation_tier: result.reputation.newTier
+								reputation_tier: result.reputation?.newTier ?? 'unknown'
 							}
 						});
 					}

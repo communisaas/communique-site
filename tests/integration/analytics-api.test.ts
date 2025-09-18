@@ -101,7 +101,7 @@ describe('Analytics API Integration', () => {
 				events
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -178,7 +178,7 @@ describe('Analytics API Integration', () => {
 				events: conversionEvents
 			});
 
-			await POST(asRequestEvent(mockRequest, {}) as any);
+			await POST(asRequestEvent(mockRequest, {}));
 
 			// Verify conversion was tracked
 			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
@@ -209,7 +209,7 @@ describe('Analytics API Integration', () => {
 				events: registrationEvents
 			});
 
-			await POST(asRequestEvent(mockRequest, {}) as any);
+			await POST(asRequestEvent(mockRequest, {}));
 
 			// Verify registration conversion was tracked
 			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
@@ -228,7 +228,7 @@ describe('Analytics API Integration', () => {
 				invalid: 'data'
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -247,7 +247,7 @@ describe('Analytics API Integration', () => {
 				events: []
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -272,7 +272,7 @@ describe('Analytics API Integration', () => {
 				]
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -300,7 +300,7 @@ describe('Analytics API Integration', () => {
 				]
 			});
 
-			await POST(asRequestEvent(mockRequest, {}) as any);
+			await POST(asRequestEvent(mockRequest, {}));
 
 			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'ip-test-session' },
@@ -334,7 +334,7 @@ describe('Analytics API Integration', () => {
 				]
 			});
 
-			await POST(asRequestEvent(mockRequest, {}) as any);
+			await POST(asRequestEvent(mockRequest, {}));
 
 			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'anonymous-session' },
@@ -360,7 +360,7 @@ describe('Analytics API Integration', () => {
 				events: largeEventBatch
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -405,7 +405,7 @@ describe('Analytics API Integration', () => {
 			// Mock database error
 			mocks.db.analytics_event.createMany.mockRejectedValue(new Error('Network error'));
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			const result = await response.json();
 
@@ -432,7 +432,7 @@ describe('Analytics API Integration', () => {
 				})
 			};
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			const result = await response.json();
 
@@ -457,7 +457,7 @@ describe('Analytics API Integration', () => {
 			};
 
 			// Should not throw error when processing circular references
-			await expect(POST(asRequestEvent(mockRequest, {}) as any)).resolves.toBeDefined();
+			await expect(POST(asRequestEvent(mockRequest, {}))).resolves.toBeDefined();
 		});
 
 		it('should limit event property size', async () => {
@@ -477,7 +477,7 @@ describe('Analytics API Integration', () => {
 				})
 			};
 
-			const response = await POST(asRequestEvent(mockRequest, {}) as any);
+			const response = await POST(asRequestEvent(mockRequest, {}));
 
 			// Should handle large payloads (size limiting happens server-side)
 			expect(response).toBeDefined();

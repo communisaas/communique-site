@@ -357,6 +357,7 @@
 			}}
 			role="dialog"
 			aria-modal="false"
+			tabindex="0"
 			in:scale={{
 				duration,
 				start: animations[animationStyle].in.start,

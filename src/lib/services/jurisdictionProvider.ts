@@ -37,7 +37,7 @@ export class USJurisdictionProvider implements JurisdictionProvider {
 
 	async addressToJurisdictions(address: NormalizedAddress): Promise<Jurisdiction[]> {
 		// Map to state and congressional district jurisdictions where possible
-		const { addressLookup } = await import('$lib/core/congress/address-lookup');
+		const { addressLookupService } = await import('$lib/core/congress/address-lookup');
 		if (!address.admin1 || !address.postalCode || !address.street || !address.admin3) {
 			return [
 				{
@@ -51,7 +51,7 @@ export class USJurisdictionProvider implements JurisdictionProvider {
 				}
 			];
 		}
-		const reps = await addressLookup.lookupRepsByAddress({
+		const reps = await addressLookupService.lookupRepsByAddress({
 			street: address.street,
 			city: address.admin3,
 			state: address.admin1,

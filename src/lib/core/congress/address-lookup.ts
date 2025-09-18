@@ -424,4 +424,35 @@ export class AddressLookupService {
 }
 
 // Export singleton instance
-export const addressLookup = new AddressLookupService();
+export const addressLookupService = new AddressLookupService();
+
+// Convenience function for ZIP-based representative lookup
+export async function addressLookup(zip: string): Promise<Representative[]> {
+	try {
+		// Create minimal address object for lookup
+		const address: Address = {
+			street: '',
+			city: '',
+			state: '', // Will be inferred from ZIP if possible
+			zip
+		};
+
+		// For ZIP-only lookup, we need to extract state from ZIP or use a different approach
+		// Let's use the ZIP district lookup to get the state first
+		const { zipDistrictLookup } = await import('$lib/services/zipDistrictLookup');
+		const districtInfo = await zipDistrictLookup.lookupDistrict(zip, '');
+		
+		// Update address with the state
+		address.state = districtInfo.state;
+
+		// Get all representatives for this address
+		const userReps = await addressLookupService.lookupRepsByAddress(address);
+		
+		// Return as flat array of representatives
+		return [userReps.house, ...userReps.senate];
+	} catch (error) {
+		console.error('Address lookup failed:', error);
+		// Return empty array on failure
+		return [];
+	}
+}

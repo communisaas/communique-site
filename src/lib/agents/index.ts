@@ -8,7 +8,8 @@ export { BaseAgent } from './base-agent';
 export type { AgentDecision } from './base-agent';
 
 export { VerificationAgent } from './verification-agent';
-export type { VerificationAssessment, VerificationSource } from './verification-agent';
+export type { VerificationAssessment } from './verification-agent';
+export type { VerificationSource } from './type-guards';
 
 export { SupplyAgent } from './supply-agent';
 export type { RewardParameters } from './supply-agent';

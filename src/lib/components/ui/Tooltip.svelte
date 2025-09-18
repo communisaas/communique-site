@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Info } from '@lucide/svelte';
-	import { onMount, onDestroy, tick } from 'svelte';
+	import { onMount, onDestroy, tick, type Snippet } from 'svelte';
 	import { get } from 'svelte/store';
 	import { activeTooltipId } from '$lib/stores/tooltip';
 
@@ -8,7 +8,7 @@
 		content: string;
 		containerClass?: string;
 		showInfoIcon?: boolean;
-		children?: unknown;
+		children?: Snippet;
 	}
 
 	const { content, containerClass = '', showInfoIcon = true, children }: Props = $props();
@@ -254,7 +254,9 @@
 	onkeydown={handleKeyDown}
 >
 	<div class="min-w-0 truncate">
-		{@render children?.()}
+		{#if children}
+			{@render children()}
+		{/if}
 	</div>
 	{#if showInfoIcon}
 		<div bind:this={infoIconElement} class="relative">

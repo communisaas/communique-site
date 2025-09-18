@@ -76,7 +76,7 @@ describe('User API Integration', () => {
 
 				mocks.db.user.findUnique.mockResolvedValueOnce(mockUser);
 
-				const response = await ProfileGET(asRequestEvent({}, { user: createMockUser() as any }));
+				const response = await ProfileGET(asRequestEvent({}, { user: createMockUser() }));
 				const data = await response.json();
 
 				expect(mocks.db.user.findUnique).toHaveBeenCalledWith({
@@ -98,7 +98,7 @@ describe('User API Integration', () => {
 			});
 
 			it('returns 401 for unauthenticated user', async () => {
-				const response = await ProfileGET(asRequestEvent({} as any, { user: null, session: null }) as any);
+				const response = await ProfileGET(asRequestEvent({} as any, { user: null, session: null }));
 
 				expect(response.status).toBe(401);
 				expect(await response.json()).toEqual({
@@ -148,7 +148,7 @@ describe('User API Integration', () => {
 				});
 
 				const response = await ProfilePOST(
-					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-456' }) as any, session: null })
+					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-456' }), session: null })
 				);
 				const data = await response.json();
 
@@ -181,7 +181,7 @@ describe('User API Integration', () => {
 				};
 
 				const response = await ProfilePOST(
-					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-789' }) as any, session: null })
+					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-789' }), session: null })
 				);
 
 				expect(response.status).toBe(400);
@@ -199,7 +199,7 @@ describe('User API Integration', () => {
 				};
 
 				const response = await ProfilePOST(
-					asRequestEvent(mockRequest, { user: null, session: null }) as any
+					asRequestEvent(mockRequest, { user: null, session: null })
 				);
 
 				expect(response.status).toBe(401);
@@ -264,7 +264,7 @@ describe('User API Integration', () => {
 				});
 
 				const response = await AddressPOST(
-					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-parse' }) as any, session: null })
+					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-parse' }), session: null })
 				);
 				const data = await response.json();
 
@@ -309,7 +309,7 @@ describe('User API Integration', () => {
 				);
 
 				const response = await AddressPOST(
-					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-reps' }) as any, session: null })
+					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-reps' }), session: null })
 				);
 				const data = await response.json();
 
@@ -350,7 +350,7 @@ describe('User API Integration', () => {
 				};
 
 				const response = await AddressPOST(
-					asRequestEvent(mockRequest, { user: null, session: null }) as any
+					asRequestEvent(mockRequest, { user: null, session: null })
 				);
 
 				expect(response.status).toBe(401);
@@ -369,7 +369,7 @@ describe('User API Integration', () => {
 				mocks.db.user.update.mockRejectedValueOnce(new Error('Database error'));
 
 				const response = await AddressPOST(
-					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-error' }) as any, session: null })
+					asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-error' }), session: null })
 				);
 
 				expect(response.status).toBe(500);
@@ -410,7 +410,7 @@ describe('User API Integration', () => {
 
 			mocks.db.user.update.mockResolvedValueOnce({ id: 'user-xss' });
 
-			await ProfilePOST(asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-xss' }) as any }));
+			await ProfilePOST(asRequestEvent(mockRequest, { user: createMockUser({ id: 'user-xss' }) }));
 
 			// The actual sanitization would happen in the API handler
 			// Here we just verify the handler was called

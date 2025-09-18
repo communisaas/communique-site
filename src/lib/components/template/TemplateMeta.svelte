@@ -77,27 +77,27 @@
 		{/if}
 
 		<div class="flex flex-col items-end gap-2">
-			{#if ctaConfig()?.subtitle}
+			{#if ctaConfig?.subtitle}
 				<span class="hidden text-xs text-slate-500 sm:block">
-					{ctaConfig()?.subtitle}
+					{ctaConfig?.subtitle}
 				</span>
 			{/if}
 
 			<Button
 				variant="primary"
-				classNames="w-full sm:w-auto shrink-0 {ctaConfig()?.colors}"
+				classNames="w-full sm:w-auto shrink-0 {ctaConfig?.colors}"
 				onclick={handleUseTemplate}
 			>
-				{#if ctaConfig()?.icon}
-					{@const IconComponent = ctaConfig().icon}
+				{#if ctaConfig?.icon}
+					{@const IconComponent = ctaConfig.icon}
 					<IconComponent class="h-4 w-4" />
 				{/if}
 
 				<span class="hidden sm:inline">
-					{ctaConfig()?.desktop}
+					{ctaConfig?.desktop}
 				</span>
 				<span class="sm:hidden">
-					{ctaConfig()?.mobile}
+					{ctaConfig?.mobile}
 				</span>
 			</Button>
 		</div>

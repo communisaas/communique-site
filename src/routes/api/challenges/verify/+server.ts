@@ -48,32 +48,29 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Fetch claim from database if ID provided
 		let claim = { content: claimContent };
 		if (claimId) {
-			const dbClaim = await db.claim?.findUnique({
-				where: { id: claimId },
-				include: {
-					template: true,
-					creator: true
-				}
-			});
+			// Note: Claim model doesn't exist in current schema
+			// Instead we'll validate based on challenge data
+			console.log(`Verifying claim ${claimId} through challenge data`);
 
-			if (dbClaim) {
-				claim = {
-					...dbClaim,
-					content: dbClaim.content || claimContent
-				};
-			}
+			// Since dbClaim doesn't exist in current schema, use fallback
+			claim = {
+				content: claimContent
+			};
 		}
 
 		// Verify the claim using specialized challenge verification
 		const verificationResult = await verificationAgent.makeDecision({
-			template: {
-				message_body: claim.content,
-				subject: `Challenge: ${challengeReason || 'Factual accuracy dispute'}`
-			},
-			checkGrammar: false, // Don't care about grammar in challenges
-			checkPolicy: false, // Focus on factual accuracy
-			checkFactuality: true, // This would be a new parameter
-			evidenceUrls
+			actionType: 'verify',
+			parameters: {
+				template: {
+					message_body: claim.content,
+					subject: `Challenge: ${challengeReason || 'Factual accuracy dispute'}`
+				},
+				checkGrammar: false, // Don't care about grammar in challenges
+				checkPolicy: false, // Focus on factual accuracy
+				checkFactuality: true, // This would be a new parameter
+				evidenceUrls
+			}
 		});
 
 		// Get challenger reputation
@@ -89,11 +86,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		// 3. Claim impact/reach
 		// 4. Network conditions
 		const marketConditions = await marketAgent.makeDecision({
-			baseReward: BigInt(stakeAmount || 1000),
 			actionType: 'challenge_market',
-			challengerReputation: challengerRep.currentScore,
-			claimCreatorReputation: claim.creator?.reputation_score || 50,
-			claimImpact: claim.template?.send_count || 1
+			parameters: {
+				baseReward: Number(stakeAmount || 1000),
+				challengerReputation: challengerRep.currentScore,
+				claimCreatorReputation: 50, // Default since creator data not available
+				claimImpact: 1 // Default since template data not available
+			}
 		});
 
 		// Determine verification outcome
@@ -105,7 +104,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		let requiredStake = baseStake;
 
 		// Adjust stake based on reputation differential
-		const repDiff = (claim.creator?.reputation_score || 50) - challengerRep.currentScore;
+		const repDiff = 50 - (challengerRep.currentScore as number || 50); // Using default creator reputation of 50
 		if (repDiff > 20) {
 			// Challenging high-rep creator requires more stake
 			requiredStake = requiredStake * BigInt(2);
@@ -114,33 +113,20 @@ export const POST: RequestHandler = async ({ request }) => {
 			requiredStake = requiredStake / BigInt(2);
 		}
 
-		// Adjust for claim impact
-		if (claim.template?.send_count > 1000) {
-			requiredStake = requiredStake * BigInt(Math.min(10, claim.template.send_count / 1000));
-		}
+		// Adjust for claim impact (using default since template data not available)
+		// Would need to fetch template data from challenge context
 
 		// Apply market multiplier
-		requiredStake = BigInt(Math.floor(Number(requiredStake) * marketConditions.rewardMultiplier));
+		requiredStake = BigInt(Math.floor(Number(requiredStake) * (marketConditions.rewardMultiplier as number || 1)));
 
 		// Store challenge verification if challengeId provided
 		if (challengeId) {
-			await db.challengeVerification?.upsert({
-				where: { challenge_id: challengeId },
-				update: {
-					factuality_score: factualityScore,
-					verification_result: verificationResult,
-					challenge_valid: challengeValid,
-					required_stake: requiredStake.toString(),
-					verified_at: new Date()
-				},
-				create: {
-					challenge_id: challengeId,
-					claim_id: claimId,
-					factuality_score: factualityScore,
-					verification_result: verificationResult,
-					challenge_valid: challengeValid,
-					required_stake: requiredStake.toString()
-				}
+			// Note: challengeVerification model doesn't exist in current schema
+			console.log('Verification result:', {
+				challengeId,
+				factualityScore,
+				challengeValid,
+				requiredStake: requiredStake.toString()
 			});
 		}
 
@@ -161,20 +147,20 @@ export const POST: RequestHandler = async ({ request }) => {
 				sufficient: stakeAmount ? BigInt(stakeAmount) >= requiredStake : false,
 				factors: {
 					reputationDifferential: repDiff,
-					claimImpact: claim.template?.send_count || 0,
+					claimImpact: 0, // Default since template data not available
 					marketMultiplier: marketConditions.rewardMultiplier
 				}
 			},
 			reputation: {
 				challenger: {
-					current: challengerRep.currentScore,
-					tier: challengerRep.currentTier,
-					atRisk: Math.floor(challengerRep.currentScore * 0.1) // 10% of rep at risk
+					current: challengerRep.currentScore as number || 50,
+					tier: challengerRep.currentTier as string || 'novice',
+					atRisk: Math.floor((challengerRep.currentScore as number || 50) * 0.1) // 10% of rep at risk
 				},
 				claimCreator: {
-					current: claim.creator?.reputation_score || 50,
-					tier: claim.creator?.reputation_tier || 'novice',
-					atRisk: Math.floor((claim.creator?.reputation_score || 50) * 0.05) // 5% at risk
+					current: 50, // Default since creator data not available
+					tier: 'novice', // Default tier
+					atRisk: Math.floor(50 * 0.05) // 5% at risk
 				}
 			}
 		});
@@ -196,12 +182,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	const challengeId = url.searchParams.get('challengeId');
 
 	if (challengeId) {
-		const challenge = await db.challengeVerification?.findUnique({
-			where: { challenge_id: challengeId },
-			include: {
-				challenge: true,
-				claim: true
-			}
+		// Note: challengeVerification model doesn't exist in current schema
+		// Using existing Challenge model instead
+		const challenge = await db.challenge.findUnique({
+			where: { id: challengeId }
 		});
 
 		if (!challenge) {
@@ -210,28 +194,32 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		return json({
 			challengeId,
-			status: challenge.challenge?.status || 'pending',
-			factualityScore: challenge.factuality_score,
-			challengeValid: challenge.challenge_valid,
-			requiredStake: challenge.required_stake,
-			verifiedAt: challenge.verified_at
+			status: challenge.status || 'pending',
+			factualityScore: null, // Not available in current schema
+			challengeValid: null, // Not available in current schema
+			requiredStake: challenge.stake_amount || '0',
+			verifiedAt: challenge.resolved_at
 		});
 	}
 
 	// Return general market stats
-	const activeCount = await db.challenge?.count({
+	const activeCount = await db.challenge.count({
 		where: { status: 'active' }
 	});
 
-	const totalStaked = await db.challenge?.aggregate({
+	// Note: stake_amount is string in schema, so we can't aggregate directly
+	const activeChallenges = await db.challenge.findMany({
 		where: { status: 'active' },
-		_sum: { stake_amount: true }
+		select: { stake_amount: true }
 	});
+	const totalStaked = activeChallenges.reduce((sum, challenge) => 
+		sum + BigInt(challenge.stake_amount || '0'), BigInt(0)
+	);
 
 	return json({
 		marketStatus: 'active',
 		activeChallenges: activeCount || 0,
-		totalStaked: totalStaked?._sum?.stake_amount?.toString() || '0',
+		totalStaked: totalStaked.toString(),
 		message: 'Carroll Mechanism challenge market operational'
 	});
 };

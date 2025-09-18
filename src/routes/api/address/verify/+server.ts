@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
-import { addressLookup } from '$lib/core/congress/address-lookup';
+import { addressLookupService } from '$lib/core/congress/address-lookup';
 
 // Real address verification using Census Bureau Geocoding API (primary)
 export const POST: RequestHandler = async ({ request }) => {
@@ -68,7 +68,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Get real representatives using Congress.gov API
 		let representatives = [];
 		try {
-			const userReps = await addressLookup.lookupRepsByAddress({
+			const userReps = await addressLookupService.lookupRepsByAddress({
 				street: street,
 				city: city,
 				state: state,

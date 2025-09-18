@@ -86,7 +86,7 @@ export type AgentDecisionType =
 export interface AgentContext {
 	userId?: string;
 	userAddress?: string; // Blockchain address for VOTER Protocol integration
-	actionType?: 'cwc_message' | 'direct_action' | 'challenge_market' | 'template_creation' | string;
+	actionType?: 'cwc_message' | 'direct_action' | 'challenge_market' | 'template_creation' | 'verify' | string;
 	templateId?: string;
 	timestamp?: string;
 	historicalData?: unknown;
@@ -100,6 +100,12 @@ export interface AgentContext {
 	// Challenge-specific properties
 	qualityScore?: number;
 	recipients?: string[];
+	// Reputation-specific properties
+	reputationChange?: number;
+	// Additional properties for API calls
+	metadata?: Record<string, unknown>;
+	template?: unknown; // Template object for verification
+	baseReward?: number;
 }
 
 export abstract class BaseAgent {

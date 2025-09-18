@@ -9,7 +9,7 @@ import type {
 	Office
 } from './base';
 import type { Jurisdiction, Chamber } from '../models';
-import { addressLookup } from '$lib/core/congress/address-lookup';
+import { addressLookupService } from '$lib/core/congress/address-lookup';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 
 export class USCongressAdapter extends LegislativeAdapter {
@@ -75,7 +75,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 				zip: address.postal_code || ''
 			};
 
-			const userReps = await addressLookup.lookupRepsByAddress(properAddress);
+			const userReps = await addressLookupService.lookupRepsByAddress(properAddress);
 
 			return [
 				{
@@ -118,7 +118,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 				senate: [{ bioguideId: representative.bioguide_id, name: representative.name }]
 			};
 
-			const validation = await addressLookup.validateReps(userReps as any);
+			const validation = await addressLookupService.validateReps(userReps as any);
 			return validation.valid;
 		} catch {
 			return false;

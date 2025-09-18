@@ -303,7 +303,7 @@
 			<ValidatedInput
 				bind:value={data.preview}
 				type="textarea"
-				placeholder={placeholderText()}
+				placeholder={placeholderText}
 				rules={templateValidationRules.message_body}
 				rows={12}
 				class="composer-textarea h-full resize-none font-mono text-sm leading-relaxed"

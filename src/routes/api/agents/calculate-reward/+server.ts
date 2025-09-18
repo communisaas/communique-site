@@ -53,9 +53,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		const marketData = extractMarketDecision(marketDecision.decision);
 		const impactData = extractImpactDecision(impactDecision.decision);
 		
-		const baseReward = supplyData.rewardAmount;
+		const baseReward = supplyData.rewardAmount || 0;
 		const marketMultiplier = marketData.rewardMultiplier;
-		const impactMultiplier = impactData.impactMultiplier;
+		const impactMultiplier = impactData.impactMultiplier || 1.0;
 
 		const finalReward = BigInt(
 			Math.floor(Number(baseReward) * marketMultiplier * impactMultiplier)

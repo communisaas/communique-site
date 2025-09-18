@@ -2,9 +2,8 @@
  * Type guards for agent decision interfaces
  */
 
-// Supply agent decision structure
+// Supply agent decision structure - should match RewardParameters
 export interface SupplyDecision {
-	rewardAmount: number; // Add missing property for compatibility
 	baseRewardUSD: number;
 	multipliers: {
 		activity: number;
@@ -18,12 +17,14 @@ export interface SupplyDecision {
 	ethPrice: number;
 	finalRewardETH: number;
 	finalRewardWei: string;
-	// Additional properties
+	// Compatibility properties
+	rewardAmount?: number;
 	supplyImpact?: number;
 }
 
 // Market agent decision structure  
 export interface MarketDecision {
+	rewardAmount: number; // Add missing property for compatibility
 	decision: string;
 	confidence: number;
 	reasoning?: string[];
@@ -38,6 +39,7 @@ export interface MarketDecision {
 
 // Impact agent decision structure
 export interface ImpactDecision {
+	rewardAmount: number; // Add missing property for compatibility
 	templateId: string;
 	legislativeOutcomes: unknown[];
 	impactScore: number;
@@ -54,14 +56,28 @@ export interface VerificationDecision {
 	userId: string;
 	verificationLevel: 'unverified' | 'partial' | 'verified' | 'high_assurance';
 	trustScore: number;
-	verificationSources: unknown[];
+	verificationSources: VerificationSource[];
 	riskFactors: string[];
 	recommendedActions: string[];
 	zkProofHash?: string;
-	districtVerification?: unknown;
+	districtVerification?: {
+		congressionalDistrict: string;
+		confidence: number;
+		source: string;
+	};
 	// Template verification properties
 	corrections?: Record<string, string>;
 	severityLevel?: number;
+}
+
+// Verification source structure
+export interface VerificationSource {
+	provider: 'didit' | 'manual_review' | 'blockchain_history';
+	type: 'kyc' | 'zk_proof' | 'address_verification' | 'behavioral_analysis';
+	score: number; // 0-100
+	confidence: number; // 0-1
+	timestamp: Date;
+	metadata: unknown;
 }
 
 // Reputation agent decision structure
@@ -152,13 +168,14 @@ export function extractSupplyDecision(decision: unknown): SupplyDecision {
 	if (isSupplyDecision(decision)) {
 		return decision;
 	}
-	return { rewardAmount: 0, 
+	return { 
 		baseRewardUSD: 0, 
 		multipliers: { activity: 1, action: 1, reputation: 1, complexity: 1, time: 1, urgency: 1 },
 		totalMultiplier: 1,
 		ethPrice: 2000,
 		finalRewardETH: 0,
-		finalRewardWei: '0' 
+		finalRewardWei: '0',
+		rewardAmount: 0
 	};
 }
 
@@ -166,7 +183,8 @@ export function extractMarketDecision(decision: unknown): MarketDecision {
 	if (isMarketDecision(decision)) {
 		return decision;
 	}
-	return { rewardAmount: 0, 
+	return { 
+		rewardAmount: 0,
 		decision: 'neutral',
 		confidence: 0.5,
 		rewardMultiplier: 1, 
@@ -179,7 +197,8 @@ export function extractImpactDecision(decision: unknown): ImpactDecision {
 	if (isImpactDecision(decision)) {
 		return decision;
 	}
-	return { rewardAmount: 0, 
+	return { 
+		rewardAmount: 0,
 		templateId: '',
 		legislativeOutcomes: [],
 		impactScore: 0,
@@ -193,7 +212,7 @@ export function extractVerificationDecision(decision: unknown): VerificationDeci
 	if (isVerificationDecision(decision)) {
 		return decision;
 	}
-	return { rewardAmount: 0, 
+	return { 
 		userId: '',
 		verificationLevel: 'unverified',
 		trustScore: 0,

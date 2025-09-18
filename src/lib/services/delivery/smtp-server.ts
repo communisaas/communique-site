@@ -40,7 +40,7 @@ const server = new SMTPServer({
 
 	// Authentication handler (if auth is enabled)
 	onAuth(auth: { method: string; username?: string; password?: string }, session: object, callback: (error?: Error | null, result?: { user: string }) => void) {
-		if (config.smtp.auth.user && config.smtp.auth.pass) {
+		if (config.smtp.auth && config.smtp.auth.user && config.smtp.auth.pass) {
 			if (auth.username === config.smtp.auth.user && auth.password === config.smtp.auth.pass) {
 				return callback(null, { user: auth.username });
 			}

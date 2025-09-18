@@ -10,9 +10,10 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
-import type { VerificationDecision } from './type-guards';
+import type { VerificationDecision, VerificationSource } from './type-guards';
 import { db, prisma } from '$lib/core/db';
 
+// VerificationAssessment - internal assessment without rewardAmount (calculated separately)
 export interface VerificationAssessment {
 	userId: string;
 	verificationLevel: 'unverified' | 'partial' | 'verified' | 'high_assurance';
@@ -25,16 +26,10 @@ export interface VerificationAssessment {
 		congressionalDistrict: string;
 		confidence: number;
 		source: string;
-	};
-}
-
-export interface VerificationSource {
-	provider: 'didit' | 'manual_review' | 'blockchain_history';
-	type: 'kyc' | 'zk_proof' | 'address_verification' | 'behavioral_analysis';
-	score: number; // 0-100
-	confidence: number; // 0-1
-	timestamp: Date;
-	metadata: unknown;
+	} | undefined;
+	// Template verification properties
+	corrections?: Record<string, string>;
+	severityLevel?: number;
 }
 
 export class VerificationAgent extends BaseAgent {
@@ -101,9 +96,7 @@ export class VerificationAgent extends BaseAgent {
 				riskFactors,
 				recommendedActions,
 				zkProofHash: verificationData.zkProofHash,
-				districtVerification: verificationData.districtVerification as
-					| { congressionalDistrict: string; confidence: number; source: string }
-					| undefined
+				districtVerification: verificationData.districtVerification as { congressionalDistrict: string; confidence: number; source: string; } | undefined
 			};
 
 			const confidence = this.assessDecisionConfidence(assessment, sourceAnalysis);
@@ -122,7 +115,7 @@ export class VerificationAgent extends BaseAgent {
 			console.error('VerificationAgent decision error:', _error);
 			return this.createDecision(
 				{
-					userId: context.userId,
+					userId: context.userId || '',
 					verificationLevel: 'unverified',
 					trustScore: 0,
 					verificationSources: [],
@@ -139,7 +132,11 @@ export class VerificationAgent extends BaseAgent {
 	private async gatherVerificationData(userId: string): Promise<{
 		sources: VerificationSource[];
 		zkProofHash?: string;
-		districtVerification?: unknown;
+		districtVerification?: {
+			congressionalDistrict: string;
+			confidence: number;
+			source: string;
+		};
 	}> {
 		const user = await db.user.findUnique({
 			where: { id: userId },
@@ -361,7 +358,7 @@ export class VerificationAgent extends BaseAgent {
 	/**
 	 * Template verification mode - verifies template content for policy compliance
 	 */
-	private async performTemplateVerification(context: AgentContext): Promise<AgentDecision> {
+	private async performTemplateVerification(context: AgentContext): Promise<AgentDecision<VerificationAssessment>> {
 		const template = context.parameters?.template as any;
 		if (!template) {
 			throw new Error('Template required for template verification mode');
@@ -418,15 +415,33 @@ export class VerificationAgent extends BaseAgent {
 		const approved = severityLevel < 7;
 		const confidence = approved ? 0.8 : 0.3;
 
-		const verificationDecision = {
-			approved,
+		const verificationAssessment: VerificationAssessment = {
+			userId: context.userId || 'template-verification',
+			verificationLevel: approved ? 'verified' : 'unverified',
+			trustScore: approved ? 800 : 200,
+			verificationSources: [{
+				provider: 'manual_review' as const,
+				type: 'address_verification' as const,
+				score: approved ? 95 : 25,
+				confidence: confidence,
+				timestamp: new Date(),
+				metadata: { 
+					templateVerification: true,
+					approved,
+					corrections,
+					severityLevel,
+					violations
+				}
+			}],
+			riskFactors: violations,
+			recommendedActions: Object.keys(corrections).length > 0 ? 
+				[`Apply corrections to: ${Object.keys(corrections).join(', ')}`] : [],
 			corrections,
-			severityLevel,
-			violations
+			severityLevel
 		};
 
 		return this.createDecision(
-			verificationDecision,
+			verificationAssessment,
 			confidence,
 			`Template verification: ${approved ? 'APPROVED' : 'REJECTED'}. Severity level: ${severityLevel}. ${violations.length > 0 ? `Violations: ${violations.join(', ')}.` : ''} ${Object.keys(corrections).length > 0 ? `Corrections suggested for: ${Object.keys(corrections).join(', ')}.` : ''}`,
 			{

@@ -94,7 +94,7 @@
 
 <div class="space-y-1">
 	{#if label}
-		<label class={labelClasses()}>
+		<label class={labelClasses}>
 			{label}
 			{#if rules.required}
 				<span class="text-red-500">*</span>
@@ -105,7 +105,7 @@
 	{#if type === 'textarea'}
 		<textarea
 			bind:value
-			class={inputClasses()}
+			class={inputClasses}
 			{placeholder}
 			{disabled}
 			{rows}
@@ -117,7 +117,7 @@
 		<input
 			{type}
 			bind:value
-			class={inputClasses()}
+			class={inputClasses}
 			{placeholder}
 			{disabled}
 			oninput={handleInput}

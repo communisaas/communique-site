@@ -366,7 +366,7 @@ async function updateReputation({
  * Agent-orchestrated identity verification
  * Replaces static verification with intelligent multi-source analysis
  */
-async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, districtHash }) {
+async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, districtHash }: { userId: string; walletAddress: string; kycResult: any; trustScore: number; districtHash: string }) {
 	if (!userId) {
 		throw error(400, 'Missing required field: userId');
 	}
@@ -466,7 +466,7 @@ async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, di
 /**
  * Get user profile with civic action history
  */
-async function getUserProfile({ userId, walletAddress }) {
+async function getUserProfile({ userId, walletAddress }: { userId?: string; walletAddress?: string }) {
 	if (!userId && !walletAddress) {
 		throw error(400, 'Must provide either userId or walletAddress');
 	}
@@ -549,6 +549,14 @@ async function createChallenge({
 	evidenceIPFS,
 	stakeAmount,
 	category
+}: {
+	challengerId: string;
+	defenderId: string;
+	title: string;
+	description: string;
+	evidenceIPFS: string;
+	stakeAmount: string;
+	category: string;
 }) {
 	if (!challengerId || !defenderId || !title || !evidenceIPFS || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge creation');

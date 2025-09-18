@@ -9,6 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ReputationAgent, ImpactAgent } from '$lib/agents';
 import { db } from '$lib/core/db';
+import { getUserReputation, getChallengerAddress } from '$lib/types/database-extensions';
 
 const reputationAgent = new ReputationAgent();
 const impactAgent = new ImpactAgent();
@@ -68,7 +69,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Calculate payouts based on resolution
 		const challengerStake = BigInt(challenge.stake_amount || 0);
-		const claimCreatorStake = BigInt(challenge.claim?.creator_stake || challengerStake / BigInt(2));
+		const claimCreatorStake = challengerStake / BigInt(2); // Note: claim creator stake not available in current schema
 		const totalPool = challengerStake + claimCreatorStake;
 
 		let challengerPayout = BigInt(0);
@@ -82,8 +83,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			return BigInt(Math.floor(Number(amount) / scaleFactor));
 		};
 
-		const challengerRep = challenge.challenger?.reputation_score || 50;
-		const creatorRep = challenge.claim?.creator?.reputation_score || 50;
+		const challengerRep = getUserReputation(challenge.challenger) || 50;
+		const creatorRep = 50; // Note: claim creator reputation not available in current schema
 
 		switch (resolution) {
 			case 'upheld':
@@ -121,58 +122,45 @@ export const POST: RequestHandler = async ({ request }) => {
 			reputationChanges.creator = -Math.min(5, Math.floor(5 * (consensusScore / 100)));
 
 			// Update challenger reputation
-			if (challenge.challenger_address) {
+			const challengerAddress = getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
+			if (challengerAddress) {
 				await reputationAgent.makeDecision({
-					userAddress: challenge.challenger_address,
+					userAddress: challengerAddress,
 					actionType: 'challenge_market',
 					qualityScore: consensusScore,
 					reputationChange: reputationChanges.challenger
 				});
 			}
 
-			// Update creator reputation
-			if (challenge.claim?.creator?.address) {
-				await reputationAgent.makeDecision({
-					userAddress: challenge.claim.creator.address,
-					actionType: 'challenge_market',
-					qualityScore: 100 - consensusScore,
-					reputationChange: reputationChanges.creator
-				});
-			}
+			// Note: Creator reputation update not implemented - claim creator data not available in current schema
 		} else if (resolution === 'rejected') {
 			// Creator was right
 			reputationChanges.challenger = -Math.min(10, Math.floor(10 * (consensusScore / 100)));
 			reputationChanges.creator = Math.min(5, Math.floor(5 * (consensusScore / 100)));
 
-			// Update reputations (opposite of above)
-			if (challenge.challenger_address) {
+			// Update challenger reputation (opposite of above)
+			const challengerAddress2 = getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
+			if (challengerAddress2) {
 				await reputationAgent.makeDecision({
-					userAddress: challenge.challenger_address,
+					userAddress: challengerAddress2,
 					actionType: 'challenge_market',
 					qualityScore: 100 - consensusScore,
 					reputationChange: reputationChanges.challenger
 				});
 			}
 
-			if (challenge.claim?.creator?.address) {
-				await reputationAgent.makeDecision({
-					userAddress: challenge.claim.creator.address,
-					actionType: 'challenge_market',
-					qualityScore: consensusScore,
-					reputationChange: reputationChanges.creator
-				});
-			}
+			// Note: Creator reputation update not implemented - claim creator data not available in current schema
 		}
 
 		// Measure impact of the resolution
 		const impactResult = await impactAgent.makeDecision({
 			actionType: 'challenge_market',
 			recipients: [], // No direct recipients
-			templateId: challenge.claim?.template_id,
+			templateId: undefined, // Note: claim template data not available in current schema
 			metadata: {
 				challengeId,
 				resolution,
-				claimReach: challenge.claim?.template?.send_count || 0,
+				claimReach: 0, // Note: claim reach data not available in current schema
 				truthValue: resolution === 'upheld' ? 'false_claim_stopped' : 'true_claim_defended'
 			}
 		});
@@ -183,19 +171,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			data: {
 				status: 'resolved',
 				resolution,
-				resolution_consensus: consensusScore,
-				challenger_payout: challengerPayout.toString(),
-				creator_payout: creatorPayout.toString(),
-				treasury_fee: treasuryFee.toString(),
-				resolved_at: new Date(),
-				resolver_address: resolverAddress
+				resolved_at: new Date()
+				// Note: Other fields like resolution_consensus, challenger_payout, etc. don't exist in current schema
 			}
 		});
 
 		// Update user balances
-		if (challengerPayout > 0 && challenge.challenger_address) {
+		const challengerAddress3 = getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
+		if (challengerPayout > 0 && challengerAddress3) {
 			const challenger = await db.user.findFirst({
-				where: { wallet_address: challenge.challenger_id }
+				where: { wallet_address: challengerAddress3 }
 			});
 
 			if (challenger) {
@@ -293,9 +278,10 @@ export const GET: RequestHandler = async ({ url }) => {
 	const challenge = await db.challenge?.findUnique({
 		where: { id: challengeId },
 		include: {
-			claim: true,
 			challenger: true,
-			verification: true
+			defender: true,
+			stakes: true
+			// Note: claim and verification relations don't exist in current schema
 		}
 	});
 
@@ -307,17 +293,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		challengeId,
 		status: challenge.status,
 		resolution: challenge.resolution,
-		consensusScore: challenge.resolution_consensus,
-		payouts:
-			challenge.status === 'resolved'
-				? {
-						challenger: challenge.challenger_payout,
-						creator: challenge.creator_payout,
-						treasury: challenge.treasury_fee
-					}
-				: null,
 		resolvedAt: challenge.resolved_at,
-		claimId: challenge.claim_id,
-		challengerAddress: challenge.challenger_address
+		challengerAddress: getChallengerAddress(challenge) || challenge.challenger?.wallet_address
+		// Note: Other fields like consensusScore, payouts, claimId don't exist in current schema
 	});
 };

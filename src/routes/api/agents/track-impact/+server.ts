@@ -256,7 +256,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			templateId,
 			impact: {
 				score: totalImpactScore,
-				multiplier: extractImpactDecision(impactResult.decision).impactMultiplier,
+				multiplier: extractImpactDecision(impactResult.decision).impactMultiplier || 1.0,
 				hasCausation,
 				highestConfidence: maxConfidence,
 				observationCount: trackedObservations.length

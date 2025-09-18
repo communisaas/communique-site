@@ -3,7 +3,7 @@ ERROR BOUNDARY COMPONENT
 Catches and handles component failures gracefully
 -->
 <script lang="ts">
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { createEventDispatcher, onMount, type Snippet } from 'svelte';
 	import { AlertTriangle, RefreshCw, Home, Bug } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
@@ -33,7 +33,7 @@ Catches and handles component failures gracefully
 		enableLogging?: boolean;
 		autoRetryDelay?: number;
 		maxRetries?: number;
-		children?: unknown;
+		children?: Snippet;
 	} = $props();
 
 	// State

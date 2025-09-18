@@ -37,6 +37,9 @@ if (browser) {
 }
 
 // Pass server data to client if needed
+/**
+ * @param {{ data: any }} params
+ */
 export async function load({ data }) {
 	return {
 		...data

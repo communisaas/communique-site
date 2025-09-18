@@ -114,8 +114,24 @@ export class SupplyAgent extends BaseAgent {
 		} catch (_error) {
 			console.error('SupplyAgent decision error:', _error);
 			// Fallback to conservative values
+			const fallbackParams: RewardParameters = {
+				baseRewardUSD: 0.1,
+				multipliers: {
+					activity: 1.0,
+					action: 1.0,
+					reputation: 1.0,
+					complexity: 1.0,
+					time: 1.0,
+					urgency: 1.0
+				},
+				totalMultiplier: 1.0,
+				ethPrice: 2000,
+				finalRewardETH: 0.00005, // 0.1 / 2000
+				finalRewardWei: '100000000000000000'
+			};
+			
 			return this.createDecision(
-				{ baseRewardUSD: 0.1, finalRewardWei: '100000000000000000' }, // 0.1 ETH as fallback
+				fallbackParams,
 				0.3,
 				`Error in supply calculation, using conservative fallback: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
 				{ error: true }

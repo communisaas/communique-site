@@ -158,10 +158,8 @@
 				class="absolute inset-0"
 				in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 				out:fly={{ x: -20, duration: 300, easing: quintOut }}
-				onkeydown={handleKeydown}
 				role="group"
 				aria-label="Address collection step"
-				tabindex="0"
 			>
 				{#if currentStep === 'collect'}
 					<!-- Address Collection Step -->
