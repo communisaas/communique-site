@@ -3,8 +3,8 @@
  */
 
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
-import type { CWCSubmissionData, CWCSubmissionResult } from '$lib/services/delivery/types';
-import { getConfig } from '$lib/services/delivery/utils/config';
+import type { CWCSubmissionData, CWCSubmissionResult } from '../types/index.js';
+import { getConfig } from '../utils/config.js';
 
 export class CWCClient {
 	private client: AxiosInstance;
@@ -193,7 +193,7 @@ export class CWCClient {
 
 		for (const field of required) {
 			if (!data[field]) {
-				throw new Error(`Missing required field: ${field}`);
+				throw new Error(`Missing required field: ${String(field)}`);
 			}
 		}
 
@@ -210,7 +210,7 @@ export class CWCClient {
 
 		for (const field of profileRequired) {
 			if (!data.userProfile[field]) {
-				throw new Error(`Missing required user profile field: ${field}`);
+				throw new Error(`Missing required user profile field: ${String(field)}`);
 			}
 		}
 

@@ -19,6 +19,7 @@ export * from './n8n';
 export * from './template';
 export * from './templateConfig';
 export * from './user';
+export * from './challenge';
 
 // Geographic & Location Types
 export * from './location';

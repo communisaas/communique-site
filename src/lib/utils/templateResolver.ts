@@ -26,6 +26,17 @@ export interface ResolvedTemplate {
 	routingEmail?: string;
 }
 
+// Type for template variable replacements
+export type TemplateReplacements = Record<string, string | null>;
+
+// Type guard for template replacements
+export function isValidReplacements(obj: unknown): obj is TemplateReplacements {
+	if (typeof obj !== 'object' || obj === null) return false;
+	return Object.values(obj).every(
+		value => typeof value === 'string' || value === null
+	);
+}
+
 // Type guards for template validation
 export function isValidTemplate(template: unknown): template is Template {
 	if (typeof template !== 'object' || template === null) return false;
@@ -51,24 +62,33 @@ export function isValidEmailServiceUser(user: unknown): user is EmailServiceUser
 	);
 }
 
-// Type for representative objects
+// Type for representative objects with stronger typing
 interface Representative {
 	name: string;
 	party: string;
-	chamber: string;
+	chamber: 'house' | 'senate' | string;
 	state: string;
 	district: string;
 }
 
-// Type guard for representatives array
+// Type guard for a single representative
+function isValidRepresentative(rep: unknown): rep is Representative {
+	if (typeof rep !== 'object' || rep === null) return false;
+	const r = rep as Record<string, unknown>;
+	
+	return (
+		typeof r.name === 'string' && r.name.trim() !== '' &&
+		typeof r.party === 'string' &&
+		typeof r.chamber === 'string' && r.chamber.trim() !== '' &&
+		typeof r.state === 'string' &&
+		typeof r.district === 'string'
+	);
+}
+
+// Type guard for representatives array with enhanced validation
 function isValidRepresentativesArray(reps: unknown): reps is Representative[] {
 	if (!Array.isArray(reps)) return false;
-	return reps.every(rep => 
-		typeof rep === 'object' && 
-		rep !== null &&
-		typeof rep.name === 'string' &&
-		typeof rep.chamber === 'string'
-	);
+	return reps.length > 0 && reps.every(isValidRepresentative);
 }
 
 /**
@@ -113,7 +133,7 @@ export function resolveTemplate(
 		const userAddress = buildUserAddress(user);
 
 		// Block variable resolution with actual data
-		const replacements: Record<string, string | null> = {
+		const replacements: TemplateReplacements = {
 			'[Name]': userName, // allow empty string to preserve punctuation
 			'[Your Name]': userName,
 			'[Address]': user.street && user.city && user.state && user.zip ? userAddress : null,

@@ -9,8 +9,8 @@ import type {
 	TemplateData,
 	DeliveryNotification,
 	APIResponse
-} from '$lib/services/delivery/types';
-import { getConfig } from '$lib/services/delivery/utils/config';
+} from '../types/index.js';
+import { getConfig } from '../utils/config.js';
 
 export class CommuniqueClient {
 	private client: AxiosInstance;

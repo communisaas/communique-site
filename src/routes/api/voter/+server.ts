@@ -291,7 +291,14 @@ async function updateReputation({
 		});
 	}
 
-	const credibilityAssessment = reputationDecision.decision;
+	const credibilityAssessment = reputationDecision.decision as {
+		credibilityScore: number;
+		tier: string;
+		category: string;
+		confidence: number;
+		reasonCode: string;
+		verification: string;
+	};
 
 	// Get current user state for comparison
 	const user = await prisma.user.findUnique({

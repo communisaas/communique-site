@@ -9,6 +9,7 @@
  */
 
 import type { Template } from '$lib/types/template';
+import type { PrismaClient } from '@prisma/client';
 
 // Core viral patterns that transcend borders
 const VIRAL_PATTERNS = {
@@ -407,7 +408,7 @@ export function generateImageText(pattern: ViralPattern): string {
 export async function adaptPatternForCountry(
 	pattern: ViralPattern,
 	country_code: string,
-	db: unknown // PrismaClient type
+	db: PrismaClient
 ): Promise<ViralPattern> {
 	// Fetch legislative channel info
 	const channel = await db.legislative_channel.findUnique({

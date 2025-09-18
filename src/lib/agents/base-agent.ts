@@ -7,10 +7,10 @@
  * "Death to hardcoded tyranny" - agents optimize for human flourishing
  */
 
-export interface AgentDecision {
+export interface AgentDecision<T = unknown> {
 	agentId: string;
 	agentType: AgentType;
-	decision: unknown;
+	decision: T;
 	confidence: number; // 0-1 scale
 	reasoning: string;
 	parameters: Record<string, unknown>;
@@ -20,13 +20,15 @@ export interface AgentDecision {
 		max?: number;
 		validRange?: [number, number];
 	};
+	// Index signature for JSON compatibility with Prisma InputJsonValue
+	[key: string]: unknown;
 }
 
-export interface AgentConsensus {
-	decisions: AgentDecision[];
+export interface AgentConsensus<T = unknown> {
+	decisions: AgentDecision<T>[];
 	consensusReached: boolean;
 	consensusConfidence: number;
-	finalDecision: unknown;
+	finalDecision: T | null;
 	dissent?: string[];
 	timestamp: Date;
 }
@@ -43,14 +45,48 @@ export enum AgentType {
 export interface AgentCapability {
 	type: AgentType;
 	description: string;
-	capabilities: string[];
-	decisionTypes: string[];
+	capabilities: AgentCapabilityType[];
+	decisionTypes: AgentDecisionType[];
 	requiredContext: (keyof AgentContext)[];
 }
 
+export type AgentCapabilityType = 
+	| 'identity_verification'
+	| 'trust_score_calculation'
+	| 'risk_assessment'
+	| 'zk_proof_validation'
+	| 'dynamic_reward_calculation'
+	| 'network_activity_monitoring'
+	| 'inflation_prevention'
+	| 'reputation_multipliers'
+	| 'reward_optimization'
+	| 'market_analysis'
+	| 'incentive_adjustment'
+	| 'participation_prediction'
+	| 'legislative_outcome_tracking'
+	| 'causal_chain_analysis'
+	| 'impact_score_calculation'
+	| 'funding_recommendations'
+	| 'credibility_assessment'
+	| 'erc8004_attestations'
+	| 'reputation_risk_analysis';
+
+export type AgentDecisionType = 
+	| 'verification_assessment'
+	| 'trust_scoring'
+	| 'reward_calculation'
+	| 'supply_optimization'
+	| 'reward_optimization'
+	| 'incentive_design'
+	| 'impact_assessment'
+	| 'funding_calculation'
+	| 'credibility_assessment'
+	| 'reputation_scoring';
+
 export interface AgentContext {
 	userId?: string;
-	actionType?: string;
+	userAddress?: string; // Blockchain address for VOTER Protocol integration
+	actionType?: 'cwc_message' | 'direct_action' | 'challenge_market' | 'template_creation' | string;
 	templateId?: string;
 	timestamp?: string;
 	historicalData?: unknown;
@@ -61,6 +97,9 @@ export interface AgentContext {
 		recentActivity: unknown[];
 	};
 	safetyRails?: Record<string, [number, number]>; // [min, max] bounds
+	// Challenge-specific properties
+	qualityScore?: number;
+	recipients?: string[];
 }
 
 export abstract class BaseAgent {
@@ -94,12 +133,12 @@ export abstract class BaseAgent {
 		return Math.max(min, Math.min(max, value));
 	}
 
-	protected createDecision(
-		decision: unknown,
+	protected createDecision<T>(
+		decision: T,
 		confidence: number,
 		reasoning: string,
 		parameters: Record<string, unknown> = {}
-	): AgentDecision {
+	): AgentDecision<T> {
 		return {
 			agentId: this.agentId,
 			agentType: this.agentType,
@@ -166,7 +205,7 @@ export class AgentCoordinator {
 		};
 	}
 
-	private calculateConsensusDecision(decisions: AgentDecision[]): unknown {
+	private calculateConsensusDecision(decisions: AgentDecision[]): unknown | null {
 		// This is a simplified consensus mechanism
 		// In production, this would be much more sophisticated
 		// and specific to the type of decision being made

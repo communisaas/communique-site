@@ -214,6 +214,17 @@ export function getScrollPosition(): { x: number; y: number } {
 export function scrollTo(x: number, y: number, smooth: boolean = true): void {
 	if (!isBrowser) return;
 
+	// Input validation
+	if (typeof x !== 'number' || typeof y !== 'number') {
+		console.warn('scrollTo: x and y coordinates must be numbers');
+		return;
+	}
+
+	if (typeof smooth !== 'boolean') {
+		console.warn('scrollTo: smooth parameter must be a boolean');
+		smooth = true;
+	}
+
 	window.scrollTo({
 		left: x,
 		top: y,
@@ -224,21 +235,37 @@ export function scrollTo(x: number, y: number, smooth: boolean = true): void {
 export function isScrolledToBottom(threshold: number = 100): boolean {
 	if (!isBrowser) return false;
 
+	// Input validation
+	if (typeof threshold !== 'number' || threshold < 0) {
+		console.warn('isScrolledToBottom: threshold must be a non-negative number');
+		threshold = 100;
+	}
+
 	const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
 	return scrollTop + clientHeight >= scrollHeight - threshold;
 }
 
 // DOM UTILITIES - SSR-safe DOM manipulation
 export function addClass(element: Element | null, className: string): void {
-	if (element && isBrowser) {
-		element.classList.add(className);
+	if (!element || !isBrowser) return;
+	
+	if (typeof className !== 'string' || className.trim() === '') {
+		console.warn('addClass: className must be a non-empty string');
+		return;
 	}
+
+	element.classList.add(className);
 }
 
 export function removeClass(element: Element | null, className: string): void {
-	if (element && isBrowser) {
-		element.classList.remove(className);
+	if (!element || !isBrowser) return;
+	
+	if (typeof className !== 'string' || className.trim() === '') {
+		console.warn('removeClass: className must be a non-empty string');
+		return;
 	}
+
+	element.classList.remove(className);
 }
 
 export function toggleBodyScroll(locked: boolean): void {

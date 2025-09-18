@@ -7,7 +7,7 @@
  * This runs server-side only, keeping API keys secure.
  */
 
-import config from './config';
+import { getConfig } from './utils/config';
 
 /**
  * Get action type based on template properties
@@ -68,9 +68,10 @@ function generateMessageHash(recipient: any, subject: any, body: any) {
  */
 async function certifyEmailDelivery(params: any) {
 	const { userProfile, templateData, cwcResult, recipients = [] } = params;
+	const config = getConfig();
 
 	// Skip if certification is disabled
-	if (!config.voter?.enabled) {
+	if (!config.features.enableVoterCertification) {
 		console.log('[VOTER] Certification disabled');
 		return null;
 	}
@@ -111,11 +112,11 @@ async function certifyEmailDelivery(params: any) {
 		};
 
 		// Call VOTER Protocol API through Communiqué proxy
-		const response = await fetch(`${config.communique.apiUrl}/api/voter-proxy/certify`, {
+		const response = await fetch(`${config.api.communiqueUrl}/api/voter-proxy/certify`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-Mail-Server-Key': config.communique.mailServerKey || ''
+				'X-Mail-Server-Key': config.api.mailServerKey || ''
 			},
 			body: JSON.stringify({
 				userAddress:

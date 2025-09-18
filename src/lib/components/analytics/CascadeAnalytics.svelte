@@ -67,7 +67,7 @@
 		}
 	}
 
-	function getViralStatusBadge(status: string): 'success' | 'warning' | 'error' | 'info' {
+	function getViralStatusBadge(status: string): 'success' | 'warning' | 'error' | 'neutral' {
 		switch (status) {
 			case 'highly_viral':
 				return 'success';
@@ -80,11 +80,11 @@
 			case 'stagnant':
 				return 'error';
 			default:
-				return 'info';
+				return 'neutral';
 		}
 	}
 
-	function getGeographicReachBadge(reach: string): 'success' | 'warning' | 'error' | 'info' {
+	function getGeographicReachBadge(reach: string): 'success' | 'warning' | 'error' | 'neutral' {
 		switch (reach) {
 			case 'national':
 				return 'success';
@@ -95,7 +95,7 @@
 			case 'local':
 				return 'error';
 			default:
-				return 'info';
+				return 'neutral';
 		}
 	}
 

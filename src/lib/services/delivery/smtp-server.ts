@@ -4,7 +4,7 @@
  */
 
 import { SMTPServer } from 'smtp-server';
-import config from './config';
+import { getConfig } from './utils/config.js';
 import { parseIncomingMessage, validateMessage } from './message-parser';
 import { CWCClient } from './cwc-integration';
 const {
@@ -21,6 +21,7 @@ const cwcClient = new CWCClient();
 /**
  * SMTP Server Configuration
  */
+const config = getConfig();
 const server = new SMTPServer({
 	// Server configuration
 	banner: 'Delivery Platform',
@@ -38,7 +39,7 @@ const server = new SMTPServer({
 	},
 
 	// Authentication handler (if auth is enabled)
-	onAuth(auth: { username: string; password: string }, session: object, callback: (error?: Error | null, result?: { user: string }) => void) {
+	onAuth(auth: { method: string; username?: string; password?: string }, session: object, callback: (error?: Error | null, result?: { user: string }) => void) {
 		if (config.smtp.auth.user && config.smtp.auth.pass) {
 			if (auth.username === config.smtp.auth.user && auth.password === config.smtp.auth.pass) {
 				return callback(null, { user: auth.username });
@@ -49,7 +50,7 @@ const server = new SMTPServer({
 	},
 
 	// Mail handler - this is where the magic happens
-	onData(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: string[] } }, callback: (error?: Error) => void) {
+	onData(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: { address: string }[] } }, callback: (error?: Error) => void) {
 		handleIncomingMail(stream, session)
 			.then(() => callback())
 			.catch((error) => {
@@ -62,7 +63,7 @@ const server = new SMTPServer({
 /**
  * Handle incoming mail messages
  */
-async function handleIncomingMail(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: string[] } }): Promise<void> {
+async function handleIncomingMail(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: { address: string }[] } }): Promise<void> {
 	try {
 		console.log('Processing incoming message...');
 
@@ -117,10 +118,10 @@ async function handleIncomingMail(stream: NodeJS.ReadableStream, session: { enve
 /**
  * Check if the recipient address indicates certified delivery
  */
-function isCertifiedDeliveryAddress(recipients: any): boolean {
+function isCertifiedDeliveryAddress(recipients: { address: string }[]): boolean {
 	const certifiedPatterns = [/^congress@/i, /^certified@/i, /^cwc@/i];
 
-	return recipients.some((recipient: any) =>
+	return recipients.some((recipient) =>
 		certifiedPatterns.some((pattern) => pattern.test(recipient.address))
 	);
 }
@@ -161,11 +162,15 @@ async function processCertifiedDelivery(parsedMessage: any, userProfile: any, te
 				deliveryConfirmation: JSON.stringify(result)
 			});
 
-			if (certificationResult) {
-				console.log(`VOTER certification successful: ${certificationResult.certificationHash}`);
-				// Include certification in the delivery result
-				(result as any).certificationHash = certificationResult.certificationHash;
-				(result as any).rewardAmount = certificationResult.rewardAmount;
+			if (certificationResult && certificationResult.success) {
+				if ('transactionHash' in certificationResult) {
+					console.log(`VOTER certification successful: ${certificationResult.transactionHash}`);
+					// Include certification in the delivery result
+					(result as any).certificationHash = certificationResult.transactionHash;
+					(result as any).actionHash = certificationResult.actionHash;
+				} else {
+					console.log(`VOTER certification disabled: No details available`);
+				}
 			}
 		} else {
 			console.error(`CWC submission failed: ${result.error}`);
@@ -201,16 +206,16 @@ function startServer() {
 	const port = config.smtp.port;
 	const host = config.smtp.host;
 
-	server.listen(port, host, (err: any) => {
-		if (err) {
-			console.error('Failed to start SMTP server:', err);
-			process.exit(1);
-		}
+	server.on('error', (err: any) => {
+		console.error('Failed to start SMTP server:', err);
+		process.exit(1);
+	});
 
+	server.listen(Number(port), host, () => {
 		console.log(`Communiqué SMTP Server listening on ${host}:${port}`);
 		console.log(`Ready to process certified delivery messages`);
-		console.log(`CWC API: ${config.cwc.apiUrl}`);
-		console.log(`Communiqué API: ${config.communique.apiUrl}`);
+		console.log(`CWC API: ${config.api.cwcUrl}`);
+		console.log(`Communiqué API: ${config.api.communiqueUrl}`);
 	});
 }
 

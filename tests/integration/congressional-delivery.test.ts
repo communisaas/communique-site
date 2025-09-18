@@ -143,7 +143,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(routingEmail)
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest));
+			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -173,7 +173,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest));
+			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -194,7 +194,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(guestEmail)
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest));
+			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -220,7 +220,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest));
+			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 
 			expect(response.status).toBe(500);
 			const errorData = JSON.parse(await response.text());
@@ -252,7 +252,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest));
+			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -270,7 +270,7 @@ describe('Congressional Delivery Integration', () => {
 				})
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest));
+			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 
 			expect(response.status).toBe(400);
 			const errorData = JSON.parse(await response.text());
@@ -284,7 +284,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest));
+			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 
 			expect(response.status).toBe(404);
 			const errorData = JSON.parse(await response.text());
@@ -307,7 +307,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			await POST(createMockRequestEvent(mockRequest));
+			await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 
 			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalledWith(
 				expect.objectContaining({

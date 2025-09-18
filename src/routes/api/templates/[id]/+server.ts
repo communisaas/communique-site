@@ -73,7 +73,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Prepare the data for the update
-		const dataToUpdate: TemplateUpdateData & { is_public?: boolean } = { ...updateData };
+		const dataToUpdate: any = { ...updateData };
 
 		// If the status is being changed to 'published', also set 'is_public' to true
 		if (updateData.status && updateData.status === 'published') {

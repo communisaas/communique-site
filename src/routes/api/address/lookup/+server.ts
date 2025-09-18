@@ -5,7 +5,33 @@ import { addressLookup } from '$lib/core/congress/address-lookup';
 // POST /api/address/lookup - Find representatives for a given address
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const data = await request.json();
+		const data: unknown = await request.json();
+		
+		// Type guard for request data
+		const isValidRequestData = (obj: unknown): obj is {
+			street: string;
+			city: string; 
+			state: string;
+			zip: string;
+		} => {
+			return (
+				typeof obj === 'object' &&
+				obj !== null &&
+				'street' in obj &&
+				'city' in obj &&
+				'state' in obj &&
+				'zip' in obj &&
+				typeof (obj as any).street === 'string' &&
+				typeof (obj as any).city === 'string' &&
+				typeof (obj as any).state === 'string' &&
+				typeof (obj as any).zip === 'string'
+			);
+		};
+
+		if (!isValidRequestData(data)) {
+			throw error(400, 'Invalid request data format');
+		}
+
 		const { street, city, state, zip } = data;
 
 		// Validate required fields

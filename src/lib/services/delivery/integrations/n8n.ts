@@ -9,8 +9,8 @@ import type {
 	VerificationResult,
 	ConsensusResult,
 	ReputationUpdate
-} from '$lib/types';
-import { getConfig } from '$lib/services/delivery/utils/config';
+} from '../types/index.js';
+import { getConfig } from '../utils/config.js';
 
 export class N8NClient {
 	private client: AxiosInstance;

@@ -27,6 +27,7 @@ export interface EnvironmentConfig {
 		n8nUrl: string;
 		n8nApiKey: string;
 		n8nWebhookSecret: string;
+		mailServerKey: string;
 	};
 	features: {
 		enableVoterCertification: boolean;
@@ -66,6 +67,8 @@ const EnvSchema = z.object({
 	N8N_URL: z.string().url().default('http://localhost:5678'),
 	N8N_API_KEY: z.string().default(''),
 	N8N_WEBHOOK_SECRET: z.string().default(''),
+
+	MAIL_SERVER_KEY: z.string().default(''),
 
 	// Feature Flags
 	ENABLE_VOTER_CERTIFICATION: z.coerce.boolean().default(false),
@@ -142,7 +145,8 @@ class ConfigManager {
 					voterApiKey: env.VOTER_API_KEY,
 					n8nUrl: env.N8N_URL,
 					n8nApiKey: env.N8N_API_KEY,
-					n8nWebhookSecret: env.N8N_WEBHOOK_SECRET
+					n8nWebhookSecret: env.N8N_WEBHOOK_SECRET,
+					mailServerKey: env.MAIL_SERVER_KEY
 				},
 
 				features: {

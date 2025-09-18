@@ -83,8 +83,8 @@
 </div>
 
 <div class="mb-6 space-y-4">
-	<div>
-		<label class="mb-3 block text-sm font-medium text-slate-700"> Select your connection: </label>
+	<fieldset>
+		<legend class="mb-3 block text-sm font-medium text-slate-700">Select your connection:</legend>
 		<div class="space-y-2">
 			{#each connectionOptions as connection}
 				<button
@@ -118,7 +118,7 @@
 				class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
 			/>
 		{/if}
-	</div>
+	</fieldset>
 
 	{#if isLocalGovernment}
 		<div>

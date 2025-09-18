@@ -31,6 +31,11 @@ import { SupplyAgent } from './supply-agent';
 import { MarketAgent } from './market-agent';
 import { ImpactAgent } from './impact-agent';
 import { ReputationAgent } from './reputation-agent';
+import { 
+	extractSupplyDecision, 
+	extractMarketDecision, 
+	extractImpactDecision
+} from './type-guards';
 
 /**
  * Agent Coordinator
@@ -108,10 +113,14 @@ export class AgentCoordinator {
 			}
 		});
 
-		// Calculate final reward
-		const baseReward = (supply.decision as any)?.finalRewardWei || '1000000000000000000';
-		const marketMultiplier = (market.decision as any)?.rewardMultiplier || 1.0;
-		const impactMultiplier = (impact.decision as any)?.impactMultiplier || 1.0;
+		// Calculate final reward with type safety
+		const supplyDecision = extractSupplyDecision(supply.decision);
+		const marketDecision = extractMarketDecision(market.decision);
+		const impactDecision = extractImpactDecision(impact.decision);
+		
+		const baseReward = supplyDecision.finalRewardWei || '1000000000000000000';
+		const marketMultiplier = marketDecision.rewardMultiplier || 1.0;
+		const impactMultiplier = impactDecision.impactScore > 0 ? 1.1 : 1.0; // Simple impact bonus
 
 		const finalReward = BigInt(
 			Math.floor(Number(baseReward) * marketMultiplier * impactMultiplier)

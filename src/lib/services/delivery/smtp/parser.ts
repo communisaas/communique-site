@@ -4,7 +4,7 @@
 
 import { type ParsedMail } from 'mailparser';
 import { z } from 'zod';
-import type { ParsedIncomingMessage } from '$lib/services/delivery/types';
+import type { ParsedIncomingMessage } from '../types/index.js';
 
 // ============================================================================
 // Validation Schemas
@@ -60,7 +60,10 @@ export async function parseIncomingMessage(mail: ParsedMail): Promise<ParsedInco
 		});
 
 		return {
-			...validatedData,
+			senderEmail: validatedData.senderEmail,
+			templateIdentifier: validatedData.templateIdentifier,
+			personalConnection: validatedData.personalConnection,
+			certifiedDelivery: validatedData.certifiedDelivery,
 			rawMessage: mail
 		};
 	} catch (_error) {

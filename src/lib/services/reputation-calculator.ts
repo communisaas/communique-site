@@ -9,6 +9,19 @@
 import { db } from '$lib/core/db';
 import type { TemplateVerification, User } from '@prisma/client';
 
+// Type for user actions used in gaming detection
+interface UserAction {
+	created_at: Date;
+	quality_score?: number;
+	message_body?: string;
+}
+
+// Type guard for user actions
+function isValidUserAction(action: unknown): action is UserAction {
+	return typeof action === 'object' && action !== null &&
+		(action as UserAction).created_at instanceof Date;
+}
+
 interface ReputationUpdate {
 	delta: number;
 	reason: string;
@@ -316,7 +329,7 @@ export class ReputationCalculator {
 	 */
 	async detectGaming(
 		userId: string,
-		recentActions: unknown[]
+		recentActions: UserAction[]
 	): Promise<{
 		suspicious: boolean;
 		penalty?: number;
@@ -328,7 +341,7 @@ export class ReputationCalculator {
 		// Check for rapid template farming
 		const actionsPerHour = recentActions.filter((a) => {
 			const hourAgo = new Date(Date.now() - 3600000);
-			return new Date(a.created_at) > hourAgo;
+			return a.created_at > hourAgo;
 		}).length;
 
 		if (actionsPerHour > 10) {
@@ -345,7 +358,7 @@ export class ReputationCalculator {
 		}
 
 		// Check for coordinated activity (similar templates in short time)
-		const templates = recentActions.map((a) => a.message_body).filter(Boolean);
+		const templates = recentActions.map((a) => a.message_body).filter(Boolean) as string[];
 		const similarity = this.checkTemplateSimilarity(templates);
 		if (similarity > 0.9 && templates.length > 3) {
 			reasons.push('Potential template farming detected');

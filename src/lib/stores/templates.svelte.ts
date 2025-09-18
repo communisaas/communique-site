@@ -3,11 +3,21 @@ import type { Template } from '$lib/types/template';
 
 // Type guard for Template
 function isTemplate(obj: unknown): obj is Template {
+	if (typeof obj !== 'object' || obj === null) {
+		return false;
+	}
+	
+	const template = obj as Template;
 	return (
-		typeof obj === 'object' &&
-		obj !== null &&
-		typeof (obj as Template).id === 'string' &&
-		typeof (obj as Template).title === 'string'
+		typeof template.id === 'string' &&
+		typeof template.title === 'string' &&
+		typeof template.description === 'string' &&
+		typeof template.category === 'string' &&
+		typeof template.type === 'string' &&
+		(template.deliveryMethod === 'email' || template.deliveryMethod === 'certified' || template.deliveryMethod === 'direct') &&
+		typeof template.message_body === 'string' &&
+		typeof template.preview === 'string' &&
+		typeof template.is_public === 'boolean'
 	);
 }
 
@@ -125,7 +135,12 @@ function createTemplateStore() {
 					throw new Error(result.error || 'Failed to create template');
 				}
 
-				const newTemplate = result.data;
+				const newTemplate = result.data as Template;
+
+				// Type guard validation
+				if (!isTemplate(newTemplate)) {
+					throw new Error('Invalid template data received from API');
+				}
 
 				// Update state directly
 				state.templates = [...state.templates, newTemplate];
@@ -148,7 +163,12 @@ function createTemplateStore() {
 					throw new Error(result.error || 'Failed to update template');
 				}
 
-				const updatedTemplate = result.data;
+				const updatedTemplate = result.data as Template;
+
+				// Type guard validation
+				if (!isTemplate(updatedTemplate)) {
+					throw new Error('Invalid template data received from API');
+				}
 
 				// Update state directly
 				state.templates = state.templates.map((t) => (t.id === id ? updatedTemplate : t));

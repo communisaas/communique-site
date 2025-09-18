@@ -45,9 +45,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		const result = await reputationAgent.makeDecision({
 			userId,
 			actionType,
-			qualityScore,
-			currentReputation,
-			parameters: { userAddress }
+			parameters: { 
+				userAddress,
+				qualityScore,
+				currentReputation
+			}
 		});
 
 		// Update user record if userId provided

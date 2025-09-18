@@ -17,7 +17,7 @@ declare module '@prisma/client' {
 		preferences?: unknown;
 	}
 
-	interface user_session {
+	interface UserSession {
 		analytics_events?: AnalyticsEvent[];
 		page_views?: number;
 		events_count?: number;

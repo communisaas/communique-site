@@ -6,6 +6,17 @@
 	import { X, MapPin, CheckCircle2, AlertCircle, Search, Home } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 
+	type Representative = {
+		name: string;
+		office: string;
+	};
+
+	type VerificationResult = {
+		verified?: boolean;
+		correctedAddress?: string;
+		representatives?: Representative[];
+	};
+
 	let {
 		template
 	}: {
@@ -47,7 +58,7 @@
 	let zipCode = $state('');
 	let addressError = $state('');
 	let isVerifying = $state(false);
-	let verificationResult = $state<Record<string, unknown> | null>(null);
+	let verificationResult = $state<VerificationResult | null>(null);
 	let selectedAddress = $state('');
 
 	function handleClose() {
@@ -95,9 +106,9 @@
 				zipCode
 			});
 
-			if (result.success && result.data?.verified) {
-				verificationResult = result.data;
-				selectedAddress = result.data.correctedAddress || fullAddress;
+			if (result.success && (result.data as VerificationResult)?.verified) {
+				verificationResult = result.data as VerificationResult;
+				selectedAddress = (result.data as VerificationResult).correctedAddress || fullAddress;
 				currentStep = 'verify';
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';
@@ -113,7 +124,7 @@
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
-			representatives: verificationResult?.representatives
+			representatives: verificationResult?.representatives as Array<Record<string, unknown>> | undefined
 		});
 	}
 

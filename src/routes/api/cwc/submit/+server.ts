@@ -83,7 +83,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			// Look up representatives based on zip code
 			const { addressLookup } = await import('$lib/core/congress/address-lookup');
 			const reps = await addressLookup(user.zip);
-			targetRecipients = reps.map((rep) => ({
+			targetRecipients = reps.map((rep: any) => ({
 				bioguideId: rep.bioguideId,
 				name: rep.name,
 				chamber: rep.role.includes('Senator') ? 'senate' : 'house',
@@ -149,11 +149,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						error: result.error || 'Submission failed'
 					});
 				}
-			} catch (_error) {
+			} catch (_error: unknown) {
 				console.error('Error:', _error);
 				errors.push({
 					recipient: recipient.name,
-					error: _error.message
+					error: _error instanceof Error ? _error.message : 'Unknown error'
 				});
 			}
 		}
@@ -195,7 +195,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		return json(response);
-	} catch (_error) {
+	} catch (_error: unknown) {
 		console.error('Error:', _error);
 		return json(
 			{

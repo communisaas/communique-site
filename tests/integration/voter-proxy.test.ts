@@ -58,7 +58,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const response = await POST(createMockRequestEvent(request));
+			const response = await POST(createMockRequestEvent(request, '/api/voter') as any);
 			const data = await response.json();
 
 			// Verify fetch was called with correct parameters
@@ -104,7 +104,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const response = await POST(createMockRequestEvent(request));
+			const response = await POST(createMockRequestEvent(request, '/api/voter') as any);
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
@@ -130,7 +130,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const response = await POST(createMockRequestEvent(request));
+			const response = await POST(createMockRequestEvent(request, '/api/voter') as any);
 			const data = await response.json();
 
 			// Should return success without calling VOTER
@@ -159,7 +159,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 				})
 			});
 
-			const response = await POST(createMockRequestEvent(request));
+			const response = await POST(createMockRequestEvent(request, '/api/voter') as any);
 			const data = await response.json();
 
 			expect(response.status).toBe(500);
@@ -181,7 +181,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 			const { GET } = await import('../../src/routes/api/voter/+server');
 
 			const url = new URL('http://localhost/api/voter/reputation/0x123');
-			const response = await GET(createMockRequestEvent(new Request(url.toString())));
+			const response = await GET(createMockRequestEvent(new Request(url.toString() as any), '/api/voter'));
 			const data = await response.json();
 
 			expect(mockFetch).toHaveBeenCalledWith(
@@ -223,7 +223,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 			});
 
 			const url = new URL('http://localhost/api/voter/consensus');
-			const response = await POST(createMockRequestEvent(request));
+			const response = await POST(createMockRequestEvent(request, '/api/voter') as any);
 			const data = await response.json();
 
 			// Verify user address header is forwarded
@@ -259,7 +259,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			const url = new URL('http://localhost/api/voter/verify');
 
-			await expect(POST(createMockRequestEvent(request))).rejects.toMatchObject({
+			await expect(POST(createMockRequestEvent(request, '/api/voter') as any)).rejects.toMatchObject({
 				status: 429
 			});
 		});
@@ -279,7 +279,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 			const { GET } = await import('../../src/routes/api/voter/+server');
 
 			const url = new URL('http://localhost/api/voter/test');
-			const response = await GET(createMockRequestEvent(new Request(url.toString())));
+			const response = await GET(createMockRequestEvent(new Request(url.toString() as any), '/api/voter'));
 			const data = await response.json();
 
 			// API key should not be in response
@@ -307,7 +307,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 			});
 
 			const url = new URL('http://localhost/api/voter/test');
-			const response = await POST(createMockRequestEvent(request));
+			const response = await POST(createMockRequestEvent(request, '/api/voter') as any);
 
 			// Should still process but CORS headers would block in browser
 			expect(response.status).not.toBe(403);
@@ -335,10 +335,10 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 			const url = new URL('http://localhost/api/voter/test');
 
 			// First attempt fails
-			await expect(POST(createMockRequestEvent(request))).rejects.toThrow();
+			await expect(POST(createMockRequestEvent(request, '/api/voter') as any)).rejects.toThrow();
 
 			// Manual retry succeeds
-			const response = await POST(createMockRequestEvent(request));
+			const response = await POST(createMockRequestEvent(request, '/api/voter') as any);
 			expect(response.status).toBe(200);
 		});
 
@@ -355,7 +355,7 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			const url = new URL('http://localhost/api/voter/test');
 
-			await expect(GET(createMockRequestEvent(new Request(url.toString())))).rejects.toMatchObject({
+			await expect(GET(createMockRequestEvent(new Request(url.toString() as any), '/api/voter'))).rejects.toMatchObject({
 				status: 500
 			});
 		});

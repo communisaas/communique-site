@@ -3,14 +3,17 @@ import type { RequestEvent } from '@sveltejs/kit';
 /**
  * Create a mock RequestEvent for testing
  */
-export function createMockRequestEvent(request: Request): RequestEvent {
-  const url = new URL(request.url);
+export function createMockRequestEvent(
+  request: Request | any,
+  routeId: string = '/'
+): any {
+  const url = request.url ? new URL(request.url) : new URL('http://localhost:3000');
   
   return {
-    request,
+    request: request as Request,
     url,
     params: {},
-    route: { id: url.pathname },
+    route: { id: routeId },
     cookies: {
       get: () => undefined,
       getAll: () => [],
@@ -20,26 +23,34 @@ export function createMockRequestEvent(request: Request): RequestEvent {
     },
     fetch: global.fetch,
     getClientAddress: () => '127.0.0.1',
-    locals: {},
+    locals: {
+      user: null,
+      session: null
+    },
     platform: undefined,
     setHeaders: () => {},
     isDataRequest: false,
     isSubRequest: false
-  } as RequestEvent;
+  };
 }
 
 /**
  * Create a mock RequestEvent with additional properties
  */
-export function createMockRequestEventWithParams(
+export function createMockRequestEventWithParams<Params extends Record<string, string> = Record<string, string>>(
   request: Request, 
-  params: Record<string, string> = {},
-  locals: Record<string, any> = {}
-): RequestEvent {
-  const baseEvent = createMockRequestEvent(request);
+  params: Params = {} as Params,
+  locals: Partial<App.Locals> = {},
+  routeId: string = '/'
+): RequestEvent<Params> {
+  const baseEvent = createMockRequestEvent<Params>(request, routeId);
   return {
     ...baseEvent,
     params,
-    locals
+    locals: {
+      user: null,
+      session: null,
+      ...locals
+    }
   };
 }

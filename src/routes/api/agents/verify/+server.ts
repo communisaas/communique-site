@@ -46,24 +46,27 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Store verification result if templateId provided
 		if (templateId) {
+			const verificationDecision = extractVerificationDecision(result.decision);
+			const isApproved = result.confidence > 0.7; // Determine approval based on confidence threshold
+			
 			await db.templateVerification.upsert({
 				where: { template_id: templateId },
 				update: {
-					correction_log: extractVerificationDecision(result.decision).corrections,
-					severity_level: extractVerificationDecision(result.decision).severityLevel,
-					moderation_status: result.approved ? 'approved' : 'pending',
-					agent_votes: { verification: result } as any,
+					correction_log: JSON.parse(JSON.stringify(verificationDecision.corrections)),
+					severity_level: verificationDecision.severityLevel,
+					moderation_status: isApproved ? 'approved' : 'pending',
+					agent_votes: JSON.parse(JSON.stringify({ verification: result })),
 					consensus_score: result.confidence || 0.5,
 					reviewed_at: new Date()
 				},
 				create: {
 					template_id: templateId,
 					user_id: 'system', // Default user for automated verification
-					correction_log: extractVerificationDecision(result.decision).corrections,
-					original_content: { subject: templateData.subject, body: templateData.message_body },
-					severity_level: extractVerificationDecision(result.decision).severityLevel,
-					moderation_status: result.approved ? 'approved' : 'pending',
-					agent_votes: { verification: result } as any,
+					correction_log: JSON.parse(JSON.stringify(verificationDecision.corrections)),
+					original_content: JSON.parse(JSON.stringify({ subject: templateData.subject, body: templateData.message_body })),
+					severity_level: verificationDecision.severityLevel,
+					moderation_status: isApproved ? 'approved' : 'pending',
+					agent_votes: JSON.parse(JSON.stringify({ verification: result })),
 					consensus_score: result.confidence || 0.5
 				}
 			});

@@ -17,15 +17,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const processedErrors: ErrorReport[] = errors.map((error: unknown) => ({
-			message: _error.message || 'Unknown error',
-			stack: error.stack,
-			context: error.context || 'unknown',
-			timestamp: error.timestamp || Date.now(),
-			userAgent: error.userAgent,
-			url: error.url,
+			message: (error as any)?.message || 'Unknown error',
+			stack: (error as any)?.stack,
+			context: (error as any)?.context || 'unknown',
+			timestamp: (error as any)?.timestamp || Date.now(),
+			userAgent: (error as any)?.userAgent,
+			url: (error as any)?.url,
 			userId: locals.user?.id,
 			additionalData: {
-				...error.additionalData,
+				...(error as any)?.additionalData,
 				sessionId: locals.session?.id,
 				batchId: crypto.randomUUID()
 			}
@@ -46,7 +46,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			success: true,
 			message: `${processedErrors.length} errors reported successfully`
 		});
-	} catch (_error) {
+	} catch (_error: unknown) {
 		console.error('Failed to process batch error report:', _error);
 		return json(
 			{

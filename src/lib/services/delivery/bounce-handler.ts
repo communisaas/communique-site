@@ -3,8 +3,8 @@
  * Sends helpful bounce emails when messages can't be processed
  */
 
-import nodemailer from 'nodemailer';
-import jwt from 'jsonwebtoken';
+import * as nodemailer from 'nodemailer';
+import * as jwt from 'jsonwebtoken';
 import config from './config';
 import { detectPotentialUser, fetchTemplateBySlug } from './user-resolution';
 

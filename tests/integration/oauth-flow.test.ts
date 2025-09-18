@@ -119,7 +119,20 @@ describe('OAuth Flow Integration', () => {
 
 	describe('OAuth Callback Handler', () => {
 		it('should handle new user registration', async () => {
-			const config = { provider: 'google', requiresCodeVerifier: true };
+			const config = { 
+				provider: 'google', 
+				requiresCodeVerifier: true,
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				redirectUrl: 'http://localhost:5173/auth/callback/google',
+				userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+				scope: 'email profile',
+				createOAuthClient: () => ({} as any),
+				exchangeTokens: vi.fn().mockResolvedValue({ access_token: 'test-token' }),
+				getUserInfo: vi.fn().mockResolvedValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				mapUserData: vi.fn().mockReturnValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				extractTokenData: vi.fn().mockReturnValue({ accessToken: 'test-token' })
+			};
 			const url = new URL('https://example.com/callback?code=valid-code&state=valid-state');
 			const cookies = {
 				get: vi.fn().mockImplementation((key) => {
@@ -291,12 +304,30 @@ describe('OAuth Flow Integration', () => {
 			const mockSetCookie = vi.fn();
 
 			const result = await oauthCallbackHandler.handleCallback(
+				{ 
+				provider: 'google', 
+				requiresCodeVerifier: true,
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				redirectUrl: 'http://localhost:5173/auth/callback/google',
+				userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+				scope: 'email profile',
+				createOAuthClient: () => ({} as any),
+				exchangeTokens: vi.fn().mockResolvedValue({ access_token: 'test-token' }),
+				getUserInfo: vi.fn().mockResolvedValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				mapUserData: vi.fn().mockReturnValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				extractTokenData: vi.fn().mockReturnValue({ accessToken: 'test-token' })
+			},
+				new URL('https://example.com/callback?code=valid-code&state=valid-state'),
 				{
-					provider: 'google',
-					code: 'valid-code',
-					state: 'valid-state',
-					codeVerifier: 'verifier'
-				},
+					get: vi.fn().mockImplementation((key) => {
+						if (key === 'oauth_state') return 'valid-state';
+						if (key === 'oauth_code_verifier') return 'verifier';
+						if (key === 'oauth_return_to') return '/profile';
+						return null;
+					}),
+					set: vi.fn()
+				} as any,
 				{ setCookie: mockSetCookie }
 			);
 
@@ -329,25 +360,64 @@ describe('OAuth Flow Integration', () => {
 
 	describe('Security Checks', () => {
 		it('should validate CSRF tokens', async () => {
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: 'verifier',
-				expectedState: 'different-state' // CSRF mismatch
-			});
+			const result = await oauthCallbackHandler.handleCallback(
+				{ 
+				provider: 'google', 
+				requiresCodeVerifier: true,
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				redirectUrl: 'http://localhost:5173/auth/callback/google',
+				userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+				scope: 'email profile',
+				createOAuthClient: () => ({} as any),
+				exchangeTokens: vi.fn().mockResolvedValue({ access_token: 'test-token' }),
+				getUserInfo: vi.fn().mockResolvedValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				mapUserData: vi.fn().mockReturnValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				extractTokenData: vi.fn().mockReturnValue({ accessToken: 'test-token' })
+			},
+				new URL('https://example.com/callback?code=valid-code&state=valid-state'),
+				{
+					get: vi.fn().mockImplementation((key) => {
+						if (key === 'oauth_state') return 'valid-state';
+						if (key === 'oauth_code_verifier') return 'verifier';
+						if (key === 'oauth_return_to') return '/profile';
+						return null;
+					}),
+					set: vi.fn()
+				} as any
+			);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('state mismatch');
 		});
 
 		it('should enforce PKCE for providers that support it', async () => {
-			const result = await oauthCallbackHandler.handleCallback({
-				provider: 'google',
-				code: 'valid-code',
-				state: 'valid-state',
-				codeVerifier: null // Missing PKCE verifier
-			});
+			const result = await oauthCallbackHandler.handleCallback(
+				{ 
+				provider: 'google', 
+				requiresCodeVerifier: true,
+				clientId: 'test-client-id',
+				clientSecret: 'test-client-secret',
+				redirectUrl: 'http://localhost:5173/auth/callback/google',
+				userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+				scope: 'email profile',
+				createOAuthClient: () => ({} as any),
+				exchangeTokens: vi.fn().mockResolvedValue({ access_token: 'test-token' }),
+				getUserInfo: vi.fn().mockResolvedValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				mapUserData: vi.fn().mockReturnValue({ id: '123', email: 'user@example.com', name: 'Test User' }),
+				extractTokenData: vi.fn().mockReturnValue({ accessToken: 'test-token' })
+			},
+				new URL('https://example.com/callback?code=valid-code&state=valid-state'),
+				{
+					get: vi.fn().mockImplementation((key) => {
+						if (key === 'oauth_state') return 'valid-state';
+						if (key === 'oauth_code_verifier') return 'verifier';
+						if (key === 'oauth_return_to') return '/profile';
+						return null;
+					}),
+					set: vi.fn()
+				} as any
+			);
 
 			expect((result as any).success).toBe(false);
 			expect((result as any).error).toContain('Missing code verifier');

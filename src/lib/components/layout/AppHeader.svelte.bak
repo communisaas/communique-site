@@ -153,7 +153,7 @@
 		if (headerConfig.type === 'advocacy' && hasAddress) {
 			return {
 				greeting: `Hi ${firstName}!`,
-				context: `${user.city || 'Your area'}, ${user.state || ''}`,
+				context: `${user.address.city || 'Your area'}, ${user.address.state || ''}`,
 				status: 'Ready to advocate'
 			};
 		}

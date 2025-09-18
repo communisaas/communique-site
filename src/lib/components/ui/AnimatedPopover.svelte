@@ -350,6 +350,13 @@
 				// Prevent popover from closing when clicking inside it
 				e.stopPropagation();
 			}}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') {
+					popoverStore.close(id);
+				}
+			}}
+			role="dialog"
+			aria-modal="false"
 			in:scale={{
 				duration,
 				start: animations[animationStyle].in.start,
@@ -372,35 +379,3 @@
 	{/if}
 </div>
 
-<style>
-	.popover-container {
-		/* Ensure proper rendering on mobile */
-		-webkit-font-smoothing: antialiased;
-		-moz-osx-font-smoothing: grayscale;
-	}
-
-	.popover-content {
-		/* Optimize text rendering */
-		text-rendering: optimizeLegibility;
-	}
-
-	/* Mobile-specific touch handling */
-	@media (max-width: 640px) {
-		.popover-container {
-			/* Improve touch responsiveness */
-			touch-action: manipulation;
-		}
-	}
-
-	/* Tablet and desktop optimizations */
-	@media (min-width: 641px) {
-		.popover-container {
-			/* Better hover effects on devices with precise pointers */
-			transition: filter 0.2s ease;
-		}
-
-		.popover-container:hover {
-			filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)) drop-shadow(0 4px 3px rgb(0 0 0 / 0.1));
-		}
-	}
-</style>

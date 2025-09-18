@@ -67,17 +67,22 @@ export interface MockLocals {
 /**
  * Helper to create a proper RequestEvent from mocks
  */
-export function asRequestEvent(
+export function asRequestEvent<Params extends Record<string, string> = Record<string, string>>(
 	request: MockRequest | any,
-	locals: MockLocals | any,
-	params: Record<string, string> = {}
-): any {
+	locals: MockLocals | any = {},
+	params: Params = {} as Params,
+	routeId: string = '/api/analytics/events'
+): RequestEvent<Params> {
 	return {
 		request: request as Request,
-		locals,
+		locals: {
+			user: null,
+			session: null,
+			...locals
+		},
 		params,
 		url: new URL('http://localhost:3000'),
-		route: { id: '' },
+		route: { id: routeId },
 		cookies: {} as any,
 		fetch: fetch,
 		getClientAddress: () => '127.0.0.1',
@@ -85,7 +90,7 @@ export function asRequestEvent(
 		setHeaders: () => {},
 		isDataRequest: false,
 		isSubRequest: false
-	};
+	} as RequestEvent<Params>;
 }
 
 /**

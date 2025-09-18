@@ -87,21 +87,47 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Transform corrections into quick fixes
 		const quickFixes: QuickFix[] = corrections.changes.map((change: unknown) => {
+			// Type guard for change object
+			const isValidChange = (obj: unknown): obj is {
+				type: string;
+				reason: string;
+				original?: string;
+				corrected?: string;
+			} => {
+				return (
+					typeof obj === 'object' &&
+					obj !== null &&
+					'type' in obj &&
+					'reason' in obj &&
+					typeof (obj as any).type === 'string' &&
+					typeof (obj as any).reason === 'string'
+				);
+			};
+
+			if (!isValidChange(change)) {
+				return {
+					type: 'grammar' as const,
+					fix: 'Invalid correction format',
+					reason: 'System error in correction processing',
+					severity: 1
+				};
+			}
+
 			let fixMessage = '';
 			let reason = change.reason;
 
 			switch (change.type) {
 				case 'grammar':
-					fixMessage = `Fix: "${change.original}" → "${change.corrected}"`;
+					fixMessage = `Fix: "${change.original || ''}" → "${change.corrected || ''}"`;
 					break;
 				case 'clarity':
-					fixMessage = `Simplify: "${change.original}" → "${change.corrected}"`;
+					fixMessage = `Simplify: "${change.original || ''}" → "${change.corrected || ''}"`;
 					break;
 				case 'formatting':
 					fixMessage = change.reason;
 					break;
 				default:
-					fixMessage = `${change.original} → ${change.corrected}`;
+					fixMessage = `${change.original || ''} → ${change.corrected || ''}`;
 			}
 
 			// Map to our voice

@@ -10,6 +10,7 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import type { VerificationDecision } from './type-guards';
 import { db, prisma } from '$lib/core/db';
 
 export interface VerificationAssessment {
@@ -62,8 +63,14 @@ export class VerificationAgent extends BaseAgent {
 		};
 	}
 
-	async makeDecision(context: AgentContext): Promise<AgentDecision> {
+	async makeDecision(context: AgentContext): Promise<AgentDecision<VerificationAssessment>> {
 		try {
+			// Check if this is template verification mode
+			if (context.actionType === 'verify' && context.parameters?.template) {
+				return await this.performTemplateVerification(context);
+			}
+
+			// Standard user verification mode
 			// Get existing user verification data
 			const verificationData = await this.gatherVerificationData(context.userId!);
 
@@ -348,6 +355,86 @@ export class VerificationAgent extends BaseAgent {
 			`${analysis.behavioralDataPresent ? 'behavioral data present' : 'limited behavioral data'}. ` +
 			`${riskFactors.length > 0 ? `Risk factors: ${riskFactors.join(', ')}. ` : ''}` +
 			`Average source confidence: ${(analysis.averageConfidence * 100).toFixed(1)}%.`
+		);
+	}
+
+	/**
+	 * Template verification mode - verifies template content for policy compliance
+	 */
+	private async performTemplateVerification(context: AgentContext): Promise<AgentDecision> {
+		const template = context.parameters?.template as any;
+		if (!template) {
+			throw new Error('Template required for template verification mode');
+		}
+
+		// Simple template verification logic
+		const subject = template.subject || template.title || '';
+		const body = template.message_body || '';
+		
+		// Check for severity level factors
+		let severityLevel = 1;
+		const violations: string[] = [];
+		const corrections: Record<string, any> = {};
+
+		// Check for inflammatory language
+		const inflammatoryPatterns = [
+			/violent|violence|attack|destroy|kill/i,
+			/hate|hatred|despise|loathe/i,
+			/communist|socialist|radical|extremist/i,
+		];
+		
+		for (const pattern of inflammatoryPatterns) {
+			if (pattern.test(subject) || pattern.test(body)) {
+				severityLevel = Math.max(severityLevel, 7);
+				violations.push('inflammatory_language');
+				break;
+			}
+		}
+
+		// Check for profanity
+		const profanityPatterns = [/damn|hell|shit|crap/i];
+		for (const pattern of profanityPatterns) {
+			if (pattern.test(subject) || pattern.test(body)) {
+				severityLevel = Math.max(severityLevel, 3);
+				violations.push('profanity');
+				break;
+			}
+		}
+
+		// Check for policy compliance
+		if (body.length > 5000) {
+			severityLevel = Math.max(severityLevel, 2);
+			violations.push('excessive_length');
+			corrections.body = body.substring(0, 4900) + '...';
+		}
+
+		if (subject.length > 200) {
+			severityLevel = Math.max(severityLevel, 2);
+			violations.push('long_subject');
+			corrections.subject = subject.substring(0, 190) + '...';
+		}
+
+		// Determine approval based on severity
+		const approved = severityLevel < 7;
+		const confidence = approved ? 0.8 : 0.3;
+
+		const verificationDecision = {
+			approved,
+			corrections,
+			severityLevel,
+			violations
+		};
+
+		return this.createDecision(
+			verificationDecision,
+			confidence,
+			`Template verification: ${approved ? 'APPROVED' : 'REJECTED'}. Severity level: ${severityLevel}. ${violations.length > 0 ? `Violations: ${violations.join(', ')}.` : ''} ${Object.keys(corrections).length > 0 ? `Corrections suggested for: ${Object.keys(corrections).join(', ')}.` : ''}`,
+			{
+				templateId: template.id,
+				templateVerification: true,
+				severityLevel,
+				violationCount: violations.length
+			}
 		);
 	}
 }

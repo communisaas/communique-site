@@ -131,12 +131,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 
-		console.error('Error:', _error);
+		console.error('Error:', error);
 		return json(
 			{
 				status: 'error',
 				result: false,
-				message: _error instanceof Error ? _error.message : 'Unknown verification error'
+				message: error instanceof Error ? error.message : 'Unknown verification error'
 			},
 			{ status: 500 }
 		);

@@ -133,7 +133,7 @@ describe('VOTER Protocol Agent Integration', () => {
 					body: JSON.stringify({ template_data: {} })
 				});
 			} catch (error) {
-				expect(error.name).toBe('AbortError');
+				expect((error as Error).name).toBe('AbortError');
 			} finally {
 				clearTimeout(timeout);
 			}

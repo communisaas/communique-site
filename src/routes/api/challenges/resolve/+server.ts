@@ -38,18 +38,17 @@ export const POST: RequestHandler = async ({ request }) => {
 			);
 		}
 
-		// Fetch challenge and verification data
+		// Fetch challenge data
 		const challenge = await db.challenge.findUnique({
 			where: { id: challengeId },
 			include: {
-				verification: true,
-				claim: {
+				challenger: true,
+				defender: true,
+				stakes: {
 					include: {
-						creator: true,
-						template: true
+						user: true
 					}
-				},
-				challenger: true
+				}
 			}
 		});
 

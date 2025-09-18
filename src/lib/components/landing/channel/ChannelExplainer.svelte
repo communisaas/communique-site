@@ -252,11 +252,12 @@
 
 						<ul class="space-y-3 border-t border-slate-200 pt-4">
 							{#each channel.features as feature (feature.text)}
+								{@const IconComponent = feature.icon}
 								<li
 									animate:flip={{ duration: 300 }}
 									class="grid grid-cols-[20px_1fr] items-start gap-2 text-sm text-gray-600 sm:text-base"
 								>
-									<svelte:component this={feature.icon} class="mt-1 h-4 w-4 text-slate-400" />
+									<IconComponent class="mt-1 h-4 w-4 text-slate-400" />
 									<span>{feature.text}</span>
 								</li>
 							{/each}

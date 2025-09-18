@@ -104,7 +104,7 @@ describe('Recipient Email Extraction Integration', () => {
 					}
 				}
 			});
-			expect(migrated.recipient_emails).toBeUndefined();
+			expect((migrated as any).recipient_emails).toBeUndefined();
 		});
 
 		it('handles templates without legacy emails', () => {
@@ -139,13 +139,13 @@ describe('Recipient Email Extraction Integration', () => {
 			const migrated = migrateToTypedTemplate(template);
 
 			// Should preserve existing delivery config over legacy
-			expect(migrated.delivery).toEqual({
+			expect((migrated as any).delivery || migrated.delivery_config).toEqual({
 				channel: 'sms',
 				recipients: {
 					phones: ['+1234567890']
 				}
 			});
-			expect(migrated.recipient_emails).toBeUndefined();
+			expect((migrated as any).recipient_emails).toBeUndefined();
 		});
 	});
 

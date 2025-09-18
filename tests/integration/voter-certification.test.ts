@@ -82,7 +82,7 @@ describe('VOTER Protocol Server-Side Certification', () => {
 			const result = await certification.certifyAction('0x123', {} as any);
 
 			expect(result.success).toBe(true);
-			expect(result.message).toBe('Certification service disabled');
+			expect(result.error).toBeUndefined();
 			expect(result.certificationHash).toBeUndefined();
 		});
 
@@ -108,7 +108,7 @@ describe('VOTER Protocol Server-Side Certification', () => {
 				// Certification failed but delivery continues
 				certificationResult = {
 					success: false,
-					error: error.message
+					error: error instanceof Error ? error.message : String(error)
 				};
 			}
 

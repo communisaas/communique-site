@@ -68,8 +68,8 @@
 </div>
 
 <div class="mb-6 space-y-4">
-	<div>
-		<label class="mb-3 block text-sm font-medium text-slate-700"> What's your role? </label>
+	<fieldset>
+		<legend class="mb-3 block text-sm font-medium text-slate-700">What's your role?</legend>
 		<div class="grid grid-cols-2 gap-2">
 			{#each roleOptions as role}
 				<button
@@ -103,7 +103,7 @@
 				class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
 			/>
 		{/if}
-	</div>
+	</fieldset>
 
 	<div>
 		<label for="organization" class="mb-2 block text-sm font-medium text-slate-700">

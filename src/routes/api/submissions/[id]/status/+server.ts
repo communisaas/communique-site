@@ -81,7 +81,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		if (!status) {
 			const response: ApiResponse = {
 				success: false,
-				error: createApiError('validation', 'RESOURCE_NOT_FOUND', 'Submission not found')
+				error: createApiError('server', 'SERVER_DATABASE', 'Submission not found')
 			};
 			return json(response, { status: 404 });
 		}

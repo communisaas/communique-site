@@ -75,7 +75,7 @@ export class TemplateCorrector {
 			await db.templateVerification.update({
 				where: { id: verificationId },
 				data: {
-					correction_log: corrections.changes,
+					correction_log: JSON.parse(JSON.stringify(corrections.changes)),
 					grammar_score: corrections.scores.grammar,
 					clarity_score: corrections.scores.clarity,
 					completeness_score: corrections.scores.completeness,

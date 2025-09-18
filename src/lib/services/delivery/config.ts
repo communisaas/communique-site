@@ -1,12 +1,83 @@
 /**
  * Configuration Management
- * Loads and validates environment variables
+ * Loads and validates environment variables with proper TypeScript typing
  */
 
-import dotenv from 'dotenv';
-dotenv.config();
+import { config as dotenvConfig } from 'dotenv';
+dotenvConfig();
 
-const config = {
+// Type definitions for configuration structure
+interface SmtpConfig {
+	port: number;
+	host: string;
+	secure: boolean;
+	auth: {
+		user: string;
+		pass: string;
+	};
+}
+
+interface CommuniqueConfig {
+	apiUrl: string;
+	apiKey: string;
+	webhookSecret: string;
+	mailServerKey: string;
+}
+
+interface CwcConfig {
+	apiKey: string;
+	apiUrl: string;
+	deliveryAgent: {
+		id: string;
+		name: string;
+		contact: string;
+		acknowledgementEmail: string;
+		ack: 'Y' | 'N';
+	};
+	campaignId: string;
+}
+
+interface VoterConfig {
+	enabled: boolean;
+	apiUrl: string;
+	apiKey: string;
+}
+
+interface LoggingConfig {
+	level: string;
+	sentryDsn: string;
+}
+
+interface DomainsConfig {
+	allowed: string[];
+	defaultFrom: string;
+}
+
+interface AppConfig {
+	smtp: SmtpConfig;
+	communique: CommuniqueConfig;
+	cwc: CwcConfig;
+	voter: VoterConfig;
+	logging: LoggingConfig;
+	domains: DomainsConfig;
+}
+
+// Helper function to ensure type safety for environment variables
+function getEnvVar(key: keyof NodeJS.ProcessEnv, defaultValue: string = ''): string {
+	return process.env[key] ?? defaultValue;
+}
+
+function getEnvVarAsNumber(key: keyof NodeJS.ProcessEnv, defaultValue: number): number {
+	const value = process.env[key];
+	const parsed = value ? parseInt(value, 10) : defaultValue;
+	return isNaN(parsed) ? defaultValue : parsed;
+}
+
+function getEnvVarAsBoolean(key: keyof NodeJS.ProcessEnv): boolean {
+	return process.env[key] === 'true';
+}
+
+const config: AppConfig = {
 	smtp: {
 		port: parseInt(process.env.SMTP_PORT || '25'),
 		host: process.env.SMTP_HOST || '0.0.0.0',
@@ -20,7 +91,8 @@ const config = {
 	communique: {
 		apiUrl: process.env.COMMUNIQUE_API_URL || 'https://communique.app/api',
 		apiKey: process.env.COMMUNIQUE_API_KEY || '',
-		webhookSecret: process.env.COMMUNIQUE_WEBHOOK_SECRET || ''
+		webhookSecret: process.env.COMMUNIQUE_WEBHOOK_SECRET || '',
+		mailServerKey: process.env.COMMUNIQUE_MAIL_SERVER_KEY || ''
 	},
 
 	cwc: {
@@ -32,7 +104,7 @@ const config = {
 			contact: process.env.CWC_DELIVERY_AGENT_CONTACT || 'contact@communique.app',
 			acknowledgementEmail:
 				process.env.CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL || 'noreply@communique.app',
-			ack: process.env.CWC_DELIVERY_AGENT_ACK || 'Y'
+			ack: (process.env.CWC_DELIVERY_AGENT_ACK || 'Y') as 'Y' | 'N'
 		},
 		campaignId: process.env.CWC_CAMPAIGN_ID || 'delivery-platform-2025'
 	},

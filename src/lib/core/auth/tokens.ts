@@ -3,8 +3,7 @@
  * Secure token handling for email verification and other auth flows
  */
 
-import pkg from 'jsonwebtoken';
-const { sign, verify, TokenExpiredError, JsonWebTokenError } = pkg;
+import { sign, verify, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken';
 import { env } from '$env/dynamic/private';
 
 interface EmailVerificationPayload {
@@ -80,7 +79,7 @@ export async function verifySignedToken<T = any>(
 export function generateOneTimeToken(data: Record<string, any>, expiresIn = '1h'): string {
 	const payload = {
 		...data,
-		nonce: crypto.randomUUID(),
+		nonce: globalThis.crypto.randomUUID(),
 		timestamp: Date.now()
 	};
 

@@ -1,20 +1,20 @@
-export interface ValidationRule {
+export interface ValidationRule<T = string> {
 	required?: boolean;
 	minLength?: number;
 	maxLength?: number;
 	pattern?: RegExp;
-	custom?: (value: string) => string | null;
+	custom?: (value: T) => string | null;
 }
 
-// Type guard for ValidationRule
-export function isValidationRule(obj: unknown): obj is ValidationRule {
+// Type guard for ValidationRule with generic support
+export function isValidationRule<T = string>(obj: unknown): obj is ValidationRule<T> {
 	if (typeof obj !== 'object' || obj === null) return false;
 	const rule = obj as Record<string, unknown>;
 	
 	return (
 		(rule.required === undefined || typeof rule.required === 'boolean') &&
-		(rule.minLength === undefined || typeof rule.minLength === 'number') &&
-		(rule.maxLength === undefined || typeof rule.maxLength === 'number') &&
+		(rule.minLength === undefined || (typeof rule.minLength === 'number' && rule.minLength >= 0)) &&
+		(rule.maxLength === undefined || (typeof rule.maxLength === 'number' && rule.maxLength >= 0)) &&
 		(rule.pattern === undefined || rule.pattern instanceof RegExp) &&
 		(rule.custom === undefined || typeof rule.custom === 'function')
 	);
@@ -25,26 +25,32 @@ export interface ValidationResult {
 	error?: string;
 }
 
-export function validateField(value: string, rules: ValidationRule): ValidationResult {
-	// Input validation
-	if (typeof value !== 'string') {
-		return { isValid: false, error: 'Value must be a string' };
+export function validateField<T = string>(
+	value: T,
+	rules: ValidationRule<T>
+): ValidationResult {
+	// Enhanced input validation
+	if (value === null || value === undefined) {
+		return { isValid: false, error: 'Value cannot be null or undefined' };
 	}
 	
-	if (!isValidationRule(rules)) {
-		return { isValid: false, error: 'Invalid validation rules' };
+	if (!isValidationRule<T>(rules)) {
+		return { isValid: false, error: 'Invalid validation rules provided' };
 	}
+	
+	// Convert value to string for length and pattern checks
+	const stringValue = String(value);
 	// Required check
-	if (rules.required && (!value || value.trim() === '')) {
+	if (rules.required && (!stringValue || stringValue.trim() === '')) {
 		return { isValid: false, error: 'This field is required' };
 	}
 
 	// Skip other validations if field is empty and not required
-	if (!value || value.trim() === '') {
+	if (!stringValue || stringValue.trim() === '') {
 		return { isValid: true };
 	}
 
-	const trimmedValue = value.trim();
+	const trimmedValue = stringValue.trim();
 
 	// Min length check
 	if (rules.minLength && trimmedValue.length < rules.minLength) {
@@ -70,11 +76,16 @@ export function validateField(value: string, rules: ValidationRule): ValidationR
 		};
 	}
 
-	// Custom validation
-	if (rules.custom) {
-		const customError = rules.custom(trimmedValue);
-		if (customError) {
-			return { isValid: false, error: customError };
+	// Custom validation with proper typing
+	if (rules.custom && typeof rules.custom === 'function') {
+		try {
+			const customError = rules.custom(value);
+			if (customError && typeof customError === 'string') {
+				return { isValid: false, error: customError };
+			}
+		} catch (error) {
+			console.error('Error in custom validation function:', error);
+			return { isValid: false, error: 'Validation error occurred' };
 		}
 	}
 
@@ -97,7 +108,7 @@ export const templateValidationRules = {
 			}
 			return null;
 		}
-	} as ValidationRule,
+	} as ValidationRule<string>,
 
 	preview: {
 		required: true,
@@ -110,7 +121,7 @@ export const templateValidationRules = {
 			}
 			return null;
 		}
-	} as ValidationRule,
+	} as ValidationRule<string>,
 
 	message_body: {
 		required: true,
@@ -123,17 +134,17 @@ export const templateValidationRules = {
 			}
 			return null;
 		}
-	} as ValidationRule,
+	} as ValidationRule<string>,
 
 	category: {
 		required: false,
 		maxLength: 50
-	} as ValidationRule,
+	} as ValidationRule<string>,
 
 	description: {
 		required: false,
 		maxLength: 300
-	} as ValidationRule
+	} as ValidationRule<string>
 };
 
 // Type for error callback functions
@@ -155,12 +166,16 @@ export class ValidationManager {
 		this.validationCallbacks.delete(callback);
 	}
 
-	public validateField(fieldName: string, value: string, rules: ValidationRule): void {
+	public validateField<T = string>(
+		fieldName: string,
+		value: T,
+		rules: ValidationRule<T>
+	): void {
 		if (typeof fieldName !== 'string' || fieldName.trim() === '') {
 			throw new Error('Field name must be a non-empty string');
 		}
 
-		const result = validateField(value, rules);
+		const result = validateField<T>(value, rules);
 
 		if (result.isValid) {
 			this.validationErrors.delete(fieldName);

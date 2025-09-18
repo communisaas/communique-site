@@ -4,28 +4,82 @@
 
 // Supply agent decision structure
 export interface SupplyDecision {
-	rewardAmount: number;
-	supplyImpact: number;
-	finalRewardWei?: string;
+	rewardAmount: number; // Add missing property for compatibility
+	baseRewardUSD: number;
+	multipliers: {
+		activity: number;
+		action: number;
+		reputation: number;
+		complexity: number;
+		time: number;
+		urgency: number;
+	};
+	totalMultiplier: number;
+	ethPrice: number;
+	finalRewardETH: number;
+	finalRewardWei: string;
+	// Additional properties
+	supplyImpact?: number;
 }
 
 // Market agent decision structure  
 export interface MarketDecision {
+	decision: string;
+	confidence: number;
+	reasoning?: string[];
 	rewardMultiplier: number;
-	marketSignal: 'bull' | 'bear' | 'neutral';
+	incentiveAdjustments: {
+		urgencyBonus: number;
+		qualityBonus: number;
+		consistencyBonus: number;
+	};
+	marketSignal: 'bullish' | 'neutral' | 'bearish';
 }
 
 // Impact agent decision structure
 export interface ImpactDecision {
-	impactMultiplier: number;
+	templateId: string;
+	legislativeOutcomes: unknown[];
 	impactScore: number;
-	legislativeOutcomes?: unknown[];
+	confidenceLevel: 'high' | 'medium' | 'low';
+	causalChains: unknown[];
+	correlationStrength: number;
+	recommendedFunding?: number;
+	// Additional properties
+	impactMultiplier?: number;
 }
 
 // Verification agent decision structure
 export interface VerificationDecision {
-	corrections: Record<string, unknown>;
-	severityLevel: number;
+	userId: string;
+	verificationLevel: 'unverified' | 'partial' | 'verified' | 'high_assurance';
+	trustScore: number;
+	verificationSources: unknown[];
+	riskFactors: string[];
+	recommendedActions: string[];
+	zkProofHash?: string;
+	districtVerification?: unknown;
+	// Template verification properties
+	corrections?: Record<string, string>;
+	severityLevel?: number;
+}
+
+// Reputation agent decision structure
+export interface ReputationDecision {
+	userId: string;
+	credibilityScore: number;
+	credibilityComponents: {
+		civic_engagement: number;
+		information_quality: number;
+		community_trust: number;
+		verification_depth: number;
+		behavioral_integrity: number;
+	};
+	tier: 'untrusted' | 'emerging' | 'established' | 'respected' | 'authoritative';
+	badges: string[];
+	attestations: unknown[];
+	riskFactors: string[];
+	portabilityHash: string;
 }
 
 // Type guards
@@ -33,8 +87,11 @@ export function isSupplyDecision(obj: unknown): obj is SupplyDecision {
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		'rewardAmount' in obj &&
-		typeof (obj as SupplyDecision).rewardAmount === 'number'
+		'baseRewardUSD' in obj &&
+		'finalRewardWei' in obj &&
+		'multipliers' in obj &&
+		typeof (obj as SupplyDecision).baseRewardUSD === 'number' &&
+		typeof (obj as SupplyDecision).finalRewardWei === 'string'
 	);
 }
 
@@ -42,8 +99,12 @@ export function isMarketDecision(obj: unknown): obj is MarketDecision {
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
+		'decision' in obj &&
 		'rewardMultiplier' in obj &&
-		typeof (obj as MarketDecision).rewardMultiplier === 'number'
+		'marketSignal' in obj &&
+		'incentiveAdjustments' in obj &&
+		typeof (obj as MarketDecision).rewardMultiplier === 'number' &&
+		typeof (obj as MarketDecision).decision === 'string'
 	);
 }
 
@@ -51,8 +112,12 @@ export function isImpactDecision(obj: unknown): obj is ImpactDecision {
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		'impactMultiplier' in obj &&
-		typeof (obj as ImpactDecision).impactMultiplier === 'number'
+		'templateId' in obj &&
+		'impactScore' in obj &&
+		'legislativeOutcomes' in obj &&
+		'confidenceLevel' in obj &&
+		typeof (obj as ImpactDecision).templateId === 'string' &&
+		typeof (obj as ImpactDecision).impactScore === 'number'
 	);
 }
 
@@ -60,9 +125,25 @@ export function isVerificationDecision(obj: unknown): obj is VerificationDecisio
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		'corrections' in obj &&
-		'severityLevel' in obj &&
-		typeof (obj as VerificationDecision).severityLevel === 'number'
+		'userId' in obj &&
+		'verificationLevel' in obj &&
+		'trustScore' in obj &&
+		'verificationSources' in obj &&
+		typeof (obj as VerificationDecision).userId === 'string' &&
+		typeof (obj as VerificationDecision).trustScore === 'number'
+	);
+}
+
+export function isReputationDecision(obj: unknown): obj is ReputationDecision {
+	return (
+		typeof obj === 'object' &&
+		obj !== null &&
+		'userId' in obj &&
+		'credibilityScore' in obj &&
+		'credibilityComponents' in obj &&
+		'tier' in obj &&
+		typeof (obj as ReputationDecision).userId === 'string' &&
+		typeof (obj as ReputationDecision).credibilityScore === 'number'
 	);
 }
 
@@ -71,26 +152,75 @@ export function extractSupplyDecision(decision: unknown): SupplyDecision {
 	if (isSupplyDecision(decision)) {
 		return decision;
 	}
-	return { rewardAmount: 0, supplyImpact: 0 };
+	return { rewardAmount: 0, 
+		baseRewardUSD: 0, 
+		multipliers: { activity: 1, action: 1, reputation: 1, complexity: 1, time: 1, urgency: 1 },
+		totalMultiplier: 1,
+		ethPrice: 2000,
+		finalRewardETH: 0,
+		finalRewardWei: '0' 
+	};
 }
 
 export function extractMarketDecision(decision: unknown): MarketDecision {
 	if (isMarketDecision(decision)) {
 		return decision;
 	}
-	return { rewardMultiplier: 1, marketSignal: 'neutral' };
+	return { rewardAmount: 0, 
+		decision: 'neutral',
+		confidence: 0.5,
+		rewardMultiplier: 1, 
+		marketSignal: 'neutral',
+		incentiveAdjustments: { urgencyBonus: 0, qualityBonus: 0, consistencyBonus: 0 }
+	};
 }
 
 export function extractImpactDecision(decision: unknown): ImpactDecision {
 	if (isImpactDecision(decision)) {
 		return decision;
 	}
-	return { impactMultiplier: 1, impactScore: 0 };
+	return { rewardAmount: 0, 
+		templateId: '',
+		legislativeOutcomes: [],
+		impactScore: 0,
+		confidenceLevel: 'low',
+		causalChains: [],
+		correlationStrength: 0
+	};
 }
 
 export function extractVerificationDecision(decision: unknown): VerificationDecision {
 	if (isVerificationDecision(decision)) {
 		return decision;
 	}
-	return { corrections: {}, severityLevel: 1 };
+	return { rewardAmount: 0, 
+		userId: '',
+		verificationLevel: 'unverified',
+		trustScore: 0,
+		verificationSources: [],
+		riskFactors: [],
+		recommendedActions: []
+	};
+}
+
+export function extractReputationDecision(decision: unknown): ReputationDecision {
+	if (isReputationDecision(decision)) {
+		return decision;
+	}
+	return {
+		userId: '',
+		credibilityScore: 0,
+		credibilityComponents: {
+			civic_engagement: 0,
+			information_quality: 0,
+			community_trust: 0,
+			verification_depth: 0,
+			behavioral_integrity: 0
+		},
+		tier: 'untrusted',
+		badges: [],
+		attestations: [],
+		riskFactors: [],
+		portabilityHash: ''
+	};
 }

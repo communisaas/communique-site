@@ -17,7 +17,6 @@ import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
-import * as crypto from 'crypto';
 
 // =============================================================================
 // TYPE DEFINITIONS

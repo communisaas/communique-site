@@ -10,7 +10,26 @@ import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { action, ...data } = await request.json();
+		const requestData: unknown = await request.json();
+		
+		// Type guard for request data
+		const isValidRequestData = (obj: unknown): obj is {
+			action: string;
+			[key: string]: unknown;
+		} => {
+			return (
+				typeof obj === 'object' &&
+				obj !== null &&
+				'action' in obj &&
+				typeof (obj as any).action === 'string'
+			);
+		};
+
+		if (!isValidRequestData(requestData)) {
+			throw error(400, 'Invalid request data format');
+		}
+
+		const { action, ...data } = requestData;
 
 		switch (action) {
 			case 'create':
@@ -88,10 +107,12 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 
 		// List challenges with filters
-		const where: unknown = {};
-		if (status) where.status = status;
+		const where: Record<string, unknown> = {};
+		if (status) {
+			(where as any).status = status;
+		}
 		if (userId) {
-			where.OR = [
+			(where as any).OR = [
 				{ challenger_id: userId },
 				{ defender_id: userId },
 				{ stakes: { some: { user_id: userId } } }
@@ -132,15 +153,16 @@ export const GET: RequestHandler = async ({ url }) => {
 /**
  * Create new challenge
  */
-async function createChallenge({
-	challengerId,
-	defenderId,
-	title,
-	description,
-	evidence,
-	stakeAmount,
-	category
-}) {
+async function createChallenge(data: Record<string, unknown>) {
+	const {
+		challengerId,
+		defenderId,
+		title,
+		description,
+		evidence,
+		stakeAmount,
+		category
+	} = data;
 	if (!challengerId || !defenderId || !title || !evidence || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge creation');
 	}
@@ -211,7 +233,8 @@ async function createChallenge({
 /**
  * Vote on challenge with quadratic voting
  */
-async function voteOnChallenge({ challengeId, userId, vote, stakeAmount }) {
+async function voteOnChallenge(data: Record<string, unknown>) {
+	const { challengeId, userId, vote, stakeAmount } = data;
 	if (!challengeId || !userId || !vote || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge vote');
 	}
@@ -289,7 +312,8 @@ async function voteOnChallenge({ challengeId, userId, vote, stakeAmount }) {
 /**
  * Resolve challenge based on votes
  */
-async function resolveChallenge({ challengeId }) {
+async function resolveChallenge(data: Record<string, unknown>) {
+	const { challengeId } = data;
 	if (!challengeId) {
 		throw error(400, 'Missing challengeId');
 	}
@@ -407,7 +431,8 @@ async function resolveChallenge({ challengeId }) {
 /**
  * Claim rewards for challenge participants
  */
-async function claimRewards({ challengeId, userId }) {
+async function claimRewards(data: Record<string, unknown>) {
+	const { challengeId, userId } = data;
 	if (!challengeId || !userId) {
 		throw error(400, 'Missing challengeId or userId');
 	}

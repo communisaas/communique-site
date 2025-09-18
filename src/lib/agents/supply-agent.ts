@@ -9,6 +9,7 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import type { SupplyDecision } from './type-guards';
 import { db, prisma } from '$lib/core/db';
 
 export interface RewardParameters {
@@ -52,7 +53,7 @@ export class SupplyAgent extends BaseAgent {
 		};
 	}
 
-	async makeDecision(context: AgentContext): Promise<AgentDecision> {
+	async makeDecision(context: AgentContext): Promise<AgentDecision<RewardParameters>> {
 		try {
 			// Get network activity data
 			const networkData = await this.getNetworkActivity();

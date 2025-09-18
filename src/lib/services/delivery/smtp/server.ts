@@ -14,14 +14,14 @@ import type {
 	CWCSubmissionData,
 	CWCSubmissionResult,
 	SMTPError
-} from '$lib/services/delivery/types';
+} from '../types/index.js';
 import { parseIncomingMessage, validateMessage } from './parser';
-import { CWCClient } from '$lib/services/delivery/integrations/cwc';
-import { CommuniqueClient } from '$lib/services/delivery/integrations/communique';
-import { VOTERClient } from '$lib/services/delivery/integrations/voter';
-import { N8NClient } from '$lib/services/delivery/integrations/n8n';
+import { CWCClient } from '../integrations/cwc.js';
+import { CommuniqueClient } from '../integrations/communique.js';
+import { VOTERClient } from '../integrations/voter.js';
+import { N8NClient } from '../integrations/n8n.js';
 import { BounceHandler } from './bounce-handler';
-import { getConfig } from '$lib/services/delivery/utils/config';
+import { getConfig } from '../utils/config.js';
 
 export class DeliveryPlatformSMTP {
 	private server: SMTPServer;

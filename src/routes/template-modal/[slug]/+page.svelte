@@ -10,6 +10,11 @@
 
 	let showModal = $state(true);
 
+	// Convert full user object to simplified type for TemplateModal
+	const simplifiedUser = $derived(
+		data.user ? { id: data.user.id, name: data.user.name || 'User' } : null
+	);
+
 	onMount(() => {
 		// Check for pending template action from OAuth flow
 		const pendingAction = sessionStorage.getItem('pending_template_action');
@@ -53,7 +58,7 @@
 {#if showModal}
 	<TemplateModal
 		template={data.template}
-		user={data.user}
+		user={simplifiedUser}
 		on:close={handleModalClose}
 		on:used={handleTemplateUsed}
 	/>

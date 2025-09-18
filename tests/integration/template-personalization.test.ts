@@ -195,8 +195,8 @@ Alice Johnson`);
 
 		const template = 'Hello [Name]!';
 
-		const baseResolved = resolveVariables(template, baseUser, null);
-		const childResolved = resolveVariables(template, childUser, null);
+		const baseResolved = resolveVariables(template, baseUser, undefined);
+		const childResolved = resolveVariables(template, childUser, undefined);
 
 		expect(baseResolved).not.toBe(childResolved);
 		expect(childResolved).toBe('Hello Override Name!');

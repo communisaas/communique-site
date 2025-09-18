@@ -6,7 +6,13 @@ export interface N8NWebhookPayload {
 	templateId: string;
 	templateData: Record<string, unknown>;
 	userId?: string;
+	userEmail?: string;
+	userName?: string;
 	userAddress?: string;
+	userZip?: string;
+	subject?: string;
+	message_body?: string;
+	deliveryMethod?: string;
 	actionType?: string;
 	timestamp: string;
 	metadata?: Record<string, unknown>;

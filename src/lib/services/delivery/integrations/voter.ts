@@ -3,8 +3,8 @@
  */
 
 import axios, { type AxiosInstance } from 'axios';
-import type { VOTERCertificationRequest, VOTERCertificationResult, VOTERActionType } from '$lib/services/delivery/types';
-import { getConfig } from '$lib/services/delivery/utils/config';
+import type { VOTERCertificationRequest, VOTERCertificationResult, VOTERActionType } from '../types/index.js';
+import { getConfig } from '../utils/config.js';
 
 export class VOTERClient {
 	private client: AxiosInstance | null = null;

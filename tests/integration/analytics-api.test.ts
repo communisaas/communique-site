@@ -101,7 +101,7 @@ describe('Analytics API Integration', () => {
 				events
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -178,10 +178,7 @@ describe('Analytics API Integration', () => {
 				events: conversionEvents
 			});
 
-			await POST({
-				request: mockRequest,
-				getClientAddress: mockGetClientAddress
-			});
+			await POST(asRequestEvent(mockRequest, {}) as any);
 
 			// Verify conversion was tracked
 			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
@@ -201,10 +198,9 @@ describe('Analytics API Integration', () => {
 			const registrationEvents: AnalyticsEvent[] = [
 				{
 					session_id: 'sess_registration_test',
-					event_type: 'funnel',
-					event_name: 'auth_completed',
+					name: 'auth_completed',
 					user_id: 'new-user-123',
-					event_properties: { provider: 'google' }
+					properties: { provider: 'google' }
 				}
 			];
 
@@ -213,10 +209,7 @@ describe('Analytics API Integration', () => {
 				events: registrationEvents
 			});
 
-			await POST({
-				request: mockRequest,
-				getClientAddress: mockGetClientAddress
-			});
+			await POST(asRequestEvent(mockRequest, {}) as any);
 
 			// Verify registration conversion was tracked
 			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
@@ -235,7 +228,7 @@ describe('Analytics API Integration', () => {
 				invalid: 'data'
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -254,7 +247,7 @@ describe('Analytics API Integration', () => {
 				events: []
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -274,13 +267,12 @@ describe('Analytics API Integration', () => {
 				events: [
 					{
 						session_id: 'test-session',
-						event_type: 'test',
-						event_name: 'test_event'
+						name: 'test_event'
 					}
 				]
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -303,16 +295,12 @@ describe('Analytics API Integration', () => {
 				events: [
 					{
 						session_id: 'ip-test-session',
-						event_type: 'test',
-						event_name: 'ip_test'
+						name: 'ip_test'
 					}
 				]
 			});
 
-			await POST({
-				request: mockRequest,
-				getClientAddress: mockGetClientAddress
-			});
+			await POST(asRequestEvent(mockRequest, {}) as any);
 
 			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'ip-test-session' },
@@ -341,16 +329,12 @@ describe('Analytics API Integration', () => {
 				events: [
 					{
 						session_id: 'anonymous-session',
-						event_type: 'navigation',
-						event_name: 'anonymous_page_view'
+						name: 'anonymous_page_view'
 					}
 				]
 			});
 
-			await POST({
-				request: mockRequest,
-				getClientAddress: mockGetClientAddress
-			});
+			await POST(asRequestEvent(mockRequest, {}) as any);
 
 			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'anonymous-session' },
@@ -367,7 +351,7 @@ describe('Analytics API Integration', () => {
 			const largeEventBatch = Array.from({ length: 50 }, (_, i) => ({
 				session_id: 'batch-test-session',
 				event_type: 'interaction' as const,
-				event_name: `event_${i}`,
+				name: `event_${i}`,
 				timestamp: new Date(Date.now() + i * 1000)
 			}));
 
@@ -376,7 +360,7 @@ describe('Analytics API Integration', () => {
 				events: largeEventBatch
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			if (!response) {
 				throw new Error('POST handler returned undefined');
@@ -393,7 +377,7 @@ describe('Analytics API Integration', () => {
 				data: expect.arrayContaining(
 					largeEventBatch.map((event) =>
 						expect.objectContaining({
-							name: event.event_name
+							name: event.name
 						})
 					)
 				),
@@ -411,8 +395,8 @@ describe('Analytics API Integration', () => {
 					events: [
 						{
 							session_id: 'error-test-session',
-							event_name: 'network_failure_test',
-							event_properties: { event_type: 'error' }
+							name: 'network_failure_test',
+							properties: { event_type: 'error' }
 						}
 					]
 				})
@@ -421,7 +405,7 @@ describe('Analytics API Integration', () => {
 			// Mock database error
 			mocks.db.analytics_event.createMany.mockRejectedValue(new Error('Network error'));
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			const result = await response.json();
 
@@ -436,19 +420,19 @@ describe('Analytics API Integration', () => {
 						// Valid event
 						{
 							session_id: 'valid-session',
-							event_name: 'valid_event',
-							event_properties: { type: 'valid' }
+							name: 'valid_event',
+							properties: { type: 'valid' }
 						},
 						// Malformed event (missing required fields)
 						{
-							event_name: 'malformed_event'
+							name: 'malformed_event'
 							// Missing session_id
 						}
 					]
 				})
 			};
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			const result = await response.json();
 
@@ -465,15 +449,15 @@ describe('Analytics API Integration', () => {
 					events: [
 						{
 							session_id: 'circular-test-session',
-							event_name: 'circular_reference_test',
-							event_properties: circularObj
+							name: 'circular_reference_test',
+							properties: circularObj
 						}
 					]
 				})
 			};
 
 			// Should not throw error when processing circular references
-			await expect(POST(asRequestEvent(mockRequest, {}))).resolves.toBeDefined();
+			await expect(POST(asRequestEvent(mockRequest, {}) as any)).resolves.toBeDefined();
 		});
 
 		it('should limit event property size', async () => {
@@ -484,9 +468,8 @@ describe('Analytics API Integration', () => {
 					events: [
 						{
 							session_id: 'size-limit-test-session',
-							event_name: 'size_limit_test',
-							event_properties: {
-								event_type: 'performance',
+							name: 'size_limit_test',
+							properties: {
 								massive_data: massiveData
 							}
 						}
@@ -494,7 +477,7 @@ describe('Analytics API Integration', () => {
 				})
 			};
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST(asRequestEvent(mockRequest, {}) as any);
 
 			// Should handle large payloads (size limiting happens server-side)
 			expect(response).toBeDefined();

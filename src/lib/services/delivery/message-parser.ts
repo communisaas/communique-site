@@ -91,7 +91,7 @@ function extractPersonalConnection(parsed: any) {
 	// Look for personal connection marker
 	// Expected format: [PERSONAL_CONNECTION_START]content[PERSONAL_CONNECTION_END]
 	const personalConnectionMatch = text.match(
-		/\[PERSONAL_CONNECTION_START\](.*?)\[PERSONAL_CONNECTION_END\]/s
+		/\[PERSONAL_CONNECTION_START\]([\s\S]*?)\[PERSONAL_CONNECTION_END\]/
 	);
 	if (personalConnectionMatch) {
 		return personalConnectionMatch[1].trim();

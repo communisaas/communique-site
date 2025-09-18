@@ -169,7 +169,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const impactResult = await impactAgent.makeDecision({
 			actionType: 'cwc_message',
 			templateId,
-			metadata: {
+			parameters: {
 				observationCount: trackedObservations.length,
 				maxCausalStrength: Math.max(...trackedObservations.map((o) => o.causalStrength)),
 				totalDeliveries: typeof template.metrics === 'object' && template.metrics !== null && 'sends' in template.metrics && typeof (template.metrics as { sends: unknown }).sends === 'number' ? (template.metrics as { sends: number }).sends : 0,
@@ -199,7 +199,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					...currentMetrics,
 					impact_score: Math.min(
 						100,
-						(currentMetrics.impact_score || 0) + Math.floor(totalImpactScore / 10)
+						(typeof currentMetrics.impact_score === 'number' ? currentMetrics.impact_score : 0) + Math.floor(totalImpactScore / 10)
 					),
 					last_impact_at: new Date()
 				}

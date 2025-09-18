@@ -1,5 +1,16 @@
 import type { UserAddress } from '$lib/types/user';
 
+// Type guards for API responses
+function isValidDistrictData(data: unknown): data is { congressional_district: string; state_house_district?: string; state_senate_district?: string } {
+	return typeof data === 'object' && data !== null &&
+		typeof (data as any).congressional_district === 'string';
+}
+
+function isValidIPLocationData(data: unknown): data is { postal_code: string; city?: string; region_code?: string } {
+	return typeof data === 'object' && data !== null &&
+		typeof (data as any).postal_code === 'string';
+}
+
 export interface GeolocationData {
 	source: 'browser_api' | 'manual_address' | 'ip_fallback';
 	coordinates?: {
@@ -105,6 +116,11 @@ export class GeolocationService {
 
 			const data = result.data;
 
+			// Validate the response data
+			if (!isValidDistrictData(data)) {
+				throw new Error('Invalid district data received from API');
+			}
+
 			return {
 				congressional: data.congressional_district,
 				state_house: data.state_house_district,
@@ -128,6 +144,11 @@ export class GeolocationService {
 			}
 
 			const data = result.data;
+
+			// Validate the response data
+			if (!isValidDistrictData(data)) {
+				throw new Error('Invalid ZIP district data received from API');
+			}
 
 			return {
 				congressional: data.congressional_district
@@ -160,7 +181,7 @@ export class GeolocationService {
 					});
 				},
 				(error) => {
-					reject(new Error(`Geolocation error: ${_error.message}`));
+					reject(new Error(`Geolocation error: ${error.message}`));
 				},
 				options
 			);
@@ -182,13 +203,18 @@ export class GeolocationService {
 
 			const data = result.data;
 
+			// Validate the response data
+			if (!isValidIPLocationData(data)) {
+				throw new Error('Invalid IP location data received from API');
+			}
+
 			return {
 				zip: data.postal_code,
 				city: data.city,
 				state: data.region_code
 			};
-		} catch (_error) {
-			throw _error;
+		} catch (error) {
+			throw error;
 		}
 	}
 

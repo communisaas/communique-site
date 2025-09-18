@@ -43,6 +43,7 @@ interface CWCResponse {
 interface CWCSubmissionResult {
 	success: boolean;
 	messageId?: string;
+	confirmationNumber?: string;
 	status: 'submitted' | 'queued' | 'failed' | 'rejected';
 	office: string;
 	timestamp: string;

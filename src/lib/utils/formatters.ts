@@ -374,6 +374,22 @@ export function formatEmail(email: string): string {
 	return email;
 }
 
+// UTILITY TYPES FOR FORMATTERS
+
+// Type for values that can be formatted as strings
+export type Formattable = string | number | Date | null | undefined;
+
+// Type guard for formattable values
+export function isFormattable(value: unknown): value is Formattable {
+	return (
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		value instanceof Date ||
+		value === null ||
+		value === undefined
+	);
+}
+
 // ERROR-SAFE FORMATTERS
 
 /**
@@ -384,11 +400,20 @@ export function safeFormat<T>(
 	fallback: T,
 	errorMessage?: string
 ): T {
+	// Input validation
+	if (typeof formatter !== 'function') {
+		console.warn('safeFormat: formatter must be a function');
+		return fallback;
+	}
+
 	try {
-		return formatter();
+		const result = formatter();
+		return result;
 	} catch (error) {
-		if (errorMessage) {
+		if (errorMessage && typeof errorMessage === 'string') {
 			console.warn(errorMessage, error);
+		} else {
+			console.warn('Error in formatter function:', error);
 		}
 		return fallback;
 	}

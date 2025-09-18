@@ -342,14 +342,14 @@ export const coordinated = {
 	/**
 	 * Debounced function
 	 */
-	debounce<T extends (...args: any[]) => void>(
-		func: T,
+	debounce<TArgs extends readonly unknown[]>(
+		func: (...args: TArgs) => void,
 		delay: number,
 		componentId?: string
-	): (...args: Parameters<T>) => void {
+	): (...args: TArgs) => void {
 		let timerId: string | null = null;
 
-		return (...args: Parameters<T>) => {
+		return (...args: TArgs) => {
 			if (timerId) {
 				timerCoordinator.clearTimer(timerId);
 			}

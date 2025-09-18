@@ -255,7 +255,7 @@ ${errorInfo.stack || 'Not available'}
 						</Button>
 
 						{#if showReportBug}
-							<Button variant="outline" onclick={reportBug}>
+							<Button variant="secondary" onclick={reportBug}>
 								<Bug class="mr-2 h-4 w-4" />
 								Report Bug
 							</Button>

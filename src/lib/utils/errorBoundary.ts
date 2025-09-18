@@ -235,16 +235,19 @@ export const errorBoundaryManager = new ErrorBoundaryManager();
 /**
  * HOC function to wrap functions with error boundaries
  */
-export function withErrorBoundary<T extends (...args: any[]) => any>(
-	fn: T,
+export function withErrorBoundary<
+	TArgs extends readonly unknown[],
+	TReturn
+>(
+	fn: (...args: TArgs) => TReturn,
 	context: string,
 	options: {
 		silent?: boolean;
-		fallback?: ReturnType<T>;
+		fallback?: TReturn;
 		onError?: (error: Error) => void;
 	} = {}
-): (...args: Parameters<T>) => ReturnType<T> | undefined {
-	return ((...args: Parameters<T>): ReturnType<T> | undefined => {
+): (...args: TArgs) => TReturn | undefined {
+	return ((...args: TArgs): TReturn | undefined => {
 		try {
 			const result = fn(...args);
 
@@ -261,7 +264,7 @@ export function withErrorBoundary<T extends (...args: any[]) => any>(
 					options.onError?.(error);
 
 					return options.fallback;
-				}) as ReturnType<T>;
+				}) as TReturn;
 			}
 
 			return result;
@@ -288,8 +291,20 @@ export async function safeAsync<T>(
 	context: string,
 	fallback?: T
 ): Promise<T | undefined> {
+	// Input validation
+	if (typeof operation !== 'function') {
+		console.error('safeAsync: operation must be a function');
+		return fallback;
+	}
+	
+	if (typeof context !== 'string' || context.trim() === '') {
+		console.error('safeAsync: context must be a non-empty string');
+		return fallback;
+	}
+
 	try {
-		return await operation();
+		const result = await operation();
+		return result;
 	} catch (error) {
 		const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
 		errorBoundaryManager.reportError(errorReport);

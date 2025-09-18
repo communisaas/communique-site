@@ -225,8 +225,9 @@
 		<!-- Quick Actions -->
 		<div class={`flex ${compact ? 'space-x-2' : 'space-x-3'} border-t border-gray-100 pt-3`}>
 			<button
-				onclick={() => (window.location.href = `/analytics?template=${performance.template_id}`)}
+				onclick={() => (window.location.href = `/analytics?template=${performance?.template_id}`)}
 				class={`flex-1 text-center ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'} rounded bg-participation-primary-50 text-participation-primary-700 transition-colors hover:bg-participation-primary-100`}
+				disabled={!performance}
 			>
 				Full Analysis
 			</button>

@@ -242,6 +242,7 @@ export interface APIConfig {
 	voterApiKey?: string;
 	n8nUrl: string;
 	n8nWebhookSecret: string;
+	mailServerKey?: string;
 }
 
 export interface EnvironmentConfig {

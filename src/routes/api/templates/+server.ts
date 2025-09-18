@@ -22,11 +22,7 @@ interface CreateTemplateRequest {
 	metrics?: Record<string, any>;
 }
 
-interface ValidationError {
-	field: string;
-	type: string;
-	message: string;
-}
+type ValidationError = ApiError;
 
 function validateTemplateData(data: unknown): {
 	isValid: boolean;

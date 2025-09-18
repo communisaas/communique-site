@@ -9,7 +9,12 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 
 	kit: {
-		adapter: adapter()
+		adapter: adapter(),
+		// Add explicit environment configuration
+		env: {
+			dir: '.',
+			publicPrefix: 'PUBLIC_'
+		}
 	},
 
 	extensions: ['.svelte', '.svx']

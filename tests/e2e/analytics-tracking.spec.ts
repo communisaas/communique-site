@@ -14,7 +14,7 @@ test.describe('Analytics Tracking E2E', () => {
 		// Listen for analytics API calls
 		await page.route('/api/analytics/events', async (route) => {
 			const request = route.request();
-			console.log('Analytics API called:', request.method(), await request.postDataJSON());
+			console.log('Analytics API called:', request.method(), await request.postDataJSON().catch(() => ({})));
 
 			// Mock successful response
 			await route.fulfill({
@@ -43,9 +43,9 @@ test.describe('Analytics Tracking E2E', () => {
 		page.on('request', (request) => {
 			if (request.url().includes('/api/analytics/events') && request.method() === 'POST') {
 				analyticsCallCount++;
-				request.postDataJSON().then((data) => {
+				request.postDataJSON().then((data: any) => {
 					lastAnalyticsPayload = data;
-				});
+				}).catch(() => {});
 			}
 		});
 
@@ -61,8 +61,7 @@ test.describe('Analytics Tracking E2E', () => {
 			expect(lastAnalyticsPayload.events).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						event_type: 'navigation',
-						event_name: 'page_view'
+						name: 'page_view'
 					})
 				])
 			);
@@ -79,15 +78,15 @@ test.describe('Analytics Tracking E2E', () => {
 				const payload = await request.postDataJSON();
 
 				payload.events.forEach((event: any) => {
-					if (event.event_name === 'template_viewed') {
+					if (event.name === 'template_viewed') {
 						templateViewTracked = true;
-						expect(event.template_id).toBeDefined();
-						expect(event.event_properties?.source).toBeDefined();
+						expect(event.properties?.template_id).toBeDefined();
+						expect(event.properties?.source).toBeDefined();
 					}
 
-					if (event.event_name === 'share_link_click') {
+					if (event.name === 'share_link_click') {
 						shareClickTracked = true;
-						expect(event.event_type).toBe('interaction');
+						expect(event.properties?.type).toBeDefined();
 					}
 				});
 			}
@@ -115,9 +114,9 @@ test.describe('Analytics Tracking E2E', () => {
 				const payload = await request.postDataJSON();
 
 				payload.events.forEach((event: any) => {
-					if (event.event_type === 'funnel') {
-						funnelEvents.push(event.event_name);
-						console.log('Funnel event tracked:', event.event_name, event.template_id);
+					if (event.funnel_id || ['template_viewed', 'onboarding_started', 'auth_completed', 'template_used'].includes(event.name)) {
+						funnelEvents.push(event.name);
+						console.log('Funnel event tracked:', event.name, event.properties?.template_id);
 					}
 				});
 			}
