@@ -76,15 +76,18 @@
 				zipCode
 			});
 
-			if (result.success && result.data?.verified) {
-				verificationResult = result.data;
-				selectedAddress = result.data.correctedAddress || fullAddress;
-				currentStep = 'verify';
+			if (result.success && result.data) {
+				// Type guard for address verification data
+				const data = result.data as Record<string, unknown>;
+				if (data.verified) {
+					verificationResult = data;
+					selectedAddress = (data.correctedAddress as string) || fullAddress;
+					currentStep = 'verify';
+				} else {
+					addressError = (data.error as string) || 'Unable to verify address. Please check and try again.';
+				}
 			} else {
-				addressError =
-					result.data?.error ||
-					result.error ||
-					'Unable to verify address. Please check and try again.';
+				addressError = (result.error as string) || 'Unable to verify address. Please check and try again.';
 			}
 		} catch (error) {
 			console.error('Address verification error:', error);
@@ -102,8 +105,8 @@
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
-			representatives: verificationResult?.representatives,
-			district: verificationResult?.district,
+			representatives: verificationResult?.representatives as unknown[] | undefined,
+			district: verificationResult?.district as string | undefined,
 			streetAddress,
 			city,
 			state: stateCode,
@@ -295,7 +298,7 @@
 						>
 							<p class="mb-2 font-medium text-slate-900">Your Representatives:</p>
 							<div class="space-y-2">
-								{#each verificationResult.representatives as rep: any}
+								{#each (verificationResult.representatives as unknown[]) || [] as rep}
 									<div class="flex items-center gap-2 text-sm">
 										<div class="h-2 w-2 rounded-full bg-participation-primary-500"></div>
 										<span class="text-slate-700">{(rep as any).name} ({(rep as any).office})</span>

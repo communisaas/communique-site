@@ -17,7 +17,134 @@ vi.mock('$env/dynamic/private', () => ({
 	}
 }));
 
-// Mock fetch for controlled testing
+// Mock database
+const mockDb = vi.hoisted(() => ({
+	user: {
+		findUnique: vi.fn(),
+		findFirst: vi.fn(),
+		create: vi.fn(),
+		update: vi.fn()
+	},
+	template: {
+		findUnique: vi.fn()
+	},
+	civicAction: {
+		create: vi.fn()
+	},
+	reputationLog: {
+		create: vi.fn()
+	},
+	challenge: {
+		create: vi.fn()
+	},
+	challengeStake: {
+		upsert: vi.fn()
+	},
+	rewardCalculation: {
+		create: vi.fn()
+	}
+}));
+
+vi.mock('$lib/core/db', () => ({
+	prisma: mockDb
+}));
+
+// Mock CWC client
+const mockCwcClient = vi.hoisted(() => ({
+	submitToAllRepresentatives: vi.fn()
+}));
+
+vi.mock('$lib/core/congress/cwc-client', () => ({
+	cwcClient: mockCwcClient
+}));
+
+// Mock agents
+vi.mock('$lib/agents/supply-agent', () => ({
+	SupplyAgent: vi.fn().mockImplementation(() => ({
+		makeDecision: vi.fn().mockResolvedValue({
+			agentId: 'supply-agent',
+			confidence: 0.9,
+			reasoning: 'Standard reward calculation',
+			decision: {
+				baseRewardUSD: 0.1,
+				totalMultiplier: 1.0,
+				finalRewardWei: '100000000000000000'
+			}
+		}))
+	}))
+}));
+
+vi.mock('$lib/agents/impact-agent', () => ({
+	ImpactAgent: vi.fn().mockImplementation(() => ({
+		makeDecision: vi.fn().mockResolvedValue({
+			agentId: 'impact-agent',
+			confidence: 0.8,
+			reasoning: 'High impact action',
+			decision: {
+				impactScore: 85
+			}
+		}))
+	}))
+}));
+
+vi.mock('$lib/agents/verification-agent', () => ({
+	VerificationAgent: vi.fn().mockImplementation(() => ({
+		makeDecision: vi.fn().mockResolvedValue({
+			agentId: 'verification-agent',
+			confidence: 0.9,
+			reasoning: 'Verified identity',
+			decision: {
+				verificationLevel: 'verified',
+				trustScore: 100
+			}
+		}))
+	}))
+}));
+
+vi.mock('$lib/agents/reputation-agent', () => ({
+	ReputationAgent: vi.fn().mockImplementation(() => ({
+		makeDecision: vi.fn().mockResolvedValue({
+			agentId: 'reputation-agent',
+			confidence: 0.85,
+			reasoning: 'Credibility assessment complete',
+			decision: {
+				credibilityScore: 150,
+				tier: 'verified'
+			}
+		}))
+	}))
+}));
+
+vi.mock('$lib/agents/base-agent', () => ({
+	AgentCoordinator: vi.fn().mockImplementation(() => ({
+		registerAgent: vi.fn(),
+		coordinateDecision: vi.fn().mockResolvedValue({
+			consensusReached: true,
+			consensusConfidence: 0.9,
+			decisions: [
+				{
+					agentType: 'SUPPLY',
+					agentId: 'supply-agent',
+					confidence: 0.9,
+					reasoning: 'Standard calculation',
+					decision: {
+						baseRewardUSD: 0.1,
+						totalMultiplier: 1.0,
+						finalRewardWei: '100000000000000000'
+					}
+				}
+			]
+		})
+	})),
+	AgentType: {
+		SUPPLY: 'SUPPLY',
+		IMPACT: 'IMPACT',
+		VERIFICATION: 'VERIFICATION',
+		REPUTATION: 'REPUTATION'
+	}
+}));
+
+// Mock fetch for controlled testing (still needed for some tests)
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
@@ -41,19 +168,21 @@ describe('VOTER Protocol Proxy Endpoints', () => {
 
 			const { POST } = await import('../../src/routes/api/voter/+server');
 
-			const request = new Request('http://localhost/api/voter/certify', {
+			const request = new Request('http://localhost/api/voter', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					userAddress: '0x123',
+					action: 'record_civic_action',
+					userId: 'user-123',
 					actionType: 'cwc_message',
-					deliveryReceipt: 'receipt-data',
-					messageHash: 'hash-123',
-					timestamp: '2024-01-01T00:00:00Z',
+					templateId: 'template-123',
 					metadata: {
-						templateId: 'template-123'
+						userAddress: '0x123',
+						deliveryReceipt: 'receipt-data',
+						messageHash: 'hash-123',
+						timestamp: '2024-01-01T00:00:00Z'
 					}
 				})
 			});

@@ -33,6 +33,17 @@ model User {
   district_hash             String?                    @map("district_hash")       // Privacy-preserving district ID
   trust_score               Int                        @default(0) @map("trust_score")
   reputation_tier           String                     @default("novice") @map("reputation_tier") // 'expert', 'verified', 'novice'
+  
+  // Reward tracking
+  pending_rewards           String?                    @map("pending_rewards") // BigInt as string
+  total_earned              String?                    @map("total_earned")    // BigInt as string
+  last_certification        DateTime?                  @map("last_certification")
+  
+  // Reputation scores
+  challenge_score           Int?                       @map("challenge_score")
+  civic_score               Int?                       @map("civic_score")
+  discourse_score           Int?                       @map("discourse_score")
+  
   // Profile fields
   role                      String?                    // User's role/profession
   organization              String?                    // User's organization  
@@ -699,6 +710,8 @@ model TemplateVerification {
   // Stage 1: Auto-correction
   correction_log        Json?     @map("correction_log") // Grammar, clarity fixes applied
   original_content      Json?     @map("original_content") // Before corrections
+  corrected_subject     String?   @map("corrected_subject")
+  corrected_body        String?   @map("corrected_body")
   
   // Stage 2: Moderation  
   moderation_status     String    @default("pending") @map("moderation_status") // pending, reviewing, approved, rejected

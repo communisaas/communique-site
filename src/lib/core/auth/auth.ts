@@ -37,6 +37,14 @@ export interface User {
 	district_hash: string | null;
 	trust_score: number;
 	reputation_tier: string;
+	// Reward tracking
+	pending_rewards: string | null;
+	total_earned: string | null;
+	last_certification: Date | null;
+	// Reputation scores
+	challenge_score: number | null;
+	civic_score: number | null;
+	discourse_score: number | null;
 	// Profile fields
 	role: string | null;
 	organization: string | null;

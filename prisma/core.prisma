@@ -39,6 +39,14 @@ model User {
   trust_score            Int                    @default(0) @map("trust_score")
   reputation_tier        String                 @default("novice") @map("reputation_tier") // 'expert', 'verified', 'novice'
   
+  // VOTER Protocol reward and reputation fields
+  pending_rewards        BigInt?                @default(0) @map("pending_rewards")
+  total_earned           BigInt?                @default(0) @map("total_earned")
+  last_certification     DateTime?              @map("last_certification")
+  challenge_score        Int?                   @default(50) @map("challenge_score")    // 0-100 score
+  civic_score            Int?                   @default(50) @map("civic_score")        // 0-100 score  
+  discourse_score        Int?                   @default(50) @map("discourse_score")    // 0-100 score
+  
   // Profile fields
   role                   String?                // User's role/profession
   organization           String?                // User's organization  

@@ -48,17 +48,18 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 
-		// Calculate final reward
+		// Calculate final reward with improved type safety
 		const supplyData = extractSupplyDecision(supplyDecision.decision);
 		const marketData = extractMarketDecision(marketDecision.decision);
 		const impactData = extractImpactDecision(impactDecision.decision);
 		
-		const baseReward = supplyData.rewardAmount || 0;
+		// Use finalRewardWei as the primary reward source, with rewardAmount as compatibility fallback
+		const baseRewardWei = supplyData.finalRewardWei || '100000000000000000'; // 0.1 ETH default
 		const marketMultiplier = marketData.rewardMultiplier;
 		const impactMultiplier = impactData.impactMultiplier || 1.0;
 
 		const finalReward = BigInt(
-			Math.floor(Number(baseReward) * marketMultiplier * impactMultiplier)
+			Math.floor(Number(baseRewardWei) * marketMultiplier * impactMultiplier)
 		);
 
 		return json({
@@ -68,12 +69,14 @@ export const POST: RequestHandler = async ({ request }) => {
 				formatted: `${Number(finalReward) / 10 ** 18} VOTER`
 			},
 			breakdown: {
-				base: baseReward.toString(),
+				base: baseRewardWei,
+				baseRewardUSD: supplyData.baseRewardUSD || 0.1,
 				marketMultiplier,
 				impactMultiplier,
 				supplyImpact: supplyData.supplyImpact,
 				impactScore: impactData.impactScore,
-				marketSignal: marketData.marketSignal
+				marketSignal: marketData.marketSignal,
+				finalRewardETH: supplyData.finalRewardETH || 0.05
 			},
 			agents: {
 				supply: supplyDecision,

@@ -63,7 +63,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			const userVerifications = await db.templateVerification.findMany({
 				where: {
 					user_id: verification.user_id,
-					quality_score: { not: null }
+					quality_score: { gt: 0 }
 				},
 				select: { quality_score: true }
 			});
@@ -151,7 +151,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			legislative_context: verification.legislative_channel
 				? {
 						country_code: verification.country_code,
-						country_name: verification.legislative_channel.name,
+						country_name: verification.legislative_channel.country_name,
 						access_tier: verification.legislative_channel.access_tier
 					}
 				: {

@@ -19,6 +19,9 @@ const mockDb = vi.hoisted(() => ({
 		create: vi.fn(),
 		update: vi.fn()
 	},
+	session: {
+		create: vi.fn()
+	},
 	user_session: {
 		create: vi.fn()
 	}
@@ -115,6 +118,11 @@ describe('OAuth Flow Integration', () => {
 			user_id: 'user-123',
 			provider: 'google'
 		});
+		mockDb.session.create.mockResolvedValue({
+			id: 'session-123',
+			userId: 'user-123',
+			expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+		});
 	});
 
 	describe('OAuth Callback Handler', () => {
@@ -141,7 +149,8 @@ describe('OAuth Flow Integration', () => {
 					if (key === 'oauth_return_to') return '/profile';
 					return null;
 				}),
-				set: vi.fn()
+				set: vi.fn(),
+				delete: vi.fn()
 			} as any;
 
 			const result = await oauthCallbackHandler.handleCallback(config, url, cookies);
@@ -326,7 +335,8 @@ describe('OAuth Flow Integration', () => {
 						if (key === 'oauth_return_to') return '/profile';
 						return null;
 					}),
-					set: vi.fn()
+					set: vi.fn(),
+					delete: vi.fn()
 				} as any,
 				{ setCookie: mockSetCookie }
 			);
@@ -383,7 +393,8 @@ describe('OAuth Flow Integration', () => {
 						if (key === 'oauth_return_to') return '/profile';
 						return null;
 					}),
-					set: vi.fn()
+					set: vi.fn(),
+					delete: vi.fn()
 				} as any
 			);
 
@@ -415,7 +426,8 @@ describe('OAuth Flow Integration', () => {
 						if (key === 'oauth_return_to') return '/profile';
 						return null;
 					}),
-					set: vi.fn()
+					set: vi.fn(),
+					delete: vi.fn()
 				} as any
 			);
 

@@ -2,16 +2,16 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
-import { createApiError, createValidationError, type ApiResponse } from '$lib/types/errors';
+import { createApiError, createValidationError, type ApiResponse, type ApiError } from '$lib/types/errors';
 
-// Validation schema for template creation
+// Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
 	title: string;
 	subject?: string;
 	message_body: string;
 	category?: string;
 	type: string;
-	deliveryMethod: string;
+	deliveryMethod: string; // Maps to delivery_method in Prisma
 	preview: string;
 	description?: string;
 	status?: string;
@@ -112,7 +112,7 @@ function validateTemplateData(data: unknown): {
 		deliveryMethod: templateData.delivery_method as string,
 		subject: (templateData.subject as string) || `Regarding: ${templateData.title}`,
 		category: (templateData.category as string) || 'General',
-		description: (templateData.description as string) || templateData.preview.substring(0, 160),
+		description: (templateData.description as string) || (templateData.preview as string)?.substring(0, 160) || '',
 		status: (templateData.status as string) || 'draft',
 		is_public: Boolean(templateData.is_public) || false,
 		delivery_config: (templateData.delivery_config as Record<string, any>) || {},
@@ -254,9 +254,24 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						return json(response, { status: 400 });
 					}
 
+					// Destructure to separate deliveryMethod and map to delivery_method for Prisma
+					const { deliveryMethod, ...templateDataForPrisma } = validData;
 					const newTemplate = await db.template.create({
 						data: {
-							...validData,
+							title: validData.title,
+							description: validData.description || '',
+							message_body: validData.message_body,
+							category: validData.category || 'General',
+							type: validData.type,
+							deliveryMethod: deliveryMethod,
+							subject: validData.subject,
+							preview: validData.preview,
+							delivery_config: validData.delivery_config || {},
+							cwc_config: validData.cwc_config || {},
+							recipient_config: validData.recipient_config || {},
+							metrics: validData.metrics || {},
+							status: validData.status || 'draft',
+							is_public: validData.is_public || false,
 							slug,
 							userId: user.id
 						}

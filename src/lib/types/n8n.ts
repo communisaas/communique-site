@@ -75,3 +75,51 @@ export interface N8NWorkflow {
 	active: boolean;
 	webhook?: string;
 }
+
+// N8N Process Template Response Types
+export interface ProcessTemplateStages {
+	verification?: {
+		approved: boolean;
+		severityLevel?: number;
+		corrections?: {
+			subject?: string;
+			body?: string;
+		};
+		violations?: string[];
+	};
+	consensus?: {
+		approved: boolean;
+		score: number;
+		agentCount: number;
+		diversityScore: number;
+	};
+	reward?: {
+		amount: string;
+		formatted: string;
+		breakdown: {
+			supply: string;
+			marketMultiplier: number;
+			impactMultiplier: number;
+		};
+	};
+	reputation?: {
+		changes: Record<string, number>;
+		newTier: string;
+		badges: string[];
+	};
+}
+
+export interface ProcessTemplateResponse {
+	success: boolean;
+	templateId: string;
+	submissionId: string;
+	stages: ProcessTemplateStages;
+	approved?: boolean;
+	reason?: string;
+	cwcReady?: {
+		subject: string;
+		body: string;
+		recipients: string[];
+		templateId: string;
+	};
+}

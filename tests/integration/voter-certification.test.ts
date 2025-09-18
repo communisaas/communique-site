@@ -119,8 +119,8 @@ describe('VOTER Protocol Server-Side Certification', () => {
 	});
 
 	describe('Action Type Classification', () => {
-		it('should correctly determine action types for templates', () => {
-			const { getVOTERActionType } = require('$lib/integrations/voter');
+		it('should correctly determine action types for templates', async () => {
+			const { getVOTERActionType } = await import('$lib/integrations/voter');
 
 			const templates = [
 				{
@@ -128,7 +128,7 @@ describe('VOTER Protocol Server-Side Certification', () => {
 					expected: 'cwc_message'
 				},
 				{
-					template: { title: 'Email Mayor Johnson', deliveryMethod: 'direct' },
+					template: { title: 'Email Official', deliveryMethod: 'direct' },
 					expected: 'direct_email'
 				},
 				{

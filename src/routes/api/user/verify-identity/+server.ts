@@ -118,14 +118,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			);
 		}
 	} catch (error: unknown) {
-		if (error.name === 'ConfigMismatchError') {
-			console.error('Self.xyz configuration mismatch:', error.issues);
+		// Type guard for ConfigMismatchError
+		if (
+			error && 
+			typeof error === 'object' && 
+			'name' in error && 
+			error.name === 'ConfigMismatchError' &&
+			'issues' in error
+		) {
+			console.error('Self.xyz configuration mismatch:', (error as any).issues);
 			return json(
 				{
 					status: 'error',
 					result: false,
 					message: 'Verification configuration mismatch',
-					issues: error.issues
+					issues: (error as any).issues
 				},
 				{ status: 400 }
 			);

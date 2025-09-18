@@ -182,7 +182,7 @@
 											<h4 class="font-medium text-slate-900">{template.title}</h4>
 											<div class="mt-1 flex items-center space-x-2">
 												<Badge
-													color={template.status === 'published' ? 'green' : 'yellow'}
+													variant={template.status === 'published' ? 'success' : 'warning'}
 													size="sm"
 												>
 													{template.status}

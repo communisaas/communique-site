@@ -56,7 +56,7 @@ export interface ChallengeStake {
 	id: string;
 	challenge_id: string;
 	user_id: string;
-	stance: string; // 'support_challenger' | 'support_defender'
+	side: string; // 'support' | 'oppose' - matches Prisma schema
 	amount: string; // BigInt as string
 	tx_hash?: string;
 	created_at: Date;
@@ -96,7 +96,7 @@ export function isValidChallengeStake(obj: unknown): obj is ChallengeStake {
 		typeof record.id === 'string' &&
 		typeof record.challenge_id === 'string' &&
 		typeof record.user_id === 'string' &&
-		typeof record.stance === 'string' &&
+		typeof record.side === 'string' &&
 		typeof record.amount === 'string'
 	);
 }

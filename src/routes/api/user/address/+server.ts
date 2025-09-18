@@ -89,15 +89,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					// Create new representative record
 					const newRep = await db.representative.create({
 						data: {
+							bioguide_id: rep.bioguide_id || 'temp_' + Date.now(),
 							name: rep.name,
 							state: rep.state,
 							district: rep.district,
 							chamber: rep.chamber,
-							party: 'Unknown', // Would be filled from actual API
+							party: rep.party || 'Unknown',
 							email: rep.email || '',
 							phone: rep.phone || '',
-							office: rep.office || '',
-							website: ''
+							office_code: rep.office_code || rep.office || ''
 						}
 					});
 					representativeId = newRep.id;
@@ -107,7 +107,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				await db.user_representatives.create({
 					data: {
 						user_id: locals.user.id,
-						representative_id: representativeId
+						representative_id: representativeId,
+						relationship: 'constituent'
 					}
 				});
 			}

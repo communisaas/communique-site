@@ -106,9 +106,9 @@
 		}
 	}
 
-	let tooltipElement: HTMLDivElement = $state();
+	let tooltipElement: HTMLDivElement | undefined = $state();
 	let containerElement: HTMLSpanElement;
-	let infoIconElement: HTMLDivElement = $state();
+	let infoIconElement: HTMLDivElement | undefined = $state();
 	let position: 'top' | 'bottom' | 'left' | 'right' = $state('top');
 
 	function updatePosition() {

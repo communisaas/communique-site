@@ -25,7 +25,7 @@ export interface AgentDecision<T = unknown> {
 }
 
 export interface AgentConsensus<T = unknown> {
-	decisions: AgentDecision<T>[];
+	decisions: AgentDecision<any>[];
 	consensusReached: boolean;
 	consensusConfidence: number;
 	finalDecision: T | null;
@@ -123,7 +123,7 @@ export abstract class BaseAgent {
 		this.safetyBounds = safetyBounds;
 	}
 
-	abstract makeDecision(context: AgentContext): Promise<AgentDecision>;
+	abstract makeDecision(context: AgentContext): Promise<AgentDecision<any>>;
 
 	getAgentType(): AgentType {
 		return this.agentType;
@@ -175,8 +175,8 @@ export class AgentCoordinator {
 	async coordinateDecision(
 		context: AgentContext,
 		requiredAgents: AgentType[]
-	): Promise<AgentConsensus> {
-		const decisions: AgentDecision[] = [];
+	): Promise<AgentConsensus<any>> {
+		const decisions: AgentDecision<any>[] = [];
 
 		// Collect decisions from required agents
 		for (const agentType of requiredAgents) {

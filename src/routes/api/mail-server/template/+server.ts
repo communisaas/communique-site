@@ -23,12 +23,23 @@ export const GET: RequestHandler = async ({ url, request }) => {
 	}
 
 	try {
+		const whereConditions = [];
+		if (slug) {
+			whereConditions.push({ slug, is_public: true });
+		}
+		if (templateId) {
+			whereConditions.push({ id: templateId });
+		}
+
+		// Filter out any undefined conditions and ensure we have at least one condition
+		const validConditions = whereConditions.filter(condition => condition !== undefined);
+		if (validConditions.length === 0) {
+			return json({ error: 'Missing slug or templateId parameter' }, { status: 400 });
+		}
+
 		const template = await db.template.findFirst({
 			where: {
-				OR: [
-					slug ? { slug, is_public: true } : undefined,
-					templateId ? { id: templateId } : undefined
-				].filter(Boolean)
+				OR: validConditions
 			},
 			select: {
 				id: true,

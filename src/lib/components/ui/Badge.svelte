@@ -1,5 +1,5 @@
 <script lang="ts">
-	export let variant: 'congressional' | 'direct' | 'success' | 'warning' | 'error' | 'neutral' =
+	export let variant: 'congressional' | 'direct' | 'certified' | 'success' | 'warning' | 'error' | 'neutral' =
 		'neutral';
 	export let size: 'sm' | 'md' = 'sm';
 	export let pulse: boolean = false;
@@ -7,6 +7,7 @@
 	const variants = {
 		congressional: 'bg-congressional-50 text-congressional-700 border-congressional-200',
 		direct: 'bg-direct-50 text-direct-700 border-direct-200',
+		certified: 'bg-green-50 text-green-700 border-green-200',
 		success: 'bg-emerald-50 text-emerald-700 border-emerald-200',
 		warning: 'bg-amber-50 text-amber-700 border-amber-200',
 		error: 'bg-red-50 text-red-700 border-red-200',
@@ -21,6 +22,7 @@
 	const pulseColors = {
 		congressional: 'bg-congressional-500',
 		direct: 'bg-direct-500',
+		certified: 'bg-green-500',
 		success: 'bg-emerald-500',
 		warning: 'bg-amber-500',
 		error: 'bg-red-500',

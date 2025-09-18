@@ -78,7 +78,7 @@
 			const { api } = await import('$lib/core/api/client');
 			const result = await api.get(`/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
-			const data = result.data;
+			const data = result.data as { available: boolean; suggestions?: string[] };
 			isAvailable = data.available;
 
 			if (!isAvailable && slugToCheck === slug) {
@@ -132,7 +132,7 @@
 			const { api } = await import('$lib/core/api/client');
 			const result = await api.get(`/templates/check-slug?${params}`);
 			if (!result.success) throw new Error(result.error);
-			const data = result.data;
+			const data = result.data as { available: boolean; suggestions?: string[] };
 
 			if (!data.available) {
 				suggestions = data.suggestions || [];

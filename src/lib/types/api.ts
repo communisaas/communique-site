@@ -208,3 +208,69 @@ export interface UserRegistrationRequest {
 	phoneHash: string;
 	selfProof: string;
 }
+
+// N8N Process Template Response Types
+export interface N8NStageVerification {
+	approved: boolean;
+	severityLevel: number;
+	corrections?: {
+		subject?: string;
+		body?: string;
+	};
+	violations?: string[];
+}
+
+export interface N8NStageConsensus {
+	approved: boolean;
+	score: number;
+	agentCount: number;
+	diversityScore: number;
+}
+
+export interface N8NStageReward {
+	amount: string;
+	formatted: string;
+	breakdown: {
+		supply: string;
+		marketMultiplier: number;
+		impactMultiplier: number;
+	};
+}
+
+export interface N8NStageReputation {
+	changes: Array<{
+		challenge?: number;
+		civic?: number;
+		discourse?: number;
+	}>;
+	newTier: string;
+	badges: string[];
+}
+
+export interface N8NCWCReady {
+	subject: string;
+	body: string;
+	recipients: string[];
+	templateId: string;
+}
+
+export interface N8NProcessTemplateResponse {
+	success: boolean;
+	templateId: string;
+	submissionId: string;
+	approved?: boolean;
+	reason?: string;
+	stages: {
+		verification?: N8NStageVerification;
+		consensus?: N8NStageConsensus;
+		reward?: N8NStageReward;
+		reputation?: N8NStageReputation;
+	};
+	cwcReady?: N8NCWCReady;
+}
+
+// Template verification correction types
+export interface TemplateCorrections {
+	subject?: string;
+	body?: string;
+}

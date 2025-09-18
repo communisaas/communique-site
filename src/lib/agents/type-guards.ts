@@ -2,7 +2,7 @@
  * Type guards for agent decision interfaces
  */
 
-// Supply agent decision structure - should match RewardParameters
+// Supply agent decision structure - matches RewardParameters exactly
 export interface SupplyDecision {
 	baseRewardUSD: number;
 	multipliers: {
@@ -17,9 +17,9 @@ export interface SupplyDecision {
 	ethPrice: number;
 	finalRewardETH: number;
 	finalRewardWei: string;
-	// Compatibility properties
-	rewardAmount?: number;
-	supplyImpact?: number;
+	// Compatibility properties for API backwards compatibility
+	rewardAmount?: number; // Derived from finalRewardWei
+	supplyImpact?: number; // Network effects multiplier
 }
 
 // Market agent decision structure  
@@ -37,9 +37,8 @@ export interface MarketDecision {
 	marketSignal: 'bullish' | 'neutral' | 'bearish';
 }
 
-// Impact agent decision structure
+// Impact agent decision structure - matches ImpactAssessment exactly
 export interface ImpactDecision {
-	rewardAmount: number; // Add missing property for compatibility
 	templateId: string;
 	legislativeOutcomes: unknown[];
 	impactScore: number;
@@ -47,11 +46,12 @@ export interface ImpactDecision {
 	causalChains: unknown[];
 	correlationStrength: number;
 	recommendedFunding?: number;
-	// Additional properties
-	impactMultiplier?: number;
+	// Compatibility properties for API backwards compatibility
+	rewardAmount?: number; // Derived from recommendedFunding
+	impactMultiplier?: number; // Calculated from impactScore
 }
 
-// Verification agent decision structure
+// Verification agent decision structure - matches VerificationAssessment
 export interface VerificationDecision {
 	userId: string;
 	verificationLevel: 'unverified' | 'partial' | 'verified' | 'high_assurance';
@@ -66,8 +66,14 @@ export interface VerificationDecision {
 		source: string;
 	};
 	// Template verification properties
-	corrections?: Record<string, string>;
+	approved?: boolean;
+	corrections?: {
+		subject?: string;
+		body?: string;
+		[key: string]: string | undefined;
+	};
 	severityLevel?: number;
+	violations?: string[];
 }
 
 // Verification source structure
@@ -80,9 +86,10 @@ export interface VerificationSource {
 	metadata: unknown;
 }
 
-// Reputation agent decision structure
+// Reputation agent decision structure - matches CredibilityAssessment exactly
 export interface ReputationDecision {
 	userId: string;
+	walletAddress?: string;
 	credibilityScore: number;
 	credibilityComponents: {
 		civic_engagement: number;
@@ -96,6 +103,13 @@ export interface ReputationDecision {
 	attestations: unknown[];
 	riskFactors: string[];
 	portabilityHash: string;
+	// Additional agent processing fields
+	reputationChanges?: {
+		challenge?: number;
+		civic?: number;
+		discourse?: number;
+	};
+	newTier?: string;
 }
 
 // Type guards
@@ -166,7 +180,17 @@ export function isReputationDecision(obj: unknown): obj is ReputationDecision {
 // Helper function to safely extract decision data
 export function extractSupplyDecision(decision: unknown): SupplyDecision {
 	if (isSupplyDecision(decision)) {
-		return decision;
+		// Add compatibility properties if missing
+		const result = { ...decision };
+		if (!result.rewardAmount) {
+			// Convert finalRewardWei to number for compatibility
+			result.rewardAmount = Number(result.finalRewardWei) || 0;
+		}
+		if (!result.supplyImpact) {
+			// Calculate supply impact from multipliers
+			result.supplyImpact = result.totalMultiplier || 1.0;
+		}
+		return result;
 	}
 	return { 
 		baseRewardUSD: 0, 
@@ -175,7 +199,8 @@ export function extractSupplyDecision(decision: unknown): SupplyDecision {
 		ethPrice: 2000,
 		finalRewardETH: 0,
 		finalRewardWei: '0',
-		rewardAmount: 0
+		rewardAmount: 0,
+		supplyImpact: 1.0
 	};
 }
 
@@ -195,16 +220,27 @@ export function extractMarketDecision(decision: unknown): MarketDecision {
 
 export function extractImpactDecision(decision: unknown): ImpactDecision {
 	if (isImpactDecision(decision)) {
-		return decision;
+		// Add compatibility properties if missing
+		const result = { ...decision };
+		if (!result.rewardAmount) {
+			// Use recommendedFunding as rewardAmount for compatibility
+			result.rewardAmount = result.recommendedFunding || 0;
+		}
+		if (!result.impactMultiplier) {
+			// Calculate impact multiplier from score (0-100 scale to 1.0-2.0 multiplier)
+			result.impactMultiplier = result.impactScore > 0 ? 1.0 + (result.impactScore / 100) : 1.0;
+		}
+		return result;
 	}
 	return { 
-		rewardAmount: 0,
 		templateId: '',
 		legislativeOutcomes: [],
 		impactScore: 0,
 		confidenceLevel: 'low',
 		causalChains: [],
-		correlationStrength: 0
+		correlationStrength: 0,
+		rewardAmount: 0,
+		impactMultiplier: 1.0
 	};
 }
 
@@ -228,6 +264,7 @@ export function extractReputationDecision(decision: unknown): ReputationDecision
 	}
 	return {
 		userId: '',
+		walletAddress: undefined,
 		credibilityScore: 0,
 		credibilityComponents: {
 			civic_engagement: 0,

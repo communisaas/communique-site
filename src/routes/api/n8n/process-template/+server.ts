@@ -9,6 +9,13 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { agentCoordinator, moderationConsensus } from '$lib/agents';
 import { db } from '$lib/core/db';
+import {
+	extractSupplyDecision,
+	extractMarketDecision,
+	extractImpactDecision,
+	extractReputationDecision
+} from '$lib/agents/type-guards';
+import type { N8NProcessTemplateResponse } from '$lib/types/api';
 
 export const POST: RequestHandler = async ({ request, url }) => {
 	try {
@@ -50,7 +57,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// Generate submission ID for tracking
 		const submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 
-		const response: unknown = {
+		const response: N8NProcessTemplateResponse = {
 			success: true,
 			templateId,
 			submissionId,
@@ -80,36 +87,39 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				template
 			});
 
+			const isApproved = verification.decision.verificationLevel === 'verified' || verification.decision.verificationLevel === 'high_assurance';
+
 			response.stages.verification = {
-				approved: verification.approved,
-				severityLevel: verification.severityLevel,
-				corrections: verification.corrections,
-				violations: verification.violations
+				approved: isApproved,
+				severityLevel: verification.decision.severityLevel || 0,
+				corrections: verification.decision.corrections,
+				violations: verification.decision.riskFactors
 			};
 
 			// Store verification result
 			await db.templateVerification.upsert({
 				where: { template_id: templateId },
 				update: {
-					corrected_subject: verification.corrections?.subject,
-					corrected_body: verification.corrections?.body,
-					severity_level: verification.severityLevel,
-					moderation_status: verification.approved ? 'approved' : 'pending',
+					corrected_subject: verification.decision.corrections?.subject || undefined,
+					corrected_body: verification.decision.corrections?.body || undefined,
+					severity_level: verification.decision.severityLevel || 0,
+					moderation_status: isApproved ? 'approved' : 'pending',
 					consensus_score: verification.confidence,
 					reviewed_at: new Date()
 				},
 				create: {
 					template_id: templateId,
-					corrected_subject: verification.corrections?.subject,
-					corrected_body: verification.corrections?.body,
-					severity_level: verification.severityLevel,
-					moderation_status: verification.approved ? 'approved' : 'pending',
+					user_id: template.user?.id || template.userId,
+					corrected_subject: verification.decision.corrections?.subject || undefined,
+					corrected_body: verification.decision.corrections?.body || undefined,
+					severity_level: verification.decision.severityLevel || 0,
+					moderation_status: isApproved ? 'approved' : 'pending',
 					consensus_score: verification.confidence
 				}
 			});
 
 			// Stop here if not approved and not forcing consensus
-			if (!verification.approved && stage === 'verify') {
+			if (!isApproved && stage === 'verify') {
 				response.approved = false;
 				response.reason = 'Failed verification';
 				return json(response);
@@ -152,57 +162,76 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			});
 
 			if (result.approved) {
+				// Extract typed decisions using type guards
+				const supplyDecision = extractSupplyDecision(result.supply?.decision);
+				const marketDecision = extractMarketDecision(result.market?.decision);
+				const impactDecision = extractImpactDecision(result.impact?.decision);
+				const reputationDecision = extractReputationDecision(result.reputation?.decision);
+
 				response.stages.reward = {
-					amount: (result.reward ?? 0).toString(),
-					formatted: `${Number(result.reward ?? 0) / 10 ** 18} VOTER`,
+					amount: (result.reward ?? 0n).toString(),
+					formatted: `${Number(result.reward ?? 0n) / 10 ** 18} VOTER`,
 					breakdown: {
-						supply: (result.supply?.rewardAmount ?? 0).toString(),
-						marketMultiplier: result.market?.rewardMultiplier ?? 1,
-						impactMultiplier: result.impact?.impactMultiplier ?? 1
+						supply: supplyDecision.finalRewardWei || '0',
+						marketMultiplier: marketDecision.rewardMultiplier || 1,
+						impactMultiplier: impactDecision.impactMultiplier || 1
 					}
 				};
-
+				
 				response.stages.reputation = {
-					changes: result.reputation?.reputationChanges ?? [],
-					newTier: result.reputation?.newTier ?? 'unknown',
-					badges: result.reputation?.badges ?? []
+					changes: [{
+						challenge: reputationDecision.credibilityComponents.behavioral_integrity,
+						civic: reputationDecision.credibilityComponents.civic_engagement,
+						discourse: reputationDecision.credibilityComponents.community_trust
+					}],
+					newTier: reputationDecision.tier,
+					badges: reputationDecision.badges
 				};
 
 				// Update user if userId provided
 				if (userId) {
 					const user = await db.user.findUnique({
-						where: { id: userId }
+						where: { id: userId },
+						select: {
+							id: true,
+							pending_rewards: true,
+							total_earned: true,
+							challenge_score: true,
+							civic_score: true,
+							discourse_score: true,
+							reputation_tier: true
+						}
 					});
 
 					if (user) {
 						await db.user.update({
 							where: { id: userId },
 							data: {
-								pending_rewards: (user.pending_rewards || 0) + Number(result.reward),
-								total_earned: (user.total_earned || 0) + Number(result.reward),
+								pending_rewards: (BigInt(user.pending_rewards || '0') + (result.reward ?? 0n)).toString(),
+								total_earned: (BigInt(user.total_earned || '0') + (result.reward ?? 0n)).toString(),
 								last_certification: new Date(),
 								challenge_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.challenge_score || 50) + (result.reputation?.reputationChanges?.challenge ?? 0)
+										(user.challenge_score || 50) + (reputationDecision.credibilityComponents.behavioral_integrity || 0)
 									)
 								),
 								civic_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.civic_score || 50) + (result.reputation?.reputationChanges?.civic ?? 0)
+										(user.civic_score || 50) + (reputationDecision.credibilityComponents.civic_engagement || 0)
 									)
 								),
 								discourse_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.discourse_score || 50) + (result.reputation?.reputationChanges?.discourse ?? 0)
+										(user.discourse_score || 50) + (reputationDecision.credibilityComponents.community_trust || 0)
 									)
 								),
-								reputation_tier: result.reputation?.newTier ?? 'unknown'
+								reputation_tier: reputationDecision.tier
 							}
 						});
 					}
@@ -223,7 +252,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				response.stages.verification?.corrections?.body || template.message_body;
 
 			response.cwcReady = {
-				subject: correctedSubject,
+				subject: correctedSubject || 'No Subject',
 				body: correctedBody,
 				recipients,
 				templateId

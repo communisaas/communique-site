@@ -14,14 +14,30 @@ const VOTER_API_KEY = env.VOTER_API_KEY || '';
 
 interface WebhookPayload {
 	event: string;
-	data: {
-		user_address?: string;
-		certification_hash?: string;
-		reward_amount?: number;
-		reputation_change?: number;
-		action_hash?: string;
-		timestamp?: string;
-	};
+	data: WebhookData;
+}
+
+interface WebhookData {
+	user_address?: string;
+	certification_hash?: string;
+	reward_amount?: number;
+	reputation_change?: number;
+	action_hash?: string;
+	timestamp?: string;
+}
+
+// Type guards for webhook data
+function isWebhookData(data: unknown): data is WebhookData {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		(typeof (data as WebhookData).user_address === 'string' || (data as WebhookData).user_address === undefined) &&
+		(typeof (data as WebhookData).certification_hash === 'string' || (data as WebhookData).certification_hash === undefined) &&
+		(typeof (data as WebhookData).reward_amount === 'number' || (data as WebhookData).reward_amount === undefined) &&
+		(typeof (data as WebhookData).reputation_change === 'number' || (data as WebhookData).reputation_change === undefined) &&
+		(typeof (data as WebhookData).action_hash === 'string' || (data as WebhookData).action_hash === undefined) &&
+		(typeof (data as WebhookData).timestamp === 'string' || (data as WebhookData).timestamp === undefined)
+	);
 }
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -72,6 +88,11 @@ export const POST: RequestHandler = async ({ request }) => {
 };
 
 async function handleCertificationComplete(data: unknown) {
+	if (!isWebhookData(data)) {
+		console.error('[Webhook] Invalid data format for certification complete:', data);
+		return;
+	}
+
 	console.log('[Webhook] Certification complete:', data.certification_hash);
 
 	// TODO: Update database with certification status
@@ -84,6 +105,11 @@ async function handleCertificationComplete(data: unknown) {
 }
 
 async function handleRewardIssued(data: unknown) {
+	if (!isWebhookData(data)) {
+		console.error('[Webhook] Invalid data format for reward issued:', data);
+		return;
+	}
+
 	console.log('[Webhook] Reward issued:', data.reward_amount);
 
 	// TODO: Update user's reward balance
@@ -94,6 +120,11 @@ async function handleRewardIssued(data: unknown) {
 }
 
 async function handleReputationUpdated(data: unknown) {
+	if (!isWebhookData(data)) {
+		console.error('[Webhook] Invalid data format for reputation updated:', data);
+		return;
+	}
+
 	console.log('[Webhook] Reputation updated for:', data.user_address);
 
 	// TODO: Update user's reputation display

@@ -183,7 +183,7 @@
 			}
 
 			// Close address modal and proceed to email generation
-			modalActions.close('address-modal');
+			modalActions.closeModal('address-modal');
 
 			// Clear any stored intent after successful address submission
 			sessionStorage.removeItem(`template_${template.id}_intent`);
@@ -202,7 +202,7 @@
 		} catch (error) {
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
-			modalActions.close('address-modal');
+			modalActions.closeModal('address-modal');
 
 			// Clear any stored intent even on error
 			sessionStorage.removeItem(`template_${template.id}_intent`);
@@ -259,7 +259,7 @@
 
 			<!-- Template metadata -->
 			<div class="flex flex-wrap items-center gap-3">
-				<Badge type={template.deliveryMethod === 'certified' ? 'certified' : 'direct'} />
+				<Badge variant={template.deliveryMethod === 'certified' ? 'certified' : 'direct'} />
 				<span class="rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
 					{template.category}
 				</span>

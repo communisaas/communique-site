@@ -282,7 +282,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 
 		// Re-lookup representatives using address lookup service
 		const { addressLookup } = await import('$lib/core/congress/address-lookup');
-		const updatedReps = await addressLookupService.lookupRepsByAddress({
+		const updatedReps = await addressLookup.lookupRepsByAddress({
 			street: user.street,
 			city: user.city,
 			state: user.state,

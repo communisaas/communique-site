@@ -8,11 +8,12 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db.js';
 import { cwcClient } from '$lib/core/congress/cwc-client.js';
-import { SupplyAgent } from '$lib/agents/supply-agent.js';
+import { SupplyAgent, type RewardParameters } from '$lib/agents/supply-agent.js';
 import { ImpactAgent } from '$lib/agents/impact-agent.js';
 import { VerificationAgent } from '$lib/agents/verification-agent.js';
 import { ReputationAgent } from '$lib/agents/reputation-agent.js';
 import { AgentCoordinator, AgentType, type AgentContext } from '$lib/agents/base-agent.js';
+import { extractReputationDecision, extractVerificationDecision } from '$lib/agents/type-guards.js';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -291,14 +292,8 @@ async function updateReputation({
 		});
 	}
 
-	const credibilityAssessment = reputationDecision.decision as {
-		credibilityScore: number;
-		tier: string;
-		category: string;
-		confidence: number;
-		reasonCode: string;
-		verification: string;
-	};
+	// Use type-safe extraction for reputation decision
+	const credibilityAssessment = extractReputationDecision(reputationDecision.decision);
 
 	// Get current user state for comparison
 	const user = await prisma.user.findUnique({
@@ -411,7 +406,8 @@ async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, di
 		};
 	}
 
-	const assessment = verificationDecision.decision;
+	// Use type-safe extraction for verification decision
+	const assessment = extractVerificationDecision(verificationDecision.decision);
 
 	// Update user with agent-determined trust score and verification status
 	await prisma.user.update({
@@ -695,7 +691,7 @@ async function calculateReward({ userAddress, actionType, templateId, timestamp 
 		throw error(500, 'Supply agent decision missing from consensus');
 	}
 
-	const rewardParams = supplyDecision.decision;
+	const rewardParams = supplyDecision.decision as RewardParameters;
 
 	// Save agent decisions for audit trail
 	await prisma.rewardCalculation.create({

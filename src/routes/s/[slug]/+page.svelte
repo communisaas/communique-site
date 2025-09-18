@@ -131,7 +131,7 @@
 			}
 
 			// Close address modal and proceed to email generation
-			modalActions.close('address-modal');
+			modalActions.closeModal('address-modal');
 
 			// Clear any stored intent after successful address submission
 			sessionStorage.removeItem(`template_${template.id}_intent`);
@@ -144,7 +144,7 @@
 		} catch (error) {
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
-			modalActions.close('address-modal');
+			modalActions.closeModal('address-modal');
 
 			// Clear any stored intent even on error
 			sessionStorage.removeItem(`template_${template.id}_intent`);

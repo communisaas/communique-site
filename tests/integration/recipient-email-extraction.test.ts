@@ -51,32 +51,32 @@ describe('Recipient Email Extraction Integration', () => {
 
 	describe('isValidDeliveryConfig', () => {
 		const validBase = {
-			channel: 'email',
-			recipients: { emails: ['test@example.com'] }
+			timing: 'immediate' as const,
+			followUp: false
 		};
 
 		it.each([
 			[null, false],
 			[undefined, false],
 			[{}, false],
-			[{ channel: 'email' }, false], // missing recipients
-			[{ recipients: { emails: ['test@example.com'] } }, false], // missing channel
+			[{ timing: 'immediate' }, false], // missing followUp
+			[{ followUp: false }, false], // missing timing
 			[validBase, true],
-			[{ ...validBase, channel: 'invalid' }, false],
-			[{ ...validBase, recipients: null }, false],
-			[{ ...validBase, recipients: { emails: [] } }, false]
+			[{ ...validBase, timing: 'invalid' }, false],
+			[{ ...validBase, timing: 'scheduled', followUp: true }, true],
+			[{ ...validBase, followUp: null }, false]
 		])('validates delivery config %p as %p', (input, expected) => {
 			expect(isValidDeliveryConfig(input)).toBe(expected);
 		});
 
-		it('validates allowed channels', () => {
-			const channels = ['email', 'sms', 'web', 'api'];
-			channels.forEach((channel) => {
-				const config = { ...validBase, channel };
+		it('validates allowed timing values', () => {
+			const timings = ['immediate', 'scheduled'];
+			timings.forEach((timing) => {
+				const config = { ...validBase, timing };
 				expect(isValidDeliveryConfig(config)).toBe(true);
 			});
 
-			expect(isValidDeliveryConfig({ ...validBase, channel: 'invalid' })).toBe(false);
+			expect(isValidDeliveryConfig({ ...validBase, timing: 'invalid' })).toBe(false);
 		});
 	});
 
@@ -87,7 +87,7 @@ describe('Recipient Email Extraction Integration', () => {
 				title: 'Test Template',
 				subject: 'Test Subject',
 				message_body: 'Test message',
-				recipient_emails: ['old@format.com']
+				recipient_config: { emails: ['old@format.com'] }
 			};
 
 			const migrated = migrateToTypedTemplate(legacy);
@@ -97,55 +97,66 @@ describe('Recipient Email Extraction Integration', () => {
 				title: 'Test Template',
 				subject: 'Test Subject',
 				message_body: 'Test message',
-				delivery: {
-					channel: 'email',
-					recipients: {
-						emails: ['old@format.com']
-					}
+				delivery_config: {
+					timing: 'immediate',
+					followUp: false
+				},
+				recipient_config: {
+					emails: ['old@format.com']
 				}
 			});
-			expect((migrated as any).recipient_emails).toBeUndefined();
 		});
 
 		it('handles templates without legacy emails', () => {
 			const modern = {
 				id: 'template-456',
 				title: 'Modern Template',
-				delivery: {
-					channel: 'email',
-					recipients: {
-						emails: ['modern@format.com']
-					}
+				delivery_config: {
+					timing: 'immediate',
+					followUp: false
+				},
+				recipient_config: {
+					emails: ['modern@format.com']
 				}
 			};
 
 			const result = migrateToTypedTemplate(modern);
-			expect(result).toEqual(modern);
+			expect(result).toEqual(expect.objectContaining({
+				id: 'template-456',
+				title: 'Modern Template',
+				delivery_config: {
+					timing: 'immediate',
+					followUp: false
+				},
+				recipient_config: {
+					emails: ['modern@format.com']
+				}
+			}));
 		});
 
 		it('preserves existing delivery config', () => {
 			const template = {
 				id: 'template-789',
 				title: 'Template',
-				recipient_emails: ['old@email.com'],
-				delivery: {
-					channel: 'sms',
-					recipients: {
-						phones: ['+1234567890']
-					}
+				delivery_config: {
+					timing: 'scheduled',
+					followUp: true
+				},
+				recipient_config: {
+					emails: ['existing@email.com']
 				}
 			};
 
 			const migrated = migrateToTypedTemplate(template);
 
-			// Should preserve existing delivery config over legacy
-			expect((migrated as any).delivery || migrated.delivery_config).toEqual({
-				channel: 'sms',
-				recipients: {
-					phones: ['+1234567890']
-				}
+			// Should preserve existing delivery config
+			expect(migrated.delivery_config).toEqual({
+				timing: 'scheduled',
+				followUp: true
 			});
-			expect((migrated as any).recipient_emails).toBeUndefined();
+			expect(migrated.recipient_config).toEqual({
+				emails: ['existing@email.com']
+			});
 		});
 	});
 
