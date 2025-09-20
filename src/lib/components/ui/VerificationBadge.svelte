@@ -71,13 +71,11 @@
 	const IconComponent = config.icon;
 
 	// Enhanced tooltip for detailed verification info
-	const tooltipText = $derived(() => {
-		if (verificationStatus === 'verified' && verifiedAt) {
-			const date = verifiedAt.toLocaleDateString();
-			return `Verified ${verificationMethod ? `via ${verificationMethod}` : ''} on ${date}${trustScore ? ` • Trust Score: ${trustScore}` : ''}`;
-		}
-		return config.label;
-	});
+	const tooltipText = $derived(
+		verificationStatus === 'verified' && verifiedAt
+			? `Verified ${verificationMethod ? `via ${verificationMethod}` : ''} on ${verifiedAt.toLocaleDateString()}${trustScore ? ` • Trust Score: ${trustScore}` : ''}`
+			: config.label
+	);
 </script>
 
 <div

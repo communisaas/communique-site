@@ -46,19 +46,13 @@ export async function storeSingleUserSentiment(
 			};
 		}
 
-		// Step 3: Store safely with upsert (won't break if user_coordinates doesn't exist)
-		await db.user_coordinates.upsert({
-			where: { user_id: userId },
-			update: {
+		// Step 3: Store safely by updating User model directly
+		await db.user.update({
+			where: { id: userId },
+			data: {
 				political_embedding: sentimentData,
 				embedding_version: 'v1_basic',
-				last_calculated: new Date()
-			},
-			create: {
-				user_id: userId,
-				political_embedding: sentimentData,
-				embedding_version: 'v1_basic',
-				last_calculated: new Date()
+				coordinates_updated_at: new Date()
 			}
 		});
 

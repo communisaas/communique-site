@@ -109,27 +109,14 @@ export function resolveTemplate(
 	user: EmailServiceUser | null,
 	options: { preserveVariables?: boolean } = {}
 ): ResolvedTemplate {
-	// Input validation with detailed debugging
+	// Input validation
 	if (!isValidTemplate(template)) {
-		console.error('Template validation failed:', {
-			template,
-			hasId: typeof template?.id === 'string',
-			hasTitle: typeof template?.title === 'string',
-			hasDeliveryMethod: typeof template?.deliveryMethod === 'string',
-			deliveryMethod: template?.deliveryMethod,
-			validDeliveryMethods: ['email', 'certified', 'direct', 'cwc'],
-			hasMessage: typeof template?.message_body === 'string' || typeof template?.preview === 'string'
-		});
+		console.error('Template validation failed:', template);
 		throw new Error('Invalid template provided to resolveTemplate');
 	}
 	
 	if (user !== null && !isValidEmailServiceUser(user)) {
-		console.error('User validation failed:', {
-			user,
-			hasId: typeof user?.id === 'string',
-			hasEmail: typeof user?.email === 'string',
-			hasName: user?.name === undefined || user?.name === null || typeof user?.name === 'string'
-		});
+		console.error('User validation failed:', user);
 		throw new Error('Invalid user provided to resolveTemplate');
 	}
 	

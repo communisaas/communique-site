@@ -159,12 +159,8 @@ export async function processTemplateMessages(): Promise<MessageEmbedding[]> {
 							id: true,
 							state: true,
 							congressional_district: true,
-							coordinates: {
-								select: {
-									latitude: true,
-									longitude: true
-								}
-							}
+							latitude: true,
+							longitude: true
 						}
 					}
 				}
@@ -190,10 +186,10 @@ export async function processTemplateMessages(): Promise<MessageEmbedding[]> {
 			text: messageText,
 			embedding,
 			sentiment,
-			geographic_coords: campaign.template.user?.coordinates
+			geographic_coords: campaign.template.user?.latitude && campaign.template.user?.longitude
 				? {
-						latitude: campaign.template.user.coordinates.latitude!,
-						longitude: campaign.template.user.coordinates.longitude!
+						latitude: campaign.template.user.latitude,
+						longitude: campaign.template.user.longitude
 					}
 				: undefined
 		};
@@ -260,28 +256,21 @@ export async function storePoliticalEmbeddings(messages: MessageEmbedding[]): Pr
 
 		if (!campaign?.template.userId) continue;
 
-		// Update or create political embedding
-		await db.user_coordinates.upsert({
-			where: { user_id: campaign.template.userId },
-			update: {
-				political_embedding: {
-					embedding: message.embedding,
-					sentiment: JSON.parse(JSON.stringify(message.sentiment)),
-					last_updated: new Date(),
-					version: 'v1_mock_bert'
-				}
-			},
-			create: {
-				user_id: campaign.template.userId,
-				latitude: message.geographic_coords.latitude,
-				longitude: message.geographic_coords.longitude,
+		// Update political embedding directly in User model
+		await db.user.update({
+			where: { id: campaign.template.userId },
+			data: {
 				political_embedding: {
 					embedding: message.embedding,
 					sentiment: JSON.parse(JSON.stringify(message.sentiment)),
 					last_updated: new Date(),
 					version: 'v1_mock_bert'
 				},
-				embedding_version: 'v1'
+				embedding_version: 'v1_mock_bert',
+				coordinates_updated_at: new Date(),
+				// Update coordinates if they're not already set
+				latitude: message.geographic_coords.latitude,
+				longitude: message.geographic_coords.longitude
 			}
 		});
 	}

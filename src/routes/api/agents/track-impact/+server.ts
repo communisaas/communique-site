@@ -44,7 +44,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			where: { id: templateId },
 			include: {
 				user: true,
-				verification: true,
 				template_campaign: true
 			}
 		});

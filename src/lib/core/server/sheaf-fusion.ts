@@ -68,12 +68,8 @@ export async function getOverlappingInformationSources(
 					id: true,
 					state: true,
 					congressional_district: true,
-					coordinates: {
-						select: {
-							community_sheaves: true,
-							political_embedding: true
-						}
-					}
+					community_sheaves: true,
+					political_embedding: true
 				}
 			},
 			template_campaign: {
@@ -93,7 +89,7 @@ export async function getOverlappingInformationSources(
 		const region = `${user?.state || 'unknown'}-${user?.congressional_district || 'unknown'}`;
 
 		// Extract community context from sheaves
-		const sheaves = user?.coordinates?.community_sheaves as Record<string, unknown> | null;
+		const sheaves = user?.community_sheaves as Record<string, unknown> | null;
 		const communityContext =
 			(sheaves?.memberships as Array<{ community_id: string }> | undefined)?.map(
 				(m) => m.community_id

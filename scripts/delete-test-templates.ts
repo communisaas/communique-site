@@ -24,18 +24,9 @@ async function deleteTestTemplates() {
 		});
 
 		if (testTemplates.length > 0) {
-			// Delete associated TemplateVerification records first
+			// Delete the templates (verification data is now part of template)
 			const templateIds = testTemplates.map((t) => t.id);
-
-			const deletedVerifications = await db.templateVerification.deleteMany({
-				where: {
-					template_id: { in: templateIds }
-				}
-			});
-
-			console.log(`Deleted ${deletedVerifications.count} verification record(s)`);
-
-			// Now delete the templates
+			
 			const result = await db.template.deleteMany({
 				where: {
 					id: { in: templateIds }

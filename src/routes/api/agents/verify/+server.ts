@@ -49,25 +49,21 @@ export const POST: RequestHandler = async ({ request }) => {
 			const verificationDecision = extractVerificationDecision(result.decision);
 			const isApproved = result.confidence > 0.7; // Determine approval based on confidence threshold
 			
-			await db.templateVerification.upsert({
-				where: { template_id: templateId },
-				update: {
-					correction_log: JSON.parse(JSON.stringify(verificationDecision.corrections)),
-					severity_level: verificationDecision.severityLevel,
-					moderation_status: isApproved ? 'approved' : 'pending',
-					agent_votes: JSON.parse(JSON.stringify({ verification: result })),
-					consensus_score: result.confidence || 0.5,
-					reviewed_at: new Date()
-				},
-				create: {
-					template_id: templateId,
-					user_id: 'system', // Default user for automated verification
+			// Update the template with verification results directly
+			await db.template.update({
+				where: { id: templateId },
+				data: {
+					verification_status: isApproved ? 'approved' : 'pending',
 					correction_log: JSON.parse(JSON.stringify(verificationDecision.corrections)),
 					original_content: JSON.parse(JSON.stringify({ subject: templateData.subject, body: templateData.message_body })),
 					severity_level: verificationDecision.severityLevel,
-					moderation_status: isApproved ? 'approved' : 'pending',
 					agent_votes: JSON.parse(JSON.stringify({ verification: result })),
-					consensus_score: result.confidence || 0.5
+					consensus_score: result.confidence || 0.5,
+					reviewed_at: new Date(),
+					// Apply corrections if available
+					corrected_subject: verificationDecision.corrections?.subject || null,
+					corrected_body: verificationDecision.corrections?.body || null,
+					corrected_at: verificationDecision.corrections ? new Date() : null
 				}
 			});
 		}

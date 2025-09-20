@@ -55,7 +55,7 @@
 	let isAtTop = $state(true);
 	let isAtBottom = $state(false);
 	let isScrollable = $state(false);
-	let variableValues: Record<string, string> = $state({});
+	let variableValues: Record<string, string | null> = $state({});
 
 	// Define which variables are system-populated vs user-editable
 	// Based on templateResolver.ts - these get auto-filled with user data
@@ -168,38 +168,6 @@
 		'Junior Senator': {
 			title: 'Auto-filled Variable',
 			description: "This will be replaced with your state's junior senator."
-		},
-		'Name': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your name from your user profile.'
-		},
-		'Your Name': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your name from your user profile.'
-		},
-		'Address': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your address from your user profile.'
-		},
-		'Your Address': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your address from your user profile.'
-		},
-		'City': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your city from your user profile.'
-		},
-		'State': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your state from your user profile.'
-		},
-		'ZIP': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your ZIP code from your user profile.'
-		},
-		'Zip Code': {
-			title: 'Auto-filled Variable',
-			description: 'This will be replaced with your ZIP code from your user profile.'
 		}
 	};
 
@@ -488,7 +456,7 @@
 	function getVariableClasses(variableName: string): string {
 		const isSystemVariable = systemVariables.has(variableName);
 		const isUserEditable = userEditableVariables.has(variableName);
-		const isEmpty = !variableValues[variableName] || (typeof variableValues[variableName] === 'string' && variableValues[variableName].trim() === '');
+		const isEmpty = !variableValues[variableName] || (typeof variableValues[variableName] === 'string' && variableValues[variableName]!.trim() === '');
 
 		if (isSystemVariable) {
 			return `
@@ -588,18 +556,18 @@
 					{:else if segment.name}
 						<span class="relative inline-block">
 							<AnimatedPopover 
-								id={segment.instanceId}
+								id={segment.instanceId || ''}
 							>
 								{#snippet trigger(params)}
 									<button
-										class={getVariableClasses(segment.name)}
+										class={getVariableClasses(segment.name || '')}
 										onclick={() => handleVariableClick(segment.name || '')}
 									>
 										<!-- Always show icon based on variable type -->
-										{#if systemVariables.has(segment.name)}
+										{#if segment.name && systemVariables.has(segment.name)}
 											<User class="h-2.5 w-2.5 text-emerald-600" />
-										{:else if userEditableVariables.has(segment.name)}
-											{#if variableValues[segment.name]}
+										{:else if segment.name && userEditableVariables.has(segment.name)}
+											{#if segment.name && variableValues[segment.name]}
 												<Edit3 class="h-2.5 w-2.5 text-participation-primary-600" />
 											{:else}
 												<Sparkles class="h-2.5 w-2.5 text-purple-600" />
@@ -608,17 +576,17 @@
 										
 										<!-- Always show text - either resolved value or placeholder -->
 										<span>
-											{#if resolvedValues[segment.name]}
+											{#if segment.name && resolvedValues[segment.name]}
 												{resolvedValues[segment.name]}
-											{:else if variableValues[segment.name]}
+											{:else if segment.name && variableValues[segment.name]}
 												{variableValues[segment.name]}
 											{:else}
-												{segment.name}
+												{segment.name || ''}
 											{/if}
 										</span>
 										
 										<!-- Personalized indicator -->
-										{#if segment.name === 'Personal Connection' && (variableValues[segment.name] || '').trim().length > 0}
+										{#if segment.name === 'Personal Connection' && segment.name && (variableValues[segment.name] || '').trim().length > 0}
 											<span
 												class="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
 												>Personalized</span
@@ -629,37 +597,35 @@
 
 								{#snippet children(props)}
 									<!-- User-editable variables with input in popover -->
-									{#if userEditableVariables.has(segment.name)}
+									{#if segment.name && userEditableVariables.has(segment.name)}
 										<div class="mb-2 flex items-center gap-1.5">
 											<Sparkles class="h-3 w-3 text-purple-500" />
 											<span class="text-[11px] font-medium tracking-tight text-slate-700">
-												{variableHints[segment.name]?.prompt || segment.name}
+												{(segment.name && variableHints[segment.name]?.prompt) || segment.name || ''}
 											</span>
 										</div>
 
-										{#if segment.name.toLowerCase().includes('connection') || segment.name
-												.toLowerCase()
-												.includes('story') || segment.name.toLowerCase().includes('reasoning')}
+										{#if segment.name && (segment.name.toLowerCase().includes('connection') || segment.name.toLowerCase().includes('story') || segment.name.toLowerCase().includes('reasoning'))}
 											<textarea
-												value={variableValues[segment.name]}
-												oninput={(e) => handleInput(e, segment.name ?? '')}
-												placeholder={variableHints[segment.name]?.placeholder ||
-													`Enter your ${segment.name}...`}
+												value={segment.name ? (variableValues[segment.name] || '') : ''}
+												oninput={(e) => handleInput(e, segment.name || '')}
+												placeholder={(segment.name && variableHints[segment.name]?.placeholder) ||
+													`Enter your ${segment.name || 'value'}...`}
 												class="w-full min-w-[280px] resize-none rounded-lg border border-slate-300 bg-white p-3
 														font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
 												rows="4"
 											></textarea>
 											<!-- Character count and encouragement -->
-											{#if variableValues[segment.name]?.length > 10}
+											{#if segment.name && variableValues[segment.name] && typeof variableValues[segment.name] === 'string' && (variableValues[segment.name] as string).length > 10}
 												<div class="mt-1 text-xs text-purple-600">
-													{variableValues[segment.name].length} characters • Looking great!
+													{(variableValues[segment.name] as string).length} characters • Looking great!
 												</div>
 											{/if}
 										{:else}
 											<input
-												value={variableValues[segment.name]}
-												oninput={(e) => handleInput(e, segment.name ?? '')}
-												placeholder={`Enter ${segment.name}...`}
+												value={segment.name ? (variableValues[segment.name] || '') : ''}
+												oninput={(e) => handleInput(e, segment.name || '')}
+												placeholder={`Enter ${segment.name || 'value'}...`}
 												class="w-full min-w-[240px] rounded-lg border border-slate-300 bg-white px-3 py-2
 														font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
 											/>
@@ -667,15 +633,15 @@
 									{/if}
 
 									<!-- System-populated hint popup -->
-									{#if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
+									{#if segment.name && systemVariables.has(segment.name) && systemVariableHints[segment.name]}
 										<div class="mb-1 flex items-center gap-1.5">
 											<User class="h-3 w-3 text-emerald-500" />
 											<span class="text-[11px] font-medium tracking-tight text-slate-700">
-												{systemVariableHints[segment.name].title}
+												{segment.name ? systemVariableHints[segment.name]?.title || '' : ''}
 											</span>
 										</div>
 										<p class="text-[11px] leading-tight text-slate-500">
-											{systemVariableHints[segment.name].description}
+											{segment.name ? systemVariableHints[segment.name]?.description || '' : ''}
 										</p>
 									{/if}
 								{/snippet}

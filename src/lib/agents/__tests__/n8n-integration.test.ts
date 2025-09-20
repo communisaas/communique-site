@@ -130,11 +130,16 @@ describe('N8N Agent Integration', () => {
 				}
 			};
 
-			// Mock db.templateVerification.findUnique
+			// Mock db.template.findUnique (verification is now part of template)
 			vi.doMock('$lib/core/db', () => ({
 				db: {
-					templateVerification: {
-						findUnique: vi.fn().mockResolvedValue(mockVerification),
+					template: {
+						findUnique: vi.fn().mockResolvedValue({
+							id: 'template-123',
+							...mockVerification,
+							verification_status: mockVerification.moderation_status,
+							severity_level: mockVerification.severity_level
+						}),
 						update: vi.fn().mockResolvedValue({})
 					}
 				}

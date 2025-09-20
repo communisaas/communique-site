@@ -170,7 +170,7 @@ export class ReputationAgent extends BaseAgent {
 						status: true,
 						created_at: true,
 						reward_wei: true,
-						agent_decisions: true
+						consensus_data: true
 					}
 				},
 				challenger_challenges: {
@@ -196,7 +196,10 @@ export class ReputationAgent extends BaseAgent {
 					orderBy: { created_at: 'desc' },
 					take: 20
 				},
-				reputation_logs: {
+				audit_logs: {
+					where: {
+						action_type: 'reputation_change'
+					},
 					orderBy: { created_at: 'desc' },
 					take: 30,
 					select: {
@@ -222,7 +225,7 @@ export class ReputationAgent extends BaseAgent {
 				...((user as any).challenger_challenges || []),
 				...((user as any).defender_challenges || [])
 			],
-			reputationLogs: (user as any).reputation_logs || [],
+			reputationLogs: (user as any).audit_logs || [],
 			verificationLevel: user.is_verified ? 'verified' : 'unverified',
 			walletAddress: user.wallet_address ?? undefined
 		};

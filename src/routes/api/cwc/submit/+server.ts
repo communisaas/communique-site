@@ -47,8 +47,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			const dbTemplate = await db.template.findUnique({
 				where: { id: templateId },
 				include: {
-					user: true,
-					verification: true
+					user: true
 				}
 			});
 
@@ -59,9 +58,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			template = {
 				...dbTemplate,
 				...template,
-				// Use corrected content if available from verification
-				subject: verification?.corrections?.subject || template.subject || dbTemplate.subject,
-				body: verification?.corrections?.body || template.body || dbTemplate.message_body
+				// Use corrected content if available from verification fields on template
+				subject: dbTemplate.corrected_subject || verification?.corrections?.subject || template.subject || dbTemplate.subject,
+				body: dbTemplate.corrected_body || verification?.corrections?.body || template.body || dbTemplate.message_body
 			};
 		}
 

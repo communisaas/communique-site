@@ -17,39 +17,42 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'verificationId or templateId required' }, { status: 400 });
 		}
 
-		// If templateId provided, find or create verification
-		let verfId = verificationId;
+		// Use templateId directly since verification is now part of the template
+		let verfId = verificationId || templateId;
 		if (templateId && !verificationId) {
 			const { db } = await import('$lib/core/db');
-			const verification = await db.templateVerification.findUnique({
-				where: { template_id: templateId }
+			const template = await db.template.findUnique({
+				where: { id: templateId },
+				select: { 
+					id: true,
+					userId: true,
+					verification_status: true,
+					country_code: true,
+					severity_level: true
+				}
 			});
 
-			if (!verification) {
-				// Get template to find user_id
-				const template = await db.template.findUnique({
+			if (!template) {
+				return json({ error: 'Template not found' }, { status: 404 });
+			}
+
+			if (!template.userId) {
+				return json({ error: 'Template missing user' }, { status: 400 });
+			}
+
+			// Initialize verification fields if not set
+			if (!template.verification_status) {
+				await db.template.update({
 					where: { id: templateId },
-					select: { userId: true }
-				});
-
-				if (!template || !template.userId) {
-					return json({ error: 'Template not found or missing user' }, { status: 404 });
-				}
-
-				// Create verification record
-				const created = await db.templateVerification.create({
 					data: {
-						template_id: templateId,
-						user_id: template.userId,
-						country_code: 'US', // Default to US, could be extracted from user profile
-						severity_level: 7, // Default for consensus review
-						moderation_status: 'pending'
+						verification_status: 'pending',
+						country_code: template.country_code || 'US',
+						severity_level: template.severity_level || 7
 					}
 				});
-				verfId = created.id;
-			} else {
-				verfId = verification.id;
 			}
+
+			verfId = templateId; // Use templateId directly
 		}
 
 		// Run consensus evaluation
