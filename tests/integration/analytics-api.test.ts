@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { safeEventProperties, safeComputedMetrics } from '../helpers/json-test-helpers';
 import { POST, GET } from '../../src/routes/api/analytics/events/+server';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsEvent, AnalyticsSession, AnalyticsExperiment } from '../../src/lib/types/analytics';
@@ -274,11 +275,11 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
 			
 			// Verify complex JSONB properties are preserved
-			expect(storedEvent.properties.nested_object.user_preferences.categories).toEqual(['voting', 'environment']);
-			expect(storedEvent.properties.array_data).toEqual(['item1', 'item2', { complex: true }]);
-			expect(storedEvent.properties.metrics.performance.loadTime).toBe(1.2);
-			expect(storedEvent.properties.unicode_text).toBe('Testing émojis 🚀 and special chars åæø');
-			expect(storedEvent.properties.null_value).toBeNull();
+			expect(safeEventProperties(storedEvent).nested_object.user_preferences.categories).toEqual(['voting', 'environment']);
+			expect(safeEventProperties(storedEvent).array_data).toEqual(['item1', 'item2', { complex: true }]);
+			expect(safeEventProperties(storedEvent).metrics.performance.loadTime).toBe(1.2);
+			expect(safeEventProperties(storedEvent).unicode_text).toBe('Testing émojis 🚀 and special chars åæø');
+			expect(safeEventProperties(storedEvent).null_value).toBeNull();
 			expect(storedEvent.properties).not.toHaveProperty('undefined_value');
 		});
 
@@ -346,9 +347,9 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
 			
 			// Should handle problematic values gracefully
-			expect(storedEvent.properties.circular).toBe('[Circular]');
-			expect(storedEvent.properties.func).toBe('[Function]');
-			expect(storedEvent.properties.htmlElement).toBe('[HTMLElement]');
+			expect(safeEventProperties(storedEvent).circular).toBe('[Circular]');
+			expect(safeEventProperties(storedEvent).func).toBe('[Function]');
+			expect(safeEventProperties(storedEvent).htmlElement).toBe('[HTMLElement]');
 		});
 	});
 
@@ -392,8 +393,8 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 					name: 'page_view',
 					event_type: 'pageview',
 					template_id: 'template-456',
-					funnel_step: null,
-					experiment_id: null,
+					funnel_step: undefined,
+					experiment_id: undefined,
 					properties: { page_url: '/', page_title: 'Home' },
 					computed_metrics: { engagement_score: 0.8 },
 					created_at: new Date()

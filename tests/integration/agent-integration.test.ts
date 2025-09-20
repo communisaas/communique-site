@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createMockTemplate } from '../types/test-helpers.js';
 import type { MockTemplate } from '../types/test-helpers.js';
+import { testMultipliersAccess } from '../helpers/json-test-helpers';
 
 /**
  * Agent Integration Tests
@@ -20,12 +21,12 @@ const mockDb = vi.hoisted(() => ({
 	user: {
 		findUnique: vi.fn().mockImplementation((query) => {
 			const userId = query?.where?.id;
-			if (!userId || userId === '') {
+			if (!userId || userId === '' || typeof userId !== 'string') {
 				return Promise.resolve(null);
 			}
 			
 			// Return different user data based on ID for testing
-			const userData = {
+			const userData: Record<string, any> = {
 				'user-123': {
 					id: 'user-123',
 					name: 'Test User 123',
@@ -138,11 +139,11 @@ const mockDb = vi.hoisted(() => ({
 	template: {
 		findUnique: vi.fn().mockImplementation((query) => {
 			const templateId = query?.where?.id;
-			if (!templateId) {
+			if (!templateId || typeof templateId !== 'string') {
 				return Promise.resolve(null);
 			}
 			
-			const templateData = {
+			const templateData: Record<string, any> = {
 				'template-123': {
 					id: 'template-123',
 					slug: 'test-template',
@@ -379,9 +380,9 @@ describe('Agent Integration', () => {
 			const decision = await agent.makeDecision(suspiciousContext);
 
 			// Should identify risk factors for suspicious users
-			expect(decision.decision.riskFactors).toBeDefined();
-			expect(decision.decision.recommendedActions).toBeDefined();
-			expect(decision.decision.verificationLevel).toMatch(/unverified|partial/);
+			expect((decision.decision as any).riskFactors).toBeDefined();
+			expect((decision.decision as any).recommendedActions).toBeDefined();
+			expect((decision.decision as any).verificationLevel).toMatch(/unverified|partial/);
 		});
 
 		it('should handle verification errors gracefully', async () => {
@@ -398,7 +399,7 @@ describe('Agent Integration', () => {
 				const decision = await agent.makeDecision(invalidContext);
 				// Should still return a decision, possibly with low confidence
 				expect(decision.confidence).toBeLessThanOrEqual(0.5);
-				expect(decision.decision.verificationLevel).toBe('unverified');
+				expect((decision.decision as any).verificationLevel).toBe('unverified');
 			} catch (error) {
 				// Or may throw error for invalid input
 				expect(error).toBeDefined();
@@ -516,7 +517,7 @@ describe('Agent Integration', () => {
 				})
 			});
 
-			expect(decision.decision.credibilityScore).toBeGreaterThanOrEqual(0);
+			expect((decision.decision as any).credibilityScore).toBeGreaterThanOrEqual(0);
 		});
 
 		it('should assess credibility components independently', async () => {
@@ -537,11 +538,11 @@ describe('Agent Integration', () => {
 			const establishedUserDecision = await agent.makeDecision(establishedUserContext);
 
 			// Both should have valid credibility components
-			expect(newUserDecision.decision.credibilityComponents.civic_engagement).toBeGreaterThanOrEqual(0);
-			expect(establishedUserDecision.decision.credibilityComponents.civic_engagement).toBeGreaterThanOrEqual(0);
+			expect((newUserDecision.decision as any).credibilityComponents.civic_engagement).toBeGreaterThanOrEqual(0);
+			expect((establishedUserDecision.decision as any).credibilityComponents.civic_engagement).toBeGreaterThanOrEqual(0);
 
 			// Check that all components are present
-			const components = newUserDecision.decision.credibilityComponents;
+			const components = (newUserDecision.decision as any).credibilityComponents;
 			expect(components).toHaveProperty('civic_engagement');
 			expect(components).toHaveProperty('information_quality');
 			expect(components).toHaveProperty('community_trust');
@@ -576,8 +577,8 @@ describe('Agent Integration', () => {
 				})
 			});
 
-			expect(decision.decision.impactScore).toBeGreaterThanOrEqual(0);
-			expect(decision.decision.impactScore).toBeLessThanOrEqual(100);
+			expect((decision.decision as any).impactScore).toBeGreaterThanOrEqual(0);
+			expect((decision.decision as any).impactScore).toBeLessThanOrEqual(100);
 		});
 
 		it('should assess different types of civic actions', async () => {
@@ -600,8 +601,8 @@ describe('Agent Integration', () => {
 			for (const context of contexts) {
 				const decision = await agent.makeDecision(context);
 				
-				expect(decision.decision.impactScore).toBeGreaterThanOrEqual(0);
-				expect(decision.decision.confidenceLevel).toMatch(/high|medium|low/);
+				expect((decision.decision as any).impactScore).toBeGreaterThanOrEqual(0);
+				expect((decision.decision as any).confidenceLevel).toMatch(/high|medium|low/);
 				expect(decision.confidence).toBeGreaterThan(0);
 				expect(decision.confidence).toBeLessThanOrEqual(1);
 			}
@@ -643,8 +644,8 @@ describe('Agent Integration', () => {
 				})
 			});
 
-			expect(decision.decision.baseRewardUSD).toBeGreaterThan(0);
-			expect(decision.decision.totalMultiplier).toBeGreaterThan(0);
+			expect((decision.decision as any).baseRewardUSD).toBeGreaterThan(0);
+			expect((decision.decision as any).totalMultiplier).toBeGreaterThan(0);
 		});
 
 		it('should apply appropriate multipliers for different scenarios', async () => {
@@ -669,8 +670,8 @@ describe('Agent Integration', () => {
 			const routineDecision = await agent.makeDecision(routineContext);
 
 			// Urgent actions should generally have higher multipliers
-			expect(urgentDecision.decision.multipliers.urgency).toBeGreaterThanOrEqual(
-				routineDecision.decision.multipliers.urgency
+			expect(testMultipliersAccess(urgentDecision.decision.multipliers).urgency).toBeGreaterThanOrEqual(
+				testMultipliersAccess(routineDecision.decision.multipliers).urgency
 			);
 
 			expect(urgentDecision.decision.totalMultiplier).toBeGreaterThanOrEqual(

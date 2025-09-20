@@ -10,6 +10,7 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
 import { prisma } from '$lib/core/db.js';
+import type { Prisma } from '@prisma/client';
 
 const VOTER_API_KEY = env.VOTER_API_KEY || '';
 
@@ -116,7 +117,7 @@ async function handleCertificationComplete(data: unknown) {
 						timestamp: data.timestamp
 					},
 					certification_type: 'voter_protocol',
-					certification_data: data,
+					certification_data: data as unknown as Prisma.JsonObject,
 					reward_amount: data.reward_amount?.toString(),
 					status: 'completed'
 				}

@@ -3,11 +3,12 @@
 	import { createEventDispatcher } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { page } from '$app/stores';
+	import type { TemplateCreationContext } from '$lib/types/template';
 
 	interface Props {
 		title?: string;
 		slug?: string;
-		context?: { channelId: 'certified' | 'direct' } | undefined;
+		context?: TemplateCreationContext | undefined;
 	}
 
 	let { title = '', slug = $bindable(''), context = undefined }: Props = $props();
@@ -67,7 +68,8 @@
 
 		try {
 			// Convert channelId to deliveryMethod for API
-			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 'direct';
+			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 
+				context?.channelId === 'cwc' ? 'cwc' : 'direct';
 
 			const params = new URLSearchParams({
 				slug: slugToCheck,
@@ -121,7 +123,8 @@
 
 		try {
 			// Convert channelId to deliveryMethod for API
-			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 'direct';
+			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 
+				context?.channelId === 'cwc' ? 'cwc' : 'direct';
 
 			const params = new URLSearchParams({
 				slug: slug,

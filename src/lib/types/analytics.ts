@@ -57,6 +57,10 @@ export interface AnalyticsSession {
 		bounce_rate?: number;
 		conversion_count?: number;
 		conversion_value?: number;
+		funnel_conversions?: Record<string, any>;
+		// Additional metrics for advanced analytics
+		predictive_metrics?: Record<string, any>;
+		performance_metrics?: Record<string, any>;
 	};
 	
 	// Funnel progress tracking (JSONB)
@@ -88,6 +92,13 @@ export interface AnalyticsExperiment {
 		target_audience?: Record<string, any>;
 		budget?: number;
 		budget_currency?: string;
+		budget_allocation?: Record<string, any>;
+		campaign_channels?: Array<{
+			name: string;
+			budget_share: number;
+			targeting: Record<string, any>;
+		}>;
+		kpi_targets?: Record<string, any>;
 		// For A/B tests
 		variations?: Array<{
 			name: string;
@@ -97,6 +108,10 @@ export interface AnalyticsExperiment {
 		// Common
 		targeting_rules?: Record<string, any>;
 		success_metrics?: string[];
+		optimization_goals?: Record<string, any>;
+		statistical_config?: Record<string, any>;
+		hypothesis?: Record<string, any>;
+		statistical_confidence?: number;
 	};
 	
 	// Timeline
@@ -114,6 +129,21 @@ export interface AnalyticsExperiment {
 		statistical_significance?: number;
 		confidence_interval?: [number, number];
 		last_calculated: string;
+		// Additional metrics for campaigns and experiments
+		reach_count?: number;
+		winning_variation?: Record<string, any>;
+		variation_results?: Record<string, any>;
+		drop_off_analysis?: Record<string, any>;
+		step_conversion_rates?: Record<string, number>;
+		recommendation?: string;
+		error?: string;
+		budget_spent?: number;
+		funnel_completion_rate?: number;
+		funnel_completion_rates?: Record<string, number>;
+		temporal_analysis?: Record<string, any>;
+		cost_per_conversion?: number;
+		predictive_metrics?: Record<string, any>;
+		performance_metrics?: Record<string, any>;
 	};
 	
 	created_at: Date;
@@ -163,4 +193,72 @@ export interface AnalyticsError {
 	error: string;
 	code?: string;
 	timestamp: string;
+}
+
+// === TYPE GUARDS FOR PRISMA JSON FIELDS ===
+
+// Type guard for session_metrics JSON field
+export interface SessionMetrics {
+	events_count: number;
+	page_views: number;
+	duration_ms?: number;
+	bounce_rate?: number;
+	conversion_count?: number;
+	conversion_value?: number;
+	funnel_conversions?: Record<string, any>;
+	// Additional metrics for advanced analytics
+	predictive_metrics?: Record<string, any>;
+	performance_metrics?: Record<string, any>;
+}
+
+export function isSessionMetrics(value: unknown): value is SessionMetrics {
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
+	
+	const obj = value as Record<string, unknown>;
+	return (
+		typeof obj.events_count === 'number' &&
+		typeof obj.page_views === 'number'
+	);
+}
+
+export function getSessionMetrics(value: unknown): SessionMetrics {
+	if (isSessionMetrics(value)) {
+		return value;
+	}
+	
+	// Return safe defaults if the data is invalid or missing
+	return {
+		events_count: 0,
+		page_views: 0,
+		conversion_count: 0
+	};
+}
+
+// Type guard for device_data JSON field
+export interface DeviceData {
+	ip_address?: string;
+	user_agent?: string;
+	fingerprint?: string;
+	viewport?: { width: number; height: number };
+	browser?: string;
+	os?: string;
+}
+
+export function isDeviceData(value: unknown): value is DeviceData {
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
+	
+	// Device data is optional, so we just check it's an object
+	return true;
+}
+
+export function getDeviceData(value: unknown): DeviceData {
+	if (isDeviceData(value)) {
+		return value as DeviceData;
+	}
+	
+	return {};
 }

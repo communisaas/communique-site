@@ -12,7 +12,7 @@ export interface FunnelEvent {
 	properties?: Record<string, unknown>;
 }
 
-class FunnelAnalytics {
+export class FunnelAnalytics {
 	private events: FunnelEvent[] = [];
 	private sessionId: string;
 

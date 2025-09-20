@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import { createApiError, createValidationError, type ApiResponse, type ApiError } from '$lib/types/errors';
+import type { Prisma } from '@prisma/client';
 
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
@@ -285,20 +286,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							userId: user.id,
 							// Consolidated verification fields with defaults
 							verification_status: 'pending',
-							severity_level: null,
-							original_content: null,
-							correction_log: null,
-							corrected_subject: null,
-							corrected_body: null,
-							grammar_score: null,
-							clarity_score: null,
-							completeness_score: null,
-							quality_score: null,
-							agent_votes: null,
-							consensus_score: null,
-							reputation_delta: null,
+							country_code: 'US',
 							reputation_applied: false,
-							reviewed_at: null
 						}
 					});
 
@@ -351,7 +340,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					.replace(/[^a-z0-9\s-]/g, '')
 					.replace(/\s+/g, '-')
 					.substring(0, 50),
-				createdAt: new Date().toISOString(),
+				created_at: new Date().toISOString(),
 				userId: null
 			};
 
@@ -389,7 +378,7 @@ async function triggerModerationPipeline(templateId: string) {
 					'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET || 'demo-secret'
 				},
 				body: JSON.stringify({
-					templateId,
+					template_id: templateId,
 					source: 'template-creation',
 					timestamp: new Date().toISOString()
 				})

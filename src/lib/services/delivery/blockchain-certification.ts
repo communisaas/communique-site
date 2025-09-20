@@ -7,6 +7,17 @@
 
 import { ethers } from 'ethers';
 
+// Type for template data to prevent toLowerCase errors
+interface TemplateData {
+	title?: string;
+	id?: string;
+	deliveryMethod?: string;
+	message_body?: string;
+	subject?: string;
+	slug?: string;
+	[key: string]: unknown;
+}
+
 // Smart contract ABIs (simplified - only functions we need)
 const COMMUNIQUE_CORE_ABI = [
 	'function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string memory metadataUri, uint256 rewardOverride) external'
@@ -48,9 +59,9 @@ class BlockchainCertification {
 	/**
 	 * Get action type enum value based on template properties
 	 */
-	getActionType(templateData: any) {
-		const title = (templateData.title || '').toLowerCase();
-		const method = (templateData.deliveryMethod || '').toLowerCase();
+	getActionType(templateData: TemplateData) {
+		const title = typeof templateData.title === 'string' ? templateData.title.toLowerCase() : '';
+		const method = typeof templateData.deliveryMethod === 'string' ? templateData.deliveryMethod.toLowerCase() : '';
 
 		// Congressional messages (corresponds to CWC_MESSAGE enum)
 		if (
@@ -91,7 +102,7 @@ class BlockchainCertification {
 		deliveryConfirmation
 	}: {
 		userAddress: string;
-		templateData: any;
+		templateData: TemplateData;
 		deliveryConfirmation: string;
 	}) {
 		try {
@@ -105,7 +116,7 @@ class BlockchainCertification {
 			const actionType = this.getActionType(templateData);
 			const actionHash = this.generateActionHash(
 				userAddress,
-				templateData.id,
+				templateData.id || 'unknown',
 				deliveryConfirmation
 			);
 			const metadataUri = `ipfs://delivery/${deliveryConfirmation}`; // Store delivery data on IPFS
@@ -183,7 +194,7 @@ export const blockchainCertification = new BlockchainCertification();
  */
 export async function certifyEmailDelivery(certificationData: {
 	userAddress: string;
-	templateData: any;
+	templateData: TemplateData;
 	deliveryConfirmation: string;
 }) {
 	if (!blockchainCertification.isConfigured()) {

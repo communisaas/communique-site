@@ -105,12 +105,7 @@
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
-			representatives: Array.isArray(verificationResult?.representatives) && verificationResult.representatives.every(item => typeof item === 'object' && item !== null) ? verificationResult.representatives as Record<string, unknown>[] : undefined,
-			district: verificationResult?.district as string | undefined,
-			streetAddress,
-			city,
-			state: stateCode,
-			zipCode
+			representatives: Array.isArray(verificationResult?.representatives) && verificationResult.representatives.every(item => typeof item === 'object' && item !== null) ? verificationResult.representatives as Record<string, unknown>[] : undefined
 		});
 	}
 

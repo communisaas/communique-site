@@ -14,7 +14,7 @@ interface CongressionalDistrict {
 }
 
 interface Representative {
-	bioguideId: string;
+	bioguide_id: string;
 	name: string;
 	party: string;
 	state: string;
@@ -22,7 +22,7 @@ interface Representative {
 	chamber: 'house' | 'senate';
 	phone?: string;
 	email?: string;
-	officeCode: string; // For CWC submissions
+	office_code: string; // For CWC submissions
 }
 
 // Congress.gov API types
@@ -35,7 +35,7 @@ interface CongressMemberTerm {
 }
 
 interface CongressMember {
-	bioguideId?: string;
+	bioguide_id?: string;
 	name?: string;
 	partyName?: string;
 	firstName?: string;
@@ -53,7 +53,7 @@ function isCongressMember(obj: unknown): obj is CongressMember {
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		(typeof (obj as CongressMember).bioguideId === 'string' ||
+		(typeof (obj as CongressMember).bioguide_id === 'string' ||
 			typeof (obj as CongressMember).name === 'string')
 	);
 }
@@ -220,13 +220,13 @@ export class AddressLookupService {
 			console.error('Failed to get House rep:', _error);
 			// Return placeholder data
 			return {
-				bioguideId: `${state}${district}H`,
+				bioguide_id: `${state}${district}H`,
 				name: `Representative for ${state}-${district}`,
 				party: 'Unknown',
 				state,
 				district,
 				chamber: 'house',
-				officeCode: `${state}${district}H`
+				office_code: `${state}${district}H`
 			};
 		}
 	}
@@ -259,22 +259,22 @@ export class AddressLookupService {
 				// Return placeholder senators
 				return [
 					{
-						bioguideId: `${state}S1`,
+						bioguide_id: `${state}S1`,
 						name: `Senior Senator for ${state}`,
 						party: 'Unknown',
 						state,
 						district: '00',
 						chamber: 'senate',
-						officeCode: `${state}S1`
+						office_code: `${state}S1`
 					},
 					{
-						bioguideId: `${state}S2`,
+						bioguide_id: `${state}S2`,
 						name: `Junior Senator for ${state}`,
 						party: 'Unknown',
 						state,
 						district: '00',
 						chamber: 'senate',
-						officeCode: `${state}S2`
+						office_code: `${state}S2`
 					}
 				];
 			}
@@ -284,22 +284,22 @@ export class AddressLookupService {
 			// Return placeholder senators
 			return [
 				{
-					bioguideId: `${state}S1`,
+					bioguide_id: `${state}S1`,
 					name: `Senior Senator for ${state}`,
 					party: 'Unknown',
 					state,
 					district: '00',
 					chamber: 'senate',
-					officeCode: `${state}S1`
+					office_code: `${state}S1`
 				},
 				{
-					bioguideId: `${state}S2`,
+					bioguide_id: `${state}S2`,
 					name: `Junior Senator for ${state}`,
 					party: 'Unknown',
 					state,
 					district: '00',
 					chamber: 'senate',
-					officeCode: `${state}S2`
+					office_code: `${state}S2`
 				}
 			];
 		}
@@ -375,13 +375,13 @@ export class AddressLookupService {
 		formattedName = formattedName || 'Unknown';
 
 		return {
-			bioguideId: member.bioguideId || '',
+			bioguide_id: member.bioguide_id || '',
 			name: formattedName,
 			party: member.partyName || currentTerm?.party || 'Unknown',
 			state: member.state || currentTerm?.state || '',
 			district: chamber === 'senate' ? '00' : String(member.district || '01').padStart(2, '0'),
 			chamber,
-			officeCode: member.bioguideId || ''
+			office_code: member.bioguide_id || ''
 		};
 	}
 
@@ -396,12 +396,12 @@ export class AddressLookupService {
 			const allReps = [reps.house, ...reps.senate];
 
 			for (const rep of allReps) {
-				const url = `https://api.data.gov/congress/v3/member/${rep.bioguideId}?api_key=${this.congressApiKey}&format=json`;
+				const url = `https://api.data.gov/congress/v3/member/${rep.bioguide_id}?api_key=${this.congressApiKey}&format=json`;
 
 				const response = await fetch(url);
 
 				if (!response.ok) {
-					errors.push(`Cannot validate representative ${rep.name} (${rep.bioguideId})`);
+					errors.push(`Cannot validate representative ${rep.name} (${rep.bioguide_id})`);
 					continue;
 				}
 

@@ -83,7 +83,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					chamber: 'house',
 					party: userReps.house.party,
 					district: `${userReps.house.state}-${userReps.house.district}`,
-					bioguideId: userReps.house.bioguideId
+					bioguideId: userReps.house.bioguide_id
 				},
 				...userReps.senate.map((senator) => ({
 					name: senator.name,
@@ -91,7 +91,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					chamber: 'senate',
 					party: senator.party,
 					district: senator.state,
-					bioguideId: senator.bioguideId
+					bioguideId: senator.bioguide_id
 				}))
 			];
 		} catch (_error) {

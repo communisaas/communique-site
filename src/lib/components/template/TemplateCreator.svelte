@@ -76,14 +76,31 @@
 	};
 
 	const isCurrentStepValid = $derived.by(() => {
-		const stepData = (formData as any)[currentStep] as Record<string, unknown>;
-		const currentErrors = validators[currentStep](stepData);
-		return currentErrors.length === 0;
+		if (currentStep === 'objective') {
+			const currentErrors = validators.objective(formData.objective);
+			return currentErrors.length === 0;
+		} else if (currentStep === 'audience') {
+			const currentErrors = validators.audience(formData.audience);
+			return currentErrors.length === 0;
+		} else if (currentStep === 'content') {
+			const currentErrors = validators.content(formData.content);
+			return currentErrors.length === 0;
+		} else {
+			const currentErrors = validators.review();
+			return currentErrors.length === 0;
+		}
 	});
 
 	function validateCurrentStep(): boolean {
-		const stepData = (formData as any)[currentStep] as Record<string, unknown>;
-		formErrors = validators[currentStep](stepData);
+		if (currentStep === 'objective') {
+			formErrors = validators.objective(formData.objective);
+		} else if (currentStep === 'audience') {
+			formErrors = validators.audience(formData.audience);
+		} else if (currentStep === 'content') {
+			formErrors = validators.content(formData.content);
+		} else {
+			formErrors = validators.review();
+		}
 		return formErrors.length === 0;
 	}
 
@@ -136,16 +153,15 @@
 			return;
 		}
 
-		const template = {
+		const template: Omit<Template, 'id'> = {
+			slug: formData.objective.slug || '',
 			title: formData.objective.title,
 			description: formData.content.preview.substring(0, 160),
 			category: formData.objective.category || 'General',
 			type: context.channelId === 'certified' ? 'certified' : 'direct',
-			delivery_method: context.channelId === 'certified' ? 'certified' : 'email',
+			deliveryMethod: context.channelId === 'certified' ? 'certified' : 'email',
 			subject: formData.objective.title || `Regarding: ${formData.objective.title}`,
 			message_body: formData.content.preview,
-			preview: formData.content.preview.substring(0, 500),
-			slug: formData.objective.slug,
 			delivery_config: {},
 			cwc_config: {},
 			recipient_config: {
@@ -153,11 +169,21 @@
 			},
 			metrics: {
 				sent: 0,
+				delivered: 0,
 				opened: 0,
 				clicked: 0,
 				views: 0
 			},
-			is_public: false
+			campaign_id: null,
+			status: 'draft',
+			is_public: false,
+			send_count: 0,
+			last_sent_at: null,
+			applicable_countries: [],
+			jurisdiction_level: null,
+			specific_locations: [],
+			preview: formData.content.preview.substring(0, 500),
+			recipientEmails: formData.audience.recipientEmails
 		};
 
 		dispatch('save', template);

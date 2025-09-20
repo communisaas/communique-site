@@ -30,24 +30,13 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import SubmissionStatus from '$lib/components/submission/SubmissionStatus.svelte';
+	import type { ComponentTemplate } from '$lib/types/component-props';
 
 	let {
 		template,
 		user = null
 	}: {
-		template: {
-			id: string;
-			slug: string;
-			title: string;
-			description: string;
-			deliveryMethod: string;
-			type?: string;
-			message_body?: string;
-			recipient_config?: any;
-			recipientEmails?: string[];
-			metrics: { sent?: number; views?: number };
-			[key: string]: unknown;
-		};
+		template: ComponentTemplate;
 		user?: { id: string; name: string } | null;
 	} = $props();
 

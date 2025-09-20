@@ -11,6 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsSession } from '../../src/lib/types/analytics';
+import { safeSessionMetrics, safeDeviceData } from '../helpers/json-test-helpers';
 
 // Mock database for session testing
 const mockDb = vi.hoisted(() => ({
@@ -216,11 +217,11 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 
 			mockDb.analytics_session.upsert.mockResolvedValue({
 				session_id: 'sess_minimal_123',
-				utm_source: null,
-				utm_medium: null,
-				utm_campaign: null,
-				landing_page: null,
-				referrer: null,
+				utm_source: undefined,
+				utm_medium: undefined,
+				utm_campaign: undefined,
+				landing_page: undefined,
+				referrer: undefined,
 				device_data: {
 					ip_address: '192.168.1.1',
 					user_agent: 'Mozilla/5.0'
@@ -369,11 +370,11 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				user_id: 'user-123',
 				created_at: new Date(),
 				updated_at: new Date(),
-				utm_source: null,
-				utm_medium: null,
-				utm_campaign: null,
-				landing_page: null,
-				referrer: null,
+				utm_source: undefined,
+				utm_medium: undefined,
+				utm_campaign: undefined,
+				landing_page: undefined,
+				referrer: undefined,
 				device_data: {},
 				session_metrics: { events_count: 0, page_views: 0 },
 				funnel_progress: {
@@ -492,7 +493,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 
 			expect(result.funnel_progress['voting-funnel'].completed).toBe(true);
 			expect(result.funnel_progress['voting-funnel'].completion_time).toBe(1800000);
-			expect(result.session_metrics.funnel_conversions).toBe(1);
+			expect(safeSessionMetrics(result).funnel_conversions).toBe(1);
 		});
 	});
 
@@ -518,7 +519,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			// Mock cleanup criteria
 			const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 			const sessionsToCleanup = expiredSessions.filter(s => 
-				s.updated_at < thirtyDaysAgo && s.session_metrics.events_count < 3
+				s.updated_at < thirtyDaysAgo && safeSessionMetrics(s).events_count < 3
 			);
 
 			// In real implementation, this would be a scheduled job
@@ -553,8 +554,8 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			const mergedSession = {
 				...authenticatedSession,
 				session_metrics: {
-					events_count: anonymousSession.session_metrics.events_count + authenticatedSession.session_metrics.events_count,
-					page_views: anonymousSession.session_metrics.page_views + authenticatedSession.session_metrics.page_views
+					events_count: safeSessionMetrics(anonymousSession).events_count + safeSessionMetrics(authenticatedSession).events_count,
+					page_views: safeSessionMetrics(anonymousSession).page_views + safeSessionMetrics(authenticatedSession).page_views
 				},
 				funnel_progress: {
 					...anonymousSession.funnel_progress,
@@ -566,7 +567,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			mockDb.analytics_session.delete.mockResolvedValue(anonymousSession);
 
 			// Verify merged session has combined data
-			expect(mergedSession.session_metrics.events_count).toBe(3);
+			expect(safeSessionMetrics(mergedSession).events_count).toBe(3);
 			expect(mergedSession.funnel_progress).toHaveProperty('voting-funnel');
 		});
 	});

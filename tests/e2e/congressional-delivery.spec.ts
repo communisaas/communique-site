@@ -1,7 +1,7 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 test.describe('Congressional Delivery E2E', () => {
-	test('should complete full congressional delivery flow', async ({ page }) => {
+	test('should complete full congressional delivery flow', async ({ page }: { page: Page }) => {
 		// Navigate to the app
 		await page.goto('/');
 
@@ -18,7 +18,7 @@ test.describe('Congressional Delivery E2E', () => {
 		// 6. User sees confirmation
 	});
 
-	test('should handle authentication flow', async ({ page }) => {
+	test('should handle authentication flow', async ({ page }: { page: Page }) => {
 		// Navigate to auth-required page
 		await page.goto('/dashboard');
 
@@ -29,7 +29,7 @@ test.describe('Congressional Delivery E2E', () => {
 		await expect(page).toHaveURL(/\/(auth|login|dashboard)/);
 	});
 
-	test('should display template creation interface', async ({ page }) => {
+	test('should display template creation interface', async ({ page }: { page: Page }) => {
 		await page.goto('/templates/create');
 
 		// Should show template creation form

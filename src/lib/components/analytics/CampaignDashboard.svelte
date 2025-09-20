@@ -343,7 +343,7 @@
 							<div class="mb-2 flex items-center justify-between">
 								<h4 class="font-medium text-gray-900">{experiment.name}</h4>
 								<Badge 
-									variant={experiment.type === 'ab_test' ? 'primary' : experiment.type === 'funnel' ? 'success' : 'warning'} 
+									variant={experiment.type === 'ab_test' ? 'certified' : experiment.type === 'funnel' ? 'success' : 'warning'} 
 									size="sm"
 								>
 									{experiment.type.replace('_', ' ').toUpperCase()}

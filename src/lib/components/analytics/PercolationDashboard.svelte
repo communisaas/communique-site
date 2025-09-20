@@ -143,7 +143,7 @@
 		</button>
 	</div>
 
-	{#if loading && !analysis}
+	{#if loading && !percolationData}
 		<div class="flex items-center justify-center py-12">
 			<LoadingCard variant="spinner" />
 			<span class="ml-3 text-gray-600">Running network percolation analysis...</span>

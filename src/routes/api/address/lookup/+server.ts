@@ -71,14 +71,14 @@ export const POST: RequestHandler = async ({ request }) => {
 					state: userReps.house.state,
 					district: userReps.house.district,
 					chamber: userReps.house.chamber,
-					officeCode: userReps.house.officeCode
+					officeCode: userReps.house.office_code
 				},
 				senate: userReps.senate.map((senator) => ({
 					name: senator.name,
 					party: senator.party,
 					state: senator.state,
 					chamber: senator.chamber,
-					officeCode: senator.officeCode
+					officeCode: senator.office_code
 				}))
 			},
 			district: userReps.district,

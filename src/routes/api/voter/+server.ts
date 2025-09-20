@@ -7,6 +7,7 @@
 
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db.js';
+import type { Prisma } from '@prisma/client';
 import { cwcClient } from '$lib/core/congress/cwc-client.js';
 import { SupplyAgent, type RewardParameters } from '$lib/agents/supply-agent.js';
 import { ImpactAgent } from '$lib/agents/impact-agent.js';
@@ -186,23 +187,23 @@ async function handleCWCSubmission({
 			user_id: userId,
 			action_type: 'civic_action',
 			action_subtype: 'cwc_message',
-			audit_data: {
+			audit_data: JSON.parse(JSON.stringify({
 				cwc_results: results,
 				submitted_at: new Date().toISOString(),
 				message_preview: message.substring(0, 100) + '...',
 				representatives_count: representatives.length,
 				delivery_method: 'cwc',
 				template_id: templateId
-			},
+			})),
 			agent_source: impactDecision?.agentId || null,
-			agent_decisions: impactDecision ? {
+			agent_decisions: impactDecision ? JSON.parse(JSON.stringify({
 				impact: {
 					agentId: impactDecision.agentId,
 					confidence: impactDecision.confidence,
 					reasoning: impactDecision.reasoning,
 					decision: impactDecision.decision
 				}
-			} : null,
+			})) : undefined,
 			confidence: impactDecision?.confidence || null,
 			civic_action_id: civicAction.id,
 			status: results.every((r) => r.success) ? 'completed' : 'failed',
@@ -390,14 +391,14 @@ async function updateReputation({
 			user_id: userId,
 			action_type: 'reputation_change',
 			action_subtype: 'agent_credibility_assessment',
-			audit_data: {
+			audit_data: JSON.parse(JSON.stringify({
 				components: credibilityAssessment.credibilityComponents,
 				badges: credibilityAssessment.badges,
 				riskFactors: credibilityAssessment.riskFactors,
 				attestations: credibilityAssessment.attestations,
 				tx_hash: txHash,
 				portabilityHash: credibilityAssessment.portabilityHash
-			},
+			})),
 			score_before: oldScore,
 			score_after: newScore,
 			change_amount: newScore - oldScore,
@@ -509,13 +510,13 @@ async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, di
 			action_subtype: 'identity_verification',
 			audit_data: {
 				verificationLevel: assessment.verificationLevel,
-				verificationSources: assessment.verificationSources,
+				verificationSources: assessment.verificationSources as any,
 				riskFactors: assessment.riskFactors,
 				recommendations: assessment.recommendedActions,
 				walletAddress,
 				kycResult,
 				districtHash
-			},
+			} as unknown as Prisma.JsonObject,
 			score_before: 0,
 			score_after: assessment.trustScore,
 			change_amount: assessment.trustScore,
@@ -573,7 +574,10 @@ async function getUserProfile({ userId, walletAddress }: { userId?: string; wall
 					}
 				}
 			},
-			reputation_logs: {
+			audit_logs: {
+				where: {
+					action_type: 'reputation_change'
+				},
 				orderBy: { created_at: 'desc' },
 				take: 5
 			},
@@ -586,7 +590,7 @@ async function getUserProfile({ userId, walletAddress }: { userId?: string; wall
 				}
 			}
 		}
-	});
+	}) as any;
 
 	if (!user) {
 		throw error(404, 'User not found');
@@ -612,7 +616,7 @@ async function getUserProfile({ userId, walletAddress }: { userId?: string; wall
 			challenges_defended: user._count.defender_challenges,
 			challenges_won: user._count.won_challenges
 		},
-		recent_actions: user.civic_actions.map((action) => ({
+		recent_actions: user.civic_actions.map((action: any) => ({
 			id: action.id,
 			type: action.action_type,
 			template_title: action.template?.title,
@@ -620,7 +624,7 @@ async function getUserProfile({ userId, walletAddress }: { userId?: string; wall
 			reward_wei: action.reward_wei,
 			created_at: action.created_at
 		})),
-		reputation_history: user.reputation_logs.map((log) => ({
+		reputation_history: user.audit_logs.map((log: any) => ({
 			score_change: log.change_amount,
 			reason: log.change_reason,
 			created_at: log.created_at

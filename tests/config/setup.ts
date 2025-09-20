@@ -117,7 +117,8 @@ afterEach(() => {
 	
 	// Clean up any global fetch mock
 	if (global.fetch && vi.isMockFunction(global.fetch)) {
-		global.fetch.mockRestore?.();
+		const mockFetch = global.fetch as ReturnType<typeof vi.fn>;
+		mockFetch.mockRestore?.();
 	}
 	
 	// Reset browser API mocks if in browser environment

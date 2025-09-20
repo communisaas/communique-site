@@ -13,6 +13,7 @@
 	// Normalize metrics data - handle both object and JSON string formats
 	function normalizeMetrics(rawMetrics: any): {
 		sent?: number;
+		delivered?: number;
 		opened?: number;
 		clicked?: number;
 		responded?: number;

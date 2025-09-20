@@ -11,7 +11,7 @@
 import { CWCGenerator } from './cwc-generator';
 import type { Template } from '$lib/types/template';
 
-interface CongressionalOffice {
+export interface CongressionalOffice {
 	bioguideId: string;
 	name: string;
 	chamber: 'house' | 'senate';

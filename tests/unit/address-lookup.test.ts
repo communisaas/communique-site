@@ -87,8 +87,8 @@ describe('Address Lookup Unit Tests', () => {
 		});
 
 		const userReps = {
-			house: { bioguideId: 'S001234', name: 'Rep. Smith' },
-			senate: [{ bioguideId: 'P000145', name: 'Sen. Padilla' }]
+			house: { bioguide_id: 'S001234', name: 'Rep. Smith' },
+			senate: [{ bioguide_id: 'P000145', name: 'Sen. Padilla' }]
 		};
 
 		const result = await mockAddressLookup.validateReps(userReps);

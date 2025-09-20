@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockRequestEvent } from '../helpers/request-event';
+import { safeEventProperties, safeComputedMetrics, safeSessionMetrics, safeDeviceData, safeExperimentConfig, safeExperimentMetricsCache } from '../helpers/json-test-helpers';
 
 // Mock database for JSONB validation testing
 const mockDb = vi.hoisted(() => ({
@@ -92,11 +93,11 @@ describe('Analytics JSONB Field Validation Tests', () => {
 				});
 
 				// Verify complex nested structure is preserved
-				expect(result.properties.user_interaction.mouse_events).toHaveLength(2);
-				expect(result.properties.user_interaction.mouse_events[0].type).toBe('click');
-				expect(result.properties.page_metadata.tags).toContain('democracy');
-				expect(result.properties.performance_metrics.load_time).toBe(1.234);
-				expect(result.properties.engagement_data.interactions).toContain('scroll');
+				expect(safeEventProperties(result).user_interaction.mouse_events).toHaveLength(2);
+				expect(safeEventProperties(result).user_interaction.mouse_events[0].type).toBe('click');
+				expect(safeEventProperties(result).page_metadata.tags).toContain('democracy');
+				expect(safeEventProperties(result).performance_metrics.load_time).toBe(1.234);
+				expect(safeEventProperties(result).engagement_data.interactions).toContain('scroll');
 			});
 
 			it('should handle array of different data types in properties', async () => {
@@ -134,12 +135,12 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					}
 				});
 
-				expect(result.properties.mixed_array).toHaveLength(6);
-				expect(result.properties.mixed_array[0]).toBe('string_value');
-				expect(result.properties.mixed_array[1]).toBe(42);
-				expect(result.properties.mixed_array[4]).toEqual({ nested: 'object', count: 5 });
-				expect(result.properties.user_journey[1].step).toBe('template_browse');
-				expect(result.properties.experimental_flags[0].enabled).toBe(true);
+				expect(safeEventProperties(result).mixed_array).toHaveLength(6);
+				expect(safeEventProperties(result).mixed_array[0]).toBe('string_value');
+				expect(safeEventProperties(result).mixed_array[1]).toBe(42);
+				expect(safeEventProperties(result).mixed_array[4]).toEqual({ nested: 'object', count: 5 });
+				expect(safeEventProperties(result).user_journey[1].step).toBe('template_browse');
+				expect(safeEventProperties(result).experimental_flags[0].enabled).toBe(true);
 			});
 
 			it('should handle special characters and unicode in properties', async () => {
@@ -181,10 +182,10 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					}
 				});
 
-				expect(result.properties.international_text.chinese).toBe('联系您的代表了解投票权');
-				expect(result.properties.international_text.emoji).toBe('🗳️ Vote for democracy! 🏛️ Make your voice heard 📢');
-				expect(result.properties.special_characters.json_meta).toContain('"key": "value"');
-				expect(result.properties.edge_cases.very_long_string).toHaveLength(10000);
+				expect(safeEventProperties(result).international_text.chinese).toBe('联系您的代表了解投票权');
+				expect(safeEventProperties(result).international_text.emoji).toBe('🗳️ Vote for democracy! 🏛️ Make your voice heard 📢');
+				expect(safeEventProperties(result).special_characters.json_meta).toContain('"key": "value"');
+				expect(safeEventProperties(result).edge_cases.very_long_string).toHaveLength(10000);
 			});
 		});
 
@@ -232,10 +233,10 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					data: { computed_metrics: computedMetrics }
 				});
 
-				expect(result.computed_metrics.engagement_score).toBe(0.857);
-				expect(result.computed_metrics.anomaly_detection.is_anomaly).toBe(false);
-				expect(result.computed_metrics.ml_insights.clustering_assignment).toBe('civic_engaged_mobile');
-				expect(result.computed_metrics.ml_insights.propensity_scores.advocacy).toBe(0.82);
+				expect(safeComputedMetrics(result).engagement_score).toBe(0.857);
+				expect(safeComputedMetrics(result).anomaly_detection.is_anomaly).toBe(false);
+				expect(safeComputedMetrics(result).ml_insights.clustering_assignment).toBe('civic_engaged_mobile');
+				expect(safeComputedMetrics(result).ml_insights.propensity_scores.advocacy).toBe(0.82);
 			});
 
 			it('should handle metrics with temporal data and timestamps', async () => {
@@ -277,9 +278,9 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					data: { computed_metrics: temporalMetrics }
 				});
 
-				expect(result.computed_metrics.calculation_metadata.model_version).toBe('v2.1.3');
-				expect(result.computed_metrics.time_series_data.hourly_engagement).toHaveLength(3);
-				expect(result.computed_metrics.cohort_analysis.ltv_estimate).toBe(47.50);
+				expect(safeComputedMetrics(result).calculation_metadata.model_version).toBe('v2.1.3');
+				expect(safeComputedMetrics(result).time_series_data.hourly_engagement).toHaveLength(3);
+				expect(safeComputedMetrics(result).cohort_analysis.ltv_estimate).toBe(47.50);
 			});
 		});
 	});
@@ -338,10 +339,10 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					}
 				});
 
-				expect(result.device_data.device_type).toBe('mobile');
-				expect(result.device_data.viewport.width).toBe(375);
-				expect(result.device_data.accessibility.screen_reader).toBe(false);
-				expect(result.device_data.connection_type).toBe('4g');
+				expect(safeDeviceData(result).device_type).toBe('mobile');
+				expect(safeDeviceData(result).viewport.width).toBe(375);
+				expect(safeDeviceData(result).accessibility.screen_reader).toBe(false);
+				expect(safeDeviceData(result).connection_type).toBe('4g');
 			});
 		});
 
@@ -406,10 +407,10 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					data: { session_metrics: sessionMetrics }
 				});
 
-				expect(result.session_metrics.events_count).toBe(25);
-				expect(result.session_metrics.duration_ms).toBe(1275000);
-				expect(result.session_metrics.predictive_metrics.lifetime_value_estimate).toBe(156.75);
-				expect(result.session_metrics.performance_metrics.error_count).toBe(0);
+				expect(safeSessionMetrics(result).events_count).toBe(25);
+				expect(safeSessionMetrics(result).duration_ms).toBe(1275000);
+				expect(safeSessionMetrics(result).predictive_metrics.lifetime_value_estimate).toBe(156.75);
+				expect(safeSessionMetrics(result).performance_metrics.error_count).toBe(0);
 			});
 		});
 
@@ -590,10 +591,10 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					}
 				});
 
-				expect(result.config.steps).toHaveLength(2);
-				expect(result.config.variations).toHaveLength(3);
-				expect(result.config.targeting_rules.geographic.included_countries).toContain('US');
-				expect(result.config.statistical_config.confidence_level).toBe(0.95);
+				expect(safeExperimentConfig(result).steps).toHaveLength(2);
+				expect(safeExperimentConfig(result).variations).toHaveLength(3);
+				expect(safeExperimentConfig(result).targeting_rules.geographic.included_countries).toContain('US');
+				expect(safeExperimentConfig(result).statistical_config.confidence_level).toBe(0.95);
 			});
 		});
 
@@ -697,11 +698,11 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					data: { metrics_cache: metricsCache }
 				});
 
-				expect(result.metrics_cache.participants_count).toBe(5847);
-				expect(result.metrics_cache.winning_variation).toBe('streamlined');
-				expect(result.metrics_cache.variation_results.streamlined.conversion_rate).toBe(0.141);
-				expect(result.metrics_cache.funnel_completion_rates.overall).toBe(0.32);
-				expect(result.metrics_cache.temporal_analysis.daily_conversion_rates).toHaveLength(3);
+				expect(safeExperimentMetricsCache(result).participants_count).toBe(5847);
+				expect(safeExperimentMetricsCache(result).winning_variation).toBe('streamlined');
+				expect(safeExperimentMetricsCache(result).variation_results.streamlined.conversion_rate).toBe(0.141);
+				expect(safeExperimentMetricsCache(result).funnel_completion_rates.overall).toBe(0.32);
+				expect(safeExperimentMetricsCache(result).temporal_analysis.daily_conversion_rates).toHaveLength(3);
 			});
 		});
 	});

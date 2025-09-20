@@ -12,8 +12,13 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import type { Template } from '$lib/types/template';
+	import type { LayoutData } from './$types';
+	import type { Snippet } from 'svelte';
 
-	let { children, data } = $props();
+	let { children, data }: { 
+		children: Snippet; 
+		data: LayoutData;
+	} = $props();
 
 	// Fetch templates from API
 	onMount(() => {

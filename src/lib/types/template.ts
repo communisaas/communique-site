@@ -15,6 +15,7 @@ export interface Template {
 	recipient_config: unknown; // Json field in database
 	metrics: {
 		sent?: number;
+		delivered?: number; // Number of messages successfully delivered 
 		opened?: number; // Deprecated - not trackable for direct email
 		clicked?: number; // For direct: recipient count; for congressional: not used
 		responded?: number; // For congressional: delivery confirmations; for direct: not used

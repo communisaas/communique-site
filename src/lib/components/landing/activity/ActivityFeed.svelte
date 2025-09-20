@@ -109,7 +109,7 @@
 							<div class="text-slate-900">{template.title}</div>
 							<div class="text-xs text-slate-500 sm:text-sm">
 								{(template.metrics?.sent ?? 0).toLocaleString()} sent
-								{#if template.metrics?.delivered}
+								{#if template.metrics?.delivered && template.metrics?.sent}
 									• {((template.metrics.delivered / template.metrics.sent) * 100).toFixed(1)}% delivered
 								{/if}
 							</div>

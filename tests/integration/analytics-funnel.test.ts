@@ -10,6 +10,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsExperiment } from '../../src/lib/types/analytics';
+import { safeExperimentConfig, safeExperimentMetricsCache, safeEventProperties } from '../helpers/json-test-helpers';
 
 // Mock database for funnel testing
 const mockDb = vi.hoisted(() => ({
@@ -133,9 +134,9 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 			});
 
 			expect(result.type).toBe('funnel');
-			expect(result.config.steps).toHaveLength(5);
-			expect(result.config.steps[0].goal_event).toBe('template_viewed');
-			expect(result.config.targeting_rules.template_categories).toContain('voting');
+			expect(safeExperimentConfig(result).steps).toHaveLength(5);
+			expect(safeExperimentConfig(result).steps[0].goal_event).toBe('template_viewed');
+			expect(safeExperimentConfig(result).targeting_rules.template_categories).toContain('voting');
 		});
 
 		it('should support A/B test funnel variations in unified schema', async () => {
@@ -185,9 +186,9 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 			});
 
 			expect(result.type).toBe('ab_test');
-			expect(result.config.variations).toHaveLength(2);
-			expect(result.config.variations[0].config.auth_modal_style).toBe('standard');
-			expect(result.config.variations[1].config.profile_required).toBe(false);
+			expect(safeExperimentConfig(result).variations).toHaveLength(2);
+			expect(safeExperimentConfig(result).variations[0].config.auth_modal_style).toBe('standard');
+			expect(safeExperimentConfig(result).variations[1].config.profile_required).toBe(false);
 		});
 	});
 
@@ -410,8 +411,8 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 			mockDb.analytics_event.findMany.mockResolvedValue(mockAbTestEvents);
 
 			// Calculate conversion rates by variation
-			const controlEvents = mockAbTestEvents.filter(e => e.properties.variation === 'control');
-			const streamlinedEvents = mockAbTestEvents.filter(e => e.properties.variation === 'streamlined');
+			const controlEvents = mockAbTestEvents.filter(e => safeEventProperties(e).variation === 'control');
+			const streamlinedEvents = mockAbTestEvents.filter(e => safeEventProperties(e).variation === 'streamlined');
 
 			const controlUsers = new Set(controlEvents.filter(e => e.name === 'template_viewed').map(e => e.user_id));
 			const controlConversions = new Set(controlEvents.filter(e => e.name === 'auth_completed').map(e => e.user_id));

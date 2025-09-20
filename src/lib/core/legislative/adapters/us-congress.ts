@@ -8,6 +8,7 @@ import type {
 	DeliveryCapability,
 	Office
 } from './base';
+import type { CongressionalOffice } from '$lib/core/congress/cwc-client';
 import type { Jurisdiction, Chamber } from '../models';
 import { addressLookupService } from '$lib/core/congress/address-lookup';
 import { cwcClient } from '$lib/core/congress/cwc-client';
@@ -83,22 +84,22 @@ export class USCongressAdapter extends LegislativeAdapter {
 					office_id: `us-house-${userReps.district.state}-${userReps.district.district}`,
 					name: userReps.house.name,
 					party: userReps.house.party,
-					bioguide_id: userReps.house.bioguideId,
+					bioguide_id: userReps.house.bioguide_id,
 					external_ids: {
-						cwc_office_code: userReps.house.officeCode,
-						bioguide: userReps.house.bioguideId
+						cwc_office_code: userReps.house.office_code,
+						bioguide: userReps.house.bioguide_id
 					},
 					is_current: true
 				},
 				...userReps.senate.map((senator) => ({
-					id: `us-senate-${senator.bioguideId}`,
+					id: `us-senate-${senator.bioguide_id}`,
 					office_id: `us-senate-${senator.state}`,
 					name: senator.name,
 					party: senator.party,
-					bioguide_id: senator.bioguideId,
+					bioguide_id: senator.bioguide_id,
 					external_ids: {
-						cwc_office_code: senator.officeCode,
-						bioguide: senator.bioguideId
+						cwc_office_code: senator.office_code,
+						bioguide: senator.bioguide_id
 					},
 					is_current: true
 				}))
@@ -114,8 +115,8 @@ export class USCongressAdapter extends LegislativeAdapter {
 
 		try {
 			const userReps = {
-				house: { bioguideId: representative.bioguide_id, name: representative.name },
-				senate: [{ bioguideId: representative.bioguide_id, name: representative.name }]
+				house: { bioguide_id: representative.bioguide_id, name: representative.name },
+				senate: [{ bioguide_id: representative.bioguide_id, name: representative.name }]
 			};
 
 			const validation = await addressLookupService.validateReps(userReps as any);
@@ -129,10 +130,10 @@ export class USCongressAdapter extends LegislativeAdapter {
 		try {
 
 			// Convert to CWC format
-			const congressionalOffice = {
+			const congressionalOffice: CongressionalOffice = {
 				bioguideId: request.representative.bioguide_id || '',
 				name: request.representative.name,
-				chamber: this.getChamberFromOffice(request.office),
+				chamber: this.getChamberFromOffice(request.office) as 'house' | 'senate',
 				officeCode: request.representative.external_ids?.cwc_office_code || '',
 				state: request.user.address?.state || '',
 				district: this.getDistrictFromRepresentative(request.representative),

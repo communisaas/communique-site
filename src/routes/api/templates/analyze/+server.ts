@@ -40,7 +40,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		} catch (error) {
 			const response: ApiResponse = {
 				success: false,
-				error: createApiError('validation', 'INVALID_JSON', 'Invalid JSON in request body')
+				error: createApiError('validation', 'VALIDATION_INVALID_FORMAT', 'Invalid JSON in request body')
 			};
 			return json(response, { status: 400 });
 		}

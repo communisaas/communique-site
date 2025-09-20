@@ -87,7 +87,7 @@ export class UserFactory extends Factory<UserFactoryData> {
 			id,
 			name: `Test User ${id.slice(-4)}`,
 			email: `user${id.slice(-4)}@test.com`,
-			avatar: null,
+			avatar: undefined,
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			
@@ -101,31 +101,31 @@ export class UserFactory extends Factory<UserFactoryData> {
 			
 			// Verification status
 			is_verified: false,
-			verification_method: null,
-			verification_data: null,
-			verified_at: null,
+			verification_method: undefined,
+			verification_data: undefined,
+			verified_at: undefined,
 			
 			// VOTER Protocol blockchain identity
-			wallet_address: null,
-			district_hash: null,
+			wallet_address: undefined,
+			district_hash: undefined,
 			trust_score: 0,
 			reputation_tier: 'novice',
 			
 			// VOTER Protocol reward and reputation fields
 			pending_rewards: BigInt(0),
 			total_earned: BigInt(0),
-			last_certification: null,
+			last_certification: undefined,
 			challenge_score: 50,
 			civic_score: 50,
 			discourse_score: 50,
 			
 			// Profile fields
-			role: null,
-			organization: null,
-			location: null,
-			connection: null,
-			connection_details: null,
-			profile_completed_at: null,
+			role: undefined,
+			organization: undefined,
+			location: undefined,
+			connection: undefined,
+			connection_details: undefined,
+			profile_completed_at: undefined,
 			profile_visibility: 'private'
 		};
 
@@ -209,13 +209,13 @@ export class TemplateFactory extends Factory<TemplateFactoryData> {
 			cwc_config: { house: true, senate: true },
 			recipient_config: { auto_lookup: true },
 			metrics: { opens: 0, clicks: 0, responses: 0 },
-			campaign_id: null,
+			campaign_id: undefined,
 			status: 'draft',
 			is_public: true,
 			
 			// Usage tracking
 			send_count: 0,
-			last_sent_at: null,
+			last_sent_at: undefined,
 			
 			// Geographic scope
 			applicable_countries: ['US'],
@@ -224,24 +224,24 @@ export class TemplateFactory extends Factory<TemplateFactoryData> {
 			
 			// Consolidated verification fields
 			verification_status: 'pending',
-			severity_level: null,
-			original_content: null,
-			correction_log: null,
-			corrected_subject: null,
-			corrected_body: null,
-			grammar_score: null,
-			clarity_score: null,
-			completeness_score: null,
-			quality_score: null,
-			agent_votes: null,
-			consensus_score: null,
-			reputation_delta: null,
+			severity_level: undefined,
+			original_content: undefined,
+			correction_log: undefined,
+			corrected_subject: undefined,
+			corrected_body: undefined,
+			grammar_score: undefined,
+			clarity_score: undefined,
+			completeness_score: undefined,
+			quality_score: undefined,
+			agent_votes: undefined,
+			consensus_score: undefined,
+			reputation_delta: undefined,
 			reputation_applied: false,
-			reviewed_at: null,
+			reviewed_at: undefined,
 			
 			createdAt: new Date(),
 			updatedAt: new Date(),
-			userId: null
+			userId: undefined
 		};
 
 		return {
@@ -258,7 +258,7 @@ export interface RepresentativeFactoryData {
 	id: string;
 	name: string;
 	bioguide_id: string;
-	chamber: 'house' | 'senate';
+	chamber: 'house' | 'senate' | 'commons';
 	party: string;
 	state: string;
 	district?: string;
@@ -310,7 +310,7 @@ export class RepresentativeFactory extends Factory<RepresentativeFactoryData> {
 			email: `${chamber}@congress.gov`,
 			
 			// Enhanced office information
-			member_name: null,
+			member_name: undefined,
 			office_address: '123 Capitol Hill',
 			office_city: 'Washington',
 			office_state: 'DC',
@@ -369,10 +369,10 @@ export class AddressFactory extends Factory<AddressFactoryData> {
  * Congressional office factory
  */
 export interface CongressionalOfficeFactoryData {
-	bioguideId: string;
+	bioguide_id: string;
 	name: string;
 	chamber: 'house' | 'senate';
-	officeCode: string;
+	office_code: string;
 	state: string;
 	district?: string;
 	party: string;
@@ -382,13 +382,13 @@ export class CongressionalOfficeFactory extends Factory<CongressionalOfficeFacto
 	build(options?: FactoryOptions<CongressionalOfficeFactoryData>): CongressionalOfficeFactoryData {
 		const chamber = options?.overrides?.chamber || 'house';
 		const state = options?.overrides?.state || 'CA';
-		const bioguideId = options?.overrides?.bioguideId || 'T123456';
+		const bioguide_id = options?.overrides?.bioguide_id || 'T123456';
 
 		const baseOffice = {
-			bioguideId,
-			name: chamber === 'senate' ? `Sen. ${bioguideId}` : `Rep. ${bioguideId}`,
+			bioguide_id,
+			name: chamber === 'senate' ? `Sen. ${bioguide_id}` : `Rep. ${bioguide_id}`,
 			chamber,
-			officeCode: bioguideId,
+			office_code: bioguide_id,
 			state,
 			district: chamber === 'house' ? '12' : undefined,
 			party: 'Democratic'

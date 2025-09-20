@@ -1,9 +1,10 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
-import { templateCorrector } from '$lib/services/template-correction';
+import { templateCorrector, type TemplateModerationResult } from '$lib/services/template-correction';
 import { moderationConsensus } from '$lib/agents/moderation-consensus';
 import { reputationCalculator } from '$lib/services/reputation-calculator';
 import type { RequestHandler } from './$types';
+import type { Prisma } from '@prisma/client';
 
 /**
  * N8N Webhook Handler for Template Moderation Pipeline
@@ -110,23 +111,8 @@ async function executeModerationPipeline(templateId: string) {
 
 		// Stage 1: Auto-correction
 		console.log(`[Moderation] Stage 1: Auto-correction for template ${templateId}`);
-		const correctionResult = await templateCorrector.processTemplate(template);
+		const correctionResult = await templateCorrector.processTemplate(templateId);
 		stages.correction = correctionResult;
-
-		// Update template with correction results
-		await db.template.update({
-			where: { id: templateId },
-			data: {
-				severity_level: correctionResult.severity,
-				correction_log: correctionResult.changes || [],
-				corrected_subject: correctionResult.correctedSubject,
-				corrected_body: correctionResult.correctedBody,
-				grammar_score: correctionResult.scores?.grammar,
-				clarity_score: correctionResult.scores?.clarity,
-				completeness_score: correctionResult.scores?.completeness,
-				quality_score: correctionResult.scores?.overall || 0
-			}
-		});
 
 		// If severity is low and corrections applied, we're done
 		if (correctionResult.severity <= 6 && !correctionResult.proceed) {
@@ -168,7 +154,7 @@ async function executeModerationPipeline(templateId: string) {
 				where: { id: templateId },
 				data: {
 					verification_status: finalStatus,
-					agent_votes: consensusResult.agentVotes,
+					agent_votes: consensusResult.agentVotes as unknown as Prisma.JsonObject,
 					consensus_score: consensusResult.score,
 					reviewed_at: new Date()
 				}

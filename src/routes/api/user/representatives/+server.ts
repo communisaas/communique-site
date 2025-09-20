@@ -4,13 +4,13 @@ import { db } from '$lib/core/db';
 import type { Representative } from '$lib/types/user';
 
 interface RepresentativeData {
-	bioguideId: string;
+	bioguide_id: string;
 	name: string;
 	party: string;
 	state: string;
 	district: string;
 	chamber: 'house' | 'senate';
-	officeCode: string;
+	office_code: string;
 }
 
 interface UserRepsData {
@@ -73,25 +73,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			for (const rep of allReps) {
 				const storedRep = await tx.representative.upsert({
-					where: { bioguide_id: rep.bioguideId },
+					where: { bioguide_id: rep.bioguide_id },
 					update: {
 						name: rep.name,
 						party: rep.party,
 						state: rep.state,
 						district: rep.district,
 						chamber: rep.chamber,
-						office_code: rep.officeCode,
+						office_code: rep.office_code,
 						is_active: true,
 						last_updated: new Date()
 					},
 					create: {
-						bioguide_id: rep.bioguideId,
+						bioguide_id: rep.bioguide_id,
 						name: rep.name,
 						party: rep.party,
 						state: rep.state,
 						district: rep.district,
 						chamber: rep.chamber,
-						office_code: rep.officeCode,
+						office_code: rep.office_code,
 						is_active: true
 					}
 				});
@@ -199,18 +199,18 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		user.representatives.forEach((userRep) => {
 			const rep: Representative = {
 				id: userRep.representative.id,
-				bioguideId: userRep.representative.bioguide_id,
+				bioguide_id: userRep.representative.bioguide_id,
 				name: userRep.representative.name,
 				party: userRep.representative.party,
-				title: userRep.representative.chamber || 'representative',
-				type: userRep.representative.chamber || 'representative',
 				state: userRep.representative.state,
 				district: userRep.representative.district, // Keep as string
 				chamber: userRep.representative.chamber,
-				officeCode: userRep.representative.office_code,
+				office_code: userRep.representative.office_code,
+				is_active: userRep.representative.is_active ?? true,
+				last_updated: userRep.representative.last_updated ?? new Date(),
 				relationship: userRep.relationship,
-				assignedAt: userRep.assigned_at,
-				lastValidated: userRep.last_validated
+				assigned_at: userRep.assigned_at,
+				last_validated: userRep.last_validated
 			};
 
 			if (userRep.relationship === 'house') {

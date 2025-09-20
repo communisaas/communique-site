@@ -19,6 +19,23 @@ interface CorrectionResult {
 		grammar: number;
 		clarity: number;
 		completeness: number;
+		overall: number;
+	};
+}
+
+export interface TemplateModerationResult {
+	status: 'corrected' | 'needs_moderation';
+	proceed: boolean;
+	severity: number;
+	// Include correction details for webhook access
+	changes?: CorrectionChange[];
+	correctedSubject?: string;
+	correctedBody?: string;
+	scores?: {
+		grammar?: number;
+		clarity?: number;
+		completeness?: number;
+		overall?: number;
 	};
 }
 
@@ -33,7 +50,7 @@ export class TemplateCorrector {
 	/**
 	 * Process a template for auto-correction (Phase 4 consolidation - verification fields in Template)
 	 */
-	async processTemplate(templateId: string) {
+	async processTemplate(templateId: string): Promise<TemplateModerationResult> {
 		const template = await db.template.findUnique({
 			where: { id: templateId }
 		});
@@ -84,7 +101,11 @@ export class TemplateCorrector {
 			return {
 				status: 'corrected',
 				proceed: false, // No need for further moderation
-				severity: corrections.severity
+				severity: corrections.severity,
+				changes: corrections.changes,
+				correctedSubject: corrections.corrected_subject,
+				correctedBody: corrections.corrected_body,
+				scores: corrections.scores
 			};
 		}
 
@@ -100,7 +121,11 @@ export class TemplateCorrector {
 		return {
 			status: 'needs_moderation',
 			proceed: true,
-			severity: corrections.severity
+			severity: corrections.severity,
+			changes: corrections.changes,
+			correctedSubject: corrections.corrected_subject,
+			correctedBody: corrections.corrected_body,
+			scores: corrections.scores
 		};
 	}
 
@@ -143,10 +168,15 @@ export class TemplateCorrector {
 		}
 
 		// Calculate scores
+		const grammarScore = this.calculateGrammarScore(correctedBody);
+		const clarityScore = this.calculateClarityScore(correctedBody);
+		const completenessScore = this.calculateCompletenessScore(template, correctedBody);
+		
 		const scores = {
-			grammar: this.calculateGrammarScore(correctedBody),
-			clarity: this.calculateClarityScore(correctedBody),
-			completeness: this.calculateCompletenessScore(template, correctedBody)
+			grammar: grammarScore,
+			clarity: clarityScore,
+			completeness: completenessScore,
+			overall: Math.round((grammarScore + clarityScore + completenessScore) / 3)
 		};
 
 		// Determine severity based on issues found

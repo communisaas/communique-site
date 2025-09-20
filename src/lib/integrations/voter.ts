@@ -9,15 +9,23 @@
 
 import type { Template } from '$lib/types/template';
 
+// Type for template data to prevent toLowerCase errors
+interface SafeTemplateData {
+	title?: unknown;
+	id?: unknown;
+	deliveryMethod?: unknown;
+	[key: string]: unknown;
+}
+
 /**
  * Get action type based on template properties
  * Shared utility for consistent action type determination
  */
-export function getVOTERActionType(template: Template): string {
-	// Check template properties to determine action type
-	const title = template.title?.toLowerCase() || '';
-	const id = template.id?.toLowerCase() || '';
-	const method = template.deliveryMethod?.toLowerCase() || '';
+export function getVOTERActionType(template: Template | SafeTemplateData): string {
+	// Check template properties to determine action type with safe type checking
+	const title = typeof template.title === 'string' ? template.title.toLowerCase() : '';
+	const id = typeof template.id === 'string' ? template.id.toLowerCase() : '';
+	const method = typeof template.deliveryMethod === 'string' ? template.deliveryMethod.toLowerCase() : '';
 
 	// Congressional messages
 	if (

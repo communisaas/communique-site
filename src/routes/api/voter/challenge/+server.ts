@@ -7,6 +7,7 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db.js';
 import type { RequestHandler } from './$types';
+import type { Prisma } from '@prisma/client';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
@@ -235,10 +236,10 @@ async function createChallenge(data: Record<string, unknown>) {
 				challenge_id: result.challengeId,
 				defender_id: defenderIdStr,
 				title: titleStr,
-				description,
+				description: description as any,
 				evidence_ipfs: evidenceStr,
 				stake_amount: stakeAmountStr,
-				category,
+				category: category as any,
 				voting_deadline: result.votingDeadline
 			},
 			status: 'completed'

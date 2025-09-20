@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { safeEventProperties, safeComputedMetrics, safeSessionMetrics, safeExperimentMetricsCache } from '../helpers/json-test-helpers';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsEvent, AnalyticsSession, AnalyticsExperiment } from '../../src/lib/types/analytics';
 
@@ -95,7 +96,7 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			const initialVisit = {
 				session_data: {
 					session_id: 'sess_journey_123',
-					user_id: null, // Anonymous initially
+					user_id: undefined, // Anonymous initially
 					utm_source: 'facebook',
 					utm_medium: 'social',
 					utm_campaign: 'voting-rights-awareness',
@@ -124,7 +125,7 @@ describe('Complete Analytics Flow Integration Tests', () => {
 
 			const expectedSession: Partial<AnalyticsSession> = {
 				session_id: 'sess_journey_123',
-				user_id: null,
+				user_id: undefined,
 				utm_source: 'facebook',
 				utm_medium: 'social',
 				utm_campaign: 'voting-rights-awareness',
@@ -348,7 +349,7 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			// Verify final session state
 			const lastSessionCall = mockDb.analytics_session.upsert.mock.calls[5][0];
 			expect(lastSessionCall.create.user_id).toBe('user-123');
-			expect(lastSessionCall.create.session_metrics.conversion_count).toBe(1);
+			expect(safeSessionMetrics(lastSessionCall.create).conversion_count).toBe(1);
 		});
 	});
 
@@ -384,10 +385,10 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				created_at: new Date(),
 				updated_at: new Date(),
 				utm_source: 'direct',
-				utm_medium: null,
-				utm_campaign: null,
+				utm_medium: undefined,
+				utm_campaign: undefined,
 				landing_page: '/',
-				referrer: null,
+				referrer: undefined,
 				device_data: { ip_address: '127.0.0.1' },
 				session_metrics: { events_count: 0, page_views: 0 },
 				funnel_progress: {}
@@ -448,14 +449,14 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			});
 
 			expect(sessionEvents).toHaveLength(3);
-			sessionEvents.forEach(event => {
+			sessionEvents.forEach((event: any) => {
 				expect(event.session_id).toBe('sess_consistency_123');
 				expect(event.user_id).toBe('user-123');
 				expect(event.experiment_id).toBe('exp-consistency-test');
 			});
 
 			// Verify experiment metrics reflect event data
-			const conversionCount = sessionEvents.filter(e => e.event_type === 'conversion').length;
+			const conversionCount = sessionEvents.filter((e: any) => e.event_type === 'conversion').length;
 			const updatedExperimentMetrics = {
 				participants_count: 1,
 				conversion_rate: conversionCount / sessionEvents.length,
@@ -473,8 +474,8 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				data: { metrics_cache: updatedExperimentMetrics }
 			});
 
-			expect(updatedExperiment.metrics_cache.participants_count).toBe(1);
-			expect(updatedExperiment.metrics_cache.funnel_completion_rate).toBe(1.0);
+			expect(safeExperimentMetricsCache(updatedExperiment).participants_count).toBe(1);
+			expect(safeExperimentMetricsCache(updatedExperiment).funnel_completion_rate).toBe(1.0);
 		});
 
 		it('should handle data migration and schema evolution', async () => {
@@ -520,8 +521,8 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			});
 
 			// Verify migration preserved data integrity
-			expect(result.properties.template_id).toBe('template-123');
-			expect(result.properties.migration_source).toBe('legacy_event_property_table');
+			expect(safeEventProperties(result).template_id).toBe('template-123');
+			expect(safeEventProperties(result).migration_source).toBe('legacy_event_property_table');
 			expect(result.computed_metrics.legacy_migration_flag).toBe(true);
 		});
 	});
@@ -765,7 +766,7 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			// User starts on mobile, continues on desktop
 			const mobileSession = {
 				session_id: 'sess_mobile_456',
-				user_id: null,
+				user_id: undefined,
 				device_data: {
 					device_type: 'mobile',
 					os: 'iOS',
@@ -813,8 +814,8 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			// Verify cross-device tracking
 			expect(userSessions).toHaveLength(2);
 			
-			const mobileSessionData = userSessions.find(s => s.session_id === 'sess_mobile_456');
-			const desktopSessionData = userSessions.find(s => s.session_id === 'sess_desktop_789');
+			const mobileSessionData = userSessions.find((s: any) => s.session_id === 'sess_mobile_456');
+			const desktopSessionData = userSessions.find((s: any) => s.session_id === 'sess_desktop_789');
 			
 			expect(mobileSessionData?.device_data.device_type).toBe('mobile');
 			expect(desktopSessionData?.device_data.device_type).toBe('desktop');
@@ -877,9 +878,9 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			const eventCall = mockDb.analytics_event.createMany.mock.calls[0][0];
 			const storedEvent = eventCall.data[0];
 			
-			expect(storedEvent.properties.language).toBe('en-GB');
-			expect(storedEvent.properties.parliament_constituency).toBe('Westminster North');
-			expect(storedEvent.properties.local_issues).toContain('housing');
+			expect(safeEventProperties(storedEvent).language).toBe('en-GB');
+			expect(safeEventProperties(storedEvent).parliament_constituency).toBe('Westminster North');
+			expect(safeEventProperties(storedEvent).local_issues).toContain('housing');
 		});
 	});
 });

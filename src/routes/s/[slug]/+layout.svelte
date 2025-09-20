@@ -5,8 +5,13 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
+	import type { LayoutData } from './$types';
+	import type { Snippet } from 'svelte';
 
-	let { children, data } = $props();
+	let { children, data }: {
+		children: Snippet;
+		data: LayoutData;
+	} = $props();
 
 	let showCopied = $state(false);
 	let showShareMenu = $state(false);

@@ -76,7 +76,7 @@
 	const isCorporate = $derived(isCorporateTemplate(template));
 	const templateContext = $derived(getTemplateContext(template));
 
-	function isLocalGovTemplate(template: Record<string, unknown>): boolean {
+	function isLocalGovTemplate(template: { category?: string; title: string }): boolean {
 		const category = template.category?.toLowerCase() || '';
 		const title = template.title?.toLowerCase() || '';
 		return (
@@ -89,7 +89,7 @@
 		);
 	}
 
-	function isCorporateTemplate(template: Record<string, unknown>): boolean {
+	function isCorporateTemplate(template: { category?: string }): boolean {
 		const category = template.category?.toLowerCase() || '';
 		return (
 			category.includes('corporate') ||

@@ -17,6 +17,11 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 			title: string;
 			deliveryMethod: string;
 		};
+		onComplete?: (data: {
+			address: string;
+			verified: boolean;
+			representatives?: Array<Record<string, unknown>>;
+		}) => void;
 	}) {
 		modal.open(data);
 	}
@@ -31,6 +36,11 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 			title: string;
 			deliveryMethod: string;
 		};
+		onComplete?: (data: {
+			address: string;
+			verified: boolean;
+			representatives?: Array<Record<string, unknown>>;
+		}) => void;
 	} | null);
 
 	function handleComplete(data: {
@@ -39,8 +49,8 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 		representatives?: Array<Record<string, unknown>>;
 	}) {
 		// Call completion callback if provided
-		if (modalStore.data?.onComplete) {
-			modalStore.data.onComplete(data);
+		if (modalData?.onComplete) {
+			modalData.onComplete(data);
 		}
 
 		// Close modal

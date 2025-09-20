@@ -114,3 +114,21 @@ export function isModalComponent(obj: unknown): obj is ModalComponent {
 		typeof (obj as any).close === 'function'
 	);
 }
+
+/**
+ * Component template interface that extends Template with index signature
+ * This allows components to accept Template objects while being flexible about extra properties
+ */
+export interface ComponentTemplate {
+	id: string;
+	slug: string;
+	title: string;
+	description: string;
+	deliveryMethod: string;
+	type?: string;
+	message_body?: string;
+	recipient_config?: any;
+	recipientEmails?: string[];
+	metrics: { sent?: number; delivered?: number; views?: number };
+	[key: string]: unknown;
+}

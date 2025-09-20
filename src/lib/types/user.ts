@@ -12,8 +12,8 @@ export interface UserProfile {
 	email: string;
 	avatar?: string;
 	phone?: string;
-	createdAt: Date;
-	updatedAt: Date;
+	created_at: Date;
+	updated_at: Date;
 }
 
 // NOTE: UserLocation interface removed - coordinates data now part of enhanced User model
@@ -52,8 +52,8 @@ export interface Representative {
 	
 	// User-representative relationship fields (for joined queries)
 	relationship?: string;
-	assignedAt?: Date;
-	lastValidated?: Date | null;
+	assigned_at?: Date;
+	last_validated?: Date | null;
 }
 
 /**

@@ -7,7 +7,7 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import type { Template } from '$lib/types/template';
-	import { toComponentUser } from '$lib/types/component-props';
+	import { toComponentUser, type ComponentTemplate } from '$lib/types/component-props';
 
 	// Connect to modal system with reactive getters
 	const modalStore = createModalStore('template-modal', 'template_modal');
@@ -22,8 +22,23 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 		} | null
 	);
 
+	// Convert Template to ComponentTemplate 
+	function toComponentTemplate(template: Template): ComponentTemplate {
+		// Extract metrics separately and spread the rest
+		const { metrics, ...otherProps } = template;
+		return {
+			...otherProps,
+			recipientEmails: template.recipientEmails,
+			metrics: {
+				sent: metrics?.sent,
+				delivered: metrics?.delivered,
+				views: metrics?.views
+			}
+		} as ComponentTemplate;
+	}
+
 	// Derived states for template and user
-	const template = $derived(modalData?.template);
+	const template = $derived(modalData?.template ? toComponentTemplate(modalData.template) : null);
 	const user = $derived(modalData?.user ? toComponentUser(modalData.user) : null);
 
 	// Open/close functions for external use

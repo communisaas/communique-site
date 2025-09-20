@@ -218,8 +218,8 @@ export class ImpactAgent extends BaseAgent {
 		for (const outcome of outcomes) {
 			const relevantActions = actions.filter(
 				(action: any) =>
-					outcome.timestamp > action.createdAt &&
-					outcome.timestamp.getTime() - action.createdAt.getTime() < 30 * 24 * 60 * 60 * 1000 // 30 days
+					outcome.timestamp > action.created_at &&
+					outcome.timestamp.getTime() - action.created_at.getTime() < 30 * 24 * 60 * 60 * 1000 // 30 days
 			);
 
 			if (relevantActions.length > 0) {
@@ -413,8 +413,8 @@ export class ImpactAgent extends BaseAgent {
 
 	private formatDateRange(actions: any[]): string {
 		if (actions.length === 0) return '';
-		const earliest = new Date(Math.min(...actions.map((a) => a.createdAt.getTime())));
-		const latest = new Date(Math.max(...actions.map((a) => a.createdAt.getTime())));
+		const earliest = new Date(Math.min(...actions.map((a) => a.created_at.getTime())));
+		const latest = new Date(Math.max(...actions.map((a) => a.created_at.getTime())));
 		return `${earliest.toLocaleDateString()} - ${latest.toLocaleDateString()}`;
 	}
 

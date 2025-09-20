@@ -135,9 +135,8 @@ describe('N8N Agent Integration', () => {
 				db: {
 					template: {
 						findUnique: vi.fn().mockResolvedValue({
-							id: 'template-123',
 							...mockVerification,
-							verification_status: mockVerification.moderation_status,
+							verification_status: 'pending',
 							severity_level: mockVerification.severity_level
 						}),
 						update: vi.fn().mockResolvedValue({})

@@ -5,6 +5,7 @@ import {
 	hasActivationData
 } from '$lib/experimental/cascade/cascade-analytics-fixed';
 import type { AnalyticsSession, AnalyticsEvent } from '$lib/types/analytics';
+import { getSessionMetrics } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -79,9 +80,18 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// Calculate analytics metrics from new consolidated session data
 		const totalSessions = userSessions.length;
-		const totalPageViews = userSessions.reduce((sum, session) => sum + (session.session_metrics?.page_views || 0), 0);
-		const totalEvents = userSessions.reduce((sum, session) => sum + (session.session_metrics?.events_count || 0), 0);
-		const totalConversions = userSessions.reduce((sum, session) => sum + (session.session_metrics?.conversion_count || 0), 0);
+		const totalPageViews = userSessions.reduce((sum, session) => {
+			const metrics = getSessionMetrics(session.session_metrics);
+			return sum + metrics.page_views;
+		}, 0);
+		const totalEvents = userSessions.reduce((sum, session) => {
+			const metrics = getSessionMetrics(session.session_metrics);
+			return sum + metrics.events_count;
+		}, 0);
+		const totalConversions = userSessions.reduce((sum, session) => {
+			const metrics = getSessionMetrics(session.session_metrics);
+			return sum + (metrics.conversion_count || 0);
+		}, 0);
 		const conversionRate = totalSessions > 0 ? totalConversions / totalSessions : 0;
 
 		// Template interaction analytics

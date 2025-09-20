@@ -106,7 +106,8 @@ export async function computeTooltipPosition(
 			x: triggerRect.left + triggerRect.width / 2 - tooltipElement.offsetWidth / 2,
 			y: triggerRect.top - tooltipElement.offsetHeight - offsetValue,
 			placement: 'top',
-			middlewareData: {}
+			middlewareData: {},
+			strategy: 'fixed'
 		};
 	}
 

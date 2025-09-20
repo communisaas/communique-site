@@ -9,14 +9,43 @@
 
 import { getConfig } from './utils/config';
 
+// Type for template data to prevent toLowerCase errors
+interface TemplateData {
+	title?: string;
+	id?: string;
+	deliveryMethod?: string;
+	message_body?: string;
+	subject?: string;
+	slug?: string;
+	[key: string]: unknown;
+}
+
+// Type for user profile
+interface UserProfile {
+	street?: string;
+	zip?: string;
+	address?: string;
+	city?: string;
+	state?: string;
+	[key: string]: unknown;
+}
+
+// Type for CWC result
+interface CwcResult {
+	submissionId?: string;
+	success?: boolean;
+	trackingNumber?: string;
+	[key: string]: unknown;
+}
+
 /**
  * Get action type based on template properties
  * Mirrors logic from main app for consistency
  */
-function getVOTERActionType(templateData: any) {
-	const title = (templateData.title || '').toLowerCase();
-	const id = (templateData.id || '').toLowerCase();
-	const method = (templateData.deliveryMethod || '').toLowerCase();
+function getVOTERActionType(templateData: TemplateData) {
+	const title = typeof templateData.title === 'string' ? templateData.title.toLowerCase() : '';
+	const id = typeof templateData.id === 'string' ? templateData.id.toLowerCase() : '';
+	const method = typeof templateData.deliveryMethod === 'string' ? templateData.deliveryMethod.toLowerCase() : '';
 
 	// Congressional messages
 	if (
@@ -50,8 +79,8 @@ function getVOTERActionType(templateData: any) {
 /**
  * Generate message hash for certification
  */
-function generateMessageHash(recipient: any, subject: any, body: any) {
-	const content = `${recipient}:${subject}:${body}`;
+function generateMessageHash(recipient: unknown, subject: unknown, body: unknown) {
+	const content = `${String(recipient)}:${String(subject)}:${String(body)}`;
 	// Simple hash for now - in production use crypto
 	let hash = 0;
 	for (let i = 0; i < content.length; i++) {
@@ -66,7 +95,13 @@ function generateMessageHash(recipient: any, subject: any, body: any) {
  * Certify email delivery through VOTER Protocol
  * Called after successful CWC submission
  */
-async function certifyEmailDelivery(params: any) {
+async function certifyEmailDelivery(params: {
+	userProfile: UserProfile;
+	templateData: TemplateData;
+	cwcResult: CwcResult;
+	recipients?: string[];
+	[key: string]: unknown;
+}) {
 	const { userProfile, templateData, cwcResult, recipients = [] } = params;
 	const config = getConfig();
 

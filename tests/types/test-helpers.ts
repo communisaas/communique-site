@@ -156,6 +156,7 @@ export interface MockTemplate extends Omit<Template, 'metrics'> {
 	updated_at?: Date;
 	creator_id?: string;
 	severity_level?: number;
+	userId?: string;
 	metrics?: {
 		sent?: number;
 		opened?: number;
@@ -182,12 +183,38 @@ export function createMockTemplate(overrides: Partial<MockTemplate> = {}): MockT
 		category: 'test',
 		type: 'advocacy',
 		deliveryMethod: 'email',
+		subject: 'Test Subject',
 		message_body: 'This is a test message.',
 		delivery_config: {},
+		cwc_config: undefined,
 		recipient_config: {},
 		preview: 'Test Template',
 		is_public: true,
 		metrics: { sent: 0, opened: 0, clicked: 0 },
+		campaign_id: undefined,
+		status: 'draft',
+		send_count: 0,
+		last_sent_at: undefined,
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		specific_locations: [],
+		verification_status: 'pending',
+		severity_level: undefined,
+		original_content: undefined,
+		correction_log: undefined,
+		corrected_subject: undefined,
+		corrected_body: undefined,
+		grammar_score: undefined,
+		clarity_score: undefined,
+		completeness_score: undefined,
+		quality_score: undefined,
+		agent_votes: undefined,
+		consensus_score: undefined,
+		reputation_delta: undefined,
+		reputation_applied: false,
+		reviewed_at: undefined,
+		corrected_at: undefined,
+		country_code: 'US',
 		created_at: now,
 		updated_at: now,
 		...overrides

@@ -48,7 +48,7 @@ describe('Critical Edge Cases', () => {
 
 	describe('Template Analysis API Edge Cases', () => {
 		it('should handle empty template content gracefully', async () => {
-			const { POST } = await import('../../src/routes/api/templates/analyze/+server.ts');
+			const { POST } = await import('../../src/routes/api/templates/analyze/+server.js');
 			const request = new Request('http://localhost/api/templates/analyze', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -68,7 +68,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle malformed JSON requests', async () => {
-			const { POST } = await import('../../src/routes/api/templates/analyze/+server.ts');
+			const { POST } = await import('../../src/routes/api/templates/analyze/+server.js');
 			const request = new Request('http://localhost/api/templates/analyze', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -80,7 +80,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle template content at realistic size limits', async () => {
-			const { POST } = await import('../../src/routes/api/templates/analyze/+server.ts');
+			const { POST } = await import('../../src/routes/api/templates/analyze/+server.js');
 			// Realistic long template (2KB - typical for legislative messages)
 			const longContent = `Dear [representative.title],\n\n${'I am writing to express my concerns about this important issue. '.repeat(25)}\n\nThank you for your time.\n\nSincerely,\n[user.name]`;
 			
@@ -105,7 +105,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle special characters in template content', async () => {
-			const { POST } = await import('../../src/routes/api/templates/analyze/+server.ts');
+			const { POST } = await import('../../src/routes/api/templates/analyze/+server.js');
 			const specialContent = "Template with special chars: ñ, é, 中文, emoji 🏛️, quotes 'single' and \"double\"";
 			
 			const request = new Request('http://localhost/api/templates/analyze', {
@@ -131,7 +131,7 @@ describe('Critical Edge Cases', () => {
 
 	describe('Agent Decision Error Handling', () => {
 		it('should handle database connection failures gracefully', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.ts');
+			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
 			// Mock database failure
 			mockDb.template.findMany.mockRejectedValue(new Error('Database connection failed'));
 			
@@ -155,7 +155,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle missing context data', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.ts');
+			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
 			const agent = new ImpactAgent();
 			const incompleteContext = {
 				// Missing required fields like userId, actionType
@@ -171,7 +171,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle context with nested user data', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.ts');
+			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
 			const agent = new ImpactAgent();
 			const complexContext = {
 				userId: 'user-123',
@@ -224,7 +224,7 @@ describe('Critical Edge Cases', () => {
 			});
 
 			try {
-				const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.ts');
+				const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
 				const funnel = new (FunnelAnalytics as any)();
 				
 				// Should gracefully handle SSR environment
@@ -250,7 +250,7 @@ describe('Critical Edge Cases', () => {
 				writable: true
 			});
 
-			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.ts');
+			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
 			
 			// Should handle corrupted data gracefully
 			expect(() => new (FunnelAnalytics as any)()).not.toThrow();
@@ -271,7 +271,7 @@ describe('Critical Edge Cases', () => {
 				writable: true
 			});
 
-			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.ts');
+			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
 			const funnel = new (FunnelAnalytics as any)();
 			
 			funnel.track('template_creation', { templateId: 'test-123' });
@@ -316,8 +316,9 @@ describe('Critical Edge Cases', () => {
 					}
 					
 					return user;
-				} catch (error) {
-					if (error.message.includes('UNIQUE constraint')) {
+				} catch (error: unknown) {
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					if (errorMessage.includes('UNIQUE constraint')) {
 						// Race condition: try to find the user again
 						return await mockDb.user.findUnique({ where: { email: 'newuser@example.com' } });
 					}
@@ -339,7 +340,7 @@ describe('Critical Edge Cases', () => {
 				)
 			);
 
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.ts');
+			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
 			const agent = new ImpactAgent();
 			
 			const decision = await agent.makeDecision({
@@ -357,7 +358,7 @@ describe('Critical Edge Cases', () => {
 
 	describe('Authentication Boundary Conditions', () => {
 		it('should handle malformed session cookies', async () => {
-			const { validateSession } = await import('../../src/lib/core/auth/auth.ts');
+			const { validateSession } = await import('../../src/lib/core/auth/auth.js');
 			
 			// Test various malformed cookie scenarios
 			const malformedCookies = [
@@ -376,7 +377,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle expired session edge cases', async () => {
-			const { validateSession } = await import('../../src/lib/core/auth/auth.ts');
+			const { validateSession } = await import('../../src/lib/core/auth/auth.js');
 			
 			// Mock session that's just expired
 			mockDb.session.findUnique.mockResolvedValue({
@@ -390,7 +391,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle session cleanup after logout', async () => {
-			const { invalidateSession } = await import('../../src/lib/core/auth/auth.ts');
+			const { invalidateSession } = await import('../../src/lib/core/auth/auth.js');
 			
 			mockDb.session.delete.mockRejectedValue(new Error('Session not found'));
 			

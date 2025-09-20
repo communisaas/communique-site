@@ -9,6 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { agentCoordinator, moderationConsensus } from '$lib/agents';
 import { db } from '$lib/core/db';
+import type { Prisma } from '@prisma/client';
 import {
 	extractSupplyDecision,
 	extractMarketDecision,
@@ -134,7 +135,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			await db.template.update({
 				where: { id: templateId },
 				data: {
-					agent_votes: consensus.agentVotes,
+					agent_votes: JSON.parse(JSON.stringify(consensus.agentVotes)),
 					consensus_score: consensus.score,
 					verification_status: consensus.approved ? 'approved' : 'rejected'
 				}

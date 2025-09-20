@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Verify the signed token
 		const payload = await verifySignedToken<{
 			email: string;
-			userId: string;
+			user_id: string;
 			templateSlug?: string;
 			timestamp: number;
 			purpose: string;
@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const existingEmail = await db.userEmail.findFirst({
 			where: {
 				email: payload.email.toLowerCase(),
-				userId: payload.userId
+				userId: payload.user_id
 			}
 		});
 
@@ -68,7 +68,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			const secondaryInUse = await db.userEmail.findFirst({
 				where: {
 					email: payload.email.toLowerCase(),
-					NOT: { userId: payload.userId }
+					NOT: { userId: payload.user_id }
 				}
 			});
 
@@ -79,11 +79,10 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			// Add and auto-verify the email
 			await db.userEmail.create({
 				data: {
-					userId: payload.userId,
+					userId: payload.user_id,
 					email: payload.email.toLowerCase(),
 					isVerified: true,
-					verifiedAt: new Date(),
-					isPrimary: false
+					verifiedAt: new Date()
 				}
 			});
 		}
@@ -91,14 +90,13 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		// Log the verification event
 		await db.auditLog.create({
 			data: {
-				user_id: payload.userId,
-				action: 'email_added_via_bounce',
-				metadata: {
+				user_id: payload.user_id,
+				action_type: 'email_added_via_bounce',
+				audit_data: {
 					email: payload.email,
 					method: 'bounce_link',
 					templateSlug: payload.templateSlug
-				},
-				created_at: new Date()
+				}
 			}
 		});
 

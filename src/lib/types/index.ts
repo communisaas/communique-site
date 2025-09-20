@@ -32,7 +32,8 @@ export * from './popover';
 // Convenience re-exports for commonly used types
 export type {
 	ApiResponse,
-	AnalyticsEvent,
+	AnalyticsEventCreate as AnalyticsEvent,
+	EnrichedAnalyticsEvent,
 	AddressUpdateRequest,
 	ProfileUpdateRequest
 } from './api';

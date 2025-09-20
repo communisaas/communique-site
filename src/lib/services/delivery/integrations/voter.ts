@@ -6,6 +6,17 @@ import axios, { type AxiosInstance } from 'axios';
 import type { VOTERCertificationRequest, VOTERCertificationResult, VOTERActionType } from '../types/index.js';
 import { getConfig } from '../utils/config.js';
 
+// Type for template data to prevent toLowerCase errors
+interface LocalTemplateData {
+	title?: string;
+	id?: string;
+	deliveryMethod?: string;
+	message_body?: string;
+	subject?: string;
+	slug?: string;
+	[key: string]: unknown;
+}
+
 export class VOTERClient {
 	private client: AxiosInstance | null = null;
 	private config = getConfig();
@@ -44,7 +55,7 @@ export class VOTERClient {
 		try {
 			console.log(`[VOTER] Certifying delivery for template ${request.templateData.id}`);
 
-			const actionType = this.determineActionType(request.templateData);
+			const actionType = this.determineActionType(request.templateData as unknown as LocalTemplateData);
 
 			const payload = {
 				user_address: request.userProfile.id, // Using user ID as address proxy
@@ -89,7 +100,7 @@ export class VOTERClient {
 	 */
 	public async getAdvancedConsensus(
 		verificationId: string,
-		templateData: Record<string, unknown>,
+		templateData: LocalTemplateData,
 		severityLevel: number,
 		existingVotes?: Record<string, Record<string, unknown>>
 	): Promise<{
@@ -254,14 +265,10 @@ export class VOTERClient {
 	/**
 	 * Determine VOTER action type based on template data
 	 */
-	private determineActionType(templateData: {
-		title?: string;
-		id: string;
-		deliveryMethod: string;
-	}): VOTERActionType {
-		const title = (templateData.title || '').toLowerCase();
-		const id = (templateData.id || '').toLowerCase();
-		const method = (templateData.deliveryMethod || '').toLowerCase();
+	private determineActionType(templateData: LocalTemplateData): VOTERActionType {
+		const title = typeof templateData.title === 'string' ? templateData.title.toLowerCase() : '';
+		const id = typeof templateData.id === 'string' ? templateData.id.toLowerCase() : '';
+		const method = typeof templateData.deliveryMethod === 'string' ? templateData.deliveryMethod.toLowerCase() : '';
 
 		// Check for congressional messaging
 		if (

@@ -2,8 +2,13 @@
 	import { page } from '$app/stores';
 	import { User, Settings, FileText, Shield, Edit3, Home, LogOut } from '@lucide/svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import type { LayoutData } from './$types';
+	import type { Snippet } from 'svelte';
 
-	let { children, data } = $props();
+	let { children, data }: {
+		children: Snippet;
+		data: LayoutData;
+	} = $props();
 
 	type TabType = 'overview' | 'profile' | 'templates' | 'settings';
 

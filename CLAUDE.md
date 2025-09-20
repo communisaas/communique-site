@@ -148,17 +148,101 @@ const mockUser: MockUser = {
 };
 ```
 
+### Critical Error Patterns to Avoid:
+
+#### ❌ Component Event Dispatch Type Mismatches
+```typescript
+// WRONG - Extra properties in event dispatch
+dispatch('complete', {
+  address: verified,
+  district: districtData,  // ← Not in event type definition
+  extraField: value        // ← Not in event type definition
+});
+
+// CORRECT - Only dispatch properties defined in event type
+const dispatch = createEventDispatcher<{
+  complete: { address: string; verified: boolean }
+}>();
+dispatch('complete', { address: verified, verified: true });
+```
+
+#### ❌ Route ID Comparisons with Non-Existent Routes
+```typescript
+// WRONG - Comparing against removed/non-existent routes
+const isTemplate = $page.route.id === '/s/[slug]' || $page.route.id === '/[slug]-backup';
+
+// CORRECT - Only compare against actual routes
+const isTemplate = $page.route.id === '/s/[slug]';
+```
+
+#### ❌ Object Spread with Duplicate Properties
+```typescript
+// WRONG - Duplicate properties cause TypeScript errors
+return {
+  id: template.id,          // ← Duplicate after spread
+  title: template.title,    // ← Duplicate after spread
+  ...template,              // ← Already includes id, title
+  recipientEmails: emails
+};
+
+// CORRECT - Extract conflicting props, then spread
+const { metrics, ...otherProps } = template;
+return {
+  ...otherProps,
+  recipientEmails: emails,
+  metrics: { sent: metrics?.sent }
+};
+```
+
+#### ❌ Generic Record Types in Validator Functions
+```typescript
+// WRONG - Generic casting loses type information
+const stepData = (formData as any)[currentStep] as Record<string, unknown>;
+formErrors = validators[currentStep](stepData); // ← Type mismatch
+
+// CORRECT - Use explicit type checks for each step
+if (currentStep === 'objective') {
+  formErrors = validators.objective(formData.objective);
+} else if (currentStep === 'audience') {
+  formErrors = validators.audience(formData.audience);
+}
+```
+
+#### ❌ Prisma Field Naming Inconsistencies
+```typescript
+// WRONG - Mixing snake_case and camelCase
+const user = {
+  congressional_district: data.congressionalDistrict,  // ← Inconsistent
+  verification_method: data.verificationMethod        // ← Inconsistent
+};
+
+// CORRECT - Use consistent snake_case for Prisma fields
+const user = {
+  congressional_district: data.congressional_district,
+  verification_method: data.verification_method
+};
+```
+
 ### Type Checking Commands:
 ```bash
 # These MUST pass with zero errors:
 npm run check         # Runs svelte-check with TypeScript
 npx tsc --noEmit      # Pure TypeScript check
+npm run build         # Verify production build succeeds
 
 # Quick check during development:
 npx tsc --noEmit --skipLibCheck
 ```
 
-**Remember: We just spent multiple rounds fixing 1,072 TypeScript errors. Every `any` type or suppression comment will lead to the same situation. We are STRICT.**
+### Pattern-Matching Error Resolution Strategy:
+When fixing TypeScript errors, group similar patterns:
+1. **Prisma field naming** - Fix all snake_case vs camelCase inconsistencies together
+2. **Component event types** - Update all event dispatcher interfaces together  
+3. **Route comparisons** - Remove all references to non-existent routes together
+4. **Object spreads** - Fix all duplicate property conflicts together
+5. **Type casting** - Replace all `any` casts with proper type guards together
+
+**Remember: We just spent multiple rounds fixing 193+ TypeScript errors. Every `any` type or suppression comment will lead to the same situation. We are STRICT.**
 
 ## Environment
 
