@@ -16,7 +16,13 @@ const impactAgent = new ImpactAgent();
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { userAddress, actionType, templateId, recipients = [], verificationScore = 1.0 } = body;
+		const { userAddress, actionType, templateId, recipients = [], verificationScore = 1.0 }: {
+			userAddress: string;
+			actionType: string;
+			templateId?: string;
+			recipients?: string[];
+			verificationScore?: number;
+		} = body;
 
 		if (!userAddress || !actionType) {
 			return json({ error: 'userAddress and actionType required' }, { status: 400 });

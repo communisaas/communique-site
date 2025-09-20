@@ -144,7 +144,7 @@ export function analyzeEmailFlow(
 		}
 
 		// Enforce address gating for congressional delivery
-		const isCongressional = template.deliveryMethod === 'certified';
+		const isCongressional = template.deliveryMethod === 'cwc';
 		const hasCompleteAddress = Boolean(user.street && user.city && user.state && user.zip);
 
 		if (isCongressional && !hasCompleteAddress) {
@@ -361,7 +361,7 @@ export function validateEmailFlow(
 	}
 
 	// User validation for congressional templates
-	if (template.deliveryMethod === 'certified' && user) {
+	if (template.deliveryMethod === 'cwc' && user) {
 		if (!user.street)
 			errors.push({
 				code: 'MISSING_STREET',
@@ -415,7 +415,7 @@ export function getEmailFlowAnalytics(
 		flowStage = 'authentication_required';
 		blockers.push('user_not_authenticated');
 	} else if (
-		template.deliveryMethod === 'certified' &&
+		template.deliveryMethod === 'cwc' &&
 		!(user.street && user.city && user.state && user.zip)
 	) {
 		flowStage = 'address_collection_required';

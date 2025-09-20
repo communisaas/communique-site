@@ -32,51 +32,47 @@ export const POST: RequestHandler = async ({ request }) => {
 		const payload = await request.json();
 
 		// Validate required fields
-		if (!payload.verificationId && !payload.templateId) {
-			return json({ error: 'Missing verificationId or templateId' }, { status: 400 });
+		if (!payload.templateId) {
+			return json({ error: 'Missing templateId' }, { status: 400 });
 		}
 
-		// Get or create verification record
-		let verificationId = payload.verificationId;
+		// Get template with consolidated verification fields
+		const template = await db.template.findUnique({
+			where: { id: payload.templateId },
+			include: { user: true }
+		});
 
-		if (!verificationId && payload.templateId) {
-			// Create verification if it doesn't exist
-			const template = await db.template.findUnique({
-				where: { id: payload.templateId },
-				include: { user: true }
+		if (!template) {
+			return json({ error: 'Template not found' }, { status: 404 });
+		}
+
+		// Check if congressional template
+		if (template.deliveryMethod !== 'certified') {
+			return json({
+				message: 'Template is not for congressional delivery, skipping moderation',
+				templateId: template.id
 			});
+		}
 
-			if (!template) {
-				return json({ error: 'Template not found' }, { status: 404 });
-			}
-
-			// Check if congressional template
-			if (template.deliveryMethod !== 'certified') {
-				return json({
-					message: 'Template is not for congressional delivery, skipping moderation',
-					templateId: template.id
-				});
-			}
-
-			// Create verification record
-			const verification = await db.templateVerification.create({
+		// Initialize verification fields if not set
+		if (!template.verification_status) {
+			await db.template.update({
+				where: { id: template.id },
 				data: {
-					template_id: template.id,
-					user_id: template.userId || '',
+					verification_status: 'pending',
 					country_code: 'US',
-					moderation_status: 'pending'
+					quality_score: 0,
+					reputation_applied: false
 				}
 			});
-
-			verificationId = verification.id;
 		}
 
 		// Execute moderation pipeline
-		const result = await executeModerationPipeline(verificationId);
+		const result = await executeModerationPipeline(payload.templateId);
 
 		return json({
 			success: true,
-			verificationId,
+			templateId: payload.templateId,
 			result
 		});
 	} catch (_error) {
@@ -94,7 +90,7 @@ export const POST: RequestHandler = async ({ request }) => {
 /**
  * Execute the complete moderation pipeline
  */
-async function executeModerationPipeline(verificationId: string) {
+async function executeModerationPipeline(templateId: string) {
 	const stages = {
 		correction: null as any,
 		moderation: null as any,
@@ -102,18 +98,54 @@ async function executeModerationPipeline(verificationId: string) {
 	};
 
 	try {
+		// Get template for processing
+		const template = await db.template.findUnique({
+			where: { id: templateId },
+			include: { user: true }
+		});
+
+		if (!template) {
+			throw new Error(`Template ${templateId} not found`);
+		}
+
 		// Stage 1: Auto-correction
-		console.log(`[Moderation] Stage 1: Auto-correction for ${verificationId}`);
-		const correctionResult = await templateCorrector.processVerification(verificationId);
+		console.log(`[Moderation] Stage 1: Auto-correction for template ${templateId}`);
+		const correctionResult = await templateCorrector.processTemplate(template);
 		stages.correction = correctionResult;
+
+		// Update template with correction results
+		await db.template.update({
+			where: { id: templateId },
+			data: {
+				severity_level: correctionResult.severity,
+				correction_log: correctionResult.changes || [],
+				corrected_subject: correctionResult.correctedSubject,
+				corrected_body: correctionResult.correctedBody,
+				grammar_score: correctionResult.scores?.grammar,
+				clarity_score: correctionResult.scores?.clarity,
+				completeness_score: correctionResult.scores?.completeness,
+				quality_score: correctionResult.scores?.overall || 0
+			}
+		});
 
 		// If severity is low and corrections applied, we're done
 		if (correctionResult.severity <= 6 && !correctionResult.proceed) {
 			console.log(`[Moderation] Template auto-corrected and approved`);
 
+			// Update template status to approved
+			await db.template.update({
+				where: { id: templateId },
+				data: {
+					verification_status: 'approved',
+					reviewed_at: new Date()
+				}
+			});
+
 			// Apply small reputation boost for clean submission
-			await reputationCalculator.applyVerificationResult(verificationId);
-			stages.reputation = { applied: true, reason: 'auto-approved after correction' };
+			if (template.userId) {
+				await reputationCalculator.applyTemplateResult(templateId);
+				stages.reputation = { applied: true, reason: 'auto-approved after correction' };
+			}
 
 			return {
 				status: 'approved',
@@ -127,16 +159,30 @@ async function executeModerationPipeline(verificationId: string) {
 			console.log(
 				`[Moderation] Stage 2: Multi-agent consensus for severity ${correctionResult.severity}`
 			);
-			const consensusResult = await moderationConsensus.evaluateTemplate(verificationId);
+			const consensusResult = await moderationConsensus.evaluateTemplate(templateId);
 			stages.moderation = consensusResult;
+
+			// Update template with consensus results
+			const finalStatus = consensusResult.approved ? 'approved' : 'rejected';
+			await db.template.update({
+				where: { id: templateId },
+				data: {
+					verification_status: finalStatus,
+					agent_votes: consensusResult.agentVotes,
+					consensus_score: consensusResult.score,
+					reviewed_at: new Date()
+				}
+			});
 
 			// Stage 3: Apply reputation changes
 			console.log(`[Moderation] Stage 3: Applying reputation changes`);
-			const reputationUpdate = await reputationCalculator.applyVerificationResult(verificationId);
-			stages.reputation = reputationUpdate;
+			if (template.userId) {
+				const reputationUpdate = await reputationCalculator.applyTemplateResult(templateId);
+				stages.reputation = reputationUpdate;
+			}
 
 			return {
-				status: consensusResult.approved ? 'approved' : 'rejected',
+				status: finalStatus,
 				stages,
 				message: consensusResult.approved
 					? 'Template approved by agent consensus'
@@ -153,11 +199,11 @@ async function executeModerationPipeline(verificationId: string) {
 	} catch (_error) {
 		console.error('Error:', _error);
 
-		// Update verification status to indicate error
-		await db.templateVerification.update({
-			where: { id: verificationId },
+		// Update template status to indicate error
+		await db.template.update({
+			where: { id: templateId },
 			data: {
-				moderation_status: 'pending',
+				verification_status: 'pending',
 				correction_log: {
 					error: _error instanceof Error ? _error.message : 'Unknown error',
 					timestamp: new Date().toISOString()

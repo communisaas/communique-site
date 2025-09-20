@@ -14,7 +14,12 @@ const reputationAgent = new ReputationAgent();
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { userAddress, actionType, qualityScore, userId } = body;
+		const { userAddress, actionType, qualityScore, userId }: {
+			userAddress: string;
+			actionType: string;
+			qualityScore: number;
+			userId?: string;
+		} = body;
 
 		if (!userAddress || !actionType || qualityScore === undefined) {
 			return json({ error: 'userAddress, actionType, and qualityScore required' }, { status: 400 });
@@ -66,6 +71,29 @@ export const POST: RequestHandler = async ({ request }) => {
 				data: {
 					trust_score: newReputation,
 					reputation_tier: decision.newTier || 'novice'
+				}
+			});
+
+			// Create unified audit log entry for reputation update
+			await db.auditLog.create({
+				data: {
+					user_id: userId,
+					action_type: 'reputation_change',
+					action_subtype: 'agent_update',
+					audit_data: {
+						action_type: actionType,
+						quality_score: qualityScore,
+						user_address: userAddress,
+						reputation_changes: changes,
+						agent_decision: decision
+					},
+					score_before: currentReputation?.total || 50,
+					score_after: newReputation,
+					change_amount: changes.total || 0,
+					change_reason: 'agent_reputation_update',
+					agent_source: result.agentId,
+					confidence: result.confidence,
+					status: 'completed'
 				}
 			});
 		}

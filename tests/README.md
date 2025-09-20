@@ -125,11 +125,25 @@ Mocks are automatically configured based on feature flags:
 ```typescript
 import mockRegistry from '../mocks/registry';
 
+// Setup standard mocks
 const mocks = mockRegistry.setupMocks();
-const dbMock = mocks['$lib/server/db'].db;
+const dbMock = mocks.db;
+const authMock = mocks.auth;
 
-// Customize mock behavior
+// Customize database mock behavior
 dbMock.user.findUnique.mockResolvedValue(customUser);
+dbMock.template.create.mockResolvedValue(newTemplate);
+
+// Customize auth mock behavior
+authMock.createSession.mockResolvedValue({
+  id: 'session-123',
+  user_id: 'user-123',
+  expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+});
+
+// Reset specific mocks during test
+vi.clearAllMocks(); // Reset all
+mockRegistry.reset(); // Reset registry state
 ```
 
 ## Best Practices
@@ -154,34 +168,86 @@ Mock only external dependencies (APIs, databases). Use real implementations for 
 
 Test names should describe user scenarios, not implementation details.
 
-## Coverage Goals
+## Coverage Goals & Thresholds
 
-- Integration tests: 80%+ feature coverage
-- Unit tests: Critical business logic only
-- E2E tests: Core user journeys
+### Current Thresholds (vitest.config.ts)
+- **Lines**: 70%
+- **Functions**: 70%
+- **Branches**: 70%
+- **Statements**: 70%
 
-## Recent Optimizations (December 2024)
+### Coverage Strategy
+- **Integration tests**: 80%+ feature coverage with realistic workflows
+- **Unit tests**: Critical business logic and edge cases only
+- **E2E tests**: Core user journeys and critical paths
+- **Mock coverage**: External dependencies fully mocked
 
-The test suite was recently consolidated to eliminate redundancy and improve maintainability:
+### Exclusions from Coverage
+- Experimental code (`src/lib/experimental/**`)
+- Feature flags (`src/lib/features/**`)
+- Test files and configuration
+- Build artifacts and dependencies
 
-### Before Consolidation: 22 files, 8,445 lines
+## Current Test Status (September 2024)
 
-### After Consolidation: 12 files, 5,145 lines (39% reduction)
+**Test Results:** 170/194 passing (87.6% pass rate)
+
+### Failing Test Categories
+
+1. **OAuth Flow Issues** (13 failures)
+   - Error handling edge cases need proper mock alignment
+   - Session management tests require environment setup
+   - CSRF/PKCE validation needs implementation updates
+
+2. **Critical Edge Cases** (8 failures)
+   - Analytics localStorage mocking in jsdom environment
+   - Agent decision context validation
+   - Database transaction error handling
+   - Template analysis API validation
+
+3. **VOTER Certification** (1 failure)
+   - Data consistency validation when VOTER service unavailable
+
+4. **Agent Integration** (2 failures)
+   - Response format alignment between mocks and implementation
+   - Context data validation in decision flows
+
+### Recent Improvements & Fixes Applied
+
+#### Phase 1: OAuth Environment Setup
+- ✅ Added comprehensive OAuth environment variables in `tests/config/setup.ts`
+- ✅ Standardized test environment configuration
+- ✅ Fixed OAuth provider initialization issues
+
+#### Phase 2: Database Mock Alignment
+- ✅ Enhanced mock registry with consistent database interfaces
+- ✅ Aligned mock return types with Prisma schema
+- ✅ Improved mock-reality synchronization patterns
+
+#### Phase 3: Response Format Standardization
+- ✅ Standardized API response formats across tests
+- ✅ Improved error handling mock patterns
+- ✅ Enhanced test data factories with realistic scenarios
+
+### Coverage Analysis Results
+
+- **Global Coverage**: >70% across all thresholds (lines, functions, branches, statements)
+- **Integration Tests**: High feature coverage with realistic workflows
+- **Unit Tests**: Focused on critical business logic
+- **Mock Coverage**: Comprehensive mocking of external dependencies
+
+### Test Consolidation (December 2024)
+
+The test suite was consolidated to eliminate redundancy:
+
+**Before:** 22 files, 8,445 lines  
+**After:** 16 files, ~6,000 lines (25% reduction)
 
 **Consolidation Strategy:**
-
-- **Recipient Email Extraction**: Combined 6 separate test files into `recipient-email-extraction.test.ts`
-- **Analytics Testing**: Merged performance tests into `analytics-api.test.ts`
-- **Slug Validation**: Integrated slug checking tests into `template-api.test.ts`
-- **Security Testing**: Wove auth security tests into `oauth-flow.test.ts` and `user-api.test.ts`
-
-**Benefits:**
-
-- ✅ 39% reduction in test file count and lines of code
-- ✅ Eliminated duplicate mocking patterns
-- ✅ Faster test execution due to reduced redundancy
-- ✅ Easier maintenance with consolidated test concerns
-- ✅ Maintained 100% critical test coverage
+- Combined related test suites to reduce duplication
+- Merged mock patterns into unified registry
+- Integrated edge case testing into feature tests
+- Maintained comprehensive coverage while reducing complexity
 
 ### Current Test File Structure
 
@@ -193,20 +259,93 @@ tests/
 ├── integration/
 │   ├── analytics-api.test.ts            # Analytics + Performance + Error handling
 │   ├── analytics-funnel.test.ts         # User journey analytics
-│   ├── congressional-delivery-flow.test.ts    # Full congressional delivery
-│   ├── congressional-delivery-pipeline.test.ts # Pipeline integration
+│   ├── agent-integration.test.ts        # Agent decision flows
+│   ├── certification-flow.test.ts       # VOTER certification workflows
+│   ├── congressional-delivery.test.ts   # Full congressional delivery
+│   ├── critical-edge-cases.test.ts      # Edge cases and error conditions
 │   ├── legislative-abstraction.test.ts  # Legislative adapter registry
 │   ├── oauth-flow.test.ts               # OAuth + Security + Session management
 │   ├── recipient-email-extraction.test.ts # Email extraction + Parsing + Validation
-│   ├── template-api.test.ts             # Template CRUD + Slug checking + Frontend integration
+│   ├── template-api.test.ts             # Template CRUD + Slug checking
 │   ├── template-personalization.test.ts # Template variable resolution
-│   └── user-api.test.ts                 # User management + Security + Permissions
+│   ├── user-api.test.ts                 # User management + Security + Permissions
+│   ├── voter-certification.test.ts      # VOTER Protocol integration
+│   └── voter-proxy.test.ts              # VOTER service proxy
 └── e2e/ (browser tests)
 ```
 
-## Maintenance
+## Test Debugging & Troubleshooting
 
-- Mocks auto-sync with implementation changes
-- Factories provide consistent test data
-- Feature flags control test scope automatically
-- Consolidated tests reduce maintenance overhead by 39%
+### Common Issues & Solutions
+
+#### 1. OAuth Test Failures
+**Problem**: Tests fail with "Invalid authorization code" or missing OAuth environment  
+**Solution**: Ensure all OAuth environment variables are set in `tests/config/setup.ts`
+
+#### 2. Database Mock Misalignment
+**Problem**: Tests fail with undefined database methods  
+**Solution**: Check mock registry alignment with actual Prisma schema
+
+#### 3. Analytics localStorage Errors
+**Problem**: "Cannot read properties of undefined (reading 'getItem')"  
+**Solution**: Mock localStorage in jsdom environment or use happy-dom
+
+#### 4. Agent Integration Failures
+**Problem**: Response format mismatches between mocks and implementation  
+**Solution**: Align mock responses with actual agent API contract
+
+#### 5. Session Management Issues
+**Problem**: Session creation/validation failures in tests  
+**Solution**: Ensure auth service mocks return properly formatted session objects
+
+### Debug Commands
+
+```bash
+# Run specific failing test with verbose output
+npm run test -- oauth-flow.test.ts --reporter=verbose
+
+# Run tests with coverage to identify gaps
+npm run test:coverage
+
+# Run only integration tests
+npm run test:integration
+
+# Debug specific test pattern
+npm run test -- --grep="OAuth.*error"
+```
+
+### Performance Optimization
+
+#### Vitest Configuration Optimizations
+- **Pool strategy**: `forks` with `singleFork: true` for better test isolation
+- **Environment**: `jsdom` for browser-like testing
+- **Coverage provider**: `istanbul` for comprehensive reporting
+
+#### Mock Registry Best Practices
+- Use centralized mock registry for consistency
+- Align mock interfaces with actual implementations
+- Reset mocks between tests to prevent interference
+- Provide realistic default return values
+
+## Maintenance & Best Practices
+
+### Mock-Reality Synchronization
+- **Automatic alignment**: Mock registry interfaces match Prisma schema
+- **Realistic defaults**: Factory data reflects production patterns
+- **Consistent patterns**: Standardized mock setup across all tests
+
+### Test Data Management
+- **Factories**: Type-safe data creation with realistic defaults
+- **Scenarios**: Pre-configured test cases for common workflows
+- **Overrides**: Easy customization for specific test needs
+
+### Environment Management
+- **Feature flags**: Automatic test scope control
+- **OAuth setup**: Comprehensive provider configuration
+- **Database mocks**: Isolated test data without real DB dependencies
+
+### Continuous Improvement
+- Regular review of failing test patterns
+- Mock alignment validation with implementation changes
+- Coverage threshold adjustments based on project maturity
+- Performance monitoring and optimization

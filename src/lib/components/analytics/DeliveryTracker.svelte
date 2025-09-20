@@ -4,6 +4,7 @@
 	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
 	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import type { AnalyticsEvent, AnalyticsSession } from '$lib/types/analytics.ts';
 
 	interface DeliveryStatus {
 		campaign_id: string;
@@ -49,9 +50,38 @@
 	let error = $state<string | null>(null);
 	let refreshInterval: NodeJS.Timeout | null = null;
 	let lastUpdate = $state<string>('');
+	let sessionData: AnalyticsSession | null = $state(null);
+	let viewStartTime = Date.now();
+
+	// Analytics tracking function using new consolidated schema
+	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+		try {
+			await fetch('/api/analytics/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: eventName,
+					event_type: 'interaction',
+					properties: {
+						user_id: userId,
+						component: 'delivery_tracker',
+						timestamp: new Date().toISOString(),
+						...properties
+					}
+				})
+			});
+		} catch (error) {
+			console.warn('Analytics tracking failed:', error);
+		}
+	}
 
 	onMount(async () => {
 		await loadDeliveryStatus();
+		
+		// Track delivery tracker view
+		await trackAnalyticsEvent('delivery_tracker_view', {
+			real_time_enabled: realTime
+		});
 
 		if (realTime) {
 			// Poll for updates every 5 seconds
@@ -59,10 +89,17 @@
 		}
 	});
 
-	onDestroy(() => {
+	onDestroy(async () => {
 		if (refreshInterval) {
 			clearInterval(refreshInterval);
 		}
+		
+		// Track session duration
+		const sessionDuration = Date.now() - viewStartTime;
+		await trackAnalyticsEvent('delivery_tracker_session_end', {
+			session_duration_ms: sessionDuration,
+			deliveries_viewed: deliveries.length
+		});
 	});
 
 	async function loadDeliveryStatus() {
@@ -137,6 +174,12 @@
 
 	async function retryDelivery(campaignId: string) {
 		try {
+			// Track retry attempt using new analytics schema
+			await trackAnalyticsEvent('delivery_retry_attempt', {
+				campaign_id: campaignId,
+				retry_source: 'dashboard'
+			});
+
 			const response = await fetch(`/api/analytics/retry-delivery`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -145,9 +188,29 @@
 
 			if (response.ok) {
 				await loadDeliveryStatus(); // Refresh status
+				
+				// Track successful retry initiation
+				await trackAnalyticsEvent('delivery_retry_initiated', {
+					campaign_id: campaignId,
+					retry_source: 'dashboard'
+				});
+			} else {
+				// Track retry failure
+				await trackAnalyticsEvent('delivery_retry_failed', {
+					campaign_id: campaignId,
+					retry_source: 'dashboard',
+					error: 'API request failed'
+				});
 			}
 		} catch (_error) {
 			console.error('Retry failed:', _error);
+			
+			// Track retry error
+			await trackAnalyticsEvent('delivery_retry_error', {
+				campaign_id: campaignId,
+				retry_source: 'dashboard',
+				error: _error instanceof Error ? _error.message : 'Unknown error'
+			});
 		}
 	}
 </script>
@@ -166,7 +229,13 @@
 				</div>
 			{/if}
 			<button
-				onclick={loadDeliveryStatus}
+				onclick={async () => {
+					await trackAnalyticsEvent('delivery_tracker_refresh', {
+						manual_refresh: true,
+						current_deliveries_count: deliveries.length
+					});
+					await loadDeliveryStatus();
+				}}
 				disabled={loading}
 				class="rounded bg-gray-100 px-3 py-1 text-sm text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
 			>
@@ -306,8 +375,14 @@
 									</button>
 								{/if}
 								<button
-									onclick={() =>
-										(window.location.href = `/analytics/delivery/${delivery.campaign_id}`)}
+									onclick={async () => {
+										await trackAnalyticsEvent('delivery_details_view', {
+											campaign_id: delivery.campaign_id,
+											template_id: delivery.template_id,
+											delivery_status: delivery.status
+										});
+										window.location.href = `/analytics/delivery/${delivery.campaign_id}`;
+									}}
 									class="rounded bg-gray-600 px-2 py-1 text-xs text-white transition-colors hover:bg-gray-700"
 								>
 									Details

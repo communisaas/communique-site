@@ -9,6 +9,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { env } from '$env/dynamic/private';
+import { prisma } from '$lib/core/db.js';
 
 const VOTER_API_KEY = env.VOTER_API_KEY || '';
 
@@ -95,10 +96,34 @@ async function handleCertificationComplete(data: unknown) {
 
 	console.log('[Webhook] Certification complete:', data.certification_hash);
 
-	// TODO: Update database with certification status
-	// TODO: Notify user of successful certification
+	// Find user by wallet address if available
+	if (data.user_address) {
+		const user = await prisma.user.findFirst({
+			where: { wallet_address: data.user_address }
+		});
 
-	// For now, just log
+		if (user) {
+			// Create audit log for certification completion
+			await prisma.auditLog.create({
+				data: {
+					user_id: user.id,
+					action_type: 'verification',
+					action_subtype: 'voter_certification_complete',
+					audit_data: {
+						certification_hash: data.certification_hash,
+						reward_amount: data.reward_amount,
+						action_hash: data.action_hash,
+						timestamp: data.timestamp
+					},
+					certification_type: 'voter_protocol',
+					certification_data: data,
+					reward_amount: data.reward_amount?.toString(),
+					status: 'completed'
+				}
+			});
+		}
+	}
+
 	if (data.user_address && data.reward_amount) {
 		console.log(`User ${data.user_address} earned ${data.reward_amount} VOTER tokens`);
 	}
@@ -112,10 +137,31 @@ async function handleRewardIssued(data: unknown) {
 
 	console.log('[Webhook] Reward issued:', data.reward_amount);
 
-	// TODO: Update user's reward balance
-	// TODO: Show notification to user
+	// Find user by wallet address if available
+	if (data.user_address) {
+		const user = await prisma.user.findFirst({
+			where: { wallet_address: data.user_address }
+		});
 
-	// For now, just log
+		if (user) {
+			// Create audit log for reward issuance
+			await prisma.auditLog.create({
+				data: {
+					user_id: user.id,
+					action_type: 'civic_action',
+					action_subtype: 'reward_issued',
+					audit_data: {
+						reward_amount: data.reward_amount,
+						action_hash: data.action_hash,
+						timestamp: data.timestamp
+					},
+					reward_amount: data.reward_amount?.toString(),
+					status: 'completed'
+				}
+			});
+		}
+	}
+
 	console.log(`Reward of ${data.reward_amount} issued to ${data.user_address}`);
 }
 
@@ -127,9 +173,41 @@ async function handleReputationUpdated(data: unknown) {
 
 	console.log('[Webhook] Reputation updated for:', data.user_address);
 
-	// TODO: Update user's reputation display
-	// TODO: Cache new reputation score
+	// Find user by wallet address if available
+	if (data.user_address) {
+		const user = await prisma.user.findFirst({
+			where: { wallet_address: data.user_address }
+		});
 
-	// For now, just log
+		if (user && data.reputation_change) {
+			// Create audit log for reputation update
+			await prisma.auditLog.create({
+				data: {
+					user_id: user.id,
+					action_type: 'reputation_change',
+					action_subtype: 'external_update',
+					audit_data: {
+						reputation_change: data.reputation_change,
+						action_hash: data.action_hash,
+						timestamp: data.timestamp
+					},
+					score_before: user.trust_score,
+					score_after: user.trust_score + data.reputation_change,
+					change_amount: data.reputation_change,
+					change_reason: 'external_voter_protocol_update',
+					status: 'completed'
+				}
+			});
+
+			// Update user's trust score
+			await prisma.user.update({
+				where: { id: user.id },
+				data: {
+					trust_score: Math.max(0, Math.min(100, user.trust_score + data.reputation_change))
+				}
+			});
+		}
+	}
+
 	console.log(`Reputation change: ${data.reputation_change}`);
 }

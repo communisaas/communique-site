@@ -21,7 +21,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 	}
 
 	try {
-		// First check primary email
+		// Look up user by email (consolidated User model only has primary email)
 		const user = await db.user.findUnique({
 			where: { email: email.toLowerCase() },
 			select: {
@@ -32,14 +32,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 				city: true,
 				state: true,
 				zip: true,
-				is_verified: true,
-				secondary_emails: {
-					where: { email: email.toLowerCase() },
-					select: {
-						email: true,
-						isVerified: true
-					}
-				}
+				is_verified: true
 			}
 		});
 
@@ -56,44 +49,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 					is_verified: user.is_verified
 				},
 				emailType: 'primary',
-				isVerified: true // Primary email is always verified
-			});
-		}
-
-		// Check secondary emails
-		const userEmail = await db.userEmail.findUnique({
-			where: { email: email.toLowerCase() },
-			include: {
-				user: {
-					select: {
-						id: true,
-						email: true,
-						name: true,
-						street: true,
-						city: true,
-						state: true,
-						zip: true,
-						is_verified: true
-					}
-				}
-			}
-		});
-
-		if (userEmail) {
-			return json({
-				user: {
-					id: userEmail.user.id,
-					email: userEmail.user.email,
-					name: userEmail.user.name,
-					street: userEmail.user.street,
-					city: userEmail.user.city,
-					state: userEmail.user.state,
-					zip: userEmail.user.zip,
-					is_verified: userEmail.user.is_verified
-				},
-				emailType: 'secondary',
-				isVerified: userEmail.isVerified,
-				secondaryEmail: userEmail.email
+				isVerified: user.is_verified
 			});
 		}
 

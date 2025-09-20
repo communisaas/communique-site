@@ -160,6 +160,85 @@ describe('Recipient Email Extraction Integration', () => {
 		});
 	});
 
+	describe('Consolidated Template Schema Compatibility', () => {
+		it('should work with full consolidated template model', () => {
+			const consolidatedTemplate = {
+				id: 'template-consolidated',
+				title: 'Consolidated Template',
+				subject: 'Test Subject',
+				message_body: 'Test message body',
+				
+				// Test new consolidated verification fields
+				verification_status: 'approved',
+				quality_score: 85,
+				consensus_score: 0.9,
+				grammar_score: 90,
+				clarity_score: 88,
+				completeness_score: 92,
+				agent_votes: { approve: 3, reject: 0, abstain: 1 },
+				reputation_delta: 10,
+				reputation_applied: true,
+				reviewed_at: new Date(),
+				
+				// Template config fields
+				delivery_config: {
+					timing: 'immediate',
+					followUp: false
+				},
+				recipient_config: {
+					emails: ['consolidated@example.com', 'test@example.com']
+				},
+				
+				// Usage tracking
+				send_count: 5,
+				last_sent_at: new Date(),
+				
+				// Geographic scope
+				applicable_countries: ['US'],
+				jurisdiction_level: 'federal',
+				specific_locations: []
+			};
+
+			const emails = extractRecipientEmails(consolidatedTemplate.recipient_config);
+			expect(emails).toEqual(['consolidated@example.com', 'test@example.com']);
+			
+			const isValidRecipient = isValidRecipientConfig(consolidatedTemplate.recipient_config);
+			expect(isValidRecipient).toBe(true);
+			
+			const isValidDelivery = isValidDeliveryConfig(consolidatedTemplate.delivery_config);
+			expect(isValidDelivery).toBe(true);
+		});
+		
+		it('should handle templates with missing optional consolidated fields', () => {
+			const partialTemplate = {
+				id: 'template-partial',
+				title: 'Partial Template',
+				message_body: 'Basic message',
+				
+				// Only basic fields, missing most consolidated verification fields
+				verification_status: null,
+				quality_score: null,
+				consensus_score: null,
+				
+				recipient_config: {
+					emails: ['partial@example.com']
+				},
+				delivery_config: {
+					timing: 'scheduled',
+					followUp: true
+				}
+			};
+
+			// Should still work with partial data
+			const emails = extractRecipientEmails(partialTemplate.recipient_config);
+			expect(emails).toEqual(['partial@example.com']);
+			
+			const migrated = migrateToTypedTemplate(partialTemplate);
+			expect(migrated.delivery_config.timing).toBe('scheduled');
+			expect(migrated.delivery_config.followUp).toBe(true);
+		});
+	});
+
 	describe('Email Validation', () => {
 		const validateEmail = (email: string): boolean => {
 			const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

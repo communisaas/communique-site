@@ -15,6 +15,7 @@ import { ReputationAgent } from '$lib/agents/reputation-agent.js';
 import { AgentCoordinator, AgentType, type AgentContext } from '$lib/agents/base-agent.js';
 import { extractReputationDecision, extractVerificationDecision } from '$lib/agents/type-guards.js';
 import type { RequestHandler } from './$types';
+import type { RewardCalculationRequest, ChallengeVoteRequest, ProcessChallengeVoteParams } from '$lib/types/api.js';
 
 export const GET: RequestHandler = async ({ url }) => {
 	return json({ message: 'VOTER Protocol API - Use POST for actions' });
@@ -42,11 +43,34 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			case 'calculate_reward':
 				return await calculateReward(data);
 			default:
-				throw error(400, `Invalid action: ${action}`);
+				return json({ success: false, message: `Invalid action: ${action}` }, { status: 400 });
 		}
 	} catch (_error) {
 		console.error('VOTER API error:', _error);
-		throw error(500, _error instanceof Error ? _error.message : 'Internal server error');
+		
+		// Return specific error message based on error type
+		let statusCode = 500;
+		let message = 'Internal server error';
+		
+		if (_error instanceof Error) {
+			message = _error.message;
+			
+			// Handle specific SvelteKit HttpError status codes - check different properties
+			if ('status' in _error) {
+				statusCode = (_error as any).status;
+			} else if ('code' in _error && typeof (_error as any).code === 'number') {
+				statusCode = (_error as any).code;
+			} else if (_error.name === 'HttpError') {
+				// Try to extract status from HttpError
+				const errorStr = _error.toString();
+				const statusMatch = errorStr.match(/status:\s*(\d+)/);
+				if (statusMatch) {
+					statusCode = parseInt(statusMatch[1]);
+				}
+			}
+		}
+		
+		return json({ success: false, message }, { status: statusCode });
 	}
 };
 
@@ -87,7 +111,7 @@ async function handleCWCSubmission({
 	});
 
 	if (!user) {
-		throw error(404, 'User not found');
+		return json({ success: false, message: 'User not found' }, { status: 404 });
 	}
 
 	const template = await prisma.template.findUnique({
@@ -135,40 +159,64 @@ async function handleCWCSubmission({
 		console.warn('Impact agent decision failed:', impactError);
 	}
 
-	// Record civic action with agent decisions
+	// Record civic action with new blockchain-focused model
 	const civicAction = await prisma.civicAction.create({
 		data: {
 			user_id: userId,
 			template_id: templateId,
 			action_type: 'cwc_message',
-			status: results.every((r) => r.success) ? 'completed' : 'failed',
-			agent_decisions: {
-				cwc_results: results,
-				submitted_at: new Date().toISOString(),
-				message_preview: message.substring(0, 100) + '...',
+			status: results.every((r) => r.success) ? 'confirmed' : 'failed',
+			consensus_data: {
 				impact_assessment: impactDecision
 					? {
 							agentId: impactDecision.agentId,
 							confidence: impactDecision.confidence,
 							reasoning: impactDecision.reasoning,
-							impactScore: (impactDecision.decision as any)?.impactScore || 0,
-							legislativeOutcomes: (impactDecision.decision as any)?.legislativeOutcomes || []
+							impactScore: (impactDecision.decision as any)?.impactScore || 0
 						}
 					: { error: 'Impact assessment failed' }
-			} as any,
-			metadata: {
-				...metadata,
+			},
+			confirmed_at: results.every((r) => r.success) ? new Date() : null
+		}
+	});
+
+	// Create unified audit log entry
+	const auditLog = await prisma.auditLog.create({
+		data: {
+			user_id: userId,
+			action_type: 'civic_action',
+			action_subtype: 'cwc_message',
+			audit_data: {
+				cwc_results: results,
+				submitted_at: new Date().toISOString(),
+				message_preview: message.substring(0, 100) + '...',
 				representatives_count: representatives.length,
 				delivery_method: 'cwc',
-				impact_tracking_enabled: true
+				template_id: templateId
 			},
-			completed_at: new Date()
+			agent_source: impactDecision?.agentId || null,
+			agent_decisions: impactDecision ? {
+				impact: {
+					agentId: impactDecision.agentId,
+					confidence: impactDecision.confidence,
+					reasoning: impactDecision.reasoning,
+					decision: impactDecision.decision
+				}
+			} : null,
+			confidence: impactDecision?.confidence || null,
+			civic_action_id: civicAction.id,
+			status: results.every((r) => r.success) ? 'completed' : 'failed',
+			metadata: {
+				...metadata,
+				impact_tracking_enabled: true
+			}
 		}
 	});
 
 	return json({
 		success: true,
 		actionId: civicAction.id,
+		auditLogId: auditLog.id,
 		results,
 		impact_assessment: impactDecision
 			? {
@@ -204,9 +252,10 @@ async function recordCivicAction({
 	status?: string;
 }) {
 	if (!userId || !actionType) {
-		throw error(400, 'Missing required fields: userId, actionType');
+		return json({ success: false, message: 'Missing required fields: userId, actionType' }, { status: 400 });
 	}
 
+	// Create blockchain-focused civic action
 	const action = await prisma.civicAction.create({
 		data: {
 			user_id: userId,
@@ -214,16 +263,34 @@ async function recordCivicAction({
 			action_type: actionType,
 			tx_hash: txHash,
 			reward_wei: rewardWei,
-			status,
+			status: status === 'completed' ? 'confirmed' : status,
+			consensus_data: agentDecisions,
+			confirmed_at: status === 'completed' ? new Date() : null
+		}
+	});
+
+	// Create unified audit log entry
+	const auditLog = await prisma.auditLog.create({
+		data: {
+			user_id: userId,
+			action_type: 'civic_action',
+			action_subtype: actionType,
+			audit_data: {
+				template_id: templateId,
+				tx_hash: txHash,
+				reward_wei: rewardWei,
+				...metadata
+			},
 			agent_decisions: agentDecisions,
-			metadata,
-			completed_at: status === 'completed' ? new Date() : null
+			civic_action_id: action.id,
+			status: status === 'completed' ? 'completed' : status
 		}
 	});
 
 	return json({
 		success: true,
 		actionId: action.id,
+		auditLogId: auditLog.id,
 		message: `Civic action ${actionType} recorded`
 	});
 }
@@ -317,15 +384,24 @@ async function updateReputation({
 		}
 	});
 
-	// Log comprehensive reputation assessment
-	await prisma.reputationLog.create({
+	// Log comprehensive reputation assessment with unified audit system
+	await prisma.auditLog.create({
 		data: {
 			user_id: userId,
+			action_type: 'reputation_change',
+			action_subtype: 'agent_credibility_assessment',
+			audit_data: {
+				components: credibilityAssessment.credibilityComponents,
+				badges: credibilityAssessment.badges,
+				riskFactors: credibilityAssessment.riskFactors,
+				attestations: credibilityAssessment.attestations,
+				tx_hash: txHash,
+				portabilityHash: credibilityAssessment.portabilityHash
+			},
 			score_before: oldScore,
 			score_after: newScore,
 			change_amount: newScore - oldScore,
 			change_reason: reason || 'agent_credibility_assessment',
-			tx_hash: txHash,
 			agent_source: reputationDecision.agentId,
 			evidence_hash: JSON.stringify({
 				components: credibilityAssessment.credibilityComponents,
@@ -333,7 +409,8 @@ async function updateReputation({
 				riskFactors: credibilityAssessment.riskFactors,
 				attestations: credibilityAssessment.attestations.length
 			}),
-			confidence: reputationDecision.confidence
+			confidence: reputationDecision.confidence,
+			status: 'completed'
 		}
 	});
 
@@ -424,21 +501,38 @@ async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, di
 		}
 	});
 
-	// Log verification change with agent reasoning
-	await prisma.reputationLog.create({
+	// Log verification change with agent reasoning using unified audit system
+	await prisma.auditLog.create({
 		data: {
 			user_id: userId,
+			action_type: 'verification',
+			action_subtype: 'identity_verification',
+			audit_data: {
+				verificationLevel: assessment.verificationLevel,
+				verificationSources: assessment.verificationSources,
+				riskFactors: assessment.riskFactors,
+				recommendations: assessment.recommendedActions,
+				walletAddress,
+				kycResult,
+				districtHash
+			},
 			score_before: 0,
 			score_after: assessment.trustScore,
 			change_amount: assessment.trustScore,
 			change_reason: 'agent_identity_verification',
+			certification_type: 'identity_verification',
+			certification_data: {
+				verificationLevel: assessment.verificationLevel,
+				sources: assessment.verificationSources?.length || 0
+			},
 			agent_source: verificationDecision.agentId,
 			confidence: verificationDecision.confidence,
 			evidence_hash: JSON.stringify({
 				verificationSources: assessment.verificationSources?.length || 0,
 				riskFactors: assessment.riskFactors,
 				recommendations: assessment.recommendedActions
-			})
+			}),
+			status: 'completed'
 		}
 	});
 
@@ -592,7 +686,7 @@ async function createChallenge({
 /**
  * Process challenge vote with quadratic voting
  */
-async function processChallengeVote({ challengeId, userId, side, stakeAmount }) {
+async function processChallengeVote({ challengeId, userId, side, stakeAmount }: ProcessChallengeVoteParams) {
 	if (!challengeId || !userId || !side || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge vote');
 	}
@@ -633,7 +727,7 @@ async function processChallengeVote({ challengeId, userId, side, stakeAmount }) 
  * Agent-orchestrated reward calculation
  * Replaces static logic with intelligent agents
  */
-async function calculateReward({ userAddress, actionType, templateId, timestamp }) {
+async function calculateReward({ userAddress, actionType, templateId, timestamp }: RewardCalculationRequest) {
 	if (!userAddress || !actionType) {
 		throw error(400, 'Missing required fields: userAddress, actionType');
 	}

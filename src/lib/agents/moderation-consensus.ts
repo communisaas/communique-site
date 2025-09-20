@@ -9,7 +9,7 @@
 
 import { db } from '$lib/core/db';
 // import { N8NClient } from '$lib/services/delivery/integrations/n8n';
-import type { Template, TemplateVerification } from '@prisma/client';
+import type { Template } from '@prisma/client';
 
 interface AgentVote {
 	approved: boolean;
@@ -69,20 +69,19 @@ export class ModerationConsensus {
 	}
 
 	/**
-	 * Evaluate a template using multi-agent consensus
+	 * Evaluate a template using multi-agent consensus (Phase 4: verification fields in Template)
 	 */
-	async evaluateTemplate(verificationId: string): Promise<ConsensusResult> {
-		const verification = await db.templateVerification.findUnique({
-			where: { id: verificationId },
-			include: { template: true }
+	async evaluateTemplate(templateId: string): Promise<ConsensusResult> {
+		const template = await db.template.findUnique({
+			where: { id: templateId }
 		});
 
-		if (!verification) {
-			throw new Error(`Verification ${verificationId} not found`);
+		if (!template) {
+			throw new Error(`Template ${templateId} not found`);
 		}
 
 		// Only check templates with severity 7+
-		if (!verification.severity_level || verification.severity_level < 7) {
+		if (!template.severity_level || template.severity_level < 7) {
 			// Auto-approve lower severity
 			return {
 				score: 1.0,
@@ -96,11 +95,11 @@ export class ModerationConsensus {
 		const votes: Record<string, AgentVote> = {};
 
 		if (this.agents.openai.enabled) {
-			votes.openai = await this.checkWithOpenAI(verification.template);
+			votes.openai = await this.checkWithOpenAI(template);
 		}
 
 		if (this.agents.gemini.enabled) {
-			votes.gemini = await this.checkWithGemini(verification.template);
+			votes.gemini = await this.checkWithGemini(template);
 		}
 
 		if (this.agents.anthropic.enabled) {
@@ -111,13 +110,13 @@ export class ModerationConsensus {
 		// Calculate weighted consensus
 		const consensus = this.calculateConsensus(votes);
 
-		// Update verification with results
-		await db.templateVerification.update({
-			where: { id: verificationId },
+		// Update template with results (Phase 4: verification fields consolidated)
+		await db.template.update({
+			where: { id: templateId },
 			data: {
 				agent_votes: votes as any,
 				consensus_score: consensus.score,
-				moderation_status: consensus.approved ? 'approved' : 'rejected',
+				verification_status: consensus.approved ? 'approved' : 'rejected',
 				reviewed_at: new Date()
 			}
 		});
@@ -252,14 +251,10 @@ export class ModerationConsensus {
 	}
 
 	/**
-	 * Check if a specific violation type is present
+	 * Check if a specific violation type is present (Phase 4: verification fields in Template)
 	 */
 	async checkForViolation(template: Template, violationType: ViolationType): Promise<boolean> {
-		const verification = await db.templateVerification.findUnique({
-			where: { template_id: template.id }
-		});
-
-		if (!verification || !verification.agent_votes) {
+		if (!template.agent_votes) {
 			return false;
 		}
 
@@ -268,11 +263,11 @@ export class ModerationConsensus {
 			return typeof data === 'object' && data !== null && !Array.isArray(data);
 		};
 
-		if (!isValidAgentVotes(verification.agent_votes)) {
+		if (!isValidAgentVotes(template.agent_votes)) {
 			return false;
 		}
 
-		const votes = verification.agent_votes;
+		const votes = template.agent_votes;
 
 		// Check if any agent detected this specific violation
 		for (const vote of Object.values(votes)) {

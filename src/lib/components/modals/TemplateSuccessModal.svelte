@@ -134,7 +134,7 @@
 					<span
 						class="inline-flex items-center rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600"
 					>
-						{template.deliveryMethod === 'certified' ? 'Congressional' : 'Direct'}
+						{template.deliveryMethod === 'cwc' ? 'Congressional' : 'Direct'}
 					</span>
 				</div>
 			</div>

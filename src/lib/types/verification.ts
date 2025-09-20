@@ -1,43 +1,9 @@
 /**
- * Template Verification Types
+ * Template Verification Types - Post-Consolidation (Phase 4)
  *
- * TypeScript interfaces for the VOTER Protocol moderation system
+ * NOTE: TemplateVerification model has been merged into Template model.
+ * These types are now for validation and processing workflows only.
  */
-
-export interface TemplateVerification {
-	id: string;
-	template_id: string;
-	user_id: string;
-	country_code: string;
-
-	// Stage 1: Auto-correction
-	correction_log?: CorrectionChange[];
-	original_content?: OriginalContent;
-	corrected_at?: Date;
-
-	// Stage 2: Moderation
-	moderation_status: 'pending' | 'reviewing' | 'approved' | 'rejected';
-	severity_level?: number; // 1-10 scale
-	reviewed_at?: Date;
-
-	// Multi-agent consensus
-	agent_votes?: Record<string, AgentVote>;
-	consensus_score?: number; // 0-1
-
-	// Quality metrics
-	quality_score: number; // 0-100
-	grammar_score?: number;
-	clarity_score?: number;
-	completeness_score?: number;
-
-	// Reputation impact (quadratic)
-	reputation_delta: number;
-	reputation_applied: boolean;
-
-	// Audit trail
-	created_at: Date;
-	updated_at: Date;
-}
 
 export interface CorrectionChange {
 	type: 'grammar' | 'formatting' | 'clarity' | 'completeness';
@@ -143,18 +109,10 @@ export interface N8NWebhookPayload {
 	metadata?: Record<string, unknown>;
 }
 
-// Type guards for runtime validation
-export function isValidTemplateVerification(obj: unknown): obj is TemplateVerification {
-	if (!obj || typeof obj !== 'object') return false;
-
-	const record = obj as Record<string, unknown>;
-	return (
-		typeof record.id === 'string' &&
-		typeof record.template_id === 'string' &&
-		typeof record.user_id === 'string' &&
-		typeof record.moderation_status === 'string' &&
-		['pending', 'reviewing', 'approved', 'rejected'].includes(record.moderation_status as string)
-	);
+// Type guards for runtime validation - updated for consolidated Template model
+export function isValidVerificationStatus(status: unknown): status is 'pending' | 'reviewing' | 'approved' | 'rejected' {
+	return typeof status === 'string' && 
+		['pending', 'reviewing', 'approved', 'rejected'].includes(status);
 }
 
 export function isValidAgentVote(obj: unknown): obj is AgentVote {

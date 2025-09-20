@@ -1,6 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
+import type { Representative } from '$lib/types/user';
 
 interface RepresentativeData {
 	bioguideId: string;
@@ -185,16 +186,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			throw error(404, 'User not found');
 		}
 
-		// Format response with proper types
-		interface Representative {
-			id: string;
-			bioguideId: string;
-			name: string;
-			party: string;
-			type: string;
-			state: string;
-			district?: number;
-		}
+		// Format response using unified Representative interface
 
 		const representatives: {
 			house: Representative | null;
@@ -205,14 +197,15 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		};
 
 		user.representatives.forEach((userRep) => {
-			const rep = {
+			const rep: Representative = {
 				id: userRep.representative.id,
 				bioguideId: userRep.representative.bioguide_id,
 				name: userRep.representative.name,
 				party: userRep.representative.party,
-				type: userRep.representative.chamber || 'representative', // Add required type property
+				title: userRep.representative.chamber || 'representative',
+				type: userRep.representative.chamber || 'representative',
 				state: userRep.representative.state,
-				district: userRep.representative.district,
+				district: userRep.representative.district, // Keep as string
 				chamber: userRep.representative.chamber,
 				officeCode: userRep.representative.office_code,
 				relationship: userRep.relationship,
@@ -281,8 +274,8 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Re-lookup representatives using address lookup service
-		const { addressLookup } = await import('$lib/core/congress/address-lookup');
-		const updatedReps = await addressLookup.lookupRepsByAddress({
+		const { addressLookupService } = await import('$lib/core/congress/address-lookup');
+		const updatedReps = await addressLookupService.lookupRepsByAddress({
 			street: user.street,
 			city: user.city,
 			state: user.state,

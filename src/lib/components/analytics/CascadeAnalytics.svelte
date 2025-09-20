@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import type { AnalyticsEvent } from '$lib/types/analytics.ts';
 
 	interface CascadeMetrics {
 		r0: number;
@@ -36,9 +37,52 @@
 	let recommendations: string[] = $state([]);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let viewStartTime = Date.now();
+
+	// Analytics tracking function using new consolidated schema
+	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+		try {
+			await fetch('/api/analytics/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: eventName,
+					event_type: 'interaction',
+					template_id: templateId,
+					properties: {
+						template_id: templateId,
+						component: 'cascade_analytics',
+						timestamp: new Date().toISOString(),
+						...properties
+					}
+				})
+			});
+		} catch (error) {
+			console.warn('Analytics tracking failed:', error);
+		}
+	}
 
 	onMount(async () => {
 		await loadCascadeAnalysis();
+		
+		// Track cascade analytics view
+		await trackAnalyticsEvent('cascade_analytics_view', {
+			analysis_type: 'epidemiological_cascade'
+		});
+	});
+
+	onDestroy(async () => {
+		// Track session duration
+		const sessionDuration = Date.now() - viewStartTime;
+		await trackAnalyticsEvent('cascade_analytics_session_end', {
+			session_duration_ms: sessionDuration,
+			final_metrics: summary ? {
+				r0: metrics?.r0,
+				viral_coefficient: summary.viral_coefficient,
+				total_activations: summary.total_activations,
+				viral_status: summary.viral_status
+			} : null
+		});
 	});
 
 	async function loadCascadeAnalysis() {
@@ -113,7 +157,14 @@
 			<p class="mt-1 text-gray-600">Epidemiological spread analysis with R0 calculations</p>
 		</div>
 		<button
-			onclick={loadCascadeAnalysis}
+			onclick={async () => {
+				await trackAnalyticsEvent('cascade_analytics_refresh', {
+					refresh_trigger: 'manual_button',
+					current_viral_status: summary?.viral_status,
+					current_r0: metrics?.r0
+				});
+				await loadCascadeAnalysis();
+			}}
 			disabled={loading}
 			class="rounded-lg bg-participation-primary-600 px-4 py-2 text-white transition-colors hover:bg-participation-primary-700 disabled:opacity-50"
 		>

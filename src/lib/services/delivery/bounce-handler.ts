@@ -4,7 +4,7 @@
  */
 
 import * as nodemailer from 'nodemailer';
-import * as jwt from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import config from './config';
 import { detectPotentialUser, fetchTemplateBySlug } from './user-resolution';
 

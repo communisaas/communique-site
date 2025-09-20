@@ -18,7 +18,7 @@ class DiditClient {
 		this.baseUrl = 'https://api.didit.me/v1';
 	}
 
-	async verify({ userAddress, verificationType = 'kyc_basic' }) {
+	async verify({ userAddress, verificationType = 'kyc_basic' }: { userAddress: string; verificationType?: string }) {
 		if (!this.apiKey) {
 			// Simulation mode for development
 			return {
@@ -63,7 +63,12 @@ const diditClient = new DiditClient();
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { userId, walletAddress, zkProof, publicInputs } = await request.json();
+		const { userId, walletAddress, zkProof, publicInputs }: {
+			userId: string;
+			walletAddress?: string;
+			zkProof?: string;
+			publicInputs?: string;
+		} = await request.json();
 
 		if (!userId) {
 			throw error(400, 'Missing required field: userId');
@@ -100,7 +105,8 @@ export const POST: RequestHandler = async ({ request }) => {
 						: 'unverified';
 
 		// Update user in database via main API endpoint
-		const updateResponse = await fetch(`${request.url.origin}/api/voter`, {
+		const requestUrl = new URL(request.url);
+		const updateResponse = await fetch(`${requestUrl.origin}/api/voter`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({

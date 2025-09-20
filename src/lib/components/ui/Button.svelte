@@ -27,7 +27,7 @@
 		onblur,
 		children
 	}: {
-		variant?: 'primary' | 'secondary' | 'magical' | 'verified' | 'community';
+		variant?: 'primary' | 'secondary' | 'magical' | 'verified' | 'community' | 'danger';
 		size?: 'sm' | 'default' | 'lg';
 		type?: 'button' | 'submit';
 		cursor?: 'default' | 'help' | 'alias' | 'pointer';
@@ -428,6 +428,12 @@
 			text-community-700 hover:text-community-800
 			border border-community-200
 			shadow-sm
+		`,
+		danger: `
+			bg-red-500 hover:bg-red-600
+			text-white
+			border border-red-600
+			shadow-sm hover:shadow-md
 		`
 	};
 </script>

@@ -24,7 +24,7 @@
 	let showDetails = $state(false);
 
 	// Detect template type for customized messaging
-	const isCongressional = $derived(template?.deliveryMethod === 'both');
+	const isCongressional = $derived(template?.deliveryMethod === 'certified');
 	const isDirectOutreach = $derived(template?.deliveryMethod === 'email');
 
 	// Check if user has seen onboarding before

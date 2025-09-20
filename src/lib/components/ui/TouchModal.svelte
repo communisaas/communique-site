@@ -12,10 +12,12 @@
 	let {
 		onclose,
 		onscrollStateChange,
+		inModal,
 		children
 	}: {
 		onclose?: () => void;
 		onscrollStateChange?: (state: ModalScrollState) => void;
+		inModal?: boolean;
 		children?: import('svelte').Snippet;
 	} = $props();
 
@@ -459,6 +461,16 @@
 		preventScroll(false); // Ensure scrolling is re-enabled when component is destroyed
 		useTimerCleanup(componentId)();
 	});
+
+	// Export methods for external component binding
+	function open(data?: unknown): void {
+		isOpen = true;
+		lockScroll();
+		updateViewportHeight();
+	}
+
+	// Export the close method for external component binding
+	export { open, close };
 </script>
 
 {#if isOpen}

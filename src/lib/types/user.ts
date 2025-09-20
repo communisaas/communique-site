@@ -16,28 +16,44 @@ export interface UserProfile {
 	updatedAt: Date;
 }
 
-export interface UserLocation {
-	id: string;
-	user_id: string;
-	latitude?: number;
-	longitude?: number;
-	political_embedding?: unknown;
-	community_sheaves?: unknown;
-	embedding_version?: string;
-	last_calculated?: Date;
-}
+// NOTE: UserLocation interface removed - coordinates data now part of enhanced User model
+// All location data (latitude, longitude, political_embedding, community_sheaves) 
+// is now directly accessible on the User object after Phase 2 consolidation
 
 export interface Representative {
 	id: string;
+	bioguide_id: string;
 	name: string;
-	title: string;
-	district?: string;
+	party: string;
 	state: string;
-	party?: string;
-	office?: string;
+	district: string;
+	chamber: string;
+	office_code: string;
 	phone?: string;
 	email?: string;
-	website?: string;
+	
+	// Enhanced office information (from Phase 5 consolidation)
+	member_name?: string; // May differ from name field
+	office_address?: string;
+	office_city?: string;
+	office_state?: string;
+	office_zip?: string;
+	
+	// Enhanced term information
+	term_start?: Date;
+	term_end?: Date;
+	current_term?: number;
+	
+	// Status and metadata
+	is_active: boolean;
+	last_updated: Date;
+	data_source?: string; // 'congress_api', 'bioguide', 'manual'
+	source_updated_at?: Date;
+	
+	// User-representative relationship fields (for joined queries)
+	relationship?: string;
+	assignedAt?: Date;
+	lastValidated?: Date | null;
 }
 
 /**
@@ -73,6 +89,14 @@ export interface EmailServiceUser {
 	/** Legacy address field for backward compatibility */
 	address?: string | null;
 
+	/** Enhanced location data (from Phase 2 User consolidation) */
+	latitude?: number | null;
+	longitude?: number | null;
+	political_embedding?: unknown | null;
+	community_sheaves?: unknown | null;
+	embedding_version?: string | null;
+	coordinates_updated_at?: Date | null;
+
 	/** Congressional representatives for template variable resolution */
 	representatives?: Array<{
 		name: string;
@@ -86,6 +110,11 @@ export interface EmailServiceUser {
 	is_verified?: boolean;
 	verification_method?: string | null;
 	verified_at?: Date | null;
+
+	/** VOTER Protocol wallet integration (from Phase 2 consolidation) */
+	wallet_address?: string | null;
+	trust_score?: number;
+	reputation_tier?: string;
 }
 
 /**
@@ -133,8 +162,26 @@ export function toEmailServiceUser(user: any | null): EmailServiceUser | null {
 		state: user.state || null,
 		zip: user.zip || null,
 		congressional_district: user.congressional_district || null,
+		
+		// Enhanced location data (from Phase 2 User consolidation)
+		latitude: user.latitude || null,
+		longitude: user.longitude || null,
+		political_embedding: user.political_embedding || null,
+		community_sheaves: user.community_sheaves || null,
+		embedding_version: user.embedding_version || null,
+		coordinates_updated_at: user.coordinates_updated_at || null,
+		
+		// Congressional representatives for template variable resolution
+		representatives: user.representatives || [],
+		
+		// Identity verification
 		is_verified: user.is_verified || false,
 		verification_method: user.verification_method || null,
-		verified_at: user.verified_at || null
+		verified_at: user.verified_at || null,
+		
+		// VOTER Protocol wallet integration (from Phase 2 consolidation)
+		wallet_address: user.wallet_address || null,
+		trust_score: user.trust_score || 0,
+		reputation_tier: user.reputation_tier || 'novice'
 	};
 }

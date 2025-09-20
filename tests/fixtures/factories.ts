@@ -32,20 +32,52 @@ abstract class Factory<T> {
 }
 
 /**
- * User factory
+ * User factory - Updated for consolidated schema
  */
 export interface UserFactoryData {
 	id: string;
 	name: string;
 	email: string;
+	avatar?: string;
+	createdAt: Date;
+	updatedAt: Date;
+	
+	// Consolidated address fields
 	street?: string;
 	city?: string;
 	state?: string;
 	zip?: string;
 	congressional_district?: string;
 	phone?: string;
-	created_at: Date;
-	updated_at: Date;
+	
+	// Verification status
+	is_verified?: boolean;
+	verification_method?: string;
+	verification_data?: any;
+	verified_at?: Date;
+	
+	// VOTER Protocol blockchain identity
+	wallet_address?: string;
+	district_hash?: string;
+	trust_score?: number;
+	reputation_tier?: string;
+	
+	// VOTER Protocol reward and reputation fields
+	pending_rewards?: bigint;
+	total_earned?: bigint;
+	last_certification?: Date;
+	challenge_score?: number;
+	civic_score?: number;
+	discourse_score?: number;
+	
+	// Profile fields
+	role?: string;
+	organization?: string;
+	location?: string;
+	connection?: string;
+	connection_details?: string;
+	profile_completed_at?: Date;
+	profile_visibility?: string;
 }
 
 export class UserFactory extends Factory<UserFactoryData> {
@@ -55,14 +87,46 @@ export class UserFactory extends Factory<UserFactoryData> {
 			id,
 			name: `Test User ${id.slice(-4)}`,
 			email: `user${id.slice(-4)}@test.com`,
+			avatar: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			
+			// Consolidated address fields
 			street: '123 Main Street',
 			city: 'San Francisco',
 			state: 'CA',
 			zip: '94102',
 			congressional_district: 'CA-12',
 			phone: '+1-555-123-4567',
-			created_at: new Date(),
-			updated_at: new Date()
+			
+			// Verification status
+			is_verified: false,
+			verification_method: null,
+			verification_data: null,
+			verified_at: null,
+			
+			// VOTER Protocol blockchain identity
+			wallet_address: null,
+			district_hash: null,
+			trust_score: 0,
+			reputation_tier: 'novice',
+			
+			// VOTER Protocol reward and reputation fields
+			pending_rewards: BigInt(0),
+			total_earned: BigInt(0),
+			last_certification: null,
+			challenge_score: 50,
+			civic_score: 50,
+			discourse_score: 50,
+			
+			// Profile fields
+			role: null,
+			organization: null,
+			location: null,
+			connection: null,
+			connection_details: null,
+			profile_completed_at: null,
+			profile_visibility: 'private'
 		};
 
 		return {
@@ -73,36 +137,111 @@ export class UserFactory extends Factory<UserFactoryData> {
 }
 
 /**
- * Template factory
+ * Template factory - Updated for consolidated schema
  */
 export interface TemplateFactoryData {
 	id: string;
+	slug: string;
 	title: string;
-	subject: string;
-	message_body: string;
+	description: string;
 	category: string;
-	tags: string[];
+	type: string;
+	deliveryMethod: string;
+	subject?: string;
+	preview: string;
+	message_body: string;
+	delivery_config: any;
+	cwc_config?: any;
+	recipient_config: any;
+	metrics: any;
+	campaign_id?: string;
+	status: string;
 	is_public: boolean;
-	created_by: string;
-	created_at: Date;
-	updated_at: Date;
+	
+	// Usage tracking
+	send_count: number;
+	last_sent_at?: Date;
+	
+	// Geographic scope
+	applicable_countries: string[];
+	jurisdiction_level?: string;
+	specific_locations: string[];
+	
+	// Consolidated verification fields
+	verification_status: string;
+	severity_level?: number;
+	original_content?: object;
+	correction_log?: object;
+	corrected_subject?: string;
+	corrected_body?: string;
+	grammar_score?: number;
+	clarity_score?: number;
+	completeness_score?: number;
+	quality_score?: number;
+	agent_votes?: object;
+	consensus_score?: number;
+	reputation_delta?: number;
+	reputation_applied: boolean;
+	reviewed_at?: Date;
+	
+	createdAt: Date;
+	updatedAt: Date;
+	userId?: string;
 }
 
 export class TemplateFactory extends Factory<TemplateFactoryData> {
 	build(options?: FactoryOptions<TemplateFactoryData>): TemplateFactoryData {
 		const id = snowflake().toString();
+		const slug = `test-template-${id.slice(-4)}`;
 		const baseTemplate = {
 			id,
+			slug,
 			title: `Test Template ${id.slice(-4)}`,
+			description: 'A test template for integration testing',
+			category: 'advocacy',
+			type: 'congressional',
+			deliveryMethod: 'cwc',
 			subject: 'Important Legislative Issue',
+			preview: 'I am writing to you about an important issue...',
 			message_body:
 				'Dear [representative.title],\n\nI am writing to you about [issue]. [Personal Connection]\n\nSincerely,\n[user.name]',
-			category: 'advocacy',
-			tags: ['test', 'advocacy'],
+			delivery_config: { method: 'cwc', target: 'congress' },
+			cwc_config: { house: true, senate: true },
+			recipient_config: { auto_lookup: true },
+			metrics: { opens: 0, clicks: 0, responses: 0 },
+			campaign_id: null,
+			status: 'draft',
 			is_public: true,
-			created_by: 'user123',
-			created_at: new Date(),
-			updated_at: new Date()
+			
+			// Usage tracking
+			send_count: 0,
+			last_sent_at: null,
+			
+			// Geographic scope
+			applicable_countries: ['US'],
+			jurisdiction_level: 'federal',
+			specific_locations: [],
+			
+			// Consolidated verification fields
+			verification_status: 'pending',
+			severity_level: null,
+			original_content: null,
+			correction_log: null,
+			corrected_subject: null,
+			corrected_body: null,
+			grammar_score: null,
+			clarity_score: null,
+			completeness_score: null,
+			quality_score: null,
+			agent_votes: null,
+			consensus_score: null,
+			reputation_delta: null,
+			reputation_applied: false,
+			reviewed_at: null,
+			
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			userId: null
 		};
 
 		return {
@@ -126,6 +265,26 @@ export interface RepresentativeFactoryData {
 	office_code: string;
 	phone?: string;
 	email?: string;
+	
+	// Enhanced office information
+	member_name?: string;
+	office_address?: string;
+	office_city?: string;
+	office_state?: string;
+	office_zip?: string;
+	
+	// Enhanced term information
+	term_start?: Date;
+	term_end?: Date;
+	current_term?: number;
+	
+	// Status and metadata
+	is_active?: boolean;
+	last_updated?: Date;
+	
+	// Data source tracking
+	data_source?: string;
+	source_updated_at?: Date;
 }
 
 export class RepresentativeFactory extends Factory<RepresentativeFactoryData> {
@@ -148,7 +307,27 @@ export class RepresentativeFactory extends Factory<RepresentativeFactoryData> {
 			district,
 			office_code: `T${id.slice(-6)}`,
 			phone: '+1-202-224-0000',
-			email: `${chamber}@congress.gov`
+			email: `${chamber}@congress.gov`,
+			
+			// Enhanced office information
+			member_name: null,
+			office_address: '123 Capitol Hill',
+			office_city: 'Washington',
+			office_state: 'DC',
+			office_zip: '20515',
+			
+			// Enhanced term information
+			term_start: new Date('2023-01-01'),
+			term_end: new Date('2025-01-01'),
+			current_term: 1,
+			
+			// Status and metadata
+			is_active: true,
+			last_updated: new Date(),
+			
+			// Data source tracking
+			data_source: 'test',
+			source_updated_at: new Date()
 		};
 
 		return {
@@ -297,10 +476,16 @@ export const testScenarios = {
 	californiaUser: () =>
 		userFactory.build({
 			overrides: {
+				id: 'action-user123',
+				name: 'Alice Cooper',
+				email: 'alice@example.com',
 				state: 'CA',
 				city: 'San Francisco',
 				zip: '94102',
-				congressional_district: 'CA-12'
+				congressional_district: 'CA-12',
+				is_verified: true,
+				trust_score: 100,
+				reputation_tier: 'verified'
 			}
 		}),
 
@@ -310,10 +495,16 @@ export const testScenarios = {
 	texasUser: () =>
 		userFactory.build({
 			overrides: {
+				id: 'action-user456',
+				name: 'Bob Wilson',
+				email: 'bob@example.com',
 				state: 'TX',
 				city: 'Austin',
 				zip: '78701',
-				congressional_district: 'TX-35'
+				congressional_district: 'TX-35',
+				is_verified: true,
+				trust_score: 85,
+				reputation_tier: 'verified'
 			}
 		}),
 
@@ -323,12 +514,16 @@ export const testScenarios = {
 	climateTemplate: () =>
 		templateFactory.build({
 			overrides: {
+				id: 'climate',
+				slug: 'climate-action',
 				title: 'Support Climate Action',
+				description: 'Template for urging representatives to support climate legislation',
 				subject: 'Urgent: Support Climate Legislation',
 				message_body:
 					'Dear [representative.title],\n\nAs your constituent, I urge you to support strong climate action. [Personal Connection]\n\nClimate change affects us all.\n\nSincerely,\n[user.name]',
 				category: 'environment',
-				tags: ['climate', 'environment', 'urgent']
+				status: 'published',
+				is_public: true
 			}
 		}),
 
@@ -338,12 +533,16 @@ export const testScenarios = {
 	healthcareTemplate: () =>
 		templateFactory.build({
 			overrides: {
+				id: 'healthcare',
+				slug: 'healthcare-access',
 				title: 'Healthcare Access for All',
+				description: 'Template for advocating for universal healthcare access',
 				subject: 'Support Universal Healthcare',
 				message_body:
 					'Dear [representative.title],\n\nI am writing about healthcare access in our district. [Personal Connection]\n\nPlease support universal healthcare.\n\nSincerely,\n[user.name]',
 				category: 'healthcare',
-				tags: ['healthcare', 'access', 'universal']
+				status: 'published',
+				is_public: true
 			}
 		}),
 

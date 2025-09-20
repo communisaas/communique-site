@@ -105,7 +105,7 @@
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
-			representatives: verificationResult?.representatives as unknown[] | undefined,
+			representatives: Array.isArray(verificationResult?.representatives) && verificationResult.representatives.every(item => typeof item === 'object' && item !== null) ? verificationResult.representatives as Record<string, unknown>[] : undefined,
 			district: verificationResult?.district as string | undefined,
 			streetAddress,
 			city,
@@ -298,7 +298,7 @@
 						>
 							<p class="mb-2 font-medium text-slate-900">Your Representatives:</p>
 							<div class="space-y-2">
-								{#each (verificationResult.representatives as unknown[]) || [] as rep}
+								{#each (Array.isArray(verificationResult.representatives) ? verificationResult.representatives : []) as rep}
 									<div class="flex items-center gap-2 text-sm">
 										<div class="h-2 w-2 rounded-full bg-participation-primary-500"></div>
 										<span class="text-slate-700">{(rep as any).name} ({(rep as any).office})</span>

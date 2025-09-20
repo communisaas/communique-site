@@ -1,8 +1,17 @@
 <script lang="ts">
-	export let variant: 'congressional' | 'direct' | 'certified' | 'success' | 'warning' | 'error' | 'neutral' =
-		'neutral';
-	export let size: 'sm' | 'md' = 'sm';
-	export let pulse: boolean = false;
+	interface Props {
+		variant?: 'congressional' | 'direct' | 'certified' | 'success' | 'warning' | 'error' | 'neutral';
+		size?: 'sm' | 'md';
+		pulse?: boolean;
+		children?: import('svelte').Snippet;
+	}
+
+	let { 
+		variant = 'neutral', 
+		size = 'sm', 
+		pulse = false,
+		children
+	}: Props = $props();
 
 	const variants = {
 		congressional: 'bg-congressional-50 text-congressional-700 border-congressional-200',
@@ -34,9 +43,12 @@
 	class="inline-flex items-center gap-1.5 rounded-full border font-medium transition-colors {variants[
 		variant
 	]} {sizes[size]}"
+	role="status"
 >
 	{#if pulse}
-		<div class="h-1.5 w-1.5 animate-save-pulse rounded-full {pulseColors[variant]}"></div>
+		<div class="h-1.5 w-1.5 animate-save-pulse rounded-full {pulseColors[variant]}" aria-hidden="true"></div>
 	{/if}
-	<slot />
+	{#if children}
+		{@render children()}
+	{/if}
 </span>

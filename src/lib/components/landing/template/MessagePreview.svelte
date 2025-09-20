@@ -8,6 +8,8 @@
 	import type { Template } from '$lib/types/template';
 	import { popover as popoverStore } from '$lib/stores/popover.svelte';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
+	import { resolveTemplate } from '$lib/utils/templateResolver';
+	import { toEmailServiceUser } from '$lib/types/user';
 
 	let {
 		preview,
@@ -26,12 +28,20 @@
 		user?: {
 			id: string;
 			name: string | null;
+			email?: string;
 			street?: string;
 			city?: string;
 			state?: string;
 			zip?: string;
 			is_verified?: boolean;
 			verification_method?: string;
+			representatives?: Array<{
+				name: string;
+				party: string;
+				chamber: 'house' | 'senate' | string;
+				state: string;
+				district: string;
+			}>;
 		} | null;
 		context?: 'list' | 'page' | 'modal';
 		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
@@ -48,34 +58,47 @@
 	let variableValues: Record<string, string> = $state({});
 
 	// Define which variables are system-populated vs user-editable
-	const systemVariables = new Set(['Name', 'Address', 'Representative Name']);
-	const userEditableVariables = new Set(['Personal Connection']);
+	// Based on templateResolver.ts - these get auto-filled with user data
+	const systemVariables = new Set([
+		'Name', 'Your Name', 'Address', 'Your Address', 'City', 'State', 'ZIP', 'Zip Code',
+		'Representative Name', 'Rep Name', 'Representative', 'Senator Name', 'Senator',
+		'Senior Senator', 'Junior Senator'
+	]);
+	
+	// These require user input and remain editable
+	const userEditableVariables = new Set([
+		'Personal Connection', 'Phone', 'Phone Number', 'Your Phone', 
+		'Your Story', 'Your Experience', 'Personal Story'
+	]);
 
-	// Function to resolve template variables with user data
-	function resolveTemplateVariables(text: string): string {
-		if (!user) return text;
-
-		let resolvedText = text;
-
-		// Replace [Name] with user's name
-		if (user.name) {
-			resolvedText = resolvedText.replace(/\[Name\]/g, user.name);
+	// Use centralized template resolver for comprehensive variable resolution
+	const resolvedTemplate = $derived(() => {
+		if (!template) return { body: preview };
+		
+		// Convert user to EmailServiceUser format if available
+		const emailServiceUser = user ? toEmailServiceUser(user) : null;
+		
+		try {
+			// Use preserveVariables option to keep variables for interactive display
+			return resolveTemplate(template, emailServiceUser, { preserveVariables: true });
+		} catch (error) {
+			console.warn('Template resolution failed, falling back to preview:', error);
+			return { body: preview };
 		}
+	});
 
-		// Replace [Address] with user's address if available
-		if (user.street && user.city && user.state && user.zip) {
-			const userAddress = `${user.street}, ${user.city}, ${user.state} ${user.zip}`;
-			resolvedText = resolvedText.replace(/\[Address\]/g, userAddress);
+	// For variable parsing, use the original template text (not resolved)
+	// This ensures we can create interactive buttons for all variables
+	const originalTemplateText = $derived(() => {
+		if (template) {
+			return template.message_body || template.preview || preview;
 		}
+		return preview;
+	});
 
-		// Note: [Representative Name] and [Personal Connection] are handled by the editing system
-		// or filled in server-side for congressional delivery
-
-		return resolvedText;
-	}
-
-	// Resolved preview text with user data substituted
-	const resolvedPreview = $derived(resolveTemplateVariables(preview));
+	// For display, we'll show a hybrid: resolved text with interactive variable buttons
+	// where variables still exist in the original template
+	const resolvedPreview = $derived(resolvedTemplate().body);
 
 	// Contextual hints and suggestions
 	const variableHints: Record<string, { prompt: string; placeholder: string }> = {
@@ -86,18 +109,97 @@
 	};
 
 	const systemVariableHints: Record<string, { title: string; description: string }> = {
+		'Name': {
+			title: 'Your Profile Name',
+			description: 'This will be replaced with your name from your profile.'
+		},
+		'Your Name': {
+			title: 'Your Profile Name',
+			description: 'This will be replaced with your name from your profile.'
+		},
+		'Address': {
+			title: 'Your Full Address',
+			description: 'This will be replaced with your complete address from your profile.'
+		},
+		'Your Address': {
+			title: 'Your Full Address', 
+			description: 'This will be replaced with your complete address from your profile.'
+		},
+		'City': {
+			title: 'Your City',
+			description: 'This will be replaced with your city from your profile.'
+		},
+		'State': {
+			title: 'Your State',
+			description: 'This will be replaced with your state from your profile.'
+		},
+		'ZIP': {
+			title: 'Your ZIP Code',
+			description: 'This will be replaced with your ZIP code from your profile.'
+		},
+		'Zip Code': {
+			title: 'Your ZIP Code',
+			description: 'This will be replaced with your ZIP code from your profile.'
+		},
 		'Representative Name': {
 			title: 'Auto-filled Variable',
-			description:
-				"This will be replaced with the representative's name based on the sender's address."
+			description: "This will be replaced with your representative's name based on your address."
 		},
-		Name: {
+		'Rep Name': {
 			title: 'Auto-filled Variable',
-			description: 'This will be replaced with the your name from your user profile.'
+			description: "This will be replaced with your representative's name based on your address."
 		},
-		Address: {
+		'Representative': {
 			title: 'Auto-filled Variable',
-			description: 'This will be replaced with the your address from your user profile.'
+			description: "This will be replaced with your representative's title and name."
+		},
+		'Senator Name': {
+			title: 'Auto-filled Variable',
+			description: "This will be replaced with your senator's name based on your address."
+		},
+		'Senator': {
+			title: 'Auto-filled Variable',
+			description: "This will be replaced with your senator's title and name."
+		},
+		'Senior Senator': {
+			title: 'Auto-filled Variable',
+			description: "This will be replaced with your state's senior senator."
+		},
+		'Junior Senator': {
+			title: 'Auto-filled Variable',
+			description: "This will be replaced with your state's junior senator."
+		},
+		'Name': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your name from your user profile.'
+		},
+		'Your Name': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your name from your user profile.'
+		},
+		'Address': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your address from your user profile.'
+		},
+		'Your Address': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your address from your user profile.'
+		},
+		'City': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your city from your user profile.'
+		},
+		'State': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your state from your user profile.'
+		},
+		'ZIP': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your ZIP code from your user profile.'
+		},
+		'Zip Code': {
+			title: 'Auto-filled Variable',
+			description: 'This will be replaced with your ZIP code from your user profile.'
 		}
 	};
 
@@ -162,16 +264,86 @@
 		return segments;
 	}
 
-	// Reactive declaration for parsed segments
-	const templateSegments = $derived(parseTemplate(resolvedPreview));
+	// Parse segments from original template to ensure variables are detected
+	// Then render them with resolved content where appropriate
+	const templateSegments = $derived(parseTemplate(originalTemplateText()));
+
+	// Get resolved values for variables from the template resolver
+	const resolvedValues = $derived((() => {
+		const emailServiceUser = user ? toEmailServiceUser(user) : null;
+		
+		// Create a map of variable name to resolved value
+		const resolvedValues: Record<string, string | null> = {};
+		
+		if (emailServiceUser) {
+			// These match the replacements in templateResolver.ts
+			resolvedValues['Name'] = emailServiceUser.name || '';
+			resolvedValues['Your Name'] = emailServiceUser.name || '';
+			resolvedValues['Address'] = emailServiceUser.street && emailServiceUser.city && emailServiceUser.state && emailServiceUser.zip 
+				? `${emailServiceUser.street}, ${emailServiceUser.city}, ${emailServiceUser.state} ${emailServiceUser.zip}` 
+				: null;
+			resolvedValues['Your Address'] = resolvedValues['Address'];
+			resolvedValues['City'] = emailServiceUser.city || null;
+			resolvedValues['State'] = emailServiceUser.state || null;
+			resolvedValues['ZIP'] = emailServiceUser.zip || null;
+			resolvedValues['Zip Code'] = emailServiceUser.zip || null;
+			
+			// Representative values
+			if (emailServiceUser.representatives && emailServiceUser.representatives.length > 0) {
+				const primaryRep = emailServiceUser.representatives.find(r => r.chamber === 'house') || emailServiceUser.representatives[0];
+				if (primaryRep) {
+					resolvedValues['Representative Name'] = primaryRep.name;
+					resolvedValues['Rep Name'] = primaryRep.name;
+					resolvedValues['Representative'] = `Rep. ${primaryRep.name}`;
+				}
+				
+				const senators = emailServiceUser.representatives.filter(r => r.chamber === 'senate');
+				if (senators.length > 0) {
+					resolvedValues['Senator Name'] = senators[0].name;
+					resolvedValues['Senator'] = `Sen. ${senators[0].name}`;
+				}
+				if (senators.length > 1) {
+					resolvedValues['Senior Senator'] = `Sen. ${senators[0].name}`;
+					resolvedValues['Junior Senator'] = `Sen. ${senators[1].name}`;
+				}
+			} else {
+				// Default values when no representative data
+				resolvedValues['Representative Name'] = 'Representative';
+				resolvedValues['Rep Name'] = 'Representative';
+				resolvedValues['Representative'] = 'Representative';
+				resolvedValues['Senator Name'] = 'Senator';
+				resolvedValues['Senator'] = 'Senator';
+				resolvedValues['Senior Senator'] = 'Senior Senator';
+				resolvedValues['Junior Senator'] = 'Junior Senator';
+			}
+		}
+		
+		return resolvedValues;
+	})());
 
 	// Initialize variable values when segments change
 	$effect(() => {
+		const segments = templateSegments;
+		console.log('🔧 Initializing variable values:', {
+			segmentCount: segments.length,
+			variables: segments.filter(s => s.type === 'variable').map(s => ({ name: s.name, type: s.type })),
+			currentValues: variableValues
+		});
 		if (Object.keys(variableValues).length === 0) {
-			for (const segment of templateSegments) {
+			for (const segment of segments) {
 				if (segment.type === 'variable' && segment.name) {
-					// Default to empty, which will show the bracketed name
-					variableValues[segment.name] = '';
+					// For user-editable variables, default to null so button shows [Variable Name]
+					// For system variables, use resolved values
+					if (userEditableVariables.has(segment.name)) {
+						variableValues[segment.name] = null;
+						console.log(`Set user-editable variable ${segment.name} to null`);
+					} else {
+						// Use resolved value or null to show [Variable Name]
+						const resolvedValue = resolvedValues[segment.name];
+						// Only use resolved value if it's not empty
+						variableValues[segment.name] = (resolvedValue && typeof resolvedValue === 'string' && resolvedValue.trim() !== '') ? resolvedValue : null;
+						console.log(`Set system variable ${segment.name} to:`, variableValues[segment.name]);
+					}
 				}
 			}
 		}
@@ -316,7 +488,7 @@
 	function getVariableClasses(variableName: string): string {
 		const isSystemVariable = systemVariables.has(variableName);
 		const isUserEditable = userEditableVariables.has(variableName);
-		const isEmpty = !variableValues[variableName] || variableValues[variableName].trim() === '';
+		const isEmpty = !variableValues[variableName] || (typeof variableValues[variableName] === 'string' && variableValues[variableName].trim() === '');
 
 		if (isSystemVariable) {
 			return `
@@ -415,25 +587,37 @@
 						{segment.content}
 					{:else if segment.name}
 						<span class="relative inline-block">
-							<AnimatedPopover
-								id={`variable-${segment.instanceId}`}
-								animationStyle="expand"
-								duration={250}
+							<AnimatedPopover 
+								id={segment.instanceId}
 							>
-								<svelte:fragment slot="trigger" let:triggerAction>
+								{#snippet trigger(params)}
 									<button
-										use:triggerAction
 										class={getVariableClasses(segment.name)}
-										onclick={() => handleVariableClick(segment.name ?? '')}
+										onclick={() => handleVariableClick(segment.name || '')}
 									>
+										<!-- Always show icon based on variable type -->
 										{#if systemVariables.has(segment.name)}
 											<User class="h-2.5 w-2.5 text-emerald-600" />
-										{:else if userEditableVariables.has(segment.name) && (!variableValues[segment.name] || variableValues[segment.name].trim() === '')}
-											<Sparkles class="h-2.5 w-2.5 text-purple-600" />
 										{:else if userEditableVariables.has(segment.name)}
-											<Edit3 class="h-2.5 w-2.5 text-participation-primary-600" />
+											{#if variableValues[segment.name]}
+												<Edit3 class="h-2.5 w-2.5 text-participation-primary-600" />
+											{:else}
+												<Sparkles class="h-2.5 w-2.5 text-purple-600" />
+											{/if}
 										{/if}
-										{variableValues[segment.name] || segment.name}
+										
+										<!-- Always show text - either resolved value or placeholder -->
+										<span>
+											{#if resolvedValues[segment.name]}
+												{resolvedValues[segment.name]}
+											{:else if variableValues[segment.name]}
+												{variableValues[segment.name]}
+											{:else}
+												{segment.name}
+											{/if}
+										</span>
+										
+										<!-- Personalized indicator -->
 										{#if segment.name === 'Personal Connection' && (variableValues[segment.name] || '').trim().length > 0}
 											<span
 												class="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
@@ -441,58 +625,60 @@
 											>
 										{/if}
 									</button>
-								</svelte:fragment>
+								{/snippet}
 
-								<!-- User-editable variables with input in popover -->
-								{#if userEditableVariables.has(segment.name)}
-									<div class="mb-2 flex items-center gap-1.5">
-										<Sparkles class="h-3 w-3 text-purple-500" />
-										<span class="text-[11px] font-medium tracking-tight text-slate-700">
-											{variableHints[segment.name]?.prompt || segment.name}
-										</span>
-									</div>
+								{#snippet children(props)}
+									<!-- User-editable variables with input in popover -->
+									{#if userEditableVariables.has(segment.name)}
+										<div class="mb-2 flex items-center gap-1.5">
+											<Sparkles class="h-3 w-3 text-purple-500" />
+											<span class="text-[11px] font-medium tracking-tight text-slate-700">
+												{variableHints[segment.name]?.prompt || segment.name}
+											</span>
+										</div>
 
-									{#if segment.name.toLowerCase().includes('connection') || segment.name
-											.toLowerCase()
-											.includes('story') || segment.name.toLowerCase().includes('reasoning')}
-										<textarea
-											value={variableValues[segment.name]}
-											oninput={(e) => handleInput(e, segment.name ?? '')}
-											placeholder={variableHints[segment.name]?.placeholder ||
-												`Enter your ${segment.name}...`}
-											class="w-full min-w-[280px] resize-none rounded-lg border border-slate-300 bg-white p-3
-													font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
-											rows="4"
-										></textarea>
-										<!-- Character count and encouragement -->
-										{#if variableValues[segment.name]?.length > 10}
-											<div class="mt-1 text-xs text-purple-600">
-												{variableValues[segment.name].length} characters • Looking great!
-											</div>
+										{#if segment.name.toLowerCase().includes('connection') || segment.name
+												.toLowerCase()
+												.includes('story') || segment.name.toLowerCase().includes('reasoning')}
+											<textarea
+												value={variableValues[segment.name]}
+												oninput={(e) => handleInput(e, segment.name ?? '')}
+												placeholder={variableHints[segment.name]?.placeholder ||
+													`Enter your ${segment.name}...`}
+												class="w-full min-w-[280px] resize-none rounded-lg border border-slate-300 bg-white p-3
+														font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
+												rows="4"
+											></textarea>
+											<!-- Character count and encouragement -->
+											{#if variableValues[segment.name]?.length > 10}
+												<div class="mt-1 text-xs text-purple-600">
+													{variableValues[segment.name].length} characters • Looking great!
+												</div>
+											{/if}
+										{:else}
+											<input
+												value={variableValues[segment.name]}
+												oninput={(e) => handleInput(e, segment.name ?? '')}
+												placeholder={`Enter ${segment.name}...`}
+												class="w-full min-w-[240px] rounded-lg border border-slate-300 bg-white px-3 py-2
+														font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
+											/>
 										{/if}
-									{:else}
-										<input
-											value={variableValues[segment.name]}
-											oninput={(e) => handleInput(e, segment.name ?? '')}
-											placeholder={`Enter ${segment.name}...`}
-											class="w-full min-w-[240px] rounded-lg border border-slate-300 bg-white px-3 py-2
-													font-sans text-sm focus:border-purple-500 focus:ring-2 focus:ring-purple-500 focus:ring-opacity-20"
-										/>
 									{/if}
-								{/if}
 
-								<!-- System-populated hint popup -->
-								{#if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
-									<div class="mb-1 flex items-center gap-1.5">
-										<User class="h-3 w-3 text-emerald-500" />
-										<span class="text-[11px] font-medium tracking-tight text-slate-700">
-											{systemVariableHints[segment.name].title}
-										</span>
-									</div>
-									<p class="text-[11px] leading-tight text-slate-500">
-										{systemVariableHints[segment.name].description}
-									</p>
-								{/if}
+									<!-- System-populated hint popup -->
+									{#if systemVariables.has(segment.name) && systemVariableHints[segment.name]}
+										<div class="mb-1 flex items-center gap-1.5">
+											<User class="h-3 w-3 text-emerald-500" />
+											<span class="text-[11px] font-medium tracking-tight text-slate-700">
+												{systemVariableHints[segment.name].title}
+											</span>
+										</div>
+										<p class="text-[11px] leading-tight text-slate-500">
+											{systemVariableHints[segment.name].description}
+										</p>
+									{/if}
+								{/snippet}
 							</AnimatedPopover>
 						</span>
 					{/if}

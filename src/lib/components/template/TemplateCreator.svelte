@@ -141,7 +141,7 @@
 			description: formData.content.preview.substring(0, 160),
 			category: formData.objective.category || 'General',
 			type: context.channelId === 'certified' ? 'certified' : 'direct',
-			delivery_method: context.channelId === 'certified' ? 'both' : 'email',
+			delivery_method: context.channelId === 'certified' ? 'certified' : 'email',
 			subject: formData.objective.title || `Regarding: ${formData.objective.title}`,
 			message_body: formData.content.preview,
 			preview: formData.content.preview.substring(0, 500),
@@ -152,9 +152,9 @@
 				emails: formData.audience.recipientEmails
 			},
 			metrics: {
-				sends: 0,
-				opens: 0,
-				clicks: 0,
+				sent: 0,
+				opened: 0,
+				clicked: 0,
 				views: 0
 			},
 			is_public: false

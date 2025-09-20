@@ -52,7 +52,7 @@
 	const hasCompleteAddress = $derived(
 		data.user && data.user.street && data.user.city && data.user.state && data.user.zip
 	);
-	const isCongressional = $derived(template.deliveryMethod === 'certified');
+	const isCongressional = $derived(template.deliveryMethod === 'cwc');
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
 
 	onMount(() => {
@@ -195,13 +195,13 @@
 
 			<!-- Template metadata -->
 			<div class="flex flex-wrap items-center gap-3">
-				<Badge variant={template.deliveryMethod === 'certified' ? 'congressional' : 'direct'}>
-					{template.deliveryMethod === 'certified' ? 'Certified Delivery' : 'Direct Outreach'}
+				<Badge variant={template.deliveryMethod === 'cwc' ? 'congressional' : 'direct'}>
+					{template.deliveryMethod === 'cwc' ? 'Congressional Delivery' : 'Direct Outreach'}
 				</Badge>
 				<span class="rounded bg-slate-100 px-2 py-1 text-sm text-slate-600">
 					{template.category}
 				</span>
-				{#if data.user?.is_verified && template.deliveryMethod === 'certified'}
+				{#if data.user?.is_verified && template.deliveryMethod === 'cwc'}
 					<div class="flex items-center gap-1 rounded bg-green-50 px-2 py-1 text-sm text-green-700">
 						<VerificationBadge showText={false} />
 						<span>Enhanced Credibility</span>
@@ -309,7 +309,7 @@
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
 				if (isMobile) {
-					modalActions.open('mobile-preview', 'mobile_preview', { template, user: data.user });
+					modalActions.openModal('mobile-preview', 'mobile_preview', { template, user: data.user });
 				}
 			}}
 			onSendMessage={async () => {
@@ -329,7 +329,7 @@
 				// For now, treat US or certified templates as existing path
 				if (
 					data.user &&
-					(channel?.country_code === 'US' || template.deliveryMethod === 'certified')
+					(channel?.country_code === 'US' || template.deliveryMethod === 'cwc')
 				) {
 					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 					if (flow.nextAction === 'address') {

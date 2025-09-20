@@ -7,7 +7,7 @@
  */
 
 import { db } from '$lib/core/db';
-import type { TemplateVerification, User } from '@prisma/client';
+import type { Template, User } from '@prisma/client';
 
 // Type for user actions used in gaming detection
 interface UserAction {
@@ -55,51 +55,55 @@ export class ReputationCalculator {
 	};
 
 	/**
-	 * Apply verification result to user reputation
+	 * Apply template verification result to user reputation (Phase 4: verification fields in Template)
 	 */
-	async applyVerificationResult(verificationId: string): Promise<ReputationUpdate> {
-		const verification = await db.templateVerification.findUnique({
-			where: { id: verificationId },
-			include: { user: true }
+	async applyTemplateResult(templateId: string): Promise<ReputationUpdate> {
+		const template = await db.template.findUnique({
+			where: { id: templateId },
+			include: { 
+				user: true // Assuming template has user relation
+			}
 		});
 
-		if (!verification) {
-			throw new Error(`Verification ${verificationId} not found`);
+		if (!template) {
+			throw new Error(`Template ${templateId} not found`);
 		}
 
 		// Check if already applied
-		if (verification.reputation_applied) {
+		if (template.reputation_applied) {
 			return {
-				delta: verification.reputation_delta || 0,
+				delta: template.reputation_delta || 0,
 				reason: 'Already applied',
-				tier: this.getTier(verification.user?.trust_score || 50),
+				tier: this.getTier(template.user?.trust_score || 50),
 				breakdown: { base: 0, multiplier: 1, final: 0 }
 			};
 		}
 
 		// Calculate reputation change
 		const update = this.calculateReputationDelta(
-			verification as TemplateVerification & { user: User }
+			template as Template & { user: User }
 		);
 
 		// Apply bounds checking
-		const currentRep = verification.user?.trust_score || 50;
+		const currentRep = template.user?.trust_score || 50;
 		const newRep = Math.max(
 			this.MIN_REPUTATION,
 			Math.min(this.MAX_REPUTATION, currentRep + update.delta)
 		);
 
 		// Update user reputation
-		await db.user.update({
-			where: { id: verification.user_id || '' },
-			data: {
-				trust_score: Math.round(newRep)
-			}
-		});
+		if (template.user) {
+			await db.user.update({
+				where: { id: template.user.id },
+				data: {
+					trust_score: Math.round(newRep)
+				}
+			});
+		}
 
 		// Mark as applied
-		await db.templateVerification.update({
-			where: { id: verificationId },
+		await db.template.update({
+			where: { id: templateId },
 			data: {
 				reputation_delta: update.delta,
 				reputation_applied: true
@@ -108,7 +112,7 @@ export class ReputationCalculator {
 
 		// Log significant changes
 		if (Math.abs(update.delta) > 10) {
-			console.log(`Significant reputation change for user ${verification.user_id}:`, {
+			console.log(`Significant reputation change for user ${template.user?.id}:`, {
 				previous: currentRep,
 				new: newRep,
 				delta: update.delta,
@@ -120,14 +124,14 @@ export class ReputationCalculator {
 	}
 
 	/**
-	 * Calculate reputation delta using quadratic scaling
+	 * Calculate reputation delta using quadratic scaling (Phase 4: using Template model)
 	 */
 	private calculateReputationDelta(
-		verification: TemplateVerification & { user: User }
+		template: Template & { user: User }
 	): ReputationUpdate {
-		const consensusScore = verification.consensus_score || 0;
-		const severity = verification.severity_level || 1;
-		const currentRep = verification.user?.trust_score || 50;
+		const consensusScore = template.consensus_score || 0;
+		const severity = template.severity_level || 1;
+		const currentRep = template.user?.trust_score || 50;
 
 		let baseDelta = 0;
 		let multiplier = 1;
@@ -140,9 +144,9 @@ export class ReputationCalculator {
 
 			// Bonus for high-quality corrections
 			if (
-				verification.correction_log &&
-				verification.quality_score &&
-				verification.quality_score > 80
+				template.correction_log &&
+				template.quality_score &&
+				template.quality_score > 80
 			) {
 				baseDelta *= 1.2;
 				reason += ' with quality bonus';

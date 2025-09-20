@@ -1,487 +1,498 @@
 /**
- * Analytics API Integration Tests
- *
- * Tests the /api/analytics/events endpoint that handles client-side event batching
- * and database storage. Validates the fix for the OAuth funnel tracking issue.
+ * Analytics API Integration Tests - Consolidated Schema (8→3 Models)
+ * 
+ * Tests the consolidated analytics system with:
+ * - analytics_event (unified with JSONB properties)
+ * - analytics_session (enhanced with UTM tracking)
+ * - analytics_experiment (campaigns/funnels/experiments)
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { AnalyticsEvent, SessionData } from '../../src/lib/core/analytics/database.js';
-import { asRequestEvent } from '../types/test-helpers';
+import { POST, GET } from '../../src/routes/api/analytics/events/+server';
+import { createMockRequestEvent } from '../helpers/request-event';
+import type { AnalyticsEvent, AnalyticsSession, AnalyticsExperiment } from '../../src/lib/types/analytics';
 
-// Setup all mocks using vi.hoisted to fix initialization order
-const mocks = vi.hoisted(() => ({
-	db: {
-		user: {
-			findUnique: vi.fn().mockResolvedValue({ id: 'user-456' })
-		},
-		template: {
-			findMany: vi.fn().mockResolvedValue([])
-		},
-		user_session: {
-			upsert: vi.fn(),
-			update: vi.fn()
-		},
-		analytics_event: {
-			createMany: vi.fn()
-		}
+// Mock database for consolidated analytics schema
+const mockDb = vi.hoisted(() => ({
+	analytics_session: {
+		upsert: vi.fn(),
+		findUnique: vi.fn(),
+		findMany: vi.fn(),
+		create: vi.fn(),
+		update: vi.fn()
+	},
+	analytics_event: {
+		createMany: vi.fn(),
+		findMany: vi.fn(),
+		create: vi.fn(),
+		findUnique: vi.fn()
+	},
+	analytics_experiment: {
+		create: vi.fn(),
+		findUnique: vi.fn(),
+		findMany: vi.fn(),
+		update: vi.fn()
+	},
+	user: {
+		findUnique: vi.fn()
+	},
+	template: {
+		findMany: vi.fn(),
+		findUnique: vi.fn()
 	}
 }));
 
 vi.mock('$lib/core/db', () => ({
-	db: mocks.db
+	db: mockDb
 }));
 
-// Import the API handler after mocks are set up
-import { POST } from '../../src/routes/api/analytics/events/+server';
-
-describe('Analytics API Integration', () => {
-	let mockRequest: any;
-	let mockGetClientAddress: any;
-
+describe('Analytics API Integration Tests - Consolidated Schema', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-
-		// Setup mock database responses
-		mocks.db.user_session.upsert.mockResolvedValue({
-			id: 'session-123',
-			session_id: 'sess_123_abc'
+		
+		// Default successful mocks
+		mockDb.user.findUnique.mockResolvedValue({ id: 'user-123' });
+		mockDb.template.findMany.mockResolvedValue([{ id: 'template-456' }]);
+		mockDb.analytics_session.upsert.mockResolvedValue({
+			session_id: 'sess_123_abc',
+			user_id: 'user-123',
+			created_at: new Date(),
+			updated_at: new Date(),
+			utm_source: 'google',
+			utm_medium: 'cpc',
+			utm_campaign: 'voting-2024',
+			device_data: { ip_address: '192.168.1.1', user_agent: 'test-agent' },
+			session_metrics: { events_count: 0, page_views: 0, conversion_count: 0 },
+			funnel_progress: {}
 		});
-
-		mocks.db.analytics_event.createMany.mockResolvedValue({
-			count: 3
-		});
-
-		mocks.db.user_session.update.mockResolvedValue({
-			id: 'session-123',
-			converted: true
-		});
-
-		// Mock template existence validation
-		mocks.db.template.findMany.mockResolvedValue([{ id: 'template-789' }]);
-
-		// Setup mock request
-		mockGetClientAddress = vi.fn().mockReturnValue('127.0.0.1');
-		mockRequest = {
-			json: vi.fn()
-		};
+		mockDb.analytics_event.createMany.mockResolvedValue({ count: 1 });
 	});
 
-	describe('Event Batch Processing', () => {
-		it('should process valid event batch successfully', async () => {
-			const sessionData: SessionData = {
-				session_id: 'sess_123_abc',
-				user_id: 'user-456',
-				user_agent: 'Mozilla/5.0 (Test Browser)',
-				referrer: 'https://example.com',
-				utm_source: 'test',
-				landing_page: 'https://localhost:5173/'
+	describe('POST /api/analytics/events - Unified Event Storage', () => {
+		it('should store events in consolidated analytics_event table with JSONB properties', async () => {
+			const eventBatch = {
+				session_data: {
+					session_id: 'sess_123_abc',
+					user_id: 'user-123',
+					utm_source: 'google',
+					utm_medium: 'cpc',
+					utm_campaign: 'voting-2024',
+					landing_page: '/',
+					referrer: 'https://google.com',
+					fingerprint: 'fp_abc123',
+					user_agent: 'Mozilla/5.0...',
+					ip_address: '192.168.1.1'
+				},
+				events: [
+					{
+						session_id: 'sess_123_abc',
+						name: 'page_view',
+						user_id: 'user-123',
+						template_id: 'template-456',
+						timestamp: new Date().toISOString(),
+						properties: {
+							page_url: '/templates/voting-reform',
+							page_title: 'Voting Reform Template',
+							category: 'voting',
+							source: 'homepage'
+						}
+					},
+					{
+						session_id: 'sess_123_abc',
+						name: 'template_viewed',
+						user_id: 'user-123',
+						template_id: 'template-456',
+						properties: {
+							template_title: 'Contact Your Rep About Voting Reform',
+							view_duration: 45000,
+							scroll_depth: 0.8,
+							interaction_count: 3
+						}
+					}
+				]
 			};
 
-			const events: AnalyticsEvent[] = [
-				{
-					session_id: 'sess_123_abc',
-					name: 'page_view',
-					properties: { page_url: 'https://localhost:5173/', timestamp: new Date() }
-				},
-				{
-					session_id: 'sess_123_abc',
-					name: 'template_viewed',
-					properties: { template_id: 'template-789', source: 'direct-link', timestamp: new Date() }
-				},
-				{
-					session_id: 'sess_123_abc',
-					name: 'button_click',
-					properties: { element: 'share_link', timestamp: new Date() }
-				}
-			];
-
-			mockRequest.json.mockResolvedValue({
-				session_data: sessionData,
-				events
+			const request = new Request('http://localhost/api/analytics/events', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
+			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			expect(response.status).toBe(200);
 
-			if (!response) {
-				throw new Error('POST handler returned undefined');
-			}
+			const data = await response.json();
+			expect(data).toEqual({
+				success: true,
+				events_processed: 2,
+				session_id: 'sess_123_abc'
+			});
 
-			const result = await response.json();
-
-			// Verify response
-			expect(result.success).toBe(true);
-			expect(result.events_processed).toBe(3);
-			expect(result.session_id).toBe('sess_123_abc');
-
-			// Verify database operations
-			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
+			// Verify session upsert with enhanced data
+			expect(mockDb.analytics_session.upsert).toHaveBeenCalledWith({
 				where: { session_id: 'sess_123_abc' },
 				create: expect.objectContaining({
 					session_id: 'sess_123_abc',
-					user_id: 'user-456',
-					ip_address: '127.0.0.1',
-					user_agent: 'Mozilla/5.0 (Test Browser)',
-					utm_source: 'test',
-					events_count: 3,
-					page_views: 1
+					user_id: 'user-123',
+					utm_source: 'google',
+					utm_medium: 'cpc',
+					utm_campaign: 'voting-2024',
+					landing_page: '/',
+					referrer: 'https://google.com',
+					device_data: {
+						ip_address: '192.168.1.1',
+						user_agent: 'Mozilla/5.0...',
+						fingerprint: 'fp_abc123'
+					},
+					session_metrics: {
+						events_count: 2,
+						page_views: 1,
+						conversion_count: 0
+					},
+					funnel_progress: {}
 				}),
-				update: expect.objectContaining({
-					user_id: 'user-456',
-					events_count: { increment: 3 },
-					page_views: { increment: 1 }
-				})
+				update: expect.any(Object)
 			});
 
-			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledWith({
-				data: expect.arrayContaining([
-					expect.objectContaining({
+			// Verify events stored with JSONB properties
+			expect(mockDb.analytics_event.createMany).toHaveBeenCalledWith({
+				data: [
+					{
 						session_id: 'sess_123_abc',
-						name: 'page_view'
-					}),
-					expect.objectContaining({
+						user_id: 'user-123',
+						timestamp: expect.any(Date),
+						name: 'page_view',
+						event_type: 'pageview',
+						template_id: 'template-456',
+						funnel_step: null,
+						experiment_id: null,
+						properties: {
+							page_url: '/templates/voting-reform',
+							page_title: 'Voting Reform Template',
+							category: 'voting',
+							source: 'homepage'
+						},
+						computed_metrics: {}
+					},
+					{
 						session_id: 'sess_123_abc',
-						name: 'template_viewed'
-					}),
-					expect.objectContaining({
-						session_id: 'sess_123_abc',
-						name: 'button_click'
-					})
-				]),
+						user_id: 'user-123',
+						timestamp: expect.any(Date),
+						name: 'template_viewed',
+						event_type: 'pageview',
+						template_id: 'template-456',
+						funnel_step: null,
+						experiment_id: null,
+						properties: {
+							template_title: 'Contact Your Rep About Voting Reform',
+							view_duration: 45000,
+							scroll_depth: 0.8,
+							interaction_count: 3
+						},
+						computed_metrics: {}
+					}
+				],
 				skipDuplicates: true
 			});
 		});
 
-		it('should handle conversion tracking correctly', async () => {
-			const sessionData: SessionData = {
-				session_id: 'sess_conversion_test',
-				user_id: 'user-converter'
+		it('should properly categorize event types for consolidated schema', async () => {
+			const eventBatch = {
+				session_data: { session_id: 'sess_123_abc' },
+				events: [
+					{ name: 'page_view', properties: {} },
+					{ name: 'template_viewed', properties: {} },
+					{ name: 'button_click', properties: {} },
+					{ name: 'template_used', properties: {} },
+					{ name: 'auth_completed', properties: {} },
+					{ name: 'conversion', properties: {} },
+					{ name: 'custom_event', funnel_id: 'funnel-123', properties: {} },
+					{ name: 'campaign_event', campaign_id: 'camp-456', properties: {} }
+				]
 			};
 
-			const conversionEvents: AnalyticsEvent[] = [
-				{
-					session_id: 'sess_conversion_test',
-					name: 'auth_completed',
-					user_id: 'user-converter',
-					properties: { template_id: 'template-oauth-test', provider: 'facebook' }
+			const request = new Request('http://localhost/api/analytics/events', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(eventBatch)
+			});
+
+			await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+
+			const createdEvents = mockDb.analytics_event.createMany.mock.calls[0][0].data;
+			
+			expect(createdEvents[0].event_type).toBe('pageview');     // page_view
+			expect(createdEvents[1].event_type).toBe('pageview');     // template_viewed
+			expect(createdEvents[2].event_type).toBe('interaction');  // button_click
+			expect(createdEvents[3].event_type).toBe('conversion');   // template_used
+			expect(createdEvents[4].event_type).toBe('conversion');   // auth_completed
+			expect(createdEvents[5].event_type).toBe('conversion');   // conversion
+			expect(createdEvents[6].event_type).toBe('funnel');       // has funnel_id
+			expect(createdEvents[7].event_type).toBe('campaign');     // has campaign_id
+		});
+
+		it('should handle complex JSONB properties without data loss', async () => {
+			const complexProperties = {
+				nested_object: {
+					user_preferences: {
+						theme: 'dark',
+						notifications: true,
+						categories: ['voting', 'environment']
+					},
+					interaction_data: {
+						mouse_movements: [{ x: 100, y: 200, timestamp: 1640995200000 }],
+						scroll_events: [{ position: 0.5, timestamp: 1640995201000 }]
+					}
 				},
+				array_data: ['item1', 'item2', { complex: true }],
+				metrics: {
+					performance: { loadTime: 1.2, renderTime: 0.8 },
+					engagement: { timeOnPage: 45000, bounced: false }
+				},
+				unicode_text: 'Testing émojis 🚀 and special chars åæø',
+				null_value: null,
+				undefined_value: undefined
+			};
+
+			const eventBatch = {
+				session_data: { session_id: 'sess_123_abc' },
+				events: [{
+					name: 'complex_interaction',
+					properties: complexProperties
+				}]
+			};
+
+			const request = new Request('http://localhost/api/analytics/events', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(eventBatch)
+			});
+
+			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			expect(response.status).toBe(200);
+
+			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
+			
+			// Verify complex JSONB properties are preserved
+			expect(storedEvent.properties.nested_object.user_preferences.categories).toEqual(['voting', 'environment']);
+			expect(storedEvent.properties.array_data).toEqual(['item1', 'item2', { complex: true }]);
+			expect(storedEvent.properties.metrics.performance.loadTime).toBe(1.2);
+			expect(storedEvent.properties.unicode_text).toBe('Testing émojis 🚀 and special chars åæø');
+			expect(storedEvent.properties.null_value).toBeNull();
+			expect(storedEvent.properties).not.toHaveProperty('undefined_value');
+		});
+
+		it('should validate user and template IDs before storing', async () => {
+			// Mock invalid user and template
+			mockDb.user.findUnique.mockResolvedValue(null);
+			mockDb.template.findMany.mockResolvedValue([]);
+
+			const eventBatch = {
+				session_data: {
+					session_id: 'sess_123_abc',
+					user_id: 'invalid-user'
+				},
+				events: [{
+					name: 'test_event',
+					user_id: 'invalid-user',
+					template_id: 'invalid-template',
+					properties: {}
+				}]
+			};
+
+			const request = new Request('http://localhost/api/analytics/events', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(eventBatch)
+			});
+
+			await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+
+			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
+			
+			// Should null invalid IDs
+			expect(storedEvent.user_id).toBeNull();
+			expect(storedEvent.template_id).toBeNull();
+		});
+
+		it('should handle circular references and problematic objects safely', async () => {
+			// Create objects that would cause JSON.stringify to fail
+			const circularObj: any = { name: 'circular' };
+			circularObj.self = circularObj;
+
+			const eventBatch = {
+				session_data: { session_id: 'sess_123_abc' },
+				events: [{
+					name: 'problematic_event',
+					properties: {
+						circular: circularObj,
+						func: () => 'function',
+						htmlElement: typeof HTMLElement !== 'undefined' ? {} : '[HTMLElement]',
+						bigint: BigInt(123),
+						symbol: Symbol('test')
+					}
+				}]
+			};
+
+			const request = new Request('http://localhost/api/analytics/events', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(eventBatch)
+			});
+
+			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			expect(response.status).toBe(200);
+
+			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
+			
+			// Should handle problematic values gracefully
+			expect(storedEvent.properties.circular).toBe('[Circular]');
+			expect(storedEvent.properties.func).toBe('[Function]');
+			expect(storedEvent.properties.htmlElement).toBe('[HTMLElement]');
+		});
+	});
+
+	describe('GET /api/analytics/events - Session Data Retrieval', () => {
+		it('should retrieve session with analytics events from consolidated schema', async () => {
+			const mockSession: AnalyticsSession = {
+				session_id: 'sess_123_abc',
+				user_id: 'user-123',
+				created_at: new Date(),
+				updated_at: new Date(),
+				utm_source: 'google',
+				utm_medium: 'cpc',
+				utm_campaign: 'voting-2024',
+				landing_page: '/',
+				referrer: 'https://google.com',
+				device_data: {
+					ip_address: '192.168.1.1',
+					user_agent: 'Mozilla/5.0',
+					fingerprint: 'fp_abc123'
+				},
+				session_metrics: {
+					events_count: 5,
+					page_views: 3,
+					conversion_count: 1
+				},
+				funnel_progress: {
+					'voting-funnel': {
+						current_step: 2,
+						completed_steps: [1, 2],
+						last_step_timestamp: new Date().toISOString()
+					}
+				}
+			};
+
+			const mockEvents: AnalyticsEvent[] = [
 				{
-					session_id: 'sess_conversion_test',
-					name: 'template_used',
-					user_id: 'user-converter',
-					properties: { template_id: 'template-oauth-test', delivery_method: 'certified' }
+					id: 'evt_1',
+					session_id: 'sess_123_abc',
+					user_id: 'user-123',
+					timestamp: new Date(),
+					name: 'page_view',
+					event_type: 'pageview',
+					template_id: 'template-456',
+					funnel_step: null,
+					experiment_id: null,
+					properties: { page_url: '/', page_title: 'Home' },
+					computed_metrics: { engagement_score: 0.8 },
+					created_at: new Date()
 				}
 			];
 
-			mockRequest.json.mockResolvedValue({
-				session_data: sessionData,
-				events: conversionEvents
+			mockDb.analytics_session.findUnique.mockResolvedValue(mockSession);
+			mockDb.analytics_event.findMany.mockResolvedValue(mockEvents);
+
+			const request = new Request('http://localhost/api/analytics/events?session_id=sess_123_abc', {
+				method: 'GET'
 			});
 
-			await POST(asRequestEvent(mockRequest, {}));
+			const response = await GET({ request, url: new URL('http://localhost/api/analytics/events?session_id=sess_123_abc') } as any);
+			expect(response.status).toBe(200);
 
-			// Verify conversion was tracked
-			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
-				where: { session_id: 'sess_conversion_test' },
-				data: {
-					converted: true,
-					conversion_type: 'template_usage'
-				}
+			const data = await response.json();
+			expect(data).toEqual({
+				success: true,
+				session: {
+					...mockSession,
+					device_data: mockSession.device_data,
+					session_metrics: mockSession.session_metrics,
+					funnel_progress: mockSession.funnel_progress
+				},
+				analytics_events: [{
+					...mockEvents[0],
+					properties: mockEvents[0].properties,
+					computed_metrics: mockEvents[0].computed_metrics
+				}],
+				events_count: 1
 			});
 		});
 
-		it('should handle registration conversion correctly', async () => {
-			const sessionData: SessionData = {
-				session_id: 'sess_registration_test'
-			};
+		it('should return 404 for non-existent sessions', async () => {
+			mockDb.analytics_session.findUnique.mockResolvedValue(null);
 
-			const registrationEvents: AnalyticsEvent[] = [
-				{
-					session_id: 'sess_registration_test',
-					name: 'auth_completed',
-					user_id: 'new-user-123',
-					properties: { provider: 'google' }
-				}
-			];
-
-			mockRequest.json.mockResolvedValue({
-				session_data: sessionData,
-				events: registrationEvents
+			const request = new Request('http://localhost/api/analytics/events?session_id=nonexistent', {
+				method: 'GET'
 			});
 
-			await POST(asRequestEvent(mockRequest, {}));
+			const response = await GET({ request, url: new URL('http://localhost/api/analytics/events?session_id=nonexistent') } as any);
+			expect(response.status).toBe(404);
 
-			// Verify registration conversion was tracked
-			expect(mocks.db.user_session.update).toHaveBeenCalledWith({
-				where: { session_id: 'sess_registration_test' },
-				data: {
-					converted: true,
-					conversion_type: 'user_registration'
-				}
+			const data = await response.json();
+			expect(data).toEqual({
+				success: false,
+				error: 'Session not found'
 			});
 		});
 	});
 
 	describe('Error Handling', () => {
-		it('should reject invalid request format', async () => {
-			mockRequest.json.mockResolvedValue({
-				invalid: 'data'
-			});
-
-			const response = await POST(asRequestEvent(mockRequest, {}));
-
-			if (!response) {
-				throw new Error('POST handler returned undefined');
-			}
-
-			const result = await response.json();
-
-			expect(result.success).toBe(false);
-			expect(result.error).toBe('Invalid request format');
-			expect(response.status).toBe(400);
-		});
-
-		it('should handle missing session_id', async () => {
-			mockRequest.json.mockResolvedValue({
-				session_data: {},
-				events: []
-			});
-
-			const response = await POST(asRequestEvent(mockRequest, {}));
-
-			if (!response) {
-				throw new Error('POST handler returned undefined');
-			}
-
-			const result = await response.json();
-
-			expect(result.success).toBe(false);
-			expect(result.error).toBe('Invalid request format');
-		});
-
 		it('should handle database errors gracefully', async () => {
-			mocks.db.user_session.upsert.mockRejectedValue(new Error('Database connection failed'));
+			mockDb.analytics_session.upsert.mockRejectedValue(new Error('Database connection failed'));
 
-			mockRequest.json.mockResolvedValue({
-				session_data: { session_id: 'test-session' },
-				events: [
-					{
-						session_id: 'test-session',
-						name: 'test_event'
-					}
-				]
+			const eventBatch = {
+				session_data: { session_id: 'sess_123_abc' },
+				events: [{ name: 'test_event', properties: {} }]
+			};
+
+			const request = new Request('http://localhost/api/analytics/events', {
+				method: 'POST',
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST(asRequestEvent(mockRequest, {}));
-
-			if (!response) {
-				throw new Error('POST handler returned undefined');
-			}
-
-			const result = await response.json();
-
-			expect(result.success).toBe(false);
-			expect(result.error).toBe('Failed to process analytics events');
+			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
 			expect(response.status).toBe(500);
-		});
-	});
 
-	describe('Data Security', () => {
-		it('should include client IP address', async () => {
-			mockGetClientAddress.mockReturnValue('192.168.1.100');
-
-			mockRequest.json.mockResolvedValue({
-				session_data: { session_id: 'ip-test-session' },
-				events: [
-					{
-						session_id: 'ip-test-session',
-						name: 'ip_test'
-					}
-				]
-			});
-
-			await POST(asRequestEvent(mockRequest, {}));
-
-			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
-				where: { session_id: 'ip-test-session' },
-				create: expect.objectContaining({
-					ip_address: '192.168.1.100'
-				}),
-				update: expect.any(Object)
-			});
-
-			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledWith({
-				data: expect.arrayContaining([
-					expect.objectContaining({
-						session_id: 'ip-test-session'
-					})
-				]),
-				skipDuplicates: true
+			const data = await response.json();
+			expect(data).toEqual({
+				success: false,
+				error: 'Failed to process analytics events'
 			});
 		});
 
-		it('should preserve user privacy with null user_id', async () => {
-			mockRequest.json.mockResolvedValue({
-				session_data: {
-					session_id: 'anonymous-session'
-					// No user_id - anonymous session
-				},
-				events: [
-					{
-						session_id: 'anonymous-session',
-						name: 'anonymous_page_view'
-					}
-				]
-			});
+		it('should validate request format', async () => {
+			const invalidRequests = [
+				{}, // Missing session_data and events
+				{ session_data: {} }, // Missing events
+				{ events: [] }, // Missing session_data
+				{ session_data: { session_id: 'test' }, events: 'not-array' } // Events not array
+			];
 
-			await POST(asRequestEvent(mockRequest, {}));
+			for (const invalidRequest of invalidRequests) {
+				const { request } = createMockRequestEvent({
+					method: 'POST',
+					url: '/api/analytics/events',
+					body: invalidRequest
+				});
 
-			expect(mocks.db.user_session.upsert).toHaveBeenCalledWith({
-				where: { session_id: 'anonymous-session' },
-				create: expect.objectContaining({
-					user_id: null
-				}),
-				update: expect.any(Object)
-			});
-		});
-	});
+				const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+				expect(response.status).toBe(400);
 
-	describe('Performance & Batching', () => {
-		it('should handle large event batches efficiently', async () => {
-			const largeEventBatch = Array.from({ length: 50 }, (_, i) => ({
-				session_id: 'batch-test-session',
-				event_type: 'interaction' as const,
-				name: `event_${i}`,
-				timestamp: new Date(Date.now() + i * 1000)
-			}));
-
-			mockRequest.json.mockResolvedValue({
-				session_data: { session_id: 'batch-test-session' },
-				events: largeEventBatch
-			});
-
-			const response = await POST(asRequestEvent(mockRequest, {}));
-
-			if (!response) {
-				throw new Error('POST handler returned undefined');
+				const data = await response.json();
+				expect(data.success).toBe(false);
+				expect(data.error).toBe('Invalid request format');
 			}
-
-			const result = await response.json();
-
-			expect(result.success).toBe(true);
-			expect(result.events_processed).toBe(50);
-
-			// Should batch insert all events in one operation
-			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledTimes(1);
-			expect(mocks.db.analytics_event.createMany).toHaveBeenCalledWith({
-				data: expect.arrayContaining(
-					largeEventBatch.map((event) =>
-						expect.objectContaining({
-							name: event.name
-						})
-					)
-				),
-				skipDuplicates: true
-			});
-		});
-	});
-
-	describe('Performance & Error Handling (from analytics-performance)', () => {
-		// Removed performance tests - these are better suited for dedicated performance testing
-
-		it('should handle network errors gracefully', async () => {
-			const mockRequest = {
-				json: async () => ({
-					events: [
-						{
-							session_id: 'error-test-session',
-							name: 'network_failure_test',
-							properties: { event_type: 'error' }
-						}
-					]
-				})
-			};
-
-			// Mock database error
-			mocks.db.analytics_event.createMany.mockRejectedValue(new Error('Network error'));
-
-			const response = await POST(asRequestEvent(mockRequest, {}));
-
-			const result = await response.json();
-
-			// Should return error response gracefully
-			expect(response.status).toBeGreaterThanOrEqual(400);
-		});
-
-		it('should handle malformed event data', async () => {
-			const mockRequest = {
-				json: async () => ({
-					events: [
-						// Valid event
-						{
-							session_id: 'valid-session',
-							name: 'valid_event',
-							properties: { type: 'valid' }
-						},
-						// Malformed event (missing required fields)
-						{
-							name: 'malformed_event'
-							// Missing session_id
-						}
-					]
-				})
-			};
-
-			const response = await POST(asRequestEvent(mockRequest, {}));
-
-			const result = await response.json();
-
-			// Should handle malformed data appropriately
-			expect([200, 400, 422]).toContain(response.status);
-		});
-
-		it('should handle circular references in event properties', async () => {
-			const circularObj: any = { name: 'test' };
-			circularObj.self = circularObj;
-
-			const mockRequest = {
-				json: async () => ({
-					events: [
-						{
-							session_id: 'circular-test-session',
-							name: 'circular_reference_test',
-							properties: circularObj
-						}
-					]
-				})
-			};
-
-			// Should not throw error when processing circular references
-			await expect(POST(asRequestEvent(mockRequest, {}))).resolves.toBeDefined();
-		});
-
-		it('should limit event property size', async () => {
-			const massiveData = 'x'.repeat(10000); // 10KB string (reduced from 1MB)
-
-			const mockRequest = {
-				json: async () => ({
-					events: [
-						{
-							session_id: 'size-limit-test-session',
-							name: 'size_limit_test',
-							properties: {
-								massive_data: massiveData
-							}
-						}
-					]
-				})
-			};
-
-			const response = await POST(asRequestEvent(mockRequest, {}));
-
-			// Should handle large payloads (size limiting happens server-side)
-			expect(response).toBeDefined();
-			expect([200, 400, 413, 500]).toContain(response.status);
 		});
 	});
 });

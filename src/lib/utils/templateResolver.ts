@@ -46,7 +46,7 @@ export function isValidTemplate(template: unknown): template is Template {
 		typeof t.id === 'string' &&
 		typeof t.title === 'string' &&
 		typeof t.deliveryMethod === 'string' &&
-		['email', 'certified', 'direct'].includes(t.deliveryMethod as string) &&
+		['email', 'certified', 'direct', 'cwc'].includes(t.deliveryMethod as string) &&
 		(typeof t.message_body === 'string' || typeof t.preview === 'string')
 	);
 }
@@ -106,16 +106,43 @@ function isValidRepresentativesArray(reps: unknown): reps is Representative[] {
  */
 export function resolveTemplate(
 	template: Template,
-	user: EmailServiceUser | null
+	user: EmailServiceUser | null,
+	options: { preserveVariables?: boolean } = {}
 ): ResolvedTemplate {
-	// Input validation
+	// Input validation with detailed debugging
 	if (!isValidTemplate(template)) {
+		console.error('Template validation failed:', {
+			template,
+			hasId: typeof template?.id === 'string',
+			hasTitle: typeof template?.title === 'string',
+			hasDeliveryMethod: typeof template?.deliveryMethod === 'string',
+			deliveryMethod: template?.deliveryMethod,
+			validDeliveryMethods: ['email', 'certified', 'direct', 'cwc'],
+			hasMessage: typeof template?.message_body === 'string' || typeof template?.preview === 'string'
+		});
 		throw new Error('Invalid template provided to resolveTemplate');
 	}
 	
 	if (user !== null && !isValidEmailServiceUser(user)) {
+		console.error('User validation failed:', {
+			user,
+			hasId: typeof user?.id === 'string',
+			hasEmail: typeof user?.email === 'string',
+			hasName: user?.name === undefined || user?.name === null || typeof user?.name === 'string'
+		});
 		throw new Error('Invalid user provided to resolveTemplate');
 	}
+	
+	// Debug user and template info
+	console.debug('Template resolution started:', {
+		templateId: template.id,
+		templateTitle: template.title,
+		deliveryMethod: template.deliveryMethod,
+		userId: user?.id,
+		userName: user?.name,
+		userRepresentatives: user?.representatives?.length || 0,
+		hasUserAddress: !!(user?.street && user?.city && user?.state && user?.zip)
+	});
 	// Get the base message content - prefer message_body over preview
 	const baseMessage = template.message_body || template.preview || '';
 
@@ -133,16 +160,35 @@ export function resolveTemplate(
 		const userAddress = buildUserAddress(user);
 
 		// Block variable resolution with actual data
-		const replacements: TemplateReplacements = {
-			'[Name]': userName, // allow empty string to preserve punctuation
-			'[Your Name]': userName,
-			'[Address]': user.street && user.city && user.state && user.zip ? userAddress : null,
-			'[Your Address]': user.street && user.city && user.state && user.zip ? userAddress : null,
-			'[City]': user.city || null,
-			'[State]': user.state || null,
-			'[ZIP]': user.zip || null,
-			'[Zip Code]': user.zip || null
-		};
+		const replacements: TemplateReplacements = {};
+		
+		// Only add replacements if we have data OR if we're not preserving variables
+		if (!options.preserveVariables || userName) {
+			replacements['[Name]'] = userName; // allow empty string to preserve punctuation
+			replacements['[Your Name]'] = userName;
+		}
+		
+		// For address fields, only replace if we have complete data
+		if (user.street && user.city && user.state && user.zip) {
+			replacements['[Address]'] = userAddress;
+			replacements['[Your Address]'] = userAddress;
+		} else if (!options.preserveVariables) {
+			// Only remove if not preserving for preview
+			replacements['[Address]'] = null;
+			replacements['[Your Address]'] = null;
+		}
+		
+		// Individual address components
+		if (user.city || !options.preserveVariables) {
+			replacements['[City]'] = user.city || null;
+		}
+		if (user.state || !options.preserveVariables) {
+			replacements['[State]'] = user.state || null;
+		}
+		if (user.zip || !options.preserveVariables) {
+			replacements['[ZIP]'] = user.zip || null;
+			replacements['[Zip Code]'] = user.zip || null;
+		}
 
 		// Congressional representative resolution with type safety
 		if (user.representatives && isValidRepresentativesArray(user.representatives)) {
@@ -185,14 +231,22 @@ export function resolveTemplate(
 			replacements['[Junior Senator]'] = 'Junior Senator';
 		}
 
-		// Remove all manual-fill placeholders - everything auto-resolves or gets removed
-		replacements['[Personal Connection]'] = null;
-		replacements['[Phone]'] = null;
-		replacements['[Phone Number]'] = null;
-		replacements['[Your Phone]'] = null;
-		replacements['[Your Story]'] = null;
-		replacements['[Your Experience]'] = null;
-		replacements['[Personal Story]'] = null;
+		// Handle manual-fill placeholders based on preserveVariables option
+		// In preview mode, keep them as placeholders for interactive buttons
+		// In send mode, remove them completely
+		if (options.preserveVariables) {
+			// Keep placeholders for preview - don't add them to replacements
+			// This way they won't be removed or replaced
+		} else {
+			// Remove all manual-fill placeholders - everything auto-resolves or gets removed
+			replacements['[Personal Connection]'] = null;
+			replacements['[Phone]'] = null;
+			replacements['[Phone Number]'] = null;
+			replacements['[Your Phone]'] = null;
+			replacements['[Your Story]'] = null;
+			replacements['[Your Experience]'] = null;
+			replacements['[Personal Story]'] = null;
+		}
 
 		// Apply all replacements to subject and body
 		Object.entries(replacements).forEach(([placeholder, value]) => {
@@ -230,7 +284,7 @@ export function resolveTemplate(
 	}
 
 	// Determine delivery method and routing
-	const isCongressional = template.deliveryMethod === 'certified';
+	const isCongressional = template.deliveryMethod === 'certified' || template.deliveryMethod === 'cwc';
 	// Parse recipient_config safely with error handling
 	let recipientConfig: unknown = template.recipient_config;
 	if (typeof template.recipient_config === 'string') {

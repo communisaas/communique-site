@@ -33,11 +33,13 @@ export const ERROR_CODES = {
 	SERVER_INTERNAL: 'SERVER_INTERNAL',
 	SERVER_DATABASE: 'SERVER_DATABASE',
 	SERVER_RATE_LIMIT: 'SERVER_RATE_LIMIT',
+	SERVER_NOT_IMPLEMENTED: 'SERVER_NOT_IMPLEMENTED',
 
 	// Auth errors
 	AUTH_REQUIRED: 'AUTH_REQUIRED',
 	AUTH_INVALID_TOKEN: 'AUTH_INVALID_TOKEN',
-	AUTH_INSUFFICIENT_PERMISSIONS: 'AUTH_INSUFFICIENT_PERMISSIONS'
+	AUTH_INSUFFICIENT_PERMISSIONS: 'AUTH_INSUFFICIENT_PERMISSIONS',
+	AUTH_UNAUTHORIZED: 'AUTH_UNAUTHORIZED'
 } as const;
 
 export const ERROR_MESSAGES = {
@@ -54,10 +56,12 @@ export const ERROR_MESSAGES = {
 	[ERROR_CODES.SERVER_INTERNAL]: 'Something went wrong on our end. Please try again.',
 	[ERROR_CODES.SERVER_DATABASE]: 'Database error. Please try again later.',
 	[ERROR_CODES.SERVER_RATE_LIMIT]: 'Too many requests. Please wait a moment and try again.',
+	[ERROR_CODES.SERVER_NOT_IMPLEMENTED]: 'Feature not implemented yet.',
 
 	[ERROR_CODES.AUTH_REQUIRED]: 'Please sign in to continue',
 	[ERROR_CODES.AUTH_INVALID_TOKEN]: 'Your session has expired. Please sign in again.',
-	[ERROR_CODES.AUTH_INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action'
+	[ERROR_CODES.AUTH_INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action',
+	[ERROR_CODES.AUTH_UNAUTHORIZED]: 'Unauthorized access'
 } as const;
 
 // Helper functions for creating errors
@@ -71,7 +75,7 @@ export function createApiError(
 	return {
 		type,
 		code: ERROR_CODES[code],
-		message: message || ERROR_MESSAGES[ERROR_CODES[code]],
+		message: message || ERROR_MESSAGES[ERROR_CODES[code] as keyof typeof ERROR_MESSAGES],
 		field,
 		details
 	};

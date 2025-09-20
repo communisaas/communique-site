@@ -126,7 +126,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!webhookSecret || webhookSecret !== process.env.N8N_WEBHOOK_SECRET) {
 			const response: ApiResponse = {
 				success: false,
-				error: createApiError('auth', 'AUTH_UNAUTHORIZED', 'Invalid webhook secret')
+				error: createApiError('authentication', 'AUTH_UNAUTHORIZED', 'Invalid webhook secret')
 			};
 			return json(response, { status: 401 });
 		}

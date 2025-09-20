@@ -4,6 +4,7 @@ import {
 	analyzeCascade,
 	hasActivationData
 } from '$lib/experimental/cascade/cascade-analytics-fixed';
+import type { AnalyticsSession, AnalyticsEvent } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -25,8 +26,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const timeframeDays = timeframe === '24h' ? 1 : timeframe === '7d' ? 7 : 30;
 		const startDate = new Date(Date.now() - timeframeDays * 24 * 60 * 60 * 1000);
 
-		// Get real-time analytics data from our new system
-		const userSessions = await db.user_session.findMany({
+		// Get real-time analytics data from new consolidated analytics_session table
+		const userSessions = await db.analytics_session.findMany({
 			where: {
 				user_id: userId,
 				created_at: {
@@ -76,12 +77,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			);
 		}, 0);
 
-		// Calculate analytics metrics
+		// Calculate analytics metrics from new consolidated session data
 		const totalSessions = userSessions.length;
-		const totalPageViews = userSessions.reduce((sum, session) => sum + session.page_views, 0);
-		const totalEvents = userSessions.reduce((sum, session) => sum + session.events_count, 0);
-		// Remove converted field reference since it doesn't exist
-		const conversionRate = 0; // Would need proper conversion tracking
+		const totalPageViews = userSessions.reduce((sum, session) => sum + (session.session_metrics?.page_views || 0), 0);
+		const totalEvents = userSessions.reduce((sum, session) => sum + (session.session_metrics?.events_count || 0), 0);
+		const totalConversions = userSessions.reduce((sum, session) => sum + (session.session_metrics?.conversion_count || 0), 0);
+		const conversionRate = totalSessions > 0 ? totalConversions / totalSessions : 0;
 
 		// Template interaction analytics
 		const templateViews = analyticsEvents.filter((e) => e.name === 'template_viewed').length;
@@ -163,9 +164,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		const recentActivity = recentEvents.map((event) => ({
 			timestamp: event.timestamp.toISOString(),
 			event: event.name,
-			template_id: null, // template_id not available in analytics_event schema
-			template_title: 'Unknown Template', // Would need template lookup
-			event_properties: {}
+			template_id: event.template_id,
+			template_title: event.template_id ? 'Template' : null, // Could be enhanced with template lookup
+			event_properties: event.properties || {}
 		}));
 
 		return json({
@@ -177,10 +178,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				total_activations: totalActivations,
 				avg_viral_coefficient: avgViralCoefficient,
 
-				// Analytics metrics
+				// Analytics metrics from consolidated session data
 				total_sessions: totalSessions,
 				total_page_views: totalPageViews,
 				total_events: totalEvents,
+				total_conversions: totalConversions,
 				conversion_rate: conversionRate,
 				template_views: templateViews,
 				template_shares: templateShares,

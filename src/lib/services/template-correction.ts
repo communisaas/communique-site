@@ -8,7 +8,7 @@
  */
 
 import { db } from '$lib/core/db';
-import type { Template, TemplateVerification } from '@prisma/client';
+import type { Template } from '@prisma/client';
 
 interface CorrectionResult {
 	severity: number;
@@ -31,50 +31,40 @@ interface CorrectionChange {
 
 export class TemplateCorrector {
 	/**
-	 * Process a template verification for auto-correction
+	 * Process a template for auto-correction (Phase 4 consolidation - verification fields in Template)
 	 */
-	async processVerification(verificationId: string) {
-		const verification = await db.templateVerification.findUnique({
-			where: { id: verificationId },
-			include: {
-				template: true
-			}
+	async processTemplate(templateId: string) {
+		const template = await db.template.findUnique({
+			where: { id: templateId }
 		});
 
-		if (!verification) {
-			throw new Error(`Verification ${verificationId} not found`);
+		if (!template) {
+			throw new Error(`Template ${templateId} not found`);
 		}
 
 		// Store original content before any modifications
-		await db.templateVerification.update({
-			where: { id: verificationId },
+		await db.template.update({
+			where: { id: templateId },
 			data: {
 				original_content: {
-					message_body: verification.template.message_body,
-					subject: verification.template.subject,
-					preview: verification.template.preview
+					message_body: template.message_body,
+					subject: template.subject,
+					preview: template.preview
 				}
 			}
 		});
 
 		// Detect issues and apply corrections
-		const corrections = await this.detectAndCorrect(verification.template);
+		const corrections = await this.detectAndCorrect(template);
 
 		// Handle based on severity
 		if (corrections.severity <= 6) {
-			// Apply corrections to template
+			// Apply corrections to template (Phase 4: verification fields consolidated into Template)
 			await db.template.update({
-				where: { id: verification.template_id },
+				where: { id: templateId },
 				data: {
 					message_body: corrections.corrected_body,
-					subject: corrections.corrected_subject
-				}
-			});
-
-			// Update verification record with correction details
-			await db.templateVerification.update({
-				where: { id: verificationId },
-				data: {
+					subject: corrections.corrected_subject,
 					correction_log: JSON.parse(JSON.stringify(corrections.changes)),
 					grammar_score: corrections.scores.grammar,
 					clarity_score: corrections.scores.clarity,
@@ -87,7 +77,7 @@ export class TemplateCorrector {
 					),
 					corrected_at: new Date(),
 					severity_level: corrections.severity,
-					moderation_status: 'approved' // Auto-approve after correction
+					verification_status: 'approved' // Auto-approve after correction
 				}
 			});
 
@@ -99,11 +89,11 @@ export class TemplateCorrector {
 		}
 
 		// Severity 7+ requires manual moderation
-		await db.templateVerification.update({
-			where: { id: verificationId },
+		await db.template.update({
+			where: { id: templateId },
 			data: {
 				severity_level: corrections.severity,
-				moderation_status: 'reviewing'
+				verification_status: 'reviewing'
 			}
 		});
 

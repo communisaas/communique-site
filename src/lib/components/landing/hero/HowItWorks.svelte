@@ -4,7 +4,7 @@
 	import { onMount } from 'svelte';
 	import { steps } from '$lib/data/steps';
 	let alignment: 'left' | 'right' = 'right';
-	const origin = $derived(alignment === 'left' ? 'origin-top-left' : 'origin-top-right');
+	const origin = $derived((alignment as 'left' | 'right') === 'left' ? 'origin-top-left' : 'origin-top-right');
 
 	onMount(() => {
 		const mediaQuery = window.matchMedia('(min-width: 768px)');

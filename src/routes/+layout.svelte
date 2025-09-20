@@ -66,5 +66,5 @@
 	</div>
 {/if}
 
-<!-- Toast notifications (always present) -->
+<!-- Global UI components (always present) -->
 <ToastContainer />

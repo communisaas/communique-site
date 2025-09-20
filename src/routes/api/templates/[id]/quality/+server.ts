@@ -11,31 +11,18 @@ import type { RequestHandler } from './$types';
  */
 export const GET: RequestHandler = async ({ params }) => {
 	try {
-		// Get template verification data
-		const verification = await db.templateVerification.findUnique({
-			where: { template_id: params.id },
-			include: {
-				template: {
-					include: {
-						user: true
-					}
-				},
-				user: true,
-				legislative_channel: true
-			}
+		// Get template with consolidated verification fields
+		const template = await db.template.findUnique({
+			where: { id: params.id },
+			include: { user: true }
 		});
 
-		// If no verification exists, check if template exists
-		if (!verification) {
-			const template = await db.template.findUnique({
-				where: { id: params.id },
-				include: { user: true }
-			});
+		if (!template) {
+			return json({ error: 'Template not found' }, { status: 404 });
+		}
 
-			if (!template) {
-				return json({ error: 'Template not found' }, { status: 404 });
-			}
-
+		// Check if template has verification data (for congressional templates)
+		if (!template.verification_status) {
 			// Return basic info for templates without verification
 			return json({
 				template_id: params.id,
@@ -53,39 +40,39 @@ export const GET: RequestHandler = async ({ params }) => {
 
 		// Calculate additional author metrics
 		let authorMetrics = null;
-		if (verification.user) {
+		if (template.user) {
 			// Count user's templates
 			const templateCount = await db.template.count({
-				where: { userId: verification.user_id }
+				where: { userId: template.userId }
 			});
 
 			// Get average quality of user's verified templates
-			const userVerifications = await db.templateVerification.findMany({
+			const userTemplates = await db.template.findMany({
 				where: {
-					user_id: verification.user_id,
+					userId: template.userId,
 					quality_score: { gt: 0 }
 				},
 				select: { quality_score: true }
 			});
 
 			const avgQuality =
-				userVerifications.length > 0
-					? userVerifications.reduce((sum, v) => sum + (v.quality_score || 0), 0) /
-						userVerifications.length
+				userTemplates.length > 0
+					? userTemplates.reduce((sum, t) => sum + (t.quality_score || 0), 0) /
+						userTemplates.length
 					: null;
 
 			// Count approved vs rejected
-			const approvedCount = await db.templateVerification.count({
+			const approvedCount = await db.template.count({
 				where: {
-					user_id: verification.user_id,
-					moderation_status: 'approved'
+					userId: template.userId,
+					verification_status: 'approved'
 				}
 			});
 
-			const rejectedCount = await db.templateVerification.count({
+			const rejectedCount = await db.template.count({
 				where: {
-					user_id: verification.user_id,
-					moderation_status: 'rejected'
+					userId: template.userId,
+					verification_status: 'rejected'
 				}
 			});
 
@@ -102,9 +89,9 @@ export const GET: RequestHandler = async ({ params }) => {
 		}
 
 		// Get tier information
-		const tierInfo = verification.user
+		const tierInfo = template.user
 			? reputationCalculator.getTierInfo(
-					reputationCalculator.getTier(verification.user.trust_score || 50)
+					reputationCalculator.getTier(template.user.trust_score || 50)
 				)
 			: null;
 
@@ -114,59 +101,53 @@ export const GET: RequestHandler = async ({ params }) => {
 
 			// Verification status
 			verification: {
-				status: verification.moderation_status,
-				verified_at: verification.reviewed_at,
-				severity_level: verification.severity_level,
+				status: template.verification_status,
+				verified_at: template.reviewed_at,
+				severity_level: template.severity_level,
 
 				// Quality scores
-				quality_score: verification.quality_score,
-				grammar_score: verification.grammar_score,
-				clarity_score: verification.clarity_score,
-				completeness_score: verification.completeness_score,
+				quality_score: template.quality_score,
+				grammar_score: template.grammar_score,
+				clarity_score: template.clarity_score,
+				completeness_score: template.completeness_score,
 
 				// Consensus information (without exposing raw votes)
-				consensus_score: verification.consensus_score
-					? (verification.consensus_score * 100).toFixed(1) + '%'
+				consensus_score: template.consensus_score
+					? (template.consensus_score * 100).toFixed(1) + '%'
 					: null,
 
 				// Auto-correction info
-				auto_corrected: !!verification.correction_log,
-				corrections_applied: verification.correction_log
-					? (verification.correction_log as any[]).length
+				auto_corrected: !!template.correction_log,
+				corrections_applied: template.correction_log
+					? (template.correction_log as any[]).length
 					: 0
 			},
 
 			// Author reputation
-			author: verification.user
+			author: template.user
 				? {
-						user_id: verification.user_id,
-						voter_reputation: verification.user.trust_score || 50,
-						tier: reputationCalculator.getTier(verification.user.trust_score || 50),
+						user_id: template.userId,
+						voter_reputation: template.user.trust_score || 50,
+						tier: reputationCalculator.getTier(template.user.trust_score || 50),
 						tier_info: tierInfo,
 						...authorMetrics
 					}
 				: null,
 
 			// Legislative context
-			legislative_context: verification.legislative_channel
-				? {
-						country_code: verification.country_code,
-						country_name: verification.legislative_channel.country_name,
-						access_tier: verification.legislative_channel.access_tier
-					}
-				: {
-						country_code: verification.country_code || 'US',
-						country_name: 'United States',
-						access_tier: 2
-					},
+			legislative_context: {
+				country_code: template.country_code || 'US',
+				country_name: 'United States',
+				access_tier: 2
+			},
 
 			// Template metadata
 			template: {
-				title: verification.template.title,
-				type: verification.template.type,
-				delivery_method: verification.template.deliveryMethod,
-				created_at: verification.template.createdAt,
-				is_public: verification.template.is_public
+				title: template.title,
+				type: template.type,
+				delivery_method: template.deliveryMethod,
+				created_at: template.createdAt,
+				is_public: template.is_public
 			}
 		};
 

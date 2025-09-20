@@ -24,7 +24,7 @@ export interface LegislativeUser {
 	address?: Address;
 }
 
-export interface Template {
+export interface LegislativeTemplate {
 	id: string;
 	subject: string;
 	message_body: string;
@@ -32,7 +32,7 @@ export interface Template {
 }
 
 export interface DeliveryRequest {
-	template: Template;
+	template: LegislativeTemplate;
 	user: LegislativeUser;
 	representative: Representative;
 	office: Office;

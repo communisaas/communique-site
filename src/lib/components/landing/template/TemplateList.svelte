@@ -77,14 +77,15 @@
 		{/each}
 	{:else}
 		{#each templates as template, index (template.id)}
-			{@const isCongressional = template.deliveryMethod === 'certified'}
+			{@const isCongressional = template.deliveryMethod === 'cwc'}
 			{@const isHovered = hoveredTemplate === template.id}
 			<button
 				type="button"
 				data-template-button
 				data-template-id={template.id}
 				data-testid="template-button-{template.id}"
-				class="relative flex w-full transform-gpu items-start justify-between gap-3 rounded-md border-2 border-l-4 p-3 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg md:p-4"
+				class="relative flex w-full items-start justify-between gap-3 rounded-md border-2 border-l-4 p-3 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg md:p-4"
+				style="will-change: transform; backface-visibility: hidden;"
 				class:cursor-pointer={selectedId !== template.id}
 				class:cursor-default={selectedId === template.id}
 				class:border-direct-400={selectedId === template.id && !isCongressional}

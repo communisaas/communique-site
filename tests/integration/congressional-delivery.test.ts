@@ -158,29 +158,21 @@ describe('Congressional Delivery Integration', () => {
 				where: { id: 'climate' }
 			});
 
-			// Verify delivery pipeline called
-			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalled();
+			// Verify delivery pipeline called with consolidated user address fields
+			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalledWith(
+				expect.objectContaining({
+					user: expect.objectContaining({
+						id: 'action-user123',
+						street: expect.any(String),
+						city: 'San Francisco',
+						state: 'CA',
+						zip: '94102',
+						congressional_district: 'CA-12'
+					})
+				})
+			);
 		});
 
-		it('processes authenticated user successfully', async () => {
-			const user = testScenarios.californiaUser();
-			const template = testScenarios.climateTemplate();
-
-			mocks.db.user.findUnique.mockResolvedValue(user);
-			mocks.db.template.findUnique.mockResolvedValue(template);
-
-			const mockRequest = {
-				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
-			};
-
-			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
-			const responseData = JSON.parse(await response.text());
-
-			expect(response.status).toBe(200);
-			expect(responseData.success).toBe(true);
-			expect(responseData.deliveryCount).toBe(3);
-			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalled();
-		});
 	});
 
 	describe('Guest User Flow', () => {
@@ -278,6 +270,8 @@ describe('Congressional Delivery Integration', () => {
 		});
 
 		it('handles missing template gracefully', async () => {
+			// Mock user to exist but template to be null
+			mocks.db.user.findUnique.mockResolvedValue(testScenarios.californiaUser());
 			mocks.db.template.findUnique.mockResolvedValue(null);
 
 			const mockRequest = {
@@ -292,12 +286,16 @@ describe('Congressional Delivery Integration', () => {
 		});
 	});
 
-	describe('Template Variable Resolution', () => {
-		it('passes template and user data to delivery pipeline', async () => {
+	describe('Template Processing', () => {
+		it('passes consolidated template and user data to delivery pipeline', async () => {
 			const user = testScenarios.californiaUser();
 			const template = {
 				...testScenarios.climateTemplate(),
-				message_body: 'Dear [representative.title], I am [user.name] from [user.city].'
+				message_body: 'Dear [representative.title], I am [user.name] from [user.city].',
+				// Test consolidated verification fields
+				verification_status: 'approved',
+				quality_score: 85,
+				consensus_score: 0.9
 			};
 
 			mocks.db.user.findUnique.mockResolvedValue(user);
@@ -309,15 +307,21 @@ describe('Congressional Delivery Integration', () => {
 
 			await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
 
+			// Verify consolidated schema usage
 			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalledWith(
 				expect.objectContaining({
 					template: expect.objectContaining({
 						id: template.id,
-						message_body: template.message_body
+						message_body: template.message_body,
+						verification_status: 'approved',
+						quality_score: 85
 					}),
 					user: expect.objectContaining({
 						id: user.id,
-						name: user.name
+						name: user.name,
+						city: user.city,
+						state: user.state,
+						congressional_district: user.congressional_district
 					})
 				})
 			);

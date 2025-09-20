@@ -2,26 +2,23 @@
  * API TYPES - Eliminate 'any' pollution in API handlers
  */
 
-// Analytics Event Types
-export interface AnalyticsEvent {
-	event:
-		| 'template_viewed'
-		| 'onboarding_started'
-		| 'auth_completed'
-		| 'template_used'
-		| 'template_shared';
-	template_id: string;
+// Analytics Event Types - Updated for Phase 1 Consolidation
+export interface AnalyticsEventCreate {
+	name: string;
+	event_type: 'pageview' | 'interaction' | 'conversion' | 'funnel' | 'campaign';
+	template_id?: string;
 	user_id?: string;
-	session_id?: string;
-	source?: string;
-	properties?: Record<string, string | number | boolean>;
-	timestamp: string;
-	ip_address?: string;
-	user_agent?: string;
+	session_id: string;
+	funnel_step?: number;
+	experiment_id?: string;
+	properties?: Record<string, any>;
+	timestamp?: string;
 }
 
-export interface EnrichedAnalyticsEvent extends AnalyticsEvent {
-	server_timestamp: string;
+export interface EnrichedAnalyticsEvent extends AnalyticsEventCreate {
+	id: string;
+	computed_metrics: Record<string, any>;
+	created_at: Date;
 }
 
 // Template Update Data
@@ -111,6 +108,13 @@ export interface ChallengeVoteRequest {
 	challengeId: string;
 	userId: string;
 	vote: 'support' | 'oppose';
+	stakeAmount: string;
+}
+
+export interface ProcessChallengeVoteParams {
+	challengeId: string;
+	userId: string;
+	side: 'support' | 'oppose';
 	stakeAmount: string;
 }
 

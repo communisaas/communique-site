@@ -85,3 +85,32 @@ export interface SpringValue<T extends number | string | object = number> {
 	update: (fn: (value: T) => T) => void;
 	subscribe: (fn: (value: T) => void) => () => void;
 }
+
+/**
+ * Standard modal component interface for external binding
+ * Ensures all modal components provide consistent open/close methods
+ */
+export interface ModalComponent {
+	/** Optional Svelte component event binding */
+	$on?(type: string, callback: (e: any) => void): () => void;
+	/** Optional Svelte component props setting */
+	$set?(props: Partial<any>): void;
+	/** Open the modal with optional data */
+	open: (data?: unknown) => void;
+	/** Close the modal */
+	close: () => void;
+}
+
+/**
+ * Type guard to check if an object implements the ModalComponent interface
+ */
+export function isModalComponent(obj: unknown): obj is ModalComponent {
+	return (
+		obj !== null &&
+		typeof obj === 'object' &&
+		'open' in obj &&
+		'close' in obj &&
+		typeof (obj as any).open === 'function' &&
+		typeof (obj as any).close === 'function'
+	);
+}

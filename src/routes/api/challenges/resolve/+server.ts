@@ -176,6 +176,29 @@ export const POST: RequestHandler = async ({ request }) => {
 			}
 		});
 
+		// Log challenge resolution in audit system
+		await db.auditLog.create({
+			data: {
+				user_id: challenge.challenger_id, // Use challenger as primary actor
+				action_type: 'civic_action',
+				action_subtype: 'challenge_resolution',
+				audit_data: {
+					challenge_id: challengeId,
+					resolution,
+					consensus_score: consensusScore,
+					reputation_changes: reputationChanges,
+					payouts: {
+						challenger: challengerPayout.toString(),
+						creator: creatorPayout.toString(),
+						treasury: treasuryFee.toString()
+					},
+					resolver_address: resolverAddress,
+					evidence_urls: evidenceUrls
+				},
+				status: 'completed'
+			}
+		});
+
 		// Update user balances
 		const challengerAddress3 = getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
 		if (challengerPayout > 0 && challengerAddress3) {

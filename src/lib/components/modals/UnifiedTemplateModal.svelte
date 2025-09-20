@@ -11,7 +11,7 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 
 	// Connect to modal system with reactive getters
 	const modalStore = createModalStore('template-modal', 'template_modal');
-	let modal: UnifiedModal = $state();
+	let modal: UnifiedModal | undefined = $state();
 
 	// Make getters reactive using $derived
 	const isOpen = $derived(modalStore.isOpen);

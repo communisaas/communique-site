@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
+import type { AnalyticsEvent } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
 
 // Define proper types for delivery status
@@ -111,6 +112,30 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			success_rate: totalDeliveries > 0 ? delivered / totalDeliveries : 0,
 			avg_delivery_time: calculateAverageDeliveryTime(deliveryStatuses)
 		};
+
+		// Optional: Log analytics event for delivery status view
+		if (locals.user?.id) {
+			try {
+				await db.analytics_event.create({
+					data: {
+						session_id: crypto.randomUUID(),
+						user_id: locals.user.id,
+						timestamp: new Date(),
+						name: 'delivery_status_viewed',
+						event_type: 'pageview',
+						properties: {
+							total_deliveries: totalDeliveries,
+							delivered_count: delivered,
+							failed_count: failed,
+							success_rate: metrics.success_rate
+						},
+						computed_metrics: {}
+					}
+				});
+			} catch (_error) {
+				// Ignore analytics errors
+			}
+		}
 
 		return json({
 			success: true,

@@ -3,7 +3,8 @@
  * Secure token handling for email verification and other auth flows
  */
 
-import { sign, verify, TokenExpiredError, JsonWebTokenError } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
+const { sign, verify, TokenExpiredError, JsonWebTokenError } = jwt;
 import { env } from '$env/dynamic/private';
 
 interface EmailVerificationPayload {

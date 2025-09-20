@@ -55,6 +55,10 @@ declare global {
 			track: (event: string, properties?: Record<string, unknown>) => void;
 			identify: (userId: string, traits?: Record<string, unknown>) => void;
 			page: (name?: string, properties?: Record<string, unknown>) => void;
+			// Specialized tracking methods
+			trackAuthCompleted: (templateId: string, provider: string, userId: string) => void;
+			trackTemplateUsed: (templateId: string, deliveryMethod: string, userId?: string) => void;
+			trackInteraction: (element: string, action: string, properties?: Record<string, unknown>) => void;
 		};
 	}
 }

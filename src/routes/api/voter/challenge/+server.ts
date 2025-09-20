@@ -225,6 +225,26 @@ async function createChallenge(data: Record<string, unknown>) {
 
 	const result = await response.json();
 
+	// Log challenge creation in audit system
+	await prisma.auditLog.create({
+		data: {
+			user_id: challengerIdStr,
+			action_type: 'civic_action',
+			action_subtype: 'challenge_create',
+			audit_data: {
+				challenge_id: result.challengeId,
+				defender_id: defenderIdStr,
+				title: titleStr,
+				description,
+				evidence_ipfs: evidenceStr,
+				stake_amount: stakeAmountStr,
+				category,
+				voting_deadline: result.votingDeadline
+			},
+			status: 'completed'
+		}
+	});
+
 	return json({
 		success: true,
 		challengeId: result.challengeId,
@@ -309,6 +329,22 @@ async function voteOnChallenge(data: Record<string, unknown>) {
 	}
 
 	const result = await response.json();
+
+	// Log challenge vote in audit system
+	await prisma.auditLog.create({
+		data: {
+			user_id: userIdStr,
+			action_type: 'civic_action',
+			action_subtype: 'challenge_vote',
+			audit_data: {
+				challenge_id: challengeIdStr,
+				vote: voteStr,
+				stake_amount: stakeAmountStr,
+				voting_power: result.votingPower
+			},
+			status: 'completed'
+		}
+	});
 
 	return json({
 		success: true,
@@ -426,6 +462,25 @@ async function resolveChallenge(data: Record<string, unknown>) {
 			treasury: challengerStake * 0.1
 		};
 	}
+
+	// Log challenge resolution in audit system
+	await prisma.auditLog.create({
+		data: {
+			user_id: winnerId,
+			action_type: 'civic_action',
+			action_subtype: 'challenge_resolve',
+			audit_data: {
+				challenge_id: challengeIdStr,
+				resolution,
+				support_power: supportPower,
+				oppose_power: opposePower,
+				total_voters: totalVoters,
+				total_power: totalPower,
+				rewards
+			},
+			status: 'completed'
+		}
+	});
 
 	return json({
 		success: true,

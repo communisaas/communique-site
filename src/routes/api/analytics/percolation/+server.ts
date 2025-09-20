@@ -3,15 +3,40 @@ import {
 	analyzeCivicInformationCascades,
 	storeCascadeAnalysis
 } from '$lib/core/server/percolation-engine';
+import { db } from '$lib/core/db';
+import type { PercolationData } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
 		// Run percolation-style connectivity analysis on the civic information network
 		const analysis = await analyzeCivicInformationCascades();
 
 		// Store results for historical tracking
 		await storeCascadeAnalysis(analysis);
+
+		// Optional: Log analytics event for percolation analysis view
+		if (locals.user?.id) {
+			try {
+				await db.analytics_event.create({
+					data: {
+						session_id: crypto.randomUUID(),
+						user_id: locals.user.id,
+						timestamp: new Date(),
+						name: 'percolation_analysis_viewed',
+						event_type: 'interaction',
+						properties: {
+							cascade_status: analysis.cascade_potential,
+							network_health: analysis.max_flow_capacity > 10 ? 'strong' : 'weak',
+							critical_node_count: analysis.critical_nodes?.length || 0
+						},
+						computed_metrics: {}
+					}
+				});
+			} catch (_error) {
+				// Ignore analytics errors
+			}
+		}
 
 		return json({
 			success: true,

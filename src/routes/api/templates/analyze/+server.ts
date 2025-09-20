@@ -32,7 +32,20 @@ interface AnalyzeResponse {
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { title, content, deliveryMethod }: AnalyzeRequest = await request.json();
+		let requestData: AnalyzeRequest;
+		
+		// Handle JSON parsing errors gracefully
+		try {
+			requestData = await request.json();
+		} catch (error) {
+			const response: ApiResponse = {
+				success: false,
+				error: createApiError('validation', 'INVALID_JSON', 'Invalid JSON in request body')
+			};
+			return json(response, { status: 400 });
+		}
+		
+		const { title, content, deliveryMethod } = requestData;
 
 		if (!content || !title) {
 			const response: ApiResponse = {
@@ -42,8 +55,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json(response, { status: 400 });
 		}
 
-		// Check if this is certified congressional delivery
-		const isCertifiedDelivery = deliveryMethod === 'certified';
+		// Check if this is CWC congressional delivery
+		const isCertifiedDelivery = deliveryMethod === 'cwc';
 
 		// Create mock template for analysis
 		const mockTemplate = {

@@ -22,14 +22,14 @@ function createPopoverStore() {
 			currentPopover = { id, state: 'opening' };
 		}
 
-		// A short delay to allow the closing animation of the previous popover
+		// A very short delay to allow the closing animation of the previous popover
 		coordinated.transition(
 			() => {
 				if (currentPopover?.id === id && currentPopover.state === 'opening') {
 					currentPopover = { id, state: 'open' };
 				}
 			},
-			50,
+			10,
 			`popover_${id}`
 		);
 	};

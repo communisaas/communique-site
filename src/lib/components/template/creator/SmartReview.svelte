@@ -36,7 +36,7 @@
 				body: JSON.stringify({
 					title: data.objective.title,
 					content: data.content.preview,
-					deliveryMethod: context.channelId === 'certified' ? 'certified' : 'email'
+					deliveryMethod: context.channelId === 'certified' ? 'cwc' : 'email'
 				})
 			});
 
@@ -106,7 +106,8 @@
 	// Derived state
 	const allSuggestionsHandled = $derived(aiSuggestions.every((s) => s.accepted !== undefined));
 	const isReady = $derived(
-		analysisState === 'ready' || (analysisState === 'ai-help' && allSuggestionsHandled)
+		(analysisState as 'checking' | 'ready' | 'suggestions' | 'ai-help') === 'ready' || 
+		((analysisState as 'checking' | 'ready' | 'suggestions' | 'ai-help') === 'ai-help' && allSuggestionsHandled)
 	);
 </script>
 

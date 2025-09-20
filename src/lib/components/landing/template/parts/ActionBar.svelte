@@ -61,7 +61,7 @@
 
 {#if onSendMessage}
 	<div class="mt-4 flex justify-center">
-		{#if template.deliveryMethod === 'certified'}
+		{#if template.deliveryMethod === 'cwc'}
 			<Button
 				variant="verified"
 				size="lg"

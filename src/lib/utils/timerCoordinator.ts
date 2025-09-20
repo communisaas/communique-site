@@ -8,12 +8,31 @@
 import { browser } from '$app/environment';
 
 // Enhanced timer type definition
-export type TimerType = 'modal' | 'transition' | 'feedback' | 'dom' | 'gesture' | 'polling' | 'debounce';
+export type TimerType = 
+	| 'modal' | 'transition' | 'feedback' | 'dom' | 'gesture' | 'polling' | 'debounce' // existing core types
+	| 'scroll-to-channel' | 'retry' | 'progress' // UI timers
+	| 'override-navigation' | 'open-creator' | 'direct-navigation' // navigation timers
+	| 'detection-timeout' | 'copy-success' | 'copy-reset' | 'copy-hide' // action timers
+	| 'cleanup' | 'auto-send' // system timers
+	| 'attention-stagger' | 'attention-settle' | 'attention-end'; // attention management
 
 // Type guard for TimerType
 export function isValidTimerType(type: unknown): type is TimerType {
 	return typeof type === 'string' && 
-		['modal', 'transition', 'feedback', 'dom', 'gesture', 'polling', 'debounce'].includes(type);
+		[
+			// Core types
+			'modal', 'transition', 'feedback', 'dom', 'gesture', 'polling', 'debounce',
+			// UI timers
+			'scroll-to-channel', 'retry', 'progress',
+			// Navigation timers
+			'override-navigation', 'open-creator', 'direct-navigation',
+			// Action timers
+			'detection-timeout', 'copy-success', 'copy-reset', 'copy-hide',
+			// System timers
+			'cleanup', 'auto-send',
+			// Attention management
+			'attention-stagger', 'attention-settle', 'attention-end'
+		].includes(type);
 }
 
 // Type for timer callback functions

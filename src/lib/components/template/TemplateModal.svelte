@@ -256,8 +256,7 @@
 	async function handleSendConfirmation(sent: boolean) {
 		if (sent) {
 			// Check delivery method to determine flow
-			const isCertifiedDelivery =
-				template.deliveryMethod === 'certified' || template.deliveryMethod === 'both';
+			const isCertifiedDelivery = template.deliveryMethod === 'cwc';
 
 			if (isCertifiedDelivery) {
 				// Congressional delivery - use full agent processing pipeline
@@ -553,7 +552,7 @@
 				<!-- Impact Counter -->
 				<div class="text-center">
 					<div class="mb-1 text-3xl font-bold text-slate-900">
-						You + {(template.metrics.sent || 0).toLocaleString()} others
+						You + {(template.metrics?.sent ?? 0).toLocaleString()} others
 					</div>
 					<p class="text-sm text-slate-600">Real voices creating real change</p>
 				</div>

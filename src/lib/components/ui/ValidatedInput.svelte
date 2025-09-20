@@ -12,6 +12,8 @@
 		serverError?: string;
 		onValidation?: (isValid: boolean, error?: string) => void;
 		rows?: number; // For textarea
+		class?: string;
+		style?: string;
 	}
 
 	let {
@@ -23,7 +25,9 @@
 		disabled = false,
 		serverError,
 		onValidation,
-		rows = 4
+		rows = 4,
+		class: className,
+		style
 	}: Props = $props();
 
 	let clientError = $state<string | null>(null);
@@ -73,13 +77,17 @@
 		const base =
 			'block w-full rounded-md border px-3 md:px-3 py-2 md:py-2 text-sm md:text-sm transition-colors focus:outline-none focus:ring-1 md:focus:ring-2 focus:ring-offset-1 md:focus:ring-offset-2';
 
+		let classes = '';
 		if (hasError) {
-			return `${base} border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500`;
+			classes = `${base} border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500`;
 		} else if (isValid) {
-			return `${base} border-green-300 text-gray-900 placeholder-gray-400 focus:border-green-500 focus:ring-green-500`;
+			classes = `${base} border-green-300 text-gray-900 placeholder-gray-400 focus:border-green-500 focus:ring-green-500`;
 		} else {
-			return `${base} border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500`;
+			classes = `${base} border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500`;
 		}
+
+		// Add custom class if provided
+		return className ? `${classes} ${className}` : classes;
 	});
 
 	const labelClasses = $derived.by(() => {
@@ -109,6 +117,7 @@
 			{placeholder}
 			{disabled}
 			{rows}
+			{style}
 			oninput={handleInput}
 			onblur={handleBlur}
 			onfocus={handleFocus}

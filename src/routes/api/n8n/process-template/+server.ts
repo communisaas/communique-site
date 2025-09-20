@@ -41,11 +41,10 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			return json({ error: 'templateId required' }, { status: 400 });
 		}
 
-		// Fetch template
+		// Fetch template with consolidated verification fields
 		const template = await db.template.findUnique({
 			where: { id: templateId },
 			include: {
-				verification: true,
 				user: true
 			}
 		});
@@ -96,25 +95,16 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				violations: verification.decision.riskFactors
 			};
 
-			// Store verification result
-			await db.templateVerification.upsert({
-				where: { template_id: templateId },
-				update: {
-					corrected_subject: verification.decision.corrections?.subject || undefined,
-					corrected_body: verification.decision.corrections?.body || undefined,
+			// Store verification result in template
+			await db.template.update({
+				where: { id: templateId },
+				data: {
+					corrected_subject: verification.decision.corrections?.subject ?? undefined,
+					corrected_body: verification.decision.corrections?.body ?? undefined,
 					severity_level: verification.decision.severityLevel || 0,
-					moderation_status: isApproved ? 'approved' : 'pending',
+					verification_status: isApproved ? 'approved' : 'pending',
 					consensus_score: verification.confidence,
 					reviewed_at: new Date()
-				},
-				create: {
-					template_id: templateId,
-					user_id: template.user?.id || template.userId,
-					corrected_subject: verification.decision.corrections?.subject || undefined,
-					corrected_body: verification.decision.corrections?.body || undefined,
-					severity_level: verification.decision.severityLevel || 0,
-					moderation_status: isApproved ? 'approved' : 'pending',
-					consensus_score: verification.confidence
 				}
 			});
 
@@ -128,26 +118,33 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Stage 2: Consensus (for severity 7+)
 		const severityLevel =
-			response.stages.verification?.severityLevel || template.verification?.severity_level || 0;
+			response.stages.verification?.severityLevel || template.severity_level || 0;
 
 		if ((stage === 'consensus' || stage === 'full') && severityLevel >= 7) {
-			const verificationId = template.verification?.id;
-			if (verificationId) {
-				const consensus = await moderationConsensus.evaluateTemplate(verificationId);
+			const consensus = await moderationConsensus.evaluateTemplate(templateId);
 
-				response.stages.consensus = {
-					approved: consensus.approved,
-					score: consensus.score,
-					agentCount: Object.keys(consensus.agentVotes).length,
-					diversityScore: consensus.diversityScore
-				};
+			response.stages.consensus = {
+				approved: consensus.approved,
+				score: consensus.score,
+				agentCount: Object.keys(consensus.agentVotes).length,
+				diversityScore: consensus.diversityScore
+			};
 
-				// Stop here if consensus rejects
-				if (!consensus.approved) {
-					response.approved = false;
-					response.reason = 'Failed consensus review';
-					return json(response);
+			// Update template with consensus results
+			await db.template.update({
+				where: { id: templateId },
+				data: {
+					agent_votes: consensus.agentVotes,
+					consensus_score: consensus.score,
+					verification_status: consensus.approved ? 'approved' : 'rejected'
 				}
+			});
+
+			// Stop here if consensus rejects
+			if (!consensus.approved) {
+				response.approved = false;
+				response.reason = 'Failed consensus review';
+				return json(response);
 			}
 		}
 

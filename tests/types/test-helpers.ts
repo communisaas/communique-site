@@ -48,6 +48,12 @@ export interface MockUser extends Partial<UserWithReputation> {
 	// Additional fields for backwards compat
 	avatar?: string | null;
 	phone?: string | null;
+	role?: string | null;
+	organization?: string | null;
+	location?: string | null;
+	connection?: string | null;
+	connection_details?: string | null;
+	profile_completed_at?: Date | null;
 	verification_method?: string | null;
 	verified_at?: Date | null;
 	coordinates?: any;
@@ -75,14 +81,13 @@ export interface MockLocals {
  * Provides better type safety while maintaining test flexibility
  */
 export function asRequestEvent<
-	Params extends Record<string, string> = Record<string, string>,
-	RouteId extends string = string
+	Params extends Record<string, string> = Record<string, string>
 >(
 	request: MockRequest | Partial<Request>,
 	locals: MockLocals = {},
 	params: Params = {} as Params,
-	routeId: RouteId = '/api/test' as RouteId
-): RequestEvent<Params, RouteId> {
+	routeId: string = '/api/test'
+): RequestEvent<Params, any> {
 	// Create a more complete mock Request object
 	const mockRequest = {
 		json: vi.fn(),
@@ -103,6 +108,18 @@ export function asRequestEvent<
 		getAll: vi.fn()
 	};
 
+	// Create mock spans for tracing
+	const mockSpan = {
+		setAttribute: vi.fn(),
+		setAttributes: vi.fn(),
+		addEvent: vi.fn(),
+		setStatus: vi.fn(),
+		updateName: vi.fn(),
+		end: vi.fn(),
+		isRecording: vi.fn(() => false),
+		recordException: vi.fn()
+	};
+
 	return {
 		request: mockRequest,
 		locals: {
@@ -112,15 +129,21 @@ export function asRequestEvent<
 		},
 		params,
 		url: new URL(mockRequest.url || 'http://localhost:3000'),
-		route: { id: routeId },
+		route: { id: routeId as any },
 		cookies: mockCookies as any,
 		fetch: globalThis.fetch,
 		getClientAddress: () => '127.0.0.1',
 		platform: {},
 		setHeaders: vi.fn(),
 		isDataRequest: false,
-		isSubRequest: false
-	} as RequestEvent<Params, RouteId>;
+		isSubRequest: false,
+		tracing: {
+			enabled: false,
+			root: mockSpan as any,
+			current: mockSpan as any
+		},
+		isRemoteRequest: false
+	} as RequestEvent<Params, any>;
 }
 
 /**

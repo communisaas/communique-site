@@ -4,7 +4,7 @@ import type {
 	DeliveryResult,
 	Address,
 	LegislativeUser,
-	Template
+	LegislativeTemplate
 } from '../adapters/base';
 import type { Representative } from '../models';
 import { adapterRegistry } from '../adapters/registry';
@@ -13,7 +13,7 @@ import { adapterRegistry } from '../adapters/registry';
 
 export interface DeliveryJob {
 	id: string;
-	template: Template;
+	template: LegislativeTemplate;
 	user: LegislativeUser;
 	target_country?: string;
 	custom_message?: string;
@@ -158,7 +158,7 @@ export class LegislativeDeliveryPipeline {
 	}
 
 	private personalizeMessage(
-		template: Template,
+		template: LegislativeTemplate,
 		user: LegislativeUser,
 		rep: Representative,
 		customMessage?: string

@@ -15,23 +15,26 @@ export interface AnalyticsEvent {
 	session_id: string;
 	user_id?: string;
 	name: string;
-	funnel_id?: string;
-	campaign_id?: string;
-	variation_id?: string;
+	event_type?: string;
+	template_id?: string;
+	funnel_step?: number;
+	experiment_id?: string;
 	properties?: Record<string, unknown>;
 }
 
 export interface SessionData {
 	session_id: string;
 	user_id?: string;
-	fingerprint?: string;
-	ip_address?: string;
-	user_agent?: string;
-	referrer?: string;
 	utm_source?: string;
 	utm_medium?: string;
 	utm_campaign?: string;
 	landing_page?: string;
+	referrer?: string;
+	device_data?: {
+		fingerprint?: string;
+		ip_address?: string;
+		user_agent?: string;
+	};
 }
 
 class DatabaseAnalytics {
@@ -61,9 +64,11 @@ class DatabaseAnalytics {
 			// Gather session data
 			this.sessionData = {
 				session_id: this.sessionId,
-				user_agent: navigator.userAgent,
 				referrer: document.referrer || undefined,
 				landing_page: window.location.href,
+				device_data: {
+					user_agent: navigator.userAgent
+				},
 				...this.parseUTMParams()
 			};
 
@@ -138,12 +143,12 @@ class DatabaseAnalytics {
 	private safeStringify(obj: unknown): string {
 		const seen = new WeakSet();
 		return JSON.stringify(obj, (key, value) => {
-			// Skip DOM elements
-			if (value instanceof HTMLElement) {
+			// Skip DOM elements (only available in browser)
+			if (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement) {
 				return '[HTMLElement]';
 			}
 			// Skip Window/Document objects
-			if (value === window || value === document) {
+			if (typeof window !== 'undefined' && (value === window || value === document)) {
 				return '[Window/Document]';
 			}
 			// Handle circular references
@@ -229,8 +234,9 @@ class DatabaseAnalytics {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: 'template_viewed',
+			event_type: 'interaction',
+			template_id: templateId,
 			properties: {
-				template_id: templateId,
 				source,
 				step: 'landing'
 			}
@@ -300,6 +306,7 @@ class DatabaseAnalytics {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: 'page_view',
+			event_type: 'pageview',
 			properties: {
 				url: url || window.location.href,
 				timestamp: Date.now()
@@ -315,6 +322,7 @@ class DatabaseAnalytics {
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: `${element}_${action}`,
+			event_type: 'interaction',
 			properties: {
 				element,
 				action,

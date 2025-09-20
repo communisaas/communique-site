@@ -172,7 +172,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			parameters: {
 				observationCount: trackedObservations.length,
 				maxCausalStrength: Math.max(...trackedObservations.map((o) => o.causalStrength)),
-				totalDeliveries: typeof template.metrics === 'object' && template.metrics !== null && 'sends' in template.metrics && typeof (template.metrics as { sends: unknown }).sends === 'number' ? (template.metrics as { sends: number }).sends : 0,
+				totalDeliveries: typeof template.metrics === 'object' && template.metrics !== null && 'sent' in template.metrics && typeof (template.metrics as { sent: unknown }).sent === 'number' ? (template.metrics as { sent: number }).sent : 0,
 				recipients: template.template_campaign?.map((c) => c.recipient_id).filter(Boolean) || []
 			}
 		});
@@ -331,7 +331,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			templateId,
 			impactScore: getMetricsValue(template?.metrics, 'impact_score', 0),
 			lastTracked: getMetricsValue(template?.metrics, 'last_impact_at', null),
-			messagesSent: getMetricsValue(template?.metrics, 'sends', 0),
+			messagesSent: getMetricsValue(template?.metrics, 'sent', 0),
 			observations: observations?.length || 0,
 			observationTypes: byType,
 			hasCausation,

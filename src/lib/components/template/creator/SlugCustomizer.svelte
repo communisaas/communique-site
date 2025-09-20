@@ -67,7 +67,7 @@
 
 		try {
 			// Convert channelId to deliveryMethod for API
-			const deliveryMethod = context?.channelId === 'certified' ? 'certified' : 'direct';
+			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 'direct';
 
 			const params = new URLSearchParams({
 				slug: slugToCheck,
@@ -121,7 +121,7 @@
 
 		try {
 			// Convert channelId to deliveryMethod for API
-			const deliveryMethod = context?.channelId === 'certified' ? 'certified' : 'direct';
+			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 'direct';
 
 			const params = new URLSearchParams({
 				slug: slug,

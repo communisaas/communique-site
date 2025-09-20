@@ -15,45 +15,53 @@ model User {
   avatar                    String?
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  
+  // === CONSOLIDATED ADDRESS FIELDS ===
   city                      String?
   congressional_district    String?
   phone                     String?
   state                     String?
   street                    String?
   zip                       String?
+  
+  // === MERGED COORDINATES DATA (from user_coordinates table) ===
+  latitude                  Float?                     // From user_coordinates
+  longitude                 Float?                     // From user_coordinates
+  political_embedding       Json?                      @map("political_embedding") // From user_coordinates
+  community_sheaves         Json?                      @map("community_sheaves") // From user_coordinates
+  embedding_version         String?                    @default("v1") @map("embedding_version") // From user_coordinates
+  coordinates_updated_at    DateTime?                  @map("coordinates_updated_at") // From user_coordinates.last_calculated
+  
+  // === VERIFICATION FIELDS ===
   is_verified               Boolean                    @default(false) @map("is_verified")
   verification_method       String?                    @map("verification_method")
   verification_data         Json?                      @map("verification_data")
   verified_at               DateTime?                  @map("verified_at")
-  voter_address             String?                    @unique @map("voter_address") // VOTER Protocol wallet address
-  voter_reputation          Int                        @default(0) @map("voter_reputation") // VOTER reputation score
   
-  // VOTER Protocol blockchain identity
-  wallet_address            String?                    @unique @map("wallet_address")
-  district_hash             String?                    @map("district_hash")       // Privacy-preserving district ID
+  // === CONSOLIDATED WALLET FIELDS (CRITICAL FIX) ===
+  wallet_address            String?                    @unique @map("wallet_address") // Consolidate voter_address + wallet_address
+  district_hash             String?                    @map("district_hash")
   trust_score               Int                        @default(0) @map("trust_score")
-  reputation_tier           String                     @default("novice") @map("reputation_tier") // 'expert', 'verified', 'novice'
+  reputation_tier           String                     @default("novice") @map("reputation_tier")
   
-  // Reward tracking
+  // === VOTER PROTOCOL FIELDS ===
   pending_rewards           String?                    @map("pending_rewards") // BigInt as string
   total_earned              String?                    @map("total_earned")    // BigInt as string
   last_certification        DateTime?                  @map("last_certification")
-  
-  // Reputation scores
   challenge_score           Int?                       @map("challenge_score")
   civic_score               Int?                       @map("civic_score")
   discourse_score           Int?                       @map("discourse_score")
   
-  // Profile fields
-  role                      String?                    // User's role/profession
-  organization              String?                    // User's organization  
+  // === PROFILE FIELDS ===
+  role                      String?
+  organization              String?
   location                  String?                    // General location description
-  connection                String?                    // Connection to issues they advocate for
-  connection_details        String?                    @map("connection_details") // Additional connection context
-  profile_completed_at      DateTime?                  @map("profile_completed_at") // When profile was completed
-  profile_visibility        String                     @default("private") @map("profile_visibility") // public, private, limited
+  connection                String?
+  connection_details        String?                    @map("connection_details")
+  profile_completed_at      DateTime?                  @map("profile_completed_at")
+  profile_visibility        String                     @default("private") @map("profile_visibility")
+  // === RELATIONS (keep existing) ===
   account                   account[]
-  certification_logs        CertificationLog[]
   political_bubbles         local_political_bubble[]
   political_dead_ends       political_dead_end[]
   political_uncertainties   political_uncertainty[]
@@ -64,15 +72,15 @@ model User {
   source_activations        user_activation[]          @relation("UserSources")
   activations               user_activation[]          @relation("UserActivations")
   context_stack             user_context_stack?
-  coordinates               user_coordinates?
-  representatives           user_representatives[]
+  representatives           user_representatives[]     // Keep this relation
   writing_style             user_writing_style?
-  template_verifications    TemplateVerification[]
-  secondary_emails          UserEmail[]
+  secondary_emails          UserEmail[]                // Keep for multiple email management
   
-  // VOTER Protocol relations
-  civic_actions             CivicAction[]
-  reputation_logs           ReputationLog[]
+  // === CONSOLIDATED AUDIT SYSTEM ===
+  audit_logs                AuditLog[]                 // Unified audit trail (replaces ReputationLog + CertificationLog)
+  civic_actions             CivicAction[]              // Blockchain-only actions
+  
+  // VOTER Protocol challenge relations
   challenger_challenges     Challenge[]            @relation("ChallengerChallenges")
   defender_challenges       Challenge[]            @relation("DefenderChallenges") 
   won_challenges            Challenge[]            @relation("WonChallenges")
@@ -95,7 +103,6 @@ model UserEmail {
   id         String    @id @default(cuid())
   userId     String    @map("user_id")
   email      String    @unique
-  isPrimary  Boolean   @default(false) @map("is_primary")
   isVerified Boolean   @default(false) @map("is_verified")
   verifiedAt DateTime? @map("verified_at")
   createdAt  DateTime  @default(now()) @map("created_at")
@@ -114,7 +121,7 @@ model Template {
   description               String
   category                  String
   type                      String
-  deliveryMethod            String                     @map("delivery_method") // 'direct' | 'certified'
+  deliveryMethod            String                     @map("delivery_method")
   subject                   String?
   preview                   String
   message_body              String
@@ -125,16 +132,55 @@ model Template {
   campaign_id               String?
   status                    String                     @default("draft")
   is_public                 Boolean                    @default(false)
-  createdAt                 DateTime                   @default(now()) @map("created_at")
-  updatedAt                 DateTime                   @updatedAt @map("updated_at")
-  userId                    String?                    @map("user_id")
+  
+  // Usage tracking
+  send_count                Int                        @default(0) @map("send_count")
+  last_sent_at              DateTime?                  @map("last_sent_at")
+  
+  // Geographic scope
   applicable_countries      String[]                   @default([])
   jurisdiction_level        String?
   specific_locations        String[]                   @default([])
+  
+  // === MERGED VERIFICATION FIELDS (from TemplateVerification) ===
+  // Verification status & process
+  verification_status       String?                    @default("pending") @map("verification_status") // 'pending', 'reviewing', 'approved', 'rejected'
+  country_code              String?                    @default("US") @map("country_code") // From TemplateVerification
+  severity_level            Int?                       @map("severity_level") // 1-10 scale
+  
+  // Content correction & backup
+  correction_log            Json?                      @map("correction_log") // Grammar, clarity fixes applied
+  original_content          Json?                      @map("original_content") // Before corrections
+  corrected_subject         String?                    @map("corrected_subject")
+  corrected_body            String?                    @map("corrected_body")
+  
+  // Multi-agent consensus & quality scores
+  agent_votes               Json?                      @map("agent_votes") // {openai: 0.8, gemini: 0.7}
+  consensus_score           Float?                     @map("consensus_score") // Weighted average
+  quality_score             Int                        @default(50) @map("quality_score") // 0-100
+  grammar_score             Int?                       @map("grammar_score")
+  clarity_score             Int?                       @map("clarity_score")
+  completeness_score        Int?                       @map("completeness_score")
+  
+  // Reputation impact (quadratic)
+  reputation_delta          Float                      @default(0) @map("reputation_delta")
+  reputation_applied        Boolean                    @default(false) @map("reputation_applied")
+  
+  // Enhanced timestamps
+  createdAt                 DateTime                   @default(now()) @map("created_at")
+  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  submitted_at              DateTime?                  @map("submitted_at") // When submitted for verification
+  corrected_at              DateTime?                  @map("corrected_at") // When AI corrections applied
+  reviewed_at               DateTime?                  @map("reviewed_at") // When human/final review completed
+  
+  // User relationship
+  userId                    String?                    @map("user_id")
+  user                      User?                      @relation(fields: [userId], references: [id])
+  
+  // === EXISTING RELATIONS (preserve all) ===
   ai_suggestions            ai_suggestions[]
   founding_communities      community_lifecycle[]
   political_uncertainties   political_uncertainty[]
-  user                      User?                      @relation(fields: [userId], references: [id])
   adaptations               template_adaptation[]
   template_analytics        template_analytics[]
   template_campaign         template_campaign[]
@@ -142,9 +188,13 @@ model Template {
   target_morphisms          template_morphism[]        @relation("TargetMorphisms")
   template_personalizations template_personalization[]
   activations               user_activation[]
-  verification              TemplateVerification?
   civic_actions             CivicAction[]
-
+  analytics_events          analytics_event[]          @relation("TemplateAnalyticsEvents")
+  
+  @@index([verification_status])
+  @@index([quality_score])
+  @@index([country_code])
+  @@index([userId])
   @@map("template")
 }
 
@@ -168,16 +218,6 @@ model account {
   @@unique([provider, provider_account_id])
 }
 
-model congressional_office {
-  id           String   @id @default(cuid())
-  office_code  String   @unique
-  state        String
-  district     String
-  member_name  String
-  party        String?
-  is_active    Boolean  @default(true)
-  last_updated DateTime @default(now())
-}
 
 model template_campaign {
   id              String    @id
@@ -198,20 +238,44 @@ model template_campaign {
 }
 
 model representative {
-  id                   String                 @id @default(cuid())
-  bioguide_id          String                 @unique
-  name                 String
-  party                String
-  state                String
-  district             String
-  chamber              String
-  office_code          String
-  phone                String?
-  email                String?
-  is_active            Boolean                @default(true)
-  last_updated         DateTime               @default(now())
-  user_representatives user_representatives[]
+  id                        String                 @id @default(cuid())
+  bioguide_id               String                 @unique
+  name                      String
+  party                     String
+  state                     String
+  district                  String
+  chamber                   String
+  office_code               String
+  phone                     String?
+  email                     String?
+  
+  // === ENHANCED OFFICE INFORMATION (from congressional_office) ===
+  member_name               String?                @map("member_name") // From congressional_office (may differ from name)
+  office_address            String?                @map("office_address")
+  office_city               String?                @map("office_city")
+  office_state              String?                @map("office_state")
+  office_zip                String?                @map("office_zip")
+  
+  // === ENHANCED TERM INFORMATION ===
+  term_start                DateTime?              @map("term_start")
+  term_end                  DateTime?              @map("term_end")
+  current_term              Int?                   @map("current_term") // Term number
+  
+  // === STATUS AND METADATA ===
+  is_active                 Boolean                @default(true)
+  last_updated              DateTime               @default(now()) @map("last_updated")
+  
+  // === DATA SOURCE TRACKING ===
+  data_source               String?                @map("data_source") // 'congress_api', 'bioguide', 'manual'
+  source_updated_at         DateTime?              @map("source_updated_at")
+  
+  // === RELATIONS (preserve all) ===
+  user_representatives      user_representatives[]
 
+  @@index([state, district])
+  @@index([chamber, is_active])
+  @@index([bioguide_id])
+  @@index([office_code])
   @@map("representative")
 }
 
@@ -321,19 +385,6 @@ model user_activation {
   @@map("user_activation")
 }
 
-model user_coordinates {
-  user_id             String   @id @map("user_id")
-  latitude            Float?
-  longitude           Float?
-  political_embedding Json?
-  community_sheaves   Json?
-  embedding_version   String   @default("v1") @map("embedding_version")
-  last_calculated     DateTime @default(now()) @map("last_calculated")
-  updated_at          DateTime @updatedAt @map("updated_at")
-  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("user_coordinates")
-}
 
 model template_morphism {
   id                  String   @id @default(cuid())
@@ -525,7 +576,6 @@ model legislative_channel {
   updated_at            DateTime              @updatedAt @map("updated_at")
   legislative_bodies    legislative_body[]
   template_adaptations  template_adaptation[]
-  template_verifications TemplateVerification[]
 
   @@index([access_tier, is_active])
   @@index([country_code])
@@ -584,168 +634,91 @@ model template_adaptation {
 
 
 
-// ANALYTICS MODELS
+// ANALYTICS MODELS (Consolidated: 8→3 models)
 
-model user_session {
-  id               String    @id @default(cuid())
-  session_id       String    @unique
-  user_id          String?
-  fingerprint      String?
-  ip_address       String?
-  user_agent       String?
-  referrer         String?
-  utm_source       String?
-  utm_medium       String?
-  utm_campaign     String?
-  landing_page     String?
-  events_count     Int       @default(0)
-  page_views       Int       @default(0)
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @default(now()) @updatedAt
-
-  @@index([session_id])
+model analytics_session {
+  session_id        String    @id @unique
+  user_id           String?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  
+  // UTM and acquisition data
+  utm_source        String?
+  utm_medium        String?
+  utm_campaign      String?
+  landing_page      String?
+  referrer          String?
+  
+  // Device and technical data (consolidated into JSONB)
+  device_data       Json      @default("{}") // ip_address, user_agent, fingerprint
+  
+  // Session metrics (aggregated from events)
+  session_metrics   Json      @default("{}") // events_count, page_views, conversion_data
+  
+  // Funnel progress tracking
+  funnel_progress   Json      @default("{}") // Current step per active funnel
+  
+  events            analytics_event[]
+  
   @@index([user_id])
   @@index([created_at])
+  @@index([utm_campaign])
+  @@map("analytics_session")
 }
 
 model analytics_event {
-  id          String    @id @default(cuid())
-  session_id  String
-  user_id     String?
-  timestamp   DateTime  @default(now())
-  name        String
-  funnel_id   String?
-  campaign_id String?
-  variation_id String?
+  id                String    @id @default(cuid())
+  session_id        String
+  user_id           String?
+  timestamp         DateTime  @default(now())
+  name              String
+  event_type        String    @default("interaction") // 'pageview', 'interaction', 'conversion', 'funnel', 'campaign'
+  template_id       String?   // For template-related events
+  funnel_step       Int?      // Current funnel step
+  experiment_id     String?   // Replaces funnel_id, campaign_id, variation_id
+  properties        Json      @default("{}") // Replaces analytics_event_property table
+  computed_metrics  Json      @default("{}") // Cached aggregations for performance
+  created_at        DateTime  @default(now()) @map("created_at")
 
-  funnel      analytics_funnel?   @relation(fields: [funnel_id], references: [id])
-  campaign    analytics_campaign? @relation(fields: [campaign_id], references: [id])
-  variation   analytics_variation? @relation(fields: [variation_id], references: [id])
-  properties  analytics_event_property[]
+  session           analytics_session? @relation(fields: [session_id], references: [session_id])
+  experiment        analytics_experiment? @relation(fields: [experiment_id], references: [id])
+  template          Template? @relation("TemplateAnalyticsEvents", fields: [template_id], references: [id])
 
   @@index([session_id, timestamp])
   @@index([user_id, timestamp])
   @@index([name, timestamp])
+  @@index([event_type, timestamp])
+  @@index([experiment_id])
+  @@map("analytics_event")
 }
 
-model analytics_event_property {
-  id      String @id @default(cuid())
-  event_id String
-  name    String
-  value   String
-
-  event   analytics_event @relation(fields: [event_id], references: [id], onDelete: Cascade)
-
-  @@unique([event_id, name])
-}
-
-model analytics_funnel {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  created_at  DateTime @default(now())
-
-  steps       analytics_funnel_step[]
-  events      analytics_event[]
-}
-
-model analytics_funnel_step {
-  id          String   @id @default(cuid())
-  funnel_id   String
-  name        String
-  step_order  Int
-
-  funnel      analytics_funnel @relation(fields: [funnel_id], references: [id], onDelete: Cascade)
-
-  @@unique([funnel_id, step_order])
-}
-
-model analytics_campaign {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-  start_date  DateTime
-  end_date    DateTime?
-  budget      Float?
-
-  events      analytics_event[]
-}
-
-model analytics_variation {
-  id          String   @id @default(cuid())
-  name        String   @unique
-  description String?
-
-  events      analytics_event[]
-}
-
-// VOTER Protocol Integration
-model CertificationLog {
-  id                 String   @id @default(uuid())
-  user_id            String   @map("user_id")
-  certification_hash String?  @map("certification_hash")
-  action_type        String   @map("action_type")
-  reward_amount      BigInt?  @map("reward_amount")
-  reputation_change  Int?     @map("reputation_change")
-  template_id        String?  @map("template_id")
-  recipient_emails   String[] @map("recipient_emails")
-  status             String   @default("pending") // pending, certified, failed
-  error_message      String?  @map("error_message")
-  created_at         DateTime @default(now()) @map("created_at")
+model analytics_experiment {
+  id                String    @id @default(cuid())
+  name              String    @unique
+  type              String    // 'funnel', 'campaign', 'ab_test'
+  status            String    @default("active") // 'active', 'paused', 'completed'
   
-  user User @relation(fields: [user_id], references: [id])
+  // Unified configuration (JSONB for flexibility)
+  config            Json      @default("{}") // Steps, variations, targeting rules
   
-  @@index([user_id])
-  @@index([certification_hash])
+  // Timeline
+  start_date        DateTime?
+  end_date          DateTime?
+  
+  // Metrics cache for dashboard performance
+  metrics_cache     Json      @default("{}") // Performance data, conversion rates
+  
+  created_at        DateTime  @default(now()) @map("created_at")
+  updated_at        DateTime  @updatedAt @map("updated_at")
+  
+  events            analytics_event[]
+  
+  @@index([type, status])
   @@index([created_at])
-  @@map("certification_log")
+  @@map("analytics_experiment")
 }
 
-model TemplateVerification {
-  id                    String    @id @default(cuid())
-  template_id           String    @unique @map("template_id")
-  user_id               String    @map("user_id")
-  country_code          String    @default("US") @map("country_code")
-  
-  // Stage 1: Auto-correction
-  correction_log        Json?     @map("correction_log") // Grammar, clarity fixes applied
-  original_content      Json?     @map("original_content") // Before corrections
-  corrected_subject     String?   @map("corrected_subject")
-  corrected_body        String?   @map("corrected_body")
-  
-  // Stage 2: Moderation  
-  moderation_status     String    @default("pending") @map("moderation_status") // pending, reviewing, approved, rejected
-  severity_level        Int?      @map("severity_level") // 1-10 scale
-  
-  // Multi-agent consensus
-  agent_votes           Json?     @map("agent_votes") // {openai: 0.8, gemini: 0.7}
-  consensus_score       Float?    @map("consensus_score") // Weighted average
-  
-  // Quality metrics
-  quality_score         Int       @default(50) @map("quality_score") // 0-100
-  grammar_score         Int?      @map("grammar_score")
-  clarity_score         Int?      @map("clarity_score")
-  completeness_score    Int?      @map("completeness_score")
-  
-  // Reputation impact (quadratic)
-  reputation_delta      Float     @default(0) @map("reputation_delta")
-  reputation_applied    Boolean   @default(false) @map("reputation_applied")
-  
-  // Timestamps
-  submitted_at          DateTime  @default(now()) @map("submitted_at")
-  corrected_at          DateTime? @map("corrected_at")
-  reviewed_at           DateTime? @map("reviewed_at")
-  
-  // Relations
-  template              Template  @relation(fields: [template_id], references: [id])
-  user                  User      @relation(fields: [user_id], references: [id])
-  legislative_channel   legislative_channel? @relation(fields: [country_code], references: [country_code])
-  
-  @@index([template_id])
-  @@index([user_id])
-  @@index([moderation_status])
-  @@map("template_verification")
-}
+
 
 model DeliveryLog {
   id              String   @id @default(cuid())
@@ -764,85 +737,109 @@ model DeliveryLog {
   @@map("delivery_logs")
 }
 
+// ============= CONSOLIDATED AUDIT SYSTEM (4→2 MODELS) =============
+// Enhanced unified audit trail for all user actions
+
 model AuditLog {
-  id         String   @id @default(cuid())
-  user_id    String   @map("user_id")
-  action     String
-  metadata   Json     @default("{}")
-  ip_address String?  @map("ip_address")
-  user_agent String?  @map("user_agent")
-  created_at DateTime @default(now()) @map("created_at")
+  id                        String    @id @default(cuid())
+  user_id                   String    @map("user_id")
+  
+  // Core audit classification
+  action_type               String    @map("action_type") // 'civic_action', 'reputation_change', 'verification', 'authentication', 'template_action'
+  action_subtype            String?   @map("action_subtype") // 'cwc_message', 'challenge_create', 'score_update', 'login', 'template_submit'
+  
+  // Unified audit data (flexible JSONB storage)
+  audit_data                Json      @default("{}") @map("audit_data") // Flexible data storage for any audit type
+  
+  // Agent provenance & evidence (from ReputationLog)
+  agent_source              String?   @map("agent_source") // Which agent made the decision
+  agent_decisions           Json?     @map("agent_decisions") // AI decision trail
+  evidence_hash             String?   @map("evidence_hash") // IPFS hash of evidence
+  confidence                Float?    @map("confidence") // Agent confidence 0-1
+  
+  // Reputation tracking (consolidated from ReputationLog)
+  score_before              Int?      @map("score_before")
+  score_after               Int?      @map("score_after") 
+  change_amount             Int?      @map("change_amount")
+  change_reason             String?   @map("change_reason")
+  
+  // Certification tracking (consolidated from CertificationLog)
+  certification_type        String?   @map("certification_type") // 'voter_protocol', 'template_approval', 'identity_verification'
+  certification_hash        String?   @map("certification_hash")
+  certification_data        Json?     @map("certification_data")
+  reward_amount             String?   @map("reward_amount") // BigInt as string (VOTER tokens)
+  recipient_emails          String[] @default([]) @map("recipient_emails")
+  
+  // Blockchain correlation (link to CivicAction if applicable)
+  civic_action_id           String?   @unique @map("civic_action_id")
+  
+  // Technical audit data (from original AuditLog)
+  ip_address                String?   @map("ip_address")
+  user_agent                String?   @map("user_agent")
+  
+  // Metadata & status
+  status                    String    @default("completed") // 'pending', 'completed', 'failed', 'cancelled'
+  error_message             String?   @map("error_message")
+  metadata                  Json?     @default("{}") @map("metadata")
+  
+  // Timestamps
+  created_at                DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  user                      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  civic_action              CivicAction? @relation(fields: [civic_action_id], references: [id])
   
   @@index([user_id])
-  @@index([action])
+  @@index([action_type])
   @@index([created_at])
-  @@map("audit_logs")
+  @@index([change_reason])
+  @@index([certification_type])
+  @@index([certification_hash])
+  @@map("audit_log")
 }
 
 // ============= VOTER PROTOCOL EXTENSIONS =============
 // Blockchain identity and civic action tracking
 
+// Refocused CivicAction: Blockchain-specific only
 model CivicAction {
-  id              String    @id @default(cuid())
-  user_id         String    @map("user_id")
-  template_id     String?   @map("template_id")
-  action_type     String    @map("action_type")    // 'cwc_message', 'template_submit', 'challenge_create'
+  id                        String    @id @default(cuid())
+  user_id                   String    @map("user_id")
   
-  // Blockchain integration
-  tx_hash         String?   @map("tx_hash")        // Ethereum/Ronin transaction
-  reward_wei      String?   @map("reward_wei")     // BigInt as string
-  status          String    @default("pending")    // 'pending', 'completed', 'failed'
+  // Core action identification (minimal, just for blockchain correlation)
+  action_type               String    @map("action_type") // 'cwc_message', 'template_submit', 'challenge_create'
+  template_id               String?   @map("template_id")
   
-  // Provenance data from AI agents
-  agent_decisions Json?     @map("agent_decisions") // AI decision trail
-  consensus_data  Json?     @map("consensus_data")  // Multi-model voting results
+  // === BLOCKCHAIN INTEGRATION ONLY ===
+  tx_hash                   String?   @map("tx_hash") // Ethereum/Monad transaction hash
+  reward_wei                String?   @map("reward_wei") // BigInt as string (VOTER tokens)
+  status                    String    @default("pending") // 'pending', 'confirmed', 'failed'
   
-  // Metadata for extensibility
-  metadata        Json?     @default("{}")
+  // Blockchain proof & validation
+  block_number              Int?      @map("block_number")
+  confirmation_count        Int?      @map("confirmation_count")
+  gas_used                  String?   @map("gas_used") // BigInt as string
   
-  created_at      DateTime  @default(now()) @map("created_at")
-  completed_at    DateTime? @map("completed_at")
+  // Multi-agent consensus for blockchain actions
+  consensus_data            Json?     @map("consensus_data") // Multi-model voting results for rewards
   
-  // Relations  
-  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  template        Template? @relation(fields: [template_id], references: [id])
+  // Timestamps
+  created_at                DateTime  @default(now()) @map("created_at")
+  confirmed_at              DateTime? @map("confirmed_at")
   
-  @@map("civic_action")
+  // Relations
+  user                      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  template                  Template? @relation(fields: [template_id], references: [id])
+  audit_log                 AuditLog? // One-to-one with audit trail entry
+  
   @@index([user_id])
   @@index([action_type])
   @@index([status])
+  @@index([tx_hash])
   @@index([created_at])
+  @@map("civic_action")
 }
 
-model ReputationLog {
-  id              String    @id @default(cuid())
-  user_id         String    @map("user_id")
-  
-  // Score changes for ERC-8004 compliance
-  score_before    Int       @map("score_before")
-  score_after     Int       @map("score_after")
-  change_amount   Int       @map("change_amount")
-  change_reason   String    @map("change_reason")
-  
-  // Blockchain proof
-  tx_hash         String?   @map("tx_hash")
-  block_number    Int?      @map("block_number")
-  
-  // Agent provenance
-  agent_source    String?   @map("agent_source")    // Which agent made change
-  evidence_hash   String?   @map("evidence_hash")   // IPFS hash of evidence
-  confidence      Float?    @map("confidence")      // Agent confidence 0-1
-  
-  created_at      DateTime  @default(now()) @map("created_at")
-  
-  // Relations
-  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  
-  @@map("reputation_log")
-  @@index([user_id])
-  @@index([created_at])
-  @@index([change_reason])
-}
 
 model Challenge {
   id                String    @id @default(cuid())
@@ -917,4 +914,29 @@ model ChallengeStake {
   @@unique([challenge_id, user_id])  // One stake per user per challenge
   @@index([challenge_id])
   @@index([user_id])
+}
+
+model RewardCalculation {
+  id                String    @id @default(cuid())
+  user_address      String    @map("user_address")
+  action_type       String    @map("action_type")
+  
+  // Reward calculation details
+  base_reward_usd   String    @map("base_reward_usd")
+  total_multiplier  String    @map("total_multiplier")
+  reward_usd        String    @map("reward_usd")
+  reward_wei        String    @map("reward_wei")
+  eth_price         String    @map("eth_price")
+  
+  // Agent decision data
+  multipliers       Json      @default("{}") @map("multipliers")
+  network_activity  Json      @default("{}") @map("network_activity")
+  agent_decisions   Json      @default("{}") @map("agent_decisions")
+  
+  created_at        DateTime  @default(now()) @map("created_at")
+  
+  @@map("reward_calculation")
+  @@index([user_address])
+  @@index([action_type])
+  @@index([created_at])
 }

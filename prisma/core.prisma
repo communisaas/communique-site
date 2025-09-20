@@ -65,12 +65,12 @@ model User {
   
   // VOTER Protocol relations
   civic_actions          CivicAction[]
-  reputation_logs        ReputationLog[]
+  audit_logs             AuditLog[]             // Phase 3: Consolidated audit trail
+  reputation_logs        ReputationLog[]        // Legacy: Will be migrated to AuditLog
   challenger_challenges  Challenge[]            @relation("ChallengerChallenges")
   defender_challenges    Challenge[]            @relation("DefenderChallenges") 
   won_challenges         Challenge[]            @relation("WonChallenges")
   challenge_stakes       ChallengeStake[]
-  template_verifications TemplateVerification[]
 
   @@map("user")
 }
@@ -143,9 +143,28 @@ model Template {
   // Core relations
   template_campaign template_campaign[]
   civic_actions     CivicAction[]
-  verification      TemplateVerification?
+  
+  // Consolidated verification fields (moved from TemplateVerification)
+  verification_status   String         @default("pending") @map("verification_status") // 'pending', 'approved', 'rejected', 'reviewing'
+  severity_level        Int?           @map("severity_level")
+  original_content      Json?          @map("original_content")
+  correction_log        Json?          @map("correction_log")
+  corrected_subject     String?        @map("corrected_subject")
+  corrected_body        String?        @map("corrected_body")
+  grammar_score         Float?         @map("grammar_score")
+  clarity_score         Float?         @map("clarity_score")
+  completeness_score    Float?         @map("completeness_score")
+  quality_score         Float?         @map("quality_score")
+  agent_votes           Json?          @map("agent_votes")
+  consensus_score       Float?         @map("consensus_score")
+  reputation_delta      Int?           @map("reputation_delta")
+  reputation_applied    Boolean        @default(false) @map("reputation_applied")
+  reviewed_at           DateTime?      @map("reviewed_at")
 
   @@map("template")
+  @@index([verification_status])
+  @@index([userId])
+  @@index([createdAt])
 }
 
 model template_campaign {
@@ -169,20 +188,44 @@ model template_campaign {
 // CONGRESSIONAL FEATURES
 
 model representative {
-  id                   String                 @id @default(cuid())
-  bioguide_id          String                 @unique
-  name                 String
-  party                String
-  state                String
-  district             String
-  chamber              String
-  office_code          String
-  phone                String?
-  email                String?
-  is_active            Boolean                @default(true)
-  last_updated         DateTime               @default(now()) @map("last_updated")
-  user_representatives user_representatives[]
+  id                        String                 @id @default(cuid())
+  bioguide_id               String                 @unique
+  name                      String
+  party                     String
+  state                     String
+  district                  String
+  chamber                   String
+  office_code               String
+  phone                     String?
+  email                     String?
+  
+  // === ENHANCED OFFICE INFORMATION (from congressional_office) ===
+  member_name               String?                @map("member_name") // From congressional_office (may differ from name)
+  office_address            String?                @map("office_address")
+  office_city               String?                @map("office_city")
+  office_state              String?                @map("office_state")
+  office_zip                String?                @map("office_zip")
+  
+  // === ENHANCED TERM INFORMATION ===
+  term_start                DateTime?              @map("term_start")
+  term_end                  DateTime?              @map("term_end")
+  current_term              Int?                   @map("current_term") // Term number
+  
+  // === STATUS AND METADATA ===
+  is_active                 Boolean                @default(true)
+  last_updated              DateTime               @default(now()) @map("last_updated")
+  
+  // === DATA SOURCE TRACKING ===
+  data_source               String?                @map("data_source") // 'congress_api', 'bioguide', 'manual'
+  source_updated_at         DateTime?              @map("source_updated_at")
+  
+  // === RELATIONS (preserve all) ===
+  user_representatives      user_representatives[]
 
+  @@index([state, district])
+  @@index([chamber, is_active])
+  @@index([bioguide_id])
+  @@index([office_code])
   @@map("representative")
 }
 
@@ -201,16 +244,6 @@ model user_representatives {
   @@map("user_representatives")
 }
 
-model congressional_office {
-  id           String   @id @default(cuid())
-  office_code  String   @unique
-  state        String
-  district     String
-  member_name  String
-  party        String?
-  is_active    Boolean  @default(true)
-  last_updated DateTime @default(now()) @map("last_updated")
-}
 
 // LEGISLATIVE SYSTEM (BETA)
 
@@ -268,36 +301,96 @@ model legislative_body {
 // ============= VOTER PROTOCOL EXTENSIONS =============
 // Blockchain identity and civic action tracking
 
+// === PHASE 3 CONSOLIDATED AUDIT SYSTEM ===
+
+model AuditLog {
+  id              String    @id @default(cuid())
+  user_id         String    @map("user_id")
+  
+  // Core audit classification
+  action_type     String    @map("action_type")    // 'civic_action', 'reputation_change', 'verification', 'authentication', 'template_action'
+  action_subtype  String?   @map("action_subtype") // 'cwc_message', 'challenge_create', 'score_update', 'login', 'template_submit'
+  
+  // Unified audit data (flexible JSONB storage)
+  audit_data      Json      @map("audit_data")     // Flexible data storage for any audit type
+  
+  // Agent provenance & evidence (from ReputationLog)
+  agent_source    String?   @map("agent_source")   // Which agent made the decision
+  agent_decisions Json?     @map("agent_decisions") // AI decision trail
+  evidence_hash   String?   @map("evidence_hash")  // IPFS hash of evidence
+  confidence      Float?    @map("confidence")     // Agent confidence 0-1
+  
+  // Reputation tracking (consolidated from ReputationLog)
+  score_before    Int?      @map("score_before")
+  score_after     Int?      @map("score_after")
+  change_amount   Int?      @map("change_amount")
+  change_reason   String?   @map("change_reason")
+  
+  // Certification tracking (for future CertificationLog functionality)
+  certification_type String? @map("certification_type") // 'voter_protocol', 'template_approval', 'identity_verification'
+  certification_data Json?   @map("certification_data")
+  reward_amount   String?   @map("reward_amount")       // BigInt as string
+  
+  // Blockchain correlation (link to CivicAction if applicable)
+  civic_action_id String?   @map("civic_action_id")
+  
+  // Metadata & status
+  status          String    @default("pending")         // 'pending', 'completed', 'failed', 'cancelled'
+  metadata        Json?     @map("metadata")
+  
+  // Timestamps
+  created_at      DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  civic_action    CivicAction? @relation(fields: [civic_action_id], references: [id])
+  
+  @@map("audit_log")
+  @@index([user_id])
+  @@index([action_type])
+  @@index([action_subtype])
+  @@index([status])
+  @@index([created_at])
+  @@index([civic_action_id])
+}
+
 model CivicAction {
   id              String    @id @default(cuid())
   user_id         String    @map("user_id")
   template_id     String?   @map("template_id")
+  
+  // Core action identification (minimal, just for blockchain correlation)
   action_type     String    @map("action_type")    // 'cwc_message', 'template_submit', 'challenge_create'
   
-  // Blockchain integration
-  tx_hash         String?   @map("tx_hash")        // Ethereum/Ronin transaction
-  reward_wei      String?   @map("reward_wei")     // BigInt as string
-  status          String    @default("pending")    // 'pending', 'completed', 'failed'
+  // === BLOCKCHAIN INTEGRATION ONLY ===
+  tx_hash         String?   @map("tx_hash")        // Ethereum/Monad transaction hash
+  reward_wei      String?   @map("reward_wei")     // BigInt as string (VOTER tokens)
+  status          String    @default("pending")    // 'pending', 'confirmed', 'failed'
   
-  // Provenance data from AI agents
-  agent_decisions Json?     @map("agent_decisions") // AI decision trail
-  consensus_data  Json?     @map("consensus_data")  // Multi-model voting results
+  // Blockchain proof & validation
+  block_number    Int?      @map("block_number")
+  confirmation_count Int?   @map("confirmation_count")
+  gas_used        String?   @map("gas_used")       // BigInt as string
   
-  // Metadata for extensibility
-  metadata        Json?     @default("{}")
+  // Multi-agent consensus for blockchain actions
+  consensus_data  Json?     @map("consensus_data") // Multi-model voting results for rewards
   
+  // Timestamps
   created_at      DateTime  @default(now()) @map("created_at")
-  completed_at    DateTime? @map("completed_at")
+  confirmed_at    DateTime? @map("confirmed_at")
   
   // Relations  
   user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
   template        Template? @relation(fields: [template_id], references: [id])
+  audit_logs      AuditLog[] // Phase 3: Audit logs can reference civic actions
   
   @@map("civic_action")
   @@index([user_id])
   @@index([action_type])
   @@index([status])
   @@index([created_at])
+  @@index([tx_hash])
+  @@index([block_number])
 }
 
 model ReputationLog {
@@ -405,55 +498,6 @@ model ChallengeStake {
   @@index([user_id])
 }
 
-// ============= TEMPLATE VERIFICATION SYSTEM =============
-// AI-powered template moderation and verification system
-
-model TemplateVerification {
-  id                  String    @id @default(cuid())
-  template_id         String    @unique @map("template_id")
-  user_id             String?   @map("user_id")
-  country_code        String?   @map("country_code")
-  
-  // Moderation status
-  moderation_status   String    @default("pending") @map("moderation_status") // 'pending', 'approved', 'rejected', 'reviewing'
-  severity_level      Int?      @map("severity_level")
-  
-  // Original content backup
-  original_content    Json?     @map("original_content")
-  
-  // Correction tracking
-  correction_log      Json?     @map("correction_log")
-  corrected_subject   String?   @map("corrected_subject")
-  corrected_body      String?   @map("corrected_body")
-  
-  // Quality scores
-  grammar_score       Float?    @map("grammar_score")
-  clarity_score       Float?    @map("clarity_score")
-  completeness_score  Float?    @map("completeness_score")
-  quality_score       Float?    @map("quality_score")
-  
-  // AI agent decisions
-  agent_votes         Json?     @map("agent_votes")
-  consensus_score     Float?    @map("consensus_score")
-  
-  // Reputation system integration
-  reputation_delta    Int?      @map("reputation_delta")
-  reputation_applied  Boolean   @default(false) @map("reputation_applied")
-  
-  // Timestamps
-  created_at          DateTime  @default(now()) @map("created_at")
-  reviewed_at         DateTime? @map("reviewed_at")
-  
-  // Relations
-  template            Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
-  user                User?     @relation(fields: [user_id], references: [id])
-
-  @@map("template_verification")
-  @@index([moderation_status])
-  @@index([template_id])
-  @@index([user_id])
-  @@index([created_at])
-}
 
 // ============= N8N WORKFLOW OPERATIONAL TABLES =============
 // Tables for workflow execution state and caching

@@ -11,7 +11,7 @@ interface CreateTemplateRequest {
 	message_body: string;
 	category?: string;
 	type: string;
-	deliveryMethod: string; // Maps to delivery_method in Prisma
+	deliveryMethod: string; // Prisma field name (mapped to delivery_method in database)
 	preview: string;
 	description?: string;
 	status?: string;
@@ -93,9 +93,9 @@ function validateTemplateData(data: unknown): {
 		errors.push(createValidationError('type', 'VALIDATION_REQUIRED', 'Template type is required'));
 	}
 
-	if (!templateData.delivery_method || typeof templateData.delivery_method !== 'string') {
+	if (!templateData.deliveryMethod || typeof templateData.deliveryMethod !== 'string') {
 		errors.push(
-			createValidationError('delivery_method', 'VALIDATION_REQUIRED', 'Delivery method is required')
+			createValidationError('deliveryMethod', 'VALIDATION_REQUIRED', 'Delivery method is required')
 		);
 	}
 
@@ -103,13 +103,13 @@ function validateTemplateData(data: unknown): {
 		return { isValid: false, errors };
 	}
 
-	// Return valid data with defaults (map delivery_method to deliveryMethod for Prisma)
+	// Return valid data with defaults
 	const validData: CreateTemplateRequest = {
 		title: templateData.title as string,
 		message_body: templateData.message_body as string,
 		preview: templateData.preview as string,
 		type: templateData.type as string,
-		deliveryMethod: templateData.delivery_method as string,
+		deliveryMethod: templateData.deliveryMethod as string,
 		subject: (templateData.subject as string) || `Regarding: ${templateData.title}`,
 		category: (templateData.category as string) || 'General',
 		description: (templateData.description as string) || (templateData.preview as string)?.substring(0, 160) || '',
@@ -119,9 +119,9 @@ function validateTemplateData(data: unknown): {
 		cwc_config: (templateData.cwc_config as Record<string, any>) || {},
 		recipient_config: (templateData.recipient_config as Record<string, any>) || {},
 		metrics: (templateData.metrics as Record<string, any>) || {
-			sends: 0,
-			opens: 0,
-			clicks: 0,
+			sent: 0,
+			opened: 0,
+			clicked: 0,
 			views: 0
 		}
 	};
@@ -169,8 +169,19 @@ export const GET: RequestHandler = async () => {
 			preview: template.preview,
 			metrics: template.metrics,
 			delivery_config: template.delivery_config,
+			cwc_config: template.cwc_config, // Was missing from API response
 			recipient_config: template.recipient_config,
+			campaign_id: template.campaign_id, // Was missing from API response
+			status: template.status, // Was missing from API response
 			is_public: template.is_public,
+			// Usage tracking fields
+			send_count: template.send_count,
+			last_sent_at: template.last_sent_at,
+			// Geographic scope fields - were missing from API response
+			applicable_countries: template.applicable_countries,
+			jurisdiction_level: template.jurisdiction_level,
+			specific_locations: template.specific_locations,
+			// Optional scope from separate table
 			scope: idToScope.get(template.id) || null,
 			recipientEmails: extractRecipientEmails(
 				typeof template.recipient_config === 'string'
@@ -254,8 +265,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						return json(response, { status: 400 });
 					}
 
-					// Destructure to separate deliveryMethod and map to delivery_method for Prisma
-					const { deliveryMethod, ...templateDataForPrisma } = validData;
 					const newTemplate = await db.template.create({
 						data: {
 							title: validData.title,
@@ -263,7 +272,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							message_body: validData.message_body,
 							category: validData.category || 'General',
 							type: validData.type,
-							deliveryMethod: deliveryMethod,
+							deliveryMethod: validData.deliveryMethod,
 							subject: validData.subject,
 							preview: validData.preview,
 							delivery_config: validData.delivery_config || {},
@@ -273,27 +282,45 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							status: validData.status || 'draft',
 							is_public: validData.is_public || false,
 							slug,
-							userId: user.id
+							userId: user.id,
+							// Consolidated verification fields with defaults
+							verification_status: 'pending',
+							severity_level: null,
+							original_content: null,
+							correction_log: null,
+							corrected_subject: null,
+							corrected_body: null,
+							grammar_score: null,
+							clarity_score: null,
+							completeness_score: null,
+							quality_score: null,
+							agent_votes: null,
+							consensus_score: null,
+							reputation_delta: null,
+							reputation_applied: false,
+							reviewed_at: null
 						}
 					});
 
-					// Create verification record for congressional templates (deliveryMethod === 'certified')
-					if (validData.deliveryMethod === 'certified') {
+					// Set verification fields for congressional templates (deliveryMethod === 'cwc')
+					if (validData.deliveryMethod === 'cwc') {
 						try {
-							const verification = await db.templateVerification.create({
+							// Update template with initial verification status
+							await db.template.update({
+								where: { id: newTemplate.id },
 								data: {
-									template_id: newTemplate.id,
-									user_id: user.id,
+									verification_status: 'pending',
 									country_code: 'US', // TODO: Extract from user profile
-									moderation_status: 'pending'
+									quality_score: 0,
+									reputation_applied: false
 								}
 							});
 
 							// Trigger moderation pipeline via webhook
-							await triggerModerationPipeline(verification.id);
-							console.log(`Created verification for congressional template ${newTemplate.id}`);
+							await triggerModerationPipeline(newTemplate.id);
+							console.log(`Set verification status for congressional template ${newTemplate.id}`);
 						} catch (verificationError) {
-							console.error('Failed to create template verification:', verificationError);
+							console.error('Failed to set template verification status:', verificationError);
 							// Don't fail the template creation, just log the error
 						}
 					}
@@ -348,11 +375,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 }
 
 /**
- * Trigger moderation pipeline for a verification record
+ * Trigger moderation pipeline for a template
  */
-async function triggerModerationPipeline(verificationId: string) {
+async function triggerModerationPipeline(templateId: string) {
 	try {
-		// Call our own moderation webhook with the verification ID
+		// Call our own moderation webhook with the template ID
 		const response = await fetch(
 			`${process.env.ORIGIN || 'http://localhost:5173'}/api/webhooks/template-moderation`,
 			{
@@ -362,7 +389,7 @@ async function triggerModerationPipeline(verificationId: string) {
 					'x-webhook-secret': process.env.N8N_WEBHOOK_SECRET || 'demo-secret'
 				},
 				body: JSON.stringify({
-					verificationId,
+					templateId,
 					source: 'template-creation',
 					timestamp: new Date().toISOString()
 				})
@@ -374,7 +401,7 @@ async function triggerModerationPipeline(verificationId: string) {
 		}
 
 		const result = await response.json();
-		console.log(`Moderation pipeline triggered for verification ${verificationId}:`, result);
+		console.log(`Moderation pipeline triggered for template ${templateId}:`, result);
 
 		return result;
 	} catch (_error) {

@@ -24,45 +24,32 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json({ error: 'Missing required fields' }, { status: 400 });
 		}
 
-		// Create delivery log entry
-		await db.deliveryLog.create({
+		// Create delivery log entry using template_campaign
+		await db.template_campaign.create({
 			data: {
+				id: submissionId || `${templateId}_${userId}_${Date.now()}`,
 				template_id: templateId,
 				user_id: userId,
-				delivery_method: deliveryMethod,
-				success,
-				submission_id: submissionId,
+				delivery_type: deliveryMethod,
+				status: success ? 'delivered' : 'failed',
+				sent_at: new Date(),
+				delivered_at: success ? new Date() : null,
 				error_message: error,
-				metadata: metadata || {},
-				delivered_at: new Date()
+				metadata: metadata || {}
 			}
 		});
 
-		// Update template metrics if successful
+		// Update template send count and last sent tracking
 		if (success && templateId) {
-			const template = await db.template.findUnique({
+			await db.template.update({
 				where: { id: templateId },
-				select: { metrics: true }
+				data: {
+					send_count: {
+						increment: 1
+					},
+					last_sent_at: new Date()
+				}
 			});
-
-			if (template) {
-				// Type guard for metrics
-				const isMetricsObject = (obj: unknown): obj is Record<string, unknown> => {
-					return typeof obj === 'object' && obj !== null;
-				};
-				
-				const currentMetrics = isMetricsObject(template.metrics) ? template.metrics : {};
-				await db.template.update({
-					where: { id: templateId },
-					data: {
-						metrics: {
-							...currentMetrics,
-							sends: (typeof currentMetrics.sends === 'number' ? currentMetrics.sends : 0) + 1,
-							lastSentAt: new Date().toISOString()
-						}
-					}
-				});
-			}
 		}
 
 		// If this was a certified delivery failure, we might want to notify the user

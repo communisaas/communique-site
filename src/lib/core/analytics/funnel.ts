@@ -26,22 +26,63 @@ class FunnelAnalytics {
 	}
 
 	private restoreEvents() {
-		const stored = localStorage.getItem('communique_funnel_events');
-		if (stored) {
-			try {
+		// Check if localStorage is available (not in SSR or private browsing)
+		if (typeof localStorage === 'undefined') {
+			return;
+		}
+		
+		try {
+			const stored = localStorage.getItem('communique_funnel_events');
+			if (stored) {
 				const events = JSON.parse(stored);
 				this.events = events.filter(
 					(e: FunnelEvent) => Date.now() - e.timestamp < 24 * 60 * 60 * 1000 // Keep events for 24 hours
 				);
-			} catch {
+			}
+		} catch {
+			// Handle corrupted localStorage data gracefully
+			try {
 				localStorage.removeItem('communique_funnel_events');
+			} catch {
+				// Even removeItem might fail in some environments
 			}
 		}
 	}
 
+	private safeStringify(obj: unknown): string {
+		const seen = new WeakSet();
+		return JSON.stringify(obj, (key, value) => {
+			// Skip DOM elements (only available in browser)
+			if (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement) {
+				return '[HTMLElement]';
+			}
+			// Skip Window/Document objects
+			if (typeof window !== 'undefined' && (value === window || value === document)) {
+				return '[Window/Document]';
+			}
+			// Handle circular references
+			if (typeof value === 'object' && value !== null) {
+				if (seen.has(value)) {
+					return '[Circular]';
+				}
+				seen.add(value);
+			}
+			// Skip functions
+			if (typeof value === 'function') {
+				return '[Function]';
+			}
+			return value;
+		});
+	}
+
 	private persistEvents() {
-		if (typeof window !== 'undefined') {
-			localStorage.setItem('communique_funnel_events', JSON.stringify(this.events));
+		// Check if localStorage is available (not in SSR or private browsing)
+		if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+			try {
+				localStorage.setItem('communique_funnel_events', this.safeStringify(this.events));
+			} catch {
+				// Handle localStorage write failures (quota exceeded, private browsing, etc.)
+			}
 		}
 	}
 
@@ -69,7 +110,7 @@ class FunnelAnalytics {
 			if (typeof window !== 'undefined') {
 				const failed = JSON.parse(localStorage.getItem('communique_failed_events') || '[]');
 				failed.push(event);
-				localStorage.setItem('communique_failed_events', JSON.stringify(failed));
+				localStorage.setItem('communique_failed_events', this.safeStringify(failed));
 			}
 			console.error('Failed to send analytics event:', _error);
 		}

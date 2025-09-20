@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import TemplatePerformanceCard from './TemplatePerformanceCard.svelte';
 	import DeliveryTracker from './DeliveryTracker.svelte';
 	import SkeletonCard from '$lib/components/ui/SkeletonCard.svelte';
@@ -7,6 +7,7 @@
 	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
 	import SkeletonTable from '$lib/components/ui/SkeletonTable.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import type { AnalyticsEvent, AnalyticsSession, AnalyticsExperiment } from '$lib/types/analytics.ts';
 
 	interface CampaignOverview {
 		total_templates: number;
@@ -34,10 +35,51 @@
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let selectedTimeframe = $state<'24h' | '7d' | '30d'>('7d');
+	let sessionData: AnalyticsSession | null = $state(null);
+	let viewStartTime = Date.now();
+	let experiments: AnalyticsExperiment[] = $state([]);
+
+	// Analytics tracking function using new consolidated schema
+	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+		try {
+			await fetch('/api/analytics/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: eventName,
+					event_type: 'interaction',
+					properties: {
+						user_id: userId,
+						component: 'campaign_dashboard',
+						timestamp: new Date().toISOString(),
+						...properties
+					}
+				})
+			});
+		} catch (error) {
+			console.warn('Analytics tracking failed:', error);
+		}
+	}
 
 	onMount(async () => {
-		await Promise.all([loadOverview(), loadUserTemplates()]);
+		await Promise.all([loadOverview(), loadUserTemplates(), loadActiveExperiments()]);
 		loading = false;
+		
+		// Track dashboard view
+		await trackAnalyticsEvent('campaign_dashboard_view', {
+			selected_timeframe: selectedTimeframe,
+			total_templates: overview?.total_templates || 0
+		});
+	});
+
+	onDestroy(async () => {
+		// Track session duration
+		const sessionDuration = Date.now() - viewStartTime;
+		await trackAnalyticsEvent('campaign_dashboard_session_end', {
+			session_duration_ms: sessionDuration,
+			final_timeframe: selectedTimeframe,
+			templates_interacted: userTemplates.length
+		});
 	});
 
 	async function loadOverview() {
@@ -66,9 +108,31 @@
 		}
 	}
 
+	async function loadActiveExperiments() {
+		try {
+			const response = await fetch('/api/analytics/experiments/active');
+			const data = await response.json();
+
+			if (data.success) {
+				experiments = data.experiments || [];
+			}
+		} catch (_error) {
+			console.error('Failed to load experiments:', _error);
+		}
+	}
+
 	async function handleTimeframeChange(timeframe: '24h' | '7d' | '30d') {
+		const previousTimeframe = selectedTimeframe;
 		selectedTimeframe = timeframe;
 		loading = true;
+		
+		// Track timeframe change
+		await trackAnalyticsEvent('campaign_dashboard_timeframe_change', {
+			previous_timeframe: previousTimeframe,
+			new_timeframe: timeframe,
+			templates_count: userTemplates.length
+		});
+		
 		await loadOverview();
 		loading = false;
 	}
@@ -264,12 +328,71 @@
 			</div>
 		{/if}
 
+		<!-- Active Experiments -->
+		{#if experiments.length > 0}
+			<div class="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+				<div class="mb-4 flex items-center justify-between">
+					<h2 class="text-xl font-semibold text-gray-900">Active Experiments</h2>
+					<Badge variant="success" size="sm">
+						{experiments.length} Running
+					</Badge>
+				</div>
+				<div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+					{#each experiments as experiment}
+						<div class="rounded-lg border border-gray-100 bg-gray-50 p-4">
+							<div class="mb-2 flex items-center justify-between">
+								<h4 class="font-medium text-gray-900">{experiment.name}</h4>
+								<Badge 
+									variant={experiment.type === 'ab_test' ? 'primary' : experiment.type === 'funnel' ? 'success' : 'warning'} 
+									size="sm"
+								>
+									{experiment.type.replace('_', ' ').toUpperCase()}
+								</Badge>
+							</div>
+							<div class="space-y-1 text-sm text-gray-600">
+								{#if experiment.metrics_cache.participants_count}
+									<div>Participants: {experiment.metrics_cache.participants_count}</div>
+								{/if}
+								{#if experiment.metrics_cache.conversion_rate}
+									<div>Conversion Rate: {(experiment.metrics_cache.conversion_rate * 100).toFixed(1)}%</div>
+								{/if}
+								{#if experiment.metrics_cache.statistical_significance}
+									<div>Significance: {(experiment.metrics_cache.statistical_significance * 100).toFixed(1)}%</div>
+								{/if}
+							</div>
+							<button 
+								onclick={async () => {
+									await trackAnalyticsEvent('experiment_view_click', {
+										experiment_id: experiment.id,
+										experiment_type: experiment.type,
+										experiment_status: experiment.status
+									});
+									window.location.href = `/analytics/experiments/${experiment.id}`;
+								}}
+								class="mt-3 w-full rounded bg-participation-primary-600 px-3 py-1 text-xs text-white transition-colors hover:bg-participation-primary-700"
+							>
+								View Details
+							</button>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
+
 		<!-- Template Performance Grid -->
 		<div>
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-xl font-semibold text-gray-900">Template Performance</h2>
 				<a
 					href="/"
+					onclick={async (e) => {
+						e.preventDefault();
+						await trackAnalyticsEvent('create_template_click', {
+							source: 'campaign_dashboard_header',
+							current_templates_count: userTemplates.length
+						});
+						window.location.href = '/';
+					}}
 					class="text-sm font-medium text-participation-primary-600 hover:text-participation-primary-700"
 				>
 					Create New Template →
@@ -290,6 +413,13 @@
 				{#if userTemplates.length > 6}
 					<div class="mt-6 text-center">
 						<button
+							onclick={async () => {
+								await trackAnalyticsEvent('show_all_templates_click', {
+									total_templates: userTemplates.length,
+									displayed_templates: 6
+								});
+								// TODO: Implement show all templates functionality
+							}}
 							class="rounded-lg bg-gray-100 px-4 py-2 text-gray-700 transition-colors hover:bg-gray-200"
 						>
 							Show All {userTemplates.length} Templates
@@ -317,6 +447,14 @@
 					</p>
 					<a
 						href="/"
+						onclick={async (e) => {
+							e.preventDefault();
+							await trackAnalyticsEvent('create_template_click', {
+								source: 'campaign_dashboard_empty_state',
+								current_templates_count: 0
+							});
+							window.location.href = '/';
+						}}
 						class="inline-flex items-center rounded-lg bg-participation-primary-600 px-4 py-2 text-white transition-colors hover:bg-participation-primary-700"
 					>
 						Create First Template

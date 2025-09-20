@@ -46,7 +46,7 @@
 	});
 
 	// Template delivery method checks
-	const isCongressional = $derived(template.deliveryMethod === 'certified');
+	const isCongressional = $derived(template.deliveryMethod === 'cwc');
 	const isDirectOutreach = $derived(template.deliveryMethod === 'email');
 
 	// Dynamic messaging based on source and template type

@@ -35,19 +35,19 @@
 				};
 			case 'profile':
 				return {
-					role: user.profile?.role || '',
-					organization: user.profile?.organization || '',
-					location: user.profile?.location || '',
-					connection: user.profile?.connection || '',
-					connection_details: user.profile?.connection_details || '',
-					profile_visibility: user.profile?.visibility || 'private'
+					role: user.role || '',
+					organization: user.organization || '',
+					location: user.location || '',
+					connection: user.connection || '',
+					connection_details: user.connection_details || '',
+					profile_visibility: user.profile_visibility || 'private'
 				};
 			case 'address':
 				return {
-					street: user.address?.street || '',
-					city: user.address?.city || '',
-					state: user.address?.state || '',
-					zip: user.address?.zip || ''
+					street: user.street || '',
+					city: user.city || '',
+					state: user.state || '',
+					zip: user.zip || ''
 				};
 			default:
 				return {};

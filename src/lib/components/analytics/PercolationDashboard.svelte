@@ -1,29 +1,35 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
+	import type { PercolationData, AnalyticsEvent, AnalyticsSession } from '$lib/types/analytics.ts';
 	// Note: using inline badges here to avoid dependency on specific Badge props
 
-	interface PercolationAnalysis {
-		threshold_probability: number;
-		critical_nodes: string[];
-		bottleneck_edges: any[];
-		max_flow_capacity: number;
-		cascade_potential: 'subcritical' | 'critical' | 'supercritical';
-	}
-
-	interface NetworkHealth {
-		cascade_status: string;
-		network_health: string;
-		critical_node_count: number;
-		bottleneck_severity: string;
-		recommendation: string;
-	}
-
-	let analysis: PercolationAnalysis | null = $state(null);
-	let interpretation: NetworkHealth | null = $state(null);
+	let percolationData: PercolationData | null = $state(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let lastUpdated = $state<string>('');
+	let sessionData: AnalyticsSession | null = $state(null);
+
+	// Analytics tracking function using new consolidated schema
+	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+		try {
+			await fetch('/api/analytics/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: eventName,
+					event_type: 'interaction',
+					properties: {
+						dashboard_type: 'percolation',
+						timestamp: new Date().toISOString(),
+						...properties
+					}
+				})
+			});
+		} catch (error) {
+			console.warn('Analytics tracking failed:', error);
+		}
+	}
 
 	onMount(async () => {
 		await loadAnalysis();
@@ -35,14 +41,20 @@
 
 		try {
 			const response = await fetch('/api/analytics/percolation');
-			const data = await response.json();
+			const data: PercolationData = await response.json();
 
 			if (data.success) {
-				analysis = data.analysis;
-				interpretation = data.interpretation;
-				lastUpdated = new Date(data.timestamp).toLocaleString();
+				percolationData = data;
+				lastUpdated = new Date().toLocaleString();
+				
+				// Track percolation dashboard view event using new analytics schema
+				await trackAnalyticsEvent('percolation_dashboard_view', {
+					cascade_status: data.data.interpretation.cascade_status,
+					confidence: data.data.interpretation.confidence,
+					processing_time_ms: data.processing_time_ms
+				});
 			} else {
-				error = data.error || 'Failed to load analysis';
+				error = 'Failed to load percolation analysis';
 			}
 		} catch (_error) {
 			error = 'Network error loading analysis';
@@ -62,13 +74,21 @@
 				body: JSON.stringify({ action: 'refresh' })
 			});
 
-			const data = await response.json();
+			const data: PercolationData = await response.json();
 
 			if (data.success) {
-				analysis = data.analysis;
+				percolationData = data;
 				lastUpdated = new Date().toLocaleString();
+				
+				// Track refresh event using new analytics schema
+				await trackAnalyticsEvent('percolation_dashboard_refresh', {
+					cascade_status: data.data.interpretation.cascade_status,
+					confidence: data.data.interpretation.confidence,
+					processing_time_ms: data.processing_time_ms,
+					refresh_trigger: 'manual'
+				});
 			} else {
-				error = data.error || 'Failed to refresh analysis';
+				error = 'Failed to refresh percolation analysis';
 			}
 		} catch (_error) {
 			error = 'Network error refreshing analysis';
@@ -90,18 +110,6 @@
 		}
 	}
 
-	function getHealthBadgeVariant(health: string): 'success' | 'warning' | 'error' | 'info' {
-		switch (health) {
-			case 'strong':
-				return 'success';
-			case 'moderate':
-				return 'warning';
-			case 'weak':
-				return 'error';
-			default:
-				return 'info';
-		}
-	}
 
 	function getBadgeClass(variant: 'success' | 'warning' | 'error' | 'info'): string {
 		switch (variant) {
@@ -154,34 +162,38 @@
 			</div>
 			<p class="mt-1 text-red-700">{error}</p>
 		</div>
-	{:else if analysis && interpretation}
+	{:else if percolationData}
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<!-- Network Status Overview -->
 			<div class="rounded-lg bg-gradient-to-br from-participation-primary-50 to-indigo-50 p-6">
 				<h3 class="mb-4 text-lg font-semibold text-gray-900">Network Status</h3>
 				<div class="space-y-3">
 					<div class="flex items-center justify-between">
-						<span class="text-gray-600">Cascade Potential</span>
+						<span class="text-gray-600">Cascade Status</span>
 						<span
-							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(getCascadeBadgeVariant(analysis.cascade_potential))}`}
+							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(getCascadeBadgeVariant(percolationData.data.interpretation.cascade_status))}`}
 						>
-							{analysis.cascade_potential.toUpperCase()}
+							{percolationData.data.interpretation.cascade_status.toUpperCase()}
 						</span>
 					</div>
 					<div class="flex items-center justify-between">
-						<span class="text-gray-600">Network Health</span>
-						<span
-							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(getHealthBadgeVariant(interpretation.network_health))}`}
-						>
-							{interpretation.network_health.toUpperCase()}
+						<span class="text-gray-600">Confidence Level</span>
+						<span class="font-mono text-lg font-semibold text-participation-primary-700">
+							{(percolationData.data.interpretation.confidence * 100).toFixed(1)}%
 						</span>
 					</div>
 					<div class="flex items-center justify-between">
-						<span class="text-gray-600">Bottleneck Severity</span>
+						<span class="text-gray-600">Threshold Distance</span>
 						<span
-							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(interpretation.bottleneck_severity === 'high' ? 'error' : 'warning')}`}
+							class={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs md:text-sm ${getBadgeClass(percolationData.data.interpretation.threshold_distance > 0.1 ? 'warning' : 'success')}`}
 						>
-							{interpretation.bottleneck_severity.toUpperCase()}
+							{percolationData.data.interpretation.threshold_distance.toFixed(3)}
+						</span>
+					</div>
+					<div class="flex items-center justify-between">
+						<span class="text-gray-600">Processing Time</span>
+						<span class="font-mono text-sm text-gray-600">
+							{percolationData.processing_time_ms}ms
 						</span>
 					</div>
 				</div>
@@ -194,49 +206,77 @@
 					<div class="flex items-center justify-between">
 						<span class="text-gray-600">Percolation Threshold</span>
 						<span class="font-mono text-lg font-semibold text-green-700">
-							{(analysis.threshold_probability * 100).toFixed(1)}%
+							{(percolationData.data.percolation_threshold * 100).toFixed(1)}%
 						</span>
 					</div>
 					<div class="flex items-center justify-between">
-						<span class="text-gray-600">Max Flow Capacity</span>
+						<span class="text-gray-600">Largest Component</span>
 						<span class="font-mono text-lg font-semibold text-green-700">
-							{analysis.max_flow_capacity.toFixed(2)}
+							{percolationData.data.largest_component_size}
 						</span>
 					</div>
 					<div class="flex items-center justify-between">
-						<span class="text-gray-600">Critical Nodes</span>
+						<span class="text-gray-600">Total Components</span>
 						<span class="font-mono text-lg font-semibold text-green-700">
-							{analysis.critical_nodes.length}
+							{percolationData.data.total_components}
 						</span>
 					</div>
 					<div class="flex items-center justify-between">
-						<span class="text-gray-600">Network Bottlenecks</span>
+						<span class="text-gray-600">Activation Probability</span>
 						<span class="font-mono text-lg font-semibold text-green-700">
-							{analysis.bottleneck_edges.length}
+							{(percolationData.data.activation_probability * 100).toFixed(1)}%
 						</span>
 					</div>
 				</div>
 			</div>
 		</div>
 
-		<!-- Recommendation Panel -->
+		<!-- Analysis Insights -->
 		<div class="mt-6 rounded-lg bg-gradient-to-r from-purple-50 to-pink-50 p-6">
-			<h3 class="mb-3 text-lg font-semibold text-gray-900">Strategic Recommendation</h3>
-			<div class="flex items-start">
-				<svg
-					class="mr-3 mt-0.5 h-6 w-6 flex-shrink-0 text-purple-500"
-					fill="none"
-					stroke="currentColor"
-					viewBox="0 0 24 24"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-					></path>
-				</svg>
-				<p class="leading-relaxed text-gray-700">{interpretation.recommendation}</p>
+			<h3 class="mb-3 text-lg font-semibold text-gray-900">Analysis Insights</h3>
+			<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+				<div class="flex items-start">
+					<svg
+						class="mr-3 mt-0.5 h-6 w-6 flex-shrink-0 text-purple-500"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M13 10V3L4 14h7v7l9-11h-7z"
+						></path>
+					</svg>
+					<div>
+						<h4 class="font-medium text-gray-900">Cascade Status</h4>
+						<p class="mt-1 text-sm text-gray-600">
+							Network is in {percolationData.data.interpretation.cascade_status} state with {(percolationData.data.interpretation.confidence * 100).toFixed(0)}% confidence
+						</p>
+					</div>
+				</div>
+				<div class="flex items-start">
+					<svg
+						class="mr-3 mt-0.5 h-6 w-6 flex-shrink-0 text-purple-500"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+						></path>
+					</svg>
+					<div>
+						<h4 class="font-medium text-gray-900">Network Structure</h4>
+						<p class="mt-1 text-sm text-gray-600">
+							{percolationData.data.total_components} components with largest at {percolationData.data.largest_component_size} nodes
+						</p>
+					</div>
+				</div>
 			</div>
 		</div>
 

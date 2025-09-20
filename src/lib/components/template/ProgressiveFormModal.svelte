@@ -44,7 +44,7 @@
 	let addressError = $state('');
 	let emailError = $state('');
 
-	const isCongressional = $derived(template.deliveryMethod === 'certified');
+	const isCongressional = $derived(template.deliveryMethod === 'cwc');
 	const isAuthFlow = $derived(template.deliveryMethod === 'auth');
 	const requiresAddress = $derived(isCongressional && !isAuthFlow);
 	const requiresEmail = $derived(!user || isAuthFlow); // Always need email for auth flow

@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
+	import type { AnalyticsEvent } from '$lib/types/analytics.ts';
 
 	interface TemplatePerformance {
 		template_id: string;
@@ -36,9 +37,52 @@
 	let performance: TemplatePerformance | null = $state(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
+	let viewStartTime = Date.now();
+
+	// Analytics tracking function using new consolidated schema
+	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+		try {
+			await fetch('/api/analytics/events', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					name: eventName,
+					event_type: 'interaction',
+					template_id: templateId,
+					properties: {
+						template_id: templateId,
+						component: 'template_performance_card',
+						compact_mode: compact,
+						timestamp: new Date().toISOString(),
+						...properties
+					}
+				})
+			});
+		} catch (error) {
+			console.warn('Analytics tracking failed:', error);
+		}
+	}
 
 	onMount(async () => {
 		await loadPerformance();
+		
+		// Track performance card view
+		await trackAnalyticsEvent('template_performance_card_view', {
+			display_mode: compact ? 'compact' : 'full'
+		});
+	});
+
+	onDestroy(async () => {
+		// Track interaction duration
+		const viewDuration = Date.now() - viewStartTime;
+		await trackAnalyticsEvent('template_performance_card_session_end', {
+			view_duration_ms: viewDuration,
+			final_metrics: performance ? {
+				total_activations: performance.metrics.total_activations,
+				viral_coefficient: performance.metrics.viral_coefficient,
+				viral_status: performance.metrics.viral_status
+			} : null
+		});
 	});
 
 	async function loadPerformance() {
@@ -225,14 +269,29 @@
 		<!-- Quick Actions -->
 		<div class={`flex ${compact ? 'space-x-2' : 'space-x-3'} border-t border-gray-100 pt-3`}>
 			<button
-				onclick={() => (window.location.href = `/analytics?template=${performance?.template_id}`)}
+				onclick={async () => {
+					if (performance) {
+						await trackAnalyticsEvent('template_full_analysis_click', {
+							viral_status: performance.metrics.viral_status,
+							total_activations: performance.metrics.total_activations,
+							viral_coefficient: performance.metrics.viral_coefficient
+						});
+						window.location.href = `/analytics?template=${performance.template_id}`;
+					}
+				}}
 				class={`flex-1 text-center ${compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'} rounded bg-participation-primary-50 text-participation-primary-700 transition-colors hover:bg-participation-primary-100`}
 				disabled={!performance}
 			>
 				Full Analysis
 			</button>
 			<button
-				onclick={loadPerformance}
+				onclick={async () => {
+					await trackAnalyticsEvent('template_performance_refresh', {
+						refresh_trigger: 'manual_button',
+						current_viral_status: performance?.metrics.viral_status
+					});
+					await loadPerformance();
+				}}
 				class={`${compact ? 'px-2 py-1 text-xs' : 'px-3 py-2 text-sm'} rounded border border-gray-200 text-gray-600 transition-colors hover:bg-gray-50`}
 			>
 				Refresh
