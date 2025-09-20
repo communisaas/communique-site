@@ -3,6 +3,7 @@
 	import { fade, fly, scale } from 'svelte/transition';
 	import { backOut, elasticOut } from 'svelte/easing';
 	import { Share2, Link2, Copy, CheckCircle, Sparkles, Send, Heart, Zap } from '@lucide/svelte';
+	import SimpleTooltip from './SimpleTooltip.svelte';
 
 	let {
 		url,
@@ -301,21 +302,8 @@
 		{/if}
 	</button>
 
-	<!-- Tooltip on hover -->
-	{#if hovered && !copied}
-		<div
-			class="pointer-events-none absolute -bottom-10 left-1/2 z-50 -translate-x-1/2 transform"
-			in:fly={{ y: -5, duration: 200 }}
-			out:fade={{ duration: 150 }}
-		>
-			<div class="whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white shadow-lg">
-				Copy link
-				<div
-					class="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-slate-900"
-				></div>
-			</div>
-		</div>
-	{/if}
+	<!-- Reusable tooltip component -->
+	<SimpleTooltip content="Copy link" placement="bottom" show={hovered && !copied} />
 </div>
 
 <style>

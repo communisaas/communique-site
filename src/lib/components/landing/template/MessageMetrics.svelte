@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { Send, Landmark, Building2, MapPin, User, Users } from '@lucide/svelte';
-	import Tooltip from '$lib/components/ui/Tooltip.svelte';
+	import { Send, Landmark, Building2, MapPin, User, Users, Info } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
+	import SimpleTooltip from '$lib/components/ui/SimpleTooltip.svelte';
 
 	interface Props {
 		template: Template;
@@ -62,7 +62,7 @@
 
 	// Determine badge type based on delivery method
 	const badgeType = $derived(
-		template.deliveryMethod === 'certified' ? 'certified' : ('direct' as 'certified' | 'direct')
+		template.deliveryMethod === 'cwc' ? 'certified' : ('direct' as 'certified' | 'direct')
 	);
 
 	// For templates with recipients, always show recipient count regardless of delivery method
@@ -114,14 +114,30 @@
 	} as const);
 
 	const currentMetric = $derived(typeMetrics[badgeType]);
+
+	// Simple tooltip state
+	let hoveredTooltip = $state<'sent' | 'recipients' | null>(null);
 </script>
 
 <div class="min-w-0 max-w-full space-y-2 text-sm">
 	<div class="flex max-w-fit items-center gap-2 text-slate-500">
 		<Send class="h-4 w-4 shrink-0" />
-		<Tooltip content="Total messages sent in this campaign" containerClass="min-w-0 flex-1">
+		<span class="min-w-0 flex-1">
 			{formatNumber(metrics.sent)} sent
-		</Tooltip>
+		</span>
+		<div class="relative">
+			<Info 
+				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
+				onmouseenter={() => hoveredTooltip = 'sent'}
+				onmouseleave={() => hoveredTooltip = null}
+			/>
+			
+			<SimpleTooltip 
+				content="Total messages sent in this campaign"
+				placement="right"
+				show={hoveredTooltip === 'sent'}
+			/>
+		</div>
 	</div>
 
 	<div class="flex max-w-fit items-center gap-2 text-slate-500">
@@ -130,8 +146,21 @@
 			<SecondaryIconComponent class="h-4 w-4 shrink-0" />
 		{/snippet}
 		{@render secondaryIconSnippet()}
-		<Tooltip content={currentMetric.secondaryTooltip} containerClass="min-w-0 flex-1">
+		<span class="min-w-0 flex-1">
 			{currentMetric.secondaryValue}
-		</Tooltip>
+		</span>
+		<div class="relative">
+			<Info 
+				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
+				onmouseenter={() => hoveredTooltip = 'recipients'}
+				onmouseleave={() => hoveredTooltip = null}
+			/>
+			
+			<SimpleTooltip 
+				content={currentMetric.secondaryTooltip}
+				placement="right"
+				show={hoveredTooltip === 'recipients'}
+			/>
+		</div>
 	</div>
 </div>
