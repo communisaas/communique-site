@@ -23,25 +23,43 @@ npm run test     # integration-first test suite
 
 ## Code Quality Standards
 
-### CRITICAL: TypeScript Strictness - ZERO TOLERANCE
+### 🚨 NUCLEAR-LEVEL TYPESCRIPT STRICTNESS - ABSOLUTE ZERO TOLERANCE 🚨
 
-**THIS IS NON-NEGOTIABLE: We enforce STRICT TypeScript compliance with ZERO exceptions.**
+**WE JUST SPENT MULTIPLE DEVELOPMENT CYCLES FIXING 193+ TYPESCRIPT ERRORS CAUSED BY LAZY TYPE PRACTICES. THIS STOPS NOW.**
 
-#### Forbidden Practices (NEVER use these):
-- ❌ **NEVER use `@ts-ignore`** - Fix the actual type issue
-- ❌ **NEVER use `@ts-nocheck`** - Every file must be type-checked  
-- ❌ **NEVER use `@ts-expect-error`** - Fix the code, not silence it
-- ❌ **NEVER use `any` type** - Always define proper types
-- ❌ **NEVER use `as any` casting** - Use proper type guards
-- ❌ **NEVER ignore type errors** - Every error must be resolved
+**EVERY SINGLE TYPE SHORTCUT COSTS US DEVELOPMENT TIME. EVERY `any` TYPE LEADS TO PRODUCTION BUGS. EVERY TYPE SUPPRESSION COMMENT CREATES TECHNICAL DEBT.**
 
-#### Required Type Practices:
-- ✅ **Define explicit types for all parameters and returns**
-- ✅ **Use type guards for runtime validation**
-- ✅ **Create comprehensive interfaces for all data structures**
-- ✅ **Use discriminated unions for variant types**
-- ✅ **Implement exhaustive type checking in switch statements**
-- ✅ **Use `unknown` instead of `any` when type is truly unknown**
+#### ⚡ INSTANT PR REJECTION CRITERIA ⚡
+**Any PR containing these patterns will be INSTANTLY REJECTED without review:**
+
+- ❌ **`any` type usage** - No exceptions, no "temporary" uses, no "quick fixes"
+- ❌ **`@ts-ignore` comments** - Fix the fucking type issue, don't silence it
+- ❌ **`@ts-nocheck` comments** - Every single file MUST be type-checked
+- ❌ **`@ts-expect-error` comments** - Fix the code, not suppress the error
+- ❌ **`as any` casting** - Use proper type guards and type assertions
+- ❌ **`Record<string, any>` patterns** - Define proper interfaces
+- ❌ **`(obj as any).property` access** - Define proper object types
+- ❌ **`unknown` misuse as `any` substitute** - Use proper type narrowing
+- ❌ **Generic function parameters without constraints** - Always constrain generics
+- ❌ **Loose object casting like `data as SomeType`** - Use type guards
+
+#### 💀 CONSEQUENCES OF TYPE VIOLATIONS 💀
+- **Immediate PR rejection** - No discussion, no exceptions
+- **Forced refactoring** - Violating code must be completely rewritten
+- **Build failure** - CI will fail and block deployments
+- **Code review rejection** - Reviewers are instructed to reject without mercy
+
+#### ✅ MANDATORY TYPE PRACTICES ✅
+**Every line of code MUST follow these practices:**
+
+- ✅ **Explicit types for ALL function parameters and returns**
+- ✅ **Comprehensive interfaces for ALL data structures**
+- ✅ **Type guards for ALL runtime validation**
+- ✅ **Discriminated unions for ALL variant types**
+- ✅ **Exhaustive type checking in ALL switch statements**
+- ✅ **Proper generic constraints for ALL generic functions**
+- ✅ **Strict null checks enabled and enforced**
+- ✅ **No implicit any configurations**
 
 ### ESLint & TypeScript Rules
 
@@ -148,7 +166,8 @@ const mockUser: MockUser = {
 };
 ```
 
-### Critical Error Patterns to Avoid:
+### 🔥 REAL-WORLD TYPE VIOLATION PATTERNS WE JUST FIXED 🔥
+**These are the EXACT lazy patterns that caused our 193+ TypeScript errors:**
 
 #### ❌ Component Event Dispatch Type Mismatches
 ```typescript
@@ -242,7 +261,48 @@ When fixing TypeScript errors, group similar patterns:
 4. **Object spreads** - Fix all duplicate property conflicts together
 5. **Type casting** - Replace all `any` casts with proper type guards together
 
-**Remember: We just spent multiple rounds fixing 193+ TypeScript errors. Every `any` type or suppression comment will lead to the same situation. We are STRICT.**
+### ⚡ ENFORCEMENT PROTOCOL ⚡
+
+#### Pre-Commit Requirements (ALL MUST PASS):
+```bash
+# These commands MUST return ZERO errors or the commit is REJECTED:
+npm run check         # TypeScript + Svelte validation
+npx tsc --noEmit      # Pure TypeScript compilation check  
+npm run build         # Production build verification
+npm run lint:strict   # Zero-tolerance ESLint check
+```
+
+#### Development Workflow Requirements:
+- **Before every commit**: Run all type-checking commands
+- **Before every PR**: Verify 0 TypeScript errors
+- **During development**: Use `npx tsc --noEmit --watch` for real-time checking
+- **In CI/CD**: Automated rejection of any type violations
+
+#### Code Review Standards:
+- **Any `any` type = INSTANT REJECTION**
+- **Any type suppression = INSTANT REJECTION**
+- **Any loose casting = INSTANT REJECTION**
+- **Any missing interface = REQUIRES IMMEDIATE FIX**
+
+### 💰 THE REAL COST OF TYPE SHORTCUTS 💰
+**Why we're this fucking strict:**
+
+- **193+ TypeScript errors** we just spent cycles fixing
+- **Hours of development time** wasted on type debugging
+- **Production bugs** caused by runtime type mismatches
+- **Technical debt** that compounds over time
+- **Developer frustration** from dealing with type chaos
+
+**EVERY TYPE SHORTCUT COSTS MORE TIME THAN DOING IT RIGHT THE FIRST TIME.**
+
+### 🎯 ZERO EXCEPTIONS POLICY 🎯
+**No matter who you are, no matter how "urgent" the feature:**
+- **No temporary `any` types** - There is no such thing as "temporary"
+- **No "quick fixes" with type suppression** - Fix the actual issue
+- **No "I'll fix it later" type violations** - Fix it now or don't commit
+- **No "it's just a test" exceptions** - Tests must be strictly typed too
+
+**Remember: We just spent multiple development cycles fixing 193+ TypeScript errors caused by these exact patterns. This nuclear-level strictness exists because we learned the hard way that type shortcuts are never worth it.**
 
 ## Environment
 

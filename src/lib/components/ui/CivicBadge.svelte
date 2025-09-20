@@ -61,7 +61,7 @@
 		novice: Star
 	};
 
-	const IconComponent = iconMap[effectiveVariant];
+	const IconComponent = iconMap[effectiveVariant()];
 
 	// Build CSS classes using design system
 	let badgeClasses = $derived.by(() => {
@@ -79,7 +79,7 @@
 			const score = displayScore;
 			return `${reputationTier} participant${score ? ` with ${score} score` : ''}`;
 		}
-		return effectiveVariant;
+		return effectiveVariant();
 	});
 </script>
 
@@ -100,7 +100,7 @@ Accessibility:
 - Semantic color meanings
 -->
 
-<span class={badgeClasses} role="status" aria-label={ariaLabel}>
+<span class={badgeClasses} role="status" aria-label={ariaLabel()}>
 	{#if icon && IconComponent}
 		<IconComponent class="h-3 w-3 flex-shrink-0" aria-hidden="true" />
 	{/if}

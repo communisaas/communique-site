@@ -126,7 +126,10 @@
 		<!-- Address Collection Card - Connected to header -->
 		<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
 			<AddressCollectionForm
-				template={pendingTemplate || {
+				template={pendingTemplate ? {
+					title: pendingTemplate.title,
+					deliveryMethod: 'certified'
+				} : {
 					title: 'Congressional Message',
 					deliveryMethod: 'certified'
 				}}
