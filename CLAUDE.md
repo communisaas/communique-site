@@ -23,11 +23,21 @@ npm run test     # integration-first test suite
 
 ## Code Quality Standards
 
-### 🚨 NUCLEAR-LEVEL TYPESCRIPT STRICTNESS - ABSOLUTE ZERO TOLERANCE 🚨
+### 🚨 ABSOLUTE ZERO ESLint ERROR POLICY 🚨
 
-**WE JUST SPENT MULTIPLE DEVELOPMENT CYCLES FIXING 193+ TYPESCRIPT ERRORS CAUSED BY LAZY TYPE PRACTICES. THIS STOPS NOW.**
+**WE JUST EXPERIENCED 1000+ ESLint ERRORS CAUSING COMPLETE DEVELOPMENT PARALYSIS. THIS NEVER HAPPENS AGAIN.**
 
-**EVERY SINGLE TYPE SHORTCUT COSTS US DEVELOPMENT TIME. EVERY `any` TYPE LEADS TO PRODUCTION BUGS. EVERY TYPE SUPPRESSION COMMENT CREATES TECHNICAL DEBT.**
+**ROOT CAUSE ANALYSIS: Inconsistent tooling, unclear standards, and reactive error-fixing created an endless cycle of technical debt.**
+
+#### 🛡️ PREVENTION-FIRST APPROACH 🛡️
+
+**BEFORE writing ANY code:**
+1. **Run `npm run lint` locally** - Must show 0 errors before committing
+2. **Configure IDE with ESLint integration** - Real-time error prevention
+3. **Use TypeScript strict mode** - Catch issues at development time
+4. **Follow established patterns** - Don't create new anti-patterns
+
+**CI WILL FAIL ON ANY ESLint ERROR. No exceptions. No "we'll fix it later."**
 
 #### ⚡ INSTANT PR REJECTION CRITERIA ⚡
 
@@ -64,22 +74,77 @@ npm run test     # integration-first test suite
 - ✅ **Strict null checks enabled and enforced**
 - ✅ **No implicit any configurations**
 
-### ESLint & TypeScript Rules
+### 🔧 ESLint Configuration Standards
 
-- **Prefix unused parameters** with `_` (e.g., `_error`, `_event`, `_config`)
-- **Remove unused imports** - Clean imports before commits
-- **Use ES6 imports** - Convert `require()` to `import` statements
-- **Proper error handling** - Name error parameters consistently
+#### Error Handling Patterns (NEVER change these):
+```typescript
+// ✅ CORRECT - Use error when needed
+try {
+  riskyOperation();
+} catch (error) {
+  console.error('Operation failed:', error);
+  throw error;
+}
 
-### Pre-commit Checklist
+// ✅ CORRECT - Anonymous when unused  
+try {
+  simpleOperation();
+} catch {
+  return { success: false };
+}
+
+// ❌ WRONG - Don't prefix used variables
+try {
+  riskyOperation();
+} catch (_error) {
+  console.error('Operation failed:', _error); // ERROR: _error used but prefixed
+}
+```
+
+#### Unused Variable Rules:
+- **Prefix with `_` ONLY if truly unused**: `_error`, `_event`, `_config`
+- **Remove unused imports entirely** - Don't just prefix them
+- **Use destructuring with rest**: `const { used, ..._unused } = obj;`
+
+#### Import Standards:
+- **ES6 imports only** - No `require()` statements
+- **Type-only imports** - `import type { Type } from './module';`
+- **Remove unused imports** - Don't accumulate dead imports
+
+### 🚀 MANDATORY Pre-commit Workflow
+
+**THESE COMMANDS MUST PASS WITH 0 ERRORS BEFORE ANY COMMIT:**
 
 ```bash
-npm run format     # Auto-fix formatting
-npm run lint       # Check for violations (warnings OK during cleanup)
-npm run check      # TypeScript validation
-npm run build      # Verify build succeeds
-npm run test:run   # Run test suite
+# 1. Format code first
+npm run format
+
+# 2. CRITICAL: Must show "✖ 0 problems"
+npm run lint --max-warnings 0
+
+# 3. TypeScript compilation must succeed
+npm run check
+
+# 4. Production build must succeed  
+npm run build
+
+# 5. Test suite must pass
+npm run test:run
 ```
+
+**If ANY command fails, you CANNOT commit. Fix the issues first.**
+
+### 🆘 Emergency ESLint Recovery Procedure
+
+**If you encounter >100 ESLint errors:**
+
+1. **STOP IMMEDIATELY** - Don't try to fix them manually
+2. **Revert to last known good commit**: `git reset --hard HEAD~1`
+3. **Run `npm run lint` to verify 0 errors**
+4. **Make smaller, incremental changes**
+5. **Test each change with `npm run lint` before proceeding**
+
+**Never attempt mass automated fixes. They create more problems than they solve.**
 
 ## TypeScript Best Practices for This Codebase
 
