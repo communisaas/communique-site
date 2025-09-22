@@ -33,7 +33,7 @@ export interface PerformancePrediction {
 // Smart variable suggestions based on context
 export function getVariableSuggestions(
 	content: string,
-	category: string,
+	_category: string,
 	existingVariables: string[]
 ): VariableSuggestion[] {
 	const suggestions: VariableSuggestion[] = [];
@@ -368,7 +368,7 @@ function calculateViralPotential(
 // Generate smart title suggestions
 export function generateTitleSuggestions(
 	content: string,
-	category: string,
+	_category: string,
 	tone: string
 ): string[] {
 	const keywords = extractKeywords(content);

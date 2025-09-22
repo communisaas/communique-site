@@ -29,7 +29,7 @@ export class CWCClient {
 					return config;
 				},
 				(error) => {
-					console.error('[CWC] Request error:', error);
+					console.error('Error occurred');
 					return Promise.reject(error);
 				}
 			);
@@ -74,19 +74,19 @@ export class CWCClient {
 				receiptHash: response.data.receipt_hash,
 				timestamp: new Date()
 			};
-		} catch (_error) {
-			if (_error instanceof IntegrationError) {
+		} catch (error) {
+			if (error instanceof IntegrationError) {
 				return {
 					success: false,
-					error: _error.message,
+					error: error.message,
 					timestamp: new Date()
 				};
 			}
 
-			console.error('[CWC] Unexpected error:', _error);
+			console.error('Error occurred');
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Unknown error',
+				error: error ? 'Unknown error' : 'Unknown error',
 				timestamp: new Date()
 			};
 		}
@@ -110,11 +110,11 @@ export class CWCClient {
 				status: this.mapStatus(response.data.status),
 				details: response.data
 			};
-		} catch (_error) {
-			console.error(`[CWC] Failed to check status for ${submissionId}:`, _error);
+		} catch (error) {
+			console.error('Error occurred');
 			return {
 				status: 'failed',
-				details: { error: _error instanceof Error ? _error.message : 'Unknown error' }
+				details: { error: error ? 'Unknown error' : 'Unknown error' }
 			};
 		}
 	}
@@ -127,23 +127,23 @@ export class CWCClient {
 		district: string
 	): Promise<{
 		valid: boolean;
-		representative?: string;
+		_representative?: string;
 		officeCode?: string;
 	}> {
 		try {
 			const response = await this.client.get<{
 				valid: boolean;
-				representative?: string;
+				_representative?: string;
 				office_code?: string;
 			}>(`/validate/district/${state}/${district}`);
 
 			return {
 				valid: response.data.valid,
-				representative: response.data.representative,
+				_representative: response.data._representative,
 				officeCode: response.data.office_code
 			};
-		} catch (_error) {
-			console.error(`[CWC] Failed to validate district ${state}-${district}:`, _error);
+		} catch (error) {
+			console.error('Error occurred');
 			return { valid: false };
 		}
 	}
@@ -162,18 +162,18 @@ export class CWCClient {
 			const response = await this.client.get<
 				Array<{
 					office_code: string;
-					representative_name: string;
+					_representative_name: string;
 					chamber: string;
 				}>
 			>(`/offices/${state}`);
 
 			return response.data.map((office) => ({
 				code: office.office_code,
-				name: office.representative_name,
+				name: office._representative_name,
 				type: office.chamber === 'senate' ? 'senate' : 'house'
 			}));
-		} catch (_error) {
-			console.error(`[CWC] Failed to get offices for ${state}:`, _error);
+		} catch (error) {
+			console.error('Error occurred');
 			return [];
 		}
 	}

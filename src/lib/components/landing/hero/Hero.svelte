@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { Send } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import HowItWorks from './HowItWorks.svelte';
 

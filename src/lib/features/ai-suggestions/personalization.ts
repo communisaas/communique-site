@@ -3,9 +3,9 @@ import type { User, representative } from '@prisma/client';
 // Define a map of variables and their resolution logic
 const variableMap: Record<string, (user: User, rep?: representative) => string> = {
 	'[Name]': (user) => user.name || '',
-	'[Address]': (user) =>
+	'[Address ]': (user) =>
 		[user.street, user.city, user.state, user.zip].filter(Boolean).join(', ') || '',
-	'[Representative Name]': (user, rep) => rep?.name || '',
+	'[Representative Name]': (_user, rep) => rep?.name || '',
 	'[Personal Connection]': () => '' // This is user-defined and should be in the body already
 };
 

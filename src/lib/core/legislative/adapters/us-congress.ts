@@ -9,7 +9,7 @@ import type {
 	Office
 } from './base';
 import type { CongressionalOffice } from '$lib/core/congress/cwc-client';
-import type { Jurisdiction, Chamber } from '../models';
+import type { Template } from '$lib/types/template';
 import { addressLookupService } from '$lib/core/congress/address-lookup';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 
@@ -104,22 +104,23 @@ export class USCongressAdapter extends LegislativeAdapter {
 					is_current: true
 				}))
 			];
-		} catch (_error) {
-			console.error('US Congressional lookup failed:', _error);
+		} catch {
+			console.error('Error occurred');
 			return [];
 		}
 	}
 
-	async validateRepresentative(representative: Representative): Promise<boolean> {
-		if (!representative.bioguide_id) return false;
+	async validateRepresentative(_representative: Representative): Promise<boolean> {
+		if (!_representative.bioguide_id) return false;
 
 		try {
 			const userReps = {
-				house: { bioguide_id: representative.bioguide_id, name: representative.name },
-				senate: [{ bioguide_id: representative.bioguide_id, name: representative.name }]
+				house: { bioguide_id: _representative.bioguide_id, name: _representative.name },
+				senate: [{ bioguide_id: _representative.bioguide_id, name: _representative.name }],
+				district: { number: '01', state: 'US' } // Default values as district info not available on Representative
 			};
 
-			const validation = await addressLookupService.validateReps(userReps as any);
+			const validation = await addressLookupService.validateReps(userReps);
 			return validation.valid;
 		} catch {
 			return false;
@@ -128,38 +129,51 @@ export class USCongressAdapter extends LegislativeAdapter {
 
 	async deliverMessage(request: DeliveryRequest): Promise<DeliveryResult> {
 		try {
-
 			// Convert to CWC format
 			const congressionalOffice: CongressionalOffice = {
-				bioguideId: request.representative.bioguide_id || '',
-				name: request.representative.name,
-				chamber: this.getChamberFromOffice(request.office) as 'house' | 'senate',
-				officeCode: request.representative.external_ids?.cwc_office_code || '',
+				bioguideId: request._representative.bioguide_id || '',
+				name: request._representative.name,
+				chamber: this.getChamber(request.office) as 'house' | 'senate',
+				officeCode: request._representative.external_ids?.cwc_office_code || '',
 				state: request.user.address?.state || '',
-				district: this.getDistrictFromRepresentative(request.representative),
-				party: request.representative.party || 'Unknown'
+				district: this.getDistrictFromRepresentative(request._representative),
+				party: request._representative.party || 'Unknown'
 			};
 
-			const templateForSubmission = {
+			const templateForSubmission: Template = {
 				id: request.template.id,
+				slug: `template-${request.template.id}`,
+				title: 'Congressional Message',
+				description: 'Message to Congress',
+				category: 'advocacy',
+				type: 'advocacy',
+				deliveryMethod: 'cwc',
 				subject: request.template.subject,
 				message_body: request.personalized_message,
 				delivery_config: {},
-				cwc_config: {}
+				cwc_config: {},
+				recipient_config: {},
+				metrics: {},
+				status: 'active',
+				is_public: true,
+				send_count: 0,
+				applicable_countries: ['US'],
+				specific_locations: [],
+				preview: request.personalized_message.substring(0, 200)
 			};
 
 			let submissionResult;
 			if (congressionalOffice.chamber === 'senate') {
 				submissionResult = await cwcClient.submitToSenate(
-					templateForSubmission as any,
-					request.user as any,
+					templateForSubmission,
+					request.user,
 					congressionalOffice,
 					request.personalized_message
 				);
 			} else {
 				submissionResult = await cwcClient.submitToHouse(
-					templateForSubmission as any,
-					request.user as any,
+					templateForSubmission,
+					request.user,
 					congressionalOffice,
 					request.personalized_message
 				);
@@ -172,16 +186,16 @@ export class USCongressAdapter extends LegislativeAdapter {
 				metadata: {
 					provider: 'CWC',
 					chamber: congressionalOffice.chamber,
-					representative: request.representative.name
+					_representative: request._representative.name
 				}
 			};
-		} catch (_error) {
+		} catch (error) {
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'CWC submission failed',
+				error: error instanceof Error ? error.message : 'CWC submission failed',
 				metadata: {
 					provider: 'CWC',
-					representative: request.representative.name
+					_representative: request._representative.name
 				}
 			};
 		}
@@ -204,7 +218,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 		return office.title;
 	}
 
-	private getChamberFromOffice(office: Office): 'house' | 'senate' {
+	private getChamber(office: Office): 'house' | 'senate' {
 		return office.id.includes('house') ? 'house' : 'senate';
 	}
 

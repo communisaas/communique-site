@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { spring } from 'svelte/motion';
-	import { fade } from 'svelte/transition';
+	// // import { fade } from 'svelte/transition';
 	import { Send } from '@lucide/svelte';
 
 	let {
@@ -42,12 +42,12 @@
 		enableFlight?: boolean;
 		flightDirection?: 'default' | 'down-right' | 'up-right';
 		flightState?: 'ready' | 'taking-off' | 'flying' | 'sent' | 'departing';
-		onclick?: (event: MouseEvent) => void;
-		onmouseover?: (event: MouseEvent) => void;
-		onmouseenter?: (event: MouseEvent) => void;
-		onmouseleave?: (event: MouseEvent) => void;
-		onfocus?: (event: FocusEvent) => void;
-		onblur?: (event: FocusEvent) => void;
+		onclick?: (__event: MouseEvent) => void;
+		onmouseover?: (__event: MouseEvent) => void;
+		onmouseenter?: (__event: MouseEvent) => void;
+		onmouseleave?: (__event: MouseEvent) => void;
+		onfocus?: (__event: FocusEvent) => void;
+		onblur?: (__event: FocusEvent) => void;
 		children?: import('svelte').Snippet;
 	} = $props();
 
@@ -69,12 +69,12 @@
 	let planeBlur = spring(0, { stiffness: 0.4, damping: 0.8 });
 
 	// Second plane for diverging animation (Hero button only)
-	let plane2X = $state(0);
-	let plane2Y = $state(0);
-	let plane2Opacity = spring(0, { stiffness: 0.4, damping: 0.8 });
-	let plane2Rotation = spring(0, { stiffness: 0.35, damping: 0.6 });
-	let plane2Scale = spring(0, { stiffness: 0.3, damping: 0.7 });
-	let showSecondPlane = $state(false);
+	let _plane2X = $state(0);
+	let _plane2Y = $state(0);
+	let _plane2Opacity = spring(0, { stiffness: 0.4, damping: 0.8 });
+	let _plane2Rotation = spring(0, { stiffness: 0.35, damping: 0.6 });
+	let _plane2Scale = spring(0, { stiffness: 0.3, damping: 0.7 });
+	let _showSecondPlane = $state(false);
 
 	// Target calculation for sublime flight paths
 	function calculateTargetPositions() {
@@ -127,7 +127,7 @@
 	}
 
 	// Calculate parabolic trajectory for sublime flight paths
-	function calculateFlightPath(
+	function _calculateFlightPath(
 		target: { x: number; y: number },
 		buttonRect: DOMRect,
 		progress: number
@@ -205,7 +205,7 @@
 		if (enableFlight) {
 			if (flightDirection === 'down-right') {
 				// Special animation for Hero "Start Writing" button with dynamic targeting
-				const targets = calculateTargetPositions();
+				const _targets = calculateTargetPositions();
 
 				switch (flightState) {
 					case 'taking-off':
@@ -253,7 +253,7 @@
 						planeOpacity.set(1);
 						planeBlur.set(0);
 						// Hide second plane (no longer used)
-						showSecondPlane = false;
+						_showSecondPlane = false;
 				}
 			} else {
 				// Default animation for send buttons - dramatic and powerful
@@ -307,7 +307,7 @@
 		}
 	});
 
-	function handleClick(event: MouseEvent) {
+	function handleClick(__event: MouseEvent) {
 		if (!disabled && !loading) {
 			clicked = true;
 
@@ -369,21 +369,21 @@
 			}
 
 			// Call the onclick handler AFTER setting up the flight animation
-			onclick?.(event);
+			onclick?.(__event);
 		}
 	}
 
-	function handleMouseEnter(event: MouseEvent) {
+	function handleMouseEnter(__event: MouseEvent) {
 		if (!disabled) {
 			hovered = true;
-			onmouseenter?.(event);
+			onmouseenter?.(__event);
 		}
 	}
 
-	function handleMouseLeave(event: MouseEvent) {
+	function handleMouseLeave(__event: MouseEvent) {
 		if (!disabled) {
 			hovered = false;
-			onmouseleave?.(event);
+			onmouseleave?.(__event);
 		}
 	}
 

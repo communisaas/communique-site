@@ -12,7 +12,7 @@ import type { Template } from '$lib/types/template';
 import type { PrismaClient } from '@prisma/client';
 
 // Core viral patterns that transcend borders
-const VIRAL_PATTERNS = {
+const _VIRAL_PATTERNS = {
 	MATH_DOESNT_WORK: {
 		opener: "The math doesn't work anymore.",
 		structure:

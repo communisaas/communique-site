@@ -1,13 +1,13 @@
 import type { NormalizedAddress } from '$lib/types/location';
 import type { Jurisdiction, Office } from '$lib/types/jurisdiction';
 
-export interface JurisdictionProvider {
+export interface Jurisdiction {
 	id: string; // e.g., 'US', 'CA', 'EU'
-	// Address normalization and geocoding
+	// Address  normalization and geocoding
 	normalizeAddress(input: Partial<NormalizedAddress> | string): Promise<NormalizedAddress>;
-	// Address → jurisdictions
-	addressToJurisdictions(address: NormalizedAddress): Promise<Jurisdiction[]>;
-	// Jurisdiction → offices
+	// Address  → jurisdictions
+	addressToJurisdiction(address: NormalizedAddress): Promise<Jurisdiction[]>;
+	// Jurisdiction  → offices
 	listOffices(
 		jurisdictionId: string,
 		filters?: { role?: string; chamber?: string }
@@ -15,7 +15,7 @@ export interface JurisdictionProvider {
 }
 
 // Basic US-only stub that adapts current services
-export class USJurisdictionProvider implements JurisdictionProvider {
+export class USJurisdiction implements Jurisdiction {
 	id = 'US';
 
 	async normalizeAddress(input: Partial<NormalizedAddress> | string): Promise<NormalizedAddress> {
@@ -35,7 +35,7 @@ export class USJurisdictionProvider implements JurisdictionProvider {
 		return { countryCode: 'US', ...input } as NormalizedAddress;
 	}
 
-	async addressToJurisdictions(address: NormalizedAddress): Promise<Jurisdiction[]> {
+	async addressToJurisdiction(address: NormalizedAddress): Promise<Jurisdiction[]> {
 		// Map to state and congressional district jurisdictions where possible
 		const { addressLookupService } = await import('$lib/core/congress/address-lookup');
 		if (!address.admin1 || !address.postalCode || !address.street || !address.admin3) {
@@ -89,7 +89,7 @@ export class USJurisdictionProvider implements JurisdictionProvider {
 				{
 					id: `${state}${district}H`,
 					jurisdiction_id: jurisdictionId,
-					role: 'representative',
+					role: '_representative',
 					chamber: 'house',
 					title: `US Representative ${state}-${district}`,
 					is_active: true,

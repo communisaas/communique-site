@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-	import { browser } from '$app/environment';
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
@@ -98,13 +97,13 @@
 		);
 	}
 
-	function getTemplateContext(template: Record<string, unknown>) {
+	function getTemplateContext(_template: Record<string, unknown>) {
 		if (isLocalGovernment) return 'local-government';
 		if (isCorporate) return 'corporate';
 		return 'general';
 	}
 
-	function handleClose() {
+	function _handleClose() {
 		dispatch('close');
 		modalStore.close();
 	}
@@ -191,9 +190,9 @@
 		dispatch('close');
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
-			event.preventDefault();
+	function _handleKeydown(_event: KeyboardEvent) {
+		if (_event.key === 'Enter' && !_event.shiftKey) {
+			_event.preventDefault();
 			if (currentStep === 'verify') {
 				handleComplete();
 			} else {
@@ -211,7 +210,7 @@
 	closeOnBackdrop={true}
 	closeOnEscape={true}
 >
-	{#snippet children(data)}
+	{#snippet children(_data)}
 		<!-- Progress Indicator -->
 		<div class="flex justify-center pb-4 pt-6">
 			<div class="flex gap-2">
@@ -234,7 +233,8 @@
 					class="p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					onkeydown={handleKeydown}
+					role="main"
+					tabindex="-1"
 				>
 					{#if currentStep === 'role'}
 						<RoleSelector

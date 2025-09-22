@@ -1,10 +1,10 @@
 <script lang="ts">
+	/// <reference types="node" />
 	import { onMount, onDestroy } from 'svelte';
-	import SkeletonCard from '$lib/components/ui/SkeletonCard.svelte';
 	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
 	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
-	import type { AnalyticsEvent, AnalyticsSession } from '$lib/types/analytics.ts';
+	import type { AnalyticsSession } from '$lib/types/analytics.ts';
+	import type { AnalyticsProperties } from '$lib/types/any-replacements.js';
 
 	interface DeliveryStatus {
 		campaign_id: string;
@@ -48,19 +48,19 @@
 	let metrics: DeliveryMetrics | null = $state(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let refreshInterval: NodeJS.Timeout | null = null;
+	let refreshInterval: number | null = null;
 	let lastUpdate = $state<string>('');
-	let sessionData: AnalyticsSession | null = $state(null);
+	let _sessionData: AnalyticsSession | null = $state(null);
 	let viewStartTime = Date.now();
 
 	// Analytics tracking function using new consolidated schema
-	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+	async function trackAnalyticsEvent(_eventName: string, properties: AnalyticsProperties) {
 		try {
 			await fetch('/api/analytics/events', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name: eventName,
+					name: _eventName,
 					event_type: 'interaction',
 					properties: {
 						user_id: userId,
@@ -70,14 +70,14 @@
 					}
 				})
 			});
-		} catch (error) {
-			console.warn('Analytics tracking failed:', error);
+		} catch (trackingError) {
+			console.warn('Analytics tracking failed:', trackingError);
 		}
 	}
 
 	onMount(async () => {
 		await loadDeliveryStatus();
-		
+
 		// Track delivery tracker view
 		await trackAnalyticsEvent('delivery_tracker_view', {
 			real_time_enabled: realTime
@@ -93,7 +93,7 @@
 		if (refreshInterval) {
 			clearInterval(refreshInterval);
 		}
-		
+
 		// Track session duration
 		const sessionDuration = Date.now() - viewStartTime;
 		await trackAnalyticsEvent('delivery_tracker_session_end', {
@@ -115,9 +115,9 @@
 			} else {
 				error = data.error || 'Failed to load delivery status';
 			}
-		} catch (_error) {
+		} catch (err) {
 			error = 'Network error loading delivery status';
-			console.error('Delivery status error:', _error);
+			console.error('Delivery status error:', err);
 		} finally {
 			loading = false;
 		}
@@ -188,7 +188,7 @@
 
 			if (response.ok) {
 				await loadDeliveryStatus(); // Refresh status
-				
+
 				// Track successful retry initiation
 				await trackAnalyticsEvent('delivery_retry_initiated', {
 					campaign_id: campaignId,
@@ -203,13 +203,13 @@
 				});
 			}
 		} catch (_error) {
-			console.error('Retry failed:', _error);
-			
+			console.error('Retry failed:', error);
+
 			// Track retry error
-			await trackAnalyticsEvent('delivery_retry_error', {
+			await trackAnalyticsEvent('delivery_retryerror', {
 				campaign_id: campaignId,
 				retry_source: 'dashboard',
-				error: _error instanceof Error ? _error.message : 'Unknown error'
+				error: error instanceof Error ? error.message : 'Unknown error'
 			});
 		}
 	}

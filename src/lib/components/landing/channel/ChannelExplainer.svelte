@@ -194,7 +194,7 @@
 				"
 				onmouseenter={() => handleChannelHover(channel.id, true)}
 				onmouseleave={() => handleChannelHover(channel.id, false)}
-				onclick={(event) => {
+				onclick={(__event) => {
 					selectedChannel = channel.id;
 					const targetElement = event.currentTarget;
 					targetElement.scrollIntoView({
@@ -214,7 +214,7 @@
 						class:opacity-10={isSelected}
 					>
 						<div class="absolute inset-0 grid grid-cols-8 gap-px">
-							{#each Array(32) as _, i}
+							{#each Array(32) as _, _i}
 								<div class="rotate-45 scale-150 transform"></div>
 							{/each}
 						</div>

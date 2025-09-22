@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { User, Building2, MapPin, Users, CheckCircle2 } from '@lucide/svelte';
+	import { Building2, MapPin, Users, CheckCircle2 } from '@lucide/svelte';
 	import AgencyRibbon from '$lib/components/ui/AgencyRibbon.svelte';
 
 	type CompletePayload = {

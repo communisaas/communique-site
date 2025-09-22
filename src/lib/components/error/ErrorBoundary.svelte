@@ -3,7 +3,7 @@ ERROR BOUNDARY COMPONENT
 Catches and handles component failures gracefully
 -->
 <script lang="ts">
-	import { createEventDispatcher, onMount, type Snippet } from 'svelte';
+	import { createEventDispatcher, onMount as _onMount, type Snippet } from 'svelte';
 	import { AlertTriangle, RefreshCw, Home, Bug } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
@@ -51,7 +51,7 @@ Catches and handles component failures gracefully
 	const componentId = `ErrorBoundary_${Math.random().toString(36).substr(2, 9)}`;
 
 	// Error handler setup
-	onMount(() => {
+	_onMount(() => {
 		const originalError = window.onerror;
 		const originalUnhandledRejection = window.onunhandledrejection;
 
@@ -64,13 +64,13 @@ Catches and handles component failures gracefully
 		};
 
 		// Capture unhandled promise rejections
-		window.onunhandledrejection = (event) => {
+		window.onunhandledrejection = (_event) => {
 			if (!hasError) {
 				const error =
-					event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+					_event.reason instanceof Error ? _event.reason : new Error(String(_event.reason));
 				handleError(error);
 			}
-			return originalUnhandledRejection?.call(window, event);
+			return originalUnhandledRejection?.call(window, _event);
 		};
 
 		return () => {

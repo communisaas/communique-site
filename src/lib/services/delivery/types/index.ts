@@ -3,7 +3,7 @@
  */
 
 import type { ParsedMail } from 'mailparser';
-import type { SMTPServerSession } from 'smtp-server';
+import type { SMTPServerSession as _SMTPServerSession } from 'smtp-server';
 
 // ============================================================================
 // Message Types
@@ -298,7 +298,7 @@ export class IntegrationError extends DeliveryPlatformError {
 // ============================================================================
 
 export type DeepPartial<T> = {
-	[P in keyof T]?: T[P] extends Record<string, any> ? DeepPartial<T[P]> : T[P];
+	[P in keyof T]?: T[P] extends Record<string, unknown> ? DeepPartial<T[P]> : T[P];
 };
 
 export type RequireAtLeastOne<T, Keys extends keyof T = keyof T> = Pick<T, Exclude<keyof T, Keys>> &

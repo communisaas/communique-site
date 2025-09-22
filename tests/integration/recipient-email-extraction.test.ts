@@ -121,17 +121,19 @@ describe('Recipient Email Extraction Integration', () => {
 			};
 
 			const result = migrateToTypedTemplate(modern);
-			expect(result).toEqual(expect.objectContaining({
-				id: 'template-456',
-				title: 'Modern Template',
-				delivery_config: {
-					timing: 'immediate',
-					followUp: false
-				},
-				recipient_config: {
-					emails: ['modern@format.com']
-				}
-			}));
+			expect(result).toEqual(
+				expect.objectContaining({
+					id: 'template-456',
+					title: 'Modern Template',
+					delivery_config: {
+						timing: 'immediate',
+						followUp: false
+					},
+					recipient_config: {
+						emails: ['modern@format.com']
+					}
+				})
+			);
 		});
 
 		it('preserves existing delivery config', () => {
@@ -167,7 +169,7 @@ describe('Recipient Email Extraction Integration', () => {
 				title: 'Consolidated Template',
 				subject: 'Test Subject',
 				message_body: 'Test message body',
-				
+
 				// Test new consolidated verification fields
 				verification_status: 'approved',
 				quality_score: 85,
@@ -179,7 +181,7 @@ describe('Recipient Email Extraction Integration', () => {
 				reputation_delta: 10,
 				reputation_applied: true,
 				reviewed_at: new Date(),
-				
+
 				// Template config fields
 				delivery_config: {
 					timing: 'immediate',
@@ -188,11 +190,11 @@ describe('Recipient Email Extraction Integration', () => {
 				recipient_config: {
 					emails: ['consolidated@example.com', 'test@example.com']
 				},
-				
+
 				// Usage tracking
 				send_count: 5,
 				last_sent_at: new Date(),
-				
+
 				// Geographic scope
 				applicable_countries: ['US'],
 				jurisdiction_level: 'federal',
@@ -201,25 +203,25 @@ describe('Recipient Email Extraction Integration', () => {
 
 			const emails = extractRecipientEmails(consolidatedTemplate.recipient_config);
 			expect(emails).toEqual(['consolidated@example.com', 'test@example.com']);
-			
+
 			const isValidRecipient = isValidRecipientConfig(consolidatedTemplate.recipient_config);
 			expect(isValidRecipient).toBe(true);
-			
+
 			const isValidDelivery = isValidDeliveryConfig(consolidatedTemplate.delivery_config);
 			expect(isValidDelivery).toBe(true);
 		});
-		
+
 		it('should handle templates with missing optional consolidated fields', () => {
 			const partialTemplate = {
 				id: 'template-partial',
 				title: 'Partial Template',
 				message_body: 'Basic message',
-				
+
 				// Only basic fields, missing most consolidated verification fields
 				verification_status: null,
 				quality_score: null,
 				consensus_score: null,
-				
+
 				recipient_config: {
 					emails: ['partial@example.com']
 				},
@@ -232,7 +234,7 @@ describe('Recipient Email Extraction Integration', () => {
 			// Should still work with partial data
 			const emails = extractRecipientEmails(partialTemplate.recipient_config);
 			expect(emails).toEqual(['partial@example.com']);
-			
+
 			const migrated = migrateToTypedTemplate(partialTemplate);
 			expect(migrated.delivery_config.timing).toBe('scheduled');
 			expect(migrated.delivery_config.followUp).toBe(true);

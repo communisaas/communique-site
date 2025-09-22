@@ -1,6 +1,6 @@
 /**
  * Analytics API Integration Tests - Consolidated Schema (8→3 Models)
- * 
+ *
  * Tests the consolidated analytics system with:
  * - analytics_event (unified with JSONB properties)
  * - analytics_session (enhanced with UTM tracking)
@@ -11,7 +11,11 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { safeEventProperties, safeComputedMetrics } from '../helpers/json-test-helpers';
 import { POST, GET } from '../../src/routes/api/analytics/events/+server';
 import { createMockRequestEvent } from '../helpers/request-event';
-import type { AnalyticsEvent, AnalyticsSession, AnalyticsExperiment } from '../../src/lib/types/analytics';
+import type {
+	AnalyticsEvent,
+	AnalyticsSession,
+	AnalyticsExperiment
+} from '../../src/lib/types/analytics';
 
 // Mock database for consolidated analytics schema
 const mockDb = vi.hoisted(() => ({
@@ -50,7 +54,7 @@ vi.mock('$lib/core/db', () => ({
 describe('Analytics API Integration Tests - Consolidated Schema', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		
+
 		// Default successful mocks
 		mockDb.user.findUnique.mockResolvedValue({ id: 'user-123' });
 		mockDb.template.findMany.mockResolvedValue([{ id: 'template-456' }]);
@@ -119,7 +123,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200);
 
 			const data = await response.json();
@@ -218,18 +222,18 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			await POST(createMockRequestEvent(request, "/api/analytics/events"));
 
 			const createdEvents = mockDb.analytics_event.createMany.mock.calls[0][0].data;
-			
-			expect(createdEvents[0].event_type).toBe('pageview');     // page_view
-			expect(createdEvents[1].event_type).toBe('pageview');     // template_viewed
-			expect(createdEvents[2].event_type).toBe('interaction');  // button_click
-			expect(createdEvents[3].event_type).toBe('conversion');   // template_used
-			expect(createdEvents[4].event_type).toBe('conversion');   // auth_completed
-			expect(createdEvents[5].event_type).toBe('conversion');   // conversion
-			expect(createdEvents[6].event_type).toBe('funnel');       // has funnel_id
-			expect(createdEvents[7].event_type).toBe('campaign');     // has campaign_id
+
+			expect(createdEvents[0].event_type).toBe('pageview'); // page_view
+			expect(createdEvents[1].event_type).toBe('pageview'); // template_viewed
+			expect(createdEvents[2].event_type).toBe('interaction'); // button_click
+			expect(createdEvents[3].event_type).toBe('conversion'); // template_used
+			expect(createdEvents[4].event_type).toBe('conversion'); // auth_completed
+			expect(createdEvents[5].event_type).toBe('conversion'); // conversion
+			expect(createdEvents[6].event_type).toBe('funnel'); // has funnel_id
+			expect(createdEvents[7].event_type).toBe('campaign'); // has campaign_id
 		});
 
 		it('should handle complex JSONB properties without data loss', async () => {
@@ -257,10 +261,12 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 
 			const eventBatch = {
 				session_data: { session_id: 'sess_123_abc' },
-				events: [{
-					name: 'complex_interaction',
-					properties: complexProperties
-				}]
+				events: [
+					{
+						name: 'complex_interaction',
+						properties: complexProperties
+					}
+				]
 			};
 
 			const request = new Request('http://localhost/api/analytics/events', {
@@ -269,16 +275,25 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200);
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
-			
+
 			// Verify complex JSONB properties are preserved
-			expect(safeEventProperties(storedEvent).nested_object.user_preferences.categories).toEqual(['voting', 'environment']);
-			expect(safeEventProperties(storedEvent).array_data).toEqual(['item1', 'item2', { complex: true }]);
+			expect(safeEventProperties(storedEvent).nested_object.user_preferences.categories).toEqual([
+				'voting',
+				'environment'
+			]);
+			expect(safeEventProperties(storedEvent).array_data).toEqual([
+				'item1',
+				'item2',
+				{ complex: true }
+			]);
 			expect(safeEventProperties(storedEvent).metrics.performance.loadTime).toBe(1.2);
-			expect(safeEventProperties(storedEvent).unicode_text).toBe('Testing émojis 🚀 and special chars åæø');
+			expect(safeEventProperties(storedEvent).unicode_text).toBe(
+				'Testing émojis 🚀 and special chars åæø'
+			);
 			expect(safeEventProperties(storedEvent).null_value).toBeNull();
 			expect(storedEvent.properties).not.toHaveProperty('undefined_value');
 		});
@@ -293,12 +308,14 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 					session_id: 'sess_123_abc',
 					user_id: 'invalid-user'
 				},
-				events: [{
-					name: 'test_event',
-					user_id: 'invalid-user',
-					template_id: 'invalid-template',
-					properties: {}
-				}]
+				events: [
+					{
+						name: 'test_event',
+						user_id: 'invalid-user',
+						template_id: 'invalid-template',
+						properties: {}
+					}
+				]
 			};
 
 			const request = new Request('http://localhost/api/analytics/events', {
@@ -307,10 +324,10 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			await POST(createMockRequestEvent(request, "/api/analytics/events"));
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
-			
+
 			// Should null invalid IDs
 			expect(storedEvent.user_id).toBeNull();
 			expect(storedEvent.template_id).toBeNull();
@@ -323,16 +340,18 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 
 			const eventBatch = {
 				session_data: { session_id: 'sess_123_abc' },
-				events: [{
-					name: 'problematic_event',
-					properties: {
-						circular: circularObj,
-						func: () => 'function',
-						htmlElement: typeof HTMLElement !== 'undefined' ? {} : '[HTMLElement]',
-						bigint: BigInt(123),
-						symbol: Symbol('test')
+				events: [
+					{
+						name: 'problematic_event',
+						properties: {
+							circular: circularObj,
+							func: () => 'function',
+							htmlElement: typeof HTMLElement !== 'undefined' ? {} : '[HTMLElement]',
+							bigint: BigInt(123),
+							symbol: Symbol('test')
+						}
 					}
-				}]
+				]
 			};
 
 			const request = new Request('http://localhost/api/analytics/events', {
@@ -341,11 +360,11 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200);
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
-			
+
 			// Should handle problematic values gracefully
 			expect(safeEventProperties(storedEvent).circular).toBe('[Circular]');
 			expect(safeEventProperties(storedEvent).func).toBe('[Function]');
@@ -408,7 +427,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				method: 'GET'
 			});
 
-			const response = await GET({ request, url: new URL('http://localhost/api/analytics/events?session_id=sess_123_abc') } as any);
+			const response = await GET(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200);
 
 			const data = await response.json();
@@ -420,11 +439,13 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 					session_metrics: mockSession.session_metrics,
 					funnel_progress: mockSession.funnel_progress
 				},
-				analytics_events: [{
-					...mockEvents[0],
-					properties: mockEvents[0].properties,
-					computed_metrics: mockEvents[0].computed_metrics
-				}],
+				analytics_events: [
+					{
+						...mockEvents[0],
+						properties: mockEvents[0].properties,
+						computed_metrics: mockEvents[0].computed_metrics
+					}
+				],
 				events_count: 1
 			});
 		});
@@ -436,7 +457,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				method: 'GET'
 			});
 
-			const response = await GET({ request, url: new URL('http://localhost/api/analytics/events?session_id=nonexistent') } as any);
+			const response = await GET(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(404);
 
 			const data = await response.json();
@@ -462,7 +483,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(500);
 
 			const data = await response.json();
@@ -487,7 +508,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 					body: invalidRequest
 				});
 
-				const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+				const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 				expect(response.status).toBe(400);
 
 				const data = await response.json();

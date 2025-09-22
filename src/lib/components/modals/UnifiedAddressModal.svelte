@@ -3,18 +3,21 @@
 	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
 	import UnifiedAddressCollectionWrapper from '$lib/components/modals/UnifiedAddressCollectionWrapper.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import type { HeaderTemplate, HeaderUser } from '$lib/types/any-replacements.js';
 
 	const modalStore = createModalStore('address-modal', 'address');
 
 	// Extract data from modal store
-	const modalData = $derived(modalStore.data as {
-		template: any;
-		source: string;
-		user?: any;
-		mode?: 'requirement' | 'collection';
-	} | null);
+	const modalData = $derived(
+		modalStore.data as {
+			template: HeaderTemplate;
+			source: string;
+			user?: HeaderUser;
+			mode?: 'requirement' | 'collection';
+		} | null
+	);
 
-	function handleComplete(event: CustomEvent) {
+	function handleComplete(__event: CustomEvent) {
 		const { address, verified, enhancedCredibility, representatives } = event.detail;
 
 		// Save address to backend

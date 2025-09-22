@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import type { ErrorReport } from '$lib/utils/errorBoundary';
+import type { ErrorDetails } from '$lib/types/any-replacements.js';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -16,20 +17,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ success: false, error: 'Batch too large (max 50 errors)' }, { status: 400 });
 		}
 
-		const processedErrors: ErrorReport[] = errors.map((error: unknown) => ({
-			message: (error as any)?.message || 'Unknown error',
-			stack: (error as any)?.stack,
-			context: (error as any)?.context || 'unknown',
-			timestamp: (error as any)?.timestamp || Date.now(),
-			userAgent: (error as any)?.userAgent,
-			url: (error as any)?.url,
-			userId: locals.user?.id,
-			additionalData: {
-				...(error as any)?.additionalData,
-				sessionId: locals.session?.id,
-				batchId: crypto.randomUUID()
-			}
-		}));
+		const processedErrors: ErrorReport[] = errors.map((error: unknown) => {
+			const errorData = error as ErrorDetails;
+			return {
+				message: errorData?.message || 'Unknown error',
+				stack: errorData?.stack,
+				context: errorData?.context || 'unknown',
+				timestamp: errorData?.timestamp || Date.now(),
+				userAgent: errorData?.userAgent,
+				url: errorData?.url,
+				userId: locals.user?.id,
+				additionalData: {
+					...errorData?.additionalData,
+					sessionId: locals.session?.id,
+					batchId: crypto.randomUUID()
+				}
+			};
+		});
 
 		// Log errors (in production, send to monitoring service)
 		if (process.env.NODE_ENV === 'development') {
@@ -46,8 +50,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			success: true,
 			message: `${processedErrors.length} errors reported successfully`
 		});
-	} catch (_error: unknown) {
-		console.error('Failed to process batch error report:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,

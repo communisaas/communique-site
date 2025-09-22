@@ -43,9 +43,10 @@ export interface ApiLocals {
 /**
  * Properly typed RequestEvent for API routes
  */
-export type ApiRequestEvent<Params extends Record<string, string> = Record<string, string>> = SvelteKitRequestEvent<Params> & {
-	locals: ApiLocals;
-};
+export type ApiRequestEvent<Params extends Record<string, string> = Record<string, string>> =
+	SvelteKitRequestEvent<Params> & {
+		locals: ApiLocals;
+	};
 
 /**
  * Type guard to check if user is authenticated

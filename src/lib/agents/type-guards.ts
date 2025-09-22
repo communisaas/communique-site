@@ -22,7 +22,7 @@ export interface SupplyDecision {
 	supplyImpact?: number; // Network effects multiplier
 }
 
-// Market agent decision structure  
+// Market agent decision structure
 export interface MarketDecision {
 	rewardAmount: number; // Add missing property for compatibility
 	decision: string;
@@ -192,8 +192,8 @@ export function extractSupplyDecision(decision: unknown): SupplyDecision {
 		}
 		return result;
 	}
-	return { 
-		baseRewardUSD: 0, 
+	return {
+		baseRewardUSD: 0,
 		multipliers: { activity: 1, action: 1, reputation: 1, complexity: 1, time: 1, urgency: 1 },
 		totalMultiplier: 1,
 		ethPrice: 2000,
@@ -208,11 +208,11 @@ export function extractMarketDecision(decision: unknown): MarketDecision {
 	if (isMarketDecision(decision)) {
 		return decision;
 	}
-	return { 
+	return {
 		rewardAmount: 0,
 		decision: 'neutral',
 		confidence: 0.5,
-		rewardMultiplier: 1, 
+		rewardMultiplier: 1,
 		marketSignal: 'neutral',
 		incentiveAdjustments: { urgencyBonus: 0, qualityBonus: 0, consistencyBonus: 0 }
 	};
@@ -228,11 +228,11 @@ export function extractImpactDecision(decision: unknown): ImpactDecision {
 		}
 		if (!result.impactMultiplier) {
 			// Calculate impact multiplier from score (0-100 scale to 1.0-2.0 multiplier)
-			result.impactMultiplier = result.impactScore > 0 ? 1.0 + (result.impactScore / 100) : 1.0;
+			result.impactMultiplier = result.impactScore > 0 ? 1.0 + result.impactScore / 100 : 1.0;
 		}
 		return result;
 	}
-	return { 
+	return {
 		templateId: '',
 		legislativeOutcomes: [],
 		impactScore: 0,
@@ -248,7 +248,7 @@ export function extractVerificationDecision(decision: unknown): VerificationDeci
 	if (isVerificationDecision(decision)) {
 		return decision;
 	}
-	return { 
+	return {
 		userId: '',
 		verificationLevel: 'unverified',
 		trustScore: 0,

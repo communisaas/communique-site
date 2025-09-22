@@ -67,8 +67,8 @@ ${this.buildCampaignXML(messageData.Campaign)}
 				`		<OrganizationName>${this.escapeXML(constituent.OrganizationName)}</OrganizationName>`
 			);
 		}
-		if (constituent.Address2) {
-			optionalFields.push(`		<Address2>${this.escapeXML(constituent.Address2)}</Address2>`);
+		if (constituent.Address) {
+			optionalFields.push(`		<Address >${this.escapeXML(constituent.Address)}</Address >`);
 		}
 		if (constituent.Zip4) {
 			optionalFields.push(`		<Zip4>${this.escapeXML(constituent.Zip4)}</Zip4>`);
@@ -91,8 +91,8 @@ ${constituent.MiddleName ? `		<MiddleName>${this.escapeXML(constituent.MiddleNam
 ${constituent.Suffix ? `		<Suffix>${this.escapeXML(constituent.Suffix)}</Suffix>` : ''}
 ${constituent.Title ? `		<Title>${this.escapeXML(constituent.Title)}</Title>` : ''}
 ${constituent.OrganizationName ? `		<OrganizationName>${this.escapeXML(constituent.OrganizationName)}</OrganizationName>` : ''}
-		<Address1>${this.escapeXML(constituent.Address1)}</Address1>
-${constituent.Address2 ? `		<Address2>${this.escapeXML(constituent.Address2)}</Address2>` : ''}
+		<Address >${this.escapeXML(constituent.Address)}</Address >
+${constituent.Address ? `		<Address >${this.escapeXML(constituent.Address)}</Address >` : ''}
 		<City>${this.escapeXML(constituent.City)}</City>
 		<StateAbbreviation>${this.escapeXML(constituent.StateAbbreviation)}</StateAbbreviation>
 		<Zip>${this.escapeXML(constituent.Zip)}</Zip>

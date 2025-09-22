@@ -39,7 +39,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (!challengerAddress) {
 			return json(
 				{
-					error: 'challengerAddress required for challenge verification'
+					error: 'challengerAddress  required for challenge verification'
 				},
 				{ status: 400 }
 			);
@@ -104,7 +104,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		let requiredStake = baseStake;
 
 		// Adjust stake based on reputation differential
-		const repDiff = 50 - (challengerRep.currentScore as number || 50); // Using default creator reputation of 50
+		const repDiff = 50 - ((challengerRep.currentScore as number) || 50); // Using default creator reputation of 50
 		if (repDiff > 20) {
 			// Challenging high-rep creator requires more stake
 			requiredStake = requiredStake * BigInt(2);
@@ -117,7 +117,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Would need to fetch template data from challenge context
 
 		// Apply market multiplier
-		requiredStake = BigInt(Math.floor(Number(requiredStake) * (marketConditions.rewardMultiplier as number || 1)));
+		requiredStake = BigInt(
+			Math.floor(Number(requiredStake) * ((marketConditions.rewardMultiplier as number) || 1))
+		);
 
 		// Store challenge verification if challengeId provided
 		if (challengeId) {
@@ -153,9 +155,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			reputation: {
 				challenger: {
-					current: challengerRep.currentScore as number || 50,
-					tier: challengerRep.currentTier as string || 'novice',
-					atRisk: Math.floor((challengerRep.currentScore as number || 50) * 0.1) // 10% of rep at risk
+					current: (challengerRep.currentScore as number) || 50,
+					tier: (challengerRep.currentTier as string) || 'novice',
+					atRisk: Math.floor(((challengerRep.currentScore as number) || 50) * 0.1) // 10% of rep at risk
 				},
 				claimCreator: {
 					current: 50, // Default since creator data not available
@@ -164,13 +166,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			}
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'Challenge verification failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -212,8 +214,9 @@ export const GET: RequestHandler = async ({ url }) => {
 		where: { status: 'active' },
 		select: { stake_amount: true }
 	});
-	const totalStaked = activeChallenges.reduce((sum, challenge) => 
-		sum + BigInt(challenge.stake_amount || '0'), BigInt(0)
+	const totalStaked = activeChallenges.reduce(
+		(sum, challenge) => sum + BigInt(challenge.stake_amount || '0'),
+		BigInt(0)
 	);
 
 	return json({

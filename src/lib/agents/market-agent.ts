@@ -7,6 +7,7 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import type { UnknownRecord } from '$lib/types/any-replacements';
 
 export interface MarketInput {
 	baseReward: bigint;
@@ -94,18 +95,23 @@ export class MarketAgent extends BaseAgent {
 				}
 			);
 		} catch (_error) {
-			console.error('MarketAgent decision error:', _error);
+			console.error('Market agent error:', _error);
 			return this.createDecision(
 				{ decision: 'error', rewardMultiplier: 1.0 },
 				0.1,
-				`Market analysis failed: ${_error}`,
+				`Market analysis failed: Unknown error`,
 				{ error: true }
 			);
 		}
 	}
 
 	async process(input: MarketInput): Promise<MarketDecision> {
-		const { baseReward, actionType, marketConditions = {}, participationTrends = {} } = input;
+		const {
+			baseReward: _baseReward,
+			actionType,
+			marketConditions = {},
+			participationTrends = {}
+		} = input;
 
 		// Analyze market signal
 		const marketSignal = this.analyzeMarketSignal(marketConditions);
@@ -171,11 +177,11 @@ export class MarketAgent extends BaseAgent {
 	 */
 	private calculateMarketMultiplier(
 		signal: 'bullish' | 'neutral' | 'bearish',
-		conditions: any
+		_conditions: UnknownRecord
 	): number {
 		switch (signal) {
 			case 'bullish':
-				// Reduce rewards in bull market (prevent inflation)
+				// Reduce rewards in bull market (pr_event inflation)
 				return 0.8;
 			case 'bearish':
 				// Increase rewards in bear market (encourage participation)
@@ -193,7 +199,11 @@ export class MarketAgent extends BaseAgent {
 		if (!trendsTyped) {
 			return 1.0; // Default multiplier
 		}
-		const { dailyActive = 0, weeklyActive = 0, growthRate = 0 } = trendsTyped;
+		const {
+			dailyActive: _dailyActive = 0,
+			weeklyActive: _weeklyActive = 0,
+			growthRate = 0
+		} = trendsTyped;
 
 		// Growth phase: increase rewards
 		if (growthRate > 20) return 1.2;
@@ -210,8 +220,8 @@ export class MarketAgent extends BaseAgent {
 	 */
 	private calculateIncentiveAdjustments(
 		actionType: string,
-		trends: unknown,
-		conditions: any
+		_trends: unknown,
+		_conditions: UnknownRecord
 	): MarketDecision['incentiveAdjustments'] {
 		const adjustments = {
 			urgencyBonus: 0,

@@ -71,7 +71,7 @@ export class CWCClient {
 		template: Template,
 		user: User,
 		senator: CongressionalOffice,
-		personalizedMessage: string
+		_personalizedMessage: string
 	): Promise<CWCSubmissionResult> {
 		if (senator.chamber !== 'senate') {
 			throw new Error('This method is only for Senate offices');
@@ -82,6 +82,28 @@ export class CWCClient {
 		}
 
 		try {
+			// Convert CongressionalOffice to UserRepresentative format for CWC Generator
+			const targetRep = {
+				bioguideId: senator.bioguideId,
+				name: senator.name,
+				party: senator.party,
+				state: senator.state,
+				district: senator.district,
+				chamber: senator.chamber,
+				officeCode: senator.officeCode
+			};
+
+			// Create mock house representative for interface compliance
+			const mockHouseRep = {
+				bioguideId: '',
+				name: '',
+				party: '',
+				state: '',
+				district: '',
+				chamber: 'house' as const,
+				officeCode: ''
+			};
+
 			// Generate CWC XML
 			const cwcMessage = {
 				template,
@@ -94,11 +116,11 @@ export class CWCClient {
 						zip: user.zip || ''
 					},
 					representatives: {
-						house: {} as any, // Not needed for single senator submission
-						senate: [senator] as any
+						house: mockHouseRep,
+						senate: [targetRep]
 					}
 				},
-				targetRep: senator
+				_targetRep: targetRep
 			};
 
 			const cwcXml = CWCGenerator.generateUserAdvocacyXML(cwcMessage);
@@ -141,7 +163,7 @@ export class CWCClient {
 
 			return result;
 		} catch (_error) {
-			console.error('Senate CWC submission error:', _error);
+			console.error('Error occurred:', _error);
 			return {
 				success: false,
 				status: 'failed',
@@ -157,27 +179,27 @@ export class CWCClient {
 	 * This is a placeholder for future House integration
 	 */
 	async submitToHouse(
-		template: Template,
-		user: User,
-		representative: CongressionalOffice,
-		personalizedMessage: string
+		_template: Template,
+		_user: User,
+		_representative: CongressionalOffice,
+		_personalizedMessage: string
 	): Promise<CWCSubmissionResult> {
-		if (representative.chamber !== 'house') {
+		if (_representative.chamber !== 'house') {
 			throw new Error('This method is only for House offices');
 		}
 
 		// House requires proxy server with whitelisted IPs
 		// For now, simulate the submission
 		console.log('House CWC submission (simulated - proxy not implemented):', {
-			office: representative.name,
-			district: representative.district,
-			state: representative.state
+			office: _representative.name,
+			district: _representative.district,
+			state: _representative.state
 		});
 
 		return {
 			success: true,
 			status: 'queued',
-			office: representative.name,
+			office: _representative.name,
 			timestamp: new Date().toISOString(),
 			messageId: `HOUSE-SIM-${Date.now()}`,
 			error: 'House submissions require proxy server - currently simulated'
@@ -191,7 +213,7 @@ export class CWCClient {
 		template: Template,
 		user: User,
 		representatives: CongressionalOffice[],
-		personalizedMessage: string
+		_personalizedMessage: string
 	): Promise<CWCSubmissionResult[]> {
 		const results: CWCSubmissionResult[] = [];
 
@@ -200,9 +222,9 @@ export class CWCClient {
 				let result: CWCSubmissionResult;
 
 				if (rep.chamber === 'senate') {
-					result = await this.submitToSenate(template, user, rep, personalizedMessage);
+					result = await this.submitToSenate(template, user, rep, _personalizedMessage);
 				} else {
-					result = await this.submitToHouse(template, user, rep, personalizedMessage);
+					result = await this.submitToHouse(template, user, rep, _personalizedMessage);
 				}
 
 				results.push(result);
@@ -210,7 +232,7 @@ export class CWCClient {
 				// Add delay between submissions to avoid rate limiting
 				await this.delay(1000);
 			} catch (_error) {
-				console.error(`Failed to submit to ${rep.name}:`, _error);
+				console.error('Error occurred:', _error);
 				results.push({
 					success: false,
 					status: 'failed',
@@ -272,8 +294,8 @@ export class CWCClient {
 				messageId,
 				cwcResponse
 			};
-		} catch (_error) {
-			console.error('Failed to parse CWC response:', _error);
+		} catch {
+			console.error('Error occurred');
 			return {
 				...baseResult,
 				success: false,

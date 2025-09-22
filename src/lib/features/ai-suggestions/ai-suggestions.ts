@@ -1,4 +1,4 @@
-import type { Template } from '$lib/types/template';
+import type { Template as _Template } from '$lib/types/template';
 
 interface AISuggestion {
 	id: string;
@@ -28,7 +28,7 @@ export class AISuggestionsService {
 	 * TODO: Implement ML-powered suggestion generation
 	 */
 	static async getSuggestions(
-		templateId: string,
+		_templateId: string,
 		variableName: string,
 		userContext?: UserContext
 	): Promise<AISuggestion[]> {
@@ -39,7 +39,7 @@ export class AISuggestionsService {
 
 		// TODO: Replace with actual API call to AI service
 		// const { api } = await import('$lib/core/api/client');
-		// const result = await api.post('/api/ai/suggestions', { templateId, variableName, userContext });
+		// const result = await api.post('/api/ai/suggestions', { templateId, _variableName, userContext });
 		// return result.success ? result.data : [];
 
 		return mockSuggestions;
@@ -50,10 +50,10 @@ export class AISuggestionsService {
 	 * TODO: Implement feedback loop for ML model improvement
 	 */
 	static async recordSuggestionUsage(
-		suggestionId: string,
-		templateId: string,
-		variableName: string,
-		finalText: string
+		_suggestionId: string,
+		_templateId: string,
+		_variableName: string,
+		_finalText: string
 	): Promise<void> {
 		// TODO: Store in template_analytics table
 		// await db.ai_suggestions.update({
@@ -78,8 +78,8 @@ export class AISuggestionsService {
 	// Mock implementations (to be replaced)
 	private static getMockSuggestions(
 		variableName: string,
-		templateCategory: string,
-		userContext?: UserContext
+		_templateCategory: string,
+		_userContext?: UserContext
 	): AISuggestion[] {
 		const suggestions: AISuggestion[] = [];
 
@@ -114,8 +114,8 @@ export class AISuggestionsService {
 
 	private static getMockPrompts(
 		variableName: string,
-		templateCategory: string,
-		userContext?: UserContext
+		_templateCategory: string,
+		_userContext?: UserContext
 	): string[] {
 		const prompts: string[] = [];
 
@@ -136,8 +136,8 @@ export class AISuggestionsService {
 	 * TODO: Implement ML pipeline for continuous improvement
 	 */
 	static async updateUserWritingProfile(
-		userId: string,
-		writingData: {
+		_userId: string,
+		_writingData: {
 			text: string;
 			context: string;
 			effectiveness?: number;

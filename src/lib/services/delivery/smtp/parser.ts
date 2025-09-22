@@ -2,7 +2,7 @@
  * Email parsing and validation utilities
  */
 
-import { type ParsedMail } from 'mailparser';
+import { type ParsedMail as _ParsedMail } from 'mailparser';
 import { z } from 'zod';
 import type { ParsedIncomingMessage } from '../types/index.js';
 
@@ -10,7 +10,7 @@ import type { ParsedIncomingMessage } from '../types/index.js';
 // Validation Schemas
 // ============================================================================
 
-const EmailAddressSchema = z.string().email('Invalid email address');
+const EmailAddress = z.string().email('Invalid email address');
 
 const TemplateIdentifierSchema = z
 	.string()
@@ -24,7 +24,7 @@ const PersonalConnectionSchema = z
 	.optional();
 
 const IncomingMessageSchema = z.object({
-	senderEmail: EmailAddressSchema,
+	senderEmail: EmailAddress,
 	templateIdentifier: TemplateIdentifierSchema,
 	personalConnection: PersonalConnectionSchema,
 	certifiedDelivery: z.boolean()
@@ -66,11 +66,11 @@ export async function parseIncomingMessage(mail: ParsedMail): Promise<ParsedInco
 			certifiedDelivery: validatedData.certifiedDelivery,
 			rawMessage: mail
 		};
-	} catch (_error) {
-		if (_error instanceof z.ZodError) {
-			throw new ValidationError('Invalid message format', _error.errors);
+	} catch {
+		if (error instanceof z.ZodError) {
+			throw new ValidationError('Invalid message format', error.errors);
 		}
-		throw _error;
+		throw error;
 	}
 }
 
@@ -81,15 +81,25 @@ function extractSenderEmail(mail: ParsedMail): string {
 	// Check 'from' field - handling both array and object with value property
 	if (Array.isArray(mail.from) && mail.from[0]?.address) {
 		return mail.from[0].address.toLowerCase();
-	} else if (mail.from && 'value' in mail.from && Array.isArray(mail.from.value) && mail.from.value[0]?.address) {
+	} else if (
+		mail.from &&
+		'value' in mail.from &&
+		Array.isArray(mail.from.value) &&
+		mail.from.value[0]?.address
+	) {
 		return mail.from.value[0].address.toLowerCase();
 	}
 
 	// Check reply-to field as fallback (if it exists)
-	const replyTo = (mail as any).replyTo;
+	const replyTo = 'replyTo' in mail ? (mail as { replyTo: unknown }).replyTo : undefined;
 	if (Array.isArray(replyTo) && replyTo[0]?.address) {
 		return replyTo[0].address.toLowerCase();
-	} else if (replyTo && 'value' in replyTo && Array.isArray(replyTo.value) && replyTo.value[0]?.address) {
+	} else if (
+		replyTo &&
+		'value' in replyTo &&
+		Array.isArray(replyTo.value) &&
+		replyTo.value[0]?.address
+	) {
 		return replyTo.value[0].address.toLowerCase();
 	}
 
@@ -183,21 +193,22 @@ function extractPersonalConnection(mail: ParsedMail): string | undefined {
 function isCertifiedDelivery(mail: ParsedMail): boolean {
 	// Check To addresses
 	const toValue = Array.isArray(mail.to) ? mail.to : mail.to ? [mail.to] : [];
-	const toAddresses = toValue.flatMap(
-		(to) => {
-			// Handle both Address directly and AddressObject with value property
-			if (to && 'address' in to && typeof to.address === 'string') {
-				return [to.address.toLowerCase()];
-			}
-			if (to && 'value' in to && Array.isArray(to.value)) {
-				return to.value.map((addr: any) => addr.address?.toLowerCase()).filter(Boolean) || [];
-			}
-			return [];
+	const toAddress = toValue.flatMap((to) => {
+		// Handle both Address  directly and Address  with value property
+		if (to && 'address' in to && typeof to.address === 'string') {
+			return [to.address.toLowerCase()];
 		}
-	);
+		if (to && 'value' in to && Array.isArray(to.value)) {
+			return (
+				to.value.map((addr: { address?: string }) => addr.address?.toLowerCase()).filter(Boolean) ||
+				[]
+			);
+		}
+		return [];
+	});
 	const certifiedPatterns = ['congress@', 'certified@', 'cwc@', 'delivery@'];
 
-	for (const address of toAddresses) {
+	for (const address of toAddress) {
 		if (certifiedPatterns.some((pattern) => address?.startsWith(pattern))) {
 			return true;
 		}
@@ -227,7 +238,7 @@ function isCertifiedDelivery(mail: ParsedMail): boolean {
  */
 export function validateMessage(message: ParsedIncomingMessage): void {
 	// Validate email format
-	if (!EmailAddressSchema.safeParse(message.senderEmail).success) {
+	if (!EmailAddress.safeParse(message.senderEmail).success) {
 		throw new ValidationError(`Invalid sender email: ${message.senderEmail}`);
 	}
 

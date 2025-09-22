@@ -4,7 +4,9 @@
 	import { onMount } from 'svelte';
 	import { steps } from '$lib/data/steps';
 	let alignment: 'left' | 'right' = 'right';
-	const origin = $derived((alignment as 'left' | 'right') === 'left' ? 'origin-top-left' : 'origin-top-right');
+	const origin = $derived(
+		(alignment as 'left' | 'right') === 'left' ? 'origin-top-left' : 'origin-top-right'
+	);
 
 	onMount(() => {
 		const mediaQuery = window.matchMedia('(min-width: 768px)');
@@ -33,10 +35,11 @@
 
 	<div class={`w-[280px] max-w-[calc(100vw-2rem)] p-4 md:w-[480px] ${origin} cursor-text`}>
 		<div class="space-y-6">
-			{#each steps as step, i}
+			{#each steps as step, _i}
+				{@const StepIcon = step.icon}
 				<div class="flex items-start gap-4 text-sm sm:text-base" class:opacity-0={!open}>
 					<div class="rounded-lg bg-blue-50 p-2">
-						<step.icon class="h-6 w-6 text-blue-400" />
+						<StepIcon class="h-6 w-6 text-blue-400" />
 					</div>
 					<div>
 						<h3 class="mb-1 font-medium text-slate-900">

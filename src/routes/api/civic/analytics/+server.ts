@@ -35,46 +35,49 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 		await forwardToExternalAnalytics(newEvent);
 
 		return json({ success: true });
-	} catch (_error) {
-		return json({ error: 'Failed to track event' }, { status: 500 });
+	} catch (err) {
+		return json({ error: 'Failed to track _event' }, { status: 500 });
 	}
 };
 
-async function storeAnalyticsEvent(event: Omit<AnalyticsEvent, 'id' | 'created_at'>) {
+async function storeAnalyticsEvent(_event: Omit<AnalyticsEvent, 'id' | 'created_at'>) {
 	try {
 		// Store in new consolidated analytics_event table with JSONB properties
 		const storedEvent = await db.analytics_event.create({
 			data: {
-				session_id: event.session_id,
+				session_id: _event.session_id,
 				user_id: event.user_id,
-				timestamp: event.timestamp,
+				timestamp: _event.timestamp,
 				name: event.name,
 				event_type: event.event_type,
-				template_id: event.template_id,
-				funnel_step: event.funnel_step,
-				experiment_id: event.experiment_id,
-				properties: event.properties,
-				computed_metrics: event.computed_metrics
+				template_id: _event.template_id,
+				funnel_step: _event.funnel_step,
+				experiment_id: _event.experiment_id,
+				properties: event.properties as any, // TODO: Fix Prisma JSON types
+				computed_metrics: _event.computed_metrics as any // TODO: Fix Prisma JSON types
 			}
 		});
 
 		// Update session data if needed
-		if (event.session_id) {
-			await updateSessionMetrics(event.session_id, event);
+		if (_event.session_id) {
+			await updateSessionMetrics(_event.session_id, _event);
 		}
 
 		// Update template metrics if template_id is provided
-		if (event.template_id) {
-			await updateTemplateMetrics(event.template_id, event);
+		if (_event.template_id) {
+			await updateTemplateMetrics(_event.template_id, _event);
 		}
 
 		return storedEvent;
-	} catch (_error) {
-		console.error('Failed to store analytics event:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 	}
 }
 
-async function updateSessionMetrics(sessionId: string, event: Omit<AnalyticsEvent, 'id' | 'created_at'>) {
+async function updateSessionMetrics(
+	sessionId: string,
+	event: Omit<AnalyticsEvent, 'id' | 'created_at'>
+) {
 	try {
 		// Update or create analytics_session with enhanced session tracking
 		await db.analytics_session.upsert({
@@ -110,12 +113,15 @@ async function updateSessionMetrics(sessionId: string, event: Omit<AnalyticsEven
 				}
 			}
 		});
-	} catch (_error) {
-		console.warn('Failed to update session metrics:', _error);
+	} catch (err) {
+		console.warn(`Could not analyze template`,err);
 	}
 }
 
-async function updateTemplateMetrics(templateId: string, event: Omit<AnalyticsEvent, 'id' | 'created_at'>) {
+async function updateTemplateMetrics(
+	templateId: string,
+	event: Omit<AnalyticsEvent, 'id' | 'created_at'>
+) {
 	try {
 		const template = await db.template.findUnique({
 			where: { id: templateId }
@@ -149,12 +155,12 @@ async function updateTemplateMetrics(templateId: string, event: Omit<AnalyticsEv
 				data: { metrics: updatedMetrics }
 			});
 		}
-	} catch (_error) {
-		console.warn('Failed to update template metrics:', _error);
+	} catch (err) {
+		console.warn(`Could not analyze template`,err);
 	}
 }
 
-async function forwardToExternalAnalytics(event: Omit<AnalyticsEvent, 'id' | 'created_at'>) {
+async function forwardToExternalAnalytics(_event: Omit<AnalyticsEvent, 'id' | 'created_at'>) {
 	// TODO: Forward to your preferred analytics service
 	// Examples:
 
@@ -174,9 +180,9 @@ async function forwardToExternalAnalytics(event: Omit<AnalyticsEvent, 'id' | 'cr
 	console.log('Analytics event:', {
 		event: event.name,
 		event_type: event.event_type,
-		template_id: event.template_id,
+		template_id: _event.template_id,
 		user_id: event.user_id,
-		session_id: event.session_id,
+		session_id: _event.session_id,
 		properties: event.properties
 	});
 }

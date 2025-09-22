@@ -8,13 +8,16 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db.js';
 import type { RequestHandler } from './$types';
 import type { Prisma } from '@prisma/client';
+import type { DatabaseWhereClause, UnknownRecord } from '$lib/types/any-replacements.js';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const requestData: unknown = await request.json();
-		
+
 		// Type guard for request data
-		const isValidRequestData = (obj: unknown): obj is {
+		const isValidRequestData = (
+			obj: unknown
+		): obj is {
 			action: string;
 			[key: string]: unknown;
 		} => {
@@ -22,7 +25,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				typeof obj === 'object' &&
 				obj !== null &&
 				'action' in obj &&
-				typeof (obj as any).action === 'string'
+				typeof (obj as UnknownRecord).action === 'string'
 			);
 		};
 
@@ -44,9 +47,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			default:
 				throw error(400, `Invalid challenge action: ${action}`);
 		}
-	} catch (_error) {
-		console.error('Challenge API error:', _error);
-		throw error(500, _error instanceof Error ? _error.message : 'Challenge operation failed');
+	} catch (err) {
+		console.error('Error occurred');
+		throw error(500, error ? 'Unknown error' : 'Challenge operation failed');
 	}
 };
 
@@ -108,12 +111,12 @@ export const GET: RequestHandler = async ({ url }) => {
 		}
 
 		// List challenges with filters
-		const where: Record<string, unknown> = {};
+		const where: DatabaseWhereClause = {};
 		if (status) {
-			(where as any).status = status;
+			where.status = status;
 		}
 		if (userId) {
-			(where as any).OR = [
+			where.OR = [
 				{ challenger_id: userId },
 				{ defender_id: userId },
 				{ stakes: { some: { user_id: userId } } }
@@ -145,9 +148,9 @@ export const GET: RequestHandler = async ({ url }) => {
 				created_at: c.created_at
 			}))
 		});
-	} catch (_error) {
-		console.error('Get challenges error:', _error);
-		throw error(500, _error instanceof Error ? _error.message : 'Failed to get challenges');
+	} catch (err) {
+		console.error('Error occurred');
+		throw error(500, error ? 'Unknown error' : 'Failed to get challenges');
 	}
 };
 
@@ -155,15 +158,7 @@ export const GET: RequestHandler = async ({ url }) => {
  * Create new challenge
  */
 async function createChallenge(data: Record<string, unknown>) {
-	const {
-		challengerId,
-		defenderId,
-		title,
-		description,
-		evidence,
-		stakeAmount,
-		category
-	} = data;
+	const { challengerId, defenderId, title, description, evidence, stakeAmount, category } = data;
 	if (!challengerId || !defenderId || !title || !evidence || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge creation');
 	}
@@ -236,10 +231,10 @@ async function createChallenge(data: Record<string, unknown>) {
 				challenge_id: result.challengeId,
 				defender_id: defenderIdStr,
 				title: titleStr,
-				description: description as any,
+				description: description as string,
 				evidence_ipfs: evidenceStr,
 				stake_amount: stakeAmountStr,
-				category: category as any,
+				category: category as string,
 				voting_deadline: result.votingDeadline
 			},
 			status: 'completed'

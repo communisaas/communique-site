@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { resolveTemplate, isValidTemplate, isValidEmailServiceUser } from '$lib/utils/templateResolver';
+import {
+	resolveTemplate,
+	isValidTemplate,
+	isValidEmailServiceUser
+} from '$lib/utils/templateResolver';
 import type { Template } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 
@@ -44,7 +48,7 @@ describe('Template Resolver Type Safety', () => {
 			},
 			{
 				name: 'Test Senator',
-				party: 'Independent', 
+				party: 'Independent',
 				chamber: 'senate',
 				state: 'CA',
 				district: 'statewide'
@@ -54,12 +58,17 @@ describe('Template Resolver Type Safety', () => {
 
 	describe('Template Type Validation', () => {
 		it('should accept all valid delivery methods', () => {
-			const validDeliveryMethods: Template['deliveryMethod'][] = ['email', 'certified', 'direct', 'cwc'];
-			
-			validDeliveryMethods.forEach(deliveryMethod => {
+			const validDeliveryMethods: Template['deliveryMethod'][] = [
+				'email',
+				'certified',
+				'direct',
+				'cwc'
+			];
+
+			validDeliveryMethods.forEach((deliveryMethod) => {
 				const template = createTestTemplate(deliveryMethod);
 				expect(isValidTemplate(template)).toBe(true);
-				
+
 				// Should not throw when resolving
 				expect(() => resolveTemplate(template, null)).not.toThrow();
 				expect(() => resolveTemplate(template, createTestUser())).not.toThrow();
@@ -70,7 +79,7 @@ describe('Template Resolver Type Safety', () => {
 			const template = createTestTemplate('email' as Template['deliveryMethod']);
 			// @ts-expect-error - Testing invalid delivery method
 			template.deliveryMethod = 'invalid-method';
-			
+
 			expect(isValidTemplate(template)).toBe(false);
 		});
 
@@ -111,9 +120,9 @@ describe('Template Resolver Type Safety', () => {
 		it('should resolve template with authenticated user', () => {
 			const template = createTestTemplate('email');
 			const user = createTestUser();
-			
+
 			const result = resolveTemplate(template, user);
-			
+
 			// Subject resolves to title when no placeholders in subject
 			expect(result.subject).toBe('Test Template');
 			expect(result.body).toContain('Test User'); // Name should be resolved
@@ -124,9 +133,9 @@ describe('Template Resolver Type Safety', () => {
 
 		it('should resolve template without authenticated user', () => {
 			const template = createTestTemplate('email');
-			
+
 			const result = resolveTemplate(template, null);
-			
+
 			// Subject resolves to title when no placeholders in subject
 			expect(result.subject).toBe('Test Template');
 			expect(result.body).toContain('[Your Name]'); // Should convert [Name] to [Your Name]
@@ -138,9 +147,9 @@ describe('Template Resolver Type Safety', () => {
 		it('should handle congressional delivery method correctly', () => {
 			const template = createTestTemplate('certified');
 			const user = createTestUser();
-			
+
 			const result = resolveTemplate(template, user);
-			
+
 			expect(result.isCongressional).toBe(true);
 			expect(result.routingEmail).toBe('congress+test-template-id-test-user-id@communique.org');
 		});
@@ -148,9 +157,9 @@ describe('Template Resolver Type Safety', () => {
 		it('should handle cwc delivery method correctly', () => {
 			const template = createTestTemplate('cwc');
 			const user = createTestUser();
-			
+
 			const result = resolveTemplate(template, user);
-			
+
 			// CWC is treated as congressional
 			expect(result.isCongressional).toBe(true);
 			expect(result.routingEmail).toBe('congress+test-template-id-test-user-id@communique.org');
@@ -160,9 +169,9 @@ describe('Template Resolver Type Safety', () => {
 			const template = createTestTemplate('email');
 			template.message_body = 'Dear [Representative Name], this is about [Senator Name].';
 			const user = createTestUser();
-			
+
 			const result = resolveTemplate(template, user);
-			
+
 			expect(result.body).toContain('Test Representative');
 			expect(result.body).toContain('Test Senator');
 		});
@@ -171,9 +180,9 @@ describe('Template Resolver Type Safety', () => {
 			const template = createTestTemplate('email');
 			template.message_body = 'Dear [Representative Name], this message is important.';
 			const userWithoutReps = { ...createTestUser(), representatives: [] };
-			
+
 			const result = resolveTemplate(template, userWithoutReps);
-			
+
 			expect(result.body).toContain('Representative'); // Should use generic fallback
 			expect(result.body).not.toContain('[Representative Name]'); // Variable should be replaced
 		});
@@ -183,9 +192,14 @@ describe('Template Resolver Type Safety', () => {
 		it('should not break when new delivery methods are added to Template type', () => {
 			// This test ensures that adding new delivery methods to the Template type
 			// doesn't break the template resolver's type validation
-			const allDeliveryMethods: Template['deliveryMethod'][] = ['email', 'certified', 'direct', 'cwc'];
-			
-			allDeliveryMethods.forEach(method => {
+			const allDeliveryMethods: Template['deliveryMethod'][] = [
+				'email',
+				'certified',
+				'direct',
+				'cwc'
+			];
+
+			allDeliveryMethods.forEach((method) => {
 				const template = createTestTemplate(method);
 				expect(() => resolveTemplate(template, null)).not.toThrow();
 				expect(() => resolveTemplate(template, createTestUser())).not.toThrow();
@@ -196,7 +210,7 @@ describe('Template Resolver Type Safety', () => {
 			// This test ensures our types are strict enough to catch errors
 			const template = createTestTemplate('email');
 			const user = createTestUser();
-			
+
 			// These should all work without type errors
 			expect(() => {
 				const result = resolveTemplate(template, user);
@@ -205,7 +219,7 @@ describe('Template Resolver Type Safety', () => {
 				const recipients: string[] = result.recipients;
 				const isCongressional: boolean = result.isCongressional;
 				const routingEmail: string | undefined = result.routingEmail;
-				
+
 				// Use the variables to avoid unused variable warnings
 				expect(typeof body).toBe('string');
 				expect(typeof subject).toBe('string');

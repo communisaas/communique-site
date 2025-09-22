@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	userFactory,
-	representativeFactory,
+	representativeFactory as _representativeFactory,
 	templateFactory,
 	congressionalOfficeFactory
 } from '../fixtures/factories';

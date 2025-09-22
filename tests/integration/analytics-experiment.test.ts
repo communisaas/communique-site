@@ -1,6 +1,6 @@
 /**
  * Analytics Experiment Integration Tests - Consolidated Schema
- * 
+ *
  * Tests the unified analytics_experiment model for:
  * - Funnel configurations and tracking
  * - Campaign management and targeting
@@ -132,7 +132,9 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 
 			expect(safeExperimentConfig(result).steps).toHaveLength(6);
 			expect(safeExperimentConfig(result).targeting_rules.geo_restrictions).toContain('US');
-			expect(safeExperimentConfig(result).optimization_goals.primary).toBe('maximize_completion_rate');
+			expect(safeExperimentConfig(result).optimization_goals.primary).toBe(
+				'maximize_completion_rate'
+			);
 		});
 
 		it('should create campaign experiment with targeting and budget configuration', async () => {
@@ -273,7 +275,8 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 						'user_satisfaction_score'
 					],
 					hypothesis: {
-						description: 'Personalized templates with moderate explanation length will achieve higher conversion rates than verbose or minimal approaches'
+						description:
+							'Personalized templates with moderate explanation length will achieve higher conversion rates than verbose or minimal approaches'
 					}
 				},
 				start_date: new Date('2024-02-01'),
@@ -317,8 +320,8 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			mockDb.analytics_event.findMany.mockResolvedValue(mockEventData);
 
 			// Simulate metrics calculation
-			const totalParticipants = new Set(mockEventData.map(e => e.user_id)).size;
-			const conversions = mockEventData.filter(e => e.name === 'template_used').length;
+			const totalParticipants = new Set(mockEventData.map((e) => e.user_id)).size;
+			const conversions = mockEventData.filter((e) => e.name === 'template_used').length;
 			const conversionRate = conversions / totalParticipants;
 
 			const metricsCache = {
@@ -328,7 +331,7 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 				step_conversion_rates: {
 					step_1: 1.0, // 3/3 users viewed page
 					step_2: 0.67, // 2/3 users viewed template
-					step_6: 0.33  // 1/3 users used template
+					step_6: 0.33 // 1/3 users used template
 				},
 				drop_off_analysis: {
 					highest_drop_off_step: 2,
@@ -361,20 +364,70 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			// Mock A/B test event data
 			const mockAbTestData = [
 				// Control variation
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'control_verbose' }, name: 'template_viewed', user_id: 'user-1' },
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'control_verbose' }, name: 'template_viewed', user_id: 'user-2' },
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'control_verbose' }, name: 'template_used', user_id: 'user-1' },
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'control_verbose' },
+					name: 'template_viewed',
+					user_id: 'user-1'
+				},
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'control_verbose' },
+					name: 'template_viewed',
+					user_id: 'user-2'
+				},
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'control_verbose' },
+					name: 'template_used',
+					user_id: 'user-1'
+				},
 
 				// Concise variation
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'variant_concise' }, name: 'template_viewed', user_id: 'user-3' },
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'variant_concise' }, name: 'template_viewed', user_id: 'user-4' },
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'variant_concise' }, name: 'template_used', user_id: 'user-3' },
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'variant_concise' }, name: 'template_used', user_id: 'user-4' },
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'variant_concise' },
+					name: 'template_viewed',
+					user_id: 'user-3'
+				},
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'variant_concise' },
+					name: 'template_viewed',
+					user_id: 'user-4'
+				},
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'variant_concise' },
+					name: 'template_used',
+					user_id: 'user-3'
+				},
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'variant_concise' },
+					name: 'template_used',
+					user_id: 'user-4'
+				},
 
 				// Personalized variation
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'variant_personalized' }, name: 'template_viewed', user_id: 'user-5' },
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'variant_personalized' }, name: 'template_viewed', user_id: 'user-6' },
-				{ experiment_id: 'ab-template-presentation', properties: { variation: 'variant_personalized' }, name: 'template_used', user_id: 'user-5' }
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'variant_personalized' },
+					name: 'template_viewed',
+					user_id: 'user-5'
+				},
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'variant_personalized' },
+					name: 'template_viewed',
+					user_id: 'user-6'
+				},
+				{
+					experiment_id: 'ab-template-presentation',
+					properties: { variation: 'variant_personalized' },
+					name: 'template_used',
+					user_id: 'user-5'
+				}
 			];
 
 			mockDb.analytics_event.findMany.mockResolvedValue(mockAbTestData);
@@ -410,7 +463,9 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			});
 
 			expect(safeExperimentMetricsCache(result).winning_variation).toBe('variant_concise');
-			expect(safeExperimentMetricsCache(result).variation_results.variant_concise.conversion_rate).toBe(1.0);
+			expect(
+				safeExperimentMetricsCache(result).variation_results.variant_concise.conversion_rate
+			).toBe(1.0);
 			expect(safeExperimentMetricsCache(result).statistical_significance).toBe(0.73);
 			expect(safeExperimentMetricsCache(result).recommendation).toContain('Continue test');
 		});
@@ -444,14 +499,15 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			const metricsCache = safeExperimentMetricsCache(experiment);
 			const config = safeExperimentConfig(experiment);
 			const budgetUtilization = metricsCache.budget_spent / (config.budget || 1);
-			const targetReachProgress = metricsCache.participants_count / (config.kpi_targets.total_reach || 1);
-			const conversionPerformance = metricsCache.conversion_rate / (config.kpi_targets.conversion_rate || 1);
+			const targetReachProgress =
+				metricsCache.participants_count / (config.kpi_targets.total_reach || 1);
+			const conversionPerformance =
+				metricsCache.conversion_rate / (config.kpi_targets.conversion_rate || 1);
 
-			const shouldComplete = (
+			const shouldComplete =
 				budgetUtilization >= 0.8 || // 80% budget spent
 				targetReachProgress >= 0.8 || // 80% reach achieved
-				conversionPerformance >= 1.2 // 20% better than target
-			);
+				conversionPerformance >= 1.2; // 20% better than target
 
 			mockDb.analytics_experiment.update.mockResolvedValue({
 				...experiment,
@@ -473,7 +529,7 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 
 			// Mock cleanup of expired experiments
 			const cleanupOperations = [];
-			
+
 			if (expiredExperiment.end_date < new Date()) {
 				cleanupOperations.push(
 					mockDb.analytics_experiment.update({
@@ -556,7 +612,7 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			];
 
 			mockDb.analytics_experiment.groupBy.mockResolvedValue(mockAggregationData);
-			
+
 			const result = await mockDb.analytics_experiment.groupBy({
 				by: ['type'],
 				_count: { id: true },
@@ -565,7 +621,9 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			});
 
 			expect(result).toHaveLength(3);
-			expect(result.find((r: any) => r.type === 'ab_test')?._avg?.['metrics_cache.conversion_rate']).toBe(0.15);
+			expect(
+				result.find((r: any) => r.type === 'ab_test')?._avg?.['metrics_cache.conversion_rate']
+			).toBe(0.15);
 		});
 	});
 
@@ -583,11 +641,11 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			};
 
 			// Should validate config before database operation
-			const isValidConfig = (config: any) => {
-				return (
-					Array.isArray(config.steps) &&
-					typeof config.targeting_rules === 'object' &&
-					Array.isArray(config.success_metrics)
+			const isValidConfig = (config: unknown) => {
+				return config && typeof config === 'object' && config !== null && (
+					Array.isArray((config as any).steps) &&
+					typeof (config as any).targeting_rules === 'object' &&
+					Array.isArray((config as any).success_metrics)
 				);
 			};
 

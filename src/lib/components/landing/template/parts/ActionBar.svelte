@@ -2,8 +2,8 @@
 	import type { Template } from '$lib/types/template';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { browser } from '$app/environment';
-	import { coordinated } from '$lib/utils/timerCoordinator';
-	import { spring, type Spring } from 'svelte/motion';
+	// import { coordinated } from '$lib/utils/timerCoordinator';
+	import { type Spring } from 'svelte/motion';
 
 	let {
 		template,
@@ -12,8 +12,8 @@
 		onSendMessage,
 		localShowEmailModal = $bindable(),
 		actionProgress = $bindable(),
-		onEmailModalClose,
-		componentId
+		onEmailModalClose: _onEmailModalClose,
+		componentId: _componentId
 	}: {
 		template: Template;
 		user: { id: string; name: string | null } | null;

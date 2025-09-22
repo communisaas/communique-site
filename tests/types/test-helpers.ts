@@ -1,6 +1,10 @@
 import type { RequestEvent } from '@sveltejs/kit';
 import type { Template } from '../../src/lib/types/template.js';
-import type { UserWithReputation, ClaimData, ChallengeWithAddress } from '../../src/lib/types/database-extensions.js';
+import type {
+	UserWithReputation,
+	ClaimData,
+	ChallengeWithAddress
+} from '../../src/lib/types/database-extensions.js';
 import { vi } from 'vitest';
 
 /**
@@ -38,7 +42,7 @@ export interface MockUser extends Partial<UserWithReputation> {
 	political_party: string | null;
 	interests: string[];
 	political_affiliation: string | null;
-	profile_metadata: any;
+	profile_metadata: Record<string, unknown>;
 	profile_visibility: string;
 	// Core fields from schema
 	trust_score: number;
@@ -56,8 +60,11 @@ export interface MockUser extends Partial<UserWithReputation> {
 	profile_completed_at?: Date | null;
 	verification_method?: string | null;
 	verified_at?: Date | null;
-	coordinates?: any;
-	preferences?: any;
+	coordinates?: {
+		lat?: number;
+		lng?: number;
+	} | null;
+	preferences?: Record<string, unknown> | null;
 	phone_verified?: boolean;
 	email_verified?: boolean;
 	last_active?: Date | null;
@@ -73,21 +80,23 @@ export interface MockUser extends Partial<UserWithReputation> {
  */
 export interface MockLocals {
 	user?: Partial<MockUser> | null;
-	session?: any;
+	session?: {
+		id?: string;
+		user_id?: string;
+		expires_at?: Date;
+	} | null;
 }
 
 /**
  * Helper to create a proper RequestEvent from mocks
  * Provides better type safety while maintaining test flexibility
  */
-export function asRequestEvent<
-	Params extends Record<string, string> = Record<string, string>
->(
+export function asRequestEvent<Params extends Record<string, string> = Record<string, string>>(
 	request: MockRequest | Partial<Request>,
 	locals: MockLocals = {},
 	params: Params = {} as Params,
 	routeId: string = '/api/test'
-): RequestEvent<Params, any> {
+): RequestEvent<Params, string> {
 	// Create a more complete mock Request object
 	const mockRequest = {
 		json: vi.fn(),
@@ -129,8 +138,8 @@ export function asRequestEvent<
 		},
 		params,
 		url: new URL(mockRequest.url || 'http://localhost:3000'),
-		route: { id: routeId as any },
-		cookies: mockCookies as any,
+		route: { id: routeId as string | null },
+		cookies: mockCookies as RequestEvent['cookies'],
 		fetch: globalThis.fetch,
 		getClientAddress: () => '127.0.0.1',
 		platform: {},
@@ -139,11 +148,11 @@ export function asRequestEvent<
 		isSubRequest: false,
 		tracing: {
 			enabled: false,
-			root: mockSpan as any,
-			current: mockSpan as any
+			root: mockSpan as RequestEvent['tracing']['root'],
+			current: mockSpan as RequestEvent['tracing']['current']
 		},
 		isRemoteRequest: false
-	} as RequestEvent<Params, any>;
+	} as RequestEvent<Params, string>;
 }
 
 /**
@@ -274,7 +283,9 @@ export function createMockClaim(overrides: Partial<ClaimData> = {}): ClaimData {
 /**
  * Create a minimal mock challenge
  */
-export function createMockChallenge(overrides: Partial<ChallengeWithAddress> = {}): ChallengeWithAddress {
+export function createMockChallenge(
+	overrides: Partial<ChallengeWithAddress> = {}
+): ChallengeWithAddress {
 	return {
 		id: 'challenge-123',
 		challenger_id: 'user-challenger',

@@ -33,19 +33,25 @@ function isWebhookData(data: unknown): data is WebhookData {
 	return (
 		typeof data === 'object' &&
 		data !== null &&
-		(typeof (data as WebhookData).user_address === 'string' || (data as WebhookData).user_address === undefined) &&
-		(typeof (data as WebhookData).certification_hash === 'string' || (data as WebhookData).certification_hash === undefined) &&
-		(typeof (data as WebhookData).reward_amount === 'number' || (data as WebhookData).reward_amount === undefined) &&
-		(typeof (data as WebhookData).reputation_change === 'number' || (data as WebhookData).reputation_change === undefined) &&
-		(typeof (data as WebhookData).action_hash === 'string' || (data as WebhookData).action_hash === undefined) &&
-		(typeof (data as WebhookData).timestamp === 'string' || (data as WebhookData).timestamp === undefined)
+		(typeof (data as WebhookData).user_address === 'string' ||
+			(data as WebhookData).user_address === undefined) &&
+		(typeof (data as WebhookData).certification_hash === 'string' ||
+			(data as WebhookData).certification_hash === undefined) &&
+		(typeof (data as WebhookData).reward_amount === 'number' ||
+			(data as WebhookData).reward_amount === undefined) &&
+		(typeof (data as WebhookData).reputation_change === 'number' ||
+			(data as WebhookData).reputation_change === undefined) &&
+		(typeof (data as WebhookData).action_hash === 'string' ||
+			(data as WebhookData).action_hash === undefined) &&
+		(typeof (data as WebhookData).timestamp === 'string' ||
+			(data as WebhookData).timestamp === undefined)
 	);
 }
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		// Verify webhook signature
-		const signature = request.headers.get('X-Webhook-Signature');
+		const signature_ = request.headers.get('X-Webhook-Signature');
 		const apiKey = request.headers.get('X-API-Key');
 
 		if (apiKey !== VOTER_API_KEY) {
@@ -57,10 +63,10 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		const payload: WebhookPayload = await request.json();
 
-		console.log('[VOTER Webhook] Received:', payload.event, payload.data);
+		console.log('[VOTER Webhook] Received:', payload._event, payload.data);
 
 		// Handle different webhook events
-		switch (payload.event) {
+		switch (payload._event) {
 			case 'certification_complete':
 				await handleCertificationComplete(payload.data);
 				break;
@@ -74,15 +80,15 @@ export const POST: RequestHandler = async ({ request }) => {
 				break;
 
 			default:
-				console.log('[VOTER Webhook] Unknown event:', payload.event);
+				console.log('[VOTER Webhook] Unknown event:', payload._event);
 		}
 
 		return json({ received: true });
-	} catch (_error) {
-		console.error('[VOTER Webhook] Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
-		if (_error instanceof Response) {
-			throw _error;
+		if (error instanceof Response) {
+			throw error;
 		}
 
 		throw error(500, 'Webhook processing failed');

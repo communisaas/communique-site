@@ -1,5 +1,7 @@
 // Type constraint for debounced functions
-type DebouncedFunction<T extends (...args: any[]) => any> = (...args: Parameters<T>) => void;
+type DebouncedFunction<T extends (...args: unknown[]) => unknown> = (
+	...args: Parameters<T>
+) => void;
 
 // Type for timer ID (browser vs Node.js compatibility)
 type TimerId = ReturnType<typeof setTimeout>;
@@ -11,7 +13,7 @@ type TimerId = ReturnType<typeof setTimeout>;
  * @param immediate - If true, trigger on the leading edge instead of trailing
  * @returns Debounced function
  */
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
 	func: T,
 	wait: number,
 	immediate: boolean = false
@@ -20,11 +22,11 @@ export function debounce<T extends (...args: any[]) => any>(
 	if (typeof func !== 'function') {
 		throw new Error('Debounce: first argument must be a function');
 	}
-	
+
 	if (typeof wait !== 'number' || wait < 0) {
 		throw new Error('Debounce: wait time must be a non-negative number');
 	}
-	
+
 	if (typeof immediate !== 'boolean') {
 		throw new Error('Debounce: immediate must be a boolean');
 	}
@@ -37,8 +39,8 @@ export function debounce<T extends (...args: any[]) => any>(
 			if (!immediate) {
 				try {
 					func.apply(this, args);
-				} catch (error) {
-					console.error('Error in debounced function:', error);
+				} catch {
+					console.error('Error occurred');
 				}
 			}
 		};
@@ -48,21 +50,23 @@ export function debounce<T extends (...args: any[]) => any>(
 		if (timeout !== null) {
 			clearTimeout(timeout);
 		}
-		
+
 		timeout = setTimeout(later, wait);
 
 		if (callNow) {
 			try {
 				func.apply(this, args);
-			} catch (error) {
-				console.error('Error in debounced function (immediate):', error);
+			} catch {
+				console.error('Error occurred');
 			}
 		}
 	};
 }
 
-// Type constraint for throttled functions  
-type ThrottledFunction<T extends (...args: any[]) => any> = (...args: Parameters<T>) => void;
+// Type constraint for throttled functions
+type ThrottledFunction<T extends (...args: unknown[]) => unknown> = (
+	...args: Parameters<T>
+) => void;
 
 /**
  * Throttle function to limit execution to once per specified time period
@@ -70,7 +74,7 @@ type ThrottledFunction<T extends (...args: any[]) => any> = (...args: Parameters
  * @param limit - The minimum time in milliseconds between function calls
  * @returns Throttled function
  */
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
 	func: T,
 	limit: number
 ): ThrottledFunction<T> {
@@ -78,7 +82,7 @@ export function throttle<T extends (...args: any[]) => any>(
 	if (typeof func !== 'function') {
 		throw new Error('Throttle: first argument must be a function');
 	}
-	
+
 	if (typeof limit !== 'number' || limit < 0) {
 		throw new Error('Throttle: limit must be a non-negative number');
 	}
@@ -89,10 +93,10 @@ export function throttle<T extends (...args: any[]) => any>(
 		if (!inThrottle) {
 			try {
 				func.apply(this, args);
-			} catch (error) {
-				console.error('Error in throttled function:', error);
+			} catch {
+				console.error('Error occurred');
 			}
-			
+
 			inThrottle = true;
 			setTimeout((): void => {
 				inThrottle = false;

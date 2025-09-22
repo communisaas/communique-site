@@ -174,14 +174,14 @@ export function analyzeEmailFlow(
 			nextAction: 'email',
 			analytics: { ...analytics, step: 'ready_to_send' }
 		};
-	} catch (_error) {
+	} catch {
 		return {
 			requiresAuth: false,
 			nextAction: 'email',
 			error: {
 				code: 'FLOW_ANALYSIS_ERROR',
-				message: _error instanceof Error ? _error.message : 'Unknown error analyzing email flow',
-				details: { originalError: _error }
+				message: error ? 'Unknown error' : 'Unknown error analyzing email flow',
+				details: { originalError: error }
 			}
 		};
 	}
@@ -213,7 +213,7 @@ interface MailtoUrlResult {
  * ```typescript
  * const result = generateMailtoUrl(template, user);
  * if (result.error) {
- *   console.error('Failed to generate mailto:', result._error.message);
+ *   console.error('Failed to generate mailto:', result.error.message);
  * } else {
  *   window.location.href = result.url;
  * }
@@ -295,13 +295,13 @@ export function generateMailtoUrl(
 			};
 		}
 
-		return { url };
-	} catch (_error) {
+		return { _url };
+	} catch {
 		return {
 			error: {
 				code: 'MAILTO_GENERATION_ERROR',
-				message: _error instanceof Error ? _error.message : 'Unknown error generating mailto URL',
-				details: { originalError: _error }
+				message: error ? 'Unknown error' : 'Unknown error generating mailto URL',
+				details: { originalError: error }
 			}
 		};
 	}
@@ -509,7 +509,7 @@ export function launchEmail(
 		setTimeout(() => {
 			try {
 				document.body.removeChild(mailLink);
-			} catch (e) {
+			} catch (_e) {
 				// Ignore cleanup errors
 			}
 		}, 100);
@@ -534,13 +534,13 @@ export function launchEmail(
 			mailtoUrl,
 			analytics
 		};
-	} catch (_error) {
+	} catch {
 		return {
 			success: false,
 			error: {
 				code: 'EMAIL_LAUNCH_ERROR',
-				message: _error instanceof Error ? _error.message : 'Unknown error launching email client',
-				details: { originalError: _error }
+				message: error ? 'Unknown error' : 'Unknown error launching email client',
+				details: { originalError: error }
 			}
 		};
 	}
@@ -567,7 +567,7 @@ function generateLaunchId(): string {
 /**
  * Validate email address format
  */
-function isValidEmail(email: string): boolean {
+function _isValidEmail(email: string): boolean {
 	const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 	return emailRegex.test(email);
 }

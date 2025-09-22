@@ -5,6 +5,8 @@
  * which may be simpler than the full database models.
  */
 
+import type { UnknownRecord, ComponentEvent } from '$lib/types/any-replacements';
+
 /**
  * Minimal user interface for components that only need basic info
  */
@@ -50,8 +52,8 @@ export function isComponentUser(obj: unknown): obj is ComponentUser {
 		typeof obj === 'object' &&
 		'id' in obj &&
 		'name' in obj &&
-		typeof (obj as any).id === 'string' &&
-		typeof (obj as any).name === 'string'
+		typeof (obj as ComponentUser).id === 'string' &&
+		typeof (obj as ComponentUser).name === 'string'
 	);
 }
 
@@ -92,9 +94,9 @@ export interface SpringValue<T extends number | string | object = number> {
  */
 export interface ModalComponent {
 	/** Optional Svelte component event binding */
-	$on?(type: string, callback: (e: any) => void): () => void;
+	$on?(type: string, callback: (e: ComponentEvent) => void): () => void;
 	/** Optional Svelte component props setting */
-	$set?(props: Partial<any>): void;
+	$set?(props: Partial<UnknownRecord>): void;
 	/** Open the modal with optional data */
 	open: (data?: unknown) => void;
 	/** Close the modal */
@@ -110,8 +112,8 @@ export function isModalComponent(obj: unknown): obj is ModalComponent {
 		typeof obj === 'object' &&
 		'open' in obj &&
 		'close' in obj &&
-		typeof (obj as any).open === 'function' &&
-		typeof (obj as any).close === 'function'
+		typeof (obj as ModalComponent).open === 'function' &&
+		typeof (obj as ModalComponent).close === 'function'
 	);
 }
 
@@ -127,7 +129,7 @@ export interface ComponentTemplate {
 	deliveryMethod: string;
 	type?: string;
 	message_body?: string;
-	recipient_config?: any;
+	recipient_config?: UnknownRecord;
 	recipientEmails?: string[];
 	metrics: { sent?: number; delivered?: number; views?: number };
 	[key: string]: unknown;

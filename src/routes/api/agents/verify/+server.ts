@@ -48,14 +48,16 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (templateId) {
 			const verificationDecision = extractVerificationDecision(result.decision);
 			const isApproved = result.confidence > 0.7; // Determine approval based on confidence threshold
-			
+
 			// Update the template with verification results directly
 			await db.template.update({
 				where: { id: templateId },
 				data: {
 					verification_status: isApproved ? 'approved' : 'pending',
 					correction_log: JSON.parse(JSON.stringify(verificationDecision.corrections)),
-					original_content: JSON.parse(JSON.stringify({ subject: templateData.subject, body: templateData.message_body })),
+					original_content: JSON.parse(
+						JSON.stringify({ subject: templateData.subject, body: templateData.message_body })
+					),
 					severity_level: verificationDecision.severityLevel,
 					agent_votes: JSON.parse(JSON.stringify({ verification: result })),
 					consensus_score: result.confidence || 0.5,
@@ -72,12 +74,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			...result
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				error: 'Verification failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

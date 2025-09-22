@@ -7,6 +7,7 @@ This document outlines the migration strategy for consolidating the analytics mo
 ## Migration Summary
 
 ### Models Being Removed (5)
+
 1. `analytics_event_property` → Merged into `analytics_event.properties` (JSONB)
 2. `analytics_funnel` → Merged into `analytics_experiment` (type='funnel')
 3. `analytics_funnel_step` → Merged into `analytics_experiment.config` (JSONB)
@@ -14,10 +15,12 @@ This document outlines the migration strategy for consolidating the analytics mo
 5. `analytics_variation` → Merged into `analytics_experiment` (type='ab_test')
 
 ### Models Being Enhanced (2)
+
 1. `user_session` → Renamed to `analytics_session` with JSONB consolidation
 2. `analytics_event` → Enhanced with JSONB properties and unified experiment relations
 
 ### Models Being Added (1)
+
 1. `analytics_experiment` → New unified model for campaigns, funnels, and A/B tests
 
 ## Detailed Migration Steps
@@ -40,7 +43,7 @@ INSERT INTO analytics_session (
   session_metrics,
   funnel_progress
 )
-SELECT 
+SELECT
   session_id,
   user_id,
   created_at,
@@ -81,7 +84,7 @@ INSERT INTO analytics_experiment (
   created_at,
   updated_at
 )
-SELECT 
+SELECT
   f.id,
   f.name,
   'funnel' as type,
@@ -96,7 +99,7 @@ SELECT
           'order', fs.step_order
         ) ORDER BY fs.step_order
       )
-      FROM analytics_funnel_step fs 
+      FROM analytics_funnel_step fs
       WHERE fs.funnel_id = f.id
     )
   ) as config,
@@ -120,11 +123,11 @@ INSERT INTO analytics_experiment (
   created_at,
   updated_at
 )
-SELECT 
+SELECT
   id,
   name,
   'campaign' as type,
-  CASE 
+  CASE
     WHEN end_date IS NULL OR end_date > NOW() THEN 'active'
     ELSE 'completed'
   END as status,
@@ -152,7 +155,7 @@ INSERT INTO analytics_experiment (
   created_at,
   updated_at
 )
-SELECT 
+SELECT
   id,
   name,
   'ab_test' as type,
@@ -173,7 +176,7 @@ FROM analytics_variation;
 ```sql
 -- Update analytics_event with new structure
 UPDATE analytics_event SET
-  event_type = CASE 
+  event_type = CASE
     WHEN funnel_id IS NOT NULL THEN 'funnel'
     WHEN campaign_id IS NOT NULL THEN 'campaign'
     WHEN variation_id IS NOT NULL THEN 'conversion'
@@ -190,7 +193,7 @@ UPDATE analytics_event SET
   created_at = timestamp;
 
 -- Clean up old foreign key columns
-ALTER TABLE analytics_event 
+ALTER TABLE analytics_event
 DROP COLUMN funnel_id,
 DROP COLUMN campaign_id,
 DROP COLUMN variation_id;
@@ -199,6 +202,7 @@ DROP COLUMN variation_id;
 ## Breaking Changes to Address
 
 ### 1. Database Schema Changes
+
 - **Foreign Key Updates**: Any code referencing `user_session` must be updated to `analytics_session`
 - **Column Removals**: Direct access to `ip_address`, `user_agent`, `fingerprint` must be updated to use `device_data` JSONB
 - **Property Access**: Event properties now accessed via JSONB field instead of separate table
@@ -206,33 +210,36 @@ DROP COLUMN variation_id;
 ### 2. API Response Changes
 
 #### Before (Event Properties):
+
 ```typescript
 // Old structure
 interface AnalyticsEvent {
-  id: string;
-  name: string;
-  properties: Array<{
-    name: string;
-    value: string;
-  }>;
+	id: string;
+	name: string;
+	properties: Array<{
+		name: string;
+		value: string;
+	}>;
 }
 ```
 
 #### After (JSONB Properties):
+
 ```typescript
 // New structure
 interface AnalyticsEvent {
-  id: string;
-  name: string;
-  event_type: 'pageview' | 'interaction' | 'conversion' | 'funnel' | 'campaign';
-  properties: Record<string, any>; // JSONB
-  computed_metrics: Record<string, any>; // JSONB
+	id: string;
+	name: string;
+	event_type: 'pageview' | 'interaction' | 'conversion' | 'funnel' | 'campaign';
+	properties: Record<string, any>; // JSONB
+	computed_metrics: Record<string, any>; // JSONB
 }
 ```
 
 ### 3. Query Pattern Changes
 
 #### Before (Join-based):
+
 ```sql
 SELECT e.name, p.name as prop_name, p.value as prop_value
 FROM analytics_event e
@@ -241,6 +248,7 @@ WHERE e.session_id = ?;
 ```
 
 #### After (JSONB-based):
+
 ```sql
 SELECT e.name, e.properties
 FROM analytics_event e
@@ -250,12 +258,14 @@ WHERE e.session_id = ?;
 ### 4. Component Updates Required
 
 #### Files Likely Affected:
+
 - Any analytics dashboard components
 - Event tracking utilities
 - Session management code
 - Funnel/campaign reporting components
 
 #### Search Patterns:
+
 ```bash
 # Find components using old analytics models
 grep -r "analytics_event_property" src/
@@ -267,42 +277,48 @@ grep -r "analytics_campaign" src/
 ## Performance Benefits
 
 ### 1. Reduced Joins
+
 - **Before**: 4-table joins for event data with properties
 - **After**: Single table query with JSONB access
 
 ### 2. Improved Indexing
+
 - JSONB GIN indexes for property searches
 - Consolidated session data reduces lookup complexity
 - Unified experiment tracking eliminates duplicate queries
 
 ### 3. Storage Efficiency
+
 - **Before**: 8 separate tables with overhead
 - **After**: 3 optimized tables with JSONB compression
 
 ## Testing Strategy
 
 ### 1. Data Integrity Verification
+
 ```sql
 -- Verify event property migration
-SELECT 
+SELECT
   COUNT(*) as old_properties,
   (SELECT COUNT(*) FROM analytics_event WHERE properties != '{}') as migrated_events
 FROM analytics_event_property;
 
 -- Verify experiment consolidation
-SELECT 
-  (SELECT COUNT(*) FROM analytics_funnel) + 
-  (SELECT COUNT(*) FROM analytics_campaign) + 
+SELECT
+  (SELECT COUNT(*) FROM analytics_funnel) +
+  (SELECT COUNT(*) FROM analytics_campaign) +
   (SELECT COUNT(*) FROM analytics_variation) as old_experiments,
   (SELECT COUNT(*) FROM analytics_experiment) as new_experiments;
 ```
 
 ### 2. Performance Testing
+
 - Compare query performance before/after migration
 - Test JSONB query patterns for property searches
 - Validate index effectiveness on new structure
 
 ### 3. Application Testing
+
 - Test all analytics dashboards
 - Verify event tracking still works
 - Confirm session management functions
@@ -311,11 +327,13 @@ SELECT
 ## Rollback Plan
 
 ### Emergency Rollback Steps
+
 1. **Restore from backup**: Keep full database backup before migration
 2. **Revert schema**: Use Prisma migration rollback
 3. **Update application code**: Revert to pre-migration code branch
 
 ### Rollback Time Estimate
+
 - **Database restore**: ~15 minutes (depends on data size)
 - **Code deployment**: ~5 minutes
 - **Verification**: ~10 minutes
@@ -324,17 +342,20 @@ SELECT
 ## Migration Timeline
 
 ### Phase 1: Schema Migration (1 hour)
+
 1. Create new consolidated models
 2. Run data migration scripts
 3. Verify data integrity
 
 ### Phase 2: Application Updates (2 hours)
+
 1. Update Prisma client generation
 2. Update analytics utilities
 3. Update affected components
 4. Test critical paths
 
 ### Phase 3: Cleanup (30 minutes)
+
 1. Drop old tables
 2. Remove unused indexes
 3. Update documentation
@@ -344,6 +365,7 @@ SELECT
 ## Post-Migration Validation
 
 ### Critical Checks
+
 - [ ] All analytics events have properties migrated
 - [ ] Session data is accessible via new structure
 - [ ] Experiments are properly categorized
@@ -351,6 +373,7 @@ SELECT
 - [ ] No application errors in analytics flows
 
 ### Monitoring
+
 - Track query performance metrics
 - Monitor JSONB field access patterns
 - Watch for any data inconsistencies

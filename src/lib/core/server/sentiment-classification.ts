@@ -186,12 +186,13 @@ export async function processTemplateMessages(): Promise<MessageEmbedding[]> {
 			text: messageText,
 			embedding,
 			sentiment,
-			geographic_coords: campaign.template.user?.latitude && campaign.template.user?.longitude
-				? {
-						latitude: campaign.template.user.latitude,
-						longitude: campaign.template.user.longitude
-					}
-				: undefined
+			geographic_coords:
+				campaign.template.user?.latitude && campaign.template.user?.longitude
+					? {
+							latitude: campaign.template.user.latitude,
+							longitude: campaign.template.user.longitude
+						}
+					: undefined
 		};
 
 		processedMessages.push(messageEmbedding);

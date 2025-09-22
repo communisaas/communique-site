@@ -30,6 +30,7 @@ npm run test     # integration-first test suite
 **EVERY SINGLE TYPE SHORTCUT COSTS US DEVELOPMENT TIME. EVERY `any` TYPE LEADS TO PRODUCTION BUGS. EVERY TYPE SUPPRESSION COMMENT CREATES TECHNICAL DEBT.**
 
 #### ⚡ INSTANT PR REJECTION CRITERIA ⚡
+
 **Any PR containing these patterns will be INSTANTLY REJECTED without review:**
 
 - ❌ **`any` type usage** - No exceptions, no "temporary" uses, no "quick fixes"
@@ -44,12 +45,14 @@ npm run test     # integration-first test suite
 - ❌ **Loose object casting like `data as SomeType`** - Use type guards
 
 #### 💀 CONSEQUENCES OF TYPE VIOLATIONS 💀
+
 - **Immediate PR rejection** - No discussion, no exceptions
 - **Forced refactoring** - Violating code must be completely rewritten
 - **Build failure** - CI will fail and block deployments
 - **Code review rejection** - Reviewers are instructed to reject without mercy
 
 #### ✅ MANDATORY TYPE PRACTICES ✅
+
 **Every line of code MUST follow these practices:**
 
 - ✅ **Explicit types for ALL function parameters and returns**
@@ -81,6 +84,7 @@ npm run test:run   # Run test suite
 ## TypeScript Best Practices for This Codebase
 
 ### SvelteKit 5 Type Requirements:
+
 ```typescript
 // ❌ WRONG - Missing types
 let count = $state(0);
@@ -94,51 +98,53 @@ let derived = $derived<number>(count * 2);
 
 // Component props MUST be typed
 let {
-  template,
-  onComplete
+	template,
+	onComplete
 }: {
-  template: Template;
-  onComplete: (data: CompletionData) => void;
+	template: Template;
+	onComplete: (data: CompletionData) => void;
 } = $props();
 ```
 
 ### Agent Type Requirements:
+
 ```typescript
 // Complete type definitions for all agent decisions
 export interface SupplyDecision {
-  rewardAmount: number;
-  baseRewardUSD: number; 
-  multipliers: {
-    participationScore: number;
-    marketConditions: number;
-    timeDecay: number;
-  };
-  reasoning: string;
-  confidence: number;
-  timestamp: string;
-  claim?: string;  // All optional properties explicitly typed
-  stakes?: number;
+	rewardAmount: number;
+	baseRewardUSD: number;
+	multipliers: {
+		participationScore: number;
+		marketConditions: number;
+		timeDecay: number;
+	};
+	reasoning: string;
+	confidence: number;
+	timestamp: string;
+	claim?: string; // All optional properties explicitly typed
+	stakes?: number;
 }
 
 // Type guards for runtime validation
 export function isSupplyDecision(value: unknown): value is SupplyDecision {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'rewardAmount' in value &&
-    typeof (value as SupplyDecision).rewardAmount === 'number'
-  );
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'rewardAmount' in value &&
+		typeof (value as SupplyDecision).rewardAmount === 'number'
+	);
 }
 ```
 
 ### Prisma and Database Types:
+
 ```typescript
 // Import generated Prisma types
 import type { User, Template, Submission } from '@prisma/client';
 
 // Extend with relations when needed
 type UserWithTemplates = User & {
-  templates: Template[];
+	templates: Template[];
 };
 
 // NEVER use loose object types
@@ -150,42 +156,46 @@ const user: User | null = await prisma.user.findFirst();
 ```
 
 ### Test Type Requirements:
+
 ```typescript
 // vi.mock MUST have proper return types
 vi.mock('$lib/core/api/client', () => ({
-  api: {
-    post: vi.fn<[string, unknown], Promise<ApiResponse<VerificationResult>>>()
-  }
+	api: {
+		post: vi.fn<[string, unknown], Promise<ApiResponse<VerificationResult>>>()
+	}
 }));
 
 // Mock data must match interfaces exactly
 const mockUser: MockUser = {
-  id: 'test-id',
-  email: 'test@example.com',
-  // ALL required properties must be present
+	id: 'test-id',
+	email: 'test@example.com'
+	// ALL required properties must be present
 };
 ```
 
 ### 🔥 REAL-WORLD TYPE VIOLATION PATTERNS WE JUST FIXED 🔥
+
 **These are the EXACT lazy patterns that caused our 193+ TypeScript errors:**
 
 #### ❌ Component Event Dispatch Type Mismatches
+
 ```typescript
 // WRONG - Extra properties in event dispatch
 dispatch('complete', {
-  address: verified,
-  district: districtData,  // ← Not in event type definition
-  extraField: value        // ← Not in event type definition
+	address: verified,
+	district: districtData, // ← Not in event type definition
+	extraField: value // ← Not in event type definition
 });
 
 // CORRECT - Only dispatch properties defined in event type
 const dispatch = createEventDispatcher<{
-  complete: { address: string; verified: boolean }
+	complete: { address: string; verified: boolean };
 }>();
 dispatch('complete', { address: verified, verified: true });
 ```
 
 #### ❌ Route ID Comparisons with Non-Existent Routes
+
 ```typescript
 // WRONG - Comparing against removed/non-existent routes
 const isTemplate = $page.route.id === '/s/[slug]' || $page.route.id === '/[slug]-backup';
@@ -195,25 +205,27 @@ const isTemplate = $page.route.id === '/s/[slug]';
 ```
 
 #### ❌ Object Spread with Duplicate Properties
+
 ```typescript
 // WRONG - Duplicate properties cause TypeScript errors
 return {
-  id: template.id,          // ← Duplicate after spread
-  title: template.title,    // ← Duplicate after spread
-  ...template,              // ← Already includes id, title
-  recipientEmails: emails
+	id: template.id, // ← Duplicate after spread
+	title: template.title, // ← Duplicate after spread
+	...template, // ← Already includes id, title
+	recipientEmails: emails
 };
 
 // CORRECT - Extract conflicting props, then spread
 const { metrics, ...otherProps } = template;
 return {
-  ...otherProps,
-  recipientEmails: emails,
-  metrics: { sent: metrics?.sent }
+	...otherProps,
+	recipientEmails: emails,
+	metrics: { sent: metrics?.sent }
 };
 ```
 
 #### ❌ Generic Record Types in Validator Functions
+
 ```typescript
 // WRONG - Generic casting loses type information
 const stepData = (formData as any)[currentStep] as Record<string, unknown>;
@@ -221,28 +233,30 @@ formErrors = validators[currentStep](stepData); // ← Type mismatch
 
 // CORRECT - Use explicit type checks for each step
 if (currentStep === 'objective') {
-  formErrors = validators.objective(formData.objective);
+	formErrors = validators.objective(formData.objective);
 } else if (currentStep === 'audience') {
-  formErrors = validators.audience(formData.audience);
+	formErrors = validators.audience(formData.audience);
 }
 ```
 
 #### ❌ Prisma Field Naming Inconsistencies
+
 ```typescript
 // WRONG - Mixing snake_case and camelCase
 const user = {
-  congressional_district: data.congressionalDistrict,  // ← Inconsistent
-  verification_method: data.verificationMethod        // ← Inconsistent
+	congressional_district: data.congressionalDistrict, // ← Inconsistent
+	verification_method: data.verificationMethod // ← Inconsistent
 };
 
 // CORRECT - Use consistent snake_case for Prisma fields
 const user = {
-  congressional_district: data.congressional_district,
-  verification_method: data.verification_method
+	congressional_district: data.congressional_district,
+	verification_method: data.verification_method
 };
 ```
 
 ### Type Checking Commands:
+
 ```bash
 # These MUST pass with zero errors:
 npm run check         # Runs svelte-check with TypeScript
@@ -254,9 +268,11 @@ npx tsc --noEmit --skipLibCheck
 ```
 
 ### Pattern-Matching Error Resolution Strategy:
+
 When fixing TypeScript errors, group similar patterns:
+
 1. **Prisma field naming** - Fix all snake_case vs camelCase inconsistencies together
-2. **Component event types** - Update all event dispatcher interfaces together  
+2. **Component event types** - Update all event dispatcher interfaces together
 3. **Route comparisons** - Remove all references to non-existent routes together
 4. **Object spreads** - Fix all duplicate property conflicts together
 5. **Type casting** - Replace all `any` casts with proper type guards together
@@ -264,27 +280,31 @@ When fixing TypeScript errors, group similar patterns:
 ### ⚡ ENFORCEMENT PROTOCOL ⚡
 
 #### Pre-Commit Requirements (ALL MUST PASS):
+
 ```bash
 # These commands MUST return ZERO errors or the commit is REJECTED:
 npm run check         # TypeScript + Svelte validation
-npx tsc --noEmit      # Pure TypeScript compilation check  
+npx tsc --noEmit      # Pure TypeScript compilation check
 npm run build         # Production build verification
 npm run lint:strict   # Zero-tolerance ESLint check
 ```
 
 #### Development Workflow Requirements:
+
 - **Before every commit**: Run all type-checking commands
 - **Before every PR**: Verify 0 TypeScript errors
 - **During development**: Use `npx tsc --noEmit --watch` for real-time checking
 - **In CI/CD**: Automated rejection of any type violations
 
 #### Code Review Standards:
+
 - **Any `any` type = INSTANT REJECTION**
 - **Any type suppression = INSTANT REJECTION**
 - **Any loose casting = INSTANT REJECTION**
 - **Any missing interface = REQUIRES IMMEDIATE FIX**
 
 ### 💰 THE REAL COST OF TYPE SHORTCUTS 💰
+
 **Why we're this fucking strict:**
 
 - **193+ TypeScript errors** we just spent cycles fixing
@@ -296,7 +316,9 @@ npm run lint:strict   # Zero-tolerance ESLint check
 **EVERY TYPE SHORTCUT COSTS MORE TIME THAN DOING IT RIGHT THE FIRST TIME.**
 
 ### 🎯 ZERO EXCEPTIONS POLICY 🎯
+
 **No matter who you are, no matter how "urgent" the feature:**
+
 - **No temporary `any` types** - There is no such thing as "temporary"
 - **No "quick fixes" with type suppression** - Fix the actual issue
 - **No "I'll fix it later" type violations** - Fix it now or don't commit

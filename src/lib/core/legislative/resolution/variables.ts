@@ -1,10 +1,10 @@
-import type { Representative } from '../models';
+import type { Representative as _Representative } from '../models';
 import type { LegislativeUser } from '../adapters/base';
 import { adapterRegistry } from '../adapters/registry';
 
 export interface VariableContext {
 	user: LegislativeUser;
-	representative: Representative;
+	_representative: _Representative;
 	country_code: string;
 }
 
@@ -28,17 +28,17 @@ export class LegislativeVariableResolver {
 		this.variables.set('user.postal_code', async (ctx) => ctx.user.address?.postal_code || '');
 
 		// Representative variables
-		this.variables.set('representative.name', async (ctx) => ctx.representative.name);
-		this.variables.set('representative.title', async (ctx) => {
+		this.variables.set('_representative.name', async (ctx) => ctx._representative.name);
+		this.variables.set('_representative.title', async (ctx) => {
 			const adapter = await adapterRegistry.getAdapter(ctx.country_code);
 			if (adapter) {
-				return adapter.formatRepresentativeName(ctx.representative);
+				return adapter.formatRepresentativeName(ctx._representative);
 			}
-			return ctx.representative.name;
+			return ctx._representative.name;
 		});
 		this.variables.set(
-			'representative.party',
-			async (ctx) => ctx.representative.party || 'Independent'
+			'_representative.party',
+			async (ctx) => ctx._representative.party || 'Independent'
 		);
 
 		// Office variables
@@ -46,7 +46,7 @@ export class LegislativeVariableResolver {
 			const adapter = await adapterRegistry.getAdapter(ctx.country_code);
 			if (adapter) {
 				const office = {
-					id: ctx.representative.office_id,
+					id: ctx._representative.office_id,
 					jurisdiction_id: '',
 					role: '',
 					title: '',
@@ -76,8 +76,8 @@ export class LegislativeVariableResolver {
 				try {
 					const value = await resolver(context);
 					resolved = resolved.replace(placeholder, value);
-				} catch (_error) {
-					console.error(`Failed to resolve variable ${variableName}:`, _error);
+				} catch (error) {
+					console.error(`Failed to resolve variable ${variableName}:`, error);
 					// Leave placeholder as-is if resolution fails
 				}
 			}

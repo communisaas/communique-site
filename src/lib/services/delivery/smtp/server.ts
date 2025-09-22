@@ -3,8 +3,8 @@
  * Receives mailto: messages and routes certified delivery through CWC API
  */
 
-import { SMTPServer, type SMTPServerOptions, type SMTPServerSession } from 'smtp-server';
-import { simpleParser, type ParsedMail } from 'mailparser';
+import { SMTPServer, type SMTPServerOptions, type SMTPServerSession as _SMTPServerSession } from 'smtp-server';
+import { ParsedMail as _ParsedMail } from 'mailparser';
 import { Readable } from 'stream';
 import type {
 	CertifiedDeliveryMessage,
@@ -15,7 +15,7 @@ import type {
 	CWCSubmissionResult,
 	SMTPError
 } from '../types/index.js';
-import { parseIncomingMessage, validateMessage } from './parser';
+import { parseIncomingMessage, validateMessage as _validateMessage } from './parser';
 import { CWCClient } from '../integrations/cwc.js';
 import { CommuniqueClient } from '../integrations/communique.js';
 import { VOTERClient } from '../integrations/voter.js';
@@ -62,7 +62,7 @@ export class DeliveryPlatformSMTP {
 	/**
 	 * Handle new SMTP connections
 	 */
-	private handleConnect(session: SMTPServerSession, callback: (err?: Error | null) => void): void {
+	private handleConnect(session: _SMTPServerSession, callback: (err?: Error | null) => void): void {
 		console.log(`New SMTP connection from ${session.remoteAddress}`);
 
 		// Rate limiting could be implemented here
@@ -75,7 +75,7 @@ export class DeliveryPlatformSMTP {
 	 */
 	private handleAuth(
 		auth: { username: string; password: string },
-		session: SMTPServerSession,
+		session: _SMTPServerSession,
 		callback: (err: Error | null | undefined, response?: { user: string }) => void
 	): void {
 		if (this.config.smtp.auth && this.config.smtp.auth.user && this.config.smtp.auth.pass) {
@@ -97,15 +97,15 @@ export class DeliveryPlatformSMTP {
 	 */
 	private handleData(
 		stream: Readable,
-		session: SMTPServerSession,
+		session: _SMTPServerSession,
 		callback: (err?: Error | null) => void
 	): void {
 		this.processIncomingMail(stream, session)
 			.then(() => {
 				callback();
 			})
-			.catch((_error) => {
-				console.error('Mail handling error:', _error);
+			.catch((error) => {
+				console.error('Error occurred');
 				callback(new Error('Message processing failed'));
 			});
 	}
@@ -113,7 +113,7 @@ export class DeliveryPlatformSMTP {
 	/**
 	 * Process incoming mail messages
 	 */
-	private async processIncomingMail(stream: Readable, session: SMTPServerSession): Promise<void> {
+	private async processIncomingMail(stream: Readable, session: _SMTPServerSession): Promise<void> {
 		try {
 			console.log('Processing incoming message...');
 
@@ -162,8 +162,8 @@ export class DeliveryPlatformSMTP {
 
 			// Process certified delivery
 			await this.processCertifiedDelivery(parsedMessage, userResult.user, templateData);
-		} catch (_error) {
-			console.error('Error handling incoming mail:', _error);
+		} catch {
+			console.error('Error occurred');
 			// Don't throw - we don't want to reject the SMTP connection
 			// Log the error and continue
 		}
@@ -273,15 +273,15 @@ export class DeliveryPlatformSMTP {
 				cwcResult: result,
 				timestamp: new Date()
 			});
-		} catch (_error) {
-			console.error('Error processing certified delivery:', _error);
+		} catch {
+			console.error('Error occurred');
 
 			// Notify of the failure
 			await this.communiqueClient.notifyDeliveryResult({
 				templateId: templateData.id,
 				userId: userProfile.id,
 				deliveryStatus: 'failed',
-				error: _error instanceof Error ? _error.message : 'Unknown error',
+				error: error ? 'Unknown error' : 'Unknown error',
 				timestamp: new Date()
 			});
 		}

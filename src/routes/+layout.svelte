@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { templateStore } from '$lib/stores/templates.svelte';
-	import { onMount } from 'svelte';
-	import { User, LogOut } from '@lucide/svelte';
+	import { onMount as _onMount } from 'svelte';
+	import { User as _User, LogOut as _LogOut } from '@lucide/svelte';
 	import { page } from '$app/stores';
 	import '../app.css';
 	import Footer from '$lib/components/layout/Footer.svelte';
@@ -11,22 +11,25 @@
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
-	import type { Template } from '$lib/types/template';
+	import type { Template as _Template } from '$lib/types/template';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
-	let { children, data }: { 
-		children: Snippet; 
+	let {
+		children,
+		data
+	}: {
+		children: Snippet;
 		data: LayoutData;
 	} = $props();
 
 	// Fetch templates from API
-	onMount(() => {
+	_onMount(() => {
 		templateStore.fetchTemplates();
 	});
 
 	// Handle template use from header
-	function handleTemplateUse(event: { template: Template; requiresAuth: boolean }) {
+	function handleTemplateUse(__event: { template: Template; requiresAuth: boolean }) {
 		const { template, requiresAuth } = event;
 
 		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));

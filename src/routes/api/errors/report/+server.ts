@@ -12,7 +12,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const errorReport: ErrorReport = {
-			message: error.message || 'Unknown error',
+			message: err.message || 'Unknown error',
 			stack: error.stack,
 			context: context || 'unknown',
 			timestamp: error.timestamp || Date.now(),
@@ -40,8 +40,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			success: true,
 			message: 'Error reported successfully'
 		});
-	} catch (_error: unknown) {
-		console.error('Failed to process error report:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,

@@ -259,7 +259,7 @@
 		const draft = templateDraftStore.getDraft(draftId);
 		if (draft) {
 			formData = draft.data;
-			currentStep = draft.currentStep as any;
+			currentStep = draft.currentStep as 'objective' | 'audience' | 'content' | 'review';
 			lastSaved = draft.lastSaved;
 		}
 		showDraftRecovery = false;
@@ -282,7 +282,7 @@
 		);
 	}
 
-	function manualSave() {
+	function _manualSave() {
 		templateDraftStore.saveDraft(draftId, formData, currentStep);
 		lastSaved = Date.now();
 	}
@@ -352,7 +352,7 @@
 				{#each formErrors as error}
 					<li>{error}</li>
 				{/each}
-				{#each Object.entries(validationErrors) as [field, message]}
+				{#each Object.entries(validationErrors) as [_field, message]}
 					<li>{message}</li>
 				{/each}
 			</ul>

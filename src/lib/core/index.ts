@@ -1,9 +1,35 @@
 // Core Module - Barrel Export
 export * from './analytics';
 export * from './api';
-export * from './congress';
-export * from './legislative';
 export * from './server';
+
+// Selective exports to avoid naming conflicts
+export { addressLookup, cwcClient, CWCGenerator } from './congress';
+export type { CongressionalOffice } from './congress/cwc-client';
+
+export {
+	adapterRegistry,
+	deliveryPipeline,
+	variableResolver,
+	USCongressAdapter
+} from './legislative';
+export type {
+	LegislativeJurisdiction,
+	Office,
+	ContactMethod,
+	Representative,
+	Chamber,
+	LegislativeSystem,
+	DeliveryCapability,
+	Jurisdiction,
+	JurisdictionType
+} from './legislative/models';
+export type {
+	Address as LegislativeAddress,
+	DeliveryRequest,
+	DeliveryResult,
+	LegislativeAdapter
+} from './legislative/adapters/base';
 
 // Auth exports (selective to avoid User type conflicts)
 export {
@@ -30,6 +56,4 @@ export { db } from './db';
 
 // Convenience re-exports
 export { funnelAnalytics } from './analytics';
-export { addressLookup, cwcClient } from './congress';
-export { adapterRegistry, deliveryPipeline } from './legislative';
 export { analyzeCivicInformationCascades, apiSecurityMiddleware } from './server';

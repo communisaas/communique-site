@@ -16,7 +16,18 @@ import { ReputationAgent } from '$lib/agents/reputation-agent.js';
 import { AgentCoordinator, AgentType, type AgentContext } from '$lib/agents/base-agent.js';
 import { extractReputationDecision, extractVerificationDecision } from '$lib/agents/type-guards.js';
 import type { RequestHandler } from './$types';
-import type { RewardCalculationRequest, ChallengeVoteRequest, ProcessChallengeVoteParams } from '$lib/types/api.js';
+import type {
+	RewardCalculationRequest,
+	ChallengeVoteRequest,
+	ProcessChallengeVoteParams
+} from '$lib/types/api.js';
+import type {
+	Representative,
+	UserProfileData,
+	KYCResult,
+	ErrorWithCode,
+	UnknownRecord
+} from '$lib/types/any-replacements.js';
 
 export const GET: RequestHandler = async ({ url }) => {
 	return json({ message: 'VOTER Protocol API - Use POST for actions' });
@@ -46,31 +57,31 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			default:
 				return json({ success: false, message: `Invalid action: ${action}` }, { status: 400 });
 		}
-	} catch (_error) {
-		console.error('VOTER API error:', _error);
-		
-		// Return specific error message based on error type
+	} catch (err) {
+		console.error('Error occurred');
+
+		// Return specific err.message based on error type
 		let statusCode = 500;
 		let message = 'Internal server error';
-		
-		if (_error instanceof Error) {
-			message = _error.message;
-			
+
+		if (error instanceof Error) {
+			message = err.message;
+
 			// Handle specific SvelteKit HttpError status codes - check different properties
-			if ('status' in _error) {
-				statusCode = (_error as any).status;
-			} else if ('code' in _error && typeof (_error as any).code === 'number') {
-				statusCode = (_error as any).code;
-			} else if (_error.name === 'HttpError') {
+			if ('status' in error) {
+				statusCode = (error as ErrorWithCode).status || 500;
+			} else if ('code' in error && typeof (error as ErrorWithCode).code === 'number') {
+				statusCode = (error as ErrorWithCode).code as number;
+			} else if (error.name === 'HttpError') {
 				// Try to extract status from HttpError
-				const errorStr = _error.toString();
+				const errorStr = error.toString();
 				const statusMatch = errorStr.match(/status:\s*(\d+)/);
 				if (statusMatch) {
 					statusCode = parseInt(statusMatch[1]);
 				}
 			}
 		}
-		
+
 		return json({ success: false, message }, { status: statusCode });
 	}
 };
@@ -88,8 +99,8 @@ async function handleCWCSubmission({
 	userId: string;
 	templateId: string;
 	message: string;
-	representatives: any[];
-	metadata?: Record<string, any>;
+	representatives: Representative[];
+	metadata?: UnknownRecord;
 }) {
 	if (!userId || !templateId || !message) {
 		throw error(400, 'Missing required fields: userId, templateId, message');
@@ -133,8 +144,8 @@ async function handleCWCSubmission({
 
 	// Submit via existing mature CWC infrastructure
 	const results = await cwcClient.submitToAllRepresentatives(
-		template as any,
-		user as any,
+		template,
+		user,
 		representatives,
 		message
 	);
@@ -173,7 +184,7 @@ async function handleCWCSubmission({
 							agentId: impactDecision.agentId,
 							confidence: impactDecision.confidence,
 							reasoning: impactDecision.reasoning,
-							impactScore: (impactDecision.decision as any)?.impactScore || 0
+							impactScore: ((impactDecision.decision as UnknownRecord)?.impactScore as number) || 0
 						}
 					: { error: 'Impact assessment failed' }
 			},
@@ -187,23 +198,29 @@ async function handleCWCSubmission({
 			user_id: userId,
 			action_type: 'civic_action',
 			action_subtype: 'cwc_message',
-			audit_data: JSON.parse(JSON.stringify({
-				cwc_results: results,
-				submitted_at: new Date().toISOString(),
-				message_preview: message.substring(0, 100) + '...',
-				representatives_count: representatives.length,
-				delivery_method: 'cwc',
-				template_id: templateId
-			})),
+			audit_data: JSON.parse(
+				JSON.stringify({
+					cwc_results: results,
+					submitted_at: new Date().toISOString(),
+					message_preview: message.substring(0, 100) + '...',
+					representatives_count: representatives.length,
+					delivery_method: 'cwc',
+					template_id: templateId
+				})
+			),
 			agent_source: impactDecision?.agentId || null,
-			agent_decisions: impactDecision ? JSON.parse(JSON.stringify({
-				impact: {
-					agentId: impactDecision.agentId,
-					confidence: impactDecision.confidence,
-					reasoning: impactDecision.reasoning,
-					decision: impactDecision.decision
-				}
-			})) : undefined,
+			agent_decisions: impactDecision
+				? JSON.parse(
+						JSON.stringify({
+							impact: {
+								agentId: impactDecision.agentId,
+								confidence: impactDecision.confidence,
+								reasoning: impactDecision.reasoning,
+								decision: impactDecision.decision
+							}
+						})
+					)
+				: undefined,
 			confidence: impactDecision?.confidence || null,
 			civic_action_id: civicAction.id,
 			status: results.every((r) => r.success) ? 'completed' : 'failed',
@@ -221,7 +238,7 @@ async function handleCWCSubmission({
 		results,
 		impact_assessment: impactDecision
 			? {
-					impactScore: (impactDecision.decision as any)?.impactScore || 0,
+					impactScore: ((impactDecision.decision as UnknownRecord)?.impactScore as number) || 0,
 					confidence: impactDecision.confidence,
 					reasoning: impactDecision.reasoning
 				}
@@ -248,12 +265,15 @@ async function recordCivicAction({
 	templateId?: string;
 	txHash?: string;
 	rewardWei?: string;
-	agentDecisions?: Record<string, any>;
-	metadata?: Record<string, any>;
+	agentDecisions?: UnknownRecord;
+	metadata?: UnknownRecord;
 	status?: string;
 }) {
 	if (!userId || !actionType) {
-		return json({ success: false, message: 'Missing required fields: userId, actionType' }, { status: 400 });
+		return json(
+			{ success: false, message: 'Missing required fields: userId, actionType' },
+			{ status: 400 }
+		);
 	}
 
 	// Create blockchain-focused civic action
@@ -314,7 +334,7 @@ async function updateReputation({
 	reason?: string;
 	txHash?: string;
 	agentSource?: string;
-	evidence?: any;
+	evidence?: UnknownRecord;
 	confidence?: number;
 }) {
 	if (!userId) {
@@ -391,14 +411,16 @@ async function updateReputation({
 			user_id: userId,
 			action_type: 'reputation_change',
 			action_subtype: 'agent_credibility_assessment',
-			audit_data: JSON.parse(JSON.stringify({
-				components: credibilityAssessment.credibilityComponents,
-				badges: credibilityAssessment.badges,
-				riskFactors: credibilityAssessment.riskFactors,
-				attestations: credibilityAssessment.attestations,
-				tx_hash: txHash,
-				portabilityHash: credibilityAssessment.portabilityHash
-			})),
+			audit_data: JSON.parse(
+				JSON.stringify({
+					components: credibilityAssessment.credibilityComponents,
+					badges: credibilityAssessment.badges,
+					riskFactors: credibilityAssessment.riskFactors,
+					attestations: credibilityAssessment.attestations,
+					tx_hash: txHash,
+					portabilityHash: credibilityAssessment.portabilityHash
+				})
+			),
 			score_before: oldScore,
 			score_after: newScore,
 			change_amount: newScore - oldScore,
@@ -439,7 +461,19 @@ async function updateReputation({
  * Agent-orchestrated identity verification
  * Replaces static verification with intelligent multi-source analysis
  */
-async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, districtHash }: { userId: string; walletAddress: string; kycResult: any; trustScore: number; districtHash: string }) {
+async function verifyIdentity({
+	userId,
+	walletAddress,
+	kycResult,
+	trustScore,
+	districtHash
+}: {
+	userId: string;
+	walletAddress: string;
+	kycResult: KYCResult;
+	trustScore: number;
+	districtHash: string;
+}) {
 	if (!userId) {
 		throw error(400, 'Missing required field: userId');
 	}
@@ -510,7 +544,7 @@ async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, di
 			action_subtype: 'identity_verification',
 			audit_data: {
 				verificationLevel: assessment.verificationLevel,
-				verificationSources: assessment.verificationSources as any,
+				verificationSources: assessment.verificationSources,
 				riskFactors: assessment.riskFactors,
 				recommendations: assessment.recommendedActions,
 				walletAddress,
@@ -557,12 +591,18 @@ async function verifyIdentity({ userId, walletAddress, kycResult, trustScore, di
 /**
  * Get user profile with civic action history
  */
-async function getUserProfile({ userId, walletAddress }: { userId?: string; walletAddress?: string }) {
+async function getUserProfile({
+	userId,
+	walletAddress
+}: {
+	userId?: string;
+	walletAddress?: string;
+}) {
 	if (!userId && !walletAddress) {
-		throw error(400, 'Must provide either userId or walletAddress');
+		throw error(400, 'Must provide either userId or walletAddress ');
 	}
 
-	const user = await prisma.user.findFirst({
+	const user = (await prisma.user.findFirst({
 		where: userId ? { id: userId } : { wallet_address: walletAddress },
 		include: {
 			civic_actions: {
@@ -590,7 +630,7 @@ async function getUserProfile({ userId, walletAddress }: { userId?: string; wall
 				}
 			}
 		}
-	}) as any;
+	})) as UserProfileData;
 
 	if (!user) {
 		throw error(404, 'User not found');
@@ -616,7 +656,7 @@ async function getUserProfile({ userId, walletAddress }: { userId?: string; wall
 			challenges_defended: user._count.defender_challenges,
 			challenges_won: user._count.won_challenges
 		},
-		recent_actions: user.civic_actions.map((action: any) => ({
+		recent_actions: user.civic_actions.map((action: UnknownRecord) => ({
 			id: action.id,
 			type: action.action_type,
 			template_title: action.template?.title,
@@ -624,7 +664,7 @@ async function getUserProfile({ userId, walletAddress }: { userId?: string; wall
 			reward_wei: action.reward_wei,
 			created_at: action.created_at
 		})),
-		reputation_history: user.audit_logs.map((log: any) => ({
+		reputation_history: user.audit_logs.map((log: UnknownRecord) => ({
 			score_change: log.change_amount,
 			reason: log.change_reason,
 			created_at: log.created_at
@@ -690,7 +730,12 @@ async function createChallenge({
 /**
  * Process challenge vote with quadratic voting
  */
-async function processChallengeVote({ challengeId, userId, side, stakeAmount }: ProcessChallengeVoteParams) {
+async function processChallengeVote({
+	challengeId,
+	userId,
+	side,
+	stakeAmount
+}: ProcessChallengeVoteParams) {
 	if (!challengeId || !userId || !side || !stakeAmount) {
 		throw error(400, 'Missing required fields for challenge vote');
 	}
@@ -700,7 +745,7 @@ async function processChallengeVote({ challengeId, userId, side, stakeAmount }: 
 
 	const stake = await prisma.challengeStake.upsert({
 		where: {
-			challenge_id_user_id: {
+			challenge_iduser_id: {
 				challenge_id: challengeId,
 				user_id: userId
 			}
@@ -731,9 +776,14 @@ async function processChallengeVote({ challengeId, userId, side, stakeAmount }: 
  * Agent-orchestrated reward calculation
  * Replaces static logic with intelligent agents
  */
-async function calculateReward({ userAddress, actionType, templateId, timestamp }: RewardCalculationRequest) {
+async function calculateReward({
+	userAddress,
+	actionType,
+	templateId,
+	timestamp
+}: RewardCalculationRequest) {
 	if (!userAddress || !actionType) {
-		throw error(400, 'Missing required fields: userAddress, actionType');
+		throw error(400, 'Missing required fields: userAddress , actionType');
 	}
 
 	// Get user for context

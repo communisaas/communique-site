@@ -65,7 +65,13 @@
 
 			// Clear any existing timeout
 			if (copyTimeout) {
-				coordinated.autoClose(() => {}, 0, componentId);
+				coordinated.autoClose(
+					() => {
+						/* Clear timeout callback */
+					},
+					0,
+					componentId
+				);
 			}
 
 			// Reset after 2 seconds
@@ -76,7 +82,9 @@
 				2000,
 				componentId
 			);
-		} catch (err) {}
+		} catch {
+			/* Ignore clipboard errors - copy operation failed silently */
+		}
 	}
 </script>
 
@@ -89,7 +97,7 @@
 		<div class="flex items-center gap-3">
 			<ShareButton
 				url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
-				title={template.subject || template.title}
+				_title={template.subject || template.title}
 				variant="magical"
 				size="lg"
 			/>
@@ -102,7 +110,7 @@
 		<!-- In list/modal context, show smaller share button -->
 		<ShareButton
 			url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
-			title={template.subject || template.title}
+			_title={template.subject || template.title}
 			variant="primary"
 			size="default"
 		/>
@@ -119,10 +127,11 @@
 			</span>
 
 			<!-- Recipients popover -->
-			<Popover let:open>
-				<svelte:fragment slot="trigger" let:triggerAction>
+			<Popover>
+				{#snippet trigger(triggerAction)}
 					<button
-						use:triggerAction
+						onclick={triggerAction.trigger}
+						aria-controls={triggerAction['aria-controls']}
 						class="inline-flex cursor-alias items-center rounded-md bg-gray-100
                                px-1.5 py-0.5 font-medium
                                text-gray-600 transition-all
@@ -138,7 +147,7 @@
 							+{recipientCount - (inModal ? 1 : 2)} more
 						</span>
 					</button>
-				</svelte:fragment>
+				{/snippet}
 
 				<div class="w-[280px] max-w-[calc(100vw-2rem)] cursor-default p-4">
 					<div class="flex items-start gap-4 text-sm sm:text-base">

@@ -15,7 +15,7 @@ export interface Template {
 	recipient_config: unknown; // Json field in database
 	metrics: {
 		sent?: number;
-		delivered?: number; // Number of messages successfully delivered 
+		delivered?: number; // Number of messages successfully delivered
 		opened?: number; // Deprecated - not trackable for direct email
 		clicked?: number; // For direct: recipient count; for congressional: not used
 		responded?: number; // For congressional: delivery confirmations; for direct: not used
@@ -29,45 +29,45 @@ export interface Template {
 	campaign_id?: string | null; // String? field in database - was missing
 	status: string; // String field with default "draft" - was missing
 	is_public: boolean;
-	
+
 	// Usage tracking (from Prisma Template model) - was missing
 	send_count: number; // Int with default 0
 	last_sent_at?: Date | string | null; // DateTime? field
-	
+
 	// Geographic scope (from Prisma Template model)
 	applicable_countries: string[]; // String[] with default []
 	jurisdiction_level?: string | null;
 	specific_locations: string[]; // String[] with default []
-	
+
 	// Optional place scoping linked via separate table
 	scope?: TemplateScope;
 	preview: string;
 	recipientEmails?: string[]; // Computed field - use extractRecipientEmails(recipient_config) instead
-	
+
 	// === MERGED VERIFICATION FIELDS (Phase 4 consolidation) ===
 	// Verification status & process
 	verification_status?: 'pending' | 'reviewing' | 'approved' | 'rejected' | null;
 	country_code?: string | null; // From TemplateVerification
 	severity_level?: number | null; // 1-10 scale
-	
+
 	// Content correction & backup
-	correction_log?: Record<string, any> | null; // Grammar, clarity fixes applied
-	original_content?: Record<string, any> | null; // Before corrections
+	correction_log?: Record<string, unknown> | null; // Grammar, clarity fixes applied
+	original_content?: Record<string, unknown> | null; // Before corrections
 	corrected_subject?: string | null;
 	corrected_body?: string | null;
-	
+
 	// Multi-agent consensus & quality scores
-	agent_votes?: Record<string, any> | null; // {openai: 0.8, gemini: 0.7}
+	agent_votes?: Record<string, unknown> | null; // {openai: 0.8, gemini: 0.7}
 	consensus_score?: number | null; // Weighted average
 	quality_score?: number; // 0-100
 	grammar_score?: number | null;
 	clarity_score?: number | null;
 	completeness_score?: number | null;
-	
+
 	// Reputation impact (quadratic)
 	reputation_delta?: number; // Default 0
 	reputation_applied?: boolean; // Default false
-	
+
 	// Enhanced timestamps (from verification)
 	submitted_at?: Date | string | null; // When submitted for verification
 	corrected_at?: Date | string | null; // When AI corrections applied

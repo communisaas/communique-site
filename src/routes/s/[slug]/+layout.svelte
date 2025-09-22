@@ -1,14 +1,17 @@
 <script lang="ts">
 	import '../../../app.css';
 	import { page } from '$app/stores';
-	import { ArrowLeft, Share2, Copy, CheckCircle, LogOut, User } from '@lucide/svelte';
+	import { ArrowLeft, Share2, Copy as _Copy, CheckCircle, LogOut as _LogOut, User as _User } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
-	let { children, data }: {
+	let {
+		children,
+		data
+	}: {
 		children: Snippet;
 		data: LayoutData;
 	} = $props();

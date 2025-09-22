@@ -9,7 +9,7 @@
  * User's blockchain identity and state
  */
 export interface BlockchainUser {
-	// Addresses
+	// Address
 	derivedAddress?: string; // Generated deterministic address
 	connectedAddress?: string; // Real wallet if connected
 	activeAddress: string; // Which address to use
@@ -160,9 +160,9 @@ export interface GovernanceActivity {
 }
 
 /**
- * Address migration record
+ * Address  migration record
  */
-export interface AddressMigration {
+export interface Address {
 	userId: string;
 	oldAddress?: string;
 	newAddress: string;

@@ -2,11 +2,11 @@
 	import { createEventDispatcher } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { X, User, ArrowRight } from '@lucide/svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	// import Button from '$lib/components/ui/Button.svelte';
 
 	let isOpen = $state(false);
 
-	const dispatch = createEventDispatcher<{
+	const _dispatch = createEventDispatcher<{
 		close: void;
 		auth: { provider: string };
 	}>();
@@ -34,7 +34,7 @@
 
 			// Redirect to OAuth provider
 			window.location.href = `/auth/${provider}`;
-		} catch (error) {
+		} catch (_error) {
 			console.error('Auth preparation failed:', error);
 			// Fallback: direct redirect
 			window.location.href = `/auth/${provider}`;
@@ -60,15 +60,21 @@
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
 		onclick={handleBackdropClick}
+		onkeydown={(e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				handleBackdropClick(e);
+			}
+		}}
 		role="dialog"
 		aria-modal="true"
 		aria-label="Sign in to Communiqué"
+		tabindex="0"
 		in:fade={{ duration: 200 }}
 		out:fade={{ duration: 150 }}
 	>
 		<div
 			class="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl"
-			onclick={(e) => e.stopPropagation()}
+			role="document"
 			in:scale={{
 				duration: 300,
 				start: 0.95,

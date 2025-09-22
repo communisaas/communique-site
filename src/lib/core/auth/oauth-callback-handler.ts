@@ -12,7 +12,6 @@
  * - Provider-specific API handling through configuration
  */
 
-import type { RequestHandler } from '@sveltejs/kit';
 import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
@@ -87,7 +86,11 @@ export interface OAuthCallbackConfig {
 
 	// Provider-specific functions with proper typing
 	createOAuthClient: () => OAuthClient;
-	exchangeTokens: (client: OAuthClient, code: string, codeVerifier?: string) => Promise<OAuthTokens>;
+	exchangeTokens: (
+		client: OAuthClient,
+		code: string,
+		codeVerifier?: string
+	) => Promise<OAuthTokens>;
 	getUserInfo: (accessToken: string, clientSecret?: string) => Promise<unknown>;
 	mapUserData: (rawUser: unknown) => UserData;
 	extractTokenData: (tokens: OAuthTokens) => TokenData;
@@ -104,11 +107,12 @@ export class OAuthCallbackHandler {
 	async handleCallback(config: OAuthCallbackConfig, url: URL, cookies: Cookies): Promise<Response> {
 		try {
 			// Step 1: Validate OAuth parameters
-			const { code, state, codeVerifier, returnTo } = this.validateParameters(
-				url,
-				cookies,
-				config.requiresCodeVerifier
-			);
+			const {
+				code,
+				state: _state,
+				codeVerifier,
+				returnTo
+			} = this.validateParameters(url, cookies, config.requiresCodeVerifier);
 
 			// Step 2: Exchange authorization code for tokens
 			const oauthClient = config.createOAuthClient();
@@ -124,8 +128,8 @@ export class OAuthCallbackHandler {
 
 			// Step 5: Create session and handle redirects
 			return await this.handleSessionAndRedirect(user, returnTo, config.provider, cookies);
-		} catch (_error) {
-			return this.handleError(_error, config.provider);
+		} catch {
+			return this.handleError(error, config.provider);
 		}
 	}
 
@@ -284,7 +288,7 @@ export class OAuthCallbackHandler {
 		// Check address requirements
 		const hasAddress = Boolean(user.street && user.city && user.state && user.zip);
 
-		const needsAddressCollection =
+		const needsAddress =
 			!hasAddress &&
 			(returnTo.includes('template-modal') ||
 				returnTo.includes('/template/') ||
@@ -315,7 +319,7 @@ export class OAuthCallbackHandler {
 		);
 
 		// Determine redirect path - clean URLs without query params
-		if (needsAddressCollection) {
+		if (needsAddress) {
 			// Store return URL in session-accessible cookie
 			cookies.set('oauth_return_to', returnTo, {
 				path: '/',

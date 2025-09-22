@@ -7,7 +7,11 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { SupplyAgent, MarketAgent, ImpactAgent } from '$lib/agents';
-import { extractSupplyDecision, extractMarketDecision, extractImpactDecision } from '$lib/agents/type-guards';
+import {
+	extractSupplyDecision,
+	extractMarketDecision,
+	extractImpactDecision
+} from '$lib/agents/type-guards';
 
 const supplyAgent = new SupplyAgent();
 const marketAgent = new MarketAgent();
@@ -16,7 +20,13 @@ const impactAgent = new ImpactAgent();
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { userAddress, actionType, templateId, recipients = [], verificationScore = 1.0 }: {
+		const {
+			userAddress,
+			actionType,
+			templateId,
+			recipients = [],
+			verificationScore = 1.0
+		}: {
 			userAddress: string;
 			actionType: string;
 			templateId?: string;
@@ -25,7 +35,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		} = body;
 
 		if (!userAddress || !actionType) {
-			return json({ error: 'userAddress and actionType required' }, { status: 400 });
+			return json({ error: 'userAddress  and actionType required' }, { status: 400 });
 		}
 
 		// Calculate base reward with supply agent
@@ -58,7 +68,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const supplyData = extractSupplyDecision(supplyDecision.decision);
 		const marketData = extractMarketDecision(marketDecision.decision);
 		const impactData = extractImpactDecision(impactDecision.decision);
-		
+
 		// Use finalRewardWei as the primary reward source, with rewardAmount as compatibility fallback
 		const baseRewardWei = supplyData.finalRewardWei || '100000000000000000'; // 0.1 ETH default
 		const marketMultiplier = marketData.rewardMultiplier;
@@ -90,12 +100,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				impact: impactDecision
 			}
 		});
-	} catch (_error) {
-		console.error('Reward calculation error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				error: 'Reward calculation failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

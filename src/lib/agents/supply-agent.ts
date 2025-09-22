@@ -9,8 +9,7 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
-import type { SupplyDecision } from './type-guards';
-import { db, prisma } from '$lib/core/db';
+import { db } from '$lib/core/db';
 
 export interface RewardParameters {
 	baseRewardUSD: number;
@@ -111,8 +110,8 @@ export class SupplyAgent extends BaseAgent {
 				this.generateReasoning(rewardParams, networkData, context),
 				{ actionType: context.actionType, networkActivity: networkData.dailyActiveUsers }
 			);
-		} catch (_error) {
-			console.error('SupplyAgent decision error:', _error);
+		} catch {
+			console.error('Error occurred');
 			// Fallback to conservative values
 			const fallbackParams: RewardParameters = {
 				baseRewardUSD: 0.1,
@@ -129,11 +128,11 @@ export class SupplyAgent extends BaseAgent {
 				finalRewardETH: 0.00005, // 0.1 / 2000
 				finalRewardWei: '100000000000000000'
 			};
-			
+
 			return this.createDecision(
 				fallbackParams,
 				0.3,
-				`Error in supply calculation, using conservative fallback: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
+				`Error in supply calculation, using conservative fallback: Unknown error`,
 				{ error: true }
 			);
 		}
@@ -220,7 +219,7 @@ export class SupplyAgent extends BaseAgent {
 		totalActions: number;
 	}): number {
 		// Dynamic base reward based on network activity
-		const { dailyActiveUsers, totalActions } = networkData;
+		const { dailyActiveUsers, totalActions: _totalActions } = networkData;
 
 		// More users = lower per-action reward to prevent inflation
 		// Fewer users = higher reward to incentivize participation

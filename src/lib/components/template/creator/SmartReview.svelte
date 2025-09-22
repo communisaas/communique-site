@@ -1,5 +1,11 @@
 <script lang="ts">
-	import { CheckCircle2, AlertTriangle, Zap, ArrowRight, Loader2 } from '@lucide/svelte';
+	import {
+		CheckCircle2,
+		AlertTriangle as _AlertTriangle,
+		Zap,
+		ArrowRight as _ArrowRight,
+		Loader2
+	} from '@lucide/svelte';
 	import type { TemplateFormData, TemplateCreationContext } from '$lib/types/template';
 	import Badge from '$lib/components/ui/Badge.svelte';
 
@@ -57,7 +63,7 @@
 				// Fallback to simple ready state
 				analysisState = 'ready';
 			}
-		} catch (error) {
+		} catch (_error) {
 			console.error('Analysis failed:', error);
 			analysisState = 'ready';
 		}
@@ -106,8 +112,9 @@
 	// Derived state
 	const allSuggestionsHandled = $derived(aiSuggestions.every((s) => s.accepted !== undefined));
 	const isReady = $derived(
-		(analysisState as 'checking' | 'ready' | 'suggestions' | 'ai-help') === 'ready' || 
-		((analysisState as 'checking' | 'ready' | 'suggestions' | 'ai-help') === 'ai-help' && allSuggestionsHandled)
+		(analysisState as 'checking' | 'ready' | 'suggestions' | 'ai-help') === 'ready' ||
+			((analysisState as 'checking' | 'ready' | 'suggestions' | 'ai-help') === 'ai-help' &&
+				allSuggestionsHandled)
 	);
 </script>
 

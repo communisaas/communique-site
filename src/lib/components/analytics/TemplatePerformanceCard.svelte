@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
-	import type { AnalyticsEvent } from '$lib/types/analytics.ts';
+	import type { AnalyticsProperties } from '$lib/types/any-replacements.js';
 
 	interface TemplatePerformance {
 		template_id: string;
@@ -40,13 +40,13 @@
 	let viewStartTime = Date.now();
 
 	// Analytics tracking function using new consolidated schema
-	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+	async function trackAnalyticsEvent(_eventName: string, properties: AnalyticsProperties) {
 		try {
 			await fetch('/api/analytics/events', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name: eventName,
+					name: _eventName,
 					event_type: 'interaction',
 					template_id: templateId,
 					properties: {
@@ -58,14 +58,14 @@
 					}
 				})
 			});
-		} catch (error) {
-			console.warn('Analytics tracking failed:', error);
+		} catch (trackingError) {
+			console.warn('Analytics tracking failed:', trackingError);
 		}
 	}
 
 	onMount(async () => {
 		await loadPerformance();
-		
+
 		// Track performance card view
 		await trackAnalyticsEvent('template_performance_card_view', {
 			display_mode: compact ? 'compact' : 'full'
@@ -77,11 +77,9 @@
 		const viewDuration = Date.now() - viewStartTime;
 		await trackAnalyticsEvent('template_performance_card_session_end', {
 			view_duration_ms: viewDuration,
-			final_metrics: performance ? {
-				total_activations: performance.metrics.total_activations,
-				viral_coefficient: performance.metrics.viral_coefficient,
-				viral_status: performance.metrics.viral_status
-			} : null
+			final_total_activations: performance?.metrics.total_activations || 0,
+			final_viral_coefficient: performance?.metrics.viral_coefficient || 0,
+			final_viral_status: performance?.metrics.viral_status || 'unknown'
 		});
 	});
 
@@ -109,7 +107,7 @@
 			} else {
 				error = data.error || 'Failed to load performance metrics';
 			}
-		} catch (_error) {
+		} catch {
 			error = 'Network error loading performance data';
 		} finally {
 			loading = false;

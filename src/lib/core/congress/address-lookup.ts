@@ -1,7 +1,7 @@
 import { normalizeState } from '$lib/utils/states';
 import { env } from '$env/dynamic/private';
 
-interface Address {
+interface AddressData {
 	street: string;
 	city: string;
 	state: string;
@@ -43,9 +43,11 @@ interface CongressMember {
 	state?: string;
 	district?: number;
 	currentMember?: boolean;
-	terms?: {
-		item?: CongressMemberTerm[];
-	} | CongressMemberTerm[];
+	terms?:
+		| {
+				item?: CongressMemberTerm[];
+		  }
+		| CongressMemberTerm[];
 }
 
 // Type guard for CongressMember
@@ -58,14 +60,13 @@ function isCongressMember(obj: unknown): obj is CongressMember {
 	);
 }
 
-
 interface UserReps {
 	house: Representative;
 	senate: Representative[]; // Always 2 senators per state
 	district: CongressionalDistrict;
 }
 
-export class AddressLookupService {
+export class Address {
 	private congressApiKey: string;
 
 	constructor() {
@@ -80,11 +81,11 @@ export class AddressLookupService {
 	}
 
 	/**
-	 * Main function: Address → User's Representatives
+	 * Main function: Address  → User's Representatives
 	 * This is called during user onboarding
 	 */
-	async lookupRepsByAddress(address: Address): Promise<UserReps> {
-		// Step 1: Address → Congressional District
+	async lookupRepsByAddress(address: AddressData): Promise<UserReps> {
+		// Step 1: Address  → Congressional District
 		const district = await this.addressToDistrict(address);
 
 		// Step 2: District → Representatives
@@ -104,7 +105,7 @@ export class AddressLookupService {
 	 * Convert address to congressional district
 	 * Primary: Census Bureau Geocoding API; Fallback: ZIP→district
 	 */
-	private async addressToDistrict(address: Address): Promise<CongressionalDistrict> {
+	private async addressToDistrict(address: AddressData): Promise<CongressionalDistrict> {
 		try {
 			const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.zip}`;
 			const url = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=4&vintage=4&format=json`;
@@ -123,7 +124,7 @@ export class AddressLookupService {
 
 			const district = this.extractDistrictFromCensus(match.geographies, address.state);
 			return district;
-		} catch (_err) {
+		} catch {
 			// Fallback to ZIP-based lookup
 			return this.zipToDistrict(address.zip, address.state);
 		}
@@ -150,7 +151,7 @@ export class AddressLookupService {
 				};
 			}
 			return { state: state.toUpperCase(), district: '00' };
-		} catch (_e) {
+		} catch {
 			return { state: state.toUpperCase(), district: '01' };
 		}
 	}
@@ -168,8 +169,8 @@ export class AddressLookupService {
 				state: result.state,
 				district: result.district
 			};
-		} catch (_error) {
-			console.error('ZIP district lookup failed:', _error);
+		} catch {
+			console.error('Error occurred');
 			return {
 				state: state.toUpperCase(),
 				district: '01' // Final fallback
@@ -178,7 +179,7 @@ export class AddressLookupService {
 	}
 
 	/**
-	 * Get House representative for a specific district
+	 * Get House _representative for a specific district
 	 */
 	private async getHouseRep(state: string, district: string): Promise<Representative> {
 		try {
@@ -192,7 +193,7 @@ export class AddressLookupService {
 			const districtNumber = parseInt(district.replace(/^0+/, ''), 10); // Remove leading zeros and convert to number
 
 			console.log(
-				`Looking for representative: ${stateAbbr}/${stateFullName} district ${districtNumber}`
+				`Looking for _representative: ${stateAbbr}/${stateFullName} district ${districtNumber}`
 			);
 
 			const houseRep = allMembers.find((member: CongressMember) => {
@@ -211,13 +212,13 @@ export class AddressLookupService {
 			});
 
 			if (!houseRep) {
-				console.error(`No House representative found for ${stateAbbr}-${districtNumber}`);
-				throw new Error(`No House representative found for ${stateAbbr}-${districtNumber}`);
+				console.error(`No House _representative found for ${stateAbbr}-${districtNumber}`);
+				throw new Error(`No House _representative found for ${stateAbbr}-${districtNumber}`);
 			}
 
 			return this.formatRepresentative(houseRep, 'house');
-		} catch (_error) {
-			console.error('Failed to get House rep:', _error);
+		} catch {
+			console.error('Error occurred');
 			// Return placeholder data
 			return {
 				bioguide_id: `${state}${district}H`,
@@ -280,7 +281,7 @@ export class AddressLookupService {
 			}
 
 			return senators;
-		} catch (_error) {
+		} catch {
 			// Return placeholder senators
 			return [
 				{
@@ -306,7 +307,7 @@ export class AddressLookupService {
 	}
 
 	/**
-	 * Format representative data from Congress.gov API
+	 * Format _representative data from Congress.gov API
 	 */
 	/**
 	 * Fetch all members from Congress API with pagination
@@ -337,7 +338,7 @@ export class AddressLookupService {
 			const data = await response.json();
 			const members = (data.members || []) as unknown[];
 			console.log(`Fetched ${members.length} members at offset ${offset}`);
-			
+
 			// Filter and validate members before adding
 			const validMembers = members.filter(isCongressMember);
 			allMembers.push(...validMembers);
@@ -359,7 +360,10 @@ export class AddressLookupService {
 		return allMembers;
 	}
 
-	private formatRepresentative(member: CongressMember, chamber: 'house' | 'senate'): Representative {
+	private formatRepresentative(
+		member: CongressMember,
+		chamber: 'house' | 'senate'
+	): Representative {
 		// Handle both direct fields and nested term data
 		const termsArray = Array.isArray(member.terms) ? member.terms : member.terms?.item;
 		const currentTerm = termsArray?.[0] || {};
@@ -401,7 +405,7 @@ export class AddressLookupService {
 				const response = await fetch(url);
 
 				if (!response.ok) {
-					errors.push(`Cannot validate representative ${rep.name} (${rep.bioguide_id})`);
+					errors.push(`Cannot validate _representative ${rep.name} (${rep.bioguide_id})`);
 					continue;
 				}
 
@@ -424,13 +428,13 @@ export class AddressLookupService {
 }
 
 // Export singleton instance
-export const addressLookupService = new AddressLookupService();
+export const addressLookupService = new Address();
 
-// Convenience function for ZIP-based representative lookup
+// Convenience function for ZIP-based _representative lookup
 export async function addressLookup(zip: string): Promise<Representative[]> {
 	try {
 		// Create minimal address object for lookup
-		const address: Address = {
+		const address: AddressData = {
 			street: '',
 			city: '',
 			state: '', // Will be inferred from ZIP if possible
@@ -441,17 +445,17 @@ export async function addressLookup(zip: string): Promise<Representative[]> {
 		// Let's use the ZIP district lookup to get the state first
 		const { zipDistrictLookup } = await import('$lib/services/zipDistrictLookup');
 		const districtInfo = await zipDistrictLookup.lookupDistrict(zip, '');
-		
+
 		// Update address with the state
 		address.state = districtInfo.state;
 
 		// Get all representatives for this address
 		const userReps = await addressLookupService.lookupRepsByAddress(address);
-		
+
 		// Return as flat array of representatives
 		return [userReps.house, ...userReps.senate];
-	} catch (error) {
-		console.error('Address lookup failed:', error);
+	} catch {
+		console.error('Error occurred');
 		// Return empty array on failure
 		return [];
 	}

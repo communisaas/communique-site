@@ -28,7 +28,7 @@ export interface Jurisdiction {
 export interface Office {
 	id: string;
 	jurisdiction_id: string;
-	role: string; // e.g., representative, senator, mayor, councillor
+	role: string; // e.g., _representative, senator, mayor, councillor
 	title?: string;
 	chamber?: string;
 	level?: 'national' | 'state' | 'provincial' | 'municipal' | 'district' | string;

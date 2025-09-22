@@ -1,5 +1,67 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, type User, type Template } from '@prisma/client';
+import type { Prisma } from '@prisma/client';
 import { isFeatureEnabled } from '../src/lib/features/config.js';
+
+// Representative type (Prisma generates lowercase table names)
+type Representative = {
+	id: string;
+	bioguide_id: string;
+	name: string;
+	party: string;
+	state: string;
+	district: string;
+	chamber: string;
+	office_code: string;
+	phone: string;
+	email: string | null;
+	is_active: boolean;
+	office_address: string;
+	office_city: string;
+	office_state: string;
+	office_zip: string;
+	term_start: Date;
+	term_end: Date;
+	current_term: number;
+	data_source: string;
+	source_updated_at: Date;
+};
+
+// Type definitions for seed data
+interface SeedTemplateData {
+	title: string;
+	description: string;
+	category: string;
+	type: string;
+	deliveryMethod: 'email' | 'certified' | 'direct' | 'cwc';
+	subject: string;
+	preview: string;
+	message_body: string;
+	metrics: Record<string, unknown>;
+	delivery_config: Record<string, unknown>;
+	cwc_config?: Record<string, unknown>;
+	recipient_config: Record<string, unknown>;
+	applicable_countries: string[];
+	jurisdiction_level: string;
+	specific_locations?: string[];
+	is_public: boolean;
+	// Verification fields
+	verification_status?: string;
+	quality_score?: number;
+	agent_votes?: Prisma.JsonValue | null;
+	consensus_score?: number | null;
+	severity_level?: number | null;
+	grammar_score?: number | null;
+	clarity_score?: number | null;
+	completeness_score?: number | null;
+	correction_log?: Prisma.JsonValue | null;
+	original_content?: Prisma.JsonValue | null;
+	corrected_at?: Date | null;
+	reviewed_at?: Date | null;
+	reputation_delta?: number;
+	reputation_applied?: boolean;
+	send_count?: number;
+	last_sent_at?: Date | null;
+}
 
 const db: PrismaClient = new PrismaClient();
 
@@ -21,7 +83,8 @@ const _policyAreaMap = {
 const seedTemplates = [
 	{
 		title: "The Math Doesn't Work: Climate Edition",
-		description: 'Source: NOAA 2024 Disaster Reports, Treasury Dept. $178B disasters vs $7.4B fossil fuel spending.',
+		description:
+			'Source: NOAA 2024 Disaster Reports, Treasury Dept. $178B disasters vs $7.4B fossil fuel spending.',
 		category: 'Environment',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
@@ -116,7 +179,8 @@ Sincerely,
 	},
 	{
 		title: '35% Offices Empty, Only 1 Building Converting',
-		description: 'Source: Axios SF June 2025, SF Chronicle Real Estate. Office-to-housing conversion failure.',
+		description:
+			'Source: Axios SF June 2025, SF Chronicle Real Estate. Office-to-housing conversion failure.',
 		category: 'Housing',
 		type: 'advocacy',
 		deliveryMethod: 'email',
@@ -177,7 +241,8 @@ Sincerely,
 	},
 	{
 		title: 'SF Teachers Commute 2 Hours, Students Skip School',
-		description: 'Source: SFUSD Teacher Survey 2025, Chronicle Housing Report. Housing crisis destroys education.',
+		description:
+			'Source: SFUSD Teacher Survey 2025, Chronicle Housing Report. Housing crisis destroys education.',
 		category: 'Education',
 		type: 'advocacy',
 		deliveryMethod: 'email',
@@ -224,7 +289,8 @@ Sincerely,
 		agent_votes: {
 			openai: {
 				score: 0.82,
-				reasoning: 'Good connection between housing and education, needs minor clarity improvements',
+				reasoning:
+					'Good connection between housing and education, needs minor clarity improvements',
 				confidence: 0.85
 			},
 			gemini: {
@@ -355,7 +421,8 @@ Sincerely,
 	},
 	{
 		title: 'SFUSD Lost 5,000 Kids to Housing Crisis',
-		description: 'Source: SFUSD Budget FAQs 2025-26, SF Chronicle. Families fleeing unaffordable city.',
+		description:
+			'Source: SFUSD Budget FAQs 2025-26, SF Chronicle. Families fleeing unaffordable city.',
 		category: 'Education',
 		type: 'advocacy',
 		deliveryMethod: 'email',
@@ -450,9 +517,10 @@ Sincerely,
 		last_sent_at: new Date('2024-12-20T12:00:00Z')
 	},
 	{
-		title: "Congress Just Spent $858B on Defense, $0 on Child Care",
-		description: 'Source: NDAA FY2024, CBO Budget Analysis. $858B defense vs $0 federal childcare investment.',
-		category: 'Family Policy', 
+		title: 'Congress Just Spent $858B on Defense, $0 on Child Care',
+		description:
+			'Source: NDAA FY2024, CBO Budget Analysis. $858B defense vs $0 federal childcare investment.',
+		category: 'Family Policy',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
 		subject: 'The Math on Family Investment',
@@ -534,10 +602,11 @@ Sincerely,
 		last_sent_at: new Date('2024-12-19T14:20:00Z')
 	},
 	{
-		title: "Medicare Pays $3,000 for $300 Insulin",
-		description: 'Source: HHS OIG Insulin Pricing Report 2024. 900% markup costs taxpayers billions.',
+		title: 'Medicare Pays $3,000 for $300 Insulin',
+		description:
+			'Source: HHS OIG Insulin Pricing Report 2024. 900% markup costs taxpayers billions.',
 		category: 'Healthcare',
-		type: 'advocacy', 
+		type: 'advocacy',
 		deliveryMethod: 'cwc',
 		subject: 'The Math on Prescription Pricing',
 		preview: "Dear Senator, The math doesn't work for patients.",
@@ -619,11 +688,12 @@ Sincerely,
 		last_sent_at: new Date('2024-12-20T09:15:00Z')
 	},
 	{
-		title: "Student Loans: $1.7T Debt, $0 Job Guarantee",
-		description: 'Source: Federal Reserve 2024, Department of Education. $1.7T debt crisis, zero job security.',
+		title: 'Student Loans: $1.7T Debt, $0 Job Guarantee',
+		description:
+			'Source: Federal Reserve 2024, Department of Education. $1.7T debt crisis, zero job security.',
 		category: 'Education',
 		type: 'advocacy',
-		deliveryMethod: 'cwc', 
+		deliveryMethod: 'cwc',
 		subject: 'The Math on Student Investment',
 		preview: "Dear Representative, The math doesn't work for students.",
 		message_body: `Dear Representative [Representative Name],
@@ -714,13 +784,14 @@ Sincerely,
 		last_sent_at: new Date('2024-12-19T16:45:00Z')
 	},
 	{
-		title: "Housing: $2,400 Rent, $400k Starter Home",
-		description: 'Source: HUD 2025 Rent Report, Census Bureau. $2,400 median rent destroys American Dream.',
+		title: 'Housing: $2,400 Rent, $400k Starter Home',
+		description:
+			'Source: HUD 2025 Rent Report, Census Bureau. $2,400 median rent destroys American Dream.',
 		category: 'Housing',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
 		subject: 'The Math on the Housing Crisis',
-		preview: "Dear [Representative Name], The housing math has broken America.",
+		preview: 'Dear [Representative Name], The housing math has broken America.',
 		message_body: `Dear [Representative Name],
 
 The housing math has broken America.
@@ -799,8 +870,9 @@ Sincerely,
 		last_sent_at: new Date('2024-12-20T10:30:00Z')
 	},
 	{
-		title: "AI Decides Everything, Congress Regulates Nothing",
-		description: 'Source: Senate AI Hearings 2024, NIST AI Report. Regulation vacuum as AI reshapes society.',
+		title: 'AI Decides Everything, Congress Regulates Nothing',
+		description:
+			'Source: Senate AI Hearings 2024, NIST AI Report. Regulation vacuum as AI reshapes society.',
 		category: 'Technology',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
@@ -861,7 +933,7 @@ Sincerely,
 			openai: {
 				score: 0.91,
 				reasoning: 'Timely issue with clear urgency, good use of statistics',
-				confidence: 0.90
+				confidence: 0.9
 			},
 			gemini: {
 				score: 0.89,
@@ -869,7 +941,7 @@ Sincerely,
 				confidence: 0.88
 			}
 		},
-		consensus_score: 0.90,
+		consensus_score: 0.9,
 		severity_level: 8,
 		grammar_score: 94,
 		clarity_score: 90,
@@ -885,12 +957,13 @@ Sincerely,
 	},
 	{
 		title: "Kids' Brains for Sale: Zero Privacy Laws",
-		description: 'Source: Surgeon General 2024, FTC Children Report. Mental health crisis, zero privacy protection.',
+		description:
+			'Source: Surgeon General 2024, FTC Children Report. Mental health crisis, zero privacy protection.',
 		category: 'Digital Rights',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
 		subject: 'The Math on Child Online Safety',
-		preview: "Dear Senator, Our kids are the product being sold.",
+		preview: 'Dear Senator, Our kids are the product being sold.',
 		message_body: `Dear Senator [Representative Name],
 
 Our kids are the product being sold.
@@ -969,13 +1042,14 @@ Sincerely,
 		last_sent_at: new Date('2024-12-20T08:00:00Z')
 	},
 	{
-		title: "Debt Ceiling Theatre: $34T Tab, Zero Solutions",
-		description: 'Source: Treasury Dept 2024, CBO Debt Analysis. $34T debt, $1T interest, zero solutions.',
+		title: 'Debt Ceiling Theatre: $34T Tab, Zero Solutions',
+		description:
+			'Source: Treasury Dept 2024, CBO Debt Analysis. $34T debt, $1T interest, zero solutions.',
 		category: 'Economy',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
 		subject: 'The Math on Fiscal Responsibility',
-		preview: "Dear Representative, The debt math threatens our future.",
+		preview: 'Dear Representative, The debt math threatens our future.',
 		message_body: `Dear Representative [Representative Name],
 
 The debt math threatens our future.
@@ -1064,13 +1138,14 @@ Sincerely,
 		last_sent_at: new Date('2024-12-20T15:00:00Z')
 	},
 	{
-		title: "Border Crisis: No Plan, Just Politics",
-		description: 'Source: CBP Statistics 2024, DHS Immigration Report. 2.5M encounters, zero comprehensive reform.',
+		title: 'Border Crisis: No Plan, Just Politics',
+		description:
+			'Source: CBP Statistics 2024, DHS Immigration Report. 2.5M encounters, zero comprehensive reform.',
 		category: 'Immigration',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
 		subject: 'The Math on Immigration Reform',
-		preview: "Dear [Representative Name], Immigration needs solutions, not soundbites.",
+		preview: 'Dear [Representative Name], Immigration needs solutions, not soundbites.',
 		message_body: `Dear [Representative Name],
 
 Immigration needs solutions, not soundbites.
@@ -1190,7 +1265,7 @@ Sincerely,
 [Address]`,
 		metrics: { sent: 4567, opened: 0, clicked: 0, responded: 4567 },
 		delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
-		recipient_config: { 
+		recipient_config: {
 			emails: ['board.of.supervisors@sfgov.org', 'cpuc@ca.gov'],
 			target_type: 'municipal'
 		},
@@ -1234,7 +1309,7 @@ Sincerely,
 [Address]`,
 		metrics: { sent: 6789, opened: 0, clicked: 0, responded: 6789 },
 		delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
-		recipient_config: { 
+		recipient_config: {
 			emails: ['board.of.supervisors@sfgov.org', 'rentboard@sfgov.org'],
 			target_type: 'municipal'
 		},
@@ -1278,7 +1353,7 @@ Sincerely,
 [Address]`,
 		metrics: { sent: 8234, opened: 0, clicked: 0, responded: 8234 },
 		delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
-		recipient_config: { 
+		recipient_config: {
 			emails: ['mtaboard@sfmta.com', 'mayorlurie@sfgov.org'],
 			target_type: 'municipal'
 		},
@@ -1299,7 +1374,7 @@ const seedUserData = [
 		email: 'sarah.teacher@gmail.com',
 		name: 'Sarah Martinez',
 		avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612c4a8?w=150',
-		
+
 		// Address Fields
 		street: '1847 Fillmore St',
 		city: 'San Francisco',
@@ -1307,28 +1382,28 @@ const seedUserData = [
 		zip: '94115',
 		congressional_district: 'CA-11',
 		phone: '+1-415-555-0123',
-		
+
 		// Coordinates (San Francisco)
 		latitude: 37.7749,
 		longitude: -122.4194,
 		political_embedding: [0.8, -0.2, 0.6, 0.1, -0.3],
-		community_sheaves: { 
-			education: 0.9, 
-			housing: 0.8, 
-			environment: 0.7 
+		community_sheaves: {
+			education: 0.9,
+			housing: 0.8,
+			environment: 0.7
 		},
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-15T10:30:00Z'),
-		
+
 		// Verification
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_abc123',
-			timestamp: '2024-01-10T14:22:33Z' 
+			timestamp: '2024-01-10T14:22:33Z'
 		},
 		verified_at: new Date('2024-01-10T14:22:33Z'),
-		
+
 		// VOTER Protocol
 		wallet_address: '0x1234567890abcdef1234567890abcdef12345678',
 		district_hash: 'hash_ca11_sf_2024',
@@ -1340,7 +1415,7 @@ const seedUserData = [
 		challenge_score: 92,
 		civic_score: 88,
 		discourse_score: 81,
-		
+
 		// Profile
 		role: 'teacher',
 		organization: 'San Francisco Unified School District',
@@ -1354,7 +1429,7 @@ const seedUserData = [
 		email: 'mike.seattle@protonmail.com',
 		name: 'Michael Chen',
 		avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
-		
+
 		// Address Fields
 		street: '2301 3rd Ave',
 		city: 'Seattle',
@@ -1362,28 +1437,28 @@ const seedUserData = [
 		zip: '98121',
 		congressional_district: 'WA-07',
 		phone: '+1-206-555-0187',
-		
+
 		// Coordinates (Seattle)
 		latitude: 47.6062,
 		longitude: -122.3321,
 		political_embedding: [0.6, 0.4, -0.1, 0.8, 0.2],
-		community_sheaves: { 
-			tech: 0.9, 
-			transit: 0.8, 
-			climate: 0.7 
+		community_sheaves: {
+			tech: 0.9,
+			transit: 0.8,
+			climate: 0.7
 		},
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-12T08:20:00Z'),
-		
+
 		// Verification
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_def456',
-			timestamp: '2024-01-08T11:15:22Z' 
+			timestamp: '2024-01-08T11:15:22Z'
 		},
 		verified_at: new Date('2024-01-08T11:15:22Z'),
-		
+
 		// VOTER Protocol
 		wallet_address: '0x2345678901bcdef12345678901bcdef123456789',
 		district_hash: 'hash_wa07_seattle_2024',
@@ -1395,7 +1470,7 @@ const seedUserData = [
 		challenge_score: 78,
 		civic_score: 82,
 		discourse_score: 75,
-		
+
 		// Profile
 		role: 'software engineer',
 		organization: 'Microsoft',
@@ -1409,7 +1484,7 @@ const seedUserData = [
 		email: 'anna.organizer@riseup.net',
 		name: 'Anna Rodriguez',
 		avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
-		
+
 		// Address Fields
 		street: '789 E 149th St',
 		city: 'New York',
@@ -1417,28 +1492,28 @@ const seedUserData = [
 		zip: '10451',
 		congressional_district: 'NY-15',
 		phone: '+1-718-555-0156',
-		
+
 		// Coordinates (Bronx, NYC)
 		latitude: 40.8176,
 		longitude: -73.9182,
 		political_embedding: [-0.7, 0.8, 0.9, -0.2, 0.6],
-		community_sheaves: { 
-			justice: 0.95, 
-			housing: 0.9, 
-			immigration: 0.8 
+		community_sheaves: {
+			justice: 0.95,
+			housing: 0.9,
+			immigration: 0.8
 		},
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-11T14:45:00Z'),
-		
+
 		// Verification
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_ghi789',
-			timestamp: '2024-01-06T13:45:11Z' 
+			timestamp: '2024-01-06T13:45:11Z'
 		},
 		verified_at: new Date('2024-01-06T13:45:11Z'),
-		
+
 		// VOTER Protocol
 		wallet_address: '0x3456789012cdef123456789012cdef12345678901',
 		district_hash: 'hash_ny15_bronx_2024',
@@ -1450,7 +1525,7 @@ const seedUserData = [
 		challenge_score: 96,
 		civic_score: 93,
 		discourse_score: 89,
-		
+
 		// Profile
 		role: 'community organizer',
 		organization: 'Bronx Housing Coalition',
@@ -1464,7 +1539,7 @@ const seedUserData = [
 		email: 'jordan.student@utexas.edu',
 		name: 'Jordan Kim',
 		avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-		
+
 		// Address Fields
 		street: '2400 Nueces St',
 		city: 'Austin',
@@ -1472,25 +1547,25 @@ const seedUserData = [
 		zip: '78705',
 		congressional_district: 'TX-25',
 		phone: '+1-512-555-0198',
-		
+
 		// Coordinates (Austin)
 		latitude: 30.2672,
 		longitude: -97.7431,
 		political_embedding: [0.2, 0.5, -0.3, 0.7, -0.1],
-		community_sheaves: { 
-			education: 0.8, 
-			climate: 0.7, 
-			democracy: 0.6 
+		community_sheaves: {
+			education: 0.8,
+			climate: 0.7,
+			democracy: 0.6
 		},
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-09T16:00:00Z'),
-		
+
 		// Verification
 		is_verified: false,
 		verification_method: null,
 		verification_data: null,
 		verified_at: null,
-		
+
 		// VOTER Protocol (lower scores for unverified)
 		wallet_address: '0x4567890123def1234567890123def123456789012',
 		district_hash: 'hash_tx25_austin_2024',
@@ -1502,7 +1577,7 @@ const seedUserData = [
 		challenge_score: 15,
 		civic_score: 32,
 		discourse_score: 45,
-		
+
 		// Profile
 		role: 'student',
 		organization: 'University of Texas at Austin',
@@ -1516,7 +1591,7 @@ const seedUserData = [
 		email: 'maria.miami@gmail.com',
 		name: 'Maria Gonzalez',
 		avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
-		
+
 		// Address Fields
 		street: '1901 Brickell Ave',
 		city: 'Miami',
@@ -1524,28 +1599,28 @@ const seedUserData = [
 		zip: '33129',
 		congressional_district: 'FL-27',
 		phone: '+1-305-555-0142',
-		
+
 		// Coordinates (Miami)
 		latitude: 25.7617,
 		longitude: -80.1918,
 		political_embedding: [0.1, -0.4, 0.8, 0.3, 0.6],
-		community_sheaves: { 
-			climate: 0.9, 
-			immigration: 0.8, 
-			housing: 0.7 
+		community_sheaves: {
+			climate: 0.9,
+			immigration: 0.8,
+			housing: 0.7
 		},
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-13T12:10:00Z'),
-		
+
 		// Verification
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_jkl012',
-			timestamp: '2024-01-04T10:30:15Z' 
+			timestamp: '2024-01-04T10:30:15Z'
 		},
 		verified_at: new Date('2024-01-04T10:30:15Z'),
-		
+
 		// VOTER Protocol
 		wallet_address: '0x5678901234ef12345678901234ef123456789012',
 		district_hash: 'hash_fl27_miami_2024',
@@ -1557,7 +1632,7 @@ const seedUserData = [
 		challenge_score: 71,
 		civic_score: 75,
 		discourse_score: 68,
-		
+
 		// Profile
 		role: 'nurse',
 		organization: 'Jackson Memorial Hospital',
@@ -1572,26 +1647,26 @@ const seedUserData = [
 		email: 'alex.coder@berkeley.edu',
 		name: 'Alex Thompson',
 		avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-		
+
 		street: '2650 Haste St',
 		city: 'Berkeley',
 		state: 'CA',
 		zip: '94720',
 		congressional_district: 'CA-12',
 		phone: '+1-510-555-0167',
-		
+
 		latitude: 37.8715,
 		longitude: -122.2588,
 		political_embedding: [0.9, 0.1, -0.2, 0.4, 0.7],
 		community_sheaves: { tech: 0.9, education: 0.6, privacy: 0.8 },
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-10T18:30:00Z'),
-		
+
 		is_verified: false,
 		verification_method: null,
 		verification_data: null,
 		verified_at: null,
-		
+
 		wallet_address: '0x6789012345f123456789012345f1234567890123',
 		district_hash: 'hash_ca12_berkeley_2024',
 		trust_score: 22,
@@ -1602,7 +1677,7 @@ const seedUserData = [
 		challenge_score: 8,
 		civic_score: 25,
 		discourse_score: 38,
-		
+
 		role: 'graduate student',
 		organization: 'UC Berkeley',
 		location: 'Berkeley, CA',
@@ -1615,29 +1690,29 @@ const seedUserData = [
 		email: 'jenny.doctor@ohsu.edu',
 		name: 'Dr. Jennifer Walsh',
 		avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150',
-		
+
 		street: '3181 SW Sam Jackson Park Rd',
 		city: 'Portland',
 		state: 'OR',
 		zip: '97239',
 		congressional_district: 'OR-01',
 		phone: '+1-503-555-0134',
-		
+
 		latitude: 45.4988,
 		longitude: -122.6853,
 		political_embedding: [0.6, 0.7, 0.3, -0.1, 0.5],
 		community_sheaves: { healthcare: 0.95, climate: 0.8, social_justice: 0.7 },
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-14T07:20:00Z'),
-		
+
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_mno345',
-			timestamp: '2024-01-05T16:45:30Z' 
+			timestamp: '2024-01-05T16:45:30Z'
 		},
 		verified_at: new Date('2024-01-05T16:45:30Z'),
-		
+
 		wallet_address: '0x789012345f6123456789012345f61234567890123',
 		district_hash: 'hash_or01_portland_2024',
 		trust_score: 88,
@@ -1648,7 +1723,7 @@ const seedUserData = [
 		challenge_score: 91,
 		civic_score: 87,
 		discourse_score: 84,
-		
+
 		role: 'physician',
 		organization: 'Oregon Health & Science University',
 		location: 'South Portland, OR',
@@ -1662,29 +1737,29 @@ const seedUserData = [
 		email: 'carlos.organizer@gmail.com',
 		name: 'Carlos Rivera',
 		avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-		
+
 		street: '1925 4th Ave',
 		city: 'San Francisco',
 		state: 'CA',
 		zip: '94158',
 		congressional_district: 'CA-11',
 		phone: '+1-415-555-0789',
-		
+
 		latitude: 37.7749,
 		longitude: -122.4194,
 		political_embedding: [0.7, 0.8, 0.4, -0.2, 0.5],
 		community_sheaves: { labor: 0.9, immigration: 0.8, justice: 0.7 },
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-08T16:45:00Z'),
-		
+
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_pqr678',
-			timestamp: '2024-01-07T09:30:45Z' 
+			timestamp: '2024-01-07T09:30:45Z'
 		},
 		verified_at: new Date('2024-01-07T09:30:45Z'),
-		
+
 		wallet_address: '0x890123456f7123456789012345f712345678901234',
 		district_hash: 'hash_ca11_sf_mission_2024',
 		trust_score: 91,
@@ -1695,7 +1770,7 @@ const seedUserData = [
 		challenge_score: 95,
 		civic_score: 92,
 		discourse_score: 88,
-		
+
 		role: 'labor organizer',
 		organization: 'Service Employees International Union',
 		location: 'Mission District, San Francisco',
@@ -1708,29 +1783,29 @@ const seedUserData = [
 		email: 'rachel.policy@georgetown.edu',
 		name: 'Dr. Rachel Thompson',
 		avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
-		
+
 		street: '3700 O St NW',
 		city: 'Washington',
 		state: 'DC',
 		zip: '20057',
 		congressional_district: 'DC-AL',
 		phone: '+1-202-555-0321',
-		
+
 		latitude: 38.9072,
 		longitude: -77.0369,
 		political_embedding: [0.5, 0.6, 0.8, 0.4, 0.3],
 		community_sheaves: { policy: 0.95, democracy: 0.9, education: 0.8 },
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-14T11:30:00Z'),
-		
+
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_stu901',
-			timestamp: '2024-01-03T15:45:22Z' 
+			timestamp: '2024-01-03T15:45:22Z'
 		},
 		verified_at: new Date('2024-01-03T15:45:22Z'),
-		
+
 		wallet_address: '0x901234567f8123456789012345f812345678901234',
 		district_hash: 'hash_dc_georgetown_2024',
 		trust_score: 87,
@@ -1741,7 +1816,7 @@ const seedUserData = [
 		challenge_score: 89,
 		civic_score: 94,
 		discourse_score: 91,
-		
+
 		role: 'policy researcher',
 		organization: 'Georgetown Public Policy Institute',
 		location: 'Georgetown, Washington DC',
@@ -1754,26 +1829,26 @@ const seedUserData = [
 		email: 'dev.unverified@protonmail.com',
 		name: 'Devon Chen',
 		avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=150',
-		
+
 		street: '450 Brannan St',
 		city: 'San Francisco',
 		state: 'CA',
 		zip: '94107',
 		congressional_district: 'CA-11',
 		phone: '+1-415-555-0654',
-		
+
 		latitude: 37.7816,
 		longitude: -122.3928,
 		political_embedding: [0.3, 0.1, -0.4, 0.9, 0.2],
 		community_sheaves: { tech: 0.8, privacy: 0.9, crypto: 0.7 },
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-11T20:15:00Z'),
-		
+
 		is_verified: false,
 		verification_method: null,
 		verification_data: null,
 		verified_at: null,
-		
+
 		wallet_address: '0x012345678f9123456789012345f912345678901234',
 		district_hash: 'hash_ca11_soma_2024',
 		trust_score: 12,
@@ -1784,7 +1859,7 @@ const seedUserData = [
 		challenge_score: 5,
 		civic_score: 18,
 		discourse_score: 22,
-		
+
 		role: 'software developer',
 		organization: 'Freelance',
 		location: 'SOMA, San Francisco',
@@ -1797,29 +1872,29 @@ const seedUserData = [
 		email: 'lisa.attorney@eff.org',
 		name: 'Lisa Park',
 		avatar: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=150',
-		
+
 		street: '815 Eddy St',
 		city: 'San Francisco',
 		state: 'CA',
 		zip: '94109',
 		congressional_district: 'CA-11',
 		phone: '+1-415-555-0987',
-		
+
 		latitude: 37.7837,
 		longitude: -122.4135,
 		political_embedding: [0.8, 0.9, 0.6, 0.2, 0.7],
 		community_sheaves: { privacy: 0.95, tech: 0.8, justice: 0.9 },
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-13T09:45:00Z'),
-		
+
 		is_verified: true,
 		verification_method: 'didit_zk',
-		verification_data: { 
+		verification_data: {
 			proof_hash: 'zk_proof_vwx234',
-			timestamp: '2024-01-02T11:20:18Z' 
+			timestamp: '2024-01-02T11:20:18Z'
 		},
 		verified_at: new Date('2024-01-02T11:20:18Z'),
-		
+
 		wallet_address: '0x123456789f0123456789012345f0123456789012345',
 		district_hash: 'hash_ca11_tenderloin_2024',
 		trust_score: 93,
@@ -1830,7 +1905,7 @@ const seedUserData = [
 		challenge_score: 97,
 		civic_score: 91,
 		discourse_score: 94,
-		
+
 		role: 'civil rights attorney',
 		organization: 'Electronic Frontier Foundation',
 		location: 'Tenderloin, San Francisco',
@@ -1843,26 +1918,26 @@ const seedUserData = [
 		email: 'marcus.student@nyu.edu',
 		name: 'Marcus Williams',
 		avatar: 'https://images.unsplash.com/photo-1556157382-0b0c6b8ac6ae?w=150',
-		
+
 		street: '726 Broadway',
 		city: 'New York',
 		state: 'NY',
 		zip: '10003',
 		congressional_district: 'NY-12',
 		phone: '+1-212-555-0432',
-		
+
 		latitude: 40.7282,
 		longitude: -73.9942,
 		political_embedding: [0.4, 0.6, 0.2, 0.8, 0.1],
 		community_sheaves: { education: 0.7, democracy: 0.6, arts: 0.8 },
 		embedding_version: 'v1',
 		coordinates_updated_at: new Date('2024-01-09T15:20:00Z'),
-		
+
 		is_verified: false,
 		verification_method: null,
 		verification_data: null,
 		verified_at: null,
-		
+
 		wallet_address: '0x234567890f1123456789012345f112345678901234',
 		district_hash: 'hash_ny12_greenwich_2024',
 		trust_score: 35,
@@ -1873,7 +1948,7 @@ const seedUserData = [
 		challenge_score: 18,
 		civic_score: 42,
 		discourse_score: 51,
-		
+
 		role: 'graduate student',
 		organization: 'New York University',
 		location: 'Greenwich Village, New York',
@@ -1905,7 +1980,7 @@ async function seedUsers() {
 		await db.auditLog.deleteMany({});
 		await db.civicAction.deleteMany({});
 		await db.user_representatives.deleteMany({});
-		
+
 		// Clear existing users (this will cascade to related data)
 		await db.user.deleteMany({});
 		console.log('✅ Cleared existing users');
@@ -1918,7 +1993,9 @@ async function seedUsers() {
 			});
 
 			createdUsers.push(createdUser);
-			console.log(`👤 Created: "${userData.name}" (${userData.email}) → ${userData.trust_score} trust, ${userData.reputation_tier}`);
+			console.log(
+				`👤 Created: "${userData.name}" (${userData.email}) → ${userData.trust_score} trust, ${userData.reputation_tier}`
+			);
 		}
 
 		console.log(`✅ Seeded ${seedUserData.length} users with comprehensive VOTER Protocol data`);
@@ -1929,7 +2006,7 @@ async function seedUsers() {
 	}
 }
 
-async function seedCoreTemplates(users: any[]) {
+async function seedCoreTemplates(users: User[]) {
 	console.log('🌱 Starting core template seeding...');
 
 	try {
@@ -1942,9 +2019,9 @@ async function seedCoreTemplates(users: any[]) {
 		for (let i = 0; i < seedTemplates.length; i++) {
 			const template = seedTemplates[i];
 			const slug = generateSlug(template.title);
-			
+
 			// Assign template to a user (distribute across verified users)
-			const verifiedUsers = users.filter(u => u.is_verified);
+			const verifiedUsers = users.filter((u) => u.is_verified);
 			const assignedUser = verifiedUsers[i % verifiedUsers.length];
 
 			const createdTemplate = await db.template.create({
@@ -1968,30 +2045,34 @@ async function seedCoreTemplates(users: any[]) {
 					is_public: template.is_public,
 					status: 'published',
 					userId: assignedUser?.id || null,
-					
+
 					// === CONSOLIDATED VERIFICATION FIELDS (Phase 4) ===
-					verification_status: (template as any).verification_status || 'pending',
-					quality_score: (template as any).quality_score || 50,
-					agent_votes: (template as any).agent_votes || null,
-					consensus_score: (template as any).consensus_score || null,
-					severity_level: (template as any).severity_level || null,
-					grammar_score: (template as any).grammar_score || null,
-					clarity_score: (template as any).clarity_score || null,
-					completeness_score: (template as any).completeness_score || null,
-					correction_log: (template as any).correction_log || null,
-					original_content: (template as any).original_content || null,
-					corrected_at: (template as any).corrected_at || null,
-					reviewed_at: (template as any).reviewed_at || null,
-					reputation_delta: (template as any).reputation_delta || 0,
-					reputation_applied: (template as any).reputation_applied || false,
-					send_count: (template as any).send_count || 0,
-					last_sent_at: (template as any).last_sent_at || null,
+					verification_status: (template as SeedTemplateData).verification_status || 'pending',
+					quality_score: (template as SeedTemplateData).quality_score || 50,
+					agent_votes: ((template as SeedTemplateData).agent_votes as Prisma.JsonValue) || null,
+					consensus_score: (template as SeedTemplateData).consensus_score || null,
+					severity_level: (template as SeedTemplateData).severity_level || null,
+					grammar_score: (template as SeedTemplateData).grammar_score || null,
+					clarity_score: (template as SeedTemplateData).clarity_score || null,
+					completeness_score: (template as SeedTemplateData).completeness_score || null,
+					correction_log:
+						((template as SeedTemplateData).correction_log as Prisma.JsonValue) || null,
+					original_content:
+						((template as SeedTemplateData).original_content as Prisma.JsonValue) || null,
+					corrected_at: (template as SeedTemplateData).corrected_at || null,
+					reviewed_at: (template as SeedTemplateData).reviewed_at || null,
+					reputation_delta: (template as SeedTemplateData).reputation_delta || 0,
+					reputation_applied: (template as SeedTemplateData).reputation_applied || false,
+					send_count: (template as SeedTemplateData).send_count || 0,
+					last_sent_at: (template as SeedTemplateData).last_sent_at || null,
 					submitted_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) // Random within last week
 				}
 			});
 
 			createdTemplates.push(createdTemplate);
-			console.log(`📝 Created: "${template.title}" → ${slug} (by ${assignedUser?.name || 'Anonymous'})`);
+			console.log(
+				`📝 Created: "${template.title}" → ${slug} (by ${assignedUser?.name || 'Anonymous'})`
+			);
 		}
 
 		console.log(`✅ Seeded ${seedTemplates.length} core templates with user assignments`);
@@ -2114,7 +2195,10 @@ async function seedCongressionalData() {
 	}
 }
 
-async function seedUserRepresentativeRelationships(users: any[], representatives: any[]) {
+async function seedUserRepresentativeRelationships(
+	users: User[],
+	representatives: Representative[]
+) {
 	console.log('🤝 Creating user-representative relationships...');
 
 	try {
@@ -2122,20 +2206,22 @@ async function seedUserRepresentativeRelationships(users: any[], representatives
 		await db.user_representatives.deleteMany({});
 
 		const relationships = [];
-		
+
 		// Create relationships for users based on their congressional districts
 		for (const user of users) {
 			if (!user.congressional_district) continue;
 
 			// Find matching representatives for this user's district
-			const matchingReps = representatives.filter(rep => {
+			const matchingReps = representatives.filter((rep) => {
 				if (rep.chamber === 'senate') {
 					// Senate: match by state only
 					return rep.state === user.state;
 				} else {
 					// House: match by exact district
-					return rep.state === user.state && 
-						   `${rep.state}-${rep.district}` === user.congressional_district;
+					return (
+						rep.state === user.state &&
+						`${rep.state}-${rep.district}` === user.congressional_district
+					);
 				}
 			});
 
@@ -2218,56 +2304,62 @@ async function seedDatabase() {
 		// Show URLs
 		console.log('\n👥 User Summary:');
 		console.log('================');
-		const verifiedCount = users.filter(u => u.is_verified).length;
-		const reputationTiers = [...new Set(users.map(u => u.reputation_tier))];
+		const verifiedCount = users.filter((u) => u.is_verified).length;
+		const reputationTiers = Array.from(new Set(users.map((u: User) => u.reputation_tier)));
 		console.log(`Verified Users: ${verifiedCount}/${users.length}`);
-		reputationTiers.forEach((tier) => {
-			const count = users.filter(u => u.reputation_tier === tier).length;
+		reputationTiers.forEach((tier: string) => {
+			const count = users.filter((u) => u.reputation_tier === tier).length;
 			console.log(`  • ${tier}: ${count} user${count > 1 ? 's' : ''}`);
 		});
-		
-		const avgTrustScore = Math.round(users.reduce((sum, u) => sum + u.trust_score, 0) / users.length);
+
+		const avgTrustScore = Math.round(
+			users.reduce((sum, u) => sum + u.trust_score, 0) / users.length
+		);
 		console.log(`Average Trust Score: ${avgTrustScore}`);
-		
+
 		const totalEarnings = users.reduce((sum, u) => sum + parseFloat(u.total_earned || '0'), 0);
 		console.log(`Total VOTER Tokens Earned: ${(totalEarnings / 1e18).toFixed(2)} VOTER`);
 
 		console.log('\n🌐 Available Templates:');
 		console.log('=====================');
-		templates.forEach((t, i) => {
-			const creator = users.find(u => u.id === t.userId);
+		templates.forEach((t, _i) => {
+			const creator = users.find((u) => u.id === t.userId);
 			console.log(`📍 https://communique.app/${t.slug}`);
 			console.log(`   "${t.title}" (${t.category} → ${t.jurisdiction_level})`);
-			console.log(`   Created by: ${creator?.name || 'Anonymous'} (${creator?.reputation_tier || 'unknown'})`);
+			console.log(
+				`   Created by: ${creator?.name || 'Anonymous'} (${creator?.reputation_tier || 'unknown'})`
+			);
 			console.log('');
 		});
 
 		console.log('📋 Template Distribution:');
-		const categories = [...new Set(templates.map((t) => t.category))];
-		categories.forEach((cat) => {
+		const categories = Array.from(new Set(templates.map((t: Template) => t.category)));
+		categories.forEach((cat: string) => {
 			const count = templates.filter((t) => t.category === cat).length;
 			console.log(`  • ${cat}: ${count} template${count > 1 ? 's' : ''}`);
 		});
 
-		const jurisdictions = [...new Set(templates.map((t) => t.jurisdiction_level))];
+		const jurisdictions = Array.from(new Set(templates.map((t: Template) => t.jurisdiction_level)));
 		console.log('\n🏛️  Jurisdiction Levels:');
-		jurisdictions.forEach((jur) => {
+		jurisdictions.forEach((jur: string | null) => {
 			const count = templates.filter((t) => t.jurisdiction_level === jur).length;
 			console.log(`  • ${jur}: ${count} template${count > 1 ? 's' : ''}`);
 		});
 
 		console.log('\n🌍 Geographic Distribution:');
-		const states = [...new Set(users.map(u => u.state))];
-		states.forEach(state => {
-			const count = users.filter(u => u.state === state).length;
+		const states = Array.from(new Set(users.map((u: User) => u.state).filter(Boolean)));
+		states.forEach((state: string) => {
+			const count = users.filter((u) => u.state === state).length;
 			console.log(`  • ${state}: ${count} user${count > 1 ? 's' : ''}`);
 		});
 
 		console.log('\n🏆 VOTER Protocol Stats:');
 		const totalPending = users.reduce((sum, u) => sum + parseFloat(u.pending_rewards || '0'), 0);
 		console.log(`Total Pending Rewards: ${(totalPending / 1e18).toFixed(2)} VOTER`);
-		console.log(`Highest Trust Score: ${Math.max(...users.map(u => u.trust_score))}`);
-		console.log(`Average Challenge Score: ${Math.round(users.reduce((sum, u) => sum + (u.challenge_score || 0), 0) / users.length)}`);
+		console.log(`Highest Trust Score: ${Math.max(...users.map((u) => u.trust_score))}`);
+		console.log(
+			`Average Challenge Score: ${Math.round(users.reduce((sum, u) => sum + (u.challenge_score || 0), 0) / users.length)}`
+		);
 
 		console.log('\n🎉 Database seeding completed successfully!\n');
 		console.log('💡 Next Steps:');
@@ -2291,6 +2383,7 @@ async function seedDatabase() {
 }
 
 // Check if this file is being run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// Use process.argv[1] to check if this script is being run directly
+if (process.argv[1]?.endsWith('seed-database.ts')) {
 	seedDatabase();
 }

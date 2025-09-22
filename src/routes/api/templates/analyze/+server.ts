@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { templateCorrector } from '$lib/services/template-correction';
 import { createApiError, type ApiResponse } from '$lib/types/errors';
+import type { UnknownRecord, AnyFunction } from '$lib/types/any-replacements';
 
 interface AnalyzeRequest {
 	title: string;
@@ -33,18 +34,22 @@ interface AnalyzeResponse {
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		let requestData: AnalyzeRequest;
-		
+
 		// Handle JSON parsing errors gracefully
 		try {
 			requestData = await request.json();
-		} catch (error) {
+		} catch (err) {
 			const response: ApiResponse = {
 				success: false,
-				error: createApiError('validation', 'VALIDATION_INVALID_FORMAT', 'Invalid JSON in request body')
+				error: createApiError(
+					'validation',
+					'VALIDATION_INVALID_FORMAT',
+					'Invalid JSON in request body'
+				)
 			};
 			return json(response, { status: 400 });
 		}
-		
+
 		const { title, content, deliveryMethod } = requestData;
 
 		if (!content || !title) {
@@ -64,7 +69,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			title,
 			subject: title,
 			message_body: content,
-			deliveryMethod: deliveryMethod as any,
+			deliveryMethod: deliveryMethod as string,
 			preview: content.substring(0, 500),
 			userId: null,
 			createdAt: new Date(),
@@ -84,7 +89,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		let corrections;
 		if (isCertifiedDelivery) {
 			// Full agent analysis for congressional templates
-			corrections = await (templateCorrector as any).detectAndCorrect(mockTemplate);
+			corrections = await (templateCorrector as AnyFunction).detectAndCorrect(mockTemplate);
 		} else {
 			// Lightweight analysis for direct outreach
 			corrections = {
@@ -101,7 +106,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Transform corrections into quick fixes
 		const quickFixes: QuickFix[] = corrections.changes.map((change: unknown) => {
 			// Type guard for change object
-			const isValidChange = (obj: unknown): obj is {
+			const isValidChange = (
+				obj: unknown
+			): obj is {
 				type: string;
 				reason: string;
 				original?: string;
@@ -112,8 +119,8 @@ export const POST: RequestHandler = async ({ request }) => {
 					obj !== null &&
 					'type' in obj &&
 					'reason' in obj &&
-					typeof (obj as any).type === 'string' &&
-					typeof (obj as any).reason === 'string'
+					typeof (obj as UnknownRecord).type === 'string' &&
+					typeof (obj as UnknownRecord).reason === 'string'
 				);
 			};
 
@@ -191,8 +198,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		return json(response);
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		const response: ApiResponse = {
 			success: false,
@@ -201,7 +208,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		return json(response, { status: 500 });
 	}
-}
+};
 
 function checkCommonIssues(content: string, isCertified: boolean = false): QuickFix[] {
 	const fixes: QuickFix[] = [];

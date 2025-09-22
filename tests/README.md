@@ -136,9 +136,9 @@ dbMock.template.create.mockResolvedValue(newTemplate);
 
 // Customize auth mock behavior
 authMock.createSession.mockResolvedValue({
-  id: 'session-123',
-  user_id: 'user-123',
-  expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+	id: 'session-123',
+	user_id: 'user-123',
+	expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 });
 
 // Reset specific mocks during test
@@ -171,18 +171,21 @@ Test names should describe user scenarios, not implementation details.
 ## Coverage Goals & Thresholds
 
 ### Current Thresholds (vitest.config.ts)
+
 - **Lines**: 70%
 - **Functions**: 70%
 - **Branches**: 70%
 - **Statements**: 70%
 
 ### Coverage Strategy
+
 - **Integration tests**: 80%+ feature coverage with realistic workflows
 - **Unit tests**: Critical business logic and edge cases only
 - **E2E tests**: Core user journeys and critical paths
 - **Mock coverage**: External dependencies fully mocked
 
 ### Exclusions from Coverage
+
 - Experimental code (`src/lib/experimental/**`)
 - Feature flags (`src/lib/features/**`)
 - Test files and configuration
@@ -215,16 +218,19 @@ Test names should describe user scenarios, not implementation details.
 ### Recent Improvements & Fixes Applied
 
 #### Phase 1: OAuth Environment Setup
+
 - ✅ Added comprehensive OAuth environment variables in `tests/config/setup.ts`
 - ✅ Standardized test environment configuration
 - ✅ Fixed OAuth provider initialization issues
 
 #### Phase 2: Database Mock Alignment
+
 - ✅ Enhanced mock registry with consistent database interfaces
 - ✅ Aligned mock return types with Prisma schema
 - ✅ Improved mock-reality synchronization patterns
 
 #### Phase 3: Response Format Standardization
+
 - ✅ Standardized API response formats across tests
 - ✅ Improved error handling mock patterns
 - ✅ Enhanced test data factories with realistic scenarios
@@ -244,6 +250,7 @@ The test suite was consolidated to eliminate redundancy:
 **After:** 16 files, ~6,000 lines (25% reduction)
 
 **Consolidation Strategy:**
+
 - Combined related test suites to reduce duplication
 - Merged mock patterns into unified registry
 - Integrated edge case testing into feature tests
@@ -279,22 +286,27 @@ tests/
 ### Common Issues & Solutions
 
 #### 1. OAuth Test Failures
+
 **Problem**: Tests fail with "Invalid authorization code" or missing OAuth environment  
 **Solution**: Ensure all OAuth environment variables are set in `tests/config/setup.ts`
 
 #### 2. Database Mock Misalignment
+
 **Problem**: Tests fail with undefined database methods  
 **Solution**: Check mock registry alignment with actual Prisma schema
 
 #### 3. Analytics localStorage Errors
+
 **Problem**: "Cannot read properties of undefined (reading 'getItem')"  
 **Solution**: Mock localStorage in jsdom environment or use happy-dom
 
 #### 4. Agent Integration Failures
+
 **Problem**: Response format mismatches between mocks and implementation  
 **Solution**: Align mock responses with actual agent API contract
 
 #### 5. Session Management Issues
+
 **Problem**: Session creation/validation failures in tests  
 **Solution**: Ensure auth service mocks return properly formatted session objects
 
@@ -317,11 +329,13 @@ npm run test -- --grep="OAuth.*error"
 ### Performance Optimization
 
 #### Vitest Configuration Optimizations
+
 - **Pool strategy**: `forks` with `singleFork: true` for better test isolation
 - **Environment**: `jsdom` for browser-like testing
 - **Coverage provider**: `istanbul` for comprehensive reporting
 
 #### Mock Registry Best Practices
+
 - Use centralized mock registry for consistency
 - Align mock interfaces with actual implementations
 - Reset mocks between tests to prevent interference
@@ -330,21 +344,25 @@ npm run test -- --grep="OAuth.*error"
 ## Maintenance & Best Practices
 
 ### Mock-Reality Synchronization
+
 - **Automatic alignment**: Mock registry interfaces match Prisma schema
 - **Realistic defaults**: Factory data reflects production patterns
 - **Consistent patterns**: Standardized mock setup across all tests
 
 ### Test Data Management
+
 - **Factories**: Type-safe data creation with realistic defaults
 - **Scenarios**: Pre-configured test cases for common workflows
 - **Overrides**: Easy customization for specific test needs
 
 ### Environment Management
+
 - **Feature flags**: Automatic test scope control
 - **OAuth setup**: Comprehensive provider configuration
 - **Database mocks**: Isolated test data without real DB dependencies
 
 ### Continuous Improvement
+
 - Regular review of failing test patterns
 - Mock alignment validation with implementation changes
 - Coverage threshold adjustments based on project maturity

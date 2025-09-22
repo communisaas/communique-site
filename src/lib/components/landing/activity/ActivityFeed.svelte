@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { Megaphone, Shield, AtSign } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
-	import type { AnalyticsEvent } from '$lib/types/analytics.ts';
+	import type { AnalyticsProperties } from '$lib/types/any-replacements.js';
 
 	interface Props {
 		templates: Template[];
@@ -13,13 +13,13 @@
 	let viewStartTime = Date.now();
 
 	// Analytics tracking function using new consolidated schema
-	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+	async function trackAnalyticsEvent(_eventName: string, properties: AnalyticsProperties) {
 		try {
 			await fetch('/api/analytics/events', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name: eventName,
+					name: _eventName,
 					event_type: 'interaction',
 					properties: {
 						component: 'activity_feed',
@@ -28,7 +28,7 @@
 					}
 				})
 			});
-		} catch (error) {
+		} catch (_error) {
 			console.warn('Analytics tracking failed:', error);
 		}
 	}
@@ -110,14 +110,13 @@
 							<div class="text-xs text-slate-500 sm:text-sm">
 								{(template.metrics?.sent ?? 0).toLocaleString()} sent
 								{#if template.metrics?.delivered && template.metrics?.sent}
-									• {((template.metrics.delivered / template.metrics.sent) * 100).toFixed(1)}% delivered
+									• {((template.metrics.delivered / template.metrics.sent) * 100).toFixed(1)}%
+									delivered
 								{/if}
 							</div>
 						</div>
 					</div>
-					<div class="text-xs text-slate-400">
-						View →
-					</div>
+					<div class="text-xs text-slate-400">View →</div>
 				</div>
 			</button>
 		{/each}

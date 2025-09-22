@@ -1,4 +1,5 @@
 <script lang="ts">
+	/// <reference types="dom" />
 	import { browser } from '$app/environment';
 	import type { Template } from '$lib/types/template';
 	import { onDestroy, onMount, tick, createEventDispatcher } from 'svelte';
@@ -15,11 +16,15 @@
 		inModal = false,
 		context = 'list',
 		user = null,
-		onScroll = () => {},
+		onScroll = () => {
+			/* Optional scroll handler */
+		},
 		onOpenModal = null,
 		onSendMessage = null,
 		showEmailModal: externalShowEmailModal = false,
-		onEmailModalClose = () => {},
+		onEmailModalClose = () => {
+			/* Optional email modal close handler */
+		},
 		expandToContent = false
 	}: {
 		template: Template;
@@ -67,25 +72,25 @@
 	let previewContainer: HTMLDivElement;
 	let firstFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
 	let lastFocusableElement: HTMLButtonElement | HTMLAnchorElement | HTMLInputElement;
-	let templateListButtons: NodeListOf<HTMLButtonElement>;
+	let templateListButtons: HTMLButtonElement[];
 
-	function handleKeyboardNav(event: KeyboardEvent) {
+	function handleKeyboardNav(_event: KeyboardEvent) {
 		// Allow focus events to pass through for popover triggers
-		if ((event.target as HTMLElement).closest('[aria-haspopup="true"]')) {
+		if ((_event.target as HTMLElement).closest('[aria-haspopup="true"]')) {
 			return;
 		}
 
-		if (event.key === 'Tab') {
-			const templateButtons = Array.from(templateListButtons);
+		if (_event.key === 'Tab') {
+			const templateButtons = templateListButtons;
 			const selectedIndex = templateButtons.findIndex(
 				(button) => button.getAttribute('data-template-id') === template.id.toString()
 			);
 			const lastTemplateIndex = templateButtons.length - 1;
 
-			if (event.shiftKey) {
+			if (_event.shiftKey) {
 				// Handle shift+tab from first element
 				if (document.activeElement === firstFocusableElement) {
-					event.preventDefault();
+					_event.preventDefault();
 					// Focus the current template button
 					templateButtons[selectedIndex]?.focus();
 				}
@@ -95,7 +100,7 @@
 					// If we're not at the last template in the list,
 					// move focus to the next template
 					if (selectedIndex < lastTemplateIndex) {
-						event.preventDefault();
+						_event.preventDefault();
 						templateButtons[selectedIndex + 1]?.focus();
 					}
 					// Otherwise, let focus continue naturally
@@ -166,7 +171,7 @@
 						sessionStorage.removeItem(`template_${template.id}_personalization`);
 					}
 				} catch (_error) {
-					console.error('Failed to restore personalization data:', _error);
+					console.error('Failed to restore personalization data:', error);
 				}
 			}
 		}
@@ -204,7 +209,7 @@
 					| HTMLInputElement;
 
 				// Get reference to template list buttons
-				templateListButtons = document.querySelectorAll('[data-template-button]');
+				templateListButtons = Array.from(document.querySelectorAll('[data-template-button]'));
 			});
 		}
 	});
@@ -221,9 +226,9 @@
 		dispatch('touchStateChange', touchState);
 	}
 
-	function handleMobileClick(event: MouseEvent) {
+	function handleMobileClick(_event: MouseEvent) {
 		// Don't intercept button clicks
-		const target = event.target as HTMLElement;
+		const target = _event.target as HTMLElement;
 		if (target.tagName === 'BUTTON' || target.closest('button')) {
 			return;
 		}
@@ -231,8 +236,8 @@
 		const isMobileDevice = isMobile();
 
 		if (!inModal && onOpenModal && isMobileDevice) {
-			event.preventDefault();
-			event.stopPropagation();
+			_event.preventDefault();
+			_event.stopPropagation();
 			onOpenModal();
 		}
 	}

@@ -102,8 +102,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				updated_at: new Date(),
 				session_metrics: {
 					events_count: { increment: events.length },
-					page_views: { increment: events.filter((e) => (e.event_name || e.name) === 'page_view').length },
-					conversion_count: { increment: events.filter((e) => (e.event_name || e.name) === 'conversion').length }
+					page_views: {
+						increment: events.filter((e) => (e.event_name || e.name) === 'page_view').length
+					},
+					conversion_count: {
+						increment: events.filter((e) => (e.event_name || e.name) === 'conversion').length
+					}
 				}
 			}
 		});
@@ -124,7 +128,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		// Helper function to safely stringify properties (handle circular references)
 		const safeStringify = (obj: unknown): string => {
 			if (!obj || typeof obj !== 'object') return String(obj);
-			
+
 			const seen = new WeakSet();
 			return JSON.stringify(obj, (key, value) => {
 				// Skip DOM elements (only available in browser)
@@ -162,7 +166,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			};
 
 			// Clean properties to prevent circular references and large objects
-			const cleanedProperties: Record<string, any> = {};
+			const cleanedProperties: Record<string, unknown> = {};
 			for (const [key, value] of Object.entries(properties)) {
 				if (value !== undefined && value !== null) {
 					try {
@@ -172,8 +176,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 						} else {
 							cleanedProperties[key] = value;
 						}
-					} catch (error) {
-						console.warn(`Failed to serialize property ${key}:`, error);
+					} catch (err) {
+						console.warn(`Could not analyze template`,err);
 						cleanedProperties[key] = '[Serialization Error]';
 					}
 				}
@@ -181,11 +185,16 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 			// Determine event type
 			const eventName = event.event_name || event.name || 'unknown';
-			let eventType: 'pageview' | 'interaction' | 'conversion' | 'funnel' | 'campaign' = 'interaction';
-			
+			let eventType: 'pageview' | 'interaction' | 'conversion' | 'funnel' | 'campaign' =
+				'interaction';
+
 			if (eventName === 'page_view' || eventName.includes('viewed')) {
 				eventType = 'pageview';
-			} else if (eventName.includes('conversion') || eventName === 'template_used' || eventName === 'auth_completed') {
+			} else if (
+				eventName.includes('conversion') ||
+				eventName === 'template_used' ||
+				eventName === 'auth_completed'
+			) {
 				eventType = 'conversion';
 			} else if (event.funnel_id) {
 				eventType = 'funnel';
@@ -199,7 +208,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				timestamp: event.timestamp ? new Date(event.timestamp) : new Date(),
 				name: eventName,
 				event_type: eventType,
-				template_id: event.template_id && validTemplateIds.has(event.template_id) ? event.template_id : null,
+				template_id:
+					event.template_id && validTemplateIds.has(event.template_id) ? event.template_id : null,
 				funnel_step: event.funnel_id ? 1 : null, // Could be enhanced based on event data
 				experiment_id: event.variation_id || event.campaign_id || null,
 				properties: cleanedProperties,
@@ -210,7 +220,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		// Batch insert events
 		if (eventsToCreate.length > 0) {
 			await db.analytics_event.createMany({
-				data: eventsToCreate,
+				data: eventsToCreate as any, // TODO: Fix Prisma types for analytics_event
 				skipDuplicates: true
 			});
 		}
@@ -221,15 +231,15 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		);
 
 		// Note: Conversion tracking would require additional user_session schema fields
-		// For now, we track conversions through analytics_event records
+		// For now, we track conversions through analyticsevent records
 
 		return json({
 			success: true,
 			events_processed: events.length,
 			session_id: session_data.session_id
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		return json(
 			{
@@ -270,7 +280,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			);
 		}
 
-		// Get analytics events for this session from consolidated analytics_event table
+		// Get analytics events for this session from consolidated analyticsevent table
 		const analyticsEvents = await db.analytics_event.findMany({
 			where: { session_id: sessionId },
 			orderBy: { timestamp: 'desc' },
@@ -286,15 +296,15 @@ export const GET: RequestHandler = async ({ url }) => {
 				session_metrics: session.session_metrics || {},
 				funnel_progress: session.funnel_progress || {}
 			},
-			analytics_events: analyticsEvents.map(event => ({
+			analyticsevents: analyticsEvents.map((event) => ({
 				...event,
 				properties: event.properties || {},
 				computed_metrics: event.computed_metrics || {}
 			})),
 			events_count: analyticsEvents.length
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		return json(
 			{

@@ -1,4 +1,4 @@
-import { createMockRequestEvent } from "../helpers/request-event";
+import { createMockRequestEvent } from '../helpers/request-event';
 /**
  * Congressional Delivery Integration Tests
  *
@@ -6,7 +6,12 @@ import { createMockRequestEvent } from "../helpers/request-event";
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { userFactory, templateFactory, testScenarios } from '../fixtures/factories';
+import type { UnknownRecord } from '../../src/lib/types/any-replacements';
+import {
+	userFactory as _userFactory,
+	templateFactory as _templateFactory,
+	testScenarios
+} from '../fixtures/factories';
 
 // Setup mocks using vi.hoisted
 const mocks = vi.hoisted(() => ({
@@ -44,7 +49,7 @@ const mocks = vi.hoisted(() => ({
 
 // Mock SvelteKit utilities
 vi.mock('@sveltejs/kit', () => ({
-	json: (data: any, init?: ResponseInit) => {
+	json: (data: UnknownRecord, init?: ResponseInit) => {
 		return new Response(JSON.stringify(data), {
 			...init,
 			headers: {
@@ -143,7 +148,9 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(routingEmail)
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
+			const response = await POST(
+				createMockRequestEvent(mockRequest, '/api/civic/routing')
+			);
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -172,7 +179,6 @@ describe('Congressional Delivery Integration', () => {
 				})
 			);
 		});
-
 	});
 
 	describe('Guest User Flow', () => {
@@ -186,7 +192,9 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(guestEmail)
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
+			const response = await POST(
+				createMockRequestEvent(mockRequest, '/api/civic/routing')
+			);
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -212,7 +220,9 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
+			const response = await POST(
+				createMockRequestEvent(mockRequest, '/api/civic/routing')
+			);
 
 			expect(response.status).toBe(500);
 			const errorData = JSON.parse(await response.text());
@@ -244,7 +254,9 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
+			const response = await POST(
+				createMockRequestEvent(mockRequest, '/api/civic/routing')
+			);
 			const responseData = JSON.parse(await response.text());
 
 			expect(response.status).toBe(200);
@@ -262,7 +274,9 @@ describe('Congressional Delivery Integration', () => {
 				})
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
+			const response = await POST(
+				createMockRequestEvent(mockRequest, '/api/civic/routing')
+			);
 
 			expect(response.status).toBe(400);
 			const errorData = JSON.parse(await response.text());
@@ -278,7 +292,9 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			const response = await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
+			const response = await POST(
+				createMockRequestEvent(mockRequest, '/api/civic/routing')
+			);
 
 			expect(response.status).toBe(404);
 			const errorData = JSON.parse(await response.text());
@@ -305,7 +321,7 @@ describe('Congressional Delivery Integration', () => {
 				json: vi.fn().mockResolvedValue(testScenarios.routingEmail())
 			};
 
-			await POST(createMockRequestEvent(mockRequest, '/api/civic/routing') as any);
+			await POST(createMockRequestEvent(mockRequest, '/api/civic/routing'));
 
 			// Verify consolidated schema usage
 			expect(mocks.deliveryPipeline.deliverToRepresentatives).toHaveBeenCalledWith(

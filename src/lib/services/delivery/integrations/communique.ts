@@ -56,8 +56,8 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (_error) {
-			console.error(`[Communiqué] Failed to resolve user by email ${email}:`, _error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -76,8 +76,8 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (_error) {
-			console.error(`[Communiqué] Failed to fetch template ${slug}:`, _error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -94,8 +94,8 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (_error) {
-			console.error(`[Communiqué] Failed to fetch template ${id}:`, _error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -109,8 +109,8 @@ export class CommuniqueClient {
 			console.log(
 				`[Communiqué] Delivery notification sent for template ${notification.templateId}`
 			);
-		} catch (_error) {
-			console.error('[Communiqué] Failed to send delivery notification:', _error);
+		} catch {
+			console.error('Error occurred');
 			// Don't throw - this is a best-effort notification
 		}
 	}
@@ -153,8 +153,8 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (_error) {
-			console.error(`[Communiqué] Failed to get district for user ${userId}:`, _error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -178,8 +178,8 @@ export class CommuniqueClient {
 			);
 
 			return response.data.success && response.data.data?.verified === true;
-		} catch (_error) {
-			console.error('[Communiqué] Failed to verify secondary email:', _error);
+		} catch {
+			console.error('Error occurred');
 			return false;
 		}
 	}
@@ -199,8 +199,8 @@ export class CommuniqueClient {
 				timestamp: new Date().toISOString(),
 				metadata
 			});
-		} catch (_error) {
-			console.error('[Communiqué] Failed to record template usage:', _error);
+		} catch {
+			console.error('Error occurred');
 			// Don't throw - this is analytics, not critical
 		}
 	}
@@ -236,8 +236,8 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch (_error) {
-			console.error(`[Communiqué] Failed to get stats for template ${templateId}:`, _error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -249,8 +249,8 @@ export class CommuniqueClient {
 		try {
 			const response = await this.client.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch (_error) {
-			console.error('[Communiqué] Health check failed:', _error);
+		} catch {
+			console.error('Error occurred');
 			return false;
 		}
 	}

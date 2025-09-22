@@ -4,7 +4,7 @@
 	import type { Template } from '$lib/types/template';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { page } from '$app/stores';
+	// import { page } from '$app/stores';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 
@@ -15,7 +15,7 @@
 	}: {
 		template: Template;
 		user?: { id: string; name: string } | null;
-		onuseTemplate: (event: { template: Template; requiresAuth: boolean }) => void;
+		onuseTemplate: (__event: { template: Template; requiresAuth: boolean }) => void;
 	} = $props();
 
 	// Use unified email service to determine flow

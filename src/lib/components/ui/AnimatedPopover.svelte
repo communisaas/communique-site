@@ -1,16 +1,17 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-	import { scale, fly } from 'svelte/transition';
+	import { scale } from 'svelte/transition';
 	import { quintOut, expoOut } from 'svelte/easing';
-	import { tick } from 'svelte';
-	import type { PopoverSlots, TriggerAction } from '$lib/types/popover';
+	import { tick as _tick } from 'svelte';
+	import type { PopoverSlots as _PopoverSlots, TriggerAction } from '$lib/types/popover';
+	import type { Snippet } from 'svelte';
 	import { addEventListener, addDocumentEventListener } from '$lib/utils/browserUtils';
 	interface Props {
 		id: string;
 		animationStyle?: 'scale' | 'fly' | 'expand';
 		duration?: number;
-		trigger?: (params: { triggerAction: TriggerAction }) => any;
-		children?: (params: { open: boolean }) => any;
+		trigger?: Snippet<[{ triggerAction: TriggerAction }]>;
+		children?: Snippet<[{ open: boolean }]>;
 	}
 
 	const { id, animationStyle = 'expand', duration = 200, trigger, children }: Props = $props();
@@ -20,14 +21,12 @@
 	let containerElement: HTMLDivElement;
 	let contentElement: HTMLDivElement | undefined = $state();
 	let isAnimating = false;
-	let position = 'bottom';
+	let _position = 'bottom';
 	let isPositioned = $state(false);
 
 	// Independent state for each popover - no shared store
 	let open = $state(false);
 	let closeTimeout: number | null = null;
-
-	interface $$Slots extends PopoverSlots {}
 
 	// Enhanced animation configurations
 	const animations = {
@@ -49,14 +48,16 @@
 	};
 
 	// Create the trigger action
-	const triggerAction: TriggerAction = (node) => {
+	const triggerAction: TriggerAction = (_node) => {
 		return {
-			destroy: () => {} // Cleanup if needed
+			destroy: () => {
+				/* Cleanup if needed */
+			}
 		};
 	};
 
 	// Enhanced scroll handling with position updates
-	function handleScroll(event: Event) {
+	function handleScroll(__event: Event) {
 		if (open && !isAnimating) {
 			// Close popover on scroll to prevent it from becoming detached
 			open = false;
@@ -78,16 +79,16 @@
 		const resizeCleanup = addEventListener('resize', handleResize);
 
 		// Global click handler to close popover when clicking outside
-		const handleGlobalClick = (event: MouseEvent) => {
+		const handleGlobalClick = (__event: MouseEvent) => {
 			// Don't handle if this was a touch interaction
 			if (isTouch) return;
 
 			if (!containerElement || !popoverElement) return;
 
-			const target = event.target as Node;
+			const target = __event.target as Node;
 
 			// Don't close if clicking a form element inside the popover
-			if (popoverElement.contains(target) && isFormElement(event.target)) {
+			if (popoverElement.contains(target) && isFormElement(__event.target)) {
 				return;
 			}
 
@@ -100,13 +101,13 @@
 		const clickCleanup = addDocumentEventListener('click', handleGlobalClick, true);
 
 		// Global touch handler to close popover when tapping outside
-		const handleGlobalTouch = (event: TouchEvent) => {
+		const handleGlobalTouch = (__event: TouchEvent) => {
 			if (!isTouch || !containerElement || !popoverElement) return;
 
-			const target = event.target as Node;
+			const target = __event.target as Node;
 
 			// Don't close if touching a form element inside the popover
-			if (popoverElement.contains(target) && isFormElement(event.target)) {
+			if (popoverElement.contains(target) && isFormElement(__event.target)) {
 				return;
 			}
 
@@ -203,18 +204,18 @@
 		);
 	}
 
-	function handleTouchStart(event: TouchEvent) {
+	function handleTouchStart(__event: TouchEvent) {
 		isTouch = true;
 
 		// Check if the touch is on a form element INSIDE the popover content
 		// (not the trigger button itself)
-		const target = event.target as Element;
-		if (popoverElement && popoverElement.contains(target) && isFormElement(event.target)) {
+		const target = __event.target as Element;
+		if (popoverElement && popoverElement.contains(target) && isFormElement(__event.target)) {
 			// Don't close popover when interacting with form elements inside it
 			return;
 		}
 
-		event.stopPropagation();
+		__event.stopPropagation();
 
 		// Clear any existing timeout
 		if (touchTimeout) {
@@ -224,7 +225,7 @@
 		// Toggle popover on tap
 		open = !open;
 		if (open) {
-			tick().then(updatePosition);
+			_tick().then(updatePosition);
 		}
 
 		// Reset touch flag after a longer delay to prevent immediate closure
@@ -234,10 +235,10 @@
 		}, 1000) as unknown as number;
 	}
 
-	function handleTouchEnd(event: TouchEvent) {
+	function handleTouchEnd(__event: TouchEvent) {
 		// Only prevent mouse events for non-form elements
-		if (!isFormElement(event.target)) {
-			event.preventDefault();
+		if (!isFormElement(__event.target)) {
+			__event.preventDefault();
 		}
 	}
 
@@ -297,10 +298,10 @@
 		// Vertical positioning
 		if (verticalPosition === 'bottom') {
 			top = triggerRect.bottom + 6;
-			position = 'bottom';
+			_position = 'bottom';
 		} else {
 			top = triggerRect.top - popoverHeight - 6;
-			position = 'top';
+			_position = 'top';
 		}
 
 		// Horizontal positioning - center on trigger, but keep in viewport
@@ -328,7 +329,7 @@
 		isAnimating = true;
 		dispatch('open');
 
-		await tick();
+		await _tick();
 		await updatePosition();
 		isPositioned = true;
 
@@ -405,4 +406,3 @@
 		</div>
 	{/if}
 </div>
-

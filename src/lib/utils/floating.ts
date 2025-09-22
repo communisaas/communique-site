@@ -1,6 +1,6 @@
 /**
  * Floating UI utilities for tooltips, popovers, and other positioned elements
- * 
+ *
  * This is a thin wrapper around @floating-ui/dom that provides:
  * - Consistent configuration for our design system
  * - Arrow positioning middleware
@@ -59,7 +59,7 @@ export async function computeTooltipPosition(
 	// Check for problematic transform contexts
 	const triggerStyles = window.getComputedStyle(triggerElement);
 	const hasTransform = triggerStyles.transform !== 'none';
-	
+
 	if (hasTransform) {
 		console.warn('Detected transform on trigger element, this may affect positioning');
 	}
@@ -71,21 +71,27 @@ export async function computeTooltipPosition(
 	];
 
 	if (allowFlip) {
-		middleware.push(flip({
-			padding: margin
-		}));
+		middleware.push(
+			flip({
+				padding: margin
+			})
+		);
 	}
 
 	if (allowShift) {
-		middleware.push(shift({
-			padding: margin
-		}));
+		middleware.push(
+			shift({
+				padding: margin
+			})
+		);
 	}
 
 	if (arrowElement) {
-		middleware.push(arrow({
-			element: arrowElement
-		}));
+		middleware.push(
+			arrow({
+				element: arrowElement
+			})
+		);
 	}
 
 	// Compute position with enhanced error handling
@@ -97,9 +103,9 @@ export async function computeTooltipPosition(
 			// Use viewport-relative strategy for better cross-context positioning
 			strategy: 'fixed'
 		});
-	} catch (error) {
-		console.error('Floating UI computation failed:', error);
-		
+	} catch {
+		console.error('Error occurred');
+
 		// Fallback to manual positioning
 		const triggerRect = triggerElement.getBoundingClientRect();
 		result = {
@@ -112,10 +118,13 @@ export async function computeTooltipPosition(
 	}
 
 	// Extract arrow data if available
-	const arrowData = arrowElement && result.middlewareData.arrow ? {
-		x: result.middlewareData.arrow.x ?? 0,
-		y: result.middlewareData.arrow.y ?? 0
-	} : undefined;
+	const arrowData =
+		arrowElement && result.middlewareData.arrow
+			? {
+					x: result.middlewareData.arrow.x ?? 0,
+					y: result.middlewareData.arrow.y ?? 0
+				}
+			: undefined;
 
 	return {
 		x: result.x,
@@ -139,10 +148,7 @@ export function setupAutoUpdate(
 /**
  * Apply position to tooltip element using transform for performance
  */
-export function applyTooltipPosition(
-	tooltipElement: HTMLElement,
-	position: TooltipPosition
-): void {
+export function applyTooltipPosition(tooltipElement: HTMLElement, position: TooltipPosition): void {
 	// Use transform for better performance
 	tooltipElement.style.transform = `translate(${position.x}px, ${position.y}px)`;
 	tooltipElement.style.left = '0';
@@ -155,7 +161,7 @@ export function applyTooltipPosition(
 	if (position.arrow) {
 		tooltipElement.style.setProperty('--arrow-x', `${position.arrow.x}px`);
 		tooltipElement.style.setProperty('--arrow-y', `${position.arrow.y}px`);
-		
+
 		// Find arrow element and position it directly for better visibility
 		const arrowElement = tooltipElement.querySelector('.tooltip-arrow') as HTMLElement;
 		if (arrowElement) {

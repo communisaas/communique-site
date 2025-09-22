@@ -22,7 +22,7 @@ export function setupProcessHandlers(): void {
 	// Handle uncaught exceptions in production
 	if (isProduction()) {
 		process.on('uncaughtException', (error) => {
-			console.error('💥 Uncaught Exception:', error);
+			console.error('Error occurred');
 
 			// Log to monitoring service
 			logToMonitoring('uncaughtException', error);
@@ -74,7 +74,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 			})
 			.catch((error) => {
 				clearTimeout(timer);
-				console.error('❌ Error during cleanup:', error);
+				console.error('Error occurred');
 				resolve();
 			});
 	});
@@ -133,8 +133,8 @@ async function notifyServices(): Promise<void> {
 
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		console.log('✅ Services notified');
-	} catch (_error) {
-		console.error('❌ Failed to notify services:', _error);
+	} catch {
+		console.error('Error occurred');
 	}
 }
 

@@ -77,6 +77,12 @@
 		bind:this={dialogElement}
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
 		onclick={handleBackdropClick}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') handleClose();
+			if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+				handleBackdropClick(e);
+			}
+		}}
 		role="dialog"
 		aria-modal="true"
 		aria-label={title || 'Modal dialog'}
@@ -86,7 +92,7 @@
 	>
 		<div
 			class="relative w-full {maxWidth} flex max-h-[90vh] flex-col overflow-hidden rounded-lg bg-white shadow-xl"
-			onclick={(e) => e.stopPropagation()}
+			role="document"
 		>
 			{#if title || showClose}
 				<div class="flex items-center justify-between border-b border-slate-200 px-6 py-4">

@@ -32,7 +32,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 		}
 
 		// Filter out any undefined conditions and ensure we have at least one condition
-		const validConditions = whereConditions.filter(condition => condition !== undefined);
+		const validConditions = whereConditions.filter((condition) => condition !== undefined);
 		if (validConditions.length === 0) {
 			return json({ error: 'Missing slug or templateId parameter' }, { status: 400 });
 		}
@@ -62,8 +62,8 @@ export const GET: RequestHandler = async ({ url, request }) => {
 		}
 
 		return json({ template });
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json({ error: 'Failed to fetch template' }, { status: 500 });
 	}
 };

@@ -2,6 +2,28 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 import { CWCGenerator } from '$lib/core/congress/cwc-generator';
+import type { Template } from '$lib/types/template';
+import type { UnknownRecord } from '$lib/types/any-replacements';
+
+interface CWCTestResults {
+	testType: string;
+	timestamp: string;
+	cwcConfigured: boolean;
+	xmlGeneration?: {
+		success: boolean;
+		errors: unknown[];
+		xmlLength: number;
+		preview: string;
+	};
+	apiConnection?: {
+		connected: boolean;
+		[key: string]: unknown;
+	};
+	senateSubmission?: {
+		success: boolean;
+		[key: string]: unknown;
+	};
+}
 
 /**
  * Test CWC integration
@@ -14,14 +36,28 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { testType = 'preview' } = await request.json();
 
 		// Test template
-		const testTemplate = {
+		const testTemplate: Template = {
 			id: 'test-template-1',
+			slug: 'test-climate-action',
 			title: 'Test Congressional Message',
+			description: 'Test template for climate action advocacy',
+			category: 'climate',
+			type: 'advocacy',
+			deliveryMethod: 'cwc',
 			subject: 'Urgent: Support Climate Action',
 			message_body:
-				'Dear [Representative Name],\n\nAs your constituent from [Address], I urge you to support climate action legislation. [Personal Connection]\n\nThank you for your service.\n\nSincerely,\n[Name]',
+				'Dear [Representative Name],\n\nAs your constituent from [Address ], I urge you to support climate action legislation. [Personal Connection]\n\nThank you for your service.\n\nSincerely,\n[Name]',
 			delivery_config: {},
-			cwc_config: {}
+			cwc_config: {},
+			recipient_config: {},
+			metrics: {},
+			status: 'active',
+			is_public: true,
+			send_count: 0,
+			applicable_countries: ['US'],
+			specific_locations: [],
+			preview:
+				'Dear Representative, As your constituent, I urge you to support climate action legislation...'
 		};
 
 		// Test user
@@ -47,7 +83,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			party: 'Democratic'
 		};
 
-		const results: any = {
+		const results: CWCTestResults = {
 			testType,
 			timestamp: new Date().toISOString(),
 			cwcConfigured: !!process.env.CWC_API_KEY
@@ -55,7 +91,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (testType === 'preview' || testType === 'all') {
 			// Test 1: XML Generation
-			const previewXML = CWCGenerator.generatePreviewXML(testTemplate as any);
+			const previewXML = CWCGenerator.generatePreviewXML(testTemplate);
 			const validation = CWCGenerator.validateXML(previewXML);
 
 			results.xmlGeneration = {
@@ -75,7 +111,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (testType === 'senate' || testType === 'all') {
 			// Test 3: Senate Submission (simulated if no API key)
 			const senateResult = await cwcClient.submitToSenate(
-				testTemplate as any,
+				testTemplate,
 				testUser,
 				testSenator,
 				'This is a test message for congressional delivery.'
@@ -104,12 +140,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			results,
 			message: 'CWC integration test completed'
 		});
-	} catch (_error) {
-		console.error('CWC test error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Test failed',
+				error: err instanceof Error ? err.message : 'Test failed',
 				message: 'CWC integration test failed'
 			},
 			{ status: 500 }

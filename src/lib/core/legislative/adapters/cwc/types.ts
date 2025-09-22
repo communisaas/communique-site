@@ -25,8 +25,7 @@ export interface CWCConstituent {
 	Suffix?: string;
 	Title?: string;
 	OrganizationName?: string;
-	Address1: string;
-	Address2?: string;
+	Address?: string;
 	City: string;
 	StateAbbreviation: string;
 	Zip: string;
@@ -79,7 +78,7 @@ export interface CommuniqueMessageInput {
 		id: string;
 		name: string | null;
 		email: string;
-		// Address fields will be populated by address verification
+		// Address  fields will be populated by address verification
 		address?: {
 			address1: string;
 			address2?: string;

@@ -3,7 +3,11 @@
  */
 
 import axios, { type AxiosInstance } from 'axios';
-import type { VOTERCertificationRequest, VOTERCertificationResult, VOTERActionType } from '../types/index.js';
+import type {
+	VOTERCertificationRequest,
+	VOTERCertificationResult,
+	VOTERActionType
+} from '../types/index.js';
 import { getConfig } from '../utils/config.js';
 
 // Type for template data to prevent toLowerCase errors
@@ -55,7 +59,9 @@ export class VOTERClient {
 		try {
 			console.log(`[VOTER] Certifying delivery for template ${request.templateData.id}`);
 
-			const actionType = this.determineActionType(request.templateData as unknown as LocalTemplateData);
+			const actionType = this.determineActionType(
+				request.templateData as unknown as LocalTemplateData
+			);
 
 			const payload = {
 				user_address: request.userProfile.id, // Using user ID as address proxy
@@ -63,7 +69,7 @@ export class VOTERClient {
 				action_data: {
 					message: request.templateData.message_body,
 					subject: request.templateData.subject || request.templateData.title,
-					representative: request.templateData.deliveryMethod,
+					_representative: request.templateData.deliveryMethod,
 					template_id: request.templateData.id,
 					user_email: request.userProfile.email,
 					user_name: request.userProfile.name,
@@ -85,12 +91,12 @@ export class VOTERClient {
 			return {
 				certificationHash: response.data.certification_hash,
 				rewardAmount: response.data.reward_amount,
-				userAddress: response.data.user_address,
+				userAddress: response.data.user__address,
 				actionType: response.data.action_type,
 				timestamp: new Date(response.data.timestamp)
 			};
-		} catch (error) {
-			console.error('[VOTER] Certification failed:', error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -149,8 +155,8 @@ export class VOTERClient {
 				diversityScore: response.data.diversity_score,
 				recommendation: response.data.recommendation
 			};
-		} catch (error) {
-			console.error('[VOTER] Advanced consensus failed:', error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -192,8 +198,8 @@ export class VOTERClient {
 				tierChange: response.data.tier_change,
 				explanation: response.data.explanation
 			};
-		} catch (error) {
-			console.error('[VOTER] Reputation calculation failed:', error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -228,8 +234,8 @@ export class VOTERClient {
 				reputation: response.data.services.reputation.available,
 				certification: response.data.services.certification.available
 			};
-		} catch (error) {
-			console.error('[VOTER] Failed to get services status:', error);
+		} catch {
+			console.error('Error occurred');
 			return {
 				consensus: false,
 				reputation: false,
@@ -249,8 +255,8 @@ export class VOTERClient {
 		try {
 			const response = await this.client!.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch (error) {
-			console.error('[VOTER] Health check failed:', error);
+		} catch {
+			console.error('Error occurred');
 			return false;
 		}
 	}
@@ -268,13 +274,16 @@ export class VOTERClient {
 	private determineActionType(templateData: LocalTemplateData): VOTERActionType {
 		const title = typeof templateData.title === 'string' ? templateData.title.toLowerCase() : '';
 		const id = typeof templateData.id === 'string' ? templateData.id.toLowerCase() : '';
-		const method = typeof templateData.deliveryMethod === 'string' ? templateData.deliveryMethod.toLowerCase() : '';
+		const method =
+			typeof templateData.deliveryMethod === 'string'
+				? templateData.deliveryMethod.toLowerCase()
+				: '';
 
 		// Check for congressional messaging
 		if (
 			method === 'certified' ||
 			title.includes('congress') ||
-			title.includes('representative') ||
+			title.includes('_representative') ||
 			title.includes('senator')
 		) {
 			return 'cwc_message';

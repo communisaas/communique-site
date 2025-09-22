@@ -1,5 +1,5 @@
 import type {
-	Jurisdiction,
+	LegislativeJurisdiction,
 	Office,
 	Representative,
 	LegislativeSystem,
@@ -7,7 +7,13 @@ import type {
 } from '../models';
 
 // Re-export types for adapters
-export type { Jurisdiction, Office, Representative, LegislativeSystem, DeliveryCapability };
+export type {
+	LegislativeJurisdiction as Jurisdiction,
+	Office,
+	Representative,
+	LegislativeSystem,
+	DeliveryCapability
+};
 
 export interface Address {
 	street?: string;
@@ -34,7 +40,7 @@ export interface LegislativeTemplate {
 export interface DeliveryRequest {
 	template: LegislativeTemplate;
 	user: LegislativeUser;
-	representative: Representative;
+	_representative: Representative;
 	office: Office;
 	personalized_message: string;
 }
@@ -55,7 +61,7 @@ export abstract class LegislativeAdapter {
 	abstract getCapabilities(): Promise<DeliveryCapability>;
 
 	abstract lookupRepresentativesByAddress(address: Address): Promise<Representative[]>;
-	abstract validateRepresentative(representative: Representative): Promise<boolean>;
+	abstract validateRepresentative(_representative: Representative): Promise<boolean>;
 
 	abstract deliverMessage(request: DeliveryRequest): Promise<DeliveryResult>;
 

@@ -17,9 +17,12 @@ interface UserAction {
 }
 
 // Type guard for user actions
-function isValidUserAction(action: unknown): action is UserAction {
-	return typeof action === 'object' && action !== null &&
-		(action as UserAction).created_at instanceof Date;
+function _isValidUserAction(action: unknown): action is UserAction {
+	return (
+		typeof action === 'object' &&
+		action !== null &&
+		(action as UserAction).created_at instanceof Date
+	);
 }
 
 interface ReputationUpdate {
@@ -60,7 +63,7 @@ export class ReputationCalculator {
 	async applyTemplateResult(templateId: string): Promise<ReputationUpdate> {
 		const template = await db.template.findUnique({
 			where: { id: templateId },
-			include: { 
+			include: {
 				user: true // Assuming template has user relation
 			}
 		});
@@ -80,9 +83,7 @@ export class ReputationCalculator {
 		}
 
 		// Calculate reputation change
-		const update = this.calculateReputationDelta(
-			template as Template & { user: User }
-		);
+		const update = this.calculateReputationDelta(template as Template & { user: User });
 
 		// Apply bounds checking
 		const currentRep = template.user?.trust_score || 50;
@@ -126,9 +127,7 @@ export class ReputationCalculator {
 	/**
 	 * Calculate reputation delta using quadratic scaling (Phase 4: using Template model)
 	 */
-	private calculateReputationDelta(
-		template: Template & { user: User }
-	): ReputationUpdate {
+	private calculateReputationDelta(template: Template & { user: User }): ReputationUpdate {
 		const consensusScore = template.consensus_score || 0;
 		const severity = template.severity_level || 1;
 		const currentRep = template.user?.trust_score || 50;
@@ -143,11 +142,7 @@ export class ReputationCalculator {
 			reason = 'Strong consensus approval - quadratic reward';
 
 			// Bonus for high-quality corrections
-			if (
-				template.correction_log &&
-				template.quality_score &&
-				template.quality_score > 80
-			) {
+			if (template.correction_log && template.quality_score && template.quality_score > 80) {
 				baseDelta *= 1.2;
 				reason += ' with quality bonus';
 			}
@@ -191,7 +186,7 @@ export class ReputationCalculator {
 				reason += ' (high reputation decay)';
 			}
 		} else if (currentRep < 10) {
-			// Harder to lose at low reputation (prevent going negative)
+			// Harder to lose at low reputation (pr_event going negative)
 			if (baseDelta < 0) {
 				baseDelta *= 0.5;
 				reason += ' (low reputation floor)';
@@ -303,11 +298,11 @@ export class ReputationCalculator {
 	 */
 	getChallengeStakeRequirement(
 		challengerRep: number,
-		targetRep: number,
+		_targetRep: number,
 		baseStake: number
 	): number {
 		const challengerTier = this.getTier(challengerRep);
-		const targetTier = this.getTier(targetRep);
+		const targetTier = this.getTier(_targetRep);
 
 		// Lower stakes for higher reputation challengers
 		let stakeMultiplier = 1.0;

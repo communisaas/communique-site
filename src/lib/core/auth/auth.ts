@@ -1,6 +1,7 @@
 import { sha256 } from '@oslojs/crypto/sha2';
 import { encodeBase32LowerCaseNoPadding, encodeHexLowerCase } from '@oslojs/encoding';
 import { db } from '$lib/core/db';
+import type { UnknownRecord } from '$lib/types/any-replacements';
 
 const DAY_IN_MS = 1000 * 60 * 60 * 24;
 
@@ -30,7 +31,7 @@ export interface User {
 	// Verification status
 	is_verified: boolean;
 	verification_method: string | null;
-	verification_data: any;
+	verification_data: UnknownRecord | null;
 	verified_at: Date | null;
 	// VOTER Protocol blockchain identity
 	wallet_address: string | null;
@@ -92,7 +93,9 @@ export async function invalidateSession(sessionId: string): Promise<void> {
 	await db.session.delete({ where: { id: sessionId } });
 }
 
-export async function validateSession(sessionId: string): Promise<SessionValidationSuccess | SessionValidationFailure> {
+export async function validateSession(
+	sessionId: string
+): Promise<SessionValidationSuccess | SessionValidationFailure> {
 	const result = await db.session.findUnique({
 		where: { id: sessionId },
 		include: { user: true }
@@ -118,7 +121,13 @@ export async function validateSession(sessionId: string): Promise<SessionValidat
 		});
 	}
 
-	return { session, user };
+	return {
+		session,
+		user: {
+			...user,
+			verification_data: user.verification_data as UnknownRecord | null
+		}
+	};
 }
 
 export type SessionValidationResult = Awaited<ReturnType<typeof validateSession>>;

@@ -43,13 +43,13 @@ export class GenericLegislativeAdapter extends LegislativeAdapter {
 		};
 	}
 
-	async lookupRepresentativesByAddress(address: Address): Promise<Representative[]> {
+	async lookupRepresentativesByAddress(_address: Address): Promise<Representative[]> {
 		// Generic adapter cannot look up representatives
-		console.warn(`No representative lookup available for ${this.country_code}`);
+		console.warn(`No _representative lookup available for ${this.country_code}`);
 		return [];
 	}
 
-	async validateRepresentative(representative: Representative): Promise<boolean> {
+	async validateRepresentative(_representative: Representative): Promise<boolean> {
 		// Cannot validate without specific country integration
 		return false;
 	}
@@ -61,7 +61,7 @@ export class GenericLegislativeAdapter extends LegislativeAdapter {
 			metadata: {
 				provider: 'Generic',
 				country: this.country_code,
-				representative: request.representative.name
+				representative: request._representative?.name
 			}
 		};
 	}

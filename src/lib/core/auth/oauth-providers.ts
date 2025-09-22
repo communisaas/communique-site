@@ -7,7 +7,14 @@
 
 import { Google, Facebook, LinkedIn, Discord } from 'arctic';
 import { Twitter } from 'arctic';
-import type { OAuthCallbackConfig, OAuthProvider, OAuthClient, OAuthTokens, TokenData, UserData } from './oauth-callback-handler';
+import type {
+	OAuthCallbackConfig,
+	OAuthProvider,
+	OAuthClient,
+	OAuthTokens,
+	TokenData,
+	UserData
+} from './oauth-callback-handler';
 import * as crypto from 'crypto';
 
 // =============================================================================
@@ -22,11 +29,11 @@ function isGoogleUser(
 		typeof user === 'object' &&
 		user !== null &&
 		'id' in user &&
-		typeof (user as any).id === 'string' &&
+		typeof (user as Record<string, unknown>).id === 'string' &&
 		'email' in user &&
-		typeof (user as any).email === 'string' &&
+		typeof (user as Record<string, unknown>).email === 'string' &&
 		'name' in user &&
-		typeof (user as any).name === 'string'
+		typeof (user as Record<string, unknown>).name === 'string'
 	);
 }
 
@@ -41,11 +48,11 @@ function isFacebookUser(user: unknown): user is {
 		typeof user === 'object' &&
 		user !== null &&
 		'id' in user &&
-		typeof (user as any).id === 'string' &&
+		typeof (user as Record<string, unknown>).id === 'string' &&
 		'email' in user &&
-		typeof (user as any).email === 'string' &&
+		typeof (user as Record<string, unknown>).email === 'string' &&
 		'name' in user &&
-		typeof (user as any).name === 'string'
+		typeof (user as Record<string, unknown>).name === 'string'
 	);
 }
 
@@ -60,11 +67,11 @@ function isLinkedInUser(user: unknown): user is {
 		typeof user === 'object' &&
 		user !== null &&
 		'sub' in user &&
-		typeof (user as any).sub === 'string' &&
+		typeof (user as Record<string, unknown>).sub === 'string' &&
 		'email' in user &&
-		typeof (user as any).email === 'string' &&
+		typeof (user as Record<string, unknown>).email === 'string' &&
 		'name' in user &&
-		typeof (user as any).name === 'string'
+		typeof (user as Record<string, unknown>).name === 'string'
 	);
 }
 
@@ -82,14 +89,15 @@ function isTwitterUser(user: unknown): user is {
 		typeof user === 'object' &&
 		user !== null &&
 		'data' in user &&
-		typeof (user as any).data === 'object' &&
-		(user as any).data !== null &&
-		'id' in (user as any).data &&
-		typeof (user as any).data.id === 'string' &&
-		'username' in (user as any).data &&
-		typeof (user as any).data.username === 'string' &&
-		'name' in (user as any).data &&
-		typeof (user as any).data.name === 'string'
+		typeof (user as Record<string, unknown>).data === 'object' &&
+		(user as Record<string, unknown>).data !== null &&
+		'id' in ((user as Record<string, unknown>).data as Record<string, unknown>) &&
+		typeof ((user as Record<string, unknown>).data as Record<string, unknown>).id === 'string' &&
+		'username' in ((user as Record<string, unknown>).data as Record<string, unknown>) &&
+		typeof ((user as Record<string, unknown>).data as Record<string, unknown>).username ===
+			'string' &&
+		'name' in ((user as Record<string, unknown>).data as Record<string, unknown>) &&
+		typeof ((user as Record<string, unknown>).data as Record<string, unknown>).name === 'string'
 	);
 }
 
@@ -106,11 +114,11 @@ function isDiscordUser(user: unknown): user is {
 		typeof user === 'object' &&
 		user !== null &&
 		'id' in user &&
-		typeof (user as any).id === 'string' &&
+		typeof (user as Record<string, unknown>).id === 'string' &&
 		'email' in user &&
-		typeof (user as any).email === 'string' &&
+		typeof (user as Record<string, unknown>).email === 'string' &&
 		'username' in user &&
-		typeof (user as any).username === 'string'
+		typeof (user as Record<string, unknown>).username === 'string'
 	);
 }
 
@@ -135,7 +143,11 @@ export const googleConfig: OAuthCallbackConfig = {
 		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
+	exchangeTokens: async (
+		client: OAuthClient,
+		code: string,
+		codeVerifier?: string
+	): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 
@@ -259,7 +271,11 @@ export const linkedinConfig: OAuthCallbackConfig = {
 		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
+	exchangeTokens: async (
+		client: OAuthClient,
+		code: string,
+		codeVerifier?: string
+	): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 
@@ -320,7 +336,11 @@ export const twitterConfig: OAuthCallbackConfig = {
 		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
+	exchangeTokens: async (
+		client: OAuthClient,
+		code: string,
+		codeVerifier?: string
+	): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 
@@ -385,7 +405,11 @@ export const discordConfig: OAuthCallbackConfig = {
 		) as unknown as OAuthClient;
 	},
 
-	exchangeTokens: async (client: OAuthClient, code: string, codeVerifier?: string): Promise<OAuthTokens> => {
+	exchangeTokens: async (
+		client: OAuthClient,
+		code: string,
+		codeVerifier?: string
+	): Promise<OAuthTokens> => {
 		return await client.validateAuthorizationCode(code, codeVerifier);
 	},
 

@@ -12,18 +12,21 @@ This guide provides comprehensive troubleshooting information for common test fa
 ### 1. OAuth Flow Failures
 
 #### Symptoms
+
 ```
 Error: Invalid authorization code
 GOOGLE OAuth error: { error: Error: Invalid authorization code }
 ```
 
 #### Root Causes
+
 - Missing OAuth environment variables
 - Mock misalignment with Arctic OAuth library
 - Session creation failure patterns
 - CSRF/PKCE validation issues
 
 #### Solutions
+
 ```typescript
 // Ensure environment setup in tests/config/setup.ts
 process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
@@ -32,16 +35,17 @@ process.env.OAUTH_REDIRECT_BASE_URL = 'http://localhost:5173';
 
 // Proper OAuth mock setup
 const mockOAuthClient = vi.hoisted(() => ({
-  validateAuthorizationCode: vi.fn().mockResolvedValue({
-    accessToken: () => 'mock-access-token',
-    refreshToken: () => 'mock-refresh-token',
-    hasRefreshToken: () => true,
-    accessTokenExpiresAt: () => new Date(Date.now() + 3600000)
-  })
+	validateAuthorizationCode: vi.fn().mockResolvedValue({
+		accessToken: () => 'mock-access-token',
+		refreshToken: () => 'mock-refresh-token',
+		hasRefreshToken: () => true,
+		accessTokenExpiresAt: () => new Date(Date.now() + 3600000)
+	})
 }));
 ```
 
 #### Debugging Commands
+
 ```bash
 # Run OAuth tests with verbose output
 npm run test -- oauth-flow.test.ts --reporter=verbose
@@ -53,135 +57,147 @@ npm run test -- --grep="OAuth.*environment"
 ### 2. Database Mock Misalignment
 
 #### Symptoms
+
 ```
 TypeError: Cannot read properties of undefined (reading 'mockResolvedValue')
 Error: db.user.findUnique is not a function
 ```
 
 #### Root Causes
+
 - Mock registry not properly initialized
 - Prisma schema changes not reflected in mocks
 - Test cleanup not resetting mock state
 
 #### Solutions
+
 ```typescript
 // Use centralized mock registry
 import mockRegistry from '../mocks/registry';
 
 beforeEach(() => {
-  const mocks = mockRegistry.setupMocks();
-  const dbMock = mocks.db;
-  
-  // Ensure all expected methods exist
-  dbMock.user.findUnique.mockResolvedValue(testUser);
-  dbMock.template.create.mockResolvedValue(testTemplate);
+	const mocks = mockRegistry.setupMocks();
+	const dbMock = mocks.db;
+
+	// Ensure all expected methods exist
+	dbMock.user.findUnique.mockResolvedValue(testUser);
+	dbMock.template.create.mockResolvedValue(testTemplate);
 });
 
 // Reset between tests
 afterEach(() => {
-  mockRegistry.reset();
-  vi.clearAllMocks();
+	mockRegistry.reset();
+	vi.clearAllMocks();
 });
 ```
 
 ### 3. Analytics localStorage Errors
 
 #### Symptoms
+
 ```
 Cannot read properties of undefined (reading 'getItem')
 localStorage is not defined in jsdom environment
 ```
 
 #### Root Causes
+
 - jsdom environment doesn't provide localStorage by default
 - Browser utilities trying to access window/localStorage in test environment
 - Missing browser environment mocks
 
 #### Solutions
+
 ```typescript
 // Mock localStorage in test setup
 beforeEach(() => {
-  const localStorageMock = {
-    getItem: vi.fn(),
-    setItem: vi.fn(),
-    removeItem: vi.fn(),
-    clear: vi.fn(),
-  };
-  Object.defineProperty(window, 'localStorage', {
-    value: localStorageMock
-  });
+	const localStorageMock = {
+		getItem: vi.fn(),
+		setItem: vi.fn(),
+		removeItem: vi.fn(),
+		clear: vi.fn()
+	};
+	Object.defineProperty(window, 'localStorage', {
+		value: localStorageMock
+	});
 });
 
 // Alternative: Use happy-dom instead of jsdom
 // In vitest.config.ts:
 test: {
-  environment: 'happy-dom' // Better browser compatibility
+	environment: 'happy-dom'; // Better browser compatibility
 }
 ```
 
 ### 4. Agent Integration Response Mismatches
 
 #### Symptoms
+
 ```
 expected { agentId: 'impact-agent-v1', ... } to match object { ... }
 Agent decision response format mismatch
 ```
 
 #### Root Causes
+
 - Mock responses don't match actual agent API contract
 - Schema evolution without mock updates
 - Context data validation changes
 
 #### Solutions
+
 ```typescript
 // Align mock responses with actual agent responses
 const mockAgentResponse = {
-  agentId: 'impact-agent-v1',
-  decision: 'approve',
-  confidence: 0.85,
-  reasoning: 'Content meets policy guidelines',
-  metadata: {
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
-  }
+	agentId: 'impact-agent-v1',
+	decision: 'approve',
+	confidence: 0.85,
+	reasoning: 'Content meets policy guidelines',
+	metadata: {
+		timestamp: new Date().toISOString(),
+		version: '1.0.0'
+	}
 };
 
 // Use factory patterns for consistent responses
 export const agentResponseFactory = {
-  build: (overrides = {}) => ({
-    ...mockAgentResponse,
-    ...overrides
-  })
+	build: (overrides = {}) => ({
+		...mockAgentResponse,
+		...overrides
+	})
 };
 ```
 
 ### 5. Session Management Failures
 
 #### Symptoms
+
 ```
 Error: Session not found
 Session creation failure in auth tests
 ```
 
 #### Root Causes
+
 - Auth service mock not returning proper session format
 - Session expiry logic not aligned with implementation
 - Cookie handling in test environment
 
 #### Solutions
+
 ```typescript
 // Proper session mock setup
 const mockAuth = {
-  createSession: vi.fn().mockResolvedValue({
-    id: 'session-123',
-    user_id: 'user-123',
-    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    created_at: new Date(),
-    updated_at: new Date()
-  }),
-  validateSession: vi.fn().mockResolvedValue(true),
-  deleteSession: vi.fn().mockResolvedValue(true),
-  sessionCookieName: 'auth_session'
+	createSession: vi.fn().mockResolvedValue({
+		id: 'session-123',
+		user_id: 'user-123',
+		expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+		created_at: new Date(),
+		updated_at: new Date()
+	}),
+	validateSession: vi.fn().mockResolvedValue(true),
+	deleteSession: vi.fn().mockResolvedValue(true),
+	sessionCookieName: 'auth_session'
 };
 ```
 
@@ -207,12 +223,12 @@ npm run test -- oauth-flow.test.ts --reporter=verbose
 import { vi } from 'vitest';
 
 beforeEach(() => {
-  // Log mock calls
-  vi.spyOn(console, 'log').mockImplementation((...args) => {
-    if (process.env.DEBUG_TESTS) {
-      console.log('[TEST DEBUG]', ...args);
-    }
-  });
+	// Log mock calls
+	vi.spyOn(console, 'log').mockImplementation((...args) => {
+		if (process.env.DEBUG_TESTS) {
+			console.log('[TEST DEBUG]', ...args);
+		}
+	});
 });
 ```
 
@@ -226,20 +242,20 @@ DEBUG_TESTS=true npm run test -- failing-test.test.ts
 ```typescript
 // Inspect mock state during tests
 it('should handle user creation', async () => {
-  const mocks = mockRegistry.setupMocks();
-  
-  // Execute test
-  await userCreationLogic();
-  
-  // Inspect calls
-  console.log('Database calls:', mocks.db.user.create.mock.calls);
-  console.log('Auth calls:', mocks.auth.createSession.mock.calls);
-  
-  expect(mocks.db.user.create).toHaveBeenCalledWith(
-    expect.objectContaining({
-      data: expect.any(Object)
-    })
-  );
+	const mocks = mockRegistry.setupMocks();
+
+	// Execute test
+	await userCreationLogic();
+
+	// Inspect calls
+	console.log('Database calls:', mocks.db.user.create.mock.calls);
+	console.log('Auth calls:', mocks.auth.createSession.mock.calls);
+
+	expect(mocks.db.user.create).toHaveBeenCalledWith(
+		expect.objectContaining({
+			data: expect.any(Object)
+		})
+	);
 });
 ```
 
@@ -248,12 +264,12 @@ it('should handle user creation', async () => {
 ```typescript
 // Check environment setup
 beforeEach(() => {
-  console.log('OAuth Environment Check:', {
-    hasClientId: !!process.env.GOOGLE_CLIENT_ID,
-    hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
-    oauthRedirectBase: process.env.OAUTH_REDIRECT_BASE_URL,
-    nodeEnv: process.env.NODE_ENV
-  });
+	console.log('OAuth Environment Check:', {
+		hasClientId: !!process.env.GOOGLE_CLIENT_ID,
+		hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+		oauthRedirectBase: process.env.OAUTH_REDIRECT_BASE_URL,
+		nodeEnv: process.env.NODE_ENV
+	});
 });
 ```
 
@@ -284,16 +300,19 @@ npm run test -- --logHeapUsage
 ```typescript
 // Monitor mock call frequency
 afterEach(() => {
-  const mocks = mockRegistry.setupMocks();
-  const totalCalls = Object.values(mocks.db).reduce((total, table) => {
-    return total + Object.values(table).reduce((tableTotal, method) => {
-      return tableTotal + (method.mock?.calls?.length || 0);
-    }, 0);
-  }, 0);
-  
-  if (totalCalls > 100) {
-    console.warn(`High mock usage: ${totalCalls} calls`);
-  }
+	const mocks = mockRegistry.setupMocks();
+	const totalCalls = Object.values(mocks.db).reduce((total, table) => {
+		return (
+			total +
+			Object.values(table).reduce((tableTotal, method) => {
+				return tableTotal + (method.mock?.calls?.length || 0);
+			}, 0)
+		);
+	}, 0);
+
+	if (totalCalls > 100) {
+		console.warn(`High mock usage: ${totalCalls} calls`);
+	}
 });
 ```
 
@@ -306,17 +325,17 @@ afterEach(() => {
 import { userFactory } from '../fixtures/factories';
 
 it('should create valid user data', () => {
-  const user = userFactory.build();
-  
-  // Validate structure
-  expect(user).toMatchObject({
-    id: expect.any(String),
-    name: expect.any(String),
-    email: expect.stringMatching(/^.+@.+\..+$/),
-    created_at: expect.any(Date)
-  });
-  
-  console.log('Generated user:', user);
+	const user = userFactory.build();
+
+	// Validate structure
+	expect(user).toMatchObject({
+		id: expect.any(String),
+		name: expect.any(String),
+		email: expect.stringMatching(/^.+@.+\..+$/),
+		created_at: expect.any(Date)
+	});
+
+	console.log('Generated user:', user);
 });
 ```
 
@@ -325,14 +344,14 @@ it('should create valid user data', () => {
 ```typescript
 // Validate mock responses match real API
 it('should return properly formatted response', async () => {
-  const response = await apiEndpoint();
-  
-  // Check response structure
-  expect(response).toHaveProperty('data');
-  expect(response).toHaveProperty('status');
-  expect(response.data).toBeDefined();
-  
-  console.log('API Response:', JSON.stringify(response, null, 2));
+	const response = await apiEndpoint();
+
+	// Check response structure
+	expect(response).toHaveProperty('data');
+	expect(response).toHaveProperty('status');
+	expect(response.data).toBeDefined();
+
+	console.log('API Response:', JSON.stringify(response, null, 2));
 });
 ```
 
@@ -364,9 +383,9 @@ npm install
 ```typescript
 // Debug environment loading
 console.log('Environment check:', {
-  NODE_ENV: process.env.NODE_ENV,
-  DATABASE_URL: process.env.DATABASE_URL?.slice(0, 20) + '...',
-  hasOAuthVars: !!process.env.GOOGLE_CLIENT_ID
+	NODE_ENV: process.env.NODE_ENV,
+	DATABASE_URL: process.env.DATABASE_URL?.slice(0, 20) + '...',
+	hasOAuthVars: !!process.env.GOOGLE_CLIENT_ID
 });
 ```
 

@@ -1,5 +1,4 @@
-import { db } from '$lib/core/db';
-import crypto from 'crypto';
+import _crypto from 'crypto';
 
 /**
  * API SECURITY LAYER - UNFUCK OUR ENDPOINTS
@@ -16,7 +15,7 @@ interface RateLimitRecord {
 
 interface SecurityConfig {
 	max_requests_per_minute: number;
-	max_computation_time_ms: number;
+	max__computation_time_ms: number;
 	require_auth: boolean;
 	allowed_ips?: string[];
 }
@@ -124,7 +123,7 @@ export function validateAndSanitizeInput(
 		}
 
 		switch (expectedType) {
-			case 'string':
+			case 'string': {
 				if (typeof value !== 'string') {
 					errors.push(`Field ${key} must be string`);
 					break;
@@ -138,8 +137,9 @@ export function validateAndSanitizeInput(
 
 				sanitized[key] = sanitizedString;
 				break;
+			}
 
-			case 'number':
+			case 'number': {
 				const num = Number(value);
 				if (isNaN(num)) {
 					errors.push(`Field ${key} must be number`);
@@ -156,6 +156,7 @@ export function validateAndSanitizeInput(
 
 				sanitized[key] = num;
 				break;
+			}
 
 			case 'boolean':
 				if (typeof value !== 'boolean') {
@@ -323,25 +324,25 @@ export function createSecurityMiddleware(endpoint: string, config: SecurityConfi
 export const SECURITY_CONFIGS: Record<string, SecurityConfig> = {
 	'percolation-analysis': {
 		max_requests_per_minute: 5, // Expensive computation
-		max_computation_time_ms: 30000, // 30 seconds max
+		max__computation_time_ms: 30000, // 30 seconds max
 		require_auth: true
 	},
 
 	'sheaf-fusion': {
 		max_requests_per_minute: 10,
-		max_computation_time_ms: 15000,
+		max__computation_time_ms: 15000,
 		require_auth: true
 	},
 
 	'test-clustering': {
 		max_requests_per_minute: 20,
-		max_computation_time_ms: 10000,
+		max__computation_time_ms: 10000,
 		require_auth: false // Allow for testing
 	},
 
 	'create-test-data': {
 		max_requests_per_minute: 2, // Very restrictive
-		max_computation_time_ms: 5000,
+		max__computation_time_ms: 5000,
 		require_auth: true,
 		allowed_ips: ['127.0.0.1', '::1'] // Localhost only
 	}
@@ -351,14 +352,16 @@ export const SECURITY_CONFIGS: Record<string, SecurityConfig> = {
  * Log security events
  */
 export async function logSecurityEvent(
-	event_type: 'rate_limit' | 'invalid_key' | 'ip_blocked' | 'successful_auth',
-	ip: string,
-	endpoint: string,
-	details?: unknown
+	_event_type: 'rate_limit' | 'invalid_key' | 'ip_blocked' | 'successful_auth',
+	_ip: string,
+	_endpoint: string,
+	_details?: unknown
 ): Promise<void> {
 	try {
 		// In production, log to proper security monitoring system
 		// Could store in database for analysis
 		// await db.security_log.create({ ... });
-	} catch (_error) {}
+	} catch {
+		/* Ignore security logging errors - function is currently a placeholder */
+	}
 }

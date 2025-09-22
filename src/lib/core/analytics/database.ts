@@ -121,14 +121,15 @@ class DatabaseAnalytics {
 		});
 	}
 
-	async trackEvent(event: AnalyticsEvent): Promise<void> {
+	async trackEvent(_event: AnalyticsEvent): Promise<void> {
 		if (!browser || !this.initialized) {
 			return;
 		}
 
 		const fullEvent: AnalyticsEvent = {
-			...event,
-			session_id: this.sessionId
+			..._event,
+			session_id: this.sessionId,
+			name: _event.name || 'unknown_event'
 		};
 
 		// Add to queue for batching
@@ -142,7 +143,7 @@ class DatabaseAnalytics {
 
 	private safeStringify(obj: unknown): string {
 		const seen = new WeakSet();
-		return JSON.stringify(obj, (key, value) => {
+		return JSON.stringify(obj, (_key, value) => {
 			// Skip DOM elements (only available in browser)
 			if (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement) {
 				return '[HTMLElement]';
@@ -214,15 +215,15 @@ class DatabaseAnalytics {
 	}
 
 	// Funnel tracking methods (compatible with existing system)
-	async trackFunnelEvent(event: FunnelEvent): Promise<void> {
+	async trackFunnelEvent(_event: FunnelEvent): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
-			user_id: event.user_id,
-			name: event.event,
+			user_id: _event.user_id,
+			name: _event.event,
 			properties: {
-				source: event.source,
-				platform: event.platform,
-				...event.properties
+				source: _event.source,
+				platform: _event.platform,
+				..._event.properties
 			}
 		});
 	}
@@ -268,7 +269,7 @@ class DatabaseAnalytics {
 			properties: {
 				template_id: templateId,
 				provider,
-				step: 'auth_success'
+				step: 'authsuccess'
 			}
 		});
 	}
@@ -334,7 +335,7 @@ class DatabaseAnalytics {
 	async trackError(error: Error, context: Record<string, unknown> = {}): Promise<void> {
 		await this.trackEvent({
 			session_id: this.sessionId,
-			name: 'javascript_error',
+			name: 'javascripterror',
 			properties: {
 				error_message: error.message,
 				error_stack: error.stack,

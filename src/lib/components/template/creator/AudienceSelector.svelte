@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Lightbulb, Users, Landmark } from '@lucide/svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
-	import { onMount } from 'svelte';
+	import { onMount as _onMount } from 'svelte';
 
 	let {
 		data = $bindable(),
@@ -16,7 +16,7 @@
 	let emailInput = $state('');
 	const isCongressional = $derived(context.channelId === 'certified');
 
-	onMount(() => {
+	_onMount(() => {
 		if (data.recipientEmails && data.recipientEmails.length > 0) {
 			emailInput = data.recipientEmails.join('\n');
 		}
@@ -24,7 +24,7 @@
 
 	function updateEmailCount() {
 		const emails = emailInput
-			.split(/[\n,;]+/)
+			.split(/[\\n,;]+/)
 			.map((email) => email.trim())
 			.filter((email) => email.length > 0 && email.includes('@'));
 		data.recipientEmails = [...new Set(emails)]; // Remove duplicates
@@ -45,7 +45,7 @@
 	}
 
 	// Auto-setup congressional targeting when component loads
-	onMount(() => {
+	_onMount(() => {
 		if (isCongressional && (!data.recipientEmails || data.recipientEmails.length === 0)) {
 			handleCongressionalSetup();
 		}

@@ -17,7 +17,7 @@ export interface UserProfile {
 }
 
 // NOTE: UserLocation interface removed - coordinates data now part of enhanced User model
-// All location data (latitude, longitude, political_embedding, community_sheaves) 
+// All location data (latitude, longitude, political_embedding, community_sheaves)
 // is now directly accessible on the User object after Phase 2 consolidation
 
 export interface Representative {
@@ -31,26 +31,26 @@ export interface Representative {
 	office_code: string;
 	phone?: string;
 	email?: string;
-	
+
 	// Enhanced office information (from Phase 5 consolidation)
 	member_name?: string; // May differ from name field
 	office_address?: string;
 	office_city?: string;
 	office_state?: string;
 	office_zip?: string;
-	
+
 	// Enhanced term information
 	term_start?: Date;
 	term_end?: Date;
 	current_term?: number;
-	
+
 	// Status and metadata
 	is_active: boolean;
 	last_updated: Date;
 	data_source?: string; // 'congress_api', 'bioguide', 'manual'
 	source_updated_at?: Date;
-	
-	// User-representative relationship fields (for joined queries)
+
+	// User-_representative relationship fields (for joined queries)
 	relationship?: string;
 	assigned_at?: Date;
 	last_validated?: Date | null;
@@ -61,7 +61,7 @@ export interface Representative {
  *
  * Consolidated User interface for email and template services.
  * This interface represents the user context needed for:
- * - Email flow analysis (auth, address, send)
+ * - Email flow analysis (auth, _address, send)
  * - Template variable resolution with user data
  * - Congressional routing determination
  * - Component user context handling
@@ -79,7 +79,7 @@ export interface EmailServiceUser {
 	/** User's email address (required for authenticated users) */
 	email: string;
 
-	/** Address components required for congressional routing */
+	/** Address  components required for congressional routing */
 	street?: string | null;
 	city?: string | null;
 	state?: string | null;
@@ -134,7 +134,7 @@ export type PrismaUserForEmail = {
 	verification_method: string | null;
 	verified_at: Date | null;
 	// Additional fields that might be present but aren't needed
-	[key: string]: any;
+	[key: string]: unknown;
 };
 
 /**
@@ -144,44 +144,51 @@ export type PrismaUserForEmail = {
  * @param user - User object from Prisma query or partial user object (can be null)
  * @returns EmailServiceUser compatible object or null
  */
-export function toEmailServiceUser(user: any | null): EmailServiceUser | null {
+export function toEmailServiceUser(user: Record<string, unknown> | null): EmailServiceUser | null {
 	if (!user) {
 		return null;
 	}
 
 	// For partial user objects (like in AppHeader), provide fallback email
 	// This allows the function to work with incomplete user data
-	const email = user.email || 'guest@example.com';
+	const email = (user.email as string) || 'guest@example.com';
 
 	return {
-		id: user.id,
+		id: user.id as string,
 		email: email,
-		name: user.name || null,
-		street: user.street || null,
-		city: user.city || null,
-		state: user.state || null,
-		zip: user.zip || null,
-		congressional_district: user.congressional_district || null,
-		
+		name: (user.name as string | null) || null,
+		street: (user.street as string | null) || null,
+		city: (user.city as string | null) || null,
+		state: (user.state as string | null) || null,
+		zip: (user.zip as string | null) || null,
+		congressional_district: (user.congressional_district as string | null) || null,
+
 		// Enhanced location data (from Phase 2 User consolidation)
-		latitude: user.latitude || null,
-		longitude: user.longitude || null,
+		latitude: (user.latitude as number | null) || null,
+		longitude: (user.longitude as number | null) || null,
 		political_embedding: user.political_embedding || null,
 		community_sheaves: user.community_sheaves || null,
-		embedding_version: user.embedding_version || null,
-		coordinates_updated_at: user.coordinates_updated_at || null,
-		
+		embedding_version: (user.embedding_version as string | null) || null,
+		coordinates_updated_at: (user.coordinates_updated_at as Date | null) || null,
+
 		// Congressional representatives for template variable resolution
-		representatives: user.representatives || [],
-		
+		representatives:
+			(user.representatives as Array<{
+				name: string;
+				party: string;
+				chamber: string;
+				state: string;
+				district: string;
+			}>) || [],
+
 		// Identity verification
-		is_verified: user.is_verified || false,
-		verification_method: user.verification_method || null,
-		verified_at: user.verified_at || null,
-		
+		is_verified: (user.is_verified as boolean) || false,
+		verification_method: (user.verification_method as string | null) || null,
+		verified_at: (user.verified_at as Date | null) || null,
+
 		// VOTER Protocol wallet integration (from Phase 2 consolidation)
-		wallet_address: user.wallet_address || null,
-		trust_score: user.trust_score || 0,
-		reputation_tier: user.reputation_tier || 'novice'
+		wallet_address: (user.wallet_address as string | null) || null,
+		trust_score: (user.trust_score as number) || 0,
+		reputation_tier: (user.reputation_tier as string) || 'novice'
 	};
 }

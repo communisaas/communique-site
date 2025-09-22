@@ -26,7 +26,7 @@ async function deleteTestTemplates() {
 		if (testTemplates.length > 0) {
 			// Delete the templates (verification data is now part of template)
 			const templateIds = testTemplates.map((t) => t.id);
-			
+
 			const result = await db.template.deleteMany({
 				where: {
 					id: { in: templateIds }

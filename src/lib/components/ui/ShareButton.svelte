@@ -1,19 +1,19 @@
 <script lang="ts">
 	import { spring } from 'svelte/motion';
-	import { fade, fly, scale } from 'svelte/transition';
-	import { backOut, elasticOut } from 'svelte/easing';
-	import { Share2, Link2, Copy, CheckCircle, Sparkles, Send, Heart, Zap } from '@lucide/svelte';
+	import { fade, scale } from 'svelte/transition';
+	import { backOut } from 'svelte/easing';
+	import { Share2, Copy as _Copy, CheckCircle, Sparkles, Heart, Zap } from '@lucide/svelte';
 	import SimpleTooltip from './SimpleTooltip.svelte';
 
 	let {
 		url,
-		title = 'Share',
+		_title = 'Share',
 		variant = 'primary',
 		size = 'default',
 		classNames = ''
 	}: {
 		url: string;
-		title?: string;
+		_title?: string;
 		variant?: 'primary' | 'secondary' | 'magical';
 		size?: 'sm' | 'default' | 'lg';
 		classNames?: string;
@@ -21,7 +21,7 @@
 
 	let copied = $state(false);
 	let animating = $state(false);
-	let showMenu = $state(false);
+	let _showMenu = $state(false);
 	let hovered = $state(false);
 	let buttonRef: HTMLButtonElement;
 
@@ -194,9 +194,9 @@
 				in:scale={{ duration: 300, easing: backOut }}
 				out:fade={{ duration: 800 }}
 			>
-				{#if Math.random() > 0.5}
+				{#if Math.random() > 0.66}
 					<Sparkles class="h-3 w-3 animate-pulse text-yellow-300" />
-				{:else if Math.random() > 0.5}
+				{:else if Math.random() > 0.33}
 					<Heart class="h-3 w-3 animate-pulse text-pink-300" />
 				{:else}
 					<Zap class="h-3 w-3 animate-pulse text-blue-300" />

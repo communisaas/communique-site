@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { ChevronRight } from '@lucide/svelte';
-	import { spring } from 'svelte/motion';
+	// import { spring } from 'svelte/motion';
 	import { preloadData } from '$app/navigation';
 	import type { Template } from '$lib/types/template';
-	import ChannelBadge from '$lib/components/ui/ChannelBadge.svelte';
+	// import ChannelBadge from '$lib/components/ui/ChannelBadge.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import MessageMetrics from './MessageMetrics.svelte';
 	import SkeletonTemplate from '$lib/components/ui/SkeletonTemplate.svelte';
@@ -31,37 +31,37 @@
 		}
 	}
 
-	function handleKeydown(event: KeyboardEvent, templateId: string, index: number) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
+	function handleKeydown(__event: KeyboardEvent, templateId: string, index: number) {
+		if (__event.key === 'Enter' || __event.key === ' ') {
+			__event.preventDefault();
 			onSelect(templateId);
 			// Dispatch custom event to notify parent to move focus
 			const customEvent = new CustomEvent('movePreviewFocus');
 			window.dispatchEvent(customEvent);
-		} else if (event.key === 'Tab' && event.shiftKey) {
+		} else if (__event.key === 'Tab' && __event.shiftKey) {
 			// If we're at the first template and shift+tab, let it go to previous element
 			if (index === 0) return;
 
 			// Otherwise, prevent default to handle our own focus management
-			event.preventDefault();
+			__event.preventDefault();
 			const buttons = document.querySelectorAll('[data-template-button]');
 			const prevButton = buttons[index - 1] as HTMLElement;
 			prevButton?.focus();
-		} else if (event.key === 'Tab' && !event.shiftKey) {
+		} else if (__event.key === 'Tab' && !__event.shiftKey) {
 			// When reaching the last template
 			if (index === templates.length - 1) {
 				// If this template is selected, let focus continue naturally
 				if (templateId === selectedId) return;
 
 				// Otherwise, dispatch event to move focus to current preview
-				event.preventDefault();
+				__event.preventDefault();
 				const customEvent = new CustomEvent('movePreviewFocus');
 				window.dispatchEvent(customEvent);
 				return;
 			}
 
 			// Otherwise continue with template list navigation
-			event.preventDefault();
+			__event.preventDefault();
 			const buttons = document.querySelectorAll('[data-template-button]');
 			const nextButton = buttons[index + 1] as HTMLElement;
 			nextButton?.focus();

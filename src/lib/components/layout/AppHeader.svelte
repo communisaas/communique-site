@@ -7,7 +7,7 @@
 		Share2,
 		Copy,
 		CheckCircle,
-		Send,
+		// Send,
 		Shield,
 		AtSign,
 		Home
@@ -17,37 +17,29 @@
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import SignInModal from '$lib/components/modals/SignInModal.svelte';
+	import type {
+		HeaderTemplate,
+		HeaderUser,
+		TemplateUseEvent
+	} from '$lib/types/any-replacements.js';
 
-	const dispatch = createEventDispatcher();
+	const _dispatch = createEventDispatcher();
 
 	let {
 		user = null,
 		template = null,
-		context = 'discovery',
+		context: _context = 'discovery',
 		onTemplateUse = null
 	}: {
-		user?: {
-			id: string;
-			email: string;
-			name: string | null;
-			street?: string | null;
-			city?: string | null;
-			state?: string | null;
-			zip?: string | null;
-			congressional_district?: string | null;
-			is_verified?: boolean;
-			verification_method?: string | null;
-			verified_at?: Date | null;
-			address?: string | null;
-		} | null;
-		template?: any | null;
+		user?: HeaderUser | null;
+		template?: HeaderTemplate | null;
 		context?: 'discovery' | 'creation' | 'advocacy' | 'impact';
-		onTemplateUse?: ((event: { template: any; requiresAuth: boolean }) => void) | null;
+		onTemplateUse?: ((__event: TemplateUseEvent) => void) | null;
 	} = $props();
 
 	let showCopied = $state(false);
 	let showShareMenu = $state(false);
-	let showAuthModal = $state(false);
+	let _showAuthModal = $state(false);
 	let authModal: SignInModal;
 
 	const componentId = 'AppHeader_' + Math.random().toString(36).substr(2, 9);
@@ -55,70 +47,70 @@
 
 	// Context-aware header configuration
 	const headerConfig = $derived.by(() => {
-			const isTemplate = $page.route.id === '/s/[slug]';
-			const isHomepage = $page.route.id === '/';
-			const isProfile = $page.route.id?.startsWith('/profile');
+		const isTemplate = $page.route.id === '/s/[slug]';
+		const isHomepage = $page.route.id === '/';
+		const isProfile = $page.route.id?.startsWith('/profile');
 
-			if (isTemplate && template) {
-				return {
-					type: 'advocacy',
-					showBack: true,
-					showShare: true,
-					showCTA: true,
-					showProfileLink: true,
-					showHomeLink: false,
-					title: template.title,
-					backText: 'All Templates',
-					backHref: '/'
-				};
-			}
+		if (isTemplate && template) {
+			return {
+				type: 'advocacy',
+				showBack: true,
+				showShare: true,
+				showCTA: true,
+				showProfileLink: true,
+				showHomeLink: false,
+				title: template.title,
+				backText: 'All Templates',
+				backHref: '/'
+			};
+		}
 
-			if (isHomepage) {
-				return {
-					type: 'discovery',
-					showBack: false,
-					showShare: false,
-					showCTA: false,
-					showProfileLink: true,
-					showHomeLink: false,
-					title: null,
-					backText: null,
-					backHref: null
-				};
-			}
-
-			if (isProfile) {
-				return {
-					type: 'profile',
-					showBack: false,
-					showShare: false,
-					showCTA: false,
-					showProfileLink: false,
-					showHomeLink: true,
-					title: null,
-					backText: null,
-					backHref: null
-				};
-			}
-
+		if (isHomepage) {
 			return {
 				type: 'discovery',
 				showBack: false,
 				showShare: false,
 				showCTA: false,
 				showProfileLink: true,
+				showHomeLink: false,
+				title: null,
+				backText: null,
+				backHref: null
+			};
+		}
+
+		if (isProfile) {
+			return {
+				type: 'profile',
+				showBack: false,
+				showShare: false,
+				showCTA: false,
+				showProfileLink: false,
 				showHomeLink: true,
 				title: null,
 				backText: null,
 				backHref: null
 			};
+		}
+
+		return {
+			type: 'discovery',
+			showBack: false,
+			showShare: false,
+			showCTA: false,
+			showProfileLink: true,
+			showHomeLink: true,
+			title: null,
+			backText: null,
+			backHref: null
+		};
 	});
 
 	// Smart CTA configuration for template actions
 	const ctaConfig = $derived.by(() => {
 		if (!template || !headerConfig.showCTA) return null;
 
-		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
+		const _emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
 		const isCongressional = template.deliveryMethod === 'cwc';
 
 		if (isCongressional) {
@@ -148,7 +140,7 @@
 		if (!user || !user.name) return null;
 
 		const firstName = user.name.split(' ')[0] || 'User';
-		const hasAddress = (user.city || user.state);
+		const hasAddress = user.city || user.state;
 
 		if (headerConfig.type === 'advocacy' && hasAddress) {
 			return {
@@ -312,8 +304,7 @@
 
 						<button
 							onclick={handleTemplateUse}
-							class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors {ctaConfig
-								?.colors}"
+							class="flex items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-medium text-white transition-colors {ctaConfig?.colors}"
 						>
 							{#if CtaIcon}
 								<CtaIcon class="h-4 w-4" />
@@ -335,6 +326,9 @@
 						<button
 							onclick={() => (showShareMenu = !showShareMenu)}
 							class="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-600 transition-all hover:bg-slate-100 hover:text-slate-900"
+							aria-expanded={showShareMenu}
+							aria-haspopup="menu"
+							aria-label="Share template"
 						>
 							<Share2 class="h-3 w-3" />
 							<span class="hidden sm:inline">Share</span>
@@ -343,10 +337,13 @@
 						{#if showShareMenu}
 							<div
 								class="absolute right-0 z-10 mt-1 w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+								role="menu"
+								aria-label="Share options"
 							>
 								<button
 									onclick={copyLink}
 									class="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+									role="menuitem"
 								>
 									{#if showCopied}
 										<CheckCircle class="h-3 w-3 text-green-600" />
@@ -359,6 +356,7 @@
 								<button
 									onclick={() => shareOnSocial('twitter')}
 									class="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+									role="menuitem"
 								>
 									<span class="font-bold text-black">𝕏</span>
 									<span>Share on X</span>
@@ -366,6 +364,7 @@
 								<button
 									onclick={() => shareOnSocial('facebook')}
 									class="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+									role="menuitem"
 								>
 									<span class="font-bold text-[#1877F2]">f</span>
 									<span>Share on Facebook</span>
@@ -373,6 +372,7 @@
 								<button
 									onclick={() => shareOnSocial('linkedin')}
 									class="flex w-full items-center gap-2 px-3 py-2 text-xs text-slate-700 hover:bg-slate-50"
+									role="menuitem"
 								>
 									<span class="font-bold text-[#0A66C2]">in</span>
 									<span>Share on LinkedIn</span>

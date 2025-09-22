@@ -23,12 +23,12 @@ export class CWCAdapter extends LegislativeAdapter {
 	readonly supported_methods = ['certified_delivery'];
 
 	private fieldMapper: CWCFieldMapper;
-	private apiKey: string;
+	private _apiKey: string;
 
 	constructor(config: CWCEnvironmentConfig) {
 		super();
 		this.fieldMapper = new CWCFieldMapper(config);
-		this.apiKey = config.CWC_API_KEY;
+		this._apiKey = config.CWC_API_KEY;
 	}
 
 	/**
@@ -81,7 +81,7 @@ export class CWCAdapter extends LegislativeAdapter {
 	 * Look up representatives by address
 	 * This would typically integrate with existing congressional district lookup
 	 */
-	async lookupRepresentativesByAddress(address: Address): Promise<Representative[]> {
+	async lookupRepresentativesByAddress(_address: Address): Promise<Representative[]> {
 		// TODO: Integrate with existing congressional district lookup system
 		// For now, this is a placeholder that would be implemented using
 		// the existing database and district mapping logic
@@ -91,11 +91,11 @@ export class CWCAdapter extends LegislativeAdapter {
 	}
 
 	/**
-	 * Validate representative
+	 * Validate _representative
 	 */
-	async validateRepresentative(representative: Representative): Promise<boolean> {
+	async validateRepresentative(_representative: Representative): Promise<boolean> {
 		// TODO: Validate against CWC office codes
-		// This would check if the representative has a valid CWC office identifier
+		// This would check if the _representative has a valid CWC office identifier
 		return true; // Placeholder
 	}
 
@@ -148,16 +148,16 @@ export class CWCAdapter extends LegislativeAdapter {
 					recipient_office: cwcInput.recipientOffice
 				}
 			};
-		} catch (_error) {
+		} catch (error) {
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Unknown error occurred'
+				error: error instanceof Error ? error.message : 'Unknown error occurred'
 			};
 		}
 	}
 
 	/**
-	 * Format representative name
+	 * Format _representative name
 	 */
 	formatRepresentativeName(rep: Representative): string {
 		return `${rep.title || ''} ${rep.name}`.trim();

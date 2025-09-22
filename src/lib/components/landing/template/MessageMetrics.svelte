@@ -11,7 +11,7 @@
 	const { template }: Props = $props();
 
 	// Normalize metrics data - handle both object and JSON string formats
-	function normalizeMetrics(rawMetrics: any): {
+	function normalizeMetrics(rawMetrics: unknown): {
 		sent?: number;
 		delivered?: number;
 		opened?: number;
@@ -127,13 +127,13 @@
 			{formatNumber(metrics.sent)} sent
 		</span>
 		<div class="relative">
-			<Info 
+			<Info
 				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
-				onmouseenter={() => hoveredTooltip = 'sent'}
-				onmouseleave={() => hoveredTooltip = null}
+				onmouseenter={() => (hoveredTooltip = 'sent')}
+				onmouseleave={() => (hoveredTooltip = null)}
 			/>
-			
-			<SimpleTooltip 
+
+			<SimpleTooltip
 				content="Total messages sent in this campaign"
 				placement="right"
 				show={hoveredTooltip === 'sent'}
@@ -151,13 +151,13 @@
 			{currentMetric.secondaryValue}
 		</span>
 		<div class="relative">
-			<Info 
+			<Info
 				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
-				onmouseenter={() => hoveredTooltip = 'recipients'}
-				onmouseleave={() => hoveredTooltip = null}
+				onmouseenter={() => (hoveredTooltip = 'recipients')}
+				onmouseleave={() => (hoveredTooltip = null)}
 			/>
-			
-			<SimpleTooltip 
+
+			<SimpleTooltip
 				content={currentMetric.secondaryTooltip}
 				placement="right"
 				show={hoveredTooltip === 'recipients'}

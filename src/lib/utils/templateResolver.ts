@@ -32,16 +32,14 @@ export type TemplateReplacements = Record<string, string | null>;
 // Type guard for template replacements
 export function isValidReplacements(obj: unknown): obj is TemplateReplacements {
 	if (typeof obj !== 'object' || obj === null) return false;
-	return Object.values(obj).every(
-		value => typeof value === 'string' || value === null
-	);
+	return Object.values(obj).every((value) => typeof value === 'string' || value === null);
 }
 
 // Type guards for template validation
 export function isValidTemplate(template: unknown): template is Template {
 	if (typeof template !== 'object' || template === null) return false;
 	const t = template as Record<string, unknown>;
-	
+
 	return (
 		typeof t.id === 'string' &&
 		typeof t.title === 'string' &&
@@ -54,7 +52,7 @@ export function isValidTemplate(template: unknown): template is Template {
 export function isValidEmailServiceUser(user: unknown): user is EmailServiceUser {
 	if (typeof user !== 'object' || user === null) return false;
 	const u = user as Record<string, unknown>;
-	
+
 	return (
 		typeof u.id === 'string' &&
 		typeof u.email === 'string' &&
@@ -62,7 +60,7 @@ export function isValidEmailServiceUser(user: unknown): user is EmailServiceUser
 	);
 }
 
-// Type for representative objects with stronger typing
+// Type for _representative objects with stronger typing
 interface Representative {
 	name: string;
 	party: string;
@@ -71,15 +69,17 @@ interface Representative {
 	district: string;
 }
 
-// Type guard for a single representative
+// Type guard for a single _representative
 function isValidRepresentative(rep: unknown): rep is Representative {
 	if (typeof rep !== 'object' || rep === null) return false;
 	const r = rep as Record<string, unknown>;
-	
+
 	return (
-		typeof r.name === 'string' && r.name.trim() !== '' &&
+		typeof r.name === 'string' &&
+		r.name.trim() !== '' &&
 		typeof r.party === 'string' &&
-		typeof r.chamber === 'string' && r.chamber.trim() !== '' &&
+		typeof r.chamber === 'string' &&
+		r.chamber.trim() !== '' &&
 		typeof r.state === 'string' &&
 		typeof r.district === 'string'
 	);
@@ -114,12 +114,12 @@ export function resolveTemplate(
 		console.error('Template validation failed:', template);
 		throw new Error('Invalid template provided to resolveTemplate');
 	}
-	
+
 	if (user !== null && !isValidEmailServiceUser(user)) {
 		console.error('User validation failed:', user);
 		throw new Error('Invalid user provided to resolveTemplate');
 	}
-	
+
 	// Debug user and template info
 	console.debug('Template resolution started:', {
 		templateId: template.id,
@@ -142,29 +142,29 @@ export function resolveTemplate(
 	let resolvedBody = baseMessage;
 
 	if (user) {
-		// User context resolution - real name, real address, real representatives
+		// User context resolution - real name, real _address, real representatives
 		const userName = user.name || '';
 		const userAddress = buildUserAddress(user);
 
 		// Block variable resolution with actual data
 		const replacements: TemplateReplacements = {};
-		
+
 		// Only add replacements if we have data OR if we're not preserving variables
 		if (!options.preserveVariables || userName) {
 			replacements['[Name]'] = userName; // allow empty string to preserve punctuation
 			replacements['[Your Name]'] = userName;
 		}
-		
+
 		// For address fields, only replace if we have complete data
 		if (user.street && user.city && user.state && user.zip) {
-			replacements['[Address]'] = userAddress;
-			replacements['[Your Address]'] = userAddress;
+			replacements['[Address ]'] = userAddress;
+			replacements['[Your Address ]'] = userAddress;
 		} else if (!options.preserveVariables) {
 			// Only remove if not preserving for preview
-			replacements['[Address]'] = null;
-			replacements['[Your Address]'] = null;
+			replacements['[Address ]'] = null;
+			replacements['[Your Address ]'] = null;
 		}
-		
+
 		// Individual address components
 		if (user.city || !options.preserveVariables) {
 			replacements['[City]'] = user.city || null;
@@ -177,10 +177,11 @@ export function resolveTemplate(
 			replacements['[Zip Code]'] = user.zip || null;
 		}
 
-		// Congressional representative resolution with type safety
+		// Congressional _representative resolution with type safety
 		if (user.representatives && isValidRepresentativesArray(user.representatives)) {
-			// Primary representative (House member or first in list)
-			const primaryRep = user.representatives.find(r => r.chamber === 'house') || user.representatives[0];
+			// Primary _representative (House member or first in list)
+			const primaryRep =
+				user.representatives.find((r) => r.chamber === 'house') || user.representatives[0];
 			if (primaryRep) {
 				replacements['[Representative Name]'] = primaryRep.name;
 				replacements['[Rep Name]'] = primaryRep.name;
@@ -192,7 +193,7 @@ export function resolveTemplate(
 			}
 
 			// Senate representatives
-			const senators = user.representatives.filter(r => r.chamber === 'senate');
+			const senators = user.representatives.filter((r) => r.chamber === 'senate');
 			if (senators.length > 0) {
 				replacements['[Senator Name]'] = senators[0].name;
 				replacements['[Senator]'] = `Sen. ${senators[0].name}`;
@@ -208,7 +209,7 @@ export function resolveTemplate(
 				replacements['[Junior Senator]'] = null;
 			}
 		} else {
-			// No representative data - use generic labels where appropriate
+			// No _representative data - use generic labels where appropriate
 			replacements['[Representative Name]'] = 'Representative';
 			replacements['[Rep Name]'] = 'Representative';
 			replacements['[Representative]'] = 'Representative';
@@ -248,7 +249,7 @@ export function resolveTemplate(
 				resolvedBody = resolvedBody.replace(linePattern, '');
 
 				// Remove inline occurrences with surrounding context
-				// Handle patterns like "from [Address]" or "at [Address]"
+				// Handle patterns like "from [Address ]" or "at [Address ]"
 				const contextPattern = new RegExp(`(from|at|in|of)\\s+${escapeRegex(placeholder)}`, 'gi');
 				resolvedSubject = resolvedSubject.replace(contextPattern, '');
 				resolvedBody = resolvedBody.replace(contextPattern, '');
@@ -266,28 +267,29 @@ export function resolveTemplate(
 		// Non-authenticated user - preserve placeholders but make them instructional
 		resolvedBody = resolvedBody
 			.replace(/\[Name\]/g, '[Your Name]')
-			.replace(/\[Address\]/g, '[Your Address]')
+			.replace(/\[Address \]/g, '[Your Address ]')
 			.replace(/\[Representative Name\]/g, "[Your Representative's Name]");
 	}
 
 	// Determine delivery method and routing
-	const isCongressional = template.deliveryMethod === 'certified' || template.deliveryMethod === 'cwc';
+	const isCongressional =
+		template.deliveryMethod === 'certified' || template.deliveryMethod === 'cwc';
 	// Parse recipient_config safely with error handling
 	let recipientConfig: unknown = template.recipient_config;
 	if (typeof template.recipient_config === 'string') {
 		try {
 			recipientConfig = JSON.parse(template.recipient_config);
-		} catch (error) {
-			console.warn('Failed to parse recipient_config JSON:', error);
+		} catch (_error) {
+			console.warn('Failed to parse recipient_config JSON:', _error);
 			recipientConfig = undefined; // allow downstream defaulting
 		}
 	}
-	
+
 	let recipients: string[] = [];
 	try {
 		recipients = extractRecipientEmails(recipientConfig);
-	} catch (error) {
-		console.error('Failed to extract recipient emails:', error);
+	} catch {
+		console.error('Error occurred');
 		recipients = [];
 	}
 
@@ -315,13 +317,17 @@ function buildUserAddress(user: EmailServiceUser): string {
 	if (!user || typeof user !== 'object') {
 		return '';
 	}
-	
+
 	// Only return address if ALL parts are present and valid
 	if (
-		typeof user.street === 'string' && user.street.trim() !== '' &&
-		typeof user.city === 'string' && user.city.trim() !== '' &&
-		typeof user.state === 'string' && user.state.trim() !== '' &&
-		typeof user.zip === 'string' && user.zip.trim() !== ''
+		typeof user.street === 'string' &&
+		user.street.trim() !== '' &&
+		typeof user.city === 'string' &&
+		user.city.trim() !== '' &&
+		typeof user.state === 'string' &&
+		user.state.trim() !== '' &&
+		typeof user.zip === 'string' &&
+		user.zip.trim() !== ''
 	) {
 		return `${user.street.trim()}, ${user.city.trim()}, ${user.state.trim()} ${user.zip.trim()}`;
 	}

@@ -12,7 +12,7 @@ export interface PersonalizationContext {
 		address?: string;
 		congressional_district?: string;
 	};
-	representative?: {
+	_representative?: {
 		name: string;
 		title?: string;
 		office?: string;
@@ -25,12 +25,12 @@ export interface PersonalizationContext {
 }
 
 /**
- * Resolves template variables with user and representative data
+ * Resolves template variables with user and _representative data
  */
 export function resolveVariables(
 	template: string,
 	user: PersonalizationContext['user'],
-	representative?: PersonalizationContext['representative']
+	_representative?: PersonalizationContext['_representative']
 ): string {
 	let resolved = template;
 
@@ -48,21 +48,21 @@ export function resolveVariables(
 		resolved = resolved.replace(/\[Zip\]/g, user.zip);
 	}
 	if (user.address) {
-		resolved = resolved.replace(/\[Address\]/g, user.address);
+		resolved = resolved.replace(/\[Address \]/g, user.address);
 	}
 	if (user.congressional_district) {
 		resolved = resolved.replace(/\[Congressional District\]/g, user.congressional_district);
 	}
 
-	// Replace representative variables
-	if (representative?.name) {
-		resolved = resolved.replace(/\[Representative Name\]/g, representative.name);
+	// Replace _representative variables
+	if (_representative?.name) {
+		resolved = resolved.replace(/\[Representative Name\]/g, _representative.name);
 	}
-	if (representative?.title) {
-		resolved = resolved.replace(/\[Representative Title\]/g, representative.title);
+	if (_representative?.title) {
+		resolved = resolved.replace(/\[Representative Title\]/g, _representative.title);
 	}
-	if (representative?.party) {
-		resolved = resolved.replace(/\[Representative Party\]/g, representative.party);
+	if (_representative?.party) {
+		resolved = resolved.replace(/\[Representative Party\]/g, _representative.party);
 	}
 
 	return resolved;

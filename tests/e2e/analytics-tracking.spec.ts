@@ -7,14 +7,38 @@
  */
 
 /// <reference path="../types/global.d.ts" />
-import { test, expect, type Page, type BrowserContext, type Route, type Request, type ConsoleMessage } from '@playwright/test';
+import {
+	test,
+	expect,
+	type Page,
+	type BrowserContext,
+	type Route,
+	type Request,
+	type ConsoleMessage
+} from '@playwright/test';
+
+// Analytics types for test payload validation
+interface AnalyticsEventPayload {
+	name: string;
+	properties?: Record<string, unknown>;
+	[key: string]: unknown;
+}
+
+interface AnalyticsPayload {
+	events: AnalyticsEventPayload[];
+	[key: string]: unknown;
+}
 
 test.describe('Analytics Tracking E2E', () => {
 	test.beforeEach(async ({ page }: { page: Page }) => {
 		// Listen for analytics API calls
 		await page.route('/api/analytics/events', async (route: Route) => {
 			const request = route.request();
-			console.log('Analytics API called:', request.method(), await request.postDataJSON().catch(() => ({})));
+			console.log(
+				'Analytics API called:',
+				request.method(),
+				await request.postDataJSON().catch(() => ({}))
+			);
 
 			// Mock successful response
 			await route.fulfill({
@@ -37,15 +61,18 @@ test.describe('Analytics Tracking E2E', () => {
 
 	test('should track page view events automatically', async ({ page }: { page: Page }) => {
 		let analyticsCallCount = 0;
-		let lastAnalyticsPayload: any = null;
+		let lastAnalyticsPayload: unknown = null;
 
 		// Monitor analytics API calls
 		page.on('request', (request: Request) => {
 			if (request.url().includes('/api/analytics/events') && request.method() === 'POST') {
 				analyticsCallCount++;
-				request.postDataJSON().then((data: any) => {
-					lastAnalyticsPayload = data;
-				}).catch(() => {});
+				request
+					.postDataJSON()
+					.then((data: unknown) => {
+						lastAnalyticsPayload = data;
+					})
+					.catch(() => {});
 			}
 		});
 
@@ -58,7 +85,7 @@ test.describe('Analytics Tracking E2E', () => {
 
 		// Should include page view events
 		if (lastAnalyticsPayload) {
-			expect(lastAnalyticsPayload.events).toEqual(
+			expect((lastAnalyticsPayload as AnalyticsPayload).events).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
 						name: 'page_view'
@@ -75,9 +102,9 @@ test.describe('Analytics Tracking E2E', () => {
 		// Monitor analytics calls for specific events
 		page.on('request', async (request: Request) => {
 			if (request.url().includes('/api/analytics/events') && request.method() === 'POST') {
-				const payload = await request.postDataJSON();
+				const payload = (await request.postDataJSON()) as AnalyticsPayload;
 
-				payload.events.forEach((event: any) => {
+				payload.events.forEach((event: AnalyticsEventPayload) => {
 					if (event.name === 'template_viewed') {
 						templateViewTracked = true;
 						expect(event.properties?.template_id).toBeDefined();
@@ -105,16 +132,27 @@ test.describe('Analytics Tracking E2E', () => {
 		expect(shareClickTracked).toBe(true);
 	});
 
-	test('should handle OAuth funnel flow across redirects', async ({ page, context }: { page: Page; context: BrowserContext }) => {
+	test('should handle OAuth funnel flow across redirects', async ({
+		page,
+		context
+	}: {
+		page: Page;
+		context: BrowserContext;
+	}) => {
 		const funnelEvents: string[] = [];
 
 		// Monitor all analytics events in the funnel
 		page.on('request', async (request: Request) => {
 			if (request.url().includes('/api/analytics/events') && request.method() === 'POST') {
-				const payload = await request.postDataJSON();
+				const payload = (await request.postDataJSON()) as AnalyticsPayload;
 
-				payload.events.forEach((event: any) => {
-					if (event.funnel_id || ['template_viewed', 'onboarding_started', 'auth_completed', 'template_used'].includes(event.name)) {
+				payload.events.forEach((event: AnalyticsEventPayload) => {
+					if (
+						event.funnel_id ||
+						['template_viewed', 'onboarding_started', 'auth_completed', 'template_used'].includes(
+							event.name
+						)
+					) {
 						funnelEvents.push(event.name);
 						console.log('Funnel event tracked:', event.name, event.properties?.template_id);
 					}
@@ -158,7 +196,7 @@ test.describe('Analytics Tracking E2E', () => {
 		page.on('request', async (request: Request) => {
 			if (request.url().includes('/api/analytics/events') && request.method() === 'POST') {
 				apiCallCount++;
-				const payload = await request.postDataJSON();
+				const payload = (await request.postDataJSON()) as AnalyticsPayload;
 				totalEventsProcessed += payload.events.length;
 
 				console.log(`Analytics batch ${apiCallCount}: ${payload.events.length} events`);
@@ -218,7 +256,7 @@ test.describe('Analytics Tracking E2E', () => {
 		// Track session IDs from analytics calls
 		page.on('request', async (request: Request) => {
 			if (request.url().includes('/api/analytics/events') && request.method() === 'POST') {
-				const payload = await request.postDataJSON();
+				const payload = (await request.postDataJSON()) as AnalyticsPayload;
 				if (payload.session_data?.session_id) {
 					sessionIds.push(payload.session_data.session_id);
 				}
@@ -242,12 +280,12 @@ test.describe('Analytics Tracking E2E', () => {
 	});
 
 	test('should respect privacy and not leak sensitive data', async ({ page }: { page: Page }) => {
-		const analyticsPayloads: any[] = [];
+		const analyticsPayloads: unknown[] = [];
 
 		// Capture all analytics payloads
 		page.on('request', async (request: Request) => {
 			if (request.url().includes('/api/analytics/events') && request.method() === 'POST') {
-				const payload = await request.postDataJSON();
+				const payload = (await request.postDataJSON()) as AnalyticsPayload;
 				analyticsPayloads.push(payload);
 			}
 		});

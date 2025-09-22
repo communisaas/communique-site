@@ -7,6 +7,8 @@
  * This is a client-safe service that communicates with server-side API endpoints
  */
 
+import type { UnknownRecord } from '$lib/types/any-replacements';
+
 export interface CertificationRequest {
 	actionType: 'direct_email' | 'cwc_message' | 'local_action';
 	deliveryReceipt: string;
@@ -56,8 +58,8 @@ class CertificationService {
 			});
 
 			if (!response.ok) {
-				const error = await response.text();
-				console.error('[Certification] API error:', error);
+				const _error = await response.text();
+				console.error('Error occurred');
 				return {
 					success: false,
 					error: `Certification failed: ${response.status}`
@@ -66,12 +68,12 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-		} catch (_error) {
-			console.error('[Certification] Network error:', _error);
+		} catch (error) {
+			console.error('Error occurred');
 			// Don't block delivery on certification failure
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Certification network error'
+				error: error instanceof Error ? error.message : 'Certification network error'
 			};
 		}
 	}
@@ -80,7 +82,7 @@ class CertificationService {
 	 * Check certification status
 	 * Calls server-side proxy endpoint
 	 */
-	async getStatus(certificationHash: string): Promise<any> {
+	async getStatus(certificationHash: string): Promise<UnknownRecord | null> {
 		try {
 			const response = await fetch(`${this.endpoints.status}/${certificationHash}`);
 
@@ -89,8 +91,8 @@ class CertificationService {
 			}
 
 			return await response.json();
-		} catch (_error) {
-			console.error('[Certification] Status check error:', _error);
+		} catch {
+			console.error('Error occurred');
 			return null;
 		}
 	}
@@ -102,7 +104,7 @@ class CertificationService {
 	async submitReceipt(
 		receipt: string,
 		actionType: string,
-		metadata?: any
+		metadata?: UnknownRecord
 	): Promise<{ verified: boolean; hash?: string }> {
 		try {
 			const response = await fetch(this.endpoints.receipt, {
@@ -123,8 +125,8 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-		} catch (_error) {
-			console.error('[Certification] Receipt submission error:', _error);
+		} catch {
+			console.error('Error occurred');
 			return { verified: false };
 		}
 	}

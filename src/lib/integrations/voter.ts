@@ -25,13 +25,14 @@ export function getVOTERActionType(template: Template | SafeTemplateData): strin
 	// Check template properties to determine action type with safe type checking
 	const title = typeof template.title === 'string' ? template.title.toLowerCase() : '';
 	const id = typeof template.id === 'string' ? template.id.toLowerCase() : '';
-	const method = typeof template.deliveryMethod === 'string' ? template.deliveryMethod.toLowerCase() : '';
+	const method =
+		typeof template.deliveryMethod === 'string' ? template.deliveryMethod.toLowerCase() : '';
 
 	// Congressional messages
 	if (
 		method === 'certified' ||
 		title.includes('congress') ||
-		title.includes('representative') ||
+		title.includes('_representative') ||
 		title.includes('senator') ||
 		id.includes('cwc')
 	) {

@@ -171,7 +171,7 @@ export class TemplateCorrector {
 		const grammarScore = this.calculateGrammarScore(correctedBody);
 		const clarityScore = this.calculateClarityScore(correctedBody);
 		const completenessScore = this.calculateCompletenessScore(template, correctedBody);
-		
+
 		const scores = {
 			grammar: grammarScore,
 			clarity: clarityScore,
@@ -407,13 +407,13 @@ export class TemplateCorrector {
 	/**
 	 * Calculate completeness score (0-100)
 	 */
-	private calculateCompletenessScore(template: Template, text: string): number {
+	private calculateCompletenessScore(template: Template, _text: string): number {
 		let score = 100;
 
 		// Check for required elements
-		if (!text.match(/^(Dear|Hello|Hi|Greetings)/i)) score -= 20; // No salutation
-		if (!text.match(/(Sincerely|Regards|Thank you|Respectfully)/i)) score -= 20; // No closing
-		if (text.length < 100) score -= 30; // Too short
+		if (!_text.match(/^(Dear|Hello|Hi|Greetings)/i)) score -= 20; // No salutation
+		if (!_text.match(/(Sincerely|Regards|Thank you|Respectfully)/i)) score -= 20; // No closing
+		if (_text.length < 100) score -= 30; // Too short
 		if (!template.subject || template.subject.length < 5) score -= 10; // No/short subject
 
 		return Math.max(0, score);

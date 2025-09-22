@@ -1,6 +1,8 @@
-import type { JurisdictionType } from '../../../types/jurisdiction';
+import type { Jurisdiction, JurisdictionType } from '../../../types/jurisdiction';
 
-export interface Jurisdiction {
+export type { Jurisdiction, JurisdictionType };
+
+export interface LegislativeJurisdiction {
 	id: string;
 	country_code: string;
 	type: JurisdictionType;

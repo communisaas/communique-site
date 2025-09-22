@@ -1,6 +1,6 @@
 /**
  * AUDIT SYSTEM TYPES - Post-Consolidation (Phase 3: 4→2 Models)
- * 
+ *
  * This file contains TypeScript interfaces for our consolidated audit system:
  * - AuditLog (unified audit trail for all user actions)
  * - CivicAction (blockchain-specific only)
@@ -12,38 +12,43 @@
 export interface AuditLog {
 	id: string;
 	user_id: string;
-	
+
 	// Core audit classification
-	action_type: 'civic_action' | 'reputation_change' | 'verification' | 'authentication' | 'template_action';
+	action_type:
+		| 'civic_action'
+		| 'reputation_change'
+		| 'verification'
+		| 'authentication'
+		| 'template_action';
 	action_subtype?: string; // 'cwc_message', 'challenge_create', 'score_update', 'login', 'template_submit'
-	
+
 	// Unified audit data (flexible JSONB storage)
-	audit_data: Record<string, any>; // Flexible data storage for any audit type
-	
+	audit_data: Record<string, unknown>; // Flexible data storage for any audit type
+
 	// Agent provenance & evidence (from ReputationLog)
 	agent_source?: string; // Which agent made the decision
-	agent_decisions?: Record<string, any>; // AI decision trail
+	agent_decisions?: Record<string, unknown>; // AI decision trail
 	evidence_hash?: string; // IPFS hash of evidence
 	confidence?: number; // Agent confidence 0-1
-	
+
 	// Reputation tracking (consolidated from ReputationLog)
 	score_before?: number;
 	score_after?: number;
 	change_amount?: number;
 	change_reason?: string;
-	
+
 	// Certification tracking (for future CertificationLog functionality)
 	certification_type?: string; // 'voter_protocol', 'template_approval', 'identity_verification'
-	certification_data?: Record<string, any>;
+	certification_data?: Record<string, unknown>;
 	reward_amount?: string; // BigInt as string
-	
+
 	// Blockchain correlation (link to CivicAction if applicable)
 	civic_action_id?: string;
-	
+
 	// Metadata & status
 	status: 'pending' | 'completed' | 'failed' | 'cancelled';
-	metadata?: Record<string, any>;
-	
+	metadata?: Record<string, unknown>;
+
 	// Timestamps
 	created_at: Date;
 }
@@ -52,24 +57,24 @@ export interface AuditLog {
 export interface CivicAction {
 	id: string;
 	user_id: string;
-	
+
 	// Core action identification (minimal, just for blockchain correlation)
 	action_type: 'cwc_message' | 'template_submit' | 'challenge_create';
 	template_id?: string;
-	
+
 	// === BLOCKCHAIN INTEGRATION ONLY ===
 	tx_hash?: string; // Ethereum/Monad transaction hash
 	reward_wei?: string; // BigInt as string (VOTER tokens)
 	status: 'pending' | 'confirmed' | 'failed';
-	
+
 	// Blockchain proof & validation
 	block_number?: number;
 	confirmation_count?: number;
 	gas_used?: string; // BigInt as string
-	
+
 	// Multi-agent consensus for blockchain actions
-	consensus_data?: Record<string, any>; // Multi-model voting results for rewards
-	
+	consensus_data?: Record<string, unknown>; // Multi-model voting results for rewards
+
 	// Timestamps
 	created_at: Date;
 	confirmed_at?: Date;
@@ -91,7 +96,13 @@ export interface UserAuditTrail {
 
 // For audit filtering and pagination
 export interface AuditFilters {
-	action_types?: ('civic_action' | 'reputation_change' | 'verification' | 'authentication' | 'template_action')[];
+	action_types?: (
+		| 'civic_action'
+		| 'reputation_change'
+		| 'verification'
+		| 'authentication'
+		| 'template_action'
+	)[];
 	date_from?: Date;
 	date_to?: Date;
 	user_id?: string;
@@ -123,4 +134,3 @@ export interface AuditMetrics {
 		end: Date;
 	};
 }
-

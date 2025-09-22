@@ -25,7 +25,7 @@ export interface AgentDecision<T = unknown> {
 }
 
 export interface AgentConsensus<T = unknown> {
-	decisions: AgentDecision<any>[];
+	decisions: AgentDecision<unknown>[];
 	consensusReached: boolean;
 	consensusConfidence: number;
 	finalDecision: T | null;
@@ -50,7 +50,7 @@ export interface AgentCapability {
 	requiredContext: (keyof AgentContext)[];
 }
 
-export type AgentCapabilityType = 
+export type AgentCapabilityType =
 	| 'identity_verification'
 	| 'trust_score_calculation'
 	| 'risk_assessment'
@@ -71,7 +71,7 @@ export type AgentCapabilityType =
 	| 'erc8004_attestations'
 	| 'reputation_risk_analysis';
 
-export type AgentDecisionType = 
+export type AgentDecisionType =
 	| 'verification_assessment'
 	| 'trust_scoring'
 	| 'reward_calculation'
@@ -86,7 +86,13 @@ export type AgentDecisionType =
 export interface AgentContext {
 	userId?: string;
 	userAddress?: string; // Blockchain address for VOTER Protocol integration
-	actionType?: 'cwc_message' | 'direct_action' | 'challenge_market' | 'template_creation' | 'verify' | string;
+	actionType?:
+		| 'cwc_message'
+		| 'direct_action'
+		| 'challenge_market'
+		| 'template_creation'
+		| 'verify'
+		| string;
 	templateId?: string;
 	timestamp?: string;
 	historicalData?: unknown;
@@ -123,7 +129,7 @@ export abstract class BaseAgent {
 		this.safetyBounds = safetyBounds;
 	}
 
-	abstract makeDecision(context: AgentContext): Promise<AgentDecision<any>>;
+	abstract makeDecision(context: AgentContext): Promise<AgentDecision<unknown>>;
 
 	getAgentType(): AgentType {
 		return this.agentType;
@@ -175,8 +181,8 @@ export class AgentCoordinator {
 	async coordinateDecision(
 		context: AgentContext,
 		requiredAgents: AgentType[]
-	): Promise<AgentConsensus<any>> {
-		const decisions: AgentDecision<any>[] = [];
+	): Promise<AgentConsensus<unknown>> {
+		const decisions: AgentDecision<unknown>[] = [];
 
 		// Collect decisions from required agents
 		for (const agentType of requiredAgents) {
@@ -241,7 +247,7 @@ export class VectorAgentMemory implements AgentMemory {
 	// This would integrate with ChromaDB in production
 	// For now, simplified in-memory storage
 	private decisions: Map<string, AgentDecision> = new Map();
-	private outcomes: Map<string, any> = new Map();
+	private outcomes: Map<string, unknown> = new Map();
 
 	async storeDecision(decision: AgentDecision, outcome?: unknown): Promise<void> {
 		const decisionId = `${decision.agentId}-${decision.timestamp.getTime()}`;

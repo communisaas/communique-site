@@ -9,6 +9,7 @@ backdrop handling, and keyboard navigation.
 	import { quintOut, backOut } from 'svelte/easing';
 	import { createModalStore, type ModalType } from '$lib/stores/modalSystem.svelte';
 	import { X } from '@lucide/svelte';
+	import type { ModalChildrenFunction } from '$lib/types/any-replacements.js';
 
 	let {
 		id,
@@ -27,7 +28,7 @@ backdrop handling, and keyboard navigation.
 		showCloseButton?: boolean;
 		closeOnBackdrop?: boolean;
 		closeOnEscape?: boolean;
-		children: (data: any) => any;
+		children: ModalChildrenFunction;
 	} = $props();
 
 	// Connect to modal system
@@ -64,6 +65,14 @@ backdrop handling, and keyboard navigation.
 				modal.close();
 			}
 		}}
+		onkeydown={(e) => {
+			if (e.key === 'Escape' && closeOnEscape) {
+				modal.close();
+			}
+			if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget && closeOnBackdrop) {
+				modal.close();
+			}
+		}}
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby={title ? `${id}-title` : undefined}
@@ -79,7 +88,7 @@ backdrop handling, and keyboard navigation.
 			class:overflow-hidden={size === 'full'}
 			class:max-h-none={size === 'full'}
 			class:h-full={size === 'full'}
-			onclick={(e) => e.stopPropagation()}
+			role="document"
 			in:scale={{ duration: 300, start: 0.9, easing: backOut }}
 			out:scale={{ duration: 200, start: 1, easing: quintOut }}
 		>

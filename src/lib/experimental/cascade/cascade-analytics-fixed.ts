@@ -12,7 +12,7 @@ export interface UserActivation {
 	user_id: string;
 	template_id: string;
 	activated_at: Date;
-	source_user_id?: string; // Who referred them
+	sourceuser_id?: string; // Who referred them
 	activation_generation: number; // Degree of separation from patient zero
 	geographic_distance: number; // Miles from source user
 	time_to_activation: number; // Hours from exposure to action
@@ -21,11 +21,11 @@ export interface UserActivation {
 /**
  * Calculate R0 using ACTUAL user_activation data (not inferred)
  */
-export async function calculateTemplateR0(templateId: string): Promise<number> {
+export async function calculateTemplateR0(_templateId: string): Promise<number> {
 	// Get actual activation data from user_activation table
 	const activations = await db.user_activation.findMany({
 		where: {
-			template_id: templateId
+			template_id: _templateId
 		},
 		orderBy: {
 			activation_time: 'asc'
@@ -52,11 +52,11 @@ export async function calculateTemplateR0(templateId: string): Promise<number> {
 /**
  * Get REAL activation chain from user_activation table
  */
-export async function getTemplateActivationChain(templateId: string): Promise<UserActivation[]> {
+export async function getTemplateActivationChain(_templateId: string): Promise<UserActivation[]> {
 	// Use actual user_activation data - no inference needed!
 	const activations = await db.user_activation.findMany({
 		where: {
-			template_id: templateId
+			template_id: _templateId
 		},
 		include: {
 			user: {
@@ -85,7 +85,7 @@ export async function getTemplateActivationChain(templateId: string): Promise<Us
 		user_id: activation.user_id,
 		template_id: activation.template_id,
 		activated_at: activation.activation_time,
-		source_user_id: activation.source_user_id || undefined,
+		sourceuser_id: activation.sourceuser_id || undefined,
 		activation_generation: activation.activation_generation,
 		geographic_distance: activation.geographic_distance || 0,
 		time_to_activation: activation.time_to_activation || 0
@@ -95,8 +95,8 @@ export async function getTemplateActivationChain(templateId: string): Promise<Us
 /**
  * Calculate activation velocity during peak spread using REAL timestamps
  */
-export async function calculateActivationVelocity(templateId: string): Promise<number> {
-	const activations = await getTemplateActivationChain(templateId);
+export async function calculateActivationVelocity(_templateId: string): Promise<number> {
+	const activations = await getTemplateActivationChain(_templateId);
 
 	if (activations.length < 10) return 0; // Need minimum sample size
 
@@ -127,8 +127,8 @@ export async function calculateActivationVelocity(templateId: string): Promise<n
 /**
  * Full cascade analysis using REAL activation data
  */
-export async function analyzeCascade(templateId: string): Promise<CascadeMetrics> {
-	const activations = await getTemplateActivationChain(templateId);
+export async function analyzeCascade(_templateId: string): Promise<CascadeMetrics> {
+	const activations = await getTemplateActivationChain(_templateId);
 
 	if (activations.length === 0) {
 		return {
@@ -140,20 +140,20 @@ export async function analyzeCascade(templateId: string): Promise<CascadeMetrics
 		};
 	}
 
-	const r0 = await calculateTemplateR0(templateId);
-	const velocity = await calculateActivationVelocity(templateId);
+	const r0 = await calculateTemplateR0(_templateId);
+	const velocity = await calculateActivationVelocity(_templateId);
 
 	// Calculate generation depth from REAL data
 	const maxGeneration = Math.max(...activations.map((a) => a.activation_generation));
 
 	// Calculate geographic jump rate (cross-district activations) from REAL data
 	const crossDistrictJumps = activations.filter((a) => {
-		if (!a.source_user_id) return false;
+		if (!a.sourceuser_id) return false;
 		// This would need to be calculated properly with user district data
 		return a.geographic_distance > 0;
 	}).length;
 
-	const totalActivations = activations.filter((a) => a.source_user_id).length;
+	const totalActivations = activations.filter((a) => a.sourceuser_id).length;
 	const jumpRate = totalActivations > 0 ? crossDistrictJumps / totalActivations : 0;
 
 	// Calculate temporal decay
@@ -171,9 +171,9 @@ export async function analyzeCascade(templateId: string): Promise<CascadeMetrics
 /**
  * Check if we have REAL cascade data for a template
  */
-export async function hasActivationData(templateId: string): Promise<boolean> {
+export async function hasActivationData(_templateId: string): Promise<boolean> {
 	const count = await db.user_activation.count({
-		where: { template_id: templateId }
+		where: { template_id: _templateId }
 	});
 	return count > 0;
 }
@@ -181,9 +181,9 @@ export async function hasActivationData(templateId: string): Promise<boolean> {
 /**
  * Get delivery metrics from template_campaign (separate from cascade metrics)
  */
-export async function getDeliveryMetrics(templateId: string) {
+export async function getDeliveryMetrics(_templateId: string) {
 	const campaigns = await db.template_campaign.findMany({
-		where: { template_id: templateId },
+		where: { template_id: _templateId },
 		select: {
 			status: true,
 			created_at: true,

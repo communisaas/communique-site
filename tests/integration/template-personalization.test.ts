@@ -1,6 +1,6 @@
 /**
  * Template Personalization Integration Tests
- * 
+ *
  * Focused tests for template variable resolution using consolidated schemas.
  * This test suite validates that templates work correctly with the new
  * consolidated User and Representative models.
@@ -24,7 +24,8 @@ describe('Template Personalization Integration', () => {
 			}
 		});
 
-		const template = 'Dear Representative, I am [Name] from [City], [State] [Zip] in district [Congressional District]. Thank you.';
+		const template =
+			'Dear Representative, I am [Name] from [City], [State] [Zip] in district [Congressional District]. Thank you.';
 
 		const resolved = resolveVariables(template, user, undefined);
 
@@ -45,11 +46,14 @@ describe('Template Personalization Integration', () => {
 			}
 		});
 
-		const template = 'Dear [Representative Name], As a [Representative Party] representative for [Representative State] district [Representative District]...';
+		const template =
+			'Dear [Representative Name], As a [Representative Party] representative for [Representative State] district [Representative District]...';
 
 		const resolved = resolveVariables(template, user, representative);
 
-		expect(resolved).toBe('Dear Nancy Pelosi, As a Democratic representative for CA district 12...');
+		expect(resolved).toBe(
+			'Dear Nancy Pelosi, As a Democratic representative for CA district 12...'
+		);
 	});
 
 	it('should handle consolidated template with user and representative data', async () => {
@@ -105,7 +109,8 @@ Sincerely,
 			}
 		});
 
-		const template = 'I am [Name] from [City], [State] in district [Congressional District]. Contact: [Phone].';
+		const template =
+			'I am [Name] from [City], [State] in district [Congressional District]. Contact: [Phone].';
 
 		const resolved = resolveVariables(template, user, undefined);
 
@@ -137,7 +142,7 @@ Sincerely,
 
 		const resolved = resolveVariables(verifiedTemplate.message_body, user, undefined);
 		expect(resolved).toContain('Hello Verified User');
-		
+
 		// Template should have consolidated verification data
 		expect(verifiedTemplate.verification_status).toBe('approved');
 		expect(verifiedTemplate.quality_score).toBe(95);

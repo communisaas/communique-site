@@ -96,7 +96,7 @@ export async function getOverlappingInformationSources(
 			) || [];
 
 		// Calculate confidence from campaign success rate
-		const campaigns = (template as any).template_campaign;
+		const campaigns = template.template_campaign;
 		const totalCampaigns = campaigns?.length || 0;
 		const confidence = totalCampaigns > 0 ? 1.0 : 0.5; // Basic confidence model
 
@@ -221,7 +221,7 @@ export function estimateSheafConsistencyCechProxy(
 	const firstRegionSections = sheaf.get(regions[0]) || [];
 
 	firstRegionSections.forEach((section) => {
-		const localData = section.local_data as any;
+		const localData = section.local_data;
 		const sentiment = localData?.sentiment;
 		const category = localData?.category;
 
@@ -233,7 +233,7 @@ export function estimateSheafConsistencyCechProxy(
 		for (let i = 1; i < regions.length; i++) {
 			const otherRegionSections = sheaf.get(regions[i]) || [];
 			const matchingSections = otherRegionSections.filter((s) => {
-				const sLocalData = s.local_data as any;
+				const sLocalData = s.local_data;
 				return sLocalData?.sentiment === sentiment && sLocalData?.category === category;
 			});
 
@@ -254,7 +254,7 @@ export function estimateSheafConsistencyCechProxy(
 			H0.push({
 				region: 'global',
 				local_data: {
-					...(section.local_data as any),
+					...section.local_data,
 					global_consensus: true,
 					supporting_regions: regions.length
 				},
@@ -278,8 +278,8 @@ export function estimateSheafConsistencyCechProxy(
 			// Check for sentiment conflicts on same category
 			sections1.forEach((s1) => {
 				sections2.forEach((s2) => {
-					const s1Data = s1.local_data as any;
-					const s2Data = s2.local_data as any;
+					const s1Data = s1.local_data;
+					const s2Data = s2.local_data;
 					if (s1Data.category === s2Data.category && s1Data.sentiment !== s2Data.sentiment) {
 						H1.push({
 							type: 'sentiment_conflict',
@@ -410,7 +410,7 @@ export async function storeFusionResults(
 			consensusEntropy,
 			qualityMetrics: fusionResult.quality_metrics
 		});
-	} catch (_error) {
+	} catch {
 		// Silently handle database errors in development
 	}
 }

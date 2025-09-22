@@ -88,14 +88,14 @@ export const GET: RequestHandler = async ({ params }) => {
 			})),
 			recommendations: generateRecommendations(metrics, viralCoefficient)
 		});
-	} catch (_error) {
-		console.error('Cascade analysis failed:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to analyze template cascade',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

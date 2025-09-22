@@ -34,7 +34,7 @@ export type {
 	ApiResponse,
 	AnalyticsEventCreate as AnalyticsEvent,
 	EnrichedAnalyticsEvent,
-	AddressUpdateRequest,
+	Address,
 	ProfileUpdateRequest
 } from './api';
 export type { ApiError, ErrorType, AppError } from './errors';
@@ -48,7 +48,7 @@ export type {
 	PrismaUserForEmail
 } from './user';
 export { toEmailServiceUser } from './user';
-export type { Jurisdiction, Office, JurisdictionType, TemplateScope } from './jurisdiction';
+export type { Jurisdiction, Office, Jurisdiction, TemplateScope } from './jurisdiction';
 export type { NormalizedAddress, GeoFence } from './location';
 export type { ModalScrollState } from './modal';
 export type { PopoverSlots, TriggerAction } from './popover';

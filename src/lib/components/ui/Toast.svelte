@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 	import { CheckCircle, XCircle, AlertTriangle, Info, X } from '@lucide/svelte';
 
 	interface Props {

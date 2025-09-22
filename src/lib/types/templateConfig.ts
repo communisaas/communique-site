@@ -103,7 +103,7 @@ export interface TemplateAnalytics {
 export interface UserActivation {
 	user_id: string;
 	template_id: string;
-	source_user_id?: string; // Functor arrow source
+	sourceuser_id?: string; // Functor arrow source
 	activation_generation: number; // Category theory morphism depth
 	activation_method: 'share' | 'view' | 'referral' | 'discovery';
 	timestamp: Date;

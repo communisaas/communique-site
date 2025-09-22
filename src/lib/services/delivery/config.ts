@@ -63,17 +63,17 @@ interface AppConfig {
 }
 
 // Helper function to ensure type safety for environment variables
-function getEnvVar(key: keyof NodeJS.ProcessEnv, defaultValue: string = ''): string {
+function _getEnvVar(key: keyof NodeJS.ProcessEnv, defaultValue: string = ''): string {
 	return process.env[key] ?? defaultValue;
 }
 
-function getEnvVarAsNumber(key: keyof NodeJS.ProcessEnv, defaultValue: number): number {
+function _getEnvVarAsNumber(key: keyof NodeJS.ProcessEnv, defaultValue: number): number {
 	const value = process.env[key];
 	const parsed = value ? parseInt(value, 10) : defaultValue;
 	return isNaN(parsed) ? defaultValue : parsed;
 }
 
-function getEnvVarAsBoolean(key: keyof NodeJS.ProcessEnv): boolean {
+function _getEnvVarAsBoolean(key: keyof NodeJS.ProcessEnv): boolean {
 	return process.env[key] === 'true';
 }
 

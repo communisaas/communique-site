@@ -59,8 +59,16 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				...dbTemplate,
 				...template,
 				// Use corrected content if available from verification fields on template
-				subject: dbTemplate.corrected_subject || verification?.corrections?.subject || template.subject || dbTemplate.subject,
-				body: dbTemplate.corrected_body || verification?.corrections?.body || template.body || dbTemplate.message_body
+				subject:
+					dbTemplate.corrected_subject ||
+					verification?.corrections?.subject ||
+					template.subject ||
+					dbTemplate.subject,
+				body:
+					dbTemplate.corrected_body ||
+					verification?.corrections?.body ||
+					template.body ||
+					dbTemplate.message_body
 			};
 		}
 
@@ -82,15 +90,23 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			// Look up representatives based on zip code
 			const { addressLookup } = await import('$lib/core/congress/address-lookup');
 			const reps = await addressLookup(user.zip);
-			targetRecipients = reps.map((rep: any) => ({
-				bioguideId: rep.bioguideId,
-				name: rep.name,
-				chamber: rep.role.includes('Senator') ? 'senate' : 'house',
-				officeCode: rep.bioguideId,
-				state: rep.state,
-				district: rep.district || '00',
-				party: rep.party
-			}));
+			targetRecipients = reps.map(
+				(rep: {
+					bioguideId: string;
+					name: string;
+					role: string;
+					state: string;
+					district?: string;
+				}) => ({
+					bioguideId: rep.bioguideId,
+					name: rep.name,
+					chamber: rep.role.includes('Senator') ? 'senate' : 'house',
+					officeCode: rep.bioguideId,
+					state: rep.state,
+					district: rep.district || '00',
+					party: rep.party
+				})
+			);
 		}
 
 		if (targetRecipients.length === 0) {
@@ -152,11 +168,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						error: result.error || 'Submission failed'
 					});
 				}
-			} catch (_error: unknown) {
-				console.error('Error:', _error);
+			} catch (err) {
+				console.error('Error occurred');
 				errors.push({
 					recipient: recipient.name,
-					error: _error instanceof Error ? _error.message : 'Unknown error'
+					error: err instanceof Error ? err.message : 'Unknown error'
 				});
 			}
 		}
@@ -192,13 +208,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		return json(response);
-	} catch (_error: unknown) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'CWC submission failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

@@ -31,15 +31,15 @@ export function swipe(node: HTMLElement, options: SwipeOptions = {}) {
 	let startY = 0;
 	let startTime = 0;
 
-	function handleTouchStart(event: TouchEvent) {
-		const touch = event.touches[0];
+	function handleTouchStart(_event: TouchEvent) {
+		const touch = _event.touches[0];
 		startX = touch.clientX;
 		startY = touch.clientY;
 		startTime = Date.now();
 	}
 
-	function handleTouchEnd(event: TouchEvent) {
-		const touch = event.changedTouches[0];
+	function handleTouchEnd(_event: TouchEvent) {
+		const touch = _event.changedTouches[0];
 		const endX = touch.clientX;
 		const endY = touch.clientY;
 		const endTime = Date.now();
@@ -92,8 +92,8 @@ export function pan(node: HTMLElement, options: PanOptions = {}) {
 	let startY = 0;
 	let isPanning = false;
 
-	function handleTouchStart(event: TouchEvent) {
-		const touch = event.touches[0];
+	function handleTouchStart(_event: TouchEvent) {
+		const touch = _event.touches[0];
 		startX = touch.clientX;
 		startY = touch.clientY;
 		isPanning = true;
@@ -101,10 +101,10 @@ export function pan(node: HTMLElement, options: PanOptions = {}) {
 		onPanStart?.({ x: startX, y: startY });
 	}
 
-	function handleTouchMove(event: TouchEvent) {
+	function handleTouchMove(_event: TouchEvent) {
 		if (!isPanning) return;
 
-		const touch = event.touches[0];
+		const touch = _event.touches[0];
 		const currentX = touch.clientX;
 		const currentY = touch.clientY;
 
@@ -178,24 +178,24 @@ export function pullToRefresh(node: HTMLElement, onRefresh: () => Promise<void>)
 
 	const threshold = 100; // Pixels to pull before triggering refresh
 
-	function handleTouchStart(event: TouchEvent) {
+	function handleTouchStart(_event: TouchEvent) {
 		if (node.scrollTop === 0) {
-			const touch = event.touches[0];
+			const touch = _event.touches[0];
 			startY = touch.clientY;
 			isPulling = true;
 			refreshTriggered = false;
 		}
 	}
 
-	function handleTouchMove(event: TouchEvent) {
+	function handleTouchMove(_event: TouchEvent) {
 		if (!isPulling) return;
 
-		const touch = event.touches[0];
+		const touch = _event.touches[0];
 		currentY = touch.clientY;
 		const deltaY = currentY - startY;
 
 		if (deltaY > 0 && node.scrollTop === 0) {
-			event.preventDefault();
+			_event.preventDefault();
 
 			// Visual feedback
 			const pullDistance = Math.min(deltaY, threshold * 1.5);

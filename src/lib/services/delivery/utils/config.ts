@@ -102,7 +102,7 @@ class ConfigManager {
 			} catch (_error) {
 				if (_error instanceof z.ZodError) {
 					console.error('Environment configuration error:');
-					_error.errors.forEach((err) => {
+					_error.errors.forEach((err: z.ZodIssue) => {
 						console.error(`  - ${err.path.join('.')}: ${err.message}`);
 					});
 					throw new Error('Invalid environment configuration');

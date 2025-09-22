@@ -11,15 +11,19 @@ declare global {
 			trackTemplateView?: (templateId: string, source?: string) => void;
 			trackOnboardingStarted?: (templateId: string) => void;
 			trackSocialShare?: (templateId: string, platform: string) => void;
-			trackInteraction?: (element: string, action: string, properties?: Record<string, unknown>) => void;
+			trackInteraction?: (
+				element: string,
+				action: string,
+				properties?: Record<string, unknown>
+			) => void;
 		};
 	}
 
 	// Playwright test global types
 	namespace globalThis {
-		var expect: any;
-		var test: any;
-		var describe: any;
+		let expect: typeof import('@playwright/test').expect;
+		let test: typeof import('@playwright/test').test;
+		let describe: (name: string, fn: () => void) => void;
 	}
 }
 

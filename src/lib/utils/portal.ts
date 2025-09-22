@@ -1,11 +1,11 @@
 /**
  * Portal utilities for rendering components outside their normal DOM hierarchy
- * 
+ *
  * This solves transform context issues by rendering floating elements directly
  * to document.body, escaping any transformed ancestors.
  */
 
-import { tick } from 'svelte';
+import { tick as _tick } from 'svelte';
 
 export interface PortalTarget {
 	element: HTMLElement;
@@ -17,11 +17,11 @@ export interface PortalTarget {
  */
 export function createPortal(id?: string): PortalTarget {
 	const element = document.createElement('div');
-	
+
 	if (id) {
 		element.id = id;
 	}
-	
+
 	// Style the portal container
 	element.style.cssText = `
 		position: absolute;
@@ -29,16 +29,16 @@ export function createPortal(id?: string): PortalTarget {
 		left: 0;
 		z-index: 9999;
 	`;
-	
+
 	// Add to body
 	document.body.appendChild(element);
-	
+
 	const cleanup = () => {
 		if (element.parentNode) {
 			element.parentNode.removeChild(element);
 		}
 	};
-	
+
 	return { element, cleanup };
 }
 
@@ -50,7 +50,7 @@ export function portal(node: HTMLElement, target?: HTMLElement | string) {
 	let portalTarget: HTMLElement;
 	let originalParent: HTMLElement | null = null;
 	let originalNextSibling: Node | null = null;
-	
+
 	function mount() {
 		// Determine target
 		if (typeof target === 'string') {
@@ -60,15 +60,15 @@ export function portal(node: HTMLElement, target?: HTMLElement | string) {
 		} else {
 			portalTarget = document.body;
 		}
-		
+
 		// Store original position
 		originalParent = node.parentElement;
 		originalNextSibling = node.nextSibling;
-		
+
 		// Move to portal target
 		portalTarget.appendChild(node);
 	}
-	
+
 	function unmount() {
 		// Restore original position
 		if (originalParent) {
@@ -79,12 +79,12 @@ export function portal(node: HTMLElement, target?: HTMLElement | string) {
 			}
 		}
 	}
-	
+
 	// Mount immediately if in browser
 	if (typeof document !== 'undefined') {
 		mount();
 	}
-	
+
 	return {
 		update(newTarget?: HTMLElement | string) {
 			if (newTarget !== target) {
@@ -101,18 +101,18 @@ export function portal(node: HTMLElement, target?: HTMLElement | string) {
 
 /**
  * Svelte 5 compatible portal using runes
- * 
+ *
  * Usage in component:
  * ```
  * let portalContainer: HTMLElement;
- * 
+ *
  * onMount(() => {
  *   const portal = createPortal('my-tooltip-portal');
  *   portalContainer = portal.element;
- *   
+ *
  *   return portal.cleanup;
  * });
- * 
+ *
  * {#if portalContainer}
  *   <div bind:this={tooltipElement} style="position: fixed; ...">
  *     Tooltip content
@@ -122,21 +122,21 @@ export function portal(node: HTMLElement, target?: HTMLElement | string) {
  */
 export class PortalManager {
 	private portals = new Map<string, PortalTarget>();
-	
+
 	/**
 	 * Get or create a portal with the given ID
 	 */
 	getPortal(id: string): PortalTarget {
 		let portal = this.portals.get(id);
-		
+
 		if (!portal) {
 			portal = createPortal(id);
 			this.portals.set(id, portal);
 		}
-		
+
 		return portal;
 	}
-	
+
 	/**
 	 * Remove a portal
 	 */
@@ -147,7 +147,7 @@ export class PortalManager {
 			this.portals.delete(id);
 		}
 	}
-	
+
 	/**
 	 * Clean up all portals
 	 */
@@ -164,7 +164,7 @@ export const portalManager = new PortalManager();
 
 /**
  * Render component content to a portal
- * 
+ *
  * This is a simpler alternative to the portal action for cases where
  * you want to conditionally render to a portal target.
  */
@@ -176,14 +176,14 @@ export function renderToPortal(
 	if (!shouldPortal) {
 		return () => {}; // No-op if not portaling
 	}
-	
+
 	const portal = portalManager.getPortal(portalId);
 	const originalParent = sourceElement.parentElement;
 	const originalNextSibling = sourceElement.nextSibling;
-	
+
 	// Move to portal
 	portal.element.appendChild(sourceElement);
-	
+
 	// Return cleanup function
 	return () => {
 		if (originalParent) {

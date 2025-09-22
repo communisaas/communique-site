@@ -1,7 +1,7 @@
 import type { LayoutServerLoad } from './$types';
 import { redirect } from '@sveltejs/kit';
 
-export const load: LayoutServerLoad = async ({ locals }) => {
+export const load: LayoutServerLoad = async ({ _locals }) => {
 	// Check if user is authenticated
 	if (!locals.user) {
 		throw redirect(302, '/');

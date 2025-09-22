@@ -1,6 +1,6 @@
 /**
  * COMPREHENSIVE API RESPONSE INTERFACES
- * 
+ *
  * Standardized response types for consistent API design across all endpoints
  */
 
@@ -145,7 +145,11 @@ export function createSuccessResponse<T>(data?: T, message?: string): SuccessRes
 	};
 }
 
-export function createErrorResponse(error: string, details?: unknown, code?: string): ErrorResponse {
+export function createErrorResponse(
+	error: string,
+	details?: unknown,
+	code?: string
+): ErrorResponse {
 	return {
 		success: false,
 		error,

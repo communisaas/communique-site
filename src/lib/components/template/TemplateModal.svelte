@@ -1,36 +1,41 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-	import { browser } from '$app/environment';
+	// import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import { fade, fly, scale, slide } from 'svelte/transition';
-	import { quintOut, backOut, elasticOut } from 'svelte/easing';
+	import { fade, _fly, scale, _slide } from 'svelte/transition';
+	import { quintOut, backOut, _elasticOut } from 'svelte/easing';
 	import { spring } from 'svelte/motion';
 	import { page } from '$app/stores';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 	import {
 		X,
 		Send,
-		Users,
-		Eye,
-		Share2,
+		Users as _Users,
+		Eye as _Eye,
+		Share2 as _Share2,
 		Copy,
 		CheckCircle2,
 		ExternalLink,
-		Sparkles,
+		Sparkles as _Sparkles,
 		ArrowRight,
-		Heart,
-		Trophy,
-		Flame
+		Heart as _Heart,
+		Trophy as _Trophy,
+		Flame as _Flame
 	} from '@lucide/svelte';
-	import TemplateMeta from '$lib/components/template/TemplateMeta.svelte';
-	import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
+	// import TemplateMeta from '$lib/components/template/TemplateMeta.svelte';
+	// import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { guestState } from '$lib/stores/guestState.svelte';
-	import { modalActions, modalState, isModalOpen } from '$lib/stores/modalSystem.svelte';
+	// import { guestState } from '$lib/stores/guestState.svelte';
+	import {
+		modalActions,
+		modalState as _modalState,
+		isModalOpen as _isModalOpen
+	} from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
-	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
+	// import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import SubmissionStatus from '$lib/components/submission/SubmissionStatus.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
+	import type { Template } from '$lib/types/template';
 
 	let {
 		template,
@@ -52,7 +57,7 @@
 	const currentState = $derived(modalActions.modalState);
 
 	let showCopied = $state(false);
-	let showShareMenu = $state(false);
+	let _showShareMenu = $state(false);
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 	let celebrationScale = spring(1, { stiffness: 0.3, damping: 0.6 });
 	let submissionId = $state<string | null>(null);
@@ -100,7 +105,7 @@
 		dispatch('close');
 	}
 
-	async function handleUnifiedEmailFlow(skipNavigation = false) {
+	async function handleUnifiedEmailFlow(_skipNavigation: boolean = false) {
 		modalActions.setState('loading');
 
 		// Reset and animate progress bar
@@ -118,7 +123,7 @@
 
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
-		const flow = analyzeEmailFlow(template as any, currentUser);
+		const flow = analyzeEmailFlow(template as Template, currentUser);
 
 		// Store mailto URL for later use
 		if (flow.mailtoUrl) {
@@ -272,7 +277,7 @@
 						submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 					}
 				} catch (_error) {
-					console.error('Failed to start agent processing:', _error);
+					console.error('Failed to start agent processing:', error);
 					// Fallback - generate client-side ID
 					submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 				}
@@ -365,7 +370,7 @@
 				componentId
 			);
 		} catch (_error) {
-			console.warn('Copy failed:', _error);
+			console.warn('Copy failed:', error);
 		}
 	}
 
@@ -382,20 +387,15 @@
 
 		window.open(urls[platform], '_blank', 'width=600,height=400');
 
-		showShareMenu = false;
+		_showShareMenu = false;
 	}
 </script>
 
 <!-- Modal Content (no backdrop - UnifiedModal handles that) -->
 <div
 	class="flex max-h-[90vh] w-full flex-col overflow-hidden"
-	onclick={(e) => {
-		e.stopPropagation();
-	}}
-	onkeydown={(e) => {
-		e.stopPropagation();
-	}}
 	role="document"
+	tabindex="-1"
 	in:scale={{ duration: 300, start: 0.9, easing: backOut }}
 	out:scale={{ duration: 200, start: 1, easing: quintOut }}
 >

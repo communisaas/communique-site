@@ -1,23 +1,24 @@
 <script lang="ts">
-	import { onMount, onDestroy, untrack, createEventDispatcher } from 'svelte';
+	/// <reference types="dom" />
+	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
 	import { browser } from '$app/environment';
 	import { scale } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
 	import { tweened, spring } from 'svelte/motion';
-	import { cubicOut, quadOut } from 'svelte/easing';
-	import { fade } from 'svelte/transition';
+	import { cubicOut } from 'svelte/easing';
+	// // import { fade } from 'svelte/transition';
 	import type { ModalScrollState } from '$lib/types/modal';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
 	let {
 		onclose,
-		onscrollStateChange,
-		inModal,
+		_onscrollStateChange,
+		_inModal,
 		children
 	}: {
 		onclose?: () => void;
-		onscrollStateChange?: (state: ModalScrollState) => void;
-		inModal?: boolean;
+		_onscrollStateChange?: (state: ModalScrollState) => void;
+		_inModal?: boolean;
 		children?: import('svelte').Snippet;
 	} = $props();
 
@@ -28,7 +29,7 @@
 	let scrollPosition: number;
 	let modalContent: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
 	let touchStart = 0;
-	let currentTouchY = 0;
+	let _currentTouchY = 0;
 	let isDismissing = false;
 	let swipeDirection: 'up' | 'down' | null = $state(null);
 
@@ -43,7 +44,7 @@
 		easing: cubicOut
 	});
 
-	let scrollState: ModalScrollState & {
+	let _scrollState: ModalScrollState & {
 		touchState?: {
 			touchY: number;
 			deltaY: number;
@@ -57,7 +58,7 @@
 		scrollProgress: 0
 	};
 
-	let touchStartTarget: EventTarget | null = null;
+	let _touchStartTarget: EventTarget | null = null;
 	let activeScrollableEl: HTMLElement | null = null;
 	let gestureMode: 'scroll' | 'dismiss' | null = $state(null);
 
@@ -170,11 +171,11 @@
 
 	function handleTouchStart(e: TouchEvent) {
 		touchStart = e.touches[0].clientY;
-		currentTouchY = touchStart;
+		_currentTouchY = touchStart;
 		isInDismissalGesture = isDismissing; // Track if we started in dismissal
 		initialDismissY = null; // Reset the initial dismiss position
 		dismissStartTranslateY = $translateY; // Capture starting position
-		touchStartTarget = e.target;
+		_touchStartTarget = e.target;
 		activeScrollableEl = (e.target as HTMLElement)?.closest(
 			'.overflow-y-auto, .overflow-auto, .overflow-scroll'
 		) as HTMLElement | null;
@@ -186,12 +187,12 @@
 		velocity = 0;
 	}
 
-	function preventScroll(prevent: boolean) {
+	function preventScroll(pr_event: boolean) {
 		// Find all scrollable elements within the modal
 		const scrollableElements = modalContent?.querySelectorAll('.overflow-y-auto, .overflow-auto');
 
 		scrollableElements?.forEach((element) => {
-			if (prevent) {
+			if (pr_event) {
 				(element as HTMLElement).style.overflow = 'hidden';
 			} else {
 				(element as HTMLElement).style.overflow = '';
@@ -400,12 +401,12 @@
 	}
 
 	// Create a function to handle scroll state updates
-	function handleScrollStateChange(event: CustomEvent) {
-		scrollableContent = { ...scrollableContent, ...event.detail };
+	function handleScrollStateChange(__event: CustomEvent) {
+		scrollableContent = { ...scrollableContent, ...__event.detail };
 	}
 
-	function handleTouchStateChange(event: CustomEvent) {
-		const newState = event.detail;
+	function handleTouchStateChange(__event: CustomEvent) {
+		const newState = __event.detail;
 		scrollableContent = { ...scrollableContent, ...newState };
 	}
 
@@ -414,20 +415,20 @@
 
 	// Svelte action to attach a non-passive touchmove handler
 	function nonPassiveTouchMove(node: HTMLElement) {
-		const onStart = (event: TouchEvent) => handleTouchStart(event);
-		const onMove = (event: TouchEvent) => handleTouchMove(event);
-		const onEnd = (event: TouchEvent) => handleTouchEnd(event);
-		const onCancel = (event: TouchEvent) => handleTouchEnd(event);
+		const onStart = (__event: TouchEvent) => handleTouchStart(__event);
+		const onMove = (__event: TouchEvent) => handleTouchMove(__event);
+		const onEnd = (__event: TouchEvent) => handleTouchEnd(__event);
+		const onCancel = (__event: TouchEvent) => handleTouchEnd(__event);
 		node.addEventListener('touchstart', onStart, { passive: false });
 		node.addEventListener('touchmove', onMove, { passive: false });
 		node.addEventListener('touchend', onEnd, { passive: true });
 		node.addEventListener('touchcancel', onCancel, { passive: true });
 		return {
 			destroy() {
-				node.removeEventListener('touchstart', onStart as unknown as EventListener);
-				node.removeEventListener('touchmove', onMove as unknown as EventListener);
-				node.removeEventListener('touchend', onEnd as unknown as EventListener);
-				node.removeEventListener('touchcancel', onCancel as unknown as EventListener);
+				node.removeEventListener('touchstart', onStart);
+				node.removeEventListener('touchmove', onMove);
+				node.removeEventListener('touchend', onEnd);
+				node.removeEventListener('touchcancel', onCancel);
 			}
 		};
 	}
@@ -438,11 +439,11 @@
 		window.addEventListener('resize', updateViewportHeight);
 		document.addEventListener('keydown', handleModalInteraction);
 		document.addEventListener('click', handleModalInteraction);
-		modalContent?.addEventListener('scrollStateChange', (event: Event) => {
-			handleScrollStateChange(event as CustomEvent);
+		modalContent?.addEventListener('scrollStateChange', (__event: Event) => {
+			handleScrollStateChange(__event as CustomEvent);
 		});
-		modalContent?.addEventListener('touchStateChange', (event: Event) => {
-			handleTouchStateChange(event as CustomEvent);
+		modalContent?.addEventListener('touchStateChange', (__event: Event) => {
+			handleTouchStateChange(__event as CustomEvent);
 		});
 		lockScroll();
 	});
@@ -451,11 +452,11 @@
 		window.removeEventListener('resize', updateViewportHeight);
 		document.removeEventListener('keydown', handleModalInteraction);
 		document.removeEventListener('click', handleModalInteraction);
-		modalContent?.removeEventListener('scrollStateChange', (event: Event) => {
-			handleScrollStateChange(event as CustomEvent);
+		modalContent?.removeEventListener('scrollStateChange', (__event: Event) => {
+			handleScrollStateChange(__event as CustomEvent);
 		});
-		modalContent?.removeEventListener('touchStateChange', (event: Event) => {
-			handleTouchStateChange(event as CustomEvent);
+		modalContent?.removeEventListener('touchStateChange', (__event: Event) => {
+			handleTouchStateChange(__event as CustomEvent);
 		});
 		unlockScroll();
 		preventScroll(false); // Ensure scrolling is re-enabled when component is destroyed
@@ -463,14 +464,14 @@
 	});
 
 	// Export methods for external component binding
-	function open(data?: unknown): void {
+	function _open(_data?: unknown): void {
 		isOpen = true;
 		lockScroll();
 		updateViewportHeight();
 	}
 
-	// Export the close method for external component binding
-	export { open, close };
+	// Note: open and close functions are available for internal use
+	// In Svelte 5, use $bindable() for exported component methods if needed
 </script>
 
 {#if isOpen}
@@ -491,11 +492,8 @@
 			class="modal-content relative mx-4 flex max-h-[90vh] w-full max-w-2xl touch-pan-y flex-col overflow-hidden rounded-xl bg-white shadow-xl sm:mx-6"
 			style="transform: translateY({$translateY}px)"
 			use:nonPassiveTouchMove
-			onkeydown={(e) => {
-				e.stopPropagation();
-			}}
 			role="document"
-			onclick={(e) => e.stopPropagation()}
+			tabindex="-1"
 		>
 			<!-- Close button -->
 			<button

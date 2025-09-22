@@ -242,7 +242,7 @@ export function findNetworkBottlenecks(nodes: NetworkNode[], edges: NetworkEdge[
 	const sink = sortedNodes[sortedNodes.length - 1].user_id;
 
 	// Run max flow algorithm to find min cut
-	const { maxFlow, minCutEdges } = maxFlowMinCut(source, sink, edges);
+	const { maxFlow: _maxFlow, minCutEdges } = maxFlowMinCut(source, sink, edges);
 
 	return minCutEdges;
 }
@@ -429,7 +429,7 @@ export async function storeCascadeAnalysis(analysis: CascadeAnalysis): Promise<v
 				}
 			}
 		});
-	} catch (_error) {
+	} catch {
 		// Silently handle database errors in development
 	}
 }

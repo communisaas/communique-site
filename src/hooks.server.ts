@@ -56,9 +56,9 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		event.locals.session = session;
 
 		return resolve(event);
-	} catch (error) {
+	} catch {
 		// If authentication fails for any reason, clear session and continue
-		console.error('Authentication error:', error);
+		console.error('Error occurred');
 		event.locals.user = null;
 		event.locals.session = null;
 		// Clear the session cookie on error

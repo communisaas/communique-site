@@ -2,7 +2,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import type { AnalyticsEvent } from '$lib/types/analytics.ts';
+	import type { AnalyticsProperties } from '$lib/types/any-replacements.js';
 
 	interface CascadeMetrics {
 		r0: number;
@@ -40,13 +40,13 @@
 	let viewStartTime = Date.now();
 
 	// Analytics tracking function using new consolidated schema
-	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+	async function trackAnalyticsEvent(_eventName: string, properties: AnalyticsProperties) {
 		try {
 			await fetch('/api/analytics/events', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name: eventName,
+					name: _eventName,
 					event_type: 'interaction',
 					template_id: templateId,
 					properties: {
@@ -57,14 +57,14 @@
 					}
 				})
 			});
-		} catch (error) {
-			console.warn('Analytics tracking failed:', error);
+		} catch (trackingError) {
+			console.warn('Analytics tracking failed:', trackingError);
 		}
 	}
 
 	onMount(async () => {
 		await loadCascadeAnalysis();
-		
+
 		// Track cascade analytics view
 		await trackAnalyticsEvent('cascade_analytics_view', {
 			analysis_type: 'epidemiological_cascade'
@@ -76,12 +76,14 @@
 		const sessionDuration = Date.now() - viewStartTime;
 		await trackAnalyticsEvent('cascade_analytics_session_end', {
 			session_duration_ms: sessionDuration,
-			final_metrics: summary ? {
-				r0: metrics?.r0,
-				viral_coefficient: summary.viral_coefficient,
-				total_activations: summary.total_activations,
-				viral_status: summary.viral_status
-			} : null
+			final_metrics: summary
+				? {
+						r0: metrics?.r0,
+						viral_coefficient: summary.viral_coefficient,
+						total_activations: summary.total_activations,
+						viral_status: summary.viral_status
+					}
+				: null
 		});
 	});
 
@@ -103,9 +105,9 @@
 			} else {
 				error = data.error || 'Failed to load cascade analysis';
 			}
-		} catch (_error) {
+		} catch (err) {
 			error = 'Network error loading cascade analysis';
-			console.error('Cascade analysis error:', _error);
+			console.error('Cascade analysis error:', err);
 		} finally {
 			loading = false;
 		}

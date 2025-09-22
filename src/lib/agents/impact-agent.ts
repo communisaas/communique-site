@@ -10,7 +10,8 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
-import { db, prisma } from '$lib/core/db';
+import type { UnknownRecord } from '$lib/types/any-replacements';
+import { db } from '$lib/core/db';
 
 export interface ImpactAssessment {
 	templateId: string;
@@ -76,7 +77,7 @@ export class ImpactAgent extends BaseAgent {
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {
 		try {
 			// Get template impact data
-			const impactAssessment = await this.assessTemplateImpact(
+			const _impactAssessment = await this.assessTemplateImpact(
 				context.templateId!,
 				context.timestamp
 			);
@@ -118,12 +119,12 @@ export class ImpactAgent extends BaseAgent {
 				this.generateImpactReasoning(assessment, outcomes),
 				{ templateId: context.templateId, impactDetected: impactScore > 0 }
 			);
-		} catch (_error) {
-			console.error('ImpactAgent decision error:', _error);
+		} catch {
+			console.error('Error occurred');
 			return this.createDecision(
 				{ templateId: context.templateId, impactScore: 0, confidenceLevel: 'low' },
 				0.2,
-				`Error in impact assessment: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
+				`Error in impact assessment: Unknown error`,
 				{ error: true }
 			);
 		}
@@ -131,7 +132,7 @@ export class ImpactAgent extends BaseAgent {
 
 	private async assessTemplateImpact(
 		templateId: string,
-		timestamp?: string
+		_timestamp?: string
 	): Promise<ImpactAssessment> {
 		// Get template content for matching
 		const template = await db.template.findUnique({
@@ -149,7 +150,7 @@ export class ImpactAgent extends BaseAgent {
 		}
 
 		// Get usage statistics
-		const usageCount = await db.template.count({
+		const _usageCount = await db.template.count({
 			where: {
 				id: templateId
 			}
@@ -217,9 +218,10 @@ export class ImpactAgent extends BaseAgent {
 		// Build causal chains based on timing and content
 		for (const outcome of outcomes) {
 			const relevantActions = actions.filter(
-				(action: any) =>
-					outcome.timestamp > action.created_at &&
-					outcome.timestamp.getTime() - action.created_at.getTime() < 30 * 24 * 60 * 60 * 1000 // 30 days
+				(action: UnknownRecord) =>
+					outcome.timestamp > (action.created_at as Date) &&
+					outcome.timestamp.getTime() - (action.created_at as Date).getTime() <
+						30 * 24 * 60 * 60 * 1000 // 30 days
 			);
 
 			if (relevantActions.length > 0) {
@@ -347,7 +349,7 @@ export class ImpactAgent extends BaseAgent {
 
 	private async mockLegislativeTracking(
 		keyPhrases: string[],
-		templateId: string
+		_templateId: string
 	): Promise<LegislativeOutcome[]> {
 		// Mock legislative outcomes - in production would be real API calls
 		const outcomes: LegislativeOutcome[] = [];
@@ -389,7 +391,7 @@ export class ImpactAgent extends BaseAgent {
 		return outcomes;
 	}
 
-	private generateMockLegislativeOutcomes(keyPhrases: string[]): LegislativeOutcome[] {
+	private generateMockLegislativeOutcomes(_keyPhrases: string[]): LegislativeOutcome[] {
 		// Simulate legislative monitoring results
 		return []; // Will be filled by mockLegislativeTracking
 	}
@@ -411,14 +413,14 @@ export class ImpactAgent extends BaseAgent {
 		);
 	}
 
-	private formatDateRange(actions: any[]): string {
+	private formatDateRange(actions: UnknownRecord[]): string {
 		if (actions.length === 0) return '';
-		const earliest = new Date(Math.min(...actions.map((a) => a.created_at.getTime())));
-		const latest = new Date(Math.max(...actions.map((a) => a.created_at.getTime())));
+		const earliest = new Date(Math.min(...actions.map((a) => (a.created_at as Date).getTime())));
+		const latest = new Date(Math.max(...actions.map((a) => (a.created_at as Date).getTime())));
 		return `${earliest.toLocaleDateString()} - ${latest.toLocaleDateString()}`;
 	}
 
-	private assessDecisionConfidence(assessment: ImpactAssessment, context: AgentContext): number {
+	private assessDecisionConfidence(assessment: ImpactAssessment, _context: AgentContext): number {
 		let confidence = 0.5; // Base confidence
 
 		// Higher confidence with more outcomes

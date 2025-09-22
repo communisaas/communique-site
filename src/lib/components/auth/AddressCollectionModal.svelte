@@ -36,7 +36,7 @@
 	}>();
 
 	let currentStep = $state<'collect' | 'verify' | 'complete'>('collect');
-	let isTransitioning = $state(false);
+	let _isTransitioning = $state(false);
 
 	// Prevent background scrolling when modal is open
 	onMount(() => {
@@ -113,7 +113,7 @@
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';
 			}
-		} catch (error) {
+		} catch {
 			addressError = 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;
@@ -124,7 +124,9 @@
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
-			representatives: verificationResult?.representatives as Array<Record<string, unknown>> | undefined
+			representatives: verificationResult?.representatives as
+				| Array<Record<string, unknown>>
+				| undefined
 		});
 	}
 
@@ -141,9 +143,9 @@
 		});
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
-			event.preventDefault();
+	function _handleKeydown(_event: KeyboardEvent) {
+		if (_event.key === 'Enter' && !_event.shiftKey) {
+			_event.preventDefault();
 			if (currentStep === 'collect') {
 				verifyAddress();
 			} else if (currentStep === 'verify') {
@@ -156,14 +158,20 @@
 <div
 	class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
 	onclick={handleClose}
+	onkeydown={(e) => {
+		if (e.key === 'Escape') handleClose();
+	}}
+	role="dialog"
+	aria-modal="true"
+	tabindex="0"
 	in:fade={{ duration: 300, easing: quintOut }}
 	out:fade={{ duration: 200 }}
 >
 	<div
 		class="fixed inset-x-4 top-1/2 mx-auto max-w-md -translate-y-1/2 transform overflow-hidden rounded-2xl bg-white shadow-2xl"
-		onclick={(e) => {
-			e.stopPropagation();
-		}}
+		role="document"
+		aria-labelledby="modal-title"
+		tabindex="-1"
 		in:scale={{
 			duration: 400,
 			easing: backOut,
@@ -187,14 +195,14 @@
 		<!-- Progress Indicator -->
 		<div class="flex justify-center pb-4 pt-6">
 			<div class="flex gap-2">
-				{#each ['collect', 'verify', 'complete'] as step, i}
+				{#each ['collect', 'verify', 'complete'] as _step, _i}
 					<div
-						class="h-2 rounded-full transition-all duration-500 ease-out {currentStep === step
+						class="h-2 rounded-full transition-all duration-500 ease-out {currentStep === _step
 							? 'w-12 bg-blue-600 shadow-lg shadow-blue-200'
-							: ['collect', 'verify', 'complete'].indexOf(currentStep) > i
+							: ['collect', 'verify', 'complete'].indexOf(currentStep) > _i
 								? 'w-8 bg-blue-300'
 								: 'w-8 bg-slate-200'}"
-					/>
+					></div>
 				{/each}
 			</div>
 		</div>
@@ -206,7 +214,8 @@
 					class="absolute inset-0 p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					onkeydown={handleKeydown}
+					role="main"
+					tabindex="-1"
 				>
 					{#if currentStep === 'collect'}
 						<!-- Address Collection Step -->
@@ -216,7 +225,9 @@
 							>
 								<MapPin class="h-6 w-6 text-blue-600" />
 							</div>
-							<h2 class="mb-2 text-xl font-bold text-slate-900">Find your representatives</h2>
+							<h2 id="modal-title" class="mb-2 text-xl font-bold text-slate-900">
+								Find your representatives
+							</h2>
 							<p class="text-slate-600">
 								We need your address to send "{template.title}" to the right congressional offices
 							</p>
@@ -365,11 +376,10 @@
 							<div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4">
 								<p class="mb-2 font-medium text-slate-900">Your Representatives:</p>
 								<div class="space-y-2">
-									{#each verificationResult.representatives as rep: any}
+									{#each verificationResult.representatives as rep}
 										<div class="flex items-center gap-2 text-sm">
 											<div class="h-2 w-2 rounded-full bg-blue-500"></div>
-											<span class="text-slate-700">{(rep as any).name} ({(rep as any).office})</span
-											>
+											<span class="text-slate-700">{rep.name} ({rep.office})</span>
 										</div>
 									{/each}
 								</div>

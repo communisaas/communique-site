@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount as _onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
@@ -11,7 +11,7 @@
 	let pendingTemplate: { slug: string; title: string } | null = $state(null);
 	let finalReturnUrl = $state('/profile');
 
-	onMount(() => {
+	_onMount(() => {
 		if (browser) {
 			// Check if there's a pending template action
 			const pendingAction = sessionStorage.getItem('pending_template_action');
@@ -20,7 +20,7 @@
 					const actionData = JSON.parse(pendingAction);
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
-				} catch (error) {
+				} catch {
 					console.error('Failed to parse pending action:', error);
 				}
 			}
@@ -44,7 +44,7 @@
 		}
 	});
 
-	async function handleAddressComplete(event: CustomEvent) {
+	async function handleAddressComplete(__event: CustomEvent) {
 		const { address, verified, representatives, district, streetAddress, city, state, zipCode } =
 			event.detail;
 
@@ -78,7 +78,7 @@
 				success = true;
 				toast.success('Address saved successfully!');
 			}
-		} catch (error) {
+		} catch {
 			console.error('Error saving address:', error);
 			const { toast } = await import('$lib/stores/toast.svelte');
 			toast.error('Failed to save address. Please try again.');
@@ -126,13 +126,15 @@
 		<!-- Address Collection Card - Connected to header -->
 		<div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
 			<AddressCollectionForm
-				template={pendingTemplate ? {
-					title: pendingTemplate.title,
-					deliveryMethod: 'certified'
-				} : {
-					title: 'Congressional Message',
-					deliveryMethod: 'certified'
-				}}
+				template={pendingTemplate
+					? {
+							title: pendingTemplate.title,
+							deliveryMethod: 'certified'
+						}
+					: {
+							title: 'Congressional Message',
+							deliveryMethod: 'certified'
+						}}
 				on:complete={handleAddressComplete}
 			/>
 		</div>

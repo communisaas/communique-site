@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
-import type { Representative } from '$lib/types/user';
+import type { Representative as _Representative } from '$lib/types/user';
 
 interface RepresentativeData {
 	bioguide_id: string;
@@ -63,7 +63,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			// 2. Clear existing representatives for this user
-			await tx.user_representatives.deleteMany({
+			await tx.userrepresentatives.deleteMany({
 				where: { user_id: userId }
 			});
 
@@ -114,17 +114,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			// Senate representatives
 			const senators = storedReps.filter((r) => r.chamber === 'senate');
-			senators.forEach((senator, index) => {
+			senators.forEach((senator, _index) => {
 				userRepRelationships.push({
 					user_id: userId,
 					representative_id: senator.id,
-					relationship: index === 0 ? 'senate_senior' : 'senate_junior',
+					relationship: _index === 0 ? 'senate_senior' : 'senate_junior',
 					is_active: true
 				});
 			});
 
 			// Insert all relationships
-			await tx.user_representatives.createMany({
+			await tx.userrepresentatives.createMany({
 				data: userRepRelationships
 			});
 
@@ -141,10 +141,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			message: `Successfully stored ${result.representativesCount} representatives for user`,
 			...result
 		});
-	} catch (_error) {
+	} catch (err) {
 		// Re-throw SvelteKit errors
-		if (_error && typeof _error === 'object' && 'status' in _error) {
-			throw _error;
+		if (error && typeof error === 'object' && 'status' in error) {
+			throw error;
 		}
 
 		throw error(500, 'Failed to store user representatives');
@@ -233,9 +233,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			representatives,
 			totalReps: user.representatives.length
 		});
-	} catch (_error) {
-		if (_error && typeof _error === 'object' && 'status' in _error) {
-			throw _error;
+	} catch (err) {
+		if (error && typeof error === 'object' && 'status' in error) {
+			throw error;
 		}
 
 		throw error(500, 'Failed to fetch user representatives');
@@ -303,9 +303,9 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		return await postHandler({ request: updateRequest, locals } as Parameters<
 			typeof postHandler
 		>[0]);
-	} catch (_error) {
-		if (_error && typeof _error === 'object' && 'status' in _error) {
-			throw _error;
+	} catch (err) {
+		if (error && typeof error === 'object' && 'status' in error) {
+			throw error;
 		}
 
 		throw error(500, 'Failed to refresh user representatives');

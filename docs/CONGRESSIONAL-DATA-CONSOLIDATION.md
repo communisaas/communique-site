@@ -7,17 +7,20 @@ Successfully consolidated congressional data from 3 models to 2 models as part o
 ## Schema Changes
 
 ### Before: 3 Models
+
 1. **`representative`** - Primary political entity model
 2. **`congressional_office`** - Duplicate office-specific data
 3. **`legislative_channel`** - Legislative delivery configuration
 
 ### After: 2 Models
+
 1. **Enhanced `representative`** - Unified political entity with office information
 2. **`legislative_channel`** - Preserved unchanged (different purpose)
 
 ## Enhanced Representative Model
 
 ### New Fields Added
+
 ```prisma
 // === ENHANCED OFFICE INFORMATION (from congressional_office) ===
 member_name               String?                @map("member_name") // From congressional_office (may differ from name)
@@ -37,6 +40,7 @@ source_updated_at         DateTime?              @map("source_updated_at")
 ```
 
 ### Enhanced Indexes
+
 ```prisma
 @@index([state, district])
 @@index([chamber, is_active])
@@ -47,6 +51,7 @@ source_updated_at         DateTime?              @map("source_updated_at")
 ## Migration Strategy
 
 ### 1. Data Migration Requirements
+
 - **Source**: `congressional_office` table data
 - **Target**: Enhanced `representative` model fields
 - **Key Mapping**:
@@ -55,11 +60,12 @@ source_updated_at         DateTime?              @map("source_updated_at")
   - `congressional_office.state/district/party` → Validate against representative data
 
 ### 2. Migration Process
+
 ```sql
 -- Step 1: Add new columns to representative table (via Prisma migration)
 -- Step 2: Migrate data from congressional_office to representative
 UPDATE representative r
-SET 
+SET
   member_name = co.member_name,
   data_source = 'congressional_office_migration',
   source_updated_at = NOW()
@@ -70,6 +76,7 @@ WHERE r.office_code = co.office_code;
 ```
 
 ### 3. Data Conflict Resolution
+
 - **Name vs Member Name**: Keep both fields for flexibility
   - `name`: Formatted display name
   - `member_name`: Official name from congressional office
@@ -77,6 +84,7 @@ WHERE r.office_code = co.office_code;
 - **Missing Data**: Gracefully handle cases where office data doesn't exist
 
 ### 4. Application Updates Required
+
 - **Seeding Scripts**: Update `seed-db-updated.ts` to use enhanced representative model
 - **API Endpoints**: No changes needed - existing representative endpoints remain functional
 - **Type Definitions**: Update TypeScript interfaces if needed
@@ -84,22 +92,26 @@ WHERE r.office_code = co.office_code;
 ## Benefits Achieved
 
 ### 1. Eliminated Data Redundancy
+
 - **Before**: 2 models storing same political entity data
 - **After**: 1 unified model with all political entity information
 - **Result**: Eliminated duplicate storage of representative information
 
 ### 2. Simplified Queries
+
 - **Before**: Required joins between representative and congressional_office
 - **After**: Single table queries for all representative data
 - **Performance**: Reduced query complexity and improved performance
 
 ### 3. Enhanced Data Model
+
 - **Term Information**: Added term tracking for historical analysis
 - **Data Provenance**: Added source tracking for data quality
 - **Office Details**: Integrated office address information
 - **Metadata**: Enhanced last_updated and source tracking
 
 ### 4. Preserved Functionality
+
 - **Address-to-Representative Mapping**: Continues working with enhanced model
 - **User-Representative Relations**: Preserved via user_representatives table
 - **API Compatibility**: Existing endpoints remain functional
@@ -108,12 +120,14 @@ WHERE r.office_code = co.office_code;
 ## Technical Implementation
 
 ### Schema File
+
 - **File**: `/Users/noot/Documents/communique/prisma/schema.prisma`
 - **Lines**: 250-289 (enhanced representative model)
 - **Removed**: Lines 221-230 (congressional_office model)
 - **Preserved**: Lines 545-582 (legislative_channel model)
 
 ### Key Features
+
 1. **Backward Compatibility**: Existing bioguide_id and office_code fields preserved
 2. **Flexible Naming**: Both name and member_name fields for different use cases
 3. **Enhanced Indexing**: Optimized for common query patterns
@@ -123,21 +137,25 @@ WHERE r.office_code = co.office_code;
 ## Critical Success Factors
 
 ### ✅ Data Preservation
+
 - All congressional_office data can be migrated to representative model
 - No loss of political entity information
 - Existing relationships maintained
 
 ### ✅ Lookup Functionality
+
 - Address-to-representative mapping continues working
 - User representative assignments preserved
 - API endpoints remain functional
 
 ### ✅ Legislative Configuration
+
 - legislative_channel model preserved unchanged
 - Delivery configuration functionality intact
 - International support maintained
 
 ### ✅ Breaking Changes Acceptable
+
 - Pre-launch status allows schema changes
 - Database normalization priority
 - Performance optimization focus

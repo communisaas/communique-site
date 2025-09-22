@@ -50,7 +50,7 @@ export function generateEmailVerificationToken(
 /**
  * Verify a signed token and extract payload
  */
-export async function verifySignedToken<T = any>(
+export async function verifySignedToken<T = unknown>(
 	token: string,
 	options: TokenVerificationOptions
 ): Promise<T> {
@@ -62,14 +62,14 @@ export async function verifySignedToken<T = any>(
 		}) as T;
 
 		return decoded;
-	} catch (_error) {
-		if (_error instanceof TokenExpiredError) {
+	} catch (error) {
+		if (error instanceof TokenExpiredError) {
 			throw new Error('Token has expired');
 		}
-		if (_error instanceof JsonWebTokenError) {
+		if (error instanceof JsonWebTokenError) {
 			throw new Error('Invalid token');
 		}
-		throw _error;
+		throw error;
 	}
 }
 
@@ -77,7 +77,7 @@ export async function verifySignedToken<T = any>(
  * Generate a one-time use token for sensitive operations
  * Includes additional entropy for security
  */
-export function generateOneTimeToken(data: Record<string, any>, expiresIn = '1h'): string {
+export function generateOneTimeToken(data: Record<string, unknown>, expiresIn = '1h'): string {
 	const payload = {
 		...data,
 		nonce: globalThis.crypto.randomUUID(),
@@ -89,7 +89,7 @@ export function generateOneTimeToken(data: Record<string, any>, expiresIn = '1h'
 	return sign(payload, secret, {
 		expiresIn,
 		issuer: 'communique.app'
-	} as any);
+	} as jwt.SignOptions);
 }
 
 /**

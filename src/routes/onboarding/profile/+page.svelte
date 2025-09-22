@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount as _onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import DirectOutreachModal from '$lib/components/auth/DirectOutreachModal.svelte';
 	import DirectOutreachCompact from '$lib/components/auth/DirectOutreachCompact.svelte';
@@ -36,7 +36,7 @@
 	const flowTemplate: FlowTemplate = $derived(computeFlowTemplate());
 	let finalReturnUrl = $state('/profile');
 
-	onMount(() => {
+	_onMount(() => {
 		if (browser) {
 			// Check if there's a pending template action
 			const pendingAction = sessionStorage.getItem('pending_template_action');
@@ -45,7 +45,9 @@
 					const actionData = JSON.parse(pendingAction);
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
-				} catch (error) {}
+				} catch {
+					/* Ignore JSON parsing errors - invalid session data */
+				}
 			}
 
 			// Check for return URL from OAuth cookie (fallback to query params for compatibility)
@@ -70,7 +72,7 @@
 		}
 	});
 
-	async function handleProfileComplete(event: CustomEvent) {
+	async function handleProfileComplete(__event: CustomEvent) {
 		const { role, organization, location, connection, connectionDetails } = event.detail;
 
 		try {
@@ -113,7 +115,7 @@
 				// Clean redirect without query parameters
 				window.location.href = finalReturnUrl;
 			}
-		} catch (error) {
+		} catch {
 			// Set OAuth completion info even on error for clean redirect
 			document.cookie = `oauth_completion=${JSON.stringify({
 				provider: 'unknown',

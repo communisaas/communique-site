@@ -1,8 +1,17 @@
 <script lang="ts">
-	import { Check, Clock, AlertTriangle, Info, Shield, Mail, Trophy, Star, Award } from '@lucide/svelte';
+	import { Check, Clock, AlertTriangle, Info, Shield, Mail, Trophy, Star } from '@lucide/svelte';
 
 	interface Props {
-		variant?: 'verified' | 'community' | 'success' | 'warning' | 'error' | 'info' | 'neutral' | 'expert' | 'novice';
+		variant?:
+			| 'verified'
+			| 'community'
+			| 'success'
+			| 'warning'
+			| 'error'
+			| 'info'
+			| 'neutral'
+			| 'expert'
+			| 'novice';
 		size?: 'sm' | 'md';
 		pulse?: boolean;
 		icon?: boolean;
@@ -16,11 +25,11 @@
 		showScore?: boolean;
 	}
 
-	let { 
-		variant = 'neutral', 
-		size = 'sm', 
-		pulse = false, 
-		icon = true, 
+	let {
+		variant = 'neutral',
+		size = 'sm',
+		pulse = false,
+		icon = true,
 		children,
 		trustScore,
 		reputationTier,
@@ -61,13 +70,13 @@
 		novice: Star
 	};
 
-	const IconComponent = iconMap[effectiveVariant()];
+	const IconComponent = $derived(() => iconMap[effectiveVariant()]);
 
 	// Build CSS classes using design system
 	let badgeClasses = $derived.by(() => {
 		const baseClasses = 'participation-badge';
 		const sizeClass = `participation-badge-${size}`;
-		const variantClass = `participation-badge-${effectiveVariant}`;
+		const variantClass = `participation-badge-${effectiveVariant()}`;
 		const pulseClass = pulse ? 'participation-pulse' : '';
 
 		return `${baseClasses} ${sizeClass} ${variantClass} ${pulseClass}`.trim();
@@ -101,8 +110,8 @@ Accessibility:
 -->
 
 <span class={badgeClasses} role="status" aria-label={ariaLabel()}>
-	{#if icon && IconComponent}
-		<IconComponent class="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+	{#if icon && IconComponent()}
+		<IconComponent() class="h-3 w-3 flex-shrink-0" aria-hidden="true" />
 	{/if}
 
 	{#if children}
@@ -110,7 +119,7 @@ Accessibility:
 	{:else if reputationTier}
 		<span class="capitalize">{reputationTier}</span>
 	{/if}
-	
+
 	{#if displayScore !== null}
 		<span class="ml-1 rounded-full bg-white/20 px-1.5 py-0.5 text-xs font-normal">
 			{displayScore}

@@ -9,7 +9,7 @@
 
 import { glob } from 'glob';
 import { readFileSync, writeFileSync } from 'fs';
-import { join, dirname, basename } from 'path';
+import { dirname, basename } from 'path';
 
 interface SourceFile {
 	path: string;
@@ -146,7 +146,7 @@ function findTestFile(sourcePath: string, testFiles: string[]): string | undefin
 	});
 }
 
-function analyzeComplexity(content: string, filePath: string): SourceFile['complexity'] {
+function analyzeComplexity(content: string, _filePath: string): SourceFile['complexity'] {
 	// Simple heuristic based on code patterns
 	const lines = content.split('\n').length;
 	const functions = (content.match(/function |const \w+ = |async |await /g) || []).length;

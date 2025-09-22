@@ -4,6 +4,7 @@ import { updateTemplateDistrictMetrics } from '$lib/core/server/district-metrics
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import type { RequestHandler } from './$types';
 import type { TemplateUpdateData } from '$lib/types/api';
+import type { UnknownRecord } from '$lib/types/any-replacements';
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
@@ -49,7 +50,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(formattedTemplate);
-	} catch (_error) {
+	} catch (err) {
 		return error(500, 'Failed to fetch template');
 	}
 };
@@ -73,7 +74,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		}
 
 		// Prepare the data for the update
-		const dataToUpdate: any = { ...updateData };
+		const dataToUpdate: UnknownRecord = { ...updateData };
 
 		// If the status is being changed to 'published', also set 'is_public' to true
 		if (updateData.status && updateData.status === 'published') {
@@ -86,7 +87,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		return json(updatedTemplate);
-	} catch (_error) {
+	} catch (err) {
 		return error(500, 'Failed to update template');
 	}
 };
@@ -113,7 +114,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		});
 
 		return json({ success: true, id: templateId });
-	} catch (_error) {
+	} catch (err) {
 		return error(500, 'Failed to delete template');
 	}
 };

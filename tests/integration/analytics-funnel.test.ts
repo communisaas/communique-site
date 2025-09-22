@@ -1,6 +1,6 @@
 /**
  * Analytics Funnel Integration Tests - Consolidated Schema
- * 
+ *
  * Tests funnel tracking with:
  * - analytics_experiment (unified funnel/campaign configuration)
  * - analytics_event (JSONB properties for funnel steps)
@@ -10,7 +10,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsExperiment } from '../../src/lib/types/analytics';
-import { safeExperimentConfig, safeExperimentMetricsCache, safeEventProperties } from '../helpers/json-test-helpers';
+import {
+	safeExperimentConfig,
+	safeExperimentMetricsCache,
+	safeEventProperties
+} from '../helpers/json-test-helpers';
 
 // Mock database for funnel testing
 const mockDb = vi.hoisted(() => ({
@@ -58,7 +62,7 @@ vi.mock('$lib/core/analytics/funnel', () => ({
 describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		
+
 		// Default mocks
 		mockDb.user.findUnique.mockResolvedValue({ id: 'user-123' });
 		mockDb.template.findUnique.mockResolvedValue({ id: 'template-456' });
@@ -280,12 +284,12 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(funnelEventBatch)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200);
 
 			// Verify events stored with funnel step tracking
 			const storedEvents = mockDb.analytics_event.createMany.mock.calls[0][0].data;
-			
+
 			expect(storedEvents).toHaveLength(4);
 			expect(storedEvents[0]).toMatchObject({
 				name: 'template_viewed',
@@ -334,12 +338,14 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 
 			const eventBatch = {
 				session_data: { session_id: 'sess_funnel_123' },
-				events: [{
-					name: 'auth_started',
-					experiment_id: 'funnel-voting-flow',
-					funnel_step: 2,
-					properties: { auth_method: 'oauth' }
-				}]
+				events: [
+					{
+						name: 'auth_started',
+						experiment_id: 'funnel-voting-flow',
+						funnel_step: 2,
+						properties: { auth_method: 'oauth' }
+					}
+				]
 			};
 
 			const request = new Request('http://localhost/api/analytics/events', {
@@ -348,7 +354,7 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			await POST(createMockRequestEvent(request, "/api/analytics/events"));
 
 			// Verify session was upserted with funnel data
 			expect(mockDb.analytics_session.upsert).toHaveBeenCalledWith(
@@ -363,12 +369,42 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 		it('should calculate funnel conversion rates from analytics_event data', async () => {
 			// Mock funnel events data from database
 			const mockFunnelEvents = [
-				{ name: 'template_viewed', funnel_step: 1, experiment_id: 'funnel-voting-flow', user_id: 'user-1' },
-				{ name: 'template_viewed', funnel_step: 1, experiment_id: 'funnel-voting-flow', user_id: 'user-2' },
-				{ name: 'template_viewed', funnel_step: 1, experiment_id: 'funnel-voting-flow', user_id: 'user-3' },
-				{ name: 'auth_started', funnel_step: 2, experiment_id: 'funnel-voting-flow', user_id: 'user-1' },
-				{ name: 'auth_started', funnel_step: 2, experiment_id: 'funnel-voting-flow', user_id: 'user-2' },
-				{ name: 'template_used', funnel_step: 4, experiment_id: 'funnel-voting-flow', user_id: 'user-1' }
+				{
+					name: 'template_viewed',
+					funnel_step: 1,
+					experiment_id: 'funnel-voting-flow',
+					user_id: 'user-1'
+				},
+				{
+					name: 'template_viewed',
+					funnel_step: 1,
+					experiment_id: 'funnel-voting-flow',
+					user_id: 'user-2'
+				},
+				{
+					name: 'template_viewed',
+					funnel_step: 1,
+					experiment_id: 'funnel-voting-flow',
+					user_id: 'user-3'
+				},
+				{
+					name: 'auth_started',
+					funnel_step: 2,
+					experiment_id: 'funnel-voting-flow',
+					user_id: 'user-1'
+				},
+				{
+					name: 'auth_started',
+					funnel_step: 2,
+					experiment_id: 'funnel-voting-flow',
+					user_id: 'user-2'
+				},
+				{
+					name: 'template_used',
+					funnel_step: 4,
+					experiment_id: 'funnel-voting-flow',
+					user_id: 'user-1'
+				}
 			];
 
 			mockDb.analytics_event.findMany.mockResolvedValue(mockFunnelEvents);
@@ -397,29 +433,76 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 		it('should track A/B test funnel performance by variation', async () => {
 			const mockAbTestEvents = [
 				// Control variation events
-				{ name: 'template_viewed', experiment_id: 'ab-onboarding-flow', properties: { variation: 'control' }, user_id: 'user-1' },
-				{ name: 'template_viewed', experiment_id: 'ab-onboarding-flow', properties: { variation: 'control' }, user_id: 'user-2' },
-				{ name: 'auth_completed', experiment_id: 'ab-onboarding-flow', properties: { variation: 'control' }, user_id: 'user-1' },
-				
+				{
+					name: 'template_viewed',
+					experiment_id: 'ab-onboarding-flow',
+					properties: { variation: 'control' },
+					user_id: 'user-1'
+				},
+				{
+					name: 'template_viewed',
+					experiment_id: 'ab-onboarding-flow',
+					properties: { variation: 'control' },
+					user_id: 'user-2'
+				},
+				{
+					name: 'auth_completed',
+					experiment_id: 'ab-onboarding-flow',
+					properties: { variation: 'control' },
+					user_id: 'user-1'
+				},
+
 				// Streamlined variation events
-				{ name: 'template_viewed', experiment_id: 'ab-onboarding-flow', properties: { variation: 'streamlined' }, user_id: 'user-3' },
-				{ name: 'template_viewed', experiment_id: 'ab-onboarding-flow', properties: { variation: 'streamlined' }, user_id: 'user-4' },
-				{ name: 'auth_completed', experiment_id: 'ab-onboarding-flow', properties: { variation: 'streamlined' }, user_id: 'user-3' },
-				{ name: 'auth_completed', experiment_id: 'ab-onboarding-flow', properties: { variation: 'streamlined' }, user_id: 'user-4' }
+				{
+					name: 'template_viewed',
+					experiment_id: 'ab-onboarding-flow',
+					properties: { variation: 'streamlined' },
+					user_id: 'user-3'
+				},
+				{
+					name: 'template_viewed',
+					experiment_id: 'ab-onboarding-flow',
+					properties: { variation: 'streamlined' },
+					user_id: 'user-4'
+				},
+				{
+					name: 'auth_completed',
+					experiment_id: 'ab-onboarding-flow',
+					properties: { variation: 'streamlined' },
+					user_id: 'user-3'
+				},
+				{
+					name: 'auth_completed',
+					experiment_id: 'ab-onboarding-flow',
+					properties: { variation: 'streamlined' },
+					user_id: 'user-4'
+				}
 			];
 
 			mockDb.analytics_event.findMany.mockResolvedValue(mockAbTestEvents);
 
 			// Calculate conversion rates by variation
-			const controlEvents = mockAbTestEvents.filter(e => safeEventProperties(e).variation === 'control');
-			const streamlinedEvents = mockAbTestEvents.filter(e => safeEventProperties(e).variation === 'streamlined');
+			const controlEvents = mockAbTestEvents.filter(
+				(e) => safeEventProperties(e).variation === 'control'
+			);
+			const streamlinedEvents = mockAbTestEvents.filter(
+				(e) => safeEventProperties(e).variation === 'streamlined'
+			);
 
-			const controlUsers = new Set(controlEvents.filter(e => e.name === 'template_viewed').map(e => e.user_id));
-			const controlConversions = new Set(controlEvents.filter(e => e.name === 'auth_completed').map(e => e.user_id));
+			const controlUsers = new Set(
+				controlEvents.filter((e) => e.name === 'template_viewed').map((e) => e.user_id)
+			);
+			const controlConversions = new Set(
+				controlEvents.filter((e) => e.name === 'auth_completed').map((e) => e.user_id)
+			);
 			const controlConversionRate = controlConversions.size / controlUsers.size;
 
-			const streamlinedUsers = new Set(streamlinedEvents.filter(e => e.name === 'template_viewed').map(e => e.user_id));
-			const streamlinedConversions = new Set(streamlinedEvents.filter(e => e.name === 'auth_completed').map(e => e.user_id));
+			const streamlinedUsers = new Set(
+				streamlinedEvents.filter((e) => e.name === 'template_viewed').map((e) => e.user_id)
+			);
+			const streamlinedConversions = new Set(
+				streamlinedEvents.filter((e) => e.name === 'auth_completed').map((e) => e.user_id)
+			);
 			const streamlinedConversionRate = streamlinedConversions.size / streamlinedUsers.size;
 
 			expect(controlConversionRate).toBe(0.5); // 1/2 users converted
@@ -457,13 +540,13 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				url: '/api/analytics/events?session_id=sess_123_abc'
 			});
 
-			const response = await GET({ 
+			const response = await GET({
 				request,
 				url: new URL('http://localhost/api/analytics/events?session_id=sess_123_abc')
-			} as any);
+			} as unknown);
 
 			const data = await response.json();
-			
+
 			expect(data.session.funnel_progress).toEqual({
 				'funnel-voting-flow': {
 					current_step: 2,
@@ -489,12 +572,14 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 
 			const eventBatch = {
 				session_data: { session_id: 'sess_123_abc' },
-				events: [{
-					name: 'invalid_funnel_event',
-					experiment_id: 'nonexistent-funnel',
-					funnel_step: 1,
-					properties: {}
-				}]
+				events: [
+					{
+						name: 'invalid_funnel_event',
+						experiment_id: 'nonexistent-funnel',
+						funnel_step: 1,
+						properties: {}
+					}
+				]
 			};
 
 			const request = new Request('http://localhost/api/analytics/events', {
@@ -503,7 +588,7 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200); // Should still process other valid events
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
@@ -547,13 +632,13 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: outOfOrderEvents
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200);
 
 			// Should store all events with their timestamps preserved
 			const storedEvents = mockDb.analytics_event.createMany.mock.calls[0][0].data;
 			expect(storedEvents).toHaveLength(3);
-			
+
 			// Verify timestamps are preserved for later chronological analysis
 			expect(storedEvents[0].timestamp).toEqual(new Date('2024-01-01T10:05:00Z'));
 			expect(storedEvents[1].timestamp).toEqual(new Date('2024-01-01T10:00:00Z'));

@@ -120,7 +120,7 @@ Template Reference: ${templateIdentifier}
 To verify this email address:
 
 1. Log into your account at ${this.config.api.communiqueUrl}
-2. Go to Account Settings > Email Addresses
+2. Go to Account Settings > Email Address 
 3. Verify this secondary email address
 4. Once verified, you can resend your message
 

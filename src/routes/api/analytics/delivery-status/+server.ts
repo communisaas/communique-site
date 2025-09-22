@@ -14,7 +14,7 @@ interface DeliveryStatus {
 	delivery_attempts: number;
 	error_message?: string;
 	recipient_info: {
-		representative_name: string;
+		_representative_name: string;
 		office_type: 'house' | 'senate';
 		district?: string;
 		state: string;
@@ -65,9 +65,9 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 		// Transform to delivery status format
 		const deliveryStatuses = deliveries.map((campaign) => {
-			// Mock recipient info - in real implementation, this would come from representative lookup
+			// Mock recipient info - in real implementation, this would come from _representative lookup
 			const recipientInfo = {
-				representative_name: getRepresentativeName(campaign.id),
+				_representative_name: getRepresentativeName(campaign.id),
 				office_type: Math.random() > 0.5 ? 'house' : ('senate' as 'house' | 'senate'),
 				district: Math.random() > 0.3 ? Math.floor(Math.random() * 50 + 1).toString() : undefined,
 				state: getRandomState()
@@ -132,7 +132,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						computed_metrics: {}
 					}
 				});
-			} catch (_error) {
+			} catch (err) {
 				// Ignore analytics errors
 			}
 		}
@@ -144,14 +144,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			total_count: totalDeliveries,
 			timestamp: new Date().toISOString()
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to load delivery status',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -192,7 +192,7 @@ function getRandomErrorMessage(): string {
 		'Recipient office temporarily unavailable',
 		'Message size exceeded limits',
 		'CWC API rate limit exceeded',
-		'Invalid representative office code',
+		'Invalid _representative office code',
 		'Network timeout during delivery'
 	];
 	return errors[Math.floor(Math.random() * errors.length)];

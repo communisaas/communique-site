@@ -87,7 +87,9 @@ export const POST: RequestHandler = async ({ request, url }) => {
 				template
 			});
 
-			const isApproved = verification.decision.verificationLevel === 'verified' || verification.decision.verificationLevel === 'high_assurance';
+			const isApproved =
+				verification.decision.verificationLevel === 'verified' ||
+				verification.decision.verificationLevel === 'high_assurance';
 
 			response.stages.verification = {
 				approved: isApproved,
@@ -154,7 +156,12 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			// Calculate rewards using all agents
 			const result = await agentCoordinator.processCivicAction({
 				userAddress,
-				actionType: actionType as any,
+				actionType: actionType as
+					| 'CWC_MESSAGE'
+					| 'LOCAL_ACTION'
+					| 'DIRECT_ACTION'
+					| 'TOWN_HALL'
+					| 'PUBLIC_COMMENT',
 				template,
 				recipients
 			});
@@ -175,13 +182,15 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						impactMultiplier: impactDecision.impactMultiplier || 1
 					}
 				};
-				
+
 				response.stages.reputation = {
-					changes: [{
-						challenge: reputationDecision.credibilityComponents.behavioral_integrity,
-						civic: reputationDecision.credibilityComponents.civic_engagement,
-						discourse: reputationDecision.credibilityComponents.community_trust
-					}],
+					changes: [
+						{
+							challenge: reputationDecision.credibilityComponents.behavioral_integrity,
+							civic: reputationDecision.credibilityComponents.civic_engagement,
+							discourse: reputationDecision.credibilityComponents.community_trust
+						}
+					],
 					newTier: reputationDecision.tier,
 					badges: reputationDecision.badges
 				};
@@ -205,28 +214,33 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						await db.user.update({
 							where: { id: userId },
 							data: {
-								pending_rewards: (BigInt(user.pending_rewards || '0') + (result.reward ?? 0n)).toString(),
+								pending_rewards: (
+									BigInt(user.pending_rewards || '0') + (result.reward ?? 0n)
+								).toString(),
 								total_earned: (BigInt(user.total_earned || '0') + (result.reward ?? 0n)).toString(),
 								last_certification: new Date(),
 								challenge_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.challenge_score || 50) + (reputationDecision.credibilityComponents.behavioral_integrity || 0)
+										(user.challenge_score || 50) +
+											(reputationDecision.credibilityComponents.behavioral_integrity || 0)
 									)
 								),
 								civic_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.civic_score || 50) + (reputationDecision.credibilityComponents.civic_engagement || 0)
+										(user.civic_score || 50) +
+											(reputationDecision.credibilityComponents.civic_engagement || 0)
 									)
 								),
 								discourse_score: Math.max(
 									0,
 									Math.min(
 										100,
-										(user.discourse_score || 50) + (reputationDecision.credibilityComponents.community_trust || 0)
+										(user.discourse_score || 50) +
+											(reputationDecision.credibilityComponents.community_trust || 0)
 									)
 								),
 								reputation_tier: reputationDecision.tier
@@ -258,13 +272,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		return json(response);
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'Processing failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

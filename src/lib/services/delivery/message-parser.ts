@@ -4,11 +4,12 @@
  */
 
 import { simpleParser } from 'mailparser';
+import type { ParsedMail, ErrorWithCode as _ErrorWithCode } from '$lib/types/any-replacements.js';
 
 /**
  * Parse incoming email to extract template data
  */
-async function parseIncomingMessage(stream: any) {
+async function parseIncomingMessage(stream: NodeJS.ReadableStream) {
 	try {
 		const parsed = await simpleParser(stream);
 
@@ -30,8 +31,9 @@ async function parseIncomingMessage(stream: any) {
 			messageId: parsed.messageId,
 			date: parsed.date
 		};
-	} catch (error: any) {
-		console.error('Error parsing message:', error);
+	} catch (_error) {
+		const errorMessage = error ? 'Unknown error' : 'Unknown error';
+		console.error('Error parsing message:', errorMessage);
 		throw new Error('Failed to parse incoming email');
 	}
 }
@@ -39,7 +41,7 @@ async function parseIncomingMessage(stream: any) {
 /**
  * Extract template ID from email headers or subject
  */
-function extractTemplateId(parsed: any) {
+function extractTemplateId(parsed: ParsedMail) {
 	// Check for custom header first
 	const headerTemplateId = parsed.headers.get('x-template-id');
 	if (headerTemplateId) {
@@ -66,7 +68,7 @@ function extractTemplateId(parsed: any) {
 /**
  * Extract user ID from email headers or message ID
  */
-function extractUserId(parsed: any) {
+function extractUserId(parsed: ParsedMail) {
 	// Check for custom header
 	const headerUserId = parsed.headers.get('x-user-id');
 	if (headerUserId) {
@@ -85,7 +87,7 @@ function extractUserId(parsed: any) {
 /**
  * Extract personal connection from email body
  */
-function extractPersonalConnection(parsed: any) {
+function extractPersonalConnection(parsed: ParsedMail) {
 	const text = parsed.text || '';
 
 	// Look for personal connection marker
@@ -110,7 +112,13 @@ function extractPersonalConnection(parsed: any) {
 /**
  * Validate that message contains required metadata
  */
-function validateMessage(parsedMessage: any) {
+function validateMessage(
+	parsedMessage: ParsedMail & {
+		templateId?: string | null;
+		userId?: string | null;
+		personalConnection?: string | null;
+	}
+) {
 	const errors = [];
 
 	if (!parsedMessage.templateId) {

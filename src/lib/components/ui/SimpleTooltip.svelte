@@ -33,18 +33,28 @@
 		out:fade={{ duration: 100 }}
 	>
 		<div class="relative">
-			<div class="whitespace-nowrap rounded-lg bg-gray-900 py-2 pl-2 pr-3 text-xs font-medium leading-none text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)]">
+			<div
+				class="whitespace-nowrap rounded-lg bg-gray-900 py-2 pl-2 pr-3 text-xs font-medium leading-none text-white shadow-[0_10px_30px_rgba(0,0,0,0.3)]"
+			>
 				{content}
 			</div>
 			<!-- Arrow positioned outside the rounded container based on placement -->
 			{#if placement === 'bottom'}
-				<div class="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-gray-900"></div>
+				<div
+					class="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-gray-900"
+				></div>
 			{:else if placement === 'top'}
-				<div class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-gray-900"></div>
+				<div
+					class="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rotate-45 transform bg-gray-900"
+				></div>
 			{:else if placement === 'right'}
-				<div class="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 transform bg-gray-900"></div>
+				<div
+					class="absolute -left-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 transform bg-gray-900"
+				></div>
 			{:else if placement === 'left'}
-				<div class="absolute -right-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 transform bg-gray-900"></div>
+				<div
+					class="absolute -right-1 top-1/2 h-2 w-2 -translate-y-1/2 rotate-45 transform bg-gray-900"
+				></div>
 			{/if}
 		</div>
 	</div>

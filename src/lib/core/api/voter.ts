@@ -108,11 +108,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (_error) {
-			console.error('[VOTER API] Process action error:', _error);
+		} catch (error) {
+			console.error('Error occurred:', error);
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Network error'
+				error: error instanceof Error ? error.message : 'Network error'
 			};
 		}
 	}
@@ -142,11 +142,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (_error) {
-			console.error('[VOTER API] Get reputation error:', _error);
+		} catch (error) {
+			console.error('Error occurred:', error);
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Network error'
+				error: error instanceof Error ? error.message : 'Network error'
 			};
 		}
 	}
@@ -176,11 +176,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (_error) {
-			console.error('[VOTER API] Get token stats error:', _error);
+		} catch (error) {
+			console.error('Error occurred:', error);
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Network error'
+				error: error instanceof Error ? error.message : 'Network error'
 			};
 		}
 	}
@@ -190,20 +190,20 @@ class VOTERProtocolAPI {
 	 */
 	async certifyCongressMessage(
 		userAddress: string,
-		representative: string,
+		_representative: string,
 		message: string,
 		district: string
-	): Promise<ApiResponse<any>> {
+	): Promise<ApiResponse<unknown>> {
 		try {
 			const response = await fetch(`${this.baseURL}/api/v1/congress/message`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					'X-API-Key': this.apiKey,
-					'X-User-Address': userAddress
+					'X-User-Address ': userAddress
 				},
 				body: JSON.stringify({
-					representative,
+					_representative,
 					message,
 					district
 				})
@@ -223,11 +223,11 @@ class VOTERProtocolAPI {
 				data,
 				status: response.status
 			};
-		} catch (_error) {
-			console.error('[VOTER API] Certify message error:', _error);
+		} catch (error) {
+			console.error('Error occurred:', error);
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Network error'
+				error: error instanceof Error ? error.message : 'Network error'
 			};
 		}
 	}

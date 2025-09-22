@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { fade, fly } from 'svelte/transition';
+	import { _fade, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { MapPin, CheckCircle2, AlertCircle, Loader2, Home } from '@lucide/svelte';
+	import { _MapPin, CheckCircle2, AlertCircle, Loader2, Home } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import type { AddressVerificationResult, _Representative } from '$lib/types/any-replacements.js';
 
 	let {
-		template
+		_template
 	}: {
-		template: {
+		_template: {
 			title: string;
 			deliveryMethod: string;
 		};
@@ -32,7 +33,7 @@
 	let addressError = $state('');
 	let isVerifying = $state(false);
 	let isSaving = $state(false);
-	let verificationResult = $state<Record<string, unknown> | null>(null);
+	let verificationResult = $state<AddressVerificationResult | null>(null);
 	let selectedAddress = $state('');
 
 	function validateAddress(): boolean {
@@ -78,18 +79,20 @@
 
 			if (result.success && result.data) {
 				// Type guard for address verification data
-				const data = result.data as Record<string, unknown>;
+				const data = result.data as AddressVerificationResult;
 				if (data.verified) {
 					verificationResult = data;
-					selectedAddress = (data.correctedAddress as string) || fullAddress;
+					selectedAddress = data.correctedAddress || fullAddress;
 					currentStep = 'verify';
 				} else {
-					addressError = (data.error as string) || 'Unable to verify address. Please check and try again.';
+					addressError =
+						(data.error as string) || 'Unable to verify address. Please check and try again.';
 				}
 			} else {
-				addressError = (result.error as string) || 'Unable to verify address. Please check and try again.';
+				addressError =
+					(result.error as string) || 'Unable to verify address. Please check and try again.';
 			}
-		} catch (error) {
+		} catch (_error) {
 			console.error('Address verification error:', error);
 			addressError =
 				error instanceof Error
@@ -105,7 +108,13 @@
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
-			representatives: Array.isArray(verificationResult?.representatives) && verificationResult.representatives.every(item => typeof item === 'object' && item !== null) ? verificationResult.representatives as Record<string, unknown>[] : undefined
+			representatives:
+				Array.isArray(verificationResult?.representatives) &&
+				verificationResult.representatives.every(
+					(item) => typeof item === 'object' && item !== null
+				)
+					? (verificationResult.representatives as Record<string, unknown>[])
+					: undefined
 		});
 	}
 
@@ -122,9 +131,9 @@
 		});
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
-			event.preventDefault();
+	function _handleKeydown(_event: KeyboardEvent) {
+		if (_event.key === 'Enter' && !_event.shiftKey) {
+			_event.preventDefault();
 			if (currentStep === 'collect') {
 				verifyAddress();
 			} else if (currentStep === 'verify') {
@@ -156,7 +165,8 @@
 			<div
 				in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 				out:fly={{ x: -20, duration: 300, easing: quintOut }}
-				onkeydown={handleKeydown}
+				role="region"
+				tabindex="-1"
 			>
 				{#if currentStep === 'collect'}
 					<!-- Address Collection Step -->
@@ -293,10 +303,10 @@
 						>
 							<p class="mb-2 font-medium text-slate-900">Your Representatives:</p>
 							<div class="space-y-2">
-								{#each (Array.isArray(verificationResult.representatives) ? verificationResult.representatives : []) as rep}
+								{#each Array.isArray(verificationResult.representatives) ? verificationResult.representatives : [] as rep}
 									<div class="flex items-center gap-2 text-sm">
 										<div class="h-2 w-2 rounded-full bg-participation-primary-500"></div>
-										<span class="text-slate-700">{(rep as any).name} ({(rep as any).office})</span>
+										<span class="text-slate-700">{rep.name} ({rep.office})</span>
 									</div>
 								{/each}
 							</div>

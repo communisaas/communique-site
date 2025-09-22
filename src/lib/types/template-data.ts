@@ -34,7 +34,7 @@ export function validateTemplateData(data: unknown): SafeTemplateData {
 	if (!isSafeTemplateData(data)) {
 		throw new Error('Invalid template data: expected object');
 	}
-	
+
 	return {
 		title: safeStringValue(data.title),
 		id: safeStringValue(data.id),

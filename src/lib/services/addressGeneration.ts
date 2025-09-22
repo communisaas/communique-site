@@ -1,5 +1,5 @@
 /**
- * Deterministic Address Generation Service
+ * Deterministic Address  Generation Service
  *
  * Generates Ethereum-compatible addresses from user IDs without storing private keys.
  * These addresses are used for tracking civic engagement in VOTER Protocol.
@@ -13,7 +13,7 @@ import { env } from '$env/dynamic/private';
 const PLATFORM_SALT = env.PLATFORM_SALT || 'communique-voter-protocol-2024';
 const CHAIN_ID = env.CHAIN_ID || '1337'; // Monad testnet
 
-export interface AddressGenerationResult {
+export interface Address {
 	address: string;
 	derivationPath: string;
 	timestamp: number;
@@ -79,10 +79,7 @@ function toChecksumAddress(address: string): string {
  * @param userEmail - User email for additional entropy
  * @returns Full address generation result with metadata
  */
-export function generateAddressWithMetadata(
-	userId: string,
-	userEmail?: string
-): AddressGenerationResult {
+export function generateAddress(userId: string, userEmail?: string): Address {
 	// Use email hash as additional salt if provided
 	const emailSalt = userEmail
 		? createHash('sha256').update(userEmail).digest('hex').slice(0, 8)
@@ -101,7 +98,7 @@ export function generateAddressWithMetadata(
 /**
  * Validate if an address is properly formatted
  *
- * @param address - Address to validate
+ * @param address - Address  to validate
  * @returns True if valid Ethereum address
  */
 export function isValidAddress(address: string): boolean {
@@ -117,9 +114,9 @@ export function isValidAddress(address: string): boolean {
  * Check if user has a connected wallet or just derived address
  *
  * @param user - User object with address fields
- * @returns Address type and which address to use
+ * @returns Address  type and which address to use
  */
-export function getUserAddressInfo(user: {
+export function getUserAddress(user: {
 	derived_address?: string;
 	connected_address?: string;
 	address_type?: 'derived' | 'connected' | 'certified';
@@ -155,9 +152,9 @@ export function getUserAddressInfo(user: {
  * Get or create address for user
  *
  * @param userId - User ID
- * @param existingAddress - Existing address if any
+ * @param existingAddress  - Existing address if any
  * @param userEmail - User email for generation
- * @returns Address to use for VOTER Protocol
+ * @returns Address  to use for VOTER Protocol
  */
 export function getOrCreateUserAddress(
 	userId: string,
@@ -170,7 +167,7 @@ export function getOrCreateUserAddress(
 	}
 
 	// Generate new deterministic address
-	const result = generateAddressWithMetadata(userId, userEmail);
+	const result = generateAddress(userId, userEmail);
 	return result.address;
 }
 
@@ -181,13 +178,13 @@ export function getOrCreateUserAddress(
  * @param users - Array of users to generate addresses for
  * @returns Map of userId to address
  */
-export function batchGenerateAddresses(
+export function batchGenerateAddress(
 	users: Array<{ id: string; email?: string }>
 ): Map<string, string> {
 	const addressMap = new Map<string, string>();
 
 	for (const user of users) {
-		const result = generateAddressWithMetadata(user.id, user.email);
+		const result = generateAddress(user.id, user.email);
 		addressMap.set(user.id, result.address);
 	}
 
@@ -198,7 +195,7 @@ export function batchGenerateAddresses(
  * Create a migration record for address generation
  * Used for tracking when addresses were generated
  */
-export interface AddressMigrationRecord {
+export interface MigrationRecord {
 	userId: string;
 	derivedAddress: string;
 	generatedAt: Date;
@@ -209,7 +206,7 @@ export function createMigrationRecord(
 	userId: string,
 	address: string,
 	batchId?: string
-): AddressMigrationRecord {
+): MigrationRecord {
 	return {
 		userId,
 		derivedAddress: address,

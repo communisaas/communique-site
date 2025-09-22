@@ -63,7 +63,7 @@ export class AdapterRegistry {
 		await this.initialize();
 		const capabilities = [];
 
-		for (const [country, adapter] of this.adapters) {
+		for (const [_country, adapter] of this.adapters) {
 			const capability = await adapter.getCapabilities();
 			capabilities.push(capability);
 		}

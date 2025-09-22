@@ -1,4 +1,4 @@
-// OAuth Provider Types  
+// OAuth Provider Types
 export type OAuthProvider = 'google' | 'twitter' | 'facebook' | 'linkedin' | 'discord';
 
 // OAuth state management

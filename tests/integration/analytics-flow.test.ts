@@ -1,6 +1,6 @@
 /**
  * Complete Analytics Flow Integration Tests - Consolidated Schema
- * 
+ *
  * Tests the complete event→session→experiment flow with:
  * - End-to-end analytics tracking
  * - Cross-model data consistency
@@ -9,9 +9,18 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { safeEventProperties, safeComputedMetrics, safeSessionMetrics, safeExperimentMetricsCache } from '../helpers/json-test-helpers';
+import {
+	safeEventProperties,
+	safeComputedMetrics,
+	safeSessionMetrics,
+	safeExperimentMetricsCache
+} from '../helpers/json-test-helpers';
 import { createMockRequestEvent } from '../helpers/request-event';
-import type { AnalyticsEvent, AnalyticsSession, AnalyticsExperiment } from '../../src/lib/types/analytics';
+import type {
+	AnalyticsEvent,
+	AnalyticsSession,
+	AnalyticsExperiment
+} from '../../src/lib/types/analytics';
 
 // Mock database for complete flow testing
 const mockDb = vi.hoisted(() => ({
@@ -51,7 +60,7 @@ vi.mock('$lib/core/db', () => ({
 describe('Complete Analytics Flow Integration Tests', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		
+
 		// Default mocks
 		mockDb.user.findUnique.mockResolvedValue({ id: 'user-123' });
 		mockDb.template.findMany.mockResolvedValue([{ id: 'template-456' }]);
@@ -82,7 +91,11 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				},
 				start_date: new Date('2024-01-01'),
 				end_date: new Date('2024-12-31'),
-				metrics_cache: { participants_count: 0, conversion_rate: 0, last_calculated: new Date().toISOString() },
+				metrics_cache: {
+					participants_count: 0,
+					conversion_rate: 0,
+					last_calculated: new Date().toISOString()
+				},
 				created_at: new Date(),
 				updated_at: new Date()
 			};
@@ -106,21 +119,23 @@ describe('Complete Analytics Flow Integration Tests', () => {
 					user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_6 like Mac OS X)',
 					ip_address: '192.168.1.100'
 				},
-				events: [{
-					name: 'page_view',
-					timestamp: new Date('2024-01-01T10:00:00Z').toISOString(),
-					properties: {
-						page_url: '/templates/voting-reform',
-						page_title: 'Contact Your Representative About Voting Reform',
-						source: 'facebook_ad',
-						ab_test_variant: 'simplified_flow',
-						utm_data: {
-							source: 'facebook',
-							medium: 'social',
-							campaign: 'voting-rights-awareness'
+				events: [
+					{
+						name: 'page_view',
+						timestamp: new Date('2024-01-01T10:00:00Z').toISOString(),
+						properties: {
+							page_url: '/templates/voting-reform',
+							page_title: 'Contact Your Representative About Voting Reform',
+							source: 'facebook_ad',
+							ab_test_variant: 'simplified_flow',
+							utm_data: {
+								source: 'facebook',
+								medium: 'social',
+								campaign: 'voting-rights-awareness'
+							}
 						}
 					}
-				}]
+				]
 			};
 
 			const expectedSession: Partial<AnalyticsSession> = {
@@ -148,26 +163,31 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				body: JSON.stringify(initialVisit)
 			});
 
-			let response = await eventsPost({ request: initialRequest, getClientAddress: () => '192.168.1.100' } as any);
+			let response = await eventsPost({
+				request: initialRequest,
+				getClientAddress: () => '192.168.1.100'
+			} as unknown);
 			expect(response.status).toBe(200);
 
 			// Step 3: User views template details
 			const templateView = {
 				session_data: { session_id: 'sess_journey_123' },
-				events: [{
-					name: 'template_viewed',
-					template_id: 'template-456',
-					experiment_id: 'exp-voting-onboarding',
-					timestamp: new Date('2024-01-01T10:02:30Z').toISOString(),
-					properties: {
-						template_category: 'voting',
-						template_title: 'Contact Your Representative About Voting Reform',
-						view_source: 'featured_list',
-						scroll_depth: 0.65,
-						time_on_page: 150000, // 2.5 minutes
-						interactions: ['highlight_text', 'click_preview']
+				events: [
+					{
+						name: 'template_viewed',
+						template_id: 'template-456',
+						experiment_id: 'exp-voting-onboarding',
+						timestamp: new Date('2024-01-01T10:02:30Z').toISOString(),
+						properties: {
+							template_category: 'voting',
+							template_title: 'Contact Your Representative About Voting Reform',
+							view_source: 'featured_list',
+							scroll_depth: 0.65,
+							time_on_page: 150000, // 2.5 minutes
+							interactions: ['highlight_text', 'click_preview']
+						}
 					}
-				}]
+				]
 			};
 
 			const templateRequest = new Request('http://localhost/api/analytics/events', {
@@ -176,25 +196,30 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				body: JSON.stringify(templateView)
 			});
 
-			response = await eventsPost({ request: templateRequest, getClientAddress: () => '192.168.1.100' } as any);
+			response = await eventsPost({
+				request: templateRequest,
+				getClientAddress: () => '192.168.1.100'
+			} as unknown);
 			expect(response.status).toBe(200);
 
 			// Step 4: User initiates authentication (funnel progression)
 			const authStart = {
 				session_data: { session_id: 'sess_journey_123' },
-				events: [{
-					name: 'auth_started',
-					experiment_id: 'exp-voting-onboarding',
-					funnel_step: 1,
-					timestamp: new Date('2024-01-01T10:05:00Z').toISOString(),
-					properties: {
-						auth_method: 'oauth',
-						provider: 'google',
-						ab_test_variant: 'simplified_flow',
-						previous_step_duration: 150000,
-						cumulative_funnel_time: 150000
+				events: [
+					{
+						name: 'auth_started',
+						experiment_id: 'exp-voting-onboarding',
+						funnel_step: 1,
+						timestamp: new Date('2024-01-01T10:05:00Z').toISOString(),
+						properties: {
+							auth_method: 'oauth',
+							provider: 'google',
+							ab_test_variant: 'simplified_flow',
+							previous_step_duration: 150000,
+							cumulative_funnel_time: 150000
+						}
 					}
-				}]
+				]
 			};
 
 			const authRequest = new Request('http://localhost/api/analytics/events', {
@@ -203,7 +228,10 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				body: JSON.stringify(authStart)
 			});
 
-			response = await eventsPost({ request: authRequest, getClientAddress: () => '192.168.1.100' } as any);
+			response = await eventsPost({
+				request: authRequest,
+				getClientAddress: () => '192.168.1.100'
+			} as unknown);
 			expect(response.status).toBe(200);
 
 			// Step 5: Authentication completed (user becomes identified)
@@ -212,20 +240,22 @@ describe('Complete Analytics Flow Integration Tests', () => {
 					session_id: 'sess_journey_123',
 					user_id: 'user-123' // Now identified
 				},
-				events: [{
-					name: 'auth_completed',
-					user_id: 'user-123',
-					experiment_id: 'exp-voting-onboarding',
-					funnel_step: 2,
-					timestamp: new Date('2024-01-01T10:06:30Z').toISOString(),
-					properties: {
-						auth_method: 'oauth',
-						provider: 'google',
-						auth_duration: 90000, // 1.5 minutes
-						user_created: false, // Returning user
-						cumulative_funnel_time: 240000
+				events: [
+					{
+						name: 'auth_completed',
+						user_id: 'user-123',
+						experiment_id: 'exp-voting-onboarding',
+						funnel_step: 2,
+						timestamp: new Date('2024-01-01T10:06:30Z').toISOString(),
+						properties: {
+							auth_method: 'oauth',
+							provider: 'google',
+							auth_duration: 90000, // 1.5 minutes
+							user_created: false, // Returning user
+							cumulative_funnel_time: 240000
+						}
 					}
-				}]
+				]
 			};
 
 			// Update session to associate with user
@@ -251,29 +281,34 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				body: JSON.stringify(authComplete)
 			});
 
-			response = await eventsPost({ request: authCompleteRequest, getClientAddress: () => '192.168.1.100' } as any);
+			response = await eventsPost({
+				request: authCompleteRequest,
+				getClientAddress: () => '192.168.1.100'
+			} as unknown);
 			expect(response.status).toBe(200);
 
 			// Step 6: Template customization
 			const templateCustomize = {
 				session_data: { session_id: 'sess_journey_123', user_id: 'user-123' },
-				events: [{
-					name: 'template_customized',
-					template_id: 'template-456',
-					user_id: 'user-123',
-					experiment_id: 'exp-voting-onboarding',
-					funnel_step: 3,
-					timestamp: new Date('2024-01-01T10:12:00Z').toISOString(),
-					properties: {
-						customization_type: 'ai_assisted',
-						fields_modified: ['personal_message', 'issue_focus'],
-						ai_suggestions_accepted: 3,
-						ai_suggestions_rejected: 1,
-						editing_time: 330000, // 5.5 minutes
-						final_word_count: 287,
-						personalization_score: 0.82
+				events: [
+					{
+						name: 'template_customized',
+						template_id: 'template-456',
+						user_id: 'user-123',
+						experiment_id: 'exp-voting-onboarding',
+						funnel_step: 3,
+						timestamp: new Date('2024-01-01T10:12:00Z').toISOString(),
+						properties: {
+							customization_type: 'ai_assisted',
+							fields_modified: ['personal_message', 'issue_focus'],
+							ai_suggestions_accepted: 3,
+							ai_suggestions_rejected: 1,
+							editing_time: 330000, // 5.5 minutes
+							final_word_count: 287,
+							personalization_score: 0.82
+						}
 					}
-				}]
+				]
 			};
 
 			const customizeRequest = new Request('http://localhost/api/analytics/events', {
@@ -282,30 +317,35 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				body: JSON.stringify(templateCustomize)
 			});
 
-			response = await eventsPost({ request: customizeRequest, getClientAddress: () => '192.168.1.100' } as any);
+			response = await eventsPost({
+				request: customizeRequest,
+				getClientAddress: () => '192.168.1.100'
+			} as unknown);
 			expect(response.status).toBe(200);
 
 			// Step 7: Final conversion - template sent
 			const templateSent = {
 				session_data: { session_id: 'sess_journey_123', user_id: 'user-123' },
-				events: [{
-					name: 'template_used',
-					template_id: 'template-456',
-					user_id: 'user-123',
-					experiment_id: 'exp-voting-onboarding',
-					funnel_step: 4,
-					timestamp: new Date('2024-01-01T10:15:30Z').toISOString(),
-					properties: {
-						delivery_method: 'certified',
-						recipients_count: 1,
-						recipient_type: 'house_representative',
-						delivery_success: true,
-						total_session_time: 930000, // 15.5 minutes
-						total_funnel_time: 930000,
-						conversion_value: 1.0,
-						ab_test_variant: 'simplified_flow'
+				events: [
+					{
+						name: 'template_used',
+						template_id: 'template-456',
+						user_id: 'user-123',
+						experiment_id: 'exp-voting-onboarding',
+						funnel_step: 4,
+						timestamp: new Date('2024-01-01T10:15:30Z').toISOString(),
+						properties: {
+							delivery_method: 'certified',
+							recipients_count: 1,
+							recipient_type: 'house_representative',
+							delivery_success: true,
+							total_session_time: 930000, // 15.5 minutes
+							total_funnel_time: 930000,
+							conversion_value: 1.0,
+							ab_test_variant: 'simplified_flow'
+						}
 					}
-				}]
+				]
 			};
 
 			// Final session state with conversion
@@ -339,7 +379,10 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				body: JSON.stringify(templateSent)
 			});
 
-			response = await eventsPost({ request: sentRequest, getClientAddress: () => '192.168.1.100' } as any);
+			response = await eventsPost({
+				request: sentRequest,
+				getClientAddress: () => '192.168.1.100'
+			} as unknown);
 			expect(response.status).toBe(200);
 
 			// Verify complete journey was tracked
@@ -368,7 +411,11 @@ describe('Complete Analytics Flow Integration Tests', () => {
 						{ name: 'conversion', order: 3, required: true, goal_event: 'template_used' }
 					]
 				},
-				metrics_cache: { participants_count: 0, conversion_rate: 0, last_calculated: new Date().toISOString() },
+				metrics_cache: {
+					participants_count: 0,
+					conversion_rate: 0,
+					last_calculated: new Date().toISOString()
+				},
 				start_date: new Date(),
 				end_date: new Date(),
 				created_at: new Date(),
@@ -449,14 +496,16 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			});
 
 			expect(sessionEvents).toHaveLength(3);
-			sessionEvents.forEach((event: any) => {
+			sessionEvents.forEach((event: unknown) => {
 				expect(event.session_id).toBe('sess_consistency_123');
 				expect(event.user_id).toBe('user-123');
 				expect(event.experiment_id).toBe('exp-consistency-test');
 			});
 
 			// Verify experiment metrics reflect event data
-			const conversionCount = sessionEvents.filter((e: any) => e.event_type === 'conversion').length;
+			const conversionCount = sessionEvents.filter(
+				(e: unknown) => e.event_type === 'conversion'
+			).length;
 			const updatedExperimentMetrics = {
 				participants_count: 1,
 				conversion_rate: conversionCount / sessionEvents.length,
@@ -535,13 +584,13 @@ describe('Complete Analytics Flow Integration Tests', () => {
 
 			// Mock batch processing
 			for (let batch = 0; batch < numberOfBatches; batch++) {
-				const events = Array.from({ length: batchSize }, (_, i) => ({
+				const events = Array.from({ length: batchSize }, (_, _i) => ({
 					session_id: `sess_volume_${batch}`,
-					name: `event_${i}`,
+					name: `event_${_i}`,
 					event_type: 'interaction' as const,
 					properties: {
 						batch_number: batch,
-						event_number: i,
+						event_number: _i,
 						timestamp: new Date().toISOString()
 					},
 					computed_metrics: {}
@@ -654,7 +703,7 @@ describe('Complete Analytics Flow Integration Tests', () => {
 			// Execute queries and verify performance characteristics
 			for (const queryTest of analyticalQueries) {
 				let result;
-				
+
 				if (queryTest.name.includes('device type')) {
 					result = await mockDb.analytics_session.findMany(queryTest.query);
 				} else if (queryTest.name.includes('template category')) {
@@ -753,7 +802,10 @@ describe('Complete Analytics Flow Integration Tests', () => {
 					body: JSON.stringify(batch)
 				});
 
-				const response = await POST({ request, getClientAddress: () => '192.168.1.100' } as any);
+				const response = await POST({
+					request,
+					getClientAddress: () => '192.168.1.100'
+				} as unknown);
 				expect(response.status).toBe(200);
 			}
 
@@ -813,10 +865,14 @@ describe('Complete Analytics Flow Integration Tests', () => {
 
 			// Verify cross-device tracking
 			expect(userSessions).toHaveLength(2);
-			
-			const mobileSessionData = userSessions.find((s: any) => s.session_id === 'sess_mobile_456');
-			const desktopSessionData = userSessions.find((s: any) => s.session_id === 'sess_desktop_789');
-			
+
+			const mobileSessionData = userSessions.find(
+				(s: unknown) => s.session_id === 'sess_mobile_456'
+			);
+			const desktopSessionData = userSessions.find(
+				(s: unknown) => s.session_id === 'sess_desktop_789'
+			);
+
 			expect(mobileSessionData?.device_data.device_type).toBe('mobile');
 			expect(desktopSessionData?.device_data.device_type).toBe('desktop');
 			expect(desktopSessionData?.funnel_progress['voting-funnel'].completed).toBe(true);
@@ -835,20 +891,22 @@ describe('Complete Analytics Flow Integration Tests', () => {
 					user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0',
 					ip_address: '203.0.113.1' // UK IP
 				},
-				events: [{
-					name: 'template_viewed',
-					template_id: 'template-uk-parliament-123',
-					properties: {
-						template_category: 'uk_politics',
-						language: 'en-GB',
-						currency: 'GBP',
-						timezone: 'Europe/London',
-						localized_content: true,
-						parliament_constituency: 'Westminster North',
-						mp_name: 'Karen Buck',
-						local_issues: ['housing', 'transport', 'environment']
+				events: [
+					{
+						name: 'template_viewed',
+						template_id: 'template-uk-parliament-123',
+						properties: {
+							template_category: 'uk_politics',
+							language: 'en-GB',
+							currency: 'GBP',
+							timezone: 'Europe/London',
+							localized_content: true,
+							parliament_constituency: 'Westminster North',
+							mp_name: 'Karen Buck',
+							local_issues: ['housing', 'transport', 'environment']
+						}
 					}
-				}]
+				]
 			};
 
 			mockDb.analytics_session.upsert.mockResolvedValue({
@@ -871,13 +929,13 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				body: JSON.stringify(internationalUserData)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '203.0.113.1' } as any);
+			const response = await POST({ request, getClientAddress: () => '203.0.113.1' } as unknown);
 			expect(response.status).toBe(200);
 
 			// Verify international/localization data is preserved
 			const eventCall = mockDb.analytics_event.createMany.mock.calls[0][0];
 			const storedEvent = eventCall.data[0];
-			
+
 			expect(safeEventProperties(storedEvent).language).toBe('en-GB');
 			expect(safeEventProperties(storedEvent).parliament_constituency).toBe('Westminster North');
 			expect(safeEventProperties(storedEvent).local_issues).toContain('housing');

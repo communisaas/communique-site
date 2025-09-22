@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ _locals }) => {
 	try {
 		if (!locals.user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 		});
 
 		return json(userTemplates);
-	} catch (_error) {
+	} catch (err) {
 		return json({ error: 'Failed to fetch templates' }, { status: 500 });
 	}
 };

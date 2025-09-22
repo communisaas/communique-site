@@ -18,7 +18,7 @@
 </script>
 
 <div class="skeleton-list space-y-3 {classNames}">
-	{#each Array(items) as _, i}
+	{#each Array(items) as _, _i}
 		<div
 			class="skeleton-list-item flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-4"
 		>

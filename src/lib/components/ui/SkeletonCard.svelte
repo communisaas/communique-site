@@ -15,8 +15,8 @@
 	<div class="mb-3 h-6 w-3/4 animate-pulse rounded bg-slate-200"></div>
 
 	<!-- Content lines -->
-	{#each Array(lines) as _, i}
-		<div class="mb-2 h-4 animate-pulse rounded bg-slate-100" style="width: {90 - i * 10}%"></div>
+	{#each Array(lines) as _, _i}
+		<div class="mb-2 h-4 animate-pulse rounded bg-slate-100" style="width: {90 - _i * 10}%"></div>
 	{/each}
 
 	<!-- Actions skeleton -->

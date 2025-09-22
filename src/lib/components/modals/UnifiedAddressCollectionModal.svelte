@@ -9,7 +9,7 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 
 	// Connect to modal system
 	const modalStore = createModalStore('address-collection-modal', 'address');
-	let modal: UnifiedModal;
+	let modal: UnifiedModal = $state();
 
 	// Open/close functions for external use
 	export function open(data: {
@@ -31,17 +31,19 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	}
 
 	// Extract data from modal store
-	const modalData = $derived(modalStore.data as {
-		template: {
-			title: string;
-			deliveryMethod: string;
-		};
-		onComplete?: (data: {
-			address: string;
-			verified: boolean;
-			representatives?: Array<Record<string, unknown>>;
-		}) => void;
-	} | null);
+	const modalData = $derived(
+		modalStore.data as {
+			template: {
+				title: string;
+				deliveryMethod: string;
+			};
+			onComplete?: (data: {
+				address: string;
+				verified: boolean;
+				representatives?: Array<Record<string, unknown>>;
+			}) => void;
+		} | null
+	);
 
 	function handleComplete(data: {
 		address: string;

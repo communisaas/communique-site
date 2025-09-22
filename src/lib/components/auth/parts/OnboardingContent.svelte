@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { fade, fly } from 'svelte/transition';
-	import { Users, Sparkles, HelpCircle, Mail, CheckCircle2 } from '@lucide/svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { fly } from 'svelte/transition';
+	import { Users, HelpCircle, Mail, CheckCircle2 } from '@lucide/svelte';
+	// import Button from '$lib/components/ui/Button.svelte';
 
 	let {
 		template,
 		source = 'direct-link',
 		onauth,
-		onclose
+		onclose: _onclose
 	}: {
 		template: {
 			title: string;
@@ -28,7 +28,7 @@
 	const isDirectOutreach = $derived(template?.deliveryMethod === 'email');
 
 	// Check if user has seen onboarding before
-	const hasSeenOnboarding = $derived.by(() => {
+	const _hasSeenOnboarding = $derived.by(() => {
 		if (typeof window === 'undefined') return false;
 		return localStorage.getItem('communique_has_seen_onboarding') === 'true';
 	});
@@ -153,7 +153,9 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ returnTo: `/s/${template.slug}` })
 			});
-		} catch {}
+		} catch {
+			/* Ignore auth preparation errors - continue with authentication */
+		}
 	}
 
 	function handleAuth(provider: string) {
@@ -321,7 +323,7 @@
 					out:fly={{ y: -10, duration: 200 }}
 				>
 					<div class="space-y-3">
-						{#each getProcessSteps(isCongressional, isDirectOutreach) as step, i}
+						{#each getProcessSteps(isCongressional, isDirectOutreach) as step, _i}
 							{@const IconComponent = step.icon}
 							<div class="flex items-start gap-3">
 								<div

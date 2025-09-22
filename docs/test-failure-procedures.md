@@ -22,6 +22,7 @@ node -e "console.log('Node:', process.version, 'Env:', process.env.NODE_ENV)"
 ```
 
 **Decision Matrix:**
+
 - **OAuth failures only** → Non-blocking, proceed with deployment review
 - **Database/Core API failures** → **BLOCKING**, halt deployment
 - **E2E failures only** → Review required, possible proceed
@@ -30,12 +31,14 @@ node -e "console.log('Node:', process.version, 'Env:', process.env.NODE_ENV)"
 #### 2. **Immediate Actions** (5-15 minutes)
 
 **For blocking failures:**
+
 1. **Revert deployment** if already in progress
 2. **Create incident ticket** with failure logs
 3. **Notify team** via configured alerts
 4. **Isolate the issue** - reproduce locally
 
 **For non-blocking failures:**
+
 1. **Create tracking issue** with test failure details
 2. **Schedule fix** within current sprint
 3. **Monitor** for escalation
@@ -61,6 +64,7 @@ npm run test:production  # Test with production feature flags
 ### OAuth Authentication Failures
 
 **Common Patterns:**
+
 - `Invalid authorization code`
 - `Failed to fetch user info`
 - `OAuth provider unavailable`
@@ -68,10 +72,11 @@ npm run test:production  # Test with production feature flags
 **Response Procedure:**
 
 1. **Check OAuth Configuration:**
+
    ```bash
    # Verify OAuth environment setup
    npm run test:unit tests/unit/oauth-config.test.ts
-   
+
    # Check provider-specific issues
    curl -f https://accounts.google.com/.well-known/openid_configuration
    ```
@@ -83,13 +88,14 @@ npm run test:production  # Test with production feature flags
 
 3. **Fix Priority:** Medium (fix within 48 hours)
 
-4. **Escalation Criteria:** 
+4. **Escalation Criteria:**
    - All OAuth providers failing simultaneously
    - OAuth failures affecting >50% of user logins
 
 ### Database/Core API Failures
 
 **Common Patterns:**
+
 - Connection timeouts
 - Schema mismatches
 - Transaction deadlocks
@@ -98,25 +104,27 @@ npm run test:production  # Test with production feature flags
 **Response Procedure:**
 
 1. **Immediate Database Health Check:**
+
    ```bash
    # Database connectivity
    npm run db:status
-   
+
    # Schema validation
    npm run db:validate
-   
+
    # Check for pending migrations
    npm run db:migrate status
    ```
 
 2. **Core API Validation:**
+
    ```bash
    # Test core endpoints
    npm run test:integration tests/integration/user-api.test.ts
    npm run test:integration tests/integration/template-api.test.ts
    ```
 
-3. **Blocking Criteria:** 
+3. **Blocking Criteria:**
    - User creation/authentication fails
    - Template CRUD operations fail
    - Congressional delivery pipeline fails
@@ -126,6 +134,7 @@ npm run test:production  # Test with production feature flags
 ### Environment/Infrastructure Failures
 
 **Common Patterns:**
+
 - Missing environment variables
 - Service unavailability
 - Memory/resource constraints
@@ -134,24 +143,26 @@ npm run test:production  # Test with production feature flags
 **Response Procedure:**
 
 1. **Infrastructure Health Check:**
+
    ```bash
    # System resources
    free -h
    df -h
-   
+
    # Network connectivity
    ping -c 3 8.8.8.8
-   
+
    # Service availability
    systemctl status postgresql
    systemctl status nginx
    ```
 
 2. **Environment Validation:**
+
    ```bash
    # Check all required variables
    npm run env:validate
-   
+
    # Verify external service connectivity
    npm run health:check
    ```
@@ -161,6 +172,7 @@ npm run test:production  # Test with production feature flags
 ### Performance/Timeout Failures
 
 **Common Patterns:**
+
 - Test timeouts
 - Slow database queries
 - Memory leaks
@@ -169,10 +181,11 @@ npm run test:production  # Test with production feature flags
 **Response Procedure:**
 
 1. **Performance Analysis:**
+
    ```bash
    # Identify slow tests
    npm run test:coverage | grep -E "slow|timeout"
-   
+
    # Memory usage analysis
    cat coverage/test-health-report.json | jq '.memoryLeaks'
    ```
@@ -226,14 +239,14 @@ fi
 
 ### Deployment Decision Matrix
 
-| Test Status | Deployment Action | Review Required |
-|-------------|------------------|-----------------|
-| All tests pass | ✅ **PROCEED** | No |
-| Core tests pass, integration issues | ⚠️ **PROCEED WITH CAUTION** | Yes |
-| Core tests pass, E2E issues | ⚠️ **PROCEED WITH MONITORING** | Yes |
-| Core tests fail | ❌ **BLOCK** | Yes |
-| Build fails | ❌ **BLOCK** | Yes |
-| Security issues (high/critical) | ❌ **BLOCK** | Yes |
+| Test Status                         | Deployment Action              | Review Required |
+| ----------------------------------- | ------------------------------ | --------------- |
+| All tests pass                      | ✅ **PROCEED**                 | No              |
+| Core tests pass, integration issues | ⚠️ **PROCEED WITH CAUTION**    | Yes             |
+| Core tests pass, E2E issues         | ⚠️ **PROCEED WITH MONITORING** | Yes             |
+| Core tests fail                     | ❌ **BLOCK**                   | Yes             |
+| Build fails                         | ❌ **BLOCK**                   | Yes             |
+| Security issues (high/critical)     | ❌ **BLOCK**                   | Yes             |
 
 ### Post-Deployment Monitoring
 
@@ -269,24 +282,28 @@ curl -f https://your-app.com/api/db/health || echo "Database health failed"
 ### Severity Levels
 
 **Critical (P0) - Immediate Response Required**
+
 - Complete service outage
 - Data loss/corruption
 - Security breach
 - Core functionality unavailable
 
 **High (P1) - Response within 2 hours**
+
 - Major feature unavailable
 - Authentication system down
 - Database performance issues
 - Significant user impact
 
 **Medium (P2) - Response within 24 hours**
+
 - Minor feature issues
 - Non-critical OAuth failures
 - Performance degradation
 - Limited user impact
 
 **Low (P3) - Response within 1 week**
+
 - Cosmetic issues
 - Enhancement requests
 - Non-user-facing problems
@@ -295,12 +312,14 @@ curl -f https://your-app.com/api/db/health || echo "Database health failed"
 ### Contact Procedures
 
 **Critical Issues (P0/P1):**
+
 1. **Immediate notification** to on-call engineer
 2. **Create incident** in tracking system
 3. **Start incident bridge** for coordination
 4. **Notify stakeholders** within 30 minutes
 
 **Standard Issues (P2/P3):**
+
 1. **Create ticket** in tracking system
 2. **Assign to appropriate team**
 3. **Set priority and timeline**
@@ -311,6 +330,7 @@ curl -f https://your-app.com/api/db/health || echo "Database health failed"
 ### Rollback Strategies
 
 **1. Immediate Rollback (< 5 minutes)**
+
 ```bash
 # Git-based rollback
 git revert HEAD --no-edit
@@ -322,6 +342,7 @@ docker restart app-container
 ```
 
 **2. Database Rollback (if needed)**
+
 ```bash
 # Prisma migration rollback
 npm run db:migrate reset --force
@@ -329,6 +350,7 @@ npm run db:migrate deploy --from-migration previous-migration
 ```
 
 **3. Feature Flag Rollback**
+
 ```bash
 # Disable problematic features
 export ENABLE_BETA=false
@@ -339,12 +361,14 @@ npm run deploy:hotfix
 ### Data Recovery
 
 **Database Recovery:**
+
 1. **Stop application** to prevent further corruption
 2. **Restore from backup** (automated daily backups)
 3. **Validate data integrity** after restore
 4. **Resume application** with monitoring
 
 **User Data Recovery:**
+
 1. **Identify affected users** from logs
 2. **Restore individual user data** if possible
 3. **Notify affected users** of resolution
@@ -355,18 +379,21 @@ npm run deploy:hotfix
 ### Test Quality Assurance
 
 **1. Comprehensive Test Coverage**
+
 - Maintain >80% integration test coverage
 - Critical paths have multiple test scenarios
 - Edge cases explicitly tested
 - Error conditions properly handled
 
 **2. Test Environment Hardening**
+
 - Production-like CI environment
 - Realistic test data volumes
 - Network latency simulation
 - Resource constraint testing
 
 **3. Automated Quality Gates**
+
 - Code review requirements
 - Automated security scanning
 - Performance regression detection
@@ -375,12 +402,14 @@ npm run deploy:hotfix
 ### Monitoring and Alerting
 
 **1. Proactive Monitoring**
+
 - Application performance monitoring (APM)
 - Infrastructure monitoring
 - User experience monitoring
 - Business metric tracking
 
 **2. Alert Configuration**
+
 - Graduated alert severity
 - Alert fatigue prevention
 - Clear escalation paths
@@ -389,12 +418,14 @@ npm run deploy:hotfix
 ### Documentation and Training
 
 **1. Runbook Maintenance**
+
 - Keep procedures up-to-date
 - Regular runbook testing
 - Clear ownership assignments
 - Version control for procedures
 
 **2. Team Training**
+
 - Regular incident response drills
 - New team member onboarding
 - Cross-team knowledge sharing
@@ -427,18 +458,21 @@ npm run deploy:hotfix
 ### Metrics and KPIs
 
 **Test Reliability Metrics:**
+
 - Test flakiness rate (target: <2%)
 - Mean time to detection (MTTD)
 - Mean time to resolution (MTTR)
 - False positive rate
 
 **Deployment Metrics:**
+
 - Deployment success rate (target: >95%)
 - Rollback frequency (target: <5%)
 - Time to production (target: <30 min)
 - Zero-downtime deployment percentage
 
 **Operational Metrics:**
+
 - Service availability (target: 99.9%)
 - Error rate (target: <0.1%)
 - Response time p95 (target: <1s)
@@ -447,16 +481,19 @@ npm run deploy:hotfix
 ### Regular Reviews
 
 **Weekly:**
+
 - Test failure trend analysis
 - Performance metric review
 - Incident follow-up status
 
 **Monthly:**
+
 - Test suite health assessment
 - Infrastructure capacity review
 - Process effectiveness evaluation
 
 **Quarterly:**
+
 - Comprehensive incident analysis
 - Test strategy refinement
 - Tool and process upgrades

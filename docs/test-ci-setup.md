@@ -24,18 +24,20 @@ FACEBOOK_CLIENT_SECRET=test-facebook-client-secret
 Set these secrets in your repository settings (Settings > Secrets and Variables > Actions):
 
 **Required for all tests:**
+
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/test
 ```
 
 **OAuth testing (recommended for comprehensive coverage):**
+
 ```bash
 # Google OAuth (for testing OAuth flows)
 GOOGLE_CLIENT_ID=your-test-google-client-id
 GOOGLE_CLIENT_SECRET=your-test-google-client-secret
 
 # Facebook OAuth
-FACEBOOK_CLIENT_ID=your-test-facebook-client-id  
+FACEBOOK_CLIENT_ID=your-test-facebook-client-id
 FACEBOOK_CLIENT_SECRET=your-test-facebook-client-secret
 
 # Discord OAuth
@@ -52,6 +54,7 @@ TWITTER_CLIENT_SECRET=your-test-twitter-client-secret
 ```
 
 **Optional configuration:**
+
 ```bash
 OAUTH_REDIRECT_BASE_URL=http://localhost:5173  # Default for testing
 ENABLE_BETA=false                              # Feature flag for beta features
@@ -115,6 +118,7 @@ Tests automatically validate the environment on startup:
 ### Test Timeouts
 
 CI environments use longer timeouts:
+
 - **Local**: 10 seconds per test
 - **CI**: 15 seconds per test
 - **Integration tests**: Up to 8 minutes total
@@ -157,7 +161,7 @@ Tests automatically handle database setup:
 The system monitors for environment changes during test execution:
 
 - Tracks required environment variables
-- Detects OAuth configuration changes  
+- Detects OAuth configuration changes
 - Warns about test pollution
 - Resets environment after each test
 
@@ -206,28 +210,31 @@ Comprehensive test execution monitoring:
 ### Common CI Issues
 
 1. **OAuth Test Failures**:
+
    ```bash
    # Check if OAuth credentials are set
    echo "OAuth setup: $HAS_OAUTH_SETUP"
-   
+
    # Verify environment variables are available
    env | grep -E "(GOOGLE|FACEBOOK|DISCORD)" | head -5
    ```
 
 2. **Database Connection Issues**:
+
    ```bash
    # Verify PostgreSQL service is healthy
    pg_isready -h localhost -p 5432
-   
+
    # Check database URL format
    echo $DATABASE_URL
    ```
 
 3. **Timeout Issues**:
+
    ```bash
    # Increase CI timeout in package.json
    "test:integration": "VITEST_TIMEOUT=20000 vitest tests/integration"
-   
+
    # Or in vitest config
    testTimeout: process.env.CI ? 20000 : 10000
    ```
@@ -259,6 +266,7 @@ DEBUG=test:* npm run test
 ### Weekly Tasks
 
 1. **Run mock drift detection**:
+
    ```bash
    npm run test:coverage
    # Check coverage/mock-drift-report.json

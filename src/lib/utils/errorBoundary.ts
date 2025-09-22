@@ -40,9 +40,10 @@ export interface ErrorBoundaryConfig {
 export function isValidErrorBoundaryConfig(config: unknown): config is ErrorBoundaryConfig {
 	if (typeof config !== 'object' || config === null) return false;
 	const cfg = config as Record<string, unknown>;
-	
+
 	return (
-		(cfg.fallback === undefined || ['minimal', 'detailed', 'redirect'].includes(cfg.fallback as string)) &&
+		(cfg.fallback === undefined ||
+			['minimal', 'detailed', 'redirect'].includes(cfg.fallback as string)) &&
 		(cfg.enableRetry === undefined || typeof cfg.enableRetry === 'boolean') &&
 		(cfg.maxRetries === undefined || typeof cfg.maxRetries === 'number') &&
 		(cfg.autoRetryDelay === undefined || typeof cfg.autoRetryDelay === 'number') &&
@@ -74,14 +75,14 @@ class ErrorBoundaryManager {
 
 		// Global error handler
 		window.addEventListener('error', (event) => {
-			const error = this.createErrorReport(
-				event.error || new Error(event.message),
-				'global_error',
-				{ source: event.filename, line: event.lineno, column: event.colno }
-			);
+			const error = this.createErrorReport(event.error || new Error(event.message), 'globalerror', {
+				source: event.filename,
+				line: event.lineno,
+				column: event.colno
+			});
 
 			if (enableLogging) {
-				console.error('Global error caught:', error);
+				console.error('Error occurred');
 			}
 
 			if (enableReporting) {
@@ -100,7 +101,7 @@ class ErrorBoundaryManager {
 			);
 
 			if (enableLogging) {
-				console.error('Unhandled promise rejection:', error);
+				console.error('Error occurred');
 			}
 
 			if (enableReporting) {
@@ -235,10 +236,7 @@ export const errorBoundaryManager = new ErrorBoundaryManager();
 /**
  * HOC function to wrap functions with error boundaries
  */
-export function withErrorBoundary<
-	TArgs extends readonly unknown[],
-	TReturn
->(
+export function withErrorBoundary<TArgs extends readonly unknown[], TReturn>(
 	fn: (...args: TArgs) => TReturn,
 	context: string,
 	options: {
@@ -247,7 +245,7 @@ export function withErrorBoundary<
 		onError?: (error: Error) => void;
 	} = {}
 ): (...args: TArgs) => TReturn | undefined {
-	return ((...args: TArgs): TReturn | undefined => {
+	return (...args: TArgs): TReturn | undefined => {
 		try {
 			const result = fn(...args);
 
@@ -257,7 +255,7 @@ export function withErrorBoundary<
 					const errorReport = errorBoundaryManager.createErrorReport(error, context);
 
 					if (!options.silent) {
-						console.error(`Error in ${context}:`, error);
+						console.error('Error occurred');
 					}
 
 					errorBoundaryManager.reportError(errorReport);
@@ -268,11 +266,11 @@ export function withErrorBoundary<
 			}
 
 			return result;
-		} catch (error) {
+		} catch {
 			const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
 
 			if (!options.silent) {
-				console.error(`Error in ${context}:`, error);
+				console.error('Error occurred');
 			}
 
 			errorBoundaryManager.reportError(errorReport);
@@ -280,7 +278,7 @@ export function withErrorBoundary<
 
 			return options.fallback;
 		}
-	});
+	};
 }
 
 /**
@@ -296,7 +294,7 @@ export async function safeAsync<T>(
 		console.error('safeAsync: operation must be a function');
 		return fallback;
 	}
-	
+
 	if (typeof context !== 'string' || context.trim() === '') {
 		console.error('safeAsync: context must be a non-empty string');
 		return fallback;
@@ -305,10 +303,10 @@ export async function safeAsync<T>(
 	try {
 		const result = await operation();
 		return result;
-	} catch (error) {
+	} catch {
 		const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
 		errorBoundaryManager.reportError(errorReport);
-		console.error(`Safe async error in ${context}:`, error);
+		console.error('Error occurred');
 		return fallback;
 	}
 }

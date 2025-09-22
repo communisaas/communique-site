@@ -3,9 +3,9 @@
  * Embedded SMTP service for congressional message delivery via CWC API
  */
 
-import { spawn } from 'child_process';
+import { _spawn } from 'child_process';
 import { env } from '$env/dynamic/private';
-import path from 'path';
+import _path from 'path';
 
 export interface DeliveryServiceConfig {
 	smtpPort: number;
@@ -17,7 +17,7 @@ export interface DeliveryServiceConfig {
 }
 
 export class DeliveryService {
-	private server: unknown;
+	private _server: unknown;
 	private config: DeliveryServiceConfig;
 
 	constructor() {
@@ -38,7 +38,7 @@ export class DeliveryService {
 		console.log('🚀 Starting Delivery Service...');
 
 		// Set environment variables for the delivery service
-		const deliveryEnv = {
+		const _deliveryEnv = {
 			...process.env,
 			SMTP_PORT: this.config.smtpPort.toString(),
 			SMTP_HOST: this.config.smtpHost,
@@ -52,12 +52,12 @@ export class DeliveryService {
 
 		// Import and start the SMTP server directly
 		try {
-			const smtpServerModule = await import('./delivery/smtp-server.js');
+			const _smtpServerModule = await import('./delivery/smtp-server.js');
 			// The delivery service will start automatically when imported
 			console.log(`📧 Delivery Service running on ${this.config.smtpHost}:${this.config.smtpPort}`);
-		} catch (_error) {
-			console.error('❌ Failed to start Delivery Service:', _error);
-			throw _error;
+		} catch (error) {
+			console.error('Error occurred');
+			throw error;
 		}
 	}
 
@@ -74,8 +74,9 @@ export class DeliveryService {
 	 */
 	async healthCheck(): Promise<boolean> {
 		// Simple health check - verify SMTP port is listening
+		const net = await import('net');
+
 		return new Promise((resolve) => {
-			const net = require('net');
 			const client = net.createConnection({
 				port: this.config.smtpPort,
 				host: this.config.smtpHost

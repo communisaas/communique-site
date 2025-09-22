@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
 	import { validateField, debounce, type ValidationRule } from '$lib/utils/validation';
 
 	interface Props {
@@ -14,6 +13,7 @@
 		rows?: number; // For textarea
 		class?: string;
 		style?: string;
+		id?: string;
 	}
 
 	let {
@@ -27,8 +27,12 @@
 		onValidation,
 		rows = 4,
 		class: className,
-		style
+		style,
+		id
 	}: Props = $props();
+
+	// Generate unique ID if not provided
+	const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`;
 
 	let clientError = $state<string | null>(null);
 	let isTouched = $state(false);
@@ -102,7 +106,7 @@
 
 <div class="space-y-1">
 	{#if label}
-		<label class={labelClasses}>
+		<label for={inputId} class={labelClasses}>
 			{label}
 			{#if rules.required}
 				<span class="text-red-500">*</span>
@@ -112,6 +116,7 @@
 
 	{#if type === 'textarea'}
 		<textarea
+			id={inputId}
 			bind:value
 			class={inputClasses}
 			{placeholder}
@@ -124,6 +129,7 @@
 		></textarea>
 	{:else}
 		<input
+			id={inputId}
 			{type}
 			bind:value
 			class={inputClasses}

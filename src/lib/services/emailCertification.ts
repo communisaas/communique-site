@@ -94,11 +94,11 @@ export async function certifyEmailDelivery(
 		}
 
 		return result;
-	} catch (_error) {
-		console.error('[Email Certification] Error:', _error);
+	} catch {
+		console.error('Error occurred');
 		return {
 			success: false,
-			error: _error instanceof Error ? _error.message : 'Certification failed'
+			error: error ? 'Unknown error' : 'Certification failed'
 		};
 	}
 }

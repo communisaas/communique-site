@@ -3,16 +3,40 @@ import { createMockTemplate } from '../types/test-helpers.js';
 import type { MockTemplate } from '../types/test-helpers.js';
 import { testMultipliersAccess } from '../helpers/json-test-helpers';
 
+// Agent decision types for testing
+interface AgentDecision {
+	decision: {
+		riskFactors?: unknown;
+		recommendedActions?: unknown;
+		verificationLevel?: string;
+		credibilityScore?: number;
+		credibilityComponents?: {
+			civic_engagement?: number;
+			[key: string]: unknown;
+		};
+		impactScore?: number;
+		confidenceLevel?: string;
+		baseRewardUSD?: number;
+		totalMultiplier?: number;
+		multipliers?: {
+			urgency?: number;
+			[key: string]: unknown;
+		};
+		[key: string]: unknown;
+	};
+	[key: string]: unknown;
+}
+
 /**
  * Agent Integration Tests
  *
  * Tests the integration with Communiqué's multi-agent system:
  * - Verification Agent: Identity verification
- * - Impact Agent: Civic impact measurement  
+ * - Impact Agent: Civic impact measurement
  * - Reputation Agent: User credibility scoring
  * - Supply Agent: Token economics and rewards
  * - Agent Coordinator: Multi-agent consensus
- * 
+ *
  * Updated for consolidated schema (Phase 1-5 complete)
  */
 
@@ -24,7 +48,7 @@ const mockDb = vi.hoisted(() => ({
 			if (!userId || userId === '' || typeof userId !== 'string') {
 				return Promise.resolve(null);
 			}
-			
+
 			// Return different user data based on ID for testing
 			const userData: Record<string, any> = {
 				'user-123': {
@@ -127,7 +151,7 @@ const mockDb = vi.hoisted(() => ({
 					discourse_score: 95
 				}
 			};
-			
+
 			return Promise.resolve(userData[userId] || null);
 		}),
 		update: vi.fn().mockResolvedValue({
@@ -142,7 +166,7 @@ const mockDb = vi.hoisted(() => ({
 			if (!templateId || typeof templateId !== 'string') {
 				return Promise.resolve(null);
 			}
-			
+
 			const templateData: Record<string, any> = {
 				'template-123': {
 					id: 'template-123',
@@ -241,7 +265,7 @@ const mockDb = vi.hoisted(() => ({
 					userId: null
 				}
 			};
-			
+
 			return Promise.resolve(templateData[templateId] || null);
 		}),
 		findMany: vi.fn().mockResolvedValue([
@@ -273,28 +297,28 @@ const mockDb = vi.hoisted(() => ({
 		findMany: vi.fn().mockImplementation((query) => {
 			// Mock data for network activity queries
 			const actions = [
-				{ 
-					id: 'action-1', 
+				{
+					id: 'action-1',
 					user_id: 'user-123',
 					template_id: 'template-123',
 					action_type: 'cwc_message',
 					status: 'confirmed',
 					reward_wei: '100000000000000000',
 					tx_hash: '0xabcd1234',
-					created_at: new Date() 
+					created_at: new Date()
 				},
-				{ 
-					id: 'action-2', 
+				{
+					id: 'action-2',
 					user_id: 'user-456',
 					template_id: 'template-456',
 					action_type: 'cwc_message',
 					status: 'confirmed',
 					reward_wei: '200000000000000000',
 					tx_hash: '0xabcd5678',
-					created_at: new Date() 
+					created_at: new Date()
 				}
 			];
-			
+
 			// Handle distinct queries for unique users
 			if (query?.distinct?.includes('user_id')) {
 				return Promise.resolve([
@@ -303,7 +327,7 @@ const mockDb = vi.hoisted(() => ({
 					{ user_id: 'user-789' }
 				]);
 			}
-			
+
 			return Promise.resolve(actions);
 		}),
 		count: vi.fn().mockResolvedValue(5)
@@ -326,7 +350,7 @@ const mockDb = vi.hoisted(() => ({
 	},
 	challenge: {
 		findMany: vi.fn().mockResolvedValue([])
-	},
+	}
 }));
 
 vi.mock('$lib/core/db', () => ({
@@ -380,9 +404,9 @@ describe('Agent Integration', () => {
 			const decision = await agent.makeDecision(suspiciousContext);
 
 			// Should identify risk factors for suspicious users
-			expect((decision.decision as any).riskFactors).toBeDefined();
-			expect((decision.decision as any).recommendedActions).toBeDefined();
-			expect((decision.decision as any).verificationLevel).toMatch(/unverified|partial/);
+			expect((decision as unknown as AgentDecision).decision.riskFactors).toBeDefined();
+			expect((decision as unknown as AgentDecision).decision.recommendedActions).toBeDefined();
+			expect((decision as unknown as AgentDecision).decision.verificationLevel).toMatch(/unverified|partial/);
 		});
 
 		it('should handle verification errors gracefully', async () => {
@@ -399,7 +423,7 @@ describe('Agent Integration', () => {
 				const decision = await agent.makeDecision(invalidContext);
 				// Should still return a decision, possibly with low confidence
 				expect(decision.confidence).toBeLessThanOrEqual(0.5);
-				expect((decision.decision as any).verificationLevel).toBe('unverified');
+				expect((decision as unknown as AgentDecision).decision.verificationLevel).toBe('unverified');
 			} catch (error) {
 				// Or may throw error for invalid input
 				expect(error).toBeDefined();
@@ -455,7 +479,7 @@ describe('Agent Integration', () => {
 		it('should handle cases where consensus is not reached', async () => {
 			// Create a mock coordinator that simulates disagreement
 			const { AgentCoordinator, AgentType } = await import('../../src/lib/agents/base-agent');
-			
+
 			// Test with agents that would disagree
 			// Since this is an integration test, we'll test a case where consensus would fail
 			const coordinator = new AgentCoordinator();
@@ -468,7 +492,7 @@ describe('Agent Integration', () => {
 
 			try {
 				const consensus = await coordinator.coordinateDecision(emptyContext, [AgentType.SUPPLY]);
-				
+
 				// If it succeeds, check that it's handling the edge case appropriately
 				expect(consensus).toMatchObject({
 					consensusReached: expect.any(Boolean),
@@ -517,7 +541,7 @@ describe('Agent Integration', () => {
 				})
 			});
 
-			expect((decision.decision as any).credibilityScore).toBeGreaterThanOrEqual(0);
+			expect((decision as unknown as AgentDecision).decision.credibilityScore).toBeGreaterThanOrEqual(0);
 		});
 
 		it('should assess credibility components independently', async () => {
@@ -538,11 +562,15 @@ describe('Agent Integration', () => {
 			const establishedUserDecision = await agent.makeDecision(establishedUserContext);
 
 			// Both should have valid credibility components
-			expect((newUserDecision.decision as any).credibilityComponents.civic_engagement).toBeGreaterThanOrEqual(0);
-			expect((establishedUserDecision.decision as any).credibilityComponents.civic_engagement).toBeGreaterThanOrEqual(0);
+			expect(
+				(((newUserDecision as unknown as AgentDecision).decision) as unknown).credibilityComponents.civic_engagement
+			).toBeGreaterThanOrEqual(0);
+			expect(
+				((establishedUserDecision as unknown as AgentDecision).decision as unknown).credibilityComponents.civic_engagement
+			).toBeGreaterThanOrEqual(0);
 
 			// Check that all components are present
-			const components = (newUserDecision.decision as any).credibilityComponents;
+			const components = (((newUserDecision as unknown as AgentDecision).decision) as unknown).credibilityComponents;
 			expect(components).toHaveProperty('civic_engagement');
 			expect(components).toHaveProperty('information_quality');
 			expect(components).toHaveProperty('community_trust');
@@ -577,8 +605,8 @@ describe('Agent Integration', () => {
 				})
 			});
 
-			expect((decision.decision as any).impactScore).toBeGreaterThanOrEqual(0);
-			expect((decision.decision as any).impactScore).toBeLessThanOrEqual(100);
+			expect((decision as unknown as AgentDecision).decision.impactScore).toBeGreaterThanOrEqual(0);
+			expect((decision as unknown as AgentDecision).decision.impactScore).toBeLessThanOrEqual(100);
 		});
 
 		it('should assess different types of civic actions', async () => {
@@ -600,9 +628,9 @@ describe('Agent Integration', () => {
 
 			for (const context of contexts) {
 				const decision = await agent.makeDecision(context);
-				
-				expect((decision.decision as any).impactScore).toBeGreaterThanOrEqual(0);
-				expect((decision.decision as any).confidenceLevel).toMatch(/high|medium|low/);
+
+				expect((decision as unknown as AgentDecision).decision.impactScore).toBeGreaterThanOrEqual(0);
+				expect((decision as unknown as AgentDecision).decision.confidenceLevel).toMatch(/high|medium|low/);
 				expect(decision.confidence).toBeGreaterThan(0);
 				expect(decision.confidence).toBeLessThanOrEqual(1);
 			}
@@ -644,8 +672,8 @@ describe('Agent Integration', () => {
 				})
 			});
 
-			expect((decision.decision as any).baseRewardUSD).toBeGreaterThan(0);
-			expect((decision.decision as any).totalMultiplier).toBeGreaterThan(0);
+			expect((decision as unknown as AgentDecision).decision.baseRewardUSD).toBeGreaterThan(0);
+			expect((decision as unknown as AgentDecision).decision.totalMultiplier).toBeGreaterThan(0);
 		});
 
 		it('should apply appropriate multipliers for different scenarios', async () => {
@@ -670,12 +698,12 @@ describe('Agent Integration', () => {
 			const routineDecision = await agent.makeDecision(routineContext);
 
 			// Urgent actions should generally have higher multipliers
-			expect(testMultipliersAccess(urgentDecision.decision.multipliers).urgency).toBeGreaterThanOrEqual(
-				testMultipliersAccess(routineDecision.decision.multipliers).urgency
-			);
+			expect(
+				testMultipliersAccess((urgentDecision as unknown as AgentDecision).decision.multipliers).urgency
+			).toBeGreaterThanOrEqual(testMultipliersAccess((routineDecision as unknown as AgentDecision).decision.multipliers).urgency);
 
-			expect(urgentDecision.decision.totalMultiplier).toBeGreaterThanOrEqual(
-				routineDecision.decision.totalMultiplier
+			expect((urgentDecision as unknown as AgentDecision).decision.totalMultiplier).toBeGreaterThanOrEqual(
+				(routineDecision as unknown as AgentDecision).decision.totalMultiplier
 			);
 		});
 	});
@@ -813,13 +841,9 @@ describe('Agent Integration', () => {
 			const validDecision = {
 				templateId: 'climate-action-template',
 				impactScore: 78,
-				legislativeOutcomes: [
-					{ bill: 'HR-1234', likelihood: 0.65 }
-				],
+				legislativeOutcomes: [{ bill: 'HR-1234', likelihood: 0.65 }],
 				confidenceLevel: 'high',
-				causalChains: [
-					{ action: 'constituent_pressure', outcome: 'committee_hearing' }
-				],
+				causalChains: [{ action: 'constituent_pressure', outcome: 'committee_hearing' }],
 				correlationStrength: 0.78
 			};
 

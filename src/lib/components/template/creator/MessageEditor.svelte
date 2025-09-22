@@ -42,9 +42,9 @@
 		if (isCongressional) vars.push(...congressionalVariables);
 		return vars;
 	});
-	const unusedVariables = $derived(availableVariables.filter((v) => !data.variables.includes(v)));
-	const hasPersonalTouch = $derived(data.variables.includes('[Personal Connection]'));
-	const hasAuthenticity = $derived(
+	const _unusedVariables = $derived(availableVariables.filter((v) => !data.variables.includes(v)));
+	const _hasPersonalTouch = $derived(data.variables.includes('[Personal Connection]'));
+	const _hasAuthenticity = $derived(
 		data.variables.includes('[Name]') || data.variables.includes('[Address]')
 	);
 
@@ -172,7 +172,7 @@
 	<!-- Compact Variable Pills Row -->
 	<div class="mb-3 flex-shrink-0">
 		<div class="mb-2 flex items-center justify-between">
-			<label class="text-xs font-medium text-slate-600">Click to insert variables:</label>
+			<span class="text-xs font-medium text-slate-600">Click to insert variables:</span>
 			<span class="text-xs text-slate-500">Auto-adds as you type</span>
 		</div>
 
@@ -180,7 +180,7 @@
 		<div class="scrollbar-hide flex gap-3 overflow-x-auto px-1 pb-2 sm:hidden">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
-				{@const isCore = coreVariables.includes(variable)}
+				{@const _isCore = coreVariables.includes(variable)}
 				{@const isAddress = variable === '[Address]'}
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
 
@@ -198,7 +198,7 @@
 						class:border-slate-200={!isUsed && !isPersonalConnection}
 						class:text-slate-600={!isUsed && !isPersonalConnection}
 						onclick={() => insertVariable(variable)}
-						disabled={isCore && isUsed}
+						disabled={_isCore && isUsed}
 						style="transform: scale({$buttonScale})"
 					>
 						{#if isUsed}
@@ -206,7 +206,7 @@
 						{:else}
 							<Plus class="h-3 w-3" />
 						{/if}
-						{variable.replace(/[\[\]]/g, '')}
+						{variable.replace(/[[\]]/g, '')}
 						{#if isPersonalConnection && !isUsed}
 							<span class="text-xs">✨</span>
 						{/if}
@@ -238,7 +238,7 @@
 		<div class="hidden flex-wrap items-center gap-2 sm:flex">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
-				{@const isCore = coreVariables.includes(variable)}
+				{@const _isCore = coreVariables.includes(variable)}
 				{@const isAddress = variable === '[Address]'}
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
 
@@ -279,14 +279,14 @@
 						class:text-slate-600={!isUsed && !isPersonalConnection}
 						class:hover:bg-slate-100={!isUsed && !isPersonalConnection}
 						onclick={() => insertVariable(variable)}
-						disabled={isCore && isUsed}
+						disabled={_isCore && isUsed}
 					>
 						{#if isUsed}
 							<Check class="h-3 w-3" />
 						{:else}
 							<Plus class="h-3 w-3" />
 						{/if}
-						{variable.replace(/[\[\]]/g, '')}
+						{variable.replace(/[[\]]/g, '')}
 						{#if isPersonalConnection && !isUsed}
 							<span class="text-xs">✨</span>
 						{/if}
@@ -306,7 +306,7 @@
 				placeholder={placeholderText}
 				rules={templateValidationRules.message_body}
 				rows={12}
-				class="composer-textarea h-full resize-none font-mono text-sm leading-relaxed"
+				class="h-full resize-none pb-16 font-mono text-sm leading-relaxed"
 				style="min-height: 250px; max-height: 60vh;"
 			/>
 
@@ -364,9 +364,7 @@
 		border: 0;
 	}
 
-	.composer-textarea {
-		padding-bottom: 4rem; /* Extra space for floating action bar */
-	}
+	/* Padding handled via Tailwind pb-16 class */
 
 	.scrollbar-hide {
 		-ms-overflow-style: none;

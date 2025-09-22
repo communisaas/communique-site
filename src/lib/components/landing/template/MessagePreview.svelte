@@ -1,8 +1,9 @@
 <script lang="ts">
+	/// <reference types="dom" />
 	import { Mail, Sparkles, User, Edit3 } from '@lucide/svelte';
 	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import { fade, fly, scale } from 'svelte/transition';
+	// import { fade, fly, scale } from 'svelte/transition';
 	import AnimatedPopover from '$lib/components/ui/AnimatedPopover.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
 	import type { Template } from '$lib/types/template';
@@ -47,8 +48,8 @@
 		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onscrollStateChange?: (scrollState: unknown) => void;
 		ontouchStateChange?: (touchState: unknown) => void;
-		onvariableSelect?: (event: { variableName: string; active: boolean }) => void;
-		onvariableChange?: (event: { name: string; value: string }) => void;
+		onvariableSelect?: (__event: { variableName: string; active: boolean }) => void;
+		onvariableChange?: (__event: { name: string; value: string }) => void;
 		expandToContent?: boolean;
 	} = $props();
 	let scrollContainer: HTMLDivElement;
@@ -60,29 +61,46 @@
 	// Define which variables are system-populated vs user-editable
 	// Based on templateResolver.ts - these get auto-filled with user data
 	const systemVariables = new Set([
-		'Name', 'Your Name', 'Address', 'Your Address', 'City', 'State', 'ZIP', 'Zip Code',
-		'Representative Name', 'Rep Name', 'Representative', 'Senator Name', 'Senator',
-		'Senior Senator', 'Junior Senator'
+		'Name',
+		'Your Name',
+		'Address',
+		'Your Address',
+		'City',
+		'State',
+		'ZIP',
+		'Zip Code',
+		'Representative Name',
+		'Rep Name',
+		'Representative',
+		'Senator Name',
+		'Senator',
+		'Senior Senator',
+		'Junior Senator'
 	]);
-	
+
 	// These require user input and remain editable
 	const userEditableVariables = new Set([
-		'Personal Connection', 'Phone', 'Phone Number', 'Your Phone', 
-		'Your Story', 'Your Experience', 'Personal Story'
+		'Personal Connection',
+		'Phone',
+		'Phone Number',
+		'Your Phone',
+		'Your Story',
+		'Your Experience',
+		'Personal Story'
 	]);
 
 	// Use centralized template resolver for comprehensive variable resolution
 	const resolvedTemplate = $derived(() => {
 		if (!template) return { body: preview };
-		
+
 		// Convert user to EmailServiceUser format if available
 		const emailServiceUser = user ? toEmailServiceUser(user) : null;
-		
+
 		try {
 			// Use preserveVariables option to keep variables for interactive display
 			return resolveTemplate(template, emailServiceUser, { preserveVariables: true });
-		} catch (error) {
-			console.warn('Template resolution failed, falling back to preview:', error);
+		} catch (_error) {
+			console.warn('Template resolution failed, falling back to preview:', _error);
 			return { body: preview };
 		}
 	});
@@ -98,7 +116,7 @@
 
 	// For display, we'll show a hybrid: resolved text with interactive variable buttons
 	// where variables still exist in the original template
-	const resolvedPreview = $derived(resolvedTemplate().body);
+	const _resolvedPreview = $derived(resolvedTemplate().body);
 
 	// Contextual hints and suggestions
 	const variableHints: Record<string, { prompt: string; placeholder: string }> = {
@@ -109,7 +127,7 @@
 	};
 
 	const systemVariableHints: Record<string, { title: string; description: string }> = {
-		'Name': {
+		Name: {
 			title: 'Your Profile Name',
 			description: 'This will be replaced with your name from your profile.'
 		},
@@ -117,23 +135,23 @@
 			title: 'Your Profile Name',
 			description: 'This will be replaced with your name from your profile.'
 		},
-		'Address': {
+		Address: {
 			title: 'Your Full Address',
 			description: 'This will be replaced with your complete address from your profile.'
 		},
 		'Your Address': {
-			title: 'Your Full Address', 
+			title: 'Your Full Address',
 			description: 'This will be replaced with your complete address from your profile.'
 		},
-		'City': {
+		City: {
 			title: 'Your City',
 			description: 'This will be replaced with your city from your profile.'
 		},
-		'State': {
+		State: {
 			title: 'Your State',
 			description: 'This will be replaced with your state from your profile.'
 		},
-		'ZIP': {
+		ZIP: {
 			title: 'Your ZIP Code',
 			description: 'This will be replaced with your ZIP code from your profile.'
 		},
@@ -149,7 +167,7 @@
 			title: 'Auto-filled Variable',
 			description: "This will be replaced with your representative's name based on your address."
 		},
-		'Representative': {
+		Representative: {
 			title: 'Auto-filled Variable',
 			description: "This will be replaced with your representative's title and name."
 		},
@@ -157,7 +175,7 @@
 			title: 'Auto-filled Variable',
 			description: "This will be replaced with your senator's name based on your address."
 		},
-		'Senator': {
+		Senator: {
 			title: 'Auto-filled Variable',
 			description: "This will be replaced with your senator's title and name."
 		},
@@ -237,64 +255,74 @@
 	const templateSegments = $derived(parseTemplate(originalTemplateText()));
 
 	// Get resolved values for variables from the template resolver
-	const resolvedValues = $derived((() => {
-		const emailServiceUser = user ? toEmailServiceUser(user) : null;
-		
-		// Create a map of variable name to resolved value
-		const resolvedValues: Record<string, string | null> = {};
-		
-		if (emailServiceUser) {
-			// These match the replacements in templateResolver.ts
-			resolvedValues['Name'] = emailServiceUser.name || '';
-			resolvedValues['Your Name'] = emailServiceUser.name || '';
-			resolvedValues['Address'] = emailServiceUser.street && emailServiceUser.city && emailServiceUser.state && emailServiceUser.zip 
-				? `${emailServiceUser.street}, ${emailServiceUser.city}, ${emailServiceUser.state} ${emailServiceUser.zip}` 
-				: null;
-			resolvedValues['Your Address'] = resolvedValues['Address'];
-			resolvedValues['City'] = emailServiceUser.city || null;
-			resolvedValues['State'] = emailServiceUser.state || null;
-			resolvedValues['ZIP'] = emailServiceUser.zip || null;
-			resolvedValues['Zip Code'] = emailServiceUser.zip || null;
-			
-			// Representative values
-			if (emailServiceUser.representatives && emailServiceUser.representatives.length > 0) {
-				const primaryRep = emailServiceUser.representatives.find(r => r.chamber === 'house') || emailServiceUser.representatives[0];
-				if (primaryRep) {
-					resolvedValues['Representative Name'] = primaryRep.name;
-					resolvedValues['Rep Name'] = primaryRep.name;
-					resolvedValues['Representative'] = `Rep. ${primaryRep.name}`;
+	const resolvedValues = $derived(
+		(() => {
+			const emailServiceUser = user ? toEmailServiceUser(user) : null;
+
+			// Create a map of variable name to resolved value
+			const resolvedValues: Record<string, string | null> = {};
+
+			if (emailServiceUser) {
+				// These match the replacements in templateResolver.ts
+				resolvedValues['Name'] = emailServiceUser.name || '';
+				resolvedValues['Your Name'] = emailServiceUser.name || '';
+				resolvedValues['Address'] =
+					emailServiceUser.street &&
+					emailServiceUser.city &&
+					emailServiceUser.state &&
+					emailServiceUser.zip
+						? `${emailServiceUser.street}, ${emailServiceUser.city}, ${emailServiceUser.state} ${emailServiceUser.zip}`
+						: null;
+				resolvedValues['Your Address'] = resolvedValues['Address'];
+				resolvedValues['City'] = emailServiceUser.city || null;
+				resolvedValues['State'] = emailServiceUser.state || null;
+				resolvedValues['ZIP'] = emailServiceUser.zip || null;
+				resolvedValues['Zip Code'] = emailServiceUser.zip || null;
+
+				// Representative values
+				if (emailServiceUser.representatives && emailServiceUser.representatives.length > 0) {
+					const primaryRep =
+						emailServiceUser.representatives.find((r) => r.chamber === 'house') ||
+						emailServiceUser.representatives[0];
+					if (primaryRep) {
+						resolvedValues['Representative Name'] = primaryRep.name;
+						resolvedValues['Rep Name'] = primaryRep.name;
+						resolvedValues['Representative'] = `Rep. ${primaryRep.name}`;
+					}
+
+					const senators = emailServiceUser.representatives.filter((r) => r.chamber === 'senate');
+					if (senators.length > 0) {
+						resolvedValues['Senator Name'] = senators[0].name;
+						resolvedValues['Senator'] = `Sen. ${senators[0].name}`;
+					}
+					if (senators.length > 1) {
+						resolvedValues['Senior Senator'] = `Sen. ${senators[0].name}`;
+						resolvedValues['Junior Senator'] = `Sen. ${senators[1].name}`;
+					}
+				} else {
+					// Default values when no representative data
+					resolvedValues['Representative Name'] = 'Representative';
+					resolvedValues['Rep Name'] = 'Representative';
+					resolvedValues['Representative'] = 'Representative';
+					resolvedValues['Senator Name'] = 'Senator';
+					resolvedValues['Senator'] = 'Senator';
+					resolvedValues['Senior Senator'] = 'Senior Senator';
+					resolvedValues['Junior Senator'] = 'Junior Senator';
 				}
-				
-				const senators = emailServiceUser.representatives.filter(r => r.chamber === 'senate');
-				if (senators.length > 0) {
-					resolvedValues['Senator Name'] = senators[0].name;
-					resolvedValues['Senator'] = `Sen. ${senators[0].name}`;
-				}
-				if (senators.length > 1) {
-					resolvedValues['Senior Senator'] = `Sen. ${senators[0].name}`;
-					resolvedValues['Junior Senator'] = `Sen. ${senators[1].name}`;
-				}
-			} else {
-				// Default values when no representative data
-				resolvedValues['Representative Name'] = 'Representative';
-				resolvedValues['Rep Name'] = 'Representative';
-				resolvedValues['Representative'] = 'Representative';
-				resolvedValues['Senator Name'] = 'Senator';
-				resolvedValues['Senator'] = 'Senator';
-				resolvedValues['Senior Senator'] = 'Senior Senator';
-				resolvedValues['Junior Senator'] = 'Junior Senator';
 			}
-		}
-		
-		return resolvedValues;
-	})());
+
+			return resolvedValues;
+		})()
+	);
 
 	// Initialize variable values when segments change
 	$effect(() => {
 		const segments = templateSegments;
 		console.log('🔧 Initializing variable values:', {
 			segmentCount: segments.length,
-			variables: segments.filter(s => s.type === 'variable').map(s => ({ name: s.name, type: s.type })),
+			variables: segments
+				.filter((s) => s.type === 'variable')
+				.map((s) => ({ name: s.name, type: s.type })),
 			currentValues: variableValues
 		});
 		if (Object.keys(variableValues).length === 0) {
@@ -309,7 +337,10 @@
 						// Use resolved value or null to show [Variable Name]
 						const resolvedValue = resolvedValues[segment.name];
 						// Only use resolved value if it's not empty
-						variableValues[segment.name] = (resolvedValue && typeof resolvedValue === 'string' && resolvedValue.trim() !== '') ? resolvedValue : null;
+						variableValues[segment.name] =
+							resolvedValue && typeof resolvedValue === 'string' && resolvedValue.trim() !== ''
+								? resolvedValue
+								: null;
 						console.log(`Set system variable ${segment.name} to:`, variableValues[segment.name]);
 					}
 				}
@@ -328,11 +359,14 @@
 			}
 		};
 
-		document.addEventListener('dismissStateChange', handleDismissState as EventListener);
+		document.addEventListener('dismissStateChange', handleDismissState as (event: Event) => void);
 		document.addEventListener('touchend', handleTouchEnd);
 
 		return () => {
-			document.removeEventListener('dismissStateChange', handleDismissState as EventListener);
+			document.removeEventListener(
+				'dismissStateChange',
+				handleDismissState as (event: Event) => void
+			);
 			document.removeEventListener('touchend', handleTouchEnd);
 			useTimerCleanup(componentId)();
 		};
@@ -369,16 +403,16 @@
 
 	let touchStartY = 0;
 
-	function handleTouchStart(event: TouchEvent) {
-		touchStartY = event.touches[0].clientY;
-		handleTouch(event);
+	function handleTouchStart(__event: TouchEvent) {
+		touchStartY = __event.touches[0].clientY;
+		handleTouch(__event);
 	}
 
-	function handleTouch(event: TouchEvent) {
+	function handleTouch(__event: TouchEvent) {
 		if (!scrollContainer) return;
 
 		const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-		const touchY = event.touches[0].clientY;
+		const touchY = __event.touches[0].clientY;
 
 		const touchState = {
 			touchY,
@@ -399,7 +433,7 @@
 				(touchState.isAtBottom && touchY < touchStartY)
 			)
 		) {
-			event.stopPropagation();
+			__event.stopPropagation();
 		}
 
 		// Dispatch custom event so modal can adjust gesture handling
@@ -419,7 +453,7 @@
 		// The popover handles opening/closing automatically
 		// We just need to notify the parent component
 		if (userEditableVariables.has(variableName)) {
-			onvariableSelect?.({ variableName, active: true });
+			onvariableSelect?.({ variableName: variableName, active: true });
 		}
 	}
 
@@ -456,7 +490,10 @@
 	function getVariableClasses(variableName: string): string {
 		const isSystemVariable = systemVariables.has(variableName);
 		const isUserEditable = userEditableVariables.has(variableName);
-		const isEmpty = !variableValues[variableName] || (typeof variableValues[variableName] === 'string' && variableValues[variableName]!.trim() === '');
+		const isEmpty =
+			!variableValues[variableName] ||
+			(typeof variableValues[variableName] === 'string' &&
+				variableValues[variableName]!.trim() === '');
 
 		if (isSystemVariable) {
 			return `
@@ -555,13 +592,13 @@
 						{segment.content}
 					{:else if segment.name}
 						<span class="relative inline-block">
-							<AnimatedPopover 
-								id={segment.instanceId || ''}
-							>
-								{#snippet trigger(params)}
+							<AnimatedPopover id={segment.instanceId || ''}>
+								{#snippet trigger(_params)}
 									<button
 										class={getVariableClasses(segment.name || '')}
 										onclick={() => handleVariableClick(segment.name || '')}
+										aria-label={`Edit ${segment.name} variable`}
+										type="button"
 									>
 										<!-- Always show icon based on variable type -->
 										{#if segment.name && systemVariables.has(segment.name)}
@@ -573,7 +610,7 @@
 												<Sparkles class="h-2.5 w-2.5 text-purple-600" />
 											{/if}
 										{/if}
-										
+
 										<!-- Always show text - either resolved value or placeholder -->
 										<span>
 											{#if segment.name && resolvedValues[segment.name]}
@@ -584,7 +621,7 @@
 												{segment.name || ''}
 											{/if}
 										</span>
-										
+
 										<!-- Personalized indicator -->
 										{#if segment.name === 'Personal Connection' && segment.name && (variableValues[segment.name] || '').trim().length > 0}
 											<span
@@ -595,19 +632,25 @@
 									</button>
 								{/snippet}
 
-								{#snippet children(props)}
+								{#snippet children(_props)}
 									<!-- User-editable variables with input in popover -->
 									{#if segment.name && userEditableVariables.has(segment.name)}
 										<div class="mb-2 flex items-center gap-1.5">
 											<Sparkles class="h-3 w-3 text-purple-500" />
 											<span class="text-[11px] font-medium tracking-tight text-slate-700">
-												{(segment.name && variableHints[segment.name]?.prompt) || segment.name || ''}
+												{(segment.name && variableHints[segment.name]?.prompt) ||
+													segment.name ||
+													''}
 											</span>
 										</div>
 
-										{#if segment.name && (segment.name.toLowerCase().includes('connection') || segment.name.toLowerCase().includes('story') || segment.name.toLowerCase().includes('reasoning'))}
+										{#if segment.name && (segment.name
+												.toLowerCase()
+												.includes('connection') || segment.name
+													.toLowerCase()
+													.includes('story') || segment.name.toLowerCase().includes('reasoning'))}
 											<textarea
-												value={segment.name ? (variableValues[segment.name] || '') : ''}
+												value={segment.name ? variableValues[segment.name] || '' : ''}
 												oninput={(e) => handleInput(e, segment.name || '')}
 												placeholder={(segment.name && variableHints[segment.name]?.placeholder) ||
 													`Enter your ${segment.name || 'value'}...`}
@@ -623,7 +666,7 @@
 											{/if}
 										{:else}
 											<input
-												value={segment.name ? (variableValues[segment.name] || '') : ''}
+												value={segment.name ? variableValues[segment.name] || '' : ''}
 												oninput={(e) => handleInput(e, segment.name || '')}
 												placeholder={`Enter ${segment.name || 'value'}...`}
 												class="w-full min-w-[240px] rounded-lg border border-slate-300 bg-white px-3 py-2

@@ -7,6 +7,7 @@
 
 import { ethers } from 'ethers';
 import { env } from '$env/dynamic/private';
+import type { ErrorWithCode, UnknownRecord } from '$lib/types/any-replacements.js';
 
 // Smart contract ABIs (only the functions we use)
 const COMMUNIQUE_CORE_ABI = [
@@ -22,7 +23,7 @@ const VOTER_TOKEN_ABI = [
 	'function transfer(address to, uint256 amount) returns (bool)'
 ];
 
-const VOTER_REGISTRY_ABI = [
+const _VOTER_REGISTRY_ABI = [
 	'function getCitizenRecords(address citizen) view returns (tuple(address participant, uint8 actionType, bytes32 actionHash, string metadataUri, uint256 timestamp, uint256 rewardAmount)[])',
 	'function isVerifiedCitizen(address citizen) view returns (bool)'
 ];
@@ -81,7 +82,7 @@ export interface VOTERActionError {
 	details?: {
 		reason?: string;
 		method?: string;
-		transaction?: any;
+		transaction?: UnknownRecord;
 	};
 }
 
@@ -100,7 +101,7 @@ class VOTERBlockchainClient {
 	private signer: ethers.Wallet | null = null;
 	private communiqueCore: ethers.Contract | null = null;
 	private voterToken: ethers.Contract | null = null;
-	private voterRegistry: ethers.Contract | null = null;
+	private _voterRegistry: ethers.Contract | null = null;
 
 	constructor() {
 		// Initialize provider
@@ -130,9 +131,9 @@ class VOTERBlockchainClient {
 		}
 
 		if (env.VOTER_REGISTRY_ADDRESS) {
-			this.voterRegistry = new ethers.Contract(
+			this._voterRegistry = new ethers.Contract(
 				env.VOTER_REGISTRY_ADDRESS,
-				VOTER_REGISTRY_ABI,
+				_VOTER_REGISTRY_ABI,
 				this.provider
 			);
 		}
@@ -210,18 +211,24 @@ class VOTERBlockchainClient {
 				actionHash: actionHash,
 				receipt: receipt as TransactionReceipt
 			};
-		} catch (error: unknown) {
-			console.error('Blockchain certification failed:', error);
+		} catch (_error) {
+			console.error('Error occurred', _error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
-				code: error instanceof Error && 'code' in error ? (error as any).code : undefined,
+				error: _error instanceof Error ? _error.message : 'Unknown error',
+				code:
+					_error instanceof Error && 'code' in _error
+						? String((_error as ErrorWithCode).code)
+						: undefined,
 				details: {
-					reason: error instanceof Error && 'reason' in error ? (error as any).reason : undefined,
+					reason:
+						_error instanceof Error && 'reason' in _error
+							? (_error as ErrorWithCode).reason
+							: undefined,
 					method: 'processCivicAction',
 					transaction:
-						error instanceof Error && 'transaction' in error
-							? (error as any).transaction
+						_error instanceof Error && 'transaction' in _error
+							? ((_error as ErrorWithCode).transaction as UnknownRecord)
 							: undefined
 				}
 			};
@@ -254,18 +261,24 @@ class VOTERBlockchainClient {
 				effectiveGasPrice: receipt.effectiveGasPrice?.toString(),
 				receipt: receipt as TransactionReceipt
 			};
-		} catch (error: unknown) {
-			console.error('User registration failed:', error);
+		} catch (_error) {
+			console.error('Error occurred', _error);
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Unknown error',
-				code: error instanceof Error && 'code' in error ? (error as any).code : undefined,
+				error: _error instanceof Error ? _error.message : 'Unknown error',
+				code:
+					_error instanceof Error && 'code' in _error
+						? String((_error as ErrorWithCode).code)
+						: undefined,
 				details: {
-					reason: error instanceof Error && 'reason' in error ? (error as any).reason : undefined,
+					reason:
+						_error instanceof Error && 'reason' in _error
+							? (_error as ErrorWithCode).reason
+							: undefined,
 					method: 'registerUser',
 					transaction:
-						error instanceof Error && 'transaction' in error
-							? (error as any).transaction
+						_error instanceof Error && 'transaction' in _error
+							? ((_error as ErrorWithCode).transaction as UnknownRecord)
 							: undefined
 				}
 			};
@@ -292,8 +305,8 @@ class VOTERBlockchainClient {
 				lastActionTime: Number(stats[2]),
 				voterTokenBalance: balance.toString()
 			};
-		} catch (error) {
-			console.error('Failed to get user stats:', error);
+		} catch (_error) {
+			console.error('Error occurred', _error);
 			return null;
 		}
 	}
@@ -335,7 +348,7 @@ export async function certifyEmailDelivery(certificationData: {
 	deliveryConfirmation: string;
 }): Promise<VOTERActionResult> {
 	return await voterBlockchainClient.certifyAction({
-		actionType: certificationData.actionType as any,
+		actionType: certificationData.actionType as VOTERAction['actionType'],
 		userAddress: certificationData.userAddress,
 		templateId: certificationData.templateId,
 		deliveryConfirmation: certificationData.deliveryConfirmation

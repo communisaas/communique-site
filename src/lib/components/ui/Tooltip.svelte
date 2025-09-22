@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Info } from '@lucide/svelte';
-	import { onMount, onDestroy, tick, type Snippet } from 'svelte';
+	import { onMount, tick as _tick, type Snippet } from 'svelte';
 	import { get } from 'svelte/store';
 	import { activeTooltipId } from '$lib/stores/tooltip';
 
@@ -24,14 +24,14 @@
 
 	let isTouchInteraction = false;
 
-	function handleTouch(event: TouchEvent | MouseEvent) {
-		if (event instanceof MouseEvent) {
+	function handleTouch(__event: TouchEvent | MouseEvent) {
+		if (__event instanceof MouseEvent) {
 			if (!window.matchMedia('(hover: hover)').matches) {
-				event.preventDefault();
-				event.stopPropagation();
+				__event.preventDefault();
+				__event.stopPropagation();
 				toggleTooltip();
 			}
-		} else if (event.type === 'touchstart') {
+		} else if (__event.type === 'touchstart') {
 			isTouchInteraction = true;
 			toggleTooltip();
 		}
@@ -53,7 +53,7 @@
 		isPositioned = false;
 
 		// Wait for next tick to ensure DOM is updated
-		await tick();
+		await _tick();
 		updatePosition();
 		isPositioned = true;
 	}
@@ -64,15 +64,15 @@
 	}
 
 	// Handle clicks/touches outside of tooltips
-	function handleGlobalClick(event: MouseEvent | TouchEvent) {
+	function handleGlobalClick(__event: MouseEvent | TouchEvent) {
 		// Don't handle if the event was already handled by a tooltip
-		if (event.defaultPrevented) return;
+		if (__event.defaultPrevented) return;
 
 		// If this is a touch event and we're in a touch interaction, only handle touchstart
-		if (event instanceof TouchEvent) {
-			if (event.type !== 'touchstart') return;
+		if (__event instanceof TouchEvent) {
+			if (__event.type !== 'touchstart') return;
 
-			const target = event.target as HTMLElement;
+			const target = __event.target as HTMLElement;
 			if (!target.closest(`[data-tooltip-id="${id}"]`) && !target.closest('[role="tooltip"]')) {
 				activeTooltipId.set(null);
 			}
@@ -80,24 +80,24 @@
 		}
 
 		// For mouse clicks, close if clicking outside
-		const target = event.target as HTMLElement;
+		const target = __event.target as HTMLElement;
 		if (!target.closest('[role="tooltip"]')) {
 			activeTooltipId.set(null);
 		}
 	}
 
-	function handleTouchEnd(event: TouchEvent) {
+	function handleTouchEnd(__event: TouchEvent) {
 		// Prevent touchend from triggering click events
 		if (isTouchInteraction) {
-			event.preventDefault();
+			__event.preventDefault();
 			isTouchInteraction = false;
 		}
 	}
 
 	// Add keyboard handler
-	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Enter' || event.key === ' ') {
-			event.preventDefault();
+	function handleKeyDown(__event: KeyboardEvent) {
+		if (__event.key === 'Enter' || __event.key === ' ') {
+			__event.preventDefault();
 			if (get(activeTooltipId) === id) {
 				activeTooltipId.set(null);
 			} else {
@@ -202,7 +202,7 @@
 
 	$effect(() => {
 		if (show) {
-			tick().then(updatePosition);
+			_tick().then(updatePosition);
 		}
 	});
 
@@ -235,7 +235,6 @@
   We're ignoring a11y warnings because this is a custom tooltip implementation
   that needs to work both standalone and nested within interactive elements.
 -->
-<!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
 <span
 	bind:this={containerElement}
 	role="button"

@@ -45,13 +45,16 @@ interface CwcResult {
 function getVOTERActionType(templateData: TemplateData) {
 	const title = typeof templateData.title === 'string' ? templateData.title.toLowerCase() : '';
 	const id = typeof templateData.id === 'string' ? templateData.id.toLowerCase() : '';
-	const method = typeof templateData.deliveryMethod === 'string' ? templateData.deliveryMethod.toLowerCase() : '';
+	const method =
+		typeof templateData.deliveryMethod === 'string'
+			? templateData.deliveryMethod.toLowerCase()
+			: '';
 
 	// Congressional messages
 	if (
 		method === 'certified' ||
 		title.includes('congress') ||
-		title.includes('representative') ||
+		title.includes('_representative') ||
 		title.includes('senator') ||
 		id.includes('cwc')
 	) {
@@ -175,8 +178,8 @@ async function certifyEmailDelivery(params: {
 		});
 
 		return result;
-	} catch (error: any) {
-		console.error('[VOTER] Certification error:', error);
+	} catch {
+		console.error('Error occurred');
 		// Don't throw - certification failure shouldn't break delivery
 		return null;
 	}

@@ -5,15 +5,44 @@
 
 import { SMTPServer } from 'smtp-server';
 import { getConfig } from './utils/config.js';
-import { parseIncomingMessage, validateMessage } from './message-parser';
+import { parseIncomingMessage, validateMessage as _validateMessage } from './message-parser';
 import { CWCClient } from './cwc-integration';
-const {
-	resolveUserByEmail,
-	fetchTemplateBySlug,
-	notifyDeliveryResult
-} = require('./user-resolution');
-import { handleUnmatchedSender, sendVerificationRequiredBounce, sendGenericBounce } from './bounce-handler';
+import { resolveUserByEmail, fetchTemplateBySlug, notifyDeliveryResult } from './user-resolution';
+import {
+	handleUnmatchedSender,
+	sendVerificationRequiredBounce,
+	sendGenericBounce
+} from './bounce-handler';
 import { certifyEmailDelivery } from './blockchain-certification';
+
+// Type definitions for parsed message data
+interface ParsedMessage {
+	from: string | { text?: string; address?: string };
+	templateId?: string;
+	personalConnection?: string;
+}
+
+interface UserProfile {
+	id: string;
+	state?: string;
+	[key: string]: unknown;
+}
+
+interface TemplateData {
+	id: string;
+	subject?: string;
+	title?: string;
+	message_body: string;
+	[key: string]: unknown;
+}
+
+interface DeliveryResult {
+	success: boolean;
+	submissionId?: string;
+	error?: string;
+	certificationHash?: string;
+	actionHash?: string;
+}
 
 // Initialize CWC client
 const cwcClient = new CWCClient();
@@ -39,7 +68,11 @@ const server = new SMTPServer({
 	},
 
 	// Authentication handler (if auth is enabled)
-	onAuth(auth: { method: string; username?: string; password?: string }, session: object, callback: (error?: Error | null, result?: { user: string }) => void) {
+	onAuth(
+		auth: { method: string; username?: string; password?: string },
+		session: object,
+		callback: (error?: Error | null, result?: { user: string }) => void
+	) {
 		if (config.smtp.auth && config.smtp.auth.user && config.smtp.auth.pass) {
 			if (auth.username === config.smtp.auth.user && auth.password === config.smtp.auth.pass) {
 				return callback(null, { user: auth.username });
@@ -50,11 +83,15 @@ const server = new SMTPServer({
 	},
 
 	// Mail handler - this is where the magic happens
-	onData(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: { address: string }[] } }, callback: (error?: Error) => void) {
+	onData(
+		stream: NodeJS.ReadableStream,
+		session: { envelope: { rcptTo: { address: string }[] } },
+		callback: (error?: Error) => void
+	) {
 		handleIncomingMail(stream, session)
 			.then(() => callback())
 			.catch((error) => {
-				console.error('Mail handling error:', error);
+				console.error('Error occurred');
 				callback(new Error('Message processing failed'));
 			});
 	}
@@ -63,13 +100,21 @@ const server = new SMTPServer({
 /**
  * Handle incoming mail messages
  */
-async function handleIncomingMail(stream: NodeJS.ReadableStream, session: { envelope: { rcptTo: { address: string }[] } }): Promise<void> {
+async function handleIncomingMail(
+	stream: NodeJS.ReadableStream,
+	session: { envelope: { rcptTo: { address: string }[] } }
+): Promise<void> {
 	try {
 		console.log('Processing incoming message...');
 
 		// Parse the incoming message
 		const parsedMessage = await parseIncomingMessage(stream);
-		const senderEmail = (parsedMessage.from as any)?.text || parsedMessage.from;
+		const senderEmail =
+			typeof parsedMessage.from === 'object' &&
+			parsedMessage.from !== null &&
+			'text' in parsedMessage.from
+				? (parsedMessage.from as { text?: string }).text || ''
+				: String(parsedMessage.from);
 		const templateIdentifier = parsedMessage.templateId;
 
 		console.log(`Message from: ${senderEmail}, Template: ${templateIdentifier}`);
@@ -108,8 +153,8 @@ async function handleIncomingMail(stream: NodeJS.ReadableStream, session: { enve
 
 		// Process certified delivery
 		await processCertifiedDelivery(parsedMessage, userResult.user, templateData);
-	} catch (error: any) {
-		console.error('Error handling incoming mail:', error);
+	} catch {
+		console.error('Error occurred');
 		// Don't throw - we don't want to reject the SMTP connection
 		// Log the error and continue
 	}
@@ -129,7 +174,11 @@ function isCertifiedDeliveryAddress(recipients: { address: string }[]): boolean 
 /**
  * Process certified delivery through CWC API
  */
-async function processCertifiedDelivery(parsedMessage: any, userProfile: any, templateData: any): Promise<void> {
+async function processCertifiedDelivery(
+	parsedMessage: ParsedMessage,
+	userProfile: UserProfile,
+	templateData: TemplateData
+): Promise<void> {
 	try {
 		console.log(
 			`Processing certified delivery for template: ${templateData.id}, user: ${userProfile.id}`
@@ -166,8 +215,8 @@ async function processCertifiedDelivery(parsedMessage: any, userProfile: any, te
 				if ('transactionHash' in certificationResult) {
 					console.log(`VOTER certification successful: ${certificationResult.transactionHash}`);
 					// Include certification in the delivery result
-					(result as any).certificationHash = certificationResult.transactionHash;
-					(result as any).actionHash = certificationResult.actionHash;
+					(result as DeliveryResult).certificationHash = certificationResult.transactionHash;
+					(result as DeliveryResult).actionHash = certificationResult.actionHash;
 				} else {
 					console.log(`VOTER certification disabled: No details available`);
 				}
@@ -178,13 +227,13 @@ async function processCertifiedDelivery(parsedMessage: any, userProfile: any, te
 
 		// Notify Communiqué API of the result (including certification if successful)
 		await notifyDeliveryResult(templateData.id, userProfile.id, result);
-	} catch (error: any) {
-		console.error('Error processing certified delivery:', error);
+	} catch {
+		console.error('Error occurred');
 
 		// Notify of the failure
 		await notifyDeliveryResult(templateData.id, userProfile.id, {
 			success: false,
-			error: error.message
+			error: error ? 'Unknown error' : 'Unknown error'
 		});
 	}
 }
@@ -193,7 +242,7 @@ async function processCertifiedDelivery(parsedMessage: any, userProfile: any, te
  * Determine recipient office based on user profile
  * This would integrate with congressional district lookup
  */
-function determineRecipientOffice(userProfile: any) {
+function determineRecipientOffice(userProfile: UserProfile): string {
 	// TODO: Implement congressional district lookup based on address
 	// For now, return a placeholder that would be mapped to actual CWC office codes
 	return `DISTRICT_${userProfile.state}_AUTO`;
@@ -206,7 +255,7 @@ function startServer() {
 	const port = config.smtp.port;
 	const host = config.smtp.host;
 
-	server.on('error', (err: any) => {
+	server.on('error', (err: Error) => {
 		console.error('Failed to start SMTP server:', err);
 		process.exit(1);
 	});
@@ -237,7 +286,7 @@ process.on('SIGINT', () => {
 });
 
 // Start the server
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
 	startServer();
 }
 

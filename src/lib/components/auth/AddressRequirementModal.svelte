@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
-	import { browser } from '$app/environment';
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
@@ -15,7 +14,7 @@
 	let {
 		template,
 		user,
-		isOpen = true,
+		_isOpen = true,
 		onclose,
 		oncomplete
 	}: {
@@ -46,9 +45,9 @@
 	const modalStore = createModalStore('address-requirement-modal', 'address');
 
 	let currentStep = $state<'collect' | 'selfxyz' | 'verify' | 'complete'>('collect');
-	let showSelfXyzOption = $state(false);
+	let _showSelfXyzOption = $state(false);
 	let selfXyzQrCode = $state<string | null>(null);
-	let selfXyzVerifying = $state(false);
+	let _selfXyzVerifying = $state(false);
 
 	// Modal control functions
 	let unifiedModal: UnifiedModal;
@@ -79,19 +78,19 @@
 	let verificationResult = $state<Record<string, unknown> | null>(null);
 	let selectedAddress = $state('');
 
-	function handleClose() {
+	function _handleClose() {
 		onclose?.();
 		dispatch('close');
 		modalStore.close();
 	}
 
-	function offerSelfXyzUpgrade() {
+	function _offerSelfXyzUpgrade() {
 		currentStep = 'selfxyz';
 	}
 
-	async function initiateSelfXyzVerification() {
+	async function _initiateSelfXyzVerification() {
 		currentStep = 'selfxyz';
-		selfXyzVerifying = true;
+		_selfXyzVerifying = true;
 
 		try {
 			// Generate a unique user ID for this verification session
@@ -127,11 +126,11 @@
 				// Fallback to manual address entry
 				currentStep = 'collect';
 			}
-		} catch (error) {
+		} catch {
 			// Fallback to manual address entry
 			currentStep = 'collect';
 		} finally {
-			selfXyzVerifying = false;
+			_selfXyzVerifying = false;
 		}
 	}
 
@@ -158,7 +157,7 @@
 					// Fallback to manual address entry
 					currentStep = 'collect';
 				}
-			} catch (error) {
+			} catch {
 				// Continue polling or fallback after timeout
 			}
 		}, 2000);
@@ -172,7 +171,7 @@
 		}, 300000);
 	}
 
-	function extractAddressFromSelfXyz(credentialSubject: any): string {
+	function extractAddressFromSelfXyz(credentialSubject: Record<string, unknown>): string {
 		// For congressional routing, we use nationality/issuing_state
 		// This provides the country-level routing needed for representatives
 		const country = credentialSubject.nationality || credentialSubject.issuing_state;
@@ -238,7 +237,7 @@
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';
 			}
-		} catch (error) {
+		} catch {
 			addressError = 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;
@@ -257,7 +256,7 @@
 		}
 	}
 
-	function proceedWithBasicAddress() {
+	function _proceedWithBasicAddress() {
 		const payload = { address: selectedAddress, verified: true };
 		oncomplete?.(payload);
 		dispatch('complete', payload);
@@ -268,9 +267,9 @@
 		verificationResult = null;
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
-			event.preventDefault();
+	function handleKeydown(_event: KeyboardEvent) {
+		if (_event.key === 'Enter' && !_event.shiftKey) {
+			_event.preventDefault();
 			if (currentStep === 'collect') {
 				verifyAddress();
 			} else if (currentStep === 'verify') {
@@ -288,14 +287,14 @@
 	closeOnBackdrop={true}
 	closeOnEscape={true}
 >
-	{#snippet children(data: any)}
+	{#snippet children(_data: Record<string, unknown>)}
 		<div class="flex-1 overflow-y-auto">
 			{#key currentStep}
 				<div
 					class="min-h-0 p-6"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					onkeydown={handleKeydown}
+					role="main"
 				>
 					{#if currentStep === 'collect'}
 						<AddressForm

@@ -1,14 +1,26 @@
 import type { UserAddress } from '$lib/types/user';
 
 // Type guards for API responses
-function isValidDistrictData(data: unknown): data is { congressional_district: string; state_house_district?: string; state_senate_district?: string } {
-	return typeof data === 'object' && data !== null &&
-		typeof (data as any).congressional_district === 'string';
+function isValidDistrictData(data: unknown): data is {
+	congressional_district: string;
+	state_house_district?: string;
+	state_senate_district?: string;
+} {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		typeof (data as Record<string, unknown>).congressional_district === 'string'
+	);
 }
 
-function isValidIPLocationData(data: unknown): data is { postal_code: string; city?: string; region_code?: string } {
-	return typeof data === 'object' && data !== null &&
-		typeof (data as any).postal_code === 'string';
+function isValidIPLocationData(
+	data: unknown
+): data is { postal_code: string; city?: string; region_code?: string } {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		typeof (data as Record<string, unknown>).postal_code === 'string'
+	);
 }
 
 export interface GeolocationData {
@@ -75,7 +87,9 @@ export class GeolocationService {
 				timestamp: Date.now(),
 				confidence: this.calculateLocationConfidence(coords.accuracy)
 			};
-		} catch (_error) {}
+		} catch {
+			/* Browser geolocation failed - will fallback to IP location */
+		}
 
 		// Fallback to IP-based location (lower accuracy)
 		if (fallbackToIP) {
@@ -87,7 +101,9 @@ export class GeolocationService {
 					timestamp: Date.now(),
 					confidence: 0.3 // IP location is rough
 				};
-			} catch (_error) {}
+			} catch {
+				/* IP geolocation also failed - no location available */
+			}
 		}
 
 		throw new Error('All geolocation methods failed');
@@ -126,7 +142,7 @@ export class GeolocationService {
 				state_house: data.state_house_district,
 				state_senate: data.state_senate_district
 			};
-		} catch (_error) {
+		} catch {
 			return undefined;
 		}
 	}
@@ -153,7 +169,7 @@ export class GeolocationService {
 			return {
 				congressional: data.congressional_district
 			};
-		} catch (_error) {
+		} catch {
 			return undefined;
 		}
 	}
@@ -213,7 +229,7 @@ export class GeolocationService {
 				city: data.city,
 				state: data.region_code
 			};
-		} catch (error) {
+		} catch {
 			throw error;
 		}
 	}
@@ -260,7 +276,7 @@ export class GeolocationService {
 			const confidence = valid ? location.confidence : location.confidence * 0.5;
 
 			return { valid, confidence };
-		} catch (_error) {
+		} catch {
 			return { valid: false, confidence: 0 };
 		}
 	}

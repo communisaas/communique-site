@@ -3,7 +3,7 @@ import type {
 	analytics_event as AnalyticsEvent,
 	user_session as UserSession,
 	user_representatives as UserRepresentatives,
-	representative as Representative
+	_representative as Representative
 } from '@prisma/client';
 
 declare module '@prisma/client' {

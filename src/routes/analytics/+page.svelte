@@ -1,17 +1,17 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount as _onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import PercolationDashboard from '$lib/components/analytics/PercolationDashboard.svelte';
 	import CascadeAnalytics from '$lib/components/analytics/CascadeAnalytics.svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
-	import type { Template } from '$lib/types/template';
+	import type { Template as _Template } from '$lib/types/template';
 
 	let selectedTemplateId = $state<string | null>(null);
 	let templates = $state<Template[]>([]);
 	let loading = $state(true);
 	let activeTab = $state<'network' | 'template'>('network');
 
-	onMount(async () => {
+	_onMount(async () => {
 		// Get template ID from URL params if provided
 		const urlTemplateId = $page.url.searchParams.get('template');
 		if (urlTemplateId) {
@@ -31,7 +31,7 @@
 			if (data.success) {
 				templates = data.templates || [];
 			}
-		} catch (error) {
+		} catch {
 			// Failed to load templates - templates will remain empty array
 		}
 	}

@@ -3,8 +3,12 @@ import { beforeAll, vi } from 'vitest';
 // Global test setup
 beforeAll(() => {
 	// Mock console methods for cleaner test output
-	vi.spyOn(console, 'error').mockImplementation(() => {});
-	vi.spyOn(console, 'warn').mockImplementation(() => {});
+	vi.spyOn(console, 'error').mockImplementation(() => {
+		/* Intentionally empty - suppress console output in tests */
+	});
+	vi.spyOn(console, 'warn').mockImplementation(() => {
+		/* Intentionally empty - suppress console output in tests */
+	});
 });
 
 // Test data constants

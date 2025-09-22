@@ -10,7 +10,7 @@ export interface ValidationRule<T = string> {
 export function isValidationRule<T = string>(obj: unknown): obj is ValidationRule<T> {
 	if (typeof obj !== 'object' || obj === null) return false;
 	const rule = obj as Record<string, unknown>;
-	
+
 	return (
 		(rule.required === undefined || typeof rule.required === 'boolean') &&
 		(rule.minLength === undefined || (typeof rule.minLength === 'number' && rule.minLength >= 0)) &&
@@ -25,19 +25,16 @@ export interface ValidationResult {
 	error?: string;
 }
 
-export function validateField<T = string>(
-	value: T,
-	rules: ValidationRule<T>
-): ValidationResult {
+export function validateField<T = string>(value: T, rules: ValidationRule<T>): ValidationResult {
 	// Enhanced input validation
 	if (value === null || value === undefined) {
 		return { isValid: false, error: 'Value cannot be null or undefined' };
 	}
-	
+
 	if (!isValidationRule<T>(rules)) {
 		return { isValid: false, error: 'Invalid validation rules provided' };
 	}
-	
+
 	// Convert value to string for length and pattern checks
 	const stringValue = String(value);
 	// Required check
@@ -83,8 +80,8 @@ export function validateField<T = string>(
 			if (customError && typeof customError === 'string') {
 				return { isValid: false, error: customError };
 			}
-		} catch (error) {
-			console.error('Error in custom validation function:', error);
+		} catch {
+			console.error('Error occurred');
 			return { isValid: false, error: 'Validation error occurred' };
 		}
 	}
@@ -166,11 +163,7 @@ export class ValidationManager {
 		this.validationCallbacks.delete(callback);
 	}
 
-	public validateField<T = string>(
-		fieldName: string,
-		value: T,
-		rules: ValidationRule<T>
-	): void {
+	public validateField<T = string>(fieldName: string, value: T, rules: ValidationRule<T>): void {
 		if (typeof fieldName !== 'string' || fieldName.trim() === '') {
 			throw new Error('Field name must be a non-empty string');
 		}
@@ -213,8 +206,8 @@ export class ValidationManager {
 		this.validationCallbacks.forEach((callback) => {
 			try {
 				callback(errors);
-			} catch (error) {
-				console.error('Error in validation callback:', error);
+			} catch {
+				console.error('Error occurred');
 			}
 		});
 	}

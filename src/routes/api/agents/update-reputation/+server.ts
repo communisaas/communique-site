@@ -8,13 +8,19 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ReputationAgent } from '$lib/agents';
 import { db } from '$lib/core/db';
+import type { ReputationDecision } from '$lib/types/any-replacements';
 
 const reputationAgent = new ReputationAgent();
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { userAddress, actionType, qualityScore, userId }: {
+		const {
+			userAddress,
+			actionType,
+			qualityScore,
+			userId
+		}: {
 			userAddress: string;
 			actionType: string;
 			qualityScore: number;
@@ -22,7 +28,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		} = body;
 
 		if (!userAddress || !actionType || qualityScore === undefined) {
-			return json({ error: 'userAddress, actionType, and qualityScore required' }, { status: 400 });
+			return json(
+				{ error: 'userAddress , actionType, and qualityScore required' },
+				{ status: 400 }
+			);
 		}
 
 		// Fetch current reputation if userId provided
@@ -50,7 +59,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const result = await reputationAgent.makeDecision({
 			userId,
 			actionType,
-			parameters: { 
+			parameters: {
 				userAddress,
 				qualityScore,
 				currentReputation
@@ -59,8 +68,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Update user record if userId provided
 		if (userId && result.decision) {
-			const decision = result.decision as any; // Type assertion for agent decision
-			const changes = decision.reputationChanges || {};
+			const decision = result.decision as ReputationDecision; // Type assertion for agent decision
+			const changes = (decision.reputationChange as { total?: number }) || {};
 			const newReputation = Math.max(
 				0,
 				Math.min(100, (currentReputation?.total || 50) + (changes.total || 0))
@@ -80,13 +89,13 @@ export const POST: RequestHandler = async ({ request }) => {
 					user_id: userId,
 					action_type: 'reputation_change',
 					action_subtype: 'agent_update',
-					audit_data: {
+					audit_data: JSON.parse(JSON.stringify({
 						action_type: actionType,
 						quality_score: qualityScore,
 						user_address: userAddress,
 						reputation_changes: changes,
 						agent_decision: decision
-					},
+					})),
 					score_before: currentReputation?.total || 50,
 					score_after: newReputation,
 					change_amount: changes.total || 0,
@@ -102,12 +111,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			...result
 		});
-	} catch (_error) {
-		console.error('Reputation update error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				error: 'Reputation update failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

@@ -1,6 +1,6 @@
 /**
  * Analytics JSONB Field Validation Tests - Consolidated Schema
- * 
+ *
  * Tests JSONB field handling across analytics models:
  * - analytics_event.properties and computed_metrics
  * - analytics_session.device_data, session_metrics, funnel_progress
@@ -9,7 +9,14 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockRequestEvent } from '../helpers/request-event';
-import { safeEventProperties, safeComputedMetrics, safeSessionMetrics, safeDeviceData, safeExperimentConfig, safeExperimentMetricsCache } from '../helpers/json-test-helpers';
+import {
+	safeEventProperties,
+	safeComputedMetrics,
+	safeSessionMetrics,
+	safeDeviceData,
+	safeExperimentConfig,
+	safeExperimentMetricsCache
+} from '../helpers/json-test-helpers';
 
 // Mock database for JSONB validation testing
 const mockDb = vi.hoisted(() => ({
@@ -182,9 +189,15 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					}
 				});
 
-				expect(safeEventProperties(result).international_text.chinese).toBe('联系您的代表了解投票权');
-				expect(safeEventProperties(result).international_text.emoji).toBe('🗳️ Vote for democracy! 🏛️ Make your voice heard 📢');
-				expect(safeEventProperties(result).special_characters.json_meta).toContain('"key": "value"');
+				expect(safeEventProperties(result).international_text.chinese).toBe(
+					'联系您的代表了解投票权'
+				);
+				expect(safeEventProperties(result).international_text.emoji).toBe(
+					'🗳️ Vote for democracy! 🏛️ Make your voice heard 📢'
+				);
+				expect(safeEventProperties(result).special_characters.json_meta).toContain(
+					'"key": "value"'
+				);
 				expect(safeEventProperties(result).edge_cases.very_long_string).toHaveLength(10000);
 			});
 		});
@@ -235,7 +248,9 @@ describe('Analytics JSONB Field Validation Tests', () => {
 
 				expect(safeComputedMetrics(result).engagement_score).toBe(0.857);
 				expect(safeComputedMetrics(result).anomaly_detection.is_anomaly).toBe(false);
-				expect(safeComputedMetrics(result).ml_insights.clustering_assignment).toBe('civic_engaged_mobile');
+				expect(safeComputedMetrics(result).ml_insights.clustering_assignment).toBe(
+					'civic_engaged_mobile'
+				);
 				expect(safeComputedMetrics(result).ml_insights.propensity_scores.advocacy).toBe(0.82);
 			});
 
@@ -264,7 +279,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 						cohort_month: '2024-01',
 						days_since_first_visit: 15,
 						retention_probability: 0.78,
-						ltv_estimate: 47.50
+						ltv_estimate: 47.5
 					}
 				};
 
@@ -280,7 +295,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 
 				expect(safeComputedMetrics(result).calculation_metadata.model_version).toBe('v2.1.3');
 				expect(safeComputedMetrics(result).time_series_data.hourly_engagement).toHaveLength(3);
-				expect(safeComputedMetrics(result).cohort_analysis.ltv_estimate).toBe(47.50);
+				expect(safeComputedMetrics(result).cohort_analysis.ltv_estimate).toBe(47.5);
 			});
 		});
 	});
@@ -293,29 +308,29 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					ip_address: '192.168.1.100',
 					user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_6 like Mac OS X)',
 					fingerprint: 'fp_abc123def456',
-					
+
 					// Parsed device information
 					device_type: 'mobile',
 					os: 'iOS',
 					os_version: '15.6',
 					browser: 'Safari',
 					browser_version: '15.6',
-					
+
 					// Screen and viewport
 					viewport: { width: 375, height: 812 },
 					screen_resolution: { width: 375, height: 812, pixel_density: 3 },
-					
+
 					// Network and performance
 					connection_type: '4g',
 					connection_speed: 'fast',
 					timezone: 'America/New_York',
 					language: 'en-US',
-					
+
 					// Privacy and permissions
 					cookies_enabled: true,
 					do_not_track: false,
 					ad_blocker_detected: false,
-					
+
 					// Accessibility features
 					accessibility: {
 						screen_reader: false,
@@ -354,32 +369,32 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					page_views: 8,
 					conversion_count: 2,
 					interaction_count: 15,
-					
+
 					// Time-based metrics
 					duration_ms: 1275000, // 21 minutes 15 seconds
 					first_event_timestamp: '2024-01-01T10:00:00Z',
 					last_event_timestamp: '2024-01-01T10:21:15Z',
-					
+
 					// Engagement metrics
 					bounce_rate: 0.0,
 					scroll_depth_avg: 0.67,
 					interaction_rate: 0.6, // 15/25 events were interactions
-					
+
 					// Conversion metrics
 					conversion_rate: 0.08, // 2/25 events were conversions
 					conversion_value: 2.0,
 					revenue_attribution: 0.0,
-					
+
 					// Quality metrics
 					quality_score: 8.2,
 					spam_score: 0.1,
 					engagement_score: 0.78,
-					
+
 					// Funnel-specific metrics
 					funnel_completion_rate: 0.5,
 					funnel_drop_off_step: 3,
 					funnel_conversions: 1,
-					
+
 					// Advanced analytics
 					predictive_metrics: {
 						churn_probability: 0.15,
@@ -387,7 +402,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 						lifetime_value_estimate: 156.75,
 						conversion_probability_next_visit: 0.45
 					},
-					
+
 					// Performance tracking
 					performance_metrics: {
 						avg_page_load_time: 1.8,
@@ -447,10 +462,10 @@ describe('Analytics JSONB Field Validation Tests', () => {
 						completed_steps: [1],
 						last_step_timestamp: '2024-01-01T10:22:00Z',
 						conversion_likelihood: 0.25,
-						completion_probability: 0.20,
+						completion_probability: 0.2,
 						step_durations: [15000],
 						total_time_in_funnel: 15000,
-						drop_off_risk: 0.80,
+						drop_off_risk: 0.8,
 						complexity_score: 'high',
 						ai_assistance_used: false,
 						template_category: 'environmental'
@@ -470,8 +485,12 @@ describe('Analytics JSONB Field Validation Tests', () => {
 				expect(Object.keys(result.funnel_progress)).toHaveLength(3);
 				expect(result.funnel_progress['voting-rights-funnel'].current_step).toBe(4);
 				expect(result.funnel_progress['voting-rights-funnel'].step_durations).toHaveLength(4);
-				expect(result.funnel_progress['onboarding-funnel'].abandonment_reason).toBe('address_verification_difficulty');
-				expect(result.funnel_progress['template-customization-funnel'].complexity_score).toBe('high');
+				expect(result.funnel_progress['onboarding-funnel'].abandonment_reason).toBe(
+					'address_verification_difficulty'
+				);
+				expect(result.funnel_progress['template-customization-funnel'].complexity_score).toBe(
+					'high'
+				);
 			});
 		});
 	});
@@ -500,7 +519,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 							providers: ['google', 'github', 'twitter']
 						}
 					],
-					
+
 					// Targeting and segmentation
 					targeting_rules: {
 						geographic: {
@@ -520,7 +539,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 							conversion_history: 'none_to_low'
 						}
 					},
-					
+
 					// A/B test variations
 					variations: [
 						{
@@ -556,7 +575,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 							}
 						}
 					],
-					
+
 					// Success criteria
 					success_metrics: [
 						'conversion_rate',
@@ -564,7 +583,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 						'user_satisfaction',
 						'long_term_retention'
 					],
-					
+
 					// Statistical configuration
 					statistical_config: {
 						confidence_level: 0.95,
@@ -593,7 +612,9 @@ describe('Analytics JSONB Field Validation Tests', () => {
 
 				expect(safeExperimentConfig(result).steps).toHaveLength(2);
 				expect(safeExperimentConfig(result).variations).toHaveLength(3);
-				expect(safeExperimentConfig(result).targeting_rules.geographic.included_countries).toContain('US');
+				expect(
+					safeExperimentConfig(result).targeting_rules.geographic.included_countries
+				).toContain('US');
 				expect(safeExperimentConfig(result).statistical_config.confidence_level).toBe(0.95);
 			});
 		});
@@ -605,37 +626,37 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					participants_count: 5847,
 					total_sessions: 7293,
 					unique_users: 5847,
-					
+
 					// Conversion metrics
 					conversion_rate: 0.127,
 					conversion_count: 743,
-					conversion_value_total: 3715.50,
-					
+					conversion_value_total: 3715.5,
+
 					// A/B test specific metrics
 					variation_results: {
 						control: {
 							participants: 2339,
 							conversions: 267,
 							conversion_rate: 0.114,
-							confidence_interval: [0.098, 0.130],
+							confidence_interval: [0.098, 0.13],
 							statistical_significance: 0.89
 						},
 						streamlined: {
 							participants: 1754,
 							conversions: 247,
 							conversion_rate: 0.141,
-							confidence_interval: [0.122, 0.160],
+							confidence_interval: [0.122, 0.16],
 							statistical_significance: 0.95
 						},
 						personalized: {
 							participants: 1754,
 							conversions: 229,
 							conversion_rate: 0.131,
-							confidence_interval: [0.112, 0.150],
+							confidence_interval: [0.112, 0.15],
 							statistical_significance: 0.92
 						}
 					},
-					
+
 					// Statistical analysis
 					statistical_significance: 0.95,
 					p_value: 0.032,
@@ -643,21 +664,21 @@ describe('Analytics JSONB Field Validation Tests', () => {
 					effect_size: 0.027,
 					test_power: 0.84,
 					winning_variation: 'streamlined',
-					
+
 					// Performance metrics
 					avg_completion_time: {
 						control: 425000, // 7 minutes 5 seconds
 						streamlined: 298000, // 4 minutes 58 seconds
 						personalized: 367000 // 6 minutes 7 seconds
 					},
-					
+
 					// Quality metrics
 					user_satisfaction: {
 						control: 7.2,
 						streamlined: 8.1,
 						personalized: 7.8
 					},
-					
+
 					// Funnel-specific metrics
 					funnel_completion_rates: {
 						step_1: 0.95,
@@ -666,11 +687,11 @@ describe('Analytics JSONB Field Validation Tests', () => {
 						step_4: 0.34,
 						overall: 0.32
 					},
-					
+
 					// Time-based analysis
 					temporal_analysis: {
 						daily_conversion_rates: [
-							{ date: '2024-01-01', rate: 0.10 },
+							{ date: '2024-01-01', rate: 0.1 },
 							{ date: '2024-01-02', rate: 0.12 },
 							{ date: '2024-01-03', rate: 0.14 }
 						],
@@ -680,7 +701,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 							weekend_avg: 0.098
 						}
 					},
-					
+
 					// Metadata
 					last_calculated: '2024-01-01T15:30:00Z',
 					calculation_duration_ms: 1247,
@@ -700,9 +721,13 @@ describe('Analytics JSONB Field Validation Tests', () => {
 
 				expect(safeExperimentMetricsCache(result).participants_count).toBe(5847);
 				expect(safeExperimentMetricsCache(result).winning_variation).toBe('streamlined');
-				expect(safeExperimentMetricsCache(result).variation_results.streamlined.conversion_rate).toBe(0.141);
+				expect(
+					safeExperimentMetricsCache(result).variation_results.streamlined.conversion_rate
+				).toBe(0.141);
 				expect(safeExperimentMetricsCache(result).funnel_completion_rates.overall).toBe(0.32);
-				expect(safeExperimentMetricsCache(result).temporal_analysis.daily_conversion_rates).toHaveLength(3);
+				expect(
+					safeExperimentMetricsCache(result).temporal_analysis.daily_conversion_rates
+				).toHaveLength(3);
 			});
 		});
 	});
@@ -807,30 +832,36 @@ describe('Analytics JSONB Field Validation Tests', () => {
 			]);
 
 			const sessions = await mockDb.analytics_session.findMany({});
-			
+
 			// Simulate aggregation logic
-			const deviceEngagement = sessions.reduce((acc: any, session: any) => {
+			const deviceEngagement = sessions.reduce((acc: unknown, session: unknown) => {
 				const deviceType = session.device_data?.device_type || 'unknown';
 				const engagement = session.session_metrics?.engagement_score || 0;
-				
+
 				if (!acc[deviceType]) {
 					acc[deviceType] = { total: 0, count: 0 };
 				}
 				acc[deviceType].total += engagement;
 				acc[deviceType].count += 1;
-				
+
 				return acc;
 			}, {});
 
 			// Calculate averages
-			const avgEngagementByDevice = Object.entries(deviceEngagement).map(([device, data]: [string, any]) => ({
-				device_type: device,
-				avg_engagement: data.total / data.count
-			}));
+			const avgEngagementByDevice = Object.entries(deviceEngagement).map(
+				([device, data]: [string, any]) => ({
+					device_type: device,
+					avg_engagement: data.total / data.count
+				})
+			);
 
 			expect(avgEngagementByDevice).toHaveLength(2);
-			expect(avgEngagementByDevice.find(d => d.device_type === 'mobile')?.avg_engagement).toBe(0.8);
-			expect(avgEngagementByDevice.find(d => d.device_type === 'desktop')?.avg_engagement).toBe(0.6);
+			expect(avgEngagementByDevice.find((d) => d.device_type === 'mobile')?.avg_engagement).toBe(
+				0.8
+			);
+			expect(avgEngagementByDevice.find((d) => d.device_type === 'desktop')?.avg_engagement).toBe(
+				0.6
+			);
 		});
 	});
 
@@ -840,7 +871,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 				{
 					name: 'Circular reference',
 					data: (() => {
-						const obj: any = { name: 'circular' };
+						const obj: unknown = { name: 'circular' };
 						obj.self = obj;
 						return obj;
 					})()
@@ -864,7 +895,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 
 			for (const testCase of malformedData) {
 				// In real implementation, this would be handled by serialization logic
-				const safeStringify = (obj: any) => {
+				const safeStringify = (obj: unknown) => {
 					try {
 						return JSON.stringify(obj, (key, value) => {
 							if (typeof value === 'bigint') return value.toString();
@@ -873,7 +904,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 							if (typeof value === 'undefined') return null;
 							return value;
 						});
-					} catch (error) {
+					} catch {
 						return JSON.stringify({ error: 'Serialization failed', original_type: typeof obj });
 					}
 				};
@@ -881,7 +912,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 				const serialized = safeStringify(testCase.data);
 				expect(serialized).toBeDefined();
 				expect(typeof serialized).toBe('string');
-				
+
 				// Should not throw when parsing back
 				expect(() => JSON.parse(serialized)).not.toThrow();
 			}
@@ -911,7 +942,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 				// Validate that valid data passes
 				expect(typeof test.valid).toBe('object');
 				expect(test.valid).not.toBeNull();
-				
+
 				// Validate that invalid data fails
 				if (test.field.includes('session_metrics') || test.field.includes('properties')) {
 					expect(typeof test.invalid === 'object').toBe(false);

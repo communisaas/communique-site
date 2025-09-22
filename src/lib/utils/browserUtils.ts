@@ -80,13 +80,13 @@ export function navigateTo(url: string): void {
 		console.warn('Invalid URL provided to navigateTo');
 		return;
 	}
-	
+
 	const win = getWindow();
 	if (win) {
 		try {
 			win.location.href = url;
-		} catch (error) {
-			console.error('Failed to navigate to URL:', error);
+		} catch {
+			console.error('Error occurred');
 		}
 	}
 }
@@ -96,13 +96,13 @@ export function openInNewTab(url: string): void {
 		console.warn('Invalid URL provided to openInNewTab');
 		return;
 	}
-	
+
 	const win = getWindow();
 	if (win) {
 		try {
 			win.open(url, '_blank', 'noopener,noreferrer');
-		} catch (error) {
-			console.error('Failed to open URL in new tab:', error);
+		} catch {
+			console.error('Error occurred');
 		}
 	}
 }
@@ -113,7 +113,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		console.warn('Text to copy must be a string');
 		return false;
 	}
-	
+
 	const nav = getNavigator();
 	if (!nav) return false;
 
@@ -127,7 +127,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		// Fallback for older browsers
 		const doc = getDocument();
 		if (!doc) return false;
-		
+
 		const textArea = doc.createElement('textarea');
 		textArea.value = text;
 		textArea.style.position = 'fixed';
@@ -140,8 +140,8 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		const success = doc.execCommand('copy');
 		textArea.remove();
 		return success;
-	} catch (error) {
-		console.error('Failed to copy to clipboard:', error);
+	} catch {
+		console.error('Error occurred');
 		return false;
 	}
 }
@@ -152,11 +152,11 @@ export type MediaQueryCallback = (matches: boolean) => void;
 // MEDIA QUERY UTILITIES - Event-driven responsive detection
 export function matchesMediaQuery(query: string): boolean {
 	if (!isBrowser || typeof query !== 'string') return false;
-	
+
 	try {
 		return window.matchMedia(query).matches;
-	} catch (error) {
-		console.error('Invalid media query:', query, error);
+	} catch {
+		console.error('Error occurred');
 		return false;
 	}
 }
@@ -174,8 +174,8 @@ export function createMediaQueryWatcher(
 		const handler = (e: MediaQueryListEvent): void => {
 			try {
 				callback(e.matches);
-			} catch (error) {
-				console.error('Error in media query callback:', error);
+			} catch {
+				console.error('Error occurred');
 			}
 		};
 
@@ -184,20 +184,20 @@ export function createMediaQueryWatcher(
 		// Initial call with error handling
 		try {
 			callback(mediaQuery.matches);
-		} catch (error) {
-			console.error('Error in initial media query callback:', error);
+		} catch {
+			console.error('Error occurred');
 		}
 
 		// Return cleanup function
 		return (): void => {
 			try {
 				mediaQuery.removeEventListener('change', handler);
-			} catch (error) {
-				console.error('Error removing media query listener:', error);
+			} catch {
+				console.error('Error occurred');
 			}
 		};
-	} catch (error) {
-		console.error('Error creating media query watcher:', error);
+	} catch {
+		console.error('Error occurred');
 		return null;
 	}
 }
@@ -248,7 +248,7 @@ export function isScrolledToBottom(threshold: number = 100): boolean {
 // DOM UTILITIES - SSR-safe DOM manipulation
 export function addClass(element: Element | null, className: string): void {
 	if (!element || !isBrowser) return;
-	
+
 	if (typeof className !== 'string' || className.trim() === '') {
 		console.warn('addClass: className must be a non-empty string');
 		return;
@@ -259,7 +259,7 @@ export function addClass(element: Element | null, className: string): void {
 
 export function removeClass(element: Element | null, className: string): void {
 	if (!element || !isBrowser) return;
-	
+
 	if (typeof className !== 'string' || className.trim() === '') {
 		console.warn('removeClass: className must be a non-empty string');
 		return;
@@ -312,7 +312,7 @@ export interface ShareData {
 export function isValidShareData(data: unknown): data is ShareData {
 	if (typeof data !== 'object' || data === null) return false;
 	const shareData = data as Record<string, unknown>;
-	
+
 	return (
 		(shareData.title === undefined || typeof shareData.title === 'string') &&
 		(shareData.text === undefined || typeof shareData.text === 'string') &&
@@ -323,14 +323,14 @@ export function isValidShareData(data: unknown): data is ShareData {
 
 export function canShareData(data: ShareData): boolean {
 	if (!supportsWebShare() || !isValidShareData(data)) return false;
-	
+
 	const nav = getNavigator();
 	if (!nav?.canShare) return false;
-	
+
 	try {
 		return nav.canShare(data);
-	} catch (error) {
-		console.error('Error checking if data can be shared:', error);
+	} catch {
+		console.error('Error occurred');
 		return false;
 	}
 }
@@ -349,9 +349,9 @@ export async function shareData(data: ShareData): Promise<boolean> {
 
 		await nav.share(data);
 		return true;
-	} catch (error) {
+	} catch (_error) {
 		// User cancelled or sharing failed
-		console.debug('Web Share cancelled or failed:', error);
+		console.debug('Web Share cancelled or failed:', _error);
 		return false;
 	}
 }
@@ -393,7 +393,7 @@ export function requestAnimationFrame(callback: () => void): void {
 // EVENT UTILITIES - Memory-safe event handling
 export function addEventListener<K extends keyof WindowEventMap>(
 	type: K,
-	listener: (event: WindowEventMap[K]) => void,
+	listener: (_event: WindowEventMap[K]) => void,
 	options?: boolean | AddEventListenerOptions
 ): (() => void) | null {
 	const win = getWindow();
@@ -407,7 +407,7 @@ export function addEventListener<K extends keyof WindowEventMap>(
 
 export function addDocumentEventListener<K extends keyof DocumentEventMap>(
 	type: K,
-	listener: (event: DocumentEventMap[K]) => void,
+	listener: (_event: DocumentEventMap[K]) => void,
 	options?: boolean | AddEventListenerOptions
 ): (() => void) | null {
 	const doc = getDocument();

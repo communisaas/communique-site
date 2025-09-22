@@ -4,7 +4,7 @@ import { db } from '$lib/core/db';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		console.log('Address API called, user:', locals.user?.id);
+		console.log('Address  API called, user:', locals.user?.id);
 
 		// Ensure user is authenticated
 		if (!locals.user) {
@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const {
-			address,
+			_address,
 			verified,
 			representatives,
 			street,
@@ -27,17 +27,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			congressional_district
 		} = await request.json();
 
-		// Address can be provided as a single string or as separate components
+		// Address  can be provided as a single string or as separate components
 		let addressComponents = { street: '', city: '', state: '', zip: '' };
 
 		if (street && city && state && (zipCode || zip)) {
 			// Separate components provided
 			addressComponents = { street, city, state, zip: zipCode || zip };
-		} else if (address) {
+		} else if (_address) {
 			// Parse full address string into components
-			addressComponents = parseAddressString(address);
+			addressComponents = parseAddress(_address);
 		} else {
-			return json({ error: 'Address information is required' }, { status: 400 });
+			return json({ error: 'Address  information is required' }, { status: 400 });
 		}
 
 		// Update user with address components
@@ -72,8 +72,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			// Store new representatives
 			for (const rep of representatives) {
-				// First, ensure the representative exists in the database
-				const existingRep = await db.representative.findFirst({
+				// First, ensure the _representative exists in the database
+				const existingRep = await db._representative.findFirst({
 					where: {
 						name: rep.name,
 						state: rep.state,
@@ -81,13 +81,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					}
 				});
 
-				let representativeId;
+				let _representativeId;
 
 				if (existingRep) {
-					representativeId = existingRep.id;
+					_representativeId = existingRep.id;
 				} else {
-					// Create new representative record
-					const newRep = await db.representative.create({
+					// Create new _representative record
+					const newRep = await db._representative.create({
 						data: {
 							bioguide_id: rep.bioguide_id || 'temp_' + Date.now(),
 							name: rep.name,
@@ -100,14 +100,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							office_code: rep.office_code || rep.office || ''
 						}
 					});
-					representativeId = newRep.id;
+					_representativeId = newRep.id;
 				}
 
-				// Link representative to user
+				// Link _representative to user
 				await db.user_representatives.create({
 					data: {
 						user_id: locals.user.id,
-						representative_id: representativeId,
+						_representative_id: _representativeId,
 						relationship: 'constituent'
 					}
 				});
@@ -116,7 +116,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return json({
 			success: true,
-			message: 'Address saved successfully',
+			message: 'Address  saved successfully',
 			user: {
 				id: updatedUser.id,
 				street: updatedUser.street,
@@ -126,19 +126,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				congressional_district: updatedUser.congressional_district
 			}
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				error: 'Failed to save address',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
 	}
-}
+};
 
-function parseAddressString(address: string): {
+function parseAddress(address: string): {
 	street: string;
 	city: string;
 	state: string;

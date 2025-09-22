@@ -18,9 +18,15 @@ const AUTO_SAVE_INTERVAL = 30 * 1000;
 interface TemplateDraftStore {
 	subscribe: Writable<DraftStorage>['subscribe'];
 	saveDraft: (draftId: string, data: TemplateFormData, currentStep: string) => void;
-	getDraft: (draftId: string) => { data: TemplateFormData; lastSaved: number; currentStep: string } | null;
+	getDraft: (
+		draftId: string
+	) => { data: TemplateFormData; lastSaved: number; currentStep: string } | null;
 	deleteDraft: (draftId: string) => void;
-	startAutoSave: (draftId: string, getFormData: () => TemplateFormData, getCurrentStep: () => string) => () => void;
+	startAutoSave: (
+		draftId: string,
+		getFormData: () => TemplateFormData,
+		getCurrentStep: () => string
+	) => () => void;
 	hasDraft: (draftId: string) => boolean;
 	getDraftAge: (draftId: string) => number | null;
 	getAllDraftIds: () => string[];
@@ -36,21 +42,26 @@ function createTemplateDraftStore(): TemplateDraftStore {
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY);
 			if (stored) {
-				const parsed = JSON.parse(stored) as Record<string, any>;
+				const parsed = JSON.parse(stored) as Record<string, unknown>;
 				// Clean up old drafts (older than 7 days)
 				const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
 				const cleaned: DraftStorage = {};
-				
+
 				for (const [key, draft] of Object.entries(parsed)) {
-					if (draft && typeof draft === 'object' && typeof draft.lastSaved === 'number' && draft.lastSaved > cutoff) {
+					if (
+						draft &&
+						typeof draft === 'object' &&
+						typeof draft.lastSaved === 'number' &&
+						draft.lastSaved > cutoff
+					) {
 						cleaned[key] = draft as DraftStorage[string];
 					}
 				}
-				
+
 				return cleaned;
 			}
-		} catch (_error) {
-			console.warn('Failed to load template drafts from storage:', _error);
+		} catch {
+			console.warn('Failed to load template drafts from storage:', error);
 		}
 
 		return {};
@@ -62,8 +73,8 @@ function createTemplateDraftStore(): TemplateDraftStore {
 
 		try {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
-		} catch (_error) {
-			console.warn('Failed to save template drafts to storage:', _error);
+		} catch {
+			console.warn('Failed to save template drafts to storage:', error);
 		}
 	}
 

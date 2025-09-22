@@ -14,11 +14,11 @@
 	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
 	import { resolveTemplate } from '$lib/utils/templateResolver';
 	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
-	import { onMount } from 'svelte';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
 	import { goto, preloadData, onNavigate } from '$app/navigation';
-	import type { TemplateCreationContext } from '$lib/types/template';
+	import { onMount } from 'svelte';
+	import type { Template, TemplateCreationContext } from '$lib/types/template';
 	import type { PageData } from './$types';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
@@ -47,7 +47,7 @@
 	let selectedChannel: string | null = $state(null);
 	let creationContext: TemplateCreationContext | null = $state(null);
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
-	let savedTemplate = $state<any>(null);
+	let savedTemplate = $state<Template | null>(null);
 	let userInitiatedSelection = $state(false); // Track if selection was user-initiated
 	let initialLoadComplete = $state(false); // Track initial load completion
 
@@ -68,7 +68,7 @@
 						.catch((error) => {
 							// Template save failed - user can retry later
 						});
-				} catch (error) {
+				} catch {
 					// Invalid pending template data - ignore
 				}
 			}
@@ -152,7 +152,7 @@
 		}
 	}
 
-	function handleChannelSelect(event: CustomEvent<string>) {
+	function handleChannelSelect(__event: CustomEvent<string>) {
 		selectedChannel = event.detail;
 		userInitiatedSelection = true;
 		const matchingTemplates = templateStore.templates.filter((t) => {
@@ -168,12 +168,12 @@
 		}
 	}
 
-	function handleCreateTemplate(event: CustomEvent<TemplateCreationContext>) {
+	function handleCreateTemplate(__event: CustomEvent<TemplateCreationContext>) {
 		creationContext = event.detail;
 		showTemplateCreator = true;
 	}
 
-	function handleTemplateCreatorAuth(event: CustomEvent) {
+	function handleTemplateCreatorAuth(__event: CustomEvent) {
 		const { name, email } = event.detail;
 
 		// For template creators, we need actual authentication to save templates
@@ -211,7 +211,10 @@
 				})
 			: // For MVP: Show both congressional and SF municipal templates
 				templateStore.templates.filter(
-					(t) => t.deliveryMethod === 'cwc' || t.deliveryMethod === 'email' || t.deliveryMethod === 'direct'
+					(t) =>
+						t.deliveryMethod === 'cwc' ||
+						t.deliveryMethod === 'email' ||
+						t.deliveryMethod === 'direct'
 				)
 	);
 
@@ -270,7 +273,12 @@
 				<div class="rounded-xl border border-orange-200 bg-orange-50 p-6 text-center">
 					<div class="mb-4 flex justify-center">
 						<div class="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
-							<svg class="h-8 w-8 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<svg
+								class="h-8 w-8 text-orange-600"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
@@ -290,7 +298,12 @@
 						class="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
 					>
 						<svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+							/>
 						</svg>
 						Try Again
 					</button>
@@ -431,24 +444,24 @@
 					showTemplateCreator = false;
 					creationContext = null;
 				}}
-				on:save={async (event) => {
+				on:save={async (_event) => {
 					// Handle template save
 					if (data.user) {
 						// Authenticated user - save directly
 						try {
-							const newTemplate = await templateStore.addTemplate(event.detail);
+							const newTemplate = await templateStore.addTemplate(_event.detail);
 							showTemplateCreator = false;
 							creationContext = null;
 							savedTemplate = newTemplate;
 							showTemplateSuccess = true;
-						} catch (error) {
+						} catch (_error) {
 							// Template save failed - user can retry
 							console.error('Failed to save template:', error);
 							// You could add a toast notification here
 						}
 					} else {
 						// Guest user - show progressive auth modal
-						pendingTemplateToSave = event.detail;
+						pendingTemplateToSave = _event.detail;
 						showTemplateAuthModal = true;
 					}
 				}}

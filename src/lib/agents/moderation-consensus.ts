@@ -114,7 +114,7 @@ export class ModerationConsensus {
 		await db.template.update({
 			where: { id: templateId },
 			data: {
-				agent_votes: votes as any,
+				agent_votes: JSON.parse(JSON.stringify(votes)),
 				consensus_score: consensus.score,
 				verification_status: consensus.approved ? 'approved' : 'rejected',
 				reviewed_at: new Date()
@@ -127,13 +127,13 @@ export class ModerationConsensus {
 	/**
 	 * Check template with OpenAI via N8N workflow
 	 */
-	private async checkWithOpenAI(template: Template): Promise<AgentVote> {
+	private async checkWithOpenAI(_template: Template): Promise<AgentVote> {
 		try {
 			// Temporary: N8N client is commented out, using mock response
 			console.warn('OpenAI N8N workflow disabled, using mock response');
 			return this.getMockVote('openai');
-		} catch (_error) {
-			console.error('OpenAI N8N workflow error:', _error);
+		} catch {
+			console.error('Error occurred');
 			// Default to approval on error (fail open)
 			return {
 				approved: true,
@@ -146,13 +146,13 @@ export class ModerationConsensus {
 	/**
 	 * Check template with Google Gemini via N8N workflow
 	 */
-	private async checkWithGemini(template: Template): Promise<AgentVote> {
+	private async checkWithGemini(_template: Template): Promise<AgentVote> {
 		try {
 			// Temporary: N8N client is commented out, using mock response
 			console.warn('Gemini N8N workflow disabled, using mock response');
 			return this.getMockVote('gemini');
-		} catch (_error) {
-			console.error('Gemini N8N workflow error:', _error);
+		} catch {
+			console.error('Error occurred');
 			// Default to approval on error (fail open)
 			return {
 				approved: true,
@@ -259,7 +259,7 @@ export class ModerationConsensus {
 		}
 
 		// Type guard to ensure agent_votes is the expected format
-		const isValidAgentVotes = (data: any): data is Record<string, AgentVote> => {
+		const isValidAgentVotes = (data: unknown): data is Record<string, AgentVote> => {
 			return typeof data === 'object' && data !== null && !Array.isArray(data);
 		};
 
@@ -272,7 +272,11 @@ export class ModerationConsensus {
 		// Check if any agent detected this specific violation
 		for (const vote of Object.values(votes)) {
 			const typedVote = vote as AgentVote;
-			if (typedVote && Array.isArray(typedVote.violations) && typedVote.violations.includes(violationType)) {
+			if (
+				typedVote &&
+				Array.isArray(typedVote.violations) &&
+				typedVote.violations.includes(violationType)
+			) {
 				return true;
 			}
 		}

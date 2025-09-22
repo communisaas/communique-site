@@ -3,7 +3,15 @@
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
-	import { X, ArrowRight, ArrowLeft, User, MapPin, Send, CheckCircle2 } from '@lucide/svelte';
+	import {
+		X,
+		ArrowRight,
+		ArrowLeft,
+		User,
+		MapPin,
+		Send,
+		CheckCircle2 as _CheckCircle2
+	} from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
@@ -198,9 +206,9 @@
 		dispatch('close');
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
-			event.preventDefault();
+	function _handleKeydown(__event: KeyboardEvent) {
+		if (__event.key === 'Enter' && !__event.shiftKey) {
+			__event.preventDefault();
 			if (isLastStep) {
 				handleSend();
 			} else {
@@ -225,13 +233,8 @@
 >
 	<div
 		class="fixed inset-x-4 top-1/2 mx-auto max-w-md -translate-y-1/2 transform overflow-hidden rounded-2xl bg-white shadow-2xl"
-		onclick={(e) => {
-			e.stopPropagation();
-		}}
-		onkeydown={(e) => {
-			e.stopPropagation();
-		}}
 		role="document"
+		tabindex="-1"
 		in:scale={{
 			duration: 400,
 			easing: backOut,
@@ -256,9 +259,9 @@
 		{#if steps.length > 1}
 			<div class="flex justify-center pb-4 pt-6">
 				<div class="flex gap-2">
-					{#each steps as step, i}
+					{#each steps as _step, _i}
 						<div
-							class="h-2 rounded-full transition-all duration-500 ease-out {i <= currentStepIndex
+							class="h-2 rounded-full transition-all duration-500 ease-out {_i <= currentStepIndex
 								? 'w-12 bg-blue-600 shadow-lg shadow-blue-200'
 								: 'w-8 bg-slate-200'}"
 						></div>
@@ -274,7 +277,6 @@
 					class="absolute inset-0 p-6 pt-2"
 					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
 					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					onkeydown={handleKeydown}
 					role="form"
 					tabindex="-1"
 				>

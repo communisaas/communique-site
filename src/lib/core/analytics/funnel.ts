@@ -30,9 +30,9 @@ export class FunnelAnalytics {
 		if (typeof localStorage === 'undefined') {
 			return;
 		}
-		
+
 		try {
-			const stored = localStorage.getItem('communique_funnel_events');
+			const stored = localStorage.getItem('communique_funnel__events');
 			if (stored) {
 				const events = JSON.parse(stored);
 				this.events = events.filter(
@@ -42,7 +42,7 @@ export class FunnelAnalytics {
 		} catch {
 			// Handle corrupted localStorage data gracefully
 			try {
-				localStorage.removeItem('communique_funnel_events');
+				localStorage.removeItem('communique_funnel__events');
 			} catch {
 				// Even removeItem might fail in some environments
 			}
@@ -51,7 +51,7 @@ export class FunnelAnalytics {
 
 	private safeStringify(obj: unknown): string {
 		const seen = new WeakSet();
-		return JSON.stringify(obj, (key, value) => {
+		return JSON.stringify(obj, (_key, value) => {
 			// Skip DOM elements (only available in browser)
 			if (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement) {
 				return '[HTMLElement]';
@@ -86,9 +86,9 @@ export class FunnelAnalytics {
 		}
 	}
 
-	track(event: string, properties: Record<string, unknown> = {}) {
+	track(_event: string, properties: Record<string, unknown> = {}) {
 		const funnelEvent: FunnelEvent = {
-			event,
+			event: _event,
 			session_id: this.sessionId,
 			timestamp: Date.now(),
 			properties,
@@ -102,17 +102,17 @@ export class FunnelAnalytics {
 		this.sendToAnalytics(funnelEvent);
 	}
 
-	private async sendToAnalytics(event: FunnelEvent) {
+	private async sendToAnalytics(_event: FunnelEvent) {
 		try {
-			await analytics.trackFunnelEvent(event);
-		} catch (_error) {
+			await analytics.trackFunnelEvent(_event);
+		} catch {
 			// Fallback: Store failed events for retry
 			if (typeof window !== 'undefined') {
-				const failed = JSON.parse(localStorage.getItem('communique_failed_events') || '[]');
-				failed.push(event);
-				localStorage.setItem('communique_failed_events', this.safeStringify(failed));
+				const failed = JSON.parse(localStorage.getItem('communique_failed__events') || '[]');
+				failed.push(_event);
+				localStorage.setItem('communique_failed__events', this.safeStringify(failed));
 			}
-			console.error('Failed to send analytics event:', _error);
+			console.error('Error occurred');
 		}
 	}
 
@@ -141,7 +141,7 @@ export class FunnelAnalytics {
 			template_id: templateId,
 			user_id: userId,
 			provider,
-			step: 'auth_success'
+			step: 'authsuccess'
 		});
 	}
 
@@ -178,7 +178,7 @@ export class FunnelAnalytics {
 		userId?: string,
 		certificationHash?: string
 	) {
-		this.track('certification_success', {
+		this.track('certificationsuccess', {
 			template_id: templateId,
 			reward_amount: rewardAmount,
 			certification_hash: certificationHash,
@@ -197,7 +197,7 @@ export class FunnelAnalytics {
 	}
 
 	trackCertificationError(templateId: string, error: string, userId?: string) {
-		this.track('certification_error', {
+		this.track('certificationerror', {
 			template_id: templateId,
 			error_message: error,
 			user_id: userId,
@@ -209,7 +209,8 @@ export class FunnelAnalytics {
 	getFunnelMetrics() {
 		const metrics = {
 			total_events: this.events.length,
-			unique_templates: new Set(this.events.map((e) => e.template_id).filter(Boolean)).size,
+			unique_templates: new Set(this.events.map((e: FunnelEvent) => e.template_id).filter(Boolean))
+				.size,
 			conversion_rate: 0,
 			funnel_steps: {
 				template_viewed: this.events.filter((e) => e.event === 'template_viewed').length,
@@ -218,8 +219,7 @@ export class FunnelAnalytics {
 				template_used: this.events.filter((e) => e.event === 'template_used').length,
 				certification_attempted: this.events.filter((e) => e.event === 'certification_attempted')
 					.length,
-				certification_success: this.events.filter((e) => e.event === 'certification_success')
-					.length,
+				certificationsuccess: this.events.filter((e) => e.event === 'certificationsuccess').length,
 				reward_earned: this.events.filter((e) => e.event === 'reward_earned').length
 			}
 		};
@@ -236,7 +236,7 @@ export class FunnelAnalytics {
 	clear() {
 		this.events = [];
 		if (typeof window !== 'undefined') {
-			localStorage.removeItem('communique_funnel_events');
+			localStorage.removeItem('communique_funnel__events');
 		}
 	}
 }

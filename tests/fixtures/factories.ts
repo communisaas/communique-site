@@ -41,7 +41,7 @@ export interface UserFactoryData {
 	avatar?: string;
 	createdAt: Date;
 	updatedAt: Date;
-	
+
 	// Consolidated address fields
 	street?: string;
 	city?: string;
@@ -49,19 +49,19 @@ export interface UserFactoryData {
 	zip?: string;
 	congressional_district?: string;
 	phone?: string;
-	
+
 	// Verification status
 	is_verified?: boolean;
 	verification_method?: string;
-	verification_data?: any;
+	verification_data?: unknown;
 	verified_at?: Date;
-	
+
 	// VOTER Protocol blockchain identity
 	wallet_address?: string;
 	district_hash?: string;
 	trust_score?: number;
 	reputation_tier?: string;
-	
+
 	// VOTER Protocol reward and reputation fields
 	pending_rewards?: bigint;
 	total_earned?: bigint;
@@ -69,7 +69,7 @@ export interface UserFactoryData {
 	challenge_score?: number;
 	civic_score?: number;
 	discourse_score?: number;
-	
+
 	// Profile fields
 	role?: string;
 	organization?: string;
@@ -90,7 +90,7 @@ export class UserFactory extends Factory<UserFactoryData> {
 			avatar: undefined,
 			createdAt: new Date(),
 			updatedAt: new Date(),
-			
+
 			// Consolidated address fields
 			street: '123 Main Street',
 			city: 'San Francisco',
@@ -98,19 +98,19 @@ export class UserFactory extends Factory<UserFactoryData> {
 			zip: '94102',
 			congressional_district: 'CA-12',
 			phone: '+1-555-123-4567',
-			
+
 			// Verification status
 			is_verified: false,
 			verification_method: undefined,
 			verification_data: undefined,
 			verified_at: undefined,
-			
+
 			// VOTER Protocol blockchain identity
 			wallet_address: undefined,
 			district_hash: undefined,
 			trust_score: 0,
 			reputation_tier: 'novice',
-			
+
 			// VOTER Protocol reward and reputation fields
 			pending_rewards: BigInt(0),
 			total_earned: BigInt(0),
@@ -118,7 +118,7 @@ export class UserFactory extends Factory<UserFactoryData> {
 			challenge_score: 50,
 			civic_score: 50,
 			discourse_score: 50,
-			
+
 			// Profile fields
 			role: undefined,
 			organization: undefined,
@@ -150,23 +150,23 @@ export interface TemplateFactoryData {
 	subject?: string;
 	preview: string;
 	message_body: string;
-	delivery_config: any;
-	cwc_config?: any;
-	recipient_config: any;
-	metrics: any;
+	delivery_config: unknown;
+	cwc_config?: unknown;
+	recipient_config: unknown;
+	metrics: unknown;
 	campaign_id?: string;
 	status: string;
 	is_public: boolean;
-	
+
 	// Usage tracking
 	send_count: number;
 	last_sent_at?: Date;
-	
+
 	// Geographic scope
 	applicable_countries: string[];
 	jurisdiction_level?: string;
 	specific_locations: string[];
-	
+
 	// Consolidated verification fields
 	verification_status: string;
 	severity_level?: number;
@@ -183,7 +183,7 @@ export interface TemplateFactoryData {
 	reputation_delta?: number;
 	reputation_applied: boolean;
 	reviewed_at?: Date;
-	
+
 	createdAt: Date;
 	updatedAt: Date;
 	userId?: string;
@@ -212,16 +212,16 @@ export class TemplateFactory extends Factory<TemplateFactoryData> {
 			campaign_id: undefined,
 			status: 'draft',
 			is_public: true,
-			
+
 			// Usage tracking
 			send_count: 0,
 			last_sent_at: undefined,
-			
+
 			// Geographic scope
 			applicable_countries: ['US'],
 			jurisdiction_level: 'federal',
 			specific_locations: [],
-			
+
 			// Consolidated verification fields
 			verification_status: 'pending',
 			severity_level: undefined,
@@ -238,7 +238,7 @@ export class TemplateFactory extends Factory<TemplateFactoryData> {
 			reputation_delta: undefined,
 			reputation_applied: false,
 			reviewed_at: undefined,
-			
+
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			userId: undefined
@@ -265,23 +265,23 @@ export interface RepresentativeFactoryData {
 	office_code: string;
 	phone?: string;
 	email?: string;
-	
+
 	// Enhanced office information
 	member_name?: string;
 	office_address?: string;
 	office_city?: string;
 	office_state?: string;
 	office_zip?: string;
-	
+
 	// Enhanced term information
 	term_start?: Date;
 	term_end?: Date;
 	current_term?: number;
-	
+
 	// Status and metadata
 	is_active?: boolean;
 	last_updated?: Date;
-	
+
 	// Data source tracking
 	data_source?: string;
 	source_updated_at?: Date;
@@ -308,23 +308,23 @@ export class RepresentativeFactory extends Factory<RepresentativeFactoryData> {
 			office_code: `T${id.slice(-6)}`,
 			phone: '+1-202-224-0000',
 			email: `${chamber}@congress.gov`,
-			
+
 			// Enhanced office information
 			member_name: undefined,
 			office_address: '123 Capitol Hill',
 			office_city: 'Washington',
 			office_state: 'DC',
 			office_zip: '20515',
-			
+
 			// Enhanced term information
 			term_start: new Date('2023-01-01'),
 			term_end: new Date('2025-01-01'),
 			current_term: 1,
-			
+
 			// Status and metadata
 			is_active: true,
 			last_updated: new Date(),
-			
+
 			// Data source tracking
 			data_source: 'test',
 			source_updated_at: new Date()
@@ -437,7 +437,7 @@ export class DeliveryJobFactory extends Factory<DeliveryJobFactoryData> {
  * Mock request factory for API tests
  */
 export interface MockRequestFactoryData {
-	json: () => Promise<any>;
+	json: () => Promise<unknown>;
 	headers: Map<string, string>;
 	url: URL;
 	method: string;

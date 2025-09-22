@@ -76,15 +76,15 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 					is_current: true
 				}
 			];
-		} catch (_error) {
-			console.error('UK Parliament lookup failed:', _error);
+		} catch {
+			console.error('Error occurred');
 			return [];
 		}
 	}
 
-	async validateRepresentative(representative: Representative): Promise<boolean> {
+	async validateRepresentative(_representative: Representative): Promise<boolean> {
 		// In a real implementation, validate against Parliament API
-		return representative.is_current;
+		return _representative.is_current;
 	}
 
 	async deliverMessage(request: DeliveryRequest): Promise<DeliveryResult> {
@@ -101,16 +101,16 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 				metadata: {
 					provider: 'UK Parliament',
 					method: 'email',
-					representative: request.representative.name
+					_representative: request._representative.name
 				}
 			};
-		} catch (_error) {
+		} catch (error) {
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'UK Parliament submission failed',
+				error: error instanceof Error ? error.message : 'UK Parliament submission failed',
 				metadata: {
 					provider: 'UK Parliament',
-					representative: request.representative.name
+					_representative: request._representative.name
 				}
 			};
 		}

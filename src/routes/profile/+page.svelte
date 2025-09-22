@@ -51,7 +51,7 @@
 		showEditModal = true;
 	}
 
-	function handleProfileSave(event: CustomEvent) {
+	function handleProfileSave(__event: CustomEvent) {
 		const { section, data } = event.detail;
 
 		// Update the local user data (in a real app, you might want to reload from server)
@@ -383,7 +383,7 @@
 
 				{#if templatesData && templatesData.templates.length > 0}
 					<div class="rounded-lg border border-slate-200 bg-white shadow-sm">
-						{#each templatesData.templates as template, i}
+						{#each templatesData.templates as template, _i}
 							<div class="p-6 {i > 0 ? 'border-t border-slate-200' : ''}">
 								<div class="flex items-start justify-between">
 									<div class="flex-1">

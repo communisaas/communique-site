@@ -30,7 +30,7 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	}
 
 	// Extract data from modal store
-	const modalData = $derived(
+	const _modalData = $derived(
 		modalStore.data as {
 			template: {
 				title: string;

@@ -3,8 +3,7 @@
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
-	import { X, Users, Sparkles, HelpCircle, Mail, CheckCircle2 } from '@lucide/svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { X, Users, HelpCircle, Mail, CheckCircle2 } from '@lucide/svelte';
 
 	let {
 		template,
@@ -27,7 +26,7 @@
 	let showDetails = $state(false);
 
 	// Check if user has seen onboarding before
-	const hasSeenOnboarding = $derived.by(() => {
+	const _hasSeenOnboarding = $derived.by(() => {
 		if (typeof window === 'undefined') return false;
 		return localStorage.getItem('communique_has_seen_onboarding') === 'true';
 	});
@@ -170,7 +169,9 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ returnTo: `/${template.slug}` })
 			});
-		} catch {}
+		} catch {
+			/* Ignore auth preparation errors - auth flow will handle missing data */
+		}
 	}
 
 	function handleAuth(provider: string) {
@@ -223,13 +224,8 @@
 	<!-- Modal Content -->
 	<div
 		class="fixed inset-x-4 inset-y-4 mx-auto flex max-w-md items-center justify-center"
-		onclick={(e) => {
-			e.stopPropagation();
-		}}
-		onkeydown={(e) => {
-			e.stopPropagation();
-		}}
 		role="document"
+		tabindex="-1"
 	>
 		<div
 			class="max-h-full w-full overflow-y-auto rounded-2xl bg-white shadow-2xl"
@@ -385,8 +381,8 @@
 							out:fly={{ y: -10, duration: 200 }}
 						>
 							<div class="space-y-3">
-								{#each getProcessSteps(isCongressional, isDirectOutreach) as step, i}
-									{@const IconComponent = step.icon}
+								{#each getProcessSteps(isCongressional, isDirectOutreach) as _step, _i}
+									{@const IconComponent = _step.icon}
 									<div class="flex items-start gap-3">
 										<div
 											class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100"
@@ -394,8 +390,8 @@
 											<IconComponent class="h-3 w-3 text-blue-600" />
 										</div>
 										<div>
-											<p class="text-sm font-medium text-slate-900">{step.title}</p>
-											<p class="text-xs text-slate-600">{step.desc}</p>
+											<p class="text-sm font-medium text-slate-900">{_step.title}</p>
+											<p class="text-xs text-slate-600">{_step.desc}</p>
 										</div>
 									</div>
 								{/each}

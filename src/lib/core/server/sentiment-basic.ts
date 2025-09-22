@@ -130,8 +130,8 @@ export function testSentimentClassifier(): void {
 		'Please help families with student debt relief'
 	];
 
-	testMessages.forEach((message, index) => {
-		const result = classifyBasicSentiment(message);
+	testMessages.forEach((message, _index) => {
+		const _result = classifyBasicSentiment(message);
 	});
 }
 
@@ -178,7 +178,7 @@ export async function getRecentTemplateMessages(limit: number = 10): Promise<
 				created_at: campaign.created_at
 			}))
 			.filter((msg) => msg.text.length > 0);
-	} catch (_error) {
+	} catch {
 		return [];
 	}
 }
@@ -194,8 +194,8 @@ export async function testOnRealData(): Promise<void> {
 		return;
 	}
 
-	messages.forEach((message, index) => {
-		const result = classifyBasicSentiment(message.text);
+	messages.forEach((message, _index) => {
+		const _result = classifyBasicSentiment(message.text);
 	});
 }
 

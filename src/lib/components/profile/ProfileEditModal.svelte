@@ -1,22 +1,23 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { X, User, Building, MapPin, Save, Loader2 } from '@lucide/svelte';
+	import { X as _X, User, Building, MapPin, Save, Loader2 } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
+	import type { UserProfileData, ProfileUpdateData } from '$lib/types/any-replacements.js';
 
 	let {
 		user,
 		section = 'basic',
 		onclose
 	}: {
-		user: any;
+		user: UserProfileData;
 		section?: 'basic' | 'profile' | 'address';
 		onclose?: () => void;
 	} = $props();
 
 	const dispatch = createEventDispatcher<{
 		close: void;
-		save: { section: string; data: any };
+		save: ProfileUpdateData;
 	}>();
 
 	let isSubmitting = $state(false);
@@ -130,7 +131,7 @@
 			} else {
 				errors.general = result.error || 'Failed to save changes';
 			}
-		} catch (error) {
+		} catch {
 			errors.general = 'Failed to save changes. Please try again.';
 		} finally {
 			isSubmitting = false;

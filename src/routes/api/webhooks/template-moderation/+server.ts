@@ -1,6 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
-import { templateCorrector, type TemplateModerationResult } from '$lib/services/template-correction';
+import {
+	templateCorrector,
+	type TemplateModerationResult
+} from '$lib/services/template-correction';
 import { moderationConsensus } from '$lib/agents/moderation-consensus';
 import { reputationCalculator } from '$lib/services/reputation-calculator';
 import type { RequestHandler } from './$types';
@@ -76,12 +79,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			templateId: payload.templateId,
 			result
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				error: 'Failed to process moderation webhook',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -92,10 +95,14 @@ export const POST: RequestHandler = async ({ request }) => {
  * Execute the complete moderation pipeline
  */
 async function executeModerationPipeline(templateId: string) {
-	const stages = {
-		correction: null as any,
-		moderation: null as any,
-		reputation: null as any
+	const stages: {
+		correction: TemplateModerationResult | null;
+		moderation: { approved: boolean; score: number; agentVotes: Record<string, unknown> } | null;
+		reputation: { applied: boolean; reason: string } | null;
+	} = {
+		correction: null,
+		moderation: null,
+		reputation: null
 	};
 
 	try {
@@ -182,8 +189,8 @@ async function executeModerationPipeline(templateId: string) {
 			stages,
 			message: 'Moderation incomplete - manual review required'
 		};
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		// Update template status to indicate error
 		await db.template.update({
@@ -191,13 +198,13 @@ async function executeModerationPipeline(templateId: string) {
 			data: {
 				verification_status: 'pending',
 				correction_log: {
-					error: _error instanceof Error ? _error.message : 'Unknown error',
+					error: err instanceof Error ? err.message : 'Unknown error',
 					timestamp: new Date().toISOString()
 				}
 			}
 		});
 
-		throw _error;
+		throw error;
 	}
 }
 

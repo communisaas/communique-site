@@ -23,7 +23,7 @@ const COMMUNIQUE_CORE_ABI = [
 	'function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string memory metadataUri, uint256 rewardOverride) external'
 ];
 
-const VOTER_REGISTRY_ABI = [
+const _VOTER_REGISTRY_ABI = [
 	'function ActionType() view returns (uint8)',
 	'function CWC_MESSAGE() view returns (uint8)',
 	'function LOCAL_ACTION() view returns (uint8)',
@@ -61,13 +61,16 @@ class BlockchainCertification {
 	 */
 	getActionType(templateData: TemplateData) {
 		const title = typeof templateData.title === 'string' ? templateData.title.toLowerCase() : '';
-		const method = typeof templateData.deliveryMethod === 'string' ? templateData.deliveryMethod.toLowerCase() : '';
+		const method =
+			typeof templateData.deliveryMethod === 'string'
+				? templateData.deliveryMethod.toLowerCase()
+				: '';
 
 		// Congressional messages (corresponds to CWC_MESSAGE enum)
 		if (
 			method === 'certified' ||
 			title.includes('congress') ||
-			title.includes('representative') ||
+			title.includes('_representative') ||
 			title.includes('senator')
 		) {
 			return 0; // CWC_MESSAGE
@@ -144,13 +147,13 @@ class BlockchainCertification {
 				actionHash: actionHash,
 				gasUsed: receipt.gasUsed.toString()
 			};
-		} catch (error: any) {
-			console.error('❌ Blockchain certification failed:', error);
+		} catch (_error) {
+			console.error('Error occurred', _error);
 
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : String(error),
-				details: error
+				error: _error instanceof Error ? _error.message : 'Unknown error',
+				details: _error
 			};
 		}
 	}

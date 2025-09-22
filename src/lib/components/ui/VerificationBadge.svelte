@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Shield, CheckCircle, Clock, AlertTriangle } from '@lucide/svelte';
+	import { Shield, Clock, AlertTriangle } from '@lucide/svelte';
 
 	interface Props {
 		size?: 'xs' | 'sm' | 'md';
@@ -15,7 +15,7 @@
 	let {
 		size = 'sm',
 		showText = true,
-		variant = 'default',
+		variant: _variant = 'default',
 		verificationStatus = 'verified',
 		verificationMethod,
 		verifiedAt,
@@ -79,7 +79,9 @@
 </script>
 
 <div
-	class="inline-flex items-center gap-1 rounded-full border font-medium {config.bgClass} {config.textClass} {config.borderClass} {sizeClasses[size]}"
+	class="inline-flex items-center gap-1 rounded-full border font-medium {config.bgClass} {config.textClass} {config.borderClass} {sizeClasses[
+		size
+	]}"
 	title={tooltipText}
 	role="status"
 	aria-label={tooltipText}
@@ -88,7 +90,7 @@
 	{#if showText}
 		<span>{config.label}</span>
 	{/if}
-	
+
 	{#if reputationTier && verificationStatus === 'verified'}
 		<span class="ml-1 rounded-full bg-white/50 px-1.5 py-0.5 text-xs font-normal opacity-75">
 			{reputationTier}

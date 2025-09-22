@@ -1,11 +1,14 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { User, Settings, FileText, Shield, Edit3, Home, LogOut } from '@lucide/svelte';
+	import { User as _User, Settings, FileText, Shield, Edit3, Home, LogOut as _LogOut } from '@lucide/svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
-	let { children, data }: {
+	let {
+		children,
+		data
+	}: {
 		children: Snippet;
 		data: LayoutData;
 	} = $props();

@@ -24,7 +24,7 @@
 		if (!data.slug) data.slug = '';
 	});
 
-	const isTitleValid = $derived(data.title.trim().length > 0);
+	const _isTitleValid = $derived(data.title.trim().length > 0);
 </script>
 
 <div class="space-y-4 md:space-y-6">

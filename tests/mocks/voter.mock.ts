@@ -1,5 +1,108 @@
 import { vi } from 'vitest';
-import type { CertificationRequest, CertificationResponse } from '../../src/lib/services/certification.js';
+import type { MockedFunction as _MockedFunction } from 'vitest';
+import type {
+	CertificationRequest,
+	CertificationResponse
+} from '../../src/lib/services/certification.js';
+
+// Define types for VOTER API mock responses
+interface VoterUser {
+	address?: string;
+}
+
+interface VoterTemplate {
+	id: string;
+	subject: string;
+	message_body: string;
+	send_count?: number;
+}
+
+interface VoterCertificationParams {
+	user?: VoterUser;
+	template: VoterTemplate;
+	mailtoUrl: string;
+	recipients: string[];
+}
+
+interface VoterVerificationResult {
+	verified: boolean;
+	severity_level: number;
+	security_alert?: boolean;
+	reason: string;
+	corrections?: {
+		message_body?: string;
+		tone_adjustments?: string[];
+	};
+	bias_check?: {
+		passed: boolean;
+		demographic_neutral: boolean;
+	};
+	threat_indicators?: string[];
+}
+
+interface VoterConsensusResult {
+	consensus_score: number;
+	approved: boolean;
+	agent_votes: {
+		verification: { approved: boolean; confidence: number };
+		impact: { approved: boolean; confidence: number };
+		reputation: { approved: boolean; confidence: number };
+	};
+	diversity_score: number;
+	recommendation: string;
+}
+
+interface VoterReputationResult {
+	reputation_delta: number;
+	total_reputation: number;
+	tier_change: string | null;
+	explanation: string;
+}
+
+interface VoterImpactResult {
+	impact_score: number;
+	effectiveness: number;
+	reach?: number;
+	engagement_rate?: number;
+	policy_influence?: number;
+	manipulation_detected?: boolean;
+	reason?: string;
+	flagged_patterns?: string[];
+}
+
+interface VoterMarketResult {
+	base_reward: number;
+	reputation_multiplier: number;
+	quality_multiplier: number;
+	impact_multiplier: number;
+	final_reward: number;
+	cap_applied: boolean;
+	cap_reason: string | null;
+	token_allocation: {
+		immediate: number;
+		vested: number;
+	};
+}
+
+interface VoterAPIResponse {
+	success: boolean;
+	certification_hash?: string;
+	reward_amount?: number;
+	reputation_change?: number;
+	user_address?: string;
+	challenge_score?: number;
+	civic_score?: number;
+	discourse_score?: number;
+	total_score?: number;
+	tier?: string;
+	recent_actions?: unknown[];
+	total_supply?: number;
+	circulating_supply?: number;
+	staked_amount?: number;
+	daily_mint_remaining?: number;
+}
+
+type VoterMockFunction = ReturnType<typeof vi.fn>;
 
 /**
  * VOTER Protocol API Mocks - Enhanced
@@ -14,8 +117,8 @@ export const voterMocks = {
 			.fn()
 			.mockImplementation(
 				async (
-					userAddress: string,
-					request: CertificationRequest
+					_userAddress: string,
+					_request: CertificationRequest
 				): Promise<CertificationResponse> => {
 					// Default success response
 					return {
@@ -38,37 +141,30 @@ export const voterMocks = {
 
 		submitReceipt: vi
 			.fn()
-			.mockImplementation(async (receipt: string, actionType: string, metadata?: any) => {
-				return {
-					verified: true,
-					hash: `receipt-${Date.now()}-${Math.random().toString(36).substring(7)}`
-				};
-			})
+			.mockImplementation(
+				async (_receipt: string, _actionType: string, _metadata?: Record<string, unknown>) => {
+					return {
+						verified: true,
+						hash: `receipt-${Date.now()}-${Math.random().toString(36).substring(7)}`
+					};
+				}
+			)
 	},
 
 	// Mock for the VOTER integration helper
 	integration: {
-		certifyEmailDelivery: vi
-			.fn()
-			.mockImplementation(
-				async (params: {
-					user?: { address?: string };
-					template: any;
-					mailtoUrl: string;
-					recipients: string[];
-				}) => {
-					if (!params.user?.address) {
-						return; // Skip certification for unauthenticated users
-					}
+		certifyEmailDelivery: vi.fn().mockImplementation(async (params: VoterCertificationParams) => {
+			if (!params.user?.address) {
+				return; // Skip certification for unauthenticated users
+			}
 
-					// Simulate certification process
-					return {
-						success: true,
-						certificationHash: `cert-${Date.now()}`,
-						rewardAmount: 50
-					};
-				}
-			)
+			// Simulate certification process
+			return {
+				success: true,
+				certificationHash: `cert-${Date.now()}`,
+				rewardAmount: 50
+			};
+		})
 	},
 
 	// Mock for WebSocket events
@@ -81,166 +177,213 @@ export const voterMocks = {
 	// Enhanced agent mocks
 	agents: {
 		verification: {
-			verify: vi.fn().mockImplementation(async (templateData: any) => {
-				// Detect problematic content
-				const content = templateData.message_body?.toLowerCase() || '';
+			verify: vi
+				.fn()
+				.mockImplementation(
+					async (templateData: VoterTemplate): Promise<VoterVerificationResult> => {
+						// Detect problematic content
+						const content = templateData.message_body?.toLowerCase() || '';
 
-				if (content.includes('ignore') && content.includes('instructions')) {
-					return {
-						verified: false,
-						severity_level: 10,
-						security_alert: true,
-						reason: 'Prompt injection detected'
-					};
-				}
+						if (content.includes('ignore') && content.includes('instructions')) {
+							return {
+								verified: false,
+								severity_level: 10,
+								security_alert: true,
+								reason: 'Prompt injection detected'
+							};
+						}
 
-				if (content.includes('idiot') || content.includes('stupid')) {
-					return {
-						verified: false,
-						severity_level: 9,
-						corrections: {
-							message_body: content.replace(/idiot|stupid/gi, '[inappropriate language removed]'),
-							tone_adjustments: ['Removed hostile language']
-						},
-						reason: 'Inappropriate language detected'
-					};
-				}
+						if (content.includes('idiot') || content.includes('stupid')) {
+							return {
+								verified: false,
+								severity_level: 9,
+								corrections: {
+									message_body: content.replace(
+										/idiot|stupid/gi,
+										'[inappropriate language removed]'
+									),
+									tone_adjustments: ['Removed hostile language']
+								},
+								reason: 'Inappropriate language detected'
+							};
+						}
 
-				return {
-					verified: true,
-					severity_level: 3,
-					corrections: {},
-					reason: 'Content meets standards'
-				};
-			})
+						return {
+							verified: true,
+							severity_level: 3,
+							corrections: {},
+							reason: 'Content meets standards'
+						};
+					}
+				)
 		},
 
 		consensus: {
-			build: vi.fn().mockImplementation(async (templateData: any, severityLevel: number) => {
-				if (severityLevel < 7) {
-					return {
-						consensus_score: 0.9,
-						approved: true,
-						agent_votes: {
-							verification: { approved: true, confidence: 0.9 },
-							impact: { approved: true, confidence: 0.85 },
-							reputation: { approved: true, confidence: 0.95 }
-						},
-						diversity_score: 0.8,
-						recommendation: 'Approve'
-					};
-				}
+			build: vi
+				.fn()
+				.mockImplementation(
+					async (
+						templateData: VoterTemplate,
+						severityLevel: number
+					): Promise<VoterConsensusResult> => {
+						if (severityLevel < 7) {
+							return {
+								consensus_score: 0.9,
+								approved: true,
+								agent_votes: {
+									verification: { approved: true, confidence: 0.9 },
+									impact: { approved: true, confidence: 0.85 },
+									reputation: { approved: true, confidence: 0.95 }
+								},
+								diversity_score: 0.8,
+								recommendation: 'Approve'
+							};
+						}
 
-				// High severity - more careful consensus
-				return {
-					consensus_score: 0.55,
-					approved: true,
-					agent_votes: {
-						verification: { approved: true, confidence: 0.6 },
-						impact: { approved: false, confidence: 0.7 },
-						reputation: { approved: true, confidence: 0.55 }
-					},
-					diversity_score: 0.9,
-					recommendation: 'Approve with caution'
-				};
-			})
+						// High severity - more careful consensus
+						return {
+							consensus_score: 0.55,
+							approved: true,
+							agent_votes: {
+								verification: { approved: true, confidence: 0.6 },
+								impact: { approved: false, confidence: 0.7 },
+								reputation: { approved: true, confidence: 0.55 }
+							},
+							diversity_score: 0.9,
+							recommendation: 'Approve with caution'
+						};
+					}
+				)
 		},
 
 		reputation: {
-			calculate: vi.fn().mockImplementation(async (userAddress: string, action: any) => {
-				const baseRep = parseInt(userAddress.slice(-2), 16) || 100;
-				const delta = action.approved ? 5 : -10;
+			calculate: vi
+				.fn()
+				.mockImplementation(
+					async (
+						userAddress: string,
+						action: { approved: boolean }
+					): Promise<VoterReputationResult> => {
+						const baseRep = parseInt(userAddress.slice(-2), 16) || 100;
+						const delta = action.approved ? 5 : -10;
 
-				return {
-					reputation_delta: delta,
-					total_reputation: baseRep + delta,
-					tier_change: delta < 0 && baseRep < 100 ? 'demotion' : null,
-					explanation: delta > 0 ? 'Successful action' : 'Failed verification'
-				};
-			})
+						return {
+							reputation_delta: delta,
+							total_reputation: baseRep + delta,
+							tier_change: delta < 0 && baseRep < 100 ? 'demotion' : null,
+							explanation: delta > 0 ? 'Successful action' : 'Failed verification'
+						};
+					}
+				)
 		},
 
 		impact: {
-			measure: vi.fn().mockImplementation(async (actionData: any) => {
-				// Detect manipulation
-				if (actionData.delivery_count > 1000 && actionData.metadata?.unique_senders < 10) {
-					return {
-						impact_score: 0,
-						effectiveness: 0,
-						manipulation_detected: true,
-						reason: 'Coordinated inauthentic behavior',
-						flagged_patterns: ['Burst activity', 'Low sender diversity']
-					};
-				}
+			measure: vi
+				.fn()
+				.mockImplementation(
+					async (actionData: {
+						delivery_count?: number;
+						metadata?: { unique_senders?: number };
+					}): Promise<VoterImpactResult> => {
+						// Detect manipulation
+						if (
+							actionData.delivery_count &&
+							actionData.delivery_count > 1000 &&
+							actionData.metadata?.unique_senders &&
+							actionData.metadata.unique_senders < 10
+						) {
+							return {
+								impact_score: 0,
+								effectiveness: 0,
+								manipulation_detected: true,
+								reason: 'Coordinated inauthentic behavior',
+								flagged_patterns: ['Burst activity', 'Low sender diversity']
+							};
+						}
 
-				return {
-					impact_score: 0.7,
-					effectiveness: 0.75,
-					reach: actionData.delivery_count || 100,
-					engagement_rate: 0.65,
-					policy_influence: 0.6
-				};
-			})
+						return {
+							impact_score: 0.7,
+							effectiveness: 0.75,
+							reach: actionData.delivery_count || 100,
+							engagement_rate: 0.65,
+							policy_influence: 0.6
+						};
+					}
+				)
 		},
 
 		market: {
-			calculateReward: vi.fn().mockImplementation(async (factors: any) => {
-				const base = 10;
-				const repMultiplier = Math.min(2, 1 + (factors.user_reputation || 100) / 200);
-				const qualityMultiplier = 1 + (factors.template_quality || 5) / 10;
-				const impactMultiplier = 1 + (factors.impact_score || 0.5);
+			calculateReward: vi
+				.fn()
+				.mockImplementation(
+					async (factors: {
+						user_reputation?: number;
+						template_quality?: number;
+						impact_score?: number;
+					}): Promise<VoterMarketResult> => {
+						const base = 10;
+						const repMultiplier = Math.min(2, 1 + (factors.user_reputation || 100) / 200);
+						const qualityMultiplier = 1 + (factors.template_quality || 5) / 10;
+						const impactMultiplier = 1 + (factors.impact_score || 0.5);
 
-				let finalReward = base * repMultiplier * qualityMultiplier * impactMultiplier;
-				const capApplied = finalReward > 500;
-				if (capApplied) finalReward = 500;
+						let finalReward = base * repMultiplier * qualityMultiplier * impactMultiplier;
+						const capApplied = finalReward > 500;
+						if (capApplied) finalReward = 500;
 
-				return {
-					base_reward: base,
-					reputation_multiplier: repMultiplier,
-					quality_multiplier: qualityMultiplier,
-					impact_multiplier: impactMultiplier,
-					final_reward: finalReward,
-					cap_applied: capApplied,
-					cap_reason: capApplied ? 'Daily limit reached' : null,
-					token_allocation: {
-						immediate: finalReward * 0.5,
-						vested: finalReward * 0.5
+						return {
+							base_reward: base,
+							reputation_multiplier: repMultiplier,
+							quality_multiplier: qualityMultiplier,
+							impact_multiplier: impactMultiplier,
+							final_reward: finalReward,
+							cap_applied: capApplied,
+							cap_reason: capApplied ? 'Daily limit reached' : null,
+							token_allocation: {
+								immediate: finalReward * 0.5,
+								vested: finalReward * 0.5
+							}
+						};
 					}
-				};
-			})
+				)
 		}
 	},
 
 	// Mock API proxy responses
 	apiProxy: {
-		post: vi.fn().mockImplementation(async (path: string, body: any) => {
-			// Route-based responses
-			if (path.includes('/certification/action')) {
-				return {
-					success: true,
-					certification_hash: `cert-${Date.now()}`,
-					reward_amount: 50,
-					reputation_change: 5
-				};
-			}
-			if (path.includes('/reputation')) {
-				return {
-					user_address: body.user_address,
-					challenge_score: 100,
-					civic_score: 250,
-					discourse_score: 75,
-					total_score: 425,
-					tier: 'emerging'
-				};
-			}
-			// Default response
-			return { success: true };
-		}),
+		post: vi
+			.fn()
+			.mockImplementation(
+				async (path: string, body: Record<string, unknown>): Promise<VoterAPIResponse> => {
+					// Route-based responses
+					if (path.includes('/certification/action')) {
+						return {
+							success: true,
+							certification_hash: `cert-${Date.now()}`,
+							reward_amount: 50,
+							reputation_change: 5
+						};
+					}
+					if (path.includes('/reputation')) {
+						return {
+							success: true,
+							user_address: body.user_address as string,
+							challenge_score: 100,
+							civic_score: 250,
+							discourse_score: 75,
+							total_score: 425,
+							tier: 'emerging'
+						};
+					}
+					// Default response
+					return { success: true };
+				}
+			),
 
-		get: vi.fn().mockImplementation(async (path: string) => {
+		get: vi.fn().mockImplementation(async (path: string): Promise<VoterAPIResponse> => {
 			if (path.includes('/reputation/')) {
 				const address = path.split('/').pop();
 				return {
+					success: true,
 					user_address: address,
 					challenge_score: 100,
 					civic_score: 250,
@@ -252,6 +395,7 @@ export const voterMocks = {
 			}
 			if (path.includes('/tokens/stats')) {
 				return {
+					success: true,
 					total_supply: 1000000,
 					circulating_supply: 500000,
 					staked_amount: 250000,
@@ -269,22 +413,22 @@ export const voterMocks = {
 export function resetVoterMocks() {
 	Object.values(voterMocks.certification).forEach((mock) => {
 		if (typeof mock === 'function' && 'mockClear' in mock) {
-			mock.mockClear();
+			(mock as VoterMockFunction).mockClear();
 		}
 	});
 	Object.values(voterMocks.integration).forEach((mock) => {
 		if (typeof mock === 'function' && 'mockClear' in mock) {
-			mock.mockClear();
+			(mock as VoterMockFunction).mockClear();
 		}
 	});
 	Object.values(voterMocks.websocket).forEach((mock) => {
 		if (typeof mock === 'function' && 'mockClear' in mock) {
-			mock.mockClear();
+			(mock as VoterMockFunction).mockClear();
 		}
 	});
 	Object.values(voterMocks.apiProxy).forEach((mock) => {
 		if (typeof mock === 'function' && 'mockClear' in mock) {
-			mock.mockClear();
+			(mock as VoterMockFunction).mockClear();
 		}
 	});
 }
@@ -309,7 +453,7 @@ export function configureVoterMock(
 			voterMocks.certification.certifyAction.mockResolvedValue({
 				success: false,
 				error: 'Certification failed: Invalid action data'
-			});
+			} as CertificationResponse);
 			break;
 
 		case 'network_error':
@@ -322,7 +466,7 @@ export function configureVoterMock(
 			voterMocks.certification.certifyAction.mockResolvedValue({
 				success: false,
 				error: 'Rate limited: Too many requests'
-			});
+			} as CertificationResponse);
 			break;
 
 		case 'consensus_split':
@@ -363,7 +507,8 @@ export function configureVoterMock(
 			voterMocks.agents.verification.verify.mockResolvedValue({
 				verified: true,
 				severity_level: 3,
-				bias_check: { passed: true, demographic_neutral: true }
+				bias_check: { passed: true, demographic_neutral: true },
+				reason: 'Content approved'
 			});
 			break;
 
@@ -409,21 +554,24 @@ export function simulateAgentGrilling(attackType: string) {
 
 		case 'byzantine_agent':
 			// Simulate an agent giving random responses
-			voterMocks.agents.verification.verify.mockImplementation(() => ({
-				verified: Math.random() > 0.5,
-				severity_level: Math.floor(Math.random() * 10),
-				reason: 'Random behavior'
-			}));
+			voterMocks.agents.verification.verify.mockImplementation(
+				(): VoterVerificationResult => ({
+					verified: Math.random() > 0.5,
+					severity_level: Math.floor(Math.random() * 10),
+					reason: 'Random behavior'
+				})
+			);
 			break;
 
-		case 'coordinated_manipulation':
+		case 'coordinated_manipulation': {
 			// Simulate coordinated attack detection
 			let callCount = 0;
-			voterMocks.agents.impact.measure.mockImplementation(() => {
+			voterMocks.agents.impact.measure.mockImplementation((): VoterImpactResult => {
 				callCount++;
 				if (callCount > 5) {
 					return {
 						impact_score: 0,
+						effectiveness: 0,
 						manipulation_detected: true,
 						reason: 'Coordinated attack pattern detected',
 						flagged_patterns: ['Rapid succession', 'Same origin']
@@ -432,5 +580,6 @@ export function simulateAgentGrilling(attackType: string) {
 				return { impact_score: 0.5, effectiveness: 0.5 };
 			});
 			break;
+		}
 	}
 }

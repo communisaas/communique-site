@@ -13,6 +13,7 @@
 import { browser } from '$app/environment';
 import { toast } from '$lib/stores/toast.svelte';
 import type { ApiError } from '$lib/types/errors';
+import type { UnknownRecord as _UnknownRecord } from '$lib/types/any-replacements';
 
 export interface ApiResponse<T = unknown> {
 	success: boolean;
@@ -30,12 +31,12 @@ interface ErrorResponseData {
 }
 
 // Type guard function
-function isErrorResponseData(data: unknown): data is ErrorResponseData {
+function _isErrorResponseData(data: unknown): data is ErrorResponseData {
 	return typeof data === 'object' && data !== null;
 }
 
 // Type guard for success response data
-function isSuccessResponseData(data: unknown): data is { success: boolean } {
+function _isSuccessResponseData(data: unknown): data is { success: boolean } {
 	return (
 		typeof data === 'object' &&
 		data !== null &&
@@ -150,7 +151,7 @@ class UnifiedApiClient {
 				onLoadingChange?.(false);
 				return result;
 			} catch (_error) {
-				lastError = _error as Error;
+				lastError = _error instanceof Error ? _error : new Error(String(_error));
 
 				// Don't retry on abort errors
 				if (_error instanceof Error && _error.name === 'AbortError') {
@@ -197,7 +198,7 @@ class UnifiedApiClient {
 			} else {
 				data = await response.text();
 			}
-		} catch (_error) {
+		} catch {
 			// Response might be empty
 			data = null;
 		}
@@ -205,7 +206,7 @@ class UnifiedApiClient {
 		// Type guard for objects with properties
 		const isErrorResponse = (
 			obj: unknown
-		): obj is { error?: string; message?: string; errors?: any[] } => {
+		): obj is { error?: string; message?: string; errors?: ApiError[] } => {
 			return typeof obj === 'object' && obj !== null;
 		};
 

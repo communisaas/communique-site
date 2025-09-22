@@ -32,7 +32,7 @@ interface User {
 interface CWCMessage {
 	template: Template;
 	user: User;
-	targetRep: UserRepresentative; // Which specific rep to send to
+	_targetRep: UserRepresentative; // Which specific rep to send to
 }
 
 export class CWCGenerator {
@@ -41,15 +41,15 @@ export class CWCGenerator {
 	 * This is the core function used when processing mailto: links
 	 */
 	static generateUserAdvocacyXML(message: CWCMessage): string {
-		const { template, user, targetRep } = message;
+		const { template, user, _targetRep } = message;
 
 		// Use Senate-specific format if targeting Senate
-		if (targetRep.chamber === 'senate') {
+		if (_targetRep.chamber === 'senate') {
 			return this.generateSenateXML(message);
 		}
 
 		const timestamp = new Date().toISOString();
-		const messageId = this.generateMessageId(user.id, template.id, targetRep.bioguideId);
+		const messageId = this.generateMessageId(user.id, template.id, _targetRep.bioguideId);
 
 		// Extract user name parts
 		const [firstName, ...lastNameParts] = (user.name || 'Constituent').split(' ');
@@ -65,7 +65,7 @@ export class CWCGenerator {
             <Email>cwc@communique.org</Email>
             <Phone>+1-555-CWC-MAIL</Phone>
         </DeliveryAgent>
-        <OfficeCode>${this.escapeXML(targetRep.officeCode)}</OfficeCode>
+        <OfficeCode>${this.escapeXML(_targetRep.officeCode)}</OfficeCode>
     </MessageHeader>
     
     <ConstituentData>
@@ -73,12 +73,12 @@ export class CWCGenerator {
             <First>${this.escapeXML(firstName)}</First>
             <Last>${this.escapeXML(lastName)}</Last>
         </Name>
-        <Address>
+        <Address >
             <Street>${this.escapeXML(user.address.street)}</Street>
             <City>${this.escapeXML(user.address.city)}</City>
             <State>${this.escapeXML(user.address.state)}</State>
             <Zip>${this.escapeXML(user.address.zip)}</Zip>
-        </Address>
+        </Address >
         <Email>${this.escapeXML(user.email)}</Email>
         ${user.phone ? `<Phone>${this.escapeXML(user.phone)}</Phone>` : ''}
     </ConstituentData>
@@ -88,7 +88,7 @@ export class CWCGenerator {
         <Body>${this.escapeXML(template.message_body)}</Body>
         
         <MessageMetadata>
-            <IntegrityHash>${this.generateIntegrityHash(user.id, template.id, targetRep.bioguideId)}</IntegrityHash>
+            <IntegrityHash>${this.generateIntegrityHash(user.id, template.id, _targetRep.bioguideId)}</IntegrityHash>
         </MessageMetadata>
     </MessageData>
 </CWC>`;
@@ -101,9 +101,9 @@ export class CWCGenerator {
 	 * The Senate uses a different XML schema than the House
 	 */
 	static generateSenateXML(message: CWCMessage): string {
-		const { template, user, targetRep } = message;
+		const { template, user, _targetRep } = message;
 
-		const messageId = this.generateMessageId(user.id, template.id, targetRep.bioguideId);
+		const messageId = this.generateMessageId(user.id, template.id, _targetRep.bioguideId);
 
 		// Extract user name parts
 		const [firstName, ...lastNameParts] = (user.name || 'Constituent').split(' ');
@@ -125,13 +125,13 @@ export class CWCGenerator {
         <LastName>${this.escapeXML(lastName)}</LastName>
         <Suffix></Suffix>
         <Title></Title>
-        <ConstituentAddress>
-            <Address1>${this.escapeXML(user.address.street)}</Address1>
-            <Address2></Address2>
+        <ConstituentAddress >
+            <Address >${this.escapeXML(user.address.street)}</Address >
+            <Address ></Address >
             <City>${this.escapeXML(user.address.city)}</City>
             <StateAbbreviation>${this.escapeXML(user.address.state)}</StateAbbreviation>
             <Zip>${this.escapeXML(user.address.zip)}</Zip>
-        </ConstituentAddress>
+        </ConstituentAddress >
         <ConstituentEmail>${this.escapeXML(user.email)}</ConstituentEmail>
         <ConstituentPhone>${this.escapeXML(user.phone || '')}</ConstituentPhone>
     </Constituent>
@@ -143,7 +143,7 @@ export class CWCGenerator {
         <OrganizationAcronym></OrganizationAcronym>
         <ConstituentMessage>${this.escapeXML(template.message_body)}</ConstituentMessage>
     </Message>
-    <OfficeCode>${this.escapeXML(targetRep.officeCode)}</OfficeCode>
+    <OfficeCode>${this.escapeXML(_targetRep.officeCode)}</OfficeCode>
 </CWC>`;
 
 		return xml;
@@ -160,7 +160,7 @@ export class CWCGenerator {
 			this.generateUserAdvocacyXML({
 				template,
 				user,
-				targetRep: rep
+				_targetRep: rep
 			})
 		);
 	}
@@ -272,7 +272,7 @@ export class CWCGenerator {
 	 */
 	static getDeliveryMethod(
 		template: Template,
-		targetRep: UserRepresentative
+		_targetRep: UserRepresentative
 	): 'cwc' | 'email' | 'hybrid' {
 		// Check template delivery configuration
 		const deliveryConfig = template.delivery_config as Record<string, unknown>;
@@ -344,7 +344,7 @@ export class CWCGenerator {
 		return this.generateUserAdvocacyXML({
 			template,
 			user: mockUser,
-			targetRep: mockUser.representatives.house
+			_targetRep: mockUser.representatives.house
 		});
 	}
 }

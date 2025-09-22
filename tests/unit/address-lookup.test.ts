@@ -112,6 +112,8 @@ describe('Address Lookup Unit Tests', () => {
 			zip: '00000'
 		};
 
-		await expect(mockAddressLookup.lookupRepsByAddress(address)).rejects.toThrow('Census API error');
+		await expect(mockAddressLookup.lookupRepsByAddress(address)).rejects.toThrow(
+			'Census API error'
+		);
 	});
 });

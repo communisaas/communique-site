@@ -9,6 +9,33 @@ import { VerificationAgent } from '../verification-agent';
 import { ModerationConsensus } from '../moderation-consensus';
 import { N8NClient } from '$lib/services/delivery/integrations/n8n';
 
+// Define types for N8N client mock
+interface MockN8NClient {
+	triggerWorkflow: ReturnType<typeof vi.fn>;
+	waitForCompletion: ReturnType<typeof vi.fn>;
+	healthCheck: ReturnType<typeof vi.fn>;
+	getWorkflowMetrics: ReturnType<typeof vi.fn>;
+	monitorWorkflowPerformance: ReturnType<typeof vi.fn>;
+}
+
+// Define types for template data
+interface TestTemplate {
+	id: string;
+	subject: string;
+	message_body: string;
+}
+
+// Define types for verification agent with private properties
+interface VerificationAgentWithMocks {
+	n8nClient: MockN8NClient;
+	process: (data: { template: TestTemplate }) => Promise<{
+		approved: boolean;
+		confidence: number;
+		decision: string;
+		reasoning: string[];
+	}>;
+}
+
 // Mock N8N client
 vi.mock('$lib/services/delivery/integrations/n8n', () => {
 	return {
@@ -25,7 +52,7 @@ vi.mock('$lib/services/delivery/integrations/n8n', () => {
 describe('N8N Agent Integration', () => {
 	let verificationAgent: VerificationAgent;
 	let moderationConsensus: ModerationConsensus;
-	let mockN8NClient: any;
+	let mockN8NClient: MockN8NClient;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -33,13 +60,13 @@ describe('N8N Agent Integration', () => {
 		moderationConsensus = new ModerationConsensus();
 
 		// Get the mocked N8N client
-		mockN8NClient = (verificationAgent as any).n8nClient;
+		mockN8NClient = (verificationAgent as unknown as VerificationAgentWithMocks).n8nClient;
 	});
 
 	describe('VerificationAgent N8N Integration', () => {
 		it('should call N8N workflow for verification', async () => {
 			// Mock successful N8N response
-			(mockN8NClient as any).triggerWorkflow.mockResolvedValue({
+			mockN8NClient.triggerWorkflow.mockResolvedValue({
 				success: true,
 				data: {
 					approved: true,
@@ -56,9 +83,11 @@ describe('N8N Agent Integration', () => {
 				message_body: 'Test message body'
 			};
 
-			const result = await (verificationAgent as any).process({ template });
+			const result = await (verificationAgent as unknown as VerificationAgentWithMocks).process({
+				template
+			});
 
-			expect((mockN8NClient as any).triggerWorkflow).toHaveBeenCalledWith(
+			expect(mockN8NClient.triggerWorkflow).toHaveBeenCalledWith(
 				'verification-comprehensive',
 				expect.objectContaining({
 					template: {
@@ -89,7 +118,9 @@ describe('N8N Agent Integration', () => {
 				message_body: 'Test message body'
 			};
 
-			const result = await (verificationAgent as any).process({ template });
+			const result = await (verificationAgent as unknown as VerificationAgentWithMocks).process({
+				template
+			});
 
 			expect(result.reasoning).toContain('[Fallback verification used]');
 			expect(result.approved).toBeDefined();
@@ -144,9 +175,9 @@ describe('N8N Agent Integration', () => {
 				}
 			}));
 
-			const result = await moderationConsensus.evaluateTemplate('verification-123');
+			await moderationConsensus.evaluateTemplate('verification-123');
 
-			expect((mockN8NClient as any).triggerWorkflow).toHaveBeenCalledWith(
+			expect(mockN8NClient.triggerWorkflow).toHaveBeenCalledWith(
 				'llm-moderation-openai',
 				expect.objectContaining({
 					template: expect.objectContaining({
@@ -155,7 +186,7 @@ describe('N8N Agent Integration', () => {
 				})
 			);
 
-			expect((mockN8NClient as any).triggerWorkflow).toHaveBeenCalledWith(
+			expect(mockN8NClient.triggerWorkflow).toHaveBeenCalledWith(
 				'llm-moderation-gemini',
 				expect.objectContaining({
 					template: expect.objectContaining({
@@ -211,7 +242,9 @@ describe('N8N Agent Integration', () => {
 			};
 
 			// Should not throw, should use fallback
-			const result = await (verificationAgent as any).process({ template });
+			const result = await (verificationAgent as unknown as VerificationAgentWithMocks).process({
+				template
+			});
 			expect(result).toBeDefined();
 			expect(result.reasoning).toContain('[Fallback verification used]');
 		});
@@ -228,7 +261,9 @@ describe('N8N Agent Integration', () => {
 				message_body: 'Test content'
 			};
 
-			const result = await (verificationAgent as any).process({ template });
+			const result = await (verificationAgent as unknown as VerificationAgentWithMocks).process({
+				template
+			});
 			expect(result.reasoning).toContain('[Fallback verification used]');
 		});
 	});
@@ -236,16 +271,16 @@ describe('N8N Agent Integration', () => {
 
 describe('N8N Workflow Pattern Compliance', () => {
 	it('should follow standard workflow input schema', async () => {
-		const mockN8NClient = new (N8NClient as any)();
+		const mockN8NClient = new (N8NClient as unknown as new () => MockN8NClient)();
 		mockN8NClient.triggerWorkflow = vi.fn().mockResolvedValue({
 			success: true,
 			data: {}
 		});
 
 		const agent = new VerificationAgent();
-		(agent as any).n8nClient = mockN8NClient;
+		(agent as unknown as VerificationAgentWithMocks).n8nClient = mockN8NClient;
 
-		await (agent as any).process({
+		await (agent as unknown as VerificationAgentWithMocks).process({
 			template: {
 				id: 'test',
 				subject: 'Test',

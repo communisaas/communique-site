@@ -11,13 +11,13 @@ export interface AnalyticsEventCreate {
 	session_id: string;
 	funnel_step?: number;
 	experiment_id?: string;
-	properties?: Record<string, any>;
+	properties?: Record<string, unknown>;
 	timestamp?: string;
 }
 
 export interface EnrichedAnalyticsEvent extends AnalyticsEventCreate {
 	id: string;
-	computed_metrics: Record<string, any>;
+	computed_metrics: Record<string, unknown>;
 	created_at: Date;
 }
 
@@ -31,12 +31,12 @@ export interface TemplateUpdateData {
 	delivery_config?: unknown;
 }
 
-// Address Update Request
-export interface AddressUpdateRequest {
+// Address  Update Request
+export interface Address {
 	address: string;
 }
 
-export interface AddressUpdateResponse {
+export interface Address {
 	success: boolean;
 	user: {
 		street: string;
@@ -53,7 +53,7 @@ export interface ProfileUpdateRequest {
 }
 
 // API Response Base
-export interface ApiResponse<T = Record<string, any>> {
+export interface ApiResponse<T = Record<string, unknown>> {
 	success: boolean;
 	data?: T;
 	error?: string;
@@ -193,7 +193,7 @@ export interface VOTERTransactionError {
 	details?: {
 		reason?: string;
 		method?: string;
-		transaction?: any;
+		transaction?: Record<string, unknown>;
 	};
 }
 

@@ -110,9 +110,12 @@ export interface N8NWebhookPayload {
 }
 
 // Type guards for runtime validation - updated for consolidated Template model
-export function isValidVerificationStatus(status: unknown): status is 'pending' | 'reviewing' | 'approved' | 'rejected' {
-	return typeof status === 'string' && 
-		['pending', 'reviewing', 'approved', 'rejected'].includes(status);
+export function isValidVerificationStatus(
+	status: unknown
+): status is 'pending' | 'reviewing' | 'approved' | 'rejected' {
+	return (
+		typeof status === 'string' && ['pending', 'reviewing', 'approved', 'rejected'].includes(status)
+	);
 }
 
 export function isValidAgentVote(obj: unknown): obj is AgentVote {

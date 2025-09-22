@@ -71,7 +71,7 @@ export async function validateOAuthSession(request: Request): Promise<SessionVal
 			user_email: session.user.email,
 			session_expires: session.expiresAt
 		};
-	} catch (_error) {
+	} catch {
 		return { valid: false, error: 'Session validation failed' };
 	}
 }
@@ -136,7 +136,7 @@ export async function checkAnalyticsPermission(
 			default:
 				return { allowed: false, reason: 'Unknown endpoint' };
 		}
-	} catch (_error) {
+	} catch {
 		return { allowed: false, reason: 'Permission check failed' };
 	}
 }
@@ -261,10 +261,10 @@ export const OAUTH_RATE_LIMITS: Record<string, number> = {
  * Log analytics usage for user
  */
 export async function logAnalyticsUsage(
-	user_id: string,
-	endpoint: string,
-	success: boolean,
-	computation_time_ms?: number
+	_user_id: string,
+	_endpoint: string,
+	_success: boolean,
+	_computation_time_ms?: number
 ): Promise<void> {
 	try {
 		// Could track usage stats in database
@@ -273,9 +273,11 @@ export async function logAnalyticsUsage(
 		//     user_id,
 		//     endpoint,
 		//     success,
-		//     computation_time_ms,
+		//     _computation_time_ms,
 		//     timestamp: new Date()
 		//   }
 		// });
-	} catch (_error) {}
+	} catch {
+		/* Ignore analytics logging errors - function is currently a placeholder */
+	}
 }

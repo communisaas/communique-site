@@ -12,10 +12,7 @@ interface EnvironmentConfig {
 }
 
 const testEnvironmentConfig: EnvironmentConfig = {
-	required: [
-		'NODE_ENV',
-		'DATABASE_URL'
-	],
+	required: ['NODE_ENV', 'DATABASE_URL'],
 	optional: [
 		'OAUTH_REDIRECT_BASE_URL',
 		'GOOGLE_CLIENT_ID',
@@ -32,12 +29,12 @@ const testEnvironmentConfig: EnvironmentConfig = {
 		'ENABLE_RESEARCH'
 	],
 	computed: {
-		IS_CI: () => process.env.CI === 'true' ? 'true' : 'false',
+		IS_CI: () => (process.env.CI === 'true' ? 'true' : 'false'),
 		HAS_OAUTH_SETUP: () => {
 			const hasGoogle = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
 			const hasFacebook = !!(process.env.FACEBOOK_CLIENT_ID && process.env.FACEBOOK_CLIENT_SECRET);
 			const hasDiscord = !!(process.env.DISCORD_CLIENT_ID && process.env.DISCORD_CLIENT_SECRET);
-			return (hasGoogle || hasFacebook || hasDiscord) ? 'true' : 'false';
+			return hasGoogle || hasFacebook || hasDiscord ? 'true' : 'false';
 		},
 		DATABASE_TYPE: () => {
 			const url = process.env.DATABASE_URL || '';
@@ -66,7 +63,7 @@ export class EnvironmentValidator {
 	validateEnvironment(): void {
 		this.validationErrors = [];
 		this.captureEnvironmentSnapshot();
-		
+
 		// Check required variables
 		for (const variable of testEnvironmentConfig.required) {
 			if (!process.env[variable]) {
@@ -78,7 +75,9 @@ export class EnvironmentValidator {
 		if (process.env.DATABASE_URL) {
 			const dbUrl = process.env.DATABASE_URL;
 			if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('sqlite:')) {
-				this.validationErrors.push('DATABASE_URL must be a valid PostgreSQL or SQLite connection string');
+				this.validationErrors.push(
+					'DATABASE_URL must be a valid PostgreSQL or SQLite connection string'
+				);
 			}
 		}
 
@@ -90,7 +89,7 @@ export class EnvironmentValidator {
 
 		if (this.validationErrors.length > 0) {
 			console.error('Environment validation failed:');
-			this.validationErrors.forEach(error => console.error(`  - ${error}`));
+			this.validationErrors.forEach((error) => console.error(`  - ${error}`));
 			throw new Error(`Environment validation failed with ${this.validationErrors.length} errors`);
 		}
 	}
@@ -108,17 +107,21 @@ export class EnvironmentValidator {
 		];
 
 		let configuredProviders = 0;
-		
+
 		for (const provider of providers) {
 			const hasId = !!process.env[provider.id];
 			const hasSecret = !!process.env[provider.secret];
-			
+
 			if (hasId && hasSecret) {
 				configuredProviders++;
 			} else if (hasId && !hasSecret) {
-				this.validationErrors.push(`${provider.name} OAuth: CLIENT_ID provided but CLIENT_SECRET missing`);
+				this.validationErrors.push(
+					`${provider.name} OAuth: CLIENT_ID provided but CLIENT_SECRET missing`
+				);
 			} else if (!hasId && hasSecret) {
-				this.validationErrors.push(`${provider.name} OAuth: CLIENT_SECRET provided but CLIENT_ID missing`);
+				this.validationErrors.push(
+					`${provider.name} OAuth: CLIENT_SECRET provided but CLIENT_ID missing`
+				);
 			}
 		}
 
@@ -187,7 +190,7 @@ export class EnvironmentValidator {
 		console.log(`   CI Environment: ${this.environmentSnapshot.IS_CI}`);
 		console.log(`   Database: ${this.environmentSnapshot.DATABASE_TYPE}`);
 		console.log(`   OAuth Setup: ${this.environmentSnapshot.HAS_OAUTH_SETUP}`);
-		
+
 		if (process.env.ENABLE_BETA === 'true') {
 			console.log('   🧪 Beta features: ENABLED');
 		}
@@ -219,7 +222,7 @@ export class EnvironmentValidator {
 		// Reset feature flags
 		delete process.env.ENABLE_BETA;
 		delete process.env.ENABLE_RESEARCH;
-		
+
 		// Ensure test environment
 		process.env.NODE_ENV = 'test';
 	}
@@ -235,13 +238,13 @@ beforeAll(() => {
 afterAll(() => {
 	const validator = EnvironmentValidator.getInstance();
 	const drift = validator.detectEnvironmentDrift();
-	
+
 	if (drift.length > 0) {
 		console.warn('\n⚠️  Environment drift detected during test execution:');
-		drift.forEach(change => console.warn(`   ${change}`));
+		drift.forEach((change) => console.warn(`   ${change}`));
 		console.warn('   This may indicate tests are modifying global state\n');
 	}
-	
+
 	validator.resetTestEnvironment();
 });
 

@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				body
 			});
 		}
-	} catch (_error) {
+	} catch (err) {
 		return error(500, 'Failed to process congressional routing');
 	}
 };
@@ -169,7 +169,7 @@ async function handleAuthenticatedCongressionalRequest({
 		results: result.results.map((r) => ({
 			success: r.success,
 			error: r.error,
-			representative: r.metadata?.representative
+			_representative: r.metadata?._representative
 		}))
 	});
 }
@@ -212,10 +212,10 @@ async function handleGuestCongressionalRequest({
 }
 
 // Helper functions (kept for guest flow compatibility)
-async function storeGuestCongressionalRequest(params: Record<string, unknown>) {
+async function storeGuestCongressionalRequest(_params: Record<string, unknown>) {
 	// TODO: Store pending request in database
 }
 
-async function sendOnboardingEmail(params: Record<string, unknown>) {
+async function sendOnboardingEmail(_params: Record<string, unknown>) {
 	// TODO: Send onboarding email with account creation link
 }

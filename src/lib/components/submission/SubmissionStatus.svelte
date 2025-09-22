@@ -28,8 +28,8 @@
 			try {
 				websocket = new WebSocket(wsUrl);
 
-				websocket.onmessage = (event) => {
-					const update = JSON.parse(event.data);
+				websocket.onmessage = (__event) => {
+					const update = JSON.parse(__event.data);
 					if (update.status) {
 						status = update.status;
 					}
@@ -48,7 +48,7 @@
 					// Fallback to polling if WebSocket fails
 					startPolling();
 				};
-			} catch (_error) {
+			} catch {
 				// WebSocket not supported, use polling
 				startPolling();
 			}
@@ -93,7 +93,7 @@
 					}
 				}
 			} catch (_error) {
-				console.error('Failed to poll submission status:', _error);
+				console.error('Failed to poll submission status:', error);
 			}
 		}, 2000);
 	}

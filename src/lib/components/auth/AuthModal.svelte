@@ -3,14 +3,14 @@
 	import { quintOut } from 'svelte/easing';
 	import { X, Shield, AtSign, ArrowRight } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import type { Template } from '$lib/types/template';
+	import type { Template as _Template } from '$lib/types/template';
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 
 	const modal = createModalStore('auth-modal', 'auth');
 
 	const modalData = $derived(
-		modal.data as { template: Template; source?: 'social-link' | 'direct-link' | 'share' } | null
+		modal.data as { template: _Template; source?: 'social-link' | 'direct-link' | 'share' } | null
 	);
 	const template = $derived(modalData?.template);
 	const source = $derived(modalData?.source || 'direct-link');
@@ -53,7 +53,9 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ returnTo: `/${template.slug}` })
 			});
-		} catch {}
+		} catch {
+			/* Ignore auth preparation errors - continue with auth flow */
+		}
 		funnelAnalytics.trackOnboardingStarted(template.id, source);
 		window.location.href = `/auth/${provider}`;
 	}
@@ -67,29 +69,37 @@
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
 		onclick={handleClose}
+		onkeydown={(e) => {
+			if (e.key === 'Escape') handleClose();
+		}}
 		in:fade={{ duration: 200 }}
 		out:fade={{ duration: 200 }}
-		role="button"
+		role="dialog"
+		aria-modal="true"
 		tabindex="-1"
 	>
 		<div
 			class="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl"
-			onclick={(e) => e.stopPropagation()}
 			in:scale={{ duration: 300, start: 0.9, easing: quintOut }}
 			out:scale={{ duration: 200, start: 1, easing: quintOut }}
-			role="button"
+			role="document"
+			aria-labelledby="auth-modal-title"
 			tabindex="-1"
 		>
 			<div class="flex items-center justify-between p-6 pb-4">
 				<div class="flex items-center gap-3">
-					<div class="flex h-10 w-10 items-center justify-center rounded-full {authConfig?.bgColor}">
+					<div
+						class="flex h-10 w-10 items-center justify-center rounded-full {authConfig?.bgColor}"
+					>
 						{#if authConfig?.icon}
 							{@const IconComponent = authConfig.icon}
 							<IconComponent class="h-5 w-5 {authConfig?.iconColor}" />
 						{/if}
 					</div>
 					<div>
-						<h2 class="text-lg font-semibold text-slate-900">{authConfig?.headline}</h2>
+						<h2 id="auth-modal-title" class="text-lg font-semibold text-slate-900">
+							{authConfig?.headline}
+						</h2>
 					</div>
 				</div>
 				<button onclick={handleClose} class="text-slate-400 transition-colors hover:text-slate-600">

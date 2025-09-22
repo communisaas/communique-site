@@ -117,33 +117,34 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ status: 400 }
 			);
 		}
-	} catch (error: unknown) {
+	} catch (err) {
 		// Type guard for ConfigMismatchError
 		if (
-			error && 
-			typeof error === 'object' && 
-			'name' in error && 
+			error &&
+			typeof error === 'object' &&
+			'name' in error &&
 			error.name === 'ConfigMismatchError' &&
 			'issues' in error
 		) {
-			console.error('Self.xyz configuration mismatch:', (error as any).issues);
+			const errorWithIssues = error as { issues: unknown[] };
+			console.error('Self.xyz configuration mismatch:', errorWithIssues.issues);
 			return json(
 				{
 					status: 'error',
 					result: false,
 					message: 'Verification configuration mismatch',
-					issues: (error as any).issues
+					issues: errorWithIssues.issues
 				},
 				{ status: 400 }
 			);
 		}
 
-		console.error('Error:', error);
+		console.error('Error occurred');
 		return json(
 			{
 				status: 'error',
 				result: false,
-				message: error instanceof Error ? error.message : 'Unknown verification error'
+				message: error ? 'Unknown error' : 'Unknown verification error'
 			},
 			{ status: 500 }
 		);

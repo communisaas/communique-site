@@ -1,23 +1,24 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
-	import type { PercolationData, AnalyticsEvent, AnalyticsSession } from '$lib/types/analytics.ts';
+	import type { PercolationData, AnalyticsSession } from '$lib/types/analytics.ts';
+	import type { AnalyticsProperties } from '$lib/types/any-replacements.js';
 	// Note: using inline badges here to avoid dependency on specific Badge props
 
 	let percolationData: PercolationData | null = $state(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
 	let lastUpdated = $state<string>('');
-	let sessionData: AnalyticsSession | null = $state(null);
+	let _sessionData: AnalyticsSession | null = $state(null);
 
 	// Analytics tracking function using new consolidated schema
-	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+	async function trackAnalyticsEvent(_eventName: string, properties: AnalyticsProperties) {
 		try {
 			await fetch('/api/analytics/events', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name: eventName,
+					name: _eventName,
 					event_type: 'interaction',
 					properties: {
 						dashboard_type: 'percolation',
@@ -26,8 +27,8 @@
 					}
 				})
 			});
-		} catch (error) {
-			console.warn('Analytics tracking failed:', error);
+		} catch (trackingError) {
+			console.warn('Analytics tracking failed:', trackingError);
 		}
 	}
 
@@ -46,7 +47,7 @@
 			if (data.success) {
 				percolationData = data;
 				lastUpdated = new Date().toLocaleString();
-				
+
 				// Track percolation dashboard view event using new analytics schema
 				await trackAnalyticsEvent('percolation_dashboard_view', {
 					cascade_status: data.data.interpretation.cascade_status,
@@ -56,9 +57,9 @@
 			} else {
 				error = 'Failed to load percolation analysis';
 			}
-		} catch (_error) {
+		} catch (err) {
 			error = 'Network error loading analysis';
-			console.error('Percolation analysis error:', _error);
+			console.error('Percolation analysis error:', err);
 		} finally {
 			loading = false;
 		}
@@ -79,7 +80,7 @@
 			if (data.success) {
 				percolationData = data;
 				lastUpdated = new Date().toLocaleString();
-				
+
 				// Track refresh event using new analytics schema
 				await trackAnalyticsEvent('percolation_dashboard_refresh', {
 					cascade_status: data.data.interpretation.cascade_status,
@@ -90,7 +91,7 @@
 			} else {
 				error = 'Failed to refresh percolation analysis';
 			}
-		} catch (_error) {
+		} catch {
 			error = 'Network error refreshing analysis';
 		} finally {
 			loading = false;
@@ -109,7 +110,6 @@
 				return 'info';
 		}
 	}
-
 
 	function getBadgeClass(variant: 'success' | 'warning' | 'error' | 'info'): string {
 		switch (variant) {
@@ -252,7 +252,9 @@
 					<div>
 						<h4 class="font-medium text-gray-900">Cascade Status</h4>
 						<p class="mt-1 text-sm text-gray-600">
-							Network is in {percolationData.data.interpretation.cascade_status} state with {(percolationData.data.interpretation.confidence * 100).toFixed(0)}% confidence
+							Network is in {percolationData.data.interpretation.cascade_status} state with {(
+								percolationData.data.interpretation.confidence * 100
+							).toFixed(0)}% confidence
 						</p>
 					</div>
 				</div>
@@ -273,7 +275,8 @@
 					<div>
 						<h4 class="font-medium text-gray-900">Network Structure</h4>
 						<p class="mt-1 text-sm text-gray-600">
-							{percolationData.data.total_components} components with largest at {percolationData.data.largest_component_size} nodes
+							{percolationData.data.total_components} components with largest at {percolationData
+								.data.largest_component_size} nodes
 						</p>
 					</div>
 				</div>

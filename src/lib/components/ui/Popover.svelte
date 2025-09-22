@@ -1,16 +1,18 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
-	import { tick } from 'svelte';
-	import type { PopoverSlots, TriggerAction } from '$lib/types/popover';
+	import { tick as _tick } from 'svelte';
+	import type { PopoverSlots as _PopoverSlots } from '$lib/types/popover';
 	import { browser } from '$app/environment';
 	import { coordinated, useTimerCleanup, timerCoordinator } from '$lib/utils/timerCoordinator';
+	import type { Snippet } from 'svelte';
+	import type { TriggerAction } from '$lib/types/any-replacements.js';
 
 	interface Props {
 		open?: boolean;
 		id?: string;
-		trigger?: (props: { trigger: TriggerAction; 'aria-controls': string }) => any;
-		children?: (props: { open: boolean }) => any;
+		trigger?: Snippet<[TriggerAction]>;
+		children?: Snippet<[{ open: boolean }]>;
 	}
 
 	let {
@@ -24,13 +26,12 @@
 	let popoverElement: HTMLDivElement | undefined = $state();
 	let containerElement: HTMLDivElement | undefined = $state();
 
-	interface $$Slots extends PopoverSlots {}
-
 	// Create the trigger action
-	const triggerAction: TriggerAction = (node) => {
-		return {
-			destroy: () => {} // Cleanup if needed
-		};
+	const triggerAction: TriggerAction = {
+		trigger: () => {
+			open = !open;
+		},
+		'aria-controls': id
 	};
 
 	// Track events that should trigger position updates
@@ -65,7 +66,7 @@
 	async function handleMouseEnter() {
 		open = true;
 		dispatch('open');
-		await tick();
+		await _tick();
 		updatePosition();
 	}
 
@@ -141,12 +142,12 @@
 	function handleFocus() {
 		open = true;
 		dispatch('open');
-		tick().then(updatePosition);
+		_tick().then(updatePosition);
 	}
 
-	function handleBlur(event: FocusEvent) {
-		const currentTarget = event.currentTarget as HTMLElement;
-		const relatedTarget = event.relatedTarget as Node | null;
+	function handleBlur(__event: FocusEvent) {
+		const currentTarget = __event.currentTarget as HTMLElement;
+		const relatedTarget = __event.relatedTarget as Node | null;
 
 		if (currentTarget && relatedTarget && !currentTarget.contains(relatedTarget)) {
 			open = false;
@@ -154,26 +155,26 @@
 		}
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Escape' && open) {
+	function handleKeydown(__event: KeyboardEvent) {
+		if (__event.key === 'Escape' && open) {
 			open = false;
 			dispatch('close');
 		}
 	}
 
-	let isTouch = false;
+	let _isTouch = false;
 	let touchTimeout: string | null = null;
 
 	// Component ID for timer coordination
 	const componentId = 'popover-' + Math.random().toString(36).substring(2, 15);
 
-	function handleTouchStart(event: TouchEvent) {
+	function handleTouchStart(__event: TouchEvent) {
 		// Don't handle touch events from within the popover content
-		if (popoverElement?.contains(event.target as Node)) {
+		if (popoverElement?.contains(__event.target as Node)) {
 			return;
 		}
 
-		isTouch = true;
+		_isTouch = true;
 		// Clear any existing timeout
 		if (touchTimeout) {
 			timerCoordinator.clearTimer(touchTimeout);
@@ -182,7 +183,7 @@
 		open = !open;
 		if (open) {
 			dispatch('open');
-			tick().then(updatePosition);
+			_tick().then(updatePosition);
 		} else {
 			dispatch('close');
 		}
@@ -190,7 +191,7 @@
 		// Reset isTouch after a delay to allow mouse events again
 		touchTimeout = coordinated.setTimeout(
 			() => {
-				isTouch = false;
+				_isTouch = false;
 				touchTimeout = null;
 			},
 			500,
@@ -214,7 +215,7 @@
 	aria-haspopup="true"
 	aria-expanded={open}
 >
-	{@render trigger?.({ trigger: triggerAction, 'aria-controls': id })}
+	{@render trigger?.(triggerAction)}
 
 	{#if open}
 		<!-- Update z-index to be higher than modal -->

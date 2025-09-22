@@ -39,11 +39,11 @@ export const GET: RequestHandler = async ({ url }) => {
 			supported_countries: supportedCountries,
 			capabilities: allCapabilities
 		});
-	} catch (_error) {
+	} catch (err) {
 		return json(
 			{
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Failed to get legislative capabilities'
+				error: error ? 'Unknown error' : 'Failed to get legislative capabilities'
 			},
 			{ status: 500 }
 		);

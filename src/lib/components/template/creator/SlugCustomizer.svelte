@@ -13,9 +13,9 @@
 
 	let { title = '', slug = $bindable(''), context = undefined }: Props = $props();
 
-	const dispatch = createEventDispatcher();
+	const _dispatch = createEventDispatcher();
 
-	let isChecking = false;
+	let __isChecking = false;
 	let isAvailable: boolean | null = $state(null);
 	let suggestions: string[] = $state([]);
 	let customSlug = $state('');
@@ -27,8 +27,8 @@
 			.toString()
 			.toLowerCase()
 			.replace(/\s+/g, '-')
-			.replace(/[^\w\-]+/g, '')
-			.replace(/\-\-+/g, '-')
+			.replace(/[^\w-]+/g, '')
+			.replace(/--+/g, '-')
 			.replace(/^-+/, '')
 			.replace(/-+$/, '');
 	}
@@ -63,13 +63,17 @@
 
 	// Check slug availability
 	async function checkAvailability(slugToCheck: string) {
-		isChecking = true;
+		__isChecking = true;
 		isAvailable = null;
 
 		try {
 			// Convert channelId to deliveryMethod for API
-			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 
-				context?.channelId === 'cwc' ? 'cwc' : 'direct';
+			const deliveryMethod =
+				context?.channelId === 'certified'
+					? 'cwc'
+					: context?.channelId === 'cwc'
+						? 'cwc'
+						: 'direct';
 
 			const params = new URLSearchParams({
 				slug: slugToCheck,
@@ -90,9 +94,10 @@
 				// Clear suggestions if slug is available
 				suggestions = [];
 			}
-		} catch (error) {
+		} catch {
+			/* Ignore slug check errors - slug availability remains unknown */
 		} finally {
-			isChecking = false;
+			__isChecking = false;
 		}
 	}
 
@@ -123,8 +128,12 @@
 
 		try {
 			// Convert channelId to deliveryMethod for API
-			const deliveryMethod = context?.channelId === 'certified' ? 'cwc' : 
-				context?.channelId === 'cwc' ? 'cwc' : 'direct';
+			const deliveryMethod =
+				context?.channelId === 'certified'
+					? 'cwc'
+					: context?.channelId === 'cwc'
+						? 'cwc'
+						: 'direct';
 
 			const params = new URLSearchParams({
 				slug: slug,
@@ -140,7 +149,7 @@
 			if (!data.available) {
 				suggestions = data.suggestions || [];
 			}
-		} catch (error) {
+		} catch {
 			// Fallback to client-side generation if server fails
 			suggestions = generateSuggestions(slug);
 		}
@@ -154,7 +163,7 @@
 	}
 
 	// Full URL for preview using dynamic hostname
-	const fullUrl = $derived(`${$page.url.origin}/${slug}`);
+	const _fullUrl = $derived(`${$page.url.origin}/${slug}`);
 	const isValidSlug = $derived(slug.length > 0 && /^[a-z0-9-]+$/.test(slug));
 </script>
 

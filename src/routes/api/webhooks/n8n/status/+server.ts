@@ -110,8 +110,8 @@ function broadcastStatusUpdate(submissionId: string, statusUpdate: unknown) {
 			if (ws.readyState === WebSocket.OPEN) {
 				try {
 					ws.send(message);
-				} catch (_error) {
-					console.error('Error:', _error);
+				} catch (err) {
+					console.error('Error occurred');
 					connections.delete(ws);
 				}
 			}
@@ -163,8 +163,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		return json(response);
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		const response: ApiResponse = {
 			success: false,

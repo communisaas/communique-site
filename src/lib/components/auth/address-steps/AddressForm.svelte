@@ -20,7 +20,7 @@
 		addressError: string;
 		isVerifying: boolean;
 		onVerifyAddress: () => void;
-		onKeydown: (event: KeyboardEvent) => void;
+		onKeydown: (__event: KeyboardEvent) => void;
 	} = $props();
 </script>
 

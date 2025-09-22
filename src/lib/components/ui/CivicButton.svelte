@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { spring } from 'svelte/motion';
-	import { Send, Loader2 } from '@lucide/svelte';
+	import { Loader2, Send } from '@lucide/svelte';
 
 	interface Props {
 		variant?: 'primary' | 'secondary' | 'verified' | 'community';
@@ -10,7 +10,7 @@
 		disabled?: boolean;
 		loading?: boolean;
 		fullWidth?: boolean;
-		onclick?: (event: MouseEvent) => void;
+		onclick?: (_event: MouseEvent) => void;
 		children?: import('svelte').Snippet;
 		text?: string;
 		icon?: import('svelte').Component;
@@ -33,8 +33,7 @@
 		icon,
 		iconPosition = 'left',
 		'aria-describedby': ariaDescribedby,
-		'data-testid': testId,
-		...restProps
+		'data-testid': testId
 	}: Props = $props();
 
 	// Enhanced micro-interactions with spring physics
@@ -69,7 +68,7 @@
 	});
 
 	// Handle click with proper civic feedback
-	function handleClick(event: MouseEvent) {
+	function handleClick(__event: MouseEvent) {
 		if (!disabled && !loading) {
 			pressed = true;
 
@@ -83,7 +82,7 @@
 				pressed = false;
 			}, 150);
 
-			onclick?.(event);
+			onclick?.(__event);
 		}
 	}
 
@@ -150,7 +149,6 @@ Accessibility:
 		tabindex={disabled ? -1 : 0}
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
-		{...restProps}
 	>
 		<span class="flex items-center justify-center gap-2">
 			{#if loading}
@@ -189,7 +187,6 @@ Accessibility:
 		onclick={handleClick}
 		onmouseenter={handleMouseEnter}
 		onmouseleave={handleMouseLeave}
-		{...restProps}
 	>
 		<span class="flex items-center justify-center gap-2">
 			{#if loading}

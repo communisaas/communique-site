@@ -23,7 +23,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			const { db } = await import('$lib/core/db');
 			const template = await db.template.findUnique({
 				where: { id: templateId },
-				select: { 
+				select: {
 					id: true,
 					userId: true,
 					verification_status: true,
@@ -62,12 +62,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			...result
 		});
-	} catch (_error) {
-		console.error('Consensus evaluation error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				error: 'Consensus evaluation failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

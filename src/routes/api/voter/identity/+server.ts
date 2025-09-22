@@ -18,7 +18,13 @@ class DiditClient {
 		this.baseUrl = 'https://api.didit.me/v1';
 	}
 
-	async verify({ userAddress, verificationType = 'kyc_basic' }: { userAddress: string; verificationType?: string }) {
+	async verify({
+		userAddress,
+		verificationType = 'kyc_basic'
+	}: {
+		userAddress: string;
+		verificationType?: string;
+	}) {
 		if (!this.apiKey) {
 			// Simulation mode for development
 			return {
@@ -63,7 +69,12 @@ const diditClient = new DiditClient();
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { userId, walletAddress, zkProof, publicInputs }: {
+		const {
+			userId,
+			walletAddress,
+			zkProof,
+			publicInputs
+		}: {
 			userId: string;
 			walletAddress?: string;
 			zkProof?: string;
@@ -87,7 +98,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		if (checks.idDocument === 'pass') trustScore += 40; // Government ID is most important
 		if (checks.faceMatch === 'pass') trustScore += 30; // Face match confirms identity
 		if (checks.liveness === 'pass') trustScore += 20; // Liveness prevents spoofing
-		if (kycResult?.addressData?.congressionalDistrict) trustScore += 10; // Address verification
+		if (kycResult?.addressData?.congressionalDistrict) trustScore += 10; // Address  verification
 
 		// Create privacy-preserving district hash
 		const districtHash = kycResult?.addressData?.congressionalDistrict
@@ -152,19 +163,19 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			message: `Identity verification completed - ${verificationLevel}`
 		});
-	} catch (_error) {
-		console.error('Identity verification error:', _error);
-		throw error(500, _error instanceof Error ? _error.message : 'Identity verification failed');
+	} catch (err) {
+		console.error('Error occurred');
+		throw error(500, error ? 'Unknown error' : 'Identity verification failed');
 	}
 };
 
 export const GET: RequestHandler = async ({ url }) => {
 	try {
 		const userId = url.searchParams.get('userId');
-		const walletAddress = url.searchParams.get('walletAddress');
+		const walletAddress = url.searchParams.get('walletAddress ');
 
 		if (!userId && !walletAddress) {
-			throw error(400, 'Must provide either userId or walletAddress parameter');
+			throw error(400, 'Must provide either userId or walletAddress  parameter');
 		}
 
 		// Get user verification status via main API
@@ -201,11 +212,8 @@ export const GET: RequestHandler = async ({ url }) => {
 				max_stake: profile.user.trust_score * 100
 			}
 		});
-	} catch (_error) {
-		console.error('Get identity verification error:', _error);
-		throw error(
-			500,
-			_error instanceof Error ? _error.message : 'Failed to get verification status'
-		);
+	} catch (err) {
+		console.error('Error occurred');
+		throw error(500, error ? 'Unknown error' : 'Failed to get verification status');
 	}
 };

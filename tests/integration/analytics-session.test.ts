@@ -1,6 +1,6 @@
 /**
  * Analytics Session Management Integration Tests - Consolidated Schema
- * 
+ *
  * Tests enhanced analytics_session model with:
  * - UTM tracking and acquisition data
  * - Device data in JSONB format
@@ -40,7 +40,7 @@ vi.mock('$lib/core/db', () => ({
 describe('Analytics Session Management Tests - Consolidated Schema', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		
+
 		// Default mocks
 		mockDb.user.findUnique.mockResolvedValue({ id: 'user-123' });
 	});
@@ -64,10 +64,12 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 					user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X)',
 					ip_address: '192.168.1.100'
 				},
-				events: [{
-					name: 'page_view',
-					properties: { page_url: '/templates/voting-reform' }
-				}]
+				events: [
+					{
+						name: 'page_view',
+						properties: { page_url: '/templates/voting-reform' }
+					}
+				]
 			};
 
 			const expectedSession: Partial<AnalyticsSession> = {
@@ -100,7 +102,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				body: JSON.stringify(sessionData)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.100' } as any);
+			const response = await POST({ request, getClientAddress: () => '192.168.1.100' } as unknown);
 			expect(response.status).toBe(200);
 
 			// Verify session creation with UTM data
@@ -135,7 +137,8 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				},
 				{
 					name: 'Desktop Chrome',
-					user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124',
+					user_agent:
+						'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124',
 					expected_device: 'desktop',
 					expected_os: 'Windows',
 					expected_browser: 'Chrome'
@@ -209,10 +212,12 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 					user_agent: 'Mozilla/5.0',
 					ip_address: '192.168.1.1'
 				},
-				events: [{
-					name: 'page_view',
-					properties: {}
-				}]
+				events: [
+					{
+						name: 'page_view',
+						properties: {}
+					}
+				]
 			};
 
 			mockDb.analytics_session.upsert.mockResolvedValue({
@@ -234,7 +239,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				body: JSON.stringify(minimalSessionData)
 			});
 
-			const response = await POST({ request, getClientAddress: () => '192.168.1.1' } as any);
+			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
 			expect(response.status).toBe(200);
 
 			// Should create session even without UTM data
@@ -282,7 +287,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				body: JSON.stringify(firstBatch)
 			});
 
-			await POST({ request: firstRequest, getClientAddress: () => '127.0.0.1' } as any);
+			await POST({ request: firstRequest, getClientAddress: () => '127.0.0.1' } as unknown);
 
 			// Second batch with conversion
 			const secondBatch = {
@@ -298,7 +303,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				session_id: 'sess_metrics_123',
 				session_metrics: {
 					events_count: 6, // 4 + 2
-					page_views: 2,   // unchanged
+					page_views: 2, // unchanged
 					conversion_count: 2, // 0 + 2 conversions
 					interaction_count: 3 // 2 + 1 auth interaction
 				}
@@ -310,7 +315,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				body: JSON.stringify(secondBatch)
 			});
 
-			await POST({ request: secondRequest, getClientAddress: () => '127.0.0.1' } as any);
+			await POST({ request: secondRequest, getClientAddress: () => '127.0.0.1' } as unknown);
 
 			// Verify metrics aggregation logic in upsert calls
 			const firstCall = mockDb.analytics_session.upsert.mock.calls[0][0];
@@ -342,9 +347,9 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			const sessionStart = sessionEvents[0].timestamp;
 			const sessionEnd = sessionEvents[sessionEvents.length - 1].timestamp;
 			const durationMs = sessionEnd.getTime() - sessionStart.getTime();
-			const pageViews = sessionEvents.filter(e => e.name === 'page_view').length;
-			const conversions = sessionEvents.filter(e => e.name === 'template_used').length;
-			
+			const pageViews = sessionEvents.filter((e) => e.name === 'page_view').length;
+			const conversions = sessionEvents.filter((e) => e.name === 'template_used').length;
+
 			const advancedMetrics = {
 				events_count: sessionEvents.length,
 				page_views: pageViews,
@@ -353,7 +358,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				bounce_rate: pageViews === 1 ? 1.0 : 0.0,
 				conversion_rate: conversions / sessionEvents.length,
 				avg_time_between_events: durationMs / (sessionEvents.length - 1),
-				engagement_score: Math.min(1.0, (sessionEvents.length * 0.1) + (durationMs / 300000)) // 5min max
+				engagement_score: Math.min(1.0, sessionEvents.length * 0.1 + durationMs / 300000) // 5min max
 			};
 
 			expect(advancedMetrics.duration_ms).toBe(735000); // 12 minutes 15 seconds
@@ -396,14 +401,17 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			mockDb.analytics_session.findUnique.mockResolvedValue(existingSession);
 
 			const { GET } = await import('../../src/routes/api/analytics/events/+server');
-			const request = new Request('http://localhost/api/analytics/events?session_id=sess_multi_funnel_123', {
-				method: 'GET'
-			});
+			const request = new Request(
+				'http://localhost/api/analytics/events?session_id=sess_multi_funnel_123',
+				{
+					method: 'GET'
+				}
+			);
 
 			const response = await GET({
 				request,
 				url: new URL('http://localhost/api/analytics/events?session_id=sess_multi_funnel_123')
-			} as any);
+			} as unknown);
 
 			const data = await response.json();
 
@@ -428,7 +436,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			// Simulate funnel step advancement
 			const newStep = 3;
 			const newTimestamp = '2024-01-01T10:15:00Z';
-			
+
 			const updatedProgress = {
 				...existingProgress,
 				'voting-funnel': {
@@ -518,12 +526,12 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 
 			// Mock cleanup criteria
 			const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-			const sessionsToCleanup = expiredSessions.filter(s => 
-				s.updated_at < thirtyDaysAgo && safeSessionMetrics(s).events_count < 3
+			const sessionsToCleanup = expiredSessions.filter(
+				(s) => s.updated_at < thirtyDaysAgo && safeSessionMetrics(s).events_count < 3
 			);
 
 			// In real implementation, this would be a scheduled job
-			const cleanupOperations = sessionsToCleanup.map(s => 
+			const cleanupOperations = sessionsToCleanup.map((s) =>
 				mockDb.analytics_session.delete({ where: { session_id: s.session_id } })
 			);
 
@@ -554,8 +562,12 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			const mergedSession = {
 				...authenticatedSession,
 				session_metrics: {
-					events_count: safeSessionMetrics(anonymousSession).events_count + safeSessionMetrics(authenticatedSession).events_count,
-					page_views: safeSessionMetrics(anonymousSession).page_views + safeSessionMetrics(authenticatedSession).page_views
+					events_count:
+						safeSessionMetrics(anonymousSession).events_count +
+						safeSessionMetrics(authenticatedSession).events_count,
+					page_views:
+						safeSessionMetrics(anonymousSession).page_views +
+						safeSessionMetrics(authenticatedSession).page_views
 				},
 				funnel_progress: {
 					...anonymousSession.funnel_progress,
@@ -623,13 +635,13 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 
 		it('should handle high-volume session updates efficiently', async () => {
 			// Mock batch session updates for performance testing
-			const batchUpdates = Array.from({ length: 100 }, (_, i) => ({
-				session_id: `sess_batch_${i}`,
+			const batchUpdates = Array.from({ length: 100 }, (_, _i) => ({
+				session_id: `sess_batch_${_i}`,
 				session_metrics: { events_count: { increment: 1 } }
 			}));
 
 			// In real implementation, these would be batched using prisma.$transaction
-			const batchPromises = batchUpdates.map(update =>
+			const batchPromises = batchUpdates.map((update) =>
 				mockDb.analytics_session.update({
 					where: { session_id: update.session_id },
 					data: { session_metrics: update.session_metrics }

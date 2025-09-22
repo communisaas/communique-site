@@ -32,20 +32,21 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		});
 
 		// Transform representatives data to simple format for frontend
-		const representatives = userWithRepresentatives?.representatives?.map(ur => ({
-			name: ur.representative.name,
-			party: ur.representative.party,
-			chamber: ur.representative.chamber,
-			state: ur.representative.state,
-			district: ur.representative.district
-		})) || [];
+		const representatives =
+			userWithRepresentatives?.representatives?.map((ur) => ({
+				name: ur.representative.name,
+				party: ur.representative.party,
+				chamber: ur.representative.chamber,
+				state: ur.representative.state,
+				district: ur.representative.district
+			})) || [];
 
 		return {
 			user: {
 				id: locals.user.id,
 				email: locals.user.email,
 				name: locals.user.name,
-				// Address info for congressional routing
+				// Address  info for congressional routing
 				street: locals.user.street,
 				city: locals.user.city,
 				state: locals.user.state,
@@ -59,8 +60,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				representatives: representatives
 			}
 		};
-	} catch (error) {
-		console.error('Error fetching user representatives:', error);
+	} catch {
+		console.error('Error occurred');
 		// Fallback to basic user data without representatives
 		return {
 			user: {

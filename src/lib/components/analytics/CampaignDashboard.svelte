@@ -5,9 +5,9 @@
 	import SkeletonCard from '$lib/components/ui/SkeletonCard.svelte';
 	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
 	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
-	import SkeletonTable from '$lib/components/ui/SkeletonTable.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import type { AnalyticsEvent, AnalyticsSession, AnalyticsExperiment } from '$lib/types/analytics.ts';
+	import type { AnalyticsSession, AnalyticsExperiment } from '$lib/types/analytics.ts';
+	import type { TemplateData, UnknownRecord } from '$lib/types/any-replacements.js';
 
 	interface CampaignOverview {
 		total_templates: number;
@@ -31,22 +31,22 @@
 	let { userId }: { userId: string } = $props();
 
 	let overview: CampaignOverview | null = $state(null);
-	let userTemplates: any[] = $state([]);
+	let userTemplates: TemplateData[] = $state([]);
 	let loading = $state(true);
-	let error = $state<string | null>(null);
+	let _error = $state<string | null>(null);
 	let selectedTimeframe = $state<'24h' | '7d' | '30d'>('7d');
-	let sessionData: AnalyticsSession | null = $state(null);
+	let _sessionData: AnalyticsSession | null = $state(null);
 	let viewStartTime = Date.now();
 	let experiments: AnalyticsExperiment[] = $state([]);
 
 	// Analytics tracking function using new consolidated schema
-	async function trackAnalyticsEvent(eventName: string, properties: Record<string, any>) {
+	async function trackAnalyticsEvent(_eventName: string, properties: UnknownRecord) {
 		try {
 			await fetch('/api/analytics/events', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					name: eventName,
+					name: _eventName,
 					event_type: 'interaction',
 					properties: {
 						user_id: userId,
@@ -56,15 +56,15 @@
 					}
 				})
 			});
-		} catch (error) {
-			console.warn('Analytics tracking failed:', error);
+		} catch (trackingError) {
+			console.warn('Analytics tracking failed:', trackingError);
 		}
 	}
 
 	onMount(async () => {
 		await Promise.all([loadOverview(), loadUserTemplates(), loadActiveExperiments()]);
 		loading = false;
-		
+
 		// Track dashboard view
 		await trackAnalyticsEvent('campaign_dashboard_view', {
 			selected_timeframe: selectedTimeframe,
@@ -91,7 +91,7 @@
 				overview = data.overview;
 			}
 		} catch (_error) {
-			console.error('Failed to load overview:', _error);
+			console.error('Failed to load overview:', error);
 		}
 	}
 
@@ -104,7 +104,7 @@
 				userTemplates = data.templates || [];
 			}
 		} catch (_error) {
-			console.error('Failed to load templates:', _error);
+			console.error('Failed to load templates:', error);
 		}
 	}
 
@@ -117,7 +117,7 @@
 				experiments = data.experiments || [];
 			}
 		} catch (_error) {
-			console.error('Failed to load experiments:', _error);
+			console.error('Failed to load experiments:', error);
 		}
 	}
 
@@ -125,20 +125,20 @@
 		const previousTimeframe = selectedTimeframe;
 		selectedTimeframe = timeframe;
 		loading = true;
-		
+
 		// Track timeframe change
 		await trackAnalyticsEvent('campaign_dashboard_timeframe_change', {
 			previous_timeframe: previousTimeframe,
 			new_timeframe: timeframe,
 			templates_count: userTemplates.length
 		});
-		
+
 		await loadOverview();
 		loading = false;
 	}
 
-	function getActivityIcon(event: string): string {
-		switch (event) {
+	function getActivityIcon(__event: string): string {
+		switch (__event) {
 			case 'template_created':
 				return '✨';
 			case 'campaign_launched':
@@ -152,8 +152,8 @@
 		}
 	}
 
-	function getActivityColor(event: string): string {
-		switch (event) {
+	function getActivityColor(__event: string): string {
+		switch (__event) {
 			case 'viral_threshold':
 				return 'text-green-600 bg-green-50';
 			case 'activation_spike':
@@ -342,8 +342,12 @@
 						<div class="rounded-lg border border-gray-100 bg-gray-50 p-4">
 							<div class="mb-2 flex items-center justify-between">
 								<h4 class="font-medium text-gray-900">{experiment.name}</h4>
-								<Badge 
-									variant={experiment.type === 'ab_test' ? 'certified' : experiment.type === 'funnel' ? 'success' : 'warning'} 
+								<Badge
+									variant={experiment.type === 'ab_test'
+										? 'certified'
+										: experiment.type === 'funnel'
+											? 'success'
+											: 'warning'}
 									size="sm"
 								>
 									{experiment.type.replace('_', ' ').toUpperCase()}
@@ -354,13 +358,19 @@
 									<div>Participants: {experiment.metrics_cache.participants_count}</div>
 								{/if}
 								{#if experiment.metrics_cache.conversion_rate}
-									<div>Conversion Rate: {(experiment.metrics_cache.conversion_rate * 100).toFixed(1)}%</div>
+									<div>
+										Conversion Rate: {(experiment.metrics_cache.conversion_rate * 100).toFixed(1)}%
+									</div>
 								{/if}
 								{#if experiment.metrics_cache.statistical_significance}
-									<div>Significance: {(experiment.metrics_cache.statistical_significance * 100).toFixed(1)}%</div>
+									<div>
+										Significance: {(
+											experiment.metrics_cache.statistical_significance * 100
+										).toFixed(1)}%
+									</div>
 								{/if}
 							</div>
-							<button 
+							<button
 								onclick={async () => {
 									await trackAnalyticsEvent('experiment_view_click', {
 										experiment_id: experiment.id,
@@ -478,9 +488,9 @@
 						{#each overview.recent_activity.slice(0, 5) as activity}
 							<div class="flex items-center space-x-3">
 								<div
-									class={`flex h-8 w-8 items-center justify-center rounded-full ${getActivityColor(activity.event)}`}
+									class={`flex h-8 w-8 items-center justify-center rounded-full ${getActivityColor(activity._event)}`}
 								>
-									<span class="text-sm">{getActivityIcon(activity.event)}</span>
+									<span class="text-sm">{getActivityIcon(activity._event)}</span>
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-gray-900">
@@ -508,20 +518,20 @@
 				<h3 class="mb-4 text-lg font-semibold text-gray-900">Top Performers</h3>
 				{#if overview?.top_performers && overview.top_performers.length > 0}
 					<div class="space-y-3">
-						{#each overview.top_performers.slice(0, 5) as performer, index}
+						{#each overview.top_performers.slice(0, 5) as performer, _index}
 							<div class="flex items-center space-x-3">
 								<div
 									class={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-										index === 0
+										_index === 0
 											? 'bg-yellow-100 text-yellow-800'
-											: index === 1
+											: _index === 1
 												? 'bg-gray-100 text-gray-600'
-												: index === 2
+												: _index === 2
 													? 'bg-orange-100 text-orange-600'
 													: 'bg-participation-primary-50 text-participation-primary-600'
 									}`}
 								>
-									{index + 1}
+									{_index + 1}
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="truncate text-sm font-medium text-gray-900">

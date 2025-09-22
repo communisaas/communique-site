@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount as _onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import type { PageData } from './$types';
@@ -15,7 +15,7 @@
 		data.user ? { id: data.user.id, name: data.user.name || 'User' } : null
 	);
 
-	onMount(() => {
+	_onMount(() => {
 		// Check for pending template action from OAuth flow
 		const pendingAction = sessionStorage.getItem('pending_template_action');
 		if (pendingAction) {
@@ -32,7 +32,7 @@
 
 	const componentId = 'TemplateModalPage_' + Math.random().toString(36).substr(2, 9);
 
-	function handleTemplateUsed(event: CustomEvent) {
+	function handleTemplateUsed(__event: CustomEvent) {
 		// Track successful conversion
 
 		// Optionally redirect to profile or success page

@@ -1,5 +1,9 @@
 import { PrismaClient } from '@prisma/client';
 
+// Type definitions for delivery methods
+type DeliveryMethod = 'email' | 'certified' | 'direct' | 'cwc';
+type LegacyDeliveryMethod = 'both' | 'email';
+
 const prisma = new PrismaClient();
 
 async function migrateDeliveryMethods() {
@@ -9,10 +13,10 @@ async function migrateDeliveryMethods() {
 		// Update existing templates with 'both' to 'certified'
 		const updateResult = await prisma.template.updateMany({
 			where: {
-				deliveryMethod: 'both' as any // Temporarily bypass type checking
+				deliveryMethod: 'both' as LegacyDeliveryMethod
 			},
 			data: {
-				deliveryMethod: 'certified' as any
+				deliveryMethod: 'certified' as DeliveryMethod
 			}
 		});
 
@@ -21,10 +25,10 @@ async function migrateDeliveryMethods() {
 		// Update any remaining 'email' to 'direct' for consistency
 		const emailResult = await prisma.template.updateMany({
 			where: {
-				deliveryMethod: 'email' as any
+				deliveryMethod: 'email' as LegacyDeliveryMethod
 			},
 			data: {
-				deliveryMethod: 'direct' as any
+				deliveryMethod: 'direct' as DeliveryMethod
 			}
 		});
 

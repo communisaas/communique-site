@@ -24,17 +24,17 @@ export interface Challenge {
 	description: string;
 	category?: string;
 	// Relations - populated by Prisma includes
-	challenger?: { 
+	challenger?: {
 		id: string;
 		email?: string;
 		name?: string;
 	};
-	defender?: { 
+	defender?: {
 		id: string;
 		email?: string;
 		name?: string;
 	};
-	winner?: { 
+	winner?: {
 		id: string;
 		email?: string;
 		name?: string;
@@ -77,7 +77,7 @@ export interface ChallengeWithRelations extends Challenge {
 // Type guards
 export function isValidChallenge(obj: unknown): obj is Challenge {
 	if (!obj || typeof obj !== 'object') return false;
-	
+
 	const record = obj as Record<string, unknown>;
 	return (
 		typeof record.id === 'string' &&
@@ -90,7 +90,7 @@ export function isValidChallenge(obj: unknown): obj is Challenge {
 
 export function isValidChallengeStake(obj: unknown): obj is ChallengeStake {
 	if (!obj || typeof obj !== 'object') return false;
-	
+
 	const record = obj as Record<string, unknown>;
 	return (
 		typeof record.id === 'string' &&

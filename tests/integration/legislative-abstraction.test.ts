@@ -9,8 +9,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
 	userFactory,
 	templateFactory,
-	deliveryJobFactory,
-	addressFactory,
+	deliveryJobFactory as _deliveryJobFactory,
+	addressFactory as _addressFactory,
 	representativeFactory
 } from '../fixtures/factories';
 

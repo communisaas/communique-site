@@ -2,8 +2,14 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
-import { createApiError, createValidationError, type ApiResponse, type ApiError } from '$lib/types/errors';
+import {
+	createApiError,
+	createValidationError,
+	type ApiResponse,
+	type ApiError
+} from '$lib/types/errors';
 import type { Prisma } from '@prisma/client';
+import type { UnknownRecord } from '$lib/types/any-replacements';
 
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
@@ -17,10 +23,10 @@ interface CreateTemplateRequest {
 	description?: string;
 	status?: string;
 	is_public?: boolean;
-	delivery_config?: Record<string, any>;
-	cwc_config?: Record<string, any>;
-	recipient_config?: Record<string, any>;
-	metrics?: Record<string, any>;
+	delivery_config?: UnknownRecord;
+	cwc_config?: UnknownRecord;
+	recipient_config?: UnknownRecord;
+	metrics?: UnknownRecord;
 }
 
 type ValidationError = ApiError;
@@ -113,13 +119,16 @@ function validateTemplateData(data: unknown): {
 		deliveryMethod: templateData.deliveryMethod as string,
 		subject: (templateData.subject as string) || `Regarding: ${templateData.title}`,
 		category: (templateData.category as string) || 'General',
-		description: (templateData.description as string) || (templateData.preview as string)?.substring(0, 160) || '',
+		description:
+			(templateData.description as string) ||
+			(templateData.preview as string)?.substring(0, 160) ||
+			'',
 		status: (templateData.status as string) || 'draft',
 		is_public: Boolean(templateData.is_public) || false,
-		delivery_config: (templateData.delivery_config as Record<string, any>) || {},
-		cwc_config: (templateData.cwc_config as Record<string, any>) || {},
-		recipient_config: (templateData.recipient_config as Record<string, any>) || {},
-		metrics: (templateData.metrics as Record<string, any>) || {
+		delivery_config: (templateData.delivery_config as UnknownRecord) || {},
+		cwc_config: (templateData.cwc_config as UnknownRecord) || {},
+		recipient_config: (templateData.recipient_config as UnknownRecord) || {},
+		metrics: (templateData.metrics as UnknownRecord) || {
 			sent: 0,
 			opened: 0,
 			clicked: 0,
@@ -142,11 +151,15 @@ export const GET: RequestHandler = async () => {
 		});
 
 		// Include template scopes - handle if table doesn't exist
-		let scopes: any[] = [];
+		let scopes: UnknownRecord[] = [];
 		try {
 			// Check if template_scope table exists in the db schema
 			if ('template_scope' in db) {
-				scopes = await (db as any).template_scope.findMany({
+				scopes = await (
+					db as unknown as {
+						template_scope: { findMany: (params: unknown) => Promise<UnknownRecord[]> };
+					}
+				).template_scope.findMany({
 					where: { template_id: { in: dbTemplates.map((t) => t.id) } }
 				});
 			}
@@ -197,8 +210,8 @@ export const GET: RequestHandler = async () => {
 		};
 
 		return json(response);
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		const response: ApiResponse = {
 			success: false,
@@ -207,7 +220,7 @@ export const GET: RequestHandler = async () => {
 
 		return json(response, { status: 500 });
 	}
-}
+};
 
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -250,76 +263,76 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					.replace(/\s+/g, '-')
 					.substring(0, 50);
 
-					const existingTemplate = await db.template.findUnique({
-						where: { slug }
-					});
+				const existingTemplate = await db.template.findUnique({
+					where: { slug }
+				});
 
-					if (existingTemplate) {
-						const response: ApiResponse = {
-							success: false,
-							error: createValidationError(
-								'title',
-								'VALIDATION_DUPLICATE',
-								'A template with a similar title already exists. Please choose a different title.'
-							)
-						};
-						return json(response, { status: 400 });
-					}
-
-					const newTemplate = await db.template.create({
-						data: {
-							title: validData.title,
-							description: validData.description || '',
-							message_body: validData.message_body,
-							category: validData.category || 'General',
-							type: validData.type,
-							deliveryMethod: validData.deliveryMethod,
-							subject: validData.subject,
-							preview: validData.preview,
-							delivery_config: validData.delivery_config || {},
-							cwc_config: validData.cwc_config || {},
-							recipient_config: validData.recipient_config || {},
-							metrics: validData.metrics || {},
-							status: validData.status || 'draft',
-							is_public: validData.is_public || false,
-							slug,
-							userId: user.id,
-							// Consolidated verification fields with defaults
-							verification_status: 'pending',
-							country_code: 'US',
-							reputation_applied: false,
-						}
-					});
-
-					// Set verification fields for congressional templates (deliveryMethod === 'cwc')
-					if (validData.deliveryMethod === 'cwc') {
-						try {
-							// Update template with initial verification status
-							await db.template.update({
-								where: { id: newTemplate.id },
-								data: {
-									verification_status: 'pending',
-									country_code: 'US', // TODO: Extract from user profile
-									quality_score: 0,
-									reputation_applied: false
-								}
-							});
-
-							// Trigger moderation pipeline via webhook
-							await triggerModerationPipeline(newTemplate.id);
-							console.log(`Set verification status for congressional template ${newTemplate.id}`);
-						} catch (verificationError) {
-							console.error('Failed to set template verification status:', verificationError);
-							// Don't fail the template creation, just log the error
-						}
-					}
-
+				if (existingTemplate) {
 					const response: ApiResponse = {
-						success: true,
-						data: { template: newTemplate }
+						success: false,
+						error: createValidationError(
+							'title',
+							'VALIDATION_DUPLICATE',
+							'A template with a similar title already exists. Please choose a different title.'
+						)
 					};
+					return json(response, { status: 400 });
+				}
 
-					return json(response);
+				const newTemplate = await db.template.create({
+					data: {
+						title: validData.title,
+						description: validData.description || '',
+						message_body: validData.message_body,
+						category: validData.category || 'General',
+						type: validData.type,
+						deliveryMethod: validData.deliveryMethod,
+						subject: validData.subject,
+						preview: validData.preview,
+						delivery_config: validData.delivery_config || {},
+						cwc_config: validData.cwc_config || {},
+						recipient_config: validData.recipient_config || {},
+						metrics: validData.metrics || {},
+						status: validData.status || 'draft',
+						is_public: validData.is_public || false,
+						slug,
+						userId: user.id,
+						// Consolidated verification fields with defaults
+						verification_status: 'pending',
+						country_code: 'US',
+						reputation_applied: false
+					}
+				});
+
+				// Set verification fields for congressional templates (deliveryMethod === 'cwc')
+				if (validData.deliveryMethod === 'cwc') {
+					try {
+						// Update template with initial verification status
+						await db.template.update({
+							where: { id: newTemplate.id },
+							data: {
+								verification_status: 'pending',
+								country_code: 'US', // TODO: Extract from user profile
+								quality_score: 0,
+								reputation_applied: false
+							}
+						});
+
+						// Trigger moderation pipeline via webhook
+						await triggerModerationPipeline(newTemplate.id);
+						console.log(`Set verification status for congressional template ${newTemplate.id}`);
+					} catch (verificationError) {
+						console.error('Failed to set template verification status:', verificationError);
+						// Don't fail the template creation, just log the error
+					}
+				}
+
+				const response: ApiResponse = {
+					success: true,
+					data: { template: newTemplate }
+				};
+
+				return json(response);
 			} catch (dbError) {
 				console.error('Database error creating template:', dbError);
 
@@ -351,8 +364,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			return json(response);
 		}
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		const response: ApiResponse = {
 			success: false,
@@ -361,7 +374,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return json(response, { status: 500 });
 	}
-}
+};
 
 /**
  * Trigger moderation pipeline for a template
@@ -393,9 +406,9 @@ async function triggerModerationPipeline(templateId: string) {
 		console.log(`Moderation pipeline triggered for template ${templateId}:`, result);
 
 		return result;
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		// Don't throw - we don't want to fail template creation if moderation fails to trigger
-		return { success: false, error: _error instanceof Error ? _error.message : 'Unknown error' };
+		return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
 	}
 }

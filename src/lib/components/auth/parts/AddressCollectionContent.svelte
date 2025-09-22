@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { MapPin, CheckCircle2, AlertCircle, Search, Home } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -13,12 +13,12 @@
 		verified?: boolean;
 		correctedAddress?: string;
 		representatives?: Representative[];
-		[key: string]: any;
+		[key: string]: unknown;
 	};
 
 	let {
 		template,
-		onclose,
+		onclose: _onclose,
 		oncomplete
 	}: {
 		template: {
@@ -93,7 +93,7 @@
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';
 			}
-		} catch (error) {
+		} catch {
 			addressError = 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;
@@ -123,9 +123,9 @@
 		});
 	}
 
-	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
-			event.preventDefault();
+	function _handleKeydown(_event: KeyboardEvent) {
+		if (_event.key === 'Enter' && !_event.shiftKey) {
+			_event.preventDefault();
 			if (currentStep === 'collect') {
 				verifyAddress();
 			} else if (currentStep === 'verify') {

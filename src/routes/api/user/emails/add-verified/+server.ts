@@ -108,12 +108,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				: '/settings/emails?success=email_added');
 
 		throw redirect(302, destination);
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		// If it's already a redirect, pass it through
-		if (_error && typeof _error === 'object' && 'status' in _error && _error.status === 302) {
-			throw _error;
+		if (error && typeof error === 'object' && 'status' in error && error.status === 302) {
+			throw error;
 		}
 
 		// Otherwise redirect to error page

@@ -32,21 +32,21 @@ function createToastStore() {
 	}
 
 	// Convenience methods
-	function success(message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) {
+	const success = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
 		return addToast({ type: 'success', message, ...options });
-	}
+	};
 
-	function error(message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) {
+	const error = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
 		return addToast({ type: 'error', message, duration: 7000, ...options });
-	}
+	};
 
-	function warning(message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) {
+	const warning = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
 		return addToast({ type: 'warning', message, ...options });
-	}
+	};
 
-	function info(message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) {
+	const info = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
 		return addToast({ type: 'info', message, ...options });
-	}
+	};
 
 	return {
 		get toasts() {

@@ -78,6 +78,9 @@
 	onclick={handleClose}
 	onkeydown={(e) => {
 		if (e.key === 'Escape') handleClose();
+		if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
+			handleClose();
+		}
 	}}
 	role="dialog"
 	aria-modal="true"
@@ -88,7 +91,7 @@
 >
 	<div
 		class="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl"
-		onclick={(e) => e.stopPropagation()}
+		role="document"
 		in:scale={{
 			duration: 300,
 			start: 0.9,

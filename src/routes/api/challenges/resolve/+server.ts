@@ -122,7 +122,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			reputationChanges.creator = -Math.min(5, Math.floor(5 * (consensusScore / 100)));
 
 			// Update challenger reputation
-			const challengerAddress = getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
+			const challengerAddress =
+				getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
 			if (challengerAddress) {
 				await reputationAgent.makeDecision({
 					userAddress: challengerAddress,
@@ -139,10 +140,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			reputationChanges.creator = Math.min(5, Math.floor(5 * (consensusScore / 100)));
 
 			// Update challenger reputation (opposite of above)
-			const challengerAddress2 = getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
-			if (challengerAddress2) {
+			const challengerAddress =
+				getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
+			if (challengerAddress) {
 				await reputationAgent.makeDecision({
-					userAddress: challengerAddress2,
+					userAddress: challengerAddress,
 					actionType: 'challenge_market',
 					qualityScore: 100 - consensusScore,
 					reputationChange: reputationChanges.challenger
@@ -200,10 +202,11 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		// Update user balances
-		const challengerAddress3 = getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
-		if (challengerPayout > 0 && challengerAddress3) {
+		const challengerAddress =
+			getChallengerAddress(challenge) || challenge.challenger?.wallet_address;
+		if (challengerPayout > 0 && challengerAddress) {
 			const challenger = await db.user.findFirst({
-				where: { wallet_address: challengerAddress3 }
+				where: { wallet_address: challengerAddress }
 			});
 
 			if (challenger) {
@@ -229,7 +232,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				await db.user.update({
 					where: { id: creator.id },
 					data: {
-						// Note: pending_rewards field doesn't exist in current schema  
+						// Note: pending_rewards field doesn't exist in current schema
 						trust_score: Math.max(
 							0,
 							Math.min(100, (creator.trust_score || 50) + reputationChanges.creator)
@@ -277,13 +280,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			timestamp: new Date().toISOString()
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'Challenge resolution failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

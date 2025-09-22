@@ -1,16 +1,19 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { addressLookupService } from '$lib/core/congress/address-lookup';
+import type { UnknownRecord } from '$lib/types/any-replacements';
 
 // POST /api/address/lookup - Find representatives for a given address
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const data: unknown = await request.json();
-		
+
 		// Type guard for request data
-		const isValidRequestData = (obj: unknown): obj is {
+		const isValidRequestData = (
+			obj: unknown
+		): obj is {
 			street: string;
-			city: string; 
+			city: string;
 			state: string;
 			zip: string;
 		} => {
@@ -21,10 +24,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				'city' in obj &&
 				'state' in obj &&
 				'zip' in obj &&
-				typeof (obj as any).street === 'string' &&
-				typeof (obj as any).city === 'string' &&
-				typeof (obj as any).state === 'string' &&
-				typeof (obj as any).zip === 'string'
+				typeof (obj as UnknownRecord).street === 'string' &&
+				typeof (obj as UnknownRecord).city === 'string' &&
+				typeof (obj as UnknownRecord).state === 'string' &&
+				typeof (obj as UnknownRecord).zip === 'string'
 			);
 		};
 
@@ -84,18 +87,18 @@ export const POST: RequestHandler = async ({ request }) => {
 			district: userReps.district,
 			message: `Found ${userReps.senate.length + 1} representatives for ${address.city}, ${address.state}`
 		});
-	} catch (_error) {
+	} catch (err) {
 		// Handle specific error types
-		if (_error && typeof _error === 'object' && 'status' in _error) {
-			throw _error; // Re-throw SvelteKit errors
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err; // Re-throw SvelteKit errors
 		}
 
-		if (_error instanceof Error) {
-			if (_error.message.includes('Congress API error')) {
+		if (err instanceof Error) {
+			if (err.message.includes('Congress API error')) {
 				throw error(503, 'Congressional data service is temporarily unavailable');
 			}
-			if (_error.message.includes('Google Civic API error')) {
-				throw error(503, 'Address validation service is temporarily unavailable');
+			if (err.message.includes('Google Civic API error')) {
+				throw error(503, 'Address  validation service is temporarily unavailable');
 			}
 		}
 
@@ -155,9 +158,9 @@ export const GET: RequestHandler = async ({ url }) => {
 			},
 			message: `Mock representatives for ${state.toUpperCase()}-${district}`
 		});
-	} catch (_error) {
-		if (_error && typeof _error === 'object' && 'status' in _error) {
-			throw _error;
+	} catch (err) {
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err;
 		}
 
 		throw error(500, 'Failed to lookup district information');

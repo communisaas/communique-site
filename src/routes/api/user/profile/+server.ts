@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				profileComplete: true
 			}
 		});
-	} catch (_error) {
+	} catch (err) {
 		return json(
 			{
 				error: 'Failed to save profile'
@@ -45,9 +45,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{ status: 500 }
 		);
 	}
-}
+};
 
-export const GET: RequestHandler = async ({ locals }) => {
+export const GET: RequestHandler = async ({ _locals }) => {
 	try {
 		// Ensure user is authenticated
 		if (!locals.user) {
@@ -117,7 +117,7 @@ export const GET: RequestHandler = async ({ locals }) => {
 				}
 			}
 		});
-	} catch (_error) {
+	} catch (err) {
 		return json(
 			{
 				error: 'Failed to fetch profile'
@@ -125,4 +125,4 @@ export const GET: RequestHandler = async ({ locals }) => {
 			{ status: 500 }
 		);
 	}
-}
+};

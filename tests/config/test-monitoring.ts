@@ -5,7 +5,7 @@ import path from 'path';
 
 /**
  * Test Monitoring and Health Tracking System
- * 
+ *
  * Monitors test execution health, performance, and failure patterns
  * to provide insights for maintenance and optimization.
  */
@@ -99,7 +99,7 @@ export class TestMonitor {
 	 * Analyze failure patterns to identify systemic issues
 	 */
 	analyzeFailurePatterns(): FailurePattern[] {
-		const failures = this.testMetrics.filter(m => m.status === 'failed');
+		const failures = this.testMetrics.filter((m) => m.status === 'failed');
 		const patterns = new Map<string, FailurePattern>();
 
 		for (const failure of failures) {
@@ -123,7 +123,7 @@ export class TestMonitor {
 		}
 
 		return Array.from(patterns.values())
-			.filter(p => p.frequency >= 2) // Only patterns affecting 2+ tests
+			.filter((p) => p.frequency >= 2) // Only patterns affecting 2+ tests
 			.sort((a, b) => b.frequency - a.frequency);
 	}
 
@@ -132,7 +132,7 @@ export class TestMonitor {
 	 */
 	detectMemoryLeaks(): MemoryLeak[] {
 		const leaks: MemoryLeak[] = [];
-		
+
 		if (!this.initialMemory) return leaks;
 
 		const memoryThreshold = 50 * 1024 * 1024; // 50MB threshold
@@ -150,8 +150,12 @@ export class TestMonitor {
 					startMemory: previousMemory,
 					endMemory: currentMemory,
 					leakSize: memoryDelta,
-					severity: memoryDelta > 100 * 1024 * 1024 ? 'high' : 
-					         memoryDelta > 75 * 1024 * 1024 ? 'medium' : 'low'
+					severity:
+						memoryDelta > 100 * 1024 * 1024
+							? 'high'
+							: memoryDelta > 75 * 1024 * 1024
+								? 'medium'
+								: 'low'
 				});
 			}
 
@@ -166,21 +170,25 @@ export class TestMonitor {
 	 */
 	generateHealthReport(): TestSuiteReport {
 		const totalTests = this.testMetrics.length;
-		const passed = this.testMetrics.filter(m => m.status === 'passed').length;
-		const failed = this.testMetrics.filter(m => m.status === 'failed').length;
-		const skipped = this.testMetrics.filter(m => m.status === 'skipped').length;
-		
+		const passed = this.testMetrics.filter((m) => m.status === 'passed').length;
+		const failed = this.testMetrics.filter((m) => m.status === 'failed').length;
+		const skipped = this.testMetrics.filter((m) => m.status === 'skipped').length;
+
 		const totalDuration = this.testMetrics.reduce((sum, m) => sum + m.duration, 0);
 		const averageDuration = totalTests > 0 ? totalDuration / totalTests : 0;
 
 		const slowestTests = this.testMetrics
-			.filter(m => m.status === 'passed' || m.status === 'failed')
+			.filter((m) => m.status === 'passed' || m.status === 'failed')
 			.sort((a, b) => b.duration - a.duration)
 			.slice(0, 10);
 
 		const failurePatterns = this.analyzeFailurePatterns();
 		const memoryLeaks = this.detectMemoryLeaks();
-		const recommendations = this.generateRecommendations(failurePatterns, memoryLeaks, averageDuration);
+		const recommendations = this.generateRecommendations(
+			failurePatterns,
+			memoryLeaks,
+			averageDuration
+		);
 
 		return {
 			timestamp: new Date().toISOString(),
@@ -203,14 +211,14 @@ export class TestMonitor {
 	async exportHealthReport(): Promise<void> {
 		const report = this.generateHealthReport();
 		const outputPath = path.resolve(process.cwd(), 'coverage/test-health-report.json');
-		
+
 		try {
 			await fs.mkdir(path.dirname(outputPath), { recursive: true });
 			await fs.writeFile(outputPath, JSON.stringify(report, null, 2));
-			
+
 			// Also generate human-readable summary
 			await this.exportHealthSummary(report);
-			
+
 			console.log(`📊 Test health report saved to: ${outputPath}`);
 		} catch (error) {
 			console.warn('Failed to save test health report:', error);
@@ -225,25 +233,31 @@ export class TestMonitor {
 		const report = this.generateHealthReport();
 
 		// High-frequency failure patterns
-		const criticalPatterns = report.failurePatterns.filter(p => p.frequency >= 5);
+		const criticalPatterns = report.failurePatterns.filter((p) => p.frequency >= 5);
 		if (criticalPatterns.length > 0) {
-			tasks.push(`🚨 CRITICAL: Address high-frequency failure patterns: ${criticalPatterns.map(p => p.category).join(', ')}`);
+			tasks.push(
+				`🚨 CRITICAL: Address high-frequency failure patterns: ${criticalPatterns.map((p) => p.category).join(', ')}`
+			);
 		}
 
 		// Memory leaks
-		const severleLeaks = report.memoryLeaks.filter(l => l.severity === 'high');
+		const severleLeaks = report.memoryLeaks.filter((l) => l.severity === 'high');
 		if (severleLeaks.length > 0) {
-			tasks.push(`🧠 MEMORY: Fix memory leaks in: ${severleLeaks.map(l => l.testName).join(', ')}`);
+			tasks.push(
+				`🧠 MEMORY: Fix memory leaks in: ${severleLeaks.map((l) => l.testName).join(', ')}`
+			);
 		}
 
 		// Slow tests
-		const slowTests = report.slowestTests.filter(t => t.duration > 5000);
+		const slowTests = report.slowestTests.filter((t) => t.duration > 5000);
 		if (slowTests.length > 0) {
-			tasks.push(`⏱️ PERFORMANCE: Optimize slow tests (>${(5000/1000)}s): ${slowTests.length} tests`);
+			tasks.push(
+				`⏱️ PERFORMANCE: Optimize slow tests (>${5000 / 1000}s): ${slowTests.length} tests`
+			);
 		}
 
 		// OAuth-specific issues
-		const oauthIssues = report.failurePatterns.filter(p => p.category === 'oauth');
+		const oauthIssues = report.failurePatterns.filter((p) => p.category === 'oauth');
 		if (oauthIssues.length > 0) {
 			tasks.push(`🔐 OAUTH: Review OAuth test configuration and mocks`);
 		}
@@ -259,7 +273,7 @@ export class TestMonitor {
 
 	private categorizeFailure(errorMessage: string): FailurePattern['category'] {
 		const msg = errorMessage.toLowerCase();
-		
+
 		if (msg.includes('oauth') || msg.includes('authorization') || msg.includes('token')) {
 			return 'oauth';
 		}
@@ -278,7 +292,7 @@ export class TestMonitor {
 		if (msg.includes('environment') || msg.includes('env') || msg.includes('variable')) {
 			return 'environment';
 		}
-		
+
 		return 'other';
 	}
 
@@ -303,13 +317,19 @@ export class TestMonitor {
 			const topCategory = patterns[0].category;
 			switch (topCategory) {
 				case 'oauth':
-					recommendations.push('Review OAuth test setup and consider using more stable mock implementations');
+					recommendations.push(
+						'Review OAuth test setup and consider using more stable mock implementations'
+					);
 					break;
 				case 'database':
-					recommendations.push('Check database connection stability and consider test isolation improvements');
+					recommendations.push(
+						'Check database connection stability and consider test isolation improvements'
+					);
 					break;
 				case 'timeout':
-					recommendations.push('Increase test timeouts for CI environment or optimize slow operations');
+					recommendations.push(
+						'Increase test timeouts for CI environment or optimize slow operations'
+					);
 					break;
 				case 'mock':
 					recommendations.push('Review mock implementations for consistency with real services');
@@ -348,21 +368,32 @@ Generated: ${report.timestamp}
 - Average Duration: ${report.averageDuration.toFixed(2)}ms
 
 ## Issues Found
-${report.failurePatterns.length > 0 ? `
+${
+	report.failurePatterns.length > 0
+		? `
 ### Failure Patterns
-${report.failurePatterns.map(p => `- ${p.category.toUpperCase()}: ${p.pattern} (${p.frequency} occurrences)`).join('\n')}
-` : '✅ No failure patterns detected'}
+${report.failurePatterns.map((p) => `- ${p.category.toUpperCase()}: ${p.pattern} (${p.frequency} occurrences)`).join('\n')}
+`
+		: '✅ No failure patterns detected'
+}
 
-${report.memoryLeaks.length > 0 ? `
+${
+	report.memoryLeaks.length > 0
+		? `
 ### Memory Leaks
-${report.memoryLeaks.map(l => `- ${l.testName}: +${(l.leakSize / 1024 / 1024).toFixed(1)}MB (${l.severity})`).join('\n')}
-` : '✅ No memory leaks detected'}
+${report.memoryLeaks.map((l) => `- ${l.testName}: +${(l.leakSize / 1024 / 1024).toFixed(1)}MB (${l.severity})`).join('\n')}
+`
+		: '✅ No memory leaks detected'
+}
 
 ## Maintenance Tasks
 ${this.generateMaintenanceTasks().join('\n')}
 
 ## Slowest Tests
-${report.slowestTests.slice(0, 5).map(t => `- ${t.suite} > ${t.testName}: ${t.duration}ms`).join('\n')}
+${report.slowestTests
+	.slice(0, 5)
+	.map((t) => `- ${t.suite} > ${t.testName}: ${t.duration}ms`)
+	.join('\n')}
 `;
 
 		const summaryPath = path.resolve(process.cwd(), 'coverage/test-health-summary.md');

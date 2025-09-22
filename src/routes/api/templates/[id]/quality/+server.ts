@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { reputationCalculator } from '$lib/services/reputation-calculator';
 import type { RequestHandler } from './$types';
+import type { UnknownRecord } from '$lib/types/any-replacements';
 
 /**
  * Template Quality API Endpoint
@@ -57,8 +58,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 			const avgQuality =
 				userTemplates.length > 0
-					? userTemplates.reduce((sum, t) => sum + (t.quality_score || 0), 0) /
-						userTemplates.length
+					? userTemplates.reduce((sum, t) => sum + (t.quality_score || 0), 0) / userTemplates.length
 					: null;
 
 			// Count approved vs rejected
@@ -119,7 +119,7 @@ export const GET: RequestHandler = async ({ params }) => {
 				// Auto-correction info
 				auto_corrected: !!template.correction_log,
 				corrections_applied: template.correction_log
-					? (template.correction_log as any[]).length
+					? (template.correction_log as UnknownRecord[]).length
 					: 0
 			},
 
@@ -152,8 +152,8 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(response);
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json({ error: 'Failed to fetch template quality information' }, { status: 500 });
 	}
 };

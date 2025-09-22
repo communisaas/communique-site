@@ -1,6 +1,6 @@
 /**
  * Critical Edge Cases Test Suite
- * 
+ *
  * Tests critical paths and realistic edge cases from production scenarios:
  * - Template analysis API edge cases
  * - Agent decision error handling with realistic context
@@ -10,6 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { UnknownRecord } from '../../src/lib/types/any-replacements';
 
 // Mock database with error scenarios
 const mockDb = vi.hoisted(() => ({
@@ -59,9 +60,9 @@ describe('Critical Edge Cases', () => {
 				})
 			});
 
-			const response = await POST({ request } as any);
+			const response = await POST({ request } as UnknownRecord);
 			expect(response.status).toBe(400);
-			
+
 			const data = await response.json();
 			expect(data.success).toBe(false);
 			expect(data.error.type).toBe('validation');
@@ -75,7 +76,7 @@ describe('Critical Edge Cases', () => {
 				body: 'invalid json{'
 			});
 
-			const response = await POST({ request } as any);
+			const response = await POST({ request } as UnknownRecord);
 			expect(response.status).toBe(400);
 		});
 
@@ -83,7 +84,7 @@ describe('Critical Edge Cases', () => {
 			const { POST } = await import('../../src/routes/api/templates/analyze/+server.js');
 			// Realistic long template (2KB - typical for legislative messages)
 			const longContent = `Dear [representative.title],\n\n${'I am writing to express my concerns about this important issue. '.repeat(25)}\n\nThank you for your time.\n\nSincerely,\n[user.name]`;
-			
+
 			const request = new Request('http://localhost/api/templates/analyze', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -94,9 +95,9 @@ describe('Critical Edge Cases', () => {
 				})
 			});
 
-			const response = await POST({ request } as any);
+			const response = await POST({ request } as UnknownRecord);
 			expect(response.status).toBeLessThan(500);
-			
+
 			const data = await response.json();
 			if (data.success) {
 				// Should handle realistic template sizes
@@ -106,8 +107,9 @@ describe('Critical Edge Cases', () => {
 
 		it('should handle special characters in template content', async () => {
 			const { POST } = await import('../../src/routes/api/templates/analyze/+server.js');
-			const specialContent = "Template with special chars: ñ, é, 中文, emoji 🏛️, quotes 'single' and \"double\"";
-			
+			const specialContent =
+				'Template with special chars: ñ, é, 中文, emoji 🏛️, quotes \'single\' and "double"';
+
 			const request = new Request('http://localhost/api/templates/analyze', {
 				method: 'POST',
 				headers: { 'content-type': 'application/json' },
@@ -118,9 +120,9 @@ describe('Critical Edge Cases', () => {
 				})
 			});
 
-			const response = await POST({ request } as any);
+			const response = await POST({ request } as UnknownRecord);
 			expect(response.status).toBeLessThan(500);
-			
+
 			const data = await response.json();
 			// Should preserve special characters correctly
 			if (data.success) {
@@ -134,7 +136,7 @@ describe('Critical Edge Cases', () => {
 			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
 			// Mock database failure
 			mockDb.template.findMany.mockRejectedValue(new Error('Database connection failed'));
-			
+
 			const agent = new ImpactAgent();
 			const context = {
 				userId: 'user-123',
@@ -143,14 +145,14 @@ describe('Critical Edge Cases', () => {
 			};
 
 			const decision = await agent.makeDecision(context);
-			
+
 			// Should return decision with low confidence rather than crashing
 			expect(decision).toMatchObject({
 				agentId: expect.stringContaining('impact'),
 				confidence: expect.any(Number),
 				reasoning: expect.any(String)
 			});
-			
+
 			expect(decision.confidence).toBeLessThan(0.5); // Low confidence due to error
 		});
 
@@ -162,7 +164,7 @@ describe('Critical Edge Cases', () => {
 			};
 
 			const decision = await agent.makeDecision(incompleteContext);
-			
+
 			expect(decision).toMatchObject({
 				agentId: expect.stringContaining('impact'),
 				confidence: expect.any(Number),
@@ -195,7 +197,7 @@ describe('Critical Edge Cases', () => {
 			};
 
 			const decision = await agent.makeDecision(complexContext);
-			
+
 			// Should handle complex nested context
 			expect(decision).toMatchObject({
 				agentId: expect.stringContaining('impact'),
@@ -226,7 +228,7 @@ describe('Critical Edge Cases', () => {
 			try {
 				const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
 				const funnel = new (FunnelAnalytics as any)();
-				
+
 				// Should gracefully handle SSR environment
 				expect(() => funnel.track('template_view', { templateId: 'test' })).not.toThrow();
 			} finally {
@@ -251,7 +253,7 @@ describe('Critical Edge Cases', () => {
 			});
 
 			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
-			
+
 			// Should handle corrupted data gracefully
 			expect(() => new (FunnelAnalytics as any)()).not.toThrow();
 			expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('communique_funnel_events');
@@ -259,7 +261,7 @@ describe('Critical Edge Cases', () => {
 
 		it('should retry failed analytics events', async () => {
 			mockAnalytics.trackFunnelEvent.mockRejectedValueOnce(new Error('Network error'));
-			
+
 			const mockLocalStorage = {
 				getItem: vi.fn().mockReturnValue('[]'),
 				setItem: vi.fn(),
@@ -273,9 +275,9 @@ describe('Critical Edge Cases', () => {
 
 			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
 			const funnel = new (FunnelAnalytics as any)();
-			
+
 			funnel.track('template_creation', { templateId: 'test-123' });
-			
+
 			// Should store failed events for retry
 			expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
 				'communique_failed_events',
@@ -288,9 +290,7 @@ describe('Critical Edge Cases', () => {
 		it('should handle concurrent user registration during OAuth flow', async () => {
 			// Simulate common race condition in OAuth registration
 			mockDb.user.findUnique.mockResolvedValueOnce(null); // First check: no user exists
-			mockDb.user.create.mockRejectedValueOnce(
-				new Error('UNIQUE constraint failed: User.email')
-			); // User created by another request
+			mockDb.user.create.mockRejectedValueOnce(new Error('UNIQUE constraint failed: User.email')); // User created by another request
 			mockDb.user.findUnique.mockResolvedValueOnce({
 				id: 'concurrent-user-123',
 				email: 'newuser@example.com',
@@ -304,7 +304,7 @@ describe('Critical Edge Cases', () => {
 				try {
 					// Try to find existing user
 					let user = await mockDb.user.findUnique({ where: { email: 'newuser@example.com' } });
-					
+
 					if (!user) {
 						// Try to create user
 						user = await mockDb.user.create({
@@ -314,7 +314,7 @@ describe('Critical Edge Cases', () => {
 							}
 						});
 					}
-					
+
 					return user;
 				} catch (error: unknown) {
 					const errorMessage = error instanceof Error ? error.message : String(error);
@@ -334,15 +334,13 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle database timeout errors', async () => {
-			mockDb.template.findMany.mockImplementation(() => 
-				new Promise((_, reject) => 
-					setTimeout(() => reject(new Error('Query timeout')), 100)
-				)
+			mockDb.template.findMany.mockImplementation(
+				() => new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 100))
 			);
 
 			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
 			const agent = new ImpactAgent();
-			
+
 			const decision = await agent.makeDecision({
 				userId: 'user-123',
 				actionType: 'cwc_message'
@@ -359,7 +357,7 @@ describe('Critical Edge Cases', () => {
 	describe('Authentication Boundary Conditions', () => {
 		it('should handle malformed session cookies', async () => {
 			const { validateSession } = await import('../../src/lib/core/auth/auth.js');
-			
+
 			// Test various malformed cookie scenarios
 			const malformedCookies = [
 				'', // Empty
@@ -378,7 +376,7 @@ describe('Critical Edge Cases', () => {
 
 		it('should handle expired session edge cases', async () => {
 			const { validateSession } = await import('../../src/lib/core/auth/auth.js');
-			
+
 			// Mock session that's just expired
 			mockDb.session.findUnique.mockResolvedValue({
 				id: 'session-123',
@@ -392,9 +390,9 @@ describe('Critical Edge Cases', () => {
 
 		it('should handle session cleanup after logout', async () => {
 			const { invalidateSession } = await import('../../src/lib/core/auth/auth.js');
-			
+
 			mockDb.session.delete.mockRejectedValue(new Error('Session not found'));
-			
+
 			// Should not throw error if session already deleted
 			await expect(invalidateSession('non-existent-session')).resolves.not.toThrow();
 		});
@@ -437,7 +435,7 @@ describe('Critical Edge Cases', () => {
 			mockDb.template.findUnique.mockResolvedValue(templateWithInvalidScores);
 
 			const template = await mockDb.template.findUnique({ where: { id: 'test-template-2' } });
-			
+
 			// Should return the data as-is; validation should happen at application layer
 			expect(template.quality_score).toBe(-10);
 			expect(template.consensus_score).toBe(1.5);

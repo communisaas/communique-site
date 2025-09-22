@@ -48,8 +48,21 @@ export interface DatabaseMock {
 	};
 }
 
+interface MockRegistryCollection {
+	db: DatabaseMock;
+	http: {
+		fetch: ReturnType<typeof vi.fn>;
+	};
+	auth: {
+		createSession: ReturnType<typeof vi.fn>;
+		validateSession: ReturnType<typeof vi.fn>;
+		deleteSession: ReturnType<typeof vi.fn>;
+		sessionCookieName: string;
+	};
+}
+
 class MockRegistry {
-	private mocks: any = null;
+	private mocks: MockRegistryCollection | null = null;
 
 	/**
 	 * Reset all mocks to initial state

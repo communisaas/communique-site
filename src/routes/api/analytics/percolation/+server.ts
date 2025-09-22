@@ -6,6 +6,7 @@ import {
 import { db } from '$lib/core/db';
 import type { PercolationData } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
+import type { PercolationAnalysis } from '$lib/types/any-replacements';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
@@ -33,7 +34,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						computed_metrics: {}
 					}
 				});
-			} catch (_error) {
+			} catch (err) {
 				// Ignore analytics errors
 			}
 		}
@@ -50,21 +51,21 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				recommendation: getRecommendation(analysis)
 			}
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to analyze information cascades',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
 	}
 };
 
-function getRecommendation(analysis: any): string {
+function getRecommendation(analysis: PercolationAnalysis): string {
 	if (analysis.cascade_potential === 'supercritical') {
 		return 'Network in optimal state for viral spread. Focus on quality content creation.';
 	} else if (analysis.cascade_potential === 'critical') {
@@ -97,7 +98,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			{ status: 400 }
 		);
-	} catch (_error) {
+	} catch (err) {
 		return json(
 			{
 				success: false,

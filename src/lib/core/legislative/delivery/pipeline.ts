@@ -6,7 +6,7 @@ import type {
 	LegislativeUser,
 	LegislativeTemplate
 } from '../adapters/base';
-import type { Representative } from '../models';
+import type { Representative as _Representative } from '../models';
 import { adapterRegistry } from '../adapters/registry';
 // Note: Using internal variable resolution for now
 // import { resolveVariables } from '$lib/services/personalization';
@@ -74,10 +74,10 @@ export class LegislativeDeliveryPipeline {
 				};
 			}
 
-			// 4. Deliver to each representative
+			// 4. Deliver to each _representative
 			for (const rep of representatives) {
 				const office = this.createOfficeFromRepresentative(rep, country_code);
-				const personalizedMessage = this.personalizeMessage(
+				const _personalizedMessage = this.personalizeMessage(
 					job.template,
 					job.user,
 					rep,
@@ -87,9 +87,9 @@ export class LegislativeDeliveryPipeline {
 				const request: DeliveryRequest = {
 					template: job.template,
 					user: job.user,
-					representative: rep,
+					_representative: rep,
 					office,
-					personalized_message: personalizedMessage
+					personalized_message: _personalizedMessage
 				};
 
 				const result = await adapter.deliverMessage(request);
@@ -107,7 +107,7 @@ export class LegislativeDeliveryPipeline {
 				results,
 				duration_ms: Date.now() - startTime
 			};
-		} catch (_error) {
+		} catch (error) {
 			return {
 				job_id: job.id,
 				total_recipients: 0,
@@ -116,7 +116,7 @@ export class LegislativeDeliveryPipeline {
 				results: [
 					{
 						success: false,
-						error: _error instanceof Error ? _error.message : 'Pipeline delivery failed'
+						error: error instanceof Error ? error.message : 'Pipeline delivery failed'
 					}
 				],
 				duration_ms: Date.now() - startTime
@@ -127,7 +127,7 @@ export class LegislativeDeliveryPipeline {
 	private async lookupRepresentatives(
 		adapter: LegislativeAdapter,
 		user: LegislativeUser
-	): Promise<Representative[]> {
+	): Promise<_Representative[]> {
 		if (!user.address) return [];
 
 		const representatives = await adapter.lookupRepresentativesByAddress(user.address);
@@ -144,11 +144,11 @@ export class LegislativeDeliveryPipeline {
 		return validatedReps;
 	}
 
-	private createOfficeFromRepresentative(rep: Representative, country_code: string) {
+	private createOfficeFromRepresentative(rep: _Representative, country_code: string) {
 		return {
 			id: rep.office_id,
 			jurisdiction_id: `${country_code.toLowerCase()}-federal`,
-			role: rep.office_id.includes('senate') ? 'senator' : 'representative',
+			role: rep.office_id.includes('senate') ? 'senator' : '_representative',
 			title: rep.office_id.includes('senate') ? 'Senator' : 'Representative',
 			chamber: rep.office_id.includes('senate') ? 'senate' : 'house',
 			level: 'national' as const,
@@ -160,7 +160,7 @@ export class LegislativeDeliveryPipeline {
 	private personalizeMessage(
 		template: LegislativeTemplate,
 		user: LegislativeUser,
-		rep: Representative,
+		rep: _Representative,
 		customMessage?: string
 	): string {
 		// Use custom message or template body
@@ -175,12 +175,16 @@ export class LegislativeDeliveryPipeline {
 		return this.basicVariableResolution(messageWithCustom, user, rep);
 	}
 
-	private basicVariableResolution(text: string, user: LegislativeUser, rep: Representative): string {
+	private basicVariableResolution(
+		text: string,
+		user: LegislativeUser,
+		rep: Representative
+	): string {
 		return text
 			.replace(/\[user\.name\]/g, user.name || 'Constituent')
 			.replace(/\[user\.first_name\]/g, (user.name || '').split(' ')[0] || 'Constituent')
-			.replace(/\[representative\.name\]/g, rep.name)
-			.replace(/\[representative\.title\]/g, rep.name) // Will be enhanced
+			.replace(/\[_representative\.name\]/g, rep.name)
+			.replace(/\[_representative\.title\]/g, rep.name) // Will be enhanced
 			.replace(/\[Name\]/g, user.name || 'Constituent') // Legacy support
 			.replace(/\[Representative Name\]/g, rep.name); // Legacy support
 	}

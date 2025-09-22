@@ -7,7 +7,12 @@ import { addressLookupService } from '$lib/core/congress/address-lookup';
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		const body = await request.json();
-		const { street, city, state, zipCode }: { street: string; city: string; state: string; zipCode: string } = body;
+		const {
+			street,
+			city,
+			state,
+			zipCode
+		}: { street: string; city: string; state: string; zipCode: string } = body;
 
 		// Basic validation
 		if (!street || !city || !state || !zipCode) {
@@ -51,7 +56,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			return json(
 				{
 					verified: false,
-					error: 'Address not found. Please check and try again.'
+					error: 'Address  not found. Please check and try again.'
 				},
 				{ status: 400 }
 			);
@@ -94,9 +99,9 @@ export const POST: RequestHandler = async ({ request }) => {
 					bioguideId: senator.bioguide_id
 				}))
 			];
-		} catch (_error) {
-			console.error('Failed to get real representatives, using placeholders:', _error);
-			console.error('Error details:', _error instanceof Error ? _error.stack : _error);
+		} catch (_repError) {
+			console.error('Failed to get real representatives, using placeholders:', _repError);
+			console.error('Error details:', _repError instanceof Error ? _repError.stack : _repError);
 			// Fallback to placeholders if Congress API fails
 			representatives = createRepresentativesFromDistrict(district, state);
 		}
@@ -108,45 +113,51 @@ export const POST: RequestHandler = async ({ request }) => {
 			correctedAddress,
 			representatives,
 			district,
-			message: 'Address verified successfully'
+			message: 'Address  verified successfully'
 		});
-	} catch (_error) {
-		console.error('Address verification error:', _error);
+	} catch (_verifyError) {
+		console.error('Address  verification error:', _verifyError);
 		return json(
 			{
 				verified: false,
-				error: 'Address verification service temporarily unavailable'
+				error: 'Address  verification service temporarily unavailable'
 			},
 			{ status: 500 }
 		);
 	}
-}
+};
 
 /**
  * Extract congressional district from Census Bureau geocoding response
  */
-function extractCongressionalDistrictFromCensus(geographies: Record<string, any>, state: string): string {
+function extractCongressionalDistrictFromCensus(
+	geographies: Record<string, unknown>,
+	state: string
+): string {
 	try {
 		// Look for 119th Congressional Districts
 		const congressionalDistricts = geographies['119th Congressional Districts'];
-		if (congressionalDistricts && congressionalDistricts.length > 0) {
-			const cd = congressionalDistricts[0].CD119;
-			if (cd === '98') {
-				// Special case for DC delegate
-				return `${state.toUpperCase()}-AL`;
+		if (Array.isArray(congressionalDistricts) && congressionalDistricts.length > 0) {
+			const firstDistrict = congressionalDistricts[0];
+			if (firstDistrict && typeof firstDistrict === 'object' && 'CD119' in firstDistrict) {
+				const cd = (firstDistrict as { CD119: string }).CD119;
+				if (cd === '98') {
+					// Special case for DC delegate
+					return `${state.toUpperCase()}-AL`;
+				}
+				return `${state.toUpperCase()}-${cd.padStart(2, '0')}`;
 			}
-			return `${state.toUpperCase()}-${cd.padStart(2, '0')}`;
 		}
 
 		// Fallback to at-large
 		return `${state.toUpperCase()}-AL`;
-	} catch (_error) {
+	} catch (_districtError) {
 		return `${state.toUpperCase()}-01`;
 	}
 }
 
 /**
- * Create representative data from district and state
+ * Create _representative data from district and state
  * This uses existing Congress.gov API integration
  */
 function createRepresentativesFromDistrict(district: string, state: string) {

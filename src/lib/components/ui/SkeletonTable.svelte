@@ -26,7 +26,7 @@
 		{#if showHeader}
 			<thead class="border-b border-slate-200 bg-slate-50">
 				<tr>
-					{#each Array(columns) as _, col}
+					{#each Array(columns) as _, _col}
 						<th class="px-4 py-3">
 							<div
 								class="h-4 rounded bg-slate-300 {animate ? 'animate-pulse' : ''}"
@@ -41,11 +41,11 @@
 		<tbody>
 			{#each Array(rows) as _, row}
 				<tr class="border-b border-slate-100 last:border-0">
-					{#each Array(columns) as _, col}
+					{#each Array(columns) as _, _col}
 						<td class="px-4 py-3">
 							<div
 								class="h-3 rounded bg-slate-200 {animate ? 'animate-pulse' : ''}"
-								style="width: {getRandomWidth(30, 90)}; animation-delay: {(row * columns + col) *
+								style="width: {getRandomWidth(30, 90)}; animation-delay: {(row * columns + _col) *
 									50}ms"
 							></div>
 						</td>

@@ -22,7 +22,7 @@ function getMetricsValue<T>(metrics: unknown, key: string, defaultValue: T): T {
 
 const impactAgent = new ImpactAgent();
 
-interface ImpactObservation {
+interface _ImpactObservation {
 	type: 'speech' | 'vote' | 'amendment' | 'media' | 'testimony';
 	source: string; // URL, transcript reference, etc.
 	confidence: number; // 0-100 correlation confidence
@@ -171,7 +171,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			parameters: {
 				observationCount: trackedObservations.length,
 				maxCausalStrength: Math.max(...trackedObservations.map((o) => o.causalStrength)),
-				totalDeliveries: typeof template.metrics === 'object' && template.metrics !== null && 'sent' in template.metrics && typeof (template.metrics as { sent: unknown }).sent === 'number' ? (template.metrics as { sent: number }).sent : 0,
+				totalDeliveries:
+					typeof template.metrics === 'object' &&
+					template.metrics !== null &&
+					'sent' in template.metrics &&
+					typeof (template.metrics as { sent: unknown }).sent === 'number'
+						? (template.metrics as { sent: number }).sent
+						: 0,
 				recipients: template.template_campaign?.map((c) => c.recipient_id).filter(Boolean) || []
 			}
 		});
@@ -198,7 +204,8 @@ export const POST: RequestHandler = async ({ request }) => {
 					...currentMetrics,
 					impact_score: Math.min(
 						100,
-						(typeof currentMetrics.impact_score === 'number' ? currentMetrics.impact_score : 0) + Math.floor(totalImpactScore / 10)
+						(typeof currentMetrics.impact_score === 'number' ? currentMetrics.impact_score : 0) +
+							Math.floor(totalImpactScore / 10)
 					),
 					last_impact_at: new Date()
 				}
@@ -237,17 +244,17 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			// Store treasury recommendation
 			// TODO: Create treasuryRecommendation model first
-		// await db.treasuryRecommendation?.create({
-		//	data: {
-		//		template_id: templateId,
-		//		legislator_id: legislatorId,
-		//		action_type: 'electoral_support',
-		//		amount: treasuryAction.amount.toString(),
-		//		confidence_score: maxConfidence,
-		//		reasoning: treasuryAction.reason,
-		//		created_at: new Date()
-		//	}
-		// });
+			// await db.treasuryRecommendation?.create({
+			//	data: {
+			//		template_id: templateId,
+			//		legislator_id: legislatorId,
+			//		action_type: 'electoral_support',
+			//		amount: treasuryAction.amount.toString(),
+			//		confidence_score: maxConfidence,
+			//		reasoning: treasuryAction.reason,
+			//		created_at: new Date()
+			//	}
+			// });
 		}
 
 		return json({
@@ -279,13 +286,13 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			philosophy: "We don't count messages sent. We count minds changed."
 		});
-	} catch (_error) {
-		console.error('Impact tracking error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'Impact tracking failed',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -299,7 +306,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	if (templateId) {
 		// TODO: Get impact observations when model is created
-		const observations: any[] = [];
+		const observations: Array<{ observation_type: string; impact_type?: string }> = [];
 		// const observations = await db.impactObservation?.findMany({
 		//	where: { template_id: templateId },
 		//	orderBy: { observed_at: 'desc' },
@@ -315,7 +322,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
 		// Categorize observations
 		const byType = observations?.reduce(
-			(acc: Record<string, number>, obs: any) => {
+			(acc: Record<string, number>, obs: { observation_type: string }) => {
 				acc[obs.observation_type] = (acc[obs.observation_type] || 0) + 1;
 				return acc;
 			},
@@ -323,7 +330,8 @@ export const GET: RequestHandler = async ({ url }) => {
 		);
 
 		const hasCausation = observations?.some(
-			(o: any) => o.impact_type?.includes('causation') || o.impact_type?.includes('adoption')
+			(o: { impact_type?: string }) =>
+				o.impact_type?.includes('causation') || o.impact_type?.includes('adoption')
 		);
 
 		return json({
@@ -340,8 +348,8 @@ export const GET: RequestHandler = async ({ url }) => {
 
 	if (legislatorId) {
 		// TODO: Get real data when models are created
-		const observations: any[] = [];
-		const recommendations: any[] = [];
+		const observations: Array<unknown> = [];
+		const recommendations: Array<{ amount?: string | number }> = [];
 		// const observations = await db.impactObservation?.findMany({
 		//	where: { legislator_id: legislatorId },
 		//	orderBy: { observed_at: 'desc' }
@@ -351,7 +359,7 @@ export const GET: RequestHandler = async ({ url }) => {
 		// });
 
 		const totalSupport = recommendations?.reduce(
-			(sum: bigint, rec: any) => sum + BigInt(rec.amount || 0),
+			(sum: bigint, rec: { amount?: string | number }) => sum + BigInt(rec.amount || 0),
 			BigInt(0)
 		);
 

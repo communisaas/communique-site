@@ -15,7 +15,7 @@ async function globalSetup(_config: FullConfig) {
 		await page.waitForLoadState('networkidle');
 
 		console.log('✅ Application is ready for MCP-enhanced testing');
-	} catch (_error) {
+	} catch {
 		console.log('⚠️  Application not yet ready, tests will handle startup');
 	} finally {
 		await context.close();

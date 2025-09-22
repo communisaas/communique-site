@@ -1,18 +1,18 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { onMount } from 'svelte';
+	import { onMount as _onMount } from 'svelte';
 	import { Users, Eye } from '@lucide/svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
-	import { extractRecipientEmails } from '$lib/types/templateConfig';
+	// import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import { modalActions, modalSystem } from '$lib/stores/modalSystem.svelte';
 	import { guestState } from '$lib/stores/guestState.svelte';
-	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
-	import ShareButton from '$lib/components/ui/ShareButton.svelte';
+	// import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/landing/template/parts/ActionBar.svelte';
 	import UnifiedTemplateModal from '$lib/components/modals/UnifiedTemplateModal.svelte';
 	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
@@ -25,7 +25,7 @@
 	let { data }: { data: PageData } = $props();
 
 	// Simple modal state
-	let isUpdatingAddress = $state(false);
+	let _isUpdatingAddress = $state(false);
 
 	// ActionBar state
 	let personalConnectionValue = $state('');
@@ -55,7 +55,7 @@
 	const isCongressional = $derived(template.deliveryMethod === 'cwc');
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
 
-	onMount(() => {
+	_onMount(() => {
 		// Clean up OAuth redirect hash fragment from Facebook
 		if (browser && window.location.hash === '#_=_') {
 			history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -103,9 +103,9 @@
 		}
 	}
 
-	async function handleAddressSubmit(address: string) {
+	async function _handleAddressSubmit(address: string) {
 		try {
-			isUpdatingAddress = true;
+			_isUpdatingAddress = true;
 
 			// Call API to update user address
 			const response = await fetch('/api/user/address', {
@@ -141,7 +141,7 @@
 				// Open TemplateModal using component method for consistency
 				templateModal?.open(template, data.user);
 			}
-		} catch (error) {
+		} catch {
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
 			modalActions.closeModal('address-modal');
@@ -155,7 +155,7 @@
 				templateModal?.open(template, data.user);
 			}
 		} finally {
-			isUpdatingAddress = false;
+			_isUpdatingAddress = false;
 		}
 	}
 </script>
@@ -259,7 +259,9 @@
 					}}
 					localShowEmailModal={false}
 					bind:actionProgress
-					onEmailModalClose={() => {}}
+					onEmailModalClose={() => {
+						/* Intentionally empty - modal close handled elsewhere */
+					}}
 					componentId="template-page-action"
 				/>
 			</div>
@@ -303,8 +305,12 @@
 			context="page"
 			user={data.user as { id: string; name: string | null } | null}
 			showEmailModal={false}
-			onEmailModalClose={() => {}}
-			onScroll={() => {}}
+			onEmailModalClose={() => {
+				/* Intentionally empty - modal close handled elsewhere */
+			}}
+			onScroll={() => {
+				/* Intentionally empty - scroll handling not needed */
+			}}
 			expandToContent={true}
 			onOpenModal={() => {
 				const isMobile = typeof window !== 'undefined' ? window.innerWidth < 768 : false;
@@ -327,10 +333,7 @@
 				}
 
 				// For now, treat US or certified templates as existing path
-				if (
-					data.user &&
-					(channel?.country_code === 'US' || template.deliveryMethod === 'cwc')
-				) {
+				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'cwc')) {
 					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', { template, source });

@@ -60,15 +60,15 @@ export const POST: RequestHandler = async ({ request }) => {
 			sessionId: userId,
 			config: appConfig
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		// Log detailed error for debugging
-		if (_error instanceof Error) {
+		if (error instanceof Error) {
 			console.error('Initialization error details:', {
-				name: _error.name,
-				message: _error.message,
-				stack: _error.stack?.split('\n').slice(0, 3)
+				name: error.name,
+				message: err.message,
+				stack: error.stack?.split('\n').slice(0, 3)
 			});
 		}
 

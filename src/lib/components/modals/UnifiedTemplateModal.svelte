@@ -8,6 +8,7 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import type { Template } from '$lib/types/template';
 	import { toComponentUser, type ComponentTemplate } from '$lib/types/component-props';
+	import type { HeaderUser } from '$lib/types/any-replacements.js';
 
 	// Connect to modal system with reactive getters
 	const modalStore = createModalStore('template-modal', 'template_modal');
@@ -18,11 +19,11 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 	const modalData = $derived(
 		modalStore.data as {
 			template: Template;
-			user: any;
+			user: HeaderUser;
 		} | null
 	);
 
-	// Convert Template to ComponentTemplate 
+	// Convert Template to ComponentTemplate
 	function toComponentTemplate(template: Template): ComponentTemplate {
 		// Extract metrics separately and spread the rest
 		const { metrics, ...otherProps } = template;
@@ -42,7 +43,7 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 	const user = $derived(modalData?.user ? toComponentUser(modalData.user) : null);
 
 	// Open/close functions for external use
-	export function open(template: Template, user: any) {
+	export function open(template: Template, user: HeaderUser) {
 		// Use modalStore directly - don't wait for modal component to exist
 		modalStore.open({ template, user });
 	}
@@ -57,7 +58,7 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 		close();
 	}
 
-	function handleUsed(event: CustomEvent) {
+	function handleUsed(__event: CustomEvent) {
 		// Dispatch or handle template used event
 		// Don't close modal - let it persist for post-send flow
 	}

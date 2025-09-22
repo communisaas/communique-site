@@ -20,12 +20,12 @@
 </script>
 
 <div class="skeleton-text {classNames}">
-	{#each Array(lines) as _, i}
+	{#each Array(lines) as _, _i}
 		<div
-			class="skeleton-line {lineHeight} rounded bg-slate-200 {i < lines - 1 ? spacing : ''} {animate
-				? 'animate-pulse'
-				: ''}"
-			style="width: {widths[i] || widths[0]}"
+			class="skeleton-line {lineHeight} rounded bg-slate-200 {_i < lines - 1
+				? spacing
+				: ''} {animate ? 'animate-pulse' : ''}"
+			style="width: {widths[_i] || widths[0]}"
 		></div>
 	{/each}
 </div>

@@ -52,7 +52,7 @@ export const GET: RequestHandler = async ({ request }) => {
 				}
 			}
 		});
-	} catch (_error) {
+	} catch (err) {
 		// Log failed usage
 		await logAnalyticsUsage(
 			security.user_id!,
@@ -64,7 +64,7 @@ export const GET: RequestHandler = async ({ request }) => {
 		return json(
 			{
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Unknown error'
+				error: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{
 				status: 500,
@@ -72,4 +72,4 @@ export const GET: RequestHandler = async ({ request }) => {
 			}
 		);
 	}
-}
+};

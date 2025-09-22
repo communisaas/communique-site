@@ -43,10 +43,20 @@ beforeAll(() => {
 	global.fetch = vi.fn();
 
 	// Polyfill Web Animations API used by Svelte transitions
-	if (typeof (global as any).Element !== 'undefined') {
-		Object.defineProperty((global as any).Element.prototype, 'animate', {
+	const globalWithElement = global as Record<string, unknown>;
+	if (typeof globalWithElement.Element !== 'undefined') {
+		const elementPrototype = (globalWithElement.Element as { prototype: Record<string, unknown> })
+			.prototype;
+		Object.defineProperty(elementPrototype, 'animate', {
 			value: function () {
-				return { cancel: () => {}, finish: () => {} } as any;
+				return {
+					cancel: () => {
+						/* Intentionally empty - mock animation */
+					},
+					finish: () => {
+						/* Intentionally empty - mock animation */
+					}
+				} as { cancel: () => void; finish: () => void };
 			},
 			configurable: true
 		});
@@ -59,12 +69,20 @@ beforeAll(() => {
 				matches: false,
 				media: query,
 				onchange: null,
-				addListener: () => {},
-				removeListener: () => {},
-				addEventListener: () => {},
-				removeEventListener: () => {},
+				addListener: () => {
+					/* Intentionally empty - polyfill */
+				},
+				removeListener: () => {
+					/* Intentionally empty - polyfill */
+				},
+				addEventListener: () => {
+					/* Intentionally empty - polyfill */
+				},
+				removeEventListener: () => {
+					/* Intentionally empty - polyfill */
+				},
 				dispatchEvent: () => false
-			}) as any;
+			}) as MediaQueryList;
 	}
 });
 

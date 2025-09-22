@@ -5,6 +5,13 @@
 
 import axios from 'axios';
 import config from './config';
+import type {
+	MessageData,
+	DeliveryResult,
+	UserProfileData,
+	TemplateData,
+	ErrorWithCode
+} from '$lib/types/any-replacements.js';
 
 /**
  * CWC API Client
@@ -12,7 +19,13 @@ import config from './config';
 class CWCClient {
 	private apiKey: string;
 	private apiUrl: string;
-	private deliveryAgent: any;
+	private deliveryAgent: {
+		id: string;
+		name: string;
+		contact: string;
+		acknowledgementEmail: string;
+		ack: string;
+	};
 	private campaignId: string;
 
 	constructor() {
@@ -25,7 +38,7 @@ class CWCClient {
 	/**
 	 * Submit message to CWC API
 	 */
-	async submitMessage(messageData: any) {
+	async submitMessage(messageData: MessageData) {
 		try {
 			const xmlMessage = this.buildCWCXML(messageData);
 
@@ -41,17 +54,21 @@ class CWCClient {
 			return {
 				success: true,
 				submissionId: response.data.submissionId || `CWC_${Date.now()}`,
-				messageId: messageData.messageId,
+				messageId: `CWC_MSG_${Date.now()}`,
 				response: response.data
 			};
-		} catch (error: any) {
-			console.error('CWC API submission failed:', error.response?.data || error.message);
+		} catch {
+			const axiosError = error as ErrorWithCode & { response?: { data?: unknown } };
+			console.error(
+				'CWC API submission failed:',
+				axiosError.response?.data || (error ? 'Unknown error' : 'Unknown error')
+			);
 
 			return {
 				success: false,
-				error: error.response?.data?.message || error.message,
+				error: axiosError.response?.data?.message || axiosError.message,
 				messageId: messageData.messageId,
-				statusCode: error.response?.status
+				statusCode: axiosError.response?.status
 			};
 		}
 	}
@@ -59,7 +76,13 @@ class CWCClient {
 	/**
 	 * Build CWC XML from parsed message data
 	 */
-	buildCWCXML(messageData: any) {
+	buildCWCXML(
+		messageData: MessageData & {
+			userProfile?: UserProfileData;
+			recipientOffice?: string;
+			personalConnection?: string;
+		}
+	) {
 		const { templateId, userId, subject, text, personalConnection, userProfile, recipientOffice } =
 			messageData;
 
@@ -89,8 +112,8 @@ class CWCClient {
 	<Constituent>
 		<FirstName>${this.escapeXML(userProfile?.firstName || '')}</FirstName>
 		<LastName>${this.escapeXML(userProfile?.lastName || '')}</LastName>
-		<Address1>${this.escapeXML(userProfile?.address1 || '')}</Address1>
-		${userProfile?.address2 ? `<Address2>${this.escapeXML(userProfile.address2)}</Address2>` : ''}
+		<Address >${this.escapeXML(userProfile?.address1 || '')}</Address >
+		${userProfile?.address2 ? `<Address >${this.escapeXML(userProfile.address2)}</Address >` : ''}
 		<City>${this.escapeXML(userProfile?.city || '')}</City>
 		<StateAbbreviation>${this.escapeXML(userProfile?.state || '')}</StateAbbreviation>
 		<Zip>${this.escapeXML(userProfile?.zip || '')}</Zip>
@@ -128,7 +151,7 @@ class CWCClient {
 /**
  * Fetch user profile from API
  */
-async function fetchUserProfile(userId: any) {
+async function fetchUserProfile(userId: string): Promise<UserProfileData | null> {
 	try {
 		const response = await axios.get(`${config.communique.apiUrl}/users/${userId}`, {
 			headers: {
@@ -139,8 +162,9 @@ async function fetchUserProfile(userId: any) {
 		});
 
 		return response.data.user;
-	} catch (error: any) {
-		console.error('Failed to fetch user profile:', error.message);
+	} catch {
+		const errorMessage = error ? 'Unknown error' : 'Unknown error';
+		console.error('Failed to fetch user profile:', errorMessage);
 		return null;
 	}
 }
@@ -148,7 +172,7 @@ async function fetchUserProfile(userId: any) {
 /**
  * Fetch template data from API
  */
-async function fetchTemplate(templateId: any) {
+async function fetchTemplate(templateId: string): Promise<TemplateData | null> {
 	try {
 		const response = await axios.get(`${config.communique.apiUrl}/templates/${templateId}`, {
 			headers: {
@@ -159,8 +183,9 @@ async function fetchTemplate(templateId: any) {
 		});
 
 		return response.data.template;
-	} catch (error: any) {
-		console.error('Failed to fetch template:', error.message);
+	} catch {
+		const errorMessage = error ? 'Unknown error' : 'Unknown error';
+		console.error('Failed to fetch template:', errorMessage);
 		return null;
 	}
 }
@@ -168,7 +193,7 @@ async function fetchTemplate(templateId: any) {
 /**
  * Notify API of delivery result
  */
-async function notifyDeliveryResult(templateId: any, userId: any, result: any) {
+async function notifyDeliveryResult(templateId: string, userId: string, result: DeliveryResult) {
 	try {
 		await axios.post(
 			`${config.communique.apiUrl}/delivery/notify`,
@@ -191,8 +216,9 @@ async function notifyDeliveryResult(templateId: any, userId: any, result: any) {
 		);
 
 		console.log('Delivery result notification sent successfully');
-	} catch (error: any) {
-		console.error('Failed to notify delivery result:', error.message);
+	} catch {
+		const errorMessage = error ? 'Unknown error' : 'Unknown error';
+		console.error('Failed to notify delivery result:', errorMessage);
 	}
 }
 

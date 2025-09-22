@@ -8,31 +8,65 @@
 import { browser } from '$app/environment';
 
 // Enhanced timer type definition
-export type TimerType = 
-	| 'modal' | 'transition' | 'feedback' | 'dom' | 'gesture' | 'polling' | 'debounce' // existing core types
-	| 'scroll-to-channel' | 'retry' | 'progress' // UI timers
-	| 'override-navigation' | 'open-creator' | 'direct-navigation' // navigation timers
-	| 'detection-timeout' | 'copy-success' | 'copy-reset' | 'copy-hide' // action timers
-	| 'cleanup' | 'auto-send' // system timers
-	| 'attention-stagger' | 'attention-settle' | 'attention-end'; // attention management
+export type TimerType =
+	| 'modal'
+	| 'transition'
+	| 'feedback'
+	| 'dom'
+	| 'gesture'
+	| 'polling'
+	| 'debounce' // existing core types
+	| 'scroll-to-channel'
+	| 'retry'
+	| 'progress' // UI timers
+	| 'override-navigation'
+	| 'open-creator'
+	| 'direct-navigation' // navigation timers
+	| 'detection-timeout'
+	| 'copy-success'
+	| 'copy-reset'
+	| 'copy-hide' // action timers
+	| 'cleanup'
+	| 'auto-send' // system timers
+	| 'attention-stagger'
+	| 'attention-settle'
+	| 'attention-end'; // attention management
 
 // Type guard for TimerType
 export function isValidTimerType(type: unknown): type is TimerType {
-	return typeof type === 'string' && 
+	return (
+		typeof type === 'string' &&
 		[
 			// Core types
-			'modal', 'transition', 'feedback', 'dom', 'gesture', 'polling', 'debounce',
+			'modal',
+			'transition',
+			'feedback',
+			'dom',
+			'gesture',
+			'polling',
+			'debounce',
 			// UI timers
-			'scroll-to-channel', 'retry', 'progress',
+			'scroll-to-channel',
+			'retry',
+			'progress',
 			// Navigation timers
-			'override-navigation', 'open-creator', 'direct-navigation',
+			'override-navigation',
+			'open-creator',
+			'direct-navigation',
 			// Action timers
-			'detection-timeout', 'copy-success', 'copy-reset', 'copy-hide',
+			'detection-timeout',
+			'copy-success',
+			'copy-reset',
+			'copy-hide',
 			// System timers
-			'cleanup', 'auto-send',
+			'cleanup',
+			'auto-send',
 			// Attention management
-			'attention-stagger', 'attention-settle', 'attention-end'
-		].includes(type);
+			'attention-stagger',
+			'attention-settle',
+			'attention-end'
+		].includes(type)
+	);
 }
 
 // Type for timer callback functions
@@ -54,7 +88,7 @@ export interface TimerRecord {
 export function isValidTimerRecord(record: unknown): record is TimerRecord {
 	if (typeof record !== 'object' || record === null) return false;
 	const r = record as Record<string, unknown>;
-	
+
 	return (
 		typeof r.id === 'string' &&
 		isValidTimerType(r.type) &&
@@ -83,15 +117,15 @@ class TimerCoordinator {
 		if (typeof callback !== 'function') {
 			throw new Error('Timer callback must be a function');
 		}
-		
+
 		if (typeof duration !== 'number' || duration < 0) {
 			throw new Error('Timer duration must be a non-negative number');
 		}
-		
+
 		if (!isValidTimerType(type)) {
 			throw new Error(`Invalid timer type: ${type}`);
 		}
-		
+
 		if (componentId !== undefined && typeof componentId !== 'string') {
 			throw new Error('Component ID must be a string');
 		}
@@ -102,8 +136,8 @@ class TimerCoordinator {
 		const timeoutId = setTimeout(() => {
 			try {
 				callback();
-			} catch (error) {
-				console.error('Error in timer callback:', error);
+			} catch {
+				console.error('Error occurred');
 			} finally {
 				this.clearTimer(id);
 			}
@@ -146,15 +180,15 @@ class TimerCoordinator {
 		if (typeof callback !== 'function') {
 			throw new Error('Timer callback must be a function');
 		}
-		
+
 		if (typeof duration !== 'number' || duration < 0) {
 			throw new Error('Timer duration must be a non-negative number');
 		}
-		
+
 		if (!isValidTimerType(type)) {
 			throw new Error(`Invalid timer type: ${type}`);
 		}
-		
+
 		if (componentId !== undefined && typeof componentId !== 'string') {
 			throw new Error('Component ID must be a string');
 		}
@@ -165,8 +199,8 @@ class TimerCoordinator {
 		const intervalId = setInterval(() => {
 			try {
 				callback();
-			} catch (error) {
-				console.error('Error in interval callback:', error);
+			} catch {
+				console.error('Error occurred');
 			}
 		}, duration);
 
@@ -211,8 +245,8 @@ class TimerCoordinator {
 			} else {
 				clearTimeout(timer.timeoutId);
 			}
-		} catch (error) {
-			console.error('Error clearing timer:', error);
+		} catch {
+			console.error('Error occurred');
 		}
 
 		this.timers.delete(id);

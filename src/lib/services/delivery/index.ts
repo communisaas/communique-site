@@ -67,15 +67,15 @@ async function main(): Promise<void> {
 			// TODO: Send startup notification to monitoring service
 			console.log('📊 Production mode - monitoring enabled');
 		}
-	} catch (_error) {
-		console.error('❌ Failed to start Delivery Platform:', _error);
+	} catch {
+		console.error('Error occurred');
 		process.exit(1);
 	}
 }
 
 // Handle uncaught errors
 process.on('uncaughtException', (error) => {
-	console.error('❌ Uncaught Exception:', error);
+	console.error('Error occurred');
 	process.exit(1);
 });
 
@@ -86,6 +86,6 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // Start the application
 main().catch((error) => {
-	console.error('❌ Fatal error:', error);
+	console.error('Error occurred');
 	process.exit(1);
 });

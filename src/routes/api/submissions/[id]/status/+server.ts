@@ -58,8 +58,8 @@ async function getSubmissionStatus(submissionId: string): Promise<SubmissionStat
 				timestamp: new Date().toISOString()
 			};
 		}
-	} catch (_error) {
-		console.error('Failed to get submission status:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 		return null;
 	}
 }
@@ -92,8 +92,8 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(response);
-	} catch (_error) {
-		console.error('Submission status error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		const response: ApiResponse = {
 			success: false,

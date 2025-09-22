@@ -7,44 +7,135 @@ function isTemplate(obj: unknown): obj is Template {
 		console.debug('Template validation failed: Not an object or null');
 		return false;
 	}
-	
+
 	const template = obj as Template;
 	const validations = [
 		// Required string fields
 		{ field: 'id', valid: typeof template.id === 'string', actual: typeof template.id },
 		{ field: 'slug', valid: typeof template.slug === 'string', actual: typeof template.slug },
 		{ field: 'title', valid: typeof template.title === 'string', actual: typeof template.title },
-		{ field: 'description', valid: typeof template.description === 'string', actual: typeof template.description },
-		{ field: 'category', valid: typeof template.category === 'string', actual: typeof template.category },
+		{
+			field: 'description',
+			valid: typeof template.description === 'string',
+			actual: typeof template.description
+		},
+		{
+			field: 'category',
+			valid: typeof template.category === 'string',
+			actual: typeof template.category
+		},
 		{ field: 'type', valid: typeof template.type === 'string', actual: typeof template.type },
-		{ field: 'message_body', valid: typeof template.message_body === 'string', actual: typeof template.message_body },
-		{ field: 'preview', valid: typeof template.preview === 'string', actual: typeof template.preview },
+		{
+			field: 'message_body',
+			valid: typeof template.message_body === 'string',
+			actual: typeof template.message_body
+		},
+		{
+			field: 'preview',
+			valid: typeof template.preview === 'string',
+			actual: typeof template.preview
+		},
 		{ field: 'status', valid: typeof template.status === 'string', actual: typeof template.status },
 		// Required number fields
-		{ field: 'send_count', valid: typeof template.send_count === 'number', actual: typeof template.send_count },
+		{
+			field: 'send_count',
+			valid: typeof template.send_count === 'number',
+			actual: typeof template.send_count
+		},
 		// Required boolean fields
-		{ field: 'is_public', valid: typeof template.is_public === 'boolean', actual: typeof template.is_public },
+		{
+			field: 'is_public',
+			valid: typeof template.is_public === 'boolean',
+			actual: typeof template.is_public
+		},
 		// Required enum field
-		{ field: 'deliveryMethod', valid: (template.deliveryMethod === 'cwc' || template.deliveryMethod === 'email'), actual: template.deliveryMethod },
+		{
+			field: 'deliveryMethod',
+			valid: template.deliveryMethod === 'cwc' || template.deliveryMethod === 'email',
+			actual: template.deliveryMethod
+		},
 		// Required array fields
-		{ field: 'applicable_countries', valid: Array.isArray(template.applicable_countries), actual: Array.isArray(template.applicable_countries) ? 'array' : typeof template.applicable_countries },
-		{ field: 'specific_locations', valid: Array.isArray(template.specific_locations), actual: Array.isArray(template.specific_locations) ? 'array' : typeof template.specific_locations },
+		{
+			field: 'applicable_countries',
+			valid: Array.isArray(template.applicable_countries),
+			actual: Array.isArray(template.applicable_countries)
+				? 'array'
+				: typeof template.applicable_countries
+		},
+		{
+			field: 'specific_locations',
+			valid: Array.isArray(template.specific_locations),
+			actual: Array.isArray(template.specific_locations)
+				? 'array'
+				: typeof template.specific_locations
+		},
 		// Required object fields (Json fields in database)
-		{ field: 'metrics', valid: (typeof template.metrics === 'object' && template.metrics !== null), actual: typeof template.metrics },
-		{ field: 'delivery_config', valid: (typeof template.delivery_config !== 'undefined'), actual: typeof template.delivery_config },
-		{ field: 'recipient_config', valid: (typeof template.recipient_config !== 'undefined'), actual: typeof template.recipient_config },
+		{
+			field: 'metrics',
+			valid: typeof template.metrics === 'object' && template.metrics !== null,
+			actual: typeof template.metrics
+		},
+		{
+			field: 'delivery_config',
+			valid: typeof template.delivery_config !== 'undefined',
+			actual: typeof template.delivery_config
+		},
+		{
+			field: 'recipient_config',
+			valid: typeof template.recipient_config !== 'undefined',
+			actual: typeof template.recipient_config
+		},
 		// Optional/nullable fields validation
-		{ field: 'subject', valid: (template.subject === undefined || template.subject === null || typeof template.subject === 'string'), actual: typeof template.subject },
-		{ field: 'cwc_config', valid: (template.cwc_config === undefined || template.cwc_config === null || typeof template.cwc_config === 'object'), actual: typeof template.cwc_config },
-		{ field: 'campaign_id', valid: (template.campaign_id === undefined || template.campaign_id === null || typeof template.campaign_id === 'string'), actual: typeof template.campaign_id },
-		{ field: 'last_sent_at', valid: (template.last_sent_at === undefined || template.last_sent_at === null || template.last_sent_at instanceof Date || typeof template.last_sent_at === 'string'), actual: template.last_sent_at instanceof Date ? 'Date' : typeof template.last_sent_at },
-		{ field: 'jurisdiction_level', valid: (template.jurisdiction_level === undefined || template.jurisdiction_level === null || typeof template.jurisdiction_level === 'string'), actual: typeof template.jurisdiction_level }
+		{
+			field: 'subject',
+			valid:
+				template.subject === undefined ||
+				template.subject === null ||
+				typeof template.subject === 'string',
+			actual: typeof template.subject
+		},
+		{
+			field: 'cwc_config',
+			valid:
+				template.cwc_config === undefined ||
+				template.cwc_config === null ||
+				typeof template.cwc_config === 'object',
+			actual: typeof template.cwc_config
+		},
+		{
+			field: 'campaign_id',
+			valid:
+				template.campaign_id === undefined ||
+				template.campaign_id === null ||
+				typeof template.campaign_id === 'string',
+			actual: typeof template.campaign_id
+		},
+		{
+			field: 'last_sent_at',
+			valid:
+				template.last_sent_at === undefined ||
+				template.last_sent_at === null ||
+				template.last_sent_at instanceof Date ||
+				typeof template.last_sent_at === 'string',
+			actual: template.last_sent_at instanceof Date ? 'Date' : typeof template.last_sent_at
+		},
+		{
+			field: 'jurisdiction_level',
+			valid:
+				template.jurisdiction_level === undefined ||
+				template.jurisdiction_level === null ||
+				typeof template.jurisdiction_level === 'string',
+			actual: typeof template.jurisdiction_level
+		}
 	];
 
-	const failures = validations.filter(v => !v.valid);
-	
+	const failures = validations.filter((v) => !v.valid);
+
 	if (failures.length > 0) {
-		console.debug('Template validation failed for fields:', failures.map(f => `${f.field} (expected valid, got ${f.actual})`));
+		console.debug(
+			'Template validation failed for fields:',
+			failures.map((f) => `${f.field} (expected valid, got ${f.actual})`)
+		);
 		console.debug('Full template object:', template);
 		return false;
 	}
@@ -127,12 +218,12 @@ function createTemplateStore() {
 				console.log('Templates API result:', result);
 
 				if (!result.success) {
-					console.error('Templates API error:', result.error);
+					console.error('Template fetch failed:', result.error);
 					throw new Error(result.error || 'Failed to fetch templates');
 				}
 
 				const data = result.data;
-				
+
 				// Type guard validation
 				if (!isTemplateArray(data)) {
 					throw new Error('Invalid template data received from API');

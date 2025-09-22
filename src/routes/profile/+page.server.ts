@@ -75,7 +75,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 					if (template.is_public) acc.public++;
 
 					// Count campaigns/uses
-					const campaigns = [] as any[]; // TODO: Fix template campaigns relation
+					const campaigns: Array<{ sent_at?: Date | null; delivered_at?: Date | null }> = []; // TODO: Fix template campaigns relation
 					acc.totalUses += campaigns.length;
 					acc.totalSent += campaigns.filter((c) => c.sent_at).length;
 					acc.totalDelivered += campaigns.filter((c) => c.delivered_at).length;
@@ -103,7 +103,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 				representatives: {
 					select: {
 						relationship: true,
-						representative: {
+						_representative: {
 							select: {
 								id: true,
 								name: true,
@@ -123,7 +123,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 			(result) =>
 				result?.representatives.map((ur) => ({
 					relationship: ur.relationship,
-					...ur.representative
+					...ur._representative
 				})) || []
 		);
 
@@ -169,11 +169,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 					};
 				})
 				.catch((error) => {
-					console.error('User details load error:', error);
+					console.error('Error occurred');
 					return null;
 				}),
 			templatesData: templatesPromise.catch((error) => {
-				console.error('Templates load error:', error);
+				console.error('Error occurred');
 				return {
 					templates: [],
 					templateStats: {
@@ -187,7 +187,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 				};
 			}),
 			representatives: representativesPromise.catch((error) => {
-				console.error('Representatives load error:', error);
+				console.error('Error occurred');
 				return [];
 			})
 		}

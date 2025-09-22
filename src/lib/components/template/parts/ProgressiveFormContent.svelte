@@ -1,14 +1,14 @@
 <script lang="ts">
-	import { fade, fly } from 'svelte/transition';
+	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { ArrowRight, ArrowLeft, User, MapPin, Send, CheckCircle2 } from '@lucide/svelte';
+	import { ArrowRight, ArrowLeft, User, MapPin, Send } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 
 	let {
 		template,
 		user = null,
-		onclose,
+		_onclose,
 		onsend
 	}: {
 		template: {
@@ -20,7 +20,7 @@
 			preview?: string;
 		};
 		user?: { id: string; name: string; address?: string } | null;
-		onclose?: () => void;
+		_onclose?: () => void;
 		onsend: (data: { name: string; address?: string; email?: string }) => void;
 	} = $props();
 
@@ -193,7 +193,7 @@
 	<!-- Progress Indicator -->
 	<div class="-mt-2 flex justify-center pb-6">
 		<div class="flex gap-2">
-			{#each steps as step, i}
+			{#each steps as _step, i}
 				<div
 					class="h-2 rounded-full transition-all duration-500 ease-out {currentStepIndex === i
 						? 'w-12 bg-blue-600 shadow-lg shadow-blue-200'

@@ -10,8 +10,9 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
-import type { VerificationDecision, VerificationSource } from './type-guards';
-import { db, prisma } from '$lib/core/db';
+import type { UnknownRecord } from '$lib/types/any-replacements';
+import type { VerificationSource } from './type-guards';
+import { db } from '$lib/core/db';
 
 // VerificationAssessment - internal assessment without rewardAmount (calculated separately)
 export interface VerificationAssessment {
@@ -22,11 +23,13 @@ export interface VerificationAssessment {
 	riskFactors: string[];
 	recommendedActions: string[];
 	zkProofHash?: string;
-	districtVerification?: {
-		congressionalDistrict: string;
-		confidence: number;
-		source: string;
-	} | undefined;
+	districtVerification?:
+		| {
+				congressionalDistrict: string;
+				confidence: number;
+				source: string;
+		  }
+		| undefined;
 	// Template verification properties
 	corrections?: Record<string, string>;
 	severityLevel?: number;
@@ -96,7 +99,9 @@ export class VerificationAgent extends BaseAgent {
 				riskFactors,
 				recommendedActions,
 				zkProofHash: verificationData.zkProofHash,
-				districtVerification: verificationData.districtVerification as { congressionalDistrict: string; confidence: number; source: string; } | undefined
+				districtVerification: verificationData.districtVerification as
+					| { congressionalDistrict: string; confidence: number; source: string }
+					| undefined
 			};
 
 			const confidence = this.assessDecisionConfidence(assessment, sourceAnalysis);
@@ -111,19 +116,19 @@ export class VerificationAgent extends BaseAgent {
 					verificationLevel
 				}
 			);
-		} catch (_error) {
-			console.error('VerificationAgent decision error:', _error);
+		} catch {
+			console.error('Error occurred');
 			return this.createDecision(
 				{
 					userId: context.userId || '',
 					verificationLevel: 'unverified',
 					trustScore: 0,
 					verificationSources: [],
-					riskFactors: ['verification_system_error'],
+					riskFactors: ['verification_systemerror'],
 					recommendedActions: ['retry_verification']
 				},
 				0.1,
-				`Error in verification assessment: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
+				`Error in verification assessment: Unknown error`,
 				{ error: true }
 			);
 		}
@@ -156,12 +161,15 @@ export class VerificationAgent extends BaseAgent {
 
 		// Add KYC verification source if available
 		if (user.verification_data && user.verification_method === 'didit') {
-			const kycData = user.verification_data as any;
+			const kycData = user.verification_data as UnknownRecord;
 			sources.push({
 				provider: 'didit',
 				type: 'kyc',
-				score: kycData.confidence ? Math.round(kycData.confidence * 100) : 60,
-				confidence: kycData.confidence || 0.6,
+				score:
+					typeof kycData.confidence === 'number' && kycData.confidence
+						? Math.round(kycData.confidence * 100)
+						: 60,
+				confidence: (typeof kycData.confidence === 'number' ? kycData.confidence : null) || 0.6,
 				timestamp: user.verified_at || new Date(),
 				metadata: {
 					addressVerified: kycData.addressData ? true : false,
@@ -172,7 +180,7 @@ export class VerificationAgent extends BaseAgent {
 		}
 
 		// Behavioral analysis and blockchain history analysis disabled
-		// due to missing database schema fields (civicActions, walletAddress)
+		// due to missing database schema fields (civicActions, walletAddress )
 
 		return {
 			sources,
@@ -245,13 +253,15 @@ export class VerificationAgent extends BaseAgent {
 		}
 	}
 
-	private identifyRiskFactors(verificationData: unknown, analysis: any): string[] {
+	private identifyRiskFactors(_verificationData: unknown, analysis: UnknownRecord): string[] {
 		const risks: string[] = [];
 
 		if (!analysis.kycPresent) risks.push('no_kyc_verification');
 		if (!analysis.behavioralDataPresent) risks.push('insufficient_behavioral_data');
-		if (analysis.sourceCount < 2) risks.push('single_source_dependency');
-		if (analysis.averageConfidence < 0.5) risks.push('low_confidence_sources');
+		if (typeof analysis.sourceCount === 'number' && analysis.sourceCount < 2)
+			risks.push('single_source_dependency');
+		if (typeof analysis.averageConfidence === 'number' && analysis.averageConfidence < 0.5)
+			risks.push('low_confidence_sources');
 
 		return risks;
 	}
@@ -259,7 +269,7 @@ export class VerificationAgent extends BaseAgent {
 	private generateRecommendations(
 		level: string,
 		risks: string[],
-		verificationData: unknown
+		_verificationData: unknown
 	): string[] {
 		const recommendations: string[] = [];
 
@@ -283,13 +293,20 @@ export class VerificationAgent extends BaseAgent {
 		return recommendations;
 	}
 
-	private analyzeBehavioralPatterns(actions: unknown[]): number {
+	private _analyzeBehavioralPatterns(actions: unknown[]): number {
 		if (actions.length === 0) return 0;
 
 		let score = Math.min(50, actions.length * 5); // Base score from action count
 
 		// Consistent action types indicate authentic engagement
-		const actionTypes = new Set(actions.map((a: any) => a.actionType));
+		const actionTypes = new Set(
+			actions.map((a: unknown) => {
+				if (typeof a === 'object' && a !== null && 'actionType' in a) {
+					return (a as UnknownRecord).actionType as string;
+				}
+				return 'unknown';
+			})
+		);
 		if (actionTypes.size > 1) score += 10;
 
 		// Regular activity over time
@@ -298,26 +315,36 @@ export class VerificationAgent extends BaseAgent {
 		if (timeSpan > 30) score += 10; // More than a month of activity
 
 		// Successful completions
-		const successfulActions = actions.filter((a: any) => a.status === 'completed').length;
+		const successfulActions = (actions as UnknownRecord[]).filter(
+			(a: UnknownRecord) => (a.status as string) === 'completed'
+		).length;
 		const successRate = successfulActions / actions.length;
 		score += Math.round(successRate * 20);
 
 		return Math.min(100, score);
 	}
 
-	private checkBehaviorConsistency(actions: unknown[]): boolean {
+	private _checkBehaviorConsistency(actions: unknown[]): boolean {
 		// Simple consistency check - more sophisticated logic would analyze patterns
-		return actions.filter((a: any) => a.status === 'completed').length / actions.length > 0.8;
+		return (
+			(actions as UnknownRecord[]).filter(
+				(a: UnknownRecord) => (a.status as string) === 'completed'
+			).length /
+				actions.length >
+			0.8
+		);
 	}
 
 	private calculateEngagementTimeSpan(actions: unknown[]): number {
 		if (actions.length < 2) return 0;
 
-		const dates = actions.map((a: any) => new Date(a.createdAt).getTime()).sort();
+		const dates = (actions as UnknownRecord[])
+			.map((a: UnknownRecord) => new Date(a.createdAt as string).getTime())
+			.sort();
 		return Math.round((dates[dates.length - 1] - dates[0]) / (24 * 60 * 60 * 1000)); // Days
 	}
 
-	private async analyzeBlockchainHistory(walletAddress: string): Promise<number> {
+	private async _analyzeBlockchainHistory(_walletAddress: string): Promise<number> {
 		// Mock blockchain analysis - in production would analyze on-chain behavior
 		// Look for: transaction history, contract interactions, token holdings, etc.
 
@@ -325,11 +352,14 @@ export class VerificationAgent extends BaseAgent {
 		return Math.random() > 0.5 ? 40 : 20;
 	}
 
-	private assessDecisionConfidence(assessment: VerificationAssessment, analysis: any): number {
+	private assessDecisionConfidence(
+		_assessment: VerificationAssessment,
+		analysis: UnknownRecord
+	): number {
 		let confidence = 0.5; // Base confidence
 
 		// Higher confidence with more sources
-		confidence += Math.min(0.3, analysis.sourceCount * 0.1);
+		confidence += Math.min(0.3, (analysis.sourceCount as number) * 0.1);
 
 		// Higher confidence with KYC
 		if (analysis.kycPresent) confidence += 0.2;
@@ -338,12 +368,15 @@ export class VerificationAgent extends BaseAgent {
 		if (analysis.behavioralDataPresent) confidence += 0.1;
 
 		// Higher confidence with high average source confidence
-		confidence += analysis.averageConfidence * 0.2;
+		confidence += (analysis.averageConfidence as number) * 0.2;
 
 		return Math.min(1.0, Math.max(0.1, confidence));
 	}
 
-	private generateVerificationReasoning(assessment: VerificationAssessment, analysis: any): string {
+	private generateVerificationReasoning(
+		assessment: VerificationAssessment,
+		analysis: UnknownRecord
+	): string {
 		const { trustScore, verificationLevel, verificationSources, riskFactors } = assessment;
 
 		return (
@@ -351,37 +384,39 @@ export class VerificationAgent extends BaseAgent {
 			`Analyzed ${verificationSources.length} sources: ${analysis.kycPresent ? 'KYC verified' : 'no KYC'}, ` +
 			`${analysis.behavioralDataPresent ? 'behavioral data present' : 'limited behavioral data'}. ` +
 			`${riskFactors.length > 0 ? `Risk factors: ${riskFactors.join(', ')}. ` : ''}` +
-			`Average source confidence: ${(analysis.averageConfidence * 100).toFixed(1)}%.`
+			`Average source confidence: ${((analysis.averageConfidence as number) * 100).toFixed(1)}%.`
 		);
 	}
 
 	/**
 	 * Template verification mode - verifies template content for policy compliance
 	 */
-	private async performTemplateVerification(context: AgentContext): Promise<AgentDecision<VerificationAssessment>> {
-		const template = context.parameters?.template as any;
+	private async performTemplateVerification(
+		context: AgentContext
+	): Promise<AgentDecision<VerificationAssessment>> {
+		const template = context.parameters?.template as UnknownRecord;
 		if (!template) {
 			throw new Error('Template required for template verification mode');
 		}
 
 		// Simple template verification logic
-		const subject = template.subject || template.title || '';
-		const body = template.message_body || '';
-		
+		const subject = (template.subject as string) || (template.title as string) || '';
+		const body = (template.message_body as string) || '';
+
 		// Check for severity level factors
 		let severityLevel = 1;
 		const violations: string[] = [];
-		const corrections: Record<string, any> = {};
+		const corrections: Record<string, unknown> = {};
 
 		// Check for inflammatory language
 		const inflammatoryPatterns = [
 			/violent|violence|attack|destroy|kill/i,
 			/hate|hatred|despise|loathe/i,
-			/communist|socialist|radical|extremist/i,
+			/communist|socialist|radical|extremist/i
 		];
-		
+
 		for (const pattern of inflammatoryPatterns) {
-			if (pattern.test(subject) || pattern.test(body)) {
+			if (pattern.test(subject as string) || pattern.test(body as string)) {
 				severityLevel = Math.max(severityLevel, 7);
 				violations.push('inflammatory_language');
 				break;
@@ -391,7 +426,7 @@ export class VerificationAgent extends BaseAgent {
 		// Check for profanity
 		const profanityPatterns = [/damn|hell|shit|crap/i];
 		for (const pattern of profanityPatterns) {
-			if (pattern.test(subject) || pattern.test(body)) {
+			if (pattern.test(subject as string) || pattern.test(body as string)) {
 				severityLevel = Math.max(severityLevel, 3);
 				violations.push('profanity');
 				break;
@@ -399,16 +434,16 @@ export class VerificationAgent extends BaseAgent {
 		}
 
 		// Check for policy compliance
-		if (body.length > 5000) {
+		if ((body as string).length > 5000) {
 			severityLevel = Math.max(severityLevel, 2);
 			violations.push('excessive_length');
-			corrections.body = body.substring(0, 4900) + '...';
+			corrections.body = (body as string).substring(0, 4900) + '...';
 		}
 
-		if (subject.length > 200) {
+		if ((subject as string).length > 200) {
 			severityLevel = Math.max(severityLevel, 2);
 			violations.push('long_subject');
-			corrections.subject = subject.substring(0, 190) + '...';
+			corrections.subject = (subject as string).substring(0, 190) + '...';
 		}
 
 		// Determine approval based on severity
@@ -419,24 +454,28 @@ export class VerificationAgent extends BaseAgent {
 			userId: context.userId || 'template-verification',
 			verificationLevel: approved ? 'verified' : 'unverified',
 			trustScore: approved ? 800 : 200,
-			verificationSources: [{
-				provider: 'manual_review' as const,
-				type: 'address_verification' as const,
-				score: approved ? 95 : 25,
-				confidence: confidence,
-				timestamp: new Date(),
-				metadata: { 
-					templateVerification: true,
-					approved,
-					corrections,
-					severityLevel,
-					violations
+			verificationSources: [
+				{
+					provider: 'manual_review' as const,
+					type: 'address_verification' as const,
+					score: approved ? 95 : 25,
+					confidence: confidence,
+					timestamp: new Date(),
+					metadata: {
+						templateVerification: true,
+						approved,
+						corrections,
+						severityLevel,
+						violations
+					}
 				}
-			}],
+			],
 			riskFactors: violations,
-			recommendedActions: Object.keys(corrections).length > 0 ? 
-				[`Apply corrections to: ${Object.keys(corrections).join(', ')}`] : [],
-			corrections,
+			recommendedActions:
+				Object.keys(corrections).length > 0
+					? [`Apply corrections to: ${Object.keys(corrections).join(', ')}`]
+					: [],
+			corrections: corrections as Record<string, string>,
 			severityLevel
 		};
 

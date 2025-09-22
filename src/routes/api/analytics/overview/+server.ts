@@ -135,8 +135,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						has_cascade_data: false
 					});
 				}
-			} catch (_error) {
-				console.warn(`Could not analyze template ${template.id}:`, _error);
+			} catch (err) {
+				console.warn(`Could not analyze template`,err);
 				topPerformers.push({
 					id: template.id,
 					title: template.title,
@@ -204,14 +204,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			timeframe,
 			generated_at: new Date().toISOString()
 		});
-	} catch (_error) {
-		console.error('Error:', _error);
+	} catch (err) {
+		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to generate campaign overview',
-				details: _error instanceof Error ? _error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

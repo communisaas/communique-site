@@ -10,7 +10,8 @@
 
 import { BaseAgent, AgentType } from './base-agent';
 import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
-import { db, prisma } from '$lib/core/db';
+import type { UnknownRecord } from '$lib/types/any-replacements';
+import { db } from '$lib/core/db';
 
 export interface CredibilityAssessment {
 	userId: string;
@@ -118,8 +119,8 @@ export class ReputationAgent extends BaseAgent {
 					credibilityScore: assessment.credibilityScore
 				}
 			);
-		} catch (_error) {
-			console.error('ReputationAgent decision error:', _error);
+		} catch {
+			console.error('Error occurred');
 			return this.createDecision(
 				{
 					userId: context.userId,
@@ -134,21 +135,21 @@ export class ReputationAgent extends BaseAgent {
 					},
 					badges: [],
 					attestations: [],
-					riskFactors: ['reputation_calculation_error'],
+					riskFactors: ['reputation_calculationerror'],
 					portabilityHash: ''
 				},
 				0.1,
-				`Error in reputation assessment: ${_error instanceof Error ? _error.message : 'Unknown error'}`,
+				`Error in reputation assessment: Unknown error`,
 				{ error: true }
 			);
 		}
 	}
 
 	private async gatherReputationData(userId: string): Promise<{
-		user: any;
-		civicActions: any[];
-		challengeHistory: any[];
-		reputationLogs: any[];
+		user: UnknownRecord;
+		civicActions: UnknownRecord[];
+		challengeHistory: UnknownRecord[];
+		reputationLogs: UnknownRecord[];
 		verificationLevel: string;
 		walletAddress?: string;
 	}> {
@@ -220,39 +221,45 @@ export class ReputationAgent extends BaseAgent {
 
 		return {
 			user,
-			civicActions: (user as any).civic_actions || [],
+			civicActions: ((user as UnknownRecord).civic_actions as UnknownRecord[]) || [],
 			challengeHistory: [
-				...((user as any).challenger_challenges || []),
-				...((user as any).defender_challenges || [])
+				...(((user as UnknownRecord).challenger_challenges as UnknownRecord[]) || []),
+				...(((user as UnknownRecord).defender_challenges as UnknownRecord[]) || [])
 			],
-			reputationLogs: (user as any).audit_logs || [],
+			reputationLogs: ((user as UnknownRecord).audit_logs as UnknownRecord[]) || [],
 			verificationLevel: user.is_verified ? 'verified' : 'unverified',
 			walletAddress: user.wallet_address ?? undefined
 		};
 	}
 
 	private calculateCredibilityComponents(
-		reputationData: any
+		reputationData: UnknownRecord
 	): CredibilityAssessment['credibilityComponents'] {
 		const { user, civicActions, challengeHistory, reputationLogs } = reputationData;
 
 		// 1. Civic Engagement (0-200 scale)
-		const civicEngagement = this.calculateCivicEngagement(civicActions, user.created_at);
+		const civicEngagement = this.calculateCivicEngagement(
+			civicActions as unknown[],
+			new Date((user as UnknownRecord).created_at as string)
+		);
 
 		// 2. Information Quality (0-200 based on challenge market performance)
-		const informationQuality = this.calculateInformationQuality(challengeHistory);
+		const informationQuality = this.calculateInformationQuality(challengeHistory as unknown[]);
 
 		// 3. Community Trust (0-200 from peer interactions and reputation logs)
-		const communityTrust = this.calculateCommunityTrust(reputationLogs, civicActions);
+		const communityTrust = this.calculateCommunityTrust(
+			reputationLogs as unknown[],
+			civicActions as unknown[]
+		);
 
 		// 4. Verification Depth (0-200 from identity verification completeness)
-		const verificationDepth = this.calculateVerificationDepth(user);
+		const verificationDepth = this.calculateVerificationDepth(user as UnknownRecord);
 
 		// 5. Behavioral Integrity (0-200 from long-term consistency patterns)
 		const behavioralIntegrity = this.calculateBehavioralIntegrity(
-			civicActions,
-			reputationLogs,
-			user.created_at
+			civicActions as unknown[],
+			reputationLogs as unknown[],
+			new Date((user as UnknownRecord).created_at as string)
 		);
 
 		return {
@@ -275,7 +282,9 @@ export class ReputationAgent extends BaseAgent {
 		const consistencyScore = Math.min(50, (civicActions.length / Math.max(1, timeSpan / 30)) * 10);
 
 		// Success rate bonus (0-50)
-		const successfulActions = civicActions.filter((a: any) => a?.status === 'completed').length;
+		const successfulActions = (civicActions as UnknownRecord[]).filter(
+			(a: UnknownRecord) => (a?.status as string) === 'completed'
+		).length;
 		const successRate = successfulActions / civicActions.length;
 		const successBonus = successRate * 50;
 
@@ -286,11 +295,13 @@ export class ReputationAgent extends BaseAgent {
 		if (challengeHistory.length === 0) return 50; // Neutral score
 
 		// Success rate in challenges (0-120)
-		const resolvedChallenges = challengeHistory.filter((c: any) => c?.resolution);
+		const resolvedChallenges = (challengeHistory as UnknownRecord[]).filter(
+			(c: UnknownRecord) => c?.resolution
+		);
 		if (resolvedChallenges.length === 0) return 50;
 
-		const wonChallenges = resolvedChallenges.filter(
-			(c: any) => c?.resolution === 'challenger_won'
+		const wonChallenges = (resolvedChallenges as UnknownRecord[]).filter(
+			(c: UnknownRecord) => (c?.resolution as string) === 'challenger_won'
 		).length;
 		const successRate = wonChallenges / resolvedChallenges.length;
 		const baseScore = successRate * 120;
@@ -299,10 +310,12 @@ export class ReputationAgent extends BaseAgent {
 		const participationBonus = Math.min(40, challengeHistory.length * 2);
 
 		// High-stakes accuracy bonus (0-40)
-		const highStakesChallenges = challengeHistory.filter(
-			(c: any) =>
+		const highStakesChallenges = (challengeHistory as UnknownRecord[]).filter(
+			(c: UnknownRecord) =>
 				c?.challenge_stakes &&
-				c.challenge_stakes.some((s: any) => parseFloat(s?.amount || '0') > 1000)
+				(c.challenge_stakes as UnknownRecord[]).some(
+					(s: UnknownRecord) => parseFloat((s?.amount as string) || '0') > 1000
+				)
 		);
 		const stakesBonus = Math.min(40, highStakesChallenges.length * 5);
 
@@ -311,17 +324,21 @@ export class ReputationAgent extends BaseAgent {
 
 	private calculateCommunityTrust(reputationLogs: unknown[], civicActions: unknown[]): number {
 		// Base score from positive reputation changes (0-100)
-		const positiveChanges = reputationLogs.filter((log: any) => log.change_amount > 0);
+		const positiveChanges = (reputationLogs as UnknownRecord[]).filter(
+			(log: UnknownRecord) => (log.change_amount as number) > 0
+		);
 		const trustScore = Math.min(100, positiveChanges.length * 5);
 
 		// Peer validation bonus from high-confidence reputation changes (0-60)
-		const highConfidenceChanges = reputationLogs.filter((log: any) => (log.confidence || 0) > 0.8);
+		const highConfidenceChanges = (reputationLogs as UnknownRecord[]).filter(
+			(log: UnknownRecord) => ((log.confidence as number) || 0) > 0.8
+		);
 		const validationBonus = Math.min(60, highConfidenceChanges.length * 10);
 
 		// Community interaction bonus (0-40)
-		const communityActions = civicActions.filter((a: any) =>
+		const communityActions = (civicActions as UnknownRecord[]).filter((a: UnknownRecord) =>
 			['challenge_participation', 'template_creation', 'community_moderation'].includes(
-				a.action_type
+				a.action_type as string
 			)
 		);
 		const interactionBonus = Math.min(40, communityActions.length * 8);
@@ -329,7 +346,7 @@ export class ReputationAgent extends BaseAgent {
 		return trustScore + validationBonus + interactionBonus;
 	}
 
-	private calculateVerificationDepth(user: any): number {
+	private calculateVerificationDepth(user: UnknownRecord): number {
 		let score = 0;
 
 		// Basic verification (0-60)
@@ -342,7 +359,7 @@ export class ReputationAgent extends BaseAgent {
 		if (user.wallet_address) score += 30;
 
 		// Trust score integration (0-70)
-		const trustScoreBonus = Math.min(70, ((user.trust_score || 0) / 1000) * 70);
+		const trustScoreBonus = Math.min(70, (((user.trust_score as number) || 0) / 1000) * 70);
 		score += trustScoreBonus;
 
 		return Math.min(200, score);
@@ -359,7 +376,9 @@ export class ReputationAgent extends BaseAgent {
 		const consistencyScore = Math.min(80, regularActivity * 15);
 
 		// No negative reputation events (0-60)
-		const negativeEvents = reputationLogs.filter((log: any) => log.change_amount < -50).length;
+		const negativeEvents = (reputationLogs as UnknownRecord[]).filter(
+			(log: UnknownRecord) => (log.change_amount as number) < -50
+		).length;
 		const integrityScore = Math.max(0, 60 - negativeEvents * 20);
 
 		// Long-term engagement (0-60)
@@ -399,53 +418,57 @@ export class ReputationAgent extends BaseAgent {
 		return 'untrusted';
 	}
 
-	private generateBadges(reputationData: any, components: any): string[] {
+	private generateBadges(reputationData: UnknownRecord, components: UnknownRecord): string[] {
 		const badges: string[] = [];
 
 		// Civic Leader
-		if (components.civic_engagement >= 180) badges.push('civic_leader');
+		if ((components.civic_engagement as number) >= 180) badges.push('civic_leader');
 
 		// Truth Seeker
-		if (components.information_quality >= 180) badges.push('truth_seeker');
+		if ((components.information_quality as number) >= 180) badges.push('truth_seeker');
 
 		// Community Pillar
-		if (components.community_trust >= 180) badges.push('community_pillar');
+		if ((components.community_trust as number) >= 180) badges.push('community_pillar');
 
 		// Verified Participant
-		if (components.verification_depth >= 150) badges.push('verified_participant');
+		if ((components.verification_depth as number) >= 150) badges.push('verified_participant');
 
 		// Consistent Contributor
-		if (components.behavioral_integrity >= 160) badges.push('consistent_contributor');
+		if ((components.behavioral_integrity as number) >= 160) badges.push('consistent_contributor');
 
 		// Challenge Master (special conditions)
 		const challengeWinRate =
-			reputationData.challengeHistory.length > 5
-				? reputationData.challengeHistory.filter((c: any) => c.resolution === 'challenger_won')
-						.length / reputationData.challengeHistory.length
+			(reputationData.challengeHistory as unknown[]).length > 5
+				? (reputationData.challengeHistory as UnknownRecord[]).filter(
+						(c: UnknownRecord) => (c.resolution as string) === 'challenger_won'
+					).length / (reputationData.challengeHistory as UnknownRecord[]).length
 				: 0;
 		if (challengeWinRate >= 0.8) badges.push('challenge_master');
 
 		// Early Adopter
-		const accountAge = this.getAccountTimeSpanDays(reputationData.user.created_at);
-		if (accountAge >= 90 && reputationData.civicActions.length >= 20) badges.push('early_adopter');
+		const accountAge = this.getAccountTimeSpanDays(
+			(reputationData.user as UnknownRecord).created_at as Date
+		);
+		if (accountAge >= 90 && (reputationData.civicActions as unknown[]).length >= 20)
+			badges.push('early_adopter');
 
 		return badges;
 	}
 
 	private async generateAttestations(
 		userId: string,
-		components: any
+		components: UnknownRecord
 	): Promise<ERC8004Attestation[]> {
 		const attestations: ERC8004Attestation[] = [];
 
 		// Civic engagement attestation
-		if (components.civic_engagement >= 100) {
+		if ((components.civic_engagement as number) >= 100) {
 			attestations.push({
 				issuer: 'VOTER_Protocol',
 				subject: userId,
 				claimType: 'civic_engagement_score',
-				claimValue: components.civic_engagement,
-				confidence: Math.min(1.0, components.civic_engagement / 200),
+				claimValue: components.civic_engagement as number,
+				confidence: Math.min(1.0, (components.civic_engagement as number) / 200),
 				timestamp: new Date(),
 				signature: `0x${Date.now().toString(16)}civic${components.civic_engagement}`,
 				chainId: 1 // Ethereum mainnet - would be Monad in production
@@ -453,13 +476,13 @@ export class ReputationAgent extends BaseAgent {
 		}
 
 		// Information quality attestation
-		if (components.information_quality >= 100) {
+		if ((components.information_quality as number) >= 100) {
 			attestations.push({
 				issuer: 'VOTER_Protocol',
 				subject: userId,
 				claimType: 'information_quality_score',
-				claimValue: components.information_quality,
-				confidence: Math.min(1.0, components.information_quality / 200),
+				claimValue: components.information_quality as number,
+				confidence: Math.min(1.0, (components.information_quality as number) / 200),
 				timestamp: new Date(),
 				signature: `0x${Date.now().toString(16)}quality${components.information_quality}`
 			});
@@ -468,20 +491,24 @@ export class ReputationAgent extends BaseAgent {
 		return attestations;
 	}
 
-	private identifyReputationRisks(reputationData: any, components: any): string[] {
+	private identifyReputationRisks(
+		reputationData: UnknownRecord,
+		components: UnknownRecord
+	): string[] {
 		const risks: string[] = [];
 
-		if (components.verification_depth < 50) risks.push('low_verification');
-		if (components.behavioral_integrity < 50) risks.push('behavioral_inconsistency');
-		if (reputationData.challengeHistory.length > 5) {
+		if ((components.verification_depth as number) < 50) risks.push('low_verification');
+		if ((components.behavioral_integrity as number) < 50) risks.push('behavioral_inconsistency');
+		if ((reputationData.challengeHistory as UnknownRecord[]).length > 5) {
 			const lossRate =
-				reputationData.challengeHistory.filter((c: any) => c.resolution === 'challenger_lost')
-					.length / reputationData.challengeHistory.length;
+				(reputationData.challengeHistory as UnknownRecord[]).filter(
+					(c: UnknownRecord) => (c.resolution as string) === 'challenger_lost'
+				).length / (reputationData.challengeHistory as UnknownRecord[]).length;
 			if (lossRate > 0.5) risks.push('high_challenge_loss_rate');
 		}
 		if (
-			reputationData.civicActions.length < 5 &&
-			this.getAccountTimeSpanDays(reputationData.user.created_at) > 30
+			(reputationData.civicActions as UnknownRecord[]).length < 5 &&
+			this.getAccountTimeSpanDays((reputationData.user as UnknownRecord).created_at as Date) > 30
 		) {
 			risks.push('low_civic_engagement');
 		}
@@ -489,7 +516,7 @@ export class ReputationAgent extends BaseAgent {
 		return risks;
 	}
 
-	private generatePortabilityHash(credibilityScore: number, components: any): string {
+	private generatePortabilityHash(credibilityScore: number, components: UnknownRecord): string {
 		// Generate deterministic hash for cross-platform reputation portability
 		const data = `${credibilityScore}-${JSON.stringify(components)}-${Date.now()}`;
 		return `0x${Buffer.from(data).toString('hex').substring(0, 32)}`;
@@ -499,13 +526,16 @@ export class ReputationAgent extends BaseAgent {
 		return Math.floor((Date.now() - new Date(createdAt).getTime()) / (24 * 60 * 60 * 1000));
 	}
 
-	private assessDecisionConfidence(assessment: CredibilityAssessment, reputationData: any): number {
+	private assessDecisionConfidence(
+		assessment: CredibilityAssessment,
+		reputationData: UnknownRecord
+	): number {
 		let confidence = 0.6; // Base confidence
 
 		// Higher confidence with more data
-		if (reputationData.civicActions.length > 10) confidence += 0.1;
-		if (reputationData.challengeHistory.length > 5) confidence += 0.1;
-		if (reputationData.reputationLogs.length > 10) confidence += 0.1;
+		if ((reputationData.civicActions as UnknownRecord[]).length > 10) confidence += 0.1;
+		if ((reputationData.challengeHistory as UnknownRecord[]).length > 5) confidence += 0.1;
+		if ((reputationData.reputationLogs as UnknownRecord[]).length > 10) confidence += 0.1;
 
 		// Higher confidence with verification
 		if (assessment.credibilityComponents.verification_depth > 100) confidence += 0.1;
@@ -515,7 +545,7 @@ export class ReputationAgent extends BaseAgent {
 
 	private generateReputationReasoning(
 		assessment: CredibilityAssessment,
-		reputationData: any
+		reputationData: UnknownRecord
 	): string {
 		const { credibilityScore, tier, credibilityComponents, badges } = assessment;
 
@@ -526,8 +556,8 @@ export class ReputationAgent extends BaseAgent {
 			`Trust ${credibilityComponents.community_trust}/200, ` +
 			`Verification ${credibilityComponents.verification_depth}/200, ` +
 			`Integrity ${credibilityComponents.behavioral_integrity}/200. ` +
-			`Based on ${reputationData.civicActions.length} civic actions, ` +
-			`${reputationData.challengeHistory.length} challenge participations. ` +
+			`Based on ${(reputationData.civicActions as UnknownRecord[]).length} civic actions, ` +
+			`${(reputationData.challengeHistory as UnknownRecord[]).length} challenge participations. ` +
 			`${badges.length > 0 ? `Earned badges: ${badges.join(', ')}.` : ''}`
 		);
 	}

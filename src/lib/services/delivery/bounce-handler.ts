@@ -36,8 +36,8 @@ function initTransporter(): nodemailer.Transporter {
  * Sends bounce email with actionable options
  */
 async function handleUnmatchedSender(
-	parsedMessage: Record<string, unknown>, 
-	senderEmail: string, 
+	parsedMessage: Record<string, unknown>,
+	senderEmail: string,
 	templateSlug: string
 ) {
 	try {
@@ -51,8 +51,8 @@ async function handleUnmatchedSender(
 			// No user found - offer signup
 			await sendNewUserBounce(senderEmail, templateSlug);
 		}
-	} catch (error: unknown) {
-		console.error('Error handling unmatched sender:', error);
+	} catch {
+		console.error('Error occurred');
 		// Send generic bounce as fallback
 		await sendGenericBounce(senderEmail, templateSlug);
 	}
