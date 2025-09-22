@@ -1,7 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { User as _User, Settings, FileText, Shield, Edit3, Home, LogOut as _LogOut } from '@lucide/svelte';
-	import Badge from '$lib/components/ui/Badge.svelte';
+	import {
+		User as UserIcon,
+		Settings,
+		FileText,
+		Edit3,
+		Home,
+		LogOut as LogOutIcon
+	} from '@lucide/svelte';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
 
@@ -19,7 +25,7 @@
 	const activeTab = $derived(($page.url.searchParams.get('tab') as TabType) || 'overview');
 
 	const tabs = [
-		{ id: 'overview', label: 'Overview', icon: User },
+		{ id: 'overview', label: 'Overview', icon: UserIcon },
 		{ id: 'profile', label: 'Profile', icon: Edit3 },
 		{ id: 'templates', label: 'Templates', icon: FileText },
 		{ id: 'settings', label: 'Settings', icon: Settings }
@@ -77,7 +83,7 @@
 							class="flex items-center gap-1.5 rounded px-2 py-1 text-sm text-slate-500 transition-all hover:bg-slate-50 hover:text-slate-700"
 							title="Sign out"
 						>
-							<LogOut class="h-4 w-4" />
+							<LogOutIcon class="h-4 w-4" />
 							<span class="hidden sm:inline">Sign out</span>
 						</a>
 					</div>
@@ -99,7 +105,7 @@
 							<div
 								class="flex h-16 w-16 items-center justify-center rounded-full bg-participation-primary-600"
 							>
-								<User class="h-8 w-8 text-white" />
+								<UserIcon class="h-8 w-8 text-white" />
 							</div>
 						{/if}
 						<div>
@@ -131,6 +137,7 @@
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
 			<div class="flex space-x-8">
 				{#each tabs as tab}
+					{@const IconComponent = tab.icon}
 					<a
 						href="/profile?tab={tab.id}"
 						class="flex items-center space-x-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors {activeTab ===
@@ -138,7 +145,7 @@
 							? 'border-participation-primary-500 text-participation-primary-600'
 							: 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700'}"
 					>
-						<tab.icon class="h-4 w-4" />
+						<IconComponent class="h-4 w-4" />
 						<span>{tab.label}</span>
 					</a>
 				{/each}

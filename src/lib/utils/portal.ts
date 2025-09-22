@@ -152,7 +152,7 @@ export class PortalManager {
 	 * Clean up all portals
 	 */
 	cleanup(): void {
-		for (const [id, portal] of this.portals) {
+		for (const [_id, portal] of this.portals) {
 			portal.cleanup();
 		}
 		this.portals.clear();

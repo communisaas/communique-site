@@ -93,10 +93,10 @@
 					(result.error as string) || 'Unable to verify address. Please check and try again.';
 			}
 		} catch (_error) {
-			console.error('Address verification error:', error);
+			console.error("Error occurred:", _error);
 			addressError =
-				error instanceof Error
-					? error.message
+				_error instanceof Error
+					? _error.message
 					: 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;

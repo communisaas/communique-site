@@ -1,8 +1,6 @@
 <script lang="ts">
 	import '../../../app.css';
 	import { page } from '$app/stores';
-	import { ArrowLeft, Share2, Copy as _Copy, CheckCircle, LogOut as _LogOut, User as _User } from '@lucide/svelte';
-	import Button from '$lib/components/ui/Button.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import type { LayoutData } from './$types';
@@ -24,13 +22,13 @@
 
 	const componentId = 'TemplateLayout_' + Math.random().toString(36).substr(2, 9);
 
-	function copyLink() {
+	function _copyLink() {
 		navigator.clipboard.writeText(shareUrl);
 		showCopied = true;
 		coordinated.setTimeout(() => (showCopied = false), 2000, 'feedback', componentId);
 	}
 
-	function shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {
+	function _shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {
 		const text = `Check out "${template?.title}" on Communiqué - make your voice heard!`;
 		const encodedUrl = encodeURIComponent(shareUrl);
 		const encodedText = encodeURIComponent(text);

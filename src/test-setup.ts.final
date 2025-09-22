@@ -1,0 +1,173 @@
+import '@testing-library/jest-dom';
+
+// Mock SvelteKit environment
+import { beforeAll, beforeEach, vi } from 'vitest';
+
+beforeAll(() => {
+	// Mock app environment
+	vi.mock('$app/environment', () => ({
+		browser: false,
+		dev: true,
+		building: false,
+		version: 'test'
+	}));
+
+	// Mock app stores
+	vi.mock('$app/stores', () => ({
+		page: {
+			subscribe: vi.fn(() => vi.fn()),
+			url: new URL('http://localhost:3000')
+		},
+		navigating: {
+			subscribe: vi.fn(() => vi.fn())
+		},
+		updated: {
+			subscribe: vi.fn(() => vi.fn())
+		}
+	}));
+
+	// Mock SvelteKit navigation
+	vi.mock('$app/navigation', () => ({
+		goto: vi.fn(),
+		invalidate: vi.fn(),
+		invalidateAll: vi.fn(),
+		preloadData: vi.fn(),
+		preloadCode: vi.fn(),
+		beforeNavigate: vi.fn(),
+		afterNavigate: vi.fn(),
+		pushState: vi.fn(),
+		replaceState: vi.fn()
+	}));
+
+	// Mock global fetch
+	global.fetch = vi.fn();
+
+	// Polyfill Web Animations API used by Svelte transitions
+	const globalWithElement = global as Record<string, unknown>;
+	if (typeof globalWithElement.Element !== 'undefined') {
+		const elementPrototype = (globalWithElement.Element as { prototype: Record<string, unknown> })
+			.prototype;
+		Object.defineProperty(elementPrototype, 'animate', {
+			value: function () {
+				return {
+					cancel: () => {
+						/* Intentionally empty - mock animation */
+					},
+					finish: () => {
+						/* Intentionally empty - mock animation */
+					}
+				} as { cancel: () => void; finish: () => void };
+			},
+			configurable: true
+		});
+	}
+
+	// Polyfill matchMedia for jsdom
+	if (typeof window !== 'undefined' && !window.matchMedia) {
+		window.matchMedia = (query: string) =>
+			({
+				matches: false,
+				media: query,
+				onchange: null,
+				addListener: () => {
+					/* Intentionally empty - polyfill */
+				},
+				removeListener: () => {
+					/* Intentionally empty - polyfill */
+				},
+				addEventListener: () => {
+					/* Intentionally empty - polyfill */
+				},
+				removeEventListener: () => {
+					/* Intentionally empty - polyfill */
+				},
+				dispatchEvent: () => false
+			}) as MediaQueryList;
+	}
+});
+
+beforeEach(() => {
+	// Ensure window and document are available in jsdom
+	if (typeof window !== 'undefined') {
+		// Mock window.location
+		Object.defineProperty(window, 'location', {
+			value: {
+				href: 'http://localhost:3000',
+				origin: 'http://localhost:3000',
+				pathname: '/',
+				search: '',
+				hash: ''
+			},
+			writable: true,
+			configurable: true
+		});
+
+		// Mock window.scrollTo
+		window.scrollTo = vi.fn();
+
+		// Mock window dimensions
+		Object.defineProperty(window, 'innerHeight', {
+			writable: true,
+			configurable: true,
+			value: 800
+		});
+
+		Object.defineProperty(window, 'innerWidth', {
+			writable: true,
+			configurable: true,
+			value: 1200
+		});
+
+		// Mock window.scrollY
+		Object.defineProperty(window, 'scrollY', {
+			writable: true,
+			configurable: true,
+			value: 0
+		});
+
+		// Mock localStorage
+		const localStorageMock = {
+			getItem: vi.fn(),
+			setItem: vi.fn(),
+			removeItem: vi.fn(),
+			clear: vi.fn()
+		};
+		Object.defineProperty(window, 'localStorage', {
+			value: localStorageMock,
+			configurable: true
+		});
+
+		// Mock sessionStorage
+		const sessionStorageMock = {
+			getItem: vi.fn(),
+			setItem: vi.fn(),
+			removeItem: vi.fn(),
+			clear: vi.fn()
+		};
+		Object.defineProperty(window, 'sessionStorage', {
+			value: sessionStorageMock,
+			configurable: true
+		});
+
+		// Mock navigator.clipboard
+		Object.defineProperty(navigator, 'clipboard', {
+			value: {
+				writeText: vi.fn(() => Promise.resolve())
+			},
+			configurable: true
+		});
+	}
+
+	// Mock document.body.style if document exists
+	if (typeof document !== 'undefined') {
+		Object.defineProperty(document.body, 'style', {
+			writable: true,
+			value: {
+				position: '',
+				top: '',
+				width: '',
+				overflow: ''
+			}
+		});
+	}
+});

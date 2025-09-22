@@ -150,11 +150,11 @@ class UnifiedApiClient {
 
 				onLoadingChange?.(false);
 				return result;
-			} catch (_error) {
-				lastError = _error instanceof Error ? _error : new Error(String(_error));
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
 
 				// Don't retry on abort errors
-				if (_error instanceof Error && _error.name === 'AbortError') {
+				if (error instanceof Error && error.name === 'AbortError') {
 					break;
 				}
 
@@ -198,7 +198,7 @@ class UnifiedApiClient {
 			} else {
 				data = await response.text();
 			}
-		} catch {
+		} catch (error) {
 			// Response might be empty
 			data = null;
 		}
@@ -212,10 +212,10 @@ class UnifiedApiClient {
 
 		if (!response.ok) {
 			const errorData = isErrorResponse(data) ? data : {};
-			const error = errorData.error || errorData.message || `HTTP ${response.status}`;
+			const _error = errorData.error || errorData.message || `HTTP ${response.status}`;
 			const errors = errorData.errors;
 
-			throw new ApiClientError(error, response.status, response, errors);
+			throw new ApiClientError(_error, response.status, response, errors);
 		}
 
 		// Type guard for standard API response format

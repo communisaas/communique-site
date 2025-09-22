@@ -12,12 +12,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const errorReport: ErrorReport = {
-			message: err.message || 'Unknown error',
+			message: error.message || 'Unknown error',
 			stack: error.stack,
 			context: context || 'unknown',
-			timestamp: error.timestamp || Date.now(),
-			userAgent: error.userAgent,
-			url: error.url,
+			timestamp: _error.timestamp || Date.now(),
+			userAgent: _error.userAgent,
+			url: _error.url,
 			userId: locals.user?.id,
 			additionalData: {
 				retryCount: retryCount || 0,
@@ -34,13 +34,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// TODO: Store in database for analysis
-		// await db.error_reports.create({ data: errorReport });
+		// await db.error_reports.create({ data: _errorReport });
 
 		return json({
 			success: true,
 			message: 'Error reported successfully'
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{

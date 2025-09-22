@@ -126,12 +126,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				congressional_district: updatedUser.congressional_district
 			}
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				error: 'Failed to save address',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

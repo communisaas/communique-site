@@ -76,7 +76,7 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 					is_current: true
 				}
 			];
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return [];
 		}
@@ -107,7 +107,7 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 		} catch (error) {
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'UK Parliament submission failed',
+				error: 'UK Parliament submission failed',
 				metadata: {
 					provider: 'UK Parliament',
 					_representative: request._representative.name

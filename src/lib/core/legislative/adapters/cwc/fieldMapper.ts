@@ -66,7 +66,6 @@ export class CWCFieldMapper {
 			MiddleName: nameParts.middleName,
 			LastName: nameParts.lastName,
 			Address: address.address1,
-			Address: address.address2,
 			City: address.city,
 			StateAbbreviation: address.state,
 			Zip: address.zip,

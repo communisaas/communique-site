@@ -196,9 +196,9 @@ export async function withTimeout<T>(
 				clearTimeout(timeout);
 				resolve(result);
 			})
-			.catch((error) => {
+			.catch((_error) => {
 				clearTimeout(timeout);
-				reject(error);
+				reject(_error);
 			});
 	});
 }
@@ -361,7 +361,7 @@ export async function logSecurityEvent(
 		// In production, log to proper security monitoring system
 		// Could store in database for analysis
 		// await db.security_log.create({ ... });
-	} catch {
+	} catch (error) {
 		/* Ignore security logging errors - function is currently a placeholder */
 	}
 }

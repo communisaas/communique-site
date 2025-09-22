@@ -121,7 +121,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		})
 		.then(
 			(result) =>
-				result?.representatives.map((ur) => ({
+				result?.representatives.map((ur: { relationship: string; _representative: unknown }) => ({
 					relationship: ur.relationship,
 					...ur._representative
 				})) || []
@@ -168,11 +168,11 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 						}
 					};
 				})
-				.catch((error) => {
+				.catch((_error) => {
 					console.error('Error occurred');
 					return null;
 				}),
-			templatesData: templatesPromise.catch((error) => {
+			templatesData: templatesPromise.catch((_error) => {
 				console.error('Error occurred');
 				return {
 					templates: [],
@@ -186,7 +186,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 					}
 				};
 			}),
-			representatives: representativesPromise.catch((error) => {
+			representatives: representativesPromise.catch((_error) => {
 				console.error('Error occurred');
 				return [];
 			})

@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
-import type { AnalyticsEvent } from '$lib/types/analytics';
+import type { AnalyticsEvent as _AnalyticsEvent } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
 
 // Define proper types for delivery status
@@ -132,7 +132,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						computed_metrics: {}
 					}
 				});
-			} catch (err) {
+			} catch (error) {
 				// Ignore analytics errors
 			}
 		}
@@ -144,14 +144,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			total_count: totalDeliveries,
 			timestamp: new Date().toISOString()
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to load delivery status',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

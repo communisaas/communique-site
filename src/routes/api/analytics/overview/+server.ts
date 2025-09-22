@@ -4,7 +4,6 @@ import {
 	analyzeCascade,
 	hasActivationData
 } from '$lib/experimental/cascade/cascade-analytics-fixed';
-import type { AnalyticsSession, AnalyticsEvent } from '$lib/types/analytics';
 import { getSessionMetrics } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
 
@@ -135,8 +134,8 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						has_cascade_data: false
 					});
 				}
-			} catch (err) {
-				console.warn(`Could not analyze template`,err);
+			} catch (error) {
+				console.warn(`Could not analyze template`, err);
 				topPerformers.push({
 					id: template.id,
 					title: template.title,
@@ -204,14 +203,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			timeframe,
 			generated_at: new Date().toISOString()
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to generate campaign overview',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

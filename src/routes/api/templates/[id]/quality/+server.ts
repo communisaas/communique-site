@@ -152,7 +152,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(response);
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json({ error: 'Failed to fetch template quality information' }, { status: 500 });
 	}

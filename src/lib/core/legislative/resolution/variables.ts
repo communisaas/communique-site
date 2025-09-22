@@ -77,7 +77,7 @@ export class LegislativeVariableResolver {
 					const value = await resolver(context);
 					resolved = resolved.replace(placeholder, value);
 				} catch (error) {
-					console.error(`Failed to resolve variable ${variableName}:`, error);
+					console.error('Error occurred');
 					// Leave placeholder as-is if resolution fails
 				}
 			}

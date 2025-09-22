@@ -85,7 +85,7 @@ export async function getTemplateActivationChain(_templateId: string): Promise<U
 		user_id: activation.user_id,
 		template_id: activation.template_id,
 		activated_at: activation.activation_time,
-		sourceuser_id: activation.sourceuser_id || undefined,
+		source_user_id: activation.source_user_id || undefined,
 		activation_generation: activation.activation_generation,
 		geographic_distance: activation.geographic_distance || 0,
 		time_to_activation: activation.time_to_activation || 0

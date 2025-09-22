@@ -20,12 +20,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const processedErrors: ErrorReport[] = errors.map((error: unknown) => {
 			const errorData = error as ErrorDetails;
 			return {
-				message: errorData?.message || 'Unknown error',
-				stack: errorData?.stack,
-				context: errorData?.context || 'unknown',
-				timestamp: errorData?.timestamp || Date.now(),
-				userAgent: errorData?.userAgent,
-				url: errorData?.url,
+				message: _errorData?.message || 'Unknown error',
+				stack: _errorData?.stack,
+				context: _errorData?.context || 'unknown',
+				timestamp: _errorData?.timestamp || Date.now(),
+				userAgent: _errorData?.userAgent,
+				url: _errorData?.url,
 				userId: locals.user?.id,
 				additionalData: {
 					...errorData?.additionalData,
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Log errors (in production, send to monitoring service)
 		if (process.env.NODE_ENV === 'development') {
-			console.error(`Batch error report (${processedErrors.length} errors):`, processedErrors);
+			console.error(`Batch error report (${processedErrors.length} _errors):`, processedErrors);
 		} else {
 			// TODO: Send to monitoring service
 			// await sendBatchToMonitoringService(processedErrors);
@@ -48,9 +48,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		return json({
 			success: true,
-			message: `${processedErrors.length} errors reported successfully`
+			message: `${processedErrors.length} _errors reported successfully`
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{

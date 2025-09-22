@@ -849,7 +849,7 @@ describe('Analytics JSONB Field Validation Tests', () => {
 
 			// Calculate averages
 			const avgEngagementByDevice = Object.entries(deviceEngagement).map(
-				([device, data]: [string, any]) => ({
+				([device, data]: [string, { total: number; count: number }]) => ({
 					device_type: device,
 					avg_engagement: data.total / data.count
 				})

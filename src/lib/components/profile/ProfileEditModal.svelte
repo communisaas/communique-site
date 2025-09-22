@@ -131,7 +131,7 @@
 			} else {
 				errors.general = result.error || 'Failed to save changes';
 			}
-		} catch {
+		} catch (error) {
 			errors.general = 'Failed to save changes. Please try again.';
 		} finally {
 			isSubmitting = false;

@@ -136,8 +136,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 					ageVerified,
 					ofacPassed
 				});
-			} catch (dbError) {
-				console.error('Failed to update user verification in database:', dbError);
+			} catch (error) {
+				console.error('Failed to update user verification in database');
 				// Continue processing - verification still succeeded
 			}
 		}
@@ -159,14 +159,14 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 			userUpdated: !!locals.user,
 			message: 'Identity verification completed successfully'
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		// Log detailed error information for debugging
 		if (error instanceof Error) {
 			console.error('Error details:', {
-				name: error.name,
-				message: err.message,
+				name: _error.name,
+				message: error.message,
 				stack: error.stack?.split('\n').slice(0, 5)
 			});
 		}

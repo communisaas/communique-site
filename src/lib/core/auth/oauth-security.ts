@@ -71,7 +71,7 @@ export async function validateOAuthSession(request: Request): Promise<SessionVal
 			user_email: session.user.email,
 			session_expires: session.expiresAt
 		};
-	} catch {
+	} catch (error) {
 		return { valid: false, error: 'Session validation failed' };
 	}
 }
@@ -125,18 +125,19 @@ export async function checkAnalyticsPermission(
 				// Allow all logged-in users
 				return { allowed: true };
 
-			case 'create-test-data':
+			case 'create-test-data': {
 				// Check if user is developer/admin (has many templates)
 				const isDeveloper = user.templates.length > 5;
 				return {
 					allowed: isDeveloper,
 					reason: isDeveloper ? undefined : 'Admin access required'
 				};
+			}
 
 			default:
 				return { allowed: false, reason: 'Unknown endpoint' };
 		}
-	} catch {
+	} catch (error) {
 		return { allowed: false, reason: 'Permission check failed' };
 	}
 }
@@ -277,7 +278,7 @@ export async function logAnalyticsUsage(
 		//     timestamp: new Date()
 		//   }
 		// });
-	} catch {
+	} catch (error) {
 		/* Ignore analytics logging errors - function is currently a placeholder */
 	}
 }

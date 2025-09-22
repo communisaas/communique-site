@@ -9,7 +9,7 @@
 		rules?: ValidationRule;
 		disabled?: boolean;
 		serverError?: string;
-		onValidation?: (isValid: boolean, error?: string) => void;
+		onValidation?: (isValid: boolean, _error?: string) => void;
 		rows?: number; // For textarea
 		class?: string;
 		style?: string;

@@ -42,7 +42,7 @@
 		(() => {
 			try {
 				return $page.url?.href ?? '';
-			} catch {
+			} catch (error) {
 				return '';
 			}
 		})()
@@ -141,7 +141,7 @@
 				// Open TemplateModal using component method for consistency
 				templateModal?.open(template, data.user);
 			}
-		} catch {
+		} catch (error) {
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
 			modalActions.closeModal('address-modal');

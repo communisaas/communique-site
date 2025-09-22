@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { templateStore } from '$lib/stores/templates.svelte';
 	import Hero from '$lib/components/landing/hero/Hero.svelte';
-	import ActivityFeed from '$lib/components/landing/activity/ActivityFeed.svelte';
+	import _ActivityFeed from '$lib/components/landing/activity/ActivityFeed.svelte';
 	import ChannelExplainer from '$lib/components/landing/channel/ChannelExplainer.svelte';
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
@@ -12,7 +12,6 @@
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import UnifiedProgressiveFormModal from '$lib/components/modals/UnifiedProgressiveFormModal.svelte';
 	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
-	import { resolveTemplate } from '$lib/utils/templateResolver';
 	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
@@ -21,7 +20,7 @@
 	import type { Template, TemplateCreationContext } from '$lib/types/template';
 	import type { PageData } from './$types';
 	import { coordinated } from '$lib/utils/timerCoordinator';
-	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
+	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import type { ModalComponent } from '$lib/types/component-props';
 
@@ -49,7 +48,6 @@
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
 	let userInitiatedSelection = $state(false); // Track if selection was user-initiated
-	let initialLoadComplete = $state(false); // Track initial load completion
 
 	// Handle OAuth return for template creation and URL parameter initialization
 	onMount(() => {
@@ -65,10 +63,10 @@
 						.then(() => {
 							sessionStorage.removeItem('pending_template_save');
 						})
-						.catch((error) => {
+						.catch((_error) => {
 							// Template save failed - user can retry later
 						});
-				} catch {
+				} catch (error) {
 					// Invalid pending template data - ignore
 				}
 			}
@@ -115,15 +113,6 @@
 			);
 		}
 
-		// Mark initial load as complete after a short delay
-		coordinated.setTimeout(
-			() => {
-				initialLoadComplete = true;
-			},
-			100,
-			'dom',
-			componentId
-		);
 	});
 
 	// Enable smooth page transitions using View Transitions API
@@ -456,7 +445,7 @@
 							showTemplateSuccess = true;
 						} catch (_error) {
 							// Template save failed - user can retry
-							console.error('Failed to save template:', error);
+							console.error("Error occurred:", _error);
 							// You could add a toast notification here
 						}
 					} else {

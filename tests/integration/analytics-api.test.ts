@@ -123,7 +123,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200);
 
 			const data = await response.json();
@@ -222,7 +222,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			await POST(createMockRequestEvent(request, '/api/analytics/events'));
 
 			const createdEvents = mockDb.analytics_event.createMany.mock.calls[0][0].data;
 
@@ -275,7 +275,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200);
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
@@ -324,7 +324,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			await POST(createMockRequestEvent(request, '/api/analytics/events'));
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
 
@@ -335,7 +335,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 
 		it('should handle circular references and problematic objects safely', async () => {
 			// Create objects that would cause JSON.stringify to fail
-			const circularObj: any = { name: 'circular' };
+			const circularObj: unknown = { name: 'circular' };
 			circularObj.self = circularObj;
 
 			const eventBatch = {
@@ -360,7 +360,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200);
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
@@ -427,7 +427,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				method: 'GET'
 			});
 
-			const response = await GET(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await GET(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200);
 
 			const data = await response.json();
@@ -457,7 +457,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				method: 'GET'
 			});
 
-			const response = await GET(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await GET(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(404);
 
 			const data = await response.json();
@@ -483,7 +483,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(500);
 
 			const data = await response.json();
@@ -508,7 +508,7 @@ describe('Analytics API Integration Tests - Consolidated Schema', () => {
 					body: invalidRequest
 				});
 
-				const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+				const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 				expect(response.status).toBe(400);
 
 				const data = await response.json();

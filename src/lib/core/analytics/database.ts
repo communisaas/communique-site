@@ -88,8 +88,8 @@ class DatabaseAnalytics {
 					}
 				}
 			});
-		} catch (_error) {
-			console.error('Failed to initialize analytics session:', _error);
+		} catch (error) {
+			console.error('Failed to initialize analytics session');
 		}
 	}
 
@@ -193,10 +193,10 @@ class DatabaseAnalytics {
 				this.eventQueue.unshift(...events);
 				console.warn('Failed to flush analytics events:', response.status);
 			}
-		} catch (_error) {
+		} catch (error) {
 			// Put events back in queue for retry
 			this.eventQueue.unshift(...events);
-			console.error('Failed to flush analytics events:', _error);
+			console.error('Failed to flush analytics events');
 		}
 	}
 

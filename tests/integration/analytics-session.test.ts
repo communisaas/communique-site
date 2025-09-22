@@ -239,7 +239,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 				body: JSON.stringify(minimalSessionData)
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200);
 
 			// Should create session even without UTM data

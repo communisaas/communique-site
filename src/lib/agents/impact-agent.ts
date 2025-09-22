@@ -119,7 +119,7 @@ export class ImpactAgent extends BaseAgent {
 				this.generateImpactReasoning(assessment, outcomes),
 				{ templateId: context.templateId, impactDetected: impactScore > 0 }
 			);
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return this.createDecision(
 				{ templateId: context.templateId, impactScore: 0, confidenceLevel: 'low' },

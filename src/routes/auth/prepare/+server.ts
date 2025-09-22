@@ -17,7 +17,7 @@ export const POST: RequestHandler = async ({ request, cookies }) => {
 		});
 
 		return json({ ok: true });
-	} catch {
+	} catch (error) {
 		return json({ ok: false }, { status: 400 });
 	}
 };

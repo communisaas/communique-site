@@ -53,9 +53,9 @@ class ZipDistrictLookupService {
 
 			this.isLoaded = true;
 			console.log(`Loaded ${this.lookupTable.size} ZIP codes with district mappings`);
-		} catch (_error) {
-			console.error('Error occurred:', _error);
-			throw _error;
+		} catch (error) {
+			console.error('Error occurred:', error);
+			throw error;
 		}
 	}
 

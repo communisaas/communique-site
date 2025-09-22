@@ -166,13 +166,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			}
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'Challenge verification failed',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

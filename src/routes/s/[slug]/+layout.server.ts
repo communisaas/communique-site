@@ -4,7 +4,7 @@ import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templ
 import type { LayoutServerLoad } from './$types';
 import { detectCountryFromHeaders, resolveChannel } from '$lib/services/channelResolver';
 
-export const load: LayoutServerLoad = async ({ params, locals, request }) => {
+export const load: LayoutServerLoad = async ({ params, locals: _locals, request }) => {
 	const { slug } = params;
 
 	// Look up template by slug

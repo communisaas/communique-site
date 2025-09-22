@@ -301,7 +301,7 @@ export class TestMonitor {
 		return errorMessage
 			.replace(/\d+/g, 'N') // Replace numbers with N
 			.replace(/['"`][^'"`]*['"`]/g, 'STRING') // Replace strings
-			.replace(/\/[^\/\s]+/g, '/PATH') // Replace paths
+			.replace(/\/[^/\s]+/g, '/PATH') // Replace paths
 			.substring(0, 100); // Limit length
 	}
 

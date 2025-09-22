@@ -64,7 +64,7 @@
 				analysisState = 'ready';
 			}
 		} catch (_error) {
-			console.error('Analysis failed:', error);
+			console.error("Error occurred:", _error);
 			analysisState = 'ready';
 		}
 	}

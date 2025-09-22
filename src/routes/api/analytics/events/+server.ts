@@ -8,7 +8,7 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { db } from '$lib/core/db';
-import type { AnalyticsEvent, AnalyticsSession } from '$lib/types/analytics';
+import type { AnalyticsEvent as _AnalyticsEvent } from '$lib/types/analytics';
 
 // Incoming event structure from client (flexible)
 interface ClientAnalyticsEvent {
@@ -176,8 +176,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 						} else {
 							cleanedProperties[key] = value;
 						}
-					} catch (err) {
-						console.warn(`Could not analyze template`,err);
+					} catch (error) {
+						console.warn(`Could not analyze template`, error);
 						cleanedProperties[key] = '[Serialization Error]';
 					}
 				}
@@ -220,13 +220,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		// Batch insert events
 		if (eventsToCreate.length > 0) {
 			await db.analytics_event.createMany({
-				data: eventsToCreate as any, // TODO: Fix Prisma types for analytics_event
+				data: eventsToCreate,
 				skipDuplicates: true
 			});
 		}
 
 		// Update session end time and check for conversions
-		const hasConversion = events.some(
+		const _hasConversion = events.some(
 			(e) => e.event_name === 'template_used' || e.event_name === 'auth_completed'
 		);
 
@@ -238,7 +238,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			events_processed: events.length,
 			session_id: session_data.session_id
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		return json(
@@ -303,7 +303,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			})),
 			events_count: analyticsEvents.length
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		return json(

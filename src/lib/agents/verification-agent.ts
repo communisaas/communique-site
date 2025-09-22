@@ -116,7 +116,7 @@ export class VerificationAgent extends BaseAgent {
 					verificationLevel
 				}
 			);
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return this.createDecision(
 				{

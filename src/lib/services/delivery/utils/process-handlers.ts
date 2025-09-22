@@ -21,11 +21,11 @@ export function setupProcessHandlers(): void {
 
 	// Handle uncaught exceptions in production
 	if (isProduction()) {
-		process.on('uncaughtException', (error) => {
+		process.on('uncaughtException', (_error) => {
 			console.error('Error occurred');
 
 			// Log to monitoring service
-			logToMonitoring('uncaughtException', error);
+			logToMonitoring('uncaughtException', _error);
 
 			// Exit gracefully
 			process.exit(1);
@@ -56,7 +56,7 @@ export function setupProcessHandlers(): void {
 async function gracefulShutdown(signal: string): Promise<void> {
 	console.log(`🛑 Graceful shutdown initiated by ${signal}`);
 
-	const config = getConfig();
+	const _config = getConfig();
 	const shutdownTimeout = 5000; // 5 seconds
 
 	const shutdownPromise = new Promise<void>((resolve) => {
@@ -72,7 +72,7 @@ async function gracefulShutdown(signal: string): Promise<void> {
 				console.log('✅ Cleanup completed');
 				resolve();
 			})
-			.catch((error) => {
+			.catch((_error) => {
 				clearTimeout(timer);
 				console.error('Error occurred');
 				resolve();
@@ -133,7 +133,7 @@ async function notifyServices(): Promise<void> {
 
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		console.log('✅ Services notified');
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 	}
 }

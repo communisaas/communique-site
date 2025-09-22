@@ -89,13 +89,15 @@ export const POST: RequestHandler = async ({ request }) => {
 					user_id: userId,
 					action_type: 'reputation_change',
 					action_subtype: 'agent_update',
-					audit_data: JSON.parse(JSON.stringify({
-						action_type: actionType,
-						quality_score: qualityScore,
-						user_address: userAddress,
-						reputation_changes: changes,
-						agent_decision: decision
-					})),
+					audit_data: JSON.parse(
+						JSON.stringify({
+							action_type: actionType,
+							quality_score: qualityScore,
+							user_address: userAddress,
+							reputation_changes: changes,
+							agent_decision: decision
+						})
+					),
 					score_before: currentReputation?.total || 50,
 					score_after: newReputation,
 					change_amount: changes.total || 0,
@@ -111,12 +113,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			...result
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				error: 'Reputation update failed',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

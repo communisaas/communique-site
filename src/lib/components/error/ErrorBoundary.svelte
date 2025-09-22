@@ -56,19 +56,19 @@ Catches and handles component failures gracefully
 		const originalUnhandledRejection = window.onunhandledrejection;
 
 		// Capture JavaScript errors
-		window.onerror = (message, source, lineno, colno, error) => {
-			if (error && !hasError) {
-				handleError(error);
+		window.onerror = (message, source, lineno, colno, _error) => {
+			if (_error && !hasError) {
+				handleError(_error);
 			}
-			return originalError?.call(window, message, source, lineno, colno, error) ?? false;
+			return originalError?.call(window, message, source, lineno, colno, _error) ?? false;
 		};
 
 		// Capture unhandled promise rejections
 		window.onunhandledrejection = (_event) => {
 			if (!hasError) {
-				const error =
+				const errorValue =
 					_event.reason instanceof Error ? _event.reason : new Error(String(_event.reason));
-				handleError(error);
+				handleError(errorValue);
 			}
 			return originalUnhandledRejection?.call(window, _event);
 		};
@@ -81,8 +81,8 @@ Catches and handles component failures gracefully
 
 	function handleError(error: Error) {
 		const info: ErrorInfo = {
-			message: error.message || 'Unknown error occurred',
-			stack: error.stack,
+			message: _error.message || 'Unknown error occurred',
+			stack: _error.stack,
 			timestamp: Date.now(),
 			userAgent: navigator.userAgent,
 			url: window.location.href
@@ -93,7 +93,7 @@ Catches and handles component failures gracefully
 
 		// Log to console in development
 		if (enableLogging) {
-			console.error('ErrorBoundary caught error:', error);
+			console.error("Error occurred:", error);
 		}
 
 		// Report to analytics/monitoring
@@ -127,7 +127,7 @@ Catches and handles component failures gracefully
 				},
 				{ skipErrorLogging: true }
 			);
-		} catch {
+		} catch (error) {
 			// Silent fail - don't create error loops
 		}
 	}

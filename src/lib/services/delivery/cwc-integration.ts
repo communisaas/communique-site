@@ -57,8 +57,13 @@ class CWCClient {
 				messageId: `CWC_MSG_${Date.now()}`,
 				response: response.data
 			};
-		} catch {
-			const axiosError = error as ErrorWithCode & { response?: { data?: unknown } };
+		} catch (error) {
+			const axiosError = error as ErrorWithCode & { 
+				response?: { 
+					data?: { message?: string }; 
+					status?: number; 
+				} 
+			};
 			console.error(
 				'CWC API submission failed:',
 				axiosError.response?.data || (error ? 'Unknown error' : 'Unknown error')
@@ -67,7 +72,7 @@ class CWCClient {
 			return {
 				success: false,
 				error: axiosError.response?.data?.message || axiosError.message,
-				messageId: messageData.messageId,
+				messageId: `ERROR_${messageData.templateId}_${Date.now()}`,
 				statusCode: axiosError.response?.status
 			};
 		}
@@ -83,16 +88,16 @@ class CWCClient {
 			personalConnection?: string;
 		}
 	) {
-		const { templateId, userId, subject, text, personalConnection, userProfile, recipientOffice } =
+		const { templateId, userId, subject, body, personalConnection, userProfile, recipientOffice } =
 			messageData;
 
 		// Generate unique message ID
 		const cwcMessageId = `DELIVERY_${templateId}_${userId}_${Date.now()}`;
 
 		// Combine personal connection with template content
-		let messageText = text;
+		let messageText = body;
 		if (personalConnection) {
-			messageText = `${personalConnection}\n\n---\n\n${text}`;
+			messageText = `${personalConnection}\n\n---\n\n${body}`;
 		}
 
 		const xml = `<?xml version="1.0" encoding="UTF-8"?>
@@ -110,10 +115,9 @@ class CWCClient {
 		<Newsletter>N</Newsletter>
 	</Recipient>
 	<Constituent>
-		<FirstName>${this.escapeXML(userProfile?.firstName || '')}</FirstName>
-		<LastName>${this.escapeXML(userProfile?.lastName || '')}</LastName>
-		<Address >${this.escapeXML(userProfile?.address1 || '')}</Address >
-		${userProfile?.address2 ? `<Address >${this.escapeXML(userProfile.address2)}</Address >` : ''}
+		<FirstName>${this.escapeXML(userProfile?.name?.split(' ')[0] || '')}</FirstName>
+		<LastName>${this.escapeXML(userProfile?.name?.split(' ').slice(1).join(' ') || '')}</LastName>
+		<Address >${this.escapeXML(userProfile?.street || '')}</Address >
 		<City>${this.escapeXML(userProfile?.city || '')}</City>
 		<StateAbbreviation>${this.escapeXML(userProfile?.state || '')}</StateAbbreviation>
 		<Zip>${this.escapeXML(userProfile?.zip || '')}</Zip>
@@ -162,7 +166,7 @@ async function fetchUserProfile(userId: string): Promise<UserProfileData | null>
 		});
 
 		return response.data.user;
-	} catch {
+	} catch (error) {
 		const errorMessage = error ? 'Unknown error' : 'Unknown error';
 		console.error('Failed to fetch user profile:', errorMessage);
 		return null;
@@ -183,7 +187,7 @@ async function fetchTemplate(templateId: string): Promise<TemplateData | null> {
 		});
 
 		return response.data.template;
-	} catch {
+	} catch (error) {
 		const errorMessage = error ? 'Unknown error' : 'Unknown error';
 		console.error('Failed to fetch template:', errorMessage);
 		return null;
@@ -202,7 +206,7 @@ async function notifyDeliveryResult(templateId: string, userId: string, result: 
 				userId,
 				deliveryMethod: 'certified',
 				success: result.success,
-				submissionId: result.submissionId,
+				submissionId: result.messageId,
 				error: result.error,
 				timestamp: new Date().toISOString()
 			},
@@ -216,7 +220,7 @@ async function notifyDeliveryResult(templateId: string, userId: string, result: 
 		);
 
 		console.log('Delivery result notification sent successfully');
-	} catch {
+	} catch (error) {
 		const errorMessage = error ? 'Unknown error' : 'Unknown error';
 		console.error('Failed to notify delivery result:', errorMessage);
 	}

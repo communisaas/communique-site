@@ -5,7 +5,7 @@
 
 import * as nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
-import config from './config';
+import _config from './config';
 import { detectPotentialUser, fetchTemplateBySlug } from './user-resolution';
 
 // Create reusable transporter
@@ -51,7 +51,7 @@ async function handleUnmatchedSender(
 			// No user found - offer signup
 			await sendNewUserBounce(senderEmail, templateSlug);
 		}
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 		// Send generic bounce as fallback
 		await sendGenericBounce(senderEmail, templateSlug);
@@ -249,7 +249,7 @@ Already have an account? You may have signed up with a different email address.
 /**
  * Send bounce for unverified secondary email
  */
-async function sendVerificationRequiredBounce(senderEmail: string, templateSlug: string) {
+async function sendVerificationRequiredBounce(senderEmail: string, _templateSlug: string) {
 	const verifyUrl = `https://communique.app/settings/emails`;
 
 	const mailOptions = {

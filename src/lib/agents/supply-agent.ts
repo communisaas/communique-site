@@ -110,7 +110,7 @@ export class SupplyAgent extends BaseAgent {
 				this.generateReasoning(rewardParams, networkData, context),
 				{ actionType: context.actionType, networkActivity: networkData.dailyActiveUsers }
 			);
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			// Fallback to conservative values
 			const fallbackParams: RewardParameters = {

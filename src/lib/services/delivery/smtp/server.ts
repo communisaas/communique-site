@@ -3,17 +3,21 @@
  * Receives mailto: messages and routes certified delivery through CWC API
  */
 
-import { SMTPServer, type SMTPServerOptions, type SMTPServerSession as _SMTPServerSession } from 'smtp-server';
-import { ParsedMail as _ParsedMail } from 'mailparser';
+import {
+	SMTPServer,
+	type SMTPServerOptions,
+	type SMTPServerSession as _SMTPServerSession
+} from 'smtp-server';
+import { simpleParser, type ParsedMail as _ParsedMail } from 'mailparser';
 import { Readable } from 'stream';
 import type {
-	CertifiedDeliveryMessage,
+	CertifiedDeliveryMessage as _CertifiedDeliveryMessage,
 	ParsedIncomingMessage,
 	UserProfile,
 	TemplateData,
 	CWCSubmissionData,
-	CWCSubmissionResult,
-	SMTPError
+	CWCSubmissionResult as _CWCSubmissionResult,
+	SMTPError as _SMTPError
 } from '../types/index.js';
 import { parseIncomingMessage, validateMessage as _validateMessage } from './parser';
 import { CWCClient } from '../integrations/cwc.js';
@@ -104,7 +108,7 @@ export class DeliveryPlatformSMTP {
 			.then(() => {
 				callback();
 			})
-			.catch((error) => {
+			.catch((_error) => {
 				console.error('Error occurred');
 				callback(new Error('Message processing failed'));
 			});
@@ -162,7 +166,7 @@ export class DeliveryPlatformSMTP {
 
 			// Process certified delivery
 			await this.processCertifiedDelivery(parsedMessage, userResult.user, templateData);
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			// Don't throw - we don't want to reject the SMTP connection
 			// Log the error and continue
@@ -273,7 +277,7 @@ export class DeliveryPlatformSMTP {
 				cwcResult: result,
 				timestamp: new Date()
 			});
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 
 			// Notify of the failure
@@ -281,7 +285,7 @@ export class DeliveryPlatformSMTP {
 				templateId: templateData.id,
 				userId: userProfile.id,
 				deliveryStatus: 'failed',
-				error: error ? 'Unknown error' : 'Unknown error',
+				error: 'Unknown error',
 				timestamp: new Date()
 			});
 		}

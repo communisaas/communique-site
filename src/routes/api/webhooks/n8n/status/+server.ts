@@ -110,7 +110,7 @@ function broadcastStatusUpdate(submissionId: string, statusUpdate: unknown) {
 			if (ws.readyState === WebSocket.OPEN) {
 				try {
 					ws.send(message);
-				} catch (err) {
+				} catch (error) {
 					console.error('Error occurred');
 					connections.delete(ws);
 				}
@@ -163,7 +163,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		return json(response);
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		const response: ApiResponse = {

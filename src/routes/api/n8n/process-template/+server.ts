@@ -9,7 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { agentCoordinator, moderationConsensus } from '$lib/agents';
 import { db } from '$lib/core/db';
-import type { Prisma } from '@prisma/client';
+import type { Prisma as _Prisma } from '@prisma/client';
 import {
 	extractSupplyDecision,
 	extractMarketDecision,
@@ -272,13 +272,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		return json(response);
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'Processing failed',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

@@ -9,7 +9,7 @@ import type { Prisma } from '@prisma/client';
  * Test-safe access to any JsonValue field with fallback
  * This allows tests to access nested properties without TypeScript errors
  */
-export function testJsonAccess<T = any>(
+export function testJsonAccess<T = unknown>(
 	jsonValue: Prisma.JsonValue,
 	path: string,
 	defaultValue?: T
@@ -24,7 +24,7 @@ export function testJsonAccess<T = any>(
 
 		for (const key of keys) {
 			if (current && typeof current === 'object' && key in current) {
-				current = current[key];
+				current = (current as Record<string, unknown>)[key];
 			} else {
 				return defaultValue;
 			}
@@ -116,7 +116,7 @@ export function testMultipliersAccess(jsonValue: Prisma.JsonValue) {
 /**
  * Helper to create a mock result object that safely exposes JsonValue fields for testing
  */
-export function createTestSafeObject<T extends Record<string, any>>(obj: T): T {
+export function createTestSafeObject<T extends Record<string, unknown>>(obj: T): T {
 	return new Proxy(obj, {
 		get: (target, prop) => {
 			const value = target[prop as keyof T];
@@ -147,7 +147,10 @@ export function createTestSafeObject<T extends Record<string, any>>(obj: T): T {
  * Alternative approach: Create type-safe accessors that work with the test patterns
  */
 export function safeExperimentConfig(experiment: unknown) {
-	const config = (experiment && typeof experiment === 'object' && experiment !== null && 'config' in experiment) ? (experiment as any).config || {} : {};
+	const config =
+		experiment && typeof experiment === 'object' && experiment !== null && 'config' in experiment
+			? (experiment as Record<string, unknown>).config || {}
+			: {};
 	return {
 		steps: config.steps || [],
 		targeting_rules: config.targeting_rules || {},
@@ -161,7 +164,13 @@ export function safeExperimentConfig(experiment: unknown) {
 }
 
 export function safeExperimentMetricsCache(experiment: unknown) {
-	const cache = (experiment && typeof experiment === 'object' && experiment !== null && 'metrics_cache' in experiment) ? (experiment as any).metrics_cache || {} : {};
+	const cache =
+		experiment &&
+		typeof experiment === 'object' &&
+		experiment !== null &&
+		'metrics_cache' in experiment
+			? (experiment as Record<string, unknown>).metrics_cache || {}
+			: {};
 	return {
 		participants_count: cache.participants_count || 0,
 		conversion_rate: cache.conversion_rate || 0,
@@ -180,11 +189,16 @@ export function safeExperimentMetricsCache(experiment: unknown) {
 }
 
 export function safeEventProperties(event: unknown) {
-	return (event && typeof event === 'object' && event !== null && 'properties' in event) ? (event as any).properties || {} : {};
+	return event && typeof event === 'object' && event !== null && 'properties' in event
+		? (event as Record<string, unknown>).properties || {}
+		: {};
 }
 
 export function safeSessionMetrics(session: unknown) {
-	const metrics = (session && typeof session === 'object' && session !== null && 'session_metrics' in session) ? (session as any).session_metrics || {} : {};
+	const metrics =
+		session && typeof session === 'object' && session !== null && 'session_metrics' in session
+			? (session as Record<string, unknown>).session_metrics || {}
+			: {};
 	return {
 		events_count: metrics.events_count || 0,
 		page_views: metrics.page_views || 0,
@@ -197,7 +211,10 @@ export function safeSessionMetrics(session: unknown) {
 }
 
 export function safeDeviceData(session: unknown) {
-	const data = (session && typeof session === 'object' && session !== null && 'device_data' in session) ? (session as any).device_data || {} : {};
+	const data =
+		session && typeof session === 'object' && session !== null && 'device_data' in session
+			? (session as Record<string, unknown>).device_data || {}
+			: {};
 	return {
 		device_type: data.device_type || 'desktop',
 		viewport: data.viewport || { width: 1920, height: 1080 },
@@ -207,7 +224,10 @@ export function safeDeviceData(session: unknown) {
 }
 
 export function safeComputedMetrics(event: unknown) {
-	const metrics = (event && typeof event === 'object' && event !== null && 'computed_metrics' in event) ? (event as any).computed_metrics || {} : {};
+	const metrics =
+		event && typeof event === 'object' && event !== null && 'computed_metrics' in event
+			? (event as Record<string, unknown>).computed_metrics || {}
+			: {};
 	return {
 		engagement_score: metrics.engagement_score || 0,
 		anomaly_detection: metrics.anomaly_detection || {},

@@ -4,11 +4,11 @@ import {
 	storeCascadeAnalysis
 } from '$lib/core/server/percolation-engine';
 import { db } from '$lib/core/db';
-import type { PercolationData } from '$lib/types/analytics';
+import type { PercolationData as _PercolationData } from '$lib/types/analytics';
 import type { RequestHandler } from './$types';
 import type { PercolationAnalysis } from '$lib/types/any-replacements';
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url: _url, locals }) => {
 	try {
 		// Run percolation-style connectivity analysis on the civic information network
 		const analysis = await analyzeCivicInformationCascades();
@@ -34,7 +34,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 						computed_metrics: {}
 					}
 				});
-			} catch (err) {
+			} catch (error) {
 				// Ignore analytics errors
 			}
 		}
@@ -51,14 +51,14 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 				recommendation: getRecommendation(analysis)
 			}
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to analyze information cascades',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
@@ -77,7 +77,7 @@ function getRecommendation(analysis: PercolationAnalysis): string {
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { action, parameters } = await request.json();
+		const { action, parameters: _parameters } = await request.json();
 
 		if (action === 'refresh') {
 			// Force refresh of network analysis
@@ -98,7 +98,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			{ status: 400 }
 		);
-	} catch (err) {
+	} catch (error) {
 		return json(
 			{
 				success: false,

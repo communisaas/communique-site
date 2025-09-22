@@ -104,7 +104,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 					is_current: true
 				}))
 			];
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return [];
 		}
@@ -115,14 +115,32 @@ export class USCongressAdapter extends LegislativeAdapter {
 
 		try {
 			const userReps = {
-				house: { bioguide_id: _representative.bioguide_id, name: _representative.name },
-				senate: [{ bioguide_id: _representative.bioguide_id, name: _representative.name }],
-				district: { number: '01', state: 'US' } // Default values as district info not available on Representative
+				house: {
+					bioguide_id: _representative.bioguide_id,
+					name: _representative.name,
+					party: _representative.party || 'Unknown',
+					state: 'US', // Default since state not available on Representative
+					district: '01', // Default since district not available on Representative
+					chamber: 'house' as const,
+					office_code: _representative.external_ids?.cwc_office_code || ''
+				},
+				senate: [
+					{
+						bioguide_id: _representative.bioguide_id,
+						name: _representative.name,
+						party: _representative.party || 'Unknown',
+						state: 'US', // Default since state not available on Representative
+						district: '00',
+						chamber: 'senate' as const,
+						office_code: _representative.external_ids?.cwc_office_code || ''
+					}
+				],
+				district: { district: '01', state: 'US' } // Default values as district info not available on Representative
 			};
 
 			const validation = await addressLookupService.validateReps(userReps);
 			return validation.valid;
-		} catch {
+		} catch (error) {
 			return false;
 		}
 	}
@@ -166,14 +184,30 @@ export class USCongressAdapter extends LegislativeAdapter {
 			if (congressionalOffice.chamber === 'senate') {
 				submissionResult = await cwcClient.submitToSenate(
 					templateForSubmission,
-					request.user,
+					{
+						id: request.user.id,
+						name: request.user.name || 'Anonymous User',
+						email: request.user.email,
+						street: request.user.address?.street,
+						city: request.user.address?.city,
+						state: request.user.address?.state,
+						zip: request.user.address?.postal_code
+					},
 					congressionalOffice,
 					request.personalized_message
 				);
 			} else {
 				submissionResult = await cwcClient.submitToHouse(
 					templateForSubmission,
-					request.user,
+					{
+						id: request.user.id,
+						name: request.user.name || 'Anonymous User',
+						email: request.user.email,
+						street: request.user.address?.street,
+						city: request.user.address?.city,
+						state: request.user.address?.state,
+						zip: request.user.address?.postal_code
+					},
 					congressionalOffice,
 					request.personalized_message
 				);
@@ -192,7 +226,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 		} catch (error) {
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'CWC submission failed',
+				error: 'CWC submission failed',
 				metadata: {
 					provider: 'CWC',
 					_representative: request._representative.name

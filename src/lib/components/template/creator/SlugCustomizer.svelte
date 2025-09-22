@@ -94,7 +94,7 @@
 				// Clear suggestions if slug is available
 				suggestions = [];
 			}
-		} catch {
+		} catch (error) {
 			/* Ignore slug check errors - slug availability remains unknown */
 		} finally {
 			__isChecking = false;
@@ -149,7 +149,7 @@
 			if (!data.available) {
 				suggestions = data.suggestions || [];
 			}
-		} catch {
+		} catch (error) {
 			// Fallback to client-side generation if server fails
 			suggestions = generateSuggestions(slug);
 		}

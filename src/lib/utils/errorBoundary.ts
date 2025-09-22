@@ -75,26 +75,30 @@ class ErrorBoundaryManager {
 
 		// Global error handler
 		window.addEventListener('error', (event) => {
-			const error = this.createErrorReport(event.error || new Error(event.message), 'globalerror', {
-				source: event.filename,
-				line: event.lineno,
-				column: event.colno
-			});
+			const _error = this.createErrorReport(
+				event.error || new Error(event.message),
+				'globalerror',
+				{
+					source: event.filename,
+					line: event.lineno,
+					column: event.colno
+				}
+			);
 
 			if (enableLogging) {
 				console.error('Error occurred');
 			}
 
 			if (enableReporting) {
-				this.reportError(error);
+				this.reportError(_error);
 			}
 
-			onError?.(error);
+			onError?.(_error);
 		});
 
 		// Unhandled promise rejections
 		window.addEventListener('unhandledrejection', (event) => {
-			const error = this.createErrorReport(
+			const _error = this.createErrorReport(
 				event.reason instanceof Error ? event.reason : new Error(String(event.reason)),
 				'unhandled_promise',
 				{ reason: event.reason }
@@ -105,10 +109,10 @@ class ErrorBoundaryManager {
 			}
 
 			if (enableReporting) {
-				this.reportError(error);
+				this.reportError(_error);
 			}
 
-			onError?.(error);
+			onError?.(_error);
 		});
 
 		// Report queued errors periodically
@@ -182,8 +186,8 @@ class ErrorBoundaryManager {
 			if (this.reportQueue.length >= 10) {
 				this.flushReportQueue();
 			}
-		} catch (reportingError) {
-			console.error('Error while reporting error:', reportingError);
+		} catch (error) {
+			console.error('Error while reporting error');
 		}
 	}
 
@@ -207,7 +211,7 @@ class ErrorBoundaryManager {
 					timeout: 5000
 				}
 			);
-		} catch (reportingError) {
+		} catch (error) {
 			// Don't create error loops - just put errors back in queue
 			this.reportQueue.unshift(...errors);
 		} finally {
@@ -251,22 +255,22 @@ export function withErrorBoundary<TArgs extends readonly unknown[], TReturn>(
 
 			// Handle async functions
 			if (result instanceof Promise) {
-				return result.catch((error) => {
-					const errorReport = errorBoundaryManager.createErrorReport(error, context);
+				return result.catch((_error) => {
+					const errorReport = errorBoundaryManager.createErrorReport(_error, context);
 
 					if (!options.silent) {
 						console.error('Error occurred');
 					}
 
 					errorBoundaryManager.reportError(errorReport);
-					options.onError?.(error);
+					options.onError?.(_error);
 
 					return options.fallback;
 				}) as TReturn;
 			}
 
 			return result;
-		} catch {
+		} catch (error) {
 			const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
 
 			if (!options.silent) {
@@ -303,7 +307,7 @@ export async function safeAsync<T>(
 	try {
 		const result = await operation();
 		return result;
-	} catch {
+	} catch (error) {
 		const errorReport = errorBoundaryManager.createErrorReport(error as Error, context);
 		errorBoundaryManager.reportError(errorReport);
 		console.error('Error occurred');

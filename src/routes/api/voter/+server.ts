@@ -57,15 +57,15 @@ export const POST: RequestHandler = async ({ request, url }) => {
 			default:
 				return json({ success: false, message: `Invalid action: ${action}` }, { status: 400 });
 		}
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
-		// Return specific err.message based on error type
+		// Return specific error.message based on error type
 		let statusCode = 500;
 		let message = 'Internal server error';
 
 		if (error instanceof Error) {
-			message = err.message;
+			message = error.message;
 
 			// Handle specific SvelteKit HttpError status codes - check different properties
 			if ('status' in error) {
@@ -167,8 +167,8 @@ async function handleCWCSubmission({
 	let impactDecision = null;
 	try {
 		impactDecision = await impactAgent.makeDecision(impactContext);
-	} catch (impactError) {
-		console.warn('Impact agent decision failed:', impactError);
+	} catch (error) {
+		console.warn('Impact agent decision failed');
 	}
 
 	// Record civic action with new blockchain-focused model
@@ -354,8 +354,8 @@ async function updateReputation({
 	let reputationDecision = null;
 	try {
 		reputationDecision = await reputationAgent.makeDecision(reputationContext);
-	} catch (reputationError) {
-		console.error('Reputation agent failed:', reputationError);
+	} catch (error) {
+		console.error('Reputation agent failed');
 
 		// Fallback to legacy reputation update
 		const user = await prisma.user.findUnique({
@@ -503,8 +503,8 @@ async function verifyIdentity({
 	let verificationDecision = null;
 	try {
 		verificationDecision = await verificationAgent.makeDecision(verificationContext);
-	} catch (verificationError) {
-		console.error('Verification agent failed:', verificationError);
+	} catch (error) {
+		console.error('Verification agent failed');
 		// Fallback to basic trust score logic
 		verificationDecision = {
 			decision: {

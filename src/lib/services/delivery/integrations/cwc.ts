@@ -28,9 +28,9 @@ export class CWCClient {
 					console.log(`[CWC] ${config.method?.toUpperCase()} ${config.url}`);
 					return config;
 				},
-				(error) => {
+				(_error) => {
 					console.error('Error occurred');
-					return Promise.reject(error);
+					return Promise.reject(_error);
 				}
 			);
 		}
@@ -86,7 +86,7 @@ export class CWCClient {
 			console.error('Error occurred');
 			return {
 				success: false,
-				error: error ? 'Unknown error' : 'Unknown error',
+				error: 'Unknown error',
 				timestamp: new Date()
 			};
 		}
@@ -114,7 +114,7 @@ export class CWCClient {
 			console.error('Error occurred');
 			return {
 				status: 'failed',
-				details: { error: error ? 'Unknown error' : 'Unknown error' }
+				details: { error: 'Unknown error' }
 			};
 		}
 	}

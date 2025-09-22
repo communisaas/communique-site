@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { SELF_XYZ_CONFIG, createUserConfig } from '$lib/core/server/selfxyz-config';
+import { SELF_XYZ_CONFIG as _SELF_XYZ_CONFIG, createUserConfig } from '$lib/core/server/selfxyz-config';
 import { verificationSessions, cleanupOldSessions } from '$lib/core/server/verification-sessions';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -60,14 +60,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			sessionId: userId,
 			config: appConfig
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		// Log detailed error for debugging
 		if (error instanceof Error) {
 			console.error('Initialization error details:', {
-				name: error.name,
-				message: err.message,
+				name: _error.name,
+				message: error.message,
 				stack: error.stack?.split('\n').slice(0, 3)
 			});
 		}

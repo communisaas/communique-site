@@ -128,7 +128,7 @@ export class OAuthCallbackHandler {
 
 			// Step 5: Create session and handle redirects
 			return await this.handleSessionAndRedirect(user, returnTo, config.provider, cookies);
-		} catch {
+		} catch (error) {
 			return this.handleError(error, config.provider);
 		}
 	}
@@ -366,8 +366,8 @@ export class OAuthCallbackHandler {
 		// Log detailed error information
 		console.error(`${provider.toUpperCase()} OAuth error:`, {
 			error: err,
-			message: err instanceof Error ? err.message : 'Unknown error',
-			stack: err instanceof Error ? err.stack : undefined,
+			message: error instanceof Error ? error.message : 'Unknown error',
+			stack: error instanceof Error ? error.stack : undefined,
 			env: {
 				hasClientId: !!process.env[`${provider.toUpperCase()}_CLIENT_ID`],
 				hasClientSecret: !!process.env[`${provider.toUpperCase()}_CLIENT_SECRET`],
@@ -380,7 +380,7 @@ export class OAuthCallbackHandler {
 		const errorMessage =
 			process.env.NODE_ENV === 'production'
 				? 'Authentication failed'
-				: `Authentication failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
+				: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
 
 		return error(500, errorMessage);
 	}

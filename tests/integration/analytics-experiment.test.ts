@@ -622,7 +622,9 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 
 			expect(result).toHaveLength(3);
 			expect(
-				result.find((r: any) => r.type === 'ab_test')?._avg?.['metrics_cache.conversion_rate']
+				result.find((r: Record<string, unknown>) => r.type === 'ab_test')?._avg?.[
+					'metrics_cache.conversion_rate'
+				]
 			).toBe(0.15);
 		});
 	});
@@ -642,10 +644,13 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 
 			// Should validate config before database operation
 			const isValidConfig = (config: unknown) => {
-				return config && typeof config === 'object' && config !== null && (
-					Array.isArray((config as any).steps) &&
-					typeof (config as any).targeting_rules === 'object' &&
-					Array.isArray((config as any).success_metrics)
+				return (
+					config &&
+					typeof config === 'object' &&
+					config !== null &&
+					Array.isArray((config as Record<string, unknown>).steps) &&
+					typeof (config as Record<string, unknown>).targeting_rules === 'object' &&
+					Array.isArray((config as Record<string, unknown>).success_metrics)
 				);
 			};
 

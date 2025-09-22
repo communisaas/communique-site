@@ -25,8 +25,8 @@ async function resolveUserByEmail(email: string) {
 		);
 
 		return response.data;
-	} catch {
-		console.error('Failed to resolve user by email:', error ? 'Unknown error' : 'Unknown error');
+	} catch (error) {
+		console.error('Failed to resolve user by email:', error instanceof Error ? error.message : 'Unknown error');
 		return { user: null, emailType: null };
 	}
 }
@@ -45,8 +45,8 @@ async function fetchUserById(userId: string) {
 		});
 
 		return response.data.user;
-	} catch {
-		console.error('Failed to fetch user by ID:', error ? 'Unknown error' : 'Unknown error');
+	} catch (error) {
+		console.error('Failed to fetch user by ID:', error instanceof Error ? error.message : 'Unknown error');
 		return null;
 	}
 }
@@ -66,8 +66,8 @@ async function fetchTemplateBySlug(slug: string) {
 		});
 
 		return response.data.template;
-	} catch {
-		console.error('Failed to fetch template by slug:', error ? 'Unknown error' : 'Unknown error');
+	} catch (error) {
+		console.error('Failed to fetch template by slug:', error instanceof Error ? error.message : 'Unknown error');
 		return null;
 	}
 }
@@ -177,8 +177,8 @@ async function notifyDeliveryResult(
 		);
 
 		console.log('Delivery result notification sent successfully');
-	} catch {
-		console.error('Failed to notify delivery result:', error ? 'Unknown error' : 'Unknown error');
+	} catch (error) {
+		console.error('Failed to notify delivery result:', error instanceof Error ? error.message : 'Unknown error');
 	}
 }
 

@@ -178,7 +178,7 @@ async function certifyEmailDelivery(params: {
 		});
 
 		return result;
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 		// Don't throw - certification failure shouldn't break delivery
 		return null;

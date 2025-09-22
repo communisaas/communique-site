@@ -84,10 +84,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		return json({ received: true });
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
-		if (error instanceof Response) {
+		if (_error instanceof Response) {
 			throw error;
 		}
 

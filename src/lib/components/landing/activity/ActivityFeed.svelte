@@ -29,7 +29,7 @@
 				})
 			});
 		} catch (_error) {
-			console.warn('Analytics tracking failed:', error);
+			console.warn('Analytics tracking failed:', _error);
 		}
 	}
 

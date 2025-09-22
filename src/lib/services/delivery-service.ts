@@ -3,7 +3,7 @@
  * Embedded SMTP service for congressional message delivery via CWC API
  */
 
-import { _spawn } from 'child_process';
+import { spawn as _spawn } from 'child_process';
 import { env } from '$env/dynamic/private';
 import _path from 'path';
 

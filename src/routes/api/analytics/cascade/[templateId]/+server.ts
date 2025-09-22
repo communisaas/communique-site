@@ -1,8 +1,6 @@
 import { json } from '@sveltejs/kit';
 import {
 	analyzeCascade,
-	calculateTemplateR0,
-	calculateActivationVelocity,
 	getTemplateActivationChain,
 	hasActivationData,
 	type CascadeMetrics
@@ -88,14 +86,14 @@ export const GET: RequestHandler = async ({ params }) => {
 			})),
 			recommendations: generateRecommendations(metrics, viralCoefficient)
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		return json(
 			{
 				success: false,
 				error: 'Failed to analyze template cascade',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

@@ -60,7 +60,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				representatives: representatives
 			}
 		};
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 		// Fallback to basic user data without representatives
 		return {

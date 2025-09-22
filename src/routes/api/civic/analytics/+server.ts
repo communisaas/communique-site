@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 		await forwardToExternalAnalytics(newEvent);
 
 		return json({ success: true });
-	} catch (err) {
+	} catch (error) {
 		return json({ error: 'Failed to track _event' }, { status: 500 });
 	}
 };
@@ -53,8 +53,8 @@ async function storeAnalyticsEvent(_event: Omit<AnalyticsEvent, 'id' | 'created_
 				template_id: _event.template_id,
 				funnel_step: _event.funnel_step,
 				experiment_id: _event.experiment_id,
-				properties: event.properties as any, // TODO: Fix Prisma JSON types
-				computed_metrics: _event.computed_metrics as any // TODO: Fix Prisma JSON types
+				properties: _event.properties as Prisma.JsonObject, // TODO: Fix Prisma JSON types
+				computed_metrics: _event.computed_metrics as Prisma.JsonObject // TODO: Fix Prisma JSON types
 			}
 		});
 
@@ -69,7 +69,7 @@ async function storeAnalyticsEvent(_event: Omit<AnalyticsEvent, 'id' | 'created_
 		}
 
 		return storedEvent;
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 	}
 }
@@ -113,8 +113,8 @@ async function updateSessionMetrics(
 				}
 			}
 		});
-	} catch (err) {
-		console.warn(`Could not analyze template`,err);
+	} catch (error) {
+		console.warn(`Could not analyze template`, err);
 	}
 }
 
@@ -155,8 +155,8 @@ async function updateTemplateMetrics(
 				data: { metrics: updatedMetrics }
 			});
 		}
-	} catch (err) {
-		console.warn(`Could not analyze template`,err);
+	} catch (error) {
+		console.warn(`Could not analyze template`, err);
 	}
 }
 

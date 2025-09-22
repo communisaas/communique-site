@@ -20,8 +20,8 @@
 					const actionData = JSON.parse(pendingAction);
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
-				} catch {
-					console.error('Failed to parse pending action:', error);
+				} catch (error) {
+					console.error('Failed to parse pending template action');
 				}
 			}
 
@@ -78,8 +78,8 @@
 				success = true;
 				toast.success('Address saved successfully!');
 			}
-		} catch {
-			console.error('Error saving address:', error);
+		} catch (error) {
+			console.error('Failed to save address to database');
 			const { toast } = await import('$lib/stores/toast.svelte');
 			toast.error('Failed to save address. Please try again.');
 			return; // Don't redirect on error

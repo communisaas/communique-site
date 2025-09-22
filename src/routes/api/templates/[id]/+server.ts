@@ -3,7 +3,7 @@ import { db } from '$lib/core/db';
 import { updateTemplateDistrictMetrics } from '$lib/core/server/district-metrics';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import type { RequestHandler } from './$types';
-import type { TemplateUpdateData } from '$lib/types/api';
+import type { TemplateUpdateData as _TemplateUpdateData } from '$lib/types/api';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -50,7 +50,7 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(formattedTemplate);
-	} catch (err) {
+	} catch (error) {
 		return error(500, 'Failed to fetch template');
 	}
 };
@@ -87,7 +87,7 @@ export const PUT: RequestHandler = async ({ params, request, locals }) => {
 		});
 
 		return json(updatedTemplate);
-	} catch (err) {
+	} catch (error) {
 		return error(500, 'Failed to update template');
 	}
 };
@@ -114,7 +114,7 @@ export const DELETE: RequestHandler = async ({ params, locals }) => {
 		});
 
 		return json({ success: true, id: templateId });
-	} catch (err) {
+	} catch (error) {
 		return error(500, 'Failed to delete template');
 	}
 };

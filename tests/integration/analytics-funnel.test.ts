@@ -284,7 +284,7 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(funnelEventBatch)
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200);
 
 			// Verify events stored with funnel step tracking
@@ -354,7 +354,7 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			await POST(createMockRequestEvent(request, '/api/analytics/events'));
 
 			// Verify session was upserted with funnel data
 			expect(mockDb.analytics_session.upsert).toHaveBeenCalledWith(
@@ -588,7 +588,7 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: JSON.stringify(eventBatch)
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200); // Should still process other valid events
 
 			const storedEvent = mockDb.analytics_event.createMany.mock.calls[0][0].data[0];
@@ -632,7 +632,7 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				body: outOfOrderEvents
 			});
 
-			const response = await POST(createMockRequestEvent(request, "/api/analytics/events"));
+			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));
 			expect(response.status).toBe(200);
 
 			// Should store all events with their timestamps preserved

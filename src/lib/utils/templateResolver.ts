@@ -279,8 +279,8 @@ export function resolveTemplate(
 	if (typeof template.recipient_config === 'string') {
 		try {
 			recipientConfig = JSON.parse(template.recipient_config);
-		} catch (_error) {
-			console.warn('Failed to parse recipient_config JSON:', _error);
+		} catch (error) {
+			console.warn('Failed to parse recipient_config JSON: Invalid JSON');
 			recipientConfig = undefined; // allow downstream defaulting
 		}
 	}
@@ -288,7 +288,7 @@ export function resolveTemplate(
 	let recipients: string[] = [];
 	try {
 		recipients = extractRecipientEmails(recipientConfig);
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 		recipients = [];
 	}

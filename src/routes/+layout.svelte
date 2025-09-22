@@ -29,8 +29,8 @@
 	});
 
 	// Handle template use from header
-	function handleTemplateUse(__event: { template: Template; requiresAuth: boolean }) {
-		const { template, requiresAuth } = event;
+	function handleTemplateUse(__event: { template: _Template; requiresAuth: boolean }) {
+		const { template, requiresAuth: _requiresAuth } = __event;
 
 		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 

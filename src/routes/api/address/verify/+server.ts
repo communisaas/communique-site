@@ -1,6 +1,5 @@
-import { json, error } from '@sveltejs/kit';
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { env } from '$env/dynamic/private';
 import { addressLookupService } from '$lib/core/congress/address-lookup';
 
 // Real address verification using Census Bureau Geocoding API (primary)
@@ -99,9 +98,9 @@ export const POST: RequestHandler = async ({ request }) => {
 					bioguideId: senator.bioguide_id
 				}))
 			];
-		} catch (_repError) {
-			console.error('Failed to get real representatives, using placeholders:', _repError);
-			console.error('Error details:', _repError instanceof Error ? _repError.stack : _repError);
+		} catch (error_repError) {
+			console.error('Failed to get real representatives, using placeholders:', error_repError);
+			console.error('Error details:', error_repError instanceof Error ? error_repError.stack : error_repError);
 			// Fallback to placeholders if Congress API fails
 			representatives = createRepresentativesFromDistrict(district, state);
 		}
@@ -115,8 +114,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			district,
 			message: 'Address  verified successfully'
 		});
-	} catch (_verifyError) {
-		console.error('Address  verification error:', _verifyError);
+	} catch (error_verifyError) {
+		console.error('Address  verification error:', error_verifyError);
 		return json(
 			{
 				verified: false,
@@ -151,7 +150,7 @@ function extractCongressionalDistrictFromCensus(
 
 		// Fallback to at-large
 		return `${state.toUpperCase()}-AL`;
-	} catch (_districtError) {
+	} catch (error) {
 		return `${state.toUpperCase()}-01`;
 	}
 }

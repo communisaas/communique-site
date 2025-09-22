@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { testOnRealData, runBasicSentimentTests } from '$lib/core/server/sentiment-basic';
+import { runBasicSentimentTests } from '$lib/core/server/sentiment-basic';
 
 export async function GET() {
 	try {
@@ -11,11 +11,11 @@ export async function GET() {
 			message: 'Sentiment analysis tests completed successfully',
 			note: 'Check server console for detailed results'
 		});
-	} catch (err) {
+	} catch (error) {
 		return json(
 			{
 				success: false,
-				error: err instanceof Error ? err.message : 'Unknown error'
+				error: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

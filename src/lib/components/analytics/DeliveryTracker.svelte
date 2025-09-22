@@ -203,13 +203,13 @@
 				});
 			}
 		} catch (_error) {
-			console.error('Retry failed:', error);
+			console.error("Error occurred:", _error);
 
 			// Track retry error
 			await trackAnalyticsEvent('delivery_retryerror', {
 				campaign_id: campaignId,
 				retry_source: 'dashboard',
-				error: error instanceof Error ? error.message : 'Unknown error'
+				error: _error instanceof Error ? _error.message : 'Unknown error'
 			});
 		}
 	}

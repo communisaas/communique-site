@@ -100,12 +100,12 @@ export const POST: RequestHandler = async ({ request }) => {
 				impact: impactDecision
 			}
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				error: 'Reward calculation failed',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

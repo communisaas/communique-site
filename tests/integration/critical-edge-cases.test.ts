@@ -227,7 +227,7 @@ describe('Critical Edge Cases', () => {
 
 			try {
 				const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
-				const funnel = new (FunnelAnalytics as any)();
+				const funnel = new FunnelAnalytics();
 
 				// Should gracefully handle SSR environment
 				expect(() => funnel.track('template_view', { templateId: 'test' })).not.toThrow();
@@ -255,7 +255,7 @@ describe('Critical Edge Cases', () => {
 			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
 
 			// Should handle corrupted data gracefully
-			expect(() => new (FunnelAnalytics as any)()).not.toThrow();
+			expect(() => new FunnelAnalytics()).not.toThrow();
 			expect(mockLocalStorage.removeItem).toHaveBeenCalledWith('communique_funnel_events');
 		});
 
@@ -274,7 +274,7 @@ describe('Critical Edge Cases', () => {
 			});
 
 			const { FunnelAnalytics } = await import('../../src/lib/core/analytics/funnel.js');
-			const funnel = new (FunnelAnalytics as any)();
+			const funnel = new FunnelAnalytics();
 
 			funnel.track('template_creation', { templateId: 'test-123' });
 

@@ -119,7 +119,7 @@ export class ReputationAgent extends BaseAgent {
 					credibilityScore: assessment.credibilityScore
 				}
 			);
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return this.createDecision(
 				{

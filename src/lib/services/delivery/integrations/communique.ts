@@ -56,7 +56,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -76,7 +76,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -94,7 +94,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -109,7 +109,7 @@ export class CommuniqueClient {
 			console.log(
 				`[Communiqué] Delivery notification sent for template ${notification.templateId}`
 			);
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			// Don't throw - this is a best-effort notification
 		}
@@ -153,7 +153,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -178,7 +178,7 @@ export class CommuniqueClient {
 			);
 
 			return response.data.success && response.data.data?.verified === true;
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return false;
 		}
@@ -199,7 +199,7 @@ export class CommuniqueClient {
 				timestamp: new Date().toISOString(),
 				metadata
 			});
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			// Don't throw - this is analytics, not critical
 		}
@@ -236,7 +236,7 @@ export class CommuniqueClient {
 			}
 
 			return null;
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -249,7 +249,7 @@ export class CommuniqueClient {
 		try {
 			const response = await this.client.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return false;
 		}

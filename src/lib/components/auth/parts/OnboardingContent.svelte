@@ -153,7 +153,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ returnTo: `/s/${template.slug}` })
 			});
-		} catch {
+		} catch (error) {
 			/* Ignore auth preparation errors - continue with authentication */
 		}
 	}

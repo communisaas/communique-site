@@ -124,7 +124,7 @@ export class Address {
 
 			const district = this.extractDistrictFromCensus(match.geographies, address.state);
 			return district;
-		} catch {
+		} catch (error) {
 			// Fallback to ZIP-based lookup
 			return this.zipToDistrict(address.zip, address.state);
 		}
@@ -151,7 +151,7 @@ export class Address {
 				};
 			}
 			return { state: state.toUpperCase(), district: '00' };
-		} catch {
+		} catch (error) {
 			return { state: state.toUpperCase(), district: '01' };
 		}
 	}
@@ -169,7 +169,7 @@ export class Address {
 				state: result.state,
 				district: result.district
 			};
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return {
 				state: state.toUpperCase(),
@@ -217,7 +217,7 @@ export class Address {
 			}
 
 			return this.formatRepresentative(houseRep, 'house');
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			// Return placeholder data
 			return {
@@ -281,7 +281,7 @@ export class Address {
 			}
 
 			return senators;
-		} catch {
+		} catch (error) {
 			// Return placeholder senators
 			return [
 				{
@@ -416,8 +416,8 @@ export class Address {
 					errors.push(`Representative ${rep.name} is no longer serving`);
 				}
 			}
-		} catch (_error) {
-			errors.push(`Validation failed: ${_error}`);
+		} catch (error) {
+			errors.push('Validation failed: API error');
 		}
 
 		return {
@@ -454,7 +454,7 @@ export async function addressLookup(zip: string): Promise<Representative[]> {
 
 		// Return as flat array of representatives
 		return [userReps.house, ...userReps.senate];
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 		// Return empty array on failure
 		return [];

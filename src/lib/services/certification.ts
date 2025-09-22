@@ -73,7 +73,7 @@ class CertificationService {
 			// Don't block delivery on certification failure
 			return {
 				success: false,
-				error: error instanceof Error ? error.message : 'Certification network error'
+				error: 'Certification network error'
 			};
 		}
 	}
@@ -91,7 +91,7 @@ class CertificationService {
 			}
 
 			return await response.json();
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -125,7 +125,7 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return { verified: false };
 		}

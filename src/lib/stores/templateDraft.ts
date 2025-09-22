@@ -60,8 +60,8 @@ function createTemplateDraftStore(): TemplateDraftStore {
 
 				return cleaned;
 			}
-		} catch {
-			console.warn('Failed to load template drafts from storage:', error);
+		} catch (error) {
+			console.warn('Failed to load template drafts from localStorage');
 		}
 
 		return {};
@@ -73,8 +73,8 @@ function createTemplateDraftStore(): TemplateDraftStore {
 
 		try {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(drafts));
-		} catch {
-			console.warn('Failed to save template drafts to storage:', error);
+		} catch (error) {
+			console.warn('Failed to save template drafts to localStorage');
 		}
 	}
 
@@ -114,7 +114,7 @@ function createTemplateDraftStore(): TemplateDraftStore {
 			plain = toPlainTemplateFormData(data);
 			// Extra safety: ensure no reactive proxies sneak in
 			plain = structuredClone(plain);
-		} catch {
+		} catch (error) {
 			// Fallback: JSON round-trip as a last resort
 			plain = JSON.parse(JSON.stringify(toPlainTemplateFormData(data)));
 		}

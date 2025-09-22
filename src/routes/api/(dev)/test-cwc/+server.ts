@@ -3,7 +3,6 @@ import type { RequestHandler } from './$types';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 import { CWCGenerator } from '$lib/core/congress/cwc-generator';
 import type { Template } from '$lib/types/template';
-import type { UnknownRecord } from '$lib/types/any-replacements';
 
 interface CWCTestResults {
 	testType: string;
@@ -140,12 +139,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			results,
 			message: 'CWC integration test completed'
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				success: false,
-				error: err instanceof Error ? err.message : 'Test failed',
+				error: error instanceof Error ? error.message : 'Test failed',
 				message: 'CWC integration test failed'
 			},
 			{ status: 500 }

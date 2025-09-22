@@ -7,7 +7,7 @@
 import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db.js';
 import type { RequestHandler } from './$types';
-import type { Prisma } from '@prisma/client';
+import type { Prisma as _Prisma } from '@prisma/client';
 import type { DatabaseWhereClause, UnknownRecord } from '$lib/types/any-replacements.js';
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -47,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			default:
 				throw error(400, `Invalid challenge action: ${action}`);
 		}
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		throw error(500, error ? 'Unknown error' : 'Challenge operation failed');
 	}
@@ -148,7 +148,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				created_at: c.created_at
 			}))
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		throw error(500, error ? 'Unknown error' : 'Failed to get challenges');
 	}

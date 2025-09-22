@@ -429,7 +429,7 @@ export async function storeCascadeAnalysis(analysis: CascadeAnalysis): Promise<v
 				}
 			}
 		});
-	} catch {
+	} catch (error) {
 		// Silently handle database errors in development
 	}
 }

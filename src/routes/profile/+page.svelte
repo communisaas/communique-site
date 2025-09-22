@@ -4,9 +4,7 @@
 		User,
 		Settings,
 		FileText,
-		Shield,
 		MapPin,
-		Calendar,
 		ExternalLink,
 		Edit3
 	} from '@lucide/svelte';
@@ -384,7 +382,7 @@
 				{#if templatesData && templatesData.templates.length > 0}
 					<div class="rounded-lg border border-slate-200 bg-white shadow-sm">
 						{#each templatesData.templates as template, _i}
-							<div class="p-6 {i > 0 ? 'border-t border-slate-200' : ''}">
+							<div class="p-6 {_i > 0 ? 'border-t border-slate-200' : ''}">
 								<div class="flex items-start justify-between">
 									<div class="flex-1">
 										<div class="mb-2 flex items-center space-x-2">

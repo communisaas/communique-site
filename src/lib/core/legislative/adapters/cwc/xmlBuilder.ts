@@ -91,7 +91,6 @@ ${constituent.MiddleName ? `		<MiddleName>${this.escapeXML(constituent.MiddleNam
 ${constituent.Suffix ? `		<Suffix>${this.escapeXML(constituent.Suffix)}</Suffix>` : ''}
 ${constituent.Title ? `		<Title>${this.escapeXML(constituent.Title)}</Title>` : ''}
 ${constituent.OrganizationName ? `		<OrganizationName>${this.escapeXML(constituent.OrganizationName)}</OrganizationName>` : ''}
-		<Address >${this.escapeXML(constituent.Address)}</Address >
 ${constituent.Address ? `		<Address >${this.escapeXML(constituent.Address)}</Address >` : ''}
 		<City>${this.escapeXML(constituent.City)}</City>
 		<StateAbbreviation>${this.escapeXML(constituent.StateAbbreviation)}</StateAbbreviation>

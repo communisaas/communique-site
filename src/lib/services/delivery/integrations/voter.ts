@@ -91,11 +91,11 @@ export class VOTERClient {
 			return {
 				certificationHash: response.data.certification_hash,
 				rewardAmount: response.data.reward_amount,
-				userAddress: response.data.user__address,
+				userAddress: response.data.user_address,
 				actionType: response.data.action_type,
 				timestamp: new Date(response.data.timestamp)
 			};
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -155,7 +155,7 @@ export class VOTERClient {
 				diversityScore: response.data.diversity_score,
 				recommendation: response.data.recommendation
 			};
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -198,7 +198,7 @@ export class VOTERClient {
 				tierChange: response.data.tier_change,
 				explanation: response.data.explanation
 			};
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return null;
 		}
@@ -234,7 +234,7 @@ export class VOTERClient {
 				reputation: response.data.services.reputation.available,
 				certification: response.data.services.certification.available
 			};
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return {
 				consensus: false,
@@ -255,7 +255,7 @@ export class VOTERClient {
 		try {
 			const response = await this.client!.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return false;
 		}
@@ -273,7 +273,7 @@ export class VOTERClient {
 	 */
 	private determineActionType(templateData: LocalTemplateData): VOTERActionType {
 		const title = typeof templateData.title === 'string' ? templateData.title.toLowerCase() : '';
-		const id = typeof templateData.id === 'string' ? templateData.id.toLowerCase() : '';
+		const _id = typeof templateData.id === 'string' ? templateData.id.toLowerCase() : '';
 		const method =
 			typeof templateData.deliveryMethod === 'string'
 				? templateData.deliveryMethod.toLowerCase()

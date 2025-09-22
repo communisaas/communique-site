@@ -6,7 +6,6 @@
  * OAuth funnel flow works across page redirects.
  */
 
-/// <reference path="../types/global.d.ts" />
 import {
 	test,
 	expect,

@@ -8,7 +8,7 @@ import {
 	type ApiResponse,
 	type ApiError
 } from '$lib/types/errors';
-import type { Prisma } from '@prisma/client';
+import type { Prisma as _Prisma } from '@prisma/client';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 
 // Validation schema for template creation - matches Prisma schema field names
@@ -163,7 +163,7 @@ export const GET: RequestHandler = async () => {
 					where: { template_id: { in: dbTemplates.map((t) => t.id) } }
 				});
 			}
-		} catch (scopeError) {
+		} catch (error) {
 			// template_scope table might not exist, continue without scopes
 			console.warn('template_scope table not found, continuing without scopes');
 		}
@@ -210,7 +210,7 @@ export const GET: RequestHandler = async () => {
 		};
 
 		return json(response);
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		const response: ApiResponse = {
@@ -228,7 +228,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		let requestData: unknown;
 		try {
 			requestData = await request.json();
-		} catch (parseError) {
+		} catch (error) {
 			const response: ApiResponse = {
 				success: false,
 				error: createApiError(
@@ -321,8 +321,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						// Trigger moderation pipeline via webhook
 						await triggerModerationPipeline(newTemplate.id);
 						console.log(`Set verification status for congressional template ${newTemplate.id}`);
-					} catch (verificationError) {
-						console.error('Failed to set template verification status:', verificationError);
+					} catch (error) {
+						console.error('Failed to set template verification status');
 						// Don't fail the template creation, just log the error
 					}
 				}
@@ -333,8 +333,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				};
 
 				return json(response);
-			} catch (dbError) {
-				console.error('Database error creating template:', dbError);
+			} catch (error) {
+				console.error('Database error creating template');
 
 				const response: ApiResponse = {
 					success: false,
@@ -364,7 +364,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			return json(response);
 		}
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		const response: ApiResponse = {
@@ -406,9 +406,9 @@ async function triggerModerationPipeline(templateId: string) {
 		console.log(`Moderation pipeline triggered for template ${templateId}:`, result);
 
 		return result;
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		// Don't throw - we don't want to fail template creation if moderation fails to trigger
-		return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+		return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
 	}
 }

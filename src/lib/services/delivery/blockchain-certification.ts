@@ -147,13 +147,13 @@ class BlockchainCertification {
 				actionHash: actionHash,
 				gasUsed: receipt.gasUsed.toString()
 			};
-		} catch (_error) {
-			console.error('Error occurred', _error);
+		} catch (error) {
+			console.error('Error occurred');
 
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Unknown error',
-				details: _error
+				error: error instanceof Error ? error.message : 'Unknown error',
+				details: error
 			};
 		}
 	}

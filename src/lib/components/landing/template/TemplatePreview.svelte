@@ -171,7 +171,7 @@
 						sessionStorage.removeItem(`template_${template.id}_personalization`);
 					}
 				} catch (_error) {
-					console.error('Failed to restore personalization data:', error);
+					console.error("Error occurred:", _error);
 				}
 			}
 		}

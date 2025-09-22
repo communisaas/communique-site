@@ -6,6 +6,19 @@ import { type ParsedMail as _ParsedMail } from 'mailparser';
 import { z } from 'zod';
 import type { ParsedIncomingMessage } from '../types/index.js';
 
+// Define proper types for mailparser Address objects
+interface EmailAddress {
+	address: string;
+	name?: string;
+}
+
+interface AddressWithValue {
+	value: EmailAddress[];
+}
+
+type ParsedMail = _ParsedMail;
+type MailAddress = EmailAddress | AddressWithValue;
+
 // ============================================================================
 // Validation Schemas
 // ============================================================================
@@ -66,7 +79,7 @@ export async function parseIncomingMessage(mail: ParsedMail): Promise<ParsedInco
 			certifiedDelivery: validatedData.certifiedDelivery,
 			rawMessage: mail
 		};
-	} catch {
+	} catch (error) {
 		if (error instanceof z.ZodError) {
 			throw new ValidationError('Invalid message format', error.errors);
 		}
@@ -193,14 +206,14 @@ function extractPersonalConnection(mail: ParsedMail): string | undefined {
 function isCertifiedDelivery(mail: ParsedMail): boolean {
 	// Check To addresses
 	const toValue = Array.isArray(mail.to) ? mail.to : mail.to ? [mail.to] : [];
-	const toAddress = toValue.flatMap((to) => {
-		// Handle both Address  directly and Address  with value property
+	const toAddress = toValue.flatMap((to: MailAddress) => {
+		// Handle both Address directly and Address with value property
 		if (to && 'address' in to && typeof to.address === 'string') {
 			return [to.address.toLowerCase()];
 		}
 		if (to && 'value' in to && Array.isArray(to.value)) {
 			return (
-				to.value.map((addr: { address?: string }) => addr.address?.toLowerCase()).filter(Boolean) ||
+				to.value.map((addr: EmailAddress) => addr.address?.toLowerCase()).filter(Boolean) ||
 				[]
 			);
 		}
@@ -322,6 +335,7 @@ export function extractTextFromHtml(html: string): string {
  */
 export function sanitizeInput(input: string): string {
 	// Remove control characters except newlines and tabs
+	// eslint-disable-next-line no-control-regex
 	let sanitized = input.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 
 	// Limit consecutive whitespace

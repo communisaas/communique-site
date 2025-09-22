@@ -31,11 +31,11 @@ export const GET: RequestHandler = async ({ url }) => {
 				}
 			}
 		});
-	} catch (err) {
+	} catch (error) {
 		return json(
 			{
 				success: false,
-				error: err instanceof Error ? err.message : 'Unknown error'
+				error: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

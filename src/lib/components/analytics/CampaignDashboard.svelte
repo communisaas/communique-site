@@ -91,7 +91,7 @@
 				overview = data.overview;
 			}
 		} catch (_error) {
-			console.error('Failed to load overview:', error);
+			console.error("Error occurred:", _error);
 		}
 	}
 
@@ -104,7 +104,7 @@
 				userTemplates = data.templates || [];
 			}
 		} catch (_error) {
-			console.error('Failed to load templates:', error);
+			console.error("Error occurred:", _error);
 		}
 	}
 
@@ -117,7 +117,7 @@
 				experiments = data.experiments || [];
 			}
 		} catch (_error) {
-			console.error('Failed to load experiments:', error);
+			console.error("Error occurred:", _error);
 		}
 	}
 

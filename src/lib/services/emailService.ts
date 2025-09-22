@@ -15,7 +15,7 @@
 
 import type { Template } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
-import { extractRecipientEmails } from '$lib/types/templateConfig';
+import { extractRecipientEmails as _extractRecipientEmails } from '$lib/types/templateConfig';
 import { resolveTemplate } from '$lib/utils/templateResolver';
 // VOTER certification now handled by mail server - removed client-side integration
 
@@ -174,14 +174,14 @@ export function analyzeEmailFlow(
 			nextAction: 'email',
 			analytics: { ...analytics, step: 'ready_to_send' }
 		};
-	} catch {
+	} catch (error) {
 		return {
 			requiresAuth: false,
 			nextAction: 'email',
 			error: {
 				code: 'FLOW_ANALYSIS_ERROR',
-				message: error ? 'Unknown error' : 'Unknown error analyzing email flow',
-				details: { originalError: error }
+				message: 'Unknown error analyzing email flow',
+				details: { originalError: 'Unknown error' }
 			}
 		};
 	}
@@ -295,13 +295,13 @@ export function generateMailtoUrl(
 			};
 		}
 
-		return { _url };
-	} catch {
+		return { url };
+	} catch (error) {
 		return {
 			error: {
 				code: 'MAILTO_GENERATION_ERROR',
-				message: error ? 'Unknown error' : 'Unknown error generating mailto URL',
-				details: { originalError: error }
+				message: error instanceof Error ? error.message : 'Unknown error generating mailto URL',
+				details: { originalError: error instanceof Error ? error.message : 'Unknown error' }
 			}
 		};
 	}
@@ -323,7 +323,7 @@ export function buildMailtoUrl(template: Template, user: EmailServiceUser | null
 /**
  * @deprecated Template resolution is now handled internally. Will be removed in next major version.
  */
-export function fillTemplateVariables(template: Template, user: EmailServiceUser | null): Template {
+export function fillTemplateVariables(template: Template, _user: EmailServiceUser | null): Template {
 	console.warn('fillTemplateVariables is deprecated. Template resolution is handled internally.');
 	return template; // Return unchanged for backward compatibility
 }
@@ -351,10 +351,10 @@ export function validateEmailFlow(
 	// Template validation
 	const templateValidation = validateTemplate(template);
 	if (!templateValidation.isValid) {
-		templateValidation.errors.forEach((error) => {
+		templateValidation.errors.forEach((_error) => {
 			errors.push({
 				code: 'INVALID_TEMPLATE',
-				message: error,
+				message: _error,
 				field: 'template'
 			});
 		});
@@ -509,7 +509,7 @@ export function launchEmail(
 		setTimeout(() => {
 			try {
 				document.body.removeChild(mailLink);
-			} catch (_e) {
+			} catch (error) {
 				// Ignore cleanup errors
 			}
 		}, 100);
@@ -520,8 +520,8 @@ export function launchEmail(
 			setTimeout(() => {
 				try {
 					window.location.href = options.redirectUrl!;
-				} catch (e) {
-					console.warn('Failed to redirect after email launch:', e);
+				} catch (error) {
+					console.warn('Failed to redirect after email launch:', error);
 				}
 			}, delay);
 		}
@@ -534,12 +534,12 @@ export function launchEmail(
 			mailtoUrl,
 			analytics
 		};
-	} catch {
+	} catch (error) {
 		return {
 			success: false,
 			error: {
 				code: 'EMAIL_LAUNCH_ERROR',
-				message: error ? 'Unknown error' : 'Unknown error launching email client',
+				message: error instanceof Error ? error.message : 'Unknown error',
 				details: { originalError: error }
 			}
 		};

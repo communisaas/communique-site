@@ -8,10 +8,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { cwcClient } from '$lib/core/congress/cwc-client';
-import { CWCGenerator } from '$lib/core/congress/cwc-generator';
+import { CWCGenerator as _CWCGenerator } from '$lib/core/congress/cwc-generator';
 import { db } from '$lib/core/db';
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, url: _url }) => {
 	try {
 		// Verify webhook secret if provided
 		const webhookSecret = request.headers.get('x-webhook-secret');
@@ -97,6 +97,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					role: string;
 					state: string;
 					district?: string;
+					party?: string;
 				}) => ({
 					bioguideId: rep.bioguideId,
 					name: rep.name,
@@ -104,7 +105,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 					officeCode: rep.bioguideId,
 					state: rep.state,
 					district: rep.district || '00',
-					party: rep.party
+					party: rep.party || 'Unknown'
 				})
 			);
 		}
@@ -168,11 +169,11 @@ export const POST: RequestHandler = async ({ request, url }) => {
 						error: result.error || 'Submission failed'
 					});
 				}
-			} catch (err) {
+			} catch (error) {
 				console.error('Error occurred');
 				errors.push({
 					recipient: recipient.name,
-					error: err instanceof Error ? err.message : 'Unknown error'
+					error: error instanceof Error ? error.message : 'Unknown error'
 				});
 			}
 		}
@@ -208,13 +209,13 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		}
 
 		return json(response);
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				success: false,
 				error: 'CWC submission failed',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

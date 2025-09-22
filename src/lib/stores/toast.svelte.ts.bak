@@ -1,0 +1,65 @@
+export interface ToastData {
+	id: string;
+	type: 'success' | 'error' | 'warning' | 'info';
+	title?: string;
+	message: string;
+	duration?: number;
+	dismissible?: boolean;
+}
+
+function createToastStore() {
+	let toasts = $state<ToastData[]>([]);
+
+	function addToast(toast: Omit<ToastData, 'id'>): string {
+		const id = crypto.randomUUID();
+		const newToast: ToastData = {
+			id,
+			duration: 5000,
+			dismissible: true,
+			...toast
+		};
+
+		toasts = [...toasts, newToast];
+		return id;
+	}
+
+	function removeToast(id: string): void {
+		toasts = toasts.filter((toast) => toast.id !== id);
+	}
+
+	function clearAll(): void {
+		toasts = [];
+	}
+
+	// Convenience methods
+	const success = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+		return addToast({ type: 'success', message, ...options });
+	};
+
+	const error = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+		return addToast({ type: 'error', message, duration: 7000, ...options });
+	};
+
+	const warning = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+		return addToast({ type: 'warning', message, ...options });
+	};
+
+	const info = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+		return addToast({ type: 'info', message, ...options });
+	};
+
+	return {
+		get toasts() {
+			return toasts;
+		},
+		addToast,
+		removeToast,
+		clearAll,
+		success,
+		error,
+		warning,
+		info
+	};
+}
+
+export const toast = createToastStore();

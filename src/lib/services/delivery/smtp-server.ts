@@ -18,8 +18,16 @@ import { certifyEmailDelivery } from './blockchain-certification';
 // Type definitions for parsed message data
 interface ParsedMessage {
 	from: string | { text?: string; address?: string };
-	templateId?: string;
-	personalConnection?: string;
+	templateId?: string | null;
+	userId?: string | null;
+	personalConnection?: string | null;
+	subject?: string;
+	text?: string;
+	html?: string;
+	to?: unknown;
+	headers?: unknown;
+	messageId?: string;
+	date?: Date;
 }
 
 interface UserProfile {
@@ -90,7 +98,7 @@ const server = new SMTPServer({
 	) {
 		handleIncomingMail(stream, session)
 			.then(() => callback())
-			.catch((error) => {
+			.catch((_error) => {
 				console.error('Error occurred');
 				callback(new Error('Message processing failed'));
 			});
@@ -117,6 +125,15 @@ async function handleIncomingMail(
 				: String(parsedMessage.from);
 		const templateIdentifier = parsedMessage.templateId;
 
+		// Validate that we have required data
+		if (!templateIdentifier) {
+			console.log('No template identifier found, skipping processing');
+			return;
+		}
+
+		// Type assertion after null check
+		const validTemplateId = String(templateIdentifier);
+
 		console.log(`Message from: ${senderEmail}, Template: ${templateIdentifier}`);
 
 		// Check if this is a certified delivery message
@@ -131,30 +148,30 @@ async function handleIncomingMail(
 		if (!userResult?.user) {
 			// No user found - send helpful bounce
 			console.log(`No user found for email: ${senderEmail}`);
-			await handleUnmatchedSender(parsedMessage, senderEmail, templateIdentifier);
+			await handleUnmatchedSender(parsedMessage, senderEmail, validTemplateId);
 			return;
 		}
 
 		// Check if secondary email needs verification
 		if (userResult.emailType === 'secondary' && !userResult.isVerified) {
 			console.log(`Secondary email not verified: ${senderEmail}`);
-			await sendVerificationRequiredBounce(senderEmail, templateIdentifier);
+			await sendVerificationRequiredBounce(senderEmail, validTemplateId);
 			return;
 		}
 
 		// Fetch template data
-		const templateData = await fetchTemplateBySlug(templateIdentifier);
+		const templateData = await fetchTemplateBySlug(validTemplateId);
 		if (!templateData) {
 			console.error(`Template not found: ${templateIdentifier}`);
 			// Send generic bounce since we can't identify the template
-			await sendGenericBounce(senderEmail, templateIdentifier);
+			await sendGenericBounce(senderEmail, validTemplateId);
 			return;
 		}
 
 		// Process certified delivery
 		await processCertifiedDelivery(parsedMessage, userResult.user, templateData);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('Error processing incoming mail:', error instanceof Error ? error.message : 'Unknown error');
 		// Don't throw - we don't want to reject the SMTP connection
 		// Log the error and continue
 	}
@@ -188,13 +205,14 @@ async function processCertifiedDelivery(
 		const cwcMessageData = {
 			templateId: templateData.id,
 			userId: userProfile.id,
-			subject: templateData.subject || templateData.title,
-			text: templateData.message_body,
-			personalConnection: parsedMessage.personalConnection,
-			// Note: Removed userProfile nested object since it's not expected by the CWC API type
-			// User data should be passed directly in the main payload
-			recipientOffice: determineRecipientOffice(userProfile),
-			messageId: `${templateData.id}_${userProfile.id}_${Date.now()}`
+			subject: templateData.subject || templateData.title || 'Message from constituent',
+			body: templateData.message_body,
+			recipients: [determineRecipientOffice(userProfile)],
+			metadata: {
+				personalConnection: parsedMessage.personalConnection,
+				recipientOffice: determineRecipientOffice(userProfile),
+				messageId: `${templateData.id}_${userProfile.id}_${Date.now()}`
+			}
 		};
 
 		// Submit to CWC API
@@ -227,13 +245,13 @@ async function processCertifiedDelivery(
 
 		// Notify Communiqué API of the result (including certification if successful)
 		await notifyDeliveryResult(templateData.id, userProfile.id, result);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('Error processing certified delivery:', error instanceof Error ? error.message : 'Unknown error');
 
 		// Notify of the failure
 		await notifyDeliveryResult(templateData.id, userProfile.id, {
 			success: false,
-			error: error ? 'Unknown error' : 'Unknown error'
+			error: error instanceof Error ? error.message : 'Unknown error'
 		});
 	}
 }

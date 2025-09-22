@@ -45,7 +45,7 @@
 					const actionData = JSON.parse(pendingAction);
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
-				} catch {
+				} catch (error) {
 					/* Ignore JSON parsing errors - invalid session data */
 				}
 			}
@@ -115,7 +115,7 @@
 				// Clean redirect without query parameters
 				window.location.href = finalReturnUrl;
 			}
-		} catch {
+		} catch (error) {
 			// Set OAuth completion info even on error for clean redirect
 			document.cookie = `oauth_completion=${JSON.stringify({
 				provider: 'unknown',

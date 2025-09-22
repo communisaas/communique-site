@@ -211,24 +211,21 @@ class VOTERBlockchainClient {
 				actionHash: actionHash,
 				receipt: receipt as TransactionReceipt
 			};
-		} catch (_error) {
-			console.error('Error occurred', _error);
+		} catch (error) {
+			console.error('Error occurred');
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Unknown error',
-				code:
-					_error instanceof Error && 'code' in _error
-						? String((_error as ErrorWithCode).code)
-						: undefined,
+				error: 'Unknown error',
+				code: undefined,
 				details: {
 					reason:
-						_error instanceof Error && 'reason' in _error
-							? (_error as ErrorWithCode).reason
+						error instanceof Error && 'reason' in error
+							? (error as ErrorWithCode).reason
 							: undefined,
 					method: 'processCivicAction',
 					transaction:
-						_error instanceof Error && 'transaction' in _error
-							? ((_error as ErrorWithCode).transaction as UnknownRecord)
+						error instanceof Error && 'transaction' in error
+							? ((error as ErrorWithCode).transaction as UnknownRecord)
 							: undefined
 				}
 			};
@@ -261,24 +258,21 @@ class VOTERBlockchainClient {
 				effectiveGasPrice: receipt.effectiveGasPrice?.toString(),
 				receipt: receipt as TransactionReceipt
 			};
-		} catch (_error) {
-			console.error('Error occurred', _error);
+		} catch (error) {
+			console.error('Error occurred');
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Unknown error',
-				code:
-					_error instanceof Error && 'code' in _error
-						? String((_error as ErrorWithCode).code)
-						: undefined,
+				error: 'Unknown error',
+				code: undefined,
 				details: {
 					reason:
-						_error instanceof Error && 'reason' in _error
-							? (_error as ErrorWithCode).reason
+						error instanceof Error && 'reason' in error
+							? (error as ErrorWithCode).reason
 							: undefined,
 					method: 'registerUser',
 					transaction:
-						_error instanceof Error && 'transaction' in _error
-							? ((_error as ErrorWithCode).transaction as UnknownRecord)
+						error instanceof Error && 'transaction' in error
+							? ((error as ErrorWithCode).transaction as UnknownRecord)
 							: undefined
 				}
 			};
@@ -305,8 +299,8 @@ class VOTERBlockchainClient {
 				lastActionTime: Number(stats[2]),
 				voterTokenBalance: balance.toString()
 			};
-		} catch (_error) {
-			console.error('Error occurred', _error);
+		} catch (error) {
+			console.error('Error occurred');
 			return null;
 		}
 	}

@@ -80,7 +80,7 @@ export function validateField<T = string>(value: T, rules: ValidationRule<T>): V
 			if (customError && typeof customError === 'string') {
 				return { isValid: false, error: customError };
 			}
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return { isValid: false, error: 'Validation error occurred' };
 		}
@@ -206,7 +206,7 @@ export class ValidationManager {
 		this.validationCallbacks.forEach((callback) => {
 			try {
 				callback(errors);
-			} catch {
+			} catch (error) {
 				console.error('Error occurred');
 			}
 		});

@@ -114,8 +114,8 @@
 					animating = false; // Animation complete, re-enable hover
 				}, 200);
 			}, 2000);
-		} catch (_error) {
-			console.error('Failed to copy:', _error);
+		} catch (error) {
+			console.error('Error occurred');
 		}
 	}
 

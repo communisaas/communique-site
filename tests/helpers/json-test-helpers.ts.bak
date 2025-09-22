@@ -1,0 +1,220 @@
+/**
+ * Test-specific helpers for safely accessing JsonValue fields
+ * These provide more lenient typing for test scenarios while maintaining type safety
+ */
+
+import type { Prisma } from '@prisma/client';
+
+/**
+ * Test-safe access to any JsonValue field with fallback
+ * This allows tests to access nested properties without TypeScript errors
+ */
+export function testJsonAccess<T = unknown>(
+	jsonValue: Prisma.JsonValue,
+	path: string,
+	defaultValue?: T
+): T | undefined {
+	try {
+		if (!jsonValue || typeof jsonValue !== 'object' || jsonValue === null) {
+			return defaultValue;
+		}
+
+		const keys = path.split('.');
+		let current: unknown = jsonValue;
+
+		for (const key of keys) {
+			if (current && typeof current === 'object' && key in current) {
+				current = current[key];
+			} else {
+				return defaultValue;
+			}
+		}
+
+		return current as T;
+	} catch {
+		return defaultValue;
+	}
+}
+
+/**
+ * Test-safe config access for analytics experiments
+ */
+export function testConfigAccess(jsonValue: Prisma.JsonValue) {
+	return new Proxy({} as object, {
+		get: (target, prop) => {
+			return testJsonAccess(jsonValue, String(prop));
+		}
+	});
+}
+
+/**
+ * Test-safe metrics cache access for analytics experiments
+ */
+export function testMetricsCacheAccess(jsonValue: Prisma.JsonValue) {
+	return new Proxy({} as object, {
+		get: (target, prop) => {
+			return testJsonAccess(jsonValue, String(prop));
+		}
+	});
+}
+
+/**
+ * Test-safe properties access for analytics events
+ */
+export function testPropertiesAccess(jsonValue: Prisma.JsonValue) {
+	return new Proxy({} as object, {
+		get: (target, prop) => {
+			return testJsonAccess(jsonValue, String(prop));
+		}
+	});
+}
+
+/**
+ * Test-safe session metrics access
+ */
+export function testSessionMetricsAccess(jsonValue: Prisma.JsonValue) {
+	return new Proxy({} as object, {
+		get: (target, prop) => {
+			return testJsonAccess(jsonValue, String(prop));
+		}
+	});
+}
+
+/**
+ * Test-safe device data access
+ */
+export function testDeviceDataAccess(jsonValue: Prisma.JsonValue) {
+	return new Proxy({} as object, {
+		get: (target, prop) => {
+			return testJsonAccess(jsonValue, String(prop));
+		}
+	});
+}
+
+/**
+ * Test-safe computed metrics access
+ */
+export function testComputedMetricsAccess(jsonValue: Prisma.JsonValue) {
+	return new Proxy({} as object, {
+		get: (target, prop) => {
+			return testJsonAccess(jsonValue, String(prop));
+		}
+	});
+}
+
+/**
+ * Test-safe multipliers access for agent decisions
+ */
+export function testMultipliersAccess(jsonValue: Prisma.JsonValue) {
+	return new Proxy({} as object, {
+		get: (target, prop) => {
+			return testJsonAccess(jsonValue, String(prop));
+		}
+	});
+}
+
+/**
+ * Helper to create a mock result object that safely exposes JsonValue fields for testing
+ */
+export function createTestSafeObject<T extends Record<string, any>>(obj: T): T {
+	return new Proxy(obj, {
+		get: (target, prop) => {
+			const value = target[prop as keyof T];
+
+			// If it's a Prisma JsonValue field, make it test-safe
+			if (value && typeof value === 'object' && value !== null) {
+				// Check if it might be a JsonValue by looking for common properties
+				const jsonFields = [
+					'config',
+					'metrics_cache',
+					'properties',
+					'session_metrics',
+					'device_data',
+					'computed_metrics',
+					'multipliers'
+				];
+				if (jsonFields.includes(String(prop))) {
+					return testJsonAccess(value as Prisma.JsonValue, '');
+				}
+			}
+
+			return value;
+		}
+	});
+}
+
+/**
+ * Alternative approach: Create type-safe accessors that work with the test patterns
+ */
+export function safeExperimentConfig(experiment: unknown) {
+	const config = (experiment && typeof experiment === 'object' && experiment !== null && 'config' in experiment) ? (experiment as any).config || {} : {};
+	return {
+		steps: config.steps || [],
+		targeting_rules: config.targeting_rules || {},
+		optimization_goals: config.optimization_goals || {},
+		statistical_config: config.statistical_config || {},
+		budget: config.budget || 0,
+		campaign_channels: config.campaign_channels || [],
+		kpi_targets: config.kpi_targets || {},
+		variations: config.variations || []
+	};
+}
+
+export function safeExperimentMetricsCache(experiment: unknown) {
+	const cache = (experiment && typeof experiment === 'object' && experiment !== null && 'metrics_cache' in experiment) ? (experiment as any).metrics_cache || {} : {};
+	return {
+		participants_count: cache.participants_count || 0,
+		conversion_rate: cache.conversion_rate || 0,
+		step_conversion_rates: cache.step_conversion_rates || {},
+		drop_off_analysis: cache.drop_off_analysis || {},
+		winning_variation: cache.winning_variation,
+		variation_results: cache.variation_results || {},
+		statistical_significance: cache.statistical_significance || 0,
+		recommendation: cache.recommendation,
+		error: cache.error,
+		budget_spent: cache.budget_spent || 0,
+		funnel_completion_rate: cache.funnel_completion_rate || 0,
+		funnel_completion_rates: cache.funnel_completion_rates || {},
+		temporal_analysis: cache.temporal_analysis || {}
+	};
+}
+
+export function safeEventProperties(event: unknown) {
+	return (event && typeof event === 'object' && event !== null && 'properties' in event) ? (event as any).properties || {} : {};
+}
+
+export function safeSessionMetrics(session: unknown) {
+	const metrics = (session && typeof session === 'object' && session !== null && 'session_metrics' in session) ? (session as any).session_metrics || {} : {};
+	return {
+		events_count: metrics.events_count || 0,
+		page_views: metrics.page_views || 0,
+		duration_ms: metrics.duration_ms || 0,
+		conversion_count: metrics.conversion_count || 0,
+		funnel_conversions: metrics.funnel_conversions || {},
+		predictive_metrics: metrics.predictive_metrics || {},
+		performance_metrics: metrics.performance_metrics || {}
+	};
+}
+
+export function safeDeviceData(session: unknown) {
+	const data = (session && typeof session === 'object' && session !== null && 'device_data' in session) ? (session as any).device_data || {} : {};
+	return {
+		device_type: data.device_type || 'desktop',
+		viewport: data.viewport || { width: 1920, height: 1080 },
+		accessibility: data.accessibility || {},
+		connection_type: data.connection_type || 'wifi'
+	};
+}
+
+export function safeComputedMetrics(event: unknown) {
+	const metrics = (event && typeof event === 'object' && event !== null && 'computed_metrics' in event) ? (event as any).computed_metrics || {} : {};
+	return {
+		engagement_score: metrics.engagement_score || 0,
+		anomaly_detection: metrics.anomaly_detection || {},
+		ml_insights: metrics.ml_insights || {},
+		calculation_metadata: metrics.calculation_metadata || {},
+		time_series_data: metrics.time_series_data || {},
+		cohort_analysis: metrics.cohort_analysis || {},
+		legacy_migration_flag: metrics.legacy_migration_flag
+	};
+}

@@ -94,11 +94,11 @@ export async function certifyEmailDelivery(
 		}
 
 		return result;
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 		return {
 			success: false,
-			error: error ? 'Unknown error' : 'Certification failed'
+			error: 'Certification failed'
 		};
 	}
 }
@@ -118,7 +118,7 @@ function parseMailtoUrl(mailtoUrl: string): {
 			subject: url.searchParams.get('subject') || undefined,
 			body: url.searchParams.get('body') || undefined
 		};
-	} catch {
+	} catch (error) {
 		return { to: mailtoUrl.replace('mailto:', '') };
 	}
 }

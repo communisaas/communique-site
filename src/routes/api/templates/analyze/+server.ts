@@ -38,7 +38,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Handle JSON parsing errors gracefully
 		try {
 			requestData = await request.json();
-		} catch (err) {
+		} catch (error) {
 			const response: ApiResponse = {
 				success: false,
 				error: createApiError(
@@ -198,7 +198,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		return json(response);
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 
 		const response: ApiResponse = {

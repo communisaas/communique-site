@@ -277,7 +277,7 @@
 						submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 					}
 				} catch (_error) {
-					console.error('Failed to start agent processing:', error);
+					console.error("Error occurred:", _error);
 					// Fallback - generate client-side ID
 					submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 				}
@@ -370,7 +370,7 @@
 				componentId
 			);
 		} catch (_error) {
-			console.warn('Copy failed:', error);
+			console.warn('Copy failed:', _error);
 		}
 	}
 

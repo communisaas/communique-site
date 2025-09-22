@@ -32,15 +32,24 @@ function createToastStore() {
 	}
 
 	// Convenience methods
-	const success = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+	const success = (
+		message: string,
+		options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>
+	) => {
 		return addToast({ type: 'success', message, ...options });
 	};
 
-	const error = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+	const _error = (
+		message: string,
+		options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>
+	) => {
 		return addToast({ type: 'error', message, duration: 7000, ...options });
 	};
 
-	const warning = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+	const warning = (
+		message: string,
+		options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>
+	) => {
 		return addToast({ type: 'warning', message, ...options });
 	};
 
@@ -56,7 +65,7 @@ function createToastStore() {
 		removeToast,
 		clearAll,
 		success,
-		error,
+		error: _error,
 		warning,
 		info
 	};

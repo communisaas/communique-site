@@ -100,7 +100,7 @@ Uses design system tokens for reliable, accessible status indication.
 
 Usage:
 - Verified/Community channel identification
-- Status communication (success, warning, error)
+- Status communication (success, warning, _error)
 - Process indicators (with pulse animation)
 
 Accessibility:
@@ -110,8 +110,8 @@ Accessibility:
 -->
 
 <span class={badgeClasses} role="status" aria-label={ariaLabel()}>
-	{#if icon && IconComponent()}
-		<IconComponent() class="h-3 w-3 flex-shrink-0" aria-hidden="true" />
+	{#if icon && IconComponent}
+		<IconComponent class="h-3 w-3 flex-shrink-0" aria-hidden="true" />
 	{/if}
 
 	{#if children}

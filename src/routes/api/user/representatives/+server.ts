@@ -141,7 +141,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			message: `Successfully stored ${result.representativesCount} representatives for user`,
 			...result
 		});
-	} catch (err) {
+	} catch (error) {
 		// Re-throw SvelteKit errors
 		if (error && typeof error === 'object' && 'status' in error) {
 			throw error;
@@ -233,7 +233,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			representatives,
 			totalReps: user.representatives.length
 		});
-	} catch (err) {
+	} catch (error) {
 		if (error && typeof error === 'object' && 'status' in error) {
 			throw error;
 		}
@@ -303,7 +303,7 @@ export const PUT: RequestHandler = async ({ request, locals }) => {
 		return await postHandler({ request: updateRequest, locals } as Parameters<
 			typeof postHandler
 		>[0]);
-	} catch (err) {
+	} catch (error) {
 		if (error && typeof error === 'object' && 'status' in error) {
 			throw error;
 		}

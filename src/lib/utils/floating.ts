@@ -103,7 +103,7 @@ export async function computeTooltipPosition(
 			// Use viewport-relative strategy for better cross-context positioning
 			strategy: 'fixed'
 		});
-	} catch {
+	} catch (error) {
 		console.error('Error occurred');
 
 		// Fallback to manual positioning

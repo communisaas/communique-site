@@ -50,7 +50,7 @@ const mockDb = vi.hoisted(() => ({
 			}
 
 			// Return different user data based on ID for testing
-			const userData: Record<string, any> = {
+			const userData: Record<string, unknown> = {
 				'user-123': {
 					id: 'user-123',
 					name: 'Test User 123',
@@ -167,7 +167,7 @@ const mockDb = vi.hoisted(() => ({
 				return Promise.resolve(null);
 			}
 
-			const templateData: Record<string, any> = {
+			const templateData: Record<string, unknown> = {
 				'template-123': {
 					id: 'template-123',
 					slug: 'test-template',
@@ -406,7 +406,9 @@ describe('Agent Integration', () => {
 			// Should identify risk factors for suspicious users
 			expect((decision as unknown as AgentDecision).decision.riskFactors).toBeDefined();
 			expect((decision as unknown as AgentDecision).decision.recommendedActions).toBeDefined();
-			expect((decision as unknown as AgentDecision).decision.verificationLevel).toMatch(/unverified|partial/);
+			expect((decision as unknown as AgentDecision).decision.verificationLevel).toMatch(
+				/unverified|partial/
+			);
 		});
 
 		it('should handle verification errors gracefully', async () => {
@@ -423,7 +425,9 @@ describe('Agent Integration', () => {
 				const decision = await agent.makeDecision(invalidContext);
 				// Should still return a decision, possibly with low confidence
 				expect(decision.confidence).toBeLessThanOrEqual(0.5);
-				expect((decision as unknown as AgentDecision).decision.verificationLevel).toBe('unverified');
+				expect((decision as unknown as AgentDecision).decision.verificationLevel).toBe(
+					'unverified'
+				);
 			} catch (error) {
 				// Or may throw error for invalid input
 				expect(error).toBeDefined();
@@ -541,7 +545,9 @@ describe('Agent Integration', () => {
 				})
 			});
 
-			expect((decision as unknown as AgentDecision).decision.credibilityScore).toBeGreaterThanOrEqual(0);
+			expect(
+				(decision as unknown as AgentDecision).decision.credibilityScore
+			).toBeGreaterThanOrEqual(0);
 		});
 
 		it('should assess credibility components independently', async () => {
@@ -563,14 +569,17 @@ describe('Agent Integration', () => {
 
 			// Both should have valid credibility components
 			expect(
-				(((newUserDecision as unknown as AgentDecision).decision) as unknown).credibilityComponents.civic_engagement
+				((newUserDecision as unknown as AgentDecision).decision as unknown).credibilityComponents
+					.civic_engagement
 			).toBeGreaterThanOrEqual(0);
 			expect(
-				((establishedUserDecision as unknown as AgentDecision).decision as unknown).credibilityComponents.civic_engagement
+				((establishedUserDecision as unknown as AgentDecision).decision as unknown)
+					.credibilityComponents.civic_engagement
 			).toBeGreaterThanOrEqual(0);
 
 			// Check that all components are present
-			const components = (((newUserDecision as unknown as AgentDecision).decision) as unknown).credibilityComponents;
+			const components = ((newUserDecision as unknown as AgentDecision).decision as unknown)
+				.credibilityComponents;
 			expect(components).toHaveProperty('civic_engagement');
 			expect(components).toHaveProperty('information_quality');
 			expect(components).toHaveProperty('community_trust');
@@ -629,8 +638,12 @@ describe('Agent Integration', () => {
 			for (const context of contexts) {
 				const decision = await agent.makeDecision(context);
 
-				expect((decision as unknown as AgentDecision).decision.impactScore).toBeGreaterThanOrEqual(0);
-				expect((decision as unknown as AgentDecision).decision.confidenceLevel).toMatch(/high|medium|low/);
+				expect((decision as unknown as AgentDecision).decision.impactScore).toBeGreaterThanOrEqual(
+					0
+				);
+				expect((decision as unknown as AgentDecision).decision.confidenceLevel).toMatch(
+					/high|medium|low/
+				);
 				expect(decision.confidence).toBeGreaterThan(0);
 				expect(decision.confidence).toBeLessThanOrEqual(1);
 			}
@@ -699,10 +712,16 @@ describe('Agent Integration', () => {
 
 			// Urgent actions should generally have higher multipliers
 			expect(
-				testMultipliersAccess((urgentDecision as unknown as AgentDecision).decision.multipliers).urgency
-			).toBeGreaterThanOrEqual(testMultipliersAccess((routineDecision as unknown as AgentDecision).decision.multipliers).urgency);
+				testMultipliersAccess((urgentDecision as unknown as AgentDecision).decision.multipliers)
+					.urgency
+			).toBeGreaterThanOrEqual(
+				testMultipliersAccess((routineDecision as unknown as AgentDecision).decision.multipliers)
+					.urgency
+			);
 
-			expect((urgentDecision as unknown as AgentDecision).decision.totalMultiplier).toBeGreaterThanOrEqual(
+			expect(
+				(urgentDecision as unknown as AgentDecision).decision.totalMultiplier
+			).toBeGreaterThanOrEqual(
 				(routineDecision as unknown as AgentDecision).decision.totalMultiplier
 			);
 		});

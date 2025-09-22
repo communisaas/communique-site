@@ -240,10 +240,10 @@ function createTemplateStore() {
 				if (!state.selectedId || !data.find((t) => t.id === state.selectedId)) {
 					state.selectedId = data[0]?.id || null;
 				}
-			} catch (err) {
-				console.error('Template fetch error:', err);
+			} catch (error) {
+				console.error('Template fetch error');
 				state.loading = false;
-				state.error = err instanceof Error ? err.message : 'Failed to fetch templates';
+				state.error = 'Failed to fetch templates';
 			}
 		},
 
@@ -270,9 +270,9 @@ function createTemplateStore() {
 				state.error = null;
 
 				return newTemplate;
-			} catch (err) {
+			} catch (error) {
 				state.error = 'Template could not be added.';
-				throw err;
+				throw new Error('Template could not be added.');
 			}
 		},
 
@@ -297,9 +297,9 @@ function createTemplateStore() {
 				state.error = null;
 
 				return updatedTemplate;
-			} catch (err) {
-				state.error = err instanceof Error ? err.message : 'Failed to update template';
-				throw err;
+			} catch (error) {
+				state.error = 'Failed to update template';
+				throw new Error('Failed to update template');
 			}
 		},
 
@@ -320,9 +320,9 @@ function createTemplateStore() {
 				state.templates = newTemplates;
 				state.selectedId = newSelectedId;
 				state.error = null;
-			} catch (err) {
-				state.error = err instanceof Error ? err.message : 'Failed to delete template';
-				throw err;
+			} catch (error) {
+				state.error = 'Failed to delete template';
+				throw new Error('Failed to delete template');
 			}
 		},
 

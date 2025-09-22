@@ -74,12 +74,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			success: true,
 			...result
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json(
 			{
 				error: 'Verification failed',
-				details: err instanceof Error ? err.message : 'Unknown error'
+				details: error instanceof Error ? error.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);

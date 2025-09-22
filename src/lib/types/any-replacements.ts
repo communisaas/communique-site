@@ -5,7 +5,7 @@
  * in the codebase with proper TypeScript types.
  */
 
-import type { RequestEvent } from '@sveltejs/kit';
+import type { RequestEvent as _RequestEvent } from '@sveltejs/kit';
 import type { User, Template } from '@prisma/client';
 
 // =============================================================================
@@ -56,8 +56,16 @@ export interface SMTPServerOptions {
 		session: SMTPSession,
 		callback: (err?: Error | null) => void
 	) => void;
-	onRcptTo?: (address: SMTPAddress, session: SMTPSession, callback: (err?: Error | null) => void) => void;
-	onMailFrom?: (address: SMTPAddress, session: SMTPSession, callback: (err?: Error | null) => void) => void;
+	onRcptTo?: (
+		address: SMTPAddress,
+		session: SMTPSession,
+		callback: (err?: Error | null) => void
+	) => void;
+	onMailFrom?: (
+		address: SMTPAddress,
+		session: SMTPSession,
+		callback: (err?: Error | null) => void
+	) => void;
 }
 
 export interface SMTPAuthResponse {

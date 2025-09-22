@@ -109,7 +109,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (error) {
-			console.error('Error occurred:', error);
+			console.error('Error occurred');
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Network error'
@@ -143,7 +143,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (error) {
-			console.error('Error occurred:', error);
+			console.error('Error occurred');
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Network error'
@@ -177,7 +177,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (error) {
-			console.error('Error occurred:', error);
+			console.error('Error occurred');
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Network error'
@@ -224,7 +224,7 @@ class VOTERProtocolAPI {
 				status: response.status
 			};
 		} catch (error) {
-			console.error('Error occurred:', error);
+			console.error('Error occurred');
 			return {
 				success: false,
 				error: error instanceof Error ? error.message : 'Network error'

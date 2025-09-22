@@ -41,8 +41,16 @@ declare module 'smtp-server' {
 			session: SMTPSession,
 			callback: (err?: Error | null) => void
 		) => void;
-		onRcptTo?: (address: SMTPAddress, session: SMTPSession, callback: (err?: Error | null) => void) => void;
-		onMailFrom?: (address: SMTPAddress, session: SMTPSession, callback: (err?: Error | null) => void) => void;
+		onRcptTo?: (
+			address: SMTPAddress,
+			session: SMTPSession,
+			callback: (err?: Error | null) => void
+		) => void;
+		onMailFrom?: (
+			address: SMTPAddress,
+			session: SMTPSession,
+			callback: (err?: Error | null) => void
+		) => void;
 	}
 
 	export interface SMTPServerSession {

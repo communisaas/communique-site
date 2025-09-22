@@ -7,7 +7,7 @@
 	import type { Template as _Template } from '$lib/types/template';
 
 	let selectedTemplateId = $state<string | null>(null);
-	let templates = $state<Template[]>([]);
+	let templates = $state<_Template[]>([]);
 	let loading = $state(true);
 	let activeTab = $state<'network' | 'template'>('network');
 
@@ -31,7 +31,7 @@
 			if (data.success) {
 				templates = data.templates || [];
 			}
-		} catch {
+		} catch (error) {
 			// Failed to load templates - templates will remain empty array
 		}
 	}

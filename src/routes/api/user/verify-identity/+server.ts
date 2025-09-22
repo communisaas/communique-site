@@ -117,13 +117,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ status: 400 }
 			);
 		}
-	} catch (err) {
+	} catch (error) {
 		// Type guard for ConfigMismatchError
 		if (
 			error &&
 			typeof error === 'object' &&
 			'name' in error &&
-			error.name === 'ConfigMismatchError' &&
+			_error.name === 'ConfigMismatchError' &&
 			'issues' in error
 		) {
 			const errorWithIssues = error as { issues: unknown[] };
@@ -133,7 +133,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					status: 'error',
 					result: false,
 					message: 'Verification configuration mismatch',
-					issues: errorWithIssues.issues
+					issues: _errorWithIssues.issues
 				},
 				{ status: 400 }
 			);
@@ -144,7 +144,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			{
 				status: 'error',
 				result: false,
-				message: error ? 'Unknown error' : 'Unknown verification error'
+				message: _error ? 'Unknown error' : 'Unknown verification error'
 			},
 			{ status: 500 }
 		);

@@ -5,7 +5,7 @@
  */
 
 import { json, error } from '@sveltejs/kit';
-import { prisma } from '$lib/core/db.js';
+import { prisma as _prisma } from '$lib/core/db.js';
 import type { RequestHandler } from './$types';
 
 // Mock Didit client - replace with actual implementation
@@ -163,7 +163,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			message: `Identity verification completed - ${verificationLevel}`
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		throw error(500, error ? 'Unknown error' : 'Identity verification failed');
 	}
@@ -212,7 +212,7 @@ export const GET: RequestHandler = async ({ url }) => {
 				max_stake: profile.user.trust_score * 100
 			}
 		});
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		throw error(500, error ? 'Unknown error' : 'Failed to get verification status');
 	}

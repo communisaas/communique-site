@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				status: success ? 'delivered' : 'failed',
 				sent_at: new Date(),
 				delivered_at: success ? new Date() : null,
-				error_message: error,
+				error_message: _error,
 				metadata: metadata || {}
 			}
 		});
@@ -59,7 +59,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		return json({ success: true, message: 'Delivery result recorded' });
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json({ error: 'Failed to record delivery result' }, { status: 500 });
 	}

@@ -55,7 +55,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 
 		// No user found
 		return json({ user: null, emailType: null });
-	} catch (err) {
+	} catch (error) {
 		console.error('Error occurred');
 		return json({ error: 'Failed to resolve user' }, { status: 500 });
 	}

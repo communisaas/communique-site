@@ -162,14 +162,14 @@ export class CWCClient {
 			});
 
 			return result;
-		} catch (_error) {
-			console.error('Error occurred:', _error);
+		} catch (error) {
+			console.error('Error occurred');
 			return {
 				success: false,
 				status: 'failed',
 				office: senator.name,
 				timestamp: new Date().toISOString(),
-				error: _error instanceof Error ? _error.message : 'Unknown error'
+				error: 'Unknown error'
 			};
 		}
 	}
@@ -231,14 +231,14 @@ export class CWCClient {
 
 				// Add delay between submissions to avoid rate limiting
 				await this.delay(1000);
-			} catch (_error) {
-				console.error('Error occurred:', _error);
+			} catch (error) {
+				console.error('Error occurred');
 				results.push({
 					success: false,
 					status: 'failed',
 					office: rep.name,
 					timestamp: new Date().toISOString(),
-					error: _error instanceof Error ? _error.message : 'Unknown error'
+					error: 'Unknown error'
 				});
 			}
 		}
@@ -294,7 +294,7 @@ export class CWCClient {
 				messageId,
 				cwcResponse
 			};
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			return {
 				...baseResult,
@@ -356,10 +356,10 @@ export class CWCClient {
 				success: true,
 				offices: Array.isArray(offices) ? offices : [offices]
 			};
-		} catch (_error) {
+		} catch (error) {
 			return {
 				success: false,
-				error: _error instanceof Error ? _error.message : 'Failed to retrieve offices'
+				error: 'Failed to retrieve offices'
 			};
 		}
 	}
@@ -379,10 +379,10 @@ export class CWCClient {
 				connected: result.success,
 				error: result.error
 			};
-		} catch (_error) {
+		} catch (error) {
 			return {
 				connected: false,
-				error: _error instanceof Error ? _error.message : 'Connection failed'
+				error: 'Connection failed'
 			};
 		}
 	}

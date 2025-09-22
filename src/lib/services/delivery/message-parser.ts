@@ -3,8 +3,8 @@
  * Extracts template metadata and content from incoming emails
  */
 
-import { simpleParser } from 'mailparser';
-import type { ParsedMail, ErrorWithCode as _ErrorWithCode } from '$lib/types/any-replacements.js';
+import { simpleParser, type ParsedMail as MailparserParsedMail } from 'mailparser';
+import type { ErrorWithCode as _ErrorWithCode } from '$lib/types/any-replacements.js';
 
 /**
  * Parse incoming email to extract template data
@@ -24,15 +24,15 @@ async function parseIncomingMessage(stream: NodeJS.ReadableStream) {
 			personalConnection,
 			subject: parsed.subject,
 			text: parsed.text,
-			html: parsed.html,
+			html: typeof parsed.html === 'string' ? parsed.html : undefined,
 			from: parsed.from,
 			to: parsed.to,
 			headers: parsed.headers,
 			messageId: parsed.messageId,
 			date: parsed.date
 		};
-	} catch (_error) {
-		const errorMessage = error ? 'Unknown error' : 'Unknown error';
+	} catch (error) {
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 		console.error('Error parsing message:', errorMessage);
 		throw new Error('Failed to parse incoming email');
 	}
@@ -41,9 +41,9 @@ async function parseIncomingMessage(stream: NodeJS.ReadableStream) {
 /**
  * Extract template ID from email headers or subject
  */
-function extractTemplateId(parsed: ParsedMail) {
+function extractTemplateId(parsed: MailparserParsedMail) {
 	// Check for custom header first
-	const headerTemplateId = parsed.headers.get('x-template-id');
+	const headerTemplateId = parsed.headers?.get('x-template-id');
 	if (headerTemplateId) {
 		return headerTemplateId;
 	}
@@ -68,9 +68,9 @@ function extractTemplateId(parsed: ParsedMail) {
 /**
  * Extract user ID from email headers or message ID
  */
-function extractUserId(parsed: ParsedMail) {
+function extractUserId(parsed: MailparserParsedMail) {
 	// Check for custom header
-	const headerUserId = parsed.headers.get('x-user-id');
+	const headerUserId = parsed.headers?.get('x-user-id');
 	if (headerUserId) {
 		return headerUserId;
 	}
@@ -87,7 +87,7 @@ function extractUserId(parsed: ParsedMail) {
 /**
  * Extract personal connection from email body
  */
-function extractPersonalConnection(parsed: ParsedMail) {
+function extractPersonalConnection(parsed: MailparserParsedMail) {
 	const text = parsed.text || '';
 
 	// Look for personal connection marker
@@ -113,7 +113,7 @@ function extractPersonalConnection(parsed: ParsedMail) {
  * Validate that message contains required metadata
  */
 function validateMessage(
-	parsedMessage: ParsedMail & {
+	parsedMessage: MailparserParsedMail & {
 		templateId?: string | null;
 		userId?: string | null;
 		personalConnection?: string | null;

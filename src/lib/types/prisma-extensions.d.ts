@@ -1,9 +1,9 @@
 import type {
 	template_campaign as TemplateCampaign,
 	analytics_event as AnalyticsEvent,
-	user_session as UserSession,
-	user_representatives as UserRepresentatives,
-	_representative as Representative
+	user_session as _UserSession,
+	user_representatives as _UserRepresentatives,
+	_representative as _Representative
 } from '@prisma/client';
 
 declare module '@prisma/client' {

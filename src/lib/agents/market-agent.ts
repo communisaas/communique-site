@@ -94,8 +94,8 @@ export class MarketAgent extends BaseAgent {
 					incentiveAdjustments: marketDecision.incentiveAdjustments
 				}
 			);
-		} catch (_error) {
-			console.error('Market agent error:', _error);
+		} catch (error) {
+			console.error('Market agent error');
 			return this.createDecision(
 				{ decision: 'error', rewardMultiplier: 1.0 },
 				0.1,

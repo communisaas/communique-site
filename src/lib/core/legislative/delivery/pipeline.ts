@@ -2,11 +2,13 @@ import type {
 	LegislativeAdapter,
 	DeliveryRequest,
 	DeliveryResult,
-	Address,
+	Address as _Address,
 	LegislativeUser,
 	LegislativeTemplate
 } from '../adapters/base';
 import type { Representative as _Representative } from '../models';
+
+type Representative = _Representative;
 import { adapterRegistry } from '../adapters/registry';
 // Note: Using internal variable resolution for now
 // import { resolveVariables } from '$lib/services/personalization';

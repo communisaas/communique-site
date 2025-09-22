@@ -132,7 +132,7 @@ export class ModerationConsensus {
 			// Temporary: N8N client is commented out, using mock response
 			console.warn('OpenAI N8N workflow disabled, using mock response');
 			return this.getMockVote('openai');
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			// Default to approval on error (fail open)
 			return {
@@ -151,7 +151,7 @@ export class ModerationConsensus {
 			// Temporary: N8N client is commented out, using mock response
 			console.warn('Gemini N8N workflow disabled, using mock response');
 			return this.getMockVote('gemini');
-		} catch {
+		} catch (error) {
 			console.error('Error occurred');
 			// Default to approval on error (fail open)
 			return {
