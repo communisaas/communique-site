@@ -202,14 +202,14 @@
 					error: 'API request failed'
 				});
 			}
-		} catch (_error) {
-			console.error("Error occurred:", _error);
+		} catch (error) {
+			console.error('Error occurred');
 
 			// Track retry error
 			await trackAnalyticsEvent('delivery_retryerror', {
 				campaign_id: campaignId,
 				retry_source: 'dashboard',
-				error: _error instanceof Error ? _error.message : 'Unknown error'
+				error: error instanceof Error ? error.message : 'Unknown error'
 			});
 		}
 	}

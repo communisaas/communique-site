@@ -7,7 +7,18 @@ import type { RequestEvent } from '@sveltejs/kit';
 export function createMockRequestEvent<
 	Params extends Record<string, string> = Record<string, string>
 >(request: Request | unknown, routeId: string = '/'): RequestEvent<Params, string> {
-	const url = request.url ? new URL(request.url) : new URL('http://localhost:3000');
+	// Handle both absolute and relative URLs
+	let url: URL;
+	if (request.url) {
+		try {
+			url = new URL(request.url);
+		} catch {
+			// If URL is relative, make it absolute
+			url = new URL(request.url, 'http://localhost:3000');
+		}
+	} else {
+		url = new URL('http://localhost:3000');
+	}
 
 	// Mock span for tracing
 	const mockSpan = {

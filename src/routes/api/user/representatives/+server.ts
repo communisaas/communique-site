@@ -23,7 +23,7 @@ interface UserRepsData {
 }
 
 // POST /api/user/representatives - Store user's representatives after onboarding
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, _locals }) => {
 	try {
 		// TODO: Add authentication check
 		// const user = locals.user;
@@ -152,7 +152,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 };
 
 // GET /api/user/representatives - Get user's current representatives
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url, _locals }) => {
 	try {
 		// TODO: Add authentication check
 		// const user = locals.user;

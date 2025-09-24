@@ -69,6 +69,7 @@
 				classNames="w-full"
 				enableFlight={true}
 				bind:flightState
+				{user}
 				onclick={handleSendClick}
 				text={user ? 'Send to Congress' : 'Send to Congress'}
 			/>
@@ -80,6 +81,7 @@
 				classNames="w-full"
 				enableFlight={true}
 				bind:flightState
+				{user}
 				onclick={handleSendClick}
 				text={user ? 'Send to Leaders' : 'Send to Leaders'}
 			/>

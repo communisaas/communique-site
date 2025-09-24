@@ -67,7 +67,7 @@ async function main(): Promise<void> {
 			// TODO: Send startup notification to monitoring service
 			console.log('📊 Production mode - monitoring enabled');
 		}
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		process.exit(1);
 	}

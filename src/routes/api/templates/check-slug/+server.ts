@@ -73,7 +73,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			available: true,
 			slug
 		});
-	} catch (error) {
+	} catch {
 		return json({ error: 'Failed to check slug availability' }, { status: 500 });
 	}
 };

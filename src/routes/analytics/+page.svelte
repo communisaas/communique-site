@@ -31,7 +31,7 @@
 			if (data.success) {
 				templates = data.templates || [];
 			}
-		} catch (error) {
+		} catch {
 			// Failed to load templates - templates will remain empty array
 		}
 	}

@@ -1,4 +1,4 @@
-import { beforeEach, afterEach, vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 /// <reference path="../types/global.d.ts" />
 
 /**
@@ -16,23 +16,27 @@ beforeEach(() => {
 
 	// Core environment configuration
 	process.env.NODE_ENV = 'test';
-	process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+	// Use environment variables from .env.test file instead of hardcoded values
+	process.env.DATABASE_URL =
+		process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5432/test';
 
-	// OAuth environment variables for comprehensive provider testing
-	process.env.OAUTH_REDIRECT_BASE_URL = 'http://localhost:5173';
-	process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
-	process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
-	process.env.FACEBOOK_CLIENT_ID = 'test-facebook-client-id';
-	process.env.FACEBOOK_CLIENT_SECRET = 'test-facebook-client-secret';
-	process.env.DISCORD_CLIENT_ID = 'test-discord-client-id';
-	process.env.DISCORD_CLIENT_SECRET = 'test-discord-client-secret';
-	process.env.LINKEDIN_CLIENT_ID = 'test-linkedin-client-id';
-	process.env.LINKEDIN_CLIENT_SECRET = 'test-linkedin-client-secret';
-	process.env.TWITTER_CLIENT_ID = 'test-twitter-client-id';
-	process.env.TWITTER_CLIENT_SECRET = 'test-twitter-client-secret';
+	// OAuth environment variables - use test-specific env vars or safe defaults
+	process.env.OAUTH_REDIRECT_BASE_URL =
+		process.env.TEST_OAUTH_REDIRECT_BASE_URL || 'http://localhost:5173';
+	// Use TEST_ prefixed variables from .env.test file
+	process.env.GOOGLE_CLIENT_ID = process.env.TEST_GOOGLE_CLIENT_ID || 'test-client-id';
+	process.env.GOOGLE_CLIENT_SECRET = process.env.TEST_GOOGLE_CLIENT_SECRET || 'test-secret';
+	process.env.FACEBOOK_CLIENT_ID = process.env.TEST_FACEBOOK_CLIENT_ID || 'test-client-id';
+	process.env.FACEBOOK_CLIENT_SECRET = process.env.TEST_FACEBOOK_CLIENT_SECRET || 'test-secret';
+	process.env.DISCORD_CLIENT_ID = process.env.TEST_DISCORD_CLIENT_ID || 'test-client-id';
+	process.env.DISCORD_CLIENT_SECRET = process.env.TEST_DISCORD_CLIENT_SECRET || 'test-secret';
+	process.env.LINKEDIN_CLIENT_ID = process.env.TEST_LINKEDIN_CLIENT_ID || 'test-client-id';
+	process.env.LINKEDIN_CLIENT_SECRET = process.env.TEST_LINKEDIN_CLIENT_SECRET || 'test-secret';
+	process.env.TWITTER_CLIENT_ID = process.env.TEST_TWITTER_CLIENT_ID || 'test-client-id';
+	process.env.TWITTER_CLIENT_SECRET = process.env.TEST_TWITTER_CLIENT_SECRET || 'test-secret';
 
 	// API and service configuration
-	process.env.CWC_API_KEY = 'test-cwc-api-key';
+	process.env.CWC_API_KEY = process.env.TEST_CWC_API_KEY || 'test-api-key';
 	process.env.SUPABASE_DATABASE_URL = process.env.DATABASE_URL;
 
 	// Mock browser APIs that may be accessed during tests
@@ -109,7 +113,7 @@ beforeEach(() => {
 afterEach(() => {
 	// Clean up all mocks to prevent test interference
 	vi.clearAllMocks();
-	vi.restoreAllMocks();
+	// Note: Removed vi.restoreAllMocks() to preserve database mocks for agent tests
 
 	// Reset feature flag environment variables
 	delete process.env.ENABLE_BETA;

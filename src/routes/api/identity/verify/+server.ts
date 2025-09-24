@@ -9,9 +9,9 @@ import { verificationSessions } from '$lib/core/server/verification-sessions';
 
 // Initialize configuration store for Self.xyz
 const configStore = new InMemoryConfigStore(
-	async (userIdentifier: string, userDefinedData: string) => {
+	async (_userIdentifier: string, _userDefinedData: string) => {
 		// Generate a consistent action ID based on user identifier and data
-		return `${userIdentifier}-${Buffer.from(userDefinedData).toString('hex').slice(0, 16)}`;
+		return `${_userIdentifier}-${Buffer.from(_userDefinedData).toString('hex').slice(0, 16)}`;
 	}
 );
 
@@ -31,7 +31,7 @@ const selfVerifier = new SelfBackendVerifier(
 	'uuid' // userIdentifierType
 );
 
-export const POST: RequestHandler = async ({ request, getClientAddress, locals }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress, locals: _locals }) => {
 	try {
 		const body = await request.json();
 		const { attestationId, proof, pubSignals, userContextData } = body;
@@ -40,7 +40,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 			attestationId,
 			userContextData: userContextData ? JSON.parse(userContextData) : null,
 			clientIP: getClientAddress(),
-			hasLoggedInUser: !!locals.user
+			hasLoggedInUser: !!_locals.user
 		});
 
 		// Store configuration for this verification (required by SDK)
@@ -159,15 +159,15 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 			userUpdated: !!locals.user,
 			message: 'Identity verification completed successfully'
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Error occurred');
 
 		// Log detailed error information for debugging
-		if (error instanceof Error) {
+		if (_error instanceof Error) {
 			console.error('Error details:', {
 				name: _error.name,
-				message: error.message,
-				stack: error.stack?.split('\n').slice(0, 5)
+				message: _error.message,
+				stack: _error.stack?.split('\n').slice(0, 5)
 			});
 		}
 

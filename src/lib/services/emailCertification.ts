@@ -94,7 +94,7 @@ export async function certifyEmailDelivery(
 		}
 
 		return result;
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return {
 			success: false,
@@ -118,7 +118,7 @@ function parseMailtoUrl(mailtoUrl: string): {
 			subject: url.searchParams.get('subject') || undefined,
 			body: url.searchParams.get('body') || undefined
 		};
-	} catch (error) {
+	} catch {
 		return { to: mailtoUrl.replace('mailto:', '') };
 	}
 }

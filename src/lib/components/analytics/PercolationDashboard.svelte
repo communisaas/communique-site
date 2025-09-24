@@ -91,7 +91,7 @@
 			} else {
 				error = 'Failed to refresh percolation analysis';
 			}
-		} catch (error) {
+		} catch {
 			error = 'Network error refreshing analysis';
 		} finally {
 			loading = false;

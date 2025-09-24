@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsExperiment } from '../../src/lib/types/analytics';
-import { safeExperimentConfig, safeExperimentMetricsCache } from '../helpers/json-test-helpers';
+import { safeExperimentConfig, safeMetricsCache } from '../helpers/json-test-helpers';
 
 // Mock database for experiment testing
 const mockDb = vi.hoisted(() => ({
@@ -354,10 +354,10 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 				data: { metrics_cache: metricsCache }
 			});
 
-			expect(safeExperimentMetricsCache(result).participants_count).toBe(3);
-			expect(safeExperimentMetricsCache(result).conversion_rate).toBeCloseTo(0.33, 2);
-			expect(safeExperimentMetricsCache(result).step_conversion_rates.step_2).toBe(0.67);
-			expect(safeExperimentMetricsCache(result).drop_off_analysis.highest_drop_off_step).toBe(2);
+			expect(safeMetricsCache(result).participants_count).toBe(3);
+			expect(safeMetricsCache(result).conversion_rate).toBeCloseTo(0.33, 2);
+			expect(safeMetricsCache(result).step_conversion_rates.step_2).toBe(0.67);
+			expect(safeMetricsCache(result).drop_off_analysis.highest_drop_off_step).toBe(2);
 		});
 
 		it('should cache A/B test statistical analysis results', async () => {
@@ -462,12 +462,10 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 				data: { metrics_cache: statisticalMetrics }
 			});
 
-			expect(safeExperimentMetricsCache(result).winning_variation).toBe('variant_concise');
-			expect(
-				safeExperimentMetricsCache(result).variation_results.variant_concise.conversion_rate
-			).toBe(1.0);
-			expect(safeExperimentMetricsCache(result).statistical_significance).toBe(0.73);
-			expect(safeExperimentMetricsCache(result).recommendation).toContain('Continue test');
+			expect(safeMetricsCache(result).winning_variation).toBe('variant_concise');
+			expect(safeMetricsCache(result).variation_results.variant_concise.conversion_rate).toBe(1.0);
+			expect(safeMetricsCache(result).statistical_significance).toBe(0.73);
+			expect(safeMetricsCache(result).recommendation).toContain('Continue test');
 		});
 	});
 
@@ -496,7 +494,7 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 			mockDb.analytics_experiment.findUnique.mockResolvedValue(experiment);
 
 			// Check if experiment should be paused/completed based on performance
-			const metricsCache = safeExperimentMetricsCache(experiment);
+			const metricsCache = safeMetricsCache(experiment);
 			const config = safeExperimentConfig(experiment);
 			const budgetUtilization = metricsCache.budget_spent / (config.budget || 1);
 			const targetReachProgress =
@@ -678,8 +676,8 @@ describe('Analytics Experiment Integration Tests - Consolidated Schema', () => {
 				data: { metrics_cache: fallbackMetrics }
 			});
 
-			expect(safeExperimentMetricsCache(result).error).toBe('Metrics calculation failed');
-			expect(safeExperimentMetricsCache(result).participants_count).toBe(0);
+			expect(safeMetricsCache(result).error).toBe('Metrics calculation failed');
+			expect(safeMetricsCache(result).participants_count).toBe(0);
 		});
 	});
 });

@@ -12,7 +12,7 @@ import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsExperiment } from '../../src/lib/types/analytics';
 import {
 	safeExperimentConfig,
-	safeExperimentMetricsCache,
+	safeMetricsCache,
 	safeEventProperties
 } from '../helpers/json-test-helpers';
 
@@ -214,6 +214,21 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 					]
 				}
 			});
+
+			// Mock successful session upsert
+			mockDb.analytics_session.upsert.mockResolvedValue({
+				session_id: 'sess_funnel_123',
+				user_id: 'user-123',
+				created_at: new Date(),
+				updated_at: new Date(),
+				funnel_progress: {}
+			});
+
+			// Mock successful event creation
+			mockDb.analytics_event.createMany.mockResolvedValue({ count: 4 });
+
+			// Mock template validation for template_id: 'template-456'
+			mockDb.template.findMany.mockResolvedValue([{ id: 'template-456' }]);
 
 			const funnelEventBatch = {
 				session_data: {
@@ -533,17 +548,14 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 			};
 
 			mockDb.analytics_session.findUnique.mockResolvedValue(existingSession);
+			mockDb.analytics_event.findMany.mockResolvedValue([]);
 
 			const { GET } = await import('../../src/routes/api/analytics/events/+server');
-			const { request } = createMockRequestEvent({
-				method: 'GET',
-				url: '/api/analytics/events?session_id=sess_123_abc'
+			const request = new Request('http://localhost/api/analytics/events?session_id=sess_123_abc', {
+				method: 'GET'
 			});
 
-			const response = await GET({
-				request,
-				url: new URL('http://localhost/api/analytics/events?session_id=sess_123_abc')
-			} as unknown);
+			const response = await GET(createMockRequestEvent(request, '/api/analytics/events'));
 
 			const data = await response.json();
 
@@ -626,10 +638,10 @@ describe('Analytics Funnel Integration Tests - Consolidated Schema', () => {
 				]
 			};
 
-			const { request } = createMockRequestEvent({
+			const request = new Request('http://localhost/api/analytics/events', {
 				method: 'POST',
-				url: '/api/analytics/events',
-				body: outOfOrderEvents
+				headers: { 'content-type': 'application/json' },
+				body: JSON.stringify(outOfOrderEvents)
 			});
 
 			const response = await POST(createMockRequestEvent(request, '/api/analytics/events'));

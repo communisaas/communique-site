@@ -193,7 +193,7 @@ async function createChallenge(data: Record<string, unknown>) {
 
 	// Generate challenge ID and claim hash
 	const challengeId = `ch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-	const claimHash = `0x${Buffer.from(challengeId).toString('hex')}`;
+	const _claimHash = `0x${Buffer.from(challengeId).toString('hex')}`;
 
 	// Set voting deadline (72 hours from now)
 	const votingDeadline = new Date();

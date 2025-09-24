@@ -39,7 +39,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 			if (!immediate) {
 				try {
 					func.apply(this, args);
-				} catch (error) {
+				} catch {
 					console.error('Error occurred');
 				}
 			}
@@ -56,7 +56,7 @@ export function debounce<T extends (...args: unknown[]) => unknown>(
 		if (callNow) {
 			try {
 				func.apply(this, args);
-			} catch (error) {
+			} catch {
 				console.error('Error occurred');
 			}
 		}
@@ -93,7 +93,7 @@ export function throttle<T extends (...args: unknown[]) => unknown>(
 		if (!inThrottle) {
 			try {
 				func.apply(this, args);
-			} catch (error) {
+			} catch {
 				console.error('Error occurred');
 			}
 

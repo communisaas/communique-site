@@ -68,7 +68,7 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			// Don't block delivery on certification failure
 			return {
@@ -91,7 +91,7 @@ class CertificationService {
 			}
 
 			return await response.json();
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return null;
 		}
@@ -125,7 +125,7 @@ class CertificationService {
 
 			const data = await response.json();
 			return data;
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return { verified: false };
 		}

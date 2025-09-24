@@ -713,7 +713,7 @@ export function safeJsonAccess<T>(jsonValue: Prisma.JsonValue, path: string, def
 		}
 
 		return current as T;
-	} catch (error) {
+	} catch {
 		return defaultValue;
 	}
 }

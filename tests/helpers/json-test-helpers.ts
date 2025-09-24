@@ -163,7 +163,7 @@ export function safeExperimentConfig(experiment: unknown) {
 	};
 }
 
-export function safeExperimentMetricsCache(experiment: unknown) {
+export function safeMetricsCache(experiment: unknown) {
 	const cache =
 		experiment &&
 		typeof experiment === 'object' &&

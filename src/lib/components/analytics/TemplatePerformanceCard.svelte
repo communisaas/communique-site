@@ -107,7 +107,7 @@
 			} else {
 				error = data.error || 'Failed to load performance metrics';
 			}
-		} catch (error) {
+		} catch {
 			error = 'Network error loading performance data';
 		} finally {
 			loading = false;

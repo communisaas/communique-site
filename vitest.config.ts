@@ -20,9 +20,9 @@ export default defineConfig({
 		pool: 'forks', // Better isolation for integration tests
 		poolOptions: {
 			forks: {
-				singleFork: true, // Use single fork for better performance
+				singleFork: false, // Enable parallelism for faster test execution
 				minForks: 1,
-				maxForks: 1
+				maxForks: 4 // Use up to 4 parallel processes
 			}
 		},
 
@@ -55,8 +55,8 @@ export default defineConfig({
 				'**/*.test.ts',
 				'build/',
 				'.svelte-kit/',
-				'src/app.html', // Static files
-				'src/routes/**/+*.{js,ts}' // SvelteKit route files
+				'src/app.html' // Static files
+				// Removed exclusion for route files to properly measure API coverage
 			],
 
 			// Focus coverage on core application code

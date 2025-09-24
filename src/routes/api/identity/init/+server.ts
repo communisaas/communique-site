@@ -1,6 +1,9 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { SELF_XYZ_CONFIG as _SELF_XYZ_CONFIG, createUserConfig } from '$lib/core/server/selfxyz-config';
+import {
+	SELF_XYZ_CONFIG as _SELF_XYZ_CONFIG,
+	createUserConfig
+} from '$lib/core/server/selfxyz-config';
 import { verificationSessions, cleanupOldSessions } from '$lib/core/server/verification-sessions';
 
 export const POST: RequestHandler = async ({ request }) => {

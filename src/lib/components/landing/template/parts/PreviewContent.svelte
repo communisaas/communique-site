@@ -82,7 +82,7 @@
 				2000,
 				componentId
 			);
-		} catch (error) {
+		} catch {
 			/* Ignore clipboard errors - copy operation failed silently */
 		}
 	}

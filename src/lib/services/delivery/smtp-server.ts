@@ -171,7 +171,10 @@ async function handleIncomingMail(
 		// Process certified delivery
 		await processCertifiedDelivery(parsedMessage, userResult.user, templateData);
 	} catch (error) {
-		console.error('Error processing incoming mail:', error instanceof Error ? error.message : 'Unknown error');
+		console.error(
+			'Error processing incoming mail:',
+			error instanceof Error ? error.message : 'Unknown error'
+		);
 		// Don't throw - we don't want to reject the SMTP connection
 		// Log the error and continue
 	}
@@ -246,7 +249,10 @@ async function processCertifiedDelivery(
 		// Notify Communiqué API of the result (including certification if successful)
 		await notifyDeliveryResult(templateData.id, userProfile.id, result);
 	} catch (error) {
-		console.error('Error processing certified delivery:', error instanceof Error ? error.message : 'Unknown error');
+		console.error(
+			'Error processing certified delivery:',
+			error instanceof Error ? error.message : 'Unknown error'
+		);
 
 		// Notify of the failure
 		await notifyDeliveryResult(templateData.id, userProfile.id, {

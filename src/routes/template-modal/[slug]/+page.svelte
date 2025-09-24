@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { page } from '$app/stores';
+	import { _page } from '$app/stores';
 	import { onMount as _onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';

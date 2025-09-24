@@ -14,16 +14,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const {
 			_address,
-			verified,
+			verified: _verified,
 			representatives,
 			street,
 			city,
 			state,
 			zip,
 			zipCode,
-			countryCode,
-			latitude,
-			longitude,
+			countryCode: _countryCode,
+			latitude: _latitude,
+			longitude: _longitude,
 			congressional_district
 		} = await request.json();
 

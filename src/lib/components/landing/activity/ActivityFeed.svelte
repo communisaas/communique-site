@@ -28,8 +28,8 @@
 					}
 				})
 			});
-		} catch (_error) {
-			console.warn('Analytics tracking failed:', _error);
+		} catch {
+			console.warn('Error occurred');
 		}
 	}
 

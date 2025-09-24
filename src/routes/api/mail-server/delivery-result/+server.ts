@@ -59,7 +59,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		return json({ success: true, message: 'Delivery result recorded' });
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return json({ error: 'Failed to record delivery result' }, { status: 500 });
 	}

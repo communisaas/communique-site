@@ -72,8 +72,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		const {
 			userId,
 			walletAddress,
-			zkProof,
-			publicInputs
+			zkProof: _zkProof,
+			publicInputs: _publicInputs
 		}: {
 			userId: string;
 			walletAddress?: string;
@@ -134,7 +134,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw error(500, 'Failed to update user verification status');
 		}
 
-		const updateResult = await updateResponse.json();
+		const _updateResult = await updateResponse.json();
 
 		return json({
 			success: true,
@@ -163,9 +163,9 @@ export const POST: RequestHandler = async ({ request }) => {
 			},
 			message: `Identity verification completed - ${verificationLevel}`
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Error occurred');
-		throw error(500, error ? 'Unknown error' : 'Identity verification failed');
+		throw error(500, _error instanceof Error ? _error.message : 'Identity verification failed');
 	}
 };
 
@@ -212,8 +212,11 @@ export const GET: RequestHandler = async ({ url }) => {
 				max_stake: profile.user.trust_score * 100
 			}
 		});
-	} catch (error) {
+	} catch (_error) {
 		console.error('Error occurred');
-		throw error(500, error ? 'Unknown error' : 'Failed to get verification status');
+		throw error(
+			500,
+			_error instanceof Error ? _error.message : 'Failed to get verification status'
+		);
 	}
 };

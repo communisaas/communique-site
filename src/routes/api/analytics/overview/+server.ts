@@ -135,7 +135,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 					});
 				}
 			} catch (error) {
-				console.warn(`Could not analyze template`, err);
+				console.warn('Error occurred');
 				topPerformers.push({
 					id: template.id,
 					title: template.title,

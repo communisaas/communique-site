@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, beforeAll } from 'vitest';
 import { mockDriftDetector } from './mock-drift-detection';
 import fs from 'fs/promises';
 import path from 'path';

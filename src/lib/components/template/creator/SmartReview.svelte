@@ -63,8 +63,8 @@
 				// Fallback to simple ready state
 				analysisState = 'ready';
 			}
-		} catch (_error) {
-			console.error("Error occurred:", _error);
+		} catch {
+			console.error('Error occurred');
 			analysisState = 'ready';
 		}
 	}

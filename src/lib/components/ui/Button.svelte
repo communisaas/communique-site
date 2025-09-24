@@ -19,6 +19,7 @@
 		enableFlight = false,
 		flightDirection = 'default',
 		flightState = $bindable('ready'),
+		user = null,
 		onclick,
 		onmouseover,
 		onmouseenter,
@@ -42,6 +43,7 @@
 		enableFlight?: boolean;
 		flightDirection?: 'default' | 'down-right' | 'up-right';
 		flightState?: 'ready' | 'taking-off' | 'flying' | 'sent' | 'departing';
+		user?: { id: string; name: string | null } | null;
 		onclick?: (__event: MouseEvent) => void;
 		onmouseover?: (__event: MouseEvent) => void;
 		onmouseenter?: (__event: MouseEvent) => void;
@@ -368,8 +370,17 @@
 				}, 200);
 			}
 
-			// Call the onclick handler AFTER setting up the flight animation
-			onclick?.(__event);
+			// Call the onclick handler - delay for signed-in users to coordinate with animation
+			const isSignedIn = user && user.id;
+			const delay = isSignedIn ? 500 : 0;
+
+			if (delay > 0) {
+				setTimeout(() => {
+					onclick?.(__event);
+				}, delay);
+			} else {
+				onclick?.(__event);
+			}
 		}
 	}
 

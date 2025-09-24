@@ -208,30 +208,26 @@ export class GeolocationService {
 	 * Get approximate location from IP address
 	 */
 	private async getIPLocation(): Promise<GeolocationData['address']> {
-		try {
-			// Use a service like ipapi.co or similar
-			const { api } = await import('$lib/core/api/client');
-			const result = await api.get('/api/geo/ip-location');
+		// Use a service like ipapi.co or similar
+		const { api } = await import('$lib/core/api/client');
+		const result = await api.get('/api/geo/ip-location');
 
-			if (!result.success) {
-				throw new Error(`IP location failed: ${result.error}`);
-			}
-
-			const data = result.data;
-
-			// Validate the response data
-			if (!isValidIPLocationData(data)) {
-				throw new Error('Invalid IP location data received from API');
-			}
-
-			return {
-				zip: data.postal_code,
-				city: data.city,
-				state: data.region_code
-			};
-		} catch (error) {
-			throw error;
+		if (!result.success) {
+			throw new Error(`IP location failed: ${result.error}`);
 		}
+
+		const data = result.data;
+
+		// Validate the response data
+		if (!isValidIPLocationData(data)) {
+			throw new Error('Invalid IP location data received from API');
+		}
+
+		return {
+			zip: data.postal_code,
+			city: data.city,
+			state: data.region_code
+		};
 	}
 
 	/**

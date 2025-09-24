@@ -90,8 +90,8 @@
 			if (data.success) {
 				overview = data.overview;
 			}
-		} catch (_error) {
-			console.error("Error occurred:", _error);
+		} catch {
+			console.error('Error occurred');
 		}
 	}
 
@@ -103,8 +103,8 @@
 			if (data.success) {
 				userTemplates = data.templates || [];
 			}
-		} catch (_error) {
-			console.error("Error occurred:", _error);
+		} catch {
+			console.error('Error occurred');
 		}
 	}
 
@@ -116,8 +116,8 @@
 			if (data.success) {
 				experiments = data.experiments || [];
 			}
-		} catch (_error) {
-			console.error("Error occurred:", _error);
+		} catch {
+			console.error('Error occurred');
 		}
 	}
 

@@ -51,7 +51,7 @@ async function handleUnmatchedSender(
 			// No user found - offer signup
 			await sendNewUserBounce(senderEmail, templateSlug);
 		}
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		// Send generic bounce as fallback
 		await sendGenericBounce(senderEmail, templateSlug);

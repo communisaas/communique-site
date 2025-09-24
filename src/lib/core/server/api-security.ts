@@ -361,7 +361,7 @@ export async function logSecurityEvent(
 		// In production, log to proper security monitoring system
 		// Could store in database for analysis
 		// await db.security_log.create({ ... });
-	} catch (error) {
+	} catch {
 		/* Ignore security logging errors - function is currently a placeholder */
 	}
 }

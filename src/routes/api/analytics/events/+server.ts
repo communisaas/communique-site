@@ -21,6 +21,8 @@ interface ClientAnalyticsEvent {
 	funnel_id?: string;
 	campaign_id?: string;
 	variation_id?: string;
+	experiment_id?: string;
+	funnel_step?: number;
 	timestamp?: Date | string;
 	page_url?: string;
 	event_properties?: Record<string, unknown>;
@@ -161,9 +163,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			// Handle event properties (merge both properties and event_properties)
 			const properties = {
 				...(event.properties || {}),
-				...(event.event_properties || {}),
-				page_url: event.page_url
+				...(event.event_properties || {})
 			};
+
+			// Add page_url if provided (either as property or top-level field)
+			if (event.page_url) {
+				properties.page_url = event.page_url;
+			}
 
 			// Clean properties to prevent circular references and large objects
 			const cleanedProperties: Record<string, unknown> = {};
@@ -176,8 +182,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 						} else {
 							cleanedProperties[key] = value;
 						}
-					} catch (error) {
-						console.warn(`Could not analyze template`, error);
+					} catch {
+						console.warn('Error occurred');
 						cleanedProperties[key] = '[Serialization Error]';
 					}
 				}
@@ -188,19 +194,27 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			let eventType: 'pageview' | 'interaction' | 'conversion' | 'funnel' | 'campaign' =
 				'interaction';
 
-			if (eventName === 'page_view' || eventName.includes('viewed')) {
-				eventType = 'pageview';
+			// Check for funnel events first (highest priority)
+			if (event.funnel_id || event.funnel_step !== undefined) {
+				eventType = 'funnel';
+			} else if (event.campaign_id) {
+				eventType = 'campaign';
 			} else if (
 				eventName.includes('conversion') ||
 				eventName === 'template_used' ||
 				eventName === 'auth_completed'
 			) {
 				eventType = 'conversion';
-			} else if (event.funnel_id) {
-				eventType = 'funnel';
-			} else if (event.campaign_id) {
-				eventType = 'campaign';
+			} else if (eventName === 'page_view' || eventName.includes('viewed')) {
+				eventType = 'pageview';
 			}
+
+			// Get funnel_step if available
+			const funnelStep = event.funnel_step ?? null;
+
+			// Get experiment_id if available (could be experiment_id, funnel_id, campaign_id, or variation_id)
+			const experimentId =
+				event.experiment_id || event.funnel_id || event.campaign_id || event.variation_id || null;
 
 			eventsToCreate.push({
 				session_id: session_data.session_id,
@@ -210,8 +224,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 				event_type: eventType,
 				template_id:
 					event.template_id && validTemplateIds.has(event.template_id) ? event.template_id : null,
-				funnel_step: event.funnel_id ? 1 : null, // Could be enhanced based on event data
-				experiment_id: event.variation_id || event.campaign_id || null,
+				funnel_step: funnelStep,
+				experiment_id: experimentId,
 				properties: cleanedProperties,
 				computed_metrics: {}
 			});
@@ -238,7 +252,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 			events_processed: events.length,
 			session_id: session_data.session_id
 		});
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 
 		return json(
@@ -296,14 +310,14 @@ export const GET: RequestHandler = async ({ url }) => {
 				session_metrics: session.session_metrics || {},
 				funnel_progress: session.funnel_progress || {}
 			},
-			analyticsevents: analyticsEvents.map((event) => ({
+			analytics_events: analyticsEvents.map((event) => ({
 				...event,
 				properties: event.properties || {},
 				computed_metrics: event.computed_metrics || {}
 			})),
 			events_count: analyticsEvents.length
 		});
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 
 		return json(

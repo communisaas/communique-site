@@ -72,7 +72,7 @@ function createGuestState() {
 						} else {
 							localStorage.removeItem('communique_guest_template');
 						}
-					} catch (error) {
+					} catch {
 						localStorage.removeItem('communique_guest_template');
 					}
 				}

@@ -53,7 +53,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ returnTo: `/${template.slug}` })
 			});
-		} catch (error) {
+		} catch {
 			/* Ignore auth preparation errors - continue with auth flow */
 		}
 		funnelAnalytics.trackOnboardingStarted(template.id, source);

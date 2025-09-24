@@ -136,7 +136,7 @@ class TimerCoordinator {
 		const timeoutId = setTimeout(() => {
 			try {
 				callback();
-			} catch (error) {
+			} catch {
 				console.error('Error occurred');
 			} finally {
 				this.clearTimer(id);
@@ -199,7 +199,7 @@ class TimerCoordinator {
 		const intervalId = setInterval(() => {
 			try {
 				callback();
-			} catch (error) {
+			} catch {
 				console.error('Error occurred');
 			}
 		}, duration);
@@ -245,7 +245,7 @@ class TimerCoordinator {
 			} else {
 				clearTimeout(timer.timeoutId);
 			}
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 		}
 

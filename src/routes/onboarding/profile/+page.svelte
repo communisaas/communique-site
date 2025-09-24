@@ -6,7 +6,7 @@
 	import DirectOutreachCompact from '$lib/components/auth/DirectOutreachCompact.svelte';
 	import type { PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { _data }: { data: PageData } = $props();
 
 	let showDirectModal = $state(true);
 	let useCompact = $state(false);
@@ -45,7 +45,7 @@
 					const actionData = JSON.parse(pendingAction);
 					pendingTemplate = actionData;
 					finalReturnUrl = `/template-modal/${actionData.slug}`;
-				} catch (error) {
+				} catch {
 					/* Ignore JSON parsing errors - invalid session data */
 				}
 			}
@@ -115,7 +115,7 @@
 				// Clean redirect without query parameters
 				window.location.href = finalReturnUrl;
 			}
-		} catch (error) {
+		} catch {
 			// Set OAuth completion info even on error for clean redirect
 			document.cookie = `oauth_completion=${JSON.stringify({
 				provider: 'unknown',

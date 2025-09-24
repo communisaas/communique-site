@@ -76,7 +76,7 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 					is_current: true
 				}
 			];
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return [];
 		}
@@ -104,7 +104,7 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 					_representative: request._representative.name
 				}
 			};
-		} catch (error) {
+		} catch {
 			return {
 				success: false,
 				error: 'UK Parliament submission failed',

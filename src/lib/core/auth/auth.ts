@@ -90,7 +90,15 @@ export async function createSession(userId: string, extended = false): Promise<S
 }
 
 export async function invalidateSession(sessionId: string): Promise<void> {
-	await db.session.delete({ where: { id: sessionId } });
+	try {
+		await db.session.delete({ where: { id: sessionId } });
+	} catch (error) {
+		// Handle case where session doesn't exist (already deleted)
+		if (error instanceof Error && error.message.includes('Record to delete does not exist')) {
+			return; // Silently handle - session was already deleted
+		}
+		throw error; // Re-throw other errors
+	}
 }
 
 export async function validateSession(

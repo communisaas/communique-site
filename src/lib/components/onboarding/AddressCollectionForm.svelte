@@ -93,7 +93,7 @@
 					(result.error as string) || 'Unable to verify address. Please check and try again.';
 			}
 		} catch (_error) {
-			console.error("Error occurred:", _error);
+			console.error('Error occurred');
 			addressError =
 				_error instanceof Error
 					? _error.message

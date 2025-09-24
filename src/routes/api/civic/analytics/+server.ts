@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
 		await forwardToExternalAnalytics(newEvent);
 
 		return json({ success: true });
-	} catch (error) {
+	} catch {
 		return json({ error: 'Failed to track _event' }, { status: 500 });
 	}
 };
@@ -69,7 +69,7 @@ async function storeAnalyticsEvent(_event: Omit<AnalyticsEvent, 'id' | 'created_
 		}
 
 		return storedEvent;
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 	}
 }
@@ -113,8 +113,8 @@ async function updateSessionMetrics(
 				}
 			}
 		});
-	} catch (error) {
-		console.warn(`Could not analyze template`, err);
+	} catch {
+		console.warn('Error occurred');
 	}
 }
 
@@ -155,8 +155,8 @@ async function updateTemplateMetrics(
 				data: { metrics: updatedMetrics }
 			});
 		}
-	} catch (error) {
-		console.warn(`Could not analyze template`, err);
+	} catch {
+		console.warn('Error occurred');
 	}
 }
 

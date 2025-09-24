@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				profileComplete: true
 			}
 		});
-	} catch (error) {
+	} catch {
 		return json(
 			{
 				error: 'Failed to save profile'
@@ -117,7 +117,7 @@ export const GET: RequestHandler = async ({ _locals }) => {
 				}
 			}
 		});
-	} catch (error) {
+	} catch {
 		return json(
 			{
 				error: 'Failed to fetch profile'

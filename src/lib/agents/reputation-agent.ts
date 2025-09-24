@@ -120,10 +120,11 @@ export class ReputationAgent extends BaseAgent {
 				}
 			);
 		} catch (error) {
-			console.error('Error occurred');
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			console.error('Reputation agent error:', errorMessage, error);
 			return this.createDecision(
 				{
-					userId: context.userId,
+					userId: context.userId || '',
 					credibilityScore: 0,
 					tier: 'untrusted',
 					credibilityComponents: {
@@ -135,12 +136,12 @@ export class ReputationAgent extends BaseAgent {
 					},
 					badges: [],
 					attestations: [],
-					riskFactors: ['reputation_calculationerror'],
+					riskFactors: ['reputation_calculation_error'],
 					portabilityHash: ''
 				},
 				0.1,
-				`Error in reputation assessment: Unknown error`,
-				{ error: true }
+				`Error in reputation assessment: ${errorMessage}`,
+				{ error: true, errorType: error instanceof Error ? error.name : 'UnknownError' }
 			);
 		}
 	}
@@ -279,7 +280,9 @@ export class ReputationAgent extends BaseAgent {
 
 		// Consistency bonus: actions spread over time (0-50)
 		const timeSpan = this.getAccountTimeSpanDays(userCreatedAt);
-		const consistencyScore = Math.min(50, (civicActions.length / Math.max(1, timeSpan / 30)) * 10);
+		// Ensure we don't divide by zero or get invalid results
+		const timeSpanMonths = Math.max(0.1, timeSpan / 30); // At least 0.1 months (3 days)
+		const consistencyScore = Math.min(50, (civicActions.length / timeSpanMonths) * 10);
 
 		// Success rate bonus (0-50)
 		const successfulActions = (civicActions as UnknownRecord[]).filter(
@@ -288,7 +291,12 @@ export class ReputationAgent extends BaseAgent {
 		const successRate = successfulActions / civicActions.length;
 		const successBonus = successRate * 50;
 
-		return actionScore + consistencyScore + successBonus;
+		// Handle NaN cases gracefully
+		const result =
+			actionScore +
+			(isNaN(consistencyScore) ? 0 : consistencyScore) +
+			(isNaN(successBonus) ? 0 : successBonus);
+		return result;
 	}
 
 	private calculateInformationQuality(challengeHistory: unknown[]): number {
@@ -372,7 +380,9 @@ export class ReputationAgent extends BaseAgent {
 	): number {
 		// Consistency over time (0-80)
 		const timeSpanDays = this.getAccountTimeSpanDays(userCreatedAt);
-		const regularActivity = civicActions.length / Math.max(1, timeSpanDays / 30);
+		// Ensure we don't divide by zero or get invalid results
+		const timeSpanMonths = Math.max(0.1, timeSpanDays / 30); // At least 0.1 months (3 days)
+		const regularActivity = civicActions.length / timeSpanMonths;
 		const consistencyScore = Math.min(80, regularActivity * 15);
 
 		// No negative reputation events (0-60)
@@ -384,7 +394,12 @@ export class ReputationAgent extends BaseAgent {
 		// Long-term engagement (0-60)
 		const longevityBonus = Math.min(60, (timeSpanDays / 30) * 5);
 
-		return consistencyScore + integrityScore + longevityBonus;
+		// Handle NaN cases gracefully
+		return (
+			(isNaN(consistencyScore) ? 0 : consistencyScore) +
+			integrityScore +
+			(isNaN(longevityBonus) ? 0 : longevityBonus)
+		);
 	}
 
 	private calculateCredibilityScore(

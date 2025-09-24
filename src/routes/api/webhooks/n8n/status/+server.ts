@@ -110,7 +110,7 @@ function broadcastStatusUpdate(submissionId: string, statusUpdate: unknown) {
 			if (ws.readyState === WebSocket.OPEN) {
 				try {
 					ws.send(message);
-				} catch (error) {
+				} catch {
 					console.error('Error occurred');
 					connections.delete(ws);
 				}
@@ -163,7 +163,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		return json(response);
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 
 		const response: ApiResponse = {
@@ -176,7 +176,7 @@ export const POST: RequestHandler = async ({ request }) => {
 };
 
 // Handle WebSocket connections for real-time status updates
-export const GET: RequestHandler = async ({ url, request }) => {
+export const GET: RequestHandler = async ({ _url, _request }) => {
 	// This would be implemented with your WebSocket server
 	// For SvelteKit, you might use a different approach like Server-Sent Events
 	// or integrate with a WebSocket library

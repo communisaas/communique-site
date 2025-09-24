@@ -11,7 +11,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type { AnalyticsSession } from '../../src/lib/types/analytics';
-import { safeSessionMetrics, safeDeviceData } from '../helpers/json-test-helpers';
+import { safeSessionMetrics, safeMetricsCache } from '../helpers/json-test-helpers';
 
 // Mock database for session testing
 const mockDb = vi.hoisted(() => ({
@@ -293,8 +293,11 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			const secondBatch = {
 				session_data: { session_id: 'sess_metrics_123' },
 				events: [
-					{ name: 'auth_completed', properties: { method: 'oauth' } },
-					{ name: 'template_used', properties: { delivery: 'certified' } }
+					{ name: 'conversion', properties: { method: 'oauth', event_source: 'auth_completed' } },
+					{
+						name: 'conversion',
+						properties: { delivery: 'certified', event_source: 'template_used' }
+					}
 				]
 			};
 
@@ -337,6 +340,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			// Mock session with events for duration calculation
 			const sessionEvents = [
 				{ timestamp: new Date('2024-01-01T10:00:00Z'), name: 'page_view' },
+				{ timestamp: new Date('2024-01-01T10:02:00Z'), name: 'page_view' },
 				{ timestamp: new Date('2024-01-01T10:05:30Z'), name: 'template_viewed' },
 				{ timestamp: new Date('2024-01-01T10:12:15Z'), name: 'template_used' }
 			];
@@ -363,7 +367,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 
 			expect(advancedMetrics.duration_ms).toBe(735000); // 12 minutes 15 seconds
 			expect(advancedMetrics.bounce_rate).toBe(0.0); // More than 1 page view
-			expect(advancedMetrics.conversion_rate).toBeCloseTo(0.33, 2);
+			expect(advancedMetrics.conversion_rate).toBeCloseTo(0.25, 2); // 1/4 = 0.25
 			expect(advancedMetrics.engagement_score).toBeGreaterThan(0.5);
 		});
 	});
@@ -399,6 +403,7 @@ describe('Analytics Session Management Tests - Consolidated Schema', () => {
 			};
 
 			mockDb.analytics_session.findUnique.mockResolvedValue(existingSession);
+			mockDb.analytics_event.findMany.mockResolvedValue([]);
 
 			const { GET } = await import('../../src/routes/api/analytics/events/+server');
 			const request = new Request(

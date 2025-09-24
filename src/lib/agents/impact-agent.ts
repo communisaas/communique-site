@@ -76,17 +76,37 @@ export class ImpactAgent extends BaseAgent {
 
 	async makeDecision(context: AgentContext): Promise<AgentDecision> {
 		try {
+			// Check for sufficient context first
+			if (!context.templateId && !context.userId && !context.actionType) {
+				return this.createDecision(
+					{ templateId: context.templateId, impactScore: 0, confidenceLevel: 'low' },
+					0.1,
+					`Insufficient context for impact assessment: Missing required fields (templateId, userId, or actionType)`,
+					{ error: false, insufficientData: true }
+				);
+			}
+
+			// Handle case where templateId is missing (but other context exists)
+			if (!context.templateId) {
+				return this.createDecision(
+					{ templateId: context.templateId, impactScore: 0, confidenceLevel: 'low' },
+					0.3,
+					`Impact assessment requires templateId for legislative tracking`,
+					{ error: false, partialData: true }
+				);
+			}
+
 			// Get template impact data
 			const _impactAssessment = await this.assessTemplateImpact(
-				context.templateId!,
+				context.templateId,
 				context.timestamp
 			);
 
 			// Track legislative outcomes
-			const outcomes = await this.trackLegislativeOutcomes(context.templateId!);
+			const outcomes = await this.trackLegislativeOutcomes(context.templateId);
 
 			// Build causal chains
-			const causalChains = await this.buildCausalChains(context.templateId!, outcomes);
+			const causalChains = await this.buildCausalChains(context.templateId, outcomes);
 
 			// Calculate impact score
 			const impactScore = this.calculateImpactScore(outcomes, causalChains);
@@ -120,12 +140,20 @@ export class ImpactAgent extends BaseAgent {
 				{ templateId: context.templateId, impactDetected: impactScore > 0 }
 			);
 		} catch (error) {
-			console.error('Error occurred');
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			console.error('Impact agent error:', errorMessage, error);
 			return this.createDecision(
-				{ templateId: context.templateId, impactScore: 0, confidenceLevel: 'low' },
+				{
+					templateId: context.templateId || '',
+					legislativeOutcomes: [],
+					impactScore: 0,
+					confidenceLevel: 'low',
+					causalChains: [],
+					correlationStrength: 0
+				},
 				0.2,
-				`Error in impact assessment: Unknown error`,
-				{ error: true }
+				`Error in impact assessment: ${errorMessage}`,
+				{ error: true, errorType: error instanceof Error ? error.name : 'UnknownError' }
 			);
 		}
 	}

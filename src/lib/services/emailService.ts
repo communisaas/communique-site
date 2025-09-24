@@ -323,7 +323,10 @@ export function buildMailtoUrl(template: Template, user: EmailServiceUser | null
 /**
  * @deprecated Template resolution is now handled internally. Will be removed in next major version.
  */
-export function fillTemplateVariables(template: Template, _user: EmailServiceUser | null): Template {
+export function fillTemplateVariables(
+	template: Template,
+	_user: EmailServiceUser | null
+): Template {
 	console.warn('fillTemplateVariables is deprecated. Template resolution is handled internally.');
 	return template; // Return unchanged for backward compatibility
 }

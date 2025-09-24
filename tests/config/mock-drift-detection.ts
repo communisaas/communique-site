@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { vi as _vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -304,7 +304,7 @@ export class MockDriftDetector {
 					endpoints.push(relativePath || '/');
 				}
 			}
-		} catch (error) {
+		} catch {
 			// Directory doesn't exist or is not accessible
 		}
 

@@ -57,7 +57,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				body
 			});
 		}
-	} catch (error) {
+	} catch {
 		return error(500, 'Failed to process congressional routing');
 	}
 };

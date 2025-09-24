@@ -170,8 +170,8 @@
 						// Data is too old, clean it up
 						sessionStorage.removeItem(`template_${template.id}_personalization`);
 					}
-				} catch (_error) {
-					console.error("Error occurred:", _error);
+				} catch {
+					console.error('Error occurred');
 				}
 			}
 		}

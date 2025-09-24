@@ -31,7 +31,7 @@
 		// If it's a JSON string, parse it
 		try {
 			return JSON.parse(rawMetrics);
-		} catch (error) {
+		} catch {
 			console.warn('Failed to parse metrics JSON:', rawMetrics);
 			return {};
 		}

@@ -126,7 +126,7 @@
 				// Fallback to manual address entry
 				currentStep = 'collect';
 			}
-		} catch (error) {
+		} catch {
 			// Fallback to manual address entry
 			currentStep = 'collect';
 		} finally {
@@ -157,7 +157,7 @@
 					// Fallback to manual address entry
 					currentStep = 'collect';
 				}
-			} catch (error) {
+			} catch {
 				// Continue polling or fallback after timeout
 			}
 		}, 2000);
@@ -237,7 +237,7 @@
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';
 			}
-		} catch (error) {
+		} catch {
 			addressError = 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;

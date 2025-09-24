@@ -37,7 +37,8 @@ export default ts.config(
 					varsIgnorePattern: '^_'
 				}
 			],
-			'@typescript-eslint/no-explicit-any': 'error'
+			'@typescript-eslint/no-explicit-any': 'error',
+			'no-ex-assign': 'error'
 		}
 	},
 	{

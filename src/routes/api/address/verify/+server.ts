@@ -100,7 +100,10 @@ export const POST: RequestHandler = async ({ request }) => {
 			];
 		} catch (error_repError) {
 			console.error('Failed to get real representatives, using placeholders:', error_repError);
-			console.error('Error details:', error_repError instanceof Error ? error_repError.stack : error_repError);
+			console.error(
+				'Error details:',
+				error_repError instanceof Error ? error_repError.stack : error_repError
+			);
 			// Fallback to placeholders if Congress API fails
 			representatives = createRepresentativesFromDistrict(district, state);
 		}

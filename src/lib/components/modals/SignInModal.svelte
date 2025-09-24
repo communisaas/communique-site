@@ -34,8 +34,8 @@
 
 			// Redirect to OAuth provider
 			window.location.href = `/auth/${provider}`;
-		} catch (_error) {
-			console.error("Error occurred:", _error);
+		} catch {
+			console.error('Error occurred');
 			// Fallback: direct redirect
 			window.location.href = `/auth/${provider}`;
 		}

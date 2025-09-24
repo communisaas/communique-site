@@ -32,6 +32,7 @@ npm run test     # integration-first test suite
 #### 🛡️ PREVENTION-FIRST APPROACH 🛡️
 
 **BEFORE writing ANY code:**
+
 1. **Run `npm run lint` locally** - Must show 0 errors before committing
 2. **Configure IDE with ESLint integration** - Real-time error prevention
 3. **Use TypeScript strict mode** - Catch issues at development time
@@ -77,36 +78,39 @@ npm run test     # integration-first test suite
 ### 🔧 ESLint Configuration Standards
 
 #### Error Handling Patterns (NEVER change these):
+
 ```typescript
 // ✅ CORRECT - Use error when needed
 try {
-  riskyOperation();
+	riskyOperation();
 } catch (error) {
-  console.error('Operation failed:', error);
-  throw error;
+	console.error('Operation failed:', error);
+	throw error;
 }
 
-// ✅ CORRECT - Anonymous when unused  
+// ✅ CORRECT - Anonymous when unused
 try {
-  simpleOperation();
+	simpleOperation();
 } catch {
-  return { success: false };
+	return { success: false };
 }
 
 // ❌ WRONG - Don't prefix used variables
 try {
-  riskyOperation();
+	riskyOperation();
 } catch (_error) {
-  console.error('Operation failed:', _error); // ERROR: _error used but prefixed
+	console.error('Operation failed:', _error); // ERROR: _error used but prefixed
 }
 ```
 
 #### Unused Variable Rules:
+
 - **Prefix with `_` ONLY if truly unused**: `_error`, `_event`, `_config`
 - **Remove unused imports entirely** - Don't just prefix them
 - **Use destructuring with rest**: `const { used, ..._unused } = obj;`
 
 #### Import Standards:
+
 - **ES6 imports only** - No `require()` statements
 - **Type-only imports** - `import type { Type } from './module';`
 - **Remove unused imports** - Don't accumulate dead imports
@@ -125,7 +129,7 @@ npm run lint --max-warnings 0
 # 3. TypeScript compilation must succeed
 npm run check
 
-# 4. Production build must succeed  
+# 4. Production build must succeed
 npm run build
 
 # 5. Test suite must pass

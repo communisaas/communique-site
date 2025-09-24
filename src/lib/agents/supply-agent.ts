@@ -111,7 +111,8 @@ export class SupplyAgent extends BaseAgent {
 				{ actionType: context.actionType, networkActivity: networkData.dailyActiveUsers }
 			);
 		} catch (error) {
-			console.error('Error occurred');
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			console.error('Supply agent error:', errorMessage, error);
 			// Fallback to conservative values
 			const fallbackParams: RewardParameters = {
 				baseRewardUSD: 0.1,
@@ -132,8 +133,8 @@ export class SupplyAgent extends BaseAgent {
 			return this.createDecision(
 				fallbackParams,
 				0.3,
-				`Error in supply calculation, using conservative fallback: Unknown error`,
-				{ error: true }
+				`Error in supply calculation, using conservative fallback: ${errorMessage}`,
+				{ error: true, errorType: error instanceof Error ? error.name : 'UnknownError' }
 			);
 		}
 	}

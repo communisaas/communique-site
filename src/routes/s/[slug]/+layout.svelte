@@ -14,7 +14,7 @@
 		data: LayoutData;
 	} = $props();
 
-	let showCopied = $state(false);
+	let _showCopied = $state(false);
 	let showShareMenu = $state(false);
 
 	const shareUrl = $derived($page.url.href);
@@ -24,8 +24,8 @@
 
 	function _copyLink() {
 		navigator.clipboard.writeText(shareUrl);
-		showCopied = true;
-		coordinated.setTimeout(() => (showCopied = false), 2000, 'feedback', componentId);
+		_showCopied = true;
+		coordinated.setTimeout(() => (_showCopied = false), 2000, 'feedback', componentId);
 	}
 
 	function _shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {

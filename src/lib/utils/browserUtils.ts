@@ -85,7 +85,7 @@ export function navigateTo(url: string): void {
 	if (win) {
 		try {
 			win.location.href = url;
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 		}
 	}
@@ -101,7 +101,7 @@ export function openInNewTab(url: string): void {
 	if (win) {
 		try {
 			win.open(url, '_blank', 'noopener,noreferrer');
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 		}
 	}
@@ -140,7 +140,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		const success = doc.execCommand('copy');
 		textArea.remove();
 		return success;
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return false;
 	}
@@ -155,7 +155,7 @@ export function matchesMediaQuery(query: string): boolean {
 
 	try {
 		return window.matchMedia(query).matches;
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return false;
 	}
@@ -174,7 +174,7 @@ export function createMediaQueryWatcher(
 		const handler = (e: MediaQueryListEvent): void => {
 			try {
 				callback(e.matches);
-			} catch (error) {
+			} catch {
 				console.error('Error occurred');
 			}
 		};
@@ -184,7 +184,7 @@ export function createMediaQueryWatcher(
 		// Initial call with error handling
 		try {
 			callback(mediaQuery.matches);
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 		}
 
@@ -192,11 +192,11 @@ export function createMediaQueryWatcher(
 		return (): void => {
 			try {
 				mediaQuery.removeEventListener('change', handler);
-			} catch (error) {
+			} catch {
 				console.error('Error occurred');
 			}
 		};
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return null;
 	}
@@ -329,7 +329,7 @@ export function canShareData(data: ShareData): boolean {
 
 	try {
 		return nav.canShare(data);
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return false;
 	}
@@ -349,7 +349,7 @@ export async function shareData(data: ShareData): Promise<boolean> {
 
 		await nav.share(data);
 		return true;
-	} catch (error) {
+	} catch {
 		// User cancelled or sharing failed
 		console.debug('Web Share cancelled or failed');
 		return false;

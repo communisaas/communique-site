@@ -58,11 +58,11 @@ class CWCClient {
 				response: response.data
 			};
 		} catch (error) {
-			const axiosError = error as ErrorWithCode & { 
-				response?: { 
-					data?: { message?: string }; 
-					status?: number; 
-				} 
+			const axiosError = error as ErrorWithCode & {
+				response?: {
+					data?: { message?: string };
+					status?: number;
+				};
 			};
 			console.error(
 				'CWC API submission failed:',

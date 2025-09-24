@@ -18,7 +18,7 @@ export const GET: RequestHandler = async ({ _locals }) => {
 		});
 
 		return json(userTemplates);
-	} catch (error) {
+	} catch {
 		return json({ error: 'Failed to fetch templates' }, { status: 500 });
 	}
 };

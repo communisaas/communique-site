@@ -9,7 +9,7 @@ import { verifySignedToken } from '$lib/core/auth/tokens';
 import { db } from '$lib/core/db';
 import { env } from '$env/dynamic/private';
 
-export const GET: RequestHandler = async ({ url, locals }) => {
+export const GET: RequestHandler = async ({ url, _locals }) => {
 	const token = url.searchParams.get('token');
 	const redirectPath = url.searchParams.get('redirect');
 

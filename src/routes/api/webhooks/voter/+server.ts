@@ -51,7 +51,7 @@ function isWebhookData(data: unknown): data is WebhookData {
 export const POST: RequestHandler = async ({ request }) => {
 	try {
 		// Verify webhook signature
-		const signature_ = request.headers.get('X-Webhook-Signature');
+		const _signature_ = request.headers.get('X-Webhook-Signature');
 		const apiKey = request.headers.get('X-API-Key');
 
 		if (apiKey !== VOTER_API_KEY) {
@@ -87,7 +87,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	} catch (error) {
 		console.error('Error occurred');
 
-		if (_error instanceof Response) {
+		if (error instanceof Response) {
 			throw error;
 		}
 

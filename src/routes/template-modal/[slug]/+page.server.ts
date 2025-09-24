@@ -3,7 +3,7 @@ import { db } from '$lib/core/db';
 import { extractRecipientEmails, extractTemplateMetrics } from '$lib/types/templateConfig';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async ({ params, locals, url }) => {
+export const load: PageServerLoad = async ({ params, locals, _url }) => {
 	const { slug } = params;
 
 	// Look up template by slug

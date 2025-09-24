@@ -127,19 +127,30 @@ function createModalSystem() {
 		},
 
 		/**
-		 * Close specific modal
+		 * Close specific modal with proper out animation timing
 		 */
 		close(id: string): void {
 			const modal = modalSystemState.activeModals[id];
 			if (!modal) return;
 
-			delete modalSystemState.activeModals[id]; // Delete property triggers reactivity
-			modalSystemState.modalStack = modalSystemState.modalStack.filter((stackId) => stackId !== id);
+			// First set isOpen to false to trigger out animations
+			modalSystemState.activeModals[id] = {
+				...modal,
+				isOpen: false
+			};
 
-			// Restore body scroll if no modals remain
-			if (modalSystemState.modalStack.length === 0) {
-				toggleBodyScroll(false);
-			}
+			// Give time for out animations to complete before removing from DOM
+			setTimeout(() => {
+				delete modalSystemState.activeModals[id];
+				modalSystemState.modalStack = modalSystemState.modalStack.filter(
+					(stackId) => stackId !== id
+				);
+
+				// Restore body scroll if no modals remain
+				if (modalSystemState.modalStack.length === 0) {
+					toggleBodyScroll(false);
+				}
+			}, 300); // Longer than scale out animation (200ms)
 		},
 
 		/**

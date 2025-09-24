@@ -117,19 +117,20 @@ export class VerificationAgent extends BaseAgent {
 				}
 			);
 		} catch (error) {
-			console.error('Error occurred');
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+			console.error('Verification agent error:', errorMessage, error);
 			return this.createDecision(
 				{
 					userId: context.userId || '',
 					verificationLevel: 'unverified',
 					trustScore: 0,
 					verificationSources: [],
-					riskFactors: ['verification_systemerror'],
+					riskFactors: ['verification_system_error'],
 					recommendedActions: ['retry_verification']
 				},
 				0.1,
-				`Error in verification assessment: Unknown error`,
-				{ error: true }
+				`Error in verification assessment: ${errorMessage}`,
+				{ error: true, errorType: error instanceof Error ? error.name : 'UnknownError' }
 			);
 		}
 	}

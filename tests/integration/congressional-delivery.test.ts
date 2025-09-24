@@ -168,11 +168,15 @@ describe('Congressional Delivery Integration', () => {
 				expect.objectContaining({
 					user: expect.objectContaining({
 						id: 'action-user123',
-						street: expect.any(String),
-						city: 'San Francisco',
-						state: 'CA',
-						zip: '94102',
-						congressional_district: 'CA-12'
+						name: 'Alice Cooper',
+						email: 'alice@example.com',
+						address: expect.objectContaining({
+							street: expect.any(String),
+							city: 'San Francisco',
+							state: 'CA',
+							postal_code: '94102',
+							country_code: 'US'
+						})
 					})
 				})
 			);
@@ -317,15 +321,18 @@ describe('Congressional Delivery Integration', () => {
 					template: expect.objectContaining({
 						id: template.id,
 						message_body: template.message_body,
-						verification_status: 'approved',
-						quality_score: 85
+						subject: template.subject
 					}),
 					user: expect.objectContaining({
 						id: user.id,
 						name: user.name,
-						city: user.city,
-						state: user.state,
-						congressional_district: user.congressional_district
+						email: user.email,
+						address: expect.objectContaining({
+							city: user.city,
+							state: user.state,
+							postal_code: user.zip,
+							country_code: 'US'
+						})
 					})
 				})
 			);

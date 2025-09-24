@@ -213,8 +213,7 @@ function isCertifiedDelivery(mail: ParsedMail): boolean {
 		}
 		if (to && 'value' in to && Array.isArray(to.value)) {
 			return (
-				to.value.map((addr: EmailAddress) => addr.address?.toLowerCase()).filter(Boolean) ||
-				[]
+				to.value.map((addr: EmailAddress) => addr.address?.toLowerCase()).filter(Boolean) || []
 			);
 		}
 		return [];

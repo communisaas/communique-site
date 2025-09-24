@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			supported_countries: supportedCountries,
 			capabilities: allCapabilities
 		});
-	} catch (error) {
+	} catch {
 		return json(
 			{
 				success: false,

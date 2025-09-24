@@ -93,7 +93,7 @@
 			} else {
 				addressError = result.error || 'Unable to verify address. Please check and try again.';
 			}
-		} catch (error) {
+		} catch {
 			addressError = 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;

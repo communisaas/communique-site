@@ -16,11 +16,7 @@ import { ReputationAgent } from '$lib/agents/reputation-agent.js';
 import { AgentCoordinator, AgentType, type AgentContext } from '$lib/agents/base-agent.js';
 import { extractReputationDecision, extractVerificationDecision } from '$lib/agents/type-guards.js';
 import type { RequestHandler } from './$types';
-import type {
-	RewardCalculationRequest,
-	ChallengeVoteRequest,
-	ProcessChallengeVoteParams
-} from '$lib/types/api.js';
+import type { RewardCalculationRequest, ProcessChallengeVoteParams } from '$lib/types/api.js';
 import type {
 	Representative,
 	UserProfileData,
@@ -29,11 +25,11 @@ import type {
 	UnknownRecord
 } from '$lib/types/any-replacements.js';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ _url }) => {
 	return json({ message: 'VOTER Protocol API - Use POST for actions' });
 };
 
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, _url }) => {
 	try {
 		const { action, ...data } = await request.json();
 
@@ -325,9 +321,9 @@ async function updateReputation({
 	scoreChange,
 	reason,
 	txHash,
-	agentSource,
-	evidence,
-	confidence
+	_agentSource,
+	_evidence,
+	_confidence
 }: {
 	userId: string;
 	scoreChange?: number;
@@ -479,7 +475,7 @@ async function verifyIdentity({
 	}
 
 	// First update user data from external verification
-	const updatedUser = await prisma.user.update({
+	const _updatedUser = await prisma.user.update({
 		where: { id: userId },
 		data: {
 			wallet_address: walletAddress,

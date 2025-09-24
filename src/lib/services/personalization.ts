@@ -18,6 +18,8 @@ export interface PersonalizationContext {
 		office?: string;
 		party?: string;
 		chamber?: string;
+		state?: string;
+		district?: string;
 	};
 	template: {
 		message_body: string;
@@ -63,6 +65,15 @@ export function resolveVariables(
 	}
 	if (_representative?.party) {
 		resolved = resolved.replace(/\[Representative Party\]/g, _representative.party);
+	}
+	if (_representative?.state) {
+		resolved = resolved.replace(/\[Representative State\]/g, _representative.state);
+	}
+	if (_representative?.district) {
+		resolved = resolved.replace(/\[Representative District\]/g, _representative.district);
+	}
+	if (_representative?.chamber) {
+		resolved = resolved.replace(/\[Representative Chamber\]/g, _representative.chamber);
 	}
 
 	return resolved;

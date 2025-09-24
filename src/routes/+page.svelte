@@ -66,7 +66,7 @@
 						.catch((_error) => {
 							// Template save failed - user can retry later
 						});
-				} catch (error) {
+				} catch {
 					// Invalid pending template data - ignore
 				}
 			}
@@ -112,7 +112,6 @@
 				componentId
 			);
 		}
-
 	});
 
 	// Enable smooth page transitions using View Transitions API
@@ -443,9 +442,9 @@
 							creationContext = null;
 							savedTemplate = newTemplate;
 							showTemplateSuccess = true;
-						} catch (_error) {
+						} catch {
 							// Template save failed - user can retry
-							console.error("Error occurred:", _error);
+							console.error('Error occurred');
 							// You could add a toast notification here
 						}
 					} else {

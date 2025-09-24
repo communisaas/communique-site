@@ -1,13 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import {
-		User,
-		Settings,
-		FileText,
-		MapPin,
-		ExternalLink,
-		Edit3
-	} from '@lucide/svelte';
+	import { User, Settings, FileText, MapPin, ExternalLink, Edit3 } from '@lucide/svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import ProfileEditModal from '$lib/components/profile/ProfileEditModal.svelte';
@@ -50,7 +43,7 @@
 	}
 
 	function handleProfileSave(__event: CustomEvent) {
-		const { section, data } = event.detail;
+		const { section: _section, data: _data } = event.detail;
 
 		// Update the local user data (in a real app, you might want to reload from server)
 		// For now, this is a simple optimistic update

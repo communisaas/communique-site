@@ -157,12 +157,12 @@ export function resolveTemplate(
 
 		// For address fields, only replace if we have complete data
 		if (user.street && user.city && user.state && user.zip) {
-			replacements['[Address ]'] = userAddress;
-			replacements['[Your Address ]'] = userAddress;
+			replacements['[Address]'] = userAddress;
+			replacements['[Your Address]'] = userAddress;
 		} else if (!options.preserveVariables) {
 			// Only remove if not preserving for preview
-			replacements['[Address ]'] = null;
-			replacements['[Your Address ]'] = null;
+			replacements['[Address]'] = null;
+			replacements['[Your Address]'] = null;
 		}
 
 		// Individual address components
@@ -267,7 +267,7 @@ export function resolveTemplate(
 		// Non-authenticated user - preserve placeholders but make them instructional
 		resolvedBody = resolvedBody
 			.replace(/\[Name\]/g, '[Your Name]')
-			.replace(/\[Address \]/g, '[Your Address ]')
+			.replace(/\[Address\]/g, '[Your Address]')
 			.replace(/\[Representative Name\]/g, "[Your Representative's Name]");
 	}
 
@@ -279,7 +279,7 @@ export function resolveTemplate(
 	if (typeof template.recipient_config === 'string') {
 		try {
 			recipientConfig = JSON.parse(template.recipient_config);
-		} catch (error) {
+		} catch {
 			console.warn('Failed to parse recipient_config JSON: Invalid JSON');
 			recipientConfig = undefined; // allow downstream defaulting
 		}
@@ -288,7 +288,7 @@ export function resolveTemplate(
 	let recipients: string[] = [];
 	try {
 		recipients = extractRecipientEmails(recipientConfig);
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		recipients = [];
 	}

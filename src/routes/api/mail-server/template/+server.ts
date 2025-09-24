@@ -62,7 +62,7 @@ export const GET: RequestHandler = async ({ url, request }) => {
 		}
 
 		return json({ template });
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return json({ error: 'Failed to fetch template' }, { status: 500 });
 	}

@@ -71,7 +71,7 @@ export async function validateOAuthSession(request: Request): Promise<SessionVal
 			user_email: session.user.email,
 			session_expires: session.expiresAt
 		};
-	} catch (error) {
+	} catch {
 		return { valid: false, error: 'Session validation failed' };
 	}
 }
@@ -137,7 +137,7 @@ export async function checkAnalyticsPermission(
 			default:
 				return { allowed: false, reason: 'Unknown endpoint' };
 		}
-	} catch (error) {
+	} catch {
 		return { allowed: false, reason: 'Permission check failed' };
 	}
 }
@@ -278,7 +278,7 @@ export async function logAnalyticsUsage(
 		//     timestamp: new Date()
 		//   }
 		// });
-	} catch (error) {
+	} catch {
 		/* Ignore analytics logging errors - function is currently a placeholder */
 	}
 }

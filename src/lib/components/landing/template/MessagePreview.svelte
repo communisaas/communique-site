@@ -99,8 +99,8 @@
 		try {
 			// Use preserveVariables option to keep variables for interactive display
 			return resolveTemplate(template, emailServiceUser, { preserveVariables: true });
-		} catch (_error) {
-			console.warn('Template resolution failed, falling back to preview:', _error);
+		} catch {
+			console.warn('Error occurred');
 			return { body: preview };
 		}
 	});

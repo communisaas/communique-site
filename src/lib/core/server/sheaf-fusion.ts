@@ -410,7 +410,7 @@ export async function storeFusionResults(
 			consensusEntropy,
 			qualityMetrics: fusionResult.quality_metrics
 		});
-	} catch (error) {
+	} catch {
 		// Silently handle database errors in development
 	}
 }

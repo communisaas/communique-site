@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createMockTemplate } from '../types/test-helpers.js';
 import type { MockTemplate } from '../types/test-helpers.js';
 import { testMultipliersAccess } from '../helpers/json-test-helpers';
@@ -41,11 +41,13 @@ interface AgentDecision {
  */
 
 // Mock agents and their dependencies - Updated for consolidated schema
-const mockDb = vi.hoisted(() => ({
+const mockDb = {
 	user: {
 		findUnique: vi.fn().mockImplementation((query) => {
 			const userId = query?.where?.id;
+			console.log('Mock called with userId:', userId);
 			if (!userId || userId === '' || typeof userId !== 'string') {
+				console.log('Invalid userId, returning null');
 				return Promise.resolve(null);
 			}
 
@@ -351,16 +353,195 @@ const mockDb = vi.hoisted(() => ({
 	challenge: {
 		findMany: vi.fn().mockResolvedValue([])
 	}
-}));
+};
 
 vi.mock('$lib/core/db', () => ({
-	prisma: mockDb,
-	db: mockDb // Expose db export for agents that use it
+	db: mockDb,
+	prisma: mockDb
 }));
 
 describe('Agent Integration', () => {
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
+		// Reset database mock implementations after clearing
+		const { db } = await import('$lib/core/db');
+
+		// Setup user mock
+		vi.mocked(db.user.findUnique).mockImplementation(async (query) => {
+			const userId = query?.where?.id;
+			if (!userId || userId === '' || typeof userId !== 'string') {
+				return null;
+			}
+
+			const userData: Record<string, unknown> = {
+				'user-123': {
+					id: 'user-123',
+					name: 'Test User 123',
+					email: 'test123@example.com',
+					verification_data: { provider: 'test' },
+					verification_method: 'email',
+					verified_at: new Date(),
+					congressional_district: 'CA-12',
+					is_verified: true,
+					trust_score: 100,
+					reputation_tier: 'verified',
+					// Additional fields for reputation agent
+					civic_actions: [
+						{ action_type: 'cwc_message', status: 'completed', created_at: new Date() },
+						{ action_type: 'template_creation', status: 'completed', created_at: new Date() }
+					],
+					challenger_challenges: [
+						{
+							id: 'challenge-1',
+							status: 'resolved',
+							resolution: 'challenger_won',
+							created_at: new Date()
+						}
+					],
+					defender_challenges: [],
+					audit_logs: [
+						{
+							score_before: 50,
+							score_after: 75,
+							change_amount: 25,
+							change_reason: 'civic_action_completed',
+							confidence: 0.8,
+							created_at: new Date()
+						}
+					],
+					wallet_address: '0x123456789',
+					createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() // 90 days ago
+				},
+				'suspicious-user': {
+					id: 'suspicious-user',
+					name: 'Suspicious User',
+					email: 'suspicious@example.com',
+					is_verified: false,
+					verification_method: null,
+					trust_score: -10,
+					reputation_tier: 'suspicious'
+				},
+				'new-user': {
+					id: 'new-user',
+					name: 'New User',
+					email: 'new@example.com',
+					trust_score: 0,
+					reputation_tier: 'novice',
+					is_verified: false,
+					civic_actions: [],
+					challenger_challenges: [],
+					defender_challenges: [],
+					audit_logs: [],
+					createdAt: new Date().toISOString()
+				},
+				'established-user': {
+					id: 'established-user',
+					name: 'Established User',
+					email: 'established@example.com',
+					trust_score: 200,
+					reputation_tier: 'expert',
+					is_verified: true,
+					verification_method: 'government_id',
+					civic_actions: [
+						{ action_type: 'cwc_message', status: 'completed', created_at: new Date() },
+						{ action_type: 'template_creation', status: 'completed', created_at: new Date() },
+						{ action_type: 'challenge_participation', status: 'completed', created_at: new Date() }
+					],
+					challenger_challenges: [
+						{
+							id: 'challenge-2',
+							status: 'resolved',
+							resolution: 'challenger_won',
+							created_at: new Date()
+						},
+						{
+							id: 'challenge-3',
+							status: 'resolved',
+							resolution: 'challenger_won',
+							created_at: new Date()
+						}
+					],
+					defender_challenges: [],
+					audit_logs: [
+						{
+							score_before: 150,
+							score_after: 200,
+							change_amount: 50,
+							change_reason: 'civic_action_completed',
+							confidence: 0.9,
+							created_at: new Date()
+						}
+					],
+					createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString()
+				}
+			};
+
+			return userData[userId] || null;
+		});
+
+		// Setup template mock
+		vi.mocked(db.template.findUnique).mockImplementation(async (query) => {
+			const templateId = query?.where?.id;
+			if (!templateId || typeof templateId !== 'string') {
+				return null;
+			}
+
+			const templateData: Record<string, unknown> = {
+				'template-123': {
+					id: 'template-123',
+					title: 'Test Template',
+					message_body: 'This is a test message about environmental policy',
+					createdAt: new Date()
+				},
+				'template-456': {
+					id: 'template-456',
+					title: 'Test Template 456',
+					message_body: 'This is a test message about healthcare policy',
+					createdAt: new Date()
+				},
+				'healthcare-template': {
+					id: 'healthcare-template',
+					title: 'Healthcare Template',
+					message_body: 'Healthcare policy advocacy message',
+					createdAt: new Date()
+				},
+				'climate-petition': {
+					id: 'climate-petition',
+					title: 'Climate Petition',
+					message_body: 'Climate action petition message',
+					createdAt: new Date()
+				}
+			};
+
+			return templateData[templateId] || null;
+		});
+
+		// Setup civicAction mocks
+		vi.mocked(db.civicAction.findMany).mockResolvedValue([
+			{
+				id: 'action-1',
+				user_id: 'user-123',
+				template_id: 'template-123',
+				action_type: 'cwc_message',
+				status: 'confirmed',
+				created_at: new Date()
+			}
+		]);
+
+		vi.mocked(db.civicAction.count).mockResolvedValue(5);
+
+		// Setup other mocks
+		vi.mocked(db.user.update).mockResolvedValue({
+			id: 'user-123',
+			trust_score: 150,
+			reputation_tier: 'verified'
+		});
+
+		vi.mocked(db.template.findMany).mockResolvedValue([]);
+		vi.mocked(db.template.count).mockResolvedValue(10);
+		vi.mocked(db.auditLog.create).mockResolvedValue({ id: 'log-123' });
+		vi.mocked(db.auditLog.findMany).mockResolvedValue([]);
+		vi.mocked(db.challenge.findMany).mockResolvedValue([]);
 	});
 
 	describe('Verification Agent', () => {

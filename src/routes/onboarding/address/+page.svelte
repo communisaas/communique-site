@@ -6,7 +6,7 @@
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import type { PageData } from './$types';
 
-	let { data }: { data: PageData } = $props();
+	let { _data }: { data: PageData } = $props();
 
 	let pendingTemplate: { slug: string; title: string } | null = $state(null);
 	let finalReturnUrl = $state('/profile');

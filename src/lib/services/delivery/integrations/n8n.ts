@@ -56,7 +56,7 @@ export class N8NClient {
 				success: true,
 				data: response.data.data
 			};
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return {
 				workflowId: 'template-moderation',
@@ -82,7 +82,7 @@ export class N8NClient {
 			});
 
 			return response.data;
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return {
 				verified: false,
@@ -110,7 +110,7 @@ export class N8NClient {
 			});
 
 			return response.data;
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return {
 				approved: false,
@@ -141,7 +141,7 @@ export class N8NClient {
 			});
 
 			return response.data;
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return {
 				userId,
@@ -182,7 +182,7 @@ export class N8NClient {
 				success: response.data.status === 'success',
 				data: response.data.data
 			};
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return {
 				workflowId: workflowName,
@@ -215,7 +215,7 @@ export class N8NClient {
 				status: response.data.status === 'success' ? 'success' : 'error',
 				data: response.data.data
 			};
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return { status: 'unknown' };
 		}
@@ -264,7 +264,7 @@ export class N8NClient {
 		try {
 			const response = await this.client.get<{ status: string }>('/health');
 			return response.data.status === 'ok';
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return false;
 		}
@@ -292,7 +292,7 @@ export class N8NClient {
 			}>(`/metrics${workflowId ? `?workflow=${workflowId}` : ''}`);
 
 			return response.data.metrics;
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return {
 				total_executions: 0,
@@ -344,7 +344,7 @@ export class N8NClient {
 				avg_response_time: metrics.average_execution_time,
 				recommendations
 			};
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return {
 				status: 'failing',
@@ -389,7 +389,7 @@ export class N8NClient {
 					webhook: webhookNode?.webhookId
 				};
 			});
-		} catch (error) {
+		} catch {
 			console.error('Error occurred');
 			return [];
 		}

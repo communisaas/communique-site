@@ -48,7 +48,7 @@
 					// Fallback to polling if WebSocket fails
 					startPolling();
 				};
-			} catch (error) {
+			} catch {
 				// WebSocket not supported, use polling
 				startPolling();
 			}
@@ -92,8 +92,8 @@
 						pollInterval = null;
 					}
 				}
-			} catch (_error) {
-				console.error("Error occurred:", _error);
+			} catch {
+				console.error('Error occurred');
 			}
 		}, 2000);
 	}

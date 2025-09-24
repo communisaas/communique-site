@@ -133,7 +133,7 @@ async function notifyServices(): Promise<void> {
 
 		await new Promise((resolve) => setTimeout(resolve, 100));
 		console.log('✅ Services notified');
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 	}
 }
@@ -141,7 +141,7 @@ async function notifyServices(): Promise<void> {
 /**
  * Log errors to monitoring service
  */
-function logToMonitoring(type: string, error: unknown): void {
+function logToMonitoring(type: string, _error: unknown): void {
 	if (!isProduction()) {
 		return;
 	}

@@ -13,7 +13,7 @@ import {
 	safeEventProperties,
 	safeComputedMetrics,
 	safeSessionMetrics,
-	safeExperimentMetricsCache
+	safeMetricsCache
 } from '../helpers/json-test-helpers';
 import { createMockRequestEvent } from '../helpers/request-event';
 import type {
@@ -328,7 +328,7 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				session_data: { session_id: 'sess_journey_123', user_id: 'user-123' },
 				events: [
 					{
-						name: 'template_used',
+						name: 'conversion',
 						template_id: 'template-456',
 						user_id: 'user-123',
 						experiment_id: 'exp-voting-onboarding',
@@ -342,7 +342,8 @@ describe('Complete Analytics Flow Integration Tests', () => {
 							total_session_time: 930000, // 15.5 minutes
 							total_funnel_time: 930000,
 							conversion_value: 1.0,
-							ab_test_variant: 'simplified_flow'
+							ab_test_variant: 'simplified_flow',
+							event_source: 'template_used'
 						}
 					}
 				]
@@ -371,7 +372,7 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				}
 			};
 
-			mockDb.analytics_session.upsert.mockResolvedValue(finalSession);
+			mockDb.analytics_session.upsert.mockResolvedValueOnce(finalSession);
 
 			const sentRequest = new Request('http://localhost/api/analytics/events', {
 				method: 'POST',
@@ -523,8 +524,8 @@ describe('Complete Analytics Flow Integration Tests', () => {
 				data: { metrics_cache: updatedExperimentMetrics }
 			});
 
-			expect(safeExperimentMetricsCache(updatedExperiment).participants_count).toBe(1);
-			expect(safeExperimentMetricsCache(updatedExperiment).funnel_completion_rate).toBe(1.0);
+			expect(safeMetricsCache(updatedExperiment).participants_count).toBe(1);
+			expect(safeMetricsCache(updatedExperiment).funnel_completion_rate).toBe(1.0);
 		});
 
 		it('should handle data migration and schema evolution', async () => {

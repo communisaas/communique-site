@@ -231,10 +231,10 @@ test.describe('Analytics Tracking E2E', () => {
 			});
 		});
 
-		let errorOccurred = false;
+		let analyticsError = false;
 		page.on('console', (msg: ConsoleMessage) => {
 			if (msg.type() === 'error' && msg.text().includes('analytics')) {
-				errorOccurred = true;
+				analyticsError = true;
 			}
 		});
 

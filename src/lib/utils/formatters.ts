@@ -131,7 +131,7 @@ export function formatNumber(value: number, options: NumberFormatOptions = {}): 
 
 	try {
 		return new Intl.NumberFormat(locale, intlOptions).format(value);
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return value.toString();
 	}
@@ -154,7 +154,7 @@ export function formatCurrency(value: number, options: CurrencyFormatOptions = {
 			currency,
 			...intlOptions
 		}).format(value);
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return `${currency} ${value.toFixed(2)}`;
 	}
@@ -179,7 +179,7 @@ export function formatPercentage(value: number, decimals: number = 1): string {
 			minimumFractionDigits: decimals,
 			maximumFractionDigits: decimals
 		}).format(value / 100);
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return `${value.toFixed(decimals)}%`;
 	}
@@ -199,7 +199,7 @@ export function formatCompactNumber(value: number): string {
 			notation: 'compact',
 			maximumFractionDigits: 1
 		}).format(value);
-	} catch (error) {
+	} catch {
 		// Fallback for older browsers
 		const abs = Math.abs(value);
 		if (abs >= 1e9) return (value / 1e9).toFixed(1) + 'B';
@@ -235,7 +235,7 @@ export function formatDate(date: Date | string | number, options: DateFormatOpti
 
 	try {
 		return new Intl.DateTimeFormat(locale, intlOptions).format(dateObj);
-	} catch (error) {
+	} catch {
 		console.error('Error occurred');
 		return dateObj.toLocaleDateString();
 	}
@@ -405,11 +405,11 @@ export function safeFormat<T>(formatter: () => T, fallback: T, errorMessage?: st
 	try {
 		const result = formatter();
 		return result;
-	} catch (error) {
+	} catch {
 		if (errorMessage && typeof errorMessage === 'string') {
 			console.warn(errorMessage);
 		} else {
-			console.warn('Error in formatter function:', error);
+			console.warn('Error in formatter function');
 		}
 		return fallback;
 	}

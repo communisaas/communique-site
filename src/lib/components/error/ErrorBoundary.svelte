@@ -81,8 +81,8 @@ Catches and handles component failures gracefully
 
 	function handleError(error: Error) {
 		const info: ErrorInfo = {
-			message: _error.message || 'Unknown error occurred',
-			stack: _error.stack,
+			message: error.message || 'Unknown error occurred',
+			stack: error.stack,
 			timestamp: Date.now(),
 			userAgent: navigator.userAgent,
 			url: window.location.href
@@ -93,7 +93,7 @@ Catches and handles component failures gracefully
 
 		// Log to console in development
 		if (enableLogging) {
-			console.error("Error occurred:", error);
+			console.error('Error occurred');
 		}
 
 		// Report to analytics/monitoring

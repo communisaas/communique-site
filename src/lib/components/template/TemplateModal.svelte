@@ -2,8 +2,8 @@
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	// import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import { fade, _fly, scale, _slide } from 'svelte/transition';
-	import { quintOut, backOut, _elasticOut } from 'svelte/easing';
+	import { fade, fly, scale, slide } from 'svelte/transition';
+	import { quintOut, backOut, elasticOut } from 'svelte/easing';
 	import { spring } from 'svelte/motion';
 	import { page } from '$app/stores';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
@@ -276,8 +276,8 @@
 						// Fallback - generate client-side ID
 						submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 					}
-				} catch (_error) {
-					console.error("Error occurred:", _error);
+				} catch {
+					console.error('Error occurred');
 					// Fallback - generate client-side ID
 					submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 				}
@@ -369,8 +369,8 @@
 				'copy-hide',
 				componentId
 			);
-		} catch (_error) {
-			console.warn('Copy failed:', _error);
+		} catch {
+			console.warn('Error occurred');
 		}
 	}
 

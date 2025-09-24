@@ -1,12 +1,12 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { SelfBackendVerifier, AllIds } from '@selfxyz/core';
-import type { AttestationId, IConfigStorage } from '@selfxyz/core';
+import type { IConfigStorage } from '@selfxyz/core';
 import { db } from '$lib/core/db';
 
 // Configuration storage implementation for Self.xyz
 class CommuniqueConfigStorage implements IConfigStorage {
-	async getConfig(configId: string) {
+	async getConfig(_configId: string) {
 		// Return verification requirements for Communiqué
 		return {
 			olderThan: 18, // Minimum age 18
@@ -15,13 +15,13 @@ class CommuniqueConfigStorage implements IConfigStorage {
 		};
 	}
 
-	async setConfig(configId: string, config: unknown) {
+	async setConfig(_configId: string, _config: unknown) {
 		// We use static configuration, so this is a no-op
 		// In a real implementation, you might store this in a database
 		return true;
 	}
 
-	async getActionId(userIdentifier: string, userDefinedData: string) {
+	async getActionId(_userIdentifier: string, _userDefinedData: string) {
 		return 'communique_verification'; // Static config ID for our app
 	}
 }
@@ -117,23 +117,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ status: 400 }
 			);
 		}
-	} catch (error) {
+	} catch (_error) {
 		// Type guard for ConfigMismatchError
 		if (
-			error &&
-			typeof error === 'object' &&
-			'name' in error &&
+			_error &&
+			typeof _error === 'object' &&
+			'name' in _error &&
 			_error.name === 'ConfigMismatchError' &&
-			'issues' in error
+			'issues' in _error
 		) {
-			const errorWithIssues = error as { issues: unknown[] };
+			const errorWithIssues = _error as { issues: unknown[] };
 			console.error('Self.xyz configuration mismatch:', errorWithIssues.issues);
 			return json(
 				{
 					status: 'error',
 					result: false,
 					message: 'Verification configuration mismatch',
-					issues: _errorWithIssues.issues
+					issues: errorWithIssues.issues
 				},
 				{ status: 400 }
 			);

@@ -39,11 +39,11 @@ export class FunnelAnalytics {
 					(e: FunnelEvent) => Date.now() - e.timestamp < 24 * 60 * 60 * 1000 // Keep events for 24 hours
 				);
 			}
-		} catch (error) {
+		} catch {
 			// Handle corrupted localStorage data gracefully
 			try {
 				localStorage.removeItem('communique_funnel__events');
-			} catch (error) {
+			} catch {
 				// Even removeItem might fail in some environments
 			}
 		}
@@ -80,7 +80,7 @@ export class FunnelAnalytics {
 		if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
 			try {
 				localStorage.setItem('communique_funnel_events', this.safeStringify(this.events));
-			} catch (error) {
+			} catch {
 				// Handle localStorage write failures (quota exceeded, private browsing, etc.)
 			}
 		}
@@ -105,7 +105,7 @@ export class FunnelAnalytics {
 	private async sendToAnalytics(_event: FunnelEvent) {
 		try {
 			await analytics.trackFunnelEvent(_event);
-		} catch (error) {
+		} catch {
 			// Fallback: Store failed events for retry
 			if (typeof window !== 'undefined') {
 				const failed = JSON.parse(localStorage.getItem('communique_failed__events') || '[]');

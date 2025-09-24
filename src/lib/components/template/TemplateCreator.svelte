@@ -54,7 +54,7 @@
 	const validators = {
 		objective: (data: TemplateFormData['objective']) => {
 			const errors: string[] = [];
-			if (!data.title.trim()) _errors.push('Title is required');
+			if (!data.title.trim()) errors.push('Title is required');
 			return errors;
 		},
 		audience: (data: TemplateFormData['audience']) => {
@@ -67,7 +67,7 @@
 		},
 		content: (data: TemplateFormData['content']) => {
 			const errors = [];
-			if (!data.preview.trim()) _errors.push('Message content is required');
+			if (!data.preview.trim()) errors.push('Message content is required');
 			// Note: We removed variable requirements to give writers more agency
 			// Templates work great with or without personalization variables
 			return errors;
