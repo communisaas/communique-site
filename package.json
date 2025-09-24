@@ -19,9 +19,6 @@
 		"test:coverage": "vitest --coverage --config=vitest.config.ts",
 		"test": "npm run test:run",
 		"test:e2e": "playwright test --config=playwright.config.ts",
-		"test:e2e:mcp": "playwright test --config=playwright-mcp.config.ts",
-		"test:e2e:debug": "playwright test --config=playwright-mcp.config.ts --debug",
-		"test:e2e:headed": "playwright test --config=playwright-mcp.config.ts --headed",
 		"test:production": "ENABLE_BETA=false ENABLE_RESEARCH=false npm run test:run",
 		"test:beta": "ENABLE_BETA=true npm run test:run",
 		"test:ci": "npm run test:run && npm run test:e2e",
@@ -37,7 +34,6 @@
 		"postinstall": "prisma generate && svelte-kit sync"
 	},
 	"devDependencies": {
-		"@playwright/mcp": "^0.0.37",
 		"@playwright/test": "^1.55.0",
 		"@sveltejs/adapter-auto": "^3.3.1",
 		"@sveltejs/adapter-node": "^5.3.2",
@@ -64,7 +60,6 @@
 		"globals": "^15.12.0",
 		"jsdom": "^26.1.0",
 		"mdsvex": "^0.12.6",
-		"playwright-mcp": "^0.0.12",
 		"prettier": "^3.6.2",
 		"prettier-plugin-svelte": "^3.4.0",
 		"prettier-plugin-tailwindcss": "^0.6.14",

@@ -57,3 +57,8 @@ test-execution-summary.md
 *.tmp
 *.temp
 *.log
+
+# Cruft prevention
+project.inlang/
+*.sh
+*.sql
