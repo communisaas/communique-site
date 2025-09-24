@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { _fade, fly } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { _MapPin, CheckCircle2, AlertCircle, Loader2, Home } from '@lucide/svelte';
+	import { MapPin, CheckCircle2, AlertCircle, Loader2, Home } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import type { AddressVerificationResult, _Representative } from '$lib/types/any-replacements.js';
 

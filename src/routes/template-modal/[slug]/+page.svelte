@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { _page } from '$app/stores';
-	import { onMount as _onMount } from 'svelte';
+	import { page } from '$app/stores';
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
 	import type { PageData } from './$types';

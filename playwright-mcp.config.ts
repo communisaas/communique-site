@@ -6,7 +6,7 @@ export default defineConfig({
 		port: 4173
 	},
 
-	testDir: 'e2e',
+	testDir: 'tests/e2e',
 
 	// MCP-specific configuration
 	use: {

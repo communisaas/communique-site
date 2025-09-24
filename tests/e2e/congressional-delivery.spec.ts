@@ -5,12 +5,26 @@ test.describe('Congressional Delivery E2E', () => {
 		// Navigate to the app
 		await page.goto('/');
 
-		// Check that we have the main heading
-		await expect(page.locator('h1')).toBeVisible();
+		// Check that template section loads
+		const templateSection = page.getByTestId('template-section');
+		await expect(templateSection).toBeVisible();
+
+		// Check templates list is visible
+		const templatesList = page.getByTestId('template-list');
+		await expect(templatesList).toBeVisible();
+
+		// Click on a template to select it
+		const templateButton = page.getByTestId(/^template-button-/).first();
+		await expect(templateButton).toBeVisible();
+		await templateButton.click();
+
+		// Check template preview loads
+		const templatePreview = page.getByTestId('template-preview');
+		await expect(templatePreview).toBeVisible();
 
 		// TODO: Add more specific E2E tests once UI is more defined
 		// This is a placeholder for the full congressional delivery flow:
-		// 1. User creates/selects template
+		// 1. User creates/selects template ✓
 		// 2. User enters personal message
 		// 3. System looks up representatives
 		// 4. User confirms delivery
