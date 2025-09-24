@@ -211,7 +211,12 @@ export const GET: RequestHandler = async () => {
 
 		return json(response);
 	} catch (error) {
-		console.error('Error occurred');
+		console.error('Templates API error:', error);
+		console.error('Error details:', {
+			message: error instanceof Error ? error.message : 'Unknown error',
+			stack: error instanceof Error ? error.stack : undefined,
+			name: error instanceof Error ? error.name : undefined
+		});
 
 		const response: ApiResponse = {
 			success: false,
@@ -334,7 +339,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				return json(response);
 			} catch (error) {
-				console.error('Database error creating template');
+				console.error('Database error creating template:', error);
+				console.error('Template creation error details:', {
+					message: error instanceof Error ? error.message : 'Unknown error',
+					stack: error instanceof Error ? error.stack : undefined
+				});
 
 				const response: ApiResponse = {
 					success: false,
@@ -365,7 +374,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json(response);
 		}
 	} catch (error) {
-		console.error('Error occurred');
+		console.error('Template POST error:', error);
+		console.error('POST error details:', {
+			message: error instanceof Error ? error.message : 'Unknown error',
+			stack: error instanceof Error ? error.stack : undefined
+		});
 
 		const response: ApiResponse = {
 			success: false,
@@ -407,7 +420,11 @@ async function triggerModerationPipeline(templateId: string) {
 
 		return result;
 	} catch (error) {
-		console.error('Error occurred');
+		console.error('Moderation pipeline error:', error);
+		console.error('Moderation error details:', {
+			message: error instanceof Error ? error.message : 'Unknown error',
+			templateId
+		});
 		// Don't throw - we don't want to fail template creation if moderation fails to trigger
 		return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
 	}
