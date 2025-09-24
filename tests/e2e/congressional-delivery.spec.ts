@@ -19,20 +19,20 @@ test.describe('Congressional Delivery E2E', () => {
 	});
 
 	test('should handle authentication flow', async ({ page }: { page: Page }) => {
-		// Navigate to auth-required page
-		await page.goto('/dashboard');
+		// Navigate to auth-required page (profile requires auth)
+		await page.goto('/profile');
 
 		// Should redirect to auth or show auth modal
 		// TODO: Implement based on actual auth UX
 
-		// Placeholder assertion
-		await expect(page).toHaveURL(/\/(auth|login|dashboard)/);
+		// Placeholder assertion - profile page or redirect
+		await expect(page).toHaveURL(/\/(auth|login|profile)/);
 	});
 
-	test('should display template creation interface', async ({ page }: { page: Page }) => {
-		await page.goto('/templates/create');
+	test('should display analytics page', async ({ page }: { page: Page }) => {
+		await page.goto('/analytics');
 
-		// Should show template creation form
+		// Should show analytics dashboard
 		// TODO: Add specific selectors based on actual UI
 
 		// Placeholder - verify page loads
