@@ -17,11 +17,11 @@
 			<div class="md:text-right">
 				<h3 class="mb-3 text-sm font-semibold text-slate-900">Contact</h3>
 				<a
-					href="mailto:support@communique.com"
+					href="mailto:support@communi.email"
 					class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-blue-600"
 				>
 					<Mail class="h-4 w-4" />
-					support@communique.com
+					support@communi.email
 				</a>
 			</div>
 		</div>
