@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { spring } from 'svelte/motion';
 	// // import { fade } from 'svelte/transition';
-	import { Send } from '@lucide/svelte';
+	import { Send, ChevronDown, Sparkles } from '@lucide/svelte';
 
 	let {
 		variant = 'primary',
@@ -19,6 +19,8 @@
 		enableFlight = false,
 		flightDirection = 'default',
 		flightState = $bindable('ready'),
+		animationType = 'flight',
+		icon = 'send',
 		user = null,
 		onclick,
 		onmouseover,
@@ -43,6 +45,8 @@
 		enableFlight?: boolean;
 		flightDirection?: 'default' | 'down-right' | 'up-right';
 		flightState?: 'ready' | 'taking-off' | 'flying' | 'sent' | 'departing' | 'returning';
+		animationType?: 'flight' | 'bounce';
+		icon?: 'send' | 'chevron-down' | 'sparkles';
 		user?: { id: string; name: string | null } | null;
 		onclick?: (__event: MouseEvent) => void;
 		onmouseover?: (__event: MouseEvent) => void;
@@ -55,6 +59,14 @@
 
 	let hovered = $state(false);
 	let clicked = $state(false);
+	
+	// Select icon component based on prop
+	const iconComponents = {
+		'send': Send,
+		'chevron-down': ChevronDown,
+		'sparkles': Sparkles
+	};
+	const IconComponent = iconComponents[icon];
 
 	// Elegant spring animations for smooth interactions
 	let buttonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
@@ -69,6 +81,10 @@
 	let planeRotation = spring(0, { stiffness: 0.35, damping: 0.6 });
 	let planeScale = spring(1, { stiffness: 0.3, damping: 0.7 });
 	let planeBlur = spring(0, { stiffness: 0.4, damping: 0.8 });
+	
+	// Bounce animation for scroll indicators
+	let bounceY = spring(0, { stiffness: 0.5, damping: 0.4 });
+	let bounceScale = spring(1, { stiffness: 0.6, damping: 0.5 });
 
 	// Second plane for diverging animation (Hero button only)
 	let _plane2X = $state(0);
@@ -181,19 +197,30 @@
 			if (variant === 'magical') {
 				glowIntensity.set(1);
 			}
-			// Subtle plane movement on hover - breathes life into the button
-			if (enableFlight && flightState === 'ready') {
-				planeX.set(3);
-				planeY.set(-2);
-				planeRotation.set(-5);
-				planeScale.set(1.05);
+			// Animation based on type
+			if (animationType === 'bounce') {
+				// Gentle bounce for scroll indicators
+				bounceY.set(-3);
+				bounceScale.set(1.1);
+			} else if (animationType === 'flight') {
+				// Subtle plane movement on hover - breathes life into the button
+				// Works even when flight is disabled for hover effect
+				if (!enableFlight || flightState === 'ready') {
+					planeX.set(3);
+					planeY.set(-2);
+					planeRotation.set(-5);
+					planeScale.set(1.05);
+				}
 			}
 		} else {
 			buttonScale.set(1);
 			shadowIntensity.set(0);
 			glowIntensity.set(0);
+			// Reset animations
+			bounceY.set(0);
+			bounceScale.set(1);
 			// Reset plane position when not hovering
-			if (enableFlight && flightState === 'ready') {
+			if (animationType === 'flight' && (!enableFlight || flightState === 'ready')) {
 				planeX.set(0);
 				planeY.set(0);
 				planeRotation.set(0);
@@ -367,7 +394,25 @@
 		if (!disabled && !loading) {
 			clicked = true;
 
-			if (enableFlight && flightState === 'ready') {
+			if (animationType === 'bounce') {
+				// Bounce animation for scroll action
+				buttonScale.set(0.95);
+				bounceY.set(5);
+				bounceScale.set(0.9);
+				
+				setTimeout(() => {
+					bounceY.set(-8);
+					bounceScale.set(1.15);
+					buttonScale.set(1.05);
+				}, 150);
+				
+				setTimeout(() => {
+					bounceY.set(0);
+					bounceScale.set(1);
+					buttonScale.set(1);
+					clicked = false;
+				}, 400);
+			} else if (enableFlight && flightState === 'ready') {
 				// Start flight sequence with anticipation
 				flightState = 'taking-off';
 				buttonScale.set(0.96); // Stronger press feedback
@@ -519,35 +564,54 @@
 		></div>
 	{/if}
 
-	<!-- Single plane element - always rendered for perfect continuity -->
-	{#if enableFlight}
+	<!-- Icon element - rendered based on animation type -->
+	{#if animationType === 'bounce'}
+		<!-- Bounce icon for scroll actions -->
 		<span
-			class="pointer-events-none absolute z-50 {flightState !== 'ready' && flightState !== 'returning'
+			class="pointer-events-none absolute z-50"
+			style="
+				top: 50%;
+				right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
+				transform: translate(0, calc(-50% + {$bounceY}px)) scale({$bounceScale});
+				transform-origin: center;
+				color: {variant === 'magical' ? 'white' : 'currentColor'};
+			"
+		>
+			<IconComponent class="h-4 w-4" />
+		</span>
+	{:else}
+		<!-- Flight icon - always shown but only animates when enableFlight is true -->
+		<span
+			class="pointer-events-none absolute z-50 {enableFlight && flightState !== 'ready' && flightState !== 'returning'
 				? 'transition-all duration-500 ease-out'
 				: ''}"
 			style="
 				top: 50%;
 				right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
 				transform: translate({$planeX}px, calc(-50% + {$planeY}px)) rotate({$planeRotation}deg) scale({$planeScale});
-				opacity: {$planeOpacity};
-				filter: blur({$planeBlur}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {flightState === 'ready'
-				? 0
-				: 0.6}));
+				opacity: {enableFlight ? $planeOpacity : 1};
+				filter: blur({enableFlight ? $planeBlur : 0}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {enableFlight && flightState !== 'ready'
+				? 0.6
+				: 0}));
 				transform-origin: center;
 				color: {variant === 'magical'
-				? flightState === 'ready' || flightState === 'returning'
+				? enableFlight && (flightState === 'ready' || flightState === 'returning')
 					? 'white'
-					: flightState === 'taking-off'
+					: enableFlight && flightState === 'taking-off'
 						? 'rgb(100, 116, 139)'
-						: 'rgb(51, 65, 85)'
-				: flightState === 'ready' || flightState === 'returning'
+						: enableFlight && flightState
+							? 'rgb(51, 65, 85)'
+							: 'white'
+				: enableFlight && (flightState === 'ready' || flightState === 'returning')
 					? 'currentColor'
-					: flightState === 'taking-off'
+					: enableFlight && flightState === 'taking-off'
 						? 'rgb(100, 116, 139)'
-						: 'rgb(51, 65, 85)'};
+						: enableFlight && flightState
+							? 'rgb(51, 65, 85)'
+							: 'currentColor'};
 			"
 		>
-			<Send class="h-4 w-4" />
+			<IconComponent class="h-4 w-4" />
 		</span>
 	{/if}
 
@@ -597,12 +661,10 @@
 					{@render children?.()}
 					{#if !children && text}{text}{/if}
 
-					<!-- Paper plane placeholder - actual plane always at root level -->
-					{#if enableFlight}
-						<span class="relative inline-block h-4 w-4">
-							<!-- Empty space - plane rendered at root for continuity -->
-						</span>
-					{/if}
+					<!-- Icon placeholder - actual icon always at root level -->
+					<span class="relative inline-block h-4 w-4">
+						<!-- Empty space - icon rendered at root for continuity -->
+					</span>
 				{/if}
 			</span>
 
@@ -659,12 +721,10 @@
 					{@render children?.()}
 					{#if !children && text}{text}{/if}
 
-					<!-- Paper plane placeholder - actual plane always at root level -->
-					{#if enableFlight}
-						<span class="relative inline-block h-4 w-4">
-							<!-- Empty space - plane rendered at root for continuity -->
-						</span>
-					{/if}
+					<!-- Icon placeholder - actual icon always at root level -->
+					<span class="relative inline-block h-4 w-4">
+						<!-- Empty space - icon rendered at root for continuity -->
+					</span>
 				{/if}
 			</span>
 

@@ -2,10 +2,6 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import HowItWorks from './HowItWorks.svelte';
 
-	let heroFlightState = $state<
-		'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | 'returning' | undefined
-	>('ready');
-
 	// Check if element is in viewport
 	function isInViewport(element: Element): boolean {
 		const rect = element.getBoundingClientRect();
@@ -37,9 +33,8 @@
 		<Button
 			variant="magical"
 			size="lg"
-			enableFlight={true}
-			flightDirection="down-right"
-			bind:flightState={heroFlightState}
+			animationType="bounce"
+			icon="sparkles"
 			onclick={() => {
 				const channelSection = document.querySelector('.w-full.max-w-4xl');
 				if (channelSection) {

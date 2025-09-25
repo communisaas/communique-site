@@ -67,7 +67,7 @@
 				size="lg"
 				testId="contact-congress-button"
 				classNames="w-full"
-				enableFlight={true}
+				enableFlight={!!user}
 				bind:flightState
 				{user}
 				onclick={handleSendClick}
@@ -79,7 +79,7 @@
 				size="lg"
 				testId="send-email-button"
 				classNames="w-full"
-				enableFlight={true}
+				enableFlight={!!user}
 				bind:flightState
 				{user}
 				onclick={handleSendClick}
