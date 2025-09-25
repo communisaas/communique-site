@@ -42,7 +42,7 @@
 		loading?: boolean;
 		enableFlight?: boolean;
 		flightDirection?: 'default' | 'down-right' | 'up-right';
-		flightState?: 'ready' | 'taking-off' | 'flying' | 'sent' | 'departing';
+		flightState?: 'ready' | 'taking-off' | 'flying' | 'sent' | 'departing' | 'returning';
 		user?: { id: string; name: string | null } | null;
 		onclick?: (__event: MouseEvent) => void;
 		onmouseover?: (__event: MouseEvent) => void;
@@ -246,8 +246,35 @@
 						planeOpacity.set(0);
 						planeBlur.set(1.8);
 						break;
+					case 'returning':
+						// Instant reset - plane shoots in from bottom-left like caught mid-flight
+						// Position far bottom-left, as if caught and thrown back
+						planeX.set(-25, { hard: true });
+						planeY.set(20, { hard: true });
+						planeRotation.set(35, { hard: true }); // Angled as if thrown
+						planeScale.set(0.6, { hard: true });
+						planeOpacity.set(0.4, { hard: true });
+						planeBlur.set(0.8, { hard: true });
+						// Immediately shoot towards position with spring physics
+						setTimeout(() => {
+							// Overshoot slightly past center for realistic catch-and-release effect
+							planeX.set(2);
+							planeY.set(-1);
+							planeRotation.set(-3);
+							planeScale.set(1.05);
+							planeOpacity.set(1);
+							planeBlur.set(0);
+						}, 20);
+						// Then settle into final position
+						setTimeout(() => {
+							planeX.set(0);
+							planeY.set(0);
+							planeRotation.set(0);
+							planeScale.set(1);
+						}, 150);
+						break;
 					default: // 'ready'
-						// Smooth reset - clean re-materialization
+						// Maintain final position
 						planeX.set(0);
 						planeY.set(0);
 						planeRotation.set(0);
@@ -296,8 +323,35 @@
 						planeOpacity.set(0); // Completely faded out
 						planeBlur.set(2); // Heavy blur
 						break;
+					case 'returning':
+						// Instant reset - plane shoots in from bottom-left like caught mid-flight
+						// Position far bottom-left, as if caught and thrown back
+						planeX.set(-25, { hard: true });
+						planeY.set(20, { hard: true });
+						planeRotation.set(35, { hard: true }); // Angled as if thrown
+						planeScale.set(0.6, { hard: true });
+						planeOpacity.set(0.4, { hard: true });
+						planeBlur.set(0.8, { hard: true });
+						// Immediately shoot towards position with spring physics
+						setTimeout(() => {
+							// Overshoot slightly past center for realistic catch-and-release effect
+							planeX.set(2);
+							planeY.set(-1);
+							planeRotation.set(-3);
+							planeScale.set(1.05);
+							planeOpacity.set(1);
+							planeBlur.set(0);
+						}, 20);
+						// Then settle into final position
+						setTimeout(() => {
+							planeX.set(0);
+							planeY.set(0);
+							planeRotation.set(0);
+							planeScale.set(1);
+						}, 150);
+						break;
 					default: // 'ready'
-						// Smooth reset with spring physics
+						// Maintain final position
 						planeX.set(0);
 						planeY.set(0);
 						planeRotation.set(0);
@@ -350,12 +404,19 @@
 					buttonScale.set(1);
 				}, 1100);
 
-				// Reset to ready - timed to minimize gap after plane fades
+				// Transition to returning state for pop-in effect
 				setTimeout(() => {
 					if (flightState === 'departing') {
-						flightState = 'ready';
+						flightState = 'returning';
 					}
 				}, 1900);
+				
+				// Complete the return to ready state after spring settles
+				setTimeout(() => {
+					if (flightState === 'returning') {
+						flightState = 'ready';
+					}
+				}, 2300);
 			} else {
 				// Standard click animation
 				buttonScale.set(0.98);
@@ -461,7 +522,7 @@
 	<!-- Single plane element - always rendered for perfect continuity -->
 	{#if enableFlight}
 		<span
-			class="pointer-events-none absolute z-50 {flightState !== 'ready'
+			class="pointer-events-none absolute z-50 {flightState !== 'ready' && flightState !== 'returning'
 				? 'transition-all duration-500 ease-out'
 				: ''}"
 			style="
@@ -474,12 +535,12 @@
 				: 0.6}));
 				transform-origin: center;
 				color: {variant === 'magical'
-				? flightState === 'ready'
+				? flightState === 'ready' || flightState === 'returning'
 					? 'white'
 					: flightState === 'taking-off'
 						? 'rgb(100, 116, 139)'
 						: 'rgb(51, 65, 85)'
-				: flightState === 'ready'
+				: flightState === 'ready' || flightState === 'returning'
 					? 'currentColor'
 					: flightState === 'taking-off'
 						? 'rgb(100, 116, 139)'

@@ -25,7 +25,7 @@
 		componentId: string;
 	} = $props();
 
-	let flightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined>(
+	let flightState = $state<'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | 'returning' | undefined>(
 		'ready'
 	);
 

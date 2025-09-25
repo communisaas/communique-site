@@ -3,7 +3,7 @@
 	import HowItWorks from './HowItWorks.svelte';
 
 	let heroFlightState = $state<
-		'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | undefined
+		'sent' | 'ready' | 'taking-off' | 'flying' | 'departing' | 'returning' | undefined
 	>('ready');
 
 	// Check if element is in viewport
