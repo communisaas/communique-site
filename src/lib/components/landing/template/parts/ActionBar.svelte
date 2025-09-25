@@ -66,8 +66,9 @@
 				variant="verified"
 				size="lg"
 				testId="contact-congress-button"
-				classNames="w-full"
+				classNames="w-full pr-5"
 				enableFlight={!!user}
+				icon="send"
 				bind:flightState
 				{user}
 				onclick={handleSendClick}
@@ -78,8 +79,9 @@
 				variant="magical"
 				size="lg"
 				testId="send-email-button"
-				classNames="w-full"
+				classNames="w-full pr-5"
 				enableFlight={!!user}
+				icon="send"
 				bind:flightState
 				{user}
 				onclick={handleSendClick}

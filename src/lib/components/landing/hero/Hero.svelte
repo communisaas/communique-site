@@ -33,8 +33,9 @@
 		<Button
 			variant="magical"
 			size="lg"
-			animationType="bounce"
-			icon="sparkles"
+			classNames="px-4 pr-6"
+			animationType="chevrons"
+			icon="chevrons-down"
 			onclick={() => {
 				const channelSection = document.querySelector('.w-full.max-w-4xl');
 				if (channelSection) {

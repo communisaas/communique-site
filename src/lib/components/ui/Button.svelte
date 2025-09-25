@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { spring } from 'svelte/motion';
 	// // import { fade } from 'svelte/transition';
-	import { Send, ChevronDown, Sparkles } from '@lucide/svelte';
+	import { Send, ChevronsDown } from '@lucide/svelte';
 
 	let {
 		variant = 'primary',
@@ -20,7 +20,7 @@
 		flightDirection = 'default',
 		flightState = $bindable('ready'),
 		animationType = 'flight',
-		icon = 'send',
+		icon = undefined,
 		user = null,
 		onclick,
 		onmouseover,
@@ -45,8 +45,8 @@
 		enableFlight?: boolean;
 		flightDirection?: 'default' | 'down-right' | 'up-right';
 		flightState?: 'ready' | 'taking-off' | 'flying' | 'sent' | 'departing' | 'returning';
-		animationType?: 'flight' | 'bounce';
-		icon?: 'send' | 'chevron-down' | 'sparkles';
+		animationType?: 'flight' | 'chevrons';
+		icon?: 'send' | 'chevrons-down' | undefined;
 		user?: { id: string; name: string | null } | null;
 		onclick?: (__event: MouseEvent) => void;
 		onmouseover?: (__event: MouseEvent) => void;
@@ -63,10 +63,9 @@
 	// Select icon component based on prop
 	const iconComponents = {
 		'send': Send,
-		'chevron-down': ChevronDown,
-		'sparkles': Sparkles
+		'chevrons-down': ChevronsDown
 	};
-	const IconComponent = iconComponents[icon];
+	const IconComponent = icon ? iconComponents[icon] : undefined;
 
 	// Elegant spring animations for smooth interactions
 	let buttonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
@@ -82,9 +81,10 @@
 	let planeScale = spring(1, { stiffness: 0.3, damping: 0.7 });
 	let planeBlur = spring(0, { stiffness: 0.4, damping: 0.8 });
 	
-	// Bounce animation for scroll indicators
-	let bounceY = spring(0, { stiffness: 0.5, damping: 0.4 });
-	let bounceScale = spring(1, { stiffness: 0.6, damping: 0.5 });
+	// Chevrons animation for scroll/reveal action
+	let chevronsY = spring(0, { stiffness: 0.3, damping: 0.8 });
+	let chevronsScale = spring(1, { stiffness: 0.3, damping: 0.8 });
+	let chevronsOpacity = spring(1, { stiffness: 0.4, damping: 0.9 });
 
 	// Second plane for diverging animation (Hero button only)
 	let _plane2X = $state(0);
@@ -198,10 +198,10 @@
 				glowIntensity.set(1);
 			}
 			// Animation based on type
-			if (animationType === 'bounce') {
-				// Gentle bounce for scroll indicators
-				bounceY.set(-3);
-				bounceScale.set(1.1);
+			if (animationType === 'chevrons') {
+				// Scale with button for cohesive animation
+				chevronsY.set(1);
+				chevronsScale.set(1.02); // Match button scale
 			} else if (animationType === 'flight') {
 				// Subtle plane movement on hover - breathes life into the button
 				// Works even when flight is disabled for hover effect
@@ -217,8 +217,9 @@
 			shadowIntensity.set(0);
 			glowIntensity.set(0);
 			// Reset animations
-			bounceY.set(0);
-			bounceScale.set(1);
+			chevronsY.set(0);
+			chevronsScale.set(1);
+			chevronsOpacity.set(1);
 			// Reset plane position when not hovering
 			if (animationType === 'flight' && (!enableFlight || flightState === 'ready')) {
 				planeX.set(0);
@@ -394,24 +395,28 @@
 		if (!disabled && !loading) {
 			clicked = true;
 
-			if (animationType === 'bounce') {
-				// Bounce animation for scroll action
-				buttonScale.set(0.95);
-				bounceY.set(5);
-				bounceScale.set(0.9);
+			if (animationType === 'chevrons') {
+				// Click animation - downward pulse
+				buttonScale.set(0.98);
+				chevronsY.set(4);
+				chevronsScale.set(0.98);
+				chevronsOpacity.set(0.7);
 				
 				setTimeout(() => {
-					bounceY.set(-8);
-					bounceScale.set(1.15);
-					buttonScale.set(1.05);
+					// Bounce down
+					chevronsY.set(6);
+					chevronsScale.set(1.05);
+					chevronsOpacity.set(1);
+					buttonScale.set(1);
 				}, 150);
 				
 				setTimeout(() => {
-					bounceY.set(0);
-					bounceScale.set(1);
-					buttonScale.set(1);
+					// Spring back
+					chevronsY.set(0);
+					chevronsScale.set(1);
+					chevronsOpacity.set(1);
 					clicked = false;
-				}, 400);
+				}, 350);
 			} else if (enableFlight && flightState === 'ready') {
 				// Start flight sequence with anticipation
 				flightState = 'taking-off';
@@ -564,23 +569,9 @@
 		></div>
 	{/if}
 
-	<!-- Icon element - rendered based on animation type -->
-	{#if animationType === 'bounce'}
-		<!-- Bounce icon for scroll actions -->
-		<span
-			class="pointer-events-none absolute z-50"
-			style="
-				top: 50%;
-				right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
-				transform: translate(0, calc(-50% + {$bounceY}px)) scale({$bounceScale});
-				transform-origin: center;
-				color: {variant === 'magical' ? 'white' : 'currentColor'};
-			"
-		>
-			<IconComponent class="h-4 w-4" />
-		</span>
-	{:else}
-		<!-- Flight icon - always shown but only animates when enableFlight is true -->
+	<!-- Icon element - different rendering based on animation type -->
+	{#if IconComponent && animationType !== 'chevrons'}
+		<!-- Flight icon - absolute positioned for flight animation -->
 		<span
 			class="pointer-events-none absolute z-50 {enableFlight && flightState !== 'ready' && flightState !== 'returning'
 				? 'transition-all duration-500 ease-out'
@@ -661,10 +652,25 @@
 					{@render children?.()}
 					{#if !children && text}{text}{/if}
 
-					<!-- Icon placeholder - actual icon always at root level -->
-					<span class="relative inline-block h-4 w-4">
-						<!-- Empty space - icon rendered at root for continuity -->
-					</span>
+					<!-- Icon rendering based on type -->
+					{#if IconComponent && animationType === 'chevrons'}
+						<!-- Chevrons inline with content for proper flexbox scaling -->
+						<span
+							class="-ml-1 -mr-1"
+							style="
+								transform: translateY({$chevronsY}px) scale({$chevronsScale});
+								opacity: {$chevronsOpacity};
+								color: {variant === 'magical' ? 'white' : 'currentColor'};
+							"
+						>
+							<IconComponent class="h-5 w-5" />
+						</span>
+					{:else if IconComponent && (animationType === 'flight' || enableFlight)}
+						<!-- Placeholder for absolute positioned flight icon -->
+						<span class="relative inline-block h-4 w-5">
+							<!-- Empty space - plane rendered at root for flight animation -->
+						</span>
+					{/if}
 				{/if}
 			</span>
 
@@ -721,10 +727,25 @@
 					{@render children?.()}
 					{#if !children && text}{text}{/if}
 
-					<!-- Icon placeholder - actual icon always at root level -->
-					<span class="relative inline-block h-4 w-4">
-						<!-- Empty space - icon rendered at root for continuity -->
-					</span>
+					<!-- Icon rendering based on type -->
+					{#if IconComponent && animationType === 'chevrons'}
+						<!-- Chevrons inline with content for proper flexbox scaling -->
+						<span
+							class="-ml-1 -mr-1"
+							style="
+								transform: translateY({$chevronsY}px) scale({$chevronsScale});
+								opacity: {$chevronsOpacity};
+								color: {variant === 'magical' ? 'white' : 'currentColor'};
+							"
+						>
+							<IconComponent class="h-5 w-5" />
+						</span>
+					{:else if IconComponent && (animationType === 'flight' || enableFlight)}
+						<!-- Placeholder for absolute positioned flight icon -->
+						<span class="relative inline-block h-4 w-5">
+							<!-- Empty space - plane rendered at root for flight animation -->
+						</span>
+					{/if}
 				{/if}
 			</span>
 
