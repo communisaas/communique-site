@@ -1,144 +1,119 @@
-# Template Variable Resolution Roadmap
+# Template Variable Roadmap
 
-## The Demon We Face
+## Simple, User-Driven Variables
 
-Our templates contain aspirational variables that require:
+Our templates use straightforward placeholder variables that users understand and can fill in themselves:
 
-- **Geographic intelligence**: `[Hospital System]`, `[Mayor Name]`
-- **Real-time economic data**: `[Local Rent Data]`, `[Living Wage Calculation]`
-- **Entity resolution**: `[Company]`, `[Platform]`, `[University]`
-- **Dynamic calculations**: `[Current Calculation]` based on context
+- **Personal context**: `[Your Story]`, `[Your Connection]`, `[Your Experience]`
+- **Local references**: `[Your City]`, `[Your District]`, `[Your Representative]`
+- **Specific entities**: `[Company Name]`, `[University]`, `[Organization]`
+- **Basic data**: `[Amount]`, `[Date]`, `[Location]`
 
-These aren't simple string replacements. They require agent-orchestrated data pipelines from trusted sources.
+These are intentionally simple. Users know their own context better than any API.
 
 ## Current Reality
 
-### Variables in Production Templates:
-
-```
-[Hospital System]—Major healthcare provider by location
-[Local Rent Data]—Median 1BR rent for user's area
-[Current Calculation]—Minimum wage × hours calculation
-[Living Wage Calculation]—MIT calculator for family size
-[Company]—Corporate entity from context
-[Platform]—Tech company identification
-[University]—Educational institution
-[Mayor Name]—City-specific elected official
-[Your Connection to the University]—User-specific context
-```
-
-### Resolution Challenge:
-
-Each variable requires:
-
-1. **Context extraction** (where is user? what company?)
-2. **Data source query** (trusted APIs only)
-3. **Fallback strategy** (when data unavailable)
-4. **Citation requirement** (source attribution)
-
-## Architecture
-
-### Phase 1: Data Provider Registry
-
-Create extensible system for verified data sources:
+### Variables in Templates:
 
 ```typescript
-interface DataProvider {
-	id: string;
-	type: 'api' | 'database' | 'agent';
-	trustScore: number;
-	capabilities: string[];
-	rateLimit: RateLimitConfig;
-	authenticate(): Promise<void>;
-	query(params: QueryParams): Promise<DataResult>;
+interface TemplateVariable {
+  name: string           // [Your City]
+  type: 'text' | 'number' | 'date' | 'select'
+  required: boolean
+  placeholder?: string   // Help text for users
+  validation?: RegExp    // Optional validation
 }
 ```
 
-**Providers needed:**
+### Resolution Strategy:
 
-- Census/ACS (demographics, income)
-- BLS (wages, employment)
-- HUD (housing costs)
-- CMS (healthcare providers)
-- Google Civic (elected officials)
-- SEC EDGAR (corporate data)
-- IPEDS (universities)
-- MIT Living Wage (calculations)
+1. **User fills in** - They know their context
+2. **Smart defaults** - Pre-fill from user profile when available
+3. **Validation only** - Ensure format is correct
+4. **No external APIs** - Keep it simple and reliable
 
-### Phase 2: Variable Resolution Engine
+## Implementation
+
+### Variable Types
 
 ```typescript
-interface VariableResolver {
-  pattern: RegExp
-  requiredContext: string[]
-  dataProviders: DataProvider[]
+type VariableType = 
+  | 'personal'    // User's personal story/experience
+  | 'location'    // City, district, region
+  | 'entity'      // Company, organization name
+  | 'numeric'     // Amounts, quantities
+  | 'temporal'    // Dates, time periods
+  | 'selection'   // Pre-defined options
+```
 
-  async resolve(context: UserContext): Promise<{
-    value: string | null
-    source: string
-    confidence: number
-    timestamp: Date
-  }>
+### User Experience
+
+1. **Template Selection** - User picks relevant template
+2. **Variable Highlighting** - Clear visual indicators for fillable fields
+3. **Inline Editing** - Click to edit directly in preview
+4. **Smart Suggestions** - From user's profile/history
+5. **Validation Feedback** - Immediate, helpful error messages
+
+### Variable Processing
+
+```typescript
+interface VariableProcessor {
+  extract(template: string): Variable[]
+  validate(variable: Variable, value: string): ValidationResult
+  substitute(template: string, values: Map<string, string>): string
+  getSuggestions(variable: Variable, user: User): string[]
 }
 ```
 
-**Resolution pipeline:**
+**Processing flow:**
 
-1. Parse template → identify variables
-2. Extract user context (location, target entity)
-3. Query appropriate data providers
-4. Agent orchestrates multiple sources if needed
-5. Return resolved value with citation
+1. Extract variables from template
+2. Present fillable form to user
+3. Validate input as user types
+4. Substitute values into final message
+5. Store for future reuse
 
-### Phase 3: Agent-Safe Orchestration
+### Smart Defaults
 
-Agent can:
-
-- **Analyze** template to identify data needs
-- **Query** verified providers only
-- **Compose** multiple data points
-- **Cannot** generate/hallucinate data
+Pre-fill variables when possible:
 
 ```typescript
-class AgentResolver {
-	async resolveTemplate(template: Template, user: User) {
-		// Agent identifies needed data
-		const variables = this.extractVariables(template);
-
-		// Query trusted sources only
-		const resolved = await Promise.all(variables.map((v) => this.resolveVariable(v, user)));
-
-		// No hallucination - only real data or explicit "unavailable"
-		return this.applyResolutions(template, resolved);
-	}
-}
-```
-
-### Phase 4: Trust & Verification
-
-Every resolved value includes:
-
-```typescript
-interface ResolvedValue {
-  variable: string
-  value: string
-  source: {
-    provider: string
-    url?: string
-    timestamp: Date
-    confidence: 0-1
+class SmartDefaults {
+  getDefault(variable: Variable, user: User): string | undefined {
+    switch(variable.type) {
+      case 'location':
+        return user.city || user.district
+      case 'representative':
+        return user.representatives?.[0]?.name
+      case 'date':
+        return new Date().toLocaleDateString()
+      default:
+        return undefined
+    }
   }
-  userEditable: boolean
 }
 ```
 
-UI shows sources:
+### Storage & Reuse
 
+Save user's variable values for future use:
+
+```typescript
+interface SavedVariable {
+  userId: string
+  variableName: string
+  value: string
+  templateId?: string
+  lastUsed: Date
+  useCount: number
+}
 ```
-Average rent: $2,850/month
-Source: HUD Fair Market Rent, San Francisco MSA, 2024
-[Edit]
-```
+
+Benefits:
+- Faster template sending
+- Consistent messaging
+- Personal variable library
+- Privacy preserved (stored locally or encrypted)
 
 ## Implementation Strategy
 

@@ -1,93 +1,62 @@
-# Low‑Friction Civic Action Funnel
+# Low-Friction Civic Action
 
-## Overview
+**One-click democracy: From link to sent message in seconds.**
 
-Reduce the effort required to take meaningful civic action. People land on a template, understand the value instantly, authenticate with one tap, and we open a ready‑to‑send email using on‑device capabilities.
+## User Flows
 
-## Flow architecture
-
-### New visitor (guest → action)
-
+### New Visitor
 ```
-Link → Template page → Auth prompt → OAuth → Template modal → mailto open → Done
+Shared link → Preview template → OAuth login → Send message → Earn rewards
 ```
 
-### Returning visitor (instant action)
-
+### Returning User  
 ```
-Link → Recognized session → Template modal → mailto open → Done
+Shared link → Auto-recognized → Send message → Earn rewards
 ```
 
-## UX principles
+## Core Principles
 
-- Show value first: preview before auth
-- Progressive disclosure: short, focused steps
-- Social proof: transparent send/usage counts
-- Completion bias: start the action, make finishing easy
-- OAuth only: no passwords
+- **Preview before auth**: Show value immediately
+- **OAuth only**: No passwords, instant login
+- **Extended sessions**: 90 days for template actions
+- **One-click send**: Pre-filled messages via mailto
+- **Viral sharing**: Templates spread like memes
 
-## Implementation components
+## Technical Implementation
 
-- Guest state: `src/lib/stores/guestState.svelte.ts`
-  - Persists template context up to 7 days in `localStorage`
-  - Tracks `source` (`social-link` | `direct-link` | `share`) and `viewCount`
+### State Management
+- Guest state persisted 7 days in localStorage
+- Pending intent saved for post-OAuth return
+- Source tracking (social/direct/share)
 
-- Auth/onboarding: `src/lib/components/auth/OnboardingModal.svelte`
-  - Progressive copy that adapts to traffic source and template type
-  - Stores pending intent in `sessionStorage` for post‑OAuth return
+### Components
+- **Guest state**: `src/lib/stores/guestState.svelte.ts`
+- **Auth modal**: `src/lib/components/auth/OnboardingModal.svelte`
+- **Template modal**: `src/lib/components/template/TemplateModal.svelte`
+- **Session management**: `src/lib/core/auth/auth.ts`
 
-- Quick action modal: `src/lib/components/template/TemplateModal.svelte`
-  - For authenticated users, auto‑generates and opens `mailto:`
-  - Success state with share options; copy link + platform share
+### Deep Links
+- Landing: `/{slug}` - Template preview page
+- Direct action: `/template-modal/{slug}` - Requires auth
+- Parameters:
+  - `?auth=required` - Force auth prompt
+  - `?source=social-link` - Attribution tracking
 
-- Extended sessions: `src/lib/core/auth/auth.ts` + OAuth callbacks
-  - 90‑day sessions when returning from `template-modal` or `auth=required`
-  - 30‑day sessions otherwise
-  - See callbacks under `src/routes/auth/*/callback/+server.ts`
+## Analytics
 
-- Analytics hooks: `src/lib/core/analytics/funnel.ts`
-  - Event model supports: `template_viewed`, `onboarding_started`, `auth_completed`, `template_used`, `template_shared`
-  - Server endpoint increments per‑template counters under `src/routes/api/civic/analytics/+server.ts`
-  - Template modal usage/sharing instrumented; add view/onboarding/auth events in `/{slug}` as needed
+Tracked events:
+- `template_viewed` - Landing page view
+- `auth_completed` - OAuth success
+- `template_used` - Message sent
+- `template_shared` - Viral spread
 
-## Deep links and routing
+Server-side counters track views, sends, and shares per template.
 
-- Landing: `/{slug}` (template page)
-- Direct modal: `/template-modal/{slug}` (requires auth; otherwise redirects to `/{slug}?auth=required&source=modal`)
-- URL parameters:
-  - `?auth=required` → prompt auth on landing
-  - `?source=social-link` | `?source=share` → attribution stored in guest state
+## Success Metrics
 
-## Personalization
+- **Conversion**: Link → Send > 20%
+- **Return rate**: 90-day session retention > 60%
+- **Viral coefficient**: Shares per send > 1.5
+- **Time to action**: < 30 seconds for returning users
 
-- Source‑aware messages in onboarding (`social-link`/`direct-link`/`share`)
-- Template‑type awareness (e.g., congressional vs direct outreach)
-- Context‑aware CTAs for guests vs signed‑in users
-- Address-aware prompts for congressional templates
-
-## Return experience
-
-- Extended session recognition (per device)
-- Fast path: open template modal and launch `mailto` for signed‑in users
-- Restore guest intent when returning from OAuth
-
-## Metrics
-
-- Tracked events (implemented):
-  - `template_used` (on mailto open)
-  - `template_shared` (on share)
-- Tracked events (available in API/model; instrument where needed):
-  - `template_viewed`, `onboarding_started`, `auth_completed`
-- Server stores counters (views, modal_views, sent, shares). Client can compute funnel ratios from events.
-
-## Technical notes
-
-- State: Svelte stores + `localStorage`/`sessionStorage`
-- Auth: OAuth providers only; session length determined by source context
-- Performance: modal lazy‑loading, client‑side email generation
-
-## Current status
-
-- Guest state, quick action modal, extended sessions, sharing: implemented
-- Event model and API exist; broader adoption can wire through `funnelAnalytics`
-- Claims are grounded in shipped code; additional analytics visualization and A/B testing are optional follow‑ups
+The flow is optimized for instant gratification while building long-term engagement through VOTER Protocol rewards.

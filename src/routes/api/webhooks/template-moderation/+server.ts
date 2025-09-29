@@ -1,13 +1,9 @@
 import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
-import {
-	templateCorrector,
-	type TemplateModerationResult
-} from '$lib/services/template-correction';
 import { moderationConsensus } from '$lib/agents/moderation-consensus';
 import { reputationCalculator } from '$lib/services/reputation-calculator';
 import type { RequestHandler } from './$types';
-import type { Prisma } from '@prisma/client';
+import type { ConsensusResult } from '$lib/agents/content/consensus-coordinator';
 
 /**
  * N8N Webhook Handler for Template Moderation Pipeline
@@ -92,21 +88,15 @@ export const POST: RequestHandler = async ({ request }) => {
 };
 
 /**
- * Execute the complete moderation pipeline
+ * Execute the complete moderation pipeline using multi-agent consensus
  */
-async function executeModerationPipeline(templateId: string) {
-	const stages: {
-		correction: TemplateModerationResult | null;
-		moderation: { approved: boolean; score: number; agentVotes: Record<string, unknown> } | null;
-		reputation: { applied: boolean; reason: string } | null;
-	} = {
-		correction: null,
-		moderation: null,
-		reputation: null
-	};
-
+async function executeModerationPipeline(templateId: string): Promise<{
+	status: string;
+	result: ConsensusResult | null;
+	message: string;
+}> {
 	try {
-		// Get template for processing
+		// Get template for initial checks
 		const template = await db.template.findUnique({
 			where: { id: templateId },
 			include: { user: true }
@@ -116,81 +106,32 @@ async function executeModerationPipeline(templateId: string) {
 			throw new Error(`Template ${templateId} not found`);
 		}
 
-		// Stage 1: Auto-correction
-		console.log(`[Moderation] Stage 1: Auto-correction for template ${templateId}`);
-		const correctionResult = await templateCorrector.processTemplate(templateId);
-		stages.correction = correctionResult;
+		// Use multi-agent consensus for all moderation
+		console.log(`[Moderation] Starting multi-agent consensus for template ${templateId}`);
+		const consensusResult = await moderationConsensus.evaluateTemplate(
+			templateId,
+			'direct-delivery' // Use voter-protocol when ready
+		);
 
-		// If severity is low and corrections applied, we're done
-		if (correctionResult.severity <= 6 && !correctionResult.proceed) {
-			console.log(`[Moderation] Template auto-corrected and approved`);
-
-			// Update template status to approved
-			await db.template.update({
-				where: { id: templateId },
-				data: {
-					verification_status: 'approved',
-					reviewed_at: new Date()
-				}
-			});
-
-			// Apply small reputation boost for clean submission
-			if (template.userId) {
-				await reputationCalculator.applyTemplateResult(templateId);
-				stages.reputation = { applied: true, reason: 'auto-approved after correction' };
-			}
-
-			return {
-				status: 'approved',
-				stages,
-				message: 'Template auto-corrected and approved'
-			};
+		// Apply reputation changes based on result
+		if (template.userId) {
+			console.log(`[Moderation] Applying reputation changes`);
+			await reputationCalculator.applyTemplateResult(templateId);
 		}
 
-		// Stage 2: Multi-agent moderation for high severity
-		if (correctionResult.severity >= 7) {
-			console.log(
-				`[Moderation] Stage 2: Multi-agent consensus for severity ${correctionResult.severity}`
-			);
-			const consensusResult = await moderationConsensus.evaluateTemplate(templateId);
-			stages.moderation = consensusResult;
+		// Return result
+		const status = consensusResult.approved ? 'approved' : 'rejected';
+		const message = consensusResult.approved
+			? `Template approved by ${consensusResult.consensusType} consensus`
+			: `Template rejected (severity: ${consensusResult.severity})`;
 
-			// Update template with consensus results
-			const finalStatus = consensusResult.approved ? 'approved' : 'rejected';
-			await db.template.update({
-				where: { id: templateId },
-				data: {
-					verification_status: finalStatus,
-					agent_votes: consensusResult.agentVotes as unknown as Prisma.JsonObject,
-					consensus_score: consensusResult.score,
-					reviewed_at: new Date()
-				}
-			});
-
-			// Stage 3: Apply reputation changes
-			console.log(`[Moderation] Stage 3: Applying reputation changes`);
-			if (template.userId) {
-				const reputationUpdate = await reputationCalculator.applyTemplateResult(templateId);
-				stages.reputation = reputationUpdate;
-			}
-
-			return {
-				status: finalStatus,
-				stages,
-				message: consensusResult.approved
-					? 'Template approved by agent consensus'
-					: `Template rejected (severity ${correctionResult.severity})`
-			};
-		}
-
-		// Shouldn't reach here, but handle edge case
 		return {
-			status: 'pending',
-			stages,
-			message: 'Moderation incomplete - manual review required'
+			status,
+			result: consensusResult,
+			message
 		};
 	} catch (error) {
-		console.error('Error occurred');
+		console.error('Moderation pipeline error:', error);
 
 		// Update template status to indicate error
 		await db.template.update({
@@ -200,7 +141,7 @@ async function executeModerationPipeline(templateId: string) {
 				correction_log: {
 					error: error instanceof Error ? error.message : 'Unknown error',
 					timestamp: new Date().toISOString()
-				}
+				} as any
 			}
 		});
 

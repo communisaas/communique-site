@@ -1,10 +1,18 @@
 # Communique Docs
 
-**What this is**: Communique lets people take civic action in seconds.
+**Democracy infrastructure that competes in the attention economy.**
 
-- Global delivery: Email (countries with public emails) and Certified API/Form (e.g., US CWC); always includes social amplification tools
-- Viral pattern generator for platform-native sharing
-- Anchoring: Monad primary; optional mirror to ETH L2 (ERC‑8004 registries) when needed
+While memecoins hit $40B in 24 hours, civic engagement reads like homework. Communique transforms political participation into instant action that spreads like viral content.
+
+**What this is**: Instant civic action infrastructure, globally.
+
+- **One click, real impact**: Contact representatives in seconds, not hours
+- **Global delivery**: US Congress (CWC) today, Westminster tomorrow, new governance forms beyond
+- **Viral by design**: Templates that spread through networks like memes
+- **VOTER Protocol powered**: Every action earns rewards, builds reputation, creates accountability
+- **On-chain verification**: Anchored on Monad with ERC-8004 portable reputation
+
+The US Congressional API is our proof of concept. Parliamentary systems are next. Any governance structure that accepts citizen input can integrate.
 
 ## Start here
 
@@ -15,8 +23,8 @@
 ## Deep dives (optional)
 
 - Agent Architecture: [agents/agent-architecture.md](./agents/agent-architecture.md)
-- Two Agent Systems Explained: [agents/two-agent-systems.md](./agents/two-agent-systems.md)
 - VOTER Blockchain Integration: [integrations/voter-blockchain.md](./integrations/voter-blockchain.md)
+- Low-Friction UX: [architecture/low-friction-civic-action.md](./architecture/low-friction-civic-action.md)
 - UI patterns: [development/ui-structure-guidelines.md](./development/ui-structure-guidelines.md)
 
 If it isn’t linked above, consider it a deep dive.

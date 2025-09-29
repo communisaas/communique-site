@@ -1,39 +1,45 @@
 /**
- * Multi-Agent Moderation Consensus - Agent-Agnostic Architecture
- *
- * Modern agent-agnostic system for template moderation.
- * Supports both VOTER Protocol and direct delivery flows.
- * Dynamic agent selection based on latest models (GPT-5, Gemini 2.5).
- * Economic optimization and sophisticated consensus with risk assessment.
+ * Moderation Consensus - Multi-Agent Template Moderation
+ * 
+ * Coordinates 3-agent voting system following VOTER Protocol principles:
+ * - No single AI model has dictatorial control
+ * - Transparent dissent and consensus tracking
+ * - Continuous learning from agent disagreements
+ * 
+ * Future: Will hand off approved templates to VOTER Protocol agents for on-chain rewards
  */
 
 import { db } from '$lib/core/db';
-import { taskOrchestrator } from './orchestrator/task-orchestrator';
-import { budgetManager } from './economics/budget-manager';
+import { consensusCoordinator } from './content/consensus-coordinator';
+import type { ConsensusResult } from './content/consensus-coordinator';
 
 export class ModerationConsensus {
 	/**
-	 * Evaluate a template using the agent-agnostic system
+	 * Evaluate a template using multi-agent consensus
 	 */
 	async evaluateTemplate(
 		templateId: string, 
-		submissionFlow: 'voter-protocol' | 'direct-delivery' = 'direct-delivery',
-		userBudget: number = 0.10
-	) {
+		submissionFlow: 'voter-protocol' | 'direct-delivery' = 'direct-delivery'
+	): Promise<ConsensusResult> {
 		try {
-			console.log(`🔄 Starting template evaluation: ${templateId} (${submissionFlow})`);
+			console.log(`🔄 Starting multi-agent consensus: ${templateId} (${submissionFlow})`);
 			
-			const result = await taskOrchestrator.processTemplate(templateId, submissionFlow, userBudget);
+			// Use consensus coordinator for multi-agent voting
+			const result = await consensusCoordinator.processTemplate(templateId, submissionFlow);
 			
-			// Update template with processing results
-			await this.updateTemplate(templateId, result);
+			// Log result for monitoring
+			console.log(
+				`✅ Consensus complete: ${result.approved ? 'APPROVED' : 'REJECTED'} ` +
+				`(${result.consensusType}) for template ${templateId}`
+			);
 			
-			console.log(`✅ Template evaluation completed: ${result.finalDecision} (confidence: ${result.confidence})`);
+			// The consensus coordinator already handles VOTER Protocol triggering
+			// when submissionFlow === 'voter-protocol'
 			
 			return result;
 			
 		} catch (error) {
-			console.error(`❌ Template evaluation failed for ${templateId}:`, error);
+			console.error(`❌ Consensus evaluation failed for ${templateId}:`, error);
 			throw error;
 		}
 	}
@@ -45,67 +51,66 @@ export class ModerationConsensus {
 		content: string,
 		submissionFlow: 'voter-protocol' | 'direct-delivery' = 'direct-delivery',
 		userReputation?: number
-	) {
-		return budgetManager.predictTemplateCost(content, submissionFlow, userReputation);
-	}
-
-	/**
-	 * Check if user can afford template processing
-	 */
-	async checkUserBudget(userId: string, estimatedCost: number) {
-		const spendingPattern = await budgetManager.getUserSpendingSummary(userId);
+	): Promise<number> {
+		// Multi-agent consensus costs
+		const unanimousCost = 0.00105; // OpenAI (FREE + enhancement) + Gemini
+		const splitDecisionCost = 0.00145; // Above + Claude tie-breaker
 		
-		if (!spendingPattern) {
-			return {
-				canAfford: true,
-				currentSpending: 0,
-				recommendations: ['First-time user - standard processing available']
-			};
+		// Estimate likelihood of split decision based on content quality
+		const needsEnhancement = content.length < 100 || !userReputation || userReputation < 50;
+		const splitLikelihood = needsEnhancement ? 0.2 : 0.1;
+		
+		// Congressional check for CWC templates
+		const congressionalCost = 0.00035;
+		
+		// Calculate expected cost
+		let expectedCost = unanimousCost * (1 - splitLikelihood) + splitDecisionCost * splitLikelihood;
+		
+		// Add congressional check cost if likely CWC
+		if (content.toLowerCase().includes('congress') || content.toLowerCase().includes('representative')) {
+			expectedCost += congressionalCost;
 		}
 		
-		const canAfford = spendingPattern.dailySpent + estimatedCost <= 10; // $10 daily limit
+		// Future: Add VOTER Protocol gas costs for on-chain flow
+		const voterProtocolCost = submissionFlow === 'voter-protocol' ? 0.10 : 0;
 		
-		return {
-			canAfford,
-			currentSpending: spendingPattern.dailySpent,
-			recommendations: canAfford 
-				? ['Processing within budget limits']
-				: ['Daily budget exceeded - consider premium plan or wait until tomorrow']
-		};
+		return expectedCost + voterProtocolCost;
 	}
 
 	/**
-	 * Update template with processing results
+	 * Get template by ID (helper method)
 	 */
-	private async updateTemplate(templateId: string, result: any) {
-		await db.template.update({
+	async getTemplate(templateId: string) {
+		return db.template.findUnique({
 			where: { id: templateId },
-			data: {
-				// Agent-agnostic fields
-				processing_pipeline: result.metadata || {},
-				agent_assignments: result.consensus.agentVotes || [],
-				consensus_weights: result.consensus.agentVotes.map((v: any) => ({ 
-					agentId: v.agentId, 
-					weight: v.weight 
-				})),
-				budget_allocated: result.processing?.totalCost || 0,
-				cost_breakdown: result.processing?.stages || [],
-				enhanced_content: result.content?.enhanced,
-				change_log: result.content?.changeLog || [],
-				submission_flow: result.metadata?.submissionFlow,
-				processing_stages: result.processing?.stages || [],
-				total_processing_time: result.processing?.totalTime,
-				cache_efficiency: result.processing?.cacheEfficiency,
-				consensus_quality: result.metadata?.qualityScore,
-				toxicity_classification: result.metadata?.riskAssessment?.toxicityLevel,
-				political_sensitivity: result.metadata?.riskAssessment?.politicalSensitivity,
-				adversarial_score: result.metadata?.riskAssessment?.adversarial,
-				verification_status: result.finalDecision === 'approved' ? 'approved' : 'rejected',
-				reviewed_at: new Date()
+			include: {
+				author: true,
+				category: true
 			}
 		});
 	}
+
+	/**
+	 * Get consensus summary for monitoring
+	 */
+	async getConsensusSummary() {
+		const costSummary = await consensusCoordinator.getCostSummary();
+		const agentPerformance = consensusCoordinator.getAgentPerformance();
+		
+		return {
+			costs: costSummary,
+			agentPerformance,
+			timestamp: new Date()
+		};
+	}
+	
+	/**
+	 * Process user feedback on moderation decision
+	 */
+	async processFeedback(templateId: string, feedback: 'correct' | 'incorrect') {
+		return consensusCoordinator.processFeedback(templateId, feedback);
+	}
 }
 
-// Export singleton instance
+// Export singleton
 export const moderationConsensus = new ModerationConsensus();

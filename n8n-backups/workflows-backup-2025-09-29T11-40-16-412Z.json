@@ -1,0 +1,2930 @@
+[
+  {
+    "createdAt": "2025-09-16T07:46:28.679Z",
+    "updatedAt": "2025-09-16T07:46:28.679Z",
+    "id": "2nIIOTwgkG97ZEgC",
+    "name": "User Journey",
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "user/action",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "User Action",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Complete user journey orchestration\nconst { action, userAddress, data } = $json;\n\n// Map user actions to workflow steps\nconst actionMap = {\n  'register': ['identity_verification', 'initial_reputation'],\n  'submit_template': ['identity_check', 'template_verification', 'consensus_voting'],\n  'send_message': ['cwc_verification', 'mint_record', 'calculate_reward'],\n  'challenge_action': ['stake_validation', 'challenge_creation'],\n  'vote_challenge': ['stake_validation', 'vote_recording'],\n  'claim_reward': ['eligibility_check', 'reward_distribution']\n};\n\nconst steps = actionMap[action] || [];\n\nreturn {\n  action,\n  userAddress,\n  data,\n  requiredSteps: steps,\n  sessionId: `session_${Date.now()}_${userAddress.slice(-6)}`,\n  timestamp: new Date().toISOString()\n};"
+        },
+        "id": "parse_action",
+        "name": "Parse Action",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          450,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "dataType": "string",
+          "value1": "={{ $json.requiredSteps[0] }}",
+          "rules": {
+            "rules": [
+              {
+                "value2": "identity_verification",
+                "output": 0
+              },
+              {
+                "value2": "identity_check",
+                "output": 1
+              },
+              {
+                "value2": "template_verification",
+                "output": 2
+              },
+              {
+                "value2": "cwc_verification",
+                "output": 3
+              },
+              {
+                "value2": "stake_validation",
+                "output": 4
+              }
+            ]
+          },
+          "fallbackOutput": 5
+        },
+        "id": "route_first_step",
+        "name": "Route First Step",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 2,
+        "position": [
+          650,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/identity/verify",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "userAddress",
+                "value": "={{ $json.userAddress }}"
+              },
+              {
+                "name": "zkProof",
+                "value": "={{ $json.data.zkProof }}"
+              },
+              {
+                "name": "publicInputs",
+                "value": "={{ $json.data.publicInputs }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "call_identity",
+        "name": "Verify Identity",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          850,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=SELECT \n  user_address,\n  kyc_status,\n  zk_status,\n  trust_score,\n  permissions\nFROM user_identities\nWHERE user_address = '{{ $json.userAddress }}'\nLIMIT 1",
+          "options": {}
+        },
+        "id": "check_identity",
+        "name": "Check Identity",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          850,
+          300
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/coordinate",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "operation",
+                "value": "verify"
+              },
+              {
+                "name": "template",
+                "value": "={{ $json.data.template }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "verify_template",
+        "name": "Verify Template",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          850,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/cwc/verify",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "userAddress",
+                "value": "={{ $json.userAddress }}"
+              },
+              {
+                "name": "templateId",
+                "value": "={{ $json.data.templateId }}"
+              },
+              {
+                "name": "recipientOffice",
+                "value": "={{ $json.data.recipientOffice }}"
+              },
+              {
+                "name": "messageBody",
+                "value": "={{ $json.data.messageBody }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "send_cwc",
+        "name": "Send via CWC",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          850,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=SELECT \n  balance,\n  staked_amount,\n  available_balance\nFROM user_balances\nWHERE user_address = '{{ $json.userAddress }}'\nLIMIT 1",
+          "options": {}
+        },
+        "id": "check_balance",
+        "name": "Check Balance",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          850,
+          600
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process step results and determine next action\nconst stepResult = $input.first().json;\nconst journey = $('parse_action').first().json;\n\n// Check if current step succeeded\nconst stepSuccess = stepResult.success || stepResult.verified || stepResult.approved;\n\nif (!stepSuccess) {\n  return {\n    success: false,\n    action: journey.action,\n    failedAt: journey.requiredSteps[0],\n    error: stepResult.error || 'Step failed',\n    timestamp: new Date().toISOString()\n  };\n}\n\n// Remove completed step and check for more\nconst remainingSteps = journey.requiredSteps.slice(1);\n\nif (remainingSteps.length === 0) {\n  // Journey complete\n  return {\n    success: true,\n    action: journey.action,\n    userAddress: journey.userAddress,\n    completedSteps: journey.requiredSteps,\n    result: stepResult,\n    rewards: calculateRewards(journey.action, stepResult),\n    timestamp: new Date().toISOString()\n  };\n}\n\n// Continue to next step\nreturn {\n  continueJourney: true,\n  userAddress: journey.userAddress,\n  data: journey.data,\n  requiredSteps: remainingSteps,\n  completedStep: journey.requiredSteps[0],\n  sessionId: journey.sessionId\n};\n\nfunction calculateRewards(action, result) {\n  const baseRewards = {\n    'register': { voter_tokens: 10, reputation: 10 },\n    'submit_template': { voter_tokens: 5, reputation: 5 },\n    'send_message': { voter_tokens: result.reward || 1, reputation: 2 },\n    'challenge_action': { voter_tokens: 0, reputation: 1 },\n    'vote_challenge': { voter_tokens: 0, reputation: 1 },\n    'claim_reward': { voter_tokens: result.reward || 0, reputation: 0 }\n  };\n  return baseRewards[action] || { voter_tokens: 0, reputation: 0 };\n}"
+        },
+        "id": "process_step",
+        "name": "Process Step Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "conditions": [
+              {
+                "leftValue": "={{ $json.continueJourney }}",
+                "rightValue": true,
+                "operation": "equal"
+              }
+            ]
+          }
+        },
+        "id": "check_continue",
+        "name": "Continue?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          1250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "nextStep",
+                "value": "={{ $json.requiredSteps[0] }}"
+              }
+            ]
+          }
+        },
+        "id": "prepare_next",
+        "name": "Prepare Next Step",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3,
+        "position": [
+          1450,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Log journey completion and trigger rewards\nconst result = $json;\n\n// Record journey completion\nconst journeyRecord = {\n  user_address: result.userAddress,\n  action: result.action,\n  success: result.success,\n  completed_steps: result.completedSteps,\n  rewards_earned: result.rewards,\n  completion_time: result.timestamp\n};\n\n// Prepare blockchain transactions if needed\nconst transactions = [];\n\nif (result.rewards.voter_tokens > 0) {\n  transactions.push({\n    type: 'distribute_reward',\n    recipient: result.userAddress,\n    amount: result.rewards.voter_tokens\n  });\n}\n\nif (result.rewards.reputation > 0) {\n  transactions.push({\n    type: 'update_reputation',\n    user: result.userAddress,\n    score_increase: result.rewards.reputation\n  });\n}\n\nreturn {\n  journeyComplete: true,\n  ...journeyRecord,\n  pendingTransactions: transactions\n};"
+        },
+        "id": "finalize_journey",
+        "name": "Finalize Journey",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1450,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "insert",
+          "table": "user_journeys",
+          "columns": "user_address,action,success,completed_steps,rewards_earned,completion_time",
+          "options": {
+            "returnFields": "id"
+          }
+        },
+        "id": "save_journey",
+        "name": "Save Journey",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          1650,
+          500
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "error",
+                "value": "No valid workflow step identified"
+              }
+            ],
+            "boolean": [
+              {
+                "name": "success",
+                "value": false
+              }
+            ]
+          }
+        },
+        "id": "error_response",
+        "name": "Error Response",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3,
+        "position": [
+          850,
+          700
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Result",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1850,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "parse_action",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "parse_action": {
+        "main": [
+          [
+            {
+              "node": "route_first_step",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "route_first_step": {
+        "main": [
+          [
+            {
+              "node": "call_identity",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "check_identity",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "verify_template",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "send_cwc",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "check_balance",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "error_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "call_identity": {
+        "main": [
+          [
+            {
+              "node": "process_step",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "check_identity": {
+        "main": [
+          [
+            {
+              "node": "process_step",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "verify_template": {
+        "main": [
+          [
+            {
+              "node": "process_step",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "send_cwc": {
+        "main": [
+          [
+            {
+              "node": "process_step",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "check_balance": {
+        "main": [
+          [
+            {
+              "node": "process_step",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "process_step": {
+        "main": [
+          [
+            {
+              "node": "check_continue",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "check_continue": {
+        "main": [
+          [
+            {
+              "node": "prepare_next",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "finalize_journey",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "prepare_next": {
+        "main": [
+          [
+            {
+              "node": "route_first_step",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "finalize_journey": {
+        "main": [
+          [
+            {
+              "node": "save_journey",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "save_journey": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "error_response": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "af000d9a-a781-4be2-b1fd-00736cf8ac78",
+    "triggerCount": 0,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T07:46:28.681Z",
+        "updatedAt": "2025-09-16T07:46:28.681Z",
+        "role": "workflow:owner",
+        "workflowId": "2nIIOTwgkG97ZEgC",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "createdAt": "2025-09-16T08:15:09.407Z",
+    "updatedAt": "2025-09-16T08:15:09.407Z",
+    "id": "BpmvTJo0o68EX7kJ",
+    "name": "Identity Verification",
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "identity/verify",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "Identity Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.didit.me/v1/verify",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "X-API-Key",
+                "value": "={{ $credentials.apiKey }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "userId",
+                "value": "={{ $json.userAddress }}"
+              },
+              {
+                "name": "verificationType",
+                "value": "kyc_basic"
+              },
+              {
+                "name": "includeProof",
+                "value": true
+              }
+            ]
+          },
+          "options": {
+            "timeout": 20000
+          }
+        },
+        "id": "call_didit",
+        "name": "Call Didit KYC",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          450,
+          300
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "didit_api",
+            "name": "Didit API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combinationMode": "multiplex",
+          "options": {}
+        },
+        "id": "process_didit",
+        "name": "Process Didit Result",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process Didit identity verification\nconst didit = $json;\nconst userAddress = $('webhook_trigger').first().json.userAddress;\n\n// Check Didit KYC result\nconst kycPassed = didit?.status === 'verified' || didit?.verified === true;\nconst hasIdVerification = didit?.checks?.idDocument === 'pass';\nconst hasFaceMatch = didit?.checks?.faceMatch === 'pass';\nconst hasLiveness = didit?.checks?.liveness === 'pass';\n\n// Extract congressional district from address verification\nconst congressionalDistrict = didit?.addressData?.congressionalDistrict || \n                             didit?.addressVerification?.district;\n\n// Calculate trust score based on Didit checks\nlet trustScore = 0;\nif (hasIdVerification) trustScore += 40;  // Government ID is most important\nif (hasFaceMatch) trustScore += 30;       // Face match confirms identity\nif (hasLiveness) trustScore += 20;        // Liveness prevents spoofing\nif (congressionalDistrict) trustScore += 10; // Address verification\n\nconst verificationLevel = \n  trustScore >= 90 ? 'fully_verified' :\n  trustScore >= 60 ? 'verified' :\n  trustScore >= 30 ? 'partially_verified' : \n  'unverified';\n\nreturn {\n  success: kycPassed,\n  userAddress,\n  verification: {\n    status: verificationLevel,\n    kyc: {\n      passed: kycPassed,\n      id_verification: hasIdVerification,\n      face_match: hasFaceMatch,\n      liveness: hasLiveness,\n      provider: 'didit'\n    },\n    congressional_district: congressionalDistrict,\n    trust_score: trustScore,\n    verified_at: new Date().toISOString()\n  },\n  permissions: {\n    can_submit_templates: trustScore >= 30,\n    can_create_challenges: trustScore >= 60,\n    can_vote_challenges: trustScore >= 40,\n    daily_action_limit: Math.floor(trustScore / 10),\n    max_stake: trustScore * 100  // Max VOTER tokens for staking\n  }\n};"
+        },
+        "id": "process_verification",
+        "name": "Process Verification",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          850,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "upsert",
+          "table": "user_identities",
+          "columns": "user_address,kyc_status,zk_status,congressional_district,trust_score,permissions,verified_at",
+          "updateKey": "user_address",
+          "options": {
+            "returnFields": "*"
+          }
+        },
+        "id": "save_identity",
+        "name": "Save Identity",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          400
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "conditions": [
+              {
+                "leftValue": "={{ $json.success }}",
+                "rightValue": true,
+                "operation": "equal"
+              }
+            ]
+          }
+        },
+        "id": "check_success",
+        "name": "Verified?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          1250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/blockchain/update_reputation",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "operation",
+                "value": "update_reputation"
+              },
+              {
+                "name": "userAddress",
+                "value": "={{ $json.userAddress }}"
+              },
+              {
+                "name": "newScore",
+                "value": "={{ $json.verification.trust_score }}"
+              },
+              {
+                "name": "reason",
+                "value": "Identity verification completed"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 20000
+          }
+        },
+        "id": "update_reputation",
+        "name": "Update Reputation",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1450,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Result",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1650,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "call_didit",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "call_didit": {
+        "main": [
+          [
+            {
+              "node": "process_didit",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "process_didit": {
+        "main": [
+          [
+            {
+              "node": "save_identity",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "save_identity": {
+        "main": [
+          [
+            {
+              "node": "check_success",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "check_success": {
+        "main": [
+          [
+            {
+              "node": "update_reputation",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "update_reputation": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "42c0ff2f-8dc5-4e6c-8eda-9ef423dd4923",
+    "triggerCount": 0,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T08:15:09.410Z",
+        "updatedAt": "2025-09-16T08:15:09.410Z",
+        "role": "workflow:owner",
+        "workflowId": "BpmvTJo0o68EX7kJ",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "createdAt": "2025-09-16T07:32:46.799Z",
+    "updatedAt": "2025-09-16T07:32:46.995Z",
+    "id": "TAcZzoASOiAZPoyJ",
+    "name": "Reward Calculator",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "calculate-reward",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "Reward Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.chain.link/v1/chainlink-price-feeds",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "pair",
+                "value": "ETH/USD"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000
+          }
+        },
+        "id": "chainlinkOracle",
+        "name": "Chainlink Oracle",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          450,
+          300
+        ]
+      },
+      {
+        "parameters": {
+          "method": "GET",
+          "url": "https://api.redstone.finance/prices",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "symbol",
+                "value": "ETH"
+              },
+              {
+                "name": "provider",
+                "value": "redstone"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000
+          }
+        },
+        "id": "redstoneOracle",
+        "name": "RedStone Oracle",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          450,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=SELECT \n  COUNT(DISTINCT user_id) as daily_active,\n  COUNT(*) as total_actions,\n  AVG(CASE WHEN action_type = 'cwc_message' THEN 1 ELSE 0 END) as cwc_rate\nFROM civic_actions\nWHERE created_at >= NOW() - INTERVAL '24 hours'",
+          "options": {}
+        },
+        "id": "activityMetrics",
+        "name": "Activity Metrics",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          450,
+          200
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=SELECT \n  reputation_score,\n  actions_verified,\n  challenges_won,\n  violations\nFROM reputation_registry\nWHERE user_address = '{{ $json.userAddress }}'",
+          "options": {}
+        },
+        "id": "reputationQuery",
+        "name": "User Reputation",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          450,
+          600
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combinationMode": "multiplex",
+          "options": {}
+        },
+        "id": "combineData",
+        "name": "Combine Data",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 2.1,
+        "position": [
+          650,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Dynamic reward calculation with oracle consensus\nconst request = $('trigger').first().json;\nconst [activity, chainlink, redstone, reputation] = $input.all().map(i => i.json);\n\n// Oracle price consensus\nconst ethPrices = [];\nif (chainlink?.price) ethPrices.push(chainlink.price);\nif (redstone?.price) ethPrices.push(redstone.price);\n\nconst ethPrice = ethPrices.length > 0 \n  ? ethPrices.reduce((a, b) => a + b) / ethPrices.length\n  : 2000; // Fallback price\n\n// Base reward in USD\nconst BASE_REWARD_USD = 0.10;\n\n// Calculate multipliers\nconst multipliers = {\n  // Activity multiplier (network effect)\n  activity: Math.min(2, 1 + (activity?.daily_active || 0) / 10000),\n  \n  // Action type multiplier\n  action: request.actionType === 'cwc_message' ? 1.5 : 1.0,\n  \n  // Reputation multiplier\n  reputation: Math.min(3, 1 + (reputation?.reputation_score || 0) / 1000),\n  \n  // Complexity multiplier\n  complexity: request.template?.message_body?.length > 500 ? 1.2 : 1.0,\n  \n  // Time decay (older actions worth less)\n  time: Math.max(0.5, 1 - (Date.now() - new Date(request.timestamp).getTime()) / (7 * 24 * 60 * 60 * 1000))\n};\n\n// Calculate final reward\nconst totalMultiplier = Object.values(multipliers).reduce((a, b) => a * b, 1);\nconst rewardUSD = BASE_REWARD_USD * totalMultiplier;\nconst rewardETH = rewardUSD / ethPrice;\nconst rewardWei = Math.floor(rewardETH * 1e18);\n\nreturn {\n  action: request.actionType,\n  user: request.userAddress,\n  base_reward_usd: BASE_REWARD_USD,\n  multipliers,\n  total_multiplier: totalMultiplier.toFixed(3),\n  reward_usd: rewardUSD.toFixed(4),\n  reward_eth: rewardETH.toFixed(8),\n  reward_wei: rewardWei.toString(),\n  eth_price: ethPrice,\n  oracle_sources: ethPrices.length,\n  network_activity: activity?.daily_active || 0,\n  user_reputation: reputation?.reputation_score || 0,\n  calculation_timestamp: new Date().toISOString()\n};"
+        },
+        "id": "calculateReward",
+        "name": "Calculate Reward",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          850,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "insert",
+          "table": "reward_calculations",
+          "columns": "user_address,action_type,base_reward_usd,total_multiplier,reward_usd,reward_wei,eth_price",
+          "options": {
+            "returnFields": "id,created_at"
+          }
+        },
+        "id": "saveCalculation",
+        "name": "Save Calculation",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          400
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Reward",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1250,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "trigger": {
+        "main": [
+          [
+            {
+              "node": "activityMetrics",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "chainlinkOracle",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "redstoneOracle",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "reputationQuery",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "activityMetrics": {
+        "main": [
+          [
+            {
+              "node": "combine_data",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "chainlinkOracle": {
+        "main": [
+          [
+            {
+              "node": "combine_data",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "redstoneOracle": {
+        "main": [
+          [
+            {
+              "node": "combine_data",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "reputationQuery": {
+        "main": [
+          [
+            {
+              "node": "combine_data",
+              "type": "main",
+              "index": 3
+            }
+          ]
+        ]
+      },
+      "combineData": {
+        "main": [
+          [
+            {
+              "node": "calculateReward",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "calculateReward": {
+        "main": [
+          [
+            {
+              "node": "saveCalculation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "saveCalculation": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {},
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "42e1b7f1-f099-4b66-88d4-0d58ba27bb7b",
+    "triggerCount": 1,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T07:32:46.801Z",
+        "updatedAt": "2025-09-16T07:32:46.801Z",
+        "role": "workflow:owner",
+        "workflowId": "TAcZzoASOiAZPoyJ",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "createdAt": "2025-09-16T07:32:42.898Z",
+    "updatedAt": "2025-09-16T07:32:43.133Z",
+    "id": "bJgEaDsHNS9ZJRmj",
+    "name": "Agent Coordinator",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "coordinate",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "Coordination Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "dataType": "string",
+          "value1": "={{ $json.operation }}",
+          "rules": {
+            "rules": [
+              {
+                "value2": "verify",
+                "output": 0
+              },
+              {
+                "value2": "consensus",
+                "output": 1
+              },
+              {
+                "value2": "reward",
+                "output": 2
+              },
+              {
+                "value2": "blockchain",
+                "output": 3
+              }
+            ]
+          },
+          "fallbackOutput": 4
+        },
+        "id": "route_operation",
+        "name": "Route Operation",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 2,
+        "position": [
+          450,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/verify",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "template",
+                "value": "={{ $json.template }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "call_verifier",
+        "name": "Call Verifier",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          650,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/consensus",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "template",
+                "value": "={{ $json.template }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 60000
+          }
+        },
+        "id": "call_consensus",
+        "name": "Call Consensus",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          650,
+          350
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/calculate-reward",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "userAddress",
+                "value": "={{ $json.userAddress }}"
+              },
+              {
+                "name": "actionType",
+                "value": "={{ $json.actionType }}"
+              },
+              {
+                "name": "template",
+                "value": "={{ $json.template }}"
+              },
+              {
+                "name": "timestamp",
+                "value": "={{ $json.timestamp }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "call_reward",
+        "name": "Call Reward",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          650,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/blockchain/{{ $json.blockchainOp }}",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "operation",
+                "value": "={{ $json.blockchainOp }}"
+              },
+              {
+                "name": "data",
+                "value": "={{ $json }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "call_blockchain",
+        "name": "Call Blockchain",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          650,
+          650
+        ]
+      },
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "error",
+                "value": "Invalid operation specified"
+              }
+            ],
+            "boolean": [
+              {
+                "name": "success",
+                "value": false
+              }
+            ]
+          }
+        },
+        "id": "invalid_op",
+        "name": "Invalid Operation",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3,
+        "position": [
+          650,
+          800
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process and enrich response\nconst operation = $('webhook_trigger').first().json.operation;\nconst response = $input.first().json;\n\nreturn {\n  success: true,\n  operation,\n  result: response,\n  metadata: {\n    coordinator: 'agent-coordinator',\n    processed_at: new Date().toISOString(),\n    workflow_version: '1.0.0'\n  }\n};"
+        },
+        "id": "process_response",
+        "name": "Process Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          850,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Result",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "route_operation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "route_operation": {
+        "main": [
+          [
+            {
+              "node": "call_verifier",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "call_consensus",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "call_reward",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "call_blockchain",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "invalid_op",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "call_verifier": {
+        "main": [
+          [
+            {
+              "node": "process_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "call_consensus": {
+        "main": [
+          [
+            {
+              "node": "process_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "call_reward": {
+        "main": [
+          [
+            {
+              "node": "process_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "call_blockchain": {
+        "main": [
+          [
+            {
+              "node": "process_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "invalid_op": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "process_response": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "48c42c7b-8890-4dbf-9ee1-495631b3b8ac",
+    "triggerCount": 1,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T07:32:42.900Z",
+        "updatedAt": "2025-09-16T07:32:42.900Z",
+        "role": "workflow:owner",
+        "workflowId": "bJgEaDsHNS9ZJRmj",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "createdAt": "2025-09-16T07:32:43.702Z",
+    "updatedAt": "2025-09-16T07:32:43.935Z",
+    "id": "d0EUWlBgGxtE8wsi",
+    "name": "Blockchain Operations",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "blockchain/:operation",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "Blockchain Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "dataType": "string",
+          "value1": "={{ $json.operation }}",
+          "rules": {
+            "rules": [
+              {
+                "value2": "mint_record",
+                "output": 0
+              },
+              {
+                "value2": "verify_action",
+                "output": 1
+              },
+              {
+                "value2": "update_reputation",
+                "output": 2
+              },
+              {
+                "value2": "distribute_reward",
+                "output": 3
+              },
+              {
+                "value2": "query_balance",
+                "output": 4
+              }
+            ]
+          },
+          "fallbackOutput": 5
+        },
+        "id": "operation_router",
+        "name": "Route Operation",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 2,
+        "position": [
+          450,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Mint VOTER Record NFT\nconst { userAddress, actionType, metadata } = $json;\n\n// Prepare contract call\nconst contractCall = {\n  to: process.env.VOTER_REGISTRY_ADDRESS,\n  data: web3.eth.abi.encodeFunctionCall({\n    name: 'mintRecord',\n    type: 'function',\n    inputs: [\n      { type: 'address', name: 'recipient' },\n      { type: 'string', name: 'actionType' },\n      { type: 'string', name: 'metadataURI' }\n    ]\n  }, [userAddress, actionType, metadata.ipfsHash || ''])\n};\n\nreturn {\n  operation: 'mint_record',\n  contract: 'VOTERRegistry',\n  method: 'mintRecord',\n  params: contractCall,\n  gasEstimate: 150000,\n  userAddress,\n  actionType\n};"
+        },
+        "id": "mint_record",
+        "name": "Mint Record",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          100
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Verify civic action on-chain\nconst { actionId, verifierSignatures, timestamp } = $json;\n\n// Multi-sig verification\nconst contractCall = {\n  to: process.env.ACTION_VERIFIER_ADDRESS,\n  data: web3.eth.abi.encodeFunctionCall({\n    name: 'verifyAction',\n    type: 'function',\n    inputs: [\n      { type: 'bytes32', name: 'actionId' },\n      { type: 'bytes[]', name: 'signatures' },\n      { type: 'uint256', name: 'timestamp' }\n    ]\n  }, [actionId, verifierSignatures, timestamp])\n};\n\nreturn {\n  operation: 'verify_action',\n  contract: 'ActionVerifier',\n  method: 'verifyAction',\n  params: contractCall,\n  gasEstimate: 100000,\n  actionId\n};"
+        },
+        "id": "verify_action",
+        "name": "Verify Action",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          250
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Update ERC-8004 reputation\nconst { userAddress, newScore, reason } = $json;\n\nconst contractCall = {\n  to: process.env.REPUTATION_REGISTRY_ADDRESS,\n  data: web3.eth.abi.encodeFunctionCall({\n    name: 'updateReputation',\n    type: 'function',\n    inputs: [\n      { type: 'address', name: 'user' },\n      { type: 'uint256', name: 'score' },\n      { type: 'string', name: 'reason' }\n    ]\n  }, [userAddress, newScore, reason])\n};\n\nreturn {\n  operation: 'update_reputation',\n  contract: 'ReputationRegistry',\n  method: 'updateReputation',\n  params: contractCall,\n  gasEstimate: 80000,\n  userAddress,\n  newScore\n};"
+        },
+        "id": "update_reputation",
+        "name": "Update Reputation",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Distribute VOTER token rewards\nconst { recipients, amounts, actionIds } = $json;\n\n// Batch reward distribution\nconst contractCall = {\n  to: process.env.VOTER_TOKEN_ADDRESS,\n  data: web3.eth.abi.encodeFunctionCall({\n    name: 'batchDistributeRewards',\n    type: 'function',\n    inputs: [\n      { type: 'address[]', name: 'recipients' },\n      { type: 'uint256[]', name: 'amounts' },\n      { type: 'bytes32[]', name: 'actionIds' }\n    ]\n  }, [recipients, amounts, actionIds])\n};\n\nreturn {\n  operation: 'distribute_reward',\n  contract: 'VOTERToken',\n  method: 'batchDistributeRewards',\n  params: contractCall,\n  gasEstimate: 50000 * recipients.length,\n  recipientCount: recipients.length,\n  totalReward: amounts.reduce((a, b) => a + b, 0)\n};"
+        },
+        "id": "distribute_reward",
+        "name": "Distribute Reward",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          550
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Query token balance\nconst { userAddress } = $json;\n\nconst contractCall = {\n  to: process.env.VOTER_TOKEN_ADDRESS,\n  data: web3.eth.abi.encodeFunctionCall({\n    name: 'balanceOf',\n    type: 'function',\n    inputs: [\n      { type: 'address', name: 'account' }\n    ]\n  }, [userAddress])\n};\n\nreturn {\n  operation: 'query_balance',\n  contract: 'VOTERToken',\n  method: 'balanceOf',\n  params: contractCall,\n  view: true, // Read-only call\n  userAddress\n};"
+        },
+        "id": "query_balance",
+        "name": "Query Balance",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          700
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.RONIN_RPC_URL }}",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "jsonrpc",
+                "value": "2.0"
+              },
+              {
+                "name": "id",
+                "value": "={{ Date.now() }}"
+              },
+              {
+                "name": "method",
+                "value": "={{ $json.view ? 'eth_call' : 'eth_sendTransaction' }}"
+              },
+              {
+                "name": "params",
+                "value": "={{ [$json.params, 'latest'] }}"
+              }
+            ]
+          }
+        },
+        "id": "execute_call",
+        "name": "Execute RPC Call",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          850,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse RPC response\nconst response = $json;\nconst operation = $('webhook_trigger').first().json.operation;\n\nif (response.error) {\n  return {\n    success: false,\n    operation,\n    error: response.error.message,\n    code: response.error.code\n  };\n}\n\n// Decode response based on operation\nlet decoded;\nswitch(operation) {\n  case 'query_balance':\n    // Decode uint256 balance\n    const balanceHex = response.result;\n    const balanceWei = parseInt(balanceHex, 16);\n    decoded = {\n      balance_wei: balanceWei.toString(),\n      balance_ether: (balanceWei / 1e18).toFixed(6),\n      balance_voter: (balanceWei / 1e18).toFixed(2)\n    };\n    break;\n    \n  case 'mint_record':\n  case 'verify_action':\n  case 'update_reputation':\n  case 'distribute_reward':\n    // Transaction hash for state-changing operations\n    decoded = {\n      tx_hash: response.result,\n      status: 'pending',\n      explorer_url: `https://explorer.roninchain.com/tx/${response.result}`\n    };\n    break;\n    \n  default:\n    decoded = response.result;\n}\n\nreturn {\n  success: true,\n  operation,\n  result: decoded,\n  timestamp: new Date().toISOString()\n};"
+        },
+        "id": "parse_response",
+        "name": "Parse Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "error",
+                "value": "Invalid operation requested"
+              }
+            ],
+            "boolean": [
+              {
+                "name": "success",
+                "value": false
+              }
+            ]
+          }
+        },
+        "id": "invalid_operation",
+        "name": "Invalid Operation",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3,
+        "position": [
+          650,
+          850
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Result",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1250,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "operation_router",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "operation_router": {
+        "main": [
+          [
+            {
+              "node": "mint_record",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "verify_action",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "update_reputation",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "distribute_reward",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "query_balance",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "invalid_operation",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "mint_record": {
+        "main": [
+          [
+            {
+              "node": "execute_call",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "verify_action": {
+        "main": [
+          [
+            {
+              "node": "execute_call",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "update_reputation": {
+        "main": [
+          [
+            {
+              "node": "execute_call",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "distribute_reward": {
+        "main": [
+          [
+            {
+              "node": "execute_call",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "query_balance": {
+        "main": [
+          [
+            {
+              "node": "execute_call",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "execute_call": {
+        "main": [
+          [
+            {
+              "node": "parse_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "parse_response": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "invalid_operation": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {},
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "1dfce810-00a7-4500-9951-c098e7135513",
+    "triggerCount": 1,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T07:32:43.704Z",
+        "updatedAt": "2025-09-16T07:32:43.704Z",
+        "role": "workflow:owner",
+        "workflowId": "d0EUWlBgGxtE8wsi",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "createdAt": "2025-09-16T07:46:24.611Z",
+    "updatedAt": "2025-09-16T07:46:24.911Z",
+    "id": "kgMphxFZYXeodi6X",
+    "name": "CWC Verification",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "cwc/verify",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "CWC Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Extract and validate CWC submission data\nconst { userAddress, templateId, recipientOffice, messageBody } = $json;\n\n// Validate required fields\nif (!userAddress || !templateId || !recipientOffice || !messageBody) {\n  return {\n    valid: false,\n    error: 'Missing required fields for CWC verification'\n  };\n}\n\n// Format for CWC API\nreturn {\n  campaign: process.env.CWC_CAMPAIGN_ID || 'voter-protocol-2025',\n  subject: `VOTER Protocol Message from ${userAddress.slice(0, 8)}...`,\n  message: messageBody,\n  recipient: recipientOffice,\n  metadata: {\n    userAddress,\n    templateId,\n    timestamp: new Date().toISOString()\n  }\n};"
+        },
+        "id": "prepare_cwc",
+        "name": "Prepare CWC Data",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          450,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.CWC_API_URL }}/campaigns/{{ $json.campaign }}/messages",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $credentials.apiKey }}"
+              },
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "subject",
+                "value": "={{ $json.subject }}"
+              },
+              {
+                "name": "message",
+                "value": "={{ $json.message }}"
+              },
+              {
+                "name": "recipient",
+                "value": "={{ $json.recipient }}"
+              },
+              {
+                "name": "deliveryMethod",
+                "value": "email"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "call_cwc_api",
+        "name": "Submit to CWC",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          650,
+          400
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "cwc_api",
+            "name": "CWC API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse CWC response and generate verification record\nconst cwcResponse = $json;\nconst metadata = $('prepare_cwc').first().json.metadata;\n\n// Check if CWC submission was successful\nconst success = cwcResponse.status === 'success' || cwcResponse.id;\n\nif (success) {\n  return {\n    success: true,\n    verification: {\n      cwc_message_id: cwcResponse.id || cwcResponse.messageId,\n      cwc_confirmation: cwcResponse.confirmation || cwcResponse.trackingId,\n      user_address: metadata.userAddress,\n      template_id: metadata.templateId,\n      verified_at: new Date().toISOString(),\n      status: 'verified'\n    },\n    next_steps: [\n      'mint_voter_record',\n      'calculate_reward',\n      'update_reputation'\n    ]\n  };\n} else {\n  return {\n    success: false,\n    error: cwcResponse.error || 'CWC submission failed',\n    metadata\n  };\n}"
+        },
+        "id": "parse_cwc_response",
+        "name": "Parse CWC Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          850,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "insert",
+          "table": "cwc_verifications",
+          "columns": "user_address,template_id,cwc_message_id,cwc_confirmation,status,verified_at",
+          "options": {
+            "returnFields": "id,created_at"
+          }
+        },
+        "id": "save_verification",
+        "name": "Save Verification",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          300
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/blockchain/mint_record",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "operation",
+                "value": "mint_record"
+              },
+              {
+                "name": "userAddress",
+                "value": "={{ $json.verification.user_address }}"
+              },
+              {
+                "name": "actionType",
+                "value": "cwc_message"
+              },
+              {
+                "name": "metadata",
+                "value": "={{ $json.verification }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "trigger_mint",
+        "name": "Trigger Mint",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          1050,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Result",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1250,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "prepare_cwc",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "prepare_cwc": {
+        "main": [
+          [
+            {
+              "node": "call_cwc_api",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "call_cwc_api": {
+        "main": [
+          [
+            {
+              "node": "parse_cwc_response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "parse_cwc_response": {
+        "main": [
+          [
+            {
+              "node": "save_verification",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "trigger_mint",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "save_verification": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "trigger_mint": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "4ac4dda9-03bf-47be-a093-4e61e27eb811",
+    "triggerCount": 1,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T07:46:24.614Z",
+        "updatedAt": "2025-09-16T07:46:24.614Z",
+        "role": "workflow:owner",
+        "workflowId": "kgMphxFZYXeodi6X",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "createdAt": "2025-09-16T07:46:22.298Z",
+    "updatedAt": "2025-09-16T07:46:22.531Z",
+    "id": "uDyTuMdRF3cgInFy",
+    "name": "Challenge Market",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "challenge/:action",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "Challenge Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "dataType": "string",
+          "value1": "={{ $params.action }}",
+          "rules": {
+            "rules": [
+              {
+                "value2": "create",
+                "output": 0
+              },
+              {
+                "value2": "vote",
+                "output": 1
+              },
+              {
+                "value2": "resolve",
+                "output": 2
+              },
+              {
+                "value2": "claim",
+                "output": 3
+              }
+            ]
+          },
+          "fallbackOutput": 4
+        },
+        "id": "route_action",
+        "name": "Route Action",
+        "type": "n8n-nodes-base.switch",
+        "typeVersion": 2,
+        "position": [
+          450,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Create new challenge\nconst { challenger, targetAction, evidence, stake } = $json;\n\n// Validate stake amount (quadratic scaling)\nconst minStake = 10; // 10 VOTER tokens minimum\nconst maxStake = 10000; // 10k VOTER tokens maximum\n\nif (stake < minStake || stake > maxStake) {\n  return {\n    error: `Stake must be between ${minStake} and ${maxStake} VOTER tokens`,\n    valid: false\n  };\n}\n\n// Calculate quadratic influence\nconst influence = Math.sqrt(stake);\n\n// Generate challenge ID\nconst challengeId = `ch_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\n\nreturn {\n  challengeId,\n  challenger,\n  targetAction,\n  evidence,\n  stake,\n  influence,\n  status: 'pending',\n  votingDeadline: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(), // 72 hours\n  created_at: new Date().toISOString()\n};"
+        },
+        "id": "create_challenge",
+        "name": "Create Challenge",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          200
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process vote on challenge\nconst { challengeId, voter, vote, stake } = $json;\n\n// Validate vote\nif (!['support', 'oppose'].includes(vote)) {\n  return {\n    error: 'Vote must be either support or oppose',\n    valid: false\n  };\n}\n\n// Calculate quadratic voting power\nconst votingPower = Math.sqrt(stake);\n\nreturn {\n  challengeId,\n  voter,\n  vote,\n  stake,\n  votingPower,\n  timestamp: new Date().toISOString()\n};"
+        },
+        "id": "process_vote",
+        "name": "Process Vote",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          350
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "executeQuery",
+          "query": "=SELECT \n  c.*,\n  SUM(CASE WHEN v.vote = 'support' THEN v.voting_power ELSE 0 END) as support_power,\n  SUM(CASE WHEN v.vote = 'oppose' THEN v.voting_power ELSE 0 END) as oppose_power,\n  COUNT(DISTINCT v.voter) as total_voters\nFROM challenges c\nLEFT JOIN challenge_votes v ON c.id = v.challenge_id\nWHERE c.id = '{{ $json.challengeId }}'\nGROUP BY c.id",
+          "options": {}
+        },
+        "id": "get_challenge_data",
+        "name": "Get Challenge Data",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          650,
+          500
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "jsCode": "// Resolve challenge based on votes\nconst challenge = $json;\n\n// Check if voting period has ended\nconst votingEnded = new Date(challenge.voting_deadline) < new Date();\n\nif (!votingEnded) {\n  return {\n    error: 'Voting period has not ended',\n    canResolve: false\n  };\n}\n\nconst supportPower = parseFloat(challenge.support_power) || 0;\nconst opposePower = parseFloat(challenge.oppose_power) || 0;\nconst totalPower = supportPower + opposePower;\n\n// Require minimum participation\nconst minParticipation = 5; // At least 5 voters\nif (challenge.total_voters < minParticipation) {\n  return {\n    status: 'insufficient_participation',\n    refund: true,\n    supportPower,\n    opposePower,\n    totalVoters: challenge.total_voters\n  };\n}\n\n// Determine outcome (60% threshold for challenge to succeed)\nconst challengeSucceeds = supportPower > opposePower * 1.5;\n\n// Calculate reward distribution\nlet rewards = {};\nif (challengeSucceeds) {\n  // Challenge succeeded - distribute opposed stakes to supporters\n  const rewardPool = challenge.target_stake || 0;\n  rewards = {\n    challenger_reward: rewardPool * 0.3, // 30% to challenger\n    voter_pool: rewardPool * 0.6, // 60% to supporting voters\n    treasury: rewardPool * 0.1 // 10% to treasury\n  };\n} else {\n  // Challenge failed - distribute challenger stake to opposers\n  const rewardPool = challenge.stake;\n  rewards = {\n    defender_reward: rewardPool * 0.3, // 30% to defender\n    voter_pool: rewardPool * 0.6, // 60% to opposing voters\n    treasury: rewardPool * 0.1 // 10% to treasury\n  };\n}\n\nreturn {\n  challengeId: challenge.id,\n  status: challengeSucceeds ? 'succeeded' : 'failed',\n  supportPower,\n  opposePower,\n  totalPower,\n  totalVoters: challenge.total_voters,\n  rewards,\n  resolved_at: new Date().toISOString()\n};"
+        },
+        "id": "resolve_challenge",
+        "name": "Resolve Challenge",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          850,
+          500
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Process reward claims\nconst { challengeId, claimant } = $json;\nconst resolution = $('resolve_challenge').first().json;\n\n// Check if claimant participated\n// This would normally query the database for participation proof\nconst participation = {\n  voted: true, // Placeholder\n  vote: 'support', // Placeholder\n  votingPower: 5.5 // Placeholder\n};\n\nif (!participation.voted) {\n  return {\n    error: 'Address did not participate in this challenge',\n    canClaim: false\n  };\n}\n\n// Check if they were on winning side\nconst wasWinner = \n  (resolution.status === 'succeeded' && participation.vote === 'support') ||\n  (resolution.status === 'failed' && participation.vote === 'oppose');\n\nif (!wasWinner) {\n  return {\n    error: 'Address was not on winning side',\n    canClaim: false\n  };\n}\n\n// Calculate individual reward (proportional to voting power)\nconst voterPool = resolution.rewards.voter_pool || 0;\nconst winnerPower = resolution.status === 'succeeded' ? resolution.supportPower : resolution.opposePower;\nconst individualReward = (participation.votingPower / winnerPower) * voterPool;\n\nreturn {\n  challengeId,\n  claimant,\n  reward: individualReward,\n  canClaim: true,\n  claimed_at: new Date().toISOString()\n};"
+        },
+        "id": "process_claim",
+        "name": "Process Claim",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          650,
+          650
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "={{ $env.N8N_INSTANCE_URL }}/webhook/blockchain/distribute_reward",
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "operation",
+                "value": "distribute_reward"
+              },
+              {
+                "name": "recipients",
+                "value": "={{ [$json.claimant] }}"
+              },
+              {
+                "name": "amounts",
+                "value": "={{ [Math.floor($json.reward * 1e18)] }}"
+              },
+              {
+                "name": "actionIds",
+                "value": "={{ [$json.challengeId] }}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 30000
+          }
+        },
+        "id": "distribute_rewards",
+        "name": "Distribute Rewards",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          850,
+          650
+        ]
+      },
+      {
+        "parameters": {
+          "operation": "insert",
+          "table": "{{ $params.action === 'create' ? 'challenges' : $params.action === 'vote' ? 'challenge_votes' : 'challenge_claims' }}",
+          "columns": "={{ Object.keys($json).join(',') }}",
+          "options": {
+            "returnFields": "id,created_at"
+          }
+        },
+        "id": "save_to_db",
+        "name": "Save to Database",
+        "type": "n8n-nodes-base.postgres",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          400
+        ],
+        "credentials": {
+          "postgres": {
+            "id": "postgres_credentials",
+            "name": "Postgres"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "error",
+                "value": "Invalid challenge action"
+              }
+            ],
+            "boolean": [
+              {
+                "name": "success",
+                "value": false
+              }
+            ]
+          }
+        },
+        "id": "invalid_action",
+        "name": "Invalid Action",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3,
+        "position": [
+          650,
+          800
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Result",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1250,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "route_action",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "route_action": {
+        "main": [
+          [
+            {
+              "node": "create_challenge",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "process_vote",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "get_challenge_data",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "process_claim",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "invalid_action",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "create_challenge": {
+        "main": [
+          [
+            {
+              "node": "save_to_db",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "process_vote": {
+        "main": [
+          [
+            {
+              "node": "save_to_db",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "get_challenge_data": {
+        "main": [
+          [
+            {
+              "node": "resolve_challenge",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "resolve_challenge": {
+        "main": [
+          [
+            {
+              "node": "save_to_db",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "process_claim": {
+        "main": [
+          [
+            {
+              "node": "distribute_rewards",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "distribute_rewards": {
+        "main": [
+          [
+            {
+              "node": "save_to_db",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "save_to_db": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "invalid_action": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "0e63b99b-ada6-49c4-8f88-946b4496c902",
+    "triggerCount": 1,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T07:46:22.303Z",
+        "updatedAt": "2025-09-16T07:46:22.303Z",
+        "role": "workflow:owner",
+        "workflowId": "uDyTuMdRF3cgInFy",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  },
+  {
+    "createdAt": "2025-09-16T07:32:44.523Z",
+    "updatedAt": "2025-09-16T07:32:45.089Z",
+    "id": "ulehs4NL1OhXyA4r",
+    "name": "Consensus Voter",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "parameters": {
+          "httpMethod": "POST",
+          "path": "consensus",
+          "options": {}
+        },
+        "id": "webhook_trigger",
+        "name": "Consensus Request",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1.1,
+        "position": [
+          250,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.openai.com/v1/chat/completions",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "Authorization",
+                "value": "=Bearer {{ $credentials.apiKey }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "model",
+                "value": "gpt-4-turbo-preview"
+              },
+              {
+                "name": "temperature",
+                "value": 0.1
+              },
+              {
+                "name": "max_tokens",
+                "value": 200
+              },
+              {
+                "name": "messages",
+                "value": "=[{\"role\": \"system\", \"content\": \"You are a nonpartisan civic content evaluator. Focus on democratic values and constructive discourse. Respond ONLY with valid JSON.\"}, {\"role\": \"user\", \"content\": \"Evaluate this template:\\n{{ JSON.stringify($json.template) }}\\n\\nVote: APPROVE, REJECT, or NEEDS_REVIEW\\nConfidence: 0.0-1.0\\nReason: Brief explanation\\n\\nResponse format:\\n{\\\"vote\\\": \\\"APPROVE\\\", \\\"confidence\\\": 0.85, \\\"reason\\\": \\\"Clear civic message\\\"}\"}]"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 20000
+          }
+        },
+        "id": "openai_voter",
+        "name": "OpenAI Vote",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          450,
+          200
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "openai_api",
+            "name": "OpenAI API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "key",
+                "value": "={{ $credentials.apiKey }}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "contents",
+                "value": "=[{\"parts\": [{\"text\": \"You are a nonpartisan civic content evaluator. Evaluate this template for civic appropriateness:\\n\\n{{ JSON.stringify($json.template) }}\\n\\nVote: APPROVE, REJECT, or NEEDS_REVIEW\\nConfidence: 0.0-1.0\\nReason: Brief explanation\\n\\nRespond ONLY with valid JSON:\\n{\\\"vote\\\": \\\"APPROVE\\\", \\\"confidence\\\": 0.85, \\\"reason\\\": \\\"Clear civic message\\\"}\"}]}]"
+              },
+              {
+                "name": "generationConfig",
+                "value": "={\"temperature\": 0.1, \"maxOutputTokens\": 200}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 20000
+          }
+        },
+        "id": "gemini_voter",
+        "name": "Gemini Vote",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          450,
+          400
+        ],
+        "credentials": {
+          "httpQueryAuth": {
+            "id": "gemini_api",
+            "name": "Gemini API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "method": "POST",
+          "url": "https://api.anthropic.com/v1/messages",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-api-key",
+                "value": "={{ $credentials.apiKey }}"
+              },
+              {
+                "name": "anthropic-version",
+                "value": "2023-06-01"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "model",
+                "value": "claude-3-sonnet-20240229"
+              },
+              {
+                "name": "max_tokens",
+                "value": 200
+              },
+              {
+                "name": "temperature",
+                "value": 0.1
+              },
+              {
+                "name": "messages",
+                "value": "=[{\"role\": \"user\", \"content\": \"You are a nonpartisan civic content evaluator. Evaluate this template for civic appropriateness:\\n\\n{{ JSON.stringify($json.template) }}\\n\\nVote: APPROVE, REJECT, or NEEDS_REVIEW\\nConfidence: 0.0-1.0\\nReason: Brief explanation\\n\\nRespond ONLY with valid JSON:\\n{\\\"vote\\\": \\\"APPROVE\\\", \\\"confidence\\\": 0.85, \\\"reason\\\": \\\"Clear civic message\\\"}\"}]"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 20000
+          }
+        },
+        "id": "claude_voter",
+        "name": "Claude Vote",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.1,
+        "position": [
+          450,
+          600
+        ],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "claude_api",
+            "name": "Claude API"
+          }
+        }
+      },
+      {
+        "parameters": {
+          "mode": "combine",
+          "combinationMode": "mergeByPosition",
+          "options": {}
+        },
+        "id": "collect_votes",
+        "name": "Collect Votes",
+        "type": "n8n-nodes-base.merge",
+        "typeVersion": 2.1,
+        "position": [
+          650,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "jsCode": "// Parse and calculate consensus from all votes\nconst votes = $input.all();\nconst parsed = [];\n\n// Parse OpenAI vote\ntry {\n  const openai = votes[0].json;\n  const content = openai.choices[0].message.content;\n  parsed.push(JSON.parse(content));\n} catch (e) {\n  console.error('Failed to parse OpenAI vote');\n}\n\n// Parse Gemini vote\ntry {\n  const gemini = votes[1].json;\n  const content = gemini.candidates[0].content.parts[0].text;\n  parsed.push(JSON.parse(content));\n} catch (e) {\n  console.error('Failed to parse Gemini vote');\n}\n\n// Parse Claude vote\ntry {\n  const claude = votes[2].json;\n  const content = claude.content[0].text;\n  parsed.push(JSON.parse(content));\n} catch (e) {\n  console.error('Failed to parse Claude vote');\n}\n\n// Count votes\nconst voteCounts = {\n  APPROVE: 0,\n  REJECT: 0,\n  NEEDS_REVIEW: 0\n};\n\nlet totalConfidence = 0;\nconst reasons = [];\n\nfor (const vote of parsed) {\n  if (vote.vote in voteCounts) {\n    voteCounts[vote.vote]++;\n    totalConfidence += vote.confidence || 0.5;\n    if (vote.reason) reasons.push(vote.reason);\n  }\n}\n\n// Determine consensus\nlet consensus;\nif (voteCounts.REJECT > 0) {\n  consensus = 'REJECT'; // Any rejection = reject\n} else if (voteCounts.APPROVE === parsed.length) {\n  consensus = 'APPROVE'; // Unanimous approval\n} else {\n  consensus = 'NEEDS_REVIEW'; // Mixed votes\n}\n\nconst avgConfidence = totalConfidence / parsed.length;\n\nreturn {\n  consensus,\n  votes: voteCounts,\n  agents: parsed.length,\n  confidence: avgConfidence,\n  unanimous: voteCounts[consensus] === parsed.length,\n  reasons,\n  individual_votes: parsed,\n  timestamp: new Date().toISOString()\n};"
+        },
+        "id": "calculate_consensus",
+        "name": "Calculate Consensus",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          850,
+          400
+        ]
+      },
+      {
+        "parameters": {
+          "options": {}
+        },
+        "id": "respond",
+        "name": "Return Consensus",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1050,
+          400
+        ]
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "openai_voter",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "gemini_voter",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "claude_voter",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "openai_voter": {
+        "main": [
+          [
+            {
+              "node": "collect_votes",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "gemini_voter": {
+        "main": [
+          [
+            {
+              "node": "collect_votes",
+              "type": "main",
+              "index": 1
+            }
+          ]
+        ]
+      },
+      "claude_voter": {
+        "main": [
+          [
+            {
+              "node": "collect_votes",
+              "type": "main",
+              "index": 2
+            }
+          ]
+        ]
+      },
+      "collect_votes": {
+        "main": [
+          [
+            {
+              "node": "calculate_consensus",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "calculate_consensus": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "d3653a04-d344-4c9d-b56e-87d63e8cbbf7",
+    "triggerCount": 1,
+    "shared": [
+      {
+        "createdAt": "2025-09-16T07:32:44.524Z",
+        "updatedAt": "2025-09-16T07:32:44.524Z",
+        "role": "workflow:owner",
+        "workflowId": "ulehs4NL1OhXyA4r",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  }
+]

@@ -8,8 +8,8 @@
  * of responsive legislators.
  */
 
-import { BaseAgent, AgentType } from './base-agent';
-import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import { BaseAgent, AgentType } from '../shared/base-agent';
+import type { AgentContext, AgentDecision, AgentCapability } from '../shared/base-agent';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 import { db } from '$lib/core/db';
 

@@ -7,8 +7,8 @@
  * Vision: "Resilient abundance through intelligence within auditable bounds"
  */
 
-import { BaseAgent, AgentType } from './base-agent';
-import type { AgentContext, AgentDecision, AgentCapability } from './base-agent';
+import { BaseAgent, AgentType } from '../shared/base-agent';
+import type { AgentContext, AgentDecision, AgentCapability } from '../shared/base-agent';
 import { db } from '$lib/core/db';
 
 export interface RewardParameters {

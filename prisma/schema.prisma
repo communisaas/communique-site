@@ -972,3 +972,47 @@ model RewardCalculation {
   @@index([action_type])
   @@index([created_at])
 }
+
+// === MULTI-AGENT CONSENSUS TRACKING ===
+
+model CostTracking {
+  id            String   @id @default(cuid())
+  date          String   @unique // YYYY-MM-DD format for daily tracking
+  totalCost     Float    @default(0) @map("total_cost")
+  requestCount  Int      @default(0) @map("request_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+  
+  @@map("cost_tracking")
+  @@index([date])
+}
+
+model AgentDissent {
+  id             String   @id @default(cuid())
+  templateId     String   @map("template_id")
+  timestamp      DateTime @default(now())
+  votes          Json     // Array of AgentVote objects
+  finalDecision  Boolean  @map("final_decision")
+  consensusType  String   @map("consensus_type") // 'unanimous', 'majority', 'tie-breaker'
+  userFeedback   String?  @map("user_feedback") // 'correct' or 'incorrect'
+  learnings      String?  // Extracted insights from the dissent
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  @@map("agent_dissent")
+  @@index([templateId])
+  @@index([timestamp])
+  @@index([consensusType])
+}
+
+model AgentPerformance {
+  id                String   @id @default(cuid())
+  agent             String   @unique // 'openai', 'gemini', 'claude'
+  totalVotes        Int      @default(0) @map("total_votes")
+  correctVotes      Int      @default(0) @map("correct_votes")
+  accuracy          Float    @default(0) // Calculated: correctVotes / totalVotes
+  averageConfidence Float    @default(0) @map("average_confidence")
+  lastUpdated       DateTime @updatedAt @map("last_updated")
+  
+  @@map("agent_performance")
+  @@index([agent])
+}

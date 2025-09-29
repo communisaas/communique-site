@@ -1,0 +1,309 @@
+[
+  {
+    "createdAt": "2025-09-29T11:40:50.406Z",
+    "updatedAt": "2025-09-29T11:41:21.653Z",
+    "id": "ifQ2OJ4muKjYJ5yf",
+    "name": "Multi-Agent Template Moderation",
+    "active": true,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "webhook_trigger",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {
+          "path": "template-moderation",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "set_variables",
+        "name": "Set Variables",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 1,
+        "position": [
+          450,
+          300
+        ],
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "templateId",
+                "value": "={{$json.templateId}}"
+              },
+              {
+                "name": "userId",
+                "value": "={{$json.userId}}"
+              },
+              {
+                "name": "submissionId",
+                "value": "=sub_{{Date.now()}}_{{Math.random().toString(36).substring(2)}}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "consensus_request",
+        "name": "Multi-Agent Consensus",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          650,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.COMMUNIQUE_API_URL}}/api/n8n/process-template",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpQueryAuth",
+          "sendQuery": true,
+          "queryParameters": {
+            "parameters": [
+              {
+                "name": "secret",
+                "value": "={{$env.N8N_WEBHOOK_SECRET}}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "templateId",
+                "value": "={{$node['set_variables'].json.templateId}}"
+              },
+              {
+                "name": "userId",
+                "value": "={{$node['set_variables'].json.userId}}"
+              },
+              {
+                "name": "stage",
+                "value": "consensus"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 10000
+          }
+        }
+      },
+      {
+        "id": "check_approval",
+        "name": "Check Approval",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          850,
+          300
+        ],
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{$json.stages.consensus.approved}}",
+                "value2": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "cwc_submit",
+        "name": "Submit to CWC",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          1050,
+          200
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.COMMUNIQUE_API_URL}}/api/cwc/submit",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-webhook-secret",
+                "value": "={{$env.N8N_WEBHOOK_SECRET}}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "templateId",
+                "value": "={{$node['set_variables'].json.templateId}}"
+              },
+              {
+                "name": "submissionId",
+                "value": "={{$node['set_variables'].json.submissionId}}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "status_update",
+        "name": "Send Status Update",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          1250,
+          300
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.COMMUNIQUE_API_URL}}/api/webhooks/n8n/status",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-webhook-secret",
+                "value": "={{$env.N8N_WEBHOOK_SECRET}}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "submissionId",
+                "value": "={{$node['set_variables'].json.submissionId}}"
+              },
+              {
+                "name": "workflowStage",
+                "value": "={{$json.approved ? 'submission' : 'consensus'}}"
+              },
+              {
+                "name": "status",
+                "value": "completed"
+              },
+              {
+                "name": "data",
+                "value": "={{$json}}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "respond",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1450,
+          300
+        ],
+        "parameters": {
+          "responseMode": "lastNode",
+          "responseCode": 200
+        }
+      }
+    ],
+    "connections": {
+      "webhook_trigger": {
+        "main": [
+          [
+            {
+              "node": "set_variables",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "set_variables": {
+        "main": [
+          [
+            {
+              "node": "consensus_request",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "consensus_request": {
+        "main": [
+          [
+            {
+              "node": "check_approval",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "check_approval": {
+        "main": [
+          [
+            {
+              "node": "cwc_submit",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "status_update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "cwc_submit": {
+        "main": [
+          [
+            {
+              "node": "status_update",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "status_update": {
+        "main": [
+          [
+            {
+              "node": "respond",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "c4cab304-b140-4d9f-b77a-6e075571be6f",
+    "triggerCount": 1,
+    "shared": [
+      {
+        "createdAt": "2025-09-29T11:40:50.412Z",
+        "updatedAt": "2025-09-29T11:40:50.412Z",
+        "role": "workflow:owner",
+        "workflowId": "ifQ2OJ4muKjYJ5yf",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  }
+]

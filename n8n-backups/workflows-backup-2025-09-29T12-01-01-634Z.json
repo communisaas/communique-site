@@ -1,0 +1,438 @@
+[
+  {
+    "createdAt": "2025-09-29T11:53:28.742Z",
+    "updatedAt": "2025-09-29T11:53:28.742Z",
+    "id": "lOMDBMYZwbxMdSVT",
+    "name": "Multi-Agent Template Moderation",
+    "active": false,
+    "isArchived": false,
+    "nodes": [
+      {
+        "id": "webhook_trigger",
+        "name": "Webhook Trigger",
+        "type": "n8n-nodes-base.webhook",
+        "typeVersion": 1,
+        "position": [
+          250,
+          300
+        ],
+        "parameters": {
+          "path": "template-moderation",
+          "responseMode": "responseNode",
+          "options": {}
+        }
+      },
+      {
+        "id": "set_variables",
+        "name": "Set Variables",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 1,
+        "position": [
+          450,
+          300
+        ],
+        "parameters": {
+          "values": {
+            "string": [
+              {
+                "name": "templateId",
+                "value": "={{$json.templateId}}"
+              },
+              {
+                "name": "userId",
+                "value": "={{$json.userId}}"
+              },
+              {
+                "name": "submissionId",
+                "value": "=sub_{{Date.now()}}_{{Math.random().toString(36).substring(2)}}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "get_template",
+        "name": "Get Template",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          650,
+          300
+        ],
+        "parameters": {
+          "method": "GET",
+          "url": "={{$env.COMMUNIQUE_API_URL}}/api/templates/{{$node['Set Variables'].json.templateId}}",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-webhook-secret",
+                "value": "={{$env.N8N_WEBHOOK_SECRET}}"
+              }
+            ]
+          },
+          "options": {
+            "timeout": 5000
+          }
+        }
+      },
+      {
+        "id": "openai_moderation",
+        "name": "OpenAI Moderation",
+        "type": "n8n-nodes-langchain.openai",
+        "typeVersion": 1,
+        "position": [
+          850,
+          200
+        ],
+        "parameters": {
+          "operation": "moderation",
+          "input": "={{$node['Get Template'].json.message_body}}",
+          "model": "text-moderation-latest"
+        }
+      },
+      {
+        "id": "gemini_analysis",
+        "name": "Gemini Analysis",
+        "type": "n8n-nodes-langchain.lmChatGoogleGemini",
+        "typeVersion": 1,
+        "position": [
+          850,
+          300
+        ],
+        "parameters": {
+          "model": "gemini-2.5-flash-lite",
+          "prompt": "Analyze this civic template for appropriateness. Return JSON with {approved: boolean, confidence: number, reasoning: string}:\n\n{{$node['Get Template'].json.message_body}}",
+          "temperature": 0.2,
+          "maxTokens": 500
+        }
+      },
+      {
+        "id": "check_consensus",
+        "name": "Check Consensus",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1050,
+          250
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "// Multi-agent consensus logic\nconst openaiResult = $input.first().json.openai_moderation;\nconst geminiResult = JSON.parse($input.first().json.gemini_analysis);\n\n// OpenAI vote (using FREE moderation API)\nconst openaiVote = {\n  agent: 'openai',\n  approved: !openaiResult.flagged,\n  confidence: openaiResult.flagged ? 0.1 : 0.9,\n  reasoning: openaiResult.flagged ? \n    `Flagged for: ${Object.keys(openaiResult.categories).filter(c => openaiResult.categories[c]).join(', ')}` :\n    'Content appears appropriate'\n};\n\n// Gemini vote\nconst geminiVote = {\n  agent: 'gemini',\n  approved: geminiResult.approved,\n  confidence: geminiResult.confidence,\n  reasoning: geminiResult.reasoning\n};\n\n// Check if we have consensus\nconst consensus = openaiVote.approved === geminiVote.approved;\n\n// Calculate weighted approval (OpenAI 40%, Gemini 35%, Claude 25% if needed)\nconst weightedScore = (openaiVote.approved ? 0.4 : 0) + (geminiVote.approved ? 0.35 : 0);\n\n// Prepare output\nreturn {\n  json: {\n    consensus,\n    needsTiebreaker: !consensus,\n    votes: [openaiVote, geminiVote],\n    consensusType: consensus ? 'unanimous' : 'pending',\n    approved: consensus ? openaiVote.approved : null,\n    weightedScore,\n    templateId: $node['Set Variables'].json.templateId,\n    submissionId: $node['Set Variables'].json.submissionId\n  }\n};"
+        }
+      },
+      {
+        "id": "tiebreaker_needed",
+        "name": "Tiebreaker Needed?",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          1250,
+          250
+        ],
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{$json.needsTiebreaker}}",
+                "value2": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "claude_tiebreaker",
+        "name": "Claude Tiebreaker",
+        "type": "n8n-nodes-langchain.lmChatAnthropic",
+        "typeVersion": 1,
+        "position": [
+          1450,
+          150
+        ],
+        "parameters": {
+          "model": "claude-3-haiku-20240307",
+          "prompt": "You are a tiebreaker for content moderation. OpenAI voted: {{$node['Check Consensus'].json.votes[0].approved}} ({{$node['Check Consensus'].json.votes[0].reasoning}}). Gemini voted: {{$node['Check Consensus'].json.votes[1].approved}} ({{$node['Check Consensus'].json.votes[1].reasoning}}). Analyze this civic template and cast the deciding vote. Return JSON with {approved: boolean, confidence: number, reasoning: string}:\n\n{{$node['Get Template'].json.message_body}}",
+          "temperature": 0.1,
+          "maxTokens": 500
+        }
+      },
+      {
+        "id": "final_consensus",
+        "name": "Final Consensus",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1650,
+          250
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "// Combine all votes including tiebreaker if needed\nconst baseVotes = $node['Check Consensus'].json.votes;\nconst needsTiebreaker = $node['Check Consensus'].json.needsTiebreaker;\n\nlet finalApproved = $node['Check Consensus'].json.approved;\nlet consensusType = $node['Check Consensus'].json.consensusType;\nlet allVotes = [...baseVotes];\n\nif (needsTiebreaker && $node['Claude Tiebreaker']) {\n  const claudeResult = JSON.parse($node['Claude Tiebreaker'].json);\n  const claudeVote = {\n    agent: 'claude',\n    approved: claudeResult.approved,\n    confidence: claudeResult.confidence,\n    reasoning: claudeResult.reasoning\n  };\n  \n  allVotes.push(claudeVote);\n  \n  // Calculate final weighted score with Claude (25% weight)\n  const weightedScore = \n    (allVotes[0].approved ? 0.4 : 0) +  // OpenAI 40%\n    (allVotes[1].approved ? 0.35 : 0) + // Gemini 35%\n    (claudeVote.approved ? 0.25 : 0);   // Claude 25%\n  \n  finalApproved = weightedScore >= 0.5;\n  consensusType = finalApproved ? 'majority' : 'rejected';\n}\n\n// Calculate total cost\nconst totalCost = 0.00105 + (needsTiebreaker ? 0.0004 : 0);\n\nreturn {\n  json: {\n    approved: finalApproved,\n    consensusType,\n    votes: allVotes,\n    totalCost,\n    severity: finalApproved ? 1 : 10,\n    templateId: $node['Check Consensus'].json.templateId,\n    submissionId: $node['Check Consensus'].json.submissionId\n  }\n};"
+        }
+      },
+      {
+        "id": "check_approval",
+        "name": "Check Approval",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [
+          1850,
+          250
+        ],
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{$json.approved}}",
+                "value2": true
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "cwc_submit",
+        "name": "Submit to CWC",
+        "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 3,
+        "position": [
+          2050,
+          150
+        ],
+        "parameters": {
+          "method": "POST",
+          "url": "={{$env.COMMUNIQUE_API_URL}}/api/cwc/submit",
+          "authentication": "genericCredentialType",
+          "genericAuthType": "httpHeaderAuth",
+          "sendHeaders": true,
+          "headerParameters": {
+            "parameters": [
+              {
+                "name": "x-webhook-secret",
+                "value": "={{$env.N8N_WEBHOOK_SECRET}}"
+              }
+            ]
+          },
+          "sendBody": true,
+          "bodyParameters": {
+            "parameters": [
+              {
+                "name": "templateId",
+                "value": "={{$node['Final Consensus'].json.templateId}}"
+              },
+              {
+                "name": "submissionId",
+                "value": "={{$node['Final Consensus'].json.submissionId}}"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "format_response",
+        "name": "Format Response",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          2250,
+          250
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "// Format the final response with all consensus data\nconst consensusData = $node['Final Consensus'].json;\nconst cwcResult = $node['Submit to CWC'] ? $node['Submit to CWC'].json : null;\n\nreturn {\n  json: {\n    success: true,\n    submissionId: consensusData.submissionId,\n    templateId: consensusData.templateId,\n    moderation: {\n      approved: consensusData.approved,\n      consensusType: consensusData.consensusType,\n      votes: consensusData.votes,\n      totalCost: consensusData.totalCost,\n      severity: consensusData.severity\n    },\n    cwc: cwcResult ? {\n      submitted: true,\n      response: cwcResult\n    } : {\n      submitted: false,\n      reason: consensusData.approved ? 'Not submitted yet' : 'Template not approved'\n    }\n  }\n};"
+        }
+      },
+      {
+        "id": "respond",
+        "name": "Respond to Webhook",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [
+          1450,
+          300
+        ],
+        "parameters": {
+          "responseMode": "lastNode",
+          "responseCode": 200
+        }
+      }
+    ],
+    "connections": {
+      "Webhook Trigger": {
+        "main": [
+          [
+            {
+              "node": "Set Variables",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Set Variables": {
+        "main": [
+          [
+            {
+              "node": "Get Template",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Get Template": {
+        "main": [
+          [
+            {
+              "node": "OpenAI Moderation",
+              "type": "main",
+              "index": 0
+            },
+            {
+              "node": "Gemini Analysis",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "OpenAI Moderation": {
+        "main": [
+          [
+            {
+              "node": "Check Consensus",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Gemini Analysis": {
+        "main": [
+          [
+            {
+              "node": "Check Consensus",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Consensus": {
+        "main": [
+          [
+            {
+              "node": "Tiebreaker Needed?",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Tiebreaker Needed?": {
+        "main": [
+          [
+            {
+              "node": "Claude Tiebreaker",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Final Consensus",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Claude Tiebreaker": {
+        "main": [
+          [
+            {
+              "node": "Final Consensus",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Final Consensus": {
+        "main": [
+          [
+            {
+              "node": "Check Approval",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Check Approval": {
+        "main": [
+          [
+            {
+              "node": "Submit to CWC",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Format Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Submit to CWC": {
+        "main": [
+          [
+            {
+              "node": "Format Response",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Format Response": {
+        "main": [
+          [
+            {
+              "node": "Respond to Webhook",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1"
+    },
+    "staticData": null,
+    "meta": null,
+    "pinData": null,
+    "versionId": "b4e30d62-d687-4a46-a780-9107e667b6fe",
+    "triggerCount": 0,
+    "shared": [
+      {
+        "createdAt": "2025-09-29T11:53:28.744Z",
+        "updatedAt": "2025-09-29T11:53:28.744Z",
+        "role": "workflow:owner",
+        "workflowId": "lOMDBMYZwbxMdSVT",
+        "projectId": "WaQMIIcE44Mlt0XZ"
+      }
+    ],
+    "tags": []
+  }
+]

@@ -1,20 +1,34 @@
 # Architecture (at a glance)
 
+## Global Democracy Infrastructure
+
+Communique is governance-neutral infrastructure. US Congress via CWC API is our launch market. Parliamentary systems follow. Any governance structure accepting citizen input can integrate.
+
 ## System
 
 - SvelteKit 5 + TypeScript + Tailwind
 - Server-rendered app with API routes under `src/routes/api`
 - Supabase (Postgres) via Prisma
 - Sessions via custom crypto (`@oslojs/crypto`)
+- VOTER Protocol integration for rewards and reputation
+- Dual agent systems: Template Processing (AI moderation) + VOTER Protocol (blockchain rewards)
 
 ## Key flows
 
-- Country resolve (SSR) → choose delivery method
-  - Email countries: template resolve → `mailto:` open
-  - Certified (e.g., US CWC): generate and submit required forms
-  - Always: viral pattern generator for platform-native sharing
-- Congressional (US): address verify → reps lookup → CWC generate → delivery
+**Universal civic action pipeline:**
+- Country resolve (SSR) → governance adapter → delivery method
+  - Email countries: template resolve → `mailto:` with tracking
+  - Certified APIs (US CWC, future Parliamentary): generate compliant forms → verified submission
+  - Always: viral pattern generator + VOTER rewards + reputation building
+
+**Governance-specific flows:**
+- Congressional (US): address → district → representatives → CWC API → blockchain rewards
+- Parliamentary (future): postcode → constituency → MPs → submission API
+- Direct Democracy (future): proposal → signature → referendum tracking
+
+**User journey:**
 - Onboarding: OAuth-only; 90-day sessions for template-action deep-link flows
+- Action: Select template → fill variables → send → earn VOTER → build reputation
 
 ## Codebase structure
 

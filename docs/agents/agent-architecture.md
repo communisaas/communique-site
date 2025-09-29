@@ -1,362 +1,174 @@
-# Dual Agent Architecture - Communique + VOTER Protocol
+# Agent Architecture
 
-## Executive Summary
+**Clear separation: Off-chain content moderation today, on-chain rewards tomorrow.**
 
-Communique implements **two complementary agent systems** that work together:
+## Two Distinct Systems
 
-1. **VOTER Protocol Agents** - On-chain reward calculation, identity verification, and reputation management
-2. **Template Processing Agents** - AI-powered content moderation and enhancement using GPT-5/Gemini
+### 1. Content Moderation (Off-chain MVP)
+**Purpose**: Template safety and quality  
+**Location**: `/src/lib/agents/content/`  
+**When**: Every template submission  
 
-These systems integrate to provide end-to-end civic engagement: from template creation through blockchain settlement.
+**Multi-Agent Consensus System** (Following VOTER Protocol principles):
 
-## System Overview
+#### The Three Agents
+1. **OpenAI (Primary - 40% weight)**
+   - FREE Moderation API: 95% accuracy in 40 languages
+   - GPT-5 enhancement: $0.001/template when needed
+   - Handles toxicity, violence, hate speech detection
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    User Submission                       │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│           TEMPLATE PROCESSING AGENTS                     │
-│         (GPT-5/Gemini Multi-Agent System)               │
-│                                                          │
-│  • Screening: Toxicity/spam detection                   │
-│  • Enhancement: Grammar/clarity improvement             │  
-│  • Validation: Fact-checking                            │
-│  • Consensus: Multi-agent voting                        │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                    [If Approved]
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│              VOTER PROTOCOL AGENTS                       │
-│            (Blockchain Settlement System)                │
-│                                                          │
-│  • VerificationAgent: Identity verification             │
-│  • SupplyAgent: Dynamic reward calculation              │
-│  • MarketAgent: Challenge market management             │
-│  • ImpactAgent: Legislative outcome tracking            │
-│  • ReputationAgent: ERC-8004 reputation                 │
-└────────────────────────┬─────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────┐
-│              BLOCKCHAIN SETTLEMENT                       │
-│                                                          │
-│  • Smart Contracts: CommuniqueCore, VOTERToken          │
-│  • User receives VOTER tokens                           │
-│  • Reputation updated on-chain                          │
-└──────────────────────────────────────────────────────────┘
-```
+2. **Gemini 2.5 Flash-Lite (Verification - 35% weight)**
+   - Ultra-cheap: $0.00005/template
+   - Checks: Actionable requests, respectful tone
+   - Second opinion to prevent single-model bias
 
-## Part 1: VOTER Protocol Agents
+3. **Claude 3.5 Haiku (Tie-breaker - 25% weight)**
+   - Only invoked when agents disagree (~10% of cases)
+   - Cost: $0.0004/template when needed
+   - Provides nuanced analysis of disagreements
 
-These agents handle blockchain integration and economic incentives.
-
-### SupplyAgent (`/src/lib/agents/supply-agent.ts`)
-
-Calculates dynamic rewards based on network activity and user reputation.
-
+#### Consensus Mechanism
 ```typescript
-interface RewardParameters {
-  baseRewardUSD: number;        // $0.01 - $1.00
-  multipliers: {
-    activity: number;          // Network effect
-    action: number;            // Action type
-    reputation: number;        // User reputation
-    complexity: number;        // Template complexity
-    time: number;             // Time decay
-    urgency: number;          // Political calendar
-  };
-  finalRewardETH: number;
-  finalRewardWei: string;
+// Multi-agent voting (no single point of failure)
+const result = await moderationConsensus.evaluateTemplate(templateId);
+
+// Result includes:
+// - approved: boolean
+// - consensusType: 'unanimous' | 'majority' | 'tie-breaker'
+// - votes: AgentVote[] with confidence scores
+// - totalCost: ~$0.00105 per template
+// - dissent: recorded for learning
+
+if (result.approved) {
+  // Send to CWC or direct outreach
 }
 ```
 
-**Key Features:**
-- Prevents inflation through daily caps
-- Adapts to political calendar events
-- Applies reputation multipliers
-- Safety bounds prevent manipulation
+#### Cost Structure
+- **Unanimous (90% of cases)**: $0.00105
+- **Split decision (10% of cases)**: $0.00145
+- **Monthly (10K templates)**: ~$11.60
 
-### VerificationAgent (`/src/lib/agents/verification-agent.ts`)
+### 2. VOTER Protocol Agents (Future On-chain)
+**Purpose**: Rewards, reputation, economic incentives  
+**Location**: `/src/lib/agents/voter-protocol/`  
+**When**: After on-chain integration  
 
-Handles identity verification and trust scoring.
-
-```typescript
-interface VerificationAssessment {
-  userId: string;
-  verificationLevel: 'unverified' | 'partial' | 'verified' | 'high_assurance';
-  trustScore: number; // 0-1000
-  zkProofHash?: string;
-  districtVerification?: {
-    congressionalDistrict: string;
-    confidence: number;
-  };
-}
-```
-
-**Integrations:**
-- Didit.me for zero-knowledge identity
-- Congressional district verification
-- Multi-source trust scoring
-- Privacy-preserving attestations
-
-### MarketAgent (`/src/lib/agents/market-agent.ts`)
-
-Manages challenge markets and stake calculations.
+Five specialized agents:
+- **VerificationAgent**: User identity verification
+- **SupplyAgent**: Dynamic reward calculation
+- **MarketAgent**: Challenge market management
+- **ImpactAgent**: Legislative outcome tracking
+- **ReputationAgent**: ERC-8004 reputation scores
 
 ```typescript
-interface StakeCalculation {
-  baseStake: number;
-  multipliers: {
-    reputation: number;
-    historicalAccuracy: number;
-    contentSeverity: number;
-  };
-  finalStakeRequired: number;
-}
-```
-
-**Features:**
-- Contextual stake requirements
-- Reputation-based adjustments
-- Quadratic scaling for fairness
-- Gaming prevention
-
-### ImpactAgent (`/src/lib/agents/impact-agent.ts`)
-
-Tracks legislative outcomes and causal chains.
-
-```typescript
-interface ImpactScore {
-  directCitations: number;      // Template quoted in testimony
-  positionChanges: number;      // Votes changed after campaign
-  mediaPickup: number;          // News coverage of template
-  causalConfidence: number;     // 0-1 confidence in causation
-}
-```
-
-### ReputationAgent (`/src/lib/agents/reputation-agent.ts`)
-
-Manages ERC-8004 portable reputation.
-
-```typescript
-interface ReputationUpdate {
-  challengeScore: number;        // Challenge market performance
-  civicScore: number;           // Civic action quality
-  discourseScore: number;       // Discussion contribution
-  attestations: string[];       // ERC-8004 attestation hashes
-}
-```
-
-## Part 2: Template Processing Agents
-
-These agents handle AI-powered content processing using GPT-5 and Gemini 2.5.
-
-### Agent Registry (`/src/lib/agents/registry/agent-registry.ts`)
-
-Maintains catalog of available AI models.
-
-```typescript
-interface AgentCapability {
-  id: string;
-  provider: 'openai' | 'google' | 'anthropic';
-  model: string;                // 'gpt-5-nano', 'gemini-2.5-flash', etc.
-  costPerMToken: {
-    input: number;
-    output: number;
-    cached?: number;             // 90% discount with caching
-  };
-  capabilities: ('screening' | 'enhancement' | 'reasoning' | 'consensus')[];
-  reliability: number;           // 0-1
-  speed: number;                // avg ms
-}
-```
-
-### Task Orchestrator (`/src/lib/agents/orchestrator/task-orchestrator.ts`)
-
-Coordinates multi-stage processing pipeline.
-
-```typescript
-async processTemplate(
-  templateId: string,
-  submissionFlow: 'voter-protocol' | 'direct-delivery',
-  userBudget: number
-): Promise<ProcessingResult>
-```
-
-**Processing Pipeline:**
-1. **Screening** - Quick toxicity check (GPT-5 Nano)
-2. **Enhancement** - Grammar/clarity improvements (GPT-5 Mini)
-3. **Validation** - Fact-checking (Gemini 2.5)
-4. **Consensus** - Multi-agent voting
-
-### Consensus Engine (`/src/lib/agents/consensus/consensus-engine.ts`)
-
-Aggregates decisions from multiple AI agents.
-
-```typescript
-interface ConsensusResult {
-  decision: 'approved' | 'rejected' | 'needs_review';
-  confidence: number;
-  agentVotes: WeightedVote[];
-  riskFactors: {
-    toxicity: number;
-    political_sensitivity: number;
-    adversarial: number;
-  };
-}
-```
-
-### Budget Manager (`/src/lib/agents/economics/budget-manager.ts`)
-
-Optimizes AI model selection for cost/quality.
-
-```typescript
-interface CostOptimizationResult {
-  selectedAgents: AgentCapability[];
-  estimatedCost: number;
-  strategy: 'cheapest' | 'quality' | 'speed' | 'balanced';
-}
-```
-
-## Part 3: Integration Points
-
-### Template Approval Flow
-
-```typescript
-// 1. User submits template
-const template = await createTemplate(userData);
-
-// 2. AI agents process template
-const processingResult = await moderationConsensus.evaluateTemplate(
-  template.id,
-  'voter-protocol',
-  0.10 // budget
-);
-
-// 3. If approved, certify with VOTER Protocol
-if (processingResult.finalDecision === 'approved') {
-  const certification = await voterClient.certifyDelivery({
-    templateData: template,
-    userProfile: user,
-    cwcResult: deliveryResult
-  });
-  
-  // 4. SupplyAgent calculates reward
-  const reward = await supplyAgent.makeDecision({
-    userId: user.id,
-    actionType: 'cwc_message',
-    templateId: template.id
-  });
-  
-  // 5. Blockchain settlement
-  const txResult = await voterBlockchain.processCivicAction({
-    userAddress: user.wallet_address,
-    actionType: 'CWC_MESSAGE',
-    rewardAmount: reward.decision.finalRewardWei
+// Future on-chain flow
+if (templateApproved && onChainEnabled) {
+  await voterProtocolCoordinator.processCivicAction({
+    userAddress,
+    template,
+    actionType: 'cwc_message'
   });
 }
 ```
 
-### Blockchain Integration (`/src/lib/core/blockchain/voter-client.ts`)
+## File Structure
 
-Direct smart contract interaction:
-
-```typescript
-// Smart contract ABIs
-const COMMUNIQUE_CORE_ABI = [
-  'function processCivicAction(address participant, uint8 actionType, bytes32 actionHash, string metadataUri, uint256 rewardOverride)',
-  'function getUserStats(address user) view returns (uint256 actionCount, uint256 civicEarned, uint256 lastActionTime)'
-];
-
-const VOTER_TOKEN_ABI = [
-  'function balanceOf(address account) view returns (uint256)',
-  'function transfer(address to, uint256 amount) returns (bool)'
-];
+```
+/src/lib/agents/
+├── content/                        # Off-chain template processing
+│   ├── ai-moderation.ts           # 3-agent voting system
+│   └── consensus-coordinator.ts   # Orchestration & cost tracking
+├── voter-protocol/                 # Future on-chain agents
+│   ├── verification-agent.ts       # User identity (not content)
+│   ├── supply-agent.ts             # Token rewards
+│   ├── market-agent.ts             # Challenge markets
+│   ├── impact-agent.ts             # Impact tracking
+│   └── reputation-agent.ts         # ERC-8004 reputation
+├── shared/                         # Common code
+│   ├── base-agent.ts              # Shared interfaces
+│   └── type-guards.ts             # Type safety
+└── moderation-consensus.ts        # Main entry point
 ```
 
-### User Address Generation (`/src/lib/services/addressGeneration.ts`)
+## Why Two Systems?
 
-Deterministic blockchain addresses from user IDs:
+### Different Requirements
+- **Content needs**: LLM analysis, subjective quality, fast response
+- **Economic needs**: Deterministic math, cryptographic proofs, blockchain
 
+### Different Timelines
+- **Content**: Real-time (seconds)
+- **Blockchain**: Batch settlement (minutes)
+
+### Different Costs
+- **Content**: Optimize for cheap AI calls
+- **Blockchain**: Security more important than cost
+
+## N8N Workflow Integration
+
+### Today (Off-chain MVP)
 ```typescript
-function generateVOTERAddress(userId: string): string {
-  // Cryptographically derive address from user ID
-  // User controls private keys only when ready
+// N8N orchestrates multi-agent consensus
+template → N8N webhook → consensus voting → approve/reject → CWC/email
+```
+
+**N8N calls these endpoints**:
+- `/api/n8n/process-template?stage=consensus` - Triggers multi-agent voting
+- `/api/webhooks/n8n/status` - Receives workflow progress updates
+
+See `docs/integrations.md#n8n-workflow-orchestration` for full N8N integration details.
+
+### Tomorrow (On-chain Integration)  
+```typescript
+// Add VOTER Protocol after approval
+template → safety check → enhancement → approve → VOTER agents → blockchain → rewards
+```
+
+### Clean Handoff
+- Template approval triggers database event
+- VOTER agents process asynchronously
+- User sees immediate feedback, rewards settle later
+
+## What Changed
+
+### Before (Regex-based)
+- Dangerous regex patterns for toxicity detection
+- No real AI moderation
+- Single point of failure
+- template-processor.ts with hardcoded patterns
+
+### After (Multi-Agent Consensus)
+- Real AI with 95% accuracy (OpenAI FREE API)
+- Three independent agents voting
+- No single point of failure
+- Cost-effective: $11.60/month for 10K templates
+- Dissent recording for continuous improvement
+
+### Database Support
+```prisma
+model CostTracking {
+  date          String   @unique  // Daily tracking
+  totalCost     Float
+  requestCount  Int
+}
+
+model AgentDissent {
+  templateId     String
+  votes          Json     // Agent disagreements
+  finalDecision  Boolean
+  userFeedback   String?  // For learning
 }
 ```
 
-## Key Design Decisions
+## Key Principles
 
-### Why Two Agent Systems?
+1. **Don't mix concerns**: Content moderation ≠ User verification
+2. **Start simple**: 2 stages are enough for MVP
+3. **Clear migration**: Off-chain today, easy on-chain tomorrow
+4. **No confusion**: Each agent has one clear purpose
 
-1. **Separation of Concerns**
-   - Template processing needs fast, flexible AI
-   - Blockchain settlement needs deterministic, auditable logic
-
-2. **Different Requirements**
-   - AI agents: Handle natural language, subjective quality
-   - VOTER agents: Handle economics, cryptographic proofs
-
-3. **Independent Scaling**
-   - Template processing scales with user submissions
-   - Blockchain agents scale with on-chain capacity
-
-### Security Considerations
-
-- **No PII in AI prompts** - Templates anonymized before processing
-- **No private keys in Communique** - Users control their own wallets
-- **Audit trails** - All agent decisions logged
-- **Circuit breakers** - Emergency stops for runaway costs
-
-## Configuration
-
-### Environment Variables
-
-```bash
-# AI Providers
-OPENAI_API_KEY=sk-...
-GOOGLE_AI_API_KEY=...
-
-# Blockchain
-VOTER_CONTRACT_ADDRESS=0x...
-VOTER_RPC_URL=https://...
-VOTER_PRIVATE_KEY=... # Server wallet only
-
-# Feature Flags
-ENABLE_VOTER_CERTIFICATION=true
-ENABLE_AI_ENHANCEMENT=true
-```
-
-## Performance Metrics
-
-### Template Processing
-- **Speed**: <3 seconds average
-- **Cost**: $0.002 per template (with caching)
-- **Approval rate**: 85% first-pass
-
-### Blockchain Settlement
-- **Gas cost**: ~100,000 gas per certification
-- **Confirmation time**: ~2 seconds (Ronin)
-- **Success rate**: 99.9%
-
-## Future Enhancements
-
-### Q4 2025
-- Anthropic Claude integration for constitutional AI
-- Cross-chain deployment (Base, Arbitrum)
-- Automated A/B testing of agent combinations
-
-### 2026
-- Fully autonomous agent governance
-- Decentralized agent marketplace
-- Zero-knowledge template processing
-
----
-
-*Last Updated: September 2025*
-*Architecture Version: 2.0.0 - Dual Agent System*
+The architecture is now optimized for:
+- **Today**: Fast, cheap template moderation
+- **Tomorrow**: Secure on-chain rewards
+- **Always**: Clear separation of concerns

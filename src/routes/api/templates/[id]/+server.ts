@@ -6,8 +6,17 @@ import type { RequestHandler } from './$types';
 import type { TemplateUpdateData as _TemplateUpdateData } from '$lib/types/api';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ params, request }) => {
 	try {
+		// Check for N8N webhook secret if provided
+		const webhookSecret = request.headers.get('x-webhook-secret');
+		const expectedSecret = process.env.N8N_WEBHOOK_SECRET;
+		
+		// If secret is configured and provided, validate it
+		if (expectedSecret && webhookSecret && webhookSecret !== expectedSecret) {
+			return error(401, 'Invalid webhook secret');
+		}
+
 		const templateId = params.id;
 
 		const template = await db.template.findUnique({
