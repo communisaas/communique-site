@@ -210,7 +210,7 @@ export class DeliveryPlatformSMTP {
 					userName: userProfile.name,
 					userAddress: userProfile.street,
 					userZip: userProfile.zip,
-					subject: templateData.subject,
+					subject: templateData.title,
 					message_body: templateData.message_body,
 					deliveryMethod: 'certified',
 					timestamp: new Date().toISOString()
@@ -226,7 +226,7 @@ export class DeliveryPlatformSMTP {
 			const cwcMessageData: CWCSubmissionData = {
 				templateId: templateData.id,
 				userId: userProfile.id,
-				subject: templateData.subject || templateData.title,
+				subject: templateData.title || templateData.title,
 				text: templateData.message_body,
 				personalConnection: parsedMessage.personalConnection,
 				userProfile: {

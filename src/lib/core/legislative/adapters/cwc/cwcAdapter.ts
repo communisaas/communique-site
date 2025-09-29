@@ -108,7 +108,7 @@ export class CWCAdapter extends LegislativeAdapter {
 			const cwcInput: CommuniqueMessageInput = {
 				template: {
 					id: request.template.id,
-					title: request.template.subject,
+					title: request.template.title,
 					message_body: request.template.message_body,
 					slug: `template-${request.template.id}` // Generate slug if needed
 				},

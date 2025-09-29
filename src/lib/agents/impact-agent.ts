@@ -168,7 +168,6 @@ export class ImpactAgent extends BaseAgent {
 			select: {
 				title: true,
 				message_body: true,
-				subject: true,
 				createdAt: true
 			}
 		});

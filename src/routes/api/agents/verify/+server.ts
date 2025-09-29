@@ -56,7 +56,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					verification_status: isApproved ? 'approved' : 'pending',
 					correction_log: JSON.parse(JSON.stringify(verificationDecision.corrections)),
 					original_content: JSON.parse(
-						JSON.stringify({ subject: templateData.subject, body: templateData.message_body })
+						JSON.stringify({ subject: templateData.title, body: templateData.message_body })
 					),
 					severity_level: verificationDecision.severityLevel,
 					agent_votes: JSON.parse(JSON.stringify({ verification: result })),

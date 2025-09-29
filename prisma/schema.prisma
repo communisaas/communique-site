@@ -122,7 +122,6 @@ model Template {
   category                  String
   type                      String
   deliveryMethod            String                     @map("delivery_method")
-  subject                   String?
   preview                   String
   message_body              String
   delivery_config           Json
@@ -142,25 +141,59 @@ model Template {
   jurisdiction_level        String?
   specific_locations        String[]                   @default([])
   
-  // === MERGED VERIFICATION FIELDS (from TemplateVerification) ===
-  // Verification status & process
-  verification_status       String?                    @default("pending") @map("verification_status") // 'pending', 'reviewing', 'approved', 'rejected'
-  country_code              String?                    @default("US") @map("country_code") // From TemplateVerification
-  severity_level            Int?                       @map("severity_level") // 1-10 scale
+  // === STATUS AND TRACKING ===
+  verification_status       String?                    @default("pending") @map("verification_status") // 'pending', 'approved', 'rejected'
+  country_code              String?                    @default("US") @map("country_code")
+  reviewed_at               DateTime?                  @map("reviewed_at")
+  reviewed_by               String?                    @map("reviewed_by")
   
-  // Content correction & backup
-  correction_log            Json?                      @map("correction_log") // Grammar, clarity fixes applied
-  original_content          Json?                      @map("original_content") // Before corrections
-  corrected_subject         String?                    @map("corrected_subject")
-  corrected_body            String?                    @map("corrected_body")
-  
-  // Multi-agent consensus & quality scores
-  agent_votes               Json?                      @map("agent_votes") // {openai: 0.8, gemini: 0.7}
-  consensus_score           Float?                     @map("consensus_score") // Weighted average
+  // Quality metrics
   quality_score             Int                        @default(50) @map("quality_score") // 0-100
   grammar_score             Int?                       @map("grammar_score")
   clarity_score             Int?                       @map("clarity_score")
   completeness_score        Int?                       @map("completeness_score")
+  
+  // === AGENT-AGNOSTIC TRACKING (Phase 1) ===
+  // Agent orchestration
+  processing_pipeline       Json?                      @map("processing_pipeline") // Dynamic pipeline configuration
+  agent_assignments         Json?                      @map("agent_assignments") // Which agents handled each stage
+  consensus_weights         Json?                      @map("consensus_weights") // How votes were weighted
+  
+  // Economic tracking  
+  budget_allocated          Decimal?                   @map("budget_allocated") // User's budget for this template
+  cost_breakdown            Json?                      @map("cost_breakdown") // Cost per agent/stage
+  optimization_metrics      Json?                      @map("optimization_metrics") // Quality vs cost tradeoffs
+  
+  // Performance analytics
+  pipeline_efficiency       Decimal?                   @map("pipeline_efficiency") // How well the pipeline performed
+  agent_performance         Json?                      @map("agent_performance") // Individual agent metrics
+  consensus_quality         Decimal?                   @map("consensus_quality") // Quality of consensus decision
+  
+  // Dynamic routing
+  fallback_attempts         Json?                      @map("fallback_attempts") // Any agent fallbacks used
+  optimization_applied      Json?                      @map("optimization_applied") // Dynamic optimizations made
+  user_satisfaction        Int?                       @map("user_satisfaction") // Feedback for future optimization
+  
+  // Enhanced content tracking
+  enhanced_content          String?                    @map("enhanced_content") // AI-enhanced version
+  change_log                Json?                      @map("change_log") // Detailed changes made
+  intent_preservation       Float?                     @map("intent_preservation") // How well intent was preserved
+  
+  // Risk assessment
+  toxicity_classification   Int?                       @map("toxicity_classification") // 0-4 scale
+  political_sensitivity     String?                    @map("political_sensitivity") // low/medium/high
+  adversarial_score         Float?                     @map("adversarial_score") // Gaming attempt detection
+  
+  // Processing flow tracking
+  submission_flow          String?                     @map("submission_flow") // 'voter-protocol' or 'direct-delivery'
+  processing_stages        Json?                       @map("processing_stages") // Stage-by-stage results
+  total_processing_time    Int?                        @map("total_processing_time") // Total time in milliseconds
+  cache_efficiency         Float?                      @map("cache_efficiency") // Cache hit ratio
+  
+  // User deposit and refund tracking
+  user_deposit             Decimal?                    @map("user_deposit") // VOTER tokens deposited
+  deposit_refunded         Boolean                     @default(false) @map("deposit_refunded")
+  deposit_refund_amount    Decimal?                    @map("deposit_refund_amount")
   
   // Reputation impact (quadratic)
   reputation_delta          Float                      @default(0) @map("reputation_delta")
@@ -171,7 +204,6 @@ model Template {
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
   submitted_at              DateTime?                  @map("submitted_at") // When submitted for verification
   corrected_at              DateTime?                  @map("corrected_at") // When AI corrections applied
-  reviewed_at               DateTime?                  @map("reviewed_at") // When human/final review completed
   
   // User relationship
   userId                    String?                    @map("user_id")

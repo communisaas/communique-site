@@ -89,10 +89,10 @@ function isTemplate(obj: unknown): obj is Template {
 		{
 			field: 'subject',
 			valid:
-				template.subject === undefined ||
-				template.subject === null ||
-				typeof template.subject === 'string',
-			actual: typeof template.subject
+				template.title === undefined ||
+				template.title === null ||
+				typeof template.title === 'string',
+			actual: typeof template.title
 		},
 		{
 			field: 'cwc_config',

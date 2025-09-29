@@ -321,7 +321,7 @@ describe('Congressional Delivery Integration', () => {
 					template: expect.objectContaining({
 						id: template.id,
 						message_body: template.message_body,
-						subject: template.subject
+						subject: template.title
 					}),
 					user: expect.objectContaining({
 						id: user.id,

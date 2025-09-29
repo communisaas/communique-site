@@ -40,7 +40,7 @@ export function validateTemplateData(data: unknown): SafeTemplateData {
 		id: safeStringValue(data.id),
 		deliveryMethod: safeStringValue(data.deliveryMethod),
 		message_body: safeStringValue(data.message_body),
-		subject: safeStringValue(data.subject),
+		subject: safeStringValue(data.title),
 		slug: safeStringValue(data.slug),
 		...data
 	};

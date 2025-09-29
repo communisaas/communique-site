@@ -135,10 +135,8 @@ export function resolveTemplate(
 
 	// Initialize resolution context
 	const subjectHasPlaceholders =
-		typeof template.subject === 'string' && /\[.+?\]/.test(template.subject);
-	let resolvedSubject = subjectHasPlaceholders
-		? template.subject || template.title || ''
-		: template.title || template.subject || '';
+		typeof template.title === 'string' && /\[.+?\]/.test(template.title);
+	let resolvedSubject = template.title || '';
 	let resolvedBody = baseMessage;
 
 	if (user) {

@@ -65,7 +65,7 @@ export class TemplateCorrector {
 			data: {
 				original_content: {
 					message_body: template.message_body,
-					subject: template.subject,
+					subject: template.title,
 					preview: template.preview
 				}
 			}
@@ -135,7 +135,7 @@ export class TemplateCorrector {
 	private async detectAndCorrect(template: Template): Promise<CorrectionResult> {
 		const changes: CorrectionChange[] = [];
 		let correctedBody = template.message_body;
-		let correctedSubject = template.subject || '';
+		let correctedSubject = template.title || '';
 
 		// Grammar corrections
 		const grammarResult = this.correctGrammar(correctedBody);
@@ -414,7 +414,7 @@ export class TemplateCorrector {
 		if (!_text.match(/^(Dear|Hello|Hi|Greetings)/i)) score -= 20; // No salutation
 		if (!_text.match(/(Sincerely|Regards|Thank you|Respectfully)/i)) score -= 20; // No closing
 		if (_text.length < 100) score -= 30; // Too short
-		if (!template.subject || template.subject.length < 5) score -= 10; // No/short subject
+		if (!template.title || template.title.length < 5) score -= 10; // No/short subject
 
 		return Math.max(0, score);
 	}

@@ -21,7 +21,7 @@
 - Blockchain-based civic action rewards and verification
 - Server-side proxy architecture for secure API communication
 - Deterministic address generation for wallet-free participation
-- See: `docs/integrations/VOTER_INTEGRATION.md`
+- See: `docs/integrations/voter-blockchain.md`
 
 ## Identity (optional)
 

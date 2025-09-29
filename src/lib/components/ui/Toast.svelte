@@ -2,11 +2,12 @@
 	import { onMount } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { CheckCircle, XCircle, AlertTriangle, Info, X } from '@lucide/svelte';
+	import { formatErrorMessage } from '$lib/utils/error-formatting';
 
 	interface Props {
 		type?: 'success' | 'error' | 'warning' | 'info';
 		title?: string;
-		message: string;
+		message: string | unknown;
 		duration?: number;
 		dismissible?: boolean;
 		onDismiss?: () => void;
@@ -60,6 +61,9 @@
 
 	const config = typeConfig[type];
 	const IconComponent = $derived(config.icon);
+	
+	// Safely format the message to handle objects
+	const formattedMessage = $derived(formatErrorMessage(message, 'An error occurred'));
 
 	function dismiss() {
 		visible = false;
@@ -90,7 +94,7 @@
 				</h4>
 			{/if}
 			<p class="text-sm {config.messageColor} {title ? 'mt-1' : ''}">
-				{message}
+				{formattedMessage}
 			</p>
 		</div>
 

@@ -43,7 +43,7 @@ export const POST: RequestHandler = async ({ request, url: _url }) => {
 
 		// Fetch template from database if not provided fully
 		let template = templateData;
-		if (templateId && (!template.subject || !template.body)) {
+		if (templateId && (!template.title || !template.body)) {
 			const dbTemplate = await db.template.findUnique({
 				where: { id: templateId },
 				include: {
@@ -62,7 +62,7 @@ export const POST: RequestHandler = async ({ request, url: _url }) => {
 				subject:
 					dbTemplate.corrected_subject ||
 					verification?.corrections?.subject ||
-					template.subject ||
+					template.title ||
 					dbTemplate.subject,
 				body:
 					dbTemplate.corrected_body ||

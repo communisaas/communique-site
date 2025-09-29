@@ -585,7 +585,7 @@
 				? 0.6
 				: 0}));
 				transform-origin: center;
-				color: {variant === 'magical'
+				color: {(variant === 'magical' || variant === 'verified')
 				? enableFlight && (flightState === 'ready' || flightState === 'returning')
 					? 'white'
 					: enableFlight && flightState === 'taking-off'
@@ -660,7 +660,7 @@
 							style="
 								transform: translateY({$chevronsY}px) scale({$chevronsScale});
 								opacity: {$chevronsOpacity};
-								color: {variant === 'magical' ? 'white' : 'currentColor'};
+								color: {(variant === 'magical' || variant === 'verified') ? 'white' : 'currentColor'};
 							"
 						>
 							<IconComponent class="h-5 w-5" />
@@ -735,7 +735,7 @@
 							style="
 								transform: translateY({$chevronsY}px) scale({$chevronsScale});
 								opacity: {$chevronsOpacity};
-								color: {variant === 'magical' ? 'white' : 'currentColor'};
+								color: {(variant === 'magical' || variant === 'verified') ? 'white' : 'currentColor'};
 							"
 						>
 							<IconComponent class="h-5 w-5" />

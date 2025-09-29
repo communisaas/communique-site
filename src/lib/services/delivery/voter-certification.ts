@@ -124,7 +124,7 @@ async function certifyEmailDelivery(params: {
 		const actionType = getVOTERActionType(templateData);
 		const messageHash = generateMessageHash(
 			recipients[0] || 'congress@communi.email',
-			templateData.subject || templateData.title || '',
+			templateData.title || templateData.title || '',
 			templateData.message_body || ''
 		);
 
@@ -142,7 +142,7 @@ async function certifyEmailDelivery(params: {
 			metadata: {
 				recipient_email: recipients[0] || 'congress@communi.email',
 				recipient_name: 'Congressional Office',
-				subject: templateData.subject || templateData.title,
+				subject: templateData.title || templateData.title,
 				template_id: templateData.id,
 				template_slug: templateData.slug,
 				cwc_tracking: cwcResult.trackingNumber

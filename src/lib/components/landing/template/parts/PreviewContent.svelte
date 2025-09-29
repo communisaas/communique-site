@@ -97,7 +97,7 @@
 		<div class="flex items-center gap-3">
 			<ShareButton
 				url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
-				_title={template.subject || template.title}
+				_title={template.title || template.title}
 				variant="magical"
 				size="lg"
 			/>
@@ -110,7 +110,7 @@
 		<!-- In list/modal context, show smaller share button -->
 		<ShareButton
 			url={`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`}
-			_title={template.subject || template.title}
+			_title={template.title || template.title}
 			variant="primary"
 			size="default"
 		/>

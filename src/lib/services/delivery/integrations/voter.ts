@@ -68,7 +68,7 @@ export class VOTERClient {
 				action_type: actionType,
 				action_data: {
 					message: request.templateData.message_body,
-					subject: request.templateData.subject || request.templateData.title,
+					subject: request.templateData.title || request.templateData.title,
 					_representative: request.templateData.deliveryMethod,
 					template_id: request.templateData.id,
 					user_email: request.userProfile.email,

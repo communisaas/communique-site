@@ -37,9 +37,9 @@
 
 ## Deep dives
 
-- Vision: `docs/architecture/community-information-theory.md`
-- Math: `docs/architecture/mathematical-foundations-cid.md`
-- Funnel: `docs/architecture/low-friction-civic-action.md`
+- Agent Architecture: `docs/agents/agent-architecture.md`
+- Two Agent Systems: `docs/agents/two-agent-systems.md`
+- VOTER Integration: `docs/integrations/voter-blockchain.md`
 - UI: `docs/development/ui-structure-guidelines.md`
 
 ## Database configuration

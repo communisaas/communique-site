@@ -252,7 +252,7 @@ export class CWCClient {
 				country: 'US'
 			},
 			message: {
-				subject: data.subject,
+				subject: data.title,
 				body: this.formatMessageBody(data.text, data.personalConnection),
 				is_response: false,
 				newsletter_opt_in: false

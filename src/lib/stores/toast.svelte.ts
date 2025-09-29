@@ -2,7 +2,7 @@ export interface ToastData {
 	id: string;
 	type: 'success' | 'error' | 'warning' | 'info';
 	title?: string;
-	message: string;
+	message: string | unknown;
 	duration?: number;
 	dismissible?: boolean;
 }
@@ -33,27 +33,27 @@ function createToastStore() {
 
 	// Convenience methods
 	const success = (
-		message: string,
+		message: string | unknown,
 		options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>
 	) => {
 		return addToast({ type: 'success', message, ...options });
 	};
 
 	const _error = (
-		message: string,
+		message: string | unknown,
 		options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>
 	) => {
 		return addToast({ type: 'error', message, duration: 7000, ...options });
 	};
 
 	const warning = (
-		message: string,
+		message: string | unknown,
 		options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>
 	) => {
 		return addToast({ type: 'warning', message, ...options });
 	};
 
-	const info = (message: string, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+	const info = (message: string | unknown, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
 		return addToast({ type: 'info', message, ...options });
 	};
 

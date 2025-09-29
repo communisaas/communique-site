@@ -39,7 +39,7 @@ export const GET: RequestHandler = async ({ params }) => {
 			category: template.category,
 			type: template.type,
 			deliveryMethod: template.deliveryMethod,
-			subject: template.subject,
+			subject: template.title,
 			preview: template.preview,
 			message_body: template.message_body,
 			metrics: template.metrics,

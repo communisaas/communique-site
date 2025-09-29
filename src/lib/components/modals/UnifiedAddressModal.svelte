@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
+	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
 	import AddressRequirementModal from '$lib/components/auth/AddressRequirementModal.svelte';
 	import UnifiedAddressCollectionWrapper from '$lib/components/modals/UnifiedAddressCollectionWrapper.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
@@ -17,7 +18,7 @@
 		} | null
 	);
 
-	function handleComplete(__event: CustomEvent) {
+	function handleComplete(event: CustomEvent) {
 		const { address, verified, enhancedCredibility, representatives } = event.detail;
 
 		// Save address to backend
@@ -66,20 +67,31 @@
 	}
 </script>
 
-{#if modalStore.isOpen && modalData}
-	{#if modalData.mode === 'collection'}
-		<UnifiedAddressCollectionWrapper
-			template={modalData.template}
-			on:close={modalStore.close}
-			on:complete={handleComplete}
-		/>
-	{:else}
-		<AddressRequirementModal
-			template={modalData.template}
-			user={modalData.user}
-			isOpen={modalStore.isOpen}
-			on:close={modalStore.close}
-			on:complete={handleComplete}
-		/>
-	{/if}
-{/if}
+<!-- Use UnifiedModal wrapper for consistent modal behavior -->
+<UnifiedModal
+	id="address-modal"
+	type="address"
+	size="sm"
+	closeOnBackdrop={true}
+	closeOnEscape={true}
+>
+	{#snippet children(_data: unknown)}
+		{#if modalData}
+			{#if modalData.mode === 'collection'}
+				<UnifiedAddressCollectionWrapper
+					template={modalData.template}
+					on:close={modalStore.close}
+					on:complete={handleComplete}
+				/>
+			{:else}
+				<AddressRequirementModal
+					template={modalData.template}
+					user={modalData.user}
+					isOpen={true}
+					on:close={modalStore.close}
+					on:complete={handleComplete}
+				/>
+			{/if}
+		{/if}
+	{/snippet}
+</UnifiedModal>

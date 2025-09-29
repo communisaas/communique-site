@@ -557,7 +557,7 @@
 					{/if}
 				</div>
 				<div class="text-sm font-medium text-participation-primary-900">
-					{template.subject || template.title}
+					{template.title || template.title}
 				</div>
 			</div>
 		{:else}

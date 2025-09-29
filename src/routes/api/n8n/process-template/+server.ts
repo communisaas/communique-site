@@ -259,7 +259,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		// Add CWC submission data if approved
 		if (response.approved && actionType === 'cwc_message') {
 			const correctedSubject =
-				response.stages.verification?.corrections?.subject || template.subject;
+				response.stages.verification?.corrections?.subject || template.title;
 			const correctedBody =
 				response.stages.verification?.corrections?.body || template.message_body;
 

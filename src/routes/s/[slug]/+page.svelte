@@ -183,14 +183,10 @@
 	<!-- Template Header with Action -->
 	<div class="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 		<div class="min-w-0 flex-1">
-			<!-- Use subject as primary title, fall back to title if no subject -->
+			<!-- Template title as primary header -->
 			<h1 class="mb-3 text-3xl font-bold text-slate-900 sm:text-4xl">
-				{template.subject || template.title}
+				{template.title}
 			</h1>
-			<!-- Show the longer title as supporting text if we're using subject as h1 -->
-			{#if template.subject && template.title}
-				<p class="mb-2 text-xl text-slate-700">{template.title}</p>
-			{/if}
 			<p class="mb-4 text-lg text-slate-600">{template.description}</p>
 
 			<!-- Template metadata -->

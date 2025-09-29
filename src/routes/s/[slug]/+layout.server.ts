@@ -51,7 +51,7 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 		category: template.category,
 		type: template.type,
 		deliveryMethod: template.deliveryMethod,
-		subject: template.subject,
+		subject: template.title,
 		message_body: template.message_body,
 		preview: template.preview,
 		is_public: template.is_public,

@@ -585,7 +585,7 @@ function validateTemplate(template: Template): { isValid: boolean; errors: strin
 		errors.push('Template missing required id field');
 	}
 
-	if (!template.title && !template.subject) {
+	if (!template.title && !template.title) {
 		errors.push('Template missing both title and subject');
 	}
 

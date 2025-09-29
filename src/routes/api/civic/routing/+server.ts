@@ -136,7 +136,7 @@ async function handleAuthenticatedCongressionalRequest({
 		id: `${templateId}-${userId}-${Date.now()}`,
 		template: {
 			id: template.id,
-			subject: template.subject || subject,
+			subject: template.title || subject,
 			message_body: template.message_body,
 			variables: {}
 		},

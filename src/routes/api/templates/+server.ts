@@ -14,7 +14,6 @@ import type { UnknownRecord } from '$lib/types/any-replacements';
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
 	title: string;
-	subject?: string;
 	message_body: string;
 	category?: string;
 	type: string;
@@ -117,7 +116,6 @@ function validateTemplateData(data: unknown): {
 		preview: templateData.preview as string,
 		type: templateData.type as string,
 		deliveryMethod: templateData.deliveryMethod as string,
-		subject: (templateData.subject as string) || `Regarding: ${templateData.title}`,
 		category: (templateData.category as string) || 'General',
 		description:
 			(templateData.description as string) ||
@@ -178,7 +176,7 @@ export const GET: RequestHandler = async () => {
 			category: template.category,
 			type: template.type,
 			deliveryMethod: template.deliveryMethod,
-			subject: template.subject,
+			subject: template.title,
 			message_body: template.message_body,
 			preview: template.preview,
 			metrics: template.metrics,
@@ -292,7 +290,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						category: validData.category || 'General',
 						type: validData.type,
 						deliveryMethod: validData.deliveryMethod,
-						subject: validData.subject,
 						preview: validData.preview,
 						delivery_config: validData.delivery_config || {},
 						cwc_config: validData.cwc_config || {},

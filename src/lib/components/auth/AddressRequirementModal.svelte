@@ -2,7 +2,6 @@
 	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
 	import { fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
-	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
 	import {
 		AddressForm,
@@ -41,8 +40,7 @@
 		complete: { address: string; verified: boolean; enhancedCredibility?: boolean };
 	}>();
 
-	// Modal system integration
-	const modalStore = createModalStore('address-requirement-modal', 'address');
+	// Modal system integration handled by UnifiedModal component
 
 	let currentStep = $state<'collect' | 'selfxyz' | 'verify' | 'complete'>('collect');
 	let _showSelfXyzOption = $state(false);
@@ -81,7 +79,8 @@
 	function _handleClose() {
 		onclose?.();
 		dispatch('close');
-		modalStore.close();
+		// Use UnifiedModal's close method to ensure proper cleanup
+		unifiedModal?.close();
 	}
 
 	function _offerSelfXyzUpgrade() {
@@ -253,6 +252,8 @@
 			const payload = { address: selectedAddress, verified: true };
 			oncomplete?.(payload);
 			dispatch('complete', payload);
+			// Close modal after completing
+			unifiedModal?.close();
 		}
 	}
 
@@ -260,6 +261,8 @@
 		const payload = { address: selectedAddress, verified: true };
 		oncomplete?.(payload);
 		dispatch('complete', payload);
+		// Close modal after completing
+		unifiedModal?.close();
 	}
 
 	function editAddress() {
@@ -279,49 +282,39 @@
 	}
 </script>
 
-<UnifiedModal
-	bind:this={unifiedModal}
-	id="address-requirement-modal"
-	type="address"
-	size="sm"
-	closeOnBackdrop={true}
-	closeOnEscape={true}
->
-	{#snippet children(_data: Record<string, unknown>)}
-		<div class="flex-1 overflow-y-auto">
-			{#key currentStep}
-				<div
-					class="min-h-0 p-6"
-					in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
-					out:fly={{ x: -20, duration: 300, easing: quintOut }}
-					role="main"
-				>
-					{#if currentStep === 'collect'}
-						<AddressForm
-							{template}
-							bind:streetAddress
-							bind:city
-							bind:stateCode
-							bind:zipCode
-							bind:addressError
-							{isVerifying}
-							onVerifyAddress={verifyAddress}
-							onKeydown={handleKeydown}
-						/>
-					{:else if currentStep === 'verify'}
-						<AddressVerification
-							{selectedAddress}
-							{verificationResult}
-							onEditAddress={editAddress}
-							onAcceptAddress={acceptAddress}
-						/>
-					{:else if currentStep === 'selfxyz'}
-						<SelfXyzVerification {selfXyzQrCode} />
-					{:else}
-						<CompletionStep />
-					{/if}
-				</div>
-			{/key}
+<!-- Modal content without wrapper (parent provides modal wrapper) -->
+<div class="flex-1 overflow-y-auto">
+	{#key currentStep}
+		<div
+			class="min-h-0 p-6"
+			in:fly={{ x: 20, duration: 400, delay: 300, easing: quintOut }}
+			out:fly={{ x: -20, duration: 300, easing: quintOut }}
+			role="main"
+		>
+			{#if currentStep === 'collect'}
+				<AddressForm
+					{template}
+					bind:streetAddress
+					bind:city
+					bind:stateCode
+					bind:zipCode
+					bind:addressError
+					{isVerifying}
+					onVerifyAddress={verifyAddress}
+					onKeydown={handleKeydown}
+				/>
+			{:else if currentStep === 'verify'}
+				<AddressVerification
+					{selectedAddress}
+					{verificationResult}
+					onEditAddress={editAddress}
+					onAcceptAddress={acceptAddress}
+				/>
+			{:else if currentStep === 'selfxyz'}
+				<SelfXyzVerification {selfXyzQrCode} />
+			{:else}
+				<CompletionStep />
+			{/if}
 		</div>
-	{/snippet}
-</UnifiedModal>
+	{/key}
+</div>

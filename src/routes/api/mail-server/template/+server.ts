@@ -49,7 +49,6 @@ export const GET: RequestHandler = async ({ url, request }) => {
 				category: true,
 				type: true,
 				deliveryMethod: true,
-				subject: true,
 				message_body: true,
 				delivery_config: true,
 				recipient_config: true,

@@ -401,7 +401,7 @@ export class VerificationAgent extends BaseAgent {
 		}
 
 		// Simple template verification logic
-		const subject = (template.subject as string) || (template.title as string) || '';
+		const subject = (template.title as string) || (template.title as string) || '';
 		const body = (template.message_body as string) || '';
 
 		// Check for severity level factors

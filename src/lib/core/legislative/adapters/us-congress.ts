@@ -166,7 +166,7 @@ export class USCongressAdapter extends LegislativeAdapter {
 				category: 'advocacy',
 				type: 'advocacy',
 				deliveryMethod: 'cwc',
-				subject: request.template.subject,
+				subject: request.template.title,
 				message_body: request.personalized_message,
 				delivery_config: {},
 				cwc_config: {},

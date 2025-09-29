@@ -54,6 +54,7 @@
 		try {
 			const { api } = await import('$lib/core/api/client');
 			const { toast } = await import('$lib/stores/toast.svelte');
+			const { formatErrorMessage } = await import('$lib/utils/error-formatting');
 
 			const result = await api.post('/user/address', {
 				street: streetAddress,
@@ -67,7 +68,7 @@
 
 			if (!result.success) {
 				console.error('Failed to save address:', result.error, result);
-				toast.error(result.error || 'Failed to save address. Please try again.');
+				toast.error(formatErrorMessage(result.error, 'Failed to save address. Please try again.'));
 				// Reset the saving state in the child component
 				const form = document.querySelector('form');
 				if (form) {

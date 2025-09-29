@@ -84,7 +84,7 @@ export class CWCGenerator {
     </ConstituentData>
     
     <MessageData>
-        <Subject>${this.escapeXML(template.subject || 'Congressional Communication')}</Subject>
+        <Subject>${this.escapeXML(template.title || 'Congressional Communication')}</Subject>
         <Body>${this.escapeXML(template.message_body)}</Body>
         
         <MessageMetadata>
@@ -136,7 +136,7 @@ export class CWCGenerator {
         <ConstituentPhone>${this.escapeXML(user.phone || '')}</ConstituentPhone>
     </Constituent>
     <Message>
-        <Subject>${this.escapeXML(template.subject || 'Congressional Communication')}</Subject>
+        <Subject>${this.escapeXML(template.title || 'Congressional Communication')}</Subject>
         <LibraryOfCongressTopics></LibraryOfCongressTopics>
         <BillNumber></BillNumber>
         <ProOrCon></ProOrCon>

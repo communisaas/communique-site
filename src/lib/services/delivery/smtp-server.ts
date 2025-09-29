@@ -208,7 +208,7 @@ async function processCertifiedDelivery(
 		const cwcMessageData = {
 			templateId: templateData.id,
 			userId: userProfile.id,
-			subject: templateData.subject || templateData.title || 'Message from constituent',
+			subject: templateData.title || templateData.title || 'Message from constituent',
 			body: templateData.message_body,
 			recipients: [determineRecipientOffice(userProfile)],
 			metadata: {

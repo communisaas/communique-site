@@ -14,9 +14,9 @@
 
 ## Deep dives (optional)
 
-- Vision: [architecture/community-information-theory.md](./architecture/community-information-theory.md)
-- Mathematical foundations: [architecture/mathematical-foundations-cid.md](./architecture/mathematical-foundations-cid.md)
-- Low‑friction action funnel: [architecture/low-friction-civic-action.md](./architecture/low-friction-civic-action.md)
+- Agent Architecture: [agents/agent-architecture.md](./agents/agent-architecture.md)
+- Two Agent Systems Explained: [agents/two-agent-systems.md](./agents/two-agent-systems.md)
+- VOTER Blockchain Integration: [integrations/voter-blockchain.md](./integrations/voter-blockchain.md)
 - UI patterns: [development/ui-structure-guidelines.md](./development/ui-structure-guidelines.md)
 
 If it isn’t linked above, consider it a deep dive.

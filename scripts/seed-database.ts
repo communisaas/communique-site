@@ -33,7 +33,6 @@ interface SeedTemplateData {
 	category: string;
 	type: string;
 	deliveryMethod: 'email' | 'certified' | 'direct' | 'cwc';
-	subject: string;
 	preview: string;
 	message_body: string;
 	metrics: Record<string, unknown>;
@@ -83,12 +82,10 @@ const _policyAreaMap = {
 const seedTemplates = [
 	{
 		title: "The Math Doesn't Work: Climate Edition",
-		description:
-			'Source: NOAA 2024 Disaster Reports, Treasury Dept. $178B disasters vs $7.4B fossil fuel spending.',
+		description: 'Climate subsidies vs disaster costs: the math doesn\'t add up.',
 		category: 'Environment',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on Climate Subsidies',
 		preview: "Dear [Representative Name], The math doesn't work anymore.",
 		message_body: `Dear [Representative Name],
 
@@ -167,8 +164,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-			subject: 'The Math on Climate Subsidies',
-			body: 'Original text before corrections...'
+				body: 'Original text before corrections...'
 		},
 		corrected_at: new Date('2024-12-15T10:30:00Z'),
 		reviewed_at: new Date('2024-12-15T14:20:00Z'),
@@ -179,12 +175,10 @@ Sincerely,
 	},
 	{
 		title: '35% Offices Empty, Only 1 Building Converting',
-		description:
-			'Source: Axios SF June 2025, SF Chronicle Real Estate. Office-to-housing conversion failure.',
+		description: 'SF office-to-housing conversion failure: 35% vacancy, 1 building converting.',
 		category: 'Housing',
 		type: 'advocacy',
 		deliveryMethod: 'email',
-		subject: 'The Math on Empty Offices',
 		preview: "The math doesn't work anymore.",
 		message_body: `Dear Mayor Lurie and Board of Supervisors,
 
@@ -241,12 +235,10 @@ Sincerely,
 	},
 	{
 		title: 'SF Teachers Commute 2 Hours, Students Skip School',
-		description:
-			'Source: SFUSD Teacher Survey 2025, Chronicle Housing Report. Housing crisis destroys education.',
+		description: 'How teacher housing costs hurt SF student outcomes.',
 		category: 'Education',
 		type: 'advocacy',
 		deliveryMethod: 'email',
-		subject: 'The Math on Student Housing',
 		preview: "The math doesn't work anymore.",
 		message_body: `Dear San Francisco Board of Education,
 
@@ -313,8 +305,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-			subject: 'The Math on Student Housing',
-			body: 'Original version before clarity improvements...'
+				body: 'Original version before clarity improvements...'
 		},
 		corrected_at: new Date('2024-12-18T09:15:00Z'),
 		reviewed_at: null,
@@ -325,11 +316,10 @@ Sincerely,
 	},
 	{
 		title: '750,000 Sq Ft Ghost Town: Union Square Retail Collapse',
-		description: 'Source: CoStar Group 2025, Union Square BID. Retail apocalypse in city center.',
+		description: 'Union Square retail collapse: 750k sq ft empty downtown.',
 		category: 'Economic Development',
 		type: 'advocacy',
 		deliveryMethod: 'email',
-		subject: 'The Math on Retail Collapse',
 		preview: "The math doesn't work anymore.",
 		message_body: `Dear Mayor Lurie and Board of Supervisors,
 
@@ -409,8 +399,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-			subject: 'The Math on Retail Collapse',
-			body: 'Original content before formatting and clarity improvements...'
+				body: 'Original content before formatting and clarity improvements...'
 		},
 		corrected_at: new Date('2024-12-16T14:25:00Z'),
 		reviewed_at: new Date('2024-12-16T18:00:00Z'),
@@ -421,12 +410,10 @@ Sincerely,
 	},
 	{
 		title: 'SFUSD Lost 5,000 Kids to Housing Crisis',
-		description:
-			'Source: SFUSD Budget FAQs 2025-26, SF Chronicle. Families fleeing unaffordable city.',
+		description: 'Schools close as families flee to affordable cities.',
 		category: 'Education',
 		type: 'advocacy',
 		deliveryMethod: 'email',
-		subject: 'The Math on Vanishing Students',
 		preview: "The math doesn't work anymore.",
 		message_body: `Dear Board of Education and Mayor Lurie,
 
@@ -506,7 +493,6 @@ Sincerely,
 			}
 		],
 		original_content: {
-			subject: 'The Math on Violence Prevention',
 			body: 'Original version with less balanced framing...'
 		},
 		corrected_at: new Date('2024-12-17T14:00:00Z'),
@@ -518,12 +504,10 @@ Sincerely,
 	},
 	{
 		title: 'Congress Just Spent $858B on Defense, $0 on Child Care',
-		description:
-			'Source: NDAA FY2024, CBO Budget Analysis. $858B defense vs $0 federal childcare investment.',
+		description: 'Defense gets $858B, childcare gets $0.',
 		category: 'Family Policy',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on Family Investment',
 		preview: "Dear Representative, The math doesn't work for families.",
 		message_body: `Dear Representative [Representative Name],
 
@@ -603,12 +587,10 @@ Sincerely,
 	},
 	{
 		title: 'Medicare Pays $3,000 for $300 Insulin',
-		description:
-			'Source: HHS OIG Insulin Pricing Report 2024. 900% markup costs taxpayers billions.',
+		description: 'Insulin costs $10 to make, Medicare pays $300.',
 		category: 'Healthcare',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on Prescription Pricing',
 		preview: "Dear Senator, The math doesn't work for patients.",
 		message_body: `Dear Senator [Representative Name],
 
@@ -689,12 +671,10 @@ Sincerely,
 	},
 	{
 		title: 'Student Loans: $1.7T Debt, $0 Job Guarantee',
-		description:
-			'Source: Federal Reserve 2024, Department of Education. $1.7T debt crisis, zero job security.',
+		description: 'Graduates pay $393/month for degrees that guarantee nothing.',
 		category: 'Education',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on Student Investment',
 		preview: "Dear Representative, The math doesn't work for students.",
 		message_body: `Dear Representative [Representative Name],
 
@@ -773,8 +753,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-			subject: 'The Math on Student Investment',
-			body: 'Original version with less specific data...'
+				body: 'Original version with less specific data...'
 		},
 		corrected_at: new Date('2024-12-18T11:20:00Z'),
 		reviewed_at: null,
@@ -785,12 +764,10 @@ Sincerely,
 	},
 	{
 		title: 'Housing: $2,400 Rent, $400k Starter Home',
-		description:
-			'Source: HUD 2025 Rent Report, Census Bureau. $2,400 median rent destroys American Dream.',
+		description: 'Housing math broken: $400k homes, $75k income.',
 		category: 'Housing',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on the Housing Crisis',
 		preview: 'Dear [Representative Name], The housing math has broken America.',
 		message_body: `Dear [Representative Name],
 
@@ -871,12 +848,10 @@ Sincerely,
 	},
 	{
 		title: 'AI Decides Everything, Congress Regulates Nothing',
-		description:
-			'Source: Senate AI Hearings 2024, NIST AI Report. Regulation vacuum as AI reshapes society.',
+		description: '8 billion AI decisions daily, zero federal safety standards.',
 		category: 'Technology',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on AI Regulation',
 		preview: "Dear [Representative Name], AI is rewriting society's rules.",
 		message_body: `Dear [Representative Name],
 
@@ -957,12 +932,10 @@ Sincerely,
 	},
 	{
 		title: "Kids' Brains for Sale: Zero Privacy Laws",
-		description:
-			'Source: Surgeon General 2024, FTC Children Report. Mental health crisis, zero privacy protection.',
+		description: 'Kids\'s data harvested, mental health destroyed, laws unchanged since 1998.',
 		category: 'Digital Rights',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on Child Online Safety',
 		preview: 'Dear Senator, Our kids are the product being sold.',
 		message_body: `Dear Senator [Representative Name],
 
@@ -1043,12 +1016,10 @@ Sincerely,
 	},
 	{
 		title: 'Debt Ceiling Theatre: $34T Tab, Zero Solutions',
-		description:
-			'Source: Treasury Dept 2024, CBO Debt Analysis. $34T debt, $1T interest, zero solutions.',
+		description: 'Interest costs more than defense, Congress plays theater.',
 		category: 'Economy',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on Fiscal Responsibility',
 		preview: 'Dear Representative, The debt math threatens our future.',
 		message_body: `Dear Representative [Representative Name],
 
@@ -1127,7 +1098,6 @@ Sincerely,
 			}
 		],
 		original_content: {
-			subject: 'The Math on Fiscal Irresponsibility',
 			body: 'Original version with more partisan framing...'
 		},
 		corrected_at: new Date('2024-12-18T08:00:00Z'),
@@ -1139,12 +1109,10 @@ Sincerely,
 	},
 	{
 		title: 'Border Crisis: No Plan, Just Politics',
-		description:
-			'Source: CBP Statistics 2024, DHS Immigration Report. 2.5M encounters, zero comprehensive reform.',
+		description: 'Immigration needs solutions, not 38 years of political theater.',
 		category: 'Immigration',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
-		subject: 'The Math on Immigration Reform',
 		preview: 'Dear [Representative Name], Immigration needs solutions, not soundbites.',
 		message_body: `Dear [Representative Name],
 
@@ -1223,7 +1191,6 @@ Sincerely,
 			}
 		],
 		original_content: {
-			subject: 'The Math on Border Security',
 			body: 'Original version with different framing...'
 		},
 		corrected_at: new Date('2024-12-19T07:30:00Z'),
@@ -1236,11 +1203,10 @@ Sincerely,
 	// Additional SF Municipal Templates
 	{
 		title: 'Waymo: 696 Crashes, Zero Accountability',
-		description: 'Source: NHTSA Crash Data 2025, Planetizen Dec 2024. Robotaxi safety crisis.',
+		description: 'Robotaxis ignore pedestrians, regulators ignore crashes.',
 		category: 'Public Safety',
 		type: 'advocacy',
 		deliveryMethod: 'email',
-		subject: 'The Math on Robotaxi Safety',
 		preview: "The math doesn't work anymore.",
 		message_body: `Dear Board of Supervisors and CPUC,
 
@@ -1280,11 +1246,10 @@ Sincerely,
 	},
 	{
 		title: 'Ellis Act: Evict Grandma, Build Luxury Condos',
-		description: 'Source: SF Tenants Union 2025, Stimmel Law. Legal eviction loopholes.',
+		description: 'Pay $30k to evict grandma, sell condo for millions.',
 		category: 'Housing',
 		type: 'advocacy',
 		deliveryMethod: 'email',
-		subject: 'The Math on Legal Evictions',
 		preview: "The math doesn't work anymore.",
 		message_body: `Dear Board of Supervisors and Rent Board,
 
@@ -1324,11 +1289,10 @@ Sincerely,
 	},
 	{
 		title: 'Muni Cuts Service, Creates Death Spiral',
-		description: 'Source: SF Standard Jan 2025, SFMTA Service Cuts. Transit death spiral.',
+		description: 'Less service = fewer riders = less money = more cuts.',
 		category: 'Transportation',
 		type: 'advocacy',
 		deliveryMethod: 'email',
-		subject: 'The Math on Transit Failure',
 		preview: "The math doesn't work anymore.",
 		message_body: `Dear SFMTA Board and Mayor Lurie,
 
@@ -2032,8 +1996,7 @@ async function seedCoreTemplates(users: User[]) {
 					category: template.category,
 					type: template.type,
 					deliveryMethod: template.deliveryMethod,
-					subject: template.subject,
-					preview: template.preview,
+						preview: template.preview,
 					message_body: template.message_body,
 					metrics: template.metrics,
 					delivery_config: template.delivery_config,

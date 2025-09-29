@@ -53,7 +53,7 @@ export const load: PageServerLoad = async ({ params, locals, _url }) => {
 		category: template.category,
 		type: template.type,
 		deliveryMethod: template.deliveryMethod,
-		subject: template.subject,
+		subject: template.title,
 		message_body: template.message_body,
 		preview: template.preview,
 		metrics: extractTemplateMetrics(template.metrics),

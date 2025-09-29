@@ -127,7 +127,6 @@ async function handleCWCSubmission({
 		select: {
 			id: true,
 			title: true,
-			subject: true,
 			message_body: true,
 			delivery_config: true,
 			cwc_config: true
