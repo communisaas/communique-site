@@ -183,8 +183,8 @@ function createMultiAgentWorkflow(): N8NWorkflow {
 			{
 				id: 'openai_moderation',
 				name: 'OpenAI Moderation',
-				type: '@n8n/n8n-nodes-langchain.openAi',
-				typeVersion: 3,
+				type: 'n8n-nodes-langchain.openai',
+				typeVersion: 1,
 				position: [850, 200],
 				parameters: {
 					resource: 'moderation',
@@ -195,8 +195,8 @@ function createMultiAgentWorkflow(): N8NWorkflow {
 			{
 				id: 'gemini_analysis',
 				name: 'Gemini Analysis',
-				type: '@n8n/n8n-nodes-langchain.googleGemini',
-				typeVersion: 2,
+				type: 'n8n-nodes-langchain.googlegemini',
+				typeVersion: 1,
 				position: [850, 300],
 				parameters: {
 					resource: 'text',
@@ -302,8 +302,8 @@ return {
 			{
 				id: 'claude_tiebreaker',
 				name: 'Claude Tiebreaker',
-				type: '@n8n/n8n-nodes-langchain.anthropic',
-				typeVersion: 2,
+				type: 'n8n-nodes-langchain.anthropic',
+				typeVersion: 1,
 				position: [1450, 150],
 				parameters: {
 					resource: 'message',
