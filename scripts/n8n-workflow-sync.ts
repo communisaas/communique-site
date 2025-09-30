@@ -183,31 +183,42 @@ function createMultiAgentWorkflow(): N8NWorkflow {
 			{
 				id: 'openai_moderation',
 				name: 'OpenAI Moderation',
-				type: 'n8n-nodes-langchain.openai',
+				type: 'n8n-nodes-base.openAi',
 				typeVersion: 1,
 				position: [850, 200],
 				parameters: {
-					resource: 'moderation',
-					text: "={{$node['Get Template'].json.message_body}}",
-					options: {}
+					operation: 'moderate',
+					input: "={{$node['Get Template'].json.message_body}}",
+					requestOptions: {}
 				}
 			},
 			{
 				id: 'gemini_analysis',
 				name: 'Gemini Analysis',
-				type: 'n8n-nodes-langchain.googlegemini',
-				typeVersion: 1,
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 3,
 				position: [850, 300],
 				parameters: {
-					resource: 'text',
-					model: 'gemini-1.5-flash',
-					prompt:
-						'Analyze this civic template for appropriateness. Return ONLY valid JSON in this exact format: {"approved": boolean, "confidence": number, "reasoning": "string"}.\n\nTemplate content:\n{{$node[\'Get Template\'].json.message_body}}',
+					method: 'POST',
+					url: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'googleAiApi',
+					sendBody: true,
+					contentType: 'json',
+					jsonParameters: {
+						parameters: [
+							{
+								name: 'contents',
+								value: '=[{"parts": [{"text": "You are a civic engagement expert analyzing templates for democratic participation. Analyze this civic template for appropriateness. Return ONLY valid JSON in this exact format: {\\"approved\\": boolean, \\"confidence\\": number, \\"reasoning\\": \\"string\\"}.\n\nTemplate content:\n" + $node[\'Get Template\'].json.message_body}]}]'
+							},
+							{
+								name: 'generationConfig',
+								value: '={"temperature": 0.2, "maxOutputTokens": 500}'
+							}
+						]
+					},
 					options: {
-						temperature: 0.2,
-						maxTokens: 500,
-						systemInstruction:
-							'You are a civic engagement expert analyzing templates for democratic participation.'
+						timeout: 30000
 					}
 				}
 			},
@@ -234,10 +245,13 @@ const openaiVote = {
     'Content appears appropriate'
 };
 
-// Parse Gemini response (LangChain node format)
+// Parse Gemini response (HTTP API format)
 let geminiAnalysis;
 try {
-  const geminiText = geminiResult.response || geminiResult.text || '{"approved": false, "confidence": 0, "reasoning": "No response"}';
+  let geminiText = '{"approved": false, "confidence": 0, "reasoning": "No response"}';
+  if (geminiResult && geminiResult.candidates && geminiResult.candidates[0]) {
+    geminiText = geminiResult.candidates[0].content.parts[0].text;
+  }
   geminiAnalysis = JSON.parse(geminiText);
 } catch (e) {
   geminiAnalysis = { approved: false, confidence: 0, reasoning: "Failed to parse Gemini response" };
@@ -302,17 +316,47 @@ return {
 			{
 				id: 'claude_tiebreaker',
 				name: 'Claude Tiebreaker',
-				type: 'n8n-nodes-langchain.anthropic',
-				typeVersion: 1,
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 3,
 				position: [1450, 150],
 				parameters: {
-					resource: 'message',
-					model: 'claude-3-5-sonnet-20241022',
-					prompt:
-						"You are a tiebreaker for content moderation. OpenAI voted: {{$node['Check Consensus'].json.votes[0].approved}} ({{$node['Check Consensus'].json.votes[0].reasoning}}). Gemini voted: {{$node['Check Consensus'].json.votes[1].approved}} ({{$node['Check Consensus'].json.votes[1].reasoning}}). Analyze this civic template and cast the deciding vote. Return ONLY valid JSON in this exact format: {\"approved\": boolean, \"confidence\": number, \"reasoning\": \"string\"}.\n\nTemplate content:\n{{$node['Get Template'].json.message_body}}",
+					method: 'POST',
+					url: 'https://api.anthropic.com/v1/messages',
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'anthropicApi',
+					sendHeaders: true,
+					headerParameters: {
+						parameters: [
+							{
+								name: 'anthropic-version',
+								value: '2023-06-01'
+							}
+						]
+					},
+					sendBody: true,
+					contentType: 'json',
+					jsonParameters: {
+						parameters: [
+							{
+								name: 'model',
+								value: 'claude-3-5-sonnet-20241022'
+							},
+							{
+								name: 'max_tokens',
+								value: 500
+							},
+							{
+								name: 'temperature',
+								value: 0.1
+							},
+							{
+								name: 'messages',
+								value: '=[{"role": "user", "content": "You are a tiebreaker for content moderation. OpenAI voted: " + $node[\'Check Consensus\'].json.votes[0].approved + " (" + $node[\'Check Consensus\'].json.votes[0].reasoning + "). Gemini voted: " + $node[\'Check Consensus\'].json.votes[1].approved + " (" + $node[\'Check Consensus\'].json.votes[1].reasoning + "). Analyze this civic template and cast the deciding vote. Return ONLY valid JSON in this exact format: {\\"approved\\": boolean, \\"confidence\\": number, \\"reasoning\\": \\"string\\"}.\n\nTemplate content:\n" + $node[\'Get Template\'].json.message_body}]'
+							}
+						]
+					},
 					options: {
-						temperature: 0.1,
-						maxTokens: 500
+						timeout: 30000
 					}
 				}
 			},
@@ -336,10 +380,13 @@ let allVotes = [...baseVotes];
 if (needsTiebreaker && $node['Claude Tiebreaker']) {
   const claudeResponse = $node['Claude Tiebreaker'].json;
   
-  // Parse Claude response (LangChain node format)
+  // Parse Claude response (HTTP API format)
   let claudeAnalysis;
   try {
-    const claudeText = claudeResponse.response || claudeResponse.text || '{"approved": false, "confidence": 0, "reasoning": "No response"}';
+    let claudeText = '{"approved": false, "confidence": 0, "reasoning": "No response"}';
+    if (claudeResponse && claudeResponse.content && claudeResponse.content[0]) {
+      claudeText = claudeResponse.content[0].text;
+    }
     claudeAnalysis = JSON.parse(claudeText);
   } catch (e) {
     claudeAnalysis = { approved: false, confidence: 0, reasoning: "Failed to parse Claude response" };
