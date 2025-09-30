@@ -142,23 +142,18 @@ function createMultiAgentWorkflow(): Omit<N8NWorkflow, 'id' | 'createdAt' | 'upd
 				parameters: {
 					mode: 'runOnceForAllItems',
 					language: 'javaScript',
-					jsCode: `// Detect delivery route from recipients
-const recipients = $json.recipients || [];
+					jsCode: `// Detect delivery route from template deliveryMethod
 const templateId = $json.templateId;
 const userId = $json.userId;
+const template = $json.template || {};
 
-// Check for congressional indicators
-const congressionalIndicators = ['bioguideId', 'congress.gov', '.house.gov', '.senate.gov'];
-const isCongressional = recipients.some(r => 
-  congressionalIndicators.some(indicator => 
-    JSON.stringify(r).includes(indicator)
-  )
-);
+// Use the template's deliveryMethod to determine route
+const deliveryMethod = template.deliveryMethod || template.delivery_method || '';
+const isCongressional = deliveryMethod === 'cwc';
 
 const routeType = isCongressional ? 'congressional' : 'direct_outreach';
 
 // Estimate token length for cost optimization
-const template = $json.template || {};
 const messageBody = template.message_body || template.body || '';
 const estimatedTokens = Math.ceil(messageBody.length / 4); // Rough estimate: 4 chars per token
 
@@ -167,9 +162,10 @@ return {
     templateId,
     userId,
     routeType,
+    deliveryMethod,
     estimatedTokens,
     template: $json.template,
-    recipients,
+    recipients: $json.recipients || [],
     submissionId: \`sub_\${Date.now()}_\${Math.random().toString(36).substring(2)}\`
   }
 };`
