@@ -8,7 +8,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { VerificationAgent } from '$lib/agents';
 import { db } from '$lib/core/db';
-import { extractVerificationDecision } from '$lib/agents/type-guards';
+import { extractVerificationDecision } from '$lib/agents/shared/type-guards';
 
 const verificationAgent = new VerificationAgent();
 

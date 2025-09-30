@@ -117,8 +117,8 @@ export class CWCSQSClient {
 			maxAttempts: 3
 		});
 
-		// Validate configuration on startup
-		this.validateConfiguration();
+		// Note: Configuration validation moved to ensureConfigured() method
+		// to avoid build-time errors when environment variables are not set
 	}
 
 	/**
@@ -136,10 +136,10 @@ export class CWCSQSClient {
 	}
 
 	/**
-	 * Validate required configuration is present
+	 * Ensure configuration is valid before operations
 	 * @throws {Error} If required configuration is missing
 	 */
-	private validateConfiguration(): void {
+	private ensureConfigured(): void {
 		const errors: string[] = [];
 
 		if (!this.config.senateQueueUrl) {
@@ -150,17 +150,25 @@ export class CWCSQSClient {
 			errors.push('CWC_HOUSE_QUEUE_URL environment variable is required');
 		}
 
-		if (!this.config.senateQueueUrl.includes('.fifo')) {
+		if (this.config.senateQueueUrl && !this.config.senateQueueUrl.includes('.fifo')) {
 			errors.push('Senate queue URL must reference a FIFO queue (.fifo suffix)');
 		}
 
-		if (!this.config.houseQueueUrl.includes('.fifo')) {
+		if (this.config.houseQueueUrl && !this.config.houseQueueUrl.includes('.fifo')) {
 			errors.push('House queue URL must reference a FIFO queue (.fifo suffix)');
 		}
 
 		if (errors.length > 0) {
 			throw new Error(`SQS Configuration errors: ${errors.join(', ')}`);
 		}
+	}
+
+	/**
+	 * Validate required configuration is present (deprecated, use ensureConfigured)
+	 * @throws {Error} If required configuration is missing
+	 */
+	private validateConfiguration(): void {
+		this.ensureConfigured();
 	}
 
 	/**
@@ -180,6 +188,8 @@ export class CWCSQSClient {
 		personalizedMessage?: string,
 		priority: 'normal' | 'high' = 'normal'
 	): Promise<SQSMessageResult> {
+		this.ensureConfigured();
+
 		if (senator.chamber !== 'senate') {
 			throw new Error('Senator office required for Senate queue submission');
 		}
@@ -239,6 +249,8 @@ export class CWCSQSClient {
 		personalizedMessage?: string,
 		priority: 'normal' | 'high' = 'normal'
 	): Promise<SQSMessageResult> {
+		this.ensureConfigured();
+
 		if (representative.chamber !== 'house') {
 			throw new Error('Representative office required for House queue submission');
 		}
@@ -298,6 +310,8 @@ export class CWCSQSClient {
 		personalizedMessage?: string,
 		priority: 'normal' | 'high' = 'normal'
 	): Promise<SQSMessageResult[]> {
+		this.ensureConfigured();
+
 		const results: SQSMessageResult[] = [];
 
 		// Process all representatives concurrently for better performance

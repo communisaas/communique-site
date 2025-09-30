@@ -11,18 +11,7 @@ export { BaseAgent } from './shared/base-agent';
 export type { AgentDecision } from './shared/base-agent';
 
 // Content moderation (off-chain MVP) - Multi-agent consensus system
-export { aiModeration } from './content/ai-moderation';
-export { consensusCoordinator } from './content/consensus-coordinator';
 export { moderationConsensus, ModerationConsensus } from './moderation-consensus';
-
-// Export types from new moderation system
-export type { ModerationResult, AgentVote } from './content/ai-moderation';
-export type {
-	ConsensusResult,
-	CostTracking,
-	AgentPerformance
-} from './content/consensus-coordinator';
-export { ModerationSeverity } from './content/ai-moderation';
 
 // VOTER Protocol agents (future on-chain)
 export { VerificationAgent } from './voter-protocol/verification-agent';

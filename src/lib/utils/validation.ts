@@ -129,6 +129,32 @@ export const templateValidationRules = {
 			if (value.length > 0 && value.split(' ').length < 5) {
 				return 'Message should contain meaningful content';
 			}
+
+			// Security-aware validation with civic voice - Focus on clear technical violations
+			// SSN pattern detection (clear PII violation)
+			if (/\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/.test(value)) {
+				return "Social Security numbers don't belong in public messages to officials";
+			}
+
+			// Credit card pattern detection (clear financial PII)
+			if (/\b(?:\d{4}[-\s]?){3}\d{4}\b/.test(value)) {
+				return "Financial information doesn't belong in advocacy messages";
+			}
+
+			// Email pattern in message body (vs variables) - guidance only
+			if (
+				/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(value) &&
+				!value.includes('[') &&
+				!value.includes(']')
+			) {
+				return 'Include your email in the signature, not the message body';
+			}
+
+			// Phone number pattern detection - guidance only
+			if (/\b(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})\b/.test(value)) {
+				return 'Phone numbers in message text can be harvested by bad actors';
+			}
+
 			return null;
 		}
 	} as ValidationRule<string>,

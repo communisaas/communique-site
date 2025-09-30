@@ -546,7 +546,9 @@ describe('Agent Integration', () => {
 
 	describe('Verification Agent', () => {
 		it('should verify user identity successfully', async () => {
-			const { VerificationAgent } = await import('../../src/lib/agents/verification-agent');
+			const { VerificationAgent } = await import(
+				'../../src/lib/agents/voter-protocol/verification-agent'
+			);
 			const agent = new VerificationAgent();
 
 			const context = {
@@ -573,7 +575,9 @@ describe('Agent Integration', () => {
 		});
 
 		it('should assess risk factors for verification', async () => {
-			const { VerificationAgent } = await import('../../src/lib/agents/verification-agent');
+			const { VerificationAgent } = await import(
+				'../../src/lib/agents/voter-protocol/verification-agent'
+			);
 			const agent = new VerificationAgent();
 
 			const suspiciousContext = {
@@ -593,7 +597,9 @@ describe('Agent Integration', () => {
 		});
 
 		it('should handle verification errors gracefully', async () => {
-			const { VerificationAgent } = await import('../../src/lib/agents/verification-agent');
+			const { VerificationAgent } = await import(
+				'../../src/lib/agents/voter-protocol/verification-agent'
+			);
 			const agent = new VerificationAgent();
 
 			// Test with invalid context
@@ -618,9 +624,11 @@ describe('Agent Integration', () => {
 
 	describe('Agent Coordinator', () => {
 		it('should coordinate multiple agents for consensus', async () => {
-			const { AgentCoordinator, AgentType } = await import('../../src/lib/agents/base-agent');
-			const { SupplyAgent } = await import('../../src/lib/agents/supply-agent');
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent');
+			const { AgentCoordinator, AgentType } = await import(
+				'../../src/lib/agents/shared/base-agent'
+			);
+			const { SupplyAgent } = await import('../../src/lib/agents/voter-protocol/supply-agent');
+			const { ImpactAgent } = await import('../../src/lib/agents/voter-protocol/impact-agent');
 
 			const coordinator = new AgentCoordinator();
 			const supplyAgent = new SupplyAgent();
@@ -663,7 +671,9 @@ describe('Agent Integration', () => {
 
 		it('should handle cases where consensus is not reached', async () => {
 			// Create a mock coordinator that simulates disagreement
-			const { AgentCoordinator, AgentType } = await import('../../src/lib/agents/base-agent');
+			const { AgentCoordinator, AgentType } = await import(
+				'../../src/lib/agents/shared/base-agent'
+			);
 
 			// Test with agents that would disagree
 			// Since this is an integration test, we'll test a case where consensus would fail
@@ -693,7 +703,9 @@ describe('Agent Integration', () => {
 
 	describe('Reputation Agent', () => {
 		it('should calculate reputation changes based on actions', async () => {
-			const { ReputationAgent } = await import('../../src/lib/agents/reputation-agent');
+			const { ReputationAgent } = await import(
+				'../../src/lib/agents/voter-protocol/reputation-agent'
+			);
 			const agent = new ReputationAgent();
 
 			const context = {
@@ -732,7 +744,9 @@ describe('Agent Integration', () => {
 		});
 
 		it('should assess credibility components independently', async () => {
-			const { ReputationAgent } = await import('../../src/lib/agents/reputation-agent');
+			const { ReputationAgent } = await import(
+				'../../src/lib/agents/voter-protocol/reputation-agent'
+			);
 			const agent = new ReputationAgent();
 
 			const newUserContext = {
@@ -771,7 +785,7 @@ describe('Agent Integration', () => {
 
 	describe('Impact Agent', () => {
 		it('should measure civic impact of actions', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent');
+			const { ImpactAgent } = await import('../../src/lib/agents/voter-protocol/impact-agent');
 			const agent = new ImpactAgent();
 
 			const context = {
@@ -800,7 +814,7 @@ describe('Agent Integration', () => {
 		});
 
 		it('should assess different types of civic actions', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent');
+			const { ImpactAgent } = await import('../../src/lib/agents/voter-protocol/impact-agent');
 			const agent = new ImpactAgent();
 
 			const contexts = [
@@ -833,7 +847,7 @@ describe('Agent Integration', () => {
 
 	describe('Supply Agent', () => {
 		it('should calculate appropriate rewards based on multiple factors', async () => {
-			const { SupplyAgent } = await import('../../src/lib/agents/supply-agent');
+			const { SupplyAgent } = await import('../../src/lib/agents/voter-protocol/supply-agent');
 			const agent = new SupplyAgent();
 
 			const context = {
@@ -871,7 +885,7 @@ describe('Agent Integration', () => {
 		});
 
 		it('should apply appropriate multipliers for different scenarios', async () => {
-			const { SupplyAgent } = await import('../../src/lib/agents/supply-agent');
+			const { SupplyAgent } = await import('../../src/lib/agents/voter-protocol/supply-agent');
 			const agent = new SupplyAgent();
 
 			const urgentContext = {
@@ -910,7 +924,7 @@ describe('Agent Integration', () => {
 
 	describe('Type Guards and Decision Extraction', () => {
 		it('should properly extract supply agent decisions', async () => {
-			const { extractSupplyDecision } = await import('../../src/lib/agents/type-guards');
+			const { extractSupplyDecision } = await import('../../src/lib/agents/shared/type-guards');
 
 			const validDecision = {
 				baseRewardUSD: 0.15,
@@ -951,7 +965,7 @@ describe('Agent Integration', () => {
 		});
 
 		it('should properly extract reputation agent decisions', async () => {
-			const { extractReputationDecision } = await import('../../src/lib/agents/type-guards');
+			const { extractReputationDecision } = await import('../../src/lib/agents/shared/type-guards');
 
 			const validDecision = {
 				userId: 'user-123',
@@ -999,7 +1013,9 @@ describe('Agent Integration', () => {
 		});
 
 		it('should properly extract verification agent decisions', async () => {
-			const { extractVerificationDecision } = await import('../../src/lib/agents/type-guards');
+			const { extractVerificationDecision } = await import(
+				'../../src/lib/agents/shared/type-guards'
+			);
 
 			const validDecision = {
 				userId: 'user-456',
@@ -1036,7 +1052,7 @@ describe('Agent Integration', () => {
 		});
 
 		it('should properly extract impact agent decisions', async () => {
-			const { extractImpactDecision } = await import('../../src/lib/agents/type-guards');
+			const { extractImpactDecision } = await import('../../src/lib/agents/shared/type-guards');
 
 			const validDecision = {
 				templateId: 'climate-action-template',

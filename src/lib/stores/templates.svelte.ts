@@ -1,5 +1,6 @@
 // Svelte 5 Templates Store - migrated from Svelte 4 store patterns
 import type { Template } from '$lib/types/template';
+import { formatErrorMessage } from '$lib/utils/error-formatting';
 
 // Type guard for Template with enhanced debugging
 function isTemplate(obj: unknown): obj is Template {
@@ -241,9 +242,10 @@ function createTemplateStore() {
 					state.selectedId = data[0]?.id || null;
 				}
 			} catch (error) {
-				console.error('Template fetch error');
+				const errorMessage = formatErrorMessage(error, 'Failed to fetch templates');
+				console.error('Template fetch failed:', errorMessage);
 				state.loading = false;
-				state.error = 'Failed to fetch templates';
+				state.error = errorMessage;
 			}
 		},
 

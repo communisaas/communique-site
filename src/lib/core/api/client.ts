@@ -14,6 +14,7 @@ import { browser } from '$app/environment';
 import { toast } from '$lib/stores/toast.svelte';
 import type { ApiError } from '$lib/types/errors';
 import type { UnknownRecord as _UnknownRecord } from '$lib/types/any-replacements';
+import { formatErrorMessage } from '$lib/utils/error-formatting';
 
 export interface ApiResponse<T = unknown> {
 	success: boolean;
@@ -168,7 +169,7 @@ class UnifiedApiClient {
 		// All retries failed
 		onLoadingChange?.(false);
 
-		const errorMessage = lastError?.message || 'Request failed';
+		const errorMessage = formatErrorMessage(lastError, 'Request failed');
 
 		if (!skipErrorLogging && browser) {
 			console.error(`API Error: ${errorMessage}`, { url, error: lastError });
@@ -212,7 +213,8 @@ class UnifiedApiClient {
 
 		if (!response.ok) {
 			const errorData = isErrorResponse(data) ? data : {};
-			const _error = errorData.error || errorData.message || `HTTP ${response.status}`;
+			const rawError = errorData.error || errorData.message || `HTTP ${response.status}`;
+			const _error = formatErrorMessage(rawError, `HTTP ${response.status} - Request failed`);
 			const errors = errorData.errors;
 
 			throw new ApiClientError(_error, response.status, response, errors);

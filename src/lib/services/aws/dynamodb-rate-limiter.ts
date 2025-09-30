@@ -17,7 +17,6 @@
 import {
 	DynamoDBClient,
 	PutItemCommand,
-	UpdateItemCommand,
 	GetItemCommand,
 	TransactWriteItemsCommand,
 	ConditionalCheckFailedException

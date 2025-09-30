@@ -84,11 +84,7 @@ export class ModerationConsensus {
 	 */
 	async getTemplate(templateId: string) {
 		return db.template.findUnique({
-			where: { id: templateId },
-			include: {
-				author: true,
-				category: true
-			}
+			where: { id: templateId }
 		});
 	}
 

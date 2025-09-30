@@ -11,7 +11,7 @@ import {
 	extractSupplyDecision,
 	extractMarketDecision,
 	extractImpactDecision
-} from '$lib/agents/type-guards';
+} from '$lib/agents/shared/type-guards';
 
 const supplyAgent = new SupplyAgent();
 const marketAgent = new MarketAgent();

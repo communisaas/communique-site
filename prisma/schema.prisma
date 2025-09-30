@@ -153,6 +153,15 @@ model Template {
   clarity_score             Int?                       @map("clarity_score")
   completeness_score        Int?                       @map("completeness_score")
   
+  // === MISSING VERIFICATION FIELDS (from core.prisma) ===
+  severity_level            Int?                       @map("severity_level") // 1-10 scale for content severity
+  original_content          Json?                      @map("original_content") // Original content before AI corrections
+  correction_log            Json?                      @map("correction_log") // Log of corrections made
+  corrected_subject         String?                    @map("corrected_subject") // AI-corrected subject line
+  corrected_body            String?                    @map("corrected_body") // AI-corrected message body
+  agent_votes               Json?                      @map("agent_votes") // Multi-agent voting results
+  consensus_score           Float?                     @map("consensus_score") // Agent consensus quality score
+  
   // === AGENT-AGNOSTIC TRACKING (Phase 1) ===
   // Agent orchestration
   processing_pipeline       Json?                      @map("processing_pipeline") // Dynamic pipeline configuration

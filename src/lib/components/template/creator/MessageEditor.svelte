@@ -243,24 +243,37 @@
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
 
 				{#if isAddress}
-					<!-- Address toggle -->
-					<label
-						class="inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all hover:scale-105"
-						class:bg-blue-50={includeAddress}
-						class:border-blue-200={includeAddress}
-						class:text-blue-700={includeAddress}
-						class:bg-slate-50={!includeAddress}
-						class:border-slate-200={!includeAddress}
-						class:text-slate-600={!includeAddress}
-					>
-						<input type="checkbox" bind:checked={includeAddress} class="sr-only" />
-						{#if includeAddress}
-							<Check class="h-3 w-3" />
-						{:else}
-							<span class="text-xs">📍</span>
-						{/if}
-						Address
-					</label>
+					<!-- Address toggle with contextual info -->
+					<div class="group relative">
+						<label
+							class="inline-flex cursor-pointer items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-all hover:scale-105"
+							class:bg-blue-50={includeAddress}
+							class:border-blue-200={includeAddress}
+							class:text-blue-700={includeAddress}
+							class:bg-slate-50={!includeAddress}
+							class:border-slate-200={!includeAddress}
+							class:text-slate-600={!includeAddress}
+						>
+							<input type="checkbox" bind:checked={includeAddress} class="sr-only" />
+							{#if includeAddress}
+								<Check class="h-3 w-3" />
+							{:else}
+								<span class="text-xs">📍</span>
+							{/if}
+							Address
+						</label>
+
+						<!-- Contextual tooltip on hover -->
+						<div
+							class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-48 -translate-x-1/2 transform rounded-lg border border-blue-100 bg-blue-50 p-2 text-xs text-blue-800 opacity-0 shadow-sm transition-opacity group-hover:block group-hover:opacity-100"
+						>
+							{#if isCongressional}
+								Uses sender's verified address to confirm they're a constituent
+							{:else}
+								Includes sender's address from their profile
+							{/if}
+						</div>
+					</div>
 				{:else}
 					<!-- Variable pill button -->
 					<button

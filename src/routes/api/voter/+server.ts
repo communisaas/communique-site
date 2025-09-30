@@ -9,12 +9,15 @@ import { json, error } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db.js';
 import type { Prisma } from '@prisma/client';
 import { cwcClient } from '$lib/core/congress/cwc-client.js';
-import { SupplyAgent, type RewardParameters } from '$lib/agents/supply-agent.js';
-import { ImpactAgent } from '$lib/agents/impact-agent.js';
-import { VerificationAgent } from '$lib/agents/verification-agent.js';
-import { ReputationAgent } from '$lib/agents/reputation-agent.js';
-import { AgentCoordinator, AgentType, type AgentContext } from '$lib/agents/base-agent.js';
-import { extractReputationDecision, extractVerificationDecision } from '$lib/agents/type-guards.js';
+import { SupplyAgent, type RewardParameters } from '$lib/agents/voter-protocol/supply-agent';
+import { ImpactAgent } from '$lib/agents/voter-protocol/impact-agent';
+import { VerificationAgent } from '$lib/agents/voter-protocol/verification-agent';
+import { ReputationAgent } from '$lib/agents/voter-protocol/reputation-agent';
+import { AgentCoordinator, AgentType, type AgentContext } from '$lib/agents/shared/base-agent';
+import {
+	extractReputationDecision,
+	extractVerificationDecision
+} from '$lib/agents/shared/type-guards';
 import type { RequestHandler } from './$types';
 import type { RewardCalculationRequest, ProcessChallengeVoteParams } from '$lib/types/api.js';
 import type {

@@ -136,7 +136,7 @@ describe('Critical Edge Cases', () => {
 
 	describe('Agent Decision Error Handling', () => {
 		it('should handle database connection failures gracefully', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
+			const { ImpactAgent } = await import('../../src/lib/agents/voter-protocol/impact-agent');
 			// Mock database failure
 			mockDb.template.findMany.mockRejectedValue(new Error('Database connection failed'));
 
@@ -160,7 +160,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle missing context data', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
+			const { ImpactAgent } = await import('../../src/lib/agents/voter-protocol/impact-agent');
 			const agent = new ImpactAgent();
 			const incompleteContext = {
 				// Missing required fields like userId, actionType
@@ -176,7 +176,7 @@ describe('Critical Edge Cases', () => {
 		});
 
 		it('should handle context with nested user data', async () => {
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
+			const { ImpactAgent } = await import('../../src/lib/agents/voter-protocol/impact-agent');
 			const agent = new ImpactAgent();
 			const complexContext = {
 				userId: 'user-123',
@@ -348,7 +348,7 @@ describe('Critical Edge Cases', () => {
 				() => new Promise((_, reject) => setTimeout(() => reject(new Error('Query timeout')), 100))
 			);
 
-			const { ImpactAgent } = await import('../../src/lib/agents/impact-agent.js');
+			const { ImpactAgent } = await import('../../src/lib/agents/voter-protocol/impact-agent');
 			const agent = new ImpactAgent();
 
 			const decision = await agent.makeDecision({

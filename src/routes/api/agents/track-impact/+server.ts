@@ -9,7 +9,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { ImpactAgent } from '$lib/agents';
 import { db } from '$lib/core/db';
-import { extractImpactDecision } from '$lib/agents/type-guards';
+import { extractImpactDecision } from '$lib/agents/shared/type-guards';
 
 // Helper function to safely access metrics properties
 function getMetricsValue<T>(metrics: unknown, key: string, defaultValue: T): T {
