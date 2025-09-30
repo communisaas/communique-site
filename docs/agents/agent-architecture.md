@@ -5,13 +5,15 @@
 ## Two Distinct Systems
 
 ### 1. Content Moderation (Off-chain MVP)
+
 **Purpose**: Template safety and quality  
 **Location**: `/src/lib/agents/content/`  
-**When**: Every template submission  
+**When**: Every template submission
 
 **Multi-Agent Consensus System** (Following VOTER Protocol principles):
 
 #### The Three Agents
+
 1. **OpenAI (Primary - 40% weight)**
    - FREE Moderation API: 95% accuracy in 40 languages
    - GPT-5 enhancement: $0.001/template when needed
@@ -28,6 +30,7 @@
    - Provides nuanced analysis of disagreements
 
 #### Consensus Mechanism
+
 ```typescript
 // Multi-agent voting (no single point of failure)
 const result = await moderationConsensus.evaluateTemplate(templateId);
@@ -40,21 +43,24 @@ const result = await moderationConsensus.evaluateTemplate(templateId);
 // - dissent: recorded for learning
 
 if (result.approved) {
-  // Send to CWC or direct outreach
+	// Send to CWC or direct outreach
 }
 ```
 
 #### Cost Structure
+
 - **Unanimous (90% of cases)**: $0.00105
 - **Split decision (10% of cases)**: $0.00145
 - **Monthly (10K templates)**: ~$11.60
 
 ### 2. VOTER Protocol Agents (Future On-chain)
+
 **Purpose**: Rewards, reputation, economic incentives  
 **Location**: `/src/lib/agents/voter-protocol/`  
-**When**: After on-chain integration  
+**When**: After on-chain integration
 
 Five specialized agents:
+
 - **VerificationAgent**: User identity verification
 - **SupplyAgent**: Dynamic reward calculation
 - **MarketAgent**: Challenge market management
@@ -64,11 +70,11 @@ Five specialized agents:
 ```typescript
 // Future on-chain flow
 if (templateApproved && onChainEnabled) {
-  await voterProtocolCoordinator.processCivicAction({
-    userAddress,
-    template,
-    actionType: 'cwc_message'
-  });
+	await voterProtocolCoordinator.processCivicAction({
+		userAddress,
+		template,
+		actionType: 'cwc_message'
+	});
 }
 ```
 
@@ -94,38 +100,45 @@ if (templateApproved && onChainEnabled) {
 ## Why Two Systems?
 
 ### Different Requirements
+
 - **Content needs**: LLM analysis, subjective quality, fast response
 - **Economic needs**: Deterministic math, cryptographic proofs, blockchain
 
 ### Different Timelines
+
 - **Content**: Real-time (seconds)
 - **Blockchain**: Batch settlement (minutes)
 
 ### Different Costs
+
 - **Content**: Optimize for cheap AI calls
 - **Blockchain**: Security more important than cost
 
 ## N8N Workflow Integration
 
 ### Today (Off-chain MVP)
+
 ```typescript
 // N8N orchestrates multi-agent consensus
 template → N8N webhook → consensus voting → approve/reject → CWC/email
 ```
 
 **N8N calls these endpoints**:
+
 - `/api/n8n/process-template?stage=consensus` - Triggers multi-agent voting
 - `/api/webhooks/n8n/status` - Receives workflow progress updates
 
 See `docs/integrations.md#n8n-workflow-orchestration` for full N8N integration details.
 
-### Tomorrow (On-chain Integration)  
+### Tomorrow (On-chain Integration)
+
 ```typescript
 // Add VOTER Protocol after approval
 template → safety check → enhancement → approve → VOTER agents → blockchain → rewards
 ```
 
 ### Clean Handoff
+
 - Template approval triggers database event
 - VOTER agents process asynchronously
 - User sees immediate feedback, rewards settle later
@@ -133,12 +146,14 @@ template → safety check → enhancement → approve → VOTER agents → block
 ## What Changed
 
 ### Before (Regex-based)
+
 - Dangerous regex patterns for toxicity detection
 - No real AI moderation
 - Single point of failure
 - template-processor.ts with hardcoded patterns
 
 ### After (Multi-Agent Consensus)
+
 - Real AI with 95% accuracy (OpenAI FREE API)
 - Three independent agents voting
 - No single point of failure
@@ -146,6 +161,7 @@ template → safety check → enhancement → approve → VOTER agents → block
 - Dissent recording for continuous improvement
 
 ### Database Support
+
 ```prisma
 model CostTracking {
   date          String   @unique  // Daily tracking
@@ -169,6 +185,7 @@ model AgentDissent {
 4. **No confusion**: Each agent has one clear purpose
 
 The architecture is now optimized for:
+
 - **Today**: Fast, cheap template moderation
 - **Tomorrow**: Secure on-chain rewards
 - **Always**: Clear separation of concerns

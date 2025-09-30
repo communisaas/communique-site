@@ -8,23 +8,24 @@ Communique is governance-neutral infrastructure. Each government type gets an ad
 
 ```typescript
 interface GovernanceAdapter {
-  // Identify representatives for a location
-  resolveRepresentatives(location: UserLocation): Representative[]
-  
-  // Format message for delivery system
-  formatMessage(template: Template, reps: Representative[]): DeliveryPayload
-  
-  // Submit through official channels
-  submitAction(payload: DeliveryPayload): SubmissionReceipt
-  
-  // Verify delivery succeeded
-  verifyDelivery(receipt: SubmissionReceipt): boolean
+	// Identify representatives for a location
+	resolveRepresentatives(location: UserLocation): Representative[];
+
+	// Format message for delivery system
+	formatMessage(template: Template, reps: Representative[]): DeliveryPayload;
+
+	// Submit through official channels
+	submitAction(payload: DeliveryPayload): SubmissionReceipt;
+
+	// Verify delivery succeeded
+	verifyDelivery(receipt: SubmissionReceipt): boolean;
 }
 ```
 
 ## Current Implementation: US Congress
 
 **CWC Adapter** (`src/lib/congress/`):
+
 - Geocodes address → congressional district
 - Looks up House rep + 2 Senators
 - Formats for Communicating with Congress API
@@ -34,50 +35,56 @@ interface GovernanceAdapter {
 ## Planned Adapters
 
 ### Westminster Parliamentary (UK, Canada, Australia)
+
 ```typescript
 class WestminsterAdapter implements GovernanceAdapter {
-  // Postcode → constituency → MP
-  // Format for parliamentary submission system
-  // Handle both Commons and Lords where applicable
+	// Postcode → constituency → MP
+	// Format for parliamentary submission system
+	// Handle both Commons and Lords where applicable
 }
 ```
 
 ### European Parliamentary
+
 ```typescript
 class EuropeanParliamentAdapter implements GovernanceAdapter {
-  // Country + region → MEPs
-  // Multi-language template support
-  // EU petition system integration
+	// Country + region → MEPs
+	// Multi-language template support
+	// EU petition system integration
 }
 ```
 
 ### Direct Democracy (Switzerland, California)
+
 ```typescript
 class DirectDemocracyAdapter implements GovernanceAdapter {
-  // Initiative/referendum tracking
-  // Signature collection and verification
-  // Proposal submission workflows
+	// Initiative/referendum tracking
+	// Signature collection and verification
+	// Proposal submission workflows
 }
 ```
 
 ### Municipal/Local
+
 ```typescript
 class MunicipalAdapter implements GovernanceAdapter {
-  // City council members
-  // Local department heads
-  // Public comment submission
+	// City council members
+	// Local department heads
+	// Public comment submission
 }
 ```
 
 ## Adapter Requirements
 
 **Must Have:**
+
 - Representative lookup by geography
 - Official submission channel (API/email/form)
 - Delivery verification method
 - Template variable mapping
 
 **Nice to Have:**
+
 - Real-time delivery confirmation
 - Response tracking
 - Public record integration
@@ -94,29 +101,34 @@ class MunicipalAdapter implements GovernanceAdapter {
 ## Global Scaling Roadmap
 
 **Phase 1 (Current)**: US Congress via CWC API
+
 - Proven model with 81M messages/year
 - Establishes patterns and infrastructure
 - Generates revenue for expansion
 
 **Phase 2 (Q2 2025)**: English-speaking Parliamentary
+
 - UK House of Commons
 - Canadian Parliament
 - Australian Parliament
 - Similar systems, shared language
 
 **Phase 3 (Q3 2025)**: European Expansion
+
 - German Bundestag
 - French Assemblée
 - European Parliament
 - Multi-language templates
 
 **Phase 4 (Q4 2025)**: Emerging Democracies
+
 - India Lok Sabha
 - Brazil Congress
 - Indonesia DPR
 - Massive populations, growing digital adoption
 
 **Phase 5 (2026)**: New Governance Forms
+
 - Digital-first governments (Estonia)
 - Blockchain-native governance (DAOs)
 - Experimental democratic systems

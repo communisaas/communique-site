@@ -82,7 +82,7 @@ const _policyAreaMap = {
 const seedTemplates = [
 	{
 		title: "The Math Doesn't Work: Climate Edition",
-		description: 'Climate subsidies vs disaster costs: the math doesn\'t add up.',
+		description: "Climate subsidies vs disaster costs: the math doesn't add up.",
 		category: 'Environment',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
@@ -164,7 +164,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-				body: 'Original text before corrections...'
+			body: 'Original text before corrections...'
 		},
 		corrected_at: new Date('2024-12-15T10:30:00Z'),
 		reviewed_at: new Date('2024-12-15T14:20:00Z'),
@@ -305,7 +305,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-				body: 'Original version before clarity improvements...'
+			body: 'Original version before clarity improvements...'
 		},
 		corrected_at: new Date('2024-12-18T09:15:00Z'),
 		reviewed_at: null,
@@ -399,7 +399,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-				body: 'Original content before formatting and clarity improvements...'
+			body: 'Original content before formatting and clarity improvements...'
 		},
 		corrected_at: new Date('2024-12-16T14:25:00Z'),
 		reviewed_at: new Date('2024-12-16T18:00:00Z'),
@@ -753,7 +753,7 @@ Sincerely,
 			}
 		],
 		original_content: {
-				body: 'Original version with less specific data...'
+			body: 'Original version with less specific data...'
 		},
 		corrected_at: new Date('2024-12-18T11:20:00Z'),
 		reviewed_at: null,
@@ -932,7 +932,7 @@ Sincerely,
 	},
 	{
 		title: "Kids' Brains for Sale: Zero Privacy Laws",
-		description: 'Kids\'s data harvested, mental health destroyed, laws unchanged since 1998.',
+		description: "Kids's data harvested, mental health destroyed, laws unchanged since 1998.",
 		category: 'Digital Rights',
 		type: 'advocacy',
 		deliveryMethod: 'cwc',
@@ -1996,7 +1996,7 @@ async function seedCoreTemplates(users: User[]) {
 					category: template.category,
 					type: template.type,
 					deliveryMethod: template.deliveryMethod,
-						preview: template.preview,
+					preview: template.preview,
 					message_body: template.message_body,
 					metrics: template.metrics,
 					delivery_config: template.delivery_config,

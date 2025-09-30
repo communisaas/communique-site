@@ -1,15 +1,24 @@
 /**
  * CWC (Communicating With Congress) Submission Endpoint
  *
- * Handles verified template submission to Congressional offices
+ * Handles verified template submission to Congressional offices via async SQS queuing
  * Called by N8N workflow after verification and consensus stages
+ *
+ * NEW BEHAVIOR: Uses async SQS queuing instead of direct CWC submission
+ * - Check rate limits and idempotency BEFORE queuing
+ * - Send messages to appropriate SQS queues (Senate vs House)
+ * - Return job IDs immediately without waiting for CWC responses
+ * - Log all operations for observability
+ * - Handle partial failures gracefully
  */
 
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { cwcClient } from '$lib/core/congress/cwc-client';
-import { CWCGenerator as _CWCGenerator } from '$lib/core/congress/cwc-generator';
+import { cwcSQSClient } from '$lib/services/aws/sqs-client';
+import { createRateLimiter, extractChamber } from '$lib/services/aws/dynamodb-rate-limiter';
+import type { IdempotencyKey } from '$lib/services/aws/dynamodb-rate-limiter';
 import { db } from '$lib/core/db';
+import { randomBytes } from 'crypto';
 
 export const POST: RequestHandler = async ({ request, url: _url }) => {
 	try {
@@ -120,31 +129,154 @@ export const POST: RequestHandler = async ({ request, url: _url }) => {
 			);
 		}
 
-		// Track submissions
-		const submissions = [];
-		const errors = [];
+		// Initialize services
+		const environment =
+			(process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development';
+		const rateLimiter = createRateLimiter(environment);
+		const jobId = `job-${randomBytes(8).toString('hex')}-${Date.now()}`;
+		const timestamp = new Date().toISOString();
 
-		// Submit to each recipient
+		// Create CWCJob record for status tracking
+		await db.cWCJob.create({
+			data: {
+				id: jobId,
+				templateId,
+				userId: user.id,
+				status: 'queued',
+				submissionCount: targetRecipients.length,
+				messageIds: [], // Will be updated as messages are queued
+				results: {}
+			}
+		});
+
+		// Track async operations
+		const queuedSubmissions: Array<{
+			recipient: string;
+			chamber: string;
+			messageId: string;
+			status: string;
+		}> = [];
+		const rateLimitedRecipients: string[] = [];
+		const duplicateSubmissions: string[] = [];
+		const errors: string[] = [];
+		const allMessageIds: string[] = [];
+
+		// Process each recipient with rate limiting and idempotency checks
 		for (const recipient of targetRecipients) {
 			try {
-				let result;
+				const chamber = extractChamber(recipient.bioguideId);
+				const today = new Date().toISOString().split('T')[0];
 
-				if (recipient.chamber === 'senate') {
-					result = await cwcClient.submitToSenate(template, user, recipient, template.body);
-				} else {
-					result = await cwcClient.submitToHouse(template, user, recipient, template.body);
+				// Check idempotency (prevent duplicate submissions)
+				const idempotencyKey: IdempotencyKey = {
+					templateId,
+					recipientOfficeId: recipient.bioguideId,
+					userId: user.id,
+					date: today
+				};
+
+				const idempotencyResult = await rateLimiter.checkIdempotency(idempotencyKey);
+				if (idempotencyResult.isDuplicate) {
+					duplicateSubmissions.push(recipient.name);
+					console.log(`Duplicate submission detected for ${recipient.name}:`, {
+						templateId,
+						userId: user.id,
+						recipientId: recipient.bioguideId,
+						originalMessageId: idempotencyResult.originalMessageId,
+						timestamp
+					});
+					continue;
 				}
 
-				if (result.success) {
-					submissions.push({
+				// Check rate limits
+				const rateLimitResult = await rateLimiter.checkRateLimit(
+					chamber,
+					recipient.bioguideId,
+					user.id
+				);
+
+				if (!rateLimitResult.allowed) {
+					rateLimitedRecipients.push(recipient.name);
+					console.log(`Rate limit exceeded for ${recipient.name}:`, {
+						chamber,
+						tokensRemaining: rateLimitResult.tokensRemaining,
+						resetAt: new Date(rateLimitResult.resetAt).toISOString(),
+						retryAfterMs: rateLimitResult.retryAfterMs,
+						timestamp
+					});
+					continue;
+				}
+
+				// Convert template to SQS format
+				const sqsTemplate = {
+					id: template.id || templateId,
+					slug: template.slug || 'unknown-slug',
+					title: template.title,
+					message_body: template.body,
+					category: template.category,
+					subject: template.subject
+				};
+
+				// Convert user to SQS format
+				const sqsUser = {
+					id: user.id,
+					name: user.name,
+					email: user.email,
+					phone: user.phone || '',
+					address: {
+						street: user.street || '',
+						city: user.city || '',
+						state: user.state || '',
+						zip: user.zip || ''
+					}
+				};
+
+				// Convert recipient to CongressionalOffice format
+				const congressionalOffice = {
+					bioguideId: recipient.bioguideId,
+					name: recipient.name,
+					chamber: recipient.chamber,
+					officeCode: recipient.officeCode,
+					state: recipient.state,
+					district: recipient.district || '00',
+					party: recipient.party || 'Unknown'
+				};
+
+				// Queue the message
+				let sqsResult;
+				if (chamber === 'senate') {
+					sqsResult = await cwcSQSClient.sendToSenateQueue(
+						sqsTemplate,
+						sqsUser,
+						congressionalOffice,
+						template.body,
+						'normal'
+					);
+				} else {
+					sqsResult = await cwcSQSClient.sendToHouseQueue(
+						sqsTemplate,
+						sqsUser,
+						congressionalOffice,
+						template.body,
+						'normal'
+					);
+				}
+
+				if (sqsResult.success && sqsResult.messageId) {
+					queuedSubmissions.push({
 						recipient: recipient.name,
 						chamber: recipient.chamber,
-						messageId: result.messageId,
-						confirmationNumber: result.confirmationNumber,
-						status: result.status
+						messageId: sqsResult.messageId,
+						status: 'queued'
 					});
 
-					// Store delivery record
+					// Collect message ID for CWCJob update
+					allMessageIds.push(sqsResult.messageId);
+
+					// Record idempotency for successful queue submission
+					await rateLimiter.recordSubmission(idempotencyKey, sqsResult.messageId);
+
+					// Store initial delivery record with queued status
 					await db.template_campaign.create({
 						data: {
 							id: `cwc_${templateId}_${user.id}_${recipient.bioguideId}_${Date.now()}`,
@@ -152,88 +284,225 @@ export const POST: RequestHandler = async ({ request, url: _url }) => {
 							user_id: user.id,
 							delivery_type: 'cwc',
 							recipient_id: recipient.bioguideId,
-							cwc_delivery_id: result.messageId,
-							status: 'delivered',
+							cwc_delivery_id: sqsResult.messageId,
+							status: 'queued',
 							sent_at: new Date(),
-							delivered_at: new Date(),
 							metadata: {
 								recipient_name: recipient.name,
 								chamber: recipient.chamber,
-								confirmation_number: result.confirmationNumber
+								job_id: jobId,
+								sqs_message_id: sqsResult.messageId,
+								md5_of_body: sqsResult.md5OfBody,
+								sequence_number: sqsResult.sequenceNumber
 							}
 						}
 					});
+
+					console.log(`Message queued successfully for ${recipient.name}:`, {
+						chamber: recipient.chamber,
+						messageId: sqsResult.messageId,
+						recipientName: recipient.name,
+						templateId,
+						userId: user.id,
+						jobId,
+						timestamp
+					});
 				} else {
-					errors.push({
-						recipient: recipient.name,
-						error: result.error || 'Submission failed'
+					errors.push(
+						`Failed to queue message for ${recipient.name}: ${sqsResult.error || 'Unknown SQS error'}`
+					);
+					console.error(`SQS queue failed for ${recipient.name}:`, {
+						chamber: recipient.chamber,
+						error: sqsResult.error,
+						templateId,
+						userId: user.id,
+						timestamp
 					});
 				}
 			} catch (error) {
-				console.error('Error occurred');
-				errors.push({
-					recipient: recipient.name,
-					error: error instanceof Error ? error.message : 'Unknown error'
+				const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+				errors.push(`Error processing ${recipient.name}: ${errorMessage}`);
+				console.error(`Error processing recipient ${recipient.name}:`, {
+					error: errorMessage,
+					templateId,
+					userId: user.id,
+					timestamp
 				});
 			}
 		}
 
-		// Update template usage tracking
-		if (submissions.length > 0) {
-			// Note: Template update fields not available in current Prisma client
-			// TODO: Regenerate Prisma client after schema updates
-			console.log(`Template ${templateId} used ${submissions.length} times`);
+		// Update CWCJob with collected message IDs and final status
+		if (allMessageIds.length > 0) {
+			try {
+				const finalStatus =
+					queuedSubmissions.length === targetRecipients.length
+						? 'processing'
+						: queuedSubmissions.length > 0
+							? 'partial'
+							: 'failed';
+
+				await db.cWCJob.update({
+					where: { id: jobId },
+					data: {
+						messageIds: allMessageIds,
+						status: finalStatus,
+						submissionCount: queuedSubmissions.length
+					}
+				});
+
+				console.log(
+					`CWCJob ${jobId} updated: ${allMessageIds.length} message IDs, status: ${finalStatus}`
+				);
+			} catch (updateError) {
+				console.error('Failed to update CWCJob with message IDs:', updateError);
+				// Don't fail the request for tracking errors
+			}
 		}
 
-		// Prepare response
+		// Update template usage tracking
+		if (queuedSubmissions.length > 0) {
+			try {
+				// Update template usage count (if schema supports it)
+				await db.template.update({
+					where: { id: templateId },
+					data: {
+						send_count: {
+							increment: queuedSubmissions.length
+						},
+						last_sent_at: new Date()
+					}
+				});
+				console.log(
+					`Template ${templateId} usage updated: ${queuedSubmissions.length} new submissions queued`
+				);
+			} catch (updateError) {
+				console.error('Failed to update template usage tracking:', updateError);
+				// Don't fail the request for tracking errors
+			}
+		}
+
+		// Prepare async response with new format
 		const response = {
-			success: submissions.length > 0,
-			templateId,
-			submissionCount: submissions.length,
-			submissions,
+			success: queuedSubmissions.length > 0,
+			jobId,
+			queuedSubmissions: queuedSubmissions.length,
+			rateLimitedRecipients,
+			duplicateSubmissions,
 			errors: errors.length > 0 ? errors : undefined,
-			confirmationNumber: submissions[0]?.confirmationNumber, // Primary confirmation for N8N
-			timestamp: new Date().toISOString()
+			timestamp
 		};
 
-		// If all submissions failed, return error
-		if (submissions.length === 0 && errors.length > 0) {
+		// Log comprehensive operation summary
+		console.log(`CWC async submission summary:`, {
+			jobId,
+			templateId,
+			userId: user.id,
+			totalRecipients: targetRecipients.length,
+			queued: queuedSubmissions.length,
+			rateLimited: rateLimitedRecipients.length,
+			duplicates: duplicateSubmissions.length,
+			errors: errors.length,
+			timestamp
+		});
+
+		// Return success if any messages were queued, partial success if some failed
+		if (
+			queuedSubmissions.length === 0 &&
+			(rateLimitedRecipients.length > 0 || duplicateSubmissions.length > 0 || errors.length > 0)
+		) {
+			// No messages queued, but not necessarily an error (could be rate limited or duplicates)
 			return json(
 				{
 					...response,
-					error: 'All submissions failed',
-					details: errors
+					message:
+						rateLimitedRecipients.length > 0
+							? 'All submissions were rate limited. Please try again later.'
+							: duplicateSubmissions.length > 0
+								? 'All submissions were duplicates of previous submissions.'
+								: 'All submissions failed due to errors.',
+					details: {
+						rateLimited: rateLimitedRecipients,
+						duplicates: duplicateSubmissions,
+						errors
+					}
 				},
-				{ status: 500 }
+				{ status: rateLimitedRecipients.length > 0 ? 429 : errors.length > 0 ? 500 : 409 }
 			);
 		}
 
 		return json(response);
 	} catch (error) {
-		console.error('Error occurred');
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		console.error('CWC async submission failed:', {
+			error: errorMessage,
+			stack: error instanceof Error ? error.stack : undefined,
+			timestamp: new Date().toISOString()
+		});
+
 		return json(
 			{
 				success: false,
-				error: 'CWC submission failed',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				jobId: `error-${randomBytes(4).toString('hex')}-${Date.now()}`,
+				queuedSubmissions: 0,
+				rateLimitedRecipients: [],
+				duplicateSubmissions: [],
+				errors: [`CWC async submission failed: ${errorMessage}`],
+				timestamp: new Date().toISOString()
 			},
 			{ status: 500 }
 		);
 	}
 };
 
-// GET endpoint for testing CWC configuration
+// GET endpoint for testing async CWC configuration
 export const GET: RequestHandler = async () => {
-	const configured = !!process.env.CWC_API_KEY;
-	const baseUrl = process.env.CWC_API_BASE_URL || 'https://www.house.gov/htbin/formproc';
+	try {
+		// Test SQS configuration
+		const sqsConfig = cwcSQSClient.getConfiguration();
+		const sqsConnectivity = await cwcSQSClient.testConnection();
 
-	return json({
-		status: configured ? 'configured' : 'not_configured',
-		configured,
-		baseUrl,
-		message: configured
-			? 'CWC integration is configured and ready'
-			: 'CWC_API_KEY environment variable not set',
-		timestamp: new Date().toISOString()
-	});
+		// Test rate limiter configuration
+		const environment =
+			(process.env.NODE_ENV as 'development' | 'staging' | 'production') || 'development';
+
+		const configured =
+			sqsConnectivity.connected && sqsConnectivity.senateQueue && sqsConnectivity.houseQueue;
+
+		return json({
+			status: configured ? 'async_configured' : 'async_not_configured',
+			configured,
+			mode: 'async_sqs_queuing',
+			sqs: {
+				region: sqsConfig.region,
+				senateQueue: sqsConfig.senateQueueUrl !== 'NOT_SET',
+				houseQueue: sqsConfig.houseQueueUrl !== 'NOT_SET',
+				credentialsConfigured: sqsConfig.credentialsConfigured
+			},
+			rateLimiting: {
+				environment,
+				enabled: true,
+				tableName: `${environment}-communique-rate-limits`
+			},
+			idempotency: {
+				enabled: true,
+				tableName: `${environment}-communique-idempotency`
+			},
+			message: configured
+				? 'CWC async SQS integration is configured and ready'
+				: 'SQS queue URLs or AWS credentials not properly configured',
+			timestamp: new Date().toISOString()
+		});
+	} catch (error) {
+		console.error('CWC async configuration check failed:', error);
+		return json(
+			{
+				status: 'async_error',
+				configured: false,
+				mode: 'async_sqs_queuing',
+				error: error instanceof Error ? error.message : 'Unknown configuration error',
+				timestamp: new Date().toISOString()
+			},
+			{ status: 500 }
+		);
+	}
 };

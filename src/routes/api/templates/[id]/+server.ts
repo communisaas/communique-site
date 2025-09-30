@@ -11,7 +11,7 @@ export const GET: RequestHandler = async ({ params, request }) => {
 		// Check for N8N webhook secret if provided
 		const webhookSecret = request.headers.get('x-webhook-secret');
 		const expectedSecret = process.env.N8N_WEBHOOK_SECRET;
-		
+
 		// If secret is configured and provided, validate it
 		if (expectedSecret && webhookSecret && webhookSecret !== expectedSecret) {
 			return error(401, 'Invalid webhook secret');

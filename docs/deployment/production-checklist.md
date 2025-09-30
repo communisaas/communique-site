@@ -5,6 +5,7 @@
 ### ✅ Environment Variables
 
 #### Required API Keys
+
 ```bash
 # OpenAI (GPT-5 Series)
 OPENAI_API_KEY=sk-...
@@ -23,6 +24,7 @@ PORT=3001
 ```
 
 #### Optional Configuration
+
 ```bash
 # Anthropic (Future)
 ANTHROPIC_API_KEY=... # For Q4 2025
@@ -45,6 +47,7 @@ EMERGENCY_SHUTDOWN_THRESHOLD=500.00 # USD
 ### ✅ Infrastructure Setup
 
 #### 1. Database Migration
+
 ```bash
 # Run Prisma migrations
 npx prisma migrate deploy
@@ -54,6 +57,7 @@ npx prisma studio # Check Template model
 ```
 
 #### 2. Redis Configuration
+
 ```bash
 # Verify Redis connection
 redis-cli ping # Should return PONG
@@ -64,6 +68,7 @@ redis-cli CONFIG SET maxmemory 2gb
 ```
 
 #### 3. API Key Validation
+
 ```bash
 # Test OpenAI connection
 curl https://api.openai.com/v1/models \
@@ -125,35 +130,35 @@ spec:
         app: communique-agents
     spec:
       containers:
-      - name: agents
-        image: communique/agents:latest
-        ports:
-        - containerPort: 3001
-        env:
-        - name: NODE_ENV
-          value: "production"
-        envFrom:
-        - secretRef:
-            name: agent-secrets
-        resources:
-          requests:
-            memory: "512Mi"
-            cpu: "500m"
-          limits:
-            memory: "1Gi"
-            cpu: "1000m"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 3001
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /ready
-            port: 3001
-          initialDelaySeconds: 5
-          periodSeconds: 5
+        - name: agents
+          image: communique/agents:latest
+          ports:
+            - containerPort: 3001
+          env:
+            - name: NODE_ENV
+              value: 'production'
+          envFrom:
+            - secretRef:
+                name: agent-secrets
+          resources:
+            requests:
+              memory: '512Mi'
+              cpu: '500m'
+            limits:
+              memory: '1Gi'
+              cpu: '1000m'
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 5
 ```
 
 ### 4. Load Balancer Configuration
@@ -170,7 +175,7 @@ upstream agents {
 server {
     listen 443 ssl http2;
     server_name api.communique.ai;
-    
+
     location /agents/ {
         proxy_pass http://agents;
         proxy_http_version 1.1;
@@ -178,7 +183,7 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
-        
+
         # Timeouts for long-running agent processes
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
@@ -209,24 +214,25 @@ groups:
         expr: rate(agent_errors_total[5m]) > 0.1
         for: 5m
         annotations:
-          summary: "High agent error rate"
-          
+          summary: 'High agent error rate'
+
       - alert: BudgetExceeded
         expr: hourly_spending > 100
         for: 1m
         annotations:
-          summary: "Hourly spending limit exceeded"
-          
+          summary: 'Hourly spending limit exceeded'
+
       - alert: LowCacheHitRate
         expr: cache_hit_rate < 0.3
         for: 10m
         annotations:
-          summary: "Cache hit rate below 30%"
+          summary: 'Cache hit rate below 30%'
 ```
 
 ### 3. Dashboard Metrics
 
 Key metrics to monitor:
+
 - **Processing Speed**: p50, p95, p99 latencies
 - **Cost Tracking**: Hourly spend by provider
 - **Error Rates**: By agent and stage
@@ -236,6 +242,7 @@ Key metrics to monitor:
 ## Security Checklist
 
 ### ✅ API Security
+
 - [ ] Rate limiting enabled
 - [ ] API keys rotated monthly
 - [ ] CORS properly configured
@@ -243,6 +250,7 @@ Key metrics to monitor:
 - [ ] IP allowlisting for admin endpoints
 
 ### ✅ Data Protection
+
 - [ ] PII stripped before AI processing
 - [ ] Template anonymization working
 - [ ] Audit logs configured
@@ -250,6 +258,7 @@ Key metrics to monitor:
 - [ ] TLS 1.3 for all connections
 
 ### ✅ Access Control
+
 - [ ] Admin endpoints protected
 - [ ] Service accounts with minimal permissions
 - [ ] MFA for production access
@@ -262,26 +271,26 @@ Key metrics to monitor:
 ```typescript
 // Redis cache settings
 const cacheConfig = {
-  // Agent responses
-  agentResponse: {
-    ttl: 3600, // 1 hour
-    keyPrefix: 'agent:response:',
-    maxSize: 10000
-  },
-  
-  // Cost predictions
-  costPrediction: {
-    ttl: 1800, // 30 minutes
-    keyPrefix: 'cost:predict:',
-    maxSize: 5000
-  },
-  
-  // User spending
-  userSpending: {
-    ttl: 300, // 5 minutes
-    keyPrefix: 'user:spend:',
-    maxSize: 10000
-  }
+	// Agent responses
+	agentResponse: {
+		ttl: 3600, // 1 hour
+		keyPrefix: 'agent:response:',
+		maxSize: 10000
+	},
+
+	// Cost predictions
+	costPrediction: {
+		ttl: 1800, // 30 minutes
+		keyPrefix: 'cost:predict:',
+		maxSize: 5000
+	},
+
+	// User spending
+	userSpending: {
+		ttl: 300, // 5 minutes
+		keyPrefix: 'user:spend:',
+		maxSize: 10000
+	}
 };
 ```
 
@@ -290,17 +299,17 @@ const cacheConfig = {
 ```typescript
 // Database connection pool
 const dbPool = {
-  min: 5,
-  max: 20,
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000
+	min: 5,
+	max: 20,
+	idleTimeoutMillis: 30000,
+	connectionTimeoutMillis: 2000
 };
 
 // Redis connection pool
 const redisPool = {
-  min: 2,
-  max: 10,
-  retryStrategy: (times: number) => Math.min(times * 50, 2000)
+	min: 2,
+	max: 10,
+	retryStrategy: (times: number) => Math.min(times * 50, 2000)
 };
 ```
 
@@ -309,9 +318,9 @@ const redisPool = {
 ```typescript
 // Batch similar requests
 const batchConfig = {
-  maxBatchSize: 10,
-  maxWaitTime: 100, // ms
-  enabledForProviders: ['openai', 'google']
+	maxBatchSize: 10,
+	maxWaitTime: 100, // ms
+	enabledForProviders: ['openai', 'google']
 };
 ```
 
@@ -321,11 +330,11 @@ const batchConfig = {
 
 ```typescript
 const features = {
-  'agent-consensus': true,
-  'gpt-5-models': true,
-  'gemini-2.5': true,
-  'enhanced-caching': true,
-  'budget-management': true
+	'agent-consensus': true,
+	'gpt-5-models': true,
+	'gemini-2.5': true,
+	'enhanced-caching': true,
+	'budget-management': true
 };
 ```
 
@@ -371,11 +380,11 @@ spec:
 ```typescript
 // A/B test configuration
 const abTests = {
-  'gpt5-vs-gemini': {
-    enabled: true,
-    trafficSplit: 0.5,
-    metrics: ['cost', 'quality', 'speed']
-  }
+	'gpt5-vs-gemini': {
+		enabled: true,
+		trafficSplit: 0.5,
+		metrics: ['cost', 'quality', 'speed']
+	}
 };
 ```
 
@@ -396,6 +405,7 @@ npm run test:agents:consensus
 ### 🚨 High Cost Alert
 
 1. **Immediate Actions**:
+
    ```bash
    # Pause all processing
    curl -X POST https://api.communique.ai/admin/agents/pause \
@@ -429,6 +439,7 @@ npm run test:agents:consensus
 ### 🚨 Database Connection Issues
 
 1. **Check Connection Pool**:
+
    ```bash
    # View pool stats
    curl https://api.communique.ai/admin/db/pool
@@ -443,6 +454,7 @@ npm run test:agents:consensus
 ## Post-Deployment Verification
 
 ### ✅ Functional Tests
+
 - [ ] Process sample template through each flow
 - [ ] Verify cost tracking accurate
 - [ ] Check enhanced content quality
@@ -450,12 +462,14 @@ npm run test:agents:consensus
 - [ ] Verify cache working
 
 ### ✅ Performance Tests
+
 - [ ] Response time <3s for standard templates
 - [ ] Can handle 100 req/min
 - [ ] Cache hit rate >60%
 - [ ] No memory leaks after 1 hour
 
 ### ✅ Integration Tests
+
 - [ ] Database writes successful
 - [ ] Redis caching functional
 - [ ] API providers responding
@@ -465,16 +479,19 @@ npm run test:agents:consensus
 ## Maintenance Schedule
 
 ### Daily
+
 - Review error logs
 - Check cost metrics
 - Monitor cache performance
 
 ### Weekly
+
 - Analyze agent performance metrics
 - Review user feedback
 - Update agent reliability scores
 
 ### Monthly
+
 - Rotate API keys
 - Review and optimize costs
 - Update model configurations
@@ -496,5 +513,5 @@ npm run test:agents:consensus
 
 ---
 
-*Last Updated: September 2025*
-*Checklist Version: 1.0.0*
+_Last Updated: September 2025_
+_Checklist Version: 1.0.0_

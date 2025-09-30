@@ -61,7 +61,7 @@
 
 	const config = typeConfig[type];
 	const IconComponent = $derived(config.icon);
-	
+
 	// Safely format the message to handle objects
 	const formattedMessage = $derived(formatErrorMessage(message, 'An error occurred'));
 

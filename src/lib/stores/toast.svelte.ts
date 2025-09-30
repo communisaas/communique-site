@@ -53,7 +53,10 @@ function createToastStore() {
 		return addToast({ type: 'warning', message, ...options });
 	};
 
-	const info = (message: string | unknown, options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>) => {
+	const info = (
+		message: string | unknown,
+		options?: Partial<Omit<ToastData, 'id' | 'type' | 'message'>>
+	) => {
 		return addToast({ type: 'info', message, ...options });
 	};
 

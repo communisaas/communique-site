@@ -16,17 +16,20 @@ Communique is governance-neutral infrastructure. US Congress via CWC API is our 
 ## Key flows
 
 **Universal civic action pipeline:**
+
 - Country resolve (SSR) → governance adapter → delivery method
   - Email countries: template resolve → `mailto:` with tracking
   - Certified APIs (US CWC, future Parliamentary): generate compliant forms → verified submission
   - Always: viral pattern generator + VOTER rewards + reputation building
 
 **Governance-specific flows:**
+
 - Congressional (US): address → district → representatives → CWC API → blockchain rewards
 - Parliamentary (future): postcode → constituency → MPs → submission API
 - Direct Democracy (future): proposal → signature → referendum tracking
 
 **User journey:**
+
 - Onboarding: OAuth-only; 90-day sessions for template-action deep-link flows
 - Action: Select template → fill variables → send → earn VOTER → build reputation
 

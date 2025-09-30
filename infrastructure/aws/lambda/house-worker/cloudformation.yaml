@@ -1,0 +1,380 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'AWS Lambda function for processing House CWC submissions via GCP proxy'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    AllowedValues: [development, staging, production]
+    Description: Deployment environment
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID for Lambda function
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnet IDs for Lambda function (private subnets recommended)
+
+  GcpProxyUrl:
+    Type: String
+    Description: GCP proxy endpoint URL
+    Default: 'https://your-gcp-proxy.com/submit'
+
+  GcpProxyAuthToken:
+    Type: String
+    NoEcho: true
+    Description: Authentication token for GCP proxy
+
+  ApiAuthToken:
+    Type: String
+    NoEcho: true
+    Description: Authentication token for job status API
+
+  JobStatusApiUrl:
+    Type: String
+    Description: Job status API endpoint
+    Default: 'https://api.communique.com/v1/cwc/jobs'
+
+Resources:
+  # IAM Role for Lambda Function
+  HouseWorkerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'house-cwc-worker-role-${Environment}'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+      Policies:
+        - PolicyName: HouseWorkerPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # DynamoDB permissions for rate limiting
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                Resource:
+                  - !GetAtt RateLimitTable.Arn
+
+              # SQS permissions
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                Resource:
+                  - !GetAtt HouseCwcQueue.Arn
+                  - !GetAtt HouseCwcDLQ.Arn
+
+              # CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/house-cwc-worker-${Environment}:*'
+
+              # CloudWatch Metrics
+              - Effect: Allow
+                Action:
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+
+  # Security Group for Lambda
+  HouseWorkerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub 'house-cwc-worker-sg-${Environment}'
+      GroupDescription: Security group for House CWC worker Lambda
+      VpcId: !Ref VpcId
+      SecurityGroupEgress:
+        # Allow HTTPS outbound for GCP proxy and APIs
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS outbound for GCP proxy and APIs
+        # Allow HTTP outbound (if needed)
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP outbound
+      Tags:
+        - Key: Name
+          Value: !Sub 'house-cwc-worker-sg-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # DynamoDB Table for Rate Limiting
+  RateLimitTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub 'cwc-rate-limits-${Environment}'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      SSESpecification:
+        SSEEnabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub 'cwc-rate-limits-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SQS Dead Letter Queue
+  HouseCwcDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'house-cwc-dlq-${Environment}'
+      MessageRetentionPeriod: 1209600 # 14 days
+      VisibilityTimeoutSeconds: 60
+      KmsMasterKeyId: alias/aws/sqs
+      Tags:
+        - Key: Name
+          Value: !Sub 'house-cwc-dlq-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # SQS FIFO Queue for House CWC submissions
+  HouseCwcQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub 'house-cwc-queue-${Environment}.fifo'
+      FifoQueue: true
+      ContentBasedDeduplication: true
+      MessageRetentionPeriod: 345600 # 4 days
+      VisibilityTimeoutSeconds: 360 # 6 minutes (3x Lambda timeout)
+      ReceiveMessageWaitTimeSeconds: 20 # Long polling
+      KmsMasterKeyId: alias/aws/sqs
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt HouseCwcDLQ.Arn
+        maxReceiveCount: 3
+      Tags:
+        - Key: Name
+          Value: !Sub 'house-cwc-queue-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Lambda Function
+  HouseWorkerFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'house-cwc-worker-${Environment}'
+      Runtime: nodejs20.x
+      Handler: index.handler
+      Code:
+        ZipFile: |
+          exports.handler = async (event) => {
+            console.log('Placeholder handler - deploy actual code');
+            return { statusCode: 200 };
+          };
+      Role: !GetAtt HouseWorkerRole.Arn
+      Timeout: 120
+      MemorySize: 512
+      ReservedConcurrencyLimit: 2 # Strict limit for House processing
+      VpcConfig:
+        SecurityGroupIds:
+          - !Ref HouseWorkerSecurityGroup
+        SubnetIds: !Ref SubnetIds
+      Environment:
+        Variables:
+          RATE_LIMIT_TABLE: !Ref RateLimitTable
+          JOB_STATUS_API_URL: !Ref JobStatusApiUrl
+          GCP_PROXY_URL: !Ref GcpProxyUrl
+          GCP_PROXY_AUTH_TOKEN: !Ref GcpProxyAuthToken
+          API_AUTH_TOKEN: !Ref ApiAuthToken
+          AWS_REGION: !Ref AWS::Region
+          ENVIRONMENT: !Ref Environment
+      DeadLetterConfig:
+        TargetArn: !GetAtt HouseCwcDLQ.Arn
+      Tags:
+        - Key: Name
+          Value: !Sub 'house-cwc-worker-${Environment}'
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Lambda Event Source Mapping for SQS
+  HouseWorkerEventSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      EventSourceArn: !GetAtt HouseCwcQueue.Arn
+      FunctionName: !Ref HouseWorkerFunction
+      BatchSize: 1 # Process one message at a time for careful House handling
+      MaximumBatchingWindowInSeconds: 5
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
+      ScalingConfig:
+        MaximumConcurrency: 2 # Strict concurrency control
+
+  # CloudWatch Log Group
+  HouseWorkerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/house-cwc-worker-${Environment}'
+      RetentionInDays: 30
+      KmsKeyId: !GetAtt LogGroupKMSKey.Arn
+
+  # KMS Key for Log Encryption
+  LogGroupKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub 'KMS key for House CWC worker logs - ${Environment}'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow CloudWatch Logs
+            Effect: Allow
+            Principal:
+              Service: !Sub 'logs.${AWS::Region}.amazonaws.com'
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: '*'
+            Condition:
+              ArnEquals:
+                'kms:EncryptionContext:aws:logs:arn': !Sub 'arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/house-cwc-worker-${Environment}'
+
+  LogGroupKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/house-cwc-worker-logs-${Environment}'
+      TargetKeyId: !Ref LogGroupKMSKey
+
+  # CloudWatch Alarms
+
+  # Lambda Errors Alarm
+  LambdaErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'house-cwc-worker-errors-${Environment}'
+      AlarmDescription: Monitor Lambda function errors
+      MetricName: Errors
+      Namespace: AWS/Lambda
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref HouseWorkerFunction
+      TreatMissingData: notBreaching
+
+  # Lambda Duration Alarm
+  LambdaDurationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'house-cwc-worker-duration-${Environment}'
+      AlarmDescription: Monitor Lambda function duration
+      MetricName: Duration
+      Namespace: AWS/Lambda
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 60000 # 60 seconds
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref HouseWorkerFunction
+      TreatMissingData: notBreaching
+
+  # SQS Queue Depth Alarm
+  SQSQueueDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'house-cwc-queue-depth-${Environment}'
+      AlarmDescription: Monitor SQS queue depth
+      MetricName: ApproximateNumberOfVisibleMessages
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt HouseCwcQueue.QueueName
+      TreatMissingData: notBreaching
+
+  # DLQ Depth Alarm
+  DLQDepthAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'house-cwc-dlq-depth-${Environment}'
+      AlarmDescription: Monitor DLQ depth
+      MetricName: ApproximateNumberOfVisibleMessages
+      Namespace: AWS/SQS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: QueueName
+          Value: !GetAtt HouseCwcDLQ.QueueName
+      TreatMissingData: notBreaching
+
+Outputs:
+  LambdaFunctionArn:
+    Description: ARN of the House CWC worker Lambda function
+    Value: !GetAtt HouseWorkerFunction.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-lambda-arn'
+
+  SQSQueueUrl:
+    Description: URL of the House CWC SQS queue
+    Value: !Ref HouseCwcQueue
+    Export:
+      Name: !Sub '${AWS::StackName}-queue-url'
+
+  SQSQueueArn:
+    Description: ARN of the House CWC SQS queue
+    Value: !GetAtt HouseCwcQueue.Arn
+    Export:
+      Name: !Sub '${AWS::StackName}-queue-arn'
+
+  DLQUrl:
+    Description: URL of the House CWC Dead Letter Queue
+    Value: !Ref HouseCwcDLQ
+    Export:
+      Name: !Sub '${AWS::StackName}-dlq-url'
+
+  RateLimitTableName:
+    Description: Name of the rate limiting DynamoDB table
+    Value: !Ref RateLimitTable
+    Export:
+      Name: !Sub '${AWS::StackName}-rate-limit-table'
+
+  SecurityGroupId:
+    Description: Security Group ID for the Lambda function
+    Value: !Ref HouseWorkerSecurityGroup
+    Export:
+      Name: !Sub '${AWS::StackName}-security-group'

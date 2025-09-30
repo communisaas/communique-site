@@ -17,11 +17,11 @@ These are intentionally simple. Users know their own context better than any API
 
 ```typescript
 interface TemplateVariable {
-  name: string           // [Your City]
-  type: 'text' | 'number' | 'date' | 'select'
-  required: boolean
-  placeholder?: string   // Help text for users
-  validation?: RegExp    // Optional validation
+	name: string; // [Your City]
+	type: 'text' | 'number' | 'date' | 'select';
+	required: boolean;
+	placeholder?: string; // Help text for users
+	validation?: RegExp; // Optional validation
 }
 ```
 
@@ -37,13 +37,13 @@ interface TemplateVariable {
 ### Variable Types
 
 ```typescript
-type VariableType = 
-  | 'personal'    // User's personal story/experience
-  | 'location'    // City, district, region
-  | 'entity'      // Company, organization name
-  | 'numeric'     // Amounts, quantities
-  | 'temporal'    // Dates, time periods
-  | 'selection'   // Pre-defined options
+type VariableType =
+	| 'personal' // User's personal story/experience
+	| 'location' // City, district, region
+	| 'entity' // Company, organization name
+	| 'numeric' // Amounts, quantities
+	| 'temporal' // Dates, time periods
+	| 'selection'; // Pre-defined options
 ```
 
 ### User Experience
@@ -58,10 +58,10 @@ type VariableType =
 
 ```typescript
 interface VariableProcessor {
-  extract(template: string): Variable[]
-  validate(variable: Variable, value: string): ValidationResult
-  substitute(template: string, values: Map<string, string>): string
-  getSuggestions(variable: Variable, user: User): string[]
+	extract(template: string): Variable[];
+	validate(variable: Variable, value: string): ValidationResult;
+	substitute(template: string, values: Map<string, string>): string;
+	getSuggestions(variable: Variable, user: User): string[];
 }
 ```
 
@@ -79,18 +79,18 @@ Pre-fill variables when possible:
 
 ```typescript
 class SmartDefaults {
-  getDefault(variable: Variable, user: User): string | undefined {
-    switch(variable.type) {
-      case 'location':
-        return user.city || user.district
-      case 'representative':
-        return user.representatives?.[0]?.name
-      case 'date':
-        return new Date().toLocaleDateString()
-      default:
-        return undefined
-    }
-  }
+	getDefault(variable: Variable, user: User): string | undefined {
+		switch (variable.type) {
+			case 'location':
+				return user.city || user.district;
+			case 'representative':
+				return user.representatives?.[0]?.name;
+			case 'date':
+				return new Date().toLocaleDateString();
+			default:
+				return undefined;
+		}
+	}
 }
 ```
 
@@ -100,16 +100,17 @@ Save user's variable values for future use:
 
 ```typescript
 interface SavedVariable {
-  userId: string
-  variableName: string
-  value: string
-  templateId?: string
-  lastUsed: Date
-  useCount: number
+	userId: string;
+	variableName: string;
+	value: string;
+	templateId?: string;
+	lastUsed: Date;
+	useCount: number;
 }
 ```
 
 Benefits:
+
 - Faster template sending
 - Consistent messaging
 - Personal variable library

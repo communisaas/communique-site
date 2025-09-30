@@ -1,0 +1,68 @@
+{
+	"name": "communique-cdk-infrastructure",
+	"version": "1.0.0",
+	"description": "AWS CDK infrastructure for Communique CWC integration system",
+	"main": "bin/app.js",
+	"scripts": {
+		"build": "tsc",
+		"watch": "tsc -w",
+		"test": "jest",
+		"cdk": "cdk",
+		"bootstrap": "cdk bootstrap",
+		"deploy": "cdk deploy --all --require-approval never",
+		"deploy:dev": "NODE_ENV=development cdk deploy --all --require-approval never",
+		"deploy:staging": "NODE_ENV=staging cdk deploy --all --require-approval never",
+		"deploy:production": "NODE_ENV=production cdk deploy --all --require-approval never",
+		"destroy": "cdk destroy --all",
+		"diff": "cdk diff",
+		"synth": "cdk synth",
+		"context": "cdk context",
+		"ls": "cdk ls",
+		"doctor": "cdk doctor",
+		"lint": "eslint lib/**/*.ts bin/**/*.ts",
+		"format": "prettier --write lib/**/*.ts bin/**/*.ts"
+	},
+	"keywords": [
+		"aws",
+		"cdk",
+		"infrastructure",
+		"lambda",
+		"sqs",
+		"dynamodb",
+		"cloudwatch",
+		"communique",
+		"cwc"
+	],
+	"author": "Communique Team",
+	"license": "MIT",
+	"dependencies": {
+		"@aws-cdk/aws-apigatewayv2-alpha": "^2.120.0-alpha.0",
+		"@aws-cdk/aws-apigatewayv2-integrations-alpha": "^2.120.0-alpha.0",
+		"aws-cdk-lib": "^2.120.0",
+		"constructs": "^10.3.0"
+	},
+	"devDependencies": {
+		"@types/jest": "^29.5.8",
+		"@types/node": "^20.9.0",
+		"@typescript-eslint/eslint-plugin": "^6.12.0",
+		"@typescript-eslint/parser": "^6.12.0",
+		"aws-cdk": "^2.120.0",
+		"eslint": "^8.54.0",
+		"jest": "^29.7.0",
+		"prettier": "^3.1.0",
+		"ts-jest": "^29.1.1",
+		"typescript": "^5.3.2"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/your-org/communique.git",
+		"directory": "infrastructure/aws/cdk"
+	},
+	"jest": {
+		"preset": "ts-jest",
+		"testEnvironment": "node"
+	}
+}

@@ -1,6 +1,6 @@
 /**
  * Agent System Exports
- * 
+ *
  * Two clear systems:
  * 1. Content moderation (off-chain) - Template processing
  * 2. VOTER Protocol (future on-chain) - Rewards and reputation
@@ -17,7 +17,11 @@ export { moderationConsensus, ModerationConsensus } from './moderation-consensus
 
 // Export types from new moderation system
 export type { ModerationResult, AgentVote } from './content/ai-moderation';
-export type { ConsensusResult, CostTracking, AgentPerformance } from './content/consensus-coordinator';
+export type {
+	ConsensusResult,
+	CostTracking,
+	AgentPerformance
+} from './content/consensus-coordinator';
 export { ModerationSeverity } from './content/ai-moderation';
 
 // VOTER Protocol agents (future on-chain)
@@ -31,14 +35,22 @@ export { MarketAgent } from './voter-protocol/market-agent';
 export type { MarketInput, MarketDecision } from './voter-protocol/market-agent';
 
 export { ImpactAgent } from './voter-protocol/impact-agent';
-export type { ImpactAssessment, LegislativeOutcome, CausalChain } from './voter-protocol/impact-agent';
+export type {
+	ImpactAssessment,
+	LegislativeOutcome,
+	CausalChain
+} from './voter-protocol/impact-agent';
 
 export { ReputationAgent } from './voter-protocol/reputation-agent';
 export type { CredibilityAssessment, ERC8004Attestation } from './voter-protocol/reputation-agent';
 
 // Type guards
 export type { VerificationSource } from './shared/type-guards';
-export { extractSupplyDecision, extractMarketDecision, extractImpactDecision } from './shared/type-guards';
+export {
+	extractSupplyDecision,
+	extractMarketDecision,
+	extractImpactDecision
+} from './shared/type-guards';
 
 // Import agents for coordinator
 import { VerificationAgent } from './voter-protocol/verification-agent';
@@ -46,11 +58,15 @@ import { SupplyAgent } from './voter-protocol/supply-agent';
 import { MarketAgent } from './voter-protocol/market-agent';
 import { ImpactAgent } from './voter-protocol/impact-agent';
 import { ReputationAgent } from './voter-protocol/reputation-agent';
-import { extractSupplyDecision, extractMarketDecision, extractImpactDecision } from './shared/type-guards';
+import {
+	extractSupplyDecision,
+	extractMarketDecision,
+	extractImpactDecision
+} from './shared/type-guards';
 
 /**
  * VOTER Protocol Agent Coordinator
- * 
+ *
  * Future on-chain coordination for rewards and reputation.
  * Keep this for future integration but not used in off-chain MVP.
  */

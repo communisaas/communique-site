@@ -5,11 +5,13 @@
 ## User Flows
 
 ### New Visitor
+
 ```
 Shared link → Preview template → OAuth login → Send message → Earn rewards
 ```
 
-### Returning User  
+### Returning User
+
 ```
 Shared link → Auto-recognized → Send message → Earn rewards
 ```
@@ -25,17 +27,20 @@ Shared link → Auto-recognized → Send message → Earn rewards
 ## Technical Implementation
 
 ### State Management
+
 - Guest state persisted 7 days in localStorage
 - Pending intent saved for post-OAuth return
 - Source tracking (social/direct/share)
 
 ### Components
+
 - **Guest state**: `src/lib/stores/guestState.svelte.ts`
 - **Auth modal**: `src/lib/components/auth/OnboardingModal.svelte`
 - **Template modal**: `src/lib/components/template/TemplateModal.svelte`
 - **Session management**: `src/lib/core/auth/auth.ts`
 
 ### Deep Links
+
 - Landing: `/{slug}` - Template preview page
 - Direct action: `/template-modal/{slug}` - Requires auth
 - Parameters:
@@ -45,6 +50,7 @@ Shared link → Auto-recognized → Send message → Earn rewards
 ## Analytics
 
 Tracked events:
+
 - `template_viewed` - Landing page view
 - `auth_completed` - OAuth success
 - `template_used` - Message sent

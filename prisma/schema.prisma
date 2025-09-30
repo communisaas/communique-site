@@ -1016,3 +1016,22 @@ model AgentPerformance {
   @@map("agent_performance")
   @@index([agent])
 }
+
+// CWC Job Status Tracking for Async Submissions
+model CWCJob {
+  id            String   @id @default(cuid())
+  templateId    String   @map("template_id")
+  userId        String   @map("user_id")
+  status        String   @default("queued") // 'queued', 'processing', 'completed', 'partial', 'failed'
+  messageIds    Json     @default("[]") @map("message_ids") // SQS message IDs array
+  results       Json?    @default("{}") @map("results") // Submission results from Lambda workers
+  submissionCount Int    @default(0) @map("submission_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+  completedAt   DateTime? @map("completed_at")
+  
+  @@map("cwc_job")
+  @@index([templateId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}

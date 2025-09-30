@@ -5,7 +5,10 @@
 /**
  * Extract a user-friendly error message from various error types
  */
-export function formatErrorMessage(error: unknown, fallback = 'An unexpected error occurred'): string {
+export function formatErrorMessage(
+	error: unknown,
+	fallback = 'An unexpected error occurred'
+): string {
 	// If it's already a string, return it
 	if (typeof error === 'string') {
 		return error;
@@ -79,7 +82,11 @@ export function formatErrorMessage(error: unknown, fallback = 'An unexpected err
 /**
  * Safely display an error in a toast notification
  */
-export function toastError(toast: { error: (message: string) => void }, error: unknown, fallback?: string) {
+export function toastError(
+	toast: { error: (message: string) => void },
+	error: unknown,
+	fallback?: string
+) {
 	const message = formatErrorMessage(error, fallback);
 	toast.error(message);
 }

@@ -59,10 +59,10 @@
 
 	let hovered = $state(false);
 	let clicked = $state(false);
-	
+
 	// Select icon component based on prop
 	const iconComponents = {
-		'send': Send,
+		send: Send,
 		'chevrons-down': ChevronsDown
 	};
 	const IconComponent = icon ? iconComponents[icon] : undefined;
@@ -80,7 +80,7 @@
 	let planeRotation = spring(0, { stiffness: 0.35, damping: 0.6 });
 	let planeScale = spring(1, { stiffness: 0.3, damping: 0.7 });
 	let planeBlur = spring(0, { stiffness: 0.4, damping: 0.8 });
-	
+
 	// Chevrons animation for scroll/reveal action
 	let chevronsY = spring(0, { stiffness: 0.3, damping: 0.8 });
 	let chevronsScale = spring(1, { stiffness: 0.3, damping: 0.8 });
@@ -401,7 +401,7 @@
 				chevronsY.set(4);
 				chevronsScale.set(0.98);
 				chevronsOpacity.set(0.7);
-				
+
 				setTimeout(() => {
 					// Bounce down
 					chevronsY.set(6);
@@ -409,7 +409,7 @@
 					chevronsOpacity.set(1);
 					buttonScale.set(1);
 				}, 150);
-				
+
 				setTimeout(() => {
 					// Spring back
 					chevronsY.set(0);
@@ -460,7 +460,7 @@
 						flightState = 'returning';
 					}
 				}, 1900);
-				
+
 				// Complete the return to ready state after spring settles
 				setTimeout(() => {
 					if (flightState === 'returning') {
@@ -573,7 +573,9 @@
 	{#if IconComponent && animationType !== 'chevrons'}
 		<!-- Flight icon - absolute positioned for flight animation -->
 		<span
-			class="pointer-events-none absolute z-50 {enableFlight && flightState !== 'ready' && flightState !== 'returning'
+			class="pointer-events-none absolute z-50 {enableFlight &&
+			flightState !== 'ready' &&
+			flightState !== 'returning'
 				? 'transition-all duration-500 ease-out'
 				: ''}"
 			style="
@@ -581,11 +583,13 @@
 				right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
 				transform: translate({$planeX}px, calc(-50% + {$planeY}px)) rotate({$planeRotation}deg) scale({$planeScale});
 				opacity: {enableFlight ? $planeOpacity : 1};
-				filter: blur({enableFlight ? $planeBlur : 0}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {enableFlight && flightState !== 'ready'
+				filter: blur({enableFlight
+				? $planeBlur
+				: 0}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {enableFlight && flightState !== 'ready'
 				? 0.6
 				: 0}));
 				transform-origin: center;
-				color: {(variant === 'magical' || variant === 'verified')
+				color: {variant === 'magical' || variant === 'verified'
 				? enableFlight && (flightState === 'ready' || flightState === 'returning')
 					? 'white'
 					: enableFlight && flightState === 'taking-off'
@@ -660,7 +664,7 @@
 							style="
 								transform: translateY({$chevronsY}px) scale({$chevronsScale});
 								opacity: {$chevronsOpacity};
-								color: {(variant === 'magical' || variant === 'verified') ? 'white' : 'currentColor'};
+								color: {variant === 'magical' || variant === 'verified' ? 'white' : 'currentColor'};
 							"
 						>
 							<IconComponent class="h-5 w-5" />
@@ -735,7 +739,7 @@
 							style="
 								transform: translateY({$chevronsY}px) scale({$chevronsScale});
 								opacity: {$chevronsOpacity};
-								color: {(variant === 'magical' || variant === 'verified') ? 'white' : 'currentColor'};
+								color: {variant === 'magical' || variant === 'verified' ? 'white' : 'currentColor'};
 							"
 						>
 							<IconComponent class="h-5 w-5" />

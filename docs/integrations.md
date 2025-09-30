@@ -12,19 +12,21 @@
 **Universal flow**: Open user's mail client with prepared message. Backend adapters handle certified submissions.
 
 ### US Congress (Current)
+
 - **Address lookup**: Census Geocoding API → district → representatives
 - **CWC submission**: Generate XML for Communicating with Congress API
 - **Components**:
   - Address validation: `src/lib/congress/address-lookup.ts`
   - CWC generator: `src/lib/congress/cwc-generator.ts`
   - API routes: `src/routes/api/civic/*`
-- **Flow**: 
+- **Flow**:
   1. Geocode address → find district
   2. Look up House rep + 2 Senators
   3. Format for CWC (prefix, topic, delivery method)
   4. Submit and return cryptographic receipt
 
 ### Future Adapters (Planned)
+
 - **Westminster** (UK/Canada/Australia): Postcode → constituency → MP
 - **European Parliament**: Country/region → MEPs with multi-language support
 - **Direct Democracy**: Initiative tracking and signature collection
@@ -56,11 +58,13 @@
 **External service that orchestrates the entire template processing pipeline.**
 
 ### Architecture
+
 - **Deployment**: Fly.io (`communique-n8n.fly.dev`)
 - **Communication**: Webhook-based with Communique APIs
 - **Purpose**: Orchestrates agents, CWC submission, status tracking
 
 ### Workflow Stages
+
 1. **Template Submission** → N8N webhook trigger
 2. **Consensus Stage** → Calls `/api/n8n/process-template?stage=consensus`
    - Triggers multi-agent voting (OpenAI + Gemini + Claude)
@@ -71,6 +75,7 @@
    - Broadcasts updates via WebSocket
 
 ### N8N Configuration
+
 ```env
 N8N_INSTANCE_URL=https://communique-n8n.fly.dev
 N8N_WEBHOOK_SECRET=shared-secret
@@ -78,11 +83,13 @@ COMMUNIQUE_API_URL=https://api.communi.email
 ```
 
 ### Webhook Endpoints
+
 - **Process**: `/api/n8n/process-template` - Main processing endpoint
 - **Status**: `/api/webhooks/n8n/status` - Workflow progress updates
 - **Moderation**: `/api/webhooks/template-moderation` - Direct trigger (testing)
 
 ### Flow Example
+
 ```
 [N8N Webhook] → [HTTP Request: Consensus] → [Switch: Approved?]
                                                 ├─Yes→ [CWC Submit]

@@ -46,16 +46,19 @@ test.describe('Basic E2E Functionality', () => {
 		// Check that either contact congress or send email button is visible
 		const contactButton = page.getByTestId('contact-congress-button');
 		const emailButton = page.getByTestId('send-email-button');
-		
-		const hasContactButton = await contactButton.count() > 0;
-		const hasEmailButton = await emailButton.count() > 0;
-		
+
+		const hasContactButton = (await contactButton.count()) > 0;
+		const hasEmailButton = (await emailButton.count()) > 0;
+
 		expect(hasContactButton || hasEmailButton).toBe(true);
 	});
 
 	test('should handle navigation between templates', async ({ page }: { page: Page }) => {
 		// Click first template
-		await page.getByTestId(/^template-button-/).first().click();
+		await page
+			.getByTestId(/^template-button-/)
+			.first()
+			.click();
 		await page.waitForTimeout(500);
 
 		// Verify preview is visible
@@ -64,10 +67,10 @@ test.describe('Basic E2E Functionality', () => {
 
 		// Click second template if available
 		const secondTemplate = page.getByTestId(/^template-button-/).nth(1);
-		if (await secondTemplate.count() > 0) {
+		if ((await secondTemplate.count()) > 0) {
 			await secondTemplate.click();
 			await page.waitForTimeout(500);
-			
+
 			// Preview should still be visible
 			await expect(templatePreview).toBeVisible();
 		}
@@ -76,11 +79,11 @@ test.describe('Basic E2E Functionality', () => {
 	test('should handle template retry on error', async ({ page }: { page: Page }) => {
 		// Check for retry button in case templates fail to load
 		const retryButton = page.getByTestId('retry-templates-button');
-		
+
 		if (await retryButton.isVisible()) {
 			await retryButton.click();
 			await page.waitForTimeout(2000);
-			
+
 			// Should still show template section after retry
 			const templateSection = page.getByTestId('template-section');
 			await expect(templateSection).toBeVisible();
@@ -89,7 +92,7 @@ test.describe('Basic E2E Functionality', () => {
 
 	test('should navigate to profile page', async ({ page }: { page: Page }) => {
 		await page.goto('/profile');
-		
+
 		// Profile page should load (may redirect to auth)
 		// Just check page doesn't crash
 		await expect(page.locator('body')).toBeVisible();
@@ -97,10 +100,10 @@ test.describe('Basic E2E Functionality', () => {
 
 	test('should navigate to analytics page', async ({ page }: { page: Page }) => {
 		await page.goto('/analytics');
-		
+
 		// Analytics page should load
 		await expect(page.locator('body')).toBeVisible();
-		
+
 		// Should have some content (not just empty body)
 		const content = await page.textContent('body');
 		expect(content?.trim().length).toBeGreaterThan(0);
@@ -109,11 +112,11 @@ test.describe('Basic E2E Functionality', () => {
 	test('should handle mobile responsive design', async ({ page }: { page: Page }) => {
 		// Test mobile viewport
 		await page.setViewportSize({ width: 375, height: 667 });
-		
+
 		// Template section should still be visible on mobile
 		const templateSection = page.getByTestId('template-section');
 		await expect(templateSection).toBeVisible();
-		
+
 		// Templates list should be visible on mobile
 		const templatesList = page.getByTestId('template-list');
 		await expect(templatesList).toBeVisible();

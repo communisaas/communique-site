@@ -17,37 +17,37 @@ VOTER Protocol Smart Contracts (Ronin)
 ## Core Components
 
 ### Deterministic Address Generation
+
 Each user gets a blockchain address without a wallet:
+
 ```typescript
 const userBlockchainAddress = generateDeterministicAddress(
-  userId,
-  process.env.PRIVATE_KEY_ENCRYPTION_KEY
+	userId,
+	process.env.PRIVATE_KEY_ENCRYPTION_KEY
 );
 ```
 
 ### Smart Contract Integration
 
 **Primary Contracts**:
+
 - `CommuniqueCore`: Central coordination and reward distribution
 - `VOTERToken`: ERC-20 governance token with staking
 - `VOTERRegistry`: Identity and action verification
 
 **Key Functions**:
+
 ```typescript
 // Process civic action and mint rewards
 await communiqueCore.processCivicAction({
-  user: userAddress,
-  actionType: 'congressional_contact',
-  verificationProof: cwcReceipt,
-  rewardAmount: calculatedReward
+	user: userAddress,
+	actionType: 'congressional_contact',
+	verificationProof: cwcReceipt,
+	rewardAmount: calculatedReward
 });
 
 // Update reputation
-await voterRegistry.updateReputation(
-  userAddress,
-  reputationScore,
-  actionContext
-);
+await voterRegistry.updateReputation(userAddress, reputationScore, actionContext);
 ```
 
 ## Server Proxy Architecture
@@ -80,12 +80,14 @@ GET /api/civic/reputation/:userId
 ## Security Model
 
 ### Private Key Management
+
 - Master key encrypted and stored securely
 - Per-user deterministic derivation
 - Keys never exposed to frontend
 - All signing happens server-side
 
 ### Transaction Security
+
 ```typescript
 // Server-side transaction signing
 const tx = await contract.populateTransaction.processCivicAction(...);
@@ -99,10 +101,10 @@ Rewards determined by VOTER Protocol agents:
 
 ```typescript
 const context = {
-  actionType: 'congressional_contact',
-  templateQuality: moderationScore,
-  userReputation: reputationScore,
-  marketConditions: currentSupply
+	actionType: 'congressional_contact',
+	templateQuality: moderationScore,
+	userReputation: reputationScore,
+	marketConditions: currentSupply
 };
 
 const reward = await supplyAgent.calculateReward(context);
@@ -112,12 +114,14 @@ const reward = await supplyAgent.calculateReward(context);
 ## Error Handling
 
 ### Blockchain Failures
+
 - Automatic retry with exponential backoff
 - Fallback to queue for later processing
 - User sees success immediately (optimistic UI)
 - Background reconciliation
 
 ### Gas Management
+
 - Platform pays all gas fees
 - Batched transactions for efficiency
 - Gas price monitoring and limits
@@ -125,6 +129,7 @@ const reward = await supplyAgent.calculateReward(context);
 ## Monitoring
 
 Track key metrics:
+
 - Transaction success rate
 - Gas costs per action
 - Reward distribution
@@ -134,6 +139,7 @@ Track key metrics:
 ## Development Setup
 
 ### Local Testing
+
 ```bash
 # Use local Anvil node
 anvil --fork-url https://ronin-mainnet.com
@@ -147,29 +153,33 @@ CONTRACT_ADDRESS=0x...
 ```
 
 ### Integration Testing
+
 ```typescript
 // Mock blockchain in tests
 vi.mock('$lib/server/blockchain', () => ({
-  processCivicAction: vi.fn().mockResolvedValue({
-    success: true,
-    txHash: '0x123...',
-    reward: 100
-  })
+	processCivicAction: vi.fn().mockResolvedValue({
+		success: true,
+		txHash: '0x123...',
+		reward: 100
+	})
 }));
 ```
 
 ## Common Issues
 
 **"User has no blockchain address"**
+
 - Check deterministic address generation
 - Verify encryption key is set
 
 **"Transaction failed"**
+
 - Check gas limits
 - Verify contract state
 - Review error logs
 
 **"Rewards not showing"**
+
 - Check block confirmations
 - Verify event indexing
 - Review reward calculation
