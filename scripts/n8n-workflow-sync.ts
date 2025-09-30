@@ -202,7 +202,7 @@ function createMultiAgentWorkflow(): N8NWorkflow {
 					modelId: {
 						'__rl': true,
 						mode: 'list',
-						value: 'gemini-1.5-flash'
+						value: 'gemini-2.5-flash-lite-preview-09-2025'
 					},
 					messages: {
 						values: [
@@ -316,7 +316,7 @@ return {
 					modelId: {
 						'__rl': true,
 						mode: 'list',
-						value: 'claude-3-5-sonnet-20241022'
+						value: 'claude-sonnet-4.5'
 					},
 					messages: {
 						values: [
