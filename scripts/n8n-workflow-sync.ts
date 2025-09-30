@@ -43,7 +43,10 @@ interface N8NWorkflow {
 		position: [number, number];
 		parameters: Record<string, unknown>;
 	}>;
-	connections: Record<string, { main: Array<Array<{ node: string; type: string; index: number }>> }>;
+	connections: Record<
+		string,
+		{ main: Array<Array<{ node: string; type: string; index: number }>> }
+	>;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -111,9 +114,9 @@ async function clearAllWorkflows(): Promise<void> {
  * Create the new multi-agent consensus workflow
  * Uses N8N's native AI nodes instead of callbacks to Communique
  */
-function createMultiAgentWorkflow(): N8NWorkflow {
+function createMultiAgentWorkflow(): Omit<N8NWorkflow, 'id' | 'createdAt' | 'updatedAt' | 'active'> {
 	return {
-		name: 'Multi-Agent Template Moderation',
+		name: 'Multi-LLM Consensus Moderation',
 		settings: {
 			executionOrder: 'v1'
 		},
@@ -131,28 +134,45 @@ function createMultiAgentWorkflow(): N8NWorkflow {
 				}
 			},
 			{
-				id: 'set_variables',
-				name: 'Set Variables',
-				type: 'n8n-nodes-base.set',
-				typeVersion: 1,
+				id: 'route_detection',
+				name: 'Route Detection',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
 				position: [450, 300],
 				parameters: {
-					values: {
-						string: [
-							{
-								name: 'templateId',
-								value: '={{$json.templateId}}'
-							},
-							{
-								name: 'userId',
-								value: '={{$json.userId}}'
-							},
-							{
-								name: 'submissionId',
-								value: '=sub_{{Date.now()}}_{{Math.random().toString(36).substring(2)}}'
-							}
-						]
-					}
+					mode: 'runOnceForAllItems',
+					language: 'javaScript',
+					jsCode: `// Detect delivery route from recipients
+const recipients = $json.recipients || [];
+const templateId = $json.templateId;
+const userId = $json.userId;
+
+// Check for congressional indicators
+const congressionalIndicators = ['bioguideId', 'congress.gov', '.house.gov', '.senate.gov'];
+const isCongressional = recipients.some(r => 
+  congressionalIndicators.some(indicator => 
+    JSON.stringify(r).includes(indicator)
+  )
+);
+
+const routeType = isCongressional ? 'congressional' : 'direct_outreach';
+
+// Estimate token length for cost optimization
+const template = $json.template || {};
+const messageBody = template.message_body || template.body || '';
+const estimatedTokens = Math.ceil(messageBody.length / 4); // Rough estimate: 4 chars per token
+
+return {
+  json: {
+    templateId,
+    userId,
+    routeType,
+    estimatedTokens,
+    template: $json.template,
+    recipients,
+    submissionId: \`sub_\${Date.now()}_\${Math.random().toString(36).substring(2)}\`
+  }
+};`
 				}
 			},
 			{
@@ -181,109 +201,69 @@ function createMultiAgentWorkflow(): N8NWorkflow {
 				}
 			},
 			{
-				id: 'openai_moderation',
-				name: 'Classify text for violations',
-				type: '@n8n/n8n-nodes-langchain.openAi',
-				typeVersion: 1.8,
-				position: [896, 144],
-				parameters: {
-					operation: 'classify',
-					simplify: true,
-					options: {}
-				}
-			},
-			{
-				id: 'gemini_analysis',
-				name: 'Message a model',
+				id: 'gemini_safety_triage',
+				name: 'Gemini Safety Triage',
 				type: '@n8n/n8n-nodes-langchain.googleGemini',
 				typeVersion: 1,
-				position: [816, 464],
+				position: [650, 300],
 				parameters: {
 					modelId: {
-						'__rl': true,
+						__rl: true,
 						mode: 'list',
-						value: 'gemini-2.5-flash-lite-preview-09-2025'
+						value: 'gemini-2.5-flash'
 					},
 					messages: {
 						values: [
 							{
 								role: 'user',
-								content: "Analyze this civic template for appropriateness. Return ONLY valid JSON in this exact format: {\"approved\": boolean, \"confidence\": number, \"reasoning\": \"string\"}.\n\nTemplate content:\n={{$node['Get Template'].json.message_body}}"
+								content:
+									"You are a safety triage system. Quickly assess this template for obvious violations.\n\nTemplate: {{$node['Get Template'].json.message_body}}\nRoute: {{$node['Route Detection'].json.routeType}}\n\nRate ONLY:\n- threat_level: 0-10 (0=safe, 10=clear threat)\n- violation_type: none|threat|harassment|doxxing|spam\n- safety_status: SAFE|REVIEW|BLOCK"
 							}
 						]
 					},
 					options: {
-						temperature: 0.2,
-						maxTokens: 500
+						temperature: 0.1,
+						maxTokens: 200
 					}
 				}
 			},
 			{
-				id: 'check_consensus',
-				name: 'Check Consensus',
+				id: 'parse_gemini_safety',
+				name: 'Parse Gemini Safety',
 				type: 'n8n-nodes-base.code',
 				typeVersion: 2,
-				position: [1050, 250],
+				position: [850, 300],
 				parameters: {
 					mode: 'runOnceForAllItems',
 					language: 'javaScript',
-					jsCode: `// Multi-agent consensus logic
-const openaiResult = $node['Classify text for violations'].json;
-const geminiResult = $node['Message a model'].json;
+					jsCode: `// Parse Gemini safety response
+const response = $node['Gemini Safety Triage'].json.response || $node['Gemini Safety Triage'].json.text || '';
 
-// OpenAI vote (using moderation API)
-const openaiVote = {
-  agent: 'openai',
-  approved: !openaiResult.flagged,
-  confidence: openaiResult.flagged ? 0.1 : 0.9,
-  reasoning: openaiResult.flagged ? 
-    \`Flagged for: \${Object.keys(openaiResult.categories || {}).filter(c => openaiResult.categories[c]).join(', ')}\` :
-    'Content appears appropriate'
-};
+// Extract structured data using regex patterns
+const threatMatch = response.match(/threat_level:\\s*(\\d+)/i);
+const violationMatch = response.match(/violation_type:\\s*(\\w+)/i);
+const statusMatch = response.match(/safety_status:\\s*(\\w+)/i);
 
-// Parse Gemini response (LangChain node format)
-let geminiAnalysis;
-try {
-  const geminiText = geminiResult.response || geminiResult.text || '{"approved": false, "confidence": 0, "reasoning": "No response"}';
-  geminiAnalysis = JSON.parse(geminiText);
-} catch (e) {
-  geminiAnalysis = { approved: false, confidence: 0, reasoning: "Failed to parse Gemini response" };
-}
+const threat_level = threatMatch ? parseInt(threatMatch[1]) : 0;
+const violation_type = violationMatch ? violationMatch[1].toLowerCase() : 'none';
+const safety_status = statusMatch ? statusMatch[1].toUpperCase() : 'SAFE';
 
-const geminiVote = {
-  agent: 'gemini',
-  approved: geminiAnalysis.approved,
-  confidence: geminiAnalysis.confidence,
-  reasoning: geminiAnalysis.reasoning
-};
-
-// Check if we have consensus
-const consensus = openaiVote.approved === geminiVote.approved;
-
-// Calculate weighted approval (OpenAI 40%, Gemini 35%, Claude 25% if needed)
-const weightedScore = (openaiVote.approved ? 0.4 : 0) + (geminiVote.approved ? 0.35 : 0);
-
-// Prepare output
 return {
   json: {
-    consensus,
-    needsTiebreaker: !consensus,
-    votes: [openaiVote, geminiVote],
-    consensusType: consensus ? 'unanimous' : 'pending',
-    approved: consensus ? openaiVote.approved : null,
-    weightedScore,
-    templateId: $node['Set Variables'].json.templateId,
-    submissionId: $node['Set Variables'].json.submissionId
+    threat_level,
+    violation_type,
+    safety_status,
+    raw_response: response
   }
 };`
 				}
 			},
 			{
-				id: 'tiebreaker_needed',
-				name: 'Tiebreaker Needed?',
+				id: 'safety_decision',
+				name: 'Safety Decision',
 				type: 'n8n-nodes-base.if',
 				typeVersion: 2,
-				position: [1250, 250],
+				position: [1050, 300],
 				parameters: {
 					conditions: {
 						options: {
@@ -293,11 +273,11 @@ return {
 						},
 						conditions: [
 							{
-								id: 'tiebreaker-condition',
-								leftValue: '={{$json.needsTiebreaker}}',
-								rightValue: true,
+								id: 'safety-condition',
+								leftValue: "={{$node['Parse Gemini Safety'].json.safety_status}}",
+								rightValue: 'SAFE',
 								operator: {
-									type: 'boolean',
+									type: 'string',
 									operation: 'equals'
 								}
 							}
@@ -307,14 +287,103 @@ return {
 				}
 			},
 			{
-				id: 'claude_tiebreaker',
-				name: 'Message a model1',
-				type: '@n8n/n8n-nodes-langchain.anthropic',
+				id: 'gpt5_contextual_analysis',
+				name: 'GPT-5 Contextual Analysis',
+				type: '@n8n/n8n-nodes-langchain.openAi',
 				typeVersion: 1,
-				position: [1408, 112],
+				position: [1250, 200],
 				parameters: {
 					modelId: {
-						'__rl': true,
+						__rl: true,
+						mode: 'list',
+						value: 'gpt-5'
+					},
+					messages: {
+						values: [
+							{
+								role: 'user',
+								content:
+									"You are an expert in nuanced content analysis. Analyze this template for sophisticated judgment.\n\nTemplate: {{$node['Get Template'].json.message_body}}\nRoute: {{$node['Route Detection'].json.routeType}}\nSafety Assessment: {{$node['Parse Gemini Safety'].json}}\n\nProvide nuanced analysis:\n- intent_assessment: legitimate|borderline|problematic\n- context_appropriateness: appropriate|needs_review|inappropriate\n- democratic_value: high|medium|low|none\n- recommendation: approve|review|block"
+							}
+						]
+					},
+					options: {
+						temperature: 0.2,
+						maxTokens: 400
+					}
+				}
+			},
+			{
+				id: 'parse_gpt5_analysis',
+				name: 'Parse GPT-5 Analysis',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				position: [1450, 200],
+				parameters: {
+					mode: 'runOnceForAllItems',
+					language: 'javaScript',
+					jsCode: `// Parse GPT-5 analysis response
+const response = $node['GPT-5 Contextual Analysis'].json.response || $node['GPT-5 Contextual Analysis'].json.text || '';
+
+// Extract structured data using regex patterns
+const intentMatch = response.match(/intent_assessment:\\s*(\\w+)/i);
+const contextMatch = response.match(/context_appropriateness:\\s*(\\w+)/i);
+const valueMatch = response.match(/democratic_value:\\s*(\\w+)/i);
+const recommendationMatch = response.match(/recommendation:\\s*(\\w+)/i);
+
+const intent_assessment = intentMatch ? intentMatch[1].toLowerCase() : 'legitimate';
+const context_appropriateness = contextMatch ? contextMatch[1].toLowerCase() : 'appropriate';
+const democratic_value = valueMatch ? valueMatch[1].toLowerCase() : 'medium';
+const recommendation = recommendationMatch ? recommendationMatch[1].toLowerCase() : 'approve';
+
+return {
+  json: {
+    intent_assessment,
+    context_appropriateness,
+    democratic_value,
+    recommendation,
+    raw_response: response
+  }
+};`
+				}
+			},
+			{
+				id: 'route_check',
+				name: 'Route Check',
+				type: 'n8n-nodes-base.if',
+				typeVersion: 2,
+				position: [1650, 200],
+				parameters: {
+					conditions: {
+						options: {
+							caseSensitive: true,
+							leftValue: '',
+							typeValidation: 'strict'
+						},
+						conditions: [
+							{
+								id: 'route-condition',
+								leftValue: "={{$node['Route Detection'].json.routeType}}",
+								rightValue: 'direct_outreach',
+								operator: {
+									type: 'string',
+									operation: 'equals'
+								}
+							}
+						],
+						combinator: 'and'
+					}
+				}
+			},
+			{
+				id: 'claude_quality_analysis',
+				name: 'Claude Quality Analysis',
+				type: '@n8n/n8n-nodes-langchain.anthropic',
+				typeVersion: 1,
+				position: [1850, 100],
+				parameters: {
+					modelId: {
+						__rl: true,
 						mode: 'list',
 						value: 'claude-sonnet-4.5'
 					},
@@ -322,7 +391,8 @@ return {
 						values: [
 							{
 								role: 'user',
-								content: "You are a tiebreaker for content moderation. OpenAI voted: {{$node['Check Consensus'].json.votes[0].approved}} ({{$node['Check Consensus'].json.votes[0].reasoning}}). Gemini voted: {{$node['Check Consensus'].json.votes[1].approved}} ({{$node['Check Consensus'].json.votes[1].reasoning}}). Analyze this civic template and cast the deciding vote. Return ONLY valid JSON in this exact format: {\"approved\": boolean, \"confidence\": number, \"reasoning\": \"string\"}.\n\nTemplate content:\n{{$node['Get Template'].json.message_body}}"
+								content:
+									"You are a professional communication expert. Assess this template for professional standards and credibility.\n\nTemplate: {{$node['Get Template'].json.message_body}}\nRoute: {{$node['Route Detection'].json.routeType}}\nGPT-5 Analysis: {{$node['Parse GPT-5 Analysis'].json}}\n\nEvaluate:\n- professional_tone: excellent|good|needs_improvement|poor\n- grammar_quality: excellent|good|needs_improvement|poor\n- stakeholder_credibility: high|medium|low\n- grammar_corrections: [list of specific corrections needed]\n- final_recommendation: approve|approve_with_edits|reject"
 							}
 						]
 					},
@@ -333,65 +403,128 @@ return {
 				}
 			},
 			{
-				id: 'final_consensus',
-				name: 'Final Consensus',
+				id: 'parse_claude_quality',
+				name: 'Parse Claude Quality',
 				type: 'n8n-nodes-base.code',
 				typeVersion: 2,
-				position: [1650, 250],
+				position: [2050, 100],
 				parameters: {
 					mode: 'runOnceForAllItems',
 					language: 'javaScript',
-					jsCode: `// Combine all votes including tiebreaker if needed
-const baseVotes = $node['Check Consensus'].json.votes;
-const needsTiebreaker = $node['Check Consensus'].json.needsTiebreaker;
+					jsCode: `// Parse Claude quality response
+const response = $node['Claude Quality Analysis'].json.response || $node['Claude Quality Analysis'].json.text || '';
 
-let finalApproved = $node['Check Consensus'].json.approved;
-let consensusType = $node['Check Consensus'].json.consensusType;
-let allVotes = [...baseVotes];
+// Extract structured data using regex patterns
+const toneMatch = response.match(/professional_tone:\\s*(\\w+)/i);
+const grammarMatch = response.match(/grammar_quality:\\s*(\\w+)/i);
+const credibilityMatch = response.match(/stakeholder_credibility:\\s*(\\w+)/i);
+const recommendationMatch = response.match(/final_recommendation:\\s*(\\w+(?:_\\w+)*)/i);
 
-if (needsTiebreaker && $node['Message a model1']) {
-  const claudeResponse = $node['Message a model1'].json;
-  
-  // Parse Claude response (LangChain node format)
-  let claudeAnalysis;
-  try {
-    const claudeText = claudeResponse.response || claudeResponse.text || '{"approved": false, "confidence": 0, "reasoning": "No response"}';
-    claudeAnalysis = JSON.parse(claudeText);
-  } catch (e) {
-    claudeAnalysis = { approved: false, confidence: 0, reasoning: "Failed to parse Claude response" };
-  }
-  
-  const claudeVote = {
-    agent: 'claude',
-    approved: claudeAnalysis.approved,
-    confidence: claudeAnalysis.confidence,
-    reasoning: claudeAnalysis.reasoning
-  };
-  
-  allVotes.push(claudeVote);
-  
-  // Calculate final weighted score with Claude (25% weight)
-  const weightedScore = 
-    (allVotes[0].approved ? 0.4 : 0) +  // OpenAI 40%
-    (allVotes[1].approved ? 0.35 : 0) + // Gemini 35%
-    (claudeVote.approved ? 0.25 : 0);   // Claude 25%
-  
-  finalApproved = weightedScore >= 0.5;
-  consensusType = finalApproved ? 'majority' : 'rejected';
-}
+// Extract grammar corrections if present
+const correctionsMatch = response.match(/grammar_corrections:\\s*\\[([^\\]]*)\\]/i);
+const grammar_corrections = correctionsMatch ? 
+  correctionsMatch[1].split(',').map(s => s.trim().replace(/['"]/g, '')) : [];
 
-// Calculate total cost (estimated)
-const totalCost = 0.00105 + (needsTiebreaker ? 0.0004 : 0);
+const professional_tone = toneMatch ? toneMatch[1].toLowerCase() : 'good';
+const grammar_quality = grammarMatch ? grammarMatch[1].toLowerCase() : 'good';
+const stakeholder_credibility = credibilityMatch ? credibilityMatch[1].toLowerCase() : 'medium';
+const final_recommendation = recommendationMatch ? recommendationMatch[1].toLowerCase() : 'approve';
 
 return {
   json: {
-    approved: finalApproved,
-    consensusType,
-    votes: allVotes,
-    totalCost,
-    severity: finalApproved ? 1 : 10,
-    templateId: $node['Check Consensus'].json.templateId,
-    submissionId: $node['Check Consensus'].json.submissionId
+    professional_tone,
+    grammar_quality,
+    stakeholder_credibility,
+    grammar_corrections,
+    final_recommendation,
+    raw_response: response
+  }
+};`
+				}
+			},
+			{
+				id: 'consensus_decision',
+				name: 'Consensus Decision',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 2,
+				position: [1850, 300],
+				parameters: {
+					mode: 'runOnceForAllItems',
+					language: 'javaScript',
+					jsCode: `// Multi-LLM consensus logic
+const routeType = $node['Route Detection'].json.routeType;
+const geminiSafety = $node['Parse Gemini Safety'].json;
+const gpt5Analysis = $node['Parse GPT-5 Analysis'].json;
+
+// Base decision from Gemini + GPT-5
+let finalDecision = 'approve';
+let reasoning = [];
+let approved = true;
+
+// Check safety first
+if (geminiSafety.safety_status === 'BLOCK') {
+  finalDecision = 'block';
+  approved = false;
+  reasoning.push(\`Safety violation: \${geminiSafety.violation_type}\`);
+}
+
+// Check GPT-5 recommendation
+if (gpt5Analysis.recommendation === 'block') {
+  finalDecision = 'block';
+  approved = false;
+  reasoning.push('GPT-5 recommends blocking due to content issues');
+} else if (gpt5Analysis.recommendation === 'review') {
+  // For review cases, err on side of caution
+  finalDecision = 'block';
+  approved = false;
+  reasoning.push('GPT-5 flagged for review - blocking to be safe');
+}
+
+// For direct route, check Claude quality assessment
+if (routeType === 'direct_outreach' && $node['Parse Claude Quality']) {
+  const claudeQuality = $node['Parse Claude Quality'].json;
+  
+  if (claudeQuality.final_recommendation === 'reject') {
+    finalDecision = 'block';
+    approved = false;
+    reasoning.push('Claude recommends rejection due to quality/professional issues');
+  } else if (claudeQuality.final_recommendation === 'approve_with_edits') {
+    finalDecision = 'approve_with_edits';
+    reasoning.push('Claude recommends approval with grammar corrections');
+  }
+}
+
+// Default to approval if no blocks
+if (reasoning.length === 0) {
+  reasoning.push('All AI agents approve the template');
+}
+
+// Prepare comprehensive output
+return {
+  json: {
+    approved,
+    finalDecision,
+    routeType,
+    reasoning: reasoning.join('; '),
+    safetyAssessment: geminiSafety,
+    contextualAnalysis: gpt5Analysis,
+    qualityAnalysis: routeType === 'direct_outreach' ? ($node['Parse Claude Quality']?.json || null) : null,
+    templateId: $node['Route Detection'].json.templateId,
+    submissionId: $node['Route Detection'].json.submissionId,
+    estimatedCost: routeType === 'congressional' ? 0.006 : 0.015, // Rough cost estimate
+    consensusType: approved ? 'approved' : 'rejected',
+    votes: [
+      {
+        agent: 'gemini',
+        approved: geminiSafety.safety_status === 'SAFE',
+        reasoning: \`Safety assessment: \${geminiSafety.safety_status}\`
+      },
+      {
+        agent: 'gpt5',
+        approved: gpt5Analysis.recommendation === 'approve',
+        reasoning: \`Contextual analysis: \${gpt5Analysis.recommendation}\`
+      }
+    ]
   }
 };`
 				}
@@ -595,7 +728,7 @@ return $input.all();`
 					mode: 'runOnceForAllItems',
 					language: 'javaScript',
 					jsCode: `// Format the final response with all consensus and async job data
-const consensusData = $node['Final Consensus'].json;
+const consensusData = $node['Consensus Decision'].json;
 const cwcAsyncResult = $node['Submit to CWC (Async)'] ? $node['Submit to CWC (Async)'].json : null;
 const jobStatusResult = $node['Poll Job Status'] ? $node['Poll Job Status'].json : null;
 
@@ -613,8 +746,10 @@ return {
       approved: consensusData.approved,
       consensusType: consensusData.consensusType,
       votes: consensusData.votes,
-      totalCost: consensusData.totalCost,
-      severity: consensusData.severity
+      estimatedCost: consensusData.estimatedCost,
+      reasoning: consensusData.reasoning,
+      finalDecision: consensusData.finalDecision,
+      routeType: consensusData.routeType
     },
     cwc: {
       submitted: cwcSubmitted,
@@ -654,38 +789,45 @@ return {
 		],
 		connections: {
 			'Webhook Trigger': {
-				main: [[{ node: 'Set Variables', type: 'main', index: 0 }]]
+				main: [[{ node: 'Route Detection', type: 'main', index: 0 }]]
 			},
-			'Set Variables': {
+			'Route Detection': {
 				main: [[{ node: 'Get Template', type: 'main', index: 0 }]]
 			},
 			'Get Template': {
+				main: [[{ node: 'Gemini Safety Triage', type: 'main', index: 0 }]]
+			},
+			'Gemini Safety Triage': {
+				main: [[{ node: 'Parse Gemini Safety', type: 'main', index: 0 }]]
+			},
+			'Parse Gemini Safety': {
+				main: [[{ node: 'Safety Decision', type: 'main', index: 0 }]]
+			},
+			'Safety Decision': {
 				main: [
-					[
-						{ node: 'Classify text for violations', type: 'main', index: 0 },
-						{ node: 'Message a model', type: 'main', index: 0 }
-					]
+					[{ node: 'GPT-5 Contextual Analysis', type: 'main', index: 0 }],
+					[{ node: 'Format Response', type: 'main', index: 0 }]
 				]
 			},
-			'Classify text for violations': {
-				main: [[{ node: 'Check Consensus', type: 'main', index: 0 }]]
+			'GPT-5 Contextual Analysis': {
+				main: [[{ node: 'Parse GPT-5 Analysis', type: 'main', index: 0 }]]
 			},
-			'Message a model': {
-				main: [[{ node: 'Check Consensus', type: 'main', index: 0 }]]
+			'Parse GPT-5 Analysis': {
+				main: [[{ node: 'Route Check', type: 'main', index: 0 }]]
 			},
-			'Check Consensus': {
-				main: [[{ node: 'Tiebreaker Needed?', type: 'main', index: 0 }]]
-			},
-			'Tiebreaker Needed?': {
+			'Route Check': {
 				main: [
-					[{ node: 'Message a model1', type: 'main', index: 0 }],
-					[{ node: 'Final Consensus', type: 'main', index: 0 }]
+					[{ node: 'Claude Quality Analysis', type: 'main', index: 0 }],
+					[{ node: 'Consensus Decision', type: 'main', index: 0 }]
 				]
 			},
-			'Message a model1': {
-				main: [[{ node: 'Final Consensus', type: 'main', index: 0 }]]
+			'Claude Quality Analysis': {
+				main: [[{ node: 'Parse Claude Quality', type: 'main', index: 0 }]]
 			},
-			'Final Consensus': {
+			'Parse Claude Quality': {
+				main: [[{ node: 'Consensus Decision', type: 'main', index: 0 }]]
+			},
+			'Consensus Decision': {
 				main: [[{ node: 'Check Approval', type: 'main', index: 0 }]]
 			},
 			'Check Approval': {
@@ -725,7 +867,7 @@ return {
 /**
  * Import a workflow to N8N
  */
-async function importWorkflow(workflow: N8NWorkflow): Promise<void> {
+async function importWorkflow(workflow: Omit<N8NWorkflow, 'id' | 'createdAt' | 'updatedAt' | 'active'>): Promise<void> {
 	const response = await fetch(`${N8N_URL}/api/v1/workflows`, {
 		method: 'POST',
 		headers: {
