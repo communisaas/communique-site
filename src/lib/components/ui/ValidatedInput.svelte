@@ -14,6 +14,9 @@
 		class?: string;
 		style?: string;
 		id?: string;
+		onkeydown?: (event: KeyboardEvent) => void;
+		onclick?: (event: MouseEvent) => void;
+		successMessage?: string; // Custom success message for context-specific validation
 	}
 
 	let {
@@ -28,7 +31,10 @@
 		rows = 4,
 		class: className,
 		style,
-		id
+		id,
+		onkeydown,
+		onclick,
+		successMessage
 	}: Props = $props();
 
 	// Generate unique ID if not provided
@@ -46,8 +52,8 @@
 		'Phone numbers in message text can be harvested by bad actors'
 	];
 
-	// Combine client and server errors
-	const displayError = $derived(serverError || (isTouched ? clientError : null));
+	// Combine client and server errors - hide validation errors when focused
+	const displayError = $derived(serverError || (isTouched && !isFocused ? clientError : null));
 	const hasError = $derived(!!displayError);
 	const isSecurityWarning = $derived(clientError && securityPatterns.includes(clientError));
 	const isValid = $derived(!hasError && isTouched);
@@ -143,6 +149,8 @@
 			oninput={handleInput}
 			onblur={handleBlur}
 			onfocus={handleFocus}
+			{onkeydown}
+			{onclick}
 		></textarea>
 	{:else}
 		<input
@@ -185,7 +193,7 @@
 				<span>{displayError}</span>
 			</div>
 		{/if}
-	{:else if isValid && rules.required}
+	{:else if isValid && rules.required && !isFocused && successMessage}
 		<div class="flex items-center gap-1 text-xs text-green-600 md:text-sm">
 			<svg class="h-3 w-3 flex-shrink-0 md:h-4 md:w-4" viewBox="0 0 20 20" fill="currentColor">
 				<path
@@ -194,7 +202,7 @@
 					clip-rule="evenodd"
 				/>
 			</svg>
-			<span>Looks good!</span>
+			<span>{successMessage}</span>
 		</div>
 	{/if}
 

@@ -397,21 +397,81 @@ npm run lint:strict   # Zero-tolerance ESLint check
 
 ## Environment
 
-Required:
+### Required (Core):
 
 ```bash
-SUPABASE_DATABASE_URL=...
-CWC_API_KEY=...
+SUPABASE_DATABASE_URL=...           # Supabase Postgres connection string
 ```
 
-Feature flags (optional):
+### Congressional Delivery (Optional):
 
 ```bash
-ENABLE_BETA=true        # Enable beta features
-ENABLE_RESEARCH=true    # Enable research features (dev only)
+CWC_API_KEY=...                     # Communicating With Congress API key
+CWC_API_BASE_URL=...                # CWC API base URL (default: https://soapbox.senate.gov/api)
 ```
 
-Optional OAuth keys as needed.
+### OAuth Providers (Optional - any combination):
+
+```bash
+# OAuth Configuration
+OAUTH_REDIRECT_BASE_URL=...         # Base URL for OAuth callbacks (e.g., http://localhost:5173)
+
+# Google OAuth
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+
+# Facebook OAuth
+FACEBOOK_CLIENT_ID=...
+FACEBOOK_CLIENT_SECRET=...
+
+# Twitter OAuth
+TWITTER_CLIENT_ID=...
+TWITTER_CLIENT_SECRET=...
+
+# LinkedIn OAuth
+LINKEDIN_CLIENT_ID=...
+LINKEDIN_CLIENT_SECRET=...
+
+# Discord OAuth
+DISCORD_CLIENT_ID=...
+DISCORD_CLIENT_SECRET=...
+```
+
+### Webhook Security:
+
+```bash
+N8N_WEBHOOK_SECRET=...              # Webhook authentication for N8N integration
+LAMBDA_WEBHOOK_SECRET=...           # AWS Lambda webhook authentication
+VOTER_API_KEY=...                   # VOTER Protocol API authentication
+COMMUNIQUE_API_KEY=...              # Internal API authentication
+```
+
+### Feature Flags:
+
+```bash
+ENABLE_BETA=true                    # Enable beta features (default: false)
+ENABLE_RESEARCH=true                # Enable research features (dev only, default: false)
+NODE_ENV=production                 # Environment (affects OAuth security, logging)
+```
+
+### AWS Infrastructure (Optional):
+
+```bash
+DYNAMO_TABLE_NAME=...               # DynamoDB table for rate limiting
+JOB_STATUS_API_URL=...              # Job status tracking endpoint
+MAX_RETRIES=3                       # Maximum retry attempts for CWC submissions
+RATE_LIMIT_WINDOW_SECONDS=3600      # Rate limit window (default: 1 hour)
+RATE_LIMIT_COUNT=10                 # Rate limit count (default: 10 per hour)
+VISIBILITY_TIMEOUT_SECONDS=300      # SQS visibility timeout (default: 5 minutes)
+```
+
+### N8N Workflow Integration (Optional):
+
+```bash
+N8N_API_KEY=...                     # N8N API key for workflow management
+N8N_AUTH_PASSWORD=...               # Alternative N8N authentication
+FLYIO_N8N_API_KEY=...               # Fly.io-specific N8N API key
+```
 
 ## Architecture (Cypherpunk Democratic Infrastructure)
 
@@ -424,43 +484,118 @@ Optional OAuth keys as needed.
 
 Code map:
 
-- Routes/API: `src/routes/`
-- UI: `src/lib/components/`
-- Core production: `src/lib/core/` (auth, db, legislative)
-- Agent Infrastructure: `src/lib/agents/` (cryptographic coordination, algorithmic verification)
-- Feature-flagged: `src/lib/features/` (OFF/BETA/ROADMAP)
-- Research/experimental: `src/lib/experimental/` (political field, sheaf theory)
-- Tests: `tests/` (integration, unit, e2e, mocks, fixtures)
+- **Routes/API**: `src/routes/` (pages, SSR, API endpoints)
+- **UI Components**: `src/lib/components/` (organized by domain: auth, landing, template, analytics, ui)
+- **Core Production**: `src/lib/core/`
+  - `auth/` - Authentication, OAuth, session management
+  - `analytics/` - Funnel tracking, database analytics
+  - `api/` - Unified API client
+  - `blockchain/` - VOTER Protocol client integration
+  - `congress/` - US Congressional delivery (CWC, address lookup)
+  - `legislative/` - Legislative abstraction layer (adapters, delivery pipeline, variable resolution)
+  - `server/` - Server-side utilities (verification, sentiment, security, metrics)
+  - `db.ts` - Prisma database client
+- **Service Layer**: `src/lib/services/`
+  - `aws/` - AWS integrations (SQS, DynamoDB)
+  - `delivery/` - Email delivery, SMTP server, integration types
+- **Agent Infrastructure**: `src/lib/agents/`
+  - `content/` - Template moderation and consensus
+  - `shared/` - Base agent classes and type guards
+  - `voter-protocol/` - Blockchain reward calculation
+- **State Management**: `src/lib/stores/` (Svelte 5 runes-based)
+- **Utilities**: `src/lib/utils/` (formatting, debounce, portal, template resolution)
+- **Types**: `src/lib/types/` (comprehensive TypeScript definitions)
+- **Feature-flagged**: `src/lib/features/` (ai-suggestions, config)
+- **Research/experimental**: `src/lib/experimental/` (cascade analytics)
+- **Integrations**: `src/lib/integrations/` (VOTER Protocol)
+- **Data**: `src/lib/data/` (static data files)
+- **Actions**: `src/lib/actions/` (Svelte actions)
+- **Tests**: `tests/` (integration, unit, e2e, mocks, fixtures)
 
-## Testing (Revolution: 53→6 files)
+## Agent Architecture (Two-Agent Consensus System)
+
+The platform uses a sophisticated multi-agent system for content moderation and VOTER Protocol integration:
+
+### Agent Types:
+
+- **Content Agents** (`src/lib/agents/content/`): Template moderation and quality assessment
+- **VOTER Protocol Agents** (`src/lib/agents/voter-protocol/`): Blockchain reward calculation and verification
+- **Shared Infrastructure** (`src/lib/agents/shared/`): Base agent classes, type guards, common utilities
+
+### Consensus Mechanism:
+
+```typescript
+// Multi-agent voting for template approval
+const consensusResult = await agentConsensus.processTemplate({
+	template,
+	agents: ['openai', 'gemini', 'claude'],
+	consensusThreshold: 0.67
+});
+
+// Result includes:
+// - approval: boolean
+// - consensusType: 'unanimous' | 'majority' | 'split'
+// - confidence: number
+// - reasoning: string[]
+```
+
+### N8N Workflow Integration:
+
+- **Orchestration**: External N8N instance coordinates agent consensus
+- **Webhook Flow**: Template submission → N8N → Agent consensus → CWC submission
+- **Status Tracking**: Real-time updates via WebSocket broadcasts
+
+### Agent API Endpoints:
 
 ```bash
-npm run test:run         # All tests (production focused)
-npm run test:integration # Integration tests (primary)
-npm run test:unit        # Critical unit tests only
-npm run test:e2e         # End-to-end browser tests
-npm run test:production  # Production features only
-npm run test:beta        # Include beta features
+POST /api/agents/consensus          # Multi-agent template moderation
+POST /api/agents/calculate-reward   # VOTER Protocol reward calculation
+POST /api/agents/track-impact       # Impact verification and scoring
+POST /api/agents/verify             # Identity and action verification
+POST /api/agents/update-reputation  # Reputation score updates
+```
+
+### VOTER Protocol Integration:
+
+- **Deterministic Address Generation**: Wallet-free blockchain participation
+- **Automatic Reward Distribution**: Server-side transaction signing
+- **Reputation Tracking**: Cross-platform ERC-8004 compatible reputation
+- **Gas Management**: Platform pays all transaction fees
+
+## Testing (Integration-First Test Suite)
+
+```bash
+npm run test             # All tests (integration + unit)
+npm run test:run         # All tests (no watch mode)
+npm run test:unit        # Unit tests only
+npm run test:integration # Integration tests only
+npm run test:e2e         # End-to-end browser tests (Playwright)
+npm run test:all         # Complete test suite (unit + integration + e2e)
 npm run test:coverage    # With coverage report
+npm run test:production  # Production features only (ENABLE_BETA=false)
+npm run test:beta        # Include beta features (ENABLE_BETA=true)
+npm run test:ci          # CI pipeline tests (test:run + test:e2e)
+npm run test:health      # Generate health reports in coverage/ directory
+npm run test:drift       # Mock drift detection reports
 ```
 
 ## Database & Seeding
 
 ```bash
-npm run db:generate
-npm run db:push
-npm run db:migrate
-npm run db:studio
-npm run db:seed          # All seed data
-npm run db:seed:core     # Core tables only
-npm run db:seed:channels # Legislative channels
+npm run db:generate      # Generate Prisma client
+npm run db:push          # Push schema changes (development)
+npm run db:migrate       # Create/run migrations (production)
+npm run db:studio        # Open Prisma Studio GUI
+npm run db:seed          # Seed sample data
+npm run db:seed:core     # Same as db:seed (alias)
+npm run db:start         # Start Docker Compose for local database
 ```
 
 ## Feature Development
 
 ```bash
-# Check feature status
-npm run dev  # See FEATURES.md dashboard
+# Standard development
+npm run dev
 
 # Enable beta features in development
 ENABLE_BETA=true npm run dev
@@ -469,11 +604,18 @@ ENABLE_BETA=true npm run dev
 ENABLE_RESEARCH=true npm run dev
 ```
 
+Feature flags control access to:
+
+- **Beta features** (`src/lib/features/`): AI suggestions, template intelligence
+- **Research features** (`src/lib/experimental/`): Cascade analytics, experimental UIs
+
 ## Where to read more
 
-- **Feature Status**: `docs/FEATURES.md`
-- **Reorganization Guide**: `docs/REORGANIZATION.md`
 - **Test Suite**: `tests/README.md`
-- **Database Seeding**: `docs/DATABASE-SEEDING.md`
-- Architecture: `docs/architecture.md`
-- Integrations: `docs/integrations.md`
+- **Database Seeding**: `docs/database-seeding.md`
+- **Architecture**: `docs/architecture.md`
+- **Integrations**: `docs/integrations.md`
+- **Development**: `docs/dev-quickstart.md`
+- **Roadmap**: `docs/roadmap.md`
+- **Agent Architecture**: `docs/agents/agent-architecture.md`
+- **VOTER Protocol**: `docs/integrations/voter-blockchain.md`

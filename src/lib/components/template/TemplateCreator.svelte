@@ -369,7 +369,7 @@
 			{:else if currentStep === 'content'}
 				<MessageEditor data={formData.content} {context} />
 			{:else}
-				<SmartReview data={formData} {context} />
+				<SmartReview data={formData} {context} isActiveStep={currentStep === 'review'} />
 			{/if}
 		</div>
 	</div>

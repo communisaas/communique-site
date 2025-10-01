@@ -3,19 +3,9 @@
  * Provides AI-based template analysis and correction capabilities
  */
 
-interface CorrectionResult {
-	changes: Array<{
-		type: 'grammar' | 'clarity' | 'structure' | 'formatting';
-		reason: string;
-		original?: string;
-		corrected?: string;
-	}>;
-	severity: number;
-	scores: {
-		grammar: number;
-		clarity: number;
-		completeness: number;
-	};
+interface ValidationResult {
+	isValid: boolean;
+	issues: string[];
 }
 
 interface TemplateInput {
@@ -26,61 +16,33 @@ interface TemplateInput {
 }
 
 /**
- * Template correction service with basic analysis capabilities
+ * Template validation service with basic technical checks
  */
-export const templateCorrector = {
+export const templateValidator = {
 	/**
-	 * Analyze and correct template content
+	 * Validate template content against basic requirements
 	 */
-	async detectAndCorrect(template: TemplateInput): Promise<CorrectionResult> {
-		// Basic analysis - can be enhanced with actual AI integration later
+	validate(template: TemplateInput): ValidationResult {
 		const content = template.message_body;
-		const changes: CorrectionResult['changes'] = [];
+		const issues: string[] = [];
 
-		// Basic grammar checks
-		if (content.includes('affect') && content.includes('effect')) {
-			changes.push({
-				type: 'grammar',
-				reason: 'Check affect vs effect usage',
-				original: 'affect/effect',
-				corrected: 'verify correct usage'
-			});
+		// Basic length requirements
+		if (content.trim().length < 20) {
+			issues.push('Message too short—add more detail');
 		}
 
-		// Clarity checks
-		if (content.length > 2000) {
-			changes.push({
-				type: 'clarity',
-				reason: 'Message may be too long for effective reading',
-				original: 'long message',
-				corrected: 'consider shortening'
-			});
+		if (content.trim().length < 50) {
+			issues.push('Recipients need context');
 		}
 
-		// Structure checks
-		if (!content.includes('\n') && content.length > 500) {
-			changes.push({
-				type: 'structure',
-				reason: 'Consider adding paragraph breaks',
-				original: 'wall of text',
-				corrected: 'break into paragraphs'
-			});
+		// Title requirement
+		if (!template.title.trim()) {
+			issues.push('Title required');
 		}
-
-		// Calculate basic severity (1-10 scale)
-		const severity = Math.min(changes.length * 2, 10);
-
-		// Calculate basic scores (0-100 scale)
-		const scores = {
-			grammar: Math.max(100 - changes.filter((c) => c.type === 'grammar').length * 10, 60),
-			clarity: Math.max(100 - changes.filter((c) => c.type === 'clarity').length * 10, 60),
-			completeness: Math.max(100 - changes.filter((c) => c.type === 'structure').length * 10, 60)
-		};
 
 		return {
-			changes,
-			severity,
-			scores
+			isValid: issues.length === 0,
+			issues
 		};
 	}
 };

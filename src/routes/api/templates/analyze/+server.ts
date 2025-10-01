@@ -1,8 +1,8 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { templateCorrector } from '$lib/services/template-correction';
+import { templateValidator } from '$lib/services/template-correction';
 import { createApiError, type ApiResponse } from '$lib/types/errors';
-import type { UnknownRecord, AnyFunction } from '$lib/types/any-replacements';
+import type { UnknownRecord } from '$lib/types/any-replacements';
 
 interface AnalyzeRequest {
 	title: string;
@@ -88,8 +88,22 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		let corrections;
 		if (isCertifiedDelivery) {
-			// Full agent analysis for congressional templates
-			corrections = await (templateCorrector as AnyFunction).detectAndCorrect(mockTemplate);
+			// Basic validation for congressional templates
+			const validation = templateValidator.validate(mockTemplate);
+			corrections = {
+				changes: validation.issues.map(issue => ({
+					type: 'structure',
+					reason: issue,
+					original: '',
+					corrected: ''
+				})),
+				severity: validation.isValid ? 1 : 3,
+				scores: {
+					grammar: validation.isValid ? 95 : 70,
+					clarity: validation.isValid ? 90 : 60,
+					completeness: validation.isValid ? 85 : 50
+				}
+			};
 		} else {
 			// Lightweight analysis for direct outreach
 			corrections = {
