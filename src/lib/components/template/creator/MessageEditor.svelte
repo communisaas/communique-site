@@ -332,8 +332,8 @@
 					<div
 						class="animate-fade-in pointer-events-auto max-w-xs rounded-lg border border-purple-200 bg-purple-50/95 px-2 py-1 text-xs text-purple-700 backdrop-blur-sm"
 					>
-						<span class="font-medium">💡 Examples:</span>
-						<span class="text-purple-600">"As a parent..." "Living here 15 years..."</span>
+						<span class="font-medium">💡 Tip:</span>
+						<span class="text-purple-600">Sender will add their personal connection here</span>
 					</div>
 				{:else}
 					<div></div>
