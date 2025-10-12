@@ -45,6 +45,23 @@ export interface DatabaseMock {
 	analytics_event: {
 		create: ReturnType<typeof vi.fn>;
 		createMany: ReturnType<typeof vi.fn>;
+		findMany: ReturnType<typeof vi.fn>;
+		findUnique: ReturnType<typeof vi.fn>;
+		count: ReturnType<typeof vi.fn>;
+	};
+	analytics_session: {
+		create: ReturnType<typeof vi.fn>;
+		findUnique: ReturnType<typeof vi.fn>;
+		findMany: ReturnType<typeof vi.fn>;
+		update: ReturnType<typeof vi.fn>;
+		upsert: ReturnType<typeof vi.fn>;
+		delete: ReturnType<typeof vi.fn>;
+	};
+	analytics_experiment: {
+		create: ReturnType<typeof vi.fn>;
+		findUnique: ReturnType<typeof vi.fn>;
+		findMany: ReturnType<typeof vi.fn>;
+		update: ReturnType<typeof vi.fn>;
 	};
 }
 
@@ -115,7 +132,24 @@ class MockRegistry {
 			},
 			analytics_event: {
 				create: vi.fn(),
-				createMany: vi.fn().mockResolvedValue({ count: 0 })
+				createMany: vi.fn().mockResolvedValue({ count: 0 }),
+				findMany: vi.fn().mockResolvedValue([]),
+				findUnique: vi.fn(),
+				count: vi.fn().mockResolvedValue(0)
+			},
+			analytics_session: {
+				create: vi.fn(),
+				findUnique: vi.fn(),
+				findMany: vi.fn().mockResolvedValue([]),
+				update: vi.fn(),
+				upsert: vi.fn(),
+				delete: vi.fn()
+			},
+			analytics_experiment: {
+				create: vi.fn(),
+				findUnique: vi.fn(),
+				findMany: vi.fn().mockResolvedValue([]),
+				update: vi.fn()
 			}
 		};
 	}

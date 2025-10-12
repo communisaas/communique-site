@@ -13,9 +13,9 @@ test.describe('Congressional Delivery E2E', () => {
 		const templatesList = page.getByTestId('template-list');
 		await expect(templatesList).toBeVisible();
 
-		// Click on a template to select it
-		const templateButton = page.getByTestId(/^template-button-/).first();
-		await expect(templateButton).toBeVisible();
+		// Click on a template to select it (deterministic)
+		await page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first().waitFor({ state: 'visible' });
+		const templateButton = page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first();
 		await templateButton.click();
 
 		// Check template preview loads
@@ -36,11 +36,17 @@ test.describe('Congressional Delivery E2E', () => {
 		// Navigate to auth-required page (profile requires auth)
 		await page.goto('/profile');
 
-		// Should redirect to auth or show auth modal
-		// TODO: Implement based on actual auth UX
+		// Should redirect to homepage for unauthenticated users (as per current implementation)
+		await expect(async () => {
+			const url = page.url();
+			// Profile page redirects unauthenticated users to homepage
+			const isValidUrl = url.includes('/') && !url.includes('/profile');
+			expect(isValidUrl).toBe(true);
+		}).toPass({ timeout: 5000 });
 
-		// Placeholder assertion - profile page or redirect
-		await expect(page).toHaveURL(/\/(auth|login|profile)/);
+		// Verify we're on homepage after redirect
+		const templateSection = page.getByTestId('template-section');
+		await expect(templateSection).toBeVisible();
 	});
 
 	test('should display analytics page', async ({ page }: { page: Page }) => {

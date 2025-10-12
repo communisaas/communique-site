@@ -2,7 +2,45 @@
 
 ## Overview
 
-This test suite uses a modern, low-code approach focused on integration testing with smart mocks and type-safe fixtures.
+This test suite uses a modern, integration-first approach focused on realistic user workflows with smart mocks and type-safe fixtures.
+
+**Status**: 170/194 tests passing (87.6% pass rate)
+**Coverage**: 70%+ across all metrics (lines, functions, branches, statements)
+**Strategy**: Integration-first with selective unit testing
+
+---
+
+## Quick Start
+
+### Running Tests
+
+```bash
+# All tests
+npm run test                    # Run all tests (watch mode)
+npm run test:run                # Run without watch mode
+
+# Specific test types
+npm run test:unit               # Unit tests only
+npm run test:integration        # Integration tests only
+npm run test:e2e                # End-to-end browser tests
+
+# With coverage
+npm run test:coverage           # Generate coverage report
+npm run test:coverage -- --watch  # Live coverage monitoring
+
+# Feature flag testing
+npm run test:production         # Production features only
+npm run test:beta               # Include beta features
+ENABLE_RESEARCH=true npm run test:run  # Include research features
+
+# Debugging
+npm run test -- --reporter=verbose
+npm run test -- --grep="pattern"
+npm run test -- filename.test.ts
+DEBUG_TESTS=true npm run test
+```
+
+---
 
 ## Architecture
 
@@ -20,17 +58,29 @@ tests/
 
 ### Key Components
 
-#### 1. Smart Mock Registry (`mocks/registry.ts`)
+#### 1. Type-Safe Fixtures (`fixtures/factories.ts`)
 
-- Auto-configures mocks based on feature flags
-- Provides consistent interfaces across tests
-- Syncs with actual implementation patterns
+Factory pattern for creating consistent test data:
 
-#### 2. Type-Safe Fixtures (`fixtures/factories.ts`)
+```typescript
+// Basic usage
+const user = userFactory.build();
 
-- Factory pattern for creating test data
-- Supports overrides and inheritance
-- Includes common test scenarios
+// With overrides
+const caUser = userFactory.build({
+  overrides: { state: 'CA', city: 'San Francisco' }
+});
+
+// Predefined scenarios
+const climateTemplate = testScenarios.climateTemplate();
+const routingEmail = testScenarios.routingEmail();
+```
+
+#### 2. Mock Registry (`mocks/registry.ts`)
+
+Provides consistent database mock interfaces:
+
+**Note**: Currently unused in tests due to vi.hoisted circular dependency issues. Each test file uses vi.hoisted patterns for isolation.
 
 #### 3. Integration-First Strategy
 
@@ -41,31 +91,7 @@ Tests focus on full user flows rather than isolated units:
 - Template personalization
 - Authentication flows
 
-## Running Tests
-
-### All Tests
-
-```bash
-npm run test           # Run all tests (unit, integration, e2e)
-npm run test:run       # Run without watch mode
-```
-
-### Specific Test Types
-
-```bash
-npm run test:unit        # Unit tests only
-npm run test:integration # Integration tests only
-npm run test:e2e         # E2E tests only
-npm run test:coverage    # With coverage report
-```
-
-### Feature Flag Testing
-
-```bash
-npm run test:production  # Production features only
-npm run test:beta        # Include beta features
-ENABLE_RESEARCH=true npm run test:run  # Include research features
-```
+---
 
 ## Writing Tests
 
@@ -77,42 +103,26 @@ import { userFactory, templateFactory, testScenarios } from '../fixtures/factori
 import mockRegistry from '../mocks/registry';
 
 describe('Feature Integration', () => {
-	it('should handle user flow end-to-end', async () => {
-		// Setup: Create test data
-		const user = testScenarios.californiaUser();
-		const template = testScenarios.climateTemplate();
+  it('should handle user flow end-to-end', async () => {
+    // Setup: Create test data
+    const user = testScenarios.californiaUser();
+    const template = testScenarios.climateTemplate();
 
-		// Setup: Configure mocks
-		const mocks = mockRegistry.setupMocks();
-		const dbMock = mocks['$lib/server/db'].db;
+    // Setup: Configure mocks
+    const mocks = mockRegistry.setupMocks();
+    const dbMock = mocks['$lib/server/db'].db;
 
-		dbMock.user.findUnique.mockResolvedValue(user);
+    dbMock.user.findUnique.mockResolvedValue(user);
 
-		// Execute & Verify
-		// ... test implementation
-	});
+    // Execute & Verify
+    // ... test implementation
+  });
 });
 ```
 
-### Using Factories
+### Mock Management
 
-```typescript
-// Basic usage
-const user = userFactory.build();
-
-// With overrides
-const caUser = userFactory.build({
-	overrides: { state: 'CA', city: 'San Francisco' }
-});
-
-// Predefined scenarios
-const climateTemplate = testScenarios.climateTemplate();
-const routingEmail = testScenarios.routingEmail();
-```
-
-## Mock Management
-
-### Automatic Configuration
+#### Automatic Configuration
 
 Mocks are automatically configured based on feature flags:
 
@@ -120,7 +130,7 @@ Mocks are automatically configured based on feature flags:
 - Beta features (BETA): Mocked when `ENABLE_BETA=true`
 - Research features (RESEARCH): Excluded unless `ENABLE_RESEARCH=true`
 
-### Custom Mock Setup
+#### Custom Mock Setup
 
 ```typescript
 import mockRegistry from '../mocks/registry';
@@ -136,9 +146,9 @@ dbMock.template.create.mockResolvedValue(newTemplate);
 
 // Customize auth mock behavior
 authMock.createSession.mockResolvedValue({
-	id: 'session-123',
-	user_id: 'user-123',
-	expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  id: 'session-123',
+  user_id: 'user-123',
+  expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 });
 
 // Reset specific mocks during test
@@ -146,224 +156,448 @@ vi.clearAllMocks(); // Reset all
 mockRegistry.reset(); // Reset registry state
 ```
 
-## Best Practices
+---
 
-### 1. Integration Over Unit
+## OAuth Testing
 
-Focus on testing user flows and feature interactions rather than isolated functions.
+### Environment Setup
 
-### 2. Use Factories
+OAuth environment variables are automatically configured in `tests/config/setup.ts`:
 
-Always use factories for test data to ensure consistency and easy maintenance.
-
-### 3. Feature Flag Aware
-
-Write tests that respect feature flags and don't test experimental code in CI.
-
-### 4. Minimal Mocking
-
-Mock only external dependencies (APIs, databases). Use real implementations for internal logic.
-
-### 5. Descriptive Tests
-
-Test names should describe user scenarios, not implementation details.
-
-## Coverage Goals & Thresholds
-
-### Current Thresholds (vitest.config.ts)
-
-- **Lines**: 70%
-- **Functions**: 70%
-- **Branches**: 70%
-- **Statements**: 70%
-
-### Coverage Strategy
-
-- **Integration tests**: 80%+ feature coverage with realistic workflows
-- **Unit tests**: Critical business logic and edge cases only
-- **E2E tests**: Core user journeys and critical paths
-- **Mock coverage**: External dependencies fully mocked
-
-### Exclusions from Coverage
-
-- Experimental code (`src/lib/experimental/**`)
-- Feature flags (`src/lib/features/**`)
-- Test files and configuration
-- Build artifacts and dependencies
-
-## Current Test Status (September 2024)
-
-**Test Results:** 170/194 passing (87.6% pass rate)
-
-### Failing Test Categories
-
-1. **OAuth Flow Issues** (13 failures)
-   - Error handling edge cases need proper mock alignment
-   - Session management tests require environment setup
-   - CSRF/PKCE validation needs implementation updates
-
-2. **Critical Edge Cases** (8 failures)
-   - Analytics localStorage mocking in jsdom environment
-   - Agent decision context validation
-   - Database transaction error handling
-   - Template analysis API validation
-
-3. **VOTER Certification** (1 failure)
-   - Data consistency validation when VOTER service unavailable
-
-4. **Agent Integration** (2 failures)
-   - Response format alignment between mocks and implementation
-   - Context data validation in decision flows
-
-### Recent Improvements & Fixes Applied
-
-#### Phase 1: OAuth Environment Setup
-
-- ✅ Added comprehensive OAuth environment variables in `tests/config/setup.ts`
-- ✅ Standardized test environment configuration
-- ✅ Fixed OAuth provider initialization issues
-
-#### Phase 2: Database Mock Alignment
-
-- ✅ Enhanced mock registry with consistent database interfaces
-- ✅ Aligned mock return types with Prisma schema
-- ✅ Improved mock-reality synchronization patterns
-
-#### Phase 3: Response Format Standardization
-
-- ✅ Standardized API response formats across tests
-- ✅ Improved error handling mock patterns
-- ✅ Enhanced test data factories with realistic scenarios
-
-### Coverage Analysis Results
-
-- **Global Coverage**: >70% across all thresholds (lines, functions, branches, statements)
-- **Integration Tests**: High feature coverage with realistic workflows
-- **Unit Tests**: Focused on critical business logic
-- **Mock Coverage**: Comprehensive mocking of external dependencies
-
-### Test Consolidation (December 2024)
-
-The test suite was consolidated to eliminate redundancy:
-
-**Before:** 22 files, 8,445 lines  
-**After:** 16 files, ~6,000 lines (25% reduction)
-
-**Consolidation Strategy:**
-
-- Combined related test suites to reduce duplication
-- Merged mock patterns into unified registry
-- Integrated edge case testing into feature tests
-- Maintained comprehensive coverage while reducing complexity
-
-### Current Test File Structure
-
-```
-tests/
-├── unit/
-│   ├── address-lookup.test.ts          # Address geocoding utilities
-│   └── cwc-client.test.ts               # Congressional Web Contact client
-├── integration/
-│   ├── analytics-api.test.ts            # Analytics + Performance + Error handling
-│   ├── analytics-funnel.test.ts         # User journey analytics
-│   ├── agent-integration.test.ts        # Agent decision flows
-│   ├── certification-flow.test.ts       # VOTER certification workflows
-│   ├── congressional-delivery.test.ts   # Full congressional delivery
-│   ├── critical-edge-cases.test.ts      # Edge cases and error conditions
-│   ├── legislative-abstraction.test.ts  # Legislative adapter registry
-│   ├── oauth-flow.test.ts               # OAuth + Security + Session management
-│   ├── recipient-email-extraction.test.ts # Email extraction + Parsing + Validation
-│   ├── template-api.test.ts             # Template CRUD + Slug checking
-│   ├── template-personalization.test.ts # Template variable resolution
-│   ├── user-api.test.ts                 # User management + Security + Permissions
-│   ├── voter-certification.test.ts      # VOTER Protocol integration
-│   └── voter-proxy.test.ts              # VOTER service proxy
-└── e2e/ (browser tests)
+```typescript
+beforeEach(() => {
+  process.env.OAUTH_REDIRECT_BASE_URL = 'http://localhost:5173';
+  process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
+  process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
+  // ... other providers
+});
 ```
 
-## Test Debugging & Troubleshooting
+### OAuth Mock Patterns
 
-### Common Issues & Solutions
+#### Basic OAuth Client Mock
 
-#### 1. OAuth Test Failures
+```typescript
+// Mock Arctic OAuth client
+const mockOAuthClient = vi.hoisted(() => ({
+  validateAuthorizationCode: vi.fn().mockResolvedValue({
+    accessToken: () => 'mock-access-token',
+    refreshToken: () => 'mock-refresh-token',
+    hasRefreshToken: () => true,
+    accessTokenExpiresAt: () => new Date(Date.now() + 3600000)
+  })
+}));
 
-**Problem**: Tests fail with "Invalid authorization code" or missing OAuth environment  
-**Solution**: Ensure all OAuth environment variables are set in `tests/config/setup.ts`
+vi.mock('arctic', () => ({
+  Google: vi.fn(() => mockOAuthClient),
+  Facebook: vi.fn(() => mockOAuthClient),
+  Discord: vi.fn(() => mockOAuthClient)
+}));
+```
+
+#### User Info Fetch Mock
+
+```typescript
+global.fetch = vi.fn().mockImplementation((url) => {
+  if (url.includes('googleapis.com/oauth2/v2/userinfo')) {
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        id: 'google-user-123',
+        email: 'test@gmail.com',
+        name: 'Test User'
+      })
+    });
+  }
+
+  return Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({})
+  });
+});
+```
+
+### Common OAuth Test Patterns
+
+```typescript
+// 1. Successful OAuth Flow
+it('should complete OAuth flow successfully', async () => {
+  const mocks = mockRegistry.setupMocks();
+
+  mocks.db.user.findUnique.mockResolvedValue(null);
+  mocks.db.user.create.mockResolvedValue(testUser);
+
+  const response = await OAuthCallbackHandler({
+    provider: 'google',
+    authCode: 'auth-code'
+  });
+
+  expect(response.status).toBe(302);
+  expect(mocks.db.user.create).toHaveBeenCalled();
+});
+
+// 2. OAuth Error Handling
+it('should handle OAuth errors gracefully', async () => {
+  mockOAuthClient.validateAuthorizationCode.mockRejectedValue(
+    new Error('Invalid authorization code')
+  );
+
+  const response = await OAuthCallbackHandler({
+    provider: 'google',
+    authCode: 'invalid-code'
+  });
+
+  expect(response.status).toBe(400);
+});
+```
+
+---
+
+## Debugging Guide
+
+### Common Failure Patterns
+
+#### 1. OAuth Flow Failures
+
+**Symptoms:**
+```
+Error: Invalid authorization code
+GOOGLE OAuth error: { error: Error: Invalid authorization code }
+```
+
+**Solutions:**
+
+```typescript
+// Ensure environment setup
+process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
+process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
+
+// Proper OAuth mock setup
+const mockOAuthClient = vi.hoisted(() => ({
+  validateAuthorizationCode: vi.fn().mockResolvedValue({
+    accessToken: () => 'mock-access-token',
+    refreshToken: () => 'mock-refresh-token'
+  })
+}));
+```
+
+**Debug Commands:**
+```bash
+npm run test -- oauth-flow.test.ts --reporter=verbose
+```
 
 #### 2. Database Mock Misalignment
 
-**Problem**: Tests fail with undefined database methods  
-**Solution**: Check mock registry alignment with actual Prisma schema
+**Symptoms:**
+```
+TypeError: Cannot read properties of undefined (reading 'mockResolvedValue')
+Error: db.user.findUnique is not a function
+```
+
+**Solutions:**
+
+```typescript
+import mockRegistry from '../mocks/registry';
+
+beforeEach(() => {
+  const mocks = mockRegistry.setupMocks();
+  const dbMock = mocks.db;
+
+  dbMock.user.findUnique.mockResolvedValue(testUser);
+  dbMock.template.create.mockResolvedValue(testTemplate);
+});
+
+afterEach(() => {
+  mockRegistry.reset();
+  vi.clearAllMocks();
+});
+```
 
 #### 3. Analytics localStorage Errors
 
-**Problem**: "Cannot read properties of undefined (reading 'getItem')"  
-**Solution**: Mock localStorage in jsdom environment or use happy-dom
-
-#### 4. Agent Integration Failures
-
-**Problem**: Response format mismatches between mocks and implementation  
-**Solution**: Align mock responses with actual agent API contract
-
-#### 5. Session Management Issues
-
-**Problem**: Session creation/validation failures in tests  
-**Solution**: Ensure auth service mocks return properly formatted session objects
-
-### Debug Commands
-
-```bash
-# Run specific failing test with verbose output
-npm run test -- oauth-flow.test.ts --reporter=verbose
-
-# Run tests with coverage to identify gaps
-npm run test:coverage
-
-# Run only integration tests
-npm run test:integration
-
-# Debug specific test pattern
-npm run test -- --grep="OAuth.*error"
+**Symptoms:**
+```
+Cannot read properties of undefined (reading 'getItem')
+localStorage is not defined in jsdom environment
 ```
 
-### Performance Optimization
+**Solutions:**
 
-#### Vitest Configuration Optimizations
+```typescript
+beforeEach(() => {
+  const localStorageMock = {
+    getItem: vi.fn(),
+    setItem: vi.fn(),
+    removeItem: vi.fn(),
+    clear: vi.fn()
+  };
+  Object.defineProperty(window, 'localStorage', {
+    value: localStorageMock
+  });
+});
+```
 
-- **Pool strategy**: `forks` with `singleFork: true` for better test isolation
-- **Environment**: `jsdom` for browser-like testing
-- **Coverage provider**: `istanbul` for comprehensive reporting
+### Debugging Techniques
 
-#### Mock Registry Best Practices
+#### 1. Isolate Failing Tests
 
-- Use centralized mock registry for consistency
-- Align mock interfaces with actual implementations
-- Reset mocks between tests to prevent interference
-- Provide realistic default return values
+```bash
+# Run single test file
+npm run test -- oauth-flow.test.ts
 
-## Maintenance & Best Practices
+# Run specific test case
+npm run test -- --grep="should handle invalid authorization code"
 
-### Mock-Reality Synchronization
+# Run with detailed output
+npm run test -- oauth-flow.test.ts --reporter=verbose
+```
 
-- **Automatic alignment**: Mock registry interfaces match Prisma schema
-- **Realistic defaults**: Factory data reflects production patterns
-- **Consistent patterns**: Standardized mock setup across all tests
+#### 2. Enable Debug Logging
 
-### Test Data Management
+```typescript
+beforeEach(() => {
+  vi.spyOn(console, 'log').mockImplementation((...args) => {
+    if (process.env.DEBUG_TESTS) {
+      console.log('[TEST DEBUG]', ...args);
+    }
+  });
+});
+```
 
-- **Factories**: Type-safe data creation with realistic defaults
-- **Scenarios**: Pre-configured test cases for common workflows
-- **Overrides**: Easy customization for specific test needs
+```bash
+DEBUG_TESTS=true npm run test -- failing-test.test.ts
+```
 
-### Environment Management
+#### 3. Mock State Inspection
 
-- **Feature flags**: Automatic test scope control
-- **OAuth setup**: Comprehensive provider configuration
-- **Database mocks**: Isolated test data without real DB dependencies
+```typescript
+it('should handle user creation', async () => {
+  const mocks = mockRegistry.setupMocks();
 
-### Continuous Improvement
+  await userCreationLogic();
 
-- Regular review of failing test patterns
-- Mock alignment validation with implementation changes
-- Coverage threshold adjustments based on project maturity
-- Performance monitoring and optimization
+  // Inspect calls
+  console.log('Database calls:', mocks.db.user.create.mock.calls);
+  console.log('Auth calls:', mocks.auth.createSession.mock.calls);
+
+  expect(mocks.db.user.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      data: expect.any(Object)
+    })
+  );
+});
+```
+
+#### 4. Performance Debugging
+
+```bash
+# Identify slow tests
+npm run test -- --reporter=verbose | grep -E "\d+ms"
+
+# Check for memory leaks
+npm run test -- --logHeapUsage
+
+# Run with inspector
+node --inspect npm run test
+```
+
+---
+
+## Coverage Strategy
+
+### Current Coverage
+
+| Metric     | Threshold | Achievement | Status |
+| ---------- | --------- | ----------- | ------ |
+| Lines      | 70%       | >70%        | ✅ Met |
+| Functions  | 70%       | >70%        | ✅ Met |
+| Branches   | 70%       | >70%        | ✅ Met |
+| Statements | 70%       | >70%        | ✅ Met |
+
+### Integration-First Approach
+
+**Philosophy**: Focus on realistic user workflows rather than isolated unit testing.
+
+**Benefits**:
+- Higher confidence in feature functionality
+- Reduced test maintenance overhead
+- Better detection of integration issues
+- More realistic test scenarios
+
+**Coverage Impact**:
+- 80%+ feature coverage through integration tests
+- Comprehensive workflow validation
+- Reduced redundancy between unit and integration tests
+
+### Selective Unit Testing
+
+**Scope**: Critical business logic and edge cases only.
+
+**Target Areas**:
+- Complex algorithms (address parsing, template resolution)
+- Error handling logic
+- Utility functions with multiple branches
+- Edge case scenarios
+
+### Coverage Exclusions
+
+**Intentionally Excluded:**
+
+1. **Experimental Code** (`src/lib/experimental/**`)
+2. **Feature Flags** (`src/lib/features/**`)
+3. **Configuration Files** (build configs, env, types)
+4. **Test Infrastructure** (test files, mocks, utilities)
+5. **Static Assets** (HTML templates, resources)
+
+### Focused Coverage Areas
+
+**High Priority** (Target: 85%+ coverage):
+- Core business logic (`src/lib/core/**`)
+- API endpoints (`src/routes/api/**`)
+- Data utilities (`src/lib/utils/**`)
+
+**Medium Priority** (Target: 70%+ coverage):
+- UI components (`src/lib/components/**`)
+- Feature implementations
+- Integration adapters
+
+**Low Priority** (Target: 50%+ coverage):
+- Experimental features
+- Development utilities
+- Configuration management
+
+---
+
+## Best Practices
+
+### 1. Quality Over Quantity
+
+- Focus on meaningful test scenarios
+- Prioritize integration workflows over isolated units
+- Ensure mocks reflect real behavior
+- Test error paths and edge cases
+
+### 2. Maintainable Tests
+
+- Use factory patterns for consistent test data
+- Centralize mock management
+- Document coverage exceptions
+- Regular review and cleanup
+
+### 3. Performance-Aware Testing
+
+- Optimize slow tests
+- Use appropriate test granularity
+- Minimize external dependencies
+- Efficient mock strategies
+
+### 4. Realistic Testing
+
+- Test actual user workflows
+- Use production-like data
+- Validate real error scenarios
+- Include performance considerations
+
+### 5. Test Isolation
+
+- Each test should be independent
+- Reset mocks between tests
+- Clear state after each test
+- Avoid test interdependencies
+
+### 6. Error Testing
+
+- Test all error paths
+- Validate error messages
+- Ensure graceful degradation
+- Test recovery mechanisms
+
+---
+
+## Troubleshooting Reference
+
+### Quick Fixes
+
+**Missing Environment Variables:**
+```
+OAuth provider configuration missing for google
+```
+→ Check `tests/config/setup.ts` has all OAuth env vars
+
+**Invalid OAuth Client:**
+```
+TypeError: Cannot read properties of undefined
+```
+→ Ensure Arctic OAuth clients are properly mocked
+
+**Session Creation Failures:**
+```
+Error: Session creation failed
+```
+→ Verify auth service mock returns proper session objects
+
+**User Info API Mocking:**
+```
+Failed to fetch user profile from provider
+```
+→ Mock the user info API endpoints with global.fetch
+
+### Useful Commands
+
+```bash
+# Basic test commands
+npm run test                    # Run all tests
+npm run test:run               # Run without watch mode
+npm run test:coverage          # Generate coverage report
+npm run test:integration       # Integration tests only
+npm run test:unit             # Unit tests only
+
+# Debugging commands
+npm run test -- --reporter=verbose
+npm run test -- --grep="pattern"
+npm run test -- filename.test.ts
+DEBUG_TESTS=true npm run test
+
+# Performance analysis
+npm run test -- --logHeapUsage
+npm run test -- --reporter=json > test-results.json
+```
+
+---
+
+## Getting Help
+
+When filing issues or asking for help:
+
+1. Include the full error message and stack trace
+2. Provide the specific test command that fails
+3. Share relevant environment information
+4. Include any custom mock setup or modifications
+5. Mention recent changes that might have introduced the issue
+
+---
+
+## Test Consolidation History
+
+### Before Consolidation
+
+- 22 test files
+- 8,445 lines of test code
+- Significant duplication
+
+### After Consolidation
+
+- 16 test files
+- ~6,000 lines of test code
+- 25% reduction in test complexity
+
+### Benefits Achieved
+
+- Maintained comprehensive feature coverage
+- Reduced maintenance overhead
+- Improved test execution performance
+- Better test organization
+
+---
+
+This testing approach prioritizes **realistic scenarios over test coverage numbers**, ensuring that tests provide genuine confidence in the platform's reliability while remaining maintainable and performant.

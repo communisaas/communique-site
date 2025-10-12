@@ -28,6 +28,8 @@
 	let includeAddress = $state(false);
 	let showVariableTip = $state(false);
 	let currentVariableTip = $state<string>('');
+	let showPreview = $state(false);
+	let previewContent = $state<string>('');
 	let tipTimeout: number | null = null;
 	let codeMirrorInsertVariable: ((variable: string) => void) | undefined = $state();
 	let codeMirrorAppendToDocument: ((text: string, preserveCursor?: boolean) => void) | undefined =
@@ -36,16 +38,17 @@
 	// Spring animations for micro-interactions
 	const buttonScale = spring(1, { stiffness: 0.4, damping: 0.7 });
 	const tipScale = spring(0, { stiffness: 0.3, damping: 0.6 });
+	const previewScale = spring(0, { stiffness: 0.3, damping: 0.6 });
 
-	// Core variables that auto-fill from user profile
+	// Core variables that are ALWAYS included in templates
 	const coreVariables = ['[Name]', '[Personal Connection]'];
-	// Address is optional - useful but not required for all advocacy messages
-	const optionalVariables = ['[Address]'];
+	// Address is essential for government communications (constituent verification)
+	const addressVariable = ['[Address]'];
 	const congressionalVariables = ['[Representative]'];
 
 	const isCongressional = $derived(context.channelId === 'certified');
 	const availableVariables = $derived.by(() => {
-		const vars = [...coreVariables, ...optionalVariables];
+		const vars = [...coreVariables, ...addressVariable];
 		if (isCongressional) vars.push(...congressionalVariables);
 		return vars;
 	});
@@ -83,11 +86,9 @@
 				}
 			}
 
-			// Add signature with Name if missing
+			// Add signature with Name if missing (Address handled separately by handleAddressToggle)
 			if (needsName) {
-				const signatureText = includeAddress
-					? 'Sincerely,\n[Name]\n[Address]'
-					: 'Sincerely,\n[Name]';
+				const signatureText = 'Sincerely,\n[Name]';
 
 				if (!currentPreview.match(/\n\n(?:Sincerely|Best regards|Thank you)/)) {
 					textToAppend += `\n\n${signatureText}`;
@@ -95,7 +96,7 @@
 					// Need to modify existing signature - use string replacement
 					const withName = currentPreview.replace(
 						/(\n\n(?:Sincerely|Best regards|Thank you),?\s*)$/m,
-						`$1\n[Name]${includeAddress ? '\n[Address]' : ''}`
+						'$1\n[Name]'
 					);
 					if (withName !== currentPreview) {
 						data.preview = withName;
@@ -115,7 +116,51 @@
 		data.variables = [...new Set(allVariables)];
 	}
 
-	// Removed overlay helper functions - will implement proper CodeMirror solution
+	// Smart Address insertion/removal function
+	function handleAddressToggle() {
+		if (!data.preview) return;
+
+		const hasAddress = data.preview.includes('[Address]');
+		
+		if (includeAddress && !hasAddress) {
+			// Need to add [Address] - find signature and insert after [Name]
+			const signaturePattern = /((?:Sincerely|Best regards|Thank you),?\s*\n\[Name\])/m;
+			const match = data.preview.match(signaturePattern);
+			
+			if (match) {
+				// Insert [Address] after [Name] in existing signature
+				const newContent = data.preview.replace(
+					signaturePattern,
+					'$1\n[Address]'
+				);
+				data.preview = newContent;
+			} else {
+				// No signature found, need to add complete signature block
+				const needsNewline = data.preview.trim() && !data.preview.endsWith('\n\n');
+				const signatureBlock = `${needsNewline ? '\n\n' : ''}Sincerely,\n[Name]\n[Address]`;
+				
+				if (codeMirrorAppendToDocument) {
+					codeMirrorAppendToDocument(signatureBlock, true);
+				} else {
+					data.preview += signatureBlock;
+				}
+			}
+		} else if (!includeAddress && hasAddress) {
+			// Need to remove [Address]
+			// Remove line with [Address], handling various spacing patterns
+			const newContent = data.preview
+				.replace(/\n\[Address\]\n/g, '\n') // Address between other lines
+				.replace(/\n\[Address\]$/g, '') // Address at end
+				.replace(/^\[Address\]\n/g, '') // Address at start (unlikely)
+				.replace(/\[Address\]/g, ''); // Any remaining Address variables
+			
+			data.preview = newContent;
+		}
+		
+		// Keep variables array in sync
+		const allVariables = data.preview.match(/\[.*?\]/g) || [];
+		data.variables = [...new Set(allVariables)];
+	}
 
 	function showVariableTipAnimated(variable: string) {
 		// Clear any existing timeout to handle conflicts
@@ -216,6 +261,12 @@
 		ensureRequiredVariables(data.preview);
 	});
 
+	// Reactive effect to handle Address toggle
+	$effect(() => {
+		// This effect runs when includeAddress changes
+		handleAddressToggle();
+	});
+
 	// Word count excluding variables
 	const wordCount = $derived.by(() => {
 		const withoutVars = data.preview.replace(/\[.*?\]/g, ' ').trim();
@@ -226,6 +277,48 @@
 	// Character count for space awareness
 	const charCount = $derived(data.preview.length);
 
+	// Sample data for preview
+	const sampleData = {
+		'[Name]': 'Jane Smith',
+		'[Personal Connection]': "As a parent of two children in our local schools, I've seen firsthand how this issue affects our community",
+		'[Address]': '123 Main Street, San Francisco, CA 94102',
+		'[Representative]': 'Representative Nancy Pelosi',
+		'[Senator]': 'Senator Alex Padilla',
+		'[City]': 'San Francisco',
+		'[State]': 'CA',
+		'[ZIP]': '94102',
+		'[Congressional District]': 'CA-12'
+	};
+
+	function generatePreview() {
+		if (!data.preview) {
+			previewContent = '';
+			return;
+		}
+
+		// Replace all variables with sample data
+		let preview = data.preview;
+		for (const [variable, value] of Object.entries(sampleData)) {
+			preview = preview.replace(new RegExp(variable.replace(/[\[\]]/g, '\\$&'), 'g'), value);
+		}
+		previewContent = preview;
+	}
+
+	function togglePreview() {
+		if (showPreview) {
+			// Hide preview
+			previewScale.set(0, { duration: 200 }).then(() => {
+				showPreview = false;
+				previewContent = '';
+			});
+		} else {
+			// Generate and show preview
+			generatePreview();
+			showPreview = true;
+			previewScale.set(1, { duration: 300 });
+		}
+	}
+
 	// Removed legacy textarea code - now using CodeMirror
 </script>
 
@@ -233,7 +326,13 @@
 	<!-- Compact Variable Pills Row -->
 	<div class="mb-3 flex-shrink-0">
 		<div class="mb-2 flex items-center justify-between">
-			<span class="text-xs font-medium text-slate-600">Click to insert variables:</span>
+			{#if isCongressional}
+				<span class="text-xs font-medium text-slate-700">
+					Core elements • <span class="text-blue-600 font-semibold">Address validates constituents</span>
+				</span>
+			{:else}
+				<span class="text-xs font-medium text-slate-600">Core elements for your template</span>
+			{/if}
 			<span class="text-xs text-slate-500">Auto-adds as you type</span>
 		</div>
 
@@ -241,7 +340,7 @@
 		<div class="scrollbar-hide flex gap-3 overflow-x-auto px-1 pb-2 sm:hidden">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
-				{@const _isCore = coreVariables.includes(variable)}
+				{@const isCore = coreVariables.includes(variable)}
 				{@const isAddress = variable === '[Address]'}
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
 
@@ -259,7 +358,7 @@
 						class:border-slate-200={!isUsed && !isPersonalConnection}
 						class:text-slate-600={!isUsed && !isPersonalConnection}
 						onclick={() => insertVariable(variable)}
-						disabled={_isCore && isUsed}
+						disabled={isCore && isUsed}
 						style="transform: scale({$buttonScale})"
 					>
 						{#if isUsed}
@@ -299,7 +398,7 @@
 		<div class="hidden flex-wrap items-center gap-2 sm:flex">
 			{#each availableVariables as variable}
 				{@const isUsed = data.variables.includes(variable)}
-				{@const _isCore = coreVariables.includes(variable)}
+				{@const isCore = coreVariables.includes(variable)}
 				{@const isAddress = variable === '[Address]'}
 				{@const isPersonalConnection = variable === '[Personal Connection]'}
 
@@ -318,6 +417,8 @@
 							<input type="checkbox" bind:checked={includeAddress} class="sr-only" />
 							{#if includeAddress}
 								<Check class="h-3 w-3" />
+							{:else if isCongressional}
+								<span class="text-xs font-bold">★</span>
 							{:else}
 								<span class="text-xs">📍</span>
 							{/if}
@@ -326,12 +427,12 @@
 
 						<!-- Contextual tooltip on hover -->
 						<div
-							class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-48 -translate-x-1/2 transform rounded-lg border border-blue-100 bg-blue-50 p-2 text-xs text-blue-800 opacity-0 shadow-sm transition-opacity group-hover:block group-hover:opacity-100"
+							class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-56 -translate-x-1/2 transform rounded-lg border border-blue-100 bg-blue-50 p-2 text-xs text-blue-800 opacity-0 shadow-sm transition-opacity group-hover:block group-hover:opacity-100"
 						>
 							{#if isCongressional}
-								Uses sender's verified address to confirm they're a constituent
+								<strong>Essential for government.</strong> Verifies senders as actual constituents — required by Congress, city councils, and county offices
 							{:else}
-								Includes sender's address from their profile
+								Includes sender's address from their profile for authenticity
 							{/if}
 						</div>
 					</div>
@@ -353,7 +454,7 @@
 						class:text-slate-600={!isUsed && !isPersonalConnection}
 						class:hover:bg-slate-100={!isUsed && !isPersonalConnection}
 						onclick={() => insertVariable(variable)}
-						disabled={_isCore && isUsed}
+						disabled={isCore && isUsed}
 					>
 						{#if isUsed}
 							<Check class="h-3 w-3" />
@@ -374,6 +475,47 @@
 	<div class="flex min-h-0 flex-1 flex-col">
 		<!-- Enhanced editor with variable highlighting -->
 		<div class="relative flex-1">
+			<!-- Preview overlay when preview is active -->
+			{#if showPreview}
+				<div 
+					class="absolute inset-0 z-10 flex flex-col bg-white rounded-lg border border-blue-200 shadow-lg"
+					style="transform: scale({$previewScale}); transform-origin: center center;"
+				>
+					<!-- Preview header -->
+					<div class="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-4 py-2 rounded-t-lg">
+						<div class="flex items-center gap-2">
+							<span class="text-sm font-medium text-blue-900">Preview with Sample Data</span>
+							<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
+								Not real-time
+							</span>
+						</div>
+						<button
+							type="button"
+							class="text-blue-600 hover:text-blue-800 transition-colors"
+							onclick={togglePreview}
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							</svg>
+						</button>
+					</div>
+					
+					<!-- Preview content -->
+					<div class="flex-1 overflow-auto p-4">
+						<div class="prose prose-sm max-w-none">
+							<pre class="whitespace-pre-wrap font-sans text-sm text-gray-700">{previewContent}</pre>
+						</div>
+					</div>
+					
+					<!-- Sample data legend -->
+					<div class="border-t border-blue-100 bg-blue-50/50 px-4 py-2 rounded-b-lg">
+						<p class="text-xs text-blue-600">
+							Showing with sample recipient data. Actual values will vary for each sender.
+						</p>
+					</div>
+				</div>
+			{/if}
+
 			<!-- Styled overlay showing variables -->
 			<!-- Removed XSS-vulnerable overlay - will implement CodeMirror 6 -->
 
@@ -406,25 +548,43 @@
 					<div></div>
 				{/if}
 
-				<!-- Word/Character Count Badge -->
-				<div
-					class="pointer-events-auto flex items-center gap-2 rounded-full border bg-white/95 px-2 py-1 text-xs shadow-sm backdrop-blur-sm"
-					class:border-slate-200={wordCount < 50}
-					class:border-emerald-200={wordCount >= 50 && wordCount <= 150}
-					class:border-amber-200={wordCount > 150 && wordCount <= 200}
-					class:border-red-200={wordCount > 200}
-				>
-					<span
-						class="font-medium transition-colors"
-						class:text-slate-500={wordCount < 50}
-						class:text-emerald-600={wordCount >= 50 && wordCount <= 150}
-						class:text-amber-600={wordCount > 150 && wordCount <= 200}
-						class:text-red-600={wordCount > 200}
+				<!-- Word/Character Count Badge with Preview Button -->
+				<div class="pointer-events-auto flex items-center gap-2">
+					<!-- Preview button -->
+					{#if !showPreview && data.preview.length > 20}
+						<button
+							type="button"
+							class="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/95 px-3 py-1 text-xs font-medium text-blue-700 shadow-sm backdrop-blur-sm transition-all hover:bg-blue-100 hover:scale-105 active:scale-95"
+							onclick={togglePreview}
+						>
+							<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+							</svg>
+							Preview
+						</button>
+					{/if}
+					
+					<!-- Word/character count -->
+					<div
+						class="flex items-center gap-2 rounded-full border bg-white/95 px-2 py-1 text-xs shadow-sm backdrop-blur-sm"
+						class:border-slate-200={wordCount < 50}
+						class:border-emerald-200={wordCount >= 50 && wordCount <= 150}
+						class:border-amber-200={wordCount > 150 && wordCount <= 200}
+						class:border-red-200={wordCount > 200}
 					>
-						{wordCount} words
-					</span>
-					<span class="text-slate-400">•</span>
-					<span class="text-slate-400">{charCount} chars</span>
+						<span
+							class="font-medium transition-colors"
+							class:text-slate-500={wordCount < 50}
+							class:text-emerald-600={wordCount >= 50 && wordCount <= 150}
+							class:text-amber-600={wordCount > 150 && wordCount <= 200}
+							class:text-red-600={wordCount > 200}
+						>
+							{wordCount} words
+						</span>
+						<span class="text-slate-400">•</span>
+						<span class="text-slate-400">{charCount} chars</span>
+					</div>
 				</div>
 			</div>
 		</div>

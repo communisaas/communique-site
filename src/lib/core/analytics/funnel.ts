@@ -32,7 +32,7 @@ export class FunnelAnalytics {
 		}
 
 		try {
-			const stored = localStorage.getItem('communique_funnel__events');
+			const stored = localStorage.getItem('communique_funnel_events');
 			if (stored) {
 				const events = JSON.parse(stored);
 				this.events = events.filter(
@@ -42,7 +42,7 @@ export class FunnelAnalytics {
 		} catch {
 			// Handle corrupted localStorage data gracefully
 			try {
-				localStorage.removeItem('communique_funnel__events');
+				localStorage.removeItem('communique_funnel_events');
 			} catch {
 				// Even removeItem might fail in some environments
 			}

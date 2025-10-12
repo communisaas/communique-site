@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { templateStore } from '$lib/stores/templates.svelte';
 	import Hero from '$lib/components/landing/hero/Hero.svelte';
-	import _ActivityFeed from '$lib/components/landing/activity/ActivityFeed.svelte';
 	import ChannelExplainer from '$lib/components/landing/channel/ChannelExplainer.svelte';
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';

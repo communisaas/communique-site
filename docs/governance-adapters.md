@@ -1,5 +1,9 @@
 # Governance Adapters
 
+**Status**: Phase 1 (US Congress) ✅ IMPLEMENTED | Phase 2-5 (Global Expansion) 🔮 PLANNED
+
+---
+
 **How Communique scales globally: One platform, every government.**
 
 ## The Adapter Pattern
@@ -22,7 +26,7 @@ interface GovernanceAdapter {
 }
 ```
 
-## Current Implementation: US Congress
+## Current Implementation: US Congress ✅ IMPLEMENTED
 
 **CWC Adapter** (`src/lib/congress/`):
 
@@ -32,7 +36,7 @@ interface GovernanceAdapter {
 - Submits with required fields (prefix, topic, delivery)
 - Returns cryptographic receipt
 
-## Planned Adapters
+## Planned Adapters 🔮 FUTURE ROADMAP
 
 ### Westminster Parliamentary (UK, Canada, Australia)
 
@@ -100,34 +104,34 @@ class MunicipalAdapter implements GovernanceAdapter {
 
 ## Global Scaling Roadmap
 
-**Phase 1 (Current)**: US Congress via CWC API
+**Phase 1 (Current)** ✅ IMPLEMENTED: US Congress via CWC API
 
 - Proven model with 81M messages/year
 - Establishes patterns and infrastructure
 - Generates revenue for expansion
 
-**Phase 2 (Q2 2025)**: English-speaking Parliamentary
+**Phase 2 (Q2 2025)** 🔮 PLANNED: English-speaking Parliamentary
 
 - UK House of Commons
 - Canadian Parliament
 - Australian Parliament
 - Similar systems, shared language
 
-**Phase 3 (Q3 2025)**: European Expansion
+**Phase 3 (Q3 2025)** 🔮 PLANNED: European Expansion
 
 - German Bundestag
 - French Assemblée
 - European Parliament
 - Multi-language templates
 
-**Phase 4 (Q4 2025)**: Emerging Democracies
+**Phase 4 (Q4 2025)** 🔮 PLANNED: Emerging Democracies
 
 - India Lok Sabha
 - Brazil Congress
 - Indonesia DPR
 - Massive populations, growing digital adoption
 
-**Phase 5 (2026)**: New Governance Forms
+**Phase 5 (2026)** 🔮 PLANNED: New Governance Forms
 
 - Digital-first governments (Estonia)
 - Blockchain-native governance (DAOs)

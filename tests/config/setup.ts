@@ -87,6 +87,19 @@ beforeEach(() => {
 			},
 			writable: true
 		});
+
+		// matchMedia mock for CSS media queries (needed for Svelte motion)
+		Object.defineProperty(window, 'matchMedia', {
+			value: vi.fn().mockImplementation((query: string) => ({
+				matches: false,
+				media: query,
+				onchange: null,
+				addEventListener: vi.fn(),
+				removeEventListener: vi.fn(),
+				dispatchEvent: vi.fn()
+			})),
+			writable: true
+		});
 	}
 
 	// Global fetch mock for external API calls

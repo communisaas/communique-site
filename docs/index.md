@@ -10,7 +10,7 @@ While memecoins hit $40B in 24 hours, civic engagement reads like homework. Comm
 - **Global delivery**: US Congress (CWC) today, Westminster tomorrow, new governance forms beyond
 - **Viral by design**: Templates that spread through networks like memes
 - **VOTER Protocol powered**: Every action earns rewards, builds reputation, creates accountability
-- **On-chain verification**: Anchored on Monad with ERC-8004 portable reputation
+- **Blockchain integration**: VOTER Protocol rewards and ERC-8004 reputation (integration in progress)
 
 The US Congressional API is our proof of concept. Parliamentary systems are next. Any governance structure that accepts citizen input can integrate.
 
@@ -23,7 +23,6 @@ The US Congressional API is our proof of concept. Parliamentary systems are next
 ## Deep dives (optional)
 
 - Agent Architecture: [agents/agent-architecture.md](./agents/agent-architecture.md)
-- VOTER Blockchain Integration: [integrations/voter-blockchain.md](./integrations/voter-blockchain.md)
 - Low-Friction UX: [architecture/low-friction-civic-action.md](./architecture/low-friction-civic-action.md)
 - UI patterns: [development/ui-structure-guidelines.md](./development/ui-structure-guidelines.md)
 

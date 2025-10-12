@@ -1,8 +1,30 @@
 /**
  * Direct VOTER Protocol Blockchain Client
  *
- * Handles direct smart contract interactions with VOTER Protocol
- * Eliminates API proxy layers for better performance and reliability
+ * STATUS: SIMPLIFIED EVM-ONLY IMPLEMENTATION
+ *
+ * ⚠️ NOTE: This is a simplified EVM-based implementation using ethers.js for direct
+ * smart contract interactions. The actual VOTER Protocol architecture uses:
+ *
+ * - NEAR Protocol (control layer, passkey-based accounts, Chain Signatures)
+ * - Scroll zkEVM (settlement layer, $0.135/action)
+ * - 5-agent system (Supply, Market, Impact, Reputation, Verification agents)
+ *
+ * For the complete VOTER Protocol architecture, see:
+ * - voter-protocol/ARCHITECTURE.md (3400+ lines, full specification)
+ * - docs/integrations.md (Communique-specific integration notes)
+ *
+ * This client provides basic EVM contract interaction for reward distribution and
+ * civic action recording. Future integration will implement the full NEAR + Scroll
+ * architecture as specified in the voter-protocol repository.
+ *
+ * Current functionality:
+ * - Register users with deterministic addresses
+ * - Process civic actions (CWC messages, local actions, etc.)
+ * - Track user stats and platform metrics
+ * - VOTER token balance queries
+ *
+ * Eliminates API proxy layers for better performance and reliability.
  */
 
 import { ethers } from 'ethers';

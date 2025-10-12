@@ -7,7 +7,6 @@ export * from './emailService';
 export * from './geolocation';
 export * from './jurisdictionProvider';
 export * from './personalization';
-export * from './viral-pattern-generator';
 export * from './zipDistrictLookup';
 
 // Convenience exports

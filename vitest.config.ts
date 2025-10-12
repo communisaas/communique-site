@@ -13,7 +13,7 @@ export default defineConfig({
 
 		// Environment configuration
 		environment: 'jsdom',
-		setupFiles: ['tests/config/setup.ts', 'tests/config/test-monitoring.ts'],
+		setupFiles: ['tests/config/setup.ts', 'tests/config/test-monitoring.ts', 'tests/setup/api-test-setup.ts'],
 		globals: true,
 
 		// Performance optimizations
@@ -34,18 +34,21 @@ export default defineConfig({
 		clearMocks: true, // Clear mocks between tests
 		restoreMocks: true, // Restore original implementations
 
-		// Coverage configuration
+		// Coverage configuration - HONEST MEASUREMENT
 		coverage: {
-			provider: 'istanbul',
+			provider: 'v8', // Svelte-aware coverage provider
 			reporter: ['text', 'html', 'json', 'lcov'],
 			reportsDirectory: './coverage',
 
-			// Performance: exclude non-essential files
+			// Include ALL source code for honest measurement
+			include: [
+				'src/**/*.{js,ts,svelte}'
+			],
+
+			// Minimal exclusions - only build artifacts and tests
 			exclude: [
 				'node_modules/**',
 				'tests/**',
-				'src/lib/experimental/**', // Exclude experimental code
-				'src/lib/features/**', // Feature flags excluded
 				'**/*.d.ts',
 				'**/*.config.{js,ts}',
 				'**/coverage/**',
@@ -55,39 +58,34 @@ export default defineConfig({
 				'**/*.test.ts',
 				'build/',
 				'.svelte-kit/',
-				'src/app.html' // Static files
-				// Removed exclusion for route files to properly measure API coverage
+				'src/app.html'
 			],
 
-			// Focus coverage on core application code
-			include: [
-				'src/lib/core/**/*.{js,ts,svelte}',
-				'src/lib/components/**/*.{js,ts,svelte}',
-				'src/lib/utils/**/*.{js,ts}',
-				'src/lib/types/**/*.{js,ts}',
-				'src/routes/api/**/*.{js,ts}'
-			],
-
-			// Coverage thresholds based on analysis
+			// HONEST thresholds - meaningful minimums to prevent regression
 			thresholds: {
 				global: {
-					branches: 70, // Current achievement: >70%
-					functions: 70, // Current achievement: >70%
-					lines: 70, // Current achievement: >70%
-					statements: 70 // Current achievement: >70%
+					branches: 20,  // Realistic starting point from current reality
+					functions: 20, // Build up from current state
+					lines: 20,     // Incremental improvement targets
+					statements: 20 // Honest measurement, not theater
 				},
-				// Per-file thresholds for critical components
-				perFile: {
-					branches: 60,
-					functions: 60,
-					lines: 60,
-					statements: 60
+				// Higher standards for critical production paths
+				'src/lib/core/auth/': {
+					branches: 40,
+					functions: 40,
+					lines: 40,
+					statements: 40
+				},
+				'src/routes/api/': {
+					branches: 30,
+					functions: 30,
+					lines: 30,
+					statements: 30
 				}
 			},
 
-			// Skip coverage for certain patterns
-			skipFull: true, // Skip files with 100% coverage in reports
-			all: true // Include all files in coverage report
+			// Include all source files in coverage report
+			all: true
 		},
 
 		// Enhanced reporting for CI

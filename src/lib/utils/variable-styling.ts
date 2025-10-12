@@ -47,58 +47,58 @@ const userEditableVariables = new Set([
 ]);
 
 /**
- * Get CSS classes for styling template variables (matches MessagePreview.svelte exactly)
+ * Get CSS classes for styling template variables with action-oriented design
+ * Focus on what users need to DO, not technical categorization
  */
 export function getVariableClasses(variableName: string, isEmpty: boolean = true): string {
 	const isSystemVariable = systemVariables.has(variableName);
 	const isUserEditable = userEditableVariables.has(variableName);
+	const isKnownVariable = isSystemVariable || isUserEditable;
 
-	if (isSystemVariable) {
-		return `
-			inline-flex items-center gap-1
-			px-1 py-0.5 rounded-sm
-			font-mono text-xs leading-none
-			transition-colors duration-150
-			bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
-			cursor-default align-baseline
-		`
-			.replace(/\s+/g, ' ')
-			.trim();
-	} else if (isUserEditable) {
-		const baseClasses = `
-			inline-flex items-center gap-1
-			px-1 py-0.5 rounded-sm
-			font-mono text-xs leading-none
-			cursor-pointer transition-all duration-150
-			align-baseline transform
-		`
-			.replace(/\s+/g, ' ')
-			.trim();
+	// Base classes for all variables
+	const baseClasses = `font-medium px-1 rounded-sm transition-all duration-150`;
 
-		if (isEmpty) {
-			return (
-				baseClasses +
-				' bg-purple-50 text-purple-700 ring-1 ring-purple-200 hover:bg-purple-100 hover:ring-purple-300'
-			);
-		} else {
-			return (
-				baseClasses +
-				' bg-participation-primary-50 text-participation-primary-700 ring-1 ring-participation-primary-200 hover:bg-participation-primary-100 hover:ring-participation-primary-300'
-			);
-		}
-	} else {
-		// Default styling for unknown variables
-		return `
-			inline-flex items-center
-			px-1 py-0.5 rounded-sm
-			font-mono text-xs leading-none
-			cursor-pointer transition-colors duration-150
-			bg-slate-50 text-slate-600 ring-1 ring-slate-200
-			align-baseline
-		`
-			.replace(/\s+/g, ' ')
-			.trim();
+	if (!isKnownVariable) {
+		// ERROR: Unknown variable that will break
+		return `${baseClasses} bg-red-50 text-red-700 border-2 border-red-400 cursor-help`;
 	}
+
+	if (isUserEditable && isEmpty) {
+		// NEEDS INPUT: User must fill this
+		return `${baseClasses} bg-amber-50 text-amber-700 border-b-2 border-dashed border-amber-400 cursor-text hover:bg-amber-100`;
+	}
+
+	// READY: Variable is filled or will be auto-filled
+	return `${baseClasses} text-slate-600 border-b border-slate-300`;
+}
+
+/**
+ * Get mark-based CSS classes optimized for CodeMirror Decoration.mark()
+ * ACTION-ORIENTED styling focused on user tasks, not technical categorization
+ * Returns ONLY CodeMirror class names - styles are defined in the EditorView.theme()
+ */
+export function getVariableMarkClasses(variableName: string, isEmpty: boolean = true): string {
+	const isSystemVar = systemVariables.has(variableName);
+	const isUserEditable = userEditableVariables.has(variableName);
+	const isKnownVariable = isSystemVar || isUserEditable;
+
+	if (!isKnownVariable) {
+		// ERROR: This will break - strong visual warning
+		return 'cm-variable-error';
+	}
+
+	if (isSystemVar) {
+		// SYSTEM: Auto-filled from user profile - subtle green/emerald
+		return 'cm-variable-system';
+	}
+
+	if (isUserEditable) {
+		// USER INPUT: Template users will fill this - amber warning
+		return 'cm-variable-needs-input';
+	}
+
+	// READY: Variable is filled or will auto-fill - subtle, non-distracting
+	return 'cm-variable-ready';
 }
 
 /**
@@ -148,23 +148,24 @@ function getVariableType(variable: string): 'system' | 'user-editable' | 'unknow
 }
 
 /**
- * Get simple text indicator for variable type (no SVG to avoid corruption)
+ * Get simple text indicator for variable type with professional icons
  */
 export function getVariableIcon(variableName: string, isEmpty: boolean = true): string {
 	const isSystemVariable = systemVariables.has(variableName);
 	const isUserEditable = userEditableVariables.has(variableName);
 
-	// Use simple text indicators instead of SVG to avoid HTML corruption
+	// Use professional, accessible icons
 	if (isSystemVariable) {
-		return '👤'; // User icon for system variables
+		return '🔒'; // Lock icon for system-populated variables
 	} else if (isUserEditable) {
 		if (!isEmpty) {
-			return '✏️'; // Edit icon for filled user variables
+			return '✓'; // Check for filled user variables
 		} else {
-			return '✨'; // Sparkles for empty user variables
+			return '✏️'; // Edit icon for empty user variables
 		}
+	} else {
+		return '⚠️'; // Warning for unknown variables
 	}
-	return '';
 }
 
 /**

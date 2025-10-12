@@ -1,5 +1,9 @@
 # Low-Friction Civic Action
 
+**Type**: UX Design Principles & Implementation Guide
+
+---
+
 **One-click democracy: From link to sent message in seconds.**
 
 ## User Flows

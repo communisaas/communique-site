@@ -12,8 +12,8 @@ test.describe('Basic E2E Functionality', () => {
 		// Navigate to homepage
 		await page.goto('/');
 
-		// Wait for page to load
-		await page.waitForTimeout(1000);
+		// Wait for template section to be visible (deterministic loading)
+		await page.getByTestId('template-section').waitFor({ state: 'visible' });
 	});
 
 	test('should load homepage with template section', async ({ page }: { page: Page }) => {
@@ -32,9 +32,11 @@ test.describe('Basic E2E Functionality', () => {
 	});
 
 	test('should be able to select and view template', async ({ page }: { page: Page }) => {
-		// Wait for templates to load
-		const templateButton = page.getByTestId(/^template-button-/).first();
-		await expect(templateButton).toBeVisible();
+		// Wait for any template button to be visible
+		await page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first().waitFor({ state: 'visible' });
+		
+		// Get the first available template button (deterministic)
+		const templateButton = page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first();
 
 		// Click on first template
 		await templateButton.click();
@@ -44,22 +46,25 @@ test.describe('Basic E2E Functionality', () => {
 		await expect(templatePreview).toBeVisible();
 
 		// Check that either contact congress or send email button is visible
-		const contactButton = page.getByTestId('contact-congress-button');
-		const emailButton = page.getByTestId('send-email-button');
-
-		const hasContactButton = (await contactButton.count()) > 0;
-		const hasEmailButton = (await emailButton.count()) > 0;
-
-		expect(hasContactButton || hasEmailButton).toBe(true);
+		// Use waitFor with timeout to handle either button appearing
+		await expect(async () => {
+			const contactButton = page.getByTestId('contact-congress-button');
+			const emailButton = page.getByTestId('send-email-button');
+			
+			const contactVisible = await contactButton.isVisible().catch(() => false);
+			const emailVisible = await emailButton.isVisible().catch(() => false);
+			
+			expect(contactVisible || emailVisible).toBe(true);
+		}).toPass({ timeout: 5000 });
 	});
 
 	test('should handle navigation between templates', async ({ page }: { page: Page }) => {
-		// Click first template
-		await page
-			.getByTestId(/^template-button-/)
-			.first()
-			.click();
-		await page.waitForTimeout(500);
+		// Click first template (deterministic)
+		const firstTemplate = page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first();
+		await firstTemplate.click();
+
+		// Wait for template preview to appear (deterministic loading)
+		await page.getByTestId('template-preview').waitFor({ state: 'visible' });
 
 		// Verify preview is visible
 		const templatePreview = page.getByTestId('template-preview');
