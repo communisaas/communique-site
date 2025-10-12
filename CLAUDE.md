@@ -440,7 +440,6 @@ DISCORD_CLIENT_SECRET=...
 ### Webhook Security:
 
 ```bash
-N8N_WEBHOOK_SECRET=...              # Webhook authentication for N8N integration
 LAMBDA_WEBHOOK_SECRET=...           # AWS Lambda webhook authentication
 VOTER_API_KEY=...                   # VOTER Protocol API authentication
 COMMUNIQUE_API_KEY=...              # Internal API authentication
@@ -463,14 +462,6 @@ MAX_RETRIES=3                       # Maximum retry attempts for CWC submissions
 RATE_LIMIT_WINDOW_SECONDS=3600      # Rate limit window (default: 1 hour)
 RATE_LIMIT_COUNT=10                 # Rate limit count (default: 10 per hour)
 VISIBILITY_TIMEOUT_SECONDS=300      # SQS visibility timeout (default: 5 minutes)
-```
-
-### N8N Workflow Integration (Optional):
-
-```bash
-N8N_API_KEY=...                     # N8N API key for workflow management
-N8N_AUTH_PASSWORD=...               # Alternative N8N authentication
-FLYIO_N8N_API_KEY=...               # Fly.io-specific N8N API key
 ```
 
 ## Architecture (Cypherpunk Democratic Infrastructure)
@@ -539,11 +530,14 @@ const consensusResult = await agentConsensus.processTemplate({
 // - reasoning: string[]
 ```
 
-### N8N Workflow Integration:
+### Agent Orchestration:
 
-- **Orchestration**: External N8N instance coordinates agent consensus
-- **Webhook Flow**: Template submission → N8N → Agent consensus → CWC submission
-- **Status Tracking**: Real-time updates via WebSocket broadcasts
+Template moderation uses LangGraph-based multi-agent consensus:
+- **3 AI agents** (OpenAI, Gemini, Claude) vote on template quality
+- **LangGraph workflows** orchestrate agent coordination
+- **TypeScript orchestration** (N8N deprecated)
+- See: `docs/agents/agent-architecture.md` for details
+- Code: `src/lib/agents/content/`
 
 ### Agent API Endpoints:
 
@@ -618,4 +612,10 @@ Feature flags control access to:
 - **Development**: `docs/dev-quickstart.md`
 - **Roadmap**: `docs/roadmap.md`
 - **Agent Architecture**: `docs/agents/agent-architecture.md`
-- **VOTER Protocol**: `docs/integrations/voter-blockchain.md`
+- **Agent Consensus**: `docs/agents/consensus-roadmap.md`
+- **Legislative Abstraction**: `docs/legislative/abstraction-layer.md`
+- **Analytics System**: `docs/analytics/overview.md`
+- **Template Creator**: `docs/features/template-creator.md`
+- **OAuth Setup**: `docs/authentication/oauth-setup.md`
+- **CWC Integration**: `docs/congressional/cwc-integration.md`
+- **Feature Flags**: `docs/development/feature-flags.md`
