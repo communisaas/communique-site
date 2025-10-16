@@ -72,8 +72,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			// Store new representatives
 			for (const rep of representatives) {
-				// First, ensure the _representative exists in the database
-				const existingRep = await db._representative.findFirst({
+				// First, ensure the representative exists in the database
+				const existingRep = await db.representative.findFirst({
 					where: {
 						name: rep.name,
 						state: rep.state,
@@ -81,13 +81,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					}
 				});
 
-				let _representativeId;
+				let representativeId;
 
 				if (existingRep) {
-					_representativeId = existingRep.id;
+					representativeId = existingRep.id;
 				} else {
-					// Create new _representative record
-					const newRep = await db._representative.create({
+					// Create new representative record
+					const newRep = await db.representative.create({
 						data: {
 							bioguide_id: rep.bioguide_id || 'temp_' + Date.now(),
 							name: rep.name,
@@ -100,14 +100,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							office_code: rep.office_code || rep.office || ''
 						}
 					});
-					_representativeId = newRep.id;
+					representativeId = newRep.id;
 				}
 
-				// Link _representative to user
+				// Link representative to user
 				await db.user_representatives.create({
 					data: {
 						user_id: locals.user.id,
-						_representative_id: _representativeId,
+						representative_id: representativeId,
 						relationship: 'constituent'
 					}
 				});

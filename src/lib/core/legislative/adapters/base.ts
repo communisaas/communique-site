@@ -32,6 +32,7 @@ export interface LegislativeUser {
 
 export interface LegislativeTemplate {
 	id: string;
+	title?: string;
 	subject: string;
 	message_body: string;
 	variables?: Record<string, unknown>;

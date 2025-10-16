@@ -6,7 +6,7 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 // Enhance DATABASE_URL with connection pooling parameters for Supabase stability
-const databaseUrl = env.DATABASE_URL.includes('?') 
+const databaseUrl = env.DATABASE_URL.includes('?')
 	? `${env.DATABASE_URL}&connection_limit=5&pool_timeout=20&connect_timeout=15`
 	: `${env.DATABASE_URL}?connection_limit=5&pool_timeout=20&connect_timeout=15`;
 

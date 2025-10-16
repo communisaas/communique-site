@@ -16,6 +16,8 @@ import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
+import { createNEARAccountFromOAuth } from '$lib/core/blockchain/oauth-near';
+import { deriveScrollAddress } from '$lib/core/blockchain/chain-signatures';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -60,6 +62,16 @@ export interface DatabaseUser {
 	profile_visibility?: string;
 	verification_method?: string | null;
 	verified_at?: Date | null;
+	// Blockchain accounts
+	near_account_id?: string | null;
+	near_account_entropy?: string | null; // 🔒 PRIVACY: Random entropy for account ID generation
+	near_auth_method?: string | null;
+	near_account_created_at?: Date | null;
+	scroll_address?: string | null;
+	scroll_derivation_path?: string | null;
+	connected_wallet_address?: string | null;
+	connected_wallet_type?: string | null;
+	connected_wallet_chain?: string | null;
 	createdAt: Date;
 	updatedAt: Date;
 }
@@ -205,6 +217,10 @@ export class OAuthCallbackHandler {
 					expires_at: tokenData.expiresAt
 				}
 			});
+
+			// Ensure blockchain accounts exist for existing user
+			await this.ensureBlockchainAccounts(existingAccount.user, config.provider, userData.id);
+
 			return existingAccount.user;
 		}
 
@@ -229,6 +245,10 @@ export class OAuthCallbackHandler {
 					scope: config.scope
 				}
 			});
+
+			// Ensure blockchain accounts exist for existing user
+			await this.ensureBlockchainAccounts(existingUser, config.provider, userData.id);
+
 			return existingUser;
 		}
 
@@ -254,7 +274,63 @@ export class OAuthCallbackHandler {
 			}
 		});
 
+		// Create blockchain accounts for new user
+		await this.ensureBlockchainAccounts(newUser, config.provider, userData.id);
+
 		return newUser;
+	}
+
+	/**
+	 * Ensure user has NEAR account and Scroll address
+	 * Creates blockchain accounts if they don't exist yet
+	 */
+	private async ensureBlockchainAccounts(
+		user: DatabaseUser,
+		provider: OAuthProvider,
+		oauthUserId: string
+	): Promise<void> {
+		try {
+			// Skip if user already has complete blockchain setup
+			if (user.near_account_id && user.scroll_address) {
+				console.log(
+					`[Blockchain] User ${user.id} already has blockchain accounts (NEAR: ${user.near_account_id})`
+				);
+				return;
+			}
+
+			// Step 1: Create NEAR account from OAuth identity
+			if (!user.near_account_id) {
+				console.log(`[Blockchain] Creating NEAR account for user ${user.id} via ${provider}`);
+				const nearAccountId = await createNEARAccountFromOAuth(provider, oauthUserId);
+				console.log(`[Blockchain] Created NEAR account: ${nearAccountId}`);
+			}
+
+			// Step 2: Derive Scroll address from NEAR account
+			// Re-fetch user to get the updated near_account_id
+			const updatedUser = await db.user.findUnique({
+				where: { id: user.id },
+				select: { near_account_id: true, scroll_address: true }
+			});
+
+			if (updatedUser?.near_account_id && !updatedUser.scroll_address) {
+				console.log(
+					`[Blockchain] Deriving Scroll address for NEAR account: ${updatedUser.near_account_id}`
+				);
+				const scrollAddress = await deriveScrollAddress(updatedUser.near_account_id);
+				console.log(`[Blockchain] Derived Scroll address: ${scrollAddress}`);
+			}
+
+			console.log(`[Blockchain] Successfully created blockchain accounts for user ${user.id}`);
+		} catch (error) {
+			// Log error but don't block OAuth flow
+			// Users can still use the platform without blockchain features
+			console.error('[Blockchain] Failed to create blockchain accounts:', {
+				userId: user.id,
+				provider,
+				error: error instanceof Error ? error.message : 'Unknown error',
+				stack: error instanceof Error ? error.stack : undefined
+			});
+		}
 	}
 
 	/**

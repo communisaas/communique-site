@@ -19,8 +19,13 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 	const dispatch = createEventDispatcher<{
 		close: void;
 		complete: {
+			street?: string;
+			city?: string;
+			state?: string;
+			zip?: string;
 			address: string;
 			verified: boolean;
+			congressional_district?: string;
 			representatives?: Array<Record<string, unknown>>;
 		};
 	}>();
@@ -40,8 +45,13 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 	}
 
 	function handleComplete(data: {
+		street?: string;
+		city?: string;
+		state?: string;
+		zip?: string;
 		address: string;
 		verified: boolean;
+		congressional_district?: string;
 		representatives?: Array<Record<string, unknown>>;
 	}) {
 		dispatch('complete', data);

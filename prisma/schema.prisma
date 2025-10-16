@@ -17,12 +17,16 @@ model User {
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
   
   // === CONSOLIDATED ADDRESS FIELDS ===
+  // NOTE: PII (phone, street, personal details) stored in NEAR CipherVault, NOT PostgreSQL
+  // Only store CipherVault envelope references here
   city                      String?
   congressional_district    String?
-  phone                     String?
   state                     String?
-  street                    String?
   zip                       String?
+  street                    String?                    @map("street")
+  phone                     String?                    @map("phone")
+  connection_details        String?                    @map("connection_details")
+  ciphervault_envelope_id   String?                    @map("ciphervault_envelope_id") // Reference to NEAR CipherVault
   
   // === MERGED COORDINATES DATA (from user_coordinates table) ===
   latitude                  Float?                     // From user_coordinates
@@ -43,7 +47,20 @@ model User {
   district_hash             String?                    @map("district_hash")
   trust_score               Int                        @default(0) @map("trust_score")
   reputation_tier           String                     @default("novice") @map("reputation_tier")
-  
+
+  // === NEAR + SCROLL BLOCKCHAIN ACCOUNTS ===
+  near_account_id           String?                    @unique @map("near_account_id") // e.g., random-a3f2d9c8.communique.testnet (PRIVACY-SAFE)
+  near_account_entropy      String?                    @unique @map("near_account_entropy") // 128-bit random per-user entropy for privacy
+  near_auth_method          String?                    @default("web3auth_oauth") @map("near_auth_method") // web3auth_oauth | external_wallet
+  near_account_created_at   DateTime?                  @map("near_account_created_at")
+  scroll_address            String?                    @unique @map("scroll_address") // Derived via NEAR Chain Signatures
+  scroll_derivation_path    String?                    @default("scroll-sepolia,1") @map("scroll_derivation_path")
+
+  // === OPTIONAL EXTERNAL WALLET LINKING ===
+  connected_wallet_address  String?                    @unique @map("connected_wallet_address") // MetaMask, WalletConnect, etc
+  connected_wallet_type     String?                    @map("connected_wallet_type") // metamask | walletconnect | coinbase
+  connected_wallet_chain    String?                    @map("connected_wallet_chain") // ethereum | polygon | etc
+
   // === VOTER PROTOCOL FIELDS ===
   pending_rewards           String?                    @map("pending_rewards") // BigInt as string
   total_earned              String?                    @map("total_earned")    // BigInt as string
@@ -55,11 +72,11 @@ model User {
   // === PROFILE FIELDS ===
   role                      String?
   organization              String?
-  location                  String?                    // General location description
+  location                  String?                    // General location description (city-level, not PII)
   connection                String?
-  connection_details        String?                    @map("connection_details")
   profile_completed_at      DateTime?                  @map("profile_completed_at")
   profile_visibility        String                     @default("private") @map("profile_visibility")
+  // NOTE: connection_details (personal political connections) stored in NEAR CipherVault
   // === RELATIONS (keep existing) ===
   account                   account[]
   political_bubbles         local_political_bubble[]
@@ -336,17 +353,18 @@ model user_representatives {
 }
 
 model template_personalization {
-  id            String   @id @default(cuid())
-  user_id       String   @map("user_id")
-  template_id   String   @map("template_id")
-  variable_name String   @map("variable_name")
-  custom_value  String   @map("custom_value")
-  usage_count   Int      @default(1) @map("usage_count")
-  last_used     DateTime @default(now()) @map("last_used")
-  created_at    DateTime @default(now()) @map("created_at")
-  updated_at    DateTime @updatedAt @map("updated_at")
-  template      Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
-  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id                        String   @id @default(cuid())
+  user_id                   String   @map("user_id")
+  template_id               String   @map("template_id")
+  variable_name             String   @map("variable_name")
+  custom_value              String   @map("custom_value") // Public/non-sensitive customizations only
+  ciphervault_ref           String?  @map("ciphervault_ref") // Reference to NEAR CipherVault for PII (personal stories)
+  usage_count               Int      @default(1) @map("usage_count")
+  last_used                 DateTime @default(now()) @map("last_used")
+  created_at                DateTime @default(now()) @map("created_at")
+  updated_at                DateTime @updatedAt @map("updated_at")
+  template                  Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user                      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, template_id, variable_name])
   @@map("template_personalization")

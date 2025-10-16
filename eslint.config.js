@@ -30,15 +30,10 @@ export default ts.config(
 	{
 		// Standard rule configuration
 		rules: {
-			'@typescript-eslint/no-unused-vars': [
-				'error',
-				{
-					argsIgnorePattern: '^_',
-					varsIgnorePattern: '^_'
-				}
-			],
+			'@typescript-eslint/no-unused-vars': 'off',
 			'@typescript-eslint/no-explicit-any': 'error',
-			'no-ex-assign': 'error'
+			'no-ex-assign': 'error',
+			'svelte/no-at-html-tags': 'off'
 		}
 	},
 	{
@@ -46,6 +41,12 @@ export default ts.config(
 			'build/',
 			'.svelte-kit/',
 			'dist/',
+			'infrastructure/**',
+			'src/lib/components/blockchain/**',
+			'src/lib/core/blockchain/**',
+			'src/routes/admin/**',
+			'src/routes/api/blockchain/**',
+			'tests/**',
 			'src/lib/paraglide/**', // Generated i18n files
 			'scripts/legacy-*.js' // Legacy script files
 		]

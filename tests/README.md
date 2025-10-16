@@ -8,6 +8,25 @@ This test suite uses a modern, integration-first approach focused on realistic u
 **Coverage**: 70%+ across all metrics (lines, functions, branches, statements)
 **Strategy**: Integration-first with selective unit testing
 
+## 🚨 Critical Testing Requirements
+
+### Address Verification & Saving Flow
+
+**MUST READ**: `docs/testing/address-flow-testing-strategy.md`
+
+This flow is mission-critical. We previously shipped 5 data integrity bugs because tests checked wrong field names. Tests MUST verify:
+
+- ✅ Exact field names (snake_case: `bioguide_id`, not `bioguideId`)
+- ✅ All required fields present (`office_code`, `state`, `congressional_district`)
+- ✅ Data pipeline contracts (verify → save → database)
+- ✅ Representative storage with real bioguide IDs (not temp fallbacks)
+
+**Pre-commit**: These tests MUST pass before any address-related changes:
+```bash
+npm run test:integration -- address-verification-api
+npm run test:integration -- address-save-api
+```
+
 ---
 
 ## Quick Start

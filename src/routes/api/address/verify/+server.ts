@@ -79,23 +79,27 @@ export const POST: RequestHandler = async ({ request }) => {
 				zip: zipCode
 			});
 
-			// Format representatives for frontend
+			// Format representatives for frontend (use snake_case for database consistency)
 			representatives = [
 				{
 					name: userReps.house.name,
 					office: `House Representative, ${userReps.house.state}-${userReps.house.district}`,
 					chamber: 'house',
 					party: userReps.house.party,
+					state: userReps.house.state,
 					district: `${userReps.house.state}-${userReps.house.district}`,
-					bioguideId: userReps.house.bioguide_id
+					bioguide_id: userReps.house.bioguide_id,
+					office_code: userReps.house.office_code
 				},
 				...userReps.senate.map((senator) => ({
 					name: senator.name,
 					office: `Senator, ${senator.state}`,
 					chamber: 'senate',
 					party: senator.party,
+					state: senator.state,
 					district: senator.state,
-					bioguideId: senator.bioguide_id
+					bioguide_id: senator.bioguide_id,
+					office_code: senator.office_code
 				}))
 			];
 		} catch (error_repError) {

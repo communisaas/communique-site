@@ -18,8 +18,13 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 			deliveryMethod: string;
 		};
 		onComplete?: (data: {
+			street?: string;
+			city?: string;
+			state?: string;
+			zip?: string;
 			address: string;
 			verified: boolean;
+			congressional_district?: string;
 			representatives?: Array<Record<string, unknown>>;
 		}) => void;
 	}) {
@@ -38,16 +43,26 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 				deliveryMethod: string;
 			};
 			onComplete?: (data: {
+				street?: string;
+				city?: string;
+				state?: string;
+				zip?: string;
 				address: string;
 				verified: boolean;
+				congressional_district?: string;
 				representatives?: Array<Record<string, unknown>>;
 			}) => void;
 		} | null
 	);
 
 	function handleComplete(data: {
+		street?: string;
+		city?: string;
+		state?: string;
+		zip?: string;
 		address: string;
 		verified: boolean;
+		congressional_district?: string;
 		representatives?: Array<Record<string, unknown>>;
 	}) {
 		// Call completion callback if provided

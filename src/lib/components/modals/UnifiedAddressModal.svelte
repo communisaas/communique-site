@@ -19,7 +19,17 @@
 	);
 
 	function handleComplete(event: CustomEvent) {
-		const { address, verified, enhancedCredibility, representatives } = event.detail;
+		const {
+			street,
+			city,
+			state,
+			zip,
+			address,
+			verified,
+			congressional_district,
+			enhancedCredibility,
+			representatives
+		} = event.detail;
 
 		// Save address to backend
 		const saveAddress = async () => {
@@ -27,7 +37,16 @@
 				await fetch('/api/user/address', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ address, verified, representatives })
+					body: JSON.stringify({
+						street,
+						city,
+						state,
+						zip,
+						address,
+						verified,
+						congressional_district,
+						representatives
+					})
 				})
 					.then((response) => response.json())
 					.then((result) => {

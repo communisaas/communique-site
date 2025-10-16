@@ -13,7 +13,11 @@ export default defineConfig({
 
 		// Environment configuration
 		environment: 'jsdom',
-		setupFiles: ['tests/config/setup.ts', 'tests/config/test-monitoring.ts', 'tests/setup/api-test-setup.ts'],
+		setupFiles: [
+			'tests/config/setup.ts',
+			'tests/config/test-monitoring.ts',
+			'tests/setup/api-test-setup.ts'
+		],
 		globals: true,
 
 		// Performance optimizations
@@ -41,9 +45,7 @@ export default defineConfig({
 			reportsDirectory: './coverage',
 
 			// Include ALL source code for honest measurement
-			include: [
-				'src/**/*.{js,ts,svelte}'
-			],
+			include: ['src/**/*.{js,ts,svelte}'],
 
 			// Minimal exclusions - only build artifacts and tests
 			exclude: [
@@ -64,9 +66,9 @@ export default defineConfig({
 			// HONEST thresholds - meaningful minimums to prevent regression
 			thresholds: {
 				global: {
-					branches: 20,  // Realistic starting point from current reality
+					branches: 20, // Realistic starting point from current reality
 					functions: 20, // Build up from current state
-					lines: 20,     // Incremental improvement targets
+					lines: 20, // Incremental improvement targets
 					statements: 20 // Honest measurement, not theater
 				},
 				// Higher standards for critical production paths

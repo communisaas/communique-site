@@ -121,24 +121,21 @@
 		if (!data.preview) return;
 
 		const hasAddress = data.preview.includes('[Address]');
-		
+
 		if (includeAddress && !hasAddress) {
 			// Need to add [Address] - find signature and insert after [Name]
 			const signaturePattern = /((?:Sincerely|Best regards|Thank you),?\s*\n\[Name\])/m;
 			const match = data.preview.match(signaturePattern);
-			
+
 			if (match) {
 				// Insert [Address] after [Name] in existing signature
-				const newContent = data.preview.replace(
-					signaturePattern,
-					'$1\n[Address]'
-				);
+				const newContent = data.preview.replace(signaturePattern, '$1\n[Address]');
 				data.preview = newContent;
 			} else {
 				// No signature found, need to add complete signature block
 				const needsNewline = data.preview.trim() && !data.preview.endsWith('\n\n');
 				const signatureBlock = `${needsNewline ? '\n\n' : ''}Sincerely,\n[Name]\n[Address]`;
-				
+
 				if (codeMirrorAppendToDocument) {
 					codeMirrorAppendToDocument(signatureBlock, true);
 				} else {
@@ -153,10 +150,10 @@
 				.replace(/\n\[Address\]$/g, '') // Address at end
 				.replace(/^\[Address\]\n/g, '') // Address at start (unlikely)
 				.replace(/\[Address\]/g, ''); // Any remaining Address variables
-			
+
 			data.preview = newContent;
 		}
-		
+
 		// Keep variables array in sync
 		const allVariables = data.preview.match(/\[.*?\]/g) || [];
 		data.variables = [...new Set(allVariables)];
@@ -280,7 +277,8 @@
 	// Sample data for preview
 	const sampleData = {
 		'[Name]': 'Jane Smith',
-		'[Personal Connection]': "As a parent of two children in our local schools, I've seen firsthand how this issue affects our community",
+		'[Personal Connection]':
+			"As a parent of two children in our local schools, I've seen firsthand how this issue affects our community",
 		'[Address]': '123 Main Street, San Francisco, CA 94102',
 		'[Representative]': 'Representative Nancy Pelosi',
 		'[Senator]': 'Senator Alex Padilla',
@@ -299,6 +297,7 @@
 		// Replace all variables with sample data
 		let preview = data.preview;
 		for (const [variable, value] of Object.entries(sampleData)) {
+			// eslint-disable-next-line no-useless-escape
 			preview = preview.replace(new RegExp(variable.replace(/[\[\]]/g, '\\$&'), 'g'), value);
 		}
 		previewContent = preview;
@@ -328,7 +327,9 @@
 		<div class="mb-2 flex items-center justify-between">
 			{#if isCongressional}
 				<span class="text-xs font-medium text-slate-700">
-					Core elements • <span class="text-blue-600 font-semibold">Address validates constituents</span>
+					Core elements • <span class="font-semibold text-blue-600"
+						>Address validates constituents</span
+					>
 				</span>
 			{:else}
 				<span class="text-xs font-medium text-slate-600">Core elements for your template</span>
@@ -430,7 +431,8 @@
 							class="pointer-events-none absolute bottom-full left-1/2 mb-2 hidden w-56 -translate-x-1/2 transform rounded-lg border border-blue-100 bg-blue-50 p-2 text-xs text-blue-800 opacity-0 shadow-sm transition-opacity group-hover:block group-hover:opacity-100"
 						>
 							{#if isCongressional}
-								<strong>Essential for government.</strong> Verifies senders as actual constituents — required by Congress, city councils, and county offices
+								<strong>Essential for government.</strong> Verifies senders as actual constituents —
+								required by Congress, city councils, and county offices
 							{:else}
 								Includes sender's address from their profile for authenticity
 							{/if}
@@ -477,12 +479,14 @@
 		<div class="relative flex-1">
 			<!-- Preview overlay when preview is active -->
 			{#if showPreview}
-				<div 
-					class="absolute inset-0 z-10 flex flex-col bg-white rounded-lg border border-blue-200 shadow-lg"
+				<div
+					class="absolute inset-0 z-10 flex flex-col rounded-lg border border-blue-200 bg-white shadow-lg"
 					style="transform: scale({$previewScale}); transform-origin: center center;"
 				>
 					<!-- Preview header -->
-					<div class="flex items-center justify-between border-b border-blue-100 bg-blue-50 px-4 py-2 rounded-t-lg">
+					<div
+						class="flex items-center justify-between rounded-t-lg border-b border-blue-100 bg-blue-50 px-4 py-2"
+					>
 						<div class="flex items-center gap-2">
 							<span class="text-sm font-medium text-blue-900">Preview with Sample Data</span>
 							<span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700">
@@ -491,24 +495,37 @@
 						</div>
 						<button
 							type="button"
-							class="text-blue-600 hover:text-blue-800 transition-colors"
+							aria-label="Close preview"
+							class="text-blue-600 transition-colors hover:text-blue-800"
 							onclick={togglePreview}
 						>
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M6 18L18 6M6 6l12 12"
+								/>
 							</svg>
 						</button>
 					</div>
-					
+
 					<!-- Preview content -->
 					<div class="flex-1 overflow-auto p-4">
 						<div class="prose prose-sm max-w-none">
-							<pre class="whitespace-pre-wrap font-sans text-sm text-gray-700">{previewContent}</pre>
+							<pre
+								class="whitespace-pre-wrap font-sans text-sm text-gray-700">{previewContent}</pre>
 						</div>
 					</div>
-					
+
 					<!-- Sample data legend -->
-					<div class="border-t border-blue-100 bg-blue-50/50 px-4 py-2 rounded-b-lg">
+					<div class="rounded-b-lg border-t border-blue-100 bg-blue-50/50 px-4 py-2">
 						<p class="text-xs text-blue-600">
 							Showing with sample recipient data. Actual values will vary for each sender.
 						</p>
@@ -554,17 +571,33 @@
 					{#if !showPreview && data.preview.length > 20}
 						<button
 							type="button"
-							class="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/95 px-3 py-1 text-xs font-medium text-blue-700 shadow-sm backdrop-blur-sm transition-all hover:bg-blue-100 hover:scale-105 active:scale-95"
+							class="flex items-center gap-1.5 rounded-full border border-blue-200 bg-blue-50/95 px-3 py-1 text-xs font-medium text-blue-700 shadow-sm backdrop-blur-sm transition-all hover:scale-105 hover:bg-blue-100 active:scale-95"
 							onclick={togglePreview}
 						>
-							<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-3 w-3"
+								fill="none"
+								viewBox="0 0 24 24"
+								stroke="currentColor"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+								/>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+								/>
 							</svg>
 							Preview
 						</button>
 					{/if}
-					
+
 					<!-- Word/character count -->
 					<div
 						class="flex items-center gap-2 rounded-full border bg-white/95 px-2 py-1 text-xs shadow-sm backdrop-blur-sm"

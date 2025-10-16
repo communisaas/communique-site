@@ -4,10 +4,7 @@
 	import { basicSetup } from 'codemirror';
 	import { EditorState, StateField, RangeSet } from '@codemirror/state';
 	import { deleteCharBackward, deleteCharForward } from '@codemirror/commands';
-	import {
-		getVariableMarkClasses,
-		getVariableTipMessage
-	} from '$lib/utils/variable-styling';
+	import { getVariableMarkClasses, getVariableTipMessage } from '$lib/utils/variable-styling';
 
 	let {
 		value = $bindable(),
@@ -31,7 +28,7 @@
 	// Helper function to build decorations from text
 	function buildDecorations(text: string) {
 		const decorationArray = [];
-		
+
 		// Find all [Variable] patterns
 		const variableRegex = /\[([^\]]+)\]/g;
 		let match;
@@ -50,8 +47,8 @@
 					attributes: {
 						'data-variable': variable,
 						'aria-label': `Variable: ${variable}. ${getVariableTipMessage(variable)}`,
-						'role': 'button',
-						'tabindex': '0'
+						role: 'button',
+						tabindex: '0'
 					}
 				}).range(from, to)
 			);
@@ -72,7 +69,7 @@
 			if (tr.docChanged) {
 				return buildDecorations(tr.state.doc.toString());
 			}
-			
+
 			// Otherwise just map existing decorations to new positions
 			return decorations.map(tr.changes);
 		},
@@ -84,17 +81,17 @@
 
 	// Helper function to get atomic ranges from document
 	function getAtomicRanges(doc: string) {
-		const ranges: Array<{from: number, to: number}> = [];
+		const ranges: Array<{ from: number; to: number }> = [];
 		const variableRegex = /\[[^\]]+\]/g;
 		let match;
-		
+
 		while ((match = variableRegex.exec(doc)) !== null) {
 			ranges.push({
 				from: match.index,
 				to: match.index + match[0].length
 			});
 		}
-		
+
 		return ranges;
 	}
 
@@ -103,15 +100,15 @@
 		const pos = view.state.selection.main.head;
 		const doc = view.state.doc.toString();
 		const ranges = getAtomicRanges(doc);
-		
+
 		// DEBUG: Log current state
 		console.log('🔍 Backspace Debug:', {
 			cursorPos: pos,
 			docLength: doc.length,
 			docSnippet: doc.slice(Math.max(0, pos - 10), pos + 10),
-			ranges: ranges.map(r => ({ from: r.from, to: r.to, text: doc.slice(r.from, r.to) }))
+			ranges: ranges.map((r) => ({ from: r.from, to: r.to, text: doc.slice(r.from, r.to) }))
 		});
-		
+
 		// Check if cursor is at the end of a variable
 		for (const range of ranges) {
 			if (range.to === pos) {
@@ -126,17 +123,17 @@
 				return true; // Handled, completely prevent default backspace
 			}
 		}
-		
+
 		console.log('❌ NO ATOMIC MATCH: Letting default backspace run');
 		return false; // Let default backspace run
 	}
 
-	// Jump to end of atomic range when delete hits a variable boundary  
+	// Jump to end of atomic range when delete hits a variable boundary
 	function jumpOverAtomForward(view: EditorView): boolean {
 		const pos = view.state.selection.main.head;
 		const doc = view.state.doc.toString();
 		const ranges = getAtomicRanges(doc);
-		
+
 		// Check if cursor is at the start of a variable
 		for (const range of ranges) {
 			if (range.from === pos) {
@@ -150,7 +147,7 @@
 				return true; // Handled, completely prevent default delete
 			}
 		}
-		
+
 		return false; // Let default delete run
 	}
 
@@ -158,19 +155,21 @@
 	const atomicRangesExtension = EditorView.atomicRanges.of((view) => {
 		const doc = view.state.doc.toString();
 		const ranges = getAtomicRanges(doc);
-		return RangeSet.of(ranges.map(range => 
-			Decoration.mark({
-				atomic: true,
-				inclusiveStart: false,
-				inclusiveEnd: false
-			}).range(range.from, range.to)
-		));
+		return RangeSet.of(
+			ranges.map((range) =>
+				Decoration.mark({
+					atomic: true,
+					inclusiveStart: false,
+					inclusiveEnd: false
+				}).range(range.from, range.to)
+			)
+		);
 	});
 
 	// Custom keymap to handle backspace/delete at atomic boundaries
 	const atomicKeymap = keymap.of([
 		{
-			key: "Backspace",
+			key: 'Backspace',
 			run: (view) => {
 				console.log('🔥 KEYMAP: Backspace handler called');
 				// If we handle the atomic jump, completely prevent default
@@ -183,7 +182,7 @@
 			}
 		},
 		{
-			key: "Delete", 
+			key: 'Delete',
 			run: (view) => {
 				// If we handle the atomic jump, completely prevent default
 				if (jumpOverAtomForward(view)) {
@@ -199,11 +198,13 @@
 	const atomicDomHandlers = EditorView.domEventHandlers({
 		beforeinput(event, view) {
 			const inputType = event.inputType;
-			
+
 			// Handle all backward deletion variants
-			if (inputType === "deleteContentBackward" || 
-			    inputType === "deleteByCut" || 
-			    inputType === "deleteByDrag") {
+			if (
+				inputType === 'deleteContentBackward' ||
+				inputType === 'deleteByCut' ||
+				inputType === 'deleteByDrag'
+			) {
 				if (jumpOverAtomBackward(view)) {
 					event.preventDefault();
 					event.stopPropagation();
@@ -211,9 +212,9 @@
 					return true;
 				}
 			}
-			
+
 			// Handle all forward deletion variants
-			if (inputType === "deleteContentForward") {
+			if (inputType === 'deleteContentForward') {
 				if (jumpOverAtomForward(view)) {
 					event.preventDefault();
 					event.stopPropagation();
@@ -221,7 +222,7 @@
 					return true;
 				}
 			}
-			
+
 			return false;
 		}
 	});
@@ -366,10 +367,9 @@
 		value = editorView.state.doc.toString();
 	}
 
-
 	onMount(() => {
 		console.log('🚀 CodeMirror initializing with atomic ranges handlers');
-		
+
 		const startState = EditorState.create({
 			doc: value,
 			extensions: [
@@ -416,7 +416,6 @@
 		};
 	});
 
-
 	// Update editor when value changes externally while preserving cursor
 	$effect(() => {
 		if (editorView && value !== editorView.state.doc.toString()) {
@@ -454,7 +453,7 @@
 
 <div class="relative">
 	<div bind:this={editorElement} class={className}></div>
-	
+
 	<!-- No modal needed - using direct inline editing -->
 </div>
 
@@ -470,11 +469,11 @@
 		transition: all 150ms ease !important;
 		border-radius: 2px !important;
 	}
-	
+
 	:global(.cm-variable-needs-input:hover) {
 		background-color: rgb(254 243 199) !important; /* hover:bg-amber-100 */
 	}
-	
+
 	:global(.cm-variable-system) {
 		background-color: rgb(236 253 245) !important; /* bg-emerald-50 */
 		color: rgb(6 78 59) !important; /* text-emerald-900 */
@@ -485,18 +484,18 @@
 		transition: all 150ms ease !important;
 		border-radius: 2px !important;
 	}
-	
+
 	:global(.cm-variable-system:hover) {
 		background-color: rgb(209 250 229) !important; /* hover:bg-emerald-100 */
 	}
-	
+
 	:global(.cm-variable-ready) {
 		color: rgb(71 85 105) !important; /* text-slate-600 */
 		border-bottom: 1px solid rgb(203 213 225) !important; /* border-slate-300 */
 		padding: 0 2px !important;
 		cursor: pointer !important;
 	}
-	
+
 	:global(.cm-variable-error) {
 		background-color: rgb(254 242 242) !important; /* bg-red-50 */
 		color: rgb(185 28 28) !important; /* text-red-700 */

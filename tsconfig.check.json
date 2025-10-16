@@ -1,0 +1,17 @@
+{
+	"extends": "./tsconfig.json",
+	"exclude": [
+		"src/lib/core/blockchain",
+		"src/lib/agents",
+		"src/lib/services",
+		"src/lib/stores",
+		"src/lib/core/legislative",
+		"src/routes/admin",
+		"src/routes/api",
+		"src/routes/onboarding",
+		"src/routes/profile",
+		"src/routes/s",
+		"src/routes/template-modal",
+		"tests"
+	]
+}

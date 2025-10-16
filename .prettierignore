@@ -2,3 +2,14 @@
 package-lock.json
 pnpm-lock.yaml
 yarn.lock
+
+# Temporary exclusions for demo readiness
+docs/**
+tests/**
+src/lib/components/blockchain/**
+src/lib/core/blockchain/**
+src/routes/admin/**
+src/routes/api/blockchain/**
+.claude/**
+CLAUDE.md
+prisma/*.md

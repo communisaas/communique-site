@@ -35,7 +35,8 @@ interface CongressMemberTerm {
 }
 
 interface CongressMember {
-	bioguide_id?: string;
+	bioguideId?: string; // Congress API uses camelCase
+	bioguide_id?: string; // Support snake_case for backwards compatibility
 	name?: string;
 	partyName?: string;
 	firstName?: string;
@@ -55,7 +56,8 @@ function isCongressMember(obj: unknown): obj is CongressMember {
 	return (
 		typeof obj === 'object' &&
 		obj !== null &&
-		(typeof (obj as CongressMember).bioguide_id === 'string' ||
+		(typeof (obj as CongressMember).bioguideId === 'string' ||
+			typeof (obj as CongressMember).bioguide_id === 'string' ||
 			typeof (obj as CongressMember).name === 'string')
 	);
 }
@@ -140,16 +142,30 @@ export class Address {
 		try {
 			const districts = geographies?.['119th Congressional Districts'];
 			if (Array.isArray(districts) && districts.length > 0) {
-				const cd = districts[0]?.CD119;
+				const districtObj = districts[0];
+
+				// Try CD119 field first (standard format)
+				let cd = districtObj?.CD119;
+
+				// Fallback: DC and some territories use GEOID where last 2 digits = district
+				if (cd === undefined && districtObj?.GEOID) {
+					const geoid = String(districtObj.GEOID);
+					cd = geoid.slice(-2); // Last 2 digits
+				}
+
 				if (cd === '98') {
 					// DC delegate special case → at-large
 					return { state: state.toUpperCase(), district: '00' };
 				}
-				return {
-					state: state.toUpperCase(),
-					district: String(cd).padStart(2, '0')
-				};
+
+				if (cd !== undefined) {
+					return {
+						state: state.toUpperCase(),
+						district: String(cd).padStart(2, '0')
+					};
+				}
 			}
+			// Fallback to at-large for any state without a numbered district
 			return { state: state.toUpperCase(), district: '00' };
 		} catch (error) {
 			return { state: state.toUpperCase(), district: '01' };
@@ -189,36 +205,41 @@ export class Address {
 			// Fetch all members with pagination (Congress has 535 members)
 			const allMembers = await this.fetchAllMembers();
 
-			// Filter for House member from the specific state and district
-			const districtNumber = parseInt(district.replace(/^0+/, ''), 10); // Remove leading zeros and convert to number
+			// Handle at-large districts (AL, 00) and regular numbered districts
+			let districtNumber: number | null = null;
 
-			console.log(
-				`Looking for _representative: ${stateAbbr}/${stateFullName} district ${districtNumber}`
-			);
+			if (district === 'AL' || district === '00') {
+				// At-large districts: DC, VT, WY, AK, MT, DE, ND, SD
+				// These are represented as district 0 or no district number in Congress API
+				districtNumber = 0;
+			} else {
+				// Regular numbered districts: remove leading zeros and parse
+				const stripped = district.replace(/^0+/, '');
+				districtNumber = stripped ? parseInt(stripped, 10) : 0;
+			}
 
 			const houseRep = allMembers.find((member: CongressMember) => {
 				// District is at the top level, not in terms
 				const memberDistrict = member.district;
 				// State can be full name or abbreviation in the API response
-				const isMatch =
-					(member.state === stateAbbr || member.state === stateFullName) &&
-					memberDistrict === districtNumber;
+				const stateMatches = member.state === stateAbbr || member.state === stateFullName;
 
-				if (isMatch) {
-					console.log('Found match!', member.name, member.state, member.district);
-				}
+				// For at-large districts (0), also match undefined district (non-voting delegates)
+				const districtMatches =
+					memberDistrict === districtNumber ||
+					(districtNumber === 0 && memberDistrict === undefined);
 
-				return isMatch;
+				return stateMatches && districtMatches;
 			});
 
 			if (!houseRep) {
-				console.error(`No House _representative found for ${stateAbbr}-${districtNumber}`);
-				throw new Error(`No House _representative found for ${stateAbbr}-${districtNumber}`);
+				console.error(`No House representative found for ${stateAbbr}-${districtNumber}`);
+				throw new Error(`No House representative found for ${stateAbbr}-${districtNumber}`);
 			}
 
 			return this.formatRepresentative(houseRep, 'house');
 		} catch (error) {
-			console.error('Error occurred');
+			console.error('Error fetching House representative:', error);
 			// Return placeholder data
 			return {
 				bioguide_id: `${state}${district}H`,
@@ -250,7 +271,8 @@ export class Address {
 				.filter((member: CongressMember) => {
 					const termsArray = Array.isArray(member.terms) ? member.terms : member.terms?.item;
 					const latestTerm = termsArray?.[0];
-					const isSenator = latestTerm?.chamber === 'Senate' || (!member.district && latestTerm); // Senators don't have districts
+					// Only match if chamber is explicitly 'Senate' (not just missing district)
+					const isSenator = latestTerm?.chamber === 'Senate';
 					return isSenator && (member.state === stateAbbr || member.state === stateFullName);
 				})
 				.slice(0, 2) // Should be exactly 2 senators
@@ -378,14 +400,17 @@ export class Address {
 		}
 		formattedName = formattedName || 'Unknown';
 
+		// Congress API returns camelCase bioguideId, fallback to snake_case for compatibility
+		const bioguideId = member.bioguideId || member.bioguide_id || '';
+
 		return {
-			bioguide_id: member.bioguide_id || '',
+			bioguide_id: bioguideId,
 			name: formattedName,
 			party: member.partyName || currentTerm?.party || 'Unknown',
 			state: member.state || currentTerm?.state || '',
 			district: chamber === 'senate' ? '00' : String(member.district || '01').padStart(2, '0'),
 			chamber,
-			office_code: member.bioguide_id || ''
+			office_code: bioguideId
 		};
 	}
 

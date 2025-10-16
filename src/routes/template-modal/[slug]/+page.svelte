@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import TemplateModal from '$lib/components/template/TemplateModal.svelte';
@@ -15,7 +14,7 @@
 		data.user ? { id: data.user.id, name: data.user.name || 'User' } : null
 	);
 
-	_onMount(() => {
+	onMount(() => {
 		// Check for pending template action from OAuth flow
 		const pendingAction = sessionStorage.getItem('pending_template_action');
 		if (pendingAction) {

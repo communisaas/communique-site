@@ -1,30 +1,30 @@
 /**
- * Direct VOTER Protocol Blockchain Client
+ * VOTER Protocol Blockchain Client - READ-ONLY
  *
- * STATUS: SIMPLIFIED EVM-ONLY IMPLEMENTATION
+ * STATUS: REFACTORED FOR CLIENT-SIDE SIGNING
  *
- * ⚠️ NOTE: This is a simplified EVM-based implementation using ethers.js for direct
- * smart contract interactions. The actual VOTER Protocol architecture uses:
+ * ⚠️ SECURITY: This client is READ-ONLY. All transaction signing happens CLIENT-SIDE.
+ * NO PRIVATE KEYS ARE STORED OR USED SERVER-SIDE.
  *
- * - NEAR Protocol (control layer, passkey-based accounts, Chain Signatures)
- * - Scroll zkEVM (settlement layer, $0.135/action)
- * - 5-agent system (Supply, Market, Impact, Reputation, Verification agents)
+ * Architecture (VOTER Protocol Specification):
+ * - NEAR Protocol: Passkey-based accounts (WebAuthn/FIDO2), Chain Signatures
+ * - Scroll zkEVM: Settlement layer ($0.135/action), EVM smart contracts
+ * - Client-side signing: User signs with Touch ID/Face ID
+ * - Server role: Query blockchain state, prepare unsigned transactions, listen for confirmations
  *
- * For the complete VOTER Protocol architecture, see:
- * - voter-protocol/ARCHITECTURE.md (3400+ lines, full specification)
- * - docs/integrations.md (Communique-specific integration notes)
- *
- * This client provides basic EVM contract interaction for reward distribution and
- * civic action recording. Future integration will implement the full NEAR + Scroll
- * architecture as specified in the voter-protocol repository.
+ * For complete architecture:
+ * - voter-protocol/ARCHITECTURE.md (3400+ lines)
+ * - docs/integrations.md (Communique integration notes)
  *
  * Current functionality:
- * - Register users with deterministic addresses
- * - Process civic actions (CWC messages, local actions, etc.)
- * - Track user stats and platform metrics
- * - VOTER token balance queries
+ * - Query user stats and balances (READ-ONLY)
+ * - Query platform metrics (READ-ONLY)
+ * - Prepare unsigned transaction data for client signing
+ * - Validate transaction structure before client submission
  *
- * Eliminates API proxy layers for better performance and reliability.
+ * Client-side signing implemented in:
+ * - src/lib/core/blockchain/client-signing.ts (passkey wallet)
+ * - src/lib/components/blockchain/TransactionSigning.svelte (signing UI)
  */
 
 import { ethers } from 'ethers';
@@ -120,27 +120,24 @@ export interface UserStats {
 
 class VOTERBlockchainClient {
 	private provider: ethers.JsonRpcProvider;
-	private signer: ethers.Wallet | null = null;
+	// 🔥 REMOVED: private signer - NO SERVER-SIDE SIGNING
 	private communiqueCore: ethers.Contract | null = null;
 	private voterToken: ethers.Contract | null = null;
 	private _voterRegistry: ethers.Contract | null = null;
 
 	constructor() {
-		// Initialize provider
+		// Initialize provider (READ-ONLY)
 		const rpcUrl = env.RPC_URL || 'http://localhost:8545';
 		this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
-		// Initialize signer if private key is provided
-		if (env.CERTIFIER_PRIVATE_KEY) {
-			this.signer = new ethers.Wallet(env.CERTIFIER_PRIVATE_KEY, this.provider);
-		}
+		// 🔥 REMOVED: Signer initialization - NO PRIVATE KEYS ON SERVER
 
-		// Initialize contracts if addresses are provided
-		if (env.COMMUNIQUE_CORE_ADDRESS && this.signer) {
+		// Initialize contracts (READ-ONLY - no signer)
+		if (env.COMMUNIQUE_CORE_ADDRESS) {
 			this.communiqueCore = new ethers.Contract(
 				env.COMMUNIQUE_CORE_ADDRESS,
 				COMMUNIQUE_CORE_ABI,
-				this.signer
+				this.provider // READ-ONLY: No signer attached
 			);
 		}
 
@@ -148,7 +145,7 @@ class VOTERBlockchainClient {
 			this.voterToken = new ethers.Contract(
 				env.VOTER_TOKEN_ADDRESS,
 				VOTER_TOKEN_ABI,
-				this.provider
+				this.provider // READ-ONLY
 			);
 		}
 
@@ -156,7 +153,7 @@ class VOTERBlockchainClient {
 			this._voterRegistry = new ethers.Contract(
 				env.VOTER_REGISTRY_ADDRESS,
 				_VOTER_REGISTRY_ABI,
-				this.provider
+				this.provider // READ-ONLY
 			);
 		}
 	}
@@ -192,9 +189,24 @@ class VOTERBlockchainClient {
 	}
 
 	/**
-	 * Certify a civic action directly on blockchain
+	 * Prepare unsigned transaction data for civic action
+	 *
+	 * 🔒 SECURITY: This method ONLY prepares transaction data.
+	 * User must sign the transaction CLIENT-SIDE with their passkey.
+	 *
+	 * @returns Unsigned transaction data for client-side signing
 	 */
-	async certifyAction(action: VOTERAction): Promise<VOTERActionResult> {
+	async prepareActionTransaction(action: VOTERAction): Promise<{
+		success: true;
+		unsignedTx: {
+			to: string;
+			data: string;
+			value: string;
+			gasLimit?: string;
+		};
+		actionHash: string;
+		metadataUri: string;
+	} | VOTERActionError> {
 		try {
 			if (!this.communiqueCore) {
 				throw new Error('CommuniqueCore contract not initialized');
@@ -203,7 +215,7 @@ class VOTERBlockchainClient {
 			const actionType = this.getActionTypeEnum(action.actionType);
 			const actionHash = this.generateActionHash(action);
 
-			// Create metadata URI (could be IPFS in production)
+			// Create metadata URI (will be moved to IPFS in Week 2)
 			const metadata = {
 				templateId: action.templateId,
 				deliveryConfirmation: action.deliveryConfirmation,
@@ -212,93 +224,151 @@ class VOTERBlockchainClient {
 			};
 			const metadataUri = `data:application/json,${encodeURIComponent(JSON.stringify(metadata))}`;
 
-			// Execute blockchain transaction
-			const tx = await this.communiqueCore.processCivicAction(
+			// Prepare unsigned transaction data (no signing)
+			const txData = this.communiqueCore.interface.encodeFunctionData('processCivicAction', [
 				action.userAddress,
 				actionType,
 				actionHash,
 				metadataUri,
 				0 // No reward override
-			);
+			]);
 
-			const receipt = await tx.wait();
+			// Estimate gas (optional, helps client prepare tx)
+			let gasLimit: string | undefined;
+			try {
+				const estimated = await this.provider.estimateGas({
+					to: await this.communiqueCore.getAddress(),
+					data: txData
+				});
+				gasLimit = estimated.toString();
+			} catch {
+				// Gas estimation failed, client will handle
+				gasLimit = undefined;
+			}
 
 			return {
 				success: true,
-				transactionHash: tx.hash,
-				blockNumber: receipt.blockNumber,
-				gasUsed: receipt.gasUsed.toString(),
-				gasPrice: receipt.gasPrice?.toString(),
-				effectiveGasPrice: receipt.effectiveGasPrice?.toString(),
-				actionHash: actionHash,
-				receipt: receipt as TransactionReceipt
+				unsignedTx: {
+					to: await this.communiqueCore.getAddress(),
+					data: txData,
+					value: '0',
+					gasLimit
+				},
+				actionHash,
+				metadataUri
 			};
 		} catch (error) {
-			console.error('Error occurred');
+			console.error('[VOTER Client] Error preparing transaction:', error);
 			return {
 				success: false,
-				error: 'Unknown error',
-				code: undefined,
+				error: error instanceof Error ? error.message : 'Failed to prepare transaction',
+				code: error instanceof Error && 'code' in error ? (error as ErrorWithCode).code : undefined,
 				details: {
 					reason:
 						error instanceof Error && 'reason' in error
 							? (error as ErrorWithCode).reason
 							: undefined,
-					method: 'processCivicAction',
-					transaction:
-						error instanceof Error && 'transaction' in error
-							? ((error as ErrorWithCode).transaction as UnknownRecord)
-							: undefined
+					method: 'prepareActionTransaction'
 				}
 			};
 		}
 	}
 
 	/**
-	 * Register a new user on blockchain
+	 * @deprecated Use prepareActionTransaction() instead
+	 *
+	 * This method previously executed transactions server-side (INSECURE).
+	 * It now throws an error to prevent accidental use of the old API.
 	 */
-	async registerUser(
+	async certifyAction(_action: VOTERAction): Promise<never> {
+		throw new Error(
+			'certifyAction() is DEPRECATED and INSECURE. ' +
+			'Use prepareActionTransaction() to get unsigned tx data, ' +
+			'then have the user sign it CLIENT-SIDE with their passkey. ' +
+			'See src/lib/core/blockchain/client-signing.ts for implementation.'
+		);
+	}
+
+	/**
+	 * Prepare unsigned transaction for user registration
+	 *
+	 * 🔒 SECURITY: User must sign this CLIENT-SIDE with their passkey
+	 */
+	async prepareUserRegistration(
 		userAddress: string,
 		phoneHash: string,
 		selfProof: string
-	): Promise<VOTERActionResult> {
+	): Promise<{
+		success: true;
+		unsignedTx: {
+			to: string;
+			data: string;
+			value: string;
+			gasLimit?: string;
+		};
+	} | VOTERActionError> {
 		try {
 			if (!this.communiqueCore) {
 				throw new Error('CommuniqueCore contract not initialized');
 			}
 
-			const tx = await this.communiqueCore.registerUser(userAddress, phoneHash, selfProof);
+			// Prepare unsigned transaction data
+			const txData = this.communiqueCore.interface.encodeFunctionData('registerUser', [
+				userAddress,
+				phoneHash,
+				selfProof
+			]);
 
-			const receipt = await tx.wait();
+			// Estimate gas
+			let gasLimit: string | undefined;
+			try {
+				const estimated = await this.provider.estimateGas({
+					to: await this.communiqueCore.getAddress(),
+					data: txData
+				});
+				gasLimit = estimated.toString();
+			} catch {
+				gasLimit = undefined;
+			}
 
 			return {
 				success: true,
-				transactionHash: tx.hash,
-				blockNumber: receipt.blockNumber,
-				gasUsed: receipt.gasUsed.toString(),
-				gasPrice: receipt.gasPrice?.toString(),
-				effectiveGasPrice: receipt.effectiveGasPrice?.toString(),
-				receipt: receipt as TransactionReceipt
+				unsignedTx: {
+					to: await this.communiqueCore.getAddress(),
+					data: txData,
+					value: '0',
+					gasLimit
+				}
 			};
 		} catch (error) {
-			console.error('Error occurred');
+			console.error('[VOTER Client] Error preparing registration:', error);
 			return {
 				success: false,
-				error: 'Unknown error',
-				code: undefined,
+				error: error instanceof Error ? error.message : 'Failed to prepare registration',
+				code: error instanceof Error && 'code' in error ? (error as ErrorWithCode).code : undefined,
 				details: {
 					reason:
 						error instanceof Error && 'reason' in error
 							? (error as ErrorWithCode).reason
 							: undefined,
-					method: 'registerUser',
-					transaction:
-						error instanceof Error && 'transaction' in error
-							? ((error as ErrorWithCode).transaction as UnknownRecord)
-							: undefined
+					method: 'prepareUserRegistration'
 				}
 			};
 		}
+	}
+
+	/**
+	 * @deprecated Use prepareUserRegistration() instead
+	 */
+	async registerUser(
+		_userAddress: string,
+		_phoneHash: string,
+		_selfProof: string
+	): Promise<never> {
+		throw new Error(
+			'registerUser() is DEPRECATED and INSECURE. ' +
+			'Use prepareUserRegistration() for client-side signing.'
+		);
 	}
 
 	/**
@@ -328,10 +398,10 @@ class VOTERBlockchainClient {
 	}
 
 	/**
-	 * Check if blockchain client is properly configured
+	 * Check if blockchain client is properly configured (READ-ONLY)
 	 */
 	isConfigured(): boolean {
-		return !!(this.communiqueCore && this.voterToken && this.signer);
+		return !!(this.communiqueCore && this.voterToken);
 	}
 
 	/**
@@ -340,14 +410,15 @@ class VOTERBlockchainClient {
 	getStatus() {
 		return {
 			configured: this.isConfigured(),
+			readOnly: true, // Always true - no server-side signing
 			contracts: {
 				communiqueCore: env.COMMUNIQUE_CORE_ADDRESS || 'not set',
 				voterToken: env.VOTER_TOKEN_ADDRESS || 'not set',
 				voterRegistry: env.VOTER_REGISTRY_ADDRESS || 'not set'
 			},
 			network: {
-				rpcUrl: env.RPC_URL || 'not set',
-				hasPrivateKey: !!env.CERTIFIER_PRIVATE_KEY
+				rpcUrl: env.RPC_URL || 'not set'
+				// 🔥 REMOVED: hasPrivateKey check - NO KEYS ON SERVER
 			}
 		};
 	}
@@ -356,17 +427,18 @@ class VOTERBlockchainClient {
 // Export singleton instance
 export const voterBlockchainClient = new VOTERBlockchainClient();
 
-// Export function for delivery service compatibility
-export async function certifyEmailDelivery(certificationData: {
+/**
+ * @deprecated This function previously executed server-side signing (INSECURE).
+ * Use voterBlockchainClient.prepareActionTransaction() for client-side signing.
+ */
+export async function certifyEmailDelivery(_certificationData: {
 	userAddress: string;
 	templateId: string;
 	actionType: string;
 	deliveryConfirmation: string;
-}): Promise<VOTERActionResult> {
-	return await voterBlockchainClient.certifyAction({
-		actionType: certificationData.actionType as VOTERAction['actionType'],
-		userAddress: certificationData.userAddress,
-		templateId: certificationData.templateId,
-		deliveryConfirmation: certificationData.deliveryConfirmation
-	});
+}): Promise<never> {
+	throw new Error(
+		'certifyEmailDelivery() is DEPRECATED and INSECURE. ' +
+		'Use voterBlockchainClient.prepareActionTransaction() for client-side signing.'
+	);
 }

@@ -12,6 +12,7 @@
 	type VerificationResult = {
 		verified?: boolean;
 		correctedAddress?: string;
+		district?: string;
 		representatives?: Representative[];
 		[key: string]: unknown;
 	};
@@ -27,8 +28,13 @@
 		};
 		onclose?: () => void;
 		oncomplete: (data: {
+			street?: string;
+			city?: string;
+			state?: string;
+			zip?: string;
 			address: string;
 			verified: boolean;
+			congressional_district?: string;
 			representatives?: Array<Record<string, unknown>>;
 		}) => void;
 	} = $props();
@@ -102,8 +108,13 @@
 
 	function acceptAddress() {
 		oncomplete({
+			street: streetAddress,
+			city,
+			state: stateCode,
+			zip: zipCode,
 			address: selectedAddress,
 			verified: true,
+			congressional_district: verificationResult?.district,
 			representatives: verificationResult?.representatives as
 				| Array<Record<string, unknown>>
 				| undefined
@@ -118,6 +129,10 @@
 	function skipVerification() {
 		const fullAddress = `${streetAddress}, ${city}, ${stateCode} ${zipCode}`;
 		oncomplete({
+			street: streetAddress,
+			city,
+			state: stateCode,
+			zip: zipCode,
 			address: fullAddress,
 			verified: false
 		});
