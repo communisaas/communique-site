@@ -1,5 +1,9 @@
 # Agent Architecture
 
+🔌 **Implementation Guide** - How communique integrates with VOTER Protocol agents
+
+**For complete agent specifications:** See [voter-protocol/ARCHITECTURE.md](https://github.com/communisaas/voter-protocol/blob/main/ARCHITECTURE.md) and [voter-protocol/docs/content-moderation-architecture.md](https://github.com/communisaas/voter-protocol/blob/main/docs/content-moderation-architecture.md)
+
 **Clear separation: Off-chain content moderation today, on-chain rewards tomorrow.**
 
 ## Two Distinct Systems

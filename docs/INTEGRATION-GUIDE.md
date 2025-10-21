@@ -1,6 +1,10 @@
 # Integration Guide: CWC, OAuth, Geocoding, self.xyz, TEE
 
-**How Communiqué integrates with external services. Not blockchain—that's in [voter-protocol](https://github.com/communisaas/voter-protocol).**
+🔌 **Implementation Guide** - How communiqué integrates with external services
+
+**For blockchain architecture and cryptography specs:** See [voter-protocol/ARCHITECTURE.md](https://github.com/communisaas/voter-protocol/blob/main/ARCHITECTURE.md) and [voter-protocol/ECONOMICS.md](https://github.com/communisaas/voter-protocol/blob/main/docs/ECONOMICS.md)
+
+**This document covers:** Congressional Web Contact (CWC) API, OAuth providers, Census Bureau geocoding, identity verification (self.xyz + Didit.me), and GCP Confidential Space (TEE) encrypted delivery.
 
 This document covers Congressional Web Contact (CWC) API, OAuth providers (Google/Facebook/Twitter/LinkedIn/Discord), Census Bureau geocoding, self.xyz + Didit.me identity verification, and GCP Confidential Space (TEE) encrypted delivery.
 
