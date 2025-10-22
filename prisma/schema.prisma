@@ -23,9 +23,6 @@ model User {
   congressional_district    String?
   state                     String?
   zip                       String?
-  street                    String?                    @map("street")
-  phone                     String?                    @map("phone")
-  connection_details        String?                    @map("connection_details")
   ciphervault_envelope_id   String?                    @map("ciphervault_envelope_id") // Reference to NEAR CipherVault
   
   // === MERGED COORDINATES DATA (from user_coordinates table) ===
@@ -870,7 +867,7 @@ model CivicAction {
   template_id               String?   @map("template_id")
   
   // === BLOCKCHAIN INTEGRATION ONLY ===
-  tx_hash                   String?   @map("tx_hash") // Ethereum/Monad transaction hash
+  tx_hash                   String?   @map("tx_hash") // Scroll zkEVM transaction hash (Ethereum L2)
   reward_wei                String?   @map("reward_wei") // BigInt as string (VOTER tokens)
   status                    String    @default("pending") // 'pending', 'confirmed', 'failed'
   

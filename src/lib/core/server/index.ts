@@ -22,7 +22,6 @@ export * from './sentiment-storage';
 
 // Utilities
 export * from './reserved-slugs';
-export * from './selfxyz-config';
 
 // Convenience exports
 export { analyzeCivicInformationCascades, storeCascadeAnalysis } from './percolation-engine';

@@ -63,7 +63,7 @@ export interface CivicAction {
 	template_id?: string;
 
 	// === BLOCKCHAIN INTEGRATION ONLY ===
-	tx_hash?: string; // Ethereum/Monad transaction hash
+	tx_hash?: string; // Scroll zkEVM transaction hash (Ethereum L2)
 	reward_wei?: string; // BigInt as string (VOTER tokens)
 	status: 'pending' | 'confirmed' | 'failed';
 

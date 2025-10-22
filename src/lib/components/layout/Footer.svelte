@@ -28,7 +28,7 @@
 
 		<div class="mt-8 border-t border-slate-200 pt-8">
 			<p class="text-center text-sm text-slate-500">
-				© {new Date().getFullYear()} Communique Inc.
+				© {new Date().getFullYear()} Communiqué PBC
 			</p>
 		</div>
 	</div>

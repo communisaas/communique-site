@@ -1,6 +1,10 @@
 # CLAUDE.md
 
-Authoritative guide for Claude Code in this repo. Single source of truth for cryptographic democratic infrastructure.
+Authoritative guide for Claude Code in this repo. Single source of truth for the **frontend application** of VOTER Protocol's cryptographic democratic infrastructure.
+
+**Phase 1 (3 months to launch):** Reputation-only. Zero-knowledge verification, encrypted delivery, on-chain reputation tracking. No token.
+
+**Phase 2 (12-18 months):** Token rewards, challenge markets, outcome markets powered by multi-agent treasury management.
 
 ## Quick start
 
@@ -464,14 +468,36 @@ RATE_LIMIT_COUNT=10                 # Rate limit count (default: 10 per hour)
 VISIBILITY_TIMEOUT_SECONDS=300      # SQS visibility timeout (default: 5 minutes)
 ```
 
-## Architecture (Cypherpunk Democratic Infrastructure)
+## Architecture (Phase 1: Reputation-Only Frontend)
 
-- SvelteKit 5 + TypeScript + Tailwind + Algorithmic Coordination
+**What Communiqué handles:**
+- SvelteKit 5 + TypeScript + Tailwind (frontend framework)
 - Supabase (Postgres) via Prisma; cryptographic sessions via `@oslojs/crypto`
-- VOTER Protocol integration: Didit.me zero-knowledge verification + algorithmic treasury execution
-- International legislative abstraction (US Congress + UK Parliament + generic)
+- OAuth authentication (Google, Facebook, Twitter, LinkedIn, Discord)
+- Address validation → Census Bureau geocoding → congressional district lookup
+- Template creation, customization, and 3-layer content moderation
+- Halo2 zero-knowledge proof generation in browser (4-6 seconds, address never leaves device, never touches any database)
+- Encrypted delivery via CWC API through GCP Confidential Space (AMD SEV-SNP TEE)
 - Integration-first testing (53→6 tests, smart mocks, fixtures)
-- Cryptographic flow: identity verify → algorithmic certification → autonomous reward distribution
+
+**What voter-protocol handles:**
+- Smart contracts on Scroll zkEVM (Ethereum L2)
+- Halo2 zero-knowledge proof verification on-chain
+- ERC-8004 on-chain reputation tracking
+- Multi-agent treasury management (Phase 2)
+- Token economics, challenge markets, outcome markets (Phase 2)
+
+**Phase 1 cryptographic flow:**
+1. Identity verification: self.xyz NFC passport (70%) + Didit.me (30%) - both FREE
+2. ZK proof generation: Browser generates Halo2 recursive proof (4-6 seconds), address never leaves browser, never touches any database
+3. Encrypted delivery: XChaCha20-Poly1305 → GCP Confidential Space → CWC API → congressional office
+4. Reputation tracking: On-chain ERC-8004 reputation updates (no token rewards yet)
+
+**Phase 2 additions (12-18 months):**
+- Token rewards for verified civic actions
+- Multi-agent treasury execution (OpenAI + Gemini/Claude consensus)
+- Challenge markets (dispute resolution)
+- Outcome markets (impact verification)
 
 Code map:
 
@@ -503,20 +529,22 @@ Code map:
 - **Actions**: `src/lib/actions/` (Svelte actions)
 - **Tests**: `tests/` (integration, unit, e2e, mocks, fixtures)
 
-## Agent Architecture (Two-Agent Consensus System)
+## Agent Architecture (Multi-Agent Content Moderation + VOTER Protocol)
 
-The platform uses a sophisticated multi-agent system for content moderation and VOTER Protocol integration:
+**Phase 1 (active now):** Content moderation agents only. 3-layer consensus for template quality.
 
-### Agent Types:
+**Phase 2 (12-18 months):** VOTER Protocol agents for treasury management, reward calculation, impact verification.
 
+### Phase 1: Content Moderation Agents
+
+**Active now:**
 - **Content Agents** (`src/lib/agents/content/`): Template moderation and quality assessment
-- **VOTER Protocol Agents** (`src/lib/agents/voter-protocol/`): Blockchain reward calculation and verification
 - **Shared Infrastructure** (`src/lib/agents/shared/`): Base agent classes, type guards, common utilities
 
-### Consensus Mechanism:
+**Consensus Mechanism:**
 
 ```typescript
-// Multi-agent voting for template approval
+// Multi-agent voting for template approval (Phase 1)
 const consensusResult = await agentConsensus.processTemplate({
 	template,
 	agents: ['openai', 'gemini', 'claude'],
@@ -530,7 +558,7 @@ const consensusResult = await agentConsensus.processTemplate({
 // - reasoning: string[]
 ```
 
-### Agent Orchestration:
+**Agent Orchestration:**
 
 Template moderation uses LangGraph-based multi-agent consensus:
 - **3 AI agents** (OpenAI, Gemini, Claude) vote on template quality
@@ -539,22 +567,72 @@ Template moderation uses LangGraph-based multi-agent consensus:
 - See: `docs/agents/agent-architecture.md` for details
 - Code: `src/lib/agents/content/`
 
+### Phase 2: VOTER Protocol Agents (12-18 months)
+
+**Not implemented yet:**
+- **VOTER Protocol Agents** (`src/lib/agents/voter-protocol/`): Blockchain reward calculation and verification
+- **Multi-agent treasury management**: OpenAI + Gemini/Claude consensus for reward distribution
+- **Impact verification**: Cross-agent scoring of civic action outcomes
+- **Challenge market agents**: Dispute resolution with economic stakes
+
 ### Agent API Endpoints:
 
 ```bash
+# Phase 1 (active):
 POST /api/agents/consensus          # Multi-agent template moderation
+
+# Phase 2 (12-18 months):
 POST /api/agents/calculate-reward   # VOTER Protocol reward calculation
 POST /api/agents/track-impact       # Impact verification and scoring
 POST /api/agents/verify             # Identity and action verification
 POST /api/agents/update-reputation  # Reputation score updates
 ```
 
-### VOTER Protocol Integration:
+### VOTER Protocol Integration (Phase 1: Read-Only + Reputation):
 
-- **Deterministic Address Generation**: Wallet-free blockchain participation
-- **Automatic Reward Distribution**: Server-side transaction signing
-- **Reputation Tracking**: Cross-platform ERC-8004 compatible reputation
-- **Gas Management**: Platform pays all transaction fees
+**Phase 1 (current):**
+- **Read-only blockchain queries**: Fetch user reputation, platform metrics
+- **Reputation tracking**: On-chain ERC-8004 reputation updates (no token rewards)
+- **Deterministic address generation**: Wallet-free blockchain participation via passkeys
+- **Gas management**: Platform pays all transaction fees
+
+**Phase 2 (12-18 months):**
+- **Client-side transaction signing**: Users sign with passkey (Face ID / Touch ID)
+- **Token rewards**: Automatic reward distribution for verified civic actions
+- **Challenge markets**: Dispute resolution with economic stakes
+- **Outcome markets**: Impact verification with reputation + token rewards
+
+**Integration example (Phase 1):**
+
+```typescript
+import { voterBlockchainClient } from '$lib/core/blockchain/voter-client';
+
+// Query user reputation (read-only)
+const stats = await voterBlockchainClient.getUserStats(userAddress);
+// Returns: { actionCount, reputationScore, lastActionTime }
+
+// Query platform metrics
+const metrics = await voterBlockchainClient.getPlatformStats();
+// Returns: { totalUsers, totalActions, totalReputation }
+```
+
+**Integration example (Phase 2):**
+
+```typescript
+// Prepare unsigned transaction for user to sign
+const { unsignedTx } = await voterBlockchainClient.prepareActionTransaction({
+  userAddress,
+  actionType: 'CWC_MESSAGE',
+  templateId,
+  deliveryConfirmation
+});
+
+// User signs with passkey (Face ID / Touch ID)
+const signedTx = await passkeyWallet.signTransaction(unsignedTx);
+
+// Submit to blockchain for reward distribution
+await submitTransaction(signedTx);
+```
 
 ## Testing (Integration-First Test Suite)
 

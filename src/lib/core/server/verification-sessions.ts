@@ -1,27 +1,101 @@
-// Shared verification session storage
-// In production, this would be Redis/Database
+/**
+ * Verification Session Management
+ *
+ * Database-backed session management for identity verification flow.
+ * Replaced in-memory storage with Prisma database for production use.
+ */
 
-interface VerificationSession {
+import { prisma } from '$lib/core/db';
+import { generateNonce, generateChallenge } from './security';
+
+export interface CreateSessionParams {
 	userId: string;
-	templateSlug: string;
-	disclosures: Record<string, unknown>;
-	qrCodeData: string;
-	status: 'pending' | 'verified' | 'failed';
-	credentialSubject?: unknown;
-	createdAt: Date;
+	method: 'self.xyz' | 'didit';
+	challenge: string; // QR code data or verification URL
 }
 
-// In-memory storage for verification sessions (use Redis/DB in production)
-export const verificationSessions = new Map<string, VerificationSession>();
+/**
+ * Create new verification session
+ * @returns Session ID and nonce for client
+ */
+export async function createVerificationSession(params: CreateSessionParams) {
+	const nonce = generateNonce();
+	const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-// Cleanup function to remove old sessions
-export function cleanupOldSessions() {
-	const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-	for (const [key, session] of verificationSessions.entries()) {
-		if (session.createdAt < oneHourAgo) {
-			verificationSessions.delete(key);
+	const session = await prisma.verificationSession.create({
+		data: {
+			user_id: params.userId,
+			nonce,
+			challenge: params.challenge,
+			expires_at: expiresAt,
+			method: params.method,
+			status: 'pending'
 		}
-	}
+	});
+
+	return {
+		sessionId: session.id,
+		nonce: session.nonce,
+		expiresAt: session.expires_at
+	};
 }
 
-export type { VerificationSession };
+/**
+ * Retrieve session and validate expiration
+ * @throws Error if session not found or expired
+ */
+export async function getVerificationSession(sessionId: string) {
+	const session = await prisma.verificationSession.findUnique({
+		where: { id: sessionId }
+	});
+
+	if (!session) {
+		throw new Error('Verification session not found');
+	}
+
+	if (new Date() > session.expires_at) {
+		// Mark as expired
+		await prisma.verificationSession.update({
+			where: { id: sessionId },
+			data: { status: 'expired' }
+		});
+		throw new Error('Verification session expired');
+	}
+
+	return session;
+}
+
+/**
+ * Mark session as verified
+ */
+export async function markSessionVerified(sessionId: string) {
+	await prisma.verificationSession.update({
+		where: { id: sessionId },
+		data: { status: 'verified' }
+	});
+}
+
+/**
+ * Mark session as failed
+ */
+export async function markSessionFailed(sessionId: string) {
+	await prisma.verificationSession.update({
+		where: { id: sessionId },
+		data: { status: 'failed' }
+	});
+}
+
+/**
+ * Cleanup expired sessions (run as cron job)
+ * @returns Number of sessions deleted
+ */
+export async function cleanupExpiredSessions() {
+	const result = await prisma.verificationSession.deleteMany({
+		where: {
+			expires_at: { lt: new Date() },
+			status: { not: 'verified' }
+		}
+	});
+
+	return result.count;
+}

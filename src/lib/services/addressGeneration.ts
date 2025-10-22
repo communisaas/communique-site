@@ -11,7 +11,7 @@ import { env } from '$env/dynamic/private';
 
 // Platform-specific salt for address generation (keeps addresses unique to Communiqué)
 const PLATFORM_SALT = env.PLATFORM_SALT || 'communique-voter-protocol-2024';
-const CHAIN_ID = env.CHAIN_ID || '1337'; // Monad testnet
+const CHAIN_ID = env.CHAIN_ID || '534351'; // Scroll Sepolia testnet (Ethereum L2)
 
 export interface Address {
 	address: string;

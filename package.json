@@ -103,7 +103,7 @@
 		"axios": "^1.7.2",
 		"codemirror": "^6.0.2",
 		"dompurify": "^3.2.7",
-		"ethers": "^6.13.4",
+		"ethers": "^6.15.0",
 		"jsonwebtoken": "^9.0.2",
 		"mailparser": "^3.7.1",
 		"ncu": "^0.2.1",

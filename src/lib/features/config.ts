@@ -14,28 +14,31 @@ export enum FeatureStatus {
 }
 
 export const FEATURES = {
-	// Core Features (always on)
+	// === PHASE 1: PRODUCTION (3 months to launch) ===
 	TEMPLATE_CREATION: FeatureStatus.ON,
 	CONGRESSIONAL_ROUTING: FeatureStatus.ON,
 	OAUTH_LOGIN: FeatureStatus.ON,
-	EMAIL_DELIVERY: FeatureStatus.ON,
+	ADDRESS_VALIDATION: FeatureStatus.ON,
 
-	// Beta Features
-	CASCADE_ANALYTICS: FeatureStatus.BETA,
-	LEGISLATIVE_CHANNELS: FeatureStatus.BETA,
-	VIRAL_PATTERN_GENERATOR: FeatureStatus.BETA,
+	// Beta Features (working but not polished)
+	LEGISLATIVE_CHANNELS: FeatureStatus.BETA, // Database schema exists, no UI
 
-	// Planned Features (see ROADMAP.md)
-	AI_SUGGESTIONS: FeatureStatus.ROADMAP,
-	VARIABLE_RESOLUTION: FeatureStatus.ROADMAP,
-	TEMPLATE_PERSONALIZATION: FeatureStatus.ROADMAP,
-	USER_WRITING_STYLE: FeatureStatus.ROADMAP,
+	// === PHASE 2: ROADMAP (12-18 months) ===
+	// Removed from codebase - will be implemented in voter-protocol repo
+	BLOCKCHAIN_INTEGRATION: FeatureStatus.ROADMAP,
+	REPUTATION_SYSTEM: FeatureStatus.ROADMAP,
+	CHALLENGE_MARKETS: FeatureStatus.ROADMAP,
+	OUTCOME_MARKETS: FeatureStatus.ROADMAP,
+	VOTER_TOKEN: FeatureStatus.ROADMAP,
+	MULTI_AGENT_CONSENSUS: FeatureStatus.ROADMAP,
 
-	// Research Features (experimental code)
-	POLITICAL_FIELD_MODELING: FeatureStatus.RESEARCH,
-	SHEAF_FUSION: FeatureStatus.RESEARCH,
-	PERCOLATION_ENGINE: FeatureStatus.RESEARCH,
-	COMMUNITY_INTERSECTION: FeatureStatus.RESEARCH
+	// === NOT IMPLEMENTING ===
+	// These were experimental and are now removed
+	CASCADE_ANALYTICS: FeatureStatus.OFF, // Removed - too complex for MVP
+	AI_SUGGESTIONS: FeatureStatus.OFF, // Phase 2 feature
+	POLITICAL_FIELD_MODELING: FeatureStatus.OFF, // Research only
+	SHEAF_FUSION: FeatureStatus.OFF, // Research only - removed
+	PERCOLATION_ENGINE: FeatureStatus.OFF // Research only - removed
 } as const;
 
 export type FeatureName = keyof typeof FEATURES;
@@ -44,23 +47,56 @@ export type FeatureName = keyof typeof FEATURES;
  * Check if a feature is enabled at runtime
  * @param feature - The feature to check
  * @returns true if the feature is enabled
+ * @throws Error in production if trying to enable OFF/RESEARCH/ROADMAP features
  */
 export function isFeatureEnabled(feature: FeatureName): boolean {
 	const status = FEATURES[feature];
+	const isProduction = process.env.NODE_ENV === 'production';
 
 	if (status === FeatureStatus.ON) {
 		return true;
 	}
 
 	if (status === FeatureStatus.BETA) {
-		return process.env.ENABLE_BETA === 'true' || process.env.PUBLIC_ENABLE_BETA === 'true';
+		const betaEnabled = process.env.ENABLE_BETA === 'true' || process.env.PUBLIC_ENABLE_BETA === 'true';
+		if (isProduction && betaEnabled) {
+			console.warn(`[Feature Flags] Beta feature '${feature}' enabled in production - use with caution`);
+		}
+		return betaEnabled;
 	}
 
 	if (status === FeatureStatus.RESEARCH) {
+		if (isProduction) {
+			throw new Error(
+				`[Feature Flags] BLOCKED: Research feature '${feature}' cannot be enabled in production. ` +
+				`Research features are experimental only.`
+			);
+		}
 		return process.env.ENABLE_RESEARCH === 'true';
 	}
 
-	// OFF, ROADMAP, or any other status
+	if (status === FeatureStatus.ROADMAP) {
+		if (isProduction) {
+			throw new Error(
+				`[Feature Flags] BLOCKED: Roadmap feature '${feature}' not implemented yet. ` +
+				`See ROADMAP.md for timeline.`
+			);
+		}
+		// Allow in development for testing future integrations
+		return false;
+	}
+
+	// OFF status - explicitly disabled
+	if (status === FeatureStatus.OFF) {
+		if (isProduction) {
+			throw new Error(
+				`[Feature Flags] BLOCKED: Feature '${feature}' is disabled (removed from codebase). ` +
+				`This feature is not available.`
+			);
+		}
+		return false;
+	}
+
 	return false;
 }
 

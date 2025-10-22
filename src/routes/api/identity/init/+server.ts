@@ -1,75 +1,65 @@
+import { SelfAppBuilder } from '@selfxyz/qrcode';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import {
-	SELF_XYZ_CONFIG as _SELF_XYZ_CONFIG,
-	createUserConfig
-} from '$lib/core/server/selfxyz-config';
-import { verificationSessions, cleanupOldSessions } from '$lib/core/server/verification-sessions';
+import { createVerificationSession } from '$lib/core/server/verification-sessions';
 
+/**
+ * Initialize self.xyz verification session
+ * Generates QR code data using official SDK
+ */
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { userId, templateSlug, requireAddress, disclosures } = await request.json();
+		const { userId, templateSlug, requireAddress } = await request.json();
 
 		if (!userId || !templateSlug) {
 			return json({ success: false, error: 'Missing required fields' }, { status: 400 });
 		}
 
-		// Generate Self.xyz app configuration with user context
-		const appConfig = createUserConfig(userId, templateSlug, requireAddress);
+		// Build self.xyz app configuration using official SDK
+		const app = new SelfAppBuilder({
+			version: 2,
+			appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'Communiqué',
+			scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'communique-congressional',
+			userId: userId,
+			userIdType: 'uuid',
+			endpoint: process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://communi.email/api/identity/verify',
+			endpointType: 'staging_https',
+			userDefinedData: JSON.stringify({
+				templateSlug,
+				requireAddress,
+				timestamp: Date.now()
+			}),
+			disclosures: {
+				nationality: true,
+				minimumAge: 18,
+				ofac: true
+			}
+		}).build();
 
-		// Merge any additional disclosures
-		if (disclosures) {
-			appConfig.disclosures = {
-				...appConfig.disclosures,
-				...disclosures
-			};
-		}
+		// Get QR code data (universal link format)
+		const qrCodeData = app.getUniversalLink();
 
-		// Create QR code data directly (Self.xyz app format)
-		// This matches the format that SelfAppBuilder.build() would generate
-		const builtConfig = {
-			...appConfig,
-			sessionId: userId,
-			version: appConfig.version || 2,
-			userIdType: 'uuid'
-		};
-
-		// Create QR code data string (the app will read this)
-		const qrCodeData = JSON.stringify(builtConfig);
-
-		// Store session for polling
-		verificationSessions.set(userId, {
+		// Create database session
+		const session = await createVerificationSession({
 			userId,
-			templateSlug,
-			disclosures: appConfig.disclosures,
-			qrCodeData,
-			status: 'pending',
-			createdAt: new Date()
-		});
-
-		// Clean up old sessions (>1 hour)
-		cleanupOldSessions();
-
-		console.log('Self.xyz verification session initialized:', {
-			userId,
-			templateSlug,
-			disclosures: Object.keys(appConfig.disclosures),
-			sessionCount: verificationSessions.size
+			method: 'self.xyz',
+			challenge: qrCodeData
 		});
 
 		return json({
 			success: true,
 			qrCodeData,
-			sessionId: userId,
-			config: appConfig
+			sessionId: session.sessionId,
+			nonce: session.nonce,
+			expiresAt: session.expiresAt
 		});
 	} catch (error) {
-		console.error('Error occurred');
+		console.error('self.xyz initialization error:', error);
 
 		// Log detailed error for debugging
 		if (error instanceof Error) {
 			console.error('Initialization error details:', {
-				name: _error.name,
+				name: error.name,
 				message: error.message,
 				stack: error.stack?.split('\n').slice(0, 3)
 			});
@@ -81,6 +71,3 @@ export const POST: RequestHandler = async ({ request }) => {
 		);
 	}
 };
-
-// Export the verification sessions for use in other endpoints
-// verificationSessions is internal to this module
