@@ -1,28 +1,112 @@
-# **Communiqué**
+# Communiqué: VOTER Protocol Frontend
 
-**Civic engagement platform for congressional advocacy and direct outreach campaigns.**
+**The user-facing application for cryptographic civic engagement.**
 
-Turn-key email delivery to Congress via Communicating With Congress (CWC) API, plus direct email campaigns with OAuth-powered user acquisition.
+Turn-key congressional delivery via CWC API. OAuth-powered onboarding. Zero-knowledge district verification in browser. Template system with 3-layer content moderation. All powered by [VOTER Protocol](https://github.com/communisaas/voter-protocol) blockchain infrastructure.
 
-**Self-sustaining civic infrastructure funded by cryptographic proof-of-work.**
+**Phase 1 (3 months to launch):** Reputation-only. Cryptographic verification, encrypted delivery, quality signals for congressional offices. No token.
 
-_Let the collective voice rise._
+**Phase 2 (12-18 months):** Token rewards, challenge markets, outcome markets.
 
-## 🚀 Live Deployment
+---
 
-- **Production**: https://communi.email
-- **Staging**: https://staging.communi.email
+## What This Is
 
-## 🛠 Tech Stack
+Communiqué is the **frontend application** that implements VOTER Protocol's cryptographic infrastructure. Users interact with Communiqué. The blockchain settlement, zero-knowledge proofs, and economic mechanisms live in [voter-protocol](https://github.com/communisaas/voter-protocol).
 
-- **Framework**: SvelteKit 5 + TypeScript + Tailwind CSS
-- **Database**: Supabase (Postgres) + Prisma ORM
-- **Authentication**: OAuth (Google, Facebook, Twitter, LinkedIn, Discord)
-- **Congressional Delivery**: Communicating With Congress (CWC) API
-- **Address Validation**: Census Bureau Geocoding API
-- **Deployment**: Fly.io
+**What Communiqué handles:**
+- Template browsing, creation, and customization
+- OAuth authentication (Google, Facebook, Twitter, LinkedIn, Discord)
+- Address validation and congressional district lookup
+- Halo2 zero-knowledge proof generation in browser (4-6 seconds)
+- Message delivery via CWC API (congressional offices)
+- 3-layer content moderation (OpenAI + Gemini/Claude + human)
+- Encrypted delivery through GCP Confidential Space (AMD SEV-SNP TEE)
 
-## ⚡ Quick Start
+**What voter-protocol handles:**
+- Smart contracts on Scroll zkEVM
+- Halo2 zero-knowledge proof verification (no trusted setup)
+- On-chain reputation (ERC-8004 portable credibility)
+- Multi-agent treasury management (Phase 2)
+- Challenge markets and outcome markets (Phase 2)
+
+**See [voter-protocol/README.md](https://github.com/communisaas/voter-protocol) for the complete vision, cryptography, and economic architecture.**
+
+---
+
+## Architecture (Phase 1)
+
+**What ships in 3 months:**
+
+```
+Browser (Client-Side)
+├─ OAuth login (5 providers)
+├─ Address collection → Census Bureau geocoding
+├─ Template selection → Variable customization
+├─ Halo2 ZK proof generation (4-6 seconds)
+├─ XChaCha20-Poly1305 encryption (libsodium)
+└─ Encrypted delivery → GCP Confidential Space TEE
+
+Server (SvelteKit 5 SSR)
+├─ Supabase (Postgres) via Prisma
+├─ Session management (@oslojs/crypto)
+├─ CWC API integration (congressional delivery)
+├─ 3-layer content moderation (OpenAI + Gemini/Claude + human)
+├─ self.xyz (70%) + Didit.me (30%) FREE identity verification
+└─ voter-protocol blockchain client (read-only queries)
+
+Settlement Layer (voter-protocol repo)
+├─ Scroll zkEVM (Ethereum L2)
+├─ Halo2 zero-knowledge proof verification
+├─ ERC-8004 reputation tracking
+└─ Phase 1: Reputation-only (no tokens)
+```
+
+**Budget:** $326/month for 1,000 users / 10,000 messages (Phase 1)
+
+**Phase 2 additions** (12-18 months):
+- VOTER token rewards
+- Challenge markets (stake on verifiable claims)
+- Outcome markets (financially compete with lobbying)
+- Multi-agent treasury management
+
+---
+
+## Tech Stack
+
+**Frontend:**
+- SvelteKit 5 (runes: $state, $derived, $effect)
+- TypeScript (strict mode, zero `any` types)
+- Tailwind CSS + design system (governance-neutral)
+- Playwright (e2e testing)
+- Vitest (integration-first test suite)
+
+**Backend:**
+- Supabase (Postgres database)
+- Prisma ORM (type-safe database queries)
+- @oslojs/crypto (cryptographic sessions)
+- CWC API (Communicating With Congress)
+- Census Bureau Geocoding API (district lookup)
+
+**Identity & Privacy:**
+- self.xyz (FREE NFC passport verification, 70% of users)
+- Didit.me (FREE government ID upload, 30% of users)
+- GCP Confidential Space (AMD SEV-SNP hardware-attested TEE)
+- XChaCha20-Poly1305 (end-to-end encryption)
+
+**Blockchain (via voter-protocol):**
+- Scroll zkEVM (settlement layer)
+- Halo2 recursive proofs (zero-knowledge proofs)
+- NEAR Chain Signatures (cross-chain account abstraction)
+
+**Deployment:**
+- Fly.io (production + staging)
+- GitHub Actions (CI/CD)
+- Prisma migrations (schema versioning)
+
+---
+
+## Quick Start
 
 ### 1. Clone & Install
 
@@ -34,227 +118,360 @@ npm install
 
 ### 2. Environment Setup
 
-Create `.env` with required variables:
+Create `.env`:
 
 ```bash
-# Database (Supabase Postgres)
+# Database (required)
 SUPABASE_DATABASE_URL="postgresql://user:pass@host:port/db"
 
-# OAuth Providers
-GOOGLE_CLIENT_ID="your-google-client-id"
-GOOGLE_CLIENT_SECRET="your-google-client-secret"
-FACEBOOK_CLIENT_ID="your-facebook-app-id"
-FACEBOOK_CLIENT_SECRET="your-facebook-app-secret"
-TWITTER_CLIENT_ID="your-twitter-client-id"
-TWITTER_CLIENT_SECRET="your-twitter-client-secret"
-LINKEDIN_CLIENT_ID="your-linkedin-client-id"
-LINKEDIN_CLIENT_SECRET="your-linkedin-client-secret"
-DISCORD_CLIENT_ID="your-discord-client-id"
-DISCORD_CLIENT_SECRET="your-discord-client-secret"
-
-# OAuth Configuration
+# OAuth (at least one provider required)
+GOOGLE_CLIENT_ID="..."
+GOOGLE_CLIENT_SECRET="..."
 OAUTH_REDIRECT_BASE_URL="http://localhost:5173"
 
-# APIs
-CWC_API_KEY="your-cwc-api-key"
-CWC_API_BASE_URL="https://cwc.api.url"
+# Congressional delivery (optional for development)
+CWC_API_KEY="..."
+CWC_API_BASE_URL="https://soapbox.senate.gov/api"
 
-# Analytics (Optional)
-
+# Feature flags (optional)
+ENABLE_BETA=false
+ENABLE_RESEARCH=false
+NODE_ENV=development
 ```
+
+**Complete environment variable reference:** See CLAUDE.md lines 398-465
 
 ### 3. Database Setup
 
 ```bash
-# Generate Prisma client
-npm run db:generate
-
-# Push schema to database
-npm run db:push
-
-# Seed sample templates and global legislative channels
-npm run db:seed
-npm run db:seed:channels
+npm run db:generate    # Generate Prisma client
+npm run db:push        # Push schema to database
+npm run db:seed        # Seed templates and legislative channels
 ```
 
 ### 4. Start Development
 
 ```bash
-npm run dev
+npm run dev  # http://localhost:5173
 ```
 
-App available at `http://localhost:5173`
+**With feature flags:**
+```bash
+ENABLE_BETA=true npm run dev       # Enable beta features
+ENABLE_RESEARCH=true npm run dev   # Enable experimental features
+```
 
-## 🔑 OAuth Provider Setup
+---
+
+## User Flow (Phase 1)
+
+**Template Selection → Customization → Delivery:**
+
+1. **Browse templates** - Filter by topic (healthcare, climate, labor, education)
+2. **OAuth login** - One of 5 providers (Google/Facebook/Twitter/LinkedIn/Discord)
+3. **Address collection** - Census Bureau geocoding → congressional district lookup
+4. **Customize template** - Fill variables, add personal connection block
+5. **Generate ZK proof** - Browser proves district membership (4-6 seconds)
+   - Halo2 recursive proof generated entirely in browser
+   - Address never leaves device, never touches any database
+6. **Encrypt message** - XChaCha20-Poly1305 encryption in browser
+7. **Deliver via TEE** - GCP Confidential Space → CWC API → congressional office
+8. **Build reputation** - On-chain reputation tracking (Phase 1)
+9. **Earn rewards** - Token rewards launch in Phase 2 (12-18 months)
+
+**Zero-knowledge proof generation happens entirely in browser.** Halo2 recursive proof (4-6 seconds) proves district membership. Your address never leaves your device, never touches any database. Congressional offices verify proof on-chain.
+
+**Encrypted delivery:** Plaintext exists only in: your browser → hardware-attested enclave → CWC API → congressional CRM. Platform operators cannot read messages.
+
+---
+
+## Development Commands
+
+### Code Quality (MUST pass before commit)
+
+```bash
+npm run format         # Prettier auto-fix
+npm run lint           # ESLint with warnings allowed
+npm run lint:strict    # Zero-tolerance ESLint (CI requirement)
+npm run check          # TypeScript + Svelte validation
+npm run build          # Production build verification
+```
+
+**Pre-commit requirement:** All commands must return 0 errors. See CLAUDE.md for nuclear-level type safety standards.
+
+### Testing (Integration-First)
+
+```bash
+npm run test              # All tests (integration + unit)
+npm run test:run          # No watch mode
+npm run test:unit         # Unit tests only
+npm run test:integration  # Integration tests only
+npm run test:e2e          # Playwright browser tests
+npm run test:coverage     # With coverage report
+npm run test:ci           # CI pipeline (test:run + test:e2e)
+```
+
+**Test philosophy:** Integration-first. Real database, real mocks, real fixtures. 53 tests consolidated to 6 high-value integration tests.
+
+### Database
+
+```bash
+npm run db:generate    # Generate Prisma client (after schema changes)
+npm run db:push        # Push schema to database (dev)
+npm run db:migrate     # Create/run migrations (production)
+npm run db:studio      # Open Prisma Studio GUI
+npm run db:seed        # Seed templates and channels
+npm run db:reset       # Reset database (dev only)
+npm run db:start       # Start Docker Compose (local Postgres)
+```
+
+### Deployment
+
+```bash
+npm run build          # Production build
+npm run preview        # Preview production build
+
+# Fly.io deployment
+fly deploy --config fly.staging.toml    # Staging
+fly deploy                              # Production
+```
+
+---
+
+## Project Structure
+
+```
+src/
+├── routes/                    # SvelteKit routes (pages + API)
+│   ├── auth/                  # OAuth callback handlers
+│   ├── api/                   # API endpoints
+│   │   ├── agents/            # Content moderation, consensus
+│   │   ├── address/           # District lookup, validation
+│   │   ├── blockchain/        # voter-protocol client queries
+│   │   └── templates/         # Template CRUD
+│   ├── s/[slug]/             # Template sharing pages
+│   └── onboarding/           # Address/profile collection
+│
+├── lib/
+│   ├── components/           # Svelte components (domain-organized)
+│   │   ├── auth/             # OAuth, verification flows
+│   │   ├── template/         # Browse, create, customize
+│   │   ├── analytics/        # Funnel tracking
+│   │   └── ui/               # Design system components
+│   │
+│   ├── core/                 # Core production infrastructure
+│   │   ├── auth/             # Session management (@oslojs/crypto)
+│   │   ├── analytics/        # Funnel tracking, database analytics
+│   │   ├── api/              # Unified API client
+│   │   ├── blockchain/       # voter-protocol integration
+│   │   ├── congress/         # CWC delivery, address lookup
+│   │   ├── legislative/      # International abstraction layer
+│   │   ├── server/           # Server-side utilities
+│   │   └── db.ts             # Prisma client singleton
+│   │
+│   ├── agents/               # Multi-agent systems
+│   │   ├── content/          # Template moderation (3-layer)
+│   │   ├── shared/           # Base classes, type guards
+│   │   └── voter-protocol/   # Blockchain reward calculation
+│   │
+│   ├── stores/               # Svelte 5 runes-based state
+│   ├── utils/                # Formatting, debounce, resolution
+│   ├── types/                # TypeScript definitions
+│   ├── features/             # Feature-flagged (ENABLE_BETA)
+│   ├── experimental/         # Research (ENABLE_RESEARCH)
+│   └── integrations/         # External service clients
+│
+├── app.html                  # HTML template
+└── app.css                   # Global styles + Tailwind
+
+docs/                         # Documentation
+prisma/                       # Database schema + migrations
+static/                       # Static assets
+tests/                        # Integration, unit, e2e tests
+```
+
+---
+
+## Key Features (Phase 1)
+
+### Template System
+
+- **Variable extraction**: `[Your City]`, `[Your Representative]`, `[Your Experience]`
+- **CodeMirror editor**: Syntax highlighting, auto-insertion
+- **Personalization blocks**: Users add their own story
+- **3-layer moderation**: OpenAI + Gemini/Claude consensus + human review
+- **Share flows**: Viral mechanics with deep-link templates
+
+### Congressional Delivery
+
+- **CWC API integration**: Official Communicating With Congress delivery
+- **Address validation**: Census Bureau geocoding → district lookup
+- **Encrypted delivery**: GCP Confidential Space (AMD SEV-SNP TEE)
+- **Delivery confirmation**: Cryptographic receipts with timestamps
+- **Representative lookup**: Automatic based on verified address
+
+### Zero-Knowledge Verification
+
+- **Browser-based proving**: Halo2 recursive proofs (4-6 seconds)
+- **Privacy guarantee**: Address never leaves device, never touches any database
+- **On-chain verification**: Congressional offices verify proofs
+- **Identity verification**: self.xyz (70%) + Didit.me (30%), both FREE
+- **Sybil resistance**: One verified identity = one account
+
+### Multi-Agent Moderation
+
+- **3 AI agents**: OpenAI, Gemini, Claude vote on template quality
+- **67% consensus required**: Prevents single-model bias
+- **Content categories**: Legal/harmful detection, not fact-checking (Phase 1)
+- **Human escalation**: Borderline cases reviewed manually
+- **Challenge markets**: Phase 2 adds economic stakes on verifiable claims
+
+### International Legislative Support
+
+- **Tiered access by country**:
+  - US: CWC certified delivery (web forms)
+  - Tier 1 (UK, Canada, EU): Direct email to offices
+  - Tier 2: Social media + public contact methods
+- **Dynamic channel resolution**: SSR-based routing
+- **Governance-neutral design**: Works for Westminster, Congressional, Parliamentary systems
+
+---
+
+## OAuth Provider Setup
 
 ### Google OAuth
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create/select project
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials
-5. Add redirect URIs:
+1. [Google Cloud Console](https://console.cloud.google.com)
+2. Create project → Enable Google+ API
+3. Create OAuth 2.0 credentials
+4. Add redirect URIs:
    - `http://localhost:5173/auth/google/callback` (dev)
    - `https://staging.communi.email/auth/google/callback` (staging)
    - `https://communi.email/auth/google/callback` (prod)
 
-### Facebook, Twitter, LinkedIn, Discord
+### Other Providers
 
-Similar setup - create apps in respective developer consoles and configure redirect URIs following the same pattern: `{BASE_URL}/auth/{provider}/callback`
+Similar setup for Facebook, Twitter, LinkedIn, Discord:
+- Create app in developer console
+- Configure redirect: `{BASE_URL}/auth/{provider}/callback`
+- Add client ID/secret to `.env`
 
-## 📊 Database Commands
+**Complete OAuth guide:** See `docs/authentication/oauth-setup.md`
 
-```bash
-npm run db:generate    # Generate Prisma client
-npm run db:push        # Push schema changes (dev)
-npm run db:migrate     # Create/run migrations (prod)
-npm run db:studio      # Open Prisma Studio GUI
-npm run db:seed        # Seed sample data
-npm run db:reset       # Reset database (dev only)
+---
+
+## Integration with voter-protocol
+
+Communiqué is the frontend. voter-protocol is the blockchain infrastructure.
+
+**Read-only queries (Phase 1):**
+```typescript
+import { voterBlockchainClient } from '$lib/core/blockchain/voter-client';
+
+// Query user reputation (on-chain)
+const stats = await voterBlockchainClient.getUserStats(userAddress);
+// Returns: { actionCount, civicEarned, lastActionTime, voterTokenBalance }
+
+// Query platform metrics
+const metrics = await voterBlockchainClient.getPlatformStats();
+// Returns: { totalUsers, totalActions, totalCivicMinted, ... }
 ```
 
-## 🏗 Build & Deploy
+**Client-side signing (Phase 2):**
+```typescript
+// Prepare unsigned transaction
+const { unsignedTx } = await voterBlockchainClient.prepareActionTransaction({
+  userAddress,
+  actionType: 'CWC_MESSAGE',
+  templateId,
+  deliveryConfirmation
+});
 
-```bash
-# Build for production
-npm run build
+// User signs with passkey (Face ID / Touch ID)
+const signedTx = await passkeyWallet.signTransaction(unsignedTx);
 
-# Preview production build
-npm run preview
-
-# Type checking
-npm run check
-
-# Linting
-npm run lint
+// Submit to blockchain
+await submitTransaction(signedTx);
 ```
 
-### Fly.io Deployment
+**Phase 1:** No token rewards, no transaction signing. Reputation tracking only.
+**Phase 2:** Token rewards, challenge markets, outcome markets require client-side signing.
 
-```bash
-# Deploy to staging
-fly deploy --config fly.staging.toml
+---
 
-# Deploy to production
-fly deploy
-```
+## Documentation
 
-## ✨ Features
+**Communiqué-specific:**
+- **[CLAUDE.md](./CLAUDE.md)** - Authoritative development guide (type safety, testing, architecture)
+- **[docs/design-system.md](./docs/design-system.md)** - Complete design system (colors, typography, components)
+- **[docs/database-seeding.md](./docs/database-seeding.md)** - Database setup and seeding
+- **[tests/README.md](./tests/README.md)** - Integration-first test suite
 
-### 🌍 Global Legislative Channels
+**voter-protocol (blockchain infrastructure):**
+- **[voter-protocol/README.md](https://github.com/communisaas/voter-protocol)** - Vision, cryptography, economics
+- **[voter-protocol/QUICKSTART.md](https://github.com/communisaas/voter-protocol/QUICKSTART.md)** - Non-technical user onboarding
+- **[voter-protocol/TECHNICAL.md](https://github.com/communisaas/voter-protocol/TECHNICAL.md)** - Blockchain deep dive
+- **[voter-protocol/CONGRESSIONAL.md](https://github.com/communisaas/voter-protocol/CONGRESSIONAL.md)** - Legislative staff guide
+- **[voter-protocol/ARCHITECTURE.md](https://github.com/communisaas/voter-protocol/ARCHITECTURE.md)** - Complete technical architecture
+- **[voter-protocol/SECURITY.md](https://github.com/communisaas/voter-protocol/SECURITY.md)** - Living threat model
 
-- Tiered access by country (email, api/form, social-only)
-- Dynamic channel resolution in SSR via `channelResolver`
-- US certified delivery (web forms) gated; Tier 1 countries use direct email
+---
 
-### 📧 Congressional Advocacy
-
-- **Address-based representative lookup**: Find user's Congress members
-- **CWC API integration**: Direct delivery to congressional offices
-- **Template system**: Pre-built advocacy messages
-- **Personalization**: Custom user details injection
-
-### 🎯 Direct Email Campaigns
-
-- **mailto-based delivery**: Opens the user's email client with pre-filled content
-- **Template engine**: Customizable message templates
-- **Campaign tracking**: Delivery analytics
-
-### 🔐 Authentication & Onboarding
-
-- **OAuth providers**: Google, Facebook, Twitter, LinkedIn, Discord
-- **Address collection**: For congressional campaigns
-- **Profile completion**: For direct outreach
-- **Extended sessions**: 90-day cookies for template-action deep-link flows (e.g., `template-modal`, `auth=required`, `action=complete`)
-
-### 📱 User Experience
-
-- **Responsive design**: Mobile-first interface
-- **Template modal**: Streamlined sharing flow
-- **mailto: integration**: One-click email client launch (Tier 1 countries)
-- **Social amplification**: Built-in viral pattern generator and share flow
-
-## 📁 Project Structure
-
-```
-src/
-├── lib/
-│   ├── server/          # Server-side utilities
-│   │   ├── auth.ts      # Session management
-│   │   ├── db.ts        # Prisma client
-│   │   └── oauth.ts     # OAuth utilities
-│   └── components/      # Reusable UI components
-├── routes/
-│   ├── auth/           # OAuth callback handlers
-│   ├── api/            # API endpoints
-│   ├── template-modal/ # Template sharing pages
-│   └── onboarding/     # Address/profile collection
-├── app.html           # HTML template
-└── app.css            # Global styles
-
-docs/                  # Documentation
-prisma/               # Database schema & migrations
-static/               # Static assets
-```
-
-## 🔗 Key Integrations
-
-### Communicating With Congress (CWC)
-
-- Validates messages against CWC requirements
-- Handles delivery to congressional offices
-- Provides delivery confirmation
-
-### Address Validation
-
-- Census Bureau Geocoding API (primary)
-- ZIP→District fallback (OpenSourceActivismTech, 119th)
-
-### Cryptographic Infrastructure (Algorithmic Coordination)
-
-- Anchoring: Monad (cheap EVM) for cryptographic proof verification; batch Merkle roots and deterministic execution logs
-- Algorithmic Treasury: Smart contracts automatically execute fund allocation based on mathematical correlation scores
-- ERC-8004 Reputation: Portable democratic credibility across platforms - built for AI agents, extended to human civic participants
-- Zero-Knowledge Verification: Didit.me integration for privacy-preserving identity proofs
-- Autonomous Execution: Code-as-constitution eliminating human discretion from democratic coordination
-
-## 🚨 Common Issues
+## Common Issues
 
 ### OAuth Redirect Mismatches
 
-Ensure redirect URIs in OAuth provider consoles match exactly:
-
-- `http://localhost:5173/auth/{provider}/callback` (dev)
-- `https://staging.communi.email/auth/{provider}/callback` (staging)
-- `https://communi.email/auth/{provider}/callback` (prod)
+Ensure redirect URIs match exactly in provider consoles:
+```
+http://localhost:5173/auth/{provider}/callback          # dev
+https://staging.communi.email/auth/{provider}/callback  # staging
+https://communi.email/auth/{provider}/callback          # prod
+```
 
 ### Database Connection Issues
 
 - Check Supabase Postgres connection string format
 - Ensure database exists and is accessible
 - Run `npm run db:generate` after schema changes
+- Use `npm run db:studio` to inspect database state
 
 ### Missing Environment Variables
 
-- All OAuth provider keys must be set
-- CWC API credentials required for congressional delivery
-- Check `.env` against the example above
+All OAuth providers need client ID/secret. CWC delivery requires API key. Check `.env` against CLAUDE.md environment section.
 
-## 📚 Documentation
+### TypeScript Errors
 
-See **[docs/](./docs/)** for comprehensive documentation:
+**Zero tolerance policy.** See CLAUDE.md for nuclear-level type safety standards. No `any` types, no `@ts-ignore`, no type suppression. Fix the actual issue.
 
-- **[Claude guide](./CLAUDE.md)**: Single authoritative development guide
-- **[Architecture](./docs/architecture.md)**: System design & flows
-- **[Integrations](./docs/integrations.md)**: External services
+### ZK Proof Generation Fails
 
-## 🤝 Contributing
+- Browser must support WebAssembly
+- WASM module (~180MB) cached after first load
+- 4-6 second proving time is normal (Halo2 recursive proof)
+- Check browser console for detailed error messages
+
+---
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make changes with proper tests
-4. Submit a pull request
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. **MUST pass before commit:**
+   ```bash
+   npm run format && npm run lint:strict && npm run check && npm run build && npm run test:run
+   ```
+4. Commit with conventional commits: `feat: add amazing feature`
+5. Push to branch: `git push origin feature/amazing-feature`
+6. Open Pull Request
 
-## 📄 License
+**Code quality standards:** See CLAUDE.md. Any PR with type violations will be instantly rejected.
+
+---
+
+## License
 
 [MIT License](./LICENSE)
+
+---
+
+*Communiqué PBC | Frontend for VOTER Protocol | 2025*
