@@ -18,11 +18,11 @@ Think: Ethereum (protocol) vs. Uniswap (application)
 
 ### Purpose
 **Reusable infrastructure** for any application that wants to:
-- Store encrypted PII on NEAR blockchain
-- Generate ZK proofs of district membership
-- Track on-chain reputation
-- Run challenge markets for truth verification
-- Coordinate democratic participation
+- Generate zero-knowledge proofs of district membership (Halo2, addresses never stored anywhere)
+- Track on-chain reputation (ERC-8004 portable credibility)
+- Run challenge markets for truth verification (Phase 2)
+- Coordinate democratic participation with cryptographic privacy
+- Deliver encrypted messages via hardware-attested TEEs
 
 ### What Belongs Here
 
@@ -44,23 +44,16 @@ contracts/scroll/
 **Ownership:** voter-protocol
 **Why:** These contracts define the protocol. Any app can integrate with them.
 
-#### 2. NEAR Contracts (CipherVault + Account Management)
+#### 2. NEAR Chain Signatures (Cross-Chain Account Abstraction)
 **Location:** `voter-protocol/contracts/near/`
 
 ```
 contracts/near/
-├── ciphervault.near/             # Encrypted PII storage
-│   ├── src/
-│   │   ├── lib.rs                # Main contract
-│   │   ├── envelope.rs           # CipherEnvelope struct
-│   │   ├── encryption.rs         # Validation logic (not crypto)
-│   │   └── guardian.rs           # Social recovery
-│   └── Cargo.toml
 └── signer.near/                  # Chain Signatures (existing NEAR contract)
 ```
 
 **Ownership:** voter-protocol
-**Why:** CipherVault is reusable infrastructure. Any app can store encrypted PII.
+**Why:** NEAR Chain Signatures enable deterministic address generation for wallet-free blockchain participation via passkeys. Addresses are never stored—generated client-side when needed.
 
 #### 3. Cryptographic Primitives (SDKs)
 **Location:** `voter-protocol/packages/crypto/`
@@ -68,14 +61,12 @@ contracts/near/
 ```
 packages/crypto/
 ├── encryption/
-│   ├── xchacha20poly1305.ts      # Client-side encryption
-│   ├── sovereign-keys.ts         # Key generation/management
-│   └── near-key-derivation.ts   # NEAR account key derivation
+│   ├── xchacha20poly1305.ts      # Message encryption (delivery only)
+│   └── passkey-derivation.ts     # Deterministic address generation
 ├── zk-proofs/
-│   ├── circuits/                 # Circom circuits
-│   │   ├── ResidencyCircuit.circom
-│   │   └── poseidon.circom
-│   ├── groth16.ts                # Proof generation
+│   ├── circuits/                 # Halo2 circuits (Rust)
+│   │   └── district-membership.rs # Halo2 Merkle proof circuit
+│   ├── halo2.ts                  # Proof generation (4-6s)
 │   ├── verifier.ts               # Proof verification
 │   └── shadow-atlas.ts           # District Merkle tree
 └── commitments/
@@ -86,17 +77,17 @@ packages/crypto/
 **Why:** These are protocol-level cryptographic operations. Any app needs these.
 
 **Dependencies:**
-- `libsodium-wrappers` (XChaCha20-Poly1305)
+- `libsodium-wrappers` (XChaCha20-Poly1305 for message delivery encryption)
 - `circomlibjs` (Poseidon commitments)
-- `snarkjs` (Groth16 proofs)
+- `halo2_proofs` (Halo2 recursive proofs, no trusted setup)
 
 #### 4. Protocol Client SDK
 **Location:** `voter-protocol/packages/client/`
 
 ```
 packages/client/
-├── ciphervault.ts                # CipherVault integration
-├── chain-signatures.ts           # NEAR Chain Signatures
+├── halo2-prover.ts               # Browser-based Halo2 proof generation
+├── chain-signatures.ts           # NEAR Chain Signatures (deterministic addresses)
 ├── reputation.ts                 # On-chain reputation queries
 ├── challenges.ts                 # Challenge market interactions
 ├── outcome-markets.ts            # Prediction market interactions
@@ -109,10 +100,12 @@ packages/client/
 **Example Usage:**
 ```typescript
 // Any app can use this
-import { CipherVault, ReputationClient } from '@voter-protocol/client';
+import { Halo2Prover, ReputationClient } from '@voter-protocol/client';
 
-const vault = new CipherVault('ciphervault.near');
-const envelopeId = await vault.storeEnvelope({ address, name, phone });
+// Generate zero-knowledge proof client-side (4-6 seconds)
+const prover = new Halo2Prover();
+const proof = await prover.generateDistrictProof(address, district);
+// Address never leaves browser, never stored anywhere
 
 const reputation = new ReputationClient(scrollProvider);
 const score = await reputation.getScore('0xABCD...1234');
@@ -123,10 +116,10 @@ const score = await reputation.getScore('0xABCD...1234');
 
 ```
 packages/types/
-├── envelope.ts                   # CipherEnvelope type
+├── halo2-proof.ts                # Halo2 proof types
 ├── reputation.ts                 # Reputation types
 ├── challenge.ts                  # Challenge market types
-└── proof.ts                      # ZK proof types
+└── district.ts                   # Congressional district types
 ```
 
 **Ownership:** voter-protocol
@@ -177,7 +170,7 @@ src/lib/
 
 ```
 integrations/voter-protocol/
-├── ciphervault-wrapper.ts        # Communique-specific CipherVault usage
+├── halo2-wrapper.ts              # Browser-based Halo2 proof generation wrapper
 ├── congressional-certification.ts # Certify messages to Congress
 └── reputation-display.ts         # Show reputation in Communique UI
 ```
@@ -185,29 +178,37 @@ integrations/voter-protocol/
 **Pattern:**
 ```typescript
 // communique wraps protocol SDK with app-specific logic
-import { CipherVault } from '@voter-protocol/client';
+import { Halo2Prover } from '@voter-protocol/client';
 import { db } from '$lib/core/db';
 
-export class CommuniqueCipherVault {
-  private vault: CipherVault;
+export class CommuniqueHalo2Wrapper {
+  private prover: Halo2Prover;
 
-  async storeUserProfile(userId: string, pii: PIIData) {
-    // Protocol: Store in CipherVault
-    const envelopeId = await this.vault.storeEnvelope(pii);
+  async generateProofWithUI(userId: string, address: string, district: string) {
+    // Show progress UI to user (4-6 seconds proving time)
+    this.showProgressIndicator("Generating zero-knowledge proof...");
 
-    // Application: Update PostgreSQL with reference
+    // Protocol: Generate Halo2 proof client-side
+    const proof = await this.prover.generateDistrictProof(address, district);
+    // Address never leaves browser, never stored anywhere
+
+    // Application: Store proof result reference (not PII)
     await db.user.update({
       where: { id: userId },
-      data: { ciphervault_envelope_id: envelopeId }
+      data: {
+        district_verified: true,
+        last_proof_timestamp: new Date()
+      }
     });
 
-    return envelopeId;
+    this.hideProgressIndicator();
+    return proof;
   }
 }
 ```
 
 **Ownership:** communique
-**Why:** Application-specific usage patterns, database integration, UI state management.
+**Why:** Application-specific usage patterns, UI state management, user experience wrapping protocol primitives. Database stores ONLY metadata (verified status, timestamps), never PII.
 
 #### 3. Database Schema (Application Data)
 **Location:** `communique/prisma/schema.prisma`
@@ -217,10 +218,10 @@ model User {
   id                        String   @id
   email                     String?
 
-  // VOTER Protocol integration
-  near_account_id           String?
-  scroll_address            String?
-  ciphervault_envelope_id   String?  // Reference to protocol storage
+  // VOTER Protocol integration (NO PII STORED)
+  scroll_address            String?  // Deterministic address (passkey-derived)
+  district_verified         Boolean  // ZK proof verification status
+  last_proof_timestamp      DateTime? // When last proof was generated
 
   // Application data
   templates                 Template[]
@@ -231,7 +232,7 @@ model Template {
   id                        String   @id
   title                     String
   category                  String
-  body                      String   // Public template text
+  body                      String   // Public template text (no PII)
 
   // Application-specific
   is_public                 Boolean
@@ -241,7 +242,7 @@ model Template {
 ```
 
 **Ownership:** communique
-**Why:** Application data model. Other apps would have different schemas.
+**Why:** Application data model. Other apps would have different schemas. Database stores ONLY metadata and public content, NEVER addresses or PII.
 
 #### 4. Feature Flags & Config
 **Location:** `communique/src/lib/features/`
@@ -267,28 +268,28 @@ features/
 npm install @voter-protocol/client @voter-protocol/crypto @voter-protocol/types
 
 // 2. Use in communique application
-import { CipherVault, ReputationClient } from '@voter-protocol/client';
+import { Halo2Prover, ReputationClient } from '@voter-protocol/client';
 import { generatePoseidonCommitment } from '@voter-protocol/crypto';
 
 // 3. Wrap with application logic
 export class CommuniqueUser {
-  async updateProfile(userId: string, profile: ProfileData) {
-    // Protocol: Store PII in CipherVault
-    const vault = new CipherVault('ciphervault.near');
-    const envelopeId = await vault.storeEnvelope({
-      legal_name: profile.name,
-      address: profile.address,
-      phone: profile.phone
-    });
+  async verifyDistrict(userId: string, address: string, district: string) {
+    // Protocol: Generate Halo2 proof client-side (4-6 seconds)
+    const prover = new Halo2Prover();
+    const proof = await prover.generateDistrictProof(address, district);
+    // Address NEVER leaves browser, NEVER stored anywhere
 
-    // Application: Update database with reference
+    // Application: Store ONLY verification status (not PII)
     await db.user.update({
       where: { id: userId },
       data: {
-        ciphervault_envelope_id: envelopeId,
-        updated_at: new Date()
+        district_verified: true,
+        last_proof_timestamp: new Date()
+        // NO address, NO district hash, ONLY metadata
       }
     });
+
+    return proof; // Proof submitted to blockchain for verification
   }
 }
 ```
@@ -298,18 +299,19 @@ export class CommuniqueUser {
 ## 📐 Architectural Boundaries
 
 ### Protocol Layer (voter-protocol)
-**Responsibility:** "How to store encrypted PII, generate ZK proofs, track reputation"
+**Responsibility:** "How to generate ZK proofs, track reputation, verify messages cryptographically"
 **Not Responsible:** "What UI to show users, how to organize templates, when to send emails"
 
 **Examples:**
-- ✅ CipherVault contract implementation
-- ✅ XChaCha20-Poly1305 encryption
-- ✅ ZK proof generation circuits
+- ✅ Halo2 proof generation circuits
+- ✅ XChaCha20-Poly1305 encryption (message delivery only)
 - ✅ On-chain reputation tracking
+- ✅ Deterministic address generation (passkey-derived)
 - ❌ Template editor UI
 - ❌ Congressional directory
 - ❌ OAuth integration
 - ❌ Email delivery timing
+- ❌ PII storage (addresses never stored anywhere)
 
 ### Application Layer (communique)
 **Responsibility:** "Congressional advocacy user experience built on protocol primitives"
@@ -319,11 +321,11 @@ export class CommuniqueUser {
 - ✅ Template creator/editor
 - ✅ Congressional office lookup
 - ✅ CWC API integration
-- ✅ Supabase database schema
+- ✅ Supabase database schema (metadata only, NO PII)
 - ✅ SvelteKit routes/pages
-- ❌ CipherVault contract code
-- ❌ Encryption primitives
-- ❌ ZK circuit design
+- ❌ Halo2 circuit design
+- ❌ Cryptographic primitives
+- ❌ ZK proof verification logic
 - ❌ Reputation smart contracts
 
 ---
@@ -333,50 +335,56 @@ export class CommuniqueUser {
 ### voter-protocol (NEEDS BUILDING)
 ```
 ❌ contracts/scroll/          # Smart contracts not deployed
-❌ contracts/near/            # CipherVault contract not built
-❌ packages/crypto/           # No encryption SDK yet
-❌ packages/client/           # No client SDK yet
-✅ ARCHITECTURE.md            # Specification complete
+❌ packages/crypto/           # Halo2 proof SDK not built
+❌ packages/client/           # Client SDK not built
+✅ ARCHITECTURE.md            # Specification complete (Halo2, no database)
+✅ TECHNICAL.md               # Implementation spec complete
+✅ SECURITY.md                # Threat model complete
 ```
 
-**Priority:** Build CipherVault contract + crypto SDK first
+**Priority:** Build Halo2 proof generation SDK + Scroll smart contracts
 
 ### communique (PARTIALLY COMPLETE)
 ```
 ✅ src/lib/core/blockchain/rpc/        # RPC abstraction (correct)
 ✅ src/lib/core/auth/                  # OAuth + passkey auth (correct)
 ✅ src/lib/core/congress/              # CWC integration (correct)
-✅ prisma/schema.prisma                # Clean schema (no PII, only refs)
-❌ src/lib/core/blockchain/ciphervault.ts  # NOT STARTED
+✅ prisma/schema.prisma                # Clean schema (metadata only, NO PII)
+❌ src/lib/core/blockchain/halo2.ts    # NOT STARTED (waiting on SDK)
 ❌ Integration with @voter-protocol/client # Can't integrate until SDK exists
 ```
 
-**Blocker:** Can't integrate protocol SDK until voter-protocol builds it.
+**Blocker:** Can't integrate protocol SDK until voter-protocol builds Halo2 proof generation.
 
 ---
 
 ## 🎯 Development Strategy
 
 ### Phase 1: Build Protocol Primitives (voter-protocol)
-**Timeline:** 1-2 weeks
+**Timeline:** 6-8 weeks
 
-1. **CipherVault Contract** (Rust/NEAR)
-   - Deploy to testnet
-   - `store_envelope`, `get_envelope`, `update_envelope`
-   - Guardian recovery logic
+1. **Halo2 Circuit Implementation** (Rust)
+   - Merkle tree membership circuit
+   - Shadow Atlas district proof
+   - 4-6 second proving time on commodity hardware
 
-2. **Crypto SDK** (TypeScript)
-   - XChaCha20-Poly1305 encryption
+2. **Crypto SDK** (TypeScript + Rust WASM)
+   - Halo2 proof generation (browser-based, 4-6s)
+   - XChaCha20-Poly1305 encryption (message delivery only)
    - Poseidon commitment generation
-   - Sovereign key management
-   - NEAR key derivation
+   - Passkey-based deterministic address derivation
 
-3. **Client SDK** (TypeScript)
-   - CipherVault integration
-   - Chain Signatures wrapper
+3. **Smart Contracts** (Solidity)
+   - DistrictGate.sol (Halo2 proof verification on Scroll L2)
+   - ReputationRegistry.sol (ERC-8004 on-chain reputation)
+   - Deploy to Scroll testnet
+
+4. **Client SDK** (TypeScript)
+   - Halo2Prover (browser-based proof generation)
+   - Chain Signatures wrapper (deterministic addresses)
    - Reputation queries
 
-4. **Publish NPM Packages**
+5. **Publish NPM Packages**
    ```bash
    @voter-protocol/crypto
    @voter-protocol/client
@@ -384,7 +392,7 @@ export class CommuniqueUser {
    ```
 
 ### Phase 2: Integrate in Communique (communique)
-**Timeline:** 1 week
+**Timeline:** 2-3 weeks
 
 1. **Install Protocol SDK**
    ```bash
@@ -392,20 +400,26 @@ export class CommuniqueUser {
    ```
 
 2. **Create Integration Wrappers**
-   - `src/lib/core/integrations/voter-protocol/`
+   - `src/lib/core/integrations/voter-protocol/halo2-wrapper.ts`
+   - UI progress indicators for 4-6s proving time
    - Application-specific usage patterns
 
 3. **Update Data Flows**
-   - Template personalization → CipherVault
-   - User profile → CipherVault
-   - Congressional delivery → CipherVault references
+   - Address collection → Halo2 proof generation (client-side only)
+   - Template personalization → encrypted delivery (no storage)
+   - Congressional delivery → ZK proof verification
+
+4. **Database Schema Updates**
+   - Remove all PII storage fields
+   - Store ONLY verification status and timestamps
+   - NO addresses, NO district hashes
 
 ### Phase 3: Deploy Both (coordinated)
-**Timeline:** 1 week
+**Timeline:** 1-2 weeks
 
-1. Deploy CipherVault contract to NEAR mainnet
-2. Deploy Scroll contracts (when ready)
-3. Update communique to use mainnet contracts
+1. Deploy Scroll smart contracts to mainnet
+2. Update communique to use mainnet contracts
+3. Load test Halo2 proving on various devices
 4. Launch
 
 ---
@@ -417,14 +431,15 @@ export class CommuniqueUser {
 voter-protocol/
 ├── contracts/
 │   ├── scroll/                   # Solidity contracts
-│   └── near/                     # Rust contracts
+│   └── near/                     # NEAR Chain Signatures only
 ├── packages/
-│   ├── crypto/                   # Encryption + ZK proofs
+│   ├── crypto/                   # Halo2 proofs + encryption (delivery only)
 │   ├── client/                   # Protocol SDK
 │   └── types/                    # Shared types
 ├── docs/
-│   ├── ARCHITECTURE.md
-│   └── integration-guide.md
+│   ├── ARCHITECTURE.md           # Full ZK architecture, no database
+│   ├── TECHNICAL.md              # Halo2 implementation details
+│   └── SECURITY.md               # Threat model
 ├── package.json
 └── turbo.json                    # Turborepo config
 ```
@@ -487,28 +502,29 @@ communique/
 ## 🚧 Immediate Action Items
 
 ### This Week (voter-protocol):
-1. Create `contracts/near/ciphervault/` directory
-2. Implement basic CipherVault contract (Rust)
-3. Create `packages/crypto/` with encryption primitives
-4. Deploy contract to NEAR testnet
-5. Publish `@voter-protocol/crypto` package
+1. Create `packages/crypto/zk-proofs/circuits/` directory
+2. Implement Halo2 Merkle membership circuit (Rust)
+3. Build WASM wrapper for browser proving
+4. Test 4-6 second proving time on commodity hardware
+5. Begin Scroll smart contract implementation
 
 ### This Week (communique):
-1. Install protocol dependencies when available
-2. Create integration wrappers
-3. Update data flows to use CipherVault
-4. Test end-to-end with testnet
+1. Update Prisma schema to remove all PII fields
+2. Add `district_verified` and `last_proof_timestamp` fields
+3. Prepare UI for 4-6s proof generation progress indicators
+4. Remove any CipherVault integration code
 
-### Next Week:
-1. Build Scroll contracts (voter-protocol)
-2. Create full protocol SDK (voter-protocol)
-3. Complete communique integration
-4. Deploy to production
+### Next 2-4 Weeks:
+1. Complete Halo2 circuit + WASM build (voter-protocol)
+2. Deploy DistrictGate.sol to Scroll testnet (voter-protocol)
+3. Publish `@voter-protocol/crypto` package
+4. Integrate Halo2 prover in communique
+5. End-to-end testing on testnet
 
 ---
 
-**Principle:** Protocol primitives enable applications. Don't build application logic into protocol. Don't rebuild protocol primitives in applications.
+**Principle:** Protocol primitives enable applications. Don't build application logic into protocol. Don't rebuild protocol primitives in applications. Addresses NEVER leave browser, NEVER stored anywhere.
 
-**Current Blocker:** voter-protocol needs to build CipherVault contract + crypto SDK before communique can integrate.
+**Current Blocker:** voter-protocol needs to build Halo2 proof generation SDK before communique can integrate.
 
-**Next Step:** Decide where to start building (contract or SDK) and execute.
+**Next Step:** Build Halo2 Merkle membership circuit, test proving time, publish SDK.
