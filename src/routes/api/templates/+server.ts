@@ -11,6 +11,11 @@ import {
 import type { Prisma as _Prisma } from '@prisma/client';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 import { moderateTemplate, containsProhibitedPatterns } from '$lib/core/server/content-moderation';
+import {
+	getMultiAgentConsensus,
+	getSingleAgentModeration
+} from '$lib/core/server/multi-agent-consensus';
+import { CONSENSUS_TYPE } from '$env/static/private';
 
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
@@ -256,10 +261,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		const validData = validation.validData!;
 
-		// === PHASE 1: CONTENT MODERATION (OpenAI + Pattern Matching) ===
-		// Auto-reject illegal/harmful content before database write
+		// === PHASE 1: 3-LAYER CONTENT MODERATION ===
+		// Layer 1: Pattern matching (fast, no API call)
+		// Layer 2: OpenAI safety filter (illegal content)
+		// Layer 3: Multi-agent consensus (quality assessment)
+		let consensusResult;
+
 		try {
-			// Check prohibited patterns first (faster, no API call)
+			// Layer 1: Check prohibited patterns first (instant)
 			const combinedContent = `${validData.title}\n\n${validData.message_body}`;
 			if (containsProhibitedPatterns(combinedContent)) {
 				const response: ApiResponse = {
@@ -273,14 +282,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return json(response, { status: 400 });
 			}
 
-			// OpenAI Moderation API (FREE tier: 20 requests/min)
+			// Layer 2: OpenAI Moderation API for safety (FREE tier: 20 requests/min)
 			const moderationResult = await moderateTemplate({
 				title: validData.title,
 				message_body: validData.message_body
 			});
 
 			if (!moderationResult.approved) {
-				console.log('Content moderation REJECTED template:', {
+				console.log('OpenAI moderation REJECTED template:', {
 					flagged_categories: moderationResult.flagged_categories,
 					timestamp: moderationResult.timestamp
 				});
@@ -296,13 +305,61 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return json(response, { status: 400 });
 			}
 
-			console.log('Content moderation APPROVED template:', {
-				timestamp: moderationResult.timestamp
-			});
+			// Layer 3: Multi-agent consensus for quality (configurable)
+			const useMultiAgent = CONSENSUS_TYPE === 'multi_agent';
+
+			if (useMultiAgent) {
+				consensusResult = await getMultiAgentConsensus({
+					title: validData.title,
+					message_body: validData.message_body,
+					category: validData.category
+				});
+
+				if (!consensusResult.approved) {
+					console.log('Multi-agent consensus REJECTED template:', {
+						consensus_type: consensusResult.consensus_type,
+						votes: consensusResult.votes.map((v) => ({
+							agent: v.agent,
+							approved: v.approved,
+							confidence: v.confidence
+						})),
+						timestamp: consensusResult.timestamp
+					});
+
+					const response: ApiResponse = {
+						success: false,
+						error: createValidationError(
+							'message_body',
+							'QUALITY_REJECTED',
+							`Template quality assessment failed (${consensusResult.consensus_type}): ${consensusResult.reasoning_summary}`
+						)
+					};
+					return json(response, { status: 400 });
+				}
+
+				console.log('Multi-agent consensus APPROVED template:', {
+					consensus_type: consensusResult.consensus_type,
+					confidence: consensusResult.final_confidence,
+					timestamp: consensusResult.timestamp
+				});
+			} else {
+				// Fallback: Single-agent moderation (OpenAI only)
+				consensusResult = await getSingleAgentModeration({
+					title: validData.title,
+					message_body: validData.message_body,
+					category: validData.category
+				});
+
+				console.log('Single-agent moderation result:', {
+					approved: consensusResult.approved,
+					confidence: consensusResult.final_confidence
+				});
+			}
 		} catch (moderationError) {
 			console.error('Content moderation error:', moderationError);
 			// Don't block template creation if moderation fails - log and continue
-			// In production, you might want to queue for manual review instead
+			// In production, queue for manual review instead
+			consensusResult = null;
 		}
 
 		const user = locals.user;
@@ -351,9 +408,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						slug,
 						userId: user.id,
 						// Consolidated verification fields with defaults
-						verification_status: 'pending',
+						verification_status: consensusResult?.approved ? 'approved' : 'pending',
 						country_code: 'US',
-						reputation_applied: false
+						reputation_applied: false,
+						// Multi-agent consensus results (Phase 1)
+						agent_votes: consensusResult?.votes || [],
+						consensus_score: consensusResult?.final_confidence || null
 					}
 				});
 
