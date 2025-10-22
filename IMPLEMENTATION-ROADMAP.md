@@ -2,21 +2,29 @@
 
 **Updated:** 2025-10-22
 **Architecture:** Halo2 zero-knowledge proofs, no database storage of PII
-**Timeline:** 6-8 weeks to MVP, 12-16 weeks to full Phase 1
+**Timeline:** 12-16 weeks to complete Phase 1 (MVP = Full Phase 1)
+**Parallel Development:** voter-protocol repo handled by separate Claude instance
 
 ---
 
 ## Executive Summary
 
-**What We're Building:**
+**Phase 1 = MVP:** We're building the complete cryptographic system as specified in voter-protocol/ARCHITECTURE.md. No compromises, no reduced-feature launch.
+
+**What We're Building (All Non-Negotiable):**
 - **Halo2 zero-knowledge district proofs** (4-6 seconds in browser, no trusted setup)
 - **Identity verification** (self.xyz + Didit.me, FREE, Sybil resistance)
 - **3-layer content moderation** (OpenAI + Gemini/Claude consensus)
 - **Encrypted message delivery** (XChaCha20-Poly1305 → GCP Confidential Space → CWC API)
-- **On-chain reputation** (ERC-8004 on Scroll L2, read-only in Phase 1)
+- **On-chain reputation** (ERC-8004 on Scroll L2, read-only queries)
 - **Congressional dashboard** (free for offices, reputation filtering)
 
-**What's Different from Old Plan:**
+**Parallel Development Model:**
+- **This repo (communique):** Frontend application, handled by this Claude instance
+- **voter-protocol repo:** Halo2 circuits, smart contracts, SDK, handled by separate Claude instance
+- **Sync points clearly marked below** when communique depends on voter-protocol deliverables
+
+**What's Different from Old Architecture:**
 - ❌ **NO** hybrid GKR+SNARK (replaced with Halo2 recursive proofs)
 - ❌ **NO** NEAR CipherVault encrypted PII storage (addresses never stored anywhere)
 - ❌ **NO** database storage of addresses or district hashes
@@ -89,11 +97,11 @@
 
 ---
 
-## Implementation Strategy: 3 Phases
+## Implementation Strategy: 3 Phases (12-16 Weeks Total)
 
-### Phase A: Foundation (Weeks 1-4) - MVP Launch Blockers
+### Phase A: Foundation (Weeks 1-4) - Independent Work
 
-**Goal:** Minimum viable system without cryptography
+**Goal:** Build foundational features that don't depend on voter-protocol
 
 **Week 1-2: Content Moderation + Identity Verification**
 - [ ] OpenAI Moderation API integration (FREE tier)
@@ -115,8 +123,8 @@
 - ✅ Database stores ZERO PII (only metadata)
 - ✅ 80%+ test coverage on core flows
 
-**MVP Without Cryptography:**
-Can launch with OAuth + identity verification + content moderation ONLY. No ZK proofs, no encryption, no blockchain. Addresses stored temporarily during session, deleted after submission.
+**🔄 SYNC POINT A (End of Week 4):**
+Check with voter-protocol Claude instance on Halo2 circuit progress. No blockers yet—communique can continue independently.
 
 ---
 
@@ -131,6 +139,15 @@ Can launch with OAuth + identity verification + content moderation ONLY. No ZK p
 - [ ] Test 4-6 second proving time on commodity hardware
 - [ ] Deploy DistrictGate.sol verifier on Scroll L2 testnet
 
+**🔄 SYNC POINT B (End of Week 8):**
+**CRITICAL BLOCKER:** communique CANNOT proceed to Week 9-10 browser integration until voter-protocol delivers:
+- `@voter-protocol/crypto` NPM package (WASM prover, 4-6s proving time verified)
+- `@voter-protocol/client` NPM package (blockchain client SDK)
+- Shadow Atlas Merkle tree published (congressional districts)
+- DistrictGate.sol deployed on Scroll L2 testnet (proof verification contract)
+
+Without these deliverables, communique cannot integrate Halo2 proof generation.
+
 **Week 9-10: Halo2 Browser Integration (communique repo)**
 - [ ] Create `src/lib/core/crypto/halo2-prover.ts`
 - [ ] Browser-based proof generation (WASM module)
@@ -144,6 +161,14 @@ Can launch with OAuth + identity verification + content moderation ONLY. No ZK p
 - [ ] Reputation display in user profiles
 - [ ] Include reputation metadata in CWC submissions
 - [ ] Congressional dashboard sees reputation scores
+
+**🔄 SYNC POINT C (End of Week 12):**
+Verify with voter-protocol Claude instance:
+- ERC-8004 reputation contract deployed on Scroll L2 (mainnet or testnet)
+- RPC endpoints accessible for read-only queries
+- Reputation scores accumulating correctly on-chain
+
+Phase C can proceed with basic reputation display even if full token economics aren't ready (Phase 2 feature).
 
 **Deliverables:**
 - ✅ Browser generates Halo2 proofs in 4-6 seconds
@@ -178,6 +203,15 @@ Can launch with OAuth + identity verification + content moderation ONLY. No ZK p
 - [ ] Congressional pilot program (3-5 offices)
 - [ ] GDPR/CCPA compliance verification
 
+**🔄 SYNC POINT D (End of Week 16):**
+**FINAL PRE-LAUNCH SYNC:** Coordinate with voter-protocol Claude instance for production deployment:
+- Smart contract audit results from voter-protocol repo
+- Mainnet deployment readiness (Scroll L2 contracts)
+- Gas cost estimates verified for production load
+- Shadow Atlas Merkle tree finalized with latest congressional district data
+
+Both repos must be production-ready before Phase 1 launch.
+
 **Deliverables:**
 - ✅ Messages encrypted end-to-end (browser → TEE → CWC)
 - ✅ Congressional dashboard filtering high-reputation constituents
@@ -190,16 +224,46 @@ Can launch with OAuth + identity verification + content moderation ONLY. No ZK p
 
 ### Protocol Layer (voter-protocol repo):
 
-**Required before communique can integrate:**
-1. Halo2 circuit implementation (Rust)
-2. WASM build of prover
-3. DistrictGate.sol verifier deployed on Scroll L2
-4. ERC-8004 reputation contract deployed
-5. Shadow Atlas Merkle tree published
-6. NPM package: `@voter-protocol/crypto`
-7. NPM package: `@voter-protocol/client`
+**Parallel Development Model:**
+- voter-protocol repo handled by **separate Claude instance**
+- communique repo handled by **this Claude instance**
+- **Sync points mark critical blockers** where communique depends on voter-protocol deliverables
 
-**Timeline:** 6-8 weeks (voter-protocol team, parallel to Phase A+B)
+**Required NPM packages from voter-protocol:**
+
+1. **`@voter-protocol/crypto`** (Required by SYNC POINT B, Week 8)
+   - Halo2 WASM prover module
+   - Shadow Atlas Merkle tree utilities
+   - Poseidon hash functions for commitments
+   - XChaCha20-Poly1305 encryption (message delivery)
+   - Browser-based proof generation (4-6s proving time verified)
+
+2. **`@voter-protocol/client`** (Required by SYNC POINT B, Week 8)
+   - Unified blockchain client for Scroll L2
+   - ERC-8004 reputation queries (read-only Phase 1)
+   - DistrictGate.sol proof verification interface
+   - NEAR Chain Signatures wrapper (deterministic addresses)
+   - Transaction preparation (for Phase 2 client-side signing)
+
+3. **`@voter-protocol/types`** (Required by SYNC POINT B, Week 8)
+   - Halo2 proof interfaces
+   - Reputation type definitions
+   - Congressional district types
+   - Shared types across protocol and application
+
+**Smart contract deployments required:**
+
+1. **DistrictGate.sol** (Scroll L2 testnet by Week 8, mainnet by Week 16)
+   - Halo2 proof verification contract
+   - Shadow Atlas Merkle root storage
+   - On-chain district membership verification
+
+2. **ReputationRegistry.sol** (Scroll L2 testnet by Week 12, mainnet by Week 16)
+   - ERC-8004 reputation tracking
+   - Read-only queries for Phase 1
+   - Token reward integration ready for Phase 2
+
+**Timeline:** Weeks 5-8 (voter-protocol deliverables must be ready by SYNC POINT B)
 
 ### External Services:
 
