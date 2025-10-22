@@ -16,14 +16,13 @@ model User {
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
   
-  // === CONSOLIDATED ADDRESS FIELDS ===
-  // NOTE: PII (phone, street, personal details) stored in NEAR CipherVault, NOT PostgreSQL
-  // Only store CipherVault envelope references here
+  // === ADDRESS DISPLAY FIELDS (NO PII) ===
+  // NOTE: Addresses NEVER stored anywhere. ZK proof verifies district membership without revealing address.
+  // These fields populated from user input for display purposes only, NOT from ZK proof.
   city                      String?
   congressional_district    String?
   state                     String?
   zip                       String?
-  ciphervault_envelope_id   String?                    @map("ciphervault_envelope_id") // Reference to NEAR CipherVault
   
   // === MERGED COORDINATES DATA (from user_coordinates table) ===
   latitude                  Float?                     // From user_coordinates
@@ -45,12 +44,12 @@ model User {
   trust_score               Int                        @default(0) @map("trust_score")
   reputation_tier           String                     @default("novice") @map("reputation_tier")
 
-  // === NEAR + SCROLL BLOCKCHAIN ACCOUNTS ===
-  near_account_id           String?                    @unique @map("near_account_id") // e.g., random-a3f2d9c8.communique.testnet (PRIVACY-SAFE)
-  near_account_entropy      String?                    @unique @map("near_account_entropy") // 128-bit random per-user entropy for privacy
-  near_auth_method          String?                    @default("web3auth_oauth") @map("near_auth_method") // web3auth_oauth | external_wallet
-  near_account_created_at   DateTime?                  @map("near_account_created_at")
-  scroll_address            String?                    @unique @map("scroll_address") // Derived via NEAR Chain Signatures
+  // === ZERO-KNOWLEDGE VERIFICATION (Phase 1) ===
+  district_verified         Boolean                    @default(false) @map("district_verified") // ZK proof verification status
+  last_proof_timestamp      DateTime?                  @map("last_proof_timestamp") // When last Halo2 proof was generated
+
+  // === SCROLL BLOCKCHAIN ACCOUNT (Deterministic from Passkey) ===
+  scroll_address            String?                    @unique @map("scroll_address") // Derived via NEAR Chain Signatures (deterministic, not PII)
   scroll_derivation_path    String?                    @default("scroll-sepolia,1") @map("scroll_derivation_path")
 
   // === OPTIONAL EXTERNAL WALLET LINKING ===
@@ -73,7 +72,7 @@ model User {
   connection                String?
   profile_completed_at      DateTime?                  @map("profile_completed_at")
   profile_visibility        String                     @default("private") @map("profile_visibility")
-  // NOTE: connection_details (personal political connections) stored in NEAR CipherVault
+
   // === RELATIONS (keep existing) ===
   account                   account[]
   political_bubbles         local_political_bubble[]
@@ -354,8 +353,7 @@ model template_personalization {
   user_id                   String   @map("user_id")
   template_id               String   @map("template_id")
   variable_name             String   @map("variable_name")
-  custom_value              String   @map("custom_value") // Public/non-sensitive customizations only
-  ciphervault_ref           String?  @map("ciphervault_ref") // Reference to NEAR CipherVault for PII (personal stories)
+  custom_value              String   @map("custom_value") // User-provided customizations (non-PII)
   usage_count               Int      @default(1) @map("usage_count")
   last_used                 DateTime @default(now()) @map("last_used")
   created_at                DateTime @default(now()) @map("created_at")
