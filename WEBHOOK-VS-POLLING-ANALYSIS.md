@@ -11,12 +11,14 @@
 **For our use case (Phase 1 launch):**
 
 ### ✅ **self.xyz: NO WEBHOOK NEEDED**
+
 - Frontend-initiated synchronous flow
 - User stays on page during verification
 - Backend endpoint receives POST from frontend (not from self.xyz servers)
 - **Implementation:** Simple API endpoint that verifies proof
 
 ### ⚠️ **Didit.me: WEBHOOK RECOMMENDED (but not required)**
+
 - Can use polling as fallback
 - Webhooks provide better UX (real-time updates)
 - **For Phase 1:** Start with polling, add webhooks in Phase 1D (polish)
@@ -74,6 +76,7 @@
 **Key Insight:** The `/api/identity/verify` endpoint is called by **our frontend**, not by self.xyz servers. It's a synchronous request-response flow.
 
 **No webhook needed because:**
+
 - User stays on the verification page
 - Frontend handles the proof and sends to backend
 - Immediate response (synchronous)
@@ -133,14 +136,14 @@
 
 **Webhook vs Polling Trade-offs:**
 
-| Aspect | Webhook | Polling |
-|--------|---------|---------|
-| **Real-time updates** | ✅ Instant | ⏱️ Delayed (polling interval) |
-| **Server load** | ✅ Low (only when events occur) | ⚠️ Higher (continuous polling) |
-| **Complexity** | ⚠️ HMAC verification, public endpoint | ✅ Simple GET requests |
-| **Reliability** | ⚠️ Depends on webhook delivery | ✅ We control retry logic |
-| **Security** | ⚠️ Must validate signatures | ✅ We initiate requests |
-| **Development** | ⚠️ Need public URL (harder in dev) | ✅ Works on localhost |
+| Aspect                | Webhook                               | Polling                        |
+| --------------------- | ------------------------------------- | ------------------------------ |
+| **Real-time updates** | ✅ Instant                            | ⏱️ Delayed (polling interval)  |
+| **Server load**       | ✅ Low (only when events occur)       | ⚠️ Higher (continuous polling) |
+| **Complexity**        | ⚠️ HMAC verification, public endpoint | ✅ Simple GET requests         |
+| **Reliability**       | ⚠️ Depends on webhook delivery        | ✅ We control retry logic      |
+| **Security**          | ⚠️ Must validate signatures           | ✅ We initiate requests        |
+| **Development**       | ⚠️ Need public URL (harder in dev)    | ✅ Works on localhost          |
 
 ---
 
@@ -149,6 +152,7 @@
 ### User Flow Context
 
 **self.xyz (NFC Passport):**
+
 ```
 1. User customizes template on our site
 2. Clicks "Send to Congress" → Verification modal appears
@@ -165,6 +169,7 @@
 ---
 
 **Didit.me (Government ID Upload):**
+
 ```
 1. User clicks "Use Government ID Instead"
 2. Redirect to Didit-hosted verification page
@@ -177,6 +182,7 @@
 **Duration:** 1-5 minutes (sometimes longer for manual review)
 **User behavior:** May navigate away, multitask
 **Options:**
+
 - ⚠️ **Polling:** User returns to our site, we check status
 - ✅ **Webhook:** We get notified when complete, update DB, send email
 
@@ -187,6 +193,7 @@
 ### **Phase 1A/1B: MVP (Weeks 1-9)**
 
 #### self.xyz: Synchronous Flow ✅
+
 ```typescript
 // Frontend (PassportFlow.svelte)
 <SelfQRcodeWrapper
@@ -229,13 +236,13 @@ export const POST: RequestHandler = async ({ request }) => {
 ```typescript
 // 1. Create session with return URL
 const response = await fetch('https://verification.didit.me/v2/session/', {
-  method: 'POST',
-  headers: { 'x-api-key': DIDIT_API_KEY },
-  body: JSON.stringify({
-    workflow_id: DIDIT_APP_ID,
-    metadata: { user_id: userId },
-    redirect_url: 'https://communi.email/verify-complete'  // User returns here
-  })
+	method: 'POST',
+	headers: { 'x-api-key': DIDIT_API_KEY },
+	body: JSON.stringify({
+		workflow_id: DIDIT_APP_ID,
+		metadata: { user_id: userId },
+		redirect_url: 'https://communi.email/verify-complete' // User returns here
+	})
 });
 
 const { session_id, verification_url } = await response.json();
@@ -248,51 +255,53 @@ window.location.href = verification_url;
 // 4. User redirected back to /verify-complete
 // Frontend polls for status
 const checkStatus = async () => {
-  const result = await fetch(`/api/identity/didit/check/${session_id}`);
+	const result = await fetch(`/api/identity/didit/check/${session_id}`);
 
-  if (result.status === 'Approved') {
-    // Show success, continue
-  } else if (result.status === 'Declined') {
-    // Show error
-  } else {
-    // Still processing, poll again in 3 seconds
-    setTimeout(checkStatus, 3000);
-  }
+	if (result.status === 'Approved') {
+		// Show success, continue
+	} else if (result.status === 'Declined') {
+		// Show error
+	} else {
+		// Still processing, poll again in 3 seconds
+		setTimeout(checkStatus, 3000);
+	}
 };
 
 checkStatus();
 ```
 
 **Backend polling endpoint:**
+
 ```typescript
 // /api/identity/didit/check/[sessionId]/+server.ts
 export const GET: RequestHandler = async ({ params }) => {
-  const { sessionId } = params;
+	const { sessionId } = params;
 
-  // Poll Didit API
-  const response = await fetch(
-    `https://verification.didit.me/v2/session/${sessionId}/decision/`,
-    { headers: { 'x-api-key': DIDIT_API_KEY } }
-  );
+	// Poll Didit API
+	const response = await fetch(`https://verification.didit.me/v2/session/${sessionId}/decision/`, {
+		headers: { 'x-api-key': DIDIT_API_KEY }
+	});
 
-  const data = await response.json();
+	const data = await response.json();
 
-  if (data.status === 'Approved') {
-    // Process verification result (extract ID data, create hash, update user)
-    await processVerificationResult(data);
-  }
+	if (data.status === 'Approved') {
+		// Process verification result (extract ID data, create hash, update user)
+		await processVerificationResult(data);
+	}
 
-  return json({ status: data.status });
+	return json({ status: data.status });
 };
 ```
 
 **Pros:**
+
 - ✅ Simple to implement (no HMAC verification)
 - ✅ Works in development (no public webhook URL needed)
 - ✅ We control retry logic
 - ✅ No webhook secret management
 
 **Cons:**
+
 - ⏱️ Slight delay (3-5 second polling interval)
 - ⚠️ User must return to our site to complete flow
 - ⚠️ Higher API call volume (but Didit doesn't charge per call)
@@ -306,36 +315,38 @@ Add webhooks for better UX:
 ```typescript
 // /api/identity/didit/webhook/+server.ts
 export const POST: RequestHandler = async ({ request }) => {
-  // Verify HMAC signature
-  const isValid = verifyDiditWebhook(body, signature, timestamp, secret);
+	// Verify HMAC signature
+	const isValid = verifyDiditWebhook(body, signature, timestamp, secret);
 
-  if (!isValid) {
-    throw error(401, 'Invalid signature');
-  }
+	if (!isValid) {
+		throw error(401, 'Invalid signature');
+	}
 
-  // Process verification asynchronously
-  if (body.status === 'Approved') {
-    await processVerificationResult(body.decision);
+	// Process verification asynchronously
+	if (body.status === 'Approved') {
+		await processVerificationResult(body.decision);
 
-    // Send email notification to user
-    await sendEmail({
-      to: user.email,
-      subject: 'Verification Complete',
-      body: 'Your identity has been verified. Click here to continue...'
-    });
-  }
+		// Send email notification to user
+		await sendEmail({
+			to: user.email,
+			subject: 'Verification Complete',
+			body: 'Your identity has been verified. Click here to continue...'
+		});
+	}
 
-  return json({ received: true });
+	return json({ received: true });
 };
 ```
 
 **Benefits:**
+
 - ✅ Real-time updates (instant)
 - ✅ Can notify user via email/SMS even if they closed tab
 - ✅ Lower polling load
 - ✅ Better user experience
 
 **Required:**
+
 - Public webhook URL (configured in Didit Console)
 - HMAC signature verification (security)
 - Webhook secret management
@@ -344,12 +355,12 @@ export const POST: RequestHandler = async ({ request }) => {
 
 ## Implementation Decision Matrix
 
-| Scenario | self.xyz | Didit.me |
-|----------|----------|----------|
-| **Phase 1 MVP (Weeks 1-9)** | Synchronous POST | Polling |
-| **Phase 1D Polish (Weeks 14-18)** | Synchronous POST | Webhook + Email |
-| **Development Environment** | ✅ Works locally | ✅ Works locally (polling) |
-| **Production Environment** | ✅ Works | ✅ Works (both approaches) |
+| Scenario                          | self.xyz         | Didit.me                   |
+| --------------------------------- | ---------------- | -------------------------- |
+| **Phase 1 MVP (Weeks 1-9)**       | Synchronous POST | Polling                    |
+| **Phase 1D Polish (Weeks 14-18)** | Synchronous POST | Webhook + Email            |
+| **Development Environment**       | ✅ Works locally | ✅ Works locally (polling) |
+| **Production Environment**        | ✅ Works         | ✅ Works (both approaches) |
 
 ---
 
@@ -358,12 +369,14 @@ export const POST: RequestHandler = async ({ request }) => {
 ### **Phase 1A/1B (Current): Implement Polling Only**
 
 **Reasons:**
+
 1. **Faster to implement** - No HMAC verification, webhook secret management
 2. **Easier to test** - Works on localhost, no ngrok needed
 3. **Good enough UX** - Most users complete verification and return to our site
 4. **Lower risk** - We control the retry logic, no dependency on webhook delivery
 
 **Implementation:**
+
 - ✅ self.xyz: `/api/identity/verify` (synchronous, frontend-initiated)
 - ✅ Didit.me: `/api/identity/didit/check/[sessionId]` (polling endpoint)
 - ✅ Frontend: Poll every 3 seconds until status changes
@@ -373,11 +386,13 @@ export const POST: RequestHandler = async ({ request }) => {
 ### **Phase 1D (Polish): Add Webhooks**
 
 **When:**
+
 - After core verification flows working
 - After we have production domain/infrastructure
 - When we want to add email notifications
 
 **Implementation:**
+
 - Add `/api/identity/didit/webhook` endpoint
 - Configure webhook URL in Didit Console
 - Implement HMAC verification
@@ -391,6 +406,7 @@ export const POST: RequestHandler = async ({ request }) => {
 ### **self.xyz: No Changes Needed**
 
 Our existing approach already correct:
+
 - ✅ Backend endpoint receives POST from frontend
 - ✅ Synchronous verification flow
 - ✅ Frontend handles success/error callbacks
@@ -416,45 +432,45 @@ Our existing approach already correct:
 ```svelte
 <!-- GovernmentIDFlow.svelte -->
 <script lang="ts">
-  let sessionId = '';
-  let status = 'pending';
+	let sessionId = '';
+	let status = 'pending';
 
-  async function startVerification() {
-    // Create session
-    const response = await fetch('/api/identity/didit/init', {
-      method: 'POST',
-      body: JSON.stringify({ userId })
-    });
+	async function startVerification() {
+		// Create session
+		const response = await fetch('/api/identity/didit/init', {
+			method: 'POST',
+			body: JSON.stringify({ userId })
+		});
 
-    const { session_id, verification_url } = await response.json();
-    sessionId = session_id;
+		const { session_id, verification_url } = await response.json();
+		sessionId = session_id;
 
-    // Redirect to Didit
-    window.location.href = verification_url;
-  }
+		// Redirect to Didit
+		window.location.href = verification_url;
+	}
 
-  async function checkStatus() {
-    const response = await fetch(`/api/identity/didit/check/${sessionId}`);
-    const data = await response.json();
+	async function checkStatus() {
+		const response = await fetch(`/api/identity/didit/check/${sessionId}`);
+		const data = await response.json();
 
-    status = data.status;
+		status = data.status;
 
-    if (status === 'Approved') {
-      // Show success, allow continuation
-    } else if (status === 'Declined') {
-      // Show error
-    } else if (status === 'In Progress' || status === 'Not Started') {
-      // Poll again in 3 seconds
-      setTimeout(checkStatus, 3000);
-    }
-  }
+		if (status === 'Approved') {
+			// Show success, allow continuation
+		} else if (status === 'Declined') {
+			// Show error
+		} else if (status === 'In Progress' || status === 'Not Started') {
+			// Poll again in 3 seconds
+			setTimeout(checkStatus, 3000);
+		}
+	}
 
-  // Start polling when user returns from Didit
-  onMount(() => {
-    if (sessionId) {
-      checkStatus();
-    }
-  });
+	// Start polling when user returns from Didit
+	onMount(() => {
+		if (sessionId) {
+			checkStatus();
+		}
+	});
 </script>
 ```
 
@@ -474,11 +490,13 @@ Our existing approach already correct:
 3. ⏳ Didit.me webhooks (add in Phase 1D for better UX)
 
 **Next steps:**
+
 1. Implement Didit polling approach first
 2. Test end-to-end flow
 3. Add webhooks later when we have production infrastructure
 
 This gives us:
+
 - ✅ Working verification flows (both SDKs)
 - ✅ Faster implementation (no webhook complexity)
 - ✅ Easier development/testing

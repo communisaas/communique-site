@@ -22,7 +22,8 @@ export const POST: RequestHandler = async ({ request }) => {
 			scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'communique-congressional',
 			userId: userId,
 			userIdType: 'uuid',
-			endpoint: process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://communi.email/api/identity/verify',
+			endpoint:
+				process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://communi.email/api/identity/verify',
 			endpointType: 'staging_https',
 			userDefinedData: JSON.stringify({
 				templateSlug,

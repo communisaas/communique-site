@@ -12,6 +12,7 @@
 **Phase 1 = MVP:** We're building the complete cryptographic system as specified in voter-protocol/ARCHITECTURE.md. No compromises, no reduced-feature launch.
 
 **What We're Building (All Non-Negotiable):**
+
 - **Halo2 zero-knowledge district proofs** (4-6 seconds in browser, no trusted setup)
 - **Identity verification** (self.xyz + Didit.me, FREE, Sybil resistance)
 - **3-layer content moderation** (OpenAI + Gemini/Claude consensus)
@@ -20,11 +21,13 @@
 - **Congressional dashboard** (free for offices, reputation filtering)
 
 **Parallel Development Model:**
+
 - **This repo (communique):** Frontend application, handled by this Claude instance
 - **voter-protocol repo:** Halo2 circuits, smart contracts, SDK, handled by separate Claude instance
 - **Sync points clearly marked below** when communique depends on voter-protocol deliverables
 
 **What's Different from Old Architecture:**
+
 - ❌ **NO** hybrid GKR+SNARK (replaced with Halo2 recursive proofs)
 - ❌ **NO** NEAR CipherVault encrypted PII storage (addresses never stored anywhere)
 - ❌ **NO** database storage of addresses or district hashes
@@ -104,6 +107,7 @@
 **Goal:** Build foundational features that don't depend on voter-protocol
 
 **Week 1-2: Content Moderation + Identity Verification**
+
 - [ ] OpenAI Moderation API integration (FREE tier)
 - [ ] Template moderation pipeline (auto-reject illegal content)
 - [ ] self.xyz SDK integration (NFC passport verification)
@@ -111,6 +115,7 @@
 - [ ] Sybil resistance (identity hash checking)
 
 **Week 3-4: Database Schema Cleanup + Test Coverage**
+
 - [ ] Remove ALL PII fields from Prisma schema
 - [ ] Add verification status fields (district_verified, last_proof_timestamp)
 - [ ] Template CRUD integration tests
@@ -118,6 +123,7 @@
 - [ ] CWC delivery integration tests
 
 **Deliverables:**
+
 - ✅ Users can verify identity via NFC passport or government ID
 - ✅ Templates auto-moderated for illegal content
 - ✅ Database stores ZERO PII (only metadata)
@@ -133,6 +139,7 @@ Check with voter-protocol Claude instance on Halo2 circuit progress. No blockers
 **Goal:** Halo2 zero-knowledge proofs + blockchain reputation
 
 **Week 5-8: Halo2 Implementation (voter-protocol repo)**
+
 - [ ] Implement Halo2 Merkle membership circuit (Rust)
 - [ ] Shadow Atlas Merkle tree construction (congressional districts)
 - [ ] Build WASM wrapper for browser proving
@@ -141,6 +148,7 @@ Check with voter-protocol Claude instance on Halo2 circuit progress. No blockers
 
 **🔄 SYNC POINT B (End of Week 8):**
 **CRITICAL BLOCKER:** communique CANNOT proceed to Week 9-10 browser integration until voter-protocol delivers:
+
 - `@voter-protocol/crypto` NPM package (WASM prover, 4-6s proving time verified)
 - `@voter-protocol/client` NPM package (blockchain client SDK)
 - Shadow Atlas Merkle tree published (congressional districts)
@@ -149,6 +157,7 @@ Check with voter-protocol Claude instance on Halo2 circuit progress. No blockers
 Without these deliverables, communique cannot integrate Halo2 proof generation.
 
 **Week 9-10: Halo2 Browser Integration (communique repo)**
+
 - [ ] Create `src/lib/core/crypto/halo2-prover.ts`
 - [ ] Browser-based proof generation (WASM module)
 - [ ] UI progress indicator (4-6s proving time)
@@ -156,6 +165,7 @@ Without these deliverables, communique cannot integrate Halo2 proof generation.
 - [ ] E2E test: proof generation → on-chain verification
 
 **Week 11-12: Blockchain Reputation (Read-Only)**
+
 - [ ] Restore `src/lib/core/blockchain/voter-client.ts`
 - [ ] ERC-8004 reputation queries (Scroll L2)
 - [ ] Reputation display in user profiles
@@ -164,6 +174,7 @@ Without these deliverables, communique cannot integrate Halo2 proof generation.
 
 **🔄 SYNC POINT C (End of Week 12):**
 Verify with voter-protocol Claude instance:
+
 - ERC-8004 reputation contract deployed on Scroll L2 (mainnet or testnet)
 - RPC endpoints accessible for read-only queries
 - Reputation scores accumulating correctly on-chain
@@ -171,6 +182,7 @@ Verify with voter-protocol Claude instance:
 Phase C can proceed with basic reputation display even if full token economics aren't ready (Phase 2 feature).
 
 **Deliverables:**
+
 - ✅ Browser generates Halo2 proofs in 4-6 seconds
 - ✅ Addresses NEVER leave browser, NEVER stored anywhere
 - ✅ Congressional offices verify proofs on-chain
@@ -183,6 +195,7 @@ Phase C can proceed with basic reputation display even if full token economics a
 **Goal:** Encrypted delivery + congressional dashboard
 
 **Week 13-14: Encrypted Delivery (GCP Confidential Space)**
+
 - [ ] XChaCha20-Poly1305 encryption in browser
 - [ ] Deploy GCP Confidential Space TEE (AMD SEV-SNP)
 - [ ] TEE attestation verification
@@ -190,6 +203,7 @@ Phase C can proceed with basic reputation display even if full token economics a
 - [ ] Test: plaintext never leaves enclave
 
 **Week 15: Congressional Dashboard**
+
 - [ ] Congressional email authentication (.senate.gov / .house.gov)
 - [ ] Message queue with reputation filters
 - [ ] Geographic clustering visualization
@@ -197,6 +211,7 @@ Phase C can proceed with basic reputation display even if full token economics a
 - [ ] Impact tracking (template → bill correlation)
 
 **Week 16: Security Audit + Launch Prep**
+
 - [ ] Smart contract audit (basic security review)
 - [ ] Penetration testing on encryption flow
 - [ ] Load testing (1000 concurrent users)
@@ -205,6 +220,7 @@ Phase C can proceed with basic reputation display even if full token economics a
 
 **🔄 SYNC POINT D (End of Week 16):**
 **FINAL PRE-LAUNCH SYNC:** Coordinate with voter-protocol Claude instance for production deployment:
+
 - Smart contract audit results from voter-protocol repo
 - Mainnet deployment readiness (Scroll L2 contracts)
 - Gas cost estimates verified for production load
@@ -213,6 +229,7 @@ Phase C can proceed with basic reputation display even if full token economics a
 Both repos must be production-ready before Phase 1 launch.
 
 **Deliverables:**
+
 - ✅ Messages encrypted end-to-end (browser → TEE → CWC)
 - ✅ Congressional dashboard filtering high-reputation constituents
 - ✅ Production-ready Phase 1 system
@@ -225,6 +242,7 @@ Both repos must be production-ready before Phase 1 launch.
 ### Protocol Layer (voter-protocol repo):
 
 **Parallel Development Model:**
+
 - voter-protocol repo handled by **separate Claude instance**
 - communique repo handled by **this Claude instance**
 - **Sync points mark critical blockers** where communique depends on voter-protocol deliverables
@@ -268,6 +286,7 @@ Both repos must be production-ready before Phase 1 launch.
 ### External Services:
 
 **API Keys Required:**
+
 - self.xyz (FREE tier: 1000 verifications/month)
 - Didit.me (FREE tier: 500 verifications/month)
 - OpenAI Moderation API (FREE tier: 20 req/min)
@@ -276,6 +295,7 @@ Both repos must be production-ready before Phase 1 launch.
 - GCP account (for Confidential Space, ~$350/month)
 
 **No-Cost Services:**
+
 - Scroll RPC (free public endpoint)
 - Census Bureau Geocoding API (free)
 - CWC API (free for congressional delivery)
@@ -289,6 +309,7 @@ Both repos must be production-ready before Phase 1 launch.
 **Risk:** Halo2 is production-grade (Zcash since 2022), but district proof circuits need custom implementation
 
 **Mitigation:**
+
 - Week 5: Evaluate if Halo2 Merkle circuit can achieve 4-6s proving
 - Contingency: Use Groth16 SNARKs (well-established, requires trusted setup)
 - Decision Point: End of Week 6 - GO/NO-GO on Halo2
@@ -298,6 +319,7 @@ Both repos must be production-ready before Phase 1 launch.
 **Risk:** AMD SEV-SNP attestation + TEE deployment may cause delays
 
 **Mitigation:**
+
 - Budget $5K for GCP/TEE consultant if blocked
 - Fallback: Ship Phase 1 without TEE encryption (accept reduced privacy)
 - Decision Point: End of Week 14 - Defer TEE to post-launch if blocked
@@ -307,6 +329,7 @@ Both repos must be production-ready before Phase 1 launch.
 **Risk:** Offices may not use dashboard
 
 **Mitigation:**
+
 - Week 13: Begin congressional outreach (parallel to dev)
 - Pilot program: Free white-glove onboarding for first 5 offices
 - User research: Weekly calls with LC staff during development
@@ -318,6 +341,7 @@ Both repos must be production-ready before Phase 1 launch.
 ### 1. Database Schema Cleanup (1-2 days)
 
 **Remove these fields from Prisma schema:**
+
 ```prisma
 model User {
   // ❌ REMOVE:
@@ -337,27 +361,28 @@ model User {
 ### 2. OpenAI Content Moderation (2-3 days)
 
 **Create:** `src/lib/core/server/content-moderation.ts`
+
 ```typescript
 import OpenAI from 'openai';
 
 export async function moderateTemplate(template: {
-  title: string;
-  message_body: string;
+	title: string;
+	message_body: string;
 }): Promise<{ approved: boolean; flagged_categories: string[] }> {
-  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+	const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-  const response = await openai.moderations.create({
-    input: `${template.title}\n\n${template.message_body}`
-  });
+	const response = await openai.moderations.create({
+		input: `${template.title}\n\n${template.message_body}`
+	});
 
-  const flagged = Object.entries(response.results[0].categories)
-    .filter(([_, flagged]) => flagged)
-    .map(([category]) => category);
+	const flagged = Object.entries(response.results[0].categories)
+		.filter(([_, flagged]) => flagged)
+		.map(([category]) => category);
 
-  return {
-    approved: flagged.length === 0,
-    flagged_categories: flagged
-  };
+	return {
+		approved: flagged.length === 0,
+		flagged_categories: flagged
+	};
 }
 ```
 
@@ -368,49 +393,51 @@ export async function moderateTemplate(template: {
 **Install:** `npm install @self.xyz/sdk`
 
 **Update:** `src/routes/api/identity/verify/+server.ts`
+
 ```typescript
 import { SelfSDK } from '@self.xyz/sdk';
 
 export const POST: RequestHandler = async ({ request }) => {
-  const { sessionId, verificationData } = await request.json();
+	const { sessionId, verificationData } = await request.json();
 
-  // Verify passport NFC signature
-  const result = await SelfSDK.verify(verificationData);
+	// Verify passport NFC signature
+	const result = await SelfSDK.verify(verificationData);
 
-  if (!result.valid) {
-    return json({ success: false, error: 'Invalid passport verification' });
-  }
+	if (!result.valid) {
+		return json({ success: false, error: 'Invalid passport verification' });
+	}
 
-  // Create identity hash (NOT storing passport number)
-  const identityHash = sha256(result.passportNumber + result.nationality);
+	// Create identity hash (NOT storing passport number)
+	const identityHash = sha256(result.passportNumber + result.nationality);
 
-  // Check Sybil resistance
-  const existing = await db.user.findFirst({
-    where: { verification_data: { path: ['identityHash'], equals: identityHash } }
-  });
+	// Check Sybil resistance
+	const existing = await db.user.findFirst({
+		where: { verification_data: { path: ['identityHash'], equals: identityHash } }
+	});
 
-  if (existing) {
-    return json({ success: false, error: 'Identity already verified' });
-  }
+	if (existing) {
+		return json({ success: false, error: 'Identity already verified' });
+	}
 
-  // Update user
-  await db.user.update({
-    where: { id: sessionId },
-    data: {
-      is_verified: true,
-      verification_method: 'self.xyz',
-      verification_data: { identityHash, nationality: result.nationality },
-      verified_at: new Date()
-    }
-  });
+	// Update user
+	await db.user.update({
+		where: { id: sessionId },
+		data: {
+			is_verified: true,
+			verification_method: 'self.xyz',
+			verification_data: { identityHash, nationality: result.nationality },
+			verified_at: new Date()
+		}
+	});
 
-  return json({ success: true });
+	return json({ success: true });
 };
 ```
 
 ### 4. Test Coverage Expansion (3-5 days)
 
 **Add tests:**
+
 - `tests/integration/template-moderation.test.ts`
 - `tests/integration/identity-verification.test.ts`
 - `tests/e2e/address-collection-flow.spec.ts`
@@ -420,22 +447,26 @@ export const POST: RequestHandler = async ({ request }) => {
 ## Budget Estimate
 
 ### Phase A (MVP): $0-500
+
 - API keys: FREE tiers sufficient
 - Infrastructure: Existing Fly.io deployment
 - Total: **$0/month** (can launch for free)
 
 ### Phase B (Cryptography): $500-1000/month
+
 - Scroll L2 gas costs: ~$100/month (1000 proof verifications)
 - Infrastructure: Existing deployment
 - Total: **~$500/month**
 
 ### Phase C (Full Phase 1): $850-1200/month
+
 - GCP Confidential Space: ~$350/month (n2d-standard-2 TEE)
 - Scroll L2 gas: ~$100/month
 - Infrastructure: ~$50/month (increased Fly.io resources)
 - Total: **~$850/month**
 
 ### One-Time Costs:
+
 - Smart contract audit: $5K-10K (basic security review)
 - GCP/TEE consultant: $5K contingency (if needed)
 - Total: **$10K-15K one-time**
@@ -445,6 +476,7 @@ export const POST: RequestHandler = async ({ request }) => {
 ## Success Metrics (Phase 1 Launch)
 
 ### Technical Metrics:
+
 - [ ] Halo2 proof generation: <6 seconds on mobile devices
 - [ ] CWC submission success rate: >95%
 - [ ] Identity verification success rate: >90%
@@ -452,12 +484,14 @@ export const POST: RequestHandler = async ({ request }) => {
 - [ ] Zero PII stored in database (verified)
 
 ### Adoption Metrics:
+
 - [ ] 3+ congressional offices using dashboard
 - [ ] 100+ verified users
 - [ ] 50+ messages delivered via VOTER Protocol
 - [ ] Positive feedback from Legislative Correspondents
 
 ### Security Metrics:
+
 - [ ] Smart contracts audited (no critical vulnerabilities)
 - [ ] Penetration testing complete (no critical findings)
 - [ ] GDPR/CCPA compliance verified
@@ -468,6 +502,7 @@ export const POST: RequestHandler = async ({ request }) => {
 ## Phase 1 → Phase 2 Transition
 
 **Phase 1 Complete When:**
+
 - All technical metrics achieved
 - 10+ congressional offices actively using dashboard
 - 1000+ verified users
@@ -476,6 +511,7 @@ export const POST: RequestHandler = async ({ request }) => {
 **Phase 2 Begins:** 12-18 months post-Phase 1 launch
 
 **Phase 2 Adds:**
+
 - VOTER token rewards for civic actions
 - Challenge markets (dispute resolution with economic stakes)
 - Outcome markets (impact verification)

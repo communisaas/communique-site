@@ -42,9 +42,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const timestamp = request.headers.get('x-didit-timestamp');
 
 		// Verify webhook authenticity
-		if (
-			!verifyWebhookSignature(body, signature, timestamp, process.env.DIDIT_WEBHOOK_SECRET!)
-		) {
+		if (!verifyWebhookSignature(body, signature, timestamp, process.env.DIDIT_WEBHOOK_SECRET!)) {
 			console.error('Invalid webhook signature');
 			throw error(401, 'Invalid webhook signature');
 		}

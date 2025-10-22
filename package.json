@@ -108,6 +108,7 @@
 		"mailparser": "^3.7.1",
 		"ncu": "^0.2.1",
 		"near-api-js": "^6.3.0",
+		"openai": "^6.6.0",
 		"postgres": "^3.4.7",
 		"qrcode": "^1.5.4",
 		"smtp-server": "^3.14.0",

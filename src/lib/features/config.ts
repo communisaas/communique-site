@@ -58,9 +58,12 @@ export function isFeatureEnabled(feature: FeatureName): boolean {
 	}
 
 	if (status === FeatureStatus.BETA) {
-		const betaEnabled = process.env.ENABLE_BETA === 'true' || process.env.PUBLIC_ENABLE_BETA === 'true';
+		const betaEnabled =
+			process.env.ENABLE_BETA === 'true' || process.env.PUBLIC_ENABLE_BETA === 'true';
 		if (isProduction && betaEnabled) {
-			console.warn(`[Feature Flags] Beta feature '${feature}' enabled in production - use with caution`);
+			console.warn(
+				`[Feature Flags] Beta feature '${feature}' enabled in production - use with caution`
+			);
 		}
 		return betaEnabled;
 	}
@@ -69,7 +72,7 @@ export function isFeatureEnabled(feature: FeatureName): boolean {
 		if (isProduction) {
 			throw new Error(
 				`[Feature Flags] BLOCKED: Research feature '${feature}' cannot be enabled in production. ` +
-				`Research features are experimental only.`
+					`Research features are experimental only.`
 			);
 		}
 		return process.env.ENABLE_RESEARCH === 'true';
@@ -79,7 +82,7 @@ export function isFeatureEnabled(feature: FeatureName): boolean {
 		if (isProduction) {
 			throw new Error(
 				`[Feature Flags] BLOCKED: Roadmap feature '${feature}' not implemented yet. ` +
-				`See ROADMAP.md for timeline.`
+					`See ROADMAP.md for timeline.`
 			);
 		}
 		// Allow in development for testing future integrations
@@ -91,7 +94,7 @@ export function isFeatureEnabled(feature: FeatureName): boolean {
 		if (isProduction) {
 			throw new Error(
 				`[Feature Flags] BLOCKED: Feature '${feature}' is disabled (removed from codebase). ` +
-				`This feature is not available.`
+					`This feature is not available.`
 			);
 		}
 		return false;

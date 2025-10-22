@@ -15,6 +15,7 @@ Turn-key congressional delivery via CWC API. OAuth-powered onboarding. Zero-know
 Communiqué is the **frontend application** that implements VOTER Protocol's cryptographic infrastructure. Users interact with Communiqué. The blockchain settlement, zero-knowledge proofs, and economic mechanisms live in [voter-protocol](https://github.com/communisaas/voter-protocol).
 
 **What Communiqué handles:**
+
 - Template browsing, creation, and customization
 - OAuth authentication (Google, Facebook, Twitter, LinkedIn, Discord)
 - Address validation and congressional district lookup
@@ -24,6 +25,7 @@ Communiqué is the **frontend application** that implements VOTER Protocol's cry
 - Encrypted delivery through GCP Confidential Space (AMD SEV-SNP TEE)
 
 **What voter-protocol handles:**
+
 - Smart contracts on Scroll zkEVM
 - Halo2 zero-knowledge proof verification (no trusted setup)
 - On-chain reputation (ERC-8004 portable credibility)
@@ -65,6 +67,7 @@ Settlement Layer (voter-protocol repo)
 **Budget:** $326/month for 1,000 users / 10,000 messages (Phase 1)
 
 **Phase 2 additions** (12-18 months):
+
 - VOTER token rewards
 - Challenge markets (stake on verifiable claims)
 - Outcome markets (financially compete with lobbying)
@@ -75,6 +78,7 @@ Settlement Layer (voter-protocol repo)
 ## Tech Stack
 
 **Frontend:**
+
 - SvelteKit 5 (runes: $state, $derived, $effect)
 - TypeScript (strict mode, zero `any` types)
 - Tailwind CSS + design system (governance-neutral)
@@ -82,6 +86,7 @@ Settlement Layer (voter-protocol repo)
 - Vitest (integration-first test suite)
 
 **Backend:**
+
 - Supabase (Postgres database)
 - Prisma ORM (type-safe database queries)
 - @oslojs/crypto (cryptographic sessions)
@@ -89,17 +94,20 @@ Settlement Layer (voter-protocol repo)
 - Census Bureau Geocoding API (district lookup)
 
 **Identity & Privacy:**
+
 - self.xyz (FREE NFC passport verification, 70% of users)
 - Didit.me (FREE government ID upload, 30% of users)
 - GCP Confidential Space (AMD SEV-SNP hardware-attested TEE)
 - XChaCha20-Poly1305 (end-to-end encryption)
 
 **Blockchain (via voter-protocol):**
+
 - Scroll zkEVM (settlement layer)
 - Halo2 recursive proofs (zero-knowledge proofs)
 - NEAR Chain Signatures (cross-chain account abstraction)
 
 **Deployment:**
+
 - Fly.io (production + staging)
 - GitHub Actions (CI/CD)
 - Prisma migrations (schema versioning)
@@ -156,6 +164,7 @@ npm run dev  # http://localhost:5173
 ```
 
 **With feature flags:**
+
 ```bash
 ENABLE_BETA=true npm run dev       # Enable beta features
 ENABLE_RESEARCH=true npm run dev   # Enable experimental features
@@ -352,6 +361,7 @@ tests/                        # Integration, unit, e2e tests
 ### Other Providers
 
 Similar setup for Facebook, Twitter, LinkedIn, Discord:
+
 - Create app in developer console
 - Configure redirect: `{BASE_URL}/auth/{provider}/callback`
 - Add client ID/secret to `.env`
@@ -365,6 +375,7 @@ Similar setup for Facebook, Twitter, LinkedIn, Discord:
 Communiqué is the frontend. voter-protocol is the blockchain infrastructure.
 
 **Read-only queries (Phase 1):**
+
 ```typescript
 import { voterBlockchainClient } from '$lib/core/blockchain/voter-client';
 
@@ -378,13 +389,14 @@ const metrics = await voterBlockchainClient.getPlatformStats();
 ```
 
 **Client-side signing (Phase 2):**
+
 ```typescript
 // Prepare unsigned transaction
 const { unsignedTx } = await voterBlockchainClient.prepareActionTransaction({
-  userAddress,
-  actionType: 'CWC_MESSAGE',
-  templateId,
-  deliveryConfirmation
+	userAddress,
+	actionType: 'CWC_MESSAGE',
+	templateId,
+	deliveryConfirmation
 });
 
 // User signs with passkey (Face ID / Touch ID)
@@ -402,12 +414,14 @@ await submitTransaction(signedTx);
 ## Documentation
 
 **Communiqué-specific:**
+
 - **[CLAUDE.md](./CLAUDE.md)** - Authoritative development guide (type safety, testing, architecture)
 - **[docs/design-system.md](./docs/design-system.md)** - Complete design system (colors, typography, components)
 - **[docs/database-seeding.md](./docs/database-seeding.md)** - Database setup and seeding
 - **[tests/README.md](./tests/README.md)** - Integration-first test suite
 
 **voter-protocol (blockchain infrastructure):**
+
 - **[voter-protocol/README.md](https://github.com/communisaas/voter-protocol)** - Vision, cryptography, economics
 - **[voter-protocol/QUICKSTART.md](https://github.com/communisaas/voter-protocol/QUICKSTART.md)** - Non-technical user onboarding
 - **[voter-protocol/TECHNICAL.md](https://github.com/communisaas/voter-protocol/TECHNICAL.md)** - Blockchain deep dive
@@ -422,6 +436,7 @@ await submitTransaction(signedTx);
 ### OAuth Redirect Mismatches
 
 Ensure redirect URIs match exactly in provider consoles:
+
 ```
 http://localhost:5173/auth/{provider}/callback          # dev
 https://staging.communi.email/auth/{provider}/callback  # staging
@@ -474,4 +489,4 @@ All OAuth providers need client ID/secret. CWC delivery requires API key. Check 
 
 ---
 
-*Communiqué PBC | Frontend for VOTER Protocol | 2025*
+_Communiqué PBC | Frontend for VOTER Protocol | 2025_

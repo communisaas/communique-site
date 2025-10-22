@@ -10,6 +10,7 @@ import {
 } from '$lib/types/errors';
 import type { Prisma as _Prisma } from '@prisma/client';
 import type { UnknownRecord } from '$lib/types/any-replacements';
+import { moderateTemplate, containsProhibitedPatterns } from '$lib/core/server/content-moderation';
 
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
@@ -254,6 +255,56 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const validData = validation.validData!;
+
+		// === PHASE 1: CONTENT MODERATION (OpenAI + Pattern Matching) ===
+		// Auto-reject illegal/harmful content before database write
+		try {
+			// Check prohibited patterns first (faster, no API call)
+			const combinedContent = `${validData.title}\n\n${validData.message_body}`;
+			if (containsProhibitedPatterns(combinedContent)) {
+				const response: ApiResponse = {
+					success: false,
+					error: createValidationError(
+						'message_body',
+						'CONTENT_PROHIBITED',
+						'Content contains prohibited patterns. Please revise your message.'
+					)
+				};
+				return json(response, { status: 400 });
+			}
+
+			// OpenAI Moderation API (FREE tier: 20 requests/min)
+			const moderationResult = await moderateTemplate({
+				title: validData.title,
+				message_body: validData.message_body
+			});
+
+			if (!moderationResult.approved) {
+				console.log('Content moderation REJECTED template:', {
+					flagged_categories: moderationResult.flagged_categories,
+					timestamp: moderationResult.timestamp
+				});
+
+				const response: ApiResponse = {
+					success: false,
+					error: createValidationError(
+						'message_body',
+						'CONTENT_FLAGGED',
+						`Content flagged for: ${moderationResult.flagged_categories.join(', ')}. Please revise your message to comply with content policies.`
+					)
+				};
+				return json(response, { status: 400 });
+			}
+
+			console.log('Content moderation APPROVED template:', {
+				timestamp: moderationResult.timestamp
+			});
+		} catch (moderationError) {
+			console.error('Content moderation error:', moderationError);
+			// Don't block template creation if moderation fails - log and continue
+			// In production, you might want to queue for manual review instead
+		}
+
 		const user = locals.user;
 
 		if (user) {
