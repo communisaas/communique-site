@@ -1,7 +1,7 @@
 # Phase 1 Implementation Roadmap
 
-**Updated:** 2025-10-22 (Revised with actual completion status)
-**Architecture:** Halo2 zero-knowledge proofs, no database storage of PII
+**Updated:** 2025-10-22 (Revised with TEE-based proving architecture)
+**Architecture:** Halo2 zero-knowledge proofs (TEE-based proving), two-tier Shadow Atlas, no database PII storage
 **Timeline:** 12-16 weeks to complete Phase 1 (MVP = Full Phase 1)
 **Parallel Development:** voter-protocol repo handled by separate Claude instance
 
@@ -37,7 +37,9 @@
 
 **What We're Building (All Non-Negotiable):**
 
-- **Halo2 zero-knowledge district proofs** (4-6 seconds in browser, no trusted setup)
+- **Halo2 zero-knowledge district proofs** (2-5 seconds in TEE, no trusted setup)
+- **Two-tier Shadow Atlas** (535 district trees + 1 global tree, efficient quarterly updates)
+- **TEE-based proving** (AWS Nitro Enclaves native Rust, not browser WASM)
 - **Identity verification** (self.xyz + Didit.me, FREE, Sybil resistance)
 - **3-layer content moderation** (OpenAI + Gemini/Claude consensus)
 - **Encrypted message delivery** (XChaCha20-Poly1305 → AWS Nitro Enclaves on ARM Graviton → CWC API)
@@ -52,11 +54,14 @@
 
 **What's Different from Old Architecture:**
 
-- ❌ **NO** hybrid GKR+SNARK (replaced with Halo2 recursive proofs)
+- ❌ **NO** browser WASM proving (replaced with TEE-based proving)
+- ❌ **NO** hybrid GKR+SNARK (replaced with Halo2 direct proving)
 - ❌ **NO** NEAR CipherVault encrypted PII storage (addresses never stored anywhere)
 - ❌ **NO** database storage of addresses or district hashes
-- ✅ **YES** client-side only ZK proof generation (addresses never leave browser)
-- ✅ **YES** Halo2 is 2x faster (4-6s vs 8-12s) and 50% cheaper (60-100k gas vs 80-120k)
+- ✅ **YES** TEE-based proving (2-5s in AWS Nitro vs 8-12s browser WASM)
+- ✅ **YES** Two-tier Merkle tree (handles unbalanced districts, efficient updates)
+- ✅ **YES** Witness encryption (XChaCha20-Poly1305, address never leaves browser in plaintext)
+- ✅ **YES** Proof Service (centralized witness generation, decentralized verification)
 
 ---
 
@@ -112,9 +117,10 @@
 ### ❌ What's Missing (Critical Path):
 
 1. **Halo2 Zero-Knowledge Proofs** - ⏳ Blocked on voter-protocol
-   - Browser-based proving (depends on @voter-protocol/crypto NPM package)
+   - TEE-based proving (AWS Nitro Enclaves, 2-5 seconds native Rust)
+   - Two-tier Shadow Atlas Merkle tree (535 district trees + 1 global tree)
+   - Proof Service API (witness generation, encrypted to TEE)
    - Smart contracts not deployed (DistrictGate.sol, ReputationRegistry.sol)
-   - Shadow Atlas Merkle tree not published
    - **Expected:** SYNC POINT B (Week 8) deliverables from voter-protocol repo
 
 2. **Congressional Dashboard** - ❌ Not started (2-3 weeks work)
@@ -181,29 +187,32 @@ Check with voter-protocol Claude instance on Halo2 circuit progress. No blockers
 
 **Week 5-8: Halo2 Implementation (voter-protocol repo)**
 
-- [ ] Implement Halo2 Merkle membership circuit (Rust)
-- [ ] Shadow Atlas Merkle tree construction (congressional districts)
-- [ ] Build WASM wrapper for browser proving
-- [ ] Test 4-6 second proving time on commodity hardware
+- [ ] Implement Halo2 two-tier Merkle circuit (Rust)
+- [ ] Shadow Atlas generation (535 district trees + 1 global tree)
+- [ ] TEE prover service (AWS Nitro Enclaves native Rust)
+- [ ] Proof Service API (witness generation, XChaCha20-Poly1305 encryption)
+- [ ] Test 2-5 second proving time in TEE
 - [ ] Deploy DistrictGate.sol verifier on Scroll L2 testnet
 
 **🔄 SYNC POINT B (End of Week 8):**
-**CRITICAL BLOCKER:** communique CANNOT proceed to Week 9-10 browser integration until voter-protocol delivers:
+**CRITICAL BLOCKER:** communique CANNOT proceed to Week 9-10 integration until voter-protocol delivers:
 
-- `@voter-protocol/crypto` NPM package (WASM prover, 4-6s proving time verified)
-- `@voter-protocol/client` NPM package (blockchain client SDK)
-- Shadow Atlas Merkle tree published (congressional districts)
+- `@voter-protocol/crypto` NPM package (TEE proving client, witness encryption)
+- `@voter-protocol/client` NPM package (blockchain client SDK, Proof Service client)
+- Shadow Atlas published (two-tier Merkle tree: 535 districts + 1 global root)
+- Proof Service API deployed (witness generation endpoint)
 - DistrictGate.sol deployed on Scroll L2 testnet (proof verification contract)
 
-Without these deliverables, communique cannot integrate Halo2 proof generation.
+Without these deliverables, communique cannot integrate Halo2 TEE proving.
 
-**Week 9-10: Halo2 Browser Integration (communique repo)**
+**Week 9-10: Halo2 TEE Integration (communique repo)**
 
-- [ ] Create `src/lib/core/crypto/halo2-prover.ts`
-- [ ] Browser-based proof generation (WASM module)
-- [ ] UI progress indicator (4-6s proving time)
+- [ ] Create `src/lib/core/crypto/proof-service-client.ts`
+- [ ] Witness encryption (XChaCha20-Poly1305 to TEE public key)
+- [ ] Proof Service API integration (address → encrypted witness → TEE proof)
+- [ ] UI progress indicator (2-5s TEE proving time)
 - [ ] Integration with address collection flow
-- [ ] E2E test: proof generation → on-chain verification
+- [ ] E2E test: address → encrypted witness → TEE proof → on-chain verification
 
 **Week 11-12: Blockchain Reputation (Read-Only)** - ⏳ 40% COMPLETE
 
@@ -226,9 +235,10 @@ Phase C can proceed with basic reputation display even if full token economics a
 
 **Deliverables:**
 
-- ✅ Browser generates Halo2 proofs in 4-6 seconds
-- ✅ Addresses NEVER leave browser, NEVER stored anywhere
-- ✅ Congressional offices verify proofs on-chain
+- ✅ TEE generates Halo2 proofs in 2-5 seconds (AWS Nitro Enclaves native Rust)
+- ✅ Addresses encrypted in browser, decrypted only in TEE (XChaCha20-Poly1305)
+- ✅ Addresses NEVER leave browser in plaintext, NEVER stored anywhere
+- ✅ Congressional offices verify proofs on-chain (300-500k gas)
 - ✅ On-chain reputation visible to users + offices
 
 ---
@@ -301,11 +311,11 @@ Both repos must be production-ready before Phase 1 launch.
 **Required NPM packages from voter-protocol:**
 
 1. **`@voter-protocol/crypto`** (Required by SYNC POINT B, Week 8)
-   - Halo2 WASM prover module
-   - Shadow Atlas Merkle tree utilities
+   - TEE proving client (AWS Nitro Enclaves communication)
+   - Witness encryption utilities (XChaCha20-Poly1305)
+   - Shadow Atlas two-tier Merkle tree utilities
    - Poseidon hash functions for commitments
-   - XChaCha20-Poly1305 encryption (message delivery)
-   - Browser-based proof generation (4-6s proving time verified)
+   - Proof Service client (witness generation API)
 
 2. **`@voter-protocol/client`** (Required by SYNC POINT B, Week 8)
    - Unified blockchain client for Scroll L2
@@ -316,6 +326,8 @@ Both repos must be production-ready before Phase 1 launch.
 
 3. **`@voter-protocol/types`** (Required by SYNC POINT B, Week 8)
    - Halo2 proof interfaces
+   - Two-tier Merkle witness types
+   - Proof Service API types
    - Reputation type definitions
    - Congressional district types
    - Shared types across protocol and application
@@ -323,8 +335,8 @@ Both repos must be production-ready before Phase 1 launch.
 **Smart contract deployments required:**
 
 1. **DistrictGate.sol** (Scroll L2 testnet by Week 8, mainnet by Week 16)
-   - Halo2 proof verification contract
-   - Shadow Atlas Merkle root storage
+   - Halo2 proof verification contract (300-500k gas)
+   - Shadow Atlas global root storage (two-tier Merkle tree)
    - On-chain district membership verification
 
 2. **ReputationRegistry.sol** (Scroll L2 testnet by Week 12, mainnet by Week 16)
@@ -355,15 +367,16 @@ Both repos must be production-ready before Phase 1 launch.
 
 ## Risk Assessment
 
-### 🔴 High Risk: Halo2 SDK Maturity
+### 🔴 High Risk: TEE Proving Infrastructure
 
-**Risk:** Halo2 is production-grade (Zcash since 2022), but district proof circuits need custom implementation
+**Risk:** AWS Nitro Enclaves add infrastructure complexity (TEE deployment, key management, attestation)
 
 **Mitigation:**
 
-- Week 5: Evaluate if Halo2 Merkle circuit can achieve 4-6s proving
-- Contingency: Use Groth16 SNARKs (well-established, requires trusted setup)
-- Decision Point: End of Week 6 - GO/NO-GO on Halo2
+- Week 5: Evaluate TEE proving performance (target: 2-5s in c6a.xlarge)
+- Week 6: Test witness encryption flow (browser → TEE → proof)
+- Contingency: Fallback to browser WASM proving (8-12s, worse UX)
+- Decision Point: End of Week 6 - GO/NO-GO on TEE proving
 
 ### 🟡 Medium Risk: AWS Nitro Enclaves Complexity
 
@@ -490,11 +503,14 @@ Both repos must be production-ready before Phase 1 launch.
 
 ### Technical Metrics:
 
-- [ ] Halo2 proof generation: <6 seconds on mobile devices
+- [ ] Halo2 proof generation: <5 seconds in TEE (AWS Nitro Enclaves)
+- [ ] Witness encryption latency: <100ms (browser → TEE)
+- [ ] On-chain verification gas: <500k (Scroll L2)
 - [ ] CWC submission success rate: >95%
 - [ ] Identity verification success rate: >90%
 - [ ] Test coverage: >80% on core flows
 - [ ] Zero PII stored in database (verified)
+- [ ] Addresses never leave browser in plaintext (verified)
 
 ### Adoption Metrics:
 
