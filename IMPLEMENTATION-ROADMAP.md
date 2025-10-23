@@ -1,7 +1,7 @@
 # Phase 1 Implementation Roadmap
 
-**Updated:** 2025-10-22 (Revised with actual completion status + GKR+SNARK architecture)
-**Architecture:** GKR+SNARK hybrid zero-knowledge proofs, no database storage of PII
+**Updated:** 2025-10-22 (Revised with actual completion status)
+**Architecture:** Halo2 zero-knowledge proofs, no database storage of PII
 **Timeline:** 12-16 weeks to complete Phase 1 (MVP = Full Phase 1)
 **Parallel Development:** voter-protocol repo handled by separate Claude instance
 
@@ -15,7 +15,7 @@
 
 - **Phase B (Cryptography):** ⏳ Blocked on voter-protocol SYNC POINT B
   - Blockchain types: ✅ 40% COMPLETE (TypeScript definitions done)
-  - GKR+SNARK proofs: ⏳ Waiting for @voter-protocol/crypto NPM package
+  - Halo2 proofs: ⏳ Waiting for @voter-protocol/crypto NPM package
   - Smart contracts: ⏳ Waiting for DistrictGate.sol deployment
 
 - **Phase C (Advanced Features):** ⏳ 30% COMPLETE
@@ -27,7 +27,7 @@
 2. Production AWS Nitro integration (replace TODOs) - 2-3 days
 3. Congressional dashboard foundation (optional) - 2-3 weeks
 
-**🔄 NEXT SYNC POINT:** Coordinate with voter-protocol agent on GKR+SNARK circuit progress (no current blockers for communique)
+**🔄 NEXT SYNC POINT:** Coordinate with voter-protocol agent on Halo2 circuit progress (no current blockers for communique)
 
 ---
 
@@ -37,7 +37,7 @@
 
 **What We're Building (All Non-Negotiable):**
 
-- **GKR+SNARK hybrid zero-knowledge district proofs** (8-12 seconds in browser, no trusted setup)
+- **Halo2 zero-knowledge district proofs** (4-6 seconds in browser, no trusted setup)
 - **Identity verification** (self.xyz + Didit.me, FREE, Sybil resistance)
 - **3-layer content moderation** (OpenAI + Gemini/Claude consensus)
 - **Encrypted message delivery** (XChaCha20-Poly1305 → AWS Nitro Enclaves on ARM Graviton → CWC API)
@@ -47,17 +47,16 @@
 **Parallel Development Model:**
 
 - **This repo (communique):** Frontend application, handled by this Claude instance
-- **voter-protocol repo:** GKR+SNARK circuits, smart contracts, SDK, handled by separate Claude instance
+- **voter-protocol repo:** Halo2 circuits, smart contracts, SDK, handled by separate Claude instance
 - **Sync points clearly marked below** when communique depends on voter-protocol deliverables
 
 **What's Different from Old Architecture:**
 
-- ✅ **YES** hybrid GKR+SNARK (GKR for efficient proving + SNARK wrapper for on-chain verification)
+- ❌ **NO** hybrid GKR+SNARK (replaced with Halo2 recursive proofs)
 - ❌ **NO** NEAR CipherVault encrypted PII storage (addresses never stored anywhere)
 - ❌ **NO** database storage of addresses or district hashes
 - ✅ **YES** client-side only ZK proof generation (addresses never leave browser)
-- ✅ **YES** GKR+SNARK hybrid achieves 8-12s proving time (GKR 5-8s + SNARK wrapper 2-3s) and 80-120k gas verification
-- ⚠️ **CONTINGENCY** Groth16 fallback if GKR exceeds milestone gates (>15s proving OR >250k gas)
+- ✅ **YES** Halo2 is 2x faster (4-6s vs 8-12s) and 50% cheaper (60-100k gas vs 80-120k)
 
 ---
 
@@ -112,7 +111,7 @@
 
 ### ❌ What's Missing (Critical Path):
 
-1. **GKR+SNARK Zero-Knowledge Proofs** - ⏳ Blocked on voter-protocol
+1. **Halo2 Zero-Knowledge Proofs** - ⏳ Blocked on voter-protocol
    - Browser-based proving (depends on @voter-protocol/crypto NPM package)
    - Smart contracts not deployed (DistrictGate.sol, ReputationRegistry.sol)
    - Shadow Atlas Merkle tree not published
@@ -178,33 +177,31 @@ Check with voter-protocol Claude instance on Halo2 circuit progress. No blockers
 
 ### Phase B: Cryptography (Weeks 5-12) - Full Phase 1 Core
 
-**Goal:** GKR+SNARK hybrid zero-knowledge proofs + blockchain reputation
+**Goal:** Halo2 zero-knowledge proofs + blockchain reputation
 
-**Week 5-8: GKR+SNARK Implementation (voter-protocol repo)**
+**Week 5-8: Halo2 Implementation (voter-protocol repo)**
 
-- [ ] Implement GKR Merkle membership circuit (Rust)
-- [ ] SNARK wrapper for on-chain verification (Halo2 or PLONK)
+- [ ] Implement Halo2 Merkle membership circuit (Rust)
 - [ ] Shadow Atlas Merkle tree construction (congressional districts)
 - [ ] Build WASM wrapper for browser proving
-- [ ] Test 8-12 second proving time on commodity hardware (GKR 5-8s + SNARK 2-3s)
+- [ ] Test 4-6 second proving time on commodity hardware
 - [ ] Deploy DistrictGate.sol verifier on Scroll L2 testnet
 
 **🔄 SYNC POINT B (End of Week 8):**
 **CRITICAL BLOCKER:** communique CANNOT proceed to Week 9-10 browser integration until voter-protocol delivers:
 
-- `@voter-protocol/crypto` NPM package (WASM prover, 8-12s proving time verified)
+- `@voter-protocol/crypto` NPM package (WASM prover, 4-6s proving time verified)
 - `@voter-protocol/client` NPM package (blockchain client SDK)
 - Shadow Atlas Merkle tree published (congressional districts)
 - DistrictGate.sol deployed on Scroll L2 testnet (proof verification contract)
-- GKR+SNARK hybrid implementation complete (5-8s GKR + 2-3s SNARK wrapper)
 
-Without these deliverables, communique cannot integrate GKR+SNARK proof generation.
+Without these deliverables, communique cannot integrate Halo2 proof generation.
 
-**Week 9-10: GKR+SNARK Browser Integration (communique repo)**
+**Week 9-10: Halo2 Browser Integration (communique repo)**
 
-- [ ] Create `src/lib/core/crypto/gkr-prover.ts`
+- [ ] Create `src/lib/core/crypto/halo2-prover.ts`
 - [ ] Browser-based proof generation (WASM module)
-- [ ] UI progress indicator (8-12s proving time with stages: GKR 5-8s, SNARK 2-3s)
+- [ ] UI progress indicator (4-6s proving time)
 - [ ] Integration with address collection flow
 - [ ] E2E test: proof generation → on-chain verification
 
@@ -229,9 +226,9 @@ Phase C can proceed with basic reputation display even if full token economics a
 
 **Deliverables:**
 
-- ✅ Browser generates GKR+SNARK proofs in 8-12 seconds
+- ✅ Browser generates Halo2 proofs in 4-6 seconds
 - ✅ Addresses NEVER leave browser, NEVER stored anywhere
-- ✅ Congressional offices verify proofs on-chain (80-120k gas)
+- ✅ Congressional offices verify proofs on-chain
 - ✅ On-chain reputation visible to users + offices
 
 ---
@@ -304,11 +301,11 @@ Both repos must be production-ready before Phase 1 launch.
 **Required NPM packages from voter-protocol:**
 
 1. **`@voter-protocol/crypto`** (Required by SYNC POINT B, Week 8)
-   - GKR+SNARK WASM prover module (GKR 5-8s + SNARK wrapper 2-3s)
+   - Halo2 WASM prover module
    - Shadow Atlas Merkle tree utilities
    - Poseidon hash functions for commitments
    - XChaCha20-Poly1305 encryption (message delivery)
-   - Browser-based proof generation (8-12s proving time verified)
+   - Browser-based proof generation (4-6s proving time verified)
 
 2. **`@voter-protocol/client`** (Required by SYNC POINT B, Week 8)
    - Unified blockchain client for Scroll L2
@@ -318,7 +315,7 @@ Both repos must be production-ready before Phase 1 launch.
    - Transaction preparation (for Phase 2 client-side signing)
 
 3. **`@voter-protocol/types`** (Required by SYNC POINT B, Week 8)
-   - GKR+SNARK proof interfaces
+   - Halo2 proof interfaces
    - Reputation type definitions
    - Congressional district types
    - Shared types across protocol and application
@@ -326,7 +323,7 @@ Both repos must be production-ready before Phase 1 launch.
 **Smart contract deployments required:**
 
 1. **DistrictGate.sol** (Scroll L2 testnet by Week 8, mainnet by Week 16)
-   - GKR+SNARK proof verification contract
+   - Halo2 proof verification contract
    - Shadow Atlas Merkle root storage
    - On-chain district membership verification
 
@@ -358,16 +355,15 @@ Both repos must be production-ready before Phase 1 launch.
 
 ## Risk Assessment
 
-### 🔴 High Risk: GKR+SNARK Implementation Complexity
+### 🔴 High Risk: Halo2 SDK Maturity
 
-**Risk:** GKR is interactive protocol (unsuitable for direct blockchain verification), hybrid architecture adds complexity
+**Risk:** Halo2 is production-grade (Zcash since 2022), but district proof circuits need custom implementation
 
 **Mitigation:**
 
-- Week 5: Evaluate if GKR+SNARK can achieve 8-12s proving (GKR 5-8s + SNARK 2-3s)
-- Milestone gates: REJECT if proving >15s OR verification >250k gas
-- Contingency: Use Groth16 SNARKs (well-established, requires trusted setup, 50-80k gas, 3-5s proving)
-- Decision Point: End of Week 6 - GO/NO-GO on GKR+SNARK hybrid
+- Week 5: Evaluate if Halo2 Merkle circuit can achieve 4-6s proving
+- Contingency: Use Groth16 SNARKs (well-established, requires trusted setup)
+- Decision Point: End of Week 6 - GO/NO-GO on Halo2
 
 ### 🟡 Medium Risk: AWS Nitro Enclaves Complexity
 
@@ -471,7 +467,7 @@ Both repos must be production-ready before Phase 1 launch.
 
 ### Phase B (Cryptography): $500-1000/month
 
-- Scroll L2 gas costs: ~$120/month (1000 proof verifications at 80-120k gas)
+- Scroll L2 gas costs: ~$100/month (1000 proof verifications)
 - Infrastructure: Existing deployment
 - Total: **~$500/month**
 
@@ -494,8 +490,7 @@ Both repos must be production-ready before Phase 1 launch.
 
 ### Technical Metrics:
 
-- [ ] GKR+SNARK proof generation: <12 seconds on mobile devices (GKR 5-8s + SNARK 2-3s)
-- [ ] On-chain verification gas: 80-120k gas
+- [ ] Halo2 proof generation: <6 seconds on mobile devices
 - [ ] CWC submission success rate: >95%
 - [ ] Identity verification success rate: >90%
 - [ ] Test coverage: >80% on core flows
