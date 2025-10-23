@@ -477,7 +477,7 @@ VISIBILITY_TIMEOUT_SECONDS=300      # SQS visibility timeout (default: 5 minutes
 - Address validation → Census Bureau geocoding → congressional district lookup
 - Template creation, customization, and 3-layer content moderation
 - Halo2 zero-knowledge proof generation in browser (4-6 seconds, address never leaves device, never touches any database)
-- Encrypted delivery via CWC API through GCP Confidential Space (AMD SEV-SNP TEE)
+- Encrypted delivery via CWC API through AWS Nitro Enclaves (ARM-based TEE, no Intel ME/AMD PSP)
 - Integration-first testing (53→6 tests, smart mocks, fixtures)
 
 **What voter-protocol handles:**
@@ -490,7 +490,7 @@ VISIBILITY_TIMEOUT_SECONDS=300      # SQS visibility timeout (default: 5 minutes
 **Phase 1 cryptographic flow:**
 1. Identity verification: self.xyz NFC passport (70%) + Didit.me (30%) - both FREE
 2. ZK proof generation: Browser generates Halo2 recursive proof (4-6 seconds), address never leaves browser, never touches any database
-3. Encrypted delivery: XChaCha20-Poly1305 → GCP Confidential Space → CWC API → congressional office
+3. Encrypted delivery: XChaCha20-Poly1305 → AWS Nitro Enclaves (ARM Graviton, hypervisor-isolated) → CWC API → congressional office
 4. Reputation tracking: On-chain ERC-8004 reputation updates (no token rewards yet)
 
 **Phase 2 additions (12-18 months):**

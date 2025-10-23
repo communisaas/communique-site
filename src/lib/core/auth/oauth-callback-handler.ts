@@ -321,14 +321,14 @@ export class OAuthCallbackHandler {
 			}
 
 			console.log(`[Blockchain] Successfully created blockchain accounts for user ${user.id}`);
-		} catch (error) {
+		} catch (err) {
 			// Log error but don't block OAuth flow
 			// Users can still use the platform without blockchain features
 			console.error('[Blockchain] Failed to create blockchain accounts:', {
 				userId: user.id,
 				provider,
-				error: error instanceof Error ? error.message : 'Unknown error',
-				stack: error instanceof Error ? error.stack : undefined
+				error: err instanceof Error ? err.message : 'Unknown error',
+				stack: err instanceof Error ? err.stack : undefined
 			});
 		}
 	}

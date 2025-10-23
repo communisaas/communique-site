@@ -3,8 +3,12 @@
 	import { browser } from '$app/environment';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { quintOut, backOut } from 'svelte/easing';
-	import { X, MapPin, CheckCircle2, AlertCircle, Search, Home } from '@lucide/svelte';
+	import { X, MapPin, CheckCircle2, AlertCircle, Search, Home, Shield } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
+	import VerificationChoice from '$lib/components/auth/address-steps/VerificationChoice.svelte';
+	import VerificationValueProp from '$lib/components/auth/address-steps/VerificationValueProp.svelte';
+	import SelfXyzVerification from '$lib/components/auth/address-steps/SelfXyzVerification.svelte';
+	import DiditVerification from '$lib/components/auth/address-steps/DiditVerification.svelte';
 
 	type Representative = {
 		name: string;
@@ -35,8 +39,12 @@
 		};
 	}>();
 
-	let currentStep = $state<'collect' | 'verify' | 'complete'>('collect');
+	let currentStep = $state<'collect' | 'verify' | 'identity' | 'complete'>('collect');
 	let _isTransitioning = $state(false);
+
+	// Identity verification state
+	let selectedVerificationMethod = $state<'nfc-passport' | 'government-id' | null>(null);
+	let showValueProp = $state(true);
 
 	// Prevent background scrolling when modal is open
 	onMount(() => {
@@ -121,6 +129,23 @@
 	}
 
 	function acceptAddress() {
+		// Move to identity verification step instead of completing immediately
+		currentStep = 'identity';
+	}
+
+	function handleIdentityVerificationComplete() {
+		// After identity verification, complete the flow
+		dispatch('complete', {
+			address: selectedAddress,
+			verified: true,
+			representatives: verificationResult?.representatives as
+				| Array<Record<string, unknown>>
+				| undefined
+		});
+	}
+
+	function skipIdentityVerification() {
+		// Allow users to skip identity verification (lower credibility)
 		dispatch('complete', {
 			address: selectedAddress,
 			verified: true,
@@ -195,11 +220,11 @@
 		<!-- Progress Indicator -->
 		<div class="flex justify-center pb-4 pt-6">
 			<div class="flex gap-2">
-				{#each ['collect', 'verify', 'complete'] as _step, _i}
+				{#each ['collect', 'verify', 'identity', 'complete'] as _step, _i}
 					<div
 						class="h-2 rounded-full transition-all duration-500 ease-out {currentStep === _step
 							? 'w-12 bg-blue-600 shadow-lg shadow-blue-200'
-							: ['collect', 'verify', 'complete'].indexOf(currentStep) > _i
+							: ['collect', 'verify', 'identity', 'complete'].indexOf(currentStep) > _i
 								? 'w-8 bg-blue-300'
 								: 'w-8 bg-slate-200'}"
 					></div>
@@ -395,6 +420,90 @@
 								Looks Good
 							</Button>
 						</div>
+					{:else if currentStep === 'identity'}
+						<!-- Identity Verification Step -->
+						<div class="mb-6 text-center">
+							<div
+								class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg"
+							>
+								<Shield class="h-6 w-6 text-white" />
+							</div>
+							<h2 class="mb-2 text-xl font-bold text-slate-900">Boost Your Impact</h2>
+							<p class="text-sm text-slate-600">
+								Verified constituents get 3x higher response rates from congressional offices
+							</p>
+						</div>
+
+						{#if showValueProp && !selectedVerificationMethod}
+							<!-- Value Proposition -->
+							<div class="mb-6">
+								<VerificationValueProp variant="compact" />
+							</div>
+						{/if}
+
+						{#if !selectedVerificationMethod}
+							<!-- Verification Method Selection -->
+							<VerificationChoice
+								onselect={(method) => {
+									selectedVerificationMethod = method;
+									showValueProp = false;
+								}}
+							/>
+
+							<!-- Skip Option -->
+							<div class="mt-6 text-center">
+								<button
+									type="button"
+									onclick={skipIdentityVerification}
+									class="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+								>
+									Continue without verification
+									<span class="ml-1 text-xs text-slate-500">(lower credibility)</span>
+								</button>
+							</div>
+						{:else if selectedVerificationMethod === 'nfc-passport'}
+							<!-- NFC Passport Verification -->
+							<SelfXyzVerification
+								userId="temp-user-id"
+								templateSlug={template.title}
+								on:complete={handleIdentityVerificationComplete}
+							/>
+
+							<!-- Back Button -->
+							<div class="mt-4">
+								<button
+									type="button"
+									onclick={() => {
+										selectedVerificationMethod = null;
+										showValueProp = true;
+									}}
+									class="w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+								>
+									← Choose Different Method
+								</button>
+							</div>
+						{:else if selectedVerificationMethod === 'government-id'}
+							<!-- Government ID Verification -->
+							<DiditVerification
+								userId="temp-user-id"
+								templateSlug={template.title}
+								on:complete={handleIdentityVerificationComplete}
+							/>
+
+							<!-- Back Button -->
+							<div class="mt-4">
+								<button
+									type="button"
+									onclick={() => {
+										selectedVerificationMethod = null;
+										showValueProp = true;
+									}}
+									class="w-full rounded-lg border-2 border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+								>
+									← Choose Different Method
+								</button>
+							</div>
+						{/if}
 					{:else}
 						<!-- Completion Step -->
 						<div class="mb-6 text-center">

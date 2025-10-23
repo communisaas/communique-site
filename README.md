@@ -22,7 +22,7 @@ Communiqué is the **frontend application** that implements VOTER Protocol's cry
 - Halo2 zero-knowledge proof generation in browser (4-6 seconds)
 - Message delivery via CWC API (congressional offices)
 - 3-layer content moderation (OpenAI + Gemini/Claude + human)
-- Encrypted delivery through GCP Confidential Space (AMD SEV-SNP TEE)
+- Encrypted delivery through AWS Nitro Enclaves (ARM-based TEE, hypervisor-isolated, independently audited 2025)
 
 **What voter-protocol handles:**
 
@@ -47,7 +47,7 @@ Browser (Client-Side)
 ├─ Template selection → Variable customization
 ├─ Halo2 ZK proof generation (4-6 seconds)
 ├─ XChaCha20-Poly1305 encryption (libsodium)
-└─ Encrypted delivery → GCP Confidential Space TEE
+└─ Encrypted delivery → AWS Nitro Enclaves (ARM TEE)
 
 Server (SvelteKit 5 SSR)
 ├─ Supabase (Postgres) via Prisma
@@ -97,7 +97,7 @@ Settlement Layer (voter-protocol repo)
 
 - self.xyz (FREE NFC passport verification, 70% of users)
 - Didit.me (FREE government ID upload, 30% of users)
-- GCP Confidential Space (AMD SEV-SNP hardware-attested TEE)
+- AWS Nitro Enclaves (ARM Graviton TEE, hypervisor-isolated, no Intel ME/AMD PSP)
 - XChaCha20-Poly1305 (end-to-end encryption)
 
 **Blockchain (via voter-protocol):**
@@ -184,7 +184,7 @@ ENABLE_RESEARCH=true npm run dev   # Enable experimental features
    - Halo2 recursive proof generated entirely in browser
    - Address never leaves device, never touches any database
 6. **Encrypt message** - XChaCha20-Poly1305 encryption in browser
-7. **Deliver via TEE** - GCP Confidential Space → CWC API → congressional office
+7. **Deliver via TEE** - AWS Nitro Enclaves (ARM) → CWC API → congressional office
 8. **Build reputation** - On-chain reputation tracking (Phase 1)
 9. **Earn rewards** - Token rewards launch in Phase 2 (12-18 months)
 
@@ -315,7 +315,7 @@ tests/                        # Integration, unit, e2e tests
 
 - **CWC API integration**: Official Communicating With Congress delivery
 - **Address validation**: Census Bureau geocoding → district lookup
-- **Encrypted delivery**: GCP Confidential Space (AMD SEV-SNP TEE)
+- **Encrypted delivery**: AWS Nitro Enclaves (ARM Graviton TEE, independently audited)
 - **Delivery confirmation**: Cryptographic receipts with timestamps
 - **Representative lookup**: Automatic based on verified address
 

@@ -1,131 +1,567 @@
 /**
- * Template Verification Types - Post-Consolidation (Phase 4)
+ * Identity Verification Type Definitions
  *
- * NOTE: TemplateVerification model has been merged into Template model.
- * These types are now for validation and processing workflows only.
+ * Comprehensive TypeScript types for the identity verification system.
+ * Ensures type safety across all verification components and API integrations.
  */
 
-export interface CorrectionChange {
-	type: 'grammar' | 'formatting' | 'clarity' | 'completeness';
-	original: string;
-	corrected: string;
-	reason: string;
-}
+// ============================================================================
+// Verification Methods
+// ============================================================================
 
-export interface OriginalContent {
-	message_body: string;
-	subject?: string;
-	preview?: string;
-}
+/**
+ * Available identity verification methods
+ */
+export type VerificationMethod = 'nfc-passport' | 'government-id';
 
-export interface AgentVote {
-	approved: boolean;
-	confidence: number; // 0-1
-	reasons?: string[];
-	violations?: ViolationType[];
-}
+/**
+ * Verification provider types
+ */
+export type VerificationProvider = 'self.xyz' | 'didit.me';
 
-export type ViolationType =
-	| 'hate_speech'
-	| 'threats'
-	| 'malicious_links'
-	| 'impersonation'
-	| 'spam_patterns'
-	| 'misinformation';
+/**
+ * Verification status states
+ */
+export type VerificationStatus =
+	| 'not-started'
+	| 'initializing'
+	| 'pending'
+	| 'qr-ready'
+	| 'waiting'
+	| 'verified'
+	| 'failed'
+	| 'expired';
 
-export interface ModerationResult {
-	status: 'approved' | 'rejected' | 'pending';
-	stages: {
-		correction?: unknown;
-		moderation?: unknown;
-		reputation?: unknown;
-	};
-	message: string;
-}
+// ============================================================================
+// Verification Session
+// ============================================================================
 
-export interface VerificationFlow {
-	verificationId: string;
-	templateId: string;
+/**
+ * Verification session data structure
+ */
+export interface VerificationSession {
+	/** Unique session identifier */
+	sessionId: string;
+
+	/** User identifier */
 	userId: string;
-	currentStage: 'correction' | 'moderation' | 'reputation' | 'complete';
-	progress: number; // 0-100
 
-	timeline: VerificationEvent[];
-}
+	/** Template context (optional) */
+	templateSlug?: string;
 
-export interface VerificationEvent {
-	timestamp: Date;
-	stage: string;
-	action: string;
-	details?: Record<string, unknown>;
-	agent?: string; // Which agent performed the action
-}
+	/** Verification method being used */
+	method: VerificationMethod;
 
-export type ReputationTier =
-	| 'untrusted' // 0-30
-	| 'novice' // 31-50
-	| 'emerging' // 51-70
-	| 'established' // 71-90
-	| 'trusted'; // 91-100
+	/** Provider handling verification */
+	provider: VerificationProvider;
 
-export interface ReputationUpdate {
-	delta: number;
-	reason: string;
-	tier: ReputationTier;
-	breakdown: {
-		base: number;
-		multiplier: number;
-		final: number;
-	};
-}
+	/** Current session status */
+	status: VerificationStatus;
 
-export interface VerificationResult {
-	approved: boolean;
-	confidence: number;
-	reasoning: string[];
-	violations?: ViolationType[];
-}
+	/** QR code data URL (for Self.xyz) */
+	qrCode?: string;
 
-export interface ConsensusResult {
-	decision: 'APPROVE' | 'REJECT' | 'NEEDS_REVIEW';
-	confidence: number;
-	votes: Record<string, AgentVote>;
-	reasoning: string[];
-}
+	/** Verification redirect URL (for Didit) */
+	verificationUrl?: string;
 
-export interface N8NWorkflowResult {
-	workflowId: string;
-	executionId: string;
-	success: boolean;
-	data?: unknown;
+	/** Session creation timestamp */
+	createdAt: Date;
+
+	/** Session expiration timestamp */
+	expiresAt: Date;
+
+	/** Error message (if failed) */
 	error?: string;
 }
 
-export interface N8NWebhookPayload {
-	template?: unknown;
-	userId?: string;
-	userAddress?: string;
-	action?: string;
+// ============================================================================
+// Verification Result
+// ============================================================================
+
+/**
+ * Verification completion result
+ */
+export interface VerificationResult {
+	/** Whether verification succeeded */
+	verified: boolean;
+
+	/** Verification method used */
+	method: VerificationMethod;
+
+	/** User identifier */
+	userId: string;
+
+	/** Verification timestamp */
+	verifiedAt: Date;
+
+	/** Congressional district extracted from verification */
+	district?: string;
+
+	/** Verification confidence score (0-1) */
+	confidence?: number;
+
+	/** Provider metadata */
+	metadata?: VerificationMetadata;
+}
+
+/**
+ * Provider-specific verification metadata
+ */
+export interface VerificationMetadata {
+	/** Provider name */
+	provider: VerificationProvider;
+
+	/** Provider session ID */
+	providerSessionId: string;
+
+	/** Document type verified (for government ID) */
+	documentType?: 'drivers-license' | 'state-id' | 'passport';
+
+	/** Issuing country/state */
+	issuingAuthority?: string;
+
+	/** Verification attempt count */
+	attempts?: number;
+
+	/** Additional provider data */
+	[key: string]: unknown;
+}
+
+// ============================================================================
+// User Verification State
+// ============================================================================
+
+/**
+ * User verification status stored in database
+ */
+export interface UserVerification {
+	/** User identifier */
+	userId: string;
+
+	/** Whether user is verified */
+	verified: boolean;
+
+	/** Verification method used */
+	verificationMethod: VerificationMethod | null;
+
+	/** Verification provider */
+	verificationProvider: VerificationProvider | null;
+
+	/** Verification timestamp */
+	verifiedAt: Date | null;
+
+	/** Verification expiration (if applicable) */
+	expiresAt: Date | null;
+
+	/** Congressional district */
+	congressionalDistrict: string | null;
+
+	/** Verification confidence score */
+	confidenceScore: number | null;
+
+	/** Last verification attempt */
+	lastAttemptAt: Date | null;
+
+	/** Total verification attempts */
+	totalAttempts: number;
+}
+
+// ============================================================================
+// API Request/Response Types
+// ============================================================================
+
+/**
+ * Self.xyz verification initialization request
+ */
+export interface SelfXyzInitRequest {
+	userId: string;
+	templateSlug?: string;
+}
+
+/**
+ * Self.xyz verification initialization response
+ */
+export interface SelfXyzInitResponse {
+	sessionId: string;
+	qrCode: string;
+	expiresAt: string;
+}
+
+/**
+ * Self.xyz verification status response
+ */
+export interface SelfXyzStatusResponse {
+	sessionId: string;
+	status: VerificationStatus;
+	verified?: boolean;
+	district?: string;
+	error?: string;
+}
+
+/**
+ * Didit verification initialization request
+ */
+export interface DiditInitRequest {
+	userId: string;
+	templateSlug?: string;
+}
+
+/**
+ * Didit verification initialization response
+ */
+export interface DiditInitResponse {
+	sessionId: string;
+	verificationUrl: string;
+	expiresAt: string;
+}
+
+/**
+ * Didit webhook payload
+ */
+export interface DiditWebhookPayload {
+	sessionId: string;
+	userId: string;
+	status: 'verified' | 'failed';
+	timestamp: string;
+	documentType?: string;
+	district?: string;
+	error?: string;
+	signature: string;
+}
+
+// ============================================================================
+// Component Props & Events
+// ============================================================================
+
+/**
+ * IdentityVerificationFlow component props
+ */
+export interface IdentityVerificationFlowProps {
+	userId: string;
+	templateSlug?: string;
+	skipValueProp?: boolean;
+	defaultMethod?: VerificationMethod | null;
+}
+
+/**
+ * IdentityVerificationFlow component events
+ */
+export interface IdentityVerificationFlowEvents {
+	complete: VerificationResult;
+	cancel: void;
+	back: void;
+}
+
+/**
+ * VerificationChoice component props
+ */
+export interface VerificationChoiceProps {
+	compact?: boolean;
+	defaultMethod?: VerificationMethod | null;
+}
+
+/**
+ * VerificationChoice component events
+ */
+export interface VerificationChoiceEvents {
+	select: { method: VerificationMethod };
+}
+
+/**
+ * VerificationValueProp component props
+ */
+export interface VerificationValuePropProps {
+	variant?: 'full' | 'compact' | 'inline';
+	showStats?: boolean;
+	showPrivacy?: boolean;
+}
+
+/**
+ * SelfXyzVerification component props
+ */
+export interface SelfXyzVerificationProps {
+	userId: string;
+	templateSlug?: string;
+	isLoading?: boolean;
+}
+
+/**
+ * SelfXyzVerification component events
+ */
+export interface SelfXyzVerificationEvents {
+	complete: { verified: boolean; method: string };
+	error: { message: string };
+}
+
+/**
+ * DiditVerification component props
+ */
+export interface DiditVerificationProps {
+	userId: string;
+	templateSlug?: string;
+	isLoading?: boolean;
+}
+
+/**
+ * DiditVerification component events
+ */
+export interface DiditVerificationEvents {
+	complete: { verified: boolean; method: string };
+	error: { message: string };
+}
+
+/**
+ * VerificationPrompt component props
+ */
+export interface VerificationPromptProps {
+	variant?: 'full' | 'compact' | 'banner';
+	dismissible?: boolean;
+}
+
+/**
+ * VerificationPrompt component events
+ */
+export interface VerificationPromptEvents {
+	verify: void;
+	dismiss: void;
+}
+
+// ============================================================================
+// Analytics & Tracking
+// ============================================================================
+
+/**
+ * Verification analytics event types
+ */
+export type VerificationEventType =
+	| 'verification_started'
+	| 'verification_method_selected'
+	| 'verification_qr_generated'
+	| 'verification_qr_scanned'
+	| 'verification_redirect_initiated'
+	| 'verification_completed'
+	| 'verification_failed'
+	| 'verification_abandoned'
+	| 'verification_retry';
+
+/**
+ * Verification analytics event payload
+ */
+export interface VerificationAnalyticsEvent {
+	/** Event type */
+	event: VerificationEventType;
+
+	/** User identifier */
+	userId: string;
+
+	/** Session identifier */
+	sessionId?: string;
+
+	/** Verification method */
+	method?: VerificationMethod;
+
+	/** Context where verification initiated */
+	context?: 'onboarding' | 'template_submission' | 'settings' | 'modal';
+
+	/** Event timestamp */
+	timestamp: Date;
+
+	/** Duration in seconds (for completion/abandonment) */
+	duration?: number;
+
+	/** Number of retry attempts */
+	retries?: number;
+
+	/** Error message (for failures) */
+	error?: string;
+
+	/** Additional metadata */
 	metadata?: Record<string, unknown>;
 }
 
-// Type guards for runtime validation - updated for consolidated Template model
-export function isValidVerificationStatus(
-	status: unknown
-): status is 'pending' | 'reviewing' | 'approved' | 'rejected' {
+// ============================================================================
+// Error Types
+// ============================================================================
+
+/**
+ * Verification error types
+ */
+export type VerificationErrorType =
+	| 'initialization_failed'
+	| 'session_expired'
+	| 'qr_generation_failed'
+	| 'verification_timeout'
+	| 'verification_rejected'
+	| 'invalid_document'
+	| 'network_error'
+	| 'provider_error'
+	| 'unknown_error';
+
+/**
+ * Verification error structure
+ */
+export interface VerificationError {
+	/** Error type */
+	type: VerificationErrorType;
+
+	/** Human-readable error message */
+	message: string;
+
+	/** Technical error details */
+	details?: string;
+
+	/** Verification method that failed */
+	method?: VerificationMethod;
+
+	/** Provider that returned error */
+	provider?: VerificationProvider;
+
+	/** Whether error is retryable */
+	retryable: boolean;
+
+	/** Error timestamp */
+	timestamp: Date;
+}
+
+// ============================================================================
+// Utility Types
+// ============================================================================
+
+/**
+ * Verification method display information
+ */
+export interface VerificationMethodInfo {
+	method: VerificationMethod;
+	provider: VerificationProvider;
+	displayName: string;
+	description: string;
+	estimatedTime: string;
+	recommended: boolean;
+	requiresDevice: 'mobile' | 'any';
+	iconName: string;
+}
+
+/**
+ * Verification statistics for value proposition
+ */
+export interface VerificationStats {
+	responseRateMultiplier: number;
+	officesPrioritizePercent: number;
+	averageResponseTime: string;
+	userTrustScore: number;
+}
+
+// ============================================================================
+// Type Guards
+// ============================================================================
+
+/**
+ * Type guard: Check if value is VerificationMethod
+ */
+export function isVerificationMethod(value: unknown): value is VerificationMethod {
+	return value === 'nfc-passport' || value === 'government-id';
+}
+
+/**
+ * Type guard: Check if value is VerificationStatus
+ */
+export function isVerificationStatus(value: unknown): value is VerificationStatus {
+	return [
+		'not-started',
+		'initializing',
+		'pending',
+		'qr-ready',
+		'waiting',
+		'verified',
+		'failed',
+		'expired'
+	].includes(value as string);
+}
+
+/**
+ * Type guard: Check if value is VerificationResult
+ */
+export function isVerificationResult(value: unknown): value is VerificationResult {
+	if (typeof value !== 'object' || value === null) return false;
+
+	const result = value as Partial<VerificationResult>;
+
 	return (
-		typeof status === 'string' && ['pending', 'reviewing', 'approved', 'rejected'].includes(status)
+		typeof result.verified === 'boolean' &&
+		isVerificationMethod(result.method) &&
+		typeof result.userId === 'string' &&
+		result.verifiedAt instanceof Date
 	);
 }
 
-export function isValidAgentVote(obj: unknown): obj is AgentVote {
-	if (!obj || typeof obj !== 'object') return false;
+/**
+ * Type guard: Check if value is VerificationError
+ */
+export function isVerificationError(value: unknown): value is VerificationError {
+	if (typeof value !== 'object' || value === null) return false;
 
-	const record = obj as Record<string, unknown>;
+	const error = value as Partial<VerificationError>;
+
 	return (
-		typeof record.approved === 'boolean' &&
-		typeof record.confidence === 'number' &&
-		record.confidence >= 0 &&
-		record.confidence <= 1
+		typeof error.type === 'string' &&
+		typeof error.message === 'string' &&
+		typeof error.retryable === 'boolean' &&
+		error.timestamp instanceof Date
 	);
 }
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/**
+ * Verification method metadata
+ */
+export const VERIFICATION_METHODS: Record<VerificationMethod, VerificationMethodInfo> = {
+	'nfc-passport': {
+		method: 'nfc-passport',
+		provider: 'self.xyz',
+		displayName: 'NFC Passport',
+		description: 'Tap your passport with your phone for instant verification',
+		estimatedTime: '30 seconds',
+		recommended: true,
+		requiresDevice: 'mobile',
+		iconName: 'Shield'
+	},
+	'government-id': {
+		method: 'government-id',
+		provider: 'didit.me',
+		displayName: 'Government ID',
+		description: 'Use your driver\'s license or state ID',
+		estimatedTime: '2-3 minutes',
+		recommended: false,
+		requiresDevice: 'any',
+		iconName: 'FileText'
+	}
+};
+
+/**
+ * Verification statistics (for value proposition)
+ */
+export const VERIFICATION_STATISTICS: VerificationStats = {
+	responseRateMultiplier: 3.0,
+	officesPrioritizePercent: 87,
+	averageResponseTime: '2-3 business days',
+	userTrustScore: 94
+};
+
+/**
+ * Session expiration times (in seconds)
+ */
+export const SESSION_EXPIRATION = {
+	'self.xyz': 15 * 60, // 15 minutes
+	'didit.me': 30 * 60 // 30 minutes
+} as const;
+
+/**
+ * Polling intervals (in milliseconds)
+ */
+export const POLLING_INTERVALS = {
+	'self.xyz': 2000, // 2 seconds
+	'didit.me': 5000 // 5 seconds
+} as const;

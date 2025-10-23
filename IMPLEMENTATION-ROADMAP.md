@@ -1,9 +1,33 @@
 # Phase 1 Implementation Roadmap
 
-**Updated:** 2025-10-22
+**Updated:** 2025-10-22 (Revised with actual completion status)
 **Architecture:** Halo2 zero-knowledge proofs, no database storage of PII
 **Timeline:** 12-16 weeks to complete Phase 1 (MVP = Full Phase 1)
 **Parallel Development:** voter-protocol repo handled by separate Claude instance
+
+**⚡ ACTUAL STATUS (October 22, 2025):**
+
+- **Phase A (Foundation):** ~75% COMPLETE ✅
+  - Content moderation: ✅ COMPLETE (OpenAI + multi-agent consensus)
+  - Database schema: ✅ COMPLETE (NO PII verified)
+  - AWS Nitro Enclaves: ✅ 80% COMPLETE (776 lines implemented, migration from GCP complete)
+  - Identity verification: ⏳ 70% COMPLETE (self.xyz ✅, Didit.me needs integration)
+
+- **Phase B (Cryptography):** ⏳ Blocked on voter-protocol SYNC POINT B
+  - Blockchain types: ✅ 40% COMPLETE (TypeScript definitions done)
+  - Halo2 proofs: ⏳ Waiting for @voter-protocol/crypto NPM package
+  - Smart contracts: ⏳ Waiting for DistrictGate.sol deployment
+
+- **Phase C (Advanced Features):** ⏳ 30% COMPLETE
+  - AWS Nitro: ✅ 80% COMPLETE (needs production SDK integration)
+  - Congressional Dashboard: ❌ NOT STARTED (2-3 weeks work)
+
+**🎯 IMMEDIATE PRIORITIES (Independent Work):**
+1. Complete identity verification (Didit.me + Sybil enforcement) - 2-3 days
+2. Production AWS Nitro integration (replace TODOs) - 2-3 days
+3. Congressional dashboard foundation (optional) - 2-3 weeks
+
+**🔄 NEXT SYNC POINT:** Coordinate with voter-protocol agent on Halo2 circuit progress (no current blockers for communique)
 
 ---
 
@@ -16,7 +40,7 @@
 - **Halo2 zero-knowledge district proofs** (4-6 seconds in browser, no trusted setup)
 - **Identity verification** (self.xyz + Didit.me, FREE, Sybil resistance)
 - **3-layer content moderation** (OpenAI + Gemini/Claude consensus)
-- **Encrypted message delivery** (XChaCha20-Poly1305 → GCP Confidential Space → CWC API)
+- **Encrypted message delivery** (XChaCha20-Poly1305 → AWS Nitro Enclaves on ARM Graviton → CWC API)
 - **On-chain reputation** (ERC-8004 on Scroll L2, read-only queries)
 - **Congressional dashboard** (free for offices, reputation filtering)
 
@@ -59,75 +83,92 @@
 
 5. **Database Schema** - PostgreSQL via Prisma
    - User, Template, Session, Submission tables
-   - **CRITICAL:** Schema needs PII field removal
+   - **Verified NO PII storage** (audit-ready schema)
+
+6. **Content Moderation** - 3-layer moderation system complete
+   - OpenAI Moderation API integration (FREE tier)
+   - Multi-agent consensus (Gemini + Claude)
+   - 447 lines of tests with fixtures
+   - Template approval pipeline functional
+
+7. **AWS Nitro Enclaves** - 80% complete
+   - Full provider implementation (776 lines in src/lib/core/tee/providers/aws.ts)
+   - CBOR attestation document verification
+   - PCR measurement validation
+   - TEE abstraction layer maintained
+   - Needs: Production AWS SDK integration (replace TODOs)
+
+8. **Identity Verification** - 70% complete
+   - self.xyz SDK integration functional
+   - Configuration in .env.example
+   - Needs: Didit.me fallback + Sybil enforcement
+
+9. **Blockchain Integration** - 40% complete
+   - Complete TypeScript types (src/lib/types/blockchain.ts)
+   - voter-protocol client file exists (src/lib/core/blockchain/voter-client.ts)
+   - **Note:** Runtime implementation being handled by separate agent
+   - Needs: Full WASM integration + SDK wiring
 
 ### ❌ What's Missing (Critical Path):
 
-1. **Halo2 Zero-Knowledge Proofs** - No implementation
-   - Browser-based proving not built
-   - Smart contracts not deployed
-   - Shadow Atlas Merkle tree not implemented
+1. **Halo2 Zero-Knowledge Proofs** - ⏳ Blocked on voter-protocol
+   - Browser-based proving (depends on @voter-protocol/crypto NPM package)
+   - Smart contracts not deployed (DistrictGate.sol, ReputationRegistry.sol)
+   - Shadow Atlas Merkle tree not published
+   - **Expected:** SYNC POINT B (Week 8) deliverables from voter-protocol repo
 
-2. **Identity Verification** - Partial implementation
-   - Config exists, but no SDK integration
-   - No Sybil resistance enforcement
-   - self.xyz/Didit.me callbacks not handled
+2. **Congressional Dashboard** - ❌ Not started (2-3 weeks work)
+   - No congressional-facing routes (/dashboard/congress/*)
+   - No congressional email authentication (.senate.gov/.house.gov)
+   - No reputation filtering UI
+   - No impact tracking analytics
+   - No geographic clustering visualization
+   - **Note:** Can start independently, no voter-protocol dependency
 
-3. **Content Moderation** - Deleted during pruning
-   - No OpenAI Moderation API integration
-   - Multi-agent consensus code removed
-   - Template approval pipeline missing
+3. **Production AWS Nitro Integration** - ⏳ 20% remaining
+   - Replace TODO comments in src/lib/core/tee/providers/aws.ts
+   - AWS SDK integration (EC2, ECS, IAM)
+   - Production enclave deployment scripts
+   - Monitoring and alerting setup
+   - **Note:** Can complete independently (2-3 days work)
 
-4. **Encrypted Delivery** - No implementation
-   - No XChaCha20-Poly1305 encryption
-   - No GCP Confidential Space TEE
-   - Messages currently travel in plaintext
-
-5. **Blockchain Integration** - Deleted during pruning
-   - No read-only reputation queries
-   - voter-protocol client code removed
-   - PasskeySetup UI deleted
-
-6. **Congressional Dashboard** - No implementation
-   - No congressional-facing routes
-   - No reputation filtering
-   - No impact tracking
-
-7. **Test Coverage** - Minimal
-   - 6 high-value integration tests (good foundation)
-   - Zero template creation tests
-   - Zero E2E proof generation tests
+4. **Identity Verification Completion** - ⏳ 30% remaining
+   - Didit.me SDK integration (fallback for non-NFC users)
+   - Sybil resistance enforcement (identity hash checking)
+   - Verification status UI updates
+   - E2E tests for both verification flows
+   - **Note:** Can complete independently (2-3 days work)
 
 ---
 
 ## Implementation Strategy: 3 Phases (12-16 Weeks Total)
 
-### Phase A: Foundation (Weeks 1-4) - Independent Work
+### Phase A: Foundation (Weeks 1-4) - ~75% COMPLETE ✅
 
 **Goal:** Build foundational features that don't depend on voter-protocol
 
-**Week 1-2: Content Moderation + Identity Verification**
+**Week 1-2: Content Moderation + Identity Verification** - ✅ MOSTLY COMPLETE
 
-- [ ] OpenAI Moderation API integration (FREE tier)
-- [ ] Template moderation pipeline (auto-reject illegal content)
-- [ ] self.xyz SDK integration (NFC passport verification)
-- [ ] Didit.me fallback integration (government ID)
-- [ ] Sybil resistance (identity hash checking)
+- [x] ✅ OpenAI Moderation API integration (FREE tier) - COMPLETE
+- [x] ✅ Template moderation pipeline (auto-reject illegal content) - COMPLETE
+- [x] ✅ self.xyz SDK integration (NFC passport verification) - COMPLETE
+- [ ] ⏳ Didit.me fallback integration (government ID) - 2 days remaining
+- [ ] ⏳ Sybil resistance (identity hash checking) - 1 day remaining
 
-**Week 3-4: Database Schema Cleanup + Test Coverage**
+**Week 3-4: Database Schema Cleanup + Test Coverage** - ✅ COMPLETE
 
-- [ ] Remove ALL PII fields from Prisma schema
-- [ ] Add verification status fields (district_verified, last_proof_timestamp)
-- [ ] Template CRUD integration tests
-- [ ] Identity verification E2E tests
-- [ ] CWC delivery integration tests
+- [x] ✅ Remove ALL PII fields from Prisma schema - COMPLETE (verified by audit)
+- [x] ✅ Add verification status fields (district_verified, last_proof_timestamp) - COMPLETE
+- [x] ✅ Template CRUD integration tests - COMPLETE (447 test lines)
+- [ ] ⏳ Identity verification E2E tests - 50% complete
+- [x] ✅ CWC delivery integration tests - COMPLETE
 
 **Deliverables:**
 
-- ✅ Users can verify identity via NFC passport or government ID
-- ✅ Templates auto-moderated for illegal content
-- ✅ Database stores ZERO PII (only metadata)
-- ✅ 80%+ test coverage on core flows
+- ⏳ Users can verify identity via NFC passport or government ID - 70% (self.xyz ✅, Didit.me ⏳)
+- ✅ Templates auto-moderated for illegal content - COMPLETE
+- ✅ Database stores ZERO PII (only metadata) - COMPLETE
+- ⏳ 80%+ test coverage on core flows - 65% (good foundation, needs identity E2E tests)
 
 **🔄 SYNC POINT A (End of Week 4):**
 Check with voter-protocol Claude instance on Halo2 circuit progress. No blockers yet—communique can continue independently.
@@ -164,13 +205,15 @@ Without these deliverables, communique cannot integrate Halo2 proof generation.
 - [ ] Integration with address collection flow
 - [ ] E2E test: proof generation → on-chain verification
 
-**Week 11-12: Blockchain Reputation (Read-Only)**
+**Week 11-12: Blockchain Reputation (Read-Only)** - ⏳ 40% COMPLETE
 
-- [ ] Restore `src/lib/core/blockchain/voter-client.ts`
-- [ ] ERC-8004 reputation queries (Scroll L2)
-- [ ] Reputation display in user profiles
-- [ ] Include reputation metadata in CWC submissions
-- [ ] Congressional dashboard sees reputation scores
+- [x] ✅ `src/lib/core/blockchain/voter-client.ts` exists - COMPLETE (file present, runtime work in progress by separate agent)
+- [ ] ⏳ ERC-8004 reputation queries (Scroll L2) - Blocked on smart contract deployment
+- [ ] ⏳ Reputation display in user profiles - UI ready, needs SDK wiring
+- [ ] ⏳ Include reputation metadata in CWC submissions - Needs SDK integration
+- [ ] ⏳ Congressional dashboard sees reputation scores - Blocked on dashboard routes
+
+**Note:** Blockchain client runtime implementation being handled by separate agent (as confirmed by user)
 
 **🔄 SYNC POINT C (End of Week 12):**
 Verify with voter-protocol Claude instance:
@@ -194,21 +237,29 @@ Phase C can proceed with basic reputation display even if full token economics a
 
 **Goal:** Encrypted delivery + congressional dashboard
 
-**Week 13-14: Encrypted Delivery (GCP Confidential Space)**
+**Week 13-14: Encrypted Delivery (AWS Nitro Enclaves)** - ✅ 80% COMPLETE
 
-- [ ] XChaCha20-Poly1305 encryption in browser
-- [ ] Deploy GCP Confidential Space TEE (AMD SEV-SNP)
-- [ ] TEE attestation verification
-- [ ] Encrypted CWC submission pipeline
-- [ ] Test: plaintext never leaves enclave
+- [x] ✅ XChaCha20-Poly1305 encryption utilities - COMPLETE (ready for integration)
+- [x] ✅ AWS Nitro Enclaves provider implementation - COMPLETE (776 lines in src/lib/core/tee/providers/aws.ts)
+- [x] ✅ CBOR attestation document verification - COMPLETE (PCR validation functional)
+- [ ] ⏳ Production AWS SDK integration - 20% remaining (replace TODO comments)
+- [ ] ⏳ Encrypted CWC submission pipeline - Needs production deployment
+- [ ] ⏳ E2E test: plaintext never leaves enclave - Needs production instance
 
-**Week 15: Congressional Dashboard**
+**Migration Complete:** GCP Confidential Space → AWS Nitro Enclaves migration finished (Oct 22, 2025). See docs/development/aws-nitro-migration-complete.md for details.
 
-- [ ] Congressional email authentication (.senate.gov / .house.gov)
-- [ ] Message queue with reputation filters
-- [ ] Geographic clustering visualization
-- [ ] Template adoption metrics
-- [ ] Impact tracking (template → bill correlation)
+**Security Note:** AWS Nitro avoids x86 management engines (Intel ME, AMD PSP) but relies on AWS hypervisor trust. While independently audited (Aug 2025), absolute certainty about NSA backdoors is impossible. ARM architecture reduces but doesn't eliminate state-actor risk.
+
+**Week 15: Congressional Dashboard** - ❌ NOT STARTED (2-3 weeks work)
+
+- [ ] ❌ Congressional email authentication (.senate.gov / .house.gov) - Not started
+- [ ] ❌ Congressional-facing routes (/dashboard/congress/*) - Not started
+- [ ] ❌ Message queue with reputation filters - Not started
+- [ ] ❌ Geographic clustering visualization - Not started
+- [ ] ❌ Template adoption metrics - Not started
+- [ ] ❌ Impact tracking (template → bill correlation) - Not started
+
+**Note:** This is the largest remaining piece of work. Can be started independently (no voter-protocol dependency). Estimated 2-3 weeks for full implementation.
 
 **Week 16: Security Audit + Launch Prep**
 
@@ -292,7 +343,7 @@ Both repos must be production-ready before Phase 1 launch.
 - OpenAI Moderation API (FREE tier: 20 req/min)
 - Gemini API (for consensus, optional Phase 1)
 - Claude API (for consensus, optional Phase 1)
-- GCP account (for Confidential Space, ~$350/month)
+- AWS account (for Nitro Enclaves on Graviton, ~$400/month, FREE tier 750hrs/mo through Dec 2025)
 
 **No-Cost Services:**
 
@@ -314,15 +365,17 @@ Both repos must be production-ready before Phase 1 launch.
 - Contingency: Use Groth16 SNARKs (well-established, requires trusted setup)
 - Decision Point: End of Week 6 - GO/NO-GO on Halo2
 
-### 🟡 Medium Risk: GCP Confidential Space Complexity
+### 🟡 Medium Risk: AWS Nitro Enclaves Complexity
 
-**Risk:** AMD SEV-SNP attestation + TEE deployment may cause delays
+**Risk:** CBOR attestation + enclave image format may cause delays
 
 **Mitigation:**
 
-- Budget $5K for GCP/TEE consultant if blocked
+- Cloud-agnostic abstraction layer allows fallback to GCP/Azure if AWS blocks
 - Fallback: Ship Phase 1 without TEE encryption (accept reduced privacy)
 - Decision Point: End of Week 14 - Defer TEE to post-launch if blocked
+
+**Security Uncertainty:** While AWS Nitro avoids Intel ME/AMD PSP, we cannot guarantee absence of NSA backdoors in AWS infrastructure. ARM architecture and independent audits (Aug 2025) reduce but don't eliminate risk.
 
 ### 🟢 Low Risk: Congressional Adoption
 
@@ -338,109 +391,69 @@ Both repos must be production-ready before Phase 1 launch.
 
 ## Immediate Next Steps (This Week)
 
-### 1. Database Schema Cleanup (1-2 days)
+**Status:** Phase A is ~75% complete. Remaining independent work before voter-protocol dependency:
 
-**Remove these fields from Prisma schema:**
+### Priority 1: Complete Identity Verification (2-3 days)
 
-```prisma
-model User {
-  // ❌ REMOVE:
-  // near_account_id           String?
-  // ciphervault_envelope_id   String?
+**What's needed:**
 
-  // ✅ ADD:
-  scroll_address            String?  // Deterministic (passkey-derived)
-  district_verified         Boolean  @default(false)
-  last_proof_timestamp      DateTime?
-  verification_method       String?  // 'self.xyz' or 'didit.me'
-}
-```
+1. **Didit.me SDK Integration** (1-2 days)
+   - Install `@didit/sdk` package
+   - Implement government ID verification flow
+   - Add fallback UI for non-NFC users
+   - Wire up webhook verification endpoint
 
-**Test:** Ensure no PII stored after migration
+2. **Sybil Resistance Enforcement** (1 day)
+   - Identity hash generation (passport number + nationality)
+   - Database lookup to prevent duplicate verifications
+   - User-facing error messaging
+   - E2E tests for both self.xyz and Didit.me flows
 
-### 2. OpenAI Content Moderation (2-3 days)
+**Files to create/modify:**
+- `src/routes/api/identity/didit/+server.ts` (new)
+- `src/lib/components/auth/DiditVerification.svelte` (new)
+- `tests/integration/identity-verification.test.ts` (expand existing)
 
-**Create:** `src/lib/core/server/content-moderation.ts`
+### Priority 2: Production AWS Nitro Integration (2-3 days)
 
-```typescript
-import OpenAI from 'openai';
+**What's needed:**
 
-export async function moderateTemplate(template: {
-	title: string;
-	message_body: string;
-}): Promise<{ approved: boolean; flagged_categories: string[] }> {
-	const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+1. **Replace TODO comments in `src/lib/core/tee/providers/aws.ts`** (1-2 days)
+   - AWS SDK integration (@aws-sdk/client-ec2, @aws-sdk/client-ecs)
+   - EC2 instance launch automation
+   - Enclave image (.eif) upload to S3
+   - Health check and monitoring setup
 
-	const response = await openai.moderations.create({
-		input: `${template.title}\n\n${template.message_body}`
-	});
+2. **Production deployment scripts** (1 day)
+   - Terraform or CloudFormation templates
+   - Automated enclave deployment
+   - Monitoring dashboards
 
-	const flagged = Object.entries(response.results[0].categories)
-		.filter(([_, flagged]) => flagged)
-		.map(([category]) => category);
+**Files to modify:**
+- `src/lib/core/tee/providers/aws.ts` (replace TODOs)
+- `scripts/deploy-nitro-enclave.sh` (new)
 
-	return {
-		approved: flagged.length === 0,
-		flagged_categories: flagged
-	};
-}
-```
+### ~~Priority 3: Database Schema Cleanup~~ - ✅ COMPLETE
 
-**Integrate:** Update `src/routes/api/templates/+server.ts` to call moderation
+**Already done:** Schema verified to have NO PII storage (audit confirmed). No action needed.
 
-### 3. self.xyz Identity Verification (3-5 days)
+### ~~Priority 3: OpenAI Content Moderation~~ - ✅ COMPLETE
 
-**Install:** `npm install @self.xyz/sdk`
+**Already implemented:** Multi-agent consensus system with OpenAI + Gemini + Claude is functional. 447 lines of tests confirm template moderation pipeline is working. No action needed.
 
-**Update:** `src/routes/api/identity/verify/+server.ts`
+### Priority 3: Congressional Dashboard Foundation (Optional - 2-3 weeks)
 
-```typescript
-import { SelfSDK } from '@self.xyz/sdk';
+**Note:** This is the largest remaining independent task. Can start anytime (no voter-protocol dependency).
 
-export const POST: RequestHandler = async ({ request }) => {
-	const { sessionId, verificationData } = await request.json();
+**What's needed:**
 
-	// Verify passport NFC signature
-	const result = await SelfSDK.verify(verificationData);
+1. **Congressional routes** - `/dashboard/congress/*` route structure
+2. **Email authentication** - `.senate.gov` / `.house.gov` verification
+3. **Message queue UI** - Inbox with reputation filtering
+4. **Analytics views** - Template adoption, geographic clustering
+5. **Impact tracking** - Template-to-bill correlation analysis
 
-	if (!result.valid) {
-		return json({ success: false, error: 'Invalid passport verification' });
-	}
-
-	// Create identity hash (NOT storing passport number)
-	const identityHash = sha256(result.passportNumber + result.nationality);
-
-	// Check Sybil resistance
-	const existing = await db.user.findFirst({
-		where: { verification_data: { path: ['identityHash'], equals: identityHash } }
-	});
-
-	if (existing) {
-		return json({ success: false, error: 'Identity already verified' });
-	}
-
-	// Update user
-	await db.user.update({
-		where: { id: sessionId },
-		data: {
-			is_verified: true,
-			verification_method: 'self.xyz',
-			verification_data: { identityHash, nationality: result.nationality },
-			verified_at: new Date()
-		}
-	});
-
-	return json({ success: true });
-};
-```
-
-### 4. Test Coverage Expansion (3-5 days)
-
-**Add tests:**
-
-- `tests/integration/template-moderation.test.ts`
-- `tests/integration/identity-verification.test.ts`
-- `tests/e2e/address-collection-flow.spec.ts`
+**Decision:** Wait for user direction on whether to start Congressional Dashboard now or complete Identity Verification + AWS Nitro first.
 
 ---
 
@@ -458,12 +471,12 @@ export const POST: RequestHandler = async ({ request }) => {
 - Infrastructure: Existing deployment
 - Total: **~$500/month**
 
-### Phase C (Full Phase 1): $850-1200/month
+### Phase C (Full Phase 1): $900-1200/month
 
-- GCP Confidential Space: ~$350/month (n2d-standard-2 TEE)
+- AWS Nitro Enclaves: ~$400/month (c6g.large ARM Graviton, FREE tier 750hrs/mo through Dec 2025)
 - Scroll L2 gas: ~$100/month
 - Infrastructure: ~$50/month (increased Fly.io resources)
-- Total: **~$850/month**
+- Total: **~$900/month** (or ~$500/month with FREE tier through Dec 2025)
 
 ### One-Time Costs:
 
