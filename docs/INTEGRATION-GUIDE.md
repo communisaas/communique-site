@@ -4,9 +4,9 @@
 
 **For blockchain architecture and cryptography specs:** See [voter-protocol/ARCHITECTURE.md](https://github.com/communisaas/voter-protocol/blob/main/ARCHITECTURE.md) and [voter-protocol/ECONOMICS.md](https://github.com/communisaas/voter-protocol/blob/main/docs/ECONOMICS.md)
 
-**This document covers:** Congressional Web Contact (CWC) API, OAuth providers, Census Bureau geocoding, identity verification (self.xyz + Didit.me), and GCP Confidential Space (TEE) encrypted delivery.
+**This document covers:** Congressional Web Contact (CWC) API, OAuth providers, Census Bureau geocoding, identity verification (self.xyz + Didit.me), and AWS Nitro Enclaves (TEE) encrypted delivery.
 
-This document covers Congressional Web Contact (CWC) API, OAuth providers (Google/Facebook/Twitter/LinkedIn/Discord), Census Bureau geocoding, self.xyz + Didit.me identity verification, and GCP Confidential Space (TEE) encrypted delivery.
+This document covers Congressional Web Contact (CWC) API, OAuth providers (Google/Facebook/Twitter/LinkedIn/Discord), Census Bureau geocoding, self.xyz + Didit.me identity verification, and AWS Nitro Enclaves (TEE) encrypted delivery.
 
 ---
 
@@ -48,7 +48,7 @@ CWC_DELIVERY_AGENT_ACK=Y
 **2. Address validated via Census Bureau geocoding**
 **3. Congressional district resolved**
 **4. Message encrypted client-side (XChaCha20-Poly1305)**
-**5. Encrypted message sent to GCP Confidential Space TEE**
+**5. Encrypted message sent to AWS Nitro Enclaves TEE**
 **6. TEE decrypts + submits to CWC API**
 **7. CWC delivers to congressional office**
 
@@ -618,14 +618,14 @@ export async function verifyDiditIdentity(
 
 ## TEE Encrypted Delivery
 
-**GCP Confidential Space (AMD SEV-SNP TEE) for encrypted message delivery:**
+**AWS Nitro Enclaves (hardware-isolated TEE) for encrypted message delivery:**
 
 ### Encryption Flow
 
 ```
 1. User's browser encrypts message with XChaCha20-Poly1305
-2. Encrypted message sent to GCP Confidential Space TEE
-3. TEE attests integrity (AMD SEV-SNP hardware attestation)
+2. Encrypted message sent to AWS Nitro Enclaves TEE
+3. TEE attests integrity (AWS Nitro attestation document)
 4. TEE decrypts message inside hardware enclave
 5. TEE submits to CWC API
 6. TEE returns delivery confirmation
@@ -664,7 +664,7 @@ export async function encryptMessage(
 ### Server-Side (TEE) Decryption
 
 ```typescript
-// Inside GCP Confidential Space TEE
+// Inside AWS Nitro Enclaves TEE
 export async function decryptAndDeliver(
   encryptedMessage: { ciphertext: string; nonce: string },
   privateKey: Uint8Array
