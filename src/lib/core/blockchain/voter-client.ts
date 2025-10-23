@@ -6,7 +6,7 @@
  *
  * Features:
  * - Deterministic address generation (NEAR Chain Signatures)
- * - Zero-knowledge district verification (Halo2, 4-6 seconds)
+ * - Zero-knowledge district verification (Halo2, 2-5 seconds TEE-based proving)
  * - On-chain reputation tracking (ERC-8004)
  * - Wallet-free blockchain participation via passkeys
  *
@@ -121,9 +121,9 @@ export const voterBlockchainClient = {
 
 	/**
 	 * Generate zero-knowledge proof of congressional district membership
-	 * Proof generation takes 4-6 seconds in browser (Halo2 WASM)
+	 * Proof generation takes 2-5 seconds in TEE (AWS Nitro Enclaves native Rust)
 	 *
-	 * PRIVACY: Address NEVER leaves browser, NEVER stored anywhere
+	 * PRIVACY: Address encrypted in browser, decrypted only in TEE, NEVER stored anywhere
 	 *
 	 * @param streetAddress - User's full street address
 	 * @param district - Congressional district (e.g., "CA-12")
@@ -137,15 +137,15 @@ export const voterBlockchainClient = {
 	) {
 		const client = await initVoterClient();
 
-		// Track progress for UI feedback (4-6 second proving time)
+		// Track progress for UI feedback (2-5 second proving time in TEE)
 		const progressTracker = onProgress
 			? {
 					onStageChange: (stage: string) => {
 						const stagePercent: Record<string, number> = {
-							'Loading circuit': 10,
-							'Generating witness': 30,
-							'Computing proof': 60,
-							'Finalizing': 90,
+							'Encrypting witness': 10,
+							'Sending to TEE': 20,
+							'Generating proof in TEE': 60,
+							'Verifying attestation': 90,
 							'Complete': 100
 						};
 						onProgress({
@@ -156,8 +156,9 @@ export const voterBlockchainClient = {
 				}
 			: undefined;
 
-		// Generate Halo2 proof client-side
-		// Address NEVER leaves browser, NEVER touches any database
+		// Generate Halo2 proof via Proof Service (TEE-based)
+		// Address encrypted in browser → TEE decrypts → proof generated → address discarded
+		// Address NEVER stored anywhere, only exists in TEE memory during proving
 		const proof = await client.zk.generateDistrictProof(
 			{
 				streetAddress,

@@ -61,14 +61,14 @@ contracts/near/
 ```
 packages/crypto/
 ├── encryption/
-│   ├── xchacha20poly1305.ts      # Message encryption (delivery only)
+│   ├── xchacha20poly1305.ts      # Message encryption (delivery) + witness encryption (TEE)
 │   └── passkey-derivation.ts     # Deterministic address generation
 ├── zk-proofs/
 │   ├── circuits/                 # Halo2 circuits (Rust)
-│   │   └── district-membership.rs # Halo2 Merkle proof circuit
-│   ├── halo2.ts                  # Proof generation (4-6s)
+│   │   └── district-membership.rs # Halo2 two-tier Merkle proof circuit
+│   ├── tee-prover.ts             # TEE proof generation client (2-5s)
 │   ├── verifier.ts               # Proof verification
-│   └── shadow-atlas.ts           # District Merkle tree
+│   └── shadow-atlas.ts           # Two-tier Shadow Atlas (535 district trees + 1 global tree)
 └── commitments/
     └── poseidon.ts               # Poseidon hash for ZK commitments
 ```
@@ -86,7 +86,8 @@ packages/crypto/
 
 ```
 packages/client/
-├── halo2-prover.ts               # Browser-based Halo2 proof generation
+├── proof-service.ts              # Proof Service API client (witness generation)
+├── tee-prover.ts                 # TEE-based Halo2 proof generation
 ├── chain-signatures.ts           # NEAR Chain Signatures (deterministic addresses)
 ├── reputation.ts                 # On-chain reputation queries
 ├── challenges.ts                 # Challenge market interactions
@@ -100,12 +101,13 @@ packages/client/
 **Example Usage:**
 ```typescript
 // Any app can use this
-import { Halo2Prover, ReputationClient } from '@voter-protocol/client';
+import { ProofServiceClient, ReputationClient } from '@voter-protocol/client';
 
-// Generate zero-knowledge proof client-side (4-6 seconds)
-const prover = new Halo2Prover();
-const proof = await prover.generateDistrictProof(address, district);
-// Address never leaves browser, never stored anywhere
+// Generate zero-knowledge proof via TEE (2-5 seconds)
+const proofService = new ProofServiceClient();
+const encryptedWitness = await encryptWitness(address, teePublicKey);
+const proof = await proofService.generateProof(encryptedWitness, district);
+// Address encrypted in browser, decrypted only in TEE, never stored anywhere
 
 const reputation = new ReputationClient(scrollProvider);
 const score = await reputation.getScore('0xABCD...1234');
@@ -170,7 +172,8 @@ src/lib/
 
 ```
 integrations/voter-protocol/
-├── halo2-wrapper.ts              # Browser-based Halo2 proof generation wrapper
+├── proof-service-wrapper.ts      # TEE-based Halo2 proof generation wrapper
+├── witness-encryption.ts         # Witness encryption utilities
 ├── congressional-certification.ts # Certify messages to Congress
 └── reputation-display.ts         # Show reputation in Communique UI
 ```
@@ -178,19 +181,24 @@ integrations/voter-protocol/
 **Pattern:**
 ```typescript
 // communique wraps protocol SDK with app-specific logic
-import { Halo2Prover } from '@voter-protocol/client';
+import { ProofServiceClient, encryptWitness } from '@voter-protocol/client';
 import { db } from '$lib/core/db';
 
-export class CommuniqueHalo2Wrapper {
-  private prover: Halo2Prover;
+export class CommuniqueProofServiceWrapper {
+  private proofService: ProofServiceClient;
 
   async generateProofWithUI(userId: string, address: string, district: string) {
-    // Show progress UI to user (4-6 seconds proving time)
-    this.showProgressIndicator("Generating zero-knowledge proof...");
+    // Show progress UI to user (2-5 seconds proving time)
+    this.showProgressIndicator("Encrypting witness...");
 
-    // Protocol: Generate Halo2 proof client-side
-    const proof = await this.prover.generateDistrictProof(address, district);
-    // Address never leaves browser, never stored anywhere
+    // Protocol: Encrypt witness to TEE public key
+    const encryptedWitness = await encryptWitness(address, this.proofService.getTEEPublicKey());
+
+    this.showProgressIndicator("Generating zero-knowledge proof in TEE...");
+
+    // Protocol: Generate Halo2 proof in TEE
+    const proof = await this.proofService.generateProof(encryptedWitness, district);
+    // Address encrypted in browser, decrypted only in TEE, never stored anywhere
 
     // Application: Store proof result reference (not PII)
     await db.user.update({
@@ -268,16 +276,17 @@ features/
 npm install @voter-protocol/client @voter-protocol/crypto @voter-protocol/types
 
 // 2. Use in communique application
-import { Halo2Prover, ReputationClient } from '@voter-protocol/client';
+import { ProofServiceClient, encryptWitness } from '@voter-protocol/client';
 import { generatePoseidonCommitment } from '@voter-protocol/crypto';
 
 // 3. Wrap with application logic
 export class CommuniqueUser {
   async verifyDistrict(userId: string, address: string, district: string) {
-    // Protocol: Generate Halo2 proof client-side (4-6 seconds)
-    const prover = new Halo2Prover();
-    const proof = await prover.generateDistrictProof(address, district);
-    // Address NEVER leaves browser, NEVER stored anywhere
+    // Protocol: Encrypt witness to TEE, generate Halo2 proof (2-5 seconds)
+    const proofService = new ProofServiceClient();
+    const encryptedWitness = await encryptWitness(address, proofService.getTEEPublicKey());
+    const proof = await proofService.generateProof(encryptedWitness, district);
+    // Address encrypted in browser, decrypted only in TEE, NEVER stored anywhere
 
     // Application: Store ONLY verification status (not PII)
     await db.user.update({
@@ -523,8 +532,8 @@ communique/
 
 ---
 
-**Principle:** Protocol primitives enable applications. Don't build application logic into protocol. Don't rebuild protocol primitives in applications. Addresses NEVER leave browser, NEVER stored anywhere.
+**Principle:** Protocol primitives enable applications. Don't build application logic into protocol. Don't rebuild protocol primitives in applications. Addresses encrypted in browser, decrypted only in TEE, NEVER stored anywhere.
 
-**Current Blocker:** voter-protocol needs to build Halo2 proof generation SDK before communique can integrate.
+**Current Blocker:** voter-protocol needs to build TEE prover service + Proof Service API before communique can integrate.
 
-**Next Step:** Build Halo2 Merkle membership circuit, test proving time, publish SDK.
+**Next Step:** Build Halo2 two-tier Merkle circuit, deploy TEE prover in AWS Nitro, test 2-5s proving time, publish SDK.

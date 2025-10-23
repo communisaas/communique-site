@@ -97,7 +97,8 @@ src/
 **Client-Side Rendered (CSR):**
 - Template editor (`/create`) - Rich interactive UI
 - Address collection modal - Client-side validation
-- ZK proof generation - Browser-only cryptography
+- Witness encryption - Browser-only cryptography (XChaCha20-Poly1305 to TEE)
+- ZK proof request - Proof Service API client (proof generated in TEE, not browser)
 
 **Progressive Enhancement Pattern:**
 

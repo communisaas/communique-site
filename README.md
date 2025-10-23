@@ -19,7 +19,7 @@ Communiqué is the **frontend application** that implements VOTER Protocol's cry
 - Template browsing, creation, and customization
 - OAuth authentication (Google, Facebook, Twitter, LinkedIn, Discord)
 - Address validation and congressional district lookup
-- Halo2 zero-knowledge proof generation in browser (4-6 seconds)
+- Halo2 zero-knowledge proofs (2-5s TEE-based proving)
 - Message delivery via CWC API (congressional offices)
 - 3-layer content moderation (OpenAI + Gemini/Claude + human)
 - Encrypted delivery through AWS Nitro Enclaves (ARM-based TEE, hypervisor-isolated, independently audited 2025)
@@ -45,9 +45,8 @@ Browser (Client-Side)
 ├─ OAuth login (5 providers)
 ├─ Address collection → Census Bureau geocoding
 ├─ Template selection → Variable customization
-├─ Halo2 ZK proof generation (4-6 seconds)
-├─ XChaCha20-Poly1305 encryption (libsodium)
-└─ Encrypted delivery → AWS Nitro Enclaves (ARM TEE)
+├─ Witness encryption (XChaCha20-Poly1305 to TEE)
+└─ Proof request → Proof Service API
 
 Server (SvelteKit 5 SSR)
 ├─ Supabase (Postgres) via Prisma
@@ -55,7 +54,14 @@ Server (SvelteKit 5 SSR)
 ├─ CWC API integration (congressional delivery)
 ├─ 3-layer content moderation (OpenAI + Gemini/Claude + human)
 ├─ self.xyz (70%) + Didit.me (30%) FREE identity verification
+├─ Proof Service client (witness generation API)
 └─ voter-protocol blockchain client (read-only queries)
+
+TEE Layer (AWS Nitro Enclaves, ARM Graviton)
+├─ Witness decryption (XChaCha20-Poly1305)
+├─ Halo2 proof generation (2-5s native Rust)
+├─ Two-tier Shadow Atlas (535 district trees + 1 global tree)
+└─ Encrypted delivery → CWC API
 
 Settlement Layer (voter-protocol repo)
 ├─ Scroll zkEVM (Ethereum L2)
@@ -180,15 +186,17 @@ ENABLE_RESEARCH=true npm run dev   # Enable experimental features
 2. **OAuth login** - One of 5 providers (Google/Facebook/Twitter/LinkedIn/Discord)
 3. **Address collection** - Census Bureau geocoding → congressional district lookup
 4. **Customize template** - Fill variables, add personal connection block
-5. **Generate ZK proof** - Browser proves district membership (4-6 seconds)
-   - Halo2 recursive proof generated entirely in browser
-   - Address never leaves device, never touches any database
+5. **Generate ZK proof** - Witness encrypted to TEE (2-5 seconds)
+   - Address encrypted in browser (XChaCha20-Poly1305)
+   - Witness sent to Proof Service API
+   - TEE generates Halo2 proof using native Rust (2-5s)
+   - Address never stored anywhere, only exists in TEE memory during proving
 6. **Encrypt message** - XChaCha20-Poly1305 encryption in browser
 7. **Deliver via TEE** - AWS Nitro Enclaves (ARM) → CWC API → congressional office
 8. **Build reputation** - On-chain reputation tracking (Phase 1)
 9. **Earn rewards** - Token rewards launch in Phase 2 (12-18 months)
 
-**Zero-knowledge proof generation happens entirely in browser.** Halo2 recursive proof (4-6 seconds) proves district membership. Your address never leaves your device, never touches any database. Congressional offices verify proof on-chain.
+**Zero-knowledge proof generation happens in TEE.** Your address is encrypted in browser, sent to Proof Service, decrypted in AWS Nitro Enclave (ARM-based TEE), proof generated in 2-5 seconds using native Rust, then discarded. Address never stored anywhere, never touches any database. Congressional offices verify proof on-chain (300-500k gas).
 
 **Encrypted delivery:** Plaintext exists only in: your browser → hardware-attested enclave → CWC API → congressional CRM. Platform operators cannot read messages.
 
@@ -321,9 +329,11 @@ tests/                        # Integration, unit, e2e tests
 
 ### Zero-Knowledge Verification
 
-- **Browser-based proving**: Halo2 recursive proofs (4-6 seconds)
-- **Privacy guarantee**: Address never leaves device, never touches any database
-- **On-chain verification**: Congressional offices verify proofs
+- **TEE-based proving**: Halo2 proofs (2-5s in AWS Nitro Enclaves native Rust)
+- **Witness encryption**: Address encrypted in browser (XChaCha20-Poly1305)
+- **Two-tier Shadow Atlas**: 535 district trees + 1 global tree for efficient proving
+- **Privacy guarantee**: Address never stored, only exists in TEE memory during proving
+- **On-chain verification**: Congressional offices verify proofs (300-500k gas)
 - **Identity verification**: self.xyz (70%) + Didit.me (30%), both FREE
 - **Sybil resistance**: One verified identity = one account
 
@@ -460,9 +470,10 @@ All OAuth providers need client ID/secret. CWC delivery requires API key. Check 
 
 ### ZK Proof Generation Fails
 
-- Browser must support WebAssembly
-- WASM module (~180MB) cached after first load
-- 4-6 second proving time is normal (Halo2 recursive proof)
+- Check Proof Service API connectivity (witness generation endpoint)
+- Witness encryption must succeed (XChaCha20-Poly1305)
+- 2-5 second proving time is normal (TEE-based Halo2 proof)
+- TEE attestation verification may fail if PCR measurements invalid
 - Check browser console for detailed error messages
 
 ---
