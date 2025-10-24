@@ -12,7 +12,6 @@ type Representative = {
 	district: string;
 	chamber: string;
 	office_code: string;
-	phone: string;
 	email: string | null;
 	is_active: boolean;
 	office_address: string;
@@ -1340,12 +1339,10 @@ const seedUserData = [
 		avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612c4a8?w=150',
 
 		// Address Fields
-		street: '1847 Fillmore St',
 		city: 'San Francisco',
 		state: 'CA',
 		zip: '94115',
 		congressional_district: 'CA-11',
-		phone: '+1-415-555-0123',
 
 		// Coordinates (San Francisco)
 		latitude: 37.7749,
@@ -1385,7 +1382,6 @@ const seedUserData = [
 		organization: 'San Francisco Unified School District',
 		location: 'Pacific Heights, San Francisco',
 		connection: 'Education advocate fighting housing costs',
-		connection_details: 'Elementary school teacher, 8 years experience, housing activist',
 		profile_completed_at: new Date('2024-01-05T16:45:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1395,12 +1391,10 @@ const seedUserData = [
 		avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
 
 		// Address Fields
-		street: '2301 3rd Ave',
 		city: 'Seattle',
 		state: 'WA',
 		zip: '98121',
 		congressional_district: 'WA-07',
-		phone: '+1-206-555-0187',
 
 		// Coordinates (Seattle)
 		latitude: 47.6062,
@@ -1440,7 +1434,6 @@ const seedUserData = [
 		organization: 'Microsoft',
 		location: 'Belltown, Seattle',
 		connection: 'Tech worker concerned about transit equity',
-		connection_details: 'Senior engineer, bike commuter, public transit advocate',
 		profile_completed_at: new Date('2024-01-03T12:30:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1450,12 +1443,10 @@ const seedUserData = [
 		avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
 
 		// Address Fields
-		street: '789 E 149th St',
 		city: 'New York',
 		state: 'NY',
 		zip: '10451',
 		congressional_district: 'NY-15',
-		phone: '+1-718-555-0156',
 
 		// Coordinates (Bronx, NYC)
 		latitude: 40.8176,
@@ -1495,7 +1486,6 @@ const seedUserData = [
 		organization: 'Bronx Housing Coalition',
 		location: 'South Bronx, New York',
 		connection: 'Fighting gentrification and displacement',
-		connection_details: 'Community organizer for 12 years, tenant rights advocate',
 		profile_completed_at: new Date('2024-01-02T09:15:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1505,12 +1495,10 @@ const seedUserData = [
 		avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
 
 		// Address Fields
-		street: '2400 Nueces St',
 		city: 'Austin',
 		state: 'TX',
 		zip: '78705',
 		congressional_district: 'TX-25',
-		phone: '+1-512-555-0198',
 
 		// Coordinates (Austin)
 		latitude: 30.2672,
@@ -1547,7 +1535,6 @@ const seedUserData = [
 		organization: 'University of Texas at Austin',
 		location: 'West Campus, Austin',
 		connection: 'Student activist for climate action',
-		connection_details: 'Environmental science major, climate action organizer',
 		profile_completed_at: new Date('2024-01-07T14:20:00Z'),
 		profile_visibility: 'private'
 	},
@@ -1557,12 +1544,10 @@ const seedUserData = [
 		avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
 
 		// Address Fields
-		street: '1901 Brickell Ave',
 		city: 'Miami',
 		state: 'FL',
 		zip: '33129',
 		congressional_district: 'FL-27',
-		phone: '+1-305-555-0142',
 
 		// Coordinates (Miami)
 		latitude: 25.7617,
@@ -1602,7 +1587,6 @@ const seedUserData = [
 		organization: 'Jackson Memorial Hospital',
 		location: 'Brickell, Miami',
 		connection: 'Healthcare worker advocating for climate resilience',
-		connection_details: 'ICU nurse, hurricane preparedness advocate',
 		profile_completed_at: new Date('2024-01-01T20:45:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1612,12 +1596,10 @@ const seedUserData = [
 		name: 'Alex Thompson',
 		avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
 
-		street: '2650 Haste St',
 		city: 'Berkeley',
 		state: 'CA',
 		zip: '94720',
 		congressional_district: 'CA-12',
-		phone: '+1-510-555-0167',
 
 		latitude: 37.8715,
 		longitude: -122.2588,
@@ -1646,7 +1628,6 @@ const seedUserData = [
 		organization: 'UC Berkeley',
 		location: 'Berkeley, CA',
 		connection: 'Computer science researcher studying digital democracy',
-		connection_details: 'PhD candidate in computer science, studying blockchain governance',
 		profile_completed_at: new Date('2024-01-09T22:15:00Z'),
 		profile_visibility: 'private'
 	},
@@ -1655,12 +1636,10 @@ const seedUserData = [
 		name: 'Dr. Jennifer Walsh',
 		avatar: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150',
 
-		street: '3181 SW Sam Jackson Park Rd',
 		city: 'Portland',
 		state: 'OR',
 		zip: '97239',
 		congressional_district: 'OR-01',
-		phone: '+1-503-555-0134',
 
 		latitude: 45.4988,
 		longitude: -122.6853,
@@ -1692,7 +1671,6 @@ const seedUserData = [
 		organization: 'Oregon Health & Science University',
 		location: 'South Portland, OR',
 		connection: 'Emergency medicine doctor advocating for healthcare access',
-		connection_details: 'ER physician, 15 years experience, rural healthcare advocate',
 		profile_completed_at: new Date('2024-01-04T11:30:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1702,12 +1680,10 @@ const seedUserData = [
 		name: 'Carlos Rivera',
 		avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
 
-		street: '1925 4th Ave',
 		city: 'San Francisco',
 		state: 'CA',
 		zip: '94158',
 		congressional_district: 'CA-11',
-		phone: '+1-415-555-0789',
 
 		latitude: 37.7749,
 		longitude: -122.4194,
@@ -1739,7 +1715,6 @@ const seedUserData = [
 		organization: 'Service Employees International Union',
 		location: 'Mission District, San Francisco',
 		connection: 'Labor rights advocate organizing service workers',
-		connection_details: 'SEIU organizer, 10 years experience, immigrant rights activist',
 		profile_completed_at: new Date('2024-01-06T08:15:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1748,12 +1723,10 @@ const seedUserData = [
 		name: 'Dr. Rachel Thompson',
 		avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
 
-		street: '3700 O St NW',
 		city: 'Washington',
 		state: 'DC',
 		zip: '20057',
 		congressional_district: 'DC-AL',
-		phone: '+1-202-555-0321',
 
 		latitude: 38.9072,
 		longitude: -77.0369,
@@ -1785,7 +1758,6 @@ const seedUserData = [
 		organization: 'Georgetown Public Policy Institute',
 		location: 'Georgetown, Washington DC',
 		connection: 'Democracy policy expert researching digital governance',
-		connection_details: 'PhD in Public Policy, democracy technology researcher',
 		profile_completed_at: new Date('2024-01-02T13:45:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1794,12 +1766,10 @@ const seedUserData = [
 		name: 'Devon Chen',
 		avatar: 'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=150',
 
-		street: '450 Brannan St',
 		city: 'San Francisco',
 		state: 'CA',
 		zip: '94107',
 		congressional_district: 'CA-11',
-		phone: '+1-415-555-0654',
 
 		latitude: 37.7816,
 		longitude: -122.3928,
@@ -1828,7 +1798,6 @@ const seedUserData = [
 		organization: 'Freelance',
 		location: 'SOMA, San Francisco',
 		connection: 'Crypto developer interested in decentralized governance',
-		connection_details: 'Blockchain developer, new to civic engagement',
 		profile_completed_at: new Date('2024-01-10T22:30:00Z'),
 		profile_visibility: 'private'
 	},
@@ -1837,12 +1806,10 @@ const seedUserData = [
 		name: 'Lisa Park',
 		avatar: 'https://images.unsplash.com/photo-1551836022-deb4988cc6c0?w=150',
 
-		street: '815 Eddy St',
 		city: 'San Francisco',
 		state: 'CA',
 		zip: '94109',
 		congressional_district: 'CA-11',
-		phone: '+1-415-555-0987',
 
 		latitude: 37.7837,
 		longitude: -122.4135,
@@ -1874,7 +1841,6 @@ const seedUserData = [
 		organization: 'Electronic Frontier Foundation',
 		location: 'Tenderloin, San Francisco',
 		connection: 'Digital rights lawyer fighting for online privacy',
-		connection_details: 'EFF staff attorney, digital privacy advocate for 8 years',
 		profile_completed_at: new Date('2024-01-01T16:45:00Z'),
 		profile_visibility: 'public'
 	},
@@ -1883,12 +1849,10 @@ const seedUserData = [
 		name: 'Marcus Williams',
 		avatar: 'https://images.unsplash.com/photo-1556157382-0b0c6b8ac6ae?w=150',
 
-		street: '726 Broadway',
 		city: 'New York',
 		state: 'NY',
 		zip: '10003',
 		congressional_district: 'NY-12',
-		phone: '+1-212-555-0432',
 
 		latitude: 40.7282,
 		longitude: -73.9942,
@@ -1917,7 +1881,6 @@ const seedUserData = [
 		organization: 'New York University',
 		location: 'Greenwich Village, New York',
 		connection: 'Political science student researching digital democracy',
-		connection_details: 'Masters in Political Science, thesis on blockchain governance',
 		profile_completed_at: new Date('2024-01-08T19:30:00Z'),
 		profile_visibility: 'private'
 	}
@@ -2060,7 +2023,6 @@ async function seedCongressionalData() {
 				district: '11',
 				chamber: 'house',
 				office_code: 'CA11',
-				phone: '(202) 225-4965',
 				email: 'sf.nancy@mail.house.gov',
 				is_active: true,
 				office_address: '1236 3rd Street, Suite 1',
@@ -2081,7 +2043,6 @@ async function seedCongressionalData() {
 				district: '09',
 				chamber: 'house',
 				office_code: 'WA09',
-				phone: '(202) 225-8901',
 				email: null, // Some don't have public emails
 				is_active: true,
 				office_address: '101 Evergreen Building, 15 S Grady Way',
@@ -2102,7 +2063,6 @@ async function seedCongressionalData() {
 				district: 'Senior',
 				chamber: 'senate',
 				office_code: 'CA-Senior',
-				phone: '(202) 224-3841',
 				email: null,
 				is_active: false, // Historical data
 				office_address: '1 Post Street, Suite 2450',
@@ -2123,7 +2083,6 @@ async function seedCongressionalData() {
 				district: 'Senior',
 				chamber: 'senate',
 				office_code: 'VT-Senior',
-				phone: '(202) 224-4242',
 				email: null,
 				is_active: false, // Retired
 				office_address: '87 State Street, Room 338',
