@@ -1,10 +1,11 @@
 <!--
 UNIFIED ADDRESS COLLECTION MODAL - Replaces AddressCollectionModal.svelte
 Uses UnifiedModal system for consistent behavior and z-index management.
+NOW USES IDENTITY VERIFICATION FIRST FLOW (self.xyz NFC passport or Didit.me government ID)
 -->
 <script lang="ts">
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
-	import { AddressCollectionContent } from '$lib/components/auth/parts';
+	import IdentityVerificationFlow from '$lib/components/auth/IdentityVerificationFlow.svelte';
 	import { createModalStore } from '$lib/stores/modalSystem.svelte';
 
 	// Connect to modal system
@@ -79,17 +80,27 @@ Uses UnifiedModal system for consistent behavior and z-index management.
 	bind:this={modal}
 	id="address-collection-modal"
 	type="address"
-	size="md"
+	size="lg"
 	showCloseButton={true}
 	closeOnBackdrop={true}
 	closeOnEscape={true}
 >
 	{#snippet children(data)}
 		{#if data?.template}
-			<AddressCollectionContent
-				template={data.template}
-				onclose={modal.close}
-				oncomplete={handleComplete}
+			<IdentityVerificationFlow
+				userId="temp-user-id"
+				templateSlug={data.template.title}
+				skipValueProp={false}
+				on:complete={(event) => {
+					// Identity verification complete - extract address from verified data
+					handleComplete({
+						address: '', // Address will be extracted from verification data
+						verified: event.detail.verified,
+						representatives: []
+					});
+				}}
+				on:cancel={modal.close}
+				on:back={modal.close}
 			/>
 		{/if}
 	{/snippet}
