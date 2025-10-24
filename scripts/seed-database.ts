@@ -2173,8 +2173,15 @@ async function seedUserRepresentativeRelationships(
 async function seedBetaFeatures() {
 	console.log('🧪 Seeding beta feature data...');
 
-	if (!isFeatureEnabled('CASCADE_ANALYTICS')) {
-		console.log('⚠️  CASCADE_ANALYTICS not enabled, skipping cascade seeding');
+	// Check if CASCADE_ANALYTICS is enabled (wrap in try-catch for production)
+	try {
+		if (!isFeatureEnabled('CASCADE_ANALYTICS')) {
+			console.log('⚠️  CASCADE_ANALYTICS not enabled, skipping cascade seeding');
+			return;
+		}
+	} catch (error) {
+		// Feature is OFF or ROADMAP in production, skip seeding
+		console.log('⚠️  CASCADE_ANALYTICS not available, skipping cascade seeding');
 		return;
 	}
 
