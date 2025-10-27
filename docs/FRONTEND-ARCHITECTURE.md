@@ -97,8 +97,8 @@ src/
 **Client-Side Rendered (CSR):**
 - Template editor (`/create`) - Rich interactive UI
 - Address collection modal - Client-side validation
-- Witness encryption - Browser-only cryptography (XChaCha20-Poly1305 to TEE)
-- ZK proof request - Proof Service API client (proof generated in TEE, not browser)
+- Message encryption - Browser-only cryptography (XChaCha20-Poly1305 to TEE for congressional delivery)
+- ZK proof generation - Browser WASM Halo2 proving (address never leaves browser)
 
 **Progressive Enhancement Pattern:**
 

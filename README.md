@@ -19,10 +19,10 @@ Communiqué is the **frontend application** that implements VOTER Protocol's cry
 - Template browsing, creation, and customization
 - OAuth authentication (Google, Facebook, Twitter, LinkedIn, Discord)
 - Address validation and congressional district lookup
-- Halo2 zero-knowledge proofs (2-5s TEE-based proving)
+- Halo2 zero-knowledge proofs (600ms-10s device-dependent browser-native proving)
 - Message delivery via CWC API (congressional offices)
 - 3-layer content moderation (OpenAI + Gemini/Claude + human)
-- Encrypted delivery through AWS Nitro Enclaves (ARM-based TEE, hypervisor-isolated, independently audited 2025)
+- Encrypted message delivery to congressional offices (hardware-attested encryption)
 
 **What voter-protocol handles:**
 
@@ -45,23 +45,21 @@ Browser (Client-Side)
 ├─ OAuth login (5 providers)
 ├─ Address collection → Census Bureau geocoding
 ├─ Template selection → Variable customization
-├─ Witness encryption (XChaCha20-Poly1305 to TEE)
-└─ Proof request → Proof Service API
+├─ Shadow Atlas witness generation (WASM)
+├─ Halo2 proof generation (600ms-10s device-dependent browser WASM)
+│  ├─ Web Workers (4 workers for parallel Poseidon hashing)
+│  ├─ Two-tier Merkle path (district tree + global tree)
+│  └─ K=12 circuit (4K constraints, optimized from K=14)
+└─ Message encryption (XChaCha20-Poly1305)
 
 Server (SvelteKit 5 SSR)
 ├─ Supabase (Postgres) via Prisma
 ├─ Session management (@oslojs/crypto)
 ├─ CWC API integration (congressional delivery)
 ├─ 3-layer content moderation (OpenAI + Gemini/Claude + human)
-├─ self.xyz (70%) + Didit.me (30%) FREE identity verification
-├─ Proof Service client (witness generation API)
-└─ voter-protocol blockchain client (read-only queries)
-
-TEE Layer (AWS Nitro Enclaves, ARM Graviton)
-├─ Witness decryption (XChaCha20-Poly1305)
-├─ Halo2 proof generation (2-5s native Rust)
-├─ Two-tier Shadow Atlas (535 district trees + 1 global tree)
-└─ Encrypted delivery → CWC API
+├─ self.xyz (projected 70%) + Didit.me (projected 30%) FREE identity verification
+├─ Shadow Atlas API (district tree distribution via IPFS)
+└─ voter-protocol blockchain client (proof verification, reputation queries)
 
 Settlement Layer (voter-protocol repo)
 ├─ Scroll zkEVM (Ethereum L2)
@@ -101,10 +99,10 @@ Settlement Layer (voter-protocol repo)
 
 **Identity & Privacy:**
 
-- self.xyz (FREE NFC passport verification, 70% of users)
-- Didit.me (FREE government ID upload, 30% of users)
-- AWS Nitro Enclaves (ARM Graviton TEE, hypervisor-isolated, no Intel ME/AMD PSP)
-- XChaCha20-Poly1305 (end-to-end encryption)
+- self.xyz (FREE NFC passport verification, projected 70% adoption)
+- Didit.me (FREE government ID upload, projected 30% adoption)
+- Browser-native ZKPs (no cloud proving, address never leaves device)
+- XChaCha20-Poly1305 (end-to-end encryption for message delivery)
 
 **Blockchain (via voter-protocol):**
 
@@ -186,19 +184,24 @@ ENABLE_RESEARCH=true npm run dev   # Enable experimental features
 2. **OAuth login** - One of 5 providers (Google/Facebook/Twitter/LinkedIn/Discord)
 3. **Address collection** - Census Bureau geocoding → congressional district lookup
 4. **Customize template** - Fill variables, add personal connection block
-5. **Generate ZK proof** - Witness encrypted to TEE (2-5 seconds)
-   - Address encrypted in browser (XChaCha20-Poly1305)
-   - Witness sent to Proof Service API
-   - TEE generates Halo2 proof using native Rust (2-5s)
-   - Address never stored anywhere, only exists in TEE memory during proving
+5. **Generate ZK proof** - Browser-native Halo2 proving (600ms-10s device-dependent)
+   - Modern desktop (Apple M3, AMD Ryzen 9): 600-800ms
+   - Recent mobile (iPhone 15, Pixel 8): 2-3s
+   - Budget mobile (iPhone 12, budget Android): 5-10s
+   - Shadow Atlas district tree loaded from IPFS (progressive loading, cached in IndexedDB)
+   - Witness generation in Web Workers (4 parallel workers for Poseidon hashing)
+   - Halo2 proof generation in browser WASM (K=12 circuit, KZG commitment)
+   - Address never leaves browser, never sent to any server
 6. **Encrypt message** - XChaCha20-Poly1305 encryption in browser
-7. **Deliver via TEE** - AWS Nitro Enclaves (ARM) → CWC API → congressional office
+7. **Deliver to Congress** - Encrypted message → CWC API → congressional office
 8. **Build reputation** - On-chain reputation tracking (Phase 1)
 9. **Earn rewards** - Token rewards launch in Phase 2 (12-18 months)
 
-**Zero-knowledge proof generation happens in TEE.** Your address is encrypted in browser, sent to Proof Service, decrypted in AWS Nitro Enclave (ARM-based TEE), proof generated in 2-5 seconds using native Rust, then discarded. Address never stored anywhere, never touches any database. Congressional offices verify proof on-chain (300-500k gas).
+**Zero-knowledge proof generation happens entirely in browser.** Your address is used to query Shadow Atlas district tree (downloaded from IPFS, cached locally), generate Merkle witness in Web Workers, then prove district membership using browser WASM. Address never leaves your device, never sent to any server. Congressional offices verify proof on-chain (~60-100k gas, estimated $0.002 per verification).
 
-**Encrypted delivery:** Plaintext exists only in: your browser → hardware-attested enclave → CWC API → congressional CRM. Platform operators cannot read messages.
+**Performance:** 600-800ms on modern desktop, 2-3s on recent mobile, 5-10s on budget devices. Proving happens entirely in browser—your address never leaves your device.
+
+**Encrypted delivery:** Message plaintext exists only in: your browser → CWC API → congressional CRM. Platform operators cannot read messages.
 
 ---
 
@@ -323,18 +326,19 @@ tests/                        # Integration, unit, e2e tests
 
 - **CWC API integration**: Official Communicating With Congress delivery
 - **Address validation**: Census Bureau geocoding → district lookup
-- **Encrypted delivery**: AWS Nitro Enclaves (ARM Graviton TEE, independently audited)
+- **Encrypted delivery**: End-to-end encryption (browser → CWC API)
 - **Delivery confirmation**: Cryptographic receipts with timestamps
 - **Representative lookup**: Automatic based on verified address
 
 ### Zero-Knowledge Verification
 
-- **TEE-based proving**: Halo2 proofs (2-5s in AWS Nitro Enclaves native Rust)
-- **Witness encryption**: Address encrypted in browser (XChaCha20-Poly1305)
-- **Two-tier Shadow Atlas**: 535 district trees + 1 global tree for efficient proving
-- **Privacy guarantee**: Address never stored, only exists in TEE memory during proving
-- **On-chain verification**: Congressional offices verify proofs (300-500k gas)
-- **Identity verification**: self.xyz (70%) + Didit.me (30%), both FREE
+- **Browser-native proving**: Halo2 proofs (600ms-10s device-dependent browser WASM)
+- **Shadow Atlas**: Two-tier Merkle tree (535 district trees + 1 global tree)
+- **Progressive loading**: District trees loaded from IPFS, cached in IndexedDB
+- **Web Workers**: Parallel Poseidon hashing across 4 workers for witness generation
+- **Privacy guarantee**: Address never leaves browser, never sent to any server
+- **On-chain verification**: Congressional offices verify proofs (~60-100k gas, estimated $0.002/user)
+- **Identity verification**: self.xyz (projected 70%) + Didit.me (projected 30%), both FREE
 - **Sybil resistance**: One verified identity = one account
 
 ### Multi-Agent Moderation
@@ -470,10 +474,10 @@ All OAuth providers need client ID/secret. CWC delivery requires API key. Check 
 
 ### ZK Proof Generation Fails
 
-- Check Proof Service API connectivity (witness generation endpoint)
-- Witness encryption must succeed (XChaCha20-Poly1305)
-- 2-5 second proving time is normal (TEE-based Halo2 proof)
-- TEE attestation verification may fail if PCR measurements invalid
+- Check Shadow Atlas IPFS availability (district tree download)
+- IndexedDB caching must be enabled (50MB district tree storage)
+- 600ms-10s proving time is normal (device-dependent browser WASM Halo2 proof)
+- Web Workers must be available (SharedArrayBuffer requires COOP/COEP headers)
 - Check browser console for detailed error messages
 
 ---

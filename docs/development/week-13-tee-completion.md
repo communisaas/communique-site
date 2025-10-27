@@ -6,6 +6,12 @@
 
 ---
 
+**⚠️ SCOPE CLARIFICATION**: This document describes TEE infrastructure for **encrypted message delivery** (XChaCha20-Poly1305 decryption → CWC API forwarding). TEE is NOT used for zero-knowledge proof generation. ZK proofs are generated entirely in browser via WebAssembly.
+
+**See**: `docs/architecture/ARCHITECTURE-DECISION-RECORD.md` for ZK proving architecture.
+
+---
+
 ## Summary
 
 Successfully implemented cloud-agnostic Trusted Execution Environment (TEE) infrastructure for encrypted congressional message delivery. The system supports GCP Confidential Space (primary), AWS Nitro Enclaves (future), and Azure Confidential VMs (future) through a unified abstraction layer.
@@ -124,7 +130,7 @@ Successfully implemented cloud-agnostic Trusted Execution Environment (TEE) infr
 ┌─────────────────────────────────────────────────────────────────┐
 │ Browser (Client)                                                │
 │                                                                 │
-│ 1. Generate ZK proof of district membership (8-12s)            │
+│ 1. Generate ZK proof in browser WASM (600ms-10s device-dependent) │
 │ 2. Encrypt message with XChaCha20-Poly1305                     │
 │    - Plaintext → Ciphertext + 24-byte nonce                    │
 │    - Key derived from user ID via scrypt                       │

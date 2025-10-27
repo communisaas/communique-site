@@ -61,14 +61,14 @@ contracts/near/
 ```
 packages/crypto/
 ├── encryption/
-│   ├── xchacha20poly1305.ts      # Message encryption (delivery) + witness encryption (TEE)
+│   ├── xchacha20poly1305.ts      # Message encryption (delivery only, for CWC API)
 │   └── passkey-derivation.ts     # Deterministic address generation
 ├── zk-proofs/
 │   ├── circuits/                 # Halo2 circuits (Rust)
 │   │   └── district-membership.rs # Halo2 two-tier Merkle proof circuit
-│   ├── tee-prover.ts             # TEE proof generation client (2-5s)
+│   ├── browser-prover.ts         # Browser WASM proof generation (600ms-10s device-dependent)
 │   ├── verifier.ts               # Proof verification
-│   └── shadow-atlas.ts           # Two-tier Shadow Atlas (535 district trees + 1 global tree)
+│   └── shadow-atlas.ts           # Two-tier Shadow Atlas (535 district trees + 1 global tree, IPFS)
 └── commitments/
     └── poseidon.ts               # Poseidon hash for ZK commitments
 ```
@@ -86,8 +86,8 @@ packages/crypto/
 
 ```
 packages/client/
-├── proof-service.ts              # Proof Service API client (witness generation)
-├── tee-prover.ts                 # TEE-based Halo2 proof generation
+├── browser-prover.ts             # Browser WASM Halo2 proof generation (600ms-10s device-dependent)
+├── shadow-atlas-loader.ts        # IPFS Shadow Atlas loading (progressive, IndexedDB caching)
 ├── chain-signatures.ts           # NEAR Chain Signatures (deterministic addresses)
 ├── reputation.ts                 # On-chain reputation queries
 ├── challenges.ts                 # Challenge market interactions
@@ -101,13 +101,13 @@ packages/client/
 **Example Usage:**
 ```typescript
 // Any app can use this
-import { ProofServiceClient, ReputationClient } from '@voter-protocol/client';
+import { BrowserProver, ReputationClient } from '@voter-protocol/client';
 
-// Generate zero-knowledge proof via TEE (2-5 seconds)
-const proofService = new ProofServiceClient();
-const encryptedWitness = await encryptWitness(address, teePublicKey);
-const proof = await proofService.generateProof(encryptedWitness, district);
-// Address encrypted in browser, decrypted only in TEE, never stored anywhere
+// Generate zero-knowledge proof in browser WASM (600ms-10s device-dependent)
+const prover = new BrowserProver();
+await prover.loadShadowAtlas(district); // Load district tree from IPFS, cache in IndexedDB
+const proof = await prover.generateProof(address, district);
+// Address NEVER leaves browser, proof generation entirely client-side
 
 const reputation = new ReputationClient(scrollProvider);
 const score = await reputation.getScore('0xABCD...1234');
@@ -172,8 +172,8 @@ src/lib/
 
 ```
 integrations/voter-protocol/
-├── proof-service-wrapper.ts      # TEE-based Halo2 proof generation wrapper
-├── witness-encryption.ts         # Witness encryption utilities
+├── browser-prover-wrapper.ts     # Browser WASM proof generation wrapper with UI
+├── shadow-atlas-manager.ts       # Shadow Atlas loading/caching manager
 ├── congressional-certification.ts # Certify messages to Congress
 └── reputation-display.ts         # Show reputation in Communique UI
 ```
@@ -181,24 +181,24 @@ integrations/voter-protocol/
 **Pattern:**
 ```typescript
 // communique wraps protocol SDK with app-specific logic
-import { ProofServiceClient, encryptWitness } from '@voter-protocol/client';
+import { BrowserProver } from '@voter-protocol/client';
 import { db } from '$lib/core/db';
 
-export class CommuniqueProofServiceWrapper {
-  private proofService: ProofServiceClient;
+export class CommuniqueBrowserProverWrapper {
+  private prover: BrowserProver;
 
   async generateProofWithUI(userId: string, address: string, district: string) {
-    // Show progress UI to user (2-5 seconds proving time)
-    this.showProgressIndicator("Encrypting witness...");
+    // Show progress UI to user (600ms-10s device-dependent proving time)
+    this.showProgressIndicator("Loading Shadow Atlas from IPFS...");
 
-    // Protocol: Encrypt witness to TEE public key
-    const encryptedWitness = await encryptWitness(address, this.proofService.getTEEPublicKey());
+    // Protocol: Load district tree (progressive loading, IndexedDB caching)
+    await this.prover.loadShadowAtlas(district);
 
-    this.showProgressIndicator("Generating zero-knowledge proof in TEE...");
+    this.showProgressIndicator("Generating zero-knowledge proof in browser...");
 
-    // Protocol: Generate Halo2 proof in TEE
-    const proof = await this.proofService.generateProof(encryptedWitness, district);
-    // Address encrypted in browser, decrypted only in TEE, never stored anywhere
+    // Protocol: Generate Halo2 proof in browser WASM
+    const proof = await this.prover.generateProof(address, district);
+    // Address NEVER leaves browser, proof generation entirely client-side
 
     // Application: Store proof result reference (not PII)
     await db.user.update({
@@ -276,17 +276,17 @@ features/
 npm install @voter-protocol/client @voter-protocol/crypto @voter-protocol/types
 
 // 2. Use in communique application
-import { ProofServiceClient, encryptWitness } from '@voter-protocol/client';
+import { BrowserProver } from '@voter-protocol/client';
 import { generatePoseidonCommitment } from '@voter-protocol/crypto';
 
 // 3. Wrap with application logic
 export class CommuniqueUser {
   async verifyDistrict(userId: string, address: string, district: string) {
-    // Protocol: Encrypt witness to TEE, generate Halo2 proof (2-5 seconds)
-    const proofService = new ProofServiceClient();
-    const encryptedWitness = await encryptWitness(address, proofService.getTEEPublicKey());
-    const proof = await proofService.generateProof(encryptedWitness, district);
-    // Address encrypted in browser, decrypted only in TEE, NEVER stored anywhere
+    // Protocol: Load Shadow Atlas, generate Halo2 proof in browser (600ms-10s device-dependent)
+    const prover = new BrowserProver();
+    await prover.loadShadowAtlas(district); // IPFS load, IndexedDB cache
+    const proof = await prover.generateProof(address, district);
+    // Address NEVER leaves browser, proof generation entirely client-side
 
     // Application: Store ONLY verification status (not PII)
     await db.user.update({
@@ -343,15 +343,15 @@ export class CommuniqueUser {
 
 ### voter-protocol (NEEDS BUILDING)
 ```
-❌ contracts/scroll/          # Smart contracts not deployed
-❌ packages/crypto/           # Halo2 proof SDK not built
-❌ packages/client/           # Client SDK not built
-✅ ARCHITECTURE.md            # Specification complete (Halo2, no database)
+❌ contracts/scroll/          # Smart contracts not deployed (DistrictGate.sol ~60-100k gas)
+❌ packages/crypto/           # Browser WASM Halo2 prover not built (600ms-10s device-dependent)
+❌ packages/client/           # Client SDK not built (BrowserProver, ShadowAtlasLoader)
+✅ ARCHITECTURE.md            # Specification complete (browser WASM, no database)
 ✅ TECHNICAL.md               # Implementation spec complete
 ✅ SECURITY.md                # Threat model complete
 ```
 
-**Priority:** Build Halo2 proof generation SDK + Scroll smart contracts
+**Priority:** Build browser WASM Halo2 prover + Shadow Atlas IPFS distribution + Scroll smart contracts
 
 ### communique (PARTIALLY COMPLETE)
 ```
@@ -359,11 +359,11 @@ export class CommuniqueUser {
 ✅ src/lib/core/auth/                  # OAuth + passkey auth (correct)
 ✅ src/lib/core/congress/              # CWC integration (correct)
 ✅ prisma/schema.prisma                # Clean schema (metadata only, NO PII)
-❌ src/lib/core/blockchain/halo2.ts    # NOT STARTED (waiting on SDK)
-❌ Integration with @voter-protocol/client # Can't integrate until SDK exists
+❌ src/lib/integrations/voter-protocol/browser-prover-wrapper.ts # NOT STARTED (waiting on SDK)
+❌ Integration with @voter-protocol/client # Can't integrate until browser WASM SDK exists
 ```
 
-**Blocker:** Can't integrate protocol SDK until voter-protocol builds Halo2 proof generation.
+**Blocker:** Can't integrate protocol SDK until voter-protocol builds browser WASM Halo2 prover + Shadow Atlas IPFS distribution.
 
 ---
 
@@ -375,21 +375,22 @@ export class CommuniqueUser {
 1. **Halo2 Circuit Implementation** (Rust)
    - Merkle tree membership circuit
    - Shadow Atlas district proof
-   - 4-6 second proving time on commodity hardware
+   - 600ms-10s device-dependent proving time (desktop 600-800ms, mobile 2-3s, budget 5-10s)
 
 2. **Crypto SDK** (TypeScript + Rust WASM)
-   - Halo2 proof generation (browser-based, 4-6s)
-   - XChaCha20-Poly1305 encryption (message delivery only)
+   - Halo2 proof generation (browser WASM, 600ms-10s device-dependent)
+   - XChaCha20-Poly1305 encryption (message delivery only, for CWC API)
    - Poseidon commitment generation
    - Passkey-based deterministic address derivation
 
 3. **Smart Contracts** (Solidity)
-   - DistrictGate.sol (Halo2 proof verification on Scroll L2)
+   - DistrictGate.sol (Halo2 proof verification on Scroll L2, ~60-100k gas)
    - ReputationRegistry.sol (ERC-8004 on-chain reputation)
    - Deploy to Scroll testnet
 
 4. **Client SDK** (TypeScript)
-   - Halo2Prover (browser-based proof generation)
+   - BrowserProver (browser WASM proof generation, 600ms-10s device-dependent)
+   - ShadowAtlasLoader (IPFS loading, IndexedDB caching)
    - Chain Signatures wrapper (deterministic addresses)
    - Reputation queries
 
@@ -409,13 +410,14 @@ export class CommuniqueUser {
    ```
 
 2. **Create Integration Wrappers**
-   - `src/lib/core/integrations/voter-protocol/halo2-wrapper.ts`
-   - UI progress indicators for 4-6s proving time
+   - `src/lib/core/integrations/voter-protocol/browser-prover-wrapper.ts`
+   - UI progress indicators for 600ms-10s device-dependent proving time
+   - Shadow Atlas loading/caching manager
    - Application-specific usage patterns
 
 3. **Update Data Flows**
-   - Address collection → Halo2 proof generation (client-side only)
-   - Template personalization → encrypted delivery (no storage)
+   - Address collection → Browser WASM proof generation (address never leaves browser)
+   - Template personalization → encrypted delivery (XChaCha20 for CWC API only)
    - Congressional delivery → ZK proof verification
 
 4. **Database Schema Updates**
@@ -428,8 +430,9 @@ export class CommuniqueUser {
 
 1. Deploy Scroll smart contracts to mainnet
 2. Update communique to use mainnet contracts
-3. Load test Halo2 proving on various devices
-4. Launch
+3. Load test browser WASM proving on various devices (desktop, mobile, budget)
+4. Verify Shadow Atlas IPFS distribution and caching
+5. Launch
 
 ---
 
@@ -514,26 +517,27 @@ communique/
 1. Create `packages/crypto/zk-proofs/circuits/` directory
 2. Implement Halo2 Merkle membership circuit (Rust)
 3. Build WASM wrapper for browser proving
-4. Test 4-6 second proving time on commodity hardware
-5. Begin Scroll smart contract implementation
+4. Test 600ms-10s device-dependent proving time (desktop, mobile, budget devices)
+5. Implement Shadow Atlas IPFS loader with IndexedDB caching
+6. Begin Scroll smart contract implementation
 
 ### This Week (communique):
 1. Update Prisma schema to remove all PII fields
 2. Add `district_verified` and `last_proof_timestamp` fields
-3. Prepare UI for 4-6s proof generation progress indicators
-4. Remove any CipherVault integration code
+3. Prepare UI for 600ms-10s device-dependent proof generation progress indicators
+4. Implement Shadow Atlas loading status UI
 
 ### Next 2-4 Weeks:
 1. Complete Halo2 circuit + WASM build (voter-protocol)
 2. Deploy DistrictGate.sol to Scroll testnet (voter-protocol)
-3. Publish `@voter-protocol/crypto` package
-4. Integrate Halo2 prover in communique
-5. End-to-end testing on testnet
+3. Publish `@voter-protocol/crypto` package with browser WASM prover
+4. Integrate browser WASM Halo2 prover in communique
+5. End-to-end testing on testnet (verify device performance ranges)
 
 ---
 
-**Principle:** Protocol primitives enable applications. Don't build application logic into protocol. Don't rebuild protocol primitives in applications. Addresses encrypted in browser, decrypted only in TEE, NEVER stored anywhere.
+**Principle:** Protocol primitives enable applications. Don't build application logic into protocol. Don't rebuild protocol primitives in applications. Addresses NEVER leave browser (not even encrypted), NEVER transmitted anywhere, NEVER stored in any database.
 
-**Current Blocker:** voter-protocol needs to build TEE prover service + Proof Service API before communique can integrate.
+**Current Blocker:** voter-protocol needs to build browser WASM Halo2 prover + Shadow Atlas IPFS distribution before communique can integrate.
 
-**Next Step:** Build Halo2 two-tier Merkle circuit, deploy TEE prover in AWS Nitro, test 2-5s proving time, publish SDK.
+**Next Step:** Build Halo2 two-tier Merkle circuit, compile to WebAssembly, implement Shadow Atlas IPFS loader with IndexedDB caching, test 600ms-10s device-dependent proving time, publish SDK.
