@@ -34,17 +34,22 @@ export async function getAttestationToken() {
 async function getGCPAttestationToken() {
 	try {
 		// GCP metadata server endpoint for OIDC tokens
-		const metadataUrl = 'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity';
+		const metadataUrl =
+			'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity';
 
 		// Audience for Workload Identity Federation
-		const audience = process.env.GCP_WORKLOAD_IDENTITY_AUDIENCE ||
+		const audience =
+			process.env.GCP_WORKLOAD_IDENTITY_AUDIENCE ||
 			`//iam.googleapis.com/projects/${process.env.GCP_PROJECT_ID}/locations/global/workloadIdentityPools/communique-tee-pool/providers/communique-tee-provider`;
 
-		const response = await fetch(`${metadataUrl}?audience=${encodeURIComponent(audience)}&format=full`, {
-			headers: {
-				'Metadata-Flavor': 'Google'
+		const response = await fetch(
+			`${metadataUrl}?audience=${encodeURIComponent(audience)}&format=full`,
+			{
+				headers: {
+					'Metadata-Flavor': 'Google'
+				}
 			}
-		});
+		);
 
 		if (!response.ok) {
 			throw new Error(`GCP metadata server error: ${response.status}`);
@@ -97,8 +102,8 @@ async function getAWSAttestationToken() {
 async function getAzureAttestationToken() {
 	try {
 		// Azure uses Microsoft Attestation service (MAA)
-		const maaEndpoint = process.env.AZURE_ATTESTATION_ENDPOINT ||
-			'https://sharedeus2.eus2.attest.azure.net';
+		const maaEndpoint =
+			process.env.AZURE_ATTESTATION_ENDPOINT || 'https://sharedeus2.eus2.attest.azure.net';
 
 		// TODO: Implement Azure MAA attestation when adding Azure support
 		throw new Error('Azure Confidential VM attestation not yet implemented');

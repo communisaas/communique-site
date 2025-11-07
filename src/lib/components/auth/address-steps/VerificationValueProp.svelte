@@ -75,14 +75,15 @@
 	<div class="space-y-8">
 		<!-- Hero Value Prop -->
 		<div class="text-center">
-			<div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg">
+			<div
+				class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg"
+			>
 				<Shield class="h-8 w-8 text-white" />
 			</div>
-			<h2 class="mb-3 text-3xl font-bold text-slate-900">
-				Why Verify Your Identity?
-			</h2>
+			<h2 class="mb-3 text-3xl font-bold text-slate-900">Why Verify Your Identity?</h2>
 			<p class="mx-auto max-w-2xl text-lg text-slate-600">
-				Congressional offices receive thousands of messages daily. Verification proves you're a real constituent—not a bot, not spam, not someone from another district.
+				Congressional offices receive thousands of messages daily. Verification proves you're a real
+				constituent—not a bot, not spam, not someone from another district.
 			</p>
 		</div>
 
@@ -91,10 +92,13 @@
 			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				{#each stats as stat}
 					{@const colors = colorClasses[stat.color as keyof typeof colorClasses]}
-					<div class="rounded-xl border {colors.border} {colors.bg} p-5 text-center shadow-sm transition-shadow hover:shadow-md">
+					{@const Icon = stat.icon}
+					<div
+						class="rounded-xl border {colors.border} {colors.bg} p-5 text-center shadow-sm transition-shadow hover:shadow-md"
+					>
 						<div class="mb-3 flex justify-center">
 							<div class="rounded-full bg-white p-2 shadow-sm">
-								<svelte:component this={stat.icon} class="h-6 w-6 {colors.text}" />
+								<Icon class="h-6 w-6 {colors.text}" />
 							</div>
 						</div>
 						<div class="mb-1 text-3xl font-bold {colors.textDark}">
@@ -135,9 +139,7 @@
 					</div>
 					<div class="flex-1">
 						<p class="font-medium text-blue-900">Reputation Score: High</p>
-						<p class="mt-1 text-sm text-blue-700">
-							Based on verified civic participation history
-						</p>
+						<p class="mt-1 text-sm text-blue-700">Based on verified civic participation history</p>
 					</div>
 				</div>
 				<div class="flex items-start gap-3 rounded-lg bg-slate-50 p-4">
@@ -156,38 +158,43 @@
 
 		<!-- Privacy Guarantee -->
 		{#if showPrivacy}
-			<div class="rounded-xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm">
+			<div
+				class="rounded-xl border border-green-200 bg-gradient-to-br from-green-50 to-emerald-50 p-6 shadow-sm"
+			>
 				<div class="flex items-start gap-4">
 					<div class="rounded-full bg-green-100 p-3 shadow-sm">
 						<Lock class="h-6 w-6 text-green-700" />
 					</div>
 					<div class="flex-1 space-y-3">
-						<h3 class="text-lg font-semibold text-slate-900">
-							Your Privacy is Our Foundation
-						</h3>
+						<h3 class="text-lg font-semibold text-slate-900">Your Privacy is Our Foundation</h3>
 						<div class="space-y-2 text-sm text-slate-700">
 							<p class="flex items-start gap-2">
 								<span class="mt-0.5 font-bold text-green-600">✓</span>
 								<span>
-									<span class="font-semibold">Your address never leaves this device.</span> We use cryptographic proofs to verify your congressional district without ever storing your location.
+									<span class="font-semibold">Your address never leaves this device.</span> We use cryptographic
+									proofs to verify your congressional district without ever storing your location.
 								</span>
 							</p>
 							<p class="flex items-start gap-2">
 								<span class="mt-0.5 font-bold text-green-600">✓</span>
 								<span>
-									<span class="font-semibold">We don't store identity documents.</span> Verification happens through trusted third-party partners who don't share your personal data with us.
+									<span class="font-semibold">We don't store identity documents.</span> Verification
+									happens through trusted third-party partners who don't share your personal data with
+									us.
 								</span>
 							</p>
 							<p class="flex items-start gap-2">
 								<span class="mt-0.5 font-bold text-green-600">✓</span>
 								<span>
-									<span class="font-semibold">What we store:</span> Verification status (yes/no) + timestamp. That's it. No names, no addresses, no documents.
+									<span class="font-semibold">What we store:</span> Verification status (yes/no) + timestamp.
+									That's it. No names, no addresses, no documents.
 								</span>
 							</p>
 							<p class="flex items-start gap-2">
 								<span class="mt-0.5 font-bold text-green-600">✓</span>
 								<span>
-									<span class="font-semibold">Congressional offices see:</span> "✓ Verified constituent from District X" – never your personal information.
+									<span class="font-semibold">Congressional offices see:</span> "✓ Verified constituent
+									from District X" – never your personal information.
 								</span>
 							</p>
 						</div>
@@ -199,9 +206,7 @@
 {:else if variant === 'compact'}
 	<div class="space-y-4">
 		<div class="text-center">
-			<h3 class="mb-2 text-lg font-semibold text-slate-900">
-				Verified Messages Get Results
-			</h3>
+			<h3 class="mb-2 text-lg font-semibold text-slate-900">Verified Messages Get Results</h3>
 			<p class="text-sm text-slate-600">
 				Congressional offices prioritize verified constituent communications
 			</p>
@@ -225,7 +230,8 @@
 				<div class="flex items-start gap-2">
 					<Lock class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
 					<p class="text-xs text-slate-700">
-						<span class="font-semibold">100% private:</span> Your address never stored. Congress sees only verification status.
+						<span class="font-semibold">100% private:</span> Your address never stored. Congress sees
+						only verification status.
 					</p>
 				</div>
 			</div>
@@ -235,7 +241,9 @@
 	<div class="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3">
 		<Shield class="h-5 w-5 flex-shrink-0 text-blue-600" />
 		<div class="flex-1 text-sm">
-			<span class="font-semibold text-blue-900">Verified messages get 3x higher response rates.</span>
+			<span class="font-semibold text-blue-900"
+				>Verified messages get 3x higher response rates.</span
+			>
 			<span class="text-blue-700">Your privacy is protected—we never store your address.</span>
 		</div>
 	</div>

@@ -532,7 +532,7 @@ export const VERIFICATION_METHODS: Record<VerificationMethod, VerificationMethod
 		method: 'government-id',
 		provider: 'didit.me',
 		displayName: 'Government ID',
-		description: 'Use your driver\'s license or state ID',
+		description: "Use your driver's license or state ID",
 		estimatedTime: '2-3 minutes',
 		recommended: false,
 		requiresDevice: 'any',

@@ -67,7 +67,8 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 					boot: true,
 					autoDelete: true,
 					initializeParams: {
-						sourceImage: 'projects/confidential-space-images-dev/global/images/family/confidential-space',
+						sourceImage:
+							'projects/confidential-space-images-dev/global/images/family/confidential-space',
 						diskSizeGb: '10'
 					}
 				}
@@ -134,7 +135,11 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 				}
 			],
 			tags: {
-				items: ['tee-workload', 'confidential-space', ...(deployConfig.tags ? Object.keys(deployConfig.tags) : [])]
+				items: [
+					'tee-workload',
+					'confidential-space',
+					...(deployConfig.tags ? Object.keys(deployConfig.tags) : [])
+				]
 			}
 		};
 
@@ -216,10 +221,7 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 	/**
 	 * Verify attestation token matches expected code hash
 	 */
-	async verifyAttestation(
-		token: AttestationToken,
-		expectedCodeHash: string
-	): Promise<boolean> {
+	async verifyAttestation(token: AttestationToken, expectedCodeHash: string): Promise<boolean> {
 		try {
 			// 1. Verify JWT signature (Google signs with public key)
 			const isValidSignature = await this.verifyJWTSignature(token.rawToken);
@@ -399,7 +401,7 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 	/**
 	 * Parse JWT token to extract claims
 	 */
-	private parseJWT(token: string): Record<string, any> {
+	private parseJWT(token: string): Record<string, unknown> {
 		const parts = token.split('.');
 		if (parts.length !== 3) {
 			throw new Error('Invalid JWT format');
@@ -407,7 +409,7 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 
 		const payload = parts[1];
 		const decoded = Buffer.from(payload, 'base64url').toString('utf-8');
-		return JSON.parse(decoded);
+		return JSON.parse(decoded) as Record<string, unknown>;
 	}
 
 	/**
@@ -431,14 +433,17 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 	/**
 	 * Create Compute Engine instance
 	 */
-	private async createComputeInstance(config: any): Promise<any> {
+	private async createComputeInstance(config: Record<string, unknown>): Promise<{
+		id: string;
+		status: string;
+	}> {
 		// TODO: Implement Compute Engine API call
 		// POST https://compute.googleapis.com/compute/v1/projects/{project}/zones/{zone}/instances
 
 		// For now, mock response
 		console.log('Creating GCP Confidential VM:', config.name);
 		return {
-			id: config.name,
+			id: config.name as string,
 			status: 'PROVISIONING'
 		};
 	}

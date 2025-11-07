@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Base stage
-FROM node:20.11.1-slim as base
+FROM node:20-slim as base
 
 LABEL fly_launch_runtime="NodeJS/Prisma"
 
@@ -32,6 +32,15 @@ ARG SUPABASE_DATABASE_URL
 ENV DATABASE_URL=${SUPABASE_DATABASE_URL}
 ARG CWC_API_KEY
 ENV CWC_API_KEY=$CWC_API_KEY
+# API keys for content moderation (can be placeholders for build)
+ARG OPENAI_API_KEY=sk-test-placeholder
+ARG GEMINI_API_KEY=test-placeholder
+ARG ANTHROPIC_API_KEY=test-placeholder
+ARG CONSENSUS_TYPE=single
+ENV OPENAI_API_KEY=$OPENAI_API_KEY
+ENV GEMINI_API_KEY=$GEMINI_API_KEY
+ENV ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY
+ENV CONSENSUS_TYPE=$CONSENSUS_TYPE
 RUN npm run build
 
 # Remove development dependencies

@@ -171,7 +171,9 @@
 	<button
 		type="button"
 		onclick={initiateVerification}
-		disabled={isLoading || verificationState === 'initializing' || verificationState === 'redirecting'}
+		disabled={isLoading ||
+			verificationState === 'initializing' ||
+			verificationState === 'redirecting'}
 		class="group relative w-full rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-6 py-4 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-60"
 	>
 		<span class="flex items-center justify-center gap-2">
@@ -198,8 +200,8 @@
 			<div class="flex-1 text-sm">
 				<p class="font-medium text-slate-900">Trusted verification partner</p>
 				<p class="mt-1 text-slate-600">
-					Didit.me is a SOC 2 Type II certified identity verification provider trusted by
-					government agencies and financial institutions.
+					Didit.me is a SOC 2 Type II certified identity verification provider trusted by government
+					agencies and financial institutions.
 				</p>
 			</div>
 		</div>

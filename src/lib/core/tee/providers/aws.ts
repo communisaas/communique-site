@@ -85,7 +85,8 @@ export class AWSNitroEnclavesProvider implements TEEProvider {
 		const eifLocation = await this.getOrBuildEnclaveImage(imageUri, deployConfig.imageDigest);
 
 		// 3. Launch EC2 parent instance with Nitro Enclaves support
-		const instanceType = this.config.instanceType || this.selectInstanceType(deployConfig.resources);
+		const instanceType =
+			this.config.instanceType || this.selectInstanceType(deployConfig.resources);
 		const instanceName = `communique-tee-${Date.now()}`;
 
 		const instanceConfig = {
@@ -219,10 +220,7 @@ export class AWSNitroEnclavesProvider implements TEEProvider {
 	 * 5. Verify PCR4 (instance ID) matches parent instance
 	 * 6. Verify timestamp is recent (not replay attack)
 	 */
-	async verifyAttestation(
-		token: AttestationToken,
-		expectedCodeHash: string
-	): Promise<boolean> {
+	async verifyAttestation(token: AttestationToken, expectedCodeHash: string): Promise<boolean> {
 		try {
 			const decoded = this.decodeCBORAttestation(token.rawToken);
 
@@ -261,12 +259,7 @@ export class AWSNitroEnclavesProvider implements TEEProvider {
 			const expectedPCR2 = await this.calculateExpectedPCR2(expectedCodeHash);
 
 			if (actualPCR2 !== expectedPCR2) {
-				console.error(
-					'Nitro attestation: PCR2 mismatch',
-					actualPCR2,
-					'expected',
-					expectedPCR2
-				);
+				console.error('Nitro attestation: PCR2 mismatch', actualPCR2, 'expected', expectedPCR2);
 				return false;
 			}
 
@@ -424,10 +417,7 @@ export class AWSNitroEnclavesProvider implements TEEProvider {
 	 *
 	 * Returns S3 location or local path to .eif file
 	 */
-	private async getOrBuildEnclaveImage(
-		dockerImage: string,
-		imageDigest: string
-	): Promise<string> {
+	private async getOrBuildEnclaveImage(dockerImage: string, imageDigest: string): Promise<string> {
 		// In production: Check S3 for pre-built .eif file
 		const eifKey = `enclaves/communique-tee-${imageDigest}.eif`;
 		const s3Bucket = process.env.AWS_ENCLAVE_BUCKET || 'communique-nitro-enclaves';
@@ -529,7 +519,11 @@ echo "Nitro Enclave started successfully"
 	/**
 	 * Launch EC2 instance via AWS SDK
 	 */
-	private async launchEC2Instance(config: any): Promise<any> {
+	private async launchEC2Instance(config: Record<string, unknown>): Promise<{
+		InstanceId: string;
+		Placement?: { AvailabilityZone: string };
+		State: { Name: string };
+	}> {
 		// TODO: Implement AWS SDK EC2 RunInstances call
 		// import { EC2Client, RunInstancesCommand } from "@aws-sdk/client-ec2";
 		//
@@ -650,7 +644,17 @@ echo "Nitro Enclave started successfully"
 	 *   signature: bytes
 	 * ]
 	 */
-	private decodeCBORAttestation(base64Cbor: string): any {
+	private decodeCBORAttestation(base64Cbor: string): {
+		module_id: string;
+		timestamp: number;
+		digest: string;
+		pcrs: Record<string, string>;
+		certificate: string;
+		cabundle: string[];
+		public_key: string;
+		nonce: string;
+		user_data: string;
+	} {
 		// TODO: Implement CBOR decoding with proper library
 		// import { decode } from 'cbor';
 		//
@@ -751,9 +755,7 @@ echo "Nitro Enclave started successfully"
 	private arePCRsAllZeros(pcrs: Record<string, string>): boolean {
 		const zeroPattern = /^0+$/;
 
-		return Object.values(pcrs || {}).every((pcr) =>
-			zeroPattern.test(pcr.replace(/:/g, ''))
-		);
+		return Object.values(pcrs || {}).every((pcr) => zeroPattern.test(pcr.replace(/:/g, '')));
 	}
 
 	/**

@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { Shield, QrCode, Smartphone, Check, Loader2, AlertCircle, RefreshCw } from '@lucide/svelte';
+	import {
+		Shield,
+		QrCode,
+		Smartphone,
+		Check,
+		Loader2,
+		AlertCircle,
+		RefreshCw
+	} from '@lucide/svelte';
 	import { createEventDispatcher } from 'svelte';
 
 	interface Props {
@@ -239,7 +247,9 @@
 				</div>
 
 				{#if verificationState === 'waiting'}
-					<div class="mt-4 flex items-center justify-center gap-2 text-sm font-medium text-blue-700">
+					<div
+						class="mt-4 flex items-center justify-center gap-2 text-sm font-medium text-blue-700"
+					>
 						<Loader2 class="h-4 w-4 animate-spin" />
 						<span>Waiting for verification...</span>
 					</div>

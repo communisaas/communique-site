@@ -152,7 +152,9 @@
 			<!-- Statistics -->
 			<div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
 				<div class="rounded-lg border border-green-200 bg-green-50 p-4 text-center">
-					<div class="mb-1 flex items-center justify-center gap-1 text-2xl font-bold text-green-700">
+					<div
+						class="mb-1 flex items-center justify-center gap-1 text-2xl font-bold text-green-700"
+					>
 						<TrendingUp class="h-6 w-6" />
 						<span>3x</span>
 					</div>

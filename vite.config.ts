@@ -8,6 +8,10 @@ export default defineConfig({
 		exclude: ['chunk-PCGYAOMB.js']
 	},
 
+	ssr: {
+		noExternal: ['@selfxyz/qrcode', 'react-spinners', '@voter-protocol/client']
+	},
+
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
 		environment: 'jsdom',

@@ -523,8 +523,8 @@
 							<CheckCircle2 class="h-5 w-5 text-green-600" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-slate-900">Message sent successfully</h2>
-							<p class="text-sm text-slate-600">Your voice has been added to the campaign</p>
+							<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
+							<p class="text-sm text-slate-600">Queued for delivery</p>
 						</div>
 					</div>
 					<button
@@ -549,8 +549,8 @@
 				<!-- Prominent URL Copy Section -->
 				<div class="rounded-xl border-2 border-slate-200 bg-slate-50 p-6">
 					<div class="mb-4 text-center">
-						<h3 class="mb-2 text-lg font-semibold text-slate-900">Share this campaign</h3>
-						<p class="text-sm text-slate-600">Help others join the movement</p>
+						<h3 class="mb-2 text-lg font-semibold text-slate-900">Share this template</h3>
+						<p class="text-sm text-slate-600">Others can use it too</p>
 					</div>
 
 					<!-- The URL Display -->

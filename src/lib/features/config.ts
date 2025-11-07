@@ -9,7 +9,6 @@ export enum FeatureStatus {
 	OFF = 'off', // Not available
 	BETA = 'beta', // Available for testing
 	ON = 'on', // Production ready
-	RESEARCH = 'research', // Research only, not for production
 	ROADMAP = 'roadmap' // Planned, see ROADMAP.md
 }
 
@@ -68,16 +67,6 @@ export function isFeatureEnabled(feature: FeatureName): boolean {
 		return betaEnabled;
 	}
 
-	if (status === FeatureStatus.RESEARCH) {
-		if (isProduction) {
-			throw new Error(
-				`[Feature Flags] BLOCKED: Research feature '${feature}' cannot be enabled in production. ` +
-					`Research features are experimental only.`
-			);
-		}
-		return process.env.ENABLE_RESEARCH === 'true';
-	}
-
 	if (status === FeatureStatus.ROADMAP) {
 		if (isProduction) {
 			throw new Error(
@@ -113,13 +102,13 @@ export function getFeatureStatus(feature: FeatureName): FeatureStatus {
 }
 
 /**
- * Check if a feature is in development (beta or research)
+ * Check if a feature is in development (beta)
  * @param feature - The feature to check
  * @returns true if the feature is in development
  */
 export function isFeatureInDevelopment(feature: FeatureName): boolean {
 	const status = FEATURES[feature];
-	return status === FeatureStatus.BETA || status === FeatureStatus.RESEARCH;
+	return status === FeatureStatus.BETA;
 }
 
 /**

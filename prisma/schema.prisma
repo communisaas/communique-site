@@ -75,16 +75,12 @@ model User {
 
   // === RELATIONS (keep existing) ===
   account                   account[]
-  political_bubbles         local_political_bubble[]
-  political_dead_ends       political_dead_end[]
-  political_uncertainties   political_uncertainty[]
   sessions                  Session[]
   templates                 Template[]
   campaigns                 template_campaign[]        @relation("UserCampaigns")
   template_personalizations template_personalization[]
   source_activations        user_activation[]          @relation("UserSources")
   activations               user_activation[]          @relation("UserActivations")
-  context_stack             user_context_stack?
   representatives           user_representatives[]     // Keep this relation
   writing_style             user_writing_style?
   secondary_emails          UserEmail[]                // Keep for multiple email management
@@ -149,10 +145,17 @@ model Template {
   send_count                Int                        @default(0) @map("send_count")
   last_sent_at              DateTime?                  @map("last_sent_at")
   
-  // Geographic scope
+  // Geographic scope (DEPRECATED - replaced by TemplateJurisdiction table)
+  // These fields will be removed after data migration completes
   applicable_countries      String[]                   @default([])
   jurisdiction_level        String?
   specific_locations        String[]                   @default([])
+
+  // NEW: Semantic embeddings for multi-dimensional search
+  location_embedding        Json?                      @map("location_embedding") // OpenAI embedding of location context
+  topic_embedding           Json?                      @map("topic_embedding")    // OpenAI embedding of policy topic
+  embedding_version         String                     @default("v1") @map("embedding_version")
+  embeddings_updated_at     DateTime?                  @map("embeddings_updated_at")
   
   // === STATUS AND TRACKING ===
   verification_status       String?                    @default("pending") @map("verification_status") // 'pending', 'approved', 'rejected'
@@ -233,8 +236,6 @@ model Template {
   
   // === EXISTING RELATIONS (preserve all) ===
   ai_suggestions            ai_suggestions[]
-  founding_communities      community_lifecycle[]
-  political_uncertainties   political_uncertainty[]
   adaptations               template_adaptation[]
   template_analytics        template_analytics[]
   template_campaign         template_campaign[]
@@ -244,12 +245,69 @@ model Template {
   activations               user_activation[]
   civic_actions             CivicAction[]
   analytics_events          analytics_event[]          @relation("TemplateAnalyticsEvents")
+
+  // NEW: Structured jurisdictions (replaces string arrays)
+  jurisdictions             TemplateJurisdiction[]
   
   @@index([verification_status])
   @@index([quality_score])
   @@index([country_code])
   @@index([userId])
   @@map("template")
+}
+
+// NEW: Structured jurisdictions for templates (replaces string arrays)
+// Enables semantic search, VPN-resistant location matching, and privacy-preserving template discovery
+model TemplateJurisdiction {
+  id                        String    @id @default(cuid())
+  template_id               String    @map("template_id")
+  jurisdiction_type         String    @map("jurisdiction_type") // 'federal' | 'state' | 'county' | 'city' | 'school_district'
+
+  // Federal jurisdictions
+  congressional_district    String?   @map("congressional_district") // "TX-18", "CA-12"
+  senate_class              String?   @map("senate_class")           // "I", "II", "III" (6-year rotation)
+
+  // State jurisdictions
+  state_code                String?   @map("state_code")             // "TX", "CA"
+  state_senate_district     String?   @map("state_senate_district")  // State upper house district
+  state_house_district      String?   @map("state_house_district")   // State lower house district
+
+  // County jurisdictions
+  county_fips               String?   @map("county_fips")            // 5-digit FIPS code (e.g., "48201" for Harris County, TX)
+  county_name               String?   @map("county_name")
+
+  // City jurisdictions
+  city_name                 String?   @map("city_name")
+  city_fips                 String?   @map("city_fips")              // Census Place FIPS code
+
+  // School district jurisdictions
+  school_district_id        String?   @map("school_district_id")     // NCES district ID
+  school_district_name      String?   @map("school_district_name")
+
+  // Geospatial data (for distance calculations)
+  latitude                  Float?
+  longitude                 Float?
+
+  // Coverage metadata
+  estimated_population      BigInt?   @map("estimated_population")   // Census estimate
+  coverage_notes            String?   @map("coverage_notes")         // Human-readable coverage description
+
+  // Timestamps
+  created_at                DateTime  @default(now()) @map("created_at")
+  updated_at                DateTime  @updatedAt @map("updated_at")
+
+  // Relation to template
+  template                  Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  // Indexes for efficient querying
+  @@index([template_id])
+  @@index([jurisdiction_type])
+  @@index([congressional_district])
+  @@index([state_code])
+  @@index([county_fips])
+  @@index([city_fips])
+  @@index([school_district_id])
+  @@map("template_jurisdiction")
 }
 
 model account {
@@ -460,141 +518,20 @@ model template_morphism {
   @@map("template_morphism")
 }
 
-model political_field_state {
-  id                 String   @id @default(cuid())
-  timestamp          DateTime @default(now())
-  field_data         Json
-  critical_points    Json?
-  community_topology Json?
-  field_version      String   @default("v1") @map("field_version")
-  calculation_params Json?    @map("calculation_params")
-
-  @@index([timestamp])
-  @@map("political_field_state")
-}
-
-model local_political_bubble {
-  id              String   @id @default(cuid())
-  center_user_id  String   @map("center_user_id")
-  radius_miles    Float    @map("radius_miles")
-  shared_beliefs  Json     @map("shared_beliefs")
-  bubble_strength Float    @map("bubble_strength")
-  edge_conflicts  Json?    @map("edge_conflicts")
-  member_count    Int      @default(1) @map("member_count")
-  formation_date  DateTime @default(now()) @map("formation_date")
-  last_updated    DateTime @updatedAt @map("last_updated")
-  is_active       Boolean  @default(true) @map("is_active")
-  center_user     User     @relation(fields: [center_user_id], references: [id], onDelete: Cascade)
-
-  @@index([center_user_id, radius_miles])
-  @@index([bubble_strength])
-  @@map("local_political_bubble")
-}
-
-model community_intersection {
-  id                    String   @id @default(cuid())
-  community_a           String   @map("community_a")
-  community_b           String   @map("community_b")
-  shared_users          Json     @map("shared_users")
-  shared_issues         Json     @map("shared_issues")
-  conflict_issues       Json?    @map("conflict_issues")
-  influence_flow        Json?    @map("influence_flow")
-  intersection_strength Float    @map("intersection_strength")
-  discovered_at         DateTime @default(now()) @map("discovered_at")
-  last_calculated       DateTime @updatedAt @map("last_calculated")
-
-  @@unique([community_a, community_b])
-  @@index([intersection_strength])
-  @@map("community_intersection")
-}
-
-model political_dead_end {
-  id               String   @id @default(cuid())
-  political_view   Json     @map("political_view")
-  origin_user_id   String   @map("origin_user_id")
-  origin_location  Json     @map("origin_location")
-  blocking_factors Json     @map("blocking_factors")
-  max_reach_miles  Float    @map("max_reach_miles")
-  decay_rate       Float    @map("decay_rate")
-  attempt_count    Int      @default(0) @map("attempt_count")
-  last_attempt     DateTime @default(now()) @map("last_attempt")
-  identified_at    DateTime @default(now()) @map("identified_at")
-  origin_user      User     @relation(fields: [origin_user_id], references: [id], onDelete: Cascade)
-
-  @@index([decay_rate, max_reach_miles])
-  @@map("political_dead_end")
-}
-
-model community_lifecycle {
-  id                    String    @id @default(cuid())
-  community_name        String    @map("community_name")
-  community_type        String    @map("community_type")
-  formation_date        DateTime  @default(now()) @map("formation_date")
-  peak_date             DateTime? @map("peak_date")
-  dissolution_date      DateTime? @map("dissolution_date")
-  trigger_event         String?   @map("trigger_event")
-  founding_template_id  String?   @map("founding_template_id")
-  member_count_timeline Json      @map("member_count_timeline")
-  engagement_timeline   Json      @map("engagement_timeline")
-  current_status        String    @default("active") @map("current_status")
-  founding_template     Template? @relation(fields: [founding_template_id], references: [id])
-
-  @@index([community_type, current_status])
-  @@index([formation_date])
-  @@map("community_lifecycle")
-}
-
-model user_context_stack {
-  id                    String   @id @default(cuid())
-  user_id               String   @unique @map("user_id")
-  geographic_context    Json     @map("geographic_context")
-  economic_context      Json     @map("economic_context")
-  social_context        Json     @map("social_context")
-  institutional_context Json     @map("institutional_context")
-  context_conflicts     Json?    @map("context_conflicts")
-  dominant_context      String?  @map("dominant_context")
-  context_stability     Float    @default(0.5) @map("context_stability")
-  last_calculated       DateTime @updatedAt @map("last_calculated")
-  user                  User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("user_context_stack")
-}
-
-model political_flow {
-  id                String   @id @default(cuid())
-  timestamp         DateTime @default(now())
-  time_window_hours Int      @default(24) @map("time_window_hours")
-  flow_sources      Json     @map("flow_sources")
-  flow_sinks        Json     @map("flow_sinks")
-  flow_velocity     Json     @map("flow_velocity")
-  flow_direction    Json     @map("flow_direction")
-  turbulence_zones  Json?    @map("turbulence_zones")
-  flow_strength     Float    @map("flow_strength")
-  dominant_issues   Json     @map("dominant_issues")
-
-  @@index([timestamp, flow_strength])
-  @@map("political_flow")
-}
-
-model political_uncertainty {
-  id                        String    @id @default(cuid())
-  user_id                   String    @map("user_id")
-  template_id               String?   @map("template_id")
-  position_cloud            Json      @map("position_cloud")
-  certainty_level           Float     @map("certainty_level")
-  change_likelihood         Float     @map("change_likelihood")
-  influence_susceptibility  Json      @map("influence_susceptibility")
-  position_volatility       Float     @default(0.5) @map("position_volatility")
-  last_position_change      DateTime? @map("last_position_change")
-  uncertainty_calculated_at DateTime  @default(now()) @map("uncertainty_calculated_at")
-  updated_at                DateTime  @updatedAt @map("updated_at")
-  template                  Template? @relation(fields: [template_id], references: [id], onDelete: Cascade)
-  user                      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, template_id])
-  @@index([certainty_level, change_likelihood])
-  @@map("political_uncertainty")
-}
+// ===================================================================
+// EXPERIMENTAL RESEARCH TABLES REMOVED (Phase 0.1 Cleanup)
+// The following 8 tables were removed as they had zero production usage:
+// - political_field_state (field theory simulation)
+// - local_political_bubble (echo chamber detection)
+// - community_intersection (community overlap analysis)
+// - political_dead_end (propagation boundary detection)
+// - community_lifecycle (community growth/decline tracking)
+// - user_context_stack (sheaf-theoretic user context)
+// - political_flow (vector field visualization)
+// - political_uncertainty (quantum-inspired persuadability)
+//
+// See docs/CODEBASE-AUDIT-PHASE-0.md for complete removal documentation
+// ===================================================================
 
 model legislative_channel {
   id                    String                @id @default(cuid())

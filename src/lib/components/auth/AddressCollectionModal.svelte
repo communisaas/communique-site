@@ -455,7 +455,7 @@
 								<button
 									type="button"
 									onclick={skipIdentityVerification}
-									class="text-sm text-slate-600 hover:text-slate-900 transition-colors"
+									class="text-sm text-slate-600 transition-colors hover:text-slate-900"
 								>
 									Continue without verification
 									<span class="ml-1 text-xs text-slate-500">(lower credibility)</span>

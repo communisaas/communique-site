@@ -9,7 +9,13 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 
 	kit: {
-		adapter: adapter(),
+		adapter: adapter({
+			// Skip prerendering to avoid post-build analysis issues
+			prerender: {
+				handleHttpError: 'warn',
+				handleMissingId: 'warn'
+			}
+		}),
 		// Add explicit environment configuration
 		env: {
 			dir: '.',

@@ -1,4 +1,5 @@
 import type { GeoFence } from './location';
+import type { TemplateJurisdiction } from '@prisma/client';
 
 export type JurisdictionType =
 	| 'country'
@@ -9,7 +10,10 @@ export type JurisdictionType =
 	| 'city'
 	| 'district'
 	| 'ward'
-	| 'custom';
+	| 'custom'
+	| 'federal'
+	| 'county'
+	| 'school_district';
 
 export interface Jurisdiction {
 	id: string;
@@ -28,7 +32,7 @@ export interface Jurisdiction {
 export interface Office {
 	id: string;
 	jurisdiction_id: string;
-	role: string; // e.g., _representative, senator, mayor, councillor
+	role: string; // e.g., representative, senator, mayor, councillor
 	title?: string;
 	chamber?: string;
 	level?: 'national' | 'state' | 'provincial' | 'municipal' | 'district' | string;
@@ -51,4 +55,92 @@ export interface TemplateScope {
 	geofence?: GeoFence | unknown;
 	created_at: string | Date;
 	updated_at: string | Date;
+}
+
+// ===== TEMPLATE CREATOR JURISDICTION PICKER TYPES =====
+
+/**
+ * Autocomplete suggestion for jurisdiction picker
+ */
+export interface JurisdictionSuggestion {
+	id: string;
+	type: 'federal' | 'state' | 'county' | 'city' | 'school_district';
+	displayName: string;
+	stateCode?: string;
+	congressionalDistrict?: string;
+	countyFips?: string;
+	countyName?: string;
+	cityName?: string;
+	cityFips?: string;
+	schoolDistrictId?: string;
+	schoolDistrictName?: string;
+	estimatedPopulation?: bigint;
+	latitude?: number;
+	longitude?: number;
+}
+
+/**
+ * Jurisdiction picker component props
+ */
+export interface JurisdictionPickerProps {
+	selectedJurisdictions: TemplateJurisdiction[];
+	onJurisdictionsChange: (jurisdictions: TemplateJurisdiction[]) => void;
+	maxSelections?: number;
+	placeholder?: string;
+	disabled?: boolean;
+}
+
+/**
+ * Coverage preview data
+ */
+export interface CoverageData {
+	totalPopulation: bigint;
+	jurisdictionBreakdown: {
+		type: 'federal' | 'state' | 'county' | 'city' | 'school_district';
+		count: number;
+		population: bigint;
+	}[];
+	congressionalDistricts: string[];
+	statesAffected: string[];
+}
+
+/**
+ * Census API integration types
+ */
+export interface CensusPopulationData {
+	fipsCode: string;
+	name: string;
+	population: number;
+	year: number;
+	source: 'census_api' | 'cached';
+}
+
+export interface CongressionalDistrictInfo {
+	district: string; // "TX-18"
+	state: string; // "TX"
+	representative?: {
+		name: string;
+		party: string;
+		office?: string;
+	};
+	population?: number;
+}
+
+/**
+ * Jurisdiction search filters
+ */
+export interface JurisdictionSearchFilters {
+	types?: ('federal' | 'state' | 'county' | 'city' | 'school_district')[];
+	stateCode?: string;
+	query: string;
+	limit?: number;
+}
+
+/**
+ * Jurisdiction validation result
+ */
+export interface JurisdictionValidation {
+	isValid: boolean;
+	errors: string[];
+	warnings: string[];
 }

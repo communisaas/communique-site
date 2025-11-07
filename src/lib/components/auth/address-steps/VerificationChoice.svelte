@@ -114,12 +114,15 @@
 						</li>
 						<li class="flex items-start gap-2 text-slate-700">
 							<Check class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-							<span><span class="font-medium">Highest credibility</span> with congressional offices</span
+							<span
+								><span class="font-medium">Highest credibility</span> with congressional offices</span
 							>
 						</li>
 						<li class="flex items-start gap-2 text-slate-700">
 							<Check class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-							<span><span class="font-medium">100% private</span> – data never leaves your device</span>
+							<span
+								><span class="font-medium">100% private</span> – data never leaves your device</span
+							>
 						</li>
 					</ul>
 				</div>
@@ -179,7 +182,8 @@
 						</li>
 						<li class="flex items-start gap-2 text-slate-700">
 							<Check class="mt-0.5 h-4 w-4 flex-shrink-0 text-slate-600" />
-							<span><span class="font-medium">No passport required</span> – any government ID works</span
+							<span
+								><span class="font-medium">No passport required</span> – any government ID works</span
 							>
 						</li>
 						<li class="flex items-start gap-2 text-slate-700">

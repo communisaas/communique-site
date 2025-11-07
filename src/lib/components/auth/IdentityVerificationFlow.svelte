@@ -16,12 +16,7 @@
 		defaultMethod?: 'nfc' | 'government-id' | null;
 	}
 
-	let {
-		userId,
-		templateSlug,
-		skipValueProp = false,
-		defaultMethod = null
-	}: Props = $props();
+	let { userId, templateSlug, skipValueProp = false, defaultMethod = null }: Props = $props();
 
 	type FlowStep = 'value-prop' | 'choice' | 'verify-nfc' | 'verify-id' | 'complete';
 
@@ -47,10 +42,25 @@
 		}
 	}
 
-	function handleVerificationComplete(event: CustomEvent<{ verified: boolean; method: string }>) {
+	async function handleVerificationComplete(event: CustomEvent<{ verified: boolean; method: string; district?: string; state?: string }>) {
 		verificationComplete = true;
 		verificationData = event.detail;
 		currentStep = 'complete';
+
+		// Add verified location signal to IndexedDB (client-side only)
+		// This is the highest confidence signal (1.0) in our 5-signal progressive inference
+		if (event.detail.district && event.detail.state) {
+			try {
+				const { addVerifiedLocationSignal } = await import('$lib/core/location');
+				await addVerifiedLocationSignal(event.detail.district, event.detail.state);
+				console.log('[Verification] Added verified location signal:', {
+					district: event.detail.district,
+					state: event.detail.state
+				});
+			} catch (error) {
+				console.error('[Verification] Failed to add location signal:', error);
+			}
+		}
 
 		// Notify parent component
 		dispatch('complete', {
@@ -108,7 +118,11 @@
 			<div class="mt-2 h-2 w-full rounded-full bg-slate-200">
 				<div
 					class="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-500"
-					style="width: {currentStep === 'value-prop' ? '33%' : currentStep === 'choice' ? '66%' : '99%'}"
+					style="width: {currentStep === 'value-prop'
+						? '33%'
+						: currentStep === 'choice'
+							? '66%'
+							: '99%'}"
 				></div>
 			</div>
 		</div>
@@ -141,14 +155,9 @@
 					Continue to Verification
 				</button>
 			</div>
-
 		{:else if currentStep === 'choice'}
 			<!-- Method Selection -->
-			<VerificationChoice
-				defaultMethod={selectedMethod}
-				on:select={handleMethodSelection}
-			/>
-
+			<VerificationChoice defaultMethod={selectedMethod} on:select={handleMethodSelection} />
 		{:else if currentStep === 'verify-nfc'}
 			<!-- NFC Passport Verification -->
 			<SelfXyzVerification
@@ -157,7 +166,6 @@
 				on:complete={handleVerificationComplete}
 				on:error={handleVerificationError}
 			/>
-
 		{:else if currentStep === 'verify-id'}
 			<!-- Government ID Verification -->
 			<DiditVerification
@@ -166,27 +174,22 @@
 				on:complete={handleVerificationComplete}
 				on:error={handleVerificationError}
 			/>
-
 		{:else if currentStep === 'complete'}
 			<!-- Success State -->
 			<div class="py-12 text-center">
-				<div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-2xl">
+				<div
+					class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-2xl"
+				>
 					<Check class="h-10 w-10 text-white" strokeWidth={3} />
 				</div>
 
-				<h2 class="mb-3 text-3xl font-bold text-slate-900">
-					Verification Complete!
-				</h2>
+				<h2 class="mb-3 text-3xl font-bold text-slate-900">Verification Complete!</h2>
 
-				<p class="mb-2 text-lg text-slate-600">
-					Your identity has been successfully verified
-				</p>
+				<p class="mb-2 text-lg text-slate-600">Your identity has been successfully verified</p>
 
 				<div class="mx-auto mb-8 max-w-md">
 					<div class="mt-6 rounded-lg border border-green-200 bg-green-50 p-4">
-						<p class="text-sm font-medium text-green-900">
-							What happens next:
-						</p>
+						<p class="text-sm font-medium text-green-900">What happens next:</p>
 						<ul class="mt-2 space-y-1 text-sm text-green-800">
 							<li class="flex items-start gap-2">
 								<span class="text-green-600">✓</span>
@@ -221,7 +224,10 @@
 	{#if currentStep !== 'complete'}
 		<div class="mt-6 text-center">
 			<p class="text-sm text-slate-600">
-				Having trouble? <a href="/help/verification" class="font-medium text-blue-600 hover:text-blue-700">Get help with verification</a>
+				Having trouble? <a
+					href="/help/verification"
+					class="font-medium text-blue-600 hover:text-blue-700">Get help with verification</a
+				>
 			</p>
 		</div>
 	{/if}

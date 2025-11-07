@@ -130,7 +130,6 @@ afterEach(() => {
 
 	// Reset feature flag environment variables
 	delete process.env.ENABLE_BETA;
-	delete process.env.ENABLE_RESEARCH;
 
 	// Clean up any global fetch mock
 	if (global.fetch && vi.isMockFunction(global.fetch)) {

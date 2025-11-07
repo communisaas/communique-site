@@ -36,10 +36,7 @@ export interface TEEProvider {
 	/**
 	 * Send encrypted payload to TEE for decryption and CWC forwarding
 	 */
-	submitEncryptedPayload(
-		instanceId: string,
-		payload: EncryptedPayload
-	): Promise<TEEResponse>;
+	submitEncryptedPayload(instanceId: string, payload: EncryptedPayload): Promise<TEEResponse>;
 
 	/**
 	 * Terminate TEE instance

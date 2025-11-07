@@ -151,6 +151,9 @@ export const GET: RequestHandler = async () => {
 			},
 			orderBy: {
 				createdAt: 'desc'
+			},
+			include: {
+				jurisdictions: true // Include jurisdictions for location filtering
 			}
 		});
 
@@ -199,6 +202,8 @@ export const GET: RequestHandler = async () => {
 			applicable_countries: template.applicable_countries,
 			jurisdiction_level: template.jurisdiction_level,
 			specific_locations: template.specific_locations,
+			// Jurisdictions for location filtering (Phase 3)
+			jurisdictions: template.jurisdictions || [],
 			// Optional scope from separate table
 			scope: idToScope.get(template.id) || null,
 			recipientEmails: extractRecipientEmails(

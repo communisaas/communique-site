@@ -62,3 +62,4 @@ test-execution-summary.md
 project.inlang/
 *.sh
 *.sql
+.env.production

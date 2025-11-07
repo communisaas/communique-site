@@ -33,6 +33,10 @@ export interface UserData {
 	// Provider-specific fields
 	username?: string;
 	discriminator?: string;
+	// Location data (for client-side inference)
+	location?: string; // e.g., "Austin, TX" or "Texas"
+	locale?: string; // e.g., "en-US"
+	timezone?: string; // e.g., "America/Chicago"
 }
 
 export interface TokenData {
@@ -137,6 +141,19 @@ export class OAuthCallbackHandler {
 
 			// Step 4: Find or create user in database
 			const user = await this.findOrCreateUser(config, userData, tokenData);
+
+			// Step 4.5: Store OAuth location data for client-side inference
+			// Note: This is stored in a client-accessible cookie for browser-side location inference
+			// Server NEVER stores location data - only passes it to client via cookie
+			if (userData.location || userData.locale || userData.timezone) {
+				this.storeOAuthLocationCookie(
+					cookies,
+					config.provider,
+					userData.location,
+					userData.locale,
+					userData.timezone
+				);
+			}
 
 			// Step 5: Create session and handle redirects
 			return await this.handleSessionAndRedirect(user, returnTo, config.provider, cookies);
@@ -467,6 +484,48 @@ export class OAuthCallbackHandler {
 	private generateAccountId(): string {
 		const bytes = crypto.getRandomValues(new Uint8Array(20));
 		return Array.from(bytes, (byte: number) => byte.toString(16).padStart(2, '0')).join('');
+	}
+
+	/**
+	 * Store OAuth location data in client-accessible cookie
+	 * This enables browser-side location inference WITHOUT server-side tracking
+	 */
+	private storeOAuthLocationCookie(
+		cookies: Cookies,
+		provider: OAuthProvider,
+		location?: string,
+		locale?: string,
+		timezone?: string
+	): void {
+		try {
+			const locationData = {
+				provider,
+				location: location || null,
+				locale: locale || null,
+				timezone: timezone || null,
+				timestamp: Date.now()
+			};
+
+			// Store in client-accessible cookie (expires in 7 days)
+			// Client will read this cookie and add OAuth location signal to IndexedDB
+			cookies.set('oauth_location', JSON.stringify(locationData), {
+				path: '/',
+				secure: false, // Allow client-side access
+				httpOnly: false, // Allow client-side access
+				maxAge: 7 * 24 * 60 * 60, // 7 days
+				sameSite: 'lax'
+			});
+
+			console.log('[OAuth Location] Stored location cookie for client-side inference:', {
+				provider,
+				hasLocation: !!location,
+				hasLocale: !!locale,
+				hasTimezone: !!timezone
+			});
+		} catch (error) {
+			// Log error but don't block OAuth flow
+			console.error('[OAuth Location] Failed to store location cookie:', error);
+		}
 	}
 }
 

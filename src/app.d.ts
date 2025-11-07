@@ -81,7 +81,6 @@ declare global {
 			// Feature Flags
 			ENABLE_BETA?: string;
 			PUBLIC_ENABLE_BETA?: string;
-			ENABLE_RESEARCH?: string;
 			ENABLE_VOTER_CERTIFICATION?: string;
 			ENABLE_CERTIFICATION?: string;
 

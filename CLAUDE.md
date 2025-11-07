@@ -453,7 +453,6 @@ COMMUNIQUE_API_KEY=...              # Internal API authentication
 
 ```bash
 ENABLE_BETA=true                    # Enable beta features (default: false)
-ENABLE_RESEARCH=true                # Enable research features (dev only, default: false)
 NODE_ENV=production                 # Environment (affects OAuth security, logging)
 ```
 
@@ -525,7 +524,6 @@ Code map:
 - **Utilities**: `src/lib/utils/` (formatting, debounce, portal, template resolution)
 - **Types**: `src/lib/types/` (comprehensive TypeScript definitions)
 - **Feature-flagged**: `src/lib/features/` (ai-suggestions, config)
-- **Research/experimental**: `src/lib/experimental/` (cascade analytics)
 - **Integrations**: `src/lib/integrations/` (VOTER Protocol)
 - **Data**: `src/lib/data/` (static data files)
 - **Actions**: `src/lib/actions/` (Svelte actions)
@@ -673,15 +671,11 @@ npm run dev
 
 # Enable beta features in development
 ENABLE_BETA=true npm run dev
-
-# Enable research features (experimental)
-ENABLE_RESEARCH=true npm run dev
 ```
 
 Feature flags control access to:
 
 - **Beta features** (`src/lib/features/`): AI suggestions, template intelligence
-- **Research features** (`src/lib/experimental/`): Cascade analytics, experimental UIs
 
 ## Where to read more
 

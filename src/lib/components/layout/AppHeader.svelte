@@ -173,8 +173,8 @@
 
 	function shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {
 		const text = template
-			? `Check out "${template.title}" on Communiqué - make your voice heard!`
-			: `Check out Communiqué - make your voice heard!`;
+			? `Check out "${template.title}" on Communiqué`
+			: `Check out Communiqué`;
 		const encodedUrl = encodeURIComponent(shareUrl);
 		const encodedText = encodeURIComponent(text);
 

@@ -3,6 +3,7 @@
 **Universal Trusted Execution Environment (TEE) container for XChaCha20-Poly1305 decryption and CWC API forwarding.**
 
 Cloud-agnostic design supports:
+
 - ✅ **GCP Confidential Space** (AMD SEV-SNP)
 - 🟡 **AWS Nitro Enclaves** (Hypervisor-backed) - Future
 - 🔵 **Azure Confidential VMs** (AMD SEV-SNP / Intel SGX) - Future
@@ -80,31 +81,34 @@ nitro-cli run-enclave \
 Decrypts XChaCha20-Poly1305 encrypted message and forwards to CWC API.
 
 **Request:**
+
 ```json
 {
-  "ciphertext": "hex-encoded encrypted message",
-  "nonce": "hex-encoded 24-byte nonce",
-  "userId": "user-id-for-key-derivation",
-  "templateId": "template-id",
-  "recipient": {
-    "name": "Senator Jane Smith",
-    "office": "senate",
-    "state": "CA",
-    "district": null
-  }
+	"ciphertext": "hex-encoded encrypted message",
+	"nonce": "hex-encoded 24-byte nonce",
+	"userId": "user-id-for-key-derivation",
+	"templateId": "template-id",
+	"recipient": {
+		"name": "Senator Jane Smith",
+		"office": "senate",
+		"state": "CA",
+		"district": null
+	}
 }
 ```
 
 **Response:**
+
 ```json
 {
-  "success": true,
-  "cwc_confirmation": "cwc-confirmation-id",
-  "timestamp": "2025-10-22T14:30:00Z"
+	"success": true,
+	"cwc_confirmation": "cwc-confirmation-id",
+	"timestamp": "2025-10-22T14:30:00Z"
 }
 ```
 
 **Headers:**
+
 - `X-Attestation-Token`: OIDC token proving TEE integrity
 
 ---
@@ -114,14 +118,15 @@ Decrypts XChaCha20-Poly1305 encrypted message and forwards to CWC API.
 Health check endpoint.
 
 **Response:**
+
 ```json
 {
-  "status": "healthy",
-  "uptime": 12345.67,
-  "memory_usage": 0.42,
-  "cpu_usage": 0.15,
-  "queue_depth": 0,
-  "timestamp": "2025-10-22T14:30:00Z"
+	"status": "healthy",
+	"uptime": 12345.67,
+	"memory_usage": 0.42,
+	"cpu_usage": 0.15,
+	"queue_depth": 0,
+	"timestamp": "2025-10-22T14:30:00Z"
 }
 ```
 
@@ -132,6 +137,7 @@ Health check endpoint.
 Prometheus metrics for monitoring.
 
 **Metrics:**
+
 - `tee_decryptions_total` - Total decryption requests
 - `tee_decryption_errors_total` - Failed decryptions
 - `tee_cwc_forwards_total` - Successful CWC forwards
@@ -145,22 +151,24 @@ Prometheus metrics for monitoring.
 Remote attestation token endpoint.
 
 **Response:**
+
 ```json
 {
-  "provider": "gcp",
-  "claims": {
-    "imageDigest": "sha256:abc123...",
-    "hardware": "GCP_AMD_SEV_SNP",
-    "softwareVersion": "1.14",
-    "issuedAt": 1698765432,
-    "projectId": "communique-production",
-    "instanceId": "1234567890"
-  },
-  "timestamp": "2025-10-22T14:30:00Z"
+	"provider": "gcp",
+	"claims": {
+		"imageDigest": "sha256:abc123...",
+		"hardware": "GCP_AMD_SEV_SNP",
+		"softwareVersion": "1.14",
+		"issuedAt": 1698765432,
+		"projectId": "communique-production",
+		"instanceId": "1234567890"
+	},
+	"timestamp": "2025-10-22T14:30:00Z"
 }
 ```
 
 **Headers:**
+
 - `X-Attestation-Token`: Raw OIDC/CBOR token
 
 ---
@@ -202,12 +210,14 @@ AZURE_ATTESTATION_ENDPOINT=...          # MAA endpoint
 ### **Threat Model:**
 
 **Attackers CANNOT:**
+
 - ❌ Access plaintext (hardware memory encryption)
 - ❌ Tamper with code (remote attestation detects changes)
 - ❌ Steal encryption keys (ephemeral, derived per-user)
 - ❌ Read decrypted messages from logs (not logged)
 
 **Attackers CAN (by design):**
+
 - ✅ See encrypted ciphertexts (public)
 - ✅ See CWC confirmations (public)
 - ✅ Monitor network traffic (encrypted in transit)
@@ -293,16 +303,19 @@ const attestation = await manager.getInstance('tee-instance-id').getAttestationT
 ## Future Enhancements
 
 ### **Phase 2 (AWS Support):**
+
 - [ ] AWS Nitro Enclaves attestation (CBOR documents)
 - [ ] vsock communication with parent EC2 instance
 - [ ] Convert Docker → Nitro Enclave Image Format (.eif)
 
 ### **Phase 3 (Azure Support):**
+
 - [ ] Azure Confidential VM attestation (MAA service)
 - [ ] Intel SGX support (DCsv2/DCsv3 series)
 - [ ] Managed Identity integration
 
 ### **Phase 4 (Advanced Security):**
+
 - [ ] Secure boot verification
 - [ ] TPM-based key sealing
 - [ ] Encrypted memory pages (beyond AMD SEV-SNP)

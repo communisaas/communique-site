@@ -4,6 +4,7 @@
 	import ChannelExplainer from '$lib/components/landing/channel/ChannelExplainer.svelte';
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
+	import LocationFilter from '$lib/components/landing/template/LocationFilter.svelte';
 	import TouchModal from '$lib/components/ui/TouchModal.svelte';
 	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
 	import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.svelte';
@@ -21,6 +22,8 @@
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
+	import { trackTemplateView } from '$lib/core/location/behavioral-tracker';
+	import type { TemplateJurisdiction } from '$lib/core/location/types';
 	import type { ModalComponent } from '$lib/types/component-props';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
@@ -47,6 +50,7 @@
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
 	let userInitiatedSelection = $state(false); // Track if selection was user-initiated
+	let locationFilteredTemplates = $state<Template[]>([]); // Templates after location filtering
 
 	// Handle OAuth return for template creation and URL parameter initialization
 	onMount(() => {
@@ -134,6 +138,18 @@
 		userInitiatedSelection = true;
 		templateStore.selectTemplate(id);
 
+		// Track template view for behavioral location inference
+		const template = templateStore.templates.find((t) => t.id === id);
+		if (template && 'jurisdictions' in template && Array.isArray(template.jurisdictions)) {
+			trackTemplateView(
+				template.id,
+				template.slug,
+				template.jurisdictions as TemplateJurisdiction[]
+			).catch((error) => {
+				console.warn('[HomePage] Failed to track template view:', error);
+			});
+		}
+
 		if (isMobile()) {
 			showMobilePreview = true;
 		}
@@ -186,7 +202,8 @@
 		});
 	}
 
-	const filteredTemplates = $derived(
+	// First apply channel filtering
+	const channelFilteredTemplates = $derived(
 		selectedChannel
 			? templateStore.templates.filter((t) => {
 					if (selectedChannel === 'certified') {
@@ -204,6 +221,19 @@
 						t.deliveryMethod === 'direct'
 				)
 	);
+
+	// Then apply location filtering (if locationFilteredTemplates is populated)
+	const filteredTemplates = $derived(
+		locationFilteredTemplates.length > 0
+			? channelFilteredTemplates.filter((t) =>
+					locationFilteredTemplates.some((filtered) => filtered.id === t.id)
+				)
+			: channelFilteredTemplates
+	);
+
+	function handleLocationFilterChange(filtered: Template[]) {
+		locationFilteredTemplates = filtered;
+	}
 
 	// Handle URL parameter initialization when templates load (legacy support)
 	$effect(() => {
@@ -246,6 +276,10 @@
 			<h2 class="mb-3 text-xl font-semibold text-gray-900" data-testid="templates-heading">
 				Active Campaigns
 			</h2>
+			<LocationFilter
+				templates={channelFilteredTemplates}
+				onFilterChange={handleLocationFilterChange}
+			/>
 			<TemplateList
 				templates={filteredTemplates}
 				selectedId={templateStore.selectedId}

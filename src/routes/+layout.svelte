@@ -11,6 +11,7 @@
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
+	import { syncOAuthLocation } from '$lib/core/location/oauth-location-sync';
 	import type { Template as _Template } from '$lib/types/template';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
@@ -23,9 +24,14 @@
 		data: LayoutData;
 	} = $props();
 
-	// Fetch templates from API
+	// Initialize app: fetch templates + sync OAuth location
 	_onMount(() => {
 		templateStore.fetchTemplates();
+
+		// Sync OAuth location if cookie exists (from OAuth callback)
+		syncOAuthLocation().catch((error) => {
+			console.warn('[App] Failed to sync OAuth location:', error);
+		});
 	});
 
 	// Handle template use from header

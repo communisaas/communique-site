@@ -25,8 +25,7 @@ const testEnvironmentConfig: EnvironmentConfig = {
 		'LINKEDIN_CLIENT_SECRET',
 		'TWITTER_CLIENT_ID',
 		'TWITTER_CLIENT_SECRET',
-		'ENABLE_BETA',
-		'ENABLE_RESEARCH'
+		'ENABLE_BETA'
 	],
 	computed: {
 		IS_CI: () => (process.env.CI === 'true' ? 'true' : 'false'),
@@ -194,9 +193,6 @@ export class EnvironmentValidator {
 		if (process.env.ENABLE_BETA === 'true') {
 			console.log('   🧪 Beta features: ENABLED');
 		}
-		if (process.env.ENABLE_RESEARCH === 'true') {
-			console.log('   🔬 Research features: ENABLED');
-		}
 		console.log('');
 	}
 
@@ -221,7 +217,6 @@ export class EnvironmentValidator {
 	resetTestEnvironment(): void {
 		// Reset feature flags
 		delete process.env.ENABLE_BETA;
-		delete process.env.ENABLE_RESEARCH;
 
 		// Ensure test environment
 		process.env.NODE_ENV = 'test';
