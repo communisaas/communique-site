@@ -100,14 +100,30 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 
 ---
 
+## Strategy & Vision
+
+**Phase 1 Launch (3 months):**
+- [strategy/PHASE-1-REALITY-GROUNDED.md](strategy/PHASE-1-REALITY-GROUNDED.md) - Privacy-preserving constituent intelligence, ZK proofs, viral mechanisms.
+
+**Coordination Mechanics:**
+- [strategy/COORDINATION-PLATFORM.md](strategy/COORDINATION-PLATFORM.md) - Why individual action fails, coordination works. 5,000 coordinated messages get meetings.
+
+**Organizing Reality:**
+- [strategy/ORGANIZING-REALITY.md](strategy/ORGANIZING-REALITY.md) - What organizing victories look like, why organizing fails, class struggle infrastructure vs civic engagement theater.
+- [strategy/README.md](strategy/README.md) - Strategic direction overview.
+
+---
+
 ## Documentation Maintenance
 
 **Cleanup Plans:**
 - [DOCUMENTATION-CLEANUP-PLAN.md](DOCUMENTATION-CLEANUP-PLAN.md) - Ongoing consolidation roadmap.
 - [DOCUMENTATION-CLEANUP-PHASE-2.md](DOCUMENTATION-CLEANUP-PHASE-2.md) - Phase 2 analysis.
+- [DOCUMENTATION-STRUCTURE-PLAN.md](DOCUMENTATION-STRUCTURE-PLAN.md) - Organization strategy.
 
 **Archive:**
-- [archive/historical/](archive/historical/) - Historical status updates, obsolete docs.
+- [archive/rejected/](archive/rejected/) - Rejected approaches (gamification, early synthesis docs).
+- [archive/historical/](archive/historical/) - Historical status updates, response docs, copy fix logs.
 
 ---
 
