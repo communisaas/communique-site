@@ -1,442 +1,402 @@
-# Delivery Paths - Technical Architecture
+# Message Delivery - User Perspective
 
-**Date**: 2025-01-08
-**Purpose**: Clarify backend routing and OAuth verification strategy
+**What users care about**: Who am I contacting?
 
----
-
-## The Two Delivery Paths
-
-### Path 1: API-Based Delivery (Congressional)
-**Target**: U.S. Congress, State Legislatures with official APIs
-
-**Flow**:
-```
-User clicks "Send"
-    ↓
-Frontend collects address
-    ↓
-Address → Census API → Congressional district
-    ↓
-Backend routes to CWC API (Communicating with Congress)
-    ↓
-Message delivered through official channels
-    ↓
-Delivery confirmed via API response
-```
-
-**Why we control delivery**:
-- Official APIs require server-side keys
-- Rate limiting needs backend coordination
-- Delivery receipts come from API
-- Constituent verification happens server-side
-
-**User UX**:
-- Click "Send Now"
-- Enter address (for routing)
-- Message sent automatically
-- Confirmation shown
+**What users don't care about**: Backend implementation details (API vs email).
 
 ---
 
-### Path 2: Direct Email (Everything Else)
-**Target**: Companies, School Boards, Public Officials with email, HOAs, etc.
+## Who You Can Contact
 
-**Flow**:
-```
-User clicks "Send"
-    ↓
-Frontend opens mailto: link
-    ↓
-User's email client opens with pre-filled message
-    ↓
-User hits "Send" in their email client
-    ↓
-Email sent directly from user's account
-    ↓
-OAuth verification: Did they actually send it?
-```
+### Large Legislatures (Campaign-Scale Delivery APIs)
 
-**Why user sends directly**:
-- No official API (just email addresses)
-- User's email = more authentic than platform email
-- OAuth can verify it actually got sent
-- No rate limiting issues
+**Who**:
+- **US Congress** (House + Senate, 535 members)
+- **State Legislatures** (varies by state, typically 100-400 members)
+- **European Parliament** (planned, 705 members)
+- **UK Parliament** (planned, 650 MPs)
 
-**User UX**:
-- Click "Send Now"
-- Email client opens (pre-filled)
-- User hits "Send"
-- We verify via OAuth
+**What makes them different**: You can't effectively run email campaigns to 535 members of Congress. They get too much volume. So they built APIs (like CWC for US Congress) to handle constituent messages at scale with verified district checks.
+
+**How delivery works** (user perspective):
+1. You customize a template
+2. You verify your address (we prove you're a constituent with zero-knowledge cryptography)
+3. You click "Send Message"
+4. **We deliver through their campaign delivery API**
+5. You get confirmation ("✓ Message delivered to Senator Warren")
+
+**Why APIs exist at this scale**: When you have 535+ members and thousands of daily messages, email breaks down. Large legislatures built infrastructure to manage constituent contact at scale while filtering out non-constituents.
+
+**User experience**: Seamless. You click "Send" and we handle delivery through their existing campaign infrastructure.
 
 ---
 
-## The Confusion Point
+### Everyone Else (Direct Contact)
 
-### What Users See:
-> "Send message to Delta Airlines"
+**Who** (this is OPEN - any decision-maker with community impact):
 
-### What Actually Happens (Two Paths):
+**Local Government**:
+- City Councils (typically 5-15 members)
+- School Boards (typically 5-9 members)
+- County Boards (varies by jurisdiction)
+- Special Districts (water boards, transit boards, planning commissions)
 
-**If Delta has official API** (Path 1):
-- Backend sends via API
-- User just clicks "Send"
+**Corporations**:
+- Customer service departments
+- C-suite executives
+- Corporate boards
+- Investor relations
 
-**If Delta only has email** (Path 2):
-- User's email client opens
-- User sends from their account
-- OAuth verifies delivery
+**HOAs** (Homeowner Associations):
+- HOA boards (24.8M homes, 62M residents governed by HOAs)
+- Property management companies
+- Community associations
 
-**The Problem**:
-Users don't know which path is happening. Both look like "Send Now" button.
+**Universities**:
+- Administration
+- Boards of trustees
+- Department chairs
+- Student affairs offices
+
+**Healthcare**:
+- Hospital administration
+- Insurance companies
+- Medical billing departments
+- Patient advocacy offices
+
+**Nonprofits**:
+- Leadership teams
+- Boards of directors
+- Program managers
+- Community organizations
+
+**Any entity with community impact** - if they make decisions affecting people, you can contact them.
+
+**How delivery works** (user perspective):
+1. You customize a template
+2. You click "Send Message"
+3. **Your email client opens with pre-filled message**
+4. You review and hit "Send" from your email
+5. We verify you sent it (via OAuth access to your Sent folder)
+
+**Why direct email**: These entities don't have centralized APIs. Each decision-maker has email contact info (public or semi-public).
+
+**User experience**: You send from your own email (more authentic), we verify delivery.
 
 ---
 
-## OAuth Verification Strategy
+## User Mental Model
 
-### For Path 2 (Direct Email):
+**What users should think**:
 
-**Challenge**: How do we know user actually sent the email?
+### For Large Legislatures:
+> "I'm sending a message to my Senator. Communiqué will deliver it through official channels."
 
-**Solution**: OAuth access to user's email provider
+### For Everyone Else:
+> "I'm sending an email to my city councilmember / corporate CEO / HOA board / university administration. Communiqué will verify I sent it."
 
-**Flow**:
-```
-1. User clicks "Send Now"
-2. Modal: "Connect your email to verify delivery"
-3. User authorizes Gmail/Outlook (OAuth)
-4. mailto: link opens with pre-filled message
-5. User sends from their email client
-6. We check their Sent folder (via OAuth API)
-7. If found → Verified delivery → Increment counter
-8. If not found → Remind user to send
-```
+**Key insight**: Users care about **who they're contacting**, not whether it's API-based or email-based.
 
-**What we check**:
-- Subject line matches
-- Recipient matches
-- Timestamp (sent within last 10 minutes)
-- Message body matches (fuzzy match, users might edit)
+---
+
+## Delivery Methods Explained (For Users)
+
+### Campaign Delivery APIs (Large Legislatures)
+
+**What happens**:
+- You fill out your address → We verify you're a constituent (zero-knowledge proof)
+- You click "Send Message" → We deliver through their campaign delivery API (CWC for US Congress)
+- Congressional office receives verified constituent message
+- You see confirmation: "✓ Message delivered to Senator Warren"
+
+**Why this works**:
+- Large legislatures can't handle email campaigns at scale (too much volume, spam filtering breaks)
+- So they built APIs (CWC, state-specific systems) for campaigns to submit verified constituent messages
+- Your address proves constituent status (cryptographically verified)
+- Congressional offices trust messages from these campaign delivery systems
 
 **Privacy**:
-- OAuth = read-only Sent folder access
-- Never store credentials
-- Token expires after verification
-- User can revoke anytime
+- Your address is verified via zero-knowledge proof (we don't store plaintext)
+- Congressional office sees district verification, not your address
+- See: `/docs/architecture/decision-record.md` for ZK proof details
 
 ---
 
-## The User Mental Model
+### Email Verification (Everyone Else)
 
-### What Should Users Think?
+**What happens**:
+- You click "Send Message" → Your email client opens (Gmail, Outlook, etc.)
+- Message is pre-filled with your customized content
+- You review and click "Send" from your email client
+- We check your Sent folder (via OAuth) to verify you sent it
+- You see confirmation: "✓ Delivery verified - Email sent to [recipient]"
 
-**For Congress/Official APIs**:
-> "Click 'Send' and we'll deliver it through official channels"
+**Why this works**:
+- Decision-makers have email addresses (no centralized API)
+- Sending from your personal email is more authentic than platform email
+- OAuth verification proves you actually sent it (prevents fake engagement)
 
-**For Direct Email**:
-> "Click 'Send' to open your email. We'll verify you sent it."
-
-### The Unified UX:
-
-Both paths use same button: **"Send Now"**
-
-But the modal explains what happens:
-
-**Path 1 (API)**:
-```
-┌─────────────────────────────────────┐
-│   Send to your representatives     │
-│                                     │
-│   Enter your address                │
-│   [Street, City, State, Zip]        │
-│                                     │
-│   [Send Message]                    │
-│                                     │
-│   We'll deliver through official    │
-│   congressional channels            │
-└─────────────────────────────────────┘
-```
-
-**Path 2 (Direct Email)**:
-```
-┌─────────────────────────────────────┐
-│   Send to Delta Airlines            │
-│                                     │
-│   Connect email to verify delivery  │
-│   [Connect Gmail]                   │
-│   [Connect Outlook]                 │
-│                                     │
-│   Your email will open pre-filled.  │
-│   We'll verify you sent it.         │
-└─────────────────────────────────────┘
-```
+**Privacy**:
+- OAuth access is read-only (we check Sent folder only, not Inbox)
+- We verify subject line + recipient match (don't read full content)
+- You can revoke OAuth access anytime
+- See: `/docs/strategy/delivery-verification.md` for verification roadmap
 
 ---
 
-## Backend Architecture
+## What This Means for Template Creators
+
+### When creating a template, you choose target:
+
+**Option 1: Large Legislature**
+- Template targets: US Congress, State Legislature, European Parliament
+- Delivery method: Campaign delivery API (CWC for US Congress, state-specific APIs)
+- User enters address → We verify district → We deliver via their API
+- Example: "Tell your Senator to support housing bill"
+
+**Option 2: Direct Contact (Open)**
+- Template targets: Local gov, corporations, HOAs, universities, hospitals, nonprofits, ANY decision-maker
+- Delivery method: Email (user sends from their account)
+- User reviews pre-filled email → Sends from Gmail/Outlook → We verify
+- Example: "Email your city council about zoning reform"
+- Example: "Contact your HOA board about fee increases"
+- Example: "Message your university administration about tuition"
+- Example: "Email corporate customer service about product issues"
+
+**Option 3: Multiple Levels** (planned)
+- Template targets: All levels (federal + state + local + corporate)
+- Delivery method: Hybrid (campaign APIs for large legislatures, email for others)
+- User sends to multiple decision-makers at once
+- Example: "Contact all your elected officials + corporate stakeholders about climate"
+
+---
+
+## Technical Implementation (For Developers)
 
 ### Database Schema:
 
-```typescript
-Template {
-  deliveryMethod: 'cwc' | 'email' | 'api'
-  recipientConfig: {
-    // For 'cwc':
-    chamber: 'house' | 'senate' | 'both'
+```prisma
+model Template {
+  target_level        String    // "federal" | "state" | "local" | "corporate" | "nonprofit" | "multi"
+  target_body         String?   // "us_congress" | "ca_legislature" | "sf_city_council" | "hoa_board" | "corporate_board"
+  delivery_method     String    // "api" | "email" | "hybrid"
 
-    // For 'email':
-    recipientEmails: string[]  // ["support@delta.com"]
+  // For API delivery:
+  api_provider        String?   // "cwc" | "state_api"
 
-    // For 'api':
-    apiEndpoint: string
-    apiProvider: string
-  }
+  // For email delivery:
+  recipient_emails    String[]  // ["council@cityofsf.gov", "ceo@corp.com", "hoa-board@example.com"]
 }
 ```
 
 ### Routing Logic:
 
 ```typescript
-async function sendMessage(template, user) {
-  if (template.deliveryMethod === 'cwc') {
-    // Path 1: Official Congressional API
-    const district = await getDistrict(user.address);
-    const reps = await getRepresentatives(district);
-    return await cwcAPI.sendMessage(reps, template.message);
+async function sendMessage(template: Template, user: User) {
+  if (template.delivery_method === 'api') {
+    // Large legislature - official API delivery
+    const district = await voterClient.resolveDistrict(user.address);
+    const recipients = await getOfficials(district, template.target_body);
+    return await officialAPI.sendMessage(recipients, template.message);
   }
 
-  if (template.deliveryMethod === 'email') {
-    // Path 2: Direct email with OAuth verification
-    const mailtoUrl = buildMailto(template);
+  if (template.delivery_method === 'email') {
+    // Direct contact (open to any decision-maker) - email delivery with OAuth verification
+    const mailtoUrl = buildMailtoUrl({
+      to: template.recipient_emails,
+      subject: template.subject,
+      body: template.message
+    });
 
-    // Return mailto URL + verification instructions
     return {
       action: 'mailto',
       url: mailtoUrl,
-      verifyInstructions: 'We'll check your Sent folder to verify delivery'
+      requiresVerification: true,
+      verificationInstructions: 'We\'ll check your Sent folder to verify delivery'
     };
   }
 }
 ```
 
----
-
-## What Makes Sense (UX Clarity)
-
-### Option A: Honest Labels
-
-**Congressional Templates**:
-> **Send via Official Channels**
-> We'll deliver through the Congressional Web Communication API
-
-**Direct Email Templates**:
-> **Send from Your Email**
-> Your email will open pre-filled. We'll verify you sent it.
-
-**Pros**: Crystal clear what happens
-**Cons**: More words, might confuse users
-
----
-
-### Option B: Unified Button, Clear Modal
-
-**All templates**:
-> **Send Now**
-
-**Modal content varies**:
-- Congressional → Address collection + auto-send
-- Direct Email → OAuth + mailto
-
-**Pros**: Simple UX, clarity in modal
-**Cons**: Users don't know until modal opens
-
----
-
-### Option C: Icons + Tooltips
-
-**Button**:
-> **Send Now** [🏛️ icon for Congress, ✉️ icon for direct email]
-
-**Tooltip**:
-- 🏛️ = "Delivered through official channels"
-- ✉️ = "Sent from your email"
-
-**Pros**: Visual hint without clutter
-**Cons**: Icons might be missed
-
----
-
-## Recommended Approach
-
-### Use Option B (Unified Button, Clear Modal)
-
-**Why**:
-1. **Simple UX** - One button ("Send Now") everywhere
-2. **Clarity when needed** - Modal explains delivery method
-3. **Flexibility** - Can add more delivery paths later
-4. **No premature explanation** - Don't confuse before they click
-
-### Implementation:
-
-**Template Card** (Unified):
-```svelte
-<button class="send-button">Send Now</button>
-```
-
-**Modal Content** (Path-Specific):
+### User Flow (Frontend):
 
 ```typescript
-if (template.deliveryMethod === 'cwc') {
-  showModal('AddressCollectionModal');
-  // → User enters address → Auto-send via API
-}
+// User clicks "Send Message" button
+function handleSendMessage(template: Template) {
+  if (template.delivery_method === 'api') {
+    // Show address collection modal
+    showModal('AddressCollectionModal', {
+      onSubmit: async (address) => {
+        const result = await sendViaAPI(template, address);
+        showConfirmation(`✓ Message delivered to ${result.recipient}`);
+      }
+    });
+  }
 
-if (template.deliveryMethod === 'email') {
-  showModal('EmailVerificationModal');
-  // → User connects OAuth → mailto opens → We verify
-}
-```
+  if (template.delivery_method === 'email') {
+    // Show email verification modal
+    showModal('EmailVerificationModal', {
+      onConnect: async (oauthToken) => {
+        const mailtoUrl = await getMailtoUrl(template);
+        window.location.href = mailtoUrl; // Opens email client
 
----
-
-## OAuth Verification Flow (Detailed)
-
-### Step 1: User Intent
-```
-User clicks "Send Now" on company template
-```
-
-### Step 2: OAuth Connection
-```
-┌─────────────────────────────────────┐
-│   Verify your message               │
-│                                     │
-│   Connect your email to prove       │
-│   delivery and track responses      │
-│                                     │
-│   [🔵 Connect Gmail]                │
-│   [🔷 Connect Outlook]              │
-│                                     │
-│   Your credentials are never stored │
-└─────────────────────────────────────┘
-```
-
-### Step 3: OAuth Authorization
-```
-User redirected to Gmail/Outlook
-→ Authorizes read-only Sent folder access
-→ Redirected back to Communiqué
-```
-
-### Step 4: mailto Launch
-```
-mailto:support@delta.com?subject=...&body=...
-
-User's email client opens
-User clicks "Send" in their client
-```
-
-### Step 5: Verification
-```
-Backend polls Gmail API (via OAuth token):
-→ GET /gmail/v1/users/me/messages?q=to:support@delta.com
-→ Finds message sent in last 10 minutes
-→ Verifies subject matches
-→ Increments template counter
-→ Notifies user: "✓ Delivery verified"
-```
-
-### Step 6: Cleanup
-```
-Store verification:
-→ templateId: "delta-baggage-complaint"
-→ verifiedAt: "2025-01-08T12:34:56Z"
-→ recipientEmail: "support@delta.com"
-
-Revoke OAuth token (optional):
-→ User can keep token for future sends
-→ Or revoke immediately after verification
-```
-
----
-
-## Privacy Considerations
-
-### What We Access (Path 2 - Direct Email):
-- ✅ Read-only Sent folder
-- ✅ Specific message (subject + recipient match)
-- ✅ Timestamp (within 10 minutes of send)
-
-### What We DON'T Access:
-- ❌ Inbox
-- ❌ Contacts
-- ❌ Message content (beyond verification)
-- ❌ Full email history
-
-### User Control:
-- User can revoke OAuth anytime
-- Token expires after verification
-- User sees what we access (OAuth consent screen)
-
----
-
-## Technical Implementation (Backend)
-
-### Gmail API Verification:
-
-```typescript
-async function verifyEmailSent(
-  userId: string,
-  oauthToken: string,
-  expectedRecipient: string,
-  expectedSubject: string,
-  sentAfter: Date
-): Promise<boolean> {
-  const gmail = google.gmail({ version: 'v1', auth: oauthToken });
-
-  const query = [
-    `to:${expectedRecipient}`,
-    `subject:"${expectedSubject}"`,
-    `after:${Math.floor(sentAfter.getTime() / 1000)}`
-  ].join(' ');
-
-  const response = await gmail.users.messages.list({
-    userId: 'me',
-    q: query,
-    maxResults: 1
-  });
-
-  return response.data.messages?.length > 0;
+        // Background: Verify email was sent
+        await verifyEmailDelivery(oauthToken, template);
+        showConfirmation('✓ Delivery verified');
+      }
+    });
+  }
 }
 ```
 
 ---
 
-## The Bottom Line
+## Privacy Guarantees by Delivery Method
 
-### Two Delivery Paths:
+### Campaign API Delivery (Large Legislatures):
 
-**Path 1 (Congressional - API-based)**:
-- User clicks "Send" → Enter address → Auto-delivery via CWC API
-- Backend controls delivery
-- Immediate confirmation
+**What we send**:
+- Zero-knowledge proof of district membership
+- Your customized message content
+- Template metadata (issue category, timestamp)
 
-**Path 2 (Direct Email - OAuth-verified)**:
-- User clicks "Send" → Connect OAuth → mailto opens → User sends
-- User controls delivery
-- Verification via Sent folder
+**What we DON'T send**:
+- Your residential address (only ZK proof)
+- Your email address (unless you include it in message)
+- Your phone number (unless you include it in message)
 
-### Unified UX:
-- Same button ("Send Now")
-- Different modals (path-specific)
-- Clear explanation at modal-open time
-
-### Why This Works:
-- Simple for users (one button)
-- Flexible (add more paths later)
-- Privacy-preserving (OAuth read-only)
-- Verifiable (Sent folder check)
+**What congressional office sees**:
+- ✅ Cryptographic proof you're a verified constituent
+- ✅ Your message content
+- ❌ Your plaintext address
 
 ---
 
-**Next**: Implement EmailVerificationModal.svelte with OAuth flow
+### Email Delivery (Direct Contact):
+
+**What we access (via OAuth)**:
+- Read-only access to your Sent folder
+- Verification that you sent email to specific recipient
+- Timestamp verification (sent within 10 minutes)
+
+**What we DON'T access**:
+- Your Inbox (only Sent folder)
+- Your email content beyond verification
+- Your contacts
+- Your full email history
+
+**What recipient sees**:
+- Your email (standard email from you)
+- Your email address (Gmail/Outlook address)
+- Your message content (whatever you sent)
+
+**User control**:
+- You can revoke OAuth access anytime
+- You review the email before sending
+- You can edit the message before sending
+
+---
+
+## Roadmap
+
+### Phase 1 (Current): US Congress + Open Direct Contact
+
+**Implemented**:
+- ✅ US Congress delivery (CWC API)
+- ✅ Direct email delivery (open to any decision-maker)
+- ✅ OAuth verification for email
+
+**Status**: Live in production
+
+---
+
+### Phase 2 (Next 3-6 months): State Legislatures
+
+**Planned**:
+- State-specific APIs (where available)
+- Fallback to email (for states without APIs)
+- Multi-tier targeting (federal + state in one message)
+
+**Example**: "Tell your federal AND state representatives about housing"
+
+---
+
+### Phase 3 (6-12 months): International Legislatures
+
+**Planned**:
+- UK Parliament (MPs API)
+- European Parliament (MEPs API)
+- Canadian Parliament
+- Australian Parliament
+
+**Challenge**: Each country has different contact systems
+
+---
+
+### Phase 4 (12+ months): Corporate Accountability at Scale
+
+**Requires**: Google Transparency & Accountability Center (TAC) for email verification
+
+**Planned targets**:
+- Corporations (customer service, C-suite)
+- Universities (administration)
+- HOAs (board members)
+- Nonprofits
+- Healthcare providers
+- Any decision-maker with community impact
+
+**Blocker**: Email verification at scale requires Google TAC partnership (proving you sent an email without reading it)
+
+---
+
+## For Congressional Offices
+
+**Understanding messages from Communiqué**:
+
+### What you receive:
+- Verified constituent messages (cryptographic proof of district membership)
+- Delivered through official CWC API (same system you already use)
+- Aggregate constituent sentiment data (issue tracking, volume)
+
+### Privacy architecture:
+- Constituents' addresses are verified via zero-knowledge proofs
+- You see proof of district membership, NOT plaintext addresses
+- Cryptographically secure (Halo2 ZK circuits, can't be forged)
+
+### Why trust these messages:
+- District verification is cryptographic (not self-reported)
+- Messages come through official CWC channels
+- Platform prevents spam (rate limiting, content moderation)
+
+**See**: `/docs/congressional/dashboard.md` for office dashboard setup
+
+---
+
+## Cross-References
+
+**District verification (voter-protocol)** → See `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md`
+
+**Zero-knowledge proofs** → See `/docs/architecture/decision-record.md`
+
+**Email verification roadmap** → See `/docs/strategy/delivery-verification.md`
+
+**CWC API integration** → See `/docs/congressional/cwc.md`
+
+**Template system** → See `/docs/features/templates.md`
+
+**Power structures** → See `/docs/research/power-structures.md`
+
+---
+
+## Bottom Line
+
+**User perspective**: "Who am I contacting?"
+
+- **Large legislatures** (Congress, state legislatures, parliaments) → We deliver through official channels
+- **Everyone else** (local gov, corporations, HOAs, universities, hospitals, nonprofits, ANY decision-maker) → You send email, we verify
+
+**Not**: "Path 1 vs Path 2" or "API vs email" - users don't care about backend implementation.
+
+**Key insight**: Users care about civic impact, not delivery infrastructure.
+
+**The openness of direct email**: Communiqué enables messaging to ANY entity with community impact. Start with governments (official APIs), expand to everything else (direct email).
