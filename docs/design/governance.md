@@ -88,8 +88,8 @@ model Submission {
   user_id String
   template_id String
 
-  // Delivery method depends on governance level
-  delivery_method String  // 'cwc_api' | 'mailto' | 'direct_form'
+  // Message routing handled by protocol (users don't choose)
+  delivery_method String  // Internal: 'cwc_api' | 'mailto' | 'direct_form'
 
   // What do we know?
   submitted_at DateTime

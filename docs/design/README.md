@@ -54,7 +54,7 @@ Strategic design documents for Communique's interface redesign, template discove
 **Why it exists:** Federal delivery is fully cryptographic (ZK proofs, AWS Nitro Enclaves, CWC API), but state/county/city uses client-side `mailto:` links. This document addresses the privacy implications and architecture gap.
 
 **Key sections:**
-- Current architecture state (federal vs. state/county/city delivery methods)
+- Current architecture state (federal district verification + OAuth for all entities)
 - Tiered privacy model (federal = maximum privacy via ZK, local = action-based privacy)
 - Client-side location resolution for all governance levels
 - Recipient name privacy assessment (public officials, acceptable)

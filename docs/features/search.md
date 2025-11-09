@@ -116,7 +116,7 @@ const embeddingText = `
 **How**: PostgreSQL `tsvector` with `ts_rank`
 **Examples**:
 - "Delta Airlines" → Exact company name match
-- "CWC_MESSAGE" → Delivery method filter
+- "CWC_MESSAGE" → Message type filter
 - "California" → Location-specific templates
 
 **Advantages**:

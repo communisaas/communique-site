@@ -79,9 +79,9 @@ Our primary navy represents institutional trust and governance credibility. This
 --civic-primary-950: #0a1720;
 ```
 
-### Delivery Channel Colors
+### Message Type Colors
 
-Clear semantic differentiation between delivery methods helps users understand their impact and routing.
+Clear semantic differentiation between message types helps users understand routing.
 
 ```css
 /* Verified Delivery (Congressional/Parliamentary) - Government Green */
@@ -534,8 +534,8 @@ Respect `prefers-reduced-motion` for users who need calmer interfaces:
 **Delivery Issues**
 
 - "Congressional system temporarily unavailable. We'll retry automatically."
-- "Representative's office mailbox is full. Trying alternate delivery method."
-- "Your address couldn't be verified. This is required for verified delivery."
+- "Representative's office mailbox is full. We'll retry automatically."
+- "Your address couldn't be verified. This is required for district verification."
 
 ### Error Communication
 
