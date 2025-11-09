@@ -104,7 +104,7 @@
 				<div class="min-w-0 flex-1">
 					<div class="flex flex-wrap items-center gap-2">
 						<Badge variant={isCongressional ? 'congressional' : 'direct'} size="sm">
-							{isCongressional ? 'Certified Delivery' : 'Direct Outreach'}
+							{isCongressional ? 'US Congress' : 'Email'}
 						</Badge>
 						<span class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 md:text-sm">
 							{template.category}

@@ -65,8 +65,8 @@
 					cta: 'Speak up'
 				},
 				share: {
-					headline: 'Join the pressure campaign',
-					subtext: 'Your voice adds to the growing momentum on this issue.',
+					headline: 'Add your voice to Congress',
+					subtext: 'Join others pressuring Congress on this issue.',
 					cta: 'Join them'
 				}
 			};
@@ -97,7 +97,7 @@
 				},
 				'direct-link': {
 					headline: 'Make your voice heard',
-					subtext: 'This campaign needs supporters like you.',
+					subtext: 'Join others pressuring decision-makers.',
 					cta: 'Get started'
 				},
 				share: {
@@ -153,7 +153,7 @@
 					title: 'Direct message delivery',
 					desc: 'Your message is sent to the right people'
 				},
-				{ icon: Users, title: 'Tracked for impact', desc: 'We monitor campaign effectiveness' },
+				{ icon: Users, title: 'Congressional messages tracked', desc: 'Delivery verified on-chain' },
 				{ icon: CheckCircle2, title: 'Drives change', desc: 'Collective voices create real impact' }
 			];
 		}

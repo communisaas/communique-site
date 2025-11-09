@@ -87,14 +87,14 @@
 		return {
 			// Short & urgent (Twitter, Discord) - <280 chars
 			short: actionCount > 1000
-				? `🔥 Join ${actionCount.toLocaleString()}+ people taking action on "${template.title}"\n\n${shareUrl}`
-				: `Take action: "${template.title}"\n\n${shareUrl}`,
+				? `🔥 ${actionCount.toLocaleString()}+ people pressuring Congress: "${template.title}"\n\n${shareUrl}`
+				: `Pressure Congress: "${template.title}"\n\n${shareUrl}`,
 
 			// Medium (Slack, group chats)
-			medium: `I just contacted my representatives about ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people have already acted. ` : ''}Takes 2 minutes: ${shareUrl}`,
+			medium: `Pressuring Congress on ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people already acted. ` : ''}Takes 2 minutes: ${shareUrl}`,
 
 			// Long (Email, Reddit)
-			long: `Hey, I wanted to share this civic action template.\n\n"${template.title}"\n\n${template.description}\n\n${actionCount > 1000 ? `This is going viral - ${actionCount.toLocaleString()}+ people have taken action. ` : actionCount > 100 ? `${actionCount.toLocaleString()} people have acted. ` : ''}Takes about 2 minutes. Your voice matters.\n\n${shareUrl}`,
+			long: `I'm sending this to Congress.\n\n"${template.title}"\n\n${template.description}\n\n${actionCount > 1000 ? `${actionCount.toLocaleString()}+ people already sent this. ` : actionCount > 100 ? `${actionCount.toLocaleString()} people acted. ` : ''}Takes 2 minutes.\n\n${shareUrl}`,
 
 			// SMS-friendly (under 160 chars)
 			sms: actionCount > 0
@@ -281,11 +281,11 @@
 
 	async function handleSendConfirmation(sent: boolean) {
 		if (sent) {
-			// Check delivery method to determine flow
-			const isCertifiedDelivery = template.deliveryMethod === 'cwc';
+			// Check if Congressional message (Phase 1: only these are verified)
+			const isCongressional = template.deliveryMethod === 'cwc';
 
-			if (isCertifiedDelivery) {
-				// Congressional delivery - use full agent processing pipeline
+			if (isCongressional) {
+				// Congressional message - verified delivery, reputation tracked
 				modalActions.setState('tracking');
 
 				// Generate submission ID and trigger agent processing
@@ -314,7 +314,8 @@
 					submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
 				}
 			} else {
-				// Direct outreach - skip agent processing, go straight to celebration
+				// Phase 1: Non-Congressional messages use mailto, no verification yet
+				// Phase 2: Will add OAuth verification for all message types
 				modalActions.confirmSend();
 
 				// Navigate to template page after brief celebration
@@ -494,9 +495,9 @@
 			>
 				<Send class="h-8 w-8 text-participation-primary-600 sm:h-10 sm:w-10" />
 			</div>
-			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Opening your email app...</h3>
+			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Preparing message...</h3>
 			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">
-				Your message is ready with your information pre-filled.
+				Opening your email with pre-filled message.
 			</p>
 
 			<!-- Animated progress indicator -->
@@ -523,9 +524,9 @@
 			>
 				<Send class="h-8 w-8 text-participation-primary-600 sm:h-10 sm:w-10" />
 			</div>
-			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Did you send your message?</h3>
+			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Did you send it?</h3>
 			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">
-				Help us track real impact by confirming your send.
+				Confirm to track this action.
 			</p>
 
 			<div class="flex justify-center gap-2 sm:gap-3">
@@ -608,8 +609,8 @@
 							<CheckCircle2 class="h-5 w-5 text-green-600" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
-							<p class="text-sm text-slate-600">Queued for delivery</p>
+							<h2 class="text-lg font-semibold text-slate-900">Sent</h2>
+							<p class="text-sm text-slate-600">Delivery in progress</p>
 						</div>
 					</div>
 					<button
@@ -753,8 +754,8 @@
 							<Send class="h-5 w-5 text-participation-primary-600" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
-							<p class="text-sm text-slate-600">Tracking delivery and impact</p>
+							<h2 class="text-lg font-semibold text-slate-900">Sent to Congress</h2>
+							<p class="text-sm text-slate-600">Tracking delivery</p>
 						</div>
 					</div>
 					<button

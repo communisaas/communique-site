@@ -6,16 +6,16 @@
 
 	const badges = {
 		certified: {
-			tooltip: 'Verified delivery to Congressional offices',
+			tooltip: 'Verified to Congress, reputation tracked',
 			class: 'bg-blue-100 text-blue-700',
 			icon: Shield,
-			text: 'Congressional Delivery'
+			text: 'US Congress'
 		},
 		direct: {
-			tooltip: 'Direct email outreach to decision makers',
+			tooltip: 'Opens your email client',
 			class: 'bg-blue-100 text-blue-600',
 			icon: AtSign,
-			text: 'Direct Outreach'
+			text: 'Email'
 		}
 	};
 
