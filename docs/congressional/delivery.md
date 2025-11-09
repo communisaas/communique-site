@@ -8,7 +8,7 @@
 
 ## Who You Can Contact
 
-### Large Legislatures (Campaign-Scale Delivery APIs)
+### Large Legislatures (Cryptographically Verified Constituent Messages)
 
 **Who**:
 - **US Congress** (House + Senate, 535 members)
@@ -16,18 +16,20 @@
 - **European Parliament** (planned, 705 members)
 - **UK Parliament** (planned, 650 MPs)
 
-**What makes them different**: You can't effectively run email campaigns to 535 members of Congress. They get too much volume. So they built APIs (like CWC for US Congress) to handle constituent messages at scale with verified district checks.
+**What makes them different**: These bodies receive thousands of constituent messages daily. They need to verify you're actually a constituent (not spam, not out-of-district activists). Email can't do this at scale. So they built systems (APIs like CWC) to handle verified constituent contact.
+
+**What we do**: We prove you're a constituent using zero-knowledge cryptography - without revealing your address. Congressional offices get cryptographic proof you're in their district, not just your claim.
 
 **How delivery works** (user perspective):
 1. You customize a template
-2. You verify your address (we prove you're a constituent with zero-knowledge cryptography)
+2. You verify your address (we generate zero-knowledge proof of district membership)
 3. You click "Send Message"
-4. **We deliver through their campaign delivery API**
+4. **We deliver cryptographically verified constituent message**
 5. You get confirmation ("✓ Message delivered to Senator Warren")
 
-**Why APIs exist at this scale**: When you have 535+ members and thousands of daily messages, email breaks down. Large legislatures built infrastructure to manage constituent contact at scale while filtering out non-constituents.
+**Why this matters**: Congressional offices can trust these messages are from real constituents (can't be forged), while your address stays private (zero-knowledge proof). Not spam, not astroturfing - verifiable constituent voice.
 
-**User experience**: Seamless. You click "Send" and we handle delivery through their existing campaign infrastructure.
+**User experience**: Seamless. You click "Send" and we handle cryptographic verification + delivery.
 
 ---
 
@@ -90,7 +92,7 @@
 **What users should think**:
 
 ### For Large Legislatures:
-> "I'm sending a message to my Senator. Communiqué will deliver it through official channels."
+> "I'm sending a cryptographically verified message to my Senator. They'll know I'm a real constituent without seeing my address."
 
 ### For Everyone Else:
 > "I'm sending an email to my city councilmember / corporate CEO / HOA board / university administration. Communiqué will verify I sent it."
@@ -101,23 +103,30 @@
 
 ## Delivery Methods Explained (For Users)
 
-### Campaign Delivery APIs (Large Legislatures)
+### Cryptographically Verified Delivery (Large Legislatures)
 
 **What happens**:
-- You fill out your address → We verify you're a constituent (zero-knowledge proof)
-- You click "Send Message" → We deliver through their campaign delivery API (CWC for US Congress)
-- Congressional office receives verified constituent message
+- You fill out your address → We generate zero-knowledge proof of district membership
+- You click "Send Message" → We deliver message + cryptographic proof
+- Congressional office receives message with unforgeable proof you're a constituent
 - You see confirmation: "✓ Message delivered to Senator Warren"
 
 **Why this works**:
-- Large legislatures can't handle email campaigns at scale (too much volume, spam filtering breaks)
-- So they built APIs (CWC, state-specific systems) for campaigns to submit verified constituent messages
-- Your address proves constituent status (cryptographically verified)
-- Congressional offices trust messages from these campaign delivery systems
+- Congressional offices need to verify constituent status (filter spam, out-of-district messages)
+- Email can't prove constituent status at scale (address can be faked, no verification)
+- We use zero-knowledge cryptography: prove you're in the district without revealing address
+- Congressional offices get cryptographic proof (can't be forged), you keep address private
+
+**What makes this different from campaigns**:
+- **Not spam**: Cryptographically proven constituent messages
+- **Not astroturfing**: Each message proves real district membership
+- **Privacy-preserving**: Zero-knowledge proof reveals district, not address
+- **Trustworthy**: Congressional offices can verify proof, can't fake constituent status
 
 **Privacy**:
 - Your address is verified via zero-knowledge proof (we don't store plaintext)
 - Congressional office sees district verification, not your address
+- Cryptographically unforgeable proof of constituent status
 - See: `/docs/architecture/decision-record.md` for ZK proof details
 
 ---
@@ -150,8 +159,8 @@
 
 **Option 1: Large Legislature**
 - Template targets: US Congress, State Legislature, European Parliament
-- Delivery method: Campaign delivery API (CWC for US Congress, state-specific APIs)
-- User enters address → We verify district → We deliver via their API
+- Delivery method: Cryptographically verified constituent messages
+- User enters address → We generate ZK proof → We deliver message + proof
 - Example: "Tell your Senator to support housing bill"
 
 **Option 2: Direct Contact (Open)**
@@ -165,7 +174,7 @@
 
 **Option 3: Multiple Levels** (planned)
 - Template targets: All levels (federal + state + local + corporate)
-- Delivery method: Hybrid (campaign APIs for large legislatures, email for others)
+- Delivery method: Hybrid (cryptographically verified for large legislatures, email for others)
 - User sends to multiple decision-makers at once
 - Example: "Contact all your elected officials + corporate stakeholders about climate"
 
@@ -253,7 +262,7 @@ function handleSendMessage(template: Template) {
 
 ## Privacy Guarantees by Delivery Method
 
-### Campaign API Delivery (Large Legislatures):
+### Cryptographically Verified Delivery (Large Legislatures):
 
 **What we send**:
 - Zero-knowledge proof of district membership
@@ -392,11 +401,13 @@ function handleSendMessage(template: Template) {
 
 **User perspective**: "Who am I contacting?"
 
-- **Large legislatures** (Congress, state legislatures, parliaments) → We deliver through official channels
+- **Large legislatures** (Congress, state legislatures, parliaments) → Cryptographically verified constituent messages (zero-knowledge proof)
 - **Everyone else** (local gov, corporations, HOAs, universities, hospitals, nonprofits, ANY decision-maker) → You send email, we verify
 
 **Not**: "Path 1 vs Path 2" or "API vs email" - users don't care about backend implementation.
 
 **Key insight**: Users care about civic impact, not delivery infrastructure.
 
-**The openness of direct email**: Communiqué enables messaging to ANY entity with community impact. Start with governments (official APIs), expand to everything else (direct email).
+**What makes large legislatures different**: Zero-knowledge cryptography proves you're a constituent without revealing your address. Not spam, not astroturfing - verifiable constituent voice.
+
+**The openness of direct email**: Communiqué enables messaging to ANY entity with community impact. Start with governments (cryptographic verification), expand to everything else (direct email).

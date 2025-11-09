@@ -6,10 +6,10 @@
 
 ## Overview
 
-**What this covers**: Message delivery to ANY decision-maker - from congressional offices (via campaign delivery APIs) to corporations, HOAs, universities, hospitals, nonprofits (via direct email).
+**What this covers**: Message delivery to ANY decision-maker - from congressional offices (cryptographically verified constituent messages) to corporations, HOAs, universities, hospitals, nonprofits (via direct email).
 
 **Two delivery methods**:
-1. **Campaign delivery APIs** (large legislatures where email campaigns don't work at scale)
+1. **Cryptographically verified delivery** (large legislatures - zero-knowledge proof of constituent status)
 2. **Direct email** (everyone else - OPEN to any entity with community impact)
 
 **User perspective**: "Who am I contacting?" not "Which backend delivery method?"
@@ -25,10 +25,11 @@
 **Key insight**: Users care about WHO they're contacting (Senator vs city council vs corporate CEO), not HOW the backend delivers it (API vs email).
 
 **Covers**:
-- Large legislatures (campaign delivery APIs for scale)
+- Large legislatures (cryptographically verified constituent messages)
 - Everyone else (direct email - open to any decision-maker)
-- User mental models
+- User mental models (users care about WHO, not HOW)
 - Privacy guarantees by delivery method
+- What makes cryptographic verification different (not spam, not astroturfing)
 - Template creator guidance
 - Roadmap (Phase 1-4)
 
@@ -40,11 +41,13 @@
 
 Technical integration with CWC API for US congressional message delivery.
 
-**What it does**: Delivers verified constituent messages through CWC campaign delivery API.
+**What it does**: Delivers cryptographically verified constituent messages through CWC API.
 
 **Scope**: US Congress only (House + Senate, 535 members)
 
-**Why CWC API exists**: You can't email 535 members of Congress at campaign scale (spam filters break, volume overwhelms staff). CWC is the campaign delivery infrastructure they built to handle verified constituent messages at scale.
+**Why CWC API exists**: Congressional offices need to verify constituent status (filter spam, out-of-district messages). Email can't prove constituent status at scale. CWC is the infrastructure they built to handle verified constituent contact.
+
+**What makes us different**: We use zero-knowledge cryptography to prove constituent status without revealing addresses. Not spam, not astroturfing - cryptographically unforgeable proof of constituent voice.
 
 **Flow**:
 1. User customizes template for congressional message
@@ -78,15 +81,21 @@ Dashboard for congressional offices to view verified constituent messages.
 
 ## Delivery Methods Comparison
 
-### Campaign Delivery APIs (Large Legislatures)
+### Cryptographically Verified Delivery (Large Legislatures)
 
 **Who**: US Congress, state legislatures, European Parliament (planned), UK Parliament (planned)
 
-**Why APIs exist**: You can't run email campaigns to 535+ members effectively (spam filters fail, staff overwhelmed, constituent verification breaks). Large legislatures built campaign delivery APIs (CWC for US Congress) to handle verified constituent messages at scale.
+**Why cryptographic verification**: Congressional offices need to verify constituent status (filter spam, out-of-district messages). Email can't prove constituent status at scale (addresses can be faked). We use zero-knowledge cryptography to prove you're a constituent without revealing your address.
+
+**What makes this different**:
+- **Not spam**: Cryptographically proven constituent messages
+- **Not astroturfing**: Each message proves real district membership
+- **Privacy-preserving**: Zero-knowledge proof reveals district, not address
+- **Trustworthy**: Congressional offices can verify proof, can't fake constituent status
 
 **User experience**:
 - User clicks "Send Message"
-- Communiqué delivers through their campaign API
+- Communiqué generates cryptographic proof and delivers
 - User gets confirmation: "✓ Message delivered to Senator Warren"
 
 **Technical flow**:
@@ -94,11 +103,11 @@ Dashboard for congressional offices to view verified constituent messages.
 1. User customizes template
 2. Address encrypted in browser (XChaCha20-Poly1305)
 3. TEE generates zero-knowledge district proof (2-5s)
-4. Message + proof → CWC API → congressional office
+4. Message + unforgeable proof → CWC API → congressional office
 5. Delivery receipt stored
 ```
 
-**Privacy**: Zero-knowledge proof reveals district membership, not address
+**Privacy**: Zero-knowledge proof reveals district membership, not address. Cryptographically unforgeable.
 
 ---
 
@@ -127,7 +136,7 @@ Dashboard for congressional offices to view verified constituent messages.
 
 ---
 
-## Privacy Architecture (Campaign APIs Only)
+## Privacy Architecture (Cryptographically Verified Delivery Only)
 
 **What congressional offices see**:
 - ✅ Zero-knowledge proof of district membership
