@@ -994,3 +994,46 @@ model CWCJob {
   @@index([status])
   @@index([createdAt])
 }
+
+// ============= LOCATION CACHING (CICERO API BUDGET PROTECTION) =============
+// Prevents duplicate API calls and budget drain attacks
+
+model LocationCache {
+  id                          String   @id @default(cuid())
+  address_hash                String   @unique @map("address_hash") // SHA-256 of normalized coordinates
+
+  // Cicero API response data
+  city_council_district       String?  @map("city_council_district")
+  city_council_member_name    String?  @map("city_council_member_name")
+  city_council_member_email   String?  @map("city_council_member_email")
+  city_council_member_phone   String?  @map("city_council_member_phone")
+
+  state_house_district        String?  @map("state_house_district")
+  state_senate_district       String?  @map("state_senate_district")
+  congressional_district      String?  @map("congressional_district")
+
+  // Cache metadata
+  cached_at                   DateTime @default(now()) @map("cached_at")
+  expires_at                  DateTime @map("expires_at") // 2-year expiration (election cycle)
+  last_verified               DateTime @default(now()) @map("last_verified")
+  hit_count                   Int      @default(0) @map("hit_count")
+
+  // Cost tracking
+  api_cost_cents              Int      @default(4) @map("api_cost_cents") // $0.04 = 4 cents
+
+  @@index([expires_at])
+  @@index([cached_at])
+  @@map("location_cache")
+}
+
+model CiceroBudget {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  requests      Int      @default(0)
+  cost_cents    Int      @default(0) @map("cost_cents")
+  cache_hits    Int      @default(0) @map("cache_hits")
+  cache_misses  Int      @default(0) @map("cache_misses")
+
+  @@index([date])
+  @@map("cicero_budget")
+}

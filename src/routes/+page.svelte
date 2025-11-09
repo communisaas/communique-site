@@ -251,8 +251,8 @@
 </script>
 
 <svelte:head>
-	<title>Communiqué</title>
-	<meta name="description" content="Coordinate campaigns that actually move decisions" />
+	<title>Communiqué - Your voice. Their decision.</title>
+	<meta name="description" content="Coordinate campaigns that decision-makers can't ignore. One complaint gets ignored. 5,000 coordinated messages force a response." />
 </svelte:head>
 
 <!-- Hero Section - Simple Badge -->

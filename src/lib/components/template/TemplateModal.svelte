@@ -12,7 +12,7 @@
 		Send,
 		Users as _Users,
 		Eye as _Eye,
-		Share2 as _Share2,
+		Share2,
 		Copy,
 		CheckCircle2,
 		ExternalLink,
@@ -20,8 +20,11 @@
 		ArrowRight,
 		Heart as _Heart,
 		Trophy as _Trophy,
-		Flame as _Flame
+		Flame as _Flame,
+		QrCode,
+		Download
 	} from '@lucide/svelte';
+	import QRCode from 'qrcode';
 	// import TemplateMeta from '$lib/components/template/TemplateMeta.svelte';
 	// import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
@@ -68,8 +71,37 @@
 	let copyButtonGlow = $state(false);
 	let copySuccessWave = $state(false);
 
+	// QR code state
+	let qrCodeDataUrl = $state<string>('');
+	let showQRCode = $state(false);
+	let showPreWrittenMessages = $state(false);
+
 	// Generate share URL for template
 	const shareUrl = $derived(`${$page.url.origin}/s/${template.slug}`);
+
+	// Pre-written share messages for different contexts
+	const shareMessages = $derived(() => {
+		const actionCount = template.metrics?.sent || 0;
+		const category = template.category.toLowerCase();
+
+		return {
+			// Short & urgent (Twitter, Discord) - <280 chars
+			short: actionCount > 1000
+				? `🔥 Join ${actionCount.toLocaleString()}+ people taking action on "${template.title}"\n\n${shareUrl}`
+				: `Take action: "${template.title}"\n\n${shareUrl}`,
+
+			// Medium (Slack, group chats)
+			medium: `I just contacted my representatives about ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people have already acted. ` : ''}Takes 2 minutes: ${shareUrl}`,
+
+			// Long (Email, Reddit)
+			long: `Hey, I wanted to share this civic action template.\n\n"${template.title}"\n\n${template.description}\n\n${actionCount > 1000 ? `This is going viral - ${actionCount.toLocaleString()}+ people have taken action. ` : actionCount > 100 ? `${actionCount.toLocaleString()} people have acted. ` : ''}Takes about 2 minutes. Your voice matters.\n\n${shareUrl}`,
+
+			// SMS-friendly (under 160 chars)
+			sms: actionCount > 0
+				? `${template.title} - Join ${actionCount.toLocaleString()}+: ${shareUrl}`
+				: `${template.title} - ${shareUrl}`
+		};
+	});
 
 	// Store event handlers for proper cleanup
 	let mailAppBlurHandler: (() => void) | null = null;
@@ -324,6 +356,46 @@
 		}
 	}
 
+	// Universal share handler (native share or clipboard)
+	async function handleUniversalShare() {
+		const shareData = {
+			title: template.title,
+			text: shareMessages().medium,
+			url: shareUrl
+		};
+
+		// Try native share first (mobile)
+		if (navigator.share && navigator.canShare?.(shareData)) {
+			try {
+				await navigator.share(shareData);
+				// Track share
+				console.log('[Share] Native share used');
+			} catch (err) {
+				// User cancelled or error
+				if (err instanceof Error && err.name !== 'AbortError') {
+					console.error('[Share] Native share failed:', err);
+				}
+			}
+		} else {
+			// Fallback to clipboard (desktop)
+			await copyMessage(shareMessages().medium);
+		}
+	}
+
+	// Copy message to clipboard
+	async function copyMessage(message: string) {
+		try {
+			await navigator.clipboard.writeText(`${message}\n\n${shareUrl}`);
+			showCopied = true;
+			coordinated.setTimeout(() => {
+				showCopied = false;
+			}, 3000, 'copy-hide', componentId);
+		} catch {
+			console.warn('Clipboard copy failed');
+		}
+	}
+
+	// Copy just the URL
 	async function copyTemplateUrl() {
 		try {
 			// Trigger press animation
@@ -374,20 +446,33 @@
 		}
 	}
 
-	function shareOnSocial(platform: 'twitter' | 'facebook' | 'linkedin') {
-		const text = `Just took action on "${template.title}" - every voice matters! Join the movement 🔥`;
-		const encodedUrl = encodeURIComponent(shareUrl);
-		const encodedText = encodeURIComponent(text);
+	// Generate QR code
+	async function loadQRCode() {
+		if (!qrCodeDataUrl) {
+			try {
+				qrCodeDataUrl = await QRCode.toDataURL(shareUrl, {
+					width: 300,
+					margin: 2,
+					color: {
+						dark: '#1E293B',
+						light: '#FFFFFF'
+					}
+				});
+			} catch (err) {
+				console.error('QR code generation failed:', err);
+			}
+		}
+		showQRCode = true;
+	}
 
-		const urls = {
-			twitter: `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`,
-			facebook: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-			linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`
-		};
+	// Download QR code as PNG
+	function downloadQRCode() {
+		if (!qrCodeDataUrl) return;
 
-		window.open(urls[platform], '_blank', 'width=600,height=400');
-
-		_showShareMenu = false;
+		const a = document.createElement('a');
+		a.href = qrCodeDataUrl;
+		a.download = `${template.slug}-qr-code.png`;
+		a.click();
 	}
 </script>
 
@@ -546,58 +631,110 @@
 					<p class="text-sm text-slate-600">Real voices creating real change</p>
 				</div>
 
-				<!-- Prominent URL Copy Section -->
-				<div class="rounded-xl border-2 border-slate-200 bg-slate-50 p-6">
-					<div class="mb-4 text-center">
-						<h3 class="mb-2 text-lg font-semibold text-slate-900">Share this template</h3>
-						<p class="text-sm text-slate-600">Others can use it too</p>
-					</div>
+				<!-- Universal Sharing Section -->
+				<div class="space-y-4">
+					<!-- Primary: Universal Share Button -->
+					<button
+						onclick={handleUniversalShare}
+						class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
+					>
+						<Share2 class="h-5 w-5" />
+						<span>{navigator.share ? 'Share this template' : 'Copy share message'}</span>
+					</button>
 
-					<!-- The URL Display -->
-					<div class="mb-4 rounded-lg border border-slate-300 bg-white p-4">
-						<div class="flex items-center justify-between">
-							<div class="mr-3 flex-1">
-								<div class="truncate font-mono text-sm text-slate-600">
-									{shareUrl}
-								</div>
-							</div>
+					{#if showCopied}
+						<div
+							class="rounded-lg bg-green-50 px-4 py-2 text-center text-sm text-green-700"
+							in:scale={{ duration: 200 }}
+							out:fade={{ duration: 200 }}
+						>
+							✓ Copied to clipboard!
+						</div>
+					{/if}
+
+					<!-- Secondary: Pre-written Messages -->
+					<details class="rounded-lg border border-slate-200 bg-white">
+						<summary class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+							📝 Copy pre-written messages for different platforms
+						</summary>
+						<div class="space-y-2 border-t border-slate-200 p-4">
 							<button
-								onclick={copyTemplateUrl}
-								class="flex items-center gap-2 rounded-lg border px-4 py-2 transition-all duration-200 {copyButtonGlow
-									? 'border-participation-primary-400 bg-participation-primary-50'
-									: 'border-slate-300 bg-white hover:border-slate-400 hover:bg-slate-50'}"
-								style="transform: scale({$copyButtonScale}) rotate({$copyButtonRotation}deg)"
+								onclick={() => copyMessage(shareMessages().short)}
+								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
 							>
-								{#if showCopied}
-									<CheckCircle2 class="h-4 w-4 text-green-600" />
-									<span class="text-sm font-medium text-green-600">Copied!</span>
-								{:else}
-									<Copy class="h-4 w-4 text-slate-600" />
-									<span class="text-sm font-medium text-slate-700">Copy</span>
-								{/if}
+								<span class="font-medium text-slate-900">Twitter / Discord</span>
+								<Copy class="h-4 w-4 text-slate-400" />
+							</button>
+							<button
+								onclick={() => copyMessage(shareMessages().medium)}
+								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
+							>
+								<span class="font-medium text-slate-900">Slack / Group chats</span>
+								<Copy class="h-4 w-4 text-slate-400" />
+							</button>
+							<button
+								onclick={() => copyMessage(shareMessages().long)}
+								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
+							>
+								<span class="font-medium text-slate-900">Email / Reddit</span>
+								<Copy class="h-4 w-4 text-slate-400" />
+							</button>
+							<button
+								onclick={() => copyMessage(shareMessages().sms)}
+								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
+							>
+								<span class="font-medium text-slate-900">Text message</span>
+								<Copy class="h-4 w-4 text-slate-400" />
 							</button>
 						</div>
+					</details>
 
-						<!-- Success Wave Animation -->
-						{#if copySuccessWave}
-							<div
-								class="pointer-events-none absolute inset-0 rounded-lg bg-green-100 opacity-30"
-								in:scale={{ duration: 300, start: 0.8 }}
-								out:fade={{ duration: 200 }}
-							></div>
-						{/if}
-					</div>
+					<!-- Tertiary: QR Code -->
+					<button
+						onclick={loadQRCode}
+						class="w-full text-sm text-slate-600 underline hover:text-slate-900"
+					>
+						<QrCode class="mr-1 inline h-4 w-4" />
+						Show QR code for in-person sharing
+					</button>
 
-					<!-- Social Share -->
-					<div class="flex justify-center gap-3">
-						<button
-							onclick={() => shareOnSocial('twitter')}
-							class="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 transition-all duration-200 hover:border-slate-400 hover:bg-slate-50"
-							title="Share on X"
+					{#if showQRCode && qrCodeDataUrl}
+						<div
+							class="rounded-lg border border-slate-200 bg-white p-4"
+							in:scale={{ duration: 300 }}
 						>
-							<span class="text-sm font-bold text-black">𝕏</span>
-							<span class="text-sm text-slate-700">Share</span>
-						</button>
+							<img src={qrCodeDataUrl} alt="QR code for {template.title}" class="mx-auto" />
+							<p class="mb-3 mt-2 text-center text-xs text-slate-600">
+								Print this for protests, meetings, or events
+							</p>
+							<button
+								onclick={downloadQRCode}
+								class="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+							>
+								<Download class="h-4 w-4" />
+								Download for printing
+							</button>
+						</div>
+					{/if}
+
+					<!-- Always Visible: Raw URL -->
+					<div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+						<input
+							type="text"
+							readonly
+							value={shareUrl}
+							onclick={(e) => e.currentTarget.select()}
+							class="mb-2 w-full rounded border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-700"
+						/>
+						<div class="flex items-center justify-between text-xs text-slate-500">
+							<span>Share this link anywhere</span>
+							<button
+								onclick={copyTemplateUrl}
+								class="text-participation-primary-600 hover:underline"
+							>
+								Copy URL
+							</button>
+						</div>
 					</div>
 				</div>
 			</div>

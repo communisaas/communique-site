@@ -3,6 +3,7 @@
 	import { onMount as _onMount } from 'svelte';
 	import { User as _User, LogOut as _LogOut } from '@lucide/svelte';
 	import { page } from '$app/stores';
+	import { browser } from '$app/environment';
 	import '../app.css';
 	import Footer from '$lib/components/layout/Footer.svelte';
 	import AppHeader from '$lib/components/layout/AppHeader.svelte';
@@ -15,6 +16,9 @@
 	import type { Template as _Template } from '$lib/types/template';
 	import type { LayoutData } from './$types';
 	import type { Snippet } from 'svelte';
+
+	// Derived state for checking if we're on profile page (browser-safe)
+	const isProfilePage = $derived(browser && $page.url?.pathname?.startsWith('/profile'));
 
 	let {
 		children,
@@ -59,7 +63,7 @@
 	}
 </script>
 
-{#if $page.url.pathname.startsWith('/profile')}
+{#if isProfilePage}
 	<!-- Profile pages: No AppHeader, no padding, full control -->
 	<div class="min-h-screen bg-slate-50">
 		<ErrorBoundary fallback="detailed" showRetry={true}>

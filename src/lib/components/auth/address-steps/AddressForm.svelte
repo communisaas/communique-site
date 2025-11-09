@@ -25,9 +25,12 @@
 </script>
 
 <div class="mb-6 text-center">
-	<h2 class="mb-2 text-xl font-bold text-slate-900">Enter Your Address</h2>
+	<h2 class="mb-2 text-2xl font-bold text-slate-900">Find who represents you</h2>
 	<p class="text-sm text-slate-600">
-		Congressional messages need your address to route to the correct representatives
+		Your address routes your message to the right officials.
+	</p>
+	<p class="mt-1 text-xs font-medium text-slate-500">
+		Used once. Deleted immediately.
 	</p>
 </div>
 
@@ -101,23 +104,31 @@
 	{/if}
 </div>
 
-<div class="space-y-3">
-	<button
-		type="button"
-		class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-blue-700 disabled:opacity-50"
-		onclick={onVerifyAddress}
-		disabled={isVerifying ||
-			!streetAddress.trim() ||
-			!city.trim() ||
-			!stateCode.trim() ||
-			!zipCode.trim()}
-	>
-		{#if isVerifying}
-			<Search class="h-4 w-4 animate-spin" />
-			Verifying address...
-		{:else}
-			<Search class="h-4 w-4" />
-			Verify & Find Representatives
-		{/if}
-	</button>
-</div>
+<button
+	type="button"
+	class="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-all hover:bg-blue-700 disabled:opacity-50"
+	onclick={onVerifyAddress}
+	disabled={isVerifying ||
+		!streetAddress.trim() ||
+		!city.trim() ||
+		!stateCode.trim() ||
+		!zipCode.trim()}
+>
+	{#if isVerifying}
+		<Search class="h-4 w-4 animate-spin" />
+		Finding your representatives...
+	{:else}
+		<Search class="h-4 w-4" />
+		Find Representatives
+	{/if}
+</button>
+
+<!-- Progressive disclosure: Why your address? -->
+<details class="text-center">
+	<summary class="cursor-pointer text-xs text-slate-500 hover:text-slate-700">
+		Why your address? →
+	</summary>
+	<p class="mt-3 text-xs leading-relaxed text-slate-600">
+		Officials only respond to constituents in their jurisdiction. Your address proves you're affected by their decisions. We use it once for routing, then permanently delete it.
+	</p>
+</details>

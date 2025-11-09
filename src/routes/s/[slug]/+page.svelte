@@ -21,6 +21,7 @@
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
 	import type { Template as TemplateType } from '$lib/types/template';
+	import SocialProofBanner from '$lib/components/template/SocialProofBanner.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -36,6 +37,7 @@
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
+	const topDistricts = $derived(data.topDistricts || []);
 	// Simplified - no query parameters needed, default to direct-link
 	const source = 'direct-link';
 	const shareUrl = $derived(
@@ -47,6 +49,17 @@
 			}
 		})()
 	);
+
+	// Enhanced description with social proof for Open Graph
+	const socialProofDescription = $derived(() => {
+		const sent = template.metrics?.sent || 0;
+		if (sent > 1000) {
+			return `Join ${sent.toLocaleString()}+ constituents who took action. ${template.description}`;
+		} else if (sent > 100) {
+			return `${sent.toLocaleString()} people have taken action. ${template.description}`;
+		}
+		return template.description;
+	});
 
 	// Check if user has complete address for congressional templates
 	const hasCompleteAddress = $derived(
@@ -168,14 +181,20 @@
 	<meta property="og:type" content="website" />
 	<meta property="og:url" content={shareUrl} />
 	<meta property="og:title" content={template.title} />
-	<meta property="og:description" content={template.description} />
+	<meta property="og:description" content={socialProofDescription} />
 	<meta property="og:site_name" content="Communiqué" />
+	<meta property="og:image" content="{shareUrl.split('?')[0]}/og-image" />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
+	<meta property="og:image:alt" content="{template.title} - Join the movement on Communiqué" />
 
 	<!-- Twitter -->
 	<meta property="twitter:card" content="summary_large_image" />
 	<meta property="twitter:url" content={shareUrl} />
 	<meta property="twitter:title" content={template.title} />
-	<meta property="twitter:description" content={template.description} />
+	<meta property="twitter:description" content={socialProofDescription} />
+	<meta property="twitter:image" content="{shareUrl.split('?')[0]}/og-image" />
+	<meta property="twitter:image:alt" content="{template.title} - Join the movement on Communiqué" />
 </svelte:head>
 
 <!-- Template content with integrated header -->
@@ -263,6 +282,13 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Social Proof Banner (show if > 10 actions) -->
+	{#if (template.metrics?.sent || 0) > 10}
+		<div class="mb-6">
+			<SocialProofBanner totalActions={template.metrics?.sent || 0} {topDistricts} />
+		</div>
+	{/if}
 
 	<!-- Template Preview -->
 	<div class="rounded-xl border border-slate-200 bg-white shadow-sm">

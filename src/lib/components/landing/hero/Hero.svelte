@@ -17,15 +17,16 @@
 <div class="space-y-8">
 	<div>
 		<h1 class="mb-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
-			Make Your Voice
-			<span class="text-participation-accent-600">Count</span>
-			<span class="mt-2 block text-xl font-normal text-gray-600 sm:text-2xl">On record.</span>
+			Your voice.
+			<span class="mt-2 block text-participation-accent-600">Their decision.</span>
 		</h1>
 
-		<p class="mb-8 text-base leading-relaxed text-gray-600 sm:text-lg">
-			Congress tracks millions of messages each year. Companies monitor customer sentiment. School
-			boards count angry parents. The pattern is simple—coordinated messages get meetings. Scattered
-			complaints get filed.
+		<p class="mb-3 text-base font-medium leading-relaxed text-gray-900 sm:text-lg">
+			Coordinate campaigns that decision-makers can't ignore.
+		</p>
+
+		<p class="mb-8 text-sm text-gray-600">
+			One complaint gets ignored. 5,000 coordinated messages force a response.
 		</p>
 	</div>
 

@@ -71,6 +71,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (!district) {
 			console.warn('[Census API] No congressional district found');
+			console.warn('[Census API] Available geographies:', Object.keys(geographies || {}));
 			return json({ error: 'Could not determine congressional district' }, { status: 404 });
 		}
 
@@ -80,8 +81,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		const countyName = county?.NAME || undefined;
 
 		// Parse congressional district (GEOID format: "0611" = CA-11)
+		console.log('[Census API] District data:', district);
 		const stateFromGeoid = district.STATE; // State FIPS code
-		const districtNumber = district.CD119; // District number
+		const districtNumber = district.CD119 || district.CD || district.GEOID?.slice(2); // Try multiple field names
+
+		if (!districtNumber) {
+			console.error('[Census API] Could not extract district number from:', district);
+			return json({ error: 'Could not determine district number' }, { status: 500 });
+		}
 
 		// Map FIPS to state code
 		const stateFipsMap: Record<string, string> = {

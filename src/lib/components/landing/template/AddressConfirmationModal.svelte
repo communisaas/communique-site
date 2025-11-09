@@ -6,9 +6,17 @@
 	 * - Like Airbnb/DoorDash: just ask for the address upfront
 	 * - Privacy-first: address never stored, only used for district lookup
 	 * - Fast and frictionless: 4 fields, clear validation, instant results
+	 *
+	 * SECURITY:
+	 * - ThumbmarkJS device fingerprinting (rate limiting)
+	 * - Cloudflare Turnstile CAPTCHA (bot protection)
+	 * - Honeypot field (catches auto-fill bots)
+	 * - Behavioral analysis (timing, mouse movement)
 	 */
 
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
+	import { Turnstile } from '@marsidev/react-turnstile';
+	import { getThumbmark } from '@thumbmarkjs/thumbmarkjs';
 
 	interface AddressConfirmationProps {
 		isOpen?: boolean;
@@ -37,6 +45,50 @@
 	let zipCode = $state('');
 	let isSubmitting = $state(false);
 	let error = $state<string | null>(null);
+
+	// Security: Device fingerprinting
+	let deviceFingerprint = $state<string | null>(null);
+
+	// Security: CAPTCHA
+	let turnstileToken = $state<string | null>(null);
+	let showCaptcha = $state(false); // Only show if needed
+
+	// Security: Honeypot (invisible field that bots auto-fill)
+	let honeypot = $state('');
+
+	// Security: Behavioral analysis
+	let formStartTime = $state(0);
+	let mouseMovements = $state<{ x: number; y: number; timestamp: number }[]>([]);
+
+	// Generate device fingerprint on mount
+	onMount(async () => {
+		try {
+			const fingerprint = await getThumbmark();
+			// getThumbmark() returns an object, convert to string
+			deviceFingerprint = typeof fingerprint === 'string' ? fingerprint : JSON.stringify(fingerprint);
+			console.log('[Security] Device fingerprint generated:', deviceFingerprint.substring(0, 16));
+		} catch (err) {
+			console.error('[Security] Failed to generate fingerprint:', err);
+		}
+
+		// Track form start time (behavioral analysis)
+		formStartTime = Date.now();
+	});
+
+	// Track mouse movements (behavioral analysis)
+	function handleMouseMove(e: MouseEvent) {
+		if (mouseMovements.length < 20) {
+			// Limit to 20 samples
+			mouseMovements = [
+				...mouseMovements,
+				{
+					x: e.clientX,
+					y: e.clientY,
+					timestamp: Date.now()
+				}
+			];
+		}
+	}
 
 	// US States for dropdown
 	const US_STATES = [
@@ -97,6 +149,38 @@
 		e.preventDefault();
 		error = null;
 
+		// ========================================================================
+		// Security: Multi-layer validation
+		// ========================================================================
+
+		// 1. Honeypot check (bots auto-fill invisible fields)
+		if (honeypot.trim() !== '') {
+			console.warn('[Security] Honeypot triggered - bot detected');
+			error = 'Invalid request. Please try again.';
+			return;
+		}
+
+		// 2. Timing check (humans take >2 seconds to fill form)
+		const formFillTime = Date.now() - formStartTime;
+		if (formFillTime < 2000) {
+			console.warn('[Security] Form filled too quickly:', formFillTime, 'ms');
+			error = 'Please slow down and try again.';
+			return;
+		}
+
+		// 3. Mouse movement check (bots don't move mouse naturally)
+		if (mouseMovements.length < 3) {
+			console.warn('[Security] Insufficient mouse movement data');
+			// Don't block, just show CAPTCHA
+			showCaptcha = true;
+		}
+
+		// 4. CAPTCHA check (if shown due to suspicious behavior)
+		if (showCaptcha && !turnstileToken) {
+			error = 'Please complete the verification';
+			return;
+		}
+
 		// Client-side validation
 		if (!street.trim() || !city.trim() || !state || !zipCode.trim()) {
 			error = 'Please fill in all fields';
@@ -112,10 +196,25 @@
 
 		try {
 			// Call Census geocoding API (server-side to avoid CORS)
+			// Include security metadata for rate limiting
 			const response = await fetch('/api/location/geocode', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ street, city, state, zipCode })
+				headers: {
+					'Content-Type': 'application/json',
+					'X-Form-Start': formStartTime.toString(),
+					'X-Mouse-Movements': mouseMovements.length.toString()
+				},
+				body: JSON.stringify({
+					street,
+					city,
+					state,
+					zipCode,
+					// Security metadata
+					fingerprint: deviceFingerprint,
+					turnstile_token: turnstileToken,
+					mouse_movements: mouseMovements.length, // Count only, not full data
+					form_fill_time: formFillTime
+				})
 			});
 
 			if (!response.ok) {
@@ -133,6 +232,10 @@
 			city = '';
 			state = 'CA';
 			zipCode = '';
+			honeypot = '';
+			mouseMovements = [];
+			turnstileToken = null;
+			showCaptcha = false;
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Failed to verify address';
 		} finally {
@@ -153,6 +256,7 @@
 		<div
 			class="max-w-md w-full rounded-xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5"
 			onclick={(e) => e.stopPropagation()}
+			onmousemove={handleMouseMove}
 		>
 			<!-- Header -->
 			<div class="mb-5 flex items-start justify-between">
@@ -182,6 +286,17 @@
 
 			<!-- Form -->
 			<form onsubmit={handleSubmit} class="space-y-4">
+				<!-- Honeypot (invisible field to catch bots) -->
+				<input
+					type="text"
+					name="website"
+					bind:value={honeypot}
+					class="absolute opacity-0 pointer-events-none"
+					tabindex="-1"
+					autocomplete="off"
+					aria-hidden="true"
+				/>
+
 				<!-- Street Address -->
 				<div>
 					<label for="street" class="block text-sm font-medium text-slate-700 mb-1.5">
@@ -272,6 +387,23 @@
 					</p>
 				</div>
 
+				<!-- Cloudflare Turnstile CAPTCHA (shown if suspicious behavior detected) -->
+				{#if showCaptcha}
+					<div class="rounded-lg border border-slate-200 p-4">
+						<p class="mb-3 text-xs text-slate-600">Please verify you're human:</p>
+						<Turnstile
+							siteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+							on:callback={(token) => (turnstileToken = token)}
+							on:error={() => {
+								error = 'CAPTCHA verification failed. Please try again.';
+								turnstileToken = null;
+							}}
+							theme="light"
+							size="normal"
+						/>
+					</div>
+				{/if}
+
 				<!-- Actions -->
 				<div class="flex gap-3 pt-2">
 					<button
@@ -308,10 +440,10 @@
 										d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
 									></path>
 								</svg>
-								Verifying...
+								Finding district...
 							</span>
 						{:else}
-							Confirm address
+							Find my district
 						{/if}
 					</button>
 				</div>
