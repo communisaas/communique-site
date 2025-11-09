@@ -99,44 +99,44 @@
 	const channels = [
 		{
 			id: 'certified',
-			title: 'Certified Delivery',
+			title: 'US Congress',
 			icon: Shield,
 			description:
-				"Straight to Congress. Every message from your district gets counted. It's how they decide.",
+				'Pressure both chambers. Every verified message from your district gets tracked on-chain.',
 			features: [
 				{
 					icon: Landmark,
-					text: 'Official CWC system delivery'
+					text: 'Verified to Congress'
 				},
 				{
 					icon: CheckCircle2,
-					text: 'Verified delivery receipt'
+					text: 'Delivery tracked on-chain'
 				},
 				{
 					icon: UsersRound,
-					text: 'District-based routing'
+					text: 'Reputation earned per message'
 				}
 			],
 			color: 'emerald'
 		},
 		{
 			id: 'direct',
-			title: 'Direct Outreach',
+			title: 'Everyone Else',
 			icon: AtSign,
 			description:
-				'CEOs, school boards, HOAs - when inboxes flood with the same message, calendars clear.',
+				'Local gov, corporations, HOAs, universities. Opens your email. Phase 2: OAuth verification.',
 			features: [
 				{
 					icon: Building2,
-					text: 'Message key decision makers'
+					text: 'Any decision-maker'
 				},
 				{
 					icon: Network,
-					text: 'Add your verified voice'
+					text: 'Phase 2: Verification for all'
 				},
 				{
 					icon: Route,
-					text: 'Send via your email client'
+					text: 'Phase 1: mailto (no tracking)'
 				}
 			],
 			color: 'blue'
@@ -157,11 +157,11 @@
 		<div class="mb-2 flex items-center justify-center gap-3">
 			<Network class="h-5 w-5 text-slate-600" />
 			<h2 class="text-xs uppercase tracking-widest text-gray-500 sm:text-sm">
-				Messages That Move Decisions
+				Pressure Decision-Makers
 			</h2>
 		</div>
 		<div class="flex items-center justify-center">
-			<h3 class="text-2xl font-semibold text-gray-900 sm:text-3xl">Pick Your Delivery Path</h3>
+			<h3 class="text-2xl font-semibold text-gray-900 sm:text-3xl">Who Do You Want to Pressure?</h3>
 		</div>
 	</div>
 
@@ -274,7 +274,7 @@
 												handleCreateTemplate(channel);
 											}}
 										>
-											Write to Congress
+											Create Template
 											<ArrowRight class="h-4 w-4" />
 										</button>
 
@@ -294,7 +294,7 @@
 												);
 											}}
 										>
-											Join a Campaign
+											Browse Templates
 											<ArrowRight class="h-4 w-4" />
 										</button>
 									</div>
@@ -307,7 +307,7 @@
 												handleCreateTemplate(channel);
 											}}
 										>
-											Start a Campaign
+											Create Template
 											<ArrowRight class="h-4 w-4" />
 										</button>
 
@@ -327,7 +327,7 @@
 												);
 											}}
 										>
-											Join the Movement
+											Browse Templates
 											<ArrowRight class="h-4 w-4" />
 										</button>
 									</div>
