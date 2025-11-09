@@ -52,13 +52,21 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 **Template System:**
 - [features/TEMPLATE-SYSTEM.md](features/TEMPLATE-SYSTEM.md) - Variable extraction, customization, moderation.
 - [features/template-creator.md](features/template-creator.md) - CodeMirror editor, jurisdiction picker.
+- [features/TEMPLATE-CREATOR-EMAIL-LOOKUP.md](features/TEMPLATE-CREATOR-EMAIL-LOOKUP.md) - Congressional email lookup integration.
+- [features/TEMPLATE-CREATOR-JURISDICTION-INTEGRATION.md](features/TEMPLATE-CREATOR-JURISDICTION-INTEGRATION.md) - Jurisdiction picker implementation.
+- [features/TEMPLATE-SEARCH-DISCOVERY.md](features/TEMPLATE-SEARCH-DISCOVERY.md) - Semantic search and discovery.
 
 **Identity & Verification:**
 - [features/oauth-setup.md](features/oauth-setup.md) - Google, Facebook, Twitter, LinkedIn, Discord OAuth.
+- [features/PROGRESSIVE-ONBOARDING.md](features/PROGRESSIVE-ONBOARDING.md) - Progressive disclosure onboarding flow.
 - [DISTRICT-VERIFICATION-RESPONSIBILITIES.md](DISTRICT-VERIFICATION-RESPONSIBILITIES.md) - Zero-knowledge district verification (voter-protocol).
 
 **Legislative Abstraction:**
 - [features/legislative-abstraction.md](features/legislative-abstraction.md) - US congressional delivery adapter pattern.
+
+**AI & Embeddings:**
+- [features/GOOGLE-GEMINI-EMBEDDING-INTEGRATION.md](features/GOOGLE-GEMINI-EMBEDDING-INTEGRATION.md) - Gemini embedding integration.
+- [features/NEXT-STEPS-EMBEDDINGS.md](features/NEXT-STEPS-EMBEDDINGS.md) - Embedding roadmap and next steps.
 
 ---
 
@@ -70,22 +78,33 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 - [design/README.md](design/README.md) - Complete design system overview.
 
 **UI Patterns:**
-- [design-system.md](design-system.md) - Component library reference.
-- [ui-structure-guidelines.md](ui-structure-guidelines.md) - Layout conventions.
+- [design/design-system.md](design/design-system.md) - Component library reference.
+- [design/ui-structure-guidelines.md](design/ui-structure-guidelines.md) - Layout conventions.
+- [design/low-friction-civic-action.md](design/low-friction-civic-action.md) - UX friction reduction patterns.
+
+**Voice & Copy:**
+- [design/UNIVERSAL-DECISION-MAKER-VOICE.md](design/UNIVERSAL-DECISION-MAKER-VOICE.md) - Copy direction and voice guidelines.
+- [design/UNIVERSAL-VOICE-RESTORED.md](design/UNIVERSAL-VOICE-RESTORED.md) - Copy fix log.
 
 ---
 
 ## Development
 
 **Database:**
-- [database-seeding.md](database-seeding.md) - Seed scripts for test data.
-- [DATA-MODEL-SPECIFICATION.md](DATA-MODEL-SPECIFICATION.md) - Prisma schema, zero-knowledge fields.
+- [development/database-seeding.md](development/database-seeding.md) - Seed scripts for test data.
+- [development/DATA-MODEL-SPECIFICATION.md](development/DATA-MODEL-SPECIFICATION.md) - Prisma schema, zero-knowledge fields.
+- [development/DATA-MODEL-COMPLEXITY-ANALYSIS.md](development/DATA-MODEL-COMPLEXITY-ANALYSIS.md) - Schema complexity analysis.
 
 **Testing:**
-- [tests/README.md](../tests/README.md) - Integration-first test suite (53→6 tests, smart mocks).
+- [../tests/README.md](../tests/README.md) - Integration-first test suite (53→6 tests, smart mocks).
+- [development/address-flow-testing.md](development/address-flow-testing.md) - Address flow test coverage.
 
-**Feature Flags:**
-- [feature-flags.md](feature-flags.md) - Beta feature toggles, configuration.
+**Feature Flags & Configuration:**
+- [development/feature-flags.md](development/feature-flags.md) - Beta feature toggles, configuration.
+- [development/analytics-overview.md](development/analytics-overview.md) - Analytics tracking implementation.
+- [development/production-checklist.md](development/production-checklist.md) - Pre-deployment verification.
+- [development/codebase-maintenance.md](development/codebase-maintenance.md) - Code health practices.
+- [development/codebase-ownership.md](development/codebase-ownership.md) - Component ownership guide.
 
 ---
 
@@ -110,6 +129,9 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 
 **Organizing Reality:**
 - [strategy/ORGANIZING-REALITY.md](strategy/ORGANIZING-REALITY.md) - What organizing victories look like, why organizing fails, class struggle infrastructure vs civic engagement theater.
+
+**Roadmap:**
+- [strategy/roadmap.md](strategy/roadmap.md) - Product roadmap and milestones.
 - [strategy/README.md](strategy/README.md) - Strategic direction overview.
 
 ---
@@ -122,8 +144,8 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 - [DOCUMENTATION-STRUCTURE-PLAN.md](DOCUMENTATION-STRUCTURE-PLAN.md) - Organization strategy.
 
 **Archive:**
-- [archive/rejected/](archive/rejected/) - Rejected approaches (gamification, early synthesis docs).
-- [archive/historical/](archive/historical/) - Historical status updates, response docs, copy fix logs.
+- [archive/rejected/](archive/rejected/) - Rejected approaches (gamification, early synthesis docs, sharing strategies).
+- [archive/historical/](archive/historical/) - Historical status updates (Week 1, Month 1, Nov 2025), implementation completion docs, technical feasibility assessments, response docs.
 
 ---
 
