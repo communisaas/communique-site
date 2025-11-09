@@ -40,7 +40,7 @@
 		</div>
 	</div>
 
-	<!-- Live Campaign Link Generation -->
+	<!-- Live Template Link Generation -->
 	<div class="space-y-3">
 		<SlugCustomizer title={data.title} bind:slug={data.slug} {context} />
 	</div>

@@ -22,7 +22,7 @@
 		</h1>
 
 		<p class="mb-3 text-base font-medium leading-relaxed text-gray-900 sm:text-lg">
-			Coordinate campaigns that decision-makers can't ignore.
+			Coordinate pressure that decision-makers can't ignore.
 		</p>
 
 		<p class="mb-8 text-sm text-gray-600">

@@ -99,7 +99,7 @@
 			secondaryIcon: shouldShowRecipients ? (recipientCount > 1 ? Users : User) : MapPin,
 			secondaryTooltip: shouldShowRecipients
 				? 'Total recipient addresses targeted'
-				: 'Percentage of congressional districts covered by this campaign',
+				: 'Percentage of congressional districts covered',
 			secondaryValue: shouldShowRecipients
 				? `${formatNumber(recipientCount)} recipients`
 				: `${getDistrictCoverage(metrics)} districts covered`
@@ -134,7 +134,7 @@
 			/>
 
 			<SimpleTooltip
-				content="Total messages sent in this campaign"
+				content="Total messages sent using this template"
 				placement="right"
 				show={hoveredTooltip === 'sent'}
 			/>

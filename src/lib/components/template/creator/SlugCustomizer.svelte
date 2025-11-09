@@ -42,7 +42,7 @@
 		const randomPrefix = actionPrefixes[Math.floor(Math.random() * actionPrefixes.length)];
 		variations.push(`${randomPrefix}-${baseSlug}`);
 
-		// Year suffix for campaigns
+		// Year suffix for templates
 		const year = new Date().getFullYear();
 		variations.push(`${baseSlug}-${year}`);
 
@@ -55,7 +55,7 @@
 		// Acronym version if multi-word
 		if (words.length > 1) {
 			const acronym = words.map((w) => w[0]).join('');
-			variations.push(`${acronym}-campaign`);
+			variations.push(`${acronym}-template`);
 		}
 
 		return variations.slice(0, 3);
@@ -172,7 +172,7 @@
 	<div class="flex items-center justify-between">
 		<label class="flex items-center gap-1 text-xs font-medium text-slate-700 md:gap-2 md:text-sm">
 			<Link2 class="h-3 w-3 md:h-4 md:w-4" />
-			Campaign Link
+			Template Link
 		</label>
 		{#if isAvailable === true}
 			<span class="flex items-center gap-1 text-xs text-green-600 md:text-xs" in:fade>
@@ -191,7 +191,7 @@
 	<div class="rounded border border-slate-200 bg-slate-50 p-1.5 md:p-3">
 		<div class="flex items-center gap-1 font-mono text-xs md:gap-2 md:text-sm">
 			<span class="break-all text-slate-500">{$page.url.origin}/</span>
-			<span class="font-semibold text-slate-900">{slug || 'your-campaign'}</span>
+			<span class="font-semibold text-slate-900">{slug || 'your-template'}</span>
 		</div>
 	</div>
 
