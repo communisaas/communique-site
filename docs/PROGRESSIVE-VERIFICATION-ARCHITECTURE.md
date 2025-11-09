@@ -373,36 +373,52 @@ model Template {
 - Bad actors manipulate template rankings
 - Fake messages dilute genuine civic participation
 
-### Solution: Multiple Paths to Trust
+### Solution: Start Simple, Add Paths as Needed
 
-**Path 1: Government ID (Traditional - Tier 2)**
-- self.xyz NFC passport or Didit.me verification
+**Phase 1 (Launch - What We're Building NOW):**
+
+**Path 1: Government ID (self.xyz / Didit.me)**
+- NFC passport scan (self.xyz) - FREE, 30 seconds
+- Government ID + biometric (Didit.me) - FREE, 2 minutes
 - Fastest path to full platform access
 - Instant reputation earning
+- **THIS IS THE MAIN PATH. Build this first.**
 
-**Path 2: Social Vouching (Alternative - Tier 2 Alt)**
-- 3 existing Tier 3+ users vouch for you
-- Vouchers stake reputation (lose points if you're a bad actor)
-- Unlock same capabilities as ID-verified users
-- **Enables access for those without government IDs**
-
-**Path 3: Proof-of-Humanity (Web of Trust - Tier 2 Alt)**
-- BrightID social graph verification (meeting-based)
-- Gitcoin Passport (aggregate identity score)
-- Worldcoin (iris scan - controversial but effective)
-- **Doesn't require government ID, just humanness proof**
-
-**Path 4: Time-Locked Participation (Gradual Trust - Tier 1.5)**
+**Path 2: Time-Locked Participation (Email Only)**
 - Email-verified users can send 1 Congressional message/week
 - No reputation earned initially
-- After 10 weeks of sustained participation → auto-upgrade to Tier 2 Alt
-- **Proof-of-work over time, accessible to anyone with email**
+- After 10 weeks of sustained participation → auto-upgrade to "Community Verified"
+- Earn +10 retroactive reputation for past messages
+- **Accessible to anyone with email, no ID required**
+- **THIS IS THE FALLBACK. Build if time permits.**
 
-**Path 5: Community Verification (Local Trust - Tier 2 Alt)**
+---
+
+**Phase 2 (Post-Launch - Only Build If We See Demand):**
+
+**Path 3: Social Vouching (FUTURE)**
+- 3 existing Tier 3+ users vouch for you
+- Vouchers stake reputation (lose points if you're a bad actor)
+- **Don't build until we have enough Tier 3+ users to make this viable**
+
+**Path 4: Community Verification (FUTURE)**
 - In-person verification at community events
-- Local organizers (Tier 4) can verify attendees
-- Photo + signature (not stored, just attestation)
-- **Builds local trust networks, no government ID needed**
+- Local organizers (Tier 4) verify attendees
+- **Don't build until we have established local communities**
+
+---
+
+**What We're NOT Building:**
+- ❌ BrightID integration (too niche, maintenance burden)
+- ❌ Gitcoin Passport (changing too fast, complex integration)
+- ❌ Worldcoin (privacy nightmare, centralized, Sam Altman bullshit)
+- ❌ Web of trust systems we'd have to build from scratch
+
+**Why This Approach:**
+- **80% of users** will use self.xyz/Didit.me (free, fast, proven)
+- **15% of users** can use time-locked email path (no ID needed)
+- **5% of users** who need alternatives can wait for Phase 2 social vouching
+- **0% of users** need us to integrate every identity provider on the planet
 
 ### Updated Tier Structure
 
@@ -413,10 +429,8 @@ model Template {
 - Messages don't earn reputation initially
 
 **Upgrade Paths:**
-- → Tier 2 (ID): Verify with self.xyz/Didit.me
-- → Tier 2 Alt (Social): Get 3 Tier 3+ vouches
-- → Tier 2 Alt (Proof-of-Humanity): BrightID/Gitcoin Passport
-- → Tier 1.5 (Time-Lock): Send 10 messages over 10 weeks → auto-upgrade
+- → Tier 2: Verify with self.xyz/Didit.me (MAIN PATH)
+- → Tier 1.5: Send 10 messages over 10 weeks → auto-upgrade (FALLBACK)
 
 #### Tier 1.5: Sustained Participation (NEW)
 **Requirements:**
@@ -432,307 +446,156 @@ model Template {
 - Real users naturally participate over time
 - No government ID required
 
-#### Tier 2 Alt: Alternative Verification (NEW)
-**Requirements (any one of):**
-- 3 Tier 3+ vouches (vouchers stake reputation)
-- BrightID verification (in-person social graph)
-- Gitcoin Passport score ≥20
-- Worldcoin iris scan (controversial, optional)
-- Community organizer attestation (Tier 4)
+#### Tier 2: Identity Verified
+**Requirements:**
+- self.xyz NFC passport scan OR
+- Didit.me government ID + biometric
 
 **Access:**
-- Identical to Tier 2 (ID verified)
-- Badge says "Community Verified" instead of "ID Verified"
+- Create Congressional templates (verified delivery)
+- Unlimited template creation
+- Earn reputation for verified civic actions
+- Templates marked "verified author"
 
 **Why This Works:**
-- Multiple paths to humanness proof
-- No single point of failure (government ID)
-- Distributed trust (vouching, social graphs, communities)
+- Free verification (self.xyz and Didit.me both free)
+- Fast (30 seconds - 2 minutes)
+- Proven anti-sybil (government IDs are hard to fake)
+- No maintenance burden on our end (they handle fraud detection)
 
-### Social Vouching Mechanism
+### Social Vouching (FUTURE - Don't Build Yet)
 
-```typescript
-// src/lib/core/auth/social-vouching.ts
+See code examples in git history if needed later. Not building this until we have enough Tier 3+ users to make it viable.
 
-export async function requestVouch(
-  requesterId: string,
-  voucherId: string
-): Promise<VouchRequest> {
-  // Voucher must be Tier 3+ (≥10 reputation)
-  const voucher = await getUser(voucherId);
-  if (voucher.reputation_score < 10) {
-    throw new Error('Voucher must have ≥10 reputation');
-  }
-
-  // Requester must be Tier 1
-  const requester = await getUser(requesterId);
-  if (!requester.email_verified) {
-    throw new Error('Must verify email first');
-  }
-
-  // Create vouch request
-  return await prisma.vouchRequest.create({
-    data: {
-      requester_id: requesterId,
-      voucher_id: voucherId,
-      status: 'pending',
-      stakes: 3, // Voucher stakes 3 reputation points
-      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-    }
-  });
-}
-
-export async function approveVouch(vouchRequestId: string) {
-  const request = await prisma.vouchRequest.findUnique({
-    where: { id: vouchRequestId },
-    include: { requester: true, voucher: true }
-  });
-
-  // Deduct staked reputation from voucher
-  await prisma.user.update({
-    where: { id: request.voucher_id },
-    data: {
-      reputation_staked: { increment: request.stakes }
-    }
-  });
-
-  // Track vouch
-  await prisma.vouch.create({
-    data: {
-      requester_id: request.requester_id,
-      voucher_id: request.voucher_id,
-      stakes: request.stakes,
-      status: 'active'
-    }
-  });
-
-  // Check if requester now has 3 vouches
-  const vouchCount = await prisma.vouch.count({
-    where: {
-      requester_id: request.requester_id,
-      status: 'active'
-    }
-  });
-
-  if (vouchCount >= 3) {
-    // Upgrade to Tier 2 Alt (Community Verified)
-    await prisma.user.update({
-      where: { id: request.requester_id },
-      data: {
-        community_verified: true,
-        governance_tier: 2
-      }
-    });
-  }
-}
-
-// If vouched user turns out to be bad actor
-export async function slashVoucher(badActorId: string, voucherId: string) {
-  const vouch = await prisma.vouch.findFirst({
-    where: {
-      requester_id: badActorId,
-      voucher_id: voucherId,
-      status: 'active'
-    }
-  });
-
-  if (vouch) {
-    // Voucher loses staked reputation permanently
-    await prisma.user.update({
-      where: { id: voucherId },
-      data: {
-        reputation_score: { decrement: vouch.stakes },
-        reputation_staked: { decrement: vouch.stakes }
-      }
-    });
-
-    // Mark vouch as slashed
-    await prisma.vouch.update({
-      where: { id: vouch.id },
-      data: { status: 'slashed' }
-    });
-  }
-}
-```
-
-### Database Schema Updates
+### Database Schema Updates (Phase 1 Only)
 
 ```prisma
 model User {
   // ... existing fields ...
 
-  // Alternative verification paths
-  community_verified    Boolean  @default(false)
-  community_verified_at DateTime?
-  verification_path     String?  // 'government_id' | 'social_vouch' | 'proof_of_humanity' | 'time_locked' | 'community_organizer'
+  // Email verification (Tier 1)
+  email_verified        Boolean  @default(false)
+  email_verified_at     DateTime?
 
-  // Social vouching
-  vouches_received      Vouch[]  @relation("VouchReceiver")
-  vouches_given         Vouch[]  @relation("VouchGiver")
-  reputation_staked     Int      @default(0) // Reputation staked in vouching
+  // Identity verification (Tier 2)
+  identity_verified     Boolean  @default(false)
+  identity_verified_at  DateTime?
+  verification_method   String?  // 'self.xyz' | 'didit'
+  verification_proof    Json?    // ZK proof metadata (for audit trail)
 
-  // Time-locked progression
+  // Time-locked progression (Tier 1.5)
   weekly_messages_sent  Int      @default(0)
   weeks_active          Int      @default(0)
   first_message_at      DateTime?
+  time_lock_verified    Boolean  @default(false)  // Auto-set after 10 weeks
+  time_lock_verified_at DateTime?
 
-  // Proof-of-humanity scores
-  brightid_verified     Boolean  @default(false)
-  gitcoin_passport_score Float?
-  worldcoin_verified    Boolean  @default(false)
-}
+  // Reputation (ERC-8004 blockchain)
+  reputation_score      Int      @default(0)
+  verified_actions      Int      @default(0)
 
-model Vouch {
-  id            String   @id @default(cuid())
-  requester_id  String
-  requester     User     @relation("VouchReceiver", fields: [requester_id], references: [id])
-  voucher_id    String
-  voucher       User     @relation("VouchGiver", fields: [voucher_id], references: [id])
-  stakes        Int      // Reputation staked by voucher
-  status        String   // 'active' | 'slashed' | 'released'
-  created_at    DateTime @default(now())
-  expires_at    DateTime?
-}
-
-model VouchRequest {
-  id            String   @id @default(cuid())
-  requester_id  String
-  voucher_id    String
-  status        String   // 'pending' | 'approved' | 'rejected' | 'expired'
-  stakes        Int      // How much voucher will stake
-  message       String?  // Personal message to voucher
-  created_at    DateTime @default(now())
-  expires_at    DateTime
+  // Governance
+  governance_tier       Int      @default(0) // 0-4 based on verification + reputation
+  can_vote              Boolean  @default(false)
+  voting_weight         Int      @default(0) // Based on reputation
 }
 ```
 
-### UI for Alternative Verification
+**What We're NOT Adding (Yet):**
+- ❌ Vouch tables (future)
+- ❌ BrightID/Gitcoin/Worldcoin fields (not building these integrations)
+- ❌ Community organizer verification (future)
+
+### UI for Verification (Phase 1 Only)
 
 ```svelte
 <!-- src/lib/components/auth/VerificationOptions.svelte -->
 
 <div class="space-y-4">
-  <h3>Choose Your Verification Path</h3>
+  <h3>Verify Your Identity</h3>
+  <p class="text-sm text-slate-600">
+    Choose how you want to verify (both are free and take under 2 minutes)
+  </p>
 
-  <!-- Path 1: Government ID (Fastest) -->
+  <!-- Path 1: NFC Passport (self.xyz) - MAIN -->
   <VerificationOption
-    title="Verify with Passport"
-    description="Instant access. Scan your passport with NFC."
+    title="Scan Your Passport"
+    description="Use NFC to scan your passport chip. Takes 30 seconds."
     icon={Shield}
-    badge="Fastest"
+    badge="Recommended"
     onclick={() => verifyWithSelfXyz()}
   />
 
-  <!-- Path 2: Social Vouching (No ID needed) -->
+  <!-- Path 2: Government ID (Didit.me) - ALTERNATIVE -->
   <VerificationOption
-    title="Get 3 Community Vouches"
-    description="Have trusted community members vouch for you. No ID required."
-    icon={UsersRound}
-    badge="No ID Needed"
-    onclick={() => showVouchingFlow()}
+    title="Verify with ID"
+    description="Upload government ID + take a selfie. Takes 2 minutes."
+    icon={IdCard}
+    badge="Alternative"
+    onclick={() => verifyWithDidit()}
   />
 
-  <!-- Path 3: Proof-of-Humanity (Alternative) -->
+  <!-- Path 3: Time-Locked (Tier 1.5) - FALLBACK -->
   <VerificationOption
-    title="Proof of Humanity Verification"
-    description="BrightID, Gitcoin Passport, or Worldcoin. No government ID."
-    icon={Network}
-    badge="Privacy-Friendly"
-    onclick={() => showProofOfHumanityOptions()}
-  />
-
-  <!-- Path 4: Time-Locked (Gradual) -->
-  <VerificationOption
-    title="Build Trust Over Time"
+    title="No ID? Build Trust Over Time"
     description="Send 1 message/week for 10 weeks. Auto-verified after sustained participation."
     icon={Clock}
-    badge="No Rush"
+    badge="No ID Needed"
     onclick={() => showTimeLockInfo()}
-  />
-
-  <!-- Path 5: Community Event (In-Person) -->
-  <VerificationOption
-    title="Verify at Community Event"
-    description="Attend a local event with a community organizer."
-    icon={MapPin}
-    badge="Local"
-    onclick={() => findLocalEvents()}
   />
 </div>
 ```
 
-### Anti-Sybil Analysis: Alternative Paths
+**What We're NOT Building:**
+- ❌ Social vouching UI (future)
+- ❌ BrightID/Gitcoin/Worldcoin options (not integrating)
+- ❌ Community event finder (future)
 
-**Social Vouching:**
-- ✅ No ID required
-- ✅ Distributed trust (3 independent vouchers)
-- ✅ Economic skin-in-the-game (vouchers stake reputation)
-- ⚠️ Risk: Sybil networks vouch for each other
-- 🛡️ Mitigation: Vouchers must be Tier 3+ (10+ verified messages = proof-of-work)
+### Anti-Sybil Analysis (Phase 1 Paths Only)
 
-**Proof-of-Humanity (BrightID):**
-- ✅ No ID required
-- ✅ Social graph verification (in-person meetings)
-- ✅ Decentralized (no central authority)
-- ⚠️ Risk: Sybil networks create fake social graphs
-- 🛡️ Mitigation: BrightID requires sustained in-person connections
+**Government ID (self.xyz / Didit.me):**
+- ✅ Free verification (both providers free)
+- ✅ Fast (30 seconds - 2 minutes)
+- ✅ Proven anti-sybil (government IDs hard to fake at scale)
+- ✅ No maintenance burden (providers handle fraud detection)
+- ⚠️ Risk: Excludes users without ID
+- 🛡️ Mitigation: Offer time-locked path as fallback
 
-**Time-Locked Participation:**
-- ✅ No ID required
-- ✅ Proof-of-work over time (10 weeks)
-- ✅ Self-correcting (sybils need sustained effort)
+**Time-Locked Participation (10 weeks):**
+- ✅ No ID required (email only)
+- ✅ Proof-of-work over time
+- ✅ Self-correcting (sybils need sustained effort per identity)
 - ⚠️ Risk: Patient sybil attackers
-- 🛡️ Mitigation: 10 weeks per identity = expensive at scale
+- 🛡️ Mitigation: 10 weeks × 1 message/week = expensive at scale
 
-**Community Verification:**
-- ✅ No ID required
-- ✅ Local trust networks
-- ✅ In-person verification
-- ⚠️ Risk: Corrupt organizers verify sybils
-- 🛡️ Mitigation: Organizers must be Tier 4 (100+ reputation = high stakes)
+### Actual Launch Plan
 
-### Recommendation: Hybrid Approach
-
-**Default Path (70% of users):**
-- Government ID verification (self.xyz / Didit.me)
-- Fastest, most secure, instant access
-
-**Alternative Paths (30% of users):**
-- **No ID Available (15%):** Social vouching or community verification
-- **Privacy Advocates (10%):** BrightID or Gitcoin Passport
-- **Patient Builders (5%):** Time-locked progression (10 weeks)
-
-**Why This Works:**
-- Inclusive: Multiple paths ensure access for all
-- Secure: Each path has anti-sybil mechanisms
-- Aligned: All paths require proof-of-work (time, social, economic)
-- Democratic: No single gatekeeping authority
+**80% of users:** Will verify with self.xyz or Didit.me (free, fast, proven)
+**15% of users:** Will use time-locked email path (no ID, 10 weeks patience)
+**5% of users:** Will request alternative paths (we'll build social vouching when we see demand)
 
 ## Open Questions
 
 1. **Should Tier 1 users be able to send Congressional messages?**
    - Current: ✅ Yes, but time-locked (1/week, no reputation until 10 weeks)
    - Trade-off: Accessibility (anyone with email) vs. slow reputation earning
+   - **Decision needed before launch**
 
-2. **What's the right vouch threshold?**
-   - Current: 3 vouches from Tier 3+ users
-   - Alternative: 5 vouches (stricter) or 2 vouches from Tier 4 (high-trust)
-   - Data needed: How many Tier 3+ users will realistically vouch?
+2. **Should time-locked users earn retroactive reputation?**
+   - Current: ✅ Yes, after 10 weeks they earn +10 reputation for past messages
+   - Alternative: ❌ No, reputation only for future messages
+   - Trade-off: Incentive alignment vs. preventing gaming
+   - **Decision needed before launch**
 
-3. **Should we integrate Worldcoin despite privacy concerns?**
-   - Pro: Iris scans are nearly impossible to fake
-   - Con: Centralized biometric database, privacy nightmare
-   - Alternative: Make it optional, alongside BrightID/Gitcoin
+3. **What's the right rate limit for Tier 1?**
+   - Current: 3 email templates/day, 1 Congressional message/week
+   - Alternative: More strict (1/day, 1/week) or more permissive (5/day, 2/week)
+   - **Can adjust after launch based on data**
 
 4. **How do we handle template transfers/ownership?**
    - If a Tier 4 user creates a template, then loses reputation, what happens?
    - Should templates be transferable to other verified users?
-   - Should there be a "template marketplace" (Phase 2)?
-
-5. **Should time-locked users earn retroactive reputation?**
-   - Current: ✅ Yes, after 10 weeks they earn +10 reputation for past messages
-   - Alternative: ❌ No, reputation only for future messages
-   - Trade-off: Incentive alignment vs. preventing gaming
+   - **Can defer to Phase 2**
 
 ## Next Steps
 
