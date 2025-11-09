@@ -102,7 +102,7 @@
 			title: 'US Congress',
 			icon: Shield,
 			description:
-				'Pressure both chambers. Every verified message from your district gets tracked on-chain.',
+				'Pressure both chambers. Every verified message from your district gets counted.',
 			features: [
 				{
 					icon: Landmark,
@@ -110,11 +110,11 @@
 				},
 				{
 					icon: CheckCircle2,
-					text: 'Delivery tracked on-chain'
+					text: 'Delivery tracked & verified'
 				},
 				{
 					icon: UsersRound,
-					text: 'Reputation earned per message'
+					text: 'Build your civic reputation'
 				}
 			],
 			color: 'emerald'
