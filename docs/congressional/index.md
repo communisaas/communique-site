@@ -1,37 +1,46 @@
 # Message Delivery Documentation
 
-**How users contact decision-makers at all levels with cryptographic verification.**
+**How the voter-protocol enables civic impact tracking and coordination.**
 
 ---
 
 ## Overview
 
-**What this covers**: Message delivery to ANY decision-maker - from congressional offices (cryptographically verified constituent messages) to corporations, HOAs, universities, hospitals, nonprofits (via direct email).
+**What users care about**: Did my message have impact? Can I track it?
 
-**Two delivery methods**:
-1. **Cryptographically verified delivery** (large legislatures - zero-knowledge proof of constituent status)
-2. **Direct email** (everyone else - OPEN to any entity with community impact)
+**What the protocol delivers**:
+- Track your civic actions over time
+- See coordination with others ("5,000 people contacted Senator Warren about housing")
+- Build on-chain reputation for civic participation (ERC-8004)
+- Collective power through coordination visibility
 
-**User perspective**: "Who am I contacting?" not "Which backend delivery method?"
+**Two ways to participate**:
+1. **Join the protocol** (recommended) - Connect OAuth, get impact tracking, reputation, coordination visibility
+2. **Send without tracking** - No OAuth, message gets sent but no verification/tracking
+
+**Who you can contact**: ANY decision-maker (Congress, local gov, corporations, HOAs, universities, healthcare, nonprofits)
+
+**User perspective**: "I want to track my civic impact" not "Which delivery method?"
 
 ---
 
 ## Core Documentation
 
-### 1. [delivery.md](delivery.md) - User-Facing Delivery Paradigm
+### 1. [delivery.md](delivery.md) - Protocol Participation Guide
 
-**Read this first**. Explains who users can contact and how delivery works from the user perspective.
+**Read this first**. Explains the voter-protocol utility and how to participate.
 
-**Key insight**: Users care about WHO they're contacting (Senator vs city council vs corporate CEO), not HOW the backend delivers it (API vs email).
+**Key insight**: Users care about **tracking civic impact and coordinating with others**, not backend implementation details.
 
 **Covers**:
-- Large legislatures (cryptographically verified constituent messages)
-- Everyone else (direct email - open to any decision-maker)
-- User mental models (users care about WHO, not HOW)
-- Privacy guarantees by delivery method
-- What makes cryptographic verification different (not spam, not astroturfing)
-- Template creator guidance
-- Roadmap (Phase 1-4)
+- Two ways to participate (join protocol vs send without tracking)
+- Protocol utility (impact tracking, reputation, coordination visibility)
+- Who you can contact (ANY decision-maker with community impact)
+- Technical implementation (zero-knowledge verification, OAuth)
+- Privacy guarantees (what we verify, what we don't access)
+- Roadmap (protocol expansion, Phase 1-4)
+
+**What's new**: Protocol-first framing. OAuth enables the protocol (impact tracking, reputation, coordination), not just "delivery verification."
 
 **Start here**: [delivery.md](delivery.md)
 
@@ -79,64 +88,55 @@ Dashboard for congressional offices to view verified constituent messages.
 
 ---
 
-## Delivery Methods Comparison
+## How Protocol Participation Works
 
-### Cryptographically Verified Delivery (Large Legislatures)
+### When You Join the Protocol (Recommended)
 
-**Who**: US Congress, state legislatures, European Parliament (planned), UK Parliament (planned)
+**What you do**: Connect your email via OAuth
 
-**Why cryptographic verification**: Congressional offices need to verify constituent status (filter spam, out-of-district messages). Email can't prove constituent status at scale (addresses can be faked). We use zero-knowledge cryptography to prove you're a constituent without revealing your address.
-
-**What makes this different**:
-- **Not spam**: Cryptographically proven constituent messages
-- **Not astroturfing**: Each message proves real district membership
-- **Privacy-preserving**: Zero-knowledge proof reveals district, not address
-- **Trustworthy**: Congressional offices can verify proof, can't fake constituent status
-
-**User experience**:
-- User clicks "Send Message"
-- Communiqué generates cryptographic proof and delivers
-- User gets confirmation: "✓ Message delivered to Senator Warren"
+**What you get**:
+- **Impact tracking**: Dashboard showing all civic actions you've taken
+- **Coordination visibility**: "5,000 people in your district contacted Senator Warren this week"
+- **Reputation building**: On-chain ERC-8004 reputation for civic participation
+- **One-click sending**: We handle delivery, verification, credit
 
 **Technical flow**:
 ```
-1. User customizes template
-2. Address encrypted in browser (XChaCha20-Poly1305)
-3. TEE generates zero-knowledge district proof (2-5s)
-4. Message + unforgeable proof → CWC API → congressional office
-5. Delivery receipt stored
+1. Connect OAuth (Gmail, Outlook, etc.) - one-time setup
+2. Customize message template
+3. Click "Send" - we handle everything
+4. Zero-knowledge verification:
+   - For Congress: Address proof generated, message + proof delivered
+   - For others: We verify Sent folder (template was sent, message intact)
+5. Reputation updates on-chain, impact tracked in dashboard
 ```
 
-**Privacy**: Zero-knowledge proof reveals district membership, not address. Cryptographically unforgeable.
+**Privacy**:
+- OAuth is read-only (Sent folder only)
+- Zero-knowledge verification (we verify template sent, don't read full content)
+- For congressional messages: Address verified via ZK proof (office sees district, not address)
+- Revoke access anytime
 
 ---
 
-### Direct Email (Everyone Else)
+### When You Send Without Tracking
 
-**Who**: Local gov, corporations, HOAs, universities, hospitals, nonprofits, ANY decision-maker with community impact
+**What you do**: Don't connect OAuth
 
-**Why email**: These entities don't have centralized APIs, but have email contact info (public/semi-public)
+**What happens**:
+- Message gets sent (your email client opens, you send manually)
+- No verification, no credit
+- Outside the voter-protocol
 
-**User experience**:
-- User clicks "Send Message"
-- Email client opens with pre-filled message
-- User reviews and sends from their own email
-- Communiqué verifies delivery via OAuth (Sent folder check)
-
-**Technical flow**:
-```
-1. User customizes template
-2. Email client opens with mailto: URL
-3. User sends from Gmail/Outlook/etc.
-4. OAuth verification (read Sent folder)
-5. Delivery verification badge appears
-```
-
-**Privacy**: OAuth access is read-only (Sent folder only), user can revoke anytime
+**Trade-off**:
+- No impact tracking
+- No reputation building
+- No coordination visibility
+- Can't see civic action history
 
 ---
 
-## Privacy Architecture (Cryptographically Verified Delivery Only)
+## Privacy Architecture (Protocol Participation)
 
 **What congressional offices see**:
 - ✅ Zero-knowledge proof of district membership
