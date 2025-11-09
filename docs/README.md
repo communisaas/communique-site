@@ -15,12 +15,79 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 
 **Setting up development?**
 - See root [README.md](../README.md) for `npm install`, `npm run dev`
-- See [features/oauth-setup.md](features/oauth-setup.md) for OAuth configuration
-- See [database-seeding.md](database-seeding.md) for test data
+- See [development/index.md](development/index.md) for complete development workflow
+- See [features/oauth.md](features/oauth.md) for OAuth configuration
 
 ---
 
-## Architecture
+## Documentation Structure
+
+Communiqué docs are organized into 5 pillar directories, each with an **index.md** that explains what's inside, reading order, and cross-references.
+
+### [strategy/](strategy/) - Strategic Direction
+
+**What's inside**: Phase 1 launch plan, coordination mechanics, organizing reality, viral growth, product roadmap.
+
+**Start with**: [strategy/index.md](strategy/index.md) → [strategy/launch.md](strategy/launch.md) → [strategy/coordination.md](strategy/coordination.md)
+
+**Who reads this**: Product team, founders, strategic partners understanding Communiqué's direction.
+
+---
+
+### [features/](features/) - Feature Implementation
+
+**What's inside**: Template system, OAuth, search, embeddings, verification, sharing, jurisdiction targeting.
+
+**Start with**: [features/index.md](features/index.md) → [features/templates.md](features/templates.md) → [features/creator.md](features/creator.md)
+
+**Who reads this**:
+- **New developers**: templates.md → creator.md → oauth.md
+- **UX designers**: onboarding.md → sharing.md → search.md
+- **Backend engineers**: abstraction.md → embeddings.md → verification.md
+- **Security engineers**: verification.md → oauth.md → /docs/architecture/tee.md
+
+---
+
+### [design/](design/) - Design System
+
+**What's inside**: Design principles, voice & tone, component library, search UX, governance patterns.
+
+**Start with**: [design/index.md](design/index.md) → [design/principles.md](design/principles.md) → [design/voice.md](design/voice.md)
+
+**Who reads this**:
+- **Designers**: principles.md → voice.md → system.md
+- **Developers implementing UI**: system.md → structure.md → friction.md
+- **Writers**: voice.md (writing style, copy patterns)
+
+---
+
+### [development/](development/) - Development & Operations
+
+**What's inside**: Database schema, seeding, testing, deployment, analytics, maintenance.
+
+**Start with**: [development/index.md](development/index.md) → [development/quickstart.md](development/quickstart.md) → [development/schema.md](development/schema.md)
+
+**Who reads this**:
+- **New developers**: quickstart.md → schema.md → testing.md
+- **DevOps engineers**: deployment.md → analytics.md → flags.md
+- **Database engineers**: schema.md → seeding.md
+
+---
+
+### [congressional/](congressional/) - Congressional Delivery
+
+**What's inside**: CWC API integration, message delivery flow, congressional dashboard, privacy architecture.
+
+**Start with**: [congressional/index.md](congressional/index.md) → [congressional/cwc.md](congressional/cwc.md) → [congressional/delivery.md](congressional/delivery.md)
+
+**Who reads this**:
+- **Backend engineers**: cwc.md → delivery.md
+- **Security engineers**: delivery.md (privacy guarantees, TEE architecture)
+- **Congressional staff**: dashboard.md (office dashboard, verification badges)
+
+---
+
+## Architecture Documentation
 
 **Product & Philosophy:**
 - [CYPHERPUNK-ARCHITECTURE.md](CYPHERPUNK-ARCHITECTURE.md) - Authoritative. McDonald 2018 research, honest messaging, privacy model.
@@ -38,114 +105,15 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 
 ---
 
-## Congressional Delivery
-
-**How messages reach congressional offices:**
-- [congressional/cwc-integration.md](congressional/cwc-integration.md) - Communicating With Congress API integration.
-- [congressional/DELIVERY-PATHS.md](congressional/DELIVERY-PATHS.md) - End-to-end message delivery flow.
-- [congressional/dashboard-implementation-plan.md](congressional/dashboard-implementation-plan.md) - Office dashboard for verified constituent messages.
-
----
-
-## Features
-
-**Template System:**
-- [features/TEMPLATE-SYSTEM.md](features/TEMPLATE-SYSTEM.md) - Variable extraction, customization, moderation.
-- [features/template-creator.md](features/template-creator.md) - CodeMirror editor, jurisdiction picker.
-- [features/TEMPLATE-CREATOR-EMAIL-LOOKUP.md](features/TEMPLATE-CREATOR-EMAIL-LOOKUP.md) - Congressional email lookup integration.
-- [features/TEMPLATE-CREATOR-JURISDICTION-INTEGRATION.md](features/TEMPLATE-CREATOR-JURISDICTION-INTEGRATION.md) - Jurisdiction picker implementation.
-- [features/TEMPLATE-SEARCH-DISCOVERY.md](features/TEMPLATE-SEARCH-DISCOVERY.md) - Semantic search and discovery.
-
-**Identity & Verification:**
-- [features/oauth-setup.md](features/oauth-setup.md) - Google, Facebook, Twitter, LinkedIn, Discord OAuth.
-- [features/PROGRESSIVE-ONBOARDING.md](features/PROGRESSIVE-ONBOARDING.md) - Progressive disclosure onboarding flow.
-- [DISTRICT-VERIFICATION-RESPONSIBILITIES.md](DISTRICT-VERIFICATION-RESPONSIBILITIES.md) - Zero-knowledge district verification (voter-protocol).
-
-**Legislative Abstraction:**
-- [features/legislative-abstraction.md](features/legislative-abstraction.md) - US congressional delivery adapter pattern.
-
-**AI & Embeddings:**
-- [features/GOOGLE-GEMINI-EMBEDDING-INTEGRATION.md](features/GOOGLE-GEMINI-EMBEDDING-INTEGRATION.md) - Gemini embedding integration.
-- [features/NEXT-STEPS-EMBEDDINGS.md](features/NEXT-STEPS-EMBEDDINGS.md) - Embedding roadmap and next steps.
-
----
-
-## Design System
-
-**Visual Language:**
-- [design/design-system-principles.md](design/design-system-principles.md) - Color tokens, typography, spacing.
-- [design/language-voice-guidelines.md](design/language-voice-guidelines.md) - Writing style, tone, messaging.
-- [design/README.md](design/README.md) - Complete design system overview.
-
-**UI Patterns:**
-- [design/design-system.md](design/design-system.md) - Component library reference.
-- [design/ui-structure-guidelines.md](design/ui-structure-guidelines.md) - Layout conventions.
-- [design/low-friction-civic-action.md](design/low-friction-civic-action.md) - UX friction reduction patterns.
-
-**Voice & Copy:**
-- [design/UNIVERSAL-DECISION-MAKER-VOICE.md](design/UNIVERSAL-DECISION-MAKER-VOICE.md) - Copy direction and voice guidelines.
-- [design/UNIVERSAL-VOICE-RESTORED.md](design/UNIVERSAL-VOICE-RESTORED.md) - Copy fix log.
-
----
-
-## Development
-
-**Database:**
-- [development/database-seeding.md](development/database-seeding.md) - Seed scripts for test data.
-- [development/DATA-MODEL-SPECIFICATION.md](development/DATA-MODEL-SPECIFICATION.md) - Prisma schema, zero-knowledge fields.
-- [development/DATA-MODEL-COMPLEXITY-ANALYSIS.md](development/DATA-MODEL-COMPLEXITY-ANALYSIS.md) - Schema complexity analysis.
-
-**Testing:**
-- [../tests/README.md](../tests/README.md) - Integration-first test suite (53→6 tests, smart mocks).
-- [development/address-flow-testing.md](development/address-flow-testing.md) - Address flow test coverage.
-
-**Feature Flags & Configuration:**
-- [development/feature-flags.md](development/feature-flags.md) - Beta feature toggles, configuration.
-- [development/analytics-overview.md](development/analytics-overview.md) - Analytics tracking implementation.
-- [development/production-checklist.md](development/production-checklist.md) - Pre-deployment verification.
-- [development/codebase-maintenance.md](development/codebase-maintenance.md) - Code health practices.
-- [development/codebase-ownership.md](development/codebase-ownership.md) - Component ownership guide.
-
----
-
 ## Integrations
 
 **Blockchain:**
 - [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md) - VOTER Protocol integration, passkey wallets, reputation tracking.
 
 **Third-Party APIs:**
-- [congressional/cwc-integration.md](congressional/cwc-integration.md) - Congressional delivery.
-- [features/oauth-setup.md](features/oauth-setup.md) - Social OAuth providers.
-
----
-
-## Strategy & Vision
-
-**Phase 1 Launch (3 months):**
-- [strategy/PHASE-1-REALITY-GROUNDED.md](strategy/PHASE-1-REALITY-GROUNDED.md) - Privacy-preserving constituent intelligence, ZK proofs, viral mechanisms.
-
-**Coordination Mechanics:**
-- [strategy/COORDINATION-PLATFORM.md](strategy/COORDINATION-PLATFORM.md) - Why individual action fails, coordination works. 5,000 coordinated messages get meetings.
-
-**Organizing Reality:**
-- [strategy/ORGANIZING-REALITY.md](strategy/ORGANIZING-REALITY.md) - What organizing victories look like, why organizing fails, class struggle infrastructure vs civic engagement theater.
-
-**Roadmap:**
-- [strategy/roadmap.md](strategy/roadmap.md) - Product roadmap and milestones.
-- [strategy/README.md](strategy/README.md) - Strategic direction overview.
-
----
-
-## Documentation Maintenance
-
-**Cleanup Plans:**
-- [DOCUMENTATION-CLEANUP-PLAN.md](DOCUMENTATION-CLEANUP-PLAN.md) - Ongoing consolidation roadmap.
-- [DOCUMENTATION-CLEANUP-PHASE-2.md](DOCUMENTATION-CLEANUP-PHASE-2.md) - Phase 2 analysis.
-- [DOCUMENTATION-STRUCTURE-PLAN.md](DOCUMENTATION-STRUCTURE-PLAN.md) - Organization strategy.
-
-**Archive:**
-- [archive/rejected/](archive/rejected/) - Rejected approaches (gamification, early synthesis docs, sharing strategies).
-- [archive/historical/](archive/historical/) - Historical status updates (Week 1, Month 1, Nov 2025), implementation completion docs, technical feasibility assessments, response docs.
+- [congressional/cwc.md](congressional/cwc.md) - Congressional delivery (CWC API)
+- [features/oauth.md](features/oauth.md) - Social OAuth providers (Google, Facebook, Twitter, LinkedIn, Discord)
+- [features/embeddings.md](features/embeddings.md) - Google Gemini embeddings for semantic search
 
 ---
 
@@ -167,15 +135,48 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 
 ---
 
+## Archive
+
+**Historical documents** (design iterations, status updates, audits):
+- [archive/historical/](archive/historical/) - Copy audits, visual comparisons, data model analyses, redesign summaries
+
+**Rejected approaches** (strategic docs that didn't fit):
+- [archive/rejected/](archive/rejected/) - Early synthesis docs, alternative strategic directions
+
+---
+
+## Quick Navigation
+
+**I want to...**
+
+- **Understand the product vision** → [CYPHERPUNK-ARCHITECTURE.md](CYPHERPUNK-ARCHITECTURE.md)
+- **Learn SvelteKit 5 patterns** → [FRONTEND-ARCHITECTURE.md](FRONTEND-ARCHITECTURE.md)
+- **Set up development environment** → [development/quickstart.md](development/quickstart.md)
+- **Understand database schema** → [development/schema.md](development/schema.md)
+- **Implement a new feature** → [features/index.md](features/index.md)
+- **Understand design system** → [design/index.md](design/index.md)
+- **Deploy to production** → [development/deployment.md](development/deployment.md)
+- **Understand congressional delivery** → [congressional/index.md](congressional/index.md)
+- **Integrate VOTER Protocol** → [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md)
+- **Understand strategic direction** → [strategy/index.md](strategy/index.md)
+
+---
+
 ## Questions?
 
 **Architecture questions:** Read [CYPHERPUNK-ARCHITECTURE.md](CYPHERPUNK-ARCHITECTURE.md) and [FRONTEND-ARCHITECTURE.md](FRONTEND-ARCHITECTURE.md)
 
 **voter-protocol questions:** See [voter-protocol repository](https://github.com/communisaas/voter-protocol)
 
-**Congressional delivery questions:** See [congressional/](congressional/) directory
+**Feature implementation:** See [features/index.md](features/index.md)
 
-**Feature implementation questions:** See [features/](features/) directory
+**Design system:** See [design/index.md](design/index.md)
+
+**Development workflow:** See [development/index.md](development/index.md)
+
+**Congressional delivery:** See [congressional/index.md](congressional/index.md)
+
+**Strategic direction:** See [strategy/index.md](strategy/index.md)
 
 ---
 
