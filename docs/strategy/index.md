@@ -44,6 +44,16 @@ Shareable impact cards, gamification, leaderboards, network visualization. Makin
 
 Product milestones, timelines, feature releases.
 
+### 6. [delivery-verification.md](delivery-verification.md) - Delivery Verification Strategy
+
+TEE-based email verification roadmap, OAuth persistence, congressional signatures, browser-native proving.
+
+**What it covers**: 4-phase approach to verify congressional message delivery without violating cypherpunk privacy principles.
+
+**Phases**: OAuth persistence (Phase 1) → TEE verification (Phase 2) → Congressional signatures (Phase 3) → Browser-native (Phase 4)
+
+**Status**: Phase 1 implemented (OAuth), Phase 2-4 planned
+
 ---
 
 ## Strategic Clarity
