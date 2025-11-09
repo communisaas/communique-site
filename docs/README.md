@@ -22,7 +22,7 @@ Communiqué is the user-facing application. Cryptographic primitives, blockchain
 
 ## Documentation Structure
 
-Communiqué docs are organized into 5 pillar directories, each with an **index.md** that explains what's inside, reading order, and cross-references.
+Communiqué docs are organized into **7 core directories**, each with an **index.md** that explains what's inside, reading order, and cross-references.
 
 ### [strategy/](strategy/) - Strategic Direction
 
@@ -87,7 +87,33 @@ Communiqué docs are organized into 5 pillar directories, each with an **index.m
 
 ---
 
-## Architecture Documentation
+### [architecture/](architecture/) - Cryptographic & Infrastructure Architecture
+
+**What's inside**: Architecture decision record (browser-native WASM proving), TEE systems overview, cloud-agnostic TEE abstraction.
+
+**Start with**: [architecture/index.md](architecture/index.md) → [architecture/decision-record.md](architecture/decision-record.md) → [architecture/tee-systems.md](architecture/tee-systems.md)
+
+**Who reads this**:
+- **Security engineers**: decision-record.md (privacy model), tee-systems.md (AWS Nitro Enclaves)
+- **Backend engineers**: cloud-tee.md (multi-cloud TEE deployment)
+- **Auditors**: decision-record.md (zero-knowledge proof generation), tee-systems.md (TEE threat model)
+
+---
+
+### [research/](research/) - Strategic Research
+
+**What's inside**: Power structure analysis (housing, workplace, education, healthcare), TEE security & backdoor analysis.
+
+**Start with**: [research/index.md](research/index.md) → [research/power-structures.md](research/power-structures.md) → [research/tee-security.md](research/tee-security.md)
+
+**Who reads this**:
+- **Product team**: power-structures.md (expansion beyond Congress)
+- **Security engineers**: tee-security.md (TEE vulnerability research)
+- **Organizers**: power-structures.md (leverage points in systems)
+
+---
+
+## Architecture Documentation (Detailed)
 
 **Product & Philosophy:**
 - [CYPHERPUNK-ARCHITECTURE.md](CYPHERPUNK-ARCHITECTURE.md) - Authoritative. McDonald 2018 research, honest messaging, privacy model.
@@ -156,9 +182,13 @@ Communiqué docs are organized into 5 pillar directories, each with an **index.m
 - **Implement a new feature** → [features/index.md](features/index.md)
 - **Understand design system** → [design/index.md](design/index.md)
 - **Deploy to production** → [development/deployment.md](development/deployment.md)
+- **Deploy AWS TEE infrastructure** → [development/aws-deployment.md](development/aws-deployment.md)
 - **Understand congressional delivery** → [congressional/index.md](congressional/index.md)
 - **Integrate VOTER Protocol** → [INTEGRATION-GUIDE.md](INTEGRATION-GUIDE.md)
 - **Understand strategic direction** → [strategy/index.md](strategy/index.md)
+- **Understand cryptographic architecture** → [architecture/index.md](architecture/index.md)
+- **Research power structures** → [research/power-structures.md](research/power-structures.md)
+- **Evaluate TEE security** → [research/tee-security.md](research/tee-security.md)
 
 ---
 
@@ -177,6 +207,10 @@ Communiqué docs are organized into 5 pillar directories, each with an **index.m
 **Congressional delivery:** See [congressional/index.md](congressional/index.md)
 
 **Strategic direction:** See [strategy/index.md](strategy/index.md)
+
+**Cryptographic architecture:** See [architecture/index.md](architecture/index.md)
+
+**Research & analysis:** See [research/index.md](research/index.md)
 
 ---
 

@@ -92,6 +92,24 @@ Notes on design iterations, rationale for changes, before/after comparisons.
 
 ---
 
+## Component Documentation
+
+### 10. [identity-verification.md](identity-verification.md) - Identity Verification UI
+
+UI components for identity verification flow.
+
+**What it defines**: IdentityVerificationFlow component architecture, emotional design, conversion optimization.
+
+**Key principle**: "Stealthily cypherpunk" - privacy as empowerment, not paranoia.
+
+### 11. [component-examples.md](component-examples.md) - Component Usage Examples
+
+Practical usage examples for UI components.
+
+**What it provides**: Code examples, integration patterns, common use cases.
+
+---
+
 ## Design Principles (Philosophy)
 
 **1. Honesty over persuasion**

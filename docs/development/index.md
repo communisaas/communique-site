@@ -98,11 +98,21 @@ Pre-deployment verification, production build, environment checks.
 - [ ] Database migrations run
 - [ ] Feature flags configured
 
+### 8. [aws-deployment.md](aws-deployment.md) - AWS Nitro Enclaves Deployment
+
+AWS-specific deployment guide for TEE infrastructure.
+
+**What it covers**: AWS Nitro Enclaves setup, security configuration, cost optimization.
+
+**Why AWS**: No Intel ME/AMD PSP (ARM Graviton), hypervisor isolation, independently audited.
+
+**Use case**: Deploying TEE for congressional message delivery (Phase 1).
+
 ---
 
 ## Code Maintenance
 
-### 8. [maintenance.md](maintenance.md) - Code Health
+### 9. [maintenance.md](maintenance.md) - Code Health
 
 Linting, formatting, dependency updates, tech debt tracking.
 
@@ -117,7 +127,7 @@ Linting, formatting, dependency updates, tech debt tracking.
 - TypeScript strict mode
 - No `any` types (use proper types or `unknown`)
 
-### 9. [ownership.md](ownership.md) - Component Ownership
+### 10. [ownership.md](ownership.md) - Component Ownership
 
 Code ownership map, who maintains what, escalation paths.
 
