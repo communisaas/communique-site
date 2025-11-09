@@ -170,8 +170,8 @@
 	<!-- Header with Timeframe Selector -->
 	<div class="flex items-center justify-between">
 		<div>
-			<h1 class="text-2xl font-bold text-gray-900">Campaign Dashboard</h1>
-			<p class="mt-1 text-gray-600">Monitor your template performance and campaign analytics</p>
+			<h1 class="text-2xl font-bold text-gray-900">Analytics Dashboard</h1>
+			<p class="mt-1 text-gray-600">Monitor your template performance and impact metrics</p>
 		</div>
 		<div class="flex rounded-lg bg-gray-100 p-1">
 			<button
@@ -254,7 +254,7 @@
 						</div>
 					</div>
 					<p class="mt-2 text-xs text-participation-primary-600">
-						{overview.active_campaigns} active campaigns
+						{overview.active_campaigns} active
 					</p>
 				</div>
 

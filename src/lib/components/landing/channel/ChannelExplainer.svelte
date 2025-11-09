@@ -124,7 +124,7 @@
 			title: 'Everyone Else',
 			icon: AtSign,
 			description:
-				'Local gov, corporations, HOAs, universities. Opens your email. Phase 2: OAuth verification.',
+				'Local gov, corporations, HOAs, universities. Opens your email client to send.',
 			features: [
 				{
 					icon: Building2,
@@ -132,11 +132,11 @@
 				},
 				{
 					icon: Network,
-					text: 'Phase 2: Verification for all'
+					text: 'Coming soon: Verified delivery'
 				},
 				{
 					icon: Route,
-					text: 'Phase 1: mailto (no tracking)'
+					text: 'Opens your email app'
 				}
 			],
 			color: 'blue'
