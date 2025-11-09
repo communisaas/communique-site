@@ -85,7 +85,7 @@
 				bind:flightState
 				{user}
 				onclick={handleSendClick}
-				text={user ? 'Send to Leaders' : 'Send to Leaders'}
+				text={user ? 'Send to Decision-Makers' : 'Send to Decision-Makers'}
 			/>
 		{/if}
 	</div>
