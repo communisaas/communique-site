@@ -5,8 +5,11 @@ export default defineConfig({
 	plugins: [sveltekit()],
 
 	optimizeDeps: {
-		exclude: ['chunk-PCGYAOMB.js']
+		exclude: ['chunk-PCGYAOMB.js', '@voter-protocol/halo2-browser-prover']
 	},
+
+	// Enable WASM support
+	assetsInclude: ['**/*.wasm'],
 
 	ssr: {
 		noExternal: ['@selfxyz/qrcode', 'react-spinners', '@voter-protocol/client']
@@ -50,6 +53,10 @@ export default defineConfig({
 	},
 
 	server: {
+		fs: {
+			// Allow serving files from linked npm packages (for local testing)
+			allow: ['..']
+		},
 		watch: {
 			ignored: ['**/prisma/schema.prisma']
 		}

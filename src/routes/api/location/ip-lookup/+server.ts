@@ -29,9 +29,10 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
 		const clientIp = getClientAddress();
 
 		// In development, use a known IP for testing (San Francisco)
-		const lookupIp = clientIp === '127.0.0.1' || clientIp === '::1'
-			? '8.8.8.8' // Google DNS (will return Mountain View, CA for testing)
-			: clientIp;
+		const lookupIp =
+			clientIp === '127.0.0.1' || clientIp === '::1'
+				? '8.8.8.8' // Google DNS (will return Mountain View, CA for testing)
+				: clientIp;
 
 		console.log(`[IP Lookup] Looking up IP: ${lookupIp}`);
 

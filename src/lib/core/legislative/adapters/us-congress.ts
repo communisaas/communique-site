@@ -174,7 +174,6 @@ export class USCongressAdapter extends LegislativeAdapter {
 				metrics: {},
 				status: 'active',
 				is_public: true,
-				send_count: 0,
 				applicable_countries: ['US'],
 				specific_locations: [],
 				preview: request.personalized_message.substring(0, 200)

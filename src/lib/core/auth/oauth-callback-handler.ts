@@ -16,8 +16,9 @@ import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
-import { createNEARAccountFromOAuth } from '$lib/core/blockchain/oauth-near';
-import { deriveScrollAddress } from '$lib/core/blockchain/chain-signatures';
+// Dynamic imports to avoid SSR issues with browser-only crypto in @voter-protocol/client
+// import { createNEARAccountFromOAuth } from '$lib/core/blockchain/oauth-near';
+// import { deriveScrollAddress } from '$lib/core/blockchain/chain-signatures';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -235,8 +236,8 @@ export class OAuthCallbackHandler {
 				}
 			});
 
-			// Ensure blockchain accounts exist for existing user
-			await this.ensureBlockchainAccounts(existingAccount.user, config.provider, userData.id);
+			// TODO: Re-enable blockchain account creation when SSR-safe
+			// await this.ensureBlockchainAccounts(existingAccount.user, config.provider, userData.id);
 
 			return existingAccount.user;
 		}
@@ -263,8 +264,8 @@ export class OAuthCallbackHandler {
 				}
 			});
 
-			// Ensure blockchain accounts exist for existing user
-			await this.ensureBlockchainAccounts(existingUser, config.provider, userData.id);
+			// TODO: Re-enable blockchain account creation when SSR-safe
+			// await this.ensureBlockchainAccounts(existingUser, config.provider, userData.id);
 
 			return existingUser;
 		}
@@ -291,8 +292,8 @@ export class OAuthCallbackHandler {
 			}
 		});
 
-		// Create blockchain accounts for new user
-		await this.ensureBlockchainAccounts(newUser, config.provider, userData.id);
+		// TODO: Re-enable blockchain account creation when SSR-safe
+		// await this.ensureBlockchainAccounts(newUser, config.provider, userData.id);
 
 		return newUser;
 	}
@@ -300,12 +301,21 @@ export class OAuthCallbackHandler {
 	/**
 	 * Ensure user has NEAR account and Scroll address
 	 * Creates blockchain accounts if they don't exist yet
+	 *
+	 * TODO: Re-enable when SSR-safe
+	 * Problem: Dynamic imports of @voter-protocol/client trigger SSR errors
+	 * Solution: Move blockchain account creation to client-side background job
 	 */
 	private async ensureBlockchainAccounts(
-		user: DatabaseUser,
-		provider: OAuthProvider,
-		oauthUserId: string
+		_user: DatabaseUser,
+		_provider: OAuthProvider,
+		_oauthUserId: string
 	): Promise<void> {
+		// Temporarily disabled due to SSR issues with @voter-protocol/client
+		// See: oauth-callback-handler.ts lines 240, 268, 296 for commented call sites
+		return;
+
+		/* ORIGINAL IMPLEMENTATION (disabled):
 		try {
 			// Skip if user already has complete blockchain setup
 			if (user.near_account_id && user.scroll_address) {
@@ -318,6 +328,8 @@ export class OAuthCallbackHandler {
 			// Step 1: Create NEAR account from OAuth identity
 			if (!user.near_account_id) {
 				console.log(`[Blockchain] Creating NEAR account for user ${user.id} via ${provider}`);
+				// Dynamic import to avoid SSR issues
+				const { createNEARAccountFromOAuth } = await import('$lib/core/blockchain/oauth-near');
 				const nearAccountId = await createNEARAccountFromOAuth(provider, oauthUserId);
 				console.log(`[Blockchain] Created NEAR account: ${nearAccountId}`);
 			}
@@ -333,6 +345,8 @@ export class OAuthCallbackHandler {
 				console.log(
 					`[Blockchain] Deriving Scroll address for NEAR account: ${updatedUser.near_account_id}`
 				);
+				// Dynamic import to avoid SSR issues
+				const { deriveScrollAddress } = await import('$lib/core/blockchain/chain-signatures');
 				const scrollAddress = await deriveScrollAddress(updatedUser.near_account_id);
 				console.log(`[Blockchain] Derived Scroll address: ${scrollAddress}`);
 			}
@@ -348,10 +362,20 @@ export class OAuthCallbackHandler {
 				stack: err instanceof Error ? err.stack : undefined
 			});
 		}
+		*/
 	}
 
 	/**
-	 * Create session and handle address collection or final redirect
+	 * Create session and redirect back to origin
+	 *
+	 * DESIGN PRINCIPLE: OAuth callback does ONE thing - authenticate.
+	 * Address collection happens contextually in the template flow, not as a wall.
+	 *
+	 * From docs/design/friction.md:
+	 * "One-click democracy: From link to sent message in seconds."
+	 *
+	 * From docs/strategy/coordination.md:
+	 * "The address wall SCATTERS our users. It breaks coordination momentum."
 	 */
 	private async handleSessionAndRedirect(
 		user: DatabaseUser,
@@ -361,7 +385,9 @@ export class OAuthCallbackHandler {
 	): Promise<Response> {
 		// Determine session type based on funnel
 		const isFromSocialFunnel =
-			returnTo.includes('template-modal') || returnTo.includes('auth=required');
+			returnTo.includes('template-modal') ||
+			returnTo.includes('auth=required') ||
+			returnTo.includes('/s/'); // Template pages
 
 		// Create session with appropriate duration
 		const session = await createSession(user.id, isFromSocialFunnel);
@@ -372,28 +398,14 @@ export class OAuthCallbackHandler {
 		// Set session cookie
 		cookies.set(sessionCookieName, session.id, {
 			path: '/',
-			secure: process.env.NODE_ENV === 'production',
+			secure: import.meta.env.MODE === 'production',
 			httpOnly: true,
 			maxAge: cookieMaxAge,
 			sameSite: 'lax'
 		});
 
-		// Check address requirements
-		const hasAddress = Boolean(user.street && user.city && user.state && user.zip);
-
-		const needsAddress =
-			!hasAddress &&
-			(returnTo.includes('template-modal') ||
-				returnTo.includes('/template/') ||
-				isFromSocialFunnel ||
-				returnTo !== '/profile');
-
-		// Check profile requirements for direct outreach
-		const isDirectOutreach = returnTo.includes('template-modal') && returnTo.includes('direct');
-
-		const hasProfile = user.phone && user.phone.startsWith('{');
-
-		// Store OAuth completion info in session storage-accessible cookie for client-side access
+		// Store OAuth completion signal for client-side detection
+		// This lets the template page know OAuth just completed → open modal immediately
 		cookies.set(
 			'oauth_completion',
 			JSON.stringify({
@@ -411,32 +423,15 @@ export class OAuthCallbackHandler {
 			}
 		);
 
-		// Determine redirect path - clean URLs without query params
-		if (needsAddress) {
-			// Store return URL in session-accessible cookie
-			cookies.set('oauth_return_to', returnTo, {
-				path: '/',
-				secure: false,
-				httpOnly: false,
-				maxAge: 60 * 10,
-				sameSite: 'lax'
-			});
-			return redirect(302, '/onboarding/address');
-		}
-
-		if (isDirectOutreach && !hasProfile) {
-			// Store return URL in session-accessible cookie
-			cookies.set('oauth_return_to', returnTo, {
-				path: '/',
-				secure: false,
-				httpOnly: false,
-				maxAge: 60 * 10,
-				sameSite: 'lax'
-			});
-			return redirect(302, '/onboarding/profile');
-		}
-
-		// Clean redirect without query parameters
+		// SIMPLE: Just redirect back to where they came from
+		// The template page will handle:
+		// - Opening the modal
+		// - Collecting address IF needed (congressional templates only)
+		// - All other template-specific logic
+		//
+		// NO MORE FORCED REDIRECTS TO /onboarding/address
+		// NO MORE ADDRESS WALLS
+		// LET THEM SEND THE FUCKING MESSAGE
 		return redirect(302, returnTo);
 	}
 

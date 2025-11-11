@@ -74,15 +74,12 @@ export class BoundaryMatcher {
 		cityName: string,
 		stateCode: string
 	): Promise<BoundaryMatchResult> {
-		console.log(`[BoundaryMatcher] Matching: ${cityName}, ${stateCode} (${latitude}, ${longitude})`);
+		console.log(
+			`[BoundaryMatcher] Matching: ${cityName}, ${stateCode} (${latitude}, ${longitude})`
+		);
 
 		// Step 1: Try client-side boundary matching
-		const localMatch = await this.matchLocalBoundaries(
-			latitude,
-			longitude,
-			cityName,
-			stateCode
-		);
+		const localMatch = await this.matchLocalBoundaries(latitude, longitude, cityName, stateCode);
 
 		if (localMatch) {
 			console.log('[BoundaryMatcher] ✓ Client-side match (zero cost, zero trust)');
@@ -95,9 +92,7 @@ export class BoundaryMatcher {
 		}
 
 		// Step 2: Fall back to Cicero API (with server-side caching)
-		console.log(
-			'[BoundaryMatcher] No local boundaries available, falling back to Cicero API'
-		);
+		console.log('[BoundaryMatcher] No local boundaries available, falling back to Cicero API');
 		const ciceroMatch = await this.matchCicero(latitude, longitude, cityName, stateCode);
 
 		if (ciceroMatch) {
@@ -147,10 +142,7 @@ export class BoundaryMatcher {
 
 			// Check each district polygon
 			for (const feature of boundaries.features) {
-				if (
-					feature.geometry.type === 'Polygon' ||
-					feature.geometry.type === 'MultiPolygon'
-				) {
+				if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
 					const polygon = feature as Feature<Polygon | MultiPolygon>;
 
 					if (turf.booleanPointInPolygon(point, polygon)) {

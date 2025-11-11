@@ -82,9 +82,7 @@ export class EmbeddingSearch {
 	 * Search templates by semantic similarity
 	 * Returns templates ranked by similarity score
 	 */
-	async search(
-		query: SearchQuery
-	): Promise<Array<TemplateWithEmbedding & { similarity: number }>> {
+	async search(query: SearchQuery): Promise<Array<TemplateWithEmbedding & { similarity: number }>> {
 		const startTime = performance.now();
 
 		// Generate embedding for query

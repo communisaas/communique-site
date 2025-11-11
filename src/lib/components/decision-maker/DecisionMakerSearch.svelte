@@ -148,10 +148,7 @@
 										<div
 											class="h-1.5 w-full max-w-[100px] overflow-hidden rounded-full bg-slate-200"
 										>
-											<div
-												class="h-full bg-yellow-500"
-												style="width: {person.confidence}%"
-											></div>
+											<div class="h-full bg-yellow-500" style="width: {person.confidence}%"></div>
 										</div>
 										<span class="text-xs text-slate-500">~{person.confidence}% verified</span>
 									</div>

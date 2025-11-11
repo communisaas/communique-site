@@ -5,6 +5,7 @@
 ## Data Sources
 
 ### San Francisco (Pilot City)
+
 - **Source**: DataSF Open Data Portal
 - **URL**: https://data.sfgov.org/Geographic-Locations-and-Boundaries/Supervisor-Districts-Current-/8nkz-x4ny
 - **License**: Public Domain (SF Open Data)
@@ -43,16 +44,20 @@ Each boundary file is a GeoJSON FeatureCollection with the following structure:
 ## Coverage
 
 ### Current (Phase 1 - Pilot)
+
 - **Cities**: 1 (San Francisco)
 - **Population**: ~800,000 (0.3% of US)
 
 ### Target (Phase 2 - Top 100)
+
 - **Cities**: 100
 - **Population**: ~140M (42% of US)
 - **Timeline**: 3 months
 
 ### Expansion Priority
+
 Cities prioritized by:
+
 1. Population size (top 100 metros)
 2. Data availability (open data portals)
 3. Data quality (boundary accuracy, metadata completeness)
@@ -67,6 +72,7 @@ Cities prioritized by:
 ```
 
 **Process:**
+
 1. Download Shapefiles from open data portals
 2. Convert to GeoJSON with `ogr2ogr`
 3. Validate geometry with `geojsonhint`
@@ -98,28 +104,30 @@ import { boundaryMatcher } from '$lib/core/location/boundary-matcher';
 
 // Match coordinates to district (zero API calls!)
 const result = await boundaryMatcher.matchDistrict(
-  37.7749,  // latitude
-  -122.4194, // longitude
-  'San Francisco',
-  'CA'
+	37.7749, // latitude
+	-122.4194, // longitude
+	'San Francisco',
+	'CA'
 );
 
 if (result.source === 'local') {
-  console.log('✓ Zero cost, zero trust!');
-  console.log(result.city_council_district);
-  // { district: "D5", representative: "Dean Preston", ... }
+	console.log('✓ Zero cost, zero trust!');
+	console.log(result.city_council_district);
+	// { district: "D5", representative: "Dean Preston", ... }
 }
 ```
 
 ### Cache Behavior
 
 **IndexedDB cache**:
+
 - Boundaries cached in browser on first load
 - Persistent across sessions
 - ~5-50MB per city
 - Works offline after first load
 
 **Memory cache**:
+
 - Fastest access (<1ms)
 - Cleared on page refresh
 
@@ -142,6 +150,7 @@ if (result.source === 'local') {
 ## Future Expansion
 
 ### Top 20 Cities (Next Sprint)
+
 1. New York, NY
 2. Los Angeles, CA
 3. Chicago, IL
@@ -164,6 +173,7 @@ if (result.source === 'local') {
 20. Boston, MA
 
 ### Data Quality Checklist
+
 - [ ] Boundary geometry validated (no self-intersections)
 - [ ] Representative metadata complete (name, email, phone)
 - [ ] Election cycle documented (next update date)
@@ -173,11 +183,13 @@ if (result.source === 'local') {
 ## Maintenance
 
 ### Quarterly Updates
+
 - Check for redistricting (after Census)
 - Verify representative information (after elections)
 - Update metadata (contact info changes)
 
 ### Election Cycles
+
 - City councils typically elect every 2-4 years
 - Some cities have staggered terms (50% every 2 years)
 - Redistricting after Census (2030 next)
@@ -191,6 +203,7 @@ if (result.source === 'local') {
 ## Support
 
 Issues with boundary data? Open a GitHub issue with:
+
 - City name
 - Address that failed to match
 - Expected district

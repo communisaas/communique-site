@@ -489,7 +489,9 @@ VISIBILITY_TIMEOUT_SECONDS=300      # SQS visibility timeout (default: 5 minutes
 
 **Phase 1 cryptographic flow:**
 1. Identity verification: self.xyz NFC passport (70%) + Didit.me (30%) - both FREE
-2. Witness encryption: Address encrypted in browser (XChaCha20-Poly1305), sent to Proof Service API
+2. Witness encryption: Address encrypted in browser (XChaCha20-Poly1305)
+   - **Current (MVP):** Encrypted blob stored in Postgres (platform cannot decrypt)
+   - **Phase 2 (cost optimization):** IPFS storage + on-chain pointer (99.97% cost reduction, see `docs/PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md`)
 3. ZK proof generation: TEE decrypts witness, generates Halo2 proof (2-5s native Rust), address exists only in TEE memory during proving
 4. Encrypted delivery: XChaCha20-Poly1305 → AWS Nitro Enclaves (ARM Graviton, hypervisor-isolated) → CWC API → congressional office
 5. Reputation tracking: On-chain ERC-8004 reputation updates (no token rewards yet)
@@ -639,6 +641,7 @@ await submitTransaction(signedTx);
 ```bash
 npm run test             # All tests (integration + unit)
 npm run test:run         # All tests (no watch mode)
+npm run test:reseed      # Tests + auto-reseed database (RECOMMENDED)
 npm run test:unit        # Unit tests only
 npm run test:integration # Integration tests only
 npm run test:e2e         # End-to-end browser tests (Playwright)
@@ -650,6 +653,8 @@ npm run test:ci          # CI pipeline tests (test:run + test:e2e)
 npm run test:health      # Generate health reports in coverage/ directory
 npm run test:drift       # Mock drift detection reports
 ```
+
+**IMPORTANT:** Tests clear the database for test isolation. Use `npm run test:reseed` to automatically reseed after running tests, or manually run `npm run db:seed` afterward. See `docs/testing/DATABASE-CLEARING-ISSUE.md` for details.
 
 ## Database & Seeding
 
@@ -677,19 +682,32 @@ Feature flags control access to:
 
 - **Beta features** (`src/lib/features/`): AI suggestions, template intelligence
 
-## Where to read more
+## Documentation Navigation
 
-- **Test Suite**: `tests/README.md`
-- **Database Seeding**: `docs/database-seeding.md`
-- **Architecture**: `docs/architecture.md`
-- **Integrations**: `docs/integrations.md`
-- **Development**: `docs/dev-quickstart.md`
-- **Roadmap**: `docs/roadmap.md`
-- **Agent Architecture**: `docs/agents/agent-architecture.md`
-- **Agent Consensus**: `docs/agents/consensus-roadmap.md`
-- **Legislative Abstraction**: `docs/legislative/abstraction-layer.md`
-- **Analytics System**: `docs/analytics/overview.md`
-- **Template Creator**: `docs/features/template-creator.md`
-- **OAuth Setup**: `docs/authentication/oauth-setup.md`
-- **CWC Integration**: `docs/congressional/cwc-integration.md`
-- **Feature Flags**: `docs/development/feature-flags.md`
+**Start here →** `docs/README.md` (comprehensive navigation map)
+
+**Implementation Status:**
+- `docs/IMPLEMENTATION-STATUS.md` - What's done, what remains (SINGLE SOURCE OF TRUTH)
+
+**Understanding the System:**
+- `docs/ARCHITECTURE.md` - Communiqué/voter-protocol separation, cypherpunk principles
+- `docs/INTEGRATION.md` - How Communiqué integrates with voter-protocol, CWC API, OAuth
+- `docs/FRONTEND.md` - SvelteKit 5 patterns, runes, type safety
+
+**Building Features:**
+- `docs/features/templates.md` - Template system
+- `docs/features/creator.md` - Template creator UI
+- `docs/features/identity-verification.md` - self.xyz + Didit.me flows
+
+**Development:**
+- `docs/development/testing.md` - Test strategy, mocks, fixtures
+- `docs/development/database.md` - Prisma schema, migrations, seeding
+- `docs/development/deployment.md` - How to deploy Communiqué
+
+**Deep Dives (Specs):**
+- `docs/specs/zk-proof-integration.md` - ZK proof integration (5 phases, 10 weeks, 45K)
+- `docs/specs/portable-identity.md` - IPFS architecture (Phase 2)
+- `docs/specs/universal-credibility.md` - Credential verification
+
+**Historical Context:**
+- `docs/archive/` - Superseded docs, migrations, historical decisions

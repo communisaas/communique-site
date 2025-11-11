@@ -86,9 +86,7 @@
 >
 	<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-3">
 		<!-- Icon -->
-		<div
-			class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full {config.iconBg}"
-		>
+		<div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full {config.iconBg}">
 			<Icon class="h-6 w-6 {config.iconColor}" />
 		</div>
 

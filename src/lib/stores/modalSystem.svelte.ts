@@ -46,6 +46,7 @@ export type LegacyModalState =
 	| 'auth_required'
 	| 'loading'
 	| 'confirmation'
+	| 'proof-generation' // ZK proof generation (Phase 2)
 	| 'celebration'
 	| 'tracking'
 	| 'retry_needed';

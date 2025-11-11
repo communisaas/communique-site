@@ -109,9 +109,7 @@ export class BehavioralLocationTracker {
 	/**
 	 * Extract jurisdiction patterns from template views
 	 */
-	private extractJurisdictionPatterns(
-		views: TemplateViewEvent[]
-	): BehavioralLocationPattern[] {
+	private extractJurisdictionPatterns(views: TemplateViewEvent[]): BehavioralLocationPattern[] {
 		// Group views by jurisdiction
 		const jurisdictionCounts = new Map<
 			string,

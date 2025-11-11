@@ -29,7 +29,9 @@ async function verifyMigration() {
 		console.log(`   Slug: ${template.slug}`);
 		console.log(`   Jurisdictions: ${template.jurisdictions.length}`);
 		for (const j of template.jurisdictions) {
-			console.log(`   - ${j.jurisdiction_type}: ${j.city_name || j.state_code || j.congressional_district}`);
+			console.log(
+				`   - ${j.jurisdiction_type}: ${j.city_name || j.state_code || j.congressional_district}`
+			);
 		}
 	}
 
@@ -40,10 +42,7 @@ async function verifyMigration() {
 	// Check templates with embeddings (should be 0 initially)
 	const templatesWithEmbeddings = await prisma.template.count({
 		where: {
-			OR: [
-				{ location_embedding: { not: null } },
-				{ topic_embedding: { not: null } }
-			]
+			OR: [{ location_embedding: { not: null } }, { topic_embedding: { not: null } }]
 		}
 	});
 
@@ -53,7 +52,7 @@ async function verifyMigration() {
 	console.log('\n✅ Migration verification complete!\n');
 }
 
-verifyMigration().catch(error => {
+verifyMigration().catch((error) => {
 	console.error('❌ Verification failed:', error);
 	process.exit(1);
 });

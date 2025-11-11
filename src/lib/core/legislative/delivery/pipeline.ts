@@ -10,6 +10,11 @@ import type { Representative as _Representative } from '../models';
 
 type Representative = _Representative;
 import { adapterRegistry } from '../adapters/registry';
+import {
+	trackTemplateAdoption,
+	getUserContributionMetrics
+} from '$lib/core/reputation/adoption-tracker';
+import crypto from 'crypto';
 // Note: Using internal variable resolution for now
 // import { resolveVariables } from '$lib/services/personalization';
 
@@ -96,6 +101,54 @@ export class LegislativeDeliveryPipeline {
 
 				const result = await adapter.deliverMessage(request);
 				results.push(result);
+
+				// Track template adoption on successful delivery (Phase 1 reputation)
+				if (result.success && job.user.id && job.template.id) {
+					try {
+						// Generate district hash from congressional district (privacy-preserving)
+						const districtIdentifier = rep.congressional_district || rep.state || 'unknown';
+						const districtHash = crypto
+							.createHash('sha256')
+							.update(districtIdentifier)
+							.digest('hex');
+
+						// Get user's current reputation score
+						const userMetrics = await getUserContributionMetrics(job.user.id);
+						const reputationScore = this.calculateUserReputationScore(userMetrics);
+
+						// Track adoption (updates template metrics and creator reputation)
+						await trackTemplateAdoption({
+							templateId: job.template.id,
+							userId: job.user.id,
+							districtHash,
+							reputationScore,
+							content: _personalizedMessage,
+							subject: job.template.title,
+							deliveryMethod: 'cwc'
+						});
+
+						// Track expertise usage (domain credibility)
+						const templateDomain = this.inferDomainFromTemplate(job.template);
+						if (templateDomain) {
+							const { trackExpertiseUsage } = await import(
+								'$lib/core/reputation/credential-verifier'
+							);
+							await trackExpertiseUsage(job.user.id, templateDomain, 'message_sent');
+
+							// Track issue if template has related bills
+							if (job.template.related_bills && job.template.related_bills.length > 0) {
+								for (const bill of job.template.related_bills) {
+									await trackExpertiseUsage(job.user.id, templateDomain, 'issue_tracked', {
+										issue_id: bill
+									});
+								}
+							}
+						}
+					} catch (trackingError) {
+						// Don't fail delivery if tracking fails - just log
+						console.error('Failed to track template adoption:', trackingError);
+					}
+				}
 			}
 
 			const successful = results.filter((r) => r.success).length;
@@ -189,6 +242,84 @@ export class LegislativeDeliveryPipeline {
 			.replace(/\[_representative\.title\]/g, rep.name) // Will be enhanced
 			.replace(/\[Name\]/g, user.name || 'Constituent') // Legacy support
 			.replace(/\[Representative Name\]/g, rep.name); // Legacy support
+	}
+
+	/**
+	 * Calculate user's reputation score from concrete signals (Phase 1)
+	 *
+	 * Formula per PHASE-1-REPUTATION-IMPLEMENTATION.md:
+	 * - Template adoption: min(adoption_rate * 5, 25) [max 25 points]
+	 * - Peer endorsements: min(endorsements * 2, 15) [max 15 points]
+	 * - Civic velocity: min(active_months * 2, 10) [max 10 points]
+	 * - Template creation: min(templates_contributed * 2, 10) [max 10 points]
+	 */
+	private calculateUserReputationScore(metrics: {
+		template_adoption_rate: number;
+		peer_endorsements: number;
+		active_months: number;
+		templates_contributed: number;
+	}): number {
+		const templateSignal = Math.min(metrics.template_adoption_rate * 5, 25);
+		const endorsementSignal = Math.min(metrics.peer_endorsements * 2, 15);
+		const velocitySignal = Math.min(metrics.active_months * 2, 10);
+		const contributionSignal = Math.min(metrics.templates_contributed * 2, 10);
+
+		return Math.round(templateSignal + endorsementSignal + velocitySignal + contributionSignal);
+	}
+
+	/**
+	 * Infer domain from template policy areas and category
+	 * Maps template topics to expertise domains for credibility tracking
+	 */
+	private inferDomainFromTemplate(template: LegislativeTemplate): string | null {
+		const policyAreas = template.policy_areas || [];
+		const category = template.category || '';
+
+		// Healthcare domains
+		if (policyAreas.includes('healthcare') || category.includes('health')) {
+			return 'healthcare';
+		}
+
+		// Education domains
+		if (policyAreas.includes('education') || category.includes('education')) {
+			return 'education';
+		}
+
+		// Environmental domains
+		if (
+			policyAreas.includes('environment') ||
+			policyAreas.includes('climate') ||
+			category.includes('environment')
+		) {
+			return 'environment';
+		}
+
+		// Economic domains
+		if (
+			policyAreas.includes('economy') ||
+			policyAreas.includes('taxation') ||
+			category.includes('economic')
+		) {
+			return 'economics';
+		}
+
+		// Civil rights / accessibility
+		if (policyAreas.includes('civil_rights') || policyAreas.includes('accessibility')) {
+			return 'civil_rights';
+		}
+
+		// Immigration
+		if (policyAreas.includes('immigration')) {
+			return 'immigration';
+		}
+
+		// Housing
+		if (policyAreas.includes('housing') || category.includes('housing')) {
+			return 'housing';
+		}
+
+		// Default: general civic engagement
+		return 'civic_engagement';
 	}
 }
 

@@ -27,9 +27,7 @@ export async function syncOAuthLocation(): Promise<boolean> {
 		}
 
 		// Read oauth_location cookie
-		const cookie = document.cookie
-			.split('; ')
-			.find((row) => row.startsWith('oauth_location='));
+		const cookie = document.cookie.split('; ').find((row) => row.startsWith('oauth_location='));
 
 		if (!cookie) {
 			return false;
@@ -40,8 +38,7 @@ export async function syncOAuthLocation(): Promise<boolean> {
 		const locationData: OAuthLocationData = JSON.parse(decodeURIComponent(value));
 
 		// Delete cookie after reading (privacy: one-time use)
-		document.cookie =
-			'oauth_location=; path=/; max-age=0; secure; samesite=lax';
+		document.cookie = 'oauth_location=; path=/; max-age=0; secure; samesite=lax';
 
 		console.log('[OAuth Location Sync] Processing OAuth location data:', {
 			provider: locationData.provider,
@@ -123,7 +120,6 @@ function extractLocationFromTimezone(timezone: string): string | null {
 		'America/Metlakatla': 'AK',
 		'America/Yakutat': 'AK',
 		'Pacific/Guam': 'GU',
-		'Pacific/Honolulu': 'HI',
 		'America/Puerto_Rico': 'PR'
 	};
 

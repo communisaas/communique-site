@@ -153,7 +153,11 @@
 					title: 'Direct message delivery',
 					desc: 'Your message is sent to the right people'
 				},
-				{ icon: Users, title: 'Congressional messages tracked', desc: 'Delivery verified & counted' },
+				{
+					icon: Users,
+					title: 'Congressional messages tracked',
+					desc: 'Delivery verified & counted'
+				},
 				{ icon: CheckCircle2, title: 'Drives change', desc: 'Collective voices create real impact' }
 			];
 		}

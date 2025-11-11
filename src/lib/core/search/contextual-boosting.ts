@@ -103,24 +103,10 @@ export class ContextualBooster {
 	 * - Older: 1.0x (no boost)
 	 * - Never sent: 0.9x (slight penalty)
 	 */
-	calculateTemporalBoost(template: TemplateWithEmbedding): number {
-		// Never sent - slight penalty (may be untested)
-		if (!template.last_sent_at) {
-			return 0.9;
-		}
-
-		const lastSent = new Date(template.last_sent_at);
-		const daysSinceLastSent = (this.now.getTime() - lastSent.getTime()) / (1000 * 60 * 60 * 24);
-
-		if (daysSinceLastSent < 7) {
-			return 1.5; // Very recent (trending)
-		} else if (daysSinceLastSent < 30) {
-			return 1.3; // Recent
-		} else if (daysSinceLastSent < 90) {
-			return 1.1; // Somewhat recent
-		}
-
-		return 1.0; // Older (no boost)
+	calculateTemporalBoost(_template: TemplateWithEmbedding): number {
+		// NOTE: Temporal boosting disabled - send_count and last_sent_at removed from schema
+		// Use verified_sends aggregate metric instead (Phase 5 feature)
+		return 1.0; // No boost
 	}
 
 	/**
@@ -135,18 +121,10 @@ export class ContextualBooster {
 	 * Note: In Phase 5, this will incorporate on-chain adoption counts
 	 * from local districts (privacy-preserving via hashed commitments)
 	 */
-	calculateNetworkBoost(template: TemplateWithEmbedding): number {
-		const sendCount = template.send_count || 0;
-
-		if (sendCount > 1000) {
-			return 3.0; // Very popular
-		} else if (sendCount > 100) {
-			return 2.0; // Popular
-		} else if (sendCount > 10) {
-			return 1.5; // Some adoption
-		}
-
-		return 1.0; // Low adoption (no boost)
+	calculateNetworkBoost(_template: TemplateWithEmbedding): number {
+		// NOTE: Network boosting disabled - send_count removed from schema
+		// Use verified_sends aggregate metric instead (Phase 5 feature)
+		return 1.0; // No boost
 	}
 
 	/**
@@ -196,7 +174,10 @@ export class ContextualBooster {
 	/**
 	 * Calculate boosted score for a template
 	 */
-	calculateBoostedScore(template: TemplateWithEmbedding, similarity: number): {
+	calculateBoostedScore(
+		template: TemplateWithEmbedding,
+		similarity: number
+	): {
 		boost: BoostingFactors;
 		final_score: number;
 	} {

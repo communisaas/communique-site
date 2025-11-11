@@ -1,65 +1,99 @@
+/**
+ * self.xyz NFC Verification Initialization Endpoint
+ *
+ * Generates QR code for NFC passport verification using @selfxyz/qrcode SDK.
+ *
+ * SDK Documentation: https://docs.self.xyz/use-self/quickstart
+ *
+ * Flow:
+ * 1. Client calls this endpoint with userId and templateSlug
+ * 2. Server generates QR code using official SDK
+ * 3. Returns QR code data for display
+ * 4. User scans QR with Self mobile app
+ * 5. Self app reads NFC passport chip (30 seconds)
+ * 6. Self app generates zero-knowledge proof
+ * 7. Self app sends proof to /api/identity/verify endpoint
+ *
+ * Features:
+ * - NFC passport verification (174 countries supported)
+ * - Zero-knowledge proofs (selective disclosure)
+ * - Age verification (18+)
+ * - OFAC compliance checking
+ * - 30-second verification time
+ */
+
 import { SelfAppBuilder } from '@selfxyz/qrcode';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createVerificationSession } from '$lib/core/server/verification-sessions';
 
-/**
- * Initialize self.xyz verification session
- * Generates QR code data using official SDK
- */
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, url }) => {
 	try {
-		const { userId, templateSlug, requireAddress } = await request.json();
+		const { userId, templateSlug } = await request.json();
 
-		if (!userId || !templateSlug) {
-			return json({ success: false, error: 'Missing required fields' }, { status: 400 });
+		if (!userId) {
+			return json({ success: false, error: 'Missing userId' }, { status: 400 });
 		}
+
+		// Validate self.xyz configuration
+		const appName = process.env.SELF_APP_NAME || 'Communiqué';
+		const scope = process.env.SELF_SCOPE || 'communique-congressional';
+
+		// Construct verification callback endpoint URL
+		const protocol = url.protocol === 'http:' && url.hostname === 'localhost' ? 'http:' : 'https:';
+		const endpoint = `${protocol}//${url.host}/api/identity/verify`;
+
+		console.log('[self.xyz] Initializing NFC verification:', {
+			appName,
+			scope,
+			userId,
+			endpoint
+		});
 
 		// Build self.xyz app configuration using official SDK
 		const app = new SelfAppBuilder({
 			version: 2,
-			appName: process.env.NEXT_PUBLIC_SELF_APP_NAME || 'Communiqué',
-			scope: process.env.NEXT_PUBLIC_SELF_SCOPE || 'communique-congressional',
-			userId: userId,
+			appName,
+			scope,
+			userId,
 			userIdType: 'uuid',
-			endpoint:
-				process.env.NEXT_PUBLIC_SELF_ENDPOINT || 'https://communi.email/api/identity/verify',
-			endpointType: 'staging_https',
+			endpoint,
+			endpointType: url.hostname === 'localhost' ? 'staging_https' : 'mainnet_https',
 			userDefinedData: JSON.stringify({
-				templateSlug,
-				requireAddress,
+				templateSlug: templateSlug || '',
 				timestamp: Date.now()
 			}),
 			disclosures: {
 				nationality: true,
 				minimumAge: 18,
-				ofac: true
+				ofac: true,
+				// Request address data for congressional district lookup
+				name: false, // Don't need full name
+				date_of_birth: true // Need for age verification
 			}
 		}).build();
 
 		// Get QR code data (universal link format)
+		// User scans this with Self mobile app
 		const qrCodeData = app.getUniversalLink();
 
-		// Create database session
-		const session = await createVerificationSession({
+		console.log('[self.xyz] QR code generated:', {
 			userId,
-			method: 'self.xyz',
-			challenge: qrCodeData
+			qrCodeLength: qrCodeData.length
 		});
 
 		return json({
 			success: true,
 			qrCodeData,
-			sessionId: session.sessionId,
-			nonce: session.nonce,
-			expiresAt: session.expiresAt
+			// Frontend will display QR code and poll for completion
+			// Self app will send verification proof directly to /api/identity/verify
+			expiresIn: 300 // QR code expires in 5 minutes
 		});
 	} catch (error) {
-		console.error('self.xyz initialization error:', error);
+		console.error('[self.xyz] Initialization error:', error);
 
 		// Log detailed error for debugging
 		if (error instanceof Error) {
-			console.error('Initialization error details:', {
+			console.error('[self.xyz] Error details:', {
 				name: error.name,
 				message: error.message,
 				stack: error.stack?.split('\n').slice(0, 3)
@@ -67,7 +101,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		return json(
-			{ success: false, error: 'Failed to initialize Self.xyz verification' },
+			{
+				success: false,
+				error: 'Failed to initialize Self.xyz verification'
+			},
 			{ status: 500 }
 		);
 	}

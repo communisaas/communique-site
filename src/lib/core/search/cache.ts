@@ -245,7 +245,8 @@ export class SearchCache {
 					}
 				};
 
-				request.onerror = () => reject(new Error(`Failed to clear expired entries from ${storeName}`));
+				request.onerror = () =>
+					reject(new Error(`Failed to clear expired entries from ${storeName}`));
 			});
 		}
 	}

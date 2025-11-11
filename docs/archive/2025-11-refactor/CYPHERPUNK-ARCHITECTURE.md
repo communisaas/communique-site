@@ -110,13 +110,21 @@ A way to force representatives to care more than $4.4B in lobbying.
 **FIRST TIME (one-time identity verification):**
 ```
 1. User provides address via self.xyz NFC passport or Didit.me
-2. Address encrypted, sent to TEE
-3. TEE decrypts in isolated memory, geocodes to district
-4. TEE generates verification credential: "Verified constituent, TX-07"
-5. Address DESTROYED (existed only in memory)
-6. Session credential cached on device (expires in X months)
-7. User is now verified - no re-verification needed
+2. Address encrypted in browser to TEE public key (XChaCha20-Poly1305)
+3. Encrypted blob storage:
+   - CURRENT (Phase 1 MVP): Postgres (platform cannot decrypt)
+   - FUTURE (Phase 2): IPFS + on-chain pointer (portable, 99.97% cheaper)
+4. TEE decrypts in isolated memory, geocodes to district
+5. TEE generates verification credential: "Verified constituent, TX-07"
+6. Address DESTROYED (existed only in TEE memory)
+7. Session credential cached on device (expires in X months)
+8. User is now verified - no re-verification needed
 ```
+
+**Storage Architecture Evolution:**
+- See `docs/PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md` for cost analysis
+- Phase 1: Postgres ($500/month for 100k users)
+- Phase 2: IPFS ($10 one-time for 100k users) = 99.97% reduction
 
 **SUBSEQUENT SENDS (using cached credential):**
 ```

@@ -49,7 +49,7 @@ Template creators aren't just writers—they're **protocol participants who need
 - Rate limiting on template creation
 - Cooldown periods between template publications
 
-**Reputation:** 0 (email verification alone doesn't grant reputation)
+**Reputation:** 0 (email verification alone doesn't grant blockchain reputation)
 
 ---
 
@@ -73,7 +73,7 @@ Template creators aren't just writers—they're **protocol participants who need
 - Biometric verification (Didit.me liveness check)
 - One identity per person (enforced by verification providers)
 
-**Reputation:** Starts at 0, earns +1 per verified Congressional message sent
+**Reputation:** Starts at 0, earns +1 per verified Congressional message via voter-protocol's ReputationRegistry contract (domain: 'congressional-advocacy'). Reputation automatically decays over time if user becomes inactive.
 
 ---
 
@@ -82,17 +82,17 @@ Template creators aren't just writers—they're **protocol participants who need
 
 **Capabilities:**
 - Everything in Tier 2
-- Governance voting rights (weighted by reputation)
+- Governance voting rights (weighted by blockchain reputation)
 - Challenge market participation (dispute resolution)
 - Template endorsements (boost template visibility)
 - Advanced analytics (cross-template insights)
 
 **Anti-Sybil Protection:**
 - Proof-of-work (10+ verified messages = real participation)
-- On-chain reputation (ERC-8004, immutable)
+- On-chain reputation (ERC-8004, immutable, time-decayed)
 - Economic skin-in-the-game (reputation at stake in challenges)
 
-**Reputation:** 10+ (grows with verified actions)
+**Reputation:** 10-49 (NOVICE tier in ERC-8004) - queried from blockchain via `getReputation(address, 'congressional-advocacy')`
 
 ---
 
@@ -110,9 +110,9 @@ Template creators aren't just writers—they're **protocol participants who need
 **Anti-Sybil Protection:**
 - Massive proof-of-work (100+ messages = serious participant)
 - Economic incentives aligned with platform health
-- Reputation loss mechanisms (bad actors lose standing)
+- Reputation loss mechanisms (bad actors lose standing via on-chain slashing)
 
-**Reputation:** 100+ (platform power user)
+**Reputation:** 100-499 (ESTABLISHED tier in ERC-8004) - queried from blockchain. At 500+ reputation, users reach TRUSTED tier with maximum platform privileges.
 
 ---
 
@@ -178,14 +178,15 @@ model User {
   verification_method   String?  // 'self.xyz' | 'didit'
   verification_proof    Json?    // ZK proof metadata
 
-  // Reputation (ERC-8004 on-chain)
-  reputation_score      Int      @default(0)
-  verified_actions      Int      @default(0)
+  // Reputation (ERC-8004 blockchain - NOT stored in Postgres)
+  // Query from voter-protocol's ReputationRegistry contract via:
+  //   voterBlockchainClient.getReputation(userAddress, 'congressional-advocacy')
+  // This returns domain-specific reputation with automatic time decay
 
-  // Governance
-  governance_tier       Int      @default(0) // 0-4 based on verification + reputation
+  // Governance (cached from blockchain)
+  governance_tier       Int      @default(0) // Recalculated from blockchain reputation each session
   can_vote              Boolean  @default(false)
-  voting_weight         Int      @default(0) // Based on reputation
+  voting_weight         Int      @default(0) // Cached reputation score from blockchain
 
   templates             Template[]
   messages              Message[]
@@ -385,9 +386,9 @@ model Template {
 - **THIS IS THE MAIN PATH. Build this first.**
 
 **Path 2: Time-Locked Participation (Email Only)**
-- Email-verified users can send 1 Congressional message/week
+- Email-verified users can send 1 Congressional message/day
 - No reputation earned initially
-- After 10 weeks of sustained participation → auto-upgrade to "Community Verified"
+- After 10 days of sustained participation → auto-upgrade to "Community Verified"
 - Earn +10 retroactive reputation for past messages
 - **Accessible to anyone with email, no ID required**
 - **THIS IS THE FALLBACK. Build if time permits.**
@@ -425,16 +426,21 @@ model Template {
 #### Tier 1: Email Verified
 **Access:**
 - Create email templates (3/day)
-- Send 1 Congressional message/week (time-locked)
-- Messages don't earn reputation initially
+- Send 1 Congressional message/day (time-locked, still annoying)
+- Messages don't earn blockchain reputation initially (tracked locally)
 
 **Upgrade Paths:**
-- → Tier 2: Verify with self.xyz/Didit.me (MAIN PATH)
-- → Tier 1.5: Send 10 messages over 10 weeks → auto-upgrade (FALLBACK)
+- → Tier 2: Verify with self.xyz/Didit.me (MAIN PATH - removes rate limits)
+- → Tier 1.5: Send messages for 10 days → auto-upgrade (FALLBACK)
+
+**Why 1/day not 1/week:**
+- 1/week is so restrictive users will bounce
+- 1/day is annoying enough to incentivize verification without being punitive
+- **The goal:** Make them think "fuck it, I'll just verify" after a few days
 
 #### Tier 1.5: Sustained Participation (NEW)
 **Requirements:**
-- Email verified + 10 Congressional messages over 10+ weeks
+- Email verified + 10 Congressional messages over 10+ days
 
 **Access:**
 - Same as Tier 2, but labeled "Community Verified"
@@ -442,9 +448,10 @@ model Template {
 - Unlimited template creation
 
 **Why This Works:**
-- Sybil attacks require sustained effort (10 weeks)
+- Sybil attacks require sustained effort (10 consecutive days)
 - Real users naturally participate over time
 - No government ID required
+- 10 days is long enough to be annoying for sybils, short enough for real users
 
 #### Tier 2: Identity Verified
 **Requirements:**
@@ -484,20 +491,27 @@ model User {
   verification_proof    Json?    // ZK proof metadata (for audit trail)
 
   // Time-locked progression (Tier 1.5)
-  weekly_messages_sent  Int      @default(0)
-  weeks_active          Int      @default(0)
+  daily_messages_sent   Int      @default(0)
+  days_active           Int      @default(0)
   first_message_at      DateTime?
-  time_lock_verified    Boolean  @default(false)  // Auto-set after 10 weeks
+  time_lock_verified    Boolean  @default(false)  // Auto-set after 10 days
   time_lock_verified_at DateTime?
 
-  // Reputation (ERC-8004 blockchain)
-  reputation_score      Int      @default(0)
-  verified_actions      Int      @default(0)
+  // Reputation (ERC-8004 blockchain - NOT stored here)
+  // Query from voter-protocol's ReputationRegistry contract:
+  //   await reputationRegistry.getReputation(userAddress, 'congressional-advocacy')
+  //   Returns: { score, tier, lastUpdate, decayRate, domain }
+  //
+  // Update reputation via:
+  //   await reputationRegistry.updateReputation(user, 'congressional-advocacy', +1, 'verified_message_sent')
+  //
+  // Tier calculation is automatic:
+  //   UNTRUSTED (0-9), NOVICE (10-49), EMERGING (50-99), ESTABLISHED (100-499), TRUSTED (500+)
 
-  // Governance
-  governance_tier       Int      @default(0) // 0-4 based on verification + reputation
-  can_vote              Boolean  @default(false)
-  voting_weight         Int      @default(0) // Based on reputation
+  // Governance (derived from blockchain reputation)
+  governance_tier       Int      @default(0) // Cached from blockchain, recalculated on each session
+  can_vote              Boolean  @default(false) // Tier 3+ (reputation ≥10)
+  voting_weight         Int      @default(0) // Cached reputation score from blockchain
 }
 ```
 
@@ -505,6 +519,115 @@ model User {
 - ❌ Vouch tables (future)
 - ❌ BrightID/Gitcoin/Worldcoin fields (not building these integrations)
 - ❌ Community organizer verification (future)
+
+---
+
+## Voter-Protocol ERC-8004 Reputation Integration
+
+**Reputation is NOT stored in Postgres. It's queried from voter-protocol's on-chain ReputationRegistry contract.**
+
+### How Reputation Works:
+
+```typescript
+// src/lib/core/blockchain/voter-client.ts
+import { voterBlockchainClient } from '$lib/core/blockchain/voter-client';
+
+// Query user reputation (read-only)
+const reputation = await voterBlockchainClient.getReputation(
+  userAddress,
+  'congressional-advocacy'
+);
+
+// Returns:
+// {
+//   score: 42,                    // Current reputation score (with time decay applied)
+//   tier: 'NOVICE',               // Tier: UNTRUSTED | NOVICE | EMERGING | ESTABLISHED | TRUSTED
+//   lastUpdate: Date,             // Last time reputation was updated
+//   decayRate: 0.95,              // Reputation decay rate (5% per period)
+//   domain: 'congressional-advocacy'
+// }
+```
+
+### Reputation Tiers (ERC-8004):
+
+| Tier | Score Range | Name | Platform Access |
+|------|-------------|------|-----------------|
+| 0 | 0-9 | UNTRUSTED | No governance voting, no moderation powers |
+| 1 | 10-49 | NOVICE | Governance voting (Tier 3), template endorsements |
+| 2 | 50-99 | EMERGING | Challenge market participation |
+| 3 | 100-499 | ESTABLISHED | Moderation powers (Tier 4), featured templates |
+| 4 | 500+ | TRUSTED | Maximum platform privileges, proposal creation |
+
+### Updating Reputation:
+
+```typescript
+// When user sends verified Congressional message
+await voterBlockchainClient.updateReputation(
+  userAddress,
+  'congressional-advocacy',
+  +1,  // Delta (can be negative for slashing)
+  'verified_congressional_message_sent'
+);
+
+// Platform pays gas fees - users don't need wallet or ETH
+```
+
+### Time Decay:
+
+Reputation automatically decays over time if users become inactive:
+- **Decay rate**: ~5% per decay period (configurable on-chain)
+- **Purpose**: Keep reputation fresh - inactive users lose influence
+- **Prevents**: Old accounts sitting on high reputation without ongoing participation
+
+### Domain-Specific Reputation:
+
+Communiqué uses domain: `'congressional-advocacy'`
+
+In Phase 2, additional domains could include:
+- `'template-creation'` - Reputation for creating quality templates
+- `'moderation'` - Reputation for accurate content moderation
+- `'governance'` - Reputation for thoughtful governance participation
+
+### Caching Strategy:
+
+```typescript
+// Cache reputation in User model for performance
+// But ALWAYS treat blockchain as source of truth
+
+model User {
+  governance_tier       Int      @default(0) // Cached, recalculated each session
+  can_vote              Boolean  @default(false) // Derived from blockchain reputation
+  voting_weight         Int      @default(0) // Cached reputation score
+}
+
+// On user login/session:
+async function refreshUserReputation(userId: string) {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  const reputation = await voterBlockchainClient.getReputation(
+    user.wallet_address,
+    'congressional-advocacy'
+  );
+
+  // Update cached values
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      governance_tier: getGovernanceTier(reputation.score),
+      can_vote: reputation.score >= 10,
+      voting_weight: reputation.score
+    }
+  });
+}
+```
+
+### Why This Approach:
+
+✅ **Immutable**: Reputation stored on blockchain, can't be manipulated
+✅ **Transparent**: All reputation changes publicly auditable
+✅ **Time-decayed**: Inactive users lose influence automatically
+✅ **Domain-specific**: Different reputation scores for different activities
+✅ **Gas-abstracted**: Platform pays fees, users don't need wallet
+✅ **Cross-platform**: Reputation portable across VOTER Protocol ecosystem
 
 ### UI for Verification (Phase 1 Only)
 
@@ -538,7 +661,7 @@ model User {
   <!-- Path 3: Time-Locked (Tier 1.5) - FALLBACK -->
   <VerificationOption
     title="No ID? Build Trust Over Time"
-    description="Send 1 message/week for 10 weeks. Auto-verified after sustained participation."
+    description="Send 1 message/day for 10 days. Auto-verified after sustained participation."
     icon={Clock}
     badge="No ID Needed"
     onclick={() => showTimeLockInfo()}
@@ -561,36 +684,36 @@ model User {
 - ⚠️ Risk: Excludes users without ID
 - 🛡️ Mitigation: Offer time-locked path as fallback
 
-**Time-Locked Participation (10 weeks):**
+**Time-Locked Participation (10 days):**
 - ✅ No ID required (email only)
 - ✅ Proof-of-work over time
 - ✅ Self-correcting (sybils need sustained effort per identity)
 - ⚠️ Risk: Patient sybil attackers
-- 🛡️ Mitigation: 10 weeks × 1 message/week = expensive at scale
+- 🛡️ Mitigation: 10 days × 1 message/day = annoying enough to funnel users toward ID verification without being prohibitively restrictive
 
 ### Actual Launch Plan
 
 **80% of users:** Will verify with self.xyz or Didit.me (free, fast, proven)
-**15% of users:** Will use time-locked email path (no ID, 10 weeks patience)
+**15% of users:** Will use time-locked email path (no ID, 10 days patience)
 **5% of users:** Will request alternative paths (we'll build social vouching when we see demand)
 
 ## Open Questions
 
 1. **Should Tier 1 users be able to send Congressional messages?**
-   - Current: ✅ Yes, but time-locked (1/week, no reputation until 10 weeks)
+   - Current: ✅ Yes, but time-locked (1/day, no reputation until 10 days)
    - Trade-off: Accessibility (anyone with email) vs. slow reputation earning
-   - **Decision needed before launch**
+   - **Decision: APPROVED - 1/day rate limit funnels users toward verification without being prohibitive**
 
 2. **Should time-locked users earn retroactive reputation?**
-   - Current: ✅ Yes, after 10 weeks they earn +10 reputation for past messages
+   - Current: ✅ Yes, after 10 days they earn +10 reputation for past messages via blockchain update
    - Alternative: ❌ No, reputation only for future messages
    - Trade-off: Incentive alignment vs. preventing gaming
    - **Decision needed before launch**
 
 3. **What's the right rate limit for Tier 1?**
-   - Current: 3 email templates/day, 1 Congressional message/week
-   - Alternative: More strict (1/day, 1/week) or more permissive (5/day, 2/week)
-   - **Can adjust after launch based on data**
+   - Current: 3 email templates/day, 1 Congressional message/day
+   - Rationale: 1/day is annoying enough to incentivize verification ("fuck it, I'll just verify") without causing user bounce
+   - **Decision: APPROVED - Can adjust after launch based on data**
 
 4. **How do we handle template transfers/ownership?**
    - If a Tier 4 user creates a template, then loses reputation, what happens?
@@ -608,7 +731,11 @@ model User {
 
 **Post-launch (Week 1-2):**
 1. Integrate self.xyz + Didit.me (Tier 2 gate)
-2. Implement reputation tracking (on-chain ERC-8004)
+2. Implement reputation tracking via voter-protocol's ERC-8004 ReputationRegistry:
+   - Replace hardcoded reputation_score fields with blockchain queries
+   - Implement `refreshUserReputation()` on user login
+   - Add `updateReputation()` calls when users send Congressional messages
+   - Cache reputation in Postgres for performance, but always treat blockchain as source of truth
 3. Add governance voting (Tier 3 unlock)
 4. Monitor sybil attack attempts and adjust rate limits
 

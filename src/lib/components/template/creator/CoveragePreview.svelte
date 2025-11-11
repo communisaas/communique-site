@@ -45,8 +45,7 @@
 			};
 			typeBreakdown.set(jurisdiction.jurisdiction_type, {
 				count: existing.count + 1,
-				population:
-					existing.population + (BigInt(jurisdiction.estimated_population || 0))
+				population: existing.population + BigInt(jurisdiction.estimated_population || 0)
 			});
 
 			// Track congressional districts
@@ -78,9 +77,7 @@
 	);
 
 	// Check if scope is appropriate
-	const isAppropriate = $derived<boolean>(
-		jurisdictions.length > 0 && !isTooNarrow
-	);
+	const isAppropriate = $derived<boolean>(jurisdictions.length > 0 && !isTooNarrow);
 
 	// Format large numbers
 	function formatNumber(num: bigint): string {
@@ -136,17 +133,21 @@
 	<div class="space-y-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
 		<!-- Header -->
 		<div class="flex items-center justify-between">
-			<h3 class="text-sm font-semibold text-slate-900 flex items-center gap-2">
+			<h3 class="flex items-center gap-2 text-sm font-semibold text-slate-900">
 				<TrendingUp class="h-4 w-4" />
 				Coverage Preview
 			</h3>
 			{#if isAppropriate}
-				<span class="inline-flex items-center gap-1 text-xs text-green-700 bg-green-100 px-2 py-1 rounded-full">
+				<span
+					class="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs text-green-700"
+				>
 					<CheckCircle class="h-3 w-3" />
 					Good reach
 				</span>
 			{:else if isTooNarrow}
-				<span class="inline-flex items-center gap-1 text-xs text-yellow-700 bg-yellow-100 px-2 py-1 rounded-full">
+				<span
+					class="inline-flex items-center gap-1 rounded-full bg-yellow-100 px-2 py-1 text-xs text-yellow-700"
+				>
 					<AlertTriangle class="h-3 w-3" />
 					Limited reach
 				</span>
@@ -154,9 +155,9 @@
 		</div>
 
 		<!-- Total reach -->
-		<div class="bg-white rounded-lg border border-slate-200 p-4">
+		<div class="rounded-lg border border-slate-200 bg-white p-4">
 			<div class="flex items-center gap-3">
-				<div class="p-2 bg-blue-100 rounded-lg">
+				<div class="rounded-lg bg-blue-100 p-2">
 					<Users class="h-5 w-5 text-blue-600" />
 				</div>
 				<div>
@@ -174,7 +175,9 @@
 				<div class="text-xs font-medium text-slate-700">Coverage Breakdown</div>
 				<div class="space-y-2">
 					{#each coverageData.jurisdictionBreakdown as breakdown}
-						<div class="flex items-center justify-between p-2 rounded {getTypeColor(breakdown.type)}">
+						<div
+							class="flex items-center justify-between rounded p-2 {getTypeColor(breakdown.type)}"
+						>
 							<span class="text-sm font-medium">
 								{getTypeDisplayName(breakdown.type)}
 							</span>
@@ -195,13 +198,15 @@
 		<!-- Geographic summary -->
 		<div class="grid grid-cols-2 gap-3 text-sm">
 			{#if coverageData.statesAffected.length > 0}
-				<div class="bg-white rounded p-3 border border-slate-200">
+				<div class="rounded border border-slate-200 bg-white p-3">
 					<div class="font-medium text-slate-900">{coverageData.statesAffected.length}</div>
-					<div class="text-xs text-slate-600">State{coverageData.statesAffected.length !== 1 ? 's' : ''}</div>
+					<div class="text-xs text-slate-600">
+						State{coverageData.statesAffected.length !== 1 ? 's' : ''}
+					</div>
 				</div>
 			{/if}
 			{#if coverageData.congressionalDistricts.length > 0}
-				<div class="bg-white rounded p-3 border border-slate-200">
+				<div class="rounded border border-slate-200 bg-white p-3">
 					<div class="font-medium text-slate-900">{coverageData.congressionalDistricts.length}</div>
 					<div class="text-xs text-slate-600">
 						District{coverageData.congressionalDistricts.length !== 1 ? 's' : ''}
@@ -214,13 +219,13 @@
 		{#if isTooNarrow}
 			<div class="rounded-lg border border-yellow-200 bg-yellow-50 p-3">
 				<div class="flex items-start gap-2">
-					<AlertTriangle class="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
+					<AlertTriangle class="mt-0.5 h-4 w-4 shrink-0 text-yellow-600" />
 					<div class="text-xs text-yellow-800">
-						<div class="font-medium mb-1">Limited reach detected</div>
+						<div class="mb-1 font-medium">Limited reach detected</div>
 						<div>
-							Templates targeting a single city may have limited impact. Consider broadening
-							your scope to include neighboring districts, the full county, or multiple cities
-							to maximize effectiveness.
+							Templates targeting a single city may have limited impact. Consider broadening your
+							scope to include neighboring districts, the full county, or multiple cities to
+							maximize effectiveness.
 						</div>
 					</div>
 				</div>
@@ -231,7 +236,7 @@
 		{#if isAppropriate && coverageData.totalPopulation > 500000}
 			<div class="rounded-lg border border-green-200 bg-green-50 p-3">
 				<div class="flex items-start gap-2">
-					<CheckCircle class="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+					<CheckCircle class="mt-0.5 h-4 w-4 shrink-0 text-green-600" />
 					<div class="text-xs text-green-800">
 						<div class="font-medium">Strong reach potential</div>
 						<div>
@@ -246,8 +251,8 @@
 {:else}
 	<!-- Empty state -->
 	<div class="rounded-lg border-2 border-dashed border-slate-300 bg-slate-50 p-8 text-center">
-		<Users class="h-8 w-8 text-slate-400 mx-auto mb-2" />
-		<div class="text-sm font-medium text-slate-700 mb-1">No jurisdictions selected</div>
+		<Users class="mx-auto mb-2 h-8 w-8 text-slate-400" />
+		<div class="mb-1 text-sm font-medium text-slate-700">No jurisdictions selected</div>
 		<div class="text-xs text-slate-500">
 			Add jurisdictions above to see estimated reach and coverage breakdown
 		</div>

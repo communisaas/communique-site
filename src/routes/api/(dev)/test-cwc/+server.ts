@@ -52,7 +52,6 @@ export const POST: RequestHandler = async ({ request }) => {
 			metrics: {},
 			status: 'active',
 			is_public: true,
-			send_count: 0,
 			applicable_countries: ['US'],
 			specific_locations: [],
 			preview:

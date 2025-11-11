@@ -42,6 +42,9 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 	const detectedCountry = detectCountryFromHeaders(request.headers) || 'US';
 	const channelInfo = await resolveChannel(detectedCountry);
 
+	// Extract metrics from JSON field
+	const jsonMetrics = extractTemplateMetrics(template.metrics);
+
 	// Format template for client
 	const formattedTemplate = {
 		id: template.id,
@@ -55,7 +58,25 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 		message_body: template.message_body,
 		preview: template.preview,
 		is_public: template.is_public,
-		metrics: extractTemplateMetrics(template.metrics),
+
+		// === AGGREGATE METRICS (consistent with schema) ===
+		verified_sends: template.verified_sends,
+		unique_districts: template.unique_districts,
+
+		// === METRICS OBJECT (backward compatibility) ===
+		metrics: {
+			sent: template.verified_sends, // Use schema field as source of truth
+			districts_covered: template.unique_districts, // Use schema field as source of truth
+			total_districts: jsonMetrics.total_districts || 435,
+			district_coverage_percent:
+				jsonMetrics.district_coverage_percent ||
+				(template.unique_districts ? Math.round((template.unique_districts / 435) * 100) : 0),
+			opened: jsonMetrics.opened || 0,
+			clicked: jsonMetrics.clicked || 0,
+			responded: jsonMetrics.responded || 0,
+			views: jsonMetrics.views || 0
+		},
+
 		delivery_config: template.delivery_config,
 		recipient_config: template.recipient_config,
 		recipientEmails: extractRecipientEmails(template.recipient_config),

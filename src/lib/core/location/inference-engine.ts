@@ -139,7 +139,9 @@ export class LocationInferenceEngine {
 
 		// Signal 3: Browser geolocation (requires permission - don't request automatically)
 		// This will be triggered manually by user clicking "Update" button
-		console.log('[LocationInference] Browser geolocation available but not requested (requires user permission)');
+		console.log(
+			'[LocationInference] Browser geolocation available but not requested (requires user permission)'
+		);
 	}
 
 	/**
@@ -250,7 +252,7 @@ export class LocationInferenceEngine {
 	async addSignal(signal: LocationSignal): Promise<void> {
 		// Remove any existing signals from the same source to avoid duplicates
 		const existingSignals = await locationStorage.getSignals();
-		const signalsToKeep = existingSignals.filter(s => s.source !== signal.source);
+		const signalsToKeep = existingSignals.filter((s) => s.source !== signal.source);
 
 		// Clear all signals and re-add only the ones we want to keep
 		await locationStorage.clearAll();
@@ -321,10 +323,7 @@ export async function getUserLocation(forceRefresh = false): Promise<InferredLoc
 /**
  * Add a location signal from OAuth callback
  */
-export async function addOAuthLocationSignal(
-	provider: string,
-	location: string
-): Promise<void> {
+export async function addOAuthLocationSignal(provider: string, location: string): Promise<void> {
 	// Parse location string (e.g., "Austin, TX" or "Texas")
 	const parts = location.split(',').map((s) => s.trim());
 

@@ -32,7 +32,11 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { generateEmbedding, estimateTokens, estimateCost } from '$lib/core/search/gemini-embeddings';
+import {
+	generateEmbedding,
+	estimateTokens,
+	estimateCost
+} from '$lib/core/search/gemini-embeddings';
 
 const prisma = new PrismaClient();
 
@@ -101,7 +105,10 @@ function buildTopicContext(template: {
 	}
 
 	// Truncate message_body to first 1000 characters to stay within token limits
-	const bodyPreview = template.message_body.length > 1000 ? template.message_body.slice(0, 1000) + '...' : template.message_body;
+	const bodyPreview =
+		template.message_body.length > 1000
+			? template.message_body.slice(0, 1000) + '...'
+			: template.message_body;
 	parts.push(`Content: ${bodyPreview}`);
 
 	return parts.join('\n\n');
@@ -150,7 +157,9 @@ async function generateTemplateEmbeddings(
 
 	// Skip if embeddings already exist (unless force flag)
 	if (!force && template.location_embedding && template.topic_embedding) {
-		console.log(`   ⏭️  Skipping ${template.slug} - embeddings already exist (use --force to regenerate)`);
+		console.log(
+			`   ⏭️  Skipping ${template.slug} - embeddings already exist (use --force to regenerate)`
+		);
 		return { locationTokens: 0, topicTokens: 0, skipped: true };
 	}
 

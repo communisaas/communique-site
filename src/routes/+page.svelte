@@ -252,7 +252,10 @@
 
 <svelte:head>
 	<title>Communiqué - Your voice. Their decision.</title>
-	<meta name="description" content="Coordinate campaigns that decision-makers can't ignore. One complaint gets ignored. 5,000 coordinated messages force a response." />
+	<meta
+		name="description"
+		content="Coordinate campaigns that decision-makers can't ignore. One complaint gets ignored. 5,000 coordinated messages force a response."
+	/>
 </svelte:head>
 
 <!-- Hero Section - Simple Badge -->
@@ -267,19 +270,21 @@
 		/>
 	</div>
 
+	<!-- Location Header - Full Width Above Template Browser -->
+	<div class="mx-auto mb-8 max-w-6xl">
+		<LocationFilter
+			templates={channelFilteredTemplates}
+			onFilterChange={handleLocationFilterChange}
+		/>
+	</div>
+
+	<!-- Template Browser - 3-Column Grid (List + Preview) -->
 	<div
 		id="template-section"
 		data-testid="template-section"
 		class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:gap-8"
 	>
 		<div class="relative z-10 md:col-span-1">
-			<h2 class="mb-3 text-xl font-semibold text-gray-900" data-testid="templates-heading">
-				Active Campaigns
-			</h2>
-			<LocationFilter
-				templates={channelFilteredTemplates}
-				onFilterChange={handleLocationFilterChange}
-			/>
 			<TemplateList
 				templates={filteredTemplates}
 				selectedId={templateStore.selectedId}

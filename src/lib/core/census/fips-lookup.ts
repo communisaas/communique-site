@@ -7,11 +7,7 @@
  * Census Bureau API: https://api.census.gov/data/2020/dec/pl
  */
 
-import type {
-	CensusPopulationResponse,
-	CensusApiResponse,
-	FipsLookupOptions
-} from './types';
+import type { CensusPopulationResponse, CensusApiResponse, FipsLookupOptions } from './types';
 
 const CENSUS_API_BASE = 'https://api.census.gov/data';
 const DEFAULT_YEAR = 2020; // Most recent decennial census
@@ -63,7 +59,9 @@ class CensusCache {
 			const request = store.get(fipsCode);
 
 			request.onsuccess = () => {
-				const cached = request.result as (CensusPopulationResponse & { timestamp: number }) | undefined;
+				const cached = request.result as
+					| (CensusPopulationResponse & { timestamp: number })
+					| undefined;
 				if (!cached) {
 					resolve(null);
 					return;
@@ -77,8 +75,7 @@ class CensusCache {
 					return;
 				}
 
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const { timestamp, ...data } = cached;
+				const { timestamp: _, ...data } = cached;
 				resolve(data);
 			};
 

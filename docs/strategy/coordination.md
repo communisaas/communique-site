@@ -73,7 +73,7 @@ They can't ignore coordinated pressure:
 ```
 Your voice. Their decision.
 
-Coordinate campaigns that decision-makers can't ignore.
+Coordinate pressure that can't be ignored.
 
 One complaint gets filed. 5,000 coordinated messages get meetings.
 ```
@@ -83,6 +83,7 @@ One complaint gets filed. 5,000 coordinated messages get meetings.
 - Outcome-focused ("get meetings")
 - No fake numbers (we're pre-launch)
 - Coordination = core value prop
+- No loaded words ("campaigns", "issues") - just direct action
 
 ---
 
@@ -115,18 +116,20 @@ Your address proves you're affected by their decisions.
 Created by [Author]
 Last updated [Date]
 
-[Send Now] [Share Campaign]
+[Send Now] [Share]
 ```
 
 **Post-launch** (with real counters):
 ```
 [Template Title]
-5,247 people sent this
+5,247 sent this
 Active in 47 states
 +127 in the last hour
 
-[Send Now] [Share Campaign]
+[Send Now] [Share]
 ```
+
+**Language note**: "5,247 sent this" not "5,247 people". Shorter. More direct. Coordination count speaks for itself.
 
 ---
 
@@ -280,6 +283,12 @@ What type of decision-maker?
 - "Make a difference" (vague)
 - "Be heard" (passive)
 
+### ❌ Loaded Category Words:
+- "campaigns" (politically loaded, implies fundraising/elections)
+- "issues" (heavy, problem-focused, political baggage)
+- "causes" (charity connotation, weak)
+- Just use location names as filters. Templates speak for themselves.
+
 ### ❌ Fake Numbers:
 - "Join 12,847 people" (WE HAVEN'T LAUNCHED YET)
 - "2,134 campaigns" (FAKE)
@@ -290,10 +299,15 @@ What type of decision-maker?
 ## What TO Say (Core Truth)
 
 ### ✅ Coordination Language:
-- "5,247 people sent this" (when true)
+- "5,247 sent this" (when true - shorter, more direct)
 - "Active in 47 states" (when true)
 - "+127 in the last hour" (when true)
-- "Coordinate campaigns that can't be ignored"
+- "Coordinate pressure that can't be ignored" (no "campaigns")
+
+### ✅ Location as Filter (Not Category):
+- "Texas" (just the location name)
+- "47 coordinating" (coordination count is the signal)
+- Templates speak for themselves (no "issues in" or "campaigns in")
 
 ### ✅ Routing Logic:
 - "Your address routes your message"

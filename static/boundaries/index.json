@@ -1,20 +1,15 @@
 {
-  "version": "2025-01-07",
-  "cities": [
-    "san-francisco-ca"
-  ],
-  "coverage": {
-    "total_cities": 1,
-    "us_population_covered": 0.003,
-    "data_sources": [
-      "DataSF Open Data Portal",
-      "US Census Bureau TIGER/Line"
-    ]
-  },
-  "notes": {
-    "pilot_city": "San Francisco",
-    "expansion_plan": "Top 100 cities by population",
-    "target_coverage": "42% of US population",
-    "update_frequency": "Quarterly (automated via GitHub Actions)"
-  }
+	"version": "2025-01-07",
+	"cities": ["san-francisco-ca"],
+	"coverage": {
+		"total_cities": 1,
+		"us_population_covered": 0.003,
+		"data_sources": ["DataSF Open Data Portal", "US Census Bureau TIGER/Line"]
+	},
+	"notes": {
+		"pilot_city": "San Francisco",
+		"expansion_plan": "Top 100 cities by population",
+		"target_coverage": "42% of US population",
+		"update_frequency": "Quarterly (automated via GitHub Actions)"
+	}
 }

@@ -42,7 +42,21 @@
 		}
 	}
 
-	async function handleVerificationComplete(event: CustomEvent<{ verified: boolean; method: string; district?: string; state?: string }>) {
+	async function handleVerificationComplete(
+		event: CustomEvent<{
+			verified: boolean;
+			method: string;
+			district?: string;
+			state?: string;
+			address?: { street: string; city: string; state: string; zip: string };
+			providerData?: {
+				provider: 'self.xyz' | 'didit.me';
+				credentialHash: string;
+				issuedAt: number;
+				expiresAt?: number;
+			};
+		}>
+	) {
 		verificationComplete = true;
 		verificationData = event.detail;
 		currentStep = 'complete';
@@ -59,6 +73,83 @@
 				});
 			} catch (error) {
 				console.error('[Verification] Failed to add location signal:', error);
+			}
+		}
+
+		// Handle complete verification flow: encryption + storage + caching
+		// This is the critical integration point that makes progressive verification work
+		if (event.detail.address && event.detail.providerData) {
+			try {
+				// Step 1: Encrypt address and store blob (existing flow)
+				const { handleVerificationComplete: processVerification } = await import(
+					'$lib/core/identity/verification-handler'
+				);
+
+				const result = await processVerification(userId, {
+					method: event.detail.method as 'nfc-passport' | 'government-id',
+					verified: event.detail.verified,
+					providerData: event.detail.providerData,
+					address: event.detail.address,
+					district: event.detail.district
+						? {
+								congressional: event.detail.district
+							}
+						: undefined
+				});
+
+				if (result.success) {
+					console.log('[Verification Flow] Complete encryption/storage flow successful:', {
+						blobId: result.blobId,
+						sessionCached: !!result.sessionCredential
+					});
+				} else {
+					console.error('[Verification Flow] Encryption/storage failed:', result.error);
+					// Don't block UI - allow user to continue even if storage fails
+					// They can retry later or verification can be re-triggered
+				}
+
+				// Step 2: Register in Shadow Atlas for ZK proof generation (new flow)
+				if (event.detail.district && event.detail.providerData) {
+					try {
+						const { registerInShadowAtlas, generateIdentityCommitment } = await import(
+							'$lib/core/identity/shadow-atlas-handler'
+						);
+
+						// Generate identity commitment from provider data
+						const identityCommitment = await generateIdentityCommitment(event.detail.providerData);
+
+						// Register in Shadow Atlas
+						const atlasResult = await registerInShadowAtlas({
+							userId,
+							identityCommitment,
+							congressionalDistrict: event.detail.district,
+							verificationMethod:
+								event.detail.providerData.provider === 'self.xyz' ? 'self.xyz' : 'didit',
+							verificationId: event.detail.providerData.credentialHash
+						});
+
+						if (atlasResult.success) {
+							console.log('[Verification Flow] Shadow Atlas registration successful:', {
+								district: event.detail.district,
+								leafIndex: atlasResult.sessionCredential?.leafIndex,
+								expiresAt: atlasResult.sessionCredential?.expiresAt
+							});
+						} else {
+							console.error(
+								'[Verification Flow] Shadow Atlas registration failed:',
+								atlasResult.error
+							);
+							// Non-blocking error - user can still proceed
+							// Proof generation will fail gracefully and prompt re-registration
+						}
+					} catch (error) {
+						console.error('[Verification Flow] Failed to register in Shadow Atlas:', error);
+						// Non-blocking error - log and continue
+					}
+				}
+			} catch (error) {
+				console.error('[Verification Flow] Failed to process verification:', error);
+				// Non-blocking error - log and continue
 			}
 		}
 

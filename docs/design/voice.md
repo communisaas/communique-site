@@ -80,7 +80,8 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 
 | Avoid | Use Instead | Reasoning |
 |-------|-------------|-----------|
-| campaigns | issues, bills, templates, legislation | "Campaigns" is politically loaded, implies fundraising/elections |
+| campaigns | (just location name) | "Campaigns" is politically loaded, implies fundraising/elections |
+| issues | (just location name) | "Issues" feels heavy, problem-focused, politically loaded |
 | privacy-focused | your data stays in your browser | Specific mechanism > vague claim |
 | secure | encrypted, zero-knowledge, TEE-based | Specific technology > vague promise |
 | community | users, people | "Community" is corporate-speak |
@@ -105,9 +106,12 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 **Examples:**
 
 ❌ "Find campaigns in your area"
-✅ "Issues in CA-11" (if district known)
-✅ "Issues in California" (if only state known)
-✅ "Federal issues" (if no location data)
+❌ "Issues in CA-11"
+✅ "CA-11" (district known - just location name)
+✅ "California" (state known - just location name)
+✅ "Nationwide" (no location data)
+
+**Reasoning**: Templates speak for themselves. Location is just a filter, not a category. Coordination count is the signal ("47 coordinating in California"), not a label like "campaigns" or "issues."
 
 ### International Users
 
@@ -270,11 +274,15 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 
 **Fixed (CORRECT):**
 ```svelte
-<h3>
-  Issues in {congressionalDistrict || stateCode || 'Congress'}
-  <InfoIcon tooltip="Location from IP (city-level). Enable browser location for district accuracy." />
-</h3>
+<h1>
+  {congressionalDistrict || countyName || stateName || 'Nationwide'}
+</h1>
+<p class="text-sm text-slate-600">
+  {coordinationCount} coordinating here
+</p>
 ```
+
+**Why**: No category labels ("campaigns", "issues"). Location is the filter. Coordination count is the signal. Templates speak for themselves.
 
 ### Identity Verification Flow
 
@@ -303,14 +311,21 @@ This document defines how Communiqué communicates. We cut through bullshit. We 
 ```svelte
 <h1>
   {#if congressionalDistrict}
-    Bills in {congressionalDistrict}
-  {:else if stateCode}
-    Bills in {stateCode}
+    {congressionalDistrict}
+  {:else if countyName}
+    {countyName}
+  {:else if stateName}
+    {stateName}
   {:else}
-    Federal bills
+    Nationwide
   {/if}
 </h1>
+<p class="text-sm">
+  {coordinationCount} coordinating
+</p>
 ```
+
+**Why**: Just the location. No "in", no "bills", no "campaigns". Coordination count shows activity. Templates below explain what people are working on.
 
 ---
 
@@ -448,8 +463,8 @@ immediately without permissions. You can upgrade to browser location anytime.
 ```
 
 **CORRECT (confident primary + transparent popover):**
-- Primary: "Issues in CA-11"
-- Popover: "Location from IP (city-level). Enable browser location for district accuracy."
+- Primary: "CA-11" (just the location)
+- Popover: "Location from IP. GPS for county precision."
 
 ### Example: OAuth login
 

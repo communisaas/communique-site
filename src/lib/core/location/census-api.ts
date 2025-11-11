@@ -7,11 +7,7 @@
  * API Documentation: https://geocoding.geo.census.gov/geocoder/
  */
 
-import type {
-	CensusGeocodingResponse,
-	CensusAddressMatch,
-	LocationSignal
-} from './types';
+import type { CensusGeocodingResponse, CensusAddressMatch, LocationSignal } from './types';
 
 // ============================================================================
 // Census API Client
@@ -26,10 +22,7 @@ export class CensusAPIClient {
 	/**
 	 * Geocode coordinates to congressional district using JSONP
 	 */
-	async geocodeCoordinates(
-		latitude: number,
-		longitude: number
-	): Promise<LocationSignal | null> {
+	async geocodeCoordinates(latitude: number, longitude: number): Promise<LocationSignal | null> {
 		try {
 			// Step 1: Get city name from Nominatim (OpenStreetMap) - free, no API key
 			const nominatimData = await this.getNominatimData(latitude, longitude);
@@ -78,7 +71,9 @@ export class CensusAPIClient {
 				};
 
 				// Create callback function
-				(window as typeof window & { [key: string]: (data: unknown) => void })[callbackName] = (data: unknown) => {
+				(window as typeof window & { [key: string]: (data: unknown) => void })[callbackName] = (
+					data: unknown
+				) => {
 					cleanup();
 
 					console.log('[Census API] Raw response:', data);
@@ -99,7 +94,9 @@ export class CensusAPIClient {
 
 					const geographies = responseData?.result?.geographies;
 					if (!geographies) {
-						console.warn('[Census API] No geographies in response - falling back to Nominatim data');
+						console.warn(
+							'[Census API] No geographies in response - falling back to Nominatim data'
+						);
 						resolve(createFallbackSignal());
 						return;
 					}
@@ -117,7 +114,9 @@ export class CensusAPIClient {
 					const state = states?.[0];
 
 					if (!district || !state) {
-						console.warn('[Census API] Missing district or state data - falling back to Nominatim data');
+						console.warn(
+							'[Census API] Missing district or state data - falling back to Nominatim data'
+						);
 						resolve(createFallbackSignal());
 						return;
 					}
@@ -233,8 +232,7 @@ export class CensusAPIClient {
 			const stateName = this.fipsToStateCode(stateCode);
 
 			// Format congressional district as "STATE-XX"
-			const congressionalDistrict =
-				stateName && cd ? `${stateName}-${cd.padStart(2, '0')}` : null;
+			const congressionalDistrict = stateName && cd ? `${stateName}-${cd.padStart(2, '0')}` : null;
 
 			// Coordinates
 			const latitude = match.coordinates?.y || null;
@@ -295,8 +293,7 @@ export class CensusAPIClient {
 			if (!address) return null;
 
 			// Priority: city > town > village > hamlet
-			const cityName =
-				address.city || address.town || address.village || address.hamlet || null;
+			const cityName = address.city || address.town || address.village || address.hamlet || null;
 
 			// Extract state code (ISO3166-2-lvl4 format: "US-CA" → "CA")
 			const stateISO = address['ISO3166-2-lvl4']; // e.g., "US-CA"

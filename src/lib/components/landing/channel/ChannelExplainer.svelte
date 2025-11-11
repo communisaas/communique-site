@@ -123,20 +123,19 @@
 			id: 'direct',
 			title: 'Everyone Else',
 			icon: AtSign,
-			description:
-				'Local gov, corporations, HOAs, universities. Opens your email client to send.',
+			description: 'Local gov, corporations, HOAs, universities. Reach any decision-maker.',
 			features: [
 				{
 					icon: Building2,
 					text: 'Any decision-maker'
 				},
 				{
-					icon: Network,
-					text: 'Coming soon: Verified delivery'
+					icon: Route,
+					text: 'Direct email delivery'
 				},
 				{
-					icon: Route,
-					text: 'Opens your email app'
+					icon: Network,
+					text: 'Coming soon: Verified tracking'
 				}
 			],
 			color: 'blue'
@@ -157,11 +156,11 @@
 		<div class="mb-2 flex items-center justify-center gap-3">
 			<Network class="h-5 w-5 text-slate-600" />
 			<h2 class="text-xs uppercase tracking-widest text-gray-500 sm:text-sm">
-				Pressure Decision-Makers
+				Send to Decision-Makers
 			</h2>
 		</div>
 		<div class="flex items-center justify-center">
-			<h3 class="text-2xl font-semibold text-gray-900 sm:text-3xl">Who Do You Want to Pressure?</h3>
+			<h3 class="text-2xl font-semibold text-gray-900 sm:text-3xl">Who Are You Reaching?</h3>
 		</div>
 	</div>
 

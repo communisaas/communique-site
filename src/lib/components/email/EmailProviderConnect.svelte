@@ -57,20 +57,13 @@
 			<Mail class="h-6 w-6 text-blue-600" />
 		</div>
 		<h2 class="mb-2 text-2xl font-bold text-slate-900">Verify your message</h2>
-		<p class="text-sm text-slate-600">
-			Connect your email to prove delivery and track responses.
-		</p>
+		<p class="text-sm text-slate-600">Connect your email to prove delivery and track responses.</p>
 	</div>
 
 	<!-- Template Context -->
 	<div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
 		<div class="flex items-center gap-2">
-			<svg
-				class="h-4 w-4 text-slate-500"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-			>
+			<svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 				<path
 					stroke-linecap="round"
 					stroke-linejoin="round"
@@ -99,18 +92,8 @@
 					<p class="font-medium text-slate-900">{provider.name}</p>
 					<p class="text-xs text-slate-500">Connect via OAuth</p>
 				</div>
-				<svg
-					class="h-5 w-5 text-slate-400"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						d="M9 5l7 7-7 7"
-					/>
+				<svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
 				</svg>
 			</button>
 		{/each}
@@ -157,7 +140,7 @@
 			<button
 				type="button"
 				onclick={onSkip}
-				class="text-sm text-slate-500 hover:text-slate-700 underline"
+				class="text-sm text-slate-500 underline hover:text-slate-700"
 			>
 				Skip verification (send without proof)
 			</button>

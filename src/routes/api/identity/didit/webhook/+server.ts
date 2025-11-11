@@ -11,6 +11,25 @@ import {
 import { prisma } from '$lib/core/db';
 
 /**
+ * Didit.me Webhook Handler
+ *
+ * Receives real-time verification status updates from Didit.me when users
+ * complete identity verification.
+ *
+ * Webhook Documentation: https://docs.didit.me/reference/webhooks
+ *
+ * Flow:
+ * 1. Didit.me sends webhook when verification status changes
+ * 2. Verify HMAC signature for security
+ * 3. Extract verified address data from webhook payload
+ * 4. Return address data to client (client will encrypt and store)
+ *
+ * Event Types:
+ * - status.updated: Verification status changed
+ * - data.updated: KYC/POA data manually updated
+ */
+
+/**
  * Verify Didit webhook HMAC signature
  * Security: Prevents unauthorized webhook events
  */

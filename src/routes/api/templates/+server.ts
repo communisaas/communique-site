@@ -177,41 +177,90 @@ export const GET: RequestHandler = async () => {
 
 		const idToScope = new Map(scopes.map((s) => [s.template_id, s]));
 
-		const formattedTemplates = dbTemplates.map((template) => ({
-			id: template.id,
-			slug: template.slug,
-			title: template.title,
-			description: template.description,
-			category: template.category,
-			type: template.type,
-			deliveryMethod: template.deliveryMethod,
-			subject: template.title,
-			message_body: template.message_body,
-			preview: template.preview,
-			metrics: template.metrics,
-			delivery_config: template.delivery_config,
-			cwc_config: template.cwc_config, // Was missing from API response
-			recipient_config: template.recipient_config,
-			campaign_id: template.campaign_id, // Was missing from API response
-			status: template.status, // Was missing from API response
-			is_public: template.is_public,
-			// Usage tracking fields
-			send_count: template.send_count,
-			last_sent_at: template.last_sent_at,
-			// Geographic scope fields - were missing from API response
-			applicable_countries: template.applicable_countries,
-			jurisdiction_level: template.jurisdiction_level,
-			specific_locations: template.specific_locations,
-			// Jurisdictions for location filtering (Phase 3)
-			jurisdictions: template.jurisdictions || [],
-			// Optional scope from separate table
-			scope: idToScope.get(template.id) || null,
-			recipientEmails: extractRecipientEmails(
-				typeof template.recipient_config === 'string'
-					? JSON.parse(template.recipient_config)
-					: template.recipient_config
-			)
-		}));
+		const formattedTemplates = dbTemplates.map((template) => {
+			// Extract metrics from JSON field
+			const jsonMetrics =
+				typeof template.metrics === 'string'
+					? JSON.parse(template.metrics)
+					: template.metrics || {};
+
+			return {
+				id: template.id,
+				slug: template.slug,
+				title: template.title,
+				description: template.description,
+				category: template.category,
+				type: template.type,
+				deliveryMethod: template.deliveryMethod,
+				subject: template.title,
+				message_body: template.message_body,
+				preview: template.preview,
+
+				// === AGGREGATE METRICS (consistent with schema) ===
+				verified_sends: template.verified_sends, // Integer field from schema
+				unique_districts: template.unique_districts, // Integer field from schema
+
+				// === METRICS OBJECT (backward compatibility + JSON fields) ===
+				metrics: {
+					// Aggregate fields (single source of truth)
+					sent: template.verified_sends, // Use schema field as source of truth
+					districts_covered: template.unique_districts, // Use schema field as source of truth
+
+					// JSON-only metrics (not in schema as integers)
+					opened: (jsonMetrics as { opened?: number }).opened || 0,
+					clicked: (jsonMetrics as { clicked?: number }).clicked || 0,
+					responded: (jsonMetrics as { responded?: number }).responded || 0,
+					views: (jsonMetrics as { views?: number }).views || 0,
+
+					// Congressional-specific (fallback to JSON if not in aggregate)
+					total_districts: (jsonMetrics as { total_districts?: number }).total_districts || 435,
+					district_coverage_percent:
+						(jsonMetrics as { district_coverage_percent?: number }).district_coverage_percent ||
+						(template.unique_districts ? Math.round((template.unique_districts / 435) * 100) : 0),
+
+					// AI/Analytics metrics from JSON
+					personalization_rate:
+						(jsonMetrics as { personalization_rate?: number }).personalization_rate || 0,
+					effectiveness_score: (jsonMetrics as { effectiveness_score?: number })
+						.effectiveness_score,
+					cascade_depth: (jsonMetrics as { cascade_depth?: number }).cascade_depth,
+					viral_coefficient: (jsonMetrics as { viral_coefficient?: number }).viral_coefficient,
+
+					// Funnel tracking metrics from JSON
+					funnel_views: (jsonMetrics as { funnel_views?: number }).funnel_views,
+					modal_views: (jsonMetrics as { modal_views?: number }).modal_views,
+					onboarding_starts: (jsonMetrics as { onboarding_starts?: number }).onboarding_starts,
+					onboarding_completes: (jsonMetrics as { onboarding_completes?: number })
+						.onboarding_completes,
+					auth_completions: (jsonMetrics as { auth_completions?: number }).auth_completions,
+					shares: (jsonMetrics as { shares?: number }).shares
+				},
+
+				delivery_config: template.delivery_config,
+				cwc_config: template.cwc_config,
+				recipient_config: template.recipient_config,
+				campaign_id: template.campaign_id,
+				status: template.status,
+				is_public: template.is_public,
+
+				// Geographic scope fields
+				applicable_countries: template.applicable_countries,
+				jurisdiction_level: template.jurisdiction_level,
+				specific_locations: template.specific_locations,
+
+				// Jurisdictions for location filtering (Phase 3)
+				jurisdictions: template.jurisdictions || [],
+
+				// Optional scope from separate table
+				scope: idToScope.get(template.id) || null,
+
+				recipientEmails: extractRecipientEmails(
+					typeof template.recipient_config === 'string'
+						? JSON.parse(template.recipient_config)
+						: template.recipient_config
+				)
+			};
+		});
 
 		const response: ApiResponse = {
 			success: true,

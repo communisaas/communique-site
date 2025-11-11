@@ -37,12 +37,6 @@ function isTemplate(obj: unknown): obj is Template {
 			actual: typeof template.preview
 		},
 		{ field: 'status', valid: typeof template.status === 'string', actual: typeof template.status },
-		// Required number fields
-		{
-			field: 'send_count',
-			valid: typeof template.send_count === 'number',
-			actual: typeof template.send_count
-		},
 		// Required boolean fields
 		{
 			field: 'is_public',
@@ -110,15 +104,6 @@ function isTemplate(obj: unknown): obj is Template {
 				template.campaign_id === null ||
 				typeof template.campaign_id === 'string',
 			actual: typeof template.campaign_id
-		},
-		{
-			field: 'last_sent_at',
-			valid:
-				template.last_sent_at === undefined ||
-				template.last_sent_at === null ||
-				template.last_sent_at instanceof Date ||
-				typeof template.last_sent_at === 'string',
-			actual: template.last_sent_at instanceof Date ? 'Date' : typeof template.last_sent_at
 		},
 		{
 			field: 'jurisdiction_level',

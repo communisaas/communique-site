@@ -556,6 +556,8 @@ if (typeof window !== 'undefined') {
 	(window as typeof window & { __nukeLocationDB?: () => Promise<void> }).__nukeLocationDB =
 		async () => {
 			await locationStorage.nukeDatabase();
-			console.log('[LocationStorage] 💀 Database nuked. Refresh page to recreate with clean schema.');
+			console.log(
+				'[LocationStorage] 💀 Database nuked. Refresh page to recreate with clean schema.'
+			);
 		};
 }

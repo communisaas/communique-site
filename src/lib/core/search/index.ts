@@ -47,10 +47,7 @@ export { EmbeddingSearch, createEmbeddingSearch } from './embedding-search';
 export { ContextualBooster, createContextualBooster } from './contextual-boosting';
 export { TemplateRanker, createTemplateRanker } from './ranking';
 export { SearchCache, createSearchCache } from './cache';
-export {
-	OpenAIEmbeddingGenerator,
-	createEmbeddingGenerator
-} from './openai-embeddings';
+export { OpenAIEmbeddingGenerator, createEmbeddingGenerator } from './openai-embeddings';
 
 // Convenience function to create full search system
 import type { TemplateWithEmbedding, InferredLocation } from './types';

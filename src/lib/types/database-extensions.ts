@@ -38,7 +38,6 @@ export interface ClaimData {
 	creator?: UserWithReputation;
 	template?: {
 		id: string;
-		send_count: number;
 	};
 }
 
@@ -82,8 +81,7 @@ export function createMockClaim(overrides: Partial<ClaimData> = {}): ClaimData {
 			reputation_score: 500
 		},
 		template: {
-			id: 'template-123',
-			send_count: 100
+			id: 'template-123'
 		},
 		...overrides
 	};

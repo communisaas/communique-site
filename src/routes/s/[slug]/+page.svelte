@@ -52,7 +52,7 @@
 
 	// Enhanced description with social proof for Open Graph
 	const socialProofDescription = $derived(() => {
-		const sent = template.metrics?.sent || 0;
+		const sent = template.verified_sends || template.metrics?.sent || 0;
 		if (sent > 1000) {
 			return `Join ${sent.toLocaleString()}+ constituents who took action. ${template.description}`;
 		} else if (sent > 100) {
@@ -75,7 +75,6 @@
 		}
 
 		// Normal template view - track with default source
-		// Share links now land here directly, no redirect needed
 		funnelAnalytics.trackTemplateView(
 			template.id,
 			source as 'social-link' | 'direct-link' | 'share'
@@ -89,20 +88,63 @@
 				template.title,
 				source as 'social-link' | 'direct-link' | 'share'
 			);
-		} else {
-			// For authenticated users, immediately trigger email flow on share link landing
-			// Use the same TemplateModal as homepage for consistency
-			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
-
-			if (flow.nextAction === 'address') {
-				// Need address - show modal
-				modalActions.openModal('address-modal', 'address', { template, source });
-			} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-				// Use modalSystem directly since component may not be mounted yet
-				modalSystem.openModal('template-modal', 'template_modal', { template, user: data.user });
-			}
+			return;
 		}
+
+		// FOR AUTHENTICATED USERS:
+		// Check if OAuth just completed → open modal immediately
+		const oauthCompletion = getOAuthCompletionCookie();
+
+		if (oauthCompletion) {
+			// Just completed OAuth - open template modal IMMEDIATELY
+			// No address wall, no interruptions
+			// Address will be collected DURING modal flow if needed (congressional templates only)
+			console.log('[Template Page] OAuth completion detected - opening modal immediately');
+
+			modalSystem.openModal('template-modal', 'template_modal', {
+				template,
+				user: data.user
+			});
+
+			// Clean up the completion cookie
+			clearOAuthCompletionCookie();
+		}
+		// Note: We removed the old "immediately trigger email flow" logic
+		// Modal will now only open after OAuth or when user clicks "Send message"
 	});
+
+	/**
+	 * Get OAuth completion cookie if it exists
+	 * This cookie is set by oauth-callback-handler after successful auth
+	 */
+	function getOAuthCompletionCookie(): {
+		provider: string;
+		returnTo: string;
+		completed: boolean;
+		timestamp: number;
+	} | null {
+		if (!browser) return null;
+
+		const cookie = document.cookie.split('; ').find((row) => row.startsWith('oauth_completion='));
+
+		if (!cookie) return null;
+
+		try {
+			const value = decodeURIComponent(cookie.split('=')[1]);
+			return JSON.parse(value);
+		} catch (error) {
+			console.error('[Template Page] Failed to parse oauth_completion cookie:', error);
+			return null;
+		}
+	}
+
+	/**
+	 * Clear OAuth completion cookie after use
+	 */
+	function clearOAuthCompletionCookie(): void {
+		if (!browser) return;
+		document.cookie = 'oauth_completion=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+	}
 
 	function handlePostAuthFlow() {
 		const flow = analyzeEmailFlow(template, data.user);
@@ -225,7 +267,9 @@
 				<div class="flex items-center gap-6 text-sm text-slate-500">
 					<div class="flex items-center gap-1.5">
 						<Users class="h-4 w-4" />
-						<span>{(template.metrics?.sent || 0).toLocaleString()} sent this</span>
+						<span
+							>{(template.verified_sends || template.metrics?.sent || 0).toLocaleString()} sent this</span
+						>
 					</div>
 					<div class="flex items-center gap-1.5">
 						<Eye class="h-4 w-4" />
@@ -241,7 +285,9 @@
 				<div class="flex items-center gap-2">
 					<span class="text-sm text-slate-600">
 						Hi {data.user.name?.split(' ')[0]} - join the {(
-							template.metrics?.sent || 0
+							template.verified_sends ||
+							template.metrics?.sent ||
+							0
 						).toLocaleString()} who sent this
 					</span>
 					{#if data.user.is_verified}
@@ -284,9 +330,12 @@
 	</div>
 
 	<!-- Social Proof Banner (show if > 10 actions) -->
-	{#if (template.metrics?.sent || 0) > 10}
+	{#if (template.verified_sends || template.metrics?.sent || 0) > 10}
 		<div class="mb-6">
-			<SocialProofBanner totalActions={template.metrics?.sent || 0} {topDistricts} />
+			<SocialProofBanner
+				totalActions={template.verified_sends || template.metrics?.sent || 0}
+				{topDistricts}
+			/>
 		</div>
 	{/if}
 

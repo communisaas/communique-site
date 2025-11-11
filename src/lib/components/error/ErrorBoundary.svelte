@@ -189,7 +189,7 @@ ${errorInfo.stack || 'Not available'}
 
 {#if hasError && errorInfo}
 	<!-- Error Boundary UI -->
-	<div class="flex min-h-[400px] items-center justify-center p-8">
+	<div class="flex max-h-screen min-h-[400px] items-center justify-center overflow-y-auto p-8">
 		<div class="w-full max-w-md space-y-6 text-center">
 			{#if fallback === 'minimal'}
 				<!-- Minimal error display -->

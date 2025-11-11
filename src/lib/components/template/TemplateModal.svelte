@@ -37,6 +37,9 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	// import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import SubmissionStatus from '$lib/components/submission/SubmissionStatus.svelte';
+	import VerificationGate from '$lib/components/auth/VerificationGate.svelte';
+	import ProofGenerator from '$lib/components/template/ProofGenerator.svelte';
+	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
 	import type { Template } from '$lib/types/template';
 
@@ -65,6 +68,14 @@
 	let celebrationScale = spring(1, { stiffness: 0.3, damping: 0.6 });
 	let submissionId = $state<string | null>(null);
 
+	// Verification gate state
+	let showVerificationGate = $state(false);
+	let verificationGateRef = $state<VerificationGate | null>(null);
+
+	// Address collection state (for congressional templates)
+	let needsAddress = $state(false);
+	let collectingAddress = $state(false);
+
 	// Enhanced URL copy component state
 	let copyButtonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
 	let copyButtonRotation = spring(0, { stiffness: 0.3, damping: 0.7 });
@@ -86,9 +97,10 @@
 
 		return {
 			// Short & urgent (Twitter, Discord) - <280 chars
-			short: actionCount > 1000
-				? `🔥 ${actionCount.toLocaleString()}+ people pressuring Congress: "${template.title}"\n\n${shareUrl}`
-				: `Pressure Congress: "${template.title}"\n\n${shareUrl}`,
+			short:
+				actionCount > 1000
+					? `🔥 ${actionCount.toLocaleString()}+ people pressuring Congress: "${template.title}"\n\n${shareUrl}`
+					: `Pressure Congress: "${template.title}"\n\n${shareUrl}`,
 
 			// Medium (Slack, group chats)
 			medium: `Pressuring Congress on ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people already acted. ` : ''}Takes 2 minutes: ${shareUrl}`,
@@ -97,9 +109,10 @@
 			long: `I'm sending this to Congress.\n\n"${template.title}"\n\n${template.description}\n\n${actionCount > 1000 ? `${actionCount.toLocaleString()}+ people already sent this. ` : actionCount > 100 ? `${actionCount.toLocaleString()} people acted. ` : ''}Takes 2 minutes.\n\n${shareUrl}`,
 
 			// SMS-friendly (under 160 chars)
-			sms: actionCount > 0
-				? `${template.title} - Join ${actionCount.toLocaleString()}+: ${shareUrl}`
-				: `${template.title} - ${shareUrl}`
+			sms:
+				actionCount > 0
+					? `${template.title} - Join ${actionCount.toLocaleString()}+: ${shareUrl}`
+					: `${template.title} - ${shareUrl}`
 		};
 	});
 
@@ -226,14 +239,14 @@
 
 		// Detect when user leaves browser (mail app opens)
 		mailAppBlurHandler = () => {
-			// Quick detection means email client opened
-			if (Date.now() - detectionStartTime < 2000) {
+			// Any blur within 3 seconds means email client opened
+			if (Date.now() - detectionStartTime < 3000) {
 				handleDetection(true);
 			}
 		};
 
 		mailAppVisibilityHandler = () => {
-			if (document.hidden && Date.now() - detectionStartTime < 2000) {
+			if (document.hidden && Date.now() - detectionStartTime < 3000) {
 				handleDetection(true);
 			}
 		};
@@ -242,21 +255,18 @@
 		window.addEventListener('blur', mailAppBlurHandler);
 		document.addEventListener('visibilitychange', mailAppVisibilityHandler);
 
-		// Shorter timeout for detection (1 second)
-		// If no blur/visibility change detected, email client probably didn't open
+		// OPTIMISTIC APPROACH: Assume mailto: worked unless we have evidence it didn't
+		// Wait 2 seconds - if user never left the window, they might not have an email client configured
 		coordinated.setTimeout(
 			() => {
 				if (!hasDetectedSwitch) {
-					// Check one more time if window is not focused
-					if (!document.hasFocus() || document.hidden) {
-						handleDetection(true);
-					} else {
-						// No detection - likely means email client didn't open
-						handleDetection(false);
-					}
+					// CHANGED: Default to success (assume mailto: worked)
+					// Only show error if window NEVER lost focus during the entire flow
+					// This prevents false-negatives when user quickly returns to browser
+					handleDetection(true);
 				}
 			},
-			1000,
+			2000,
 			'detection-timeout',
 			componentId
 		);
@@ -279,40 +289,188 @@
 		);
 	}
 
+	/**
+	 * Handle address collection complete
+	 * Continue to verification gate (if needed) then submission
+	 */
+	async function handleAddressComplete(
+		_event: CustomEvent<{
+			address: string;
+			verified: boolean;
+			representatives: unknown[];
+			district: string;
+			streetAddress: string;
+			city: string;
+			state: string;
+			zipCode: string;
+		}>
+	) {
+		const { streetAddress, city, state, zipCode, district, verified } = _event.detail;
+
+		// Save address to database
+		try {
+			const { api } = await import('$lib/core/api/client');
+
+			const result = await api.post('/user/address', {
+				street: streetAddress,
+				city,
+				state,
+				zip: zipCode,
+				congressional_district: district,
+				verified
+			});
+
+			if (!result.success) {
+				console.error('[Template Modal] Failed to save address:', result.error);
+				// TODO: Show error state
+				return;
+			}
+
+			console.log('[Template Modal] Address saved successfully');
+
+			// Update page data to reflect new address
+			if ($page.data?.user) {
+				$page.data.user.street = streetAddress;
+				$page.data.user.city = city;
+				$page.data.user.state = state;
+				$page.data.user.zip = zipCode;
+				$page.data.user.congressional_district = district;
+			}
+
+			// Close address collection
+			collectingAddress = false;
+			needsAddress = false;
+
+			// Continue with submission flow
+			// Check verification gate, then submit
+			if (user?.id && verificationGateRef) {
+				const isVerified = await verificationGateRef.checkVerification();
+
+				if (!isVerified) {
+					showVerificationGate = true;
+					return;
+				}
+			}
+
+			// Proceed to submission
+			await submitCongressionalMessage();
+		} catch (error) {
+			console.error('[Template Modal] Address save error:', error);
+			// TODO: Show error state
+		}
+	}
+
+	/**
+	 * Submit Congressional message with ZK proof generation
+	 * Extracted for reuse after verification complete
+	 */
+	async function submitCongressionalMessage() {
+		// Phase 2: Trigger ZK proof generation instead of direct submission
+		modalActions.setState('proof-generation');
+		console.log('[Template Modal] Starting ZK proof generation flow');
+	}
+
+	/**
+	 * Handle verification complete from VerificationGate
+	 * After user verifies, proceed with Congressional submission
+	 */
+	function handleVerificationComplete(_event: CustomEvent<{ userId: string; method: string }>) {
+		console.log(
+			'[Template Modal] Verification complete, proceeding with submission:',
+			_event.detail
+		);
+		showVerificationGate = false;
+
+		// Now that user is verified, submit the Congressional message
+		submitCongressionalMessage();
+
+		// Celebration animation
+		celebrationScale.set(1.05).then(() => celebrationScale.set(1));
+	}
+
+	/**
+	 * Handle verification cancel from VerificationGate
+	 * User cancelled verification - return to confirmation state
+	 */
+	function handleVerificationCancel() {
+		console.log('[Template Modal] Verification cancelled');
+		showVerificationGate = false;
+		// Return to confirmation state so user can try again
+		modalActions.setState('confirmation');
+	}
+
+	/**
+	 * Handle proof generation complete
+	 * Move to tracking state to show TEE processing + delivery
+	 */
+	function handleProofComplete(event: CustomEvent<{ submissionId: string }>) {
+		console.log('[Template Modal] Proof generation complete:', event.detail);
+		submissionId = event.detail.submissionId;
+		modalActions.setState('tracking');
+
+		// Celebration animation
+		celebrationScale.set(1.05).then(() => celebrationScale.set(1));
+	}
+
+	/**
+	 * Handle proof generation cancel
+	 * User cancelled proof generation - return to confirmation state
+	 */
+	function handleProofCancel() {
+		console.log('[Template Modal] Proof generation cancelled');
+		modalActions.setState('confirmation');
+	}
+
+	/**
+	 * Handle proof generation error
+	 * Show error and allow retry
+	 */
+	function handleProofError(event: CustomEvent<{ message: string }>) {
+		console.error('[Template Modal] Proof generation failed:', event.detail.message);
+		// For now, return to confirmation state
+		// TODO: Show dedicated error state with retry option
+		modalActions.setState('retry_needed');
+	}
+
 	async function handleSendConfirmation(sent: boolean) {
 		if (sent) {
 			// Check if Congressional message (Phase 1: only these are verified)
 			const isCongressional = template.deliveryMethod === 'cwc';
 
 			if (isCongressional) {
-				// Congressional message - verified delivery, reputation tracked
-				modalActions.setState('tracking');
+				// STEP 1: Check if user has address (for congressional routing)
+				const currentUser = $page.data?.user || user;
+				const hasAddress =
+					currentUser &&
+					currentUser.street &&
+					currentUser.city &&
+					currentUser.state &&
+					currentUser.zip;
 
-				// Generate submission ID and trigger agent processing
-				try {
-					const response = await fetch('/api/n8n/process-template', {
-						method: 'POST',
-						headers: { 'Content-Type': 'application/json' },
-						body: JSON.stringify({
-							templateId: template.id,
-							userId: user?.id,
-							actionType: 'cwc_message',
-							stage: 'submitted'
-						})
-					});
-
-					const result = await response.json();
-					if (result.success && result.data?.submissionId) {
-						submissionId = result.data.submissionId;
-					} else {
-						// Fallback - generate client-side ID
-						submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
-					}
-				} catch {
-					console.error('Error occurred');
-					// Fallback - generate client-side ID
-					submissionId = 'sub_' + Date.now() + '_' + Math.random().toString(36).substring(2);
+				if (!hasAddress) {
+					// Need address for congressional routing - collect it inline
+					console.log(
+						'[Template Modal] Congressional template needs address - showing inline collection'
+					);
+					collectingAddress = true;
+					needsAddress = true;
+					return; // Stop until address collected
 				}
+
+				// STEP 2: Progressive verification gate: Check if user is verified
+				if (user?.id && verificationGateRef) {
+					const isVerified = await verificationGateRef.checkVerification();
+
+					if (!isVerified) {
+						// User not verified - show verification gate
+						console.log('[Template Modal] User not verified, showing verification gate');
+						showVerificationGate = true;
+						return; // Stop submission until verification complete
+					}
+				}
+
+				// STEP 3: User has address + is verified - proceed with submission
+				await submitCongressionalMessage();
 			} else {
 				// Phase 1: Non-Congressional messages use mailto, no verification yet
 				// Phase 2: Will add OAuth verification for all message types
@@ -388,9 +546,14 @@
 		try {
 			await navigator.clipboard.writeText(`${message}\n\n${shareUrl}`);
 			showCopied = true;
-			coordinated.setTimeout(() => {
-				showCopied = false;
-			}, 3000, 'copy-hide', componentId);
+			coordinated.setTimeout(
+				() => {
+					showCopied = false;
+				},
+				3000,
+				'copy-hide',
+				componentId
+			);
 		} catch {
 			console.warn('Clipboard copy failed');
 		}
@@ -525,9 +688,7 @@
 				<Send class="h-8 w-8 text-participation-primary-600 sm:h-10 sm:w-10" />
 			</div>
 			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Did you send it?</h3>
-			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">
-				Confirm to track this action.
-			</p>
+			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">Confirm to track this action.</p>
 
 			<div class="flex justify-center gap-2 sm:gap-3">
 				<Button
@@ -655,7 +816,9 @@
 
 					<!-- Secondary: Pre-written Messages -->
 					<details class="rounded-lg border border-slate-200 bg-white">
-						<summary class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50">
+						<summary
+							class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
+						>
 							📝 Copy pre-written messages for different platforms
 						</summary>
 						<div class="space-y-2 border-t border-slate-200 p-4">
@@ -740,6 +903,63 @@
 				</div>
 			</div>
 		</div>
+	{:else if collectingAddress}
+		<!-- Address Collection State - Inline for Congressional templates -->
+		<div class="relative p-6 sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
+			<!-- Close Button -->
+			<button
+				onclick={handleClose}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
+
+			<!-- Header -->
+			<div class="mb-6 text-center">
+				<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Find Your Representative</h3>
+				<p class="text-sm text-slate-600 sm:text-base">
+					This message goes to your representative. We need your district to route it correctly.
+				</p>
+			</div>
+
+			<!-- Address Collection Form -->
+			<AddressCollectionForm
+				template={{
+					title: template.title,
+					deliveryMethod: template.deliveryMethod
+				}}
+				on:complete={handleAddressComplete}
+			/>
+		</div>
+	{:else if currentState === 'proof-generation'}
+		<!-- ZK Proof Generation State (Phase 2) -->
+		<div class="flex h-full flex-col p-6">
+			{#if user?.id}
+				<ProofGenerator
+					userId={user.id}
+					templateId={template.id}
+					templateData={{
+						subject: template.title,
+						message: template.body || template.description,
+						recipientOffices: template.category ? [template.category] : []
+					}}
+					on:complete={handleProofComplete}
+					on:cancel={handleProofCancel}
+					on:error={handleProofError}
+				/>
+			{:else}
+				<!-- Fallback if user not available -->
+				<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-center">
+					<p class="text-red-900">User authentication required</p>
+					<button
+						onclick={() => modalActions.setState('auth_required')}
+						class="mt-2 text-sm text-red-700 underline"
+					>
+						Sign in to continue
+					</button>
+				</div>
+			{/if}
+		</div>
 	{:else if currentState === 'tracking'}
 		<!-- Agent Processing Tracking State -->
 		<div class="flex h-full flex-col">
@@ -803,3 +1023,15 @@
 		</div>
 	{/if}
 </div>
+
+<!-- Verification Gate Modal -->
+{#if user?.id}
+	<VerificationGate
+		bind:this={verificationGateRef}
+		userId={user.id}
+		templateSlug={template.slug}
+		bind:showModal={showVerificationGate}
+		on:verified={handleVerificationComplete}
+		on:cancel={handleVerificationCancel}
+	/>
+{/if}

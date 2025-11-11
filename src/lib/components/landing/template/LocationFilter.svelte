@@ -39,6 +39,7 @@
 	import { locationStorage } from '$lib/core/location/storage';
 	import type { Template } from '$lib/types/template';
 	import AddressConfirmationModal from './AddressConfirmationModal.svelte';
+	import TemplatePreviewCard from './TemplatePreviewCard.svelte';
 	import { locationInferenceEngine } from '$lib/core/location/inference-engine';
 
 	interface LocationFilterProps {
@@ -55,14 +56,98 @@
 	let isLoadingLocation = $state(true);
 	let locationError = $state<string | null>(null);
 	let isDetectingLocation = $state(false);
-	let showPrivacyExplainer = $state(false);
-	let showSignalBreakdown = $state(false);
 	let showAddressModal = $state(false);
+	let forcedPrecision = $state<PrecisionLevel | null>(null); // User-selected precision override
 
 	// Computed
 	const hasLocation = $derived(
 		inferredLocation && (inferredLocation.congressional_district || inferredLocation.city_name)
 	);
+
+	// Breadcrumb components for drill-down navigation
+	const breadcrumbState = $derived.by(() => {
+		if (!inferredLocation?.state_code) return null;
+
+		const stateNames: Record<string, string> = {
+			AL: 'Alabama',
+			AK: 'Alaska',
+			AZ: 'Arizona',
+			AR: 'Arkansas',
+			CA: 'California',
+			CO: 'Colorado',
+			CT: 'Connecticut',
+			DE: 'Delaware',
+			DC: 'Washington DC',
+			FL: 'Florida',
+			GA: 'Georgia',
+			HI: 'Hawaii',
+			ID: 'Idaho',
+			IL: 'Illinois',
+			IN: 'Indiana',
+			IA: 'Iowa',
+			KS: 'Kansas',
+			KY: 'Kentucky',
+			LA: 'Louisiana',
+			ME: 'Maine',
+			MD: 'Maryland',
+			MA: 'Massachusetts',
+			MI: 'Michigan',
+			MN: 'Minnesota',
+			MS: 'Mississippi',
+			MO: 'Missouri',
+			MT: 'Montana',
+			NE: 'Nebraska',
+			NV: 'Nevada',
+			NH: 'New Hampshire',
+			NJ: 'New Jersey',
+			NM: 'New Mexico',
+			NY: 'New York',
+			NC: 'North Carolina',
+			ND: 'North Dakota',
+			OH: 'Ohio',
+			OK: 'Oklahoma',
+			OR: 'Oregon',
+			PA: 'Pennsylvania',
+			RI: 'Rhode Island',
+			SC: 'South Carolina',
+			SD: 'South Dakota',
+			TN: 'Tennessee',
+			TX: 'Texas',
+			UT: 'Utah',
+			VT: 'Vermont',
+			VA: 'Virginia',
+			WA: 'Washington',
+			WV: 'West Virginia',
+			WI: 'Wisconsin',
+			WY: 'Wyoming',
+			PR: 'Puerto Rico',
+			GU: 'Guam',
+			VI: 'US Virgin Islands',
+			AS: 'American Samoa',
+			MP: 'Northern Mariana Islands'
+		};
+
+		return stateNames[inferredLocation.state_code] || inferredLocation.state_code;
+	});
+
+	const breadcrumbCounty = $derived.by(() => {
+		if (!inferredLocation) return null;
+
+		const countyName = locationSignals[0]?.metadata?.county_name;
+		const cityName = inferredLocation.city_name;
+
+		if (cityName && countyName && cityName !== countyName) {
+			return `${cityName}, ${countyName}`;
+		}
+		return countyName || cityName || null;
+	});
+
+	const breadcrumbDistrict = $derived.by(() => {
+		if (!inferredLocation?.congressional_district) return null;
+
+		// Parse district code (e.g., "CA-16" → "CA-16")
+		return inferredLocation.congressional_district;
+	});
 
 	const locationLabel = $derived.by(() => {
 		if (!inferredLocation) return null;
@@ -90,21 +175,62 @@
 		// Strategy 4: State full name (expand abbreviation as fallback)
 		if (inferredLocation.state_code) {
 			const stateNames: Record<string, string> = {
-				'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
-				'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
-				'DC': 'Washington DC', 'FL': 'Florida', 'GA': 'Georgia', 'HI': 'Hawaii',
-				'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
-				'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine',
-				'MD': 'Maryland', 'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota',
-				'MS': 'Mississippi', 'MO': 'Missouri', 'MT': 'Montana', 'NE': 'Nebraska',
-				'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey', 'NM': 'New Mexico',
-				'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
-				'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island',
-				'SC': 'South Carolina', 'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas',
-				'UT': 'Utah', 'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington',
-				'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
-				'PR': 'Puerto Rico', 'GU': 'Guam', 'VI': 'US Virgin Islands',
-				'AS': 'American Samoa', 'MP': 'Northern Mariana Islands'
+				AL: 'Alabama',
+				AK: 'Alaska',
+				AZ: 'Arizona',
+				AR: 'Arkansas',
+				CA: 'California',
+				CO: 'Colorado',
+				CT: 'Connecticut',
+				DE: 'Delaware',
+				DC: 'Washington DC',
+				FL: 'Florida',
+				GA: 'Georgia',
+				HI: 'Hawaii',
+				ID: 'Idaho',
+				IL: 'Illinois',
+				IN: 'Indiana',
+				IA: 'Iowa',
+				KS: 'Kansas',
+				KY: 'Kentucky',
+				LA: 'Louisiana',
+				ME: 'Maine',
+				MD: 'Maryland',
+				MA: 'Massachusetts',
+				MI: 'Michigan',
+				MN: 'Minnesota',
+				MS: 'Mississippi',
+				MO: 'Missouri',
+				MT: 'Montana',
+				NE: 'Nebraska',
+				NV: 'Nevada',
+				NH: 'New Hampshire',
+				NJ: 'New Jersey',
+				NM: 'New Mexico',
+				NY: 'New York',
+				NC: 'North Carolina',
+				ND: 'North Dakota',
+				OH: 'Ohio',
+				OK: 'Oklahoma',
+				OR: 'Oregon',
+				PA: 'Pennsylvania',
+				RI: 'Rhode Island',
+				SC: 'South Carolina',
+				SD: 'South Dakota',
+				TN: 'Tennessee',
+				TX: 'Texas',
+				UT: 'Utah',
+				VT: 'Vermont',
+				VA: 'Virginia',
+				WA: 'Washington',
+				WV: 'West Virginia',
+				WI: 'Wisconsin',
+				WY: 'Wyoming',
+				PR: 'Puerto Rico',
+				GU: 'Guam',
+				VI: 'US Virgin Islands',
+				AS: 'American Samoa',
+				MP: 'Northern Mariana Islands'
 			};
 			return stateNames[inferredLocation.state_code] || inferredLocation.state_code;
 		}
@@ -114,7 +240,195 @@
 
 	const districtLabel = $derived.by(() => {
 		if (!inferredLocation?.congressional_district) return null;
+
+		// Expand state code to full name
+		const stateNames: Record<string, string> = {
+			AL: 'Alabama',
+			AK: 'Alaska',
+			AZ: 'Arizona',
+			AR: 'Arkansas',
+			CA: 'California',
+			CO: 'Colorado',
+			CT: 'Connecticut',
+			DE: 'Delaware',
+			DC: 'Washington DC',
+			FL: 'Florida',
+			GA: 'Georgia',
+			HI: 'Hawaii',
+			ID: 'Idaho',
+			IL: 'Illinois',
+			IN: 'Indiana',
+			IA: 'Iowa',
+			KS: 'Kansas',
+			KY: 'Kentucky',
+			LA: 'Louisiana',
+			ME: 'Maine',
+			MD: 'Maryland',
+			MA: 'Massachusetts',
+			MI: 'Michigan',
+			MN: 'Minnesota',
+			MS: 'Mississippi',
+			MO: 'Missouri',
+			MT: 'Montana',
+			NE: 'Nebraska',
+			NV: 'Nevada',
+			NH: 'New Hampshire',
+			NJ: 'New Jersey',
+			NM: 'New Mexico',
+			NY: 'New York',
+			NC: 'North Carolina',
+			ND: 'North Dakota',
+			OH: 'Ohio',
+			OK: 'Oklahoma',
+			OR: 'Oregon',
+			PA: 'Pennsylvania',
+			RI: 'Rhode Island',
+			SC: 'South Carolina',
+			SD: 'South Dakota',
+			TN: 'Tennessee',
+			TX: 'Texas',
+			UT: 'Utah',
+			VT: 'Vermont',
+			VA: 'Virginia',
+			WA: 'Washington',
+			WV: 'West Virginia',
+			WI: 'Wisconsin',
+			WY: 'Wyoming',
+			PR: 'Puerto Rico',
+			GU: 'Guam',
+			VI: 'US Virgin Islands',
+			AS: 'American Samoa',
+			MP: 'Northern Mariana Islands'
+		};
+
+		// Parse district code (e.g., "CA-16" → "California's 16th Congressional District")
+		const match = inferredLocation.congressional_district.match(/^([A-Z]{2})-(\d+)$/);
+		if (match) {
+			const [, stateCode, districtNum] = match;
+			const stateName = stateNames[stateCode] || stateCode;
+
+			// Ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
+			const num = parseInt(districtNum);
+			let suffix = 'th';
+			if (num % 10 === 1 && num !== 11) suffix = 'st';
+			else if (num % 10 === 2 && num !== 12) suffix = 'nd';
+			else if (num % 10 === 3 && num !== 13) suffix = 'rd';
+
+			return `${stateName}'s ${num}${suffix} Congressional District`;
+		}
+
+		// Fallback if format doesn't match
 		return inferredLocation.congressional_district;
+	});
+
+	// Precision levels for progressive funnel
+	type PrecisionLevel = 'nationwide' | 'state' | 'county' | 'district';
+
+	// Natural precision based on available location data
+	const naturalPrecision = $derived.by((): PrecisionLevel => {
+		if (!inferredLocation) return 'nationwide';
+		if (inferredLocation.congressional_district) return 'district';
+		if (inferredLocation.city_name || locationSignals[0]?.metadata?.county_name) return 'county';
+		if (inferredLocation.state_code) return 'state';
+		return 'nationwide';
+	});
+
+	// Effective precision (respects user drill-down selection)
+	const currentPrecision = $derived.by((): PrecisionLevel => {
+		// User can drill down to lower precision (state when district is available)
+		if (forcedPrecision) return forcedPrecision;
+		return naturalPrecision;
+	});
+
+	// Calculate coordination counts per precision level
+	const coordinationByPrecision = $derived.by(() => {
+		const templatesWithJurisdictions = templates.filter(
+			(t): t is TemplateWithJurisdictions => 'jurisdictions' in t && Array.isArray(t.jurisdictions)
+		);
+
+		const counts = {
+			nationwide: 0,
+			state: 0,
+			county: 0,
+			district: 0
+		};
+
+		if (!inferredLocation) {
+			// Show all federal templates when no location
+			counts.nationwide = templatesWithJurisdictions
+				.filter((t) => t.jurisdictions.some((j) => j.jurisdiction_type === 'federal'))
+				.reduce((total, t) => total + (t.send_count || 0), 0);
+			return counts;
+		}
+
+		for (const template of templatesWithJurisdictions) {
+			const sendCount = template.verified_sends || 0;
+
+			for (const jurisdiction of template.jurisdictions) {
+				// Federal templates count at all levels
+				if (jurisdiction.jurisdiction_type === 'federal') {
+					counts.nationwide += sendCount;
+					counts.state += sendCount;
+					counts.county += sendCount;
+					counts.district += sendCount;
+					break;
+				}
+
+				// State-level templates
+				if (
+					jurisdiction.jurisdiction_type === 'state' &&
+					jurisdiction.state_code === inferredLocation.state_code
+				) {
+					counts.state += sendCount;
+					counts.county += sendCount;
+					counts.district += sendCount;
+					break;
+				}
+
+				// County-level templates (match by city or county name)
+				if (
+					jurisdiction.jurisdiction_type === 'city' ||
+					jurisdiction.jurisdiction_type === 'county'
+				) {
+					const countyName = locationSignals[0]?.metadata?.county_name;
+					const matchesCity =
+						inferredLocation.city_name &&
+						(jurisdiction.city_name === inferredLocation.city_name ||
+							jurisdiction.county_name?.includes(inferredLocation.city_name));
+					const matchesCounty =
+						countyName &&
+						(jurisdiction.county_name === countyName || jurisdiction.city_name === countyName);
+
+					if (matchesCity || matchesCounty) {
+						counts.county += sendCount;
+						counts.district += sendCount;
+						break;
+					}
+				}
+
+				// District-level templates
+				if (jurisdiction.congressional_district === inferredLocation.congressional_district) {
+					counts.district += sendCount;
+					break;
+				}
+			}
+		}
+
+		return counts;
+	});
+
+	const coordinationCount = $derived.by(() => {
+		return coordinationByPrecision[currentPrecision];
+	});
+
+	// Count for next precision level (for preview)
+	const nextLevelCount = $derived.by(() => {
+		const precision = currentPrecision;
+		const counts = coordinationByPrecision;
+
+		if (precision === 'state') return counts.county - counts.state;
+		if (precision === 'county') return counts.district - counts.county;
+		return 0;
 	});
 
 	const localTemplateCount = $derived.by(() => {
@@ -132,6 +446,38 @@
 	// Load inferred location using the inference engine
 	onMount(async () => {
 		try {
+			// DEV MODE: Force location for visual design evaluation
+			if (browser && window.location.hostname === 'localhost') {
+				console.log('[LocationFilter] 🎨 DEV MODE: Using mock location data for design evaluation');
+				inferredLocation = {
+					congressional_district: 'CA-16',
+					state_code: 'CA',
+					city_name: 'San Francisco',
+					county_fips: '06075',
+					confidence: 0.85,
+					signals: [
+						{
+							signal_type: 'ip',
+							confidence: 0.4,
+							state_code: 'CA',
+							city_name: 'San Francisco',
+							congressional_district: 'CA-16',
+							county_fips: '06075',
+							latitude: 37.7749,
+							longitude: -122.4194,
+							source: 'dev.mock',
+							timestamp: new Date().toISOString(),
+							metadata: { county_name: 'San Francisco County' }
+						}
+					],
+					inferred_at: new Date().toISOString()
+				};
+
+				locationSignals = inferredLocation.signals;
+				isLoadingLocation = false;
+				return; // Skip real inference in dev mode
+			}
+
 			// Get user location from inference engine (uses cached if available)
 			let location = await getUserLocation();
 
@@ -140,11 +486,13 @@
 			if (location && location.confidence > 0 && browser) {
 				const signals = await locationStorage.getSignals();
 				const oldGPSSignal = signals.find(
-					s => (s.source === 'census.browser' || s.source === 'nominatim.browser') && !s.city_name
+					(s) => (s.source === 'census.browser' || s.source === 'nominatim.browser') && !s.city_name
 				);
 
 				if (oldGPSSignal) {
-					console.log('[LocationFilter] 🔄 Detected GPS signal without city_name - requesting fresh geolocation with Nominatim');
+					console.log(
+						'[LocationFilter] 🔄 Detected GPS signal without city_name - requesting fresh geolocation with Nominatim'
+					);
 					// Request fresh geolocation which will now include Nominatim city lookup
 					const freshSignal = await addBrowserGeolocationSignal();
 
@@ -173,18 +521,14 @@
 					locationSignals = signals;
 
 					// DEBUG: Log signals to understand source
-					console.log('[LocationFilter] Location signals:', signals.map(s => ({
-						source: s.source,
-						city_name: s.city_name,
-						confidence: s.confidence
-					})));
-
-					// Check if this is first time seeing inferred location (cypherpunk "holy shit" moment)
-					const hasSeenExplainer = localStorage.getItem('location_privacy_explainer_seen');
-					if (!hasSeenExplainer && signals.length > 0) {
-						showPrivacyExplainer = true;
-						localStorage.setItem('location_privacy_explainer_seen', 'true');
-					}
+					console.log(
+						'[LocationFilter] Location signals:',
+						signals.map((s) => ({
+							source: s.source,
+							city_name: s.city_name,
+							confidence: s.confidence
+						}))
+					);
 				}
 			}
 
@@ -223,10 +567,81 @@
 		}
 	});
 
+	// Filter templates by precision level (progressive funnel)
+	function filterTemplatesByPrecision(
+		templates: TemplateWithJurisdictions[],
+		precision: PrecisionLevel
+	): TemplateWithJurisdictions[] {
+		if (!inferredLocation) {
+			// No location: show only federal templates
+			return templates.filter((t) =>
+				t.jurisdictions.some((j) => j.jurisdiction_type === 'federal')
+			);
+		}
+
+		return templates.filter((template) => {
+			for (const jurisdiction of template.jurisdictions) {
+				// Federal templates shown at all levels
+				if (jurisdiction.jurisdiction_type === 'federal') {
+					return true;
+				}
+
+				// State-level: show federal + state templates
+				if (precision === 'state') {
+					if (
+						jurisdiction.jurisdiction_type === 'state' &&
+						jurisdiction.state_code === inferredLocation.state_code
+					) {
+						return true;
+					}
+				}
+
+				// County-level: show federal + state + county templates
+				if (precision === 'county' || precision === 'district') {
+					// State templates
+					if (
+						jurisdiction.jurisdiction_type === 'state' &&
+						jurisdiction.state_code === inferredLocation.state_code
+					) {
+						return true;
+					}
+
+					// County/city templates
+					if (
+						jurisdiction.jurisdiction_type === 'city' ||
+						jurisdiction.jurisdiction_type === 'county'
+					) {
+						const countyName = locationSignals[0]?.metadata?.county_name;
+						const matchesCity =
+							inferredLocation.city_name &&
+							(jurisdiction.city_name === inferredLocation.city_name ||
+								jurisdiction.county_name?.includes(inferredLocation.city_name));
+						const matchesCounty =
+							countyName &&
+							(jurisdiction.county_name === countyName || jurisdiction.city_name === countyName);
+
+						if (matchesCity || matchesCounty) {
+							return true;
+						}
+					}
+				}
+
+				// District-level: show ALL templates (federal + state + county + district)
+				if (precision === 'district') {
+					if (jurisdiction.congressional_district === inferredLocation.congressional_district) {
+						return true;
+					}
+				}
+			}
+
+			return false;
+		});
+	}
+
 	// Apply filtering when showLocalOnly or templates change
 	$effect(() => {
 		if (!showLocalOnly || !inferredLocation) {
-			// Show all templates
+			// Show all templates when filter is off
 			onFilterChange(templates);
 			return;
 		}
@@ -236,8 +651,14 @@
 			(t): t is TemplateWithJurisdictions => 'jurisdictions' in t && Array.isArray(t.jurisdictions)
 		);
 
+		// Apply precision-based filtering (progressive funnel)
+		const precisionFiltered = filterTemplatesByPrecision(
+			templatesWithJurisdictions,
+			currentPrecision
+		);
+
 		// Score templates by location relevance
-		const scored = scoreTemplatesByRelevance(templatesWithJurisdictions, inferredLocation);
+		const scored = scoreTemplatesByRelevance(precisionFiltered, inferredLocation);
 
 		// Apply behavioral boosting asynchronously
 		getTemplateViewCounts()
@@ -352,95 +773,19 @@
 	function handleAddressModalClose() {
 		showAddressModal = false;
 	}
+
+	// Breadcrumb drill-down handlers
+	function handleBreadcrumbClick(level: PrecisionLevel) {
+		// Toggle precision level when clicking breadcrumb
+		if (currentPrecision === level) {
+			// Reset to natural precision if clicking current level
+			forcedPrecision = null;
+		} else {
+			// Switch to clicked precision level
+			forcedPrecision = level;
+		}
+	}
 </script>
-
-<!-- Privacy Explainer Modal (First-Time Delightful Discovery) -->
-{#if showPrivacyExplainer && hasLocation}
-	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm transition-opacity duration-200"
-	>
-		<div
-			class="max-w-md scale-100 transform rounded-xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5 transition-all duration-200"
-		>
-			<!-- Header with Trust Badge -->
-			<div class="mb-4 flex items-start gap-3">
-				<div class="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-					<svg
-						class="h-5 w-5 text-emerald-600"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-						stroke-width="2.5"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-						/>
-					</svg>
-				</div>
-				<div>
-					<h2 class="text-lg font-semibold tracking-tight text-slate-900">
-						Issues in {locationLabel}
-					</h2>
-					<p class="mt-0.5 text-sm text-slate-600">
-						Location inferred from IP
-					</p>
-				</div>
-			</div>
-
-			<!-- Main Message - Simple -->
-			<div class="mb-4 text-sm text-slate-700">
-				<p class="leading-relaxed">
-					Showing legislation relevant to your district.
-				</p>
-
-				<!-- Technical Details - Progressive Disclosure -->
-				<details class="group mt-3">
-					<summary
-						class="cursor-pointer text-xs font-medium text-slate-500 transition-colors hover:text-slate-700"
-					>
-						<span class="inline-flex items-center gap-1">
-							How this works
-							<svg
-								class="h-3 w-3 transition-transform group-open:rotate-180"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
-								<path
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									d="M19 9l-7 7-7-7"
-								/>
-							</svg>
-						</span>
-					</summary>
-					<div class="mt-2 space-y-2 pl-1 text-xs text-slate-600">
-						<p>
-							• Analyzed {locationSignals.length} signal{locationSignals.length !== 1 ? 's' : ''} (IP, timezone,
-							OAuth data)
-						</p>
-						<p>• Stored in browser IndexedDB (not our database)</p>
-						<p>
-							• {Math.round((inferredLocation?.confidence || 0) * 100)}% confidence based on
-							signal quality
-						</p>
-					</div>
-				</details>
-			</div>
-
-			<!-- Primary Action - Clean, Confident -->
-			<button
-				onclick={() => (showPrivacyExplainer = false)}
-				class="w-full rounded-lg bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors duration-150 hover:bg-slate-800 active:bg-slate-700"
-			>
-				Got it
-			</button>
-		</div>
-	</div>
-{/if}
 
 {#if isLoadingLocation}
 	<!-- Loading skeleton (elegant, minimal) -->
@@ -469,16 +814,14 @@
 		</div>
 	</div>
 {:else if hasLocation}
-	<!-- ELEGANT CONSUMER-FRIENDLY LOCATION DISPLAY -->
-	<div
-		class="group mb-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5 transition-all hover:shadow-md hover:ring-slate-900/10"
-	>
-		<!-- Location Header -->
-		<div class="mb-3 flex items-center gap-2.5">
-			<!-- Location Pin Icon -->
-			<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
+	<!-- MINIMAL LOCATION HEADER (Location-as-Filter Principle) -->
+	<div class="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
+		<!-- Location name with icon -->
+		<div class="flex items-start gap-3">
+			<!-- Location pin icon -->
+			<div class="flex-shrink-0">
 				<svg
-					class="h-4 w-4 text-blue-600"
+					class="h-7 w-7 text-blue-600"
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -497,48 +840,169 @@
 				</svg>
 			</div>
 
-			<!-- Location Text -->
-			<div class="min-w-0 flex-1">
-				<h3 class="truncate text-[15px] font-medium tracking-tight text-slate-900">
-					{locationLabel}
-				</h3>
-				<p class="mt-0.5 text-xs text-slate-500">
+			<div class="flex-1">
+				<!-- H2 header (larger, more weight) -->
+				<h2 class="text-3xl font-bold leading-tight text-slate-900">
 					{#if districtLabel}
 						{districtLabel}
-					{:else if inferredLocation?.state_code}
-						Showing statewide templates
+					{:else if locationLabel}
+						{locationLabel}
 					{:else}
-						Your location
+						Nationwide
 					{/if}
-				</p>
+				</h2>
+
+				<!-- Coordination count (when available) -->
+				{#if coordinationCount > 0}
+					<p class="mt-2 text-base font-medium text-slate-600">
+						{coordinationCount.toLocaleString()}
+						{coordinationCount === 1 ? 'sent this' : 'coordinating'}
+					</p>
+				{/if}
 			</div>
 		</div>
 
-		<!-- Privacy Indicator (Subtle) -->
-		<div class="mb-3 flex items-center gap-2 text-xs text-slate-500">
-			<svg class="h-3.5 w-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 20 20">
-				<path
-					fill-rule="evenodd"
-					d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-					clip-rule="evenodd"
-				/>
-			</svg>
-			<span>Data stays in browser</span>
+		<!-- Geographic breadcrumb navigation (drill-down) -->
+		{#if breadcrumbState || breadcrumbCounty || breadcrumbDistrict}
+			<nav class="mt-4 flex items-center gap-2 text-sm" aria-label="Location breadcrumb">
+				{#if breadcrumbState}
+					<button
+						onclick={() => handleBreadcrumbClick('state')}
+						class="rounded-md px-3 py-1.5 font-medium transition-colors {currentPrecision ===
+						'state'
+							? 'bg-blue-100 text-blue-900'
+							: 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}"
+						aria-current={currentPrecision === 'state' ? 'location' : undefined}
+					>
+						{breadcrumbState}
+					</button>
+				{/if}
+
+				{#if breadcrumbCounty && naturalPrecision !== 'state'}
+					<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 5l7 7-7 7"
+						/>
+					</svg>
+					<button
+						onclick={() => handleBreadcrumbClick('county')}
+						class="rounded-md px-3 py-1.5 font-medium transition-colors {currentPrecision ===
+						'county'
+							? 'bg-blue-100 text-blue-900'
+							: 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}"
+						aria-current={currentPrecision === 'county' ? 'location' : undefined}
+					>
+						{breadcrumbCounty}
+					</button>
+				{/if}
+
+				{#if breadcrumbDistrict && naturalPrecision === 'district'}
+					<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M9 5l7 7-7 7"
+						/>
+					</svg>
+					<button
+						onclick={() => handleBreadcrumbClick('district')}
+						class="rounded-md px-3 py-1.5 font-medium transition-colors {currentPrecision ===
+						'district'
+							? 'bg-blue-100 text-blue-900'
+							: 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'}"
+						aria-current={currentPrecision === 'district' ? 'location' : undefined}
+					>
+						{breadcrumbDistrict}
+					</button>
+				{/if}
+			</nav>
+		{/if}
+
+		<!-- Progressive affordance buttons (3-step funnel) -->
+		<div class="mt-3 space-y-2">
+			{#if !districtLabel && !locationLabel}
+				<!-- STEP 0: No location → Ask for GPS or address -->
+				<button
+					onclick={handleUpdateLocation}
+					disabled={isDetectingLocation}
+					class="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:bg-blue-800 disabled:opacity-50"
+				>
+					{isDetectingLocation ? 'Detecting...' : "See what's happening nearby →"}
+				</button>
+			{:else if !districtLabel && locationLabel}
+				<!-- STEP 1: Has state/county → Offer district precision -->
+				<div class="space-y-2">
+					<button
+						onclick={() => (showAddressModal = true)}
+						class="w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 active:bg-blue-800"
+					>
+						Find who represents you →
+					</button>
+					<!-- Show preview of next-level coordination -->
+					{#if nextLevelCount > 0}
+						<p class="text-center text-xs text-slate-500">
+							{#if currentPrecision === 'state'}
+								+{nextLevelCount} more coordinating in your county
+							{:else if currentPrecision === 'county'}
+								+{nextLevelCount} more coordinating in your district
+							{/if}
+						</p>
+					{:else if coordinationCount > 0}
+						<p class="text-center text-xs text-slate-500">
+							See congressional district coordination
+						</p>
+					{/if}
+				</div>
+			{:else if districtLabel}
+				<!-- STEP 2: Has district → Show filter toggle -->
+				<div class="flex items-center gap-2">
+					{#if coordinationCount > 0}
+						<button
+							onclick={handleToggleFilter}
+							class="flex-1 rounded-lg px-4 py-2 text-sm font-semibold transition-all {showLocalOnly
+								? 'bg-slate-900 text-white shadow-sm hover:bg-slate-800'
+								: 'bg-slate-100 text-slate-700 hover:bg-slate-200'}"
+						>
+							{showLocalOnly
+								? `Showing ${coordinationCount} coordinating`
+								: `See ${coordinationCount} coordinating`}
+						</button>
+					{/if}
+					<!-- Change address option -->
+					<button
+						onclick={() => (showAddressModal = true)}
+						class="rounded-lg px-3 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+					>
+						Change location
+					</button>
+				</div>
+			{/if}
 		</div>
 
-		<!-- Signal Breakdown (Progressive Disclosure - Technical Users Only) -->
+		<!-- Template preview card (next precision level) -->
+		{#if nextLevelCount > 0 && (currentPrecision === 'state' || currentPrecision === 'county')}
+			<div class="mt-4">
+				<TemplatePreviewCard
+					templateCount={nextLevelCount}
+					precisionLevel={currentPrecision === 'state' ? 'county' : 'district'}
+					onUnlock={currentPrecision === 'state'
+						? handleUpdateLocation
+						: () => (showAddressModal = true)}
+				/>
+			</div>
+		{/if}
+
+		<!-- Technical details (progressive disclosure) -->
 		{#if locationSignals.length > 0}
-			{@const uniqueSignals = locationSignals.filter(
-				(signal, index, self) =>
-					index === self.findIndex((s) => s.source === signal.source && s.signal_type === signal.signal_type)
-			)}
-			<details class="group/signals mb-3">
-				<summary
-					class="cursor-pointer list-none text-xs font-medium text-slate-500 transition-colors hover:text-slate-700"
-				>
+			<details class="group mt-4">
+				<summary class="cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-700">
 					<span class="inline-flex items-center gap-1.5">
 						<svg
-							class="h-3 w-3 transition-transform group-open/signals:rotate-180"
+							class="h-3 w-3 transition-transform group-open:rotate-180"
 							fill="none"
 							viewBox="0 0 24 24"
 							stroke="currentColor"
@@ -550,67 +1014,51 @@
 								d="M19 9l-7 7-7-7"
 							/>
 						</svg>
-						<span>How we determined this</span>
+						How we determined this location
 					</span>
 				</summary>
-
-				<div class="mt-2.5 space-y-1.5 pl-1">
-					{#each uniqueSignals as signal}
-						<div class="rounded-lg bg-slate-50 px-3 py-1.5 text-xs text-slate-600">
-							{#if signal.source === 'browser.timezone'}
-								Inferred from timezone
-							{:else if signal.source === 'ip.geolocation'}
-								IP address location
-							{:else if signal.source === 'census.browser'}
-								GPS coordinates
-							{:else if signal.source === 'nominatim.browser'}
-								GPS coordinates (Census API unavailable)
-							{:else if signal.source.includes('oauth')}
-								OAuth provider profile
-							{:else if signal.signal_type === 'verified'}
-								Identity verification
+				<div class="mt-3 space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+					<!-- Location source -->
+					<div class="text-xs">
+						<span class="font-medium text-slate-700">Source:</span>
+						<span class="ml-1 text-slate-600">
+							{#if locationSignals.some((s) => s.signal_type === 'verified')}
+								Verified address
+							{:else if locationSignals.some((s) => s.source === 'census.browser' || s.source === 'nominatim.browser')}
+								GPS (browser location)
+							{:else if locationSignals.some((s) => s.source === 'ip.geolocation')}
+								IP address
+							{:else if locationSignals.some((s) => s.source.includes('oauth'))}
+								OAuth profile
 							{:else}
-								Browser signal
+								Browser inference
 							{/if}
-						</div>
-					{/each}
+						</span>
+					</div>
+
+					<!-- Accuracy level -->
+					<div class="text-xs">
+						<span class="font-medium text-slate-700">Precision:</span>
+						<span class="ml-1 text-slate-600">
+							{#if districtLabel}
+								District-level (100% accurate)
+							{:else if inferredLocation?.city_name}
+								City-level (95% accurate)
+							{:else if inferredLocation?.state_code}
+								State-level (89% accurate)
+							{:else}
+								Nationwide
+							{/if}
+						</span>
+					</div>
+
+					<!-- Privacy note -->
+					<div class="border-t border-slate-200 pt-2 text-xs text-slate-500">
+						Your location data stays in your browser. Never sent to our servers.
+					</div>
 				</div>
 			</details>
 		{/if}
-
-		<!-- Actions -->
-		<div class="flex items-center gap-2">
-			{#if !districtLabel}
-				<!-- No district: prompt address confirmation -->
-				<button
-					onclick={() => (showAddressModal = true)}
-					class="flex-1 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:bg-blue-800"
-				>
-					Enter your address
-				</button>
-			{:else}
-				<!-- Has district: show filter toggle + change address option -->
-				{#if localTemplateCount > 0}
-					<button
-						onclick={handleToggleFilter}
-						class="flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 {showLocalOnly
-							? 'bg-slate-900 text-white shadow-sm hover:bg-slate-800 active:bg-slate-700'
-							: 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:bg-slate-300'}"
-					>
-						{showLocalOnly ? `Showing ${localTemplateCount} local` : 'Show local issues'}
-					</button>
-				{/if}
-				<button
-					onclick={() => (showAddressModal = true)}
-					class="rounded-lg px-3.5 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
-					title="Update your address"
-				>
-					<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-						<path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-					</svg>
-				</button>
-			{/if}
-		</div>
 	</div>
 {:else}
 	<!-- No location detected - ask for address -->

@@ -221,10 +221,7 @@
 		}
 
 		// Add to selected jurisdictions
-		selectedJurisdictions = [
-			...selectedJurisdictions,
-			newJurisdiction as TemplateJurisdiction
-		];
+		selectedJurisdictions = [...selectedJurisdictions, newJurisdiction as TemplateJurisdiction];
 
 		// Clear search
 		searchQuery = '';
@@ -280,7 +277,7 @@
 <div class="space-y-4">
 	<!-- Search input -->
 	<div class="relative">
-		<label for="jurisdiction-search" class="block text-sm font-medium text-slate-700 mb-2">
+		<label for="jurisdiction-search" class="mb-2 block text-sm font-medium text-slate-700">
 			<div class="flex items-center gap-2">
 				<Map class="h-4 w-4 text-slate-400" />
 				Target Jurisdictions
@@ -288,7 +285,7 @@
 		</label>
 
 		<div class="relative">
-			<Search class="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+			<Search class="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
 			<input
 				id="jurisdiction-search"
 				type="text"
@@ -296,30 +293,34 @@
 				oninput={handleSearchInput}
 				{placeholder}
 				{disabled}
-				class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
+				class="w-full rounded-md border border-slate-300 py-2 pl-10 pr-4 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 disabled:bg-slate-50 disabled:text-slate-500"
 			/>
 			{#if isSearching}
 				<div class="absolute right-3 top-1/2 -translate-y-1/2">
-					<div class="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+					<div
+						class="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"
+					></div>
 				</div>
 			{/if}
 		</div>
 
 		<!-- Autocomplete suggestions -->
 		{#if showSuggestions && suggestions.length > 0}
-			<div class="absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-md shadow-lg max-h-60 overflow-auto">
+			<div
+				class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border border-slate-200 bg-white shadow-lg"
+			>
 				{#each suggestions as suggestion}
 					<button
 						type="button"
 						onclick={() => selectSuggestion(suggestion)}
-						class="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center justify-between gap-2"
+						class="flex w-full items-center justify-between gap-2 px-4 py-2 text-left hover:bg-slate-50"
 					>
-						<div class="flex-1 min-w-0">
-							<div class="text-sm font-medium text-slate-900 truncate">
+						<div class="min-w-0 flex-1">
+							<div class="truncate text-sm font-medium text-slate-900">
 								{suggestion.displayName}
 							</div>
 						</div>
-						<span class="text-xs px-2 py-1 rounded-full {getTypeBadgeColor(suggestion.type)}">
+						<span class="rounded-full px-2 py-1 text-xs {getTypeBadgeColor(suggestion.type)}">
 							{suggestion.type}
 						</span>
 					</button>
@@ -337,9 +338,13 @@
 			<div class="flex flex-wrap gap-2">
 				{#each selectedJurisdictions as jurisdiction, index}
 					<div
-						class="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-full text-sm"
+						class="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm"
 					>
-						<span class="text-xs px-2 py-0.5 rounded-full {getTypeBadgeColor(jurisdiction.jurisdiction_type)}">
+						<span
+							class="rounded-full px-2 py-0.5 text-xs {getTypeBadgeColor(
+								jurisdiction.jurisdiction_type
+							)}"
+						>
 							{jurisdiction.jurisdiction_type}
 						</span>
 						<span class="text-slate-700">{getJurisdictionDisplayName(jurisdiction)}</span>
@@ -351,7 +356,7 @@
 						<button
 							type="button"
 							onclick={() => removeJurisdiction(index)}
-							class="text-slate-400 hover:text-red-600 transition-colors"
+							class="text-slate-400 transition-colors hover:text-red-600"
 							aria-label="Remove jurisdiction"
 						>
 							<X class="h-3 w-3" />
@@ -365,7 +370,8 @@
 	<!-- Helper text -->
 	<p class="text-xs text-slate-500">
 		{#if selectedJurisdictions.length === 0}
-			Search for congressional districts (e.g., "TX-18"), cities (e.g., "Austin"), or states (e.g., "Texas").
+			Search for congressional districts (e.g., "TX-18"), cities (e.g., "Austin"), or states (e.g.,
+			"Texas").
 		{:else if selectedJurisdictions.length >= maxSelections}
 			Maximum {maxSelections} jurisdictions selected.
 		{:else}

@@ -30,9 +30,10 @@ export interface Template {
 	status: string; // String field with default "draft" - was missing
 	is_public: boolean;
 
-	// Usage tracking (from Prisma Template model) - was missing
-	send_count: number; // Int with default 0
-	last_sent_at?: Date | string | null; // DateTime? field
+	// Usage tracking - AGGREGATE METRICS ONLY (privacy-preserving)
+	// Backend: verified_sends (Prisma field)
+	// Frontend: send_count (mapped from verified_sends for compatibility)
+	send_count: number; // Total verified sends (aggregate pool metric)
 
 	// Geographic scope (from Prisma Template model)
 	applicable_countries: string[]; // String[] with default []

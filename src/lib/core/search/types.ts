@@ -22,9 +22,7 @@ export interface TemplateWithEmbedding {
 	topic_embedding: number[] | null;
 	embedding_version: string;
 	jurisdictions: TemplateJurisdiction[];
-	send_count: number;
 	quality_score: number;
-	last_sent_at: string | null;
 	created_at: string;
 }
 

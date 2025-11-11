@@ -69,7 +69,7 @@
 <!-- Privacy promise -->
 <div class="mb-4 flex items-center justify-center gap-2 text-xs text-slate-500">
 	<svg class="h-3 w-3 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-		<circle cx="10" cy="10" r="8"/>
+		<circle cx="10" cy="10" r="8" />
 	</svg>
 	Address deleted after delivery
 </div>

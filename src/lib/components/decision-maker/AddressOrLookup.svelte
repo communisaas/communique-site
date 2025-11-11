@@ -22,8 +22,7 @@
 	} = $props();
 
 	// Decide which path based on template metadata
-	const requiresAddress =
-		template.deliveryMethod === 'cwc' || template.targetType === 'government';
+	const requiresAddress = template.deliveryMethod === 'cwc' || template.targetType === 'government';
 
 	function handleAddressComplete(event: CustomEvent<{ address: string }>) {
 		onComplete({ address: event.detail.address });

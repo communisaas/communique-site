@@ -16,7 +16,8 @@
 
 	import { createEventDispatcher, onMount } from 'svelte';
 	import { Turnstile } from '@marsidev/react-turnstile';
-	import { getThumbmark } from '@thumbmarkjs/thumbmarkjs';
+	// Dynamic import for browser-only library (avoid SSR issues)
+	// import { getThumbmark } from '@thumbmarkjs/thumbmarkjs';
 
 	interface AddressConfirmationProps {
 		isOpen?: boolean;
@@ -63,9 +64,12 @@
 	// Generate device fingerprint on mount
 	onMount(async () => {
 		try {
+			// Dynamic import to avoid SSR issues with browser-only library
+			const { getThumbmark } = await import('@thumbmarkjs/thumbmarkjs');
 			const fingerprint = await getThumbmark();
 			// getThumbmark() returns an object, convert to string
-			deviceFingerprint = typeof fingerprint === 'string' ? fingerprint : JSON.stringify(fingerprint);
+			deviceFingerprint =
+				typeof fingerprint === 'string' ? fingerprint : JSON.stringify(fingerprint);
 			console.log('[Security] Device fingerprint generated:', deviceFingerprint.substring(0, 16));
 		} catch (err) {
 			console.error('[Security] Failed to generate fingerprint:', err);
@@ -252,18 +256,23 @@
 	<div
 		class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm"
 		onclick={handleClose}
+		onkeydown={(e) => e.key === 'Escape' && handleClose()}
+		role="button"
+		tabindex="0"
 	>
 		<div
-			class="max-w-md w-full rounded-xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5"
+			class="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl ring-1 ring-slate-900/5"
 			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
 			onmousemove={handleMouseMove}
+			role="dialog"
+			aria-modal="true"
+			tabindex="-1"
 		>
 			<!-- Header -->
 			<div class="mb-5 flex items-start justify-between">
 				<div>
-					<h2 class="text-lg font-semibold tracking-tight text-slate-900">
-						Enter your address
-					</h2>
+					<h2 class="text-lg font-semibold tracking-tight text-slate-900">Enter your address</h2>
 					<p class="mt-1 text-sm text-slate-600">
 						We'll find your representatives and local issues
 					</p>
@@ -291,7 +300,7 @@
 					type="text"
 					name="website"
 					bind:value={honeypot}
-					class="absolute opacity-0 pointer-events-none"
+					class="pointer-events-none absolute opacity-0"
 					tabindex="-1"
 					autocomplete="off"
 					aria-hidden="true"
@@ -299,7 +308,7 @@
 
 				<!-- Street Address -->
 				<div>
-					<label for="street" class="block text-sm font-medium text-slate-700 mb-1.5">
+					<label for="street" class="mb-1.5 block text-sm font-medium text-slate-700">
 						Street address
 					</label>
 					<input
@@ -314,9 +323,7 @@
 
 				<!-- City -->
 				<div>
-					<label for="city" class="block text-sm font-medium text-slate-700 mb-1.5">
-						City
-					</label>
+					<label for="city" class="mb-1.5 block text-sm font-medium text-slate-700"> City </label>
 					<input
 						id="city"
 						type="text"
@@ -330,7 +337,7 @@
 				<!-- State & ZIP (2-column grid) -->
 				<div class="grid grid-cols-2 gap-3">
 					<div>
-						<label for="state" class="block text-sm font-medium text-slate-700 mb-1.5">
+						<label for="state" class="mb-1.5 block text-sm font-medium text-slate-700">
 							State
 						</label>
 						<select
@@ -346,7 +353,7 @@
 					</div>
 
 					<div>
-						<label for="zipCode" class="block text-sm font-medium text-slate-700 mb-1.5">
+						<label for="zipCode" class="mb-1.5 block text-sm font-medium text-slate-700">
 							ZIP code
 						</label>
 						<input
@@ -371,7 +378,7 @@
 				<!-- Privacy Note -->
 				<div class="flex items-start gap-2 rounded-lg bg-blue-50 px-3.5 py-2.5">
 					<svg
-						class="h-4 w-4 flex-shrink-0 text-blue-600 mt-0.5"
+						class="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600"
 						fill="currentColor"
 						viewBox="0 0 20 20"
 					>
@@ -421,11 +428,7 @@
 					>
 						{#if isSubmitting}
 							<span class="inline-flex items-center gap-2">
-								<svg
-									class="h-4 w-4 animate-spin"
-									fill="none"
-									viewBox="0 0 24 24"
-								>
+								<svg class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
 									<circle
 										class="opacity-25"
 										cx="12"

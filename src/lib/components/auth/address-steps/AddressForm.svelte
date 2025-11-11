@@ -26,12 +26,8 @@
 
 <div class="mb-6 text-center">
 	<h2 class="mb-2 text-2xl font-bold text-slate-900">Find who represents you</h2>
-	<p class="text-sm text-slate-600">
-		Your address routes your message to the right officials.
-	</p>
-	<p class="mt-1 text-xs font-medium text-slate-500">
-		Used once. Deleted immediately.
-	</p>
+	<p class="text-sm text-slate-600">Your address routes your message to the right officials.</p>
+	<p class="mt-1 text-xs font-medium text-slate-500">Used once. Deleted immediately.</p>
 </div>
 
 <!-- Template Context -->
@@ -129,6 +125,7 @@
 		Why your address? →
 	</summary>
 	<p class="mt-3 text-xs leading-relaxed text-slate-600">
-		Officials only respond to constituents in their jurisdiction. Your address proves you're affected by their decisions. We use it once for routing, then permanently delete it.
+		Officials only respond to constituents in their jurisdiction. Your address proves you're
+		affected by their decisions. We use it once for routing, then permanently delete it.
 	</p>
 </details>

@@ -15,22 +15,11 @@ model User {
   avatar                    String?
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
-  
-  // === ADDRESS DISPLAY FIELDS (NO PII) ===
-  // NOTE: Addresses NEVER stored anywhere. ZK proof verifies district membership without revealing address.
-  // These fields populated from user input for display purposes only, NOT from ZK proof.
-  city                      String?
-  congressional_district    String?
-  state                     String?
-  zip                       String?
-  
-  // === MERGED COORDINATES DATA (from user_coordinates table) ===
-  latitude                  Float?                     // From user_coordinates
-  longitude                 Float?                     // From user_coordinates
-  political_embedding       Json?                      @map("political_embedding") // From user_coordinates
-  community_sheaves         Json?                      @map("community_sheaves") // From user_coordinates
-  embedding_version         String?                    @default("v1") @map("embedding_version") // From user_coordinates
-  coordinates_updated_at    DateTime?                  @map("coordinates_updated_at") // From user_coordinates.last_calculated
+
+  // === PRIVACY-PRESERVING VERIFICATION ===
+  // NO PII stored per CYPHERPUNK-ARCHITECTURE.md
+  // Address verified once via TEE, cached as session credential, then destroyed
+  // District stored as hash only (not plaintext)
   
   // === VERIFICATION FIELDS ===
   is_verified               Boolean                    @default(false) @map("is_verified")
@@ -64,7 +53,21 @@ model User {
   challenge_score           Int?                       @map("challenge_score")
   civic_score               Int?                       @map("civic_score")
   discourse_score           Int?                       @map("discourse_score")
-  
+
+  // === PHASE 1 REPUTATION FIELDS (Concrete Signals Only) ===
+  templates_contributed     Int                        @default(0) @map("templates_contributed") // Count
+  template_adoption_rate    Float                      @default(0.0) @map("template_adoption_rate") // % of templates others used
+  peer_endorsements         Int                        @default(0) @map("peer_endorsements") // On-chain attestations
+  active_months             Int                        @default(0) @map("active_months") // Engagement velocity
+
+  // === PHASE 2 FIELDS (default 0, extend later without rewrites) ===
+  challenge_wins            Int                        @default(0) @map("challenge_wins")
+  challenge_losses          Int                        @default(0) @map("challenge_losses")
+
+  // === PHASE 2+ FIELDS (CMS dependency) ===
+  response_correlation      Float?                     @map("response_correlation") // % of messages with office responses
+  citation_count            Int                        @default(0) @map("citation_count") // Congressional citations
+
   // === PROFILE FIELDS ===
   role                      String?
   organization              String?
@@ -88,12 +91,24 @@ model User {
   // === CONSOLIDATED AUDIT SYSTEM ===
   audit_logs                AuditLog[]                 // Unified audit trail (replaces ReputationLog + CertificationLog)
   civic_actions             CivicAction[]              // Blockchain-only actions
-  
+
   // VOTER Protocol challenge relations
   challenger_challenges     Challenge[]            @relation("ChallengerChallenges")
-  defender_challenges       Challenge[]            @relation("DefenderChallenges") 
+  defender_challenges       Challenge[]            @relation("DefenderChallenges")
   won_challenges            Challenge[]            @relation("WonChallenges")
   challenge_stakes          ChallengeStake[]
+
+  // Encrypted identity blob (Phase 1: Postgres, Phase 2: IPFS)
+  encrypted_delivery_data   EncryptedDeliveryData?
+
+  // === DOMAIN EXPERTISE (Universal Credibility System) ===
+  // Flexible, agent-interpreted credentials for any decision-making context
+  // Works for Congress, HOAs, universities, corporations, nonprofits
+  expertise                 UserExpertise[]
+
+  // === SHADOW ATLAS REGISTRATION ===
+  // Zero-knowledge proof generation data (NO PII, only cryptographic metadata)
+  shadow_atlas_registration ShadowAtlasRegistration?
 
   @@map("user")
 }
@@ -140,10 +155,11 @@ model Template {
   campaign_id               String?
   status                    String                     @default("draft")
   is_public                 Boolean                    @default(false)
-  
-  // Usage tracking
-  send_count                Int                        @default(0) @map("send_count")
-  last_sent_at              DateTime?                  @map("last_sent_at")
+
+  // Aggregate community metrics (NO individual user tracking)
+  verified_sends            Int                        @default(0) @map("verified_sends") // Total verified messages sent
+  unique_districts          Int                        @default(0) @map("unique_districts") // Unique districts reached
+  avg_reputation            Float?                     @map("avg_reputation") // Average sender reputation
   
   // Geographic scope (DEPRECATED - replaced by TemplateJurisdiction table)
   // These fields will be removed after data migration completes
@@ -162,12 +178,24 @@ model Template {
   country_code              String?                    @default("US") @map("country_code")
   reviewed_at               DateTime?                  @map("reviewed_at")
   reviewed_by               String?                    @map("reviewed_by")
-  
-  // Quality metrics
-  quality_score             Int                        @default(50) @map("quality_score") // 0-100
-  grammar_score             Int?                       @map("grammar_score")
-  clarity_score             Int?                       @map("clarity_score")
-  completeness_score        Int?                       @map("completeness_score")
+
+  // === PHASE 1 REPUTATION FIELDS (Congressional Dashboard Signals) ===
+  // MODERATION SIGNALS (safety only, NOT quality)
+  flagged_by_moderation     Boolean                    @default(false) @map("flagged_by_moderation") // OpenAI API flagged
+  consensus_approved        Boolean                    @default(false) @map("consensus_approved") // Multi-agent approved (binary)
+
+  // CONGRESSIONAL DASHBOARD SIGNALS (McDonald 2018 research)
+  policy_areas              String[]                   @default([]) @map("policy_areas") // ["healthcare", "climate"]
+  related_bills             String[]                   @default([]) @map("related_bills") // ["H.R. 1234", "S. 567"]
+
+  // Aggregate pools (expertise distribution)
+  expertise_breakdown       Json?                      @map("expertise_breakdown") // { professional: 15, industry: 8, community: 12 }
+  verification_breakdown    Json?                      @map("verification_breakdown") // { nfc_passport: 10, government_id: 5 }
+  reputation_distribution   Json?                      @map("reputation_distribution") // { verified: 8, endorsed: 5, cited: 2 }
+
+  // === PHASE 2+ FIELDS (CMS dependency) ===
+  office_response_rate      Float?                     @map("office_response_rate") // % of offices that responded
+  citation_rate             Float?                     @map("citation_rate") // % of offices that cited content
   
   // === MISSING VERIFICATION FIELDS (from core.prisma) ===
   severity_level            Int?                       @map("severity_level") // 1-10 scale for content severity
@@ -248,12 +276,56 @@ model Template {
 
   // NEW: Structured jurisdictions (replaces string arrays)
   jurisdictions             TemplateJurisdiction[]
-  
+
+  // NEW: Verifiable messages (pseudonymous, NO user linkage)
+  messages                  Message[]
+
   @@index([verification_status])
-  @@index([quality_score])
   @@index([country_code])
   @@index([userId])
   @@map("template")
+}
+
+// ============= VERIFIABLE MESSAGE MODEL =============
+// Per CYPHERPUNK-ARCHITECTURE.md: Messages are PUBLIC, pseudonymous, and verifiable
+// NO user_id linkage - can't trace who sent individual messages
+// Congressional offices read PUBLIC content + verification proof
+
+model Message {
+  id                        String    @id @default(cuid())
+  template_id               String    @map("template_id")
+
+  // PUBLIC message content (plaintext, readable by offices + moderation)
+  content                   String    // Actual message body sent
+  subject                   String?   // Email subject (if applicable)
+
+  // CRYPTOGRAPHIC VERIFICATION (stored for later verification)
+  verification_proof        String    @map("verification_proof") // ZK proof of district membership
+  district_hash             String    @map("district_hash")      // SHA-256(district) - NOT plaintext
+  reputation_score          Int       @default(0) @map("reputation_score") // Sender's reputation at send time
+
+  // DELIVERY TRACKING (congressional office engagement)
+  sent_at                   DateTime  @default(now()) @map("sent_at")
+  delivered_at              DateTime? @map("delivered_at")
+  office_read               Boolean   @default(false) @map("office_read")
+  office_responded          Boolean   @default(false) @map("office_responded")
+  office_response_time      Int?      @map("office_response_time") // Minutes from delivery to response
+
+  // DELIVERY METADATA
+  delivery_method           String    @map("delivery_method") // 'cwc' | 'email'
+  cwc_submission_id         String?   @map("cwc_submission_id")
+  delivery_status           String    @default("pending") @map("delivery_status") // 'pending', 'delivered', 'failed'
+  error_message             String?   @map("error_message")
+
+  // Relation to template (aggregates community metrics)
+  template                  Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id])
+  @@index([district_hash])
+  @@index([sent_at])
+  @@index([delivery_status])
+  @@index([office_read])
+  @@map("message")
 }
 
 // NEW: Structured jurisdictions for templates (replaces string arrays)
@@ -995,45 +1067,195 @@ model CWCJob {
   @@index([createdAt])
 }
 
-// ============= LOCATION CACHING (CICERO API BUDGET PROTECTION) =============
-// Prevents duplicate API calls and budget drain attacks
+// ============= ENCRYPTED IDENTITY BLOBS (PHASE 1) =============
+// Per PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md
+// Phase 1: Postgres storage (platform cannot decrypt)
+// Phase 2: IPFS + on-chain pointers (portable credentials)
 
-model LocationCache {
-  id                          String   @id @default(cuid())
-  address_hash                String   @unique @map("address_hash") // SHA-256 of normalized coordinates
+model EncryptedDeliveryData {
+  id                String   @id @default(cuid())
+  user_id           String   @unique @map("user_id")
 
-  // Cicero API response data
-  city_council_district       String?  @map("city_council_district")
-  city_council_member_name    String?  @map("city_council_member_name")
-  city_council_member_email   String?  @map("city_council_member_email")
-  city_council_member_phone   String?  @map("city_council_member_phone")
+  // XChaCha20-Poly1305 encrypted blob
+  ciphertext        String   @map("ciphertext")         // Base64-encoded encrypted data
+  nonce             String   @map("nonce")              // Base64-encoded nonce
+  ephemeral_public_key String @map("ephemeral_public_key") // Base64-encoded ephemeral key
 
-  state_house_district        String?  @map("state_house_district")
-  state_senate_district       String?  @map("state_senate_district")
-  congressional_district      String?  @map("congressional_district")
+  // TEE key used for encryption
+  tee_key_id        String   @map("tee_key_id")         // Which TEE public key was used
 
-  // Cache metadata
-  cached_at                   DateTime @default(now()) @map("cached_at")
-  expires_at                  DateTime @map("expires_at") // 2-year expiration (election cycle)
-  last_verified               DateTime @default(now()) @map("last_verified")
-  hit_count                   Int      @default(0) @map("hit_count")
+  // Metadata
+  encryption_version String  @default("1.0.0") @map("encryption_version")
+  created_at        DateTime @default(now()) @map("created_at")
+  updated_at        DateTime @updatedAt @map("updated_at")
+  last_used_at      DateTime? @map("last_used_at")      // When blob was last decrypted in TEE
 
-  // Cost tracking
-  api_cost_cents              Int      @default(4) @map("api_cost_cents") // $0.04 = 4 cents
+  // User relation
+  user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  @@index([expires_at])
-  @@index([cached_at])
-  @@map("location_cache")
+  @@index([user_id])
+  @@index([created_at])
+  @@index([tee_key_id])
+  @@map("encrypted_delivery_data")
 }
 
-model CiceroBudget {
-  id            String   @id @default(cuid())
-  date          DateTime @default(now())
-  requests      Int      @default(0)
-  cost_cents    Int      @default(0) @map("cost_cents")
-  cache_hits    Int      @default(0) @map("cache_hits")
-  cache_misses  Int      @default(0) @map("cache_misses")
+// ============= UNIVERSAL CREDIBILITY SYSTEM =============
+// Flexible, agent-interpreted domain expertise for ANY decision-making context
+// Works for: Congress, HOAs, universities, corporations, nonprofits, etc.
+// Per conversation: "without overengineering this" - same schema works everywhere
 
-  @@index([date])
-  @@map("cicero_budget")
+model UserExpertise {
+  id                     String   @id @default(cuid())
+  user_id                String   @map("user_id")
+
+  // Domain context (flexible, not rigid enum)
+  domain                 String   // "healthcare" | "hoa_landscaping" | "university_accessibility" | "corporate_supply_chain" | etc.
+  organization_type      String?  @map("organization_type") // "congress" | "hoa" | "university" | "corporate" | "nonprofit"
+
+  // === FREE-TEXT CREDENTIALS (agent parses/verifies) ===
+  // No rigid schemas - agents interpret based on domain
+  professional_role      String?  @map("professional_role")     // "Registered Nurse" | "Certified Arborist" | "APICS Supply Chain Manager"
+  experience_description String?  @map("experience_description") // Free-text backstory, context, relevant experience
+  credentials_claim      String?  @map("credentials_claim")      // "CA RN License #482901" | "ISA Cert #WE-8901A" | "GPC certification"
+
+  // === AGENT VERIFICATION RESULTS ===
+  // Agents check state APIs, professional registries, peer networks
+  verification_status    String   @default("unverified") @map("verification_status") // "unverified" | "agent_verified" | "state_api_verified" | "peer_endorsed"
+  verification_evidence  Json?    @map("verification_evidence")  // What agent found (API response, registry data, etc.)
+  verified_at            DateTime? @map("verified_at")
+  verified_by_agent      String?  @map("verified_by_agent")      // Which agent verified (openai | gemini | claude | state_api)
+
+  // === CREDIBILITY MULTIPLIERS ===
+  // Used for filtering/weighting in decision-maker UIs
+  credential_multiplier  Float    @default(1.0) @map("credential_multiplier") // 1.0 = unverified, 1.5 = peer-endorsed, 2.0 = state-verified
+
+  // === CONCRETE USAGE SIGNALS ===
+  // McDonald 2018 research: Staffers value concrete behaviors, not abstract scores
+  issues_tracked         String[] @default([]) @map("issues_tracked")         // Bill IDs, proposal numbers, resolution codes
+  templates_created      Int      @default(0) @map("templates_created")
+  messages_sent          Int      @default(0) @map("messages_sent")
+  peer_endorsements      Int      @default(0) @map("peer_endorsements")       // Other verified experts vouch for this person
+  active_months          Int      @default(0) @map("active_months")
+
+  // === METADATA ===
+  is_active              Boolean  @default(true) @map("is_active")
+  created_at             DateTime @default(now()) @map("created_at")
+  updated_at             DateTime @updatedAt @map("updated_at")
+  last_used_at           DateTime? @map("last_used_at")
+
+  // Relation
+  user                   User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  // Indexes for efficient querying
+  @@unique([user_id, domain]) // One expertise record per user per domain
+  @@index([user_id])
+  @@index([domain])
+  @@index([verification_status])
+  @@index([credential_multiplier])
+  @@index([organization_type])
+  @@map("user_expertise")
+}
+
+// ============= SHADOW ATLAS INTEGRATION (Phase 1: Zero-Knowledge Proofs) =============
+// Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md
+// Stores Merkle path and cryptographic metadata for browser-based proof generation
+// NO PII stored - address encrypted separately, only proof generation data cached
+
+model ShadowAtlasRegistration {
+  id                        String   @id @default(cuid())
+  user_id                   String   @unique @map("user_id")
+
+  // === CRYPTOGRAPHIC IDENTITY ===
+  // Identity commitment from self.xyz or Didit.me (Poseidon hash)
+  identity_commitment       String   @map("identity_commitment")
+
+  // === DISTRICT MERKLE TREE METADATA ===
+  congressional_district    String   @map("congressional_district") // "CA-12", "NY-15", etc.
+  leaf_index                Int      @map("leaf_index")             // Position in district tree (0-4095)
+  merkle_root               String   @map("merkle_root")            // Current root for verification
+
+  // Merkle path for proof generation (12 sibling hashes for 4096-leaf tree)
+  merkle_path               Json     @map("merkle_path")            // Array of 12 hex strings
+
+  // === VERIFICATION METADATA ===
+  verification_method       String   @map("verification_method")    // 'self.xyz' | 'didit'
+  verification_id           String   @map("verification_id")        // External verification ID
+  verification_timestamp    DateTime @map("verification_timestamp") // When identity was verified
+
+  // === REGISTRATION STATUS ===
+  registration_status       String   @default("pending") @map("registration_status") // 'pending' | 'registered' | 'expired'
+  registered_at             DateTime? @map("registered_at")        // When Shadow Atlas registration completed
+  expires_at                DateTime @map("expires_at")            // 6 months from registration
+
+  // === PROOF GENERATION CACHE ===
+  // Cached for performance (avoid re-fetching from voter-protocol)
+  last_proof_generated_at   DateTime? @map("last_proof_generated_at")
+  total_proofs_generated    Int      @default(0) @map("total_proofs_generated")
+
+  // === METADATA ===
+  created_at                DateTime @default(now()) @map("created_at")
+  updated_at                DateTime @updatedAt @map("updated_at")
+
+  // Relation
+  user                      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([congressional_district])
+  @@index([registration_status])
+  @@index([expires_at])
+  @@map("shadow_atlas_registration")
+}
+
+// ============= ZK PROOF SUBMISSIONS (Phase 1: Encrypted Delivery) =============
+// Tracks ZK proof submissions for congressional delivery
+// Links proof generation → encrypted blob → delivery → on-chain verification
+
+model Submission {
+  id                        String   @id @default(cuid())
+  user_id                   String   @map("user_id")
+  template_id               String   @map("template_id")
+
+  // === ZERO-KNOWLEDGE PROOF DATA ===
+  // Browser-generated Halo2 proof (2-5s in TEE)
+  proof_hex                 String   @map("proof_hex")              // Serialized proof (hex string)
+  public_inputs             Json     @map("public_inputs")          // [merkle_root, nullifier, action_id]
+  nullifier                 String   @map("nullifier")              // Unique per (identity, action) - prevents double-spend
+
+  // === WITNESS ENCRYPTION (XChaCha20-Poly1305) ===
+  // Address encrypted to TEE public key, decrypted only in enclave
+  encrypted_witness         String   @map("encrypted_witness")      // Base64-encoded ciphertext
+  witness_nonce             String   @map("witness_nonce")          // Base64-encoded nonce
+  ephemeral_public_key      String   @map("ephemeral_public_key")   // Base64-encoded ephemeral key
+  tee_key_id                String   @map("tee_key_id")             // Which TEE key was used
+
+  // === CONGRESSIONAL DELIVERY ===
+  // CWC API submission (encrypted delivery through TEE)
+  cwc_submission_id         String?  @map("cwc_submission_id")      // CWC API submission ID
+  delivery_status           String   @default("pending") @map("delivery_status") // 'pending' | 'delivered' | 'failed'
+  delivery_error            String?  @map("delivery_error")         // Error message if failed
+  delivered_at              DateTime? @map("delivered_at")
+
+  // === BLOCKCHAIN VERIFICATION ===
+  // On-chain proof verification (Scroll zkEVM)
+  verification_tx_hash      String?  @map("verification_tx_hash")   // Scroll transaction hash
+  verification_status       String   @default("pending") @map("verification_status") // 'pending' | 'verified' | 'rejected'
+  verified_at               DateTime? @map("verified_at")
+  block_number              Int?     @map("block_number")
+
+  // === REPUTATION TRACKING ===
+  // On-chain ERC-8004 reputation update (Phase 1: no token rewards)
+  reputation_delta          Int?     @map("reputation_delta")       // Reputation change (+5, +10, etc.)
+  reputation_tx_hash        String?  @map("reputation_tx_hash")     // Reputation update transaction
+
+  // === METADATA ===
+  created_at                DateTime @default(now()) @map("created_at")
+  updated_at                DateTime @updatedAt @map("updated_at")
+
+  @@index([user_id])
+  @@index([template_id])
+  @@index([nullifier])
+  @@index([delivery_status])
+  @@index([verification_status])
+  @@index([created_at])
+  @@map("submission")
 }

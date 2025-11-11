@@ -326,7 +326,10 @@ export function exceedsMaxLength(text: string): boolean {
  * @param maxTokens - Maximum tokens (default: 2048)
  * @returns Truncated text
  */
-export function truncateText(text: string, maxTokens: number = EMBEDDING_CONFIG.maxInputTokens): string {
+export function truncateText(
+	text: string,
+	maxTokens: number = EMBEDDING_CONFIG.maxInputTokens
+): string {
 	const estimatedTokens = estimateTokens(text);
 
 	if (estimatedTokens <= maxTokens) {

@@ -21,6 +21,7 @@ export const FEATURES = {
 
 	// Beta Features (working but not polished)
 	LEGISLATIVE_CHANNELS: FeatureStatus.BETA, // Database schema exists, no UI
+	ZK_PROOF_GENERATION: FeatureStatus.BETA, // Browser-native Halo2 proving (requires Shadow Atlas)
 
 	// === PHASE 2: ROADMAP (12-18 months) ===
 	// Removed from codebase - will be implemented in voter-protocol repo
@@ -50,15 +51,20 @@ export type FeatureName = keyof typeof FEATURES;
  */
 export function isFeatureEnabled(feature: FeatureName): boolean {
 	const status = FEATURES[feature];
-	const isProduction = process.env.NODE_ENV === 'production';
+	// Browser-safe environment check - use import.meta.env for Vite
+	const isProduction = import.meta.env.MODE === 'production';
 
 	if (status === FeatureStatus.ON) {
 		return true;
 	}
 
 	if (status === FeatureStatus.BETA) {
+		// Check for beta flag in browser-safe way
 		const betaEnabled =
-			process.env.ENABLE_BETA === 'true' || process.env.PUBLIC_ENABLE_BETA === 'true';
+			import.meta.env.VITE_ENABLE_BETA === 'true' ||
+			(typeof window !== 'undefined' &&
+				typeof import.meta.env.PUBLIC_ENABLE_BETA !== 'undefined' &&
+				import.meta.env.PUBLIC_ENABLE_BETA === 'true');
 		if (isProduction && betaEnabled) {
 			console.warn(
 				`[Feature Flags] Beta feature '${feature}' enabled in production - use with caution`

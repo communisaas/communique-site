@@ -46,13 +46,13 @@ function parseLocationString(location: string): {
 		'San Francisco': { city: 'San Francisco', state: 'CA' },
 		'Los Angeles': { city: 'Los Angeles', state: 'CA' },
 		'New York': { city: 'New York', state: 'NY' },
-		'Chicago': { city: 'Chicago', state: 'IL' },
-		'Houston': { city: 'Houston', state: 'TX' },
-		'Austin': { city: 'Austin', state: 'TX' },
-		'Seattle': { city: 'Seattle', state: 'WA' },
-		'Boston': { city: 'Boston', state: 'MA' },
-		'Denver': { city: 'Denver', state: 'CO' },
-		'Portland': { city: 'Portland', state: 'OR' }
+		Chicago: { city: 'Chicago', state: 'IL' },
+		Houston: { city: 'Houston', state: 'TX' },
+		Austin: { city: 'Austin', state: 'TX' },
+		Seattle: { city: 'Seattle', state: 'WA' },
+		Boston: { city: 'Boston', state: 'MA' },
+		Denver: { city: 'Denver', state: 'CO' },
+		Portland: { city: 'Portland', state: 'OR' }
 	};
 
 	// Check known cities
@@ -78,7 +78,8 @@ function parseLocationString(location: string): {
 	// County pattern: "Harris County, TX", "Travis County, Texas"
 	const countyMatch = trimmed.match(/^([\w\s]+)\s+County,\s+([A-Z]{2}|[A-Za-z\s]+)$/);
 	if (countyMatch) {
-		const stateCode = countyMatch[2].length === 2 ? countyMatch[2] : stateNameToCode(countyMatch[2]);
+		const stateCode =
+			countyMatch[2].length === 2 ? countyMatch[2] : stateNameToCode(countyMatch[2]);
 		return {
 			jurisdiction_type: 'county',
 			county_name: countyMatch[1].trim(),
@@ -218,7 +219,9 @@ async function migrateTemplateLocations(dryRun = false): Promise<MigrationStats>
 
 		// Skip if already migrated
 		if (template.jurisdictions.length > 0) {
-			console.log(`⏭️  Skipping ${template.slug} - already has ${template.jurisdictions.length} jurisdictions`);
+			console.log(
+				`⏭️  Skipping ${template.slug} - already has ${template.jurisdictions.length} jurisdictions`
+			);
 			stats.skipped++;
 			continue;
 		}
