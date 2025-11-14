@@ -460,6 +460,16 @@ export class OAuthCallbackHandler {
 			}
 		}
 
+		// If this is already an HttpError with a specific status (like 400 validation errors),
+		// preserve the original error instead of wrapping it in a 500
+		if (err && typeof err === 'object' && 'status' in err && 'body' in err) {
+			const status = err.status as number;
+			// Re-throw 4xx client errors (validation, auth failures, etc.) as-is
+			if (status >= 400 && status < 500) {
+				throw err;
+			}
+		}
+
 		// Log detailed error information
 		console.error(`${provider.toUpperCase()} OAuth error:`, {
 			error: err,

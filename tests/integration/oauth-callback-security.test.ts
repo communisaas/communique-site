@@ -112,29 +112,38 @@ describe('OAuth Callback Security Tests', () => {
 	describe('CSRF Protection via State Parameter', () => {
 		it('should reject requests with missing state parameter', async () => {
 			const url = new URL('http://localhost:5173/auth/google/callback?code=auth_code_123');
-			
+
 			vi.mocked(mockCookies.get).mockImplementation((key: string) => {
 				if (key === 'oauth_state') return 'stored_state_123';
 				return undefined;
 			});
 
-			await expect(
-				handler.handleCallback(mockConfig, url, mockCookies)
-			).rejects.toThrow('Missing required OAuth parameters');
+			try {
+				await handler.handleCallback(mockConfig, url, mockCookies);
+				expect.fail('Expected error to be thrown');
+			} catch (err: any) {
+				// SvelteKit error() creates HttpError with status and body, but no message property
+				expect(err.status).toBe(400);
+				expect(err.body?.message).toContain('Missing required OAuth parameters');
+			}
 		});
 
 		it('should reject requests with mismatched state parameter', async () => {
 			const url = new URL('http://localhost:5173/auth/google/callback?code=auth_code_123&state=different_state');
-			
+
 			vi.mocked(mockCookies.get).mockImplementation((key: string) => {
 				if (key === 'oauth_state') return 'stored_state_123';
 				if (key === 'oauth_return_to') return '/profile';
 				return undefined;
 			});
 
-			await expect(
-				handler.handleCallback(mockConfig, url, mockCookies)
-			).rejects.toThrow('Invalid OAuth state');
+			try {
+				await handler.handleCallback(mockConfig, url, mockCookies);
+				expect.fail('Expected error to be thrown');
+			} catch (err: any) {
+				expect(err.status).toBe(400);
+				expect(err.body?.message).toContain('Invalid OAuth state');
+			}
 		});
 
 		it('should accept requests with valid matching state', async () => {
@@ -185,7 +194,7 @@ describe('OAuth Callback Security Tests', () => {
 	describe('PKCE (Proof Key for Code Exchange) Security', () => {
 		it('should require code verifier when PKCE is enabled', async () => {
 			const url = new URL('http://localhost:5173/auth/google/callback?code=auth_code_123&state=valid_state_123');
-			
+
 			vi.mocked(mockCookies.get).mockImplementation((key: string) => {
 				if (key === 'oauth_state') return 'valid_state_123';
 				if (key === 'oauth_return_to') return '/profile';
@@ -193,9 +202,13 @@ describe('OAuth Callback Security Tests', () => {
 				return undefined;
 			});
 
-			await expect(
-				handler.handleCallback(mockConfig, url, mockCookies)
-			).rejects.toThrow('Missing code verifier');
+			try {
+				await handler.handleCallback(mockConfig, url, mockCookies);
+				expect.fail('Expected error to be thrown');
+			} catch (err: any) {
+				expect(err.status).toBe(400);
+				expect(err.body?.message).toContain('Missing code verifier');
+			}
 		});
 
 		it('should clean up code verifier cookie after use', async () => {
@@ -346,7 +359,7 @@ describe('OAuth Callback Security Tests', () => {
 		it('should generate unique session IDs', async () => {
 			const url1 = new URL('http://localhost:5173/auth/google/callback?code=code1&state=state1');
 			const url2 = new URL('http://localhost:5173/auth/google/callback?code=code2&state=state2');
-			
+
 			// Mock different users
 			mockDb.user.create
 				.mockResolvedValueOnce({ id: 'user_1', email: 'user1@example.com', name: 'User 1', avatar: null, createdAt: new Date(), updatedAt: new Date() })
@@ -360,8 +373,12 @@ describe('OAuth Callback Security Tests', () => {
 					return undefined;
 				});
 
-			await handler.handleCallback(mockConfig, url1, mockCookies);
-			
+			try {
+				await handler.handleCallback(mockConfig, url1, mockCookies);
+			} catch (redirectResponse: any) {
+				expect(redirectResponse.status).toBe(302);
+			}
+
 			vi.mocked(mockCookies.get)
 				.mockImplementation((key: string) => {
 					if (key === 'oauth_state') return 'state2';
@@ -370,13 +387,17 @@ describe('OAuth Callback Security Tests', () => {
 					return undefined;
 				});
 
-			await handler.handleCallback(mockConfig, url2, mockCookies);
-			
+			try {
+				await handler.handleCallback(mockConfig, url2, mockCookies);
+			} catch (redirectResponse: any) {
+				expect(redirectResponse.status).toBe(302);
+			}
+
 			// Verify different session IDs were set
 			const sessionCalls = vi.mocked(mockCookies.set).mock.calls.filter(
 				call => call[0] === 'session'
 			);
-			
+
 			expect(sessionCalls).toHaveLength(2);
 			expect(sessionCalls[0][1]).toBe('session_123'); // Both would be same in this mock, but in reality would differ
 		});
@@ -394,7 +415,7 @@ describe('OAuth Callback Security Tests', () => {
 			});
 
 			const url = new URL('http://localhost:5173/auth/google/callback?code=auth_code_123&state=valid_state_123');
-			
+
 			vi.mocked(mockCookies.get).mockImplementation((key: string) => {
 				if (key === 'oauth_state') return 'valid_state_123';
 				if (key === 'oauth_return_to') return '/profile';
@@ -402,8 +423,12 @@ describe('OAuth Callback Security Tests', () => {
 				return undefined;
 			});
 
-			await handler.handleCallback(mockConfig, url, mockCookies);
-			
+			try {
+				await handler.handleCallback(mockConfig, url, mockCookies);
+			} catch (redirectResponse: any) {
+				expect(redirectResponse.status).toBe(302);
+			}
+
 			// Verify new session is created even for existing user
 			expect(mockCookies.set).toHaveBeenCalledWith(
 				'session',
@@ -487,7 +512,7 @@ describe('OAuth Callback Security Tests', () => {
 			mockDb.user.create.mockRejectedValue(new Error('Database connection failed with credentials xyz'));
 
 			const url = new URL('http://localhost:5173/auth/google/callback?code=auth_code_123&state=valid_state_123');
-			
+
 			vi.mocked(mockCookies.get).mockImplementation((key: string) => {
 				if (key === 'oauth_state') return 'valid_state_123';
 				if (key === 'oauth_return_to') return '/profile';
@@ -495,11 +520,16 @@ describe('OAuth Callback Security Tests', () => {
 				return undefined;
 			});
 
-			const errorResponse = await handler.handleCallback(mockConfig, url, mockCookies);
-			
-			// In production, should return generic error message
-			expect(errorResponse.status).toBe(500);
-			
+			try {
+				await handler.handleCallback(mockConfig, url, mockCookies);
+				expect.fail('Expected error to be thrown');
+			} catch (err: any) {
+				// In production, should throw generic error message
+				expect(err.status).toBe(500);
+				expect(err.body?.message).toBe('Authentication failed');
+				expect(err.body?.message).not.toContain('credentials');
+			}
+
 			// Restore environment
 			process.env.NODE_ENV = originalEnv;
 		});
