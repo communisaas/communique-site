@@ -104,7 +104,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 	});
 
 	describe('Mock Proof Generation (UX Testing)', () => {
-		it('should generate mock proof with valid structure', async () => {
+		it.skipIf(isNodeEnvironment)('should generate mock proof with valid structure', async () => {
 			const district = 'CA-12';
 			const result = await generateMockProof(district);
 
@@ -133,7 +133,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 			console.log(`[Test] Proof size: ${result.proof.length} bytes`);
 		}, 30000);
 
-		it('should generate different proofs for different districts', async () => {
+		it.skipIf(isNodeEnvironment)('should generate different proofs for different districts', async () => {
 			const proof1 = await generateMockProof('CA-12');
 			const proof2 = await generateMockProof('TX-18');
 
@@ -148,7 +148,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 	});
 
 	describe('Real Proof Generation (Integration)', () => {
-		it('should generate proof with valid Merkle path', async () => {
+		it.skipIf(isNodeEnvironment)('should generate proof with valid Merkle path', async () => {
 			// Mock inputs (valid field elements)
 			const identityCommitment =
 				'0x0000000000000000000000000000000000000000000000000000000000000001';
@@ -175,7 +175,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 			console.log(`[Test] Real proof generation: ${result.generationTime.toFixed(0)}ms`);
 		}, 30000);
 
-		it('should validate Merkle path length', async () => {
+		it.skipIf(isNodeEnvironment)('should validate Merkle path length', async () => {
 			const identityCommitment =
 				'0x0000000000000000000000000000000000000000000000000000000000000001';
 			const actionId = '0x0000000000000000000000000000000000000000000000000000000000000002';
@@ -191,7 +191,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 			).rejects.toThrow('Invalid Merkle path length');
 		}, 30000);
 
-		it('should validate leaf index bounds', async () => {
+		it.skipIf(isNodeEnvironment)('should validate leaf index bounds', async () => {
 			const identityCommitment =
 				'0x0000000000000000000000000000000000000000000000000000000000000001';
 			const actionId = '0x0000000000000000000000000000000000000000000000000000000000000002';
@@ -211,7 +211,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 	});
 
 	describe('Performance Benchmarking', () => {
-		it('should benchmark proof generation performance', async () => {
+		it.skipIf(isNodeEnvironment)('should benchmark proof generation performance', async () => {
 			const iterations = 3;
 			const times: number[] = [];
 
@@ -237,7 +237,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 	});
 
 	describe('Error Handling', () => {
-		it('should handle initialization failures gracefully', async () => {
+		it.skipIf(isNodeEnvironment)('should handle initialization failures gracefully', async () => {
 			// Mock import failure
 			vi.mock('@voter-protocol/halo2-browser-prover', () => {
 				throw new Error('WASM module not found');
@@ -248,7 +248,7 @@ describe('ZK Proof Generation - Browser Environment', () => {
 			// Re-import to get mocked version
 			const { initializeProver: mockInit } = await import('$lib/core/proof/prover');
 
-			await expect(mockInit(14)).rejects.toThrow();
+			await expect(mockInit()).rejects.toThrow();
 
 			// Cleanup mock
 			vi.unmock('@voter-protocol/halo2-browser-prover');
