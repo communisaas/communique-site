@@ -1584,13 +1584,14 @@ async function seedCoreTemplates(users: User[]) {
 				console.log(`  ✓ Added federal jurisdiction (nationwide)`);
 			} else if (template.jurisdiction_level === 'municipal' && template.specific_locations) {
 				// Municipal templates: specific city/county
+				// IMPORTANT: Create 'city' jurisdiction type so city templates are properly categorized
 				for (const location of template.specific_locations) {
 					if (location === 'San Francisco') {
 						// San Francisco = CA state + San Francisco county
 						await db.templateJurisdiction.create({
 							data: {
 								template_id: createdTemplate.id,
-								jurisdiction_type: 'state',
+								jurisdiction_type: 'city', // CHANGED from 'state' → Municipal templates are city-level
 								state_code: 'CA',
 								city_name: 'San Francisco',
 								county_name: 'San Francisco County'

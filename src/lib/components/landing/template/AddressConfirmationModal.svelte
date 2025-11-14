@@ -389,8 +389,7 @@
 						/>
 					</svg>
 					<p class="text-xs leading-relaxed text-blue-900">
-						Your address is never stored. We only use it to look up your congressional district via
-						the Census Bureau API.
+						Census Bureau finds your district. Stored in browser, not on our servers.
 					</p>
 				</div>
 

@@ -70,11 +70,15 @@ export class ClientSideTemplateFilter {
 					// Apply location confidence multiplier
 					// High confidence (verified=1.0) → full score
 					// Low confidence (IP=0.2) → reduced score certainty
-					const confidenceMultiplier = this.inferredLocation.confidence;
+					// EXCEPTION: Federal templates always get full score (relevant to everyone)
+					const isFederal = bestJurisdiction.jurisdiction_type === 'federal';
+					const confidenceMultiplier = isFederal ? 1.0 : this.inferredLocation.confidence;
 					const finalScore = bestScore * confidenceMultiplier;
 
 					// Add confidence indicator to match reason
-					const confidenceLabel = this.getConfidenceLabel(this.inferredLocation.confidence);
+					const confidenceLabel = isFederal
+						? 'national'
+						: this.getConfidenceLabel(this.inferredLocation.confidence);
 					const enhancedReason = `${matchReason} (${confidenceLabel})`;
 
 					return {
@@ -145,6 +149,14 @@ export class ClientSideTemplateFilter {
 
 	/**
 	 * Score jurisdiction by relevance
+	 *
+	 * Scoring hierarchy (highest to lowest):
+	 * 1.0 = District match (most specific)
+	 * 0.8 = County match
+	 * 0.7 = City match
+	 * 0.5 = State match
+	 * 0.3 = Federal/national (baseline - always relevant within country)
+	 * 0.0 = No match
 	 */
 	private scoreJurisdiction(jurisdiction: TemplateJurisdiction): { score: number; reason: string } {
 		let score = 0;
@@ -187,6 +199,14 @@ export class ClientSideTemplateFilter {
 		) {
 			score = 0.5;
 			reason = `Your state: ${this.inferredLocation.state_code}`;
+			return { score, reason };
+		}
+
+		// Federal/national templates (0.3 baseline - always relevant within country)
+		// Country boundaries enforced by scope-filtering.ts
+		if (jurisdiction.jurisdiction_type === 'federal') {
+			score = 0.3;
+			reason = `National issue (${this.inferredLocation.country_code || 'country-wide'})`;
 			return { score, reason };
 		}
 

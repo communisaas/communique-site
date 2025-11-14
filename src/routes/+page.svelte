@@ -17,7 +17,7 @@
 	import { page } from '$app/stores';
 	import { goto, preloadData, onNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import type { Template, TemplateCreationContext } from '$lib/types/template';
+	import type { Template, TemplateCreationContext, TemplateGroup } from '$lib/types/template';
 	import type { PageData } from './$types';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
@@ -50,7 +50,9 @@
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
 	let userInitiatedSelection = $state(false); // Track if selection was user-initiated
-	let locationFilteredTemplates = $state<Template[]>([]); // Templates after location filtering
+	let locationFilteredGroups = $state<TemplateGroup[]>([]); // Template groups after location filtering
+	let nextUnlock = $state<{ level: 'city' | 'district'; count: number } | null>(null); // Next precision unlock info
+	let openAddressModal = $state<(() => void) | null>(null); // Handler to open LocationFilter's address modal
 
 	// Handle OAuth return for template creation and URL parameter initialization
 	onMount(() => {
@@ -222,17 +224,47 @@
 				)
 	);
 
-	// Then apply location filtering (if locationFilteredTemplates is populated)
-	const filteredTemplates = $derived(
-		locationFilteredTemplates.length > 0
-			? channelFilteredTemplates.filter((t) =>
-					locationFilteredTemplates.some((filtered) => filtered.id === t.id)
-				)
-			: channelFilteredTemplates
+	// Flatten location groups to get all templates for selection logic
+	const locationFilteredTemplates = $derived(
+		locationFilteredGroups.flatMap((g) => g.templates)
 	);
 
-	function handleLocationFilterChange(filtered: Template[]) {
-		locationFilteredTemplates = filtered;
+	// Then apply channel filtering to groups
+	const filteredGroups = $derived(
+		locationFilteredGroups.length > 0
+			? locationFilteredGroups
+					.map((group) => ({
+						...group,
+						templates: group.templates.filter((t) =>
+							channelFilteredTemplates.some((ft) => ft.id === t.id)
+						)
+					}))
+					.filter((group) => group.templates.length > 0)
+			: // No location filtering yet - create single group from channel-filtered templates
+				[
+					{
+						title: 'All Templates',
+						templates: channelFilteredTemplates,
+						minScore: 0,
+						level: 'nationwide' as const,
+						coordinationCount: channelFilteredTemplates.reduce(
+							(sum, t) => sum + (t.send_count || 0),
+							0
+						)
+					}
+				]
+	);
+
+	function handleLocationFilterChange(groups: TemplateGroup[]) {
+		locationFilteredGroups = groups;
+	}
+
+	function handleNextUnlockChange(unlock: { level: 'city' | 'district'; count: number } | null) {
+		nextUnlock = unlock;
+	}
+
+	function handleAddressModalHandler(handler: () => void) {
+		openAddressModal = handler;
 	}
 
 	// Handle URL parameter initialization when templates load (legacy support)
@@ -275,6 +307,8 @@
 		<LocationFilter
 			templates={channelFilteredTemplates}
 			onFilterChange={handleLocationFilterChange}
+			onNextUnlockChange={handleNextUnlockChange}
+			onAddressModalOpen={handleAddressModalHandler}
 		/>
 	</div>
 
@@ -286,7 +320,7 @@
 	>
 		<div class="relative z-10 md:col-span-1">
 			<TemplateList
-				templates={filteredTemplates}
+				groups={filteredGroups}
 				selectedId={templateStore.selectedId}
 				onSelect={handleTemplateSelect}
 				loading={isLoading}

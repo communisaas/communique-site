@@ -84,8 +84,6 @@
 
 	// Breadcrumb components for drill-down navigation
 	const breadcrumbCountry = $derived.by(() => {
-		if (!inferredLocation?.country_code) return null;
-
 		const countryNames: Record<string, string> = {
 			US: 'United States',
 			CA: 'Canada',
@@ -95,7 +93,43 @@
 			IE: 'Ireland'
 		};
 
-		return countryNames[inferredLocation.country_code] || inferredLocation.country_code;
+		// Strategy 1: Explicit country code (highest confidence - from signal metadata)
+		if (inferredLocation?.country_code) {
+			return countryNames[inferredLocation.country_code] || inferredLocation.country_code;
+		}
+
+		// Strategy 2: Inferred country from state code (deterministic - state codes are unambiguous)
+		// Design Pattern: "Inferrable Defaults with Explicit Overrides"
+		// State codes have 1:1 country mapping, so we can deterministically infer country
+		if (inferredLocation?.state_code) {
+			const stateCode = inferredLocation.state_code;
+
+			// US states and territories (unambiguous mapping)
+			const usStates = [
+				'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN',
+				'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH',
+				'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT',
+				'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'PR', 'GU', 'VI', 'AS', 'MP'
+			];
+			if (usStates.includes(stateCode)) {
+				return 'United States';
+			}
+
+			// Canadian provinces and territories (unambiguous mapping)
+			const caProvinces = ['AB', 'BC', 'MB', 'NB', 'NL', 'NT', 'NS', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'];
+			if (caProvinces.includes(stateCode)) {
+				return 'Canada';
+			}
+
+			// Australian states and territories (unambiguous mapping)
+			const auStates = ['NSW', 'VIC', 'QLD', 'SA', 'WA', 'TAS', 'NT', 'ACT'];
+			if (auStates.includes(stateCode)) {
+				return 'Australia';
+			}
+		}
+
+		// No country determinable (no explicit country_code, no inferrable state)
+		return null;
 	});
 
 	const breadcrumbState = $derived.by(() => {

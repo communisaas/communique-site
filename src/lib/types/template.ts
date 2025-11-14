@@ -42,6 +42,19 @@ export interface Template {
 
 	// Optional place scoping linked via separate table
 	scope?: TemplateScope;
+
+	// === NEW: Location-as-Context Properties (Phase 2025-01) ===
+	// How geographically broad is the target/issue?
+	geographic_scope?: 'international' | 'national' | 'state' | 'metro' | 'district' | 'local';
+
+	// What location verification is required to participate?
+	minimum_precision_required?: 'none' | 'country' | 'state' | 'county' | 'district';
+
+	// What type of power structure is the target?
+	target_type?: 'government' | 'corporate' | 'institutional' | 'labor' | 'advocacy';
+
+	// Entity name (for corporate/institutional targets)
+	target_entity?: string | null;
 	preview: string;
 	recipientEmails?: string[]; // Computed field - use extractRecipientEmails(recipient_config) instead
 
@@ -104,3 +117,54 @@ export interface TemplateFormData {
 
 // For UI components that only need a minimal user shape
 export type MinimalUser = { id: string; name: string };
+
+// ============================================================================
+// Progressive Template Sections (2025-01-12)
+// ============================================================================
+
+/**
+ * Geographic precision level for template grouping
+ */
+export type PrecisionLevel = 'district' | 'city' | 'county' | 'state' | 'nationwide';
+
+/**
+ * Template group for section-based display
+ * Templates are grouped by geographic precision tier
+ */
+export interface TemplateGroup {
+	/** Section title (e.g., "In Your District", "Nationwide") */
+	title: string;
+
+	/** Templates in this tier */
+	templates: Template[];
+
+	/** Minimum relevance score for this tier (for internal sorting) */
+	minScore: number;
+
+	/** Precision level this group represents */
+	level: PrecisionLevel;
+
+	/** Number of people coordinating in this tier (for display) */
+	coordinationCount: number;
+}
+
+/**
+ * Preview card for next unlockable tier
+ * Creates desire for next funnel step (GPS → verified address)
+ */
+export interface NextTierPreview {
+	/** Number of templates in next tier */
+	count: number;
+
+	/** Geographic level (e.g., "city", "district") */
+	level: string;
+
+	/** Call-to-action text */
+	cta: string;
+
+	/** Button action text */
+	action: string;
+
+	/** Callback when user clicks */
+	onClick: () => void;
+}

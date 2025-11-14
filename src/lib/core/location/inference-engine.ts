@@ -156,6 +156,7 @@ export class LocationInferenceEngine {
 			}
 
 			const data = (await response.json()) as {
+				country_code?: string;
 				city?: string;
 				state_code?: string;
 				latitude?: number;
@@ -163,8 +164,9 @@ export class LocationInferenceEngine {
 				timezone?: string;
 			};
 
-			if (!data.state_code) {
-				console.warn('[IP Lookup] No state code in response');
+			// IP can ALWAYS determine country (highly reliable)
+			if (!data.country_code) {
+				console.warn('[IP Lookup] No country code in response');
 				return null;
 			}
 
@@ -181,6 +183,7 @@ export class LocationInferenceEngine {
 					return {
 						...censusSignal,
 						signal_type: 'ip',
+						country_code: data.country_code,
 						source: 'ip.geolocation',
 						confidence: 0.4, // Higher than timezone, lower than browser geolocation
 						metadata: {
@@ -192,13 +195,15 @@ export class LocationInferenceEngine {
 				}
 			}
 
-			// Fallback: Return state-only signal without congressional district
+			// Fallback: Return country + state signal (no district)
 			return {
 				signal_type: 'ip',
-				confidence: 0.3, // State-only is less confident
-				state_code: data.state_code,
+				confidence: data.state_code ? 0.3 : 0.6, // Country-only is more confident than state (VPN-resistant)
+				country_code: data.country_code,
+				state_code: data.state_code || null,
 				city_name: data.city || null,
 				congressional_district: null,
+				county_fips: null,
 				latitude: data.latitude || null,
 				longitude: data.longitude || null,
 				source: 'ip.geolocation',
@@ -219,9 +224,11 @@ export class LocationInferenceEngine {
 	private extractLocationFromSignals(signals: LocationSignal[]): InferredLocation {
 		if (signals.length === 0) {
 			return {
+				country_code: null,
 				congressional_district: null,
 				state_code: null,
 				city_name: null,
+				county_name: null,
 				county_fips: null,
 				confidence: 0,
 				signals: [],
@@ -235,10 +242,16 @@ export class LocationInferenceEngine {
 		// Calculate weighted confidence from all signals
 		const confidence = calculateWeightedConfidence(signals);
 
+		// Country code should come from highest confidence signal with country data
+		// Fallback to any signal with country code (IP is highly reliable for country)
+		const countrySignal = signals.find((s) => s.country_code) || primarySignal;
+
 		return {
+			country_code: countrySignal.country_code || null,
 			congressional_district: primarySignal.congressional_district || null,
 			state_code: primarySignal.state_code || null,
 			city_name: primarySignal.city_name || null,
+			county_name: (primarySignal.metadata?.county_name as string | null) || null,
 			county_fips: primarySignal.county_fips || null,
 			confidence,
 			signals,
@@ -323,7 +336,7 @@ export async function getUserLocation(forceRefresh = false): Promise<InferredLoc
 /**
  * Add a location signal from OAuth callback
  */
-export async function addOAuthLocationSignal(provider: string, location: string): Promise<void> {
+export async function addOAuthLocationSignal(provider: string, location: string, countryCode = 'US'): Promise<void> {
 	// Parse location string (e.g., "Austin, TX" or "Texas")
 	const parts = location.split(',').map((s) => s.trim());
 
@@ -352,9 +365,13 @@ export async function addOAuthLocationSignal(provider: string, location: string)
 	const signal: LocationSignal = {
 		signal_type: 'oauth',
 		confidence: 0.8,
+		country_code: countryCode,
 		state_code: stateCode,
 		city_name: cityName,
 		congressional_district: null, // Will be resolved via Census API if coordinates available
+		county_fips: null,
+		latitude: null,
+		longitude: null,
 		source: `oauth.${provider}`,
 		timestamp: new Date().toISOString(),
 		metadata: {
@@ -370,13 +387,19 @@ export async function addOAuthLocationSignal(provider: string, location: string)
  */
 export async function addVerifiedLocationSignal(
 	congressionalDistrict: string,
-	stateCode: string
+	stateCode: string,
+	countryCode = 'US'
 ): Promise<void> {
 	const signal: LocationSignal = {
 		signal_type: 'verified',
 		confidence: 1.0,
+		country_code: countryCode,
 		congressional_district: congressionalDistrict,
 		state_code: stateCode,
+		city_name: null,
+		county_fips: null,
+		latitude: null,
+		longitude: null,
 		source: 'verification.identity',
 		timestamp: new Date().toISOString()
 	};

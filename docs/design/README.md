@@ -1,8 +1,8 @@
 # Design Documentation Index
 
-**Last Updated:** 2025-11-03
+**Last Updated:** 2025-11-12
 
-Strategic design documents for Communique's interface redesign, template discovery system, and multi-level governance architecture.
+Strategic design documents for Communique's interface redesign, template discovery system, and location-based progressive precision.
 
 ---
 

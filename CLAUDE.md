@@ -531,6 +531,85 @@ Code map:
 - **Actions**: `src/lib/actions/` (Svelte actions)
 - **Tests**: `tests/` (integration, unit, e2e, mocks, fixtures)
 
+## Platform Positioning & Voice Guidelines
+
+### 🚨 CRITICAL: This is NOT a Government-Only Platform 🚨
+
+**Communiqué is a MULTI-STAKEHOLDER social coordination platform.**
+
+We coordinate action across ALL power structures:
+- **Government** (legislators, regulators, agencies)
+- **Corporate** (executives, boards, shareholders)
+- **Institutional** (universities, hospitals, foundations)
+- **Labor** (unions, worker organizations)
+- **Advocacy** (NGOs, community organizations)
+
+**❌ NEVER use government-centric language in user-facing copy:**
+- ❌ "Contact your representative"
+- ❌ "Send to Congress"
+- ❌ "Bills in your district"
+- ❌ "Find campaigns"
+- ❌ "Government issues"
+
+**✅ Use multi-stakeholder language that reflects coordination:**
+- ✅ Location + coordination count: "CA-11" / "47 coordinating in California"
+- ✅ Direct action verbs: "Send message" / "Coordinate" / "Join"
+- ✅ Template titles speak for themselves (no category labels needed)
+- ✅ When delivery method is relevant: "Send via email" / "Certified delivery"
+
+### Voice Reference: docs/design/voice.md
+
+**ALL user-facing copy MUST follow the voice guidelines in `docs/design/voice.md`.**
+
+**Core Principles (from voice.md):**
+1. **Confident & Direct** - State what is. Don't explain, justify, or defend.
+2. **Technical Details in Popovers** - Primary UI: simple statement. Popover: mechanism for those who care.
+3. **Don't Wear Cypherpunk on Our Sleeve** - Users don't need to know the mechanism unless they ask.
+4. **No Pre-Defending** - Don't apologize for what we are. Don't explain what we're not.
+5. **Imperative Voice** - Commands, not suggestions.
+
+**Vocabulary to Avoid (see voice.md lines 79-95):**
+- ❌ campaigns, issues, community, platform, content, engagement, solutions, empower
+- ✅ Use specific, direct language instead (see voice.md for replacements)
+
+**Geographic Scope Language (voice.md lines 97-114):**
+- Federal: "All 50 states + DC + territories" (NOT "national issues")
+- State: "California" (just the state name)
+- District: "CA-11" (just the district code)
+- Templates speak for themselves - location is just a filter, not a category
+
+**Example Pattern (voice.md lines 268-286):**
+```svelte
+<!-- WRONG -->
+<h3>Find campaigns in your area</h3>
+<p>We'll show you the most relevant local campaigns</p>
+
+<!-- CORRECT -->
+<h1>{congressionalDistrict || stateName || 'Nationwide'}</h1>
+<p>{coordinationCount} coordinating here</p>
+```
+
+### Template Target Types (from template.ts)
+
+Templates have a `target_type` field that specifies the power structure:
+```typescript
+target_type?: 'government' | 'corporate' | 'institutional' | 'labor' | 'advocacy';
+```
+
+Never assume all templates are government-focused. Check the template's actual target type and delivery method before writing copy.
+
+### Why This Matters
+
+**Real-world consequence:** A user correction led to this section being added to prevent government-centric language that misrepresents the platform's multi-stakeholder coordination mission.
+
+When writing copy:
+1. **Check voice.md first** - Ensure language aligns with pragmatic cypherpunk principles
+2. **Never assume government context** - Templates can target any power structure
+3. **Location is a filter, not a category** - Don't label sections as "campaigns" or "issues"
+4. **Templates speak for themselves** - Let the template title/description explain what it does
+
+**Before shipping any user-facing copy, run through the checklist in voice.md (lines 378-398).**
+
 ## Agent Architecture (Multi-Agent Content Moderation + VOTER Protocol)
 
 **Phase 1 (active now):** Content moderation agents only. 3-layer consensus for template quality.

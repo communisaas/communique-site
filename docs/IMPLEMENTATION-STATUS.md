@@ -324,6 +324,39 @@ export async function POST({ request }) {
 
 ---
 
+### 🚧 IN PROGRESS: Progressive Template Sections (2025-01-12)
+
+**Goal:** Replace hard toggle + clickable breadcrumb with auto-grouped template sections
+
+**Status:** Implementation in progress
+
+**What's Complete:**
+- ✅ Comprehensive spec (`docs/specs/progressive-template-sections.md`)
+- ✅ Type definitions (`TemplateGroup`, `NextTierPreview`, `PrecisionLevel`)
+- ✅ LocationFilter props updated to emit `TemplateGroup[]`
+- ✅ Removed unused state (`showLocalOnly`, `forcedPrecision`)
+
+**What's Remaining:**
+- ⏳ Remove breadcrumb click handlers and toggle button
+- ⏳ Implement `createTemplateGroups()` function
+- ⏳ Replace LocationFilter `$effect()` to emit groups
+- ⏳ Update TemplateList to render sections
+- ⏳ Update parent component (+page.svelte) to handle groups
+- ⏳ Test progressive section unlocking
+
+**User Experience:**
+- Sections unlock as precision increases (IP → GPS → verified)
+- No manual controls - algorithm does all the work
+- Local templates always visible (cold start solved)
+- Familiar pattern (Netflix/YouTube sections)
+
+**Documentation:**
+- Spec: `docs/specs/progressive-template-sections.md`
+- Architecture: Country-first filtering + soft weighting
+- User cognition: Geographic tiers > pure momentum sort
+
+---
+
 ### Week 1-2: Core UX Foundation (FRONTEND FIRST)
 
 **Goal:** Validate user flow with fake data, perfect UX before adding crypto complexity

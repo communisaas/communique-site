@@ -54,6 +54,7 @@ export class CensusAPIClient {
 					return {
 						signal_type: 'browser',
 						confidence: 0.4, // Lower confidence without district data
+						country_code: 'US', // Census API only covers US
 						congressional_district: null, // Can't determine without Census API
 						state_code: stateCode || null,
 						city_name: cityName || null,
@@ -132,6 +133,7 @@ export class CensusAPIClient {
 					const signal: LocationSignal = {
 						signal_type: 'browser',
 						confidence: 0.6,
+						country_code: 'US', // Census API only covers US
 						congressional_district: congressionalDistrict,
 						state_code: censusStateCode,
 						city_name: cityName, // From Nominatim reverse geocoding
@@ -242,8 +244,10 @@ export class CensusAPIClient {
 			const signal: LocationSignal = {
 				signal_type: source === 'browser' ? 'browser' : 'oauth',
 				confidence: source === 'browser' ? 0.6 : 0.8, // Browser geolocation is less reliable
+				country_code: 'US', // Census API only covers US
 				congressional_district: congressionalDistrict,
 				state_code: stateName,
+				city_name: null,
 				county_fips: countyFips,
 				latitude,
 				longitude,
@@ -514,8 +518,11 @@ export function getTimezoneLocation(): LocationSignal | null {
 		return {
 			signal_type: 'ip',
 			confidence: 0.2, // Low confidence - timezone is a weak signal
+			country_code: 'US', // Timezone mapping assumes US
 			state_code: stateCode,
+			city_name: null,
 			congressional_district: null,
+			county_fips: null,
 			latitude: null,
 			longitude: null,
 			source: 'browser.timezone',

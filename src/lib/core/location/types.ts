@@ -24,6 +24,9 @@ export interface LocationSignal {
 	/** Confidence score (0.0 = no confidence, 1.0 = absolute certainty) */
 	confidence: number;
 
+	/** Country code (e.g., "US", "CA", "GB") - ISO 3166-1 alpha-2 */
+	country_code?: string | null;
+
 	/** Congressional district (e.g., "TX-18") */
 	congressional_district?: string | null;
 
@@ -59,6 +62,9 @@ export interface LocationSignal {
  * Inferred location from multiple signals
  */
 export interface InferredLocation {
+	/** Country code (e.g., "US", "CA", "GB") - ISO 3166-1 alpha-2 */
+	country_code: string | null;
+
 	/** Congressional district (highest confidence signal) */
 	congressional_district: string | null;
 
@@ -67,6 +73,9 @@ export interface InferredLocation {
 
 	/** City name (optional, from highest confidence signal) */
 	city_name?: string | null;
+
+	/** County name (optional, from highest confidence signal) */
+	county_name?: string | null;
 
 	/** County FIPS code (optional, from highest confidence signal) */
 	county_fips?: string | null;
