@@ -28,12 +28,10 @@ import {
 
 /**
  * TESTING STRATEGY:
- * - Node/Vitest: Test API surface, error handling, validation logic
- * - Browser manual: Test actual WASM proving (see MANUAL TESTING GUIDE below)
- * - Skip WASM tests in Node (WASM requires browser environment)
+ * - Node/Vitest: Test API surface, error handling, validation logic (this file)
+ * - Browser E2E: Test actual WASM proving (tests/e2e/zk-proof-wasm.spec.ts)
+ * - Manual testing: Full UX testing (see MANUAL TESTING GUIDE below)
  */
-
-const isNodeEnvironment = typeof window === 'undefined';
 
 describe('ZK Proof Generation - Browser Environment', () => {
 	beforeEach(() => {
@@ -59,201 +57,15 @@ describe('ZK Proof Generation - Browser Environment', () => {
 		});
 	});
 
-	describe('Prover Initialization (Performance Critical)', () => {
-		it.skipIf(isNodeEnvironment)('should initialize prover and cache instance', async () => {
-			// First initialization - expect this to take 5-10s on real hardware
-			const startTime = performance.now();
-			const prover1 = await initializeProver(14);
-			const initTime = performance.now() - startTime;
+	// Prover initialization tests moved to E2E: tests/e2e/zk-proof-wasm.spec.ts
 
-			expect(prover1).toBeDefined();
-			expect(isProverInitialized()).toBe(true);
+	// Mock proof generation tests moved to E2E: tests/e2e/zk-proof-wasm.spec.ts
 
-			console.log(`[Test] First initialization: ${initTime.toFixed(0)}ms`);
+	// Real proof generation tests moved to E2E: tests/e2e/zk-proof-wasm.spec.ts
 
-			// Second call should return cached instance (instant)
-			const cachedStart = performance.now();
-			const prover2 = await initializeProver(14);
-			const cachedTime = performance.now() - cachedStart;
+	// Performance benchmarking tests moved to E2E: tests/e2e/zk-proof-wasm.spec.ts
 
-			expect(prover2).toBe(prover1); // Same instance
-			expect(cachedTime).toBeLessThan(100); // Should be instant
-
-			console.log(`[Test] Cached initialization: ${cachedTime.toFixed(0)}ms`);
-
-			// Verify metrics were recorded
-			const metrics = getInitMetrics();
-			expect(metrics).toBeDefined();
-			expect(metrics?.k).toBe(14);
-			expect(metrics?.initTime).toBeGreaterThan(0);
-		}, 30000); // 30s timeout for WASM keygen
-
-		it.skipIf(isNodeEnvironment)('should handle concurrent initialization requests', async () => {
-			// Simulate multiple components trying to initialize at once
-			const [prover1, prover2, prover3] = await Promise.all([
-				initializeProver(14),
-				initializeProver(14),
-				initializeProver(14)
-			]);
-
-			// All should get the same instance
-			expect(prover1).toBe(prover2);
-			expect(prover2).toBe(prover3);
-			expect(isProverInitialized()).toBe(true);
-		}, 30000);
-	});
-
-	describe('Mock Proof Generation (UX Testing)', () => {
-		it.skipIf(isNodeEnvironment)('should generate mock proof with valid structure', async () => {
-			const district = 'CA-12';
-			const result = await generateMockProof(district);
-
-			// Verify result structure
-			expect(result).toHaveProperty('proof');
-			expect(result).toHaveProperty('publicInputs');
-			expect(result).toHaveProperty('district');
-			expect(result).toHaveProperty('generationTime');
-
-			// Verify proof is a Uint8Array
-			expect(result.proof).toBeInstanceOf(Uint8Array);
-			expect(result.proof.length).toBeGreaterThan(0);
-
-			// Verify public inputs
-			expect(result.publicInputs).toHaveProperty('districtRoot');
-			expect(result.publicInputs).toHaveProperty('nullifier');
-			expect(result.publicInputs).toHaveProperty('actionId');
-
-			// Verify district matches
-			expect(result.district).toBe(district);
-
-			// Verify generation time was recorded
-			expect(result.generationTime).toBeGreaterThan(0);
-
-			console.log(`[Test] Mock proof generated in ${result.generationTime.toFixed(0)}ms`);
-			console.log(`[Test] Proof size: ${result.proof.length} bytes`);
-		}, 30000);
-
-		it.skipIf(isNodeEnvironment)('should generate different proofs for different districts', async () => {
-			const proof1 = await generateMockProof('CA-12');
-			const proof2 = await generateMockProof('TX-18');
-
-			// Districts should be different
-			expect(proof1.district).not.toBe(proof2.district);
-
-			// Proofs should have same structure
-			expect(proof1.proof.length).toBe(proof2.proof.length);
-
-			console.log(`[Test] Generated proofs for CA-12 and TX-18`);
-		}, 30000);
-	});
-
-	describe('Real Proof Generation (Integration)', () => {
-		it.skipIf(isNodeEnvironment)('should generate proof with valid Merkle path', async () => {
-			// Mock inputs (valid field elements)
-			const identityCommitment =
-				'0x0000000000000000000000000000000000000000000000000000000000000001';
-			const actionId = '0x0000000000000000000000000000000000000000000000000000000000000002';
-			const leafIndex = 0;
-
-			// Mock Merkle path (12 sibling hashes for K=14 circuit)
-			const merklePath = Array(12).fill(
-				'0x0000000000000000000000000000000000000000000000000000000000000003'
-			);
-
-			const result = await generateDistrictProof(
-				identityCommitment,
-				actionId,
-				leafIndex,
-				merklePath,
-				'CA-12'
-			);
-
-			expect(result.proof).toBeInstanceOf(Uint8Array);
-			expect(result.proof.length).toBeGreaterThan(0);
-			expect(result.district).toBe('CA-12');
-
-			console.log(`[Test] Real proof generation: ${result.generationTime.toFixed(0)}ms`);
-		}, 30000);
-
-		it.skipIf(isNodeEnvironment)('should validate Merkle path length', async () => {
-			const identityCommitment =
-				'0x0000000000000000000000000000000000000000000000000000000000000001';
-			const actionId = '0x0000000000000000000000000000000000000000000000000000000000000002';
-			const leafIndex = 0;
-
-			// Invalid path (wrong length)
-			const invalidPath = Array(10).fill(
-				'0x0000000000000000000000000000000000000000000000000000000000000003'
-			);
-
-			await expect(
-				generateDistrictProof(identityCommitment, actionId, leafIndex, invalidPath, 'CA-12')
-			).rejects.toThrow('Invalid Merkle path length');
-		}, 30000);
-
-		it.skipIf(isNodeEnvironment)('should validate leaf index bounds', async () => {
-			const identityCommitment =
-				'0x0000000000000000000000000000000000000000000000000000000000000001';
-			const actionId = '0x0000000000000000000000000000000000000000000000000000000000000002';
-			const merklePath = Array(12).fill(
-				'0x0000000000000000000000000000000000000000000000000000000000000003'
-			);
-
-			// Invalid leaf index (K=14 supports 0-4095)
-			await expect(
-				generateDistrictProof(identityCommitment, actionId, -1, merklePath, 'CA-12')
-			).rejects.toThrow('Invalid leaf index');
-
-			await expect(
-				generateDistrictProof(identityCommitment, actionId, 5000, merklePath, 'CA-12')
-			).rejects.toThrow('Invalid leaf index');
-		}, 30000);
-	});
-
-	describe('Performance Benchmarking', () => {
-		it.skipIf(isNodeEnvironment)('should benchmark proof generation performance', async () => {
-			const iterations = 3;
-			const times: number[] = [];
-
-			for (let i = 0; i < iterations; i++) {
-				const result = await generateMockProof(`CA-${i + 1}`);
-				times.push(result.generationTime);
-			}
-
-			const avgTime = times.reduce((a, b) => a + b, 0) / times.length;
-			const minTime = Math.min(...times);
-			const maxTime = Math.max(...times);
-
-			console.log(`[Benchmark] Average: ${avgTime.toFixed(0)}ms`);
-			console.log(`[Benchmark] Min: ${minTime.toFixed(0)}ms`);
-			console.log(`[Benchmark] Max: ${maxTime.toFixed(0)}ms`);
-
-			// Performance expectations (will vary by hardware)
-			// Desktop: 1-2s, Mobile: 8-15s
-			// In Node test environment with WASM, expect 1-5s
-			expect(avgTime).toBeGreaterThan(0);
-			expect(avgTime).toBeLessThan(30000); // 30s max (generous for CI)
-		}, 120000); // 2 minute timeout for benchmarking
-	});
-
-	describe('Error Handling', () => {
-		it.skipIf(isNodeEnvironment)('should handle initialization failures gracefully', async () => {
-			// Mock import failure
-			vi.mock('@voter-protocol/halo2-browser-prover', () => {
-				throw new Error('WASM module not found');
-			});
-
-			resetProver(); // Clear any cached instance
-
-			// Re-import to get mocked version
-			const { initializeProver: mockInit } = await import('$lib/core/proof/prover');
-
-			await expect(mockInit()).rejects.toThrow();
-
-			// Cleanup mock
-			vi.unmock('@voter-protocol/halo2-browser-prover');
-		});
-	});
+	// Error handling tests moved to E2E: tests/e2e/zk-proof-wasm.spec.ts
 });
 
 describe('ZK Proof Generation - UI Integration', () => {

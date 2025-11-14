@@ -8,7 +8,7 @@ export default defineConfig({
 	workers: process.env.CI ? 1 : undefined,
 	reporter: 'html',
 	use: {
-		baseURL: 'http://localhost:4173',
+		baseURL: process.env.CI ? 'http://localhost:4173' : 'http://localhost:5173',
 		trace: 'on-first-retry'
 	},
 	projects: [
@@ -25,10 +25,17 @@ export default defineConfig({
 			use: { ...devices['Desktop Safari'] }
 		}
 	],
-	webServer: {
-		command: 'npm run build && npm run preview',
-		port: 4173,
-		reuseExistingServer: !process.env.CI,
-		timeout: 120000
-	}
+	webServer: process.env.CI
+		? {
+				command: 'npm run build && npm run preview',
+				port: 4173,
+				reuseExistingServer: false,
+				timeout: 120000
+			}
+		: {
+				command: 'npm run dev',
+				port: 5173,
+				reuseExistingServer: true,
+				timeout: 120000
+			}
 });

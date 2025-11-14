@@ -79,7 +79,7 @@
 		try {
 			console.log('[Test 2] Initializing prover (cold start)...');
 			const startTime = performance.now();
-			await initializeProver(14);
+			await initializeProver(undefined, 14); // progressCallback, k
 			const initTime = performance.now() - startTime;
 
 			testResults.initTime = initTime;
@@ -113,7 +113,7 @@
 		try {
 			console.log('[Test 3] Testing cached initialization...');
 			const startTime = performance.now();
-			await initializeProver(14); // Should be instant
+			await initializeProver(undefined, 14); // Should be instant
 			const cachedTime = performance.now() - startTime;
 
 			testResults.cachedTime = cachedTime;
