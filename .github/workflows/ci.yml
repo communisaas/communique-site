@@ -64,6 +64,11 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
+      - name: Push database schema
+        run: npx prisma db push --accept-data-loss
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/test
+
       - name: Environment health check
         run: |
           echo "Node version: $(node --version)"
