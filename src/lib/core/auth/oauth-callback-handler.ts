@@ -140,6 +140,11 @@ export class OAuthCallbackHandler {
 			const rawUserData = await config.getUserInfo(tokenData.accessToken, config.clientSecret);
 			const userData = config.mapUserData(rawUserData);
 
+			// Validate user data before database operations
+			if (!userData.id || !userData.email) {
+				throw new Error('Invalid user data from provider');
+			}
+
 			// Step 4: Find or create user in database
 			const user = await this.findOrCreateUser(config, userData, tokenData);
 
@@ -158,8 +163,8 @@ export class OAuthCallbackHandler {
 
 			// Step 5: Create session and handle redirects
 			return await this.handleSessionAndRedirect(user, returnTo, config.provider, cookies);
-		} catch (error) {
-			return this.handleError(error, config.provider);
+		} catch (err) {
+			return this.handleError(err, config.provider);
 		}
 	}
 
@@ -398,7 +403,7 @@ export class OAuthCallbackHandler {
 		// Set session cookie
 		cookies.set(sessionCookieName, session.id, {
 			path: '/',
-			secure: import.meta.env.MODE === 'production',
+			secure: process.env.NODE_ENV === 'production',
 			httpOnly: true,
 			maxAge: cookieMaxAge,
 			sameSite: 'lax'
@@ -437,9 +442,13 @@ export class OAuthCallbackHandler {
 
 	/**
 	 * Handle errors consistently across all providers
+	 *
+	 * IMPORTANT: This method THROWS errors for test compatibility.
+	 * SvelteKit's error() function creates an HttpError that must be thrown,
+	 * and redirect() creates a redirect Response that must be thrown.
 	 */
-	private handleError(err: unknown, provider: string): Response {
-		// Don't log SvelteKit redirects as errors
+	private handleError(err: unknown, provider: string): never {
+		// Don't log SvelteKit redirects as errors - just re-throw
 		if (err instanceof Response && err.status >= 300 && err.status < 400) {
 			throw err;
 		}
@@ -454,8 +463,8 @@ export class OAuthCallbackHandler {
 		// Log detailed error information
 		console.error(`${provider.toUpperCase()} OAuth error:`, {
 			error: err,
-			message: error instanceof Error ? error.message : 'Unknown error',
-			stack: error instanceof Error ? error.stack : undefined,
+			message: err instanceof Error ? err.message : 'Unknown error',
+			stack: err instanceof Error ? err.stack : undefined,
 			env: {
 				hasClientId: !!process.env[`${provider.toUpperCase()}_CLIENT_ID`],
 				hasClientSecret: !!process.env[`${provider.toUpperCase()}_CLIENT_SECRET`],
@@ -464,13 +473,13 @@ export class OAuthCallbackHandler {
 			}
 		});
 
-		// Return appropriate error message
+		// Throw appropriate error
 		const errorMessage =
 			process.env.NODE_ENV === 'production'
 				? 'Authentication failed'
-				: `Authentication failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+				: `Authentication failed: ${err instanceof Error ? err.message : 'Unknown error'}`;
 
-		return error(500, errorMessage);
+		throw error(500, errorMessage);
 	}
 
 	/**
