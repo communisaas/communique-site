@@ -55,7 +55,7 @@
 				'/toolhouse/generate-message',
 				requestData,
 				{
-					timeout: 60000, // 60 seconds for agent processing
+					timeout: 200000, // 200 seconds (3+ minutes) for Toolhouse agent processing
 					showToast: false // Don't show success toast
 				}
 			);
