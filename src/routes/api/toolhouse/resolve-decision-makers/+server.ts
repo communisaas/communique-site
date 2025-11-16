@@ -22,6 +22,53 @@ interface DecisionMakerResponse {
 }
 
 /**
+ * Extract ANY valid JSON from text, regardless of surrounding content
+ */
+function extractJSON(text: string): any | null {
+	// Try parsing the whole thing first
+	try {
+		return JSON.parse(text);
+	} catch {
+		// Find the largest valid JSON structure (prefer arrays/objects)
+		const candidates: any[] = [];
+
+		// Extract all JSON arrays
+		const arrayMatches = text.matchAll(/\[(?:[^\[\]]|\[[^\[\]]*\])*\]/gs);
+		for (const match of arrayMatches) {
+			try {
+				const parsed = JSON.parse(match[0]);
+				if (Array.isArray(parsed) && parsed.length > 0) {
+					candidates.push({ value: parsed, length: match[0].length });
+				}
+			} catch {
+				continue;
+			}
+		}
+
+		// Extract all JSON objects
+		const objectMatches = text.matchAll(/\{(?:[^{}]|\{[^{}]*\})*\}/gs);
+		for (const match of objectMatches) {
+			try {
+				const parsed = JSON.parse(match[0]);
+				if (parsed && typeof parsed === 'object') {
+					candidates.push({ value: parsed, length: match[0].length });
+				}
+			} catch {
+				continue;
+			}
+		}
+
+		// Return the largest valid JSON found
+		if (candidates.length > 0) {
+			candidates.sort((a, b) => b.length - a.length);
+			return candidates[0].value;
+		}
+
+		return null;
+	}
+}
+
+/**
  * Resolve decision-makers using Toolhouse AI agent
  *
  * POST /api/toolhouse/resolve-decision-makers
@@ -81,77 +128,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(500, 'Failed to resolve decision-makers');
 		}
 
-		// Parse response (handle streaming like subject-line agent)
+		// Extract JSON from response (handles markdown, notes, any flanking text)
 		const text = await response.text();
-
 		console.log('[DecisionMaker] Raw response (first 500 chars):', text.substring(0, 500));
-		console.log('[DecisionMaker] Response length:', text.length);
 
-		let result: DecisionMakerResponse;
+		const result = extractJSON(text);
 
-		// Strategy 1: Try parsing as single JSON
-		try {
-			result = JSON.parse(text);
-			console.log('[DecisionMaker] Parsed as single JSON object');
-		} catch (parseError) {
-			console.log('[DecisionMaker] Not a single JSON object, trying alternative strategies...');
-
-			// Strategy 2: Try newline-delimited JSON (look for last valid JSON)
-			const lines = text.split('\n').filter((line) => line.trim());
-			console.log('[DecisionMaker] Found', lines.length, 'lines in response');
-
-			let lastValidJson: DecisionMakerResponse | null = null;
-			for (const line of lines) {
-				try {
-					const parsed = JSON.parse(line);
-					if (parsed && typeof parsed === 'object' && 'decision_makers' in parsed) {
-						lastValidJson = parsed as DecisionMakerResponse;
-						console.log('[DecisionMaker] Found valid decision_makers JSON in line');
-					}
-				} catch {
-					// Skip non-JSON lines silently
-				}
-			}
-
-			if (lastValidJson) {
-				result = lastValidJson;
-			} else {
-				// Strategy 3: Try to extract JSON from within text (regex search)
-				console.log('[DecisionMaker] No valid JSON in lines, trying regex extraction...');
-
-				// Look for JSON object with decision_makers key
-				const jsonMatch = text.match(/\{[^{}]*"decision_makers"[^{}]*\[[^\]]*\][^{}]*\}/s);
-				if (jsonMatch) {
-					try {
-						result = JSON.parse(jsonMatch[0]);
-						console.log('[DecisionMaker] Extracted JSON via regex');
-					} catch {
-						// Strategy 4: Look for any valid JSON object anywhere in the text
-						const allJsonMatches = text.matchAll(/\{(?:[^{}]|(?:\{[^{}]*\}))*\}/g);
-						for (const match of allJsonMatches) {
-							try {
-								const parsed = JSON.parse(match[0]);
-								if (parsed && typeof parsed === 'object' && 'decision_makers' in parsed) {
-									result = parsed as DecisionMakerResponse;
-									console.log('[DecisionMaker] Found valid JSON in regex scan');
-									break;
-								}
-							} catch {
-								continue;
-							}
-						}
-					}
-				}
-
-				if (!result) {
-					console.error('[DecisionMaker] Failed to parse any valid JSON from response');
-					console.error('[DecisionMaker] Full raw text:', text);
-					throw error(500, 'Failed to parse agent response - no valid JSON found');
-				}
-			}
+		if (!result) {
+			console.error('[DecisionMaker] No valid JSON found in response');
+			console.error('[DecisionMaker] Full text:', text);
+			throw error(500, 'Failed to parse agent response - no valid JSON found');
 		}
 
-		console.log('[DecisionMaker] Final parsed result:', result);
+		console.log('[DecisionMaker] Extracted JSON:', result);
 
 		// Normalize response: handle both { decision_makers: [...] } and direct array
 		let normalizedResult: DecisionMakerResponse;
