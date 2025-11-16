@@ -20,6 +20,7 @@ import { CONSENSUS_TYPE } from '$env/static/private';
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
 	title: string;
+	slug?: string; // HACKATHON: Accept slug from AI agent (don't regenerate)
 	message_body: string;
 	category?: string;
 	type: string;
@@ -55,12 +56,13 @@ function validateTemplateData(data: unknown): {
 		errors.push(
 			createValidationError('title', 'VALIDATION_REQUIRED', 'Template title is required')
 		);
-	} else if (templateData.title.length > 200) {
+	} else if (templateData.title.length > 500) {
+		// HACKATHON: Increased from 200 to 500 for generous limits
 		errors.push(
 			createValidationError(
 				'title',
 				'VALIDATION_TOO_LONG',
-				'Title must be less than 200 characters'
+				'Title must be less than 500 characters'
 			)
 		);
 	}
@@ -73,12 +75,13 @@ function validateTemplateData(data: unknown): {
 		errors.push(
 			createValidationError('message_body', 'VALIDATION_REQUIRED', 'Message content is required')
 		);
-	} else if (templateData.message_body.length > 10000) {
+	} else if (templateData.message_body.length > 50000) {
+		// HACKATHON: Increased from 10,000 to 50,000 for generous limits
 		errors.push(
 			createValidationError(
 				'message_body',
 				'VALIDATION_TOO_LONG',
-				'Message must be less than 10,000 characters'
+				'Message must be less than 50,000 characters'
 			)
 		);
 	}
@@ -421,12 +424,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (user) {
 			// Authenticated user - save to database
 			try {
-				// Check for duplicate slug - validData.title is guaranteed to exist from validation
-				const slug = validData.title
-					.toLowerCase()
-					.replace(/[^a-z0-9\s-]/g, '')
-					.replace(/\s+/g, '-')
-					.substring(0, 50);
+				// HACKATHON FIX: Use AI-generated slug if provided, otherwise generate from title
+				// This preserves the slug created by the subject line generator agent
+				const slug = validData.slug?.trim()
+					? validData.slug.trim()
+					: validData.title
+							.toLowerCase()
+							.replace(/[^a-z0-9\s-]/g, '')
+							.replace(/\s+/g, '-')
+							.substring(0, 100); // Increased from 50 to 100 for generous limits
 
 				const existingTemplate = await db.template.findUnique({
 					where: { slug }
@@ -436,9 +442,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					const response: ApiResponse = {
 						success: false,
 						error: createValidationError(
-							'title',
+							'slug',
 							'VALIDATION_DUPLICATE',
-							'A template with a similar title already exists. Please choose a different title.'
+							'This link is already taken. Please choose a different one or customize your link.'
 						)
 					};
 					return json(response, { status: 400 });
@@ -516,14 +522,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 		} else {
 			// Guest user - return the template data with a temporary ID for client-side storage
+			// HACKATHON FIX: Use AI-generated slug if provided
 			const guestTemplate = {
 				...validData,
 				id: `guest-${Date.now()}`,
-				slug: validData.title
-					.toLowerCase()
-					.replace(/[^a-z0-9\s-]/g, '')
-					.replace(/\s+/g, '-')
-					.substring(0, 50),
+				slug: validData.slug?.trim()
+					? validData.slug.trim()
+					: validData.title
+							.toLowerCase()
+							.replace(/[^a-z0-9\s-]/g, '')
+							.replace(/\s+/g, '-')
+							.substring(0, 100), // Increased from 50 to 100
 				created_at: new Date().toISOString(),
 				userId: null
 			};
