@@ -304,15 +304,9 @@
 					{personalConnectionValue}
 					onSendMessage={() => {
 						if (!data.user) {
-							// Use UnifiedOnboardingModal for consistency with landing page
-							modalActions.openModal('onboarding-modal', 'onboarding', {
-								template,
-								source: source as 'social-link' | 'direct-link' | 'share'
-							});
-							funnelAnalytics.trackOnboardingStarted(
-								template.id,
-								source as 'social-link' | 'direct-link' | 'share'
-							);
+							// DEMO MODE: Skip auth wall on template landing, go straight to modal
+							// User is already on the template page, let them proceed
+							templateModal?.open(template, null);
 						} else {
 							// For authenticated users, use TemplateModal for the entire flow
 							handlePostAuthFlow();
