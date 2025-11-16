@@ -30,9 +30,8 @@ interface MessageGenerationResponse {
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	const session = await locals.auth();
-
 	// Authentication check
+	const session = locals.session;
 	if (!session?.userId) {
 		throw error(401, 'Authentication required');
 	}

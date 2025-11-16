@@ -7,8 +7,8 @@
 
 	interface Props {
 		decisionMakers: ProcessedDecisionMaker[];
-		customRecipients?: CustomRecipient[];
-		includesCongress?: boolean;
+		customRecipients: CustomRecipient[];
+		includesCongress: boolean;
 		onupdate: (data: {
 			decisionMakers: ProcessedDecisionMaker[];
 			customRecipients: CustomRecipient[];
@@ -16,37 +16,35 @@
 		}) => void;
 	}
 
-	let {
-		decisionMakers = $bindable([]),
-		customRecipients = $bindable([]),
-		includesCongress = $bindable(false)
-	}: Props = $props();
+	let { decisionMakers = $bindable(), customRecipients = $bindable(), includesCongress = $bindable() }: Props = $props();
 
 	let showCustomForm = $state(false);
 	let duplicateError = $state<string | null>(null);
 
 	const totalRecipients = $derived(
-		decisionMakers.length + customRecipients.length + (includesCongress ? 1 : 0)
+		(decisionMakers?.length || 0) + (customRecipients?.length || 0) + (includesCongress ? 1 : 0)
 	);
 
 	function handleAddCustom(recipient: { email: string; name: string; organization?: string }) {
 		// Check for duplicates
-		if (isDuplicateEmail(recipient.email, decisionMakers, customRecipients)) {
+		if (isDuplicateEmail(recipient.email, decisionMakers || [], customRecipients || [])) {
 			duplicateError = 'This email is already in your recipient list';
 			return;
 		}
 
 		// Add to custom recipients
-		customRecipients = [...customRecipients, recipient];
+		customRecipients = [...(customRecipients || []), recipient];
 		showCustomForm = false;
 		duplicateError = null;
 	}
 
 	function handleRemoveDecisionMaker(index: number) {
+		if (!decisionMakers) return;
 		decisionMakers = decisionMakers.filter((_, i) => i !== index);
 	}
 
 	function handleRemoveCustom(index: number) {
+		if (!customRecipients) return;
 		customRecipients = customRecipients.filter((_, i) => i !== index);
 	}
 </script>
@@ -55,7 +53,7 @@
 	<!-- Header -->
 	<div>
 		<h3 class="text-lg font-semibold text-slate-900 md:text-xl">
-			{#if decisionMakers.length > 0}
+			{#if decisionMakers?.length > 0}
 				We found {decisionMakers.length} decision-maker{decisionMakers.length === 1 ? '' : 's'}
 			{:else}
 				Add decision-makers
@@ -69,7 +67,7 @@
 	</div>
 
 	<!-- AI-Resolved Decision-Makers -->
-	{#if decisionMakers.length > 0}
+	{#if decisionMakers?.length > 0}
 		<div class="space-y-3">
 			{#each decisionMakers as dm, i}
 				<DecisionMakerCard decisionMaker={dm} onremove={() => handleRemoveDecisionMaker(i)} />
@@ -78,7 +76,7 @@
 	{/if}
 
 	<!-- Custom Recipients -->
-	{#if customRecipients.length > 0}
+	{#if customRecipients?.length > 0}
 		<div class="space-y-3">
 			<h4 class="text-sm font-medium text-slate-700">Custom recipients</h4>
 			{#each customRecipients as cr, i}
@@ -143,7 +141,7 @@
 	</div>
 
 	<!-- Empty State -->
-	{#if decisionMakers.length === 0 && customRecipients.length === 0 && !includesCongress}
+	{#if (decisionMakers?.length || 0) === 0 && (customRecipients?.length || 0) === 0 && !includesCongress}
 		<div class="rounded-lg border-2 border-dashed border-slate-200 bg-slate-50 p-8 text-center">
 			<p class="text-sm text-slate-600">
 				No decision-makers found. Add contacts manually or include congressional representatives.

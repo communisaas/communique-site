@@ -23,12 +23,28 @@ export function processDecisionMakers(
 
 /**
  * Extract reasoning (why this person matters) from provenance
- * Returns text before "Source:" or first sentence
+ * Handles two formats:
+ * 1. "URL (reasoning text)" - reasoning in parentheses after URL
+ * 2. "Reasoning text. Source: URL" - reasoning before source marker
  */
 export function extractReasoning(provenance: string): string {
+	// Format 1: URL (reasoning) - extract text in parentheses
+	const parenMatch = provenance.match(/\(([^)]+)\)/);
+	if (parenMatch) {
+		return parenMatch[1].trim();
+	}
+
+	// Format 2: Remove URL if it's at the start
+	let text = provenance.replace(/^https?:\/\/[^\s]+\s*/, '').trim();
+
 	// Split on common provenance markers
-	const parts = provenance.split(/Source:|Email format verified|His role|Her role/i);
+	const parts = text.split(/Source:|Email format verified|His role|Her role/i);
 	const reasoning = parts[0].trim();
+
+	// If we still have a URL at the start, just use the full text
+	if (reasoning.startsWith('http')) {
+		return 'Decision-maker contact verified';
+	}
 
 	// Return first sentence or first 150 chars
 	const firstSentence = reasoning.match(/^[^.!?]+[.!?]/);
@@ -79,21 +95,25 @@ export function inferPowerLevel(title: string): 'primary' | 'secondary' | 'suppo
  * Convert decision-makers to recipient emails for template
  */
 export function extractRecipientEmails(
-	decisionMakers: ProcessedDecisionMaker[],
-	customRecipients: CustomRecipient[],
+	decisionMakers: ProcessedDecisionMaker[] | undefined,
+	customRecipients: CustomRecipient[] | undefined,
 	includesCongress: boolean
 ): string[] {
 	const emails: string[] = [];
 
 	// AI-resolved decision-makers
-	decisionMakers.forEach((dm) => {
-		if (dm.email) emails.push(dm.email);
-	});
+	if (decisionMakers) {
+		decisionMakers.forEach((dm) => {
+			if (dm.email) emails.push(dm.email);
+		});
+	}
 
 	// Custom recipients
-	customRecipients.forEach((cr) => {
-		emails.push(cr.email);
-	});
+	if (customRecipients) {
+		customRecipients.forEach((cr) => {
+			emails.push(cr.email);
+		});
+	}
 
 	// Congressional marker
 	if (includesCongress) {
@@ -108,20 +128,18 @@ export function extractRecipientEmails(
  */
 export function isDuplicateEmail(
 	email: string,
-	decisionMakers: ProcessedDecisionMaker[],
-	customRecipients: CustomRecipient[]
+	decisionMakers: ProcessedDecisionMaker[] | undefined,
+	customRecipients: CustomRecipient[] | undefined
 ): boolean {
 	const normalizedEmail = email.toLowerCase().trim();
 
 	// Check decision-makers
-	const inDecisionMakers = decisionMakers.some(
-		(dm) => dm.email?.toLowerCase().trim() === normalizedEmail
-	);
+	const inDecisionMakers =
+		decisionMakers?.some((dm) => dm.email?.toLowerCase().trim() === normalizedEmail) || false;
 
 	// Check custom recipients
-	const inCustomRecipients = customRecipients.some(
-		(cr) => cr.email.toLowerCase().trim() === normalizedEmail
-	);
+	const inCustomRecipients =
+		customRecipients?.some((cr) => cr.email.toLowerCase().trim() === normalizedEmail) || false;
 
 	return inDecisionMakers || inCustomRecipients;
 }

@@ -26,11 +26,20 @@
 			stage = 'generating';
 			console.log('[MessageGenerationResolver] Generating message...');
 
+			// Validate we have required data
+			if (!formData.objective.title || !formData.objective.description) {
+				throw new Error('Missing subject line or core issue');
+			}
+
+			if (!formData.audience.decisionMakers || formData.audience.decisionMakers.length === 0) {
+				throw new Error('No decision-makers selected');
+			}
+
 			// Prepare request data
 			const requestData = {
 				subject_line: formData.objective.title,
 				core_issue: formData.objective.description,
-				domain: formData.objective.category.toLowerCase(),
+				domain: formData.objective.category?.toLowerCase() || 'general',
 				decision_makers: formData.audience.decisionMakers.map((dm) => ({
 					name: dm.name,
 					title: dm.title,
