@@ -134,18 +134,22 @@ export function analyzeEmailFlow(
 			};
 		}
 
-		// No user = auth required
+		// DEMO MODE: Allow guests to access non-congressional templates
+		const isCongressional = template.deliveryMethod === 'cwc';
 		if (!user) {
-			return {
-				requiresAuth: true,
-				nextAction: 'auth',
-				analytics: { ...analytics, step: 'require_auth' }
-			};
+			if (isCongressional) {
+				// Congressional templates require authentication
+				return {
+					requiresAuth: true,
+					nextAction: 'auth',
+					analytics: { ...analytics, step: 'require_auth' }
+				};
+			}
+			// For non-CWC templates, guests can proceed to mailto generation
 		}
 
-		// Enforce address gating for congressional delivery
-		const isCongressional = template.deliveryMethod === 'cwc';
-		const hasCompleteAddress = Boolean(user.street && user.city && user.state && user.zip);
+		// Enforce address gating for authenticated users on congressional delivery
+		const hasCompleteAddress = user ? Boolean(user.street && user.city && user.state && user.zip) : false;
 
 		if (isCongressional && !hasCompleteAddress) {
 			return {
