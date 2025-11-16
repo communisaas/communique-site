@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Template } from '$lib/types/template';
-	import { Users, ClipboardCopy, ClipboardCheck } from '@lucide/svelte';
+	import { Users, ClipboardCopy, ClipboardCheck, BookOpen } from '@lucide/svelte';
 	import TemplateTips from '../TemplateTips.svelte';
 	import MessagePreview from '../MessagePreview.svelte';
 	import Popover from '$lib/components/ui/Popover.svelte';
@@ -8,6 +8,9 @@
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import { fade } from 'svelte/transition';
 	import { coordinated } from '$lib/utils/timerCoordinator';
+	import SourceCard from '$lib/components/template/creator/SourceCard.svelte';
+	import ResearchLog from '$lib/components/template/creator/ResearchLog.svelte';
+	import { hasCitations } from '$lib/utils/message-processing';
 
 	let {
 		template,
@@ -39,6 +42,12 @@
 
 	let copied = $state(false);
 	let copyTimeout: string | null = null;
+	let showResearchLog = $state(false);
+
+	// Check if template has sources and citations
+	const hasSources = $derived(template.sources && template.sources.length > 0);
+	const hasResearchLog = $derived(template.research_log && template.research_log.length > 0);
+	const hasCitationsInMessage = $derived(hasCitations(template.message_body));
 
 	async function copyToClipboard() {
 		const csvEmails = recipients.join(', ');
@@ -208,4 +217,29 @@
 		}}
 		{expandToContent}
 	/>
+
+	<!-- Sources section (when available) -->
+	{#if hasSources && hasCitationsInMessage}
+		<div class="mt-6 space-y-3">
+			<div class="flex items-center gap-2">
+				<BookOpen class="h-5 w-5 text-slate-600" />
+				<h4 class="font-semibold text-slate-900">
+					Sources ({template.sources?.length || 0})
+				</h4>
+			</div>
+
+			<div class="space-y-2">
+				{#each template.sources || [] as source}
+					<SourceCard {source} />
+				{/each}
+			</div>
+		</div>
+	{/if}
+
+	<!-- Research log (when available) -->
+	{#if hasResearchLog}
+		<div class="mt-4">
+			<ResearchLog researchLog={template.research_log || []} bind:expanded={showResearchLog} />
+		</div>
+	{/if}
 </div>
