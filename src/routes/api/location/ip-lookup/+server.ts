@@ -41,6 +41,21 @@ export const GET: RequestHandler = async ({ getClientAddress }) => {
 
 		if (!response.ok) {
 			console.error('[IP Lookup] API error:', response.status);
+
+			// Fallback: Return mock California location for development (avoid rate limit failures)
+			if (lookupIp === '8.8.8.8' || response.status === 429) {
+				console.warn('[IP Lookup] Using fallback location (Mountain View, CA)');
+				return json({
+					city: 'Mountain View',
+					state: 'California',
+					state_code: 'CA',
+					country_code: 'US',
+					latitude: 37.3861,
+					longitude: -122.0839,
+					timezone: 'America/Los_Angeles'
+				});
+			}
+
 			return json({ error: 'IP lookup failed' }, { status: response.status });
 		}
 

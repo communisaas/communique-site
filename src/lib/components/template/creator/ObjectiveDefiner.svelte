@@ -1,9 +1,11 @@
 <script lang="ts">
-	import { Lightbulb } from '@lucide/svelte';
+	import { Lightbulb, Sparkles } from '@lucide/svelte';
+	import { untrack } from 'svelte';
 	import type { TemplateCreationContext } from '$lib/types/template';
 	import { templateValidationRules } from '$lib/utils/validation';
 	import ValidatedInput from '$lib/components/ui/ValidatedInput.svelte';
 	import SlugCustomizer from './SlugCustomizer.svelte';
+	import SubjectLineGenerator from './SubjectLineGenerator.svelte';
 
 	interface Props {
 		data: {
@@ -11,38 +13,134 @@
 			description: string;
 			category: string;
 			slug?: string;
+			aiGenerated?: boolean;
 		};
 		context: TemplateCreationContext;
 	}
 
 	let { data = $bindable(), context }: Props = $props();
 
-	// Initialize data if empty
+	// State for AI suggestion
+	let showGenerator = $state(false);
+	let userIssueDescription = $state('');
+
+	// Handle suggestion acceptance
+	function handleSuggestionAccept(suggestion: {
+		subject_line: string;
+		core_issue: string;
+		domain: string;
+		url_slug: string;
+	}) {
+		data.title = suggestion.subject_line;
+		data.description = suggestion.core_issue;
+		data.slug = suggestion.url_slug;
+		data.category = mapDomainToCategory(suggestion.domain);
+		data.aiGenerated = true; // Mark as AI-generated to prevent slug overwriting
+		showGenerator = false;
+	}
+
+	function mapDomainToCategory(domain: string): string {
+		const mapping: Record<string, string> = {
+			government: 'Government',
+			corporate: 'Corporate',
+			institutional: 'Institutional',
+			labor: 'Labor',
+			advocacy: 'Advocacy'
+		};
+		return mapping[domain] || 'General';
+	}
+
+	// Initialize data if empty (using untrack to avoid mutation warnings)
 	$effect(() => {
-		if (!data.title) data.title = '';
-		if (!data.description) data.description = '';
-		if (!data.slug) data.slug = '';
+		untrack(() => {
+			if (!data.title) data.title = '';
+			if (!data.description) data.description = '';
+			if (!data.slug) data.slug = '';
+		});
 	});
 
 	const _isTitleValid = $derived(data.title.trim().length > 0);
 </script>
 
 <div class="space-y-4 md:space-y-6">
-	<!-- Hero Focus: Main Action -->
+	<!-- Subject Line Input -->
 	<div class="space-y-3 md:space-y-4">
 		<div class="space-y-2">
+			<div class="flex items-center justify-between">
+				<label for="title-input" class="block text-sm font-medium text-slate-700">
+					Subject line
+				</label>
+
+				{#if !showGenerator}
+					<button
+						type="button"
+						onclick={() => (showGenerator = true)}
+						class="inline-flex items-center gap-1 text-xs text-participation-primary-600 hover:text-participation-primary-700 md:text-sm"
+					>
+						<Sparkles class="h-3.5 w-3.5 md:h-4 md:w-4" />
+						Need help?
+					</button>
+				{/if}
+			</div>
+
 			<ValidatedInput
 				bind:value={data.title}
-				label="Issue Title (will be the subject line when sent)"
-				placeholder="e.g., Update City Park Hours"
+				placeholder="e.g., University Raised Tuition 40% While Sitting on $8B Endowment"
 				rules={templateValidationRules.title}
 			/>
 		</div>
 	</div>
 
+	<!-- AI-Assisted Generator (collapsed by default) -->
+	{#if showGenerator}
+		<div class="rounded-lg border-2 border-slate-200 bg-slate-50 p-4">
+			<div class="flex items-start justify-between gap-3">
+				<div class="flex items-start gap-3">
+					<Sparkles class="mt-0.5 h-5 w-5 text-participation-primary-600" />
+					<div class="flex-1">
+						<h4 class="text-sm font-medium text-slate-900 md:text-base">
+							Let's craft this together
+						</h4>
+						<p class="mt-1 text-xs text-slate-600 md:text-sm">
+							Describe what's pissing you off. We'll write the subject line.
+						</p>
+					</div>
+				</div>
+				<button
+					type="button"
+					onclick={() => (showGenerator = false)}
+					class="text-slate-400 hover:text-slate-600"
+					aria-label="Close"
+				>
+					<svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M6 18L18 6M6 6l12 12"
+						></path>
+					</svg>
+				</button>
+			</div>
+
+			<div class="mt-4 border-t border-slate-200 pt-4">
+				<SubjectLineGenerator
+					bind:description={userIssueDescription}
+					onaccept={handleSuggestionAccept}
+					oncancel={() => (showGenerator = false)}
+				/>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Live Template Link Generation -->
 	<div class="space-y-3">
-		<SlugCustomizer title={data.title} bind:slug={data.slug} {context} />
+		<SlugCustomizer
+			title={data.title}
+			bind:slug={data.slug}
+			aiGenerated={data.aiGenerated}
+			{context}
+		/>
 	</div>
 
 	<!-- Reference Tips - Available When Needed -->

@@ -104,15 +104,87 @@ export interface TemplateFormData {
 		description: string;
 		category: string;
 		slug?: string;
+		aiGenerated?: boolean; // Flag indicating content was AI-generated
 	};
 	audience: {
+		decisionMakers: ProcessedDecisionMaker[];
 		recipientEmails: string[];
+		includesCongress: boolean;
+		customRecipients: CustomRecipient[];
 	};
 	content: {
 		preview: string;
 		variables: string[];
+		sources?: Source[]; // Citation sources from message generation
+		researchLog?: string[]; // Agent's research process log
+		aiGenerated?: boolean; // Flag indicating message was AI-generated
+		edited?: boolean; // Flag indicating user edited AI-generated message
 	};
 	review: Record<string, never>; // For validation purposes, no data to store
+}
+
+/**
+ * Processed decision-maker with extracted provenance data
+ */
+export interface ProcessedDecisionMaker {
+	name: string;
+	title: string;
+	organization: string;
+	email?: string;
+	provenance: string; // Full verification text from agent
+	reasoning: string; // Extracted: why this person matters
+	source?: string; // Extracted: verification URL
+	powerLevel?: 'primary' | 'secondary' | 'supporting';
+	isAiResolved: boolean; // true = AI-resolved, false = manually added
+}
+
+/**
+ * Custom recipient added manually by user
+ */
+export interface CustomRecipient {
+	email: string;
+	name: string;
+	organization?: string;
+}
+
+/**
+ * Source reference from message generation agent
+ */
+export interface Source {
+	num: number; // Citation number [1], [2], etc.
+	title: string; // Source title
+	url: string; // Source URL
+	type: 'journalism' | 'research' | 'government' | 'legal' | 'advocacy'; // Source type
+}
+
+// ============================================================================
+// Multi-Target Delivery Types (Hackathon Implementation)
+// ============================================================================
+
+/**
+ * Template recipient configuration for multi-target delivery
+ * Templates can target Congress + external decision-makers in one action
+ */
+export interface TemplateRecipientConfig {
+	type: 'multi-target';
+	recipients: TemplateRecipient[];
+}
+
+/**
+ * Individual recipient in a multi-target template
+ */
+export interface TemplateRecipient {
+	type: 'congressional' | 'email';
+
+	// Congressional recipients
+	chamber?: 'house' | 'senate'; // undefined = both
+	selection?: 'user_district' | 'all_congress' | 'specific_members';
+	specific_bioguide_ids?: string[]; // For targeting specific members
+
+	// Email recipients
+	email?: string;
+	name?: string; // Display name for UI
+	organization?: string; // For context
 }
 
 // For UI components that only need a minimal user shape

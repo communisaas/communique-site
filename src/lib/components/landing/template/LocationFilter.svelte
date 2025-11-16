@@ -40,6 +40,8 @@
 	import type { Template, TemplateGroup } from '$lib/types/template';
 	import AddressConfirmationModal from './AddressConfirmationModal.svelte';
 	import PrivacyIndicator from './PrivacyBadge.svelte';
+	import LocationAutocomplete from './LocationAutocomplete.svelte';
+	import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
 	import { locationInferenceEngine } from '$lib/core/location/inference-engine';
 
 	interface LocationFilterProps {
@@ -466,17 +468,32 @@
 	const nextUnlock = $derived.by(() => {
 		if (!inferredLocation) {
 			// No location at all → state is first unlock
-			return { level: 'state', count: templateCountsByTier.state };
+			return {
+				level: 'state' as const,
+				count: templateCountsByTier.state,
+				locationContext: null
+			};
 		}
 
 		if (!inferredLocation.city_name) {
 			// Have state, need city
-			return { level: 'city', count: templateCountsByTier.city };
+			// City templates are distributed across the state, not in a single city
+			const stateName = breadcrumbState || inferredLocation.state_code;
+			return {
+				level: 'city' as const,
+				count: templateCountsByTier.city,
+				locationContext: stateName
+			};
 		}
 
 		if (!inferredLocation.congressional_district) {
 			// Have city, need district
-			return { level: 'district', count: templateCountsByTier.district };
+			const cityName = breadcrumbCity || inferredLocation.city_name;
+			return {
+				level: 'district' as const,
+				count: templateCountsByTier.district,
+				locationContext: cityName
+			};
 		}
 
 		// Max precision reached
@@ -486,9 +503,8 @@
 	// Load inferred location using the inference engine
 	onMount(async () => {
 		try {
-			// DEV MODE: Disabled to test address entry funnel
+			// DEV MODE: Enabled temporarily to bypass IP lookup issues
 			// Uncomment to simulate IP-based location (country + state only)
-			/*
 			if (browser && window.location.hostname === 'localhost') {
 				console.log('[LocationFilter] 🎨 DEV MODE: Using realistic IP-based location (country + state)');
 				inferredLocation = {
@@ -522,7 +538,6 @@
 				isLoadingLocation = false;
 				return; // Skip real inference in dev mode
 			}
-			*/
 
 			// Get user location from inference engine (uses cached if available)
 			let location = await getUserLocation();
@@ -552,11 +567,10 @@
 
 			if (location && location.confidence > 0) {
 				inferredLocation = location;
-
-				// DEBUG: Log inferred location to understand why city isn't showing
-				console.log('[LocationFilter] Inferred location:', {
-					city_name: location.city_name,
+				console.log('[LocationFilter] ✓ Location loaded:', {
+					country_code: location.country_code,
 					state_code: location.state_code,
+					city_name: location.city_name,
 					congressional_district: location.congressional_district,
 					confidence: location.confidence
 				});
@@ -565,17 +579,10 @@
 				if (browser) {
 					const signals = await locationStorage.getSignals();
 					locationSignals = signals;
-
-					// DEBUG: Log signals to understand source
-					console.log(
-						'[LocationFilter] Location signals:',
-						signals.map((s) => ({
-							source: s.source,
-							city_name: s.city_name,
-							confidence: s.confidence
-						}))
-					);
+					console.log('[LocationFilter] Loaded signals:', signals.length);
 				}
+			} else {
+				console.warn('[LocationFilter] ✗ No location data (confidence:', location?.confidence, ')');
 			}
 
 			isLoadingLocation = false;
@@ -807,7 +814,6 @@
 
 	// Emit nextUnlock changes to parent
 	$effect(() => {
-		console.log('[LocationFilter] nextUnlock:', nextUnlock);
 		onNextUnlockChange(nextUnlock);
 	});
 
@@ -865,8 +871,6 @@
 	async function handleAddressConfirmed(event: CustomEvent<VerifiedAddress>) {
 		const verified = event.detail;
 
-		console.log('[LocationFilter] Address confirmed:', verified);
-
 		try {
 			// Create verified location signal with highest confidence
 			const signal: LocationSignal = {
@@ -901,8 +905,6 @@
 
 			// Close modal
 			showAddressModal = false;
-
-			console.log('[LocationFilter] ✓ Verified location updated:', location);
 		} catch (error) {
 			console.error('[LocationFilter] Error storing verified location:', error);
 			locationError = 'Failed to save verified location';
@@ -911,6 +913,93 @@
 
 	function handleAddressModalClose() {
 		showAddressModal = false;
+	}
+
+	/**
+	 * Safely extract country_code from LocationHierarchy result
+	 * Handles all possible Nominatim response patterns
+	 */
+	function extractCountryCode(result: LocationHierarchy): string | null {
+		// Try country.code first (check exists and is non-empty)
+		if (result.country && result.country.code && result.country.code !== '') {
+			return result.country.code;
+		}
+
+		// Fallback to state's country_code
+		if (result.state?.country_code && result.state.country_code !== '') {
+			return result.state.country_code;
+		}
+
+		// Fallback to city's country_code
+		if (result.city?.country_code && result.city.country_code !== '') {
+			return result.city.country_code;
+		}
+
+		// No country determinable
+		return null;
+	}
+
+	/**
+	 * Handle location change from autocomplete breadcrumb
+	 * Creates a user-selected signal (confidence 0.9, not 1.0 since not verified)
+	 */
+	async function handleLocationSelect(result: LocationHierarchy) {
+		try {
+			// Serialize previous location (avoid Svelte proxy cloning issues)
+			const previousLocationData = inferredLocation
+				? {
+						country_code: inferredLocation.country_code,
+						state_code: inferredLocation.state_code,
+						city_name: inferredLocation.city_name,
+						congressional_district: inferredLocation.congressional_district
+					}
+				: null;
+
+			// Safely extract country code (handles all Nominatim response patterns)
+			const countryCode = extractCountryCode(result);
+
+			// Create user-selected signal
+			const signal: LocationSignal = {
+				signal_type: 'user_selected',
+				confidence: 0.9, // High but not verified (1.0)
+				congressional_district: null, // Will lookup if needed
+				state_code: result.state?.code || null,
+				city_name: result.city?.name || null,
+				country_code: countryCode,
+				county_fips: null,
+				latitude: result.city?.lat || null,
+				longitude: result.city?.lon || null,
+				source: 'user.breadcrumb_selection',
+				timestamp: new Date().toISOString(),
+				metadata: {
+					display_name: result.display_name,
+					previous_location: previousLocationData
+				}
+			};
+
+			// Store signal
+			await locationInferenceEngine.addSignal(signal);
+
+			// Re-infer location
+			const location = await getUserLocation(true);
+			inferredLocation = location;
+
+			// Reload signals for display
+			if (browser) {
+				const signals = await locationStorage.getSignals();
+				locationSignals = signals;
+			}
+		} catch (error) {
+			console.error('[LocationFilter] Error updating location from breadcrumb:', error);
+			locationError = 'Failed to update location';
+		}
+	}
+
+	/**
+	 * Handle filter toggle (click breadcrumb without editing)
+	 */
+	function handleScopeFilter(scope: GeographicScope) {
+		selectedScope = selectedScope === scope ? null : scope;
 	}
 </script>
 
@@ -942,7 +1031,7 @@
 	</div>
 {:else if hasLocation}
 	<!-- TEMPLATE BROWSER HEADER (Two-column: Location left, Unlock right) -->
-	<div class="mb-6 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-900/5">
+	<div class="mb-6 rounded-xl bg-white px-6 pt-6 pb-4 shadow-sm ring-1 ring-slate-900/5">
 		<div class="flex items-start justify-between gap-8">
 			<!-- LEFT COLUMN: Location Information -->
 			<div class="flex flex-1 items-start gap-3">
@@ -995,8 +1084,105 @@
 						</button>
 					{/if}
 
+					<!-- Geographic breadcrumb (inline with location elements) -->
+					{#if breadcrumbCountry || breadcrumbState || breadcrumbCounty || breadcrumbCity || breadcrumbDistrict}
+						<nav class="mt-2 flex items-center gap-2 text-sm" aria-label="Filter by geographic scope">
+							{#if breadcrumbCountry}
+								<LocationAutocomplete
+									label={breadcrumbCountry}
+									level="country"
+									isSelected={selectedScope === 'country'}
+									on:select={handleLocationSelect}
+									on:filter={() => handleScopeFilter('country')}
+								/>
+							{/if}
+
+							{#if breadcrumbState && breadcrumbCountry}
+								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 5l7 7-7 7"
+									/>
+								</svg>
+							{/if}
+
+							{#if breadcrumbState}
+								<LocationAutocomplete
+									label={breadcrumbState}
+									level="state"
+									currentCountry={inferredLocation?.country_code}
+									isSelected={selectedScope === 'state'}
+									on:select={handleLocationSelect}
+									on:filter={() => handleScopeFilter('state')}
+								/>
+							{/if}
+
+							{#if breadcrumbCounty}
+								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 5l7 7-7 7"
+									/>
+								</svg>
+								<LocationAutocomplete
+									label={breadcrumbCounty}
+									level="city"
+									currentCountry={inferredLocation?.country_code}
+									currentState={inferredLocation?.state_code}
+									isSelected={selectedScope === 'county'}
+									on:select={handleLocationSelect}
+									on:filter={() => handleScopeFilter('county')}
+								/>
+							{/if}
+
+							{#if breadcrumbCity}
+								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 5l7 7-7 7"
+									/>
+								</svg>
+								<LocationAutocomplete
+									label={breadcrumbCity}
+									level="city"
+									currentCountry={inferredLocation?.country_code}
+									currentState={inferredLocation?.state_code}
+									isSelected={selectedScope === 'city'}
+									on:select={handleLocationSelect}
+									on:filter={() => handleScopeFilter('city')}
+								/>
+							{/if}
+
+							{#if breadcrumbDistrict}
+								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M9 5l7 7-7 7"
+									/>
+								</svg>
+								<LocationAutocomplete
+									label={breadcrumbDistrict}
+									level="district"
+									currentCountry={inferredLocation?.country_code}
+									currentState={inferredLocation?.state_code}
+									isSelected={selectedScope === 'district'}
+									on:select={handleLocationSelect}
+									on:filter={() => handleScopeFilter('district')}
+								/>
+							{/if}
+						</nav>
+					{/if}
+
 					<!-- Privacy indicator (passive trust signal) -->
-					<div class="mt-2">
+					<div class="mt-4 pt-3 border-t border-slate-100">
 						<PrivacyIndicator />
 					</div>
 
@@ -1035,7 +1221,7 @@
 									{:else if locationSignals.some((s) => s.source.includes('oauth'))}
 										From OAuth profile
 									{:else}
-										From browser inference
+										From browser timezone and language
 									{/if}
 								</div>
 
@@ -1049,172 +1235,80 @@
 				</div>
 			</div>
 
-			<!-- RIGHT COLUMN: Progressive Unlock CTA (always visible for consistent layout) -->
+			<!-- RIGHT COLUMN: Progressive Unlock CTA -->
 			{#if nextUnlock}
-				{#if nextUnlock.count > 0}
-					<!-- Active unlock opportunity -->
-					<div class="flex-shrink-0" style="min-width: 280px; max-width: 320px;">
-					<div class="rounded-lg border border-blue-100 bg-gradient-to-br from-blue-50 to-white p-4">
-						<div class="flex items-start gap-3">
-							<!-- Plus icon -->
-							<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
-								<svg class="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-								</svg>
-							</div>
+				<div class="flex-shrink-0 group" style="min-width: 280px; max-width: 320px;">
+					<div class="relative overflow-hidden rounded-participation-lg border border-surface-border bg-surface-base p-4 shadow-participation-sm transition-all duration-300 hover:shadow-participation-md hover:border-surface-border-strong">
+						<!-- Subtle noise texture overlay -->
+						<div class="absolute inset-0 opacity-[0.015] pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
 
-							<div class="flex-1 min-w-0">
-								<!-- Count -->
-								<h3 class="text-sm font-semibold text-slate-900">
-									{nextUnlock.count} {nextUnlock.level} {nextUnlock.count === 1 ? 'template' : 'templates'} available
-								</h3>
-
-								<!-- Benefit -->
-								<p class="mt-0.5 text-xs text-slate-600">
+						{#if nextUnlock.count > 0}
+							<!-- Active state: Single unified message -->
+							<div class="relative mb-4 text-center">
+								<div class="inline-flex items-baseline gap-2">
+									<span class="font-mono text-4xl font-black leading-none tracking-tighter text-participation-accent-600">
+										{nextUnlock.count}
+									</span>
+									<span class="text-sm font-medium text-text-secondary">
+										{#if nextUnlock.level === 'city'}
+											more across cities
+										{:else if nextUnlock.level === 'district'}
+											more at district level
+										{:else}
+											more available
+										{/if}
+									</span>
+								</div>
+								<p class="mt-2 text-xs text-text-tertiary">
 									{#if nextUnlock.level === 'city'}
-										See local campaigns in your area
+										Enter address to see yours
+									{:else if nextUnlock.level === 'district'}
+										Enter address for your district
 									{:else}
-										See campaigns in your district
+										Enter address to unlock
 									{/if}
 								</p>
 							</div>
-						</div>
-
-						<!-- CTA button (full width) -->
-						<button
-							onclick={() => (showAddressModal = true)}
-							class="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-blue-700 hover:shadow active:bg-blue-800"
-						>
-							Enter your {nextUnlock.level} →
-						</button>
-					</div>
-					</div>
-				{:else}
-					<!-- No templates available at next tier (maintain layout consistency) -->
-					<div class="flex-shrink-0" style="min-width: 280px; max-width: 320px;">
-						<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-							<div class="flex items-start gap-3">
-								<!-- Info icon -->
-								<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-100">
-									<svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+						{:else}
+							<!-- Empty state: Centered, minimal -->
+							<div class="text-center mb-4">
+								<div class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised mb-2">
+									<svg class="h-5 w-5 text-text-quaternary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+										<path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
 									</svg>
 								</div>
-
-								<div class="flex-1 min-w-0">
-									<h3 class="text-sm font-medium text-slate-700">
-										No {nextUnlock.level} templates yet
-									</h3>
-									<p class="mt-0.5 text-xs text-slate-500">
-										Check back soon for local coordination opportunities
-									</p>
-								</div>
+								<h3 class="text-sm font-semibold text-text-secondary">Get more precise location</h3>
+								<p class="mt-1 text-xs text-text-tertiary">Unlock future coordination opportunities</p>
 							</div>
+						{/if}
+
+						<!-- CTA button -->
+						<button onclick={() => (showAddressModal = true)} class="group/btn relative w-full overflow-hidden rounded-md bg-participation-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-participation-primary-700 hover:shadow-md active:bg-participation-primary-800 active:scale-[0.98]">
+							<span class="relative z-10 inline-flex items-center justify-center gap-2">
+								Enter your address
+								<svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+									<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+								</svg>
+							</span>
+							<div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full"></div>
+						</button>
+
+						<!-- CTA copy with privacy reassurance on hover -->
+						<div class="mt-4 relative h-4 overflow-hidden">
+							<!-- Default state: Agency-driven copy -->
+							<p class="absolute inset-0 text-[10px] leading-tight text-text-tertiary font-medium transition-all duration-300 group-hover:translate-y-[-100%] group-hover:opacity-0">
+								Unlock precise coordination in your area
+							</p>
+							<!-- Hover state: Privacy reassurance -->
+							<p class="absolute inset-0 text-[10px] leading-tight text-text-quaternary translate-y-[100%] opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+								Stays in your browser. Never sent to servers.
+							</p>
 						</div>
 					</div>
-				{/if}
+				</div>
 			{/if}
 		</div>
-
-		<!-- Geographic breadcrumb (full-width below both columns) -->
-		{#if breadcrumbCountry || breadcrumbState || breadcrumbCounty || breadcrumbCity || breadcrumbDistrict}
-			<nav class="mt-4 flex items-center gap-2 text-sm" aria-label="Filter by geographic scope">
-				{#if breadcrumbCountry}
-					<button
-						onclick={() => selectedScope = selectedScope === 'country' ? null : 'country'}
-						class="rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
-						class:bg-slate-100={selectedScope === 'country'}
-						class:text-slate-900={selectedScope === 'country'}
-						class:text-slate-600={selectedScope !== 'country'}
-					>
-						{breadcrumbCountry}
-					</button>
-				{/if}
-
-				{#if breadcrumbState && breadcrumbCountry}
-					<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5l7 7-7 7"
-						/>
-					</svg>
-				{/if}
-
-				{#if breadcrumbState}
-					<button
-						onclick={() => selectedScope = selectedScope === 'state' ? null : 'state'}
-						class="rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
-						class:bg-slate-100={selectedScope === 'state'}
-						class:text-slate-900={selectedScope === 'state'}
-						class:text-slate-700={selectedScope !== 'state'}
-					>
-						{breadcrumbState}
-					</button>
-				{/if}
-
-				{#if breadcrumbCounty}
-					<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5l7 7-7 7"
-						/>
-					</svg>
-					<button
-						onclick={() => selectedScope = selectedScope === 'county' ? null : 'county'}
-						class="rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
-						class:bg-slate-100={selectedScope === 'county'}
-						class:text-slate-900={selectedScope === 'county'}
-						class:text-slate-700={selectedScope !== 'county'}
-					>
-						{breadcrumbCounty}
-					</button>
-				{/if}
-
-				{#if breadcrumbCity}
-					<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5l7 7-7 7"
-						/>
-					</svg>
-					<button
-						onclick={() => selectedScope = selectedScope === 'city' ? null : 'city'}
-						class="rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
-						class:bg-slate-100={selectedScope === 'city'}
-						class:text-slate-900={selectedScope === 'city'}
-						class:text-slate-700={selectedScope !== 'city'}
-					>
-						{breadcrumbCity}
-					</button>
-				{/if}
-
-				{#if breadcrumbDistrict}
-					<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M9 5l7 7-7 7"
-						/>
-					</svg>
-					<button
-						onclick={() => selectedScope = selectedScope === 'district' ? null : 'district'}
-						class="rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
-						class:bg-slate-100={selectedScope === 'district'}
-						class:text-slate-900={selectedScope === 'district'}
-						class:text-slate-700={selectedScope !== 'district'}
-					>
-						{breadcrumbDistrict}
-					</button>
-				{/if}
-			</nav>
-		{/if}
 	</div>
 {:else}
 	<!-- No location detected - ask for address -->

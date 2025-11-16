@@ -38,11 +38,9 @@ export const load: PageServerLoad = async ({ params, locals, _url }) => {
 		}
 	});
 
-	// Check if user is authenticated
-	if (!locals.user) {
-		// Redirect to main template page with auth prompt
-		throw redirect(302, `/${slug}?auth=required&source=modal`);
-	}
+	// HACKATHON: Allow unauthenticated access via QR code / direct link
+	// Users can send via mailto FIRST, then we prompt account creation
+	// This removes friction for viral template sharing
 
 	// Format template for client
 	const formattedTemplate = {

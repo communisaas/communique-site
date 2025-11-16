@@ -263,15 +263,8 @@ export class LocationInferenceEngine {
 	 * Add a new location signal (replaces existing signals from same source)
 	 */
 	async addSignal(signal: LocationSignal): Promise<void> {
-		// Remove any existing signals from the same source to avoid duplicates
-		const existingSignals = await locationStorage.getSignals();
-		const signalsToKeep = existingSignals.filter((s) => s.source !== signal.source);
-
-		// Clear all signals and re-add only the ones we want to keep
-		await locationStorage.clearAll();
-		for (const s of signalsToKeep) {
-			await locationStorage.storeSignal(s);
-		}
+		// Remove any existing signal from the same source (atomic operation)
+		await locationStorage.deleteSignalBySource(signal.source);
 
 		// Add the new signal
 		await locationStorage.storeSignal(signal);

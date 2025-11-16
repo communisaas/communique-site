@@ -246,6 +246,44 @@ export class LocationStorage {
 	}
 
 	/**
+	 * Delete signal by source (atomic operation to replace signal from same source)
+	 */
+	async deleteSignalBySource(source: string): Promise<void> {
+		try {
+			const db = await this.init();
+
+			// Verify object store exists before accessing
+			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.LOCATION_SIGNALS)) {
+				console.warn('[LocationStorage] Object store not found, cannot delete signal');
+				return;
+			}
+
+			return new Promise((resolve, reject) => {
+				const transaction = db.transaction([INDEXED_DB_STORES.LOCATION_SIGNALS], 'readwrite');
+				const store = transaction.objectStore(INDEXED_DB_STORES.LOCATION_SIGNALS);
+				const request = store.openCursor();
+
+				request.onsuccess = (event) => {
+					const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+					if (cursor) {
+						const signal = cursor.value as unknown;
+						if (isLocationSignal(signal) && signal.source === source) {
+							cursor.delete();
+						}
+						cursor.continue();
+					} else {
+						resolve();
+					}
+				};
+
+				request.onerror = () => reject(new Error('Failed to delete signal by source'));
+			});
+		} catch (error) {
+			console.error('[LocationStorage] Failed to delete signal by source:', error);
+		}
+	}
+
+	/**
 	 * Clear expired signals
 	 */
 	async clearExpiredSignals(): Promise<number> {

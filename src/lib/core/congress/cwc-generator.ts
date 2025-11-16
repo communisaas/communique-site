@@ -33,15 +33,37 @@ interface CWCMessage {
 	template: Template;
 	user: User;
 	_targetRep: UserRepresentative; // Which specific rep to send to
+	personalizedMessage?: string; // Custom message to include in the body
 }
 
 export class CWCGenerator {
+	/**
+	 * Generate proper CWC office code from representative data
+	 * House: H{STATE}{DISTRICT} format (e.g., HCA13 for CA-13)
+	 * Senate: S{STATE}{01-03} format (e.g., SCA01 for CA senators)
+	 */
+	static generateOfficeCode(rep: UserRepresentative): string {
+		if (rep.chamber === 'senate') {
+			// Senate uses S{STATE}{01-03} format based on state
+			const state = rep.state.toUpperCase();
+			// For demo purposes, use position-based suffix (01, 02, 03)
+			// In production, this would map to actual Senate seat positions
+			const suffix = rep.bioguideId.endsWith('1') ? '01' : '02';
+			return `S${state}${suffix}`;
+		} else {
+			// House uses H{STATE}{DISTRICT} format
+			const state = rep.state.toUpperCase();
+			const district = rep.district.padStart(2, '0'); // Ensure 2-digit format
+			return `H${state}${district}`;
+		}
+	}
+
 	/**
 	 * Generate CWC XML for a user's advocacy message
 	 * This is the core function used when processing mailto: links
 	 */
 	static generateUserAdvocacyXML(message: CWCMessage): string {
-		const { template, user, _targetRep } = message;
+		const { template, user, _targetRep, personalizedMessage } = message;
 
 		// Use Senate-specific format if targeting Senate
 		if (_targetRep.chamber === 'senate') {
@@ -65,7 +87,7 @@ export class CWCGenerator {
             <Email>cwc@communique.org</Email>
             <Phone>+1-555-CWC-MAIL</Phone>
         </DeliveryAgent>
-        <OfficeCode>${this.escapeXML(_targetRep.officeCode)}</OfficeCode>
+        <OfficeCode>${this.escapeXML(this.generateOfficeCode(_targetRep))}</OfficeCode>
     </MessageHeader>
     
     <ConstituentData>
@@ -85,7 +107,7 @@ export class CWCGenerator {
     
     <MessageData>
         <Subject>${this.escapeXML(template.title || 'Congressional Communication')}</Subject>
-        <Body>${this.escapeXML(template.message_body)}</Body>
+        <Body>${this.escapeXML(personalizedMessage || template.message_body)}</Body>
         
         <MessageMetadata>
             <IntegrityHash>${this.generateIntegrityHash(user.id, template.id, _targetRep.bioguideId)}</IntegrityHash>
@@ -97,53 +119,65 @@ export class CWCGenerator {
 	}
 
 	/**
-	 * Generate Senate-specific CWC XML
-	 * The Senate uses a different XML schema than the House
+	 * Generate Senate-specific CWC XML based on official Senate RELAX NG schema
+	 * Matches exact Senate SOAPBox API requirements
 	 */
 	static generateSenateXML(message: CWCMessage): string {
-		const { template, user, _targetRep } = message;
+		const { template, user, _targetRep, personalizedMessage } = message;
 
-		const messageId = this.generateMessageId(user.id, template.id, _targetRep.bioguideId);
+		// Generate required IDs and timestamps
+		const deliveryId = this.generateDeliveryId(user.id, template.id, _targetRep.bioguideId);
+		const deliveryDate = new Date().toISOString().split('T')[0].replace(/-/g, ''); // YYYYMMDD format
+		const timestamp = new Date().toISOString();
 
 		// Extract user name parts
 		const [firstName, ...lastNameParts] = (user.name || 'Constituent').split(' ');
 		const lastName = lastNameParts.join(' ') || 'User';
 
-		// Simplified Senate XML format based on error feedback
+		// Format phone number to XXX-XXX-XXXX pattern
+		const formattedPhone = this.formatPhoneNumber(user.phone || '555-123-4567');
+
+		// Generate Library of Congress topics based on template content
+		const topics = this.generateLibraryOfCongressTopics(template.title || '');
+
+		// Official Senate CWC XML based on RELAX NG schema - CORRECT ORDER
 		const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <CWC>
-    <DeliveryId>${this.escapeXML(messageId)}</DeliveryId>
-    <DeliveryAgent>
-        <Name>Communique Advocacy Platform</Name>
-        <Email>cwc@communique.org</Email>
-        <Phone>+1-555-CWC-MAIL</Phone>
-    </DeliveryAgent>
+    <CWCVersion>2.0</CWCVersion>
+    <Delivery>
+        <DeliveryId>${deliveryId}</DeliveryId>
+        <DeliveryDate>${deliveryDate}</DeliveryDate>
+        <DeliveryAgent>Communique Advocacy Platform</DeliveryAgent>
+        <DeliveryAgentAckEmailAddress>cwc@communique.org</DeliveryAgentAckEmailAddress>
+        <DeliveryAgentContact>
+            <DeliveryAgentContactName>Communique Support Team</DeliveryAgentContactName>
+            <DeliveryAgentContactEmail>support@communique.org</DeliveryAgentContactEmail>
+            <DeliveryAgentContactPhone>555-123-4567</DeliveryAgentContactPhone>
+        </DeliveryAgentContact>
+        <CampaignId>${template.id || 'communique-campaign'}</CampaignId>
+    </Delivery>
+    <Recipient>
+        <MemberOffice>${this.generateOfficeCode(_targetRep)}</MemberOffice>
+        <IsResponseRequested>Y</IsResponseRequested>
+        <NewsletterOptIn>N</NewsletterOptIn>
+    </Recipient>
     <Constituent>
-        <Prefix></Prefix>
+        <Prefix>Mr.</Prefix>
         <FirstName>${this.escapeXML(firstName)}</FirstName>
-        <MiddleName></MiddleName>
         <LastName>${this.escapeXML(lastName)}</LastName>
-        <Suffix></Suffix>
-        <Title></Title>
-        <ConstituentAddress >
-            <Address >${this.escapeXML(user.address.street)}</Address >
-            <Address ></Address >
-            <City>${this.escapeXML(user.address.city)}</City>
-            <StateAbbreviation>${this.escapeXML(user.address.state)}</StateAbbreviation>
-            <Zip>${this.escapeXML(user.address.zip)}</Zip>
-        </ConstituentAddress >
-        <ConstituentEmail>${this.escapeXML(user.email)}</ConstituentEmail>
-        <ConstituentPhone>${this.escapeXML(user.phone || '')}</ConstituentPhone>
+        <Address1>${this.escapeXML(user.address.street)}</Address1>
+        <City>${this.escapeXML(user.address.city)}</City>
+        <StateAbbreviation>${this.escapeXML(user.address.state)}</StateAbbreviation>
+        <Zip>${this.escapeXML(user.address.zip)}</Zip>
+        <Email>${this.escapeXML(user.email)}</Email>
     </Constituent>
     <Message>
         <Subject>${this.escapeXML(template.title || 'Congressional Communication')}</Subject>
-        <LibraryOfCongressTopics></LibraryOfCongressTopics>
-        <BillNumber></BillNumber>
-        <ProOrCon></ProOrCon>
-        <OrganizationAcronym></OrganizationAcronym>
-        <ConstituentMessage>${this.escapeXML(template.message_body)}</ConstituentMessage>
+        <LibraryOfCongressTopics>
+            ${topics.map(topic => `<LibraryOfCongressTopic>${topic}</LibraryOfCongressTopic>`).join('\n            ')}
+        </LibraryOfCongressTopics>
+        <ConstituentMessage>${this.escapeXML(personalizedMessage || template.message_body || template.body || '')}</ConstituentMessage>
     </Message>
-    <OfficeCode>${this.escapeXML(_targetRep.officeCode)}</OfficeCode>
 </CWC>`;
 
 		return xml;
@@ -166,6 +200,15 @@ export class CWCGenerator {
 	}
 
 	/**
+	 * Generate unique delivery ID for Senate submissions (must be valid token format)
+	 */
+	static generateDeliveryId(userId: string, templateId: string, repBioguideId: string): string {
+		// Senate requires numeric format only, max 10 digits
+		const timestamp = Date.now().toString().slice(-8);
+		return `${timestamp}`;
+	}
+
+	/**
 	 * Generate unique message ID for CWC submission
 	 */
 	static generateMessageId(userId: string, templateId: string, repBioguideId: string): string {
@@ -181,6 +224,60 @@ export class CWCGenerator {
 		const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
 		const dataString = `${userId}:${templateId}:${repBioguideId}:${today}`;
 		return this.simpleHash(dataString);
+	}
+
+	/**
+	 * Format phone number to XXX-XXX-XXXX pattern
+	 */
+	static formatPhoneNumber(phone: string): string {
+		// Remove all non-digits
+		const digits = phone.replace(/\D/g, '');
+		
+		// If we have 10 digits, format as XXX-XXX-XXXX
+		if (digits.length === 10) {
+			return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+		}
+		
+		// Default fallback
+		return '555-123-4567';
+	}
+
+	/**
+	 * Generate Library of Congress topics based on template title/content
+	 */
+	static generateLibraryOfCongressTopics(title: string): string[] {
+		const titleLower = title.toLowerCase();
+		const topics: string[] = [];
+		
+		// Simple keyword matching for common topics
+		if (titleLower.includes('health') || titleLower.includes('medicare') || titleLower.includes('medicaid')) {
+			topics.push('Health');
+		}
+		if (titleLower.includes('environment') || titleLower.includes('climate') || titleLower.includes('pollution')) {
+			topics.push('Environmental Protection');
+		}
+		if (titleLower.includes('education') || titleLower.includes('school') || titleLower.includes('student')) {
+			topics.push('Education');
+		}
+		if (titleLower.includes('economy') || titleLower.includes('jobs') || titleLower.includes('employment')) {
+			topics.push('Labor and Employment');
+		}
+		if (titleLower.includes('immigration') || titleLower.includes('border')) {
+			topics.push('Immigration');
+		}
+		if (titleLower.includes('tax') || titleLower.includes('budget')) {
+			topics.push('Taxation');
+		}
+		if (titleLower.includes('civil rights') || titleLower.includes('equality') || titleLower.includes('discrimination')) {
+			topics.push('Civil Rights and Liberties, Minority Issues');
+		}
+		
+		// Default topic if none matched
+		if (topics.length === 0) {
+			topics.push('Government Operations and Politics');
+		}
+		
+		return topics;
 	}
 
 	/**
@@ -228,14 +325,14 @@ export class CWCGenerator {
 		const isSenateFormat = xml.includes('<DeliveryId>') && xml.includes('<Constituent>');
 
 		if (isSenateFormat) {
-			// Senate-specific validation
+			// Senate-specific validation (RELAX NG schema)
 			const senateRequiredElements = [
 				'<CWC>',
 				'<DeliveryId>',
 				'<DeliveryAgent>',
 				'<Constituent>',
 				'<Message>',
-				'<OfficeCode>'
+				'<MemberOffice>' // Senate uses MemberOffice, not OfficeCode
 			];
 
 			senateRequiredElements.forEach((element) => {

@@ -1,11 +1,11 @@
 <script lang="ts">
 	/**
-	 * PrivacyIndicator: Declarative trust signal with progressive disclosure
+	 * PrivacyIndicator: Empowering user agency through technical transparency
 	 *
-	 * DESIGN PHILOSOPHY (Stripe pattern):
-	 * - Short declarative text: "Private filtering (no server tracking)"
-	 * - Tooltip on hover: Explains browser-side architecture
-	 * - Trust through clarity, not vagueness
+	 * DESIGN PHILOSOPHY:
+	 * - Short declarative text: Focus on USER control
+	 * - Tooltip on hover: Explains WHAT data powers this (new info)
+	 * - Trust through clarity about mechanism
 	 * - Link to full details for those who care
 	 */
 </script>
@@ -13,9 +13,9 @@
 <a
 	href="/privacy"
 	class="group relative inline-flex items-center gap-1.5 text-slate-500 transition-colors hover:text-slate-700"
-	aria-label="Your location filtering happens privately in your browser"
+	aria-label="Your location preferences stay in your browser"
 >
-	<!-- Lock icon (trust indicator) -->
+	<!-- Lock icon (control indicator) -->
 	<svg class="h-3.5 w-3.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
 		<path
 			fill-rule="evenodd"
@@ -24,14 +24,14 @@
 		/>
 	</svg>
 
-	<!-- Declarative privacy text -->
-	<span class="text-xs">Private filtering (no server tracking)</span>
+	<!-- Empowering user-focused text -->
+	<span class="text-xs">Your location, your control</span>
 
-	<!-- Tooltip on hover (explains HOW it's private) -->
+	<!-- Tooltip on hover (explains WHAT powers this - actual new info) -->
 	<div
 		class="pointer-events-none absolute bottom-full left-0 mb-2 z-10 w-64 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100"
 	>
-		All filtering happens in your browser. Your location never touches our servers.
+		Uses IP address and timezone automatically. Enter your address for precise results. Stored only in your browser.
 		<div class="absolute top-full left-4 -mt-1 h-2 w-2 rotate-45 bg-slate-900"></div>
 	</div>
 </a>

@@ -12,7 +12,7 @@
 /**
  * Signal types in order of reliability (weakest to strongest)
  */
-export type LocationSignalType = 'ip' | 'browser' | 'oauth' | 'behavioral' | 'verified';
+export type LocationSignalType = 'ip' | 'browser' | 'oauth' | 'behavioral' | 'user_selected' | 'verified';
 
 /**
  * Individual location signal with confidence scoring
@@ -103,6 +103,7 @@ export const SIGNAL_CONFIDENCE_WEIGHTS: Record<LocationSignalType, number> = {
 	browser: 0.6, // Medium - user can deny permission or spoof
 	oauth: 0.8, // High - verified with OAuth provider
 	behavioral: 0.9, // Very high - revealed preference from template engagement
+	user_selected: 0.9, // Very high - explicit user intent from breadcrumb selection
 	verified: 1.0 // Absolute - cryptographic proof from self.xyz/Didit.me
 };
 
@@ -114,6 +115,7 @@ export const SIGNAL_EXPIRATION: Record<LocationSignalType, number> = {
 	browser: 7 * 24 * 60 * 60 * 1000, // 7 days (coordinates stable)
 	oauth: 90 * 24 * 60 * 60 * 1000, // 90 days (OAuth profile stable)
 	behavioral: 30 * 24 * 60 * 60 * 1000, // 30 days (behavioral patterns stable)
+	user_selected: 90 * 24 * 60 * 60 * 1000, // 90 days (user intent stable)
 	verified: 365 * 24 * 60 * 60 * 1000 // 365 days (verified address rarely changes)
 };
 
@@ -318,7 +320,7 @@ export function isLocationSignal(value: unknown): value is LocationSignal {
 
 	return (
 		typeof signal.signal_type === 'string' &&
-		['ip', 'browser', 'oauth', 'behavioral', 'verified'].includes(signal.signal_type) &&
+		['ip', 'browser', 'oauth', 'behavioral', 'user_selected', 'verified'].includes(signal.signal_type) &&
 		typeof signal.confidence === 'number' &&
 		signal.confidence >= 0 &&
 		signal.confidence <= 1 &&

@@ -5,8 +5,8 @@
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
 	import { templateDraftStore, generateDraftId, formatTimeAgo } from '$lib/stores/templateDraft';
 	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
-	import AudienceSelector from './creator/AudienceSelector.svelte';
-	import MessageEditor from './creator/MessageEditor.svelte';
+	import DecisionMakerResolver from './creator/DecisionMakerResolver.svelte';
+	import MessageGenerationResolver from './creator/MessageGenerationResolver.svelte';
 	import SmartReview from './creator/SmartReview.svelte';
 
 	const dispatch = createEventDispatcher<{
@@ -41,7 +41,10 @@
 			slug: ''
 		},
 		audience: {
-			recipientEmails: []
+			decisionMakers: [],
+			recipientEmails: [],
+			includesCongress: false,
+			customRecipients: []
 		},
 		content: {
 			preview: '',
@@ -59,9 +62,9 @@
 		},
 		audience: (data: TemplateFormData['audience']) => {
 			const errors = [];
-			// For congressional templates, auto-routing handles recipients
-			if (context.channelId === 'direct' && data.recipientEmails.length === 0) {
-				errors.push('At least one recipient email is required');
+			// Multi-target validation: At least one recipient required
+			if (data.recipientEmails.length === 0) {
+				errors.push('At least one recipient is required');
 			}
 			return errors;
 		},
@@ -363,65 +366,65 @@
 	<div class="relative flex-1">
 		<div class="p-4 md:p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
-				<ObjectiveDefiner data={formData.objective} {context} />
+				<ObjectiveDefiner bind:data={formData.objective} {context} />
 			{:else if currentStep === 'audience'}
-				<AudienceSelector data={formData.audience} {context} />
+				<DecisionMakerResolver bind:formData={formData} onnext={handleNext} onback={handleBack} />
 			{:else if currentStep === 'content'}
-				<MessageEditor data={formData.content} {context} />
+				<MessageGenerationResolver bind:formData={formData} onnext={handleNext} onback={handleBack} />
 			{:else}
 				<SmartReview data={formData} {context} isActiveStep={currentStep === 'review'} />
 			{/if}
 		</div>
 	</div>
 
-	<!-- Navigation -->
-	<div class="border-t border-slate-200 bg-slate-50 px-4 py-3 md:px-6 md:py-4">
-		<div class="flex items-center justify-between">
-			<button
-				class="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
-				onclick={handleBack}
-				disabled={currentStep === 'objective' || isSubmitting}
-			>
-				<ArrowLeft class="h-4 w-4 md:h-4 md:w-4" />
-				Back
-			</button>
+	<!-- Navigation (hidden for audience and content steps - they handle their own nav) -->
+	{#if currentStep !== 'audience' && currentStep !== 'content'}
+		<div class="border-t border-slate-200 bg-slate-50 px-4 py-3 md:px-6 md:py-4">
+			<div class="flex items-center justify-between">
+				<button
+					class="flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+					onclick={handleBack}
+					disabled={currentStep === 'objective' || isSubmitting}
+				>
+					<ArrowLeft class="h-4 w-4 md:h-4 md:w-4" />
+					Back
+				</button>
 
-			{#if currentStep === 'review'}
-				<button
-					class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
-					onclick={handleSave}
-					disabled={!isCurrentStepValid || isSubmitting}
-				>
-					{#if isSubmitting}
-						<div
-							class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent md:h-4 md:w-4"
-						></div>
-						Publishing...
-					{:else}
-						Publish Template
+				{#if currentStep === 'review'}
+					<button
+						class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+						onclick={handleSave}
+						disabled={!isCurrentStepValid || isSubmitting}
+					>
+						{#if isSubmitting}
+							<div
+								class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent md:h-4 md:w-4"
+							></div>
+							Publishing...
+						{:else}
+							Publish Template
+							<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
+						{/if}
+					</button>
+				{:else}
+					<button
+						class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+						onclick={handleNext}
+						disabled={!isCurrentStepValid || isSubmitting}
+					>
+						{#if currentStep === 'objective'}
+							Pick Decision-Makers
+						{:else if currentStep === 'content'}
+							Make It Count
+						{:else}
+							Continue
+						{/if}
 						<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
-					{/if}
-				</button>
-			{:else}
-				<button
-					class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
-					onclick={handleNext}
-					disabled={!isCurrentStepValid || isSubmitting}
-				>
-					{#if currentStep === 'objective'}
-						Pick Decision-Makers
-					{:else if currentStep === 'audience'}
-						Load Your Message
-					{:else if currentStep === 'content'}
-						Make It Count
-					{:else}
-						Continue
-					{/if}
-					<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
-				</button>
-			{/if}
+					</button>
+				{/if}
+			</div>
 		</div>
-	</div>
+	{/if}
 </div>
 
 <!-- Draft Recovery Modal -->

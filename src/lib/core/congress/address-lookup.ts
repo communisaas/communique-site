@@ -485,3 +485,17 @@ export async function addressLookup(zip: string): Promise<Representative[]> {
 		return [];
 	}
 }
+
+/**
+ * Get representatives for a complete address (street, city, state, zip)
+ * This is the function used by the CWC submission endpoint
+ */
+export async function getRepresentativesForAddress(address: AddressData): Promise<Representative[]> {
+	try {
+		const userReps = await addressLookupService.lookupRepsByAddress(address);
+		return [userReps.house, ...userReps.senate];
+	} catch (error) {
+		console.error('Error getting representatives for address:', error);
+		throw new Error(`Failed to get representatives: ${error.message}`);
+	}
+}

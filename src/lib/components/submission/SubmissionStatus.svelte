@@ -69,31 +69,53 @@
 
 		pollInterval = setInterval(async () => {
 			try {
-				const response = await fetch(`/api/submissions/${submissionId}/status`);
+				// HACKATHON: Use new CWC job status endpoint instead of blockchain tracking
+				const response = await fetch(`/api/cwc/jobs/${submissionId}`);
 				const data = await response.json();
 
 				if (data.status) {
-					status = data.status;
+					// Map CWC job status to UI status
+					switch (data.status) {
+						case 'processing':
+							status = 'routing';
+							break;
+						case 'completed':
+							status = 'delivered';
+							break;
+						case 'partially_completed':
+							status = 'delivered';
+							break;
+						case 'failed':
+							status = 'failed';
+							break;
+						default:
+							status = 'sending';
+					}
 				}
-				if (data.details) {
-					details = data.details;
+				
+				// Set delivery count from results
+				if (data.results && Array.isArray(data.results)) {
+					deliveryCount = data.results.filter((r: any) => r.success).length;
+					
+					// Set details from first error if any
+					const firstError = data.results.find((r: any) => r.error);
+					if (firstError) {
+						details = firstError.error;
+					}
 				}
-				if (data.deliveryCount !== undefined) {
-					deliveryCount = data.deliveryCount;
-				}
-				if (data.canOverride !== undefined) {
-					canOverride = data.canOverride;
-				}
+				
+				// Allow override after a few seconds
+				canOverride = true;
 
-				// Stop polling once delivered
-				if (status === 'recorded' || status === 'failed') {
+				// Stop polling once completed or failed
+				if (status === 'delivered' || status === 'failed') {
 					if (pollInterval) {
 						clearInterval(pollInterval);
 						pollInterval = null;
 					}
 				}
-			} catch {
-				console.error('Error occurred');
+			} catch (error) {
+				console.error('[SubmissionStatus] Polling error:', error);
 			}
 		}, 2000);
 	}

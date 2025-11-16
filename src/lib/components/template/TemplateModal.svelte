@@ -37,6 +37,7 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	// import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import SubmissionStatus from '$lib/components/submission/SubmissionStatus.svelte';
+	import CWCProgressTracker from '$lib/components/template/CWCProgressTracker.svelte';
 	import VerificationGate from '$lib/components/auth/VerificationGate.svelte';
 	import ProofGenerator from '$lib/components/template/ProofGenerator.svelte';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
@@ -120,15 +121,15 @@
 	let mailAppBlurHandler: (() => void) | null = null;
 	let mailAppVisibilityHandler: (() => void) | null = null;
 
-	// Initialize modal and auto-trigger mailto for authenticated users
+	// Initialize modal and auto-trigger mailto for ALL users (viral QR code flow)
 	onMount(() => {
 		// Don't manipulate scroll here - UnifiedModal handles it
 		// Don't call modalActions.open - parent component handles it
 
-		if (user) {
-			// For authenticated users, immediately start the mailto flow
-			handleUnifiedEmailFlow();
-		}
+		// HACKATHON: Trigger mailto for EVERYONE (authenticated or not)
+		// This removes friction for viral template sharing via QR code
+		// After they send, we'll prompt account creation if needed
+		handleUnifiedEmailFlow();
 	});
 
 	onDestroy(() => {
@@ -361,13 +362,65 @@
 	}
 
 	/**
-	 * Submit Congressional message with ZK proof generation
-	 * Extracted for reuse after verification complete
+	 * Submit Congressional message with direct CWC API submission (MVP version)
+	 * HACKATHON: Bypasses ZK proof generation for demo purposes
 	 */
 	async function submitCongressionalMessage() {
-		// Phase 2: Trigger ZK proof generation instead of direct submission
-		modalActions.setState('proof-generation');
-		console.log('[Template Modal] Starting ZK proof generation flow');
+		try {
+			console.log('[Template Modal] Starting direct CWC submission (MVP)');
+			
+			// Set loading state
+			modalActions.setState('cwc-submission');
+			
+			// Get current user and address info
+			const currentUser = $page.data?.user || user;
+			const address = {
+				street: currentUser?.street || '',
+				city: currentUser?.city || '',
+				state: currentUser?.state || '',
+				zip: currentUser?.zip || ''
+			};
+			
+			// Validate we have required address info
+			if (!address.street || !address.city || !address.state || !address.zip) {
+				console.error('[Template Modal] Missing address information');
+				modalActions.setState('error');
+				return;
+			}
+			
+			// Call MVP CWC submission endpoint
+			const response = await fetch('/api/cwc/submit-mvp', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					templateId: template.id,
+					address,
+					personalizedMessage: template.body || template.description,
+					userEmail: currentUser?.email,
+					userName: currentUser?.name
+				})
+			});
+			
+			if (!response.ok) {
+				const error = await response.json();
+				console.error('[Template Modal] CWC submission failed:', error);
+				modalActions.setState('error');
+				return;
+			}
+			
+			const result = await response.json();
+			console.log('[Template Modal] CWC submission queued:', result);
+			
+			// Store job ID for tracking
+			submissionId = result.jobId;
+			
+			// Move to tracking state
+			modalActions.setState('tracking');
+			
+		} catch (error) {
+			console.error('[Template Modal] CWC submission error:', error);
+			modalActions.setState('error');
+		}
 	}
 
 	/**
@@ -434,6 +487,25 @@
 
 	async function handleSendConfirmation(sent: boolean) {
 		if (sent) {
+			// HACKATHON: If unauthenticated, prompt account creation AFTER they send
+			// This maximizes viral conversion while maintaining quality
+			if (!user) {
+				console.log('[Template Modal] Guest user confirmed send - showing onboarding');
+
+				// Close template modal
+				dispatch('close');
+
+				// Open onboarding modal to create account
+				modalActions.openModal('onboarding-modal', 'onboarding', {
+					template,
+					source: 'template-modal' as const,
+					// Store that they already sent the message
+					skipDirectSend: true
+				});
+
+				return;
+			}
+
 			// Check if Congressional message (Phase 1: only these are verified)
 			const isCongressional = template.deliveryMethod === 'cwc';
 
@@ -757,21 +829,21 @@
 			</div>
 		</div>
 	{:else if currentState === 'celebration'}
-		<!-- Professional Celebration State -->
+		<!-- Enhanced Celebration State -->
 		<div class="flex h-full flex-col">
-			<!-- Clean Header -->
+			<!-- Celebration Header -->
 			<div class="border-b border-slate-100 p-6">
 				<div class="flex items-center justify-between">
 					<div class="flex items-center gap-3">
 						<div
-							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-100"
+							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-green-100 to-blue-100"
 							style="transform: scale({$celebrationScale})"
 						>
 							<CheckCircle2 class="h-5 w-5 text-green-600" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-slate-900">Sent</h2>
-							<p class="text-sm text-slate-600">Delivery in progress</p>
+							<h2 class="text-lg font-semibold text-slate-900">🎉 Mission Accomplished!</h2>
+							<p class="text-sm text-slate-600">Your voice has reached Congress</p>
 						</div>
 					</div>
 					<button
@@ -783,36 +855,65 @@
 				</div>
 			</div>
 
-			<!-- Content -->
+			<!-- Enhanced Celebration Content -->
 			<div class="flex-1 space-y-6 p-6">
-				<!-- Impact Counter -->
-				<div class="text-center">
-					<div class="mb-1 text-3xl font-bold text-slate-900">
-						You + {(template.metrics?.sent ?? 0).toLocaleString()} others
+				<!-- Achievement Badge -->
+				<div class="rounded-xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 text-center">
+					<div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg">
+						<Flame class="h-8 w-8 text-orange-500" />
 					</div>
-					<p class="text-sm text-slate-600">Real voices creating real change</p>
+					<h3 class="mb-2 text-xl font-bold text-slate-900">Congressional Advocate</h3>
+					<p class="text-sm text-slate-600">You've successfully contacted your elected representatives</p>
+					<div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-2">
+						<p class="text-xs text-blue-800">
+							🎯 <strong>Demo Success!</strong> Your message reached the Senate chamber. House integration launching soon!
+						</p>
+					</div>
 				</div>
 
-				<!-- Universal Sharing Section -->
-				<div class="space-y-4">
+				<!-- Impact Counter with Social Proof -->
+				<div class="rounded-lg border border-slate-200 bg-white p-4">
+					<div class="text-center">
+						<div class="mb-2 text-3xl font-bold text-slate-900">
+							You + {(template.metrics?.sent ?? 0).toLocaleString()} others
+						</div>
+						<p class="text-sm text-slate-600">Real voices creating real change</p>
+						<div class="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
+							<Users class="h-3 w-3" />
+							<span>Part of a movement</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Next Steps / Share -->
+				<div class="space-y-3">
 					<!-- Primary: Universal Share Button -->
 					<button
 						onclick={handleUniversalShare}
 						class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
 					>
 						<Share2 class="h-5 w-5" />
-						<span>{navigator.share ? 'Share this template' : 'Copy share message'}</span>
+						<span>{navigator.share ? 'Share your advocacy' : 'Copy share message'}</span>
 					</button>
 
-					{#if showCopied}
-						<div
-							class="rounded-lg bg-green-50 px-4 py-2 text-center text-sm text-green-700"
-							in:scale={{ duration: 200 }}
-							out:fade={{ duration: 200 }}
-						>
-							✓ Copied to clipboard!
-						</div>
-					{/if}
+					<!-- Secondary: View Template -->
+					<button
+						onclick={() => goto(`/s/${template.slug}`, { replaceState: true })}
+						class="w-full rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50"
+					>
+						View template details
+					</button>
+				</div>
+
+				{#if showCopied}
+					<div
+						class="rounded-lg bg-green-50 px-4 py-2 text-center text-sm text-green-700"
+						in:scale={{ duration: 200 }}
+						out:fade={{ duration: 200 }}
+					>
+						✓ Copied to clipboard!
+					</div>
+				{/if}
 
 					<!-- Secondary: Pre-written Messages -->
 					<details class="rounded-lg border border-slate-200 bg-white">
@@ -931,34 +1032,56 @@
 				on:complete={handleAddressComplete}
 			/>
 		</div>
-	{:else if currentState === 'proof-generation'}
-		<!-- ZK Proof Generation State (Phase 2) -->
-		<div class="flex h-full flex-col p-6">
-			{#if user?.id}
-				<ProofGenerator
-					userId={user.id}
-					templateId={template.id}
-					templateData={{
-						subject: template.title,
-						message: template.body || template.description,
-						recipientOffices: template.category ? [template.category] : []
-					}}
-					on:complete={handleProofComplete}
-					on:cancel={handleProofCancel}
-					on:error={handleProofError}
-				/>
-			{:else}
-				<!-- Fallback if user not available -->
-				<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-center">
-					<p class="text-red-900">User authentication required</p>
+	{:else if currentState === 'cwc-submission'}
+		<!-- Enhanced CWC Submission Progress State -->
+		<div class="flex h-full flex-col">
+			<!-- Header -->
+			<div class="border-b border-slate-100 p-6">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div
+							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100"
+							style="transform: scale({$celebrationScale})"
+						>
+							<Send class="h-5 w-5 text-blue-600 animate-pulse" />
+						</div>
+						<div>
+							<h2 class="text-lg font-semibold text-slate-900">Sending to Congress</h2>
+							<p class="text-sm text-slate-600">Your voice is being delivered to Washington</p>
+						</div>
+					</div>
 					<button
-						onclick={() => modalActions.setState('auth_required')}
-						class="mt-2 text-sm text-red-700 underline"
+						onclick={() => {
+							// Allow user to close and track later
+							goto(`/s/${template.slug}`, { replaceState: true });
+							handleClose();
+						}}
+						class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
 					>
-						Sign in to continue
+						<X class="h-5 w-5" />
 					</button>
 				</div>
-			{/if}
+			</div>
+
+			<!-- Enhanced Progress Tracker -->
+			<div class="flex-1 p-6">
+				<div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+					<div class="flex items-center gap-2">
+						<Sparkles class="h-4 w-4 text-blue-600" />
+						<p class="text-sm text-blue-800">
+							🎯 <strong>Live Demo:</strong> Connecting directly to the Senate chamber for real-time message delivery!
+						</p>
+					</div>
+				</div>
+				<CWCProgressTracker
+					{submissionId}
+					{template}
+					onComplete={() => {
+						// Move to celebration state after successful delivery
+						modalActions.setState('celebration');
+					}}
+				/>
+			</div>
 		</div>
 	{:else if currentState === 'tracking'}
 		<!-- Agent Processing Tracking State -->

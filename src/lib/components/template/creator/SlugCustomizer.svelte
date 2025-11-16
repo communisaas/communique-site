@@ -8,10 +8,16 @@
 	interface Props {
 		title?: string;
 		slug?: string;
+		aiGenerated?: boolean;
 		context?: TemplateCreationContext | undefined;
 	}
 
-	let { title = '', slug = $bindable(''), context = undefined }: Props = $props();
+	let {
+		title = '',
+		slug = $bindable(''),
+		aiGenerated = false,
+		context = undefined
+	}: Props = $props();
 
 	const _dispatch = createEventDispatcher();
 
@@ -101,14 +107,23 @@
 		}
 	}
 
-	// Update slug when title changes
+	// Update slug when title changes (but only if slug is empty or was auto-generated)
+	let lastAutoSlug = $state('');
 	$effect(() => {
-		if (title) {
+		if (title && !aiGenerated) {
+			// Don't auto-generate if content is AI-generated (AI already provided perfect slug)
 			const newSlug = slugify(title);
-			if (newSlug !== slug && !customSlug) {
+			// Only auto-generate if:
+			// 1. Slug is empty, OR
+			// 2. Current slug matches the last auto-generated slug (user hasn't manually changed it)
+			if (!slug || (slug === lastAutoSlug && newSlug !== slug)) {
 				slug = newSlug;
+				lastAutoSlug = newSlug;
 				checkAvailability(slug);
 			}
+		} else if (aiGenerated && slug) {
+			// AI-generated slug: just check availability, don't modify
+			checkAvailability(slug);
 		}
 	});
 
