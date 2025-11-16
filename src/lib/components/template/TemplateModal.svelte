@@ -843,7 +843,7 @@
 						</div>
 						<div>
 							<h2 class="text-lg font-semibold text-slate-900">🎉 Mission Accomplished!</h2>
-							<p class="text-sm text-slate-600">Your voice has reached Congress</p>
+							<p class="text-sm text-slate-600">Your message has been delivered</p>
 						</div>
 					</div>
 					<button
@@ -857,19 +857,51 @@
 
 			<!-- Enhanced Celebration Content -->
 			<div class="flex-1 space-y-6 overflow-y-auto p-6">
-				<!-- Impact Counter with Social Proof -->
-				<div class="rounded-lg border border-slate-200 bg-white p-4">
-					<div class="text-center">
-						<div class="mb-2 text-3xl font-bold text-slate-900">
-							You + {(template.metrics?.sent ?? 0).toLocaleString()} others
-						</div>
-						<p class="text-sm text-slate-600">Real voices creating real change</p>
-						<div class="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
-							<Users class="h-3 w-3" />
-							<span>Part of a movement</span>
+				<!-- Pioneer Badge (first 10 users) or Impact Counter -->
+				{#if (template.metrics?.sent ?? 0) <= 10}
+					{@const sentCount = template.metrics?.sent ?? 0}
+					<!-- Pioneer Badge -->
+					<div class="rounded-lg border-2 border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-6">
+						<div class="text-center">
+							<div class="mb-3 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
+								<Flame class="h-8 w-8 text-white" />
+							</div>
+							<div class="mb-2 text-3xl font-bold text-slate-900">
+								{#if sentCount === 0}
+									🔥 FIRST SENDER 🔥
+								{:else}
+									Pioneer #{sentCount + 1}
+								{/if}
+							</div>
+							<p class="mb-3 text-sm font-medium text-orange-900">
+								{#if sentCount === 0}
+									You just launched this movement
+								{:else}
+									Early adopter • Setting the standard
+								{/if}
+							</p>
+							<div class="rounded-lg bg-white/50 px-4 py-3 text-xs text-slate-700">
+								<p class="font-semibold">Your impact matters most:</p>
+								<p class="mt-1">Every movement starts with pioneers like you who act first.</p>
+							</div>
 						</div>
 					</div>
-				</div>
+				{:else}
+					{@const sentCount = template.metrics?.sent ?? 0}
+					<!-- Standard Impact Counter -->
+					<div class="rounded-lg border border-slate-200 bg-white p-4">
+						<div class="text-center">
+							<div class="mb-2 text-3xl font-bold text-slate-900">
+								You + {sentCount.toLocaleString()} others
+							</div>
+							<p class="text-sm text-slate-600">Real voices creating real change</p>
+							<div class="mt-3 flex items-center justify-center gap-2 text-xs text-slate-500">
+								<Users class="h-3 w-3" />
+								<span>Part of a movement</span>
+							</div>
+						</div>
+					</div>
+				{/if}
 
 				<!-- Next Steps / Share -->
 				<div class="space-y-3">
@@ -880,14 +912,6 @@
 					>
 						<Share2 class="h-5 w-5" />
 						<span>{navigator.share ? 'Share your advocacy' : 'Copy share message'}</span>
-					</button>
-
-					<!-- Secondary: View Template -->
-					<button
-						onclick={() => goto(`/s/${template.slug}`, { replaceState: true })}
-						class="w-full rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50"
-					>
-						View template details
 					</button>
 				</div>
 
@@ -901,46 +925,7 @@
 					</div>
 				{/if}
 
-					<!-- Secondary: Pre-written Messages -->
-					<details class="rounded-lg border border-slate-200 bg-white">
-						<summary
-							class="cursor-pointer px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-						>
-							📝 Copy pre-written messages for different platforms
-						</summary>
-						<div class="space-y-2 border-t border-slate-200 p-4">
-							<button
-								onclick={() => copyMessage(shareMessages().short)}
-								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
-							>
-								<span class="font-medium text-slate-900">Twitter / Discord</span>
-								<Copy class="h-4 w-4 text-slate-400" />
-							</button>
-							<button
-								onclick={() => copyMessage(shareMessages().medium)}
-								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
-							>
-								<span class="font-medium text-slate-900">Slack / Group chats</span>
-								<Copy class="h-4 w-4 text-slate-400" />
-							</button>
-							<button
-								onclick={() => copyMessage(shareMessages().long)}
-								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
-							>
-								<span class="font-medium text-slate-900">Email / Reddit</span>
-								<Copy class="h-4 w-4 text-slate-400" />
-							</button>
-							<button
-								onclick={() => copyMessage(shareMessages().sms)}
-								class="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-50"
-							>
-								<span class="font-medium text-slate-900">Text message</span>
-								<Copy class="h-4 w-4 text-slate-400" />
-							</button>
-						</div>
-					</details>
-
-					<!-- Tertiary: QR Code -->
+					<!-- QR Code -->
 					<button
 						onclick={loadQRCode}
 						class="w-full text-sm text-slate-600 underline hover:text-slate-900"
@@ -1031,8 +1016,8 @@
 							<Send class="h-5 w-5 text-blue-600 animate-pulse" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-slate-900">Sending to Congress</h2>
-							<p class="text-sm text-slate-600">Your voice is being delivered to Washington</p>
+							<h2 class="text-lg font-semibold text-slate-900">Delivering your message</h2>
+							<p class="text-sm text-slate-600">Coordinating with decision-makers</p>
 						</div>
 					</div>
 					<button
@@ -1082,7 +1067,7 @@
 							<Send class="h-5 w-5 text-participation-primary-600" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-slate-900">Sent to Congress</h2>
+							<h2 class="text-lg font-semibold text-slate-900">Message sent</h2>
 							<p class="text-sm text-slate-600">Tracking delivery</p>
 						</div>
 					</div>
