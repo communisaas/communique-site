@@ -19,7 +19,7 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 	const modalData = $derived(
 		modalStore.data as {
 			template: Template;
-			user: HeaderUser;
+			user: HeaderUser | null;
 		} | null
 	);
 
@@ -43,7 +43,7 @@ Uses UnifiedModal system for consistent behavior and proper reactivity.
 	const user = $derived(modalData?.user ? toComponentUser(modalData.user) : null);
 
 	// Open/close functions for external use
-	export function open(template: Template, user: HeaderUser) {
+	export function open(template: Template, user: HeaderUser | null) {
 		// Use modalStore directly - don't wait for modal component to exist
 		modalStore.open({ template, user });
 	}
