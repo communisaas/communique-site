@@ -115,7 +115,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				status: r.status,
 				messageId: r.messageId,
 				confirmationNumber: r.confirmationNumber,
-				error: r.error
+				error: r.error,
+				cwcResponse: r.cwcResponse // Include full CWC API response for proof
 			})),
 			summary: {
 				total: results.length,
@@ -176,7 +177,7 @@ async function processCWCSubmissionsSync(
 
 		await prisma.cWCJob.update({
 			where: { id: jobId },
-			data: { 
+			data: {
 				status: failedCount === 0 ? 'completed' : 'partially_completed',
 				completed_at: new Date(),
 				results: results.map(r => ({
@@ -185,7 +186,8 @@ async function processCWCSubmissionsSync(
 					success: r.success,
 					messageId: r.messageId,
 					confirmationNumber: r.confirmationNumber,
-					error: r.error
+					error: r.error,
+					cwcResponse: r.cwcResponse // Include full CWC API response for proof
 				})),
 				metadata: {
 					successCount,
