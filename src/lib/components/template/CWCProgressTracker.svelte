@@ -239,9 +239,9 @@
 		
 		<div class="space-y-2">
 			{#each progress.senateOffices as office}
+				{@const IconComponent = getStatusIcon(office.status)}
 				<div class="flex items-center gap-3 rounded-lg border border-slate-100 p-2">
-					{@const IconComponent = getStatusIcon(office.status)}
-					<IconComponent 
+					<IconComponent
 						class="h-4 w-4 {office.status === 'success' ? 'text-green-600' : 'text-slate-400'}"
 					/>
 					<div class="flex-1">
@@ -277,9 +277,9 @@
 		
 		<div class="space-y-2">
 			{#if progress.houseOffice}
+				{@const IconComponent = getStatusIcon(progress.houseOffice.status)}
 				<div class="flex items-center gap-3 rounded-lg border border-slate-100 p-2">
-					{@const IconComponent = getStatusIcon(progress.houseOffice.status)}
-					<IconComponent 
+					<IconComponent
 						class="h-4 w-4 {progress.houseOffice.status === 'success' ? 'text-green-600' : 'text-slate-400'}"
 					/>
 					<div class="flex-1">
