@@ -38,6 +38,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           CONGRESS_API_KEY: ${{ secrets.CONGRESS_API_KEY }}
+          TOOLHOUSE_API_KEY: ${{ secrets.TOOLHOUSE_API_KEY }}
           ORIGIN: ${{ secrets.STAGING_ORIGIN }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
