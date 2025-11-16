@@ -4,6 +4,7 @@
 	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft, X } from '@lucide/svelte';
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
 	import { templateDraftStore, generateDraftId, formatTimeAgo } from '$lib/stores/templateDraft';
+	import { appendReferences } from '$lib/utils/message-processing';
 	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
 	import DecisionMakerResolver from './creator/DecisionMakerResolver.svelte';
 	import MessageGenerationResolver from './creator/MessageGenerationResolver.svelte';
@@ -156,6 +157,11 @@
 			return;
 		}
 
+		// Append References section to message body (at bottom for trust without interrupting flow)
+		const messageWithReferences = formData.content.sources && formData.content.sources.length > 0
+			? appendReferences(formData.content.preview, formData.content.sources)
+			: formData.content.preview;
+
 		const template: Omit<Template, 'id'> = {
 			slug: formData.objective.slug || '',
 			title: formData.objective.title,
@@ -164,7 +170,9 @@
 			type: context.channelId === 'certified' ? 'certified' : 'direct',
 			deliveryMethod: context.channelId === 'certified' ? 'certified' : 'email',
 			subject: formData.objective.title || `Regarding: ${formData.objective.title}`,
-			message_body: formData.content.preview,
+			message_body: messageWithReferences, // Message with References appended
+			sources: formData.content.sources || [], // Persist sources for provenance
+			research_log: formData.content.researchLog || [], // Persist research log for transparency
 			delivery_config: {},
 			cwc_config: {},
 			recipient_config: {

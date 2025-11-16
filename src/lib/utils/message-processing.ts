@@ -190,3 +190,29 @@ export function estimateReadingTime(message: string): number {
 export function hasCitations(message: string): boolean {
 	return /\[\d+\]/.test(message);
 }
+
+/**
+ * Append a References section to the message if it has sources
+ * Places references at the BOTTOM for maximum trust without interrupting message flow
+ * @param message - Message text with citations
+ * @param sources - Array of source objects
+ * @returns Message with References section appended
+ */
+export function appendReferences(message: string, sources: Source[]): string {
+	if (!sources || sources.length === 0 || !hasCitations(message)) {
+		return message;
+	}
+
+	// Sort sources by citation number
+	const sortedSources = [...sources].sort((a, b) => a.num - b.num);
+
+	// Build references section
+	const referencesSeparator = '\n\n--- REFERENCES ---\n\n';
+	const referencesList = sortedSources
+		.map((source) => {
+			return `[${source.num}] ${source.title}\n${source.url}`;
+		})
+		.join('\n\n');
+
+	return message + referencesSeparator + referencesList;
+}

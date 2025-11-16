@@ -22,6 +22,8 @@ interface CreateTemplateRequest {
 	title: string;
 	slug?: string; // HACKATHON: Accept slug from AI agent (don't regenerate)
 	message_body: string;
+	sources?: Array<{ num: number; title: string; url: string; type: string }>; // Citation sources from AI agent
+	research_log?: string[]; // Agent's research process log
 	category?: string;
 	type: string;
 	deliveryMethod: string; // Prisma field name (mapped to delivery_method in database)
@@ -123,6 +125,8 @@ function validateTemplateData(data: unknown): {
 		title: templateData.title as string,
 		slug: (templateData.slug as string) || undefined, // HACKATHON: Extract slug from request
 		message_body: templateData.message_body as string,
+		sources: (templateData.sources as Array<{ num: number; title: string; url: string; type: string}>) || [],
+		research_log: (templateData.research_log as string[]) || [],
 		preview: templateData.preview as string,
 		type: templateData.type as string,
 		deliveryMethod: templateData.deliveryMethod as string,
@@ -456,6 +460,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						title: validData.title,
 						description: validData.description || '',
 						message_body: validData.message_body,
+						sources: validData.sources || [],
+						research_log: validData.research_log || [],
 						category: validData.category || 'General',
 						type: validData.type,
 						deliveryMethod: validData.deliveryMethod,

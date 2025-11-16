@@ -148,6 +148,8 @@ model Template {
   deliveryMethod            String                     @map("delivery_method")
   preview                   String
   message_body              String
+  sources                   Json?                      @default("[]") // Citation sources from message generation agent
+  research_log              Json?                      @default("[]") @map("research_log") // Agent's research process log
   delivery_config           Json
   cwc_config                Json?
   recipient_config          Json

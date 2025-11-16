@@ -10,6 +10,8 @@ export interface Template {
 	deliveryMethod: 'email' | 'certified' | 'direct' | 'cwc';
 	subject?: string | null;
 	message_body: string;
+	sources?: Source[]; // Citation sources from message generation agent
+	research_log?: string[]; // Agent's research process log
 	delivery_config: unknown; // Json field in database
 	cwc_config?: unknown | null; // Json? field in database - was missing
 	recipient_config: unknown; // Json field in database
