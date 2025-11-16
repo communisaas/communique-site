@@ -19,7 +19,7 @@
 		senateProgress: 0, // 0-200 (2 senators)
 		houseProgress: 0, // 0-100 (1 representative)
 		overallProgress: 0, // 0-100
-		senateOffices: [] as Array<{name: string, state: string, status: 'pending' | 'submitting' | 'success' | 'failed'}>,
+		senateOffices: [] as Array<{name: string, state: string, status: 'pending' | 'submitting' | 'success' | 'failed', messageId?: string, cwcResponse?: any}>,
 		houseOffice: null as {name: string, district: string, status: 'pending' | 'submitting' | 'success' | 'failed'} | null,
 		errors: [] as string[],
 		startTime: Date.now()
@@ -102,7 +102,9 @@
 			progress.senateOffices = senateResults.map((r: any) => ({
 				name: r.office,
 				state: r.state || 'Unknown',
-				status: r.success ? 'success' : 'failed'
+				status: r.success ? 'success' : 'failed',
+				messageId: r.messageId,
+				cwcResponse: r.cwcResponse
 			}));
 			
 			const senateSuccessCount = senateResults.filter((r: any) => r.success).length;
@@ -247,6 +249,9 @@
 					<div class="flex-1">
 						<p class="text-sm font-medium text-slate-900">{office.name}</p>
 						<p class="text-xs text-slate-600">{office.state}</p>
+						{#if office.messageId}
+							<p class="text-xs text-slate-500 font-mono">ID: {office.messageId}</p>
+						{/if}
 					</div>
 					{#if office.status === 'success'}
 						<span class="text-xs text-green-600">✓ Delivered</span>
@@ -313,7 +318,7 @@
 
 	<!-- Completion Reward -->
 	{#if progress.stage === 'completed'}
-		<div 
+		<div
 			class="rounded-lg bg-gradient-to-br from-green-50 to-blue-50 p-4 text-center"
 			style="transform: scale({$celebrationPulse})"
 		>
@@ -323,7 +328,7 @@
 				<Flame class="h-5 w-5 text-orange-500" />
 			</div>
 			<p class="text-sm text-slate-700">
-				Your voice has been delivered to Congress. 
+				Your message has been delivered.
 				{#if progress.errors.length === 0}
 					✨ Perfect delivery to all offices!
 				{:else}
