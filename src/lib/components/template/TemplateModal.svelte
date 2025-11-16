@@ -20,7 +20,7 @@
 		ArrowRight,
 		Heart as _Heart,
 		Trophy as _Trophy,
-		Flame as _Flame,
+		Flame,
 		QrCode,
 		Download
 	} from '@lucide/svelte';
