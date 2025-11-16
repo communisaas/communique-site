@@ -68,6 +68,7 @@
 		{#each phases as phase, i}
 			{@const isActive = i === currentPhaseIndex}
 			{@const isComplete = i < currentPhaseIndex}
+			{@const IconComponent = phase.icon}
 			<div
 				class="flex items-start gap-3 rounded-lg p-3 transition-all duration-300"
 				class:bg-participation-primary-50={isActive}
@@ -83,7 +84,7 @@
 					class:bg-slate-100={!isActive && !isComplete}
 					class:text-slate-400={!isActive && !isComplete}
 				>
-					<svelte:component this={phase.icon} class="h-4 w-4" />
+					<IconComponent class="h-4 w-4" />
 				</div>
 
 				<div class="flex-1">

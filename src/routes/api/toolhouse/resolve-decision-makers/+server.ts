@@ -84,20 +84,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Parse response (handle streaming like subject-line agent)
 		const text = await response.text();
 
-		console.log('[DecisionMaker] Raw response (full):', text);
+		console.log('[DecisionMaker] Raw response (first 500 chars):', text.substring(0, 500));
 		console.log('[DecisionMaker] Response length:', text.length);
 
 		let result: DecisionMakerResponse;
+
+		// Strategy 1: Try parsing as single JSON
 		try {
-			// Attempt to parse as JSON
 			result = JSON.parse(text);
 			console.log('[DecisionMaker] Parsed as single JSON object');
 		} catch (parseError) {
-			console.log(
-				'[DecisionMaker] Not a single JSON object, attempting to parse streaming format...'
-			);
+			console.log('[DecisionMaker] Not a single JSON object, trying alternative strategies...');
 
-			// Handle streaming/newline-delimited JSON
+			// Strategy 2: Try newline-delimited JSON (look for last valid JSON)
 			const lines = text.split('\n').filter((line) => line.trim());
 			console.log('[DecisionMaker] Found', lines.length, 'lines in response');
 
@@ -105,40 +104,83 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			for (const line of lines) {
 				try {
 					const parsed = JSON.parse(line);
-					if (parsed && typeof parsed === 'object') {
+					if (parsed && typeof parsed === 'object' && 'decision_makers' in parsed) {
 						lastValidJson = parsed as DecisionMakerResponse;
-						console.log('[DecisionMaker] Successfully parsed line:', parsed);
+						console.log('[DecisionMaker] Found valid decision_makers JSON in line');
 					}
 				} catch {
-					// Skip non-JSON lines
-					console.log('[DecisionMaker] Skipping non-JSON line:', line.substring(0, 100));
+					// Skip non-JSON lines silently
 				}
 			}
 
 			if (lastValidJson) {
 				result = lastValidJson;
 			} else {
-				console.error('[DecisionMaker] Failed to parse any valid JSON from response');
-				console.error('[DecisionMaker] Raw text:', text.substring(0, 500));
-				throw error(500, 'Failed to parse agent response');
+				// Strategy 3: Try to extract JSON from within text (regex search)
+				console.log('[DecisionMaker] No valid JSON in lines, trying regex extraction...');
+
+				// Look for JSON object with decision_makers key
+				const jsonMatch = text.match(/\{[^{}]*"decision_makers"[^{}]*\[[^\]]*\][^{}]*\}/s);
+				if (jsonMatch) {
+					try {
+						result = JSON.parse(jsonMatch[0]);
+						console.log('[DecisionMaker] Extracted JSON via regex');
+					} catch {
+						// Strategy 4: Look for any valid JSON object anywhere in the text
+						const allJsonMatches = text.matchAll(/\{(?:[^{}]|(?:\{[^{}]*\}))*\}/g);
+						for (const match of allJsonMatches) {
+							try {
+								const parsed = JSON.parse(match[0]);
+								if (parsed && typeof parsed === 'object' && 'decision_makers' in parsed) {
+									result = parsed as DecisionMakerResponse;
+									console.log('[DecisionMaker] Found valid JSON in regex scan');
+									break;
+								}
+							} catch {
+								continue;
+							}
+						}
+					}
+				}
+
+				if (!result) {
+					console.error('[DecisionMaker] Failed to parse any valid JSON from response');
+					console.error('[DecisionMaker] Full raw text:', text);
+					throw error(500, 'Failed to parse agent response - no valid JSON found');
+				}
 			}
 		}
 
 		console.log('[DecisionMaker] Final parsed result:', result);
 
-		// Validate response structure
-		if (!result.decision_makers || !Array.isArray(result.decision_makers)) {
+		// Normalize response: handle both { decision_makers: [...] } and direct array
+		let normalizedResult: DecisionMakerResponse;
+
+		if (Array.isArray(result)) {
+			// Direct array format - wrap it
+			console.log('[DecisionMaker] Response is direct array, wrapping in decision_makers key');
+			normalizedResult = { decision_makers: result };
+		} else if (result && typeof result === 'object' && 'decision_makers' in result) {
+			// Already has decision_makers key
+			normalizedResult = result as DecisionMakerResponse;
+		} else {
 			console.error('[DecisionMaker] Invalid response structure:', result);
+			throw error(500, 'Invalid agent response structure');
+		}
+
+		// Validate array
+		if (!Array.isArray(normalizedResult.decision_makers)) {
+			console.error('[DecisionMaker] decision_makers is not an array:', normalizedResult);
 			throw error(500, 'Invalid agent response structure');
 		}
 
 		console.log('[DecisionMaker] Resolved decision-makers:', {
 			userId: session.userId,
-			count: result.decision_makers.length,
-			names: result.decision_makers.map((dm) => dm.name)
+			count: normalizedResult.decision_makers.length,
+			names: normalizedResult.decision_makers.map((dm) => dm.name)
 		});
 
-		return json(result);
+		return json(normalizedResult);
 	} catch (err) {
 		console.error('[DecisionMaker] Error:', err);
 

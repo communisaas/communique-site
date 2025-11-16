@@ -60,20 +60,22 @@
 		const cleanup = cyclePhases();
 		return cleanup;
 	});
-
-	const IconComponent = $derived(phases[currentPhaseIndex].icon);
 </script>
 
 <div class="mx-auto max-w-2xl space-y-8 py-12">
 	<!-- Phase indicator -->
 	<div class="space-y-4">
-		<div class="flex items-center justify-center gap-4">
-			<div
-				class="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-participation-primary-500 to-participation-primary-600 shadow-lg"
-			>
-				<IconComponent class="h-8 w-8 text-white" />
+		{#snippet phaseIcon()}
+			{@const IconComponent = phases[currentPhaseIndex].icon}
+			<div class="flex items-center justify-center gap-4">
+				<div
+					class="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-participation-primary-500 to-participation-primary-600 shadow-lg"
+				>
+					<IconComponent class="h-8 w-8 text-white" />
+				</div>
 			</div>
-		</div>
+		{/snippet}
+		{@render phaseIcon()}
 
 		<!-- Phase text -->
 		<div class="text-center">
