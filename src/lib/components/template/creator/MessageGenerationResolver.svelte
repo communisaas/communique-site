@@ -2,6 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { TemplateFormData } from '$lib/types/template';
 	import { api } from '$lib/core/api/client';
+	import { cleanHtmlFormatting } from '$lib/utils/message-processing';
 	import MessageAnticipation from './MessageAnticipation.svelte';
 	import MessageResults from './MessageResults.svelte';
 
@@ -68,12 +69,15 @@
 			// Extract data
 			const { message, subject, sources, research_log } = response.data;
 
+			// Clean HTML formatting from message
+			const cleanedMessage = cleanHtmlFormatting(message);
+
 			// Store original for "start fresh"
-			originalMessage = message;
+			originalMessage = cleanedMessage;
 			originalSubject = subject;
 
 			// Update formData
-			formData.content.preview = message;
+			formData.content.preview = cleanedMessage;
 			formData.content.sources = sources || [];
 			formData.content.researchLog = research_log || [];
 			formData.content.aiGenerated = true;
