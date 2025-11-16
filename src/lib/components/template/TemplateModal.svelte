@@ -1003,7 +1003,6 @@
 					</div>
 				</div>
 			</div>
-		</div>
 	{:else if collectingAddress}
 		<!-- Address Collection State - Inline for Congressional templates -->
 		<div class="relative p-6 sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
