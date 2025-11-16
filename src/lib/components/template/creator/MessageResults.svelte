@@ -84,8 +84,9 @@
 		<div class="prose prose-sm max-w-none">
 			{#each paragraphs as paragraph}
 				<p class="mb-4 leading-relaxed text-slate-700">
-					{#each paragraph.split(/(\[\d+\])/) as part}
+					{#each paragraph.split(/(\[\d+\]|\*\*.*?\*\*|\*.*?\*)/) as part}
 						{#if /^\[\d+\]$/.test(part)}
+							<!-- Citation link -->
 							{@const citationNum = parseInt(part.slice(1, -1), 10)}
 							{@const source = sources.find((s) => s.num === citationNum)}
 							{#if source}
@@ -103,7 +104,14 @@
 							{:else}
 								<span class="text-slate-400">{part}</span>
 							{/if}
+						{:else if /^\*\*.*?\*\*$/.test(part)}
+							<!-- Bold text (markdown **text**) -->
+							<strong class="font-semibold text-slate-900">{part.slice(2, -2)}</strong>
+						{:else if /^\*.*?\*$/.test(part)}
+							<!-- Italic text (markdown *text*) -->
+							<em class="italic">{part.slice(1, -1)}</em>
 						{:else}
+							<!-- Regular text -->
 							{part}
 						{/if}
 					{/each}

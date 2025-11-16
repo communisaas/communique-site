@@ -118,12 +118,43 @@ export function getSourceTypeBadge(type: Source['type']): {
 }
 
 /**
+ * Clean HTML formatting from message text
+ * Converts HTML tags to clean text while preserving structure:
+ * - <b>, <strong> → **text** (markdown bold)
+ * - <i>, <em> → *text* (markdown italic)
+ * - <br>, <br/> → newline
+ * - All other tags → stripped
+ * @param message - Message text with HTML tags
+ * @returns Clean text with markdown-style formatting
+ */
+export function cleanHtmlFormatting(message: string): string {
+	return message
+		// Convert <b> and <strong> to markdown bold
+		.replace(/<b>(.*?)<\/b>/gi, '**$1**')
+		.replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+		// Convert <i> and <em> to markdown italic
+		.replace(/<i>(.*?)<\/i>/gi, '*$1*')
+		.replace(/<em>(.*?)<\/em>/gi, '*$1*')
+		// Convert <br> to newlines
+		.replace(/<br\s*\/?>/gi, '\n')
+		// Strip all other HTML tags
+		.replace(/<[^>]+>/g, '')
+		// Clean up multiple consecutive newlines
+		.replace(/\n{3,}/g, '\n\n')
+		.trim();
+}
+
+/**
  * Split message into paragraphs for better rendering
- * @param message - Full message text
+ * Handles both \n\n and <br><br> style paragraph breaks
+ * @param message - Full message text (may contain HTML)
  * @returns Array of paragraph strings
  */
 export function splitIntoParagraphs(message: string): string[] {
-	return message
+	// First clean HTML formatting
+	const cleaned = cleanHtmlFormatting(message);
+
+	return cleaned
 		.split('\n\n')
 		.map((p) => p.trim())
 		.filter((p) => p.length > 0);
