@@ -40,6 +40,13 @@
 - **Privacy Architecture**: What's private (address), public (message content), pseudonymous (reputation)
 - **Cost Analysis**: $682.50/month Gemini savings, 99.97% IPFS savings
 
+→ **`architecture/LOCATION-SIGNAL-ACCURACY-LIMITS.md`** (NEW)
+
+- **Location Signal Accuracy Matrix**: What each signal type can reliably determine
+- **IP Geolocation Limits**: State-level only (NOT district, NOT reliable city)
+- **False Precision Prevention**: Don't claim to know more than you actually know
+- **Code Enforcement**: Type system patterns, testing requirements
+
 ### I need to INTEGRATE with external systems
 
 → **`INTEGRATION.md`**
