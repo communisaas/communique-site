@@ -10,7 +10,7 @@
 	import {
 		X,
 		Send,
-		Users as _Users,
+		Users,
 		Eye as _Eye,
 		Share2,
 		Copy,
@@ -856,14 +856,14 @@
 			</div>
 
 			<!-- Enhanced Celebration Content -->
-			<div class="flex-1 space-y-6 p-6">
+			<div class="flex-1 space-y-6 overflow-y-auto p-6">
 				<!-- Achievement Badge -->
 				<div class="rounded-xl bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6 text-center">
 					<div class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-lg">
 						<Flame class="h-8 w-8 text-orange-500" />
 					</div>
-					<h3 class="mb-2 text-xl font-bold text-slate-900">Congressional Advocate</h3>
-					<p class="text-sm text-slate-600">You've successfully contacted your elected representatives</p>
+					<h3 class="mb-2 text-xl font-bold text-slate-900">Message Delivered</h3>
+					<p class="text-sm text-slate-600">Your voice reached the decision-makers</p>
 					<div class="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-2">
 						<p class="text-xs text-blue-800">
 							🎯 <strong>Demo Success!</strong> Your message reached the Senate chamber. House integration launching soon!
