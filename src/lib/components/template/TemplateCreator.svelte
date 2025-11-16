@@ -159,7 +159,7 @@
 		const template: Omit<Template, 'id'> = {
 			slug: formData.objective.slug || '',
 			title: formData.objective.title,
-			description: formData.content.preview.substring(0, 160),
+			description: formData.objective.description || formData.content.preview.substring(0, 160),
 			category: formData.objective.category || 'General',
 			type: context.channelId === 'certified' ? 'certified' : 'direct',
 			deliveryMethod: context.channelId === 'certified' ? 'certified' : 'email',
