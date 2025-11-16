@@ -178,8 +178,8 @@
 				views: 0
 			},
 			campaign_id: null,
-			status: 'draft',
-			is_public: false,
+			status: 'published',
+			is_public: true,
 			send_count: 0,
 			last_sent_at: null,
 			applicable_countries: [],
