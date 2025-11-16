@@ -36,16 +36,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const apiKey = process.env.TOOLHOUSE_API_KEY;
-	const agentId = process.env.TOOLHOUSE_AGENT_ID;
+	// Use message generation agent (writer), not subject line agent
+	const messageAgentId = process.env.TOOLHOUSE_MESSAGE_AGENT_ID || 'fb9e5f19-cb4d-4a0d-8e6f-31337c253893';
 
 	if (!apiKey) {
 		console.error('[generate-message] Missing TOOLHOUSE_API_KEY environment variable');
 		throw error(500, 'Server configuration error: Missing API key');
-	}
-
-	if (!agentId) {
-		console.error('[generate-message] Missing TOOLHOUSE_AGENT_ID environment variable');
-		throw error(500, 'Server configuration error: Missing agent ID');
 	}
 
 	let body: MessageGenerationRequest;
@@ -73,8 +69,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), 180000);
 
-		// Call Toolhouse agent
-		const response = await fetch(`${TOOLHOUSE_API_BASE}/${agentId}`, {
+		// Call Toolhouse message generation agent
+		const response = await fetch(`${TOOLHOUSE_API_BASE}/${messageAgentId}`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
