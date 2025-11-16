@@ -121,6 +121,7 @@ function validateTemplateData(data: unknown): {
 	// Return valid data with defaults
 	const validData: CreateTemplateRequest = {
 		title: templateData.title as string,
+		slug: (templateData.slug as string) || undefined, // HACKATHON: Extract slug from request
 		message_body: templateData.message_body as string,
 		preview: templateData.preview as string,
 		type: templateData.type as string,
