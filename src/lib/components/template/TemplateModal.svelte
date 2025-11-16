@@ -88,6 +88,19 @@
 	let showQRCode = $state(false);
 	let showPreWrittenMessages = $state(false);
 
+	// CWC job results state (for conditional .gov verification)
+	let cwcJobResults = $state<any[]>([]);
+	let hasSenateDelivery = $derived(
+		cwcJobResults.some(
+			(r) =>
+				r.chamber === 'senate' &&
+				r.success &&
+				r.messageId &&
+				!r.messageId.startsWith('SIM-') &&
+				!r.messageId.startsWith('HOUSE-SIM-')
+		)
+	);
+
 	// Generate share URL for template
 	const shareUrl = $derived(`${$page.url.origin}/s/${template.slug}`);
 
@@ -100,14 +113,14 @@
 			// Short & urgent (Twitter, Discord) - <280 chars
 			short:
 				actionCount > 1000
-					? `🔥 ${actionCount.toLocaleString()}+ people pressuring Congress: "${template.title}"\n\n${shareUrl}`
-					: `Pressure Congress: "${template.title}"\n\n${shareUrl}`,
+					? `🔥 ${actionCount.toLocaleString()}+ people coordinating: "${template.title}"\n\n${shareUrl}`
+					: `"${template.title}"\n\n${shareUrl}`,
 
 			// Medium (Slack, group chats)
-			medium: `Pressuring Congress on ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people already acted. ` : ''}Takes 2 minutes: ${shareUrl}`,
+			medium: `Coordinating on ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people already sent. ` : ''}Takes 2 minutes: ${shareUrl}`,
 
 			// Long (Email, Reddit)
-			long: `I'm sending this to Congress.\n\n"${template.title}"\n\n${template.description}\n\n${actionCount > 1000 ? `${actionCount.toLocaleString()}+ people already sent this. ` : actionCount > 100 ? `${actionCount.toLocaleString()} people acted. ` : ''}Takes 2 minutes.\n\n${shareUrl}`,
+			long: `I'm sending this.\n\n"${template.title}"\n\n${template.description}\n\n${actionCount > 1000 ? `${actionCount.toLocaleString()}+ people already sent this. ` : actionCount > 100 ? `${actionCount.toLocaleString()} people acted. ` : ''}Takes 2 minutes.\n\n${shareUrl}`,
 
 			// SMS-friendly (under 160 chars)
 			sms:
@@ -710,6 +723,30 @@
 		a.download = `${template.slug}-qr-code.png`;
 		a.click();
 	}
+
+	// Fetch CWC job results to check for Senate delivery
+	async function fetchCWCResults() {
+		if (!submissionId) return;
+
+		try {
+			const response = await fetch(`/api/cwc/jobs/${submissionId}`);
+			if (!response.ok) {
+				console.error('[Template Modal] Failed to fetch CWC job results');
+				return;
+			}
+
+			const data = await response.json();
+			if (data.results && Array.isArray(data.results)) {
+				cwcJobResults = data.results;
+				console.log('[Template Modal] CWC job results loaded:', {
+					count: cwcJobResults.length,
+					hasSenate: hasSenateDelivery
+				});
+			}
+		} catch (error) {
+			console.error('[Template Modal] Error fetching CWC results:', error);
+		}
+	}
 </script>
 
 <!-- Modal Content (no backdrop - UnifiedModal handles that) -->
@@ -911,7 +948,7 @@
 						class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
 					>
 						<Share2 class="h-5 w-5" />
-						<span>{navigator.share ? 'Share your advocacy' : 'Copy share message'}</span>
+						<span>{navigator.share ? 'Share template' : 'Copy share message'}</span>
 					</button>
 				</div>
 
@@ -972,6 +1009,28 @@
 							</button>
 						</div>
 					</div>
+
+				<!-- Senate Delivery Verification (only if actual Senate submission) -->
+				{#if hasSenateDelivery}
+					<div class="rounded-lg border border-blue-200 bg-blue-50 p-4" in:fade={{ duration: 400 }}>
+						<div class="mb-2 flex items-center gap-2">
+							<CheckCircle2 class="h-4 w-4 text-blue-600" />
+							<p class="text-sm font-semibold text-blue-900">Senate Delivery Confirmed</p>
+						</div>
+						<p class="mb-2 text-xs text-blue-800">
+							Your message was delivered through the official Senate messaging system
+						</p>
+						<a
+							href="https://soapbox.senate.gov/api"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-700 hover:underline"
+						>
+							<ExternalLink class="h-3 w-3" />
+							soapbox.senate.gov/api
+						</a>
+					</div>
+				{/if}
 				</div>
 			</div>
 	{:else if collectingAddress}
@@ -1046,7 +1105,9 @@
 				<CWCProgressTracker
 					{submissionId}
 					{template}
-					onComplete={() => {
+					onComplete={async () => {
+						// Fetch CWC job results for verification before showing celebration
+						await fetchCWCResults();
 						// Move to celebration state after successful delivery
 						modalActions.setState('celebration');
 					}}
