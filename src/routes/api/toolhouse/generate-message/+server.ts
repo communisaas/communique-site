@@ -69,9 +69,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	try {
-		// Create abort controller for timeout (90 seconds for AI agent processing)
+		// Create abort controller for timeout (180 seconds for AI agent processing)
 		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), 90000);
+		const timeoutId = setTimeout(() => controller.abort(), 180000);
 
 		// Call Toolhouse agent
 		const response = await fetch(`${TOOLHOUSE_API_BASE}/${agentId}`, {
