@@ -17,6 +17,53 @@ interface ToolhouseResponse {
 }
 
 /**
+ * Extract ANY valid JSON from text, regardless of surrounding content
+ */
+function extractJSON(text: string): any | null {
+	// Try parsing the whole thing first
+	try {
+		return JSON.parse(text);
+	} catch {
+		// Find the largest valid JSON structure (prefer arrays/objects)
+		const candidates: any[] = [];
+
+		// Extract all JSON arrays
+		const arrayMatches = text.matchAll(/\[(?:[^\[\]]|\[[^\[\]]*\])*\]/gs);
+		for (const match of arrayMatches) {
+			try {
+				const parsed = JSON.parse(match[0]);
+				if (Array.isArray(parsed) && parsed.length > 0) {
+					candidates.push({ value: parsed, length: match[0].length });
+				}
+			} catch {
+				continue;
+			}
+		}
+
+		// Extract all JSON objects
+		const objectMatches = text.matchAll(/\{(?:[^{}]|\{[^{}]*\})*\}/gs);
+		for (const match of objectMatches) {
+			try {
+				const parsed = JSON.parse(match[0]);
+				if (parsed && typeof parsed === 'object') {
+					candidates.push({ value: parsed, length: match[0].length });
+				}
+			} catch {
+				continue;
+			}
+		}
+
+		// Return the largest valid JSON found
+		if (candidates.length > 0) {
+			candidates.sort((a, b) => b.length - a.length);
+			return candidates[0].value;
+		}
+
+		return null;
+	}
+}
+
+/**
  * Generate subject line using Toolhouse AI agent
  *
  * POST /api/toolhouse/generate-subject
@@ -80,50 +127,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Extract Run ID from headers
 		const newRunId = response.headers.get('X-Toolhouse-Run-ID') || runId;
 
-		// Parse response (handle streaming)
+		// Extract JSON from response (handles markdown, notes, any flanking text)
 		const text = await response.text();
+		console.log('[Toolhouse] Raw response (first 500 chars):', text.substring(0, 500));
 
-		console.log('[Toolhouse] Raw response (full):', text);
-		console.log('[Toolhouse] Response length:', text.length);
+		const result = extractJSON(text) as ToolhouseResponse;
 
-		let result: ToolhouseResponse;
-		try {
-			// Attempt to parse as JSON
-			result = JSON.parse(text);
-			console.log('[Toolhouse] Parsed as single JSON object');
-		} catch (parseError) {
-			console.log('[Toolhouse] Not a single JSON object, attempting to parse streaming format...');
-
-			// If streaming, try to extract complete JSON objects
-			// Handle newline-delimited JSON or SSE format
-			const lines = text.split('\n').filter((line) => line.trim());
-			console.log('[Toolhouse] Found', lines.length, 'lines in response');
-
-			let lastValidJson: ToolhouseResponse | null = null;
-			for (const line of lines) {
-				try {
-					// Try parsing each line as JSON
-					const parsed = JSON.parse(line);
-					if (parsed && typeof parsed === 'object') {
-						lastValidJson = parsed as ToolhouseResponse;
-						console.log('[Toolhouse] Successfully parsed line:', parsed);
-					}
-				} catch {
-					// Skip lines that aren't valid JSON
-					console.log('[Toolhouse] Skipping non-JSON line:', line.substring(0, 100));
-				}
-			}
-
-			if (lastValidJson) {
-				result = lastValidJson;
-			} else {
-				console.error('[Toolhouse] Failed to parse any valid JSON from response');
-				console.error('[Toolhouse] Raw text:', text.substring(0, 500));
-				throw error(500, 'Failed to parse agent response');
-			}
+		if (!result) {
+			console.error('[Toolhouse] No valid JSON found in response');
+			console.error('[Toolhouse] Full text:', text);
+			throw error(500, 'Failed to parse agent response - no valid JSON found');
 		}
 
-		console.log('[Toolhouse] Final parsed result:', result);
+		console.log('[Toolhouse] Extracted JSON:', result);
 
 		console.log('[Toolhouse] Subject line generated:', {
 			userId: session.userId,
