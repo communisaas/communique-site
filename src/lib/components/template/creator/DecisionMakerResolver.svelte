@@ -100,9 +100,15 @@
 		}
 	}
 
-	// Auto-run on mount
+	// Auto-run on mount (only if not already resolved)
 	onMount(() => {
-		resolveDecisionMakers();
+		// Only auto-resolve if we don't already have decision-makers
+		if (!formData.audience?.decisionMakers || formData.audience.decisionMakers.length === 0) {
+			resolveDecisionMakers();
+		} else {
+			// Already have decision-makers, skip to results
+			stage = 'results';
+		}
 	});
 
 	function handleNext() {
