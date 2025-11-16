@@ -170,32 +170,12 @@ export class LocationInferenceEngine {
 				return null;
 			}
 
-			// If we have coordinates, use Census API to get congressional district
-			if (data.latitude && data.longitude) {
-				console.log('[IP Lookup] Got coordinates, fetching congressional district...');
+			// IP geolocation provides approximate coordinates (city-center, ISP routing)
+			// This is NOT accurate enough for congressional district lookup
+			// Only browser geolocation or verified address can reliably determine district
+			console.log('[IP Lookup] Returning state-level location (IP cannot reliably determine district)');
 
-				// Import Census API client
-				const { censusAPI } = await import('./census-api');
-				const censusSignal = await censusAPI.geocodeCoordinates(data.latitude, data.longitude);
-
-				if (censusSignal) {
-					// Upgrade to IP signal (override the 'browser' type from Census API)
-					return {
-						...censusSignal,
-						signal_type: 'ip',
-						country_code: data.country_code,
-						source: 'ip.geolocation',
-						confidence: 0.4, // Higher than timezone, lower than browser geolocation
-						metadata: {
-							...censusSignal.metadata,
-							city: data.city,
-							timezone: data.timezone
-						}
-					};
-				}
-			}
-
-			// Fallback: Return country + state signal (no district)
+			// Return country + state signal (no district)
 			return {
 				signal_type: 'ip',
 				confidence: data.state_code ? 0.3 : 0.6, // Country-only is more confident than state (VPN-resistant)
