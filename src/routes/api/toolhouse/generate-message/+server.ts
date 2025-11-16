@@ -1,7 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-const TOOLHOUSE_AGENT_ID = 'fb9e5f19-cb4d-4a0d-8e6f-31337c253893';
 const TOOLHOUSE_API_BASE = 'https://agents.toolhouse.ai';
 
 interface MessageGenerationRequest {
@@ -37,9 +36,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 
 	const apiKey = process.env.TOOLHOUSE_API_KEY;
+	const agentId = process.env.TOOLHOUSE_AGENT_ID;
+
 	if (!apiKey) {
 		console.error('[generate-message] Missing TOOLHOUSE_API_KEY environment variable');
-		throw error(500, 'Server configuration error');
+		throw error(500, 'Server configuration error: Missing API key');
+	}
+
+	if (!agentId) {
+		console.error('[generate-message] Missing TOOLHOUSE_AGENT_ID environment variable');
+		throw error(500, 'Server configuration error: Missing agent ID');
 	}
 
 	let body: MessageGenerationRequest;
@@ -63,8 +69,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	});
 
 	try {
+		// Create abort controller for timeout (90 seconds for AI agent processing)
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), 90000);
+
 		// Call Toolhouse agent
-		const response = await fetch(`${TOOLHOUSE_API_BASE}/${TOOLHOUSE_AGENT_ID}`, {
+		const response = await fetch(`${TOOLHOUSE_API_BASE}/${agentId}`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
@@ -77,8 +87,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					decision_makers: body.decision_makers || [],
 					domain: body.domain || 'general'
 				})
-			})
+			}),
+			signal: controller.signal
 		});
+
+		clearTimeout(timeoutId);
 
 		if (!response.ok) {
 			const errorText = await response.text();
