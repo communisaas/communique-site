@@ -500,10 +500,35 @@
 
 	async function handleSendConfirmation(sent: boolean) {
 		if (sent) {
-			// HACKATHON: If unauthenticated, prompt account creation AFTER they send
-			// This maximizes viral conversion while maintaining quality
-			if (!user) {
-				console.log('[Template Modal] Guest user confirmed send - showing onboarding');
+			// Check if Congressional message (Phase 1: only these are verified)
+			const isCongressional = template.deliveryMethod === 'cwc';
+
+			// DEMO MODE: For guest users on non-Congressional (mailto) templates,
+			// skip onboarding and go straight to celebration for viral QR code flow
+			if (!user && !isCongressional) {
+				console.log('[Template Modal] Guest user confirmed send - proceeding to celebration (demo mode)');
+
+				// Go straight to celebration for mailto templates
+				modalActions.confirmSend();
+
+				// Navigate to template page after brief celebration
+				coordinated.setTimeout(
+					async () => {
+						await goto(`/s/${template.slug}`, { replaceState: true });
+					},
+					1500,
+					'guest-navigation',
+					componentId
+				);
+
+				// Celebration animation
+				celebrationScale.set(1.05).then(() => celebrationScale.set(1));
+				return;
+			}
+
+			// For Congressional templates, guest users need to create account first
+			if (!user && isCongressional) {
+				console.log('[Template Modal] Guest user on Congressional template - showing onboarding');
 
 				// Close template modal
 				dispatch('close');
@@ -518,9 +543,6 @@
 
 				return;
 			}
-
-			// Check if Congressional message (Phase 1: only these are verified)
-			const isCongressional = template.deliveryMethod === 'cwc';
 
 			if (isCongressional) {
 				// STEP 1: Check if user has address (for congressional routing)
