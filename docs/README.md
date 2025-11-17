@@ -79,6 +79,7 @@
 → **`development/testing.md`** - Test strategy, mocks, fixtures (integration-first approach)
 → **`development/database.md`** - Prisma schema, migrations, seeding
 → **`development/deployment.md`** - How to deploy Communiqué (production build, environment variables)
+→ **`development/integrations/`** - External service integrations (Toolhouse, decision-maker, multi-target delivery)
 
 ### I need DEEP TECHNICAL SPECS
 
@@ -92,6 +93,7 @@
 
 - `archive/2025-01-district-verification/` - Pre-voter-protocol separation
 - `archive/2025-11-refactor/` - Architecture refactor process
+- `archive/2025-11-phase-2-implementation/` - Phase 2 status files (superseded by IMPLEMENTATION-STATUS.md)
 - `archive/migrations/` - Database privacy migration records
 
 ---
@@ -145,10 +147,11 @@ docs/ (13 docs)
 │   ├── creator.md                      # Template creator UI
 │   └── identity-verification.md        # self.xyz + Didit.me (CONSOLIDATED)
 │
-├── development/ (3 docs)
+├── development/ (3 docs + integrations/)
 │   ├── testing.md                      # Test strategy, mocks, fixtures
 │   ├── database.md                     # Schema, migrations, seeding
-│   └── deployment.md                   # How to deploy
+│   ├── deployment.md                   # How to deploy
+│   └── integrations/                   # External service integrations (4 docs)
 │
 ├── specs/ (3 docs)
 │   ├── zk-proof-integration.md         # ZK proof integration guide (45K)
@@ -158,6 +161,7 @@ docs/ (13 docs)
 └── archive/ (historical, not counted)
     ├── 2025-01-district-verification/
     ├── 2025-11-refactor/
+    ├── 2025-11-phase-2-implementation/
     └── migrations/
 ```
 
