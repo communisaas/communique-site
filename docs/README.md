@@ -94,6 +94,7 @@
 - `archive/2025-01-district-verification/` - Pre-voter-protocol separation
 - `archive/2025-11-refactor/` - Architecture refactor process
 - `archive/2025-11-phase-2-implementation/` - Phase 2 status files (superseded by IMPLEMENTATION-STATUS.md)
+- `archive/2025-11-design-iterations/` - OAuth flow refactor, UI copy audits, progressive precision UX
 - `archive/migrations/` - Database privacy migration records
 
 ---
@@ -162,6 +163,7 @@ docs/ (13 docs)
     ├── 2025-01-district-verification/
     ├── 2025-11-refactor/
     ├── 2025-11-phase-2-implementation/
+    ├── 2025-11-design-iterations/
     └── migrations/
 ```
 
