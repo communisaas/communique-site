@@ -112,9 +112,18 @@ Practical usage examples for UI components.
 
 ## Design Philosophy (Definitive)
 
-### ⭐ Active Philosophy
+### ⭐ Start Here: Complete Design System
 
-**[COORDINATION-DYNAMICS-PHILOSOPHY.md](COORDINATION-DYNAMICS-PHILOSOPHY.md)** - THE definitive design philosophy
+**[design-system.md](design-system.md)** - THE definitive design system (consolidated)
+
+**Single source of truth** blending all philosophy docs:
+- Typography system (Satoshi + JetBrains Mono)
+- Color system (participation, semantic, surfaces)
+- Component patterns (buttons, cards, forms, badges)
+- Animation philosophy (paper plane, share, coordination dynamics)
+- Voice & language (pragmatic cypherpunk)
+- Accessibility standards (WCAG AA, keyboard, reduced-motion)
+- Migration roadmap (3 phases, 6 weeks)
 
 **Core principle**: "Invisible crypto, visible coordination"
 
@@ -125,19 +134,19 @@ Practical usage examples for UI components.
 - ✅ Subtle progressive disclosure for privacy (popovers, expandable details)
 - ✅ "Credibly cool" aesthetic - neither corporate bland nor crypto tacky
 
-**Lean towards v2, tactically preserve v1**:
-- From v2: Satoshi typography, dynamic interactions, distinctive aesthetic
-- From v1: Mono for data, progressive disclosure, accessibility, pragmatic voice
-
 ### 📚 Historical Context
 
-**[DESIGN-PHILOSOPHY-EVOLUTION.md](DESIGN-PHILOSOPHY-EVOLUTION.md)** - Analysis of how we got here
+**[design-philosophy-evolution.md](design-philosophy-evolution.md)** - Analysis of philosophy evolution
 
 Compares two competing philosophies that existed in codebase:
 1. **Consumer-Friendly Privacy** (docs/design/) - Blend in with consumer apps
 2. **Dynamic Coordination Hub** (design-system-v2/) - Distinctively cool
 
 Shows reasoning for synthesis decision.
+
+**[coordination-dynamics-philosophy.md](coordination-dynamics-philosophy.md)** - Initial synthesis (superseded by design-system.md)
+
+First attempt at blending both philosophies. Preserved for historical context.
 
 ### Current Design Principles (Philosophy)
 

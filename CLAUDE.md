@@ -766,12 +766,12 @@ Feature flags control access to:
 **Start here →** `docs/README.md` (comprehensive navigation map)
 
 **Implementation Status:**
-- `docs/IMPLEMENTATION-STATUS.md` - What's done, what remains (SINGLE SOURCE OF TRUTH)
+- `docs/implementation-status.md` - What's done, what remains (SINGLE SOURCE OF TRUTH)
 
 **Understanding the System:**
-- `docs/ARCHITECTURE.md` - Communiqué/voter-protocol separation, cypherpunk principles
-- `docs/INTEGRATION.md` - How Communiqué integrates with voter-protocol, CWC API, OAuth
-- `docs/FRONTEND.md` - SvelteKit 5 patterns, runes, type safety
+- `docs/architecture.md` - Communiqué/voter-protocol separation, cypherpunk principles
+- `docs/integration.md` - How Communiqué integrates with voter-protocol, CWC API, OAuth
+- `docs/frontend.md` - SvelteKit 5 patterns, runes, type safety
 
 **Building Features:**
 - `docs/features/templates.md` - Template system

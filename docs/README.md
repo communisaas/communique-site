@@ -8,10 +8,10 @@
 
 ## Quick Navigation
 
-**"What's the current status?"** → `IMPLEMENTATION-STATUS.md`
-**"How does Communiqué work?"** → `ARCHITECTURE.md`
-**"How do I integrate with voter-protocol?"** → `INTEGRATION.md`
-**"How do I build frontend features?"** → `FRONTEND.md`
+**"What's the current status?"** → `implementation-status.md`
+**"How does Communiqué work?"** → `architecture.md`
+**"How do I integrate with voter-protocol?"** → `integration.md`
+**"How do I build frontend features?"** → `frontend.md`
 **"How do I test?"** → `development/testing.md`
 **"How do I deploy?"** → `development/deployment.md`
 
@@ -21,7 +21,7 @@
 
 ### I need to understand the CURRENT state
 
-→ **`IMPLEMENTATION-STATUS.md`** (SINGLE SOURCE OF TRUTH)
+→ **`implementation-status.md`** (SINGLE SOURCE OF TRUTH)
 
 - What's complete (encryption, database, refactor)
 - What's in progress (voter-protocol ZK proofs)
@@ -31,7 +31,7 @@
 
 ### I need to understand the ARCHITECTURE
 
-→ **`ARCHITECTURE.md`**
+→ **`architecture.md`**
 
 - **Separation of Concerns**: What Communiqué handles vs voter-protocol
   - Communiqué: UI/UX, OAuth, database, browser encryption, API proxies
@@ -40,7 +40,7 @@
 - **Privacy Architecture**: What's private (address), public (message content), pseudonymous (reputation)
 - **Cost Analysis**: $682.50/month Gemini savings, 99.97% IPFS savings
 
-→ **`architecture/LOCATION-SIGNAL-ACCURACY-LIMITS.md`** (NEW)
+→ **`architecture/location-signal-accuracy-limits.md`** (NEW)
 
 - **Location Signal Accuracy Matrix**: What each signal type can reliably determine
 - **IP Geolocation Limits**: State-level only (NOT district, NOT reliable city)
@@ -49,7 +49,7 @@
 
 ### I need to INTEGRATE with external systems
 
-→ **`INTEGRATION.md`**
+→ **`integration.md`**
 
 - **voter-protocol Integration**: ReputationAgent API, geocoding, district resolution, ZK proving
 - **CWC API**: Congressional message delivery through TEE
@@ -60,7 +60,7 @@
 
 ### I need to build FRONTEND features
 
-→ **`FRONTEND.md`**
+→ **`frontend.md`**
 
 - **SvelteKit 5 Architecture**: SSR vs CSR, when to use each
 - **Runes-Based State Management**: `$state`, `$derived`, `$effect`
@@ -93,7 +93,7 @@
 
 - `archive/2025-01-district-verification/` - Pre-voter-protocol separation
 - `archive/2025-11-refactor/` - Architecture refactor process
-- `archive/2025-11-phase-2-implementation/` - Phase 2 status files (superseded by IMPLEMENTATION-STATUS.md)
+- `archive/2025-11-phase-2-implementation/` - Phase 2 status files (superseded by implementation-status.md)
 - `archive/2025-11-design-iterations/` - OAuth flow refactor, UI copy audits, progressive precision UX
 - `archive/migrations/` - Database privacy migration records
 
@@ -101,10 +101,10 @@
 
 ## Information Ownership (No Redundancy)
 
-**Implementation Status:** ONLY in `IMPLEMENTATION-STATUS.md`
-**Architecture:** ONLY in `ARCHITECTURE.md`
-**Integration:** ONLY in `INTEGRATION.md`
-**Frontend:** ONLY in `FRONTEND.md`
+**Implementation Status:** ONLY in `implementation-status.md`
+**Architecture:** ONLY in `architecture.md`
+**Integration:** ONLY in `integration.md`
+**Frontend:** ONLY in `frontend.md`
 **Features:** ONLY in `features/*.md`
 **Development:** ONLY in `development/*.md`
 **Specs:** ONLY in `specs/*.md`
@@ -117,7 +117,7 @@
 
 ### Search Strategy
 
-1. **Check `IMPLEMENTATION-STATUS.md`** - Current state of everything
+1. **Check `implementation-status.md`** - Current state of everything
 2. **Check `docs/README.md`** (this file) - Navigate to specific topic
 3. **Use grep** - `grep -r "keyword" docs/` (finds information fast)
 
@@ -138,10 +138,10 @@
 
 docs/ (13 docs)
 ├── README.md                           # This navigation map
-├── IMPLEMENTATION-STATUS.md            # What's done, what remains (SINGLE SOURCE OF TRUTH)
-├── ARCHITECTURE.md                     # Communiqué/voter-protocol separation
-├── INTEGRATION.md                      # CWC API, OAuth, voter-protocol
-├── FRONTEND.md                         # SvelteKit 5, runes, components
+├── implementation-status.md            # What's done, what remains (SINGLE SOURCE OF TRUTH)
+├── architecture.md                     # Communiqué/voter-protocol separation
+├── integration.md                      # CWC API, OAuth, voter-protocol
+├── frontend.md                         # SvelteKit 5, runes, components
 │
 ├── features/ (3 docs)
 │   ├── templates.md                    # Template system
