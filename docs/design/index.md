@@ -110,7 +110,24 @@ Practical usage examples for UI components.
 
 ---
 
-## Design Principles (Philosophy)
+## Design Philosophy Evolution
+
+### Core Documents
+
+**[DESIGN-PHILOSOPHY-EVOLUTION.md](DESIGN-PHILOSOPHY-EVOLUTION.md)** - Analysis of competing philosophies
+
+**Two philosophies in tension**:
+1. **Consumer-Friendly Privacy** (current docs/design/) - Blend in with trusted consumer apps
+2. **Dynamic Coordination Hub** (design-system-v2/) - Distinctively cool civic tech
+
+**Synthesis proposed**: "Credibly Pragmatic"
+- Satoshi for brand identity, JetBrains Mono for data scannability
+- Dynamic interactions for coordination signals, subtle disclosure for privacy
+- Bold about collective action, reassuring about personal data
+
+**Decision needed**: Adopt synthesis, choose one philosophy, or define new approach
+
+### Current Design Principles (Philosophy)
 
 **1. Honesty over persuasion**
 - No dark patterns
