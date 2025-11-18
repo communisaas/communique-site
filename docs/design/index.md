@@ -1,154 +1,89 @@
-# Design System Documentation
+# Design Documentation
 
-**Design system foundations, UI patterns, and interaction design.**
-
----
-
-## Start Here: Design Foundations
-
-### 1. [principles.md](principles.md) - Design Principles
-
-Color tokens, typography scale, spacing system, visual hierarchy.
-
-**What it defines**: Core design tokens used throughout the application.
-
-**Read first**: Establishes design language foundation.
-
-### 2. [voice.md](voice.md) - Voice & Tone
-
-Writing style, messaging guidelines, copy patterns.
-
-**What it defines**: How Communiqué speaks to users (direct, honest, technical).
-
-**Key principle**: No bullshit. No emotional manipulation. Respect user intelligence.
-
-### 3. [system.md](system.md) - Component Library
-
-Reusable UI components, patterns, usage guidelines.
-
-**What it defines**: Button variants, form inputs, modals, cards, navigation.
-
-**Dependencies**: principles.md (uses design tokens)
+**Design system, voice guidelines, and UX patterns for Communiqué**
 
 ---
 
-## Layout & Structure
+## Start Here
 
-### 4. [structure.md](structure.md) - Layout Patterns
+### ⭐ [design-system.md](design-system.md) - THE Definitive Design System
 
-Grid system, responsive breakpoints, spacing conventions.
+**Single source of truth** for all design decisions.
 
-**What it defines**: How components are arranged on pages.
+**Complete coverage:**
+- Core philosophy: "Invisible crypto, visible coordination"
+- Typography: Satoshi (brand/words) + JetBrains Mono (data/metrics)
+- Color system: Participation colors, semantic states, surfaces
+- Component patterns: Buttons, cards, forms, badges
+- Animation philosophy: Dopamine-pushing for coordination, subtle for privacy
+- Accessibility: WCAG AA, keyboard navigation, reduced-motion support
+- Migration roadmap: 3 phases, 6 weeks
 
-**Dependencies**: principles.md (spacing scale)
-
-### 5. [friction.md](friction.md) - UX Friction Reduction
-
-Patterns for reducing cognitive load, minimizing clicks, progressive disclosure.
-
-**What it defines**: One-click actions, smart defaults, contextual help.
-
-**Key insight**: Every extra click loses 20% of users.
-
----
-
-## Feature-Specific UX
-
-### 6. [discovery.md](discovery.md) - Template Discovery
-
-Template browsing, filtering, recommendation UX.
-
-**What it defines**: How users find relevant templates (search, categories, trending).
-
-**Dependencies**: search-ux.md
-
-### 7. [search-ux.md](search-ux.md) - Search Interaction
-
-Search input behavior, autocomplete, result ranking display.
-
-**What it defines**: Search interaction patterns, instant results, query refinement.
-
-**Dependencies**: principles.md (typography, spacing)
-
----
-
-## Advanced Patterns
-
-### 8. [governance.md](governance.md) - Privacy-Preserving Governance UI
-
-UI patterns for zero-knowledge voting, reputation display, challenge mechanisms.
-
-**What it defines**: How to show collective decision-making without revealing individual votes.
-
-**Key challenge**: Display "80% voted yes" without showing who voted.
-
-### 9. [redesign.md](redesign.md) - Design Evolution
-
-Notes on design iterations, rationale for changes, before/after comparisons.
-
-**What it documents**: Why we redesigned X, what we learned, what worked/didn't work.
-
-**Use case**: Historical context for design decisions.
-
----
-
-## Component Documentation
-
-### 10. [identity-verification.md](identity-verification.md) - Identity Verification UI
-
-UI components for identity verification flow.
-
-**What it defines**: IdentityVerificationFlow component architecture, emotional design, conversion optimization.
-
-**Key principle**: "Stealthily cypherpunk" - privacy as empowerment, not paranoia.
-
-### 11. [component-examples.md](component-examples.md) - Component Usage Examples
-
-Practical usage examples for UI components.
-
-**What it provides**: Code examples, integration patterns, common use cases.
-
----
-
-## Design Philosophy (Definitive)
-
-### ⭐ Start Here: Complete Design System
-
-**[design-system.md](design-system.md)** - THE definitive design system (consolidated)
-
-**Single source of truth** blending all philosophy docs:
-- Typography system (Satoshi + JetBrains Mono)
-- Color system (participation, semantic, surfaces)
-- Component patterns (buttons, cards, forms, badges)
-- Animation philosophy (paper plane, share, coordination dynamics)
-- Voice & language (pragmatic cypherpunk)
-- Accessibility standards (WCAG AA, keyboard, reduced-motion)
-- Migration roadmap (3 phases, 6 weeks)
-
-**Core principle**: "Invisible crypto, visible coordination"
-
-**Key decisions**:
+**Key decisions:**
 - ✅ Satoshi for words (headlines, UI, CTAs) - distinctive brand identity
 - ✅ JetBrains Mono for numbers (counts, metrics, codes) - scannable data
 - ✅ Dopamine-pushing animations for coordination (send, share, count updates)
 - ✅ Subtle progressive disclosure for privacy (popovers, expandable details)
 - ✅ "Credibly cool" aesthetic - neither corporate bland nor crypto tacky
 
-### 📚 Historical Context
+### 📝 [voice.md](voice.md) - Voice & Language Guidelines
 
-**[design-philosophy-evolution.md](design-philosophy-evolution.md)** - Analysis of philosophy evolution
+**How Communiqué speaks to users.**
 
-Compares two competing philosophies that existed in codebase:
-1. **Consumer-Friendly Privacy** (docs/design/) - Blend in with consumer apps
-2. **Dynamic Coordination Hub** (design-system-v2/) - Distinctively cool
+**Core principles:**
+1. **Confident & Direct** - State what is. Don't explain, justify, or defend.
+2. **Technical Details in Popovers** - Primary UI: simple statement. Popover: mechanism for those who care.
+3. **Don't Wear Cypherpunk on Our Sleeve** - Users don't need to know the mechanism unless they ask.
+4. **No Pre-Defending** - Don't apologize for what we are. Don't explain what we're not.
+5. **Imperative Voice** - Commands, not suggestions.
 
-Shows reasoning for synthesis decision.
+**Vocabulary to avoid:** campaigns, issues, community, platform, content, engagement, solutions, empower
 
-**[coordination-dynamics-philosophy.md](coordination-dynamics-philosophy.md)** - Initial synthesis (superseded by design-system.md)
+---
 
-First attempt at blending both philosophies. Preserved for historical context.
+## UX Patterns
 
-### Current Design Principles (Philosophy)
+**Specific solutions for common design challenges.**
+
+### [patterns/location-filtering.md](patterns/location-filtering.md)
+
+**Location as filter, not category + data inference patterns**
+
+- Core principle: Location names stand alone (no "campaigns in", no "issues in")
+- Inferrable defaults: Country from state code, deterministic 1:1 mappings
+- Progressive precision funnel: IP → State → County → District
+- Voice guidance: When to use minimal headers vs. descriptive affordances
+
+### [patterns/template-discovery.md](patterns/template-discovery.md)
+
+**Template browsing, filtering, recommendation UX**
+
+- How users find relevant templates
+- Search, categories, trending patterns
+- Template card design
+- Progressive disclosure patterns
+
+### [patterns/privacy-governance.md](patterns/privacy-governance.md)
+
+**Privacy-preserving governance UI patterns**
+
+- Zero-knowledge voting displays
+- Reputation visualization without revealing votes
+- Challenge mechanisms
+- How to show collective decision-making without exposing individuals
+
+### [patterns/identity-verification.md](patterns/identity-verification.md)
+
+**Identity verification flow UI**
+
+- IdentityVerificationFlow component architecture
+- Emotional design for privacy
+- Conversion optimization
+- "Stealthily cypherpunk" - privacy as empowerment, not paranoia
+
+---
+
+## Current Design Principles
 
 **1. Honesty over persuasion**
 - No dark patterns
@@ -194,34 +129,38 @@ First attempt at blending both philosophies. Preserved for historical context.
 ## For Designers
 
 **New to the design system?**
-1. Read principles.md (design tokens)
-2. Read voice.md (writing style)
-3. Read system.md (component library)
-4. Explore `/src/lib/components/` (implementation)
+1. Read [design-system.md](design-system.md) - THE complete design system
+2. Read [voice.md](voice.md) - Writing style and language guidelines
+3. Explore `/src/lib/components/` - Component implementations
 
 **Designing a new feature?**
-1. Check friction.md (reduce cognitive load)
-2. Check governance.md (if privacy-related)
-3. Check discovery.md or search-ux.md (if search-related)
+1. Check [patterns/](patterns/) for existing solutions
+2. Use design tokens from [design-system.md](design-system.md)
+3. Follow accessibility guidelines (WCAG AA)
 4. Prototype in Figma, then implement in code
 
 **Writing copy?**
-1. Read voice.md first
-2. Avoid: marketing speak, emotional appeals, dark patterns
-3. Prefer: direct language, honest claims, respect for user
+1. Read [voice.md](voice.md) first
+2. Avoid: marketing speak, emotional appeals, dark patterns, category labels
+3. Prefer: direct language, honest claims, location-first, coordination-focused
 
 ---
 
 ## For Developers
 
 **Implementing a component?**
-1. Check system.md for existing patterns
-2. Use design tokens from principles.md
-3. Follow accessibility guidelines
+1. Check [design-system.md](design-system.md) for component patterns and examples
+2. Use design tokens (Satoshi for words, JetBrains Mono for data)
+3. Follow accessibility guidelines (keyboard nav, WCAG AA contrast)
 4. Add to component library in `/src/lib/components/ui/`
 
 **Building a feature?**
-1. Read relevant UX doc (discovery.md, search-ux.md, governance.md)
-2. Match spacing/typography to principles.md
+1. Read relevant pattern docs ([patterns/](patterns/))
+2. Match spacing/typography to design-system.md
 3. Test keyboard navigation
 4. Check mobile responsiveness
+5. Respect `prefers-reduced-motion` for animations
+
+---
+
+*Communiqué PBC | Design Documentation | 2025-11-18*
