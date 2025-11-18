@@ -110,22 +110,34 @@ Practical usage examples for UI components.
 
 ---
 
-## Design Philosophy Evolution
+## Design Philosophy (Definitive)
 
-### Core Documents
+### ⭐ Active Philosophy
 
-**[DESIGN-PHILOSOPHY-EVOLUTION.md](DESIGN-PHILOSOPHY-EVOLUTION.md)** - Analysis of competing philosophies
+**[COORDINATION-DYNAMICS-PHILOSOPHY.md](COORDINATION-DYNAMICS-PHILOSOPHY.md)** - THE definitive design philosophy
 
-**Two philosophies in tension**:
-1. **Consumer-Friendly Privacy** (current docs/design/) - Blend in with trusted consumer apps
-2. **Dynamic Coordination Hub** (design-system-v2/) - Distinctively cool civic tech
+**Core principle**: "Invisible crypto, visible coordination"
 
-**Synthesis proposed**: "Credibly Pragmatic"
-- Satoshi for brand identity, JetBrains Mono for data scannability
-- Dynamic interactions for coordination signals, subtle disclosure for privacy
-- Bold about collective action, reassuring about personal data
+**Key decisions**:
+- ✅ Satoshi for words (headlines, UI, CTAs) - distinctive brand identity
+- ✅ JetBrains Mono for numbers (counts, metrics, codes) - scannable data
+- ✅ Dopamine-pushing animations for coordination (send, share, count updates)
+- ✅ Subtle progressive disclosure for privacy (popovers, expandable details)
+- ✅ "Credibly cool" aesthetic - neither corporate bland nor crypto tacky
 
-**Decision needed**: Adopt synthesis, choose one philosophy, or define new approach
+**Lean towards v2, tactically preserve v1**:
+- From v2: Satoshi typography, dynamic interactions, distinctive aesthetic
+- From v1: Mono for data, progressive disclosure, accessibility, pragmatic voice
+
+### 📚 Historical Context
+
+**[DESIGN-PHILOSOPHY-EVOLUTION.md](DESIGN-PHILOSOPHY-EVOLUTION.md)** - Analysis of how we got here
+
+Compares two competing philosophies that existed in codebase:
+1. **Consumer-Friendly Privacy** (docs/design/) - Blend in with consumer apps
+2. **Dynamic Coordination Hub** (design-system-v2/) - Distinctively cool
+
+Shows reasoning for synthesis decision.
 
 ### Current Design Principles (Philosophy)
 
