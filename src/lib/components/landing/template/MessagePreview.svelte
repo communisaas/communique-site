@@ -100,7 +100,6 @@
 			// Use preserveVariables option to keep variables for interactive display
 			return resolveTemplate(template, emailServiceUser, { preserveVariables: true });
 		} catch {
-			console.warn('Error occurred');
 			return { body: preview };
 		}
 	});
@@ -318,13 +317,6 @@
 	// Initialize variable values when segments change
 	$effect(() => {
 		const segments = templateSegments;
-		console.log('🔧 Initializing variable values:', {
-			segmentCount: segments.length,
-			variables: segments
-				.filter((s) => s.type === 'variable')
-				.map((s) => ({ name: s.name, type: s.type })),
-			currentValues: variableValues
-		});
 		if (Object.keys(variableValues).length === 0) {
 			for (const segment of segments) {
 				if (segment.type === 'variable' && segment.name) {
@@ -332,7 +324,6 @@
 					// For system variables, use resolved values
 					if (userEditableVariables.has(segment.name)) {
 						variableValues[segment.name] = null;
-						console.log(`Set user-editable variable ${segment.name} to null`);
 					} else {
 						// Use resolved value or null to show [Variable Name]
 						const resolvedValue = resolvedValues[segment.name];
@@ -341,7 +332,6 @@
 							resolvedValue && typeof resolvedValue === 'string' && resolvedValue.trim() !== ''
 								? resolvedValue
 								: null;
-						console.log(`Set system variable ${segment.name} to:`, variableValues[segment.name]);
 					}
 				}
 			}

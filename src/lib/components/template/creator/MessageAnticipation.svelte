@@ -102,9 +102,9 @@
 	<div class="rounded-lg border border-slate-200 bg-slate-50 p-6">
 		<p class="text-sm leading-relaxed text-slate-700 md:text-base">
 			<span class="font-semibold text-slate-900">Why this takes time:</span>
-			Generic templates get ignored. We're researching your issue, finding credible sources, and
-			crafting a message that demonstrates you understand the political landscape. This isn't
-			template spam—it's strategic civic action.
+			Generic templates get ignored. We're researching your issue, finding credible sources, and crafting
+			a message that demonstrates you understand the political landscape. This isn't template spam—it's
+			strategic civic action.
 		</p>
 	</div>
 

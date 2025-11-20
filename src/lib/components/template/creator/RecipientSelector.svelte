@@ -99,9 +99,7 @@
 		{#if customEmails.length > 0}
 			<div class="space-y-1.5 md:space-y-2">
 				{#each customEmails as recipient, i}
-					<div
-						class="flex items-center gap-2 rounded-lg bg-slate-50 p-2.5 md:gap-2 md:p-3"
-					>
+					<div class="flex items-center gap-2 rounded-lg bg-slate-50 p-2.5 md:gap-2 md:p-3">
 						<div class="flex-1">
 							<div class="text-sm font-medium text-slate-900 md:text-base">
 								{recipient.name}

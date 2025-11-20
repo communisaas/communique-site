@@ -149,7 +149,9 @@ export function analyzeEmailFlow(
 		}
 
 		// Enforce address gating for authenticated users on congressional delivery
-		const hasCompleteAddress = user ? Boolean(user.street && user.city && user.state && user.zip) : false;
+		const hasCompleteAddress = user
+			? Boolean(user.street && user.city && user.state && user.zip)
+			: false;
 
 		if (isCongressional && !hasCompleteAddress) {
 			return {

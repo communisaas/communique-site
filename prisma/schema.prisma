@@ -279,6 +279,9 @@ model Template {
   // NEW: Structured jurisdictions (replaces string arrays)
   jurisdictions             TemplateJurisdiction[]
 
+  // NEW: International geographic scope (agent-extracted, breadcrumb filtering)
+  scopes                    TemplateScope[]
+
   // NEW: Verifiable messages (pseudonymous, NO user linkage)
   messages                  Message[]
 
@@ -382,6 +385,57 @@ model TemplateJurisdiction {
   @@index([city_fips])
   @@index([school_district_id])
   @@map("template_jurisdiction")
+}
+
+// ============= INTERNATIONAL GEOGRAPHIC SCOPE (PHASE 1) =============
+// Agent-extracted geographic scope for template filtering
+// Works internationally: US, UK, France, Japan, Brazil, etc.
+// Universal semantic hierarchy: country → region → locality → district
+
+model TemplateScope {
+  id              String   @id @default(cuid())
+  template_id     String   @map("template_id")
+
+  // UNIVERSAL HIERARCHY (works internationally)
+  country_code    String   @map("country_code")              // ISO 3166-1 alpha-2: "US", "GB", "FR", "JP", "BR"
+  region_code     String?  @map("region_code")               // "CA" (US), "ENG" (UK), "11" (FR Île-de-France), "13" (JP Tokyo)
+  locality_code   String?  @map("locality_code")             // City/municipality FIPS/code
+  district_code   String?  @map("district_code")             // Legislative district: "CA-12" (US), "Holborn and St Pancras" (UK)
+
+  // HUMAN-READABLE (agent-extracted, user sees this)
+  display_text    String   @map("display_text")              // "California", "CA-12", "London", "São Paulo", "Tokyo"
+
+  // SEMANTIC LEVEL (for filtering, internationally consistent)
+  scope_level     String   @map("scope_level")               // 'country' | 'region' | 'locality' | 'district'
+
+  // POWER STRUCTURE CONTEXT (CRITICAL - prevents painful migration later)
+  // Open-ended, not an enum - agents can identify any decision-making structure
+  power_structure_type String? @map("power_structure_type")  // Examples: government, corporate, housing, institutional, labor, nonprofit, advocacy, cooperative, etc.
+  audience_filter      String? @map("audience_filter")       // Examples: renters, homeowners, workers, residents, shareholders, members, etc.
+  scope_notes          String? @map("scope_notes")           // Free text for edge cases: "CA-specific corporate policy", "Renters in rent-controlled buildings"
+
+  // AGENT CONFIDENCE (for validation, not just edit affordance)
+  confidence      Float    @default(0.8)
+  extraction_method String @default("regex") @map("extraction_method") // 'regex' | 'fuzzy' | 'geocoder' | 'llm' | 'user_confirmed'
+  validated_against String? @map("validated_against")        // 'ip_location' | 'oauth_location' | 'verified_address' | 'user_edit'
+
+  // OPTIONAL ENRICHMENT
+  estimated_reach BigInt?  @map("estimated_reach")
+  latitude        Float?
+  longitude       Float?
+
+  created_at      DateTime @default(now()) @map("created_at")
+  updated_at      DateTime @updatedAt @map("updated_at")
+
+  template        Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+
+  @@index([template_id])
+  @@index([country_code, scope_level])
+  @@index([country_code, region_code])
+  @@index([district_code])
+  @@index([power_structure_type])
+  @@index([extraction_method])
+  @@map("template_scope")
 }
 
 model account {
@@ -1260,4 +1314,34 @@ model Submission {
   @@index([verification_status])
   @@index([created_at])
   @@map("submission")
+}
+
+// ============= SCOPE CORRECTION LEARNING (EPIC 5: SELF-IMPROVING) =============
+// Track user corrections to AI-extracted geographic scope
+// System learns from patterns and improves accuracy over time
+// Asymptotic approach to 99% accuracy through continuous learning
+
+model ScopeCorrection {
+  id                String   @id @default(cuid())
+  template_id       String   @map("template_id")
+
+  // AI's original extraction
+  ai_extracted      Json     @map("ai_extracted") // Full ScopeMapping
+  ai_confidence     Float    @map("ai_confidence")
+  ai_method         String   @map("ai_method") // 'regex' | 'fuzzy' | 'geocoder' | 'llm'
+
+  // User's correction
+  user_corrected    Json     @map("user_corrected") // Full ScopeMapping
+  correction_type   String   @map("correction_type") // 'wrong_country' | 'wrong_region' | 'wrong_district' | 'too_broad' | 'too_specific' | 'other'
+
+  // Context for learning
+  message_snippet   String   @map("message_snippet") // First 200 chars
+  subject           String
+
+  created_at        DateTime @default(now()) @map("created_at")
+
+  @@index([ai_method, correction_type])
+  @@index([created_at])
+  @@index([template_id])
+  @@map("scope_correction")
 }

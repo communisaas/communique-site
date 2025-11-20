@@ -16,17 +16,22 @@
 
 <div class="space-y-8">
 	<div>
-		<h1 class="mb-6 text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+		<h1
+			class="mb-6 text-4xl font-bold leading-[1.15] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl"
+		>
 			Your voice.
-			<span class="mt-2 block text-participation-accent-600">Their decision.</span>
+			<span
+				class="mt-2 block bg-gradient-to-br from-violet-600 to-purple-600 bg-clip-text text-transparent"
+				>Their decision.</span
+			>
 		</h1>
 
-		<p class="mb-3 text-base font-medium leading-relaxed text-gray-900 sm:text-lg">
-			Coordinate pressure that decision-makers can't ignore.
+		<p class="mb-3 max-w-2xl text-lg font-medium leading-relaxed text-gray-900">
+			Pressure that decision-makers can't ignore.
 		</p>
 
-		<p class="mb-8 text-sm text-gray-600">
-			One complaint gets ignored. 5,000 coordinated messages force a response.
+		<p class="max-w-xl text-base text-gray-600">
+			One complaint gets buried. Coordination forces action.
 		</p>
 	</div>
 

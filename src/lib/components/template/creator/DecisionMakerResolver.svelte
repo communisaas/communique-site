@@ -127,7 +127,9 @@
 	{#if stage === 'structuring'}
 		<!-- Brief transition: 1-2 seconds -->
 		<div class="space-y-4 py-8 text-center">
-			<div class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-participation-primary-600 border-t-transparent"></div>
+			<div
+				class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-participation-primary-600 border-t-transparent"
+			></div>
 			<p class="text-lg font-medium text-slate-900">Analyzing your issue...</p>
 			<p class="text-sm text-slate-600">Preparing to find decision-makers</p>
 		</div>
@@ -158,7 +160,9 @@
 			<button
 				type="button"
 				onclick={handleNext}
-				disabled={formData.audience.decisionMakers.length === 0 && formData.audience.customRecipients.length === 0 && !formData.audience.includesCongress}
+				disabled={formData.audience.decisionMakers.length === 0 &&
+					formData.audience.customRecipients.length === 0 &&
+					!formData.audience.includesCongress}
 				class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-participation-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
 			>
 				Next →

@@ -135,7 +135,7 @@
 				},
 				{
 					icon: Network,
-					text: 'Coming soon: Verified tracking'
+					text: 'Encrypted tracking (soon)'
 				}
 			],
 			color: 'blue'
@@ -173,17 +173,16 @@
 			<div
 				role="button"
 				tabindex="0"
-				class="group relative transform-gpu cursor-pointer rounded-md border-2 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
-				class:border-verified-500={isSelected && channel.id === 'certified'}
-				class:border-participation-primary-500={isSelected && channel.id === 'direct'}
-				class:bg-verified-50={isSelected && channel.id === 'certified'}
-				class:bg-participation-primary-50={isSelected && channel.id === 'direct'}
+				class="group relative transform-gpu cursor-pointer rounded-xl border-2 backdrop-blur-md transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+				class:border-verified-400={isSelected && channel.id === 'certified'}
+				class:border-participation-primary-400={isSelected && channel.id === 'direct'}
 				class:border-slate-200={!isSelected && !isHovered && !attentionMode}
 				class:border-slate-300={!isSelected && (isHovered || attentionMode)}
 				class:cursor-default={isSelected}
 				style="
+					background-color: {isSelected ? 'rgba(255, 255, 255, 0.85)' : 'rgba(255, 255, 255, 0.65)'};
 					transform: scale({scaleValue});
-					box-shadow: 
+					box-shadow:
 						0 4px 6px -1px rgba(0, 0, 0, 0.1),
 						0 2px 4px -1px rgba(0, 0, 0, 0.06),
 						0 0 {20 * glowValue}px rgba({channel.id === 'certified' ? '16, 185, 129' : '79, 70, 229'}, {0.2 *
@@ -195,7 +194,7 @@
 				onmouseleave={() => handleChannelHover(channel.id, false)}
 				onclick={(__event) => {
 					selectedChannel = channel.id;
-					const targetElement = event.currentTarget;
+					const targetElement = __event.currentTarget as HTMLElement;
 					targetElement.scrollIntoView({
 						behavior: 'smooth',
 						block: 'center'
@@ -262,77 +261,82 @@
 							{/each}
 						</ul>
 
-						{#if isSelected}
-							<div transition:fade={{ duration: 200 }} class="space-y-3 pt-4">
-								{#if channel.id === 'certified'}
-									<div class="flex flex-col gap-3">
-										<button
-											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700"
-											onclick={(e) => {
-												e.stopPropagation();
-												handleCreateTemplate(channel);
-											}}
-										>
-											Create Template
-											<ArrowRight class="h-4 w-4" />
-										</button>
+						<!-- Always reserve space for buttons, reveal progressively -->
+						<div
+							class="space-y-3 pt-4 transition-all duration-300"
+							style="
+								opacity: {isSelected ? 1 : 0.5};
+								transform: scale({isSelected ? 1 : 0.98}) translateY({isSelected ? 0 : -4}px);
+							"
+						>
+							{#if channel.id === 'certified'}
+								<div class="flex flex-col gap-3">
+									<button
+										class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md bg-emerald-600 px-4 py-2 text-white shadow-lg shadow-emerald-600/20 transition-all duration-200 hover:scale-[1.02] hover:bg-emerald-700"
+										onclick={(e) => {
+											e.stopPropagation();
+											handleCreateTemplate(channel);
+										}}
+									>
+										Create Template
+										<ArrowRight class="h-4 w-4" />
+									</button>
 
-										<button
-											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md border border-emerald-200 px-4 py-2 text-emerald-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 hover:shadow-lg"
-											onclick={(e) => {
-												e.stopPropagation();
-												document.getElementById('template-section')?.scrollIntoView({
-													behavior: 'smooth',
-													block: 'center'
-												});
-												dispatchEvent(
-													new CustomEvent('channelSelect', {
-														detail: channel.id,
-														bubbles: true
-													})
-												);
-											}}
-										>
-											Browse Templates
-											<ArrowRight class="h-4 w-4" />
-										</button>
-									</div>
-								{:else}
-									<div class="flex flex-col gap-3">
-										<button
-											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md bg-participation-primary-600 px-4 py-2 text-white shadow-lg shadow-participation-primary-600/20 transition-all duration-200 hover:scale-[1.02] hover:bg-participation-primary-700"
-											onclick={(e) => {
-												e.stopPropagation();
-												handleCreateTemplate(channel);
-											}}
-										>
-											Create Template
-											<ArrowRight class="h-4 w-4" />
-										</button>
+									<button
+										class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md border border-emerald-200 px-4 py-2 text-emerald-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 hover:shadow-lg"
+										onclick={(e) => {
+											e.stopPropagation();
+											document.getElementById('template-section')?.scrollIntoView({
+												behavior: 'smooth',
+												block: 'center'
+											});
+											dispatchEvent(
+												new CustomEvent('channelSelect', {
+													detail: channel.id,
+													bubbles: true
+												})
+											);
+										}}
+									>
+										Browse Templates
+										<ArrowRight class="h-4 w-4" />
+									</button>
+								</div>
+							{:else}
+								<div class="flex flex-col gap-3">
+									<button
+										class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md bg-participation-primary-600 px-4 py-2 text-white shadow-lg shadow-participation-primary-600/20 transition-all duration-200 hover:scale-[1.02] hover:bg-participation-primary-700"
+										onclick={(e) => {
+											e.stopPropagation();
+											handleCreateTemplate(channel);
+										}}
+									>
+										Create Template
+										<ArrowRight class="h-4 w-4" />
+									</button>
 
-										<button
-											class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md border border-participation-primary-200 px-4 py-2 text-participation-primary-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-participation-primary-300 hover:bg-participation-primary-50 hover:text-participation-primary-800 hover:shadow-lg"
-											onclick={(e) => {
-												e.stopPropagation();
-												document.getElementById('template-section')?.scrollIntoView({
-													behavior: 'smooth',
-													block: 'center'
-												});
-												dispatchEvent(
-													new CustomEvent('channelSelect', {
-														detail: channel.id,
-														bubbles: true
-													})
-												);
-											}}
-										>
-											Browse Templates
-											<ArrowRight class="h-4 w-4" />
-										</button>
-									</div>
-								{/if}
-							</div>
-						{/if}
+									<button
+										class="flex w-full transform-gpu items-center justify-center gap-2 rounded-md border border-participation-primary-200 px-4 py-2 text-participation-primary-700 shadow-md transition-all duration-200 hover:scale-[1.02] hover:border-participation-primary-300 hover:bg-participation-primary-50 hover:text-participation-primary-800 hover:shadow-lg"
+										onclick={(e) => {
+											e.stopPropagation();
+											document.getElementById('template-section')?.scrollIntoView({
+												behavior: 'smooth',
+												block: 'center'
+											});
+											dispatchEvent(
+												new CustomEvent('channelSelect', {
+													detail: channel.id,
+													bubbles: true
+												})
+											);
+										}}
+									>
+										Browse Templates
+										<ArrowRight class="h-4 w-4" />
+									</button>
+								</div>
+							{/if}
+						</div>
 
 						<!-- Keep the bottom border indicator -->
 						<div

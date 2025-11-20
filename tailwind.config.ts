@@ -15,6 +15,36 @@ export default {
 			*/
 
 			fontFamily: {
+				// === DUAL-FONT SYSTEM ===
+				// Satoshi: Brand identity, words, UI copy, CTAs
+				// JetBrains Mono: Data, metrics, counts, codes
+
+				sans: [
+					'"Satoshi"',
+					'ui-sans-serif',
+					'system-ui',
+					'-apple-system',
+					'BlinkMacSystemFont',
+					'"Segoe UI"',
+					'Roboto',
+					'"Helvetica Neue"',
+					'Arial',
+					'sans-serif'
+				], // Default: Satoshi for all text
+
+				brand: [
+					'"Satoshi"',
+					'ui-sans-serif',
+					'system-ui',
+					'-apple-system',
+					'BlinkMacSystemFont',
+					'"Segoe UI"',
+					'Roboto',
+					'"Helvetica Neue"',
+					'Arial',
+					'sans-serif'
+				], // Explicit brand font (Satoshi)
+
 				mono: [
 					'"JetBrains Mono"',
 					'ui-monospace',
@@ -25,9 +55,11 @@ export default {
 					'Liberation Mono',
 					'Courier New',
 					'monospace'
-				],
+				], // Data, metrics, counts, codes
+
+				// Legacy support (for gradual migration)
 				participation: [
-					'"Inter"',
+					'"Satoshi"',
 					'ui-sans-serif',
 					'system-ui',
 					'-apple-system',
@@ -37,19 +69,7 @@ export default {
 					'"Helvetica Neue"',
 					'Arial',
 					'sans-serif'
-				],
-				sans: [
-					'"Inter"',
-					'ui-sans-serif',
-					'system-ui',
-					'-apple-system',
-					'BlinkMacSystemFont',
-					'"Segoe UI"',
-					'Roboto',
-					'"Helvetica Neue"',
-					'Arial',
-					'sans-serif'
-				] // Set Inter as default
+				]
 			},
 
 			colors: {
@@ -233,7 +253,15 @@ export default {
 				'participation-lg': '0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)',
 				'participation-brand': '0 4px 14px 0 rgb(79 70 229 / 0.15)', // Indigo-600 branded shadow
 				'participation-verified': '0 4px 14px 0 rgb(16 185 129 / 0.15)',
-				'participation-community': '0 4px 14px 0 rgb(14 165 233 / 0.15)'
+				'participation-community': '0 4px 14px 0 rgb(14 165 233 / 0.15)',
+
+				// Atmospheric shadows (Phase 3: Cypherpunk Newsroom)
+				'atmospheric-card':
+					'inset 0 1px 0 0 rgba(255, 255, 255, 0.6), 0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+				'atmospheric-card-hover':
+					'inset 0 1px 0 0 rgba(255, 255, 255, 0.8), 0 8px 16px -4px rgba(0, 0, 0, 0.08)',
+				'atmospheric-featured':
+					'inset 0 2px 0 0 rgba(255, 255, 255, 0.8), 0 12px 24px -8px rgba(139, 92, 246, 0.12)'
 			},
 
 			// Typography Scale - Information Hierarchy

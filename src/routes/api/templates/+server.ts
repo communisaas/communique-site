@@ -17,6 +17,9 @@ import {
 } from '$lib/core/server/multi-agent-consensus';
 import { CONSENSUS_TYPE } from '$env/static/private';
 
+// Import ScopeMapping type for geographic scope
+import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
+
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
 	title: string;
@@ -35,6 +38,7 @@ interface CreateTemplateRequest {
 	cwc_config?: UnknownRecord;
 	recipient_config?: UnknownRecord;
 	metrics?: UnknownRecord;
+	geographic_scope?: ScopeMapping; // Agent-extracted geographic scope for TemplateScope creation
 }
 
 type ValidationError = ApiError;
@@ -125,7 +129,9 @@ function validateTemplateData(data: unknown): {
 		title: templateData.title as string,
 		slug: (templateData.slug as string) || undefined, // HACKATHON: Extract slug from request
 		message_body: templateData.message_body as string,
-		sources: (templateData.sources as Array<{ num: number; title: string; url: string; type: string}>) || [],
+		sources:
+			(templateData.sources as Array<{ num: number; title: string; url: string; type: string }>) ||
+			[],
 		research_log: (templateData.research_log as string[]) || [],
 		preview: templateData.preview as string,
 		type: templateData.type as string,
@@ -145,7 +151,8 @@ function validateTemplateData(data: unknown): {
 			opened: 0,
 			clicked: 0,
 			views: 0
-		}
+		},
+		geographic_scope: (templateData.geographic_scope as ScopeMapping) || undefined
 	};
 
 	return { isValid: true, errors: [], validData };
@@ -455,33 +462,77 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					return json(response, { status: 400 });
 				}
 
-				const newTemplate = await db.template.create({
-					data: {
-						title: validData.title,
-						description: validData.description || '',
-						message_body: validData.message_body,
-						sources: validData.sources || [],
-						research_log: validData.research_log || [],
-						category: validData.category || 'General',
-						type: validData.type,
-						deliveryMethod: validData.deliveryMethod,
-						preview: validData.preview,
-						delivery_config: validData.delivery_config || {},
-						cwc_config: validData.cwc_config || {},
-						recipient_config: validData.recipient_config || {},
-						metrics: validData.metrics || {},
-						status: validData.status || 'draft',
-						is_public: validData.is_public || false,
-						slug,
-						userId: user.id,
-						// Consolidated verification fields with defaults
-						verification_status: consensusResult?.approved ? 'approved' : 'pending',
-						country_code: 'US',
-						reputation_applied: false,
-						// Multi-agent consensus results (Phase 1)
-						agent_votes: consensusResult?.votes || [],
-						consensus_score: consensusResult?.final_confidence || null
+				// Create template with optional TemplateScope in a transaction
+				const newTemplate = await db.$transaction(async (tx) => {
+					// Step 1: Create the template
+					const template = await tx.template.create({
+						data: {
+							title: validData.title,
+							description: validData.description || '',
+							message_body: validData.message_body,
+							sources: validData.sources || [],
+							research_log: validData.research_log || [],
+							category: validData.category || 'General',
+							type: validData.type,
+							deliveryMethod: validData.deliveryMethod,
+							preview: validData.preview,
+							delivery_config: validData.delivery_config || {},
+							cwc_config: validData.cwc_config || {},
+							recipient_config: validData.recipient_config || {},
+							metrics: validData.metrics || {},
+							status: validData.status || 'draft',
+							is_public: validData.is_public || false,
+							slug,
+							userId: user.id,
+							// Consolidated verification fields with defaults
+							verification_status: consensusResult?.approved ? 'approved' : 'pending',
+							country_code: validData.geographic_scope?.country_code || 'US',
+							reputation_applied: false,
+							// Multi-agent consensus results (Phase 1)
+							agent_votes: consensusResult?.votes || [],
+							consensus_score: consensusResult?.final_confidence || null
+						}
+					});
+
+					// Step 2: Create TemplateScope if geographic_scope was extracted
+					if (validData.geographic_scope) {
+						const scope = validData.geographic_scope;
+
+						// Log scope creation for monitoring
+						console.log(
+							'[template-scope-creation]',
+							JSON.stringify({
+								timestamp: new Date().toISOString(),
+								template_id: template.id,
+								scope_level: scope.scope_level,
+								display_text: scope.display_text,
+								country_code: scope.country_code,
+								confidence: scope.confidence,
+								extraction_method: scope.extraction_method || 'regex'
+							})
+						);
+
+						await tx.templateScope.create({
+							data: {
+								template_id: template.id,
+								country_code: scope.country_code,
+								region_code: scope.region_code || null,
+								locality_code: scope.locality_code || null,
+								district_code: scope.district_code || null,
+								display_text: scope.display_text,
+								scope_level: scope.scope_level,
+								confidence: scope.confidence,
+								extraction_method: scope.extraction_method || 'regex',
+								// Optional fields - set to null if not provided
+								power_structure_type: null,
+								audience_filter: null,
+								scope_notes: null,
+								validated_against: null
+							}
+						});
 					}
+
+					return template;
 				});
 
 				// Set verification fields for congressional templates (deliveryMethod === 'cwc')

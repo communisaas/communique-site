@@ -36,10 +36,33 @@ export class BehavioralLocationTracker {
 		jurisdictions: TemplateJurisdiction[]
 	): Promise<void> {
 		try {
+			// Serialize jurisdictions to remove bigint fields (IndexedDB can't clone bigint)
+			const serializedJurisdictions = jurisdictions.map((j) => ({
+				id: j.id,
+				template_id: j.template_id,
+				jurisdiction_type: j.jurisdiction_type,
+				congressional_district: j.congressional_district || null,
+				senate_class: j.senate_class || null,
+				state_code: j.state_code || null,
+				state_senate_district: j.state_senate_district || null,
+				state_house_district: j.state_house_district || null,
+				county_fips: j.county_fips || null,
+				county_name: j.county_name || null,
+				city_name: j.city_name || null,
+				city_fips: j.city_fips || null,
+				school_district_id: j.school_district_id || null,
+				school_district_name: j.school_district_name || null,
+				latitude: j.latitude || null,
+				longitude: j.longitude || null,
+				// Convert bigint to number for storage (safe for population counts)
+				estimated_population: j.estimated_population ? Number(j.estimated_population) : null,
+				coverage_notes: j.coverage_notes || null
+			}));
+
 			const event: TemplateViewEvent = {
 				template_id: templateId,
 				template_slug: templateSlug,
-				jurisdictions,
+				jurisdictions: serializedJurisdictions as TemplateJurisdiction[],
 				viewed_at: new Date().toISOString()
 			};
 

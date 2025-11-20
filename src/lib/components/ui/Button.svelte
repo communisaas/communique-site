@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { spring } from 'svelte/motion';
 	// // import { fade } from 'svelte/transition';
-	import { Send, ChevronsDown } from '@lucide/svelte';
+	import { Send, ChevronsDown, ChevronsRight } from '@lucide/svelte';
 
 	let {
 		variant = 'primary',
@@ -59,13 +59,37 @@
 
 	let hovered = $state(false);
 	let clicked = $state(false);
+	let isLargeViewport = $state(false);
 
-	// Select icon component based on prop
+	// Track viewport width for responsive chevron direction
+	$effect(() => {
+		if (typeof window !== 'undefined' && icon === 'chevrons-down') {
+			const updateViewport = () => {
+				isLargeViewport = window.innerWidth >= 1024; // lg breakpoint
+			};
+
+			updateViewport();
+			window.addEventListener('resize', updateViewport);
+
+			return () => window.removeEventListener('resize', updateViewport);
+		}
+	});
+
+	// Select icon component based on prop and viewport
 	const iconComponents = {
 		send: Send,
-		'chevrons-down': ChevronsDown
+		'chevrons-down': ChevronsDown,
+		'chevrons-right': ChevronsRight
 	};
-	const IconComponent = icon ? iconComponents[icon] : undefined;
+	const IconComponent = $derived(
+		icon === 'chevrons-down'
+			? isLargeViewport
+				? iconComponents['chevrons-right']
+				: iconComponents['chevrons-down']
+			: icon
+				? iconComponents[icon]
+				: undefined
+	);
 
 	// Elegant spring animations for smooth interactions
 	let buttonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
@@ -82,7 +106,8 @@
 	let planeBlur = spring(0, { stiffness: 0.4, damping: 0.8 });
 
 	// Chevrons animation for scroll/reveal action
-	let chevronsY = spring(0, { stiffness: 0.3, damping: 0.8 });
+	let chevronsX = spring(0, { stiffness: 0.3, damping: 0.8 }); // For horizontal movement
+	let chevronsY = spring(0, { stiffness: 0.3, damping: 0.8 }); // For vertical movement
 	let chevronsScale = spring(1, { stiffness: 0.3, damping: 0.8 });
 	let chevronsOpacity = spring(1, { stiffness: 0.4, damping: 0.9 });
 
@@ -200,7 +225,12 @@
 			// Animation based on type
 			if (animationType === 'chevrons') {
 				// Scale with button for cohesive animation
-				chevronsY.set(1);
+				// Move in the direction the chevron points
+				if (isLargeViewport) {
+					chevronsX.set(1); // Move right on large viewports
+				} else {
+					chevronsY.set(1); // Move down on small viewports
+				}
 				chevronsScale.set(1.02); // Match button scale
 			} else if (animationType === 'flight') {
 				// Subtle plane movement on hover - breathes life into the button
@@ -217,6 +247,7 @@
 			shadowIntensity.set(0);
 			glowIntensity.set(0);
 			// Reset animations
+			chevronsX.set(0);
 			chevronsY.set(0);
 			chevronsScale.set(1);
 			chevronsOpacity.set(1);
@@ -396,15 +427,25 @@
 			clicked = true;
 
 			if (animationType === 'chevrons') {
-				// Click animation - downward pulse
+				// Click animation - pulse in direction of chevron
 				buttonScale.set(0.98);
-				chevronsY.set(4);
+				if (isLargeViewport) {
+					// Rightward pulse
+					chevronsX.set(4);
+				} else {
+					// Downward pulse
+					chevronsY.set(4);
+				}
 				chevronsScale.set(0.98);
 				chevronsOpacity.set(0.7);
 
 				setTimeout(() => {
-					// Bounce down
-					chevronsY.set(6);
+					// Bounce in direction
+					if (isLargeViewport) {
+						chevronsX.set(6);
+					} else {
+						chevronsY.set(6);
+					}
 					chevronsScale.set(1.05);
 					chevronsOpacity.set(1);
 					buttonScale.set(1);
@@ -412,6 +453,7 @@
 
 				setTimeout(() => {
 					// Spring back
+					chevronsX.set(0);
 					chevronsY.set(0);
 					chevronsScale.set(1);
 					chevronsOpacity.set(1);
@@ -662,7 +704,7 @@
 						<span
 							class="-ml-1 -mr-1"
 							style="
-								transform: translateY({$chevronsY}px) scale({$chevronsScale});
+								transform: translate({$chevronsX}px, {$chevronsY}px) scale({$chevronsScale});
 								opacity: {$chevronsOpacity};
 								color: {variant === 'magical' || variant === 'verified' ? 'white' : 'currentColor'};
 							"
@@ -737,7 +779,7 @@
 						<span
 							class="-ml-1 -mr-1"
 							style="
-								transform: translateY({$chevronsY}px) scale({$chevronsScale});
+								transform: translate({$chevronsX}px, {$chevronsY}px) scale({$chevronsScale});
 								opacity: {$chevronsOpacity};
 								color: {variant === 'magical' || variant === 'verified' ? 'white' : 'currentColor'};
 							"

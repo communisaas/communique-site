@@ -2,9 +2,33 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
-/* Import monospace fonts */
+/* Import JetBrains Mono for data/metrics */
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Satoshi font for brand/words - Self-hosted for performance */
+@font-face {
+	font-family: 'Satoshi';
+	src: url('/fonts/satoshi/Satoshi-Regular.woff2') format('woff2');
+	font-weight: 400;
+	font-style: normal;
+	font-display: swap; /* Prevent FOIT, show fallback immediately */
+}
+
+@font-face {
+	font-family: 'Satoshi';
+	src: url('/fonts/satoshi/Satoshi-Medium.woff2') format('woff2');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Satoshi';
+	src: url('/fonts/satoshi/Satoshi-Bold.woff2') format('woff2');
+	font-weight: 700;
+	font-style: normal;
+	font-display: swap;
+}
 
 @layer base {
 	:root {
@@ -192,7 +216,7 @@
 		@apply px-3 py-1 text-xs;
 		@apply transition-all duration-150;
 		font-family:
-			'Inter',
+			'Satoshi',
 			ui-sans-serif,
 			system-ui,
 			-apple-system,
@@ -283,7 +307,7 @@
 		border-color: var(--surface-border);
 		color: var(--text-primary);
 		font-family:
-			'Inter',
+			'Satoshi',
 			ui-sans-serif,
 			system-ui,
 			-apple-system,
@@ -323,7 +347,7 @@
 		@apply focus:outline-none focus:ring-2 focus:ring-offset-2;
 		@apply disabled:cursor-not-allowed disabled:opacity-50;
 		font-family:
-			'Inter',
+			'Satoshi',
 			ui-sans-serif,
 			system-ui,
 			-apple-system,

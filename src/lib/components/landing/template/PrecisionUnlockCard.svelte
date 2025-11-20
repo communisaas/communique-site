@@ -42,22 +42,24 @@
 >
 	<div class="flex items-center gap-3">
 		<!-- Visual attention hook -->
-		<div
-			class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100"
-		>
-			<svg class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-				/>
+		<div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
+			<svg
+				class="h-5 w-5 text-blue-600"
+				fill="none"
+				viewBox="0 0 24 24"
+				stroke="currentColor"
+				stroke-width="2.5"
+			>
+				<path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
 			</svg>
 		</div>
 
-		<div class="flex-1 min-w-0">
+		<div class="min-w-0 flex-1">
 			<!-- Value proposition (specific count) -->
 			<h3 class="text-base font-semibold text-slate-900">
-				{nextUnlock.count} {nextUnlock.level} {nextUnlock.count === 1 ? 'template' : 'templates'} available
+				{nextUnlock.count}
+				{nextUnlock.level}
+				{nextUnlock.count === 1 ? 'template' : 'templates'} available
 			</h3>
 
 			<!-- Benefit (what you'll see) -->

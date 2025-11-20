@@ -9,6 +9,7 @@
 	import AppHeader from '$lib/components/layout/AppHeader.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
+	import AtmosphericBackground from '$lib/components/ui/AtmosphericBackground.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
@@ -63,9 +64,12 @@
 	}
 </script>
 
+<!-- Atmospheric background layer (Phase 3: Cypherpunk Newsroom) -->
+<AtmosphericBackground variant="subtle" />
+
 {#if isProfilePage}
 	<!-- Profile pages: No AppHeader, no padding, full control -->
-	<div class="min-h-screen bg-slate-50">
+	<div class="relative min-h-screen">
 		<ErrorBoundary fallback="detailed" showRetry={true}>
 			{@render children()}
 		</ErrorBoundary>
@@ -73,7 +77,7 @@
 	</div>
 {:else}
 	<!-- Regular pages: AppHeader + padding -->
-	<div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+	<div class="relative min-h-screen">
 		<AppHeader user={data.user} template={data.template} onTemplateUse={handleTemplateUse} />
 		<div class="p-6 md:p-10">
 			<ErrorBoundary fallback="detailed" showRetry={true}>

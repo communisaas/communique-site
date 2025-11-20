@@ -16,7 +16,11 @@
 		}) => void;
 	}
 
-	let { decisionMakers = $bindable(), customRecipients = $bindable(), includesCongress = $bindable() }: Props = $props();
+	let {
+		decisionMakers = $bindable(),
+		customRecipients = $bindable(),
+		includesCongress = $bindable()
+	}: Props = $props();
 
 	let showCustomForm = $state(false);
 	let duplicateError = $state<string | null>(null);

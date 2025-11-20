@@ -94,12 +94,10 @@ async function getCached(
 			};
 
 			request.onerror = () => {
-				console.warn('[AutocompleteCache] Failed to read cache:', request.error);
 				resolve(null);
 			};
 		});
 	} catch (error) {
-		console.warn('[AutocompleteCache] Cache read error:', error);
 		return null;
 	}
 }
@@ -137,7 +135,6 @@ async function setCached(
 			transaction.onerror = () => reject(transaction.error);
 		});
 	} catch (error) {
-		console.warn('[AutocompleteCache] Failed to cache results:', error);
 	}
 }
 
@@ -165,7 +162,6 @@ export async function clearExpiredCache(): Promise<void> {
 					deleteCount++;
 					cursor.continue();
 				} else {
-					console.log(`[AutocompleteCache] Cleared ${deleteCount} expired entries`);
 					resolve();
 				}
 			};
@@ -173,7 +169,6 @@ export async function clearExpiredCache(): Promise<void> {
 			request.onerror = () => reject(request.error);
 		});
 	} catch (error) {
-		console.warn('[AutocompleteCache] Failed to clear expired cache:', error);
 	}
 }
 
@@ -192,9 +187,7 @@ export async function clearAllCache(): Promise<void> {
 			request.onerror = () => reject(request.error);
 		});
 
-		console.log('[AutocompleteCache] All cache cleared');
 	} catch (error) {
-		console.warn('[AutocompleteCache] Failed to clear cache:', error);
 	}
 }
 
@@ -210,12 +203,10 @@ export async function searchLocationsCached(
 	// Check cache first
 	const cached = await getCached(query, scope, countryCode, stateCode);
 	if (cached) {
-		console.log('[AutocompleteCache] Cache hit:', query);
 		return cached;
 	}
 
 	// Cache miss - fetch from API
-	console.log('[AutocompleteCache] Cache miss, fetching:', query);
 	const results = await searchLocations(query, scope, countryCode, stateCode);
 
 	// Store in cache (async, don't wait)

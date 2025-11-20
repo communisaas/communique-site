@@ -232,7 +232,7 @@ export class CWCClient {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
-					'Authorization': proxyAuthToken ? `Bearer ${proxyAuthToken}` : '',
+					Authorization: proxyAuthToken ? `Bearer ${proxyAuthToken}` : '',
 					'X-Request-ID': submission.jobId
 				},
 				body: JSON.stringify(submission)
@@ -241,7 +241,7 @@ export class CWCClient {
 			if (!response.ok) {
 				const errorText = await response.text();
 				console.error(`House proxy submission failed (${response.status}):`, errorText);
-				
+
 				return {
 					success: false,
 					status: 'failed',
@@ -262,10 +262,9 @@ export class CWCClient {
 				messageId: result.submissionId || submission.jobId,
 				confirmationNumber: result.submissionId
 			};
-
 		} catch (error) {
 			console.error('House CWC submission error:', error);
-			
+
 			// If proxy fails, fall back to simulation for hackathon demo
 			return this.simulateHouseSubmission(representative);
 		}

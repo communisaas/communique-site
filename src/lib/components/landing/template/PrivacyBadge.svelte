@@ -24,14 +24,15 @@
 		/>
 	</svg>
 
-	<!-- Empowering user-focused text -->
-	<span class="text-xs">Your location, your control</span>
+	<!-- Empowering user-focused text: Satoshi for brand voice -->
+	<span class="font-brand text-xs">Your location, your control</span>
 
-	<!-- Tooltip on hover (explains WHAT powers this - actual new info) -->
+	<!-- Tooltip on hover (explains WHAT powers this - actual new info): Satoshi for brand voice -->
 	<div
-		class="pointer-events-none absolute bottom-full left-0 mb-2 z-10 w-64 rounded-lg bg-slate-900 px-3 py-2 text-xs font-medium leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100"
+		class="pointer-events-none absolute bottom-full left-0 z-10 mb-2 w-64 rounded-lg bg-slate-900 px-3 py-2 font-brand text-xs font-medium leading-relaxed text-white opacity-0 shadow-lg transition-opacity duration-200 group-hover:opacity-100"
 	>
-		Uses IP address and timezone automatically. Enter your address for precise results. Stored only in your browser.
-		<div class="absolute top-full left-4 -mt-1 h-2 w-2 rotate-45 bg-slate-900"></div>
+		Uses IP address and timezone automatically. Enter your address for precise results. Stored only
+		in your browser.
+		<div class="absolute left-4 top-full -mt-1 h-2 w-2 rotate-45 bg-slate-900"></div>
 	</div>
 </a>

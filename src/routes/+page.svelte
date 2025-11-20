@@ -225,9 +225,7 @@
 	);
 
 	// Flatten location groups to get all templates for selection logic
-	const locationFilteredTemplates = $derived(
-		locationFilteredGroups.flatMap((g) => g.templates)
-	);
+	const locationFilteredTemplates = $derived(locationFilteredGroups.flatMap((g) => g.templates));
 
 	// Then apply channel filtering to groups
 	const filteredGroups = $derived(
@@ -290,16 +288,23 @@
 	/>
 </svelte:head>
 
-<!-- Hero Section - Simple Badge -->
-<section class="pt-12">
-	<div class="mx-auto mb-6 flex max-w-6xl flex-row flex-wrap items-center justify-center gap-8">
-		<span class="relative w-9/12 md:w-7/12">
-			<Hero />
-		</span>
-		<ChannelExplainer
-			on:channelSelect={handleChannelSelect}
-			on:createTemplate={handleCreateTemplate}
-		/>
+<!-- Hero Section - Two-Column Layout -->
+<section class="px-4 pb-16 pt-16 sm:px-6 lg:px-8">
+	<div class="mx-auto max-w-7xl">
+		<div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
+			<!-- Hero: Left Column -->
+			<div class="lg:mt-4">
+				<Hero />
+			</div>
+
+			<!-- Channel Selection: Right Column -->
+			<div class="flex items-center">
+				<ChannelExplainer
+					on:channelSelect={handleChannelSelect}
+					on:createTemplate={handleCreateTemplate}
+				/>
+			</div>
+		</div>
 	</div>
 
 	<!-- Location Header - Full Width Above Template Browser -->

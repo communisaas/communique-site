@@ -381,10 +381,10 @@
 	async function submitCongressionalMessage() {
 		try {
 			console.log('[Template Modal] Starting direct CWC submission (MVP)');
-			
+
 			// Set loading state
 			modalActions.setState('cwc-submission');
-			
+
 			// Get current user and address info
 			const currentUser = $page.data?.user || user;
 			const address = {
@@ -393,14 +393,14 @@
 				state: currentUser?.state || '',
 				zip: currentUser?.zip || ''
 			};
-			
+
 			// Validate we have required address info
 			if (!address.street || !address.city || !address.state || !address.zip) {
 				console.error('[Template Modal] Missing address information');
 				modalActions.setState('error');
 				return;
 			}
-			
+
 			// Call MVP CWC submission endpoint
 			const response = await fetch('/api/cwc/submit-mvp', {
 				method: 'POST',
@@ -413,23 +413,22 @@
 					userName: currentUser?.name
 				})
 			});
-			
+
 			if (!response.ok) {
 				const error = await response.json();
 				console.error('[Template Modal] CWC submission failed:', error);
 				modalActions.setState('error');
 				return;
 			}
-			
+
 			const result = await response.json();
 			console.log('[Template Modal] CWC submission queued:', result);
-			
+
 			// Store job ID for tracking
 			submissionId = result.jobId;
-			
+
 			// Move to tracking state
 			modalActions.setState('tracking');
-			
 		} catch (error) {
 			console.error('[Template Modal] CWC submission error:', error);
 			modalActions.setState('error');
@@ -506,7 +505,9 @@
 			// DEMO MODE: For guest users on non-Congressional (mailto) templates,
 			// skip onboarding and go straight to celebration for viral QR code flow
 			if (!user && !isCongressional) {
-				console.log('[Template Modal] Guest user confirmed send - proceeding to celebration (demo mode)');
+				console.log(
+					'[Template Modal] Guest user confirmed send - proceeding to celebration (demo mode)'
+				);
 
 				// Go straight to celebration for mailto templates
 				modalActions.confirmSend();
@@ -920,9 +921,13 @@
 				{#if (template.metrics?.sent ?? 0) <= 10}
 					{@const sentCount = template.metrics?.sent ?? 0}
 					<!-- Pioneer Badge -->
-					<div class="rounded-lg border-2 border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-6">
+					<div
+						class="rounded-lg border-2 border-orange-300 bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 p-6"
+					>
 						<div class="text-center">
-							<div class="mb-3 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg">
+							<div
+								class="mb-3 inline-flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-600 shadow-lg"
+							>
 								<Flame class="h-8 w-8 text-white" />
 							</div>
 							<div class="mb-2 text-3xl font-bold text-slate-900">
@@ -984,53 +989,50 @@
 					</div>
 				{/if}
 
-					<!-- QR Code -->
-					<button
-						onclick={loadQRCode}
-						class="w-full text-sm text-slate-600 underline hover:text-slate-900"
-					>
-						<QrCode class="mr-1 inline h-4 w-4" />
-						Show QR code for in-person sharing
-					</button>
+				<!-- QR Code -->
+				<button
+					onclick={loadQRCode}
+					class="w-full text-sm text-slate-600 underline hover:text-slate-900"
+				>
+					<QrCode class="mr-1 inline h-4 w-4" />
+					Show QR code for in-person sharing
+				</button>
 
-					{#if showQRCode && qrCodeDataUrl}
-						<div
-							class="rounded-lg border border-slate-200 bg-white p-4"
-							in:scale={{ duration: 300 }}
+				{#if showQRCode && qrCodeDataUrl}
+					<div class="rounded-lg border border-slate-200 bg-white p-4" in:scale={{ duration: 300 }}>
+						<img src={qrCodeDataUrl} alt="QR code for {template.title}" class="mx-auto" />
+						<p class="mb-3 mt-2 text-center text-xs text-slate-600">
+							Print this for protests, meetings, or events
+						</p>
+						<button
+							onclick={downloadQRCode}
+							class="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
 						>
-							<img src={qrCodeDataUrl} alt="QR code for {template.title}" class="mx-auto" />
-							<p class="mb-3 mt-2 text-center text-xs text-slate-600">
-								Print this for protests, meetings, or events
-							</p>
-							<button
-								onclick={downloadQRCode}
-								class="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-							>
-								<Download class="h-4 w-4" />
-								Download for printing
-							</button>
-						</div>
-					{/if}
-
-					<!-- Always Visible: Raw URL -->
-					<div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
-						<input
-							type="text"
-							readonly
-							value={shareUrl}
-							onclick={(e) => e.currentTarget.select()}
-							class="mb-2 w-full rounded border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-700"
-						/>
-						<div class="flex items-center justify-between text-xs text-slate-500">
-							<span>Share this link anywhere</span>
-							<button
-								onclick={copyTemplateUrl}
-								class="text-participation-primary-600 hover:underline"
-							>
-								Copy URL
-							</button>
-						</div>
+							<Download class="h-4 w-4" />
+							Download for printing
+						</button>
 					</div>
+				{/if}
+
+				<!-- Always Visible: Raw URL -->
+				<div class="rounded-lg border border-slate-200 bg-slate-50 p-3">
+					<input
+						type="text"
+						readonly
+						value={shareUrl}
+						onclick={(e) => e.currentTarget.select()}
+						class="mb-2 w-full rounded border border-slate-300 bg-white px-3 py-2 font-mono text-xs text-slate-700"
+					/>
+					<div class="flex items-center justify-between text-xs text-slate-500">
+						<span>Share this link anywhere</span>
+						<button
+							onclick={copyTemplateUrl}
+							class="text-participation-primary-600 hover:underline"
+						>
+							Copy URL
+						</button>
+					</div>
+				</div>
 
 				<!-- Senate Delivery Verification (only if actual Senate submission) -->
 				{#if hasSenateDelivery}
@@ -1053,8 +1055,8 @@
 						</a>
 					</div>
 				{/if}
-				</div>
 			</div>
+		</div>
 	{:else if collectingAddress}
 		<!-- Address Collection State - Inline for Congressional templates -->
 		<div class="relative p-6 sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
@@ -1094,7 +1096,7 @@
 							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100"
 							style="transform: scale({$celebrationScale})"
 						>
-							<Send class="h-5 w-5 text-blue-600 animate-pulse" />
+							<Send class="h-5 w-5 animate-pulse text-blue-600" />
 						</div>
 						<div>
 							<h2 class="text-lg font-semibold text-slate-900">Delivering your message</h2>
@@ -1120,7 +1122,8 @@
 					<div class="flex items-center gap-2">
 						<Sparkles class="h-4 w-4 text-blue-600" />
 						<p class="text-sm text-blue-800">
-							🎯 <strong>Live Demo:</strong> Connecting directly to the Senate chamber for real-time message delivery!
+							🎯 <strong>Live Demo:</strong> Connecting directly to the Senate chamber for real-time
+							message delivery!
 						</p>
 					</div>
 				</div>

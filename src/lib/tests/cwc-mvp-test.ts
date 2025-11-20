@@ -38,21 +38,24 @@ async function testCWCSubmission() {
 		// Step 1: Get representatives for address
 		console.log('📍 Looking up representatives for address:', testAddress);
 		const representatives = await getRepresentativesForAddress(testAddress);
-		
+
 		if (!representatives || representatives.length === 0) {
 			console.error('❌ No representatives found for address');
 			return;
 		}
 
-		console.log('✅ Found representatives:', representatives.map(r => ({
-			name: r.name,
-			chamber: r.chamber,
-			state: r.state,
-			district: r.district
-		})));
+		console.log(
+			'✅ Found representatives:',
+			representatives.map((r) => ({
+				name: r.name,
+				chamber: r.chamber,
+				state: r.state,
+				district: r.district
+			}))
+		);
 
 		// Step 2: Test Senate submission
-		const senators = representatives.filter(r => r.chamber === 'senate');
+		const senators = representatives.filter((r) => r.chamber === 'senate');
 		if (senators.length > 0) {
 			console.log('🏛️ Testing Senate submission to:', senators[0].name);
 			const senateResult = await cwcClient.submitToSenate(
@@ -65,7 +68,7 @@ async function testCWCSubmission() {
 		}
 
 		// Step 3: Test House submission
-		const houseReps = representatives.filter(r => r.chamber === 'house');
+		const houseReps = representatives.filter((r) => r.chamber === 'house');
 		if (houseReps.length > 0) {
 			console.log('🏛️ Testing House submission to:', houseReps[0].name);
 			const houseResult = await cwcClient.submitToHouse(
@@ -88,7 +91,6 @@ async function testCWCSubmission() {
 		console.log('✅ Batch results:', batchResults);
 
 		console.log('🎉 CWC MVP test completed successfully!');
-
 	} catch (error) {
 		console.error('❌ CWC MVP test failed:', error);
 	}

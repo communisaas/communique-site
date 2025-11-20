@@ -92,18 +92,18 @@
 							status = 'sending';
 					}
 				}
-				
+
 				// Set delivery count from results
 				if (data.results && Array.isArray(data.results)) {
 					deliveryCount = data.results.filter((r: any) => r.success).length;
-					
+
 					// Set details from first error if any
 					const firstError = data.results.find((r: any) => r.error);
 					if (firstError) {
 						details = firstError.error;
 					}
 				}
-				
+
 				// Allow override after a few seconds
 				canOverride = true;
 

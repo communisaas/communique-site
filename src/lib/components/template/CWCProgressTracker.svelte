@@ -19,8 +19,18 @@
 		senateProgress: 0, // 0-200 (2 senators)
 		houseProgress: 0, // 0-100 (1 representative)
 		overallProgress: 0, // 0-100
-		senateOffices: [] as Array<{name: string, state: string, status: 'pending' | 'submitting' | 'success' | 'failed', messageId?: string, cwcResponse?: any}>,
-		houseOffice: null as {name: string, district: string, status: 'pending' | 'submitting' | 'success' | 'failed'} | null,
+		senateOffices: [] as Array<{
+			name: string;
+			state: string;
+			status: 'pending' | 'submitting' | 'success' | 'failed';
+			messageId?: string;
+			cwcResponse?: any;
+		}>,
+		houseOffice: null as {
+			name: string;
+			district: string;
+			status: 'pending' | 'submitting' | 'success' | 'failed';
+		} | null,
 		errors: [] as string[],
 		startTime: Date.now()
 	});
@@ -35,10 +45,10 @@
 
 	// Milestone messages for micro-rewards
 	const milestoneMessages = {
-		firstSenator: "🎯 First senator contacted!",
-		secondSenator: "⚖️ Both senators reached!",
-		houseRep: "🏛️ Your representative contacted!",
-		allComplete: "🎉 All voices heard!"
+		firstSenator: '🎯 First senator contacted!',
+		secondSenator: '⚖️ Both senators reached!',
+		houseRep: '🏛️ Your representative contacted!',
+		allComplete: '🎉 All voices heard!'
 	};
 
 	onMount(() => {
@@ -69,10 +79,10 @@
 				if (data.status === 'completed' || data.status === 'partially_completed') {
 					progress.stage = 'completed';
 					progress.overallProgress = 100;
-					
+
 					// Final celebration
 					triggerMilestone(milestoneMessages.allComplete);
-					
+
 					if (pollInterval) {
 						clearInterval(pollInterval);
 						pollInterval = null;
@@ -92,7 +102,7 @@
 	function updateProgress(data: any) {
 		const results = data.results;
 		const totalOffices = results.length;
-		
+
 		// Categorize by chamber
 		const senateResults = results.filter((r: any) => r.chamber === 'senate');
 		const houseResults = results.filter((r: any) => r.chamber === 'house');
@@ -106,10 +116,10 @@
 				messageId: r.messageId,
 				cwcResponse: r.cwcResponse
 			}));
-			
+
 			const senateSuccessCount = senateResults.filter((r: any) => r.success).length;
 			progress.senateProgress = (senateSuccessCount / Math.max(senateResults.length, 1)) * 100;
-			
+
 			// Milestone: First senator
 			if (senateSuccessCount === 1 && progress.senateOffices[0]?.status === 'success') {
 				triggerMilestone(milestoneMessages.firstSenator);
@@ -128,9 +138,9 @@
 				district: houseResult.district || 'Unknown',
 				status: houseResult.success ? 'success' : 'failed'
 			};
-			
+
 			progress.houseProgress = houseResult.success ? 100 : 0;
-			
+
 			// Milestone: House representative
 			if (houseResult.success) {
 				triggerMilestone(milestoneMessages.houseRep);
@@ -159,9 +169,9 @@
 		milestoneMessage = message;
 		showMilestoneMessage = true;
 		milestoneGlow = true;
-		
+
 		celebrationPulse.set(1.1).then(() => celebrationPulse.set(1));
-		
+
 		setTimeout(() => {
 			showMilestoneMessage = false;
 			milestoneGlow = false;
@@ -177,10 +187,14 @@
 
 	function getStatusIcon(status: string) {
 		switch (status) {
-			case 'success': return CheckCircle2;
-			case 'failed': return AlertCircle;
-			case 'submitting': return Send;
-			default: return Send;
+			case 'success':
+				return CheckCircle2;
+			case 'failed':
+				return AlertCircle;
+			case 'submitting':
+				return Send;
+			default:
+				return Send;
 		}
 	}
 
@@ -203,20 +217,25 @@
 			</div>
 			<p class="text-sm text-slate-600">Real voices creating real change</p>
 		</div>
-		
+
 		<!-- Overall Progress Bar -->
 		<div class="mb-2 h-3 w-full overflow-hidden rounded-full bg-slate-100">
-			<div 
-				class="h-full rounded-full transition-all duration-500 {getProgressColor(progress.overallProgress, progress.errors.length > 0)}"
+			<div
+				class="h-full rounded-full transition-all duration-500 {getProgressColor(
+					progress.overallProgress,
+					progress.errors.length > 0
+				)}"
 				style="width: {progress.overallProgress}%"
 			></div>
 		</div>
-		<p class="text-xs text-slate-500">{Math.round(progress.overallProgress)}% complete • {elapsedTime()}</p>
+		<p class="text-xs text-slate-500">
+			{Math.round(progress.overallProgress)}% complete • {elapsedTime()}
+		</p>
 	</div>
 
 	<!-- Milestone Messages -->
 	{#if showMilestoneMessage}
-		<div 
+		<div
 			class="mb-4 rounded-lg bg-gradient-to-r from-blue-50 to-green-50 p-3 text-center transition-all"
 			class:animate-pulse={milestoneGlow}
 		>
@@ -238,7 +257,7 @@
 			</div>
 			<div class="text-xs text-slate-500">{Math.round(progress.senateProgress)}%</div>
 		</div>
-		
+
 		<div class="space-y-2">
 			{#each progress.senateOffices as office}
 				{@const IconComponent = getStatusIcon(office.status)}
@@ -250,7 +269,7 @@
 						<p class="text-sm font-medium text-slate-900">{office.name}</p>
 						<p class="text-xs text-slate-600">{office.state}</p>
 						{#if office.messageId}
-							<p class="text-xs text-slate-500 font-mono">ID: {office.messageId}</p>
+							<p class="font-mono text-xs text-slate-500">ID: {office.messageId}</p>
 						{/if}
 					</div>
 					{#if office.status === 'success'}
@@ -258,10 +277,10 @@
 					{/if}
 				</div>
 			{/each}
-			
+
 			{#if progress.senateOffices.length === 0}
 				<div class="flex items-center gap-3 rounded-lg border border-slate-100 p-2 opacity-50">
-					<Send class="h-4 w-4 text-slate-400 animate-pulse" />
+					<Send class="h-4 w-4 animate-pulse text-slate-400" />
 					<div class="flex-1">
 						<p class="text-sm text-slate-600">Finding your senators...</p>
 					</div>
@@ -279,13 +298,15 @@
 			</div>
 			<div class="text-xs text-slate-500">{Math.round(progress.houseProgress)}%</div>
 		</div>
-		
+
 		<div class="space-y-2">
 			{#if progress.houseOffice}
 				{@const IconComponent = getStatusIcon(progress.houseOffice.status)}
 				<div class="flex items-center gap-3 rounded-lg border border-slate-100 p-2">
 					<IconComponent
-						class="h-4 w-4 {progress.houseOffice.status === 'success' ? 'text-green-600' : 'text-slate-400'}"
+						class="h-4 w-4 {progress.houseOffice.status === 'success'
+							? 'text-green-600'
+							: 'text-slate-400'}"
 					/>
 					<div class="flex-1">
 						<p class="text-sm font-medium text-slate-900">{progress.houseOffice.name}</p>
@@ -297,20 +318,21 @@
 				</div>
 			{:else}
 				<div class="flex items-center gap-3 rounded-lg border border-slate-100 p-2 opacity-50">
-					<Send class="h-4 w-4 text-slate-400 animate-pulse" />
+					<Send class="h-4 w-4 animate-pulse text-slate-400" />
 					<div class="flex-1">
 						<p class="text-sm text-slate-600">Finding your representative...</p>
 					</div>
 				</div>
 			{/if}
 		</div>
-		
+
 		<!-- Demo Mode Notice -->
 		<div class="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-2">
 			<div class="flex items-center gap-2">
 				<Sparkles class="h-3 w-3 text-amber-600" />
 				<p class="text-xs text-amber-800">
-					🚀 <strong>Demo Mode:</strong> Currently connecting to Senate only. House integration coming soon!
+					🚀 <strong>Demo Mode:</strong> Currently connecting to Senate only. House integration coming
+					soon!
 				</p>
 			</div>
 		</div>
@@ -342,7 +364,7 @@
 	{#if progress.errors.length > 0}
 		<div class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">
 			<div class="flex items-start gap-2">
-				<AlertCircle class="h-4 w-4 mt-0.5 text-red-600" />
+				<AlertCircle class="mt-0.5 h-4 w-4 text-red-600" />
 				<div>
 					<p class="text-sm font-medium text-red-900">Delivery issues</p>
 					{#each progress.errors as error}

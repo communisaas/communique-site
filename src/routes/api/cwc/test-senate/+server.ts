@@ -4,7 +4,7 @@ import { cwcClient } from '$lib/core/congress/cwc-client';
 
 /**
  * Senate CWC Integration Test
- * 
+ *
  * This endpoint tests direct Senate CWC submission via the real Senate API
  * to ensure our integration works for the hackathon demo.
  */
@@ -12,7 +12,8 @@ import { cwcClient } from '$lib/core/congress/cwc-client';
 const testTemplate = {
 	id: 'test-senate-direct-123',
 	title: 'Test Senate Direct Communication',
-	message_body: 'This is a test message for direct Senate API integration testing for our hackathon demo.',
+	message_body:
+		'This is a test message for direct Senate API integration testing for our hackathon demo.',
 	target_audience: 'congress',
 	created_at: new Date(),
 	updated_at: new Date()
@@ -66,11 +67,13 @@ export const GET: RequestHandler = async () => {
 		results.apiKeyStatus = {
 			present: !!apiKey,
 			length: apiKey ? apiKey.length : 0,
-			masked: apiKey ? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}` : 'Not set'
+			masked: apiKey
+				? `${apiKey.substring(0, 8)}...${apiKey.substring(apiKey.length - 4)}`
+				: 'Not set'
 		};
 
 		console.log('🔑 API Key Status:', results.apiKeyStatus.present ? '✅ Present' : '❌ Missing');
-		
+
 		if (!apiKey) {
 			results.errors.push('CWC_API_KEY not configured - Senate submissions will be simulated');
 		}
@@ -79,18 +82,18 @@ export const GET: RequestHandler = async () => {
 
 		// Test Senate submissions
 		console.log('📤 Testing Senate Submissions');
-		
+
 		for (const senator of testSenators) {
 			try {
 				console.log(`   Testing ${senator.name} (${senator.state})...`);
-				
+
 				const result = await cwcClient.submitToSenate(
 					testTemplate,
 					testUser,
 					senator,
 					`This is a personalized test message for Senator ${senator.name} for our hackathon demo.`
 				);
-				
+
 				results.senateSubmissions.push({
 					senator: senator.name,
 					state: senator.state,
@@ -101,8 +104,10 @@ export const GET: RequestHandler = async () => {
 					error: result.error,
 					timestamp: result.timestamp
 				});
-				
-				console.log(`   ✅ ${senator.name}: ${result.success ? 'Success' : 'Failed'} (${result.status})`);
+
+				console.log(
+					`   ✅ ${senator.name}: ${result.success ? 'Success' : 'Failed'} (${result.status})`
+				);
 				if (result.messageId) {
 					console.log(`      Message ID: ${result.messageId}`);
 				}
@@ -112,11 +117,10 @@ export const GET: RequestHandler = async () => {
 				if (result.error) {
 					console.log(`      Error: ${result.error}`);
 				}
-				
 			} catch (senatorError) {
 				console.log(`   ❌ ${senator.name}: Error - ${senatorError.message}`);
 				results.errors.push(`Senator ${senator.name} failed: ${senatorError.message}`);
-				
+
 				results.senateSubmissions.push({
 					senator: senator.name,
 					state: senator.state,
@@ -125,31 +129,33 @@ export const GET: RequestHandler = async () => {
 					timestamp: new Date().toISOString()
 				});
 			}
-			
+
 			// Add delay between submissions to avoid rate limiting
-			await new Promise(resolve => setTimeout(resolve, 2000));
+			await new Promise((resolve) => setTimeout(resolve, 2000));
 		}
-		
+
 		console.log('');
 
 		// Calculate overall success
-		const successfulSubmissions = results.senateSubmissions.filter(s => s.success).length;
+		const successfulSubmissions = results.senateSubmissions.filter((s) => s.success).length;
 		results.overallSuccess = successfulSubmissions > 0;
-		
+
 		console.log('📊 Test Summary:');
 		console.log(`   Total Senators Tested: ${testSenators.length}`);
 		console.log(`   Successful Submissions: ${successfulSubmissions}`);
 		console.log(`   Failed Submissions: ${testSenators.length - successfulSubmissions}`);
 		console.log(`   Overall Success: ${results.overallSuccess ? '✅ Yes' : '❌ No'}`);
-		
+
 		if (results.errors.length > 0) {
 			console.log(`   Errors: ${results.errors.length}`);
-			results.errors.forEach(error => console.log(`     - ${error}`));
+			results.errors.forEach((error) => console.log(`     - ${error}`));
 		}
 
 		return json({
 			success: results.overallSuccess,
-			message: results.overallSuccess ? 'Senate API integration test successful' : 'Senate API integration test completed with errors',
+			message: results.overallSuccess
+				? 'Senate API integration test successful'
+				: 'Senate API integration test completed with errors',
 			results,
 			summary: {
 				totalSenators: testSenators.length,
@@ -159,17 +165,19 @@ export const GET: RequestHandler = async () => {
 				errors: results.errors.length
 			}
 		});
-
 	} catch (error) {
 		console.error('❌ Senate test failed:', error.message);
-		
-		return json({
-			success: false,
-			error: error.message,
-			stack: error.stack,
-			results: {
-				errors: [error.message]
-			}
-		}, { status: 500 });
+
+		return json(
+			{
+				success: false,
+				error: error.message,
+				stack: error.stack,
+				results: {
+					errors: [error.message]
+				}
+			},
+			{ status: 500 }
+		);
 	}
 };

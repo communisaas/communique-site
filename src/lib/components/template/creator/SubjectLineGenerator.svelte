@@ -141,7 +141,8 @@
 
 		{#if suggestions.length > 0}
 			<div class="text-xs text-slate-600 md:text-sm">
-				{attemptsRemaining} {attemptsRemaining === 1 ? 'try' : 'tries'} left
+				{attemptsRemaining}
+				{attemptsRemaining === 1 ? 'try' : 'tries'} left
 			</div>
 		{/if}
 	</div>
@@ -207,9 +208,7 @@
 				<div class="flex gap-3 text-xs text-slate-600">
 					<span>Domain: <strong class="text-slate-900">{currentSuggestion.domain}</strong></span>
 					<span>•</span>
-					<span
-						>Slug: <strong class="text-slate-900">{currentSuggestion.url_slug}</strong></span
-					>
+					<span>Slug: <strong class="text-slate-900">{currentSuggestion.url_slug}</strong></span>
 				</div>
 			</div>
 

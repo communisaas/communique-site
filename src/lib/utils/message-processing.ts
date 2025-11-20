@@ -83,10 +83,7 @@ export function getSourceTypeBadge(type: Source['type']): {
 	text: string;
 	border: string;
 } {
-	const badges: Record<
-		Source['type'],
-		{ bg: string; text: string; border: string }
-	> = {
+	const badges: Record<Source['type'], { bg: string; text: string; border: string }> = {
 		journalism: {
 			bg: 'bg-blue-50',
 			text: 'text-blue-700',
@@ -128,20 +125,22 @@ export function getSourceTypeBadge(type: Source['type']): {
  * @returns Clean text with markdown-style formatting
  */
 export function cleanHtmlFormatting(message: string): string {
-	return message
-		// Convert <b> and <strong> to markdown bold
-		.replace(/<b>(.*?)<\/b>/gi, '**$1**')
-		.replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-		// Convert <i> and <em> to markdown italic
-		.replace(/<i>(.*?)<\/i>/gi, '*$1*')
-		.replace(/<em>(.*?)<\/em>/gi, '*$1*')
-		// Convert <br> to newlines
-		.replace(/<br\s*\/?>/gi, '\n')
-		// Strip all other HTML tags
-		.replace(/<[^>]+>/g, '')
-		// Clean up multiple consecutive newlines
-		.replace(/\n{3,}/g, '\n\n')
-		.trim();
+	return (
+		message
+			// Convert <b> and <strong> to markdown bold
+			.replace(/<b>(.*?)<\/b>/gi, '**$1**')
+			.replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+			// Convert <i> and <em> to markdown italic
+			.replace(/<i>(.*?)<\/i>/gi, '*$1*')
+			.replace(/<em>(.*?)<\/em>/gi, '*$1*')
+			// Convert <br> to newlines
+			.replace(/<br\s*\/?>/gi, '\n')
+			// Strip all other HTML tags
+			.replace(/<[^>]+>/g, '')
+			// Clean up multiple consecutive newlines
+			.replace(/\n{3,}/g, '\n\n')
+			.trim()
+	);
 }
 
 /**

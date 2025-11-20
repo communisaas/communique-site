@@ -5,7 +5,8 @@
  * All filtering happens in browser - server NEVER knows user location.
  *
  * Features:
- * - Jurisdiction-based filtering (federal, state, county, city)
+ * - Hierarchical scope-based filtering (country → region → locality → district)
+ * - International support (US, UK, France, Japan, Brazil)
  * - Distance-based relevance scoring
  * - Population-based prioritization
  * - Behavioral pattern boosting
@@ -17,10 +18,182 @@ import type {
 	InferredLocation,
 	ScoredTemplate
 } from './types';
+import type { ScopeMapping, ScopeLevel } from '$lib/utils/scope-mapper-international';
 
 // ============================================================================
 // Template Filter
 // ============================================================================
+
+/**
+ * Geographic scope filter (breadcrumb selection)
+ */
+export type GeographicScope = 'district' | 'city' | 'county' | 'state' | 'nationwide' | null;
+
+/**
+ * TemplateScope from database (matches Prisma schema)
+ */
+export interface TemplateScope {
+	id: string;
+	template_id: string;
+	country_code: string;
+	region_code?: string | null;
+	locality_code?: string | null;
+	district_code?: string | null;
+	display_text: string;
+	scope_level: ScopeLevel;
+	confidence: number;
+	extraction_method?: string;
+}
+
+// ============================================================================
+// Hierarchical Scope Matching
+// ============================================================================
+
+/**
+ * Convert InferredLocation to ScopeMapping for hierarchical matching
+ */
+function inferredLocationToScope(location: InferredLocation): ScopeMapping {
+	// Determine scope level based on most specific location data available
+	let scopeLevel: ScopeLevel = 'country';
+	let displayText = location.country_code || 'Unknown';
+
+	if (location.congressional_district) {
+		scopeLevel = 'district';
+		displayText = location.congressional_district;
+	} else if (location.city_name) {
+		scopeLevel = 'locality';
+		displayText = location.city_name;
+	} else if (location.state_code) {
+		scopeLevel = 'region';
+		displayText = location.state_code;
+	}
+
+	return {
+		country_code: location.country_code || 'US',
+		scope_level: scopeLevel,
+		display_text: displayText,
+		region_code: location.state_code || undefined,
+		locality_code: location.city_name || undefined,
+		district_code: location.congressional_district || undefined,
+		confidence: location.confidence
+	};
+}
+
+/**
+ * Check if template scope matches user location hierarchically
+ *
+ * Hierarchical matching rules:
+ * - User in "CA-12" (district) → matches "CA-12", "California", "Nationwide"
+ * - User in "California" (region) → matches "California", "Nationwide" (NOT "CA-12")
+ * - User in "US" (country) → matches "Nationwide" only
+ *
+ * @returns Match level ('district' | 'region' | 'locality' | 'country' | null)
+ */
+function getHierarchicalMatch(
+	userLocation: ScopeMapping,
+	templateScope: TemplateScope
+): ScopeLevel | null {
+	// Country must always match
+	if (templateScope.country_code !== userLocation.country_code) {
+		return null;
+	}
+
+	// Exact match at any level
+	if (userLocation.scope_level === templateScope.scope_level) {
+		// District-level exact match
+		if (
+			templateScope.scope_level === 'district' &&
+			templateScope.district_code === userLocation.district_code
+		) {
+			return 'district';
+		}
+
+		// Locality-level exact match
+		if (
+			templateScope.scope_level === 'locality' &&
+			templateScope.locality_code === userLocation.locality_code
+		) {
+			return 'locality';
+		}
+
+		// Region-level exact match
+		if (
+			templateScope.scope_level === 'region' &&
+			templateScope.region_code === userLocation.region_code
+		) {
+			return 'region';
+		}
+
+		// Country-level exact match
+		if (templateScope.scope_level === 'country') {
+			return 'country';
+		}
+	}
+
+	// Hierarchical fallback: User at more specific level can see broader templates
+	// User in district → can see region/country templates in same region/country
+	if (userLocation.scope_level === 'district') {
+		// District user sees region templates in same region
+		if (
+			templateScope.scope_level === 'region' &&
+			templateScope.region_code === userLocation.region_code
+		) {
+			return 'region';
+		}
+
+		// District user sees country templates in same country
+		if (templateScope.scope_level === 'country') {
+			return 'country';
+		}
+	}
+
+	// User in locality → can see region/country templates in same region/country
+	if (userLocation.scope_level === 'locality') {
+		// Locality user sees region templates in same region
+		if (
+			templateScope.scope_level === 'region' &&
+			templateScope.region_code === userLocation.region_code
+		) {
+			return 'region';
+		}
+
+		// Locality user sees country templates in same country
+		if (templateScope.scope_level === 'country') {
+			return 'country';
+		}
+	}
+
+	// User in region → can see country templates in same country (but NOT more specific)
+	if (userLocation.scope_level === 'region') {
+		// Region user sees country templates in same country
+		if (templateScope.scope_level === 'country') {
+			return 'country';
+		}
+	}
+
+	// No match
+	return null;
+}
+
+/**
+ * Convert hierarchical match level to geographic scope for breadcrumb filtering
+ */
+function matchLevelToGeographicScope(matchLevel: ScopeLevel | null): GeographicScope {
+	if (!matchLevel) return null;
+
+	switch (matchLevel) {
+		case 'district':
+			return 'district';
+		case 'locality':
+			return 'city'; // Locality maps to city in UI
+		case 'region':
+			return 'state'; // Region maps to state in UI
+		case 'country':
+			return 'nationwide';
+		default:
+			return null;
+	}
+}
 
 /**
  * ClientSideTemplateFilter: Filter and rank templates by location relevance
@@ -28,7 +201,8 @@ import type {
 export class ClientSideTemplateFilter {
 	constructor(
 		private inferredLocation: InferredLocation,
-		private templates: TemplateWithJurisdictions[]
+		private templates: TemplateWithJurisdictions[],
+		private selectedScope: GeographicScope = null
 	) {}
 
 	/**
@@ -47,36 +221,58 @@ export class ClientSideTemplateFilter {
 
 	/**
 	 * Score templates by relevance
+	 *
+	 * NEW: Prioritizes TemplateScope (hierarchical international scoping) over
+	 * TemplateJurisdiction (US-only legacy system).
+	 *
+	 * Scoring strategy:
+	 * 1. If template has scopes → use scoreTemplateScope() for hierarchical matching
+	 * 2. Else → fall back to scoreJurisdiction() for backward compatibility
 	 */
 	scoreByRelevance(): ScoredTemplate[] {
 		const matched = this.templates
 			.map((template) => {
-				// Find best matching jurisdiction for this template
 				let bestScore = 0;
 				let bestJurisdiction: TemplateJurisdiction | null = null;
 				let matchReason = '';
 
-				for (const jurisdiction of template.jurisdictions) {
-					const { score, reason } = this.scoreJurisdiction(jurisdiction);
+				// PRIORITY 1: Use TemplateScope if available (NEW hierarchical system)
+				if (template.scopes && template.scopes.length > 0) {
+					for (const scope of template.scopes) {
+						const { score, reason } = this.scoreTemplateScope(scope as TemplateScope);
 
-					if (score > bestScore) {
-						bestScore = score;
-						bestJurisdiction = jurisdiction;
-						matchReason = reason;
+						if (score > bestScore) {
+							bestScore = score;
+							matchReason = reason;
+							// Map scope to jurisdiction for backward compatibility
+							bestJurisdiction = null; // No jurisdiction object for scopes
+						}
+					}
+				}
+				// FALLBACK: Use TemplateJurisdiction if no scopes (legacy system)
+				else if (template.jurisdictions && template.jurisdictions.length > 0) {
+					for (const jurisdiction of template.jurisdictions) {
+						const { score, reason } = this.scoreJurisdiction(jurisdiction);
+
+						if (score > bestScore) {
+							bestScore = score;
+							bestJurisdiction = jurisdiction;
+							matchReason = reason;
+						}
 					}
 				}
 
-				if (bestScore > 0 && bestJurisdiction) {
+				if (bestScore > 0) {
 					// Apply location confidence multiplier
 					// High confidence (verified=1.0) → full score
 					// Low confidence (IP=0.2) → reduced score certainty
-					// EXCEPTION: Federal templates always get full score (relevant to everyone)
-					const isFederal = bestJurisdiction.jurisdiction_type === 'federal';
-					const confidenceMultiplier = isFederal ? 1.0 : this.inferredLocation.confidence;
+					// EXCEPTION: Country-level templates always get full score (relevant to everyone)
+					const isCountryLevel = bestScore === 0.3; // Country-level baseline score
+					const confidenceMultiplier = isCountryLevel ? 1.0 : this.inferredLocation.confidence;
 					const finalScore = bestScore * confidenceMultiplier;
 
 					// Add confidence indicator to match reason
-					const confidenceLabel = isFederal
+					const confidenceLabel = isCountryLevel
 						? 'national'
 						: this.getConfidenceLabel(this.inferredLocation.confidence);
 					const enhancedReason = `${matchReason} (${confidenceLabel})`;
@@ -85,7 +281,7 @@ export class ClientSideTemplateFilter {
 						template,
 						score: finalScore,
 						matchReason: enhancedReason,
-						jurisdiction: bestJurisdiction
+						jurisdiction: bestJurisdiction!
 					};
 				}
 
@@ -157,10 +353,19 @@ export class ClientSideTemplateFilter {
 	 * 0.5 = State match
 	 * 0.3 = Federal/national (baseline - always relevant within country)
 	 * 0.0 = No match
+	 *
+	 * NEW: Hierarchical scope matching via TemplateScope table
+	 * - Uses international scope hierarchy: country → region → locality → district
+	 * - Supports scopes from TemplateScope table (if present)
+	 * - Falls back to TemplateJurisdiction for backward compatibility
+	 *
+	 * Breadcrumb scope boosting:
+	 * When user selects a specific breadcrumb level, boost templates matching that level
 	 */
 	private scoreJurisdiction(jurisdiction: TemplateJurisdiction): { score: number; reason: string } {
 		let score = 0;
 		let reason = '';
+		let matchLevel: GeographicScope = null;
 
 		// Exact congressional district match (1.0 score)
 		if (
@@ -168,50 +373,130 @@ export class ClientSideTemplateFilter {
 			jurisdiction.congressional_district === this.inferredLocation.congressional_district
 		) {
 			score = 1.0;
+			matchLevel = 'district';
 			reason = `Your district: ${this.inferredLocation.congressional_district}`;
-			return { score, reason };
 		}
-
 		// County match (0.8 score)
-		if (
+		else if (
 			this.inferredLocation.county_fips &&
 			jurisdiction.county_fips === this.inferredLocation.county_fips
 		) {
 			score = 0.8;
+			matchLevel = 'county';
 			reason = `Your county: ${jurisdiction.county_name || this.inferredLocation.county_fips}`;
-			return { score, reason };
 		}
-
 		// City match (0.7 score)
-		if (
+		else if (
 			this.inferredLocation.city_name &&
 			jurisdiction.city_name?.toLowerCase() === this.inferredLocation.city_name.toLowerCase()
 		) {
 			score = 0.7;
+			matchLevel = 'city';
 			reason = `Your city: ${this.inferredLocation.city_name}`;
-			return { score, reason };
 		}
-
 		// State match (0.5 score)
-		if (
+		else if (
 			this.inferredLocation.state_code &&
 			jurisdiction.state_code === this.inferredLocation.state_code
 		) {
 			score = 0.5;
+			matchLevel = 'state';
 			reason = `Your state: ${this.inferredLocation.state_code}`;
-			return { score, reason };
 		}
-
 		// Federal/national templates (0.3 baseline - always relevant within country)
 		// Country boundaries enforced by scope-filtering.ts
-		if (jurisdiction.jurisdiction_type === 'federal') {
+		else if (jurisdiction.jurisdiction_type === 'federal') {
 			score = 0.3;
+			matchLevel = 'nationwide';
 			reason = `National issue (${this.inferredLocation.country_code || 'country-wide'})`;
-			return { score, reason };
 		}
 
-		// No match
-		return { score: 0, reason: 'No location match' };
+		const baseScore = score;
+
+		// Apply breadcrumb scope boost
+		if (score > 0 && this.selectedScope && matchLevel === this.selectedScope) {
+			// Boost templates matching the selected breadcrumb level by 30%
+			const boostedScore = Math.min(1.0, score * 1.3);
+			console.log('[TemplateFilter] 🎯 Breadcrumb boost applied:', {
+				matchLevel,
+				selectedScope: this.selectedScope,
+				baseScore,
+				boostedScore,
+				boost: '+30%'
+			});
+			score = boostedScore;
+		}
+
+		return { score, reason };
+	}
+
+	/**
+	 * Score template using hierarchical scope matching (TemplateScope table)
+	 *
+	 * This is the NEW scoring method that uses the TemplateScope table
+	 * for international hierarchical matching.
+	 *
+	 * Score hierarchy:
+	 * 1.0 = Exact district match
+	 * 0.7 = Exact locality match
+	 * 0.5 = Exact region match
+	 * 0.3 = Country match (baseline)
+	 * 0.0 = No match
+	 */
+	private scoreTemplateScope(templateScope: TemplateScope): { score: number; reason: string } {
+		// Convert InferredLocation to ScopeMapping for hierarchical matching
+		const userScope = inferredLocationToScope(this.inferredLocation);
+
+		// Get hierarchical match level
+		const matchLevel = getHierarchicalMatch(userScope, templateScope);
+
+		if (!matchLevel) {
+			return { score: 0, reason: 'No scope match' };
+		}
+
+		// Score based on match level
+		let score = 0;
+		let reason = '';
+
+		switch (matchLevel) {
+			case 'district':
+				score = 1.0;
+				reason = `Your district: ${templateScope.display_text}`;
+				break;
+			case 'locality':
+				score = 0.7;
+				reason = `Your city: ${templateScope.display_text}`;
+				break;
+			case 'region':
+				score = 0.5;
+				reason = `Your state: ${templateScope.display_text}`;
+				break;
+			case 'country':
+				score = 0.3;
+				reason = `Nationwide (${templateScope.country_code})`;
+				break;
+		}
+
+		const baseScore = score;
+
+		// Convert hierarchical match level to GeographicScope for breadcrumb boost
+		const geographicScope = matchLevelToGeographicScope(matchLevel);
+
+		// Apply breadcrumb scope boost
+		if (score > 0 && this.selectedScope && geographicScope === this.selectedScope) {
+			const boostedScore = Math.min(1.0, score * 1.3);
+			console.log('[TemplateFilter] 🎯 Scope breadcrumb boost applied:', {
+				matchLevel,
+				geographicScope,
+				selectedScope: this.selectedScope,
+				baseScore,
+				boostedScore,
+				boost: '+30%'
+			});
+			score = boostedScore;
+		}
+
+		return { score, reason };
 	}
 }
 
@@ -235,9 +520,10 @@ export function filterTemplatesByLocation(
  */
 export function scoreTemplatesByRelevance(
 	templates: TemplateWithJurisdictions[],
-	location: InferredLocation
+	location: InferredLocation,
+	selectedScope: GeographicScope = null
 ): ScoredTemplate[] {
-	const filter = new ClientSideTemplateFilter(location, templates);
+	const filter = new ClientSideTemplateFilter(location, templates, selectedScope);
 	return filter.scoreByRelevance();
 }
 

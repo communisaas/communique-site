@@ -77,10 +77,4 @@ export const congressApi = {
 	}
 };
 
-// Legacy compatibility message
-if (typeof window !== 'undefined' && window.console) {
-	console.debug(
-		'[Deprecation Notice] $lib/services/apiClient is deprecated. ' +
-			'Please update imports to use $lib/core/api directly.'
-	);
-}
+// Legacy compatibility message removed (console cleanup)

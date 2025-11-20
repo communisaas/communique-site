@@ -107,7 +107,10 @@ export function meetsMinimumPrecision(
 	// STEP 1: COUNTRY BOUNDARY CHECK (applies to ALL precision levels)
 	// If template specifies applicable countries, user MUST be in one of them
 	if (template.applicable_countries && template.applicable_countries.length > 0) {
-		if (!userLocation?.country_code || !template.applicable_countries.includes(userLocation.country_code)) {
+		if (
+			!userLocation?.country_code ||
+			!template.applicable_countries.includes(userLocation.country_code)
+		) {
 			// User is in wrong country or country unknown - HARD REJECT
 			return false;
 		}
@@ -120,7 +123,9 @@ export function meetsMinimumPrecision(
 
 	// Country requirement: User must have country detected (highly reliable via IP)
 	if (required === 'country') {
-		const hasSufficientPrecision = ['country', 'state', 'county', 'district'].includes(userPrecision);
+		const hasSufficientPrecision = ['country', 'state', 'county', 'district'].includes(
+			userPrecision
+		);
 		// Country match already verified in STEP 1
 		return hasSufficientPrecision;
 	}
@@ -297,10 +302,7 @@ export function groupTemplatesByScope(
 	}
 
 	// Group 2: State-level (only if user has state precision)
-	if (
-		['state', 'county', 'district'].includes(userPrecision) &&
-		userLocation?.state_code
-	) {
+	if (['state', 'county', 'district'].includes(userPrecision) && userLocation?.state_code) {
 		const stateTemplates = templates.filter(
 			(t) =>
 				t.minimum_precision_required === 'state' &&

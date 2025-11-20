@@ -63,3 +63,7 @@ project.inlang/
 *.sh
 *.sql
 .env.production
+
+# GeoIP databases (download separately, ~70MB)
+data/*.mmdb
+data/*.tar.gz

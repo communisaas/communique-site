@@ -52,7 +52,6 @@ export const GET: RequestHandler = async ({ params }) => {
 		};
 
 		return json(response);
-
 	} catch (err) {
 		console.error('[CWC Job Status] Error:', err);
 

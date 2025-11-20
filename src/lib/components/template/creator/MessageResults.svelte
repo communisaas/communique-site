@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { RotateCcw, Edit3, BookOpen } from '@lucide/svelte';
 	import type { Source } from '$lib/types/template';
+	import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
 	import SourceCard from './SourceCard.svelte';
 	import ResearchLog from './ResearchLog.svelte';
+	import GeographicScopeEditor from './GeographicScopeEditor.svelte';
 	import {
 		splitIntoParagraphs,
 		countWords,
@@ -15,11 +17,20 @@
 		subject: string;
 		sources: Source[];
 		researchLog: string[];
+		geographicScope?: ScopeMapping | null;
 		onEdit: () => void;
 		onStartFresh: () => void;
 	}
 
-	let { message, subject, sources, researchLog, onEdit, onStartFresh }: Props = $props();
+	let {
+		message,
+		subject,
+		sources,
+		researchLog,
+		geographicScope = $bindable(),
+		onEdit,
+		onStartFresh
+	}: Props = $props();
 
 	let showResearchLog = $state(false);
 	let selectedCitation = $state<number | null>(null);
@@ -37,6 +48,14 @@
 		if (sourceElement) {
 			sourceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 		}
+	}
+
+	// Handle geographic scope changes
+	function handleScopeChanged(
+		event: CustomEvent<{ scope: ScopeMapping; validatedAgainst: 'user_edit' }>
+	) {
+		geographicScope = event.detail.scope;
+		console.log('[MessageResults] Geographic scope updated:', event.detail.scope);
 	}
 </script>
 
@@ -78,6 +97,28 @@
 		<p class="text-xs font-medium text-slate-700">Subject</p>
 		<p class="mt-1 font-medium text-slate-900">{subject}</p>
 	</div>
+
+	<!-- Geographic scope (if extracted) -->
+	{#if geographicScope}
+		<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+			<p class="mb-2 text-xs font-medium text-slate-700">Geographic Scope</p>
+			<div class="flex items-baseline gap-1">
+				<p class="text-sm text-slate-700">
+					This message is targeted
+					<GeographicScopeEditor scope={geographicScope} on:scopeChanged={handleScopeChanged} />
+				</p>
+			</div>
+			<p class="mt-2 text-xs text-slate-600">
+				{#if geographicScope.confidence >= 0.9}
+					High confidence extraction. Click "Edit" to change if incorrect.
+				{:else if geographicScope.confidence >= 0.7}
+					Medium confidence extraction. Select from dropdown to verify or change.
+				{:else}
+					Low confidence extraction. Please verify the location is correct.
+				{/if}
+			</p>
+		</div>
+	{/if}
 
 	<!-- Message with citations -->
 	<div class="rounded-lg border border-slate-200 bg-white p-6">

@@ -12,7 +12,13 @@
 /**
  * Signal types in order of reliability (weakest to strongest)
  */
-export type LocationSignalType = 'ip' | 'browser' | 'oauth' | 'behavioral' | 'user_selected' | 'verified';
+export type LocationSignalType =
+	| 'ip'
+	| 'browser'
+	| 'oauth'
+	| 'behavioral'
+	| 'user_selected'
+	| 'verified';
 
 /**
  * Individual location signal with confidence scoring
@@ -190,6 +196,18 @@ export interface TemplateWithJurisdictions {
 	description?: string;
 	category?: string;
 	jurisdictions: TemplateJurisdiction[];
+	scopes?: Array<{
+		id: string;
+		template_id: string;
+		country_code: string;
+		region_code?: string | null;
+		locality_code?: string | null;
+		district_code?: string | null;
+		display_text: string;
+		scope_level: 'country' | 'region' | 'locality' | 'district';
+		confidence: number;
+		extraction_method?: string;
+	}>;
 }
 
 /**
@@ -320,7 +338,9 @@ export function isLocationSignal(value: unknown): value is LocationSignal {
 
 	return (
 		typeof signal.signal_type === 'string' &&
-		['ip', 'browser', 'oauth', 'behavioral', 'user_selected', 'verified'].includes(signal.signal_type) &&
+		['ip', 'browser', 'oauth', 'behavioral', 'user_selected', 'verified'].includes(
+			signal.signal_type
+		) &&
 		typeof signal.confidence === 'number' &&
 		signal.confidence >= 0 &&
 		signal.confidence <= 1 &&

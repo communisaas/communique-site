@@ -24,24 +24,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Parse request body
 		const body = await request.json();
-		const {
-			templateId,
-			address,
-			personalizedMessage,
-			userEmail,
-			userName
-		} = body;
+		const { templateId, address, personalizedMessage, userEmail, userName } = body;
 
 		// Validate required fields
-		if (!templateId || !address || !address.street || !address.city || !address.state || !address.zip) {
+		if (
+			!templateId ||
+			!address ||
+			!address.street ||
+			!address.city ||
+			!address.state ||
+			!address.zip
+		) {
 			throw error(400, 'Missing required address fields');
 		}
 
 		// Validate template exists
 		const template = await prisma.template.findUnique({
 			where: { id: templateId },
-			select: { 
-				id: true, 
+			select: {
+				id: true,
 				title: true,
 				message_body: true,
 				slug: true
@@ -55,14 +56,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Get user's congressional representatives
 		console.log('[CWC MVP] Looking up representatives for address:', address);
 		const representatives = await getRepresentativesForAddress(address);
-		
+
 		if (!representatives || representatives.length === 0) {
 			throw error(404, 'No congressional representatives found for this address');
 		}
 
 		console.log('[CWC MVP] Found representatives:', {
 			count: representatives.length,
-			representatives: representatives.map(r => ({ name: r.name, chamber: r.chamber, state: r.state }))
+			representatives: representatives.map((r) => ({
+				name: r.name,
+				chamber: r.chamber,
+				state: r.state
+			}))
 		});
 
 		// Create a mock user object for CWC submission
@@ -84,7 +89,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				status: 'processing',
 				metadata: {
 					address,
-					representatives: representatives.map(r => ({ name: r.name, chamber: r.chamber, bioguideId: r.bioguideId })),
+					representatives: representatives.map((r) => ({
+						name: r.name,
+						chamber: r.chamber,
+						bioguideId: r.bioguideId
+					})),
 					personalizedMessage
 				}
 			}
@@ -93,22 +102,28 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		console.log('[CWC MVP] Created job:', job.id);
 
 		// Submit to representatives synchronously for immediate demo feedback
-		const results = await processCWCSubmissionsSync(job.id, template, user, representatives, personalizedMessage);
+		const results = await processCWCSubmissionsSync(
+			job.id,
+			template,
+			user,
+			representatives,
+			personalizedMessage
+		);
 
 		// Calculate summary statistics
-		const successful = results.filter(r => r.success).length;
-		const failed = results.filter(r => !r.success).length;
+		const successful = results.filter((r) => r.success).length;
+		const failed = results.filter((r) => !r.success).length;
 
 		return json({
 			success: true,
 			jobId: job.id,
-			representatives: representatives.map(r => ({ 
-				name: r.name, 
-				chamber: r.chamber, 
+			representatives: representatives.map((r) => ({
+				name: r.name,
+				chamber: r.chamber,
 				state: r.state,
-				district: r.district 
+				district: r.district
 			})),
-			results: results.map(r => ({
+			results: results.map((r) => ({
 				office: r.office,
 				chamber: r.chamber || (r.office.includes('Senator') ? 'senate' : 'house'),
 				success: r.success,
@@ -123,9 +138,11 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				successful,
 				failed
 			},
-			message: successful === results.length ? 'All submissions successful!' : `${successful}/${results.length} submissions successful`
+			message:
+				successful === results.length
+					? 'All submissions successful!'
+					: `${successful}/${results.length} submissions successful`
 		});
-
 	} catch (err) {
 		console.error('[CWC MVP Submission] Error:', err);
 
@@ -155,7 +172,7 @@ async function processCWCSubmissionsSync(
 		// Update job status
 		await prisma.cWCJob.update({
 			where: { id: jobId },
-			data: { 
+			data: {
 				status: 'processing',
 				started_at: new Date()
 			}
@@ -172,15 +189,15 @@ async function processCWCSubmissionsSync(
 		console.log(`[CWC MVP] Completed direct API submissions for job ${jobId}:`, results);
 
 		// Update job with results
-		const successCount = results.filter(r => r.success).length;
-		const failedCount = results.filter(r => !r.success).length;
+		const successCount = results.filter((r) => r.success).length;
+		const failedCount = results.filter((r) => !r.success).length;
 
 		await prisma.cWCJob.update({
 			where: { id: jobId },
 			data: {
 				status: failedCount === 0 ? 'completed' : 'partially_completed',
 				completed_at: new Date(),
-				results: results.map(r => ({
+				results: results.map((r) => ({
 					office: r.office,
 					status: r.status,
 					success: r.success,
@@ -200,19 +217,18 @@ async function processCWCSubmissionsSync(
 		});
 
 		return results;
-
 	} catch (error) {
 		console.error(`[CWC MVP] Direct API processing failed for job ${jobId}:`, error);
-		
+
 		await prisma.cWCJob.update({
 			where: { id: jobId },
-			data: { 
+			data: {
 				status: 'failed',
 				completed_at: new Date(),
 				error: error instanceof Error ? error.message : 'Unknown error'
 			}
 		});
-		
+
 		throw error;
 	}
 }

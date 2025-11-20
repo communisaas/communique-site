@@ -65,15 +65,9 @@
 
 		try {
 			// Map level to search scope
-			const scope =
-				level === 'country' ? 'country' : level === 'state' ? 'state' : 'city';
+			const scope = level === 'country' ? 'country' : level === 'state' ? 'state' : 'city';
 
-			const searchResults = await searchLocationsCached(
-				query,
-				scope,
-				currentCountry,
-				currentState
-			);
+			const searchResults = await searchLocationsCached(query, scope, currentCountry, currentState);
 
 			results = searchResults;
 			selectedIndex = 0; // Reset selection on new results
@@ -256,7 +250,7 @@
 	<!-- Autocomplete dropdown -->
 	{#if isOpen}
 		<div
-			class="absolute top-full left-0 z-50 mt-2 w-80 rounded-lg border border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5"
+			class="absolute left-0 top-full z-50 mt-2 w-80 rounded-lg border border-slate-200 bg-white shadow-xl ring-1 ring-slate-900/5"
 		>
 			<!-- Search input -->
 			<div class="border-b border-slate-100 p-3">
@@ -266,7 +260,11 @@
 					value={searchQuery}
 					oninput={onInput}
 					onkeydown={handleKeydown}
-					placeholder="Search {level === 'country' ? 'countries' : level === 'state' ? 'states' : 'cities'}..."
+					placeholder="Search {level === 'country'
+						? 'countries'
+						: level === 'state'
+							? 'states'
+							: 'cities'}..."
 					class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder-slate-400 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
 					autocomplete="off"
 					spellcheck="false"

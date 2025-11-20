@@ -32,8 +32,7 @@
 
 	// Collective power: Show coordination strength, open invitation
 	const coordinatingCount = templateCount;
-	const locationContext =
-		precisionLevel === 'county' ? 'in your area' : 'at this precision level';
+	const locationContext = precisionLevel === 'county' ? 'in your area' : 'at this precision level';
 </script>
 
 <div class="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -78,7 +77,8 @@
 			<!-- Social proof with open invitation (research: 3-5x more persuasive) -->
 			{#if currentCount > 0}
 				<p class="mt-2 text-xs font-medium text-blue-600">
-					Seeing {currentCount.toLocaleString()} now · Join {coordinatingCount.toLocaleString()} more {locationContext}
+					Seeing {currentCount.toLocaleString()} now · Join {coordinatingCount.toLocaleString()} more
+					{locationContext}
 				</p>
 			{/if}
 		</div>
@@ -93,7 +93,9 @@
 
 		<!-- Trust signal (privacy reassurance) -->
 		<p class="mt-2 text-center text-xs text-slate-500">
-			{precisionLevel === 'district' ? '🔒 Zero-knowledge proof · Address encrypted' : '📍 GPS-based · No tracking'}
+			{precisionLevel === 'district'
+				? '🔒 Zero-knowledge proof · Address encrypted'
+				: '📍 GPS-based · No tracking'}
 		</p>
 	</div>
 </div>

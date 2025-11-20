@@ -4,7 +4,7 @@ import { CWCGenerator } from '$lib/core/congress/cwc-generator';
 
 /**
  * CWC Implementation Test Endpoint
- * 
+ *
  * This endpoint tests our CWC integration without requiring external environment setup.
  * It verifies:
  * 1. CWC XML generation with proper office codes
@@ -16,7 +16,8 @@ import { CWCGenerator } from '$lib/core/congress/cwc-generator';
 const testTemplate = {
 	id: 'test-template-123',
 	title: 'Test Congressional Communication',
-	message_body: 'This is a test message to verify our CWC implementation is working correctly for the hackathon demo.',
+	message_body:
+		'This is a test message to verify our CWC implementation is working correctly for the hackathon demo.',
 	target_audience: 'congress',
 	created_at: new Date(),
 	updated_at: new Date()
@@ -70,15 +71,15 @@ export const GET: RequestHandler = async () => {
 
 		// Test 1: CWC Office Code Generation
 		console.log('🏛️ Test 1: CWC Office Code Generation');
-		
+
 		const houseOfficeCode = CWCGenerator.generateOfficeCode(mockHouseRep);
 		const senateOfficeCode = CWCGenerator.generateOfficeCode(mockSenateRep);
-		
+
 		results.officeCodeGeneration = [
 			{ rep: mockHouseRep.name, chamber: 'house', officeCode: houseOfficeCode },
 			{ rep: mockSenateRep.name, chamber: 'senate', officeCode: senateOfficeCode }
 		];
-		
+
 		console.log(`   House: ${mockHouseRep.name} -> ${houseOfficeCode}`);
 		console.log(`   Senate: ${mockSenateRep.name} -> ${senateOfficeCode}`);
 		console.log('');
@@ -97,13 +98,13 @@ export const GET: RequestHandler = async () => {
 			_targetRep: mockHouseRep,
 			personalizedMessage: 'This is a personalized message for the House representative.'
 		});
-		
+
 		results.houseXML = {
 			officeCode: houseOfficeCode,
 			messagePreview: houseXML.substring(0, 300) + '...',
 			fullXML: houseXML
 		};
-		
+
 		// Validate House XML
 		const houseValidation = CWCGenerator.validateXML(houseXML);
 		results.validation.push({
@@ -111,7 +112,7 @@ export const GET: RequestHandler = async () => {
 			valid: houseValidation.valid,
 			errors: houseValidation.errors
 		});
-		
+
 		console.log('✅ House XML generated successfully');
 		console.log('   Validation:', houseValidation.valid ? '✅ Valid' : '❌ Invalid');
 		if (!houseValidation.valid) {
@@ -141,13 +142,13 @@ export const GET: RequestHandler = async () => {
 			_targetRep: mockSenateRep,
 			personalizedMessage: 'This is a personalized message for the Senate.'
 		});
-		
+
 		results.senateXML = {
 			officeCode: senateOfficeCode,
 			messagePreview: senateXML.substring(0, 300) + '...',
 			fullXML: senateXML
 		};
-		
+
 		// Validate Senate XML
 		const senateValidation = CWCGenerator.validateXML(senateXML);
 		results.validation.push({
@@ -155,7 +156,7 @@ export const GET: RequestHandler = async () => {
 			valid: senateValidation.valid,
 			errors: senateValidation.errors
 		});
-		
+
 		console.log('✅ Senate XML generated successfully');
 		console.log('   Validation:', senateValidation.valid ? '✅ Valid' : '❌ Invalid');
 		if (!senateValidation.valid) {
@@ -165,8 +166,9 @@ export const GET: RequestHandler = async () => {
 
 		// Test 4: Personalized Message Integration
 		console.log('💬 Test 4: Personalized Message Integration');
-		const customMessage = 'This is a CUSTOM personalized message that should override the template body.';
-		
+		const customMessage =
+			'This is a CUSTOM personalized message that should override the template body.';
+
 		const xmlWithPersonalization = CWCGenerator.generateUserAdvocacyXML({
 			template: testTemplate,
 			user: {
@@ -179,15 +181,21 @@ export const GET: RequestHandler = async () => {
 			_targetRep: mockHouseRep,
 			personalizedMessage: customMessage
 		});
-		
+
 		results.personalizedMessage = {
 			customMessage,
 			containsCustomMessage: xmlWithPersonalization.includes(customMessage),
-			preview: xmlWithPersonalization.substring(xmlWithPersonalization.indexOf('<Body>'), xmlWithPersonalization.indexOf('</Body>') + 7)
+			preview: xmlWithPersonalization.substring(
+				xmlWithPersonalization.indexOf('<Body>'),
+				xmlWithPersonalization.indexOf('</Body>') + 7
+			)
 		};
-		
+
 		console.log('✅ Personalized message integration test completed');
-		console.log('   Custom message found in XML:', results.personalizedMessage.containsCustomMessage);
+		console.log(
+			'   Custom message found in XML:',
+			results.personalizedMessage.containsCustomMessage
+		);
 		console.log('');
 
 		console.log('🎉 All CWC Implementation Tests Completed Successfully!');
@@ -198,20 +206,22 @@ export const GET: RequestHandler = async () => {
 			results,
 			summary: {
 				officeCodes: results.officeCodeGeneration.length,
-				houseXML: results.validation.find(v => v.type === 'house')?.valid || false,
-				senateXML: results.validation.find(v => v.type === 'senate')?.valid || false,
+				houseXML: results.validation.find((v) => v.type === 'house')?.valid || false,
+				senateXML: results.validation.find((v) => v.type === 'senate')?.valid || false,
 				personalizedMessages: results.personalizedMessage?.containsCustomMessage || false
 			}
 		});
-
 	} catch (error) {
 		console.error('❌ Test failed:', error.message);
 		console.error('Stack:', error.stack);
-		
-		return json({
-			success: false,
-			error: error.message,
-			stack: error.stack
-		}, { status: 500 });
+
+		return json(
+			{
+				success: false,
+				error: error.message,
+				stack: error.stack
+			},
+			{ status: 500 }
+		);
 	}
 };

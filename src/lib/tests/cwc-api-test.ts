@@ -1,6 +1,6 @@
 /**
  * API Test for CWC MVP Endpoints
- * 
+ *
  * Test the new /api/cwc/submit-mvp and /api/cwc/jobs/[jobId] endpoints
  */
 
@@ -31,7 +31,11 @@ async function testCWCApiEndpoints() {
 		});
 
 		if (!submitResponse.ok) {
-			console.error('❌ Submit endpoint failed:', submitResponse.status, await submitResponse.text());
+			console.error(
+				'❌ Submit endpoint failed:',
+				submitResponse.status,
+				await submitResponse.text()
+			);
 			return;
 		}
 
@@ -48,7 +52,11 @@ async function testCWCApiEndpoints() {
 		const statusResponse = await fetch(`http://localhost:5173/api/cwc/jobs/${submitResult.jobId}`);
 
 		if (!statusResponse.ok) {
-			console.error('❌ Status endpoint failed:', statusResponse.status, await statusResponse.text());
+			console.error(
+				'❌ Status endpoint failed:',
+				statusResponse.status,
+				await statusResponse.text()
+			);
 			return;
 		}
 
@@ -56,7 +64,6 @@ async function testCWCApiEndpoints() {
 		console.log('✅ Status result:', statusResult);
 
 		console.log('🎉 CWC MVP API endpoints test completed successfully!');
-
 	} catch (error) {
 		console.error('❌ API test failed:', error);
 	}

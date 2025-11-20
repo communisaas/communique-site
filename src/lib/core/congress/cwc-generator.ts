@@ -174,7 +174,7 @@ export class CWCGenerator {
     <Message>
         <Subject>${this.escapeXML(template.title || 'Congressional Communication')}</Subject>
         <LibraryOfCongressTopics>
-            ${topics.map(topic => `<LibraryOfCongressTopic>${topic}</LibraryOfCongressTopic>`).join('\n            ')}
+            ${topics.map((topic) => `<LibraryOfCongressTopic>${topic}</LibraryOfCongressTopic>`).join('\n            ')}
         </LibraryOfCongressTopics>
         <ConstituentMessage>${this.escapeXML(personalizedMessage || template.message_body || template.body || '')}</ConstituentMessage>
     </Message>
@@ -232,12 +232,12 @@ export class CWCGenerator {
 	static formatPhoneNumber(phone: string): string {
 		// Remove all non-digits
 		const digits = phone.replace(/\D/g, '');
-		
+
 		// If we have 10 digits, format as XXX-XXX-XXXX
 		if (digits.length === 10) {
 			return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 		}
-		
+
 		// Default fallback
 		return '555-123-4567';
 	}
@@ -248,18 +248,34 @@ export class CWCGenerator {
 	static generateLibraryOfCongressTopics(title: string): string[] {
 		const titleLower = title.toLowerCase();
 		const topics: string[] = [];
-		
+
 		// Simple keyword matching for common topics
-		if (titleLower.includes('health') || titleLower.includes('medicare') || titleLower.includes('medicaid')) {
+		if (
+			titleLower.includes('health') ||
+			titleLower.includes('medicare') ||
+			titleLower.includes('medicaid')
+		) {
 			topics.push('Health');
 		}
-		if (titleLower.includes('environment') || titleLower.includes('climate') || titleLower.includes('pollution')) {
+		if (
+			titleLower.includes('environment') ||
+			titleLower.includes('climate') ||
+			titleLower.includes('pollution')
+		) {
 			topics.push('Environmental Protection');
 		}
-		if (titleLower.includes('education') || titleLower.includes('school') || titleLower.includes('student')) {
+		if (
+			titleLower.includes('education') ||
+			titleLower.includes('school') ||
+			titleLower.includes('student')
+		) {
 			topics.push('Education');
 		}
-		if (titleLower.includes('economy') || titleLower.includes('jobs') || titleLower.includes('employment')) {
+		if (
+			titleLower.includes('economy') ||
+			titleLower.includes('jobs') ||
+			titleLower.includes('employment')
+		) {
 			topics.push('Labor and Employment');
 		}
 		if (titleLower.includes('immigration') || titleLower.includes('border')) {
@@ -268,15 +284,19 @@ export class CWCGenerator {
 		if (titleLower.includes('tax') || titleLower.includes('budget')) {
 			topics.push('Taxation');
 		}
-		if (titleLower.includes('civil rights') || titleLower.includes('equality') || titleLower.includes('discrimination')) {
+		if (
+			titleLower.includes('civil rights') ||
+			titleLower.includes('equality') ||
+			titleLower.includes('discrimination')
+		) {
 			topics.push('Civil Rights and Liberties, Minority Issues');
 		}
-		
+
 		// Default topic if none matched
 		if (topics.length === 0) {
 			topics.push('Government Operations and Politics');
 		}
-		
+
 		return topics;
 	}
 

@@ -1,5 +1,13 @@
 <script lang="ts">
-	import { CheckCircle2, Mail, ExternalLink, X, User, ChevronDown, ChevronUp } from '@lucide/svelte';
+	import {
+		CheckCircle2,
+		Mail,
+		ExternalLink,
+		X,
+		User,
+		ChevronDown,
+		ChevronUp
+	} from '@lucide/svelte';
 	import type { ProcessedDecisionMaker } from '$lib/types/template';
 
 	interface Props {

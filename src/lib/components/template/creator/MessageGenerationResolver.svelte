@@ -51,14 +51,10 @@
 			console.log('[MessageGenerationResolver] Request data:', requestData);
 
 			// Call message generation API
-			const response = await api.post(
-				'/toolhouse/generate-message',
-				requestData,
-				{
-					timeout: 200000, // 200 seconds (3+ minutes) for Toolhouse agent processing
-					showToast: false // Don't show success toast
-				}
-			);
+			const response = await api.post('/toolhouse/generate-message', requestData, {
+				timeout: 200000, // 200 seconds (3+ minutes) for Toolhouse agent processing
+				showToast: false // Don't show success toast
+			});
 
 			console.log('[MessageGenerationResolver] Raw response:', response);
 
@@ -67,7 +63,7 @@
 			}
 
 			// Extract data
-			const { message, subject, sources, research_log } = response.data;
+			const { message, subject, sources, research_log, geographic_scope } = response.data;
 
 			// Clean HTML formatting from message
 			const cleanedMessage = cleanHtmlFormatting(message);
@@ -80,6 +76,7 @@
 			formData.content.preview = cleanedMessage;
 			formData.content.sources = sources || [];
 			formData.content.researchLog = research_log || [];
+			formData.content.geographicScope = geographic_scope || null;
 			formData.content.aiGenerated = true;
 			formData.content.edited = false;
 
@@ -152,6 +149,7 @@
 	{:else if stage === 'results'}
 		<!-- Results display with citations, sources, and research log -->
 		<MessageResults
+			bind:geographicScope={formData.content.geographicScope}
 			message={formData.content.preview}
 			subject={formData.objective.title}
 			sources={formData.content.sources || []}
@@ -194,9 +192,7 @@
 
 			<!-- Subject line -->
 			<div>
-				<label for="edit-subject" class="block text-sm font-medium text-slate-700">
-					Subject
-				</label>
+				<label for="edit-subject" class="block text-sm font-medium text-slate-700"> Subject </label>
 				<input
 					id="edit-subject"
 					type="text"
@@ -207,9 +203,7 @@
 
 			<!-- Message body -->
 			<div>
-				<label for="edit-message" class="block text-sm font-medium text-slate-700">
-					Message
-				</label>
+				<label for="edit-message" class="block text-sm font-medium text-slate-700"> Message </label>
 				<textarea
 					id="edit-message"
 					bind:value={formData.content.preview}

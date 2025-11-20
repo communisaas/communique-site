@@ -26,6 +26,25 @@
 - ✅ Subtle progressive disclosure for privacy (popovers, expandable details)
 - ✅ "Credibly cool" aesthetic - neither corporate bland nor crypto tacky
 
+### 📐 [TYPOGRAPHY-SYSTEM.md](TYPOGRAPHY-SYSTEM.md) - Typography Implementation Guide
+
+**Dual-font system reference and implementation patterns.**
+
+**Covers:**
+- Satoshi vs JetBrains Mono usage rules
+- Tailwind class patterns (font-brand, font-mono)
+- Component-specific examples (CoordinationTicker, TemplateCard)
+- Font loading strategy (<100ms FOIT target)
+- Performance measurement and optimization
+- Migration guide (Phase 1→2→3)
+- Accessibility requirements (WCAG AA)
+
+**Implementation status:**
+- [TYPOGRAPHY-IMPLEMENTATION-SUMMARY.md](TYPOGRAPHY-IMPLEMENTATION-SUMMARY.md) - Phase 1 foundation
+- [PHASE-2-PROGRESS.md](PHASE-2-PROGRESS.md) - Phase 2 component migration (WEEK 2 COMPLETE ✅)
+- [PHASE-3-ATMOSPHERIC.md](PHASE-3-ATMOSPHERIC.md) - Phase 3 atmospheric design (WEEK 3 IN PROGRESS 🟡)
+- [PERFORMANCE-VERIFICATION.md](PERFORMANCE-VERIFICATION.md) - Performance testing guide
+
 ### 📝 [voice.md](voice.md) - Voice & Language Guidelines
 
 **How Communiqué speaks to users.**

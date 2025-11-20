@@ -158,9 +158,10 @@
 		}
 
 		// Append References section to message body (at bottom for trust without interrupting flow)
-		const messageWithReferences = formData.content.sources && formData.content.sources.length > 0
-			? appendReferences(formData.content.preview, formData.content.sources)
-			: formData.content.preview;
+		const messageWithReferences =
+			formData.content.sources && formData.content.sources.length > 0
+				? appendReferences(formData.content.preview, formData.content.sources)
+				: formData.content.preview;
 
 		const template: Omit<Template, 'id'> = {
 			slug: formData.objective.slug || '',
@@ -376,9 +377,9 @@
 			{#if currentStep === 'objective'}
 				<ObjectiveDefiner bind:data={formData.objective} {context} />
 			{:else if currentStep === 'audience'}
-				<DecisionMakerResolver bind:formData={formData} onnext={handleNext} onback={handleBack} />
+				<DecisionMakerResolver bind:formData onnext={handleNext} onback={handleBack} />
 			{:else if currentStep === 'content'}
-				<MessageGenerationResolver bind:formData={formData} onnext={handleNext} onback={handleBack} />
+				<MessageGenerationResolver bind:formData onnext={handleNext} onback={handleBack} />
 			{:else}
 				<SmartReview data={formData} {context} isActiveStep={currentStep === 'review'} />
 			{/if}

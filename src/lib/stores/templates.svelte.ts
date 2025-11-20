@@ -5,7 +5,6 @@ import { formatErrorMessage } from '$lib/utils/error-formatting';
 // Type guard for Template with enhanced debugging
 function isTemplate(obj: unknown): obj is Template {
 	if (typeof obj !== 'object' || obj === null) {
-		console.debug('Template validation failed: Not an object or null');
 		return false;
 	}
 
@@ -118,11 +117,6 @@ function isTemplate(obj: unknown): obj is Template {
 	const failures = validations.filter((v) => !v.valid);
 
 	if (failures.length > 0) {
-		console.debug(
-			'Template validation failed for fields:',
-			failures.map((f) => `${f.field} (expected valid, got ${f.actual})`)
-		);
-		console.debug('Full template object:', template);
 		return false;
 	}
 
@@ -201,7 +195,6 @@ function createTemplateStore() {
 			try {
 				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.list<Template[]>();
-				console.log('Templates API result:', result);
 
 				if (!result.success) {
 					console.error('Template fetch failed:', result.error);

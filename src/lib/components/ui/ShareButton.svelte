@@ -211,9 +211,9 @@
 		onmouseenter={() => !animating && !copied && (hovered = true)}
 		onmouseleave={() => !animating && !copied && (hovered = false)}
 		class="
-			relative inline-flex transform-gpu cursor-pointer
-			items-center justify-center
-			rounded-full font-medium transition-all
+			relative inline-flex transform-gpu cursor-pointer items-center
+			justify-center rounded-full
+			font-brand font-medium transition-all
 			duration-200 ease-out
 			{sizeClasses[size]}
 			{variantClasses[variant]}

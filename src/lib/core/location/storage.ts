@@ -37,7 +37,6 @@ export class LocationStorage {
 	 * Force delete the database (nuclear option for corrupted databases)
 	 */
 	async nukeDatabase(): Promise<void> {
-		console.log('[LocationStorage] 🔥 NUKING DATABASE - Forcing complete recreation');
 
 		// Close existing connection
 		this.close();
@@ -46,7 +45,6 @@ export class LocationStorage {
 			const request = indexedDB.deleteDatabase(INDEXED_DB_NAME);
 
 			request.onsuccess = () => {
-				console.log('[LocationStorage] ✓ Database deleted successfully');
 				resolve();
 			};
 
@@ -56,7 +54,6 @@ export class LocationStorage {
 			};
 
 			request.onblocked = () => {
-				console.warn('[LocationStorage] ⚠ Database deletion blocked - close all other tabs');
 			};
 		});
 	}
@@ -94,7 +91,6 @@ export class LocationStorage {
 					// We can't directly check keyPath from an open database
 					// So we'll validate by attempting a transaction
 					// If this fails, it means the schema is corrupted
-					console.log('[LocationStorage] Database opened with version:', this.db.version);
 				}
 
 				resolve(request.result);
@@ -154,7 +150,6 @@ export class LocationStorage {
 
 			// Verify object store exists before accessing
 			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.LOCATION_SIGNALS)) {
-				console.warn('[LocationStorage] Object store not found, cannot store signal');
 				return;
 			}
 
@@ -189,7 +184,6 @@ export class LocationStorage {
 
 			// Verify object store exists before accessing
 			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.LOCATION_SIGNALS)) {
-				console.warn('[LocationStorage] Object store not found, returning empty signals');
 				return [];
 			}
 
@@ -221,7 +215,6 @@ export class LocationStorage {
 
 			// Verify object store exists before accessing
 			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.LOCATION_SIGNALS)) {
-				console.warn('[LocationStorage] Object store not found, returning empty signals by type');
 				return [];
 			}
 
@@ -254,7 +247,6 @@ export class LocationStorage {
 
 			// Verify object store exists before accessing
 			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.LOCATION_SIGNALS)) {
-				console.warn('[LocationStorage] Object store not found, cannot delete signal');
 				return;
 			}
 
@@ -292,7 +284,6 @@ export class LocationStorage {
 
 			// Verify object store exists before accessing
 			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.LOCATION_SIGNALS)) {
-				console.warn('[LocationStorage] Object store not found, skipping cleanup');
 				return 0;
 			}
 
@@ -426,7 +417,6 @@ export class LocationStorage {
 
 			// Verify object store exists before accessing
 			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.INFERRED_LOCATION)) {
-				console.warn('[LocationStorage] Object store not found, cannot store inferred location');
 				return;
 			}
 
@@ -485,7 +475,6 @@ export class LocationStorage {
 
 			// Verify object store exists before accessing
 			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.INFERRED_LOCATION)) {
-				console.warn('[LocationStorage] Object store not found, returning null');
 				return null;
 			}
 
@@ -594,8 +583,5 @@ if (typeof window !== 'undefined') {
 	(window as typeof window & { __nukeLocationDB?: () => Promise<void> }).__nukeLocationDB =
 		async () => {
 			await locationStorage.nukeDatabase();
-			console.log(
-				'[LocationStorage] 💀 Database nuked. Refresh page to recreate with clean schema.'
-			);
 		};
 }

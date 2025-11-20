@@ -1,39 +1,82 @@
 # CLAUDE.md
 
-Authoritative guide for Claude Code in this repo. Single source of truth for the **frontend application** of VOTER Protocol's cryptographic democratic infrastructure.
+**Authoritative guide for Claude Code.** Single source of truth for VOTER Protocol's cryptographic social coordination infrastructure frontend.
+
+---
+
+## 🎯 What Communiqué Actually Is
+
+**Communiqué is a multi-stakeholder social coordination platform using cryptographic primitives to enable accountability across ALL power structures.**
+
+### Power Structures We Coordinate Against:
+
+1. **Government** - Congress, state legislatures, regulators, agencies
+2. **Corporate** - Executives, boards, shareholders (workplace accountability)
+3. **Housing** - Landlords, HOAs, property management companies
+4. **Institutional** - Universities, hospitals, school boards
+5. **Labor** - Union organizing, worker cooperatives
+6. **Nonprofit** - NGO accountability, participatory grantmaking
+7. **Advocacy** - Community organizations, mutual aid networks
+
+**See `docs/research/power-structures.md` for comprehensive power structure research (landlords, HOAs, universities, hospitals, school boards, nonprofits, worker organizing).**
+
+### ⚠️ CRITICAL: Language Must Reflect Multi-Stakeholder Scope
+
+**❌ NEVER use government-only language:**
+- "Contact your representative"
+- "Send to Congress"
+- "Bills in your district"
+- "Find campaigns"
+- "Government issues"
+
+**✅ Use power-structure-agnostic language:**
+- Location + coordination count: "CA-11" / "47 coordinating in California"
+- Direct action verbs: "Send message" / "Coordinate" / "Join"
+- Template titles speak for themselves (no category labels)
+- When relevant: "Send via email" / "Certified delivery" / "Congressional delivery"
+
+**→ `docs/design/voice.md`** - Pragmatic cypherpunk voice guide (confident, direct, no corporate speak, technical details in popovers)
+
+---
+
+## Phase Roadmap
 
 **Phase 1 (3 months to launch):** Reputation-only. Zero-knowledge verification, encrypted delivery, on-chain reputation tracking. No token.
 
 **Phase 2 (12-18 months):** Token rewards, challenge markets, outcome markets powered by multi-agent treasury management.
 
-## Quick start
+---
+
+## Quick Start
 
 ```bash
 npm install
 npm run dev        # http://localhost:5173
 ```
 
-Common:
+Common commands:
 
 ```bash
-npm run build    # prod build
-npm run preview  # preview
-npm run check    # type + svelte-check
-npm run lint     # eslint with warnings allowed
-npm run lint:strict # eslint with zero tolerance (for cleanup)
-npm run format   # prettier --write . (auto-fix formatting)
-npm run test     # integration-first test suite
+npm run build          # prod build
+npm run preview        # preview
+npm run check          # type + svelte-check
+npm run lint           # eslint with warnings allowed
+npm run lint:strict    # eslint with zero tolerance
+npm run format         # prettier --write . (auto-fix)
+npm run test           # integration-first test suite
 ```
 
-## Code Quality Standards
+---
 
-### 🚨 ABSOLUTE ZERO ESLint ERROR POLICY 🚨
+## 🚨 Code Quality: ABSOLUTE ZERO TOLERANCE 🚨
 
-**WE JUST EXPERIENCED 1000+ ESLint ERRORS CAUSING COMPLETE DEVELOPMENT PARALYSIS. THIS NEVER HAPPENS AGAIN.**
+### Why This Nuclear-Level Strictness Exists
 
-**ROOT CAUSE ANALYSIS: Inconsistent tooling, unclear standards, and reactive error-fixing created an endless cycle of technical debt.**
+**WE JUST EXPERIENCED 1000+ ESLint ERRORS CAUSING COMPLETE DEVELOPMENT PARALYSIS.**
 
-#### 🛡️ PREVENTION-FIRST APPROACH 🛡️
+ROOT CAUSE: Inconsistent tooling, unclear standards, reactive error-fixing created endless technical debt.
+
+### PREVENTION-FIRST APPROACH
 
 **BEFORE writing ANY code:**
 
@@ -44,109 +87,48 @@ npm run test     # integration-first test suite
 
 **CI WILL FAIL ON ANY ESLint ERROR. No exceptions. No "we'll fix it later."**
 
-#### ⚡ INSTANT PR REJECTION CRITERIA ⚡
+### ⚡ INSTANT PR REJECTION CRITERIA ⚡
 
 **Any PR containing these patterns will be INSTANTLY REJECTED without review:**
 
-- ❌ **`any` type usage** - No exceptions, no "temporary" uses, no "quick fixes"
-- ❌ **`@ts-ignore` comments** - Fix the fucking type issue, don't silence it
-- ❌ **`@ts-nocheck` comments** - Every single file MUST be type-checked
-- ❌ **`@ts-expect-error` comments** - Fix the code, not suppress the error
-- ❌ **`as any` casting** - Use proper type guards and type assertions
-- ❌ **`Record<string, any>` patterns** - Define proper interfaces
-- ❌ **`(obj as any).property` access** - Define proper object types
-- ❌ **`unknown` misuse as `any` substitute** - Use proper type narrowing
-- ❌ **Generic function parameters without constraints** - Always constrain generics
-- ❌ **Loose object casting like `data as SomeType`** - Use type guards
+- ❌ **`any` type usage** - No exceptions, no "temporary" uses
+- ❌ **`@ts-ignore` / `@ts-nocheck` / `@ts-expect-error`** - Fix the type issue
+- ❌ **`as any` casting** - Use proper type guards
+- ❌ **`Record<string, any>`** - Define proper interfaces
+- ❌ **`unknown` as `any` substitute** - Use proper type narrowing
+- ❌ **Generic parameters without constraints** - Always constrain generics
+- ❌ **Loose object casting** - Use type guards
 
-#### 💀 CONSEQUENCES OF TYPE VIOLATIONS 💀
+### ✅ MANDATORY PRACTICES
 
-- **Immediate PR rejection** - No discussion, no exceptions
-- **Forced refactoring** - Violating code must be completely rewritten
-- **Build failure** - CI will fail and block deployments
-- **Code review rejection** - Reviewers are instructed to reject without mercy
-
-#### ✅ MANDATORY TYPE PRACTICES ✅
-
-**Every line of code MUST follow these practices:**
-
-- ✅ **Explicit types for ALL function parameters and returns**
-- ✅ **Comprehensive interfaces for ALL data structures**
-- ✅ **Type guards for ALL runtime validation**
-- ✅ **Discriminated unions for ALL variant types**
-- ✅ **Exhaustive type checking in ALL switch statements**
-- ✅ **Proper generic constraints for ALL generic functions**
-- ✅ **Strict null checks enabled and enforced**
-- ✅ **No implicit any configurations**
-
-### 🔧 ESLint Configuration Standards
-
-#### Error Handling Patterns (NEVER change these):
-
-```typescript
-// ✅ CORRECT - Use error when needed
-try {
-	riskyOperation();
-} catch (error) {
-	console.error('Operation failed:', error);
-	throw error;
-}
-
-// ✅ CORRECT - Anonymous when unused
-try {
-	simpleOperation();
-} catch {
-	return { success: false };
-}
-
-// ❌ WRONG - Don't prefix used variables
-try {
-	riskyOperation();
-} catch (_error) {
-	console.error('Operation failed:', _error); // ERROR: _error used but prefixed
-}
-```
-
-#### Unused Variable Rules:
-
-- **Prefix with `_` ONLY if truly unused**: `_error`, `_event`, `_config`
-- **Remove unused imports entirely** - Don't just prefix them
-- **Use destructuring with rest**: `const { used, ..._unused } = obj;`
-
-#### Import Standards:
-
-- **ES6 imports only** - No `require()` statements
-- **Type-only imports** - `import type { Type } from './module';`
-- **Remove unused imports** - Don't accumulate dead imports
+**Every line of code MUST:**
+- ✅ Explicit types for ALL function parameters/returns
+- ✅ Comprehensive interfaces for ALL data structures
+- ✅ Type guards for ALL runtime validation
+- ✅ Discriminated unions for ALL variant types
+- ✅ Exhaustive type checking in ALL switch statements
+- ✅ Proper generic constraints
+- ✅ Strict null checks enabled
 
 ### 🚀 MANDATORY Pre-commit Workflow
 
 **THESE COMMANDS MUST PASS WITH 0 ERRORS BEFORE ANY COMMIT:**
 
 ```bash
-# 1. Format code first
-npm run format
-
-# 2. CRITICAL: Must show "✖ 0 problems"
-npm run lint --max-warnings 0
-
-# 3. TypeScript compilation must succeed
-npm run check
-
-# 4. Production build must succeed
-npm run build
-
-# 5. Test suite must pass
-npm run test:run
+npm run format                   # Format code first
+npm run lint --max-warnings 0    # CRITICAL: Must show "✖ 0 problems"
+npm run check                    # TypeScript + Svelte validation
+npm run build                    # Production build must succeed
+npm run test:run                 # Test suite must pass
 ```
 
 **If ANY command fails, you CANNOT commit. Fix the issues first.**
 
-### 🆘 Emergency ESLint Recovery Procedure
+### 🆘 Emergency ESLint Recovery
 
 **If you encounter >100 ESLint errors:**
 
-1. **STOP IMMEDIATELY** - Don't try to fix them manually
+1. **STOP IMMEDIATELY** - Don't try to fix manually
 2. **Revert to last known good commit**: `git reset --hard HEAD~1`
 3. **Run `npm run lint` to verify 0 errors**
 4. **Make smaller, incremental changes**
@@ -154,9 +136,11 @@ npm run test:run
 
 **Never attempt mass automated fixes. They create more problems than they solve.**
 
-## TypeScript Best Practices for This Codebase
+---
 
-### SvelteKit 5 Type Requirements:
+## TypeScript Best Practices
+
+### SvelteKit 5 Runes (MUST be typed)
 
 ```typescript
 // ❌ WRONG - Missing types
@@ -179,37 +163,7 @@ let {
 } = $props();
 ```
 
-### Agent Type Requirements:
-
-```typescript
-// Complete type definitions for all agent decisions
-export interface SupplyDecision {
-	rewardAmount: number;
-	baseRewardUSD: number;
-	multipliers: {
-		participationScore: number;
-		marketConditions: number;
-		timeDecay: number;
-	};
-	reasoning: string;
-	confidence: number;
-	timestamp: string;
-	claim?: string; // All optional properties explicitly typed
-	stakes?: number;
-}
-
-// Type guards for runtime validation
-export function isSupplyDecision(value: unknown): value is SupplyDecision {
-	return (
-		typeof value === 'object' &&
-		value !== null &&
-		'rewardAmount' in value &&
-		typeof (value as SupplyDecision).rewardAmount === 'number'
-	);
-}
-```
-
-### Prisma and Database Types:
+### Prisma Database Types
 
 ```typescript
 // Import generated Prisma types
@@ -220,7 +174,6 @@ type UserWithTemplates = User & {
 	templates: Template[];
 };
 
-// NEVER use loose object types
 // ❌ WRONG
 const user: any = await prisma.user.findFirst();
 
@@ -228,53 +181,25 @@ const user: any = await prisma.user.findFirst();
 const user: User | null = await prisma.user.findFirst();
 ```
 
-### Test Type Requirements:
-
-```typescript
-// vi.mock MUST have proper return types
-vi.mock('$lib/core/api/client', () => ({
-	api: {
-		post: vi.fn<[string, unknown], Promise<ApiResponse<VerificationResult>>>()
-	}
-}));
-
-// Mock data must match interfaces exactly
-const mockUser: MockUser = {
-	id: 'test-id',
-	email: 'test@example.com'
-	// ALL required properties must be present
-};
-```
-
-### 🔥 REAL-WORLD TYPE VIOLATION PATTERNS WE JUST FIXED 🔥
+### 🔥 Real-World Type Violation Patterns We Just Fixed
 
 **These are the EXACT lazy patterns that caused our 193+ TypeScript errors:**
 
 #### ❌ Component Event Dispatch Type Mismatches
 
 ```typescript
-// WRONG - Extra properties in event dispatch
+// WRONG - Extra properties not in event type
 dispatch('complete', {
 	address: verified,
-	district: districtData, // ← Not in event type definition
-	extraField: value // ← Not in event type definition
+	district: districtData, // ← Not in event type
+	extraField: value       // ← Not in event type
 });
 
-// CORRECT - Only dispatch properties defined in event type
+// CORRECT - Only dispatch defined properties
 const dispatch = createEventDispatcher<{
 	complete: { address: string; verified: boolean };
 }>();
 dispatch('complete', { address: verified, verified: true });
-```
-
-#### ❌ Route ID Comparisons with Non-Existent Routes
-
-```typescript
-// WRONG - Comparing against removed/non-existent routes
-const isTemplate = $page.route.id === '/s/[slug]' || $page.route.id === '/[slug]-backup';
-
-// CORRECT - Only compare against actual routes
-const isTemplate = $page.route.id === '/s/[slug]';
 ```
 
 #### ❌ Object Spread with Duplicate Properties
@@ -282,9 +207,9 @@ const isTemplate = $page.route.id === '/s/[slug]';
 ```typescript
 // WRONG - Duplicate properties cause TypeScript errors
 return {
-	id: template.id, // ← Duplicate after spread
+	id: template.id,    // ← Duplicate after spread
 	title: template.title, // ← Duplicate after spread
-	...template, // ← Already includes id, title
+	...template,        // ← Already includes id, title
 	recipientEmails: emails
 };
 
@@ -297,77 +222,43 @@ return {
 };
 ```
 
-#### ❌ Generic Record Types in Validator Functions
-
-```typescript
-// WRONG - Generic casting loses type information
-const stepData = (formData as any)[currentStep] as Record<string, unknown>;
-formErrors = validators[currentStep](stepData); // ← Type mismatch
-
-// CORRECT - Use explicit type checks for each step
-if (currentStep === 'objective') {
-	formErrors = validators.objective(formData.objective);
-} else if (currentStep === 'audience') {
-	formErrors = validators.audience(formData.audience);
-}
-```
-
 #### ❌ Prisma Field Naming Inconsistencies
 
 ```typescript
 // WRONG - Mixing snake_case and camelCase
 const user = {
 	congressional_district: data.congressionalDistrict, // ← Inconsistent
-	verification_method: data.verificationMethod // ← Inconsistent
+	verification_method: data.verificationMethod        // ← Inconsistent
 };
 
-// CORRECT - Use consistent snake_case for Prisma fields
+// CORRECT - Consistent snake_case for Prisma fields
 const user = {
 	congressional_district: data.congressional_district,
 	verification_method: data.verification_method
 };
 ```
 
-### Type Checking Commands:
+### Type Checking Commands
 
 ```bash
-# These MUST pass with zero errors:
-npm run check         # Runs svelte-check with TypeScript
-npx tsc --noEmit      # Pure TypeScript check
-npm run build         # Verify production build succeeds
+npm run check              # TypeScript + Svelte validation
+npx tsc --noEmit           # Pure TypeScript check
+npm run build              # Verify production build
 
 # Quick check during development:
 npx tsc --noEmit --skipLibCheck
 ```
 
-### Pattern-Matching Error Resolution Strategy:
-
-When fixing TypeScript errors, group similar patterns:
-
-1. **Prisma field naming** - Fix all snake_case vs camelCase inconsistencies together
-2. **Component event types** - Update all event dispatcher interfaces together
-3. **Route comparisons** - Remove all references to non-existent routes together
-4. **Object spreads** - Fix all duplicate property conflicts together
-5. **Type casting** - Replace all `any` casts with proper type guards together
-
-### ⚡ ENFORCEMENT PROTOCOL ⚡
+### ⚡ ENFORCEMENT PROTOCOL
 
 #### Pre-Commit Requirements (ALL MUST PASS):
 
 ```bash
-# These commands MUST return ZERO errors or the commit is REJECTED:
-npm run check         # TypeScript + Svelte validation
-npx tsc --noEmit      # Pure TypeScript compilation check
-npm run build         # Production build verification
-npm run lint:strict   # Zero-tolerance ESLint check
+npm run check              # TypeScript + Svelte validation
+npx tsc --noEmit           # Pure TypeScript compilation check
+npm run build              # Production build verification
+npm run lint:strict        # Zero-tolerance ESLint check
 ```
-
-#### Development Workflow Requirements:
-
-- **Before every commit**: Run all type-checking commands
-- **Before every PR**: Verify 0 TypeScript errors
-- **During development**: Use `npx tsc --noEmit --watch` for real-time checking
-- **In CI/CD**: Automated rejection of any type violations
 
 #### Code Review Standards:
 
@@ -376,9 +267,9 @@ npm run lint:strict   # Zero-tolerance ESLint check
 - **Any loose casting = INSTANT REJECTION**
 - **Any missing interface = REQUIRES IMMEDIATE FIX**
 
-### 💰 THE REAL COST OF TYPE SHORTCUTS 💰
+### 💰 THE REAL COST OF TYPE SHORTCUTS
 
-**Why we're this fucking strict:**
+**Why we're this strict:**
 
 - **193+ TypeScript errors** we just spent cycles fixing
 - **Hours of development time** wasted on type debugging
@@ -388,7 +279,7 @@ npm run lint:strict   # Zero-tolerance ESLint check
 
 **EVERY TYPE SHORTCUT COSTS MORE TIME THAN DOING IT RIGHT THE FIRST TIME.**
 
-### 🎯 ZERO EXCEPTIONS POLICY 🎯
+### 🎯 ZERO EXCEPTIONS POLICY
 
 **No matter who you are, no matter how "urgent" the feature:**
 
@@ -399,22 +290,155 @@ npm run lint:strict   # Zero-tolerance ESLint check
 
 **Remember: We just spent multiple development cycles fixing 193+ TypeScript errors caused by these exact patterns. This nuclear-level strictness exists because we learned the hard way that type shortcuts are never worth it.**
 
-## Environment
+---
 
-### Required (Core):
+## Architecture Overview
+
+### What Communiqué Handles (Frontend + Orchestration)
+
+- **SvelteKit 5** + TypeScript + Tailwind (frontend framework)
+- **Supabase (Postgres)** via Prisma; cryptographic sessions via `@oslojs/crypto`
+- **OAuth authentication** (Google, Facebook, Twitter, LinkedIn, Discord)
+- **Address validation** → Census Bureau geocoding → congressional district lookup
+- **Template system** - Creation, customization, multi-target delivery (Congress + corporations + HOAs + schools + nonprofits)
+- **3-layer content moderation** - Multi-agent consensus (OpenAI, Gemini, Claude)
+- **Witness encryption** in browser (XChaCha20-Poly1305 to TEE public key)
+- **ZK proof coordination** - Halo2 proofs (2-5s TEE-based proving in AWS Nitro Enclaves native Rust)
+- **Encrypted delivery** via CWC API through AWS Nitro Enclaves (ARM-based TEE, no Intel ME/AMD PSP)
+- **Integration-first testing** (53→6 tests, smart mocks, fixtures)
+
+### What voter-protocol Handles (Blockchain + Cryptography)
+
+- **Smart contracts** on Scroll zkEVM (Ethereum L2)
+- **Halo2 ZK proof verification** on-chain
+- **ERC-8004 on-chain reputation** tracking
+- **Multi-agent treasury management** (Phase 2)
+- **Token economics, challenge markets, outcome markets** (Phase 2)
+
+**→ `docs/architecture.md`** - Comprehensive architecture doc explaining Communiqué/voter-protocol separation, cypherpunk principles, privacy architecture, cost analysis
+
+**→ `docs/architecture/LOCATION-SIGNAL-ACCURACY-LIMITS.md`** - Location signal accuracy matrix (IP = state-level only, NOT district), false precision prevention, code enforcement patterns
+
+### Phase 1 Cryptographic Flow
+
+1. **Identity verification**: self.xyz NFC passport (70%) + Didit.me (30%) - both FREE
+2. **Witness encryption**: Address encrypted in browser (XChaCha20-Poly1305)
+   - **Current (MVP):** Encrypted blob stored in Postgres (platform cannot decrypt)
+   - **Phase 2:** IPFS storage + on-chain pointer (99.97% cost reduction)
+3. **ZK proof generation**: TEE decrypts witness, generates Halo2 proof (2-5s native Rust), address exists only in TEE memory during proving
+4. **Encrypted delivery**: XChaCha20-Poly1305 → AWS Nitro Enclaves (ARM Graviton, hypervisor-isolated) → CWC API → congressional office
+5. **Reputation tracking**: On-chain ERC-8004 reputation updates (no token rewards yet)
+
+**→ `docs/specs/zk-proof-integration.md`** - ZK proof integration guide (5 phases, 10 weeks, 45K comprehensive)
+
+**→ `docs/specs/portable-identity.md`** - IPFS + on-chain pointer architecture (Phase 2, 19K)
+
+**→ `docs/specs/universal-credibility.md`** - Credential verification system (17K)
+
+### Phase 2 Additions (12-18 months)
+
+- Token rewards for verified civic actions
+- Multi-agent treasury execution (OpenAI + Gemini/Claude consensus)
+- Challenge markets (dispute resolution)
+- Outcome markets (impact verification)
+
+---
+
+## Code Map
+
+### Routes & API
+**Location:** `src/routes/`
+- **Pages** - SvelteKit SSR pages, layout components
+- **API endpoints** - `/api/*` server routes (templates, auth, verification, congressional delivery)
+
+### UI Components
+**Location:** `src/lib/components/`
+
+Organized by domain:
+- **`auth/`** - OAuth flows, session UI, address verification modals
+- **`landing/`** - Template browser, location filter, channel explainer
+- **`template/`** - Template cards, creator UI, variable editor
+- **`analytics/`** - Funnel tracking UI, delivery dashboards
+- **`ui/`** - Reusable primitives (buttons, modals, forms, atmospheric background)
+
+### Core Production Systems
+**Location:** `src/lib/core/`
+
+- **`auth/`** - Authentication, OAuth providers, session management
+- **`analytics/`** - Funnel tracking, database analytics, event logging
+- **`api/`** - Unified API client for backend communication
+- **`blockchain/`** - VOTER Protocol client integration (reputation queries)
+- **`congress/`** - US Congressional delivery (CWC API, address lookup)
+- **`legislative/`** - Legislative abstraction layer (adapters, delivery pipeline, variable resolution)
+- **`location/`** - Location inference engine (5-signal system: IP, browser, OAuth, behavioral, verified)
+- **`server/`** - Server-side utilities (verification, sentiment, security, metrics)
+- **`db.ts`** - Prisma database client
+
+**→ `docs/architecture/LOCATION-SIGNAL-ACCURACY-LIMITS.md`** explains why IP can only reliably determine state (NOT district), and how the 5-signal system progressively improves accuracy
+
+### Service Layer
+**Location:** `src/lib/services/`
+
+- **`aws/`** - AWS integrations (SQS, DynamoDB, rate limiting)
+- **`delivery/`** - Email delivery, SMTP server, multi-target delivery
+- **`geolite2.ts`** - IP geolocation database (state-level only)
+
+### Agent Infrastructure
+**Location:** `src/lib/agents/`
+
+- **`content/`** - Template moderation and multi-agent consensus (OpenAI, Gemini, Claude)
+- **`shared/`** - Base agent classes, type guards, common utilities
+- **`voter-protocol/`** - Blockchain reward calculation (Phase 2)
+
+**→ `docs/agents/agent-architecture.md`** (if exists) - Agent orchestration patterns, LangGraph workflows
+
+### State Management
+**Location:** `src/lib/stores/`
+
+Svelte 5 runes-based reactive state (NOT old stores API).
+
+### Utilities & Types
+**Location:** `src/lib/utils/` and `src/lib/types/`
+
+- **Utils** - Formatting, debounce, portal, template resolution
+- **Types** - Comprehensive TypeScript definitions for templates, users, locations, jurisdictions
+
+### Feature Flags
+**Location:** `src/lib/features/`
+
+Beta features (AI suggestions, template intelligence) gated by `ENABLE_BETA` env var.
+
+### Tests
+**Location:** `tests/`
+
+- **`integration/`** - Integration tests (database, API, auth flows)
+- **`unit/`** - Unit tests (utilities, type guards, business logic)
+- **`e2e/`** - End-to-end browser tests (Playwright)
+- **`mocks/`** - Mock data factories
+- **`fixtures/`** - Test fixtures
+
+**→ `docs/development/testing.md`** - Test strategy (integration-first approach, smart mocks, fixtures)
+
+**→ `docs/testing/DATABASE-CLEARING-ISSUE.md`** - Important: Tests clear database for isolation; use `npm run test:reseed` to auto-reseed
+
+---
+
+## Environment Variables
+
+### Required (Core)
 
 ```bash
 SUPABASE_DATABASE_URL=...           # Supabase Postgres connection string
 ```
 
-### Congressional Delivery (Optional):
+### Congressional Delivery (Optional)
 
 ```bash
 CWC_API_KEY=...                     # Communicating With Congress API key
 CWC_API_BASE_URL=...                # CWC API base URL (default: https://soapbox.senate.gov/api)
 ```
 
-### OAuth Providers (Optional - any combination):
+### OAuth Providers (Optional - any combination)
 
 ```bash
 # OAuth Configuration
@@ -441,7 +465,7 @@ DISCORD_CLIENT_ID=...
 DISCORD_CLIENT_SECRET=...
 ```
 
-### Webhook Security:
+### Webhook Security
 
 ```bash
 LAMBDA_WEBHOOK_SECRET=...           # AWS Lambda webhook authentication
@@ -449,14 +473,14 @@ VOTER_API_KEY=...                   # VOTER Protocol API authentication
 COMMUNIQUE_API_KEY=...              # Internal API authentication
 ```
 
-### Feature Flags:
+### Feature Flags
 
 ```bash
 ENABLE_BETA=true                    # Enable beta features (default: false)
 NODE_ENV=production                 # Environment (affects OAuth security, logging)
 ```
 
-### AWS Infrastructure (Optional):
+### AWS Infrastructure (Optional)
 
 ```bash
 DYNAMO_TABLE_NAME=...               # DynamoDB table for rate limiting
@@ -467,196 +491,57 @@ RATE_LIMIT_COUNT=10                 # Rate limit count (default: 10 per hour)
 VISIBILITY_TIMEOUT_SECONDS=300      # SQS visibility timeout (default: 5 minutes)
 ```
 
-## Architecture (Phase 1: Reputation-Only Frontend)
+---
 
-**What Communiqué handles:**
-- SvelteKit 5 + TypeScript + Tailwind (frontend framework)
-- Supabase (Postgres) via Prisma; cryptographic sessions via `@oslojs/crypto`
-- OAuth authentication (Google, Facebook, Twitter, LinkedIn, Discord)
-- Address validation → Census Bureau geocoding → congressional district lookup
-- Template creation, customization, and 3-layer content moderation
-- Witness encryption in browser (XChaCha20-Poly1305 to TEE public key)
-- Halo2 zero-knowledge proofs (2-5s TEE-based proving in AWS Nitro Enclaves native Rust)
-- Encrypted delivery via CWC API through AWS Nitro Enclaves (ARM-based TEE, no Intel ME/AMD PSP)
-- Integration-first testing (53→6 tests, smart mocks, fixtures)
+## Agent Architecture
 
-**What voter-protocol handles:**
-- Smart contracts on Scroll zkEVM (Ethereum L2)
-- Halo2 zero-knowledge proof verification on-chain
-- ERC-8004 on-chain reputation tracking
-- Multi-agent treasury management (Phase 2)
-- Token economics, challenge markets, outcome markets (Phase 2)
+### Phase 1: Content Moderation (Active Now)
 
-**Phase 1 cryptographic flow:**
-1. Identity verification: self.xyz NFC passport (70%) + Didit.me (30%) - both FREE
-2. Witness encryption: Address encrypted in browser (XChaCha20-Poly1305)
-   - **Current (MVP):** Encrypted blob stored in Postgres (platform cannot decrypt)
-   - **Phase 2 (cost optimization):** IPFS storage + on-chain pointer (99.97% cost reduction, see `docs/PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md`)
-3. ZK proof generation: TEE decrypts witness, generates Halo2 proof (2-5s native Rust), address exists only in TEE memory during proving
-4. Encrypted delivery: XChaCha20-Poly1305 → AWS Nitro Enclaves (ARM Graviton, hypervisor-isolated) → CWC API → congressional office
-5. Reputation tracking: On-chain ERC-8004 reputation updates (no token rewards yet)
+**Location:** `src/lib/agents/content/`
 
-**Phase 2 additions (12-18 months):**
-- Token rewards for verified civic actions
-- Multi-agent treasury execution (OpenAI + Gemini/Claude consensus)
-- Challenge markets (dispute resolution)
-- Outcome markets (impact verification)
+**Purpose:** 3-layer multi-agent consensus for template quality.
 
-Code map:
-
-- **Routes/API**: `src/routes/` (pages, SSR, API endpoints)
-- **UI Components**: `src/lib/components/` (organized by domain: auth, landing, template, analytics, ui)
-- **Core Production**: `src/lib/core/`
-  - `auth/` - Authentication, OAuth, session management
-  - `analytics/` - Funnel tracking, database analytics
-  - `api/` - Unified API client
-  - `blockchain/` - VOTER Protocol client integration
-  - `congress/` - US Congressional delivery (CWC, address lookup)
-  - `legislative/` - Legislative abstraction layer (adapters, delivery pipeline, variable resolution)
-  - `server/` - Server-side utilities (verification, sentiment, security, metrics)
-  - `db.ts` - Prisma database client
-- **Service Layer**: `src/lib/services/`
-  - `aws/` - AWS integrations (SQS, DynamoDB)
-  - `delivery/` - Email delivery, SMTP server, integration types
-- **Agent Infrastructure**: `src/lib/agents/`
-  - `content/` - Template moderation and consensus
-  - `shared/` - Base agent classes and type guards
-  - `voter-protocol/` - Blockchain reward calculation
-- **State Management**: `src/lib/stores/` (Svelte 5 runes-based)
-- **Utilities**: `src/lib/utils/` (formatting, debounce, portal, template resolution)
-- **Types**: `src/lib/types/` (comprehensive TypeScript definitions)
-- **Feature-flagged**: `src/lib/features/` (ai-suggestions, config)
-- **Integrations**: `src/lib/integrations/` (VOTER Protocol)
-- **Data**: `src/lib/data/` (static data files)
-- **Actions**: `src/lib/actions/` (Svelte actions)
-- **Tests**: `tests/` (integration, unit, e2e, mocks, fixtures)
-
-## Platform Positioning & Voice Guidelines
-
-### 🚨 CRITICAL: This is NOT a Government-Only Platform 🚨
-
-**Communiqué is a MULTI-STAKEHOLDER social coordination platform.**
-
-We coordinate action across ALL power structures:
-- **Government** (legislators, regulators, agencies)
-- **Corporate** (executives, boards, shareholders)
-- **Institutional** (universities, hospitals, foundations)
-- **Labor** (unions, worker organizations)
-- **Advocacy** (NGOs, community organizations)
-
-**❌ NEVER use government-centric language in user-facing copy:**
-- ❌ "Contact your representative"
-- ❌ "Send to Congress"
-- ❌ "Bills in your district"
-- ❌ "Find campaigns"
-- ❌ "Government issues"
-
-**✅ Use multi-stakeholder language that reflects coordination:**
-- ✅ Location + coordination count: "CA-11" / "47 coordinating in California"
-- ✅ Direct action verbs: "Send message" / "Coordinate" / "Join"
-- ✅ Template titles speak for themselves (no category labels needed)
-- ✅ When delivery method is relevant: "Send via email" / "Certified delivery"
-
-### Voice Reference: docs/design/voice.md
-
-**ALL user-facing copy MUST follow the voice guidelines in `docs/design/voice.md`.**
-
-**Core Principles (from voice.md):**
-1. **Confident & Direct** - State what is. Don't explain, justify, or defend.
-2. **Technical Details in Popovers** - Primary UI: simple statement. Popover: mechanism for those who care.
-3. **Don't Wear Cypherpunk on Our Sleeve** - Users don't need to know the mechanism unless they ask.
-4. **No Pre-Defending** - Don't apologize for what we are. Don't explain what we're not.
-5. **Imperative Voice** - Commands, not suggestions.
-
-**Vocabulary to Avoid (see voice.md lines 79-95):**
-- ❌ campaigns, issues, community, platform, content, engagement, solutions, empower
-- ✅ Use specific, direct language instead (see voice.md for replacements)
-
-**Geographic Scope Language (voice.md lines 97-114):**
-- Federal: "All 50 states + DC + territories" (NOT "national issues")
-- State: "California" (just the state name)
-- District: "CA-11" (just the district code)
-- Templates speak for themselves - location is just a filter, not a category
-
-**Example Pattern (voice.md lines 268-286):**
-```svelte
-<!-- WRONG -->
-<h3>Find campaigns in your area</h3>
-<p>We'll show you the most relevant local campaigns</p>
-
-<!-- CORRECT -->
-<h1>{congressionalDistrict || stateName || 'Nationwide'}</h1>
-<p>{coordinationCount} coordinating here</p>
-```
-
-### Template Target Types (from template.ts)
-
-Templates have a `target_type` field that specifies the power structure:
-```typescript
-target_type?: 'government' | 'corporate' | 'institutional' | 'labor' | 'advocacy';
-```
-
-Never assume all templates are government-focused. Check the template's actual target type and delivery method before writing copy.
-
-### Why This Matters
-
-**Real-world consequence:** A user correction led to this section being added to prevent government-centric language that misrepresents the platform's multi-stakeholder coordination mission.
-
-When writing copy:
-1. **Check voice.md first** - Ensure language aligns with pragmatic cypherpunk principles
-2. **Never assume government context** - Templates can target any power structure
-3. **Location is a filter, not a category** - Don't label sections as "campaigns" or "issues"
-4. **Templates speak for themselves** - Let the template title/description explain what it does
-
-**Before shipping any user-facing copy, run through the checklist in voice.md (lines 378-398).**
-
-## Agent Architecture (Multi-Agent Content Moderation + VOTER Protocol)
-
-**Phase 1 (active now):** Content moderation agents only. 3-layer consensus for template quality.
-
-**Phase 2 (12-18 months):** VOTER Protocol agents for treasury management, reward calculation, impact verification.
-
-### Phase 1: Content Moderation Agents
-
-**Active now:**
-- **Content Agents** (`src/lib/agents/content/`): Template moderation and quality assessment
-- **Shared Infrastructure** (`src/lib/agents/shared/`): Base agent classes, type guards, common utilities
+**Active Agents:**
+- **Content Agents** - Template moderation and quality assessment
+- **Shared Infrastructure** - Base agent classes, type guards, common utilities
 
 **Consensus Mechanism:**
 
 ```typescript
-// Multi-agent voting for template approval (Phase 1)
+// Multi-agent voting for template approval
 const consensusResult = await agentConsensus.processTemplate({
 	template,
 	agents: ['openai', 'gemini', 'claude'],
-	consensusThreshold: 0.67
+	consensusThreshold: 0.67  // 2/3 majority required
 });
 
-// Result includes:
+// Returns:
 // - approval: boolean
 // - consensusType: 'unanimous' | 'majority' | 'split'
 // - confidence: number
 // - reasoning: string[]
 ```
 
-**Agent Orchestration:**
-
-Template moderation uses LangGraph-based multi-agent consensus:
+**Orchestration:**
 - **3 AI agents** (OpenAI, Gemini, Claude) vote on template quality
 - **LangGraph workflows** orchestrate agent coordination
 - **TypeScript orchestration** (N8N deprecated)
-- See: `docs/agents/agent-architecture.md` for details
-- Code: `src/lib/agents/content/`
 
 ### Phase 2: VOTER Protocol Agents (12-18 months)
 
 **Not implemented yet:**
-- **VOTER Protocol Agents** (`src/lib/agents/voter-protocol/`): Blockchain reward calculation and verification
-- **Multi-agent treasury management**: OpenAI + Gemini/Claude consensus for reward distribution
-- **Impact verification**: Cross-agent scoring of civic action outcomes
-- **Challenge market agents**: Dispute resolution with economic stakes
 
-### Agent API Endpoints:
+**Location:** `src/lib/agents/voter-protocol/`
+
+**Purpose:** Blockchain reward calculation, treasury management, impact verification.
+
+**Planned Agents:**
+- **Reward calculation agents** - Determine token rewards for verified actions
+- **Multi-agent treasury** - OpenAI + Gemini/Claude consensus for reward distribution
+- **Impact verification agents** - Cross-agent scoring of civic action outcomes
+- **Challenge market agents** - Dispute resolution with economic stakes
+
+### Agent API Endpoints
 
 ```bash
 # Phase 1 (active):
@@ -669,21 +554,18 @@ POST /api/agents/verify             # Identity and action verification
 POST /api/agents/update-reputation  # Reputation score updates
 ```
 
-### VOTER Protocol Integration (Phase 1: Read-Only + Reputation):
+---
 
-**Phase 1 (current):**
-- **Read-only blockchain queries**: Fetch user reputation, platform metrics
-- **Reputation tracking**: On-chain ERC-8004 reputation updates (no token rewards)
-- **Deterministic address generation**: Wallet-free blockchain participation via passkeys
-- **Gas management**: Platform pays all transaction fees
+## VOTER Protocol Integration
 
-**Phase 2 (12-18 months):**
-- **Client-side transaction signing**: Users sign with passkey (Face ID / Touch ID)
-- **Token rewards**: Automatic reward distribution for verified civic actions
-- **Challenge markets**: Dispute resolution with economic stakes
-- **Outcome markets**: Impact verification with reputation + token rewards
+### Phase 1 (Current): Read-Only + Reputation
 
-**Integration example (Phase 1):**
+- **Read-only blockchain queries** - Fetch user reputation, platform metrics
+- **Reputation tracking** - On-chain ERC-8004 reputation updates (no token rewards)
+- **Deterministic address generation** - Wallet-free blockchain participation via passkeys
+- **Gas management** - Platform pays all transaction fees
+
+**Integration example:**
 
 ```typescript
 import { voterBlockchainClient } from '$lib/core/blockchain/voter-client';
@@ -697,25 +579,20 @@ const metrics = await voterBlockchainClient.getPlatformStats();
 // Returns: { totalUsers, totalActions, totalReputation }
 ```
 
-**Integration example (Phase 2):**
+### Phase 2 (12-18 months): Token Rewards + Markets
 
-```typescript
-// Prepare unsigned transaction for user to sign
-const { unsignedTx } = await voterBlockchainClient.prepareActionTransaction({
-  userAddress,
-  actionType: 'CWC_MESSAGE',
-  templateId,
-  deliveryConfirmation
-});
+- **Client-side transaction signing** - Users sign with passkey (Face ID / Touch ID)
+- **Token rewards** - Automatic reward distribution for verified civic actions
+- **Challenge markets** - Dispute resolution with economic stakes
+- **Outcome markets** - Impact verification with reputation + token rewards
 
-// User signs with passkey (Face ID / Touch ID)
-const signedTx = await passkeyWallet.signTransaction(unsignedTx);
+**→ `docs/integration.md`** - Comprehensive integration guide (voter-protocol, CWC API, OAuth providers, identity verification, TEE encrypted delivery)
 
-// Submit to blockchain for reward distribution
-await submitTransaction(signedTx);
-```
+---
 
-## Testing (Integration-First Test Suite)
+## Testing
+
+### Test Commands
 
 ```bash
 npm run test             # All tests (integration + unit)
@@ -733,9 +610,17 @@ npm run test:health      # Generate health reports in coverage/ directory
 npm run test:drift       # Mock drift detection reports
 ```
 
-**IMPORTANT:** Tests clear the database for test isolation. Use `npm run test:reseed` to automatically reseed after running tests, or manually run `npm run db:seed` afterward. See `docs/testing/DATABASE-CLEARING-ISSUE.md` for details.
+**⚠️ IMPORTANT:** Tests clear the database for test isolation. Use `npm run test:reseed` to automatically reseed after running tests, or manually run `npm run db:seed` afterward.
+
+**→ `docs/testing/DATABASE-CLEARING-ISSUE.md`** - Details on database clearing behavior
+
+**→ `docs/development/testing.md`** - Test strategy (integration-first approach, smart mocks, fixtures, coverage requirements)
+
+---
 
 ## Database & Seeding
+
+### Database Commands
 
 ```bash
 npm run db:generate      # Generate Prisma client
@@ -747,46 +632,127 @@ npm run db:seed:core     # Same as db:seed (alias)
 npm run db:start         # Start Docker Compose for local database
 ```
 
+**→ `docs/development/database.md`** - Prisma schema documentation, migration workflows, seeding patterns
+
+**→ `docs/development/schema.md`** - Database schema reference (if more detailed than database.md)
+
+---
+
 ## Feature Development
 
-```bash
-# Standard development
-npm run dev
+### Standard Development
 
-# Enable beta features in development
-ENABLE_BETA=true npm run dev
+```bash
+npm run dev              # Start dev server (http://localhost:5173)
 ```
 
-Feature flags control access to:
+### Beta Features
 
-- **Beta features** (`src/lib/features/`): AI suggestions, template intelligence
+```bash
+ENABLE_BETA=true npm run dev   # Enable beta features in development
+```
+
+**Feature flags control access to:**
+- **Beta features** (`src/lib/features/`) - AI suggestions, template intelligence
+
+**→ `docs/development/flags.md`** - Feature flag system documentation (if exists)
+
+---
 
 ## Documentation Navigation
 
-**Start here →** `docs/README.md` (comprehensive navigation map)
+### 🎯 Quick Reference
 
-**Implementation Status:**
-- `docs/implementation-status.md` - What's done, what remains (SINGLE SOURCE OF TRUTH)
+**"What's the current status?"**
+→ **`docs/implementation-status.md`** - What's done, what remains (SINGLE SOURCE OF TRUTH)
+
+**"How does Communiqué work?"**
+→ **`docs/architecture.md`** - Communiqué/voter-protocol separation, cypherpunk principles, privacy architecture
+
+**"How do I integrate with external systems?"**
+→ **`docs/integration.md`** - voter-protocol, CWC API, OAuth providers, identity verification (self.xyz, Didit.me), TEE encrypted delivery
+
+**"How do I build frontend features?"**
+→ **`docs/frontend.md`** - SvelteKit 5 patterns, runes-based state management, component composition, type safety
+
+**"How do I test?"**
+→ **`docs/development/testing.md`** - Integration-first test strategy, mocks, fixtures
+
+**"How do I deploy?"**
+→ **`docs/development/deployment.md`** - Production deployment workflow
+
+### 📚 Documentation Structure
+
+**Start here:**
+→ **`docs/README.md`** - Comprehensive documentation map (15 active docs, down from 95+, 84% reduction)
 
 **Understanding the System:**
-- `docs/architecture.md` - Communiqué/voter-protocol separation, cypherpunk principles
-- `docs/integration.md` - How Communiqué integrates with voter-protocol, CWC API, OAuth
-- `docs/frontend.md` - SvelteKit 5 patterns, runes, type safety
+- **`docs/architecture.md`** - System architecture, separation of concerns
+- **`docs/architecture/LOCATION-SIGNAL-ACCURACY-LIMITS.md`** - Location signal accuracy (IP = state only), false precision prevention
+- **`docs/integration.md`** - External system integrations
+- **`docs/frontend.md`** - SvelteKit 5 frontend patterns
+- **`docs/research/power-structures.md`** - ALL power structures (landlords, HOAs, universities, hospitals, school boards, nonprofits, worker organizing)
+- **`docs/design/voice.md`** - Pragmatic cypherpunk voice (confident, direct, technical details in popovers)
 
 **Building Features:**
-- `docs/features/templates.md` - Template system
-- `docs/features/creator.md` - Template creator UI
-- `docs/features/identity-verification.md` - self.xyz + Didit.me flows
+- **`docs/features/templates.md`** - Template system (creation, customization, moderation)
+- **`docs/features/creator.md`** - Template creator UI (CodeMirror editor, variable system)
+- **`docs/features/identity-verification.md`** - self.xyz + Didit.me flows (session-based verification)
+- **`docs/features/jurisdiction.md`** - Jurisdiction system (TemplateJurisdiction model replacing deprecated string arrays)
+- **`docs/features/oauth.md`** - OAuth flows (Google, Facebook, Twitter, LinkedIn, Discord)
+- **`docs/features/onboarding.md`** - User onboarding flows
 
 **Development:**
-- `docs/development/testing.md` - Test strategy, mocks, fixtures
-- `docs/development/database.md` - Prisma schema, migrations, seeding
-- `docs/development/deployment.md` - How to deploy Communiqué
+- **`docs/development/testing.md`** - Test strategy, mocks, fixtures
+- **`docs/development/database.md`** - Prisma schema, migrations, seeding
+- **`docs/development/deployment.md`** - Deployment workflows
+- **`docs/development/integrations/`** - External service integrations:
+  - `message-generation-integration.md` - AI message generation
+  - `decision-maker-resolution-integration.md` - Decision-maker lookup
+  - `multi-target-delivery-spec.md` - Multi-target delivery (Congress + corporations + HOAs)
+  - `toolhouse-subject-line-integration.md` - Subject line generation
 
-**Deep Dives (Specs):**
-- `docs/specs/zk-proof-integration.md` - ZK proof integration (5 phases, 10 weeks, 45K)
-- `docs/specs/portable-identity.md` - IPFS architecture (Phase 2)
-- `docs/specs/universal-credibility.md` - Credential verification
+**Deep Technical Specs:**
+- **`docs/specs/zk-proof-integration.md`** - ZK proof integration guide (5 phases, 10 weeks, 45K comprehensive)
+- **`docs/specs/portable-identity.md`** - IPFS + on-chain pointer architecture (Phase 2, 19K)
+- **`docs/specs/universal-credibility.md`** - Credential verification system (17K)
+- **`docs/specs/progressive-template-sections.md`** - Template sectioning UX
+- **`docs/specs/interactive-location-breadcrumb.md`** - Location filter breadcrumb UI
 
 **Historical Context:**
-- `docs/archive/` - Superseded docs, migrations, historical decisions
+- **`docs/archive/`** - Superseded docs, migrations, historical decisions
+  - `2025-01-district-verification/` - Pre-voter-protocol separation
+  - `2025-11-refactor/` - Architecture refactor process
+  - `2025-11-phase-2-implementation/` - Phase 2 status files (superseded by implementation-status.md)
+  - `2025-11-design-iterations/` - OAuth flow refactor, UI copy audits, progressive precision UX
+  - `migrations/` - Database privacy migration records
+
+---
+
+## Principles
+
+### Information Ownership (No Redundancy)
+
+**Implementation Status:** ONLY in `docs/implementation-status.md`
+**Architecture:** ONLY in `docs/architecture.md`
+**Integration:** ONLY in `docs/integration.md`
+**Frontend:** ONLY in `docs/frontend.md`
+**Features:** ONLY in `docs/features/*.md`
+**Development:** ONLY in `docs/development/*.md`
+**Specs:** ONLY in `docs/specs/*.md`
+
+**Every piece of information has ONE home. No duplication across docs.**
+
+### Documentation Philosophy
+
+**No Cruft** - Every document serves a clear purpose. Historical/superseded content lives in `archive/`.
+
+**No Redundancy** - "Redundancy kills context." Every piece of information has exactly ONE home.
+
+**No Fragmentation** - "Fragmentation tears us into development hell." Related information lives together.
+
+**Claude Code Optimization** - Docs optimized for AI instances to quickly find relevant context without confusion.
+
+---
+
+*Communiqué PBC | Multi-Stakeholder Cryptographic Social Coordination | 2025-01*

@@ -70,7 +70,6 @@
 			// getThumbmark() returns an object, convert to string
 			deviceFingerprint =
 				typeof fingerprint === 'string' ? fingerprint : JSON.stringify(fingerprint);
-			console.log('[Security] Device fingerprint generated:', deviceFingerprint.substring(0, 16));
 		} catch (err) {
 			console.error('[Security] Failed to generate fingerprint:', err);
 		}
@@ -273,9 +272,7 @@
 			<div class="mb-4 flex items-start justify-between">
 				<div>
 					<h2 class="text-lg font-semibold tracking-tight text-slate-900">Enter your address</h2>
-					<p class="mt-1 text-sm text-slate-600">
-						Unlock local coordination opportunities
-					</p>
+					<p class="mt-1 text-sm text-slate-600">Unlock local coordination opportunities</p>
 				</div>
 				<button
 					onclick={handleClose}

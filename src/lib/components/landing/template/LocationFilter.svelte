@@ -29,7 +29,8 @@
 	} from '$lib/core/location/types';
 	import {
 		scoreTemplatesByRelevance,
-		boostByUserBehavior
+		boostByUserBehavior,
+		type GeographicScope
 	} from '$lib/core/location/template-filter';
 	import {
 		getUserLocation,
@@ -51,7 +52,12 @@
 		onAddressModalOpen?: (handler: () => void) => void;
 	}
 
-	let { templates = [], onFilterChange = () => {}, onNextUnlockChange = () => {}, onAddressModalOpen = () => {} }: LocationFilterProps = $props();
+	let {
+		templates = [],
+		onFilterChange = () => {},
+		onNextUnlockChange = () => {},
+		onAddressModalOpen = () => {}
+	}: LocationFilterProps = $props();
 
 	// Helper: Convert ALL CAPS city/county names to Title Case
 	function toTitleCase(str: string): string {
@@ -71,17 +77,16 @@
 	let showAddressModal = $state(false);
 
 	// Geographic scope filter (null = show all, or specific level to filter to)
-	type GeographicScope = 'country' | 'state' | 'county' | 'city' | 'district' | null;
+	// Type is imported from template-filter.ts
 	let selectedScope = $state<GeographicScope>(null); // null = show all scopes
 
 	// Computed - ANY location data counts (country, state, county, or district)
 	const hasLocation = $derived(
-		inferredLocation && (
-			inferredLocation.country_code ||
-			inferredLocation.state_code ||
-			inferredLocation.city_name ||
-			inferredLocation.congressional_district
-		)
+		inferredLocation &&
+			(inferredLocation.country_code ||
+				inferredLocation.state_code ||
+				inferredLocation.city_name ||
+				inferredLocation.congressional_district)
 	);
 
 	// Breadcrumb components for drill-down navigation
@@ -108,17 +113,83 @@
 
 			// US states and territories (unambiguous mapping)
 			const usStates = [
-				'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'DC', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN',
-				'IA', 'KS', 'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH',
-				'NJ', 'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT',
-				'VT', 'VA', 'WA', 'WV', 'WI', 'WY', 'PR', 'GU', 'VI', 'AS', 'MP'
+				'AL',
+				'AK',
+				'AZ',
+				'AR',
+				'CA',
+				'CO',
+				'CT',
+				'DE',
+				'DC',
+				'FL',
+				'GA',
+				'HI',
+				'ID',
+				'IL',
+				'IN',
+				'IA',
+				'KS',
+				'KY',
+				'LA',
+				'ME',
+				'MD',
+				'MA',
+				'MI',
+				'MN',
+				'MS',
+				'MO',
+				'MT',
+				'NE',
+				'NV',
+				'NH',
+				'NJ',
+				'NM',
+				'NY',
+				'NC',
+				'ND',
+				'OH',
+				'OK',
+				'OR',
+				'PA',
+				'RI',
+				'SC',
+				'SD',
+				'TN',
+				'TX',
+				'UT',
+				'VT',
+				'VA',
+				'WA',
+				'WV',
+				'WI',
+				'WY',
+				'PR',
+				'GU',
+				'VI',
+				'AS',
+				'MP'
 			];
 			if (usStates.includes(stateCode)) {
 				return 'United States';
 			}
 
 			// Canadian provinces and territories (unambiguous mapping)
-			const caProvinces = ['AB', 'BC', 'MB', 'NB', 'NL', 'NT', 'NS', 'NU', 'ON', 'PE', 'QC', 'SK', 'YT'];
+			const caProvinces = [
+				'AB',
+				'BC',
+				'MB',
+				'NB',
+				'NL',
+				'NT',
+				'NS',
+				'NU',
+				'ON',
+				'PE',
+				'QC',
+				'SK',
+				'YT'
+			];
 			if (caProvinces.includes(stateCode)) {
 				return 'Canada';
 			}
@@ -430,21 +501,27 @@
 		for (const template of templatesWithJurisdictions) {
 			for (const jurisdiction of template.jurisdictions) {
 				// District templates: Have congressional_district AND match user's state
-				if (jurisdiction.congressional_district &&
-				    jurisdiction.state_code === inferredLocation.state_code) {
+				if (
+					jurisdiction.congressional_district &&
+					jurisdiction.state_code === inferredLocation.state_code
+				) {
 					districtCount++;
 					break; // Count each template once
 				}
 				// City templates: Have city_name AND match user's state (would unlock with city entry)
-				else if (jurisdiction.city_name &&
-				         jurisdiction.state_code === inferredLocation.state_code) {
+				else if (
+					jurisdiction.city_name &&
+					jurisdiction.state_code === inferredLocation.state_code
+				) {
 					cityCount++;
 					break;
 				}
 				// State templates: Have state_code match (but no city/district)
-				else if (jurisdiction.state_code === inferredLocation.state_code &&
-				         !jurisdiction.city_name &&
-				         !jurisdiction.congressional_district) {
+				else if (
+					jurisdiction.state_code === inferredLocation.state_code &&
+					!jurisdiction.city_name &&
+					!jurisdiction.congressional_district
+				) {
 					stateCount++;
 					break;
 				}
@@ -503,42 +580,6 @@
 	// Load inferred location using the inference engine
 	onMount(async () => {
 		try {
-			// DEV MODE: Enabled temporarily to bypass IP lookup issues
-			// Uncomment to simulate IP-based location (country + state only)
-			if (browser && window.location.hostname === 'localhost') {
-				console.log('[LocationFilter] 🎨 DEV MODE: Using realistic IP-based location (country + state)');
-				inferredLocation = {
-					country_code: 'US', // IP CAN reliably determine country
-					congressional_district: null, // IP CANNOT reliably determine district
-					state_code: 'CA', // IP can maybe determine state (but VPNs break this)
-					city_name: null, // IP-based city is too imprecise
-					county_name: null, // IP-based county is unreliable
-					county_fips: null,
-					confidence: 0.6, // Moderate confidence for IP-based inference
-					signals: [
-						{
-							signal_type: 'ip',
-							confidence: 0.6,
-							country_code: 'US',
-							state_code: 'CA',
-							city_name: null,
-							congressional_district: null,
-							county_fips: null,
-							latitude: null,
-							longitude: null,
-							source: 'ip.geolocation',
-							timestamp: new Date().toISOString(),
-							metadata: {}
-						}
-					],
-					inferred_at: new Date().toISOString()
-				};
-
-				locationSignals = inferredLocation.signals;
-				isLoadingLocation = false;
-				return; // Skip real inference in dev mode
-			}
-
 			// Get user location from inference engine (uses cached if available)
 			let location = await getUserLocation();
 
@@ -551,38 +592,24 @@
 				);
 
 				if (oldGPSSignal) {
-					console.log(
-						'[LocationFilter] 🔄 Detected GPS signal without city_name - requesting fresh geolocation with Nominatim'
-					);
 					// Request fresh geolocation which will now include Nominatim city lookup
 					const freshSignal = await addBrowserGeolocationSignal();
 
 					if (freshSignal) {
 						// Re-infer location with new signal
 						location = await getUserLocation(true);
-						console.log('[LocationFilter] ✓ Location updated with city_name:', location.city_name);
 					}
 				}
 			}
 
 			if (location && location.confidence > 0) {
 				inferredLocation = location;
-				console.log('[LocationFilter] ✓ Location loaded:', {
-					country_code: location.country_code,
-					state_code: location.state_code,
-					city_name: location.city_name,
-					congressional_district: location.congressional_district,
-					confidence: location.confidence
-				});
 
 				// Load signals for transparency display
 				if (browser) {
 					const signals = await locationStorage.getSignals();
 					locationSignals = signals;
-					console.log('[LocationFilter] Loaded signals:', signals.length);
 				}
-			} else {
-				console.warn('[LocationFilter] ✗ No location data (confidence:', location?.confidence, ')');
 			}
 
 			isLoadingLocation = false;
@@ -596,20 +623,15 @@
 				errorMessage.includes('out-of-line keys') ||
 				errorMessage.includes('key parameter was not provided')
 			) {
-				console.warn(
-					'[LocationFilter] 🔥 Detected corrupted IndexedDB schema - initiating recovery'
-				);
-
 				try {
 					// Nuclear option: Delete and recreate database
 					await locationStorage.nukeDatabase();
-					console.log('[LocationFilter] ✓ Database nuked - reloading page for clean schema');
 
 					// Force page reload to recreate database with correct schema
 					window.location.reload();
 					return; // Don't continue execution
 				} catch (nukeError) {
-					console.error('[LocationFilter] ✗ Failed to recover database:', nukeError);
+					console.error('[LocationFilter] Database recovery failed:', nukeError);
 					locationError = 'Database recovery failed - try clearing browser data';
 				}
 			} else {
@@ -648,17 +670,17 @@
 		// Score thresholds for each tier (based on template-filter.ts scoring)
 		const THRESHOLDS = {
 			district: 0.95, // District match (1.0 score with confidence multiplier)
-			city: 0.65,     // City/county match (0.7-0.8 base score)
-			state: 0.45,    // State match (0.5 base score)
+			city: 0.65, // City/county match (0.7-0.8 base score)
+			state: 0.45, // State match (0.5 base score)
 			nationwide: 0.25 // Federal baseline (0.3 base score)
 		};
 
 		// Group 1: District-level templates (only show if user has district)
 		if (hasDistrict && (scopeFilter === null || scopeFilter === 'district')) {
 			const districtTemplates = scoredTemplates
-				.filter(s => s.score >= THRESHOLDS.district)
+				.filter((s) => s.score >= THRESHOLDS.district)
 				.sort((a, b) => (b.template.send_count || 0) - (a.template.send_count || 0))
-				.map(s => s.template);
+				.map((s) => s.template);
 
 			if (districtTemplates.length > 0) {
 				const coordinationCount = districtTemplates.reduce(
@@ -679,15 +701,12 @@
 		// Group 2: City-level templates (only show if user has city/county)
 		if (hasCity && (scopeFilter === null || scopeFilter === 'city')) {
 			const cityTemplates = scoredTemplates
-				.filter(s => s.score >= THRESHOLDS.city && s.score < THRESHOLDS.district)
+				.filter((s) => s.score >= THRESHOLDS.city && s.score < THRESHOLDS.district)
 				.sort((a, b) => (b.template.send_count || 0) - (a.template.send_count || 0))
-				.map(s => s.template);
+				.map((s) => s.template);
 
 			if (cityTemplates.length > 0) {
-				const coordinationCount = cityTemplates.reduce(
-					(sum, t) => sum + (t.send_count || 0),
-					0
-				);
+				const coordinationCount = cityTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0);
 
 				// Use city name if available, otherwise "In Your Area"
 				const cityName = location?.city_name ? toTitleCase(location.city_name) : null;
@@ -706,15 +725,12 @@
 		// Group 3: State-level templates (show if user has state)
 		if (hasState && (scopeFilter === null || scopeFilter === 'state')) {
 			const stateTemplates = scoredTemplates
-				.filter(s => s.score >= THRESHOLDS.state && s.score < THRESHOLDS.city)
+				.filter((s) => s.score >= THRESHOLDS.state && s.score < THRESHOLDS.city)
 				.sort((a, b) => (b.template.send_count || 0) - (a.template.send_count || 0))
-				.map(s => s.template);
+				.map((s) => s.template);
 
 			if (stateTemplates.length > 0) {
-				const coordinationCount = stateTemplates.reduce(
-					(sum, t) => sum + (t.send_count || 0),
-					0
-				);
+				const coordinationCount = stateTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0);
 
 				// Get full state name from breadcrumb computation
 				const stateName = breadcrumbState || location?.state_code;
@@ -731,11 +747,11 @@
 		}
 
 		// Group 4: Nationwide templates (always show - federal issues affect everyone)
-		if (scopeFilter === null || scopeFilter === 'country') {
+		if (scopeFilter === null || scopeFilter === 'nationwide') {
 			const nationwideTemplates = scoredTemplates
-				.filter(s => s.score >= THRESHOLDS.nationwide && s.score < THRESHOLDS.state)
+				.filter((s) => s.score >= THRESHOLDS.nationwide && s.score < THRESHOLDS.state)
 				.sort((a, b) => (b.template.send_count || 0) - (a.template.send_count || 0))
-				.map(s => s.template);
+				.map((s) => s.template);
 
 			if (nationwideTemplates.length > 0) {
 				const coordinationCount = nationwideTemplates.reduce(
@@ -758,11 +774,12 @@
 
 	// Apply progressive section-based grouping
 	$effect(() => {
+		// Explicitly track selectedScope for reactivity
+		const currentScope = selectedScope;
+
 		if (!inferredLocation) {
 			// No location: show all templates in single nationwide group
-			const allTemplates = templates.sort(
-				(a, b) => (b.send_count || 0) - (a.send_count || 0)
-			);
+			const allTemplates = templates.sort((a, b) => (b.send_count || 0) - (a.send_count || 0));
 
 			onFilterChange([
 				{
@@ -795,19 +812,25 @@
 		);
 
 		// Score templates by location relevance (0.0 = no match, 1.0 = district match)
-		const scored = scoreTemplatesByRelevance(templatesWithJurisdictions, inferredLocation);
+		// Pass currentScope to boost templates matching the selected breadcrumb level
+		const scored = scoreTemplatesByRelevance(
+			templatesWithJurisdictions,
+			inferredLocation,
+			currentScope
+		);
 
 		// Apply behavioral boosting asynchronously, then create groups
 		getTemplateViewCounts()
 			.then((viewCounts) => {
 				const boosted = boostByUserBehavior(scored, viewCounts);
-				const groups = createTemplateGroups(boosted, inferredLocation, selectedScope);
+				const groups = createTemplateGroups(boosted, inferredLocation, currentScope);
+
 				onFilterChange(groups);
 			})
-			.catch((error) => {
-				console.warn('[LocationFilter] Failed to apply behavioral boosting:', error);
+			.catch(() => {
 				// Fallback to location-only scoring
-				const groups = createTemplateGroups(scored, inferredLocation, selectedScope);
+				const groups = createTemplateGroups(scored, inferredLocation, currentScope);
+
 				onFilterChange(groups);
 			});
 	});
@@ -943,8 +966,22 @@
 	 * Handle location change from autocomplete breadcrumb
 	 * Creates a user-selected signal (confidence 0.9, not 1.0 since not verified)
 	 */
-	async function handleLocationSelect(result: LocationHierarchy) {
+	async function handleLocationSelect(event: CustomEvent<LocationHierarchy>) {
 		try {
+			// Extract LocationHierarchy from CustomEvent detail
+			const result = event.detail;
+
+			// Validate that result has meaningful location data
+			const hasCountryData = result.country?.code && result.country.code !== '';
+			const hasStateData = result.state?.code && result.state.code !== '';
+			const hasCityData = result.city?.name && result.city.name !== '';
+
+			// Accept if ANY location level is present (country, state, or city)
+			if (!hasCountryData && !hasStateData && !hasCityData) {
+				locationError = 'Invalid location selection';
+				return;
+			}
+
 			// Serialize previous location (avoid Svelte proxy cloning issues)
 			const previousLocationData = inferredLocation
 				? {
@@ -967,8 +1004,8 @@
 				city_name: result.city?.name || null,
 				country_code: countryCode,
 				county_fips: null,
-				latitude: result.city?.lat || null,
-				longitude: result.city?.lon || null,
+				latitude: result.city?.lat || result.state?.lat || null,
+				longitude: result.city?.lon || result.state?.lon || null,
 				source: 'user.breadcrumb_selection',
 				timestamp: new Date().toISOString(),
 				metadata: {
@@ -1031,8 +1068,8 @@
 	</div>
 {:else if hasLocation}
 	<!-- TEMPLATE BROWSER HEADER (Two-column: Location left, Unlock right) -->
-	<div class="mb-6 rounded-xl bg-white px-6 pt-6 pb-4 shadow-sm ring-1 ring-slate-900/5">
-		<div class="flex items-start justify-between gap-8">
+	<div class="mb-6 rounded-xl bg-white px-4 pb-4 pt-6 shadow-sm ring-1 ring-slate-900/5 sm:px-6">
+		<div class="flex flex-col items-start gap-6 md:flex-row md:justify-between md:gap-8">
 			<!-- LEFT COLUMN: Location Information -->
 			<div class="flex flex-1 items-start gap-3">
 				<!-- Location pin icon -->
@@ -1057,9 +1094,9 @@
 					</svg>
 				</div>
 
-				<div class="flex-1 min-w-0">
-					<!-- H2 header (human-readable location) -->
-					<h2 class="text-3xl font-bold leading-tight text-slate-900">
+				<div class="min-w-0 flex-1">
+					<!-- H2 header (human-readable location): Satoshi Bold for brand voice -->
+					<h2 class="font-brand text-3xl font-bold leading-tight text-slate-900">
 						{#if locationLabel}
 							{locationLabel}
 						{:else}
@@ -1067,18 +1104,18 @@
 						{/if}
 					</h2>
 
-					<!-- District metadata (power-agnostic - shown when available) -->
+					<!-- District metadata (power-agnostic - shown when available): Satoshi Medium -->
 					{#if districtLabel}
-						<p class="mt-1 text-sm font-medium text-slate-500">
+						<p class="mt-1 font-brand text-sm font-medium text-slate-500">
 							{districtLabel}
 						</p>
 					{/if}
 
-					<!-- Correction affordance (error recovery only) -->
+					<!-- Correction affordance (error recovery only): Satoshi Regular -->
 					{#if locationLabel}
 						<button
 							onclick={() => (showAddressModal = true)}
-							class="mt-1 text-sm text-slate-600 underline decoration-dotted underline-offset-2 hover:text-slate-900"
+							class="mt-1 font-brand text-sm text-slate-600 underline decoration-dotted underline-offset-2 hover:text-slate-900"
 						>
 							Not from {locationLabel}?
 						</button>
@@ -1086,19 +1123,27 @@
 
 					<!-- Geographic breadcrumb (inline with location elements) -->
 					{#if breadcrumbCountry || breadcrumbState || breadcrumbCounty || breadcrumbCity || breadcrumbDistrict}
-						<nav class="mt-2 flex items-center gap-2 text-sm" aria-label="Filter by geographic scope">
+						<nav
+							class="mt-2 flex items-center gap-2 text-sm"
+							aria-label="Filter by geographic scope"
+						>
 							{#if breadcrumbCountry}
 								<LocationAutocomplete
 									label={breadcrumbCountry}
 									level="country"
-									isSelected={selectedScope === 'country'}
+									isSelected={selectedScope === 'nationwide'}
 									on:select={handleLocationSelect}
-									on:filter={() => handleScopeFilter('country')}
+									on:filter={() => handleScopeFilter('nationwide')}
 								/>
 							{/if}
 
 							{#if breadcrumbState && breadcrumbCountry}
-								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<svg
+									class="h-4 w-4 text-slate-400"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
@@ -1120,7 +1165,12 @@
 							{/if}
 
 							{#if breadcrumbCounty}
-								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<svg
+									class="h-4 w-4 text-slate-400"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
@@ -1140,7 +1190,12 @@
 							{/if}
 
 							{#if breadcrumbCity}
-								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<svg
+									class="h-4 w-4 text-slate-400"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
@@ -1160,7 +1215,12 @@
 							{/if}
 
 							{#if breadcrumbDistrict}
-								<svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<svg
+									class="h-4 w-4 text-slate-400"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
 									<path
 										stroke-linecap="round"
 										stroke-linejoin="round"
@@ -1168,21 +1228,24 @@
 										d="M9 5l7 7-7 7"
 									/>
 								</svg>
-								<LocationAutocomplete
-									label={breadcrumbDistrict}
-									level="district"
-									currentCountry={inferredLocation?.country_code}
-									currentState={inferredLocation?.state_code}
-									isSelected={selectedScope === 'district'}
-									on:select={handleLocationSelect}
-									on:filter={() => handleScopeFilter('district')}
-								/>
+								<!-- District breadcrumb: Display-only (no edit/search - determined by verified address) -->
+								<button
+									onclick={() => handleScopeFilter('district')}
+									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
+									class:bg-slate-100={selectedScope === 'district'}
+									class:text-slate-900={selectedScope === 'district'}
+									class:text-slate-700={selectedScope !== 'district'}
+									aria-label="Filter by {breadcrumbDistrict}"
+									title="Congressional district is determined by verified address"
+								>
+									<span>{breadcrumbDistrict}</span>
+								</button>
 							{/if}
 						</nav>
 					{/if}
 
 					<!-- Privacy indicator (passive trust signal) -->
-					<div class="mt-4 pt-3 border-t border-slate-100">
+					<div class="mt-4 border-t border-slate-100 pt-3">
 						<PrivacyIndicator />
 					</div>
 
@@ -1190,7 +1253,7 @@
 					{#if locationSignals.length > 0}
 						<details class="group mt-2">
 							<summary
-								class="list-none cursor-pointer text-xs font-medium text-slate-500 hover:text-slate-700 [&::-webkit-details-marker]:hidden"
+								class="cursor-pointer list-none text-xs font-medium text-slate-500 hover:text-slate-700 [&::-webkit-details-marker]:hidden"
 							>
 								<span class="inline-flex items-center gap-1.5">
 									<svg
@@ -1237,19 +1300,28 @@
 
 			<!-- RIGHT COLUMN: Progressive Unlock CTA -->
 			{#if nextUnlock}
-				<div class="flex-shrink-0 group" style="min-width: 280px; max-width: 320px;">
-					<div class="relative overflow-hidden rounded-participation-lg border border-surface-border bg-surface-base p-4 shadow-participation-sm transition-all duration-300 hover:shadow-participation-md hover:border-surface-border-strong">
+				<div class="group w-full md:w-auto md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0">
+					<div
+						class="relative overflow-hidden rounded-participation-lg border border-surface-border bg-surface-base p-4 shadow-participation-sm transition-all duration-300 hover:border-surface-border-strong hover:shadow-participation-md"
+					>
 						<!-- Subtle noise texture overlay -->
-						<div class="absolute inset-0 opacity-[0.015] pointer-events-none" style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"></div>
+						<div
+							class="pointer-events-none absolute inset-0 opacity-[0.015]"
+							style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"
+						></div>
 
 						{#if nextUnlock.count > 0}
 							<!-- Active state: Single unified message -->
 							<div class="relative mb-4 text-center">
 								<div class="inline-flex items-baseline gap-2">
-									<span class="font-mono text-4xl font-black leading-none tracking-tighter text-participation-accent-600">
+									<!-- Count: JetBrains Mono for metric clarity -->
+									<span
+										class="font-mono text-4xl font-black tabular-nums leading-none tracking-tighter text-participation-accent-600"
+									>
 										{nextUnlock.count}
 									</span>
-									<span class="text-sm font-medium text-text-secondary">
+									<!-- Label: Satoshi Medium for brand voice -->
+									<span class="font-brand text-sm font-medium text-text-secondary">
 										{#if nextUnlock.level === 'city'}
 											more across cities
 										{:else if nextUnlock.level === 'district'}
@@ -1259,7 +1331,8 @@
 										{/if}
 									</span>
 								</div>
-								<p class="mt-2 text-xs text-text-tertiary">
+								<!-- Description: Satoshi Regular -->
+								<p class="mt-2 font-brand text-xs text-text-tertiary">
 									{#if nextUnlock.level === 'city'}
 										Enter address to see yours
 									{:else if nextUnlock.level === 'district'}
@@ -1271,38 +1344,75 @@
 							</div>
 						{:else}
 							<!-- Empty state: Centered, minimal -->
-							<div class="text-center mb-4">
-								<div class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised mb-2">
-									<svg class="h-5 w-5 text-text-quaternary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-										<path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+							<div class="mb-4 text-center">
+								<div
+									class="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised"
+								>
+									<svg
+										class="h-5 w-5 text-text-quaternary"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+										/>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+										/>
 									</svg>
 								</div>
-								<h3 class="text-sm font-semibold text-text-secondary">Get more precise location</h3>
-								<p class="mt-1 text-xs text-text-tertiary">Unlock future coordination opportunities</p>
+								<!-- Heading: Satoshi Semibold -->
+								<h3 class="font-brand text-sm font-semibold text-text-secondary">
+									Get more precise location
+								</h3>
+								<!-- Description: Satoshi Regular -->
+								<p class="mt-1 font-brand text-xs text-text-tertiary">
+									Unlock future coordination opportunities
+								</p>
 							</div>
 						{/if}
 
-						<!-- CTA button -->
-						<button onclick={() => (showAddressModal = true)} class="group/btn relative w-full overflow-hidden rounded-md bg-participation-primary-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-participation-primary-700 hover:shadow-md active:bg-participation-primary-800 active:scale-[0.98]">
+						<!-- CTA button: Satoshi Semibold for CTAs -->
+						<button
+							onclick={() => (showAddressModal = true)}
+							class="group/btn relative w-full overflow-hidden rounded-md bg-participation-primary-600 px-4 py-2.5 font-brand text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-participation-primary-700 hover:shadow-md active:scale-[0.98] active:bg-participation-primary-800"
+						>
 							<span class="relative z-10 inline-flex items-center justify-center gap-2">
 								Enter your address
-								<svg class="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+								<svg
+									class="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-0.5"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+									stroke-width="2.5"
+								>
 									<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
 								</svg>
 							</span>
-							<div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full"></div>
+							<div
+								class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full"
+							></div>
 						</button>
 
-						<!-- CTA copy with privacy reassurance on hover -->
-						<div class="mt-4 relative h-4 overflow-hidden">
+						<!-- CTA copy with privacy reassurance on hover: Satoshi Medium -->
+						<div class="relative mt-4 h-4 overflow-hidden">
 							<!-- Default state: Agency-driven copy -->
-							<p class="absolute inset-0 text-[10px] leading-tight text-text-tertiary font-medium transition-all duration-300 group-hover:translate-y-[-100%] group-hover:opacity-0">
+							<p
+								class="absolute inset-0 font-brand text-[10px] font-medium leading-tight text-text-tertiary transition-all duration-300 group-hover:translate-y-[-100%] group-hover:opacity-0"
+							>
 								Unlock precise coordination in your area
 							</p>
 							<!-- Hover state: Privacy reassurance -->
-							<p class="absolute inset-0 text-[10px] leading-tight text-text-quaternary translate-y-[100%] opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-								Stays in your browser. Never sent to servers.
+							<p
+								class="absolute inset-0 translate-y-[100%] font-brand text-[10px] font-medium leading-tight text-text-tertiary opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+							>
+								Stays in your browser. Never sent to our servers.
 							</p>
 						</div>
 					</div>

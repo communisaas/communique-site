@@ -490,7 +490,9 @@ export async function addressLookup(zip: string): Promise<Representative[]> {
  * Get representatives for a complete address (street, city, state, zip)
  * This is the function used by the CWC submission endpoint
  */
-export async function getRepresentativesForAddress(address: AddressData): Promise<Representative[]> {
+export async function getRepresentativesForAddress(
+	address: AddressData
+): Promise<Representative[]> {
 	try {
 		const userReps = await addressLookupService.lookupRepsByAddress(address);
 		return [userReps.house, ...userReps.senate];

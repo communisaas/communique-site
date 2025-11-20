@@ -113,20 +113,8 @@
 	onMount(() => {
 		// Restore personalization data if returning from OAuth
 		if (browser) {
-			console.log('🔍 Checking for restoration...', {
-				templateId: template.id,
-				hasUser: !!user,
-				userState: user ? 'loaded' : 'not loaded'
-			});
-
 			const savedData = sessionStorage.getItem(`template_${template.id}_personalization`);
 			const pendingSend = sessionStorage.getItem(`template_${template.id}_pending_send`);
-
-			console.log('💾 Session data:', {
-				hasSavedData: !!savedData,
-				pendingSend,
-				savedDataPreview: savedData ? savedData.substring(0, 50) + '...' : 'none'
-			});
 
 			if (savedData) {
 				try {
@@ -134,7 +122,6 @@
 					// Only restore if data is less than 30 minutes old
 					if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 60 * 1000) {
 						personalConnectionValue = parsed.personalConnection || '';
-						console.log('✅ Restored personalization:', parsed.personalConnection);
 
 						// Check if we should auto-trigger send flow
 						if (pendingSend === 'true' && user) {
@@ -146,7 +133,6 @@
 									// Apply Personal Connection to template if available
 									const pc = personalConnectionValue?.trim();
 									if (pc && pc.length > 0 && typeof template?.message_body === 'string') {
-										console.log('📝 Applying Personal Connection:', pc);
 										template.message_body = template.message_body.replace(
 											/\[Personal Connection\]/g,
 											pc
@@ -154,7 +140,6 @@
 									}
 
 									// Let parent handle the full flow (modal + email launch)
-									console.log('📧 Auto-triggering send message...');
 									if (onSendMessage) {
 										onSendMessage();
 									} else {

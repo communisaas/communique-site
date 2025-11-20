@@ -109,39 +109,25 @@ export class LocationInferenceEngine {
 	 * Generate initial signals (IP, browser, timezone)
 	 */
 	private async generateInitialSignals(): Promise<void> {
-		console.log('[LocationInference] Generating initial signals...');
-
 		// Signal 1: IP-based geolocation (automatic, no permission required)
 		try {
 			const ipSignal = await this.getIPLocationSignal();
 			if (ipSignal) {
-				console.log('[LocationInference] ✓ IP signal generated:', ipSignal);
 				await locationStorage.storeSignal(ipSignal);
-			} else {
-				console.warn('[LocationInference] ✗ IP signal failed');
 			}
 		} catch (error) {
-			console.error('[LocationInference] ✗ IP signal error:', error);
+			console.error('[LocationInference] IP signal error:', error);
 		}
 
 		// Signal 2: Timezone-based inference (fallback if IP fails)
 		try {
 			const timezoneSignal = getTimezoneLocation();
 			if (timezoneSignal) {
-				console.log('[LocationInference] ✓ Timezone signal generated:', timezoneSignal);
 				await locationStorage.storeSignal(timezoneSignal);
-			} else {
-				console.warn('[LocationInference] ✗ Timezone signal failed - timezone not recognized');
 			}
 		} catch (error) {
-			console.error('[LocationInference] ✗ Timezone signal error:', error);
+			console.error('[LocationInference] Timezone signal error:', error);
 		}
-
-		// Signal 3: Browser geolocation (requires permission - don't request automatically)
-		// This will be triggered manually by user clicking "Update" button
-		console.log(
-			'[LocationInference] Browser geolocation available but not requested (requires user permission)'
-		);
 	}
 
 	/**
@@ -157,10 +143,8 @@ export class LocationInferenceEngine {
 
 			const data = (await response.json()) as {
 				country_code?: string;
-				city?: string;
+				state?: string;
 				state_code?: string;
-				latitude?: number;
-				longitude?: number;
 				timezone?: string;
 			};
 
@@ -170,26 +154,25 @@ export class LocationInferenceEngine {
 				return null;
 			}
 
-			// IP geolocation provides approximate coordinates (city-center, ISP routing)
-			// This is NOT accurate enough for congressional district lookup
-			// Only browser geolocation or verified address can reliably determine district
-			console.log('[IP Lookup] Returning state-level location (IP cannot reliably determine district)');
+			// IP geolocation is only accurate at state level
+			// City/coordinates from IP are based on ISP routing and are highly unreliable
 
-			// Return country + state signal (no district)
+			// Return country + state signal (no city, no district, no coordinates)
 			return {
 				signal_type: 'ip',
 				confidence: data.state_code ? 0.3 : 0.6, // Country-only is more confident than state (VPN-resistant)
 				country_code: data.country_code,
 				state_code: data.state_code || null,
-				city_name: data.city || null,
-				congressional_district: null,
+				city_name: null, // IP cannot reliably determine city
+				congressional_district: null, // IP cannot determine district
 				county_fips: null,
-				latitude: data.latitude || null,
-				longitude: data.longitude || null,
+				latitude: null, // Coordinates from IP are ISP routing points, not user location
+				longitude: null,
 				source: 'ip.geolocation',
 				timestamp: new Date().toISOString(),
 				metadata: {
-					timezone: data.timezone
+					timezone: data.timezone,
+					state_name: data.state
 				}
 			};
 		} catch (error) {
@@ -309,7 +292,11 @@ export async function getUserLocation(forceRefresh = false): Promise<InferredLoc
 /**
  * Add a location signal from OAuth callback
  */
-export async function addOAuthLocationSignal(provider: string, location: string, countryCode = 'US'): Promise<void> {
+export async function addOAuthLocationSignal(
+	provider: string,
+	location: string,
+	countryCode = 'US'
+): Promise<void> {
 	// Parse location string (e.g., "Austin, TX" or "Texas")
 	const parts = location.split(',').map((s) => s.trim());
 

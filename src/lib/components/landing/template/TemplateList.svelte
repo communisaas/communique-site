@@ -87,7 +87,8 @@
 						{group.title}
 					</h3>
 					<span class="text-xs font-medium text-slate-500">
-						{group.templates.length} {group.templates.length === 1 ? 'template' : 'templates'}
+						{group.templates.length}
+						{group.templates.length === 1 ? 'template' : 'templates'}
 					</span>
 				</div>
 
@@ -101,16 +102,16 @@
 						data-template-button
 						data-template-id={template.id}
 						data-testid="template-button-{template.id}"
-						class="relative flex w-full items-start justify-between gap-3 rounded-md border-2 border-l-4 p-3 text-left transition-all duration-200 hover:scale-[1.02] hover:shadow-lg md:p-4"
-						style="will-change: transform; backface-visibility: hidden;"
+						class="relative flex w-full items-start justify-between gap-3 rounded-xl border border-l-4 bg-white/80 p-3 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-atmospheric-card-hover md:p-4"
+						class:!bg-direct-50={selectedId === template.id && !isCongressional}
+						class:!bg-congressional-50={selectedId === template.id && isCongressional}
+						style="will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;"
 						class:cursor-pointer={selectedId !== template.id}
 						class:cursor-default={selectedId === template.id}
 						class:border-direct-400={selectedId === template.id && !isCongressional}
 						class:border-congressional-400={selectedId === template.id && isCongressional}
-						class:bg-direct-50={selectedId === template.id && !isCongressional}
-						class:bg-congressional-50={selectedId === template.id && isCongressional}
 						class:border-slate-200={selectedId !== template.id && !isHovered}
-						class:border-slate-300={selectedId !== template.id && isHovered}
+						class:border-violet-200={selectedId !== template.id && isHovered}
 						class:border-l-congressional-500={isCongressional}
 						class:border-l-direct-500={!isCongressional}
 						onmouseenter={() => handleTemplateHover(template.id, true)}
