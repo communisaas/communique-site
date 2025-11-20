@@ -44,21 +44,35 @@ afterAll(() => {
  */
 
 export async function clearTestDatabase() {
-  // Clear in reverse dependency order to avoid foreign key constraints
+  // Clear in STRICT reverse dependency order to avoid foreign key constraints
+  // Order: Children → Parents (leaf nodes first, root last)
   try {
-    await db.template_campaign.deleteMany();
+    // Leaf nodes (no other tables depend on them)
     await db.cWCJob.deleteMany();
+    await db.template_campaign.deleteMany();
+
+    // Analytics events (depend on session & template)
     await db.analytics_event.deleteMany();
+
+    // Analytics sessions (events depend on this)
     await db.analytics_session.deleteMany();
+
+    // Representative relationships
     await db.user_representatives.deleteMany();
     await db.representative.deleteMany();
+
+    // Templates (depend on users)
     await db.template.deleteMany();
+
+    // Auth sessions and accounts
     await db.session.deleteMany();
     await db.account.deleteMany();
+
+    // Root: Users (everything depends on this)
     await db.user.deleteMany();
   } catch (error) {
-    // Ignore foreign key constraint errors during test cleanup
-    console.warn('Database cleanup warning:', error instanceof Error ? error.message : error);
+    // In tests, we want loud failures to catch schema issues
+    throw new Error(`Database cleanup failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -167,12 +181,17 @@ export function createMockRequestEvent(options: {
   locals?: Record<string, any>;
 }) {
   const request = createMockRequest(options);
-  
+
   return {
     request,
     params: options.params || {},
     url: new URL(options.url, 'http://localhost:5173'),
-    locals: options.locals || {},
+    locals: {
+      // Provide database instances for API routes
+      db: testDb,
+      analyticsDb: testDb,
+      ...options.locals
+    },
     getClientAddress: () => '127.0.0.1',
     platform: null,
     route: { id: options.url }
@@ -210,10 +229,15 @@ export function createGuestSession() {
 
 /**
  * Test Data Cleanup
- * 
- * Ensures test isolation and prevents data pollution.
+ *
+ * IMPORTANT: No global beforeEach cleanup to avoid race conditions with parallel tests.
+ * Each test file should call clearTestDatabase() in its own beforeEach hook.
+ *
+ * Why: Vitest runs tests in parallel (maxForks: 4). A global beforeEach clears
+ * the database while other tests are creating data, causing foreign key violations.
  */
 
-beforeEach(async () => {
-  await clearTestDatabase();
-});
+// REMOVED: Global beforeEach that caused race conditions
+// beforeEach(async () => {
+//   await clearTestDatabase();
+// });
