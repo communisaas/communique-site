@@ -4,7 +4,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 export default defineConfig({
 	plugins: [sveltekit()],
 	resolve: {
-		conditions: ['browser']
+		conditions: ['node', 'import', 'module', 'default']
 	},
 	test: {
 		// File patterns
@@ -19,6 +19,13 @@ export default defineConfig({
 			'tests/setup/api-test-setup.ts'
 		],
 		globals: true,
+
+		// MSW v2 Node.js compatibility - resolve server imports correctly
+		server: {
+			deps: {
+				inline: ['msw']
+			}
+		},
 
 		// Performance optimizations
 		pool: 'forks', // Better isolation for integration tests
