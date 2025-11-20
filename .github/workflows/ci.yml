@@ -77,17 +77,13 @@ jobs:
           echo "OAuth redirect base: $OAUTH_REDIRECT_BASE_URL"
           echo "Feature flags - BETA: $ENABLE_BETA, RESEARCH: $ENABLE_RESEARCH"
 
-      # HACKATHON: Allow test failures (build + deploy is priority)
-      # TODO: Fix tests and remove continue-on-error after demo
       - name: Unit tests
         run: npm run test:unit
         timeout-minutes: 5
-        continue-on-error: true
 
       - name: Integration tests
         run: npm run test:integration
         timeout-minutes: 8
-        continue-on-error: true
         env:
           # Additional timeout for integration tests
           VITEST_TIMEOUT: 10000
@@ -95,7 +91,6 @@ jobs:
       - name: Test coverage
         run: npm run test:coverage
         timeout-minutes: 10
-        continue-on-error: true
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
@@ -103,10 +98,11 @@ jobs:
           file: ./coverage/lcov.info
           flags: unittests
           name: codecov-umbrella
-          fail_ci_if_error: false
+          fail_ci_if_error: true
 
-      # Build verification removed - TypeScript errors prevent build
-      # Will be re-enabled after TypeScript fixes
+      - name: Build verification
+        run: npm run build
+        timeout-minutes: 10
 
   # WASM ZK Proof tests (requires browser environment)
   wasm:

@@ -72,13 +72,9 @@
 
 <button
 	type="button"
-	class="group relative flex w-full flex-col overflow-hidden rounded-xl border-l-4 bg-white/80 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.01] hover:shadow-atmospheric-card-hover"
-	class:border-l-congressional-500={isCongressional}
-	class:border-l-direct-500={!isCongressional}
-	class:border-congressional-200/50={isCongressional}
-	class:border-direct-200/50={!isCongressional}
-	class:hover:border-congressional-200/80={isCongressional}
-	class:hover:border-direct-200/80={!isCongressional}
+	class="group relative flex w-full flex-col overflow-hidden rounded-xl border-l-4 bg-white/80 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.01] hover:shadow-atmospheric-card-hover {isCongressional
+		? 'border-l-congressional-500 border-congressional-200/50 hover:border-congressional-200/80'
+		: 'border-l-direct-500 border-direct-200/50 hover:border-direct-200/80'}"
 	style="will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;"
 	onclick={onSelect}
 	data-testid="template-card-{template.id}"
@@ -116,9 +112,7 @@
 			<!-- Verified Sends Metric: JetBrains Mono with gradient for high activity -->
 			<div class="relative flex items-center gap-2 text-sm text-slate-600">
 				<Send
-					class="h-4 w-4 shrink-0"
-					class:text-slate-500={!isHighActivity}
-					class:text-violet-500={isHighActivity}
+					class="h-4 w-4 shrink-0 {isHighActivity ? 'text-violet-500' : 'text-slate-500'}"
 					aria-hidden="true"
 				/>
 				<span

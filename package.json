@@ -5,7 +5,7 @@
 	"scripts": {
 		"start": "node build",
 		"dev": "vite dev",
-		"build": "vite build || true",
+		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && echo \"Skipping svelte-check (temporarily disabled for demo)\"",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
