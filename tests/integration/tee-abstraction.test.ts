@@ -145,7 +145,6 @@ describe('TEE Abstraction Layer', () => {
 				recipient: {
 					name: 'Senator Jane Smith',
 					office: 'senate',
-					state: 'CA',
 					district: null
 				}
 			};
@@ -165,7 +164,6 @@ describe('TEE Abstraction Layer', () => {
 				recipient: {
 					name: 'Senator Jane Smith',
 					office: 'senate',
-					state: 'CA',
 					district: null
 				}
 			};
@@ -243,7 +241,6 @@ describe('TEE Abstraction Layer', () => {
 				recipient: {
 					name: 'Senator Jane Smith',
 					office: 'senate',
-					state: 'CA',
 					district: null
 				}
 			};

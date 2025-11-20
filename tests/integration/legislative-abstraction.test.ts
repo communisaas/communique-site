@@ -100,7 +100,6 @@ describe('Legislative Abstraction Integration', () => {
 		it('should handle US congressional delivery through CWC adapter', async () => {
 			const user = userFactory.build({
 				overrides: {
-					state: 'CA',
 					congressional_district: 'CA-12'
 				}
 			});
@@ -139,8 +138,6 @@ describe('Legislative Abstraction Integration', () => {
 		it('should handle UK parliamentary delivery through generic email adapter', async () => {
 			const user = userFactory.build({
 				overrides: {
-					state: 'London', // Using state field for UK constituency
-					zip: 'SW1A 0AA'
 				}
 			});
 			const template = templateFactory.build({
@@ -214,7 +211,6 @@ describe('Legislative Abstraction Integration', () => {
 			const usRep = representativeFactory.build({
 				overrides: {
 					chamber: 'house',
-					state: 'CA',
 					district: '12',
 					party: 'Democratic'
 				}
@@ -223,7 +219,6 @@ describe('Legislative Abstraction Integration', () => {
 			const ukRep = representativeFactory.build({
 				overrides: {
 					chamber: 'commons', // UK equivalent
-					state: 'London', // Constituency
 					district: undefined, // UK doesn't use districts
 					party: 'Labour'
 				}

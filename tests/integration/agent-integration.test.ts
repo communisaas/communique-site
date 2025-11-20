@@ -61,10 +61,6 @@ const mockDb = {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 					// Consolidated address fields
-					street: '123 Main St',
-					city: 'San Francisco',
-					state: 'CA',
-					zip: '94102',
 					congressional_district: 'CA-12',
 					phone: '+1-555-123-4567',
 					// Verification status
@@ -101,10 +97,6 @@ const mockDb = {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 					// Consolidated address fields
-					street: '456 Fake St',
-					city: 'Unknown',
-					state: 'XX',
-					zip: '00000',
 					congressional_district: 'XX-00',
 					phone: '+1-555-000-0000',
 					// Verification status

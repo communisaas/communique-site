@@ -171,9 +171,6 @@ describe('Congressional Delivery Integration', () => {
 						name: 'Alice Cooper',
 						email: 'alice@example.com',
 						address: expect.objectContaining({
-							street: expect.any(String),
-							city: 'San Francisco',
-							state: 'CA',
 							postal_code: '94102',
 							country_code: 'US'
 						})
@@ -328,8 +325,6 @@ describe('Congressional Delivery Integration', () => {
 						name: user.name,
 						email: user.email,
 						address: expect.objectContaining({
-							city: user.city,
-							state: user.state,
 							postal_code: user.zip,
 							country_code: 'US'
 						})

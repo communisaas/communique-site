@@ -69,11 +69,7 @@ export async function createTestUser(overrides?: Partial<any>) {
       email: 'test@example.com',
       name: 'Test User',
       trust_score: 100,
-      street: '123 Test St',
-      city: 'San Francisco',
-      state: 'CA',
-      zip: '94102',
-      congressional_district: 'CA-12',
+      // NO PII FIELDS - address data never stored in database per privacy architecture
       is_verified: true,
       ...overrides
     }

@@ -28,10 +28,6 @@ describe('Address Save API', () => {
 	describe('POST /api/user/address', () => {
 		it('should save address with individual components (not just string)', async () => {
 			const addressData = {
-				street: '1600 Pennsylvania Avenue NW',
-				city: 'Washington',
-				state: 'DC',
-				zip: '20500',
 				congressional_district: 'DC-AL',
 				verified: true,
 				representatives: [
@@ -39,7 +35,6 @@ describe('Address Save API', () => {
 						name: 'Eleanor Holmes Norton',
 						chamber: 'house',
 						party: 'Democratic',
-						state: 'District of Columbia',
 						district: 'DC-AL',
 						bioguide_id: 'N000147',
 						office_code: 'N000147'
@@ -88,10 +83,6 @@ describe('Address Save API', () => {
 
 		it('should store representatives with correct field names (snake_case)', async () => {
 			const addressData = {
-				street: '1 Dr Carlton B Goodlett Pl',
-				city: 'San Francisco',
-				state: 'CA',
-				zip: '94102',
 				congressional_district: 'CA-11',
 				verified: true,
 				representatives: [
@@ -99,7 +90,6 @@ describe('Address Save API', () => {
 						name: 'Nancy Pelosi',
 						chamber: 'house',
 						party: 'Democratic',
-						state: 'California',
 						district: 'CA-11',
 						bioguide_id: 'P000197', // CRITICAL: snake_case
 						office_code: 'P000197'
@@ -108,7 +98,6 @@ describe('Address Save API', () => {
 						name: 'Alex Padilla',
 						chamber: 'senate',
 						party: 'Democratic',
-						state: 'California',
 						district: 'CA',
 						bioguide_id: 'P000145',
 						office_code: 'P000145'
@@ -147,9 +136,6 @@ describe('Address Save API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '1600 Pennsylvania Avenue NW',
-					city: 'Washington',
-					state: 'DC',
 					zipCode: '20500'
 				})
 			});
@@ -173,10 +159,6 @@ describe('Address Save API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '1600 Pennsylvania Avenue NW',
-					city: 'Washington',
-					state: 'DC',
-					zip: '20500',
 					congressional_district: verifyData.district,
 					verified: true,
 					representatives: verifyData.representatives

@@ -16,11 +16,7 @@ describe('Template Personalization Integration', () => {
 			overrides: {
 				name: 'Jane Smith',
 				// Test consolidated address fields
-				city: 'San Francisco',
-				state: 'CA',
-				zip: '94102',
 				congressional_district: 'CA-12',
-				street: '123 Main Street'
 			}
 		});
 
@@ -41,7 +37,6 @@ describe('Template Personalization Integration', () => {
 				name: 'Nancy Pelosi',
 				chamber: 'house',
 				party: 'Democratic',
-				state: 'CA',
 				district: '12'
 			}
 		});
@@ -60,8 +55,6 @@ describe('Template Personalization Integration', () => {
 		const user = userFactory.build({
 			overrides: {
 				name: 'John Doe',
-				city: 'Austin',
-				state: 'TX',
 				congressional_district: 'TX-35',
 				// Test additional consolidated fields
 				is_verified: true,
@@ -75,7 +68,6 @@ describe('Template Personalization Integration', () => {
 				name: 'Lloyd Doggett',
 				chamber: 'house',
 				party: 'Democratic',
-				state: 'TX',
 				district: '35'
 			}
 		});
@@ -102,8 +94,6 @@ Sincerely,
 		const user = userFactory.build({
 			overrides: {
 				name: 'Test User',
-				city: undefined, // Missing city
-				state: 'CA',
 				congressional_district: undefined, // Missing district
 				phone: undefined // Missing phone
 			}
@@ -152,7 +142,6 @@ Sincerely,
 		const user = userFactory.build({
 			overrides: {
 				name: "O'Connor-Smith", // Special characters
-				city: 'São Paulo' // Non-ASCII characters
 			}
 		});
 

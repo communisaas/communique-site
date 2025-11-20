@@ -26,11 +26,9 @@ export interface MockUser extends Partial<UserWithReputation> {
 	id: string;
 	email: string;
 	name: string | null;
-	street: string | null;
-	city: string | null;
-	state: string | null;
-	zip: string | null;
-	congressional_district: string | null;
+	// NO PII FIELDS (removed per privacy-preserving architecture)
+	// Address data is never stored in database (verified once via TEE, then destroyed)
+	congressional_district: string | null; // Stored as hash only in real schema (district_hash)
 	is_verified: boolean;
 	createdAt: Date;
 	updatedAt: Date;
@@ -240,10 +238,7 @@ export function createMockUser(overrides: Partial<MockUser> = {}): MockUser {
 		id: 'user-123',
 		email: 'test@example.com',
 		name: 'Test User',
-		street: null,
-		city: null,
-		state: null,
-		zip: null,
+		// NO PII FIELDS - address data never stored in database
 		congressional_district: null,
 		is_verified: false,
 		createdAt: now,

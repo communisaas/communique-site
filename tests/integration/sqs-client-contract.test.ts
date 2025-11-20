@@ -75,10 +75,6 @@ describe('SQS Client Contract Tests', () => {
 			email: 'jane@example.com',
 			phone: '+1234567890',
 			address: {
-				street: '123 Main St',
-				city: 'Anytown',
-				state: 'CA',
-				zip: '90210',
 				zip4: '1234'
 			}
 		};
@@ -88,7 +84,6 @@ describe('SQS Client Contract Tests', () => {
 			name: 'Dianne Feinstein',
 			chamber: 'senate',
 			officeCode: 'CA_SEN',
-			state: 'CA',
 			district: '00',
 			party: 'Democratic'
 		};
@@ -98,7 +93,6 @@ describe('SQS Client Contract Tests', () => {
 			name: 'Nancy Pelosi',
 			chamber: 'house',
 			officeCode: 'CA12',
-			state: 'CA',
 			district: '12',
 			party: 'Democratic'
 		};
@@ -173,7 +167,6 @@ describe('SQS Client Contract Tests', () => {
 						priority: { DataType: 'String', StringValue: 'high' },
 						templateId: { DataType: 'String', StringValue: 'template_123' },
 						userId: { DataType: 'String', StringValue: 'user_456' },
-						state: { DataType: 'String', StringValue: 'CA' },
 						district: { DataType: 'String', StringValue: '00' }
 					})
 				})
@@ -207,10 +200,6 @@ describe('SQS Client Contract Tests', () => {
 					email: 'jane@example.com',
 					phone: '+1234567890',
 					address: {
-						street: '123 Main St',
-						city: 'Anytown',
-						state: 'CA',
-						zip: '90210',
 						zip4: '1234'
 					}
 				},
@@ -219,7 +208,6 @@ describe('SQS Client Contract Tests', () => {
 					name: 'Dianne Feinstein',
 					chamber: 'senate',
 					officeCode: 'CA_SEN',
-					state: 'CA',
 					district: '00',
 					party: 'Democratic'
 				},
@@ -284,7 +272,6 @@ describe('SQS Client Contract Tests', () => {
 				name: 'Nancy Pelosi',
 				chamber: 'house',
 				officeCode: 'CA12',
-				state: 'CA',
 				district: '12',
 				party: 'Democratic'
 			});
@@ -414,7 +401,6 @@ describe('SQS Client Contract Tests', () => {
 				priority: { DataType: 'String', StringValue: 'high' },
 				templateId: { DataType: 'String', StringValue: 'template_123' },
 				userId: { DataType: 'String', StringValue: 'user_456' },
-				state: { DataType: 'String', StringValue: 'CA' },
 				district: { DataType: 'String', StringValue: '00' }
 			});
 		});

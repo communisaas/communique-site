@@ -14,9 +14,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '1600 Pennsylvania Avenue NW',
-					city: 'Washington',
-					state: 'DC',
 					zipCode: '20500'
 				})
 			});
@@ -49,9 +46,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '1 Dr Carlton B Goodlett Pl',
-					city: 'San Francisco',
-					state: 'CA',
 					zipCode: '94102'
 				})
 			});
@@ -80,7 +74,6 @@ describe('Address Verification API', () => {
 			expect(houseRep.bioguide_id).toBe(houseRep.office_code);
 
 			const senators = data.representatives.filter((r: { chamber: string }) => r.chamber === 'senate');
-			senators.forEach((senator: { name: string; party: string; bioguide_id: string; office_code: string; state: string }) => {
 				expect(senator.name).toBeTruthy();
 				expect(senator.party).toBeTruthy();
 				expect(senator.bioguide_id).toBeTruthy();
@@ -96,9 +89,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '109 State St',
-					city: 'Montpelier',
-					state: 'VT',
 					zipCode: '05602'
 				})
 			});
@@ -121,8 +111,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '123 Main St',
-					city: 'Springfield'
 					// Missing state and zipCode
 				})
 			});
@@ -138,9 +126,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '123 Main St',
-					city: 'Springfield',
-					state: 'IL',
 					zipCode: 'INVALID'
 				})
 			});
@@ -156,9 +141,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '999999 Nonexistent Street',
-					city: 'Faketown',
-					state: 'CA',
 					zipCode: '99999'
 				})
 			});
@@ -176,9 +158,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '1600 pennsylvania ave nw', // lowercase
-					city: 'washington',
-					state: 'DC',
 					zipCode: '20500'
 				})
 			});
@@ -198,9 +177,6 @@ describe('Address Verification API', () => {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					street: '1600 Pennsylvania Avenue NW',
-					city: 'Washington',
-					state: 'DC',
 					zipCode: '20500'
 				})
 			});

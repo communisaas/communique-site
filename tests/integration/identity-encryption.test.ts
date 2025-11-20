@@ -28,10 +28,6 @@ describe('Identity Blob Encryption', () => {
 	it('should encrypt identity blob with XChaCha20-Poly1305', async () => {
 		const testBlob: IdentityBlob = {
 			address: {
-				street: '123 Main St',
-				city: 'Austin',
-				state: 'TX',
-				zip: '78701'
 			},
 			verificationCredential: {
 				provider: 'self.xyz',
@@ -84,10 +80,6 @@ describe('Identity Blob Encryption', () => {
 	it('should encrypt with deterministic nonce generation', async () => {
 		const testBlob: IdentityBlob = {
 			address: {
-				street: '456 Oak Ave',
-				city: 'Houston',
-				state: 'TX',
-				zip: '77002'
 			},
 			verificationCredential: {
 				provider: 'didit.me',
@@ -116,10 +108,6 @@ describe('Identity Blob Encryption', () => {
 	it('should include optional district data in encryption', async () => {
 		const testBlob: IdentityBlob = {
 			address: {
-				street: '789 Pine Rd',
-				city: 'Dallas',
-				state: 'TX',
-				zip: '75201'
 			},
 			verificationCredential: {
 				provider: 'self.xyz',
@@ -150,10 +138,6 @@ describe('Identity Blob Encryption', () => {
 	it('should include template personalization data', async () => {
 		const testBlob: IdentityBlob = {
 			address: {
-				street: '321 Elm St',
-				city: 'San Antonio',
-				state: 'TX',
-				zip: '78205'
 			},
 			verificationCredential: {
 				provider: 'didit.me',

@@ -33,7 +33,6 @@ vi.mock('@codemirror/view', () => {
 		destroy: vi.fn(),
 		dispatch: vi.fn(),
 		focus: vi.fn(),
-		state: {
 			doc: { toString: () => '', length: 0 },
 			selection: { main: { from: 0, to: 0, head: 0 } }
 		}
