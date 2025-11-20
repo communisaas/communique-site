@@ -29,7 +29,7 @@ describe('Levenshtein Distance', () => {
 
 		it('should calculate substitutions correctly', () => {
 			expect(levenshteinDistance('california', 'californa')).toBe(1); // i→o
-			expect(levenshteinDistance('florida', 'flordia')).toBe(1); // i→d
+			expect(levenshteinDistance('florida', 'flordia')).toBe(2); // swap id→di (transposition = 2 edits)
 		});
 
 		it('should calculate insertions correctly', () => {
@@ -55,8 +55,8 @@ describe('Levenshtein Distance', () => {
 		});
 
 		it('should return false for distance exceeding threshold', () => {
-			expect(withinEditDistance('socal', 'total', 2)).toBe(false);
-			expect(withinEditDistance('xyz', 'abcdef', 2)).toBe(false);
+			expect(withinEditDistance('socal', 'total', 2)).toBe(true); // Distance = 2 (exactly at threshold)
+			expect(withinEditDistance('xyz', 'abcdef', 2)).toBe(false); // Distance = 6
 		});
 
 		it('should handle default threshold of 2', () => {
@@ -153,12 +153,13 @@ describe('Fuzzy Scope Matcher', () => {
 		});
 
 		it('should match typos with edit distance = 2', () => {
-			const masachusetts = fuzzyMatchScope('masachusetts', 'US');
-			expect(masachusetts?.display_text).toBe('Massachusetts');
-			expect(masachusetts?.confidence).toBeCloseTo(0.75, 2); // 0.9 - 0.15 penalty
+			const flordia = fuzzyMatchScope('flordia', 'US'); // Swap id→di (distance 2)
+			expect(flordia?.display_text).toBe('Florida');
+			expect(flordia?.confidence).toBeCloseTo(0.75, 2); // 0.9 - 0.15 penalty
 
-			const conecticut = fuzzyMatchScope('conecticut', 'US');
-			expect(conecticut?.display_text).toBe('Connecticut');
+			const pensilvania = fuzzyMatchScope('pensilvania', 'US'); // Missing n, y (distance 2)
+			expect(pensilvania?.display_text).toBe('Pennsylvania');
+			expect(pensilvania?.confidence).toBeCloseTo(0.75, 2);
 		});
 
 		it('should NOT match typos with edit distance > 2', () => {
@@ -339,7 +340,7 @@ describe('Fuzzy Scope Matcher', () => {
 			const closest = findClosestPattern('californiaa', 'US');
 			expect(closest).not.toBeNull();
 			expect(closest?.pattern.canonical).toBe('California');
-			expect(closest?.distance).toBeGreaterThan(2);
+			expect(closest?.distance).toBe(1); // californiaa → california = insert 'a' = distance 1
 		});
 
 		it('should return null for empty input', () => {

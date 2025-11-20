@@ -58,8 +58,8 @@ export function fuzzyMatchScope(text: string, countryCode: string = 'US'): Scope
 	const normalized = text.toLowerCase().trim();
 
 	// Early exit: empty string or too short (avoid false positives on common words)
-	// Minimum length 3 for exact matches (e.g., "NYC"), 5 for typo tolerance
-	if (!normalized || normalized.length < 3) {
+	// Minimum length 2 for exact matches (e.g., "CA", "NY", "SF"), 5 for typo tolerance
+	if (!normalized || normalized.length < 2) {
 		return null;
 	}
 
