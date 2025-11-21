@@ -134,8 +134,7 @@ async function setCached(
 			transaction.oncomplete = () => resolve();
 			transaction.onerror = () => reject(transaction.error);
 		});
-	} catch (error) {
-	}
+	} catch (error) {}
 }
 
 /**
@@ -168,8 +167,7 @@ export async function clearExpiredCache(): Promise<void> {
 
 			request.onerror = () => reject(request.error);
 		});
-	} catch (error) {
-	}
+	} catch (error) {}
 }
 
 /**
@@ -186,9 +184,7 @@ export async function clearAllCache(): Promise<void> {
 			request.onsuccess = () => resolve();
 			request.onerror = () => reject(request.error);
 		});
-
-	} catch (error) {
-	}
+	} catch (error) {}
 }
 
 /**

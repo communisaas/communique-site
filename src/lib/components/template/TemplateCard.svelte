@@ -73,8 +73,8 @@
 <button
 	type="button"
 	class="group relative flex w-full flex-col overflow-hidden rounded-xl border-l-4 bg-white/80 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.01] hover:shadow-atmospheric-card-hover {isCongressional
-		? 'border-l-congressional-500 border-congressional-200/50 hover:border-congressional-200/80'
-		: 'border-l-direct-500 border-direct-200/50 hover:border-direct-200/80'}"
+		? 'border-congressional-200/50 border-l-congressional-500 hover:border-congressional-200/80'
+		: 'border-direct-200/50 border-l-direct-500 hover:border-direct-200/80'}"
 	style="will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;"
 	onclick={onSelect}
 	data-testid="template-card-{template.id}"
@@ -87,7 +87,7 @@
 				{isCongressional ? 'Congressional' : 'Direct'}
 			</Badge>
 			<span
-				class="font-brand rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 md:text-sm"
+				class="rounded bg-gray-100 px-2 py-1 font-brand text-xs font-medium text-gray-600 md:text-sm"
 			>
 				{template.category}
 			</span>
@@ -95,19 +95,21 @@
 
 		<!-- Title: Satoshi Bold for distinctive brand voice -->
 		<h3
-			class="font-brand line-clamp-2 text-lg font-bold text-gray-900 group-hover:text-gray-700 md:text-xl"
+			class="line-clamp-2 font-brand text-lg font-bold text-gray-900 group-hover:text-gray-700 md:text-xl"
 		>
 			{template.title}
 		</h3>
 
 		<!-- Description: Satoshi Regular for readable body text -->
-		<p class="font-brand line-clamp-3 text-sm text-gray-600 md:text-base">
+		<p class="line-clamp-3 font-brand text-sm text-gray-600 md:text-base">
 			{template.description}
 		</p>
 	</div>
 
 	<!-- Metrics Section: Atmospheric tint instead of flat gray -->
-	<div class="mt-auto border-t border-slate-100/50 bg-gradient-to-br from-slate-50/30 to-violet-50/10 p-4">
+	<div
+		class="mt-auto border-t border-slate-100/50 bg-gradient-to-br from-slate-50/30 to-violet-50/10 p-4"
+	>
 		<div class="flex items-center justify-between gap-4">
 			<!-- Verified Sends Metric: JetBrains Mono with gradient for high activity -->
 			<div class="relative flex items-center gap-2 text-sm text-slate-600">

@@ -42,9 +42,7 @@ export const GET: RequestHandler = async ({ getClientAddress, request, url }) =>
 			// Priority 2: Fallback to mock location (no external API calls)
 			// No X-Dev-IP header or query params - those expose PII in logs/URLs
 			else {
-				console.log(
-					'[IP Lookup] Development mode: No proxy headers found, using mock location'
-				);
+				console.log('[IP Lookup] Development mode: No proxy headers found, using mock location');
 				const mockLocation = getMockLocation();
 				return json(mockLocation);
 			}

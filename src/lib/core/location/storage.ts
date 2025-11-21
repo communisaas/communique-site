@@ -37,7 +37,6 @@ export class LocationStorage {
 	 * Force delete the database (nuclear option for corrupted databases)
 	 */
 	async nukeDatabase(): Promise<void> {
-
 		// Close existing connection
 		this.close();
 
@@ -53,8 +52,7 @@ export class LocationStorage {
 				reject(new Error('Failed to delete database'));
 			};
 
-			request.onblocked = () => {
-			};
+			request.onblocked = () => {};
 		});
 	}
 

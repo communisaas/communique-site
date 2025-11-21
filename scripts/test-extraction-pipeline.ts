@@ -136,9 +136,16 @@ async function extractGeographicScope(
 	}
 
 	const statePatterns = [
-		/\bcalifornia\b/, /\bnew york\b/, /\btexas\b/, /\bflorida\b/,
-		/\billinois\b/, /\bpennsylvania\b/, /\bohio\b/, /\bgeorgia\b/,
-		/\bmichigan\b/, /\bnorth carolina\b/,
+		/\bcalifornia\b/,
+		/\bnew york\b/,
+		/\btexas\b/,
+		/\bflorida\b/,
+		/\billinois\b/,
+		/\bpennsylvania\b/,
+		/\bohio\b/,
+		/\bgeorgia\b/,
+		/\bmichigan\b/,
+		/\bnorth carolina\b/,
 		/\bin (california|new york|texas|florida|illinois)\b/
 	];
 
@@ -152,8 +159,11 @@ async function extractGeographicScope(
 	}
 
 	const nationwidePatterns = [
-		/\bnationwide\b/, /\ball states\b/, /\bfederal\b/,
-		/\bacross america\b/, /\bacross the (country|nation|united states)\b/
+		/\bnationwide\b/,
+		/\ball states\b/,
+		/\bfederal\b/,
+		/\bacross america\b/,
+		/\bacross the (country|nation|united states)\b/
 	];
 
 	for (const pattern of nationwidePatterns) {
@@ -218,7 +228,9 @@ async function runTests() {
 
 	const hasGoogleMapsKey = Boolean(process.env.GOOGLE_MAPS_API_KEY);
 	if (!hasGoogleMapsKey) {
-		console.log(`${YELLOW}⚠️  No GOOGLE_MAPS_API_KEY found - geocoding tests will be skipped${RESET}\n`);
+		console.log(
+			`${YELLOW}⚠️  No GOOGLE_MAPS_API_KEY found - geocoding tests will be skipped${RESET}\n`
+		);
 	}
 
 	for (const testCase of TEST_CASES) {
@@ -232,24 +244,33 @@ async function runTests() {
 		try {
 			const { scope, layer } = await extractGeographicScope(testCase.message, testCase.subject);
 
-			const layerMatch = layer === testCase.expectedLayer ||
+			const layerMatch =
+				layer === testCase.expectedLayer ||
 				(layer === 'geocoding-cached' && testCase.expectedLayer === 'geocoding');
 
-			const scopeMatch = !testCase.expectedScope ||
+			const scopeMatch =
+				!testCase.expectedScope ||
 				scope?.display_text?.toLowerCase().includes(testCase.expectedScope.toLowerCase());
 
-			const levelMatch = !testCase.expectedLevel ||
-				scope?.scope_level === testCase.expectedLevel;
+			const levelMatch = !testCase.expectedLevel || scope?.scope_level === testCase.expectedLevel;
 
 			if (layerMatch && scopeMatch && levelMatch) {
 				console.log(`${GREEN}✓ PASS: ${testCase.name}${RESET}`);
-				console.log(`  Layer: ${layer}, Scope: ${scope?.display_text || 'none'}, Level: ${scope?.scope_level || 'none'}`);
-				console.log(`  Confidence: ${scope?.confidence || 0}, Method: ${scope?.extraction_method || 'none'}\n`);
+				console.log(
+					`  Layer: ${layer}, Scope: ${scope?.display_text || 'none'}, Level: ${scope?.scope_level || 'none'}`
+				);
+				console.log(
+					`  Confidence: ${scope?.confidence || 0}, Method: ${scope?.extraction_method || 'none'}\n`
+				);
 				passed++;
 			} else {
 				console.log(`${RED}✗ FAIL: ${testCase.name}${RESET}`);
-				console.log(`  Expected: layer=${testCase.expectedLayer}, scope=${testCase.expectedScope}, level=${testCase.expectedLevel}`);
-				console.log(`  Got: layer=${layer}, scope=${scope?.display_text || 'none'}, level=${scope?.scope_level || 'none'}\n`);
+				console.log(
+					`  Expected: layer=${testCase.expectedLayer}, scope=${testCase.expectedScope}, level=${testCase.expectedLevel}`
+				);
+				console.log(
+					`  Got: layer=${layer}, scope=${scope?.display_text || 'none'}, level=${scope?.scope_level || 'none'}\n`
+				);
 				failed++;
 			}
 		} catch (error) {
@@ -272,9 +293,15 @@ async function runTests() {
 
 	// Coverage analysis
 	console.log(`\n${BLUE}Coverage Analysis:${RESET}`);
-	console.log(`  Layer 1 (Regex): ${passed >= 3 ? GREEN : RED}${passed >= 3 ? '✓' : '✗'} Operational${RESET}`);
-	console.log(`  Layer 2 (Fuzzy): ${passed >= 6 ? GREEN : RED}${passed >= 6 ? '✓' : '✗'} Operational${RESET}`);
-	console.log(`  Layer 3 (Geocoding): ${hasGoogleMapsKey ? (passed >= 8 ? GREEN : YELLOW) : YELLOW}${hasGoogleMapsKey ? (passed >= 8 ? '✓' : '~') : '⊘'} ${hasGoogleMapsKey ? 'Operational' : 'Skipped (no API key)'}${RESET}`);
+	console.log(
+		`  Layer 1 (Regex): ${passed >= 3 ? GREEN : RED}${passed >= 3 ? '✓' : '✗'} Operational${RESET}`
+	);
+	console.log(
+		`  Layer 2 (Fuzzy): ${passed >= 6 ? GREEN : RED}${passed >= 6 ? '✓' : '✗'} Operational${RESET}`
+	);
+	console.log(
+		`  Layer 3 (Geocoding): ${hasGoogleMapsKey ? (passed >= 8 ? GREEN : YELLOW) : YELLOW}${hasGoogleMapsKey ? (passed >= 8 ? '✓' : '~') : '⊘'} ${hasGoogleMapsKey ? 'Operational' : 'Skipped (no API key)'}${RESET}`
+	);
 	console.log(`  Layer 4 (LLM): ${YELLOW}⊘ Not yet implemented${RESET}\n`);
 
 	process.exit(failed > 0 ? 1 : 0);

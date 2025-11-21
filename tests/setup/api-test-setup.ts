@@ -51,11 +51,14 @@ export async function clearTestDatabase() {
     await db.cWCJob.deleteMany();
     await db.template_campaign.deleteMany();
 
-    // Analytics events (depend on session & template)
+    // Analytics events (depend on session & template & experiment)
     await db.analytics_event.deleteMany();
 
     // Analytics sessions (events depend on this)
     await db.analytics_session.deleteMany();
+
+    // Analytics experiments (events reference this via experiment_id)
+    await db.analytics_experiment.deleteMany();
 
     // Representative relationships
     await db.user_representatives.deleteMany();

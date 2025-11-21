@@ -73,46 +73,64 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		}
 
 		// Ensure analytics session exists using new consolidated schema
-		await db.analytics_session.upsert({
-			where: {
-				session_id: session_data.session_id
-			},
-			create: {
-				session_id: session_data.session_id,
-				user_id: validatedUserId,
-				created_at: new Date(),
-				updated_at: new Date(),
-				utm_source: session_data.utm_source,
-				utm_medium: session_data.utm_medium,
-				utm_campaign: session_data.utm_campaign,
-				landing_page: session_data.landing_page,
-				referrer: session_data.referrer,
-				device_data: {
-					ip_address: clientIP,
-					user_agent: session_data.user_agent,
-					fingerprint: session_data.fingerprint
-				},
-				session_metrics: {
-					events_count: events.length,
-					page_views: events.filter((e) => (e.event_name || e.name) === 'page_view').length,
-					conversion_count: events.filter((e) => (e.event_name || e.name) === 'conversion').length
-				},
-				funnel_progress: {}
-			},
-			update: {
-				user_id: validatedUserId || undefined,
-				updated_at: new Date(),
-				session_metrics: {
-					events_count: { increment: events.length },
-					page_views: {
-						increment: events.filter((e) => (e.event_name || e.name) === 'page_view').length
-					},
-					conversion_count: {
-						increment: events.filter((e) => (e.event_name || e.name) === 'conversion').length
-					}
-				}
-			}
+		// Note: JSONB fields don't support Prisma's atomic increment operator
+		// We need to read-modify-write for session_metrics updates
+		const existingSession = await db.analytics_session.findUnique({
+			where: { session_id: session_data.session_id },
+			select: { session_metrics: true }
 		});
+
+		// Calculate new event counts
+		const pageViewCount = events.filter((e) => (e.event_name || e.name) === 'page_view').length;
+		const conversionCount = events.filter(
+			(e) =>
+				(e.event_name || e.name) === 'template_used' || (e.event_name || e.name) === 'conversion'
+		).length;
+
+		if (existingSession) {
+			// Update existing session - manually increment JSONB metrics
+			const currentMetrics = existingSession.session_metrics as Record<string, number> | null;
+			const newMetrics = {
+				events_count: (currentMetrics?.events_count || 0) + events.length,
+				page_views: (currentMetrics?.page_views || 0) + pageViewCount,
+				conversion_count: (currentMetrics?.conversion_count || 0) + conversionCount
+			};
+
+			await db.analytics_session.update({
+				where: { session_id: session_data.session_id },
+				data: {
+					user_id: validatedUserId || undefined,
+					updated_at: new Date(),
+					session_metrics: newMetrics
+				}
+			});
+		} else {
+			// Create new session
+			await db.analytics_session.create({
+				data: {
+					session_id: session_data.session_id,
+					user_id: validatedUserId,
+					created_at: new Date(),
+					updated_at: new Date(),
+					utm_source: session_data.utm_source,
+					utm_medium: session_data.utm_medium,
+					utm_campaign: session_data.utm_campaign,
+					landing_page: session_data.landing_page,
+					referrer: session_data.referrer,
+					device_data: {
+						ip_address: clientIP,
+						user_agent: session_data.user_agent,
+						fingerprint: session_data.fingerprint
+					},
+					session_metrics: {
+						events_count: events.length,
+						page_views: pageViewCount,
+						conversion_count: conversionCount
+					},
+					funnel_progress: {}
+				}
+			});
+		}
 
 		// Validate template_ids exist if provided
 		const templateIds = [

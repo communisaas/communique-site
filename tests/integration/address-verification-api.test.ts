@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 /**
  * Integration tests for address verification API
@@ -74,6 +74,7 @@ describe('Address Verification API', () => {
 			expect(houseRep.bioguide_id).toBe(houseRep.office_code);
 
 			const senators = data.representatives.filter((r: { chamber: string }) => r.chamber === 'senate');
+			senators.forEach((senator: { name: string; party: string; bioguide_id: string; office_code: string; state: string }) => {
 				expect(senator.name).toBeTruthy();
 				expect(senator.party).toBeTruthy();
 				expect(senator.bioguide_id).toBeTruthy();
@@ -171,8 +172,8 @@ describe('Address Verification API', () => {
 			expect(data.correctedAddress).toMatch(/PENNSYLVANIA/); // Should be uppercase from Census
 		});
 
-		it('[CONTRACT TEST] should return data structure compatible with save endpoint', async () => {
-			// This test ensures the verify → save data pipeline doesn't break
+		it('[CONTRACT TEST] should return data structure compatible with session storage', async () => {
+			// This test ensures the verify API returns proper data structure for session-based verification
 			const response = await fetch(`${API_BASE}/api/address/verify`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -184,7 +185,7 @@ describe('Address Verification API', () => {
 			expect(response.status).toBe(200);
 			const data = await response.json();
 
-			// Verify all fields that /api/user/address expects
+			// Verify all fields needed for session-based verification
 			expect(data.verified).toBeDefined();
 			expect(data.district).toBeDefined();
 			expect(data.representatives).toBeDefined();

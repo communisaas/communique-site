@@ -72,23 +72,57 @@ const sessionScenarios = [
 describe('Analytics Core Integration Tests - Real Database', () => {
 	let testUser: any;
 	let testTemplate: any;
+	let testFunnelExperiment: any;
+	let testCampaignExperiment: any;
 
 	beforeEach(async () => {
 		await clearTestDatabase();
-		
+
 		// Create real test data
 		testUser = await createTestUser({
 			id: 'test-user-analytics',
 			email: 'analytics@test.com',
 			name: 'Analytics Test User'
 		});
-		
+
 		testTemplate = await createTestTemplate(testUser.id, {
 			id: 'test-template-analytics',
 			slug: 'analytics-test-template',
 			title: 'Analytics Test Template'
 		});
-	});
+
+		// Create test experiments for foreign key constraints
+		// Using upsert for robustness in case clearTestDatabase() doesn't fully clean
+		testFunnelExperiment = await db.analytics_experiment.upsert({
+			where: { id: 'funnel-123' },
+			create: {
+				id: 'funnel-123',
+				name: 'Test Funnel Experiment',
+				type: 'funnel',
+				status: 'active',
+				config: {
+					steps: ['objective', 'template', 'send']
+				},
+				metrics_cache: {}
+			},
+			update: {}
+		});
+
+		testCampaignExperiment = await db.analytics_experiment.upsert({
+			where: { id: 'camp-456' },
+			create: {
+				id: 'camp-456',
+				name: 'Test Campaign Experiment',
+				type: 'campaign',
+				status: 'active',
+				config: {
+					campaign_name: 'voting-2024'
+				},
+				metrics_cache: {}
+			},
+			update: {}
+		});
+	}, 10000); // 10 second timeout for beforeEach hook
 
 	afterEach(async () => {
 		await clearTestDatabase();
