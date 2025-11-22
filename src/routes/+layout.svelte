@@ -9,7 +9,6 @@
 	import AppHeader from '$lib/components/layout/AppHeader.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
-	import AtmosphericBackground from '$lib/components/ui/AtmosphericBackground.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
@@ -63,9 +62,6 @@
 		}
 	}
 </script>
-
-<!-- Atmospheric background layer (Phase 3: Cypherpunk Newsroom) -->
-<AtmosphericBackground variant="subtle" />
 
 {#if isProfilePage}
 	<!-- Profile pages: No AppHeader, no padding, full control -->

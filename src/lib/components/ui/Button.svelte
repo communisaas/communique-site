@@ -61,18 +61,9 @@
 	let clicked = $state(false);
 	let isLargeViewport = $state(false);
 
-	// Track viewport width for responsive chevron direction
+	// Always use downward chevrons (no responsive swap)
 	$effect(() => {
-		if (typeof window !== 'undefined' && icon === 'chevrons-down') {
-			const updateViewport = () => {
-				isLargeViewport = window.innerWidth >= 1024; // lg breakpoint
-			};
-
-			updateViewport();
-			window.addEventListener('resize', updateViewport);
-
-			return () => window.removeEventListener('resize', updateViewport);
-		}
+		isLargeViewport = false;
 	});
 
 	// Select icon component based on prop and viewport
@@ -81,15 +72,7 @@
 		'chevrons-down': ChevronsDown,
 		'chevrons-right': ChevronsRight
 	};
-	const IconComponent = $derived(
-		icon === 'chevrons-down'
-			? isLargeViewport
-				? iconComponents['chevrons-right']
-				: iconComponents['chevrons-down']
-			: icon
-				? iconComponents[icon]
-				: undefined
-	);
+	const IconComponent = $derived(icon ? iconComponents[icon] : undefined);
 
 	// Elegant spring animations for smooth interactions
 	let buttonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
@@ -97,13 +80,14 @@
 	let glowIntensity = spring(0, { stiffness: 0.4, damping: 0.8 }); // For magical variant glow
 
 	// Dynamic paper plane flight animation with realistic physics
-	// All animations use springs for natural paper plane movement
-	let planeX = spring(0, { stiffness: 0.3, damping: 0.7 });
-	let planeY = spring(0, { stiffness: 0.25, damping: 0.6 });
-	let planeOpacity = spring(1, { stiffness: 0.4, damping: 0.8 });
-	let planeRotation = spring(0, { stiffness: 0.35, damping: 0.6 });
-	let planeScale = spring(1, { stiffness: 0.3, damping: 0.7 });
-	let planeBlur = spring(0, { stiffness: 0.4, damping: 0.8 });
+	// CRITICAL: All springs must have IDENTICAL physics for unified motion
+	const flightPhysics = { stiffness: 0.08, damping: 0.85 };
+	let planeX = spring(0, flightPhysics);
+	let planeY = spring(0, flightPhysics);
+	let planeOpacity = spring(1, flightPhysics);
+	let planeRotation = spring(0, flightPhysics);
+	let planeScale = spring(1, flightPhysics);
+	let planeBlur = spring(0, flightPhysics);
 
 	// Chevrons animation for scroll/reveal action
 	let chevronsX = spring(0, { stiffness: 0.3, damping: 0.8 }); // For horizontal movement
@@ -261,163 +245,54 @@
 		}
 	});
 
-	// Engaging paper plane flight animation with realistic physics and visual flair
+	// Paper plane flight - simple, elegant, unified physics
 	$effect(() => {
 		if (enableFlight) {
-			if (flightDirection === 'down-right') {
-				// Special animation for Hero "Start Writing" button with dynamic targeting
-				const _targets = calculateTargetPositions();
-
-				switch (flightState) {
-					case 'taking-off':
-						// Elegant launch - natural paper plane physics
-						planeX.set(45);
-						planeY.set(-12);
-						planeRotation.set(-8); // Gentle banking for natural launch
-						planeScale.set(1.1);
-						planeOpacity.set(0.95);
-						planeBlur.set(0.3);
-						break;
-					case 'flying':
-						// Continue elegant arc with natural deceleration
-						planeX.set(80);
-						planeY.set(-25);
-						planeRotation.set(5); // Leveling out
-						planeScale.set(1.2);
-						planeOpacity.set(0.85);
-						planeBlur.set(0.6);
-						break;
-					case 'sent':
-						// Natural banking turn with realistic physics
-						planeX.set(140);
-						planeY.set(-40);
-						planeRotation.set(25); // Natural banking
-						planeScale.set(1.1);
-						planeOpacity.set(0.75);
-						planeBlur.set(1.0);
-						break;
-					case 'departing':
-						// Gravity and air resistance taking effect
-						planeX.set(220);
-						planeY.set(-55);
-						planeRotation.set(30); // Continuing bank
-						planeScale.set(0.7);
-						planeOpacity.set(0);
-						planeBlur.set(1.8);
-						break;
-					case 'returning':
-						// Instant reset - plane shoots in from bottom-left like caught mid-flight
-						// Position far bottom-left, as if caught and thrown back
-						planeX.set(-25, { hard: true });
-						planeY.set(20, { hard: true });
-						planeRotation.set(35, { hard: true }); // Angled as if thrown
-						planeScale.set(0.6, { hard: true });
-						planeOpacity.set(0.4, { hard: true });
-						planeBlur.set(0.8, { hard: true });
-						// Immediately shoot towards position with spring physics
-						setTimeout(() => {
-							// Overshoot slightly past center for realistic catch-and-release effect
-							planeX.set(2);
-							planeY.set(-1);
-							planeRotation.set(-3);
-							planeScale.set(1.05);
-							planeOpacity.set(1);
-							planeBlur.set(0);
-						}, 20);
-						// Then settle into final position
-						setTimeout(() => {
-							planeX.set(0);
-							planeY.set(0);
-							planeRotation.set(0);
-							planeScale.set(1);
-						}, 150);
-						break;
-					default: // 'ready'
-						// Maintain final position
-						planeX.set(0);
-						planeY.set(0);
-						planeRotation.set(0);
-						planeScale.set(1);
-						planeOpacity.set(1);
-						planeBlur.set(0);
-						// Hide second plane (no longer used)
-						_showSecondPlane = false;
-				}
-			} else {
-				// Default animation for send buttons - dramatic and powerful
-				switch (flightState) {
-					case 'taking-off':
-						// Powerful launch with natural physics variation
-						planeX.set(45);
-						planeY.set(-8);
-						planeRotation.set(-12); // Banking left for the turn
-						planeScale.set(1.1);
-						planeOpacity.set(0.95);
-						planeBlur.set(0.5);
-						break;
-					case 'flying':
-						// Dramatic arc with realistic paper plane movement
-						planeX.set(120);
-						planeY.set(-35); // Higher arc
-						planeRotation.set(25); // Banking right into the dive
-						planeScale.set(1.3); // Growing larger as it "flies toward us"
-						planeOpacity.set(0.7);
-						planeBlur.set(1.2); // Motion blur effect
-						break;
-					case 'sent':
-						// Peak trajectory with natural deceleration
-						planeX.set(140);
-						planeY.set(-40);
-						planeRotation.set(30);
-						planeScale.set(1.2);
-						planeOpacity.set(0.8);
-						planeBlur.set(1);
-						break;
-					case 'departing':
-						// Natural descent with air resistance
-						planeX.set(250); // Far off right
-						planeY.set(-60); // Continuing upward
-						planeRotation.set(35); // Still banking
-						planeScale.set(0.6); // Getting smaller
-						planeOpacity.set(0); // Completely faded out
-						planeBlur.set(2); // Heavy blur
-						break;
-					case 'returning':
-						// Instant reset - plane shoots in from bottom-left like caught mid-flight
-						// Position far bottom-left, as if caught and thrown back
-						planeX.set(-25, { hard: true });
-						planeY.set(20, { hard: true });
-						planeRotation.set(35, { hard: true }); // Angled as if thrown
-						planeScale.set(0.6, { hard: true });
-						planeOpacity.set(0.4, { hard: true });
-						planeBlur.set(0.8, { hard: true });
-						// Immediately shoot towards position with spring physics
-						setTimeout(() => {
-							// Overshoot slightly past center for realistic catch-and-release effect
-							planeX.set(2);
-							planeY.set(-1);
-							planeRotation.set(-3);
-							planeScale.set(1.05);
-							planeOpacity.set(1);
-							planeBlur.set(0);
-						}, 20);
-						// Then settle into final position
-						setTimeout(() => {
-							planeX.set(0);
-							planeY.set(0);
-							planeRotation.set(0);
-							planeScale.set(1);
-						}, 150);
-						break;
-					default: // 'ready'
-						// Maintain final position
-						planeX.set(0);
-						planeY.set(0);
-						planeRotation.set(0);
-						planeScale.set(1);
-						planeOpacity.set(1);
-						planeBlur.set(0);
-				}
+			switch (flightState) {
+				case 'taking-off':
+					// Gentle lift - plane tips up and begins moving
+					planeX.set(20);
+					planeY.set(-8);
+					planeRotation.set(-15);
+					planeScale.set(1.05);
+					planeOpacity.set(1);
+					planeBlur.set(0);
+					break;
+				case 'flying':
+					// Soaring arc - smooth rightward and upward motion
+					planeX.set(80);
+					planeY.set(-30);
+					planeRotation.set(10);
+					planeScale.set(1);
+					planeOpacity.set(0.9);
+					planeBlur.set(0.5);
+					break;
+				case 'sent':
+				case 'departing':
+					// Gliding away - continues trajectory, fades out
+					planeX.set(180);
+					planeY.set(-45);
+					planeRotation.set(20);
+					planeScale.set(0.85);
+					planeOpacity.set(0);
+					planeBlur.set(1);
+					break;
+				case 'returning':
+					// Quick reset
+					planeX.set(0, { hard: true });
+					planeY.set(0, { hard: true });
+					planeRotation.set(0, { hard: true });
+					planeScale.set(1, { hard: true });
+					planeOpacity.set(1, { hard: true });
+					planeBlur.set(0, { hard: true });
+					break;
+				default: // 'ready'
+					planeX.set(0);
+					planeY.set(0);
+					planeRotation.set(0);
+					planeScale.set(1);
+					planeOpacity.set(1);
+					planeBlur.set(0);
 			}
 		}
 	});
@@ -425,22 +300,20 @@
 	function handleClick(__event: MouseEvent) {
 		if (!disabled && !loading) {
 			clicked = true;
+			const isSignedIn = user && user.id;
 
 			if (animationType === 'chevrons') {
 				// Click animation - pulse in direction of chevron
 				buttonScale.set(0.98);
 				if (isLargeViewport) {
-					// Rightward pulse
 					chevronsX.set(4);
 				} else {
-					// Downward pulse
 					chevronsY.set(4);
 				}
 				chevronsScale.set(0.98);
 				chevronsOpacity.set(0.7);
 
 				setTimeout(() => {
-					// Bounce in direction
 					if (isLargeViewport) {
 						chevronsX.set(6);
 					} else {
@@ -452,65 +325,84 @@
 				}, 150);
 
 				setTimeout(() => {
-					// Spring back
 					chevronsX.set(0);
 					chevronsY.set(0);
 					chevronsScale.set(1);
 					chevronsOpacity.set(1);
 					clicked = false;
 				}, 350);
-			} else if (enableFlight && flightState === 'ready') {
-				// Start flight sequence with anticipation
-				flightState = 'taking-off';
-				buttonScale.set(0.96); // Stronger press feedback
 
-				// Clear clicked state quickly for flight buttons
+				onclick?.(__event);
+			} else if (enableFlight && isSignedIn && flightState === 'ready') {
+				// SIGNED IN: Full flight animation, redirect after brief takeoff
+				flightState = 'taking-off';
+				buttonScale.set(0.96);
+
 				setTimeout(() => {
 					clicked = false;
 				}, 150);
 
-				// Takeoff phase - longer to show the banking turn
 				setTimeout(() => {
-					if (flightState === 'taking-off') {
-						flightState = 'flying';
-					}
+					if (flightState === 'taking-off') flightState = 'flying';
 				}, 400);
 
-				// Flight phase - dramatic arc with scale and blur
 				setTimeout(() => {
 					if (flightState === 'flying') {
 						flightState = 'sent';
-						buttonScale.set(1.03); // Slight success bounce
+						buttonScale.set(1.03);
 					}
 				}, 800);
 
-				// Continue off screen
 				setTimeout(() => {
-					if (flightState === 'sent') {
-						flightState = 'departing';
-					}
+					if (flightState === 'sent') flightState = 'departing';
 				}, 1200);
 
-				// Button settle
 				setTimeout(() => {
 					buttonScale.set(1);
 				}, 1100);
 
-				// Transition to returning state for pop-in effect
 				setTimeout(() => {
-					if (flightState === 'departing') {
-						flightState = 'returning';
-					}
+					if (flightState === 'departing') flightState = 'returning';
 				}, 1900);
 
-				// Complete the return to ready state after spring settles
 				setTimeout(() => {
-					if (flightState === 'returning') {
-						flightState = 'ready';
-					}
+					if (flightState === 'returning') flightState = 'ready';
 				}, 2300);
+
+				// Redirect early - user sees takeoff then page transitions
+				setTimeout(() => {
+					onclick?.(__event);
+				}, 120);
+			} else if (icon === 'send') {
+				// NOT SIGNED IN (or no flight): Pulse animation with plane
+				// Button press
+				buttonScale.set(0.96);
+
+				// Plane pulses with button - eager forward motion
+				planeX.set(8);
+				planeY.set(-3);
+				planeRotation.set(-8);
+				planeScale.set(1.1);
+
+				setTimeout(() => {
+					// Button bounces back
+					buttonScale.set(1.02);
+					// Plane settles back
+					planeX.set(0);
+					planeY.set(0);
+					planeRotation.set(0);
+					planeScale.set(1);
+				}, 150);
+
+				setTimeout(() => {
+					buttonScale.set(1);
+					clicked = false;
+				}, 250);
+
+				// Immediate callback - opens auth modal
+				onclick?.(__event);
 			} else {
-				// Standard click animation
+				// Standard click animation (no icon)
 				buttonScale.set(0.98);
 
 				setTimeout(() => {
@@ -521,17 +413,7 @@
 					buttonScale.set(1);
 					clicked = false;
 				}, 200);
-			}
 
-			// Call the onclick handler - delay for signed-in users to coordinate with animation
-			const isSignedIn = user && user.id;
-			const delay = isSignedIn ? 500 : 0;
-
-			if (delay > 0) {
-				setTimeout(() => {
-					onclick?.(__event);
-				}, delay);
-			} else {
 				onclick?.(__event);
 			}
 		}
@@ -613,43 +495,50 @@
 
 	<!-- Icon element - different rendering based on animation type -->
 	{#if IconComponent && animationType !== 'chevrons'}
-		<!-- Flight icon - absolute positioned for flight animation -->
+		<!-- Flight icon - uses two overlapping icons for color transition effect -->
+		{@const isFlying = enableFlight && flightState !== 'ready' && flightState !== 'returning'}
+		{@const isWhiteText =
+			variant === 'primary' ||
+			variant === 'magical' ||
+			variant === 'verified' ||
+			variant === 'danger'}
+		{@const baseColor = isWhiteText ? 'white' : 'rgb(71, 85, 105)'}
+		{@const buttonEdge = 30}
+		{@const transitionProgress = Math.max(0, Math.min(1, ($planeX - buttonEdge) / 50))}
+
+		<!-- Base layer: starts as button color, fades as plane exits -->
 		<span
-			class="pointer-events-none absolute z-50 {enableFlight &&
-			flightState !== 'ready' &&
-			flightState !== 'returning'
-				? 'transition-all duration-500 ease-out'
-				: ''}"
+			class="pointer-events-none absolute z-50"
 			style="
 				top: 50%;
 				right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
 				transform: translate({$planeX}px, calc(-50% + {$planeY}px)) rotate({$planeRotation}deg) scale({$planeScale});
-				opacity: {enableFlight ? $planeOpacity : 1};
-				filter: blur({enableFlight
-				? $planeBlur
-				: 0}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {enableFlight && flightState !== 'ready'
-				? 0.6
-				: 0}));
+				opacity: {(enableFlight ? $planeOpacity : 1) * (1 - transitionProgress)};
+				filter: blur({enableFlight ? $planeBlur : 0}px);
 				transform-origin: center;
-				color: {variant === 'magical' || variant === 'verified'
-				? enableFlight && (flightState === 'ready' || flightState === 'returning')
-					? 'white'
-					: enableFlight && flightState === 'taking-off'
-						? 'rgb(100, 116, 139)'
-						: enableFlight && flightState
-							? 'rgb(51, 65, 85)'
-							: 'white'
-				: enableFlight && (flightState === 'ready' || flightState === 'returning')
-					? 'currentColor'
-					: enableFlight && flightState === 'taking-off'
-						? 'rgb(100, 116, 139)'
-						: enableFlight && flightState
-							? 'rgb(51, 65, 85)'
-							: 'currentColor'};
+				color: {baseColor};
 			"
 		>
 			<IconComponent class="h-4 w-4" />
 		</span>
+
+		<!-- Dark layer: appears as plane exits button -->
+		{#if transitionProgress > 0}
+			<span
+				class="pointer-events-none absolute z-50"
+				style="
+					top: 50%;
+					right: {size === 'lg' ? '24px' : size === 'sm' ? '12px' : '16px'};
+					transform: translate({$planeX}px, calc(-50% + {$planeY}px)) rotate({$planeRotation}deg) scale({$planeScale});
+					opacity: {$planeOpacity * transitionProgress};
+					filter: blur({$planeBlur}px) drop-shadow(0 4px 10px rgba(0, 0, 0, {isFlying ? 0.4 : 0}));
+					transform-origin: center;
+					color: rgb(15, 23, 42);
+				"
+			>
+				<IconComponent class="h-4 w-4" />
+			</span>
+		{/if}
 	{/if}
 
 	{#if href}

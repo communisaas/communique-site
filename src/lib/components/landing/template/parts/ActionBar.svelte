@@ -76,7 +76,7 @@
 			/>
 		{:else}
 			<Button
-				variant="magical"
+				variant="primary"
 				size="lg"
 				testId="send-email-button"
 				classNames="w-full pr-5"

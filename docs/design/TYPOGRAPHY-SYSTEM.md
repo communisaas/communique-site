@@ -1,25 +1,25 @@
 # Typography System
 
-**Dual-font system for distinctive brand identity and data readability.**
+**Words in Satoshi. Numbers in Mono.**
 
 ---
 
 ## The System: Satoshi + JetBrains Mono
 
-### Satoshi (Brand/Words)
+### Satoshi (Words)
 **Use for:** Headlines, UI copy, buttons, CTAs, body text, navigation
 
-**Why:** Distinctive personality, "credibly cool" aesthetic, geometric yet warm
+**Why:** Geometric but warm. Not corporate bland (Arial, Helvetica). Not crypto tacky (Poppins).
 
 **Weights:**
 - **400 (Regular)** - Body text, descriptions
 - **500 (Medium)** - UI elements, labels, navigation
 - **700 (Bold)** - Headlines, emphasis, CTAs
 
-### JetBrains Mono (Data/Metrics)
+### JetBrains Mono (Numbers)
 **Use for:** Counts, metrics, codes, timestamps, technical data
 
-**Why:** Monospace ensures scannable alignment, technical credibility, numeric clarity
+**Why:** Tabular figures align. Numbers tick like scoreboards. Technical credibility.
 
 **Weights:**
 - **400 (Regular)** - Standard metrics
@@ -415,7 +415,7 @@ Before shipping typography changes:
 
 ## Why This Works
 
-### Satoshi Creates Distinctive Identity
+### Satoshi
 
 **Geometric + Warm:** Not corporate bland (Arial, Helvetica) or crypto tacky (Poppins, Montserrat)
 
@@ -423,22 +423,22 @@ Before shipping typography changes:
 
 **Generous x-height:** Readable at small sizes, accessible across devices
 
-### JetBrains Mono Creates Data Clarity
+### JetBrains Mono
 
 **Tabular figures:** Numbers align vertically in columns/lists
 
 **Distinct characters:** 0 vs O, 1 vs l vs I - zero ambiguity
 
-**Technical credibility:** Developers recognize JetBrains, signals technical competence
+**Technical credibility:** Infrastructure signals competence
 
-### Together: "Invisible crypto, visible coordination"
+### Together: "The weight of numbers"
 
-**Satoshi (brand):** Approachable, distinctive, human
+**Satoshi (words):** Human, direct, infrastructure voice
 
-**JetBrains Mono (data):** Technical, precise, trustworthy
+**JetBrains Mono (numbers):** Weighted, inevitable, like a scoreboard
 
-**Combination:** Credibly cool - neither corporate bland nor crypto tacky
+Numbers tick up. Coordination feels heavier.
 
 ---
 
-*Communiqué PBC | Typography System | 2025-11-18*
+*Communiqué PBC | Typography System | 2025-11*

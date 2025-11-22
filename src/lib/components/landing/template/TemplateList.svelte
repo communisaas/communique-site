@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronRight } from '@lucide/svelte';
+	import { ChevronRight, PenLine } from '@lucide/svelte';
 	// import { spring } from 'svelte/motion';
 	import { preloadData } from '$app/navigation';
 	import type { Template, TemplateGroup } from '$lib/types/template';
@@ -12,10 +12,11 @@
 		groups: TemplateGroup[];
 		selectedId: string | null;
 		onSelect: (id: string) => void;
+		onCreateTemplate?: () => void;
 		loading?: boolean;
 	}
 
-	let { groups, selectedId, onSelect, loading = false }: Props = $props();
+	let { groups, selectedId, onSelect, onCreateTemplate, loading = false }: Props = $props();
 
 	// Flatten groups into single array for keyboard navigation
 	const allTemplates = $derived(groups.flatMap((g) => g.templates));
@@ -79,6 +80,27 @@
 			<SkeletonTemplate variant="list" animate={true} classNames="template-loading-{index}" />
 		{/each}
 	{:else}
+		<!-- Create New Template Card -->
+		{#if onCreateTemplate}
+			<button
+				type="button"
+				onclick={onCreateTemplate}
+				class="group relative flex w-full items-center gap-4 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50/50 p-4 text-left transition-all duration-300 hover:border-cyan-400 hover:bg-cyan-50/50 hover:shadow-md md:p-5"
+			>
+				<div
+					class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 transition-colors group-hover:bg-cyan-100"
+				>
+					<PenLine class="h-5 w-5 text-slate-500 transition-colors group-hover:text-cyan-600" />
+				</div>
+				<div>
+					<h3 class="font-medium text-slate-700 transition-colors group-hover:text-cyan-700">
+						Start something new
+					</h3>
+					<p class="text-sm text-slate-500">Write the message others will send</p>
+				</div>
+			</button>
+		{/if}
+
 		{#each groups as group, groupIndex (group.title)}
 			<!-- Section Header -->
 			<div class="space-y-3 md:space-y-4">

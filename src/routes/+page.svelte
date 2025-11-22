@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { templateStore } from '$lib/stores/templates.svelte';
 	import Hero from '$lib/components/landing/hero/Hero.svelte';
-	import ChannelExplainer from '$lib/components/landing/channel/ChannelExplainer.svelte';
 	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
 	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import LocationFilter from '$lib/components/landing/template/LocationFilter.svelte';
@@ -15,6 +14,7 @@
 	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
+	import RelayLoom from '$lib/components/landing/hero/RelayLoom.svelte';
 	import { goto, preloadData, onNavigate } from '$app/navigation';
 	import { onMount } from 'svelte';
 	import type { Template, TemplateCreationContext, TemplateGroup } from '$lib/types/template';
@@ -45,7 +45,6 @@
 	let showTemplateAuthModal = $state(false);
 	let showTemplateSuccess = $state(false);
 	let modalComponent = $state<ModalComponent>();
-	let selectedChannel: string | null = $state(null);
 	let creationContext: TemplateCreationContext | null = $state(null);
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
@@ -83,37 +82,20 @@
 		// Check for template creation parameter
 		const createTemplate = $page.url.searchParams.get('create');
 		if (createTemplate === 'true') {
-			// Scroll to channel selector and open template creator
+			// Open the template creator modal
 			coordinated.setTimeout(
 				() => {
-					// First scroll to the channel explainer section
-					const channelSection = document.querySelector('.w-full.max-w-4xl');
-					if (channelSection) {
-						channelSection.scrollIntoView({
-							behavior: 'smooth',
-							block: 'center'
-						});
-					}
-
-					// Then open the template creator modal after a brief delay
-					coordinated.setTimeout(
-						() => {
-							creationContext = {
-								channelId: 'direct',
-								channelTitle: 'Direct Outreach',
-								isCongressional: false
-							};
-							showTemplateCreator = true;
-							// Clean up URL
-							window.history.replaceState({}, '', '/');
-						},
-						800,
-						'open-creator',
-						componentId
-					);
+					creationContext = {
+						channelId: 'direct',
+						channelTitle: 'Direct Outreach',
+						isCongressional: false
+					};
+					showTemplateCreator = true;
+					// Clean up URL
+					window.history.replaceState({}, '', '/');
 				},
 				100,
-				'scroll-to-channel',
+				'open-creator',
 				componentId
 			);
 		}
@@ -157,27 +139,6 @@
 		}
 	}
 
-	function handleChannelSelect(__event: CustomEvent<string>) {
-		selectedChannel = event.detail;
-		userInitiatedSelection = true;
-		const matchingTemplates = templateStore.templates.filter((t) => {
-			if (selectedChannel === 'certified') {
-				return t.deliveryMethod === 'cwc';
-			} else if (selectedChannel === 'direct') {
-				return t.deliveryMethod === 'email';
-			}
-			return false;
-		});
-		if (matchingTemplates.length > 0) {
-			templateStore.selectTemplate(matchingTemplates[0].id);
-		}
-	}
-
-	function handleCreateTemplate(__event: CustomEvent<TemplateCreationContext>) {
-		creationContext = event.detail;
-		showTemplateCreator = true;
-	}
-
 	function handleTemplateCreatorAuth(__event: CustomEvent) {
 		const { name, email } = event.detail;
 
@@ -204,51 +165,29 @@
 		});
 	}
 
-	// First apply channel filtering
-	const channelFilteredTemplates = $derived(
-		selectedChannel
-			? templateStore.templates.filter((t) => {
-					if (selectedChannel === 'certified') {
-						return t.deliveryMethod === 'cwc';
-					} else if (selectedChannel === 'direct') {
-						return t.deliveryMethod === 'email' || t.deliveryMethod === 'direct';
-					}
-					return false;
-				})
-			: // For MVP: Show both congressional and SF municipal templates
-				templateStore.templates.filter(
-					(t) =>
-						t.deliveryMethod === 'cwc' ||
-						t.deliveryMethod === 'email' ||
-						t.deliveryMethod === 'direct'
-				)
+	// Show all templates (congressional + direct email)
+	const allTemplates = $derived(
+		templateStore.templates.filter(
+			(t) =>
+				t.deliveryMethod === 'cwc' || t.deliveryMethod === 'email' || t.deliveryMethod === 'direct'
+		)
 	);
 
 	// Flatten location groups to get all templates for selection logic
 	const locationFilteredTemplates = $derived(locationFilteredGroups.flatMap((g) => g.templates));
 
-	// Then apply channel filtering to groups
+	// Use location-filtered groups if available, otherwise show all templates
 	const filteredGroups = $derived(
 		locationFilteredGroups.length > 0
 			? locationFilteredGroups
-					.map((group) => ({
-						...group,
-						templates: group.templates.filter((t) =>
-							channelFilteredTemplates.some((ft) => ft.id === t.id)
-						)
-					}))
-					.filter((group) => group.templates.length > 0)
-			: // No location filtering yet - create single group from channel-filtered templates
+			: // No location filtering yet - create single group from all templates
 				[
 					{
 						title: 'All Templates',
-						templates: channelFilteredTemplates,
+						templates: allTemplates,
 						minScore: 0,
 						level: 'nationwide' as const,
-						coordinationCount: channelFilteredTemplates.reduce(
-							(sum, t) => sum + (t.send_count || 0),
-							0
-						)
+						coordinationCount: allTemplates.reduce((sum, t) => sum + (t.send_count || 0), 0)
 					}
 				]
 	);
@@ -288,294 +227,322 @@
 	/>
 </svelte:head>
 
-<!-- Hero Section - Two-Column Layout -->
-<section class="px-4 pb-16 pt-16 sm:px-6 lg:px-8">
-	<div class="mx-auto max-w-7xl">
-		<div class="grid grid-cols-1 gap-12 lg:grid-cols-2 lg:gap-16">
-			<!-- Hero: Left Column -->
-			<div class="lg:mt-4">
-				<Hero />
+<!-- Hero + Template Browser - Continuous Flow -->
+<section class="px-4 pt-8 sm:px-6 sm:pt-10 lg:px-8 lg:pt-12">
+	<!-- Hero -->
+	<div class="mx-auto mb-16 w-full max-w-7xl sm:mb-20 lg:mb-24">
+		<div class="grid w-full grid-cols-1 gap-8 lg:grid-cols-2 lg:items-center lg:gap-10">
+			<!-- Hero: Copy & CTA -->
+			<div>
+				<Hero
+					on:createTemplate={() => {
+						creationContext = {
+							channelId: 'direct',
+							channelTitle: 'Direct Outreach',
+							isCongressional: false
+						};
+						showTemplateCreator = true;
+					}}
+				/>
 			</div>
 
-			<!-- Channel Selection: Right Column -->
-			<div class="flex items-center">
-				<ChannelExplainer
-					on:channelSelect={handleChannelSelect}
-					on:createTemplate={handleCreateTemplate}
-				/>
+			<!-- Hero: Visual system -->
+			<div class="flex lg:items-start lg:justify-end">
+				<RelayLoom />
 			</div>
 		</div>
 	</div>
 
-	<!-- Location Header - Full Width Above Template Browser -->
-	<div class="mx-auto mb-8 max-w-6xl">
-		<LocationFilter
-			templates={channelFilteredTemplates}
-			onFilterChange={handleLocationFilterChange}
-			onNextUnlockChange={handleNextUnlockChange}
-			onAddressModalOpen={handleAddressModalHandler}
-		/>
-	</div>
-
-	<!-- Template Browser - 3-Column Grid (List + Preview) -->
-	<div
-		id="template-section"
-		data-testid="template-section"
-		class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:gap-8"
-	>
-		<div class="relative z-10 md:col-span-1">
-			<TemplateList
-				groups={filteredGroups}
-				selectedId={templateStore.selectedId}
-				onSelect={handleTemplateSelect}
-				loading={isLoading}
+	<!-- Template Browser -->
+	<div id="template-browser" class="mx-auto max-w-6xl">
+		<!-- Location Header -->
+		<div class="mb-8">
+			<LocationFilter
+				templates={allTemplates}
+				onFilterChange={handleLocationFilterChange}
+				onNextUnlockChange={handleNextUnlockChange}
+				onAddressModalOpen={handleAddressModalHandler}
 			/>
 		</div>
 
-		<!-- Desktop/Tablet Preview -->
-		<div class="hidden md:col-span-2 md:block">
-			{#if hasError}
-				<div class="rounded-xl border border-orange-200 bg-orange-50 p-6 text-center">
-					<div class="mb-4 flex justify-center">
-						<div class="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
-							<svg
-								class="h-8 w-8 text-orange-600"
-								fill="none"
-								viewBox="0 0 24 24"
-								stroke="currentColor"
-							>
+		<!-- Template Browser - 3-Column Grid (List + Preview) -->
+		<div
+			id="template-section"
+			data-testid="template-section"
+			class="mx-auto grid max-w-6xl grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 md:gap-8"
+		>
+			<div class="relative z-10 md:col-span-1">
+				<TemplateList
+					groups={filteredGroups}
+					selectedId={templateStore.selectedId}
+					onSelect={handleTemplateSelect}
+					onCreateTemplate={() => {
+						creationContext = {
+							channelId: 'direct',
+							channelTitle: 'Direct Outreach',
+							isCongressional: false
+						};
+						showTemplateCreator = true;
+					}}
+					loading={isLoading}
+				/>
+			</div>
+
+			<!-- Desktop/Tablet Preview -->
+			<div class="hidden md:col-span-2 md:block">
+				{#if hasError}
+					<div class="rounded-xl border border-orange-200 bg-orange-50 p-6 text-center">
+						<div class="mb-4 flex justify-center">
+							<div class="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
+								<svg
+									class="h-8 w-8 text-orange-600"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M12 8v4m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+									/>
+								</svg>
+							</div>
+						</div>
+						<h3 class="mb-2 text-lg font-medium text-gray-900">
+							Templates temporarily unavailable
+						</h3>
+						<p class="mb-4 text-sm text-gray-600">
+							We're having trouble loading templates right now. This usually resolves quickly.
+						</p>
+						<button
+							onclick={() => templateStore.fetchTemplates()}
+							data-testid="retry-templates-button"
+							class="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
+						>
+							<svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 								<path
 									stroke-linecap="round"
 									stroke-linejoin="round"
 									stroke-width="2"
-									d="M12 8v4m0 4h.01M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9 9 4.03 9 9z"
+									d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+								/>
+							</svg>
+							Try Again
+						</button>
+					</div>
+				{:else if isLoading && !selectedTemplate}
+					<!-- Skeleton loader for first load -->
+					<div class="rounded-xl border border-slate-200 bg-white p-6">
+						<div class="animate-pulse">
+							<div class="mb-6 flex items-center justify-between">
+								<div>
+									<div class="mb-2 h-6 w-64 rounded bg-slate-200"></div>
+									<div class="flex gap-2">
+										<div class="h-6 w-20 rounded bg-slate-200"></div>
+										<div class="h-6 w-24 rounded bg-slate-200"></div>
+										<div class="h-6 w-16 rounded bg-slate-200"></div>
+									</div>
+								</div>
+								<div class="h-10 w-32 rounded bg-slate-200"></div>
+							</div>
+							<div class="mb-3 h-4 w-full rounded bg-slate-200"></div>
+							<div class="mb-6 h-4 w-3/4 rounded bg-slate-200"></div>
+							<div class="h-64 rounded bg-slate-200"></div>
+						</div>
+					</div>
+				{:else if selectedTemplate}
+					<TemplatePreview
+						template={selectedTemplate}
+						user={data.user}
+						onSendMessage={async () => {
+							if (!selectedTemplate) {
+								return;
+							}
+
+							// Landing page requires auth for ALL templates
+							if (!data.user) {
+								modalActions.openModal('onboarding-modal', 'onboarding', {
+									template: selectedTemplate,
+									source: 'featured'
+								});
+								return;
+							}
+
+							const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user));
+
+							if (flow.nextAction === 'address') {
+								modalActions.openModal('address-modal', 'address', {
+									template: selectedTemplate,
+									source: 'featured',
+									user: data.user
+								});
+							} else {
+								// Preload the template page data immediately
+								const templateUrl = `/s/${selectedTemplate.slug}`;
+								preloadData(templateUrl);
+
+								// Let button animation play briefly - just the takeoff (500ms)
+								// This shows the plane launching without the full flight path
+								setTimeout(() => {
+									goto(templateUrl);
+								}, 500);
+							}
+						}}
+					/>
+				{:else}
+					<!-- Empty state -->
+					<div class="rounded-xl border border-slate-200 bg-slate-50 p-12 text-center">
+						<div class="mb-4 text-slate-400">
+							<svg class="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="1.5"
+									d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
 								/>
 							</svg>
 						</div>
+						<h3 class="mb-2 text-lg font-medium text-slate-900">No campaigns running yet</h3>
+						<p class="text-slate-600">Someone has to move first. Start one.</p>
 					</div>
-					<h3 class="mb-2 text-lg font-medium text-gray-900">Templates temporarily unavailable</h3>
-					<p class="mb-4 text-sm text-gray-600">
-						We're having trouble loading templates right now. This usually resolves quickly.
-					</p>
-					<button
-						onclick={() => templateStore.fetchTemplates()}
-						data-testid="retry-templates-button"
-						class="inline-flex items-center rounded-lg bg-orange-600 px-4 py-2 text-white transition-colors hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2"
-					>
-						<svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-							/>
-						</svg>
-						Try Again
-					</button>
-				</div>
-			{:else if isLoading && !selectedTemplate}
-				<!-- Skeleton loader for first load -->
-				<div class="rounded-xl border border-slate-200 bg-white p-6">
-					<div class="animate-pulse">
-						<div class="mb-6 flex items-center justify-between">
-							<div>
-								<div class="mb-2 h-6 w-64 rounded bg-slate-200"></div>
-								<div class="flex gap-2">
-									<div class="h-6 w-20 rounded bg-slate-200"></div>
-									<div class="h-6 w-24 rounded bg-slate-200"></div>
-									<div class="h-6 w-16 rounded bg-slate-200"></div>
-								</div>
-							</div>
-							<div class="h-10 w-32 rounded bg-slate-200"></div>
-						</div>
-						<div class="mb-3 h-4 w-full rounded bg-slate-200"></div>
-						<div class="mb-6 h-4 w-3/4 rounded bg-slate-200"></div>
-						<div class="h-64 rounded bg-slate-200"></div>
-					</div>
-				</div>
-			{:else if selectedTemplate}
-				<TemplatePreview
-					template={selectedTemplate}
-					user={data.user}
-					onSendMessage={async () => {
-						if (!selectedTemplate) {
-							return;
-						}
-
-						const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user));
-
-						if (flow.nextAction === 'auth') {
-							modalActions.openModal('onboarding-modal', 'onboarding', {
-								template: selectedTemplate,
-								source: 'featured'
-							});
-						} else if (flow.nextAction === 'address') {
-							modalActions.openModal('address-modal', 'address', {
-								template: selectedTemplate,
-								source: 'featured',
-								user: data.user
-							});
-						} else {
-							// Preload the template page data immediately
-							const templateUrl = `/s/${selectedTemplate.slug}`;
-							preloadData(templateUrl);
-
-							// Let button animation play briefly - just the takeoff (500ms)
-							// This shows the plane launching without the full flight path
-							setTimeout(() => {
-								goto(templateUrl);
-							}, 500);
-						}
-					}}
-				/>
-			{:else}
-				<!-- Empty state -->
-				<div class="rounded-xl border border-slate-200 bg-slate-50 p-12 text-center">
-					<div class="mb-4 text-slate-400">
-						<svg class="mx-auto h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="1.5"
-								d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-							/>
-						</svg>
-					</div>
-					<h3 class="mb-2 text-lg font-medium text-slate-900">No campaigns running yet</h3>
-					<p class="text-slate-600">Someone has to move first. Start one.</p>
-				</div>
-			{/if}
-		</div>
-	</div>
-
-	<!-- Mobile Preview Modal -->
-	{#if showMobilePreview && selectedTemplate}
-		<TouchModal
-			bind:this={modalComponent}
-			on:close={() => (showMobilePreview = false)}
-			inModal={true}
-		>
-			<div class="h-full">
-				<TemplatePreview
-					template={selectedTemplate}
-					inModal={true}
-					user={data.user}
-					onSendMessage={async () => {
-						const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user));
-
-						if (flow.nextAction === 'auth') {
-							modalActions.openModal('onboarding-modal', 'onboarding', {
-								template: selectedTemplate,
-								source: 'mobile'
-							});
-							showMobilePreview = false;
-						} else if (flow.nextAction === 'address') {
-							modalActions.openModal('address-modal', 'address', {
-								template: selectedTemplate,
-								source: 'mobile',
-								user: data.user
-							});
-							showMobilePreview = false;
-						} else {
-							// Preload the template page
-							const templateUrl = `/s/${selectedTemplate.slug}`;
-							preloadData(templateUrl);
-
-							// Let button animation play until plane is off-screen (1200ms)
-							// This avoids showing the reset animation
-							setTimeout(() => {
-								goto(templateUrl);
-							}, 1200);
-						}
-					}}
-				/>
+				{/if}
 			</div>
-		</TouchModal>
-	{/if}
+		</div>
 
-	<!-- Template Creator Modal -->
-	{#if showTemplateCreator && creationContext}
-		<SimpleModal
-			maxWidth="max-w-4xl"
-			showClose={false}
-			onclose={() => {
-				showTemplateCreator = false;
-				creationContext = null;
-			}}
-		>
-			<TemplateCreator
-				context={creationContext}
-				on:close={() => {
+		<!-- Mobile Preview Modal -->
+		{#if showMobilePreview && selectedTemplate}
+			<TouchModal
+				bind:this={modalComponent}
+				on:close={() => (showMobilePreview = false)}
+				inModal={true}
+			>
+				<div class="h-full">
+					<TemplatePreview
+						template={selectedTemplate}
+						inModal={true}
+						user={data.user}
+						onSendMessage={async () => {
+							// Landing page requires auth for ALL templates
+							if (!data.user) {
+								modalActions.openModal('onboarding-modal', 'onboarding', {
+									template: selectedTemplate,
+									source: 'mobile'
+								});
+								showMobilePreview = false;
+								return;
+							}
+
+							const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user));
+
+							if (flow.nextAction === 'address') {
+								modalActions.openModal('address-modal', 'address', {
+									template: selectedTemplate,
+									source: 'mobile',
+									user: data.user
+								});
+								showMobilePreview = false;
+							} else {
+								// Preload the template page
+								const templateUrl = `/s/${selectedTemplate.slug}`;
+								preloadData(templateUrl);
+
+								// Let button animation play until plane is off-screen (1200ms)
+								// This avoids showing the reset animation
+								setTimeout(() => {
+									goto(templateUrl);
+								}, 1200);
+							}
+						}}
+					/>
+				</div>
+			</TouchModal>
+		{/if}
+
+		<!-- Template Creator Modal -->
+		{#if showTemplateCreator && creationContext}
+			<SimpleModal
+				maxWidth="max-w-4xl"
+				showClose={false}
+				onclose={() => {
 					showTemplateCreator = false;
 					creationContext = null;
 				}}
-				on:save={async (_event) => {
-					// Handle template save
-					if (data.user) {
-						// Authenticated user - save directly
-						try {
-							const newTemplate = await templateStore.addTemplate(_event.detail);
-							showTemplateCreator = false;
-							creationContext = null;
-							savedTemplate = newTemplate;
-							showTemplateSuccess = true;
-						} catch {
-							// Template save failed - user can retry
-							console.error('Error occurred');
-							// You could add a toast notification here
+			>
+				<TemplateCreator
+					context={creationContext}
+					on:close={() => {
+						showTemplateCreator = false;
+						creationContext = null;
+					}}
+					on:save={async (_event) => {
+						// Handle template save
+						if (data.user) {
+							// Authenticated user - save directly
+							try {
+								const newTemplate = await templateStore.addTemplate(_event.detail);
+								showTemplateCreator = false;
+								creationContext = null;
+								savedTemplate = newTemplate;
+								showTemplateSuccess = true;
+							} catch {
+								// Template save failed - user can retry
+								console.error('Error occurred');
+								// You could add a toast notification here
+							}
+						} else {
+							// Guest user - show progressive auth modal
+							pendingTemplateToSave = _event.detail;
+							showTemplateAuthModal = true;
 						}
-					} else {
-						// Guest user - show progressive auth modal
-						pendingTemplateToSave = _event.detail;
-						showTemplateAuthModal = true;
+					}}
+				/>
+			</SimpleModal>
+		{/if}
+
+		<!-- Auth Modals -->
+		<UnifiedOnboardingModal />
+
+		<!-- Template Creator Auth Modal -->
+		{#if showTemplateAuthModal && pendingTemplateToSave}
+			<UnifiedProgressiveFormModal
+				template={{
+					id: 'template-creation',
+					title: 'Save Your Template',
+					description: 'Create an account to save your template and track its impact',
+					slug: 'template-creation',
+					deliveryMethod: 'auth',
+					preview: 'Sign up to save your advocacy template and help others make their voices heard.'
+				}}
+				user={data.user}
+				on:close={() => {
+					showTemplateAuthModal = false;
+					pendingTemplateToSave = null;
+				}}
+				on:send={handleTemplateCreatorAuth}
+			/>
+		{/if}
+
+		<!-- Address Collection Modal -->
+		<UnifiedAddressModal />
+
+		<!-- Template Success Modal -->
+		{#if showTemplateSuccess && savedTemplate}
+			<TemplateSuccessModal
+				template={savedTemplate}
+				onclose={() => {
+					showTemplateSuccess = false;
+					savedTemplate = null;
+				}}
+				on:createAnother={() => {
+					showTemplateSuccess = false;
+					savedTemplate = null;
+					// Re-open creator with same context
+					if (creationContext) {
+						showTemplateCreator = true;
 					}
 				}}
 			/>
-		</SimpleModal>
-	{/if}
-
-	<!-- Auth Modals -->
-	<UnifiedOnboardingModal />
-
-	<!-- Template Creator Auth Modal -->
-	{#if showTemplateAuthModal && pendingTemplateToSave}
-		<UnifiedProgressiveFormModal
-			template={{
-				id: 'template-creation',
-				title: 'Save Your Template',
-				description: 'Create an account to save your template and track its impact',
-				slug: 'template-creation',
-				deliveryMethod: 'auth',
-				preview: 'Sign up to save your advocacy template and help others make their voices heard.'
-			}}
-			user={data.user}
-			on:close={() => {
-				showTemplateAuthModal = false;
-				pendingTemplateToSave = null;
-			}}
-			on:send={handleTemplateCreatorAuth}
-		/>
-	{/if}
-
-	<!-- Address Collection Modal -->
-	<UnifiedAddressModal />
-
-	<!-- Template Success Modal -->
-	{#if showTemplateSuccess && savedTemplate}
-		<TemplateSuccessModal
-			template={savedTemplate}
-			onclose={() => {
-				showTemplateSuccess = false;
-				savedTemplate = null;
-			}}
-			on:createAnother={() => {
-				showTemplateSuccess = false;
-				savedTemplate = null;
-				// Re-open creator with same context
-				if (creationContext) {
-					showTemplateCreator = true;
-				}
-			}}
-		/>
-	{/if}
+		{/if}
+	</div>
 </section>

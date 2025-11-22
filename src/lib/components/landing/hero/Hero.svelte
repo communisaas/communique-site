@@ -1,16 +1,21 @@
 <script lang="ts">
+	import { createEventDispatcher } from 'svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import HowItWorks from './HowItWorks.svelte';
+	import { PenLine } from '@lucide/svelte';
 
-	// Check if element is in viewport
-	function isInViewport(element: Element): boolean {
-		const rect = element.getBoundingClientRect();
-		const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-		const verticalCenter = windowHeight / 2;
+	const dispatch = createEventDispatcher<{
+		createTemplate: void;
+	}>();
 
-		// Check if element's center is near viewport center (within 100px tolerance)
-		const elementCenter = rect.top + rect.height / 2;
-		return Math.abs(elementCenter - verticalCenter) < 100;
+	function scrollToTemplates() {
+		const templateBrowser = document.getElementById('template-browser');
+		if (templateBrowser) {
+			templateBrowser.scrollIntoView({
+				behavior: 'smooth',
+				block: 'start'
+			});
+		}
 	}
 </script>
 
@@ -20,45 +25,35 @@
 			class="mb-6 text-4xl font-bold leading-[1.15] tracking-tight text-gray-900 sm:text-5xl lg:text-6xl"
 		>
 			Your voice.
-			<span
-				class="mt-2 block bg-gradient-to-br from-violet-600 to-purple-600 bg-clip-text text-transparent"
-				>Their decision.</span
-			>
+			<br />
+			<span class="mt-2 block text-cyan-600">Sent together.</span>
 		</h1>
 
 		<p class="mb-3 max-w-2xl text-lg font-medium leading-relaxed text-gray-900">
-			Pressure that decision-makers can't ignore.
+			Write it once. Share the link. Everyone can send it.
 		</p>
 
 		<p class="max-w-xl text-base text-gray-600">
-			One complaint gets buried. Coordination forces action.
+			One complaint gets buried. Coordinated messages make impact.
 		</p>
 	</div>
 
-	<div class="flex gap-4">
+	<div class="flex flex-wrap gap-3">
 		<Button
-			variant="magical"
+			variant="primary"
 			size="lg"
-			classNames="px-4 pr-6"
+			onclick={() => dispatch('createTemplate')}
+			text="Start Writing"
+		>
+			<PenLine slot="icon" class="h-4 w-4" />
+		</Button>
+		<Button
+			variant="secondary"
+			size="lg"
 			animationType="chevrons"
 			icon="chevrons-down"
-			onclick={() => {
-				const channelSection = document.querySelector('.w-full.max-w-4xl');
-				if (channelSection) {
-					// Check if already at the channel section
-					if (isInViewport(channelSection)) {
-						// Already there - trigger attention animation on channels
-						window.dispatchEvent(new CustomEvent('drawAttentionToChannels'));
-					} else {
-						// Scroll to channel section
-						channelSection.scrollIntoView({
-							behavior: 'smooth',
-							block: 'center'
-						});
-					}
-				}
-			}}
-			text="Start Writing"
+			onclick={scrollToTemplates}
+			text="Browse Templates"
 		/>
 		<HowItWorks />
 	</div>

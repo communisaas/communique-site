@@ -32,12 +32,31 @@
 
 @layer base {
 	:root {
-		/* 
+		/*
 		=== COMMUNIQUE DESIGN SYSTEM ===
-		Infrastructure for consequential participation in any governance system
-		Designed for global accessibility and future governance forms
+		"The weight of numbers."
+
+		Coordination graph aesthetic derived from RelayLoom.
+		Teal for routes. Indigo for sharing. Emerald for verification.
 		*/
 
+		/* === COORDINATION GRAPH COLORS (Primary) === */
+		--coord-route: rgba(59, 196, 184, 0.9); /* #3BC4B8 — Message routes to targets */
+		--coord-route-solid: #3bc4b8;
+		--coord-share: rgba(79, 70, 229, 0.9); /* #4F46E5 — Sharing/spreading connections */
+		--coord-share-solid: #4f46e5;
+		--coord-verified: #10b981; /* Emerald — Delivery confirmed */
+
+		/* Node styling (cards, elements) */
+		--coord-node-bg: rgba(255, 255, 255, 0.9);
+		--coord-node-border: rgba(148, 163, 184, 0.45);
+		--coord-node-shadow: 0 20px 50px -28px rgba(15, 23, 42, 0.45);
+
+		/* Edge styling (connection lines) */
+		--coord-edge-width: 1.3;
+		--coord-edge-shadow: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.12));
+
+		/* === LEGACY TOKENS (backward compatibility) === */
 		/* Core Brand Colors—Vibrant Trust */
 		--participation-primary-50: #eef2ff;
 		--participation-primary-100: #e0e7ff;

@@ -2,7 +2,7 @@
 	import { spring } from 'svelte/motion';
 	import { fade, scale } from 'svelte/transition';
 	import { backOut } from 'svelte/easing';
-	import { Share2, Copy as _Copy, CheckCircle, Sparkles, Heart, Zap } from '@lucide/svelte';
+	import { Share2, CheckCircle, Sparkles, Heart, Zap } from '@lucide/svelte';
 	import SimpleTooltip from './SimpleTooltip.svelte';
 
 	let {
@@ -222,25 +222,23 @@
 		"
 		style="
 			transform: scale({$buttonScale});
-			box-shadow: 
-				0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+			box-shadow:
+				0 4px 6px -1px rgba(0, 0, 0, 0.1),
 				0 2px 4px -1px rgba(0, 0, 0, 0.06),
-				0 0 {20 * $glowIntensity}px rgba(79, 70, 229, {0.5 * $glowIntensity}),
-				0 0 {30 * $copiedGlow}px rgba(34, 197, 94, {0.3 * $copiedGlow});
-			filter: brightness({1 + $copiedGlow * 0.1});
+				0 0 {20 * $glowIntensity}px rgba(79, 70, 229, {0.3 * $glowIntensity}),
+				0 0 {30 * $copiedGlow}px rgba(34, 197, 94, {0.2 * $copiedGlow});
 		"
 		aria-label={copied ? 'Link copied!' : 'Share this template'}
 	>
-		<!-- Animated background gradient for primary -->
-		{#if variant === 'primary'}
+		<!-- Success shimmer on copy (celebratory sweep) -->
+		{#if copied}
 			<div
-				class="absolute inset-0 animate-pulse rounded-full bg-gradient-to-r from-indigo-400/20 to-purple-400/20"
-				style="opacity: {$glowIntensity * 0.5}"
+				class="animate-shimmer-once absolute inset-0 z-0 rounded-full bg-gradient-to-r from-transparent via-white/30 to-transparent"
 			></div>
 		{/if}
 
-		<!-- Content container with fixed layout -->
-		<div class="flex items-center gap-2">
+		<!-- Content container with fixed layout (z-10 to stay above overlays) -->
+		<div class="relative z-10 flex items-center gap-2">
 			<!-- Icon container - morphing animation with both icons -->
 			<div
 				class="relative inline-flex items-center justify-center"
@@ -252,7 +250,7 @@
 					style="
 						opacity: {copied ? 0 : 1};
 						transform: scale({copied ? 0.3 : 1});
-						transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+						transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 					"
 				>
 					<Share2 class="{iconSizes[size]} text-current" />
@@ -287,19 +285,6 @@
 				</span>
 			</div>
 		</div>
-
-		<!-- Smooth ripple effect on click -->
-		{#if copied}
-			<div
-				class="pointer-events-none absolute inset-0 rounded-full"
-				in:scale={{ duration: 400, easing: backOut, start: 0.8, opacity: 0.3 }}
-				out:fade={{ duration: 600 }}
-			>
-				<div
-					class="absolute inset-0 rounded-full bg-gradient-to-r from-white/20 to-indigo-200/20"
-				></div>
-			</div>
-		{/if}
 	</button>
 
 	<!-- Reusable tooltip component -->
@@ -307,17 +292,16 @@
 </div>
 
 <style>
-	@keyframes float {
-		0%,
-		100% {
-			transform: translateY(0px);
+	@keyframes shimmer-once {
+		0% {
+			transform: translateX(-100%);
 		}
-		50% {
-			transform: translateY(-10px);
+		100% {
+			transform: translateX(100%);
 		}
 	}
 
-	.animate-float {
-		animation: float 3s ease-in-out infinite;
+	.animate-shimmer-once {
+		animation: shimmer-once 0.6s ease-out forwards;
 	}
 </style>

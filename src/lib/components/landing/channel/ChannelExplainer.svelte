@@ -340,7 +340,7 @@
 
 						<!-- Keep the bottom border indicator -->
 						<div
-							class="absolute bottom-0 left-0 h-1 w-full transform transition-all duration-300"
+							class="absolute bottom-0 left-0 h-1 w-full transform rounded-b-xl transition-all duration-300"
 							class:bg-verified-500={channel.id === 'certified' && (isSelected || isHovered)}
 							class:bg-participation-primary-500={channel.id === 'direct' &&
 								(isSelected || isHovered)}
