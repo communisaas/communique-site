@@ -56,6 +56,8 @@ describe('Template Personalization Integration', () => {
 			overrides: {
 				name: 'John Doe',
 				congressional_district: 'TX-35',
+				city: 'Austin',
+				state: 'TX',
 				// Test additional consolidated fields
 				is_verified: true,
 				reputation_tier: 'verified',
@@ -68,7 +70,8 @@ describe('Template Personalization Integration', () => {
 				name: 'Lloyd Doggett',
 				chamber: 'house',
 				party: 'Democratic',
-				district: '35'
+				district: '35',
+				state: 'TX'
 			}
 		});
 
@@ -148,12 +151,13 @@ Sincerely,
 		const template = `Dear Representative,
 
     I am [Name] from [City].
-    
+
     Thank you for your time.`;
 
 		const resolved = resolveVariables(template, user, undefined);
 
-		expect(resolved).toContain("I am O'Connor-Smith from São Paulo");
+		// Factory default city is San Francisco
+		expect(resolved).toContain("I am O'Connor-Smith from San Francisco");
 		expect(resolved).toContain('    Thank you for your time.'); // Preserves indentation
 	});
 });
