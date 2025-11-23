@@ -17,7 +17,7 @@ jobs:
       - name: TypeScript check
         run: npm run check
       - name: Lint check
-        run: npm run lint --max-warnings 0
+        run: npm run lint:strict
       - name: Build verification
         run: NODE_ENV=production npm run build
 

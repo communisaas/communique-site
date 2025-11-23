@@ -27,9 +27,11 @@ RUN npm ci --include=dev
 COPY --link . .
 
 # Build application
-# Prisma expects DATABASE_URL at build time; map from SUPABASE_DATABASE_URL if provided
+# Prisma expects DATABASE_URL at build time; accept either DATABASE_URL or SUPABASE_DATABASE_URL
+ARG DATABASE_URL
 ARG SUPABASE_DATABASE_URL
-ENV DATABASE_URL=${SUPABASE_DATABASE_URL}
+# Use DATABASE_URL if set, otherwise fallback to SUPABASE_DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL:-${SUPABASE_DATABASE_URL}}
 ARG CWC_API_KEY
 ENV CWC_API_KEY=$CWC_API_KEY
 # API keys for content moderation (can be placeholders for build)
