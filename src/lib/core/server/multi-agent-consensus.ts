@@ -20,7 +20,7 @@
  * - Spam/abuse detection
  */
 
-import { GEMINI_API_KEY, ANTHROPIC_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export interface AgentVote {
 	agent: 'gemini' | 'claude';
@@ -50,7 +50,7 @@ export interface TemplateModerationInput {
  * Get moderation decision from Gemini 2.5 Flash (primary quality assessment)
  */
 async function getGeminiVote(template: TemplateModerationInput): Promise<AgentVote> {
-	if (!GEMINI_API_KEY) {
+	if (!env.GEMINI_API_KEY) {
 		// Fallback if Gemini not configured
 		return {
 			agent: 'gemini',
@@ -81,7 +81,7 @@ Respond in JSON format:
 }`;
 
 	const response = await fetch(
-		`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+		`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${env.GEMINI_API_KEY}`,
 		{
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -112,7 +112,7 @@ Respond in JSON format:
  * Get moderation decision from Claude Haiku 4.5 (tie-breaker only)
  */
 async function getClaudeVote(template: TemplateModerationInput): Promise<AgentVote> {
-	if (!ANTHROPIC_API_KEY) {
+	if (!env.ANTHROPIC_API_KEY) {
 		// Fallback if Claude not configured
 		return {
 			agent: 'claude',
@@ -146,7 +146,7 @@ Respond in JSON format:
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
-			'x-api-key': ANTHROPIC_API_KEY,
+			'x-api-key': env.ANTHROPIC_API_KEY,
 			'anthropic-version': '2023-06-01'
 		},
 		body: JSON.stringify({

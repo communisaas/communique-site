@@ -15,7 +15,7 @@ import {
 	getMultiAgentConsensus,
 	getSingleAgentModeration
 } from '$lib/core/server/multi-agent-consensus';
-import { CONSENSUS_TYPE } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 // Import ScopeMapping type for geographic scope
 import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
@@ -375,7 +375,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			}
 
 			// Layer 3: Multi-agent consensus for quality (configurable)
-			const useMultiAgent = CONSENSUS_TYPE === 'multi_agent';
+			const useMultiAgent = env.CONSENSUS_TYPE === 'multi_agent';
 
 			if (useMultiAgent) {
 				consensusResult = await getMultiAgentConsensus({

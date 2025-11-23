@@ -8,7 +8,7 @@
  */
 
 import OpenAI from 'openai';
-import { OPENAI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export interface ModerationResult {
 	approved: boolean;
@@ -31,7 +31,7 @@ export interface TemplateModerationInput {
 export async function moderateTemplate(
 	template: TemplateModerationInput
 ): Promise<ModerationResult> {
-	const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
+	const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY });
 
 	// Combine title and body for comprehensive moderation
 	const content = `${template.title}\n\n${template.message_body}`;

@@ -24,7 +24,7 @@
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { OPENAI_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { createEmbeddingGenerator } from '$lib/core/search/openai-embeddings';
 import { prisma } from '$lib/core/db';
 
@@ -37,12 +37,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		const body = (await request.json()) as { text?: string; texts?: string[]; templateId?: string };
 
 		// Validate OpenAI API key
-		if (!OPENAI_API_KEY) {
+		if (!env.OPENAI_API_KEY) {
 			throw error(500, 'OpenAI API key not configured');
 		}
 
 		// Create embedding generator
-		const generator = createEmbeddingGenerator(OPENAI_API_KEY);
+		const generator = createEmbeddingGenerator(env.OPENAI_API_KEY);
 
 		// Single text embedding (for search queries)
 		if (body.text) {
