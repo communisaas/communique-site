@@ -14,9 +14,13 @@ const poolTimeout = 30; // Increased from 20s to handle slower queries
 const connectTimeout = 20; // Increased from 15s for Supabase latency
 
 // Enhance DATABASE_URL with connection pooling parameters for Supabase stability
-const databaseUrl = env.DATABASE_URL.includes('?')
-	? `${env.DATABASE_URL}&connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}&connect_timeout=${connectTimeout}`
-	: `${env.DATABASE_URL}?connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}&connect_timeout=${connectTimeout}`;
+// Note: Use empty string as fallback during build - actual connections happen at runtime
+const baseUrl = env.DATABASE_URL || '';
+const databaseUrl = baseUrl
+	? baseUrl.includes('?')
+		? `${baseUrl}&connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}&connect_timeout=${connectTimeout}`
+		: `${baseUrl}?connection_limit=${connectionLimit}&pool_timeout=${poolTimeout}&connect_timeout=${connectTimeout}`
+	: '';
 
 export const db: PrismaClient =
 	globalForPrisma.prisma ??
