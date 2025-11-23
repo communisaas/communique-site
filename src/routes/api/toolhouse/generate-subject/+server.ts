@@ -27,7 +27,8 @@ function extractJSON(text: string): any | null {
 		// Find the largest valid JSON structure (prefer arrays/objects)
 		const candidates: any[] = [];
 
-		// Extract all JSON arrays
+		// Extract all JSON arrays (eslint-disable-next-line no-useless-escape - escapes are required for regex)
+		// eslint-disable-next-line no-useless-escape
 		const arrayMatches = text.matchAll(/\[(?:[^\[\]]|\[[^\[\]]*\])*\]/gs);
 		for (const match of arrayMatches) {
 			try {

@@ -241,7 +241,7 @@ export const GET: RequestHandler = async () => {
 
 			// Check if response has expected structure
 			const hasExpectedFields = Object.keys(expectedResponseFormat).some((field) =>
-				results.responseData.data.hasOwnProperty(field)
+				Object.hasOwn(results.responseData.data, field)
 			);
 
 			if (hasExpectedFields) {

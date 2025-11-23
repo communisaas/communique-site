@@ -35,7 +35,7 @@ export function extractReasoning(provenance: string): string {
 	}
 
 	// Format 2: Remove URL if it's at the start
-	let text = provenance.replace(/^https?:\/\/[^\s]+\s*/, '').trim();
+	const text = provenance.replace(/^https?:\/\/[^\s]+\s*/, '').trim();
 
 	// Split on common provenance markers
 	const parts = text.split(/Source:|Email format verified|His role|Her role/i);
