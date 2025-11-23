@@ -47,18 +47,18 @@ export async function clearTestDatabase() {
   // Clear in STRICT reverse dependency order to avoid foreign key constraints
   // Order: Children → Parents (leaf nodes first, root last)
   try {
+    // Analytics events MUST be deleted first (references session_id FK)
+    await db.analytics_event.deleteMany();
+
+    // Analytics sessions (after events are deleted)
+    await db.analytics_session.deleteMany();
+
+    // Analytics experiments (after events are deleted)
+    await db.analytics_experiment.deleteMany();
+
     // Leaf nodes (no other tables depend on them)
     await db.cWCJob.deleteMany();
     await db.template_campaign.deleteMany();
-
-    // Analytics events (depend on session & template & experiment)
-    await db.analytics_event.deleteMany();
-
-    // Analytics sessions (events depend on this)
-    await db.analytics_session.deleteMany();
-
-    // Analytics experiments (events reference this via experiment_id)
-    await db.analytics_experiment.deleteMany();
 
     // Representative relationships
     await db.user_representatives.deleteMany();
