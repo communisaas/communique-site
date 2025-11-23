@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	// ─────────────────────────────────────────────────────────────
 	// Types
@@ -54,7 +54,7 @@
 		// Wide screens: tight band for Gestalt proximity
 		// Narrow screens: use staggered arc (10-40%) with clear corridor to targets
 		senderZone: { min: 10, max: 40 }, // Expanded for mobile arc layout
-		targetZone: { min: 60, max: 85 }  // Clear corridor from senders
+		targetZone: { min: 60, max: 85 } // Clear corridor from senders
 	};
 
 	// ─────────────────────────────────────────────────────────────
@@ -133,10 +133,10 @@
 			// Chevron pattern: "You" at apex, peers fan out below, creates unity
 			// This communicates: You initiate → Peers join → Coalition forms
 			const chevronPositions: Array<{ x: number; y: number }> = [
-				{ x: 50, y: 18 },   // You - apex center (initiator)
-				{ x: 28, y: 32 },   // Neighbors - left wing
-				{ x: 72, y: 32 },   // Friends - right wing
-				{ x: 50, y: 46 }    // Coworkers - base center
+				{ x: 50, y: 18 }, // You - apex center (initiator)
+				{ x: 28, y: 32 }, // Neighbors - left wing
+				{ x: 72, y: 32 }, // Friends - right wing
+				{ x: 50, y: 46 } // Coworkers - base center
 			];
 
 			return senders.map((node, i) => ({
@@ -156,10 +156,10 @@
 			// Visual symmetry: senders chevron ↔ targets inverted chevron
 			// Y positions shifted +9% for vertical centering
 			const phoneChevronPositions: Array<{ x: number; y: number }> = [
-				{ x: 50, y: 15 },   // You - apex center (initiator)
-				{ x: 18, y: 27 },   // Neighbors - left wing (WIDE)
-				{ x: 82, y: 27 },   // Friends - right wing (WIDE)
-				{ x: 50, y: 41 }    // Coworkers - base center (coalition complete)
+				{ x: 50, y: 15 }, // You - apex center (initiator)
+				{ x: 18, y: 27 }, // Neighbors - left wing (WIDE)
+				{ x: 82, y: 27 }, // Friends - right wing (WIDE)
+				{ x: 50, y: 41 } // Coworkers - base center (coalition complete)
 			];
 
 			return senders.map((node, i) => ({
@@ -202,9 +202,9 @@
 			// Inverted chevron: 2 targets on top row (WIDE), 1 at bottom apex
 			// Pushed to edges to match sender chevron width
 			const invertedChevronPositions: Array<{ x: number; y: number }> = [
-				{ x: 18, y: 69 },   // Representative - left (matches Neighbors X)
-				{ x: 82, y: 69 },   // Mayor - right (matches Friends X)
-				{ x: 50, y: 85 }    // CEO - apex inverted (matches You/Coworkers X)
+				{ x: 18, y: 69 }, // Representative - left (matches Neighbors X)
+				{ x: 82, y: 69 }, // Mayor - right (matches Friends X)
+				{ x: 50, y: 85 } // CEO - apex inverted (matches You/Coworkers X)
 			];
 
 			return targets.map((node, i) => ({
@@ -219,9 +219,9 @@
 		// (18 + 82) / 2 = 50% perfect vertical centering
 		if (aspect >= 0.5 && aspect < 0.9) {
 			const tabletTargetPositions: Array<{ x: number; y: number }> = [
-				{ x: 20, y: 82 },   // Representative - left
-				{ x: 50, y: 82 },   // Mayor - center
-				{ x: 80, y: 82 }    // CEO - right
+				{ x: 20, y: 82 }, // Representative - left
+				{ x: 50, y: 82 }, // Mayor - center
+				{ x: 80, y: 82 } // CEO - right
 			];
 
 			return targets.map((node, i) => ({
@@ -302,16 +302,16 @@
 
 	const TIMING = {
 		// Narrative reveal timing
-		phase1Start: 0,          // You send
-		phase2Start: 600,        // You share (after send lands)
-		phase3Start: 1200,       // Peers send (after share spreads)
-		edgeDrawDuration: 800,   // How long each edge takes to draw
-		edgeStagger: 100,        // Stagger within a phase
+		phase1Start: 0, // You send
+		phase2Start: 600, // You share (after send lands)
+		phase3Start: 1200, // Peers send (after share spreads)
+		edgeDrawDuration: 800, // How long each edge takes to draw
+		edgeStagger: 100, // Stagger within a phase
 
 		// Ambient particles (life after reveal)
-		ambientDelay: 2400,      // Start after narrative completes
-		ambientDuration: 5000,   // Slow breathing rhythm
-		ambientStagger: 600,     // Offset between particles
+		ambientDelay: 2400, // Start after narrative completes
+		ambientDuration: 5000, // Slow breathing rhythm
+		ambientStagger: 600, // Offset between particles
 
 		// Hover response
 		activeDuration: 700,
@@ -410,16 +410,219 @@
 	}
 
 	// ─────────────────────────────────────────────────────────────
+	// Narrative Content (the story each node reveals)
+	// ─────────────────────────────────────────────────────────────
+
+	type NarrativeContent = {
+		headline: string;
+		body: string[];
+		insight: string;
+		cta: string;
+		ctaAction: 'write' | 'browse' | 'browse';
+	};
+
+	const narrativeContent: Record<string, NarrativeContent> = {
+		you: {
+			headline: 'Your voice. Amplified.',
+			body: [
+				'You\'ve sent emails that vanished into the void. Called offices that promised to "pass along your concerns." Nothing changed.',
+				'This time is different. You write once — your authentic grievance, your specific problem. Then you share a link. And everyone who shares your problem can send it too.'
+			],
+			insight: 'One complaint gets buried. Coordinated messages make impact.',
+			cta: 'Start Writing',
+			ctaAction: 'write'
+		},
+		neighbors: {
+			headline: 'They share your streets.',
+			body: [
+				'The same potholes. The same broken streetlights. The same rent increases.',
+				"When you share the link, you're not asking for a favor. You're inviting them to a fight that's already theirs. They personalize with their address, their name. Same grievance. Thousands of voices."
+			],
+			insight: "Coalition isn't built. It's unlocked.",
+			cta: 'Browse Templates',
+			ctaAction: 'browse'
+		},
+		friends: {
+			headline: 'They share your outrage.',
+			body: [
+				'The friends who text you "did you see this??" about the same news stories. Who vent about the same problems over dinner.',
+				"They've felt the same frustration. They just needed someone to start. You share. They make it their own."
+			],
+			insight: 'Your network is already aligned. Activate it.',
+			cta: 'Browse Templates',
+			ctaAction: 'browse'
+		},
+		coworkers: {
+			headline: 'They share your workplace.',
+			body: [
+				'The same policies. The same frustrations. The same fear of speaking up alone.',
+				'When one person complains, they\'re a "problem employee." When dozens coordinate, they\'re a constituency.'
+			],
+			insight: 'Individual complaints are noise. Collective voice is power.',
+			cta: 'Browse Templates',
+			ctaAction: 'browse'
+		},
+		rep: {
+			headline: 'They count every constituent.',
+			body: [
+				'Congressional offices tally every email, every call, every contact. Staff report engagement numbers to the member.',
+				"One email from their district? Filed. Fifty from the same zip code on the same issue? That's a crisis meeting."
+			],
+			insight: 'They work for you. Remind them.',
+			cta: 'See Templates',
+			ctaAction: 'browse'
+		},
+		mayor: {
+			headline: 'They watch the neighborhoods.',
+			body: [
+				'Local officials track complaint patterns obsessively. They know which intersections, which blocks, which issues are heating up.',
+				"Scattered complaints are background noise. Coordinated pressure from one neighborhood? That's the next town hall agenda item."
+			],
+			insight: 'Local power responds to local pressure.',
+			cta: 'See Local Templates',
+			ctaAction: 'browse'
+		},
+		ceo: {
+			headline: 'They fear coordinated customers.',
+			body: [
+				"One angry customer is a support ticket. A thousand sending the same message? That's a brand crisis.",
+				"Corporate accountability isn't about shame. It's about showing them the numbers. Making the cost of ignoring you higher than the cost of change."
+			],
+			insight: 'Corporations respond to collective voice.',
+			cta: 'See Corporate Templates',
+			ctaAction: 'browse'
+		}
+	};
+
+	// ─────────────────────────────────────────────────────────────
 	// State
 	// ─────────────────────────────────────────────────────────────
 
 	let reducedMotion = $state(false);
 	let hoveredId = $state<string | null>(null);
+	let expandedNodeId = $state<string | null>(null);
 	let mounted = $state(false);
 	let narrativeComplete = $state(false);
 
+	// Derived: is any node expanded?
+	const isExpanded = $derived(expandedNodeId !== null);
+	const expandedContent = $derived(expandedNodeId ? narrativeContent[expandedNodeId] : null);
+
 	const connectedNodeIds = $derived(hoveredId ? getConnectedNodeIds(hoveredId) : []);
 	const activeConnections = $derived(hoveredId ? getConnectionsForNode(hoveredId) : []);
+
+	// ─────────────────────────────────────────────────────────────
+	// Node Expansion Handlers
+	// ─────────────────────────────────────────────────────────────
+
+	/**
+	 * FLIP Animation for mobile expansion
+	 *
+	 * Perceptual Engineering: The node must animate FROM where it is
+	 * in the loom TO the center of the viewport. This maintains
+	 * object permanence - the user tapped THIS node, and THIS node
+	 * floats up to meet them.
+	 *
+	 * FLIP = First, Last, Invert, Play
+	 * 1. FIRST: Capture node's current viewport position (MEASURE)
+	 * 2. Trigger state change (node becomes position:fixed at center)
+	 * 3. LAST: Measure where node actually ended up (MEASURE, don't calculate!)
+	 * 4. INVERT: Apply transform to move node BACK to original position
+	 * 5. PLAY: Animate transform to identity (node floats to center)
+	 *
+	 * Critical fixes from brutalist review:
+	 * - MEASURE the LAST position, don't calculate it
+	 * - Disable competing CSS transitions during FLIP
+	 * - Use requestAnimationFrame for proper frame timing
+	 */
+	async function handleNodeClick(nodeId: string): Promise<void> {
+		// Collapsing - just reset state
+		if (expandedNodeId === nodeId) {
+			expandedNodeId = null;
+			return;
+		}
+
+		// Check if we're on mobile and should do FLIP animation
+		const isMobile = typeof window !== 'undefined' && window.innerWidth <= 480;
+		const nodeEl = containerEl?.querySelector(`[data-node-id="${nodeId}"]`) as HTMLElement | null;
+
+		if (isMobile && nodeEl && !reducedMotion) {
+			// FIRST: Capture current position in viewport (MEASURE)
+			const firstRect = nodeEl.getBoundingClientRect();
+			const firstCenterX = firstRect.left + firstRect.width / 2;
+			const firstCenterY = firstRect.top + firstRect.height / 2;
+
+			// CRITICAL: Disable competing CSS transitions BEFORE state change
+			// The .node class has left/top transitions that would fire simultaneously
+			nodeEl.style.transition = 'none';
+
+			// Trigger state change
+			expandedNodeId = nodeId;
+			hoveredId = null;
+
+			// Wait for Svelte to update DOM
+			await tick();
+
+			// LAST: MEASURE where node actually ended up (don't calculate!)
+			// This accounts for actual viewport dimensions, safe areas, URL bars, etc.
+			const lastRect = nodeEl.getBoundingClientRect();
+			const lastCenterX = lastRect.left + lastRect.width / 2;
+			const lastCenterY = lastRect.top + lastRect.height / 2;
+
+			// INVERT: Calculate offset from final to initial position
+			const deltaX = firstCenterX - lastCenterX;
+			const deltaY = firstCenterY - lastCenterY;
+
+			// Apply inverted transform (node appears at original position)
+			// Note: base transform is translate(-50%, -50%), so we add our delta
+			nodeEl.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+
+			// Force reflow to ensure transform is applied
+			void nodeEl.offsetHeight;
+
+			// PLAY: Use requestAnimationFrame to ensure browser paints inverted state first
+			requestAnimationFrame(() => {
+				// Now enable transition and animate to final position
+				nodeEl.style.transition = 'transform 350ms cubic-bezier(0.4, 0, 0.2, 1)';
+				nodeEl.style.transform = 'translate(-50%, -50%)';
+
+				// Clean up inline styles after animation
+				const cleanup = (): void => {
+					nodeEl.style.transition = '';
+					nodeEl.style.transform = '';
+					nodeEl.removeEventListener('transitionend', cleanup);
+				};
+				nodeEl.addEventListener('transitionend', cleanup);
+
+				// Fallback cleanup in case transitionend doesn't fire
+				setTimeout(() => {
+					nodeEl.style.transition = '';
+					nodeEl.style.transform = '';
+				}, 400);
+			});
+		} else {
+			// Desktop or reduced motion: just expand in place
+			expandedNodeId = nodeId;
+			hoveredId = null;
+		}
+	}
+
+	function handleDismiss(): void {
+		expandedNodeId = null;
+	}
+
+	function handleKeydown(event: KeyboardEvent): void {
+		if (event.key === 'Escape' && expandedNodeId) {
+			expandedNodeId = null;
+		}
+	}
+
+	function handleBackdropClick(event: MouseEvent): void {
+		// Only dismiss if clicking the backdrop itself, not the expanded node
+		if ((event.target as HTMLElement).classList.contains('expansion-backdrop')) {
+			expandedNodeId = null;
+		}
+	}
 
 	onMount(() => {
 		reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -450,8 +653,12 @@
 			narrativeComplete = true;
 		}, TIMING.ambientDelay);
 
+		// Global keydown listener for Escape
+		window.addEventListener('keydown', handleKeydown);
+
 		return () => {
 			resizeObserver?.disconnect();
+			window.removeEventListener('keydown', handleKeydown);
 		};
 	});
 
@@ -459,7 +666,15 @@
 		return activeConnections.some((ac) => ac.from === conn.from && ac.to === conn.to);
 	}
 
-	function getNodeState(nodeId: string): 'idle' | 'hovered' | 'connected' | 'dimmed' {
+	function getNodeState(
+		nodeId: string
+	): 'idle' | 'hovered' | 'connected' | 'dimmed' | 'expanded' | 'recessed' {
+		// Expansion state takes priority
+		if (expandedNodeId) {
+			if (nodeId === expandedNodeId) return 'expanded';
+			return 'recessed'; // All other nodes recede when one is expanded
+		}
+		// Normal hover states
 		if (!hoveredId) return 'idle';
 		if (nodeId === hoveredId) return 'hovered';
 		if (connectedNodeIds.includes(nodeId)) return 'connected';
@@ -473,19 +688,13 @@
 
 	function getPhaseIndex(conn: Connection): number {
 		if (conn.phase === 'you-send') {
-			const idx = youDeliverConnections.findIndex(
-				(c) => c.from === conn.from && c.to === conn.to
-			);
+			const idx = youDeliverConnections.findIndex((c) => c.from === conn.from && c.to === conn.to);
 			return idx;
 		} else if (conn.phase === 'you-share') {
-			const idx = shareConnections.findIndex(
-				(c) => c.from === conn.from && c.to === conn.to
-			);
+			const idx = shareConnections.findIndex((c) => c.from === conn.from && c.to === conn.to);
 			return idx;
 		} else {
-			const idx = peerDeliverConnections.findIndex(
-				(c) => c.from === conn.from && c.to === conn.to
-			);
+			const idx = peerDeliverConnections.findIndex((c) => c.from === conn.from && c.to === conn.to);
 			return idx;
 		}
 	}
@@ -496,6 +705,7 @@
 	class:mounted
 	class:narrative-complete={narrativeComplete}
 	class:reduced-motion={reducedMotion}
+	class:is-expanded={isExpanded}
 	style:--label-font-size={labelFontSize}
 	style:--tag-font-size={tagFontSize}
 	style:--micro-font-size={microFontSize}
@@ -504,7 +714,7 @@
 	style:--node-max-width={nodeMaxWidth}
 >
 	<div class="canvas-container" bind:this={containerEl}>
-		<svg viewBox={viewBox} class="edge-canvas" aria-hidden="true">
+		<svg {viewBox} class="edge-canvas" aria-hidden="true">
 			<defs>
 				<!-- Glow filter for active particles -->
 				<filter id="particle-glow" x="-50%" y="-50%" width="200%" height="200%">
@@ -536,7 +746,7 @@
 						class:active={isActive}
 						style:--draw-delay="{delay}ms"
 						style:--draw-duration="{TIMING.edgeDrawDuration}ms"
-						style:--stroke-width="{isActive ? strokeWidthActive : strokeWidth}"
+						style:--stroke-width={isActive ? strokeWidthActive : strokeWidth}
 					/>
 				{/each}
 			</g>
@@ -603,49 +813,106 @@
 		<!-- Nodes -->
 		{#each senderPositions as node}
 			{@const state = getNodeState(node.id)}
+			{@const content = narrativeContent[node.id]}
 			<button
 				class="node sender"
 				class:hovered={state === 'hovered'}
 				class:connected={state === 'connected'}
 				class:dimmed={state === 'dimmed'}
+				class:expanded={state === 'expanded'}
+				class:recessed={state === 'recessed'}
+				data-node-id={node.id}
 				style:left="{node.x}%"
 				style:top="{node.y}%"
-				onmouseenter={() => (hoveredId = node.id)}
-				onmouseleave={() => (hoveredId = null)}
-				onfocus={() => (hoveredId = node.id)}
-				onblur={() => (hoveredId = null)}
+				onclick={() => handleNodeClick(node.id)}
+				onmouseenter={() => !isExpanded && (hoveredId = node.id)}
+				onmouseleave={() => !isExpanded && (hoveredId = null)}
+				onfocus={() => !isExpanded && (hoveredId = node.id)}
+				onblur={() => !isExpanded && (hoveredId = null)}
 			>
 				<span class="glow-ring"></span>
 				<span class="node-content">
 					<span class="label" class:you-label={node.id === 'you'}>{node.label}</span>
 					<span class="tag">{node.id === 'you' ? 'Write once' : 'Share link'}</span>
+
+					<!-- Expanded narrative content -->
+					{#if state === 'expanded' && content}
+						<div class="narrative-panel">
+							<h4 class="narrative-headline">{content.headline}</h4>
+							{#each content.body as paragraph}
+								<p class="narrative-body">{paragraph}</p>
+							{/each}
+							<p class="narrative-insight">{content.insight}</p>
+							<button
+								class="narrative-cta"
+								onclick={(e) => {
+									e.stopPropagation(); /* TODO: dispatch action */
+								}}
+							>
+								{content.cta}
+							</button>
+						</div>
+					{/if}
 				</span>
 			</button>
 		{/each}
 
 		{#each targetPositions as node}
 			{@const state = getNodeState(node.id)}
+			{@const content = narrativeContent[node.id]}
 			<button
 				class="node target"
 				class:hovered={state === 'hovered'}
 				class:connected={state === 'connected'}
 				class:dimmed={state === 'dimmed'}
+				class:expanded={state === 'expanded'}
+				class:recessed={state === 'recessed'}
+				data-node-id={node.id}
 				style:left="{node.x}%"
 				style:top="{node.y}%"
-				onmouseenter={() => (hoveredId = node.id)}
-				onmouseleave={() => (hoveredId = null)}
-				onfocus={() => (hoveredId = node.id)}
-				onblur={() => (hoveredId = null)}
+				onclick={() => handleNodeClick(node.id)}
+				onmouseenter={() => !isExpanded && (hoveredId = node.id)}
+				onmouseleave={() => !isExpanded && (hoveredId = null)}
+				onfocus={() => !isExpanded && (hoveredId = node.id)}
+				onblur={() => !isExpanded && (hoveredId = null)}
 			>
 				<span class="glow-ring"></span>
 				<span class="node-content">
 					<span class="label">{node.label}</span>
-					{#if node.badge}
+					{#if node.badge && state !== 'expanded'}
 						<span class="micro">{node.badge}</span>
+					{/if}
+
+					<!-- Expanded narrative content -->
+					{#if state === 'expanded' && content}
+						<div class="narrative-panel">
+							<h4 class="narrative-headline">{content.headline}</h4>
+							{#each content.body as paragraph}
+								<p class="narrative-body">{paragraph}</p>
+							{/each}
+							<p class="narrative-insight">{content.insight}</p>
+							<button
+								class="narrative-cta"
+								onclick={(e) => {
+									e.stopPropagation(); /* TODO: dispatch action */
+								}}
+							>
+								{content.cta}
+							</button>
+						</div>
 					{/if}
 				</span>
 			</button>
 		{/each}
+
+		<!-- Backdrop for dismissing expanded state -->
+		{#if isExpanded}
+			<button
+				class="expansion-backdrop"
+				onclick={handleBackdropClick}
+				aria-label="Close expanded node"
+			></button>
+		{/if}
 	</div>
 </div>
 
@@ -657,11 +924,22 @@
 	.relay-loom {
 		--share-color: oklch(0.7 0.15 270);
 		--share-color-bright: oklch(0.8 0.18 270);
-		--share-glow: oklch(0.75 0.12 270 / 0.5);
+		/*
+		 * Glow layers for box-shadow approach:
+		 * Inner: brightest, tightest spread
+		 * Mid: softer, wider
+		 * Outer: whisper, widest (peripheral detection only)
+		 */
+		--share-glow-inner: oklch(0.72 0.14 270 / 0.35);
+		--share-glow-mid: oklch(0.78 0.1 270 / 0.2);
+		--share-glow-outer: oklch(0.85 0.06 270 / 0.1);
 
 		--deliver-color: oklch(0.75 0.14 175);
 		--deliver-color-bright: oklch(0.85 0.16 175);
-		--deliver-glow: oklch(0.8 0.12 175 / 0.5);
+		/* Teal glow layers: same principle */
+		--deliver-glow-inner: oklch(0.75 0.12 175 / 0.32);
+		--deliver-glow-mid: oklch(0.8 0.08 175 / 0.18);
+		--deliver-glow-outer: oklch(0.88 0.04 175 / 0.08);
 
 		--transition-fast: 150ms;
 		--transition-normal: 220ms;
@@ -683,7 +961,9 @@
 		box-shadow:
 			0 1px 3px oklch(0 0 0 / 0.04),
 			0 18px 60px -45px oklch(0.25 0.05 250 / 0.45);
-		overflow: hidden;
+		/* Allow glow rings to extend beyond container bounds
+		   Clip only the edges, not the internal glow effects */
+		overflow: visible;
 	}
 
 	@media (min-width: 1024px) {
@@ -877,22 +1157,41 @@
 			max-width 280ms cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
+	/*
+	 * Glow Ring — Perceptual Engineering
+	 *
+	 * Function: AMBIENT peripheral feedback
+	 * Anti-pattern: Hard edges, visible banding, spotlight effect
+	 *
+	 * Solution: Layered box-shadows
+	 * Box-shadows naturally have soft edges (Gaussian blur built-in)
+	 * Multiple layers at increasing spread create smooth inverse-square falloff
+	 * No gradient banding possible - shadows blend continuously
+	 */
 	.glow-ring {
 		position: absolute;
-		inset: -10px;
-		border-radius: 18px;
-		background: radial-gradient(
-			circle at center,
-			var(--node-glow, transparent) 0%,
-			transparent 70%
-		);
+		inset: -4px -6px;
+		border-radius: 14px;
+		background: transparent;
 		opacity: 0;
-		transition: opacity var(--transition-fast) ease-out;
+		transition: opacity var(--transition-normal) ease-out;
 		pointer-events: none;
+		/*
+		 * Layered shadows: each layer adds soft glow
+		 * Inner layers: tighter spread, higher opacity
+		 * Outer layers: wider spread, lower opacity
+		 * Result: smooth falloff with NO hard edges
+		 */
+		box-shadow:
+			0 0 8px 2px var(--node-glow-inner, transparent),
+			0 0 16px 4px var(--node-glow-mid, transparent),
+			0 0 28px 8px var(--node-glow-outer, transparent);
 	}
 
 	.node-content {
 		position: relative;
+		/* Ensure content stays above the glow ring */
+		z-index: 1;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
@@ -914,7 +1213,9 @@
 	}
 
 	.node.sender {
-		--node-glow: var(--share-glow);
+		--node-glow-inner: var(--share-glow-inner);
+		--node-glow-mid: var(--share-glow-mid);
+		--node-glow-outer: var(--share-glow-outer);
 	}
 
 	.node.sender .node-content {
@@ -922,7 +1223,9 @@
 	}
 
 	.node.target {
-		--node-glow: var(--deliver-glow);
+		--node-glow-inner: var(--deliver-glow-inner);
+		--node-glow-mid: var(--deliver-glow-mid);
+		--node-glow-outer: var(--deliver-glow-outer);
 	}
 
 	.node.target .node-content {
@@ -1006,5 +1309,297 @@
 		font-size: var(--micro-font-size, 10px);
 		color: oklch(0.45 0.02 250);
 		transition: font-size var(--transition-normal) ease-out;
+	}
+
+	/* ─────────────────────────────────────────────────────────────
+	   Node Expansion — Perceptual Engineering
+
+	   Cognitive mode shift: spatial reasoning → narrative comprehension
+
+	   Key principles:
+	   - Node expands TO REVEAL, not spawn new element (continuity)
+	   - Other nodes RECEDE, not disappear (maintain spatial context)
+	   - Backdrop is SUBTLE (focus, not block)
+	   - Content reveals with timing (headline → body → insight → CTA)
+	   ───────────────────────────────────────────────────────────── */
+
+	/* Backdrop: subtle focus overlay */
+	.expansion-backdrop {
+		position: absolute;
+		inset: 0;
+		z-index: 5;
+		background: oklch(0.98 0.005 250 / 0.7);
+		backdrop-filter: blur(2px);
+		border: none;
+		cursor: pointer;
+		opacity: 0;
+		animation: backdrop-fade-in 250ms ease-out forwards;
+	}
+
+	@keyframes backdrop-fade-in {
+		from {
+			opacity: 0;
+		}
+		to {
+			opacity: 1;
+		}
+	}
+
+	/* Recessed state: other nodes fade when one is expanded */
+	.node.recessed {
+		pointer-events: none;
+		z-index: 1;
+	}
+
+	.node.recessed .node-content {
+		opacity: 0.35;
+		filter: saturate(0.5) blur(0.5px);
+		transform: scale(0.95);
+	}
+
+	.node.recessed .glow-ring {
+		opacity: 0 !important;
+	}
+
+	/* Expanded state: node transforms to reveal narrative */
+	.node.expanded {
+		z-index: 10;
+		/* Allow natural flow for expanded content */
+		min-width: auto;
+		max-width: none;
+	}
+
+	.node.expanded .node-content {
+		/* Expand to comfortable reading width */
+		min-width: 280px;
+		max-width: 340px;
+		padding: 1.25rem 1.5rem;
+		gap: 0;
+		align-items: flex-start;
+		text-align: left;
+		transform: scale(1);
+		box-shadow:
+			0 8px 30px -8px oklch(0.2 0.05 250 / 0.25),
+			0 25px 60px -15px oklch(0.15 0.08 250 / 0.2);
+		border-color: oklch(0.6 0.12 270 / 0.6);
+		background: oklch(1 0 0 / 0.98);
+	}
+
+	.node.target.expanded .node-content {
+		border-color: oklch(0.65 0.1 175 / 0.6);
+	}
+
+	.node.expanded .glow-ring {
+		opacity: 0.8;
+		/* Expand glow for expanded state */
+		inset: -8px -10px;
+	}
+
+	/* Hide original label/tag in expanded state */
+	.node.expanded .label,
+	.node.expanded .tag {
+		display: none;
+	}
+
+	/* ─────────────────────────────────────────────────────────────
+	   Narrative Panel Content
+	   ───────────────────────────────────────────────────────────── */
+
+	.narrative-panel {
+		display: flex;
+		flex-direction: column;
+		gap: 0.75rem;
+		width: 100%;
+		opacity: 0;
+		animation: narrative-reveal 350ms ease-out 100ms forwards;
+	}
+
+	@keyframes narrative-reveal {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	.narrative-headline {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 1.125rem;
+		font-weight: 700;
+		letter-spacing: -0.02em;
+		line-height: 1.3;
+		color: oklch(0.2 0.02 250);
+		margin: 0 0 0.25rem 0;
+	}
+
+	.narrative-body {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.875rem;
+		font-weight: 400;
+		line-height: 1.55;
+		color: oklch(0.35 0.02 250);
+		margin: 0;
+	}
+
+	.narrative-body + .narrative-body {
+		margin-top: 0.5rem;
+	}
+
+	.narrative-insight {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		font-style: italic;
+		line-height: 1.4;
+		color: oklch(0.45 0.08 270);
+		margin: 0.5rem 0 0 0;
+		padding-left: 0.75rem;
+		border-left: 2px solid oklch(0.7 0.12 270 / 0.4);
+	}
+
+	.node.target .narrative-insight {
+		color: oklch(0.45 0.08 175);
+		border-left-color: oklch(0.7 0.1 175 / 0.4);
+	}
+
+	.narrative-cta {
+		margin-top: 0.75rem;
+		padding: 0.625rem 1rem;
+		border: none;
+		border-radius: 8px;
+		background: linear-gradient(135deg, oklch(0.55 0.18 270), oklch(0.48 0.2 270));
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: white;
+		cursor: pointer;
+		transition:
+			transform 150ms ease-out,
+			box-shadow 150ms ease-out;
+	}
+
+	.narrative-cta:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 12px -2px oklch(0.5 0.18 270 / 0.4);
+	}
+
+	.narrative-cta:active {
+		transform: translateY(0);
+	}
+
+	.node.target .narrative-cta {
+		background: linear-gradient(135deg, oklch(0.6 0.14 175), oklch(0.52 0.16 175));
+	}
+
+	.node.target .narrative-cta:hover {
+		box-shadow: 0 4px 12px -2px oklch(0.55 0.14 175 / 0.4);
+	}
+
+	/* ─────────────────────────────────────────────────────────────
+	   Responsive Expansion Sizing
+
+	   Phone: Expanded node takes more width (limited horizontal space)
+	   Tablet: Comfortable reading width
+	   Desktop: Generous but not overwhelming
+	   ───────────────────────────────────────────────────────────── */
+
+	/*
+	 * PHONE: Viewport-centered expansion
+	 *
+	 * Perceptual Engineering: On small screens, the user's intent is to READ.
+	 * The loom's spatial context becomes secondary. The content must come to them.
+	 *
+	 * Solution: Use position:fixed to center expanded node in viewport.
+	 * - Node "floats up" from its position to meet the user's eyes
+	 * - Backdrop covers entire viewport (also fixed)
+	 * - No scroll hunting required
+	 */
+	@media (max-width: 480px) {
+		/* Backdrop must also be fixed to cover full viewport on phone */
+		.expansion-backdrop {
+			position: fixed;
+			inset: 0;
+		}
+
+		/* Expanded node centers in viewport, detached from loom coordinates */
+		.node.expanded {
+			position: fixed;
+			/* Override inline styles - center in viewport */
+			left: 50% !important;
+			top: 42% !important; /* Slightly above center for thumb comfort */
+			/* transform already includes translate(-50%, -50%) from base .node */
+		}
+
+		.node.expanded .node-content {
+			min-width: 260px;
+			max-width: calc(100vw - 48px);
+			max-height: calc(100vh - 120px);
+			overflow-y: auto;
+			padding: 1.25rem 1.25rem;
+		}
+
+		.narrative-headline {
+			font-size: 1.0625rem;
+		}
+
+		.narrative-body {
+			font-size: 0.8125rem;
+		}
+
+		.narrative-insight {
+			font-size: 0.75rem;
+		}
+
+		.narrative-cta {
+			font-size: 0.8125rem;
+			padding: 0.625rem 1rem;
+			/* Full width CTA on mobile for easier thumb tap */
+			width: 100%;
+		}
+	}
+
+	/* Tablet: optimal reading width */
+	@media (min-width: 481px) and (max-width: 768px) {
+		.node.expanded .node-content {
+			min-width: 260px;
+			max-width: 320px;
+		}
+	}
+
+	/* Desktop: generous but focused */
+	@media (min-width: 769px) {
+		.node.expanded .node-content {
+			min-width: 300px;
+			max-width: 380px;
+			padding: 1.5rem 1.75rem;
+		}
+
+		.narrative-headline {
+			font-size: 1.25rem;
+		}
+
+		.narrative-body {
+			font-size: 0.9375rem;
+		}
+	}
+
+	/* Reduced motion: instant states, no animations */
+	.relay-loom.reduced-motion .expansion-backdrop {
+		animation: none;
+		opacity: 1;
+	}
+
+	.relay-loom.reduced-motion .narrative-panel {
+		animation: none;
+		opacity: 1;
+		transform: none;
+	}
+
+	.relay-loom.reduced-motion .node.recessed .node-content,
+	.relay-loom.reduced-motion .node.expanded .node-content {
+		transition: none;
 	}
 </style>

@@ -31,6 +31,34 @@
 }
 
 @layer base {
+	/*
+	=== VISUAL FOUNDATION — PERCEPTUAL ENGINEERING ===
+
+	The background is not empty space—it's the ground plane.
+	Human perception evolved in warm-lit environments (fire, sun).
+	Pure white is perceptually "machine" - warm cream is "inhabited".
+
+	Subtle gradient creates depth without distraction.
+	The eye perceives this as "livable space" not "blank canvas".
+	*/
+	html {
+		background: linear-gradient(
+			180deg,
+			var(--foundation-gradient-start, oklch(0.995 0.004 55)) 0%,
+			var(--foundation-gradient-end, oklch(0.985 0.006 65)) 100%
+		);
+		/* Ensure gradient covers full viewport even with short content */
+		min-height: 100vh;
+		/* Fallback for browsers without oklch support */
+		background-color: #fdfcfa;
+	}
+
+	body {
+		/* Inherit the warm foundation */
+		background: transparent;
+		min-height: 100vh;
+	}
+
 	:root {
 		/*
 		=== COMMUNIQUE DESIGN SYSTEM ===
@@ -47,10 +75,10 @@
 		--coord-share-solid: #4f46e5;
 		--coord-verified: #10b981; /* Emerald — Delivery confirmed */
 
-		/* Node styling (cards, elements) */
-		--coord-node-bg: rgba(255, 255, 255, 0.9);
-		--coord-node-border: rgba(148, 163, 184, 0.45);
-		--coord-node-shadow: 0 20px 50px -28px rgba(15, 23, 42, 0.45);
+		/* Node styling (cards, elements) - warm foundation */
+		--coord-node-bg: oklch(0.995 0.003 55 / 0.92); /* Warm white, not pure */
+		--coord-node-border: oklch(0.85 0.01 60 / 0.45); /* Warm border */
+		--coord-node-shadow: 0 20px 50px -28px oklch(0.15 0.02 60 / 0.35); /* Warm shadow */
 
 		/* Edge styling (connection lines) */
 		--coord-edge-width: 1.3;
@@ -127,14 +155,32 @@
 		--status-neutral-500: #6b7280; /* Draft, inactive */
 		--status-neutral-700: #374151;
 
-		/* Surface Colors—Infrastructure Gravitas */
-		--surface-base: #ffffff; /* Clean, trustworthy white */
-		--surface-raised: #f9fafb; /* Slightly elevated surfaces */
-		--surface-overlay: #f3f4f6; /* Modals, overlays */
+		/*
+		=== SURFACE COLORS — PERCEPTUAL ENGINEERING ===
+
+		Pure white (#ffffff) is perceptually "dead":
+		- Zero peripheral information
+		- Maximally flat (no depth cues)
+		- Cold/clinical emotional temperature
+		- Maximum contrast = eye strain
+
+		Communiqué is about COLLECTIVE HUMAN ACTION.
+		Visual foundation should feel: warm, alive, inhabited.
+
+		oklch color space for perceptual uniformity.
+		Warm amber undertone (hue ~55-60) signals human presence.
+		*/
+		--surface-base: oklch(0.993 0.003 60); /* Warm off-white: human, not machine */
+		--surface-raised: oklch(0.985 0.004 60); /* Slightly elevated, warmer */
+		--surface-overlay: oklch(0.975 0.005 55); /* Modals: warm cream */
 		--surface-inverted: #111827; /* Dark mode, headers */
-		--surface-accent: #f8fafc; /* Subtle emphasis */
-		--surface-border: #e5e7eb; /* Clean separation */
-		--surface-border-strong: #d1d5db; /* Defined sections */
+		--surface-accent: oklch(0.988 0.004 55); /* Subtle warm emphasis */
+		--surface-border: oklch(0.9 0.008 60 / 0.8); /* Warm separation */
+		--surface-border-strong: oklch(0.85 0.01 60 / 0.9); /* Defined sections */
+
+		/* Visual Foundation - Ambient Gradient */
+		--foundation-gradient-start: oklch(0.995 0.004 55); /* Warm cream top */
+		--foundation-gradient-end: oklch(0.985 0.006 65); /* Slightly warmer bottom */
 
 		/* Text Colors—Clear Hierarchy */
 		--text-primary: #111827; /* Headings, important content */
@@ -155,6 +201,43 @@
 		--focus-ring-verified: 0 0 0 3px rgb(16 185 129 / 0.1); /* Emerald focus */
 		--focus-ring-community: 0 0 0 3px rgb(14 165 233 / 0.1); /* Sky focus */
 		--focus-ring-accent: 0 0 0 3px rgb(147 51 234 / 0.1); /* Violet accent focus */
+
+		/*
+		=== HEADER SYSTEM (Perceptual Engineering) ===
+		Minimal cognitive load. Header provides orientation only.
+		oklch color space for perceptual uniformity.
+		*/
+
+		/* Header surfaces */
+		--header-bg: oklch(0.99 0.005 250 / 0.85);
+		--header-bg-solid: oklch(0.99 0.005 250 / 0.95);
+		--header-border: oklch(0.85 0.02 250 / 0.6);
+
+		/* Shadows (layered, from RelayLoom) */
+		--header-shadow: 0 1px 3px oklch(0 0 0 / 0.03), 0 4px 12px -6px oklch(0.25 0.05 250 / 0.15);
+		--header-shadow-scrolled:
+			0 1px 3px oklch(0 0 0 / 0.04), 0 8px 20px -10px oklch(0.25 0.05 250 / 0.25);
+
+		/* Interactive (from RelayLoom edge colors) */
+		--header-action-primary: oklch(0.55 0.18 270); /* Share purple */
+		--header-action-primary-hover: oklch(0.5 0.2 270);
+		--header-action-congress: oklch(0.65 0.14 175); /* Deliver teal */
+		--header-action-congress-hover: oklch(0.6 0.16 175);
+
+		/* Text hierarchy */
+		--header-text-primary: oklch(0.15 0.02 250);
+		--header-text-secondary: oklch(0.45 0.02 250);
+		--header-text-muted: oklch(0.55 0.02 250);
+
+		/* Focus ring */
+		--header-focus-ring: oklch(0.6 0.15 270 / 0.5);
+
+		/* Timing constants */
+		--header-transition-fast: 150ms;
+		--header-transition-normal: 220ms;
+		--header-transition-slow: 320ms;
+		--header-easing: cubic-bezier(0.4, 0, 0.2, 1);
+		--header-easing-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 }
 

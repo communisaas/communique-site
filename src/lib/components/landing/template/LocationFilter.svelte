@@ -1040,42 +1040,441 @@
 	}
 </script>
 
-{#if isLoadingLocation}
-	<!-- Loading skeleton (elegant, minimal) -->
-	<div class="mb-4 animate-pulse rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
-		<div class="flex items-center gap-2.5">
-			<div class="h-8 w-8 rounded-full bg-slate-100"></div>
-			<div class="flex-1 space-y-2">
-				<div class="h-4 w-32 rounded-md bg-slate-100"></div>
-				<div class="h-3 w-20 rounded-md bg-slate-50"></div>
+<!--
+  CLS PREVENTION: Explicit min-height reservation.
+  Distinguished engineer principle: Don't chase pixel-perfect skeletons.
+  Reserve the space explicitly - hydrated state is ~220px on desktop.
+-->
+<div class="location-filter-container">
+	{#if isLoadingLocation}
+		<!-- Loading skeleton -->
+		<div class="mb-6 rounded-xl bg-white px-4 pb-4 pt-6 shadow-sm ring-1 ring-slate-900/5 sm:px-6">
+			<div class="flex flex-col items-start gap-6 md:flex-row md:justify-between md:gap-8">
+				<!-- LEFT COLUMN skeleton (matches hydrated left column) -->
+				<div class="flex flex-1 animate-pulse items-start gap-3">
+					<!-- Location pin icon placeholder -->
+					<div class="h-7 w-7 flex-shrink-0 rounded-full bg-slate-100"></div>
+
+					<div class="min-w-0 flex-1 space-y-3">
+						<!-- H2 header placeholder -->
+						<div class="h-9 w-40 rounded-md bg-slate-100"></div>
+
+						<!-- District metadata placeholder -->
+						<div class="h-4 w-56 rounded-md bg-slate-50"></div>
+
+						<!-- Correction affordance placeholder -->
+						<div class="h-4 w-32 rounded-md bg-slate-50"></div>
+
+						<!-- Breadcrumb placeholder -->
+						<div class="flex items-center gap-2 pt-1">
+							<div class="h-7 w-24 rounded-md bg-slate-100"></div>
+							<div class="h-4 w-4 rounded bg-slate-50"></div>
+							<div class="h-7 w-20 rounded-md bg-slate-100"></div>
+						</div>
+
+						<!-- Privacy indicator placeholder -->
+						<div class="border-t border-slate-100 pt-3">
+							<div class="h-4 w-44 rounded-md bg-slate-50"></div>
+						</div>
+					</div>
+				</div>
+
+				<!-- RIGHT COLUMN skeleton (matches unlock CTA card) -->
+				<div
+					class="hidden w-full animate-pulse md:block md:w-auto md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0"
+				>
+					<div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+						<!-- Count + label placeholder -->
+						<div class="mb-4 flex items-baseline justify-center gap-2">
+							<div class="h-10 w-12 rounded-md bg-slate-100"></div>
+							<div class="h-4 w-28 rounded-md bg-slate-100"></div>
+						</div>
+						<!-- Description placeholder -->
+						<div class="mx-auto mb-4 h-3 w-40 rounded-md bg-slate-50"></div>
+						<!-- Button placeholder -->
+						<div class="h-10 w-full rounded-md bg-slate-200"></div>
+						<!-- Privacy copy placeholder -->
+						<div class="mx-auto mt-4 h-3 w-48 rounded-md bg-slate-50"></div>
+					</div>
+				</div>
 			</div>
 		</div>
-	</div>
-{:else if locationError}
-	<!-- Error state - gracefully degrade to showing all templates -->
-	<div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-		<div class="flex items-center gap-2 text-sm text-slate-600">
-			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-				/>
-			</svg>
-			<span>Showing all templates</span>
+	{:else if locationError}
+		<!-- Error state - gracefully degrade to showing all templates -->
+		<div class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+			<div class="flex items-center gap-2 text-sm text-slate-600">
+				<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					/>
+				</svg>
+				<span>Showing all templates</span>
+			</div>
 		</div>
-	</div>
-{:else if hasLocation}
-	<!-- TEMPLATE BROWSER HEADER (Two-column: Location left, Unlock right) -->
-	<div class="mb-6 rounded-xl bg-white px-4 pb-4 pt-6 shadow-sm ring-1 ring-slate-900/5 sm:px-6">
-		<div class="flex flex-col items-start gap-6 md:flex-row md:justify-between md:gap-8">
-			<!-- LEFT COLUMN: Location Information -->
-			<div class="flex flex-1 items-start gap-3">
-				<!-- Location pin icon -->
-				<div class="flex-shrink-0">
+	{:else if hasLocation}
+		<!-- TEMPLATE BROWSER HEADER (Two-column: Location left, Unlock right) -->
+		<div class="mb-6 rounded-xl bg-white px-4 pb-4 pt-6 shadow-sm ring-1 ring-slate-900/5 sm:px-6">
+			<div class="flex flex-col items-start gap-6 md:flex-row md:justify-between md:gap-8">
+				<!-- LEFT COLUMN: Location Information -->
+				<div class="flex flex-1 items-start gap-3">
+					<!-- Location pin icon -->
+					<div class="flex-shrink-0">
+						<svg
+							class="h-7 w-7 text-blue-600"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+							/>
+							<path
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+							/>
+						</svg>
+					</div>
+
+					<div class="min-w-0 flex-1">
+						<!-- H2 header (human-readable location): Satoshi Bold for brand voice -->
+						<h2 class="font-brand text-3xl font-bold leading-tight text-slate-900">
+							{#if locationLabel}
+								{locationLabel}
+							{:else}
+								Nationwide
+							{/if}
+						</h2>
+
+						<!-- District metadata (power-agnostic - shown when available): Satoshi Medium -->
+						{#if districtLabel}
+							<p class="mt-1 font-brand text-sm font-medium text-slate-500">
+								{districtLabel}
+							</p>
+						{/if}
+
+						<!-- Correction affordance (error recovery only): Satoshi Regular -->
+						{#if locationLabel}
+							<button
+								onclick={() => (showAddressModal = true)}
+								class="mt-1 font-brand text-sm text-slate-600 underline decoration-dotted underline-offset-2 hover:text-slate-900"
+							>
+								Not from {locationLabel}?
+							</button>
+						{/if}
+
+						<!-- Geographic breadcrumb (inline with location elements) -->
+						{#if breadcrumbCountry || breadcrumbState || breadcrumbCounty || breadcrumbCity || breadcrumbDistrict}
+							<nav
+								class="mt-2 flex items-center gap-2 text-sm"
+								aria-label="Filter by geographic scope"
+							>
+								{#if breadcrumbCountry}
+									<LocationAutocomplete
+										label={breadcrumbCountry}
+										level="country"
+										isSelected={selectedScope === 'nationwide'}
+										on:select={handleLocationSelect}
+										on:filter={() => handleScopeFilter('nationwide')}
+									/>
+								{/if}
+
+								{#if breadcrumbState && breadcrumbCountry}
+									<svg
+										class="h-4 w-4 text-slate-400"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5l7 7-7 7"
+										/>
+									</svg>
+								{/if}
+
+								{#if breadcrumbState}
+									<LocationAutocomplete
+										label={breadcrumbState}
+										level="state"
+										currentCountry={inferredLocation?.country_code}
+										isSelected={selectedScope === 'state'}
+										on:select={handleLocationSelect}
+										on:filter={() => handleScopeFilter('state')}
+									/>
+								{/if}
+
+								{#if breadcrumbCounty}
+									<svg
+										class="h-4 w-4 text-slate-400"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5l7 7-7 7"
+										/>
+									</svg>
+									<LocationAutocomplete
+										label={breadcrumbCounty}
+										level="city"
+										currentCountry={inferredLocation?.country_code}
+										currentState={inferredLocation?.state_code}
+										isSelected={selectedScope === 'county'}
+										on:select={handleLocationSelect}
+										on:filter={() => handleScopeFilter('county')}
+									/>
+								{/if}
+
+								{#if breadcrumbCity}
+									<svg
+										class="h-4 w-4 text-slate-400"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5l7 7-7 7"
+										/>
+									</svg>
+									<LocationAutocomplete
+										label={breadcrumbCity}
+										level="city"
+										currentCountry={inferredLocation?.country_code}
+										currentState={inferredLocation?.state_code}
+										isSelected={selectedScope === 'city'}
+										on:select={handleLocationSelect}
+										on:filter={() => handleScopeFilter('city')}
+									/>
+								{/if}
+
+								{#if breadcrumbDistrict}
+									<svg
+										class="h-4 w-4 text-slate-400"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											stroke-linecap="round"
+											stroke-linejoin="round"
+											stroke-width="2"
+											d="M9 5l7 7-7 7"
+										/>
+									</svg>
+									<!-- District breadcrumb: Display-only (no edit/search - determined by verified address) -->
+									<button
+										onclick={() => handleScopeFilter('district')}
+										class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
+										class:bg-slate-100={selectedScope === 'district'}
+										class:text-slate-900={selectedScope === 'district'}
+										class:text-slate-700={selectedScope !== 'district'}
+										aria-label="Filter by {breadcrumbDistrict}"
+										title="Congressional district is determined by verified address"
+									>
+										<span>{breadcrumbDistrict}</span>
+									</button>
+								{/if}
+							</nav>
+						{/if}
+
+						<!-- Privacy indicator (passive trust signal) -->
+						<div class="mt-4 border-t border-slate-100 pt-3">
+							<PrivacyIndicator />
+						</div>
+
+						<!-- Technical details (progressive disclosure) -->
+						{#if locationSignals.length > 0}
+							<details class="group mt-2">
+								<summary
+									class="cursor-pointer list-none text-xs font-medium text-slate-500 hover:text-slate-700 [&::-webkit-details-marker]:hidden"
+								>
+									<span class="inline-flex items-center gap-1.5">
+										<svg
+											class="h-3 w-3 transition-transform group-open:rotate-180"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												stroke-width="2"
+												d="M19 9l-7 7-7-7"
+											/>
+										</svg>
+										How we determined this location
+									</span>
+								</summary>
+								<div class="mt-3 space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
+									<!-- Location source -->
+									<div class="text-xs text-slate-600">
+										{#if locationSignals.some((s) => s.signal_type === 'verified')}
+											From verified address
+										{:else if locationSignals.some((s) => s.source === 'census.browser' || s.source === 'nominatim.browser')}
+											From GPS (browser location)
+										{:else if locationSignals.some((s) => s.source === 'ip.geolocation')}
+											From IP address
+										{:else if locationSignals.some((s) => s.source.includes('oauth'))}
+											From OAuth profile
+										{:else}
+											From browser timezone and language
+										{/if}
+									</div>
+
+									<!-- Privacy note -->
+									<div class="border-t border-slate-200 pt-2 text-xs text-slate-500">
+										Your location data stays in your browser. Never sent to our servers.
+									</div>
+								</div>
+							</details>
+						{/if}
+					</div>
+				</div>
+
+				<!-- RIGHT COLUMN: Progressive Unlock CTA -->
+				{#if nextUnlock}
+					<div class="group w-full md:w-auto md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0">
+						<div
+							class="relative overflow-hidden rounded-participation-lg border border-surface-border bg-surface-base p-4 shadow-participation-sm transition-all duration-300 hover:border-surface-border-strong hover:shadow-participation-md"
+						>
+							<!-- Subtle noise texture overlay -->
+							<div
+								class="pointer-events-none absolute inset-0 opacity-[0.015]"
+								style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"
+							></div>
+
+							{#if nextUnlock.count > 0}
+								<!-- Active state: Single unified message -->
+								<div class="relative mb-4 text-center">
+									<div class="inline-flex items-baseline gap-2">
+										<!-- Count: JetBrains Mono for metric clarity -->
+										<span
+											class="font-mono text-4xl font-black tabular-nums leading-none tracking-tighter text-participation-accent-600"
+										>
+											{nextUnlock.count}
+										</span>
+										<!-- Label: Satoshi Medium for brand voice -->
+										<span class="font-brand text-sm font-medium text-text-secondary">
+											{#if nextUnlock.level === 'city'}
+												more across cities
+											{:else if nextUnlock.level === 'district'}
+												more at district level
+											{:else}
+												more available
+											{/if}
+										</span>
+									</div>
+									<!-- Description: Satoshi Regular -->
+									<p class="mt-2 font-brand text-xs text-text-tertiary">
+										{#if nextUnlock.level === 'city'}
+											Enter address to see yours
+										{:else if nextUnlock.level === 'district'}
+											Enter address for your district
+										{:else}
+											Enter address to unlock
+										{/if}
+									</p>
+								</div>
+							{:else}
+								<!-- Empty state: Centered, minimal -->
+								<div class="mb-4 text-center">
+									<div
+										class="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised"
+									>
+										<svg
+											class="h-5 w-5 text-text-quaternary"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+											stroke-width="2"
+										>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+											/>
+											<path
+												stroke-linecap="round"
+												stroke-linejoin="round"
+												d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+											/>
+										</svg>
+									</div>
+									<!-- Heading: Satoshi Semibold -->
+									<h3 class="font-brand text-sm font-semibold text-text-secondary">
+										Get more precise location
+									</h3>
+									<!-- Description: Satoshi Regular -->
+									<p class="mt-1 font-brand text-xs text-text-tertiary">
+										Unlock future coordination opportunities
+									</p>
+								</div>
+							{/if}
+
+							<!-- CTA button: Satoshi Semibold for CTAs -->
+							<button
+								onclick={() => (showAddressModal = true)}
+								class="group/btn relative w-full overflow-hidden rounded-md bg-participation-primary-600 px-4 py-2.5 font-brand text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-participation-primary-700 hover:shadow-md active:scale-[0.98] active:bg-participation-primary-800"
+							>
+								<span class="relative z-10 inline-flex items-center justify-center gap-2">
+									Enter your address
+									<svg
+										class="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-0.5"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+										stroke-width="2.5"
+									>
+										<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+									</svg>
+								</span>
+								<div
+									class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full"
+								></div>
+							</button>
+
+							<!-- CTA copy with privacy reassurance on hover: Satoshi Medium -->
+							<div class="relative mt-4 h-4 overflow-hidden">
+								<!-- Default state: Agency-driven copy -->
+								<p
+									class="absolute inset-0 font-brand text-[10px] font-medium leading-tight text-text-tertiary transition-all duration-300 group-hover:translate-y-[-100%] group-hover:opacity-0"
+								>
+									Unlock precise coordination in your area
+								</p>
+								<!-- Hover state: Privacy reassurance -->
+								<p
+									class="absolute inset-0 translate-y-[100%] font-brand text-[10px] font-medium leading-tight text-text-tertiary opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
+								>
+									Stays in your browser. Never sent to our servers.
+								</p>
+							</div>
+						</div>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{:else}
+		<!-- No location detected - ask for address -->
+		<div class="mb-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
+			<div class="mb-3 flex items-start gap-3">
+				<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
 					<svg
-						class="h-7 w-7 text-blue-600"
+						class="h-4 w-4 text-blue-600"
 						fill="none"
 						viewBox="0 0 24 24"
 						stroke="currentColor"
@@ -1093,373 +1492,23 @@
 						/>
 					</svg>
 				</div>
-
-				<div class="min-w-0 flex-1">
-					<!-- H2 header (human-readable location): Satoshi Bold for brand voice -->
-					<h2 class="font-brand text-3xl font-bold leading-tight text-slate-900">
-						{#if locationLabel}
-							{locationLabel}
-						{:else}
-							Nationwide
-						{/if}
-					</h2>
-
-					<!-- District metadata (power-agnostic - shown when available): Satoshi Medium -->
-					{#if districtLabel}
-						<p class="mt-1 font-brand text-sm font-medium text-slate-500">
-							{districtLabel}
-						</p>
-					{/if}
-
-					<!-- Correction affordance (error recovery only): Satoshi Regular -->
-					{#if locationLabel}
-						<button
-							onclick={() => (showAddressModal = true)}
-							class="mt-1 font-brand text-sm text-slate-600 underline decoration-dotted underline-offset-2 hover:text-slate-900"
-						>
-							Not from {locationLabel}?
-						</button>
-					{/if}
-
-					<!-- Geographic breadcrumb (inline with location elements) -->
-					{#if breadcrumbCountry || breadcrumbState || breadcrumbCounty || breadcrumbCity || breadcrumbDistrict}
-						<nav
-							class="mt-2 flex items-center gap-2 text-sm"
-							aria-label="Filter by geographic scope"
-						>
-							{#if breadcrumbCountry}
-								<LocationAutocomplete
-									label={breadcrumbCountry}
-									level="country"
-									isSelected={selectedScope === 'nationwide'}
-									on:select={handleLocationSelect}
-									on:filter={() => handleScopeFilter('nationwide')}
-								/>
-							{/if}
-
-							{#if breadcrumbState && breadcrumbCountry}
-								<svg
-									class="h-4 w-4 text-slate-400"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 5l7 7-7 7"
-									/>
-								</svg>
-							{/if}
-
-							{#if breadcrumbState}
-								<LocationAutocomplete
-									label={breadcrumbState}
-									level="state"
-									currentCountry={inferredLocation?.country_code}
-									isSelected={selectedScope === 'state'}
-									on:select={handleLocationSelect}
-									on:filter={() => handleScopeFilter('state')}
-								/>
-							{/if}
-
-							{#if breadcrumbCounty}
-								<svg
-									class="h-4 w-4 text-slate-400"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 5l7 7-7 7"
-									/>
-								</svg>
-								<LocationAutocomplete
-									label={breadcrumbCounty}
-									level="city"
-									currentCountry={inferredLocation?.country_code}
-									currentState={inferredLocation?.state_code}
-									isSelected={selectedScope === 'county'}
-									on:select={handleLocationSelect}
-									on:filter={() => handleScopeFilter('county')}
-								/>
-							{/if}
-
-							{#if breadcrumbCity}
-								<svg
-									class="h-4 w-4 text-slate-400"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 5l7 7-7 7"
-									/>
-								</svg>
-								<LocationAutocomplete
-									label={breadcrumbCity}
-									level="city"
-									currentCountry={inferredLocation?.country_code}
-									currentState={inferredLocation?.state_code}
-									isSelected={selectedScope === 'city'}
-									on:select={handleLocationSelect}
-									on:filter={() => handleScopeFilter('city')}
-								/>
-							{/if}
-
-							{#if breadcrumbDistrict}
-								<svg
-									class="h-4 w-4 text-slate-400"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path
-										stroke-linecap="round"
-										stroke-linejoin="round"
-										stroke-width="2"
-										d="M9 5l7 7-7 7"
-									/>
-								</svg>
-								<!-- District breadcrumb: Display-only (no edit/search - determined by verified address) -->
-								<button
-									onclick={() => handleScopeFilter('district')}
-									class="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 font-medium transition-colors hover:bg-slate-100"
-									class:bg-slate-100={selectedScope === 'district'}
-									class:text-slate-900={selectedScope === 'district'}
-									class:text-slate-700={selectedScope !== 'district'}
-									aria-label="Filter by {breadcrumbDistrict}"
-									title="Congressional district is determined by verified address"
-								>
-									<span>{breadcrumbDistrict}</span>
-								</button>
-							{/if}
-						</nav>
-					{/if}
-
-					<!-- Privacy indicator (passive trust signal) -->
-					<div class="mt-4 border-t border-slate-100 pt-3">
-						<PrivacyIndicator />
-					</div>
-
-					<!-- Technical details (progressive disclosure) -->
-					{#if locationSignals.length > 0}
-						<details class="group mt-2">
-							<summary
-								class="cursor-pointer list-none text-xs font-medium text-slate-500 hover:text-slate-700 [&::-webkit-details-marker]:hidden"
-							>
-								<span class="inline-flex items-center gap-1.5">
-									<svg
-										class="h-3 w-3 transition-transform group-open:rotate-180"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											stroke-width="2"
-											d="M19 9l-7 7-7-7"
-										/>
-									</svg>
-									How we determined this location
-								</span>
-							</summary>
-							<div class="mt-3 space-y-2 rounded-lg border border-slate-100 bg-slate-50 p-3">
-								<!-- Location source -->
-								<div class="text-xs text-slate-600">
-									{#if locationSignals.some((s) => s.signal_type === 'verified')}
-										From verified address
-									{:else if locationSignals.some((s) => s.source === 'census.browser' || s.source === 'nominatim.browser')}
-										From GPS (browser location)
-									{:else if locationSignals.some((s) => s.source === 'ip.geolocation')}
-										From IP address
-									{:else if locationSignals.some((s) => s.source.includes('oauth'))}
-										From OAuth profile
-									{:else}
-										From browser timezone and language
-									{/if}
-								</div>
-
-								<!-- Privacy note -->
-								<div class="border-t border-slate-200 pt-2 text-xs text-slate-500">
-									Your location data stays in your browser. Never sent to our servers.
-								</div>
-							</div>
-						</details>
-					{/if}
+				<div class="flex-1">
+					<h4 class="text-sm font-semibold text-slate-900">Find coordination in your area</h4>
+					<p class="mt-0.5 text-xs leading-relaxed text-slate-600">
+						Enter your address to unlock local issues
+					</p>
 				</div>
 			</div>
 
-			<!-- RIGHT COLUMN: Progressive Unlock CTA -->
-			{#if nextUnlock}
-				<div class="group w-full md:w-auto md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0">
-					<div
-						class="relative overflow-hidden rounded-participation-lg border border-surface-border bg-surface-base p-4 shadow-participation-sm transition-all duration-300 hover:border-surface-border-strong hover:shadow-participation-md"
-					>
-						<!-- Subtle noise texture overlay -->
-						<div
-							class="pointer-events-none absolute inset-0 opacity-[0.015]"
-							style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.9%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E');"
-						></div>
-
-						{#if nextUnlock.count > 0}
-							<!-- Active state: Single unified message -->
-							<div class="relative mb-4 text-center">
-								<div class="inline-flex items-baseline gap-2">
-									<!-- Count: JetBrains Mono for metric clarity -->
-									<span
-										class="font-mono text-4xl font-black tabular-nums leading-none tracking-tighter text-participation-accent-600"
-									>
-										{nextUnlock.count}
-									</span>
-									<!-- Label: Satoshi Medium for brand voice -->
-									<span class="font-brand text-sm font-medium text-text-secondary">
-										{#if nextUnlock.level === 'city'}
-											more across cities
-										{:else if nextUnlock.level === 'district'}
-											more at district level
-										{:else}
-											more available
-										{/if}
-									</span>
-								</div>
-								<!-- Description: Satoshi Regular -->
-								<p class="mt-2 font-brand text-xs text-text-tertiary">
-									{#if nextUnlock.level === 'city'}
-										Enter address to see yours
-									{:else if nextUnlock.level === 'district'}
-										Enter address for your district
-									{:else}
-										Enter address to unlock
-									{/if}
-								</p>
-							</div>
-						{:else}
-							<!-- Empty state: Centered, minimal -->
-							<div class="mb-4 text-center">
-								<div
-									class="mb-2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-surface-raised"
-								>
-									<svg
-										class="h-5 w-5 text-text-quaternary"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-										stroke-width="2"
-									>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-										/>
-										<path
-											stroke-linecap="round"
-											stroke-linejoin="round"
-											d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-										/>
-									</svg>
-								</div>
-								<!-- Heading: Satoshi Semibold -->
-								<h3 class="font-brand text-sm font-semibold text-text-secondary">
-									Get more precise location
-								</h3>
-								<!-- Description: Satoshi Regular -->
-								<p class="mt-1 font-brand text-xs text-text-tertiary">
-									Unlock future coordination opportunities
-								</p>
-							</div>
-						{/if}
-
-						<!-- CTA button: Satoshi Semibold for CTAs -->
-						<button
-							onclick={() => (showAddressModal = true)}
-							class="group/btn relative w-full overflow-hidden rounded-md bg-participation-primary-600 px-4 py-2.5 font-brand text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-participation-primary-700 hover:shadow-md active:scale-[0.98] active:bg-participation-primary-800"
-						>
-							<span class="relative z-10 inline-flex items-center justify-center gap-2">
-								Enter your address
-								<svg
-									class="h-3.5 w-3.5 transition-transform duration-200 group-hover/btn:translate-x-0.5"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-									stroke-width="2.5"
-								>
-									<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-								</svg>
-							</span>
-							<div
-								class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/10 to-transparent transition-transform duration-700 group-hover/btn:translate-x-full"
-							></div>
-						</button>
-
-						<!-- CTA copy with privacy reassurance on hover: Satoshi Medium -->
-						<div class="relative mt-4 h-4 overflow-hidden">
-							<!-- Default state: Agency-driven copy -->
-							<p
-								class="absolute inset-0 font-brand text-[10px] font-medium leading-tight text-text-tertiary transition-all duration-300 group-hover:translate-y-[-100%] group-hover:opacity-0"
-							>
-								Unlock precise coordination in your area
-							</p>
-							<!-- Hover state: Privacy reassurance -->
-							<p
-								class="absolute inset-0 translate-y-[100%] font-brand text-[10px] font-medium leading-tight text-text-tertiary opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100"
-							>
-								Stays in your browser. Never sent to our servers.
-							</p>
-						</div>
-					</div>
-				</div>
-			{/if}
+			<button
+				onclick={() => (showAddressModal = true)}
+				class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:bg-blue-800"
+			>
+				Enter your address
+			</button>
 		</div>
-	</div>
-{:else}
-	<!-- No location detected - ask for address -->
-	<div class="mb-4 rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-900/5">
-		<div class="mb-3 flex items-start gap-3">
-			<div class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-50">
-				<svg
-					class="h-4 w-4 text-blue-600"
-					fill="none"
-					viewBox="0 0 24 24"
-					stroke="currentColor"
-					stroke-width="2"
-				>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-					/>
-					<path
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-					/>
-				</svg>
-			</div>
-			<div class="flex-1">
-				<h4 class="text-sm font-semibold text-slate-900">Find coordination in your area</h4>
-				<p class="mt-0.5 text-xs leading-relaxed text-slate-600">
-					Enter your address to unlock local issues
-				</p>
-			</div>
-		</div>
-
-		<button
-			onclick={() => (showAddressModal = true)}
-			class="w-full rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-150 hover:bg-blue-700 active:bg-blue-800"
-		>
-			Enter your address
-		</button>
-	</div>
-{/if}
+	{/if}
+</div>
 
 <!-- Address Confirmation Modal -->
 <AddressConfirmationModal
@@ -1467,3 +1516,29 @@
 	on:close={handleAddressModalClose}
 	on:confirm={handleAddressConfirmed}
 />
+
+<style>
+	/*
+	 * CLS Prevention: Explicit height reservation
+	 *
+	 * Distinguished engineer principle: Don't chase pixel-perfect skeletons.
+	 * Skeleton height matching is fragile - content changes, padding changes,
+	 * conditional elements appear/disappear.
+	 *
+	 * Instead: Reserve the space explicitly. The hydrated LocationFilter
+	 * with the two-column layout (location info + unlock CTA) measures ~220px.
+	 * Using min-height ensures no layout shift regardless of loading state.
+	 *
+	 * Mobile: Simpler layout, less height needed (~150px)
+	 * Tablet/Desktop: Two-column layout, ~220px
+	 */
+	.location-filter-container {
+		min-height: 150px; /* Mobile: single column */
+	}
+
+	@media (min-width: 768px) {
+		.location-filter-container {
+			min-height: 220px; /* Desktop: two-column layout */
+		}
+	}
+</style>
