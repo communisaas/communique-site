@@ -2,6 +2,17 @@
 	import { onMount, tick } from 'svelte';
 
 	// ─────────────────────────────────────────────────────────────
+	// Props
+	// ─────────────────────────────────────────────────────────────
+
+	/**
+	 * When embedded=true, the loom strips its container styling
+	 * (border, background, shadow, padding) to integrate seamlessly
+	 * with parent containers like CoordinationExplainer.
+	 */
+	let { embedded = false }: { embedded?: boolean } = $props();
+
+	// ─────────────────────────────────────────────────────────────
 	// Types
 	// ─────────────────────────────────────────────────────────────
 
@@ -706,6 +717,7 @@
 	class:narrative-complete={narrativeComplete}
 	class:reduced-motion={reducedMotion}
 	class:is-expanded={isExpanded}
+	class:embedded
 	style:--label-font-size={labelFontSize}
 	style:--tag-font-size={tagFontSize}
 	style:--micro-font-size={microFontSize}
@@ -975,6 +987,42 @@
 	@media (min-width: 1280px) {
 		.relay-loom {
 			max-width: 900px;
+		}
+	}
+
+	/*
+	 * Embedded mode: Strip container styling when nested in parent card
+	 * (e.g., CoordinationExplainer). Parent provides visual container.
+	 */
+	.relay-loom.embedded {
+		border: none;
+		background: transparent;
+		box-shadow: none;
+		border-radius: 0;
+		padding: 0.5rem 0;
+		max-width: none;
+	}
+
+	@media (min-width: 640px) {
+		.relay-loom.embedded {
+			padding: 0.75rem 0 0.5rem;
+		}
+	}
+
+	/* Reduce canvas height when embedded */
+	.relay-loom.embedded .canvas-container {
+		height: 420px;
+	}
+
+	@media (min-width: 640px) {
+		.relay-loom.embedded .canvas-container {
+			height: 460px;
+		}
+	}
+
+	@media (min-width: 1024px) {
+		.relay-loom.embedded .canvas-container {
+			height: 480px;
 		}
 	}
 
@@ -1568,6 +1616,7 @@
 			max-width: 320px;
 		}
 	}
+
 
 	/* Desktop: generous but focused */
 	@media (min-width: 769px) {

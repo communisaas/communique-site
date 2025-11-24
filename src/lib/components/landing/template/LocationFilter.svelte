@@ -1049,7 +1049,7 @@
 	{#if isLoadingLocation}
 		<!-- Loading skeleton -->
 		<div class="mb-6 rounded-xl bg-white px-4 pb-4 pt-6 shadow-sm ring-1 ring-slate-900/5 sm:px-6">
-			<div class="flex flex-col items-start gap-6 md:flex-row md:justify-between md:gap-8">
+			<div class="flex flex-col items-start gap-6 lg:flex-row lg:justify-between lg:gap-8">
 				<!-- LEFT COLUMN skeleton (matches hydrated left column) -->
 				<div class="flex flex-1 animate-pulse items-start gap-3">
 					<!-- Location pin icon placeholder -->
@@ -1081,7 +1081,7 @@
 
 				<!-- RIGHT COLUMN skeleton (matches unlock CTA card) -->
 				<div
-					class="hidden w-full animate-pulse md:block md:w-auto md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0"
+					class="hidden w-full animate-pulse lg:block lg:w-auto lg:min-w-[280px] lg:max-w-[320px] lg:flex-shrink-0"
 				>
 					<div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
 						<!-- Count + label placeholder -->
@@ -1117,7 +1117,7 @@
 	{:else if hasLocation}
 		<!-- TEMPLATE BROWSER HEADER (Two-column: Location left, Unlock right) -->
 		<div class="mb-6 rounded-xl bg-white px-4 pb-4 pt-6 shadow-sm ring-1 ring-slate-900/5 sm:px-6">
-			<div class="flex flex-col items-start gap-6 md:flex-row md:justify-between md:gap-8">
+			<div class="flex flex-col items-start gap-6 lg:flex-row lg:justify-between lg:gap-8">
 				<!-- LEFT COLUMN: Location Information -->
 				<div class="flex flex-1 items-start gap-3">
 					<!-- Location pin icon -->
@@ -1348,7 +1348,7 @@
 
 				<!-- RIGHT COLUMN: Progressive Unlock CTA -->
 				{#if nextUnlock}
-					<div class="group w-full md:w-auto md:min-w-[280px] md:max-w-[320px] md:flex-shrink-0">
+					<div class="group w-full lg:w-auto lg:min-w-[280px] lg:max-w-[320px] lg:flex-shrink-0">
 						<div
 							class="relative overflow-hidden rounded-participation-lg border border-surface-border bg-surface-base p-4 shadow-participation-sm transition-all duration-300 hover:border-surface-border-strong hover:shadow-participation-md"
 						>
@@ -1529,14 +1529,14 @@
 	 * with the two-column layout (location info + unlock CTA) measures ~220px.
 	 * Using min-height ensures no layout shift regardless of loading state.
 	 *
-	 * Mobile: Simpler layout, less height needed (~150px)
-	 * Tablet/Desktop: Two-column layout, ~220px
+	 * Mobile/Tablet (<1024px): Stacked layout, simpler height (~150px)
+	 * Desktop (>=1024px): Two-column layout, ~220px
 	 */
 	.location-filter-container {
-		min-height: 150px; /* Mobile: single column */
+		min-height: 150px; /* Mobile/Tablet: single column */
 	}
 
-	@media (min-width: 768px) {
+	@media (min-width: 1024px) {
 		.location-filter-container {
 			min-height: 220px; /* Desktop: two-column layout */
 		}

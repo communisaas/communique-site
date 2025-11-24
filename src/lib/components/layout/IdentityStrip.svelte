@@ -29,7 +29,7 @@
 
 	// Derive back navigation from context
 	const backConfig = $derived.by(() => {
-		const routeId = $page.route.id;
+		const routeId = $page.route?.id;
 
 		if (routeId === '/s/[slug]' && template) {
 			return {

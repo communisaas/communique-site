@@ -47,9 +47,9 @@
 
 	// Context-aware header configuration
 	const headerConfig = $derived.by(() => {
-		const isTemplate = $page.route.id === '/s/[slug]';
-		const isHomepage = $page.route.id === '/';
-		const isProfile = $page.route.id?.startsWith('/profile');
+		const isTemplate = $page.route?.id === '/s/[slug]';
+		const isHomepage = $page.route?.id === '/';
+		const isProfile = $page.route?.id?.startsWith('/profile');
 
 		if (isTemplate && template) {
 			return {

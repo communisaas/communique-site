@@ -28,7 +28,7 @@
 	 */
 	const isProfilePage = $derived($page.url?.pathname?.startsWith('/profile') ?? false);
 	const isHomepage = $derived($page.url?.pathname === '/');
-	const isTemplatePage = $derived($page.route.id === '/s/[slug]');
+	const isTemplatePage = $derived($page.route?.id === '/s/[slug]');
 
 	let {
 		children,
@@ -85,13 +85,11 @@
 		<Footer />
 	</div>
 {:else if isHomepage}
-	<!-- Homepage: No top padding (AmbientPresence floats) -->
+	<!-- Homepage: No wrapper padding - page manages its own spacing for sticky behavior -->
 	<div class="relative min-h-screen">
-		<div class="p-6 md:p-10">
-			<ErrorBoundary fallback="detailed" showRetry={true}>
-				{@render children()}
-			</ErrorBoundary>
-		</div>
+		<ErrorBoundary fallback="detailed" showRetry={true}>
+			{@render children()}
+		</ErrorBoundary>
 		<Footer />
 	</div>
 {:else}

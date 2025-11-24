@@ -32,7 +32,7 @@
 	type HeaderContext = 'homepage' | 'template' | 'profile' | 'other';
 
 	const headerContext = $derived.by((): HeaderContext => {
-		const routeId = $page.route.id;
+		const routeId = $page.route?.id;
 
 		if (routeId === '/') return 'homepage';
 		if (routeId === '/s/[slug]') return 'template';
