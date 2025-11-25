@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronRight, PenLine } from '@lucide/svelte';
+	import { ChevronRight, PenLine, Landmark, Building2, Mail, Users, Search } from '@lucide/svelte';
 	// import { spring } from 'svelte/motion';
 	import { preloadData } from '$app/navigation';
 	import type { Template, TemplateGroup } from '$lib/types/template';
@@ -7,6 +7,8 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import MessageMetrics from './MessageMetrics.svelte';
 	import SkeletonTemplate from '$lib/components/ui/SkeletonTemplate.svelte';
+	import { deriveTargetPresentation } from '$lib/utils/deriveTargetPresentation';
+	import { scoreTemplate, sortTemplatesByScore } from '$lib/utils/template-scoring';
 
 	interface Props {
 		groups: TemplateGroup[];
@@ -18,10 +20,84 @@
 
 	let { groups, selectedId, onSelect, onCreateTemplate, loading = false }: Props = $props();
 
+	// Progressive disclosure constant
+	const INITIAL_VISIBLE = 8;
+
+	// Search state
+	let searchQuery = $state('');
+
+	// Enrich templates with scoring metrics and sort by displayScore
+	const scoredGroups = $derived.by(() => {
+		const now = new Date();
+
+		return groups.map((group) => {
+			// Enrich each template with scoring metrics
+			const enriched = group.templates.map((t) => ({
+				...t,
+				...scoreTemplate(
+					{
+						send_count: t.send_count || 0,
+						created_at: new Date(t.created_at),
+						updated_at: new Date(t.updated_at)
+					},
+					now
+				)
+			}));
+
+			// Sort by displayScore (descending)
+			const sorted = sortTemplatesByScore(enriched);
+
+			return {
+				...group,
+				templates: sorted
+			};
+		});
+	});
+
+	// Client-side filter (instant - no debounce needed)
+	const filteredGroups = $derived.by(() => {
+		if (!searchQuery.trim()) return scoredGroups;
+
+		const query = searchQuery.toLowerCase();
+
+		return scoredGroups
+			.map((group) => ({
+				...group,
+				templates: group.templates.filter(
+					(t) =>
+						t.title.toLowerCase().includes(query) ||
+						t.description?.toLowerCase().includes(query) ||
+						t.category?.toLowerCase().includes(query)
+				)
+			}))
+			.filter((group) => group.templates.length > 0); // Remove empty groups
+	});
+
+	// Match count for feedback
+	const matchCount = $derived(filteredGroups.reduce((sum, g) => sum + g.templates.length, 0));
+
+	// Track expansion state per group (by title)
+	let expandedGroups = $state<Set<string>>(new Set());
+
 	// Flatten groups into single array for keyboard navigation
-	const allTemplates = $derived(groups.flatMap((g) => g.templates));
+	const allTemplates = $derived(filteredGroups.flatMap((g) => g.templates));
 
 	let hoveredTemplate = $state<string | null>(null);
+
+	function toggleGroupExpansion(groupTitle: string): void {
+		const newExpanded = new Set(expandedGroups);
+		if (newExpanded.has(groupTitle)) {
+			newExpanded.delete(groupTitle);
+		} else {
+			newExpanded.add(groupTitle);
+		}
+		expandedGroups = newExpanded;
+	}
+
+	function getVisibleCount(group: TemplateGroup): number {
+		const isExpanded = expandedGroups.has(group.title);
+		return isExpanded ? group.templates.length : Math.min(INITIAL_VISIBLE, group.templates.length);
+	}
 
 	function handleTemplateHover(templateId: string, isHovering: boolean) {
 		hoveredTemplate = isHovering ? templateId : null;
@@ -80,6 +156,30 @@
 			<SkeletonTemplate variant="list" animate={true} classNames="template-loading-{index}" />
 		{/each}
 	{:else}
+		<!-- Search UI -->
+		<div class="search-container">
+			<div class="search-input-wrapper">
+				<Search class="search-icon" size={18} />
+				<input
+					type="search"
+					class="search-input"
+					placeholder="Search templates..."
+					bind:value={searchQuery}
+				/>
+			</div>
+
+			{#if searchQuery && matchCount > 0}
+				<p class="search-results-count">
+					{matchCount}
+					{matchCount === 1 ? 'template' : 'templates'} match "{searchQuery}"
+				</p>
+			{/if}
+
+			{#if searchQuery && matchCount === 0}
+				<p class="no-results">No templates match "{searchQuery}"</p>
+			{/if}
+		</div>
+
 		<!-- Create New Template Card -->
 		{#if onCreateTemplate}
 			<button
@@ -101,7 +201,7 @@
 			</button>
 		{/if}
 
-		{#each groups as group, groupIndex (group.title)}
+		{#each filteredGroups as group, groupIndex (group.title)}
 			<!-- Section Header -->
 			<div class="space-y-3 md:space-y-4">
 				<div class="flex items-center justify-between">
@@ -114,11 +214,12 @@
 					</span>
 				</div>
 
-				<!-- Templates in this group -->
-				{#each group.templates as template, templateIndex (template.id)}
+				<!-- Templates in this group (with progressive disclosure) -->
+				{#each group.templates.slice(0, getVisibleCount(group)) as template, templateIndex (template.id)}
 					{@const isCongressional = template.deliveryMethod === 'cwc'}
 					{@const isHovered = hoveredTemplate === template.id}
 					{@const globalIndex = allTemplates.findIndex((t) => t.id === template.id)}
+					{@const targetInfo = deriveTargetPresentation(template)}
 					<button
 						type="button"
 						data-template-button
@@ -142,16 +243,65 @@
 						onkeydown={(e) => handleKeydown(e, template.id, globalIndex)}
 					>
 						<div class="min-w-0 flex-1">
-							<div class="flex flex-wrap items-center gap-2">
-								<Badge variant={isCongressional ? 'congressional' : 'direct'} size="sm">
-									{isCongressional ? 'US Congress' : 'Email'}
-								</Badge>
-								<span class="rounded bg-gray-100 px-2 py-1 text-xs text-gray-600 md:text-sm">
-									{template.category}
-								</span>
-							</div>
+							<!-- Perceptual Decision-Maker Representation -->
+							{#if targetInfo.type === 'multi-level'}
+								<!-- Multi-Level Coordination: Vertical Stack -->
+								<!-- Peripheral detection: 2 rows = broader coordination scope -->
+								<div class="mb-2 space-y-1">
+									{#each targetInfo.targets as target}
+										<div class="flex items-center gap-2">
+											{#if target.icon === 'Capitol'}
+												<Landmark class="h-4 w-4 text-congressional-600" />
+											{:else if target.icon === 'Building'}
+												<Building2 class="h-4 w-4 text-emerald-600" />
+											{:else if target.icon === 'Users'}
+												<Users class="h-4 w-4 text-slate-600" />
+											{:else}
+												<Mail class="h-4 w-4 text-slate-600" />
+											{/if}
+											<span
+												class="text-sm font-medium"
+												class:text-congressional-700={target.emphasis === 'federal'}
+												class:text-blue-700={target.emphasis === 'state'}
+												class:text-emerald-700={target.emphasis === 'local'}
+												class:text-slate-700={target.emphasis === 'neutral'}
+											>
+												{target.primary}
+											</span>
+											{#if target.secondary}
+												<span class="text-xs text-slate-500">{target.secondary}</span>
+											{/if}
+										</div>
+									{/each}
+								</div>
+							{:else}
+								<!-- Single-Level Coordination -->
+								<div class="mb-2 flex items-center gap-2">
+									{#if targetInfo.icon === 'Capitol'}
+										<Landmark class="h-4 w-4 text-congressional-600" />
+									{:else if targetInfo.icon === 'Building'}
+										<Building2 class="h-4 w-4 text-emerald-600" />
+									{:else if targetInfo.icon === 'Users'}
+										<Users class="h-4 w-4 text-slate-600" />
+									{:else}
+										<Mail class="h-4 w-4 text-slate-600" />
+									{/if}
+									<span
+										class="text-sm font-medium"
+										class:text-congressional-700={targetInfo.emphasis === 'federal'}
+										class:text-blue-700={targetInfo.emphasis === 'state'}
+										class:text-emerald-700={targetInfo.emphasis === 'local'}
+										class:text-slate-700={targetInfo.emphasis === 'neutral'}
+									>
+										{targetInfo.primary}
+									</span>
+									{#if targetInfo.secondary}
+										<span class="text-xs text-slate-500">{targetInfo.secondary}</span>
+									{/if}
+								</div>
+							{/if}
 
-							<h3 class="mt-2 truncate font-medium text-gray-900 md:mt-3">
+							<h3 class="truncate font-medium text-gray-900">
 								{template.title}
 							</h3>
 
@@ -168,7 +318,98 @@
 						</div>
 					</button>
 				{/each}
+
+				<!-- Show more/less button -->
+				{#if group.templates.length > INITIAL_VISIBLE}
+					{@const isExpanded = expandedGroups.has(group.title)}
+					{@const visibleCount = getVisibleCount(group)}
+					{@const hiddenCount = group.templates.length - visibleCount}
+
+					<button
+						type="button"
+						class="show-more-button"
+						onclick={() => toggleGroupExpansion(group.title)}
+					>
+						{#if isExpanded}
+							Show fewer
+						{:else}
+							Show {hiddenCount} more in {group.title}
+						{/if}
+					</button>
+				{/if}
 			</div>
 		{/each}
 	{/if}
 </div>
+
+<style>
+	/* Search UI Styles */
+	.search-container {
+		margin-bottom: 1.5rem;
+	}
+
+	.search-input-wrapper {
+		position: relative;
+		display: flex;
+		align-items: center;
+	}
+
+	.search-input-wrapper :global(.search-icon) {
+		position: absolute;
+		left: 1rem;
+		color: oklch(0.5 0.02 250);
+		pointer-events: none;
+	}
+
+	.search-input {
+		width: 100%;
+		padding: 0.75rem 1rem 0.75rem 2.75rem;
+		border: 1px solid oklch(0.85 0.02 250);
+		border-radius: 8px;
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.9375rem;
+		background: white;
+		transition: border-color 150ms ease-out;
+	}
+
+	.search-input:focus {
+		outline: none;
+		border-color: oklch(0.65 0.12 195);
+		box-shadow: 0 0 0 3px oklch(0.65 0.12 195 / 0.1);
+	}
+
+	.search-results-count {
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+		color: oklch(0.5 0.02 250);
+	}
+
+	.no-results {
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+		color: oklch(0.45 0.02 250);
+		font-style: italic;
+	}
+
+	/* Progressive Disclosure Button */
+	.show-more-button {
+		width: 100%;
+		padding: 0.75rem;
+		margin-top: 0.75rem;
+		border: 1px dashed oklch(0.8 0.02 250);
+		border-radius: 8px;
+		background: oklch(0.98 0.005 250);
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: oklch(0.45 0.02 250);
+		cursor: pointer;
+		transition: all 150ms ease-out;
+	}
+
+	.show-more-button:hover {
+		border-color: oklch(0.65 0.12 195);
+		background: oklch(0.97 0.01 195);
+		color: oklch(0.35 0.02 250);
+	}
+</style>

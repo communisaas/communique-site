@@ -199,6 +199,17 @@ export const GET: RequestHandler = async () => {
 					? JSON.parse(template.metrics)
 					: template.metrics || {};
 
+			// Calculate coordination scale (0-1 range, logarithmic for perceptual encoding)
+			// 1 send = 0.0, 10 sends = 0.33, 100 sends = 0.67, 1000+ sends = 1.0
+			const sendCount = template.verified_sends || 0;
+			const coordinationScale = Math.min(1.0, Math.log10(Math.max(1, sendCount)) / 3);
+
+			// Determine if template is "new" (created in last 7 days)
+			const createdAt = new Date(template.createdAt);
+			const now = new Date();
+			const daysSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+			const isNew = daysSinceCreation <= 7;
+
 			return {
 				id: template.id,
 				slug: template.slug,
@@ -211,9 +222,14 @@ export const GET: RequestHandler = async () => {
 				message_body: template.message_body,
 				preview: template.preview,
 
+				// === PERCEPTUAL ENCODING PROPERTIES ===
+				coordinationScale, // 0-1 scale for visual weight (card size)
+				isNew, // Temporal signal for "New" badge
+
 				// === AGGREGATE METRICS (consistent with schema) ===
 				verified_sends: template.verified_sends, // Integer field from schema
 				unique_districts: template.unique_districts, // Integer field from schema
+				send_count: template.verified_sends, // Frontend compatibility (mapped from verified_sends)
 
 				// === METRICS OBJECT (backward compatibility + JSON fields) ===
 				metrics: {

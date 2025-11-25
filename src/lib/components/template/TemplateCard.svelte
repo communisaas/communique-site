@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { Send, Users, MapPin, ChevronRight } from '@lucide/svelte';
+	import { Send, Users, MapPin, ChevronRight, Building2, Landmark, Mail } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
-	import Badge from '$lib/components/ui/Badge.svelte';
+	import { deriveTargetPresentation } from '$lib/utils/deriveTargetPresentation';
 	import SimpleTooltip from '$lib/components/ui/SimpleTooltip.svelte';
 
 	interface Props {
@@ -11,6 +11,9 @@
 	}
 
 	const { template, variant = 'grid', onSelect }: Props = $props();
+
+	// Derive perceptual representation
+	const targetInfo = $derived(deriveTargetPresentation(template));
 
 	// Normalize metrics data - handle both object and JSON string formats
 	function normalizeMetrics(rawMetrics: unknown): {
@@ -33,7 +36,7 @@
 	}
 
 	const metrics = $derived(normalizeMetrics(template.metrics));
-	const isCongressional = $derived(template.deliveryMethod === 'cwc');
+	const isCongressional = $derived(targetInfo.type === 'district-based');
 
 	// Format numbers with commas
 	function formatNumber(num: number | undefined | null): string {
@@ -68,29 +71,53 @@
 
 	// High-activity threshold for atmospheric effects
 	const isHighActivity = $derived(verifiedSends > 100);
+
+	// === PERCEPTUAL ENCODING: Visual weight based on coordination magnitude ===
+	// Subtle scale transformation: 1.0 (baseline) to 1.15 (high coordination)
+	// Logarithmic encoding makes peripheral detection possible before reading text
+	const cardScale = $derived(1.0 + template.coordinationScale * 0.15);
 </script>
 
 <button
 	type="button"
-	class="group relative flex w-full flex-col overflow-hidden rounded-xl border-l-4 bg-white/80 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.01] hover:shadow-atmospheric-card-hover {isCongressional
+	class="group relative flex w-full flex-col overflow-hidden rounded-xl border-l-4 bg-white/80 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:shadow-atmospheric-card-hover {isCongressional
 		? 'border-congressional-200/50 border-l-congressional-500 hover:border-congressional-200/80'
 		: 'border-direct-200/50 border-l-direct-500 hover:border-direct-200/80'}"
-	style="will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;"
+	style="transform: scale({cardScale}); transform-origin: center; will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;"
 	onclick={onSelect}
 	data-testid="template-card-{template.id}"
 >
+	<!-- New Badge: Temporal signal (top-right corner) -->
+	{#if template.isNew}
+		<span
+			class="absolute right-3 top-3 z-10 rounded bg-cyan-500 px-2 py-1 font-brand text-[0.6875rem] font-bold uppercase tracking-wide text-white shadow-sm"
+		>
+			New
+		</span>
+	{/if}
+
 	<!-- Header Section -->
 	<div class="flex flex-col gap-3 p-4">
-		<!-- Badges -->
-		<div class="flex flex-wrap items-center gap-2">
-			<Badge variant={isCongressional ? 'congressional' : 'direct'} size="sm">
-				{isCongressional ? 'Congressional' : 'Direct'}
-			</Badge>
-			<span
-				class="rounded bg-gray-100 px-2 py-1 font-brand text-xs font-medium text-gray-600 md:text-sm"
-			>
-				{template.category}
-			</span>
+		<!-- Power Topology: Decision-maker names (recognition > categorization) -->
+		<div
+			class="flex items-center gap-2 text-sm"
+			class:text-blue-600={targetInfo.emphasis === 'federal'}
+			class:text-green-600={targetInfo.emphasis === 'local'}
+			class:text-slate-600={targetInfo.emphasis === 'neutral'}
+		>
+			{#if targetInfo.icon === 'Capitol'}
+				<Landmark class="h-4 w-4 shrink-0 opacity-70" />
+			{:else if targetInfo.icon === 'Building'}
+				<Building2 class="h-4 w-4 shrink-0 opacity-70" />
+			{:else if targetInfo.icon === 'Mail'}
+				<Mail class="h-4 w-4 shrink-0 opacity-70" />
+			{:else}
+				<Users class="h-4 w-4 shrink-0 opacity-70" />
+			{/if}
+			<span class="font-brand font-medium">{targetInfo.primary}</span>
+			{#if targetInfo.secondary}
+				<span class="font-brand text-xs opacity-70">{targetInfo.secondary}</span>
+			{/if}
 		</div>
 
 		<!-- Title: Satoshi Bold for distinctive brand voice -->
@@ -113,7 +140,7 @@
 		<div class="flex items-center justify-between gap-4">
 			<!-- Verified Sends Metric: JetBrains Mono with gradient for high activity -->
 			<div class="relative flex items-center gap-2 text-sm text-slate-600">
-				<Send
+				<Users
 					class="h-4 w-4 shrink-0 {isHighActivity ? 'text-violet-500' : 'text-slate-500'}"
 					aria-hidden="true"
 				/>
@@ -128,6 +155,9 @@
 					{formatNumber(verifiedSends)}
 				</span>
 				<span class="font-brand text-slate-500">sent</span>
+				{#if targetInfo.coordinationContext}
+					<span class="font-brand text-xs text-slate-400">in {targetInfo.coordinationContext}</span>
+				{/if}
 			</div>
 
 			{#if isCongressional && uniqueDistricts > 0}

@@ -42,23 +42,45 @@ function isTemplate(obj: unknown): obj is Template {
 			valid: typeof template.is_public === 'boolean',
 			actual: typeof template.is_public
 		},
+		{
+			field: 'isNew',
+			valid: typeof template.isNew === 'boolean',
+			actual: typeof template.isNew
+		},
+		// Required number fields
+		{
+			field: 'send_count',
+			valid: typeof template.send_count === 'number',
+			actual: typeof template.send_count
+		},
+		{
+			field: 'coordinationScale',
+			valid: typeof template.coordinationScale === 'number',
+			actual: typeof template.coordinationScale
+		},
 		// Required enum field
 		{
 			field: 'deliveryMethod',
 			valid: template.deliveryMethod === 'cwc' || template.deliveryMethod === 'email',
 			actual: template.deliveryMethod
 		},
-		// Required array fields
+		// Optional array fields (Phase 2+: migrating to TemplateJurisdiction)
 		{
 			field: 'applicable_countries',
-			valid: Array.isArray(template.applicable_countries),
+			valid:
+				template.applicable_countries === null ||
+				template.applicable_countries === undefined ||
+				Array.isArray(template.applicable_countries),
 			actual: Array.isArray(template.applicable_countries)
 				? 'array'
 				: typeof template.applicable_countries
 		},
 		{
 			field: 'specific_locations',
-			valid: Array.isArray(template.specific_locations),
+			valid:
+				template.specific_locations === null ||
+				template.specific_locations === undefined ||
+				Array.isArray(template.specific_locations),
 			actual: Array.isArray(template.specific_locations)
 				? 'array'
 				: typeof template.specific_locations

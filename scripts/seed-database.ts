@@ -123,7 +123,8 @@ Sincerely,
 			urgency: 'high'
 		},
 		recipient_config: {
-			target_type: 'congressional',
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
 			committees: ['energy', 'environment']
 		},
@@ -201,8 +202,27 @@ Sincerely,
 			cwcEnabled: false
 		},
 		recipient_config: {
-			emails: ['mayorlurie@sfgov.org', 'board.of.supervisors@sfgov.org'],
-			target_type: 'municipal'
+			reach: 'location-specific',
+			decisionMakers: [
+				{
+					name: 'Mayor London Breed',
+					shortName: 'Mayor Breed',
+					role: 'Mayor',
+					organization: 'City of San Francisco'
+				},
+				{
+					name: 'Board of Supervisors',
+					shortName: 'SF Board',
+					role: 'Board',
+					organization: 'City of San Francisco'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['mayorlurie@sfgov.org', 'board.of.supervisors@sfgov.org']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'municipal',
@@ -259,8 +279,21 @@ Sincerely,
 			cwcEnabled: false
 		},
 		recipient_config: {
-			emails: ['board@sfusd.edu'],
-			target_type: 'municipal'
+			reach: 'location-specific',
+			decisionMakers: [
+				{
+					name: 'SF Board of Education',
+					shortName: 'SFUSD Board',
+					role: 'Board',
+					organization: 'San Francisco Unified School District'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['board@sfusd.edu']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'municipal',
@@ -346,8 +379,27 @@ Sincerely,
 			cwcEnabled: false
 		},
 		recipient_config: {
-			emails: ['mayorlurie@sfgov.org', 'oewd@sfgov.org'],
-			target_type: 'municipal'
+			reach: 'location-specific',
+			decisionMakers: [
+				{
+					name: 'Mayor Daniel Lurie',
+					shortName: 'Mayor Lurie',
+					role: 'Mayor',
+					organization: 'City of San Francisco'
+				},
+				{
+					name: 'Office of Economic & Workforce Development',
+					shortName: 'OEWD',
+					role: 'Economic Development Office',
+					organization: 'City of San Francisco'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['mayorlurie@sfgov.org', 'oewd@sfgov.org']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'municipal',
@@ -438,8 +490,27 @@ Sincerely,
 			cwcEnabled: false
 		},
 		recipient_config: {
-			emails: ['board@sfusd.edu', 'mayorlurie@sfgov.org'],
-			target_type: 'municipal'
+			reach: 'location-specific',
+			decisionMakers: [
+				{
+					name: 'SF Board of Education',
+					shortName: 'SFUSD Board',
+					role: 'Board',
+					organization: 'San Francisco Unified School District'
+				},
+				{
+					name: 'Mayor Daniel Lurie',
+					shortName: 'Mayor Lurie',
+					role: 'Mayor',
+					organization: 'City of San Francisco'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['board@sfusd.edu', 'mayorlurie@sfgov.org']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'municipal',
@@ -535,9 +606,10 @@ Sincerely,
 			policy_area: 'Social Services'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['budget', 'education'],
-			target_type: 'congressional'
+			committees: ['budget', 'education']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -617,9 +689,10 @@ Sincerely,
 			policy_area: 'Healthcare'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['health', 'judiciary'],
-			target_type: 'congressional'
+			committees: ['health', 'judiciary']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -699,9 +772,10 @@ Sincerely,
 			policy_area: 'Education'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['education', 'budget'],
-			target_type: 'congressional'
+			committees: ['education', 'budget']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -790,9 +864,10 @@ Sincerely,
 			policy_area: 'Housing and Urban Development'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['financial', 'housing'],
-			target_type: 'congressional'
+			committees: ['financial', 'housing']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -872,9 +947,10 @@ Sincerely,
 			policy_area: 'Technology and Innovation'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['technology', 'commerce'],
-			target_type: 'congressional'
+			committees: ['technology', 'commerce']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -954,9 +1030,10 @@ Sincerely,
 			policy_area: 'Commerce and Technology'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['commerce', 'judiciary'],
-			target_type: 'congressional'
+			committees: ['commerce', 'judiciary']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -1036,9 +1113,10 @@ Sincerely,
 			policy_area: 'Budget and Finance'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['budget', 'finance'],
-			target_type: 'congressional'
+			committees: ['budget', 'finance']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -1127,9 +1205,10 @@ Sincerely,
 			policy_area: 'Immigration and Border Security'
 		},
 		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
 			chambers: ['house', 'senate'],
-			committees: ['judiciary', 'homeland'],
-			target_type: 'congressional'
+			committees: ['judiciary', 'homeland']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'federal',
@@ -1201,8 +1280,27 @@ Sincerely,
 		metrics: { sent: 4567, opened: 0, clicked: 0, responded: 4567 },
 		delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
 		recipient_config: {
-			emails: ['board.of.supervisors@sfgov.org', 'cpuc@ca.gov'],
-			target_type: 'municipal'
+			reach: 'location-specific',
+			decisionMakers: [
+				{
+					name: 'SF Board of Supervisors',
+					shortName: 'SF Board',
+					role: 'Board',
+					organization: 'City of San Francisco'
+				},
+				{
+					name: 'California Public Utilities Commission',
+					shortName: 'CPUC',
+					role: 'Regulatory Commission',
+					organization: 'State of California'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['board.of.supervisors@sfgov.org', 'cpuc@ca.gov']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'municipal',
@@ -1242,8 +1340,27 @@ Sincerely,
 		metrics: { sent: 6789, opened: 0, clicked: 0, responded: 6789 },
 		delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
 		recipient_config: {
-			emails: ['board.of.supervisors@sfgov.org', 'rentboard@sfgov.org'],
-			target_type: 'municipal'
+			reach: 'location-specific',
+			decisionMakers: [
+				{
+					name: 'SF Board of Supervisors',
+					shortName: 'SF Board',
+					role: 'Board',
+					organization: 'City of San Francisco'
+				},
+				{
+					name: 'SF Rent Board',
+					shortName: 'Rent Board',
+					role: 'Rent Stabilization Board',
+					organization: 'City of San Francisco'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['board.of.supervisors@sfgov.org', 'rentboard@sfgov.org']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'municipal',
@@ -1283,8 +1400,27 @@ Sincerely,
 		metrics: { sent: 8234, opened: 0, clicked: 0, responded: 8234 },
 		delivery_config: { timing: 'immediate', followUp: false, cwcEnabled: false },
 		recipient_config: {
-			emails: ['mtaboard@sfmta.com', 'mayorlurie@sfgov.org'],
-			target_type: 'municipal'
+			reach: 'location-specific',
+			decisionMakers: [
+				{
+					name: 'SFMTA Board of Directors',
+					shortName: 'SFMTA Board',
+					role: 'Board',
+					organization: 'San Francisco Municipal Transportation Agency'
+				},
+				{
+					name: 'Mayor Daniel Lurie',
+					shortName: 'Mayor Lurie',
+					role: 'Mayor',
+					organization: 'City of San Francisco'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['mtaboard@sfmta.com', 'mayorlurie@sfgov.org']
 		},
 		applicable_countries: ['US'],
 		jurisdiction_level: 'municipal',
@@ -1292,6 +1428,654 @@ Sincerely,
 		is_public: true,
 		verification_status: 'approved',
 		quality_score: 84
+	},
+	// Multi-Level Template (Federal + Municipal coordination)
+	{
+		title: 'SF Housing Crisis Needs Federal + Local Action',
+		description: 'Coordinate with your congressional delegation AND SF leadership on housing.',
+		category: 'Housing',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Housing crisis requires coordination at all levels of government.',
+		message_body: `Dear Decision-Makers,
+
+The SF housing crisis requires action at every level of government.
+
+Federal: $400k median home, $75k median income (HUD 2024).
+Local: 35% office vacancy, 1 conversion in pipeline (SF Controller Q2 2025).
+The gap: We need both federal funding AND local zoning reform.
+
+Sources: U.S. Department of Housing and Urban Development Fair Market Rent Report 2025; SF Controller's Office Economic Report Q2 2025
+
+From [Address] where we coordinate across government levels.
+
+[Personal Connection]
+
+This isn't federal vs local. It's both.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 1234,
+			opened: 0,
+			clicked: 0,
+			responded: 1234,
+			districts_covered: 1,
+			total_districts: 1,
+			district_coverage_percent: 100
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Housing Policy',
+			urgency: 'high',
+			policy_area: 'Housing and Urban Development'
+		},
+		recipient_config: {
+			reach: 'district-based', // Has both CWC and local
+			cwcRouting: true, // Congressional delivery
+			chambers: ['house', 'senate'],
+			committees: ['housing', 'financial'],
+			decisionMakers: [
+				// Local decision-makers
+				{
+					name: 'Mayor Daniel Lurie',
+					shortName: 'Mayor Lurie',
+					role: 'Mayor',
+					organization: 'City of San Francisco'
+				},
+				{
+					name: 'SF Board of Supervisors',
+					shortName: 'SF Board',
+					role: 'Board',
+					organization: 'City of San Francisco'
+				}
+			],
+			location: {
+				city: 'San Francisco',
+				state: 'CA',
+				jurisdiction: 'San Francisco, CA'
+			},
+			emails: ['mayorlurie@sfgov.org', 'board.of.supervisors@sfgov.org']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		specific_locations: ['San Francisco'],
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 91
+	},
+	// Multi-Stakeholder Templates (Federal + Corporate + Institutional)
+	{
+		title: 'Blackstone: 79% Rent Hike, $1B CEO Bonus',
+		description: 'Private equity buys homes, jacks rent 79%, pays CEO $1 billion.',
+		category: 'Housing',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Private equity is pricing families out of homes.',
+		message_body: `Dear Decision-Makers,
+
+Private equity is pricing families out of homes.
+
+Blackstone rent increases (San Diego): 79% at one property, 38% average (PESP Report 2024).
+CEO compensation: $1.02 billion in 2024 (Stephen Schwarzman, Forbes).
+Federal oversight: Zero (SEC doesn't regulate landlord practices).
+Eviction rate comparison: Corporate landlords 68% more likely to evict (PESP Research).
+
+Sources: Private Equity Stakeholder Project, "Blackstone Comes to Collect" 2024; Federal Trade Commission, "Invitation Homes Settlement" 2024; National Low Income Housing Coalition, "Corporate Landlord Report" 2024
+
+Federal: Regulate corporate landlords, cap rent increases, tenant bill of rights.
+Corporate: Blackstone, Invitation Homes, Pretium Partners need accountability.
+
+From [Address] where Wall Street owns the block.
+
+[Personal Connection]
+
+When did housing become a wealth extraction scheme?
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 15234,
+			opened: 0,
+			clicked: 0,
+			responded: 15234,
+			districts_covered: 285,
+			total_districts: 435,
+			district_coverage_percent: 66
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Corporate Landlords',
+			urgency: 'high',
+			policy_area: 'Housing and Urban Development'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['housing', 'financial']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 93
+	},
+	{
+		title: '$145B Climate Losses, $700B Fossil Subsidies',
+		description: 'Insurance companies abandon us while profiting from fossil fuels.',
+		category: 'Environment',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Insurance abandons climate victims while funding the cause.',
+		message_body: `Dear [Representative Name],
+
+Insurance companies abandon climate victims while profiting from the cause.
+
+Climate disaster losses (2025): $145 billion insured losses (Munich Re).
+Fossil fuel subsidies (US): $700 billion/year (IMF 2024).
+Home insurance costs (FL): $17,000/year, could triple over mortgage (Bloomberg).
+California rate hikes: 48.4% since 2019 (Consumer Federation).
+
+Sources: Munich Re, "Natural Catastrophe Report 2025"; International Monetary Fund, "Fossil Fuel Subsidies" 2024; California Department of Insurance, "Rate Filing Data" 2024
+
+Federal: End fossil subsidies, mandate climate coverage, cap premium increases.
+Corporate: Insurance companies AND fossil fuel companies need accountability.
+
+From [Address] where fires burn and insurance vanishes.
+
+[Personal Connection]
+
+You subsidize the arsonist while the house burns.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 22456,
+			opened: 0,
+			clicked: 0,
+			responded: 22456,
+			districts_covered: 401,
+			total_districts: 435,
+			district_coverage_percent: 92
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Climate and Insurance',
+			urgency: 'critical',
+			policy_area: 'Environmental Protection'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['environment', 'financial']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 95
+	},
+	{
+		title: 'Uber Nets $9.8B, Drivers Get $318/Week',
+		description: 'Gig companies profit billions while workers earn below minimum wage.',
+		category: 'Labor Rights',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Gig economy: record profits, poverty wages.',
+		message_body: `Dear [Representative Name],
+
+Gig economy: record profits, poverty wages.
+
+Uber net income (2024): $9.8 billion, "strongest quarter ever" (Uber Q4 Report).
+DoorDash revenue growth: 24% YoY to $10.72 billion (DoorDash Annual Report).
+Lyft driver earnings: $318/week average, down 13.9% from 2023 (HRW Study).
+Federal worker protections: Zero for gig workers (Department of Labor).
+
+Sources: Human Rights Watch, "The Gig Trap" 2025; Uber Technologies Q4 2024 Earnings Report; Massachusetts Attorney General Settlement 2024
+
+Federal: Classify gig workers as employees, mandate benefits, enforce minimum wage.
+Corporate: Uber, Lyft, DoorDash, Instacart must provide employee protections.
+
+From [Address] where app workers can't afford rent.
+
+[Personal Connection]
+
+"Independent contractor" means no healthcare, no sick leave, no future.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 18923,
+			opened: 0,
+			clicked: 0,
+			responded: 18923,
+			districts_covered: 367,
+			total_districts: 435,
+			district_coverage_percent: 84
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Gig Worker Rights',
+			urgency: 'high',
+			policy_area: 'Labor and Employment'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['labor', 'commerce']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 94
+	},
+	{
+		title: 'Amazon: $145K Fine, Hundreds of Crushed Spines',
+		description: 'OSHA fines Amazon $145K for systematic warehouse injuries.',
+		category: 'Worker Safety',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Worker injuries designed into the system.',
+		message_body: `Dear [Representative Name],
+
+Amazon warehouse injuries: designed into the system.
+
+OSHA settlement (Dec 2024): $145,000 penalty for systematic safety violations (OSHA).
+Injury findings: "High risk of low back injuries" across 10 facilities nationwide (DOL).
+Corporate response: "Designed for speed but not safety" (Assistant Sec. Parker).
+Head/back injury failures: Workers denied medical care, returned to jobs, injuries worsened (OSHA Citations).
+
+Sources: U.S. Department of Labor OSHA, "Amazon Settlement" December 2024; OSHA National News Release, "Safety Hazards" February 2023; Minnesota OSHA Citations April 2024
+
+Federal: Increase OSHA penalties 1000x, mandate ergonomic standards, criminalize willful violations.
+Corporate: Amazon must prioritize worker safety over delivery speed.
+
+From [Address] where two-day shipping costs human spines.
+
+[Personal Connection]
+
+$145K fine for destroying hundreds of bodies. That's not justice.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 16789,
+			opened: 0,
+			clicked: 0,
+			responded: 16789,
+			districts_covered: 342,
+			total_districts: 435,
+			district_coverage_percent: 79
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Workplace Safety',
+			urgency: 'high',
+			policy_area: 'Labor and Employment'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['labor', 'commerce']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 92
+	},
+	{
+		title: '$260B Tax Break, Hospitals Send Debt to Collections',
+		description: 'Nonprofit hospitals get $260B tax exemption, sue patients for medical debt.',
+		category: 'Healthcare',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: '"Nonprofit" hospitals profit from tax exemptions and patient debt.',
+		message_body: `Dear [Representative Name],
+
+"Nonprofit" hospitals: tax-exempt debt collectors.
+
+Nonprofit hospital tax exemption (2025-2034): $260 billion federal revenue loss (CRFB).
+Medical debt in America: $195-220 billion affecting 100 million people (Cornell ILR).
+Fair share deficit: 54% of hospitals get MORE in tax benefits than they spend on community (Research Analysis).
+IRS enforcement: Zero hospitals lost nonprofit status in 10 years (GAO Report 2020).
+
+Sources: Committee for a Responsible Federal Budget, "Nonprofit Hospital Tax Benefits" 2024; Cornell ILR Scheinman Institute, "Medical Debt Crisis" 2024; Government Accountability Office, "IRS Nonprofit Enforcement" 2020
+
+Federal: Revoke nonprofit status for hospitals that sue patients, mandate minimum charity care, enforce IRS rules.
+Corporate: Hospital systems claiming nonprofit status while acting like collection agencies.
+
+From [Address] where the hospital sued grandma for cancer treatment.
+
+[Personal Connection]
+
+Tax-exempt means serving the community, not extracting from it.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 19567,
+			opened: 0,
+			clicked: 0,
+			responded: 19567,
+			districts_covered: 388,
+			total_districts: 435,
+			district_coverage_percent: 89
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Hospital Accountability',
+			urgency: 'high',
+			policy_area: 'Healthcare'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['health', 'finance']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 96
+	},
+	{
+		title: 'University Housing Costs Exceed Tuition',
+		description: 'Students budget more for dorms than degrees, 60% face food/housing insecurity.',
+		category: 'Education',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'College tuition is the cheaper part now.',
+		message_body: `Dear [Representative Name],
+
+College housing costs now exceed tuition.
+
+Housing vs tuition: Students at public universities pay MORE for room/board than tuition (Georgetown Feed 2025).
+Basic needs insecurity: 60% of students face food/housing issues, 14% experience homelessness (NASFAA Survey).
+Student debt from housing: $50,000+ debt despite full scholarship due to $2,000/month rent (U Illinois Graduate).
+Housing cost growth: 14% above inflation (2010-2020) while tuition stayed flat (Hechingerreport).
+
+Sources: Georgetown University The Feed, "Room and Board Costs" 2025; National Association of Student Financial Aid Administrators, "Basic Needs Survey" 2024; Hechingerreport, "Fastest-Growing College Cost" 2024
+
+Federal: Mandate universities provide affordable housing, cap on-campus rent increases, include housing in financial aid calculations.
+Institutional: Universities must stop profiting from student housing crisis.
+
+From [Address] where degrees cost less than dorm rooms.
+
+[Personal Connection]
+
+Full scholarship, still $50K in debt. Explain that.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 21890,
+			opened: 0,
+			clicked: 0,
+			responded: 21890,
+			districts_covered: 395,
+			total_districts: 435,
+			district_coverage_percent: 91
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Student Housing Crisis',
+			urgency: 'high',
+			policy_area: 'Education'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['education', 'housing']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 94
+	},
+	{
+		title: 'Childcare: 35% of Income, Women Exit Workforce',
+		description:
+			'Childcare costs force mothers out of jobs, costs up 5.2% while inflation is 3.4%.',
+		category: 'Family Policy',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Childcare costs more than college, forces parents out.',
+		message_body: `Dear [Representative Name],
+
+Childcare costs are forcing families to choose: work or children.
+
+Childcare cost burden: 35% of single parent median income (Care Index 2025, up from 32%).
+Workforce exodus: Women with young kids dropped 3 percentage points in labor participation (Jan-Jun 2025).
+Childcare inflation: 5.2% year-over-year, 1.5x total inflation rate (BLS September 2025).
+State comparison: 41 states + DC, infant care costs exceed in-state university tuition (Care.com Study).
+
+Sources: U.S. Chamber of Commerce, "Understanding America's Labor Shortage" 2025; Bureau of Labor Statistics, "Childcare Price Index" September 2025; Federal Reserve Bank of Atlanta, "Too Costly to Work?" 2025
+
+Federal: Universal childcare, cap costs at 7% of income, employer subsidies required.
+Corporate: Employers must provide on-site childcare or subsidies for working parents.
+
+From [Address] where parents choose between career and kids.
+
+[Personal Connection]
+
+You can't build an economy when parents can't afford to work.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 24567,
+			opened: 0,
+			clicked: 0,
+			responded: 24567,
+			districts_covered: 408,
+			total_districts: 435,
+			district_coverage_percent: 94
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Childcare Crisis',
+			urgency: 'critical',
+			policy_area: 'Family Policy'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['education', 'labor']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 95
+	},
+	{
+		title: 'Pharma: $4 Production, $315 Retail, 100x Markup',
+		description: 'Insulin costs $4 to make, sells for $315, government pays 100x markup.',
+		category: 'Healthcare',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Pharmaceutical markup: 100x production cost.',
+		message_body: `Dear [Representative Name],
+
+Pharmaceutical companies charge 100x production cost with taxpayer money.
+
+Insulin production cost: $2-4 per vial (2018 Study, Yale).
+Retail pharmacy price: $315+ per vial (KFF Health News).
+Profitable biosimilar price: $61-111/year (97% less than current prices, 2024 Analysis).
+Government procurement: 2-9x production cost, sometimes 100x (WHO Report).
+
+Sources: Yale School of Medicine, "Diabetes Medicine Production Costs" 2024; KFF Health News, "Why Does Insulin Cost So Much?" 2024; World Health Organization, "Insulin Pricing Study" 2023
+
+Federal: Mandate cost-based pricing for government purchases, cap retail prices, break pharmacy middleman monopoly.
+Corporate: Eli Lilly, Novo Nordisk, Sanofi must justify 100x markup or face generic competition.
+
+From [Address] where rationing insulin means rationing life.
+
+[Personal Connection]
+
+$4 to make, $315 to survive. That's not healthcare, it's extortion.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 27834,
+			opened: 0,
+			clicked: 0,
+			responded: 27834,
+			districts_covered: 418,
+			total_districts: 435,
+			district_coverage_percent: 96
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Drug Pricing',
+			urgency: 'critical',
+			policy_area: 'Healthcare'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['health', 'judiciary']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 97
+	},
+	{
+		title: 'AI: 4.7M Jobs Gone, Zero Worker Protection Laws',
+		description: 'AI automates millions of jobs, Congress passes zero worker protection laws.',
+		category: 'Technology',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'AI displacement accelerating, worker protections nonexistent.',
+		message_body: `Dear [Representative Name],
+
+AI is displacing millions of workers with zero safety net.
+
+Jobs automated (2024): 4.7 million (Bureau of Labor Statistics).
+AI job cuts (October 2025 alone): 31,039 positions cited AI as cause (Layoffs Tracker).
+Tech worker unemployment spike: 3 percentage points among 20-30 year olds (Fed Research 2025).
+Federal worker protections: Zero AI-specific displacement insurance or retraining programs (Social Security Act unchanged since 1935).
+
+Sources: Bureau of Labor Statistics, "Automation Impact Report" 2024; Federal Reserve Bank of St. Louis, "AI Contributing to Unemployment" 2025; Goldman Sachs, "AI Impact on Global Workforce" 2024
+
+Federal: AI displacement insurance, mandatory retraining programs, corporate automation taxes to fund transition.
+Corporate: Tech companies profiting from AI must fund worker transition and retraining.
+
+From [Address] where algorithms took the job, not the robots.
+
+[Personal Connection]
+
+Your social safety net was designed for 1935. It's 2025.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 20123,
+			opened: 0,
+			clicked: 0,
+			responded: 20123,
+			districts_covered: 378,
+			total_districts: 435,
+			district_coverage_percent: 87
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'AI Worker Displacement',
+			urgency: 'high',
+			policy_area: 'Technology and Labor'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['technology', 'labor']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 93
+	},
+	{
+		title: '47M Americans Food Insecure, Groceries Up 33.5%',
+		description: 'Food prices surge 33.5% since 2020, wages stagnate, 47 million go hungry.',
+		category: 'Economic Justice',
+		type: 'advocacy',
+		deliveryMethod: 'cwc',
+		preview: 'Working people with jobs waiting in food bank lines.',
+		message_body: `Dear [Representative Name],
+
+Working Americans with full-time jobs are waiting in food bank lines.
+
+Food insecurity (2023): 47.4 million Americans, up 3.2M from 2022 (USDA).
+Grocery price increase: 33.5% since pandemic started, outpacing overall inflation (Fed Data).
+Wage disconnect: Middle class wages haven't kept pace with inflation (Urban Institute 2025).
+Impact on communities: 38.6% of Black adults, 34.6% of Hispanic adults face food insecurity vs 22.9% white adults (FRAC Report).
+
+Sources: U.S. Department of Agriculture, "Food Security Report" 2024; Food Research & Action Center, "Household Food Insecurity" 2024; Urban Institute, "Households Faced Persistent Challenges Affording Food" 2025
+
+Federal: Raise minimum wage to match inflation, expand SNAP, cap food price increases during crises.
+Corporate: Grocery chains and food manufacturers must justify record profits during hunger crisis.
+
+From [Address] where nurses and teachers use food banks.
+
+[Personal Connection]
+
+Multiple jobs, still can't feed kids. Explain that.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: {
+			sent: 23890,
+			opened: 0,
+			clicked: 0,
+			responded: 23890,
+			districts_covered: 402,
+			total_districts: 435,
+			district_coverage_percent: 92
+		},
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: {
+			topic: 'Food Insecurity',
+			urgency: 'critical',
+			policy_area: 'Agriculture and Nutrition'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['agriculture', 'labor']
+		},
+		applicable_countries: ['US'],
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved',
+		quality_score: 94
 	}
 ];
 
@@ -1565,7 +2349,7 @@ async function seedCoreTemplates(users: User[]) {
 					// corrected_at: (template as SeedTemplateData).corrected_at || null,  // REMOVED Phase 2+
 					reviewed_at: (template as SeedTemplateData).reviewed_at || null,
 					reputation_delta: (template as SeedTemplateData).reputation_delta || 0,
-					reputation_applied: (template as SeedTemplateData).reputation_applied || false,
+					reputation_applied: (template as SeedTemplateData).reputation_applied || false
 					// submitted_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)  // REMOVED Phase 2+
 				}
 			});

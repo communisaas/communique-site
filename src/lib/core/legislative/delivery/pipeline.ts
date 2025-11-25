@@ -126,7 +126,6 @@ export class LegislativeDeliveryPipeline {
 							subject: job.template.title,
 							deliveryMethod: 'cwc'
 						});
-
 					} catch (trackingError) {
 						// Don't fail delivery if tracking fails - just log
 						console.error('Failed to track template adoption:', trackingError);

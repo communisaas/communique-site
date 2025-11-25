@@ -16,6 +16,14 @@ export interface Template {
 	delivery_config: unknown; // Json field in database
 	cwc_config?: unknown | null; // Json? field in database - was missing
 	recipient_config: unknown; // Json field in database
+
+	// === PERCEPTUAL ENCODING PROPERTIES ===
+	// Visual weight encoding (0-1 scale for card size transformation)
+	// Logarithmic scale: 1 send = 0.0, 10 = 0.33, 100 = 0.67, 1000+ = 1.0
+	coordinationScale: number;
+	// Temporal signal for "New" badge (created within 7 days)
+	isNew: boolean;
+
 	metrics: {
 		sent?: number;
 		delivered?: number; // Number of messages successfully delivered
@@ -89,6 +97,10 @@ export interface Template {
 	submitted_at?: Date | string | null; // When submitted for verification
 	corrected_at?: Date | string | null; // When AI corrections applied
 	reviewed_at?: Date | string | null; // When human/final review completed
+
+	// Standard Prisma timestamps
+	createdAt: Date | string; // Template creation timestamp
+	updatedAt: Date | string; // Template last update timestamp
 }
 
 export interface TemplateCreationContext {
@@ -193,6 +205,108 @@ export interface TemplateRecipient {
 
 // For UI components that only need a minimal user shape
 export type MinimalUser = { id: string; name: string };
+
+// ============================================================================
+// Perceptual Decision-Maker Representation (2025-01-25)
+// Power topology instead of categorization
+// ============================================================================
+
+/**
+ * Power reach - how decision-makers are selected
+ * Maps to user's spatial mental model of power distance
+ */
+export type PowerReach = 'district-based' | 'location-specific' | 'universal';
+
+/**
+ * Decision-maker identity (recognition > categorization)
+ * Names are faster to recognize than roles or categories
+ */
+export interface DecisionMaker {
+	/** Full name: "Mayor London Breed" */
+	name: string;
+	/** Short display name: "Mayor Breed" */
+	shortName?: string;
+	/** Role fallback: "Mayor" (if name unavailable) */
+	role?: string;
+	/** Organization context: "City of San Francisco" */
+	organization?: string;
+}
+
+/**
+ * Geographic location for spatial grounding
+ * Users think spatially, not taxonomically
+ */
+export interface RecipientLocation {
+	city?: string;
+	state?: string;
+	/** Composite jurisdiction: "San Francisco, CA" */
+	jurisdiction?: string;
+}
+
+/**
+ * Perceptual recipient configuration
+ * Encodes power topology for direct recognition
+ */
+export interface PerceptualRecipientConfig {
+	/** Power reach type */
+	reach: PowerReach;
+	/** Decision-maker identities (for recognition) */
+	decisionMakers?: DecisionMaker[];
+	/** Geographic context (spatial grounding) */
+	location?: RecipientLocation;
+	/** Email addresses (implementation detail) */
+	emails?: string[];
+	/** CWC API routing (congressional) */
+	cwcRouting?: boolean;
+}
+
+/**
+ * Single power level target
+ * Used in both standalone and multi-level presentations
+ */
+export interface PowerLevelTarget {
+	/** Primary text: "Your 3 representatives" or "Mayor Breed, Board of Supervisors" */
+	primary: string;
+	/** Secondary text: "+2 more" (if truncated) */
+	secondary?: string | null;
+	/** Icon name for peripheral category hint */
+	icon: 'Capitol' | 'Building' | 'Users' | 'Mail';
+	/** Visual emphasis for color coding */
+	emphasis: 'federal' | 'state' | 'local' | 'neutral';
+}
+
+/**
+ * Visual representation derived from recipient config
+ * Optimized for peripheral scanning + recognition
+ *
+ * Perceptual Design:
+ * - Single-level: One row, one color
+ * - Multi-level: Vertical stack, each level maintains semantic color
+ * - Peripheral detection: Row count = coordination breadth (~150ms recognition)
+ */
+export type TargetPresentation =
+	| {
+			/** Single power level */
+			type: 'district-based' | 'location-specific' | 'universal';
+			/** Primary text: "Your 3 representatives" or "Mayor Breed, SFMTA Board" */
+			primary: string;
+			/** Secondary text: "+2 more" (if truncated) */
+			secondary?: string | null;
+			/** Icon name for peripheral category hint */
+			icon: 'Capitol' | 'Building' | 'Users' | 'Mail';
+			/** Visual emphasis for color coding */
+			emphasis: 'federal' | 'state' | 'local' | 'neutral';
+			/** Coordination context: "CA-11" or "San Francisco" */
+			coordinationContext?: string;
+	  }
+	| {
+			/** Multi-stakeholder coordination across power levels */
+			type: 'multi-level';
+			/** Array of power levels (federal, state, local, etc.) */
+			targets: PowerLevelTarget[];
+			/** Coordination context: "CA-11" or "San Francisco" */
+			coordinationContext?: string;
+	  };
 
 // ============================================================================
 // Progressive Template Sections (2025-01-12)
