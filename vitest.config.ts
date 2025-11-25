@@ -71,7 +71,7 @@ export default defineConfig({
 		// Coverage configuration - HONEST MEASUREMENT
 		coverage: {
 			provider: 'v8', // Svelte-aware coverage provider
-			reporter: ['text', 'html', 'json', 'lcov'],
+			reporter: ['text', 'html', 'json', 'lcov', 'cobertura'],
 			reportsDirectory: './coverage',
 
 			// Include ALL source code for honest measurement

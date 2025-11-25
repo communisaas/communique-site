@@ -612,6 +612,20 @@ npm run test:drift       # Mock drift detection reports
 
 **⚠️ IMPORTANT:** Tests clear the database for test isolation. Use `npm run test:reseed` to automatically reseed after running tests, or manually run `npm run db:seed` afterward.
 
+### Coverage Reporting
+
+**CI uses tokenless Code Coverage Summary** - No external service required, runs entirely in GitHub Actions.
+
+**Coverage formats:**
+- `coverage/lcov.info` - For local inspection
+- `coverage/cobertura-coverage.xml` - For CI reporting (Code Coverage Summary action)
+- `coverage/` - HTML reports for detailed local analysis
+
+**CI features:**
+- Automatic PR comments with coverage summary
+- Coverage badges without external services
+- Fails if coverage drops below thresholds (20% global, 40% for critical paths)
+
 **→ `docs/testing/DATABASE-CLEARING-ISSUE.md`** - Details on database clearing behavior
 
 **→ `docs/development/testing.md`** - Test strategy (integration-first approach, smart mocks, fixtures, coverage requirements)
