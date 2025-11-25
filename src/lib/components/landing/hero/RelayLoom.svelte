@@ -1617,7 +1617,6 @@
 		}
 	}
 
-
 	/* Desktop: generous but focused */
 	@media (min-width: 769px) {
 		.node.expanded .node-content {

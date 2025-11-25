@@ -294,9 +294,7 @@
 					{#if hasError}
 						<div class="rounded-xl border border-orange-200 bg-orange-50 p-6 text-center">
 							<div class="mb-4 flex justify-center">
-								<div
-									class="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100"
-								>
+								<div class="flex h-16 w-16 items-center justify-center rounded-full bg-orange-100">
 									<svg
 										class="h-8 w-8 text-orange-600"
 										fill="none"
@@ -375,7 +373,11 @@
 
 <!-- Mobile Preview Modal -->
 {#if showMobilePreview && selectedTemplate}
-	<TouchModal bind:this={modalComponent} on:close={() => (showMobilePreview = false)} inModal={true}>
+	<TouchModal
+		bind:this={modalComponent}
+		on:close={() => (showMobilePreview = false)}
+		inModal={true}
+	>
 		<div class="h-full">
 			<TemplatePreview
 				template={selectedTemplate}

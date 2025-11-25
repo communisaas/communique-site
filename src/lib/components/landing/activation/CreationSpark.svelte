@@ -42,11 +42,7 @@
 	}
 </script>
 
-<div
-	class="creation-spark"
-	class:activated={isActivated}
-	class:has-content={hasContent}
->
+<div class="creation-spark" class:activated={isActivated} class:has-content={hasContent}>
 	<!-- Brand + Headline integrated into creation surface -->
 	<div class="spark-header">
 		<p class="brand-mark">communiqué</p>
@@ -54,16 +50,12 @@
 			Your voice.
 			<span class="accent">Sent together.</span>
 		</h1>
-		<p class="subhead">
-			Write it once. Share the link. Everyone can send it.
-		</p>
+		<p class="subhead">Write it once. Share the link. Everyone can send it.</p>
 	</div>
 
 	<!-- The writing surface - immediately visible -->
 	<div class="spark-surface">
-		<label for="issue-input" class="spark-prompt">
-			What needs to change?
-		</label>
+		<label for="issue-input" class="spark-prompt"> What needs to change? </label>
 
 		<div class="input-container" class:focused={isFocused}>
 			<textarea

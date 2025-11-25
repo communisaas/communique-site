@@ -82,21 +82,11 @@
 		<!-- Right: Template Stream -->
 		<div class="stream-column">
 			<div class="stream-header">
-				<LocationFilter
-					{templates}
-					onFilterChange={onFilterChange}
-					onNextUnlockChange={onNextUnlockChange}
-					onAddressModalOpen={onAddressModalOpen}
-				/>
+				<LocationFilter {templates} {onFilterChange} {onNextUnlockChange} {onAddressModalOpen} />
 			</div>
 
 			<div class="stream-content">
-				<TemplateList
-					{groups}
-					{selectedId}
-					onSelect={handleTemplateSelect}
-					{loading}
-				/>
+				<TemplateList {groups} {selectedId} onSelect={handleTemplateSelect} {loading} />
 			</div>
 		</div>
 	</div>
@@ -139,22 +129,12 @@
 
 		<!-- Location filter -->
 		<div class="mobile-filter">
-			<LocationFilter
-				{templates}
-				onFilterChange={onFilterChange}
-				onNextUnlockChange={onNextUnlockChange}
-				onAddressModalOpen={onAddressModalOpen}
-			/>
+			<LocationFilter {templates} {onFilterChange} {onNextUnlockChange} {onAddressModalOpen} />
 		</div>
 
 		<!-- Template stream -->
 		<div class="mobile-stream">
-			<TemplateList
-				{groups}
-				{selectedId}
-				onSelect={handleTemplateSelect}
-				{loading}
-			/>
+			<TemplateList {groups} {selectedId} onSelect={handleTemplateSelect} {loading} />
 		</div>
 	</div>
 </div>
