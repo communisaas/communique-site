@@ -222,6 +222,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1.5rem;
+		/* Safe-area-aware top spacing: respects notch/status bar + provides breathing room */
+		padding-top: max(env(safe-area-inset-top), 1.5rem);
 	}
 
 	@media (min-width: 1024px) {
