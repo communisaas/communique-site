@@ -297,7 +297,7 @@ npm run lint:strict        # Zero-tolerance ESLint check
 ### What Communiqué Handles (Frontend + Orchestration)
 
 - **SvelteKit 5** + TypeScript + Tailwind (frontend framework)
-- **Supabase (Postgres)** via Prisma; cryptographic sessions via `@oslojs/crypto`
+- **Neon Postgres** via Prisma; cryptographic sessions via `@oslojs/crypto`
 - **OAuth authentication** (Google, Facebook, Twitter, LinkedIn, Discord)
 - **Address validation** → Census Bureau geocoding → congressional district lookup
 - **Template system** - Creation, customization, multi-target delivery (Congress + corporations + HOAs + schools + nonprofits)
@@ -428,7 +428,7 @@ Beta features (AI suggestions, template intelligence) gated by `ENABLE_BETA` env
 ### Required (Core)
 
 ```bash
-SUPABASE_DATABASE_URL=...           # Supabase Postgres connection string
+DATABASE_URL=...                    # Neon Postgres connection string
 ```
 
 ### Congressional Delivery (Optional)
