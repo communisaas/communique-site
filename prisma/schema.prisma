@@ -162,108 +162,35 @@ model Template {
   verified_sends            Int                        @default(0) @map("verified_sends") // Total verified messages sent
   unique_districts          Int                        @default(0) @map("unique_districts") // Unique districts reached
   avg_reputation            Float?                     @map("avg_reputation") // Average sender reputation
-  
-  // Geographic scope (DEPRECATED - replaced by TemplateJurisdiction table)
-  // These fields will be removed after data migration completes
-  applicable_countries      String[]                   @default([])
-  jurisdiction_level        String?
-  specific_locations        String[]                   @default([])
 
   // NEW: Semantic embeddings for multi-dimensional search
   location_embedding        Json?                      @map("location_embedding") // OpenAI embedding of location context
   topic_embedding           Json?                      @map("topic_embedding")    // OpenAI embedding of policy topic
   embedding_version         String                     @default("v1") @map("embedding_version")
   embeddings_updated_at     DateTime?                  @map("embeddings_updated_at")
-  
+
   // === STATUS AND TRACKING ===
   verification_status       String?                    @default("pending") @map("verification_status") // 'pending', 'approved', 'rejected'
   country_code              String?                    @default("US") @map("country_code")
   reviewed_at               DateTime?                  @map("reviewed_at")
   reviewed_by               String?                    @map("reviewed_by")
 
-  // === PHASE 1 REPUTATION FIELDS (Congressional Dashboard Signals) ===
-  // MODERATION SIGNALS (safety only, NOT quality)
+  // === PHASE 1 MODERATION (safety only, NOT quality) ===
   flagged_by_moderation     Boolean                    @default(false) @map("flagged_by_moderation") // OpenAI API flagged
   consensus_approved        Boolean                    @default(false) @map("consensus_approved") // Multi-agent approved (binary)
 
-  // CONGRESSIONAL DASHBOARD SIGNALS (McDonald 2018 research)
-  policy_areas              String[]                   @default([]) @map("policy_areas") // ["healthcare", "climate"]
-  related_bills             String[]                   @default([]) @map("related_bills") // ["H.R. 1234", "S. 567"]
-
-  // Aggregate pools (expertise distribution)
-  expertise_breakdown       Json?                      @map("expertise_breakdown") // { professional: 15, industry: 8, community: 12 }
-  verification_breakdown    Json?                      @map("verification_breakdown") // { nfc_passport: 10, government_id: 5 }
-  reputation_distribution   Json?                      @map("reputation_distribution") // { verified: 8, endorsed: 5, cited: 2 }
-
-  // === PHASE 2+ FIELDS (CMS dependency) ===
-  office_response_rate      Float?                     @map("office_response_rate") // % of offices that responded
-  citation_rate             Float?                     @map("citation_rate") // % of offices that cited content
-  
-  // === MISSING VERIFICATION FIELDS (from core.prisma) ===
-  severity_level            Int?                       @map("severity_level") // 1-10 scale for content severity
-  original_content          Json?                      @map("original_content") // Original content before AI corrections
-  correction_log            Json?                      @map("correction_log") // Log of corrections made
-  corrected_subject         String?                    @map("corrected_subject") // AI-corrected subject line
-  corrected_body            String?                    @map("corrected_body") // AI-corrected message body
-  agent_votes               Json?                      @map("agent_votes") // Multi-agent voting results
-  consensus_score           Float?                     @map("consensus_score") // Agent consensus quality score
-  
-  // === AGENT-AGNOSTIC TRACKING (Phase 1) ===
-  // Agent orchestration
-  processing_pipeline       Json?                      @map("processing_pipeline") // Dynamic pipeline configuration
-  agent_assignments         Json?                      @map("agent_assignments") // Which agents handled each stage
-  consensus_weights         Json?                      @map("consensus_weights") // How votes were weighted
-  
-  // Economic tracking  
-  budget_allocated          Decimal?                   @map("budget_allocated") // User's budget for this template
-  cost_breakdown            Json?                      @map("cost_breakdown") // Cost per agent/stage
-  optimization_metrics      Json?                      @map("optimization_metrics") // Quality vs cost tradeoffs
-  
-  // Performance analytics
-  pipeline_efficiency       Decimal?                   @map("pipeline_efficiency") // How well the pipeline performed
-  agent_performance         Json?                      @map("agent_performance") // Individual agent metrics
-  consensus_quality         Decimal?                   @map("consensus_quality") // Quality of consensus decision
-  
-  // Dynamic routing
-  fallback_attempts         Json?                      @map("fallback_attempts") // Any agent fallbacks used
-  optimization_applied      Json?                      @map("optimization_applied") // Dynamic optimizations made
-  user_satisfaction        Int?                       @map("user_satisfaction") // Feedback for future optimization
-  
-  // Enhanced content tracking
-  enhanced_content          String?                    @map("enhanced_content") // AI-enhanced version
-  change_log                Json?                      @map("change_log") // Detailed changes made
-  intent_preservation       Float?                     @map("intent_preservation") // How well intent was preserved
-  
-  // Risk assessment
-  toxicity_classification   Int?                       @map("toxicity_classification") // 0-4 scale
-  political_sensitivity     String?                    @map("political_sensitivity") // low/medium/high
-  adversarial_score         Float?                     @map("adversarial_score") // Gaming attempt detection
-  
-  // Processing flow tracking
-  submission_flow          String?                     @map("submission_flow") // 'voter-protocol' or 'direct-delivery'
-  processing_stages        Json?                       @map("processing_stages") // Stage-by-stage results
-  total_processing_time    Int?                        @map("total_processing_time") // Total time in milliseconds
-  cache_efficiency         Float?                      @map("cache_efficiency") // Cache hit ratio
-  
-  // User deposit and refund tracking
-  user_deposit             Decimal?                    @map("user_deposit") // VOTER tokens deposited
-  deposit_refunded         Boolean                     @default(false) @map("deposit_refunded")
-  deposit_refund_amount    Decimal?                    @map("deposit_refund_amount")
-  
-  // Reputation impact (quadratic)
+  // Reputation impact (Phase 1: on-chain ERC-8004, no token rewards)
   reputation_delta          Float                      @default(0) @map("reputation_delta")
   reputation_applied        Boolean                    @default(false) @map("reputation_applied")
-  
-  // Enhanced timestamps
+
+  // Timestamps
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
-  submitted_at              DateTime?                  @map("submitted_at") // When submitted for verification
-  corrected_at              DateTime?                  @map("corrected_at") // When AI corrections applied
-  
+
   // User relationship
   userId                    String?                    @map("user_id")
   user                      User?                      @relation(fields: [userId], references: [id])
-  
+
   // === EXISTING RELATIONS (preserve all) ===
   ai_suggestions            ai_suggestions[]
   adaptations               template_adaptation[]
@@ -276,7 +203,7 @@ model Template {
   civic_actions             CivicAction[]
   analytics_events          analytics_event[]          @relation("TemplateAnalyticsEvents")
 
-  // NEW: Structured jurisdictions (replaces string arrays)
+  // NEW: Structured jurisdictions (replaces deprecated string arrays)
   jurisdictions             TemplateJurisdiction[]
 
   // NEW: International geographic scope (agent-extracted, breadcrumb filtering)
