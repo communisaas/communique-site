@@ -3,6 +3,8 @@
  *
  * Tests core UI functionality without relying on analytics or complex integrations.
  * Validates that the basic user flow works as expected.
+ *
+ * Updated for new Activation Surface landing page (Nov 2024).
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -12,72 +14,75 @@ test.describe('Basic E2E Functionality', () => {
 		// Navigate to homepage
 		await page.goto('/');
 
-		// Wait for template section to be visible (deterministic loading)
-		await page.getByTestId('template-section').waitFor({ state: 'visible' });
+		// Wait for template list to be visible (deterministic loading)
+		await page.getByTestId('template-list').waitFor({ state: 'visible', timeout: 10000 });
 	});
 
-	test('should load homepage with template section', async ({ page }: { page: Page }) => {
-		// Check that template section loads
-		const templateSection = page.getByTestId('template-section');
-		await expect(templateSection).toBeVisible();
+	test('should load homepage with template list', async ({ page }: { page: Page }) => {
+		// Check that template list loads
+		const templateList = page.getByTestId('template-list');
+		await expect(templateList).toBeVisible();
 
-		// Check templates heading is visible
-		const templatesHeading = page.getByTestId('templates-heading');
-		await expect(templatesHeading).toBeVisible();
-		await expect(templatesHeading).toHaveText('Active Campaigns');
-
-		// Check templates list is visible
-		const templatesList = page.getByTestId('template-list');
-		await expect(templatesList).toBeVisible();
+		// Check that at least one template button exists
+		const firstTemplate = templateList.locator('[data-testid^="template-button-"]').first();
+		await expect(firstTemplate).toBeVisible();
 	});
 
 	test('should be able to select and view template', async ({ page }: { page: Page }) => {
-		// Wait for any template button to be visible
-		await page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first().waitFor({ state: 'visible' });
-		
 		// Get the first available template button (deterministic)
-		const templateButton = page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first();
+		const templateButton = page
+			.getByTestId('template-list')
+			.locator('[data-testid^="template-button-"]')
+			.first();
 
 		// Click on first template
 		await templateButton.click();
 
-		// Check template preview loads
-		const templatePreview = page.getByTestId('template-preview');
-		await expect(templatePreview).toBeVisible();
+		// On desktop: template preview should be visible
+		// On mobile: modal opens
+		const isMobile = await page.viewport().then((vp) => (vp?.width ?? 1024) < 768);
 
-		// Check that either contact congress or send email button is visible
-		// Use waitFor with timeout to handle either button appearing
-		await expect(async () => {
-			const contactButton = page.getByTestId('contact-congress-button');
-			const emailButton = page.getByTestId('send-email-button');
-			
-			const contactVisible = await contactButton.isVisible().catch(() => false);
-			const emailVisible = await emailButton.isVisible().catch(() => false);
-			
-			expect(contactVisible || emailVisible).toBe(true);
-		}).toPass({ timeout: 5000 });
+		if (isMobile) {
+			// Mobile: check for modal
+			const modal = page.locator('[role="dialog"]').or(page.locator('.modal'));
+			await expect(modal).toBeVisible({ timeout: 5000 });
+		} else {
+			// Desktop: check template preview loads in sidebar
+			const templatePreview = page.getByTestId('template-preview');
+			await expect(templatePreview).toBeVisible();
+
+			// Check that some action button exists (send, contact, etc)
+			const actionButton = templatePreview.locator('button').filter({
+				hasText: /Send|Contact|Join/i
+			});
+			await expect(actionButton.first()).toBeVisible({ timeout: 5000 });
+		}
 	});
 
 	test('should handle navigation between templates', async ({ page }: { page: Page }) => {
+		const templateList = page.getByTestId('template-list');
+
 		// Click first template (deterministic)
-		const firstTemplate = page.getByTestId('template-list').locator('[data-testid^="template-button-"]').first();
+		const firstTemplate = templateList.locator('[data-testid^="template-button-"]').first();
 		await firstTemplate.click();
 
-		// Wait for template preview to appear (deterministic loading)
-		await page.getByTestId('template-preview').waitFor({ state: 'visible' });
+		// Wait a moment for selection to process
+		await page.waitForTimeout(500);
 
-		// Verify preview is visible
-		const templatePreview = page.getByTestId('template-preview');
-		await expect(templatePreview).toBeVisible();
+		// Try to click second template if available
+		const templates = await templateList.locator('[data-testid^="template-button-"]').count();
 
-		// Click second template if available
-		const secondTemplate = page.getByTestId(/^template-button-/).nth(1);
-		if ((await secondTemplate.count()) > 0) {
+		if (templates > 1) {
+			const secondTemplate = templateList.locator('[data-testid^="template-button-"]').nth(1);
 			await secondTemplate.click();
 			await page.waitForTimeout(500);
 
-			// Preview should still be visible
-			await expect(templatePreview).toBeVisible();
+			// On desktop, preview should still be visible (just different content)
+			const isMobile = await page.viewport().then((vp) => (vp?.width ?? 1024) < 768);
+			if (!isMobile) {
+				const templatePreview = page.getByTestId('template-preview');
+				await expect(templatePreview).toBeVisible();
+			}
 		}
 	});
 
@@ -89,9 +94,9 @@ test.describe('Basic E2E Functionality', () => {
 			await retryButton.click();
 			await page.waitForTimeout(2000);
 
-			// Should still show template section after retry
-			const templateSection = page.getByTestId('template-section');
-			await expect(templateSection).toBeVisible();
+			// Should still show template list after retry
+			const templateList = page.getByTestId('template-list');
+			await expect(templateList).toBeVisible();
 		}
 	});
 
@@ -118,12 +123,30 @@ test.describe('Basic E2E Functionality', () => {
 		// Test mobile viewport
 		await page.setViewportSize({ width: 375, height: 667 });
 
-		// Template section should still be visible on mobile
-		const templateSection = page.getByTestId('template-section');
-		await expect(templateSection).toBeVisible();
+		// Template list should still be visible on mobile
+		const templateList = page.getByTestId('template-list');
+		await expect(templateList).toBeVisible();
 
-		// Templates list should be visible on mobile
-		const templatesList = page.getByTestId('template-list');
-		await expect(templatesList).toBeVisible();
+		// Templates should be visible
+		const firstTemplate = templateList.locator('[data-testid^="template-button-"]').first();
+		await expect(firstTemplate).toBeVisible();
+	});
+
+	test('should display CreationSpark on landing page', async ({ page }: { page: Page }) => {
+		// Check that CreationSpark (create template) interface is visible
+		const createHeadline = page.getByText(/Your voice.*Sent together/i);
+		await expect(createHeadline).toBeVisible({ timeout: 5000 });
+
+		// Check for the input field
+		const issueInput = page.locator('#issue-input');
+		await expect(issueInput).toBeVisible();
+	});
+
+	test('should display CoordinationExplainer section', async ({ page }: { page: Page }) => {
+		// Check that "How it works" explainer is present
+		const explainerButton = page.getByRole('button', {
+			name: /How coordination works/i
+		});
+		await expect(explainerButton).toBeVisible();
 	});
 });
