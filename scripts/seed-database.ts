@@ -1542,9 +1542,9 @@ async function seedCoreTemplates(users: User[]) {
 					delivery_config: template.delivery_config,
 					cwc_config: template.cwc_config || {},
 					recipient_config: template.recipient_config,
-					applicable_countries: template.applicable_countries || [],
-					jurisdiction_level: template.jurisdiction_level,
-					specific_locations: template.specific_locations || [],
+					// applicable_countries: template.applicable_countries || [],  // REMOVED Phase 2+ (use TemplateJurisdiction)
+					// jurisdiction_level: template.jurisdiction_level,  // REMOVED Phase 2+ (use TemplateJurisdiction)
+					// specific_locations: template.specific_locations || [],  // REMOVED Phase 2+ (use TemplateJurisdiction)
 					is_public: template.is_public,
 					status: 'published',
 					...(assignedUser ? { user: { connect: { id: assignedUser.id } } } : {}),
@@ -1553,20 +1553,20 @@ async function seedCoreTemplates(users: User[]) {
 					verified_sends: (template.metrics.sent as number) || 0,
 					unique_districts: (template.metrics.districts_covered as number) || 0,
 
-					// === CONSOLIDATED VERIFICATION FIELDS (Phase 4) ===
+					// === PHASE 1 VERIFICATION FIELDS ===
 					verification_status: (template as SeedTemplateData).verification_status || 'pending',
-					agent_votes: ((template as SeedTemplateData).agent_votes as Prisma.JsonValue) || null,
-					consensus_score: (template as SeedTemplateData).consensus_score || null,
-					severity_level: (template as SeedTemplateData).severity_level || null,
-					correction_log:
-						((template as SeedTemplateData).correction_log as Prisma.JsonValue) || null,
-					original_content:
-						((template as SeedTemplateData).original_content as Prisma.JsonValue) || null,
-					corrected_at: (template as SeedTemplateData).corrected_at || null,
+					// agent_votes: ((template as SeedTemplateData).agent_votes as Prisma.JsonValue) || null,  // REMOVED Phase 2+
+					// consensus_score: (template as SeedTemplateData).consensus_score || null,  // REMOVED Phase 2+
+					// severity_level: (template as SeedTemplateData).severity_level || null,  // REMOVED Phase 2+
+					// correction_log:
+					// 	((template as SeedTemplateData).correction_log as Prisma.JsonValue) || null,  // REMOVED Phase 2+
+					// original_content:
+					// 	((template as SeedTemplateData).original_content as Prisma.JsonValue) || null,  // REMOVED Phase 2+
+					// corrected_at: (template as SeedTemplateData).corrected_at || null,  // REMOVED Phase 2+
 					reviewed_at: (template as SeedTemplateData).reviewed_at || null,
 					reputation_delta: (template as SeedTemplateData).reputation_delta || 0,
 					reputation_applied: (template as SeedTemplateData).reputation_applied || false,
-					submitted_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) // Random within last week
+					// submitted_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000)  // REMOVED Phase 2+
 				}
 			});
 
