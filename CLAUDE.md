@@ -624,7 +624,7 @@ npm run test:drift       # Mock drift detection reports
 **CI features:**
 - Automatic PR comments with coverage summary
 - Coverage badges without external services
-- Fails if coverage drops below thresholds (20% global, 40% for critical paths)
+- **Informational only** - Reports coverage but doesn't block CI (targets: 20% global, 40% critical paths)
 
 **→ `docs/testing/DATABASE-CLEARING-ISSUE.md`** - Details on database clearing behavior
 
