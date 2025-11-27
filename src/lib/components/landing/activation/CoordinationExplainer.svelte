@@ -14,14 +14,22 @@
 	 * reveals the full RelayLoom with narrative content.
 	 */
 
-	import { ChevronDown } from '@lucide/svelte';
-	import RelayLoom from '../hero/RelayLoom.svelte';
+import { ChevronDown } from '@lucide/svelte';
+import RelayLoom from '../hero/RelayLoom.svelte';
 
-	let isExpanded = $state(false);
+let isExpanded = $state(false);
+let loomEpoch = $state(0);
 
-	function toggleExpanded() {
-		isExpanded = !isExpanded;
+function toggleExpanded() {
+	const willExpand = !isExpanded;
+	isExpanded = willExpand;
+
+	// Force the loom to remount whenever we open the explainer so
+	// the edge choreography plays from frame zero instead of staying paused
+	if (willExpand) {
+		loomEpoch += 1;
 	}
+}
 </script>
 
 <section class="coordination-explainer" class:expanded={isExpanded}>
@@ -57,7 +65,10 @@
 		<!-- Single inner wrapper for proper grid collapse -->
 		<div class="content-inner">
 			<div class="loom-container">
-				<RelayLoom embedded={true} />
+				{#if isExpanded}
+					{@key loomEpoch}
+						<RelayLoom embedded={true} />
+				{/if}
 			</div>
 
 			<!-- Summary points -->
@@ -212,12 +223,12 @@
 	}
 
 	.loom-container {
-		padding: 0.5rem 0.75rem 0;
+		padding: 0 0.75rem;
 	}
 
 	@media (min-width: 640px) {
 		.loom-container {
-			padding: 0.75rem 1rem 0;
+			padding: 0 1rem;
 		}
 	}
 
@@ -225,7 +236,7 @@
 	.summary-points {
 		display: grid;
 		gap: 1rem;
-		padding: 1.5rem;
+		padding: 1rem 1.5rem;
 		border-top: 1px solid oklch(0.92 0.01 250);
 		background: oklch(0.98 0.005 250);
 	}

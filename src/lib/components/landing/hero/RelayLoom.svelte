@@ -275,7 +275,12 @@
 	// (Use base node arrays, not positioned - connections are stable)
 	// ─────────────────────────────────────────────────────────────
 
-	// Phase 1: You send directly to targets
+	// Phase 1: You share with your network (propagation originates at YOU)
+	const shareConnections: Connection[] = senders
+		.filter((s) => s.id !== 'you')
+		.map((s) => ({ from: 'you', to: s.id, type: 'share', phase: 'you-share' }));
+
+	// Phase 2: You also send directly to targets
 	const youDeliverConnections: Connection[] = targets.map((t) => ({
 		from: 'you',
 		to: t.id,
@@ -283,12 +288,7 @@
 		phase: 'you-send'
 	}));
 
-	// Phase 2: You share with your network
-	const shareConnections: Connection[] = senders
-		.filter((s) => s.id !== 'you')
-		.map((s) => ({ from: 'you', to: s.id, type: 'share', phase: 'you-share' }));
-
-	// Phase 3: Your network sends to targets
+	// Phase 3: Your network sends to targets (after receiving from you)
 	const peerDeliverConnections: Connection[] = senders
 		.filter((s) => s.id !== 'you')
 		.flatMap((s) =>
@@ -300,10 +300,10 @@
 			}))
 		);
 
-	// Ordered by narrative sequence
+	// Ordered by narrative sequence (strictly from you → peers → targets)
 	const allConnections: Connection[] = [
-		...youDeliverConnections,
 		...shareConnections,
+		...youDeliverConnections,
 		...peerDeliverConnections
 	];
 
@@ -312,15 +312,17 @@
 	// ─────────────────────────────────────────────────────────────
 
 	const TIMING = {
-		// Narrative reveal timing
-		phase1Start: 0, // You send
-		phase2Start: 600, // You share (after send lands)
-		phase3Start: 1200, // Peers send (after share spreads)
+		// Narrative reveal timing (propagation outward from You)
+		phaseStarts: {
+			'you-share': 0,
+			'you-send': 700,
+			'peers-send': 1400
+		},
 		edgeDrawDuration: 800, // How long each edge takes to draw
 		edgeStagger: 100, // Stagger within a phase
 
 		// Ambient particles (life after reveal)
-		ambientDelay: 2400, // Start after narrative completes
+		ambientDelay: 3400, // Start after narrative completes
 		ambientDuration: 5000, // Slow breathing rhythm
 		ambientStagger: 600, // Offset between particles
 
@@ -397,11 +399,7 @@
 	}
 
 	function getEdgeDelay(conn: Connection, indexInPhase: number): number {
-		const phaseStart = {
-			'you-send': TIMING.phase1Start,
-			'you-share': TIMING.phase2Start,
-			'peers-send': TIMING.phase3Start
-		}[conn.phase];
+		const phaseStart = TIMING.phaseStarts[conn.phase] ?? 0;
 		return phaseStart + indexInPhase * TIMING.edgeStagger;
 	}
 
@@ -999,30 +997,24 @@
 		background: transparent;
 		box-shadow: none;
 		border-radius: 0;
-		padding: 0.5rem 0;
+		padding: 0;
 		max-width: none;
-	}
-
-	@media (min-width: 640px) {
-		.relay-loom.embedded {
-			padding: 0.75rem 0 0.5rem;
-		}
 	}
 
 	/* Reduce canvas height when embedded */
 	.relay-loom.embedded .canvas-container {
-		height: 420px;
+		height: 320px;
 	}
 
 	@media (min-width: 640px) {
 		.relay-loom.embedded .canvas-container {
-			height: 460px;
+			height: 340px;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.relay-loom.embedded .canvas-container {
-			height: 480px;
+			height: 360px;
 		}
 	}
 
