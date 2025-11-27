@@ -1,9 +1,7 @@
 <script lang="ts">
 	import { ChevronRight, PenLine, Landmark, Building2, Mail, Users, Search } from '@lucide/svelte';
-	// import { spring } from 'svelte/motion';
 	import { preloadData } from '$app/navigation';
 	import type { Template, TemplateGroup } from '$lib/types/template';
-	// import ChannelBadge from '$lib/components/ui/ChannelBadge.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import MessageMetrics from './MessageMetrics.svelte';
 	import SkeletonTemplate from '$lib/components/ui/SkeletonTemplate.svelte';
@@ -20,8 +18,25 @@
 
 	let { groups, selectedId, onSelect, onCreateTemplate, loading = false }: Props = $props();
 
-	// Progressive disclosure constant
-	const INITIAL_VISIBLE = 8;
+	/**
+	 * PERCEPTUAL ENGINEERING: Progressive Rendering Constants
+	 *
+	 * These constants define the rhythm of template materialization.
+	 * - INITIAL_VISIBLE: Must be tall enough to push sentinel below viewport
+	 * - BATCH_SIZE: Cognitive chunk size for progressive loading
+	 * - VIEWPORT_BUFFER: Distance before bottom edge to trigger next batch
+	 *
+	 * CRITICAL: Initial batch must exceed viewport height + buffer to prevent
+	 * immediate sentinel visibility on mount (causes runaway observer firing)
+	 *
+	 * Math: Template height ~120px × 12 templates = 1440px
+	 * Mobile viewport: 667px, Desktop: 1080px
+	 * Buffer: 200px
+	 * Result: 1440px > (1080px + 200px) ✓ Sentinel starts off-screen
+	 */
+	const INITIAL_VISIBLE = 12; // Increased from 8 to ensure sentinel below viewport
+	const BATCH_SIZE = 8;
+	const VIEWPORT_BUFFER = 200; // Reduced from 400px to prevent overeager triggering
 
 	// Search state
 	let searchQuery = $state('');
@@ -76,27 +91,128 @@
 	// Match count for feedback
 	const matchCount = $derived(filteredGroups.reduce((sum, g) => sum + g.templates.length, 0));
 
-	// Track expansion state per group (by title)
-	let expandedGroups = $state<Set<string>>(new Set());
+	/**
+	 * PERCEPTUAL ENGINEERING: Viewport-Aware Progressive Rendering
+	 *
+	 * Instead of "show more" buttons (discrete state change), we use IntersectionObserver
+	 * to progressively reveal templates as the user scrolls (continuous revelation).
+	 *
+	 * Cognitive Benefits:
+	 * - Preserves spatial memory (templates above don't shift)
+	 * - Matches prediction (templates appear at scrolling rhythm)
+	 * - Zero interaction cost (scrolling IS the query)
+	 * - Peripheral awareness (motion signals "more below")
+	 */
+
+	/**
+	 * PERCEPTUAL ENGINEERING: Progressive rendering state
+	 *
+	 * We track visible counts separately from initialization to avoid circular dependencies.
+	 * - visibleCounts: Mutable map updated by IntersectionObserver
+	 * - getVisibleCount(): Reads from visibleCounts, falls back to INITIAL_VISIBLE
+	 *
+	 * This avoids the effect_update_depth_exceeded error by never writing to
+	 * visibleCounts in a reactive context that reads from it.
+	 */
+	let visibleCounts = $state<Map<string, number>>(new Map());
+
+	// Sentinel elements for intersection observation (one per group)
+	let sentinelElements = $state<Map<string, HTMLElement>>(new Map());
 
 	// Flatten groups into single array for keyboard navigation
 	const allTemplates = $derived(filteredGroups.flatMap((g) => g.templates));
 
 	let hoveredTemplate = $state<string | null>(null);
 
-	function toggleGroupExpansion(groupTitle: string): void {
-		const newExpanded = new Set(expandedGroups);
-		if (newExpanded.has(groupTitle)) {
-			newExpanded.delete(groupTitle);
-		} else {
-			newExpanded.add(groupTitle);
-		}
-		expandedGroups = newExpanded;
+	/**
+	 * Get visible template count for a group
+	 * Starts at INITIAL_VISIBLE, grows in BATCH_SIZE increments as user scrolls
+	 */
+	function getVisibleCount(group: TemplateGroup): number {
+		const currentCount = visibleCounts.get(group.title) || INITIAL_VISIBLE;
+		return Math.min(currentCount, group.templates.length);
 	}
 
-	function getVisibleCount(group: TemplateGroup): number {
-		const isExpanded = expandedGroups.has(group.title);
-		return isExpanded ? group.templates.length : Math.min(INITIAL_VISIBLE, group.templates.length);
+	/**
+	 * Increment visible count for a group when sentinel enters viewport
+	 */
+	function incrementVisibleCount(groupTitle: string): void {
+		const current = visibleCounts.get(groupTitle) || INITIAL_VISIBLE;
+		const newCount = current + BATCH_SIZE;
+		visibleCounts.set(groupTitle, newCount);
+		// Trigger reactivity by creating new Map
+		visibleCounts = new Map(visibleCounts);
+	}
+
+
+	/**
+	 * Svelte Action: Register sentinel element and setup observer
+	 *
+	 * CRITICAL FIXES (per brutalist feedback):
+	 * 1. rootMargin must specify ALL sides (top, right, bottom, left)
+	 *    - '400px' applies 400px to ALL sides (creates 800x800px trigger zone)
+	 *    - '0px 0px 200px 0px' applies buffer ONLY to bottom edge
+	 * 2. Delay observer initialization until after layout completes
+	 *    - Double RAF ensures templates have rendered and calculated heights
+	 *    - Prevents immediate intersection on mount
+	 * 3. Remove redundant Map recreation (Svelte 5 $state tracks Map.set())
+	 */
+	function registerSentinel(element: HTMLElement, groupTitle: string) {
+		sentinelElements.set(groupTitle, element);
+
+		let observer: IntersectionObserver | null = null;
+
+		// CRITICAL: Wait for browser layout to complete before observing
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				// Double RAF ensures initial templates have rendered + layout calculated
+				observer = new IntersectionObserver(
+					(entries) => {
+						entries.forEach((entry) => {
+							console.log('[IntersectionObserver]', {
+								groupTitle,
+								isIntersecting: entry.isIntersecting,
+								intersectionRatio: entry.intersectionRatio,
+								boundingRect: entry.boundingClientRect,
+								rootBounds: entry.rootBounds
+							});
+
+							if (entry.isIntersecting) {
+								// User scrolled near sentinel, load next batch
+								const current = visibleCounts.get(groupTitle) || INITIAL_VISIBLE;
+								const newCount = current + BATCH_SIZE;
+								console.log('[Progressive Load]', {
+									groupTitle,
+									current,
+									newCount,
+									totalTemplates: filteredGroups.find(g => g.title === groupTitle)?.templates.length
+								});
+
+								// CRITICAL: Svelte 5 $state requires reassignment for Map reactivity
+								// .set() alone doesn't trigger - must create new Map
+								visibleCounts = new Map(visibleCounts.set(groupTitle, newCount));
+							}
+						});
+					},
+					{
+						// CRITICAL: Apply buffer ONLY to bottom (not all sides)
+						rootMargin: `0px 0px ${VIEWPORT_BUFFER}px 0px`,
+						threshold: 0
+					}
+				);
+
+				observer.observe(element);
+				console.log('[Sentinel Registered]', { groupTitle, element });
+			});
+		});
+
+		return {
+			destroy() {
+				console.log('[Sentinel Destroyed]', { groupTitle });
+				observer?.disconnect();
+				sentinelElements.delete(groupTitle);
+			}
+		};
 	}
 
 	function handleTemplateHover(templateId: string, isHovering: boolean) {
@@ -214,18 +330,20 @@
 					</span>
 				</div>
 
-				<!-- Templates in this group (with progressive disclosure) -->
+				<!-- Templates in this group (viewport-aware progressive rendering) -->
 				{#each group.templates.slice(0, getVisibleCount(group)) as template, templateIndex (template.id)}
 					{@const isCongressional = template.deliveryMethod === 'cwc'}
 					{@const isHovered = hoveredTemplate === template.id}
 					{@const globalIndex = allTemplates.findIndex((t) => t.id === template.id)}
 					{@const targetInfo = deriveTargetPresentation(template)}
+					{@const isNewlyRevealed = templateIndex >= INITIAL_VISIBLE}
 					<button
 						type="button"
 						data-template-button
 						data-template-id={template.id}
 						data-testid="template-button-{template.id}"
-						class="relative flex w-full items-start justify-between gap-3 rounded-xl border border-l-4 bg-white/80 p-3 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-atmospheric-card-hover md:p-4"
+						class="template-card relative flex w-full items-start justify-between gap-3 rounded-xl border border-l-4 bg-white/80 p-3 text-left shadow-atmospheric-card backdrop-blur-sm transition-all duration-300 hover:scale-[1.02] hover:shadow-atmospheric-card-hover md:p-4"
+						class:newly-revealed={isNewlyRevealed}
 						class:!bg-direct-50={selectedId === template.id && !isCongressional}
 						class:!bg-congressional-50={selectedId === template.id && isCongressional}
 						style="will-change: transform; backface-visibility: hidden; border-width: 1px; border-left-width: 4px;"
@@ -319,23 +437,30 @@
 					</button>
 				{/each}
 
-				<!-- Show more/less button -->
-				{#if group.templates.length > INITIAL_VISIBLE}
-					{@const isExpanded = expandedGroups.has(group.title)}
-					{@const visibleCount = getVisibleCount(group)}
-					{@const hiddenCount = group.templates.length - visibleCount}
+				<!-- Sentinel Element for Infinite Scroll -->
+				<!--
+					PERCEPTUAL ENGINEERING: This invisible element triggers the next batch.
+					When it enters the viewport (+ buffer), the IntersectionObserver fires.
 
-					<button
-						type="button"
-						class="show-more-button"
-						onclick={() => toggleGroupExpansion(group.title)}
+					Why this works:
+					- Zero interaction cost (scrolling IS the query)
+					- Preserves spatial memory (no layout shifts)
+					- Peripheral motion signals "more below" naturally
+				-->
+				{#if getVisibleCount(group) < group.templates.length}
+					<div
+						class="sentinel"
+						use:registerSentinel={group.title}
+						data-group={group.title}
+						aria-hidden="true"
 					>
-						{#if isExpanded}
-							Show fewer
-						{:else}
-							Show {hiddenCount} more in {group.title}
-						{/if}
-					</button>
+						<!-- Loading indicator (peripheral awareness) -->
+						<div class="loading-pulse">
+							<div class="pulse-dot"></div>
+							<div class="pulse-dot"></div>
+							<div class="pulse-dot"></div>
+						</div>
+					</div>
 				{/if}
 			</div>
 		{/each}
@@ -391,25 +516,72 @@
 		font-style: italic;
 	}
 
-	/* Progressive Disclosure Button */
-	.show-more-button {
-		width: 100%;
-		padding: 0.75rem;
-		margin-top: 0.75rem;
-		border: 1px dashed oklch(0.8 0.02 250);
-		border-radius: 8px;
-		background: oklch(0.98 0.005 250);
-		font-family: 'Satoshi', system-ui, sans-serif;
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: oklch(0.45 0.02 250);
-		cursor: pointer;
-		transition: all 150ms ease-out;
+	/**
+	 * PERCEPTUAL ENGINEERING: Template Entrance Animation
+	 *
+	 * Newly revealed templates fade in with subtle upward motion.
+	 * This creates peripheral awareness without demanding focal attention.
+	 *
+	 * Timing: 200ms ease-out (natural deceleration, like friction)
+	 * Motion: 8px upward (just enough for motion detection)
+	 */
+	.template-card.newly-revealed {
+		animation: reveal 200ms ease-out forwards;
 	}
 
-	.show-more-button:hover {
-		border-color: oklch(0.65 0.12 195);
-		background: oklch(0.97 0.01 195);
-		color: oklch(0.35 0.02 250);
+	@keyframes reveal {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+
+	/* Sentinel Element (Intersection Observer Target) */
+	.sentinel {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: 2rem 0;
+		margin-top: 0.75rem;
+		min-height: 60px;
+	}
+
+	/* Loading Pulse Animation (Peripheral Awareness Signal) */
+	.loading-pulse {
+		display: flex;
+		gap: 0.5rem;
+		align-items: center;
+	}
+
+	.pulse-dot {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: oklch(0.7 0.05 195);
+		animation: pulse 1.4s ease-in-out infinite;
+	}
+
+	.pulse-dot:nth-child(2) {
+		animation-delay: 0.2s;
+	}
+
+	.pulse-dot:nth-child(3) {
+		animation-delay: 0.4s;
+	}
+
+	@keyframes pulse {
+		0%,
+		100% {
+			opacity: 0.3;
+			transform: scale(0.8);
+		}
+		50% {
+			opacity: 1;
+			transform: scale(1.2);
+		}
 	}
 </style>

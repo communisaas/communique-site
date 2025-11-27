@@ -35,7 +35,11 @@
 	import type { ModalComponent } from '$lib/types/component-props';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
-	import { CreationSpark, CoordinationExplainer } from '$lib/components/landing/activation';
+	import {
+		CreationSpark,
+		CoordinationExplainer,
+		ContextFooter
+	} from '$lib/components/landing/activation';
 
 	let { data }: { data: PageData } = $props();
 
@@ -260,13 +264,22 @@
 <section class="activation-page">
 	<!-- Main Content: Split Layout -->
 	<div class="activation-container">
-		<!-- Left Column: Creation Spark -->
+		<!-- Left Column: Creation Spark + Minimal Footer -->
 		<div class="creation-column">
-			<CreationSpark on:activate={handleSparkActivate} />
+			<CreationSpark on:activate={handleSparkActivate}>
+				{#snippet context()}
+					<ContextFooter />
+				{/snippet}
+			</CreationSpark>
 		</div>
 
 		<!-- Right Column: Template Stream + Preview -->
 		<div class="stream-column">
+			<!-- How It Works - Spatially Adjacent to Coordination Signals -->
+			<div class="stream-explainer">
+				<CoordinationExplainer />
+			</div>
+
 			<!-- Location Filter -->
 			<div class="stream-header">
 				<LocationFilter
@@ -363,11 +376,6 @@
 				</div>
 			</div>
 		</div>
-	</div>
-
-	<!-- How It Works - Progressive Disclosure -->
-	<div class="explainer-section">
-		<CoordinationExplainer />
 	</div>
 </section>
 
@@ -517,28 +525,35 @@
 	 */
 
 	/*
-	 * STICKY FIX: Container has NO top padding.
-	 * Top padding lives on children so sticky can lock at viewport edge.
+	 * STICKY FIX: Container top padding for mobile/tablet only.
+	 * Desktop (>=1280px): NO top padding - creation-column sticky locks at viewport edge.
+	 * Mobile/tablet (<1280px): Top padding matches horizontal padding at each breakpoint.
 	 */
 	.activation-page {
 		display: flex;
 		flex-direction: column;
 		gap: 3rem;
-		padding: 0 1rem 4rem; /* No top padding - children own it */
+		padding: 1rem 1rem 4rem; /* Top matches horizontal (1rem) */
 		max-width: 1600px;
 		margin: 0 auto;
 	}
 
 	@media (min-width: 640px) {
 		.activation-page {
-			padding: 0 1.5rem 5rem; /* No top padding */
+			padding: 1.5rem 1.5rem 5rem; /* Top matches horizontal (1.5rem) */
 			gap: 4rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.activation-page {
-			padding: 0 2rem 6rem; /* No top padding */
+			padding: 2rem 2rem 6rem; /* Top matches horizontal (2rem) */
+		}
+	}
+
+	@media (min-width: 1280px) {
+		.activation-page {
+			padding: 0 2rem 6rem; /* NO top padding - sticky sidebar takes over */
 		}
 	}
 
@@ -578,7 +593,6 @@
 	.creation-column {
 		/* Mobile/Tablet: show as expandable card */
 		padding: 1.5rem;
-		padding-top: calc(1.5rem + 2rem); /* Card padding + container spacing */
 		border-radius: 16px;
 		border: 1px solid oklch(0.9 0.02 250);
 		background: white;
@@ -587,28 +601,17 @@
 			0 10px 30px -10px oklch(0.3 0.05 250 / 0.1);
 	}
 
-	@media (min-width: 640px) {
-		.creation-column {
-			padding-top: calc(1.5rem + 2.5rem); /* Match activation-page's old 2.5rem top */
-		}
-	}
-
-	@media (min-width: 1024px) {
-		.creation-column {
-			padding-top: calc(1.5rem + 3rem); /* Match activation-page's old 3rem top */
-		}
-	}
-
 	@media (min-width: 1280px) {
 		.creation-column {
 			/* Desktop: sticky sidebar - locks immediately at viewport edge */
 			position: sticky;
 			top: 0;
-			padding: 3rem 0 0 0; /* Top spacing inside sticky element */
+			padding: 3rem 0 8rem 0; /* Top spacing + bottom for absolutely positioned footer */
 			border: none;
 			background: transparent;
 			box-shadow: none;
 			z-index: 10; /* Stay above scrolling content */
+			overflow: visible; /* Allow RelayLoom expanded nodes to overflow */
 		}
 	}
 
@@ -616,20 +619,13 @@
 	.stream-column {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 0.5rem;
 		min-width: 0;
-		padding-top: 2rem; /* Match old container padding */
 	}
 
-	@media (min-width: 640px) {
+	@media (min-width: 1280px) {
 		.stream-column {
-			padding-top: 2.5rem;
-		}
-	}
-
-	@media (min-width: 1024px) {
-		.stream-column {
-			padding-top: 3rem;
+			padding-top: 3rem; /* Match creation-column top spacing on desktop */
 		}
 	}
 
@@ -673,10 +669,14 @@
 		}
 	}
 
-	/* Explainer Section */
-	.explainer-section {
-		max-width: 1200px;
-		margin: 0 auto;
-		width: 100%;
+	/* Stream Explainer - Spatially adjacent to coordination signals */
+	.stream-explainer {
+		margin-bottom: 0.5em;
+	}
+
+	@media (min-width: 640px) {
+		.stream-explainer {
+			margin-bottom: 1.5rem;
+		}
 	}
 </style>

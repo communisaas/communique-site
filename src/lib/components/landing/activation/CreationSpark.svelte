@@ -17,6 +17,15 @@
 	import { createEventDispatcher } from 'svelte';
 	import { ArrowRight } from '@lucide/svelte';
 
+	import type { Snippet } from 'svelte';
+
+	// Props
+	interface Props {
+		context?: Snippet;
+	}
+
+	let { context }: Props = $props();
+
 	const dispatch = createEventDispatcher<{
 		activate: { initialText: string };
 	}>();
@@ -109,6 +118,11 @@
 		<span class="divider-text">or join an existing campaign</span>
 		<span class="divider-line"></span>
 	</div>
+
+	<!-- Render additional context (explainer, footer, etc) -->
+	{#if context}
+		{@render context()}
+	{/if}
 </div>
 
 <style>
@@ -127,7 +141,19 @@
 	.creation-spark {
 		display: flex;
 		flex-direction: column;
-		gap: 1.5rem;
+		gap: 0.5rem;
+	}
+
+	/*
+	 * Desktop: Positioning context for absolutely positioned footer
+	 * Also allows overflow for expanded RelayLoom nodes if explainer is slotted
+	 */
+	@media (min-width: 1280px) {
+		.creation-spark {
+			position: relative;
+			overflow: visible;
+			min-height: calc(100vh - 6rem); /* Full viewport minus top padding */
+		}
 	}
 
 	/* Header - Brand + Headline */
@@ -373,14 +399,14 @@
 		display: flex;
 		align-items: center;
 		gap: 1rem;
-		margin-top: 0.5rem;
+		margin-top: 0;
 	}
 
 	/* Desktop: Transform to directional label without misleading lines */
 	@media (min-width: 1280px) {
 		.spark-divider {
-			margin-top: 1.5rem;
-			padding-top: 1.5rem;
+			margin-top: 1rem;
+			padding-top: 1rem;
 			border-top: 1px solid oklch(0.92 0.01 250);
 			justify-content: flex-start;
 			gap: 0.5rem;

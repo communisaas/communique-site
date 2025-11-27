@@ -93,6 +93,8 @@
 	const pulseLength = $derived(8 * avgScale);
 	const pulseThickness = $derived(2.2 * avgScale);
 
+	type EdgeTiming = { start: number | null; arrival: number | null };
+
 	// Dynamic font scale: shrink text when container gets narrow
 	// This preserves edge visibility by making nodes smaller
 	// Scale ranges: 1.0 at 500px+ width, down to 0.75 at 300px
@@ -709,6 +711,39 @@
 			return idx;
 		}
 	}
+
+	// Compute principled edge timings: a node only emits after receiving
+	const edgeSchedule = $derived(computeEdgeSchedule());
+
+	function computeEdgeSchedule(): EdgeTiming[] {
+		const activation: Record<string, number> = { you: 0 };
+		const schedule: EdgeTiming[] = [];
+
+		for (const conn of allConnections) {
+			const phaseIndex = getPhaseIndex(conn);
+			const sourceActive = activation[conn.from];
+			const hasSource = Number.isFinite(sourceActive);
+
+			// If source never received, edge stays latent
+			if (!hasSource) {
+				schedule.push({ start: null, arrival: null });
+				continue;
+			}
+
+			const phaseStart = TIMING.phaseStarts[conn.phase] ?? 0;
+			const start = sourceActive + phaseStart + phaseIndex * TIMING.edgeStagger;
+			const arrival = start + TIMING.edgeDrawDuration;
+
+			schedule.push({ start, arrival });
+
+			// Update activation for receivers so they can emit later
+			const current = activation[conn.to];
+			const nextArrival = Math.min(current ?? Number.POSITIVE_INFINITY, arrival);
+			activation[conn.to] = nextArrival;
+		}
+
+		return schedule;
+	}
 </script>
 
 <div
@@ -767,15 +802,16 @@
 			<g class="edges-layer" filter="url(#trace-noise)">
 				{#each allConnections as conn, i}
 					{@const phaseIndex = getPhaseIndex(conn)}
-					{@const delay = getEdgeDelay(conn, phaseIndex)}
+					{@const delay = edgeSchedule[i]?.start ?? null}
 					{@const isActive = isConnectionActive(conn)}
 					<use
 						href="#edge-path-{i}"
 						class="edge-drawing"
+						class:latent={delay === null}
 						class:share={conn.type === 'share'}
 						class:deliver={conn.type === 'deliver'}
 						class:active={isActive}
-						style:--draw-delay="{delay}ms"
+						style:--draw-delay={delay !== null ? `${delay}ms` : undefined}
 						style:--draw-duration="{TIMING.edgeDrawDuration}ms"
 						style:--stroke-width={isActive ? strokeWidthActive : strokeWidth}
 						style:stroke={conn.type === 'share'
@@ -790,6 +826,7 @@
 				<g class="particles-ambient">
 					{#each allConnections as conn, i}
 						{@const stagger = i * TIMING.ambientStagger}
+						{@const edgeStart = edgeSchedule[i]?.start}
 						<rect
 							width={pulseLength}
 							height={pulseThickness}
@@ -803,7 +840,7 @@
 							<animateMotion
 								dur="{TIMING.ambientDuration}ms"
 								repeatCount="indefinite"
-								begin="{stagger}ms"
+								begin={edgeStart === null ? 'indefinite' : `${(edgeStart ?? 0) + TIMING.edgeDrawDuration + 120}ms`}
 								calcMode="spline"
 								keySplines="0.4 0 0.2 1"
 								keyTimes="0;1"
@@ -830,6 +867,7 @@
 						{@const pathIndex = allConnections.findIndex(
 							(c) => c.from === conn.from && c.to === conn.to
 						)}
+						{@const edgeStart = edgeSchedule[pathIndex]?.start}
 						{#each [0, 1, 2] as particleIndex}
 							{@const stagger = particleIndex * TIMING.activeStagger}
 							<rect
@@ -844,7 +882,7 @@
 								<animateMotion
 									dur="{TIMING.activeDuration}ms"
 									repeatCount="indefinite"
-									begin="{stagger}ms"
+									begin={edgeStart === null ? 'indefinite' : `${(edgeStart ?? 0) + stagger}ms`}
 									calcMode="spline"
 									keySplines="0.33 1 0.68 1"
 									keyTimes="0;1"
@@ -1125,6 +1163,12 @@
 	.relay-loom.mounted .edge-drawing {
 		animation: draw-edge var(--draw-duration, 800ms) ease-out forwards;
 		animation-delay: var(--draw-delay, 0ms);
+	}
+
+	.edge-drawing.latent {
+		animation: none !important;
+		stroke-dashoffset: 1200;
+		opacity: 0.06;
 	}
 
 	@keyframes draw-edge {
