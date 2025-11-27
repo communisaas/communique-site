@@ -90,6 +90,8 @@
 	const particleRadiusActive = $derived(2.5 * avgScale);
 	const strokeWidth = $derived(1.3 * avgScale);
 	const strokeWidthActive = $derived(1.8 * avgScale);
+	const pulseLength = $derived(8 * avgScale);
+	const pulseThickness = $derived(2.2 * avgScale);
 
 	// Dynamic font scale: shrink text when container gets narrow
 	// This preserves edge visibility by making nodes smaller
@@ -324,7 +326,7 @@
 		// Ambient particles (life after reveal)
 		ambientDelay: 3400, // Start after narrative completes
 		ambientDuration: 5000, // Slow breathing rhythm
-		ambientStagger: 600, // Offset between particles
+		ambientStagger: 520, // Offset between particles
 
 		// Hover response
 		activeDuration: 700,
@@ -726,6 +728,25 @@
 	<div class="canvas-container" bind:this={containerEl}>
 		<svg {viewBox} class="edge-canvas" aria-hidden="true">
 			<defs>
+				<!-- Gradients encode phase semantics while keeping provenance from "you" -->
+				<linearGradient id="edge-share-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+					<stop offset="0%" stop-color="oklch(0.32 0.02 250)" />
+					<stop offset="30%" stop-color="oklch(0.55 0.12 55)" />
+					<stop offset="100%" stop-color="oklch(0.64 0.14 70)" />
+				</linearGradient>
+
+				<linearGradient id="edge-deliver-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+					<stop offset="0%" stop-color="oklch(0.3 0.02 240)" />
+					<stop offset="35%" stop-color="oklch(0.5 0.1 190)" />
+					<stop offset="100%" stop-color="oklch(0.62 0.12 175)" />
+				</linearGradient>
+
+				<!-- Subtle displacement for interference shimmer (very low amplitude) -->
+				<filter id="trace-noise" x="-10%" y="-10%" width="120%" height="120%">
+					<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" seed="3" result="noise" />
+					<feDisplacementMap in="SourceGraphic" in2="noise" scale="1" xChannelSelector="R" yChannelSelector="G" />
+				</filter>
+
 				<!-- Glow filter for active particles -->
 				<filter id="particle-glow" x="-50%" y="-50%" width="200%" height="200%">
 					<feGaussianBlur in="SourceGraphic" stdDeviation="1" result="blur" />
@@ -743,7 +764,7 @@
 			</defs>
 
 			<!-- Layer 1: Edges with staged reveal -->
-			<g class="edges-layer">
+			<g class="edges-layer" filter="url(#trace-noise)">
 				{#each allConnections as conn, i}
 					{@const phaseIndex = getPhaseIndex(conn)}
 					{@const delay = getEdgeDelay(conn, phaseIndex)}
@@ -757,6 +778,9 @@
 						style:--draw-delay="{delay}ms"
 						style:--draw-duration="{TIMING.edgeDrawDuration}ms"
 						style:--stroke-width={isActive ? strokeWidthActive : strokeWidth}
+						style:stroke={conn.type === 'share'
+							? 'url(#edge-share-gradient)'
+							: 'url(#edge-deliver-gradient)'}
 					/>
 				{/each}
 			</g>
@@ -766,8 +790,11 @@
 				<g class="particles-ambient">
 					{#each allConnections as conn, i}
 						{@const stagger = i * TIMING.ambientStagger}
-						<circle
-							r={particleRadiusAmbient}
+						<rect
+							width={pulseLength}
+							height={pulseThickness}
+							rx={pulseThickness}
+							ry={pulseThickness}
 							class="particle ambient"
 							class:share={conn.type === 'share'}
 							class:deliver={conn.type === 'deliver'}
@@ -783,7 +810,15 @@
 							>
 								<mpath href="#edge-path-{i}" />
 							</animateMotion>
-						</circle>
+
+							<animate
+								attributeName="opacity"
+								values="0;0.7;0.18;0"
+								dur="1200ms"
+								repeatCount="indefinite"
+								begin="{stagger}ms"
+							/>
+						</rect>
 					{/each}
 				</g>
 			{/if}
@@ -797,8 +832,11 @@
 						)}
 						{#each [0, 1, 2] as particleIndex}
 							{@const stagger = particleIndex * TIMING.activeStagger}
-							<circle
-								r={particleRadiusActive}
+							<rect
+								width={pulseLength}
+								height={pulseThickness + 0.4 * avgScale}
+								rx={pulseThickness}
+								ry={pulseThickness}
 								class="particle active"
 								class:share={conn.type === 'share'}
 								class:deliver={conn.type === 'deliver'}
@@ -813,7 +851,14 @@
 								>
 									<mpath href="#edge-path-{pathIndex}" />
 								</animateMotion>
-							</circle>
+								<animate
+									attributeName="opacity"
+									values="0.85;1;0.4"
+									dur="{TIMING.activeDuration}ms"
+									repeatCount="indefinite"
+									begin="{stagger}ms"
+								/>
+							</rect>
 						{/each}
 					{/each}
 				</g>
@@ -932,8 +977,9 @@
 	   ───────────────────────────────────────────────────────────── */
 
 	.relay-loom {
-		--share-color: oklch(0.7 0.15 270);
-		--share-color-bright: oklch(0.8 0.18 270);
+		--trace-charcoal: oklch(0.2 0.02 250);
+		--share-color: url(#edge-share-gradient);
+		--share-color-bright: oklch(0.78 0.16 70);
 		/*
 		 * Glow layers for box-shadow approach:
 		 * Inner: brightest, tightest spread
@@ -944,8 +990,8 @@
 		--share-glow-mid: oklch(0.78 0.1 270 / 0.2);
 		--share-glow-outer: oklch(0.85 0.06 270 / 0.1);
 
-		--deliver-color: oklch(0.75 0.14 175);
-		--deliver-color-bright: oklch(0.85 0.16 175);
+		--deliver-color: url(#edge-deliver-gradient);
+		--deliver-color-bright: oklch(0.78 0.12 175);
 		/* Teal glow layers: same principle */
 		--deliver-glow-inner: oklch(0.75 0.12 175 / 0.32);
 		--deliver-glow-mid: oklch(0.8 0.08 175 / 0.18);
@@ -1057,12 +1103,14 @@
 		stroke-width: var(--stroke-width, 1.3);
 		stroke-linecap: round;
 		stroke-linejoin: round;
-		stroke-dasharray: 1000;
-		stroke-dashoffset: 1000;
+		stroke-dasharray: 1200;
+		stroke-dashoffset: 1200;
 		opacity: 0;
+		filter: saturate(1) brightness(0.96);
 		transition:
 			stroke var(--transition-fast) ease-out,
-			stroke-width var(--transition-fast) ease-out;
+			stroke-width var(--transition-fast) ease-out,
+			opacity 160ms ease-out;
 	}
 
 	.edge-drawing.share {
@@ -1081,15 +1129,17 @@
 
 	@keyframes draw-edge {
 		0% {
-			stroke-dashoffset: 1000;
+			stroke-dashoffset: 1200;
 			opacity: 0;
+			stroke-width: calc(var(--stroke-width, 1.3) * 0.6);
 		}
-		15% {
-			opacity: 0.7;
+		20% {
+			opacity: 0.82;
+			stroke-width: calc(var(--stroke-width, 1.3) * 1.08);
 		}
 		100% {
 			stroke-dashoffset: 0;
-			opacity: 0.5;
+			opacity: 0.58;
 		}
 	}
 
@@ -1097,7 +1147,8 @@
 	.relay-loom.narrative-complete .edge-drawing {
 		stroke-dasharray: none;
 		stroke-dashoffset: 0;
-		opacity: 0.4;
+		opacity: 0.32;
+		stroke-width: calc(var(--stroke-width, 1.3) * 0.75);
 	}
 
 	/* Hover intensifies connected edges */
@@ -1127,45 +1178,48 @@
 
 	.particle {
 		will-change: transform;
+		transform-box: fill-box;
+		transform-origin: center;
+		stroke: none;
 	}
 
 	.particle.ambient {
 		opacity: 0;
-	}
-
-	.particle.ambient.share {
-		fill: var(--share-color);
+		fill: oklch(0.68 0.07 70 / 0.9);
 	}
 
 	.particle.ambient.deliver {
-		fill: var(--deliver-color);
+		fill: oklch(0.62 0.06 180 / 0.9);
 	}
 
 	/* Fade in ambient particles after narrative - use animation delay to sync with SMIL begin */
 	.relay-loom.narrative-complete .particle.ambient {
-		animation: particle-fade-in 400ms ease-out forwards;
+		animation: particle-fade-in 420ms ease-out forwards;
 		animation-delay: var(--particle-delay, 0ms);
 	}
 
 	@keyframes particle-fade-in {
 		0% {
 			opacity: 0;
+			transform: scale(0.85);
+		}
+		40% {
+			opacity: 0.7;
+			transform: scale(1.08);
 		}
 		100% {
-			opacity: 0.55;
+			opacity: 0.2;
+			transform: scale(0.96);
 		}
 	}
 
 	.particle.active {
+		fill: oklch(0.8 0.15 70);
 		opacity: 0.95;
 	}
 
-	.particle.active.share {
-		fill: var(--share-color-bright);
-	}
-
 	.particle.active.deliver {
-		fill: var(--deliver-color-bright);
+		fill: oklch(0.76 0.12 175);
 	}
 
 	/* Reduced motion: hide all particles */
