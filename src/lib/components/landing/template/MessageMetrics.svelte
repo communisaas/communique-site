@@ -126,7 +126,7 @@
 		<span class="min-w-0 flex-1">
 			{formatNumber(metrics.sent)} sent
 		</span>
-		<div class="relative">
+		<div class="relative z-50">
 			<Info
 				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
 				onmouseenter={() => (hoveredTooltip = 'sent')}
@@ -150,7 +150,7 @@
 		<span class="min-w-0 flex-1">
 			{currentMetric.secondaryValue}
 		</span>
-		<div class="relative">
+		<div class="relative z-50">
 			<Info
 				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
 				onmouseenter={() => (hoveredTooltip = 'recipients')}

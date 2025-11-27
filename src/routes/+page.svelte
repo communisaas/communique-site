@@ -658,6 +658,8 @@
 
 	.template-list-column {
 		min-width: 0;
+		position: relative;
+		z-index: 20;
 	}
 
 	.template-preview-column {
