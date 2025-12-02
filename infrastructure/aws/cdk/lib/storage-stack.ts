@@ -2,6 +2,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as backup from 'aws-cdk-lib/aws-backup';
+import * as events from 'aws-cdk-lib/aws-events';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { EnvironmentConfig } from './config';
@@ -67,7 +68,7 @@ export class StorageStack extends cdk.Stack {
 	private createRateLimitTable(config: EnvironmentConfig): dynamodb.Table {
 		const tableConfig = config.dynamodb.rateLimitTable;
 
-		return new dynamodb.Table(this, 'RateLimitTable', {
+		const table = new dynamodb.Table(this, 'RateLimitTable', {
 			tableName: tableConfig.tableName,
 			partitionKey: {
 				name: 'pk',
@@ -95,29 +96,32 @@ export class StorageStack extends cdk.Stack {
 				config.environment === 'production' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
 			contributorInsightsEnabled: config.monitoring.enableDetailedMonitoring,
 			stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES, // For monitoring changes
-			globalSecondaryIndexes: [
-				{
-					indexName: 'UserIdIndex',
-					partitionKey: {
-						name: 'userId',
-						type: dynamodb.AttributeType.STRING
-					},
-					sortKey: {
-						name: 'createdAt',
-						type: dynamodb.AttributeType.NUMBER
-					},
-					projectionType: dynamodb.ProjectionType.ALL
-				},
-				{
-					indexName: 'ExpirationIndex',
-					partitionKey: {
-						name: 'expiresAt',
-						type: dynamodb.AttributeType.NUMBER
-					},
-					projectionType: dynamodb.ProjectionType.KEYS_ONLY
-				}
-			]
 		});
+
+		// Add Global Secondary Indexes
+		table.addGlobalSecondaryIndex({
+			indexName: 'UserIdIndex',
+			partitionKey: {
+				name: 'userId',
+				type: dynamodb.AttributeType.STRING
+			},
+			sortKey: {
+				name: 'createdAt',
+				type: dynamodb.AttributeType.NUMBER
+			},
+			projectionType: dynamodb.ProjectionType.ALL
+		});
+
+		table.addGlobalSecondaryIndex({
+			indexName: 'ExpirationIndex',
+			partitionKey: {
+				name: 'expiresAt',
+				type: dynamodb.AttributeType.NUMBER
+			},
+			projectionType: dynamodb.ProjectionType.KEYS_ONLY
+		});
+
+		return table;
 	}
 
 	/**
@@ -126,7 +130,7 @@ export class StorageStack extends cdk.Stack {
 	private createJobTrackingTable(config: EnvironmentConfig): dynamodb.Table {
 		const tableConfig = config.dynamodb.jobTrackingTable;
 
-		return new dynamodb.Table(this, 'JobTrackingTable', {
+		const table = new dynamodb.Table(this, 'JobTrackingTable', {
 			tableName: tableConfig.tableName,
 			partitionKey: {
 				name: 'jobId',
@@ -154,41 +158,45 @@ export class StorageStack extends cdk.Stack {
 				config.environment === 'production' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
 			contributorInsightsEnabled: config.monitoring.enableDetailedMonitoring,
 			stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES, // For monitoring and audit
-			globalSecondaryIndexes: [
-				{
-					indexName: 'UserJobIndex',
-					partitionKey: {
-						name: 'userId',
-						type: dynamodb.AttributeType.STRING
-					},
-					sortKey: {
-						name: 'createdAt',
-						type: dynamodb.AttributeType.NUMBER
-					},
-					projectionType: dynamodb.ProjectionType.ALL
-				},
-				{
-					indexName: 'StatusIndex',
-					partitionKey: {
-						name: 'status',
-						type: dynamodb.AttributeType.STRING
-					},
-					sortKey: {
-						name: 'createdAt',
-						type: dynamodb.AttributeType.NUMBER
-					},
-					projectionType: dynamodb.ProjectionType.ALL
-				},
-				{
-					indexName: 'CompletionIndex',
-					partitionKey: {
-						name: 'completedAt',
-						type: dynamodb.AttributeType.NUMBER
-					},
-					projectionType: dynamodb.ProjectionType.KEYS_ONLY
-				}
-			]
 		});
+
+		// Add Global Secondary Indexes
+		table.addGlobalSecondaryIndex({
+			indexName: 'UserJobIndex',
+			partitionKey: {
+				name: 'userId',
+				type: dynamodb.AttributeType.STRING
+			},
+			sortKey: {
+				name: 'createdAt',
+				type: dynamodb.AttributeType.NUMBER
+			},
+			projectionType: dynamodb.ProjectionType.ALL
+		});
+
+		table.addGlobalSecondaryIndex({
+			indexName: 'StatusIndex',
+			partitionKey: {
+				name: 'status',
+				type: dynamodb.AttributeType.STRING
+			},
+			sortKey: {
+				name: 'createdAt',
+				type: dynamodb.AttributeType.NUMBER
+			},
+			projectionType: dynamodb.ProjectionType.ALL
+		});
+
+		table.addGlobalSecondaryIndex({
+			indexName: 'CompletionIndex',
+			partitionKey: {
+				name: 'completedAt',
+				type: dynamodb.AttributeType.NUMBER
+			},
+			projectionType: dynamodb.ProjectionType.KEYS_ONLY
+		});
+
+		return table;
 	}
 
 	/**
@@ -208,9 +216,9 @@ export class StorageStack extends cdk.Stack {
 			backupPlanName: `${config.appName}-dynamodb-backup-plan`,
 			backupVault: backupVault,
 			backupPlanRules: [
-				{
+				new backup.BackupPlanRule({
 					ruleName: 'DailyBackups',
-					scheduleExpression: backup.Schedule.cron({
+					scheduleExpression: events.Schedule.cron({
 						hour: '2',
 						minute: '0'
 					}),
@@ -218,7 +226,7 @@ export class StorageStack extends cdk.Stack {
 					completionWindow: cdk.Duration.hours(2),
 					deleteAfter: cdk.Duration.days(30),
 					moveToColdStorageAfter: cdk.Duration.days(7)
-				}
+				})
 			]
 		});
 

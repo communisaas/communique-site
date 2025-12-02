@@ -30,6 +30,8 @@ export interface WitnessData {
 	actionId: string;
 	/** Timestamp */
 	timestamp: number;
+	/** User address for encryption (not used in proof) */
+	address: string;
 }
 
 /**
@@ -110,11 +112,11 @@ export async function encryptWitness(witness: WitnessData): Promise<EncryptedWit
 		// Step 1: Get TEE public key
 		const teeKey = await getTEEPublicKey();
 
-		// Step 2: Generate ephemeral X25519 keypair
+		// Step 2: Generate ephemeral P-256 keypair (X25519 not supported in browsers)
 		const ephemeralKeypair = await crypto.subtle.generateKey(
 			{
 				name: 'ECDH',
-				namedCurve: 'X25519'
+				namedCurve: 'P-256'
 			},
 			true, // extractable
 			['deriveBits']
@@ -127,7 +129,7 @@ export async function encryptWitness(witness: WitnessData): Promise<EncryptedWit
 			teePublicKeyBytes,
 			{
 				name: 'ECDH',
-				namedCurve: 'X25519'
+				namedCurve: 'P-256'
 			},
 			false,
 			[]

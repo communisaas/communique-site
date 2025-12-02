@@ -10,16 +10,13 @@
 	 */
 
 	import { templateStore } from '$lib/stores/templates.svelte';
-	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
-	import LocationFilter from '$lib/components/landing/template/LocationFilter.svelte';
-	import TemplateList from '$lib/components/landing/template/TemplateList.svelte';
+	import TemplatePreview from '$lib/components/template-browser/TemplatePreview.svelte';
+	import LocationFilter from '$lib/components/template-browser/LocationFilter.svelte';
+	import TemplateList from '$lib/components/template-browser/TemplateList.svelte';
 	import TouchModal from '$lib/components/ui/TouchModal.svelte';
 	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
 	import TemplateSuccessModal from '$lib/components/modals/TemplateSuccessModal.svelte';
-	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
-	import UnifiedProgressiveFormModal from '$lib/components/modals/UnifiedProgressiveFormModal.svelte';
-	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
 	import { isMobile, navigateTo } from '$lib/utils/browserUtils';
 	import { browser } from '$app/environment';
 	import { page } from '$app/stores';
@@ -35,11 +32,8 @@
 	import type { ModalComponent } from '$lib/types/component-props';
 
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
-	import {
-		CreationSpark,
-		CoordinationExplainer,
-		ContextFooter
-	} from '$lib/components/landing/activation';
+	import { CreationSpark, CoordinationExplainer } from '$lib/components/activation';
+	import { guestState } from '$lib/stores/guestState.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -229,7 +223,20 @@
 		if (!data.user) {
 			modalActions.openModal('onboarding-modal', 'onboarding', {
 				template,
-				source: 'featured'
+				source: 'featured',
+				onComplete: async (detail: any) => {
+					// If address was collected during onboarding (unlikely but possible depending on flow), save it
+					if (detail?.address) {
+						// Client-side caching only - Cypherpunk ethos
+						guestState.setAddress(detail.address);
+					}
+
+					const templateUrl = `/s/${template.slug}`;
+					preloadData(templateUrl);
+					setTimeout(() => {
+						goto(templateUrl);
+					}, 500);
+				}
 			});
 			return;
 		}
@@ -240,7 +247,19 @@
 			modalActions.openModal('address-modal', 'address', {
 				template,
 				source: 'featured',
-				user: data.user
+				user: data.user,
+				onComplete: async (detail: any) => {
+					if (detail?.address) {
+						// Client-side caching only - Cypherpunk ethos
+						guestState.setAddress(detail.address);
+					}
+
+					const templateUrl = `/s/${template.slug}`;
+					preloadData(templateUrl);
+					setTimeout(() => {
+						goto(templateUrl);
+					}, 500);
+				}
 			});
 		} else {
 			const templateUrl = `/s/${template.slug}`;
@@ -268,7 +287,23 @@
 		<div class="creation-column">
 			<CreationSpark on:activate={handleSparkActivate}>
 				{#snippet context()}
-					<ContextFooter />
+					<footer class="creation-footer">
+						<a href="mailto:hello@communi.email" class="contact-link">
+							<span class="link-text">hello@communi.email</span>
+							<svg
+								class="link-arrow"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<line x1="5" y1="12" x2="19" y2="12"></line>
+								<polyline points="12 5 19 12 12 19"></polyline>
+							</svg>
+						</a>
+					</footer>
 				{/snippet}
 			</CreationSpark>
 		</div>
@@ -462,32 +497,6 @@
 	</SimpleModal>
 {/if}
 
-<!-- Auth Modals -->
-<UnifiedOnboardingModal />
-
-<!-- Template Creator Auth Modal -->
-{#if showTemplateAuthModal && pendingTemplateToSave}
-	<UnifiedProgressiveFormModal
-		template={{
-			id: 'template-creation',
-			title: 'Save Your Template',
-			description: 'Create an account to save your template and track its impact',
-			slug: 'template-creation',
-			deliveryMethod: 'auth',
-			preview: 'Sign up to save your advocacy template and help others make their voices heard.'
-		}}
-		user={data.user}
-		on:close={() => {
-			showTemplateAuthModal = false;
-			pendingTemplateToSave = null;
-		}}
-		on:send={handleTemplateCreatorAuth}
-	/>
-{/if}
-
-<!-- Address Collection Modal -->
-<UnifiedAddressModal />
-
 <!-- Template Success Modal -->
 {#if showTemplateSuccess && savedTemplate}
 	<TemplateSuccessModal
@@ -533,27 +542,28 @@
 		display: flex;
 		flex-direction: column;
 		gap: 3rem;
-		padding: 1rem 1rem 4rem; /* Top matches horizontal (1rem) */
+		min-height: 100vh;
+		padding: 1rem 1rem 0; /* Top matches horizontal (1rem); no bottom padding */
 		max-width: 1600px;
 		margin: 0 auto;
 	}
 
 	@media (min-width: 640px) {
 		.activation-page {
-			padding: 1.5rem 1.5rem 5rem; /* Top matches horizontal (1.5rem) */
+			padding: 1.5rem 1.5rem 0; /* Top matches horizontal (1.5rem) */
 			gap: 4rem;
 		}
 	}
 
 	@media (min-width: 1024px) {
 		.activation-page {
-			padding: 2rem 2rem 6rem; /* Top matches horizontal (2rem) */
+			padding: 2rem 2rem 0; /* Top matches horizontal (2rem) */
 		}
 	}
 
 	@media (min-width: 1280px) {
 		.activation-page {
-			padding: 0 2rem 6rem; /* NO top padding - sticky sidebar takes over */
+			padding: 0 2rem 0; /* NO top padding - sticky sidebar takes over */
 		}
 	}
 
@@ -606,7 +616,7 @@
 			/* Desktop: sticky sidebar - locks immediately at viewport edge */
 			position: sticky;
 			top: 0;
-			padding: 3rem 0 8rem 0; /* Top spacing + bottom for absolutely positioned footer */
+			padding: 3rem 0 2rem 0; /* Top spacing + bottom for absolutely positioned footer */
 			border: none;
 			background: transparent;
 			box-shadow: none;
@@ -637,12 +647,14 @@
 	.template-browser {
 		display: grid;
 		gap: 1.5rem;
+		padding-bottom: 1.5rem;
 	}
 
 	@media (min-width: 768px) {
 		.template-browser {
 			grid-template-columns: 1fr 1.5fr;
 			gap: 2rem;
+			padding-bottom: 2rem;
 		}
 	}
 
@@ -678,5 +690,42 @@
 		.stream-explainer {
 			margin-bottom: 1.5rem;
 		}
+	}
+
+	/* Creation Footer & Contact Link */
+	.creation-footer {
+		margin-top: auto;
+		padding-top: 1.5rem;
+	}
+
+	.contact-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		text-decoration: none;
+		color: oklch(0.55 0.02 250);
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.875rem;
+		font-weight: 500;
+		transition: color 200ms ease-out;
+	}
+
+	.link-arrow {
+		width: 1em;
+		height: 1em;
+		opacity: 0;
+		transform: translateX(-4px);
+		transition:
+			opacity 200ms ease-out,
+			transform 200ms ease-out;
+	}
+
+	.contact-link:hover {
+		color: oklch(0.55 0.15 195); /* Cyan */
+	}
+
+	.contact-link:hover .link-arrow {
+		opacity: 1;
+		transform: translateX(0);
 	}
 </style>

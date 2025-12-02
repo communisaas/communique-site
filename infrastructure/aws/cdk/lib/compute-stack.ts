@@ -7,6 +7,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as servicediscovery from 'aws-cdk-lib/aws-servicediscovery';
 import * as path from 'path';
 import { Construct } from 'constructs';
 import { EnvironmentConfig } from './config';
@@ -19,6 +20,8 @@ export interface ComputeStackProps extends cdk.StackProps {
 	readonly houseQueue: sqs.IQueue;
 	readonly rateLimitTable: dynamodb.ITable;
 	readonly jobTrackingTable: dynamodb.ITable;
+	readonly teeNamespace: servicediscovery.INamespace;
+	readonly teeService: servicediscovery.IService;
 }
 
 /**
@@ -30,6 +33,8 @@ export class ComputeStack extends cdk.Stack {
 	public readonly houseWorkerFunction: lambda.Function;
 	public readonly senateWorkerRole: iam.Role;
 	public readonly houseWorkerRole: iam.Role;
+	public readonly teeProxyFunction: lambda.Function;
+	public readonly teeProxyRole: iam.Role;
 
 	constructor(scope: Construct, id: string, props: ComputeStackProps) {
 		super(scope, id, props);
@@ -74,6 +79,29 @@ export class ComputeStack extends cdk.Stack {
 			vpc,
 			lambdaSecurityGroup
 		);
+
+		// Create TEE Proxy Lambda
+		this.teeProxyRole = this.createLambdaRole('TeeProxyRole', config);
+
+		// Grant permissions for Service Discovery
+		this.teeProxyRole.addToPolicy(new iam.PolicyStatement({
+			effect: iam.Effect.ALLOW,
+			actions: ['servicediscovery:DiscoverInstances'],
+			resources: ['*'] // Ideally restrict to the namespace/service
+		}));
+
+		this.teeProxyFunction = this.createWorkerFunction(
+			'TeeProxyFunction',
+			'tee-proxy',
+			this.teeProxyRole,
+			config,
+			vpc,
+			lambdaSecurityGroup
+		);
+
+		// Add environment variables for TEE discovery
+		this.teeProxyFunction.addEnvironment('TEE_NAMESPACE', props.teeNamespace.namespaceName);
+		this.teeProxyFunction.addEnvironment('TEE_SERVICE_NAME', props.teeService.serviceName);
 
 		// Configure SQS event sources for Lambda functions
 		this.configureSqsEventSources(config, senateQueue, houseQueue);
@@ -173,12 +201,7 @@ export class ComputeStack extends cdk.Stack {
 		// Create log group with appropriate retention
 		const logGroup = new logs.LogGroup(this, `${id}LogGroup`, {
 			logGroupName: `/aws/lambda/${config.appName}-${workerType}`,
-			retention:
-				logs.RetentionDays.values()[
-					Object.keys(logs.RetentionDays).indexOf(
-						`DAYS_${config.lambda.logRetentionDays}`
-					) as keyof typeof logs.RetentionDays
-				] || logs.RetentionDays.ONE_WEEK,
+			retention: this.getRetentionDays(config.lambda.logRetentionDays),
 			removalPolicy: cdk.RemovalPolicy.DESTROY
 		});
 
@@ -195,12 +218,11 @@ export class ComputeStack extends cdk.Stack {
 			logGroup: logGroup,
 			environment: {
 				...config.lambda.environment,
-				FUNCTION_NAME: `${config.appName}-${workerType}`,
-				AWS_REGION: this.region
+				FUNCTION_NAME: `${config.appName}-${workerType}`
 			},
 			vpc: vpc,
 			vpcSubnets: {
-				subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS
+				subnetType: ec2.SubnetType.PRIVATE_ISOLATED
 			},
 			securityGroups: [securityGroup],
 			tracing: config.monitoring.enableXray ? lambda.Tracing.ACTIVE : lambda.Tracing.DISABLED,
@@ -238,22 +260,14 @@ export class ComputeStack extends cdk.Stack {
 		// Senate queue event source
 		this.senateWorkerFunction.addEventSource(
 			new lambdaEventSources.SqsEventSource(senateQueue, {
-				batchSize: 1, // Process one message at a time for better error handling
-				maxConcurrency: 5, // Limit concurrency to prevent overwhelming CWC API
-				reportBatchItemFailures: true, // Enable partial batch failure reporting
-				maxBatchingWindow: cdk.Duration.seconds(0), // Process immediately
-				enabled: true
+				maxBatchingWindow: undefined
 			})
 		);
 
 		// House queue event source
 		this.houseWorkerFunction.addEventSource(
 			new lambdaEventSources.SqsEventSource(houseQueue, {
-				batchSize: 1, // Process one message at a time for better error handling
-				maxConcurrency: 5, // Limit concurrency to prevent overwhelming CWC API
-				reportBatchItemFailures: true, // Enable partial batch failure reporting
-				maxBatchingWindow: cdk.Duration.seconds(0), // Process immediately
-				enabled: true
+				maxBatchingWindow: undefined
 			})
 		);
 	}
@@ -327,7 +341,7 @@ export class ComputeStack extends cdk.Stack {
 		new cloudwatch.Alarm(this, `${prefix}ConcurrentExecutionsAlarm`, {
 			alarmName: `${config.appName}-${prefix.toLowerCase()}-concurrent-executions`,
 			alarmDescription: `${prefix} Lambda function concurrent executions are high`,
-			metric: lambdaFunction.metricConcurrentExecutions({
+			metric: lambdaFunction.metric('ConcurrentExecutions', {
 				period: cdk.Duration.minutes(5),
 				statistic: 'Maximum'
 			}),
@@ -389,5 +403,23 @@ export class ComputeStack extends cdk.Stack {
 			description: 'House worker IAM role ARN',
 			exportName: `${config.appName}-house-worker-role-arn`
 		});
+	}
+	/**
+	 * Helper to get log retention days from number
+	 */
+	private getRetentionDays(days: number): logs.RetentionDays {
+		switch (days) {
+			case 1: return logs.RetentionDays.ONE_DAY;
+			case 3: return logs.RetentionDays.THREE_DAYS;
+			case 5: return logs.RetentionDays.FIVE_DAYS;
+			case 7: return logs.RetentionDays.ONE_WEEK;
+			case 14: return logs.RetentionDays.TWO_WEEKS;
+			case 30: return logs.RetentionDays.ONE_MONTH;
+			case 60: return logs.RetentionDays.TWO_MONTHS;
+			case 90: return logs.RetentionDays.THREE_MONTHS;
+			case 180: return logs.RetentionDays.SIX_MONTHS;
+			case 365: return logs.RetentionDays.ONE_YEAR;
+			default: return logs.RetentionDays.ONE_WEEK;
+		}
 	}
 }

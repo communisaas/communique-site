@@ -134,8 +134,8 @@ export interface EncryptedPayload {
 	/** Nonce (24 bytes, hex-encoded) */
 	nonce: string;
 
-	/** User identifier (for key derivation) */
-	userId: string;
+	/** Ephemeral public key (hex-encoded) for ECDH */
+	ephemeralPublicKey: string;
 
 	/** Template identifier */
 	templateId: string;

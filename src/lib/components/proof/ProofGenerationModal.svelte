@@ -61,26 +61,16 @@
 			statusMessage = 'Initializing Halo2 prover...';
 			progress = 10;
 
-			const { initializeProver, isProverInitialized } = await import('$lib/core/proof/prover');
-
-			// Check if already initialized (instant)
-			if (isProverInitialized()) {
-				console.log('[ProofModal] Using cached prover');
-				progress = 30;
-			} else {
-				console.log('[ProofModal] First-time initialization (5-10s)');
-				await initializeProver(14);
-				progress = 30;
-			}
+			// Use orchestrator for real initialization
+			const { proverOrchestrator } = await import('$lib/core/proof/prover-orchestrator');
+			await proverOrchestrator.init();
+			progress = 30;
 
 			// Stage 2: Proof generation
 			stage = 'generating';
 			statusMessage = 'Generating zero-knowledge proof...';
 			educationalMessage = educationalMessages[0].text;
 			progress = 40;
-
-			// Mock proof generation (replace with real when Shadow Atlas ready)
-			const { generateMockProof } = await import('$lib/core/proof/prover');
 
 			// Simulate progress updates
 			const progressInterval = setInterval(() => {
@@ -89,7 +79,9 @@
 				}
 			}, 500);
 
-			const result = await generateMockProof(district);
+			// Simulate proof generation (since we don't have full witness here)
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+			const result = { proof: new Uint8Array(100) }; // Mock result
 
 			clearInterval(progressInterval);
 			progress = 100;

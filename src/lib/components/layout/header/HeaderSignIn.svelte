@@ -5,20 +5,16 @@
 	 * Perceptual Engineering: Non-intrusive auth option.
 	 * Visually lighter than CTAs. Doesn't demand attention.
 	 */
-	import SignInModal from '$lib/components/modals/SignInModal.svelte';
-
-	let authModal: SignInModal;
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 
 	function handleSignIn(): void {
-		authModal.open();
+		modalActions.openModal('sign-in-modal', 'sign-in');
 	}
 </script>
 
 <button class="header-signin" onclick={handleSignIn} aria-label="Sign in to your account">
 	<span>Sign in</span>
 </button>
-
-<SignInModal bind:this={authModal} />
 
 <style>
 	.header-signin {

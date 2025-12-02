@@ -14,6 +14,7 @@ import type {
 } from './provider';
 import { AWSNitroEnclavesProvider, type AWSProviderConfig } from './providers/aws';
 import { GCPConfidentialSpaceProvider, type GCPProviderConfig } from './providers/gcp';
+import crypto from 'node:crypto';
 
 /**
  * TEE Manager configuration
@@ -95,6 +96,106 @@ export class TEEManager {
 	}
 
 	/**
+	 * Encrypt and submit message to TEE
+	 * Implements "Digital Faraday Cage" flow:
+	 * 1. Get TEE attestation (and public key)
+	 * 2. Verify attestation
+	 * 3. Encrypt payload with TEE public key (ECDH + AES-GCM)
+	 * 4. Submit encrypted payload
+	 */
+	async encryptAndSubmit(
+		instanceId: string,
+		data: {
+			userId: string;
+			templateId: string;
+			recipient: {
+				name: string;
+				office: 'senate' | 'house';
+				state: string;
+				district?: string;
+			};
+			message: string;
+		}
+	): Promise<TEEResponse> {
+		const entry = this.activeInstances.get(instanceId);
+		if (!entry) {
+			throw new Error(`TEE instance not found: ${instanceId}`);
+		}
+
+		// 1. Get attestation and public key
+		console.log('Fetching TEE attestation for encryption...');
+		const attestation = await entry.provider.getAttestationToken(instanceId);
+
+		// 2. Verify attestation
+		const expectedHash = String(entry.instance.providerMetadata.imageDigest || '');
+		const valid = await entry.provider.verifyAttestation(attestation, expectedHash);
+
+		if (!valid) {
+			throw new Error('TEE attestation verification failed - refusing to encrypt');
+		}
+
+		// 3. Encrypt payload
+		// We need the TEE's public key from the attestation
+		const teePublicKeyB64 = attestation.claims.publicKey as string;
+		if (!teePublicKeyB64) {
+			throw new Error('TEE attestation missing public key');
+		}
+
+		// Import TEE public key
+		// Assuming it's SPKI DER encoded (base64)
+		const teePublicKey = crypto.createPublicKey({
+			key: Buffer.from(teePublicKeyB64, 'base64'),
+			format: 'der',
+			type: 'spki'
+		});
+
+		// Generate ephemeral keypair
+		const ephemeralKeyPair = crypto.generateKeyPairSync('ec', {
+			namedCurve: 'P-256'
+		});
+
+		// Derive shared secret (ECDH)
+		const sharedSecret = crypto.diffieHellman({
+			privateKey: ephemeralKeyPair.privateKey,
+			publicKey: teePublicKey
+		});
+
+		// Derive AES key (HKDF-SHA256)
+		const aesKey = crypto.hkdfSync(
+			'sha256',
+			sharedSecret,
+			Buffer.alloc(0),
+			Buffer.alloc(0),
+			32
+		);
+
+		// Encrypt message (AES-256-GCM)
+		const iv = crypto.randomBytes(12);
+		// Ensure aesKey is a Buffer/Uint8Array
+		const aesKeyBuffer = Buffer.from(aesKey);
+		const cipher = crypto.createCipheriv('aes-256-gcm', aesKeyBuffer, iv);
+
+		let ciphertext = cipher.update(data.message, 'utf8');
+		ciphertext = Buffer.concat([ciphertext, cipher.final()]);
+		const authTag = cipher.getAuthTag();
+
+		// Append auth tag to ciphertext (standard practice for GCM in some libs, or send separately)
+		// Our TEE implementation expects tag appended
+		const finalCiphertext = Buffer.concat([ciphertext, authTag]);
+
+		// 4. Submit encrypted payload
+		const payload: EncryptedPayload = {
+			ciphertext: finalCiphertext.toString('base64'),
+			nonce: iv.toString('base64'),
+			ephemeralPublicKey: ephemeralKeyPair.publicKey.export({ format: 'der', type: 'spki' }).toString('hex'),
+			templateId: data.templateId,
+			recipient: data.recipient
+		};
+
+		return this.submitMessage(instanceId, payload, false); // Skip re-verification since we just did it
+	}
+
+	/**
 	 * Submit encrypted message to TEE for decryption and CWC forwarding
 	 */
 	async submitMessage(
@@ -165,6 +266,28 @@ export class TEEManager {
 		}
 
 		return results;
+	}
+
+	/**
+	 * Get all healthy TEE instances
+	 */
+	async getHealthyInstances(): Promise<TEEInstance[]> {
+		const healthyInstances: TEEInstance[] = [];
+
+		// Check health of all active instances
+		// Note: In production, we might cache health status to avoid spamming checks
+		const healthStatuses = await this.healthCheckAll();
+
+		for (const [id, isHealthy] of healthStatuses) {
+			if (isHealthy) {
+				const instance = this.getInstance(id);
+				if (instance) {
+					healthyInstances.push(instance);
+				}
+			}
+		}
+
+		return healthyInstances;
 	}
 
 	/**

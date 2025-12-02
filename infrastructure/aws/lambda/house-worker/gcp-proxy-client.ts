@@ -1,4 +1,4 @@
-import { setTimeout } from 'timers/promises';
+import { setTimeout as promiseDelay } from 'timers/promises';
 
 export interface GcpProxyClientConfig {
 	baseUrl: string;
@@ -27,7 +27,7 @@ export interface HouseCwcSubmission {
 export interface GcpProxyResponse {
 	success: boolean;
 	message: string;
-	submissionId?: string;
+	submissionId?: string | undefined;
 	timestamp: string;
 	processingTimeMs: number;
 }
@@ -43,8 +43,10 @@ export class GcpProxyError extends Error {
 	}
 }
 
+type InternalGcpProxyClientConfig = Required<Pick<GcpProxyClientConfig, 'baseUrl' | 'timeout' | 'maxRetries' | 'retryDelayMs' | 'retryBackoffMultiplier'>> & { authToken?: string };
+
 export class GcpProxyClient {
-	private readonly config: Required<GcpProxyClientConfig>;
+	private readonly config: InternalGcpProxyClientConfig;
 
 	constructor(config: GcpProxyClientConfig) {
 		this.config = {
@@ -52,7 +54,7 @@ export class GcpProxyClient {
 			retryDelayMs: 1000,
 			retryBackoffMultiplier: 2.0,
 			...config
-		};
+		} as InternalGcpProxyClientConfig;
 
 		if (!this.config.baseUrl) {
 			throw new Error('GCP proxy base URL is required');
@@ -86,7 +88,7 @@ export class GcpProxyClient {
 					console.log(
 						`Retrying submission attempt ${attempt + 1}/${this.config.maxRetries + 1} after ${Math.round(totalDelay)}ms`
 					);
-					await setTimeout(totalDelay);
+					await promiseDelay(totalDelay);
 				}
 
 				const response = await this.makeRequest(submission);
@@ -167,7 +169,7 @@ export class GcpProxyClient {
 			console.log(`Making HTTP request to GCP proxy: ${this.config.baseUrl}`);
 
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
+			const timeoutId = global.setTimeout(() => controller.abort(), this.config.timeout);
 
 			const response = await fetch(this.config.baseUrl, {
 				method: 'POST',
@@ -243,12 +245,12 @@ export class GcpProxyClient {
 		if (typeof responseData === 'object' && responseData !== null) {
 			const data = responseData as Record<string, unknown>;
 
-			if (typeof data.error === 'string') {
-				return `GCP proxy error (${statusCode}): ${data.error}`;
+			if (typeof data['error'] === 'string') {
+				return `GCP proxy error (${statusCode}): ${data['error']}`;
 			}
 
-			if (typeof data.message === 'string') {
-				return `GCP proxy error (${statusCode}): ${data.message}`;
+			if (typeof data['message'] === 'string') {
+				return `GCP proxy error (${statusCode}): ${data['message']}`;
 			}
 		}
 
@@ -279,19 +281,19 @@ export class GcpProxyClient {
 		const data = responseData as Record<string, unknown>;
 
 		// Check for success flag
-		const success = Boolean(data.success);
+		const success = Boolean(data['success']);
 
 		// Extract message
 		const message =
-			typeof data.message === 'string'
-				? data.message
+			typeof data['message'] === 'string'
+				? (data['message'] as string)
 				: success
 					? 'Submission completed successfully'
 					: 'Submission failed';
 
 		// Extract optional fields
-		const submissionId = typeof data.submissionId === 'string' ? data.submissionId : undefined;
-		const processingTimeMs = typeof data.processingTimeMs === 'number' ? data.processingTimeMs : 0;
+		const submissionId = typeof data['submissionId'] === 'string' ? (data['submissionId'] as string) : undefined;
+		const processingTimeMs = typeof data['processingTimeMs'] === 'number' ? (data['processingTimeMs'] as number) : 0;
 
 		return {
 			success,
@@ -317,7 +319,7 @@ export class GcpProxyClient {
 
 		try {
 			const controller = new AbortController();
-			const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for health check
+			const timeoutId = global.setTimeout(() => controller.abort(), 5000); // 5 second timeout for health check
 
 			const response = await fetch(`${this.config.baseUrl}/health`, {
 				method: 'GET',

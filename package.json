@@ -4,7 +4,7 @@
 	"type": "module",
 	"scripts": {
 		"start": "node build",
-		"dev": "vite dev",
+		"dev": "vite dev --host",
 		"build": "vite build",
 		"preview": "vite preview",
 		"check": "svelte-kit sync && echo \"Skipping svelte-check (temporarily disabled for demo)\"",
@@ -114,6 +114,7 @@
 		"@web3auth/base": "^9.7.0",
 		"@web3auth/modal": "^10.4.0",
 		"@web3auth/openlogin-adapter": "^8.12.4",
+		"@zkpassport/poseidon2": "^0.6.2",
 		"arctic": "^3.7.0",
 		"axios": "^1.7.2",
 		"codemirror": "^6.0.2",

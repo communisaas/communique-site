@@ -11,7 +11,7 @@
 	import { browser } from '$app/environment';
 	import { onMount } from 'svelte';
 	import { ChevronDown, User, LogOut } from '@lucide/svelte';
-	import SignInModal from '$lib/components/modals/SignInModal.svelte';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { HeaderUser } from '$lib/types/any-replacements';
 
 	let {
@@ -25,7 +25,6 @@
 	let isVisible = $state(false);
 	let isDropdownOpen = $state(false);
 	let dropdownRef = $state<HTMLDivElement | null>(null);
-	let authModal: SignInModal;
 
 	// Reveal logic: show after delay or scroll
 	onMount(() => {
@@ -95,7 +94,7 @@
 	});
 
 	function handleSignIn(): void {
-		authModal.open();
+		modalActions.openModal('sign-in-modal', 'sign-in');
 	}
 </script>
 
@@ -147,8 +146,6 @@
 		</button>
 	{/if}
 </div>
-
-<SignInModal bind:this={authModal} />
 
 <style>
 	.ambient-presence {

@@ -22,13 +22,15 @@
 		Trophy as _Trophy,
 		Flame,
 		QrCode,
-		Download
+		Download,
+		ShieldCheck,
+		AlertCircle
 	} from '@lucide/svelte';
 	import QRCode from 'qrcode';
 	// import TemplateMeta from '$lib/components/template/TemplateMeta.svelte';
 	// import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	// import { guestState } from '$lib/stores/guestState.svelte';
+	import { guestState } from '$lib/stores/guestState.svelte';
 	import {
 		modalActions,
 		modalState as _modalState,
@@ -138,6 +140,13 @@
 	onMount(() => {
 		// Don't manipulate scroll here - UnifiedModal handles it
 		// Don't call modalActions.open - parent component handles it
+
+		// Check if this is a congressional template (ZKP flow)
+		if (template.deliveryMethod === 'cwc') {
+			console.log('[TemplateModal] Congressional template detected, initiating ZKP flow');
+			submitCongressionalMessage();
+			return;
+		}
 
 		// HACKATHON: Trigger mailto for EVERYONE (authenticated or not)
 		// This removes friction for viral template sharing via QR code
@@ -380,57 +389,18 @@
 	 */
 	async function submitCongressionalMessage() {
 		try {
-			console.log('[Template Modal] Starting direct CWC submission (MVP)');
+			console.log('[Template Modal] Starting ZKP submission flow');
 
-			// Set loading state
+			// Set loading state - this will now trigger the ProofGenerator component
 			modalActions.setState('cwc-submission');
 
-			// Get current user and address info
-			const currentUser = $page.data?.user || user;
-			const address = {
-				street: currentUser?.street || '',
-				city: currentUser?.city || '',
-				state: currentUser?.state || '',
-				zip: currentUser?.zip || ''
-			};
-
-			// Validate we have required address info
-			if (!address.street || !address.city || !address.state || !address.zip) {
-				console.error('[Template Modal] Missing address information');
-				modalActions.setState('error');
-				return;
-			}
-
-			// Call MVP CWC submission endpoint
-			const response = await fetch('/api/cwc/submit-mvp', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					templateId: template.id,
-					address,
-					personalizedMessage: template.body || template.description,
-					userEmail: currentUser?.email,
-					userName: currentUser?.name
-				})
-			});
-
-			if (!response.ok) {
-				const error = await response.json();
-				console.error('[Template Modal] CWC submission failed:', error);
-				modalActions.setState('error');
-				return;
-			}
-
-			const result = await response.json();
-			console.log('[Template Modal] CWC submission queued:', result);
-
-			// Store job ID for tracking
-			submissionId = result.jobId;
-
-			// Move to tracking state
-			modalActions.setState('tracking');
+			// The ProofGenerator component handles the rest:
+			// 1. Loading credentials
+			// 2. Generating proof
+			// 3. Encrypting witness (with address)
+			// 4. Submitting to backend
 		} catch (error) {
-			console.error('[Template Modal] CWC submission error:', error);
+			console.error('[Template Modal] Submission error:', error);
 			modalActions.setState('error');
 		}
 	}
@@ -1068,25 +1038,16 @@
 				<X class="h-5 w-5" />
 			</button>
 
-			<!-- Header -->
-			<div class="mb-6 text-center">
-				<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Find Your Representative</h3>
-				<p class="text-sm text-slate-600 sm:text-base">
-					This message goes to your representative. We need your district to route it correctly.
-				</p>
-			</div>
-
-			<!-- Address Collection Form -->
 			<AddressCollectionForm
-				template={{
+				_template={{
 					title: template.title,
 					deliveryMethod: template.deliveryMethod
 				}}
-				on:complete={handleAddressComplete}
+				oncomplete={handleAddressComplete}
 			/>
 		</div>
 	{:else if currentState === 'cwc-submission'}
-		<!-- Enhanced CWC Submission Progress State -->
+		<!-- ZKP Proof Generation & Submission State -->
 		<div class="flex h-full flex-col">
 			<!-- Header -->
 			<div class="border-b border-slate-100 p-6">
@@ -1096,19 +1057,15 @@
 							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-blue-100"
 							style="transform: scale({$celebrationScale})"
 						>
-							<Send class="h-5 w-5 animate-pulse text-blue-600" />
+							<ShieldCheck class="h-5 w-5 text-blue-600" />
 						</div>
 						<div>
-							<h2 class="text-lg font-semibold text-slate-900">Delivering your message</h2>
-							<p class="text-sm text-slate-600">Coordinating with decision-makers</p>
+							<h2 class="text-lg font-semibold text-slate-900">Securing your message</h2>
+							<p class="text-sm text-slate-600">Generating zero-knowledge proof</p>
 						</div>
 					</div>
 					<button
-						onclick={() => {
-							// Allow user to close and track later
-							goto(`/s/${template.slug}`, { replaceState: true });
-							handleClose();
-						}}
+						onclick={handleClose}
 						class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
 					>
 						<X class="h-5 w-5" />
@@ -1116,27 +1073,30 @@
 				</div>
 			</div>
 
-			<!-- Enhanced Progress Tracker -->
-			<div class="flex-1 p-6">
-				<div class="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
-					<div class="flex items-center gap-2">
-						<Sparkles class="h-4 w-4 text-blue-600" />
-						<p class="text-sm text-blue-800">
-							🎯 <strong>Live Demo:</strong> Connecting directly to the Senate chamber for real-time
-							message delivery!
-						</p>
+			<!-- Proof Generator Component -->
+			<div class="flex-1 overflow-y-auto p-6">
+				{#if user?.id}
+					<ProofGenerator
+						userId={user.id}
+						templateId={template.id}
+						templateData={{
+							subject: template.title,
+							message: template.body || template.description,
+							recipientOffices: ['Senate', 'House'] // TODO: Get actual offices
+						}}
+						address={guestState.state?.address || user.street || ''}
+						skipCredentialCheck={true}
+						on:complete={handleProofComplete}
+						on:cancel={handleProofCancel}
+						on:error={handleProofError}
+					/>
+				{:else}
+					<div class="flex flex-col items-center justify-center py-12 text-center">
+						<AlertCircle class="mb-4 h-12 w-12 text-amber-500" />
+						<h3 class="mb-2 text-lg font-semibold text-slate-900">Authentication Required</h3>
+						<p class="text-sm text-slate-600">Please sign in to send verified messages.</p>
 					</div>
-				</div>
-				<CWCProgressTracker
-					{submissionId}
-					{template}
-					onComplete={async () => {
-						// Fetch CWC job results for verification before showing celebration
-						await fetchCWCResults();
-						// Move to celebration state after successful delivery
-						modalActions.setState('celebration');
-					}}
-				/>
+				{/if}
 			</div>
 		</div>
 	{:else if currentState === 'tracking'}

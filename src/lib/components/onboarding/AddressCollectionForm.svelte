@@ -4,24 +4,23 @@
 	import { quintOut } from 'svelte/easing';
 	import { MapPin, CheckCircle2, AlertCircle, Loader2, Home } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import type { AddressVerificationResult, _Representative } from '$lib/types/any-replacements.js';
+	import type { AddressVerificationResult, Representative } from '$lib/types/any-replacements.js';
+	import type { Representative as ProviderRepresentative } from '$lib/core/legislative/types';
 
 	let {
-		_template
+		_template,
+		oncomplete
 	}: {
 		_template: {
 			title: string;
 			deliveryMethod: string;
 		};
-	} = $props();
-
-	const dispatch = createEventDispatcher<{
-		complete: {
+		oncomplete?: (data: {
 			address: string;
 			verified: boolean;
-			representatives?: Array<Record<string, unknown>>;
-		};
-	}>();
+			representatives?: Representative[] | ProviderRepresentative[];
+		}) => void;
+	} = $props();
 
 	let currentStep = $state<'collect' | 'verify' | 'complete'>('collect');
 
@@ -104,18 +103,24 @@
 	}
 
 	function acceptAddress() {
+		console.log('[AddressForm] acceptAddress called, address:', selectedAddress);
 		isSaving = true;
-		dispatch('complete', {
-			address: selectedAddress,
-			verified: true,
-			representatives:
-				Array.isArray(verificationResult?.representatives) &&
-				verificationResult.representatives.every(
-					(item) => typeof item === 'object' && item !== null
-				)
-					? (verificationResult.representatives as Record<string, unknown>[])
-					: undefined
-		});
+		if (oncomplete) {
+			console.log('[AddressForm] Calling oncomplete callback...');
+			oncomplete({
+				address: selectedAddress,
+				verified: true,
+				representatives:
+					Array.isArray(verificationResult?.representatives) &&
+					verificationResult.representatives.every(
+						(item) => typeof item === 'object' && item !== null
+					)
+						? (verificationResult.representatives as Representative[])
+						: undefined
+			});
+		} else {
+			console.warn('[AddressForm] No oncomplete callback registered!');
+		}
 	}
 
 	function editAddress() {
@@ -125,10 +130,12 @@
 
 	function skipVerification() {
 		const fullAddress = `${streetAddress}, ${city}, ${stateCode} ${zipCode}`;
-		dispatch('complete', {
-			address: fullAddress,
-			verified: false
-		});
+		if (oncomplete) {
+			oncomplete({
+				address: fullAddress,
+				verified: false
+			});
+		}
 	}
 
 	function _handleKeydown(_event: KeyboardEvent) {
@@ -145,15 +152,15 @@
 
 <div class="p-6">
 	<!-- Progress Indicator -->
-	<div class="-mt-2 flex justify-center pb-4">
+	<div class="-mt-2 flex justify-center pb-6">
 		<div class="flex gap-2">
 			{#each ['collect', 'verify', 'complete'] as step, i}
 				<div
-					class="h-2 rounded-full transition-all duration-500 ease-out {currentStep === step
-						? 'w-12 bg-participation-primary-600 shadow-lg shadow-participation-primary-200'
+					class="h-1.5 rounded-full transition-all duration-500 ease-out {currentStep === step
+						? 'w-12 bg-blue-600 shadow-lg shadow-blue-200'
 						: ['collect', 'verify', 'complete'].indexOf(currentStep) > i
-							? 'w-8 bg-participation-primary-300'
-							: 'w-8 bg-slate-200'}"
+							? 'w-8 bg-blue-300'
+							: 'w-8 bg-slate-100'}"
 				></div>
 			{/each}
 		</div>
@@ -171,18 +178,62 @@
 				{#if currentStep === 'collect'}
 					<!-- Address Collection Step -->
 
-					<!-- Compact value prop -->
-					<div class="mb-4 border-l-4 border-green-400 bg-green-50 p-3">
-						<p class="text-sm font-medium text-green-800">
-							Your address unlocks personalized delivery routes. Messages reach the right offices,
-							show local support, and carry more weight when they come from real constituents.
+					<!-- Header with "Digital Faraday Cage" Metaphor -->
+					<div class="mb-6 text-center">
+						<div class="relative mb-4 inline-flex h-16 w-16 items-center justify-center">
+							<!-- Pulse Effect -->
+							<div
+								class="absolute inset-0 animate-ping rounded-full bg-blue-100 opacity-75 duration-[3000ms]"
+							></div>
+							<!-- Main Icon -->
+							<div
+								class="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm ring-1 ring-blue-100"
+							>
+								<MapPin class="h-8 w-8 text-blue-600 opacity-90" strokeWidth={1.5} />
+							</div>
+						</div>
+						<h2 class="mb-2 text-xl font-bold text-slate-900">Locate Your District</h2>
+						<p class="text-slate-600">
+							We need your address to route this message to the correct office.
 						</p>
+					</div>
+
+					<!-- Privacy Note (Shield) -->
+					<div
+						class="mb-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50/50 p-4"
+					>
+						<div
+							class="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-600"
+						>
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-4 w-4"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+							>
+								<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+							</svg>
+						</div>
+						<div>
+							<h3 class="text-sm font-semibold text-blue-900">Private & Secure</h3>
+							<p class="mt-1 text-xs leading-relaxed text-blue-700">
+								Your address is <strong>never shared publicly</strong>. It is only used to verify
+								residency and identify your elected officials.
+							</p>
+						</div>
 					</div>
 
 					<!-- Form Fields -->
 					<div class="mb-6 space-y-4">
 						<div>
-							<label for="street" class="mb-2 block text-sm font-medium text-slate-700">
+							<label
+								for="street"
+								class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500"
+							>
 								Street Address
 							</label>
 							<input
@@ -190,24 +241,32 @@
 								type="text"
 								bind:value={streetAddress}
 								placeholder="123 Main Street"
-								class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
+								class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
 							/>
 						</div>
 
 						<div>
-							<label for="city" class="mb-2 block text-sm font-medium text-slate-700"> City </label>
+							<label
+								for="city"
+								class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500"
+							>
+								City
+							</label>
 							<input
 								id="city"
 								type="text"
 								bind:value={city}
 								placeholder="City"
-								class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
+								class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
 							/>
 						</div>
 
 						<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 							<div>
-								<label for="state" class="mb-2 block text-sm font-medium text-slate-700">
+								<label
+									for="state"
+									class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500"
+								>
 									State
 								</label>
 								<input
@@ -216,11 +275,14 @@
 									bind:value={stateCode}
 									placeholder="CA"
 									maxlength="2"
-									class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
+									class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
 								/>
 							</div>
 							<div>
-								<label for="zip" class="mb-2 block text-sm font-medium text-slate-700">
+								<label
+									for="zip"
+									class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500"
+								>
 									ZIP Code
 								</label>
 								<input
@@ -229,84 +291,113 @@
 									bind:value={zipCode}
 									placeholder="12345"
 									maxlength="10"
-									class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
+									class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-slate-900 placeholder-slate-400 transition-all focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
 								/>
 							</div>
 						</div>
 
 						{#if addressError}
-							<div class="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3">
-								<AlertCircle class="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
-								<p class="text-sm text-red-700">{addressError}</p>
+							<div
+								class="flex items-start gap-3 rounded-lg border border-red-100 bg-red-50 p-3 text-red-600"
+								in:fly={{ y: -10, duration: 200 }}
+							>
+								<AlertCircle class="mt-0.5 h-5 w-5 shrink-0" />
+								<p class="text-sm font-medium">{addressError}</p>
 							</div>
 						{/if}
 					</div>
 
 					<div class="space-y-3">
-						<Button
-							variant="primary"
-							size="sm"
-							classNames="w-full"
+						<button
 							onclick={verifyAddress}
 							disabled={isVerifying ||
 								!streetAddress.trim() ||
 								!city.trim() ||
 								!stateCode.trim() ||
 								!zipCode.trim()}
+							class="group relative w-full overflow-hidden rounded-xl bg-slate-900 px-4 py-3.5 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-900/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
 						>
-							{#if isVerifying}
-								<Loader2 class="mr-2 h-4 w-4 animate-spin" />
-								Verifying address...
-							{:else}
-								<CheckCircle2 class="mr-2 h-4 w-4" />
-								Continue
-							{/if}
-						</Button>
+							<div class="relative z-10 flex items-center justify-center gap-2">
+								{#if isVerifying}
+									<Loader2 class="h-4 w-4 animate-spin" />
+									<span>Verifying...</span>
+								{:else}
+									<span>Find My Representatives</span>
+									<svg
+										xmlns="http://www.w3.org/2000/svg"
+										class="h-4 w-4 transition-transform group-hover:translate-x-0.5"
+										viewBox="0 0 24 24"
+										fill="none"
+										stroke="currentColor"
+										stroke-width="2"
+										stroke-linecap="round"
+										stroke-linejoin="round"
+									>
+										<path d="M5 12h14M12 5l7 7-7 7" />
+									</svg>
+								{/if}
+							</div>
+						</button>
 
-						<Button variant="secondary" size="sm" classNames="w-full" onclick={skipVerification}>
+						<button
+							onclick={skipVerification}
+							class="w-full rounded-xl px-4 py-2 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+						>
 							Skip for now
-						</Button>
+						</button>
 					</div>
-
-					<!-- Privacy Note at bottom -->
-					<p class="mt-6 text-center text-xs text-slate-500">
-						Your address is saved to your profile for future messages and never shared with third
-						parties.
-					</p>
 				{:else if currentStep === 'verify'}
 					<!-- Address Verification Step -->
 					<div class="mb-6 text-center">
-						<div
-							class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100"
-						>
-							<CheckCircle2 class="h-6 w-6 text-green-600" />
+						<div class="relative mb-4 inline-flex h-16 w-16 items-center justify-center">
+							<div
+								class="absolute inset-0 animate-ping rounded-full bg-green-100 opacity-75 duration-[3000ms]"
+							></div>
+							<div
+								class="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-green-50 to-emerald-50 shadow-sm ring-1 ring-green-100"
+							>
+								<CheckCircle2 class="h-8 w-8 text-green-600 opacity-90" strokeWidth={1.5} />
+							</div>
 						</div>
-						<h2 class="mb-2 text-xl font-bold text-slate-900">Confirm your address</h2>
-						<p class="text-slate-600">We've verified your address and found your representatives</p>
+						<h2 class="mb-2 text-xl font-bold text-slate-900">Address Verified</h2>
+						<p class="text-slate-600">We found your district and representatives.</p>
 					</div>
 
 					<!-- Verified Address -->
-					<div class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4">
-						<div class="flex items-start gap-3">
-							<Home class="mt-0.5 h-5 w-5 shrink-0 text-green-600" />
+					<div class="mb-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+						<div class="border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+							<p class="text-xs font-semibold uppercase tracking-wider text-slate-500">
+								Official Address
+							</p>
+						</div>
+						<div class="flex items-start gap-3 p-4">
+							<Home class="mt-0.5 h-5 w-5 shrink-0 text-slate-400" />
 							<div>
-								<p class="font-medium text-slate-900">Verified Address:</p>
-								<p class="mt-1 text-sm text-slate-600">{selectedAddress}</p>
+								<p class="font-medium text-slate-900">{selectedAddress}</p>
 							</div>
 						</div>
 					</div>
 
 					<!-- Representatives Found -->
 					{#if verificationResult?.representatives}
-						<div
-							class="mb-6 rounded-lg border border-participation-primary-200 bg-participation-primary-50 p-4"
-						>
-							<p class="mb-2 font-medium text-slate-900">Your Representatives:</p>
-							<div class="space-y-2">
+						<div class="mb-6 overflow-hidden rounded-xl border border-blue-100 bg-blue-50/30">
+							<div class="border-b border-blue-100 bg-blue-50/50 px-4 py-3">
+								<p class="text-xs font-semibold uppercase tracking-wider text-blue-600">
+									Your Representatives
+								</p>
+							</div>
+							<div class="divide-y divide-blue-100/50">
 								{#each Array.isArray(verificationResult.representatives) ? verificationResult.representatives : [] as rep}
-									<div class="flex items-center gap-2 text-sm">
-										<div class="h-2 w-2 rounded-full bg-participation-primary-500"></div>
-										<span class="text-slate-700">{rep.name} ({rep.office})</span>
+									<div class="flex items-center gap-3 p-3">
+										<div
+											class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600"
+										>
+											{rep.name.charAt(0)}
+										</div>
+										<div>
+											<p class="text-sm font-medium text-slate-900">{rep.name}</p>
+											<p class="text-xs text-slate-500">{rep.office}</p>
+										</div>
 									</div>
 								{/each}
 							</div>
@@ -314,41 +405,40 @@
 					{/if}
 
 					<div class="flex gap-3">
-						<Button
-							variant="secondary"
-							size="sm"
-							classNames="flex-1"
+						<button
 							onclick={editAddress}
 							disabled={isSaving}
+							class="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:bg-slate-50 hover:text-slate-900 disabled:opacity-50"
 						>
-							Edit Address
-						</Button>
-						<Button
-							variant="primary"
-							size="sm"
-							classNames="flex-1"
+							Edit
+						</button>
+						<button
 							onclick={acceptAddress}
 							disabled={isSaving}
+							class="flex-1 rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-slate-900/20 transition-all hover:bg-slate-800 hover:shadow-xl hover:shadow-slate-900/30 active:scale-[0.98] disabled:opacity-50"
 						>
 							{#if isSaving}
-								<Loader2 class="mr-1 h-4 w-4 animate-spin" />
-								Saving...
+								<span class="flex items-center justify-center gap-2">
+									<Loader2 class="h-4 w-4 animate-spin" />
+									Saving...
+								</span>
 							{:else}
-								<CheckCircle2 class="mr-1 h-4 w-4" />
-								Looks Good
+								Confirm & Continue
 							{/if}
-						</Button>
+						</button>
 					</div>
 				{:else}
 					<!-- Completion Step -->
 					<div class="mb-6 text-center">
-						<div
-							class="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-green-100"
-						>
-							<CheckCircle2 class="h-6 w-6 text-green-600" />
+						<div class="relative mb-4 inline-flex h-16 w-16 items-center justify-center">
+							<div
+								class="relative flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-green-50 to-emerald-50 shadow-sm ring-1 ring-green-100"
+							>
+								<CheckCircle2 class="h-8 w-8 text-green-600 opacity-90" strokeWidth={1.5} />
+							</div>
 						</div>
 						<h2 class="mb-2 text-xl font-bold text-slate-900">You're all set!</h2>
-						<p class="text-slate-600">Your address has been saved and verified</p>
+						<p class="text-slate-600">Your address has been securely saved.</p>
 					</div>
 				{/if}
 			</div>

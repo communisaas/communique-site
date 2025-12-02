@@ -2,14 +2,12 @@
 	import { page } from '$app/stores';
 	import { onMount as _onMount } from 'svelte';
 	import { browser } from '$app/environment';
-	import DirectOutreachModal from '$lib/components/auth/DirectOutreachModal.svelte';
 	import DirectOutreachCompact from '$lib/components/auth/DirectOutreachCompact.svelte';
 	import type { PageData } from './$types';
 
 	let { _data }: { data: PageData } = $props();
 
 	let showDirectModal = $state(true);
-	let useCompact = $state(false);
 	let pendingTemplate: {
 		slug: string;
 		title: string;
@@ -66,9 +64,6 @@
 					finalReturnUrl = decodeURIComponent(returnTo);
 				}
 			}
-
-			// Feature flag: compact direct outreach
-			useCompact = $page.url.searchParams.get('compact') === '1';
 		}
 	});
 
@@ -172,17 +167,9 @@
 </div>
 
 {#if showDirectModal}
-	{#if useCompact}
-		<DirectOutreachCompact
-			template={flowTemplate}
-			on:complete={handleProfileComplete}
-			on:close={handleProfileSkip}
-		/>
-	{:else}
-		<DirectOutreachModal
-			template={flowTemplate}
-			on:complete={handleProfileComplete}
-			on:close={handleProfileSkip}
-		/>
-	{/if}
+	<DirectOutreachCompact
+		template={flowTemplate}
+		on:complete={handleProfileComplete}
+		on:close={handleProfileSkip}
+	/>
 {/if}

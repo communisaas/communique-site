@@ -21,6 +21,7 @@ export type ModalType =
 	| 'share_menu'
 	| 'copied_feedback'
 	| 'error_dialog'
+	| 'sign-in'
 	| 'confirmation_dialog';
 
 // Modal State Interface

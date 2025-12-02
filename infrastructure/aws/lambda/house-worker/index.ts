@@ -1,4 +1,4 @@
-import { SQSHandler, SQSRecord, Context } from 'aws-lambda';
+import { SQSHandler, SQSRecord } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { GcpProxyClient } from './gcp-proxy-client';
@@ -9,7 +9,8 @@ const {
 	RATE_LIMIT_TABLE = 'cwc-rate-limits',
 	JOB_STATUS_API_URL = 'https://api.communique.com/v1/cwc/jobs',
 	GCP_PROXY_URL = 'https://your-gcp-proxy.com/submit',
-	GCP_PROXY_AUTH_TOKEN,
+	GCP_PROXY_AUTH_TOKEN = '',
+	API_AUTH_TOKEN = '',
 	AWS_REGION = 'us-east-1'
 } = process.env;
 
@@ -142,7 +143,7 @@ async function updateJobStatus(update: JobStatusUpdate): Promise<void> {
 			method: 'PUT',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: `Bearer ${process.env.API_AUTH_TOKEN}`
+				Authorization: `Bearer ${API_AUTH_TOKEN}`
 			},
 			body: JSON.stringify(update)
 		});
@@ -285,7 +286,7 @@ function parseMessageBody(record: SQSRecord): HouseCwcSubmission {
 /**
  * Main Lambda handler for processing House CWC submissions from SQS FIFO
  */
-export const handler: SQSHandler = async (event, context: Context) => {
+export const handler: SQSHandler = async (event) => {
 	console.log(`Processing ${event.Records.length} House CWC submissions`);
 	console.log('Circuit breaker state:', circuitBreaker.getState());
 

@@ -1,296 +1,156 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db';
-import {
-	storeSessionCredential,
-	calculateExpirationDate
-} from '$lib/core/identity/session-credentials';
-import type { SessionCredential } from '$lib/core/identity/session-credentials';
+import type { RequestHandler } from './$types';
 
-/**
- * Shadow Atlas Registration Endpoint
- *
- * Registers user's identity commitment in district Merkle tree
- * Returns merkle_path for browser-based ZK proof generation
- *
- * Flow:
- * 1. Verify user is authenticated and identity-verified
- * 2. Call voter-protocol Shadow Atlas API to register
- * 3. Store merkle_path in database (ShadowAtlasRegistration)
- * 4. Cache credential in IndexedDB for 6 months
- *
- * Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md Phase 1.3
- */
+// Mock Poseidon hash for now (in production, use @voter-protocol/crypto or circomlibjs)
+// We need a stable hash function for the Merkle tree
+function mockHash(left: string, right: string): string {
+	// Simple string concatenation hash for demo purposes
+	// In real ZK, this MUST be Poseidon
+	return `hash(${left},${right})`;
+}
+
+function computeMerklePath(leaves: string[], index: number, depth: number = 12): string[] {
+	const path: string[] = [];
+	let currentLevel = [...leaves];
+	let currentIndex = index;
+
+	for (let i = 0; i < depth; i++) {
+		// Pad level if odd
+		if (currentLevel.length % 2 !== 0) {
+			currentLevel.push('0'); // Zero value
+		}
+
+		const isRightNode = currentIndex % 2 !== 0;
+		const siblingIndex = isRightNode ? currentIndex - 1 : currentIndex + 1;
+
+		// Get sibling (or zero if out of bounds)
+		const sibling = currentLevel[siblingIndex] || '0';
+		path.push(sibling);
+
+		// Move to next level
+		const nextLevel: string[] = [];
+		for (let j = 0; j < currentLevel.length; j += 2) {
+			nextLevel.push(mockHash(currentLevel[j], currentLevel[j + 1] || '0'));
+		}
+		currentLevel = nextLevel;
+		currentIndex = Math.floor(currentIndex / 2);
+	}
+
+	return path;
+}
+
+function computeMerkleRoot(leaves: string[], depth: number = 12): string {
+	let currentLevel = [...leaves];
+
+	for (let i = 0; i < depth; i++) {
+		if (currentLevel.length % 2 !== 0) currentLevel.push('0');
+		const nextLevel: string[] = [];
+		for (let j = 0; j < currentLevel.length; j += 2) {
+			nextLevel.push(mockHash(currentLevel[j], currentLevel[j + 1] || '0'));
+		}
+		currentLevel = nextLevel;
+	}
+
+	return currentLevel[0] || '0';
+}
+
 export const POST: RequestHandler = async ({ request, locals }) => {
+	console.log('Register endpoint called');
 	try {
-		// Check authentication
 		const session = locals.session;
-		if (!session?.userId) {
-			throw error(401, 'Authentication required');
+		console.log('Session:', session);
+		if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
+
+		const { identityCommitment, district } = await request.json();
+
+		if (!identityCommitment || !district) {
+			return json({ error: 'Missing required fields' }, { status: 400 });
 		}
 
-		const userId = session.userId;
+		// Use transaction to ensure consistency
+		const result = await prisma.$transaction(async (tx) => {
+			// 1. Get or create the tree for this district
+			let tree = await tx.shadowAtlasTree.findUnique({
+				where: { congressional_district: district }
+			});
 
-		// Parse request body
-		const body = await request.json();
-		const { identityCommitment, congressionalDistrict, verificationMethod, verificationId } = body;
-
-		// Validate required fields
-		if (!identityCommitment || !congressionalDistrict || !verificationMethod || !verificationId) {
-			throw error(400, 'Missing required fields');
-		}
-
-		// Validate verification method
-		if (verificationMethod !== 'self.xyz' && verificationMethod !== 'didit') {
-			throw error(400, 'Invalid verification method');
-		}
-
-		// Validate congressional district format (e.g., "CA-12", "NY-15")
-		const districtRegex = /^[A-Z]{2}-\d{1,2}$/;
-		if (!districtRegex.test(congressionalDistrict)) {
-			throw error(400, 'Invalid congressional district format');
-		}
-
-		// Verify user is identity-verified
-		const user = await prisma.user.findUnique({
-			where: { id: userId },
-			select: {
-				is_verified: true,
-				verification_method: true,
-				identity_hash: true
-			}
-		});
-
-		if (!user || !user.is_verified) {
-			throw error(403, 'Identity verification required');
-		}
-
-		// Check if user already has registration
-		const existingRegistration = await prisma.shadowAtlasRegistration.findUnique({
-			where: { user_id: userId }
-		});
-
-		if (existingRegistration && existingRegistration.registration_status === 'registered') {
-			// Check if expired
-			const now = new Date();
-			if (existingRegistration.expires_at > now) {
-				// Return existing registration
-				return json({
-					success: true,
+			if (!tree) {
+				tree = await tx.shadowAtlasTree.create({
 					data: {
-						leafIndex: existingRegistration.leaf_index,
-						merklePath: existingRegistration.merkle_path as string[],
-						merkleRoot: existingRegistration.merkle_root,
-						districtSize: 4096,
-						expiresAt: existingRegistration.expires_at.toISOString(),
-						status: 'already_registered'
+						congressional_district: district,
+						leaves: [],
+						merkle_root: '0',
+						leaf_count: 0
 					}
 				});
 			}
-		}
 
-		// TODO: Call voter-protocol Shadow Atlas API
-		// For now, we'll use mock data since voter-protocol team is building the Merkle tree
-		// In production, this will call: POST https://api.voter-protocol.org/shadow-atlas/register
+			// 2. Check if user is already registered in this district
+			const existingRegistration = await tx.shadowAtlasRegistration.findUnique({
+				where: { user_id: session.userId }
+			});
 
-		const mockResponse = await registerWithShadowAtlas({
-			identityCommitment,
-			congressionalDistrict,
-			verificationMethod,
-			verificationId
-		});
-
-		if (!mockResponse.success) {
-			throw error(500, mockResponse.error || 'Shadow Atlas registration failed');
-		}
-
-		// Calculate expiration (6 months from now)
-		const expiresAt = calculateExpirationDate();
-		const now = new Date();
-
-		// Store in database
-		const registration = await prisma.shadowAtlasRegistration.upsert({
-			where: { user_id: userId },
-			update: {
-				identity_commitment: identityCommitment,
-				congressional_district: congressionalDistrict,
-				leaf_index: mockResponse.leafIndex,
-				merkle_root: mockResponse.merkleRoot,
-				merkle_path: mockResponse.merklePath,
-				verification_method: verificationMethod,
-				verification_id: verificationId,
-				verification_timestamp: now,
-				registration_status: 'registered',
-				registered_at: now,
-				expires_at: expiresAt,
-				updated_at: now
-			},
-			create: {
-				user_id: userId,
-				identity_commitment: identityCommitment,
-				congressional_district: congressionalDistrict,
-				leaf_index: mockResponse.leafIndex,
-				merkle_root: mockResponse.merkleRoot,
-				merkle_path: mockResponse.merklePath,
-				verification_method: verificationMethod,
-				verification_id: verificationId,
-				verification_timestamp: now,
-				registration_status: 'registered',
-				registered_at: now,
-				expires_at: expiresAt
+			if (existingRegistration) {
+				// If already registered, return existing path
+				// In a real app, we might allow re-registration or updates
+				return {
+					leafIndex: existingRegistration.leaf_index,
+					merklePath: existingRegistration.merkle_path,
+					root: existingRegistration.merkle_root
+				};
 			}
+
+			// 3. Add leaf to tree
+			const newLeaves = [...tree.leaves, identityCommitment];
+			const leafIndex = tree.leaves.length;
+
+			// 4. Compute new root and path
+			// Note: This is O(N) which is fine for small trees (4096 leaves)
+			// For larger trees, we'd use a sparse tree or incremental updates
+			const root = computeMerkleRoot(newLeaves);
+			const path = computeMerklePath(newLeaves, leafIndex);
+
+			// 5. Update tree
+			await tx.shadowAtlasTree.update({
+				where: { id: tree.id },
+				data: {
+					leaves: newLeaves,
+					leaf_count: newLeaves.length,
+					merkle_root: root
+				}
+			});
+
+			// 6. Create registration record
+			await tx.shadowAtlasRegistration.create({
+				data: {
+					user_id: session.userId,
+					congressional_district: district,
+					identity_commitment: identityCommitment,
+					leaf_index: leafIndex,
+					merkle_root: root,
+					merkle_path: path,
+					verification_method: 'self.xyz', // Default for Phase 1
+					verification_id: 'mock-verification-id',
+					verification_timestamp: new Date(),
+					registration_status: 'registered',
+					expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 6 months
+				}
+			});
+
+			return {
+				leafIndex,
+				merklePath: path,
+				root
+			};
 		});
 
-		// Prepare session credential for IndexedDB caching (client-side)
-		const sessionCredential: SessionCredential = {
-			userId,
-			identityCommitment,
-			leafIndex: registration.leaf_index,
-			merklePath: mockResponse.merklePath,
-			merkleRoot: registration.merkle_root,
-			congressionalDistrict,
-			verificationMethod,
-			createdAt: now,
-			expiresAt
-		};
-
-		// Return registration data (frontend will cache in IndexedDB)
-		return json({
-			success: true,
-			data: {
-				leafIndex: registration.leaf_index,
-				merklePath: mockResponse.merklePath,
-				merkleRoot: registration.merkle_root,
-				districtSize: 4096,
-				expiresAt: expiresAt.toISOString(),
-				sessionCredential // Client will cache this
-			}
-		});
-	} catch (err) {
-		console.error('[Shadow Atlas Registration] Error:', err);
-
-		// Re-throw SvelteKit errors
-		if (err && typeof err === 'object' && 'status' in err) {
-			throw err;
+		return json(result);
+	} catch (error) {
+		console.error('Shadow Atlas registration error:', error);
+		if (error instanceof Error) {
+			console.error('Error stack:', error.stack);
 		}
-
-		throw error(500, 'Shadow Atlas registration failed');
+		return json({ error: 'Internal server error', details: String(error) }, { status: 500 });
 	}
 };
-
-// ============================================================================
-// Mock Shadow Atlas API (Replace with real API when voter-protocol deploys)
-// ============================================================================
-
-interface RegisterRequest {
-	identityCommitment: string;
-	congressionalDistrict: string;
-	verificationMethod: string;
-	verificationId: string;
-}
-
-interface RegisterResponse {
-	success: boolean;
-	leafIndex: number;
-	merklePath: string[];
-	merkleRoot: string;
-	error?: string;
-}
-
-/**
- * Mock Shadow Atlas registration
- * TODO: Replace with real voter-protocol API call
- *
- * Real implementation will:
- * 1. POST to https://api.voter-protocol.org/shadow-atlas/register
- * 2. Receive leafIndex, merklePath (12 hashes), merkleRoot
- * 3. Handle rate limiting, retries, error responses
- */
-async function registerWithShadowAtlas(request: RegisterRequest): Promise<RegisterResponse> {
-	// MOCK IMPLEMENTATION - Remove when voter-protocol API is ready
-	// This generates deterministic mock data for testing
-
-	console.log('[Shadow Atlas API - MOCK] Registering:', {
-		district: request.congressionalDistrict,
-		commitment: request.identityCommitment.slice(0, 10) + '...'
-	});
-
-	// Simulate API latency
-	await new Promise((resolve) => setTimeout(resolve, 500));
-
-	// Generate mock leaf index (deterministic from identity commitment)
-	const hash = await crypto.subtle.digest(
-		'SHA-256',
-		new TextEncoder().encode(request.identityCommitment)
-	);
-	const hashArray = new Uint8Array(hash);
-	const leafIndex = (hashArray[0] << 8) | hashArray[1]; // 0-65535
-	const districtLeafIndex = leafIndex % 4096; // 0-4095 (4096 leaves per district)
-
-	// Generate mock Merkle path (12 sibling hashes for 4096-leaf tree)
-	// In production, Shadow Atlas computes this from actual district tree
-	const merklePath: string[] = [];
-	for (let i = 0; i < 12; i++) {
-		const siblingHash = Array.from({ length: 64 }, () =>
-			Math.floor(Math.random() * 16).toString(16)
-		).join('');
-		merklePath.push('0x' + siblingHash);
-	}
-
-	// Generate mock Merkle root
-	const rootHash = Array.from({ length: 64 }, () =>
-		Math.floor(Math.random() * 16).toString(16)
-	).join('');
-	const merkleRoot = '0x' + rootHash;
-
-	console.log('[Shadow Atlas API - MOCK] Registration complete:', {
-		leafIndex: districtLeafIndex,
-		merklePathLength: merklePath.length,
-		merkleRoot: merkleRoot.slice(0, 10) + '...'
-	});
-
-	return {
-		success: true,
-		leafIndex: districtLeafIndex,
-		merklePath,
-		merkleRoot
-	};
-
-	// TODO: Real implementation (when voter-protocol deploys):
-	/*
-	const response = await fetch('https://api.voter-protocol.org/shadow-atlas/register', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			'Authorization': `Bearer ${process.env.VOTER_API_KEY}`
-		},
-		body: JSON.stringify({
-			identity_commitment: request.identityCommitment,
-			congressional_district: request.congressionalDistrict,
-			verification: {
-				method: request.verificationMethod,
-				verification_id: request.verificationId
-			}
-		})
-	});
-
-	if (!response.ok) {
-		const errorData = await response.json();
-		return {
-			success: false,
-			leafIndex: 0,
-			merklePath: [],
-			merkleRoot: '',
-			error: errorData.message || 'Shadow Atlas API error'
-		};
-	}
-
-	const data = await response.json();
-	return {
-		success: true,
-		leafIndex: data.leaf_index,
-		merklePath: data.merkle_path,
-		merkleRoot: data.merkle_root
-	};
-	*/
-}

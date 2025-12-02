@@ -61,13 +61,7 @@ export function isValidEmailServiceUser(user: unknown): user is EmailServiceUser
 }
 
 // Type for _representative objects with stronger typing
-interface Representative {
-	name: string;
-	party: string;
-	chamber: 'house' | 'senate' | string;
-	state: string;
-	district: string;
-}
+import type { Representative } from '$lib/core/legislative/types';
 
 // Type guard for a single _representative
 function isValidRepresentative(rep: unknown): rep is Representative {

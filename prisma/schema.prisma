@@ -797,31 +797,13 @@ model AuditLog {
   // Unified audit data (flexible JSONB storage)
   audit_data                Json      @default("{}") @map("audit_data") // Flexible data storage for any audit type
   
-  // Agent provenance & evidence (from ReputationLog)
-  agent_source              String?   @map("agent_source") // Which agent made the decision
-  agent_decisions           Json?     @map("agent_decisions") // AI decision trail
-  evidence_hash             String?   @map("evidence_hash") // IPFS hash of evidence
-  confidence                Float?    @map("confidence") // Agent confidence 0-1
+  // Agent provenance & evidence
+  agent_id                  String?   @map("agent_id") // Which agent verified/acted
+  verification_method       String?   @map("verification_method") // 'zk_proof', 'oauth', 'manual'
+  evidence_cid              String?   @map("evidence_cid") // IPFS CID for proof
   
-  // Reputation tracking (consolidated from ReputationLog)
-  score_before              Int?      @map("score_before")
-  score_after               Int?      @map("score_after") 
-  change_amount             Int?      @map("change_amount")
-  change_reason             String?   @map("change_reason")
-  
-  // Certification tracking (consolidated from CertificationLog)
-  certification_type        String?   @map("certification_type") // 'voter_protocol', 'template_approval', 'identity_verification'
-  certification_hash        String?   @map("certification_hash")
-  certification_data        Json?     @map("certification_data")
-  reward_amount             String?   @map("reward_amount") // BigInt as string (VOTER tokens)
-  recipient_emails          String[] @default([]) @map("recipient_emails")
-  
-  // Blockchain correlation (link to CivicAction if applicable)
+  // Blockchain correlation
   civic_action_id           String?   @unique @map("civic_action_id")
-  
-  // Technical audit data (from original AuditLog)
-  ip_address                String?   @map("ip_address")
-  user_agent                String?   @map("user_agent")
   
   // Metadata & status
   status                    String    @default("completed") // 'pending', 'completed', 'failed', 'cancelled'
@@ -836,11 +818,8 @@ model AuditLog {
   civic_action              CivicAction? @relation(fields: [civic_action_id], references: [id])
   
   @@index([user_id])
-  @@index([action_type])
+  @@index([action_type, action_subtype])
   @@index([created_at])
-  @@index([change_reason])
-  @@index([certification_type])
-  @@index([certification_hash])
   @@map("audit_log")
 }
 
@@ -1189,6 +1168,19 @@ model ShadowAtlasRegistration {
   @@map("shadow_atlas_registration")
 }
 
+model ShadowAtlasTree {
+  id                     String   @id @default(cuid())
+  congressional_district String   @unique @map("congressional_district")
+  leaf_count             Int      @default(0) @map("leaf_count")
+  merkle_root            String   @map("merkle_root")
+  leaves                 String[] // Array of identity commitments
+
+  created_at             DateTime @default(now()) @map("created_at")
+  updated_at             DateTime @updatedAt @map("updated_at")
+
+  @@map("shadow_atlas_tree")
+}
+
 // ============= ZK PROOF SUBMISSIONS (Phase 1: Encrypted Delivery) =============
 // Tracks ZK proof submissions for congressional delivery
 // Links proof generation → encrypted blob → delivery → on-chain verification
@@ -1203,13 +1195,17 @@ model Submission {
   proof_hex                 String   @map("proof_hex")              // Serialized proof (hex string)
   public_inputs             Json     @map("public_inputs")          // [merkle_root, nullifier, action_id]
   nullifier                 String   @map("nullifier")              // Unique per (identity, action) - prevents double-spend
+  action_id                 String   @map("action_id")              // Context for the proof
 
   // === WITNESS ENCRYPTION (XChaCha20-Poly1305) ===
   // Address encrypted to TEE public key, decrypted only in enclave
   encrypted_witness         String   @map("encrypted_witness")      // Base64-encoded ciphertext
-  witness_nonce             String   @map("witness_nonce")          // Base64-encoded nonce
-  ephemeral_public_key      String   @map("ephemeral_public_key")   // Base64-encoded ephemeral key
-  tee_key_id                String   @map("tee_key_id")             // Which TEE key was used
+  encrypted_message         String?  @map("encrypted_message")      // Base64-encoded message (optional if public)
+  
+  // Encryption Metadata (Optional for Phase 1 MVP if bundled)
+  witness_nonce             String?  @map("witness_nonce")          // Base64-encoded nonce
+  ephemeral_public_key      String?  @map("ephemeral_public_key")   // Base64-encoded ephemeral key
+  tee_key_id                String?  @map("tee_key_id")             // Which TEE key was used
 
   // === CONGRESSIONAL DELIVERY ===
   // CWC API submission (encrypted delivery through TEE)

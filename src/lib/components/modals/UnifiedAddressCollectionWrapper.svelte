@@ -5,7 +5,8 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import UnifiedModal from '$lib/components/ui/UnifiedModal.svelte';
-	import { AddressCollectionContent } from '$lib/components/auth/parts';
+	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
+	// import { AddressCollectionContent } from '$lib/components/auth/parts';
 
 	let {
 		template
@@ -44,17 +45,19 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 		dispatch('close');
 	}
 
-	function handleComplete(data: {
-		street?: string;
-		city?: string;
-		state?: string;
-		zip?: string;
-		address: string;
-		verified: boolean;
-		congressional_district?: string;
-		representatives?: Array<Record<string, unknown>>;
-	}) {
-		dispatch('complete', data);
+	function handleComplete(
+		event: CustomEvent<{
+			street?: string;
+			city?: string;
+			state?: string;
+			zip?: string;
+			address: string;
+			verified: boolean;
+			congressional_district?: string;
+			representatives?: Array<Record<string, unknown>>;
+		}>
+	) {
+		dispatch('complete', event.detail);
 	}
 </script>
 
@@ -69,11 +72,7 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 >
 	{#snippet children(data)}
 		{#if data?.template}
-			<AddressCollectionContent
-				template={data.template}
-				onclose={handleClose}
-				oncomplete={handleComplete}
-			/>
+			<AddressCollectionForm _template={data.template} on:complete={handleComplete} />
 		{/if}
 	{/snippet}
 </UnifiedModal>

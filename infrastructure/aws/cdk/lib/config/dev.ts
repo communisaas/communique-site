@@ -6,7 +6,7 @@ export const devConfig: EnvironmentConfig = {
 	appName: 'communique-dev',
 	vpcCidr: '10.0.0.0/16',
 	enableVpcLogs: false,
-	enableNatGateway: false, // Cost optimization for dev
+	enableNatGateway: true, // Enabled (using NAT Instance for cost savings)
 
 	dynamodb: {
 		rateLimitTable: {
@@ -63,21 +63,21 @@ export const devConfig: EnvironmentConfig = {
 	},
 
 	monitoring: {
-		enableXray: false, // Disabled for cost optimization
+		enableXray: false,
 		enableDetailedMonitoring: false,
 		alarmEmail: 'dev-alerts@communique.app',
 		dashboardName: 'Communique-Dev-CWC'
 	},
 
 	cost: {
-		monthlyBudgetUsd: 50,
-		enableBudgetAlerts: true
+		monthlyBudgetUsd: 20,
+		enableBudgetAlerts: false // Disabled to avoid deployment errors and cost
 	},
 
 	security: {
 		enableKmsEncryption: true,
-		kmsKeyRotation: false, // Disabled for dev to reduce costs
-		enableVpcEndpoints: false // Disabled for cost optimization
+		kmsKeyRotation: false,
+		enableVpcEndpoints: false
 	},
 
 	tags: {

@@ -651,9 +651,9 @@
 	// Runs whenever expanded dimensions or active node changes
 	$effect(() => {
 		if (expandedNodeId && !isMobile && expandedWidth > 0 && expandedHeight > 0) {
-			const viewportWidth = window.innerWidth;
-			const viewportHeight = window.innerHeight;
-			const margin = 24; // Safe area
+			const viewportWidth = document.documentElement.clientWidth;
+			const viewportHeight = document.documentElement.clientHeight;
+			const margin = 32; // Safe area (increased for better negative space)
 
 			let shiftX = 0;
 			let shiftY = 0;

@@ -16,7 +16,6 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
 	DynamoDBDocumentClient,
 	GetCommand,
-	PutCommand,
 	UpdateCommand
 } from '@aws-sdk/lib-dynamodb';
 
@@ -100,8 +99,8 @@ interface JobStatusUpdate {
 	jobId: string;
 	messageId: string;
 	status: 'processing' | 'submitted' | 'failed' | 'rate_limited';
-	cwcResponse?: Record<string, unknown>;
-	error?: string;
+	cwcResponse?: Record<string, unknown> | undefined;
+	error?: string | undefined;
 	timestamp: string;
 }
 
@@ -127,7 +126,7 @@ const docClient = DynamoDBDocumentClient.from(dynamoClient);
  */
 export const handler = async (event: SQSEvent, context: Context): Promise<SQSBatchResponse> => {
 	console.log('Lambda invocation started', {
-		requestId: context.requestId,
+		requestId: context.awsRequestId,
 		messageCount: event.Records.length,
 		timestamp: new Date().toISOString()
 	});
@@ -137,12 +136,12 @@ export const handler = async (event: SQSEvent, context: Context): Promise<SQSBat
 	// Process each SQS record
 	for (const record of event.Records) {
 		try {
-			await processRecord(record, context.requestId);
+			await processRecord(record, context.awsRequestId);
 		} catch (error) {
 			console.error('Failed to process record', {
 				messageId: record.messageId,
 				error: error instanceof Error ? error.message : 'Unknown error',
-				requestId: context.requestId
+				requestId: context.awsRequestId
 			});
 
 			// Add to batch failures for partial retry
@@ -153,7 +152,7 @@ export const handler = async (event: SQSEvent, context: Context): Promise<SQSBat
 	}
 
 	console.log('Lambda invocation completed', {
-		requestId: context.requestId,
+		requestId: context.awsRequestId,
 		totalMessages: event.Records.length,
 		failedMessages: batchItemFailures.length,
 		successfulMessages: event.Records.length - batchItemFailures.length
@@ -232,7 +231,7 @@ async function processRecord(record: SQSRecord, requestId: string): Promise<void
 			jobId: messageBody.jobId,
 			messageId: messageBody.messageId,
 			status: result.success ? 'submitted' : 'failed',
-			cwcResponse: result.cwcResponse,
+			cwcResponse: result.cwcResponse || undefined,
 			error: result.error,
 			timestamp: new Date().toISOString()
 		});
@@ -462,7 +461,7 @@ async function checkRateLimit(
 	userId: string,
 	action: string
 ): Promise<{ allowed: boolean; remainingCount: number }> {
-	const key = `${userId}:${action}`;
+	// const key = `${userId}:${action}`;
 	const currentTime = Math.floor(Date.now() / 1000);
 	const windowStart = currentTime - config.rateLimitWindow;
 

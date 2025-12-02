@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { onMount as _onMount } from 'svelte';
 	import { Users, Eye } from '@lucide/svelte';
-	import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
+	import TemplatePreview from '$lib/components/template-browser/TemplatePreview.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import VerificationBadge from '$lib/components/ui/VerificationBadge.svelte';
@@ -13,10 +13,8 @@
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { funnelAnalytics } from '$lib/core/analytics/funnel';
 	// import ShareButton from '$lib/components/ui/ShareButton.svelte';
-	import ActionBar from '$lib/components/landing/template/parts/ActionBar.svelte';
-	import UnifiedTemplateModal from '$lib/components/modals/UnifiedTemplateModal.svelte';
-	import UnifiedOnboardingModal from '$lib/components/modals/UnifiedOnboardingModal.svelte';
-	import UnifiedAddressModal from '$lib/components/modals/UnifiedAddressModal.svelte';
+	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
+
 	import { spring } from 'svelte/motion';
 	import { browser } from '$app/environment';
 	import type { PageData } from './$types';
@@ -33,7 +31,6 @@
 	let actionProgress = $state(spring(0));
 
 	// Template modal reference
-	let templateModal: UnifiedTemplateModal;
 
 	const template: TemplateType = $derived(data.template as unknown as TemplateType);
 	const channel = $derived(data.channel);
@@ -63,7 +60,8 @@
 
 	// Check if user has complete address for congressional templates
 	const hasCompleteAddress = $derived(
-		data.user && data.user.street && data.user.city && data.user.state && data.user.zip
+		(data.user && data.user.street && data.user.city && data.user.state && data.user.zip) ||
+			guestState.state?.address
 	);
 	const isCongressional = $derived(template.deliveryMethod === 'cwc');
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
@@ -151,52 +149,47 @@
 
 		if (flow.nextAction === 'address') {
 			// Need address collection
-			modalActions.openModal('address-modal', 'address', { template, source });
+			modalActions.openModal('address-modal', 'address', {
+				template,
+				source,
+				mode: 'collection',
+				onComplete: async (detail: any) => {
+					await _handleAddressSubmit(detail.address);
+				}
+			});
 		} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-			// Open TemplateModal using component method for consistency
-			templateModal?.open(template, data.user);
+			// Open TemplateModal using modalActions
+			modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
 		}
 	}
 
 	async function _handleAddressSubmit(address: string) {
+		console.log('[TemplateFlow] _handleAddressSubmit called with:', address);
 		try {
 			_isUpdatingAddress = true;
 
-			// Call API to update user address
-			const response = await fetch('/api/user/address', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ address })
-			});
+			// Client-side caching only - Cypherpunk ethos
+			// No backend call here
+			guestState.setAddress(address);
+			console.log('[TemplateFlow] Address cached locally via guestState');
 
-			if (!response.ok) {
-				throw new Error('Failed to save address');
-			}
-
-			const result = await response.json();
-
-			// Update local user data to reflect the new address
+			// Update local user data to reflect the new address (mock update for UI)
 			if (data.user) {
-				data.user.street = result.user.street;
-				data.user.city = result.user.city;
-				data.user.state = result.user.state;
-				data.user.zip = result.user.zip;
+				// We don't have the full parsed address, but we can set what we have
+				// or just rely on guestState check in hasCompleteAddress
+				// data.user.street = ... // We only have the raw string or detail object if we changed the signature
 			}
 
 			// Close address modal and proceed to email generation
 			modalActions.closeModal('address-modal');
-
-			// Clear any stored intent after successful address submission
-			sessionStorage.removeItem(`template_${template.id}_intent`);
-
-			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
-			if (flow.mailtoUrl) {
-				// Open TemplateModal using component method for consistency
-				templateModal?.open(template, data.user);
-			}
-		} catch {
+			// Open TemplateModal using modalActions
+			console.log('[TemplateFlow] Opening template modal...');
+			modalActions.openModal('template-modal', 'template_modal', {
+				template,
+				user: { ...data.user, address }
+			});
+		} catch (error) {
+			console.error('[TemplateFlow] Error in _handleAddressSubmit:', error);
 			// Error occurred during address update, but we'll still proceed with email
 			// In production, consider showing a warning about unverified address
 			modalActions.closeModal('address-modal');
@@ -206,8 +199,8 @@
 
 			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
 			if (flow.mailtoUrl) {
-				// Open TemplateModal using component method for consistency
-				templateModal?.open(template, data.user);
+				// Open TemplateModal using modalActions
+				modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
 			}
 		} finally {
 			_isUpdatingAddress = false;
@@ -306,7 +299,7 @@
 						if (!data.user) {
 							// DEMO MODE: Skip auth wall on template landing, go straight to modal
 							// User is already on the template page, let them proceed
-							templateModal?.open(template, null);
+							modalActions.openModal('template-modal', 'template_modal', { template, user: null });
 						} else {
 							// For authenticated users, use TemplateModal for the entire flow
 							handlePostAuthFlow();
@@ -356,7 +349,15 @@
 					</div>
 					<Button
 						variant="secondary"
-						onclick={() => modalActions.openModal('address-modal', 'address', { template, source })}
+						onclick={() =>
+							modalActions.openModal('address-modal', 'address', {
+								template,
+								source,
+								mode: 'collection',
+								onComplete: async (detail: any) => {
+									await _handleAddressSubmit(detail.address);
+								}
+							})}
 						classNames="ml-auto"
 					>
 						Add Address
@@ -389,10 +390,20 @@
 					if (flow.nextAction === 'auth') {
 						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
 					} else if (flow.nextAction === 'address') {
-						modalActions.openModal('address-modal', 'address', { template, source });
+						modalActions.openModal('address-modal', 'address', {
+							template,
+							source,
+							mode: 'collection',
+							onComplete: async (detail: any) => {
+								await _handleAddressSubmit(detail.address);
+							}
+						});
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						// Open TemplateModal using component method for consistency
-						templateModal?.open(template, data.user);
+						// Open TemplateModal using modalActions
+						modalActions.openModal('template-modal', 'template_modal', {
+							template,
+							user: data.user
+						});
 					}
 					return;
 				}
@@ -400,11 +411,51 @@
 				// For now, treat US or certified templates as existing path
 				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'cwc')) {
 					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
+
+					// Check if we have a cached address from guestState (Cypherpunk flow)
+					if (guestState.state?.address && flow.nextAction === 'address') {
+						// We have the address locally! We can proceed to email generation
+						// But we might need to verify it first or just pass it through.
+						// For now, let's open the address modal in 'verify' mode or just skip to template modal
+						// if we trust the cached address.
+
+						// Better UX: Open address modal pre-filled? Or just use it?
+						// "Securely cache the address so users don't constantly reenter it"
+						// Let's pass it to the address modal to pre-fill/verify, OR just consider it done.
+
+						// If we consider it done:
+						modalActions.openModal('template-modal', 'template_modal', {
+							template,
+							user: { ...data.user, address: guestState.state.address } // Mock user with address
+						});
+						return;
+					}
+
 					if (flow.nextAction === 'address') {
-						modalActions.openModal('address-modal', 'address', { template, source });
+						modalActions.openModal('address-modal', 'address', {
+							template,
+							source,
+							mode: 'collection',
+							onComplete: async (detail: any) => {
+								// Client-side caching only
+								if (detail?.address) {
+									guestState.setAddress(detail.address);
+								}
+								// No backend save here either
+
+								// Proceed to template modal
+								modalActions.openModal('template-modal', 'template_modal', {
+									template,
+									user: data.user
+								});
+							}
+						});
 					} else if (flow.nextAction === 'email' && flow.mailtoUrl) {
-						// Open TemplateModal using component method for consistency
-						templateModal?.open(template, data.user);
+						// Open TemplateModal using modalActions
+						modalActions.openModal('template-modal', 'template_modal', {
+							template,
+							user: data.user
+						});
 					} else {
 						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
 					}
@@ -417,8 +468,3 @@
 		/>
 	</div>
 </div>
-
-<!-- Modal Components -->
-<UnifiedOnboardingModal />
-<UnifiedAddressModal />
-<UnifiedTemplateModal bind:this={templateModal} />

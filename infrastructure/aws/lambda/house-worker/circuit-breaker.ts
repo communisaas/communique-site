@@ -13,9 +13,9 @@ export interface CircuitBreakerStats {
 	state: CircuitBreakerState;
 	failureCount: number;
 	successCount: number;
-	lastFailureTime?: number;
-	lastSuccessTime?: number;
-	nextAttemptTime?: number;
+	lastFailureTime?: number | undefined;
+	lastSuccessTime?: number | undefined;
+	nextAttemptTime?: number | undefined;
 	totalExecutions: number;
 	stateChanges: number;
 }
@@ -43,9 +43,9 @@ export class CircuitBreaker {
 	private state: CircuitBreakerState = 'CLOSED';
 	private failureCount = 0;
 	private successCount = 0;
-	private lastFailureTime?: number;
-	private lastSuccessTime?: number;
-	private nextAttemptTime?: number;
+	private lastFailureTime?: number | undefined;
+	private lastSuccessTime?: number | undefined;
+	private nextAttemptTime?: number | undefined;
 	private totalExecutions = 0;
 	private stateChanges = 0;
 

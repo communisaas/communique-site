@@ -5,6 +5,7 @@ import { NetworkingStack } from '../lib/networking-stack';
 import { StorageStack } from '../lib/storage-stack';
 import { QueueStack } from '../lib/queue-stack';
 import { ComputeStack } from '../lib/compute-stack';
+import { TeeComputeStack } from '../lib/tee-compute-stack';
 import { MonitoringStack } from '../lib/monitoring-stack';
 import { getEnvironmentConfig } from '../lib/config';
 
@@ -50,6 +51,14 @@ class CommuniqueCdkApp extends cdk.App {
 			stackName: `${config.appName}-queue-${config.environment}`
 		});
 
+		// Create TEE Compute Stack (Nitro Enclaves)
+		const teeComputeStack = new TeeComputeStack(this, `${config.appName}-TeeCompute`, {
+			...commonProps,
+			config,
+			vpc: networkingStack.vpc,
+			stackName: `${config.appName}-tee-compute-${config.environment}`
+		});
+
 		// Create Compute Stack (Lambda functions)
 		const computeStack = new ComputeStack(this, `${config.appName}-Compute`, {
 			...commonProps,
@@ -60,6 +69,8 @@ class CommuniqueCdkApp extends cdk.App {
 			houseQueue: queueStack.houseQueue,
 			rateLimitTable: storageStack.rateLimitTable,
 			jobTrackingTable: storageStack.jobTrackingTable,
+			teeNamespace: teeComputeStack.namespace,
+			teeService: teeComputeStack.service,
 			stackName: `${config.appName}-compute-${config.environment}`
 		});
 
@@ -81,7 +92,9 @@ class CommuniqueCdkApp extends cdk.App {
 		// Add stack dependencies
 		storageStack.addDependency(networkingStack);
 		queueStack.addDependency(storageStack);
+		teeComputeStack.addDependency(networkingStack);
 		computeStack.addDependency(queueStack);
+		computeStack.addDependency(teeComputeStack);
 		monitoringStack.addDependency(computeStack);
 
 		// Add global tags
@@ -92,7 +105,7 @@ class CommuniqueCdkApp extends cdk.App {
 		// Add deployment timestamp tag
 		cdk.Tags.of(this).add('DeployedAt', new Date().toISOString());
 		cdk.Tags.of(this).add('DeployedBy', process.env.USER || 'unknown');
-		cdk.Tags.of(this).add('CDKVersion', cdk.VERSION);
+		// cdk.Tags.of(this).add('CDKVersion', cdk.VERSION);
 
 		// Output environment information
 		console.log(`🚀 Deploying Communique CWC infrastructure for ${config.environment} environment`);
@@ -110,4 +123,4 @@ class CommuniqueCdkApp extends cdk.App {
 }
 
 // Create and synthesize the CDK app
-new CommuniqueCdkApp();
+new CommuniqueCdkApp().synth();

@@ -8,6 +8,7 @@
 	import HeaderSystem from '$lib/components/layout/HeaderSystem.svelte';
 	import ErrorBoundary from '$lib/components/error/ErrorBoundary.svelte';
 	import ToastContainer from '$lib/components/ui/ToastContainer.svelte';
+	import ModalRegistry from '$lib/components/modals/ModalRegistry.svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
@@ -38,14 +39,26 @@
 		data: LayoutData;
 	} = $props();
 
-	// Initialize app: fetch templates + sync OAuth location
-	_onMount(() => {
+	// Initialize app: fetch templates + sync OAuth location + pre-warm ZK prover
+	_onMount(async () => {
 		templateStore.fetchTemplates();
 
 		// Sync OAuth location if cookie exists (from OAuth callback)
 		syncOAuthLocation().catch((error) => {
 			console.warn('[App] Failed to sync OAuth location:', error);
 		});
+
+		// Pre-warm the ZK Prover (starts 12-14s keygen in background worker)
+		// This ensures "The Hum" is fast when the user actually needs it.
+		try {
+			const { proverOrchestrator } = await import('$lib/core/proof/prover-orchestrator');
+			console.log('[App] Pre-warming ZK Prover...');
+			proverOrchestrator.init().catch((err) => {
+				console.warn('[App] ZK Prover pre-warming failed (non-fatal):', err);
+			});
+		} catch (err) {
+			console.warn('[App] Failed to load ZK Prover for pre-warming:', err);
+		}
 	});
 
 	// Handle template use from header/bottom bar
@@ -90,7 +103,6 @@
 		<ErrorBoundary fallback="detailed" showRetry={true}>
 			{@render children()}
 		</ErrorBoundary>
-		<Footer />
 	</div>
 {:else}
 	<!-- Other pages: Header padding for fixed IdentityStrip -->
@@ -106,3 +118,4 @@
 
 <!-- Global UI components (always present) -->
 <ToastContainer />
+<ModalRegistry />

@@ -174,8 +174,8 @@ export class MonitoringStack extends cdk.Stack {
 			new cloudwatch.GraphWidget({
 				title: 'SQS Queue Depth',
 				left: [
-					resources.senateQueue.metricApproximateNumberOfVisibleMessages({ label: 'Senate Queue' }),
-					resources.houseQueue.metricApproximateNumberOfVisibleMessages({ label: 'House Queue' })
+					resources.senateQueue.metricApproximateNumberOfMessagesVisible({ label: 'Senate Queue' }),
+					resources.houseQueue.metricApproximateNumberOfMessagesVisible({ label: 'House Queue' })
 				],
 				width: 12,
 				height: 6
@@ -196,8 +196,8 @@ export class MonitoringStack extends cdk.Stack {
 			new cloudwatch.GraphWidget({
 				title: 'Dead Letter Queue Messages',
 				left: [
-					resources.senateDlq.metricApproximateNumberOfVisibleMessages({ label: 'Senate DLQ' }),
-					resources.houseDlq.metricApproximateNumberOfVisibleMessages({ label: 'House DLQ' })
+					resources.senateDlq.metricApproximateNumberOfMessagesVisible({ label: 'Senate DLQ' }),
+					resources.houseDlq.metricApproximateNumberOfMessagesVisible({ label: 'House DLQ' })
 				],
 				width: 12,
 				height: 6
@@ -205,8 +205,8 @@ export class MonitoringStack extends cdk.Stack {
 			new cloudwatch.SingleValueWidget({
 				title: 'Total DLQ Messages',
 				metrics: [
-					resources.senateDlq.metricApproximateNumberOfVisibleMessages({ label: 'Senate DLQ' }),
-					resources.houseDlq.metricApproximateNumberOfVisibleMessages({ label: 'House DLQ' })
+					resources.senateDlq.metricApproximateNumberOfMessagesVisible({ label: 'Senate DLQ' }),
+					resources.houseDlq.metricApproximateNumberOfMessagesVisible({ label: 'House DLQ' })
 				],
 				width: 12,
 				height: 6
@@ -235,10 +235,10 @@ export class MonitoringStack extends cdk.Stack {
 			new cloudwatch.GraphWidget({
 				title: 'DynamoDB Throttled Requests',
 				left: [
-					resources.rateLimitTable.metricThrottledRequestsForOperations({
+					resources.rateLimitTable.metricThrottledRequests({
 						label: 'Rate Limit Throttles'
 					}),
-					resources.jobTrackingTable.metricThrottledRequestsForOperations({
+					resources.jobTrackingTable.metricThrottledRequests({
 						label: 'Job Tracking Throttles'
 					})
 				],
@@ -310,9 +310,9 @@ export class MonitoringStack extends cdk.Stack {
 	private createCompositeAlarms(config: EnvironmentConfig): void {
 		// System Health Composite Alarm
 		const systemHealthAlarm = new cloudwatch.CompositeAlarm(this, 'SystemHealthAlarm', {
-			alarmName: `${config.appName}-system-health`,
+			compositeAlarmName: `${config.appName}-system-health`,
 			alarmDescription: 'Overall CWC integration system health',
-			compositeAlarmRule: cloudwatch.AlarmRule.anyOf(
+			alarmRule: cloudwatch.AlarmRule.anyOf(
 				cloudwatch.AlarmRule.fromAlarm(
 					cloudwatch.Alarm.fromAlarmArn(
 						this,
@@ -346,7 +346,7 @@ export class MonitoringStack extends cdk.Stack {
 					cloudwatch.AlarmState.ALARM
 				)
 			),
-			treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
+
 		});
 
 		// Add action to send notification
@@ -354,9 +354,9 @@ export class MonitoringStack extends cdk.Stack {
 
 		// High Latency Composite Alarm
 		const highLatencyAlarm = new cloudwatch.CompositeAlarm(this, 'HighLatencyAlarm', {
-			alarmName: `${config.appName}-high-latency`,
+			compositeAlarmName: `${config.appName}-high-latency`,
 			alarmDescription: 'CWC integration system experiencing high latency',
-			compositeAlarmRule: cloudwatch.AlarmRule.anyOf(
+			alarmRule: cloudwatch.AlarmRule.anyOf(
 				cloudwatch.AlarmRule.fromAlarm(
 					cloudwatch.Alarm.fromAlarmArn(
 						this,
@@ -374,7 +374,7 @@ export class MonitoringStack extends cdk.Stack {
 					cloudwatch.AlarmState.ALARM
 				)
 			),
-			treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
+
 		});
 
 		highLatencyAlarm.addAlarmAction(new cloudwatchActions.SnsAction(this.alarmTopic));
@@ -394,10 +394,9 @@ export class MonitoringStack extends cdk.Stack {
 					unit: 'USD'
 				},
 				costFilters: {
-					TagKey: ['Project'],
-					TagValue: ['communique']
+					TagKeyValue: [`user:Project$${config.tags.Project || 'communique'}`]
 				},
-				budgetType: 'COST'
+
 			},
 			notificationsWithSubscribers: [
 				{
@@ -409,11 +408,11 @@ export class MonitoringStack extends cdk.Stack {
 					},
 					subscribers: config.monitoring.alarmEmail
 						? [
-								{
-									subscriptionType: 'EMAIL',
-									address: config.monitoring.alarmEmail
-								}
-							]
+							{
+								subscriptionType: 'EMAIL',
+								address: config.monitoring.alarmEmail
+							}
+						]
 						: []
 				},
 				{
@@ -425,11 +424,11 @@ export class MonitoringStack extends cdk.Stack {
 					},
 					subscribers: config.monitoring.alarmEmail
 						? [
-								{
-									subscriptionType: 'EMAIL',
-									address: config.monitoring.alarmEmail
-								}
-							]
+							{
+								subscriptionType: 'EMAIL',
+								address: config.monitoring.alarmEmail
+							}
+						]
 						: []
 				}
 			]
@@ -463,7 +462,7 @@ export class MonitoringStack extends cdk.Stack {
 
 		if (this.budget) {
 			new cdk.CfnOutput(this, 'BudgetName', {
-				value: this.budget.budget.budgetName!,
+				value: `${config.appName}-monthly-budget`,
 				description: 'AWS Budget name for cost monitoring',
 				exportName: `${config.appName}-budget-name`
 			});

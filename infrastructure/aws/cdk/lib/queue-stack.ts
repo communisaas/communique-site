@@ -102,9 +102,9 @@ export class QueueStack extends cdk.Stack {
 			retentionPeriod: cdk.Duration.days(config.sqs.messageRetentionDays),
 			deadLetterQueue: queueConfig.enableDlq
 				? {
-						queue: deadLetterQueue,
-						maxReceiveCount: queueConfig.maxReceiveCount
-					}
+					queue: deadLetterQueue,
+					maxReceiveCount: queueConfig.maxReceiveCount
+				}
 				: undefined,
 			encryption: kmsKey ? sqs.QueueEncryption.KMS : sqs.QueueEncryption.SQS_MANAGED,
 			encryptionMasterKey: kmsKey,
@@ -165,7 +165,7 @@ export class QueueStack extends cdk.Stack {
 		new cloudwatch.Alarm(this, `${prefix}QueueDepthAlarm`, {
 			alarmName: `${config.appName}-${prefix.toLowerCase()}-queue-depth`,
 			alarmDescription: `${prefix} queue depth is too high`,
-			metric: queue.metricApproximateNumberOfVisibleMessages({
+			metric: queue.metricApproximateNumberOfMessagesVisible({
 				period: cdk.Duration.minutes(5),
 				statistic: 'Average'
 			}),
@@ -193,7 +193,7 @@ export class QueueStack extends cdk.Stack {
 		new cloudwatch.Alarm(this, `${prefix}DlqMessagesAlarm`, {
 			alarmName: `${config.appName}-${prefix.toLowerCase()}-dlq-messages`,
 			alarmDescription: `${prefix} DLQ has messages indicating failures`,
-			metric: dlq.metricApproximateNumberOfVisibleMessages({
+			metric: dlq.metricApproximateNumberOfMessagesVisible({
 				period: cdk.Duration.minutes(5),
 				statistic: 'Sum'
 			}),

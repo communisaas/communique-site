@@ -16,7 +16,7 @@
 	import { createEventDispatcher } from 'svelte';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
-	import SignInModal from '$lib/components/modals/SignInModal.svelte';
+	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type {
 		HeaderTemplate,
 		HeaderUser,
@@ -40,7 +40,6 @@
 	let showCopied = $state(false);
 	let showShareMenu = $state(false);
 	let _showAuthModal = $state(false);
-	let authModal: SignInModal;
 
 	const componentId = 'AppHeader_' + Math.random().toString(36).substr(2, 9);
 	const shareUrl = $derived($page.url.href);
@@ -197,7 +196,7 @@
 	}
 
 	function handleHeaderSignIn() {
-		authModal.open();
+		modalActions.openModal('sign-in-modal', 'sign-in');
 	}
 </script>
 
@@ -397,6 +396,3 @@
 		aria-label="Close share menu"
 	></div>
 {/if}
-
-<!-- Sign In Modal -->
-<SignInModal bind:this={authModal} />

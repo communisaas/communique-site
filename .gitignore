@@ -67,3 +67,11 @@ project.inlang/
 # GeoIP databases (download separately, ~70MB)
 data/*.mmdb
 data/*.tar.gz
+
+# Infrastructure build artifacts
+infrastructure/aws/lambda/*/dist/
+infrastructure/aws/lambda/*/node_modules/
+infrastructure/aws/cdk/cdk.out/
+infrastructure/aws/cdk/deploy_log.txt
+infrastructure/aws/tee-enclave/node_modules/
+infrastructure/gcp-proxy/node_modules/

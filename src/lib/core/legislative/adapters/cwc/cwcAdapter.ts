@@ -16,8 +16,9 @@ import type {
 import type { CWCEnvironmentConfig, CommuniqueMessageInput } from './types.js';
 import { CWCFieldMapper } from './fieldMapper.js';
 import { CWCXMLBuilder } from './xmlBuilder.js';
+import type { LegislativeProvider, Representative as ProviderRepresentative } from '../../types.js';
 
-export class CWCAdapter extends LegislativeAdapter {
+export class CWCAdapter extends LegislativeAdapter implements LegislativeProvider {
 	readonly country_code = 'US';
 	readonly name = 'Congressional Web Contact (CWC)';
 	readonly supported_methods = ['certified_delivery'];
@@ -108,7 +109,7 @@ export class CWCAdapter extends LegislativeAdapter {
 			const cwcInput: CommuniqueMessageInput = {
 				template: {
 					id: request.template.id,
-					title: request.template.title,
+					title: request.template.title || '',
 					message_body: request.template.message_body,
 					slug: `template-${request.template.id}` // Generate slug if needed
 				},
@@ -118,11 +119,11 @@ export class CWCAdapter extends LegislativeAdapter {
 					email: request.user.email,
 					address: request.user.address
 						? {
-								address1: request.user.address.street || '',
-								city: request.user.address.city || '',
-								state: request.user.address.state || '',
-								zip: request.user.address.postal_code || ''
-							}
+							address1: request.user.address.street || '',
+							city: request.user.address.city || '',
+							state: request.user.address.state || '',
+							zip: request.user.address.postal_code || ''
+						}
 						: undefined,
 					phone: undefined // TODO: Add phone field to base User interface
 				},
@@ -168,6 +169,110 @@ export class CWCAdapter extends LegislativeAdapter {
 	 */
 	formatOfficeTitle(office: Office): string {
 		return office.title || `${office.chamber} Office`;
+	}
+
+	// ============================================================================
+	// LegislativeProvider Implementation
+	// ============================================================================
+
+	/**
+	 * Get representatives for a specific address
+	 */
+	async getRepresentatives(address: {
+		street: string;
+		city: string;
+		state: string;
+		zip: string;
+	}): Promise<ProviderRepresentative[]> {
+		// In a real implementation, this would call the Google Civic Info API or similar
+		// For CWC, we might rely on the user providing their rep, or use a separate lookup service
+		// Since CWC is just for delivery, we might return empty or throw if we can't lookup
+		// But the interface requires it.
+		// For now, we'll return an empty array or mock data if needed, but ideally we connect to `src/lib/core/congress/address-lookup.ts`
+
+		// TODO: Connect to address-lookup.ts
+		return [];
+	}
+
+	/**
+	 * Submit a message to a specific representative
+	 */
+	async submitMessage(
+		representative: ProviderRepresentative,
+		message: {
+			subject: string;
+			body: string;
+			topic?: string;
+		},
+		constituent: {
+			firstName: string;
+			lastName: string;
+			email: string;
+			address: {
+				street: string;
+				city: string;
+				state: string;
+				zip: string;
+			};
+			phone?: string;
+		}
+	): Promise<{
+		success: boolean;
+		confirmationCode?: string;
+		error?: string;
+	}> {
+		try {
+			// Map to CWC input
+			// We need to construct a CWC-compatible office code from the representative data
+			// This is tricky if we don't have the internal office ID.
+			// Ideally, the representative object passed here comes from getRepresentatives which should populate it.
+
+			// Construct CWC Office Code (simplified logic)
+			const officeCode = representative.bioguideId || `HON-${representative.name.replace(/\s+/g, '').toUpperCase()}`;
+
+			const cwcInput: CommuniqueMessageInput = {
+				template: {
+					id: 'dynamic-submission', // No template ID in this flow?
+					title: message.subject,
+					message_body: message.body,
+					slug: 'dynamic-submission'
+				},
+				user: {
+					id: 'constituent', // Anonymous or transient ID
+					name: `${constituent.firstName} ${constituent.lastName}`,
+					email: constituent.email,
+					address: {
+						address1: constituent.address.street,
+						city: constituent.address.city,
+						state: constituent.address.state,
+						zip: constituent.address.zip
+					},
+					phone: constituent.phone
+				},
+				personalConnection: '', // Not used in this direct flow?
+				recipientOffice: officeCode
+			};
+
+			// Map to CWC XML structure
+			const cwcMessage = this.fieldMapper.mapToCWCMessage(cwcInput);
+
+			// Build XML
+			const xmlMessage = CWCXMLBuilder.buildXMLMessage(cwcMessage);
+
+			// Submit to CWC API
+			const result = await this.submitToCWCAPI(xmlMessage);
+
+			return {
+				success: result.success,
+				confirmationCode: result.submissionId,
+				error: result.success ? undefined : 'Submission failed'
+			};
+		} catch (error) {
+			return {
+				success: false,
+				error: error instanceof Error ? error.message : 'Unknown error occurred'
+			};
+		}
 	}
 
 	/**

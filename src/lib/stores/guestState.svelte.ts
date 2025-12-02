@@ -6,6 +6,7 @@ export interface GuestTemplateState {
 	source: 'social-link' | 'direct-link' | 'share';
 	timestamp: number;
 	viewCount: number;
+	address?: string;
 }
 
 // Guest state for pre-authentication template interactions
@@ -36,6 +37,18 @@ function createGuestState() {
 			// Persist to localStorage for cross-session continuity
 			if (browser) {
 				localStorage.setItem('communique_guest_template', JSON.stringify(newState));
+			}
+		},
+
+		// Store address for ZKP flow (client-side only)
+		setAddress(address: string): void {
+			if (!state) return;
+
+			const updated = { ...state, address };
+			state = updated;
+
+			if (browser) {
+				localStorage.setItem('communique_guest_template', JSON.stringify(updated));
 			}
 		},
 

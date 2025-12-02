@@ -25,6 +25,7 @@ import type {
 	TEEResponse,
 	TEEHealthStatus
 } from '../provider';
+import crypto from 'node:crypto';
 
 /**
  * AWS-specific configuration
@@ -63,7 +64,7 @@ export interface AWSProviderConfig {
 export class AWSNitroEnclavesProvider implements TEEProvider {
 	readonly name = 'aws' as const;
 
-	constructor(private config: AWSProviderConfig) {}
+	constructor(private config: AWSProviderConfig) { }
 
 	/**
 	 * Deploy Nitro Enclave on AWS
@@ -762,7 +763,7 @@ echo "Nitro Enclave started successfully"
 	 * Generate random nonce for attestation challenge
 	 */
 	private generateNonce(): string {
-		return Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('hex');
+		return crypto.randomBytes(32).toString('hex');
 	}
 
 	/**
