@@ -15,6 +15,10 @@ export default defineConfig({
 		noExternal: ['@selfxyz/qrcode', 'react-spinners', '@voter-protocol/client']
 	},
 
+	worker: {
+		format: 'es'
+	},
+
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}'],
 		environment: 'jsdom',
