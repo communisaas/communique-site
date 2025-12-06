@@ -20,8 +20,18 @@
 	type Stage = 'structuring' | 'resolving' | 'results' | 'error';
 	let stage = $state<Stage>('resolving');
 	let errorMessage = $state<string | null>(null);
+	let isResolving = $state(false); // Prevent concurrent resolution attempts
 
 	async function resolveDecisionMakers() {
+		// Prevent concurrent calls
+		if (isResolving) {
+			console.log('[DecisionMakerResolver] Already resolving, skipping...');
+			return;
+		}
+
+		isResolving = true;
+		errorMessage = null; // Clear previous errors
+
 		try {
 			// Stage 1: Structure input if manual (quick pass)
 			if (!formData.objective.aiGenerated) {
@@ -94,9 +104,20 @@
 			stage = 'results';
 		} catch (err) {
 			console.error('[DecisionMakerResolver] Error:', err);
-			errorMessage =
-				err instanceof Error ? err.message : 'Failed to resolve decision-makers. Please try again.';
+
+			// Handle AbortError specifically (request was cancelled)
+			if (err instanceof Error && err.name === 'AbortError') {
+				errorMessage = 'Request was cancelled. Please try again.';
+			} else {
+				errorMessage =
+					err instanceof Error
+						? err.message
+						: 'Failed to resolve decision-makers. Please try again.';
+			}
+
 			stage = 'error';
+		} finally {
+			isResolving = false;
 		}
 	}
 

@@ -171,9 +171,9 @@
 			<button
 				type="button"
 				onclick={handleNext}
-				class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-participation-primary-700"
+				class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 hover:shadow"
 			>
-				Review & Publish →
+				Publish →
 			</button>
 		</div>
 	{:else if stage === 'editing'}

@@ -5,10 +5,9 @@
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
 	import { templateDraftStore, generateDraftId, formatTimeAgo } from '$lib/stores/templateDraft';
 	import { appendReferences } from '$lib/utils/message-processing';
-	import ObjectiveDefiner from './creator/ObjectiveDefiner.svelte';
+	import UnifiedObjectiveEntry from './creator/UnifiedObjectiveEntry.svelte';
 	import DecisionMakerResolver from './creator/DecisionMakerResolver.svelte';
 	import MessageGenerationResolver from './creator/MessageGenerationResolver.svelte';
-	import SmartReview from './creator/SmartReview.svelte';
 
 	const dispatch = createEventDispatcher<{
 		close: void;
@@ -18,14 +17,16 @@
 	let {
 		context,
 		isSubmitting = false,
-		validationErrors = {}
+		validationErrors = {},
+		initialText = ''
 	}: {
 		context: TemplateCreationContext;
 		isSubmitting?: boolean;
 		validationErrors?: Record<string, string>;
+		initialText?: string;
 	} = $props();
 
-	let currentStep: 'objective' | 'audience' | 'content' | 'review' = $state('objective');
+	let currentStep: 'objective' | 'audience' | 'content' = $state('objective');
 	let formErrors: string[] = $state([]);
 	let draftId = $state<string>(generateDraftId());
 	let lastSaved = $state<number | null>(null);
@@ -36,6 +37,7 @@
 
 	let formData: TemplateFormData = $state({
 		objective: {
+			rawInput: initialText, // Initialize from CreationSpark
 			title: '',
 			description: '',
 			category: '',
@@ -50,8 +52,7 @@
 		content: {
 			preview: '',
 			variables: []
-		},
-		review: {}
+		}
 	});
 
 	// Validation functions for each step
@@ -75,8 +76,7 @@
 			// Note: We removed variable requirements to give writers more agency
 			// Templates work great with or without personalization variables
 			return errors;
-		},
-		review: () => [] // Review step doesn't need validation
+		}
 	};
 
 	const isCurrentStepValid = $derived.by(() => {
@@ -89,10 +89,8 @@
 		} else if (currentStep === 'content') {
 			const currentErrors = validators.content(formData.content);
 			return currentErrors.length === 0;
-		} else {
-			const currentErrors = validators.review();
-			return currentErrors.length === 0;
 		}
+		return true;
 	});
 
 	function validateCurrentStep(): boolean {
@@ -102,8 +100,6 @@
 			formErrors = validators.audience(formData.audience);
 		} else if (currentStep === 'content') {
 			formErrors = validators.content(formData.content);
-		} else {
-			formErrors = validators.review();
 		}
 		return formErrors.length === 0;
 	}
@@ -111,12 +107,7 @@
 	function handleNext() {
 		if (!validateCurrentStep()) return;
 
-		const steps: ('objective' | 'audience' | 'content' | 'review')[] = [
-			'objective',
-			'audience',
-			'content',
-			'review'
-		];
+		const steps: ('objective' | 'audience' | 'content')[] = ['objective', 'audience', 'content'];
 		const currentIndex = steps.indexOf(currentStep);
 
 		if (currentIndex < steps.length - 1) {
@@ -126,12 +117,7 @@
 	}
 
 	function handleBack() {
-		const steps: ('objective' | 'audience' | 'content' | 'review')[] = [
-			'objective',
-			'audience',
-			'content',
-			'review'
-		];
+		const steps: ('objective' | 'audience' | 'content')[] = ['objective', 'audience', 'content'];
 		const currentIndex = steps.indexOf(currentStep);
 
 		if (currentIndex > 0) {
@@ -206,7 +192,7 @@
 
 	// Progress calculation
 	const progress = $derived.by(() => {
-		const steps = ['objective', 'audience', 'content', 'review'];
+		const steps = ['objective', 'audience', 'content'];
 		return ((steps.indexOf(currentStep) + 1) / steps.length) * 100;
 	});
 
@@ -225,11 +211,6 @@
 			title: 'Load Your Message',
 			icon: Mail,
 			description: 'What gets their attention and moves the needle?'
-		},
-		review: {
-			title: 'Make It Count',
-			icon: Building2,
-			description: 'Quick check before your message hits the target'
 		}
 	};
 
@@ -271,7 +252,7 @@
 		const draft = templateDraftStore.getDraft(draftId);
 		if (draft) {
 			formData = draft.data;
-			currentStep = draft.currentStep as 'objective' | 'audience' | 'content' | 'review';
+			currentStep = draft.currentStep as 'objective' | 'audience' | 'content';
 			lastSaved = draft.lastSaved;
 		}
 		showDraftRecovery = false;
@@ -375,13 +356,11 @@
 	<div class="relative flex-1">
 		<div class="p-4 md:p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
-				<ObjectiveDefiner bind:data={formData.objective} {context} />
+				<UnifiedObjectiveEntry bind:data={formData.objective} {context} />
 			{:else if currentStep === 'audience'}
 				<DecisionMakerResolver bind:formData onnext={handleNext} onback={handleBack} />
 			{:else if currentStep === 'content'}
-				<MessageGenerationResolver bind:formData onnext={handleNext} onback={handleBack} />
-			{:else}
-				<SmartReview data={formData} {context} isActiveStep={currentStep === 'review'} />
+				<MessageGenerationResolver bind:formData onnext={handleSave} onback={handleBack} />
 			{/if}
 		</div>
 	</div>
@@ -399,38 +378,18 @@
 					Back
 				</button>
 
-				{#if currentStep === 'review'}
-					<button
-						class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:cursor-not-allowed disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
-						onclick={handleSave}
-						disabled={!isCurrentStepValid || isSubmitting}
-					>
-						{#if isSubmitting}
-							<div
-								class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent md:h-4 md:w-4"
-							></div>
-							Publishing...
-						{:else}
-							Publish Template
-							<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
-						{/if}
-					</button>
-				{:else}
-					<button
-						class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
-						onclick={handleNext}
-						disabled={!isCurrentStepValid || isSubmitting}
-					>
-						{#if currentStep === 'objective'}
-							Pick Decision-Makers
-						{:else if currentStep === 'content'}
-							Make It Count
-						{:else}
-							Continue
-						{/if}
-						<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
-					</button>
-				{/if}
+				<button
+					class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
+					onclick={handleNext}
+					disabled={!isCurrentStepValid || isSubmitting}
+				>
+					{#if currentStep === 'objective'}
+						Pick Decision-Makers
+					{:else}
+						Continue
+					{/if}
+					<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
+				</button>
 			</div>
 		</div>
 	{/if}
