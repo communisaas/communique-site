@@ -57,11 +57,11 @@ export class NetworkingStack extends cdk.Stack {
 			],
 			flowLogs: config.enableVpcLogs
 				? {
-					CloudWatchLogs: {
-						destination: ec2.FlowLogDestination.toCloudWatchLogs(vpcLogGroup!),
-						trafficType: ec2.FlowLogTrafficType.ALL
+						CloudWatchLogs: {
+							destination: ec2.FlowLogDestination.toCloudWatchLogs(vpcLogGroup!),
+							trafficType: ec2.FlowLogTrafficType.ALL
+						}
 					}
-				}
 				: undefined
 		});
 
@@ -187,7 +187,7 @@ export class NetworkingStack extends cdk.Stack {
 		});
 
 		// Allow inbound traffic from Private Subnets
-		this.privateSubnets.forEach(subnet => {
+		this.privateSubnets.forEach((subnet) => {
 			natSg.addIngressRule(
 				ec2.Peer.ipv4(subnet.ipv4CidrBlock),
 				ec2.Port.allTraffic(),
@@ -203,7 +203,7 @@ export class NetworkingStack extends cdk.Stack {
 			'echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/custom-ip-forwarding.conf',
 			'sysctl -p /etc/sysctl.d/custom-ip-forwarding.conf',
 			// Dynamically detect the primary network interface
-			'PRIMARY_IF=$(ip route show to default | awk \'{print $5}\')',
+			"PRIMARY_IF=$(ip route show to default | awk '{print $5}')",
 			'iptables -t nat -A POSTROUTING -o $PRIMARY_IF -j MASQUERADE',
 			'iptables -F FORWARD',
 			'service iptables save',
@@ -214,9 +214,7 @@ export class NetworkingStack extends cdk.Stack {
 		// Role for NAT Instance (SSM for debugging)
 		const natRole = new iam.Role(this, 'NatInstanceRole', {
 			assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
-			managedPolicies: [
-				iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')
-			]
+			managedPolicies: [iam.ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore')]
 		});
 
 		// Create the NAT Instance
@@ -259,10 +257,12 @@ export class NetworkingStack extends cdk.Stack {
 			alarmDescription: 'Recover NAT Instance if system status check fails',
 			namespace: 'AWS/EC2',
 			metricName: 'StatusCheckFailed_System',
-			dimensions: [{
-				name: 'InstanceId',
-				value: natInstance.instanceId
-			}],
+			dimensions: [
+				{
+					name: 'InstanceId',
+					value: natInstance.instanceId
+				}
+			],
 			statistic: 'Maximum',
 			period: 60,
 			evaluationPeriods: 2,

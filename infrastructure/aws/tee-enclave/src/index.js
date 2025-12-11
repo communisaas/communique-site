@@ -193,43 +193,45 @@ app.use((error, req, res, next) => {
 const PORT = process.env.PORT || 8080;
 
 // Initialize crypto (generate keypair) before starting server
-initCrypto().then(() => {
-	const server = app.listen(PORT, '0.0.0.0', () => {
-		console.log('='.repeat(60));
-		console.log('TEE Workload Server Started');
-		console.log('='.repeat(60));
-		console.log('Port:', PORT);
-		console.log('Environment:', process.env.NODE_ENV || 'production');
-		console.log('Cloud Provider:', detectCloudProvider());
-		console.log('Endpoints:');
-		console.log('  POST /decrypt-and-forward - Decrypt and forward to CWC');
-		console.log('  GET  /health              - Health check');
-		console.log('  GET  /metrics             - Prometheus metrics');
-		console.log('  GET  /attestation         - Remote attestation token');
-		console.log('='.repeat(60));
-		console.log('TEE is ready to process encrypted messages');
-		console.log('='.repeat(60));
-	});
-
-	// Graceful shutdown
-	process.on('SIGTERM', () => {
-		console.log('SIGTERM received, shutting down gracefully...');
-
-		server.close(() => {
-			console.log('Server closed');
-			process.exit(0);
+initCrypto()
+	.then(() => {
+		const server = app.listen(PORT, '0.0.0.0', () => {
+			console.log('='.repeat(60));
+			console.log('TEE Workload Server Started');
+			console.log('='.repeat(60));
+			console.log('Port:', PORT);
+			console.log('Environment:', process.env.NODE_ENV || 'production');
+			console.log('Cloud Provider:', detectCloudProvider());
+			console.log('Endpoints:');
+			console.log('  POST /decrypt-and-forward - Decrypt and forward to CWC');
+			console.log('  GET  /health              - Health check');
+			console.log('  GET  /metrics             - Prometheus metrics');
+			console.log('  GET  /attestation         - Remote attestation token');
+			console.log('='.repeat(60));
+			console.log('TEE is ready to process encrypted messages');
+			console.log('='.repeat(60));
 		});
 
-		// Force shutdown after 10 seconds
-		setTimeout(() => {
-			console.error('Forced shutdown after timeout');
-			process.exit(1);
-		}, 10000);
+		// Graceful shutdown
+		process.on('SIGTERM', () => {
+			console.log('SIGTERM received, shutting down gracefully...');
+
+			server.close(() => {
+				console.log('Server closed');
+				process.exit(0);
+			});
+
+			// Force shutdown after 10 seconds
+			setTimeout(() => {
+				console.error('Forced shutdown after timeout');
+				process.exit(1);
+			}, 10000);
+		});
+	})
+	.catch((err) => {
+		console.error('Failed to initialize TEE workload:', err);
+		process.exit(1);
 	});
-}).catch(err => {
-	console.error('Failed to initialize TEE workload:', err);
-	process.exit(1);
-});
 
 /**
  * Detect cloud provider from environment

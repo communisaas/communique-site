@@ -119,11 +119,11 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 					email: request.user.email,
 					address: request.user.address
 						? {
-							address1: request.user.address.street || '',
-							city: request.user.address.city || '',
-							state: request.user.address.state || '',
-							zip: request.user.address.postal_code || ''
-						}
+								address1: request.user.address.street || '',
+								city: request.user.address.city || '',
+								state: request.user.address.state || '',
+								zip: request.user.address.postal_code || ''
+							}
 						: undefined,
 					phone: undefined // TODO: Add phone field to base User interface
 				},
@@ -228,7 +228,8 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 			// Ideally, the representative object passed here comes from getRepresentatives which should populate it.
 
 			// Construct CWC Office Code (simplified logic)
-			const officeCode = representative.bioguideId || `HON-${representative.name.replace(/\s+/g, '').toUpperCase()}`;
+			const officeCode =
+				representative.bioguideId || `HON-${representative.name.replace(/\s+/g, '').toUpperCase()}`;
 
 			const cwcInput: CommuniqueMessageInput = {
 				template: {

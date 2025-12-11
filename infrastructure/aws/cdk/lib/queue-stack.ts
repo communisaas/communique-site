@@ -102,9 +102,9 @@ export class QueueStack extends cdk.Stack {
 			retentionPeriod: cdk.Duration.days(config.sqs.messageRetentionDays),
 			deadLetterQueue: queueConfig.enableDlq
 				? {
-					queue: deadLetterQueue,
-					maxReceiveCount: queueConfig.maxReceiveCount
-				}
+						queue: deadLetterQueue,
+						maxReceiveCount: queueConfig.maxReceiveCount
+					}
 				: undefined,
 			encryption: kmsKey ? sqs.QueueEncryption.KMS : sqs.QueueEncryption.SQS_MANAGED,
 			encryptionMasterKey: kmsKey,

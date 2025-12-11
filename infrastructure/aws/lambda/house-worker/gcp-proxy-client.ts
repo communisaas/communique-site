@@ -43,7 +43,12 @@ export class GcpProxyError extends Error {
 	}
 }
 
-type InternalGcpProxyClientConfig = Required<Pick<GcpProxyClientConfig, 'baseUrl' | 'timeout' | 'maxRetries' | 'retryDelayMs' | 'retryBackoffMultiplier'>> & { authToken?: string };
+type InternalGcpProxyClientConfig = Required<
+	Pick<
+		GcpProxyClientConfig,
+		'baseUrl' | 'timeout' | 'maxRetries' | 'retryDelayMs' | 'retryBackoffMultiplier'
+	>
+> & { authToken?: string };
 
 export class GcpProxyClient {
 	private readonly config: InternalGcpProxyClientConfig;
@@ -292,8 +297,10 @@ export class GcpProxyClient {
 					: 'Submission failed';
 
 		// Extract optional fields
-		const submissionId = typeof data['submissionId'] === 'string' ? (data['submissionId'] as string) : undefined;
-		const processingTimeMs = typeof data['processingTimeMs'] === 'number' ? (data['processingTimeMs'] as number) : 0;
+		const submissionId =
+			typeof data['submissionId'] === 'string' ? (data['submissionId'] as string) : undefined;
+		const processingTimeMs =
+			typeof data['processingTimeMs'] === 'number' ? (data['processingTimeMs'] as number) : 0;
 
 		return {
 			success,

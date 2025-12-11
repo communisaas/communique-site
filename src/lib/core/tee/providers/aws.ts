@@ -64,7 +64,7 @@ export interface AWSProviderConfig {
 export class AWSNitroEnclavesProvider implements TEEProvider {
 	readonly name = 'aws' as const;
 
-	constructor(private config: AWSProviderConfig) { }
+	constructor(private config: AWSProviderConfig) {}
 
 	/**
 	 * Deploy Nitro Enclave on AWS

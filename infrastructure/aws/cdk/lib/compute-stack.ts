@@ -84,11 +84,13 @@ export class ComputeStack extends cdk.Stack {
 		this.teeProxyRole = this.createLambdaRole('TeeProxyRole', config);
 
 		// Grant permissions for Service Discovery
-		this.teeProxyRole.addToPolicy(new iam.PolicyStatement({
-			effect: iam.Effect.ALLOW,
-			actions: ['servicediscovery:DiscoverInstances'],
-			resources: ['*'] // Ideally restrict to the namespace/service
-		}));
+		this.teeProxyRole.addToPolicy(
+			new iam.PolicyStatement({
+				effect: iam.Effect.ALLOW,
+				actions: ['servicediscovery:DiscoverInstances'],
+				resources: ['*'] // Ideally restrict to the namespace/service
+			})
+		);
 
 		this.teeProxyFunction = this.createWorkerFunction(
 			'TeeProxyFunction',
@@ -409,17 +411,28 @@ export class ComputeStack extends cdk.Stack {
 	 */
 	private getRetentionDays(days: number): logs.RetentionDays {
 		switch (days) {
-			case 1: return logs.RetentionDays.ONE_DAY;
-			case 3: return logs.RetentionDays.THREE_DAYS;
-			case 5: return logs.RetentionDays.FIVE_DAYS;
-			case 7: return logs.RetentionDays.ONE_WEEK;
-			case 14: return logs.RetentionDays.TWO_WEEKS;
-			case 30: return logs.RetentionDays.ONE_MONTH;
-			case 60: return logs.RetentionDays.TWO_MONTHS;
-			case 90: return logs.RetentionDays.THREE_MONTHS;
-			case 180: return logs.RetentionDays.SIX_MONTHS;
-			case 365: return logs.RetentionDays.ONE_YEAR;
-			default: return logs.RetentionDays.ONE_WEEK;
+			case 1:
+				return logs.RetentionDays.ONE_DAY;
+			case 3:
+				return logs.RetentionDays.THREE_DAYS;
+			case 5:
+				return logs.RetentionDays.FIVE_DAYS;
+			case 7:
+				return logs.RetentionDays.ONE_WEEK;
+			case 14:
+				return logs.RetentionDays.TWO_WEEKS;
+			case 30:
+				return logs.RetentionDays.ONE_MONTH;
+			case 60:
+				return logs.RetentionDays.TWO_MONTHS;
+			case 90:
+				return logs.RetentionDays.THREE_MONTHS;
+			case 180:
+				return logs.RetentionDays.SIX_MONTHS;
+			case 365:
+				return logs.RetentionDays.ONE_YEAR;
+			default:
+				return logs.RetentionDays.ONE_WEEK;
 		}
 	}
 }

@@ -104,7 +104,7 @@ async function getAWSAttestationToken(publicKey) {
 
 		// Generate random nonce (optional but recommended)
 		// NSM API expects nonce as Buffer or Uint8Array
-		// const nonce = crypto.randomBytes(16); 
+		// const nonce = crypto.randomBytes(16);
 
 		// Request attestation document
 		// We can optionally pass public key, nonce, and user data

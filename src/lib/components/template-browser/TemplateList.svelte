@@ -144,7 +144,6 @@
 		visibleCounts = new Map(visibleCounts);
 	}
 
-
 	/**
 	 * Svelte Action: Register sentinel element and setup observer
 	 *
@@ -185,7 +184,8 @@
 									groupTitle,
 									current,
 									newCount,
-									totalTemplates: filteredGroups.find(g => g.title === groupTitle)?.templates.length
+									totalTemplates: filteredGroups.find((g) => g.title === groupTitle)?.templates
+										.length
 								});
 
 								// CRITICAL: Svelte 5 $state requires reassignment for Map reactivity

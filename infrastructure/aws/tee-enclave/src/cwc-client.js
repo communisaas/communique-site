@@ -26,8 +26,8 @@ export async function forwardToCWC({ message, recipient, templateId, attestation
 	// Determine CWC API endpoint based on office type
 	let endpoint =
 		recipient.office === 'senate'
-			? (process.env.CWC_SENATE_ENDPOINT || 'https://soapbox.senate.gov/api/submit')
-			: (process.env.CWC_HOUSE_ENDPOINT || 'https://forms.house.gov/api/submit');
+			? process.env.CWC_SENATE_ENDPOINT || 'https://soapbox.senate.gov/api/submit'
+			: process.env.CWC_HOUSE_ENDPOINT || 'https://forms.house.gov/api/submit';
 
 	const gcpProxyUrl = process.env.GCP_PROXY_URL;
 	let headers = {

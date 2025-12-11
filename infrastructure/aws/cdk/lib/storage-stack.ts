@@ -95,7 +95,7 @@ export class StorageStack extends cdk.Stack {
 			removalPolicy:
 				config.environment === 'production' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
 			contributorInsightsEnabled: config.monitoring.enableDetailedMonitoring,
-			stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES, // For monitoring changes
+			stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES // For monitoring changes
 		});
 
 		// Add Global Secondary Indexes
@@ -157,7 +157,7 @@ export class StorageStack extends cdk.Stack {
 			removalPolicy:
 				config.environment === 'production' ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
 			contributorInsightsEnabled: config.monitoring.enableDetailedMonitoring,
-			stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES, // For monitoring and audit
+			stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES // For monitoring and audit
 		});
 
 		// Add Global Secondary Indexes

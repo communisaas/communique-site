@@ -9,6 +9,7 @@
 
 	interface Props {
 		data: {
+			rawInput: string;
 			title: string;
 			description: string;
 			category: string;
@@ -22,7 +23,6 @@
 
 	// State for AI suggestion
 	let showGenerator = $state(false);
-	let userIssueDescription = $state('');
 
 	// Handle suggestion acceptance
 	function handleSuggestionAccept(suggestion: {
@@ -125,7 +125,7 @@
 
 			<div class="mt-4 border-t border-slate-200 pt-4">
 				<SubjectLineGenerator
-					bind:description={userIssueDescription}
+					bind:description={data.rawInput}
 					onaccept={handleSuggestionAccept}
 					oncancel={() => (showGenerator = false)}
 				/>

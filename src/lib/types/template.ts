@@ -115,6 +115,7 @@ export interface TemplateCreationContext {
 
 export interface TemplateFormData {
 	objective: {
+		rawInput: string; // User's unstructured initial input
 		title: string;
 		description: string;
 		category: string;

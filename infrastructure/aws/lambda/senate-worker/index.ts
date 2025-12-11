@@ -13,11 +13,7 @@ import type {
 	Context
 } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import {
-	DynamoDBDocumentClient,
-	GetCommand,
-	UpdateCommand
-} from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, GetCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 
 // Types from Communique codebase
 interface Template {

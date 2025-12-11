@@ -471,6 +471,7 @@
 	>
 		<TemplateCreator
 			context={creationContext}
+			initialText={creationInitialText}
 			on:close={() => {
 				showTemplateCreator = false;
 				creationContext = null;
@@ -635,7 +636,7 @@
 
 	@media (min-width: 1280px) {
 		.stream-column {
-			padding-top: 3rem; /* Match creation-column top spacing on desktop */
+			padding-top: 3rem; /* Desktop: Match creation-column top spacing */
 		}
 	}
 
@@ -684,11 +685,22 @@
 	/* Stream Explainer - Spatially adjacent to coordination signals */
 	.stream-explainer {
 		margin-bottom: 0.5em;
+		/* Mobile/Tablet (stacked layout): No top padding - creation column above provides clearance */
+		padding-top: 0;
 	}
 
 	@media (min-width: 640px) {
 		.stream-explainer {
 			margin-bottom: 1.5rem;
+		}
+	}
+
+	@media (min-width: 1280px) {
+		.stream-explainer {
+			/* Desktop side-by-side: Add padding for floating pill clearance
+			 * (stream-column has 3rem + this 2.5rem = 5.5rem total clearance) */
+			margin-bottom: 1.5rem;
+			padding-top: 2.5rem;
 		}
 	}
 

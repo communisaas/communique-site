@@ -345,8 +345,7 @@ export class MonitoringStack extends cdk.Stack {
 					),
 					cloudwatch.AlarmState.ALARM
 				)
-			),
-
+			)
 		});
 
 		// Add action to send notification
@@ -373,8 +372,7 @@ export class MonitoringStack extends cdk.Stack {
 					),
 					cloudwatch.AlarmState.ALARM
 				)
-			),
-
+			)
 		});
 
 		highLatencyAlarm.addAlarmAction(new cloudwatchActions.SnsAction(this.alarmTopic));
@@ -395,8 +393,7 @@ export class MonitoringStack extends cdk.Stack {
 				},
 				costFilters: {
 					TagKeyValue: [`user:Project$${config.tags.Project || 'communique'}`]
-				},
-
+				}
 			},
 			notificationsWithSubscribers: [
 				{
@@ -408,11 +405,11 @@ export class MonitoringStack extends cdk.Stack {
 					},
 					subscribers: config.monitoring.alarmEmail
 						? [
-							{
-								subscriptionType: 'EMAIL',
-								address: config.monitoring.alarmEmail
-							}
-						]
+								{
+									subscriptionType: 'EMAIL',
+									address: config.monitoring.alarmEmail
+								}
+							]
 						: []
 				},
 				{
@@ -424,11 +421,11 @@ export class MonitoringStack extends cdk.Stack {
 					},
 					subscribers: config.monitoring.alarmEmail
 						? [
-							{
-								subscriptionType: 'EMAIL',
-								address: config.monitoring.alarmEmail
-							}
-						]
+								{
+									subscriptionType: 'EMAIL',
+									address: config.monitoring.alarmEmail
+								}
+							]
 						: []
 				}
 			]

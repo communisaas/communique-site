@@ -69,7 +69,7 @@ export async function decrypt(ciphertext, nonce, ephemeralPublicKeyHex) {
 			type: 'spki'
 		});
 
-		// Note: importing raw EC key in Node can be tricky. 
+		// Note: importing raw EC key in Node can be tricky.
 		// If client sends raw bytes (X+Y), we might need to construct JWK or SPKI.
 		// For this implementation, let's assume standard ECDH flow where we can compute secret.
 
@@ -92,11 +92,7 @@ export async function decrypt(ciphertext, nonce, ephemeralPublicKeyHex) {
 		);
 
 		// 3. Decrypt using AES-256-GCM
-		const decipher = crypto.createDecipheriv(
-			'aes-256-gcm',
-			aesKey,
-			Buffer.from(nonce, 'base64')
-		);
+		const decipher = crypto.createDecipheriv('aes-256-gcm', aesKey, Buffer.from(nonce, 'base64'));
 
 		// We need the auth tag. Usually in GCM, the tag is appended to ciphertext or sent separately.
 		// The client `nitro-enclave-demo.ts` uses `crypto.subtle.encrypt` which appends the tag.

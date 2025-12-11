@@ -58,7 +58,7 @@
 
 			// Stage 1: Initialization (5-10s first time, instant if cached)
 			stage = 'initializing';
-			statusMessage = 'Initializing Halo2 prover...';
+			statusMessage = 'Initializing Noir prover...';
 			progress = 10;
 
 			// Use orchestrator for real initialization

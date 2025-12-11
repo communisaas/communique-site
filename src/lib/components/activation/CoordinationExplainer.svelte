@@ -18,16 +18,22 @@
 	import RelayLoom from '$lib/components/visualization/RelayLoom.svelte';
 
 	let isExpanded = $state(false);
+	let shouldRenderLoom = $state(false);
 	let loomEpoch = $state(0);
 
 	function toggleExpanded() {
 		const willExpand = !isExpanded;
 		isExpanded = willExpand;
 
-		// Force the loom to remount whenever we open the explainer so
-		// the edge choreography plays from frame zero instead of staying paused
 		if (willExpand) {
+			// Expanding: render loom immediately, then expand
+			shouldRenderLoom = true;
 			loomEpoch += 1;
+		} else {
+			// Collapsing: delay unmount until after 400ms collapse animation
+			setTimeout(() => {
+				shouldRenderLoom = false;
+			}, 400);
 		}
 	}
 </script>
@@ -65,7 +71,7 @@
 		<!-- Single inner wrapper for proper grid collapse -->
 		<div class="content-inner">
 			<div class="loom-container">
-				{#if isExpanded}
+				{#if shouldRenderLoom}
 					{#key loomEpoch}
 						<RelayLoom embedded={true} />
 					{/key}
@@ -110,10 +116,24 @@
 
 	.coordination-explainer {
 		border-radius: 16px;
-		border: 1px solid oklch(0.88 0.02 250);
-		background: oklch(0.99 0.005 250);
+		border: 1.5px solid oklch(0.75 0.08 195);
+		background: linear-gradient(135deg, oklch(0.98 0.015 240) 0%, oklch(0.99 0.008 220) 100%);
 		overflow: hidden;
 		transition: box-shadow 300ms ease-out;
+		/* Subtle breathing animation for peripheral salience */
+		animation: breathe 8s ease-in-out infinite;
+	}
+
+	@keyframes breathe {
+		0%,
+		100% {
+			box-shadow: 0 1px 3px oklch(0 0 0 / 0.04);
+		}
+		50% {
+			box-shadow:
+				0 2px 8px oklch(0.55 0.1 195 / 0.08),
+				0 8px 24px oklch(0.55 0.1 195 / 0.04);
+		}
 	}
 
 	/*
@@ -146,7 +166,7 @@
 	}
 
 	.explainer-header:hover {
-		background: oklch(0.97 0.01 250);
+		background: oklch(0.96 0.02 240);
 	}
 
 	.header-content {
@@ -158,8 +178,8 @@
 	.header-title {
 		font-family: 'Satoshi', system-ui, sans-serif;
 		font-size: 1rem;
-		font-weight: 600;
-		color: oklch(0.25 0.02 250);
+		font-weight: 700;
+		color: oklch(0.2 0.03 250);
 		margin: 0;
 	}
 
@@ -180,14 +200,14 @@
 	.toggle-label {
 		font-family: 'Satoshi', system-ui, sans-serif;
 		font-size: 0.8125rem;
-		font-weight: 500;
-		color: oklch(0.55 0.1 195);
+		font-weight: 600;
+		color: oklch(0.5 0.15 195);
 	}
 
 	.header-toggle :global(.toggle-icon) {
 		width: 1.25rem;
 		height: 1.25rem;
-		color: oklch(0.55 0.1 195);
+		color: oklch(0.5 0.15 195);
 		transition: transform 300ms ease-out;
 	}
 
@@ -291,6 +311,13 @@
 
 	/* Reduced motion */
 	@media (prefers-reduced-motion: reduce) {
+		.coordination-explainer {
+			animation: none;
+			box-shadow:
+				0 2px 6px oklch(0.55 0.1 195 / 0.06),
+				0 6px 16px oklch(0.55 0.1 195 / 0.03);
+		}
+
 		.explainer-content {
 			transition: none;
 		}

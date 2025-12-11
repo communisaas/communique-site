@@ -161,13 +161,7 @@ export class TEEManager {
 		});
 
 		// Derive AES key (HKDF-SHA256)
-		const aesKey = crypto.hkdfSync(
-			'sha256',
-			sharedSecret,
-			Buffer.alloc(0),
-			Buffer.alloc(0),
-			32
-		);
+		const aesKey = crypto.hkdfSync('sha256', sharedSecret, Buffer.alloc(0), Buffer.alloc(0), 32);
 
 		// Encrypt message (AES-256-GCM)
 		const iv = crypto.randomBytes(12);
@@ -187,7 +181,9 @@ export class TEEManager {
 		const payload: EncryptedPayload = {
 			ciphertext: finalCiphertext.toString('base64'),
 			nonce: iv.toString('base64'),
-			ephemeralPublicKey: ephemeralKeyPair.publicKey.export({ format: 'der', type: 'spki' }).toString('hex'),
+			ephemeralPublicKey: ephemeralKeyPair.publicKey
+				.export({ format: 'der', type: 'spki' })
+				.toString('hex'),
 			templateId: data.templateId,
 			recipient: data.recipient
 		};
