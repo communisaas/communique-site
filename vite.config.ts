@@ -5,7 +5,7 @@ export default defineConfig({
 	plugins: [sveltekit()],
 
 	optimizeDeps: {
-		exclude: ['chunk-PCGYAOMB.js', '@voter-protocol/halo2-browser-prover']
+		exclude: ['chunk-PCGYAOMB.js']
 	},
 
 	// Enable WASM support

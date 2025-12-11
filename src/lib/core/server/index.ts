@@ -7,7 +7,6 @@
 
 // Analytics & Percolation
 export * from './percolation-engine';
-export * from './sheaf-fusion';
 export * from './civic-analytics';
 
 // Security & Auth
@@ -24,7 +23,7 @@ export * from './sentiment-storage';
 export * from './reserved-slugs';
 
 // Convenience exports
-export { analyzeCivicInformationCascades, storeCascadeAnalysis } from './percolation-engine';
+export { runPercolationAnalysis, formatPercolationResponse } from './percolation-engine';
 export { createSecurityMiddleware as apiSecurityMiddleware, validateApiKey } from './api-security';
 export { getDistrictMetrics as processDistrictMetrics } from './district-metrics';
 export {

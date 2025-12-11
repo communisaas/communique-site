@@ -61,6 +61,7 @@ test-execution-summary.md
 # Cruft prevention
 project.inlang/
 *.sh
+!scripts/remote-test.sh
 *.sql
 .env.production
 
@@ -75,3 +76,4 @@ infrastructure/aws/cdk/cdk.out/
 infrastructure/aws/cdk/deploy_log.txt
 infrastructure/aws/tee-enclave/node_modules/
 infrastructure/gcp-proxy/node_modules/
+scripts/remote-test
