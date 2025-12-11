@@ -1,11 +1,15 @@
+import ProverWorker from './prover-worker?worker';
 import type { WitnessData, ProofResult } from './prover-core';
-import type { WorkerEvent } from './worker-protocol';
-import ProverWorker from './prover.worker?worker'; // Vite worker import
+
+type WorkerEvent = { type: 'STATUS'; status: string }
+    | { type: 'ERROR'; message: string }
+    | { type: 'PROGRESS'; stage: string; percent: number }
+    | { type: 'PROOF_COMPLETE'; result: ProofResult };
 
 /**
  * Prover Orchestrator
- * 
- * Manages the lifecycle of the Halo2 Prover Web Worker.
+ *
+ * Manages the lifecycle of the Noir Prover Web Worker.
  * Ensures the main thread remains non-blocking during proof generation.
  */
 export class ProverOrchestrator {
@@ -118,7 +122,7 @@ export class ProverOrchestrator {
     }
 
     private notifyProgress(stage: string, percent: number) {
-        this.progressCallbacks.forEach(cb => cb(stage, percent));
+        this.progressCallbacks.forEach((cb) => cb(stage, percent));
     }
 
     /**

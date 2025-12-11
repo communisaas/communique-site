@@ -1,12 +1,13 @@
 /**
- * Core Halo2 Prover Logic (WASM Wrapper)
- * 
+ * Core Noir Prover Logic (WASM Wrapper)
+ *
  * This module runs inside the Web Worker.
- * It handles the direct interaction with the WASM module.
+ * It handles the direct interaction with @voter-protocol/noir-prover.
  */
 
-import type { Prover } from '@voter-protocol/halo2-browser-prover';
-import { computePoseidonNullifier, poseidonHash } from '$lib/core/crypto/poseidon';
+import { NoirProver } from '@voter-protocol/noir-prover';
+import type { CircuitInputs } from '@voter-protocol/noir-prover';
+import { computePoseidonNullifier } from '$lib/core/crypto/poseidon';
 
 // ============================================================================
 // Types
@@ -20,11 +21,16 @@ export interface WitnessData {
     actionId: string;
     timestamp: number;
     address?: string;
+    // New fields for Noir circuit
+    authorityHash?: string;
+    epochId?: string;
+    campaignId?: string;
+    userSecret?: string;
 }
 
 export interface ProofResult {
     success: boolean;
-    proof?: string; // Hex-encoded proof
+    proof?: unknown; // Proof format depends on backend
     publicInputs?: {
         merkleRoot: string;
         nullifier: string;
@@ -38,42 +44,39 @@ export interface ProofResult {
 // Core Logic
 // ============================================================================
 
-let proverInstance: Prover | null = null;
+let proverInstance: NoirProver | null = null;
 
 /**
- * Initialize the WASM prover
+ * Initialize the Noir prover
  */
 export async function initializeWasmProver(
-    k: number = 14,
+    _k: number = 14, // Ignored for Noir, kept for API compatibility
     progressCallback?: (stage: string, percent: number) => void
-): Promise<Prover> {
+): Promise<NoirProver> {
     if (proverInstance) return proverInstance;
 
     try {
         progressCallback?.('loading-wasm', 10);
 
-        // Import WASM module
-        const wasmModule = await import('@voter-protocol/halo2-browser-prover');
+        // Create prover instance
+        proverInstance = new NoirProver();
 
-        // Initialize WASM runtime
+        // Initialize (loads WASM + circuit bytecode)
         progressCallback?.('initializing-runtime', 30);
-        await wasmModule.default();
+        await proverInstance.init();
 
-        const { Prover } = wasmModule;
-
-        // Perform Key Generation (expensive!)
+        // Pre-generate proving key (expensive, but cached)
         progressCallback?.('generating-keys', 50);
-        console.log(`[ProverCore] Starting keygen for K=${k}...`);
+        console.log('[ProverCore] Starting warmup...');
         const startTime = performance.now();
 
-        const prover = new Prover(k);
+        await proverInstance.warmup();
 
         const duration = performance.now() - startTime;
-        console.log(`[ProverCore] Keygen complete in ${duration.toFixed(0)}ms`);
+        console.log(`[ProverCore] Warmup complete in ${duration.toFixed(0)}ms`);
 
         progressCallback?.('ready', 100);
-        proverInstance = prover;
-        return prover;
+        return proverInstance;
     } catch (error) {
         console.error('[ProverCore] Initialization failed:', error);
         throw error;
@@ -95,42 +98,33 @@ export async function generateZkProof(
         progressCallback?.('proving', 0);
         console.log('[ProverCore] Starting proof generation...');
 
-        // Validate inputs
-        if (witness.merklePath.length !== 12) {
-            throw new Error(`Invalid Merkle path length: ${witness.merklePath.length}`);
-        }
+        // Compute nullifier
+        const nullifier = await computePoseidonNullifier(witness.identityCommitment, witness.actionId);
 
-        // Generate proof (Blocking WASM call)
+        // Map witness to circuit inputs
+        const circuitInputs: CircuitInputs = {
+            merkleRoot: witness.merkleRoot,
+            nullifier,
+            authorityHash: witness.authorityHash || '0x0',
+            epochId: witness.epochId || witness.actionId,
+            campaignId: witness.campaignId || witness.actionId,
+            leaf: witness.identityCommitment,
+            merklePath: witness.merklePath,
+            leafIndex: witness.leafIndex,
+            userSecret: witness.userSecret || witness.identityCommitment,
+        };
+
+        // Generate proof
         const proveStart = performance.now();
-        const proofBytes = await proverInstance.prove(
-            witness.identityCommitment,
-            witness.actionId,
-            witness.leafIndex,
-            witness.merklePath
-        );
+        const result = await proverInstance.prove(circuitInputs);
         const proveTime = performance.now() - proveStart;
-        console.log(`[ProverCore] Proof generation (WASM only) took ${proveTime.toFixed(0)}ms`);
-
-        progressCallback?.('proving', 80);
-
-        // Compute nullifier using Poseidon2
-        const nullifier = await computePoseidonNullifier(
-            witness.identityCommitment,
-            witness.actionId
-        );
-
-        progressCallback?.('finalizing', 90);
-
-        // Convert proof to hex
-        const proofHex = '0x' + Array.from(proofBytes)
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
+        console.log(`[ProverCore] Proof generation took ${proveTime.toFixed(0)}ms`);
 
         progressCallback?.('complete', 100);
 
         return {
             success: true,
-            proof: proofHex,
+            proof: result.proof,
             publicInputs: {
                 merkleRoot: witness.merkleRoot,
                 nullifier,
