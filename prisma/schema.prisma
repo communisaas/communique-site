@@ -1133,11 +1133,11 @@ model ShadowAtlasRegistration {
 
   // === DISTRICT MERKLE TREE METADATA ===
   congressional_district    String   @map("congressional_district") // "CA-12", "NY-15", etc.
-  leaf_index                Int      @map("leaf_index")             // Position in district tree (0-4095)
+  leaf_index                Int      @map("leaf_index")             // Position in district tree (0-16383)
   merkle_root               String   @map("merkle_root")            // Current root for verification
 
-  // Merkle path for proof generation (12 sibling hashes for 4096-leaf tree)
-  merkle_path               Json     @map("merkle_path")            // Array of 12 hex strings
+  // Merkle path for proof generation (14 sibling hashes for 16384-leaf tree)
+  merkle_path               Json     @map("merkle_path")            // Array of 14 hex strings
 
   // === VERIFICATION METADATA ===
   verification_method       String   @map("verification_method")    // 'self.xyz' | 'didit'
