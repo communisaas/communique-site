@@ -74,19 +74,40 @@
 			// Generate mock credentials if skipping check (for testing/demo)
 			if (!credential && skipCredentialCheck) {
 				console.log('[ProofGenerator] Using mock credentials for demo');
+
+				// Use ProverOrchestrator to compute merkle root in the worker
+				// This avoids initializing a separate Barretenberg instance in the main thread
+				// (which would hang for 30+ seconds due to WASM/threading issues)
+				const { proverOrchestrator } = await import('$lib/core/proof/prover-orchestrator');
+
+				// Create a cryptographically valid single-leaf merkle tree
+				// The mock data must satisfy circuit constraints in main.nr:
+				// 1. computed_root = compute_merkle_root(leaf, path, index) must equal merkleRoot
+				// 2. computed_nullifier = poseidon2_hash4(...) must equal nullifier (handled by prover-core)
+				const mockLeaf = '0x0000000000000000000000000000000000000000000000000000000000000001';
+				const mockPath = Array(14).fill(
+					'0x0000000000000000000000000000000000000000000000000000000000000000'
+				);
+				const mockIndex = 0;
+
+				// Compute merkle root using worker's Barretenberg Poseidon2 (matches Noir circuit)
+				console.log('[ProofGenerator] Computing merkle root via worker (Barretenberg Poseidon2)...');
+				const mockMerkleRoot = await proverOrchestrator.computeMerkleRoot(mockLeaf, mockPath, mockIndex);
+				console.log('[ProofGenerator] Computed merkle root:', mockMerkleRoot);
+
 				credential = {
 					userId,
-					identityCommitment: '0x0000000000000000000000000000000000000000000000000000000000000001',
-					leafIndex: 0,
-					merklePath: Array(12).fill(
-						'0x0000000000000000000000000000000000000000000000000000000000000003'
-					),
-					merkleRoot: '0x0000000000000000000000000000000000000000000000000000000000000002',
+					identityCommitment: mockLeaf,
+					leafIndex: mockIndex,
+					merklePath: mockPath,
+					merkleRoot: mockMerkleRoot,
 					congressionalDistrict: 'DEMO-00',
 					verificationMethod: 'self.xyz' as const,
 					createdAt: new Date(),
 					expiresAt: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000)
 				};
+
+				console.log('[ProofGenerator] Mock credentials created with valid merkle root');
 			}
 
 			if (!credential && !skipCredentialCheck) {
@@ -103,9 +124,10 @@
 			}
 
 			// Step 2: Prepare Witness Data
-			// Convert template ID to field element using Poseidon hash
-			const { poseidonHash } = await import('$lib/core/crypto/poseidon');
-			const actionId = await poseidonHash(templateId);
+			// Convert template ID to field element using Poseidon hash (via worker)
+			// Note: proverOrchestrator may already be imported from mock credentials block above
+			const orchestratorModule = await import('$lib/core/proof/prover-orchestrator');
+			const actionId = await orchestratorModule.proverOrchestrator.poseidonHash(templateId);
 
 			console.log('[ProofGenerator] Template ID hashed to action ID:', {
 				templateId,
@@ -125,14 +147,14 @@
 
 			// Step 3: Generate ZK Proof
 			// Use the Orchestrator to run proving in a Web Worker (non-blocking)
-			const { proverOrchestrator } = await import('$lib/core/proof/prover-orchestrator');
+			// Note: orchestratorModule already imported above for poseidonHash
 
 			// Initialize if needed (idempotent)
 			state = { status: 'initializing-prover', progress: 0 };
-			await proverOrchestrator.init();
+			await orchestratorModule.proverOrchestrator.init();
 
 			// Generate proof
-			const proofResult = await proverOrchestrator.prove(witness, (stage, percent) => {
+			const proofResult = await orchestratorModule.proverOrchestrator.prove(witness, (stage, percent) => {
 				// Map worker stages to UI states
 				if (stage === 'generating-keys') {
 					state = { status: 'initializing-prover', progress: percent };
@@ -211,7 +233,11 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					templateId,
-					proof: proofResult.proof,
+					proof: proofResult.proof
+						? Array.from(proofResult.proof)
+								.map((b) => b.toString(16).padStart(2, '0'))
+								.join('')
+						: '',
 					publicInputs: proofResult.publicInputs,
 					nullifier: proofResult.nullifier,
 					encryptedWitness: encryptedWitness.ciphertext,

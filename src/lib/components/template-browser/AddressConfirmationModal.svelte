@@ -15,7 +15,7 @@
 	 */
 
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { Turnstile } from '@marsidev/react-turnstile';
+	// Note: Turnstile CAPTCHA uses native Cloudflare script, not React
 	// Dynamic import for browser-only library (avoid SSR issues)
 	// import { getThumbmark } from '@thumbmarkjs/thumbmarkjs';
 
@@ -395,16 +395,16 @@
 				{#if showCaptcha}
 					<div class="rounded-lg border border-slate-200 p-4">
 						<p class="mb-3 text-xs text-slate-600">Please verify you're human:</p>
-						<Turnstile
-							siteKey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
-							on:callback={(token) => (turnstileToken = token)}
-							on:error={() => {
-								error = 'CAPTCHA verification failed. Please try again.';
-								turnstileToken = null;
-							}}
-							theme="light"
-							size="normal"
-						/>
+						<!-- TODO: Replace with native Cloudflare Turnstile script integration -->
+						<div
+							class="cf-turnstile"
+							data-sitekey={import.meta.env.PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA'}
+							data-callback="onTurnstileCallback"
+							data-theme="light"
+						></div>
+						<p class="mt-2 text-xs text-slate-500">
+							CAPTCHA verification pending native integration
+						</p>
 					</div>
 				{/if}
 
