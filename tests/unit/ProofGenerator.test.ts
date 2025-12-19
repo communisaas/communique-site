@@ -43,7 +43,7 @@ describe('ProofGenerator Component', () => {
 	const mockCredential = {
 		identityCommitment: '0x123',
 		leafIndex: 0,
-		merklePath: Array(12).fill('0x000'),
+		merklePath: Array(14).fill('0x000'),
 		merkleRoot: '0xabc'
 	};
 

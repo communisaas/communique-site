@@ -73,7 +73,7 @@ describe('ZKP Integration Flow', () => {
         expect(registerResponse.status).toBe(200);
         const registerData = await registerResponse.json();
         expect(registerData.leafIndex).toBeDefined();
-        expect(registerData.merklePath).toHaveLength(12); // Depth 12
+        expect(registerData.merklePath).toHaveLength(14); // Depth 14
         expect(registerData.root).toBeDefined();
 
         // Verify DB state after registration
