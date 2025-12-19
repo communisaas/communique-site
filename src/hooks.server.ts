@@ -67,4 +67,18 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 	}
 };
 
-export const handle = handleAuth;
+// Add cross-origin isolation headers for ZK proving (SharedArrayBuffer support)
+const handleCrossOriginIsolation: Handle = async ({ event, resolve }) => {
+	const response = await resolve(event);
+
+	// Set COOP/COEP headers for all responses
+	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
+	response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+
+	return response;
+};
+
+// Compose multiple handles using SvelteKit's sequence
+import { sequence } from '@sveltejs/kit/hooks';
+
+export const handle = sequence(handleCrossOriginIsolation, handleAuth);
