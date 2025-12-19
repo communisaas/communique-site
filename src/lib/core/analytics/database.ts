@@ -332,14 +332,15 @@ class DatabaseAnalytics {
 		});
 	}
 
-	async trackError(error: Error, context: Record<string, unknown> = {}): Promise<void> {
+	async trackError(error: unknown, context: Record<string, unknown> = {}): Promise<void> {
+		const errorObj = error instanceof Error ? error : null;
 		await this.trackEvent({
 			session_id: this.sessionId,
 			name: 'javascripterror',
 			properties: {
-				error_message: error.message,
-				error_stack: error.stack,
-				error_name: error.name,
+				error_message: errorObj?.message ?? String(error) ?? 'Unknown error',
+				error_stack: errorObj?.stack,
+				error_name: errorObj?.name ?? 'UnknownError',
 				...context
 			}
 		});
