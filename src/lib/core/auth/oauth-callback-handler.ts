@@ -16,9 +16,25 @@ import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
-// Dynamic imports to avoid SSR issues with browser-only crypto in @voter-protocol/client
-// import { createNEARAccountFromOAuth } from '$lib/core/blockchain/oauth-near';
-// import { deriveScrollAddress } from '$lib/core/blockchain/chain-signatures';
+
+/**
+ * BLOCKCHAIN ACCOUNT CREATION DEFERRED TO CLIENT
+ *
+ * Previously, OAuth callback handler attempted to create NEAR/Scroll accounts
+ * server-side, which caused SSR build failures due to browser-only dependencies:
+ * - @near-js/keystores-browser (IndexedDB)
+ * - @near-js/biometric-ed25519 (WebAuthn)
+ * - idb (IndexedDB wrapper)
+ *
+ * NEW ARCHITECTURE:
+ * 1. OAuth callback completes authentication (server-side)
+ * 2. Sets oauth_blockchain_pending cookie for client detection
+ * 3. Client-side component (BlockchainInit.svelte) handles account creation
+ * 4. Uses dynamic imports + browser guards for SSR safety
+ *
+ * See: /src/lib/core/blockchain/use-blockchain.ts
+ * See: /src/lib/components/blockchain/BlockchainInit.svelte
+ */
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -241,8 +257,8 @@ export class OAuthCallbackHandler {
 				}
 			});
 
-			// TODO: Re-enable blockchain account creation when SSR-safe
-			// await this.ensureBlockchainAccounts(existingAccount.user, config.provider, userData.id);
+			// Blockchain account creation deferred to client-side
+			// See BlockchainInit.svelte component for actual account creation
 
 			return existingAccount.user;
 		}
@@ -269,8 +285,8 @@ export class OAuthCallbackHandler {
 				}
 			});
 
-			// TODO: Re-enable blockchain account creation when SSR-safe
-			// await this.ensureBlockchainAccounts(existingUser, config.provider, userData.id);
+			// Blockchain account creation deferred to client-side
+			// See BlockchainInit.svelte component for actual account creation
 
 			return existingUser;
 		}
@@ -297,77 +313,35 @@ export class OAuthCallbackHandler {
 			}
 		});
 
-		// TODO: Re-enable blockchain account creation when SSR-safe
-		// await this.ensureBlockchainAccounts(newUser, config.provider, userData.id);
+		// Blockchain account creation deferred to client-side
+		// See BlockchainInit.svelte component for actual account creation
 
 		return newUser;
 	}
 
 	/**
-	 * Ensure user has NEAR account and Scroll address
-	 * Creates blockchain accounts if they don't exist yet
+	 * DEPRECATED: Blockchain account creation moved to client-side
 	 *
-	 * TODO: Re-enable when SSR-safe
-	 * Problem: Dynamic imports of @voter-protocol/client trigger SSR errors
-	 * Solution: Move blockchain account creation to client-side background job
+	 * Previously this method attempted to create NEAR/Scroll accounts server-side,
+	 * but it caused SSR build failures due to browser-only dependencies.
+	 *
+	 * NEW APPROACH: Client-side initialization via BlockchainInit.svelte
+	 * - Uses dynamic imports with browser guards
+	 * - Triggers after OAuth callback completes
+	 * - Zero server-side blockchain code execution
+	 *
+	 * See: /src/lib/core/blockchain/use-blockchain.ts
+	 * See: /src/lib/components/blockchain/BlockchainInit.svelte
 	 */
 	private async ensureBlockchainAccounts(
 		_user: DatabaseUser,
 		_provider: OAuthProvider,
 		_oauthUserId: string
 	): Promise<void> {
-		// Temporarily disabled due to SSR issues with @voter-protocol/client
-		// See: oauth-callback-handler.ts lines 240, 268, 296 for commented call sites
+		// This method is deprecated and no longer used
+		// Blockchain account creation happens client-side via BlockchainInit.svelte
+		console.log('[Blockchain] Account creation deferred to client-side component');
 		return;
-
-		/* ORIGINAL IMPLEMENTATION (disabled):
-		try {
-			// Skip if user already has complete blockchain setup
-			if (user.near_account_id && user.scroll_address) {
-				console.log(
-					`[Blockchain] User ${user.id} already has blockchain accounts (NEAR: ${user.near_account_id})`
-				);
-				return;
-			}
-
-			// Step 1: Create NEAR account from OAuth identity
-			if (!user.near_account_id) {
-				console.log(`[Blockchain] Creating NEAR account for user ${user.id} via ${provider}`);
-				// Dynamic import to avoid SSR issues
-				const { createNEARAccountFromOAuth } = await import('$lib/core/blockchain/oauth-near');
-				const nearAccountId = await createNEARAccountFromOAuth(provider, oauthUserId);
-				console.log(`[Blockchain] Created NEAR account: ${nearAccountId}`);
-			}
-
-			// Step 2: Derive Scroll address from NEAR account
-			// Re-fetch user to get the updated near_account_id
-			const updatedUser = await db.user.findUnique({
-				where: { id: user.id },
-				select: { near_account_id: true, scroll_address: true }
-			});
-
-			if (updatedUser?.near_account_id && !updatedUser.scroll_address) {
-				console.log(
-					`[Blockchain] Deriving Scroll address for NEAR account: ${updatedUser.near_account_id}`
-				);
-				// Dynamic import to avoid SSR issues
-				const { deriveScrollAddress } = await import('$lib/core/blockchain/chain-signatures');
-				const scrollAddress = await deriveScrollAddress(updatedUser.near_account_id);
-				console.log(`[Blockchain] Derived Scroll address: ${scrollAddress}`);
-			}
-
-			console.log(`[Blockchain] Successfully created blockchain accounts for user ${user.id}`);
-		} catch (err) {
-			// Log error but don't block OAuth flow
-			// Users can still use the platform without blockchain features
-			console.error('[Blockchain] Failed to create blockchain accounts:', {
-				userId: user.id,
-				provider,
-				error: err instanceof Error ? err.message : 'Unknown error',
-				stack: err instanceof Error ? err.stack : undefined
-			});
-		}
-		*/
 	}
 
 	/**
@@ -424,6 +398,25 @@ export class OAuthCallbackHandler {
 				secure: false, // Allow client-side access
 				httpOnly: false, // Allow client-side access
 				maxAge: 60 * 5, // 5 minutes
+				sameSite: 'lax'
+			}
+		);
+
+		// Store blockchain initialization signal for client-side component
+		// BlockchainInit.svelte reads this cookie to trigger account creation
+		cookies.set(
+			'oauth_blockchain_pending',
+			JSON.stringify({
+				userId: user.id,
+				provider,
+				needsInit: !user.near_account_id || !user.scroll_address,
+				timestamp: Date.now()
+			}),
+			{
+				path: '/',
+				secure: false, // Allow client-side access
+				httpOnly: false, // Allow client-side access
+				maxAge: 60 * 15, // 15 minutes
 				sameSite: 'lax'
 			}
 		);

@@ -338,7 +338,7 @@ class DatabaseAnalytics {
 			session_id: this.sessionId,
 			name: 'javascripterror',
 			properties: {
-				error_message: errorObj?.message ?? String(error) ?? 'Unknown error',
+				error_message: errorObj?.message ?? String(error),
 				error_stack: errorObj?.stack,
 				error_name: errorObj?.name ?? 'UnknownError',
 				...context
