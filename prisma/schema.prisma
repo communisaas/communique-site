@@ -144,6 +144,7 @@ model Template {
   title                     String
   description               String
   category                  String
+  topics                    Json?                      @default("[]") // Topic tags for search/filtering (1-5 lowercase strings)
   type                      String
   deliveryMethod            String                     @map("delivery_method")
   preview                   String

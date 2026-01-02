@@ -6,7 +6,9 @@ import alias from '@rollup/plugin-alias';
 import { fileURLToPath } from 'url';
 
 // Resolve paths for alias configuration
-const bufferShimPath = fileURLToPath(new URL('./src/lib/core/proof/buffer-shim.ts', import.meta.url));
+const bufferShimPath = fileURLToPath(
+	new URL('./src/lib/core/proof/buffer-shim.ts', import.meta.url)
+);
 const pinoShimPath = fileURLToPath(new URL('./src/lib/core/proof/pino-shim.ts', import.meta.url));
 
 export default defineConfig({
