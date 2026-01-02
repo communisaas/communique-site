@@ -22,6 +22,36 @@
 	let errorMessage = $state<string | null>(null);
 	let isResolving = $state(false); // Prevent concurrent resolution attempts
 
+	/**
+	 * Build topics array with robust fallback chain
+	 * 1. Use topics array if populated with valid entries
+	 * 2. Fall back to category (normalized)
+	 * 3. Ultimate fallback - 'general'
+	 */
+	function buildTopics(): string[] {
+		if (Array.isArray(formData.objective.topics) && formData.objective.topics.length > 0) {
+			const valid = formData.objective.topics.filter((t) => t && t.trim());
+			if (valid.length > 0) return valid;
+		}
+		if (formData.objective.category && formData.objective.category.trim()) {
+			return [formData.objective.category.toLowerCase().trim()];
+		}
+		return ['general'];
+	}
+
+	/**
+	 * Build voice sample with fallback chain
+	 * Prefer AI-extracted voiceSample, fall back to rawInput, then description
+	 */
+	function buildVoiceSample(): string {
+		return (
+			formData.objective.voiceSample ||
+			formData.objective.rawInput ||
+			formData.objective.description ||
+			''
+		);
+	}
+
 	async function resolveDecisionMakers() {
 		// Prevent concurrent calls
 		if (isResolving) {
@@ -40,7 +70,7 @@
 
 				// Quick structure pass via subject-line agent
 				const structureResponse = await api.post(
-					'/toolhouse/generate-subject',
+					'/agents/generate-subject',
 					{
 						message: `${formData.objective.title}. ${formData.objective.description}`
 					},
@@ -61,12 +91,16 @@
 			stage = 'resolving';
 			console.log('[DecisionMakerResolver] Resolving decision-makers...');
 
+			const topics = buildTopics();
+			const voiceSample = buildVoiceSample();
+
 			const response = await api.post(
-				'/toolhouse/resolve-decision-makers',
+				'/agents/resolve-decision-makers',
 				{
 					subject_line: formData.objective.title,
 					core_issue: formData.objective.description,
-					domain: formData.objective.category.toLowerCase(),
+					topics,
+					voice_sample: voiceSample,
 					url_slug: formData.objective.slug
 				},
 				{

@@ -11,8 +11,9 @@
 		onaccept: (suggestion: {
 			subject_line: string;
 			core_issue: string;
-			domain: string;
+			topics: string[];
 			url_slug: string;
+			voice_sample: string;
 		}) => void;
 		oncancel: () => void;
 	} = $props();
@@ -23,9 +24,10 @@
 		Array<{
 			subject_line: string;
 			core_issue: string;
-			domain: string;
+			topics: string[];
 			url_slug: string;
-			runId?: string;
+			voice_sample: string;
+			interactionId?: string;
 		}>
 	>([]);
 	let currentIndex = $state(0);
@@ -60,9 +62,9 @@
 		error = null;
 
 		try {
-			const response = await api.post('/toolhouse/generate-subject', {
+			const response = await api.post('/agents/generate-subject', {
 				message: editedDescription,
-				runId: currentSuggestion?.runId // Continue conversation if refining
+				interactionId: currentSuggestion?.interactionId // Continue conversation if refining
 			});
 
 			console.log('[SubjectLineGenerator] Received response:', response);
@@ -205,10 +207,13 @@
 					</p>
 				</div>
 
-				<div class="flex gap-3 text-xs text-slate-600">
-					<span>Domain: <strong class="text-slate-900">{currentSuggestion.domain}</strong></span>
-					<span>•</span>
-					<span>Slug: <strong class="text-slate-900">{currentSuggestion.url_slug}</strong></span>
+				<div class="space-y-1 text-xs text-slate-600">
+					<div class="flex flex-wrap gap-1.5">
+						{#each currentSuggestion.topics as topic}
+							<span class="rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">{topic}</span>
+						{/each}
+					</div>
+					<div>Slug: <strong class="text-slate-900">{currentSuggestion.url_slug}</strong></div>
 				</div>
 			</div>
 

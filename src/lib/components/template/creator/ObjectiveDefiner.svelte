@@ -13,10 +13,26 @@
 			title: string;
 			description: string;
 			category: string;
+			topics?: string[];
 			slug?: string;
+			voiceSample?: string;
 			aiGenerated?: boolean;
 		};
 		context: TemplateCreationContext;
+	}
+
+	/**
+	 * Normalize topics to lowercase, hyphenated format
+	 * "Tuition Hikes" → "tuition-hikes"
+	 */
+	function normalizeTopics(topics: string[]): string[] {
+		return topics.map((t) =>
+			t
+				.toLowerCase()
+				.trim()
+				.replace(/\s+/g, '-')
+				.replace(/[^a-z0-9-]/g, '')
+		);
 	}
 
 	let { data = $bindable(), context }: Props = $props();
@@ -28,26 +44,23 @@
 	function handleSuggestionAccept(suggestion: {
 		subject_line: string;
 		core_issue: string;
-		domain: string;
+		topics: string[];
 		url_slug: string;
+		voice_sample: string;
 	}) {
 		data.title = suggestion.subject_line;
 		data.description = suggestion.core_issue;
 		data.slug = suggestion.url_slug;
-		data.category = mapDomainToCategory(suggestion.domain);
+		data.voiceSample = suggestion.voice_sample; // Emotional peak for downstream agents
+		// Normalize and store all topics
+		const normalized = normalizeTopics(suggestion.topics);
+		data.topics = normalized;
+		// Use primary topic as category (capitalize first letter of first word)
+		const primaryTopic = normalized[0] || 'general';
+		data.category =
+			primaryTopic.split('-')[0].charAt(0).toUpperCase() + primaryTopic.split('-')[0].slice(1);
 		data.aiGenerated = true; // Mark as AI-generated to prevent slug overwriting
 		showGenerator = false;
-	}
-
-	function mapDomainToCategory(domain: string): string {
-		const mapping: Record<string, string> = {
-			government: 'Government',
-			corporate: 'Corporate',
-			institutional: 'Institutional',
-			labor: 'Labor',
-			advocacy: 'Advocacy'
-		};
-		return mapping[domain] || 'General';
 	}
 
 	// Initialize data if empty (using untrack to avoid mutation warnings)

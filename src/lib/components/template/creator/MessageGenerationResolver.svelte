@@ -22,6 +22,43 @@
 	let originalMessage = $state('');
 	let originalSubject = $state('');
 
+	/**
+	 * Build topics array with robust fallback chain
+	 * 1. Use topics array if populated with valid entries
+	 * 2. Fall back to category (normalized)
+	 * 3. Ultimate fallback - 'general'
+	 */
+	function buildTopics(): string[] {
+		if (Array.isArray(formData.objective.topics) && formData.objective.topics.length > 0) {
+			const valid = formData.objective.topics.filter((t) => t && t.trim());
+			if (valid.length > 0) return valid;
+		}
+		if (formData.objective.category && formData.objective.category.trim()) {
+			return [formData.objective.category.toLowerCase().trim()];
+		}
+		return ['general'];
+	}
+
+	/**
+	 * Build voice sample with fallback chain
+	 * Prefer AI-extracted voiceSample, fall back to rawInput, then description
+	 */
+	function buildVoiceSample(): string {
+		return (
+			formData.objective.voiceSample ||
+			formData.objective.rawInput ||
+			formData.objective.description ||
+			''
+		);
+	}
+
+	/**
+	 * Build raw input with fallback to description
+	 */
+	function buildRawInput(): string {
+		return formData.objective.rawInput || formData.objective.description || '';
+	}
+
 	async function generateMessage() {
 		try {
 			stage = 'generating';
@@ -36,23 +73,30 @@
 				throw new Error('No decision-makers selected');
 			}
 
+			// Build with fallback chains
+			const topics = buildTopics();
+			const voiceSample = buildVoiceSample();
+			const rawInput = buildRawInput();
+
 			// Prepare request data
 			const requestData = {
 				subject_line: formData.objective.title,
 				core_issue: formData.objective.description,
-				domain: formData.objective.category?.toLowerCase() || 'general',
+				topics,
 				decision_makers: formData.audience.decisionMakers.map((dm) => ({
 					name: dm.name,
 					title: dm.title,
 					organization: dm.organization
-				}))
+				})),
+				voice_sample: voiceSample,
+				raw_input: rawInput
 			};
 
 			console.log('[MessageGenerationResolver] Request data:', requestData);
 
 			// Call message generation API
-			const response = await api.post('/toolhouse/generate-message', requestData, {
-				timeout: 200000, // 200 seconds (3+ minutes) for Toolhouse agent processing
+			const response = await api.post('/agents/generate-message', requestData, {
+				timeout: 200000, // 200 seconds (3+ minutes) for Gemini agent processing
 				showToast: false // Don't show success toast
 			});
 

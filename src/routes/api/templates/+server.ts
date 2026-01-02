@@ -28,6 +28,7 @@ interface CreateTemplateRequest {
 	sources?: Array<{ num: number; title: string; url: string; type: string }>; // Citation sources from AI agent
 	research_log?: string[]; // Agent's research process log
 	category?: string;
+	topics?: string[]; // Topic tags from AI (1-5 lowercase strings for search/filtering)
 	type: string;
 	deliveryMethod: string; // Prisma field name (mapped to delivery_method in database)
 	preview: string;
@@ -137,6 +138,7 @@ function validateTemplateData(data: unknown): {
 		type: templateData.type as string,
 		deliveryMethod: templateData.deliveryMethod as string,
 		category: (templateData.category as string) || 'General',
+		topics: (templateData.topics as string[]) || [],
 		description:
 			(templateData.description as string) ||
 			(templateData.preview as string)?.substring(0, 160) ||
@@ -216,6 +218,7 @@ export const GET: RequestHandler = async () => {
 				title: template.title,
 				description: template.description,
 				category: template.category,
+				topics: (template.topics as string[]) || [],
 				type: template.type,
 				deliveryMethod: template.deliveryMethod,
 				subject: template.title,
@@ -489,6 +492,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							sources: validData.sources || [],
 							research_log: validData.research_log || [],
 							category: validData.category || 'General',
+							topics: validData.topics || [],
 							type: validData.type,
 							deliveryMethod: validData.deliveryMethod,
 							preview: validData.preview,
@@ -607,6 +611,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							.replace(/[^a-z0-9\s-]/g, '')
 							.replace(/\s+/g, '-')
 							.substring(0, 100), // Increased from 50 to 100
+				topics: validData.topics || [],
 				created_at: new Date().toISOString(),
 				userId: null
 			};

@@ -91,8 +91,14 @@
 				const mockIndex = 0;
 
 				// Compute merkle root using worker's Barretenberg Poseidon2 (matches Noir circuit)
-				console.log('[ProofGenerator] Computing merkle root via worker (Barretenberg Poseidon2)...');
-				const mockMerkleRoot = await proverOrchestrator.computeMerkleRoot(mockLeaf, mockPath, mockIndex);
+				console.log(
+					'[ProofGenerator] Computing merkle root via worker (Barretenberg Poseidon2)...'
+				);
+				const mockMerkleRoot = await proverOrchestrator.computeMerkleRoot(
+					mockLeaf,
+					mockPath,
+					mockIndex
+				);
 				console.log('[ProofGenerator] Computed merkle root:', mockMerkleRoot);
 
 				credential = {
@@ -154,16 +160,19 @@
 			await orchestratorModule.proverOrchestrator.init();
 
 			// Generate proof
-			const proofResult = await orchestratorModule.proverOrchestrator.prove(witness, (stage, percent) => {
-				// Map worker stages to UI states
-				if (stage === 'generating-keys') {
-					state = { status: 'initializing-prover', progress: percent };
-				} else if (stage === 'proving') {
-					state = { status: 'generating-proof', progress: percent };
-				} else if (stage === 'finalizing') {
-					state = { status: 'generating-proof', progress: 95 };
+			const proofResult = await orchestratorModule.proverOrchestrator.prove(
+				witness,
+				(stage, percent) => {
+					// Map worker stages to UI states
+					if (stage === 'generating-keys') {
+						state = { status: 'initializing-prover', progress: percent };
+					} else if (stage === 'proving') {
+						state = { status: 'generating-proof', progress: percent };
+					} else if (stage === 'finalizing') {
+						state = { status: 'generating-proof', progress: 95 };
+					}
 				}
-			});
+			);
 
 			if (!proofResult.success) {
 				state = {

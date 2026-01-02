@@ -31,6 +31,7 @@
 	let draftId = $state<string>(generateDraftId());
 	let lastSaved = $state<number | null>(null);
 	let showDraftRecovery = $state(false);
+	let isTransitioning = $state(false); // For button loading states
 
 	// Auto-save cleanup function
 	let cleanupAutoSave: (() => void) | null = null;
@@ -41,7 +42,11 @@
 			title: '',
 			description: '',
 			category: '',
-			slug: ''
+			slug: '',
+			// Voice pipeline fields (critical for agent chaining)
+			topics: [],
+			voiceSample: '',
+			aiGenerated: false
 		},
 		audience: {
 			decisionMakers: [],
@@ -51,7 +56,13 @@
 		},
 		content: {
 			preview: '',
-			variables: []
+			variables: [],
+			// Message generation metadata
+			sources: [],
+			researchLog: [],
+			geographicScope: null,
+			aiGenerated: false,
+			edited: false
 		}
 	});
 
@@ -106,13 +117,22 @@
 
 	function handleNext() {
 		if (!validateCurrentStep()) return;
+		if (isTransitioning) return;
 
 		const steps: ('objective' | 'audience' | 'content')[] = ['objective', 'audience', 'content'];
 		const currentIndex = steps.indexOf(currentStep);
 
 		if (currentIndex < steps.length - 1) {
-			currentStep = steps[currentIndex + 1];
-			formErrors = []; // Clear errors when moving to next step
+			// Show immediate feedback - button enters loading state
+			isTransitioning = true;
+
+			// Small delay to ensure loading state is visible before view transition
+			// This maintains causality: click → feedback → transition
+			setTimeout(() => {
+				currentStep = steps[currentIndex + 1];
+				formErrors = []; // Clear errors when moving to next step
+				isTransitioning = false;
+			}, 150);
 		}
 	}
 
@@ -381,14 +401,18 @@
 				<button
 					class="flex items-center gap-1.5 rounded bg-participation-primary-600 px-3 py-2 text-sm text-white hover:bg-participation-primary-700 disabled:opacity-50 md:gap-2 md:px-4 md:py-2 md:text-base"
 					onclick={handleNext}
-					disabled={!isCurrentStepValid || isSubmitting}
+					disabled={!isCurrentStepValid || isSubmitting || isTransitioning}
 				>
-					{#if currentStep === 'objective'}
+					{#if isTransitioning}
+						<div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+						Finding decision-makers...
+					{:else if currentStep === 'objective'}
 						Pick Decision-Makers
+						<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
 					{:else}
 						Continue
+						<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
 					{/if}
-					<ArrowRight class="h-4 w-4 md:h-4 md:w-4" />
 				</button>
 			</div>
 		</div>

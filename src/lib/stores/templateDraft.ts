@@ -87,21 +87,51 @@ function createTemplateDraftStore(): TemplateDraftStore {
 
 	function toPlainTemplateFormData(data: TemplateFormData): TemplateFormData {
 		// Create a plain, serializable copy detached from any reactive proxies
+		// CRITICAL: Must serialize ALL fields for voice pipeline integrity
 		return {
 			objective: {
 				title: data.objective?.title ?? '',
 				description: data.objective?.description ?? '',
 				category: data.objective?.category ?? '',
-				slug: data.objective?.slug ?? ''
+				slug: data.objective?.slug ?? '',
+				// Voice pipeline fields
+				topics: Array.isArray(data.objective?.topics) ? [...data.objective.topics] : [],
+				voiceSample: data.objective?.voiceSample ?? '',
+				rawInput: data.objective?.rawInput ?? '',
+				aiGenerated: data.objective?.aiGenerated ?? false
 			},
 			audience: {
 				recipientEmails: Array.isArray(data.audience?.recipientEmails)
 					? [...data.audience.recipientEmails]
+					: [],
+				// Decision makers from AI resolution
+				decisionMakers: Array.isArray(data.audience?.decisionMakers)
+					? data.audience.decisionMakers.map((dm) => ({
+							name: dm.name ?? '',
+							title: dm.title ?? '',
+							organization: dm.organization ?? '',
+							reasoning: dm.reasoning ?? '',
+							source_url: dm.source_url ?? '',
+							confidence: dm.confidence ?? 0
+						}))
 					: []
 			},
 			content: {
 				preview: data.content?.preview ?? '',
-				variables: Array.isArray(data.content?.variables) ? [...data.content.variables] : []
+				variables: Array.isArray(data.content?.variables) ? [...data.content.variables] : [],
+				// Message generation metadata
+				sources: Array.isArray(data.content?.sources)
+					? data.content.sources.map((s) => ({
+							num: s.num ?? 0,
+							title: s.title ?? '',
+							url: s.url ?? '',
+							type: s.type ?? 'journalism'
+						}))
+					: [],
+				researchLog: Array.isArray(data.content?.researchLog) ? [...data.content.researchLog] : [],
+				geographicScope: data.content?.geographicScope ?? null,
+				aiGenerated: data.content?.aiGenerated ?? false,
+				edited: data.content?.edited ?? false
 			},
 			review: {}
 		};

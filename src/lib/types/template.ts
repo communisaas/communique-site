@@ -7,6 +7,7 @@ export interface Template {
 	title: string;
 	description: string;
 	category: string;
+	topics?: string[]; // Topic tags for search/filtering (1-5 lowercase strings)
 	type: string;
 	deliveryMethod: 'email' | 'certified' | 'direct' | 'cwc';
 	subject?: string | null;
@@ -119,7 +120,9 @@ export interface TemplateFormData {
 		title: string;
 		description: string;
 		category: string;
+		topics?: string[]; // Topic tags from AI or manual entry (1-5 lowercase strings)
 		slug?: string;
+		voiceSample?: string; // Emotional peak from rawInput - flows to downstream agents
 		aiGenerated?: boolean; // Flag indicating content was AI-generated
 	};
 	audience: {
