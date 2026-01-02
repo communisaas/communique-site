@@ -9,6 +9,12 @@
 	import { SuggestionCache } from '$lib/services/ai/suggestion-cache';
 	import { SuggestionRateLimiter } from '$lib/services/ai/rate-limiter';
 	import SlugCustomizer from './SlugCustomizer.svelte';
+	import ClarificationPanel from './ClarificationPanel.svelte';
+	import type {
+		ClarificationQuestion,
+		InferredContext,
+		ClarificationAnswers
+	} from '$lib/core/agents/types/clarification';
 
 	interface Props {
 		data: {
@@ -16,10 +22,26 @@
 			title: string;
 			description: string;
 			category: string;
+			topics?: string[];
 			slug?: string;
+			voiceSample?: string;
 			aiGenerated?: boolean;
 		};
 		context: TemplateCreationContext;
+	}
+
+	/**
+	 * Normalize topics to lowercase, hyphenated format
+	 * "Tuition Hikes" → "tuition-hikes"
+	 */
+	function normalizeTopics(topics: string[]): string[] {
+		return topics.map((t) =>
+			t
+				.toLowerCase()
+				.trim()
+				.replace(/\s+/g, '-')
+				.replace(/[^a-z0-9-]/g, '')
+		);
 	}
 
 	let { data = $bindable(), context }: Props = $props();
@@ -28,23 +50,31 @@
 	type SuggestionState =
 		| { status: 'idle' }
 		| { status: 'thinking'; startTime: number }
+		| {
+				status: 'clarifying';
+				questions: ClarificationQuestion[];
+				inferredContext: InferredContext;
+				interactionId: string;
+		  }
 		| { status: 'ready'; suggestion: AISuggestion }
 		| { status: 'error'; message: string };
 
 	interface AISuggestion {
 		subject_line: string;
 		core_issue: string;
-		domain: string;
+		topics: string[];
 		url_slug: string;
-		runId?: string;
+		voice_sample: string;
+		interactionId?: string;
 	}
 
 	let suggestionState = $state<SuggestionState>({ status: 'idle' });
 	let showAISuggest = $state(false);
 	let attemptCount = $state(0);
 	let isGenerating = $state(false);
-	let userWantsAI = $state(false); // User explicitly opted into AI suggestions
+	let userWantsAI = $state(true); // Default to AI mode - auto-trigger on first input
 	let manualMode = $state(false); // User writing subject line manually
+	let hasAutoTriggered = $state(false); // Track if we've auto-triggered once
 
 	// Iteration history (perceptual substrate for temporal navigation)
 	let suggestionHistory = $state<AISuggestion[]>([]);
@@ -78,30 +108,34 @@
 		suggestionHistory.length > 0 && selectedIterationIndex < suggestionHistory.length - 1
 	);
 
-	// React to rawInput changes with debouncing (only if user wants AI)
+	// React to rawInput changes with debouncing
+	// Auto-triggers on first sufficient input, then on subsequent changes if userWantsAI
 	$effect(() => {
 		// Cancel existing timer
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
 		}
 
-		// Only auto-generate if user explicitly wants AI
-		if (!userWantsAI || manualMode) {
+		// Don't auto-generate if in manual mode
+		if (manualMode) {
 			return;
 		}
 
 		const text = data.rawInput || '';
+		const hasSufficientInput = text.trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH;
 
-		// Check conditions
+		// Check conditions for generation
 		const shouldGenerate =
-			text.trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH &&
+			hasSufficientInput &&
 			suggestionState.status === 'idle' &&
+			!isGenerating &&
 			calculateSimilarity(text, lastGeneratedText) <
 				1 - AI_SUGGESTION_TIMING.CONTENT_SIMILARITY_THRESHOLD;
 
-		if (shouldGenerate) {
+		if (shouldGenerate && userWantsAI) {
 			// Start debounce timer
 			debounceTimer = setTimeout(() => {
+				hasAutoTriggered = true;
 				handleDebouncedGeneration(text);
 			}, AI_SUGGESTION_TIMING.DEBOUNCE_DELAY);
 		}
@@ -132,7 +166,11 @@
 		await generateSuggestionWithTiming(text);
 	}
 
-	async function generateSuggestionWithTiming(text: string): Promise<void> {
+	async function generateSuggestionWithTiming(
+		text: string,
+		clarificationAnswers?: ClarificationAnswers,
+		interactionId?: string
+	): Promise<void> {
 		const requestId = crypto.randomUUID();
 		currentRequestId = requestId;
 
@@ -148,16 +186,26 @@
 		try {
 			rateLimiter.recordCall();
 
-			const response = await api.post(
-				'/toolhouse/generate-subject',
-				{ message: text },
-				{
-					timeout: AI_SUGGESTION_TIMING.SUGGESTION_TIMEOUT,
-					retries: AI_SUGGESTION_TIMING.MAX_RETRIES,
-					showToast: false,
-					skipErrorLogging: true
-				}
-			);
+			const payload: {
+				message: string;
+				interactionId?: string;
+				clarificationAnswers?: ClarificationAnswers;
+			} = { message: text };
+
+			if (interactionId) {
+				payload.interactionId = interactionId;
+			}
+
+			if (clarificationAnswers) {
+				payload.clarificationAnswers = clarificationAnswers;
+			}
+
+			const response = await api.post('/agents/generate-subject', payload, {
+				timeout: AI_SUGGESTION_TIMING.SUGGESTION_TIMEOUT,
+				retries: AI_SUGGESTION_TIMING.MAX_RETRIES,
+				showToast: false,
+				skipErrorLogging: true
+			});
 
 			clearTimeout(thinkingTimer);
 
@@ -167,6 +215,25 @@
 			}
 
 			if (response.success && response.data) {
+				// Check if agent needs clarification
+				if (response.data.needs_clarification) {
+					suggestionState = {
+						status: 'clarifying',
+						questions: response.data.clarification_questions || [],
+						inferredContext: response.data.inferred_context || {
+							detected_location: null,
+							detected_scope: null,
+							detected_target_type: null,
+							location_confidence: 0,
+							scope_confidence: 0,
+							target_type_confidence: 0
+						},
+						interactionId: response.data.interactionId || crypto.randomUUID()
+					};
+					showAISuggest = true;
+					return;
+				}
+
 				// Cache result
 				suggestionCache.set(text.trim().toLowerCase(), response.data as AISuggestion);
 
@@ -222,11 +289,20 @@
 
 	function acceptSuggestion() {
 		if (currentSuggestion) {
-			const { subject_line, core_issue, url_slug, domain } = currentSuggestion;
-			data.title = subject_line;
-			data.description = core_issue;
-			data.slug = url_slug;
-			data.category = mapDomainToCategory(domain);
+			const { subject_line, core_issue, url_slug, topics, voice_sample } = currentSuggestion;
+			data.title = subject_line || '';
+			// Fallback chain for core_issue: use raw input if agent didn't provide one
+			data.description = core_issue || data.rawInput || '';
+			data.slug = url_slug || '';
+			// Fallback chain for voice_sample: prefer agent-extracted, then raw input
+			data.voiceSample = voice_sample || data.rawInput || '';
+			// Normalize and store all topics
+			const normalized = normalizeTopics(topics || []);
+			data.topics = normalized;
+			// Use primary topic as category (capitalize first letter of first word)
+			const primaryTopic = normalized[0] || 'general';
+			data.category =
+				primaryTopic.split('-')[0].charAt(0).toUpperCase() + primaryTopic.split('-')[0].slice(1);
 			data.aiGenerated = true;
 			showAISuggest = false;
 		}
@@ -282,8 +358,20 @@
 	function enableAISuggestions() {
 		userWantsAI = true;
 		manualMode = false;
+		// Trigger generation immediately if we have enough input
 		if ((data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH) {
 			generateSuggestion();
+		}
+	}
+
+	// Handle keyboard shortcuts in textarea
+	function handleTextareaKeydown(event: KeyboardEvent) {
+		// Cmd/Ctrl + Enter to trigger generation immediately
+		if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+			event.preventDefault();
+			if ((data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && !isGenerating) {
+				generateSuggestion();
+			}
 		}
 	}
 
@@ -292,17 +380,38 @@
 		userWantsAI = false;
 		showAISuggest = false;
 		suggestionState = { status: 'idle' };
+		// Capture rawInput as voice sample for downstream agents
+		// Manual writers still have voice—it's in their original complaint
+		if (data.rawInput && data.rawInput.trim()) {
+			data.voiceSample = data.rawInput.trim();
+		}
+		data.aiGenerated = false;
 	}
 
-	function mapDomainToCategory(domain: string): string {
-		const mapping: Record<string, string> = {
-			government: 'Government',
-			corporate: 'Corporate',
-			institutional: 'Institutional',
-			labor: 'Labor',
-			advocacy: 'Advocacy'
-		};
-		return mapping[domain] || 'General';
+	/**
+	 * Handle clarification answers submission
+	 * Answers are flexible key-value pairs - agent interprets them in context
+	 */
+	async function handleClarificationSubmit(answers: Record<string, string>): Promise<void> {
+		if (suggestionState.status !== 'clarifying') return;
+
+		// Pass answers directly - agent has full autonomy to interpret
+		await generateSuggestionWithTiming(
+			data.rawInput,
+			answers as ClarificationAnswers,
+			suggestionState.interactionId
+		);
+	}
+
+	/**
+	 * Handle clarification skip
+	 * Re-call API with empty answers (agent uses inferred context)
+	 */
+	async function handleClarificationSkip(): Promise<void> {
+		if (suggestionState.status !== 'clarifying') return;
+
+		// Re-call API with empty answers - agent will use its best guess
+		await generateSuggestionWithTiming(data.rawInput, {}, suggestionState.interactionId);
 	}
 </script>
 
@@ -316,60 +425,52 @@
 		<textarea
 			id="raw-input"
 			bind:value={data.rawInput}
+			onkeydown={handleTextareaKeydown}
 			placeholder="The rent keeps going up but wages don't..."
 			rows="5"
 			disabled={isGenerating}
+			tabindex={0}
 			class="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3
              text-base text-slate-900 transition-colors duration-200
              placeholder:italic placeholder:text-slate-500 focus:border-participation-primary-500 focus:bg-white focus:outline-none
              focus:ring-2 focus:ring-participation-primary-500
              disabled:cursor-not-allowed disabled:opacity-60"
-		/>
+		></textarea>
 
 		<div class="mt-2 flex items-center justify-between text-xs text-slate-600">
 			{#if (data.rawInput || '').trim().length > 0}
 				<span class="font-mono">{(data.rawInput || '').length} characters</span>
+				{#if (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && !isGenerating && !showAISuggest}
+					<span class="text-slate-400">⌘↵ to generate now</span>
+				{/if}
 			{:else}
 				<span class="italic">Describe the problem you want to solve</span>
 			{/if}
 		</div>
 	</div>
 
-	<!-- Path choice: refine or write manually -->
-	{#if !manualMode && !userWantsAI && !showAISuggest && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH}
-		<div class="mt-4 flex gap-3" transition:slide={{ duration: 200 }}>
-			<button
-				type="button"
-				onclick={enableAISuggestions}
-				class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg
-                 bg-participation-primary-600 px-4 py-3 text-sm font-semibold text-white
-                 shadow-sm transition-all duration-150 hover:bg-participation-primary-700 hover:shadow"
-			>
-				<Sparkles class="h-4 w-4" />
-				Hit me ({5 - attemptCount}
-				{attemptCount === 4 ? 'left' : 'left'})
-			</button>
-
+	<!-- Manual mode option (shown during generation or when AI is working) -->
+	{#if !manualMode && !showAISuggest && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && suggestionState.status !== 'thinking'}
+		<div class="mt-3 text-right" transition:fade={{ duration: 150 }}>
 			<button
 				type="button"
 				onclick={writeManually}
-				class="inline-flex items-center gap-2 rounded-lg border-2 border-slate-300
-                 bg-white px-4 py-3 text-sm font-medium text-slate-700
-                 transition-all duration-150 hover:border-slate-400 hover:bg-slate-50"
+				tabindex={0}
+				class="text-sm text-slate-500 underline transition-colors hover:text-slate-700"
 			>
-				I'll write it
+				I'll write my own subject line
 			</button>
 		</div>
 	{/if}
 
-	<!-- Status indicator (shows when refining enabled and waiting) -->
-	{#if userWantsAI && !showAISuggest && suggestionState.status === 'idle' && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH}
+	<!-- Status indicator (shows when waiting to generate) -->
+	{#if !manualMode && !showAISuggest && suggestionState.status === 'idle' && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH}
 		<div
 			class="mt-2 flex items-center gap-2 text-xs text-slate-500"
 			transition:fade={{ duration: 150 }}
 		>
 			<Sparkles class="h-3.5 w-3.5" />
-			<span>Refining when you stop typing...</span>
+			<span>Generating when you stop typing...</span>
 		</div>
 	{/if}
 
@@ -383,6 +484,18 @@
 				class="h-4 w-4 animate-spin rounded-full border-2 border-participation-primary-600 border-t-transparent"
 			/>
 			<span>Refining...</span>
+		</div>
+	{/if}
+
+	<!-- Clarification panel (shown when agent needs clarification) -->
+	{#if showAISuggest && suggestionState.status === 'clarifying'}
+		<div class="mt-4" transition:slide={{ duration: 200 }}>
+			<ClarificationPanel
+				questions={suggestionState.questions}
+				inferredContext={suggestionState.inferredContext}
+				onSubmit={handleClarificationSubmit}
+				onSkip={handleClarificationSkip}
+			/>
 		</div>
 	{/if}
 
@@ -500,14 +613,16 @@
 				</p>
 			</div>
 
-			<div class="mb-4 space-y-1 text-sm text-slate-700">
+			<div class="mb-4 space-y-2 text-sm text-slate-700">
 				<div>
 					<strong class="font-semibold">Core issue:</strong>
 					{currentSuggestion.core_issue}
 				</div>
-				<div>
-					<strong class="font-semibold">Domain:</strong>
-					{currentSuggestion.domain}
+				<div class="flex flex-wrap gap-1.5">
+					{#each currentSuggestion.topics as topic}
+						<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{topic}</span
+						>
+					{/each}
 				</div>
 				<div class="text-xs text-slate-600">
 					<strong class="font-semibold">Slug:</strong>
@@ -520,9 +635,11 @@
 					<button
 						type="button"
 						onclick={acceptSuggestion}
+						tabindex={0}
 						class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg
                  bg-participation-primary-600 px-4 py-2 text-sm font-semibold text-white
-                 shadow-sm transition-all duration-150 hover:bg-participation-primary-700 hover:shadow"
+                 shadow-sm transition-all duration-150 hover:bg-participation-primary-700 hover:shadow
+                 focus:outline-none focus:ring-2 focus:ring-participation-primary-500 focus:ring-offset-2"
 					>
 						Use this
 						<ArrowRight class="h-4 w-4" />
@@ -531,9 +648,11 @@
 					<button
 						type="button"
 						onclick={writeManually}
+						tabindex={0}
 						class="inline-flex items-center gap-2 rounded-lg border-2 border-slate-300
                  bg-white px-4 py-2 text-sm font-medium text-slate-700
-                 transition-all duration-150 hover:border-slate-400 hover:bg-slate-50"
+                 transition-all duration-150 hover:border-slate-400 hover:bg-slate-50
+                 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
 					>
 						I'll write it
 					</button>
@@ -545,18 +664,20 @@
 							type="button"
 							onclick={generateSuggestion}
 							disabled={isGenerating}
+							tabindex={0}
 							class="inline-flex items-center gap-2 text-sm font-medium text-participation-primary-700
                      transition-colors duration-150 hover:text-participation-primary-800
+                     focus:outline-none focus:underline
                      disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{#if isGenerating}
 								<div
 									class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-participation-primary-600 border-t-transparent"
-								/>
+								></div>
 							{:else}
 								<Sparkles class="h-3.5 w-3.5" />
 							{/if}
-							Hit me again ({5 - attemptCount} left)
+							Try another ({5 - attemptCount} left)
 						</button>
 					{:else}
 						<span class="text-sm text-slate-600">Out of refinements</span>
@@ -565,7 +686,8 @@
 					<button
 						type="button"
 						onclick={editRawWriting}
-						class="text-sm text-slate-600 underline hover:text-slate-800"
+						tabindex={0}
+						class="text-sm text-slate-600 underline hover:text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
 					>
 						Edit original
 					</button>

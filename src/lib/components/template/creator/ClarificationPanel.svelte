@@ -1,0 +1,228 @@
+<script lang="ts">
+	/**
+	 * ClarificationPanel: Conversational clarification UI
+	 *
+	 * PERCEPTUAL ENGINEERING:
+	 * - Feels like a conversation turn, not a form
+	 * - Agent formulates questions in natural language
+	 * - Two input types: location_picker (structured) and open_text (free-form)
+	 * - Smooth transitions, consistent timing
+	 *
+	 * COGNITIVE LOAD:
+	 * - Maximum 2 questions (4±1 working memory chunks)
+	 * - Pre-filled values reduce recall burden (recognition > recall)
+	 * - Skip option respects user agency
+	 */
+
+	import type { ClarificationQuestion, InferredContext } from '$lib/core/agents/types/clarification';
+	import LocationAutocomplete from '../../template-browser/LocationAutocomplete.svelte';
+	import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
+	import { slide, fade } from 'svelte/transition';
+
+	interface Props {
+		questions: ClarificationQuestion[];
+		inferredContext: InferredContext;
+		onSubmit: (answers: Record<string, string>) => void;
+		onSkip: () => void;
+	}
+
+	let { questions, inferredContext, onSubmit, onSkip }: Props = $props();
+
+	// Answer state - keyed by question ID
+	let answers = $state<Record<string, string>>({});
+
+	// Initialize with any prefilled values
+	$effect(() => {
+		const initialAnswers: Record<string, string> = {};
+		questions.forEach((question) => {
+			if (question.type === 'location_picker' && question.prefilled_location) {
+				initialAnswers[question.id] = question.prefilled_location;
+			}
+		});
+		answers = initialAnswers;
+	});
+
+	// Check if all required questions are answered
+	const canSubmit = $derived(
+		questions.every((q) => !q.required || (answers[q.id] && answers[q.id].trim().length > 0))
+	);
+
+	function handleLocationSelect(questionId: string, location: LocationHierarchy) {
+		// Build location string from hierarchy
+		let locationString = location.display_name;
+
+		if (location.city?.name) {
+			locationString = `${location.city.name}, ${location.state?.code || location.country.code}`;
+		} else if (location.state?.name) {
+			locationString = `${location.state.name}, ${location.country.code}`;
+		} else if (location.country?.name) {
+			locationString = location.country.name;
+		}
+
+		answers[questionId] = locationString;
+	}
+
+	function handleTextInput(questionId: string, event: Event) {
+		const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+		answers[questionId] = target.value;
+	}
+
+	function handleSubmit() {
+		if (canSubmit) {
+			onSubmit(answers);
+		}
+	}
+
+	// Keyboard shortcuts: Enter to submit (when not in textarea), Escape to skip
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter' && canSubmit && !(e.target instanceof HTMLTextAreaElement)) {
+			e.preventDefault();
+			handleSubmit();
+		} else if (e.key === 'Escape') {
+			e.preventDefault();
+			onSkip();
+		}
+	}
+
+	// Map location_level to LocationAutocomplete level prop
+	function getLocationLevel(level?: 'city' | 'state' | 'country'): 'state' | 'country' {
+		// LocationAutocomplete uses 'state' for city-level precision
+		return level === 'country' ? 'country' : 'state';
+	}
+</script>
+
+<svelte:window on:keydown={handleKeydown} />
+
+<div
+	class="clarification-panel rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm"
+	transition:slide={{ duration: 250 }}
+>
+	<!-- Conversational Header -->
+	<header class="mb-6">
+		<div class="flex items-start gap-3">
+			<!-- Agent avatar indicator -->
+			<div
+				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-participation-primary-100"
+			>
+				<svg
+					class="h-4 w-4 text-participation-primary-600"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+					></path>
+				</svg>
+			</div>
+			<div>
+				<p class="text-base font-medium text-slate-900">Quick question to route this right</p>
+				<p class="mt-0.5 text-sm text-slate-500">
+					This helps me find the right people to target
+				</p>
+			</div>
+		</div>
+	</header>
+
+	<!-- Questions (conversational flow) -->
+	<div class="space-y-5">
+		{#each questions as question, index}
+			<div
+				class="question-block"
+				transition:fade={{ duration: 150, delay: index * 50 }}
+			>
+				<!-- Question text (agent's voice) -->
+				<label
+					for={question.id}
+					class="mb-2 block text-sm font-medium text-slate-800"
+				>
+					{question.question}
+					{#if !question.required}
+						<span class="ml-1 font-normal text-slate-400">(optional)</span>
+					{/if}
+				</label>
+
+				{#if question.type === 'location_picker'}
+					<!-- Location Autocomplete -->
+					<div class="location-input-wrapper">
+						<LocationAutocomplete
+							label={answers[question.id] || question.prefilled_location || 'Search for a city or state...'}
+							level={getLocationLevel(question.location_level)}
+							isSelected={!!answers[question.id]}
+							on:select={(e) => handleLocationSelect(question.id, e.detail)}
+						/>
+					</div>
+				{:else}
+					<!-- Open Text Input -->
+					<div class="relative">
+						<input
+							type="text"
+							id={question.id}
+							value={answers[question.id] || ''}
+							placeholder={question.placeholder || 'Type your answer...'}
+							oninput={(e) => handleTextInput(question.id, e)}
+							class="w-full rounded-lg border-2 border-slate-200 bg-white px-4 py-3
+								text-base text-slate-900 transition-all duration-150
+								placeholder:text-slate-400
+								focus:border-participation-primary-500 focus:bg-white focus:outline-none
+								focus:ring-2 focus:ring-participation-primary-500/20"
+						/>
+					</div>
+				{/if}
+			</div>
+		{/each}
+	</div>
+
+	<!-- Agent reasoning (collapsed, for transparency) -->
+	{#if inferredContext.reasoning}
+		<details class="mt-5">
+			<summary class="cursor-pointer text-xs text-slate-400 hover:text-slate-600">
+				Why am I asking?
+			</summary>
+			<p class="mt-2 text-xs leading-relaxed text-slate-500">
+				{inferredContext.reasoning}
+			</p>
+		</details>
+	{/if}
+
+	<!-- Actions -->
+	<footer class="mt-6 flex items-center justify-between border-t border-slate-100 pt-5">
+		<button
+			type="button"
+			onclick={onSkip}
+			class="text-sm font-medium text-slate-500 transition-colors duration-150 hover:text-slate-700"
+		>
+			Skip — use your best guess
+		</button>
+
+		<button
+			type="button"
+			onclick={handleSubmit}
+			disabled={!canSubmit}
+			class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-5 py-2.5
+				text-sm font-semibold text-white shadow-sm transition-all duration-150
+				hover:bg-participation-primary-700 hover:shadow
+				disabled:cursor-not-allowed disabled:opacity-50"
+		>
+			Continue
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+			</svg>
+		</button>
+	</footer>
+</div>
+
+<style>
+	/* Subtle focus enhancement for the whole panel */
+	.clarification-panel:focus-within {
+		box-shadow: 0 0 0 2px rgba(var(--participation-primary-500), 0.1);
+	}
+
+	/* Location picker wrapper styling */
+	.location-input-wrapper :global(.location-autocomplete) {
+		width: 100%;
+	}
+</style>
