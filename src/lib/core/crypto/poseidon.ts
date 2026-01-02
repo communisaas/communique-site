@@ -56,7 +56,9 @@ async function getBarretenbergSync(): Promise<BarretenbergSyncType> {
 			`[Poseidon] Environment check: SAB=${sabSupport}, Threads=${threads}, Context=${typeof self !== 'undefined' && 'WorkerGlobalScope' in self ? 'Worker' : 'Main'}`
 		);
 
-		console.log('[Poseidon] Initializing BarretenbergSync singleton (threads: 1, no nested workers)...');
+		console.log(
+			'[Poseidon] Initializing BarretenbergSync singleton (threads: 1, no nested workers)...'
+		);
 		const startTime = performance.now();
 
 		try {

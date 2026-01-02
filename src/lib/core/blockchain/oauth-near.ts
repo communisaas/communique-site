@@ -13,8 +13,12 @@
  *
  * SECURITY: OAuth ID is hashed before derivation. Provider cannot
  * reverse-engineer NEAR account or Scroll address from OAuth data.
+ *
+ * SSR SAFETY: All functions in this module require browser context.
+ * They MUST be called via dynamic imports from client-side code only.
  */
 
+import { browser } from '$app/environment';
 import { voterBlockchainClient } from './voter-client';
 import { deriveScrollAddress } from './chain-signatures';
 import { db } from '$lib/core/db';
@@ -22,14 +26,25 @@ import { db } from '$lib/core/db';
 /**
  * Create NEAR implicit account from OAuth provider identity
  *
+ * CRITICAL: This function requires browser context (WebAuthn, IndexedDB)
+ * Must be called from client-side code only via dynamic import
+ *
  * @param provider - OAuth provider (google, facebook, etc.)
  * @param oauthUserId - Provider-specific user ID
  * @returns NEAR implicit account ID
+ * @throws Error if called in SSR context
  */
 export async function createNEARAccountFromOAuth(
 	provider: string,
 	oauthUserId: string
 ): Promise<string> {
+	// SSR guard - NEAR account creation requires browser APIs
+	if (!browser) {
+		throw new Error(
+			'createNEARAccountFromOAuth requires browser context (WebAuthn). Cannot execute during SSR.'
+		);
+	}
+
 	try {
 		// Create NEAR account via passkey
 		// This triggers deterministic address derivation for Scroll/Ethereum
@@ -58,16 +73,30 @@ export async function createNEARAccountFromOAuth(
  * Ensure user has complete blockchain setup (NEAR + Scroll)
  * Creates accounts if they don't exist yet
  *
+ * CRITICAL: This function requires browser context for account creation
+ * Must be called from client-side code only via dynamic import
+ *
  * @param userId - Communique user ID
  * @param provider - OAuth provider
  * @param oauthUserId - Provider-specific user ID
  * @returns Account details
+ * @throws Error if called in SSR context
  */
 export async function ensureBlockchainAccounts(
 	userId: string,
 	provider: string,
 	oauthUserId: string
-) {
+): Promise<{
+	nearAccountId: string;
+	scrollAddress: string;
+}> {
+	// SSR guard - blockchain account creation requires browser APIs
+	if (!browser) {
+		throw new Error(
+			'ensureBlockchainAccounts requires browser context (WebAuthn, IndexedDB). Cannot execute during SSR.'
+		);
+	}
+
 	// Check if user already has blockchain accounts
 	const user = await db.user.findUnique({
 		where: { id: userId },

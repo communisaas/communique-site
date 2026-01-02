@@ -9,8 +9,12 @@
  * - NEAR implicit account (ed25519 passkey)
  * - MPC-derived ECDSA addresses (Scroll, Ethereum, Bitcoin)
  * - No private keys stored (derived on-demand via MPC)
+ *
+ * SSR SAFETY: All functions in this module require browser context.
+ * They MUST be called via dynamic imports from client-side code only.
  */
 
+import { browser } from '$app/environment';
 import { voterBlockchainClient } from './voter-client';
 
 /**
@@ -20,10 +24,21 @@ import { voterBlockchainClient } from './voter-client';
  * SECURITY: Address derived deterministically from NEAR account.
  * No private keys stored. MPC signs transactions via 300+ validators.
  *
+ * CRITICAL: This function requires browser context (NEAR API, IndexedDB)
+ * Must be called from client-side code only via dynamic import
+ *
  * @param nearAccountId - NEAR implicit account ID (e.g., "abc123...def456.near")
  * @returns Scroll address (EVM-compatible)
+ * @throws Error if called in SSR context
  */
 export async function deriveScrollAddress(nearAccountId: string): Promise<string> {
+	// SSR guard - Chain Signatures derivation requires browser APIs
+	if (!browser) {
+		throw new Error(
+			'deriveScrollAddress requires browser context (NEAR API, IndexedDB). Cannot execute during SSR.'
+		);
+	}
+
 	// Get account state from VOTER Protocol client
 	const accountState = voterBlockchainClient.getCurrentAccount();
 
@@ -41,10 +56,21 @@ export async function deriveScrollAddress(nearAccountId: string): Promise<string
  * Derive Ethereum L1 address from NEAR implicit account
  * Same MPC process as Scroll, but for Ethereum mainnet
  *
+ * CRITICAL: This function requires browser context (NEAR API, IndexedDB)
+ * Must be called from client-side code only via dynamic import
+ *
  * @param nearAccountId - NEAR implicit account ID
  * @returns Ethereum address (EVM-compatible)
+ * @throws Error if called in SSR context
  */
 export async function deriveEthereumAddress(nearAccountId: string): Promise<string> {
+	// SSR guard - Chain Signatures derivation requires browser APIs
+	if (!browser) {
+		throw new Error(
+			'deriveEthereumAddress requires browser context (NEAR API, IndexedDB). Cannot execute during SSR.'
+		);
+	}
+
 	const account = voterBlockchainClient.getCurrentAccount();
 
 	if (!account.scrollAddress) {
@@ -60,9 +86,20 @@ export async function deriveEthereumAddress(nearAccountId: string): Promise<stri
 /**
  * Check if user has a NEAR account with derived addresses
  *
+ * CRITICAL: This function requires browser context
+ * Must be called from client-side code only
+ *
  * @returns Account existence status
+ * @throws Error if called in SSR context
  */
 export function hasChainSignaturesAccount(): boolean {
+	// SSR guard - requires browser context
+	if (!browser) {
+		throw new Error(
+			'hasChainSignaturesAccount requires browser context. Cannot execute during SSR.'
+		);
+	}
+
 	const account = voterBlockchainClient.getCurrentAccount();
 	return account.nearAccount !== null && account.scrollAddress !== null;
 }
@@ -70,9 +107,25 @@ export function hasChainSignaturesAccount(): boolean {
 /**
  * Get all derived addresses for current user
  *
+ * CRITICAL: This function requires browser context
+ * Must be called from client-side code only
+ *
  * @returns All blockchain addresses derived from NEAR account
+ * @throws Error if called in SSR context
  */
-export function getAllDerivedAddresses() {
+export function getAllDerivedAddresses(): {
+	near: string | null;
+	scroll: string | null;
+	ethereum: string | null;
+	connectedWallet: string | null;
+} {
+	// SSR guard - requires browser context
+	if (!browser) {
+		throw new Error(
+			'getAllDerivedAddresses requires browser context. Cannot execute during SSR.'
+		);
+	}
+
 	const account = voterBlockchainClient.getCurrentAccount();
 
 	return {

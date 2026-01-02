@@ -138,12 +138,7 @@ class BufferShim extends Uint8Array {
 		return toCopy;
 	}
 
-	copy(
-		target: Uint8Array,
-		targetStart?: number,
-		sourceStart?: number,
-		sourceEnd?: number
-	): number {
+	copy(target: Uint8Array, targetStart?: number, sourceStart?: number, sourceEnd?: number): number {
 		const tStart = targetStart ?? 0;
 		const sStart = sourceStart ?? 0;
 		const sEnd = sourceEnd ?? this.length;
@@ -282,6 +277,9 @@ export default BufferShim;
 if (typeof globalThis !== 'undefined' && !globalThis.Buffer) {
 	(globalThis as unknown as { Buffer: typeof BufferShim }).Buffer = BufferShim;
 }
-if (typeof window !== 'undefined' && !(window as unknown as { Buffer?: typeof BufferShim }).Buffer) {
+if (
+	typeof window !== 'undefined' &&
+	!(window as unknown as { Buffer?: typeof BufferShim }).Buffer
+) {
 	(window as unknown as { Buffer: typeof BufferShim }).Buffer = BufferShim;
 }

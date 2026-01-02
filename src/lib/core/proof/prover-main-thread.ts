@@ -94,7 +94,12 @@ export async function generateProofMainThread(
 		const authorityHash = witness.authorityHash || '0x0';
 
 		// Compute nullifier
-		const nullifier = await computePoseidonNullifier(userSecret, campaignId, authorityHash, epochId);
+		const nullifier = await computePoseidonNullifier(
+			userSecret,
+			campaignId,
+			authorityHash,
+			epochId
+		);
 
 		// Map witness to circuit inputs
 		const circuitInputs = {

@@ -15,6 +15,7 @@
  * - This wrapper: Communique-specific usage patterns + UI state
  */
 
+import { browser } from '$app/environment';
 import { VOTERClient, type VOTERClientConfig } from '@voter-protocol/client';
 import { PUBLIC_SCROLL_RPC_URL } from '$env/static/public';
 
@@ -27,10 +28,21 @@ let voterClient: VOTERClient | null = null;
 /**
  * Initialize VOTER Protocol client with Communique-specific configuration
  *
+ * CRITICAL: This function requires browser context (IndexedDB, WebAuthn)
+ * Must be called from client-side code only (e.g., onMount in Svelte)
+ *
  * @param options - Optional configuration overrides
  * @returns Initialized VOTER Protocol client
+ * @throws Error if called in SSR context
  */
 export async function initVoterClient(options?: Partial<VOTERClientConfig>): Promise<VOTERClient> {
+	// SSR guard - VOTER Protocol client requires browser-only APIs
+	if (!browser) {
+		throw new Error(
+			'VOTERClient requires browser context (IndexedDB, WebAuthn). Cannot initialize during SSR.'
+		);
+	}
+
 	if (voterClient) {
 		return voterClient;
 	}
@@ -66,18 +78,19 @@ export async function initVoterClient(options?: Partial<VOTERClientConfig>): Pro
  * Throws if client hasn't been initialized yet
  *
  * @returns Active VOTER Protocol client
+ * @throws Error if called in SSR context or client not initialized
  */
 export function getVoterClient(): VOTERClient {
+	if (!browser) {
+		throw new Error('VOTERClient requires browser context. Cannot access during SSR.');
+	}
+
 	if (!voterClient) {
-		throw new Error(
-			'VOTER Protocol client not initialized. Call initVoterClient() first.'
-		);
+		throw new Error('VOTER Protocol client not initialized. Call initVoterClient() first.');
 	}
 
 	if (!voterClient.isReady()) {
-		throw new Error(
-			'VOTER Protocol client not ready. Await initVoterClient() before use.'
-		);
+		throw new Error('VOTER Protocol client not ready. Await initVoterClient() before use.');
 	}
 
 	return voterClient;
