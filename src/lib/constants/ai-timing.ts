@@ -5,7 +5,7 @@ export const AI_SUGGESTION_TIMING = {
 	CONTENT_SIMILARITY_THRESHOLD: 0.2, // Only re-gen if 20%+ change
 
 	// Network timeouts
-	SUGGESTION_TIMEOUT: 8000, // Give up after 8s
+	SUGGESTION_TIMEOUT: 30000, // Give up after 30s (Gemini agent may need retries)
 	RETRY_DELAY: 2000, // Wait 2s before retry
 	MAX_RETRIES: 1, // Retry once on timeout
 
