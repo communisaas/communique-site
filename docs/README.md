@@ -2,7 +2,7 @@
 
 **Purpose:** Find what you need, fast. Every piece of information has ONE home.
 
-**Total Active Docs:** 15 (down from 95+)
+**Total Active Docs:** ~70 files across organized folders
 
 ---
 
@@ -13,180 +13,130 @@
 **"How do I integrate with voter-protocol?"** → `integration.md`
 **"How do I build frontend features?"** → `frontend.md`
 **"How do I test?"** → `development/testing.md`
-**"How do I deploy?"** → `development/deployment.md`
+**"Voice and design language?"** → `design/voice.md`
 
 ---
 
-## Documentation by Purpose
+## Core Documentation (5 files)
 
-### I need to understand the CURRENT state
-
-→ **`implementation-status.md`** (SINGLE SOURCE OF TRUTH)
-
-- What's complete (encryption, database, refactor)
-- What's in progress (voter-protocol ZK proofs)
-- What's blocked (TEE deployment, message delivery)
-- Launch blockers
-- Privacy violations fixed
-
-### I need to understand the ARCHITECTURE
-
-→ **`architecture.md`**
-
-- **Separation of Concerns**: What Communiqué handles vs voter-protocol
-  - Communiqué: UI/UX, OAuth, database, browser encryption, API proxies
-  - voter-protocol: Cryptography, TEE deployment, ZK proofs, ReputationAgent, blockchain
-- **Cypherpunk Principles**: Browser-native ZK proving (no server-side secrets)
-- **Privacy Architecture**: What's private (address), public (message content), pseudonymous (reputation)
-- **Cost Analysis**: $682.50/month Gemini savings, 99.97% IPFS savings
-
-→ **`architecture/location-signal-accuracy-limits.md`** (NEW)
-
-- **Location Signal Accuracy Matrix**: What each signal type can reliably determine
-- **IP Geolocation Limits**: State-level only (NOT district, NOT reliable city)
-- **False Precision Prevention**: Don't claim to know more than you actually know
-- **Code Enforcement**: Type system patterns, testing requirements
-
-### I need to INTEGRATE with external systems
-
-→ **`integration.md`**
-
-- **voter-protocol Integration**: ReputationAgent API, geocoding, district resolution, ZK proving
-- **CWC API**: Congressional message delivery through TEE
-- **OAuth Providers**: Google, Facebook, Twitter, LinkedIn, Discord (full flow examples)
-- **Identity Verification**: self.xyz (NFC passport) + Didit.me (government ID)
-- **TEE Encrypted Delivery**: Browser encryption → AWS Nitro Enclaves → CWC API
-- **Rate Limiting**: CWC API limits, error handling, retry logic
-
-### I need to build FRONTEND features
-
-→ **`frontend.md`**
-
-- **SvelteKit 5 Architecture**: SSR vs CSR, when to use each
-- **Runes-Based State Management**: `$state`, `$derived`, `$effect`
-- **Component Patterns**: Props, events, composition
-- **Form Handling**: Validation, error states, progressive enhancement
-- **Type Safety**: Zero tolerance for `any` types
-
-### I need to understand SPECIFIC FEATURES
-
-→ **`features/templates.md`** - Template system (creation, customization, moderation)
-→ **`features/creator.md`** - Template creator UI (CodeMirror editor, variable system)
-→ **`features/identity-verification.md`** - self.xyz + Didit.me flows (session-based verification)
-
-### I need to TEST or DEPLOY
-
-→ **`development/testing.md`** - Test strategy, mocks, fixtures (integration-first approach)
-→ **`development/database.md`** - Prisma schema, migrations, seeding
-→ **`development/deployment.md`** - How to deploy Communiqué (production build, environment variables)
-→ **`development/integrations/`** - External service integrations (Toolhouse, decision-maker, multi-target delivery)
-
-### I need DEEP TECHNICAL SPECS
-
-→ **`specs/zk-proof-integration.md`** - ZK proof integration guide (5 phases, 10 weeks, 45K comprehensive)
-→ **`specs/portable-identity.md`** - IPFS + on-chain pointer architecture (Phase 2, 19K)
-→ **`specs/universal-credibility.md`** - Credential verification system (17K)
-
-### I need HISTORICAL CONTEXT
-
-→ **`archive/`** - Superseded docs, migrations, historical decisions
-
-- `archive/2025-01-district-verification/` - Pre-voter-protocol separation
-- `archive/2025-11-refactor/` - Architecture refactor process
-- `archive/2025-11-phase-2-implementation/` - Phase 2 status files (superseded by implementation-status.md)
-- `archive/2025-11-design-iterations/` - OAuth flow refactor, UI copy audits, progressive precision UX
-- `archive/migrations/` - Database privacy migration records
+| File | Purpose |
+|------|---------|
+| `implementation-status.md` | What's done, in progress, blocked (SINGLE SOURCE OF TRUTH) |
+| `architecture.md` | Communiqué/voter-protocol separation, privacy architecture |
+| `integration.md` | CWC API, OAuth, voter-protocol, identity verification |
+| `frontend.md` | SvelteKit 5, runes-based state, component patterns |
 
 ---
 
-## Information Ownership (No Redundancy)
+## Folder Guide
 
-**Implementation Status:** ONLY in `implementation-status.md`
-**Architecture:** ONLY in `architecture.md`
-**Integration:** ONLY in `integration.md`
-**Frontend:** ONLY in `frontend.md`
-**Features:** ONLY in `features/*.md`
-**Development:** ONLY in `development/*.md`
-**Specs:** ONLY in `specs/*.md`
+### `features/` (12 files)
+Feature-specific documentation.
 
-**Principle:** Every piece of information has ONE home. No duplication across docs.
+**Key files:**
+- `templates.md` - Template system (creation, customization, moderation)
+- `creator.md` - Template creator UI (CodeMirror, variable system)
+- `oauth.md` - OAuth provider flows
+- `onboarding.md` - User onboarding flows
+- `jurisdiction.md` - Jurisdiction system (TemplateJurisdiction model)
+
+### `specs/` (12 files)
+Technical specifications and design docs.
+
+**Core specs (mentioned in CLAUDE.md):**
+- `zk-proof-integration.md` - ZK proof integration (5 phases, 45K)
+- `portable-identity.md` - IPFS + on-chain pointer (Phase 2)
+- `universal-credibility.md` - Credential verification system
+
+**Design specs:**
+- `subject-line-clarifying-questions.md` - Clarification UI design
+- `progressive-template-sections.md` - Template sectioning UX
+- `proof-generation-ux.md` - Browser-native ZKP UX
+- `header-redesign.md` - Header perceptual engineering
+
+### `development/` (11 files + integrations/)
+Development workflows and guides.
+
+**Key files:**
+- `testing.md` - Integration-first test strategy, mocks, fixtures
+- `database.md` - Prisma schema, migrations, seeding
+- `deployment.md` - Production deployment
+- `integrations/` - External service integrations (4 files)
+  - `clarification-panel-usage.md` - Clarification panel guide
+  - `message-generation-integration.md` - AI message generation
+  - `decision-maker-resolution-integration.md` - Decision-maker lookup
+  - `multi-target-delivery-spec.md` - Multi-target delivery
+
+### `architecture/` (5 files)
+Architectural deep-dives.
+
+- `LOCATION-SIGNAL-ACCURACY-LIMITS.md` - Location signal accuracy matrix (IP = state only)
+
+### `design/` (5 files)
+Design system and voice.
+
+**Key files:**
+- `voice.md` - Pragmatic cypherpunk voice guide (mentioned in CLAUDE.md)
+- `design-system.md` - Component design system
+- `TYPOGRAPHY-SYSTEM.md` - Typography standards
+- `ux-responsibilities.md` - UX layer responsibilities
+
+### `congressional/` (4 files)
+Congressional delivery system.
+
+- `cwc.md` - CWC API documentation
+- `delivery.md` - Delivery system spec
+- `dashboard.md` - Dashboard spec
+
+### `strategy/` (8 files)
+Business and launch strategy (non-technical).
+
+### `testing/` (2 files)
+Testing guides.
+
+- `DATABASE-CLEARING-ISSUE.md` - Important: test database clearing behavior
+- `ZK-PROOF-TESTING-STRATEGY.md` - ZK proof testing
+
+### `research/` (3 files)
+Research and analysis.
+
+- `power-structures.md` - Multi-stakeholder power structure research (mentioned in CLAUDE.md)
+
+---
+
+## Archive
+
+**`archive/`** - Superseded docs, completed migrations, historical decisions
+
+- `2025-12-clarification-implementation/` - Clarification feature implementation docs
+- `2025-12-completed-specs/` - Completed specs (Gemini migration, geocoding)
+- `toolhouse/` - Deprecated Toolhouse integration
+
+---
+
+## Information Ownership
+
+| Topic | Home |
+|-------|------|
+| Implementation Status | `implementation-status.md` |
+| Architecture | `architecture.md` |
+| Integration | `integration.md` |
+| Frontend | `frontend.md` |
+| Features | `features/*.md` |
+| Specs | `specs/*.md` |
+| Development | `development/*.md` |
+| Design | `design/*.md` |
+
+**Principle:** Every piece of information has ONE home. No duplication.
 
 ---
 
 ## Finding Information
 
-### Search Strategy
-
 1. **Check `implementation-status.md`** - Current state of everything
-2. **Check `docs/README.md`** (this file) - Navigate to specific topic
+2. **Check this README** - Navigate to specific folder
 3. **Use grep** - `grep -r "keyword" docs/` (finds information fast)
 
-### Don't
-
-- ❌ Read multiple docs for same topic (shouldn't exist after consolidation)
-- ❌ Check archived docs first (unless researching historical decisions)
-- ❌ Assume information is duplicated (it's not - ONE home per piece of info)
-
 ---
 
-## Complete Documentation Structure
-
-```
-/ (2 docs)
-├── CLAUDE.md                           # Entry point for Claude Code
-└── README.md                           # Project overview
-
-docs/ (13 docs)
-├── README.md                           # This navigation map
-├── implementation-status.md            # What's done, what remains (SINGLE SOURCE OF TRUTH)
-├── architecture.md                     # Communiqué/voter-protocol separation
-├── integration.md                      # CWC API, OAuth, voter-protocol
-├── frontend.md                         # SvelteKit 5, runes, components
-│
-├── features/ (3 docs)
-│   ├── templates.md                    # Template system
-│   ├── creator.md                      # Template creator UI
-│   └── identity-verification.md        # self.xyz + Didit.me (CONSOLIDATED)
-│
-├── development/ (3 docs + integrations/)
-│   ├── testing.md                      # Test strategy, mocks, fixtures
-│   ├── database.md                     # Schema, migrations, seeding
-│   ├── deployment.md                   # How to deploy
-│   └── integrations/                   # External service integrations (4 docs)
-│
-├── specs/ (3 docs)
-│   ├── zk-proof-integration.md         # ZK proof integration guide (45K)
-│   ├── portable-identity.md            # IPFS + on-chain pointer (19K)
-│   └── universal-credibility.md        # Credential verification (17K)
-│
-└── archive/ (historical, not counted)
-    ├── 2025-01-district-verification/
-    ├── 2025-11-refactor/
-    ├── 2025-11-phase-2-implementation/
-    ├── 2025-11-design-iterations/
-    └── migrations/
-```
-
-**Total Active Docs:** 15 (vs 95+ before consolidation)
-**Reduction:** 84% fewer docs, 100% of critical information retained
-**Navigation Time:** <30 seconds to find any piece of information
-
----
-
-## Documentation Principles
-
-### No Cruft
-Every document serves a clear purpose. Historical/superseded content lives in `archive/`.
-
-### No Redundancy
-"Redundancy kills context." Every piece of information has exactly ONE home.
-
-### No Fragmentation
-"Fragmentation tears us into development hell." Related information lives together.
-
-### Claude Code Navigation
-Docs optimized for AI instances to quickly find relevant context without confusion.
-
----
-
-*Communiqué PBC | Documentation Map | 2025-11-09*
+*Communiqué PBC | Documentation Map | 2025-01-02*
