@@ -1,7 +1,7 @@
 /**
  * Gemini AI Client for Agent Infrastructure
  *
- * Centralized SDK wrapper for Gemini 3 Flash integration with:
+ * Centralized SDK wrapper for Gemini 3 Flash Preview integration with:
  * - Singleton client initialization
  * - Structured output with JSON schemas
  * - Google Search grounding
