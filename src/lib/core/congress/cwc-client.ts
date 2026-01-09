@@ -52,16 +52,18 @@ interface CWCSubmissionResult {
 }
 
 export class CWCClient {
-	private apiKey: string;
-	private baseUrl: string;
+	// Use lazy getters for env vars to ensure they're read at call time, not import time
+	// This is critical for test environments where env vars may be set after module import
+	private get apiKey(): string {
+		return process.env.CWC_API_KEY || '';
+	}
+
+	private get baseUrl(): string {
+		return process.env.CWC_API_BASE_URL || 'https://soapbox.senate.gov/api';
+	}
 
 	constructor() {
-		this.apiKey = process.env.CWC_API_KEY || '';
-		this.baseUrl = process.env.CWC_API_BASE_URL || 'https://soapbox.senate.gov/api';
-
-		if (!this.apiKey) {
-			console.warn('CWC_API_KEY not configured - congressional submissions will be simulated');
-		}
+		// Env vars are now read lazily via getters, so no need to check here
 	}
 
 	/**

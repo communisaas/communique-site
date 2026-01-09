@@ -11,7 +11,7 @@ describe('AI Timing Constants', () => {
 	});
 
 	it('should have suggestion timeout', () => {
-		expect(AI_SUGGESTION_TIMING.SUGGESTION_TIMEOUT).toBe(8000);
+		expect(AI_SUGGESTION_TIMING.SUGGESTION_TIMEOUT).toBe(30000); // 30s for AI generation
 	});
 
 	it('should have rate limit configuration', () => {

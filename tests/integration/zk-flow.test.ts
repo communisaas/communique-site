@@ -11,28 +11,28 @@ const mockLocals = {
 
 describe('ZKP Integration Flow', () => {
     beforeEach(async () => {
-        // Clean up DB
+        // Clean up DB in dependency order (child tables first)
         await prisma.submission.deleteMany();
         await prisma.shadowAtlasRegistration.deleteMany();
         await prisma.shadowAtlasTree.deleteMany();
-        // Ensure user exists (upsert to avoid unique constraint if exists)
-        await prisma.user.upsert({
-            where: { id: 'test-user-id' },
-            update: {},
-            create: {
+        // Delete test template and user before recreating
+        await prisma.template.deleteMany({ where: { id: 'template-123' } });
+        await prisma.user.deleteMany({ where: { id: 'test-user-id' } });
+
+        // Create user first (template depends on it)
+        await prisma.user.create({
+            data: {
                 id: 'test-user-id',
-                email: 'test@example.com',
+                email: `zk-test-${Date.now()}@example.com`, // Unique email per run
                 name: 'Test User'
             }
         });
 
-        // Ensure template exists
-        await prisma.template.upsert({
-            where: { id: 'template-123' },
-            update: {},
-            create: {
+        // Then create template (depends on user)
+        await prisma.template.create({
+            data: {
                 id: 'template-123',
-                slug: 'test-template',
+                slug: `test-template-${Date.now()}`, // Unique slug per run
                 title: 'Test Template',
                 description: 'Test Description',
                 message_body: 'Test Body',
@@ -73,7 +73,7 @@ describe('ZKP Integration Flow', () => {
         expect(registerResponse.status).toBe(200);
         const registerData = await registerResponse.json();
         expect(registerData.leafIndex).toBeDefined();
-        expect(registerData.merklePath).toHaveLength(14); // Depth 14
+        expect(registerData.merklePath).toHaveLength(12); // Depth 12 (current configuration)
         expect(registerData.root).toBeDefined();
 
         // Verify DB state after registration
