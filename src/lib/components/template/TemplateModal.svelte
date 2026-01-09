@@ -7,6 +7,7 @@
 	import { spring } from 'svelte/motion';
 	import { page } from '$app/stores';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
+	import { invalidateLocationCaches } from '$lib/core/identity/cache-invalidation';
 	import {
 		X,
 		Send,
@@ -350,6 +351,9 @@
 			}
 
 			console.log('[Template Modal] Address saved successfully');
+
+			// Invalidate stale location caches (old address/district data)
+			await invalidateLocationCaches();
 
 			// Update page data to reflect new address
 			if ($page.data?.user) {
@@ -1084,7 +1088,19 @@
 							message: template.body || template.description,
 							recipientOffices: ['Senate', 'House'] // TODO: Get actual offices
 						}}
-						address={guestState.state?.address || user.street || ''}
+						address={guestState.state?.address || $page.data.user?.street || ''}
+						mvpAddress={$page.data.user?.street
+							? {
+									street: $page.data.user.street,
+									city: $page.data.user.city || '',
+									state: $page.data.user.state || '',
+									zip: $page.data.user.zip || ''
+								}
+							: undefined}
+						userEmail={$page.data.user?.email}
+						userName={$page.data.user?.first_name
+							? `${$page.data.user.first_name} ${$page.data.user.last_name || ''}`.trim()
+							: undefined}
 						skipCredentialCheck={true}
 						on:complete={handleProofComplete}
 						on:cancel={handleProofCancel}

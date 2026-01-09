@@ -2,6 +2,13 @@
 	import { createEventDispatcher } from 'svelte';
 	import { ShieldCheck, AlertCircle, Check, Loader2 } from 'lucide-svelte';
 
+	interface AddressData {
+		street: string;
+		city: string;
+		state: string;
+		zip: string;
+	}
+
 	interface Props {
 		userId: string;
 		templateId: string;
@@ -12,11 +19,26 @@
 		};
 		/** Skip credential check (for testing) */
 		skipCredentialCheck?: boolean;
-		/** User address for encryption */
+		/** User address for encryption (string for witness, structured for CWC) */
 		address: string;
+		/** Structured address for MVP direct CWC delivery (bypasses TEE) */
+		mvpAddress?: AddressData;
+		/** User email for CWC submission */
+		userEmail?: string;
+		/** User name for CWC submission */
+		userName?: string;
 	}
 
-	let { userId, templateId, templateData, skipCredentialCheck = false, address }: Props = $props();
+	let {
+		userId,
+		templateId,
+		templateData,
+		skipCredentialCheck = false,
+		address,
+		mvpAddress,
+		userEmail,
+		userName
+	}: Props = $props();
 
 	type ProofGenerationState =
 		| { status: 'idle' }
@@ -253,7 +275,11 @@
 					witnessNonce: encryptedWitness.nonce,
 					ephemeralPublicKey: encryptedWitness.ephemeralPublicKey,
 					teeKeyId: encryptedWitness.teeKeyId,
-					templateData
+					templateData,
+					// MVP bypass: Pass cleartext address for direct CWC delivery
+					mvpAddress,
+					userEmail,
+					userName
 				})
 			});
 
