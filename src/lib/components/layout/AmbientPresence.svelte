@@ -13,6 +13,7 @@
 	import { ChevronDown, User, LogOut } from '@lucide/svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import type { HeaderUser } from '$lib/types/any-replacements';
+	import { performLogout } from '$lib/core/identity/cache-invalidation';
 
 	let {
 		user = null,
@@ -96,6 +97,13 @@
 	function handleSignIn(): void {
 		modalActions.openModal('sign-in-modal', 'sign-in');
 	}
+
+	// Handle logout with cache clearing
+	async function handleLogout(event: MouseEvent): Promise<void> {
+		event.preventDefault();
+		isDropdownOpen = false;
+		await performLogout();
+	}
 </script>
 
 <!--
@@ -132,10 +140,10 @@
 						<span>Profile</span>
 					</a>
 					<div class="ambient-dropdown-divider"></div>
-					<a href="/auth/logout" class="ambient-dropdown-item" role="menuitem">
+					<button type="button" onclick={handleLogout} class="ambient-dropdown-item" role="menuitem">
 						<LogOut class="ambient-dropdown-icon" />
 						<span>Sign out</span>
-					</a>
+					</button>
 				</div>
 			{/if}
 		</div>

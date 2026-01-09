@@ -8,8 +8,16 @@
 	 */
 	import { User, LogOut, ChevronDown } from '@lucide/svelte';
 	import type { HeaderUser } from '$lib/types/any-replacements';
+	import { performLogout } from '$lib/core/identity/cache-invalidation';
 
 	let { user }: { user: HeaderUser } = $props();
+
+	// Handle logout with cache clearing
+	async function handleLogout(event: MouseEvent): Promise<void> {
+		event.preventDefault();
+		isOpen = false;
+		await performLogout();
+	}
 
 	let isOpen = $state(false);
 	let dropdownRef = $state<HTMLDivElement | null>(null);
@@ -85,10 +93,10 @@
 				<span>Profile</span>
 			</a>
 			<div class="header-dropdown-divider"></div>
-			<a href="/auth/logout" class="header-dropdown-item" role="menuitem">
+			<button type="button" onclick={handleLogout} class="header-dropdown-item" role="menuitem">
 				<LogOut class="header-dropdown-item-icon" />
 				<span>Sign out</span>
-			</a>
+			</button>
 		</div>
 	{/if}
 </div>
