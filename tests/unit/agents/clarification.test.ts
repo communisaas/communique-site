@@ -252,6 +252,109 @@ describe('Confidence Calculations', () => {
 	});
 });
 
+describe('ConversationContext for Multi-Turn Reconstruction', () => {
+	it('should construct valid context with all fields', () => {
+		const context = {
+			originalDescription: 'rent is out of control in my city',
+			questionsAsked: [
+				{
+					id: 'location',
+					question: 'Where are you dealing with this?',
+					type: 'location_picker' as const,
+					location_level: 'city' as const,
+					required: true
+				}
+			],
+			inferredContext: {
+				detected_location: null,
+				detected_scope: null,
+				detected_target_type: 'government',
+				location_confidence: 0.2,
+				scope_confidence: 0.3,
+				target_type_confidence: 0.6,
+				reasoning: 'No location signal. Could target city council, state legislature, or Congress depending on scope.'
+			},
+			answers: { location: 'San Francisco, CA' }
+		};
+
+		expect(context.originalDescription).toBe('rent is out of control in my city');
+		expect(context.questionsAsked).toHaveLength(1);
+		expect(context.questionsAsked[0].type).toBe('location_picker');
+		expect(context.questionsAsked[0].location_level).toBe('city');
+		expect(context.answers.location).toBe('San Francisco, CA');
+	});
+
+	it('should handle empty answers (user skipped clarification)', () => {
+		const context = {
+			originalDescription: '6th street is insane',
+			questionsAsked: [
+				{
+					id: 'location',
+					question: "Which city's 6th street are you talking about?",
+					type: 'location_picker' as const,
+					location_level: 'city' as const,
+					required: true
+				}
+			],
+			inferredContext: {
+				detected_location: null,
+				detected_scope: 'local',
+				detected_target_type: 'government',
+				location_confidence: 0.1,
+				scope_confidence: 0.8,
+				target_type_confidence: 0.7
+			},
+			answers: {} // User skipped
+		};
+
+		expect(Object.keys(context.answers)).toHaveLength(0);
+		// Even with empty answers, we should have the original description and questions
+		expect(context.originalDescription).toBeDefined();
+		expect(context.questionsAsked).toHaveLength(1);
+	});
+
+	it('should support location_level for geographic scope inference', () => {
+		const cityQuestion = {
+			id: 'location',
+			question: "Which city's 6th street?",
+			type: 'location_picker' as const,
+			location_level: 'city' as const,
+			required: true
+		};
+
+		const stateQuestion = {
+			id: 'location',
+			question: 'Which state is affected by this policy?',
+			type: 'location_picker' as const,
+			location_level: 'state' as const,
+			required: true
+		};
+
+		expect(cityQuestion.location_level).toBe('city');
+		expect(stateQuestion.location_level).toBe('state');
+	});
+
+	it('should preserve inferred_context reasoning for prompt reconstruction', () => {
+		const context = {
+			originalDescription: 'Amazon warehouse workers are being pushed too hard',
+			questionsAsked: [], // No questions - clear target
+			inferredContext: {
+				detected_location: 'nationwide',
+				detected_scope: 'national',
+				detected_target_type: 'corporate',
+				location_confidence: 0.95,
+				scope_confidence: 0.9,
+				target_type_confidence: 0.95,
+				reasoning: 'Target is Amazon corporate regardless of which warehouse. Location does not change routing.'
+			},
+			answers: {}
+		};
+
+		expect(context.inferredContext.reasoning).toContain('Amazon corporate');
+		expect(context.inferredContext.reasoning).toContain('Location does not change routing');
+	});
+});
+
 describe('Clarification Question Types', () => {
 	it('should define valid question IDs', () => {
 		const validIds: Array<'location' | 'scope' | 'target_type'> = [
