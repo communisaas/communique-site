@@ -40,6 +40,10 @@
 	// Get normalized metrics
 	const metrics = $derived(normalizeMetrics(template.metrics));
 
+	// Pre-launch: Hide metrics when zero (no negative social proof)
+	// Post-launch: Remove this check to reveal real engagement data
+	const hasEngagement = $derived((metrics.sent || 0) > 0 || (metrics.districts_covered || 0) > 0);
+
 	// Calculate recipient count for direct email templates
 	const recipientCount = $derived(
 		// Use pre-computed recipientEmails from API if available
@@ -120,48 +124,51 @@
 	let hoveredTooltip = $state<'sent' | 'recipients' | null>(null);
 </script>
 
-<div class="min-w-0 max-w-full space-y-2 text-sm">
-	<div class="flex max-w-fit items-center gap-2 text-slate-500">
-		<Send class="h-4 w-4 shrink-0" />
-		<span class="min-w-0 flex-1">
-			{formatNumber(metrics.sent)} sent
-		</span>
-		<div class="relative z-50">
-			<Info
-				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
-				onmouseenter={() => (hoveredTooltip = 'sent')}
-				onmouseleave={() => (hoveredTooltip = null)}
-			/>
+<!-- Pre-launch: Only show metrics when there's real engagement -->
+{#if hasEngagement}
+	<div class="min-w-0 max-w-full space-y-2 text-sm">
+		<div class="flex max-w-fit items-center gap-2 text-slate-500">
+			<Send class="h-4 w-4 shrink-0" />
+			<span class="min-w-0 flex-1">
+				{formatNumber(metrics.sent)} sent
+			</span>
+			<div class="relative z-50">
+				<Info
+					class="h-4 w-4 shrink-0 cursor-help text-slate-400"
+					onmouseenter={() => (hoveredTooltip = 'sent')}
+					onmouseleave={() => (hoveredTooltip = null)}
+				/>
 
-			<SimpleTooltip
-				content="Total messages sent using this template"
-				placement="right"
-				show={hoveredTooltip === 'sent'}
-			/>
+				<SimpleTooltip
+					content="Total messages sent using this template"
+					placement="right"
+					show={hoveredTooltip === 'sent'}
+				/>
+			</div>
+		</div>
+
+		<div class="flex max-w-fit items-center gap-2 text-slate-500">
+			{#snippet secondaryIconSnippet()}
+				{@const SecondaryIconComponent = currentMetric.secondaryIcon}
+				<SecondaryIconComponent class="h-4 w-4 shrink-0" />
+			{/snippet}
+			{@render secondaryIconSnippet()}
+			<span class="min-w-0 flex-1">
+				{currentMetric.secondaryValue}
+			</span>
+			<div class="relative z-50">
+				<Info
+					class="h-4 w-4 shrink-0 cursor-help text-slate-400"
+					onmouseenter={() => (hoveredTooltip = 'recipients')}
+					onmouseleave={() => (hoveredTooltip = null)}
+				/>
+
+				<SimpleTooltip
+					content={currentMetric.secondaryTooltip}
+					placement="right"
+					show={hoveredTooltip === 'recipients'}
+				/>
+			</div>
 		</div>
 	</div>
-
-	<div class="flex max-w-fit items-center gap-2 text-slate-500">
-		{#snippet secondaryIconSnippet()}
-			{@const SecondaryIconComponent = currentMetric.secondaryIcon}
-			<SecondaryIconComponent class="h-4 w-4 shrink-0" />
-		{/snippet}
-		{@render secondaryIconSnippet()}
-		<span class="min-w-0 flex-1">
-			{currentMetric.secondaryValue}
-		</span>
-		<div class="relative z-50">
-			<Info
-				class="h-4 w-4 shrink-0 cursor-help text-slate-400"
-				onmouseenter={() => (hoveredTooltip = 'recipients')}
-				onmouseleave={() => (hoveredTooltip = null)}
-			/>
-
-			<SimpleTooltip
-				content={currentMetric.secondaryTooltip}
-				placement="right"
-				show={hoveredTooltip === 'recipients'}
-			/>
-		</div>
-	</div>
-</div>
+{/if}

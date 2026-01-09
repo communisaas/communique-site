@@ -63,10 +63,13 @@
 				{template.category}
 			</span>
 			<Badge variant={template.deliveryMethod === 'cwc' ? 'certified' : 'direct'} />
-			<div class="flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm">
-				<Send class="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
-				<span>{(template.metrics?.sent || 0).toLocaleString()} sent</span>
-			</div>
+			<!-- Pre-launch: Only show sent count when there's real engagement -->
+			{#if (template.metrics?.sent || 0) > 0}
+				<div class="flex items-center gap-1.5 text-xs text-slate-500 sm:text-sm">
+					<Send class="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+					<span>{(template.metrics?.sent || 0).toLocaleString()} sent</span>
+				</div>
+			{/if}
 		</div>
 	</div>
 	<div class="flex items-center gap-3">

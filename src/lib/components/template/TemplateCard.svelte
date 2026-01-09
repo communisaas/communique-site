@@ -69,6 +69,10 @@
 	const verifiedSends = $derived(template.send_count || metrics.sent || 0);
 	const uniqueDistricts = $derived(metrics.districts_covered || 0);
 
+	// Pre-launch: Hide engagement metrics when zero (no negative social proof)
+	// Post-launch: Remove this check to reveal real engagement data
+	const hasEngagement = $derived(verifiedSends > 0 || uniqueDistricts > 0);
+
 	// High-activity threshold for atmospheric effects
 	const isHighActivity = $derived(verifiedSends > 100);
 
@@ -133,79 +137,84 @@
 		</p>
 	</div>
 
-	<!-- Metrics Section: Atmospheric tint instead of flat gray -->
+	<!-- Footer Section: Action arrow always visible, metrics only when meaningful -->
 	<div
 		class="mt-auto border-t border-slate-100/50 bg-gradient-to-br from-slate-50/30 to-violet-50/10 p-4"
 	>
 		<div class="flex items-center justify-between gap-4">
-			<!-- Verified Sends Metric: JetBrains Mono with gradient for high activity -->
-			<div class="relative flex items-center gap-2 text-sm text-slate-600">
-				<Users
-					class="h-4 w-4 shrink-0 {isHighActivity ? 'text-violet-500' : 'text-slate-500'}"
-					aria-hidden="true"
-				/>
-				<span
-					class="font-mono font-medium tabular-nums"
-					class:bg-gradient-to-br={isHighActivity}
-					class:from-violet-600={isHighActivity}
-					class:to-purple-600={isHighActivity}
-					class:bg-clip-text={isHighActivity}
-					class:text-transparent={isHighActivity}
-				>
-					{formatNumber(verifiedSends)}
-				</span>
-				<span class="font-brand text-slate-500">sent</span>
-				{#if targetInfo.coordinationContext}
-					<span class="font-brand text-xs text-slate-400">in {targetInfo.coordinationContext}</span>
-				{/if}
-			</div>
-
-			{#if isCongressional && uniqueDistricts > 0}
-				<!-- Congressional: Districts Covered Metric: JetBrains Mono for metrics -->
+			{#if hasEngagement}
+				<!-- Metrics Section: Only show when there's real engagement (post-launch) -->
+				<!-- Verified Sends Metric: JetBrains Mono with gradient for high activity -->
 				<div class="relative flex items-center gap-2 text-sm text-slate-600">
-					<MapPin class="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
-					<span class="font-mono font-medium tabular-nums">{formatNumber(uniqueDistricts)}</span>
-					<span class="font-brand text-slate-500">districts</span>
-					<!-- Info icon - changed from button to span to avoid nested button hydration issue -->
-					<span
-						class="cursor-help text-slate-400 hover:text-slate-600"
-						onmouseenter={() => (hoveredMetric = 'districts')}
-						onmouseleave={() => (hoveredMetric = null)}
-						role="tooltip"
-						aria-label="District coverage information"
-					>
-						<svg
-							class="h-4 w-4"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							aria-hidden="true"
-						>
-							<path
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								stroke-width="2"
-								d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-							></path>
-						</svg>
-					</span>
-
-					<SimpleTooltip
-						content="{getDistrictCoverage()} of congressional districts reached"
-						placement="top"
-						show={hoveredMetric === 'districts'}
+					<Users
+						class="h-4 w-4 shrink-0 {isHighActivity ? 'text-violet-500' : 'text-slate-500'}"
+						aria-hidden="true"
 					/>
+					<span
+						class="font-mono font-medium tabular-nums"
+						class:bg-gradient-to-br={isHighActivity}
+						class:from-violet-600={isHighActivity}
+						class:to-purple-600={isHighActivity}
+						class:bg-clip-text={isHighActivity}
+						class:text-transparent={isHighActivity}
+					>
+						{formatNumber(verifiedSends)}
+					</span>
+					<span class="font-brand text-slate-500">sent</span>
+					{#if targetInfo.coordinationContext}
+						<span class="font-brand text-xs text-slate-400">in {targetInfo.coordinationContext}</span>
+					{/if}
 				</div>
+
+				{#if isCongressional && uniqueDistricts > 0}
+					<!-- Congressional: Districts Covered Metric -->
+					<div class="relative flex items-center gap-2 text-sm text-slate-600">
+						<MapPin class="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+						<span class="font-mono font-medium tabular-nums">{formatNumber(uniqueDistricts)}</span>
+						<span class="font-brand text-slate-500">districts</span>
+						<span
+							class="cursor-help text-slate-400 hover:text-slate-600"
+							onmouseenter={() => (hoveredMetric = 'districts')}
+							onmouseleave={() => (hoveredMetric = null)}
+							role="tooltip"
+							aria-label="District coverage information"
+						>
+							<svg
+								class="h-4 w-4"
+								fill="none"
+								stroke="currentColor"
+								viewBox="0 0 24 24"
+								aria-hidden="true"
+							>
+								<path
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+								></path>
+							</svg>
+						</span>
+
+						<SimpleTooltip
+							content="{getDistrictCoverage()} of congressional districts reached"
+							placement="top"
+							show={hoveredMetric === 'districts'}
+						/>
+					</div>
+				{:else if hasEngagement}
+					<!-- Direct Email: Voices count -->
+					<div class="flex items-center gap-2 text-sm text-slate-600">
+						<Users class="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
+						<span class="font-mono font-medium tabular-nums">{formatNumber(verifiedSends)}</span>
+						<span class="font-brand text-slate-500">voices</span>
+					</div>
+				{/if}
 			{:else}
-				<!-- Direct Email: Recipients Count: JetBrains Mono for metrics -->
-				<div class="flex items-center gap-2 text-sm text-slate-600">
-					<Users class="h-4 w-4 shrink-0 text-slate-500" aria-hidden="true" />
-					<span class="font-mono font-medium tabular-nums">{formatNumber(verifiedSends)}</span>
-					<span class="font-brand text-slate-500">voices</span>
-				</div>
+				<!-- Pre-launch: Spacer to maintain layout balance with action arrow -->
+				<div class="flex-1"></div>
 			{/if}
 
-			<!-- Action Arrow -->
+			<!-- Action Arrow: Always visible -->
 			<ChevronRight
 				class="h-5 w-5 shrink-0 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-slate-600"
 				aria-hidden="true"
