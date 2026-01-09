@@ -13,13 +13,19 @@
 import { interact } from '../gemini-client';
 import { SUBJECT_LINE_SCHEMA } from '../schemas';
 import { SUBJECT_LINE_PROMPT } from '../prompts/subject-line';
-import type { SubjectLineResponseWithClarification, ClarificationAnswers } from '../types';
+import type {
+	SubjectLineResponseWithClarification,
+	ClarificationAnswers,
+	ConversationContext
+} from '../types';
 
 export interface GenerateSubjectOptions {
 	description: string;
 	previousInteractionId?: string;
 	refinementFeedback?: string;
 	clarificationAnswers?: ClarificationAnswers;
+	/** Full context for clarification turns (replaces broken multi-turn) */
+	conversationContext?: ConversationContext;
 }
 
 export interface GenerateSubjectResult {
@@ -42,7 +48,39 @@ export async function generateSubjectLine(
 ): Promise<GenerateSubjectResult> {
 	let prompt: string;
 
-	if (options.clarificationAnswers && options.previousInteractionId) {
+	if (options.conversationContext) {
+		// NEW: Full context reconstruction
+		const ctx = options.conversationContext;
+
+		const answerLines = Object.entries(ctx.answers)
+			.filter(([, v]: [string, string]) => v?.trim())
+			.map(([questionId, answer]: [string, string]) => {
+				const question = ctx.questionsAsked.find((q) => q.id === questionId);
+				return `- "${question?.question || questionId}": ${answer}`;
+			})
+			.join('\n');
+
+		prompt = `## Original Issue
+${ctx.originalDescription}
+
+## Clarification Conversation
+
+I asked:
+${ctx.questionsAsked.map((q) => `- ${q.question}`).join('\n')}
+
+User clarified:
+${answerLines || '(User skipped - use your best judgment based on the original issue)'}
+
+## My Previous Analysis
+- Detected location: ${ctx.inferredContext.detected_location || 'unknown'}
+- Detected scope: ${ctx.inferredContext.detected_scope || 'unknown'}
+- Detected target: ${ctx.inferredContext.detected_target_type || 'unknown'}
+- Reasoning: ${ctx.inferredContext.reasoning || 'none'}
+
+Now generate the final subject_line, core_issue, topics, url_slug, and voice_sample using this complete context.
+Do not ask for more clarification - generate the output now.`;
+	} else if (options.clarificationAnswers && options.previousInteractionId) {
+		// LEGACY: Keep for backwards compatibility (but this path is broken)
 		// User provided clarification - format all answers for the agent
 		const answers = options.clarificationAnswers;
 		const answerParts = Object.entries(answers)
@@ -84,14 +122,21 @@ ${options.description}`;
 
 	// Validate: if needs_clarification is true but no questions provided, override to false
 	// This handles cases where the agent hedges (says it needs clarification but doesn't ask)
-	if (data.needs_clarification && (!data.clarification_questions || data.clarification_questions.length === 0)) {
-		console.log('[subject-line] Agent said needs_clarification but provided no questions - overriding to false');
+	if (
+		data.needs_clarification &&
+		(!data.clarification_questions || data.clarification_questions.length === 0)
+	) {
+		console.log(
+			'[subject-line] Agent said needs_clarification but provided no questions - overriding to false'
+		);
 		data.needs_clarification = false;
 	}
 
 	// If agent returned neither clarification questions nor a subject line, retry with explicit instruction
 	if (!data.needs_clarification && !data.subject_line) {
-		console.log('[subject-line] Agent returned empty response - retrying with explicit instruction');
+		console.log(
+			'[subject-line] Agent returned empty response - retrying with explicit instruction'
+		);
 
 		const retryResponse = await interact(
 			`You must generate a subject line now. The user said: "${options.description}"

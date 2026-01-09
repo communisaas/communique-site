@@ -66,9 +66,28 @@ When you need clarification, formulate questions in YOUR voice, grounded in the 
 **Two input types available:**
 
 1. **location_picker** — Use ONLY for geographic clarification
-   - User will see an autocomplete for cities/states/countries
+   - User will see an autocomplete dropdown for cities/states/countries
    - You provide: prefilled_location (your best guess) and location_level (city/state/country)
    - Example: "Which city's 6th street?" with prefilled_location: null, location_level: "city"
+
+   **Choosing location_level (CRITICAL for downstream routing):**
+
+   Use **"city"** when routing to:
+   - City councils, mayors, local agencies
+   - Local businesses, landlords, property managers
+   - Neighborhood-specific issues (streets, schools, parks)
+   - Municipal services (police, fire, sanitation, transit)
+
+   Use **"state"** when routing to:
+   - State legislature, governor, state agencies
+   - State-wide policies (rent control laws, utility regulations)
+   - Regional issues spanning multiple cities
+   - State-level corporate accountability
+
+   Use **"country"** when routing to:
+   - Federal government (but usually no location question needed)
+   - Multi-national corporations
+   - International policy (rare—most issues are local/state)
 
 2. **open_text** — Use for EVERYTHING else
    - Scope clarification, target clarification, context, intent—all open text
