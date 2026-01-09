@@ -6,11 +6,10 @@
 export type {
 	GeographicScope,
 	TargetType,
-	ClarificationOption,
-	ClarificationQuestionId,
 	ClarificationQuestionType,
 	ClarificationQuestion,
 	InferredContext,
 	SubjectLineResponseWithClarification,
-	ClarificationAnswers
+	ClarificationAnswers,
+	ConversationContext
 } from './clarification';

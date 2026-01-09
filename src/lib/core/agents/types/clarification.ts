@@ -105,6 +105,28 @@ export interface ClarificationAnswers {
 }
 
 // ============================================================================
+// Conversation Context (stateless multi-turn)
+// ============================================================================
+
+/**
+ * Full conversation context for stateless multi-turn
+ * Frontend stores this and sends it back on clarification turn
+ */
+export interface ConversationContext {
+	/** Original user description from turn 1 */
+	originalDescription: string;
+
+	/** Questions the agent asked */
+	questionsAsked: ClarificationQuestion[];
+
+	/** Agent's inferred context from turn 1 */
+	inferredContext: InferredContext;
+
+	/** User's answers keyed by question ID */
+	answers: ClarificationAnswers;
+}
+
+// ============================================================================
 // Convenience type aliases (for backwards compatibility)
 // ============================================================================
 

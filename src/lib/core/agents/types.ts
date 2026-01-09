@@ -10,13 +10,12 @@ import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
 export type {
 	GeographicScope,
 	TargetType,
-	ClarificationOption,
 	ClarificationQuestion,
-	ClarificationQuestionId,
 	ClarificationQuestionType,
 	InferredContext,
 	SubjectLineResponseWithClarification,
-	ClarificationAnswers
+	ClarificationAnswers,
+	ConversationContext
 } from './types/clarification';
 
 // ============================================================================
