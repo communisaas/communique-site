@@ -12,11 +12,16 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateSubjectLine } from '$lib/core/agents/agents/subject-line';
-import type { ClarificationAnswers } from '$lib/core/agents/types';
+import type { ClarificationAnswers, ConversationContext } from '$lib/core/agents/types';
 
 interface RequestBody {
 	message: string;
 	interactionId?: string;
+
+	/** Full context for clarification turns (new stateless approach) */
+	conversationContext?: ConversationContext;
+
+	/** @deprecated Use conversationContext instead */
 	clarificationAnswers?: ClarificationAnswers;
 }
 
@@ -35,6 +40,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	console.log('[agents/generate-subject] Generating:', {
 		userId,
 		messageLength: body.message.length,
+		hasConversationContext: !!body.conversationContext,
+		// Legacy
 		isRefinement: !!body.interactionId,
 		hasClarificationAnswers: !!body.clarificationAnswers
 	});
@@ -42,6 +49,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
 		const result = await generateSubjectLine({
 			description: body.message,
+			conversationContext: body.conversationContext,
+			// Legacy support (deprecated)
 			previousInteractionId: body.interactionId,
 			clarificationAnswers: body.clarificationAnswers
 		});
