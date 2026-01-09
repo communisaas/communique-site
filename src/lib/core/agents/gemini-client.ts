@@ -47,7 +47,7 @@ export function getGeminiClient(): GoogleGenAI {
 // ============================================================================
 
 export const GEMINI_CONFIG = {
-	model: 'gemini-2.5-flash',
+	model: 'gemini-3-flash',
 	defaults: {
 		temperature: 0.3,
 		maxOutputTokens: 8192,

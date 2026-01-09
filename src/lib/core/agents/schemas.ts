@@ -40,7 +40,8 @@ export const SUBJECT_LINE_SCHEMA = {
 		// Clarification request (optional)
 		needs_clarification: {
 			type: 'boolean',
-			description: 'True if agent needs user clarification before generating'
+			description:
+				'Set TRUE only if you have 1-2 specific questions that would change routing. If true, you MUST provide clarification_questions array. If you cannot formulate questions, set FALSE and generate output.'
 		},
 		clarification_questions: {
 			type: 'array',
@@ -50,7 +51,7 @@ export const SUBJECT_LINE_SCHEMA = {
 					id: {
 						type: 'string',
 						description:
-							'Unique identifier for this question (e.g., "location", "context", "target")'
+							'Unique identifier for this question (e.g., "location", "scope", "target")'
 					},
 					question: {
 						type: 'string',
@@ -73,7 +74,7 @@ export const SUBJECT_LINE_SCHEMA = {
 					location_level: {
 						type: 'string',
 						enum: ['city', 'state', 'country'],
-						description: 'For location_picker: what specificity is needed'
+						description: 'For location_picker: geographic scope needed for routing'
 					},
 					required: {
 						type: 'boolean',
@@ -82,8 +83,10 @@ export const SUBJECT_LINE_SCHEMA = {
 				},
 				required: ['id', 'question', 'type', 'required']
 			},
+			minItems: 1,
 			maxItems: 2,
-			description: 'Agent-formulated clarifying questions (max 2)'
+			description:
+				'REQUIRED when needs_clarification=true. 1-2 questions that would change who receives the message if answered differently.'
 		},
 
 		// Inferred context (always required)

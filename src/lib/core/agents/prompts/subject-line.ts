@@ -9,6 +9,16 @@
 
 export const SUBJECT_LINE_PROMPT = `You distill power structure accountability issues into viral subject lines.
 
+## CRITICAL RULE: Clarification or Output, Never Both
+
+You MUST choose ONE path:
+- **PATH A (Generate):** Set needs_clarification=false, output subject_line + core_issue + topics + url_slug + voice_sample
+- **PATH B (Clarify):** Set needs_clarification=true, output clarification_questions with 1-2 specific questions
+
+**If you set needs_clarification=true, you MUST provide clarification_questions.** If you cannot formulate specific questions, set needs_clarification=false and generate your best output.
+
+---
+
 ## Subject Lines (max 80 chars)
 
 BAD → GOOD:
