@@ -61,7 +61,7 @@ const ZERO_METRICS = {
 const templateData = [
 	{
 		title: "The Math Doesn't Work: Climate Edition",
-		description: 'Climate subsidies vs disaster costs: the math doesn\'t add up.',
+		description: "Climate subsidies vs disaster costs: the math doesn't add up.",
 		category: 'Environment',
 		type: 'advocacy',
 		deliveryMethod: 'cwc' as const,
@@ -89,8 +89,17 @@ Sincerely,
 [Address]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
-		cwc_config: { policy_area: 'Environmental Protection', topic: 'Climate Subsidies', urgency: 'high' },
-		recipient_config: { reach: 'district-based', cwcRouting: true, chambers: ['house', 'senate'], committees: ['energy', 'environment'] },
+		cwc_config: {
+			policy_area: 'Environmental Protection',
+			topic: 'Climate Subsidies',
+			urgency: 'high'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['energy', 'environment']
+		},
 		jurisdiction_level: 'federal',
 		is_public: true,
 		verification_status: 'approved'
@@ -128,8 +137,18 @@ Sincerely,
 		recipient_config: {
 			reach: 'location-specific',
 			decisionMakers: [
-				{ name: 'Mayor London Breed', shortName: 'Mayor Breed', role: 'Mayor', organization: 'City of San Francisco' },
-				{ name: 'Board of Supervisors', shortName: 'SF Board', role: 'Board', organization: 'City of San Francisco' }
+				{
+					name: 'Mayor London Breed',
+					shortName: 'Mayor Breed',
+					role: 'Mayor',
+					organization: 'City of San Francisco'
+				},
+				{
+					name: 'Board of Supervisors',
+					shortName: 'SF Board',
+					role: 'Board',
+					organization: 'City of San Francisco'
+				}
 			],
 			location: { city: 'San Francisco', state: 'CA', jurisdiction: 'San Francisco, CA' },
 			emails: ['mayorlurie@sfgov.org', 'board.of.supervisors@sfgov.org']
@@ -170,8 +189,17 @@ Sincerely,
 [Address]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
-		cwc_config: { topic: 'Housing Crisis', urgency: 'critical', policy_area: 'Housing and Urban Development' },
-		recipient_config: { reach: 'district-based', cwcRouting: true, chambers: ['house', 'senate'], committees: ['financial', 'housing'] },
+		cwc_config: {
+			topic: 'Housing Crisis',
+			urgency: 'critical',
+			policy_area: 'Housing and Urban Development'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['financial', 'housing']
+		},
 		jurisdiction_level: 'federal',
 		is_public: true,
 		verification_status: 'approved'
@@ -207,8 +235,17 @@ Sincerely,
 [Address]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
-		cwc_config: { topic: 'Child Online Safety', urgency: 'critical', policy_area: 'Commerce and Technology' },
-		recipient_config: { reach: 'district-based', cwcRouting: true, chambers: ['house', 'senate'], committees: ['commerce', 'judiciary'] },
+		cwc_config: {
+			topic: 'Child Online Safety',
+			urgency: 'critical',
+			policy_area: 'Commerce and Technology'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['commerce', 'judiciary']
+		},
 		jurisdiction_level: 'federal',
 		is_public: true,
 		verification_status: 'approved'
@@ -245,8 +282,17 @@ Sincerely,
 [Address]`,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
-		cwc_config: { topic: 'Gig Worker Rights', urgency: 'high', policy_area: 'Labor and Employment' },
-		recipient_config: { reach: 'district-based', cwcRouting: true, chambers: ['house', 'senate'], committees: ['labor', 'commerce'] },
+		cwc_config: {
+			topic: 'Gig Worker Rights',
+			urgency: 'high',
+			policy_area: 'Labor and Employment'
+		},
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['labor', 'commerce']
+		},
 		jurisdiction_level: 'federal',
 		is_public: true,
 		verification_status: 'approved'
@@ -284,7 +330,12 @@ Sincerely,
 		metrics: ZERO_METRICS,
 		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
 		cwc_config: { topic: 'Drug Pricing', urgency: 'critical', policy_area: 'Healthcare' },
-		recipient_config: { reach: 'district-based', cwcRouting: true, chambers: ['house', 'senate'], committees: ['health', 'judiciary'] },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['health', 'judiciary']
+		},
 		jurisdiction_level: 'federal',
 		is_public: true,
 		verification_status: 'approved'
@@ -559,7 +610,6 @@ async function seedDatabase() {
 		console.log(`Representatives: ${counts.representatives}`);
 
 		console.log('\n✅ Fresh seed complete - all engagement data is ZERO\n');
-
 	} catch (error) {
 		console.error('❌ Seed failed:', error);
 		process.exit(1);

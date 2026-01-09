@@ -49,7 +49,8 @@ export const SUBJECT_LINE_SCHEMA = {
 				properties: {
 					id: {
 						type: 'string',
-						description: 'Unique identifier for this question (e.g., "location", "context", "target")'
+						description:
+							'Unique identifier for this question (e.g., "location", "context", "target")'
 					},
 					question: {
 						type: 'string',
@@ -66,7 +67,8 @@ export const SUBJECT_LINE_SCHEMA = {
 					},
 					prefilled_location: {
 						type: 'string',
-						description: 'For location_picker: agent best guess to pre-fill (e.g., "San Francisco, CA")'
+						description:
+							'For location_picker: agent best guess to pre-fill (e.g., "San Francisco, CA")'
 					},
 					location_level: {
 						type: 'string',

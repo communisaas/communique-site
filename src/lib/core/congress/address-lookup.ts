@@ -268,15 +268,21 @@ export class Address {
 		if (!termsArray || termsArray.length === 0) return undefined;
 
 		// Find term without endYear (current) or with highest startYear
-		return termsArray.reduce((current: CongressMemberTerm | undefined, term: CongressMemberTerm) => {
-			// Prefer terms without endYear (still serving)
-			if (!term.endYear) return term;
-			// Otherwise use term with highest startYear
-			if (!current || (term.startYear && (!current.startYear || term.startYear > current.startYear))) {
-				return term;
-			}
-			return current;
-		}, undefined);
+		return termsArray.reduce(
+			(current: CongressMemberTerm | undefined, term: CongressMemberTerm) => {
+				// Prefer terms without endYear (still serving)
+				if (!term.endYear) return term;
+				// Otherwise use term with highest startYear
+				if (
+					!current ||
+					(term.startYear && (!current.startYear || term.startYear > current.startYear))
+				) {
+					return term;
+				}
+				return current;
+			},
+			undefined
+		);
 	}
 
 	/**

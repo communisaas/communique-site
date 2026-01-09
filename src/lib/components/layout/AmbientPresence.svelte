@@ -140,7 +140,12 @@
 						<span>Profile</span>
 					</a>
 					<div class="ambient-dropdown-divider"></div>
-					<button type="button" onclick={handleLogout} class="ambient-dropdown-item" role="menuitem">
+					<button
+						type="button"
+						onclick={handleLogout}
+						class="ambient-dropdown-item"
+						role="menuitem"
+					>
 						<LogOut class="ambient-dropdown-icon" />
 						<span>Sign out</span>
 					</button>

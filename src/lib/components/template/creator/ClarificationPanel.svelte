@@ -14,7 +14,10 @@
 	 * - Skip option respects user agency
 	 */
 
-	import type { ClarificationQuestion, InferredContext } from '$lib/core/agents/types/clarification';
+	import type {
+		ClarificationQuestion,
+		InferredContext
+	} from '$lib/core/agents/types/clarification';
 	import LocationAutocomplete from '../../template-browser/LocationAutocomplete.svelte';
 	import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
 	import { slide, fade } from 'svelte/transition';
@@ -120,9 +123,7 @@
 			</div>
 			<div>
 				<p class="text-base font-medium text-slate-900">Quick question to route this right</p>
-				<p class="mt-0.5 text-sm text-slate-500">
-					This helps me find the right people to target
-				</p>
+				<p class="mt-0.5 text-sm text-slate-500">This helps me find the right people to target</p>
 			</div>
 		</div>
 	</header>
@@ -130,15 +131,9 @@
 	<!-- Questions (conversational flow) -->
 	<div class="space-y-5">
 		{#each questions as question, index}
-			<div
-				class="question-block"
-				transition:fade={{ duration: 150, delay: index * 50 }}
-			>
+			<div class="question-block" transition:fade={{ duration: 150, delay: index * 50 }}>
 				<!-- Question text (agent's voice) -->
-				<label
-					for={question.id}
-					class="mb-2 block text-sm font-medium text-slate-800"
-				>
+				<label for={question.id} class="mb-2 block text-sm font-medium text-slate-800">
 					{question.question}
 					{#if !question.required}
 						<span class="ml-1 font-normal text-slate-400">(optional)</span>
@@ -149,7 +144,9 @@
 					<!-- Location Autocomplete -->
 					<div class="location-input-wrapper">
 						<LocationAutocomplete
-							label={answers[question.id] || question.prefilled_location || 'Search for a city or state...'}
+							label={answers[question.id] ||
+								question.prefilled_location ||
+								'Search for a city or state...'}
 							level={getLocationLevel(question.location_level)}
 							isSelected={!!answers[question.id]}
 							on:select={(e) => handleLocationSelect(question.id, e.detail)}

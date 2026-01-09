@@ -162,7 +162,9 @@
 					</span>
 					<span class="font-brand text-slate-500">sent</span>
 					{#if targetInfo.coordinationContext}
-						<span class="font-brand text-xs text-slate-400">in {targetInfo.coordinationContext}</span>
+						<span class="font-brand text-xs text-slate-400"
+							>in {targetInfo.coordinationContext}</span
+						>
 					{/if}
 				</div>
 

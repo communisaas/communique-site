@@ -138,7 +138,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				console.log('[Submission] Found representatives:', {
 					count: representatives.length,
-					names: representatives.map(r => r.name)
+					names: representatives.map((r) => r.name)
 				});
 
 				// Create mock user object for CWC submission
@@ -149,7 +149,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				const cwcUser = {
 					id: userId,
-					name: userName || `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Verified Constituent',
+					name:
+						userName ||
+						`${user?.first_name || ''} ${user?.last_name || ''}`.trim() ||
+						'Verified Constituent',
 					email: userEmail || user?.email || 'constituent@verified.communique.app',
 					street: mvpAddress.street,
 					city: mvpAddress.city,
@@ -165,8 +168,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					personalizedMessage || ''
 				);
 
-				const successCount = results.filter(r => r.success).length;
-				const failedCount = results.filter(r => !r.success).length;
+				const successCount = results.filter((r) => r.success).length;
+				const failedCount = results.filter((r) => !r.success).length;
 
 				console.log('[Submission] CWC delivery complete:', {
 					submissionId: submission.id,
@@ -180,7 +183,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				await prisma.submission.update({
 					where: { id: submission.id },
 					data: {
-						delivery_status: failedCount === 0 ? 'delivered' : (successCount > 0 ? 'partial' : 'failed'),
+						delivery_status:
+							failedCount === 0 ? 'delivered' : successCount > 0 ? 'partial' : 'failed',
 						verification_status: 'verified', // MVP mode - proof already validated
 						cwc_submission_id: results[0]?.messageId || null, // Store first message ID as reference
 						delivered_at: new Date()
@@ -188,13 +192,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				});
 
 				deliveryResults = {
-					representatives: representatives.map(r => ({
+					representatives: representatives.map((r) => ({
 						name: r.name,
 						chamber: r.chamber,
 						state: r.state,
 						district: r.district
 					})),
-					results: results.map(r => ({
+					results: results.map((r) => ({
 						office: r.office,
 						chamber: r.chamber || (r.office.includes('Senator') ? 'senate' : 'house'),
 						success: r.success,
@@ -209,7 +213,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						failed: failedCount
 					}
 				};
-
 			} catch (cwcError) {
 				console.error('[Submission] CWC delivery failed:', cwcError);
 

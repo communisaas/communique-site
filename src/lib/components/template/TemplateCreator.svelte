@@ -404,7 +404,9 @@
 					disabled={!isCurrentStepValid || isSubmitting || isTransitioning}
 				>
 					{#if isTransitioning}
-						<div class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+						<div
+							class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+						></div>
 						Finding decision-makers...
 					{:else if currentStep === 'objective'}
 						Pick Decision-Makers
