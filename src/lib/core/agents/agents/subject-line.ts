@@ -120,16 +120,62 @@ ${options.description}`;
 	let data = JSON.parse(response.outputs) as SubjectLineResponseWithClarification;
 	let currentInteractionId = response.id;
 
-	// Validate: if needs_clarification is true but no questions provided, override to false
-	// This handles cases where the agent hedges (says it needs clarification but doesn't ask)
+	// Validate: if needs_clarification is true but no questions provided
+	// Retry specifically asking for the clarification questions
 	if (
 		data.needs_clarification &&
 		(!data.clarification_questions || data.clarification_questions.length === 0)
 	) {
 		console.log(
-			'[subject-line] Agent said needs_clarification but provided no questions - overriding to false'
+			'[subject-line] Agent said needs_clarification but provided no questions - asking for questions explicitly'
 		);
-		data.needs_clarification = false;
+
+		const clarifyRetryResponse = await interact(
+			`You indicated you need clarification about: "${options.description}"
+
+Your reasoning was: ${data.inferred_context?.reasoning || 'routing would change based on answers'}
+
+Now provide the clarification_questions array. You MUST include 1-2 questions in this exact JSON format:
+{
+  "needs_clarification": true,
+  "clarification_questions": [
+    {
+      "id": "location",
+      "question": "Which city's 6th street are you talking about?",
+      "type": "location_picker",
+      "location_level": "city",
+      "required": true
+    }
+  ],
+  "inferred_context": { ... }
+}
+
+What questions do you need answered to route this correctly?`,
+			{
+				systemInstruction: SUBJECT_LINE_PROMPT,
+				responseSchema: SUBJECT_LINE_SCHEMA,
+				temperature: 0.3,
+				thinkingLevel: 'low',
+				previousInteractionId: currentInteractionId
+			}
+		);
+
+		const clarifyRetryData = JSON.parse(
+			clarifyRetryResponse.outputs
+		) as SubjectLineResponseWithClarification;
+
+		// If we got questions this time, use them
+		if (clarifyRetryData.clarification_questions?.length) {
+			console.log('[subject-line] Clarification retry got questions:', {
+				count: clarifyRetryData.clarification_questions.length
+			});
+			data = clarifyRetryData;
+			currentInteractionId = clarifyRetryResponse.id;
+		} else {
+			// Still no questions - agent can't formulate them, force generation
+			console.log('[subject-line] Clarification retry still no questions - forcing generation');
+			data.needs_clarification = false;
+		}
 	}
 
 	// If agent returned neither clarification questions nor a subject line, retry with explicit instruction
