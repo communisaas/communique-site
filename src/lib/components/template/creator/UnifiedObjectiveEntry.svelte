@@ -76,6 +76,13 @@
 	let manualMode = $state(false); // User writing subject line manually
 	let hasAutoTriggered = $state(false); // Track if we've auto-triggered once
 
+	// Store complete context for clarification turns
+	let conversationContext = $state<{
+		originalDescription: string;
+		questionsAsked: ClarificationQuestion[];
+		inferredContext: InferredContext;
+	} | null>(null);
+
 	// Iteration history (perceptual substrate for temporal navigation)
 	let suggestionHistory = $state<AISuggestion[]>([]);
 	let selectedIterationIndex = $state<number>(0);
@@ -235,6 +242,21 @@
 						},
 						interactionId: response.data.interactionId || crypto.randomUUID()
 					};
+
+					// Store complete context for reconstruction on answer submission
+					conversationContext = {
+						originalDescription: text,
+						questionsAsked: response.data.clarification_questions || [],
+						inferredContext: response.data.inferred_context || {
+							detected_location: null,
+							detected_scope: null,
+							detected_target_type: null,
+							location_confidence: 0,
+							scope_confidence: 0,
+							target_type_confidence: 0
+						}
+					};
+
 					showAISuggest = true;
 					return;
 				}
@@ -374,7 +396,10 @@
 		// Cmd/Ctrl + Enter to trigger generation immediately
 		if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
 			event.preventDefault();
-			if ((data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && !isGenerating) {
+			if (
+				(data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH &&
+				!isGenerating
+			) {
 				generateSuggestion();
 			}
 		}
@@ -395,28 +420,70 @@
 
 	/**
 	 * Handle clarification answers submission
-	 * Answers are flexible key-value pairs - agent interprets them in context
+	 * Sends COMPLETE context (original + questions + answers) for stateless reconstruction
 	 */
 	async function handleClarificationSubmit(answers: Record<string, string>): Promise<void> {
-		if (suggestionState.status !== 'clarifying') return;
+		if (suggestionState.status !== 'clarifying' || !conversationContext) return;
 
-		// Pass answers directly - agent has full autonomy to interpret
-		await generateSuggestionWithTiming(
-			data.rawInput,
-			answers as ClarificationAnswers,
-			suggestionState.interactionId
-		);
+		// Build full conversation context for the agent
+		const fullContext = {
+			originalDescription: conversationContext.originalDescription,
+			questionsAsked: conversationContext.questionsAsked,
+			inferredContext: conversationContext.inferredContext,
+			answers: answers as ClarificationAnswers
+		};
+
+		isGenerating = true;
+
+		try {
+			const response = await api.post(
+				'/agents/generate-subject',
+				{
+					message: data.rawInput,
+					conversationContext: fullContext
+				},
+				{
+					timeout: AI_SUGGESTION_TIMING.SUGGESTION_TIMEOUT,
+					retries: AI_SUGGESTION_TIMING.MAX_RETRIES,
+					showToast: false,
+					skipErrorLogging: true
+				}
+			);
+
+			if (response.success && response.data) {
+				// Agent should return final output now (no more clarification)
+				const newSuggestion = response.data as AISuggestion;
+
+				suggestionCache.set(data.rawInput.trim().toLowerCase(), newSuggestion);
+				suggestionHistory = [...suggestionHistory, newSuggestion];
+				selectedIterationIndex = suggestionHistory.length - 1;
+
+				suggestionState = { status: 'ready', suggestion: newSuggestion };
+				lastGeneratedText = data.rawInput;
+				attemptCount++;
+
+				// Clear conversation context
+				conversationContext = null;
+			} else {
+				throw new Error(response.error || 'Generation failed after clarification');
+			}
+		} catch (err) {
+			suggestionState = {
+				status: 'error',
+				message: 'Something broke after clarification. Try again.'
+			};
+		} finally {
+			isGenerating = false;
+		}
 	}
 
 	/**
 	 * Handle clarification skip
-	 * Re-call API with empty answers (agent uses inferred context)
+	 * Still sends context but with empty answers - agent uses best guesses
 	 */
 	async function handleClarificationSkip(): Promise<void> {
-		if (suggestionState.status !== 'clarifying') return;
-
-		// Re-call API with empty answers - agent will use its best guess
-		await generateSuggestionWithTiming(data.rawInput, {}, suggestionState.interactionId);
+		// Treat skip as submitting empty answers - agent will use inferred context
+		await handleClarificationSubmit({});
 	}
 </script>
 
@@ -672,7 +739,7 @@
 							tabindex={0}
 							class="inline-flex items-center gap-2 text-sm font-medium text-participation-primary-700
                      transition-colors duration-150 hover:text-participation-primary-800
-                     focus:outline-none focus:underline
+                     focus:underline focus:outline-none
                      disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{#if isGenerating}
