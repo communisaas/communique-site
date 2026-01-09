@@ -162,8 +162,13 @@
 			return;
 		}
 
-		// Generate
-		await generateSuggestionWithTiming(text);
+		// Set generating flag to prevent double-triggers
+		isGenerating = true;
+		try {
+			await generateSuggestionWithTiming(text);
+		} finally {
+			isGenerating = false;
+		}
 	}
 
 	async function generateSuggestionWithTiming(

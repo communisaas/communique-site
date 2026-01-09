@@ -103,10 +103,12 @@ export async function generate(
 	if (options.enableGrounding) {
 		config.tools = [{ googleSearch: {} }];
 		// Cannot use responseMimeType with tools - Gemini API limitation
+		console.log('[agents/gemini-client] Using grounding mode (no JSON schema)');
 	} else if (options.responseSchema) {
 		// Only add structured output if NOT using grounding
 		config.responseMimeType = 'application/json';
 		config.responseSchema = options.responseSchema;
+		console.log('[agents/gemini-client] Using JSON schema mode (no grounding)');
 	}
 
 	// Add system instruction if provided
