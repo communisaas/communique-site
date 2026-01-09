@@ -1,6 +1,12 @@
 import { normalizeState } from '$lib/utils/states';
 import { env } from '$env/dynamic/private';
 
+// Fallback to process.env for test environment compatibility
+// SvelteKit's $env/dynamic/private doesn't work correctly in vitest
+const getEnvVar = (key: string): string => {
+	return env?.[key] || process.env[key] || '';
+};
+
 interface AddressData {
 	street: string;
 	city: string;
@@ -69,17 +75,17 @@ interface UserReps {
 }
 
 export class Address {
-	private congressApiKey: string;
-
-	constructor() {
-		// Use CONGRESS_API_KEY which is the valid Congress.gov API key
-		this.congressApiKey = env.CONGRESS_API_KEY || env.CWC_API_KEY || '';
+	// Getter for lazy evaluation - ensures env vars are read at call time
+	// This is critical for test environments where env vars may be set after module import
+	private get congressApiKey(): string {
+		const key = getEnvVar('CONGRESS_API_KEY') || getEnvVar('CWC_API_KEY');
 		// Only warn if we're in production and the key is missing
-		if (!this.congressApiKey && env.NODE_ENV === 'production') {
+		if (!key && getEnvVar('NODE_ENV') === 'production') {
 			console.warn(
 				'CONGRESS_API_KEY environment variable is missing - Congress features will be disabled'
 			);
 		}
+		return key;
 	}
 
 	/**
@@ -254,6 +260,26 @@ export class Address {
 	}
 
 	/**
+	 * Find the current/active term for a member
+	 * The current term is the one without an endYear or with the most recent startYear
+	 */
+	private getCurrentTerm(member: CongressMember): CongressMemberTerm | undefined {
+		const termsArray = Array.isArray(member.terms) ? member.terms : member.terms?.item;
+		if (!termsArray || termsArray.length === 0) return undefined;
+
+		// Find term without endYear (current) or with highest startYear
+		return termsArray.reduce((current: CongressMemberTerm | undefined, term: CongressMemberTerm) => {
+			// Prefer terms without endYear (still serving)
+			if (!term.endYear) return term;
+			// Otherwise use term with highest startYear
+			if (!current || (term.startYear && (!current.startYear || term.startYear > current.startYear))) {
+				return term;
+			}
+			return current;
+		}, undefined);
+	}
+
+	/**
 	 * Get both senators for a state
 	 */
 	private async getSenators(state: string): Promise<Representative[]> {
@@ -269,10 +295,9 @@ export class Address {
 			// Filter for senators from the specific state
 			const senators = allMembers
 				.filter((member: CongressMember) => {
-					const termsArray = Array.isArray(member.terms) ? member.terms : member.terms?.item;
-					const latestTerm = termsArray?.[0];
-					// Only match if chamber is explicitly 'Senate' (not just missing district)
-					const isSenator = latestTerm?.chamber === 'Senate';
+					const currentTerm = this.getCurrentTerm(member);
+					// Only match if current term chamber is explicitly 'Senate'
+					const isSenator = currentTerm?.chamber === 'Senate';
 					return isSenator && (member.state === stateAbbr || member.state === stateFullName);
 				})
 				.slice(0, 2) // Should be exactly 2 senators
@@ -386,9 +411,8 @@ export class Address {
 		member: CongressMember,
 		chamber: 'house' | 'senate'
 	): Representative {
-		// Handle both direct fields and nested term data
-		const termsArray = Array.isArray(member.terms) ? member.terms : member.terms?.item;
-		const currentTerm = termsArray?.[0] || {};
+		// Use current term (not just first term) for accurate data
+		const currentTerm = this.getCurrentTerm(member) || {};
 
 		// Format name from "Last, First Middle" to "First Middle Last"
 		let formattedName = member.name || '';
@@ -403,11 +427,15 @@ export class Address {
 		// Congress API returns camelCase bioguideId, fallback to snake_case for compatibility
 		const bioguideId = member.bioguideId || member.bioguide_id || '';
 
+		// Normalize state to abbreviation for consistent output
+		const rawState = member.state || currentTerm?.state || '';
+		const { abbreviation: normalizedState } = normalizeState(rawState);
+
 		return {
 			bioguide_id: bioguideId,
 			name: formattedName,
 			party: member.partyName || currentTerm?.party || 'Unknown',
-			state: member.state || currentTerm?.state || '',
+			state: normalizedState || rawState,
 			district: chamber === 'senate' ? '00' : String(member.district || '01').padStart(2, '0'),
 			chamber,
 			office_code: bioguideId

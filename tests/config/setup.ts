@@ -36,7 +36,9 @@ beforeEach(() => {
 	process.env.TWITTER_CLIENT_SECRET = process.env.TEST_TWITTER_CLIENT_SECRET || 'test-secret';
 
 	// API and service configuration
-	process.env.CWC_API_KEY = process.env.TEST_CWC_API_KEY || 'test-api-key';
+	// Keep real CONGRESS_API_KEY for smoke tests, fallback to test key for mocked tests
+	process.env.CONGRESS_API_KEY = process.env.CONGRESS_API_KEY || 'test-congress-api-key';
+	process.env.CWC_API_KEY = process.env.CWC_API_KEY || process.env.TEST_CWC_API_KEY || 'test-api-key';
 	process.env.SUPABASE_DATABASE_URL = process.env.DATABASE_URL;
 
 	// Mock browser APIs that may be accessed during tests
@@ -103,6 +105,7 @@ beforeEach(() => {
 	}
 
 	// Global fetch mock for external API calls
+	// NOTE: Smoke tests call vi.unstubAllGlobals() to restore real fetch
 	global.fetch = vi.fn().mockResolvedValue({
 		ok: true,
 		status: 200,

@@ -1,10 +1,15 @@
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Load .env file for tests (needed for smoke tests that hit real APIs)
+const env = loadEnv('test', process.cwd(), '');
+Object.assign(process.env, env);
 
 export default defineConfig({
 	plugins: [
