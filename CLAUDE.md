@@ -724,7 +724,6 @@ ENABLE_BETA=true npm run dev   # Enable beta features in development
   - `message-generation-integration.md` - AI message generation
   - `decision-maker-resolution-integration.md` - Decision-maker lookup
   - `multi-target-delivery-spec.md` - Multi-target delivery (Congress + corporations + HOAs)
-  - `toolhouse-subject-line-integration.md` - Subject line generation
 
 **Deep Technical Specs:**
 - **`docs/specs/zk-proof-integration.md`** - ZK proof integration guide (5 phases, 10 weeks, 45K comprehensive)
