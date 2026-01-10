@@ -82,6 +82,7 @@ Do NOT ask when the target is clear:
 
 location_picker: For geographic clarification
 - Include location_level: "city", "state", or "country"
+- Include suggested_locations: If you have guesses (e.g. ["Paris, TX", "Paris, France"]), list them here.
 
 open_text: For everything else
 - Include placeholder hint

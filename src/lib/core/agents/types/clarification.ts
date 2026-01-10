@@ -45,6 +45,9 @@ export interface ClarificationQuestion {
 	/** For location_picker: what level of specificity is needed */
 	location_level?: 'city' | 'state' | 'country';
 
+	/** For location_picker: list of potential locations the agent inferred (e.g. ["Paris, TX", "Paris, France"]) */
+	suggested_locations?: string[];
+
 	/** Whether this question must be answered to proceed */
 	required: boolean;
 }

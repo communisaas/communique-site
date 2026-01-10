@@ -45,6 +45,11 @@ export const SUBJECT_LINE_SCHEMA = {
 						enum: ['city', 'state', 'country'],
 						description: 'For location_picker: geographic level'
 					},
+					suggested_locations: {
+						type: 'array',
+						items: { type: 'string' },
+						description: 'List of potential location strings for user to choose from'
+					},
 					required: {
 						type: 'boolean',
 						description: 'Is this question required?'
