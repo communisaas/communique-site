@@ -11,7 +11,6 @@
  */
 
 import { GoogleGenAI } from '@google/genai';
-import { env } from '$env/dynamic/private';
 import type { GenerateContentResponse, GenerateContentConfig } from '@google/genai';
 import type { GenerateOptions, InteractionResponse } from './types';
 
@@ -32,12 +31,13 @@ let client: GoogleGenAI | null = null;
  */
 export function getGeminiClient(): GoogleGenAI {
 	if (!client) {
-		if (!env.GEMINI_API_KEY) {
+		const apiKey = process.env.GEMINI_API_KEY;
+		if (!apiKey) {
 			throw new Error(
 				'GEMINI_API_KEY environment variable not set. Get key from: https://aistudio.google.com/apikey'
 			);
 		}
-		client = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY });
+		client = new GoogleGenAI({ apiKey });
 	}
 	return client;
 }
