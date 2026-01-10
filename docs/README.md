@@ -104,16 +104,6 @@ Research and analysis.
 
 ---
 
-## Archive
-
-**`archive/`** - Superseded docs, completed migrations, historical decisions
-
-- `2025-12-clarification-implementation/` - Clarification feature implementation docs
-- `2025-12-completed-specs/` - Completed specs (Gemini migration, geocoding)
-- `toolhouse/` - Deprecated Toolhouse integration
-
----
-
 ## Information Ownership
 
 | Topic | Home |
