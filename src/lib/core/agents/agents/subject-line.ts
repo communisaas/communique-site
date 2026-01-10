@@ -117,8 +117,42 @@ ${options.description}`;
 		previousInteractionId: options.previousInteractionId
 	});
 
-	let data = JSON.parse(response.outputs) as SubjectLineResponseWithClarification;
+	let data: SubjectLineResponseWithClarification;
 	let currentInteractionId = response.id;
+
+	// Parse JSON with error handling for truncated responses
+	try {
+		data = JSON.parse(response.outputs) as SubjectLineResponseWithClarification;
+	} catch (parseError) {
+		console.error('[subject-line] JSON parse error:', parseError);
+		console.log('[subject-line] Raw output length:', response.outputs?.length || 0);
+
+		// If JSON is truncated, retry with simpler instruction
+		console.log('[subject-line] Retrying with simplified prompt due to parse error');
+		const retryResponse = await interact(
+			`Generate a subject line for: "${options.description}"
+
+Output ONLY these fields in JSON:
+- subject_line (max 80 chars)
+- core_issue (one sentence)
+- topics (1-3 tags)
+- url_slug (2-4 words, hyphenated)
+- voice_sample (key phrase from input)
+- inferred_context with reasoning
+
+Keep response under 2000 characters.`,
+			{
+				systemInstruction: SUBJECT_LINE_PROMPT,
+				responseSchema: SUBJECT_LINE_SCHEMA,
+				temperature: 0.5,
+				thinkingLevel: 'low',
+				previousInteractionId: currentInteractionId
+			}
+		);
+
+		data = JSON.parse(retryResponse.outputs) as SubjectLineResponseWithClarification;
+		currentInteractionId = retryResponse.id;
+	}
 
 	// Validate: if needs_clarification is true but no questions provided
 	// Retry specifically asking for the clarification questions
@@ -131,26 +165,13 @@ ${options.description}`;
 		);
 
 		const clarifyRetryResponse = await interact(
-			`You indicated you need clarification about: "${options.description}"
+			`You need clarification for: "${options.description}"
 
-Your reasoning was: ${data.inferred_context?.reasoning || 'routing would change based on answers'}
+Ask 1-2 questions. Each question needs: id, question text, type (location_picker or open_text), required (true/false).
+For location questions: add location_level (city/state/country).
+For open_text: add placeholder hint.
 
-Now provide the clarification_questions array. You MUST include 1-2 questions in this exact JSON format:
-{
-  "needs_clarification": true,
-  "clarification_questions": [
-    {
-      "id": "location",
-      "question": "Which city's 6th street are you talking about?",
-      "type": "location_picker",
-      "location_level": "city",
-      "required": true
-    }
-  ],
-  "inferred_context": { ... }
-}
-
-What questions do you need answered to route this correctly?`,
+Set needs_clarification=true and include clarification_questions array.`,
 			{
 				systemInstruction: SUBJECT_LINE_PROMPT,
 				responseSchema: SUBJECT_LINE_SCHEMA,
