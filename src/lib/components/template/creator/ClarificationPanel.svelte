@@ -34,6 +34,9 @@
 	// Answer state - keyed by question ID
 	let answers = $state<Record<string, string>>({});
 
+	// Track which questions are in "Other" mode (showing search instead of buttons)
+	let showSearchMode = $state<Record<string, boolean>>({});
+
 	// Initialize with any prefilled values
 	$effect(() => {
 		const initialAnswers: Record<string, string> = {};
@@ -63,6 +66,16 @@
 		}
 
 		answers[questionId] = locationString;
+	}
+
+	function handleSuggestionClick(questionId: string, suggestion: string) {
+		answers[questionId] = suggestion;
+	}
+
+	function toggleSearchMode(questionId: string) {
+		showSearchMode[questionId] = true;
+		// Clear answer if switching to search to avoid confusion?
+		// Or keep it? Let's keep it for now, user can clear it.
 	}
 
 	function handleTextInput(questionId: string, event: Event) {
@@ -143,15 +156,52 @@
 				{#if question.type === 'location_picker'}
 					<!-- Location Autocomplete -->
 					<div class="location-input-wrapper">
-						<LocationAutocomplete
-							label={answers[question.id] ||
-								question.prefilled_location ||
-								'Search for a city or state...'}
-							level={getLocationLevel(question.location_level)}
-							isSelected={!!answers[question.id]}
-							suggestedLocations={question.suggested_locations}
-							on:select={(e) => handleLocationSelect(question.id, e.detail)}
-						/>
+						{#if question.suggested_locations && question.suggested_locations.length > 0 && !showSearchMode[question.id]}
+							<!-- Suggested Locations Buttons -->
+							<div class="mb-3 flex flex-wrap gap-2">
+								{#each question.suggested_locations as suggestion}
+									<button
+										type="button"
+										onclick={() => handleSuggestionClick(question.id, suggestion)}
+										class="rounded-lg border px-4 py-2 text-sm font-medium transition-all
+											{answers[question.id] === suggestion
+											? 'border-participation-primary-500 bg-participation-primary-50 text-participation-primary-700 ring-1 ring-participation-primary-500'
+											: 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50'}"
+									>
+										{suggestion}
+									</button>
+								{/each}
+
+								<!-- "Other" Button -->
+								<button
+									type="button"
+									onclick={() => toggleSearchMode(question.id)}
+									class="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-500
+										transition-colors hover:bg-slate-50 hover:text-slate-700"
+								>
+									Other...
+								</button>
+							</div>
+						{:else}
+							<!-- Location Autocomplete (Search) -->
+							<LocationAutocomplete
+								label={answers[question.id] ||
+									question.prefilled_location ||
+									'Search for a city or state...'}
+								level={getLocationLevel(question.location_level)}
+								isSelected={!!answers[question.id]}
+								suggestedLocations={question.suggested_locations}
+								on:select={(e) => handleLocationSelect(question.id, e.detail)}
+							/>
+							{#if question.suggested_locations && question.suggested_locations.length > 0}
+								<button
+									onclick={() => (showSearchMode[question.id] = false)}
+									class="mt-2 text-xs text-participation-primary-600 hover:underline"
+								>
+									Show suggestions
+								</button>
+							{/if}
+						{/if}
 					</div>
 				{:else}
 					<!-- Open Text Input -->
