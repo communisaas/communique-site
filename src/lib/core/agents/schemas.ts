@@ -11,38 +11,13 @@
 export const SUBJECT_LINE_SCHEMA = {
 	type: 'object',
 	properties: {
-		// Standard output (optional when clarification needed)
-		subject_line: {
-			type: 'string',
-			description: 'Compelling subject line for the issue (max 80 chars)'
-		},
-		core_issue: {
-			type: 'string',
-			description: 'One-sentence distillation of the core problem'
-		},
-		topics: {
-			type: 'array',
-			items: { type: 'string' },
-			minItems: 1,
-			maxItems: 5,
-			description: 'Topic clusters this issue relates to (1-5 tags)'
-		},
-		url_slug: {
-			type: 'string',
-			description: 'URL-safe slug for the template (lowercase, hyphens)'
-		},
-		voice_sample: {
-			type: 'string',
-			description:
-				'The most visceral phrase from input - the emotional peak that downstream agents should channel (1-2 sentences, verbatim or near-verbatim from input)'
-		},
-
-		// Clarification request (optional)
+		// Decision field - ALWAYS required
 		needs_clarification: {
 			type: 'boolean',
-			description:
-				'Set TRUE only if you have 1-2 specific questions that would change routing. If true, you MUST provide clarification_questions array. If you cannot formulate questions, set FALSE and generate output.'
+			description: 'true = ask clarifying questions, false = generate subject line'
 		},
+
+		// Clarification questions - ALWAYS required (empty array if not clarifying)
 		clarification_questions: {
 			type: 'array',
 			items: {
@@ -50,84 +25,100 @@ export const SUBJECT_LINE_SCHEMA = {
 				properties: {
 					id: {
 						type: 'string',
-						description:
-							'Unique identifier for this question (e.g., "location", "scope", "target")'
+						description: 'Unique ID: "location", "scope", or "target"'
 					},
 					question: {
 						type: 'string',
-						description: 'Natural language question formulated by agent, grounded in user input'
+						description: 'Natural question grounded in user input'
 					},
 					type: {
 						type: 'string',
 						enum: ['location_picker', 'open_text'],
-						description: 'location_picker for geographic selection, open_text for everything else'
+						description: 'location_picker for geography, open_text for everything else'
 					},
 					placeholder: {
 						type: 'string',
-						description: 'For open_text: hint text for the input field'
-					},
-					prefilled_location: {
-						type: 'string',
-						description:
-							'For location_picker: agent best guess to pre-fill (e.g., "San Francisco, CA")'
+						description: 'Hint text for open_text input'
 					},
 					location_level: {
 						type: 'string',
 						enum: ['city', 'state', 'country'],
-						description: 'For location_picker: geographic scope needed for routing'
+						description: 'For location_picker: geographic level'
 					},
 					required: {
 						type: 'boolean',
-						description: 'Whether this question must be answered'
+						description: 'Is this question required?'
 					}
 				},
 				required: ['id', 'question', 'type', 'required']
 			},
-			minItems: 1,
 			maxItems: 2,
-			description:
-				'REQUIRED when needs_clarification=true. 1-2 questions that would change who receives the message if answered differently.'
+			description: 'If needs_clarification=true: 1-2 questions. If false: empty array []'
 		},
 
-		// Inferred context (always required)
+		// Generation output - only when needs_clarification=false
+		subject_line: {
+			type: 'string',
+			description: 'Compelling subject line (max 80 chars)'
+		},
+		core_issue: {
+			type: 'string',
+			description: 'One sentence: problem + who has power + who is harmed'
+		},
+		topics: {
+			type: 'array',
+			items: { type: 'string' },
+			maxItems: 5,
+			description: '1-5 lowercase topic tags'
+		},
+		url_slug: {
+			type: 'string',
+			description: 'URL slug: 2-4 words, lowercase, hyphens'
+		},
+		voice_sample: {
+			type: 'string',
+			description: 'Most visceral phrase from input (1-2 sentences, verbatim)'
+		},
+
+		// Context - ALWAYS required
 		inferred_context: {
 			type: 'object',
 			properties: {
 				detected_location: {
 					type: ['string', 'null'],
-					description: 'Best guess location string (e.g., "San Francisco, CA")'
+					description: 'Best guess location'
 				},
 				detected_scope: {
 					type: ['string', 'null'],
 					enum: ['local', 'state', 'national', 'international', null],
-					description: 'Best guess geographic scope'
+					description: 'Geographic scope'
 				},
 				detected_target_type: {
 					type: ['string', 'null'],
 					enum: ['government', 'corporate', 'institutional', 'other', null],
-					description: 'Best guess power structure type'
+					description: 'Power structure type'
 				},
 				location_confidence: {
 					type: 'number',
 					minimum: 0,
 					maximum: 1,
-					description: 'Confidence in location detection (0-1)'
+					description: '0-1 confidence in location'
 				},
 				scope_confidence: {
 					type: 'number',
 					minimum: 0,
 					maximum: 1,
-					description: 'Confidence in scope detection (0-1)'
+					description: '0-1 confidence in scope'
 				},
 				target_type_confidence: {
 					type: 'number',
 					minimum: 0,
 					maximum: 1,
-					description: 'Confidence in target type detection (0-1)'
+					description: '0-1 confidence in target type'
 				},
 				reasoning: {
 					type: 'string',
-					description: 'Agent reasoning about why clarification is/isnt needed'
+					description: 'Why clarification is or is not needed'
 				}
 			},
 			required: [
@@ -136,12 +127,13 @@ export const SUBJECT_LINE_SCHEMA = {
 				'detected_target_type',
 				'location_confidence',
 				'scope_confidence',
-				'target_type_confidence'
+				'target_type_confidence',
+				'reasoning'
 			],
-			description: "Agent's inferred context, confidence scores, and reasoning"
+			description: 'Inferred context with confidence scores'
 		}
 	},
-	required: ['inferred_context']
+	required: ['needs_clarification', 'clarification_questions', 'inferred_context']
 };
 
 // ============================================================================

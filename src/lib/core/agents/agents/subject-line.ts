@@ -117,123 +117,19 @@ ${options.description}`;
 		previousInteractionId: options.previousInteractionId
 	});
 
-	let data: SubjectLineResponseWithClarification;
+	let data = JSON.parse(response.outputs) as SubjectLineResponseWithClarification;
 	let currentInteractionId = response.id;
 
-	// Parse JSON with error handling for truncated responses
-	try {
-		data = JSON.parse(response.outputs) as SubjectLineResponseWithClarification;
-	} catch (parseError) {
-		console.error('[subject-line] JSON parse error:', parseError);
-		console.log('[subject-line] Raw output length:', response.outputs?.length || 0);
-
-		// If JSON is truncated, retry with simpler instruction
-		console.log('[subject-line] Retrying with simplified prompt due to parse error');
-		const retryResponse = await interact(
-			`Generate a subject line for: "${options.description}"
-
-Output ONLY these fields in JSON:
-- subject_line (max 80 chars)
-- core_issue (one sentence)
-- topics (1-3 tags)
-- url_slug (2-4 words, hyphenated)
-- voice_sample (key phrase from input)
-- inferred_context with reasoning
-
-Keep response under 2000 characters.`,
-			{
-				systemInstruction: SUBJECT_LINE_PROMPT,
-				responseSchema: SUBJECT_LINE_SCHEMA,
-				temperature: 0.5,
-				thinkingLevel: 'low',
-				previousInteractionId: currentInteractionId
-			}
-		);
-
-		data = JSON.parse(retryResponse.outputs) as SubjectLineResponseWithClarification;
-		currentInteractionId = retryResponse.id;
-	}
-
-	// Validate: if needs_clarification is true but no questions provided
-	// Retry specifically asking for the clarification questions
+	// Validate: if needs_clarification is true but no questions provided, override to false
+	// This handles cases where the agent hedges (says it needs clarification but doesn't ask)
 	if (
 		data.needs_clarification &&
 		(!data.clarification_questions || data.clarification_questions.length === 0)
 	) {
 		console.log(
-			'[subject-line] Agent said needs_clarification but provided no questions - asking for questions explicitly'
+			'[subject-line] Agent said needs_clarification but provided no questions - overriding to false'
 		);
-
-		const clarifyRetryResponse = await interact(
-			`You need clarification for: "${options.description}"
-
-Ask 1-2 questions. Each question needs: id, question text, type (location_picker or open_text), required (true/false).
-For location questions: add location_level (city/state/country).
-For open_text: add placeholder hint.
-
-Set needs_clarification=true and include clarification_questions array.`,
-			{
-				systemInstruction: SUBJECT_LINE_PROMPT,
-				responseSchema: SUBJECT_LINE_SCHEMA,
-				temperature: 0.3,
-				thinkingLevel: 'low',
-				previousInteractionId: currentInteractionId
-			}
-		);
-
-		const clarifyRetryData = JSON.parse(
-			clarifyRetryResponse.outputs
-		) as SubjectLineResponseWithClarification;
-
-		// If we got questions this time, use them
-		if (clarifyRetryData.clarification_questions?.length) {
-			console.log('[subject-line] Clarification retry got questions:', {
-				count: clarifyRetryData.clarification_questions.length
-			});
-			data = clarifyRetryData;
-			currentInteractionId = clarifyRetryResponse.id;
-		} else {
-			// Still no questions - infer what clarification is needed from context
-			console.log(
-				'[subject-line] Clarification retry still no questions - inferring from context'
-			);
-
-			const ctx = data.inferred_context || clarifyRetryData.inferred_context;
-			const reasoning = ctx?.reasoning || '';
-			const locationConfidence = ctx?.location_confidence || 0;
-
-			// If low location confidence, construct a location question
-			if (locationConfidence < 0.5) {
-				console.log('[subject-line] Constructing location clarification question');
-				data.clarification_questions = [
-					{
-						id: 'location',
-						question: `Which city's ${extractLocationHint(options.description)} are you talking about?`,
-						type: 'location_picker' as const,
-						location_level: 'city' as const,
-						required: true
-					}
-				];
-				// Keep needs_clarification true since we constructed a question
-			} else {
-				// High location confidence but model still wanted clarification - force generation
-				console.log('[subject-line] Cannot infer clarification type - forcing generation');
-				data.needs_clarification = false;
-			}
-		}
-	}
-
-	// Helper function to extract location hint from description
-	function extractLocationHint(description: string): string {
-		// Look for common street/place patterns
-		const streetMatch = description.match(/(\d+(?:st|nd|rd|th)\s+street|\w+\s+(?:street|avenue|ave|blvd|road|rd))/i);
-		if (streetMatch) return streetMatch[1];
-
-		// Look for "the [place]" patterns
-		const placeMatch = description.match(/the\s+(\w+(?:\s+\w+)?)/i);
-		if (placeMatch) return placeMatch[1];
-
-		return 'area';
+		data.needs_clarification = false;
 	}
 
 	// If agent returned neither clarification questions nor a subject line, retry with explicit instruction
