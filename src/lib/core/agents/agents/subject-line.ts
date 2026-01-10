@@ -193,10 +193,47 @@ Set needs_clarification=true and include clarification_questions array.`,
 			data = clarifyRetryData;
 			currentInteractionId = clarifyRetryResponse.id;
 		} else {
-			// Still no questions - agent can't formulate them, force generation
-			console.log('[subject-line] Clarification retry still no questions - forcing generation');
-			data.needs_clarification = false;
+			// Still no questions - infer what clarification is needed from context
+			console.log(
+				'[subject-line] Clarification retry still no questions - inferring from context'
+			);
+
+			const ctx = data.inferred_context || clarifyRetryData.inferred_context;
+			const reasoning = ctx?.reasoning || '';
+			const locationConfidence = ctx?.location_confidence || 0;
+
+			// If low location confidence, construct a location question
+			if (locationConfidence < 0.5) {
+				console.log('[subject-line] Constructing location clarification question');
+				data.clarification_questions = [
+					{
+						id: 'location',
+						question: `Which city's ${extractLocationHint(options.description)} are you talking about?`,
+						type: 'location_picker' as const,
+						location_level: 'city' as const,
+						required: true
+					}
+				];
+				// Keep needs_clarification true since we constructed a question
+			} else {
+				// High location confidence but model still wanted clarification - force generation
+				console.log('[subject-line] Cannot infer clarification type - forcing generation');
+				data.needs_clarification = false;
+			}
 		}
+	}
+
+	// Helper function to extract location hint from description
+	function extractLocationHint(description: string): string {
+		// Look for common street/place patterns
+		const streetMatch = description.match(/(\d+(?:st|nd|rd|th)\s+street|\w+\s+(?:street|avenue|ave|blvd|road|rd))/i);
+		if (streetMatch) return streetMatch[1];
+
+		// Look for "the [place]" patterns
+		const placeMatch = description.match(/the\s+(\w+(?:\s+\w+)?)/i);
+		if (placeMatch) return placeMatch[1];
+
+		return 'area';
 	}
 
 	// If agent returned neither clarification questions nor a subject line, retry with explicit instruction
