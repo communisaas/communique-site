@@ -1,7 +1,7 @@
 import type { ProcessedDecisionMaker, CustomRecipient } from '$lib/types/template';
 
 /**
- * Process raw decision-maker data from Toolhouse agent
+ * Process raw decision-maker data from agent
  */
 export function processDecisionMakers(
 	rawDecisionMakers: Array<{
@@ -9,16 +9,26 @@ export function processDecisionMakers(
 		title: string;
 		organization: string;
 		email?: string;
-		provenance: string;
+		provenance?: string; // Optional in new schema, might be effectively 'reasoning'
+		reasoning?: string; // New field from agent
+		source_url?: string; // New field from agent
 	}>
 ): ProcessedDecisionMaker[] {
-	return rawDecisionMakers.map((dm) => ({
-		...dm,
-		reasoning: extractReasoning(dm.provenance),
-		source: extractSource(dm.provenance),
-		powerLevel: inferPowerLevel(dm.title),
-		isAiResolved: true
-	}));
+	return rawDecisionMakers.map((dm) => {
+		// Handle both legacy (provenance) and new (reasoning) formats
+		const reasoningText = dm.reasoning || (dm.provenance ? extractReasoning(dm.provenance) : 'No reasoning provided');
+		const sourceUrl = dm.source_url || (dm.provenance ? extractSource(dm.provenance) : undefined);
+
+		return {
+			...dm,
+			reasoning: reasoningText,
+			source: sourceUrl,
+			powerLevel: inferPowerLevel(dm.title),
+			isAiResolved: true,
+			// Ensure provenance is always a string to satisfy typscript if needed, or just let it match the input
+			provenance: dm.provenance || ''
+		};
+	});
 }
 
 /**
@@ -27,7 +37,9 @@ export function processDecisionMakers(
  * 1. "URL (reasoning text)" - reasoning in parentheses after URL
  * 2. "Reasoning text. Source: URL" - reasoning before source marker
  */
-export function extractReasoning(provenance: string): string {
+export function extractReasoning(provenance: string | undefined): string {
+	if (!provenance) return '';
+
 	// Format 1: URL (reasoning) - extract text in parentheses
 	const parenMatch = provenance.match(/\(([^)]+)\)/);
 	if (parenMatch) {
@@ -58,7 +70,8 @@ export function extractReasoning(provenance: string): string {
 /**
  * Extract verification URL from provenance
  */
-export function extractSource(provenance: string): string | undefined {
+export function extractSource(provenance: string | undefined): string | undefined {
+	if (!provenance) return undefined;
 	const urlMatch = provenance.match(/https?:\/\/[^\s)]+/);
 	return urlMatch?.[0];
 }

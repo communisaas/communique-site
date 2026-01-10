@@ -120,7 +120,24 @@ Return ONLY the JSON object, no additional text before or after.`;
 			responseText = responseText.slice(jsonStartIndex, jsonEndIndex + 1);
 		}
 
-		const data = JSON.parse(responseText) as DecisionMakerResponse;
+
+		// Attempt to parse JSON
+		let data: DecisionMakerResponse;
+		try {
+			data = JSON.parse(responseText) as DecisionMakerResponse;
+		} catch (parseError) {
+			console.error('[decision-maker] JSON Parse Error. Raw text:', responseText);
+			// Try to sanitize common JSON errors (trailing commas, missing commas between objects)
+			try {
+				const sanitized = responseText
+					.replace(/,\s*}/g, '}')       // Remove trailing comma before }
+					.replace(/,\s*]/g, ']')       // Remove trailing comma before ]
+					.replace(/}\s*{/g, '}, {');   // Insert missing comma between objects
+				data = JSON.parse(sanitized) as DecisionMakerResponse;
+			} catch (retryError) {
+				throw new Error(`JSON parse failed: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+			}
+		}
 
 		// Extract grounding metadata for enhanced sources
 		const groundingMetadata = response.candidates?.[0]?.groundingMetadata;

@@ -14,6 +14,8 @@ export const DECISION_MAKER_PROMPT = `You are an expert researcher specializing 
 
 Identify 3-5 REAL people with DIRECT power over the issue described. These must be verifiable individuals currently in positions of authority, not hypothetical or generic roles.
 
+MANDATORY: You MUST find verifiable contact information (email). If you cannot find a public email address for a decision-maker, DO NOT INCLUDE THEM. We only want actionable targets.
+
 You will receive:
 - A subject line describing the issue
 - A core issue explanation
@@ -83,22 +85,18 @@ For each decision-maker, you MUST provide:
 
 ### Required Fields
 - **name**: Full legal name (First Last, no titles/honorifics)
-- **title**: Current official title
+- **title**: Current official title (Verify they currently hold this role)
 - **organization**: Organization/institution they work for
-- **provenance**: 2-3 sentences explaining WHY they have power over this issue
+- **email**: Publicly available contact email (official .gov, corporate contact form, press email)
+- **source_url**: URL where you verified this information and found the email
+- **provenance**: 2-3 sentences explaining WHY they have power over this issue & confirming they are the CURRENT officeholder.
   - State the specific lever of power (committee chair, CEO, etc.)
   - Reference recent actions or statements on this issue if available
   - Be concrete: "As chair of the Senate Banking Committee" not "has influence over banking"
 - **confidence**: 0.0 to 1.0 based on source quality (see scoring below)
 
 ### Optional Fields
-- **email**: Publicly available contact email (official .gov, corporate contact form, press email)
-  - Only include if found on official source
-  - Never guess or infer email format
-  - Omit if not publicly available
-- **source_url**: URL where you verified this information
-  - Prefer: .gov sites, official org websites, major news outlets
-  - Should directly mention the person in context of the issue
+- **contact_channel**: "email" | "form" | "phone" | "congress" | "other"
 
 ## Confidence Scoring
 

@@ -168,13 +168,13 @@ export const DECISION_MAKER_SCHEMA = {
 						maximum: 1
 					}
 				},
-				required: ['name', 'title', 'organization', 'provenance', 'confidence']
+				required: ['name', 'title', 'organization', 'provenance', 'email', 'source_url', 'confidence']
 			},
 			maxItems: 10
 		},
 		research_summary: { type: 'string' }
 	},
-	required: ['decision_makers']
+	required: ['decision_makers', 'research_summary']
 };
 
 // ============================================================================
