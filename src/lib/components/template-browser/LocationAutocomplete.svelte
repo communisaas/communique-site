@@ -25,6 +25,7 @@
 		currentCountry?: string; // Filter results to country
 		currentState?: string; // Filter results to state
 		isSelected?: boolean; // Whether this breadcrumb is currently filtering
+		suggestedLocations?: string[]; // Array of suggested location strings
 	}
 
 	let {
@@ -32,7 +33,8 @@
 		level,
 		currentCountry,
 		currentState,
-		isSelected = false
+		isSelected = false,
+		suggestedLocations = []
 	}: LocationAutocompleteProps = $props();
 
 	const dispatch = createEventDispatcher<{
@@ -297,6 +299,49 @@
 						</svg>
 						<span class="mt-1 block">Searching...</span>
 					</li>
+				{:else if results.length === 0 && searchQuery.trim().length === 0 && suggestedLocations.length > 0}
+					<!-- Suggested Locations -->
+					<li
+						class="bg-slate-50/50 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400"
+					>
+						Suggested
+					</li>
+					{#each suggestedLocations as suggestion}
+						<li
+							class="cursor-pointer px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+							onclick={() => {
+								searchQuery = suggestion;
+								handleSearch(suggestion);
+								inputRef?.focus();
+							}}
+							onkeydown={(e) => {
+								if (e.key === 'Enter') {
+									searchQuery = suggestion;
+									handleSearch(suggestion);
+									inputRef?.focus();
+								}
+							}}
+							tabindex="0"
+							role="button"
+						>
+							<div class="flex items-center gap-2">
+								<svg
+									class="h-3.5 w-3.5 text-participation-primary-500"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path
+										stroke-linecap="round"
+										stroke-linejoin="round"
+										stroke-width="2"
+										d="M13 10V3L4 14h7v7l9-11h-7z"
+									/>
+								</svg>
+								{suggestion}
+							</div>
+						</li>
+					{/each}
 				{:else if results.length === 0}
 					<!-- Empty state -->
 					<li class="px-3 py-6 text-center text-sm text-slate-500">
@@ -308,34 +353,57 @@
 					</li>
 				{:else}
 					<!-- Results -->
-					{#each results as result, i}
-						<li
-							role="option"
-							aria-selected={i === selectedIndex}
-							tabindex={i === selectedIndex ? 0 : -1}
-							onclick={() => handleSelect(result, i)}
-							onkeydown={(e) => {
-								if (e.key === 'Enter') {
-									e.preventDefault();
-									handleSelect(result, i);
-								}
-							}}
-							class="cursor-pointer px-3 py-2 text-sm transition-colors"
-							class:bg-blue-50={i === selectedIndex}
-							class:text-blue-900={i === selectedIndex}
-							class:hover:bg-slate-50={i !== selectedIndex}
-						>
-							<div class="font-medium text-slate-900">
-								{#if level === 'country'}
-									{result.country.name}
-								{:else if level === 'state'}
-									{result.state?.name || result.display_name}
-								{:else}
-									{result.city?.name || result.display_name}
-								{/if}
-							</div>
-							<div class="mt-0.5 text-xs text-slate-500">{result.display_name}</div>
-						</li>
+					{#each ['city', 'state', 'country'] as groupLevel}
+						{@const groupResults = results.filter((r) => {
+							if (level === 'country') return true; // No grouping needed for country level
+							if (groupLevel === 'city') return r.city;
+							if (groupLevel === 'state') return !r.city && r.state;
+							if (groupLevel === 'country') return !r.city && !r.state && r.country;
+							return false;
+						})}
+
+						{#if groupResults.length > 0 && level !== 'country'}
+							<li
+								class="sticky top-0 bg-slate-50/50 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400"
+							>
+								{groupLevel === 'city'
+									? 'Cities'
+									: groupLevel === 'state'
+										? 'States / Provinces'
+										: 'Countries'}
+							</li>
+						{/if}
+
+						{#each groupResults as result}
+							{@const originalIndex = results.indexOf(result)}
+							<li
+								role="option"
+								aria-selected={originalIndex === selectedIndex}
+								tabindex={originalIndex === selectedIndex ? 0 : -1}
+								onclick={() => handleSelect(result, originalIndex)}
+								onkeydown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										handleSelect(result, originalIndex);
+									}
+								}}
+								class="cursor-pointer px-3 py-2 text-sm transition-colors"
+								class:bg-blue-50={originalIndex === selectedIndex}
+								class:text-blue-900={originalIndex === selectedIndex}
+								class:hover:bg-slate-50={originalIndex !== selectedIndex}
+							>
+								<div class="font-medium text-slate-900">
+									{#if level === 'country'}
+										{result.country.name}
+									{:else if level === 'state'}
+										{result.state?.name || result.display_name}
+									{:else}
+										{result.city?.name || result.display_name}
+									{/if}
+								</div>
+								<div class="mt-0.5 text-xs text-slate-500">{result.display_name}</div>
+							</li>
+						{/each}
 					{/each}
 				{/if}
 			</ul>

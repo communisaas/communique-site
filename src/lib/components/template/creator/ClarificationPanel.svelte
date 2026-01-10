@@ -149,6 +149,7 @@
 								'Search for a city or state...'}
 							level={getLocationLevel(question.location_level)}
 							isSelected={!!answers[question.id]}
+							suggestedLocations={question.suggested_locations}
 							on:select={(e) => handleLocationSelect(question.id, e.detail)}
 						/>
 					</div>
