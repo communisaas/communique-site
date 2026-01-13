@@ -168,7 +168,15 @@ export const DECISION_MAKER_SCHEMA = {
 						maximum: 1
 					}
 				},
-				required: ['name', 'title', 'organization', 'provenance', 'email', 'source_url', 'confidence']
+				required: [
+					'name',
+					'title',
+					'organization',
+					'provenance',
+					'email',
+					'source_url',
+					'confidence'
+				]
 			},
 			maxItems: 10
 		},

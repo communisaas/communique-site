@@ -16,7 +16,8 @@ export function processDecisionMakers(
 ): ProcessedDecisionMaker[] {
 	return rawDecisionMakers.map((dm) => {
 		// Handle both legacy (provenance) and new (reasoning) formats
-		const reasoningText = dm.reasoning || (dm.provenance ? extractReasoning(dm.provenance) : 'No reasoning provided');
+		const reasoningText =
+			dm.reasoning || (dm.provenance ? extractReasoning(dm.provenance) : 'No reasoning provided');
 		const sourceUrl = dm.source_url || (dm.provenance ? extractSource(dm.provenance) : undefined);
 
 		return {

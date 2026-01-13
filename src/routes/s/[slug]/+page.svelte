@@ -11,7 +11,7 @@
 	import { guestState } from '$lib/stores/guestState.svelte';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
-	import { funnelAnalytics } from '$lib/core/analytics/funnel';
+	import { trackTemplateView } from '$lib/core/analytics/client';
 	// import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import ActionBar from '$lib/components/template-browser/parts/ActionBar.svelte';
 
@@ -72,11 +72,8 @@
 			history.replaceState(null, '', window.location.pathname + window.location.search);
 		}
 
-		// Normal template view - track with default source
-		funnelAnalytics.trackTemplateView(
-			template.id,
-			source as 'social-link' | 'direct-link' | 'share'
-		);
+		// Track template view (aggregated, no source tracking - that's surveillance)
+		trackTemplateView(template.id);
 
 		// Store template context for guest users
 		if (!data.user) {

@@ -2,37 +2,24 @@
  * Root layout JavaScript - handles global client-side initialization
  *
  * This runs on every page load and handles:
- * - Analytics initialization
+ * - Error tracking (categorized, no surveillance)
  * - Global client-side setup
  */
 
 import { browser } from '$app/environment';
-import { analytics } from '$lib/core/analytics/database';
-import { page } from '$app/stores';
+import { trackError } from '$lib/core/analytics/client';
 
-// Initialize analytics on client-side
+// Initialize error tracking on client-side
+// NOTE: No page view tracking - that's a surveillance pattern
 if (browser) {
-	// Track page views automatically
-	page.subscribe(($page) => {
-		if (analytics.isReady && $page?.url?.href) {
-			analytics.trackPageView($page.url.href);
-		}
-	});
-
-	// Track errors automatically
+	// Track errors automatically (categorized by type)
 	window.addEventListener('error', (event) => {
-		analytics.trackError(event.error, {
-			filename: event.filename,
-			lineno: event.lineno,
-			colno: event.colno
-		});
+		trackError(event.error);
 	});
 
 	// Track unhandled promise rejections
 	window.addEventListener('unhandledrejection', (event) => {
-		analytics.trackError(new Error(event.reason), {
-			type: 'unhandled_promise_rejection'
-		});
+		trackError(new Error(String(event.reason)));
 	});
 }
 

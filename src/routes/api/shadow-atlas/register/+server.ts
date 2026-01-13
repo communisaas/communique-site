@@ -70,6 +70,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Use transaction to ensure consistency
 		const result = await prisma.$transaction(async (tx) => {
+			// 0. Verify user exists (defensive check for test isolation)
+			const userExists = await tx.user.findUnique({
+				where: { id: session.userId },
+				select: { id: true }
+			});
+			if (!userExists) {
+				throw new Error(`User ${session.userId} not found - cannot register for Shadow Atlas`);
+			}
+
 			// 1. Get or create the tree for this district
 			let tree = await tx.shadowAtlasTree.findUnique({
 				where: { congressional_district: district }

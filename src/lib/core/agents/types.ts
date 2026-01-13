@@ -108,3 +108,25 @@ export interface InteractionResponse {
 	outputs: string;
 	model: string;
 }
+
+// ============================================================================
+// Streaming Types
+// ============================================================================
+
+/**
+ * Streaming chunk from Gemini with thinking support
+ */
+export interface StreamChunk {
+	type: 'thought' | 'text' | 'complete' | 'error';
+	content: string;
+}
+
+/**
+ * SSE event types for streaming subject generation
+ */
+export type SubjectStreamEvent =
+	| { type: 'thought'; content: string }
+	| { type: 'partial'; content: string }
+	| { type: 'clarification'; data: SubjectLineResponseWithClarification }
+	| { type: 'complete'; data: SubjectLineResponseWithClarification }
+	| { type: 'error'; message: string };

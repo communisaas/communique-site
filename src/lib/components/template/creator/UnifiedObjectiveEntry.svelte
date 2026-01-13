@@ -50,6 +50,7 @@
 	type SuggestionState =
 		| { status: 'idle' }
 		| { status: 'thinking'; startTime: number }
+		| { status: 'streaming'; thoughts: string[]; startTime: number }
 		| {
 				status: 'clarifying';
 				questions: ClarificationQuestion[];
@@ -188,6 +189,118 @@
 
 		const startTime = Date.now();
 
+		// For clarification answers, use non-streaming API (simpler flow)
+		if (clarificationAnswers || interactionId) {
+			await generateWithNonStreaming(
+				text,
+				requestId,
+				startTime,
+				clarificationAnswers,
+				interactionId
+			);
+			return;
+		}
+
+		// Use streaming for initial generation - show thoughts in real-time
+		try {
+			rateLimiter.recordCall();
+
+			// Start with streaming state immediately (no delay - perceptual continuity)
+			suggestionState = { status: 'streaming', thoughts: [], startTime };
+
+			await api.stream<{ content?: string; data?: AISuggestion; message?: string }>(
+				'/agents/stream-subject',
+				{ message: text },
+				(event) => {
+					// Ignore stale responses
+					if (requestId !== currentRequestId) return;
+
+					switch (event.type) {
+						case 'thought':
+							// Accumulate thoughts for display
+							if (event.data.content && suggestionState.status === 'streaming') {
+								suggestionState = {
+									...suggestionState,
+									thoughts: [...suggestionState.thoughts, event.data.content]
+								};
+							}
+							break;
+
+						case 'clarification':
+							if (event.data.data) {
+								const responseData = event.data.data;
+								suggestionState = {
+									status: 'clarifying',
+									questions: responseData.clarification_questions || [],
+									inferredContext: responseData.inferred_context || {
+										detected_location: null,
+										detected_scope: null,
+										detected_target_type: null,
+										location_confidence: 0,
+										scope_confidence: 0,
+										target_type_confidence: 0
+									},
+									interactionId: crypto.randomUUID()
+								};
+								conversationContext = {
+									originalDescription: text,
+									questionsAsked: responseData.clarification_questions || [],
+									inferredContext: responseData.inferred_context || {
+										detected_location: null,
+										detected_scope: null,
+										detected_target_type: null,
+										location_confidence: 0,
+										scope_confidence: 0,
+										target_type_confidence: 0
+									}
+								};
+								showAISuggest = true;
+							}
+							break;
+
+						case 'complete':
+							if (event.data.data) {
+								const newSuggestion = event.data.data as AISuggestion;
+								suggestionCache.set(text.trim().toLowerCase(), newSuggestion);
+								suggestionHistory = [...suggestionHistory, newSuggestion];
+								selectedIterationIndex = suggestionHistory.length - 1;
+								suggestionState = { status: 'ready', suggestion: newSuggestion };
+								showAISuggest = true;
+								lastGeneratedText = text;
+								attemptCount++;
+							}
+							break;
+
+						case 'error':
+							suggestionState = {
+								status: 'error',
+								message: event.data.message || 'Something broke. Try again.'
+							};
+							break;
+					}
+				}
+			);
+		} catch (err) {
+			if (requestId === currentRequestId) {
+				suggestionState = {
+					status: 'error',
+					message: 'Something broke. Try again.'
+				};
+			}
+		}
+	}
+
+	/**
+	 * Non-streaming generation for clarification follow-ups
+	 * (Multi-turn context requires the standard API)
+	 */
+	async function generateWithNonStreaming(
+		text: string,
+		requestId: string,
+		startTime: number,
+		clarificationAnswers?: ClarificationAnswers,
+		interactionId?: string
+	): Promise<void> {
 		// Delay showing "thinking" to prevent flash
 		const thinkingTimer = setTimeout(() => {
 			if (currentRequestId === requestId) {
@@ -367,9 +480,24 @@
 		}
 	}
 
-	// Attach keyboard listener on mount
+	// Attach keyboard listener on mount + auto-trigger if we have initial input
 	onMount(() => {
 		window.addEventListener('keydown', handleKeyboardNavigation);
+
+		// Auto-trigger immediately if we opened with initial text (no debounce)
+		// This is the key UX improvement: user types → opens creator → agent starts immediately
+		const text = data.rawInput || '';
+		if (
+			text.trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH &&
+			!hasAutoTriggered &&
+			userWantsAI &&
+			!manualMode
+		) {
+			// Skip the debounce - user already wrote their complaint, fire now
+			hasAutoTriggered = true;
+			handleDebouncedGeneration(text);
+		}
+
 		return () => {
 			if (debounceTimer) clearTimeout(debounceTimer);
 			window.removeEventListener('keydown', handleKeyboardNavigation);
@@ -546,16 +674,69 @@
 		</div>
 	{/if}
 
-	<!-- Thinking indicator (only show if not already showing suggestion surface) -->
+	<!-- Streaming thoughts (perceptual engineering: show the agent thinking out loud) -->
+	{#if suggestionState.status === 'streaming' && !showAISuggest}
+		<div
+			class="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4"
+			transition:fade={{ duration: 200 }}
+		>
+			<div class="flex items-start gap-3">
+				<!-- Pulsing indicator (alive, not mechanical) -->
+				<div class="mt-1 flex-shrink-0">
+					<div class="relative h-2 w-2">
+						<div
+							class="absolute inset-0 animate-ping rounded-full bg-participation-primary-400 opacity-75"
+						></div>
+						<div class="relative h-2 w-2 rounded-full bg-participation-primary-500"></div>
+					</div>
+				</div>
+
+				<!-- Thoughts stream -->
+				<div class="min-h-[3rem] flex-1 space-y-1.5">
+					{#if suggestionState.thoughts.length === 0}
+						<p class="text-sm italic text-slate-400">analyzing your issue...</p>
+					{:else}
+						{#each suggestionState.thoughts as thought, i}
+							<p
+								class="text-sm text-slate-600"
+								class:font-medium={i === suggestionState.thoughts.length - 1}
+								style="animation: thoughtAppear 0.3s ease-out forwards; opacity: 0;"
+							>
+								{thought}
+							</p>
+						{/each}
+					{/if}
+				</div>
+			</div>
+
+			<!-- Subtle "skip" option -->
+			<div class="mt-3 flex justify-end">
+				<button
+					type="button"
+					onclick={writeManually}
+					class="text-xs text-slate-400 transition-colors hover:text-slate-600"
+				>
+					I'll write my own
+				</button>
+			</div>
+		</div>
+	{/if}
+
+	<!-- Fallback thinking indicator (for non-streaming paths like clarification follow-up) -->
 	{#if suggestionState.status === 'thinking' && !showAISuggest}
 		<div
-			class="mt-3 flex items-center gap-2 text-sm text-slate-600"
+			class="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4"
 			transition:fade={{ duration: 150 }}
 		>
-			<div
-				class="h-4 w-4 animate-spin rounded-full border-2 border-participation-primary-600 border-t-transparent"
-			/>
-			<span>Refining...</span>
+			<div class="flex items-center gap-3">
+				<div class="relative h-2 w-2">
+					<div
+						class="absolute inset-0 animate-ping rounded-full bg-participation-primary-400 opacity-75"
+					></div>
+					<div class="relative h-2 w-2 rounded-full bg-participation-primary-500"></div>
+				</div>
+				<span class="text-sm text-slate-500">refining with your clarifications...</span>
+			</div>
 		</div>
 	{/if}
 
@@ -847,3 +1028,23 @@
 		/>
 	</div>
 </div>
+
+<style>
+	/*
+	 * Streaming Thoughts Animation
+	 *
+	 * Perceptual Engineering: Each thought fades in and slides up slightly,
+	 * creating the feeling of emergence rather than sudden appearance.
+	 * The animation is fast (300ms) to avoid feeling sluggish.
+	 */
+	@keyframes -global-thoughtAppear {
+		from {
+			opacity: 0;
+			transform: translateY(4px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+</style>

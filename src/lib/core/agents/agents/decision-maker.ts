@@ -120,7 +120,6 @@ Return ONLY the JSON object, no additional text before or after.`;
 			responseText = responseText.slice(jsonStartIndex, jsonEndIndex + 1);
 		}
 
-
 		// Attempt to parse JSON
 		let data: DecisionMakerResponse;
 		try {
@@ -130,12 +129,14 @@ Return ONLY the JSON object, no additional text before or after.`;
 			// Try to sanitize common JSON errors (trailing commas, missing commas between objects)
 			try {
 				const sanitized = responseText
-					.replace(/,\s*}/g, '}')       // Remove trailing comma before }
-					.replace(/,\s*]/g, ']')       // Remove trailing comma before ]
-					.replace(/}\s*{/g, '}, {');   // Insert missing comma between objects
+					.replace(/,\s*}/g, '}') // Remove trailing comma before }
+					.replace(/,\s*]/g, ']') // Remove trailing comma before ]
+					.replace(/}\s*{/g, '}, {'); // Insert missing comma between objects
 				data = JSON.parse(sanitized) as DecisionMakerResponse;
 			} catch (retryError) {
-				throw new Error(`JSON parse failed: ${parseError instanceof Error ? parseError.message : String(parseError)}`);
+				throw new Error(
+					`JSON parse failed: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+				);
 			}
 		}
 

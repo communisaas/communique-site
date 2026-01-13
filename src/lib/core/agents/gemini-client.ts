@@ -12,7 +12,7 @@
 
 import { GoogleGenAI } from '@google/genai';
 import type { GenerateContentResponse, GenerateContentConfig } from '@google/genai';
-import type { GenerateOptions, InteractionResponse } from './types';
+import type { GenerateOptions, InteractionResponse, StreamChunk } from './types';
 
 // ============================================================================
 // Client Singleton
@@ -180,6 +180,104 @@ export async function generate(
 	}
 
 	throw new Error('[agents/gemini-client] Max retries exceeded (should not reach here)');
+}
+
+// ============================================================================
+// Streaming Generation with Thoughts
+// ============================================================================
+
+/**
+ * Stream content from Gemini with thinking summaries
+ *
+ * Uses generateContentStream with includeThoughts: true to provide
+ * real-time visibility into the model's reasoning process.
+ *
+ * Yields chunks with type 'thought' for reasoning and 'text' for output.
+ *
+ * @param prompt - User prompt to generate from
+ * @param options - Generation configuration options
+ * @yields StreamChunk with type and content
+ *
+ * @example
+ * ```typescript
+ * for await (const chunk of generateStream('Analyze this...', {
+ *   systemInstruction: SUBJECT_LINE_PROMPT,
+ *   responseSchema: SUBJECT_LINE_SCHEMA
+ * })) {
+ *   if (chunk.type === 'thought') {
+ *     console.log('Thinking:', chunk.content);
+ *   } else if (chunk.type === 'text') {
+ *     console.log('Output:', chunk.content);
+ *   }
+ * }
+ * ```
+ */
+export async function* generateStream(
+	prompt: string,
+	options: GenerateOptions = {}
+): AsyncGenerator<StreamChunk> {
+	const ai = getGeminiClient();
+
+	const config: GenerateContentConfig = {
+		temperature: options.temperature ?? GEMINI_CONFIG.defaults.temperature,
+		maxOutputTokens: options.maxOutputTokens ?? GEMINI_CONFIG.defaults.maxOutputTokens,
+		// Enable thinking with summaries
+		thinkingConfig: {
+			includeThoughts: true,
+			thinkingBudget:
+				options.thinkingLevel === 'high' ? 8192 : options.thinkingLevel === 'low' ? 1024 : 4096
+		}
+	};
+
+	// Add response schema if provided (non-grounding mode)
+	if (options.responseSchema) {
+		config.responseMimeType = 'application/json';
+		config.responseSchema = options.responseSchema;
+	}
+
+	// Add system instruction if provided
+	if (options.systemInstruction) {
+		config.systemInstruction = options.systemInstruction;
+	}
+
+	try {
+		const response = await ai.models.generateContentStream({
+			model: GEMINI_CONFIG.model,
+			contents: prompt,
+			config
+		});
+
+		let fullText = '';
+
+		for await (const chunk of response) {
+			// Check for parts with thought flag
+			if (chunk.candidates?.[0]?.content?.parts) {
+				for (const part of chunk.candidates[0].content.parts) {
+					if (!part.text) continue;
+
+					// Check if this is a thought part
+					if ('thought' in part && part.thought) {
+						yield { type: 'thought', content: part.text };
+					} else {
+						fullText += part.text;
+						yield { type: 'text', content: part.text };
+					}
+				}
+			} else if (chunk.text) {
+				// Fallback for simpler response structure
+				fullText += chunk.text;
+				yield { type: 'text', content: chunk.text };
+			}
+		}
+
+		yield { type: 'complete', content: fullText };
+	} catch (error) {
+		console.error('[agents/gemini-client] Stream error:', error);
+		yield {
+			type: 'error',
+			content: error instanceof Error ? error.message : 'Stream generation failed'
+		};
+	}
 }
 
 // ============================================================================

@@ -744,28 +744,167 @@ model analytics_experiment {
   name              String    @unique
   type              String    // 'funnel', 'campaign', 'ab_test'
   status            String    @default("active") // 'active', 'paused', 'completed'
-  
+
   // Unified configuration (JSONB for flexibility)
   config            Json      @default("{}") // Steps, variations, targeting rules
-  
+
   // Timeline
   start_date        DateTime?
   end_date          DateTime?
-  
+
   // Metrics cache for dashboard performance
   metrics_cache     Json      @default("{}") // Performance data, conversion rates
-  
+
   created_at        DateTime  @default(now()) @map("created_at")
   updated_at        DateTime  @updatedAt @map("updated_at")
-  
+
   events            analytics_event[]
-  
+
   @@index([type, status])
   @@index([created_at])
   @@map("analytics_experiment")
 }
 
+// =============================================================================
+// PRIVACY-FIRST ANALYTICS SCHEMA (Wave 1)
+// =============================================================================
+// These models REPLACE the legacy analytics_session, analytics_event, and
+// analytics_experiment tables. Legacy tables kept temporarily for migration.
+// See docs/specs/privacy-first-analytics.md for full specification.
 
+/// Daily aggregate metrics - the ONLY analytics data we store
+/// No individual events, no sessions, no user tracking
+model analytics_aggregate {
+  id              String    @id @default(cuid())
+
+  // Time bucket (day granularity - never finer)
+  date            DateTime  @db.Date
+
+  // Metric dimensions (empty string = not specified)
+  metric          String    // e.g., "template_view", "funnel_3", "delivery_success"
+  template_id     String    @default("")  // For template-specific metrics
+  jurisdiction    String    @default("")  // Geographic rollup (district, state, region, national)
+  delivery_method String    @default("")  // For delivery metrics
+  utm_source      String    @default("")  // For acquisition metrics
+  error_type      String    @default("")  // For error metrics
+
+  // The only value we store: a count
+  count           Int       @default(0)
+
+  // Differential privacy metadata
+  noise_applied   Float     @default(0)   // Laplace noise applied to count
+  epsilon         Float     @default(1.0) // Privacy budget consumed
+
+  // Composite unique constraint prevents duplicates
+  @@unique([date, metric, template_id, jurisdiction, delivery_method, utm_source, error_type])
+
+  // Query optimization indexes
+  @@index([date])
+  @@index([metric, date])
+  @@index([template_id, date])
+  @@index([jurisdiction, date])
+
+  @@map("analytics_aggregate")
+}
+
+// =============================================================================
+// PRIVACY BUDGET ENFORCEMENT (Wave 2: Differential Privacy)
+// =============================================================================
+// These models implement a CQRS pattern to prevent "infinite budget" attacks:
+//
+// WRITE PATH:
+//   Raw increments → analytics_aggregate (no noise)
+//
+// MATERIALIZE PATH (Daily Cron):
+//   1. Read raw counts from analytics_aggregate
+//   2. Apply Laplace noise ONCE (deterministic seed for auditability)
+//   3. Write to analytics_snapshot (immutable after creation)
+//   4. Track epsilon spent in privacy_budget
+//
+// READ PATH:
+//   Queries ONLY read from analytics_snapshot (noise already applied)
+//   This defeats attacks where repeated queries average out fresh noise
+//
+// See docs/specs/privacy-first-analytics.md for full specification.
+// =============================================================================
+
+/// Pre-noised aggregate data for privacy-preserving queries
+/// Noise applied ONCE at materialization, never at query time
+/// This defeats "infinite budget" attacks via temporal separation
+model analytics_snapshot {
+  id              String   @id @default(cuid())
+
+  // Time bucket (day granularity - never finer)
+  snapshot_date   DateTime @db.Date
+
+  // Metric dimensions (empty string = not specified)
+  metric          String   // e.g., "template_view", "funnel_3", "delivery_success"
+  template_id     String   @default("")  // For template-specific metrics
+  jurisdiction    String   @default("")  // Geographic rollup (district, state, region, national)
+  delivery_method String   @default("")  // For delivery metrics
+  utm_source      String   @default("")  // For acquisition metrics
+  error_type      String   @default("")  // For error metrics
+
+  // The noisy count (noise applied once, immutable after creation)
+  noisy_count     Int
+
+  // Privacy metadata
+  epsilon_spent   Float    // Privacy budget consumed by this snapshot
+  noise_seed      String   // For auditability - enables deterministic noise reproduction
+
+  created_at      DateTime @default(now())
+
+  // Composite unique constraint prevents duplicates
+  @@unique([snapshot_date, metric, template_id, jurisdiction, delivery_method, utm_source, error_type])
+
+  // Query optimization indexes
+  @@index([snapshot_date])
+  @@index([metric, snapshot_date])
+  @@index([template_id, snapshot_date])
+  @@index([jurisdiction, snapshot_date])
+
+  @@map("analytics_snapshot")
+}
+
+/// Daily privacy budget tracking to enforce MAX_DAILY_EPSILON limits
+/// Prevents budget exhaustion and tracks query patterns
+model privacy_budget {
+  id            String   @id @default(cuid())
+
+  // Budget tracking by day
+  budget_date   DateTime @db.Date @unique
+
+  // Epsilon accounting
+  epsilon_spent Float    @default(0)   // Total epsilon spent today
+  epsilon_limit Float    @default(10.0) // Daily limit (configurable)
+
+  // Query tracking
+  queries_count Int      @default(0)   // Number of queries executed
+
+  // Timestamps
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@map("privacy_budget")
+}
+
+/// Funnel definitions (static configuration, no user data)
+model analytics_funnel {
+  id              String    @id @default(cuid())
+  name            String    @unique
+
+  // Step definitions (JSONB for flexibility)
+  // Example: [{ order: 1, name: "view", event: "template_viewed" }, ...]
+  steps           Json      @default("[]")
+
+  // Funnel status
+  status          String    @default("active") // 'active', 'archived'
+
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  @@map("analytics_funnel")
+}
 
 model DeliveryLog {
   id              String   @id @default(cuid())
@@ -1268,4 +1407,48 @@ model ScopeCorrection {
   @@index([created_at])
   @@index([template_id])
   @@map("scope_correction")
+}
+
+// ============= DISTRIBUTED RATE LIMITING (Postgres-Based) =============
+// Multi-instance rate limiting using existing Neon Postgres
+// See docs/architecture/rate-limiting.md for design rationale
+//
+// WHY NOT REDIS:
+// - Single person maintaining, operational overhead matters
+// - Neon Postgres already available (zero additional cost)
+// - For DP contribution limits, approximate enforcement is acceptable
+// - Privacy guarantees come from DP noise, not exact rate limits
+//
+// USAGE:
+// - Analytics contribution limits (MAX_DAILY_CONTRIBUTIONS per identifier)
+// - API rate limiting for sensitive endpoints
+// - Template submission throttling
+//
+// CLEANUP:
+// - Daily cron job deletes entries older than 2 days
+// - See src/routes/api/cron/cleanup-rate-limits for implementation
+
+model RateLimit {
+  id            String   @id @default(cuid())
+
+  // Composite key: identifier (hashed IP) + metric type
+  key           String   // Format: "sha256(ip):metric_name" or "sha256(ip):endpoint"
+
+  // Time window (day granularity for daily limits)
+  window_start  DateTime @db.Date @map("window_start")
+
+  // Counter (incremented atomically via upsert)
+  count         Int      @default(1)
+
+  // Timestamps
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
+
+  // Composite unique constraint for upsert
+  @@unique([key, window_start])
+
+  // Index for cleanup queries (delete old windows)
+  @@index([window_start])
+
+  @@map("rate_limits")
 }

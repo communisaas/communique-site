@@ -280,6 +280,80 @@ class UnifiedApiClient {
 	}
 
 	/**
+	 * Stream SSE events from an endpoint
+	 *
+	 * @param endpoint - API endpoint path
+	 * @param body - Request body (for POST)
+	 * @param onEvent - Callback for each SSE event
+	 * @returns Promise that resolves when stream ends
+	 *
+	 * @example
+	 * ```typescript
+	 * await api.stream('/agents/stream-subject', { message: 'My issue...' }, (event) => {
+	 *   if (event.type === 'thought') console.log('Thinking:', event.data);
+	 *   if (event.type === 'complete') console.log('Done:', event.data);
+	 * });
+	 * ```
+	 */
+	async stream<T = unknown>(
+		endpoint: string,
+		body: object,
+		onEvent: (event: { type: string; data: T }) => void
+	): Promise<void> {
+		const normalizedBase = this.baseURL.endsWith('/') ? this.baseURL.slice(0, -1) : this.baseURL;
+		const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+		const url = `${normalizedBase}${normalizedEndpoint}`;
+
+		const response = await fetch(url, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(body)
+		});
+
+		if (!response.ok) {
+			throw new ApiClientError(`HTTP ${response.status}`, response.status, response);
+		}
+
+		const reader = response.body?.getReader();
+		if (!reader) {
+			throw new ApiClientError('No response body');
+		}
+
+		const decoder = new TextDecoder();
+		let buffer = '';
+
+		try {
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+
+				// Parse SSE events from buffer
+				const lines = buffer.split('\n');
+				buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+				let currentEventType = '';
+				for (const line of lines) {
+					if (line.startsWith('event: ')) {
+						currentEventType = line.slice(7).trim();
+					} else if (line.startsWith('data: ')) {
+						const dataStr = line.slice(6);
+						try {
+							const data = JSON.parse(dataStr) as T;
+							onEvent({ type: currentEventType, data });
+						} catch {
+							// Skip invalid JSON
+						}
+					}
+				}
+			}
+		} finally {
+			reader.releaseLock();
+		}
+	}
+
+	/**
 	 * Utility: Sleep for specified milliseconds
 	 */
 	private sleep(ms: number): Promise<void> {
