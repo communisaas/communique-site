@@ -46,6 +46,10 @@ afterAll(() => {
 export async function clearTestDatabase() {
   // Clear in STRICT reverse dependency order to avoid foreign key constraints
   // Order: Children → Parents (leaf nodes first, root last)
+  //
+  // WARNING: Avoid calling this in beforeEach hooks in parallel test environments!
+  // Tests running in parallel (maxForks: 4) can have their data deleted mid-test.
+  // Prefer using unique IDs per test run for isolation instead.
   try {
     // Analytics events MUST be deleted first (references session_id FK)
     await db.analytics_event.deleteMany();
@@ -59,6 +63,10 @@ export async function clearTestDatabase() {
     // Leaf nodes (no other tables depend on them)
     await db.cWCJob.deleteMany();
     await db.template_campaign.deleteMany();
+
+    // Shadow Atlas (depends on users via FK)
+    await db.shadowAtlasRegistration.deleteMany();
+    await db.shadowAtlasTree.deleteMany();
 
     // Representative relationships
     await db.user_representatives.deleteMany();

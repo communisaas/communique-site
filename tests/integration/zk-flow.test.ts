@@ -3,27 +3,32 @@ import { POST as registerHandler } from '../../src/routes/api/shadow-atlas/regis
 import { POST as submitHandler } from '../../src/routes/api/congressional/submit/+server';
 import { prisma } from '../../src/lib/core/db';
 
-// Mock locals
-const mockLocals = {
-    user: { userId: 'test-user-id' },
-    session: { id: 'test-session-id', userId: 'test-user-id' }
-};
+// Test context - computed fresh in beforeEach for true isolation
+let testRunId: string;
+let testUserId: string;
+let testTemplateId: string;
+let mockLocals: { user: { userId: string }; session: { id: string; userId: string } };
 
+// NOTE: This test uses unique IDs per test run for parallel safety
+// No clearTestDatabase() - creates isolated data that won't conflict with other tests
 describe('ZKP Integration Flow', () => {
     beforeEach(async () => {
-        // Clean up DB in dependency order (child tables first)
-        await prisma.submission.deleteMany();
-        await prisma.shadowAtlasRegistration.deleteMany();
-        await prisma.shadowAtlasTree.deleteMany();
-        // Delete test template and user before recreating
-        await prisma.template.deleteMany({ where: { id: 'template-123' } });
-        await prisma.user.deleteMany({ where: { id: 'test-user-id' } });
+        // Generate unique IDs for THIS test execution (not module load)
+        testRunId = `zk-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        testUserId = `test-user-${testRunId}`;
+        testTemplateId = `template-${testRunId}`;
 
+        mockLocals = {
+            user: { userId: testUserId },
+            session: { id: `session-${testRunId}`, userId: testUserId }
+        };
+
+        // No cleanup needed - IDs are unique per test
         // Create user first (template depends on it)
         await prisma.user.create({
             data: {
-                id: 'test-user-id',
-                email: `zk-test-${Date.now()}@example.com`, // Unique email per run
+                id: testUserId,
+                email: `${testRunId}@example.com`,
                 name: 'Test User'
             }
         });
@@ -31,14 +36,14 @@ describe('ZKP Integration Flow', () => {
         // Then create template (depends on user)
         await prisma.template.create({
             data: {
-                id: 'template-123',
-                slug: `test-template-${Date.now()}`, // Unique slug per run
+                id: testTemplateId,
+                slug: `test-template-${testRunId}`,
                 title: 'Test Template',
                 description: 'Test Description',
                 message_body: 'Test Body',
                 category: 'test',
                 type: 'congressional',
-                userId: 'test-user-id',
+                userId: testUserId,
                 deliveryMethod: 'email',
                 preview: 'Test Preview',
                 delivery_config: {},
@@ -78,24 +83,24 @@ describe('ZKP Integration Flow', () => {
 
         // Verify DB state after registration
         const registration = await prisma.shadowAtlasRegistration.findUnique({
-            where: { user_id: 'test-user-id' }
+            where: { user_id: testUserId }
         });
         expect(registration).toBeDefined();
         expect(registration?.congressional_district).toBe('CA-12');
 
-        // 2. Submission
+        // 2. Submission (use unique nullifier + actionId per test run)
         const submitRequest = new Request('http://localhost/api/congressional/submit', {
             method: 'POST',
             body: JSON.stringify({
                 proof: 'mock-proof-hex',
                 publicSignals: {
                     districtRoot: registerData.root,
-                    nullifier: 'mock-nullifier-456'
+                    nullifier: `nullifier-${testRunId}`
                 },
                 encryptedWitness: 'mock-witness-base64',
                 encryptedMessage: 'mock-message-base64',
-                templateId: 'template-123',
-                actionId: 'action-789'
+                templateId: testTemplateId,
+                actionId: `action-${testRunId}`
             })
         });
 
@@ -118,7 +123,7 @@ describe('ZKP Integration Flow', () => {
 
         // Verify DB state after submission
         const submission = await prisma.submission.findFirst({
-            where: { user_id: 'test-user-id' }
+            where: { user_id: testUserId }
         });
         expect(submission).toBeDefined();
         expect((submission as any)?.verification_status).toBe('verified');
