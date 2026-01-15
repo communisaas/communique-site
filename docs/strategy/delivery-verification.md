@@ -1,8 +1,14 @@
 # Email Verification (TEE-Based Privacy-Preserving Verification)
 
-**Status**: Planned (Phase 3)
-**Priority**: P3 (after core template system and semantic search)
-**Dependencies**: OAuth integration, TEE infrastructure
+**Status**: Phased Implementation
+**Current Phase**: Phase 1 Complete (OAuth persistence)
+**Future Phases**: Phase 2-4 Planned (TEE verification, congressional signatures, browser-native)
+
+> **Implementation Status Overview**:
+> - **Phase 1 (OAuth)**: ✅ IMPLEMENTED - Token persistence, encrypted storage, revocation
+> - **Phase 2 (TEE verification)**: 🔮 FUTURE - AWS Nitro Enclaves, zero-knowledge email proofs
+> - **Phase 3 (Congressional signatures)**: 🔮 FUTURE - Requires congressional office adoption
+> - **Phase 4 (Browser-native)**: 🔮 FUTURE - Client-side WASM proving (12-18 months)
 
 ---
 
@@ -31,7 +37,7 @@ Users need to prove they sent congressional messages for reputation tracking, bu
 
 ---
 
-## Phase 1: OAuth Token Persistence (Implemented)
+## Phase 1: OAuth Token Persistence ✅ IMPLEMENTED
 
 **Current implementation**:
 ```typescript
@@ -58,7 +64,7 @@ await prisma.user.update({
 
 ---
 
-## Phase 2: TEE-Based Email Verification (Planned)
+## Phase 2: TEE-Based Email Verification 🔮 FUTURE
 
 ### Architecture
 
@@ -170,7 +176,7 @@ export async function verifyEmailDelivery(
 
 ---
 
-## Phase 3: Congressional Email Signatures (Future Enhancement)
+## Phase 3: Congressional Email Signatures 🔮 FUTURE
 
 **Better approach** (when congressional offices adopt):
 
@@ -200,7 +206,7 @@ const deliveryReceipt = {
 
 ---
 
-## Phase 4: Browser-Native Verification (Long-term Vision)
+## Phase 4: Browser-Native Verification 🔮 FUTURE
 
 **Ultimate goal**: Client-side email verification with no server access
 
@@ -241,7 +247,7 @@ const proof = await generateProofInBrowser({
 - [x] Token refresh logic
 - [x] User revocation flow
 
-### Phase 2: TEE Email Verification (6-8 weeks)
+### Phase 2: TEE Email Verification 🔮 FUTURE (6-8 weeks)
 - [ ] TEE email verification module (`src/lib/core/tee/email-verifier.ts`)
 - [ ] AWS Nitro Enclave deployment configuration
 - [ ] Gmail API integration in TEE
@@ -251,7 +257,7 @@ const proof = await generateProofInBrowser({
 - [ ] Integration tests (mocked TEE)
 - [ ] Security audit (TEE code review)
 
-### Phase 3: Congressional Email Signatures (Advocacy Timeline)
+### Phase 3: Congressional Email Signatures 🔮 FUTURE (Advocacy Timeline)
 - [ ] Draft email signing specification
 - [ ] Congressional office outreach
 - [ ] Pilot program with 1-2 offices
@@ -259,7 +265,7 @@ const proof = await generateProofInBrowser({
 - [ ] Verification client implementation
 - [ ] Documentation for congressional IT teams
 
-### Phase 4: Browser-Native Verification (12-18 months)
+### Phase 4: Browser-Native Verification 🔮 FUTURE (12-18 months)
 - [ ] Browser WASM Halo2 optimization
 - [ ] WebAuthn integration
 - [ ] Gmail API CORS workaround

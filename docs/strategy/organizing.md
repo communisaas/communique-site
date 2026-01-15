@@ -1,5 +1,9 @@
 # Organizing Reality: Victories, Failures, and Class Struggle Infrastructure
 
+> **Phase 2+ Strategy Document** (12-18 months post-launch)
+>
+> Current Phase 1 focuses on viral civic engagement through congressional message templates and social proof systems. This document outlines future expansion into broader organizing infrastructure including tenant unions, workplace organizing, ballot initiatives, and mutual aid networks.
+
 **What organizing actually looks like.** What wins, what fails, and why most people don't organize even when they should.
 
 ---

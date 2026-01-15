@@ -217,17 +217,15 @@ Encrypted data today may become decryptable tomorrow:
 
 ## Implementation Requirements
 
-### Week 5-8: Halo2 Circuit Implementation (voter-protocol)
+### Phase 1 Complete (January 2026)
 
-**Deliverables**:
+**Halo2 Circuit Implementation (voter-protocol):**
 - Halo2 two-tier Merkle circuit (Rust)
 - Shadow Atlas generation script (535 district trees + 1 global tree)
 - WASM compilation pipeline (wasm-pack)
 - NPM package: `@voter-protocol/crypto`
 
-### Week 9-10: Browser WASM Integration (communiqué)
-
-**Deliverables**:
+**Browser WASM Integration (communiqué):**
 - WASM loader with progressive enhancement
 - Shadow Atlas IPFS client (district tree fetching)
 - Web Workers for parallel Poseidon hashing
@@ -235,9 +233,7 @@ Encrypted data today may become decryptable tomorrow:
 - Proof generation UI with progress indicator
 - Browser compatibility detection
 
-### Week 11-12: On-Chain Verification (voter-protocol)
-
-**Deliverables**:
+**On-Chain Verification (voter-protocol):**
 - DistrictGate.sol verifier contract (Scroll L2)
 - Proof verification gas optimization
 - Merkle root management (quarterly Shadow Atlas updates)
@@ -274,9 +270,8 @@ Encrypted data today may become decryptable tomorrow:
 
 **Files Updated**:
 1. `README.md` - Architecture section (browser-native WASM proving)
-2. `IMPLEMENTATION-ROADMAP.md` - Week 9-10 integration details
-3. `FRONTEND-ARCHITECTURE.md` - Client-side proving flow
-4. `docs/architecture/TEE-SYSTEMS-OVERVIEW.md` - Clarify TEE is message delivery only
+2. `docs/frontend.md` - Client-side proving flow
+3. `docs/architecture/tee-systems.md` - Clarify TEE is message delivery only
 
 **Files Removed**:
 - All references to "TEE-based proving"
@@ -285,8 +280,6 @@ Encrypted data today may become decryptable tomorrow:
 
 **New Documentation**:
 - This Architecture Decision Record
-- `docs/PERFORMANCE-BENCHMARKS.md` (proving time measurements)
-- `docs/architecture/SHADOW-ATLAS-INTEGRATION.md` (IPFS loading, caching)
 
 ---
 

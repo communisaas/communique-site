@@ -50,21 +50,9 @@ CodeMirror editor, jurisdiction picker, variable extraction UI.
 
 ---
 
-### 3. [email-lookup.md](email-lookup.md) - Congressional Email Lookup
-
-Hunter.io integration for template creators finding congressional office emails.
-
-**What it does**: Template creators can look up congressional office emails (3/day limit).
-
-**Dependencies**: None (standalone Hunter.io API integration)
-
-**Implementation**: Communiqué feature (rate-limited API calls)
-
----
-
 ## Authentication & Onboarding
 
-### 4. [oauth.md](oauth.md) - OAuth Integration
+### 3. [oauth.md](oauth.md) - OAuth Integration
 
 Google, Facebook, Twitter, LinkedIn, Discord authentication. Token persistence and management.
 
@@ -76,7 +64,7 @@ Google, Facebook, Twitter, LinkedIn, Discord authentication. Token persistence a
 
 ---
 
-### 5. [onboarding.md](onboarding.md) - Progressive Onboarding
+### 4. [onboarding.md](onboarding.md) - Progressive Onboarding
 
 Progressive disclosure patterns, step-by-step user activation.
 
@@ -90,7 +78,7 @@ Progressive disclosure patterns, step-by-step user activation.
 
 ## Discovery & Search
 
-### 6. [search.md](search.md) - Semantic Search
+### 5. [search.md](search.md) - Semantic Search
 
 Template discovery via semantic embeddings, natural language queries.
 
@@ -102,7 +90,7 @@ Template discovery via semantic embeddings, natural language queries.
 
 ---
 
-### 7. [jurisdiction.md](jurisdiction.md) - Jurisdiction Targeting
+### 6. [jurisdiction.md](jurisdiction.md) - Jurisdiction Targeting
 
 Geographic targeting for templates (city council, state legislature, congressional district).
 
@@ -116,7 +104,7 @@ Geographic targeting for templates (city council, state legislature, congression
 
 ## Advanced Features
 
-### 8. [embeddings.md](embeddings.md) - Gemini Embeddings
+### 7. [embeddings.md](embeddings.md) - Gemini Embeddings
 
 Google Gemini integration for semantic search, template clustering, recommendation engine.
 
@@ -130,7 +118,7 @@ Google Gemini integration for semantic search, template clustering, recommendati
 
 ---
 
-### 9. [sharing.md](sharing.md) - Universal Sharing
+### 8. [sharing.md](sharing.md) - Universal Sharing
 
 Native share API (mobile) + clipboard (desktop). Platform-agnostic sharing patterns.
 
@@ -142,7 +130,7 @@ Native share API (mobile) + clipboard (desktop). Platform-agnostic sharing patte
 
 ---
 
-### 10. [abstraction.md](abstraction.md) - Legislative Abstraction
+### 9. [abstraction.md](abstraction.md) - Legislative Abstraction
 
 Adapter pattern for different legislative bodies (US Congress, state legislatures, city councils).
 
@@ -189,6 +177,10 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 **Congressional delivery** → See `/docs/congressional/delivery.md`
 
+**Decision-maker enrichment pipeline** → See `/docs/development/integrations/decision-maker-resolution-integration.md`
+
+**Privacy-preserving analytics** → See `/docs/specs/analytics/` (7 comprehensive docs)
+
 **District verification (voter-protocol)** → See `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md`
 
 ---
@@ -200,13 +192,15 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 | templates.md | ✅ Complete | P0 (core) | Communiqué |
 | creator.md | ✅ Complete | P0 (core) | Communiqué |
 | oauth.md | ✅ Complete | P0 (core) | Communiqué |
-| onboarding.md | ✅ Complete | P1 | Communiqué |
+| onboarding.md | ✅ Complete (includes decision-maker enrichment) | P0 (core) | Communiqué |
 | jurisdiction.md | ✅ Complete | P1 | Communiqué |
 | sharing.md | ✅ Complete | P1 | Communiqué |
 | abstraction.md | ✅ Complete (US) | P1 | Communiqué |
-| search.md | 🚧 In Progress | P2 | Communiqué |
-| embeddings.md | 🚧 In Progress | P2 | Communiqué |
-| email-lookup.md | 🚧 In Progress | P2 | Communiqué |
+| search.md | ✅ Complete | P2 | Communiqué |
+| embeddings.md | ✅ Complete | P2 | Communiqué |
+| **Decision-maker enrichment** | ✅ Complete (3-phase AI pipeline) | P0 (core) | Communiqué |
+| **Privacy-preserving analytics** | ✅ Complete | P1 | Communiqué |
+| **Multi-target delivery** | ✅ Complete | P0 (core) | Communiqué |
 | **District verification** | ✅ Complete | P0 | **voter-protocol** |
 | **Reputation tracking** | ✅ Complete | P0 | **voter-protocol** |
 
@@ -218,7 +212,7 @@ Adapter pattern for different legislative bodies (US Congress, state legislature
 
 **UX designers**: onboarding.md → sharing.md → search.md
 
-**Backend engineers**: abstraction.md → embeddings.md → email-lookup.md
+**Backend engineers**: abstraction.md → embeddings.md → onboarding.md (decision-maker enrichment)
 
 **Understanding voter-protocol integration**: See `/docs/DISTRICT-VERIFICATION-RESPONSIBILITIES.md` first
 

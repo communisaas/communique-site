@@ -2,7 +2,7 @@
 
 **Purpose:** Find what you need, fast. Every piece of information has ONE home.
 
-**Total Active Docs:** ~70 files across organized folders
+**Total Active Docs:** 83 files across organized folders (76 active + 7 archived)
 
 ---
 
@@ -17,20 +17,22 @@
 
 ---
 
-## Core Documentation (5 files)
+## Core Documentation (8 files in root)
 
 | File | Purpose |
 |------|---------|
+| `README.md` | This documentation map |
 | `implementation-status.md` | What's done, in progress, blocked (SINGLE SOURCE OF TRUTH) |
 | `architecture.md` | Communiqué/voter-protocol separation, privacy architecture |
 | `integration.md` | CWC API, OAuth, voter-protocol, identity verification |
 | `frontend.md` | SvelteKit 5, runes-based state, component patterns |
+| `DOCUMENTATION-CLEANUP-PLAN.md` | Current documentation reorganization plan |
 
 ---
 
 ## Folder Guide
 
-### `features/` (12 files)
+### `features/` (10 files)
 Feature-specific documentation.
 
 **Key files:**
@@ -39,11 +41,12 @@ Feature-specific documentation.
 - `oauth.md` - OAuth provider flows
 - `onboarding.md` - User onboarding flows
 - `jurisdiction.md` - Jurisdiction system (TemplateJurisdiction model)
+- `identity-verification.md` - self.xyz + Didit.me flows
 
-### `specs/` (12 files)
+### `specs/` (15 files)
 Technical specifications and design docs.
 
-**Core specs (mentioned in CLAUDE.md):**
+**Core specs:**
 - `zk-proof-integration.md` - ZK proof integration (5 phases, 45K)
 - `portable-identity.md` - IPFS + on-chain pointer (Phase 2)
 - `universal-credibility.md` - Credential verification system
@@ -53,54 +56,78 @@ Technical specifications and design docs.
 - `progressive-template-sections.md` - Template sectioning UX
 - `proof-generation-ux.md` - Browser-native ZKP UX
 - `header-redesign.md` - Header perceptual engineering
+- `analytics-funnel.md` - Analytics tracking specification
+- `interactive-location-breadcrumb.md` - Location filter breadcrumb UI
 
-### `development/` (11 files + integrations/)
+### `development/` (15 files including integrations/)
 Development workflows and guides.
 
 **Key files:**
 - `testing.md` - Integration-first test strategy, mocks, fixtures
 - `database.md` - Prisma schema, migrations, seeding
 - `deployment.md` - Production deployment
-- `integrations/` - External service integrations (4 files)
+- `integrations/` - External service integrations (11 files)
   - `clarification-panel-usage.md` - Clarification panel guide
   - `message-generation-integration.md` - AI message generation
   - `decision-maker-resolution-integration.md` - Decision-maker lookup
   - `multi-target-delivery-spec.md` - Multi-target delivery
 
-### `architecture/` (5 files)
+### `architecture/` (4 files)
 Architectural deep-dives.
 
+**Key files:**
 - `LOCATION-SIGNAL-ACCURACY-LIMITS.md` - Location signal accuracy matrix (IP = state only)
+- `progressive-precision.md` - Progressive precision framework
 
-### `design/` (5 files)
+### `design/` (9 files)
 Design system and voice.
 
 **Key files:**
-- `voice.md` - Pragmatic cypherpunk voice guide (mentioned in CLAUDE.md)
+- `voice.md` - Pragmatic cypherpunk voice guide
 - `design-system.md` - Component design system
 - `TYPOGRAPHY-SYSTEM.md` - Typography standards
 - `ux-responsibilities.md` - UX layer responsibilities
+- `colors.md` - Color system
+- `motion.md` - Animation and transitions
 
-### `congressional/` (4 files)
+### `congressional/` (2 files)
 Congressional delivery system.
 
-- `cwc.md` - CWC API documentation
-- `delivery.md` - Delivery system spec
+**Key files:**
+- `delivery.md` - Delivery system spec (includes CWC API technical reference)
 - `dashboard.md` - Dashboard spec
 
-### `strategy/` (8 files)
+### `strategy/` (7 files)
 Business and launch strategy (non-technical).
 
-### `testing/` (2 files)
-Testing guides.
+**Key files:**
+- `launch-checklist.md` - Pre-launch requirements
+- `beta-strategy.md` - Beta testing approach
 
+### `testing/` (2 files)
+Testing guides and documentation.
+
+**Key files:**
 - `DATABASE-CLEARING-ISSUE.md` - Important: test database clearing behavior
 - `ZK-PROOF-TESTING-STRATEGY.md` - ZK proof testing
 
 ### `research/` (3 files)
 Research and analysis.
 
-- `power-structures.md` - Multi-stakeholder power structure research (mentioned in CLAUDE.md)
+**Key files:**
+- `power-structures.md` - Multi-stakeholder power structure research
+- `competitive-analysis.md` - Competitive landscape
+
+### `implementation/` (1 file)
+Implementation tracking.
+
+**Key file:**
+- `current-work.md` - Detailed current work tracking
+
+### `archive/` (7 files)
+Historical documentation and superseded specs.
+
+Contains archived docs from past migrations, refactors, and design iterations. Reference only for historical context.
 
 ---
 

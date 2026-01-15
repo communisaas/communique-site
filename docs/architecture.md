@@ -174,7 +174,7 @@ await identityRegistry.updateEncryptedBlob(ipfsHashToBytes32(ipfsHash));
 **Privacy:** Platform never sees encrypted blobs (stored on IPFS, not controlled)
 **Portability:** ✅ Users own blob, can use on competing platforms
 
-**See:** `docs/PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md` for full analysis
+**See:** `docs/specs/portable-identity.md` for full analysis
 
 ---
 
@@ -332,7 +332,7 @@ TOTAL COST:
 
 **Savings:** **99.97% reduction** ($30,000 → $10)
 
-**See:** `docs/PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md` for full cost analysis
+**See:** `docs/specs/portable-identity.md` for full cost analysis
 
 ---
 
@@ -578,20 +578,18 @@ DIDIT_API_KEY=<didit-api-key>
 ## References
 
 **Implementation Docs:**
-- `docs/IMPLEMENTATION-STATUS-2025-11-09.md` - Current MVP status
-- `docs/PHASE-1-ENCRYPTION-COMPLETE.md` - Encryption infrastructure details
-- `docs/ZK-PROOF-INTEGRATION-PHASE-1.md` - ZK proof integration guide (5 phases, 10 weeks)
+- `docs/implementation-status.md` - Current MVP status
+- `docs/specs/zk-proof-integration.md` - ZK proof integration guide (5 phases, 10 weeks)
 
 **Architecture Docs:**
-- `docs/PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md` - Phase 2 IPFS proposal (99.97% cost reduction)
-- `docs/UNIVERSAL-CREDIBILITY-SYSTEM.md` - Credential verification, expertise tracking
+- `docs/specs/portable-identity.md` - Phase 2 IPFS proposal (99.97% cost reduction)
+- `docs/specs/universal-credibility.md` - Credential verification, expertise tracking
 
 **Frontend Docs:**
-- `docs/FRONTEND-ARCHITECTURE.md` - SvelteKit 5, runes, component patterns
-- `docs/PROGRESSIVE-VERIFICATION-ARCHITECTURE.md` - Identity verification tiers (0-4)
+- `docs/frontend.md` - SvelteKit 5, runes, component patterns
 
 **Integration Docs:**
-- `docs/INTEGRATION-GUIDE.md` - CWC API, OAuth, self.xyz, Didit.me, TEE delivery
+- `docs/integration.md` - CWC API, OAuth, self.xyz, Didit.me, TEE delivery
 
 **voter-protocol Docs:**
 - `/Users/noot/Documents/voter-protocol/ARCHITECTURE.md` - Blockchain architecture

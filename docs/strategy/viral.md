@@ -1,8 +1,10 @@
 # Communiqué Growth Strategy: From Civic Tool to Viral Movement
 
 **Date**: 2025-01-08
-**Status**: Strategic Planning
+**Status**: Strategic Planning (Phase 1 Complete, Phases 2-4 Future)
 **Goal**: Transform grassroots civic action into self-sustaining viral growth
+
+> **Implementation Status**: Only Phase 1 (shareable impact cards) is currently implemented. Phases 2-4 (template discovery, gamification, network visualization) are strategic planning documents for future development.
 
 ---
 
@@ -44,7 +46,7 @@ User sends message
 
 ---
 
-## Phase 1: Shareable Impact Cards (2 weeks to MVP)
+## Phase 1: Shareable Impact Cards ✅ IMPLEMENTED
 
 ### What We Build
 
@@ -144,7 +146,7 @@ model ShareableCard {
 
 ---
 
-## Phase 2: Template Discovery via Social (4 weeks)
+## Phase 2: Template Discovery via Social 🔮 PLANNED (Future Strategy)
 
 ### The Problem: Template Discovery Sucks
 
@@ -251,7 +253,7 @@ const trending = await prisma.template.findMany({
 
 ---
 
-## Phase 3: Gamification & Leaderboards (6 weeks)
+## Phase 3: Gamification & Leaderboards 🔮 PLANNED (Future Strategy)
 
 ### The Hook: Civic Engagement as Competition
 
@@ -365,7 +367,7 @@ model Badge {
 
 ---
 
-## Phase 4: Network Visualization (8 weeks)
+## Phase 4: Network Visualization 🔮 PLANNED (Future Strategy)
 
 ### The Vision: See Your Impact Ripple Out
 
