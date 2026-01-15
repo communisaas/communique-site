@@ -1,5 +1,7 @@
 # Jurisdiction Precision: Data Model, UX, and Agentic Assistance
 
+> **Note**: This is strategic UX analysis for jurisdiction selection. For implementation details, see [docs/features/jurisdiction.md](../features/jurisdiction.md).
+
 **Created**: 2025-11-11
 **Status**: Analysis & Strategic Planning
 

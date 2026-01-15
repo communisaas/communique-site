@@ -242,28 +242,40 @@ Template ready:
 
 ---
 
-## The Lookup Strategy (Waterfall)
+## The Lookup Strategy (AI Agent Pipeline)
 
-### Tier 1: Free APIs (Use First)
-1. **Hunter.io** (freemium) - Email finder by company/name
-2. **Clearbit** (freemium) - Company enrichment
-3. **Ballotpedia** (free) - Elected officials
-4. **Google Civic Information API** (free) - US representatives
-5. **OpenCorporates** (free) - Company officers
+### Current Implementation: Three-Phase Agent Pipeline
 
-### Tier 2: Web Scraping (Fallback)
-1. **Company website** - "Contact" page, "About" page
-2. **LinkedIn** - Executive profiles (public data)
-3. **Press releases** - Often include contact emails
-4. **Local .gov sites** - School boards, city councils
+**Location:** `src/lib/core/agents/agents/decision-maker.ts`
 
-### Tier 3: Pattern Guessing (Last Resort)
-1. **Common patterns**:
+**How it works:**
+
+#### Phase 1: Identification (Google Search Grounding)
+- Agent uses Google Search grounding to find 3-5 REAL candidates
+- Prevents hallucination by requiring verifiable search results
+- Extracts names, titles, organizations from search snippets
+
+#### Phase 2: Enrichment (Parallel Contact Discovery)
+- Parallel contact information lookup for each candidate
+- Hunter.io API (50 searches/month free tier)
+- Clearbit API fallback (1000 requests/month free tier)
+- Pattern guessing as last resort
+
+#### Phase 3: Validation (Email Verification)
+- Filters to only verified, contactable decision-makers
+- Merges duplicate entries
+- Returns validated list with confidence scores
+
+**Rate Limiting:** No per-user limits currently enforced (relies on API provider limits)
+
+**Fallback Strategy:**
+1. Hunter.io → Clearbit → Pattern guessing
+2. Pattern guessing generates common formats with low confidence scores:
    - `firstname.lastname@company.com`
    - `firstinitial.lastname@company.com`
    - `firstname@company.com`
-2. **Verify with email validation API**
-3. **Show confidence score** ("80% likely valid")
+
+**See:** `docs/specs/decision-maker-enrichment-pipeline.md` for comprehensive pipeline docs
 
 ---
 
@@ -497,32 +509,26 @@ async function findDecisionMakers(query: string, context?: string) {
 
 ---
 
-## Free APIs for Lookup
+## API Providers (Implemented)
 
 ### 1. Hunter.io (Email Finder)
 - **Free tier**: 50 searches/month
-- **API**: `https://api.hunter.io/v2/email-finder?domain=apple.com&first_name=tim&last_name=cook`
+- **API**: `https://api.hunter.io/v2/email-finder`
 - **Returns**: Email + confidence score
+- **Used in**: Phase 2 enrichment (first priority)
 
 ### 2. Clearbit (Company Enrichment)
 - **Free tier**: 1000 requests/month
-- **API**: `https://company.clearbit.com/v2/companies/find?domain=apple.com`
+- **API**: `https://company.clearbit.com/v2/companies/find`
 - **Returns**: Company officers + emails
+- **Used in**: Phase 2 enrichment (fallback)
 
-### 3. Google Civic Information API
-- **Free**: Unlimited
-- **API**: `https://civicinfo.googleapis.com/civicinfo/v2/representatives?address=...`
-- **Returns**: Elected officials + contact info
+### 3. Google Search (Grounding)
+- **Free**: Research agent grounding
+- **Used in**: Phase 1 identification (prevents hallucination)
+- **Returns**: Verifiable candidate names from search results
 
-### 4. Ballotpedia API (Elected Officials)
-- **Free**: Public data
-- **API**: Web scraping (no official API, but scrapable)
-- **Returns**: School boards, city councils, etc.
-
-### 5. OpenCorporates (Company Officers)
-- **Free tier**: 500 requests/day
-- **API**: `https://api.opencorporates.com/v0.4/companies/us_ca/...`
-- **Returns**: Corporate officers (but rarely emails)
+**Note**: Google Civic Information API, Ballotpedia, and OpenCorporates are NOT currently used. The three-phase agent pipeline (Identification → Enrichment → Validation) handles all decision-maker resolution.
 
 ---
 

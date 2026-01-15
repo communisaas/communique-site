@@ -6,6 +6,102 @@
 
 ---
 
+## Pre-Deployment Checklist
+
+### Environment Variables
+
+**Required API Keys:**
+
+```bash
+# OpenAI (GPT-5 Series)
+OPENAI_API_KEY=sk-...
+OPENAI_ORGANIZATION=org-... # Optional but recommended
+
+# Google AI (Gemini 2.5)
+GOOGLE_AI_API_KEY=...
+
+# Database
+DATABASE_URL=postgresql://...
+REDIS_URL=redis://...
+
+# Communique Core
+NODE_ENV=production
+PORT=3001
+```
+
+**Optional Configuration:**
+
+```bash
+# Anthropic (Future)
+ANTHROPIC_API_KEY=... # For Q4 2025
+
+# Monitoring
+METRICS_ENDPOINT=https://metrics.communique.ai/ingest
+SENTRY_DSN=...
+LOG_LEVEL=info
+
+# Rate Limiting
+RATE_LIMIT_WINDOW=60000 # 1 minute
+RATE_LIMIT_MAX_REQUESTS=100
+
+# Budget Limits
+DEFAULT_USER_DAILY_LIMIT=10.00 # USD
+SYSTEM_HOURLY_LIMIT=100.00 # USD
+EMERGENCY_SHUTDOWN_THRESHOLD=500.00 # USD
+```
+
+### Infrastructure Setup
+
+**1. Database Migration**
+
+```bash
+# Run Prisma migrations
+npx prisma migrate deploy
+
+# Verify agent-agnostic fields exist
+npx prisma studio # Check Template model
+```
+
+**2. Redis Configuration**
+
+```bash
+# Verify Redis connection
+redis-cli ping # Should return PONG
+
+# Set cache TTLs
+redis-cli CONFIG SET maxmemory-policy allkeys-lru
+redis-cli CONFIG SET maxmemory 2gb
+```
+
+**3. API Key Validation**
+
+```bash
+# Test OpenAI connection
+curl https://api.openai.com/v1/models \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+
+# Test Google AI connection
+curl "https://generativelanguage.googleapis.com/v1/models?key=$GOOGLE_AI_API_KEY"
+```
+
+### Build Verification
+
+```bash
+# Install dependencies
+npm ci --production
+
+# Build TypeScript
+npm run build
+
+# Run tests
+npm run test
+
+# Type checking
+npm run typecheck
+```
+
+---
+
 ## Why AWS Nitro Enclaves?
 
 **Decision rationale:** See [tee-security-backdoor-analysis.md](../research/tee-security-backdoor-analysis.md) and [gcp-vs-aws-cost-comparison.md](../development/gcp-vs-aws-cost-comparison.md)

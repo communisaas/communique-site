@@ -370,7 +370,7 @@ See `/docs/congressional/dashboard.md` for office dashboard setup (view messages
 
 **Email verification roadmap** → See `/docs/strategy/delivery-verification.md`
 
-**CWC API integration** → See `/docs/congressional/cwc.md`
+**CWC API technical details** → See Appendix below
 
 **Template system** → See `/docs/features/templates.md`
 
@@ -406,3 +406,175 @@ See `/docs/congressional/dashboard.md` for office dashboard setup (view messages
 **Key insight**: Users don't care about "cryptographic verification" or "delivery methods." They care about **seeing their civic impact and coordinating with others.**
 
 **The protocol makes that possible.**
+
+---
+
+## Appendix: CWC API Technical Reference
+
+### XML Message Formats
+
+#### House Format (CWC 2.0)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<CWC version="2.0">
+    <MessageHeader>
+        <MessageId>comm_1234567890_tpl_abc123_rep_H001234</MessageId>
+        <Timestamp>2025-10-12T19:35:00Z</Timestamp>
+        <DeliveryAgent>
+            <Name>Communique Advocacy Platform</Name>
+            <Email>cwc@communique.org</Email>
+            <Phone>+1-555-CWC-MAIL</Phone>
+        </DeliveryAgent>
+        <OfficeCode>CA12_HOUSE</OfficeCode>
+    </MessageHeader>
+    <ConstituentData>
+        <Name>
+            <First>Jane</First>
+            <Last>Constituent</Last>
+        </Name>
+        <Address>
+            <Street>123 Main Street</Street>
+            <City>San Francisco</City>
+            <State>CA</State>
+            <Zip>94102</Zip>
+        </Address>
+        <Email>jane@example.com</Email>
+        <Phone>555-123-4567</Phone>
+    </ConstituentData>
+    <MessageData>
+        <Subject>Support for Climate Action Legislation</Subject>
+        <Body>Dear Representative,
+
+I'm writing to urge support for climate action legislation...
+
+Sincerely,
+Jane Constituent</Body>
+        <MessageMetadata>
+            <IntegrityHash>sha256:abc123...</IntegrityHash>
+        </MessageMetadata>
+    </MessageData>
+</CWC>
+```
+
+#### Senate Format (Simplified CWC)
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<CWC>
+    <DeliveryId>comm_1234567890_tpl_abc123_sen_S000123</DeliveryId>
+    <DeliveryAgent>
+        <Name>Communique Advocacy Platform</Name>
+        <Email>cwc@communique.org</Email>
+        <Phone>+1-555-CWC-MAIL</Phone>
+    </DeliveryAgent>
+    <Constituent>
+        <FirstName>Jane</FirstName>
+        <LastName>Constituent</LastName>
+        <ConstituentAddress>
+            <Address>123 Main Street</Address>
+            <City>San Francisco</City>
+            <StateAbbreviation>CA</StateAbbreviation>
+            <Zip>94102</Zip>
+        </ConstituentAddress>
+        <ConstituentEmail>jane@example.com</ConstituentEmail>
+        <ConstituentPhone>555-123-4567</ConstituentPhone>
+    </Constituent>
+    <Message>
+        <Subject>Support for Climate Action Legislation</Subject>
+        <ConstituentMessage>Dear Senator,
+
+I'm writing to urge support for climate action legislation...
+
+Sincerely,
+Jane Constituent</ConstituentMessage>
+    </Message>
+    <OfficeCode>CA_SENATE_FEINSTEIN</OfficeCode>
+</CWC>
+```
+
+### Field Mapping Reference
+
+#### Constituent Data Mapping
+
+| Communiqué Field | CWC House Field | CWC Senate Field | Required |
+|------------------|-----------------|------------------|----------|
+| `user.name` | `ConstituentData.Name.First/Last` | `Constituent.FirstName/LastName` | Yes |
+| `user.email` | `ConstituentData.Email` | `Constituent.ConstituentEmail` | Yes |
+| `user.address.street` | `ConstituentData.Address.Street` | `ConstituentAddress.Address` | Yes |
+| `user.address.city` | `ConstituentData.Address.City` | `ConstituentAddress.City` | Yes |
+| `user.address.state` | `ConstituentData.Address.State` | `ConstituentAddress.StateAbbreviation` | Yes |
+| `user.address.zip` | `ConstituentData.Address.Zip` | `ConstituentAddress.Zip` | Yes |
+| `user.phone` | `ConstituentData.Phone` | `Constituent.ConstituentPhone` | Optional |
+
+#### Message Data Mapping
+
+| Communiqué Field | CWC House Field | CWC Senate Field | Required |
+|------------------|-----------------|------------------|----------|
+| `template.title` | `MessageData.Subject` | `Message.Subject` | Yes |
+| `template.message_body` | `MessageData.Body` | `Message.ConstituentMessage` | Yes |
+
+### Message ID Format
+
+```
+comm_{timestamp}_{userId}_{templateId}_{repBioguideId}
+
+Example:
+comm_1728764100_user_abc123_tpl_climate-action_H001234
+```
+
+**Components**:
+- `comm_` - Communique identifier prefix
+- Unix timestamp
+- User ID (anonymized or hashed)
+- Template ID
+- Representative bioguide ID
+
+### CWC Error Codes
+
+```typescript
+const CWC_ERROR_CODES = {
+  'INVALID_OFFICE': 'Office code not recognized',
+  'MISSING_FIELD': 'Required field missing from XML',
+  'INVALID_ADDRESS': 'Address cannot be verified',
+  'DUPLICATE_MESSAGE': 'Message ID already submitted',
+  'RATE_LIMIT': 'Too many submissions from this user',
+  'XML_MALFORMED': 'XML does not match schema',
+  'UNAUTHORIZED': 'Invalid API credentials'
+};
+```
+
+### Retry Logic Pattern
+
+```typescript
+async function submitWithRetry(
+  xml: string,
+  maxRetries: number = 3
+): Promise<CWCResponse> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await submitToCWC({ xml });
+      if (response.success) return response;
+
+      // Don't retry on validation errors
+      if (response.errors?.some(e => e.code.includes('INVALID'))) {
+        throw new Error(`CWC validation failed: ${response.errors}`);
+      }
+
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      await delay(Math.pow(2, attempt) * 1000); // Exponential backoff
+    }
+  }
+
+  throw new Error('Max retries exceeded');
+}
+```
+
+### Code Locations
+
+**CWC Adapter**: `src/lib/core/legislative/adapters/cwc/cwcAdapter.ts`
+**XML Builder**: `src/lib/core/legislative/adapters/cwc/xmlBuilder.ts`
+**Field Mapper**: `src/lib/core/legislative/adapters/cwc/fieldMapper.ts`
+**Type Definitions**: `src/lib/core/legislative/adapters/cwc/types.ts`
+**Address Lookup**: `src/lib/core/congress/address-lookup.ts`

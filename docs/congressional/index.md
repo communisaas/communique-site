@@ -46,33 +46,7 @@
 
 ---
 
-### 2. [cwc.md](cwc.md) - Communicating With Congress API Integration
-
-Technical integration with CWC API for US congressional message delivery.
-
-**What it does**: Delivers cryptographically verified constituent messages through CWC API.
-
-**Scope**: US Congress only (House + Senate, 535 members)
-
-**Why CWC API exists**: Congressional offices need to verify constituent status (filter spam, out-of-district messages). Email can't prove constituent status at scale. CWC is the infrastructure they built to handle verified constituent contact.
-
-**What makes us different**: We use zero-knowledge cryptography to prove constituent status without revealing addresses. Not spam, not astroturfing - cryptographically unforgeable proof of constituent voice.
-
-**Flow**:
-1. User customizes template for congressional message
-2. Address verified via zero-knowledge proof
-3. Message encrypted (XChaCha20-Poly1305)
-4. Sent through TEE → CWC API → congressional office
-5. Delivery receipt stored
-
-**API endpoints**:
-- `POST /api/cwc/submit` - Submit congressional message
-- `GET /api/cwc/status/:id` - Check delivery status
-- `POST /api/cwc/verify` - Verify delivery receipt
-
----
-
-### 3. [dashboard.md](dashboard.md) - Congressional Office Dashboard
+### 2. [dashboard.md](dashboard.md) - Congressional Office Dashboard
 
 Dashboard for congressional offices to view verified constituent messages.
 

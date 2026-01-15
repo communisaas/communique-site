@@ -61,32 +61,87 @@ This is the honest aesthetic. Not gradients and glows. A graph of coordination.
 
 ## Typography
 
-### The System
+### The System: Satoshi + JetBrains Mono
 
-**Satoshi** — Words, labels, UI. Geometric but warm. Not corporate bland.
+**Satoshi (Words)** — Headlines, UI copy, buttons, CTAs, body text, navigation. Geometric but warm. Not corporate bland (Arial, Helvetica). Not crypto tacky (Poppins).
 
-**JetBrains Mono** — Numbers, metrics, codes. Technical credibility. Tabular figures.
+**JetBrains Mono (Numbers)** — Counts, metrics, codes, timestamps, technical data. Tabular figures align. Numbers tick like scoreboards. Technical credibility.
 
 ### The Rule
+
+**Words in Satoshi. Numbers in Mono.**
 
 If it's a word, use Satoshi. If it's a number, use JetBrains Mono.
 
 ```svelte
 <!-- Location + count -->
-<h1 class="font-sans text-2xl font-bold">California</h1>
-<p class="font-mono text-sm">47 coordinating</p>
+<h1 class="font-brand text-2xl font-bold">California</h1>
+<p class="font-mono text-sm font-medium">47 coordinating</p>
 
 <!-- Template metrics -->
-<span class="font-mono tabular-nums">1,247</span> sent
+<span class="font-mono tabular-nums font-bold">1,247</span> sent
 <span class="font-mono tabular-nums">94</span> districts
+
+<!-- District code -->
+<span class="font-mono text-lg font-bold">CA-11</span>
 ```
 
 ### Weights
 
-- **700 (Bold)** — Headlines, counts, CTAs
-- **600 (Semibold)** — Subheads, emphasis
-- **500 (Medium)** — UI elements, labels
-- **400 (Regular)** — Body text
+**Satoshi:**
+- **700 (Bold)** — Headlines, emphasis, CTAs
+- **500 (Medium)** — UI elements, labels, navigation
+- **400 (Regular)** — Body text, descriptions
+
+**JetBrains Mono:**
+- **700 (Bold)** — Large numbers, hero metrics
+- **500 (Medium)** — Emphasized counts
+- **400 (Regular)** — Standard metrics
+
+### Tailwind Classes
+
+```html
+<!-- DEFAULT: Satoshi for all text -->
+<p>This uses Satoshi by default</p>
+
+<!-- EXPLICIT: Use brand font (Satoshi) -->
+<h1 class="font-brand">Coordination Infrastructure</h1>
+
+<!-- DATA: Use mono font for metrics -->
+<span class="font-mono tabular-nums">1,247</span>
+```
+
+### Size Scale
+
+```css
+--text-xs: 0.75rem / 1rem;      /* 12px / 16px */
+--text-sm: 0.875rem / 1.25rem;  /* 14px / 20px */
+--text-base: 1rem / 1.5rem;     /* 16px / 24px */
+--text-lg: 1.125rem / 1.75rem;  /* 18px / 28px */
+--text-xl: 1.25rem / 1.75rem;   /* 20px / 28px */
+--text-2xl: 1.5rem / 2rem;      /* 24px / 32px */
+--text-3xl: 1.875rem / 2.25rem; /* 30px / 36px */
+--text-4xl: 2.25rem / 2.5rem;   /* 36px / 40px */
+```
+
+**Minimum sizes:**
+- Body text: 16px (1rem) — WCAG AA compliance, prevents iOS zoom on input
+- Small text: 14px (0.875rem)
+- Micro text: 12px (0.75rem) — use sparingly
+
+### Font Loading Performance
+
+**Target:** <100ms FOIT (Flash of Invisible Text)
+
+**Strategy:**
+1. **Preload** critical fonts (Medium, Bold) in `<head>`
+2. **font-display: swap** prevents invisible text, shows fallback immediately
+3. **Self-hosted Satoshi** eliminates external DNS lookup
+4. **WOFF2 format** provides best compression (30-50% smaller than WOFF)
+
+**Location:** `/static/fonts/satoshi/` (Satoshi-Regular.woff2, Satoshi-Medium.woff2, Satoshi-Bold.woff2)
+
+**JetBrains Mono:** Via Google Fonts with `display=swap` for reliable CDN and subset optimization
 
 ---
 

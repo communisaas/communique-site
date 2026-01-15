@@ -667,6 +667,145 @@ const state = $state<TemplateState>({
 
 ---
 
+## Making Complexity Invisible
+
+### The UX Principle
+
+**What users think they're doing:**
+> "I'm sending a message to my representative about healthcare."
+
+**What's actually happening:**
+> Browser generates Halo2 zero-knowledge proof, encrypts witness to TEE public key, submits proof to Scroll L2 blockchain, sends encrypted blob to AWS Nitro Enclave for decryption and CWC API delivery, updates on-chain ERC-8004 reputation, and creates pseudonymous Message record in Postgres.
+
+**Communiqué's job:**
+> Make the second paragraph COMPLETELY INVISIBLE unless the user explicitly wants to see it.
+
+### User Mental Model
+
+1. Pick a template about an issue I care about
+2. Add my personal story (30 seconds)
+3. Click "Send to My Representatives"
+4. Done. Message delivered anonymously.
+
+**What user sees:**
+```
+⏳ Preparing anonymous delivery... (~10 seconds)
+[Progress bar: 60%]
+```
+
+Then:
+```
+✅ Delivered anonymously to Representative Smith
+```
+
+**What user NEVER sees:** WASM proving, Halo2 circuits, Poseidon hashes, nullifiers, Merkle paths, TEE attestation, gas fees, blockchain transactions.
+
+### The Invisible Work
+
+**Identity Verification (30s-2min):**
+- self.xyz NFC passport tap (70% of users)
+- Didit.me government ID + liveness check (30% of users)
+- Returns `identity_commitment` (Poseidon hash)
+- Browser encrypts address to TEE public key (XChaCha20-Poly1305)
+- Encrypted blob stored in Postgres
+- TEE decrypts → geocodes → returns district ("TX-07")
+- Session credential cached: "Verified TX-07 constituent"
+- **User is verified - NEVER ASKED AGAIN**
+
+**ZK Proof Generation (8-15s mobile, 600ms-2s desktop):**
+- WASM module loaded (~800MB memory)
+- Halo2 circuit initialized (K=14, 4,096-leaf Merkle tree)
+- Browser generates ZK proof: "I am ONE OF 4,096 registered TX-07 residents"
+- Proof DOESN'T reveal: which resident, which address, which leaf
+- **User sees loading state with accurate time estimate**
+
+**Encrypted Delivery:**
+- Message encrypted in browser (XChaCha20-Poly1305)
+- Sent to AWS Nitro Enclave (ARM Graviton, hypervisor-isolated)
+- TEE decrypts inside hardware enclave
+- Calls CWC API with plaintext address
+- Receives delivery confirmation
+- **Address destroyed (zeroed from memory)**
+- **Congressional office sees: "Verified Constituent (TX-07)"**
+
+**On-Chain Reputation:**
+- Smart contract verifies ZK proof (300-500k gas)
+- Checks nullifier not reused
+- Updates ERC-8004 reputation (+1 Healthcare Policy)
+- **Platform pays all gas fees**
+- **User never interacts with blockchain directly**
+
+### Progressive Disclosure
+
+**Default view:** Simple, fast, obvious
+```svelte
+<TemplateCard>
+  <h2>Support Medicare Expansion</h2>
+  <p>247 constituents sent this template</p>
+  <button>Add My Story →</button>
+</TemplateCard>
+```
+
+**Hover state:** Aggregate context (optional)
+```svelte
+<Tooltip>
+  <p>247 verified constituents sent variations</p>
+  <p>82 unique congressional districts</p>
+  <p>Average reputation: 8,740 in Healthcare Policy</p>
+</Tooltip>
+```
+
+**Click "Details":** Full transparency (if user asks)
+```svelte
+<details>
+  <summary>How is this anonymous?</summary>
+  <section class="technical-details">
+    <h3>Privacy Technology</h3>
+    <ul>
+      <li><strong>Zero-Knowledge Proofs:</strong> You prove you're a TX-07 constituent without revealing which one</li>
+      <li><strong>Encrypted Delivery:</strong> Your address is encrypted in your browser, decrypted only inside a secure enclave</li>
+      <li><strong>On-Chain Reputation:</strong> Your civic action score is tracked on Scroll blockchain, not linked to your identity</li>
+      <li><strong>Pseudonymous Messaging:</strong> Congressional offices see "Verified TX-07 Constituent", not your name</li>
+    </ul>
+    <a href="/docs/privacy" class="learn-more">Learn more about our privacy architecture →</a>
+  </section>
+</details>
+```
+
+**Power user view:** Cryptographic audit trail (advanced users only)
+```svelte
+<details class="cryptographic-proof">
+  <summary>Cryptographic Proof (Advanced)</summary>
+  <section class="proof-details">
+    <h3>Zero-Knowledge Proof</h3>
+    <code class="proof-hex">{proofBytes.slice(0, 100)}...</code>
+
+    <h3>Public Outputs</h3>
+    <ul>
+      <li><strong>District Root:</strong> <code>{publicOutputs.district_root}</code></li>
+      <li><strong>Nullifier:</strong> <code>{publicOutputs.nullifier}</code></li>
+      <li><strong>Action ID:</strong> <code>{publicOutputs.action_id}</code></li>
+    </ul>
+
+    <h3>On-Chain Verification</h3>
+    <p>
+      Scroll L2 Transaction:
+      <a href="https://scroll.io/tx/{blockchainTxHash}" target="_blank">
+        {blockchainTxHash.slice(0, 10)}...
+      </a>
+    </p>
+  </section>
+</details>
+```
+
+### The Golden Rule
+
+**If explaining the technology is required for the user to trust it, the UX has failed.**
+
+Trust comes from transparency WHEN ASKED, not from forcing users to understand Halo2.
+
+---
+
 ## Next Steps
 
 - **Template System**: See `TEMPLATE-SYSTEM.md` for variable extraction, editor, moderation

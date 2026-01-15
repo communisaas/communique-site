@@ -255,6 +255,113 @@ export async function generateDistrictProof(
 
 ---
 
+## Perceptual Engineering: Making Computation Tangible
+
+### Philosophy: "Pragmatic Cypherpunk"
+
+High-tech privacy should feel like a physical tool, not a math problem. We are not "generating a proof" - we are **sealing an envelope**.
+
+**The Core Metaphor: "The Secure Envelope"**
+- **The Message:** The letter inside
+- **The Encryption:** The lead lining (only recipient can open it)
+- **The ZK Proof:** The wax seal on outside (proves authenticity without revealing sender)
+
+### Three Perceptual Stages (600ms - 10s)
+
+The process takes time. We fill this time with *meaning*, not just a spinner.
+
+#### Stage 1: The "Hum" (Proof Generation)
+**Technical:** WASM Prover running in Web Worker (high CPU usage)
+
+**Visual:** The "Send" button expands into a status bar. A complex, organic pattern (Voronoi diagram or noise field) iterates and resolves. It looks like "computation" or "thinking," not "loading."
+
+**Haptic (Mobile):** Low-frequency, steady vibration (if supported) or rhythmic visual pulse
+
+**Copy progression:**
+- "Checking eligibility..."
+- "Anonymizing identity..."
+- "Verifying district..."
+
+**Why:** Tells the user "Your device is doing work to protect you."
+
+#### Stage 2: The "Snap" (Encryption)
+**Technical:** XChaCha20-Poly1305 encryption (<100ms)
+
+**Visual:** The organic pattern "crystallizes" or "locks" into a solid, geometric shape (shield or closed lock). Sharp, satisfying animation.
+
+**Sound (Optional):** Subtle "click" or "snap" sound
+
+**Copy:** "Message sealed."
+
+**Why:** Visually confirms content is now unreadable to anyone but recipient
+
+#### Stage 3: The "Slide" (Transmission)
+**Technical:** HTTP POST to backend
+
+**Visual:** The sealed geometric shape slides off-screen (upwards/right), leaving clean "Sent" state
+
+**Copy:** "Delivered to [Representative Name]."
+
+### Technical Implementation: The "Shadow Worker"
+
+To keep UI at 60fps while CPU crunches ZK proof, we **MUST** use a Web Worker.
+
+**Thread separation:**
+- **Main Thread:** Animations, UI updates, "Fluid Fill" effects
+- **Worker Thread:** WASM loading, witness computation, proof generation
+
+**Communication protocol:**
+```typescript
+// Main → Worker
+START_PROOF { inputs }
+
+// Worker → Main (progress updates)
+PROGRESS { step: 'witness', percent: 20 }
+PROGRESS { step: 'proving', percent: 60 }
+COMPLETE { proof, publicSignals }
+```
+
+**Sequence:**
+1. User clicks Send
+2. UI starts "Hum" animation
+3. Worker starts proof generation (heavy)
+4. Worker encrypts message (light, parallel)
+5. Worker finishes proof
+6. UI triggers "Snap" (encryption visualization)
+7. Network sends payload
+
+### Copy Dictionary (Jargon → Intuition)
+
+| Web3 / Tech Jargon | Our UI Copy |
+| :--- | :--- |
+| **Zero-Knowledge Proof** | **Anonymous Verification** |
+| **Generate Witness** | **Checking Eligibility** |
+| **Circuit Constraint** | **Security Check** |
+| **Merkle Root** | **District Registry** |
+| **Gas / Transaction** | **Delivery** |
+| **Wallet / Signer** | **Your Device** |
+| **Hash** | **Digital Fingerprint** |
+| **Encrypt** | **Seal** |
+
+### Error Handling: The "Jam"
+
+If proof fails (invalid inputs) or times out:
+
+**Visual:** Organic pattern turns "dissonant" (red/orange tint, jagged edges) and fades out
+
+**Copy:** "Could not seal message."
+
+**Action:** "Retry" button appears (*never* show raw stack trace)
+
+### Accessibility
+
+**Screen readers:** Announce status changes:
+- "Anonymizing identity..."
+- "Message sealed"
+- "Delivered to Representative Smith"
+
+---
+
 ## Integration Roadmap
 
 ### Week 1-2: NPM Package + Infrastructure
