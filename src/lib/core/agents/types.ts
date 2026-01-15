@@ -34,15 +34,26 @@ export interface DecisionMaker {
 	name: string;
 	title: string;
 	organization: string;
-	email?: string;
-	provenance: string;
-	source_url?: string;
+	email: string; // REQUIRED - guaranteed present after pipeline
+	reasoning: string;
+	sourceUrl: string; // Identity verification source
+	emailSource: string; // Email verification source
 	confidence: number;
+	contactChannel: ContactChannel;
+	// Legacy field for backward compatibility (deprecated)
+	provenance?: string;
+	source_url?: string;
 }
 
 export interface DecisionMakerResponse {
 	decision_makers: DecisionMaker[];
 	research_summary?: string;
+	pipeline_stats?: {
+		candidates_found: number;
+		enrichments_succeeded: number;
+		validations_passed: number;
+		total_latency_ms: number;
+	};
 }
 
 export interface Source {
@@ -130,3 +141,39 @@ export type SubjectStreamEvent =
 	| { type: 'clarification'; data: SubjectLineResponseWithClarification }
 	| { type: 'complete'; data: SubjectLineResponseWithClarification }
 	| { type: 'error'; message: string };
+
+// ============================================================================
+// Decision-Maker Pipeline Types
+// ============================================================================
+
+export type ContactChannel = 'email' | 'form' | 'phone' | 'congress' | 'other';
+
+export interface DecisionMakerCandidate {
+	name: string;
+	title: string;
+	organization: string;
+	reasoning: string;
+	sourceUrl: string;
+	confidence: number;
+	contactChannel?: ContactChannel;
+}
+
+export interface EnrichedDecisionMaker extends DecisionMakerCandidate {
+	email?: string;
+	emailSource?: string;
+	emailConfidence?: number;
+	enrichmentStatus: 'success' | 'not_found' | 'timeout' | 'error';
+	enrichmentAttempts: number;
+}
+
+export interface ValidatedDecisionMaker {
+	name: string;
+	title: string;
+	organization: string;
+	email: string; // REQUIRED - guaranteed present
+	reasoning: string;
+	sourceUrl: string;
+	emailSource: string;
+	confidence: number;
+	contactChannel: ContactChannel;
+}

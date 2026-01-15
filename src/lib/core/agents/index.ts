@@ -27,7 +27,12 @@ export type {
 	ClarificationQuestionType,
 	InferredContext,
 	SubjectLineResponseWithClarification,
-	ClarificationAnswers
+	ClarificationAnswers,
+	// Decision-Maker Pipeline types
+	ContactChannel,
+	DecisionMakerCandidate,
+	EnrichedDecisionMaker,
+	ValidatedDecisionMaker
 } from './types';
 
 // JSON schemas

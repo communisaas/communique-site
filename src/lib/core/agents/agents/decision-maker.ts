@@ -1,18 +1,19 @@
 /**
  * Decision-Maker Resolver Agent
  *
- * Uses Gemini 3 Flash with Google Search grounding to research and identify
- * REAL people with power over social issues.
+ * Orchestrates the three-phase decision-maker enrichment pipeline:
+ * 1. Identification - Find candidates with Google Search grounding
+ * 2. Enrichment - Discover contact info for each candidate
+ * 3. Validation - Filter and merge verified decision-makers
  *
  * CRITICAL: This agent MUST use Google Search grounding to find verifiable
  * decision-makers. Without grounding, the model will hallucinate names.
  */
 
-import { generate } from '../gemini-client';
-import { extractSourcesFromGrounding } from '../utils/grounding';
-import { DECISION_MAKER_PROMPT } from '../prompts/decision-maker';
-import { DECISION_MAKER_SCHEMA } from '../schemas';
-import type { DecisionMakerResponse, DecisionMaker } from '../types';
+import { identifyDecisionMakerCandidates } from './decision-maker-identification';
+import { enrichWithContactInfo } from './decision-maker-enrichment';
+import { validateAndMerge } from './decision-maker-validation';
+import type { ValidatedDecisionMaker, DecisionMakerResponse } from '../types';
 
 // ========================================
 // Options Interface
@@ -33,11 +34,16 @@ export interface ResolveOptions {
 /**
  * Resolve decision-makers for a given issue
  *
- * Uses Google Search grounding to find REAL, verifiable people with power
- * over the issue. Returns 3-5 decision-makers with provenance and sources.
+ * Orchestrates the three-phase enrichment pipeline to find REAL, verifiable
+ * people with power and their contact information.
+ *
+ * Pipeline:
+ * 1. Identification - Find 3-5 candidates with Google Search grounding
+ * 2. Enrichment - Discover email addresses for each candidate (parallel)
+ * 3. Validation - Filter to only verified, contactable decision-makers
  *
  * @param options - Resolution options (subject, issue, topics, voiceSample)
- * @returns Decision-maker response with research summary
+ * @returns Decision-maker response with research summary and pipeline stats
  *
  * @example
  * ```typescript
@@ -50,134 +56,144 @@ export interface ResolveOptions {
  *
  * console.log(result.decision_makers);
  * // [
- * //   { name: 'Andy Jassy', title: 'CEO', organization: 'Amazon', ... },
- * //   { name: 'Beth Galetti', title: 'SVP, People Experience', ... }
+ * //   { name: 'Andy Jassy', title: 'CEO', organization: 'Amazon', email: '...', ... },
+ * //   { name: 'Beth Galetti', title: 'SVP, People Experience', email: '...', ... }
  * // ]
+ * console.log(result.pipeline_stats);
+ * // { candidates_found: 5, enrichments_succeeded: 3, validations_passed: 2, total_latency_ms: 28543 }
  * ```
  */
 export async function resolveDecisionMakers(
 	options: ResolveOptions
 ): Promise<DecisionMakerResponse> {
-	const { subjectLine, coreIssue, topics, voiceSample, urlSlug } = options;
-
-	// Build prompt with issue context and voice sample
-	const voiceBlock = voiceSample ? `\nVoice Sample (the human stakes):\n"${voiceSample}"\n` : '';
-
-	const prompt = `Find the decision-makers for this issue:
-
-Subject: ${subjectLine}
-Core Issue: ${coreIssue}
-Topics: ${topics.join(', ')}
-${urlSlug ? `URL Slug: ${urlSlug}` : ''}${voiceBlock}
-Research and identify 3-5 specific people who have direct power over this issue.
-For each person, explain WHY they have power and provide source URLs proving it.
-
-Use Google Search to find current, verifiable information. Only include REAL people
-you can verify through credible sources. Never invent names or guess positions.
-
-IMPORTANT: Return your response as valid JSON matching this exact structure:
-{
-  "decision_makers": [
-    {
-      "name": "Full Name",
-      "title": "Current Job Title",
-      "organization": "Organization Name",
-      "reasoning": "Why this person has power over this issue",
-      "contact_channel": "email" | "form" | "phone" | "congress" | "other",
-      "confidence": 0.0-1.0,
-      "source_url": "URL proving this information"
-    }
-  ],
-  "research_summary": "Summary of why these people were selected"
-}
-
-Return ONLY the JSON object, no additional text before or after.`;
+	const startTime = Date.now();
 
 	try {
-		// Call Gemini with Google Search grounding enabled
-		const response = await generate(prompt, {
-			systemInstruction: DECISION_MAKER_PROMPT,
-			responseSchema: DECISION_MAKER_SCHEMA,
-			temperature: 0.2, // Low temperature for factual accuracy
-			thinkingLevel: 'high', // Deep reasoning for research
-			enableGrounding: true, // CRITICAL: Enable Google Search
-			maxOutputTokens: 4096
+		// ========================================
+		// Phase 1: Identify Candidates
+		// ========================================
+		console.log('[decision-maker] Phase 1: Identifying candidates...');
+		const phase1Start = Date.now();
+
+		const candidates = await identifyDecisionMakerCandidates(options);
+
+		const phase1Duration = Date.now() - phase1Start;
+		console.log(
+			`[decision-maker] Phase 1 complete: Found ${candidates.length} candidates (${phase1Duration}ms)`
+		);
+
+		// Early return if no candidates found
+		if (candidates.length === 0) {
+			console.log('[decision-maker] No candidates found, returning empty result');
+			return {
+				decision_makers: [],
+				research_summary:
+					'No verifiable decision-makers found for this issue. Try refining the subject line or core issue to be more specific.',
+				pipeline_stats: {
+					candidates_found: 0,
+					enrichments_succeeded: 0,
+					validations_passed: 0,
+					total_latency_ms: Date.now() - startTime
+				}
+			};
+		}
+
+		// ========================================
+		// Phase 2: Enrich with Contact Info
+		// ========================================
+		console.log('[decision-maker] Phase 2: Enriching with contact info...');
+		const phase2Start = Date.now();
+
+		const enriched = await enrichWithContactInfo(candidates);
+
+		const phase2Duration = Date.now() - phase2Start;
+		console.log(
+			`[decision-maker] Phase 2 complete: Enriched ${enriched.length}/${candidates.length} candidates (${phase2Duration}ms)`
+		);
+
+		// Check if all enrichments failed
+		if (enriched.length === 0) {
+			console.warn('[decision-maker] All enrichments failed, checking for rate limits');
+
+			// Check if any enrichment failed due to rate limiting
+			const hasRateLimitError = candidates.length > 0; // If we had candidates but zero enriched, likely rate limited
+
+			return {
+				decision_makers: [],
+				research_summary: hasRateLimitError
+					? 'Found potential decision-makers but could not retrieve contact information due to rate limiting. Please try again in a few minutes.'
+					: 'Found potential decision-makers but could not verify their contact information. Try refining the issue to be more specific.',
+				pipeline_stats: {
+					candidates_found: candidates.length,
+					enrichments_succeeded: 0,
+					validations_passed: 0,
+					total_latency_ms: Date.now() - startTime
+				}
+			};
+		}
+
+		// ========================================
+		// Phase 3: Validate and Merge
+		// ========================================
+		console.log('[decision-maker] Phase 3: Validating and merging...');
+		const phase3Start = Date.now();
+
+		const validated = validateAndMerge(enriched);
+
+		const phase3Duration = Date.now() - phase3Start;
+		console.log(
+			`[decision-maker] Phase 3 complete: Validated ${validated.length}/${enriched.length} decision-makers (${phase3Duration}ms)`
+		);
+
+		// Check if validation filtered everything out
+		if (validated.length === 0) {
+			console.warn('[decision-maker] All candidates filtered out during validation');
+
+			return {
+				decision_makers: [],
+				research_summary:
+					'Found potential decision-makers but could not verify their email addresses. Contact information may not be publicly available for this issue.',
+				pipeline_stats: {
+					candidates_found: candidates.length,
+					enrichments_succeeded: enriched.length,
+					validations_passed: 0,
+					total_latency_ms: Date.now() - startTime
+				}
+			};
+		}
+
+		// ========================================
+		// Build Research Summary
+		// ========================================
+		const totalLatency = Date.now() - startTime;
+
+		const summary = buildResearchSummary(candidates.length, enriched.length, validated.length);
+
+		console.log(`[decision-maker] Pipeline complete in ${totalLatency}ms:`, {
+			candidates: candidates.length,
+			enriched: enriched.length,
+			validated: validated.length,
+			names: validated.map((dm) => dm.name)
 		});
 
-		// Parse response - may have markdown code blocks when using grounding
-		let responseText = response.text || '{}';
-
-		// Strip markdown code blocks if present
-		const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-		if (jsonMatch) {
-			responseText = jsonMatch[1].trim();
-		}
-
-		// Try to find JSON object if there's surrounding text
-		const jsonStartIndex = responseText.indexOf('{');
-		const jsonEndIndex = responseText.lastIndexOf('}');
-		if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-			responseText = responseText.slice(jsonStartIndex, jsonEndIndex + 1);
-		}
-
-		// Attempt to parse JSON
-		let data: DecisionMakerResponse;
-		try {
-			data = JSON.parse(responseText) as DecisionMakerResponse;
-		} catch (parseError) {
-			console.error('[decision-maker] JSON Parse Error. Raw text:', responseText);
-			// Try to sanitize common JSON errors (trailing commas, missing commas between objects)
-			try {
-				const sanitized = responseText
-					.replace(/,\s*}/g, '}') // Remove trailing comma before }
-					.replace(/,\s*]/g, ']') // Remove trailing comma before ]
-					.replace(/}\s*{/g, '}, {'); // Insert missing comma between objects
-				data = JSON.parse(sanitized) as DecisionMakerResponse;
-			} catch (retryError) {
-				throw new Error(
-					`JSON parse failed: ${parseError instanceof Error ? parseError.message : String(parseError)}`
-				);
+		return {
+			decision_makers: validated,
+			research_summary: summary,
+			pipeline_stats: {
+				candidates_found: candidates.length,
+				enrichments_succeeded: enriched.length,
+				validations_passed: validated.length,
+				total_latency_ms: totalLatency
 			}
-		}
-
-		// Extract grounding metadata for enhanced sources
-		const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
-
-		if (groundingMetadata) {
-			const groundingSources = extractSourcesFromGrounding(
-				groundingMetadata as unknown as import('../types').GroundingMetadata
-			);
-
-			// Cross-reference decision-makers with grounding sources
-			// If a decision-maker doesn't have a source_url, try to find one
-			data.decision_makers = data.decision_makers.map((dm) => ({
-				...dm,
-				source_url: dm.source_url || findMatchingSource(dm, groundingSources)
-			}));
-
-			// Log search queries for debugging
-			if (groundingMetadata.webSearchQueries && groundingMetadata.webSearchQueries.length > 0) {
-				console.log('[decision-maker] Google Search queries:', groundingMetadata.webSearchQueries);
-			}
-		}
-
-		// Validate minimum quality threshold
-		if (data.decision_makers.length === 0) {
-			throw new Error('No decision-makers found. The agent may not have access to grounding.');
-		}
-
-		// Log results
-		console.log('[decision-maker] Resolved:', {
-			count: data.decision_makers.length,
-			names: data.decision_makers.map((dm) => dm.name),
-			avgConfidence:
-				data.decision_makers.reduce((sum, dm) => sum + dm.confidence, 0) /
-				data.decision_makers.length
-		});
-
-		return data;
+		};
 	} catch (error) {
-		console.error('[decision-maker] Resolution error:', error);
+		const totalLatency = Date.now() - startTime;
+
+		console.error('[decision-maker] Pipeline error:', {
+			error: error instanceof Error ? error.message : String(error),
+			latency: totalLatency
+		});
+
 		throw new Error(
 			`Failed to resolve decision-makers: ${error instanceof Error ? error.message : String(error)}`
 		);
@@ -189,28 +205,47 @@ Return ONLY the JSON object, no additional text before or after.`;
 // ========================================
 
 /**
- * Find a matching source URL for a decision-maker
+ * Build an intelligent research summary
  *
- * Attempts to match organization name to source URLs from grounding.
- * Used when the model doesn't explicitly provide a source_url.
+ * Creates a human-readable summary of the pipeline's research results,
+ * explaining what was found and any notable gaps.
  *
- * @param dm - Decision-maker to find source for
- * @param sources - Available source URLs from grounding
- * @returns Matching URL or undefined
+ * @param candidatesFound - Number of candidates identified in Phase 1
+ * @param enrichmentsSucceeded - Number of candidates with contact info found in Phase 2
+ * @param validationsPassed - Number of candidates with verified emails in Phase 3
+ * @returns Research summary string
  */
-function findMatchingSource(dm: DecisionMaker, sources: string[]): string | undefined {
-	// Try to match organization name to source URLs
-	const orgLower = dm.organization.toLowerCase();
-	const orgSlug = orgLower.replace(/\s+/g, ''); // Remove spaces for URL matching
+function buildResearchSummary(
+	candidatesFound: number,
+	enrichmentsSucceeded: number,
+	validationsPassed: number
+): string {
+	const parts: string[] = [];
 
-	// Look for URLs containing the organization name
-	return sources.find((url) => {
-		const urlLower = url.toLowerCase();
-		return (
-			urlLower.includes(orgSlug) ||
-			urlLower.includes(orgLower) ||
-			// Try individual words from org name
-			orgLower.split(/\s+/).some((word) => word.length > 3 && urlLower.includes(word))
+	// Primary result
+	parts.push(
+		`Found ${validationsPassed} decision-maker${validationsPassed === 1 ? '' : 's'} with verified contact information.`
+	);
+
+	// Notable gaps
+	if (candidatesFound > enrichmentsSucceeded) {
+		const missingEmails = candidatesFound - enrichmentsSucceeded;
+		parts.push(
+			`Could not find contact info for ${missingEmails} candidate${missingEmails === 1 ? '' : 's'}.`
 		);
-	});
+	}
+
+	if (enrichmentsSucceeded > validationsPassed) {
+		const failedValidation = enrichmentsSucceeded - validationsPassed;
+		parts.push(
+			`${failedValidation} email${failedValidation === 1 ? '' : 's'} could not be verified.`
+		);
+	}
+
+	// Success context
+	if (validationsPassed > 0) {
+		parts.push('All returned decision-makers have validated email addresses for direct contact.');
+	}
+
+	return parts.join(' ');
 }
