@@ -147,7 +147,9 @@ Return ONLY the JSON object, no additional text before or after.`;
 
 		// Parse response using shared grounding-json utility
 		// (Handles markdown code blocks, surrounding text, trailing commas, etc.)
-		const extraction = extractJsonFromGroundingResponse<IdentificationResponse>(response.text || '{}');
+		const extraction = extractJsonFromGroundingResponse<IdentificationResponse>(
+			response.text || '{}'
+		);
 
 		if (!isSuccessfulExtraction(extraction)) {
 			console.error('[decision-maker-identification] JSON extraction failed:', extraction.error);

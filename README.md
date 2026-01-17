@@ -35,36 +35,40 @@ npm run dev        # http://localhost:5173
 
 ## Documentation
 
-| Topic | Location |
-|-------|----------|
-| **Getting Started** | [Quick Start](#quick-start) (above) |
-| **Architecture** | [docs/architecture.md](./docs/architecture.md) - System design, Communiqué/voter-protocol separation |
-| **Frontend Patterns** | [docs/frontend.md](./docs/frontend.md) - SvelteKit 5, runes, component composition |
-| **Integration Guide** | [docs/integration.md](./docs/integration.md) - OAuth, CWC API, identity verification, blockchain |
-| **Implementation Status** | [docs/implementation-status.md](./docs/implementation-status.md) - What's done, what remains |
-| **Development Guide** | [CLAUDE.md](./CLAUDE.md) - Authoritative development standards (type safety, testing) |
-| **All Documentation** | [docs/README.md](./docs/README.md) - Complete documentation map |
+| Topic                     | Location                                                                                             |
+| ------------------------- | ---------------------------------------------------------------------------------------------------- |
+| **Getting Started**       | [Quick Start](#quick-start) (above)                                                                  |
+| **Architecture**          | [docs/architecture.md](./docs/architecture.md) - System design, Communiqué/voter-protocol separation |
+| **Frontend Patterns**     | [docs/frontend.md](./docs/frontend.md) - SvelteKit 5, runes, component composition                   |
+| **Integration Guide**     | [docs/integration.md](./docs/integration.md) - OAuth, CWC API, identity verification, blockchain     |
+| **Implementation Status** | [docs/implementation-status.md](./docs/implementation-status.md) - What's done, what remains         |
+| **Development Guide**     | [CLAUDE.md](./CLAUDE.md) - Authoritative development standards (type safety, testing)                |
+| **All Documentation**     | [docs/README.md](./docs/README.md) - Complete documentation map                                      |
 
 ### Key Documentation
 
 **Understanding the System:**
+
 - [docs/architecture.md](./docs/architecture.md) - Communiqué/voter-protocol separation, privacy architecture
 - [docs/architecture/LOCATION-SIGNAL-ACCURACY-LIMITS.md](./docs/architecture/LOCATION-SIGNAL-ACCURACY-LIMITS.md) - Location signal accuracy (IP = state only)
 - [docs/research/power-structures.md](./docs/research/power-structures.md) - ALL power structures we coordinate against
 - [docs/design/voice.md](./docs/design/voice.md) - Pragmatic cypherpunk voice guide
 
 **Building Features:**
+
 - [docs/features/templates.md](./docs/features/templates.md) - Template system (creation, customization, moderation)
 - [docs/features/identity-verification.md](./docs/features/identity-verification.md) - self.xyz + Didit.me flows
 - [docs/features/jurisdiction.md](./docs/features/jurisdiction.md) - Jurisdiction system
 - [docs/features/oauth.md](./docs/features/oauth.md) - OAuth flows (5 providers)
 
 **Development:**
+
 - [docs/development/testing.md](./docs/development/testing.md) - Integration-first test strategy
 - [docs/development/database.md](./docs/development/database.md) - Prisma schema, migrations, seeding
 - [docs/development/deployment.md](./docs/development/deployment.md) - Production deployment workflow
 
 **Deep Technical Specs:**
+
 - [docs/specs/zk-proof-integration.md](./docs/specs/zk-proof-integration.md) - ZK proof integration (5 phases, 45K guide)
 - [docs/specs/portable-identity.md](./docs/specs/portable-identity.md) - IPFS + on-chain pointer architecture
 - [docs/specs/universal-credibility.md](./docs/specs/universal-credibility.md) - Credential verification system
@@ -74,26 +78,31 @@ npm run dev        # http://localhost:5173
 ## Tech Stack
 
 **Frontend:**
+
 - SvelteKit 5, TypeScript (strict), Tailwind CSS
 - Vitest (integration-first testing), Playwright (e2e)
 
 **Backend:**
+
 - Neon Postgres via Prisma
 - @oslojs/crypto (cryptographic sessions)
 - CWC API (congressional delivery)
 - Census Bureau Geocoding API (district lookup)
 
 **Identity & Privacy:**
+
 - self.xyz + Didit.me (FREE identity verification)
 - Browser-native ZKPs (Halo2, 600ms-10s proving)
 - XChaCha20-Poly1305 (end-to-end encryption)
 
 **Blockchain (via voter-protocol):**
+
 - Scroll zkEVM (settlement layer)
 - Halo2 recursive proofs (zero-knowledge)
 - ERC-8004 reputation tracking
 
 **Deployment:**
+
 - Fly.io (production + staging)
 - GitHub Actions (CI/CD)
 
@@ -104,6 +113,7 @@ npm run dev        # http://localhost:5173
 Communiqué is the **frontend application** for VOTER Protocol's cryptographic infrastructure. Users interact with Communiqué. The blockchain settlement, zero-knowledge proofs, and economic mechanisms live in [voter-protocol](https://github.com/communisaas/voter-protocol).
 
 **What Communiqué handles:**
+
 - Template browsing, creation, customization
 - OAuth authentication (5 providers)
 - Address validation → congressional district lookup
@@ -113,6 +123,7 @@ Communiqué is the **frontend application** for VOTER Protocol's cryptographic i
 - Encrypted message delivery
 
 **What voter-protocol handles:**
+
 - Smart contracts on Scroll zkEVM
 - Halo2 ZK proof verification on-chain
 - ERC-8004 on-chain reputation
@@ -178,6 +189,7 @@ npm run db:seed          # Seed sample data
 ### Code Quality Standards
 
 **ZERO TOLERANCE POLICY:**
+
 - No `any` types
 - No `@ts-ignore` / `@ts-nocheck` / `@ts-expect-error`
 - No type suppression

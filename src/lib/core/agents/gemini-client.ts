@@ -12,7 +12,12 @@
 
 import { GoogleGenAI } from '@google/genai';
 import type { GenerateContentResponse, GenerateContentConfig } from '@google/genai';
-import type { GenerateOptions, InteractionResponse, StreamChunk, StreamResultWithThoughts } from './types';
+import type {
+	GenerateOptions,
+	InteractionResponse,
+	StreamChunk,
+	StreamResultWithThoughts
+} from './types';
 import { extractJsonFromGroundingResponse } from './utils/grounding-json';
 import { recoverTruncatedJson } from './utils/truncation-recovery';
 

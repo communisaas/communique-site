@@ -127,7 +127,9 @@ export function mergeContinuation<T extends Record<string, unknown>>(
 		...Object.fromEntries(
 			Object.entries(continuation).filter(
 				([key, value]) =>
-					value !== undefined && value !== null && (original[key] === undefined || original[key] === null)
+					value !== undefined &&
+					value !== null &&
+					(original[key] === undefined || original[key] === null)
 			)
 		)
 	} as Partial<T>;
@@ -139,10 +141,7 @@ export function mergeContinuation<T extends Record<string, unknown>>(
  * These are the fields that MUST be present for a usable response.
  * If these are all present, we can proceed even with partial data.
  */
-export const SUBJECT_LINE_CRITICAL_FIELDS = [
-	'needs_clarification',
-	'inferred_context'
-] as const;
+export const SUBJECT_LINE_CRITICAL_FIELDS = ['needs_clarification', 'inferred_context'] as const;
 
 /**
  * Subject-line generation-mode critical fields

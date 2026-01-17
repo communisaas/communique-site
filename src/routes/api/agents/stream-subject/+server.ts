@@ -50,14 +50,11 @@ export const POST: RequestHandler = async ({ request }) => {
 			try {
 				// Use generateStreamWithThoughts to get actual thinking summaries
 				// This doesn't use responseMimeType, allowing thoughts to flow
-				const generator = generateStreamWithThoughts<SubjectLineResponseWithClarification>(
-					prompt,
-					{
-						systemInstruction: SUBJECT_LINE_PROMPT,
-						temperature: 0.4,
-						thinkingLevel: 'medium' // Medium gives richer thought summaries
-					}
-				);
+				const generator = generateStreamWithThoughts<SubjectLineResponseWithClarification>(prompt, {
+					systemInstruction: SUBJECT_LINE_PROMPT,
+					temperature: 0.4,
+					thinkingLevel: 'medium' // Medium gives richer thought summaries
+				});
 
 				let iterResult = await generator.next();
 

@@ -86,4 +86,8 @@ export { MESSAGE_WRITER_PROMPT } from './prompts/message-writer';
 export { extractJsonFromGroundingResponse, isSuccessfulExtraction } from './utils/grounding-json';
 
 // Truncation recovery for structured output
-export { recoverTruncatedJson, buildContinuationPrompt, mergeContinuation } from './utils/truncation-recovery';
+export {
+	recoverTruncatedJson,
+	buildContinuationPrompt,
+	mergeContinuation
+} from './utils/truncation-recovery';

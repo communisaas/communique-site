@@ -103,9 +103,7 @@
 				{currentThought}
 			</p>
 		{:else if isActive}
-			<p class="thought thought-placeholder" style="opacity: 0.4">
-				Understanding your concern...
-			</p>
+			<p class="thought thought-placeholder" style="opacity: 0.4">Understanding your concern...</p>
 		{/if}
 	</div>
 {/if}

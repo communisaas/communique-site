@@ -57,7 +57,12 @@ export function extractJsonFromGroundingResponse<T>(responseText: string): Extra
 		if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
 			cleaned = cleaned.slice(arrayStart, arrayEnd + 1);
 		} else {
-			return { data: null, success: false, error: 'No JSON object or array found', cleanedText: cleaned };
+			return {
+				data: null,
+				success: false,
+				error: 'No JSON object or array found',
+				cleanedText: cleaned
+			};
 		}
 	} else {
 		cleaned = cleaned.slice(jsonStartIndex, jsonEndIndex + 1);
@@ -92,6 +97,8 @@ export function extractJsonFromGroundingResponse<T>(responseText: string): Extra
 /**
  * Type guard to check if extraction succeeded
  */
-export function isSuccessfulExtraction<T>(result: ExtractedJson<T>): result is ExtractedJson<T> & { data: T; success: true } {
+export function isSuccessfulExtraction<T>(
+	result: ExtractedJson<T>
+): result is ExtractedJson<T> & { data: T; success: true } {
 	return result.success && result.data !== null;
 }
