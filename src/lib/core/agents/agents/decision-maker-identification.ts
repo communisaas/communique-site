@@ -15,12 +15,16 @@
 
 import { generate } from '../gemini-client';
 import { extractSourcesFromGrounding } from '../utils/grounding';
+import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
 import { DECISION_MAKER_IDENTIFICATION_PROMPT } from '../prompts/decision-maker-identification';
-import type { GroundingMetadata } from '../types';
+import type { GroundingMetadata, DecisionMakerCandidate, ContactChannel } from '../types';
 
 // ========================================
-// Type Definitions
+// Type Definitions (Import from types.ts for single source of truth)
 // ========================================
+
+// Re-export for backwards compatibility with existing consumers
+export type { DecisionMakerCandidate, ContactChannel };
 
 /**
  * Options for decision-maker identification
@@ -36,34 +40,6 @@ export interface IdentificationOptions {
 	voiceSample?: string;
 	/** URL slug for the template (optional) */
 	urlSlug?: string;
-}
-
-/**
- * Contact channel hint for Phase 2 enrichment
- */
-export type ContactChannel = 'email' | 'form' | 'phone' | 'congress' | 'other';
-
-/**
- * Decision-maker candidate from Phase 1 identification
- *
- * These are CANDIDATES - they may or may not have discoverable contact info.
- * Phase 2 (enrichment) will attempt to find emails for these candidates.
- */
-export interface DecisionMakerCandidate {
-	/** Full name (no titles/honorifics) */
-	name: string;
-	/** Current job title */
-	title: string;
-	/** Organization name */
-	organization: string;
-	/** Why they have power (2-3 sentences) */
-	reasoning: string;
-	/** URL proving identity/role */
-	sourceUrl: string;
-	/** 0-1 confidence based on source quality */
-	confidence: number;
-	/** Hint for enrichment phase - what contact channel to try */
-	contactChannel?: ContactChannel;
 }
 
 /**
@@ -169,41 +145,17 @@ Return ONLY the JSON object, no additional text before or after.`;
 			maxOutputTokens: 4096
 		});
 
-		// Parse response - may have markdown code blocks when using grounding
-		let responseText = response.text || '{}';
+		// Parse response using shared grounding-json utility
+		// (Handles markdown code blocks, surrounding text, trailing commas, etc.)
+		const extraction = extractJsonFromGroundingResponse<IdentificationResponse>(response.text || '{}');
 
-		// Strip markdown code blocks if present
-		const jsonMatch = responseText.match(/```(?:json)?\s*([\s\S]*?)```/);
-		if (jsonMatch) {
-			responseText = jsonMatch[1].trim();
+		if (!isSuccessfulExtraction(extraction)) {
+			console.error('[decision-maker-identification] JSON extraction failed:', extraction.error);
+			console.error('[decision-maker-identification] Cleaned text:', extraction.cleanedText);
+			throw new Error(`JSON parse failed: ${extraction.error}`);
 		}
 
-		// Try to find JSON object if there's surrounding text
-		const jsonStartIndex = responseText.indexOf('{');
-		const jsonEndIndex = responseText.lastIndexOf('}');
-		if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-			responseText = responseText.slice(jsonStartIndex, jsonEndIndex + 1);
-		}
-
-		// Attempt to parse JSON
-		let data: IdentificationResponse;
-		try {
-			data = JSON.parse(responseText) as IdentificationResponse;
-		} catch (parseError) {
-			console.error('[decision-maker-identification] JSON Parse Error. Raw text:', responseText);
-			// Try to sanitize common JSON errors (trailing commas, missing commas)
-			try {
-				const sanitized = responseText
-					.replace(/,\s*}/g, '}') // Remove trailing comma before }
-					.replace(/,\s*]/g, ']') // Remove trailing comma before ]
-					.replace(/}\s*{/g, '}, {'); // Insert missing comma between objects
-				data = JSON.parse(sanitized) as IdentificationResponse;
-			} catch (retryError) {
-				throw new Error(
-					`JSON parse failed: ${parseError instanceof Error ? parseError.message : String(parseError)}`
-				);
-			}
-		}
+		const data = extraction.data;
 
 		// Extract grounding metadata for enhanced sources
 		const groundingMetadata = response.candidates?.[0]?.groundingMetadata;

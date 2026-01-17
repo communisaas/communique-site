@@ -124,6 +124,7 @@
 		"@web3auth/openlogin-adapter": "^8.12.4",
 		"arctic": "^3.7.0",
 		"axios": "^1.7.2",
+		"best-effort-json-parser": "^1.2.1",
 		"buffer": "^6.0.3",
 		"codemirror": "^6.0.2",
 		"d3-delaunay": "^6.0.4",

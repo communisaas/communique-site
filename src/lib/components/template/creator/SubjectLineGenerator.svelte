@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Sparkles, ArrowRight, ChevronLeft, ChevronRight } from '@lucide/svelte';
-	import { api } from '$lib/core/api/client';
+	import ThinkingAtmosphere from '$lib/components/ui/ThinkingAtmosphere.svelte';
 
 	let {
 		description = $bindable(''),
@@ -20,6 +20,7 @@
 
 	// State
 	let isGenerating = $state(false);
+	let thoughts = $state<string[]>([]);
 	let suggestions = $state<
 		Array<{
 			subject_line: string;
@@ -60,25 +61,71 @@
 
 		isGenerating = true;
 		error = null;
+		thoughts = []; // Reset thoughts for new generation
 
 		try {
-			const response = await api.post('/agents/generate-subject', {
-				message: editedDescription,
-				interactionId: currentSuggestion?.interactionId // Continue conversation if refining
+			// Use streaming endpoint for real-time thoughts
+			const response = await fetch('/api/agents/stream-subject', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ message: editedDescription })
 			});
 
-			console.log('[SubjectLineGenerator] Received response:', response);
-
-			// Extract data from API client wrapper
-			if (!response.success || !response.data) {
-				throw new Error('Invalid response from API');
+			if (!response.ok) {
+				throw new Error('Failed to start generation');
 			}
 
-			// Add new suggestion to the list
-			suggestions = [...suggestions, response.data];
-			currentIndex = suggestions.length - 1;
-			attemptCount++;
-			error = null;
+			const reader = response.body?.getReader();
+			if (!reader) {
+				throw new Error('No response stream');
+			}
+
+			const decoder = new TextDecoder();
+			let buffer = '';
+
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
+
+				buffer += decoder.decode(value, { stream: true });
+
+				// Parse SSE events from buffer
+				const lines = buffer.split('\n');
+				buffer = lines.pop() || ''; // Keep incomplete line in buffer
+
+				for (let i = 0; i < lines.length; i++) {
+					const line = lines[i];
+
+					if (line.startsWith('event: ')) {
+						const eventType = line.slice(7);
+						const dataLine = lines[i + 1];
+
+						if (dataLine?.startsWith('data: ')) {
+							const data = JSON.parse(dataLine.slice(6));
+
+							switch (eventType) {
+								case 'thought':
+									// Add thought for atmospheric display
+									thoughts = [...thoughts, data.content];
+									break;
+
+								case 'complete':
+								case 'clarification':
+									// Add completed suggestion
+									suggestions = [...suggestions, data.data];
+									currentIndex = suggestions.length - 1;
+									attemptCount++;
+									break;
+
+								case 'error':
+									throw new Error(data.message);
+							}
+
+							i++; // Skip data line we just processed
+						}
+					}
+				}
+			}
 		} catch (err) {
 			console.error('[SubjectLineGenerator] Error:', err);
 			error = 'Something broke. Try again.';
@@ -134,20 +181,25 @@
 				<div
 					class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
 				></div>
-				Loading...
+				Thinking...
 			{:else}
 				<Sparkles class="h-4 w-4" />
 				{suggestions.length === 0 ? 'Hit me' : 'Try again'}
 			{/if}
 		</button>
 
-		{#if suggestions.length > 0}
+		{#if suggestions.length > 0 && !isGenerating}
 			<div class="text-xs text-slate-600 md:text-sm">
 				{attemptsRemaining}
 				{attemptsRemaining === 1 ? 'try' : 'tries'} left
 			</div>
 		{/if}
 	</div>
+
+	<!-- Thinking Atmosphere - shows agent's reasoning process -->
+	{#if isGenerating || thoughts.length > 0}
+		<ThinkingAtmosphere {thoughts} isActive={isGenerating} />
+	{/if}
 
 	<!-- Error Display -->
 	{#if error}

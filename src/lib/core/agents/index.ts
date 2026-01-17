@@ -5,7 +5,15 @@
  */
 
 // Client functions
-export { getGeminiClient, generate, interact, GEMINI_CONFIG } from './gemini-client';
+export {
+	getGeminiClient,
+	generate,
+	interact,
+	GEMINI_CONFIG,
+	generateStream,
+	generateStreamWithThoughts,
+	generateWithThoughts
+} from './gemini-client';
 
 // Type definitions
 export type {
@@ -18,6 +26,8 @@ export type {
 	ConversationState,
 	GenerateOptions,
 	InteractionResponse,
+	StreamChunk,
+	StreamResultWithThoughts,
 	// Clarification types (Phase 1)
 	GeographicScope,
 	TargetType,
@@ -69,5 +79,11 @@ export {
 
 // Prompts
 export { SUBJECT_LINE_PROMPT } from './prompts/subject-line';
-export { DECISION_MAKER_PROMPT } from './prompts/decision-maker';
 export { MESSAGE_WRITER_PROMPT } from './prompts/message-writer';
+// Note: DECISION_MAKER_PROMPT exists but is unused - phase-specific prompts are used instead
+
+// Utilities for grounding mode (when JSON schema is incompatible)
+export { extractJsonFromGroundingResponse, isSuccessfulExtraction } from './utils/grounding-json';
+
+// Truncation recovery for structured output
+export { recoverTruncatedJson, buildContinuationPrompt, mergeContinuation } from './utils/truncation-recovery';

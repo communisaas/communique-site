@@ -10,36 +10,15 @@
 
 import { generate } from '../gemini-client';
 import { DECISION_MAKER_ENRICHMENT_PROMPT } from '../prompts/decision-maker-enrichment';
+import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
+import type { DecisionMakerCandidate, EnrichedDecisionMaker } from '../types';
 
 // ========================================
-// Type Definitions
+// Type Definitions (Import from types.ts for single source of truth)
 // ========================================
 
-/**
- * Decision-maker candidate from Phase 1 identification
- * This is the input to enrichment - comes from decision-maker-identification.ts
- */
-export interface DecisionMakerCandidate {
-	name: string;
-	title: string;
-	organization: string;
-	reasoning: string;
-	sourceUrl: string;
-	confidence: number;
-	contactChannel?: 'email' | 'form' | 'phone' | 'congress' | 'other';
-}
-
-/**
- * Enriched decision-maker with contact information
- * This is the output of Phase 2 - includes email discovery results
- */
-export interface EnrichedDecisionMaker extends DecisionMakerCandidate {
-	email?: string;
-	emailSource?: string;
-	emailConfidence?: number;
-	enrichmentStatus: 'success' | 'not_found' | 'timeout' | 'error';
-	enrichmentAttempts: number;
-}
+// Re-export for backwards compatibility
+export type { DecisionMakerCandidate, EnrichedDecisionMaker };
 
 /**
  * Raw API response from Gemini email enrichment
@@ -267,41 +246,22 @@ function extractDomain(url: string): string {
  * @returns Parsed email enrichment data
  */
 function parseEnrichmentResponse(responseText: string): EmailEnrichmentResponse {
-	try {
-		// Strip markdown code blocks if present
-		let cleaned = responseText.trim();
-		const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
-		if (jsonMatch) {
-			cleaned = jsonMatch[1].trim();
-		}
+	// Use shared grounding-json utility (handles markdown, surrounding text, etc.)
+	const extraction = extractJsonFromGroundingResponse<EmailEnrichmentResponse>(responseText);
 
-		// Extract JSON object if surrounded by text
-		const jsonStartIndex = cleaned.indexOf('{');
-		const jsonEndIndex = cleaned.lastIndexOf('}');
-		if (jsonStartIndex !== -1 && jsonEndIndex !== -1 && jsonEndIndex > jsonStartIndex) {
-			cleaned = cleaned.slice(jsonStartIndex, jsonEndIndex + 1);
-		}
-
-		// Parse JSON
-		const data = JSON.parse(cleaned) as EmailEnrichmentResponse;
-
-		// Validate structure
-		return {
-			email: data.email || null,
-			source_url: data.source_url || null,
-			confidence: typeof data.confidence === 'number' ? data.confidence : 0
-		};
-	} catch (error) {
-		console.error('[decision-maker-enrichment] JSON parse error:', error);
+	if (!isSuccessfulExtraction(extraction)) {
+		console.error('[decision-maker-enrichment] JSON extraction failed:', extraction.error);
 		console.error('[decision-maker-enrichment] Raw text:', responseText);
-
-		// Return empty result on parse failure
-		return {
-			email: null,
-			source_url: null,
-			confidence: 0
-		};
+		return { email: null, source_url: null, confidence: 0 };
 	}
+
+	// Validate and normalize structure
+	const data = extraction.data;
+	return {
+		email: data.email || null,
+		source_url: data.source_url || null,
+		confidence: typeof data.confidence === 'number' ? data.confidence : 0
+	};
 }
 
 /**

@@ -108,6 +108,12 @@ export interface GenerateOptions {
 	responseSchema?: object;
 	systemInstruction?: string;
 	previousInteractionId?: string;
+	/**
+	 * When true, streams thinking summaries from Gemini.
+	 * IMPORTANT: This disables responseMimeType (incompatible with thoughts).
+	 * JSON must be requested in the system prompt and parsed manually.
+	 */
+	streamThoughts?: boolean;
 }
 
 /**
@@ -130,6 +136,23 @@ export interface InteractionResponse {
 export interface StreamChunk {
 	type: 'thought' | 'text' | 'complete' | 'error';
 	content: string;
+}
+
+/**
+ * Enhanced streaming result with thoughts and parsed data
+ * Used when streamThoughts=true to get both thinking summaries and structured output
+ */
+export interface StreamResultWithThoughts<T = unknown> {
+	/** Thinking summaries streamed during generation */
+	thoughts: string[];
+	/** Raw text output (before JSON extraction) */
+	rawText: string;
+	/** Parsed structured data (null if parsing failed) */
+	data: T | null;
+	/** Whether JSON extraction succeeded */
+	parseSuccess: boolean;
+	/** Parse error message if extraction failed */
+	parseError?: string;
 }
 
 /**

@@ -12,7 +12,9 @@
 
 import { GoogleGenAI } from '@google/genai';
 import type { GenerateContentResponse, GenerateContentConfig } from '@google/genai';
-import type { GenerateOptions, InteractionResponse, StreamChunk } from './types';
+import type { GenerateOptions, InteractionResponse, StreamChunk, StreamResultWithThoughts } from './types';
+import { extractJsonFromGroundingResponse } from './utils/grounding-json';
+import { recoverTruncatedJson } from './utils/truncation-recovery';
 
 // ============================================================================
 // Client Singleton
@@ -129,11 +131,64 @@ export async function generate(
 
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		try {
-			return await ai.models.generateContent({
+			const response = await ai.models.generateContent({
 				model: GEMINI_CONFIG.model,
 				contents: prompt,
 				config
 			});
+
+			// Check for truncation (MAX_TOKENS finish reason)
+			const finishReason = response.candidates?.[0]?.finishReason;
+			const wasTruncated = finishReason === 'MAX_TOKENS';
+
+			if (wasTruncated) {
+				console.warn(
+					'[agents/gemini-client] Response truncated (MAX_TOKENS). Output length:',
+					response.text?.length
+				);
+			}
+
+			// Validate JSON response if schema was requested
+			if (options.responseSchema && response.text) {
+				// Attempt graceful recovery instead of hard failure
+				const recovery = recoverTruncatedJson<Record<string, unknown>>(response.text, [
+					'needs_clarification',
+					'inferred_context'
+				]);
+
+				if (!recovery.wasTruncated) {
+					// Clean parse succeeded
+					return response;
+				}
+
+				// Truncation occurred - check if we have enough to proceed
+				if (recovery.isUsable) {
+					console.log(
+						'[agents/gemini-client] Truncated but usable - recovered critical fields:',
+						Object.keys(recovery.data).filter((k) => recovery.data[k] !== undefined)
+					);
+					// Patch the response text with recovered JSON
+					// This allows downstream code to parse successfully
+					const patchedResponse = {
+						...response,
+						text: JSON.stringify(recovery.data)
+					} as GenerateContentResponse;
+					return patchedResponse;
+				}
+
+				// Recovery failed - log diagnostics and throw for retry
+				console.error(
+					'[agents/gemini-client] Truncation recovery failed. Missing:',
+					recovery.missingFields,
+					'Last chars:',
+					recovery.lastChars
+				);
+				throw new Error(
+					`[agents/gemini-client] Response truncated, missing critical fields: ${recovery.missingFields.join(', ')}`
+				);
+			}
+
+			return response;
 		} catch (error) {
 			const isLastAttempt = attempt === maxRetries - 1;
 
@@ -278,6 +333,191 @@ export async function* generateStream(
 			content: error instanceof Error ? error.message : 'Stream generation failed'
 		};
 	}
+}
+
+// ============================================================================
+// Streaming with Thoughts + JSON Parsing
+// ============================================================================
+
+/**
+ * JSON instruction suffix appended to system prompts when streamThoughts=true
+ * This ensures the model outputs valid JSON even without responseMimeType
+ */
+const JSON_OUTPUT_INSTRUCTION = `
+
+CRITICAL: Your response MUST be valid JSON only. No markdown, no code blocks, no explanation text.
+Output the JSON object directly, starting with { and ending with }.`;
+
+/**
+ * Stream content with thinking summaries and parse JSON at the end
+ *
+ * This function enables perceptual coupling between the user and agent activity
+ * by streaming thought summaries in real-time while still getting structured output.
+ *
+ * Key insight: responseMimeType='application/json' suppresses thoughts with complex schemas.
+ * Solution: Don't use responseMimeType, append JSON instructions to system prompt,
+ * then parse manually using extractJsonFromGroundingResponse.
+ *
+ * @param prompt - User prompt to generate from
+ * @param options - Generation configuration (streamThoughts should be true)
+ * @yields StreamChunk for thoughts and text as they arrive
+ * @returns Final StreamResultWithThoughts with parsed JSON data
+ *
+ * @example
+ * ```typescript
+ * const generator = generateStreamWithThoughts<SubjectLineResponse>('Analyze...', {
+ *   systemInstruction: SUBJECT_LINE_PROMPT,
+ *   streamThoughts: true
+ * });
+ *
+ * const thoughts: string[] = [];
+ * let result: StreamResultWithThoughts<SubjectLineResponse>;
+ *
+ * for await (const chunk of generator) {
+ *   if (chunk.type === 'thought') {
+ *     console.log('Thinking:', chunk.content);
+ *     thoughts.push(chunk.content);
+ *   }
+ * }
+ * result = generator.result; // Access final parsed result
+ * ```
+ */
+export async function* generateStreamWithThoughts<T = unknown>(
+	prompt: string,
+	options: GenerateOptions = {}
+): AsyncGenerator<StreamChunk, StreamResultWithThoughts<T>> {
+	const ai = getGeminiClient();
+
+	// Append JSON instruction to system prompt
+	const systemInstruction = options.systemInstruction
+		? options.systemInstruction + JSON_OUTPUT_INSTRUCTION
+		: JSON_OUTPUT_INSTRUCTION;
+
+	const config: GenerateContentConfig = {
+		temperature: options.temperature ?? GEMINI_CONFIG.defaults.temperature,
+		maxOutputTokens: options.maxOutputTokens ?? GEMINI_CONFIG.defaults.maxOutputTokens,
+		systemInstruction,
+		// Enable thinking with summaries
+		thinkingConfig: {
+			includeThoughts: true,
+			thinkingBudget:
+				options.thinkingLevel === 'high' ? 8192 : options.thinkingLevel === 'low' ? 1024 : 4096
+		}
+		// NOTE: Do NOT use responseMimeType here - it suppresses thoughts
+	};
+
+	const thoughts: string[] = [];
+	let fullText = '';
+
+	try {
+		const response = await ai.models.generateContentStream({
+			model: GEMINI_CONFIG.model,
+			contents: prompt,
+			config
+		});
+
+		for await (const chunk of response) {
+			// Check for parts with thought flag
+			if (chunk.candidates?.[0]?.content?.parts) {
+				for (const part of chunk.candidates[0].content.parts) {
+					if (!part.text) continue;
+
+					// Check if this is a thought part
+					if ('thought' in part && part.thought) {
+						thoughts.push(part.text);
+						yield { type: 'thought', content: part.text };
+					} else {
+						fullText += part.text;
+						yield { type: 'text', content: part.text };
+					}
+				}
+			} else if (chunk.text) {
+				// Fallback for simpler response structure
+				fullText += chunk.text;
+				yield { type: 'text', content: chunk.text };
+			}
+		}
+
+		yield { type: 'complete', content: fullText };
+
+		// Parse JSON from the collected text
+		const extraction = extractJsonFromGroundingResponse<T>(fullText);
+
+		return {
+			thoughts,
+			rawText: fullText,
+			data: extraction.data,
+			parseSuccess: extraction.success,
+			parseError: extraction.error
+		};
+	} catch (error) {
+		console.error('[agents/gemini-client] Stream error:', error);
+		yield {
+			type: 'error',
+			content: error instanceof Error ? error.message : 'Stream generation failed'
+		};
+
+		return {
+			thoughts,
+			rawText: fullText,
+			data: null,
+			parseSuccess: false,
+			parseError: error instanceof Error ? error.message : 'Stream generation failed'
+		};
+	}
+}
+
+/**
+ * Convenience function to stream thoughts and get final parsed result
+ *
+ * Collects all stream output and returns the final result.
+ * Use generateStreamWithThoughts directly if you need to process chunks in real-time.
+ *
+ * @param prompt - User prompt
+ * @param options - Generation options
+ * @param onThought - Callback for each thought (optional)
+ * @returns Final result with thoughts and parsed data
+ */
+export async function generateWithThoughts<T = unknown>(
+	prompt: string,
+	options: GenerateOptions = {},
+	onThought?: (thought: string) => void
+): Promise<StreamResultWithThoughts<T>> {
+	const generator = generateStreamWithThoughts<T>(prompt, options);
+	const thoughts: string[] = [];
+	let rawText = '';
+
+	// Iterate through chunks, capturing the return value
+	let iterResult = await generator.next();
+
+	while (!iterResult.done) {
+		const chunk = iterResult.value;
+
+		if (chunk.type === 'thought') {
+			thoughts.push(chunk.content);
+			if (onThought) {
+				onThought(chunk.content);
+			}
+		} else if (chunk.type === 'text') {
+			rawText += chunk.content;
+		}
+
+		iterResult = await generator.next();
+	}
+
+	// When done=true, value contains the return value of the generator
+	if (iterResult.done && iterResult.value) {
+		return iterResult.value as StreamResultWithThoughts<T>;
+	}
+
+	// Fallback if something went wrong
+	return {
+		thoughts,
+		rawText,
+		data: null,
+		parseSuccess: false,
+		parseError: 'Generator did not return a result'
+	};
 }
 
 // ============================================================================

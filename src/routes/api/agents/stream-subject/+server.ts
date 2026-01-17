@@ -4,18 +4,20 @@
  * POST /api/agents/stream-subject
  *
  * Returns Server-Sent Events (SSE) stream with:
- * - thought: Model's reasoning process (streamed in real-time)
- * - partial: Partial JSON output chunks
+ * - thought: Model's reasoning summaries (streamed in real-time)
  * - complete: Final structured output
  * - error: Error message if generation fails
  *
  * Perceptual Engineering: Instead of a spinner, users see the agent
  * "thinking out loud" - building accurate mental model of system behavior.
+ *
+ * Key insight: responseMimeType='application/json' suppresses thoughts.
+ * Solution: Use generateStreamWithThoughts which doesn't use responseMimeType
+ * and parses JSON manually, allowing thoughts to flow through.
  */
 
 import type { RequestHandler } from './$types';
-import { generateStream } from '$lib/core/agents/gemini-client';
-import { SUBJECT_LINE_SCHEMA } from '$lib/core/agents/schemas';
+import { generateStreamWithThoughts } from '$lib/core/agents/gemini-client';
 import { SUBJECT_LINE_PROMPT } from '$lib/core/agents/prompts/subject-line';
 import type { SubjectLineResponseWithClarification } from '$lib/core/agents/types';
 
@@ -46,53 +48,70 @@ export const POST: RequestHandler = async ({ request }) => {
 			};
 
 			try {
-				let jsonAccumulator = '';
+				// Use generateStreamWithThoughts to get actual thinking summaries
+				// This doesn't use responseMimeType, allowing thoughts to flow
+				const generator = generateStreamWithThoughts<SubjectLineResponseWithClarification>(
+					prompt,
+					{
+						systemInstruction: SUBJECT_LINE_PROMPT,
+						temperature: 0.4,
+						thinkingLevel: 'medium' // Medium gives richer thought summaries
+					}
+				);
 
-				for await (const chunk of generateStream(prompt, {
-					systemInstruction: SUBJECT_LINE_PROMPT,
-					responseSchema: SUBJECT_LINE_SCHEMA,
-					temperature: 0.4,
-					thinkingLevel: 'low'
-				})) {
+				let iterResult = await generator.next();
+
+				while (!iterResult.done) {
+					const chunk = iterResult.value;
+
 					switch (chunk.type) {
 						case 'thought':
 							// Stream thoughts to UI for real-time visibility
-							sendEvent('thought', { content: chunk.content });
+							// Clean up markdown formatting for UI display
+							sendEvent('thought', {
+								content: cleanThoughtForDisplay(chunk.content)
+							});
 							break;
 
 						case 'text':
-							// Accumulate JSON output
-							jsonAccumulator += chunk.content;
-							// Don't send partial JSON - wait for complete
+							// Don't stream partial JSON - wait for complete
 							break;
 
 						case 'complete':
-							// Parse and send final result
-							try {
-								const data = JSON.parse(jsonAccumulator) as SubjectLineResponseWithClarification;
-
-								// Validate: if needs_clarification but no questions, override
-								if (
-									data.needs_clarification &&
-									(!data.clarification_questions || data.clarification_questions.length === 0)
-								) {
-									data.needs_clarification = false;
-								}
-
-								if (data.needs_clarification) {
-									sendEvent('clarification', { data });
-								} else {
-									sendEvent('complete', { data });
-								}
-							} catch (parseError) {
-								console.error('[stream-subject] JSON parse error:', parseError);
-								sendEvent('error', { message: 'Failed to parse response' });
-							}
+							// Final parsing happens in generator return value
 							break;
 
 						case 'error':
 							sendEvent('error', { message: chunk.content });
 							break;
+					}
+
+					iterResult = await generator.next();
+				}
+
+				// Get the final parsed result from the generator
+				if (iterResult.done && iterResult.value) {
+					const result = iterResult.value;
+
+					if (result.parseSuccess && result.data) {
+						const data = result.data;
+
+						// Validate: if needs_clarification but no questions, override
+						if (
+							data.needs_clarification &&
+							(!data.clarification_questions || data.clarification_questions.length === 0)
+						) {
+							data.needs_clarification = false;
+						}
+
+						if (data.needs_clarification) {
+							sendEvent('clarification', { data });
+						} else {
+							sendEvent('complete', { data });
+						}
+					} else {
+						console.error('[stream-subject] JSON parse error:', result.parseError);
+						sendEvent('error', { message: 'Failed to parse response' });
 					}
 				}
 			} catch (error) {
@@ -114,3 +133,32 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 	});
 };
+
+/**
+ * Clean thought content for UI display
+ *
+ * Gemini's thought summaries often include markdown headings.
+ * Extract the core insight for cleaner display.
+ */
+function cleanThoughtForDisplay(thought: string): string {
+	// Remove markdown bold headings like "**Analyzing the Issue**"
+	let cleaned = thought.replace(/^\*\*([^*]+)\*\*\s*[-–—]?\s*/i, '');
+
+	// Remove leading newlines
+	cleaned = cleaned.replace(/^\n+/, '');
+
+	// Trim and ensure reasonable length for UI
+	cleaned = cleaned.trim();
+
+	// Truncate very long thoughts for UI readability
+	if (cleaned.length > 200) {
+		const lastPeriod = cleaned.lastIndexOf('.', 200);
+		if (lastPeriod > 100) {
+			cleaned = cleaned.slice(0, lastPeriod + 1);
+		} else {
+			cleaned = cleaned.slice(0, 200) + '...';
+		}
+	}
+
+	return cleaned;
+}
