@@ -7,12 +7,19 @@
  * using Gemini 3 Flash with multi-turn refinement and clarification support.
  *
  * Phase 1: Extended to handle clarification questions
+ *
+ * Rate Limiting: 5/hour for guests, 15/hour for authenticated, 30/hour for verified.
  */
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateSubjectLine } from '$lib/core/agents/agents/subject-line';
 import type { ClarificationAnswers, ConversationContext } from '$lib/core/agents/types';
+import {
+	enforceLLMRateLimit,
+	getUserContext,
+	logLLMOperation
+} from '$lib/server/llm-cost-protection';
 
 interface RequestBody {
 	message: string;
@@ -25,13 +32,18 @@ interface RequestBody {
 	clarificationAnswers?: ClarificationAnswers;
 }
 
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async (event) => {
+	// Rate limit check - throws 429 if exceeded
+	await enforceLLMRateLimit(event, 'subject-line');
+	const userContext = getUserContext(event);
+	const startTime = Date.now();
+
 	// Auth is optional for subject line generation (template creation)
 	// Authenticated users get tracked, guests can still use the feature
-	const session = locals.session;
+	const session = event.locals.session;
 	const userId = session?.userId || 'guest';
 
-	const body = (await request.json()) as RequestBody;
+	const body = (await event.request.json()) as RequestBody;
 
 	if (!body.message?.trim()) {
 		throw error(400, 'Message is required');
@@ -60,6 +72,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			needsClarification: result.data.needs_clarification,
 			questionCount: result.data.clarification_questions?.length ?? 0,
 			hasOutput: !!result.data.subject_line
+		});
+
+		// Log operation for cost tracking
+		logLLMOperation('subject-line', userContext, {
+			callCount: 1,
+			durationMs: Date.now() - startTime,
+			success: true
 		});
 
 		return json({

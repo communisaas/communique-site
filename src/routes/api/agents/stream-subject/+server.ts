@@ -14,19 +14,32 @@
  * Key insight: responseMimeType='application/json' suppresses thoughts.
  * Solution: Use generateStreamWithThoughts which doesn't use responseMimeType
  * and parses JSON manually, allowing thoughts to flow through.
+ *
+ * Rate Limiting: 5/hour for guests, 15/hour for authenticated, 30/hour for verified.
  */
 
 import type { RequestHandler } from './$types';
 import { generateStreamWithThoughts } from '$lib/core/agents/gemini-client';
 import { SUBJECT_LINE_PROMPT } from '$lib/core/agents/prompts/subject-line';
 import type { SubjectLineResponseWithClarification } from '$lib/core/agents/types';
+import {
+	enforceLLMRateLimit,
+	addRateLimitHeaders,
+	getUserContext,
+	logLLMOperation
+} from '$lib/server/llm-cost-protection';
 
 interface RequestBody {
 	message: string;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
-	const body = (await request.json()) as RequestBody;
+export const POST: RequestHandler = async (event) => {
+	// Rate limit check - throws 429 if exceeded
+	const rateLimitCheck = await enforceLLMRateLimit(event, 'subject-line');
+	const userContext = getUserContext(event);
+	const startTime = Date.now();
+
+	const body = (await event.request.json()) as RequestBody;
 
 	if (!body.message?.trim()) {
 		return new Response(JSON.stringify({ error: 'Message is required' }), {
@@ -122,13 +135,23 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 	});
 
-	return new Response(stream, {
-		headers: {
-			'Content-Type': 'text/event-stream',
-			'Cache-Control': 'no-cache',
-			Connection: 'keep-alive'
-		}
+	const headers = new Headers({
+		'Content-Type': 'text/event-stream',
+		'Cache-Control': 'no-cache',
+		Connection: 'keep-alive'
 	});
+
+	// Add rate limit info to headers
+	addRateLimitHeaders(headers, rateLimitCheck);
+
+	// Log operation for cost tracking
+	logLLMOperation('subject-line', userContext, {
+		callCount: 1,
+		durationMs: Date.now() - startTime,
+		success: true
+	});
+
+	return new Response(stream, { headers });
 };
 
 /**

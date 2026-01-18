@@ -16,11 +16,19 @@
  * Response:
  * - decision_makers: Array of decision-makers with provenance and sources
  * - research_summary: Summary of why these people were selected
+ *
+ * Rate Limiting: BLOCKED for guests (requires auth), 3/hour for authenticated, 10/hour for verified.
+ * This is the most expensive endpoint (4-6 Gemini calls with grounding per request).
  */
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { resolveDecisionMakers } from '$lib/core/agents/agents/decision-maker';
+import {
+	enforceLLMRateLimit,
+	getUserContext,
+	logLLMOperation
+} from '$lib/server/llm-cost-protection';
 
 // ========================================
 // Request/Response Types
@@ -38,16 +46,20 @@ interface RequestBody {
 // POST Handler
 // ========================================
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-	// Auth is optional for decision-maker resolution (template creation)
-	// Authenticated users get tracked, guests can still use the feature
-	const session = locals.session;
+export const POST: RequestHandler = async (event) => {
+	// Rate limit check - throws 429 if exceeded
+	// CRITICAL: This blocks guests entirely (quota = 0) because this is the most expensive operation
+	await enforceLLMRateLimit(event, 'decision-makers');
+	const userContext = getUserContext(event);
+
+	// Auth is now effectively required (guests are blocked by rate limiter)
+	const session = event.locals.session;
 	const userId = session?.userId || 'guest';
 
 	// Parse request body
 	let body: RequestBody;
 	try {
-		body = (await request.json()) as RequestBody;
+		body = (await event.request.json()) as RequestBody;
 	} catch (err) {
 		throw error(400, 'Invalid JSON in request body');
 	}
@@ -99,6 +111,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				result.decision_makers.reduce((sum, dm) => sum + dm.confidence, 0) /
 					result.decision_makers.length || 0,
 			latencyMs
+		});
+
+		// Log operation for cost tracking (4-6 calls with grounding)
+		logLLMOperation('decision-makers', userContext, {
+			callCount: 1 + result.decision_makers.length, // 1 identification + N enrichments
+			durationMs: latencyMs,
+			success: true
 		});
 
 		// Return result

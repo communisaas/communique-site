@@ -3,11 +3,18 @@
  *
  * Generates research-backed civic action messages with inline citations
  * using the Gemini Message Writer agent.
+ *
+ * Rate Limiting: BLOCKED for guests (requires auth), 10/hour for authenticated, 30/hour for verified.
  */
 
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { generateMessage } from '$lib/core/agents/agents/message-writer';
+import {
+	enforceLLMRateLimit,
+	getUserContext,
+	logLLMOperation
+} from '$lib/server/llm-cost-protection';
 
 // ============================================================================
 // Request/Response Types
@@ -28,9 +35,14 @@ interface RequestBody {
 // POST Handler
 // ============================================================================
 
-export const POST: RequestHandler = async ({ request, locals }) => {
-	// Auth check
-	const session = locals.session;
+export const POST: RequestHandler = async (event) => {
+	// Rate limit check - throws 429 if exceeded (also blocks guests)
+	await enforceLLMRateLimit(event, 'message-generation');
+	const userContext = getUserContext(event);
+	const startTime = Date.now();
+
+	// Auth check (redundant with rate limiter, but explicit for clarity)
+	const session = event.locals.session;
 	if (!session?.userId) {
 		console.error('[agents/generate-message] Unauthorized request');
 		throw error(401, 'Authentication required');
@@ -39,7 +51,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	// Parse request body
 	let body: RequestBody;
 	try {
-		body = (await request.json()) as RequestBody;
+		body = (await event.request.json()) as RequestBody;
 	} catch (err) {
 		console.error('[agents/generate-message] Invalid JSON:', err);
 		throw error(400, 'Invalid request body');
@@ -82,6 +94,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			messageLength: result.message.length,
 			sourceCount: result.sources.length,
 			researchQueries: result.research_log.length
+		});
+
+		// Log operation for cost tracking (2+ calls with grounding)
+		logLLMOperation('message-generation', userContext, {
+			callCount: 2, // message generation + geographic extraction
+			durationMs: Date.now() - startTime,
+			success: true
 		});
 
 		return json(result);
