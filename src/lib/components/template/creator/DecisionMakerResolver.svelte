@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import type { TemplateFormData } from '$lib/types/template';
 	import { api } from '$lib/core/api/client';
 	import {
@@ -8,6 +10,7 @@
 	} from '$lib/utils/decision-maker-processing';
 	import AnticipationBuilder from './AnticipationBuilder.svelte';
 	import DecisionMakerResults from './DecisionMakerResults.svelte';
+	import AuthGateOverlay from './AuthGateOverlay.svelte';
 
 	interface Props {
 		formData: TemplateFormData;
@@ -17,10 +20,39 @@
 
 	let { formData = $bindable(), onnext, onback }: Props = $props();
 
-	type Stage = 'structuring' | 'resolving' | 'results' | 'error';
+	type Stage = 'structuring' | 'resolving' | 'results' | 'error' | 'auth-required';
 	let stage = $state<Stage>('resolving');
 	let errorMessage = $state<string | null>(null);
 	let isResolving = $state(false); // Prevent concurrent resolution attempts
+
+	/**
+	 * Check if error indicates auth is required
+	 * The rate limiter returns 429 with specific messages for auth-blocked operations
+	 */
+	function isAuthRequiredError(err: unknown): boolean {
+		if (err instanceof Error) {
+			const msg = err.message.toLowerCase();
+			return (
+				msg.includes('requires an account') ||
+				msg.includes('sign in') ||
+				msg.includes('authentication required') ||
+				msg.includes('rate limit') // 429 errors from guest quota = 0
+			);
+		}
+		return false;
+	}
+
+	/**
+	 * Handle auth initiation - redirect to OAuth with return URL
+	 */
+	function handleAuthStart(provider: 'google' | 'discord') {
+		// Current URL will be used for redirect after auth
+		const currentUrl = $page.url.pathname + $page.url.search;
+		const returnUrl = encodeURIComponent(currentUrl);
+
+		// Navigate to OAuth endpoint
+		goto(`/auth/${provider}?redirect=${returnUrl}`);
+	}
 
 	/**
 	 * Build topics array with robust fallback chain
@@ -142,14 +174,18 @@
 			// Handle AbortError specifically (request was cancelled)
 			if (err instanceof Error && err.name === 'AbortError') {
 				errorMessage = 'Request was cancelled. Please try again.';
+				stage = 'error';
+			} else if (isAuthRequiredError(err)) {
+				// Auth required - show progressive auth overlay instead of error
+				console.log('[DecisionMakerResolver] Auth required, showing overlay');
+				stage = 'auth-required';
 			} else {
 				errorMessage =
 					err instanceof Error
 						? err.message
 						: 'Failed to resolve decision-makers. Please try again.';
+				stage = 'error';
 			}
-
-			stage = 'error';
 		} finally {
 			isResolving = false;
 		}
@@ -248,6 +284,21 @@
 					Go back
 				</button>
 			</div>
+		</div>
+	{:else if stage === 'auth-required'}
+		<!-- Auth required - progressive commitment overlay -->
+		<div class="relative">
+			<!-- Show anticipation builder in background (visible progress) -->
+			<div class="pointer-events-none opacity-30">
+				<AnticipationBuilder />
+			</div>
+			<!-- Auth overlay -->
+			<AuthGateOverlay
+				subjectLine={formData.objective.title}
+				coreIssue={formData.objective.description}
+				onauthstart={handleAuthStart}
+				onback={onback}
+			/>
 		</div>
 	{/if}
 </div>
