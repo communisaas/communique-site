@@ -1,7 +1,6 @@
 import { defineConfig } from 'vitest/config';
 import { sveltekit } from '@sveltejs/kit/vite';
 import wasm from 'vite-plugin-wasm';
-import topLevelAwait from 'vite-plugin-top-level-await';
 import alias from '@rollup/plugin-alias';
 import { fileURLToPath } from 'url';
 
@@ -22,9 +21,13 @@ export default defineConfig({
 			]
 		}),
 		wasm(),
-		topLevelAwait(),
 		sveltekit()
 	],
+
+	// Use native top-level await with esnext target (replaces vite-plugin-top-level-await)
+	build: {
+		target: 'esnext'
+	},
 
 	// Polyfill Node.js globals for browser (needed for @aztec/bb.js)
 	resolve: {
@@ -71,8 +74,7 @@ export default defineConfig({
 					{ find: 'pino', replacement: pinoShimPath }
 				]
 			}),
-			wasm(),
-			topLevelAwait()
+			wasm()
 		],
 		rollupOptions: {
 			external: [],
