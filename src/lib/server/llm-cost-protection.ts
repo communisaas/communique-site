@@ -83,18 +83,36 @@ interface UserContext {
  * Determines trust tier based on:
  * 1. Authentication status (session exists)
  * 2. Verification status (identity verified via SELF/government ID)
+ *
+ * SECURITY: Uses SvelteKit's getClientAddress() which respects adapter trust proxy
+ * settings, NOT raw x-forwarded-for header (which is attacker-controlled).
  */
 export function getUserContext(event: RequestEvent): UserContext {
 	const session = event.locals.session;
 	const userId = session?.userId || null;
 
-	// Get IP for guest rate limiting (fallback to request ID)
-	const forwarded = event.request.headers.get('x-forwarded-for');
-	const ip = forwarded?.split(',')[0]?.trim() || 'unknown';
+	// SECURITY FIX: Use SvelteKit's trusted client address extraction
+	// This respects adapter-node's trust proxy configuration and handles
+	// proxy chains correctly (unlike raw x-forwarded-for parsing).
+	// Falls back to 'unknown' only if truly unavailable.
+	let ip: string;
+	try {
+		ip = event.getClientAddress();
+	} catch {
+		// getClientAddress() can throw if not available (e.g., in tests)
+		// Fall back to platform-specific headers in priority order
+		const headers = event.request.headers;
+		ip =
+			headers.get('fly-client-ip') || // Fly.io's trusted header
+			headers.get('cf-connecting-ip') || // Cloudflare's trusted header
+			headers.get('x-real-ip') || // Common reverse proxy header
+			'unknown';
+	}
 
-	// Check verification status from session or user record
-	// TODO: Add actual verification check from user profile
-	const isVerified = session?.user?.verificationStatus === 'verified';
+	// Check verification status from session user record
+	// SECURITY FIX: Use correct field name (is_verified: boolean, not verificationStatus)
+	// This is populated from the database via hooks.server.ts:37
+	const isVerified = session?.user?.is_verified === true;
 
 	const isAuthenticated = !!userId;
 
@@ -141,14 +159,16 @@ export async function checkRateLimit(
 	const quota = QUOTAS[operation]?.[context.tier];
 
 	if (!quota) {
-		console.error(`[LLM-Protection] Unknown operation: ${operation}`);
-		// Fail open for unknown operations (log for monitoring)
+		// SECURITY FIX: Fail CLOSED for unknown operations
+		// This prevents typos or new endpoints from bypassing rate limiting
+		console.error(`[LLM-Protection] BLOCKED: Unknown operation "${operation}" - failing closed`);
 		return {
-			allowed: true,
-			remaining: 999,
-			limit: 999,
+			allowed: false,
+			remaining: 0,
+			limit: 0,
 			resetAt: new Date(Date.now() + 3600000),
-			tier: context.tier
+			tier: context.tier,
+			reason: `Operation "${operation}" is not configured for rate limiting. Contact support.`
 		};
 	}
 
