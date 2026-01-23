@@ -1,5 +1,5 @@
 import { mdsvex } from 'mdsvex';
-import adapter from '@sveltejs/adapter-node';
+import adapter from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 /** @type {import('@sveltejs/kit').Config} */
@@ -20,6 +20,13 @@ const config = {
 		env: {
 			dir: '.',
 			publicPrefix: 'PUBLIC_'
+		},
+		// Experimental: Server instrumentation for Sentry
+		// Enables src/instrumentation.server.ts to initialize before SvelteKit
+		experimental: {
+			instrumentation: {
+				server: true
+			}
 		}
 	},
 

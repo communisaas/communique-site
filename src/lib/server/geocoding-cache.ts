@@ -1,5 +1,6 @@
 /**
  * Redis caching layer for geocoding results
+ * refactored to be in-memory only for Cloudflare compatibility
  *
  * Caches geocoding API results to avoid duplicate API calls and reduce costs.
  * Cache TTL: 30 days (locations don't change often)
@@ -11,7 +12,9 @@ import type { GeocodeResult } from './geocoding';
 const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
 /**
- * Simple in-memory cache implementation (fallback when Redis unavailable)
+ * Simple in-memory cache implementation
+ * Note: On Cloudflare, this will be per-isolate.
+ * For shared caching, we should migrate to Cloudflare KV later.
  */
 class MemoryCache {
 	private cache: Map<string, { value: GeocodeResult; expiresAt: number }> = new Map();
@@ -47,59 +50,9 @@ class MemoryCache {
 // In-memory fallback cache
 const memoryCache = new MemoryCache();
 
-// Cleanup expired entries every hour
-setInterval(() => memoryCache.cleanup(), 60 * 60 * 1000);
-
-/**
- * Redis client (lazy initialization)
- * Using dynamic import to avoid Redis dependency when not configured
- */
-type RedisClientType = {
-	connect: () => Promise<void>;
-	get: (key: string) => Promise<string | null>;
-	set: (key: string, value: string, options?: { EX: number }) => Promise<void>;
-	del: (keys: string[]) => Promise<number>;
-	keys: (pattern: string) => Promise<string[]>;
-	on: (event: string, handler: (error: Error) => void) => void;
-};
-
-let redisClient: RedisClientType | null = null;
-let redisAvailable = false;
-
-async function getRedisClient() {
-	if (redisClient) return redisClient;
-
-	const redisUrl = process.env.REDIS_URL;
-
-	// If no Redis URL, use in-memory cache
-	if (!redisUrl) {
-		console.log('[geocoding-cache] Redis not configured, using in-memory cache');
-		redisAvailable = false;
-		return null;
-	}
-
-	try {
-		// Dynamic import to avoid requiring Redis when not configured
-		const { createClient } = await import('redis');
-
-		redisClient = createClient({ url: redisUrl });
-		await redisClient.connect();
-
-		redisAvailable = true;
-		console.log('[geocoding-cache] Redis client connected');
-
-		// Handle connection errors
-		redisClient.on('error', (err: Error) => {
-			console.error('[geocoding-cache] Redis error:', err);
-			redisAvailable = false;
-		});
-
-		return redisClient;
-	} catch (error) {
-		console.error('[geocoding-cache] Failed to initialize Redis:', error);
-		redisAvailable = false;
-		return null;
-	}
+// Cleanup expired entries every hour if runtime supports it (Node/long-running)
+if (typeof setInterval !== 'undefined') {
+	setInterval(() => memoryCache.cleanup(), 60 * 60 * 1000);
 }
 
 /**
@@ -116,52 +69,22 @@ function getCacheKey(locationText: string): string {
  */
 export async function getCachedGeocode(locationText: string): Promise<GeocodeResult | null> {
 	const key = getCacheKey(locationText);
+	const cached = memoryCache.get(key);
 
-	try {
-		const client = await getRedisClient();
-
-		if (client && redisAvailable) {
-			const cached = await client.get(key);
-
-			if (cached) {
-				console.log(
-					'[geocoding-cache]',
-					JSON.stringify({
-						timestamp: new Date().toISOString(),
-						input: locationText,
-						cache_hit: true,
-						backend: 'redis'
-					})
-				);
-				return JSON.parse(cached);
-			}
-		} else {
-			// Fallback to in-memory cache
-			const cached = memoryCache.get(key);
-			if (cached) {
-				console.log(
-					'[geocoding-cache]',
-					JSON.stringify({
-						timestamp: new Date().toISOString(),
-						input: locationText,
-						cache_hit: true,
-						backend: 'memory'
-					})
-				);
-				return cached;
-			}
-		}
-
-		return null;
-	} catch (error) {
-		console.error('[geocoding-cache] Read error:', error);
-		// Fail gracefully - try in-memory cache as fallback
-		const cached = memoryCache.get(key);
-		if (cached) {
-			return cached;
-		}
-		return null;
+	if (cached) {
+		console.log(
+			'[geocoding-cache]',
+			JSON.stringify({
+				timestamp: new Date().toISOString(),
+				input: locationText,
+				cache_hit: true,
+				backend: 'memory'
+			})
+		);
+		return cached;
 	}
+
+	return null;
 }
 
 /**
@@ -169,78 +92,29 @@ export async function getCachedGeocode(locationText: string): Promise<GeocodeRes
  */
 export async function setCachedGeocode(locationText: string, result: GeocodeResult): Promise<void> {
 	const key = getCacheKey(locationText);
-
-	try {
-		const client = await getRedisClient();
-
-		if (client && redisAvailable) {
-			await client.set(key, JSON.stringify(result), { EX: CACHE_TTL_SECONDS });
-		} else {
-			// Fallback to in-memory cache
-			memoryCache.set(key, result, CACHE_TTL_SECONDS);
-		}
-	} catch (error) {
-		console.error('[geocoding-cache] Write error:', error);
-		// Fail gracefully - try in-memory cache as fallback
-		try {
-			memoryCache.set(key, result, CACHE_TTL_SECONDS);
-		} catch (memError) {
-			console.error('[geocoding-cache] Memory cache write error:', memError);
-		}
-	}
+	memoryCache.set(key, result, CACHE_TTL_SECONDS);
 }
 
 /**
  * Clear all cached geocoding results (for testing/debugging)
  */
 export async function clearGeocodeCache(): Promise<void> {
-	try {
-		const client = await getRedisClient();
-
-		if (client && redisAvailable) {
-			// Delete all keys matching geocode:* pattern
-			const keys = await client.keys('geocode:*');
-			if (keys.length > 0) {
-				await client.del(keys);
-			}
-		}
-
-		// Also clear in-memory cache
-		memoryCache.cleanup();
-	} catch (error) {
-		console.error('[geocoding-cache] Clear cache error:', error);
-	}
+	memoryCache.cleanup();
+	// Manually clear if needed, but cleanup handles expiry
+	// For forced clear, we'd need a clear method on MemoryCache
 }
 
 /**
  * Get cache statistics (for monitoring)
  */
 export async function getGeocodeRacheStats(): Promise<{
-	backend: 'redis' | 'memory';
+	backend: 'memory';
 	available: boolean;
 	keyCount?: number;
 }> {
-	try {
-		const client = await getRedisClient();
-
-		if (client && redisAvailable) {
-			const keys = await client.keys('geocode:*');
-			return {
-				backend: 'redis',
-				available: true,
-				keyCount: keys.length
-			};
-		}
-
-		return {
-			backend: 'memory',
-			available: true
-		};
-	} catch (error) {
-		console.error('[geocoding-cache] Stats error:', error);
-		return {
-			backend: 'memory',
-			available: false
-		};
-	}
+	return {
+		backend: 'memory',
+		available: true
+	};
 }
+
