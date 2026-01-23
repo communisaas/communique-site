@@ -1,15 +1,7 @@
 name = "communique-site"
 compatibility_date = "2025-01-21"
-pages_build_output_dir = ".svelte-kit/cloudflare"
-
-[site]
-bucket = ".svelte-kit/cloudflare"
-
-[build]
-command = "npm run build"
-
-# Enable NodeJS compatibility for libraries that need it (e.g. Buffer)
 compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = ".svelte-kit/cloudflare"
 
 [env.production]
 name = "communique-site"

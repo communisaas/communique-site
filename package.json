@@ -24,6 +24,7 @@
 		"test:beta": "ENABLE_BETA=true npm run test:run",
 		"test:ci": "npm run test:run && npm run test:e2e",
 		"ci": "npm run db:generate && npm run test:unit && npm run test:integration && npm run build",
+		"deploy": "npm run build && wrangler pages deploy .svelte-kit/cloudflare",
 		"test:health": "npm run test:coverage && node -e \"console.log('Health reports generated in coverage/ directory')\"",
 		"test:drift": "npm run test:unit && node -e \"const detector = require('./tests/config/mock-drift-detection.ts'); detector.mockDriftDetector.exportDriftReport();\"",
 		"test:smoke": "vitest --run tests/smoke --config=vitest.config.ts",
