@@ -156,6 +156,8 @@ export interface ProcessedDecisionMaker {
 	source?: string; // Extracted: verification URL
 	powerLevel?: 'primary' | 'secondary' | 'supporting';
 	isAiResolved: boolean; // true = AI-resolved, false = manually added
+	recencyCheck?: string; // New: explicit recency verification text
+	positionSourceDate?: string; // New: date of verification source
 }
 
 /**
@@ -290,27 +292,27 @@ export interface PowerLevelTarget {
  */
 export type TargetPresentation =
 	| {
-			/** Single power level */
-			type: 'district-based' | 'location-specific' | 'universal';
-			/** Primary text: "Your 3 representatives" or "Mayor Breed, SFMTA Board" */
-			primary: string;
-			/** Secondary text: "+2 more" (if truncated) */
-			secondary?: string | null;
-			/** Icon name for peripheral category hint */
-			icon: 'Capitol' | 'Building' | 'Users' | 'Mail';
-			/** Visual emphasis for color coding */
-			emphasis: 'federal' | 'state' | 'local' | 'neutral';
-			/** Coordination context: "CA-11" or "San Francisco" */
-			coordinationContext?: string;
-	  }
+		/** Single power level */
+		type: 'district-based' | 'location-specific' | 'universal';
+		/** Primary text: "Your 3 representatives" or "Mayor Breed, SFMTA Board" */
+		primary: string;
+		/** Secondary text: "+2 more" (if truncated) */
+		secondary?: string | null;
+		/** Icon name for peripheral category hint */
+		icon: 'Capitol' | 'Building' | 'Users' | 'Mail';
+		/** Visual emphasis for color coding */
+		emphasis: 'federal' | 'state' | 'local' | 'neutral';
+		/** Coordination context: "CA-11" or "San Francisco" */
+		coordinationContext?: string;
+	}
 	| {
-			/** Multi-stakeholder coordination across power levels */
-			type: 'multi-level';
-			/** Array of power levels (federal, state, local, etc.) */
-			targets: PowerLevelTarget[];
-			/** Coordination context: "CA-11" or "San Francisco" */
-			coordinationContext?: string;
-	  };
+		/** Multi-stakeholder coordination across power levels */
+		type: 'multi-level';
+		/** Array of power levels (federal, state, local, etc.) */
+		targets: PowerLevelTarget[];
+		/** Coordination context: "CA-11" or "San Francisco" */
+		coordinationContext?: string;
+	};
 
 // ============================================================================
 // Progressive Template Sections (2025-01-12)

@@ -11,14 +11,19 @@ export function processDecisionMakers(
 		email?: string;
 		provenance?: string; // Optional in new schema, might be effectively 'reasoning'
 		reasoning?: string; // New field from agent
-		source_url?: string; // New field from agent
+		sourceUrl?: string; // Agent returns camelCase
+		source_url?: string; // Legacy snake_case support
+		emailSource?: string; // How email was verified
+		recencyCheck?: string; // Verification text
+		metadata?: { positionSourceDate?: string }; // Structure from agent
 	}>
 ): ProcessedDecisionMaker[] {
 	return rawDecisionMakers.map((dm) => {
 		// Handle both legacy (provenance) and new (reasoning) formats
 		const reasoningText =
 			dm.reasoning || (dm.provenance ? extractReasoning(dm.provenance) : 'No reasoning provided');
-		const sourceUrl = dm.source_url || (dm.provenance ? extractSource(dm.provenance) : undefined);
+		// Support both camelCase (agent output) and snake_case (legacy)
+		const sourceUrl = dm.sourceUrl || dm.source_url || (dm.provenance ? extractSource(dm.provenance) : undefined);
 
 		return {
 			...dm,
@@ -27,7 +32,9 @@ export function processDecisionMakers(
 			powerLevel: inferPowerLevel(dm.title),
 			isAiResolved: true,
 			// Ensure provenance is always a string to satisfy typscript if needed, or just let it match the input
-			provenance: dm.provenance || ''
+			provenance: dm.provenance || '',
+			recencyCheck: dm.recencyCheck,
+			positionSourceDate: dm.metadata?.positionSourceDate
 		};
 	});
 }
