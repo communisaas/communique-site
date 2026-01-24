@@ -28,13 +28,13 @@
 	];
 </script>
 
-<div class="space-y-4">
+<div class="space-y-2.5">
 	<!-- Primary providers -->
 	{#each providers as auth}
 		<button
 			onclick={() => handleAuthClick(auth.provider)}
 			disabled={loadingProvider !== null}
-			class="relative flex w-full items-center justify-center gap-3 overflow-hidden rounded-lg border border-slate-200 bg-white px-4 py-3 font-medium text-slate-900 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-[0.98] disabled:cursor-wait disabled:opacity-100"
+			class="relative flex w-full items-center justify-center gap-2.5 overflow-hidden rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium text-slate-900 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-[0.98] disabled:cursor-wait disabled:opacity-100"
 		>
 			<!-- Fluid Fill Progress -->
 			{#if loadingProvider === auth.provider}
@@ -86,12 +86,12 @@
 	{/each}
 
 	<!-- Secondary providers -->
-	<div class="grid grid-cols-3 gap-3">
+	<div class="grid grid-cols-3 gap-2">
 		{#each secondaryProviders as auth}
 			<button
 				onclick={() => handleAuthClick(auth.provider)}
 				disabled={loadingProvider !== null}
-				class="relative flex flex-col items-center justify-center gap-2 overflow-hidden rounded-lg border border-slate-200 bg-white p-3 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-[0.98] disabled:cursor-wait disabled:opacity-50"
+				class="relative flex items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-white p-2 transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 hover:shadow-sm active:scale-[0.98] disabled:cursor-wait disabled:opacity-50"
 				aria-label="Continue with {auth.name}"
 			>
 				{#if loadingProvider === auth.provider}

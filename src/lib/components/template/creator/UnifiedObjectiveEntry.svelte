@@ -406,7 +406,8 @@
 	}
 
 	async function generateSuggestion(): Promise<void> {
-		if (attemptCount >= 5) return;
+		// Prevent concurrent generation (race condition: rapid clicks or re-renders)
+		if (isGenerating || attemptCount >= 5) return;
 
 		isGenerating = true;
 
@@ -551,7 +552,8 @@
 	 * Sends COMPLETE context (original + questions + answers) for stateless reconstruction
 	 */
 	async function handleClarificationSubmit(answers: Record<string, string>): Promise<void> {
-		if (suggestionState.status !== 'clarifying' || !conversationContext) return;
+		// Prevent concurrent submissions (race condition: double-click or click+Escape)
+		if (isGenerating || suggestionState.status !== 'clarifying' || !conversationContext) return;
 
 		// Build full conversation context for the agent
 		const fullContext = {

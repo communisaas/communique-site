@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Plus } from '@lucide/svelte';
 	import type { ProcessedDecisionMaker, CustomRecipient } from '$lib/types/template';
+	import DecisionMakerGrouped from './DecisionMakerGrouped.svelte';
 	import DecisionMakerCard from './DecisionMakerCard.svelte';
 	import CustomDecisionMakerForm from './CustomDecisionMakerForm.svelte';
 	import { isDuplicateEmail } from '$lib/utils/decision-maker-processing';
@@ -70,13 +71,12 @@
 		{/if}
 	</div>
 
-	<!-- AI-Resolved Decision-Makers -->
+	<!-- AI-Resolved Decision-Makers (Grouped by Organization) -->
 	{#if decisionMakers?.length > 0}
-		<div class="space-y-3">
-			{#each decisionMakers as dm, i}
-				<DecisionMakerCard decisionMaker={dm} onremove={() => handleRemoveDecisionMaker(i)} />
-			{/each}
-		</div>
+		<DecisionMakerGrouped
+			{decisionMakers}
+			onremove={handleRemoveDecisionMaker}
+		/>
 	{/if}
 
 	<!-- Custom Recipients -->

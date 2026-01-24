@@ -18,12 +18,15 @@
 		context,
 		isSubmitting = false,
 		validationErrors = {},
-		initialText = ''
+		initialText = '',
+		initialDraftId = ''
 	}: {
 		context: TemplateCreationContext;
 		isSubmitting?: boolean;
 		validationErrors?: Record<string, string>;
 		initialText?: string;
+		/** Pre-load a specific draft by ID (skips recovery modal) */
+		initialDraftId?: string;
 	} = $props();
 
 	let currentStep: 'objective' | 'audience' | 'content' = $state('objective');
@@ -236,19 +239,32 @@
 
 	// Draft recovery and auto-save setup
 	onMount(() => {
-		// Check for existing draft
-		const availableDrafts = templateDraftStore.getAllDraftIds();
-		if (availableDrafts.length > 0) {
-			// Show recovery dialog for the most recent draft
-			const mostRecentDraftId = availableDrafts
-				.map((id) => ({ id, age: templateDraftStore.getDraftAge(id) || Infinity }))
-				.sort((a, b) => a.age - b.age)[0].id;
+		// If initialDraftId provided, load that draft directly (from DraftResumeBanner)
+		// Perceptual: Immediate continuation, no modal interruption
+		if (initialDraftId) {
+			const draft = templateDraftStore.getDraft(initialDraftId);
+			if (draft) {
+				draftId = initialDraftId;
+				formData = draft.data;
+				currentStep = draft.currentStep as typeof currentStep;
+				lastSaved = draft.lastSaved;
+				// No recovery modal needed - user already chose to continue
+			}
+		} else {
+			// Standard flow: check for existing drafts and show recovery modal
+			const availableDrafts = templateDraftStore.getAllDraftIds();
+			if (availableDrafts.length > 0) {
+				// Show recovery dialog for the most recent draft
+				const mostRecentDraftId = availableDrafts
+					.map((id) => ({ id, age: templateDraftStore.getDraftAge(id) || Infinity }))
+					.sort((a, b) => a.age - b.age)[0].id;
 
-			const draft = templateDraftStore.getDraft(mostRecentDraftId);
-			if (draft && draft.lastSaved > Date.now() - 24 * 60 * 60 * 1000) {
-				// Within 24 hours
-				showDraftRecovery = true;
-				draftId = mostRecentDraftId;
+				const draft = templateDraftStore.getDraft(mostRecentDraftId);
+				if (draft && draft.lastSaved > Date.now() - 24 * 60 * 60 * 1000) {
+					// Within 24 hours
+					showDraftRecovery = true;
+					draftId = mostRecentDraftId;
+				}
 			}
 		}
 
@@ -378,9 +394,21 @@
 			{#if currentStep === 'objective'}
 				<UnifiedObjectiveEntry bind:data={formData.objective} {context} />
 			{:else if currentStep === 'audience'}
-				<DecisionMakerResolver bind:formData onnext={handleNext} onback={handleBack} />
+				<DecisionMakerResolver
+					bind:formData
+					onnext={handleNext}
+					onback={handleBack}
+					{draftId}
+					onSaveDraft={() => templateDraftStore.saveDraft(draftId, formData, currentStep)}
+				/>
 			{:else if currentStep === 'content'}
-				<MessageGenerationResolver bind:formData onnext={handleSave} onback={handleBack} />
+				<MessageGenerationResolver
+					bind:formData
+					onnext={handleSave}
+					onback={handleBack}
+					{draftId}
+					onSaveDraft={() => templateDraftStore.saveDraft(draftId, formData, currentStep)}
+				/>
 			{/if}
 		</div>
 	</div>

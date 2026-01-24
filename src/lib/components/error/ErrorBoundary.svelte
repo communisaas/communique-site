@@ -1,19 +1,23 @@
 <!--
 ERROR BOUNDARY COMPONENT
-Catches and handles component failures gracefully
+Catches and handles component failures gracefully.
+
+Error REPORTING is handled by Sentry (hooks.client.ts / hooks.server.ts).
+This component only handles the USER EXPERIENCE:
+- Display friendly error messages
+- Provide retry functionality
+- Allow navigation back to safety
 -->
 <script lang="ts">
 	import { createEventDispatcher, onMount as _onMount, type Snippet } from 'svelte';
-	import { AlertTriangle, RefreshCw, Home, Bug } from '@lucide/svelte';
+	import { AlertTriangle, RefreshCw, Home } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 
 	interface ErrorInfo {
 		message: string;
 		stack?: string;
-		componentStack?: string;
 		timestamp: number;
-		userAgent: string;
 		url: string;
 	}
 
@@ -21,7 +25,6 @@ Catches and handles component failures gracefully
 	let {
 		fallback = 'detailed',
 		showRetry = true,
-		showReportBug = true,
 		enableLogging = true,
 		autoRetryDelay = 0, // 0 = no auto retry
 		maxRetries = 2,
@@ -29,7 +32,6 @@ Catches and handles component failures gracefully
 	}: {
 		fallback?: 'minimal' | 'detailed' | 'redirect';
 		showRetry?: boolean;
-		showReportBug?: boolean;
 		enableLogging?: boolean;
 		autoRetryDelay?: number;
 		maxRetries?: number;
@@ -45,7 +47,6 @@ Catches and handles component failures gracefully
 	const dispatch = createEventDispatcher<{
 		error: ErrorInfo;
 		retry: void;
-		report: ErrorInfo;
 	}>();
 
 	const componentId = `ErrorBoundary_${Math.random().toString(36).substr(2, 9)}`;
@@ -84,7 +85,6 @@ Catches and handles component failures gracefully
 			message: error.message || 'Unknown error occurred',
 			stack: error.stack,
 			timestamp: Date.now(),
-			userAgent: navigator.userAgent,
 			url: window.location.href
 		};
 
@@ -93,13 +93,10 @@ Catches and handles component failures gracefully
 
 		// Log to console in development
 		if (enableLogging) {
-			console.error('Error occurred');
+			console.error('[ErrorBoundary]', error);
 		}
 
-		// Report to analytics/monitoring
-		reportError(info);
-
-		// Dispatch error event
+		// Dispatch error event (Sentry captures via global handlers)
 		dispatch('error', info);
 
 		// Auto-retry if configured
@@ -112,23 +109,6 @@ Catches and handles component failures gracefully
 				'feedback',
 				componentId
 			);
-		}
-	}
-
-	async function reportError(info: ErrorInfo) {
-		try {
-			const { api } = await import('$lib/core/api/client');
-			await api.post(
-				'/api/errors/report',
-				{
-					error: info,
-					context: 'ErrorBoundary',
-					retryCount
-				},
-				{ skipErrorLogging: true }
-			);
-		} catch (error) {
-			// Silent fail - don't create error loops
 		}
 	}
 
@@ -150,29 +130,6 @@ Catches and handles component failures gracefully
 			'feedback',
 			componentId
 		);
-	}
-
-	function reportBug() {
-		if (errorInfo) {
-			dispatch('report', errorInfo);
-
-			// Default behavior: mailto with error details
-			const subject = encodeURIComponent(`Bug Report: ${errorInfo.message}`);
-			const body = encodeURIComponent(
-				`
-Error Details:
-- Message: ${errorInfo.message}
-- URL: ${errorInfo.url}
-- Timestamp: ${new Date(errorInfo.timestamp).toISOString()}
-- User Agent: ${errorInfo.userAgent}
-
-Stack Trace:
-${errorInfo.stack || 'Not available'}
-			`.trim()
-			);
-
-			window.location.href = `mailto:support@example.com?subject=${subject}&body=${body}`;
-		}
 	}
 
 	function goHome() {
@@ -214,11 +171,11 @@ ${errorInfo.stack || 'Not available'}
 						<AlertTriangle class="mx-auto h-12 w-12 text-red-500" />
 						<h3 class="text-lg font-semibold text-slate-900">Oops! Something went wrong</h3>
 						<p class="text-sm text-slate-600">
-							We encountered an unexpected error. This has been reported to our team.
+							We encountered an unexpected error. Our team has been notified.
 						</p>
 					</div>
 
-					<!-- Error details (development) -->
+					<!-- Error details (development only) -->
 					{#if import.meta.env.DEV}
 						<details class="rounded-lg bg-red-50 p-3 text-left">
 							<summary class="cursor-pointer text-xs font-medium text-red-700">
@@ -253,13 +210,6 @@ ${errorInfo.stack || 'Not available'}
 							<Home class="mr-2 h-4 w-4" />
 							Go Home
 						</Button>
-
-						{#if showReportBug}
-							<Button variant="secondary" onclick={reportBug}>
-								<Bug class="mr-2 h-4 w-4" />
-								Report Bug
-							</Button>
-						{/if}
 					</div>
 
 					{#if retryCount >= maxRetries}

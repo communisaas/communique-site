@@ -1,22 +1,90 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { FileText, Search, BookOpen, CheckCircle2 } from '@lucide/svelte';
 	import type { TemplateFormData } from '$lib/types/template';
-	import { api } from '$lib/core/api/client';
 	import { cleanHtmlFormatting } from '$lib/utils/message-processing';
-	import MessageAnticipation from './MessageAnticipation.svelte';
+	import { parseSSEStream } from '$lib/utils/sse-stream';
+	import ThinkingAtmosphere from '$lib/components/ui/ThinkingAtmosphere.svelte';
 	import MessageResults from './MessageResults.svelte';
+	import AuthGateOverlay from './AuthGateOverlay.svelte';
 
 	interface Props {
 		formData: TemplateFormData;
 		onnext: () => void;
 		onback: () => void;
+		/** Draft ID for OAuth resumption */
+		draftId?: string;
+		/** Save draft callback for OAuth flow */
+		onSaveDraft?: () => void;
 	}
 
-	let { formData = $bindable(), onnext, onback }: Props = $props();
+	let { formData = $bindable(), onnext, onback, draftId, onSaveDraft }: Props = $props();
 
-	type Stage = 'generating' | 'results' | 'editing' | 'error';
+	type Stage = 'generating' | 'results' | 'editing' | 'error' | 'auth-required';
 	let stage = $state<Stage>('generating');
 	let errorMessage = $state<string | null>(null);
+	let isGenerating = $state(false);
+
+	// Streaming state
+	let thoughts = $state<string[]>([]);
+	let currentPhase = $state<'research' | 'complete'>('research');
+
+	// Phase display
+	const phases = [
+		{ id: 'research', icon: Search, text: 'Researching and writing' },
+		{ id: 'complete', icon: CheckCircle2, text: 'Complete' }
+	] as const;
+
+	/**
+	 * Check if error indicates auth is required
+	 * Matches rate limiter 429 responses for guests
+	 */
+	function isAuthRequiredError(err: unknown): boolean {
+		if (err instanceof Error) {
+			const msg = err.message.toLowerCase();
+			return (
+				msg.includes('requires an account') ||
+				msg.includes('sign in') ||
+				msg.includes('authentication required') ||
+				msg.includes('rate limit') ||
+				msg.includes('401')
+			);
+		}
+		return false;
+	}
+
+	/**
+	 * Build progress items for auth gate - shows sunk cost
+	 */
+	function buildAuthProgressItems() {
+		const items = [];
+
+		// Their subject line
+		if (formData.objective.title) {
+			items.push({
+				label: 'Subject line',
+				value: formData.objective.title,
+				secondary: formData.objective.description
+			});
+		}
+
+		// Their selected decision-makers (truncated list)
+		const dmCount = formData.audience?.decisionMakers?.length || 0;
+		if (dmCount > 0) {
+			const firstDm = formData.audience.decisionMakers[0];
+			const dmValue =
+				dmCount === 1
+					? firstDm.name
+					: `${firstDm.name} + ${dmCount - 1} other${dmCount > 2 ? 's' : ''}`;
+			items.push({
+				label: 'Decision-makers',
+				value: dmValue,
+				secondary: firstDm.title
+			});
+		}
+
+		return items;
+	}
 
 	// Store original AI-generated message for "start fresh"
 	let originalMessage = $state('');
@@ -60,9 +128,16 @@
 	}
 
 	async function generateMessage() {
+		// Prevent concurrent generation
+		if (isGenerating) return;
+		isGenerating = true;
+
 		try {
 			stage = 'generating';
-			console.log('[MessageGenerationResolver] Generating message...');
+			errorMessage = null;
+			thoughts = [];
+			currentPhase = 'research';
+			console.log('[MessageGenerationResolver] Starting streaming generation...');
 
 			// Validate we have required data
 			if (!formData.objective.title || !formData.objective.description) {
@@ -78,69 +153,106 @@
 			const voiceSample = buildVoiceSample();
 			const rawInput = buildRawInput();
 
-			// Prepare request data
-			const requestData = {
-				subject_line: formData.objective.title,
-				core_issue: formData.objective.description,
-				topics,
-				decision_makers: formData.audience.decisionMakers.map((dm) => ({
-					name: dm.name,
-					title: dm.title,
-					organization: dm.organization
-				})),
-				voice_sample: voiceSample,
-				raw_input: rawInput
-			};
-
-			console.log('[MessageGenerationResolver] Request data:', requestData);
-
-			// Call message generation API
-			const response = await api.post('/agents/generate-message', requestData, {
-				timeout: 200000, // 200 seconds (3+ minutes) for Gemini agent processing
-				showToast: false // Don't show success toast
+			// Use streaming endpoint
+			const response = await fetch('/api/agents/stream-message', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					subject_line: formData.objective.title,
+					core_issue: formData.objective.description,
+					topics,
+					decision_makers: formData.audience.decisionMakers.map((dm) => ({
+						name: dm.name,
+						title: dm.title,
+						organization: dm.organization
+					})),
+					voice_sample: voiceSample,
+					raw_input: rawInput
+				})
 			});
 
-			console.log('[MessageGenerationResolver] Raw response:', response);
-
-			if (!response.success || !response.data) {
-				throw new Error(response.error || 'Failed to generate message');
+			// Check for auth errors
+			if (response.status === 429 || response.status === 401) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || 'Authentication required');
 			}
 
-			// Extract data
-			const { message, subject, sources, research_log, geographic_scope } = response.data;
-
-			// Clean HTML formatting from message
-			const cleanedMessage = cleanHtmlFormatting(message);
-
-			// Store original for "start fresh"
-			originalMessage = cleanedMessage;
-			originalSubject = subject;
-
-			// Update formData
-			formData.content.preview = cleanedMessage;
-			formData.content.sources = sources || [];
-			formData.content.researchLog = research_log || [];
-			formData.content.geographicScope = geographic_scope || null;
-			formData.content.aiGenerated = true;
-			formData.content.edited = false;
-
-			// Update subject if different
-			if (subject && subject !== formData.objective.title) {
-				formData.objective.title = subject;
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || 'Failed to generate message');
 			}
 
-			console.log('[MessageGenerationResolver] Message generated:', {
-				message_length: message.length,
-				sources_count: sources?.length || 0,
-				research_log_count: research_log?.length || 0
-			});
+			// Process SSE stream
+			for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
+				switch (event.type) {
+					case 'phase':
+						currentPhase = event.data.phase as typeof currentPhase;
+						break;
 
-			stage = 'results';
+					case 'thought':
+						if (typeof event.data.content === 'string') {
+							thoughts = [...thoughts, event.data.content];
+						}
+						break;
+
+					case 'complete': {
+						const result = event.data as {
+							message?: string;
+							subject?: string;
+							sources?: unknown[];
+							research_log?: string[];
+							geographic_scope?: unknown;
+						};
+
+						// Clean HTML formatting from message
+						const cleanedMessage = cleanHtmlFormatting(result.message || '');
+
+						// Store original for "start fresh"
+						originalMessage = cleanedMessage;
+						originalSubject = result.subject || formData.objective.title;
+
+						// Update formData
+						formData.content.preview = cleanedMessage;
+						formData.content.sources = (result.sources as typeof formData.content.sources) || [];
+						formData.content.researchLog = result.research_log || [];
+						formData.content.geographicScope =
+							(result.geographic_scope as typeof formData.content.geographicScope) || null;
+						formData.content.aiGenerated = true;
+						formData.content.edited = false;
+
+						// Update subject if different
+						if (result.subject && result.subject !== formData.objective.title) {
+							formData.objective.title = result.subject;
+						}
+
+						console.log('[MessageGenerationResolver] Message generated:', {
+							message_length: cleanedMessage.length,
+							sources_count: formData.content.sources?.length || 0
+						});
+
+						stage = 'results';
+						break;
+					}
+
+					case 'error':
+						throw new Error(
+							typeof event.data.message === 'string' ? event.data.message : 'Generation failed'
+						);
+				}
+			}
 		} catch (err) {
 			console.error('[MessageGenerationResolver] Error:', err);
-			errorMessage =
-				err instanceof Error ? err.message : 'Failed to generate message. Please try again.';
-			stage = 'error';
+
+			if (isAuthRequiredError(err)) {
+				console.log('[MessageGenerationResolver] Auth required, showing overlay');
+				stage = 'auth-required';
+			} else {
+				errorMessage =
+					err instanceof Error ? err.message : 'Failed to generate message. Please try again.';
+				stage = 'error';
+			}
+		} finally {
+			isGenerating = false;
 		}
 	}
 
@@ -188,8 +300,77 @@
 
 <div class="mx-auto max-w-3xl">
 	{#if stage === 'generating'}
-		<!-- Main wait: 15-30 seconds with educational phases -->
-		<MessageAnticipation />
+		<!-- Streaming generation UI with real agent thoughts -->
+		<div class="mx-auto max-w-2xl space-y-6 py-8">
+			<!-- Header -->
+			<div class="text-center">
+				<h3 class="text-lg font-semibold text-slate-900 md:text-xl">
+					Crafting your research-backed message
+				</h3>
+				<p class="mt-2 text-sm text-slate-500">
+					Finding sources, building arguments, writing with your voice
+				</p>
+			</div>
+
+			<!-- Phase indicator -->
+			<div class="space-y-2">
+				{#each phases as phase, i}
+					{@const phaseIndex = phases.findIndex((p) => p.id === currentPhase)}
+					{@const isActive = phase.id === currentPhase}
+					{@const isComplete = i < phaseIndex || currentPhase === 'complete'}
+					{@const IconComponent = phase.icon}
+					<div
+						class="flex items-center gap-3 rounded-lg p-3 transition-all duration-300"
+						class:bg-participation-primary-50={isActive}
+						class:border={isActive}
+						class:border-participation-primary-200={isActive}
+					>
+						<div
+							class="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300"
+							class:bg-participation-primary-600={isActive}
+							class:text-white={isActive}
+							class:bg-green-100={isComplete}
+							class:text-green-600={isComplete}
+							class:bg-slate-100={!isActive && !isComplete}
+							class:text-slate-400={!isActive && !isComplete}
+						>
+							<IconComponent class="h-5 w-5" />
+						</div>
+
+						<p
+							class="text-sm font-medium transition-colors duration-300"
+							class:text-participation-primary-900={isActive}
+							class:text-green-900={isComplete}
+							class:text-slate-500={!isActive && !isComplete}
+						>
+							{phase.text}
+						</p>
+
+						{#if isComplete}
+							<CheckCircle2 class="ml-auto h-5 w-5 text-green-600" />
+						{:else if isActive}
+							<div class="ml-auto h-5 w-5">
+								<div
+									class="h-full w-full animate-spin rounded-full border-2 border-participation-primary-600 border-t-transparent"
+								></div>
+							</div>
+						{/if}
+					</div>
+				{/each}
+			</div>
+
+			<!-- Real agent thoughts -->
+			<ThinkingAtmosphere {thoughts} isActive={stage === 'generating'} />
+
+			<!-- Educational context -->
+			<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+				<p class="text-sm text-slate-600">
+					<span class="font-medium text-slate-700">Why this takes time:</span>
+					We're researching your specific issue, finding credible sources, and writing a message that
+					shows you understand the landscape.
+				</p>
+			</div>
+		</div>
 	{:else if stage === 'results'}
 		<!-- Results display with citations, sources, and research log -->
 		<MessageResults
@@ -302,6 +483,19 @@
 					Go back
 				</button>
 			</div>
+		</div>
+	{:else if stage === 'auth-required'}
+		<!-- Auth required - progressive commitment overlay -->
+		<div class="relative min-h-[400px]">
+			<AuthGateOverlay
+				title="Unlock Message Generation"
+				description="Free account required to craft your message"
+				icon={FileText}
+				progress={buildAuthProgressItems()}
+				onback={onback}
+				{draftId}
+				{onSaveDraft}
+			/>
 		</div>
 	{/if}
 </div>
