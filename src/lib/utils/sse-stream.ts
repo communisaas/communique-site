@@ -5,6 +5,8 @@
  * Used by all streaming agent consumers (subject line, decision-makers, message generation).
  */
 
+import { z } from 'zod';
+
 export interface SSEEvent<T = unknown> {
 	type: string;
 	data: T;
@@ -51,10 +53,18 @@ export async function* parseSSEStream<T = unknown>(
 					currentEventType = line.slice(7).trim();
 				} else if (line.startsWith('data: ') && currentEventType) {
 					try {
-						const data = JSON.parse(line.slice(6)) as T;
-						yield { type: currentEventType, data };
-					} catch {
-						// Skip malformed JSON
+						const parsed = JSON.parse(line.slice(6));
+						// Basic validation - ensure it's a valid object
+						const GenericDataSchema = z.unknown();
+						const result = GenericDataSchema.safeParse(parsed);
+
+						if (result.success) {
+							yield { type: currentEventType, data: result.data as T };
+						} else {
+							console.warn('[SSE Stream] Invalid event data:', result.error);
+						}
+					} catch (error) {
+						console.warn('[SSE Stream] Failed to parse SSE data:', error);
 					}
 					currentEventType = '';
 				}

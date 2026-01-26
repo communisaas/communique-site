@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { z } from 'zod';
 
 export interface GuestTemplateState {
 	templateSlug: string;
@@ -8,6 +9,16 @@ export interface GuestTemplateState {
 	viewCount: number;
 	address?: string;
 }
+
+// Zod schema for guest state validation
+const GuestTemplateStateSchema = z.object({
+	templateSlug: z.string(),
+	templateTitle: z.string(),
+	source: z.enum(['social-link', 'direct-link', 'share']),
+	timestamp: z.number(),
+	viewCount: z.number(),
+	address: z.string().optional()
+});
 
 // Guest state for pre-authentication template interactions
 function createGuestState() {
@@ -78,14 +89,22 @@ function createGuestState() {
 				const stored = localStorage.getItem('communique_guest_template');
 				if (stored) {
 					try {
-						const parsedState = JSON.parse(stored);
-						// Only restore if within 7 days
-						if (Date.now() - parsedState.timestamp < 7 * 24 * 60 * 60 * 1000) {
-							state = parsedState;
+						const parsed = JSON.parse(stored);
+						const result = GuestTemplateStateSchema.safeParse(parsed);
+
+						if (result.success) {
+							// Only restore if within 7 days
+							if (Date.now() - result.data.timestamp < 7 * 24 * 60 * 60 * 1000) {
+								state = result.data;
+							} else {
+								localStorage.removeItem('communique_guest_template');
+							}
 						} else {
+							console.warn('[GuestState] Invalid stored state:', result.error.flatten());
 							localStorage.removeItem('communique_guest_template');
 						}
-					} catch {
+					} catch (error) {
+						console.warn('[GuestState] Failed to parse stored state:', error);
 						localStorage.removeItem('communique_guest_template');
 					}
 				}

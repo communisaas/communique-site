@@ -198,9 +198,9 @@ export class ValidationManager {
 
 		if (result.isValid) {
 			this.validationErrors.delete(fieldName);
-		} else {
-			// result.error is guaranteed to exist when isValid is false
-			this.validationErrors.set(fieldName, result.error!);
+		} else if (result.error) {
+			// result.error exists when isValid is false
+			this.validationErrors.set(fieldName, result.error);
 		}
 
 		this.notifyCallbacks();

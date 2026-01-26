@@ -34,11 +34,7 @@ export const FEATURES = {
 
 	// === NOT IMPLEMENTING ===
 	// These were experimental and are now removed
-	CASCADE_ANALYTICS: FeatureStatus.OFF, // Removed - too complex for MVP
-	AI_SUGGESTIONS: FeatureStatus.OFF, // Phase 2 feature
-	POLITICAL_FIELD_MODELING: FeatureStatus.OFF, // Research only
-	SHEAF_FUSION: FeatureStatus.OFF, // Research only - removed
-	PERCOLATION_ENGINE: FeatureStatus.OFF // Research only - removed
+	AI_SUGGESTIONS: FeatureStatus.OFF // Phase 2 feature
 } as const;
 
 export type FeatureName = keyof typeof FEATURES;

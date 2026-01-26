@@ -173,10 +173,24 @@ export function analyzeEmailFlow(
 			};
 		}
 
+		// mailtoResult.url is guaranteed to exist when there's no error
+		if (!mailtoResult.url) {
+			return {
+				requiresAuth: false,
+				nextAction: 'email',
+				error: {
+					code: 'MAILTO_URL_MISSING',
+					message: 'Mailto URL generation succeeded but URL is missing',
+					details: { templateId: template.id }
+				},
+				analytics: { ...analytics, step: 'mailto_url_missing' }
+			};
+		}
+
 		return {
 			requiresAuth: false,
 			requiresAddress: false,
-			mailtoUrl: mailtoResult.url!,
+			mailtoUrl: mailtoResult.url,
 			nextAction: 'email',
 			analytics: { ...analytics, step: 'ready_to_send' }
 		};
@@ -311,30 +325,6 @@ export function generateMailtoUrl(
 			}
 		};
 	}
-}
-
-// =============================================================================
-// BACKWARD COMPATIBILITY EXPORTS
-// =============================================================================
-
-/**
- * @deprecated Use generateMailtoUrl instead. Will be removed in next major version.
- */
-export function buildMailtoUrl(template: Template, user: EmailServiceUser | null): string {
-	console.warn('buildMailtoUrl is deprecated. Use generateMailtoUrl instead.');
-	const result = generateMailtoUrl(template, user);
-	return result.url || '';
-}
-
-/**
- * @deprecated Template resolution is now handled internally. Will be removed in next major version.
- */
-export function fillTemplateVariables(
-	template: Template,
-	_user: EmailServiceUser | null
-): Template {
-	console.warn('fillTemplateVariables is deprecated. Template resolution is handled internally.');
-	return template; // Return unchanged for backward compatibility
 }
 
 // =============================================================================
@@ -526,9 +516,10 @@ export function launchEmail(
 		// Handle optional page redirection
 		if (options?.redirectUrl) {
 			const delay = options.redirectDelay ?? 500;
+			const redirectTarget = options.redirectUrl;
 			setTimeout(() => {
 				try {
-					window.location.href = options.redirectUrl!;
+					window.location.href = redirectTarget;
 				} catch (error) {
 					console.warn('Failed to redirect after email launch:', error);
 				}

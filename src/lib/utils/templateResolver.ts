@@ -16,6 +16,7 @@
 import type { Template } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
+import { z } from 'zod';
 
 // Enhanced interface with better type safety
 export interface ResolvedTemplate {
@@ -266,22 +267,33 @@ export function resolveTemplate(
 	// Determine delivery method and routing
 	const isCongressional =
 		template.deliveryMethod === 'certified' || template.deliveryMethod === 'cwc';
-	// Parse recipient_config safely with error handling
-	let recipientConfig: unknown = template.recipient_config;
+
+	// Parse recipient_config safely with Zod validation
+	const RecipientConfigSchema = z.unknown();
+	let recipientConfig: unknown = null;
+
 	if (typeof template.recipient_config === 'string') {
 		try {
-			recipientConfig = JSON.parse(template.recipient_config);
-		} catch {
-			console.warn('Failed to parse recipient_config JSON: Invalid JSON');
-			recipientConfig = undefined; // allow downstream defaulting
+			const parsed = JSON.parse(template.recipient_config);
+			const result = RecipientConfigSchema.safeParse(parsed);
+			if (result.success) {
+				recipientConfig = result.data;
+			} else {
+				console.warn('[TemplateResolver] Invalid recipient_config:', result.error.flatten());
+			}
+		} catch (error) {
+			console.warn('[TemplateResolver] Failed to parse recipient_config JSON:', error);
 		}
+	} else {
+		const result = RecipientConfigSchema.safeParse(template.recipient_config);
+		recipientConfig = result.success ? result.data : null;
 	}
 
 	let recipients: string[] = [];
 	try {
 		recipients = extractRecipientEmails(recipientConfig);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.warn('[TemplateResolver] Failed to extract recipient emails:', error);
 		recipients = [];
 	}
 

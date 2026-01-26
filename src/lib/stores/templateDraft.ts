@@ -1,5 +1,6 @@
 import { writable, type Writable } from 'svelte/store';
 import type { TemplateFormData } from '$lib/types/template';
+import { z } from 'zod';
 
 interface DraftStorage {
 	[key: string]: {
@@ -35,6 +36,15 @@ interface TemplateDraftStore {
 function createTemplateDraftStore(): TemplateDraftStore {
 	const { subscribe, set, update } = writable<DraftStorage>({});
 
+	// Zod schema for draft validation
+	const DraftEntrySchema = z.object({
+		data: z.unknown(), // TemplateFormData is complex, validate structure later
+		lastSaved: z.number(),
+		currentStep: z.string()
+	});
+
+	const DraftStorageSchema = z.record(DraftEntrySchema);
+
 	// Load drafts from localStorage on initialization
 	function loadDrafts(): DraftStorage {
 		if (typeof localStorage === 'undefined') return {};
@@ -42,26 +52,31 @@ function createTemplateDraftStore(): TemplateDraftStore {
 		try {
 			const stored = localStorage.getItem(STORAGE_KEY);
 			if (stored) {
-				const parsed = JSON.parse(stored) as Record<string, unknown>;
+				const parsed = JSON.parse(stored);
+				const result = DraftStorageSchema.safeParse(parsed);
+
+				if (!result.success) {
+					console.warn(
+						'[TemplateDraft] Invalid draft storage structure:',
+						result.error.flatten()
+					);
+					return {};
+				}
+
 				// Clean up old drafts (older than 7 days)
 				const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
 				const cleaned: DraftStorage = {};
 
-				for (const [key, draft] of Object.entries(parsed)) {
-					if (
-						draft &&
-						typeof draft === 'object' &&
-						typeof draft.lastSaved === 'number' &&
-						draft.lastSaved > cutoff
-					) {
+				for (const [key, draft] of Object.entries(result.data)) {
+					if (draft.lastSaved > cutoff) {
 						cleaned[key] = draft as DraftStorage[string];
 					}
 				}
 
 				return cleaned;
 			}
-		} catch {
-			console.warn('Failed to load template drafts from localStorage');
+		} catch (error) {
+			console.warn('[TemplateDraft] Failed to load template drafts from localStorage:', error);
 		}
 
 		return {};
