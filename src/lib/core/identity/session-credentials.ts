@@ -249,32 +249,6 @@ export async function clearExpiredCredentials(): Promise<number> {
 	}
 }
 
-/**
- * Get all active credentials (admin/debugging)
- *
- * @returns List of all non-expired credentials
- */
-export async function getAllActiveCredentials(): Promise<SessionCredential[]> {
-	try {
-		const db = await getDB();
-		const allCredentials = await db.getAll(STORE_NAME);
-
-		const now = new Date();
-		const active = allCredentials.filter((cred) => cred.expiresAt >= now);
-
-		console.log('[Session Credentials] Active credentials:', {
-			total: allCredentials.length,
-			active: active.length,
-			expired: allCredentials.length - active.length
-		});
-
-		return active;
-	} catch (error) {
-		console.error('[Session Credentials] Get all failed:', error);
-		return [];
-	}
-}
-
 // ============================================================================
 // Utility Functions
 // ============================================================================
@@ -289,20 +263,6 @@ export function calculateExpirationDate(): Date {
 	const expiresAt = new Date(now);
 	expiresAt.setMonth(expiresAt.getMonth() + 6);
 	return expiresAt;
-}
-
-/**
- * Format credential for display (debugging)
- *
- * @param credential - Credential to format
- * @returns Human-readable summary
- */
-export function formatCredential(credential: SessionCredential): string {
-	const now = new Date();
-	const remainingMs = credential.expiresAt.getTime() - now.getTime();
-	const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-
-	return `${credential.congressionalDistrict} (${credential.verificationMethod}) - ${remainingDays} days remaining`;
 }
 
 // ============================================================================

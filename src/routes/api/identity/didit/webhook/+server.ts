@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createHmac, createHash } from 'crypto';
+import { createHmac, createHash, timingSafeEqual } from 'crypto';
 import {
 	generateIdentityHash,
 	generateIdentityFingerprint,
@@ -9,6 +9,7 @@ import {
 	type IdentityProof
 } from '$lib/core/server/identity-hash';
 import { prisma } from '$lib/core/db';
+import { z } from 'zod';
 
 /**
  * Didit.me Webhook Handler
@@ -32,6 +33,7 @@ import { prisma } from '$lib/core/db';
 /**
  * Verify Didit webhook HMAC signature
  * Security: Prevents unauthorized webhook events
+ * Uses constant-time comparison to prevent timing attacks
  */
 function verifyWebhookSignature(
 	body: string,
@@ -46,7 +48,22 @@ function verifyWebhookSignature(
 	const payload = `${timestamp}.${body}`;
 	const expectedSignature = createHmac('sha256', secret).update(payload).digest('hex');
 
-	return signature === expectedSignature;
+	// SECURITY FIX: Use constant-time comparison to prevent timing attacks
+	// Convert hex strings to Buffers for timingSafeEqual
+	try {
+		const signatureBuffer = Buffer.from(signature, 'hex');
+		const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+
+		// Ensure buffers are same length before comparison
+		if (signatureBuffer.length !== expectedBuffer.length) {
+			return false;
+		}
+
+		return timingSafeEqual(signatureBuffer, expectedBuffer);
+	} catch {
+		// Handle invalid hex strings
+		return false;
+	}
 }
 
 /**
@@ -61,13 +78,59 @@ export const POST: RequestHandler = async ({ request }) => {
 		const timestamp = request.headers.get('x-didit-timestamp');
 
 		// Verify webhook authenticity
-		if (!verifyWebhookSignature(body, signature, timestamp, process.env.DIDIT_WEBHOOK_SECRET!)) {
+		const webhookSecret = process.env.DIDIT_WEBHOOK_SECRET;
+		if (!webhookSecret) {
+			console.error('DIDIT_WEBHOOK_SECRET not configured');
+			throw error(500, 'Webhook configuration error');
+		}
+		if (!verifyWebhookSignature(body, signature, timestamp, webhookSecret)) {
 			console.error('Invalid webhook signature');
 			throw error(401, 'Invalid webhook signature');
 		}
 
-		// Parse event data
-		const event = JSON.parse(body);
+		// Parse and validate event data
+		const DiditEventSchema = z.object({
+			type: z.string(),
+			data: z.object({
+				status: z.string(),
+				metadata: z
+					.object({
+						user_id: z.string().optional()
+					})
+					.passthrough()
+					.optional(),
+				session_id: z.string().optional(),
+				decision: z
+					.object({
+						id_verification: z
+							.object({
+								date_of_birth: z.string(),
+								document_number: z.string(),
+								issuing_state: z.string(),
+								document_type: z.string()
+							})
+							.passthrough()
+							.optional()
+					})
+					.passthrough()
+					.optional()
+			})
+		});
+
+		let event;
+		try {
+			const parsed = JSON.parse(body);
+			const result = DiditEventSchema.safeParse(parsed);
+			if (!result.success) {
+				console.error('[Didit Webhook] Invalid event structure:', result.error.flatten());
+				throw error(400, 'Invalid webhook event structure');
+			}
+			event = result.data;
+		} catch (parseError) {
+			console.error('[Didit Webhook] Failed to parse event body:', parseError);
+			throw error(400, 'Invalid JSON in webhook body');
+		}
+
 		const { type, data } = event;
 
 		// Only process status.updated events

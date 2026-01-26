@@ -17,13 +17,17 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, url }) => {
-	try {
-		const { userId, templateSlug } = await request.json();
+export const POST: RequestHandler = async ({ locals, request, url }) => {
+	// Authentication check
+	if (!locals.user) {
+		return json({ error: 'Authentication required' }, { status: 401 });
+	}
 
-		if (!userId) {
-			throw error(400, 'Missing userId');
-		}
+	// Use authenticated user's ID
+	const userId = locals.user.id;
+
+	try {
+		const { templateSlug } = await request.json();
 
 		// Validate Didit.me configuration
 		const apiKey = process.env.DIDIT_API_KEY;

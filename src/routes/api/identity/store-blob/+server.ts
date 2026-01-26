@@ -14,17 +14,24 @@ import { prisma } from '$lib/core/db';
 import type { EncryptedBlob } from '$lib/core/identity/blob-encryption';
 
 interface StoreRequest {
-	userId: string;
 	blob: EncryptedBlob;
 }
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
+	// Authentication check
+	if (!locals.user) {
+		return json({ error: 'Authentication required' }, { status: 401 });
+	}
+
+	// Use authenticated user's ID
+	const userId = locals.user.id;
+
 	try {
 		const body = (await request.json()) as StoreRequest;
-		const { userId, blob } = body;
+		const { blob } = body;
 
-		if (!userId || !blob) {
-			return json({ error: 'Missing userId or blob' }, { status: 400 });
+		if (!blob) {
+			return json({ error: 'Missing blob' }, { status: 400 });
 		}
 
 		// Validate blob structure

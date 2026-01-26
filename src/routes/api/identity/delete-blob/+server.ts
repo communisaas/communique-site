@@ -11,19 +11,16 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 
-interface DeleteRequest {
-	userId: string;
-}
+export const DELETE: RequestHandler = async ({ locals }) => {
+	// Authentication check
+	if (!locals.user) {
+		return json({ error: 'Authentication required' }, { status: 401 });
+	}
 
-export const DELETE: RequestHandler = async ({ request }) => {
+	// Use authenticated user's ID
+	const userId = locals.user.id;
+
 	try {
-		const body = (await request.json()) as DeleteRequest;
-		const { userId } = body;
-
-		if (!userId) {
-			return json({ error: 'Missing userId' }, { status: 400 });
-		}
-
 		// Delete encrypted blob
 		await prisma.encryptedDeliveryData.delete({
 			where: { user_id: userId }

@@ -26,13 +26,17 @@ import { SelfAppBuilder } from '@selfxyz/qrcode';
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const POST: RequestHandler = async ({ request, url }) => {
-	try {
-		const { userId, templateSlug } = await request.json();
+export const POST: RequestHandler = async ({ locals, request, url }) => {
+	// Authentication check
+	if (!locals.user) {
+		return json({ error: 'Authentication required' }, { status: 401 });
+	}
 
-		if (!userId) {
-			return json({ success: false, error: 'Missing userId' }, { status: 400 });
-		}
+	// Use authenticated user's ID
+	const userId = locals.user.id;
+
+	try {
+		const { templateSlug } = await request.json();
 
 		// Validate self.xyz configuration
 		const appName = process.env.SELF_APP_NAME || 'Communiqué';

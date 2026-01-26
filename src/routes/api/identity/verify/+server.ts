@@ -15,8 +15,13 @@ import { hashIPAddress } from '$lib/core/server/security';
  * self.xyz Verification Callback
  * Called by frontend after user scans QR with Self app
  */
-export const POST: RequestHandler = async ({ request, getClientAddress }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress, locals }) => {
 	try {
+		// CVE-INTERNAL-003 FIX: Require authenticated session
+		if (!locals.user) {
+			throw error(401, 'Authentication required');
+		}
+
 		const { attestationId, proof, publicSignals, userContextData } = await request.json();
 
 		// Validate required fields
@@ -30,8 +35,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		const { isValid, isMinimumAgeValid, isOfacValid } = result.isValidDetails;
 
 		if (!isValid || !isMinimumAgeValid || !isOfacValid) {
-			// Decode user ID from hex
-			const userId = Buffer.from(userContextData, 'hex').toString('utf-8');
+			// Use authenticated user ID from session (not untrusted client input)
+			const userId = locals.user.id;
 
 			// Log failed verification
 			await prisma.verificationAudit.create({
@@ -82,59 +87,70 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		// Generate identity hash (Sybil resistance)
 		const identityHash = generateIdentityHash(identityProof);
 		const identityFingerprint = generateIdentityFingerprint(identityHash);
+		const userId = locals.user.id;
 
-		// Check for duplicate identity
-		const userId = Buffer.from(userContextData, 'hex').toString('utf-8');
-		const existingUser = await prisma.user.findUnique({
-			where: { identity_hash: identityHash }
-		});
+		// Wrap all database operations in a transaction to prevent race conditions
+		// This ensures atomic check-and-set for duplicate identity detection
+		const duplicateDetected = await prisma.$transaction(async (tx) => {
+			// Check for duplicate identity (within transaction for consistency)
+			const existingUser = await tx.user.findUnique({
+				where: { identity_hash: identityHash }
+			});
 
-		if (existingUser && existingUser.id !== userId) {
-			// Log duplicate attempt
-			await prisma.verificationAudit.create({
+			if (existingUser && existingUser.id !== userId) {
+				// Log duplicate attempt
+				await tx.verificationAudit.create({
+					data: {
+						user_id: userId,
+						method: 'self.xyz',
+						status: 'failed',
+						failure_reason: 'duplicate_identity',
+						identity_hash: identityHash,
+						identity_fingerprint: identityFingerprint,
+						ip_address_hash: hashIPAddress(getClientAddress())
+					}
+				});
+
+				return true; // Signal duplicate detected
+			}
+
+			// Update user verification status
+			await tx.user.update({
+				where: { id: userId },
 				data: {
-					user_id: userId,
-					method: 'self.xyz',
-					status: 'failed',
-					failure_reason: 'duplicate_identity',
+					is_verified: true,
+					verification_method: 'self.xyz',
+					verified_at: new Date(),
 					identity_hash: identityHash,
 					identity_fingerprint: identityFingerprint,
-					ip_address_hash: hashIPAddress(getClientAddress())
+					birth_year: birthYear
 				}
 			});
 
+			// Log successful verification
+			await tx.verificationAudit.create({
+				data: {
+					user_id: userId,
+					method: 'self.xyz',
+					status: 'success',
+					identity_hash: identityHash,
+					identity_fingerprint: identityFingerprint,
+					ip_address_hash: hashIPAddress(getClientAddress()),
+					metadata: {
+						attestation_id: attestationId,
+						nationality: identityProof.nationality,
+						document_type: identityProof.documentType
+					}
+				}
+			});
+
+			return false; // No duplicate
+		});
+
+		// Throw HTTP error outside transaction to avoid Prisma wrapping it
+		if (duplicateDetected) {
 			throw error(409, 'Identity already verified with another account');
 		}
-
-		// Update user verification status
-		await prisma.user.update({
-			where: { id: userId },
-			data: {
-				is_verified: true,
-				verification_method: 'self.xyz',
-				verified_at: new Date(),
-				identity_hash: identityHash,
-				identity_fingerprint: identityFingerprint,
-				birth_year: birthYear
-			}
-		});
-
-		// Log successful verification
-		await prisma.verificationAudit.create({
-			data: {
-				user_id: userId,
-				method: 'self.xyz',
-				status: 'success',
-				identity_hash: identityHash,
-				identity_fingerprint: identityFingerprint,
-				ip_address_hash: hashIPAddress(getClientAddress()),
-				metadata: {
-					attestation_id: attestationId,
-					nationality: identityProof.nationality,
-					document_type: identityProof.documentType
-				}
-			}
-		});
 
 		return json({
 			status: 'success',

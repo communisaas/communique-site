@@ -140,38 +140,6 @@ export async function encryptIdentityBlob(
 }
 
 /**
- * Verify encrypted blob structure (client-side validation)
- */
-export function isValidEncryptedBlob(blob: unknown): blob is EncryptedBlob {
-	if (typeof blob !== 'object' || blob === null) return false;
-
-	const b = blob as Record<string, unknown>;
-
-	return (
-		typeof b.ciphertext === 'string' &&
-		typeof b.nonce === 'string' &&
-		typeof b.publicKey === 'string' &&
-		typeof b.version === 'string' &&
-		typeof b.timestamp === 'number'
-	);
-}
-
-/**
- * Decrypt blob (TEE-only operation, not available in browser)
- *
- * This function signature exists for type completeness but should
- * NEVER be called in browser code. Decryption happens only in AWS Nitro Enclaves.
- *
- * @throws Always throws error (decryption requires TEE private key)
- */
-export function decryptIdentityBlob(_encryptedBlob: EncryptedBlob): never {
-	throw new Error(
-		'Decryption is only available in AWS Nitro Enclaves. ' +
-			'The TEE private key never leaves the enclave.'
-	);
-}
-
-/**
  * Storage interface for encrypted blobs
  *
  * Phase 1: Postgres via API
@@ -233,25 +201,6 @@ export class PostgresBlobStorage implements BlobStorage {
 }
 
 /**
- * Phase 2: IPFS blob storage (future implementation)
- *
- * See: docs/PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md
- */
-export class IPFSBlobStorage implements BlobStorage {
-	async store(_userId: string, _blob: EncryptedBlob): Promise<string> {
-		throw new Error('IPFS storage not implemented yet (Phase 2)');
-	}
-
-	async retrieve(_userId: string): Promise<EncryptedBlob | null> {
-		throw new Error('IPFS storage not implemented yet (Phase 2)');
-	}
-
-	async delete(_userId: string): Promise<void> {
-		throw new Error('IPFS storage not implemented yet (Phase 2)');
-	}
-}
-
-/**
  * Get active storage implementation
  *
  * Phase 1: Always Postgres
@@ -260,4 +209,44 @@ export class IPFSBlobStorage implements BlobStorage {
 export function getBlobStorage(): BlobStorage {
 	// TODO: Phase 2 - Check feature flag or user preference
 	return new PostgresBlobStorage();
+}
+
+/**
+ * Validate encrypted blob structure
+ *
+ * Checks that all required fields are present and have valid types.
+ * Does NOT validate cryptographic integrity (that requires the TEE private key).
+ *
+ * @param blob - Object to validate
+ * @returns true if blob has valid EncryptedBlob structure
+ */
+export function isValidEncryptedBlob(blob: unknown): blob is EncryptedBlob {
+	if (blob === null || blob === undefined || typeof blob !== 'object') {
+		return false;
+	}
+
+	const candidate = blob as Record<string, unknown>;
+
+	// Check required fields exist and have correct types
+	if (typeof candidate.ciphertext !== 'string' || candidate.ciphertext.length === 0) {
+		return false;
+	}
+
+	if (typeof candidate.nonce !== 'string' || candidate.nonce.length === 0) {
+		return false;
+	}
+
+	if (typeof candidate.publicKey !== 'string' || candidate.publicKey.length === 0) {
+		return false;
+	}
+
+	if (typeof candidate.version !== 'string' || candidate.version.length === 0) {
+		return false;
+	}
+
+	if (typeof candidate.timestamp !== 'number' || candidate.timestamp <= 0) {
+		return false;
+	}
+
+	return true;
 }

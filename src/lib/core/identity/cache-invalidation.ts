@@ -11,6 +11,7 @@
  * - communique_guest_template (localStorage): Guest state with address
  */
 
+import { z } from 'zod';
 import { browser } from '$app/environment';
 
 // IndexedDB database names
@@ -19,6 +20,14 @@ const LOCATION_DB_NAME = 'communique-location';
 
 // localStorage keys
 const GUEST_STATE_KEY = 'communique_guest_template';
+
+// =============================================================================
+// ZOD SCHEMA
+// =============================================================================
+
+const GuestStateSchema = z.object({
+	address: z.string().optional()
+}).passthrough(); // Allow additional fields
 
 /**
  * Clear all location-related caches
@@ -43,9 +52,18 @@ export async function invalidateLocationCaches(): Promise<void> {
 		const storedState = localStorage.getItem(GUEST_STATE_KEY);
 		if (storedState) {
 			const parsed = JSON.parse(storedState);
-			if (parsed.address) {
-				delete parsed.address;
-				localStorage.setItem(GUEST_STATE_KEY, JSON.stringify(parsed));
+			const validationResult = GuestStateSchema.safeParse(parsed);
+
+			if (!validationResult.success) {
+				console.warn(
+					'[CacheInvalidation] Invalid guest state structure:',
+					validationResult.error.flatten()
+				);
+				// Remove invalid data entirely
+				localStorage.removeItem(GUEST_STATE_KEY);
+			} else if (validationResult.data.address) {
+				delete validationResult.data.address;
+				localStorage.setItem(GUEST_STATE_KEY, JSON.stringify(validationResult.data));
 				console.log('[CacheInvalidation] Cleared guest state address');
 			}
 		}

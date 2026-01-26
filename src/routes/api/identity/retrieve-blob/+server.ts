@@ -8,17 +8,27 @@
  * Phase 2: IPFS CID retrieval + on-chain pointer
  */
 
-import { json } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import type { EncryptedBlob } from '$lib/core/identity/blob-encryption';
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
 	try {
+		// SECURITY FIX: Require authenticated session
+		if (!locals.user) {
+			throw error(401, 'Authentication required');
+		}
+
 		const userId = url.searchParams.get('userId');
 
 		if (!userId) {
 			return json({ error: 'Missing userId parameter' }, { status: 400 });
+		}
+
+		// SECURITY FIX: Verify user can only access their own blob
+		if (userId !== locals.user.id) {
+			throw error(403, 'Access denied: Cannot retrieve another user\'s encrypted data');
 		}
 
 		// Fetch encrypted blob
@@ -49,12 +59,16 @@ export const GET: RequestHandler = async ({ url }) => {
 				tee_key_id: encryptedData.tee_key_id
 			}
 		});
-	} catch (error) {
-		console.error('Error retrieving encrypted blob:', error);
+	} catch (err) {
+		// Re-throw SvelteKit HttpErrors (401, 403, etc.)
+		if (err && typeof err === 'object' && 'status' in err) {
+			throw err;
+		}
+		console.error('Error retrieving encrypted blob:', err);
 		return json(
 			{
 				error: 'Failed to retrieve encrypted blob',
-				details: error instanceof Error ? error.message : 'Unknown error'
+				details: err instanceof Error ? err.message : 'Unknown error'
 			},
 			{ status: 500 }
 		);
