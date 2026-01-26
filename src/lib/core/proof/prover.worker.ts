@@ -10,19 +10,40 @@
 import { Buffer } from './buffer-shim';
 (globalThis as any).Buffer = Buffer;
 
+// Type for proof results (matching prover-core.ts)
+interface ProofResult {
+	success: boolean;
+	proof?: Uint8Array;
+	publicInputs?: Record<string, unknown>;
+	nullifier?: string;
+	error?: string;
+}
+
+// Type for witness data
+interface WitnessData {
+	identityCommitment: string;
+	leafIndex: number;
+	merklePath: string[];
+	merkleRoot: string;
+	actionId: string;
+	timestamp: number;
+	address: string;
+	[key: string]: unknown;
+}
+
 // Type for worker events (inline to avoid hoisting issues)
 type WorkerEvent =
 	| { type: 'STATUS'; status: string }
 	| { type: 'ERROR'; message: string }
 	| { type: 'PROGRESS'; stage: string; percent: number }
-	| { type: 'PROOF_COMPLETE'; result: any }
+	| { type: 'PROOF_COMPLETE'; result: ProofResult }
 	| { type: 'MERKLE_ROOT_RESULT'; merkleRoot: string }
 	| { type: 'POSEIDON_HASH_RESULT'; hash: string };
 
 type WorkerCommand =
 	| { type: 'INIT'; k?: number }
 	| { type: 'INIT_HASH_ONLY' }
-	| { type: 'PROVE'; witness: any }
+	| { type: 'PROVE'; witness: WitnessData }
 	| { type: 'COMPUTE_MERKLE_ROOT'; leaf: string; merklePath: string[]; leafIndex: number }
 	| { type: 'POSEIDON_HASH'; input: string };
 
@@ -30,7 +51,7 @@ function isWorkerCommand(data: unknown): data is WorkerCommand {
 	return typeof data === 'object' && data !== null && 'type' in data;
 }
 
-const ctx: Worker = self as any;
+const ctx: Worker = self as Worker;
 
 // Dynamic import wrapper to load prover-core AFTER Buffer is set
 let proverCore: typeof import('./prover-core') | null = null;
@@ -136,7 +157,7 @@ async function handleInitHashOnly() {
 	}
 }
 
-async function handleProve(witness: any) {
+async function handleProve(witness: WitnessData) {
 	sendEvent({ type: 'STATUS', status: 'proving' });
 
 	try {

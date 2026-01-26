@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { db } from '$lib/core/db';
 
 /**
@@ -6,6 +7,17 @@ import { db } from '$lib/core/db';
  * Implements the mathematical processing pipeline:
  * f: Text → ℝ³ (sentiment_class, confidence, intensity)
  */
+
+// =============================================================================
+// ZOD SCHEMA
+// =============================================================================
+
+const PoliticalEmbeddingSchema = z.object({
+	embedding: z.array(z.number()),
+	sentiment: z.unknown(), // Will be validated separately
+	last_updated: z.date(),
+	version: z.string()
+});
 
 export interface SentimentResult {
 	sentiment_class: 'pro' | 'anti' | 'neutral';
@@ -257,16 +269,29 @@ export async function storePoliticalEmbeddings(messages: MessageEmbedding[]): Pr
 
 		if (!campaign?.template.userId) continue;
 
+		// Serialize political embedding
+		const politicalEmbedding = {
+			embedding: message.embedding,
+			sentiment: message.sentiment,
+			last_updated: new Date(),
+			version: 'v1_mock_bert'
+		};
+
+		// Validate before storing
+		const validationResult = PoliticalEmbeddingSchema.safeParse(politicalEmbedding);
+		if (!validationResult.success) {
+			console.error(
+				'[sentiment] Invalid political embedding structure:',
+				validationResult.error.flatten()
+			);
+			continue; // Skip this message
+		}
+
 		// Update political embedding directly in User model
 		await db.user.update({
 			where: { id: campaign.template.userId },
 			data: {
-				political_embedding: {
-					embedding: message.embedding,
-					sentiment: JSON.parse(JSON.stringify(message.sentiment)),
-					last_updated: new Date(),
-					version: 'v1_mock_bert'
-				},
+				political_embedding: JSON.parse(JSON.stringify(validationResult.data)),
 				embedding_version: 'v1_mock_bert',
 				coordinates_updated_at: new Date(),
 				// Update coordinates if they're not already set

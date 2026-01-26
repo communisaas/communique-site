@@ -15,8 +15,18 @@
 
 import type { WitnessData, ProofResult } from './prover-core';
 
+// Type for the NoirProver instance (avoiding direct import to prevent SSR issues)
+interface NoirProverInstance {
+	init(): Promise<void>;
+	warmup(): Promise<void>;
+	prove(inputs: Record<string, unknown>): Promise<{
+		proof: Uint8Array;
+		publicInputs: Record<string, unknown>;
+	}>;
+}
+
 // Lazy-loaded prover instance
-let noirProverInstance: any = null;
+let noirProverInstance: NoirProverInstance | null = null;
 let initPromise: Promise<void> | null = null;
 
 /**

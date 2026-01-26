@@ -84,10 +84,12 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 	 */
 	async lookupRepresentativesByAddress(_address: Address): Promise<Representative[]> {
 		// TODO: Integrate with existing congressional district lookup system
-		// For now, this is a placeholder that would be implemented using
-		// the existing database and district mapping logic
+		// Implementation reference: src/lib/core/congress/address-lookup.ts
+		// The getRepresentativesForAddress() function provides the actual implementation
+		// This adapter method should call that function and transform the results
+		// to match the Representative interface expected by the legislative adapter base class
 		throw new Error(
-			'Representative lookup not yet implemented - integrate with existing district lookup'
+			'Representative lookup not yet implemented - integrate with src/lib/core/congress/address-lookup.ts'
 		);
 	}
 
@@ -293,15 +295,25 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 		xmlMessage: string
 	): Promise<{ success: boolean; submissionId?: string }> {
 		// TODO: Implement actual CWC API submission
-		// This would make an HTTP request to the CWC API endpoint
-		// with proper authentication and error handling
+		// Implementation reference: src/lib/core/congress/cwc-client.ts
+		//
+		// This method should use the cwcClient singleton for actual submissions:
+		// - For Senate: cwcClient.submitToSenate()
+		// - For House: cwcClient.submitToHouse()
+		//
+		// IMPORTANT: House submissions require IP whitelisting
+		// See cwc-client.ts for details on House CWC configuration requirements
+		//
+		// Current status: This adapter is a legacy abstraction layer.
+		// Active CWC submissions go through cwcClient directly, not this adapter.
 
-		console.log('CWC XML Message:', xmlMessage);
+		console.log('CWC XML Message (not sent - placeholder only):', xmlMessage.substring(0, 200));
 
-		// Placeholder implementation
+		// Placeholder implementation - returns simulated success
+		// Real implementation should call cwcClient methods
 		return {
 			success: true,
-			submissionId: `CWC_${Date.now()}`
+			submissionId: `CWC_PLACEHOLDER_${Date.now()}`
 		};
 	}
 }

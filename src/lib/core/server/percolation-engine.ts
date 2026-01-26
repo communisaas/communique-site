@@ -102,7 +102,8 @@ class UnionFind {
 			this.makeSet(x);
 		}
 
-		const parentX = this.parent.get(x)!;
+		// After makeSet, parentX is guaranteed to exist
+		const parentX = this.parent.get(x) ?? x;
 		if (parentX !== x) {
 			// Path compression: point directly to root
 			const root = this.find(parentX);
@@ -266,7 +267,8 @@ class EdmondsKarp {
 		visited.add(source);
 
 		while (queue.length > 0) {
-			const u = queue.shift()!;
+			const u = queue.shift();
+			if (u === undefined) break;
 
 			const neighbors = this.capacity.get(u);
 			if (!neighbors) continue;
@@ -305,7 +307,8 @@ class EdmondsKarp {
 			let v = sink;
 
 			while (v !== source) {
-				const u = parent.get(v)!;
+				const u = parent.get(v);
+				if (u === undefined) break;
 				const cap = this.capacity.get(u)?.get(v) ?? 0;
 				const f = this.flow.get(u)?.get(v) ?? 0;
 				pathFlow = Math.min(pathFlow, cap - f);
@@ -315,15 +318,22 @@ class EdmondsKarp {
 			// Update flow along the path
 			v = sink;
 			while (v !== source) {
-				const u = parent.get(v)!;
+				const u = parent.get(v);
+				if (u === undefined) break;
 
 				// Forward edge: increase flow
 				const currentFlow = this.flow.get(u)?.get(v) ?? 0;
-				this.flow.get(u)!.set(v, currentFlow + pathFlow);
+				const forwardFlowMap = this.flow.get(u);
+				if (forwardFlowMap) {
+					forwardFlowMap.set(v, currentFlow + pathFlow);
+				}
 
 				// Reverse edge: decrease flow (residual graph)
 				const reverseFlow = this.flow.get(v)?.get(u) ?? 0;
-				this.flow.get(v)!.set(u, reverseFlow - pathFlow);
+				const reverseFlowMap = this.flow.get(v);
+				if (reverseFlowMap) {
+					reverseFlowMap.set(u, reverseFlow - pathFlow);
+				}
 
 				v = u;
 			}
@@ -345,7 +355,8 @@ class EdmondsKarp {
 		reachable.add(source);
 
 		while (queue.length > 0) {
-			const u = queue.shift()!;
+			const u = queue.shift();
+			if (u === undefined) break;
 
 			const neighbors = this.capacity.get(u);
 			if (!neighbors) continue;

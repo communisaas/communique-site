@@ -34,7 +34,11 @@ async function loadBbJs() {
 		BarretenbergSync = bbjs.BarretenbergSync;
 		Fr = bbjs.Fr;
 	}
-	return { BarretenbergSync: BarretenbergSync!, Fr: Fr! };
+	// After the if block, both are guaranteed to be assigned
+	if (!BarretenbergSync || !Fr) {
+		throw new Error('Failed to load @aztec/bb.js: BarretenbergSync or Fr is undefined');
+	}
+	return { BarretenbergSync, Fr };
 }
 
 /**

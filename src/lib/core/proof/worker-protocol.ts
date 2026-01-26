@@ -32,10 +32,11 @@ export type WorkerEvent =
 /**
  * Type guard for WorkerCommand
  */
-export function isWorkerCommand(data: any): data is WorkerCommand {
+export function isWorkerCommand(data: unknown): data is WorkerCommand {
 	return (
 		typeof data === 'object' &&
 		data !== null &&
+		'type' in data &&
 		(data.type === 'INIT' ||
 			data.type === 'INIT_HASH_ONLY' ||
 			data.type === 'PROVE' ||

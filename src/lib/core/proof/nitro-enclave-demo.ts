@@ -108,12 +108,24 @@ export async function verifyNitroAttestation(
 	return true; // Always valid in demo
 }
 
+// Type for witness data
+interface WitnessData {
+	identityCommitment: string;
+	leafIndex: number;
+	merklePath: string[];
+	merkleRoot: string;
+	actionId: string;
+	timestamp: number;
+	address: string;
+	[key: string]: unknown;
+}
+
 /**
  * Simulate encrypting witness to Nitro Enclave
  * Real timing: 5-15ms (ECDH + AES-GCM encryption)
  */
 export async function encryptToNitroEnclave(
-	witness: any,
+	witness: WitnessData,
 	attestation: NitroAttestationDocument
 ): Promise<{
 	ciphertext: string;
