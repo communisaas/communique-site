@@ -6,10 +6,17 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 
+	// Validate OAuth credentials
+	const clientId = process.env.FACEBOOK_CLIENT_ID;
+	const clientSecret = process.env.FACEBOOK_CLIENT_SECRET;
+	if (!clientId || !clientSecret) {
+		throw new Error('Missing OAuth credentials for Facebook');
+	}
+
 	// Create Facebook OAuth provider with static redirect URI
 	const facebook = new Facebook(
-		process.env.FACEBOOK_CLIENT_ID!,
-		process.env.FACEBOOK_CLIENT_SECRET!,
+		clientId,
+		clientSecret,
 		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`
 	);
 

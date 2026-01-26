@@ -14,6 +14,7 @@
 
 import type { Cookies } from '@sveltejs/kit';
 import { error, redirect } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
 
@@ -67,25 +68,21 @@ export interface DatabaseUser {
 	email: string;
 	name: string | null;
 	avatar: string | null;
-	street?: string | null;
-	city?: string | null;
-	state?: string | null;
-	zip?: string | null;
-	phone?: string | null;
-	congressional_district?: string | null;
+	// NOTE: PII fields (street, city, state, zip, phone, congressional_district) removed
+	// per CYPHERPUNK-ARCHITECTURE.md - address data is encrypted in EncryptedDeliveryData
 	is_verified?: boolean;
 	role?: string | null;
 	organization?: string | null;
 	location?: string | null;
 	connection?: string | null;
-	connection_details?: string | null;
+	// NOTE: connection_details field removed - does not exist in schema
 	profile_completed_at?: Date | null;
 	profile_visibility?: string;
 	verification_method?: string | null;
 	verified_at?: Date | null;
 	// Blockchain accounts
 	near_account_id?: string | null;
-	near_account_entropy?: string | null; // 🔒 PRIVACY: Random entropy for account ID generation
+	near_account_entropy?: string | null; // PRIVACY: Random entropy for account ID generation
 	near_auth_method?: string | null;
 	near_account_created_at?: Date | null;
 	scroll_address?: string | null;
@@ -395,7 +392,7 @@ export class OAuthCallbackHandler {
 			}),
 			{
 				path: '/',
-				secure: false, // Allow client-side access
+				secure: !dev, // Secure in production
 				httpOnly: false, // Allow client-side access
 				maxAge: 60 * 5, // 5 minutes
 				sameSite: 'lax'
@@ -414,7 +411,7 @@ export class OAuthCallbackHandler {
 			}),
 			{
 				path: '/',
-				secure: false, // Allow client-side access
+				secure: !dev, // Secure in production
 				httpOnly: false, // Allow client-side access
 				maxAge: 60 * 15, // 15 minutes
 				sameSite: 'lax'
@@ -517,7 +514,7 @@ export class OAuthCallbackHandler {
 			// Client will read this cookie and add OAuth location signal to IndexedDB
 			cookies.set('oauth_location', JSON.stringify(locationData), {
 				path: '/',
-				secure: false, // Allow client-side access
+				secure: !dev, // Secure in production
 				httpOnly: false, // Allow client-side access
 				maxAge: 7 * 24 * 60 * 60, // 7 days
 				sameSite: 'lax'

@@ -73,31 +73,3 @@ export async function verifySignedToken<T = unknown>(
 	}
 }
 
-/**
- * Generate a one-time use token for sensitive operations
- * Includes additional entropy for security
- */
-export function generateOneTimeToken(data: Record<string, unknown>, expiresIn = '1h'): string {
-	const payload = {
-		...data,
-		nonce: globalThis.crypto.randomUUID(),
-		timestamp: Date.now()
-	};
-
-	const secret = env.JWT_SECRET || 'development-secret';
-
-	return sign(payload, secret, {
-		expiresIn,
-		issuer: 'communique.app'
-	} as jwt.SignOptions);
-}
-
-/**
- * Create a secure hash for email + userId combination
- * Used for quick lookups without exposing user data
- */
-export function createEmailUserHash(email: string, userId: string): string {
-	const data = `${email.toLowerCase()}:${userId}`;
-	// In production, use proper crypto hashing
-	return Buffer.from(data).toString('base64url');
-}

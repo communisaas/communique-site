@@ -6,10 +6,17 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 
+	// Validate OAuth credentials
+	const clientId = process.env.LINKEDIN_CLIENT_ID;
+	const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+	if (!clientId || !clientSecret) {
+		throw new Error('Missing OAuth credentials for LinkedIn');
+	}
+
 	// Create LinkedIn OAuth provider with static redirect URL
 	const linkedin = new LinkedIn(
-		process.env.LINKEDIN_CLIENT_ID!,
-		process.env.LINKEDIN_CLIENT_SECRET!,
+		clientId,
+		clientSecret,
 		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`
 	);
 

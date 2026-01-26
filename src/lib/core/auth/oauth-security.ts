@@ -14,16 +14,6 @@ interface SessionValidation {
 	error?: string;
 }
 
-interface RateLimit {
-	user_id: string;
-	endpoint: string;
-	count: number;
-	window_start: number;
-}
-
-// Simple in-memory rate limiting by user_id
-const userRateLimits = new Map<string, RateLimit>();
-
 /**
  * Validate OAuth session from cookie/header
  */
@@ -140,112 +130,6 @@ export async function checkAnalyticsPermission(
 	} catch {
 		return { allowed: false, reason: 'Permission check failed' };
 	}
-}
-
-/**
- * Rate limiting by OAuth user (not IP)
- */
-export function checkUserRateLimit(
-	user_id: string,
-	endpoint: string,
-	max_per_minute: number = 10
-): { allowed: boolean; remaining: number; reset_time: number } {
-	const now = Date.now();
-	const windowMs = 60 * 1000; // 1 minute
-	const key = `${user_id}:${endpoint}`;
-
-	const record = userRateLimits.get(key);
-
-	if (!record || now - record.window_start > windowMs) {
-		// New window
-		userRateLimits.set(key, {
-			user_id,
-			endpoint,
-			count: 1,
-			window_start: now
-		});
-
-		return {
-			allowed: true,
-			remaining: max_per_minute - 1,
-			reset_time: now + windowMs
-		};
-	}
-
-	if (record.count >= max_per_minute) {
-		return {
-			allowed: false,
-			remaining: 0,
-			reset_time: record.window_start + windowMs
-		};
-	}
-
-	record.count++;
-	userRateLimits.set(key, record);
-
-	return {
-		allowed: true,
-		remaining: max_per_minute - record.count,
-		reset_time: record.window_start + windowMs
-	};
-}
-
-/**
- * OAuth security middleware for our analytics endpoints
- */
-export async function oauthSecurityMiddleware(
-	request: Request,
-	endpoint: string
-): Promise<{
-	allowed: boolean;
-	user_id?: string;
-	error?: string;
-	headers?: Record<string, string>;
-}> {
-	// Validate OAuth session
-	const sessionValidation = await validateOAuthSession(request);
-
-	if (!sessionValidation.valid) {
-		return {
-			allowed: false,
-			error: `Authentication required: ${sessionValidation.error}`
-		};
-	}
-
-	const user_id = sessionValidation.user_id!;
-
-	// Check endpoint permissions
-	const permission = await checkAnalyticsPermission(user_id, endpoint);
-
-	if (!permission.allowed) {
-		return {
-			allowed: false,
-			error: `Access denied: ${permission.reason}`
-		};
-	}
-
-	// Check rate limiting
-	const rateLimit = checkUserRateLimit(user_id, endpoint);
-
-	if (!rateLimit.allowed) {
-		return {
-			allowed: false,
-			error: 'Rate limit exceeded',
-			headers: {
-				'X-RateLimit-Remaining': '0',
-				'X-RateLimit-Reset': rateLimit.reset_time.toString()
-			}
-		};
-	}
-
-	return {
-		allowed: true,
-		user_id,
-		headers: {
-			'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-			'X-RateLimit-Reset': rateLimit.reset_time.toString()
-		}
-	};
 }
 
 /**

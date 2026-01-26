@@ -18,6 +18,96 @@ import type {
 import * as crypto from 'crypto';
 
 // =============================================================================
+// TIMEOUT AND RETRY UTILITIES
+// =============================================================================
+
+const DEFAULT_TIMEOUT = 30000; // 30 seconds
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+/**
+ * Execute fetch with timeout
+ */
+async function fetchWithTimeout(
+	url: string,
+	options: RequestInit = {},
+	timeout: number = DEFAULT_TIMEOUT
+): Promise<Response> {
+	const controller = new AbortController();
+	const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+	try {
+		const response = await fetch(url, {
+			...options,
+			signal: controller.signal
+		});
+		clearTimeout(timeoutId);
+		return response;
+	} catch (error) {
+		clearTimeout(timeoutId);
+		if (error instanceof Error && error.name === 'AbortError') {
+			const timeoutError = new Error(`OAuth request timeout after ${timeout}ms: ${url}`);
+			console.error('[OAuth] Timeout:', timeoutError.message);
+			throw timeoutError;
+		}
+		throw error;
+	}
+}
+
+/**
+ * Execute fetch with retry logic for transient failures
+ */
+async function fetchWithRetry(
+	url: string,
+	options: RequestInit = {},
+	timeout: number = DEFAULT_TIMEOUT
+): Promise<Response> {
+	let lastError: Error | null = null;
+
+	for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+		try {
+			const response = await fetchWithTimeout(url, options, timeout);
+
+			// Don't retry on client errors (4xx except 429)
+			if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+				return response;
+			}
+
+			// Retry on server errors (5xx) or rate limiting (429)
+			if (response.status === 429 || response.status >= 500) {
+				if (attempt < MAX_RETRIES - 1) {
+					const delay = RETRY_DELAY * Math.pow(2, attempt);
+					console.warn(
+						`[OAuth] Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES})`
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					continue;
+				}
+			}
+
+			return response;
+		} catch (error) {
+			lastError = error instanceof Error ? error : new Error(String(error));
+
+			// Don't retry on timeout if it's the last attempt
+			if (attempt === MAX_RETRIES - 1) {
+				console.error(`[OAuth] Request failed after ${MAX_RETRIES} attempts:`, lastError.message);
+				throw lastError;
+			}
+
+			// Exponential backoff for retries
+			const delay = RETRY_DELAY * Math.pow(2, attempt);
+			console.warn(
+				`[OAuth] Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${MAX_RETRIES}): ${lastError.message}`
+			);
+			await new Promise((resolve) => setTimeout(resolve, delay));
+		}
+	}
+
+	throw lastError || new Error('OAuth request failed after retries');
+}
+
+// =============================================================================
 // TYPE GUARDS FOR OAUTH PROVIDER RESPONSES
 // =============================================================================
 
@@ -123,347 +213,407 @@ function isDiscordUser(user: unknown): user is {
 }
 
 // =============================================================================
+// CREDENTIAL VALIDATION HELPER
+// =============================================================================
+
+function getRequiredEnv(name: string, provider: string): string {
+	const value = process.env[name];
+	if (!value) {
+		throw new Error(`Missing OAuth credentials for ${provider}: ${name} is not set`);
+	}
+	return value;
+}
+
+// =============================================================================
 // GOOGLE CONFIGURATION
 // =============================================================================
 
-export const googleConfig: OAuthCallbackConfig = {
-	provider: 'google',
-	clientId: process.env.GOOGLE_CLIENT_ID!,
-	clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-	redirectUrl: `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`,
-	userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
-	requiresCodeVerifier: true,
-	scope: 'profile email',
+function createGoogleConfig(): OAuthCallbackConfig {
+	const clientId = getRequiredEnv('GOOGLE_CLIENT_ID', 'Google');
+	const clientSecret = getRequiredEnv('GOOGLE_CLIENT_SECRET', 'Google');
+	const redirectUrl = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`;
 
-	createOAuthClient: (): OAuthClient => {
-		return new Google(
-			process.env.GOOGLE_CLIENT_ID!,
-			process.env.GOOGLE_CLIENT_SECRET!,
-			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`
-		) as unknown as OAuthClient;
-	},
+	return {
+		provider: 'google',
+		clientId,
+		clientSecret,
+		redirectUrl,
+		userInfoUrl: 'https://www.googleapis.com/oauth2/v2/userinfo',
+		requiresCodeVerifier: true,
+		scope: 'profile email',
 
-	exchangeTokens: async (
-		client: OAuthClient,
-		code: string,
-		codeVerifier?: string
-	): Promise<OAuthTokens> => {
-		return await client.validateAuthorizationCode(code, codeVerifier);
-	},
+		createOAuthClient: (): OAuthClient => {
+			return new Google(
+				clientId,
+				clientSecret,
+				redirectUrl
+			) as unknown as OAuthClient;
+		},
 
-	getUserInfo: async (accessToken: string): Promise<unknown> => {
-		const response = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-			headers: {
-				Authorization: `Bearer ${accessToken}`
+		exchangeTokens: async (
+			client: OAuthClient,
+			code: string,
+			codeVerifier?: string
+		): Promise<OAuthTokens> => {
+			return await client.validateAuthorizationCode(code, codeVerifier);
+		},
+
+		getUserInfo: async (accessToken: string): Promise<unknown> => {
+			const response = await fetchWithRetry('https://www.googleapis.com/oauth2/v2/userinfo', {
+				headers: {
+					Authorization: `Bearer ${accessToken}`
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch user info: ${response.statusText}`);
 			}
-		});
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch user info: ${response.statusText}`);
+			return await response.json();
+		},
+
+		mapUserData: (rawUser: unknown): UserData => {
+			if (!isGoogleUser(rawUser)) {
+				throw new Error('Invalid Google user data format');
+			}
+			return {
+				id: rawUser.id,
+				email: rawUser.email,
+				name: rawUser.name,
+				avatar: rawUser.picture
+			};
+		},
+
+		extractTokenData: (tokens: OAuthTokens): TokenData => {
+			const expiresAtDate = tokens.accessTokenExpiresAt();
+			return {
+				accessToken: tokens.accessToken(),
+				refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
+				expiresAt: expiresAtDate ? Math.floor(expiresAtDate.getTime() / 1000) : null
+			};
 		}
+	};
+}
 
-		return await response.json();
-	},
-
-	mapUserData: (rawUser: unknown): UserData => {
-		if (!isGoogleUser(rawUser)) {
-			throw new Error('Invalid Google user data format');
-		}
-		return {
-			id: rawUser.id,
-			email: rawUser.email,
-			name: rawUser.name,
-			avatar: rawUser.picture
-		};
-	},
-
-	extractTokenData: (tokens: OAuthTokens): TokenData => ({
-		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
-		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
-			: null
-	})
-};
+export const googleConfig: OAuthCallbackConfig = createGoogleConfig();
 
 // =============================================================================
 // FACEBOOK CONFIGURATION
 // =============================================================================
 
-export const facebookConfig: OAuthCallbackConfig = {
-	provider: 'facebook',
-	clientId: process.env.FACEBOOK_CLIENT_ID!,
-	clientSecret: process.env.FACEBOOK_CLIENT_SECRET!,
-	redirectUrl: `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`,
-	userInfoUrl: 'https://graph.facebook.com/me',
-	requiresCodeVerifier: false,
-	scope: 'email public_profile',
+function createFacebookConfig(): OAuthCallbackConfig {
+	const clientId = getRequiredEnv('FACEBOOK_CLIENT_ID', 'Facebook');
+	const clientSecret = getRequiredEnv('FACEBOOK_CLIENT_SECRET', 'Facebook');
+	const redirectUrl = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`;
 
-	createOAuthClient: (): OAuthClient => {
-		return new Facebook(
-			process.env.FACEBOOK_CLIENT_ID!,
-			process.env.FACEBOOK_CLIENT_SECRET!,
-			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/facebook/callback`
-		) as unknown as OAuthClient;
-	},
+	return {
+		provider: 'facebook',
+		clientId,
+		clientSecret,
+		redirectUrl,
+		userInfoUrl: 'https://graph.facebook.com/me',
+		requiresCodeVerifier: false,
+		scope: 'email public_profile',
 
-	exchangeTokens: async (client: OAuthClient, code: string): Promise<OAuthTokens> => {
-		return await client.validateAuthorizationCode(code);
-	},
+		createOAuthClient: (): OAuthClient => {
+			return new Facebook(
+				clientId,
+				clientSecret,
+				redirectUrl
+			) as unknown as OAuthClient;
+		},
 
-	getUserInfo: async (accessToken: string, clientSecret?: string): Promise<unknown> => {
-		// Facebook requires appsecret_proof for enhanced security
-		const appsecretProof = crypto
-			.createHmac('sha256', clientSecret!)
-			.update(accessToken)
-			.digest('hex');
+		exchangeTokens: async (client: OAuthClient, code: string): Promise<OAuthTokens> => {
+			return await client.validateAuthorizationCode(code);
+		},
 
-		const response = await fetch(
-			`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}&appsecret_proof=${appsecretProof}`
-		);
+		getUserInfo: async (accessToken: string, clientSecret?: string): Promise<unknown> => {
+			// Facebook requires appsecret_proof for enhanced security
+			if (!clientSecret) {
+				throw new Error('Facebook OAuth requires client secret for appsecret_proof');
+			}
+			const appsecretProof = crypto
+				.createHmac('sha256', clientSecret)
+				.update(accessToken)
+				.digest('hex');
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch user info: ${response.statusText}`);
+			const response = await fetchWithRetry(
+				`https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}&appsecret_proof=${appsecretProof}`
+			);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch user info: ${response.statusText}`);
+			}
+
+			return await response.json();
+		},
+
+		mapUserData: (rawUser: unknown): UserData => {
+			if (!isFacebookUser(rawUser)) {
+				throw new Error('Invalid Facebook user data format');
+			}
+			return {
+				id: rawUser.id,
+				email: rawUser.email,
+				name: rawUser.name,
+				avatar: rawUser.picture?.data?.url
+			};
+		},
+
+		extractTokenData: (tokens: OAuthTokens): TokenData => {
+			const expiresAtDate = tokens.accessTokenExpiresAt();
+			return {
+				accessToken: tokens.accessToken(),
+				refreshToken: null,
+				expiresAt: expiresAtDate ? Math.floor(expiresAtDate.getTime() / 1000) : null
+			};
 		}
+	};
+}
 
-		return await response.json();
-	},
-
-	mapUserData: (rawUser: unknown): UserData => {
-		if (!isFacebookUser(rawUser)) {
-			throw new Error('Invalid Facebook user data format');
-		}
-		return {
-			id: rawUser.id,
-			email: rawUser.email,
-			name: rawUser.name,
-			avatar: rawUser.picture?.data?.url
-		};
-	},
-
-	extractTokenData: (tokens: OAuthTokens): TokenData => ({
-		accessToken: tokens.accessToken(),
-		refreshToken: null,
-		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
-			: null
-	})
-};
+export const facebookConfig: OAuthCallbackConfig = createFacebookConfig();
 
 // =============================================================================
 // LINKEDIN CONFIGURATION
 // =============================================================================
 
-export const linkedinConfig: OAuthCallbackConfig = {
-	provider: 'linkedin',
-	clientId: process.env.LINKEDIN_CLIENT_ID!,
-	clientSecret: process.env.LINKEDIN_CLIENT_SECRET!,
-	redirectUrl: `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`,
-	userInfoUrl: 'https://api.linkedin.com/v2/userinfo',
-	requiresCodeVerifier: true,
-	scope: 'openid profile email',
+function createLinkedInConfig(): OAuthCallbackConfig {
+	const clientId = getRequiredEnv('LINKEDIN_CLIENT_ID', 'LinkedIn');
+	const clientSecret = getRequiredEnv('LINKEDIN_CLIENT_SECRET', 'LinkedIn');
+	const redirectUrl = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`;
 
-	createOAuthClient: (): OAuthClient => {
-		return new LinkedIn(
-			process.env.LINKEDIN_CLIENT_ID!,
-			process.env.LINKEDIN_CLIENT_SECRET!,
-			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/linkedin/callback`
-		) as unknown as OAuthClient;
-	},
+	return {
+		provider: 'linkedin',
+		clientId,
+		clientSecret,
+		redirectUrl,
+		userInfoUrl: 'https://api.linkedin.com/v2/userinfo',
+		requiresCodeVerifier: true,
+		scope: 'openid profile email',
 
-	exchangeTokens: async (
-		client: OAuthClient,
-		code: string,
-		codeVerifier?: string
-	): Promise<OAuthTokens> => {
-		return await client.validateAuthorizationCode(code, codeVerifier);
-	},
+		createOAuthClient: (): OAuthClient => {
+			return new LinkedIn(
+				clientId,
+				clientSecret,
+				redirectUrl
+			) as unknown as OAuthClient;
+		},
 
-	getUserInfo: async (accessToken: string): Promise<unknown> => {
-		const response = await fetch('https://api.linkedin.com/v2/userinfo', {
-			headers: {
-				Authorization: `Bearer ${accessToken}`,
-				'X-RestLi-Protocol-Version': '2.0.0'
+		exchangeTokens: async (
+			client: OAuthClient,
+			code: string,
+			codeVerifier?: string
+		): Promise<OAuthTokens> => {
+			return await client.validateAuthorizationCode(code, codeVerifier);
+		},
+
+		getUserInfo: async (accessToken: string): Promise<unknown> => {
+			const response = await fetchWithRetry('https://api.linkedin.com/v2/userinfo', {
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'X-RestLi-Protocol-Version': '2.0.0'
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch user info: ${response.statusText}`);
 			}
-		});
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch user info: ${response.statusText}`);
+			return await response.json();
+		},
+
+		mapUserData: (rawUser: unknown): UserData => {
+			if (!isLinkedInUser(rawUser)) {
+				throw new Error('Invalid LinkedIn user data format');
+			}
+			return {
+				id: rawUser.sub, // LinkedIn uses 'sub' as the user ID
+				email: rawUser.email,
+				name: rawUser.name,
+				avatar: rawUser.picture
+			};
+		},
+
+		extractTokenData: (tokens: OAuthTokens): TokenData => {
+			const expiresAtDate = tokens.accessTokenExpiresAt();
+			return {
+				accessToken: tokens.accessToken(),
+				refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
+				expiresAt: expiresAtDate ? Math.floor(expiresAtDate.getTime() / 1000) : null
+			};
 		}
+	};
+}
 
-		return await response.json();
-	},
-
-	mapUserData: (rawUser: unknown): UserData => {
-		if (!isLinkedInUser(rawUser)) {
-			throw new Error('Invalid LinkedIn user data format');
-		}
-		return {
-			id: rawUser.sub, // LinkedIn uses 'sub' as the user ID
-			email: rawUser.email,
-			name: rawUser.name,
-			avatar: rawUser.picture
-		};
-	},
-
-	extractTokenData: (tokens: OAuthTokens): TokenData => ({
-		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
-		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
-			: null
-	})
-};
+export const linkedinConfig: OAuthCallbackConfig = createLinkedInConfig();
 
 // =============================================================================
 // TWITTER CONFIGURATION
 // =============================================================================
 
-export const twitterConfig: OAuthCallbackConfig = {
-	provider: 'twitter',
-	clientId: process.env.TWITTER_CLIENT_ID!,
-	clientSecret: process.env.TWITTER_CLIENT_SECRET!,
-	redirectUrl: `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`,
-	userInfoUrl: 'https://api.twitter.com/2/users/me',
-	requiresCodeVerifier: true,
-	scope: 'users.read tweet.read offline.access',
+function createTwitterConfig(): OAuthCallbackConfig {
+	const clientId = getRequiredEnv('TWITTER_CLIENT_ID', 'Twitter');
+	const clientSecret = getRequiredEnv('TWITTER_CLIENT_SECRET', 'Twitter');
+	const redirectUrl = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`;
 
-	createOAuthClient: (): OAuthClient => {
-		return new Twitter(
-			process.env.TWITTER_CLIENT_ID!,
-			process.env.TWITTER_CLIENT_SECRET!,
-			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`
-		) as unknown as OAuthClient;
-	},
+	return {
+		provider: 'twitter',
+		clientId,
+		clientSecret,
+		redirectUrl,
+		userInfoUrl: 'https://api.twitter.com/2/users/me',
+		requiresCodeVerifier: true,
+		scope: 'users.read tweet.read offline.access',
 
-	exchangeTokens: async (
-		client: OAuthClient,
-		code: string,
-		codeVerifier?: string
-	): Promise<OAuthTokens> => {
-		return await client.validateAuthorizationCode(code, codeVerifier);
-	},
+		createOAuthClient: (): OAuthClient => {
+			return new Twitter(
+				clientId,
+				clientSecret,
+				redirectUrl
+			) as unknown as OAuthClient;
+		},
 
-	getUserInfo: async (accessToken: string): Promise<unknown> => {
-		const response = await fetch(
-			'https://api.twitter.com/2/users/me?user.fields=profile_image_url',
-			{
-				headers: {
-					Authorization: `Bearer ${accessToken}`
+		exchangeTokens: async (
+			client: OAuthClient,
+			code: string,
+			codeVerifier?: string
+		): Promise<OAuthTokens> => {
+			return await client.validateAuthorizationCode(code, codeVerifier);
+		},
+
+		getUserInfo: async (accessToken: string): Promise<unknown> => {
+			const response = await fetchWithRetry(
+				'https://api.twitter.com/2/users/me?user.fields=profile_image_url',
+				{
+					headers: {
+						Authorization: `Bearer ${accessToken}`
+					}
 				}
+			);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch user info: ${response.statusText}`);
 			}
-		);
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch user info: ${response.statusText}`);
+			return await response.json();
+		},
+
+		mapUserData: (rawUser: unknown): UserData => {
+			if (!isTwitterUser(rawUser)) {
+				throw new Error('Invalid Twitter user data format');
+			}
+			return {
+				id: rawUser.data.id,
+				// Twitter doesn't always provide email, generate placeholder
+				email: rawUser.data.email || `${rawUser.data.username}@twitter.local`,
+				name: rawUser.data.name,
+				avatar: rawUser.data.profile_image_url,
+				username: rawUser.data.username
+			};
+		},
+
+		extractTokenData: (tokens: OAuthTokens): TokenData => {
+			const expiresAtDate = tokens.accessTokenExpiresAt();
+			return {
+				accessToken: tokens.accessToken(),
+				refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
+				expiresAt: expiresAtDate ? Math.floor(expiresAtDate.getTime() / 1000) : null
+			};
 		}
+	};
+}
 
-		return await response.json();
-	},
-
-	mapUserData: (rawUser: unknown): UserData => {
-		if (!isTwitterUser(rawUser)) {
-			throw new Error('Invalid Twitter user data format');
-		}
-		return {
-			id: rawUser.data.id,
-			// Twitter doesn't always provide email, generate placeholder
-			email: rawUser.data.email || `${rawUser.data.username}@twitter.local`,
-			name: rawUser.data.name,
-			avatar: rawUser.data.profile_image_url,
-			username: rawUser.data.username
-		};
-	},
-
-	extractTokenData: (tokens: OAuthTokens): TokenData => ({
-		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
-		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
-			: null
-	})
-};
+export const twitterConfig: OAuthCallbackConfig = createTwitterConfig();
 
 // =============================================================================
 // DISCORD CONFIGURATION
 // =============================================================================
 
-export const discordConfig: OAuthCallbackConfig = {
-	provider: 'discord',
-	clientId: process.env.DISCORD_CLIENT_ID!,
-	clientSecret: process.env.DISCORD_CLIENT_SECRET!,
-	redirectUrl: `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`,
-	userInfoUrl: 'https://discord.com/api/users/@me',
-	requiresCodeVerifier: true,
-	scope: 'identify email',
+function createDiscordConfig(): OAuthCallbackConfig {
+	const clientId = getRequiredEnv('DISCORD_CLIENT_ID', 'Discord');
+	const clientSecret = getRequiredEnv('DISCORD_CLIENT_SECRET', 'Discord');
+	const redirectUrl = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`;
 
-	createOAuthClient: (): OAuthClient => {
-		return new Discord(
-			process.env.DISCORD_CLIENT_ID!,
-			process.env.DISCORD_CLIENT_SECRET!,
-			`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`
-		) as unknown as OAuthClient;
-	},
+	return {
+		provider: 'discord',
+		clientId,
+		clientSecret,
+		redirectUrl,
+		userInfoUrl: 'https://discord.com/api/users/@me',
+		requiresCodeVerifier: true,
+		scope: 'identify email',
 
-	exchangeTokens: async (
-		client: OAuthClient,
-		code: string,
-		codeVerifier?: string
-	): Promise<OAuthTokens> => {
-		return await client.validateAuthorizationCode(code, codeVerifier);
-	},
+		createOAuthClient: (): OAuthClient => {
+			return new Discord(
+				clientId,
+				clientSecret,
+				redirectUrl
+			) as unknown as OAuthClient;
+		},
 
-	getUserInfo: async (accessToken: string): Promise<unknown> => {
-		const response = await fetch('https://discord.com/api/users/@me', {
-			headers: {
-				Authorization: `Bearer ${accessToken}`
+		exchangeTokens: async (
+			client: OAuthClient,
+			code: string,
+			codeVerifier?: string
+		): Promise<OAuthTokens> => {
+			return await client.validateAuthorizationCode(code, codeVerifier);
+		},
+
+		getUserInfo: async (accessToken: string): Promise<unknown> => {
+			const response = await fetchWithRetry('https://discord.com/api/users/@me', {
+				headers: {
+					Authorization: `Bearer ${accessToken}`
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch user info: ${response.statusText}`);
 			}
-		});
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch user info: ${response.statusText}`);
+			return await response.json();
+		},
+
+		mapUserData: (rawUser: unknown): UserData => {
+			if (!isDiscordUser(rawUser)) {
+				throw new Error('Invalid Discord user data format');
+			}
+
+			// Discord avatar URL construction
+			let avatar: string | undefined;
+			if (rawUser.avatar) {
+				const format = rawUser.avatar.startsWith('a_') ? 'gif' : 'png';
+				avatar = `https://cdn.discordapp.com/avatars/${rawUser.id}/${rawUser.avatar}.${format}`;
+			}
+
+			// Discord name handling (global_name > username#discriminator)
+			const name =
+				rawUser.global_name ||
+				(rawUser.discriminator && rawUser.discriminator !== '0'
+					? `${rawUser.username}#${rawUser.discriminator}`
+					: rawUser.username);
+
+			return {
+				id: rawUser.id,
+				email: rawUser.email,
+				name,
+				avatar,
+				username: rawUser.username,
+				discriminator: rawUser.discriminator
+			};
+		},
+
+		extractTokenData: (tokens: OAuthTokens): TokenData => {
+			const expiresAtDate = tokens.accessTokenExpiresAt();
+			return {
+				accessToken: tokens.accessToken(),
+				refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
+				expiresAt: expiresAtDate ? Math.floor(expiresAtDate.getTime() / 1000) : null
+			};
 		}
+	};
+}
 
-		return await response.json();
-	},
-
-	mapUserData: (rawUser: unknown): UserData => {
-		if (!isDiscordUser(rawUser)) {
-			throw new Error('Invalid Discord user data format');
-		}
-
-		// Discord avatar URL construction
-		let avatar: string | undefined;
-		if (rawUser.avatar) {
-			const format = rawUser.avatar.startsWith('a_') ? 'gif' : 'png';
-			avatar = `https://cdn.discordapp.com/avatars/${rawUser.id}/${rawUser.avatar}.${format}`;
-		}
-
-		// Discord name handling (global_name > username#discriminator)
-		const name =
-			rawUser.global_name ||
-			(rawUser.discriminator && rawUser.discriminator !== '0'
-				? `${rawUser.username}#${rawUser.discriminator}`
-				: rawUser.username);
-
-		return {
-			id: rawUser.id,
-			email: rawUser.email,
-			name,
-			avatar,
-			username: rawUser.username,
-			discriminator: rawUser.discriminator
-		};
-	},
-
-	extractTokenData: (tokens: OAuthTokens): TokenData => ({
-		accessToken: tokens.accessToken(),
-		refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
-		expiresAt: tokens.accessTokenExpiresAt()
-			? Math.floor(tokens.accessTokenExpiresAt()!.getTime() / 1000)
-			: null
-	})
-};
+export const discordConfig: OAuthCallbackConfig = createDiscordConfig();
 
 // =============================================================================
 // PROVIDER REGISTRY

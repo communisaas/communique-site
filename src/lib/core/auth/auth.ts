@@ -15,6 +15,11 @@ export interface Session {
 	createdAt: Date;
 }
 
+/**
+ * User type from authentication - matches Prisma User model
+ * NO PII stored per CYPHERPUNK-ARCHITECTURE.md
+ * Address data stored in EncryptedDeliveryData, provided at send time
+ */
 export interface User {
 	id: string;
 	email: string;
@@ -22,20 +27,16 @@ export interface User {
 	avatar: string | null;
 	createdAt: Date;
 	updatedAt: Date;
-	city: string | null;
-	congressional_district: string | null;
-	phone: string | null;
-	state: string | null;
-	street: string | null;
-	zip: string | null;
 	// Verification status
 	is_verified: boolean;
 	verification_method: string | null;
 	verification_data: UnknownRecord | null;
 	verified_at: Date | null;
+	// Privacy-preserving district (hash only, no plaintext)
+	district_hash: string | null;
+	district_verified: boolean;
 	// VOTER Protocol blockchain identity
 	wallet_address: string | null;
-	district_hash: string | null;
 	trust_score: number;
 	reputation_tier: string;
 	// Reward tracking
@@ -46,12 +47,11 @@ export interface User {
 	challenge_score: number | null;
 	civic_score: number | null;
 	discourse_score: number | null;
-	// Profile fields
+	// Profile fields (general, non-PII)
 	role: string | null;
 	organization: string | null;
-	location: string | null;
+	location: string | null; // General location description (city-level, not full address)
 	connection: string | null;
-	connection_details: string | null;
 	profile_completed_at: Date | null;
 	profile_visibility: string;
 }

@@ -7,12 +7,19 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
 
+	// Validate OAuth credentials
+	const clientId = process.env.GOOGLE_CLIENT_ID;
+	const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+	if (!clientId || !clientSecret) {
+		throw new Error('Missing OAuth credentials for Google');
+	}
+
 	const redirectUri = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/google/callback`;
 
 	// Create Google OAuth provider with static redirect URI
 	const google = new Google(
-		process.env.GOOGLE_CLIENT_ID!,
-		process.env.GOOGLE_CLIENT_SECRET!,
+		clientId,
+		clientSecret,
 		redirectUri
 	);
 

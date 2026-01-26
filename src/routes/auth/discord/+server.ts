@@ -7,10 +7,17 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
 
+	// Validate OAuth credentials
+	const clientId = process.env.DISCORD_CLIENT_ID;
+	const clientSecret = process.env.DISCORD_CLIENT_SECRET;
+	if (!clientId || !clientSecret) {
+		throw new Error('Missing OAuth credentials for Discord');
+	}
+
 	// Create Discord OAuth provider with static redirect URL
 	const discord = new Discord(
-		process.env.DISCORD_CLIENT_ID!,
-		process.env.DISCORD_CLIENT_SECRET!,
+		clientId,
+		clientSecret,
 		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`
 	);
 

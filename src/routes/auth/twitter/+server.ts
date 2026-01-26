@@ -7,10 +7,17 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
 
+	// Validate OAuth credentials
+	const clientId = process.env.TWITTER_CLIENT_ID;
+	const clientSecret = process.env.TWITTER_CLIENT_SECRET;
+	if (!clientId || !clientSecret) {
+		throw new Error('Missing OAuth credentials for Twitter');
+	}
+
 	// Create Twitter OAuth provider with static redirect URI
 	const twitter = new Twitter(
-		process.env.TWITTER_CLIENT_ID!,
-		process.env.TWITTER_CLIENT_SECRET!,
+		clientId,
+		clientSecret,
 		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/twitter/callback`
 	);
 
