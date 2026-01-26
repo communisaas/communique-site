@@ -11,11 +11,26 @@
  * Expected cost: < $20/month
  */
 
+import { z } from 'zod';
 import OpenAI from 'openai';
 import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
 
 const openai = new OpenAI({
 	apiKey: process.env.OPENAI_API_KEY
+});
+
+// =============================================================================
+// ZOD SCHEMA
+// =============================================================================
+
+const LLMScopeResponseSchema = z.object({
+	country_code: z.string(),
+	region_code: z.string().optional(),
+	locality: z.string().optional(),
+	district: z.string().optional(),
+	scope_level: z.enum(['country', 'region', 'locality', 'district']),
+	confidence: z.number().min(0).max(1),
+	reasoning: z.string()
 });
 
 export interface LLMExtractionContext {
@@ -90,16 +105,24 @@ Return JSON matching this schema:
 		}
 
 		const parsed = JSON.parse(content);
+		const validationResult = LLMScopeResponseSchema.safeParse(parsed);
 
-		// Map OpenAI response to ScopeMapping
+		if (!validationResult.success) {
+			console.error('[llm-extraction] Invalid response structure:', validationResult.error.flatten());
+			return null;
+		}
+
+		const validated = validationResult.data;
+
+		// Map validated OpenAI response to ScopeMapping
 		const result: ScopeMapping = {
-			country_code: parsed.country_code || 'US',
-			scope_level: parsed.scope_level || 'country',
-			display_text: parsed.locality || parsed.region_code || parsed.country_code,
-			region_code: parsed.region_code,
-			locality_code: parsed.locality,
-			district_code: parsed.district,
-			confidence: (parsed.confidence || 0.7) * 0.9, // Reduce LLM confidence slightly (hallucinations)
+			country_code: validated.country_code || 'US',
+			scope_level: validated.scope_level || 'country',
+			display_text: validated.locality || validated.region_code || validated.country_code,
+			region_code: validated.region_code,
+			locality_code: validated.locality,
+			district_code: validated.district,
+			confidence: (validated.confidence || 0.7) * 0.9, // Reduce LLM confidence slightly (hallucinations)
 			extraction_method: 'llm'
 		};
 
@@ -113,7 +136,7 @@ Return JSON matching this schema:
 				extracted: result.display_text,
 				scope_level: result.scope_level,
 				confidence: result.confidence,
-				reasoning: parsed.reasoning,
+				reasoning: validated.reasoning,
 				cost_usd: 0.002, // Approximate GPT-4 cost per request
 				context_used: Boolean(context?.decision_makers || context?.domain)
 			})

@@ -10,6 +10,7 @@
  * Don't throw away work—preserve partial results.
  */
 
+import { z } from 'zod';
 import { parse as parsePartialJson } from 'best-effort-json-parser';
 
 export interface TruncationRecoveryResult<T> {
@@ -33,22 +34,43 @@ export interface TruncationRecoveryResult<T> {
  *
  * @param text - Raw response text (may be truncated JSON)
  * @param criticalFields - Fields that must be present for result to be usable
+ * @param schema - Optional Zod schema for validation
  * @returns Recovery result with extracted data and metadata
  */
 export function recoverTruncatedJson<T extends Record<string, unknown>>(
 	text: string,
-	criticalFields: (keyof T)[]
+	criticalFields: (keyof T)[],
+	schema?: z.ZodType<T>
 ): TruncationRecoveryResult<T> {
-	// First, try standard parse
+	// First, try standard parse with validation
 	try {
-		const data = JSON.parse(text) as T;
-		return {
-			data,
-			wasTruncated: false,
-			missingFields: [],
-			isUsable: true,
-			lastChars: ''
-		};
+		const parsed = JSON.parse(text);
+
+		// Validate with Zod if schema provided
+		if (schema) {
+			const result = schema.safeParse(parsed);
+			if (!result.success) {
+				console.error('[truncation-recovery] Zod validation failed:', result.error.flatten());
+				// Fall through to recovery logic
+			} else {
+				return {
+					data: result.data,
+					wasTruncated: false,
+					missingFields: [],
+					isUsable: true,
+					lastChars: ''
+				};
+			}
+		} else {
+			// No schema, accept as-is
+			return {
+				data: parsed as T,
+				wasTruncated: false,
+				missingFields: [],
+				isUsable: true,
+				lastChars: ''
+			};
+		}
 	} catch {
 		// Standard parse failed, try recovery
 	}

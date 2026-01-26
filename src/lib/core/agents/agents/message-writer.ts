@@ -5,12 +5,32 @@
  * using Google Search grounding.
  */
 
+import { z } from 'zod';
 import { generate } from '../gemini-client';
 import { MESSAGE_SCHEMA } from '../schemas';
 import { MESSAGE_WRITER_PROMPT } from '../prompts/message-writer';
 import { buildSourceList, mergeAndDeduplicateSources } from '../utils/grounding';
 import { extractGeographicScopeComplete } from '$lib/server/complete-extraction-pipeline';
 import type { MessageResponse, DecisionMaker, Source, GroundingMetadata } from '../types';
+
+// ============================================================================
+// Zod Schema for Runtime Validation
+// ============================================================================
+
+const SourceSchema = z.object({
+	num: z.number(),
+	title: z.string(),
+	url: z.string(),
+	type: z.enum(['journalism', 'research', 'government', 'legal', 'advocacy'])
+});
+
+const MessageResponseSchema = z.object({
+	message: z.string(),
+	subject: z.string(),
+	sources: z.array(SourceSchema),
+	research_log: z.array(z.string()).optional(),
+	geographic_scope: z.unknown().optional() // Will be added by extraction pipeline
+});
 
 // ============================================================================
 // Types
@@ -79,11 +99,22 @@ Research current information and write a message that:
 		maxOutputTokens: 8192
 	});
 
-	// Parse the response
+	// Parse and validate the response
 	if (!response.text) {
 		throw new Error('[message-writer] No response text from Gemini');
 	}
-	const data = JSON.parse(response.text) as MessageResponse;
+
+	const parsed = JSON.parse(response.text);
+	const validationResult = MessageResponseSchema.safeParse(parsed);
+
+	if (!validationResult.success) {
+		console.error('[message-writer] Invalid response structure:', validationResult.error.flatten());
+		throw new Error(
+			`Invalid message response: ${validationResult.error.errors[0]?.message || 'Unknown validation error'}`
+		);
+	}
+
+	const data = validationResult.data as MessageResponse;
 
 	// Extract grounding metadata for enhanced sources
 	const groundingMetadata = response.candidates?.[0]?.groundingMetadata as

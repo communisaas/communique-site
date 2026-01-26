@@ -10,6 +10,7 @@
  * - Conversation, not forms
  */
 
+import { z } from 'zod';
 import { interact } from '../gemini-client';
 import { SUBJECT_LINE_SCHEMA } from '../schemas';
 import { SUBJECT_LINE_PROMPT } from '../prompts/subject-line';
@@ -18,6 +19,41 @@ import type {
 	ClarificationAnswers,
 	ConversationContext
 } from '../types';
+
+// ============================================================================
+// Zod Schema for Runtime Validation
+// ============================================================================
+
+const ClarificationQuestionSchema = z.object({
+	id: z.string(),
+	question: z.string(),
+	type: z.enum(['location_picker', 'open_text']),
+	placeholder: z.string().optional(),
+	location_level: z.enum(['city', 'state', 'country']).optional(),
+	suggested_locations: z.array(z.string()).optional(),
+	required: z.boolean()
+});
+
+const InferredContextSchema = z.object({
+	detected_location: z.string().nullable(),
+	detected_scope: z.enum(['local', 'state', 'national', 'international']).nullable(),
+	detected_target_type: z.enum(['government', 'corporate', 'institutional', 'other']).nullable(),
+	location_confidence: z.number().min(0).max(1),
+	scope_confidence: z.number().min(0).max(1),
+	target_type_confidence: z.number().min(0).max(1),
+	reasoning: z.string()
+});
+
+const SubjectLineResponseSchema = z.object({
+	needs_clarification: z.boolean(),
+	clarification_questions: z.array(ClarificationQuestionSchema).optional(),
+	subject_line: z.string().optional(),
+	core_issue: z.string().optional(),
+	topics: z.array(z.string()).optional(),
+	url_slug: z.string().optional(),
+	voice_sample: z.string().optional(),
+	inferred_context: InferredContextSchema
+});
 
 export interface GenerateSubjectOptions {
 	description: string;
@@ -117,7 +153,18 @@ ${options.description}`;
 		previousInteractionId: options.previousInteractionId
 	});
 
-	let data = JSON.parse(response.outputs) as SubjectLineResponseWithClarification;
+	// Parse and validate the response
+	const parsed = JSON.parse(response.outputs);
+	const validationResult = SubjectLineResponseSchema.safeParse(parsed);
+
+	if (!validationResult.success) {
+		console.error('[subject-line] Invalid response structure:', validationResult.error.flatten());
+		throw new Error(
+			`Invalid subject line response: ${validationResult.error.errors[0]?.message || 'Unknown validation error'}`
+		);
+	}
+
+	let data = validationResult.data as SubjectLineResponseWithClarification;
 	let currentInteractionId = response.id;
 
 	// Validate: if needs_clarification is true but no questions provided, override to false
@@ -151,7 +198,18 @@ Generate the output with subject_line, core_issue, topics, url_slug, and voice_s
 			}
 		);
 
-		data = JSON.parse(retryResponse.outputs) as SubjectLineResponseWithClarification;
+		// Parse and validate retry response
+		const retryParsed = JSON.parse(retryResponse.outputs);
+		const retryValidation = SubjectLineResponseSchema.safeParse(retryParsed);
+
+		if (!retryValidation.success) {
+			console.error('[subject-line] Invalid retry response:', retryValidation.error.flatten());
+			throw new Error(
+				`Invalid retry response: ${retryValidation.error.errors[0]?.message || 'Unknown validation error'}`
+			);
+		}
+
+		data = retryValidation.data as SubjectLineResponseWithClarification;
 		currentInteractionId = retryResponse.id;
 		data.needs_clarification = false; // Force no clarification on retry
 

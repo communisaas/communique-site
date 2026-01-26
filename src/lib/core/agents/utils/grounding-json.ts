@@ -13,6 +13,8 @@
  * - Responses may have trailing commas or other minor syntax errors
  */
 
+import { z } from 'zod';
+
 export interface ExtractedJson<T> {
 	data: T | null;
 	success: boolean;
@@ -22,18 +24,23 @@ export interface ExtractedJson<T> {
 }
 
 /**
- * Extract and parse JSON from a grounding-mode response
+ * Extract and parse JSON from a grounding-mode response with optional Zod validation
  *
  * Handles:
  * - Markdown code blocks (```json ... ```)
  * - Surrounding text (finds first { to last })
  * - Trailing commas
  * - Missing commas between objects
+ * - Runtime type validation with Zod
  *
  * @param responseText - Raw response text from Gemini
+ * @param schema - Optional Zod schema for validation
  * @returns Extracted data or null with error details
  */
-export function extractJsonFromGroundingResponse<T>(responseText: string): ExtractedJson<T> {
+export function extractJsonFromGroundingResponse<T>(
+	responseText: string,
+	schema?: z.ZodType<T>
+): ExtractedJson<T> {
 	if (!responseText?.trim()) {
 		return { data: null, success: false, error: 'Empty response' };
 	}
@@ -70,8 +77,24 @@ export function extractJsonFromGroundingResponse<T>(responseText: string): Extra
 
 	// Step 3: Attempt direct parse
 	try {
-		const data = JSON.parse(cleaned) as T;
-		return { data, success: true, cleanedText: cleaned };
+		const parsed = JSON.parse(cleaned);
+
+		// Step 3a: Validate with Zod if schema provided
+		if (schema) {
+			const result = schema.safeParse(parsed);
+			if (!result.success) {
+				console.error('[grounding-json] Zod validation failed:', result.error.flatten());
+				return {
+					data: null,
+					success: false,
+					error: `Validation failed: ${result.error.errors[0]?.message || 'Invalid data structure'}`,
+					cleanedText: cleaned
+				};
+			}
+			return { data: result.data, success: true, cleanedText: cleaned };
+		}
+
+		return { data: parsed as T, success: true, cleanedText: cleaned };
 	} catch (firstError) {
 		// Step 4: Try sanitizing common LLM JSON errors
 		try {
@@ -81,8 +104,24 @@ export function extractJsonFromGroundingResponse<T>(responseText: string): Extra
 				.replace(/}\s*{/g, '}, {') // Insert missing comma between objects
 				.replace(/]\s*\[/g, '], ['); // Insert missing comma between arrays
 
-			const data = JSON.parse(sanitized) as T;
-			return { data, success: true, cleanedText: sanitized };
+			const parsed = JSON.parse(sanitized);
+
+			// Validate with Zod if schema provided
+			if (schema) {
+				const result = schema.safeParse(parsed);
+				if (!result.success) {
+					console.error('[grounding-json] Zod validation failed:', result.error.flatten());
+					return {
+						data: null,
+						success: false,
+						error: `Validation failed: ${result.error.errors[0]?.message || 'Invalid data structure'}`,
+						cleanedText: sanitized
+					};
+				}
+				return { data: result.data, success: true, cleanedText: sanitized };
+			}
+
+			return { data: parsed as T, success: true, cleanedText: sanitized };
 		} catch (secondError) {
 			return {
 				data: null,

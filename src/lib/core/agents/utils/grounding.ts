@@ -91,13 +91,17 @@ export function buildSourceList(metadata: GroundingMetadata): Source[] {
 	const chunks = metadata.groundingChunks || [];
 
 	return chunks
-		.filter((chunk) => chunk.web?.uri)
-		.map((chunk, index) => ({
-			num: index + 1,
-			title: chunk.web!.title || 'Source',
-			url: chunk.web!.uri!,
-			type: inferSourceType(chunk.web!.uri!) as Source['type']
-		}));
+		.map((chunk, index) => {
+			const uri = chunk.web?.uri;
+			if (!uri) return null;
+			return {
+				num: index + 1,
+				title: chunk.web?.title || 'Source',
+				url: uri,
+				type: inferSourceType(uri) as Source['type']
+			};
+		})
+		.filter((source): source is Source => source !== null);
 }
 
 /**
