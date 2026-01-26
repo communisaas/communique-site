@@ -8,7 +8,12 @@ import { prisma } from '$lib/core/db';
  * Returns the current status of a CWC submission job
  * Used by the frontend to poll for progress updates
  */
-export const GET: RequestHandler = async ({ params }) => {
+export const GET: RequestHandler = async ({ locals, params }) => {
+	// Authentication check
+	if (!locals.user) {
+		return json({ error: 'Authentication required' }, { status: 401 });
+	}
+
 	try {
 		const { jobId } = params;
 
@@ -21,18 +26,22 @@ export const GET: RequestHandler = async ({ params }) => {
 			where: { id: jobId },
 			select: {
 				id: true,
+				userId: true,
 				status: true,
-				created_at: true,
-				started_at: true,
-				completed_at: true,
+				createdAt: true,
+				completedAt: true,
 				results: true,
-				metadata: true,
-				error: true
+				submissionCount: true
 			}
 		});
 
 		if (!job) {
 			throw error(404, 'Job not found');
+		}
+
+		// Ownership check - ensure user owns this job
+		if (job.userId !== locals.user.id) {
+			return json({ error: 'Access denied' }, { status: 403 });
 		}
 
 		// Calculate progress based on status and results
@@ -43,12 +52,10 @@ export const GET: RequestHandler = async ({ params }) => {
 			jobId: job.id,
 			status: job.status,
 			progress,
-			createdAt: job.created_at,
-			startedAt: job.started_at,
-			completedAt: job.completed_at,
+			createdAt: job.createdAt,
+			completedAt: job.completedAt,
 			results: job.results || [],
-			error: job.error,
-			metadata: job.metadata
+			submissionCount: job.submissionCount
 		};
 
 		return json(response);
@@ -64,18 +71,30 @@ export const GET: RequestHandler = async ({ params }) => {
 	}
 };
 
+interface JobResult {
+	status: string;
+	[key: string]: unknown;
+}
+
+interface CWCJob {
+	status: string;
+	results?: unknown;
+	[key: string]: unknown;
+}
+
 /**
  * Calculate progress percentage based on job status and results
  */
-function calculateProgress(job: any): number {
+function calculateProgress(job: CWCJob): number {
 	switch (job.status) {
 		case 'pending':
 			return 0;
 		case 'processing':
 			// If we have results, calculate based on completed submissions
 			if (job.results && Array.isArray(job.results)) {
-				const completedCount = job.results.filter((r: any) => r.status !== 'pending').length;
-				const totalCount = job.results.length;
+				const results = job.results as JobResult[];
+				const completedCount = results.filter((r) => r.status !== 'pending').length;
+				const totalCount = results.length;
 				return totalCount > 0 ? Math.round((completedCount / totalCount) * 50) : 25; // Max 50% during processing
 			}
 			return 25; // Default processing progress

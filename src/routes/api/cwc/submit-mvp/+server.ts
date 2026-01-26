@@ -7,20 +7,19 @@ import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup'
 /**
  * MVP CWC Submission Endpoint
  *
- * HACKATHON VERSION: Bypasses ZK proofs and directly submits to CWC API
- * This is a simplified version for demo purposes that:
+ * Submits messages directly to CWC API:
  * 1. Accepts template + user address info
  * 2. Looks up congressional representatives
  * 3. Submits directly to CWC API
  * 4. Returns job ID for tracking
- *
- * TODO: Replace with proper Phase 2 ZK implementation post-hackathon
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
-		// Check authentication (optional for hackathon - can work with guest users)
-		const session = locals.session;
-		const userId = session?.userId;
+		// Authentication is REQUIRED to contact Congress
+		if (!locals.user) {
+			return json({ error: 'Authentication required to contact Congress' }, { status: 401 });
+		}
+		const userId = locals.user.id;
 
 		// Parse request body
 		const body = await request.json();
@@ -84,18 +83,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Create CWC job for tracking
 		const job = await prisma.cWCJob.create({
 			data: {
-				user_id: userId,
-				template_id: templateId,
-				status: 'processing',
-				metadata: {
-					address,
-					representatives: representatives.map((r) => ({
-						name: r.name,
-						chamber: r.chamber,
-						bioguideId: r.bioguideId
-					})),
-					personalizedMessage
-				}
+				userId: userId,
+				templateId: templateId,
+				status: 'processing'
 			}
 		});
 
@@ -155,15 +145,43 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 };
 
+interface TemplateData {
+	id: string;
+	title: string;
+	message_body: string;
+	slug: string;
+	[key: string]: unknown;
+}
+
+interface UserData {
+	id: string;
+	name: string;
+	email: string;
+	street: string;
+	city: string;
+	state: string;
+	zip: string;
+	[key: string]: unknown;
+}
+
+interface RepresentativeData {
+	name: string;
+	chamber: string;
+	bioguideId: string;
+	state?: string;
+	district?: string;
+	[key: string]: unknown;
+}
+
 /**
  * Process CWC submissions synchronously - straight to API for demo
  * HACKATHON: Bypasses queues for immediate feedback
  */
 async function processCWCSubmissionsSync(
 	jobId: string,
-	template: any,
-	user: any,
-	representatives: any[],
+	template: TemplateData,
+	user: UserData,
+	representatives: RepresentativeData[],
 	personalizedMessage: string
 ) {
 	try {
@@ -173,8 +191,7 @@ async function processCWCSubmissionsSync(
 		await prisma.cWCJob.update({
 			where: { id: jobId },
 			data: {
-				status: 'processing',
-				started_at: new Date()
+				status: 'processing'
 			}
 		});
 
@@ -195,8 +212,9 @@ async function processCWCSubmissionsSync(
 		await prisma.cWCJob.update({
 			where: { id: jobId },
 			data: {
-				status: failedCount === 0 ? 'completed' : 'partially_completed',
-				completed_at: new Date(),
+				status: failedCount === 0 ? 'completed' : 'partial',
+				completedAt: new Date(),
+				submissionCount: results.length,
 				results: results.map((r) => ({
 					office: r.office,
 					status: r.status,
@@ -204,15 +222,8 @@ async function processCWCSubmissionsSync(
 					messageId: r.messageId,
 					confirmationNumber: r.confirmationNumber,
 					error: r.error,
-					cwcResponse: r.cwcResponse // Include full CWC API response for proof
-				})),
-				metadata: {
-					successCount,
-					failedCount,
-					totalCount: results.length,
-					directApi: true, // Mark as direct API for demo tracking
-					processedAt: new Date().toISOString()
-				}
+					cwcResponse: r.cwcResponse
+				}))
 			}
 		});
 
@@ -224,8 +235,8 @@ async function processCWCSubmissionsSync(
 			where: { id: jobId },
 			data: {
 				status: 'failed',
-				completed_at: new Date(),
-				error: error instanceof Error ? error.message : 'Unknown error'
+				completedAt: new Date(),
+				results: { error: error instanceof Error ? error.message : 'Unknown error' }
 			}
 		});
 

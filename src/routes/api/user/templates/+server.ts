@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import { db } from '$lib/core/db';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ _locals }) => {
+export const GET: RequestHandler = async ({ locals }) => {
 	try {
 		if (!locals.user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });

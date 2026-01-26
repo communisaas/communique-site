@@ -45,7 +45,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			mvpAddress,
 			personalizedMessage,
 			userEmail,
-			userName
+			userName,
+			// Idempotency key for preventing duplicate submissions from retries
+			idempotencyKey
 		} = body;
 
 		// Validate required fields
@@ -72,32 +74,50 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(404, 'Template not found');
 		}
 
-		// Check nullifier uniqueness (prevent double-actions)
-		const existingSubmission = await prisma.submission.findFirst({
-			where: { nullifier }
-		});
+		// Create submission with atomic idempotency and nullifier checks
+		// Transaction ensures no race conditions on duplicate submissions
+		const submission = await prisma.$transaction(async (tx) => {
+			// Check idempotency key first (client retry protection)
+			if (idempotencyKey) {
+				const existingByIdempotency = await tx.submission.findUnique({
+					where: { idempotency_key: idempotencyKey }
+				});
 
-		if (existingSubmission) {
-			throw error(409, 'This action has already been submitted (duplicate nullifier)');
-		}
-
-		// Create submission
-		// action_id is the templateId (in production, it's poseidon hash of templateId in public_inputs)
-		const submission = await prisma.submission.create({
-			data: {
-				user_id: userId,
-				template_id: templateId,
-				action_id: templateId, // MVP: use templateId directly; production: extract from publicInputs
-				proof_hex: proof,
-				public_inputs: publicInputs,
-				nullifier,
-				encrypted_witness: encryptedWitness,
-				witness_nonce: witnessNonce,
-				ephemeral_public_key: ephemeralPublicKey,
-				tee_key_id: teeKeyId,
-				delivery_status: 'pending',
-				verification_status: 'pending'
+				if (existingByIdempotency) {
+					// Return existing submission for idempotent retry
+					return existingByIdempotency;
+				}
 			}
+
+			// Check nullifier uniqueness (prevent double-actions)
+			// This check is now atomic with creation due to unique constraint + transaction
+			const existingByNullifier = await tx.submission.findUnique({
+				where: { nullifier }
+			});
+
+			if (existingByNullifier) {
+				throw error(409, 'This action has already been submitted (duplicate nullifier)');
+			}
+
+			// Create submission atomically
+			// action_id is the templateId (in production, it's poseidon hash of templateId in public_inputs)
+			return await tx.submission.create({
+				data: {
+					user_id: userId,
+					template_id: templateId,
+					action_id: templateId, // MVP: use templateId directly; production: extract from publicInputs
+					proof_hex: proof,
+					public_inputs: publicInputs,
+					nullifier,
+					encrypted_witness: encryptedWitness,
+					witness_nonce: witnessNonce,
+					ephemeral_public_key: ephemeralPublicKey,
+					tee_key_id: teeKeyId,
+					idempotency_key: idempotencyKey,
+					delivery_status: 'pending',
+					verification_status: 'pending'
+				}
+			});
 		});
 
 		console.log('[Submission] Created:', {
@@ -109,6 +129,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// MVP Mode: Direct CWC delivery (bypasses TEE for pre-launch)
 		// Production: TEE decrypts witness and handles delivery
+		// Note: CWC delivery updates below are separate transactions since they're
+		// status updates on an already-created submission (no race condition risk)
 		let deliveryResults = null;
 
 		if (mvpAddress && mvpAddress.street && mvpAddress.city && mvpAddress.state && mvpAddress.zip) {

@@ -10,12 +10,8 @@ import {
 } from '$lib/types/errors';
 import type { Prisma as _Prisma } from '@prisma/client';
 import type { UnknownRecord } from '$lib/types/any-replacements';
-import { moderateTemplate, containsProhibitedPatterns } from '$lib/core/server/content-moderation';
-import {
-	getMultiAgentConsensus,
-	getSingleAgentModeration
-} from '$lib/core/server/multi-agent-consensus';
-import { env } from '$env/dynamic/private';
+import { moderateTemplate } from '$lib/core/server/moderation';
+import { z } from 'zod';
 
 // Import ScopeMapping type for geographic scope
 import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
@@ -194,12 +190,57 @@ export const GET: RequestHandler = async () => {
 
 		const idToScope = new Map(scopes.map((s) => [s.template_id, s]));
 
+		// Zod schema for metrics validation
+		const MetricsSchema = z
+			.object({
+				opened: z.number().optional(),
+				clicked: z.number().optional(),
+				responded: z.number().optional(),
+				views: z.number().optional(),
+				total_districts: z.number().optional(),
+				district_coverage_percent: z.number().optional(),
+				personalization_rate: z.number().optional(),
+				effectiveness_score: z.number().optional(),
+				cascade_depth: z.number().optional(),
+				viral_coefficient: z.number().optional(),
+				funnel_views: z.number().optional(),
+				modal_views: z.number().optional(),
+				onboarding_starts: z.number().optional(),
+				onboarding_completes: z.number().optional(),
+				auth_completions: z.number().optional(),
+				shares: z.number().optional()
+			})
+			.passthrough();
+
 		const formattedTemplates = dbTemplates.map((template) => {
-			// Extract metrics from JSON field
-			const jsonMetrics =
-				typeof template.metrics === 'string'
-					? JSON.parse(template.metrics)
-					: template.metrics || {};
+			// Extract metrics from JSON field with validation
+			let jsonMetrics = {};
+			if (typeof template.metrics === 'string') {
+				try {
+					const parsed = JSON.parse(template.metrics);
+					const result = MetricsSchema.safeParse(parsed);
+					if (result.success) {
+						jsonMetrics = result.data;
+					} else {
+						console.warn(
+							`[Templates API] Invalid metrics for template ${template.id}:`,
+							result.error.flatten()
+						);
+					}
+				} catch (error) {
+					console.warn(`[Templates API] Failed to parse metrics for template ${template.id}:`, error);
+				}
+			} else {
+				const result = MetricsSchema.safeParse(template.metrics || {});
+				if (result.success) {
+					jsonMetrics = result.data;
+				} else {
+					console.warn(
+						`[Templates API] Invalid metrics object for template ${template.id}:`,
+						result.error.flatten()
+					);
+				}
+			}
 
 			// Calculate coordination scale (0-1 range, logarithmic for perceptual encoding)
 			// 1 send = 0.0, 10 sends = 0.33, 100 sends = 0.67, 1000+ sends = 1.0
@@ -277,22 +318,35 @@ export const GET: RequestHandler = async () => {
 				status: template.status,
 				is_public: template.is_public,
 
-				// Geographic scope fields
-				applicable_countries: template.applicable_countries,
-				jurisdiction_level: template.jurisdiction_level,
-				specific_locations: template.specific_locations,
-
 				// Jurisdictions for location filtering (Phase 3)
 				jurisdictions: template.jurisdictions || [],
 
 				// Optional scope from separate table
 				scope: idToScope.get(template.id) || null,
 
-				recipientEmails: extractRecipientEmails(
-					typeof template.recipient_config === 'string'
-						? JSON.parse(template.recipient_config)
-						: template.recipient_config
-				)
+				recipientEmails: (() => {
+					// Validate and parse recipient_config
+					const RecipientConfigSchema = z.unknown();
+					let recipientConfig = null;
+
+					if (typeof template.recipient_config === 'string') {
+						try {
+							const parsed = JSON.parse(template.recipient_config);
+							const result = RecipientConfigSchema.safeParse(parsed);
+							recipientConfig = result.success ? result.data : null;
+						} catch (error) {
+							console.warn(
+								`[Templates API] Failed to parse recipient_config for template ${template.id}:`,
+								error
+							);
+						}
+					} else {
+						const result = RecipientConfigSchema.safeParse(template.recipient_config);
+						recipientConfig = result.success ? result.data : null;
+					}
+
+					return extractRecipientEmails(recipientConfig);
+				})()
 			};
 		});
 
@@ -347,102 +401,101 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json(response, { status: 400 });
 		}
 
-		const validData = validation.validData!;
+		// validData is guaranteed to exist when isValid is true
+		if (!validation.validData) {
+			const response: ApiResponse = {
+				success: false,
+				error: createApiError('validation', 'VALIDATION_MISSING_DATA', 'Validation passed but data is missing')
+			};
+			return json(response, { status: 400 });
+		}
+		const validData = validation.validData;
 
-		// === PHASE 1: 3-LAYER CONTENT MODERATION ===
-		// Layer 1: Pattern matching (fast, no API call)
-		// Layer 2: OpenAI safety filter (illegal content)
-		// Layer 3: Multi-agent consensus (quality assessment)
+		// === 2-LAYER CONTENT MODERATION (Llama Guard 4 + Gemini) ===
+		// Layer 1: Llama Guard 4 (MLCommons S1-S14 hazard taxonomy)
+		//   - Elections (S13), Defamation (S5), specialized for civic content
+		//   - 14,400 free requests/day via GROQ
+		// Layer 2: Gemini 2.5 Flash (quality assessment)
+		//   - Policy relevance, professionalism, congressional appropriateness
 		let consensusResult;
 
 		try {
-			// Layer 1: Check prohibited patterns first (instant)
-			const combinedContent = `${validData.title}\n\n${validData.message_body}`;
-			if (containsProhibitedPatterns(combinedContent)) {
-				const response: ApiResponse = {
-					success: false,
-					error: createValidationError(
-						'message_body',
-						'CONTENT_PROHIBITED',
-						'Content contains prohibited patterns. Please revise your message.'
-					)
-				};
-				return json(response, { status: 400 });
-			}
-
-			// Layer 2: OpenAI Moderation API for safety (FREE tier: 20 requests/min)
 			const moderationResult = await moderateTemplate({
 				title: validData.title,
-				message_body: validData.message_body
+				message_body: validData.message_body,
+				category: validData.category
 			});
 
 			if (!moderationResult.approved) {
-				console.log('OpenAI moderation REJECTED template:', {
-					flagged_categories: moderationResult.flagged_categories,
-					timestamp: moderationResult.timestamp
+				// Determine error type based on which layer rejected
+				const isSafetyRejection = !moderationResult.safety?.safe;
+				const errorCode = isSafetyRejection ? 'CONTENT_FLAGGED' : 'QUALITY_REJECTED';
+
+				console.log(`Moderation REJECTED template (${isSafetyRejection ? 'safety' : 'quality'}):`, {
+					hazards: moderationResult.safety?.hazards,
+					summary: moderationResult.summary,
+					latencyMs: moderationResult.latency_ms
 				});
 
 				const response: ApiResponse = {
 					success: false,
-					error: createValidationError(
-						'message_body',
-						'CONTENT_FLAGGED',
-						`Content flagged for: ${moderationResult.flagged_categories.join(', ')}. Please revise your message to comply with content policies.`
-					)
+					error: createValidationError('message_body', errorCode, moderationResult.summary)
 				};
 				return json(response, { status: 400 });
 			}
 
-			// Layer 3: Multi-agent consensus for quality (configurable)
-			const useMultiAgent = env.CONSENSUS_TYPE === 'multi_agent';
-
-			if (useMultiAgent) {
-				consensusResult = await getMultiAgentConsensus({
-					title: validData.title,
-					message_body: validData.message_body,
-					category: validData.category
-				});
-
-				if (!consensusResult.approved) {
-					console.log('Multi-agent consensus REJECTED template:', {
-						consensus_type: consensusResult.consensus_type,
-						votes: consensusResult.votes.map((v) => ({
-							agent: v.agent,
-							approved: v.approved,
-							confidence: v.confidence
-						})),
-						timestamp: consensusResult.timestamp
-					});
-
-					const response: ApiResponse = {
-						success: false,
-						error: createValidationError(
-							'message_body',
-							'QUALITY_REJECTED',
-							`Template quality assessment failed (${consensusResult.consensus_type}): ${consensusResult.reasoning_summary}`
-						)
-					};
-					return json(response, { status: 400 });
-				}
-
-				console.log('Multi-agent consensus APPROVED template:', {
-					consensus_type: consensusResult.consensus_type,
-					confidence: consensusResult.final_confidence,
-					timestamp: consensusResult.timestamp
-				});
-			} else {
-				// Fallback: Single-agent moderation (OpenAI only)
-				consensusResult = await getSingleAgentModeration({
-					title: validData.title,
-					message_body: validData.message_body,
-					category: validData.category
-				});
-
-				console.log('Single-agent moderation result:', {
-					approved: consensusResult.approved,
-					confidence: consensusResult.final_confidence
+			// Convert to legacy format for backward compatibility with DB storage
+			// Inline conversion (deprecated function removed)
+			const votes = [];
+			if (moderationResult.prompt_guard) {
+				votes.push({
+					agent: 'prompt-guard',
+					approved: moderationResult.prompt_guard.safe,
+					confidence: 1.0 - moderationResult.prompt_guard.score,
+					reasoning: moderationResult.prompt_guard.safe
+						? 'No prompt injection detected'
+						: `Injection detected (${(moderationResult.prompt_guard.score * 100).toFixed(1)}%)`,
+					timestamp: moderationResult.prompt_guard.timestamp
 				});
 			}
+			if (moderationResult.safety) {
+				votes.push({
+					agent: 'llama-guard',
+					approved: moderationResult.safety.safe,
+					confidence: moderationResult.safety.safe ? 1.0 : 0.0,
+					reasoning: moderationResult.safety.reasoning,
+					timestamp: moderationResult.safety.timestamp
+				});
+			}
+			if (moderationResult.quality) {
+				votes.push({
+					agent: 'gemini',
+					approved: moderationResult.quality.approved,
+					confidence: moderationResult.quality.confidence,
+					reasoning: moderationResult.quality.reasoning,
+					timestamp: moderationResult.quality.timestamp
+				});
+			}
+			const approvedCount = votes.filter((v) => v.approved).length;
+			const consensusType =
+				approvedCount === votes.length ? 'unanimous' : approvedCount === 0 ? 'unanimous' : 'split';
+
+			consensusResult = {
+				approved: moderationResult.approved,
+				consensus_type: consensusType,
+				votes,
+				final_confidence:
+					moderationResult.quality?.confidence ?? (moderationResult.safety?.safe ? 1.0 : 0.0),
+				reasoning_summary: moderationResult.summary,
+				timestamp: new Date().toISOString()
+			};
+
+			console.log('Moderation APPROVED template:', {
+				safetyModel: moderationResult.safety?.model,
+				qualityModel: moderationResult.quality?.model,
+				confidence: moderationResult.quality?.confidence,
+				latencyMs: moderationResult.latency_ms
+			});
 		} catch (moderationError) {
 			console.error('Content moderation error:', moderationError);
 			// Don't block template creation if moderation fails - log and continue
@@ -503,14 +556,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							status: validData.status || 'draft',
 							is_public: validData.is_public || false,
 							slug,
-							userId: user.id,
+							// Use Prisma relation connect syntax instead of scalar userId
+							user: { connect: { id: user.id } },
 							// Consolidated verification fields with defaults
 							verification_status: consensusResult?.approved ? 'approved' : 'pending',
 							country_code: validData.geographic_scope?.country_code || 'US',
 							reputation_applied: false,
-							// Multi-agent consensus results (Phase 1)
-							agent_votes: consensusResult?.votes || [],
-							consensus_score: consensusResult?.final_confidence || null
+							// Multi-agent consensus tracking via consensus_approved boolean
+							consensus_approved: consensusResult?.approved ?? false
 						}
 					});
 
@@ -564,7 +617,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							data: {
 								verification_status: 'pending',
 								country_code: 'US', // TODO: Extract from user profile
-								quality_score: 0,
 								reputation_applied: false
 							}
 						});

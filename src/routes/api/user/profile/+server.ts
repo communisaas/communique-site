@@ -16,6 +16,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		// Update user with profile information using proper fields
+		// Note: connection_details removed - field does not exist in schema
 		const updatedUser = await db.user.update({
 			where: { id: locals.user.id },
 			data: {
@@ -23,7 +24,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				organization: organization || null,
 				location: location || null,
 				connection,
-				connection_details: connectionDetails || null,
 				profile_completed_at: new Date(),
 				updatedAt: new Date()
 			}
@@ -47,14 +47,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 	}
 };
 
-export const GET: RequestHandler = async ({ _locals }) => {
+export const GET: RequestHandler = async ({ locals }) => {
 	try {
+		// CVE-INTERNAL-004 FIX: Corrected parameter name from _locals to locals
 		// Ensure user is authenticated
 		if (!locals.user) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
 		// Get user's profile information
+		// Note: PII fields (street, city, state, zip, phone) removed per privacy architecture
+		// Address data is encrypted in EncryptedDeliveryData, not stored on User
 		const user = await db.user.findUnique({
 			where: { id: locals.user.id },
 			select: {
@@ -62,17 +65,10 @@ export const GET: RequestHandler = async ({ _locals }) => {
 				name: true,
 				email: true,
 				avatar: true,
-				phone: true,
-				street: true,
-				city: true,
-				state: true,
-				zip: true,
-				congressional_district: true,
 				role: true,
 				organization: true,
 				location: true,
 				connection: true,
-				connection_details: true,
 				profile_completed_at: true,
 				profile_visibility: true,
 				is_verified: true,
@@ -91,20 +87,13 @@ export const GET: RequestHandler = async ({ _locals }) => {
 				name: user.name,
 				email: user.email,
 				avatar: user.avatar,
-				phone: user.phone,
-				address: {
-					street: user.street,
-					city: user.city,
-					state: user.state,
-					zip: user.zip,
-					congressional_district: user.congressional_district
-				},
+				// Note: address and phone removed per privacy architecture
+				// PII is encrypted in EncryptedDeliveryData, not exposed via API
 				profile: {
 					role: user.role,
 					organization: user.organization,
 					location: user.location,
 					connection: user.connection,
-					connection_details: user.connection_details,
 					completed_at: user.profile_completed_at,
 					visibility: user.profile_visibility
 				},
