@@ -4,6 +4,7 @@
 	import { browser } from '$app/environment';
 	import DirectOutreachCompact from '$lib/components/auth/DirectOutreachCompact.svelte';
 	import type { PageData } from './$types';
+	import { z } from 'zod';
 
 	let { _data }: { data: PageData } = $props();
 
@@ -40,11 +41,27 @@
 			const pendingAction = sessionStorage.getItem('pending_template_action');
 			if (pendingAction) {
 				try {
-					const actionData = JSON.parse(pendingAction);
-					pendingTemplate = actionData;
-					finalReturnUrl = `/template-modal/${actionData.slug}`;
-				} catch {
-					/* Ignore JSON parsing errors - invalid session data */
+					// Validate pending action data
+					const PendingActionSchema = z.object({
+						slug: z.string(),
+						title: z.string(),
+						deliveryMethod: z.string().optional(),
+						category: z.string().optional()
+					});
+
+					const parsed = JSON.parse(pendingAction);
+					const result = PendingActionSchema.safeParse(parsed);
+
+					if (result.success) {
+						pendingTemplate = result.data;
+						finalReturnUrl = `/template-modal/${result.data.slug}`;
+					} else {
+						console.warn('[Profile Page] Invalid pending action data:', result.error.flatten());
+						sessionStorage.removeItem('pending_template_action');
+					}
+				} catch (error) {
+					console.warn('[Profile Page] Failed to parse pending action data:', error);
+					sessionStorage.removeItem('pending_template_action');
 				}
 			}
 

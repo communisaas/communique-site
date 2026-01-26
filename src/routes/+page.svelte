@@ -34,6 +34,7 @@
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
 	import { CreationSpark, CoordinationExplainer } from '$lib/components/activation';
 	import { guestState } from '$lib/stores/guestState.svelte';
+	import { z } from 'zod';
 
 	let { data }: { data: PageData } = $props();
 
@@ -66,17 +67,33 @@
 			const pendingData = sessionStorage.getItem('pending_template_save');
 			if (pendingData) {
 				try {
-					const { templateData } = JSON.parse(pendingData);
-					templateStore
-						.addTemplate(templateData)
-						.then(() => {
-							sessionStorage.removeItem('pending_template_save');
-						})
-						.catch((_error) => {
-							// Template save failed - user can retry later
-						});
-				} catch {
-					// Invalid pending template data - ignore
+					// Validate stored template data
+					const PendingTemplateSchema = z.object({
+						templateData: z.unknown(),
+						creatorInfo: z.object({ name: z.string(), email: z.string() }).optional(),
+						timestamp: z.number()
+					});
+
+					const parsed = JSON.parse(pendingData);
+					const result = PendingTemplateSchema.safeParse(parsed);
+
+					if (result.success) {
+						const { templateData } = result.data;
+						templateStore
+							.addTemplate(templateData)
+							.then(() => {
+								sessionStorage.removeItem('pending_template_save');
+							})
+							.catch((_error) => {
+								// Template save failed - user can retry later
+							});
+					} else {
+						console.warn('[HomePage] Invalid pending template data:', result.error.flatten());
+						sessionStorage.removeItem('pending_template_save');
+					}
+				} catch (error) {
+					console.warn('[HomePage] Failed to parse pending template data:', error);
+					sessionStorage.removeItem('pending_template_save');
 				}
 			}
 		}
@@ -148,7 +165,12 @@
 		showTemplateCreator = true;
 	}
 
-	function handleTemplateCreatorAuth(_event: CustomEvent) {
+	interface AuthEventDetail {
+		name: string;
+		email: string;
+	}
+
+	function handleTemplateCreatorAuth(_event: CustomEvent<AuthEventDetail>) {
 		const { name, email } = _event.detail;
 
 		if (typeof window !== 'undefined') {
@@ -219,12 +241,17 @@
 		}
 	});
 
+	interface OnCompleteDetail {
+		address?: string;
+		[key: string]: unknown;
+	}
+
 	async function handleSendMessage(template: Template) {
 		if (!data.user) {
 			modalActions.openModal('onboarding-modal', 'onboarding', {
 				template,
 				source: 'featured',
-				onComplete: async (detail: any) => {
+				onComplete: async (detail: OnCompleteDetail) => {
 					// If address was collected during onboarding (unlikely but possible depending on flow), save it
 					if (detail?.address) {
 						// Client-side caching only - Cypherpunk ethos
@@ -248,7 +275,7 @@
 				template,
 				source: 'featured',
 				user: data.user,
-				onComplete: async (detail: any) => {
+				onComplete: async (detail: OnCompleteDetail) => {
 					if (detail?.address) {
 						// Client-side caching only - Cypherpunk ethos
 						guestState.setAddress(detail.address);

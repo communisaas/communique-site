@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import type { RequestHandler } from './$types';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 import { CWCGenerator } from '$lib/core/congress/cwc-generator';
@@ -31,6 +32,10 @@ interface CWCTestResults {
  * for congressional message delivery.
  */
 export const POST: RequestHandler = async ({ request }) => {
+	if (!dev) {
+		return json({ error: 'Development endpoint not available' }, { status: 404 });
+	}
+
 	try {
 		const { testType = 'preview' } = await request.json();
 
@@ -152,6 +157,10 @@ export const POST: RequestHandler = async ({ request }) => {
 };
 
 export const GET: RequestHandler = async () => {
+	if (!dev) {
+		return json({ error: 'Development endpoint not available' }, { status: 404 });
+	}
+
 	// Simple status check
 	return json({
 		cwcConfigured: !!process.env.CWC_API_KEY,

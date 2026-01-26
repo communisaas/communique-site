@@ -71,6 +71,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Get real representatives using Congress.gov API
 		let representatives = [];
+		let specialStatus = null;
 		try {
 			const userReps = await addressLookupService.lookupRepsByAddress({
 				street: street,
@@ -79,18 +80,30 @@ export const POST: RequestHandler = async ({ request }) => {
 				zip: zipCode
 			});
 
+			// Check for DC or territory special status
+			if (userReps.special_status) {
+				specialStatus = userReps.special_status;
+			}
+
+			// Format house representative (delegate for DC/territories)
+			const houseRep = {
+				name: userReps.house.name,
+				office: userReps.house.is_voting_member === false
+					? `${userReps.house.delegate_type === 'resident_commissioner' ? 'Resident Commissioner' : 'Non-Voting Delegate'}, ${userReps.house.state}`
+					: `House Representative, ${userReps.house.state}-${userReps.house.district}`,
+				chamber: 'house',
+				party: userReps.house.party,
+				state: userReps.house.state,
+				district: `${userReps.house.state}-${userReps.house.district}`,
+				bioguide_id: userReps.house.bioguide_id,
+				office_code: userReps.house.office_code,
+				is_voting_member: userReps.house.is_voting_member,
+				delegate_type: userReps.house.delegate_type
+			};
+
 			// Format representatives for frontend (use snake_case for database consistency)
 			representatives = [
-				{
-					name: userReps.house.name,
-					office: `House Representative, ${userReps.house.state}-${userReps.house.district}`,
-					chamber: 'house',
-					party: userReps.house.party,
-					state: userReps.house.state,
-					district: `${userReps.house.state}-${userReps.house.district}`,
-					bioguide_id: userReps.house.bioguide_id,
-					office_code: userReps.house.office_code
-				},
+				houseRep,
 				...userReps.senate.map((senator) => ({
 					name: senator.name,
 					office: `Senator, ${senator.state}`,
@@ -99,7 +112,8 @@ export const POST: RequestHandler = async ({ request }) => {
 					state: senator.state,
 					district: senator.state,
 					bioguide_id: senator.bioguide_id,
-					office_code: senator.office_code
+					office_code: senator.office_code,
+					is_voting_member: senator.is_voting_member
 				}))
 			];
 		} catch (error_repError) {
@@ -119,6 +133,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			correctedAddress,
 			representatives,
 			district,
+			special_status: specialStatus,
 			message: 'Address  verified successfully'
 		});
 	} catch (error_verifyError) {

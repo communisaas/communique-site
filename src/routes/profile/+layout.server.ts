@@ -7,17 +7,16 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 		throw redirect(302, '/');
 	}
 
-	// Pass user data including address fields for profile completion calculation
 	return {
 		user: {
 			id: locals.user.id,
 			name: locals.user.name,
 			email: locals.user.email,
 			avatar: locals.user.avatar || null,
-			street: locals.user.street,
-			city: locals.user.city,
-			state: locals.user.state,
-			zip: locals.user.zip
+			is_verified: locals.user.is_verified,
+			district_verified: locals.user.district_verified,
+			trust_score: locals.user.trust_score,
+			reputation_tier: locals.user.reputation_tier
 		}
 	};
 };

@@ -141,6 +141,11 @@
 		document.cookie = 'oauth_completion=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 	}
 
+	interface AddressModalDetail {
+		address: string;
+		[key: string]: unknown;
+	}
+
 	function handlePostAuthFlow() {
 		const flow = analyzeEmailFlow(template, data.user);
 
@@ -150,7 +155,7 @@
 				template,
 				source,
 				mode: 'collection',
-				onComplete: async (detail: any) => {
+				onComplete: async (detail: AddressModalDetail) => {
 					await _handleAddressSubmit(detail.address);
 				}
 			});
@@ -351,7 +356,7 @@
 								template,
 								source,
 								mode: 'collection',
-								onComplete: async (detail: any) => {
+								onComplete: async (detail: AddressModalDetail) => {
 									await _handleAddressSubmit(detail.address);
 								}
 							})}
@@ -391,7 +396,7 @@
 							template,
 							source,
 							mode: 'collection',
-							onComplete: async (detail: any) => {
+							onComplete: async (detail: AddressModalDetail) => {
 								await _handleAddressSubmit(detail.address);
 							}
 						});
@@ -433,7 +438,7 @@
 							template,
 							source,
 							mode: 'collection',
-							onComplete: async (detail: any) => {
+							onComplete: async (detail: AddressModalDetail) => {
 								// Client-side caching only
 								if (detail?.address) {
 									guestState.setAddress(detail.address);

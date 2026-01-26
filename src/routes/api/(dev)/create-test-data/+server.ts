@@ -1,7 +1,11 @@
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { storeSingleUserSentiment } from '$lib/core/server/sentiment-storage';
 
 export async function POST() {
+	if (!dev) {
+		return json({ error: 'Development endpoint not available' }, { status: 404 });
+	}
 	try {
 		// Create test sentiment data matching our mathematical pipeline example
 		const testData = [

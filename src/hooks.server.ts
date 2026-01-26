@@ -29,26 +29,25 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 					id: user.id,
 					email: user.email,
 					name: user.name,
-					street: user.street,
-					city: user.city,
-					state: user.state,
-					zip: user.zip,
-					congressional_district: user.congressional_district,
-					is_verified: user.is_verified,
-					is_active: true, // Default since field doesn't exist in schema
-					is_banned: false, // Default since field doesn't exist in schema
-					is_admin: false, // Default since field doesn't exist in schema
 					avatar: user.avatar,
-					phone: user.phone,
+					// Verification status
+					is_verified: user.is_verified,
+					verification_method: user.verification_method ?? null,
+					verified_at: user.verified_at ?? null,
+					// Privacy-preserving district (hash only, no PII)
+					district_hash: user.district_hash ?? null,
+					district_verified: user.district_verified ?? false,
+					// Profile fields
 					role: user.role ?? null,
 					organization: user.organization ?? null,
 					location: user.location ?? null,
 					connection: user.connection ?? null,
-					connection_details: user.connection_details ?? null,
 					profile_completed_at: user.profile_completed_at ?? null,
 					profile_visibility: user.profile_visibility ?? 'private',
-					verification_method: user.verification_method ?? null,
-					verified_at: user.verified_at ?? null,
+					// Reputation
+					trust_score: user.trust_score ?? 0,
+					reputation_tier: user.reputation_tier ?? 'novice',
+					// Timestamps
 					createdAt: user.createdAt,
 					updatedAt: user.updatedAt
 				}

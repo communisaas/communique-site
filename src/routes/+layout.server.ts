@@ -46,16 +46,14 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				id: locals.user.id,
 				email: locals.user.email,
 				name: locals.user.name,
-				// Address  info for congressional routing
-				street: locals.user.street,
-				city: locals.user.city,
-				state: locals.user.state,
-				zip: locals.user.zip,
-				congressional_district: locals.user.congressional_district,
+				avatar: locals.user.avatar,
 				// Verification status
 				is_verified: locals.user.is_verified || false,
 				verification_method: locals.user.verification_method,
 				verified_at: locals.user.verified_at,
+				// Privacy-preserving district (hash only)
+				district_hash: locals.user.district_hash,
+				district_verified: locals.user.district_verified,
 				// Representatives data for template resolution
 				representatives: representatives
 			}
@@ -68,14 +66,12 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				id: locals.user.id,
 				email: locals.user.email,
 				name: locals.user.name,
-				street: locals.user.street,
-				city: locals.user.city,
-				state: locals.user.state,
-				zip: locals.user.zip,
-				congressional_district: locals.user.congressional_district,
+				avatar: locals.user.avatar,
 				is_verified: locals.user.is_verified || false,
 				verification_method: locals.user.verification_method,
 				verified_at: locals.user.verified_at,
+				district_hash: locals.user.district_hash,
+				district_verified: locals.user.district_verified,
 				representatives: []
 			}
 		};

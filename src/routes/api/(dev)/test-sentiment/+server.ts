@@ -1,7 +1,11 @@
 import { json } from '@sveltejs/kit';
+import { dev } from '$app/environment';
 import { runBasicSentimentTests } from '$lib/core/server/sentiment-basic';
 
 export async function GET() {
+	if (!dev) {
+		return json({ error: 'Development endpoint not available' }, { status: 404 });
+	}
 	try {
 		// Run the basic sentiment tests
 		await runBasicSentimentTests();

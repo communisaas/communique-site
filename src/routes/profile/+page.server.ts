@@ -19,20 +19,24 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 			name: true,
 			email: true,
 			avatar: true,
-			phone: true,
-			street: true,
-			city: true,
-			state: true,
-			zip: true,
-			congressional_district: true,
+			// Profile fields
 			role: true,
 			organization: true,
 			location: true,
 			connection: true,
-			connection_details: true,
 			profile_completed_at: true,
 			profile_visibility: true,
+			// Verification
 			is_verified: true,
+			verification_method: true,
+			verified_at: true,
+			district_verified: true,
+			// Reputation
+			trust_score: true,
+			reputation_tier: true,
+			templates_contributed: true,
+			peer_endorsements: true,
+			// Timestamps
 			createdAt: true,
 			updatedAt: true
 		}
@@ -142,25 +146,25 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 						name: user.name,
 						email: user.email,
 						avatar: user.avatar,
-						phone: user.phone,
-						address: {
-							street: user.street,
-							city: user.city,
-							state: user.state,
-							zip: user.zip,
-							congressional_district: user.congressional_district
-						},
 						profile: {
 							role: user.role,
 							organization: user.organization,
 							location: user.location,
 							connection: user.connection,
-							connection_details: user.connection_details,
 							completed_at: user.profile_completed_at,
 							visibility: user.profile_visibility
 						},
 						verification: {
-							is_verified: user.is_verified
+							is_verified: user.is_verified,
+							method: user.verification_method,
+							verified_at: user.verified_at,
+							district_verified: user.district_verified
+						},
+						reputation: {
+							trust_score: user.trust_score,
+							tier: user.reputation_tier,
+							templates_contributed: user.templates_contributed,
+							peer_endorsements: user.peer_endorsements
 						},
 						timestamps: {
 							created_at: user.createdAt,

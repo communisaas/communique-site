@@ -17,7 +17,12 @@ interface DecisionMaker {
  * 2. Clearbit API (if available)
  * 3. Pattern guessing with confidence scoring
  */
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
+	// Authentication required to prevent API key abuse
+	if (!locals.user) {
+		return json({ error: 'Authentication required' }, { status: 401 });
+	}
+
 	const query = url.searchParams.get('q');
 	const templateId = url.searchParams.get('templateId');
 

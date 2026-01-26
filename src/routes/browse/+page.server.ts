@@ -1,6 +1,7 @@
 import type { PageServerLoad } from './$types';
 import { db } from '$lib/core/db';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
+import { z } from 'zod';
 
 export const load: PageServerLoad = async () => {
 	try {
@@ -21,12 +22,46 @@ export const load: PageServerLoad = async () => {
 			}
 		});
 
+		// Zod schema for metrics validation
+		const MetricsSchema = z
+			.object({
+				total_districts: z.number().optional(),
+				district_coverage_percent: z.number().optional(),
+				opened: z.number().optional(),
+				clicked: z.number().optional(),
+				views: z.number().optional()
+			})
+			.passthrough();
+
 		const templates = dbTemplates.map((template) => {
-			// Extract metrics from JSON field
-			const jsonMetrics =
-				typeof template.metrics === 'string'
-					? JSON.parse(template.metrics)
-					: template.metrics || {};
+			// Extract metrics from JSON field with validation
+			let jsonMetrics = {};
+			if (typeof template.metrics === 'string') {
+				try {
+					const parsed = JSON.parse(template.metrics);
+					const result = MetricsSchema.safeParse(parsed);
+					if (result.success) {
+						jsonMetrics = result.data;
+					} else {
+						console.warn(
+							`[Browse Page] Invalid metrics for template ${template.id}:`,
+							result.error.flatten()
+						);
+					}
+				} catch (error) {
+					console.warn(`[Browse Page] Failed to parse metrics for template ${template.id}:`, error);
+				}
+			} else {
+				const result = MetricsSchema.safeParse(template.metrics || {});
+				if (result.success) {
+					jsonMetrics = result.data;
+				} else {
+					console.warn(
+						`[Browse Page] Invalid metrics object for template ${template.id}:`,
+						result.error.flatten()
+					);
+				}
+			}
 
 			return {
 				id: template.id,
@@ -60,11 +95,29 @@ export const load: PageServerLoad = async () => {
 				// Config
 				delivery_config: template.delivery_config,
 				recipient_config: template.recipient_config,
-				recipientEmails: extractRecipientEmails(
-					typeof template.recipient_config === 'string'
-						? JSON.parse(template.recipient_config)
-						: template.recipient_config
-				),
+				recipientEmails: (() => {
+					// Validate and parse recipient_config
+					const RecipientConfigSchema = z.unknown();
+					let recipientConfig = null;
+
+					if (typeof template.recipient_config === 'string') {
+						try {
+							const parsed = JSON.parse(template.recipient_config);
+							const result = RecipientConfigSchema.safeParse(parsed);
+							recipientConfig = result.success ? result.data : null;
+						} catch (error) {
+							console.warn(
+								`[Browse Page] Failed to parse recipient_config for template ${template.id}:`,
+								error
+							);
+						}
+					} else {
+						const result = RecipientConfigSchema.safeParse(template.recipient_config);
+						recipientConfig = result.success ? result.data : null;
+					}
+
+					return extractRecipientEmails(recipientConfig);
+				})(),
 
 				// Metadata
 				is_public: template.is_public,

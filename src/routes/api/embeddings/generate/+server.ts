@@ -31,7 +31,12 @@ import { prisma } from '$lib/core/db';
 /**
  * Generate embedding for a single text or batch
  */
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ locals, request }) => {
+	// Authentication check
+	if (!locals.user) {
+		return json({ error: 'Authentication required' }, { status: 401 });
+	}
+
 	try {
 		// Parse request body
 		const body = (await request.json()) as { text?: string; texts?: string[]; templateId?: string };
