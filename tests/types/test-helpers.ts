@@ -54,7 +54,6 @@ export interface MockUser extends Partial<UserWithReputation> {
 	organization?: string | null;
 	location?: string | null;
 	connection?: string | null;
-	connection_details?: string | null;
 	profile_completed_at?: Date | null;
 	verification_method?: string | null;
 	verified_at?: Date | null;

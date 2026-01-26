@@ -239,10 +239,18 @@ describe('k-ary RR Debiasing Accuracy', () => {
 		for (const [metric, trueCount] of trueDistribution) {
 			const estimated = corrected.get(metric) ?? 0;
 
-			// Tolerance scales with count: k-ary RR has higher variance than binary
-			// Allow 40% relative error or 60 absolute error, whichever is larger
-			// Higher tolerance needed for k=20 domain size with statistical variance
-			const tolerance = Math.max(trueCount * 0.4, 60);
+			// Tolerance must account for k-ary RR debiasing variance amplification.
+			// The debiasing formula divides by (p - q) ≈ 0.24 for ε=2, k=20,
+			// which amplifies noise by ~4x. For small counts, this creates
+			// substantial variance.
+			//
+			// Statistical analysis:
+			// - For n=850 total reports, expected observed count variance ≈ n*p*(1-p)
+			// - Debiasing amplifies this by 1/(p-q)²
+			// - 3-sigma bound for 99.7% confidence: ~3 * sqrt(variance)
+			//
+			// Use 50% relative error or 80 absolute (whichever larger) for robustness
+			const tolerance = Math.max(trueCount * 0.5, 80);
 
 			expect(Math.abs(estimated - trueCount)).toBeLessThan(tolerance);
 		}

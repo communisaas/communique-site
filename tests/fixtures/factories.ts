@@ -75,7 +75,6 @@ export interface UserFactoryData {
 	organization?: string;
 	location?: string;
 	connection?: string;
-	connection_details?: string;
 	profile_completed_at?: Date;
 	profile_visibility?: string;
 }
@@ -124,7 +123,6 @@ export class UserFactory extends Factory<UserFactoryData> {
 			organization: undefined,
 			location: undefined,
 			connection: undefined,
-			connection_details: undefined,
 			profile_completed_at: undefined,
 			profile_visibility: 'private'
 		};

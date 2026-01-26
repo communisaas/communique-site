@@ -131,7 +131,7 @@ export const EDGE_CASE_ADDRESSES: TestAddress[] = [
 		city: 'Washington',
 		state: 'DC',
 		zip: '20004',
-		expectedDistrict: 'DC-AL',
+		expectedDistrict: 'DC-00',
 		expectedState: 'DC',
 		description: 'DC - Non-voting delegate, no senators',
 		category: 'non-voting'
@@ -142,9 +142,31 @@ export const EDGE_CASE_ADDRESSES: TestAddress[] = [
 		city: 'San Juan',
 		state: 'PR',
 		zip: '00901',
-		expectedDistrict: 'PR-AL',
+		expectedDistrict: 'PR-00',
 		expectedState: 'PR',
 		description: 'Puerto Rico - Resident Commissioner (non-voting)',
+		category: 'non-voting'
+	},
+	{
+		// US Virgin Islands - Non-voting delegate
+		street: '21-22 Kongens Gade',
+		city: 'Charlotte Amalie',
+		state: 'VI',
+		zip: '00802',
+		expectedDistrict: 'VI-00',
+		expectedState: 'VI',
+		description: 'US Virgin Islands - Non-voting delegate',
+		category: 'non-voting'
+	},
+	{
+		// Guam - Non-voting delegate
+		street: '173 Aspinall Ave',
+		city: 'Hagatna',
+		state: 'GU',
+		zip: '96910',
+		expectedDistrict: 'GU-00',
+		expectedState: 'GU',
+		description: 'Guam - Non-voting delegate',
 		category: 'non-voting'
 	}
 ];
@@ -247,6 +269,9 @@ export const mockResponses = {
 	 * Generate Census geocoding response for a test address
 	 */
 	censusGeocode(address: TestAddress) {
+		const districtNum = address.expectedDistrict.split('-')[1];
+		const is119thFormat = address.category === 'non-voting' || address.state === 'DC' || ['PR', 'VI', 'GU', 'AS', 'MP'].includes(address.state);
+
 		return {
 			result: {
 				addressMatches: [
@@ -257,10 +282,12 @@ export const mockResponses = {
 							y: 37.7749 // latitude (SF default)
 						},
 						geographies: {
-							'Congressional Districts': [
+							'119th Congressional Districts': [
 								{
+									// DC uses special code 98, territories use 98 or their own codes
+									CD119: address.state === 'DC' ? '98' : (districtNum === '00' ? '98' : districtNum),
 									GEOID: address.expectedDistrict.replace('-', ''),
-									NAME: `Congressional District ${address.expectedDistrict.split('-')[1]}`,
+									NAME: `Congressional District ${districtNum}`,
 									STATE: address.expectedState
 								}
 							]

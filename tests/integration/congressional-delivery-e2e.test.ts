@@ -68,8 +68,9 @@ const handlers = [
 	// Returns all current members - code filters by state/district client-side
 	http.get('https://api.congress.gov/v3/member', () => {
 		// Generate mock members matching real API format with terms.item structure
-		// Include members for test states: CA, TX, NY, CO, VT
+		// Include members for test states: CA, TX, NY, CO, VT, DC, PR, VI, GU
 		const testStates = ['California', 'Texas', 'New York', 'Colorado', 'Vermont'];
+		const territories = ['DC', 'PR', 'VI', 'GU'];
 		const members: Record<string, unknown>[] = [];
 
 		for (const state of testStates) {
@@ -105,6 +106,27 @@ const handlers = [
 				partyName: 'Democratic',
 				state: state,
 				district: isAtLarge ? undefined : 1,
+				terms: {
+					item: [{ chamber: 'House of Representatives', startYear: 2023 }]
+				}
+			});
+		}
+
+		// Add delegates for DC and territories (no senators, no voting power)
+		for (const territory of territories) {
+			const delegateNames: Record<string, string> = {
+				DC: 'Eleanor Holmes Norton',
+				PR: 'Pablo José Hernández Rivera',
+				VI: 'Stacey Plaskett',
+				GU: 'James Moylan'
+			};
+
+			members.push({
+				bioguideId: `${territory}D01`,
+				name: delegateNames[territory] || `Delegate (${territory})`,
+				partyName: territory === 'GU' ? 'Republican' : 'Democratic',
+				state: territory,
+				district: undefined, // Delegates have no district number
 				terms: {
 					item: [{ chamber: 'House of Representatives', startYear: 2023 }]
 				}
@@ -197,6 +219,60 @@ describe('Congressional Delivery E2E', () => {
 			expect(reps.length).toBe(3);
 		});
 
+		it('should handle DC addresses correctly (delegate only, no senators)', async () => {
+			const dcAddress = EDGE_CASE_ADDRESSES.find((a) => a.state === 'DC');
+			if (!dcAddress) throw new Error('DC test address not found');
+
+			const reps = await getRepresentativesForAddress({
+				street: dcAddress.street,
+				city: dcAddress.city,
+				state: dcAddress.state,
+				zip: dcAddress.zip
+			});
+
+			expect(reps).toBeDefined();
+			// DC: 1 non-voting delegate only (no senators)
+			expect(reps.length).toBe(1);
+			expect(reps[0].chamber).toBe('house');
+			expect(reps[0].state).toBe('DC');
+		});
+
+		it('should handle Puerto Rico addresses correctly (resident commissioner, no senators)', async () => {
+			const prAddress = EDGE_CASE_ADDRESSES.find((a) => a.state === 'PR');
+			if (!prAddress) throw new Error('Puerto Rico test address not found');
+
+			const reps = await getRepresentativesForAddress({
+				street: prAddress.street,
+				city: prAddress.city,
+				state: prAddress.state,
+				zip: prAddress.zip
+			});
+
+			expect(reps).toBeDefined();
+			// PR: 1 resident commissioner only (no senators)
+			expect(reps.length).toBe(1);
+			expect(reps[0].chamber).toBe('house');
+			expect(reps[0].state).toBe('PR');
+		});
+
+		it('should handle US Virgin Islands correctly', async () => {
+			const viAddress = EDGE_CASE_ADDRESSES.find((a) => a.state === 'VI');
+			if (!viAddress) throw new Error('VI test address not found');
+
+			const reps = await getRepresentativesForAddress({
+				street: viAddress.street,
+				city: viAddress.city,
+				state: viAddress.state,
+				zip: viAddress.zip
+			});
+
+			expect(reps).toBeDefined();
+			// VI: 1 non-voting delegate only (no senators)
+			expect(reps.length).toBe(1);
+			expect(reps[0].chamber).toBe('house');
+			expect(reps[0].state).toBe('VI');
+		});
+
 		it('should return placeholder reps for invalid addresses (graceful degradation)', async () => {
 			const reps = await getRepresentativesForAddress({
 				street: INVALID_ADDRESSES.nonExistentAddress.street,
@@ -213,107 +289,15 @@ describe('Congressional Delivery E2E', () => {
 		});
 	});
 
-	// =========================================================================
-	// CWC SUBMISSION TESTS
-	// =========================================================================
-
-	// NOTE: CWC Submission tests require complex MSW setup to intercept
-	// CWC API requests. These tests are skipped pending proper mock infrastructure.
-	// The actual CWC submission logic is tested via smoke tests against real APIs.
-	describe.skip('CWC Submission', () => {
-		const mockTemplate = {
-			id: 'test-template-123',
-			title: 'Test Climate Action Template',
-			message_body: 'Please support climate legislation for our community.',
-			slug: 'test-climate-action'
-		};
-
-		const mockUser = {
-			id: 'test-user-456',
-			name: 'Test Constituent',
-			email: 'test@example.com',
-			street: DEFAULT_TEST_ADDRESS.street,
-			city: DEFAULT_TEST_ADDRESS.city,
-			state: DEFAULT_TEST_ADDRESS.state,
-			zip: DEFAULT_TEST_ADDRESS.zip
-		};
-
-		it('should submit to all representatives successfully', async () => {
-			// First get representatives
-			const reps = await getRepresentativesForAddress({
-				street: mockUser.street,
-				city: mockUser.city,
-				state: mockUser.state,
-				zip: mockUser.zip
-			});
-
-			expect(reps.length).toBeGreaterThan(0);
-
-			// Submit to all
-			const results = await cwcClient.submitToAllRepresentatives(
-				mockTemplate,
-				mockUser,
-				reps,
-				'Personal message: This affects my neighborhood directly.'
-			);
-
-			expect(results).toBeDefined();
-			expect(results.length).toBe(reps.length);
-
-			// All should succeed with mocked API
-			const successCount = results.filter((r) => r.success).length;
-			expect(successCount).toBe(reps.length);
-
-			// Each result should have a message ID
-			for (const result of results) {
-				expect(result.messageId || result.confirmationNumber).toBeDefined();
-			}
-		});
-
-		it('should handle Senate submission', async () => {
-			const reps = await getRepresentativesForAddress({
-				street: mockUser.street,
-				city: mockUser.city,
-				state: mockUser.state,
-				zip: mockUser.zip
-			});
-
-			const senators = reps.filter((r) => r.chamber === 'senate');
-			expect(senators.length).toBe(2);
-
-			const results = await cwcClient.submitToAllRepresentatives(
-				mockTemplate,
-				mockUser,
-				senators,
-				''
-			);
-
-			expect(results.length).toBe(2);
-			expect(results.every((r) => r.success)).toBe(true);
-		});
-
-		it('should handle House submission', async () => {
-			const reps = await getRepresentativesForAddress({
-				street: mockUser.street,
-				city: mockUser.city,
-				state: mockUser.state,
-				zip: mockUser.zip
-			});
-
-			const houseReps = reps.filter((r) => r.chamber === 'house');
-			expect(houseReps.length).toBe(1);
-
-			const results = await cwcClient.submitToAllRepresentatives(
-				mockTemplate,
-				mockUser,
-				houseReps,
-				''
-			);
-
-			expect(results.length).toBe(1);
-			expect(results[0].success).toBe(true);
-		});
-	});
+	/**
+	 * NOTE: CWC Submission tests removed.
+	 *
+	 * CWC API mocking via MSW is unreliable due to complex request signing and
+	 * query parameter handling. Real CWC submission is tested via:
+	 * - tests/smoke/congressional-smoke.test.ts (live API testing)
+	 *
+	 * For unit testing CWC client logic, see the cwc-client unit tests.
+	 */
 
 	// =========================================================================
 	// ERROR HANDLING TESTS
@@ -345,59 +329,8 @@ describe('Congressional Delivery E2E', () => {
 			expect(reps.length).toBe(3);
 		});
 
-		// CWC rate limit testing requires proper MSW interception
-		// Tested via smoke tests with real API responses
-		it.skip('should handle CWC API rate limit', async () => {
-			// Override handler to return 429 rate limit error
-			// Use regex to match URL with query parameters
-			server.use(
-				http.post(/https:\/\/soapbox\.senate\.gov\/api\/testing-messages\/.*/, () => {
-					return HttpResponse.json(mockResponses.cwcSubmitError('rate_limit'), { status: 429 });
-				})
-			);
-
-			const mockTemplate = {
-				id: 'test',
-				title: 'Test',
-				message_body: 'Test',
-				slug: 'test'
-			};
-
-			const mockUser = {
-				id: 'test',
-				name: 'Test',
-				email: 'test@test.com',
-				street: '123 Test',
-				city: 'Test',
-				state: 'CA',
-				zip: '94102'
-			};
-
-			const mockReps = [
-				{
-					bioguideId: 'CAS001',
-					name: 'Test Senator',
-					chamber: 'senate' as const,
-					state: 'CA',
-					district: '00',
-					party: 'D',
-					officeCode: 'CAS001'
-				}
-			];
-
-			const results = await cwcClient.submitToAllRepresentatives(
-				mockTemplate,
-				mockUser,
-				mockReps,
-				''
-			);
-
-			// Should return failure result, not throw
-			expect(results.length).toBe(1);
-			expect(results[0].success).toBe(false);
-			// Error will contain HTTP status and response body
-			expect(results[0].error?.toLowerCase()).toContain('429');
-		});
+		// NOTE: CWC rate limit testing removed - requires MSW interception that doesn't
+		// reliably work with CWC's complex request format. Tested via smoke tests.
 
 		it('should handle missing address fields', async () => {
 			const reps = await getRepresentativesForAddress({
@@ -412,70 +345,12 @@ describe('Congressional Delivery E2E', () => {
 		});
 	});
 
-	// =========================================================================
-	// FULL FLOW INTEGRATION TEST
-	// =========================================================================
-
-	// Full flow test requires CWC API mocking which is not reliably intercepted by MSW
-	// Use smoke tests (tests/smoke/congressional-smoke.test.ts) for real API testing
-	describe.skip('Full Congressional Delivery Flow', () => {
-		it('should complete full flow: address → lookup → submit → verify', async () => {
-			const address = DEFAULT_TEST_ADDRESS;
-
-			// Step 1: Resolve address to representatives
-			const reps = await getRepresentativesForAddress({
-				street: address.street,
-				city: address.city,
-				state: address.state,
-				zip: address.zip
-			});
-
-			expect(reps.length).toBeGreaterThan(0);
-			console.log(`[Test] Found ${reps.length} representatives for ${address.description}`);
-
-			// Step 2: Prepare submission data
-			const template = {
-				id: 'climate-action-2025',
-				title: 'Support Climate Action Now',
-				message_body:
-					'As your constituent, I urge you to support comprehensive climate legislation.',
-				slug: 'climate-action-2025'
-			};
-
-			const user = {
-				id: 'test-user-e2e',
-				name: 'Jane Constituent',
-				email: 'jane@example.com',
-				street: address.street,
-				city: address.city,
-				state: address.state,
-				zip: address.zip
-			};
-
-			// Step 3: Submit to all representatives
-			const results = await cwcClient.submitToAllRepresentatives(
-				template,
-				user,
-				reps,
-				'This is a personal note about why this matters to me.'
-			);
-
-			// Step 4: Verify results
-			expect(results.length).toBe(reps.length);
-
-			const successful = results.filter((r) => r.success);
-			const failed = results.filter((r) => !r.success);
-
-			console.log(`[Test] Submission results: ${successful.length} success, ${failed.length} failed`);
-
-			// With mocked API, all should succeed
-			expect(successful.length).toBe(reps.length);
-
-			// Each successful result should have tracking info
-			for (const result of successful) {
-				expect(result.office).toBeDefined();
-				expect(result.messageId || result.confirmationNumber).toBeDefined();
-			}
-		});
-	});
+	/**
+	 * NOTE: Full Congressional Delivery Flow test removed.
+	 *
+	 * End-to-end CWC submission testing requires real API calls due to
+	 * MSW's limitations with complex request formats. Use:
+	 * - tests/smoke/congressional-smoke.test.ts for real API testing
+	 * - Playwright E2E tests for full user flow testing
+	 */
 });
