@@ -9,6 +9,7 @@
  * No sessions. No user tracking. No device fingerprinting.
  */
 
+import { z } from 'zod';
 import { browser } from '$app/environment';
 import {
 	PRIVACY,
@@ -28,6 +29,12 @@ import { applyLocalDP } from './noise';
 
 const DEBOUNCE_MS = 500;
 const ENDPOINT = '/api/analytics/increment';
+
+// =============================================================================
+// ZOD SCHEMA
+// =============================================================================
+
+const ContributionsSchema = z.record(z.string(), z.number());
 
 // =============================================================================
 // CONTRIBUTION TRACKER
@@ -69,8 +76,19 @@ class ContributionTracker {
 	private getContributions(): Record<string, number> {
 		try {
 			const stored = localStorage.getItem(this.storageKey);
-			return stored ? JSON.parse(stored) : {};
-		} catch {
+			if (!stored) return {};
+
+			const parsed = JSON.parse(stored);
+			const result = ContributionsSchema.safeParse(parsed);
+
+			if (!result.success) {
+				console.warn('[analytics] Invalid contributions data, resetting:', result.error.flatten());
+				return {};
+			}
+
+			return result.data;
+		} catch (error) {
+			console.warn('[analytics] Failed to parse contributions:', error);
 			return {};
 		}
 	}

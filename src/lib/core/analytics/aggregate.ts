@@ -1,7 +1,18 @@
 /**
  * Server-Side Aggregation
  *
- * Upsert aggregates, apply noise on queries.
+ * ⚠️  DEPRECATION NOTICE: Direct queries to analytics_aggregate are DEPRECATED
+ *
+ * This module manages RAW aggregate data (no noise applied).
+ * For queries, use snapshot.ts instead to ensure differential privacy.
+ *
+ * WRITE PATH (✅ SAFE): Use this module to increment counters
+ * READ PATH (❌ UNSAFE): Use queryNoisySnapshots() from snapshot.ts
+ *
+ * Feature Flag: USE_SNAPSHOT_ONLY (default: true)
+ * When enabled, queryAggregates() redirects to queryNoisySnapshots()
+ *
+ * See index.ts for detailed privacy architecture documentation.
  */
 
 import { db } from '$lib/core/db';
@@ -350,10 +361,98 @@ function makeBucketKey(metric: Metric, dims: Dimensions): string {
 // =============================================================================
 
 /**
+ * Check if snapshot-only mode is enabled
+ *
+ * Reads USE_SNAPSHOT_ONLY environment variable.
+ * Defaults to true for safety (production must use snapshots).
+ */
+function isSnapshotOnlyMode(): boolean {
+	const envValue = process.env.USE_SNAPSHOT_ONLY;
+	// Default to true for safety - only disable explicitly for testing
+	return envValue !== 'false';
+}
+
+/**
+ * Log deprecation warning for raw aggregate queries
+ *
+ * @param metric - Metric being queried
+ * @param caller - Function or component making the query
+ */
+function logDeprecationWarning(metric: string, caller = 'unknown'): void {
+	console.warn(`
+┌─────────────────────────────────────────────────────────────────┐
+│ ⚠️  DEPRECATION WARNING: Raw Aggregate Query Detected           │
+├─────────────────────────────────────────────────────────────────┤
+│ Metric: ${metric.padEnd(55)}│
+│ Caller: ${caller.padEnd(55)}│
+├─────────────────────────────────────────────────────────────────┤
+│ PRIVACY RISK: Querying analytics_aggregate bypasses DP          │
+│                                                                 │
+│ ✅ SOLUTION: Use queryNoisySnapshots() from snapshot.ts         │
+│                                                                 │
+│ This query will be blocked in future versions when              │
+│ USE_SNAPSHOT_ONLY=true becomes the enforced default.            │
+│                                                                 │
+│ See: docs/specs/analytics/dp-hardening-guide.md                │
+└─────────────────────────────────────────────────────────────────┘
+	`);
+}
+
+/**
  * Query aggregates with differential privacy
+ *
+ * ⚠️  DEPRECATED: Use queryNoisySnapshots() from snapshot.ts instead
+ *
+ * CONSOLIDATION (WP-010):
+ * - When USE_SNAPSHOT_ONLY=true (default): Redirects to queryNoisySnapshots()
+ * - When USE_SNAPSHOT_ONLY=false (testing): Allows raw queries with warning
+ *
+ * PRIVACY GUARANTEE:
+ * - Snapshot mode: ε = 1.0 differential privacy (Laplace noise)
+ * - Raw mode: ε = ∞ (NO PRIVACY - true counts visible)
  */
 export async function queryAggregates(params: AggregateQuery): Promise<AggregateQueryResponse> {
 	const { metric, start, end, groupBy, filters } = params;
+
+	// CONSOLIDATION: Redirect to snapshot system if flag is enabled
+	if (isSnapshotOnlyMode()) {
+		console.log(
+			`[Analytics] USE_SNAPSHOT_ONLY=true: Redirecting query to snapshot system (metric: ${metric})`
+		);
+
+		// Import snapshot query function (avoid circular dependency)
+		const { queryNoisySnapshots } = await import('./snapshot');
+
+		// Query noisy snapshots instead of raw aggregates
+		const snapshotResults = await queryNoisySnapshots({
+			metric,
+			start,
+			end,
+			groupBy,
+			filters
+		});
+
+		// Convert snapshot results to AggregateQueryResponse format
+		return {
+			success: true,
+			metric,
+			date_range: {
+				start: start.toISOString(),
+				end: end.toISOString()
+			},
+			results: snapshotResults,
+			privacy: {
+				epsilon: PRIVACY.SERVER_EPSILON,
+				differential_privacy: true,
+				ldp_corrected: true,
+				coarsening_applied: false,
+				coarsen_threshold: PRIVACY.COARSEN_THRESHOLD
+			}
+		};
+	}
+
+	// If we reach here, USE_SNAPSHOT_ONLY=false (testing mode)
+	logDeprecationWarning(metric, 'queryAggregates');
 
 	// Validate date range
 	const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
@@ -490,11 +589,92 @@ function groupByDimensions(
 
 /**
  * Get platform health metrics
+ *
+ * ⚠️  CONSOLIDATED (WP-010): Now uses snapshot system when USE_SNAPSHOT_ONLY=true
+ *
+ * PRIVACY GUARANTEE:
+ * - Snapshot mode (default): Uses pre-noised snapshots (ε = 1.0 per metric)
+ * - Raw mode (testing): Applies Laplace noise at query time (ε = 1.0 per metric)
+ *
+ * Both modes provide differential privacy, but snapshot mode is more efficient
+ * and prevents accidental raw queries.
  */
 export async function getHealthMetrics() {
 	const now = getTodayUTC();
 	const thirtyDaysAgo = getDaysAgoUTC(30);
 	const sevenDaysAgo = getDaysAgoUTC(7);
+
+	// CONSOLIDATION: Use snapshot system when flag is enabled
+	if (isSnapshotOnlyMode()) {
+		console.log('[Analytics] getHealthMetrics: Using snapshot system (USE_SNAPSHOT_ONLY=true)');
+
+		// Import snapshot query function
+		const { queryNoisySnapshots } = await import('./snapshot');
+
+		// Query noisy snapshots for all metrics in parallel
+		const [views30d, uses30d, attempted7d, succeeded7d, failed7d] = await Promise.all([
+			queryNoisySnapshots({
+				metric: 'template_view',
+				start: thirtyDaysAgo,
+				end: now
+			}),
+			queryNoisySnapshots({
+				metric: 'template_use',
+				start: thirtyDaysAgo,
+				end: now
+			}),
+			queryNoisySnapshots({
+				metric: 'delivery_attempt',
+				start: sevenDaysAgo,
+				end: now
+			}),
+			queryNoisySnapshots({
+				metric: 'delivery_success',
+				start: sevenDaysAgo,
+				end: now
+			}),
+			queryNoisySnapshots({
+				metric: 'delivery_fail',
+				start: sevenDaysAgo,
+				end: now
+			})
+		]);
+
+		// Extract counts (already noisy from snapshots)
+		const viewsNoisy = views30d[0]?.count ?? 0;
+		const usesNoisy = uses30d[0]?.count ?? 0;
+		const attemptedNoisy = attempted7d[0]?.count ?? 0;
+		const succeededNoisy = succeeded7d[0]?.count ?? 0;
+		const failedNoisy = failed7d[0]?.count ?? 0;
+
+		return {
+			success: true,
+			metrics: {
+				template_adoption: {
+					views_30d: viewsNoisy,
+					uses_30d: usesNoisy,
+					conversion_rate: viewsNoisy > 0 ? usesNoisy / viewsNoisy : 0
+				},
+				delivery_health: {
+					attempted_7d: attemptedNoisy,
+					succeeded_7d: succeededNoisy,
+					failed_7d: failedNoisy,
+					success_rate: attemptedNoisy > 0 ? succeededNoisy / attemptedNoisy : 0
+				}
+			},
+			privacy: {
+				epsilon: PRIVACY.SERVER_EPSILON * 5, // 5 metrics queried
+				differential_privacy: true as const,
+				ldp_corrected: true,
+				coarsening_applied: false,
+				coarsen_threshold: PRIVACY.COARSEN_THRESHOLD
+			},
+			generated_at: new Date().toISOString()
+		};
+	}
+
+	// RAW MODE (testing only): Query raw aggregates and apply noise at query time
+	logDeprecationWarning('health_metrics', 'getHealthMetrics');
 
 	// Template adoption (30 days)
 	const [views30d, uses30d] = await Promise.all([
@@ -547,7 +727,7 @@ export async function getHealthMetrics() {
 			}
 		},
 		privacy: {
-			epsilon: PRIVACY.SERVER_EPSILON,
+			epsilon: PRIVACY.SERVER_EPSILON * 5, // 5 metrics queried
 			differential_privacy: true as const,
 			ldp_corrected: true, // k-ary RR correction applied in processBatch
 			coarsening_applied: false,
