@@ -3,12 +3,29 @@
 	import type { Template } from '$lib/types/template';
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
 	import SimpleTooltip from '$lib/components/ui/SimpleTooltip.svelte';
+	import { z } from 'zod';
 
 	interface Props {
 		template: Template;
 	}
 
 	const { template }: Props = $props();
+
+	// Zod schema for metrics validation
+	const MetricsSchema = z
+		.object({
+			sent: z.number().optional(),
+			delivered: z.number().optional(),
+			opened: z.number().optional(),
+			clicked: z.number().optional(),
+			responded: z.number().optional(),
+			responses: z.number().optional(),
+			views: z.number().optional(),
+			districts_covered: z.number().optional(),
+			total_districts: z.number().optional(),
+			district_coverage_percent: z.number().optional()
+		})
+		.passthrough();
 
 	// Normalize metrics data - handle both object and JSON string formats
 	function normalizeMetrics(rawMetrics: unknown): {
@@ -25,14 +42,29 @@
 	} {
 		if (!rawMetrics) return {};
 
-		// If it's already an object, return it
-		if (typeof rawMetrics === 'object') return rawMetrics;
+		// If it's already an object, validate and return it
+		if (typeof rawMetrics === 'object') {
+			const result = MetricsSchema.safeParse(rawMetrics);
+			if (result.success) {
+				return result.data;
+			} else {
+				console.warn('[MessageMetrics] Invalid metrics object:', result.error.flatten());
+				return {};
+			}
+		}
 
-		// If it's a JSON string, parse it
+		// If it's a JSON string, parse and validate it
 		try {
-			return JSON.parse(rawMetrics);
-		} catch {
-			console.warn('Failed to parse metrics JSON:', rawMetrics);
+			const parsed = JSON.parse(rawMetrics as string);
+			const result = MetricsSchema.safeParse(parsed);
+			if (result.success) {
+				return result.data;
+			} else {
+				console.warn('[MessageMetrics] Invalid metrics JSON:', result.error.flatten());
+				return {};
+			}
+		} catch (error) {
+			console.warn('[MessageMetrics] Failed to parse metrics:', error);
 			return {};
 		}
 	}
@@ -49,12 +81,26 @@
 		// Use pre-computed recipientEmails from API if available
 		template.recipientEmails && Array.isArray(template.recipientEmails)
 			? template.recipientEmails.length
-			: // Fallback to parsing recipient_config
-				extractRecipientEmails(
-					typeof template.recipient_config === 'string'
-						? JSON.parse(template.recipient_config)
-						: template.recipient_config
-				).length
+			: // Fallback to parsing recipient_config with validation
+				(() => {
+					const RecipientConfigSchema = z.unknown();
+					let recipientConfig = null;
+
+					if (typeof template.recipient_config === 'string') {
+						try {
+							const parsed = JSON.parse(template.recipient_config);
+							const result = RecipientConfigSchema.safeParse(parsed);
+							recipientConfig = result.success ? result.data : null;
+						} catch (error) {
+							console.warn('[MessageMetrics] Failed to parse recipient_config:', error);
+						}
+					} else {
+						const result = RecipientConfigSchema.safeParse(template.recipient_config);
+						recipientConfig = result.success ? result.data : null;
+					}
+
+					return extractRecipientEmails(recipientConfig).length;
+				})()
 	);
 
 	// Format numbers with commas, handle undefined/null values

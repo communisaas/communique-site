@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
+
 	/**
 	 * ThinkingAtmosphere - Perceptual Engineering Component
 	 *
@@ -31,6 +33,9 @@
 	let isTransitioning = $state(false);
 	let opacity = $state(0);
 
+	// Track active timeouts for cleanup
+	let activeTimeouts: number[] = [];
+
 	// Current thought with fade logic
 	const currentThought = $derived(
 		displayedThoughtIndex >= 0 && displayedThoughtIndex < thoughts.length
@@ -49,12 +54,14 @@
 	$effect(() => {
 		if (!isActive && currentThought) {
 			// Fade out the last thought
-			setTimeout(() => {
+			const timeout1 = setTimeout(() => {
 				opacity = 0;
-				setTimeout(() => {
+				const timeout2 = setTimeout(() => {
 					if (onComplete) onComplete();
 				}, 300);
+				activeTimeouts.push(timeout2);
 			}, 800); // Hold the last thought briefly
+			activeTimeouts.push(timeout1);
 		}
 	});
 
@@ -79,8 +86,17 @@
 	}
 
 	function sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => setTimeout(resolve, ms));
+		return new Promise((resolve) => {
+			const timeout = setTimeout(resolve, ms);
+			activeTimeouts.push(timeout);
+		});
 	}
+
+	onDestroy(() => {
+		// Clear all active timeouts
+		activeTimeouts.forEach((timeout) => clearTimeout(timeout));
+		activeTimeouts = [];
+	});
 </script>
 
 {#if isActive || currentThought}

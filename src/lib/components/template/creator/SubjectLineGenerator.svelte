@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Sparkles, ArrowRight, ChevronLeft, ChevronRight } from '@lucide/svelte';
 	import ThinkingAtmosphere from '$lib/components/ui/ThinkingAtmosphere.svelte';
+	import { z } from 'zod';
 
 	let {
 		description = $bindable(''),
@@ -93,6 +94,26 @@
 				const lines = buffer.split('\n');
 				buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
+				// Zod schemas for SSE event validation
+				const ThoughtEventSchema = z.object({
+					content: z.string()
+				});
+
+				const CompleteEventSchema = z.object({
+					data: z.object({
+						subject_line: z.string(),
+						core_issue: z.string(),
+						topics: z.array(z.string()),
+						url_slug: z.string(),
+						voice_sample: z.string(),
+						interactionId: z.string().optional()
+					})
+				});
+
+				const ErrorEventSchema = z.object({
+					message: z.string()
+				});
+
 				for (let i = 0; i < lines.length; i++) {
 					const line = lines[i];
 
@@ -101,24 +122,44 @@
 						const dataLine = lines[i + 1];
 
 						if (dataLine?.startsWith('data: ')) {
-							const data = JSON.parse(dataLine.slice(6));
+							try {
+								const parsed = JSON.parse(dataLine.slice(6));
 
-							switch (eventType) {
-								case 'thought':
-									// Add thought for atmospheric display
-									thoughts = [...thoughts, data.content];
-									break;
+								switch (eventType) {
+									case 'thought': {
+										const result = ThoughtEventSchema.safeParse(parsed);
+										if (result.success) {
+											thoughts = [...thoughts, result.data.content];
+										} else {
+											console.warn('[SubjectLineGenerator] Invalid thought event:', result.error.flatten());
+										}
+										break;
+									}
 
-								case 'complete':
-								case 'clarification':
-									// Add completed suggestion
-									suggestions = [...suggestions, data.data];
-									currentIndex = suggestions.length - 1;
-									attemptCount++;
-									break;
+									case 'complete':
+									case 'clarification': {
+										const result = CompleteEventSchema.safeParse(parsed);
+										if (result.success) {
+											suggestions = [...suggestions, result.data.data];
+											currentIndex = suggestions.length - 1;
+											attemptCount++;
+										} else {
+											console.warn('[SubjectLineGenerator] Invalid complete event:', result.error.flatten());
+										}
+										break;
+									}
 
-								case 'error':
-									throw new Error(data.message);
+									case 'error': {
+										const result = ErrorEventSchema.safeParse(parsed);
+										if (result.success) {
+											throw new Error(result.data.message);
+										} else {
+											throw new Error('Unknown error occurred');
+										}
+									}
+								}
+							} catch (parseError) {
+								console.warn('[SubjectLineGenerator] Failed to parse SSE data:', parseError);
 							}
 
 							i++; // Skip data line we just processed

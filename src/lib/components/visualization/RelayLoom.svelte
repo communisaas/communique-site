@@ -761,12 +761,13 @@
 		}
 
 		// Start mount animation
-		requestAnimationFrame(() => {
+		let animationFrameId: number | null = null;
+		animationFrameId = requestAnimationFrame(() => {
 			mounted = true;
 		});
 
 		// Mark narrative complete after all edges drawn
-		setTimeout(() => {
+		const narrativeTimeout = setTimeout(() => {
 			narrativeComplete = true;
 		}, TIMING.ambientDelay);
 
@@ -774,7 +775,13 @@
 		window.addEventListener('keydown', handleKeydown);
 
 		return () => {
-			resizeObserver?.disconnect();
+			if (resizeObserver) {
+				resizeObserver.disconnect();
+			}
+			if (animationFrameId !== null) {
+				cancelAnimationFrame(animationFrameId);
+			}
+			clearTimeout(narrativeTimeout);
 			window.removeEventListener('keydown', handleKeydown);
 			mobileQuery.removeEventListener('change', handleMobileChange);
 		};

@@ -3,6 +3,7 @@
 	import type { Template } from '$lib/types/template';
 	import { deriveTargetPresentation } from '$lib/utils/deriveTargetPresentation';
 	import SimpleTooltip from '$lib/components/ui/SimpleTooltip.svelte';
+	import { z } from 'zod';
 
 	interface Props {
 		template: Template;
@@ -15,6 +16,16 @@
 	// Derive perceptual representation
 	const targetInfo = $derived(deriveTargetPresentation(template));
 
+	// Zod schema for metrics validation
+	const MetricsSchema = z
+		.object({
+			sent: z.number().optional(),
+			districts_covered: z.number().optional(),
+			total_districts: z.number().optional(),
+			district_coverage_percent: z.number().optional()
+		})
+		.passthrough();
+
 	// Normalize metrics data - handle both object and JSON string formats
 	function normalizeMetrics(rawMetrics: unknown): {
 		sent?: number;
@@ -24,13 +35,29 @@
 	} {
 		if (!rawMetrics) return {};
 
-		// If it's already an object, return it
-		if (typeof rawMetrics === 'object') return rawMetrics as Record<string, number>;
+		// If it's already an object, validate and return it
+		if (typeof rawMetrics === 'object') {
+			const result = MetricsSchema.safeParse(rawMetrics);
+			if (result.success) {
+				return result.data;
+			} else {
+				console.warn('[TemplateCard] Invalid metrics object:', result.error.flatten());
+				return {};
+			}
+		}
 
-		// If it's a JSON string, parse it
+		// If it's a JSON string, parse and validate it
 		try {
-			return JSON.parse(rawMetrics as string) as Record<string, number>;
-		} catch {
+			const parsed = JSON.parse(rawMetrics as string);
+			const result = MetricsSchema.safeParse(parsed);
+			if (result.success) {
+				return result.data;
+			} else {
+				console.warn('[TemplateCard] Invalid metrics JSON:', result.error.flatten());
+				return {};
+			}
+		} catch (error) {
+			console.warn('[TemplateCard] Failed to parse metrics:', error);
 			return {};
 		}
 	}

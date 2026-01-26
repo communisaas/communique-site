@@ -461,6 +461,12 @@
 		unlockScroll();
 		preventScroll(false); // Ensure scrolling is re-enabled when component is destroyed
 		useTimerCleanup(componentId)();
+
+		// Stop tweened animations to prevent memory leaks
+		dismissHintOpacity.set(0, { duration: 0 });
+		hintScale.set(0.8, { duration: 0 });
+		blurAmount.set(0, { duration: 0 });
+		gestureProgress.set(0, { duration: 0 });
 	});
 
 	// Export methods for external component binding

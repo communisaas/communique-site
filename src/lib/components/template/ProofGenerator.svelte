@@ -9,6 +9,21 @@
 		zip: string;
 	}
 
+	interface EncryptionBenchmark {
+		totalTime: number;
+		steps: {
+			keyDerivation: number;
+			encryption: number;
+			[key: string]: number;
+		};
+		crypto: {
+			curve: string;
+			cipher: string;
+			kdf: string;
+			enclaveKeyId: string;
+		};
+	}
+
 	interface Props {
 		userId: string;
 		templateId: string;
@@ -47,10 +62,10 @@
 		| { status: 'generating-proof'; progress: number }
 		| { status: 'fetching-attestation' }
 		| { status: 'verifying-attestation'; pcr0?: string }
-		| { status: 'encrypting-witness'; benchmark?: any }
-		| { status: 'paused-on-benchmark'; benchmark: any }
+		| { status: 'encrypting-witness'; benchmark?: EncryptionBenchmark }
+		| { status: 'paused-on-benchmark'; benchmark: EncryptionBenchmark }
 		| { status: 'submitting' }
-		| { status: 'complete'; submissionId: string; benchmark?: any }
+		| { status: 'complete'; submissionId: string; benchmark?: EncryptionBenchmark }
 		| { status: 'error'; message: string; recoverable: boolean; retryAction?: () => void };
 
 	let state = $state<ProofGenerationState>({ status: 'idle' });

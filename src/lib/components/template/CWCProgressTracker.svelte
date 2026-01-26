@@ -3,13 +3,23 @@
 	import { Send, CheckCircle2, AlertCircle, Users, Sparkles, Trophy, Flame } from '@lucide/svelte';
 	import { spring } from 'svelte/motion';
 
+	interface TemplateMetrics {
+		sent?: number;
+		[key: string]: unknown;
+	}
+
+	interface TemplateData {
+		metrics?: TemplateMetrics;
+		[key: string]: unknown;
+	}
+
 	let {
 		submissionId,
 		template,
 		onComplete
 	}: {
 		submissionId: string;
-		template: any;
+		template: TemplateData;
 		onComplete?: () => void;
 	} = $props();
 
@@ -24,7 +34,7 @@
 			state: string;
 			status: 'pending' | 'submitting' | 'success' | 'failed';
 			messageId?: string;
-			cwcResponse?: any;
+			cwcResponse?: unknown;
 		}>,
 		houseOffice: null as {
 			name: string;
@@ -63,13 +73,19 @@
 		}
 	});
 
+	interface JobStatusData {
+		status: string;
+		results?: unknown[];
+		[key: string]: unknown;
+	}
+
 	function startPolling() {
 		if (pollInterval) return;
 
 		pollInterval = setInterval(async () => {
 			try {
 				const response = await fetch(`/api/cwc/jobs/${submissionId}`);
-				const data = await response.json();
+				const data: JobStatusData = await response.json();
 
 				if (data.results && Array.isArray(data.results)) {
 					updateProgress(data);
@@ -99,17 +115,29 @@
 		}, 1500); // Poll every 1.5 seconds for smoother updates
 	}
 
-	function updateProgress(data: any) {
-		const results = data.results;
+	interface JobResult {
+		chamber?: string;
+		office: string;
+		state?: string;
+		district?: string;
+		success: boolean;
+		messageId?: string;
+		cwcResponse?: unknown;
+		error?: string;
+		[key: string]: unknown;
+	}
+
+	function updateProgress(data: JobStatusData) {
+		const results = data.results as JobResult[];
 		const totalOffices = results.length;
 
 		// Categorize by chamber
-		const senateResults = results.filter((r: any) => r.chamber === 'senate');
-		const houseResults = results.filter((r: any) => r.chamber === 'house');
+		const senateResults = results.filter((r) => r.chamber === 'senate');
+		const houseResults = results.filter((r) => r.chamber === 'house');
 
 		// Update Senate progress
 		if (senateResults.length > 0) {
-			progress.senateOffices = senateResults.map((r: any) => ({
+			progress.senateOffices = senateResults.map((r) => ({
 				name: r.office,
 				state: r.state || 'Unknown',
 				status: r.success ? 'success' : 'failed',
@@ -117,7 +145,7 @@
 				cwcResponse: r.cwcResponse
 			}));
 
-			const senateSuccessCount = senateResults.filter((r: any) => r.success).length;
+			const senateSuccessCount = senateResults.filter((r) => r.success).length;
 			progress.senateProgress = (senateSuccessCount / Math.max(senateResults.length, 1)) * 100;
 
 			// Milestone: First senator
@@ -148,7 +176,7 @@
 		}
 
 		// Update overall progress
-		const totalSuccessCount = results.filter((r: any) => r.success).length;
+		const totalSuccessCount = results.filter((r) => r.success).length;
 		progress.overallProgress = (totalSuccessCount / Math.max(totalOffices, 1)) * 100;
 
 		// Update stage based on progress
@@ -161,8 +189,8 @@
 		}
 
 		// Track errors
-		const failedResults = results.filter((r: any) => !r.success && r.error);
-		progress.errors = failedResults.map((r: any) => r.error);
+		const failedResults = results.filter((r) => !r.success && r.error);
+		progress.errors = failedResults.map((r) => r.error || 'Unknown error');
 	}
 
 	function triggerMilestone(message: string) {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Info } from '@lucide/svelte';
-	import { onMount, tick as _tick, type Snippet } from 'svelte';
+	import { onMount, onDestroy, tick as _tick, type Snippet } from 'svelte';
 	import { get } from 'svelte/store';
 	import { activeTooltipId } from '$lib/stores/tooltip';
 
@@ -18,8 +18,12 @@
 	let show = $state(false);
 
 	// Update show state based on active tooltip
-	activeTooltipId.subscribe((activeId) => {
+	const unsubscribe = activeTooltipId.subscribe((activeId) => {
 		show = activeId === id;
+	});
+
+	onDestroy(() => {
+		unsubscribe();
 	});
 
 	let isTouchInteraction = false;

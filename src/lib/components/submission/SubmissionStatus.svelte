@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { CheckCircle2, Send, AlertCircle, ExternalLink } from '@lucide/svelte';
 	import { onMount, onDestroy } from 'svelte';
+	import { z } from 'zod';
 
 	let {
 		submissionId,
@@ -28,19 +29,38 @@
 			try {
 				websocket = new WebSocket(wsUrl);
 
+				// Zod schema for WebSocket update validation
+				const UpdateSchema = z.object({
+					status: z.enum(['sending', 'routing', 'delivered', 'recorded', 'failed']).optional(),
+					details: z.string().optional(),
+					deliveryCount: z.number().optional(),
+					canOverride: z.boolean().optional()
+				});
+
 				websocket.onmessage = (__event) => {
-					const update = JSON.parse(__event.data);
-					if (update.status) {
-						status = update.status;
-					}
-					if (update.details) {
-						details = update.details;
-					}
-					if (update.deliveryCount !== undefined) {
-						deliveryCount = update.deliveryCount;
-					}
-					if (update.canOverride !== undefined) {
-						canOverride = update.canOverride;
+					try {
+						const parsed = JSON.parse(__event.data);
+						const result = UpdateSchema.safeParse(parsed);
+
+						if (result.success) {
+							const update = result.data;
+							if (update.status) {
+								status = update.status;
+							}
+							if (update.details) {
+								details = update.details;
+							}
+							if (update.deliveryCount !== undefined) {
+								deliveryCount = update.deliveryCount;
+							}
+							if (update.canOverride !== undefined) {
+								canOverride = update.canOverride;
+							}
+						} else {
+							console.warn('[SubmissionStatus] Invalid WebSocket update:', result.error.flatten());
+						}
+					} catch (error) {
+						console.warn('[SubmissionStatus] Failed to parse WebSocket message:', error);
 					}
 				};
 
@@ -64,6 +84,19 @@
 	// Fallback polling for status updates
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 
+	// Zod schema for job status API response
+	const JobStatusSchema = z.object({
+		status: z.string(),
+		results: z
+			.array(
+				z.object({
+					success: z.boolean(),
+					error: z.string().optional()
+				})
+			)
+			.optional()
+	});
+
 	function startPolling() {
 		if (pollInterval) return;
 
@@ -71,7 +104,15 @@
 			try {
 				// HACKATHON: Use new CWC job status endpoint instead of blockchain tracking
 				const response = await fetch(`/api/cwc/jobs/${submissionId}`);
-				const data = await response.json();
+				const parsed = await response.json();
+				const result = JobStatusSchema.safeParse(parsed);
+
+				if (!result.success) {
+					console.warn('[SubmissionStatus] Invalid job status response:', result.error.flatten());
+					return;
+				}
+
+				const data = result.data;
 
 				if (data.status) {
 					// Map CWC job status to UI status
@@ -95,11 +136,11 @@
 
 				// Set delivery count from results
 				if (data.results && Array.isArray(data.results)) {
-					deliveryCount = data.results.filter((r: any) => r.success).length;
+					deliveryCount = data.results.filter((r) => r.success).length;
 
 					// Set details from first error if any
-					const firstError = data.results.find((r: any) => r.error);
-					if (firstError) {
+					const firstError = data.results.find((r) => r.error);
+					if (firstError && firstError.error) {
 						details = firstError.error;
 					}
 				}

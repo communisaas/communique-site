@@ -1,17 +1,19 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
-	import { X as _X, User, Building, MapPin, Save, Loader2 } from '@lucide/svelte';
+	import { X as _X, User, Building, Save, Loader2 } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
 	import type { UserProfileData, ProfileUpdateData } from '$lib/types/any-replacements.js';
 
+	// NOTE: 'address' section removed per CYPHERPUNK-ARCHITECTURE.md
+	// PII (street, city, state, zip) is encrypted in EncryptedDeliveryData, not stored on User
 	let {
 		user,
 		section = 'basic',
 		onclose
 	}: {
 		user: UserProfileData;
-		section?: 'basic' | 'profile' | 'address';
+		section?: 'basic' | 'profile';
 		onclose?: () => void;
 	} = $props();
 
@@ -31,8 +33,7 @@
 			case 'basic':
 				return {
 					name: user.name || '',
-					email: user.email || '',
-					phone: user.phone || ''
+					email: user.email || ''
 				};
 			case 'profile':
 				return {
@@ -40,15 +41,7 @@
 					organization: user.organization || '',
 					location: user.location || '',
 					connection: user.connection || '',
-					connection_details: user.connection_details || '',
 					profile_visibility: user.profile_visibility || 'private'
-				};
-			case 'address':
-				return {
-					street: user.street || '',
-					city: user.city || '',
-					state: user.state || '',
-					zip: user.zip || ''
 				};
 			default:
 				return {};
@@ -83,21 +76,6 @@
 					errors.connection = 'Connection to issues is required';
 				}
 				break;
-
-			case 'address':
-				if (!formData.street?.trim()) {
-					errors.street = 'Street address is required';
-				}
-				if (!formData.city?.trim()) {
-					errors.city = 'City is required';
-				}
-				if (!formData.state?.trim()) {
-					errors.state = 'State is required';
-				}
-				if (!formData.zip?.trim()) {
-					errors.zip = 'ZIP code is required';
-				}
-				break;
 		}
 
 		return Object.keys(errors).length === 0;
@@ -109,13 +87,9 @@
 		isSubmitting = true;
 
 		try {
-			// Call the appropriate API endpoint
-			let endpoint = '/api/user/profile';
-			let payload = { ...formData };
-
-			if (section === 'address') {
-				endpoint = '/api/user/address';
-			}
+			// Call the profile API endpoint
+			const endpoint = '/api/user/profile';
+			const payload = { ...formData };
 
 			const response = await fetch(endpoint, {
 				method: 'POST',
@@ -140,14 +114,12 @@
 
 	const sectionTitles = {
 		basic: 'Basic Information',
-		profile: 'Profile Details',
-		address: 'Address Information'
+		profile: 'Profile Details'
 	};
 
 	const sectionIcons = {
 		basic: User,
-		profile: Building,
-		address: MapPin
+		profile: Building
 	};
 </script>
 
@@ -205,16 +177,6 @@
 					{/if}
 				</div>
 
-				<div>
-					<label for="phone" class="mb-1 block text-sm font-medium text-slate-700"> Phone </label>
-					<input
-						id="phone"
-						type="tel"
-						bind:value={formData.phone}
-						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
-						placeholder="(555) 123-4567"
-					/>
-				</div>
 			{:else if section === 'profile'}
 				<div>
 					<label for="role" class="mb-1 block text-sm font-medium text-slate-700">
@@ -284,19 +246,6 @@
 				</div>
 
 				<div>
-					<label for="connection_details" class="mb-1 block text-sm font-medium text-slate-700">
-						Additional Details
-					</label>
-					<textarea
-						id="connection_details"
-						bind:value={formData.connection_details}
-						rows="3"
-						class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500"
-						placeholder="Tell us more about your connection to the issues you care about..."
-					></textarea>
-				</div>
-
-				<div>
 					<label for="visibility" class="mb-1 block text-sm font-medium text-slate-700">
 						Profile Visibility
 					</label>
@@ -309,87 +258,6 @@
 						<option value="limited">Limited - Visible to template users</option>
 						<option value="public">Public - Visible to everyone</option>
 					</select>
-				</div>
-			{:else if section === 'address'}
-				<div>
-					<label for="street" class="mb-1 block text-sm font-medium text-slate-700">
-						Street Address *
-					</label>
-					<input
-						id="street"
-						type="text"
-						bind:value={formData.street}
-						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.street
-							? 'border-red-300'
-							: ''}"
-						placeholder="123 Main Street"
-					/>
-					{#if errors.street}
-						<p class="mt-1 text-sm text-red-600">{errors.street}</p>
-					{/if}
-				</div>
-
-				<div class="grid grid-cols-2 gap-3">
-					<div>
-						<label for="city" class="mb-1 block text-sm font-medium text-slate-700"> City * </label>
-						<input
-							id="city"
-							type="text"
-							bind:value={formData.city}
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.city
-								? 'border-red-300'
-								: ''}"
-							placeholder="San Francisco"
-						/>
-						{#if errors.city}
-							<p class="mt-1 text-sm text-red-600">{errors.city}</p>
-						{/if}
-					</div>
-
-					<div>
-						<label for="state" class="mb-1 block text-sm font-medium text-slate-700">
-							State *
-						</label>
-						<input
-							id="state"
-							type="text"
-							bind:value={formData.state}
-							class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.state
-								? 'border-red-300'
-								: ''}"
-							placeholder="CA"
-							maxlength="2"
-						/>
-						{#if errors.state}
-							<p class="mt-1 text-sm text-red-600">{errors.state}</p>
-						{/if}
-					</div>
-				</div>
-
-				<div class="w-1/2">
-					<label for="zip" class="mb-1 block text-sm font-medium text-slate-700">
-						ZIP Code *
-					</label>
-					<input
-						id="zip"
-						type="text"
-						bind:value={formData.zip}
-						class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-participation-primary-500 focus:ring-2 focus:ring-participation-primary-500 {errors.zip
-							? 'border-red-300'
-							: ''}"
-						placeholder="94102"
-						maxlength="10"
-					/>
-					{#if errors.zip}
-						<p class="mt-1 text-sm text-red-600">{errors.zip}</p>
-					{/if}
-				</div>
-
-				<div class="rounded-lg bg-participation-primary-50 p-3 text-sm text-slate-600">
-					<p>
-						Your address helps us identify your congressional representatives for advocacy
-						messaging.
-					</p>
 				</div>
 			{/if}
 		</div>

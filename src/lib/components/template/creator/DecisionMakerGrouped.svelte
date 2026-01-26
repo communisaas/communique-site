@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { Building2, Mail, ExternalLink, Copy, Check, ChevronDown, X } from '@lucide/svelte';
 	import type { ProcessedDecisionMaker } from '$lib/types/template';
 
@@ -36,14 +37,28 @@
 
 	// Track copy state per email
 	let copiedEmail = $state<string | null>(null);
+	let copyTimeout: number | null = null;
 
 	async function copyEmail(email: string) {
 		await navigator.clipboard.writeText(email);
 		copiedEmail = email;
-		setTimeout(() => {
+
+		// Clear existing timeout
+		if (copyTimeout !== null) {
+			clearTimeout(copyTimeout);
+		}
+
+		copyTimeout = setTimeout(() => {
 			if (copiedEmail === email) copiedEmail = null;
+			copyTimeout = null;
 		}, 2000);
 	}
+
+	onDestroy(() => {
+		if (copyTimeout !== null) {
+			clearTimeout(copyTimeout);
+		}
+	});
 
 	function toggleOrg(org: string) {
 		const newSet = new Set(expandedOrgs);
