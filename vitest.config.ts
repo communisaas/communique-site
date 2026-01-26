@@ -40,9 +40,9 @@ export default defineConfig({
 		// Environment configuration
 		environment: 'jsdom',
 		setupFiles: [
+			'tests/setup/api-test-setup.ts', // MSW setup FIRST so it can intercept fetch
 			'tests/config/setup.ts',
 			'tests/config/test-monitoring.ts',
-			'tests/setup/api-test-setup.ts',
 			'@testing-library/svelte/vitest' // Adds setup() and cleanup() for Svelte 5
 		],
 		globals: true,
@@ -59,11 +59,14 @@ export default defineConfig({
 		pool: 'forks', // Better isolation for integration tests
 		poolOptions: {
 			forks: {
-				singleFork: false, // Enable parallelism for faster test execution
+				singleFork: false, // Enable parallelism for unit tests
 				minForks: 1,
 				maxForks: 4 // Use up to 4 parallel processes
 			}
 		},
+		// Run integration tests sequentially to avoid database interference
+		// Unit tests can still run in parallel
+		fileParallelism: false, // Prevent race conditions in shared database tests
 
 		// Test execution settings (CI-aware)
 		testTimeout: process.env.CI ? 15000 : 10000, // Longer timeouts for CI

@@ -51,15 +51,6 @@ export async function clearTestDatabase() {
   // Tests running in parallel (maxForks: 4) can have their data deleted mid-test.
   // Prefer using unique IDs per test run for isolation instead.
   try {
-    // Analytics events MUST be deleted first (references session_id FK)
-    await db.analytics_event.deleteMany();
-
-    // Analytics sessions (after events are deleted)
-    await db.analytics_session.deleteMany();
-
-    // Analytics experiments (after events are deleted)
-    await db.analytics_experiment.deleteMany();
-
     // Leaf nodes (no other tables depend on them)
     await db.cWCJob.deleteMany();
     await db.template_campaign.deleteMany();

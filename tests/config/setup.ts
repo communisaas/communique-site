@@ -104,18 +104,22 @@ beforeEach(() => {
 		});
 	}
 
-	// Global fetch mock for external API calls
-	// NOTE: Smoke tests call vi.unstubAllGlobals() to restore real fetch
-	global.fetch = vi.fn().mockResolvedValue({
-		ok: true,
-		status: 200,
-		statusText: 'OK',
-		headers: new Headers(),
-		json: vi.fn().mockResolvedValue({}),
-		text: vi.fn().mockResolvedValue(''),
-		blob: vi.fn().mockResolvedValue(new Blob()),
-		arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0))
-	});
+	// Global fetch mock for unit tests ONLY
+	// Integration tests (tests/integration/**) use MSW for external API mocking
+	// MSW must intercept fetch, so we skip the global mock for integration tests
+	const isIntegrationTest = expect.getState().testPath?.includes('/tests/integration/');
+	if (!isIntegrationTest) {
+		global.fetch = vi.fn().mockResolvedValue({
+			ok: true,
+			status: 200,
+			statusText: 'OK',
+			headers: new Headers(),
+			json: vi.fn().mockResolvedValue({}),
+			text: vi.fn().mockResolvedValue(''),
+			blob: vi.fn().mockResolvedValue(new Blob()),
+			arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0))
+		});
+	}
 });
 
 /**

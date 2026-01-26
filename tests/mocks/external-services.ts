@@ -93,33 +93,50 @@ export const oauthHandlers = [
 ];
 
 // Self.xyz Identity Verification Mocks
+// The Self.xyz SDK uses Celo blockchain RPC to verify ZK proofs on-chain
 export const selfXyzHandlers = [
-  // Initialize verification session
-  http.post('https://api.self.xyz/v1/verifications', () => {
+  // Celo Alfajores Testnet RPC (used when SELF_MOCK_PASSPORT=true)
+  http.post('https://alfajores-forno.celo-testnet.org', async ({ request }) => {
+    const body = await request.json() as any;
+    const method = body.method;
+
+    // Mock smart contract responses for ZK proof verification
+    if (method === 'eth_call') {
+      // Return mock data indicating valid verification
+      // The actual verification logic runs in the SDK
+      return HttpResponse.json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: '0x0000000000000000000000000000000000000000000000000000000000000001' // true
+      });
+    }
+
+    // Default response for other RPC methods
     return HttpResponse.json({
-      id: 'verification-123',
-      status: 'pending',
-      qr_code: 'data:image/png;base64,mock-qr-code',
-      expires_at: '2024-10-04T08:00:00Z'
+      jsonrpc: '2.0',
+      id: body.id,
+      result: '0x'
     });
   }),
 
-  // Check verification status
-  http.get('https://api.self.xyz/v1/verifications/:id', ({ params }) => {
-    return HttpResponse.json({
-      id: params.id,
-      status: 'verified',
-      proof: {
-        age_over_18: true,
-        us_citizen: true,
-        verified_at: '2024-10-04T07:30:00Z'
-      }
-    });
-  }),
+  // Celo Mainnet RPC (used when SELF_MOCK_PASSPORT=false)
+  http.post('https://forno.celo.org', async ({ request }) => {
+    const body = await request.json() as any;
+    const method = body.method;
 
-  // Webhook for verification completion
-  http.post('https://api.self.xyz/webhooks/verification', () => {
-    return HttpResponse.json({ received: true });
+    if (method === 'eth_call') {
+      return HttpResponse.json({
+        jsonrpc: '2.0',
+        id: body.id,
+        result: '0x0000000000000000000000000000000000000000000000000000000000000001' // true
+      });
+    }
+
+    return HttpResponse.json({
+      jsonrpc: '2.0',
+      id: body.id,
+      result: '0x'
+    });
   })
 ];
 
@@ -196,13 +213,194 @@ export const sqsHandlers = [
   })
 ];
 
+// Census and Congress.gov API Handlers
+export const censusAndCongressHandlers = [
+  // Census Bureau Geocoding API
+  http.get('https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress', ({ request }) => {
+    const url = new URL(request.url);
+    const address = (url.searchParams.get('address') || '').toLowerCase();
+
+    // Mock DC address (case-insensitive)
+    if (address.includes('pennsylvania') || address.includes('washington, dc') ||
+        (address.includes('dc') && address.includes('20500'))) {
+      return HttpResponse.json({
+        result: {
+          addressMatches: [
+            {
+              matchedAddress: '1600 Pennsylvania Ave NW, Washington, DC 20500',
+              geographies: {
+                '119th Congressional Districts': [
+                  {
+                    CD119: '98', // DC delegate special code
+                    GEOID: '1100'
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      });
+    }
+
+    // Mock NYC address (case-insensitive)
+    if (address.includes('350 fifth avenue') || address.includes('350 5th ave') ||
+        (address.includes('new york') && address.includes('ny'))) {
+      return HttpResponse.json({
+        result: {
+          addressMatches: [
+            {
+              matchedAddress: '350 Fifth Avenue, New York, NY 10118',
+              geographies: {
+                '119th Congressional Districts': [
+                  {
+                    CD119: '10',
+                    GEOID: '3610'
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      });
+    }
+
+    // Mock Puerto Rico address (case-insensitive)
+    if (address.includes('san juan') || address.includes('puerto rico') ||
+        (address.includes('pr') && address.includes('00901'))) {
+      return HttpResponse.json({
+        result: {
+          addressMatches: [
+            {
+              matchedAddress: 'San Juan, PR 00901',
+              geographies: {
+                '119th Congressional Districts': [
+                  {
+                    CD119: '98',
+                    GEOID: '7200'
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      });
+    }
+
+    // Invalid address (ZZ state, 00000 zip, etc.)
+    return HttpResponse.json({
+      result: {
+        addressMatches: []
+      }
+    });
+  }),
+
+  // Congress.gov API - Representatives
+  // Returns current members with proper pagination support
+  http.get('https://api.congress.gov/v3/member', ({ request }) => {
+    const url = new URL(request.url);
+    const limit = parseInt(url.searchParams.get('limit') || '250', 10);
+    const offset = parseInt(url.searchParams.get('offset') || '0', 10);
+
+    // All current members (119th Congress)
+    const allMembers = [
+      // NYC Representatives
+      {
+        bioguideId: 'NYS001',
+        name: 'Schumer, Chuck',
+        partyName: 'Democratic',
+        state: 'NY',
+        currentMember: true,
+        terms: {
+          item: [{ chamber: 'Senate', startYear: 1999, party: 'Democratic' }]
+        }
+      },
+      {
+        bioguideId: 'NYS002',
+        name: 'Gillibrand, Kirsten',
+        partyName: 'Democratic',
+        state: 'NY',
+        currentMember: true,
+        terms: {
+          item: [{ chamber: 'Senate', startYear: 2009, party: 'Democratic' }]
+        }
+      },
+      {
+        bioguideId: 'NYH010',
+        name: 'Goldman, Daniel',
+        partyName: 'Democratic',
+        state: 'NY',
+        district: 10,
+        currentMember: true,
+        terms: {
+          item: [{ chamber: 'House of Representatives', startYear: 2023, party: 'Democratic' }]
+        }
+      },
+      // DC Delegate
+      {
+        bioguideId: 'N000147',
+        name: 'Norton, Eleanor Holmes',
+        partyName: 'Democratic',
+        state: 'DC',
+        district: undefined,
+        currentMember: true,
+        terms: {
+          item: [{ chamber: 'House of Representatives', startYear: 1991, party: 'Democratic' }]
+        }
+      },
+      // Puerto Rico Resident Commissioner
+      {
+        bioguideId: 'G000619',
+        name: 'Hernández Rivera, Pablo José',
+        partyName: 'New Progressive',
+        state: 'PR',
+        district: undefined,
+        currentMember: true,
+        terms: {
+          item: [{ chamber: 'House of Representatives', startYear: 2025, party: 'New Progressive' }]
+        }
+      }
+    ];
+
+    // Apply pagination
+    const paginatedMembers = allMembers.slice(offset, offset + limit);
+
+    return HttpResponse.json({
+      members: paginatedMembers,
+      pagination: {
+        count: paginatedMembers.length,
+        next: offset + limit < allMembers.length ? `/v3/member?offset=${offset + limit}&limit=${limit}` : null
+      }
+    });
+  }),
+
+  // CWC Senate API (testing endpoint)
+  http.post(/https:\/\/soapbox\.senate\.gov\/api\/testing-messages\/.*/, () => {
+    return HttpResponse.json({
+      messageId: `SEN-${Date.now()}`,
+      status: 'submitted',
+      timestamp: new Date().toISOString()
+    });
+  }),
+
+  // CWC House API via proxy (will fail without proper config)
+  http.post(/http:\/\/.*:8080\/api\/house\/submit.*/, () => {
+    return HttpResponse.json(
+      {
+        error: 'House CWC delivery not configured'
+      },
+      { status: 500 }
+    );
+  })
+];
+
 // Combine all handlers
 export const externalServiceHandlers = [
   ...cwcHandlers,
   ...oauthHandlers,
   ...selfXyzHandlers,
   ...congressionalDataHandlers,
-  ...sqsHandlers
+  ...sqsHandlers,
+  ...censusAndCongressHandlers
 ];
 
 // Error scenario handlers for testing edge cases
