@@ -9,15 +9,16 @@ import type { UnknownRecord, ComponentEvent } from '$lib/types/any-replacements'
 
 /**
  * Minimal user interface for components that only need basic info
+ * NO PII per CYPHERPUNK-ARCHITECTURE.md
  */
 export interface ComponentUser {
 	id: string;
 	name: string;
-	address?: string;
 }
 
 /**
  * Convert a full user object to component user format
+ * Address fields removed - not stored on User model
  */
 export function toComponentUser(user: unknown): ComponentUser | null {
 	if (!user || typeof user !== 'object') return null;
@@ -25,21 +26,13 @@ export function toComponentUser(user: unknown): ComponentUser | null {
 	const userObj = user as {
 		id?: string;
 		name?: string;
-		street?: string;
-		city?: string;
-		state?: string;
-		zip?: string;
 	};
 
 	if (!userObj.id || typeof userObj.id !== 'string') return null;
 
 	return {
 		id: userObj.id,
-		name: userObj.name || 'Anonymous',
-		address:
-			userObj.street && userObj.city && userObj.state && userObj.zip
-				? `${userObj.street}, ${userObj.city}, ${userObj.state} ${userObj.zip}`
-				: undefined
+		name: userObj.name || 'Anonymous'
 	};
 }
 

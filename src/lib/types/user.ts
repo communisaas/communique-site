@@ -1,8 +1,14 @@
-export interface UserAddress {
+/**
+ * Ephemeral address data for congressional delivery
+ * This is NOT stored on the User model (privacy-preserving)
+ * Provided at send time from guest state or TEE-decrypted EncryptedDeliveryData
+ */
+export interface DeliveryAddress {
 	street?: string;
 	city?: string;
 	state?: string;
 	zip?: string;
+	phone?: string;
 	congressional_district?: string;
 }
 
@@ -11,7 +17,6 @@ export interface UserProfile {
 	name?: string;
 	email: string;
 	avatar?: string;
-	phone?: string;
 	created_at: Date;
 	updated_at: Date;
 }
@@ -59,15 +64,12 @@ export interface Representative {
 /**
  * UNIFIED EMAIL SERVICE USER INTERFACE
  *
- * Consolidated User interface for email and template services.
- * This interface represents the user context needed for:
- * - Email flow analysis (auth, _address, send)
- * - Template variable resolution with user data
- * - Congressional routing determination
- * - Component user context handling
+ * User context for template resolution and congressional delivery.
  *
- * Note: This interface is designed to be compatible with the Prisma User model
- * while exposing only the fields needed for email services.
+ * PRIVACY-PRESERVING DESIGN (per CYPHERPUNK-ARCHITECTURE.md):
+ * - User model stores NO PII (no address, no phone)
+ * - Address data comes from DeliveryAddress at send time
+ * - District stored as hash only on User model
  */
 export interface EmailServiceUser {
 	/** Unique user identifier */
@@ -79,23 +81,21 @@ export interface EmailServiceUser {
 	/** User's email address (required for authenticated users) */
 	email: string;
 
-	/** Address  components required for congressional routing */
+	/**
+	 * Ephemeral address data for congressional routing
+	 * NOT stored on User model - provided at send time from:
+	 * - Guest state (unverified users)
+	 * - TEE-decrypted EncryptedDeliveryData (verified users)
+	 */
 	street?: string | null;
 	city?: string | null;
 	state?: string | null;
 	zip?: string | null;
+	phone?: string | null;
 	congressional_district?: string | null;
 
 	/** Legacy address field for backward compatibility */
 	address?: string | null;
-
-	/** Enhanced location data (from Phase 2 User consolidation) */
-	latitude?: number | null;
-	longitude?: number | null;
-	political_embedding?: unknown | null;
-	community_sheaves?: unknown | null;
-	embedding_version?: string | null;
-	coordinates_updated_at?: Date | null;
 
 	/** Congressional representatives for template variable resolution */
 	representatives?: Array<{
@@ -111,65 +111,66 @@ export interface EmailServiceUser {
 	verification_method?: string | null;
 	verified_at?: Date | null;
 
-	/** VOTER Protocol wallet integration (from Phase 2 consolidation) */
+	/** VOTER Protocol integration */
 	wallet_address?: string | null;
 	trust_score?: number;
 	reputation_tier?: string;
 }
 
 /**
- * Type representing the Prisma User model shape for email services
- * This matches the subset of fields that EmailServiceUser needs
+ * Prisma User model fields relevant for email services
+ * NOTE: NO PII fields - address data comes from DeliveryAddress at send time
  */
 export type PrismaUserForEmail = {
 	id: string;
 	email: string;
 	name: string | null;
-	street: string | null;
-	city: string | null;
-	state: string | null;
-	zip: string | null;
-	congressional_district: string | null;
 	is_verified: boolean;
 	verification_method: string | null;
 	verified_at: Date | null;
-	// Additional fields that might be present but aren't needed
+	district_hash: string | null;
+	trust_score: number;
+	reputation_tier: string;
+	// Additional fields that might be present
 	[key: string]: unknown;
 };
 
 /**
- * Convert a User model or partial user object to EmailServiceUser interface
- * Handles type compatibility and filters only required fields
+ * Convert a user object to EmailServiceUser interface
  *
- * @param user - User object from Prisma query or partial user object (can be null)
+ * IMPORTANT: Address fields (street, city, state, zip, congressional_district)
+ * are NOT stored on the User model per CYPHERPUNK-ARCHITECTURE.md.
+ * They must be provided separately from:
+ * - Guest state (for unverified users)
+ * - TEE-decrypted EncryptedDeliveryData (for verified users)
+ *
+ * @param user - User object or partial user object (can be null)
+ * @param deliveryAddress - Optional ephemeral address data for congressional routing
  * @returns EmailServiceUser compatible object or null
  */
-export function toEmailServiceUser(user: Record<string, unknown> | null): EmailServiceUser | null {
+export function toEmailServiceUser(
+	user: Record<string, unknown> | null,
+	deliveryAddress?: DeliveryAddress | null
+): EmailServiceUser | null {
 	if (!user) {
 		return null;
 	}
 
 	// For partial user objects (like in AppHeader), provide fallback email
-	// This allows the function to work with incomplete user data
 	const email = (user.email as string) || 'guest@example.com';
 
 	return {
 		id: user.id as string,
 		email: email,
 		name: (user.name as string | null) || null,
-		street: (user.street as string | null) || null,
-		city: (user.city as string | null) || null,
-		state: (user.state as string | null) || null,
-		zip: (user.zip as string | null) || null,
-		congressional_district: (user.congressional_district as string | null) || null,
 
-		// Enhanced location data (from Phase 2 User consolidation)
-		latitude: (user.latitude as number | null) || null,
-		longitude: (user.longitude as number | null) || null,
-		political_embedding: user.political_embedding || null,
-		community_sheaves: user.community_sheaves || null,
-		embedding_version: (user.embedding_version as string | null) || null,
-		coordinates_updated_at: (user.coordinates_updated_at as Date | null) || null,
+		// Address data from separate source (NOT from User model)
+		street: deliveryAddress?.street || null,
+		city: deliveryAddress?.city || null,
+		state: deliveryAddress?.state || null,
+		zip: deliveryAddress?.zip || null,
+		phone: deliveryAddress?.phone || null,
+		congressional_district: deliveryAddress?.congressional_district || null,
 
 		// Congressional representatives for template variable resolution
 		representatives:
@@ -186,7 +187,7 @@ export function toEmailServiceUser(user: Record<string, unknown> | null): EmailS
 		verification_method: (user.verification_method as string | null) || null,
 		verified_at: (user.verified_at as Date | null) || null,
 
-		// VOTER Protocol wallet integration (from Phase 2 consolidation)
+		// VOTER Protocol integration
 		wallet_address: (user.wallet_address as string | null) || null,
 		trust_score: (user.trust_score as number) || 0,
 		reputation_tier: (user.reputation_tier as string) || 'novice'

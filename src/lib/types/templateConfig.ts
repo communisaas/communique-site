@@ -80,25 +80,6 @@ export interface TemplatePersonalization {
 	last_used: Date;
 }
 
-export interface AISuggestion {
-	variable_name: string;
-	category: 'personal_story' | 'reasoning' | 'example' | 'context';
-	suggestion_text: string;
-	context_tags: ContextTags;
-	effectiveness_score?: number;
-	is_active: boolean;
-}
-
-export interface TemplateAnalytics {
-	variable_name: string;
-	date: Date;
-	total_uses: number;
-	personalization_rate: number;
-	avg_length?: number;
-	engagement_score?: number;
-	top_themes: string[];
-}
-
 // USER ACTIVATION NETWORK - Mathematical cascade tracking
 export interface UserActivation {
 	user_id: string;
@@ -134,8 +115,6 @@ export interface TypedTemplate {
 	userId?: string;
 
 	personalizations?: TemplatePersonalization[];
-	ai_suggestions?: AISuggestion[];
-	analytics?: TemplateAnalytics[];
 	user_activations?: UserActivation[];
 }
 
@@ -223,17 +202,44 @@ function isValidTemplateMetrics(obj: unknown): obj is TemplateMetrics {
  * Migration Helper - Convert Legacy Template to Typed Template
  */
 export function migrateToTypedTemplate(legacyTemplate: unknown): TypedTemplate {
+	if (typeof legacyTemplate !== 'object' || legacyTemplate === null) {
+		throw new Error('Invalid legacy template: must be an object');
+	}
+
 	const legacy = legacyTemplate as Record<string, unknown>;
-	return {
-		...legacy,
+
+	// Build the typed template with proper validation
+	const template: TypedTemplate = {
+		id: typeof legacy.id === 'string' ? legacy.id : '',
+		slug: typeof legacy.slug === 'string' ? legacy.slug : undefined,
+		title: typeof legacy.title === 'string' ? legacy.title : '',
+		description: typeof legacy.description === 'string' ? legacy.description : '',
+		category: typeof legacy.category === 'string' ? legacy.category : '',
+		type: typeof legacy.type === 'string' ? legacy.type : '',
+		deliveryMethod: legacy.deliveryMethod === 'certified' ? 'certified' : 'email',
+		subject: typeof legacy.subject === 'string' ? legacy.subject : undefined,
+		message_body: typeof legacy.message_body === 'string' ? legacy.message_body : '',
+		preview: typeof legacy.preview === 'string' ? legacy.preview : '',
+		is_public: typeof legacy.is_public === 'boolean' ? legacy.is_public : false,
+
 		delivery_config: extractDeliveryConfig(legacy.delivery_config),
 		recipient_config: { emails: extractRecipientEmails(legacy.recipient_config) },
-		cwc_config: legacy.cwc_config || undefined,
-		metrics: legacy.metrics || {
-			sent: 0,
-			opened: 0,
-			clicked: 0,
-			responded: 0
-		}
-	} as TypedTemplate;
+		cwc_config: legacy.cwc_config as CwcConfig | undefined,
+		metrics: extractTemplateMetrics(legacy.metrics),
+
+		campaign_id: typeof legacy.campaign_id === 'string' ? legacy.campaign_id : undefined,
+		status: isValidStatus(legacy.status) ? legacy.status : 'draft',
+		createdAt: legacy.createdAt instanceof Date ? legacy.createdAt : new Date(),
+		updatedAt: legacy.updatedAt instanceof Date ? legacy.updatedAt : new Date(),
+		userId: typeof legacy.userId === 'string' ? legacy.userId : undefined,
+
+		personalizations: Array.isArray(legacy.personalizations) ? legacy.personalizations as TemplatePersonalization[] : undefined,
+		user_activations: Array.isArray(legacy.user_activations) ? legacy.user_activations as UserActivation[] : undefined
+	};
+
+	return template;
+}
+
+function isValidStatus(status: unknown): status is 'draft' | 'active' | 'archived' {
+	return status === 'draft' || status === 'active' || status === 'archived';
 }

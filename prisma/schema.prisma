@@ -9,72 +9,83 @@ datasource db {
 }
 
 model User {
-  id                        String                     @id @default(cuid())
-  email                     String                     @unique
-  name                      String?
-  avatar                    String?
-  createdAt                 DateTime                   @default(now()) @map("created_at")
-  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // === PRIVACY-PRESERVING VERIFICATION ===
   // NO PII stored per CYPHERPUNK-ARCHITECTURE.md
   // Address verified once via TEE, cached as session credential, then destroyed
   // District stored as hash only (not plaintext)
-  
+
   // === VERIFICATION FIELDS ===
-  is_verified               Boolean                    @default(false) @map("is_verified")
-  verification_method       String?                    @map("verification_method")
-  verification_data         Json?                      @map("verification_data")
-  verified_at               DateTime?                  @map("verified_at")
-  
+  is_verified         Boolean   @default(false) @map("is_verified")
+  verification_method String?   @map("verification_method")
+  verification_data   Json?     @map("verification_data")
+  verified_at         DateTime? @map("verified_at")
+
+  // === SYBIL RESISTANCE FIELDS (Phase 1A Identity Verification) ===
+  // Privacy-preserving identity verification for duplicate detection
+  // See docs/adr/007-identity-schema-migration.md for design rationale
+  identity_hash        String? @unique @map("identity_hash") // SHA-256(passport+nationality+birthYear+salt) - Sybil resistance
+  identity_fingerprint String? @map("identity_fingerprint") // First 16 chars of hash for audit-safe logging
+  birth_year           Int?    @map("birth_year") // Year only for 18+ age verification (NOT full DOB)
+
+  // === VERIFICATION RATE LIMITING (Phase 1A) ===
+  verification_attempts       Int       @default(0) @map("verification_attempts")
+  verification_cooldown_until DateTime? @map("verification_cooldown_until")
+
   // === CONSOLIDATED WALLET FIELDS (CRITICAL FIX) ===
-  wallet_address            String?                    @unique @map("wallet_address") // Consolidate voter_address + wallet_address
-  district_hash             String?                    @map("district_hash")
-  trust_score               Int                        @default(0) @map("trust_score")
-  reputation_tier           String                     @default("novice") @map("reputation_tier")
+  wallet_address  String? @unique @map("wallet_address") // Consolidate voter_address + wallet_address
+  district_hash   String? @map("district_hash")
+  trust_score     Int     @default(0) @map("trust_score")
+  reputation_tier String  @default("novice") @map("reputation_tier")
 
   // === ZERO-KNOWLEDGE VERIFICATION (Phase 1) ===
-  district_verified         Boolean                    @default(false) @map("district_verified") // ZK proof verification status
-  last_proof_timestamp      DateTime?                  @map("last_proof_timestamp") // When last Halo2 proof was generated
+  district_verified    Boolean   @default(false) @map("district_verified") // ZK proof verification status
+  last_proof_timestamp DateTime? @map("last_proof_timestamp") // When last Halo2 proof was generated
 
   // === SCROLL BLOCKCHAIN ACCOUNT (Deterministic from Passkey) ===
-  scroll_address            String?                    @unique @map("scroll_address") // Derived via NEAR Chain Signatures (deterministic, not PII)
-  scroll_derivation_path    String?                    @default("scroll-sepolia,1") @map("scroll_derivation_path")
+  scroll_address         String? @unique @map("scroll_address") // Derived via NEAR Chain Signatures (deterministic, not PII)
+  scroll_derivation_path String? @default("scroll-sepolia,1") @map("scroll_derivation_path")
 
   // === OPTIONAL EXTERNAL WALLET LINKING ===
-  connected_wallet_address  String?                    @unique @map("connected_wallet_address") // MetaMask, WalletConnect, etc
-  connected_wallet_type     String?                    @map("connected_wallet_type") // metamask | walletconnect | coinbase
-  connected_wallet_chain    String?                    @map("connected_wallet_chain") // ethereum | polygon | etc
+  connected_wallet_address String? @unique @map("connected_wallet_address") // MetaMask, WalletConnect, etc
+  connected_wallet_type    String? @map("connected_wallet_type") // metamask | walletconnect | coinbase
+  connected_wallet_chain   String? @map("connected_wallet_chain") // ethereum | polygon | etc
 
   // === VOTER PROTOCOL FIELDS ===
-  pending_rewards           String?                    @map("pending_rewards") // BigInt as string
-  total_earned              String?                    @map("total_earned")    // BigInt as string
-  last_certification        DateTime?                  @map("last_certification")
-  challenge_score           Int?                       @map("challenge_score")
-  civic_score               Int?                       @map("civic_score")
-  discourse_score           Int?                       @map("discourse_score")
+  pending_rewards    String?   @map("pending_rewards") // BigInt as string
+  total_earned       String?   @map("total_earned") // BigInt as string
+  last_certification DateTime? @map("last_certification")
+  challenge_score    Int?      @map("challenge_score")
+  civic_score        Int?      @map("civic_score")
+  discourse_score    Int?      @map("discourse_score")
 
   // === PHASE 1 REPUTATION FIELDS (Concrete Signals Only) ===
-  templates_contributed     Int                        @default(0) @map("templates_contributed") // Count
-  template_adoption_rate    Float                      @default(0.0) @map("template_adoption_rate") // % of templates others used
-  peer_endorsements         Int                        @default(0) @map("peer_endorsements") // On-chain attestations
-  active_months             Int                        @default(0) @map("active_months") // Engagement velocity
+  templates_contributed  Int   @default(0) @map("templates_contributed") // Count
+  template_adoption_rate Float @default(0.0) @map("template_adoption_rate") // % of templates others used
+  peer_endorsements      Int   @default(0) @map("peer_endorsements") // On-chain attestations
+  active_months          Int   @default(0) @map("active_months") // Engagement velocity
 
   // === PHASE 2 FIELDS (default 0, extend later without rewrites) ===
-  challenge_wins            Int                        @default(0) @map("challenge_wins")
-  challenge_losses          Int                        @default(0) @map("challenge_losses")
+  challenge_wins   Int @default(0) @map("challenge_wins")
+  challenge_losses Int @default(0) @map("challenge_losses")
 
   // === PHASE 2+ FIELDS (CMS dependency) ===
-  response_correlation      Float?                     @map("response_correlation") // % of messages with office responses
-  citation_count            Int                        @default(0) @map("citation_count") // Congressional citations
+  response_correlation Float? @map("response_correlation") // % of messages with office responses
+  citation_count       Int    @default(0) @map("citation_count") // Congressional citations
 
   // === PROFILE FIELDS ===
-  role                      String?
-  organization              String?
-  location                  String?                    // General location description (city-level, not PII)
-  connection                String?
-  profile_completed_at      DateTime?                  @map("profile_completed_at")
-  profile_visibility        String                     @default("private") @map("profile_visibility")
+  role                 String?
+  organization         String?
+  location             String? // General location description (city-level, not PII)
+  connection           String?
+  profile_completed_at DateTime? @map("profile_completed_at")
+  profile_visibility   String    @default("private") @map("profile_visibility")
 
   // === RELATIONS (keep existing) ===
   account                   account[]
@@ -84,31 +95,34 @@ model User {
   template_personalizations template_personalization[]
   source_activations        user_activation[]          @relation("UserSources")
   activations               user_activation[]          @relation("UserActivations")
-  representatives           user_representatives[]     // Keep this relation
-  writing_style             user_writing_style?
-  secondary_emails          UserEmail[]                // Keep for multiple email management
-  
+  representatives           user_representatives[] // Keep this relation
+
   // === CONSOLIDATED AUDIT SYSTEM ===
-  audit_logs                AuditLog[]                 // Unified audit trail (replaces ReputationLog + CertificationLog)
-  civic_actions             CivicAction[]              // Blockchain-only actions
+  audit_logs    AuditLog[] // Unified audit trail (replaces ReputationLog + CertificationLog)
+  civic_actions CivicAction[] // Blockchain-only actions
 
   // VOTER Protocol challenge relations
-  challenger_challenges     Challenge[]            @relation("ChallengerChallenges")
-  defender_challenges       Challenge[]            @relation("DefenderChallenges")
-  won_challenges            Challenge[]            @relation("WonChallenges")
-  challenge_stakes          ChallengeStake[]
+  challenger_challenges Challenge[]      @relation("ChallengerChallenges")
+  defender_challenges   Challenge[]      @relation("DefenderChallenges")
+  won_challenges        Challenge[]      @relation("WonChallenges")
+  challenge_stakes      ChallengeStake[]
 
   // Encrypted identity blob (Phase 1: Postgres, Phase 2: IPFS)
-  encrypted_delivery_data   EncryptedDeliveryData?
+  encrypted_delivery_data EncryptedDeliveryData?
 
   // === DOMAIN EXPERTISE (Universal Credibility System) ===
   // Flexible, agent-interpreted credentials for any decision-making context
   // Works for Congress, HOAs, universities, corporations, nonprofits
-  expertise                 UserExpertise[]
+  expertise UserExpertise[]
 
   // === SHADOW ATLAS REGISTRATION ===
   // Zero-knowledge proof generation data (NO PII, only cryptographic metadata)
   shadow_atlas_registration ShadowAtlasRegistration?
+
+  // === IDENTITY VERIFICATION AUDIT (Phase 1A) ===
+  // Track verification attempts for fraud detection and compliance
+  verification_audits   VerificationAudit[]
+  verification_sessions VerificationSession[]
 
   @@map("user")
 }
@@ -123,95 +137,75 @@ model Session {
   @@map("session")
 }
 
-model UserEmail {
-  id         String    @id @default(cuid())
-  userId     String    @map("user_id")
-  email      String    @unique
-  isVerified Boolean   @default(false) @map("is_verified")
-  verifiedAt DateTime? @map("verified_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([email])
-  @@index([userId])
-  @@map("user_emails")
-}
 
 model Template {
-  id                        String                     @id @default(cuid())
-  slug                      String                     @unique
-  title                     String
-  description               String
-  category                  String
-  topics                    Json?                      @default("[]") // Topic tags for search/filtering (1-5 lowercase strings)
-  type                      String
-  deliveryMethod            String                     @map("delivery_method")
-  preview                   String
-  message_body              String
-  sources                   Json?                      @default("[]") // Citation sources from message generation agent
-  research_log              Json?                      @default("[]") @map("research_log") // Agent's research process log
-  delivery_config           Json
-  cwc_config                Json?
-  recipient_config          Json
-  metrics                   Json
-  campaign_id               String?
-  status                    String                     @default("draft")
-  is_public                 Boolean                    @default(false)
+  id               String  @id @default(cuid())
+  slug             String  @unique
+  title            String
+  description      String
+  category         String
+  topics           Json?   @default("[]") // Topic tags for search/filtering (1-5 lowercase strings)
+  type             String
+  deliveryMethod   String  @map("delivery_method")
+  preview          String
+  message_body     String
+  sources          Json?   @default("[]") // Citation sources from message generation agent
+  research_log     Json?   @default("[]") @map("research_log") // Agent's research process log
+  delivery_config  Json
+  cwc_config       Json?
+  recipient_config Json
+  metrics          Json
+  campaign_id      String?
+  status           String  @default("draft")
+  is_public        Boolean @default(false)
 
   // Aggregate community metrics (NO individual user tracking)
-  verified_sends            Int                        @default(0) @map("verified_sends") // Total verified messages sent
-  unique_districts          Int                        @default(0) @map("unique_districts") // Unique districts reached
-  avg_reputation            Float?                     @map("avg_reputation") // Average sender reputation
+  verified_sends   Int    @default(0) @map("verified_sends") // Total verified messages sent
+  unique_districts Int    @default(0) @map("unique_districts") // Unique districts reached
+  avg_reputation   Float? @map("avg_reputation") // Average sender reputation
 
   // NEW: Semantic embeddings for multi-dimensional search
-  location_embedding        Json?                      @map("location_embedding") // OpenAI embedding of location context
-  topic_embedding           Json?                      @map("topic_embedding")    // OpenAI embedding of policy topic
-  embedding_version         String                     @default("v1") @map("embedding_version")
-  embeddings_updated_at     DateTime?                  @map("embeddings_updated_at")
+  location_embedding    Json?     @map("location_embedding") // OpenAI embedding of location context
+  topic_embedding       Json?     @map("topic_embedding") // OpenAI embedding of policy topic
+  embedding_version     String    @default("v1") @map("embedding_version")
+  embeddings_updated_at DateTime? @map("embeddings_updated_at")
 
   // === STATUS AND TRACKING ===
-  verification_status       String?                    @default("pending") @map("verification_status") // 'pending', 'approved', 'rejected'
-  country_code              String?                    @default("US") @map("country_code")
-  reviewed_at               DateTime?                  @map("reviewed_at")
-  reviewed_by               String?                    @map("reviewed_by")
+  verification_status String?   @default("pending") @map("verification_status") // 'pending', 'approved', 'rejected'
+  country_code        String?   @default("US") @map("country_code")
+  reviewed_at         DateTime? @map("reviewed_at")
+  reviewed_by         String?   @map("reviewed_by")
 
   // === PHASE 1 MODERATION (safety only, NOT quality) ===
-  flagged_by_moderation     Boolean                    @default(false) @map("flagged_by_moderation") // OpenAI API flagged
-  consensus_approved        Boolean                    @default(false) @map("consensus_approved") // Multi-agent approved (binary)
+  flagged_by_moderation Boolean @default(false) @map("flagged_by_moderation") // OpenAI API flagged
+  consensus_approved    Boolean @default(false) @map("consensus_approved") // Multi-agent approved (binary)
 
   // Reputation impact (Phase 1: on-chain ERC-8004, no token rewards)
-  reputation_delta          Float                      @default(0) @map("reputation_delta")
-  reputation_applied        Boolean                    @default(false) @map("reputation_applied")
+  reputation_delta   Float   @default(0) @map("reputation_delta")
+  reputation_applied Boolean @default(false) @map("reputation_applied")
 
   // Timestamps
-  createdAt                 DateTime                   @default(now()) @map("created_at")
-  updatedAt                 DateTime                   @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // User relationship
-  userId                    String?                    @map("user_id")
-  user                      User?                      @relation(fields: [userId], references: [id])
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id])
 
   // === EXISTING RELATIONS (preserve all) ===
-  ai_suggestions            ai_suggestions[]
-  adaptations               template_adaptation[]
-  template_analytics        template_analytics[]
   template_campaign         template_campaign[]
-  source_morphisms          template_morphism[]        @relation("SourceMorphisms")
-  target_morphisms          template_morphism[]        @relation("TargetMorphisms")
   template_personalizations template_personalization[]
   activations               user_activation[]
   civic_actions             CivicAction[]
-  analytics_events          analytics_event[]          @relation("TemplateAnalyticsEvents")
 
   // NEW: Structured jurisdictions (replaces deprecated string arrays)
-  jurisdictions             TemplateJurisdiction[]
+  jurisdictions TemplateJurisdiction[]
 
   // NEW: International geographic scope (agent-extracted, breadcrumb filtering)
-  scopes                    TemplateScope[]
+  scopes TemplateScope[]
 
   // NEW: Verifiable messages (pseudonymous, NO user linkage)
-  messages                  Message[]
+  messages Message[]
 
   @@index([verification_status])
   @@index([country_code])
@@ -225,33 +219,33 @@ model Template {
 // Congressional offices read PUBLIC content + verification proof
 
 model Message {
-  id                        String    @id @default(cuid())
-  template_id               String    @map("template_id")
+  id          String @id @default(cuid())
+  template_id String @map("template_id")
 
   // PUBLIC message content (plaintext, readable by offices + moderation)
-  content                   String    // Actual message body sent
-  subject                   String?   // Email subject (if applicable)
+  content String // Actual message body sent
+  subject String? // Email subject (if applicable)
 
   // CRYPTOGRAPHIC VERIFICATION (stored for later verification)
-  verification_proof        String    @map("verification_proof") // ZK proof of district membership
-  district_hash             String    @map("district_hash")      // SHA-256(district) - NOT plaintext
-  reputation_score          Int       @default(0) @map("reputation_score") // Sender's reputation at send time
+  verification_proof String @map("verification_proof") // ZK proof of district membership
+  district_hash      String @map("district_hash") // SHA-256(district) - NOT plaintext
+  reputation_score   Int    @default(0) @map("reputation_score") // Sender's reputation at send time
 
   // DELIVERY TRACKING (congressional office engagement)
-  sent_at                   DateTime  @default(now()) @map("sent_at")
-  delivered_at              DateTime? @map("delivered_at")
-  office_read               Boolean   @default(false) @map("office_read")
-  office_responded          Boolean   @default(false) @map("office_responded")
-  office_response_time      Int?      @map("office_response_time") // Minutes from delivery to response
+  sent_at              DateTime  @default(now()) @map("sent_at")
+  delivered_at         DateTime? @map("delivered_at")
+  office_read          Boolean   @default(false) @map("office_read")
+  office_responded     Boolean   @default(false) @map("office_responded")
+  office_response_time Int?      @map("office_response_time") // Minutes from delivery to response
 
   // DELIVERY METADATA
-  delivery_method           String    @map("delivery_method") // 'cwc' | 'email'
-  cwc_submission_id         String?   @map("cwc_submission_id")
-  delivery_status           String    @default("pending") @map("delivery_status") // 'pending', 'delivered', 'failed'
-  error_message             String?   @map("error_message")
+  delivery_method   String  @map("delivery_method") // 'cwc' | 'email'
+  cwc_submission_id String? @map("cwc_submission_id")
+  delivery_status   String  @default("pending") @map("delivery_status") // 'pending', 'delivered', 'failed'
+  error_message     String? @map("error_message")
 
   // Relation to template (aggregates community metrics)
-  template                  Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  template Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   @@index([template_id])
   @@index([district_hash])
@@ -264,45 +258,45 @@ model Message {
 // NEW: Structured jurisdictions for templates (replaces string arrays)
 // Enables semantic search, VPN-resistant location matching, and privacy-preserving template discovery
 model TemplateJurisdiction {
-  id                        String    @id @default(cuid())
-  template_id               String    @map("template_id")
-  jurisdiction_type         String    @map("jurisdiction_type") // 'federal' | 'state' | 'county' | 'city' | 'school_district'
+  id                String @id @default(cuid())
+  template_id       String @map("template_id")
+  jurisdiction_type String @map("jurisdiction_type") // 'federal' | 'state' | 'county' | 'city' | 'school_district'
 
   // Federal jurisdictions
-  congressional_district    String?   @map("congressional_district") // "TX-18", "CA-12"
-  senate_class              String?   @map("senate_class")           // "I", "II", "III" (6-year rotation)
+  congressional_district String? @map("congressional_district") // "TX-18", "CA-12"
+  senate_class           String? @map("senate_class") // "I", "II", "III" (6-year rotation)
 
   // State jurisdictions
-  state_code                String?   @map("state_code")             // "TX", "CA"
-  state_senate_district     String?   @map("state_senate_district")  // State upper house district
-  state_house_district      String?   @map("state_house_district")   // State lower house district
+  state_code            String? @map("state_code") // "TX", "CA"
+  state_senate_district String? @map("state_senate_district") // State upper house district
+  state_house_district  String? @map("state_house_district") // State lower house district
 
   // County jurisdictions
-  county_fips               String?   @map("county_fips")            // 5-digit FIPS code (e.g., "48201" for Harris County, TX)
-  county_name               String?   @map("county_name")
+  county_fips String? @map("county_fips") // 5-digit FIPS code (e.g., "48201" for Harris County, TX)
+  county_name String? @map("county_name")
 
   // City jurisdictions
-  city_name                 String?   @map("city_name")
-  city_fips                 String?   @map("city_fips")              // Census Place FIPS code
+  city_name String? @map("city_name")
+  city_fips String? @map("city_fips") // Census Place FIPS code
 
   // School district jurisdictions
-  school_district_id        String?   @map("school_district_id")     // NCES district ID
-  school_district_name      String?   @map("school_district_name")
+  school_district_id   String? @map("school_district_id") // NCES district ID
+  school_district_name String? @map("school_district_name")
 
   // Geospatial data (for distance calculations)
-  latitude                  Float?
-  longitude                 Float?
+  latitude  Float?
+  longitude Float?
 
   // Coverage metadata
-  estimated_population      BigInt?   @map("estimated_population")   // Census estimate
-  coverage_notes            String?   @map("coverage_notes")         // Human-readable coverage description
+  estimated_population BigInt? @map("estimated_population") // Census estimate
+  coverage_notes       String? @map("coverage_notes") // Human-readable coverage description
 
   // Timestamps
-  created_at                DateTime  @default(now()) @map("created_at")
-  updated_at                DateTime  @updatedAt @map("updated_at")
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
   // Relation to template
-  template                  Template  @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  template Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   // Indexes for efficient querying
   @@index([template_id])
@@ -321,41 +315,41 @@ model TemplateJurisdiction {
 // Universal semantic hierarchy: country → region → locality → district
 
 model TemplateScope {
-  id              String   @id @default(cuid())
-  template_id     String   @map("template_id")
+  id          String @id @default(cuid())
+  template_id String @map("template_id")
 
   // UNIVERSAL HIERARCHY (works internationally)
-  country_code    String   @map("country_code")              // ISO 3166-1 alpha-2: "US", "GB", "FR", "JP", "BR"
-  region_code     String?  @map("region_code")               // "CA" (US), "ENG" (UK), "11" (FR Île-de-France), "13" (JP Tokyo)
-  locality_code   String?  @map("locality_code")             // City/municipality FIPS/code
-  district_code   String?  @map("district_code")             // Legislative district: "CA-12" (US), "Holborn and St Pancras" (UK)
+  country_code  String  @map("country_code") // ISO 3166-1 alpha-2: "US", "GB", "FR", "JP", "BR"
+  region_code   String? @map("region_code") // "CA" (US), "ENG" (UK), "11" (FR Île-de-France), "13" (JP Tokyo)
+  locality_code String? @map("locality_code") // City/municipality FIPS/code
+  district_code String? @map("district_code") // Legislative district: "CA-12" (US), "Holborn and St Pancras" (UK)
 
   // HUMAN-READABLE (agent-extracted, user sees this)
-  display_text    String   @map("display_text")              // "California", "CA-12", "London", "São Paulo", "Tokyo"
+  display_text String @map("display_text") // "California", "CA-12", "London", "São Paulo", "Tokyo"
 
   // SEMANTIC LEVEL (for filtering, internationally consistent)
-  scope_level     String   @map("scope_level")               // 'country' | 'region' | 'locality' | 'district'
+  scope_level String @map("scope_level") // 'country' | 'region' | 'locality' | 'district'
 
   // POWER STRUCTURE CONTEXT (CRITICAL - prevents painful migration later)
   // Open-ended, not an enum - agents can identify any decision-making structure
-  power_structure_type String? @map("power_structure_type")  // Examples: government, corporate, housing, institutional, labor, nonprofit, advocacy, cooperative, etc.
-  audience_filter      String? @map("audience_filter")       // Examples: renters, homeowners, workers, residents, shareholders, members, etc.
-  scope_notes          String? @map("scope_notes")           // Free text for edge cases: "CA-specific corporate policy", "Renters in rent-controlled buildings"
+  power_structure_type String? @map("power_structure_type") // Examples: government, corporate, housing, institutional, labor, nonprofit, advocacy, cooperative, etc.
+  audience_filter      String? @map("audience_filter") // Examples: renters, homeowners, workers, residents, shareholders, members, etc.
+  scope_notes          String? @map("scope_notes") // Free text for edge cases: "CA-specific corporate policy", "Renters in rent-controlled buildings"
 
   // AGENT CONFIDENCE (for validation, not just edit affordance)
-  confidence      Float    @default(0.8)
-  extraction_method String @default("regex") @map("extraction_method") // 'regex' | 'fuzzy' | 'geocoder' | 'llm' | 'user_confirmed'
-  validated_against String? @map("validated_against")        // 'ip_location' | 'oauth_location' | 'verified_address' | 'user_edit'
+  confidence        Float   @default(0.8)
+  extraction_method String  @default("regex") @map("extraction_method") // 'regex' | 'fuzzy' | 'geocoder' | 'llm' | 'user_confirmed'
+  validated_against String? @map("validated_against") // 'ip_location' | 'oauth_location' | 'verified_address' | 'user_edit'
 
   // OPTIONAL ENRICHMENT
-  estimated_reach BigInt?  @map("estimated_reach")
+  estimated_reach BigInt? @map("estimated_reach")
   latitude        Float?
   longitude       Float?
 
-  created_at      DateTime @default(now()) @map("created_at")
-  updated_at      DateTime @updatedAt @map("updated_at")
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
-  template        Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  template Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
   @@index([template_id])
   @@index([country_code, scope_level])
@@ -386,7 +380,6 @@ model account {
   @@unique([provider, provider_account_id])
 }
 
-
 model template_campaign {
   id              String    @id
   template_id     String
@@ -406,39 +399,39 @@ model template_campaign {
 }
 
 model representative {
-  id                        String                 @id @default(cuid())
-  bioguide_id               String                 @unique
-  name                      String
-  party                     String
-  state                     String
-  district                  String
-  chamber                   String
-  office_code               String
-  phone                     String?
-  email                     String?
-  
+  id          String  @id @default(cuid())
+  bioguide_id String  @unique
+  name        String
+  party       String
+  state       String
+  district    String
+  chamber     String
+  office_code String
+  phone       String?
+  email       String?
+
   // === ENHANCED OFFICE INFORMATION (from congressional_office) ===
-  member_name               String?                @map("member_name") // From congressional_office (may differ from name)
-  office_address            String?                @map("office_address")
-  office_city               String?                @map("office_city")
-  office_state              String?                @map("office_state")
-  office_zip                String?                @map("office_zip")
-  
+  member_name    String? @map("member_name") // From congressional_office (may differ from name)
+  office_address String? @map("office_address")
+  office_city    String? @map("office_city")
+  office_state   String? @map("office_state")
+  office_zip     String? @map("office_zip")
+
   // === ENHANCED TERM INFORMATION ===
-  term_start                DateTime?              @map("term_start")
-  term_end                  DateTime?              @map("term_end")
-  current_term              Int?                   @map("current_term") // Term number
-  
+  term_start   DateTime? @map("term_start")
+  term_end     DateTime? @map("term_end")
+  current_term Int?      @map("current_term") // Term number
+
   // === STATUS AND METADATA ===
-  is_active                 Boolean                @default(true)
-  last_updated              DateTime               @default(now()) @map("last_updated")
-  
+  is_active    Boolean  @default(true)
+  last_updated DateTime @default(now()) @map("last_updated")
+
   // === DATA SOURCE TRACKING ===
-  data_source               String?                @map("data_source") // 'congress_api', 'bioguide', 'manual'
-  source_updated_at         DateTime?              @map("source_updated_at")
-  
+  data_source       String?   @map("data_source") // 'congress_api', 'bioguide', 'manual'
+  source_updated_at DateTime? @map("source_updated_at")
+
   // === RELATIONS (preserve all) ===
-  user_representatives      user_representatives[]
+  user_representatives user_representatives[]
 
   @@index([state, district])
   @@index([chamber, is_active])
@@ -463,73 +456,24 @@ model user_representatives {
 }
 
 model template_personalization {
-  id                        String   @id @default(cuid())
-  user_id                   String   @map("user_id")
-  template_id               String   @map("template_id")
-  variable_name             String   @map("variable_name")
-  custom_value              String   @map("custom_value") // User-provided customizations (non-PII)
-  usage_count               Int      @default(1) @map("usage_count")
-  last_used                 DateTime @default(now()) @map("last_used")
-  created_at                DateTime @default(now()) @map("created_at")
-  updated_at                DateTime @updatedAt @map("updated_at")
-  template                  Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
-  user                      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  user_id       String   @map("user_id")
+  template_id   String   @map("template_id")
+  variable_name String   @map("variable_name")
+  custom_value  String   @map("custom_value") // User-provided customizations (non-PII)
+  usage_count   Int      @default(1) @map("usage_count")
+  last_used     DateTime @default(now()) @map("last_used")
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
+  template      Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, template_id, variable_name])
   @@map("template_personalization")
 }
 
-model ai_suggestions {
-  id                  String   @id @default(cuid())
-  template_id         String   @map("template_id")
-  variable_name       String   @map("variable_name")
-  category            String
-  suggestion_text     String   @map("suggestion_text")
-  context_tags        Json?    @map("context_tags")
-  usage_count         Int      @default(0) @map("usage_count")
-  effectiveness_score Float?   @map("effectiveness_score")
-  is_active           Boolean  @default(true) @map("is_active")
-  created_at          DateTime @default(now()) @map("created_at")
-  updated_at          DateTime @updatedAt @map("updated_at")
-  template            Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
 
-  @@index([template_id, variable_name])
-  @@map("ai_suggestions")
-}
 
-model user_writing_style {
-  id                 String    @id @default(cuid())
-  user_id            String    @unique @map("user_id")
-  tone_preference    String?   @map("tone_preference")
-  length_preference  String?   @map("length_preference")
-  personal_themes    Json?     @map("personal_themes")
-  writing_samples    Json?     @map("writing_samples")
-  engagement_metrics Json?     @map("engagement_metrics")
-  last_analyzed      DateTime? @map("last_analyzed")
-  created_at         DateTime  @default(now()) @map("created_at")
-  updated_at         DateTime  @updatedAt @map("updated_at")
-  user               User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@map("user_writing_style")
-}
-
-model template_analytics {
-  id                   String   @id @default(cuid())
-  template_id          String   @map("template_id")
-  variable_name        String   @map("variable_name")
-  date                 DateTime
-  total_uses           Int      @default(0) @map("total_uses")
-  personalization_rate Float    @default(0) @map("personalization_rate")
-  avg_length           Float?   @map("avg_length")
-  engagement_score     Float?   @map("engagement_score")
-  top_themes           Json?    @map("top_themes")
-  created_at           DateTime @default(now()) @map("created_at")
-  updated_at           DateTime @updatedAt @map("updated_at")
-  template             Template @relation(fields: [template_id], references: [id], onDelete: Cascade)
-
-  @@unique([template_id, variable_name, date])
-  @@map("template_analytics")
-}
 
 model user_activation {
   id                    String   @id @default(cuid())
@@ -554,26 +498,6 @@ model user_activation {
 }
 
 
-model template_morphism {
-  id                  String   @id @default(cuid())
-  source_template_id  String   @map("source_template_id")
-  target_template_id  String   @map("target_template_id")
-  transformation_type String   @map("transformation_type")
-  morphism_data       Json     @map("morphism_data")
-  similarity_score    Float?   @map("similarity_score")
-  usage_count         Int      @default(0) @map("usage_count")
-  effectiveness_score Float?   @map("effectiveness_score")
-  is_active           Boolean  @default(true) @map("is_active")
-  created_at          DateTime @default(now()) @map("created_at")
-  updated_at          DateTime @updatedAt @map("updated_at")
-  source_template     Template @relation("SourceMorphisms", fields: [source_template_id], references: [id], onDelete: Cascade)
-  target_template     Template @relation("TargetMorphisms", fields: [target_template_id], references: [id], onDelete: Cascade)
-
-  @@unique([source_template_id, target_template_id])
-  @@index([transformation_type, similarity_score])
-  @@map("template_morphism")
-}
-
 // ===================================================================
 // EXPERIMENTAL RESEARCH TABLES REMOVED (Phase 0.1 Cleanup)
 // The following 8 tables were removed as they had zero production usage:
@@ -590,13 +514,13 @@ model template_morphism {
 // ===================================================================
 
 model legislative_channel {
-  id                    String                @id @default(cuid())
-  country_code          String                @unique
+  id                    String   @id @default(cuid())
+  country_code          String   @unique
   country_name          String
   legislature_name      String
   legislature_type      String
   access_method         String
-  access_tier           Int                   @default(3)
+  access_tier           Int      @default(3)
   email_pattern         String?
   email_domain          String?
   email_format_notes    String?
@@ -606,164 +530,28 @@ model legislative_channel {
   rate_limit_requests   Int?
   rate_limit_daily      Int?
   form_url              String?
-  form_requires_captcha Boolean               @default(false)
+  form_requires_captcha Boolean  @default(false)
   form_max_length       Int?
   primary_language      String
   supported_languages   String[]
-  requires_constituent  Boolean               @default(false)
-  requires_real_address Boolean               @default(false)
-  forbidden_words       String[]              @default([])
+  requires_constituent  Boolean  @default(false)
+  requires_real_address Boolean  @default(false)
+  forbidden_words       String[] @default([])
   message_guidelines    String?
   population            BigInt?
   internet_penetration  Float?
   democracy_index       Float?
-  is_active             Boolean               @default(true)
+  is_active             Boolean  @default(true)
   last_verified         DateTime?
-  created_at            DateTime              @default(now()) @map("created_at")
-  updated_at            DateTime              @updatedAt @map("updated_at")
-  legislative_bodies    legislative_body[]
-  template_adaptations  template_adaptation[]
+  created_at            DateTime @default(now()) @map("created_at")
+  updated_at            DateTime @updatedAt @map("updated_at")
 
   @@index([access_tier, is_active])
   @@index([country_code])
   @@map("legislative_channel")
 }
 
-model legislative_body {
-  id                  String              @id @default(cuid())
-  channel_id          String              @map("channel_id")
-  body_name           String
-  body_type           String
-  member_count        Int
-  member_title        String
-  email_pattern       String?
-  api_endpoint        String?
-  term_length_years   Int
-  last_election       DateTime?
-  next_election       DateTime?
-  created_at          DateTime            @default(now()) @map("created_at")
-  updated_at          DateTime            @updatedAt @map("updated_at")
-  legislative_channel legislative_channel @relation(fields: [channel_id], references: [id], onDelete: Cascade)
-
-  @@index([channel_id])
-  @@map("legislative_body")
-}
-
-model template_adaptation {
-  id                  String              @id @default(cuid())
-  source_template_id  String              @map("source_template_id")
-  target_country_code String              @map("target_country_code")
-  target_language     String              @map("target_language")
-  adapted_title       String
-  adapted_subject     String?
-  adapted_body        String
-  currency_symbol     String?
-  number_format       String?
-  local_examples      Json?
-  local_officials     Json?
-  local_data_sources  Json?
-  tone_adjustment     String?
-  cultural_notes      String?
-  usage_count         Int                 @default(0)
-  success_rate        Float?
-  viral_coefficient   Float?
-  is_active           Boolean             @default(true)
-  created_at          DateTime            @default(now()) @map("created_at")
-  updated_at          DateTime            @updatedAt @map("updated_at")
-  source_template     Template            @relation(fields: [source_template_id], references: [id], onDelete: Cascade)
-  legislative_channel legislative_channel @relation(fields: [target_country_code], references: [country_code], onDelete: Cascade)
-
-  @@unique([source_template_id, target_country_code, target_language])
-  @@index([target_country_code, is_active])
-  @@map("template_adaptation")
-}
-
-
-
-
-// ANALYTICS MODELS (Consolidated: 8→3 models)
-
-model analytics_session {
-  session_id        String    @id @unique
-  user_id           String?
-  created_at        DateTime  @default(now())
-  updated_at        DateTime  @updatedAt
-  
-  // UTM and acquisition data
-  utm_source        String?
-  utm_medium        String?
-  utm_campaign      String?
-  landing_page      String?
-  referrer          String?
-  
-  // Device and technical data (consolidated into JSONB)
-  device_data       Json      @default("{}") // ip_address, user_agent, fingerprint
-  
-  // Session metrics (aggregated from events)
-  session_metrics   Json      @default("{}") // events_count, page_views, conversion_data
-  
-  // Funnel progress tracking
-  funnel_progress   Json      @default("{}") // Current step per active funnel
-  
-  events            analytics_event[]
-  
-  @@index([user_id])
-  @@index([created_at])
-  @@index([utm_campaign])
-  @@map("analytics_session")
-}
-
-model analytics_event {
-  id                String    @id @default(cuid())
-  session_id        String
-  user_id           String?
-  timestamp         DateTime  @default(now())
-  name              String
-  event_type        String    @default("interaction") // 'pageview', 'interaction', 'conversion', 'funnel', 'campaign'
-  template_id       String?   // For template-related events
-  funnel_step       Int?      // Current funnel step
-  experiment_id     String?   // Replaces funnel_id, campaign_id, variation_id
-  properties        Json      @default("{}") // Replaces analytics_event_property table
-  computed_metrics  Json      @default("{}") // Cached aggregations for performance
-  created_at        DateTime  @default(now()) @map("created_at")
-
-  session           analytics_session? @relation(fields: [session_id], references: [session_id])
-  experiment        analytics_experiment? @relation(fields: [experiment_id], references: [id])
-  template          Template? @relation("TemplateAnalyticsEvents", fields: [template_id], references: [id])
-
-  @@index([session_id, timestamp])
-  @@index([user_id, timestamp])
-  @@index([name, timestamp])
-  @@index([event_type, timestamp])
-  @@index([experiment_id])
-  @@map("analytics_event")
-}
-
-model analytics_experiment {
-  id                String    @id @default(cuid())
-  name              String    @unique
-  type              String    // 'funnel', 'campaign', 'ab_test'
-  status            String    @default("active") // 'active', 'paused', 'completed'
-
-  // Unified configuration (JSONB for flexibility)
-  config            Json      @default("{}") // Steps, variations, targeting rules
-
-  // Timeline
-  start_date        DateTime?
-  end_date          DateTime?
-
-  // Metrics cache for dashboard performance
-  metrics_cache     Json      @default("{}") // Performance data, conversion rates
-
-  created_at        DateTime  @default(now()) @map("created_at")
-  updated_at        DateTime  @updatedAt @map("updated_at")
-
-  events            analytics_event[]
-
-  @@index([type, status])
-  @@index([created_at])
-  @@map("analytics_experiment")
-}
+// ANALYTICS MODELS (Legacy models removed - see analytics_aggregate for privacy-first replacement)
 
 // =============================================================================
 // PRIVACY-FIRST ANALYTICS SCHEMA (Wave 1)
@@ -775,35 +563,33 @@ model analytics_experiment {
 /// Daily aggregate metrics - the ONLY analytics data we store
 /// No individual events, no sessions, no user tracking
 model analytics_aggregate {
-  id              String    @id @default(cuid())
+  id String @id @default(cuid())
 
   // Time bucket (day granularity - never finer)
-  date            DateTime  @db.Date
+  date DateTime @db.Date
 
   // Metric dimensions (empty string = not specified)
-  metric          String    // e.g., "template_view", "funnel_3", "delivery_success"
-  template_id     String    @default("")  // For template-specific metrics
-  jurisdiction    String    @default("")  // Geographic rollup (district, state, region, national)
-  delivery_method String    @default("")  // For delivery metrics
-  utm_source      String    @default("")  // For acquisition metrics
-  error_type      String    @default("")  // For error metrics
+  metric          String // e.g., "template_view", "funnel_3", "delivery_success"
+  template_id     String @default("") // For template-specific metrics
+  jurisdiction    String @default("") // Geographic rollup (district, state, region, national)
+  delivery_method String @default("") // For delivery metrics
+  utm_source      String @default("") // For acquisition metrics
+  error_type      String @default("") // For error metrics
 
   // The only value we store: a count
-  count           Int       @default(0)
+  count Int @default(0)
 
   // Differential privacy metadata
-  noise_applied   Float     @default(0)   // Laplace noise applied to count
-  epsilon         Float     @default(1.0) // Privacy budget consumed
+  noise_applied Float @default(0) // Laplace noise applied to count
+  epsilon       Float @default(1.0) // Privacy budget consumed
 
   // Composite unique constraint prevents duplicates
   @@unique([date, metric, template_id, jurisdiction, delivery_method, utm_source, error_type])
-
   // Query optimization indexes
   @@index([date])
   @@index([metric, date])
   @@index([template_id, date])
   @@index([jurisdiction, date])
-
   @@map("analytics_aggregate")
 }
 
@@ -832,131 +618,96 @@ model analytics_aggregate {
 /// Noise applied ONCE at materialization, never at query time
 /// This defeats "infinite budget" attacks via temporal separation
 model analytics_snapshot {
-  id              String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Time bucket (day granularity - never finer)
-  snapshot_date   DateTime @db.Date
+  snapshot_date DateTime @db.Date
 
   // Metric dimensions (empty string = not specified)
-  metric          String   // e.g., "template_view", "funnel_3", "delivery_success"
-  template_id     String   @default("")  // For template-specific metrics
-  jurisdiction    String   @default("")  // Geographic rollup (district, state, region, national)
-  delivery_method String   @default("")  // For delivery metrics
-  utm_source      String   @default("")  // For acquisition metrics
-  error_type      String   @default("")  // For error metrics
+  metric          String // e.g., "template_view", "funnel_3", "delivery_success"
+  template_id     String @default("") // For template-specific metrics
+  jurisdiction    String @default("") // Geographic rollup (district, state, region, national)
+  delivery_method String @default("") // For delivery metrics
+  utm_source      String @default("") // For acquisition metrics
+  error_type      String @default("") // For error metrics
 
   // The noisy count (noise applied once, immutable after creation)
-  noisy_count     Int
+  noisy_count Int
 
   // Privacy metadata
-  epsilon_spent   Float    // Privacy budget consumed by this snapshot
-  noise_seed      String   // For auditability - enables deterministic noise reproduction
+  epsilon_spent Float // Privacy budget consumed by this snapshot
+  noise_seed    String // For auditability - enables deterministic noise reproduction
 
-  created_at      DateTime @default(now())
+  created_at DateTime @default(now())
 
   // Composite unique constraint prevents duplicates
   @@unique([snapshot_date, metric, template_id, jurisdiction, delivery_method, utm_source, error_type])
-
   // Query optimization indexes
   @@index([snapshot_date])
   @@index([metric, snapshot_date])
   @@index([template_id, snapshot_date])
   @@index([jurisdiction, snapshot_date])
-
   @@map("analytics_snapshot")
 }
 
 /// Daily privacy budget tracking to enforce MAX_DAILY_EPSILON limits
 /// Prevents budget exhaustion and tracks query patterns
 model privacy_budget {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Budget tracking by day
-  budget_date   DateTime @db.Date @unique
+  budget_date DateTime @unique @db.Date
 
   // Epsilon accounting
-  epsilon_spent Float    @default(0)   // Total epsilon spent today
-  epsilon_limit Float    @default(10.0) // Daily limit (configurable)
+  epsilon_spent Float @default(0) // Total epsilon spent today
+  epsilon_limit Float @default(10.0) // Daily limit (configurable)
 
   // Query tracking
-  queries_count Int      @default(0)   // Number of queries executed
+  queries_count Int @default(0) // Number of queries executed
 
   // Timestamps
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   @@map("privacy_budget")
 }
 
-/// Funnel definitions (static configuration, no user data)
-model analytics_funnel {
-  id              String    @id @default(cuid())
-  name            String    @unique
 
-  // Step definitions (JSONB for flexibility)
-  // Example: [{ order: 1, name: "view", event: "template_viewed" }, ...]
-  steps           Json      @default("[]")
-
-  // Funnel status
-  status          String    @default("active") // 'active', 'archived'
-
-  created_at      DateTime  @default(now())
-  updated_at      DateTime  @updatedAt
-
-  @@map("analytics_funnel")
-}
-
-model DeliveryLog {
-  id              String   @id @default(cuid())
-  template_id     String   @map("template_id")
-  user_id         String   @map("user_id")
-  delivery_method String   @map("delivery_method") // 'certified' | 'direct'
-  success         Boolean
-  submission_id   String?  @map("submission_id")
-  error_message   String?  @map("error_message")
-  metadata        Json     @default("{}")
-  delivered_at    DateTime @default(now()) @map("delivered_at")
-  
-  @@index([template_id])
-  @@index([user_id])
-  @@index([delivery_method])
-  @@map("delivery_logs")
-}
 
 // ============= CONSOLIDATED AUDIT SYSTEM (4→2 MODELS) =============
 // Enhanced unified audit trail for all user actions
 
 model AuditLog {
-  id                        String    @id @default(cuid())
-  user_id                   String    @map("user_id")
-  
+  id      String @id @default(cuid())
+  user_id String @map("user_id")
+
   // Core audit classification
-  action_type               String    @map("action_type") // 'civic_action', 'reputation_change', 'verification', 'authentication', 'template_action'
-  action_subtype            String?   @map("action_subtype") // 'cwc_message', 'challenge_create', 'score_update', 'login', 'template_submit'
-  
+  action_type    String  @map("action_type") // 'civic_action', 'reputation_change', 'verification', 'authentication', 'template_action'
+  action_subtype String? @map("action_subtype") // 'cwc_message', 'challenge_create', 'score_update', 'login', 'template_submit'
+
   // Unified audit data (flexible JSONB storage)
-  audit_data                Json      @default("{}") @map("audit_data") // Flexible data storage for any audit type
-  
+  audit_data Json @default("{}") @map("audit_data") // Flexible data storage for any audit type
+
   // Agent provenance & evidence
-  agent_id                  String?   @map("agent_id") // Which agent verified/acted
-  verification_method       String?   @map("verification_method") // 'zk_proof', 'oauth', 'manual'
-  evidence_cid              String?   @map("evidence_cid") // IPFS CID for proof
-  
+  agent_id            String? @map("agent_id") // Which agent verified/acted
+  verification_method String? @map("verification_method") // 'zk_proof', 'oauth', 'manual'
+  evidence_cid        String? @map("evidence_cid") // IPFS CID for proof
+
   // Blockchain correlation
-  civic_action_id           String?   @unique @map("civic_action_id")
-  
+  civic_action_id String? @unique @map("civic_action_id")
+
   // Metadata & status
-  status                    String    @default("completed") // 'pending', 'completed', 'failed', 'cancelled'
-  error_message             String?   @map("error_message")
-  metadata                  Json?     @default("{}") @map("metadata")
-  
+  status        String  @default("completed") // 'pending', 'completed', 'failed', 'cancelled'
+  error_message String? @map("error_message")
+  metadata      Json?   @default("{}") @map("metadata")
+
   // Timestamps
-  created_at                DateTime  @default(now()) @map("created_at")
-  
+  created_at DateTime @default(now()) @map("created_at")
+
   // Relations
-  user                      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  civic_action              CivicAction? @relation(fields: [civic_action_id], references: [id])
-  
+  user         User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  civic_action CivicAction? @relation(fields: [civic_action_id], references: [id])
+
   @@index([user_id])
   @@index([action_type, action_subtype])
   @@index([created_at])
@@ -968,35 +719,35 @@ model AuditLog {
 
 // Refocused CivicAction: Blockchain-specific only
 model CivicAction {
-  id                        String    @id @default(cuid())
-  user_id                   String    @map("user_id")
-  
+  id      String @id @default(cuid())
+  user_id String @map("user_id")
+
   // Core action identification (minimal, just for blockchain correlation)
-  action_type               String    @map("action_type") // 'cwc_message', 'template_submit', 'challenge_create'
-  template_id               String?   @map("template_id")
-  
+  action_type String  @map("action_type") // 'cwc_message', 'template_submit', 'challenge_create'
+  template_id String? @map("template_id")
+
   // === BLOCKCHAIN INTEGRATION ONLY ===
-  tx_hash                   String?   @map("tx_hash") // Scroll zkEVM transaction hash (Ethereum L2)
-  reward_wei                String?   @map("reward_wei") // BigInt as string (VOTER tokens)
-  status                    String    @default("pending") // 'pending', 'confirmed', 'failed'
-  
+  tx_hash    String? @map("tx_hash") // Scroll zkEVM transaction hash (Ethereum L2)
+  reward_wei String? @map("reward_wei") // BigInt as string (VOTER tokens)
+  status     String  @default("pending") // 'pending', 'confirmed', 'failed'
+
   // Blockchain proof & validation
-  block_number              Int?      @map("block_number")
-  confirmation_count        Int?      @map("confirmation_count")
-  gas_used                  String?   @map("gas_used") // BigInt as string
-  
+  block_number       Int?    @map("block_number")
+  confirmation_count Int?    @map("confirmation_count")
+  gas_used           String? @map("gas_used") // BigInt as string
+
   // Multi-agent consensus for blockchain actions
-  consensus_data            Json?     @map("consensus_data") // Multi-model voting results for rewards
-  
+  consensus_data Json? @map("consensus_data") // Multi-model voting results for rewards
+
   // Timestamps
-  created_at                DateTime  @default(now()) @map("created_at")
-  confirmed_at              DateTime? @map("confirmed_at")
-  
+  created_at   DateTime  @default(now()) @map("created_at")
+  confirmed_at DateTime? @map("confirmed_at")
+
   // Relations
-  user                      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  template                  Template? @relation(fields: [template_id], references: [id])
-  audit_log                 AuditLog? // One-to-one with audit trail entry
-  
+  user      User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  template  Template? @relation(fields: [template_id], references: [id])
+  audit_log AuditLog? // One-to-one with audit trail entry
+
   @@index([user_id])
   @@index([action_type])
   @@index([status])
@@ -1005,168 +756,114 @@ model CivicAction {
   @@map("civic_action")
 }
 
-
 model Challenge {
-  id                String    @id @default(cuid())
-  
+  id String @id @default(cuid())
+
   // Participants (using existing user IDs)
-  challenger_id     String    @map("challenger_id")
-  defender_id       String    @map("defender_id")
-  
+  challenger_id String @map("challenger_id")
+  defender_id   String @map("defender_id")
+
   // Challenge data
-  claim_hash        String    @unique @map("claim_hash")
-  evidence_ipfs     String    @map("evidence_ipfs")
-  stake_amount      String    @map("stake_amount")      // BigInt as string (VOTER tokens)
-  
+  claim_hash    String @unique @map("claim_hash")
+  evidence_ipfs String @map("evidence_ipfs")
+  stake_amount  String @map("stake_amount") // BigInt as string (VOTER tokens)
+
   // Status tracking
-  status            String    @default("active")        // 'active', 'resolved', 'cancelled'
-  resolution        String?   @map("resolution")        // 'challenger_wins', 'defender_wins'
-  winner_id         String?   @map("winner_id")
-  
+  status     String  @default("active") // 'active', 'resolved', 'cancelled'
+  resolution String? @map("resolution") // 'challenger_wins', 'defender_wins'
+  winner_id  String? @map("winner_id")
+
   // Voting period
-  voting_deadline   DateTime  @map("voting_deadline")
-  
+  voting_deadline DateTime @map("voting_deadline")
+
   // Timing
-  created_at        DateTime  @default(now()) @map("created_at")
-  resolved_at       DateTime? @map("resolved_at")
-  
+  created_at  DateTime  @default(now()) @map("created_at")
+  resolved_at DateTime? @map("resolved_at")
+
   // Blockchain proof
-  creation_tx       String?   @map("creation_tx")
-  resolution_tx     String?   @map("resolution_tx")
-  
+  creation_tx   String? @map("creation_tx")
+  resolution_tx String? @map("resolution_tx")
+
   // Challenge description
-  title             String
-  description       String
-  category          String?
-  
+  title       String
+  description String
+  category    String?
+
   // Relations
-  challenger        User      @relation("ChallengerChallenges", fields: [challenger_id], references: [id])
-  defender          User      @relation("DefenderChallenges", fields: [defender_id], references: [id])
-  winner            User?     @relation("WonChallenges", fields: [winner_id], references: [id])
-  stakes            ChallengeStake[]
-  
-  @@map("challenge")
+  challenger User             @relation("ChallengerChallenges", fields: [challenger_id], references: [id])
+  defender   User             @relation("DefenderChallenges", fields: [defender_id], references: [id])
+  winner     User?            @relation("WonChallenges", fields: [winner_id], references: [id])
+  stakes     ChallengeStake[]
+
   @@index([status])
   @@index([created_at])
   @@index([voting_deadline])
+  @@map("challenge")
 }
 
 model ChallengeStake {
-  id             String    @id @default(cuid())
-  challenge_id   String    @map("challenge_id")
-  user_id        String    @map("user_id")
-  
+  id           String @id @default(cuid())
+  challenge_id String @map("challenge_id")
+  user_id      String @map("user_id")
+
   // Stake details
-  amount         String    @map("amount")           // BigInt as string
-  side           String    @map("side")             // 'support', 'oppose'
-  claimed        Boolean   @default(false)
-  
+  amount  String  @map("amount") // BigInt as string
+  side    String  @map("side") // 'support', 'oppose'
+  claimed Boolean @default(false)
+
   // Quadratic voting power calculation
-  voting_power   Float     @map("voting_power")     // sqrt(amount)
-  
+  voting_power Float @map("voting_power") // sqrt(amount)
+
   // Blockchain proof
-  stake_tx       String?   @map("stake_tx")
-  claim_tx       String?   @map("claim_tx")
-  
-  created_at     DateTime  @default(now()) @map("created_at")
-  claimed_at     DateTime? @map("claimed_at")
-  
+  stake_tx String? @map("stake_tx")
+  claim_tx String? @map("claim_tx")
+
+  created_at DateTime  @default(now()) @map("created_at")
+  claimed_at DateTime? @map("claimed_at")
+
   // Relations
-  challenge      Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
-  user           User      @relation(fields: [user_id], references: [id])
-  
-  @@map("challenge_stake")
-  @@unique([challenge_id, user_id])  // One stake per user per challenge
+  challenge Challenge @relation(fields: [challenge_id], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [user_id], references: [id])
+
+  @@unique([challenge_id, user_id]) // One stake per user per challenge
   @@index([challenge_id])
   @@index([user_id])
+  @@map("challenge_stake")
 }
 
-model RewardCalculation {
-  id                String    @id @default(cuid())
-  user_address      String    @map("user_address")
-  action_type       String    @map("action_type")
-  
-  // Reward calculation details
-  base_reward_usd   String    @map("base_reward_usd")
-  total_multiplier  String    @map("total_multiplier")
-  reward_usd        String    @map("reward_usd")
-  reward_wei        String    @map("reward_wei")
-  eth_price         String    @map("eth_price")
-  
-  // Agent decision data
-  multipliers       Json      @default("{}") @map("multipliers")
-  network_activity  Json      @default("{}") @map("network_activity")
-  agent_decisions   Json      @default("{}") @map("agent_decisions")
-  
-  created_at        DateTime  @default(now()) @map("created_at")
-  
-  @@map("reward_calculation")
-  @@index([user_address])
-  @@index([action_type])
-  @@index([created_at])
-}
 
 // === MULTI-AGENT CONSENSUS TRACKING ===
 
 model CostTracking {
-  id            String   @id @default(cuid())
-  date          String   @unique // YYYY-MM-DD format for daily tracking
-  totalCost     Float    @default(0) @map("total_cost")
-  requestCount  Int      @default(0) @map("request_count")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
-  
-  @@map("cost_tracking")
+  id           String   @id @default(cuid())
+  date         String   @unique // YYYY-MM-DD format for daily tracking
+  totalCost    Float    @default(0) @map("total_cost")
+  requestCount Int      @default(0) @map("request_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
   @@index([date])
+  @@map("cost_tracking")
 }
 
-model AgentDissent {
-  id             String   @id @default(cuid())
-  templateId     String   @map("template_id")
-  timestamp      DateTime @default(now())
-  votes          Json     // Array of AgentVote objects
-  finalDecision  Boolean  @map("final_decision")
-  consensusType  String   @map("consensus_type") // 'unanimous', 'majority', 'tie-breaker'
-  userFeedback   String?  @map("user_feedback") // 'correct' or 'incorrect'
-  learnings      String?  // Extracted insights from the dissent
-  createdAt      DateTime @default(now()) @map("created_at")
-  
-  @@map("agent_dissent")
-  @@index([templateId])
-  @@index([timestamp])
-  @@index([consensusType])
-}
-
-model AgentPerformance {
-  id                String   @id @default(cuid())
-  agent             String   @unique // 'openai', 'gemini', 'claude'
-  totalVotes        Int      @default(0) @map("total_votes")
-  correctVotes      Int      @default(0) @map("correct_votes")
-  accuracy          Float    @default(0) // Calculated: correctVotes / totalVotes
-  averageConfidence Float    @default(0) @map("average_confidence")
-  lastUpdated       DateTime @updatedAt @map("last_updated")
-  
-  @@map("agent_performance")
-  @@index([agent])
-}
 
 // CWC Job Status Tracking for Async Submissions
 model CWCJob {
-  id            String   @id @default(cuid())
-  templateId    String   @map("template_id")
-  userId        String   @map("user_id")
-  status        String   @default("queued") // 'queued', 'processing', 'completed', 'partial', 'failed'
-  messageIds    Json     @default("[]") @map("message_ids") // SQS message IDs array
-  results       Json?    @default("{}") @map("results") // Submission results from Lambda workers
-  submissionCount Int    @default(0) @map("submission_count")
-  createdAt     DateTime @default(now()) @map("created_at")
-  completedAt   DateTime? @map("completed_at")
-  
-  @@map("cwc_job")
+  id              String    @id @default(cuid())
+  templateId      String    @map("template_id")
+  userId          String    @map("user_id")
+  status          String    @default("queued") // 'queued', 'processing', 'completed', 'partial', 'failed'
+  messageIds      Json      @default("[]") @map("message_ids") // SQS message IDs array
+  results         Json?     @default("{}") @map("results") // Submission results from Lambda workers
+  submissionCount Int       @default(0) @map("submission_count")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  completedAt     DateTime? @map("completed_at")
+
   @@index([templateId])
   @@index([userId])
   @@index([status])
   @@index([createdAt])
+  @@map("cwc_job")
 }
 
 // ============= ENCRYPTED IDENTITY BLOBS (PHASE 1) =============
@@ -1175,25 +872,25 @@ model CWCJob {
 // Phase 2: IPFS + on-chain pointers (portable credentials)
 
 model EncryptedDeliveryData {
-  id                String   @id @default(cuid())
-  user_id           String   @unique @map("user_id")
+  id      String @id @default(cuid())
+  user_id String @unique @map("user_id")
 
   // XChaCha20-Poly1305 encrypted blob
-  ciphertext        String   @map("ciphertext")         // Base64-encoded encrypted data
-  nonce             String   @map("nonce")              // Base64-encoded nonce
+  ciphertext           String @map("ciphertext") // Base64-encoded encrypted data
+  nonce                String @map("nonce") // Base64-encoded nonce
   ephemeral_public_key String @map("ephemeral_public_key") // Base64-encoded ephemeral key
 
   // TEE key used for encryption
-  tee_key_id        String   @map("tee_key_id")         // Which TEE public key was used
+  tee_key_id String @map("tee_key_id") // Which TEE public key was used
 
   // Metadata
-  encryption_version String  @default("1.0.0") @map("encryption_version")
-  created_at        DateTime @default(now()) @map("created_at")
-  updated_at        DateTime @updatedAt @map("updated_at")
-  last_used_at      DateTime? @map("last_used_at")      // When blob was last decrypted in TEE
+  encryption_version String    @default("1.0.0") @map("encryption_version")
+  created_at         DateTime  @default(now()) @map("created_at")
+  updated_at         DateTime  @updatedAt @map("updated_at")
+  last_used_at       DateTime? @map("last_used_at") // When blob was last decrypted in TEE
 
   // User relation
-  user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([created_at])
@@ -1207,46 +904,46 @@ model EncryptedDeliveryData {
 // Per conversation: "without overengineering this" - same schema works everywhere
 
 model UserExpertise {
-  id                     String   @id @default(cuid())
-  user_id                String   @map("user_id")
+  id      String @id @default(cuid())
+  user_id String @map("user_id")
 
   // Domain context (flexible, not rigid enum)
-  domain                 String   // "healthcare" | "hoa_landscaping" | "university_accessibility" | "corporate_supply_chain" | etc.
-  organization_type      String?  @map("organization_type") // "congress" | "hoa" | "university" | "corporate" | "nonprofit"
+  domain            String // "healthcare" | "hoa_landscaping" | "university_accessibility" | "corporate_supply_chain" | etc.
+  organization_type String? @map("organization_type") // "congress" | "hoa" | "university" | "corporate" | "nonprofit"
 
   // === FREE-TEXT CREDENTIALS (agent parses/verifies) ===
   // No rigid schemas - agents interpret based on domain
-  professional_role      String?  @map("professional_role")     // "Registered Nurse" | "Certified Arborist" | "APICS Supply Chain Manager"
-  experience_description String?  @map("experience_description") // Free-text backstory, context, relevant experience
-  credentials_claim      String?  @map("credentials_claim")      // "CA RN License #482901" | "ISA Cert #WE-8901A" | "GPC certification"
+  professional_role      String? @map("professional_role") // "Registered Nurse" | "Certified Arborist" | "APICS Supply Chain Manager"
+  experience_description String? @map("experience_description") // Free-text backstory, context, relevant experience
+  credentials_claim      String? @map("credentials_claim") // "CA RN License #482901" | "ISA Cert #WE-8901A" | "GPC certification"
 
   // === AGENT VERIFICATION RESULTS ===
   // Agents check state APIs, professional registries, peer networks
-  verification_status    String   @default("unverified") @map("verification_status") // "unverified" | "agent_verified" | "state_api_verified" | "peer_endorsed"
-  verification_evidence  Json?    @map("verification_evidence")  // What agent found (API response, registry data, etc.)
-  verified_at            DateTime? @map("verified_at")
-  verified_by_agent      String?  @map("verified_by_agent")      // Which agent verified (openai | gemini | claude | state_api)
+  verification_status   String    @default("unverified") @map("verification_status") // "unverified" | "agent_verified" | "state_api_verified" | "peer_endorsed"
+  verification_evidence Json?     @map("verification_evidence") // What agent found (API response, registry data, etc.)
+  verified_at           DateTime? @map("verified_at")
+  verified_by_agent     String?   @map("verified_by_agent") // Which agent verified (openai | gemini | claude | state_api)
 
   // === CREDIBILITY MULTIPLIERS ===
   // Used for filtering/weighting in decision-maker UIs
-  credential_multiplier  Float    @default(1.0) @map("credential_multiplier") // 1.0 = unverified, 1.5 = peer-endorsed, 2.0 = state-verified
+  credential_multiplier Float @default(1.0) @map("credential_multiplier") // 1.0 = unverified, 1.5 = peer-endorsed, 2.0 = state-verified
 
   // === CONCRETE USAGE SIGNALS ===
   // McDonald 2018 research: Staffers value concrete behaviors, not abstract scores
-  issues_tracked         String[] @default([]) @map("issues_tracked")         // Bill IDs, proposal numbers, resolution codes
-  templates_created      Int      @default(0) @map("templates_created")
-  messages_sent          Int      @default(0) @map("messages_sent")
-  peer_endorsements      Int      @default(0) @map("peer_endorsements")       // Other verified experts vouch for this person
-  active_months          Int      @default(0) @map("active_months")
+  issues_tracked    String[] @default([]) @map("issues_tracked") // Bill IDs, proposal numbers, resolution codes
+  templates_created Int      @default(0) @map("templates_created")
+  messages_sent     Int      @default(0) @map("messages_sent")
+  peer_endorsements Int      @default(0) @map("peer_endorsements") // Other verified experts vouch for this person
+  active_months     Int      @default(0) @map("active_months")
 
   // === METADATA ===
-  is_active              Boolean  @default(true) @map("is_active")
-  created_at             DateTime @default(now()) @map("created_at")
-  updated_at             DateTime @updatedAt @map("updated_at")
-  last_used_at           DateTime? @map("last_used_at")
+  is_active    Boolean   @default(true) @map("is_active")
+  created_at   DateTime  @default(now()) @map("created_at")
+  updated_at   DateTime  @updatedAt @map("updated_at")
+  last_used_at DateTime? @map("last_used_at")
 
   // Relation
-  user                   User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   // Indexes for efficient querying
   @@unique([user_id, domain]) // One expertise record per user per domain
@@ -1264,42 +961,42 @@ model UserExpertise {
 // NO PII stored - address encrypted separately, only proof generation data cached
 
 model ShadowAtlasRegistration {
-  id                        String   @id @default(cuid())
-  user_id                   String   @unique @map("user_id")
+  id      String @id @default(cuid())
+  user_id String @unique @map("user_id")
 
   // === CRYPTOGRAPHIC IDENTITY ===
   // Identity commitment from self.xyz or Didit.me (Poseidon hash)
-  identity_commitment       String   @map("identity_commitment")
+  identity_commitment String @map("identity_commitment")
 
   // === DISTRICT MERKLE TREE METADATA ===
-  congressional_district    String   @map("congressional_district") // "CA-12", "NY-15", etc.
-  leaf_index                Int      @map("leaf_index")             // Position in district tree (0-16383)
-  merkle_root               String   @map("merkle_root")            // Current root for verification
+  congressional_district String @map("congressional_district") // "CA-12", "NY-15", etc.
+  leaf_index             Int    @map("leaf_index") // Position in district tree (0-16383)
+  merkle_root            String @map("merkle_root") // Current root for verification
 
   // Merkle path for proof generation (14 sibling hashes for 16384-leaf tree)
-  merkle_path               Json     @map("merkle_path")            // Array of 14 hex strings
+  merkle_path Json @map("merkle_path") // Array of 14 hex strings
 
   // === VERIFICATION METADATA ===
-  verification_method       String   @map("verification_method")    // 'self.xyz' | 'didit'
-  verification_id           String   @map("verification_id")        // External verification ID
-  verification_timestamp    DateTime @map("verification_timestamp") // When identity was verified
+  verification_method    String   @map("verification_method") // 'self.xyz' | 'didit'
+  verification_id        String   @map("verification_id") // External verification ID
+  verification_timestamp DateTime @map("verification_timestamp") // When identity was verified
 
   // === REGISTRATION STATUS ===
-  registration_status       String   @default("pending") @map("registration_status") // 'pending' | 'registered' | 'expired'
-  registered_at             DateTime? @map("registered_at")        // When Shadow Atlas registration completed
-  expires_at                DateTime @map("expires_at")            // 6 months from registration
+  registration_status String    @default("pending") @map("registration_status") // 'pending' | 'registered' | 'expired'
+  registered_at       DateTime? @map("registered_at") // When Shadow Atlas registration completed
+  expires_at          DateTime  @map("expires_at") // 6 months from registration
 
   // === PROOF GENERATION CACHE ===
   // Cached for performance (avoid re-fetching from voter-protocol)
-  last_proof_generated_at   DateTime? @map("last_proof_generated_at")
-  total_proofs_generated    Int      @default(0) @map("total_proofs_generated")
+  last_proof_generated_at DateTime? @map("last_proof_generated_at")
+  total_proofs_generated  Int       @default(0) @map("total_proofs_generated")
 
   // === METADATA ===
-  created_at                DateTime @default(now()) @map("created_at")
-  updated_at                DateTime @updatedAt @map("updated_at")
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
   // Relation
-  user                      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([congressional_district])
@@ -1315,8 +1012,8 @@ model ShadowAtlasTree {
   merkle_root            String   @map("merkle_root")
   leaves                 String[] // Array of identity commitments
 
-  created_at             DateTime @default(now()) @map("created_at")
-  updated_at             DateTime @updatedAt @map("updated_at")
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
   @@map("shadow_atlas_tree")
 }
@@ -1326,57 +1023,107 @@ model ShadowAtlasTree {
 // Links proof generation → encrypted blob → delivery → on-chain verification
 
 model Submission {
-  id                        String   @id @default(cuid())
-  user_id                   String   @map("user_id")
-  template_id               String   @map("template_id")
+  id          String @id @default(cuid())
+  user_id     String @map("user_id")
+  template_id String @map("template_id")
 
   // === ZERO-KNOWLEDGE PROOF DATA ===
   // Browser-generated Halo2 proof (2-5s in TEE)
-  proof_hex                 String   @map("proof_hex")              // Serialized proof (hex string)
-  public_inputs             Json     @map("public_inputs")          // [merkle_root, nullifier, action_id]
-  nullifier                 String   @map("nullifier")              // Unique per (identity, action) - prevents double-spend
-  action_id                 String   @map("action_id")              // Context for the proof
+  proof_hex     String @map("proof_hex") // Serialized proof (hex string)
+  public_inputs Json   @map("public_inputs") // [merkle_root, nullifier, action_id]
+  nullifier     String @unique @map("nullifier") // Unique per (identity, action) - prevents double-spend
+  action_id     String @map("action_id") // Context for the proof
+
+  // === IDEMPOTENCY ===
+  // Prevents duplicate submissions from client retries
+  idempotency_key String? @unique @map("idempotency_key") // Client-generated unique key
 
   // === WITNESS ENCRYPTION (XChaCha20-Poly1305) ===
   // Address encrypted to TEE public key, decrypted only in enclave
-  encrypted_witness         String   @map("encrypted_witness")      // Base64-encoded ciphertext
-  encrypted_message         String?  @map("encrypted_message")      // Base64-encoded message (optional if public)
-  
+  encrypted_witness String  @map("encrypted_witness") // Base64-encoded ciphertext
+  encrypted_message String? @map("encrypted_message") // Base64-encoded message (optional if public)
+
   // Encryption Metadata (Optional for Phase 1 MVP if bundled)
-  witness_nonce             String?  @map("witness_nonce")          // Base64-encoded nonce
-  ephemeral_public_key      String?  @map("ephemeral_public_key")   // Base64-encoded ephemeral key
-  tee_key_id                String?  @map("tee_key_id")             // Which TEE key was used
+  witness_nonce        String? @map("witness_nonce") // Base64-encoded nonce
+  ephemeral_public_key String? @map("ephemeral_public_key") // Base64-encoded ephemeral key
+  tee_key_id           String? @map("tee_key_id") // Which TEE key was used
 
   // === CONGRESSIONAL DELIVERY ===
   // CWC API submission (encrypted delivery through TEE)
-  cwc_submission_id         String?  @map("cwc_submission_id")      // CWC API submission ID
-  delivery_status           String   @default("pending") @map("delivery_status") // 'pending' | 'delivered' | 'failed'
-  delivery_error            String?  @map("delivery_error")         // Error message if failed
-  delivered_at              DateTime? @map("delivered_at")
+  cwc_submission_id String?   @map("cwc_submission_id") // CWC API submission ID
+  delivery_status   String    @default("pending") @map("delivery_status") // 'pending' | 'delivered' | 'failed'
+  delivery_error    String?   @map("delivery_error") // Error message if failed
+  delivered_at      DateTime? @map("delivered_at")
 
   // === BLOCKCHAIN VERIFICATION ===
   // On-chain proof verification (Scroll zkEVM)
-  verification_tx_hash      String?  @map("verification_tx_hash")   // Scroll transaction hash
-  verification_status       String   @default("pending") @map("verification_status") // 'pending' | 'verified' | 'rejected'
-  verified_at               DateTime? @map("verified_at")
-  block_number              Int?     @map("block_number")
+  verification_tx_hash String?   @map("verification_tx_hash") // Scroll transaction hash
+  verification_status  String    @default("pending") @map("verification_status") // 'pending' | 'verified' | 'rejected'
+  verified_at          DateTime? @map("verified_at")
+  block_number         Int?      @map("block_number")
 
   // === REPUTATION TRACKING ===
   // On-chain ERC-8004 reputation update (Phase 1: no token rewards)
-  reputation_delta          Int?     @map("reputation_delta")       // Reputation change (+5, +10, etc.)
-  reputation_tx_hash        String?  @map("reputation_tx_hash")     // Reputation update transaction
+  reputation_delta   Int?    @map("reputation_delta") // Reputation change (+5, +10, etc.)
+  reputation_tx_hash String? @map("reputation_tx_hash") // Reputation update transaction
 
   // === METADATA ===
-  created_at                DateTime @default(now()) @map("created_at")
-  updated_at                DateTime @updatedAt @map("updated_at")
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
   @@index([user_id])
   @@index([template_id])
-  @@index([nullifier])
   @@index([delivery_status])
   @@index([verification_status])
   @@index([created_at])
   @@map("submission")
+}
+
+// ============= IDENTITY VERIFICATION AUDIT (Phase 1A) =============
+// Track all identity verification attempts for fraud detection and compliance
+// See docs/adr/007-identity-schema-migration.md for design rationale
+
+model VerificationAudit {
+  id                   String   @id @default(cuid())
+  user_id              String   @map("user_id")
+  method               String // 'self.xyz' | 'didit'
+  status               String // 'pending' | 'success' | 'failed' | 'expired'
+  failure_reason       String?  @map("failure_reason") // 'age_below_18' | 'duplicate_identity' | 'expired_passport' | 'invalid_proof'
+  identity_hash        String?  @map("identity_hash") // Only for successful verifications (helps detect duplicates)
+  identity_fingerprint String?  @map("identity_fingerprint") // First 16 chars (audit-safe logging)
+  ip_address_hash      String?  @map("ip_address_hash") // SHA-256(IP + daily_salt) for fraud detection
+  metadata             Json? // SDK responses (sanitized, no PII)
+  created_at           DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@index([identity_hash])
+  @@index([status, created_at])
+  @@map("verification_audit")
+}
+
+// ============= VERIFICATION SESSION (Phase 1A) =============
+// Ephemeral sessions for self.xyz and Didit verification flows
+// 5-minute expiration prevents replay attacks
+
+model VerificationSession {
+  id         String   @id @default(cuid())
+  user_id    String   @map("user_id")
+  nonce      String   @unique // Cryptographic nonce (prevents replay attacks)
+  challenge  String // QR code data / verification challenge
+  expires_at DateTime @map("expires_at") // 5-minute expiration (security best practice)
+  status     String   @default("pending") // 'pending' | 'verified' | 'expired' | 'failed'
+  method     String // 'self.xyz' | 'didit'
+  created_at DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, created_at])
+  @@index([expires_at]) // For cleanup job
+  @@map("verification_session")
 }
 
 // ============= SCOPE CORRECTION LEARNING (EPIC 5: SELF-IMPROVING) =============
@@ -1385,23 +1132,23 @@ model Submission {
 // Asymptotic approach to 99% accuracy through continuous learning
 
 model ScopeCorrection {
-  id                String   @id @default(cuid())
-  template_id       String   @map("template_id")
+  id          String @id @default(cuid())
+  template_id String @map("template_id")
 
   // AI's original extraction
-  ai_extracted      Json     @map("ai_extracted") // Full ScopeMapping
-  ai_confidence     Float    @map("ai_confidence")
-  ai_method         String   @map("ai_method") // 'regex' | 'fuzzy' | 'geocoder' | 'llm'
+  ai_extracted  Json   @map("ai_extracted") // Full ScopeMapping
+  ai_confidence Float  @map("ai_confidence")
+  ai_method     String @map("ai_method") // 'regex' | 'fuzzy' | 'geocoder' | 'llm'
 
   // User's correction
-  user_corrected    Json     @map("user_corrected") // Full ScopeMapping
-  correction_type   String   @map("correction_type") // 'wrong_country' | 'wrong_region' | 'wrong_district' | 'too_broad' | 'too_specific' | 'other'
+  user_corrected  Json   @map("user_corrected") // Full ScopeMapping
+  correction_type String @map("correction_type") // 'wrong_country' | 'wrong_region' | 'wrong_district' | 'too_broad' | 'too_specific' | 'other'
 
   // Context for learning
-  message_snippet   String   @map("message_snippet") // First 200 chars
-  subject           String
+  message_snippet String @map("message_snippet") // First 200 chars
+  subject         String
 
-  created_at        DateTime @default(now()) @map("created_at")
+  created_at DateTime @default(now()) @map("created_at")
 
   @@index([ai_method, correction_type])
   @@index([created_at])
@@ -1429,26 +1176,24 @@ model ScopeCorrection {
 // - See src/routes/api/cron/cleanup-rate-limits for implementation
 
 model RateLimit {
-  id            String   @id @default(cuid())
+  id String @id @default(cuid())
 
   // Composite key: identifier (hashed IP) + metric type
-  key           String   // Format: "sha256(ip):metric_name" or "sha256(ip):endpoint"
+  key String // Format: "sha256(ip):metric_name" or "sha256(ip):endpoint"
 
   // Time window (day granularity for daily limits)
-  window_start  DateTime @db.Date @map("window_start")
+  window_start DateTime @map("window_start") @db.Date
 
   // Counter (incremented atomically via upsert)
-  count         Int      @default(1)
+  count Int @default(1)
 
   // Timestamps
-  created_at    DateTime @default(now()) @map("created_at")
-  updated_at    DateTime @updatedAt @map("updated_at")
+  created_at DateTime @default(now()) @map("created_at")
+  updated_at DateTime @updatedAt @map("updated_at")
 
   // Composite unique constraint for upsert
   @@unique([key, window_start])
-
   // Index for cleanup queries (delete old windows)
   @@index([window_start])
-
   @@map("rate_limits")
 }
