@@ -1,0 +1,523 @@
+# Production Secrets Checklist
+
+This document provides a comprehensive checklist of all environment variables required for the Communique production deployment on Cloudflare Pages.
+
+## Quick Reference: Critical vs Optional
+
+| Priority | Category | Variables |
+|----------|----------|-----------|
+| **CRITICAL** | Database | `DATABASE_URL` |
+| **CRITICAL** | Security Salts | `IDENTITY_HASH_SALT`, `IP_HASH_SALT` |
+| **CRITICAL** | AI Moderation | `OPENAI_API_KEY`, `GEMINI_API_KEY` |
+| **CRITICAL** | Congressional API | `CWC_API_KEY` |
+| **CRITICAL** | Authentication | `JWT_SECRET`, `EMAIL_VERIFICATION_SECRET` |
+| **HIGH** | Identity Verification | `DIDIT_API_KEY`, `DIDIT_WORKFLOW_ID`, `DIDIT_WEBHOOK_SECRET` |
+| **HIGH** | OAuth | `GOOGLE_CLIENT_ID/SECRET`, other OAuth providers |
+| **MEDIUM** | VOTER Protocol | `VOTER_API_URL`, `VOTER_API_KEY` |
+| **MEDIUM** | Congressional Lookup | `CONGRESS_API_KEY` |
+| **MEDIUM** | House Submissions | `GCP_PROXY_URL`, `GCP_PROXY_AUTH_TOKEN` |
+| **OPTIONAL** | AI Tie-breaker | `ANTHROPIC_API_KEY` |
+| **OPTIONAL** | self.xyz | `SELF_APP_NAME`, `SELF_SCOPE`, `SELF_MOCK_PASSPORT` |
+
+---
+
+## 1. Security Salts (CRITICAL)
+
+These salts are used for privacy-preserving identity hashing and fraud detection. **NEVER regenerate `IDENTITY_HASH_SALT` in production** as it would invalidate all existing identity hashes.
+
+### IDENTITY_HASH_SALT
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Sybil resistance - deterministic identity hashing for duplicate detection |
+| **Used In** | `src/lib/core/server/identity-hash.ts` |
+| **Format** | 64-character hex string (256 bits) |
+| **Generate** | `openssl rand -hex 32` |
+| **Regeneration** | **NEVER** - would require full data migration |
+
+```bash
+# Generate value
+openssl rand -hex 32
+# Example output: a1b2c3d4e5f6...64 characters total
+```
+
+### IP_HASH_SALT
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Privacy-preserving fraud detection with daily rotation |
+| **Used In** | `src/lib/core/server/security.ts` |
+| **Format** | 64-character hex string (256 bits) |
+| **Generate** | `openssl rand -hex 32` |
+| **Regeneration** | Safe to rotate (daily rotation built-in) |
+
+```bash
+# Generate value
+openssl rand -hex 32
+```
+
+---
+
+## 2. Database Configuration (CRITICAL)
+
+### DATABASE_URL
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | PostgreSQL connection string (Neon/Supabase) |
+| **Used In** | `src/lib/core/db.ts`, Prisma |
+| **Format** | PostgreSQL connection string with SSL |
+| **Obtain** | Neon/Supabase dashboard |
+
+```
+postgresql://user:password@ep-xxx.region.aws.neon.tech/database?sslmode=require
+```
+
+---
+
+## 3. Authentication Secrets (CRITICAL)
+
+### JWT_SECRET
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | JWT token signing for session management |
+| **Used In** | `src/lib/core/auth/tokens.ts` |
+| **Format** | Strong random string (32+ characters) |
+| **Generate** | `openssl rand -base64 32` |
+| **Regeneration** | Will invalidate all active sessions |
+
+```bash
+# Generate value
+openssl rand -base64 32
+```
+
+### EMAIL_VERIFICATION_SECRET
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Email verification token signing |
+| **Used In** | `src/lib/core/auth/tokens.ts` |
+| **Format** | Strong random string (32+ characters) |
+| **Generate** | `openssl rand -base64 32` |
+| **Fallback** | Uses `JWT_SECRET` if not set |
+
+```bash
+# Generate value
+openssl rand -base64 32
+```
+
+---
+
+## 4. Congressional Web Contact (CWC) API (CRITICAL)
+
+### CWC_API_KEY
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Senate CWC API authentication for message submissions |
+| **Used In** | `src/lib/core/congress/cwc-client.ts` |
+| **Obtain** | Apply via Senate CWC Program: https://www.senate.gov/legislative/LIS_MEMBER/Offices/contact_info.htm |
+| **Format** | API key string |
+
+### CWC_API_BASE_URL
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Senate CWC API endpoint |
+| **Default** | `https://soapbox.senate.gov/api` |
+| **Required** | Only if using non-standard endpoint |
+
+### Additional CWC Configuration
+
+```bash
+CWC_CAMPAIGN_ID=communique-2025
+CWC_DELIVERY_AGENT_ID=COMMUNIQUE_PBC
+CWC_DELIVERY_AGENT_NAME="Communique PBC"
+CWC_DELIVERY_AGENT_CONTACT=hello@communi.email
+CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL=noreply@communi.email
+CWC_DELIVERY_AGENT_ACK=Y
+```
+
+---
+
+## 5. Congress.gov API (MEDIUM)
+
+### CONGRESS_API_KEY
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Congress.gov API for representative lookup |
+| **Used In** | `src/lib/core/congress/address-lookup.ts` |
+| **Obtain** | Register at https://api.congress.gov/sign-up/ |
+| **Format** | API key string |
+| **Fallback** | Uses `CWC_API_KEY` if not set |
+
+---
+
+## 6. AI Moderation APIs (CRITICAL)
+
+### OPENAI_API_KEY
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Content moderation (Layer 1 - safety filter) |
+| **Used In** | `src/lib/core/server/content-moderation.ts` |
+| **Obtain** | https://platform.openai.com/api-keys |
+| **Tier** | Free moderation tier (20 req/min) |
+
+### GEMINI_API_KEY
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Primary quality assessment (Layer 2) + embeddings |
+| **Used In** | `src/lib/core/server/multi-agent-consensus.ts`, `src/lib/core/search/gemini-embeddings.ts` |
+| **Obtain** | https://aistudio.google.com/apikey |
+| **Format** | `AIza...` (40 characters) |
+| **Tier** | Free tier available |
+
+### ANTHROPIC_API_KEY (Optional)
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Tie-breaker moderation (Layer 3) - only called when Gemini rejects |
+| **Used In** | `src/lib/core/server/multi-agent-consensus.ts` |
+| **Obtain** | https://console.anthropic.com/settings/keys |
+| **Required** | Optional - system works without it |
+
+---
+
+## 7. Identity Verification - Didit.me (HIGH)
+
+### DIDIT_API_KEY
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Didit.me identity verification API authentication |
+| **Used In** | `src/routes/api/identity/didit/init/+server.ts` |
+| **Obtain** | https://didit.me/dashboard (sign up for API access) |
+
+### DIDIT_WORKFLOW_ID
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Didit.me workflow configuration ID |
+| **Used In** | `src/routes/api/identity/didit/init/+server.ts` |
+| **Obtain** | Didit.me dashboard - create verification workflow |
+
+### DIDIT_WEBHOOK_SECRET
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | HMAC signature verification for webhooks |
+| **Used In** | `src/routes/api/identity/didit/webhook/+server.ts` |
+| **Obtain** | Didit.me dashboard - webhook settings |
+
+---
+
+## 8. Identity Verification - self.xyz (OPTIONAL)
+
+self.xyz uses on-chain verification and does not require API keys for basic functionality.
+
+### SELF_APP_NAME
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | App name shown in self.xyz mobile app |
+| **Default** | `Communique` |
+
+### SELF_SCOPE
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Verification scope identifier |
+| **Default** | `communique-congressional` |
+
+### SELF_MOCK_PASSPORT
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Enable test mode for development |
+| **Default** | `false` |
+| **Production** | Must be `false` |
+
+---
+
+## 9. OAuth Providers (HIGH)
+
+All OAuth providers follow the same pattern. Each requires `CLIENT_ID` and `CLIENT_SECRET`.
+
+### Required Base Configuration
+
+```bash
+OAUTH_REDIRECT_BASE_URL=https://communi.email
+```
+
+### Google OAuth
+
+| Field | Value |
+|-------|-------|
+| **Obtain** | https://console.cloud.google.com/apis/credentials |
+
+```bash
+GOOGLE_CLIENT_ID=xxx.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=GOCSPX-xxx
+```
+
+### Facebook OAuth
+
+| Field | Value |
+|-------|-------|
+| **Obtain** | https://developers.facebook.com/apps/ |
+
+```bash
+FACEBOOK_CLIENT_ID=123456789
+FACEBOOK_CLIENT_SECRET=xxx
+```
+
+### LinkedIn OAuth
+
+| Field | Value |
+|-------|-------|
+| **Obtain** | https://www.linkedin.com/developers/apps |
+
+```bash
+LINKEDIN_CLIENT_ID=xxx
+LINKEDIN_CLIENT_SECRET=xxx
+```
+
+### Twitter/X OAuth
+
+| Field | Value |
+|-------|-------|
+| **Obtain** | https://developer.twitter.com/en/portal/dashboard |
+
+```bash
+TWITTER_CLIENT_ID=xxx
+TWITTER_CLIENT_SECRET=xxx
+```
+
+### Discord OAuth
+
+| Field | Value |
+|-------|-------|
+| **Obtain** | https://discord.com/developers/applications |
+
+```bash
+DISCORD_CLIENT_ID=xxx
+DISCORD_CLIENT_SECRET=xxx
+```
+
+---
+
+## 10. House CWC Proxy (MEDIUM)
+
+**IMPORTANT:** House of Representatives CWC API requires IP whitelisting from the House vendor program.
+
+**Status as of 2026-01:** House submissions will **FAIL** if not properly configured (no silent simulation).
+
+To enable House submissions, you must:
+1. Apply for CWC vendor program: https://www.house.gov/doing-business-with-the-house/communicating-with-congress-cwc
+2. Contact CWCVendors@mail.house.gov for IP whitelist approval
+3. Deploy a proxy server with whitelisted IP OR get your production server IP whitelisted
+4. Configure the environment variables below
+
+**Without configuration:** House submissions fail with clear error messages directing users to contact forms.
+
+### GCP_PROXY_URL
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Proxy server with whitelisted IP for House CWC submissions |
+| **Used In** | `src/lib/core/congress/cwc-client.ts` |
+| **Required** | YES (for House delivery) - Senate works without proxy |
+| **Default** | None - must be explicitly configured |
+| **Example** | `http://your-whitelisted-proxy.example.com:8080` |
+
+### GCP_PROXY_AUTH_TOKEN
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Authentication token for proxy server |
+| **Used In** | `src/lib/core/congress/cwc-client.ts` |
+| **Required** | Recommended (if proxy requires auth) |
+
+---
+
+## 11. VOTER Protocol Integration (MEDIUM)
+
+### VOTER_API_URL
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | VOTER protocol API endpoint for reputation scoring |
+| **Used In** | `src/lib/core/api/voter.ts` |
+| **Default** | `http://localhost:8000` (development) |
+| **Production** | `https://reputation.voter.workers.dev` |
+
+### VOTER_API_KEY
+
+| Field | Value |
+|-------|-------|
+| **Purpose** | Authentication for VOTER protocol API |
+| **Used In** | `src/lib/core/api/voter.ts` |
+| **Format** | 64-character hex string |
+| **Generate** | `openssl rand -hex 32` |
+
+---
+
+## 12. Variables to REMOVE from Production
+
+These variables are **NOT USED** in the current codebase and should be removed if present:
+
+| Variable | Status |
+|----------|--------|
+| `TWITCH_CLIENT_ID` | **Unused** - No Twitch integration exists |
+| `TWITCH_CLIENT_SECRET` | **Unused** - No Twitch integration exists |
+| `GROQ_API_KEY` | **Unused** - No Groq integration exists |
+| `AWS_ACCESS_KEY_ID` | **Optional** - Only for TEE deployment (not used in Cloudflare) |
+| `AWS_SECRET_ACCESS_KEY` | **Optional** - Only for TEE deployment (not used in Cloudflare) |
+
+---
+
+## Cloudflare Pages Deployment Commands
+
+### Setting Secrets via Wrangler CLI
+
+```bash
+# Database
+wrangler pages secret put DATABASE_URL
+
+# Security Salts (CRITICAL - generate fresh values)
+wrangler pages secret put IDENTITY_HASH_SALT
+wrangler pages secret put IP_HASH_SALT
+
+# Authentication Secrets
+wrangler pages secret put JWT_SECRET
+wrangler pages secret put EMAIL_VERIFICATION_SECRET
+
+# Congressional APIs
+wrangler pages secret put CWC_API_KEY
+wrangler pages secret put CONGRESS_API_KEY
+
+# AI Moderation
+wrangler pages secret put OPENAI_API_KEY
+wrangler pages secret put GEMINI_API_KEY
+wrangler pages secret put ANTHROPIC_API_KEY
+
+# Identity Verification - Didit.me
+wrangler pages secret put DIDIT_API_KEY
+wrangler pages secret put DIDIT_WORKFLOW_ID
+wrangler pages secret put DIDIT_WEBHOOK_SECRET
+
+# OAuth Providers
+wrangler pages secret put OAUTH_REDIRECT_BASE_URL
+wrangler pages secret put GOOGLE_CLIENT_ID
+wrangler pages secret put GOOGLE_CLIENT_SECRET
+wrangler pages secret put FACEBOOK_CLIENT_ID
+wrangler pages secret put FACEBOOK_CLIENT_SECRET
+wrangler pages secret put LINKEDIN_CLIENT_ID
+wrangler pages secret put LINKEDIN_CLIENT_SECRET
+wrangler pages secret put TWITTER_CLIENT_ID
+wrangler pages secret put TWITTER_CLIENT_SECRET
+wrangler pages secret put DISCORD_CLIENT_ID
+wrangler pages secret put DISCORD_CLIENT_SECRET
+
+# House CWC Proxy
+wrangler pages secret put GCP_PROXY_URL
+wrangler pages secret put GCP_PROXY_AUTH_TOKEN
+
+# VOTER Protocol
+wrangler pages secret put VOTER_API_URL
+wrangler pages secret put VOTER_API_KEY
+```
+
+### Setting Secrets via Cloudflare Dashboard
+
+1. Navigate to **Cloudflare Dashboard** > **Pages** > **communique-site**
+2. Go to **Settings** > **Environment variables**
+3. Add each secret under **Production** environment
+4. Click **Encrypt** for sensitive values (API keys, secrets)
+
+---
+
+## Pre-Deployment Checklist
+
+### Critical (Must Have)
+
+- [ ] `DATABASE_URL` - Neon/Supabase PostgreSQL connection string
+- [ ] `IDENTITY_HASH_SALT` - Generated with `openssl rand -hex 32`
+- [ ] `IP_HASH_SALT` - Generated with `openssl rand -hex 32`
+- [ ] `JWT_SECRET` - Generated with `openssl rand -base64 32`
+- [ ] `OPENAI_API_KEY` - For content moderation
+- [ ] `GEMINI_API_KEY` - For quality assessment + embeddings
+- [ ] `CWC_API_KEY` - For Senate submissions
+
+### High Priority
+
+- [ ] `DIDIT_API_KEY` - For identity verification
+- [ ] `DIDIT_WORKFLOW_ID` - For identity verification
+- [ ] `DIDIT_WEBHOOK_SECRET` - For webhook security
+- [ ] `OAUTH_REDIRECT_BASE_URL` - Set to production domain
+- [ ] At least one OAuth provider configured (Google recommended)
+
+### Medium Priority
+
+- [ ] `CONGRESS_API_KEY` - For representative lookup
+- [ ] `GCP_PROXY_URL` + `GCP_PROXY_AUTH_TOKEN` - For House submissions
+- [ ] `ANTHROPIC_API_KEY` - For tie-breaker moderation
+- [ ] `VOTER_API_URL` + `VOTER_API_KEY` - For reputation scoring
+- [ ] `EMAIL_VERIFICATION_SECRET` - For email verification tokens
+
+### Verification
+
+After setting all secrets, verify deployment:
+
+```bash
+# Check that secrets are set (values are hidden)
+wrangler pages secret list
+
+# Trigger a test deployment
+wrangler pages deploy
+```
+
+---
+
+## Security Notes
+
+1. **Never commit secrets to git** - Use `.env.local` for development
+2. **Rotate secrets periodically** - Except `IDENTITY_HASH_SALT` (requires migration)
+3. **Use Cloudflare's encryption** - Always encrypt sensitive values in dashboard
+4. **Audit access** - Limit who can view/modify production secrets
+5. **Monitor for leaks** - Set up alerts for exposed credentials
+
+---
+
+## Troubleshooting
+
+### "IDENTITY_HASH_SALT environment variable not configured"
+
+The identity verification system requires this salt. Generate and set it:
+
+```bash
+openssl rand -hex 32 | wrangler pages secret put IDENTITY_HASH_SALT
+```
+
+### "IP_HASH_SALT environment variable not configured"
+
+The fraud detection system requires this salt. Generate and set it:
+
+```bash
+openssl rand -hex 32 | wrangler pages secret put IP_HASH_SALT
+```
+
+### "Didit.me integration not configured"
+
+Set all three Didit variables:
+- `DIDIT_API_KEY`
+- `DIDIT_WORKFLOW_ID`
+- `DIDIT_WEBHOOK_SECRET`
+
+### OAuth login fails
+
+Ensure `OAUTH_REDIRECT_BASE_URL` matches your production domain exactly (e.g., `https://communi.email`).
