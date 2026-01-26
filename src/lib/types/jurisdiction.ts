@@ -104,17 +104,6 @@ export interface CoverageData {
 	statesAffected: string[];
 }
 
-/**
- * Census API integration types
- */
-export interface CensusPopulationData {
-	fipsCode: string;
-	name: string;
-	population: number;
-	year: number;
-	source: 'census_api' | 'cached';
-}
-
 export interface CongressionalDistrictInfo {
 	district: string; // "TX-18"
 	state: string; // "TX"
@@ -126,21 +115,3 @@ export interface CongressionalDistrictInfo {
 	population?: number;
 }
 
-/**
- * Jurisdiction search filters
- */
-export interface JurisdictionSearchFilters {
-	types?: ('federal' | 'state' | 'county' | 'city' | 'school_district')[];
-	stateCode?: string;
-	query: string;
-	limit?: number;
-}
-
-/**
- * Jurisdiction validation result
- */
-export interface JurisdictionValidation {
-	isValid: boolean;
-	errors: string[];
-	warnings: string[];
-}

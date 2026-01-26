@@ -118,34 +118,6 @@ export interface ProcessChallengeVoteParams {
 	stakeAmount: string;
 }
 
-export interface RewardCalculationRequest {
-	userAddress: string;
-	actionType: string;
-	templateId?: string;
-	timestamp?: string;
-}
-
-export interface RewardCalculationResponse {
-	success: boolean;
-	action: string;
-	user: string;
-	base_reward_usd: number;
-	multipliers: {
-		activity: number;
-		action: number;
-		reputation: number;
-		complexity: number;
-		time: number;
-	};
-	total_multiplier: number;
-	reward_usd: number;
-	reward_eth: number;
-	reward_wei: string;
-	eth_price: number;
-	network_activity: number;
-	user_reputation: number;
-	calculation_timestamp: string;
-}
 
 // Blockchain Transaction Types for VOTER Protocol
 export interface BlockchainTransactionLog {

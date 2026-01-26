@@ -310,22 +310,6 @@ export interface DiditVerificationEvents {
 	error: { message: string };
 }
 
-/**
- * VerificationPrompt component props
- */
-export interface VerificationPromptProps {
-	variant?: 'full' | 'compact' | 'banner';
-	dismissible?: boolean;
-}
-
-/**
- * VerificationPrompt component events
- */
-export interface VerificationPromptEvents {
-	verify: void;
-	dismiss: void;
-}
-
 // ============================================================================
 // Analytics & Tracking
 // ============================================================================

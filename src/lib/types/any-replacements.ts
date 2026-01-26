@@ -26,66 +26,6 @@ export interface ParsedMail {
 	inReplyTo?: string;
 }
 
-export interface SMTPSession {
-	id: string;
-	remoteAddress: string;
-	clientHostname?: string;
-	openingCommand?: string;
-	envelope?: {
-		mailFrom: { address: string; args?: Record<string, unknown> };
-		rcptTo: Array<{ address: string; args?: Record<string, unknown> }>;
-	};
-	user?: string;
-	transaction?: number;
-}
-
-export interface SMTPServerOptions {
-	secure?: boolean;
-	port?: number;
-	host?: string;
-	logger?: Logger;
-	authMethods?: string[];
-	onAuth?: (
-		auth: AuthInfo,
-		session: SMTPSession,
-		callback: (err?: Error | null, response?: SMTPAuthResponse) => void
-	) => void;
-	onConnect?: (session: SMTPSession, callback: (err?: Error | null) => void) => void;
-	onData?: (
-		stream: NodeJS.ReadableStream,
-		session: SMTPSession,
-		callback: (err?: Error | null) => void
-	) => void;
-	onRcptTo?: (
-		address: SMTPAddress,
-		session: SMTPSession,
-		callback: (err?: Error | null) => void
-	) => void;
-	onMailFrom?: (
-		address: SMTPAddress,
-		session: SMTPSession,
-		callback: (err?: Error | null) => void
-	) => void;
-}
-
-export interface SMTPAuthResponse {
-	user?: string;
-	[key: string]: unknown;
-}
-
-export interface AuthInfo {
-	method: string;
-	username?: string;
-	password?: string;
-	accessToken?: string;
-	[key: string]: unknown;
-}
-
-export interface SMTPAddress {
-	address: string;
-	args?: Record<string, unknown>;
-}
-
 export interface Logger {
 	info: (message: string, ...args: unknown[]) => void;
 	error: (message: string, ...args: unknown[]) => void;
@@ -241,55 +181,6 @@ export interface CorrectionLogEntry {
 	correction_type: string;
 	applied_at: Date;
 	applied_by?: string;
-}
-
-// =============================================================================
-// AGENT AND DECISION TYPES
-// =============================================================================
-
-export interface AgentDecision {
-	decision: Record<string, unknown>;
-	confidence: number;
-	reasoning: string;
-	timestamp: string;
-	agent_id: string;
-	stage: string;
-}
-
-export interface SupplyDecision {
-	rewardAmount: number;
-	baseRewardUSD: number;
-	multipliers: {
-		participationScore: number;
-		marketConditions: number;
-		timeDecay: number;
-	};
-	reasoning: string;
-	confidence: number;
-	timestamp: string;
-	claim?: string;
-	stakes?: number;
-}
-
-export interface ImpactDecision {
-	impactScore: number;
-	metrics: {
-		reach: number;
-		engagement: number;
-		conversion: number;
-	};
-	reasoning: string;
-	confidence: number;
-	timestamp: string;
-}
-
-export interface ReputationDecision {
-	reputationChange: number;
-	newTier: string;
-	badges: string[];
-	reasoning: string;
-	confidence: number;
-	timestamp: string;
 }
 
 // =============================================================================
@@ -518,22 +409,8 @@ export interface HeaderUser {
 	address?: string | null;
 }
 
-// Credential subject type for verification
-export interface CredentialSubject {
-	nationality?: string;
-	issuing_state?: string;
-	residence_country?: string;
-	[key: string]: unknown;
-}
-
 // UI Component types
 export type ModalChildrenFunction = (data: UnknownRecord) => unknown;
-export type PopoverTriggerFunction = (params: { triggerAction: TriggerAction }) => unknown;
-export type PopoverChildrenFunction = (params: { open: boolean }) => unknown;
-export type PopoverTriggerVariant = (props: {
-	trigger: TriggerAction;
-	'aria-controls': string;
-}) => unknown;
 
 export interface TriggerAction {
 	trigger: () => void;
