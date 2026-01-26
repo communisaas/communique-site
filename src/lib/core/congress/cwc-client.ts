@@ -4,12 +4,21 @@
  * Handles submission of citizen messages to congressional offices
  * via the official CWC system.
  *
- * Senate: Direct API access with API key
- * House: Requires proxy server with whitelisted IPs (not implemented)
+ * Senate: Direct API access with API key to soapbox.senate.gov
+ * House: Requires IP whitelisting from House CWC vendor program
+ *        (https://www.house.gov/doing-business-with-the-house/communicating-with-congress-cwc)
+ *        Contact: CWCVendors@mail.house.gov
+ *
+ * IMPORTANT: House submissions require either:
+ * 1. Whitelisted IP address (requires official vendor approval)
+ * 2. GCP proxy server with whitelisted IP (configured via GCP_PROXY_URL env var)
+ *
+ * Without proper configuration, House submissions will FAIL with clear error messages.
  */
 
 import { CWCGenerator } from './cwc-generator';
 import type { Template } from '$lib/types/template';
+import type { EmailServiceUser } from '$lib/types/user';
 
 export interface CongressionalOffice {
 	bioguideId: string;
@@ -21,16 +30,8 @@ export interface CongressionalOffice {
 	party: string;
 }
 
-interface User {
-	id: string;
-	name: string;
-	email: string;
-	phone?: string;
-	street?: string;
-	city?: string;
-	state?: string;
-	zip?: string;
-}
+// Use EmailServiceUser which properly handles ephemeral delivery address
+type User = EmailServiceUser;
 
 interface CWCResponse {
 	messageId?: string;
@@ -62,8 +63,94 @@ export class CWCClient {
 		return process.env.CWC_API_BASE_URL || 'https://soapbox.senate.gov/api';
 	}
 
+	private readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
+	private readonly MAX_RETRIES = 3;
+	private readonly RETRY_DELAY = 1000; // 1 second
+
 	constructor() {
 		// Env vars are now read lazily via getters, so no need to check here
+	}
+
+	/**
+	 * Execute fetch with timeout and retry logic
+	 */
+	private async fetchWithTimeout(
+		url: string,
+		options: RequestInit,
+		timeout: number = this.DEFAULT_TIMEOUT
+	): Promise<Response> {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+		try {
+			const response = await fetch(url, {
+				...options,
+				signal: controller.signal
+			});
+			clearTimeout(timeoutId);
+			return response;
+		} catch (error) {
+			clearTimeout(timeoutId);
+			if (error instanceof Error && error.name === 'AbortError') {
+				const timeoutError = new Error(`Request timeout after ${timeout}ms: ${url}`);
+				console.error('[CWC Client] Timeout:', timeoutError.message);
+				throw timeoutError;
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Execute fetch with retry logic for transient failures
+	 */
+	private async fetchWithRetry(
+		url: string,
+		options: RequestInit,
+		timeout: number = this.DEFAULT_TIMEOUT
+	): Promise<Response> {
+		let lastError: Error | null = null;
+
+		for (let attempt = 0; attempt < this.MAX_RETRIES; attempt++) {
+			try {
+				const response = await this.fetchWithTimeout(url, options, timeout);
+
+				// Don't retry on client errors (4xx except 429)
+				if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+					return response;
+				}
+
+				// Retry on server errors (5xx) or rate limiting (429)
+				if (response.status === 429 || response.status >= 500) {
+					if (attempt < this.MAX_RETRIES - 1) {
+						const delay = this.RETRY_DELAY * Math.pow(2, attempt);
+						console.warn(
+							`[CWC Client] Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.MAX_RETRIES})`
+						);
+						await this.delay(delay);
+						continue;
+					}
+				}
+
+				return response;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+
+				// Don't retry on timeout if it's the last attempt
+				if (attempt === this.MAX_RETRIES - 1) {
+					console.error(`[CWC Client] Request failed after ${this.MAX_RETRIES} attempts:`, lastError.message);
+					throw lastError;
+				}
+
+				// Exponential backoff for retries
+				const delay = this.RETRY_DELAY * Math.pow(2, attempt);
+				console.warn(
+					`[CWC Client] Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${this.MAX_RETRIES}): ${lastError.message}`
+				);
+				await this.delay(delay);
+			}
+		}
+
+		throw lastError || new Error('Request failed after retries');
 	}
 
 	/**
@@ -110,7 +197,10 @@ export class CWCClient {
 			const cwcMessage = {
 				template,
 				user: {
-					...user,
+					id: user.id,
+					name: user.name || 'Constituent',
+					email: user.email,
+					phone: user.phone || undefined, // Convert null to undefined
 					address: {
 						street: user.street || '',
 						city: user.city || '',
@@ -144,7 +234,7 @@ export class CWCClient {
 			// Submit to Senate CWC endpoint (testing for now)
 			const endpoint = `${this.baseUrl}/testing-messages/?apikey=${this.apiKey}`;
 
-			const response = await fetch(endpoint, {
+			const response = await this.fetchWithRetry(endpoint, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/xml',
@@ -178,8 +268,19 @@ export class CWCClient {
 	}
 
 	/**
-	 * Submit message to House office via GCP proxy
-	 * HACKATHON: Uses GCP proxy server at 34.171.151.252
+	 * Submit message to House office via CWC API
+	 *
+	 * IMPORTANT: House CWC API requires IP whitelisting from the House vendor program.
+	 * See: https://www.house.gov/doing-business-with-the-house/communicating-with-congress-cwc
+	 * Contact: CWCVendors@mail.house.gov
+	 *
+	 * Options for House submission:
+	 * 1. Direct API access (requires whitelisted server IP - not available in most deployments)
+	 * 2. GCP proxy server (requires GCP_PROXY_URL env var pointing to whitelisted proxy)
+	 * 3. Alternative delivery (e.g., email via representative's contact form)
+	 *
+	 * This method will FAIL CLEARLY if House CWC is not properly configured.
+	 * NO SILENT SIMULATION - users must know if their message is not being delivered.
 	 */
 	async submitToHouse(
 		template: Template,
@@ -191,99 +292,165 @@ export class CWCClient {
 			throw new Error('This method is only for House offices');
 		}
 
-		// House requires proxy server with whitelisted IPs
-		const proxyUrl = process.env.GCP_PROXY_URL || 'http://34.171.151.252:8080';
+		const timestamp = new Date().toISOString();
+		const baseResult = {
+			office: representative.name,
+			timestamp
+		};
+
+		// Check for GCP proxy configuration
+		const proxyUrl = process.env.GCP_PROXY_URL;
 		const proxyAuthToken = process.env.GCP_PROXY_AUTH_TOKEN;
 
 		if (!proxyUrl) {
-			console.warn('GCP_PROXY_URL not configured - House submissions will be simulated');
-			return this.simulateHouseSubmission(representative);
+			const errorMessage = [
+				'House CWC delivery not configured.',
+				'House of Representatives requires IP whitelisting for CWC API access.',
+				'To enable House submissions:',
+				'1. Apply for CWC vendor program: https://www.house.gov/doing-business-with-the-house/communicating-with-congress-cwc',
+				'2. Contact CWCVendors@mail.house.gov for IP whitelist approval',
+				'3. Configure GCP_PROXY_URL environment variable with approved proxy server',
+				'Alternative: Use representative contact forms for House members.'
+			].join(' ');
+
+			console.error('[CWC House] Configuration missing:', {
+				office: representative.name,
+				bioguideId: representative.bioguideId,
+				district: `${representative.state}-${representative.district}`,
+				error: 'GCP_PROXY_URL not configured',
+				timestamp
+			});
+
+			return {
+				...baseResult,
+				success: false,
+				status: 'failed',
+				error: errorMessage
+			};
 		}
 
 		try {
-			console.log('House CWC submission via GCP proxy:', {
+			console.log('[CWC House] Attempting submission via GCP proxy:', {
 				office: representative.name,
-				district: representative.district,
-				state: representative.state,
-				proxyUrl
+				bioguideId: representative.bioguideId,
+				district: `${representative.state}-${representative.district}`,
+				proxyUrl: proxyUrl.replace(/\/\/.*@/, '//<REDACTED>@'), // Redact auth in URL if present
+				hasAuthToken: !!proxyAuthToken,
+				timestamp
 			});
 
 			// Prepare House CWC submission payload
+			const jobId = `house-${Date.now()}-${representative.bioguideId}`;
 			const submission = {
-				jobId: `house-${Date.now()}-${representative.bioguideId}`,
+				jobId,
 				officeCode: representative.officeCode,
 				recipientName: representative.name,
-				recipientEmail: `${representative.bioguideId}@house.gov`, // Mock email
+				recipientEmail: `${representative.bioguideId}@house.gov`,
 				subject: template.title,
 				message: personalizedMessage,
 				senderName: user.name,
 				senderEmail: user.email,
 				senderAddress: `${user.street}, ${user.city}, ${user.state} ${user.zip}`,
-				senderPhone: '',
+				senderPhone: user.phone || '',
 				priority: 'normal' as const,
 				metadata: {
 					templateId: template.id,
 					userId: user.id,
 					bioguideId: representative.bioguideId,
-					submissionTime: new Date().toISOString()
+					submissionTime: timestamp
 				}
 			};
 
-			// Submit to GCP proxy
-			const response = await fetch(`${proxyUrl}/api/house/submit`, {
+			// Submit to GCP proxy with timeout and retry
+			const response = await this.fetchWithRetry(`${proxyUrl}/api/house/submit`, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
 					Authorization: proxyAuthToken ? `Bearer ${proxyAuthToken}` : '',
-					'X-Request-ID': submission.jobId
+					'X-Request-ID': jobId
 				},
 				body: JSON.stringify(submission)
 			});
 
 			if (!response.ok) {
 				const errorText = await response.text();
-				console.error(`House proxy submission failed (${response.status}):`, errorText);
+				console.error('[CWC House] Proxy submission failed:', {
+					office: representative.name,
+					bioguideId: representative.bioguideId,
+					status: response.status,
+					statusText: response.statusText,
+					errorBody: errorText,
+					jobId,
+					timestamp
+				});
+
+				// Provide specific error messages based on status code
+				let userErrorMessage = `House CWC submission failed (HTTP ${response.status})`;
+				if (response.status === 401 || response.status === 403) {
+					userErrorMessage += '. Proxy authentication failed. Check GCP_PROXY_AUTH_TOKEN configuration.';
+				} else if (response.status === 404) {
+					userErrorMessage += '. Proxy endpoint not found. Verify GCP_PROXY_URL is correct.';
+				} else if (response.status === 429) {
+					userErrorMessage += '. Rate limit exceeded. Please try again later.';
+				} else if (response.status >= 500) {
+					userErrorMessage += '. Proxy server error. This may be temporary.';
+				}
+				userErrorMessage += ` Error details: ${errorText}`;
 
 				return {
+					...baseResult,
 					success: false,
 					status: 'failed',
-					office: representative.name,
-					timestamp: new Date().toISOString(),
-					error: `House proxy error: ${response.status} ${errorText}`
+					error: userErrorMessage
 				};
 			}
 
 			const result = await response.json();
-			console.log('House proxy submission successful:', result);
+			console.log('[CWC House] Submission successful:', {
+				office: representative.name,
+				bioguideId: representative.bioguideId,
+				submissionId: result.submissionId,
+				jobId,
+				timestamp
+			});
 
 			return {
+				...baseResult,
 				success: true,
 				status: 'submitted',
-				office: representative.name,
-				timestamp: new Date().toISOString(),
-				messageId: result.submissionId || submission.jobId,
+				messageId: result.submissionId || jobId,
 				confirmationNumber: result.submissionId
 			};
 		} catch (error) {
-			console.error('House CWC submission error:', error);
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			console.error('[CWC House] Submission error:', {
+				office: representative.name,
+				bioguideId: representative.bioguideId,
+				error: errorMessage,
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
+				stack: error instanceof Error ? error.stack : undefined,
+				timestamp
+			});
 
-			// If proxy fails, fall back to simulation for hackathon demo
-			return this.simulateHouseSubmission(representative);
+			// Determine if this is a network/timeout error
+			const isNetworkError =
+				errorMessage.includes('timeout') ||
+				errorMessage.includes('ECONNREFUSED') ||
+				errorMessage.includes('ENOTFOUND') ||
+				errorMessage.includes('fetch failed');
+
+			let userErrorMessage = `House CWC submission failed: ${errorMessage}`;
+			if (isNetworkError) {
+				userErrorMessage += '. The proxy server may be unreachable or down. Please verify GCP_PROXY_URL configuration and network connectivity.';
+			}
+
+			return {
+				...baseResult,
+				success: false,
+				status: 'failed',
+				error: userErrorMessage
+			};
 		}
-	}
-
-	/**
-	 * Simulate House submission when proxy is unavailable
-	 */
-	private simulateHouseSubmission(representative: CongressionalOffice): CWCSubmissionResult {
-		return {
-			success: true,
-			status: 'queued',
-			office: representative.name,
-			timestamp: new Date().toISOString(),
-			messageId: `HOUSE-SIM-${Date.now()}`,
-			error: 'House submissions require proxy server - currently simulated'
-		};
 	}
 
 	/**
@@ -416,7 +583,9 @@ export class CWCClient {
 		}
 
 		try {
-			const response = await fetch(`${this.baseUrl}/active_offices?apikey=${this.apiKey}`);
+			const response = await this.fetchWithRetry(`${this.baseUrl}/active_offices?apikey=${this.apiKey}`, {
+				method: 'GET'
+			});
 
 			if (!response.ok) {
 				return {

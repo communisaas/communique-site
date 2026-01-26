@@ -10,11 +10,21 @@
  * - Standardized response format
  */
 
+import { z } from 'zod';
 import { browser } from '$app/environment';
 import { toast } from '$lib/stores/toast.svelte';
 import type { ApiError } from '$lib/types/errors';
 import type { UnknownRecord as _UnknownRecord } from '$lib/types/any-replacements';
 import { formatErrorMessage } from '$lib/utils/error-formatting';
+
+// =============================================================================
+// ZOD SCHEMA
+// =============================================================================
+
+const SSEEventDataSchema = z.object({
+	type: z.string(),
+	data: z.unknown()
+});
 
 export interface ApiResponse<T = unknown> {
 	success: boolean;
@@ -340,9 +350,12 @@ class UnifiedApiClient {
 					} else if (line.startsWith('data: ')) {
 						const dataStr = line.slice(6);
 						try {
-							const data = JSON.parse(dataStr) as T;
-							onEvent({ type: currentEventType, data });
-						} catch {
+							const parsed = JSON.parse(dataStr);
+							// Basic validation - ensure we have a valid event structure
+							const eventData = { type: currentEventType, data: parsed as T };
+							onEvent(eventData);
+						} catch (error) {
+							console.warn('[api-client] Failed to parse SSE data:', error);
 							// Skip invalid JSON
 						}
 					}

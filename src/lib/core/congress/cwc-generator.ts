@@ -1,4 +1,5 @@
 import type { Template } from '$lib/types/template';
+import type { EmailServiceUser } from '$lib/types/user';
 
 interface UserRepresentative {
 	bioguideId: string;
@@ -17,12 +18,14 @@ interface UserAddress {
 	zip: string;
 }
 
+// CWC-specific User interface
+// Address fields come from DeliveryAddress (ephemeral, not stored on User model)
 interface User {
 	id: string;
 	name: string;
 	email: string;
-	phone?: string;
-	address: UserAddress;
+	phone?: string; // Optional, from DeliveryAddress
+	address: UserAddress; // Ephemeral delivery address
 	representatives: {
 		house: UserRepresentative;
 		senate: UserRepresentative[];

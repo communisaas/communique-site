@@ -8,9 +8,21 @@
  * Cookie is deleted after reading to prevent tracking.
  */
 
+import { z } from 'zod';
 import { addOAuthLocationSignal } from './inference-engine';
 import { censusAPI } from './census-api';
 import type { OAuthLocationData } from './types';
+
+// ============================================================================
+// ZOD SCHEMA
+// ============================================================================
+
+const OAuthLocationDataSchema = z.object({
+	provider: z.string(),
+	location: z.string().optional(),
+	locale: z.string().optional(),
+	timezone: z.string().optional()
+});
 
 // ============================================================================
 // OAuth Location Sync
@@ -33,9 +45,19 @@ export async function syncOAuthLocation(): Promise<boolean> {
 			return false;
 		}
 
-		// Parse cookie value
+		// Parse and validate cookie value
 		const value = cookie.split('=')[1];
-		const locationData: OAuthLocationData = JSON.parse(decodeURIComponent(value));
+		const parsed = JSON.parse(decodeURIComponent(value));
+		const validationResult = OAuthLocationDataSchema.safeParse(parsed);
+
+		if (!validationResult.success) {
+			console.error('[OAuth Location Sync] Invalid location data:', validationResult.error.flatten());
+			// Delete invalid cookie
+			document.cookie = 'oauth_location=; path=/; max-age=0; secure; samesite=lax';
+			return false;
+		}
+
+		const locationData = validationResult.data as OAuthLocationData;
 
 		// Delete cookie after reading (privacy: one-time use)
 		document.cookie = 'oauth_location=; path=/; max-age=0; secure; samesite=lax';

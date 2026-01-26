@@ -29,6 +29,9 @@ interface Representative {
 	phone?: string;
 	email?: string;
 	office_code: string; // For CWC submissions
+	is_voting_member?: boolean; // False for DC delegate, territory delegates/commissioners
+	delegate_type?: 'delegate' | 'resident_commissioner'; // Type of non-voting member
+	term_end?: string; // ISO date string for when current term ends
 }
 
 // Congress.gov API types
@@ -70,9 +73,107 @@ function isCongressMember(obj: unknown): obj is CongressMember {
 
 interface UserReps {
 	house: Representative;
-	senate: Representative[]; // Always 2 senators per state
+	senate: Representative[]; // Always 2 senators per state (empty for DC/territories)
 	district: CongressionalDistrict;
+	special_status?: {
+		type: 'dc' | 'territory';
+		message: string;
+		has_senators: boolean;
+		has_voting_representative: boolean;
+	};
 }
+
+/**
+ * Fallback data for DC and territory delegates
+ * Updated as of 119th Congress (2025-2027)
+ * Source: https://www.house.gov/representatives
+ */
+const DELEGATE_FALLBACK_DATA: Record<string, Representative> = {
+	DC: {
+		bioguide_id: 'N000147',
+		name: 'Eleanor Holmes Norton',
+		party: 'Democratic',
+		state: 'DC',
+		district: '00',
+		chamber: 'house',
+		office_code: 'N000147',
+		is_voting_member: false,
+		delegate_type: 'delegate',
+		term_end: '2027-01-03' // 119th Congress ends
+	},
+	PR: {
+		bioguide_id: 'G000619',
+		name: 'Pablo José Hernández Rivera',
+		party: 'New Progressive',
+		state: 'PR',
+		district: '00',
+		chamber: 'house',
+		office_code: 'G000619',
+		is_voting_member: false,
+		delegate_type: 'resident_commissioner',
+		term_end: '2029-01-03' // 4-year term ending in 2029
+	},
+	VI: {
+		bioguide_id: 'P000620',
+		name: 'Stacey Plaskett',
+		party: 'Democratic',
+		state: 'VI',
+		district: '00',
+		chamber: 'house',
+		office_code: 'P000620',
+		is_voting_member: false,
+		delegate_type: 'delegate',
+		term_end: '2027-01-03'
+	},
+	GU: {
+		bioguide_id: 'M001160',
+		name: 'James Moylan',
+		party: 'Republican',
+		state: 'GU',
+		district: '00',
+		chamber: 'house',
+		office_code: 'M001160',
+		is_voting_member: false,
+		delegate_type: 'delegate',
+		term_end: '2027-01-03'
+	},
+	AS: {
+		bioguide_id: 'R000600',
+		name: 'Aumua Amata Coleman Radewagen',
+		party: 'Republican',
+		state: 'AS',
+		district: '00',
+		chamber: 'house',
+		office_code: 'R000600',
+		is_voting_member: false,
+		delegate_type: 'delegate',
+		term_end: '2027-01-03'
+	},
+	MP: {
+		bioguide_id: 'S001177',
+		name: 'Gregorio Kilili Camacho Sablan',
+		party: 'Democratic',
+		state: 'MP',
+		district: '00',
+		chamber: 'house',
+		office_code: 'S001177',
+		is_voting_member: false,
+		delegate_type: 'delegate',
+		term_end: '2027-01-03'
+	}
+};
+
+/**
+ * User-facing messages for DC and territory representation
+ */
+const SPECIAL_STATUS_MESSAGES = {
+	DC: 'As a Washington, DC resident, you have a non-voting delegate in the House of Representatives who can introduce legislation and participate in committees, but cannot vote on final passage of bills. DC does not have representation in the Senate.',
+	PR: 'As a Puerto Rico resident, you have a Resident Commissioner in the House of Representatives who serves a 4-year term. The Resident Commissioner can introduce legislation and participate in committees, but cannot vote on final passage of bills. Puerto Rico does not have representation in the Senate.',
+	VI: 'As a U.S. Virgin Islands resident, you have a non-voting delegate in the House of Representatives who can introduce legislation and participate in committees, but cannot vote on final passage of bills. The territory does not have representation in the Senate.',
+	GU: 'As a Guam resident, you have a non-voting delegate in the House of Representatives who can introduce legislation and participate in committees, but cannot vote on final passage of bills. Guam does not have representation in the Senate.',
+	AS: 'As an American Samoa resident, you have a non-voting delegate in the House of Representatives who can introduce legislation and participate in committees, but cannot vote on final passage of bills. American Samoa does not have representation in the Senate.',
+	MP: 'As a Northern Mariana Islands resident, you have a non-voting delegate in the House of Representatives who can introduce legislation and participate in committees, but cannot vote on final passage of bills. The territory does not have representation in the Senate.'
+};
 
 export class Address {
 	// Getter for lazy evaluation - ensures env vars are read at call time
@@ -88,6 +189,107 @@ export class Address {
 		return key;
 	}
 
+	private readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
+	private readonly MAX_RETRIES = 3;
+	private readonly RETRY_DELAY = 1000; // 1 second
+
+	/**
+	 * Execute fetch with timeout and retry logic
+	 */
+	private async fetchWithTimeout(
+		url: string,
+		options: RequestInit = {},
+		timeout: number = this.DEFAULT_TIMEOUT
+	): Promise<Response> {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+		try {
+			const response = await fetch(url, {
+				...options,
+				signal: controller.signal
+			});
+			clearTimeout(timeoutId);
+			return response;
+		} catch (error) {
+			clearTimeout(timeoutId);
+			if (error instanceof Error && error.name === 'AbortError') {
+				const timeoutError = new Error(`Request timeout after ${timeout}ms: ${url}`);
+				console.error('[Address Lookup] Timeout:', timeoutError.message);
+				throw timeoutError;
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Execute fetch with retry logic for transient failures
+	 */
+	private async fetchWithRetry(
+		url: string,
+		options: RequestInit = {},
+		timeout: number = this.DEFAULT_TIMEOUT
+	): Promise<Response> {
+		let lastError: Error | null = null;
+
+		for (let attempt = 0; attempt < this.MAX_RETRIES; attempt++) {
+			try {
+				const response = await this.fetchWithTimeout(url, options, timeout);
+
+				// Don't retry on client errors (4xx except 429)
+				if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+					return response;
+				}
+
+				// Retry on server errors (5xx) or rate limiting (429)
+				if (response.status === 429 || response.status >= 500) {
+					if (attempt < this.MAX_RETRIES - 1) {
+						const delay = this.RETRY_DELAY * Math.pow(2, attempt);
+						console.warn(
+							`[Address Lookup] Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.MAX_RETRIES})`
+						);
+						await this.sleep(delay);
+						continue;
+					}
+				}
+
+				return response;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+
+				// Don't retry on timeout if it's the last attempt
+				if (attempt === this.MAX_RETRIES - 1) {
+					console.error(`[Address Lookup] Request failed after ${this.MAX_RETRIES} attempts:`, lastError.message);
+					throw lastError;
+				}
+
+				// Exponential backoff for retries
+				const delay = this.RETRY_DELAY * Math.pow(2, attempt);
+				console.warn(
+					`[Address Lookup] Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${this.MAX_RETRIES}): ${lastError.message}`
+				);
+				await this.sleep(delay);
+			}
+		}
+
+		throw lastError || new Error('Request failed after retries');
+	}
+
+	/**
+	 * Sleep utility for retry delays
+	 */
+	private sleep(ms: number): Promise<void> {
+		return new Promise((resolve) => setTimeout(resolve, ms));
+	}
+
+	/**
+	 * Check if state/territory is DC or a US territory without full representation
+	 */
+	private isDCOrTerritory(state: string): boolean {
+		const territoryStates = ['DC', 'PR', 'VI', 'GU', 'AS', 'MP'];
+		return territoryStates.includes(state.toUpperCase());
+	}
+
 	/**
 	 * Main function: Address  → User's Representatives
 	 * This is called during user onboarding
@@ -96,7 +298,28 @@ export class Address {
 		// Step 1: Address  → Congressional District
 		const district = await this.addressToDistrict(address);
 
-		// Step 2: District → Representatives
+		// Step 2: Check if this is DC or a territory
+		const isDCOrTerritory = this.isDCOrTerritory(district.state);
+
+		if (isDCOrTerritory) {
+			// DC and territories: delegate only, no senators
+			const delegate = await this.getDelegate(district.state);
+			const statusType = district.state === 'DC' ? 'dc' : 'territory';
+
+			return {
+				house: delegate,
+				senate: [], // No senators for DC/territories
+				district,
+				special_status: {
+					type: statusType,
+					message: SPECIAL_STATUS_MESSAGES[district.state as keyof typeof SPECIAL_STATUS_MESSAGES] || '',
+					has_senators: false,
+					has_voting_representative: false
+				}
+			};
+		}
+
+		// Step 3: District → Representatives (normal states)
 		const [houseRep, senators] = await Promise.all([
 			this.getHouseRep(district.state, district.district),
 			this.getSenators(district.state)
@@ -118,7 +341,7 @@ export class Address {
 			const fullAddress = `${address.street}, ${address.city}, ${address.state} ${address.zip}`;
 			const url = `https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress?address=${encodeURIComponent(fullAddress)}&benchmark=4&vintage=4&format=json`;
 
-			const response = await fetch(url);
+			const response = await this.fetchWithRetry(url);
 			if (!response.ok) {
 				throw new Error(`Census geocoding API error: ${response.status}`);
 			}
@@ -198,6 +421,70 @@ export class Address {
 				district: '01' // Final fallback
 			};
 		}
+	}
+
+	/**
+	 * Get delegate for DC or US territory
+	 * First tries to fetch from Congress API, falls back to hardcoded data
+	 */
+	private async getDelegate(state: string): Promise<Representative> {
+		try {
+			// Normalize state to handle both abbreviations and full names
+			const { abbreviation: stateAbbr } = normalizeState(state);
+
+			// Fetch all members with pagination
+			const allMembers = await this.fetchAllMembers();
+
+			// Find the delegate/commissioner for this territory
+			// Delegates have district = undefined or 0 for their territory
+			const delegate = allMembers.find((member: CongressMember) => {
+				const stateMatches = member.state === stateAbbr;
+				// For delegates, district is typically undefined
+				const isDelegate = member.district === undefined || member.district === 0;
+				return stateMatches && isDelegate;
+			});
+
+			if (delegate) {
+				const rep = this.formatRepresentative(delegate, 'house');
+				// Mark as non-voting delegate
+				rep.is_voting_member = false;
+				rep.delegate_type = stateAbbr === 'PR' ? 'resident_commissioner' : 'delegate';
+				return rep;
+			}
+
+			// If not found in API, use fallback data
+			console.warn(`Delegate not found in API for ${stateAbbr}, using fallback data`);
+			return this.getDelegateFallback(stateAbbr);
+		} catch (error) {
+			console.error(`Error fetching delegate for ${state}:`, error);
+			// Return fallback data
+			return this.getDelegateFallback(state);
+		}
+	}
+
+	/**
+	 * Get fallback delegate data for DC/territories
+	 */
+	private getDelegateFallback(state: string): Representative {
+		const { abbreviation: stateAbbr } = normalizeState(state);
+		const fallback = DELEGATE_FALLBACK_DATA[stateAbbr];
+
+		if (fallback) {
+			return { ...fallback }; // Return copy to prevent mutation
+		}
+
+		// Ultimate fallback for unknown territory
+		return {
+			bioguide_id: `${stateAbbr}D00`,
+			name: `Delegate for ${stateAbbr}`,
+			party: 'Unknown',
+			state: stateAbbr,
+			district: '00',
+			chamber: 'house',
+			office_code: `${stateAbbr}D00`,
+			is_voting_member: false,
+			delegate_type: 'delegate'
+		};
 	}
 
 	/**
@@ -376,7 +663,7 @@ export class Address {
 			const url = `https://api.congress.gov/v3/member?api_key=${this.congressApiKey}&format=json&currentMember=true&limit=${limit}&offset=${offset}`;
 
 			console.log(`Fetching members offset ${offset}...`);
-			const response = await fetch(url, {
+			const response = await this.fetchWithRetry(url, {
 				headers: {
 					'User-Agent': 'Communique/1.0',
 					Accept: 'application/json'
@@ -437,6 +724,10 @@ export class Address {
 		const rawState = member.state || currentTerm?.state || '';
 		const { abbreviation: normalizedState } = normalizeState(rawState);
 
+		// Detect if this is a non-voting delegate (DC or territories)
+		const isTerritory = this.isDCOrTerritory(normalizedState);
+		const isDelegate = isTerritory && chamber === 'house';
+
 		return {
 			bioguide_id: bioguideId,
 			name: formattedName,
@@ -444,7 +735,9 @@ export class Address {
 			state: normalizedState || rawState,
 			district: chamber === 'senate' ? '00' : String(member.district || '01').padStart(2, '0'),
 			chamber,
-			office_code: bioguideId
+			office_code: bioguideId,
+			is_voting_member: isDelegate ? false : true,
+			delegate_type: isDelegate ? (normalizedState === 'PR' ? 'resident_commissioner' : 'delegate') : undefined
 		};
 	}
 
@@ -461,7 +754,7 @@ export class Address {
 			for (const rep of allReps) {
 				const url = `https://api.data.gov/congress/v3/member/${rep.bioguide_id}?api_key=${this.congressApiKey}&format=json`;
 
-				const response = await fetch(url);
+				const response = await this.fetchWithRetry(url);
 
 				if (!response.ok) {
 					errors.push(`Cannot validate _representative ${rep.name} (${rep.bioguide_id})`);
@@ -532,6 +825,7 @@ export async function getRepresentativesForAddress(
 		return [userReps.house, ...userReps.senate];
 	} catch (error) {
 		console.error('Error getting representatives for address:', error);
-		throw new Error(`Failed to get representatives: ${error.message}`);
+		const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+		throw new Error(`Failed to get representatives: ${errorMessage}`);
 	}
 }

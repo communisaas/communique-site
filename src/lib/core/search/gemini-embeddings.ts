@@ -24,8 +24,42 @@ export const EMBEDDING_CONFIG = {
 	model: 'gemini-embedding-001' as const,
 	dimensions: 768, // Recommended: 768, 1536, or 3072
 	maxInputTokens: 2048,
-	batchSize: 100 // Max texts per batch request
+	batchSize: 100, // Max texts per batch request
+	timeout: 30000 // 30 second timeout for API calls
 } as const;
+
+/**
+ * Execute fetch-like operation with timeout for Gemini SDK
+ * This wraps the Gemini SDK call with a timeout controller
+ */
+async function withTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	operationName: string
+): Promise<T> {
+	let timeoutId: NodeJS.Timeout | undefined;
+
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			const error = new Error(`Gemini API timeout after ${timeoutMs}ms: ${operationName}`);
+			console.error('[Gemini Embeddings] Timeout:', error.message);
+			reject(error);
+		}, timeoutMs);
+	});
+
+	try {
+		const result = await Promise.race([promise, timeoutPromise]);
+		if (timeoutId !== undefined) {
+			clearTimeout(timeoutId);
+		}
+		return result;
+	} catch (error) {
+		if (timeoutId !== undefined) {
+			clearTimeout(timeoutId);
+		}
+		throw error;
+	}
+}
 
 /**
  * Task types for Gemini embeddings
@@ -103,14 +137,18 @@ export async function generateEmbedding(
 
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		try {
-			const result = await ai.models.embedContent({
-				model: EMBEDDING_CONFIG.model,
-				contents: [text],
-				config: {
-					outputDimensionality: dimensions,
-					taskType: taskType
-				}
-			});
+			const result = await withTimeout(
+				ai.models.embedContent({
+					model: EMBEDDING_CONFIG.model,
+					contents: [text],
+					config: {
+						outputDimensionality: dimensions,
+						taskType: taskType
+					}
+				}),
+				EMBEDDING_CONFIG.timeout,
+				'embedContent'
+			);
 
 			if (!result.embeddings || result.embeddings.length === 0) {
 				throw new Error('No embeddings returned from Gemini API');
@@ -220,14 +258,18 @@ export async function generateBatchEmbeddings(
 
 	for (let attempt = 0; attempt < maxRetries; attempt++) {
 		try {
-			const result = await ai.models.embedContent({
-				model: EMBEDDING_CONFIG.model,
-				contents: texts,
-				config: {
-					outputDimensionality: dimensions,
-					taskType: taskType
-				}
-			});
+			const result = await withTimeout(
+				ai.models.embedContent({
+					model: EMBEDDING_CONFIG.model,
+					contents: texts,
+					config: {
+						outputDimensionality: dimensions,
+						taskType: taskType
+					}
+				}),
+				EMBEDDING_CONFIG.timeout,
+				'embedContent (batch)'
+			);
 
 			if (!result.embeddings || result.embeddings.length !== texts.length) {
 				throw new Error(

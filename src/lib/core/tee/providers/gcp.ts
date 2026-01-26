@@ -9,6 +9,7 @@
  * - Updated October 2025 with latest APIs
  */
 
+import { z } from 'zod';
 import type {
 	TEEProvider,
 	TEEDeploymentConfig,
@@ -18,6 +19,41 @@ import type {
 	TEEResponse,
 	TEEHealthStatus
 } from '../provider';
+
+// =============================================================================
+// ZOD SCHEMA
+// =============================================================================
+
+const JWTClaimsSchema = z.object({
+	submods: z
+		.object({
+			container: z
+				.object({
+					image_digest: z.string().optional(),
+					image_reference: z.string().optional()
+				})
+				.optional()
+		})
+		.optional(),
+	hwmodel: z.string().optional(),
+	swversion: z.union([z.string(), z.array(z.string()), z.number()]).optional(),
+	iat: z.number().optional(),
+	exp: z.number().optional(),
+	iss: z.string().optional(),
+	aud: z.string().optional(),
+	google: z
+		.object({
+			compute_engine: z
+				.object({
+					project_id: z.string().optional(),
+					zone: z.string().optional(),
+					instance_id: z.string().optional(),
+					instance_name: z.string().optional()
+				})
+				.optional()
+		})
+		.optional()
+});
 
 /**
  * GCP-specific configuration
@@ -401,7 +437,7 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 	/**
 	 * Parse JWT token to extract claims
 	 */
-	private parseJWT(token: string): Record<string, unknown> {
+	private parseJWT(token: string): z.infer<typeof JWTClaimsSchema> {
 		const parts = token.split('.');
 		if (parts.length !== 3) {
 			throw new Error('Invalid JWT format');
@@ -409,7 +445,17 @@ export class GCPConfidentialSpaceProvider implements TEEProvider {
 
 		const payload = parts[1];
 		const decoded = Buffer.from(payload, 'base64url').toString('utf-8');
-		return JSON.parse(decoded) as Record<string, unknown>;
+		const parsed = JSON.parse(decoded);
+
+		// Validate JWT claims structure
+		const validationResult = JWTClaimsSchema.safeParse(parsed);
+		if (!validationResult.success) {
+			console.warn('[gcp-tee] Invalid JWT claims structure:', validationResult.error.flatten());
+			// Return parsed data anyway but log warning
+			return parsed as z.infer<typeof JWTClaimsSchema>;
+		}
+
+		return validationResult.data;
 	}
 
 	/**

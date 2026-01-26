@@ -18,6 +18,91 @@ import type { CensusGeocodingResponse, CensusAddressMatch, LocationSignal } from
  */
 export class CensusAPIClient {
 	private readonly baseUrl = 'https://geocoding.geo.census.gov/geocoder';
+	private readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
+	private readonly MAX_RETRIES = 3;
+	private readonly RETRY_DELAY = 1000; // 1 second
+
+	/**
+	 * Execute fetch with timeout
+	 */
+	private async fetchWithTimeout(
+		url: string,
+		options: RequestInit = {},
+		timeout: number = this.DEFAULT_TIMEOUT
+	): Promise<Response> {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+		try {
+			const response = await fetch(url, {
+				...options,
+				signal: controller.signal
+			});
+			clearTimeout(timeoutId);
+			return response;
+		} catch (error) {
+			clearTimeout(timeoutId);
+			if (error instanceof Error && error.name === 'AbortError') {
+				const timeoutError = new Error(`Request timeout after ${timeout}ms: ${url}`);
+				console.error('[Census API] Timeout:', timeoutError.message);
+				throw timeoutError;
+			}
+			throw error;
+		}
+	}
+
+	/**
+	 * Execute fetch with retry logic for transient failures
+	 */
+	private async fetchWithRetry(
+		url: string,
+		options: RequestInit = {},
+		timeout: number = this.DEFAULT_TIMEOUT
+	): Promise<Response> {
+		let lastError: Error | null = null;
+
+		for (let attempt = 0; attempt < this.MAX_RETRIES; attempt++) {
+			try {
+				const response = await this.fetchWithTimeout(url, options, timeout);
+
+				// Don't retry on client errors (4xx except 429)
+				if (response.status >= 400 && response.status < 500 && response.status !== 429) {
+					return response;
+				}
+
+				// Retry on server errors (5xx) or rate limiting (429)
+				if (response.status === 429 || response.status >= 500) {
+					if (attempt < this.MAX_RETRIES - 1) {
+						const delay = this.RETRY_DELAY * Math.pow(2, attempt);
+						console.warn(
+							`[Census API] Request failed with status ${response.status}, retrying in ${delay}ms (attempt ${attempt + 1}/${this.MAX_RETRIES})`
+						);
+						await new Promise((resolve) => setTimeout(resolve, delay));
+						continue;
+					}
+				}
+
+				return response;
+			} catch (error) {
+				lastError = error instanceof Error ? error : new Error(String(error));
+
+				// Don't retry on timeout if it's the last attempt
+				if (attempt === this.MAX_RETRIES - 1) {
+					console.error(`[Census API] Request failed after ${this.MAX_RETRIES} attempts:`, lastError.message);
+					throw lastError;
+				}
+
+				// Exponential backoff for retries
+				const delay = this.RETRY_DELAY * Math.pow(2, attempt);
+				console.warn(
+					`[Census API] Request failed, retrying in ${delay}ms (attempt ${attempt + 1}/${this.MAX_RETRIES}): ${lastError.message}`
+				);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+			}
+		}
+
+		throw lastError || new Error('Request failed after retries');
+	}
 
 	/**
 	 * Geocode coordinates to congressional district using JSONP
@@ -38,10 +123,10 @@ export class CensusAPIClient {
 				// Set timeout to prevent hanging
 				const timeout = setTimeout(() => {
 					cleanup();
-					console.warn('[Census API] Request timed out - falling back to Nominatim data');
+					console.warn('[Census API] JSONP request timed out - falling back to Nominatim data');
 					// Graceful degradation: Return city/state from Nominatim even if Census fails
 					resolve(createFallbackSignal());
-				}, 10000); // 10 second timeout
+				}, this.DEFAULT_TIMEOUT);
 
 				// Helper to create fallback signal when Census API fails
 				const createFallbackSignal = (): LocationSignal | null => {
@@ -186,7 +271,7 @@ export class CensusAPIClient {
 		try {
 			const url = `${this.baseUrl}/geographies/onelineaddress?address=${encodeURIComponent(address)}&benchmark=4&vintage=4&format=json`;
 
-			const response = await fetch(url);
+			const response = await this.fetchWithRetry(url);
 			if (!response.ok) {
 				console.error('Census API error:', response.status);
 				return null;
@@ -278,7 +363,7 @@ export class CensusAPIClient {
 			// Usage policy: https://operations.osmfoundation.org/policies/nominatim/
 			const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`;
 
-			const response = await fetch(url, {
+			const response = await this.fetchWithRetry(url, {
 				headers: {
 					'User-Agent': 'Communique/1.0 (https://communique.app)' // Required by Nominatim
 				}
@@ -424,7 +509,7 @@ export async function getBrowserGeolocation(): Promise<LocationSignal | null> {
 			},
 			{
 				enableHighAccuracy: true,
-				timeout: 10000,
+				timeout: 30000, // 30 seconds for geolocation
 				maximumAge: 0
 			}
 		);

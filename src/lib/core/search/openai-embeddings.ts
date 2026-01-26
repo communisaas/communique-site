@@ -23,6 +23,7 @@ export class OpenAIEmbeddingGenerator {
 	private baseURL = 'https://api.openai.com/v1';
 	private maxRetries = 3;
 	private retryDelay = 1000; // 1 second
+	private readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
 
 	constructor(
 		apiKey: string,
@@ -33,6 +34,35 @@ export class OpenAIEmbeddingGenerator {
 		}
 		this.apiKey = apiKey;
 		this.model = model;
+	}
+
+	/**
+	 * Execute fetch with timeout
+	 */
+	private async fetchWithTimeout(
+		url: string,
+		options: RequestInit,
+		timeout: number = this.DEFAULT_TIMEOUT
+	): Promise<Response> {
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+		try {
+			const response = await fetch(url, {
+				...options,
+				signal: controller.signal
+			});
+			clearTimeout(timeoutId);
+			return response;
+		} catch (error) {
+			clearTimeout(timeoutId);
+			if (error instanceof Error && error.name === 'AbortError') {
+				const timeoutError = new Error(`Request timeout after ${timeout}ms: ${url}`);
+				console.error('[OpenAI Embeddings] Timeout:', timeoutError.message);
+				throw timeoutError;
+			}
+			throw error;
+		}
 	}
 
 	/**
@@ -94,7 +124,7 @@ export class OpenAIEmbeddingGenerator {
 
 		for (let attempt = 0; attempt < this.maxRetries; attempt++) {
 			try {
-				const response = await fetch(`${this.baseURL}/embeddings`, {
+				const response = await this.fetchWithTimeout(`${this.baseURL}/embeddings`, {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',

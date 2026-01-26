@@ -179,9 +179,10 @@ export class BoundaryMatcher {
 	 */
 	private async loadBoundaries(citySlug: string): Promise<FeatureCollection> {
 		// Check memory cache first (fastest)
-		if (this.boundaryCache.has(citySlug)) {
+		const cachedBoundary = this.boundaryCache.get(citySlug);
+		if (cachedBoundary) {
 			console.log(`[BoundaryMatcher] Memory cache HIT: ${citySlug}`);
-			return this.boundaryCache.get(citySlug)!;
+			return cachedBoundary;
 		}
 
 		// Check IndexedDB (persistent)
