@@ -12,7 +12,7 @@
 Frontend application for VOTER Protocol's cryptographic democratic infrastructure. SvelteKit 5 UI/UX layer that orchestrates identity verification, template creation, message moderation, and congressional delivery.
 
 **What voter-protocol is:**
-Backend cryptographic infrastructure. Halo2 zero-knowledge proofs, AWS Nitro Enclave encrypted delivery, ERC-8004 reputation tracking, multi-agent treasury management (Phase 2).
+Backend cryptographic infrastructure. Noir/UltraHonk zero-knowledge proofs, AWS Nitro Enclave encrypted delivery, ERC-8004 reputation tracking, multi-agent treasury management (Phase 2).
 
 **Separation of Concerns:**
 - **Communique** (this repo): UI/UX, OAuth, database, analytics, congressional office lookup
@@ -52,9 +52,9 @@ Backend cryptographic infrastructure. Halo2 zero-knowledge proofs, AWS Nitro Enc
 - ✅ **API Proxies** - Calls to voter-protocol services (geocoding, district resolution, ZK proving)
 
 **What Communique does NOT handle:**
-- ❌ Cryptographic primitives (voter-protocol WASM prover)
+- ❌ Cryptographic primitives (voter-protocol Noir prover)
 - ❌ TEE deployment (AWS Nitro Enclaves in voter-protocol)
-- ❌ ZK circuit design (Halo2 circuits in voter-protocol)
+- ❌ ZK circuit design (Noir circuits in voter-protocol)
 - ❌ Blockchain contracts (Scroll zkEVM in voter-protocol)
 - ❌ Agent verification logic (ReputationAgent in voter-protocol)
 
@@ -63,9 +63,9 @@ Backend cryptographic infrastructure. Halo2 zero-knowledge proofs, AWS Nitro Enc
 ### voter-protocol Responsibilities (Backend/Crypto)
 
 **What voter-protocol handles:**
-- ✅ **Halo2 ZK Circuits** - K=14 Merkle tree proofs (4,096 leaves per district)
-- ✅ **Browser WASM Prover** - Native Rust compiled to WASM (600ms-10s proving)
-- ✅ **Solidity Verifier** - On-chain proof verification (300-500k gas)
+- ✅ **Noir ZK Circuits** - Merkle tree proofs (depth 18/20/22/24 for 260K-16M leaves)
+- ✅ **Browser WASM Prover** - Noir/UltraHonk compiled to WASM (600ms-10s proving)
+- ✅ **Solidity Verifier** - On-chain UltraHonk proof verification (300-500k gas)
 - ✅ **AWS Nitro Enclaves** - TEE deployment, encrypted witness decryption
 - ✅ **CWC API Integration** - Congressional message delivery (inside TEE)
 - ✅ **ReputationAgent** - Gemini 2.5 Flash credential verification
@@ -86,9 +86,9 @@ Backend cryptographic infrastructure. Halo2 zero-knowledge proofs, AWS Nitro Enc
 
 ### Principle 1: Browser-Native ZK Proving
 
-**REALITY (2025-11-09):**
-- ✅ **Halo2 circuits PRODUCTION-READY** in voter-protocol
-- ✅ **Browser WASM proving** (wasm.rs, 621 lines, 600ms-10s)
+**REALITY (2025-11-09, updated 2026-01-26):**
+- ✅ **Noir/UltraHonk circuits PRODUCTION-READY** in voter-protocol
+- ✅ **Browser WASM proving** (noir-prover package, 600ms-10s)
 - ✅ **No server-side proving** (cypherpunk-compliant)
 - ✅ **Address never leaves browser** (encrypted to TEE, destroyed after proving)
 
@@ -347,7 +347,7 @@ TOTAL COST:
 │ 1. OAuth Login (Google/Facebook/Twitter/LinkedIn/Discord)        │
 │ 2. Identity Verification UI (self.xyz NFC / Didit.me)            │
 │ 3. Address Encryption (XChaCha20-Poly1305 to TEE public key)     │
-│ 4. ZK Proof Generation (WASM Halo2 prover, 600ms-10s)            │
+│ 4. ZK Proof Generation (WASM Noir/UltraHonk prover, 600ms-10s)   │
 │ 5. Template Customization (PUBLIC content + personal story)      │
 └─────────────────────────────────────────────────────────────────┘
                             ↓
@@ -413,7 +413,7 @@ TOTAL COST:
 ├─────────────────────────────────────────────────────────────────┤
 │ • IdentityRegistry (on-chain identity commitments)               │
 │ • ReputationRegistry (ERC-8004 reputation with time decay)       │
-│ • DistrictGate (Halo2 proof verifier, 300-500k gas)              │
+│ • DistrictGate (UltraHonk proof verifier, 300-500k gas)          │
 │ • Phase 2: Token rewards, challenge markets, outcome markets     │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -450,8 +450,8 @@ TOTAL COST:
 ### ⏳ IN PROGRESS (voter-protocol)
 
 **ZK Proof Infrastructure:**
-- ✅ Halo2 circuits PRODUCTION-READY (K=14, 4,096 leaves)
-- ✅ Browser WASM prover COMPLETE (wasm.rs, 600ms-10s)
+- ✅ Noir/UltraHonk circuits PRODUCTION-READY (depth 18/20/22/24)
+- ✅ Browser WASM prover COMPLETE (noir-prover, 600ms-10s)
 - ✅ Solidity verifier COMPLETE (300-500k gas)
 - ⏳ Shadow Atlas registration API (backend)
 - ⏳ WASM prover client integration (frontend)
@@ -540,7 +540,7 @@ DIDIT_API_KEY=<didit-api-key>
 3. **Smart Contracts** (Scroll zkEVM)
    - Deploy IdentityRegistry.sol
    - Deploy ReputationRegistry.sol (ERC-8004)
-   - Deploy DistrictGate.sol (Halo2 verifier)
+   - Deploy DistrictGate.sol (UltraHonk verifier)
    - Share contract addresses with Communique
 
 **See:** voter-protocol/DEPLOYMENT.md for detailed instructions

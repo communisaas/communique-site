@@ -98,7 +98,7 @@ src/
 - Template editor (`/create`) - Rich interactive UI
 - Address collection modal - Client-side validation
 - Message encryption - Browser-only cryptography (XChaCha20-Poly1305 to TEE for congressional delivery)
-- ZK proof generation - Browser WASM Halo2 proving (address never leaves browser)
+- ZK proof generation - Browser WASM Noir/UltraHonk proving (address never leaves browser)
 
 **Progressive Enhancement Pattern:**
 
@@ -675,7 +675,7 @@ const state = $state<TemplateState>({
 > "I'm sending a message to my representative about healthcare."
 
 **What's actually happening:**
-> Browser generates Halo2 zero-knowledge proof, encrypts witness to TEE public key, submits proof to Scroll L2 blockchain, sends encrypted blob to AWS Nitro Enclave for decryption and CWC API delivery, updates on-chain ERC-8004 reputation, and creates pseudonymous Message record in Postgres.
+> Browser generates Noir/UltraHonk zero-knowledge proof, encrypts witness to TEE public key, submits proof to Scroll L2 blockchain, sends encrypted blob to AWS Nitro Enclave for decryption and CWC API delivery, updates on-chain ERC-8004 reputation, and creates pseudonymous Message record in Postgres.
 
 **Communiqué's job:**
 > Make the second paragraph COMPLETELY INVISIBLE unless the user explicitly wants to see it.
@@ -698,7 +698,7 @@ Then:
 ✅ Delivered anonymously to Representative Smith
 ```
 
-**What user NEVER sees:** WASM proving, Halo2 circuits, Poseidon hashes, nullifiers, Merkle paths, TEE attestation, gas fees, blockchain transactions.
+**What user NEVER sees:** WASM proving, Noir circuits, Poseidon hashes, nullifiers, Merkle paths, TEE attestation, gas fees, blockchain transactions.
 
 ### The Invisible Work
 
@@ -713,9 +713,9 @@ Then:
 - **User is verified - NEVER ASKED AGAIN**
 
 **ZK Proof Generation (8-15s mobile, 600ms-2s desktop):**
-- WASM module loaded (~800MB memory)
-- Halo2 circuit initialized (K=14, 4,096-leaf Merkle tree)
-- Browser generates ZK proof: "I am ONE OF 4,096 registered TX-07 residents"
+- WASM module loaded (Noir/UltraHonk prover)
+- Noir circuit initialized (depth=20 for ~1M leaves, or depth=18/22/24)
+- Browser generates ZK proof: "I am ONE OF registered TX-07 residents"
 - Proof DOESN'T reveal: which resident, which address, which leaf
 - **User sees loading state with accurate time estimate**
 
@@ -802,7 +802,7 @@ Then:
 
 **If explaining the technology is required for the user to trust it, the UX has failed.**
 
-Trust comes from transparency WHEN ASKED, not from forcing users to understand Halo2.
+Trust comes from transparency WHEN ASKED, not from forcing users to understand Noir circuits.
 
 ---
 
