@@ -3,15 +3,25 @@ import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
+import {
+	isCredentialValidForAction,
+	formatValidationError,
+	type SessionCredentialForPolicy
+} from '$lib/core/identity/credential-policy';
 
 /**
  * MVP CWC Submission Endpoint
  *
  * Submits messages directly to CWC API:
  * 1. Accepts template + user address info
- * 2. Looks up congressional representatives
- * 3. Submits directly to CWC API
- * 4. Returns job ID for tracking
+ * 2. Validates credential TTL for constituent_message action
+ * 3. Looks up congressional representatives
+ * 4. Submits directly to CWC API
+ * 5. Returns job ID for tracking
+ *
+ * Security: Enforces action-based TTL (ISSUE-005)
+ * - constituent_message requires verification within 30 days
+ * - Prevents stale district credentials from moved users
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -20,6 +30,41 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			return json({ error: 'Authentication required to contact Congress' }, { status: 401 });
 		}
 		const userId = locals.user.id;
+
+		// ISSUE-005: Enforce action-based TTL for constituent messages
+		// Constituent messages require fresh verification (30 days)
+		if (!locals.user.verified_at) {
+			return json(
+				{
+					error: 'verification_required',
+					code: 'NOT_VERIFIED',
+					message: 'You must verify your address before contacting Congress.',
+					requiresReverification: true
+				},
+				{ status: 403 }
+			);
+		}
+
+		// Build credential object for TTL validation
+		const credential: SessionCredentialForPolicy = {
+			userId: locals.user.id,
+			createdAt: locals.user.verified_at,
+			congressionalDistrict: locals.user.district_hash ?? undefined
+		};
+
+		// Validate credential age for constituent_message action
+		const validation = isCredentialValidForAction(credential, 'constituent_message');
+
+		if (!validation.valid) {
+			console.log('[CWC MVP] Credential TTL exceeded:', {
+				userId,
+				action: 'constituent_message',
+				daysOld: Math.floor(validation.age / (24 * 60 * 60 * 1000)),
+				maxDays: Math.floor(validation.maxAge / (24 * 60 * 60 * 1000))
+			});
+
+			return json(formatValidationError(validation), { status: 403 });
+		}
 
 		// Parse request body
 		const body = await request.json();

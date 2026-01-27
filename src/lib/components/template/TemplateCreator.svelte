@@ -36,8 +36,29 @@
 	let showDraftRecovery = $state(false);
 	let isTransitioning = $state(false); // For button loading states
 
+	// Pending AI suggestion from UnifiedObjectiveEntry (auto-applied on close)
+	let pendingSuggestion = $state<{
+		subject_line: string;
+		core_issue: string;
+		topics: string[];
+		url_slug: string;
+		voice_sample: string;
+	} | null>(null);
+
 	// Auto-save cleanup function
 	let cleanupAutoSave: (() => void) | null = null;
+
+	// Debounced save timer for immediate feedback
+	let debounceSaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let isSaving = $state(false); // Visual feedback during save debounce
+	const DEBOUNCE_SAVE_DELAY = 2000; // 2 seconds after last change
+
+	// Derived: has content worth saving (for ambient indicator)
+	const hasContent = $derived(
+		formData.objective.rawInput?.trim() ||
+			formData.objective.title?.trim() ||
+			formData.content.preview?.trim()
+	);
 
 	let formData: TemplateFormData = $state({
 		objective: {
@@ -237,17 +258,41 @@
 		}
 	};
 
+	// Infer the furthest meaningful step from draft data completeness
+	// Perceptual: Resume where the user's *progress* left off, not where
+	// the cursor happened to be. A saved title means objective is done.
+	function inferStepFromData(data: TemplateFormData): 'objective' | 'audience' | 'content' {
+		const hasMessage = data.content?.preview?.trim();
+		const hasRecipients =
+			(data.audience?.recipientEmails?.length ?? 0) > 0 ||
+			(data.audience?.decisionMakers?.length ?? 0) > 0;
+		const hasTitle = data.objective?.title?.trim();
+
+		if (hasMessage) return 'content'; // Furthest progress - reviewing message
+		if (hasRecipients) return 'content'; // Has audience, advance to message
+		if (hasTitle) return 'audience'; // Has subject line, advance to decision-makers
+		return 'objective'; // Still at the beginning
+	}
+
 	// Draft recovery and auto-save setup
 	onMount(() => {
-		// If initialDraftId provided, load that draft directly (from DraftResumeBanner)
-		// Perceptual: Immediate continuation, no modal interruption
+		// If initialDraftId provided, load that draft directly (from CreationSpark)
+		// Perceptual: Immediate continuation at the furthest meaningful step
 		if (initialDraftId) {
 			const draft = templateDraftStore.getDraft(initialDraftId);
 			if (draft) {
 				draftId = initialDraftId;
 				formData = draft.data;
-				currentStep = draft.currentStep as typeof currentStep;
 				lastSaved = draft.lastSaved;
+
+				// Smart step: use the further of saved step or inferred step
+				const savedStep = draft.currentStep as typeof currentStep;
+				const inferredStep = inferStepFromData(draft.data);
+				const stepOrder: (typeof currentStep)[] = ['objective', 'audience', 'content'];
+				const savedIdx = stepOrder.indexOf(savedStep);
+				const inferredIdx = stepOrder.indexOf(inferredStep);
+				currentStep = inferredIdx >= savedIdx ? inferredStep : savedStep;
+
 				// No recovery modal needed - user already chose to continue
 			}
 		} else {
@@ -277,9 +322,75 @@
 	});
 
 	onDestroy(() => {
-		// Cleanup auto-save
+		// Auto-apply pending AI suggestion before saving
+		// If user saw a refined subject line but closed without clicking "Use this",
+		// preserve the suggestion so it doesn't replay on resume
+		if (pendingSuggestion && !formData.objective.title?.trim()) {
+			formData.objective.title = pendingSuggestion.subject_line || '';
+			formData.objective.description =
+				pendingSuggestion.core_issue || formData.objective.rawInput || '';
+			formData.objective.slug = pendingSuggestion.url_slug || '';
+			formData.objective.voiceSample =
+				pendingSuggestion.voice_sample || formData.objective.rawInput || '';
+			formData.objective.topics = (pendingSuggestion.topics || []).map((t) =>
+				t
+					.toLowerCase()
+					.trim()
+					.replace(/\s+/g, '-')
+					.replace(/[^a-z0-9-]/g, '')
+			);
+			const primaryTopic = formData.objective.topics[0] || 'general';
+			formData.objective.category =
+				primaryTopic.split('-')[0].charAt(0).toUpperCase() + primaryTopic.split('-')[0].slice(1);
+			formData.objective.aiGenerated = true;
+		}
+
+		// Save draft immediately on close - user's work must persist
+		// Perceptual: Action-outcome causality - closing preserves work
+		const hasContent =
+			formData.objective.rawInput?.trim() ||
+			formData.objective.title?.trim() ||
+			formData.content.preview?.trim();
+
+		if (hasContent) {
+			templateDraftStore.saveDraft(draftId, formData, currentStep);
+		}
+
+		// Cleanup timers
 		if (cleanupAutoSave) {
 			cleanupAutoSave();
+		}
+		if (debounceSaveTimer) {
+			clearTimeout(debounceSaveTimer);
+		}
+	});
+
+	// Debounced save on content changes
+	// Perceptual: Continuous persistence like Google Docs - work is always safe
+	$effect(() => {
+		// Track changes to meaningful content
+		const rawInput = formData.objective.rawInput;
+		const title = formData.objective.title;
+		const preview = formData.content.preview;
+
+		// Clear existing timer
+		if (debounceSaveTimer) {
+			clearTimeout(debounceSaveTimer);
+		}
+
+		// Check if there's content worth saving
+		const contentExists = rawInput?.trim() || title?.trim() || preview?.trim();
+
+		if (contentExists) {
+			// Show saving indicator immediately on change
+			isSaving = true;
+
+			// Debounce: save 2 seconds after last change
+			debounceSaveTimer = setTimeout(() => {
+				templateDraftStore.saveDraft(draftId, formData, currentStep);
+				lastSaved = Date.now();
+				isSaving = false;
+			}, DEBOUNCE_SAVE_DELAY);
 		}
 	});
 
@@ -342,18 +453,40 @@
 				</div>
 
 				<div class="flex items-center gap-2">
-					<!-- Auto-save indicator -->
-					{#if lastSaved}
+					<!-- Draft/Save indicator - Perceptual: Ambient awareness of work safety -->
+					{#if isSaving}
+						<!-- Saving state: user sees their changes are being captured -->
 						<div
-							class="inline-flex items-center gap-0.5 rounded-full border border-emerald-200
-						            bg-emerald-50 px-1.5
-						            py-0.5 text-xs text-emerald-600 md:px-2
-						            md:text-xs"
+							class="inline-flex items-center gap-1 rounded-full border border-amber-200
+							       bg-amber-50 px-1.5 py-0.5 text-xs text-amber-600 md:px-2"
 						>
 							<div
-								class="h-0.5 w-0.5 animate-save-pulse rounded-full bg-emerald-500 md:h-1 md:w-1"
+								class="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500"
 							></div>
-							saved {formatTimeAgo(lastSaved).toLowerCase()}
+							<span class="hidden sm:inline">saving...</span>
+						</div>
+					{:else if lastSaved}
+						<!-- Saved state: work is safely persisted -->
+						<div
+							class="inline-flex items-center gap-1 rounded-full border border-emerald-200
+							       bg-emerald-50 px-1.5 py-0.5 text-xs text-emerald-600 md:px-2"
+						>
+							<div
+								class="h-1.5 w-1.5 rounded-full bg-emerald-500"
+							></div>
+							<span class="hidden sm:inline">saved {formatTimeAgo(lastSaved).toLowerCase()}</span>
+							<span class="sm:hidden">saved</span>
+						</div>
+					{:else if hasContent}
+						<!-- Has content but not yet saved: will save soon -->
+						<div
+							class="inline-flex items-center gap-1 rounded-full border border-slate-200
+							       bg-slate-50 px-1.5 py-0.5 text-xs text-slate-500 md:px-2"
+						>
+							<div
+								class="h-1.5 w-1.5 rounded-full bg-slate-400"
+							></div>
+							<span class="hidden sm:inline">draft</span>
 						</div>
 					{/if}
 
@@ -392,7 +525,7 @@
 	<div class="relative flex-1">
 		<div class="p-4 md:p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
-				<UnifiedObjectiveEntry bind:data={formData.objective} {context} />
+				<UnifiedObjectiveEntry bind:data={formData.objective} {context} onAccept={handleNext} bind:pendingSuggestion />
 			{:else if currentStep === 'audience'}
 				<DecisionMakerResolver
 					bind:formData

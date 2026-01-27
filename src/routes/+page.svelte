@@ -54,6 +54,7 @@
 	let modalComponent = $state<ModalComponent>();
 	let creationContext: TemplateCreationContext | null = $state(null);
 	let creationInitialText = $state<string>('');
+	let resumeDraftId = $state<string>('');
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
 	let userInitiatedSelection = $state(false);
@@ -101,9 +102,16 @@
 		// Initialize template store
 		templateStore.fetchTemplates();
 
-		// Check for template creation parameter
+		// Check for template creation parameter (including auth return with draft)
 		const createTemplate = $page.url.searchParams.get('create');
+		const resumeDraftParam = $page.url.searchParams.get('resumeDraft');
+
 		if (createTemplate === 'true') {
+			// Extract draft ID for seamless auth return flow
+			if (resumeDraftParam) {
+				resumeDraftId = decodeURIComponent(resumeDraftParam);
+			}
+
 			coordinated.setTimeout(
 				() => {
 					creationContext = {
@@ -155,8 +163,12 @@
 		}
 	}
 
-	function handleSparkActivate(event: CustomEvent<{ initialText: string }>) {
+	function handleSparkActivate(event: CustomEvent<{ initialText: string; draftId?: string }>) {
 		creationInitialText = event.detail.initialText;
+		// If draft ID provided, use it for seamless continuation
+		if (event.detail.draftId) {
+			resumeDraftId = event.detail.draftId;
+		}
 		creationContext = {
 			channelId: 'direct',
 			channelTitle: 'Direct Outreach',
@@ -499,10 +511,12 @@
 		<TemplateCreator
 			context={creationContext}
 			initialText={creationInitialText}
+			initialDraftId={resumeDraftId}
 			on:close={() => {
 				showTemplateCreator = false;
 				creationContext = null;
 				creationInitialText = '';
+				resumeDraftId = '';
 			}}
 			on:save={async (_event) => {
 				if (data.user) {

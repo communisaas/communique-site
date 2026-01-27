@@ -145,8 +145,18 @@ Please generate a new subject line based on this feedback.`;
 ${options.description}`;
 	}
 
+	// Inject current date for temporal awareness
+	const systemPrompt = SUBJECT_LINE_PROMPT.replace(
+		'{CURRENT_DATE}',
+		new Date().toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		})
+	);
+
 	const response = await interact(prompt, {
-		systemInstruction: SUBJECT_LINE_PROMPT,
+		systemInstruction: systemPrompt,
 		responseSchema: SUBJECT_LINE_SCHEMA,
 		temperature: 0.4, // Moderate creativity
 		thinkingLevel: 'low', // Fast reasoning (not research-heavy)
@@ -190,7 +200,7 @@ ${options.description}`;
 
 Generate the output with subject_line, core_issue, topics, url_slug, and voice_sample. Do not ask for clarification.`,
 			{
-				systemInstruction: SUBJECT_LINE_PROMPT,
+				systemInstruction: systemPrompt,
 				responseSchema: SUBJECT_LINE_SCHEMA,
 				temperature: 0.5, // Slightly higher for more output
 				thinkingLevel: 'low',

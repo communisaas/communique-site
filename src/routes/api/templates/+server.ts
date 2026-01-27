@@ -11,6 +11,7 @@ import {
 import type { Prisma as _Prisma } from '@prisma/client';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 import { moderateTemplate } from '$lib/core/server/moderation';
+import { generateBatchEmbeddings } from '$lib/core/search/gemini-embeddings';
 import { z } from 'zod';
 
 // Import ScopeMapping type for geographic scope
@@ -553,8 +554,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							cwc_config: validData.cwc_config || {},
 							recipient_config: validData.recipient_config || {},
 							metrics: validData.metrics || {},
-							status: validData.status || 'draft',
-							is_public: validData.is_public || false,
+							// Auto-publish if moderation passes - no manual review needed
+							status: consensusResult?.approved ? 'published' : 'draft',
+							is_public: consensusResult?.approved ?? false,
 							slug,
 							// Use Prisma relation connect syntax instead of scalar userId
 							user: { connect: { id: user.id } },
@@ -630,6 +632,35 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					}
 				}
 
+				// Generate embeddings for searchability (FREE via Gemini)
+				// Only generate if template is public (passed moderation)
+				if (newTemplate.is_public) {
+					try {
+						const locationText = `${newTemplate.title} ${newTemplate.description || ''} ${newTemplate.category}`;
+						const topicText = `${newTemplate.title} ${newTemplate.description || ''} ${newTemplate.message_body}`;
+
+						const embeddings = await generateBatchEmbeddings(
+							[locationText, topicText],
+							{ taskType: 'RETRIEVAL_DOCUMENT' }
+						);
+
+						await db.template.update({
+							where: { id: newTemplate.id },
+							data: {
+								location_embedding: embeddings[0],
+								topic_embedding: embeddings[1],
+								embedding_version: 'v1',
+								embeddings_updated_at: new Date()
+							}
+						});
+
+						console.log(`[embeddings] Generated for template ${newTemplate.id}`);
+					} catch (embeddingError) {
+						// Don't fail template creation if embedding generation fails
+						console.error('[embeddings] Failed to generate:', embeddingError);
+					}
+				}
+
 				const response: ApiResponse = {
 					success: true,
 					data: { template: newTemplate }
@@ -651,29 +682,12 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				return json(response, { status: 500 });
 			}
 		} else {
-			// Guest user - return the template data with a temporary ID for client-side storage
-			// HACKATHON FIX: Use AI-generated slug if provided
-			const guestTemplate = {
-				...validData,
-				id: `guest-${Date.now()}`,
-				slug: validData.slug?.trim()
-					? validData.slug.trim()
-					: validData.title
-							.toLowerCase()
-							.replace(/[^a-z0-9\s-]/g, '')
-							.replace(/\s+/g, '-')
-							.substring(0, 100), // Increased from 50 to 100
-				topics: validData.topics || [],
-				created_at: new Date().toISOString(),
-				userId: null
-			};
-
+			// Guest users cannot create templates - require authentication
 			const response: ApiResponse = {
-				success: true,
-				data: { template: guestTemplate }
+				success: false,
+				error: createApiError('auth', 'AUTH_REQUIRED', 'Authentication required to create templates')
 			};
-
-			return json(response);
+			return json(response, { status: 401 });
 		}
 	} catch (error) {
 		console.error('Template POST error:', error);

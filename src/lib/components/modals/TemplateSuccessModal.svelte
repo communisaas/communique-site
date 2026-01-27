@@ -3,6 +3,7 @@
 	import { fade, scale } from 'svelte/transition';
 	import {
 		CheckCircle,
+		Clock,
 		Share2,
 		ExternalLink,
 		PlusCircle,
@@ -31,6 +32,10 @@
 	let shareUrl = $derived(
 		`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`
 	);
+
+	// State-aware derived values for perceptual clarity
+	let isPublished = $derived(template.status === 'published' && template.is_public);
+	let isDraft = $derived(template.status === 'draft' || !template.is_public);
 
 	function handleClose() {
 		onclose?.();
@@ -107,16 +112,31 @@
 			<X class="h-5 w-5" />
 		</button>
 
-		<!-- Success Icon Animation -->
-		<div class="bg-gradient-to-br from-emerald-50 to-blue-50 px-6 pb-6 pt-8 text-center">
+		<!-- State-Aware Header: Immediately perceivable (peripheral vision → focal) -->
+		<div
+			class="px-6 pb-6 pt-8 text-center {isPublished
+				? 'bg-gradient-to-br from-emerald-50 to-blue-50'
+				: 'bg-gradient-to-br from-amber-50 to-orange-50'}"
+		>
 			<div
 				class="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-full bg-white shadow-lg"
 				in:scale={{ duration: 600, delay: 200, start: 0 }}
 			>
-				<CheckCircle class="h-12 w-12 text-emerald-500" />
+				{#if isPublished}
+					<CheckCircle class="h-12 w-12 text-emerald-500" />
+				{:else}
+					<Clock class="h-12 w-12 text-amber-500" />
+				{/if}
 			</div>
-			<h2 class="mb-2 text-2xl font-bold text-slate-900">Template Created!</h2>
-			<p class="text-slate-600">Your template is ready to share and make an impact</p>
+			{#if isPublished}
+				<h2 class="mb-2 text-2xl font-bold text-slate-900">Template Published!</h2>
+				<p class="text-slate-600">Your template is live and ready to share</p>
+			{:else}
+				<h2 class="mb-2 text-2xl font-bold text-slate-900">Template Saved as Draft</h2>
+				<p class="text-slate-600">
+					Content is being reviewed. You'll be notified when it's published.
+				</p>
+			{/if}
 		</div>
 
 		<!-- Template Preview -->
@@ -143,47 +163,74 @@
 			</div>
 		</div>
 
-		<!-- Share Section -->
-		<div class="border-b border-slate-200 px-6 py-4">
-			<div class="mb-3 flex items-center justify-between">
-				<span class="text-sm font-medium text-slate-700">Share your template</span>
-				{#if copied}
-					<span class="text-xs font-medium text-emerald-600" in:fade> Copied! </span>
-				{/if}
-			</div>
-			<div class="flex gap-2">
-				<div class="flex-1 truncate rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">
-					{shareUrl}
+		<!-- Share Section: Only visible when template is published -->
+		{#if isPublished}
+			<div class="border-b border-slate-200 px-6 py-4">
+				<div class="mb-3 flex items-center justify-between">
+					<span class="text-sm font-medium text-slate-700">Share your template</span>
+					{#if copied}
+						<span class="text-xs font-medium text-emerald-600" in:fade> Copied! </span>
+					{/if}
 				</div>
-				<button
-					onclick={copyToClipboard}
-					class="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100"
-					aria-label="Copy link"
-				>
-					<Copy class="h-5 w-5" />
-				</button>
-				<button
-					onclick={handleShare}
-					class="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100"
-					aria-label="Share"
-				>
-					<Share2 class="h-5 w-5" />
-				</button>
+				<div class="flex gap-2">
+					<div class="flex-1 truncate rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">
+						{shareUrl}
+					</div>
+					<button
+						onclick={copyToClipboard}
+						class="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100"
+						aria-label="Copy link"
+					>
+						<Copy class="h-5 w-5" />
+					</button>
+					<button
+						onclick={handleShare}
+						class="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100"
+						aria-label="Share"
+					>
+						<Share2 class="h-5 w-5" />
+					</button>
+				</div>
 			</div>
-		</div>
+		{:else}
+			<!-- Draft state: Explain what's happening -->
+			<div class="border-b border-slate-200 px-6 py-4">
+				<div class="rounded-lg bg-amber-50 p-4">
+					<p class="text-sm font-medium text-amber-800">Why is my template a draft?</p>
+					<p class="mt-1 text-sm text-amber-700">
+						Our automated review couldn't verify the content. This usually resolves within a few
+						minutes. Check your dashboard for updates.
+					</p>
+				</div>
+			</div>
+		{/if}
 
-		<!-- Action Buttons -->
+		<!-- Action Buttons: State-appropriate primary action -->
 		<div class="space-y-2 px-6 py-4">
-			<Button variant="primary" size="sm" classNames="w-full" onclick={handleViewTemplate}>
-				<ExternalLink class="mr-2 h-4 w-4" />
-				View Template
-			</Button>
+			{#if isPublished}
+				<Button variant="primary" size="sm" classNames="w-full" onclick={handleViewTemplate}>
+					<ExternalLink class="mr-2 h-4 w-4" />
+					View Template
+				</Button>
+			{:else}
+				<Button variant="primary" size="sm" classNames="w-full" onclick={handleDashboard}>
+					<LayoutDashboard class="mr-2 h-4 w-4" />
+					Go to Dashboard
+				</Button>
+			{/if}
 
 			<div class="grid grid-cols-2 gap-2">
-				<Button variant="secondary" size="sm" onclick={handleDashboard}>
-					<LayoutDashboard class="mr-1.5 h-4 w-4" />
-					Dashboard
-				</Button>
+				{#if isPublished}
+					<Button variant="secondary" size="sm" onclick={handleDashboard}>
+						<LayoutDashboard class="mr-1.5 h-4 w-4" />
+						Dashboard
+					</Button>
+				{:else}
+					<Button variant="secondary" size="sm" onclick={handleViewTemplate}>
+						<ExternalLink class="mr-1.5 h-4 w-4" />
+						Preview Draft
+					</Button>
+				{/if}
 
 				<Button variant="secondary" size="sm" onclick={handleCreateAnother}>
 					<PlusCircle class="mr-1.5 h-4 w-4" />
@@ -192,15 +239,26 @@
 			</div>
 		</div>
 
-		<!-- Tips Section -->
-		<div class="bg-blue-50 px-6 py-4">
-			<p class="mb-2 text-xs font-medium text-blue-900">💡 Next steps:</p>
-			<ul class="space-y-1 text-xs text-blue-700">
-				<li>• Share your template on social media to gather support</li>
-				<li>• Track engagement from your dashboard</li>
-				<li>• Customize messaging for different audiences</li>
-			</ul>
-		</div>
+		<!-- Tips Section: Context-appropriate guidance -->
+		{#if isPublished}
+			<div class="bg-blue-50 px-6 py-4">
+				<p class="mb-2 text-xs font-medium text-blue-900">💡 Next steps:</p>
+				<ul class="space-y-1 text-xs text-blue-700">
+					<li>• Share your template on social media to gather support</li>
+					<li>• Track engagement from your dashboard</li>
+					<li>• Customize messaging for different audiences</li>
+				</ul>
+			</div>
+		{:else}
+			<div class="bg-amber-50 px-6 py-4">
+				<p class="mb-2 text-xs font-medium text-amber-900">⏳ What happens next:</p>
+				<ul class="space-y-1 text-xs text-amber-700">
+					<li>• Your template is being reviewed automatically</li>
+					<li>• Most reviews complete within a few minutes</li>
+					<li>• Check your dashboard for status updates</li>
+				</ul>
+			</div>
+		{/if}
 	</div>
 </div>
 

@@ -9,13 +9,18 @@
 	 * Users see the writing surface, understand what "create" means,
 	 * and can begin immediately without predicting modal contents.
 	 *
+	 * Draft continuation: Integrates directly into the surface.
+	 * User's saved work pre-fills the textarea - they SEE their words
+	 * and recognize their work. No separate "resume draft" UI needed.
+	 *
 	 * Low commitment: typing in a field is lower friction than clicking
 	 * an abstract button. The spark captures initial intent, then
 	 * transitions to the full wizard.
 	 */
 
-	import { createEventDispatcher } from 'svelte';
-	import { ArrowRight } from '@lucide/svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
+	import { ArrowRight, Sparkles } from '@lucide/svelte';
+	import { templateDraftStore, formatTimeAgo } from '$lib/stores/templateDraft';
 
 	import type { Snippet } from 'svelte';
 
@@ -27,19 +32,108 @@
 	let { context }: Props = $props();
 
 	const dispatch = createEventDispatcher<{
-		activate: { initialText: string };
+		activate: { initialText: string; draftId?: string };
 	}>();
 
 	let issueText = $state('');
 	let isFocused = $state(false);
 	let inputEl = $state<HTMLTextAreaElement | null>(null);
 
+	// Draft state - integrated into the surface
+	let activeDraftId = $state<string | null>(null);
+	let draftLastSaved = $state<number | null>(null);
+	let draftStep = $state<string | null>(null);
+
+	// Load draft on mount - pre-fill surface with user's saved work
+	onMount(() => {
+		const draftIds = templateDraftStore.getAllDraftIds();
+		if (draftIds.length === 0) return;
+
+		// Find most recent draft within 24 hours
+		const cutoff = 24 * 60 * 60 * 1000;
+		let mostRecentId: string | null = null;
+		let mostRecentAge = Infinity;
+
+		for (const id of draftIds) {
+			const age = templateDraftStore.getDraftAge(id);
+			if (age !== null && age < cutoff && age < mostRecentAge) {
+				mostRecentAge = age;
+				mostRecentId = id;
+			}
+		}
+
+		if (mostRecentId) {
+			const draft = templateDraftStore.getDraft(mostRecentId);
+			if (draft) {
+				// Pre-fill the surface with draft content
+				// User sees their words → immediate recognition
+				const rawInput = draft.data.objective?.rawInput || '';
+				const title = draft.data.objective?.title || '';
+
+				// Use rawInput if available, otherwise title
+				if (rawInput.trim()) {
+					issueText = rawInput;
+					activeDraftId = mostRecentId;
+					draftLastSaved = draft.lastSaved;
+					draftStep = draft.currentStep;
+				} else if (title.trim()) {
+					issueText = title;
+					activeDraftId = mostRecentId;
+					draftLastSaved = draft.lastSaved;
+					draftStep = draft.currentStep;
+				}
+			}
+		}
+	});
+
 	// Derived: has user started writing?
 	const hasContent = $derived(issueText.trim().length > 0);
 	const isActivated = $derived(hasContent || isFocused);
+	const hasDraft = $derived(activeDraftId !== null);
+
+	// Smart step inference: determine where the user will actually land
+	// Must match TemplateCreator's inferStepFromData logic
+	const inferredStep = $derived.by(() => {
+		if (!activeDraftId) return null;
+		const draft = templateDraftStore.getDraft(activeDraftId);
+		if (!draft) return draftStep;
+		const data = draft.data;
+		const hasMessage = data.content?.preview?.trim();
+		const hasRecipients =
+			(data.audience?.recipientEmails?.length ?? 0) > 0 ||
+			(data.audience?.decisionMakers?.length ?? 0) > 0;
+		const hasTitle = data.objective?.title?.trim();
+		if (hasMessage) return 'content';
+		if (hasRecipients) return 'content';
+		if (hasTitle) return 'audience';
+		return 'objective';
+	});
+
+	// Clear draft state when user clears the text
+	$effect(() => {
+		if (!issueText.trim() && activeDraftId) {
+			// User cleared the surface - offer to discard draft
+			// But don't auto-discard, let them start fresh
+		}
+	});
 
 	function handleContinue() {
-		dispatch('activate', { initialText: issueText.trim() });
+		dispatch('activate', {
+			initialText: issueText.trim(),
+			draftId: activeDraftId || undefined
+		});
+	}
+
+	function handleStartFresh() {
+		// Discard draft and clear surface
+		if (activeDraftId) {
+			templateDraftStore.deleteDraft(activeDraftId);
+			activeDraftId = null;
+			draftLastSaved = null;
+			draftStep = null;
+		}
+		issueText = '';
+		inputEl?.focus();
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -64,9 +158,19 @@
 
 	<!-- The writing surface - immediately visible -->
 	<div class="spark-surface">
-		<label for="issue-input" class="spark-prompt"> What needs to change? </label>
+		<div class="spark-prompt-row">
+			<label for="issue-input" class="spark-prompt"> What needs to change? </label>
 
-		<div class="input-container" class:focused={isFocused}>
+			<!-- Draft indicator - subtle, peripheral awareness -->
+			{#if hasDraft && draftLastSaved}
+				<div class="draft-indicator">
+					<Sparkles class="draft-icon" />
+					<span class="draft-text">saved {formatTimeAgo(draftLastSaved).toLowerCase()}</span>
+				</div>
+			{/if}
+		</div>
+
+		<div class="input-container" class:focused={isFocused} class:has-draft={hasDraft}>
 			<textarea
 				bind:this={inputEl}
 				bind:value={issueText}
@@ -83,6 +187,11 @@
 			<div class="input-footer">
 				{#if hasContent}
 					<span class="char-count">{issueText.length} characters</span>
+					{#if hasDraft}
+						<button type="button" class="start-fresh-link" onclick={handleStartFresh}>
+							start fresh
+						</button>
+					{/if}
 				{:else}
 					<span class="hint">Describe the problem you want to solve</span>
 				{/if}
@@ -95,11 +204,22 @@
 				type="button"
 				class="continue-btn"
 				class:ready={hasContent}
+				class:is-draft={hasDraft}
 				onclick={handleContinue}
 				disabled={!hasContent}
 			>
 				<span class="btn-text">
-					{hasContent ? 'Pick decision-makers' : 'Start typing above'}
+					{#if !hasContent}
+						Start typing above
+					{:else if hasDraft && inferredStep === 'content'}
+						Continue to message
+					{:else if hasDraft && inferredStep === 'audience'}
+						Continue to decision-makers
+					{:else if hasDraft}
+						Continue draft
+					{:else}
+						Pick decision-makers
+					{/if}
 				</span>
 				<ArrowRight class="btn-icon" />
 			</button>
@@ -223,12 +343,49 @@
 		gap: 0.75rem;
 	}
 
+	.spark-prompt-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.75rem;
+	}
+
 	.spark-prompt {
 		font-family: 'Satoshi', system-ui, sans-serif;
 		font-size: 0.875rem;
 		font-weight: 600;
 		color: oklch(0.35 0.02 250);
 		margin: 0;
+	}
+
+	/* Draft indicator - subtle peripheral awareness */
+	.draft-indicator {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.25rem 0.625rem;
+		background: oklch(0.96 0.02 155);
+		border: 1px solid oklch(0.88 0.04 155);
+		border-radius: 100px;
+		animation: draftPulse 2s ease-in-out;
+	}
+
+	@keyframes draftPulse {
+		0% { opacity: 0; transform: translateX(4px); }
+		100% { opacity: 1; transform: translateX(0); }
+	}
+
+	.draft-indicator :global(.draft-icon) {
+		width: 0.75rem;
+		height: 0.75rem;
+		color: oklch(0.5 0.1 155);
+	}
+
+	.draft-text {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.6875rem;
+		font-weight: 500;
+		color: oklch(0.4 0.06 155);
 	}
 
 	.input-container {
@@ -248,6 +405,19 @@
 			0 0 0 3px oklch(0.7 0.1 195 / 0.15),
 			0 4px 12px -2px oklch(0.5 0.1 195 / 0.1);
 		background: white;
+	}
+
+	/* Draft state - subtle emerald accent to signal preserved work */
+	.input-container.has-draft {
+		border-color: oklch(0.75 0.08 155);
+		background: oklch(0.995 0.005 155);
+	}
+
+	.input-container.has-draft.focused {
+		border-color: oklch(0.6 0.12 155);
+		box-shadow:
+			0 0 0 3px oklch(0.7 0.08 155 / 0.15),
+			0 4px 12px -2px oklch(0.5 0.08 155 / 0.1);
 	}
 
 	.spark-input {
@@ -287,6 +457,26 @@
 		font-size: 0.75rem;
 		color: oklch(0.55 0.02 250);
 		font-style: italic;
+	}
+
+	.start-fresh-link {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: oklch(0.5 0.04 250);
+		background: none;
+		border: none;
+		padding: 0;
+		cursor: pointer;
+		text-decoration: underline;
+		text-decoration-color: oklch(0.7 0.02 250);
+		text-underline-offset: 2px;
+		transition: color 150ms ease-out;
+	}
+
+	.start-fresh-link:hover {
+		color: oklch(0.35 0.04 250);
+		text-decoration-color: oklch(0.5 0.02 250);
 	}
 
 	/* Actions - collapse height when hidden to avoid negative space */
@@ -339,9 +529,18 @@
 		cursor: pointer;
 	}
 
+	/* Draft continuation - emerald accent for preserved work */
+	.continue-btn.ready.is-draft {
+		background: linear-gradient(135deg, oklch(0.52 0.12 155), oklch(0.45 0.14 155));
+	}
+
 	.continue-btn.ready:hover {
 		transform: translateY(-1px);
 		box-shadow: 0 4px 12px -2px oklch(0.5 0.15 195 / 0.35);
+	}
+
+	.continue-btn.ready.is-draft:hover {
+		box-shadow: 0 4px 12px -2px oklch(0.45 0.12 155 / 0.35);
 	}
 
 	.continue-btn.ready:active {

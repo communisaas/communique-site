@@ -23,6 +23,7 @@
 	let dialogElement: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
 	let isOpen = $state(false);
 	let scrollPosition: number;
+	let mouseDownOnBackdrop = $state(false);
 
 	function handleClose() {
 		onclose?.();
@@ -30,10 +31,18 @@
 		isOpen = false;
 	}
 
+	function handleMouseDown(e: MouseEvent) {
+		// Track if mousedown started on backdrop (not modal content)
+		mouseDownOnBackdrop = e.target === dialogElement;
+	}
+
 	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === dialogElement) {
+		// Only close if BOTH mousedown AND mouseup were on backdrop
+		// This prevents accidental closes from text selection that drifts to backdrop
+		if (e.target === dialogElement && mouseDownOnBackdrop) {
 			handleClose();
 		}
+		mouseDownOnBackdrop = false;
 	}
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -76,6 +85,7 @@
 	<div
 		bind:this={dialogElement}
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+		onmousedown={handleMouseDown}
 		onclick={handleBackdropClick}
 		onkeydown={(e) => {
 			if (e.key === 'Escape') handleClose();

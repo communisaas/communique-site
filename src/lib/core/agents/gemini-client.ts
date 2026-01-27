@@ -155,42 +155,37 @@ export async function generate(
 
 			// Validate JSON response if schema was requested
 			if (options.responseSchema && response.text) {
-				// Attempt graceful recovery instead of hard failure
-				const recovery = recoverTruncatedJson<Record<string, unknown>>(response.text, [
-					'needs_clarification',
-					'inferred_context'
-				]);
-
-				if (!recovery.wasTruncated) {
-					// Clean parse succeeded
+				// Try to parse the JSON - if it fails, it's truncated
+				try {
+					JSON.parse(response.text);
+					// Valid JSON, return as-is
 					return response;
-				}
+				} catch {
+					// JSON is malformed/truncated - attempt best-effort recovery
+					const recovery = recoverTruncatedJson<Record<string, unknown>>(response.text, []);
 
-				// Truncation occurred - check if we have enough to proceed
-				if (recovery.isUsable) {
-					console.log(
-						'[agents/gemini-client] Truncated but usable - recovered critical fields:',
-						Object.keys(recovery.data).filter((k) => recovery.data[k] !== undefined)
+					if (recovery.data && Object.keys(recovery.data).length > 0) {
+						console.log(
+							'[agents/gemini-client] Truncated but recoverable - extracted fields:',
+							Object.keys(recovery.data)
+						);
+						// Patch the response with recovered partial JSON
+						const patchedResponse = {
+							...response,
+							text: JSON.stringify(recovery.data)
+						} as GenerateContentResponse;
+						return patchedResponse;
+					}
+
+					// Recovery failed completely
+					console.error(
+						'[agents/gemini-client] JSON parse failed and recovery unsuccessful. Last chars:',
+						recovery.lastChars
 					);
-					// Patch the response text with recovered JSON
-					// This allows downstream code to parse successfully
-					const patchedResponse = {
-						...response,
-						text: JSON.stringify(recovery.data)
-					} as GenerateContentResponse;
-					return patchedResponse;
+					throw new Error(
+						'[agents/gemini-client] Response contains malformed JSON that could not be recovered'
+					);
 				}
-
-				// Recovery failed - log diagnostics and throw for retry
-				console.error(
-					'[agents/gemini-client] Truncation recovery failed. Missing:',
-					recovery.missingFields,
-					'Last chars:',
-					recovery.lastChars
-				);
-				throw new Error(
-					`[agents/gemini-client] Response truncated, missing critical fields: ${recovery.missingFields.join(', ')}`
-				);
 			}
 
 			return response;

@@ -28,6 +28,16 @@
 			aiGenerated?: boolean;
 		};
 		context: TemplateCreationContext;
+		/** Called when user accepts AI suggestion - triggers flow advancement */
+		onAccept?: () => void;
+		/** Exposes the current ready suggestion so parent can auto-apply on close */
+		pendingSuggestion?: {
+			subject_line: string;
+			core_issue: string;
+			topics: string[];
+			url_slug: string;
+			voice_sample: string;
+		} | null;
 	}
 
 	/**
@@ -44,7 +54,8 @@
 		);
 	}
 
-	let { data = $bindable(), context }: Props = $props();
+	let { data = $bindable(), context, onAccept, pendingSuggestion = $bindable(null) }: Props =
+		$props();
 
 	// State
 	type SuggestionState =
@@ -110,6 +121,11 @@
 				? suggestionState.suggestion
 				: null
 	);
+
+	// Sync bindable pendingSuggestion so parent can auto-apply on close
+	$effect(() => {
+		pendingSuggestion = showAISuggest ? currentSuggestion : null;
+	});
 
 	// Is user viewing an older iteration (not the latest)?
 	const isViewingPastIteration = $derived(
@@ -446,6 +462,10 @@
 				primaryTopic.split('-')[0].charAt(0).toUpperCase() + primaryTopic.split('-')[0].slice(1);
 			data.aiGenerated = true;
 			showAISuggest = false;
+
+			// Flow advancement: user accepted subject line, advance to decision-makers
+			// Perceptual: ArrowRight icon on button sets expectation of forward motion
+			onAccept?.();
 		}
 	}
 

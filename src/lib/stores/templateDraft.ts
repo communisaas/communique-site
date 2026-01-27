@@ -217,8 +217,14 @@ function createTemplateDraftStore(): TemplateDraftStore {
 			const formData = getFormData();
 			const currentStep = getCurrentStep();
 
-			// Only save if there's actual content
-			if (formData.objective.title.trim() || formData.content.preview.trim()) {
+			// Save if there's ANY meaningful content
+			// Critical: rawInput IS the user's work - don't ignore it
+			const hasContent =
+				formData.objective.rawInput?.trim() ||
+				formData.objective.title?.trim() ||
+				formData.content.preview?.trim();
+
+			if (hasContent) {
 				saveDraft(draftId, formData, currentStep);
 			}
 		}, AUTO_SAVE_INTERVAL);
