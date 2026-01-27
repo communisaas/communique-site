@@ -2,11 +2,20 @@ import { writable, type Writable } from 'svelte/store';
 import type { TemplateFormData } from '$lib/types/template';
 import { z } from 'zod';
 
+interface PendingSuggestion {
+	subject_line: string;
+	core_issue: string;
+	topics: string[];
+	url_slug: string;
+	voice_sample: string;
+}
+
 interface DraftStorage {
 	[key: string]: {
 		data: TemplateFormData;
 		lastSaved: number;
 		currentStep: string;
+		pendingSuggestion?: PendingSuggestion | null;
 	};
 }
 
@@ -18,15 +27,26 @@ const AUTO_SAVE_INTERVAL = 30 * 1000;
 
 interface TemplateDraftStore {
 	subscribe: Writable<DraftStorage>['subscribe'];
-	saveDraft: (draftId: string, data: TemplateFormData, currentStep: string) => void;
+	saveDraft: (
+		draftId: string,
+		data: TemplateFormData,
+		currentStep: string,
+		pendingSuggestion?: PendingSuggestion | null
+	) => void;
 	getDraft: (
 		draftId: string
-	) => { data: TemplateFormData; lastSaved: number; currentStep: string } | null;
+	) => {
+		data: TemplateFormData;
+		lastSaved: number;
+		currentStep: string;
+		pendingSuggestion?: PendingSuggestion | null;
+	} | null;
 	deleteDraft: (draftId: string) => void;
 	startAutoSave: (
 		draftId: string,
 		getFormData: () => TemplateFormData,
-		getCurrentStep: () => string
+		getCurrentStep: () => string,
+		getPendingSuggestion?: () => PendingSuggestion | null
 	) => () => void;
 	hasDraft: (draftId: string) => boolean;
 	getDraftAge: (draftId: string) => number | null;
@@ -37,10 +57,22 @@ function createTemplateDraftStore(): TemplateDraftStore {
 	const { subscribe, set, update } = writable<DraftStorage>({});
 
 	// Zod schema for draft validation
+	const PendingSuggestionSchema = z
+		.object({
+			subject_line: z.string(),
+			core_issue: z.string(),
+			topics: z.array(z.string()),
+			url_slug: z.string(),
+			voice_sample: z.string()
+		})
+		.nullable()
+		.optional();
+
 	const DraftEntrySchema = z.object({
 		data: z.unknown(), // TemplateFormData is complex, validate structure later
 		lastSaved: z.number(),
-		currentStep: z.string()
+		currentStep: z.string(),
+		pendingSuggestion: PendingSuggestionSchema
 	});
 
 	const DraftStorageSchema = z.record(DraftEntrySchema);
@@ -152,7 +184,12 @@ function createTemplateDraftStore(): TemplateDraftStore {
 		};
 	}
 
-	function saveDraft(draftId: string, data: TemplateFormData, currentStep: string) {
+	function saveDraft(
+		draftId: string,
+		data: TemplateFormData,
+		currentStep: string,
+		suggestionToSave?: PendingSuggestion | null
+	) {
 		let plain: TemplateFormData;
 		try {
 			// Prefer a structuredClone of a plain object to avoid proxy issues
@@ -164,10 +201,11 @@ function createTemplateDraftStore(): TemplateDraftStore {
 			plain = JSON.parse(JSON.stringify(toPlainTemplateFormData(data)));
 		}
 
-		const draft = {
+		const draft: DraftStorage[string] = {
 			data: plain,
 			lastSaved: Date.now(),
-			currentStep
+			currentStep,
+			pendingSuggestion: suggestionToSave ?? null
 		};
 
 		update((drafts) => {
@@ -179,7 +217,12 @@ function createTemplateDraftStore(): TemplateDraftStore {
 
 	function getDraft(
 		draftId: string
-	): { data: TemplateFormData; lastSaved: number; currentStep: string } | null {
+	): {
+		data: TemplateFormData;
+		lastSaved: number;
+		currentStep: string;
+		pendingSuggestion?: PendingSuggestion | null;
+	} | null {
 		const drafts = loadDrafts();
 		return drafts[draftId] || null;
 	}
@@ -204,7 +247,8 @@ function createTemplateDraftStore(): TemplateDraftStore {
 	function startAutoSave(
 		draftId: string,
 		getFormData: () => TemplateFormData,
-		getCurrentStep: () => string
+		getCurrentStep: () => string,
+		getPendingSuggestion?: () => PendingSuggestion | null
 	) {
 		// Clear existing timer
 		const existingTimer = autoSaveTimers.get(draftId);
@@ -225,7 +269,7 @@ function createTemplateDraftStore(): TemplateDraftStore {
 				formData.content.preview?.trim();
 
 			if (hasContent) {
-				saveDraft(draftId, formData, currentStep);
+				saveDraft(draftId, formData, currentStep, getPendingSuggestion?.() ?? null);
 			}
 		}, AUTO_SAVE_INTERVAL);
 

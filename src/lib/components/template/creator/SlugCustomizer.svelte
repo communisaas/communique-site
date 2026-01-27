@@ -10,13 +10,16 @@
 		slug?: string;
 		aiGenerated?: boolean;
 		context?: TemplateCreationContext | undefined;
+		/** Exposes slug readiness: true = valid & available, false = invalid or taken, null = checking/unknown */
+		slugReady?: boolean | null;
 	}
 
 	let {
 		title = '',
 		slug = $bindable(''),
 		aiGenerated = false,
-		context = undefined
+		context = undefined,
+		slugReady = $bindable(null)
 	}: Props = $props();
 
 	const _dispatch = createEventDispatcher();
@@ -107,23 +110,25 @@
 		}
 	}
 
-	// Update slug when title changes (but only if slug is empty or was auto-generated)
+	// Auto-generate slug from title for manual input
 	let lastAutoSlug = $state('');
 	$effect(() => {
 		if (title && !aiGenerated) {
-			// Don't auto-generate if content is AI-generated (AI already provided perfect slug)
 			const newSlug = slugify(title);
-			// Only auto-generate if:
-			// 1. Slug is empty, OR
-			// 2. Current slug matches the last auto-generated slug (user hasn't manually changed it)
 			if (!slug || (slug === lastAutoSlug && newSlug !== slug)) {
 				slug = newSlug;
 				lastAutoSlug = newSlug;
-				checkAvailability(slug);
 			}
-		} else if (aiGenerated && slug) {
-			// AI-generated slug: just check availability, don't modify
-			checkAvailability(slug);
+		}
+	});
+
+	// Check availability whenever slug changes and is valid
+	let lastCheckedSlug = '';
+	$effect(() => {
+		const currentSlug = slug;
+		if (currentSlug && /^[a-z0-9-]+$/.test(currentSlug) && currentSlug !== lastCheckedSlug) {
+			lastCheckedSlug = currentSlug;
+			checkAvailability(currentSlug);
 		}
 	});
 
@@ -180,6 +185,20 @@
 	// Full URL for preview using dynamic hostname
 	const _fullUrl = $derived(`${$page.url.origin}/${slug}`);
 	const isValidSlug = $derived(slug.length > 0 && /^[a-z0-9-]+$/.test(slug));
+
+	// Sync slugReady bindable: true = valid & available, false = invalid/taken, null = checking/unknown
+	$effect(() => {
+		if (!slug || !isValidSlug) {
+			slugReady = false;
+		} else if (isAvailable === true) {
+			slugReady = true;
+		} else if (isAvailable === false) {
+			slugReady = false;
+		} else {
+			// null = still checking or not yet checked
+			slugReady = null;
+		}
+	});
 </script>
 
 <div class="space-y-2 md:space-y-4">

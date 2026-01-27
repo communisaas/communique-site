@@ -91,22 +91,13 @@
 	const isActivated = $derived(hasContent || isFocused);
 	const hasDraft = $derived(activeDraftId !== null);
 
-	// Smart step inference: determine where the user will actually land
-	// Must match TemplateCreator's inferStepFromData logic
-	const inferredStep = $derived.by(() => {
-		if (!activeDraftId) return null;
+	// Check draft state for button text accuracy
+	const draftHasSuggestion = $derived.by(() => {
+		if (!activeDraftId) return false;
 		const draft = templateDraftStore.getDraft(activeDraftId);
-		if (!draft) return draftStep;
-		const data = draft.data;
-		const hasMessage = data.content?.preview?.trim();
-		const hasRecipients =
-			(data.audience?.recipientEmails?.length ?? 0) > 0 ||
-			(data.audience?.decisionMakers?.length ?? 0) > 0;
-		const hasTitle = data.objective?.title?.trim();
-		if (hasMessage) return 'content';
-		if (hasRecipients) return 'content';
-		if (hasTitle) return 'audience';
-		return 'objective';
+		if (!draft) return false;
+		// Either a pending (not yet accepted) suggestion, or an accepted title
+		return !!draft.pendingSuggestion || !!draft.data.objective?.title?.trim();
 	});
 
 	// Clear draft state when user clears the text
@@ -211,10 +202,12 @@
 				<span class="btn-text">
 					{#if !hasContent}
 						Start typing above
-					{:else if hasDraft && inferredStep === 'content'}
+					{:else if hasDraft && draftStep === 'content'}
 						Continue to message
-					{:else if hasDraft && inferredStep === 'audience'}
+					{:else if hasDraft && draftStep === 'audience'}
 						Continue to decision-makers
+					{:else if hasDraft && draftHasSuggestion}
+						Review subject line
 					{:else if hasDraft}
 						Continue draft
 					{:else}

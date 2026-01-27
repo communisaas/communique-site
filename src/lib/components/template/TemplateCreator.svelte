@@ -29,14 +29,23 @@
 		initialDraftId?: string;
 	} = $props();
 
-	let currentStep: 'objective' | 'audience' | 'content' = $state('objective');
-	let formErrors: string[] = $state([]);
-	let draftId = $state<string>(generateDraftId());
-	let lastSaved = $state<number | null>(null);
-	let showDraftRecovery = $state(false);
-	let isTransitioning = $state(false); // For button loading states
+	// --- Synchronous draft restoration ---
+	// MUST happen before child components render, because child onMount runs
+	// before parent onMount in Svelte. If we deferred to onMount, UnifiedObjectiveEntry
+	// would fire API calls before we could provide the restored suggestion.
+	// localStorage is synchronous, so this is safe at init time.
+	const _loadedDraft = initialDraftId ? templateDraftStore.getDraft(initialDraftId) : null;
 
-	// Pending AI suggestion from UnifiedObjectiveEntry (auto-applied on close)
+	let currentStep: 'objective' | 'audience' | 'content' = $state(
+		_loadedDraft ? (_loadedDraft.currentStep as 'objective' | 'audience' | 'content') : 'objective'
+	);
+	let formErrors: string[] = $state([]);
+	let draftId = $state<string>(_loadedDraft ? initialDraftId : generateDraftId());
+	let lastSaved = $state<number | null>(_loadedDraft ? _loadedDraft.lastSaved : null);
+	let showDraftRecovery = $state(false);
+	let isTransitioning = $state(false);
+
+	// Pending AI suggestion from UnifiedObjectiveEntry (persisted in draft on close)
 	let pendingSuggestion = $state<{
 		subject_line: string;
 		core_issue: string;
@@ -45,13 +54,54 @@
 		voice_sample: string;
 	} | null>(null);
 
+	// Suggestion restored from draft (passed to UnifiedObjectiveEntry to show panel immediately)
+	// Set synchronously so it's available at child's first render + onMount
+	let restoredSuggestion = $state<typeof pendingSuggestion>(
+		_loadedDraft?.pendingSuggestion ?? null
+	);
+
+	// Template link readiness from SlugCustomizer (via UnifiedObjectiveEntry)
+	let slugReady = $state<boolean | null>(null);
+
 	// Auto-save cleanup function
 	let cleanupAutoSave: (() => void) | null = null;
 
 	// Debounced save timer for immediate feedback
 	let debounceSaveTimer: ReturnType<typeof setTimeout> | null = null;
-	let isSaving = $state(false); // Visual feedback during save debounce
-	const DEBOUNCE_SAVE_DELAY = 2000; // 2 seconds after last change
+	let isSaving = $state(false);
+	const DEBOUNCE_SAVE_DELAY = 2000;
+
+	let formData: TemplateFormData = $state(
+		_loadedDraft
+			? _loadedDraft.data
+			: {
+					objective: {
+						rawInput: initialText,
+						title: '',
+						description: '',
+						category: '',
+						slug: '',
+						topics: [],
+						voiceSample: '',
+						aiGenerated: false
+					},
+					audience: {
+						decisionMakers: [],
+						recipientEmails: [],
+						includesCongress: false,
+						customRecipients: []
+					},
+					content: {
+						preview: '',
+						variables: [],
+						sources: [],
+						researchLog: [],
+						geographicScope: null,
+						aiGenerated: false,
+						edited: false
+					}
+				}
+	);
 
 	// Derived: has content worth saving (for ambient indicator)
 	const hasContent = $derived(
@@ -60,41 +110,14 @@
 			formData.content.preview?.trim()
 	);
 
-	let formData: TemplateFormData = $state({
-		objective: {
-			rawInput: initialText, // Initialize from CreationSpark
-			title: '',
-			description: '',
-			category: '',
-			slug: '',
-			// Voice pipeline fields (critical for agent chaining)
-			topics: [],
-			voiceSample: '',
-			aiGenerated: false
-		},
-		audience: {
-			decisionMakers: [],
-			recipientEmails: [],
-			includesCongress: false,
-			customRecipients: []
-		},
-		content: {
-			preview: '',
-			variables: [],
-			// Message generation metadata
-			sources: [],
-			researchLog: [],
-			geographicScope: null,
-			aiGenerated: false,
-			edited: false
-		}
-	});
-
 	// Validation functions for each step
 	const validators = {
 		objective: (data: TemplateFormData['objective']) => {
 			const errors: string[] = [];
 			if (!data.title.trim()) errors.push('Title is required');
+			if (!data.slug?.trim()) errors.push('Template link is required');
+			else if (slugReady === false) errors.push('Template link is unavailable — choose a different link');
+			// slugReady === null (still checking) is allowed — server validates uniqueness at save time
 			return errors;
 		},
 		audience: (data: TemplateFormData['audience']) => {
@@ -258,55 +281,19 @@
 		}
 	};
 
-	// Infer the furthest meaningful step from draft data completeness
-	// Perceptual: Resume where the user's *progress* left off, not where
-	// the cursor happened to be. A saved title means objective is done.
-	function inferStepFromData(data: TemplateFormData): 'objective' | 'audience' | 'content' {
-		const hasMessage = data.content?.preview?.trim();
-		const hasRecipients =
-			(data.audience?.recipientEmails?.length ?? 0) > 0 ||
-			(data.audience?.decisionMakers?.length ?? 0) > 0;
-		const hasTitle = data.objective?.title?.trim();
-
-		if (hasMessage) return 'content'; // Furthest progress - reviewing message
-		if (hasRecipients) return 'content'; // Has audience, advance to message
-		if (hasTitle) return 'audience'; // Has subject line, advance to decision-makers
-		return 'objective'; // Still at the beginning
-	}
-
-	// Draft recovery and auto-save setup
+	// Auto-save setup (onMount needed for cleanup lifecycle)
 	onMount(() => {
-		// If initialDraftId provided, load that draft directly (from CreationSpark)
-		// Perceptual: Immediate continuation at the furthest meaningful step
-		if (initialDraftId) {
-			const draft = templateDraftStore.getDraft(initialDraftId);
-			if (draft) {
-				draftId = initialDraftId;
-				formData = draft.data;
-				lastSaved = draft.lastSaved;
-
-				// Smart step: use the further of saved step or inferred step
-				const savedStep = draft.currentStep as typeof currentStep;
-				const inferredStep = inferStepFromData(draft.data);
-				const stepOrder: (typeof currentStep)[] = ['objective', 'audience', 'content'];
-				const savedIdx = stepOrder.indexOf(savedStep);
-				const inferredIdx = stepOrder.indexOf(inferredStep);
-				currentStep = inferredIdx >= savedIdx ? inferredStep : savedStep;
-
-				// No recovery modal needed - user already chose to continue
-			}
-		} else {
-			// Standard flow: check for existing drafts and show recovery modal
+		// Draft was already loaded synchronously above for initialDraftId.
+		// Only handle the recovery modal path here (no initialDraftId).
+		if (!_loadedDraft && !initialDraftId) {
 			const availableDrafts = templateDraftStore.getAllDraftIds();
 			if (availableDrafts.length > 0) {
-				// Show recovery dialog for the most recent draft
 				const mostRecentDraftId = availableDrafts
 					.map((id) => ({ id, age: templateDraftStore.getDraftAge(id) || Infinity }))
 					.sort((a, b) => a.age - b.age)[0].id;
 
 				const draft = templateDraftStore.getDraft(mostRecentDraftId);
 				if (draft && draft.lastSaved > Date.now() - 24 * 60 * 60 * 1000) {
-					// Within 24 hours
 					showDraftRecovery = true;
 					draftId = mostRecentDraftId;
 				}
@@ -317,43 +304,22 @@
 		cleanupAutoSave = templateDraftStore.startAutoSave(
 			draftId,
 			() => formData,
-			() => currentStep
+			() => currentStep,
+			() => pendingSuggestion
 		);
 	});
 
 	onDestroy(() => {
-		// Auto-apply pending AI suggestion before saving
-		// If user saw a refined subject line but closed without clicking "Use this",
-		// preserve the suggestion so it doesn't replay on resume
-		if (pendingSuggestion && !formData.objective.title?.trim()) {
-			formData.objective.title = pendingSuggestion.subject_line || '';
-			formData.objective.description =
-				pendingSuggestion.core_issue || formData.objective.rawInput || '';
-			formData.objective.slug = pendingSuggestion.url_slug || '';
-			formData.objective.voiceSample =
-				pendingSuggestion.voice_sample || formData.objective.rawInput || '';
-			formData.objective.topics = (pendingSuggestion.topics || []).map((t) =>
-				t
-					.toLowerCase()
-					.trim()
-					.replace(/\s+/g, '-')
-					.replace(/[^a-z0-9-]/g, '')
-			);
-			const primaryTopic = formData.objective.topics[0] || 'general';
-			formData.objective.category =
-				primaryTopic.split('-')[0].charAt(0).toUpperCase() + primaryTopic.split('-')[0].slice(1);
-			formData.objective.aiGenerated = true;
-		}
-
 		// Save draft immediately on close - user's work must persist
 		// Perceptual: Action-outcome causality - closing preserves work
+		// Include pendingSuggestion so the suggestion panel restores on resume
 		const hasContent =
 			formData.objective.rawInput?.trim() ||
 			formData.objective.title?.trim() ||
 			formData.content.preview?.trim();
 
 		if (hasContent) {
-			templateDraftStore.saveDraft(draftId, formData, currentStep);
+			templateDraftStore.saveDraft(draftId, formData, currentStep, pendingSuggestion);
 		}
 
 		// Cleanup timers
@@ -387,7 +353,7 @@
 
 			// Debounce: save 2 seconds after last change
 			debounceSaveTimer = setTimeout(() => {
-				templateDraftStore.saveDraft(draftId, formData, currentStep);
+				templateDraftStore.saveDraft(draftId, formData, currentStep, pendingSuggestion);
 				lastSaved = Date.now();
 				isSaving = false;
 			}, DEBOUNCE_SAVE_DELAY);
@@ -423,7 +389,7 @@
 	}
 
 	function _manualSave() {
-		templateDraftStore.saveDraft(draftId, formData, currentStep);
+		templateDraftStore.saveDraft(draftId, formData, currentStep, pendingSuggestion);
 		lastSaved = Date.now();
 	}
 </script>
@@ -525,7 +491,7 @@
 	<div class="relative flex-1">
 		<div class="p-4 md:p-6" transition:fade={{ duration: 150 }}>
 			{#if currentStep === 'objective'}
-				<UnifiedObjectiveEntry bind:data={formData.objective} {context} onAccept={handleNext} bind:pendingSuggestion />
+				<UnifiedObjectiveEntry bind:data={formData.objective} {context} onAccept={handleNext} bind:pendingSuggestion initialSuggestion={restoredSuggestion} bind:slugReady />
 			{:else if currentStep === 'audience'}
 				<DecisionMakerResolver
 					bind:formData

@@ -38,6 +38,16 @@
 			url_slug: string;
 			voice_sample: string;
 		} | null;
+		/** Restored suggestion from draft — shows panel immediately without re-generating */
+		initialSuggestion?: {
+			subject_line: string;
+			core_issue: string;
+			topics: string[];
+			url_slug: string;
+			voice_sample: string;
+		} | null;
+		/** Exposes template link readiness: true = valid & available, false = invalid/taken, null = checking */
+		slugReady?: boolean | null;
 	}
 
 	/**
@@ -54,8 +64,14 @@
 		);
 	}
 
-	let { data = $bindable(), context, onAccept, pendingSuggestion = $bindable(null) }: Props =
-		$props();
+	let {
+		data = $bindable(),
+		context,
+		onAccept,
+		pendingSuggestion = $bindable(null),
+		initialSuggestion = null,
+		slugReady = $bindable(null)
+	}: Props = $props();
 
 	// State
 	type SuggestionState =
@@ -127,6 +143,15 @@
 		pendingSuggestion = showAISuggest ? currentSuggestion : null;
 	});
 
+	// Update template link as soon as AI suggestion arrives
+	// This flows through bind:slug to SlugCustomizer so the link section
+	// updates in real-time, not just when the user clicks "Use this"
+	$effect(() => {
+		if (currentSuggestion?.url_slug && showAISuggest) {
+			data.slug = currentSuggestion.url_slug;
+		}
+	});
+
 	// Is user viewing an older iteration (not the latest)?
 	const isViewingPastIteration = $derived(
 		suggestionHistory.length > 0 && selectedIterationIndex < suggestionHistory.length - 1
@@ -142,6 +167,18 @@
 
 		// Don't auto-generate if in manual mode
 		if (manualMode) {
+			return;
+		}
+
+		// Don't auto-generate if a suggestion already exists (accepted or pending from draft)
+		// This prevents the $effect from racing ahead of onMount restoration
+		if (initialSuggestion || (data.aiGenerated && data.title?.trim())) {
+			return;
+		}
+
+		// Don't auto-generate if already triggered (onMount Path 3 or previous debounce)
+		// This prevents the $effect and onMount from double-triggering the API
+		if (hasAutoTriggered) {
 			return;
 		}
 
@@ -505,18 +542,61 @@
 	onMount(() => {
 		window.addEventListener('keydown', handleKeyboardNavigation);
 
-		// Auto-trigger immediately if we opened with initial text (no debounce)
-		// This is the key UX improvement: user types → opens creator → agent starts immediately
-		const text = data.rawInput || '';
-		if (
-			text.trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH &&
-			!hasAutoTriggered &&
-			userWantsAI &&
-			!manualMode
-		) {
-			// Skip the debounce - user already wrote their complaint, fire now
+		// Three restoration paths, checked in priority order:
+		//
+		// 1. Pending suggestion from draft (user saw it but didn't click "Use this")
+		// 2. Accepted suggestion (user clicked "Use this", navigated forward, then back)
+		// 3. Fresh start (auto-trigger generation if sufficient input)
+
+		if (initialSuggestion) {
+			// Path 1: Restore pending suggestion from draft
+			const restored: AISuggestion = {
+				subject_line: initialSuggestion.subject_line,
+				core_issue: initialSuggestion.core_issue,
+				topics: initialSuggestion.topics,
+				url_slug: initialSuggestion.url_slug,
+				voice_sample: initialSuggestion.voice_sample
+			};
+			suggestionHistory = [restored];
+			selectedIterationIndex = 0;
+			suggestionState = { status: 'ready', suggestion: restored };
+			showAISuggest = true;
 			hasAutoTriggered = true;
-			handleDebouncedGeneration(text);
+			lastGeneratedText = data.rawInput || '';
+			attemptCount = 1;
+		} else if (data.aiGenerated && data.title?.trim()) {
+			// Path 2: Reconstruct accepted suggestion from formData
+			// User already accepted → lock in the result, don't re-generate
+			const reconstructed: AISuggestion = {
+				subject_line: data.title,
+				core_issue: data.description || data.rawInput || '',
+				topics: data.topics || [],
+				url_slug: data.slug || '',
+				voice_sample: data.voiceSample || data.rawInput || ''
+			};
+			suggestionHistory = [reconstructed];
+			selectedIterationIndex = 0;
+			suggestionState = { status: 'ready', suggestion: reconstructed };
+			showAISuggest = true;
+			hasAutoTriggered = true;
+			lastGeneratedText = data.rawInput || '';
+			attemptCount = 1;
+		} else {
+			// Path 3: Fresh start — auto-trigger if we have sufficient pre-filled input
+			// The $effect also watches rawInput, but the hasAutoTriggered guard
+			// prevents it from double-firing after this direct call.
+			// For from-scratch typing (empty rawInput), this path skips and the
+			// $effect handles debounced generation as the user types.
+			const text = data.rawInput || '';
+			if (
+				text.trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH &&
+				!hasAutoTriggered &&
+				userWantsAI &&
+				!manualMode
+			) {
+				hasAutoTriggered = true;
+				handleDebouncedGeneration(text);
+			}
 		}
 
 		return () => {
@@ -1047,6 +1127,7 @@
 			bind:slug={data.slug}
 			aiGenerated={data.aiGenerated}
 			{context}
+			bind:slugReady
 		/>
 	</div>
 </div>

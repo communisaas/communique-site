@@ -16,6 +16,15 @@ const config = {
 				handleMissingId: 'warn'
 			}
 		}),
+		// BA-010: Explicitly enable CSRF origin checking (defense-in-depth).
+		// This is the SvelteKit 2.x default, but we set it explicitly to prevent
+		// accidental disabling. All non-GET requests must have a matching Origin header.
+		// Note: External webhooks (e.g., Didit) that lack a browser Origin header
+		// are allowed through because server-to-server requests typically omit Origin.
+		// SvelteKit only blocks requests where Origin is present but mismatched.
+		csrf: {
+			checkOrigin: true
+		},
 		// Add explicit environment configuration
 		env: {
 			dir: '.',

@@ -3,7 +3,12 @@ import type { RequestHandler } from './$types';
 import { addressLookupService } from '$lib/core/congress/address-lookup';
 
 // Real address verification using Census Bureau Geocoding API (primary)
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, locals }) => {
+	// BA-010: Require authenticated session for address verification (handles PII)
+	if (!locals.user) {
+		return json({ verified: false, error: 'Authentication required' }, { status: 401 });
+	}
+
 	try {
 		const body = await request.json();
 		const {
