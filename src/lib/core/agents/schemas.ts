@@ -142,7 +142,49 @@ export const SUBJECT_LINE_SCHEMA = {
 };
 
 // ============================================================================
-// Decision Maker Schema
+// Role Discovery Schema (Phase 1 of two-phase decision-maker resolution)
+// ============================================================================
+
+export const ROLE_DISCOVERY_SCHEMA = {
+	type: 'object',
+	properties: {
+		roles: {
+			type: 'array',
+			items: {
+				type: 'object',
+				properties: {
+					position: {
+						type: 'string',
+						description: 'Title/role (e.g., "Mayor", "CEO", "Chair of Senate Committee")'
+					},
+					organization: {
+						type: 'string',
+						description: 'Specific organization (e.g., "City of San Francisco")'
+					},
+					jurisdiction: {
+						type: 'string',
+						description: 'Geographic or institutional scope (e.g., "San Francisco, CA")'
+					},
+					reasoning: {
+						type: 'string',
+						description: 'Why this position has power over the issue'
+					},
+					search_query: {
+						type: 'string',
+						description: 'Suggested search query to find the current holder'
+					}
+				},
+				required: ['position', 'organization', 'jurisdiction', 'reasoning', 'search_query']
+			},
+			minItems: 3,
+			maxItems: 12
+		}
+	},
+	required: ['roles']
+};
+
+// ============================================================================
+// Decision Maker Schema (used by Phase 2 output / legacy)
 // ============================================================================
 
 export const DECISION_MAKER_SCHEMA = {
@@ -219,7 +261,22 @@ export const MESSAGE_SCHEMA = {
 		research_log: {
 			type: 'array',
 			items: { type: 'string' }
+		},
+		geographic_scope: {
+			type: 'object',
+			properties: {
+				scope_level: {
+					type: 'string',
+					enum: ['local', 'district', 'metro', 'state', 'national', 'international'],
+					description: 'Geographic breadth of the issue'
+				},
+				scope_display: {
+					type: 'string',
+					description: 'Human-readable location (e.g., "San Francisco, CA", "California", "Nationwide")'
+				}
+			},
+			required: ['scope_level', 'scope_display']
 		}
 	},
-	required: ['message', 'subject', 'sources']
+	required: ['message', 'subject', 'sources', 'geographic_scope']
 };

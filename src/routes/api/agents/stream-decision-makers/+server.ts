@@ -4,8 +4,8 @@
  * POST /api/agents/stream-decision-makers
  *
  * Returns Server-Sent Events (SSE) stream with:
- * - phase: Pipeline phase changes (identify, enrich, validate, complete)
- * - thought: Agent reasoning from identification phase
+ * - phase: Pipeline phase changes (discover, lookup, complete)
+ * - thought: Agent reasoning from person lookup phase
  * - progress: Enrichment progress (current/total candidates)
  * - complete: Final result with decision-makers
  * - error: Error message if resolution fails
@@ -128,9 +128,9 @@ export const POST: RequestHandler = async (event) => {
 				latencyMs
 			});
 
-			// Log operation for cost tracking
+			// Log operation for cost tracking (2 Gemini calls: role discovery + person lookup)
 			logLLMOperation('decision-makers', userContext, {
-				callCount: 1 + result.decision_makers.length,
+				callCount: 2,
 				durationMs: latencyMs,
 				success: true
 			});

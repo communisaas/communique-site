@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { RotateCcw, Edit3, BookOpen } from '@lucide/svelte';
 	import type { Source } from '$lib/types/template';
-	import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
+	import type { MessageGeographicScope } from '$lib/core/agents/types';
 	import SourceCard from './SourceCard.svelte';
 	import ResearchLog from './ResearchLog.svelte';
 	import GeographicScopeEditor from './GeographicScopeEditor.svelte';
@@ -17,7 +17,7 @@
 		subject: string;
 		sources: Source[];
 		researchLog: string[];
-		geographicScope?: ScopeMapping | null;
+		geographicScope?: MessageGeographicScope | null;
 		onEdit: () => void;
 		onStartFresh: () => void;
 	}
@@ -51,11 +51,8 @@
 	}
 
 	// Handle geographic scope changes
-	function handleScopeChanged(
-		event: CustomEvent<{ scope: ScopeMapping; validatedAgainst: 'user_edit' }>
-	) {
-		geographicScope = event.detail.scope;
-		console.log('[MessageResults] Geographic scope updated:', event.detail.scope);
+	function handleScopeChanged(scope: MessageGeographicScope) {
+		geographicScope = scope;
 	}
 </script>
 
@@ -105,18 +102,9 @@
 			<div class="flex items-baseline gap-1">
 				<p class="text-sm text-slate-700">
 					This message is targeted
-					<GeographicScopeEditor scope={geographicScope} on:scopeChanged={handleScopeChanged} />
+					<GeographicScopeEditor scope={geographicScope} onScopeChanged={handleScopeChanged} />
 				</p>
 			</div>
-			<p class="mt-2 text-xs text-slate-600">
-				{#if geographicScope.confidence >= 0.9}
-					High confidence extraction. Click "Edit" to change if incorrect.
-				{:else if geographicScope.confidence >= 0.7}
-					Medium confidence extraction. Select from dropdown to verify or change.
-				{:else}
-					Low confidence extraction. Please verify the location is correct.
-				{/if}
-			</p>
 		</div>
 	{/if}
 

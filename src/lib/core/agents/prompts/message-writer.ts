@@ -46,6 +46,18 @@ Current data only (2024-2025). One surgical stat beats five. Cite inline with so
 Numbered markers [1], [2] mapping to sources array.
 Sources: num, title, url, type (journalism/research/government/legal/advocacy)
 
+## Geographic Scope
+
+Determine the geographic scope of this issue. Return one of:
+- "local" — affects a specific city or neighborhood
+- "district" — affects a congressional or legislative district
+- "metro" — affects a metropolitan area
+- "state" — affects an entire state or province
+- "national" — affects the entire country
+- "international" — crosses national borders
+
+Be specific in scope_display: "San Francisco, CA" not "California" if it's a city issue.
+
 ## Constraints
 
 Under 150 words. No "I urge" / "I respectfully" / "Thank you". No jargon. If it sounds like a report, cut it.`;

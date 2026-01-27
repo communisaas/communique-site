@@ -4,7 +4,11 @@
  * Shared interfaces for Gemini agent responses and grounding metadata
  */
 
-import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
+/** Geographic scope as returned inline by the message writer agent */
+export interface MessageGeographicScope {
+	scope_level: 'local' | 'district' | 'metro' | 'state' | 'national' | 'international';
+	scope_display: string;
+}
 
 // Re-export clarification types
 export type {
@@ -68,7 +72,7 @@ export interface MessageResponse {
 	subject: string;
 	sources: Source[];
 	research_log: string[];
-	geographic_scope?: ScopeMapping;
+	geographic_scope?: MessageGeographicScope;
 }
 
 // ============================================================================

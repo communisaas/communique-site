@@ -14,8 +14,8 @@ import { moderateTemplate } from '$lib/core/server/moderation';
 import { generateBatchEmbeddings } from '$lib/core/search/gemini-embeddings';
 import { z } from 'zod';
 
-// Import ScopeMapping type for geographic scope
-import type { ScopeMapping } from '$lib/utils/scope-mapper-international';
+// Import MessageGeographicScope for agent-extracted geographic scope
+import type { MessageGeographicScope } from '$lib/core/agents/types';
 
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
@@ -36,7 +36,7 @@ interface CreateTemplateRequest {
 	cwc_config?: UnknownRecord;
 	recipient_config?: UnknownRecord;
 	metrics?: UnknownRecord;
-	geographic_scope?: ScopeMapping; // Agent-extracted geographic scope for TemplateScope creation
+	geographic_scope?: MessageGeographicScope; // Agent-extracted geographic scope for TemplateScope creation
 }
 
 type ValidationError = ApiError;
@@ -151,7 +151,7 @@ function validateTemplateData(data: unknown): {
 			clicked: 0,
 			views: 0
 		},
-		geographic_scope: (templateData.geographic_scope as ScopeMapping) || undefined
+		geographic_scope: (templateData.geographic_scope as MessageGeographicScope) || undefined
 	};
 
 	return { isValid: true, errors: [], validData };
@@ -562,7 +562,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							user: { connect: { id: user.id } },
 							// Consolidated verification fields with defaults
 							verification_status: consensusResult?.approved ? 'approved' : 'pending',
-							country_code: validData.geographic_scope?.country_code || 'US',
+							country_code: 'US',
 							reputation_applied: false,
 							// Multi-agent consensus tracking via consensus_approved boolean
 							consensus_approved: consensusResult?.approved ?? false
@@ -571,34 +571,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 					// Step 2: Create TemplateScope if geographic_scope was extracted
 					if (validData.geographic_scope) {
-						const scope = validData.geographic_scope;
+						const geoScope = validData.geographic_scope;
 
-						// Log scope creation for monitoring
-						console.log(
-							'[template-scope-creation]',
-							JSON.stringify({
-								timestamp: new Date().toISOString(),
-								template_id: template.id,
-								scope_level: scope.scope_level,
-								display_text: scope.display_text,
-								country_code: scope.country_code,
-								confidence: scope.confidence,
-								extraction_method: scope.extraction_method || 'regex'
-							})
-						);
+						// Map agent scope_level to DB scope_level
+						// Agent: local|district|metro|state|national|international
+						// DB:    district|locality|region|country
+						const scopeLevelMap: Record<string, string> = {
+							local: 'locality',
+							district: 'district',
+							metro: 'locality',
+							state: 'region',
+							national: 'country',
+							international: 'country'
+						};
+						const dbScopeLevel = scopeLevelMap[geoScope.scope_level] || 'country';
 
 						await tx.templateScope.create({
 							data: {
 								template_id: template.id,
-								country_code: scope.country_code,
-								region_code: scope.region_code || null,
-								locality_code: scope.locality_code || null,
-								district_code: scope.district_code || null,
-								display_text: scope.display_text,
-								scope_level: scope.scope_level,
-								confidence: scope.confidence,
-								extraction_method: scope.extraction_method || 'regex',
-								// Optional fields - set to null if not provided
+								country_code: 'US',
+								display_text: geoScope.scope_display,
+								scope_level: dbScopeLevel,
+								confidence: 1.0,
+								extraction_method: 'gemini_inline',
 								power_structure_type: null,
 								audience_filter: null,
 								scope_notes: null,

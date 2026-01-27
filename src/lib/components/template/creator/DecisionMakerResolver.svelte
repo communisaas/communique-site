@@ -10,7 +10,7 @@
 	import ThinkingAtmosphere from '$lib/components/ui/ThinkingAtmosphere.svelte';
 	import DecisionMakerResults from './DecisionMakerResults.svelte';
 	import AuthGateOverlay from './AuthGateOverlay.svelte';
-	import { Search, Building, Users, CheckCircle2 } from '@lucide/svelte';
+	import { Search, Building, CheckCircle2 } from '@lucide/svelte';
 
 	interface Props {
 		formData: TemplateFormData;
@@ -31,14 +31,13 @@
 
 	// Streaming state
 	let thoughts = $state<string[]>([]);
-	let currentPhase = $state<'identify' | 'enrich' | 'validate' | 'complete'>('identify');
+	let currentPhase = $state<'discover' | 'lookup' | 'complete'>('discover');
 	let enrichmentProgress = $state<{ current: number; total: number } | null>(null);
 
-	// Phase display data
+	// Phase display data — matches two-phase backend architecture
 	const phases = [
-		{ id: 'identify', icon: Search, text: 'Researching decision-makers' },
-		{ id: 'enrich', icon: Building, text: 'Finding contact information' },
-		{ id: 'validate', icon: Users, text: 'Validating pathways' },
+		{ id: 'discover', icon: Search, text: 'Mapping institutional power' },
+		{ id: 'lookup', icon: Building, text: 'Verifying current officeholders' },
 		{ id: 'complete', icon: CheckCircle2, text: 'Complete' }
 	] as const;
 
@@ -99,7 +98,7 @@
 		isResolving = true;
 		errorMessage = null;
 		thoughts = [];
-		currentPhase = 'identify';
+		currentPhase = 'discover';
 		enrichmentProgress = null;
 
 		try {
@@ -311,7 +310,7 @@
 								{phase.text}
 							</p>
 							<!-- Enrichment progress bar -->
-							{#if isActive && phase.id === 'enrich' && enrichmentProgress}
+							{#if isActive && phase.id === 'lookup' && enrichmentProgress}
 								<div class="mt-1.5 flex items-center gap-2">
 									<div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
 										<div

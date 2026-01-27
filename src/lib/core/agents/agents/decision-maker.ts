@@ -1,42 +1,58 @@
 /**
- * Decision-Maker Resolution Agent
+ * Decision-Maker Resolution Agent — Two-Phase Architecture
  *
- * Single Gemini call extracts decision-makers AND their contact information.
+ * Phase 1 (Role Discovery): Identify POSITIONS with power over the issue.
+ *   - No grounding. Uses responseSchema for guaranteed JSON.
+ *   - LLM reasons about institutional power structure without activating name associations.
  *
- * Strategy:
- * 1. Identifies decision-makers with power over the issue
- * 2. Finds their emails through exhaustive search
- * 3. Extracts organization domains and patterns for fallback inference
- * 4. Provides fallback contact methods (press emails, contact pages)
+ * Phase 2 (Person Lookup): Search for who CURRENTLY holds each role.
+ *   - Google Search grounding enabled.
+ *   - Information flow inverted: search first, extract name from results.
+ *   - Eliminates confirmation bias from stale parametric memory.
  *
- * All in ONE Gemini call with Google Search grounding.
- *
- * CRITICAL: This agent MUST use Google Search grounding to find verifiable
- * decision-makers. Without grounding, the model will hallucinate names.
+ * Two calls total (not N+1): Phase 2 is a single batched grounding call.
  */
 
-import { generateWithThoughts } from '../gemini-client';
-import { DECISION_MAKER_PROMPT, buildDecisionMakerPrompt } from '../prompts/decision-maker';
+import { generate, generateWithThoughts } from '../gemini-client';
+import {
+	ROLE_DISCOVERY_PROMPT,
+	PERSON_LOOKUP_PROMPT,
+	buildRoleDiscoveryPrompt,
+	buildPersonLookupPrompt
+} from '../prompts/decision-maker';
+import { ROLE_DISCOVERY_SCHEMA } from '../schemas';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
-import { verifyMxRecord, parseName } from '../utils/email-verifier';
 import type { DecisionMakerResponse, DecisionMaker, ContactChannel } from '../types';
 
 // ============================================================================
 // Types
 // ============================================================================
 
+/** A discovered role/position from Phase 1 */
+interface DiscoveredRole {
+	position: string;
+	organization: string;
+	jurisdiction: string;
+	reasoning: string;
+	search_query: string;
+}
+
+interface RoleDiscoveryResponse {
+	roles: DiscoveredRole[];
+}
+
+/** A candidate from Phase 2 (person + contact info) */
 interface Candidate {
 	name: string;
 	title: string;
 	organization: string;
 	reasoning: string;
 	source_url: string;
-	email: string; // Required - agent only returns candidates with verified emails
-	recency_check: string; // Required - verification they currently hold this position
-	position_source_date?: string; // Optional - date of the source used for verification
+	email: string;
+	recency_check: string;
 }
 
-interface GeminiResponse {
+interface PersonLookupResponse {
 	decision_makers: Candidate[];
 	research_summary: string;
 }
@@ -45,11 +61,12 @@ interface GeminiResponse {
 // Public Interface
 // ============================================================================
 
-export type PipelinePhase = 'identify' | 'complete';
+export type PipelinePhase = 'discover' | 'lookup' | 'complete';
 
 export interface StreamingCallbacks {
 	onThought?: (thought: string, phase: PipelinePhase) => void;
 	onPhase?: (phase: PipelinePhase, message: string) => void;
+	onProgress?: (progress: { current: number; total: number; candidateName?: string; status?: string }) => void;
 }
 
 export interface ResolveOptions {
@@ -66,12 +83,10 @@ export interface ResolveOptions {
 // ============================================================================
 
 /**
- * Resolve decision-makers for a given issue.
+ * Resolve decision-makers using two-phase architecture.
  *
- * Extracts 5-8 candidates with emails, domains, and patterns in ONE Gemini call.
- *
- * @param options - Resolution options (subject, issue, topics, voiceSample)
- * @returns Decision-maker response with research summary and stats
+ * Phase 1: Identify positions with power (structured output, no grounding)
+ * Phase 2: Look up current holders via Google Search (grounding, no schema)
  */
 export async function resolveDecisionMakers(
 	options: ResolveOptions
@@ -79,55 +94,116 @@ export async function resolveDecisionMakers(
 	const startTime = Date.now();
 	const { subjectLine, coreIssue, topics, voiceSample, streaming } = options;
 
-	console.log('[decision-maker] Starting resolution...');
+	console.log('[decision-maker] Starting two-phase resolution...');
 	console.log('[decision-maker] Subject:', subjectLine);
 
-	streaming?.onPhase?.('identify', 'Researching decision-makers and their contact information...');
-
 	try {
-		const userPrompt = buildDecisionMakerPrompt(subjectLine, coreIssue, topics, voiceSample);
+		// ====================================================================
+		// Phase 1: Role Discovery — Structural reasoning, no names
+		// ====================================================================
 
-		const result = await generateWithThoughts<GeminiResponse>(
-			userPrompt,
+		streaming?.onPhase?.('discover', 'Mapping institutional power structure...');
+
+		const rolePrompt = buildRoleDiscoveryPrompt(subjectLine, coreIssue, topics, voiceSample);
+
+		console.log('[decision-maker] Phase 1: Discovering roles...');
+
+		const roleResponse = await generate(rolePrompt, {
+			systemInstruction: ROLE_DISCOVERY_PROMPT,
+			responseSchema: ROLE_DISCOVERY_SCHEMA,
+			temperature: 0.3,
+			maxOutputTokens: 4096
+		});
+
+		let roles: DiscoveredRole[];
+		try {
+			const parsed = JSON.parse(roleResponse.text || '{}') as RoleDiscoveryResponse;
+			roles = parsed.roles || [];
+		} catch {
+			console.error('[decision-maker] Phase 1 JSON parse failed, raw:', roleResponse.text?.slice(0, 200));
+			throw new Error('Failed to parse role discovery response');
+		}
+
+		console.log('[decision-maker] Phase 1 complete:', {
+			rolesFound: roles.length,
+			positions: roles.map((r) => `${r.position} at ${r.organization}`)
+		});
+
+		if (roles.length === 0) {
+			streaming?.onPhase?.('complete', 'No relevant positions identified');
+			return {
+				decision_makers: [],
+				research_summary: 'No positions with direct power over this issue were identified. Try refining the subject line to be more specific about the decision being sought.',
+				pipeline_stats: {
+					candidates_found: 0,
+					enrichments_succeeded: 0,
+					validations_passed: 0,
+					total_latency_ms: Date.now() - startTime
+				}
+			};
+		}
+
+		// ====================================================================
+		// Phase 2: Person Lookup — Grounded search for current holders
+		// ====================================================================
+
+		streaming?.onPhase?.('lookup', `Verifying current holders of ${roles.length} positions...`);
+		streaming?.onProgress?.({ current: 0, total: roles.length, status: 'Searching...' });
+
+		const lookupPrompt = buildPersonLookupPrompt(roles, subjectLine);
+
+		const now = new Date();
+		const currentDate = now.toLocaleDateString('en-US', {
+			year: 'numeric',
+			month: 'long',
+			day: 'numeric'
+		});
+		const currentYear = now.getFullYear().toString();
+
+		const systemPrompt = PERSON_LOOKUP_PROMPT
+			.replace(/{CURRENT_DATE}/g, currentDate)
+			.replace(/{CURRENT_YEAR}/g, currentYear);
+
+		console.log('[decision-maker] Phase 2: Looking up current holders...');
+
+		const lookupResult = await generateWithThoughts<PersonLookupResponse>(
+			lookupPrompt,
 			{
-				systemInstruction: DECISION_MAKER_PROMPT.replace(
-					'{CURRENT_DATE}',
-					new Date().toLocaleDateString('en-US', {
-						year: 'numeric',
-						month: 'long',
-						day: 'numeric'
-					})
-				).replace('{CURRENT_YEAR}', new Date().getFullYear().toString()),
+				systemInstruction: systemPrompt,
 				temperature: 0.2,
 				thinkingLevel: 'high',
 				enableGrounding: true,
-				maxOutputTokens: 16384 // Increased to prevent truncation
+				maxOutputTokens: 16384
 			},
-			streaming?.onThought ? (thought) => streaming.onThought!(thought, 'identify') : undefined
+			streaming?.onThought
+				? (thought) => streaming.onThought!(thought, 'lookup')
+				: undefined
 		);
 
-		const extraction = extractJsonFromGroundingResponse<GeminiResponse>(result.rawText || '{}');
+		const extraction = extractJsonFromGroundingResponse<PersonLookupResponse>(lookupResult.rawText || '{}');
 
 		if (!isSuccessfulExtraction(extraction)) {
-			console.error('[decision-maker] JSON extraction failed:', extraction.error);
-			throw new Error(`Failed to parse response: ${extraction.error}`);
+			console.error('[decision-maker] Phase 2 JSON extraction failed:', extraction.error);
+			throw new Error(`Failed to parse person lookup response: ${extraction.error}`);
 		}
 
 		const data = extraction.data;
-		console.log('[decision-maker] Extracted candidates:', data.decision_makers?.length || 0);
+		console.log('[decision-maker] Phase 2 complete:', {
+			candidatesFound: data.decision_makers?.length || 0
+		});
 
 		const processed = processDecisionMakers(data.decision_makers || []);
 
 		const latencyMs = Date.now() - startTime;
 
 		if (processed.length === 0) {
-			console.log('[decision-maker] No decision-makers found');
-			streaming?.onPhase?.('complete', 'No decision-makers found');
+			console.log('[decision-maker] No decision-makers found after processing');
+			streaming?.onPhase?.('complete', 'No verified decision-makers found');
 			return {
 				decision_makers: [],
 				research_summary:
 					data.research_summary ||
-					'No verifiable decision-makers found for this issue. Try refining the subject line or core issue to be more specific.',
+					'No verifiable decision-makers found. The positions were identified but current holders could not be verified with recent sources.',
 				pipeline_stats: {
 					candidates_found: data.decision_makers?.length || 0,
 					enrichments_succeeded: 0,
@@ -137,10 +213,12 @@ export async function resolveDecisionMakers(
 			};
 		}
 
-		console.log(`[decision-maker] Resolution complete in ${latencyMs}ms:`, {
-			count: processed.length,
-			names: processed.map((dm) => dm.name),
-			withEmail: processed.filter((dm) => dm.email).length
+		console.log(`[decision-maker] Two-phase resolution complete in ${latencyMs}ms:`, {
+			rolesDiscovered: roles.length,
+			candidatesFound: data.decision_makers?.length || 0,
+			verified: processed.length,
+			withEmail: processed.filter((dm) => dm.email).length,
+			names: processed.map((dm) => dm.name)
 		});
 
 		streaming?.onPhase?.(
@@ -150,7 +228,7 @@ export async function resolveDecisionMakers(
 
 		return {
 			decision_makers: processed,
-			research_summary: data.research_summary || 'Research completed.',
+			research_summary: data.research_summary || 'Two-phase research completed.',
 			pipeline_stats: {
 				candidates_found: data.decision_makers?.length || 0,
 				enrichments_succeeded: processed.filter((p) => p.email).length,
@@ -172,11 +250,11 @@ export async function resolveDecisionMakers(
 
 /**
  * Process candidates into DecisionMaker format.
- * All candidates have verified emails (agent only returns those).
+ * All candidates should have verified emails (agent only returns those).
  */
 function processDecisionMakers(candidates: Candidate[]): DecisionMaker[] {
 	return candidates
-		.filter((c) => c.email && c.reasoning && c.source_url && c.recency_check) // All fields mandatory
+		.filter((c) => c.email && c.reasoning && c.source_url && c.recency_check)
 		.map((candidate) => ({
 			name: candidate.name,
 			title: candidate.title,
@@ -186,9 +264,7 @@ function processDecisionMakers(candidates: Candidate[]): DecisionMaker[] {
 			sourceUrl: candidate.source_url,
 			emailSource: candidate.source_url,
 			recencyCheck: candidate.recency_check,
-			// Pass through the source date if available, might be useful for UI later
-			metadata: candidate.position_source_date ? { positionSourceDate: candidate.position_source_date } : undefined,
-			confidence: 0.8, // High confidence - agent verified
+			confidence: 0.8,
 			contactChannel: 'email' as ContactChannel
 		}));
 }

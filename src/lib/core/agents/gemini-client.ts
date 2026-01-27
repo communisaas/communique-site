@@ -406,6 +406,12 @@ export async function* generateStreamWithThoughts<T = unknown>(
 		// NOTE: Do NOT use responseMimeType here - it suppresses thoughts
 	};
 
+	// Add grounding if enabled (Google Search for real-time data)
+	if (options.enableGrounding) {
+		config.tools = [{ googleSearch: {} }];
+		console.log('[agents/gemini-client] Stream+thoughts: grounding enabled');
+	}
+
 	const thoughts: string[] = [];
 	let fullText = '';
 
