@@ -198,9 +198,10 @@ function deserializeAfterDecryption(data: Record<string, unknown>): SessionCrede
  * Store session credential in IndexedDB
  *
  * Encrypts the credential using Web Crypto API before storage.
- * Falls back to plaintext if encryption is unavailable.
+ * Throws if encryption is unavailable (will not store plaintext).
  *
  * @param credential - Session credential to store
+ * @throws Error if Web Crypto API is unavailable (insecure context, old browser)
  */
 export async function storeSessionCredential(credential: SessionCredential): Promise<void> {
 	try {
@@ -210,35 +211,25 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 
 		let storedCredential: StoredCredential;
 
-		if (isEncryptionAvailable()) {
-			// Serialize and encrypt credential data
-			const serialized = serializeForEncryption(credential);
-			const encrypted = await encryptCredential(serialized);
-
-			storedCredential = {
-				userId: credential.userId,
-				encrypted,
-				expiresAt: credential.expiresAt
-			};
-
-			console.log('[Session Cache] Stored encrypted credential for user:', credential.userId);
-		} else {
-			// Fallback: Store plaintext (legacy format)
-			console.warn('[Session Cache] Encryption unavailable, storing plaintext');
-
-			storedCredential = {
-				userId: credential.userId,
-				isVerified: credential.isVerified,
-				verificationMethod: credential.verificationMethod,
-				congressionalDistrict: credential.congressionalDistrict,
-				blobId: credential.blobId,
-				encryptedAt: credential.encryptedAt,
-				expiresAt: credential.expiresAt,
-				zkProofWitness: credential.zkProofWitness
-			};
-
-			console.log('[Session Cache] Stored plaintext credential for user:', credential.userId);
+		if (!isEncryptionAvailable()) {
+			throw new Error(
+				'[Session Cache] Cannot store credentials: Web Crypto API is unavailable. ' +
+				'Credential storage requires a secure context (HTTPS or localhost) with Web Crypto support. ' +
+				'Refusing to store credentials in plaintext.'
+			);
 		}
+
+		// Serialize and encrypt credential data
+		const serialized = serializeForEncryption(credential);
+		const encrypted = await encryptCredential(serialized);
+
+		storedCredential = {
+			userId: credential.userId,
+			encrypted,
+			expiresAt: credential.expiresAt
+		};
+
+		console.log('[Session Cache] Stored encrypted credential for user:', credential.userId);
 
 		return new Promise((resolve, reject) => {
 			const request = store.put(storedCredential);

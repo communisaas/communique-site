@@ -1,6 +1,6 @@
 import { redirect } from '@sveltejs/kit';
 import { Facebook } from 'arctic';
-import { generateState } from '$lib/core/auth/oauth';
+import { generateState, validateReturnTo } from '$lib/core/auth/oauth';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ cookies, url }) => {
@@ -29,9 +29,9 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 		sameSite: 'lax'
 	});
 
-	// Store the return URL if provided
-	const returnTo = url.searchParams.get('returnTo');
-	if (returnTo) {
+	// Store the return URL if provided (BA-004: validate to prevent open redirect)
+	const returnTo = validateReturnTo(url.searchParams.get('returnTo'));
+	if (returnTo !== '/') {
 		cookies.set('oauth_return_to', returnTo, {
 			path: '/',
 			secure: process.env.NODE_ENV === 'production',

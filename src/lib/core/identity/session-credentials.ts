@@ -185,9 +185,10 @@ function storedToSessionCredential(stored: StoredCredential): SessionCredential 
  * Store session credential in IndexedDB
  *
  * Encrypts the credential using Web Crypto API before storage.
- * Falls back to plaintext if encryption is unavailable.
+ * Throws if encryption is unavailable (will not store plaintext).
  *
  * @param credential - Credential to store
+ * @throws Error if Web Crypto API is unavailable (insecure context, old browser)
  */
 export async function storeSessionCredential(credential: SessionCredential): Promise<void> {
 	try {
@@ -204,47 +205,30 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 				credential.expiresAt instanceof Date ? credential.expiresAt : new Date(credential.expiresAt)
 		};
 
-		if (isEncryptionAvailable()) {
-			// Encrypt credential data
-			const encrypted = await encryptCredential(normalizedCredential);
-
-			const storedCredential: StoredCredential = {
-				userId: credential.userId,
-				encrypted,
-				expiresAt: normalizedCredential.expiresAt
-			};
-
-			await db.put(STORE_NAME, storedCredential);
-
-			console.log('[Session Credentials] Stored (encrypted):', {
-				userId: credential.userId,
-				district: credential.congressionalDistrict,
-				expiresAt: normalizedCredential.expiresAt.toISOString()
-			});
-		} else {
-			// Fallback: Store plaintext (legacy format)
-			console.warn('[Session Credentials] Encryption unavailable, storing plaintext');
-
-			const storedCredential: StoredCredential = {
-				userId: normalizedCredential.userId,
-				identityCommitment: normalizedCredential.identityCommitment,
-				leafIndex: normalizedCredential.leafIndex,
-				merklePath: normalizedCredential.merklePath,
-				merkleRoot: normalizedCredential.merkleRoot,
-				congressionalDistrict: normalizedCredential.congressionalDistrict,
-				verificationMethod: normalizedCredential.verificationMethod,
-				createdAt: normalizedCredential.createdAt,
-				expiresAt: normalizedCredential.expiresAt
-			};
-
-			await db.put(STORE_NAME, storedCredential);
-
-			console.log('[Session Credentials] Stored (plaintext):', {
-				userId: credential.userId,
-				district: credential.congressionalDistrict,
-				expiresAt: normalizedCredential.expiresAt.toISOString()
-			});
+		if (!isEncryptionAvailable()) {
+			throw new Error(
+				'[Session Credentials] Cannot store credentials: Web Crypto API is unavailable. ' +
+				'Credential storage requires a secure context (HTTPS or localhost) with Web Crypto support. ' +
+				'Refusing to store credentials in plaintext.'
+			);
 		}
+
+		// Encrypt credential data
+		const encrypted = await encryptCredential(normalizedCredential);
+
+		const storedCredential: StoredCredential = {
+			userId: credential.userId,
+			encrypted,
+			expiresAt: normalizedCredential.expiresAt
+		};
+
+		await db.put(STORE_NAME, storedCredential);
+
+		console.log('[Session Credentials] Stored (encrypted):', {
+			userId: credential.userId,
+			district: credential.congressionalDistrict,
+			expiresAt: normalizedCredential.expiresAt.toISOString()
+		});
 	} catch (error) {
 		console.error('[Session Credentials] Store failed:', error);
 		throw new Error('Failed to store session credential');

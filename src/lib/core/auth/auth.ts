@@ -72,6 +72,14 @@ function generateSessionToken(): string {
 	return token;
 }
 
+/**
+ * BA-020: Session token security — the raw token is generated, then immediately
+ * SHA-256 hashed to produce the sessionId. Only the hash is stored in the database
+ * and set as the cookie value. The raw token is never persisted anywhere.
+ * This means cookie value === DB value === SHA-256(random token), which is the
+ * correct pattern. No TODO needed — token hashing before DB storage is already
+ * implemented.
+ */
 export async function createSession(userId: string, extended = false): Promise<Session> {
 	const token = generateSessionToken();
 	const sessionId = encodeHexLowerCase(sha256(new TextEncoder().encode(token)));

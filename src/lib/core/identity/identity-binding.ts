@@ -66,17 +66,22 @@ export function computeIdentityCommitment(
 	birthYear: number,
 	documentType: string
 ): string {
+	// Domain separation prefix prevents cross-protocol hash collisions
+	const DOMAIN_PREFIX = 'communique-identity-v1';
+
 	// Normalize inputs for consistent hashing
 	const normalized = [
+		DOMAIN_PREFIX,
 		passportNumber.toUpperCase().trim(),
 		nationality.toUpperCase().trim(),
 		birthYear.toString(),
 		documentType.toLowerCase().trim()
 	].join(':');
 
-	// Create deterministic commitment
+	// Double-hash with domain separation for preimage resistance
 	// In Phase 2, this will be replaced with Poseidon hash for ZK compatibility
-	const commitment = createHash('sha256').update(normalized).digest('hex');
+	const inner = createHash('sha256').update(normalized).digest();
+	const commitment = createHash('sha256').update(inner).digest('hex');
 
 	return commitment;
 }

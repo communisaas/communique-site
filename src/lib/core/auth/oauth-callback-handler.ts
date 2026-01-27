@@ -17,6 +17,7 @@ import { error, redirect } from '@sveltejs/kit';
 import { dev } from '$app/environment';
 import { db } from '$lib/core/db';
 import { createSession, sessionCookieName } from '$lib/core/auth/auth';
+import { validateReturnTo } from '$lib/core/auth/oauth';
 
 /**
  * BLOCKCHAIN ACCOUNT CREATION DEFERRED TO CLIENT
@@ -425,6 +426,10 @@ export class OAuthCallbackHandler {
 
 		// Store OAuth completion signal for client-side detection
 		// This lets the template page know OAuth just completed → open modal immediately
+		// BA-013: httpOnly intentionally false — this cookie is read by client-side JS:
+		//   - src/routes/s/[slug]/+page.svelte (reads via document.cookie to detect OAuth return)
+		//   - src/routes/onboarding/profile/+page.svelte (reads/writes via document.cookie)
+		// Contains only non-sensitive flow-control data (provider name, returnTo path, timestamp).
 		cookies.set(
 			'oauth_completion',
 			JSON.stringify({
@@ -436,14 +441,17 @@ export class OAuthCallbackHandler {
 			{
 				path: '/',
 				secure: !dev, // Secure in production
-				httpOnly: false, // Allow client-side access
+				httpOnly: false, // Client JS reads this — see BA-013 comment above
 				maxAge: 60 * 5, // 5 minutes
 				sameSite: 'lax'
 			}
 		);
 
-		// Store blockchain initialization signal for client-side component
-		// BlockchainInit.svelte reads this cookie to trigger account creation
+		// Store blockchain initialization signal for server-side detection
+		// BA-013: Fixed httpOnly to true — no client-side JS reads this cookie.
+		// The referenced BlockchainInit.svelte component does not exist; this cookie
+		// is only set server-side and can be read server-side via hooks or load functions.
+		// Contains userId which should not be exposed to document.cookie (XSS risk).
 		cookies.set(
 			'oauth_blockchain_pending',
 			JSON.stringify({
@@ -455,7 +463,7 @@ export class OAuthCallbackHandler {
 			{
 				path: '/',
 				secure: !dev, // Secure in production
-				httpOnly: false, // Allow client-side access
+				httpOnly: true, // BA-013: No client JS reads this; contains userId
 				maxAge: 60 * 15, // 15 minutes
 				sameSite: 'lax'
 			}
@@ -470,7 +478,12 @@ export class OAuthCallbackHandler {
 		// NO MORE FORCED REDIRECTS TO /onboarding/address
 		// NO MORE ADDRESS WALLS
 		// LET THEM SEND THE FUCKING MESSAGE
-		return redirect(302, returnTo);
+		//
+		// BA-004: Validate returnTo at the redirect point (defense in depth)
+		// This is the critical enforcement point — even if a malicious value
+		// was stored in the cookie, it gets sanitized before redirect.
+		const safeReturnTo = validateReturnTo(returnTo);
+		return redirect(302, safeReturnTo);
 	}
 
 	/**

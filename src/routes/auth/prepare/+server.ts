@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import { validateReturnTo } from '$lib/core/auth/oauth';
 import type { RequestHandler } from './$types';
 
 // POST /auth/prepare
@@ -6,7 +7,8 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, cookies }) => {
 	try {
 		const { returnTo } = await request.json().catch(() => ({ returnTo: '/' }));
-		const safeReturnTo = typeof returnTo === 'string' && returnTo.length > 0 ? returnTo : '/';
+		// BA-004: Validate returnTo to prevent open redirect attacks
+		const safeReturnTo = validateReturnTo(typeof returnTo === 'string' ? returnTo : null);
 
 		cookies.set('oauth_return_to', safeReturnTo, {
 			path: '/',

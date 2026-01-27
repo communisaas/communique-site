@@ -91,15 +91,27 @@ export async function registerInShadowAtlas(
 
 		const data = await response.json();
 
-		if (!data.success || !data.data) {
+		// API returns: { leafIndex, merklePath, root }
+		if (data.leafIndex === undefined || !data.merklePath || !data.root) {
 			return {
 				success: false,
-				error: 'Invalid response from Shadow Atlas API'
+				error: 'Invalid response from Shadow Atlas API: missing leafIndex, merklePath, or root'
 			};
 		}
 
-		// Extract session credential from response
-		const sessionCredential: SessionCredential = data.data.sessionCredential;
+		// Construct session credential from API response fields
+		const now = new Date();
+		const sessionCredential: SessionCredential = {
+			userId: request.userId,
+			identityCommitment: request.identityCommitment,
+			leafIndex: data.leafIndex,
+			merklePath: data.merklePath,
+			merkleRoot: data.root,
+			congressionalDistrict: request.congressionalDistrict,
+			verificationMethod: request.verificationMethod,
+			createdAt: now,
+			expiresAt: calculateExpirationDate()
+		};
 
 		// Cache in IndexedDB for future proof generation
 		await storeSessionCredential(sessionCredential);
@@ -107,7 +119,7 @@ export async function registerInShadowAtlas(
 		console.log('[Shadow Atlas] Registration successful:', {
 			userId: request.userId,
 			district: request.congressionalDistrict,
-			leafIndex: data.data.leafIndex,
+			leafIndex: data.leafIndex,
 			expiresAt: sessionCredential.expiresAt
 		});
 
