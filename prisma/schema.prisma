@@ -34,6 +34,13 @@ model User {
   identity_fingerprint String? @map("identity_fingerprint") // First 16 chars of hash for audit-safe logging
   birth_year           Int?    @map("birth_year") // Year only for 18+ age verification (NOT full DOB)
 
+  // === CROSS-PROVIDER IDENTITY DEDUPLICATION (ISSUE-001) ===
+  // Cryptographic identity commitment from self.xyz/Didit.me verification
+  // Used to link multiple OAuth providers to the same verified person
+  // When a verified user logs in with a new OAuth provider, accounts are merged
+  identity_commitment    String?   @unique @map("identity_commitment")
+  identity_commitment_at DateTime? @map("identity_commitment_at")
+
   // === VERIFICATION RATE LIMITING (Phase 1A) ===
   verification_attempts       Int       @default(0) @map("verification_attempts")
   verification_cooldown_until DateTime? @map("verification_cooldown_until")
@@ -375,6 +382,13 @@ model account {
   session_state       String?
   created_at          DateTime @default(now())
   updated_at          DateTime @updatedAt
+
+  // === SYBIL RESISTANCE: Email Verification Tracking (ISSUE-002) ===
+  // Twitter allows accounts without verified email, creating synthetic emails
+  // like username@twitter.local. These accounts get lower trust_score to
+  // prevent Sybil attacks while still allowing basic functionality.
+  email_verified      Boolean  @default(true) @map("email_verified") // false for synthetic emails (e.g., Twitter without email)
+
   user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([provider, provider_account_id])

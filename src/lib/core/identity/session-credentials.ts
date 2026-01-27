@@ -8,9 +8,20 @@
  * - NO PII stored (address encrypted separately)
  * - Only merkle_path + proof generation metadata
  * - Expires after 6 months (re-verification required)
+ *
+ * Security (ISSUE-004):
+ * - Credentials encrypted with Web Crypto API before storage
+ * - Device-bound, non-extractable AES-256-GCM key
+ * - Protects against XSS, malicious extensions, devtools inspection
  */
 
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import {
+	encryptCredential,
+	decryptCredential,
+	isEncryptionAvailable,
+	type EncryptedCredential
+} from './credential-encryption';
 
 // ============================================================================
 // Types
@@ -45,10 +56,37 @@ export interface SessionCredential {
 	expiresAt: Date;
 }
 
+/**
+ * Stored credential wrapper
+ *
+ * Can contain either:
+ * - encrypted: New encrypted format
+ * - Legacy plaintext fields (for migration)
+ */
+interface StoredCredential {
+	/** User ID (always stored in plaintext for indexing) */
+	userId: string;
+
+	/** Encrypted credential data (new format) */
+	encrypted?: EncryptedCredential;
+
+	/** Expiration date (stored in plaintext for index queries) */
+	expiresAt: Date;
+
+	// Legacy plaintext fields (for migration detection)
+	identityCommitment?: string;
+	leafIndex?: number;
+	merklePath?: string[];
+	merkleRoot?: string;
+	congressionalDistrict?: string;
+	verificationMethod?: 'self.xyz' | 'didit';
+	createdAt?: Date;
+}
+
 interface SessionCredentialDB extends DBSchema {
 	credentials: {
 		key: string; // userId
-		value: SessionCredential;
+		value: StoredCredential;
 		indexes: {
 			'by-expires': Date;
 		};
@@ -60,7 +98,7 @@ interface SessionCredentialDB extends DBSchema {
 // ============================================================================
 
 const DB_NAME = 'communique-session';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped for encryption migration
 const STORE_NAME = 'credentials';
 
 let dbInstance: IDBPDatabase<SessionCredentialDB> | null = null;
@@ -74,16 +112,25 @@ async function getDB(): Promise<IDBPDatabase<SessionCredentialDB>> {
 	}
 
 	dbInstance = await openDB<SessionCredentialDB>(DB_NAME, DB_VERSION, {
-		upgrade(db) {
-			// Create credentials store
-			const store = db.createObjectStore(STORE_NAME, {
-				keyPath: 'userId'
-			});
+		upgrade(db, oldVersion, _newVersion, transaction) {
+			if (oldVersion < 1) {
+				// Create credentials store
+				const store = db.createObjectStore(STORE_NAME, {
+					keyPath: 'userId'
+				});
 
-			// Index for expiration queries
-			store.createIndex('by-expires', 'expiresAt');
+				// Index for expiration queries
+				store.createIndex('by-expires', 'expiresAt');
 
-			console.log('[Session Credentials] Database initialized');
+				console.log('[Session Credentials] Database initialized');
+			}
+
+			if (oldVersion < 2) {
+				// Version 2: Added encryption support
+				// No schema changes needed - we store encrypted data in the same store
+				// Migration happens lazily on read/write
+				console.log('[Session Credentials] Upgraded to v2 (encryption support)');
+			}
 		},
 		blocked() {
 			console.warn('[Session Credentials] Database upgrade blocked - close other tabs');
@@ -103,11 +150,42 @@ async function getDB(): Promise<IDBPDatabase<SessionCredentialDB>> {
 }
 
 // ============================================================================
+// Encryption Helpers
+// ============================================================================
+
+/**
+ * Check if a stored credential is in legacy plaintext format
+ */
+function isLegacyPlaintext(stored: StoredCredential): boolean {
+	return !stored.encrypted && stored.identityCommitment !== undefined;
+}
+
+/**
+ * Convert stored credential to SessionCredential
+ */
+function storedToSessionCredential(stored: StoredCredential): SessionCredential {
+	return {
+		userId: stored.userId,
+		identityCommitment: stored.identityCommitment!,
+		leafIndex: stored.leafIndex!,
+		merklePath: stored.merklePath!,
+		merkleRoot: stored.merkleRoot!,
+		congressionalDistrict: stored.congressionalDistrict!,
+		verificationMethod: stored.verificationMethod!,
+		createdAt: stored.createdAt instanceof Date ? stored.createdAt : new Date(stored.createdAt!),
+		expiresAt: stored.expiresAt instanceof Date ? stored.expiresAt : new Date(stored.expiresAt)
+	};
+}
+
+// ============================================================================
 // CRUD Operations
 // ============================================================================
 
 /**
  * Store session credential in IndexedDB
+ *
+ * Encrypts the credential using Web Crypto API before storage.
+ * Falls back to plaintext if encryption is unavailable.
  *
  * @param credential - Credential to store
  */
@@ -116,7 +194,7 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 		const db = await getDB();
 
 		// Ensure dates are Date objects
-		const credentialToStore: SessionCredential = {
+		const normalizedCredential: SessionCredential = {
 			...credential,
 			createdAt:
 				credential.createdAt instanceof Date
@@ -126,13 +204,47 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 				credential.expiresAt instanceof Date ? credential.expiresAt : new Date(credential.expiresAt)
 		};
 
-		await db.put(STORE_NAME, credentialToStore);
+		if (isEncryptionAvailable()) {
+			// Encrypt credential data
+			const encrypted = await encryptCredential(normalizedCredential);
 
-		console.log('[Session Credentials] Stored:', {
-			userId: credential.userId,
-			district: credential.congressionalDistrict,
-			expiresAt: credentialToStore.expiresAt.toISOString()
-		});
+			const storedCredential: StoredCredential = {
+				userId: credential.userId,
+				encrypted,
+				expiresAt: normalizedCredential.expiresAt
+			};
+
+			await db.put(STORE_NAME, storedCredential);
+
+			console.log('[Session Credentials] Stored (encrypted):', {
+				userId: credential.userId,
+				district: credential.congressionalDistrict,
+				expiresAt: normalizedCredential.expiresAt.toISOString()
+			});
+		} else {
+			// Fallback: Store plaintext (legacy format)
+			console.warn('[Session Credentials] Encryption unavailable, storing plaintext');
+
+			const storedCredential: StoredCredential = {
+				userId: normalizedCredential.userId,
+				identityCommitment: normalizedCredential.identityCommitment,
+				leafIndex: normalizedCredential.leafIndex,
+				merklePath: normalizedCredential.merklePath,
+				merkleRoot: normalizedCredential.merkleRoot,
+				congressionalDistrict: normalizedCredential.congressionalDistrict,
+				verificationMethod: normalizedCredential.verificationMethod,
+				createdAt: normalizedCredential.createdAt,
+				expiresAt: normalizedCredential.expiresAt
+			};
+
+			await db.put(STORE_NAME, storedCredential);
+
+			console.log('[Session Credentials] Stored (plaintext):', {
+				userId: credential.userId,
+				district: credential.congressionalDistrict,
+				expiresAt: normalizedCredential.expiresAt.toISOString()
+			});
+		}
 	} catch (error) {
 		console.error('[Session Credentials] Store failed:', error);
 		throw new Error('Failed to store session credential');
@@ -142,27 +254,64 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 /**
  * Retrieve session credential from IndexedDB
  *
+ * Automatically handles:
+ * - Decryption of encrypted credentials
+ * - Migration of legacy plaintext credentials
+ * - Expiration checking
+ *
  * @param userId - User ID to look up
  * @returns Credential if found and valid, null otherwise
  */
 export async function getSessionCredential(userId: string): Promise<SessionCredential | null> {
 	try {
 		const db = await getDB();
-		const credential = await db.get(STORE_NAME, userId);
+		const stored = await db.get(STORE_NAME, userId);
 
-		if (!credential) {
+		if (!stored) {
 			console.log('[Session Credentials] Not found:', { userId });
 			return null;
 		}
 
-		// Check if expired
+		// Check if expired (using plaintext expiresAt)
 		const now = new Date();
-		if (credential.expiresAt < now) {
+		const expiresAt = stored.expiresAt instanceof Date ? stored.expiresAt : new Date(stored.expiresAt);
+		if (expiresAt < now) {
 			console.log('[Session Credentials] Expired, auto-clearing:', {
 				userId,
-				expiredAt: credential.expiresAt.toISOString()
+				expiredAt: expiresAt.toISOString()
 			});
 			await clearSessionCredential(userId);
+			return null;
+		}
+
+		let credential: SessionCredential;
+
+		if (stored.encrypted) {
+			// Decrypt the credential
+			try {
+				credential = await decryptCredential<SessionCredential>(stored.encrypted);
+				// Ensure dates are Date objects after deserialization
+				credential.createdAt = new Date(credential.createdAt);
+				credential.expiresAt = new Date(credential.expiresAt);
+			} catch (decryptError) {
+				console.error('[Session Credentials] Decryption failed:', decryptError);
+				// Key may have been rotated or device changed - clear invalid credential
+				await clearSessionCredential(userId);
+				return null;
+			}
+		} else if (isLegacyPlaintext(stored)) {
+			// Legacy plaintext format - migrate to encrypted
+			credential = storedToSessionCredential(stored);
+
+			// Migrate to encrypted format in background
+			if (isEncryptionAvailable()) {
+				storeSessionCredential(credential).catch((error) => {
+					console.error('[Session Credentials] Migration failed:', error);
+				});
+				console.log('[Session Credentials] Migrating to encrypted format:', { userId });
+			}
+		} else {
+			console.error('[Session Credentials] Invalid stored format:', { userId });
 			return null;
 		}
 
@@ -171,7 +320,8 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 			district: credential.congressionalDistrict,
 			remainingDays: Math.floor(
 				(credential.expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
-			)
+			),
+			encrypted: !!stored.encrypted
 		});
 
 		return credential;
@@ -250,6 +400,58 @@ export async function clearExpiredCredentials(): Promise<number> {
 }
 
 // ============================================================================
+// Migration Functions
+// ============================================================================
+
+/**
+ * Migrate all plaintext credentials to encrypted format
+ *
+ * Call this on app startup to ensure all credentials are encrypted.
+ * Safe to call multiple times - skips already encrypted credentials.
+ *
+ * @returns Number of credentials migrated
+ */
+export async function migrateToEncrypted(): Promise<number> {
+	if (!isEncryptionAvailable()) {
+		console.log('[Session Credentials] Encryption unavailable, skipping migration');
+		return 0;
+	}
+
+	try {
+		const db = await getDB();
+		const all = await db.getAll(STORE_NAME);
+
+		let migratedCount = 0;
+
+		for (const stored of all) {
+			// Skip already encrypted
+			if (stored.encrypted) {
+				continue;
+			}
+
+			// Skip if not valid plaintext format
+			if (!isLegacyPlaintext(stored)) {
+				continue;
+			}
+
+			// Convert and re-store with encryption
+			const credential = storedToSessionCredential(stored);
+			await storeSessionCredential(credential);
+			migratedCount++;
+		}
+
+		if (migratedCount > 0) {
+			console.log(`[Session Credentials] Migrated ${migratedCount} credentials to encrypted storage`);
+		}
+
+		return migratedCount;
+	} catch (error) {
+		console.error('[Session Credentials] Migration failed:', error);
+		return 0;
+	}
+}
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -266,12 +468,18 @@ export function calculateExpirationDate(): Date {
 }
 
 // ============================================================================
-// Auto-cleanup on Load
+// Auto-cleanup and Migration on Load
 // ============================================================================
 
-// Run cleanup on module load (background task)
+// Run cleanup and migration on module load (background task)
 if (typeof window !== 'undefined') {
-	clearExpiredCredentials().catch((error) => {
-		console.error('[Session Credentials] Auto-cleanup failed:', error);
-	});
+	// Clear expired credentials first
+	clearExpiredCredentials()
+		.then(() => {
+			// Then migrate any remaining plaintext to encrypted
+			return migrateToEncrypted();
+		})
+		.catch((error) => {
+			console.error('[Session Credentials] Auto-initialization failed:', error);
+		});
 }

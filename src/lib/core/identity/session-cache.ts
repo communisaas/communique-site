@@ -15,12 +15,24 @@
  * - Session expires after 3-6 months
  * - User can clear at any time
  *
+ * Security (ISSUE-004):
+ * - Credentials encrypted with Web Crypto API before storage
+ * - Device-bound, non-extractable AES-256-GCM key
+ * - Protects against XSS, malicious extensions, devtools inspection
+ *
  * Progressive Verification:
  * - First visit: Full verification required
  * - Return visits: Skip verification (if not expired)
  * - Template submission: Check credential, skip if valid
  * - Expiration: Graceful re-verification prompt
  */
+
+import {
+	encryptCredential,
+	decryptCredential,
+	isEncryptionAvailable,
+	type EncryptedCredential
+} from './credential-encryption';
 
 // ============================================================================
 // Types
@@ -45,12 +57,38 @@ export interface SessionCredential {
 	zkProofWitness?: Uint8Array;
 }
 
+/**
+ * Stored credential wrapper
+ *
+ * Can contain either:
+ * - encrypted: New encrypted format
+ * - Legacy plaintext fields (for migration)
+ */
+interface StoredCredential {
+	/** User ID (always stored in plaintext for indexing) */
+	userId: string;
+
+	/** Encrypted credential data (new format) */
+	encrypted?: EncryptedCredential;
+
+	/** Expiration date (stored in plaintext for index queries) */
+	expiresAt: string;
+
+	// Legacy plaintext fields (for migration detection)
+	isVerified?: boolean;
+	verificationMethod?: 'nfc-passport' | 'government-id';
+	congressionalDistrict?: string;
+	blobId?: string;
+	encryptedAt?: string;
+	zkProofWitness?: Uint8Array;
+}
+
 // ============================================================================
 // IndexedDB Setup
 // ============================================================================
 
 const DB_NAME = 'communique-sessions';
-const DB_VERSION = 1;
+const DB_VERSION = 2; // Bumped for encryption migration
 const STORE_NAME = 'verification-credentials';
 
 /**
@@ -72,8 +110,84 @@ async function openDatabase(): Promise<IDBDatabase> {
 				// Create index for quick expiration checks
 				objectStore.createIndex('expiresAt', 'expiresAt', { unique: false });
 			}
+
+			// Version 2: Added encryption support
+			// No schema changes needed - we store encrypted data in the same store
+			// Migration happens lazily on read/write
+			console.log('[Session Cache] Database upgraded to v2 (encryption support)');
 		};
 	});
+}
+
+// ============================================================================
+// Encryption Helpers
+// ============================================================================
+
+/**
+ * Check if a stored credential is in legacy plaintext format
+ */
+function isLegacyPlaintext(stored: StoredCredential): boolean {
+	return !stored.encrypted && stored.blobId !== undefined;
+}
+
+/**
+ * Convert stored credential to SessionCredential
+ */
+function storedToSessionCredential(stored: StoredCredential): SessionCredential {
+	return {
+		userId: stored.userId,
+		isVerified: stored.isVerified!,
+		verificationMethod: stored.verificationMethod!,
+		congressionalDistrict: stored.congressionalDistrict,
+		blobId: stored.blobId!,
+		encryptedAt: stored.encryptedAt!,
+		expiresAt: stored.expiresAt,
+		zkProofWitness: stored.zkProofWitness
+	};
+}
+
+/**
+ * Serialize SessionCredential for encryption (handle Uint8Array)
+ */
+function serializeForEncryption(credential: SessionCredential): object {
+	let zkProofWitnessBase64: string | undefined;
+
+	if (credential.zkProofWitness) {
+		// Convert Uint8Array to base64 for JSON serialization
+		let binary = '';
+		for (let i = 0; i < credential.zkProofWitness.length; i++) {
+			binary += String.fromCharCode(credential.zkProofWitness[i]);
+		}
+		zkProofWitnessBase64 = btoa(binary);
+	}
+
+	return {
+		...credential,
+		zkProofWitness: zkProofWitnessBase64
+	};
+}
+
+/**
+ * Deserialize SessionCredential after decryption (restore Uint8Array)
+ */
+function deserializeAfterDecryption(data: Record<string, unknown>): SessionCredential {
+	return {
+		userId: data.userId as string,
+		isVerified: data.isVerified as boolean,
+		verificationMethod: data.verificationMethod as 'nfc-passport' | 'government-id',
+		congressionalDistrict: data.congressionalDistrict as string | undefined,
+		blobId: data.blobId as string,
+		encryptedAt: data.encryptedAt as string,
+		expiresAt: data.expiresAt as string,
+		// Convert base64 back to Uint8Array
+		zkProofWitness: data.zkProofWitness
+			? new Uint8Array(
+					atob(data.zkProofWitness as string)
+						.split('')
+						.map((c) => c.charCodeAt(0))
+			  )
+			: undefined
+	};
 }
 
 // ============================================================================
@@ -83,6 +197,9 @@ async function openDatabase(): Promise<IDBDatabase> {
 /**
  * Store session credential in IndexedDB
  *
+ * Encrypts the credential using Web Crypto API before storage.
+ * Falls back to plaintext if encryption is unavailable.
+ *
  * @param credential - Session credential to store
  */
 export async function storeSessionCredential(credential: SessionCredential): Promise<void> {
@@ -91,13 +208,42 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 		const transaction = db.transaction([STORE_NAME], 'readwrite');
 		const store = transaction.objectStore(STORE_NAME);
 
-		return new Promise((resolve, reject) => {
-			const request = store.put(credential);
+		let storedCredential: StoredCredential;
 
-			request.onsuccess = () => {
-				console.log('[Session Cache] Stored credential for user:', credential.userId);
-				resolve();
+		if (isEncryptionAvailable()) {
+			// Serialize and encrypt credential data
+			const serialized = serializeForEncryption(credential);
+			const encrypted = await encryptCredential(serialized);
+
+			storedCredential = {
+				userId: credential.userId,
+				encrypted,
+				expiresAt: credential.expiresAt
 			};
+
+			console.log('[Session Cache] Stored encrypted credential for user:', credential.userId);
+		} else {
+			// Fallback: Store plaintext (legacy format)
+			console.warn('[Session Cache] Encryption unavailable, storing plaintext');
+
+			storedCredential = {
+				userId: credential.userId,
+				isVerified: credential.isVerified,
+				verificationMethod: credential.verificationMethod,
+				congressionalDistrict: credential.congressionalDistrict,
+				blobId: credential.blobId,
+				encryptedAt: credential.encryptedAt,
+				expiresAt: credential.expiresAt,
+				zkProofWitness: credential.zkProofWitness
+			};
+
+			console.log('[Session Cache] Stored plaintext credential for user:', credential.userId);
+		}
+
+		return new Promise((resolve, reject) => {
+			const request = store.put(storedCredential);
+
+			request.onsuccess = () => resolve();
 
 			request.onerror = () => {
 				console.error('[Session Cache] Failed to store credential:', request.error);
@@ -115,6 +261,11 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 /**
  * Retrieve session credential from IndexedDB
  *
+ * Automatically handles:
+ * - Decryption of encrypted credentials
+ * - Migration of legacy plaintext credentials
+ * - Expiration checking
+ *
  * @param userId - User identifier
  * @returns Session credential if exists, null otherwise
  */
@@ -127,17 +278,17 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 		return new Promise((resolve, reject) => {
 			const request = store.get(userId);
 
-			request.onsuccess = () => {
-				const credential = request.result as SessionCredential | undefined;
+			request.onsuccess = async () => {
+				const stored = request.result as StoredCredential | undefined;
 
-				if (!credential) {
+				if (!stored) {
 					console.log('[Session Cache] No credential found for user:', userId);
 					resolve(null);
 					return;
 				}
 
-				// Check expiration
-				const expiresAt = new Date(credential.expiresAt);
+				// Check expiration (using plaintext expiresAt)
+				const expiresAt = new Date(stored.expiresAt);
 				const now = new Date();
 
 				if (expiresAt < now) {
@@ -148,7 +299,40 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 					return;
 				}
 
-				console.log('[Session Cache] Retrieved valid credential for user:', userId);
+				let credential: SessionCredential;
+
+				if (stored.encrypted) {
+					// Decrypt the credential
+					try {
+						const decrypted = await decryptCredential<Record<string, unknown>>(stored.encrypted);
+						credential = deserializeAfterDecryption(decrypted);
+						console.log('[Session Cache] Retrieved encrypted credential for user:', userId);
+					} catch (decryptError) {
+						console.error('[Session Cache] Decryption failed:', decryptError);
+						// Key may have been rotated or device changed - clear invalid credential
+						deleteSessionCredential(userId);
+						resolve(null);
+						return;
+					}
+				} else if (isLegacyPlaintext(stored)) {
+					// Legacy plaintext format - migrate to encrypted
+					credential = storedToSessionCredential(stored);
+
+					// Migrate to encrypted format in background
+					if (isEncryptionAvailable()) {
+						storeSessionCredential(credential).catch((error) => {
+							console.error('[Session Cache] Migration failed:', error);
+						});
+						console.log('[Session Cache] Migrating to encrypted format:', userId);
+					}
+
+					console.log('[Session Cache] Retrieved plaintext credential for user:', userId);
+				} else {
+					console.error('[Session Cache] Invalid stored format for user:', userId);
+					resolve(null);
+					return;
+				}
+
 				resolve(credential);
 			};
 
@@ -252,18 +436,89 @@ export async function hasValidSession(userId: string): Promise<boolean> {
 }
 
 // ============================================================================
+// Migration Functions
+// ============================================================================
+
+/**
+ * Migrate all plaintext credentials to encrypted format
+ *
+ * Call this on app startup to ensure all credentials are encrypted.
+ * Safe to call multiple times - skips already encrypted credentials.
+ *
+ * @returns Number of credentials migrated
+ */
+export async function migrateToEncrypted(): Promise<number> {
+	if (!isEncryptionAvailable()) {
+		console.log('[Session Cache] Encryption unavailable, skipping migration');
+		return 0;
+	}
+
+	try {
+		const db = await openDatabase();
+		const transaction = db.transaction([STORE_NAME], 'readonly');
+		const store = transaction.objectStore(STORE_NAME);
+
+		return new Promise((resolve, reject) => {
+			const request = store.getAll();
+
+			request.onsuccess = async () => {
+				const allStored = request.result as StoredCredential[];
+				let migratedCount = 0;
+
+				for (const stored of allStored) {
+					// Skip already encrypted
+					if (stored.encrypted) {
+						continue;
+					}
+
+					// Skip if not valid plaintext format
+					if (!isLegacyPlaintext(stored)) {
+						continue;
+					}
+
+					// Convert and re-store with encryption
+					const credential = storedToSessionCredential(stored);
+					await storeSessionCredential(credential);
+					migratedCount++;
+				}
+
+				if (migratedCount > 0) {
+					console.log(`[Session Cache] Migrated ${migratedCount} credentials to encrypted storage`);
+				}
+
+				resolve(migratedCount);
+			};
+
+			request.onerror = () => {
+				console.error('[Session Cache] Migration failed:', request.error);
+				reject(request.error);
+			};
+
+			transaction.oncomplete = () => db.close();
+		});
+	} catch (error) {
+		console.error('[Session Cache] Migration failed:', error);
+		return 0;
+	}
+}
+
+// ============================================================================
 // Initialization
 // ============================================================================
 
 /**
  * Initialize session cache (run on app startup)
  *
- * Clears expired credentials to keep IndexedDB clean
+ * Clears expired credentials and migrates plaintext to encrypted storage.
  */
 export async function initializeSessionCache(): Promise<void> {
 	try {
 		// Clear expired credentials on startup
 		await clearExpiredCredentials();
+
+		// Migrate any remaining plaintext to encrypted
+		await migrateToEncrypted();
+
 		console.log('[Session Cache] Initialized');
 	} catch (error) {
 		console.error('[Session Cache] Initialization failed:', error);

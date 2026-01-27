@@ -55,6 +55,10 @@ export interface UserData {
 	location?: string; // e.g., "Austin, TX" or "Texas"
 	locale?: string; // e.g., "en-US"
 	timezone?: string; // e.g., "America/Chicago"
+	// Email verification status (ISSUE-002: Sybil resistance)
+	// Twitter accounts without verified email get synthetic emails like username@twitter.local
+	// These accounts receive lower trust_score to prevent Sybil attacks
+	emailVerified?: boolean; // undefined = true (default), false = synthetic email
 }
 
 export interface TokenData {
@@ -226,12 +230,22 @@ export class OAuthCallbackHandler {
 
 	/**
 	 * Find existing user or create new one with OAuth account
+	 *
+	 * ISSUE-002: Sybil Resistance for Unverified Emails
+	 * Twitter accounts without verified email get synthetic emails (username@twitter.local)
+	 * These accounts receive lower trust_score to prevent Sybil attacks:
+	 * - Verified email: trust_score = 100 (socially vouched)
+	 * - Unverified/synthetic email: trust_score = 50 (location-hinted tier)
 	 */
 	private async findOrCreateUser(
 		config: OAuthCallbackConfig,
 		userData: UserData,
 		tokenData: TokenData
 	): Promise<DatabaseUser> {
+		// ISSUE-002: Determine email verification status
+		// Default to true for backwards compatibility (most providers verify email)
+		const emailVerified = userData.emailVerified !== false;
+
 		// Check for existing OAuth account
 		const existingAccount = await db.account.findUnique({
 			where: {
@@ -243,14 +257,17 @@ export class OAuthCallbackHandler {
 			include: { user: true }
 		});
 
-		// Update existing account tokens
+		// Update existing account tokens and email verification status
 		if (existingAccount) {
 			await db.account.update({
 				where: { id: existingAccount.id },
 				data: {
 					access_token: tokenData.accessToken,
 					refresh_token: tokenData.refreshToken,
-					expires_at: tokenData.expiresAt
+					expires_at: tokenData.expiresAt,
+					// ISSUE-002: Update email_verified status on each login
+					// (in case user verified their email since last login)
+					email_verified: emailVerified
 				}
 			});
 
@@ -278,7 +295,9 @@ export class OAuthCallbackHandler {
 					refresh_token: tokenData.refreshToken,
 					expires_at: tokenData.expiresAt,
 					token_type: 'Bearer',
-					scope: config.scope
+					scope: config.scope,
+					// ISSUE-002: Track email verification status for Sybil resistance
+					email_verified: emailVerified
 				}
 			});
 
@@ -288,12 +307,23 @@ export class OAuthCallbackHandler {
 			return existingUser;
 		}
 
+		// ISSUE-002: Apply lower trust_score for accounts with unverified/synthetic email
+		// This creates a Sybil-resistant trust tier:
+		// - trust_score 100: Verified email (socially vouched tier)
+		// - trust_score 50: Unverified/synthetic email (location-hinted tier)
+		// Users can still use basic functionality but are restricted from sensitive operations
+		const baseTrustScore = emailVerified ? 100 : 50;
+		const baseReputationTier = emailVerified ? 'verified' : 'novice';
+
 		// Create new user with OAuth account
 		const newUser = await db.user.create({
 			data: {
 				email: userData.email,
 				name: userData.name,
 				avatar: userData.avatar,
+				// ISSUE-002: Apply trust_score based on email verification
+				trust_score: baseTrustScore,
+				reputation_tier: baseReputationTier,
 				account: {
 					create: {
 						id: this.generateAccountId(),
@@ -304,11 +334,24 @@ export class OAuthCallbackHandler {
 						refresh_token: tokenData.refreshToken,
 						expires_at: tokenData.expiresAt,
 						token_type: 'Bearer',
-						scope: config.scope
+						scope: config.scope,
+						// ISSUE-002: Track email verification status for Sybil resistance
+						email_verified: emailVerified
 					}
 				}
 			}
 		});
+
+		// Log Sybil resistance action for audit
+		if (!emailVerified) {
+			console.log('[OAuth Sybil Resistance] New user created with unverified email:', {
+				provider: config.provider,
+				userId: newUser.id,
+				email: userData.email,
+				trust_score: baseTrustScore,
+				reputation_tier: baseReputationTier
+			});
+		}
 
 		// Blockchain account creation deferred to client-side
 		// See BlockchainInit.svelte component for actual account creation

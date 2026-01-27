@@ -502,13 +502,21 @@ function createTwitterConfig(): OAuthCallbackConfig {
 			if (!isTwitterUser(rawUser)) {
 				throw new Error('Invalid Twitter user data format');
 			}
+
+			// ISSUE-002: Track email verification status for Sybil resistance
+			// Twitter accounts without verified email get synthetic emails like username@twitter.local
+			// These accounts receive lower trust_score to prevent creating multiple accounts
+			const hasVerifiedEmail = !!rawUser.data.email;
+
 			return {
 				id: rawUser.data.id,
 				// Twitter doesn't always provide email, generate placeholder
 				email: rawUser.data.email || `${rawUser.data.username}@twitter.local`,
 				name: rawUser.data.name,
 				avatar: rawUser.data.profile_image_url,
-				username: rawUser.data.username
+				username: rawUser.data.username,
+				// Track whether email is verified (false for synthetic @twitter.local emails)
+				emailVerified: hasVerifiedEmail
 			};
 		},
 
