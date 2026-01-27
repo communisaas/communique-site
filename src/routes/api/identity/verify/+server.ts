@@ -10,6 +10,11 @@ import {
 } from '$lib/core/server/identity-hash';
 import { prisma } from '$lib/core/db';
 import { hashIPAddress } from '$lib/core/server/security';
+import {
+	computeIdentityCommitment,
+	bindIdentityCommitment,
+	getCommitmentFingerprint
+} from '$lib/core/identity/identity-binding';
 
 /**
  * self.xyz Verification Callback
@@ -89,6 +94,15 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		const identityFingerprint = generateIdentityFingerprint(identityHash);
 		const userId = locals.user.id;
 
+		// ISSUE-001: Generate identity commitment for cross-provider deduplication
+		const identityCommitment = computeIdentityCommitment(
+			identityProof.passportNumber,
+			identityProof.nationality,
+			identityProof.birthYear,
+			identityProof.documentType
+		);
+		const commitmentFingerprint = getCommitmentFingerprint(identityCommitment);
+
 		// Wrap all database operations in a transaction to prevent race conditions
 		// This ensures atomic check-and-set for duplicate identity detection
 		const duplicateDetected = await prisma.$transaction(async (tx) => {
@@ -139,7 +153,8 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 					metadata: {
 						attestation_id: attestationId,
 						nationality: identityProof.nationality,
-						document_type: identityProof.documentType
+						document_type: identityProof.documentType,
+						commitment_fingerprint: commitmentFingerprint
 					}
 				}
 			});
@@ -150,6 +165,26 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		// Throw HTTP error outside transaction to avoid Prisma wrapping it
 		if (duplicateDetected) {
 			throw error(409, 'Identity already verified with another account');
+		}
+
+		// ISSUE-001: Bind identity commitment for cross-provider deduplication
+		// This must happen AFTER the transaction succeeds to avoid partial state
+		const bindingResult = await bindIdentityCommitment(userId, identityCommitment);
+
+		if (bindingResult.linkedToExisting) {
+			// User was merged into existing account
+			console.log(
+				`[self.xyz] User ${userId} merged into ${bindingResult.userId} via identity commitment`
+			);
+
+			return json({
+				status: 'success',
+				result: true,
+				verified: true,
+				merged: true,
+				mergedIntoUserId: bindingResult.userId,
+				message: 'Your identity was already verified with another account. Accounts have been merged.'
+			});
 		}
 
 		return json({

@@ -10,6 +10,11 @@ import {
 } from '$lib/core/server/identity-hash';
 import { prisma } from '$lib/core/db';
 import { z } from 'zod';
+import {
+	computeIdentityCommitment,
+	bindIdentityCommitment,
+	getCommitmentFingerprint
+} from '$lib/core/identity/identity-binding';
 
 /**
  * Didit.me Webhook Handler
@@ -206,6 +211,15 @@ export const POST: RequestHandler = async ({ request }) => {
 		const identityHash = generateIdentityHash(identityProof);
 		const identityFingerprint = generateIdentityFingerprint(identityHash);
 
+		// ISSUE-001: Generate identity commitment for cross-provider deduplication
+		const identityCommitment = computeIdentityCommitment(
+			identityProof.passportNumber,
+			identityProof.nationality,
+			identityProof.birthYear,
+			identityProof.documentType
+		);
+		const commitmentFingerprint = getCommitmentFingerprint(identityCommitment);
+
 		// Check for duplicate identity
 		const duplicateUser = await prisma.user.findUnique({
 			where: { identity_hash: identityHash }
@@ -256,10 +270,29 @@ export const POST: RequestHandler = async ({ request }) => {
 					document_number_hash: createHash('sha256')
 						.update(verification.document_number)
 						.digest('hex')
-						.substring(0, 16) // Store hash, not actual number
+						.substring(0, 16), // Store hash, not actual number
+					commitment_fingerprint: commitmentFingerprint
 				}
 			}
 		});
+
+		// ISSUE-001: Bind identity commitment for cross-provider deduplication
+		const bindingResult = await bindIdentityCommitment(userId, identityCommitment);
+
+		if (bindingResult.linkedToExisting) {
+			// User was merged into existing account
+			console.log(
+				`[Didit] User ${userId} merged into ${bindingResult.userId} via identity commitment`
+			);
+
+			return json({
+				received: true,
+				processed: true,
+				verified: true,
+				merged: true,
+				mergedIntoUserId: bindingResult.userId
+			});
+		}
 
 		return json({
 			received: true,

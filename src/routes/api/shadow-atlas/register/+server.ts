@@ -1,38 +1,66 @@
 import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db';
 import type { RequestHandler } from './$types';
+import { Poseidon2Hasher } from '@voter-protocol/crypto';
 
-// Mock Poseidon hash for now (in production, use @voter-protocol/crypto or circomlibjs)
-// We need a stable hash function for the Merkle tree
-function mockHash(left: string, right: string): string {
-	// Simple string concatenation hash for demo purposes
-	// In real ZK, this MUST be Poseidon
-	return `hash(${left},${right})`;
-}
+/**
+ * CVE-VOTER-004 FIX: Use production Poseidon2 hasher for Merkle tree operations
+ *
+ * CRITICAL: This module now uses the same Poseidon2 implementation as the ZK circuits.
+ * The Poseidon2Hasher executes the actual Noir stdlib Poseidon2 permutation, ensuring
+ * that Merkle roots computed here will match those verified in zero-knowledge proofs.
+ *
+ * ZERO padding constant - represents empty leaf in Merkle tree
+ */
+const ZERO_LEAF = 0n;
 
-function computeMerklePath(leaves: string[], index: number, depth: number = 12): string[] {
-	const path: string[] = [];
+/**
+ * Merkle tree depth - supports up to 2^12 = 4096 leaves per district
+ */
+const MERKLE_DEPTH = 12;
+
+/**
+ * Compute the Merkle path (authentication path) for a leaf at given index
+ *
+ * @param hasher - Poseidon2Hasher instance
+ * @param leaves - Array of leaf values as bigint
+ * @param index - Index of the leaf to compute path for
+ * @param depth - Tree depth (default: 12)
+ * @returns Array of sibling hashes along the path from leaf to root
+ */
+async function computeMerklePath(
+	hasher: Poseidon2Hasher,
+	leaves: bigint[],
+	index: number,
+	depth: number = MERKLE_DEPTH
+): Promise<bigint[]> {
+	const path: bigint[] = [];
 	let currentLevel = [...leaves];
 	let currentIndex = index;
 
 	for (let i = 0; i < depth; i++) {
-		// Pad level if odd
+		// Pad level to even length with zero leaves
 		if (currentLevel.length % 2 !== 0) {
-			currentLevel.push('0'); // Zero value
+			currentLevel.push(ZERO_LEAF);
 		}
 
+		// Determine sibling position
 		const isRightNode = currentIndex % 2 !== 0;
 		const siblingIndex = isRightNode ? currentIndex - 1 : currentIndex + 1;
 
 		// Get sibling (or zero if out of bounds)
-		const sibling = currentLevel[siblingIndex] || '0';
+		const sibling = siblingIndex < currentLevel.length ? currentLevel[siblingIndex] : ZERO_LEAF;
 		path.push(sibling);
 
-		// Move to next level
-		const nextLevel: string[] = [];
+		// Compute next level using Poseidon2
+		const nextLevel: bigint[] = [];
 		for (let j = 0; j < currentLevel.length; j += 2) {
-			nextLevel.push(mockHash(currentLevel[j], currentLevel[j + 1] || '0'));
+			const left = currentLevel[j];
+			const right = j + 1 < currentLevel.length ? currentLevel[j + 1] : ZERO_LEAF;
+			const hash = await hasher.hashPair(left, right);
+			nextLevel.push(hash);
 		}
+
 		currentLevel = nextLevel;
 		currentIndex = Math.floor(currentIndex / 2);
 	}
@@ -40,19 +68,58 @@ function computeMerklePath(leaves: string[], index: number, depth: number = 12):
 	return path;
 }
 
-function computeMerkleRoot(leaves: string[], depth: number = 12): string {
+/**
+ * Compute the Merkle root from an array of leaves
+ *
+ * @param hasher - Poseidon2Hasher instance
+ * @param leaves - Array of leaf values as bigint
+ * @param depth - Tree depth (default: 12)
+ * @returns The Merkle root as bigint
+ */
+async function computeMerkleRoot(
+	hasher: Poseidon2Hasher,
+	leaves: bigint[],
+	depth: number = MERKLE_DEPTH
+): Promise<bigint> {
+	if (leaves.length === 0) {
+		return ZERO_LEAF;
+	}
+
 	let currentLevel = [...leaves];
 
 	for (let i = 0; i < depth; i++) {
-		if (currentLevel.length % 2 !== 0) currentLevel.push('0');
-		const nextLevel: string[] = [];
-		for (let j = 0; j < currentLevel.length; j += 2) {
-			nextLevel.push(mockHash(currentLevel[j], currentLevel[j + 1] || '0'));
+		// Pad level to even length with zero leaves
+		if (currentLevel.length % 2 !== 0) {
+			currentLevel.push(ZERO_LEAF);
 		}
+
+		// Compute next level using Poseidon2
+		const nextLevel: bigint[] = [];
+		for (let j = 0; j < currentLevel.length; j += 2) {
+			const left = currentLevel[j];
+			const right = j + 1 < currentLevel.length ? currentLevel[j + 1] : ZERO_LEAF;
+			const hash = await hasher.hashPair(left, right);
+			nextLevel.push(hash);
+		}
+
 		currentLevel = nextLevel;
 	}
 
-	return currentLevel[0] || '0';
+	return currentLevel[0] ?? ZERO_LEAF;
+}
+
+/**
+ * Convert bigint array to string array for database storage
+ */
+function bigintArrayToStringArray(arr: bigint[]): string[] {
+	return arr.map((v) => v.toString());
+}
+
+/**
+ * Convert string array from database to bigint array
+ */
+function stringArrayToBigintArray(arr: string[]): bigint[] {
+	return arr.map((v) => BigInt(v));
 }
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -67,6 +134,25 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!identityCommitment || !district) {
 			return json({ error: 'Missing required fields' }, { status: 400 });
 		}
+
+		// Parse identity commitment as bigint (accepts hex string or decimal string)
+		let commitmentBigint: bigint;
+		try {
+			if (typeof identityCommitment === 'string') {
+				commitmentBigint = identityCommitment.startsWith('0x')
+					? BigInt(identityCommitment)
+					: BigInt(identityCommitment);
+			} else if (typeof identityCommitment === 'bigint') {
+				commitmentBigint = identityCommitment;
+			} else {
+				return json({ error: 'Invalid identityCommitment format' }, { status: 400 });
+			}
+		} catch {
+			return json({ error: 'Failed to parse identityCommitment as bigint' }, { status: 400 });
+		}
+
+		// Initialize Poseidon2 hasher (singleton, cached after first call)
+		const hasher = await Poseidon2Hasher.getInstance();
 
 		// Use transaction to ensure consistency
 		const result = await prisma.$transaction(async (tx) => {
@@ -102,7 +188,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			if (existingRegistration) {
 				// If already registered, return existing path
-				// In a real app, we might allow re-registration or updates
+				// Convert stored string arrays back to bigint for response
 				return {
 					leafIndex: existingRegistration.leaf_index,
 					merklePath: existingRegistration.merkle_path,
@@ -110,23 +196,29 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				};
 			}
 
-			// 3. Add leaf to tree
-			const newLeaves = [...tree.leaves, identityCommitment];
-			const leafIndex = tree.leaves.length;
+			// 3. Add leaf to tree (convert existing leaves to bigint)
+			const existingLeaves = stringArrayToBigintArray(tree.leaves);
+			const newLeaves = [...existingLeaves, commitmentBigint];
+			const leafIndex = existingLeaves.length;
 
-			// 4. Compute new root and path
+			// 4. Compute new root and path using Poseidon2
 			// Note: This is O(N) which is fine for small trees (4096 leaves)
 			// For larger trees, we'd use a sparse tree or incremental updates
-			const root = computeMerkleRoot(newLeaves);
-			const path = computeMerklePath(newLeaves, leafIndex);
+			const root = await computeMerkleRoot(hasher, newLeaves);
+			const path = await computeMerklePath(hasher, newLeaves, leafIndex);
+
+			// Convert bigint values to strings for database storage
+			const rootString = root.toString();
+			const pathStrings = bigintArrayToStringArray(path);
+			const leavesStrings = bigintArrayToStringArray(newLeaves);
 
 			// 5. Update tree
 			await tx.shadowAtlasTree.update({
 				where: { id: tree.id },
 				data: {
-					leaves: newLeaves,
+					leaves: leavesStrings,
 					leaf_count: newLeaves.length,
-					merkle_root: root
+					merkle_root: rootString
 				}
 			});
 
@@ -135,10 +227,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				data: {
 					user_id: session.userId,
 					congressional_district: district,
-					identity_commitment: identityCommitment,
+					identity_commitment: commitmentBigint.toString(),
 					leaf_index: leafIndex,
-					merkle_root: root,
-					merkle_path: path,
+					merkle_root: rootString,
+					merkle_path: pathStrings,
 					verification_method: 'self.xyz', // Default for Phase 1
 					verification_id: 'mock-verification-id',
 					verification_timestamp: new Date(),
@@ -149,8 +241,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			return {
 				leafIndex,
-				merklePath: path,
-				root
+				merklePath: pathStrings,
+				root: rootString
 			};
 		});
 

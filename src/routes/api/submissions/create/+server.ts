@@ -3,6 +3,11 @@ import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
+import {
+	isCredentialValidForAction,
+	formatValidationError,
+	type SessionCredentialForPolicy
+} from '$lib/core/identity/credential-policy';
 
 /**
  * Submission Creation Endpoint
@@ -12,10 +17,15 @@ import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup'
  *
  * Flow:
  * 1. Validate authentication
- * 2. Verify proof format
- * 3. Check nullifier uniqueness (prevent double-actions)
- * 4. Store in Submission table
- * 5. Trigger TEE processing (async)
+ * 2. Enforce credential TTL for constituent_message action (ISSUE-005)
+ * 3. Verify proof format
+ * 4. Check nullifier uniqueness (prevent double-actions)
+ * 5. Store in Submission table
+ * 6. Trigger TEE processing (async)
+ *
+ * Security: Enforces action-based TTL (ISSUE-005)
+ * - constituent_message requires verification within 30 days
+ * - Prevents stale district credentials from moved users (~2% annually)
  *
  * Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md Phase 2
  */
@@ -28,6 +38,41 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const userId = session.userId;
+
+		// ISSUE-005: Enforce action-based TTL for constituent messages
+		// This endpoint handles congressional delivery, requiring fresh verification
+		if (!locals.user?.verified_at) {
+			return json(
+				{
+					error: 'verification_required',
+					code: 'NOT_VERIFIED',
+					message: 'You must verify your address before submitting to Congress.',
+					requiresReverification: true
+				},
+				{ status: 403 }
+			);
+		}
+
+		// Build credential object for TTL validation
+		const credential: SessionCredentialForPolicy = {
+			userId: locals.user.id,
+			createdAt: locals.user.verified_at,
+			congressionalDistrict: locals.user.district_hash ?? undefined
+		};
+
+		// Validate credential age for constituent_message action
+		const validation = isCredentialValidForAction(credential, 'constituent_message');
+
+		if (!validation.valid) {
+			console.log('[Submission] Credential TTL exceeded:', {
+				userId,
+				action: 'constituent_message',
+				daysOld: Math.floor(validation.age / (24 * 60 * 60 * 1000)),
+				maxDays: Math.floor(validation.maxAge / (24 * 60 * 60 * 1000))
+			});
+
+			return json(formatValidationError(validation), { status: 403 });
+		}
 
 		// Parse request body
 		const body = await request.json();
