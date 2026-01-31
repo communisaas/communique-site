@@ -48,7 +48,7 @@ const SubjectLineResponseSchema = z.object({
 	needs_clarification: z.boolean(),
 	clarification_questions: z.array(ClarificationQuestionSchema).optional(),
 	subject_line: z.string().optional(),
-	core_issue: z.string().optional(),
+	core_message: z.string().optional(),
 	topics: z.array(z.string()).optional(),
 	url_slug: z.string().optional(),
 	voice_sample: z.string().optional(),
@@ -113,7 +113,7 @@ ${answerLines || '(User skipped - use your best judgment based on the original i
 - Detected target: ${ctx.inferredContext.detected_target_type || 'unknown'}
 - Reasoning: ${ctx.inferredContext.reasoning || 'none'}
 
-Now generate the final subject_line, core_issue, topics, url_slug, and voice_sample using this complete context.
+Now generate the final subject_line, core_message, topics, url_slug, and voice_sample using this complete context.
 Do not ask for more clarification - generate the output now.`;
 	} else if (options.clarificationAnswers && options.previousInteractionId) {
 		// LEGACY: Keep for backwards compatibility (but this path is broken)
@@ -198,7 +198,7 @@ ${options.description}`;
 		const retryResponse = await interact(
 			`You must generate a subject line now. The user said: "${options.description}"
 
-Generate the output with subject_line, core_issue, topics, url_slug, and voice_sample. Do not ask for clarification.`,
+Generate the output with subject_line, core_message, topics, url_slug, and voice_sample. Do not ask for clarification.`,
 			{
 				systemInstruction: systemPrompt,
 				responseSchema: SUBJECT_LINE_SCHEMA,

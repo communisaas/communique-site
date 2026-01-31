@@ -13,14 +13,13 @@
  * Two calls total (not N+1): Phase 2 is a single batched grounding call.
  */
 
-import { generate, generateWithThoughts } from '../gemini-client';
+import { generateWithThoughts } from '../gemini-client';
 import {
 	ROLE_DISCOVERY_PROMPT,
 	PERSON_LOOKUP_PROMPT,
 	buildRoleDiscoveryPrompt,
 	buildPersonLookupPrompt
 } from '../prompts/decision-maker';
-import { ROLE_DISCOVERY_SCHEMA } from '../schemas';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
 import type { DecisionMakerResponse, DecisionMaker, ContactChannel } from '../types';
 
@@ -71,7 +70,7 @@ export interface StreamingCallbacks {
 
 export interface ResolveOptions {
 	subjectLine: string;
-	coreIssue: string;
+	coreMessage: string;
 	topics: string[];
 	voiceSample?: string;
 	urlSlug?: string;
@@ -92,7 +91,7 @@ export async function resolveDecisionMakers(
 	options: ResolveOptions
 ): Promise<DecisionMakerResponse> {
 	const startTime = Date.now();
-	const { subjectLine, coreIssue, topics, voiceSample, streaming } = options;
+	const { subjectLine, coreMessage, topics, voiceSample, streaming } = options;
 
 	console.log('[decision-maker] Starting two-phase resolution...');
 	console.log('[decision-maker] Subject:', subjectLine);
@@ -104,25 +103,34 @@ export async function resolveDecisionMakers(
 
 		streaming?.onPhase?.('discover', 'Mapping institutional power structure...');
 
-		const rolePrompt = buildRoleDiscoveryPrompt(subjectLine, coreIssue, topics, voiceSample);
+		const rolePrompt = buildRoleDiscoveryPrompt(subjectLine, coreMessage, topics, voiceSample);
 
-		console.log('[decision-maker] Phase 1: Discovering roles...');
+		console.log('[decision-maker] Phase 1: Discovering roles with thoughts...');
 
-		const roleResponse = await generate(rolePrompt, {
-			systemInstruction: ROLE_DISCOVERY_PROMPT,
-			responseSchema: ROLE_DISCOVERY_SCHEMA,
-			temperature: 0.3,
-			maxOutputTokens: 4096
-		});
+		// Use generateWithThoughts to stream real agent reasoning during role discovery
+		// This lets users see the agent's thought process as it maps power structures
+		const roleResult = await generateWithThoughts<RoleDiscoveryResponse>(
+			rolePrompt,
+			{
+				systemInstruction: ROLE_DISCOVERY_PROMPT,
+				temperature: 0.3,
+				thinkingLevel: 'medium',
+				maxOutputTokens: 4096
+			},
+			streaming?.onThought
+				? (thought) => streaming.onThought!(thought, 'discover')
+				: undefined
+		);
 
-		let roles: DiscoveredRole[];
-		try {
-			const parsed = JSON.parse(roleResponse.text || '{}') as RoleDiscoveryResponse;
-			roles = parsed.roles || [];
-		} catch {
-			console.error('[decision-maker] Phase 1 JSON parse failed, raw:', roleResponse.text?.slice(0, 200));
+		const extraction = extractJsonFromGroundingResponse<RoleDiscoveryResponse>(roleResult.rawText || '{}');
+
+		if (!isSuccessfulExtraction(extraction)) {
+			console.error('[decision-maker] Phase 1 JSON extraction failed:', extraction.error);
+			console.error('[decision-maker] Raw text (first 200 chars):', roleResult.rawText?.slice(0, 200));
 			throw new Error('Failed to parse role discovery response');
 		}
+
+		const roles: DiscoveredRole[] = extraction.data?.roles || [];
 
 		console.log('[decision-maker] Phase 1 complete:', {
 			rolesFound: roles.length,
@@ -141,6 +149,16 @@ export async function resolveDecisionMakers(
 					total_latency_ms: Date.now() - startTime
 				}
 			};
+		}
+
+		// Bridging thought: summarize discovered roles before moving to person lookup
+		if (streaming?.onThought) {
+			const roleNames = roles.slice(0, 3).map((r) => r.position);
+			const suffix = roles.length > 3 ? ` and ${roles.length - 3} more` : '';
+			streaming.onThought(
+				`Found ${roles.length} key positions: ${roleNames.join(', ')}${suffix}. Now searching for who currently holds each role...`,
+				'discover'
+			);
 		}
 
 		// ====================================================================
@@ -180,14 +198,14 @@ export async function resolveDecisionMakers(
 				: undefined
 		);
 
-		const extraction = extractJsonFromGroundingResponse<PersonLookupResponse>(lookupResult.rawText || '{}');
+		const lookupExtraction = extractJsonFromGroundingResponse<PersonLookupResponse>(lookupResult.rawText || '{}');
 
-		if (!isSuccessfulExtraction(extraction)) {
-			console.error('[decision-maker] Phase 2 JSON extraction failed:', extraction.error);
-			throw new Error(`Failed to parse person lookup response: ${extraction.error}`);
+		if (!isSuccessfulExtraction(lookupExtraction)) {
+			console.error('[decision-maker] Phase 2 JSON extraction failed:', lookupExtraction.error);
+			throw new Error(`Failed to parse person lookup response: ${lookupExtraction.error}`);
 		}
 
-		const data = extraction.data;
+		const data = lookupExtraction.data;
 		console.log('[decision-maker] Phase 2 complete:', {
 			candidatesFound: data.decision_makers?.length || 0
 		});

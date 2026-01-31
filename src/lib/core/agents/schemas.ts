@@ -66,9 +66,9 @@ export const SUBJECT_LINE_SCHEMA = {
 			type: 'string',
 			description: 'Compelling subject line (max 80 chars)'
 		},
-		core_issue: {
+		core_message: {
 			type: 'string',
-			description: 'One sentence: problem + who has power + who is harmed'
+			description: 'One sentence: what the user is saying + who has power to act'
 		},
 		topics: {
 			type: 'array',
@@ -238,10 +238,6 @@ export const MESSAGE_SCHEMA = {
 			type: 'string',
 			description: 'The full message body with citation markers [1], [2], etc.'
 		},
-		subject: {
-			type: 'string',
-			description: 'Email subject line'
-		},
 		sources: {
 			type: 'array',
 			items: {
@@ -264,19 +260,28 @@ export const MESSAGE_SCHEMA = {
 		},
 		geographic_scope: {
 			type: 'object',
+			description: 'ISO 3166 geographic scope. type=international (no other fields), type=nationwide (country: ISO 3166-1), type=subnational (country + optional subdivision ISO 3166-2 + optional locality city name)',
 			properties: {
-				scope_level: {
+				type: {
 					type: 'string',
-					enum: ['local', 'district', 'metro', 'state', 'national', 'international'],
-					description: 'Geographic breadth of the issue'
+					enum: ['international', 'nationwide', 'subnational'],
+					description: 'Scope type'
 				},
-				scope_display: {
+				country: {
 					type: 'string',
-					description: 'Human-readable location (e.g., "San Francisco, CA", "California", "Nationwide")'
+					description: 'ISO 3166-1 alpha-2 country code (e.g. "US", "GB", "JP")'
+				},
+				subdivision: {
+					type: 'string',
+					description: 'ISO 3166-2 subdivision code (e.g. "US-CA", "GB-ENG", "JP-13")'
+				},
+				locality: {
+					type: 'string',
+					description: 'City or locality name (e.g. "San Francisco", "London")'
 				}
 			},
-			required: ['scope_level', 'scope_display']
+			required: ['type']
 		}
 	},
-	required: ['message', 'subject', 'sources', 'geographic_scope']
+	required: ['message', 'sources', 'geographic_scope']
 };

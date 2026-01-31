@@ -115,7 +115,7 @@ Return valid JSON:
  */
 export function buildRoleDiscoveryPrompt(
 	subjectLine: string,
-	coreIssue: string,
+	coreMessage: string,
 	topics: string[],
 	voiceSample?: string
 ): string {
@@ -123,13 +123,13 @@ export function buildRoleDiscoveryPrompt(
 		? `\n\nVoice Sample (the human stakes):\n"${voiceSample}"\n`
 		: '';
 
-	return `Identify the positions with power over this issue:
+	return `Identify the positions with power over this matter:
 
 Subject: ${subjectLine}
-Core Issue: ${coreIssue}
+Core Message: ${coreMessage}
 Topics: ${topics.join(', ')}
 ${voiceBlock}
-Return 6-10 positions (NOT people) with direct authority or gatekeeping power over this issue.`;
+Return 6-10 positions (NOT people) with direct authority or gatekeeping power over this matter.`;
 }
 
 /**
@@ -169,9 +169,9 @@ export const DECISION_MAKER_PROMPT = ROLE_DISCOVERY_PROMPT;
 /** @deprecated Use buildRoleDiscoveryPrompt and buildPersonLookupPrompt instead */
 export function buildDecisionMakerPrompt(
 	subjectLine: string,
-	coreIssue: string,
+	coreMessage: string,
 	topics: string[],
 	voiceSample?: string
 ): string {
-	return buildRoleDiscoveryPrompt(subjectLine, coreIssue, topics, voiceSample);
+	return buildRoleDiscoveryPrompt(subjectLine, coreMessage, topics, voiceSample);
 }

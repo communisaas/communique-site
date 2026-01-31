@@ -82,7 +82,7 @@ export interface InferredContext {
 export interface SubjectLineResponseWithClarification {
 	// Standard output (only present if no clarification needed)
 	subject_line?: string;
-	core_issue?: string;
+	core_message?: string;
 	topics?: string[];
 	url_slug?: string;
 	voice_sample?: string;

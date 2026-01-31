@@ -172,7 +172,7 @@ export const SUBJECT_LINE_CRITICAL_FIELDS = ['needs_clarification', 'inferred_co
  */
 export const SUBJECT_LINE_GENERATION_FIELDS = [
 	'subject_line',
-	'core_issue',
+	'core_message',
 	'topics',
 	'url_slug'
 ] as const;

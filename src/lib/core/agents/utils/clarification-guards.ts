@@ -33,14 +33,14 @@ export function hasCompleteOutput(
 	response: SubjectLineResponseWithClarification
 ): response is SubjectLineResponseWithClarification & {
 	subject_line: string;
-	core_issue: string;
+	core_message: string;
 	topics: string[];
 	url_slug: string;
 	voice_sample: string;
 } {
 	return (
 		typeof response.subject_line === 'string' &&
-		typeof response.core_issue === 'string' &&
+		typeof response.core_message === 'string' &&
 		Array.isArray(response.topics) &&
 		typeof response.url_slug === 'string' &&
 		typeof response.voice_sample === 'string'

@@ -4,11 +4,24 @@
  * Shared interfaces for Gemini agent responses and grounding metadata
  */
 
-/** Geographic scope as returned inline by the message writer agent */
-export interface MessageGeographicScope {
-	scope_level: 'local' | 'district' | 'metro' | 'state' | 'national' | 'international';
-	scope_display: string;
-}
+/**
+ * Standardized geographic scope encoding (ISO 3166)
+ *
+ * Three types, one discriminated union:
+ * - international: crosses national borders
+ * - nationwide: single country (ISO 3166-1 alpha-2)
+ * - subnational: country + optional subdivision (ISO 3166-2) + optional locality
+ */
+export type GeoScope =
+	| { type: 'international' }
+	| { type: 'nationwide'; country: string; displayName?: string }
+	| {
+			type: 'subnational';
+			country: string;
+			subdivision?: string;
+			locality?: string;
+			displayName?: string;
+	  };
 
 // Re-export clarification types
 export type {
@@ -28,7 +41,7 @@ export type {
 
 export interface SubjectLineResponse {
 	subject_line: string;
-	core_issue: string;
+	core_message: string;
 	topics: string[];
 	url_slug: string;
 	voice_sample: string; // The emotional peak from raw input - carries through pipeline
@@ -69,10 +82,9 @@ export interface Source {
 
 export interface MessageResponse {
 	message: string;
-	subject: string;
 	sources: Source[];
 	research_log: string[];
-	geographic_scope?: MessageGeographicScope;
+	geographic_scope?: GeoScope;
 }
 
 // ============================================================================
