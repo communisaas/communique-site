@@ -1,0 +1,96 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"description": "MongoDB Atlas Vector Search index definitions for Communique",
+	"indexes": [
+		{
+			"name": "intelligence_vector_index",
+			"type": "vectorSearch",
+			"collection": "intelligence",
+			"definition": {
+				"fields": [
+					{
+						"type": "vector",
+						"path": "embedding",
+						"numDimensions": 1024,
+						"similarity": "cosine"
+					},
+					{
+						"type": "filter",
+						"path": "category"
+					},
+					{
+						"type": "filter",
+						"path": "topics"
+					},
+					{
+						"type": "filter",
+						"path": "publishedAt"
+					},
+					{
+						"type": "filter",
+						"path": "relevanceScore"
+					}
+				]
+			},
+			"description": "Vector search for intelligence items with category, topic, date, and relevance filtering"
+		},
+		{
+			"name": "organization_vector_index",
+			"type": "vectorSearch",
+			"collection": "organizations",
+			"definition": {
+				"fields": [
+					{
+						"type": "vector",
+						"path": "embedding",
+						"numDimensions": 1024,
+						"similarity": "cosine"
+					},
+					{
+						"type": "filter",
+						"path": "industry"
+					},
+					{
+						"type": "filter",
+						"path": "source"
+					}
+				]
+			},
+			"description": "Vector search for organizations with industry and source filtering"
+		},
+		{
+			"name": "intelligence_text_index",
+			"type": "search",
+			"collection": "intelligence",
+			"definition": {
+				"mappings": {
+					"dynamic": false,
+					"fields": {
+						"title": {
+							"type": "string",
+							"analyzer": "lucene.english"
+						},
+						"snippet": {
+							"type": "string",
+							"analyzer": "lucene.english"
+						},
+						"category": {
+							"type": "string"
+						},
+						"topics": {
+							"type": "string"
+						}
+					}
+				}
+			},
+			"description": "Full-text search index for intelligence items (used in hybrid search)"
+		}
+	],
+	"notes": [
+		"These indexes must be created via the MongoDB Atlas UI or Atlas Search API",
+		"Vector indexes require Atlas M10+ tier",
+		"Similarity metric 'cosine' is recommended for Voyage AI embeddings",
+		"numDimensions must match the embedding model (1024 for voyage-3)",
+		"Filter fields enable pre-filtering before vector search for better performance"
+	]
+}
