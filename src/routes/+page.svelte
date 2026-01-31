@@ -60,8 +60,6 @@
 	let templateSaveError = $state<string | null>(null);
 	let userInitiatedSelection = $state(false);
 	let locationFilteredGroups = $state<TemplateGroup[]>([]);
-	let nextUnlock = $state<{ level: 'city' | 'district'; count: number } | null>(null);
-	let openAddressModal = $state<(() => void) | null>(null);
 
 	// Handle OAuth return for template creation and URL parameter initialization
 	onMount(() => {
@@ -233,14 +231,6 @@
 		locationFilteredGroups = groups;
 	}
 
-	function handleNextUnlockChange(unlock: { level: 'city' | 'district'; count: number } | null) {
-		nextUnlock = unlock;
-	}
-
-	function handleAddressModalHandler(handler: () => void) {
-		openAddressModal = handler;
-	}
-
 	// Handle URL parameter initialization when templates load
 	$effect(() => {
 		if (browser && templateStore.templates.length > 0 && !userInitiatedSelection) {
@@ -360,8 +350,6 @@
 				<LocationFilter
 					templates={allTemplates}
 					onFilterChange={handleLocationFilterChange}
-					onNextUnlockChange={handleNextUnlockChange}
-					onAddressModalOpen={handleAddressModalHandler}
 				/>
 			</div>
 
