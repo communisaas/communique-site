@@ -1,21 +1,34 @@
 # OAuth Authentication Setup
 
-**Status**: ✅ IMPLEMENTED | 5 Providers Supported
+**Status**: ✅ IMPLEMENTED | 4 Providers Active + 1 Planned
 
 ---
 
-**Unified OAuth authentication system supporting Google, Facebook, Twitter, LinkedIn, and Discord.**
+**Unified OAuth authentication system with Sybil-resistance-aware provider hierarchy.**
+
+### Provider Status (2026-01-31)
+
+| Provider | Status | Sybil Resistance | Notes |
+|----------|--------|------------------|-------|
+| **Coinbase** | 🟡 PLANNED | ⭐⭐⭐⭐⭐ | KYC-verified, see `specs/coinbase-auth-integration.md` |
+| Google | ✅ Active | ⭐⭐⭐⭐ | Primary tier |
+| LinkedIn | ✅ Active | ⭐⭐⭐⭐ | Primary tier |
+| Facebook | ✅ Active | ⭐⭐⭐ | Secondary tier |
+| X/Twitter | ✅ Active | ⭐⭐ | Secondary tier, `users.email` scope added |
+| Discord | ❌ DISABLED | ⭐⭐ | Routes return 403, low Sybil resistance |
 
 ## Overview
 
 Communique uses passwordless OAuth authentication to reduce friction and maximize conversion. Users authenticate with existing social accounts, enabling instant civic action without signup forms.
 
-**Supported Providers**:
-- Google OAuth 2.0
-- Facebook Login
-- Twitter (X) OAuth 2.0
-- LinkedIn OAuth 2.0
-- Discord OAuth 2.0
+**Active Providers**:
+- Google OAuth 2.0 (Primary tier)
+- LinkedIn OAuth 2.0 (Primary tier)
+- Facebook Login (Secondary tier)
+- Twitter (X) OAuth 2.0 (Secondary tier)
+
+**Planned**: Coinbase OAuth 2.0 (KYC-verified, highest Sybil resistance)
+**Disabled**: Discord OAuth 2.0 (low Sybil resistance)
 
 **Architecture**: Arctic library + unified callback handler + session management
 
@@ -517,20 +530,23 @@ try {
 
 ## Roadmap
 
-### Near Term
-- Add GitHub OAuth (developer audience)
-- Add Microsoft OAuth (enterprise users)
+### Near Term (P1)
+- **Coinbase OAuth** — KYC-verified identity, highest Sybil resistance (see `specs/coinbase-auth-integration.md`)
 - Session refresh tokens (extend 90-day expiry)
 
 ### Medium Term
-- WebAuthn/Passkey support (passwordless++
-- Multi-factor authentication (SMS, TOTP)
+- Apple Sign In (device-bound identity)
+- WebAuthn/Passkey support (passwordless++)
+- On-chain verification (Coinbase Verifications on Base L2)
 - Account linking (merge multiple OAuth accounts)
 
 ### Long Term
 - Self-hosted OAuth provider (Communique SSO)
 - OAuth for API access (external integrations)
 - Federated identity (cross-platform reputation)
+
+### Removed
+- ~~Discord OAuth~~ — Disabled due to low Sybil resistance (2026-01-31)
 
 ## References
 
