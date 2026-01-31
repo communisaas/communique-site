@@ -115,7 +115,7 @@ export async function resolveDecisionMakers(
 				systemInstruction: ROLE_DISCOVERY_PROMPT,
 				temperature: 0.3,
 				thinkingLevel: 'medium',
-				maxOutputTokens: 4096
+				maxOutputTokens: 65536 // Maximum for Gemini 2.5+ to prevent truncation
 			},
 			streaming?.onThought
 				? (thought) => streaming.onThought!(thought, 'discover')
@@ -125,9 +125,15 @@ export async function resolveDecisionMakers(
 		const extraction = extractJsonFromGroundingResponse<RoleDiscoveryResponse>(roleResult.rawText || '{}');
 
 		if (!isSuccessfulExtraction(extraction)) {
-			console.error('[decision-maker] Phase 1 JSON extraction failed:', extraction.error);
-			console.error('[decision-maker] Raw text (first 200 chars):', roleResult.rawText?.slice(0, 200));
-			throw new Error('Failed to parse role discovery response');
+			// Log technical details for debugging
+			console.error('[decision-maker] Phase 1 JSON extraction failed:', {
+				error: extraction.error,
+				rawTextLength: roleResult.rawText?.length,
+				rawTextHead: roleResult.rawText?.slice(0, 200),
+				rawTextTail: roleResult.rawText?.slice(-200)
+			});
+			// User-friendly error
+			throw new Error('Finding decision-makers hit a snag. Please try again.');
 		}
 
 		const roles: DiscoveredRole[] = extraction.data?.roles || [];
@@ -191,7 +197,7 @@ export async function resolveDecisionMakers(
 				temperature: 0.2,
 				thinkingLevel: 'high',
 				enableGrounding: true,
-				maxOutputTokens: 16384
+				maxOutputTokens: 65536 // Maximum for Gemini 2.5+ to prevent truncation
 			},
 			streaming?.onThought
 				? (thought) => streaming.onThought!(thought, 'lookup')
@@ -201,8 +207,15 @@ export async function resolveDecisionMakers(
 		const lookupExtraction = extractJsonFromGroundingResponse<PersonLookupResponse>(lookupResult.rawText || '{}');
 
 		if (!isSuccessfulExtraction(lookupExtraction)) {
-			console.error('[decision-maker] Phase 2 JSON extraction failed:', lookupExtraction.error);
-			throw new Error(`Failed to parse person lookup response: ${lookupExtraction.error}`);
+			// Log technical details for debugging
+			console.error('[decision-maker] Phase 2 JSON extraction failed:', {
+				error: lookupExtraction.error,
+				rawTextLength: lookupResult.rawText?.length,
+				rawTextHead: lookupResult.rawText?.slice(0, 200),
+				rawTextTail: lookupResult.rawText?.slice(-200)
+			});
+			// User-friendly error
+			throw new Error('Finding decision-makers hit a snag. Please try again.');
 		}
 
 		const data = lookupExtraction.data;

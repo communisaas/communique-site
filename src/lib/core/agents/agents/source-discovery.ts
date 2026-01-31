@@ -214,7 +214,7 @@ Return the sources you find through search.`;
 			temperature: 0.3,
 			thinkingLevel: 'medium',
 			enableGrounding: true, // Critical: enables real web search
-			maxOutputTokens: 8192
+			maxOutputTokens: 65536 // Maximum for Gemini 2.5+ to prevent truncation
 		},
 		onThought
 	);
@@ -222,8 +222,14 @@ Return the sources you find through search.`;
 	const extraction = extractJsonFromGroundingResponse<DiscoveryResponse>(result.rawText || '{}');
 
 	if (!isSuccessfulExtraction(extraction)) {
-		console.error('[source-discovery] Phase 1 JSON extraction failed:', extraction.error);
-		throw new Error(`Failed to parse source discovery response: ${extraction.error}`);
+		// Log technical details for debugging (visible in browser console)
+		console.error('[source-discovery] Phase 1 JSON extraction failed:', {
+			error: extraction.error,
+			rawTextLength: result.rawText?.length,
+			rawTextTail: result.rawText?.slice(-200)
+		});
+		// User-friendly error - doesn't break their vibe
+		throw new Error('Our research service hit a snag. Please try again.');
 	}
 
 	const discovered = extraction.data?.sources || [];

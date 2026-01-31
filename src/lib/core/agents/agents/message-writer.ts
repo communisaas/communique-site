@@ -238,7 +238,7 @@ CRITICAL: Only cite sources from the verified list above. Use exact URLs as prov
 			temperature: 0.4,
 			thinkingLevel: 'high',
 			enableGrounding: false, // Disabled — using pre-verified sources
-			maxOutputTokens: 8192
+			maxOutputTokens: 65536 // Maximum for Gemini 2.5+ to prevent truncation
 		},
 		onThought ? (thought) => onThought(thought, 'message') : undefined
 	);
@@ -247,9 +247,15 @@ CRITICAL: Only cite sources from the verified list above. Use exact URLs as prov
 	const extraction = extractJsonFromGroundingResponse<MessageResponse>(result.rawText || '');
 
 	if (!isSuccessfulExtraction(extraction)) {
-		console.error('[message-writer] JSON extraction failed:', extraction.error);
-		console.error('[message-writer] Raw text (first 500 chars):', result.rawText?.slice(0, 500));
-		throw new Error(`Failed to parse message response: ${extraction.error}`);
+		// Log technical details for debugging (visible in browser console)
+		console.error('[message-writer] JSON extraction failed:', {
+			error: extraction.error,
+			rawTextLength: result.rawText?.length,
+			rawTextHead: result.rawText?.slice(0, 300),
+			rawTextTail: result.rawText?.slice(-200)
+		});
+		// User-friendly error - doesn't break their vibe
+		throw new Error('Message generation hit a snag. Please try again.');
 	}
 
 	console.log('[message-writer] Extracted data keys:', Object.keys(extraction.data || {}));
@@ -258,10 +264,10 @@ CRITICAL: Only cite sources from the verified list above. Use exact URLs as prov
 	const validationResult = MessageResponseSchema.safeParse(extraction.data);
 
 	if (!validationResult.success) {
+		// Log technical details for debugging
 		console.error('[message-writer] Invalid response structure:', validationResult.error.flatten());
-		throw new Error(
-			`Invalid message response: ${validationResult.error.errors[0]?.message || 'Unknown validation error'}`
-		);
+		// User-friendly error
+		throw new Error('Message generation hit a snag. Please try again.');
 	}
 
 	// CRITICAL: Replace generated sources with verified sources

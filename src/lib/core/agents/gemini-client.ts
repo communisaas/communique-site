@@ -57,7 +57,7 @@ export const GEMINI_CONFIG = {
 	model: 'gemini-3-flash-preview',
 	defaults: {
 		temperature: 0.3,
-		maxOutputTokens: 8192,
+		maxOutputTokens: 65536, // Maximum for Gemini 2.5+ to prevent truncation
 		thinkingLevel: 'medium' as const
 	}
 } as const;
