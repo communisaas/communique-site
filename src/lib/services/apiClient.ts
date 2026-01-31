@@ -23,7 +23,8 @@ export const templatesApi = {
 	},
 
 	async create<T = unknown>(template: Record<string, unknown>): Promise<ApiResponse<T>> {
-		const res = await api.post('/templates', template);
+		// Disable automatic toast - let caller handle success/error messaging
+		const res = await api.post('/templates', template, { showToast: false });
 		if (
 			res.success &&
 			res.data &&

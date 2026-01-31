@@ -273,8 +273,10 @@ function createTemplateStore() {
 
 				return newTemplate;
 			} catch (error) {
-				state.error = 'Template could not be added.';
-				throw new Error('Template could not be added.');
+				// Preserve the original error message for user feedback
+				const message = error instanceof Error ? error.message : 'Template could not be added.';
+				state.error = message;
+				throw error instanceof Error ? error : new Error(message);
 			}
 		},
 

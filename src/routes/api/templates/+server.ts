@@ -14,8 +14,8 @@ import { moderateTemplate } from '$lib/core/server/moderation';
 import { generateBatchEmbeddings } from '$lib/core/search/gemini-embeddings';
 import { z } from 'zod';
 
-// Import MessageGeographicScope for agent-extracted geographic scope
-import type { MessageGeographicScope } from '$lib/core/agents/types';
+// Import GeoScope for agent-extracted geographic scope
+import type { GeoScope } from '$lib/core/agents/types';
 
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
@@ -36,7 +36,7 @@ interface CreateTemplateRequest {
 	cwc_config?: UnknownRecord;
 	recipient_config?: UnknownRecord;
 	metrics?: UnknownRecord;
-	geographic_scope?: MessageGeographicScope; // Agent-extracted geographic scope for TemplateScope creation
+	geographic_scope?: GeoScope; // Agent-extracted geographic scope for TemplateScope creation
 }
 
 type ValidationError = ApiError;
@@ -151,7 +151,7 @@ function validateTemplateData(data: unknown): {
 			clicked: 0,
 			views: 0
 		},
-		geographic_scope: (templateData.geographic_scope as MessageGeographicScope) || undefined
+		geographic_scope: (templateData.geographic_scope as GeoScope) || undefined
 	};
 
 	return { isValid: true, errors: [], validData };
@@ -499,9 +499,19 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		} catch (moderationError) {
 			console.error('Content moderation error:', moderationError);
-			// Don't block template creation if moderation fails - log and continue
-			// In production, queue for manual review instead
-			consensusResult = null;
+			// Atomic: if moderation fails, don't create the template
+			// This prevents slug consumption on failed publishes
+			const errorMessage =
+				moderationError instanceof Error ? moderationError.message : 'Content moderation failed';
+			const response: ApiResponse = {
+				success: false,
+				error: createApiError(
+					'server',
+					'MODERATION_FAILED',
+					`Unable to verify content: ${errorMessage}. Please try again.`
+				)
+			};
+			return json(response, { status: 503 });
 		}
 
 		const user = locals.user;
@@ -570,28 +580,41 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					});
 
 					// Step 2: Create TemplateScope if geographic_scope was extracted
-					if (validData.geographic_scope) {
-						const geoScope = validData.geographic_scope;
+					if (validData.geographic_scope && validData.geographic_scope.type !== 'international') {
+						const geo = validData.geographic_scope;
 
-						// Map agent scope_level to DB scope_level
-						// Agent: local|district|metro|state|national|international
-						// DB:    district|locality|region|country
-						const scopeLevelMap: Record<string, string> = {
-							local: 'locality',
-							district: 'district',
-							metro: 'locality',
-							state: 'region',
-							national: 'country',
-							international: 'country'
-						};
-						const dbScopeLevel = scopeLevelMap[geoScope.scope_level] || 'country';
+						// Derive DB fields from GeoScope discriminated union
+						let countryCode = 'US';
+						let regionCode: string | null = null;
+						let localityCode: string | null = null;
+						let scopeLevel = 'country';
+						let displayText = 'Nationwide';
+
+						if (geo.type === 'nationwide') {
+							countryCode = geo.country;
+							displayText = geo.country;
+						} else if (geo.type === 'subnational') {
+							countryCode = geo.country;
+							if (geo.subdivision) {
+								regionCode = geo.subdivision;
+								scopeLevel = 'region';
+								displayText = geo.subdivision;
+							}
+							if (geo.locality) {
+								localityCode = geo.locality;
+								scopeLevel = 'locality';
+								displayText = geo.locality + (geo.subdivision ? `, ${geo.subdivision}` : '');
+							}
+						}
 
 						await tx.templateScope.create({
 							data: {
 								template_id: template.id,
-								country_code: 'US',
-								display_text: geoScope.scope_display,
-								scope_level: dbScopeLevel,
+								country_code: countryCode,
+								region_code: regionCode,
+								locality_code: localityCode,
+								display_text: displayText,
+								scope_level: scopeLevel,
 								confidence: 1.0,
 								extraction_method: 'gemini_inline',
 								power_structure_type: null,

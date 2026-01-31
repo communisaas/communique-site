@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 interface PendingSuggestion {
 	subject_line: string;
-	core_issue: string;
+	core_message: string;
 	topics: string[];
 	url_slug: string;
 	voice_sample: string;
@@ -60,7 +60,7 @@ function createTemplateDraftStore(): TemplateDraftStore {
 	const PendingSuggestionSchema = z
 		.object({
 			subject_line: z.string(),
-			core_issue: z.string(),
+			core_message: z.string(),
 			topics: z.array(z.string()),
 			url_slug: z.string(),
 			voice_sample: z.string()
@@ -151,7 +151,7 @@ function createTemplateDraftStore(): TemplateDraftStore {
 				recipientEmails: Array.isArray(data.audience?.recipientEmails)
 					? [...data.audience.recipientEmails]
 					: [],
-				// Decision makers from AI resolution
+				// Decision makers from AI resolution - preserve ALL fields including email
 				decisionMakers: Array.isArray(data.audience?.decisionMakers)
 					? data.audience.decisionMakers.map((dm) => ({
 							name: dm.name ?? '',
@@ -159,7 +159,21 @@ function createTemplateDraftStore(): TemplateDraftStore {
 							organization: dm.organization ?? '',
 							reasoning: dm.reasoning ?? '',
 							source_url: dm.source_url ?? '',
-							confidence: dm.confidence ?? 0
+							confidence: dm.confidence ?? 0,
+							// Critical: these fields are needed for email extraction
+							email: dm.email ?? '',
+							source: dm.source ?? '',
+							isAiResolved: dm.isAiResolved ?? true
+						}))
+					: [],
+				// These fields were missing - critical for recipient extraction
+				includesCongress: data.audience?.includesCongress ?? false,
+				customRecipients: Array.isArray(data.audience?.customRecipients)
+					? data.audience.customRecipients.map((r) => ({
+							name: r.name ?? '',
+							email: r.email ?? '',
+							title: r.title ?? '',
+							organization: r.organization ?? ''
 						}))
 					: []
 			},
