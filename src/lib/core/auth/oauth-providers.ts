@@ -7,6 +7,7 @@
 
 import { Google, Facebook, LinkedIn, Discord } from 'arctic';
 import { Twitter } from 'arctic';
+import { CoinbaseOAuth } from './coinbase-oauth';
 import type {
 	OAuthCallbackConfig,
 	OAuthProvider,
@@ -209,6 +210,36 @@ function isDiscordUser(user: unknown): user is {
 		typeof (user as Record<string, unknown>).email === 'string' &&
 		'username' in user &&
 		typeof (user as Record<string, unknown>).username === 'string'
+	);
+}
+
+// Coinbase OAuth response type guard
+function isCoinbaseUser(user: unknown): user is {
+	data: {
+		id: string;
+		name: string;
+		email: string;
+		avatar_url?: string;
+		country?: {
+			code?: string;
+			name?: string;
+		};
+		created_at?: string;
+	};
+} {
+	return (
+		typeof user === 'object' &&
+		user !== null &&
+		'data' in user &&
+		typeof (user as Record<string, unknown>).data === 'object' &&
+		(user as Record<string, unknown>).data !== null &&
+		'id' in ((user as Record<string, unknown>).data as Record<string, unknown>) &&
+		typeof ((user as Record<string, unknown>).data as Record<string, unknown>).id === 'string' &&
+		'email' in ((user as Record<string, unknown>).data as Record<string, unknown>) &&
+		typeof ((user as Record<string, unknown>).data as Record<string, unknown>).email ===
+			'string' &&
+		'name' in ((user as Record<string, unknown>).data as Record<string, unknown>) &&
+		typeof ((user as Record<string, unknown>).data as Record<string, unknown>).name === 'string'
 	);
 }
 
@@ -463,7 +494,11 @@ function createTwitterConfig(): OAuthCallbackConfig {
 		redirectUrl,
 		userInfoUrl: 'https://api.twitter.com/2/users/me',
 		requiresCodeVerifier: true,
-		scope: 'users.read tweet.read offline.access',
+		// ISSUE-002: Request email scope to enable Sybil resistance
+		// NOTE: "Request email from users" must be enabled in the X Developer Portal
+		// for the email field to be returned. Even with this scope, email is only
+		// returned if the user has a verified email AND grants permission.
+		scope: 'users.read tweet.read users.email offline.access',
 
 		createOAuthClient: (): OAuthClient => {
 			return new Twitter(
@@ -482,8 +517,13 @@ function createTwitterConfig(): OAuthCallbackConfig {
 		},
 
 		getUserInfo: async (accessToken: string): Promise<unknown> => {
+			// ISSUE-002: Request email field for Sybil resistance
+			// Email will only be returned if:
+			// 1. users.email scope was granted during OAuth
+			// 2. User has a verified email on their X account
+			// 3. "Request email from users" is enabled in X Developer Portal
 			const response = await fetchWithRetry(
-				'https://api.twitter.com/2/users/me?user.fields=profile_image_url',
+				'https://api.twitter.com/2/users/me?user.fields=profile_image_url,email',
 				{
 					headers: {
 						Authorization: `Bearer ${accessToken}`
@@ -534,8 +574,16 @@ function createTwitterConfig(): OAuthCallbackConfig {
 export const twitterConfig: OAuthCallbackConfig = createTwitterConfig();
 
 // =============================================================================
-// DISCORD CONFIGURATION
+// DISCORD CONFIGURATION — FULLY DISABLED
 // =============================================================================
+// Discord is DISABLED due to low Sybil resistance (⭐⭐):
+// - UI: Removed from AuthButtons.svelte
+// - Routes: /auth/discord/* return 403
+// - Config: Kept here for potential future re-enablement
+//
+// To re-enable:
+// 1. Restore routes from git history (src/routes/auth/discord/*)
+// 2. Add Discord back to secondaryProviders in AuthButtons.svelte
 
 function createDiscordConfig(): OAuthCallbackConfig {
 	const clientId = getRequiredEnv('DISCORD_CLIENT_ID', 'Discord');
@@ -624,6 +672,102 @@ function createDiscordConfig(): OAuthCallbackConfig {
 export const discordConfig: OAuthCallbackConfig = createDiscordConfig();
 
 // =============================================================================
+// COINBASE CONFIGURATION
+// =============================================================================
+// Coinbase provides the HIGHEST trust_score (90) due to strict KYC requirements:
+// - Government-issued ID verification
+// - Proof of address
+// - Selfie verification with liveness detection
+// - Email verification (always verified)
+//
+// This makes Coinbase accounts extremely resistant to Sybil attacks and provides
+// high confidence in identity uniqueness - ideal for civic applications requiring
+// one-person-one-vote guarantees.
+
+function createCoinbaseConfig(): OAuthCallbackConfig {
+	const clientId = getRequiredEnv('COINBASE_CLIENT_ID', 'Coinbase');
+	const clientSecret = getRequiredEnv('COINBASE_CLIENT_SECRET', 'Coinbase');
+	const redirectUrl = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/coinbase/callback`;
+
+	return {
+		provider: 'coinbase' as OAuthProvider,
+		clientId,
+		clientSecret,
+		redirectUrl,
+		userInfoUrl: 'https://api.coinbase.com/v2/user',
+		requiresCodeVerifier: true,
+		scope: 'wallet:user:read wallet:user:email offline_access',
+
+		createOAuthClient: (): OAuthClient => {
+			return new CoinbaseOAuth(
+				clientId,
+				clientSecret,
+				redirectUrl
+			) as unknown as OAuthClient;
+		},
+
+		exchangeTokens: async (
+			client: OAuthClient,
+			code: string,
+			codeVerifier?: string
+		): Promise<OAuthTokens> => {
+			if (!codeVerifier) {
+				throw new Error('Code verifier required for Coinbase OAuth');
+			}
+			return await client.validateAuthorizationCode(code, codeVerifier);
+		},
+
+		getUserInfo: async (accessToken: string): Promise<unknown> => {
+			const response = await fetchWithRetry('https://api.coinbase.com/v2/user', {
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'CB-VERSION': '2024-01-01'
+				}
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch user info: ${response.statusText}`);
+			}
+
+			return await response.json();
+		},
+
+		mapUserData: (rawUser: unknown): UserData => {
+			if (!isCoinbaseUser(rawUser)) {
+				throw new Error('Invalid Coinbase user data format');
+			}
+
+			// Coinbase requires KYC so email is always verified
+			// Extract country code for potential location inference (client-side only)
+			const countryCode = rawUser.data.country?.code;
+
+			return {
+				id: rawUser.data.id,
+				email: rawUser.data.email,
+				name: rawUser.data.name,
+				avatar: rawUser.data.avatar_url,
+				// Email is always verified due to KYC requirements
+				emailVerified: true,
+				// Store country code for client-side location inference
+				// Server never stores this - only passes to client via oauth_location cookie
+				location: countryCode || undefined
+			};
+		},
+
+		extractTokenData: (tokens: OAuthTokens): TokenData => {
+			const expiresAtDate = tokens.accessTokenExpiresAt();
+			return {
+				accessToken: tokens.accessToken(),
+				refreshToken: tokens.hasRefreshToken() ? tokens.refreshToken?.() || null : null,
+				expiresAt: expiresAtDate ? Math.floor(expiresAtDate.getTime() / 1000) : null
+			};
+		}
+	};
+}
+
+export const coinbaseConfig: OAuthCallbackConfig = createCoinbaseConfig();
+
+// =============================================================================
 // PROVIDER REGISTRY
 // =============================================================================
 
@@ -632,7 +776,8 @@ export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthCallbackConfig> = {
 	facebook: facebookConfig,
 	linkedin: linkedinConfig,
 	twitter: twitterConfig,
-	discord: discordConfig
+	discord: discordConfig,
+	coinbase: coinbaseConfig
 } as const;
 
 /**

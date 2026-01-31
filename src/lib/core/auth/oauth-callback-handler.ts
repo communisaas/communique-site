@@ -42,7 +42,7 @@ import { validateReturnTo } from '$lib/core/auth/oauth';
 // TYPE DEFINITIONS
 // =============================================================================
 
-export type OAuthProvider = 'google' | 'facebook' | 'linkedin' | 'twitter' | 'discord';
+export type OAuthProvider = 'google' | 'facebook' | 'linkedin' | 'twitter' | 'discord' | 'coinbase';
 
 export interface UserData {
 	id: string;

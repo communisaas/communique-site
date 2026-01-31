@@ -1,7 +1,18 @@
-import { oauthCallbackHandler } from '$lib/core/auth/oauth-callback-handler';
-import { discordConfig } from '$lib/core/auth/oauth-providers';
+/**
+ * Discord OAuth Callback — DISABLED
+ *
+ * Discord authentication is disabled due to LOW Sybil resistance.
+ * See: /auth/discord/+server.ts for details.
+ */
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, cookies }) => {
-	return oauthCallbackHandler.handleCallback(discordConfig, url, cookies);
+export const GET: RequestHandler = async () => {
+	return json(
+		{
+			error: 'discord_disabled',
+			message: 'Discord authentication is disabled due to insufficient Sybil resistance'
+		},
+		{ status: 403 }
+	);
 };

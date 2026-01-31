@@ -1,59 +1,24 @@
-import { redirect } from '@sveltejs/kit';
-import { Discord } from 'arctic';
-import { generateState, generateCodeVerifier, validateReturnTo } from '$lib/core/auth/oauth';
+/**
+ * Discord OAuth Route — DISABLED
+ *
+ * Discord authentication is disabled due to LOW Sybil resistance (⭐⭐):
+ * - No phone verification required
+ * - No identity verification
+ * - Trivial to create multiple accounts
+ * - Email verification optional
+ *
+ * See: IMPLEMENTATION-GAP-ANALYSIS.md, AuthButtons.svelte
+ * To re-enable: restore original implementation from git history
+ */
+import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ cookies, url }) => {
-	const state = generateState();
-	const codeVerifier = generateCodeVerifier();
-
-	// Validate OAuth credentials
-	const clientId = process.env.DISCORD_CLIENT_ID;
-	const clientSecret = process.env.DISCORD_CLIENT_SECRET;
-	if (!clientId || !clientSecret) {
-		throw new Error('Missing OAuth credentials for Discord');
-	}
-
-	// Create Discord OAuth provider with static redirect URL
-	const discord = new Discord(
-		clientId,
-		clientSecret,
-		`${process.env.OAUTH_REDIRECT_BASE_URL}/auth/discord/callback`
+export const GET: RequestHandler = async () => {
+	return json(
+		{
+			error: 'discord_disabled',
+			message: 'Discord authentication is disabled due to insufficient Sybil resistance'
+		},
+		{ status: 403 }
 	);
-
-	// Store state and code verifier in cookies for verification
-	cookies.set('oauth_state', state, {
-		path: '/',
-		secure: process.env.NODE_ENV === 'production',
-		httpOnly: true,
-		maxAge: 60 * 10, // 10 minutes
-		sameSite: 'lax'
-	});
-
-	cookies.set('oauth_code_verifier', codeVerifier, {
-		path: '/',
-		secure: process.env.NODE_ENV === 'production',
-		httpOnly: true,
-		maxAge: 60 * 10, // 10 minutes
-		sameSite: 'lax'
-	});
-
-	// Store the return URL if provided (BA-004: validate to prevent open redirect)
-	const returnTo = validateReturnTo(url.searchParams.get('returnTo'));
-	if (returnTo !== '/') {
-		cookies.set('oauth_return_to', returnTo, {
-			path: '/',
-			secure: process.env.NODE_ENV === 'production',
-			httpOnly: true,
-			maxAge: 60 * 10, // 10 minutes
-			sameSite: 'lax'
-		});
-	}
-
-	const authorizationURL = await discord.createAuthorizationURL(state, codeVerifier, [
-		'identify',
-		'email'
-	]);
-
-	redirect(302, authorizationURL.toString());
 };

@@ -1,5 +1,5 @@
 // OAuth Provider Types
-export type OAuthProvider = 'google' | 'twitter' | 'facebook' | 'linkedin' | 'discord';
+export type OAuthProvider = 'google' | 'twitter' | 'facebook' | 'linkedin' | 'discord' | 'coinbase';
 
 // OAuth state management
 export function generateState(): string {
