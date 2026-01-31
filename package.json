@@ -44,6 +44,7 @@
 		"@rollup/plugin-alias": "^6.0.0",
 		"@sveltejs/adapter-auto": "^3.3.1",
 		"@sveltejs/adapter-cloudflare": "^7.2.6",
+		"@sveltejs/adapter-node": "^5.5.2",
 		"@sveltejs/kit": "^2.48.4",
 		"@sveltejs/vite-plugin-svelte": "^4.0.0",
 		"@tailwindcss/aspect-ratio": "^0.4.2",

@@ -1,6 +1,10 @@
 import { mdsvex } from 'mdsvex';
-import adapter from '@sveltejs/adapter-cloudflare';
+import adapterNode from '@sveltejs/adapter-node';
+import adapterCloudflare from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
+
+// Use Node adapter for Fly.io, Cloudflare adapter for CF Pages
+const useCloudflare = process.env.ADAPTER === 'cloudflare';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
@@ -9,13 +13,15 @@ const config = {
 	preprocess: [vitePreprocess(), mdsvex()],
 
 	kit: {
-		adapter: adapter({
-			// Skip prerendering to avoid post-build analysis issues
-			prerender: {
-				handleHttpError: 'warn',
-				handleMissingId: 'warn'
-			}
-		}),
+		adapter: useCloudflare
+			? adapterCloudflare({
+					// Skip prerendering to avoid post-build analysis issues
+					prerender: {
+						handleHttpError: 'warn',
+						handleMissingId: 'warn'
+					}
+				})
+			: adapterNode(),
 		// BA-010: Explicitly enable CSRF origin checking (defense-in-depth).
 		// This is the SvelteKit 2.x default, but we set it explicitly to prevent
 		// accidental disabling. All non-GET requests must have a matching Origin header.
