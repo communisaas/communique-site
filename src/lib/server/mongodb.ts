@@ -64,8 +64,21 @@ function initializeMongoClient(): Promise<MongoClient> {
 	}
 }
 
-// Initialize the client promise
-clientPromise = initializeMongoClient();
+// Lazy initialization - don't connect until first use
+// This prevents crashes in environments where MongoDB isn't available (e.g., Cloudflare Workers)
+let isInitialized = false;
+
+function ensureClientInitialized(): void {
+	if (!isInitialized) {
+		try {
+			clientPromise = initializeMongoClient();
+			isInitialized = true;
+		} catch (error) {
+			console.error('[MongoDB] Failed to initialize client:', error);
+			throw error;
+		}
+	}
+}
 
 /**
  * Get the MongoDB client instance
@@ -79,6 +92,7 @@ clientPromise = initializeMongoClient();
  */
 export async function getMongoClient(): Promise<MongoClient> {
 	try {
+		ensureClientInitialized();
 		const client = await clientPromise;
 
 		// Verify connection is alive
@@ -147,14 +161,4 @@ export async function testMongoConnection(): Promise<boolean> {
 	}
 }
 
-// Log connection status on module load
-clientPromise
-	.then(async (client) => {
-		const serverInfo = client.options;
-		console.log('[MongoDB] Connected successfully');
-		console.log(`[MongoDB] Database: ${DATABASE_NAME}`);
-		console.log(`[MongoDB] Max pool size: ${serverInfo.maxPoolSize}`);
-	})
-	.catch((error) => {
-		console.error('[MongoDB] Initial connection failed:', error);
-	});
+// Connection logging moved to getMongoClient() for lazy initialization

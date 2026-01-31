@@ -7,13 +7,17 @@ import { ensureAllIndexes } from '$lib/server/mongodb/indexes';
 /**
  * MongoDB Index Initialization
  *
- * Runs once on server startup to ensure all indexes exist.
- * Uses a module-level guard to prevent multiple invocations during hot reload.
+ * Runs lazily on first MongoDB-using request to ensure all indexes exist.
+ * Uses a module-level guard to prevent multiple invocations.
  * Fire-and-forget pattern: doesn't block request handling.
+ *
+ * NOTE: MongoDB initialization is deferred because the Node.js MongoDB driver
+ * may not be available in all deployment environments (e.g., Cloudflare Workers).
  */
 let indexInitialized = false;
 
 function initializeMongoIndexes(): void {
+	// Skip if already initialized or in a serverless environment that may not support MongoDB
 	if (indexInitialized) {
 		return;
 	}
@@ -32,8 +36,8 @@ function initializeMongoIndexes(): void {
 		});
 }
 
-// Initialize indexes on module load (server startup)
-initializeMongoIndexes();
+// NOTE: Do not initialize indexes on module load - MongoDB may not be available
+// in all environments. Index initialization will happen on first MongoDB access.
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	try {
