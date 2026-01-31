@@ -1,5 +1,5 @@
 import type { TemplateScope } from './jurisdiction';
-import type { MessageGeographicScope } from '$lib/core/agents/types';
+import type { GeoScope } from '$lib/core/agents/types';
 
 export interface Template {
 	id: string;
@@ -136,7 +136,7 @@ export interface TemplateFormData {
 		variables: string[];
 		sources?: Source[]; // Citation sources from message generation
 		researchLog?: string[]; // Agent's research process log
-		geographicScope?: MessageGeographicScope | null; // Geographic scope from message writer agent
+		geographicScope?: GeoScope | null; // Geographic scope from message writer agent
 		aiGenerated?: boolean; // Flag indicating message was AI-generated
 		edited?: boolean; // Flag indicating user edited AI-generated message
 	};

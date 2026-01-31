@@ -19,7 +19,7 @@
 	 */
 
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { ArrowRight, Sparkles } from '@lucide/svelte';
+	import { ArrowRight, Clock } from '@lucide/svelte';
 	import { templateDraftStore, formatTimeAgo } from '$lib/stores/templateDraft';
 
 	import type { Snippet } from 'svelte';
@@ -155,39 +155,53 @@
 			<!-- Draft indicator - subtle, peripheral awareness -->
 			{#if hasDraft && draftLastSaved}
 				<div class="draft-indicator">
-					<Sparkles class="draft-icon" />
+					<Clock class="draft-icon" />
 					<span class="draft-text">saved {formatTimeAgo(draftLastSaved).toLowerCase()}</span>
 				</div>
 			{/if}
 		</div>
 
-		<div class="input-container" class:focused={isFocused} class:has-draft={hasDraft}>
-			<textarea
-				bind:this={inputEl}
-				bind:value={issueText}
-				id="issue-input"
-				class="spark-input"
-				placeholder="The rent keeps going up but wages don't..."
-				rows="3"
-				onfocus={() => (isFocused = true)}
-				onblur={() => (isFocused = false)}
-				onkeydown={handleKeydown}
-			></textarea>
+		{#if hasDraft}
+			<!-- SETTLED STATE: Draft displayed as read-only artifact -->
+			<div class="draft-artifact" role="region" aria-label="Your saved draft">
+				<!-- Content as quotation -->
+				<div class="draft-content">
+					<blockquote class="draft-quote">"{issueText}"</blockquote>
+				</div>
 
-			<!-- Subtle helper text -->
-			<div class="input-footer">
-				{#if hasContent}
-					<span class="char-count">{issueText.length} characters</span>
-					{#if hasDraft}
-						<button type="button" class="start-fresh-link" onclick={handleStartFresh}>
-							start fresh
-						</button>
-					{/if}
-				{:else}
-					<span class="hint">Describe the problem you want to solve</span>
-				{/if}
+				<!-- Footer: Start fresh only -->
+				<div class="draft-footer">
+					<span class="draft-hint">Continue where you left off, or</span>
+					<button type="button" class="start-fresh-link" onclick={handleStartFresh}>
+						start fresh
+					</button>
+				</div>
 			</div>
-		</div>
+		{:else}
+			<!-- ACTIVE STATE: Editable textarea -->
+			<div class="input-container" class:focused={isFocused}>
+				<textarea
+					bind:this={inputEl}
+					bind:value={issueText}
+					id="issue-input"
+					class="spark-input"
+					placeholder="The rent keeps going up but wages don't..."
+					rows="3"
+					onfocus={() => (isFocused = true)}
+					onblur={() => (isFocused = false)}
+					onkeydown={handleKeydown}
+				></textarea>
+
+				<!-- Subtle helper text -->
+				<div class="input-footer">
+					{#if hasContent}
+						<span class="char-count">{issueText.length} characters</span>
+					{:else}
+						<span class="hint">Describe the problem you want to solve</span>
+					{/if}
+				</div>
+			</div>
+		{/if}
 
 		<!-- Continue action - appears when content exists or focused -->
 		<div class="spark-actions" class:visible={isActivated}>
@@ -411,6 +425,44 @@
 		box-shadow:
 			0 0 0 3px oklch(0.7 0.08 155 / 0.15),
 			0 4px 12px -2px oklch(0.5 0.08 155 / 0.1);
+	}
+
+	/* Draft Artifact - Settled state presentation */
+	.draft-artifact {
+		border-radius: 12px;
+		border: 2px solid oklch(0.75 0.08 155);
+		background: oklch(0.995 0.005 155);
+		overflow: hidden;
+	}
+
+	.draft-content {
+		padding: 1rem;
+	}
+
+	.draft-quote {
+		margin: 0;
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 1rem;
+		line-height: 1.5;
+		color: oklch(0.3 0.02 250);
+		border-left: 3px solid oklch(0.7 0.08 155);
+		padding-left: 0.75rem;
+	}
+
+	.draft-footer {
+		padding: 0.5rem 1rem;
+		border-top: 1px solid oklch(0.88 0.04 155);
+		background: oklch(0.98 0.005 155);
+		display: flex;
+		justify-content: flex-end;
+		align-items: center;
+		gap: 0.375rem;
+	}
+
+	.draft-hint {
+		font-family: 'Satoshi', system-ui, sans-serif;
+		font-size: 0.75rem;
+		color: oklch(0.5 0.02 250);
 	}
 
 	.spark-input {

@@ -1,21 +1,22 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
+	import { slide } from 'svelte/transition';
 
 	/**
 	 * ThinkingAtmosphere - Perceptual Engineering Component
 	 *
-	 * Displays streaming thoughts from an AI agent as an atmospheric presence,
-	 * not a log. Thoughts fade in and out, building anticipation toward a result.
+	 * Displays streaming thoughts as a scannable research log.
+	 * Left-justified for F-pattern reading. Accumulated to show progress.
 	 *
 	 * Perceptual principles:
-	 * - Single thought visible (replaces, doesn't accumulate)
-	 * - Soft transitions (300ms fade)
-	 * - Subtle life indicator (breathing animation)
-	 * - No container (floats in space)
-	 * - Typography that breathes (lighter weight, muted)
+	 * - Left-justified for natural scanning
+	 * - Accumulated log shows research depth
+	 * - Latest thought highlighted, older fade back
+	 * - Compact container with subtle border
+	 * - Auto-scroll to latest
 	 *
-	 * The goal: users feel the agent "thinking with them", building trust
-	 * that their issue is being carefully considered.
+	 * The goal: users see research happening in real-time,
+	 * building confidence their issue is being analyzed.
 	 */
 
 	let {
@@ -28,196 +29,169 @@
 		onComplete?: () => void;
 	} = $props();
 
-	// Track which thought is currently displayed
-	let displayedThoughtIndex = $state(-1);
-	let isTransitioning = $state(false);
-	let opacity = $state(0);
-
 	// Track active timeouts for cleanup
 	let activeTimeouts: number[] = [];
 
-	// Current thought with fade logic
-	const currentThought = $derived(
-		displayedThoughtIndex >= 0 && displayedThoughtIndex < thoughts.length
-			? thoughts[displayedThoughtIndex]
-			: null
-	);
+	// Container ref for auto-scroll
+	let containerRef: HTMLDivElement | null = $state(null);
 
-	// When new thoughts arrive, transition to show them
+	// Auto-scroll when new thoughts arrive
+	// Wait for slide transition (150ms) to complete before scrolling
 	$effect(() => {
-		if (thoughts.length > 0 && thoughts.length - 1 > displayedThoughtIndex) {
-			transitionToThought(thoughts.length - 1);
-		}
-	});
-
-	// When generation completes, fade out
-	$effect(() => {
-		if (!isActive && currentThought) {
-			// Fade out the last thought
-			const timeout1 = setTimeout(() => {
-				opacity = 0;
-				const timeout2 = setTimeout(() => {
-					if (onComplete) onComplete();
-				}, 300);
-				activeTimeouts.push(timeout2);
-			}, 800); // Hold the last thought briefly
-			activeTimeouts.push(timeout1);
-		}
-	});
-
-	async function transitionToThought(index: number) {
-		if (isTransitioning) return;
-		isTransitioning = true;
-
-		// If there's a current thought, fade it out first
-		if (currentThought) {
-			opacity = 0;
-			await sleep(200);
-		}
-
-		// Update to new thought
-		displayedThoughtIndex = index;
-
-		// Fade in new thought
-		await sleep(50); // Small delay for DOM update
-		opacity = 1;
-
-		isTransitioning = false;
-	}
-
-	function sleep(ms: number): Promise<void> {
-		return new Promise((resolve) => {
-			const timeout = setTimeout(resolve, ms);
+		const thoughtCount = thoughts.length;
+		if (thoughtCount > 0 && containerRef) {
+			// Wait for slide transition to complete, then scroll
+			const timeout = setTimeout(() => {
+				containerRef?.scrollTo({
+					top: containerRef.scrollHeight,
+					behavior: 'smooth'
+				});
+			}, 160); // Slightly longer than transition duration (150ms)
 			activeTimeouts.push(timeout);
-		});
-	}
+		}
+	});
+
+	// Notify completion
+	$effect(() => {
+		if (!isActive && thoughts.length > 0 && onComplete) {
+			const timeout = setTimeout(onComplete, 400);
+			activeTimeouts.push(timeout);
+		}
+	});
 
 	onDestroy(() => {
-		// Clear all active timeouts
 		activeTimeouts.forEach((timeout) => clearTimeout(timeout));
 		activeTimeouts = [];
 	});
 </script>
 
-{#if isActive || currentThought}
+{#if isActive || thoughts.length > 0}
 	<div
 		class="thinking-atmosphere"
 		class:active={isActive}
 		aria-live="polite"
 		aria-label="AI thinking process"
 	>
-		<!-- Subtle progress indicator -->
-		<div class="progress-dots" class:visible={isActive}>
-			<span class="dot"></span>
-			<span class="dot"></span>
-			<span class="dot"></span>
+		<!-- Header with activity indicator -->
+		<div class="header">
+			{#if isActive}
+				<span class="pulse" aria-hidden="true"></span>
+			{/if}
+			<span class="label">Analyzing...</span>
 		</div>
 
-		<!-- Thought content with fade -->
-		{#if currentThought}
-			<p class="thought" style="opacity: {opacity}">
-				{currentThought}
-			</p>
-		{:else if isActive}
-			<p class="thought thought-placeholder" style="opacity: 0.4">Understanding your concern...</p>
-		{/if}
+		<!-- Thought log -->
+		<div class="thought-log" bind:this={containerRef} role="log">
+			{#each thoughts as thought, i (i)}
+				<p
+					class="thought"
+					class:latest={i === thoughts.length - 1 && isActive}
+					class:faded={i < thoughts.length - 1}
+					transition:slide={{ duration: 150 }}
+				>
+					{thought}
+				</p>
+			{/each}
+
+			{#if isActive && thoughts.length === 0}
+				<p class="thought placeholder">Understanding your concern...</p>
+			{/if}
+		</div>
 	</div>
 {/if}
 
 <style>
 	.thinking-atmosphere {
-		position: relative;
-		padding: 1rem 0;
-		min-height: 3rem;
+		padding: 0.75rem;
+		border-radius: 0.5rem;
+		border: 1px solid #e2e8f0; /* slate-200 */
+		background: #f8fafc; /* slate-50 */
 	}
 
-	/* Progress dots - subtle indicator of activity */
-	.progress-dots {
+	.header {
 		display: flex;
-		gap: 0.375rem;
-		justify-content: center;
-		margin-bottom: 0.75rem;
-		opacity: 0;
-		transition: opacity 0.3s ease;
+		align-items: center;
+		gap: 0.5rem;
+		margin-bottom: 0.5rem;
 	}
 
-	.progress-dots.visible {
-		opacity: 1;
-	}
-
-	.dot {
-		width: 0.375rem;
-		height: 0.375rem;
+	.pulse {
+		width: 6px;
+		height: 6px;
 		border-radius: 50%;
-		background: var(--color-participation-primary-400, #818cf8);
-		opacity: 0.4;
-		animation: pulse 1.4s ease-in-out infinite;
-	}
-
-	.dot:nth-child(2) {
-		animation-delay: 0.2s;
-	}
-
-	.dot:nth-child(3) {
-		animation-delay: 0.4s;
+		background: var(--color-participation-primary-500, #6366f1);
+		animation: pulse 1.5s ease-in-out infinite;
 	}
 
 	@keyframes pulse {
 		0%,
 		100% {
-			opacity: 0.3;
-			transform: scale(0.9);
+			opacity: 0.4;
 		}
 		50% {
-			opacity: 0.8;
-			transform: scale(1.1);
+			opacity: 1;
 		}
 	}
 
-	/* Thought text - atmospheric, not clinical */
+	.label {
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: #64748b; /* slate-500 */
+	}
+
+	.thought-log {
+		max-height: 8rem;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+	}
+
 	.thought {
-		font-size: 0.875rem;
-		line-height: 1.5;
-		color: #64748b; /* slate-500 - muted but readable */
+		font-size: 0.8125rem;
+		line-height: 1.4;
+		color: #334155; /* slate-700 */
+		text-align: left;
+		margin: 0;
+		padding: 0.25rem 0.5rem;
+		border-left: 2px solid transparent;
+		transition: all 0.15s ease-out;
+	}
+
+	.thought.latest {
+		color: #1e293b; /* slate-800 */
+		border-left-color: var(--color-participation-primary-500, #6366f1);
+		background: white;
+	}
+
+	.thought.faded {
+		color: #64748b; /* slate-500 */
+	}
+
+	.thought.placeholder {
+		color: #94a3b8; /* slate-400 */
 		font-style: italic;
-		text-align: center;
-		max-width: 32rem;
-		margin: 0 auto;
-		transition:
-			opacity 0.3s ease-out,
-			transform 0.3s ease-out;
-		/* Subtle breathing animation */
-		animation: breathe 4s ease-in-out infinite;
 	}
 
-	.thought-placeholder {
-		animation: none;
+	/* Scrollbar */
+	.thought-log::-webkit-scrollbar {
+		width: 3px;
 	}
 
-	@keyframes breathe {
-		0%,
-		100% {
-			transform: translateY(0);
-		}
-		50% {
-			transform: translateY(-2px);
-		}
+	.thought-log::-webkit-scrollbar-track {
+		background: transparent;
 	}
 
-	/* Active state - slightly more prominent */
-	.thinking-atmosphere.active .thought {
-		color: #475569; /* slate-600 - slightly more prominent when active */
+	.thought-log::-webkit-scrollbar-thumb {
+		background: #e2e8f0;
+		border-radius: 2px;
 	}
 
-	/* Reduced motion support */
+	/* Reduced motion */
 	@media (prefers-reduced-motion: reduce) {
-		.dot {
+		.pulse {
 			animation: none;
-			opacity: 0.6;
-		}
-
-		.thought {
-			animation: none;
+			opacity: 0.7;
 		}
 	}
 </style>

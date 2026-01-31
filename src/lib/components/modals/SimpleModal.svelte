@@ -7,12 +7,14 @@
 	let {
 		title = '',
 		showClose = true,
+		closeOnBackdrop = true,
 		maxWidth = 'max-w-2xl',
 		onclose,
 		children
 	}: {
 		title?: string;
 		showClose?: boolean;
+		closeOnBackdrop?: boolean;
 		maxWidth?: string;
 		onclose?: () => void;
 		children?: import('svelte').Snippet;
@@ -39,7 +41,7 @@
 	function handleBackdropClick(e: MouseEvent) {
 		// Only close if BOTH mousedown AND mouseup were on backdrop
 		// This prevents accidental closes from text selection that drifts to backdrop
-		if (e.target === dialogElement && mouseDownOnBackdrop) {
+		if (closeOnBackdrop && e.target === dialogElement && mouseDownOnBackdrop) {
 			handleClose();
 		}
 		mouseDownOnBackdrop = false;

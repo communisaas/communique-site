@@ -34,7 +34,7 @@
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
 	import { CreationSpark, CoordinationExplainer } from '$lib/components/activation';
 	import { guestState } from '$lib/stores/guestState.svelte';
-	import { z } from 'zod';
+		import { z } from 'zod';
 
 	let { data }: { data: PageData } = $props();
 
@@ -57,6 +57,7 @@
 	let resumeDraftId = $state<string>('');
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
+	let templateSaveError = $state<string | null>(null);
 	let userInitiatedSelection = $state(false);
 	let locationFilteredGroups = $state<TemplateGroup[]>([]);
 	let nextUnlock = $state<{ level: 'city' | 'district'; count: number } | null>(null);
@@ -502,6 +503,7 @@
 	<SimpleModal
 		maxWidth="max-w-4xl"
 		showClose={false}
+		closeOnBackdrop={false}
 		onclose={() => {
 			showTemplateCreator = false;
 			creationContext = null;
@@ -512,23 +514,30 @@
 			context={creationContext}
 			initialText={creationInitialText}
 			initialDraftId={resumeDraftId}
+			bind:onSaveError={templateSaveError}
 			on:close={() => {
 				showTemplateCreator = false;
 				creationContext = null;
 				creationInitialText = '';
 				resumeDraftId = '';
+				templateSaveError = null;
 			}}
 			on:save={async (_event) => {
 				if (data.user) {
 					try {
+						templateSaveError = null;
 						const newTemplate = await templateStore.addTemplate(_event.detail);
+						// Success: close creator and show success modal
 						showTemplateCreator = false;
 						creationContext = null;
 						creationInitialText = '';
 						savedTemplate = newTemplate;
 						showTemplateSuccess = true;
-					} catch {
-						console.error('Template save failed');
+					} catch (error) {
+						// Inline error at publish button (perceptual: feedback at action locus)
+						templateSaveError =
+							error instanceof Error ? error.message : 'Failed to publish template';
+						console.error('Template save failed:', error);
 					}
 				} else {
 					pendingTemplateToSave = _event.detail;

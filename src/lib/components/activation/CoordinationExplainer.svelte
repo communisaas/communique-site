@@ -52,7 +52,7 @@
 			<p class="header-teaser">
 				{isExpanded
 					? 'Click any node to learn more'
-					: 'One complaint gets buried. Coordinated messages make impact.'}
+					: 'One message gets buried. Coordinated voices make impact.'}
 			</p>
 		</div>
 		<div class="header-toggle">
@@ -84,7 +84,7 @@
 					<span class="point-number">1</span>
 					<div class="point-content">
 						<strong>Write once</strong>
-						<span>Describe your grievance. Pick who decides.</span>
+						<span>Describe your message. Pick who decides.</span>
 					</div>
 				</div>
 				<div class="point">
@@ -98,7 +98,7 @@
 					<span class="point-number">3</span>
 					<div class="point-content">
 						<strong>Impact together</strong>
-						<span>Decision-makers see coordinated pressure, not isolated complaints.</span>
+						<span>Decision-makers see coordinated voices, not isolated messages.</span>
 					</div>
 				</div>
 			</div>
