@@ -8,6 +8,7 @@
 
 import type { ProcessedDecisionMaker } from '$lib/types/template';
 import type { StreamingCallbacks, PipelinePhase } from '../agents/decision-maker';
+import type { CompositeThoughtEmitter } from '$lib/core/thoughts/composite-emitter';
 
 // ============================================================================
 // Target Types
@@ -93,6 +94,13 @@ export interface ResolveContext {
 
 	/** Streaming callbacks for progress updates */
 	streaming?: StreamingCallbacks;
+
+	/**
+	 * CompositeThoughtEmitter for two-phase streaming (Discovery + Verification).
+	 * When provided, the composite provider will use this instead of raw callbacks,
+	 * enabling proper phase state machine, confidence tracking, and verification boost.
+	 */
+	compositeEmitter?: CompositeThoughtEmitter;
 }
 
 // ============================================================================
@@ -177,4 +185,12 @@ export interface RouterOptions {
 	preferredProvider?: string;
 	/** Maximum resolution time before timeout (ms) */
 	timeoutMs?: number;
+	/**
+	 * Force legacy split routing (Gemini for gov, Firecrawl for org).
+	 * @deprecated Use the new composite provider architecture instead.
+	 * The composite provider handles both target types with intelligent
+	 * strategy selection and fallback. This flag exists only for
+	 * backward compatibility and will be removed in a future version.
+	 */
+	useLegacyRouting?: boolean;
 }

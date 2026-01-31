@@ -3,6 +3,16 @@
  *
  * Routes resolution requests to the appropriate provider based on target type.
  * Handles fallback logic and provider prioritization.
+ *
+ * NEW DEFAULT BEHAVIOR (v2):
+ * - CompositeProvider is the default for ALL target types
+ * - Composite handles both government (Gemini-primary) and organizational (Firecrawl-primary)
+ * - Use `useLegacyRouting: true` to force the old split routing behavior
+ *
+ * LEGACY BEHAVIOR (deprecated):
+ * - Gemini provider for government targets
+ * - Firecrawl provider for organizational targets
+ * - Will emit deprecation warning when used
  */
 
 import type {
@@ -13,6 +23,16 @@ import type {
 	RouterOptions,
 	DecisionMakerTargetType
 } from './types';
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+/** Name of the composite provider (new default) */
+const COMPOSITE_PROVIDER_NAME = 'composite-firecrawl-gemini';
+
+/** Whether legacy routing deprecation warning has been shown */
+let legacyRoutingWarningShown = false;
 
 // ============================================================================
 // Router Implementation
@@ -56,6 +76,12 @@ export class DecisionMakerRouter {
 
 	/**
 	 * Find the best provider for a resolution context
+	 *
+	 * Selection priority:
+	 * 1. If preferredProvider is specified and can resolve, use it
+	 * 2. If useLegacyRouting is true, use target-type-based routing (deprecated)
+	 * 3. Default: Use composite provider if available and can resolve
+	 * 4. Fallback: Use target-type-based routing
 	 */
 	private selectProvider(
 		context: ResolveContext,
@@ -69,6 +95,27 @@ export class DecisionMakerRouter {
 			}
 		}
 
+		// Check for legacy routing mode
+		if (options?.useLegacyRouting) {
+			this.emitLegacyRoutingWarning();
+			return this.selectLegacyProvider(context);
+		}
+
+		// NEW DEFAULT: Try composite provider first
+		const compositeProvider = this.providers.get(COMPOSITE_PROVIDER_NAME);
+		if (compositeProvider && compositeProvider.provider.canResolve(context)) {
+			return compositeProvider.provider;
+		}
+
+		// Fallback to target-type-based routing if composite not available
+		return this.selectLegacyProvider(context);
+	}
+
+	/**
+	 * Legacy provider selection based on target type
+	 * @deprecated Use composite provider instead
+	 */
+	private selectLegacyProvider(context: ResolveContext): DecisionMakerProvider | null {
 		// Get providers for this target type
 		const candidates = this.getProvidersForTargetType(context.targetType);
 
@@ -80,6 +127,21 @@ export class DecisionMakerRouter {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Emit deprecation warning for legacy routing (once per session)
+	 */
+	private emitLegacyRoutingWarning(): void {
+		if (!legacyRoutingWarningShown) {
+			console.warn(
+				'[router] DEPRECATION WARNING: useLegacyRouting is deprecated. ' +
+					'The composite provider architecture is now the default and handles all target types. ' +
+					'Legacy routing will be removed in a future version. ' +
+					'Please update your code to use the new architecture.'
+			);
+			legacyRoutingWarningShown = true;
+		}
 	}
 
 	/**
