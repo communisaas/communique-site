@@ -1,0 +1,26 @@
+# fly.toml - Production configuration for communique
+# Deployed from: production branch
+
+app = "communique"
+primary_region = "sjc"
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  ORIGIN = "https://communique.fly.dev"
+  OAUTH_REDIRECT_BASE_URL = "https://communique.fly.dev"
+
+[[vm]]
+  memory = "1gb"
+  cpu_kind = "shared"
+  cpus = 1

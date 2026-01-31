@@ -1,0 +1,72 @@
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches:
+      - production
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'production' && 'production' || 'staging' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine deployment target
+        id: target
+        run: |
+          if [ "${{ github.ref_name }}" = "production" ]; then
+            echo "app=communique" >> $GITHUB_OUTPUT
+            echo "config=fly.toml" >> $GITHUB_OUTPUT
+            echo "env=production" >> $GITHUB_OUTPUT
+          else
+            echo "app=communique-staging" >> $GITHUB_OUTPUT
+            echo "config=fly.staging.toml" >> $GITHUB_OUTPUT
+            echo "env=staging" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: |
+          flyctl deploy \
+            --config ${{ steps.target.outputs.config }} \
+            --app ${{ steps.target.outputs.app }} \
+            --remote-only \
+            --build-arg DATABASE_URL="${{ secrets.DATABASE_URL }}" \
+            --build-arg CWC_API_KEY="${{ secrets.CWC_API_KEY }}"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deployment Summary
+        run: |
+          echo "## Deployment Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **App**: ${{ steps.target.outputs.app }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environment**: ${{ steps.target.outputs.env }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit**: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.target.outputs.env }}" = "production" ]; then
+            echo "🌐 **URL**: https://communique.fly.dev" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "🌐 **URL**: https://communique-staging.fly.dev" >> $GITHUB_STEP_SUMMARY
+          fi

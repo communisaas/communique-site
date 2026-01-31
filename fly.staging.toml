@@ -1,0 +1,26 @@
+# fly.staging.toml - Staging configuration for communique-staging
+# Deployed from: main branch
+
+app = "communique-staging"
+primary_region = "sjc"
+
+[build]
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+  ORIGIN = "https://communique-staging.fly.dev"
+  OAUTH_REDIRECT_BASE_URL = "https://communique-staging.fly.dev"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
