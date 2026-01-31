@@ -25,9 +25,11 @@ ACCESSIBILITY:
 
 	interface Props {
 		citation: Citation;
+		/** Callback when user clicks "View Full Document" (L3 depth) */
+		onViewDocument?: (documentId: string) => void;
 	}
 
-	let { citation }: Props = $props();
+	let { citation, onViewDocument }: Props = $props();
 
 	// Source type badge styling
 	const sourceTypeSchemes = {
@@ -150,19 +152,21 @@ ACCESSIBILITY:
 		{/if}
 	</div>
 
-	<!-- Future: Full document button (L3 depth) -->
+	<!-- L3 Depth: Full document button -->
 	{#if citation.documentId}
-		<div
-			class="rounded-lg border p-3"
-			style="
-				background: oklch(0.985 0.003 60);
-				border-color: oklch(0.88 0.01 60 / 0.3);
-			"
+		<button
+			type="button"
+			class="view-document-btn"
+			onclick={() => onViewDocument?.(citation.documentId!)}
 		>
-			<p class="text-xs" style="color: oklch(0.45 0.02 60);">
-				Full document view coming soon (L3 depth - Reducto parse)
-			</p>
-		</div>
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+			</svg>
+			<span>View Full Document Analysis</span>
+			<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+			</svg>
+		</button>
 	{/if}
 </div>
 
@@ -178,5 +182,36 @@ ACCESSIBILITY:
 
 	blockquote p::after {
 		content: close-quote;
+	}
+
+	/* L3 document button */
+	.view-document-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		width: 100%;
+		padding: 12px 16px;
+		background: oklch(0.55 0.12 280);
+		border: none;
+		border-radius: 8px;
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: white;
+		cursor: pointer;
+		transition: background 150ms ease, transform 150ms ease;
+	}
+
+	.view-document-btn:hover {
+		background: oklch(0.5 0.12 280);
+	}
+
+	.view-document-btn:active {
+		transform: scale(0.98);
+	}
+
+	.view-document-btn:focus-visible {
+		outline: 2px solid oklch(0.55 0.12 280);
+		outline-offset: 2px;
 	}
 </style>

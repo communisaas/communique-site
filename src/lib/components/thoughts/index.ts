@@ -30,3 +30,7 @@ export { default as DetailDrawer } from './DetailDrawer.svelte';
 // Detail Expansion Components
 export { default as CitationDetail } from './CitationDetail.svelte';
 export { default as ActionDetail } from './ActionDetail.svelte';
+
+// Document Intelligence (L2/L3 depth)
+export { default as DocumentPreview } from './DocumentPreview.svelte';
+export { default as DocumentDetail } from './DocumentDetail.svelte';
