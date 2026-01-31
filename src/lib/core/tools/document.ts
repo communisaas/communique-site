@@ -9,7 +9,8 @@
 
 import { getReductoClient } from '$lib/server/reducto/client';
 import type { ParsedDocument, DocumentType } from '$lib/server/reducto/types';
-import type { Citation, ThoughtEmitter } from '$lib/core/thoughts/types';
+import type { Citation } from '$lib/core/thoughts/types';
+import type { ThoughtEmitter } from '$lib/core/thoughts/emitter';
 
 // ============================================================================
 // Tool Definition

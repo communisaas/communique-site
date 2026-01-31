@@ -1,9 +1,11 @@
 # Firecrawl + MongoDB Atlas Integration Plan
 
-> **Version:** 2.1.0
+> **Version:** 2.2.0
 > **Date:** 2026-01-31
-> **Status:** Wave 4 Complete — Agent-First Experience Implemented
+> **Status:** Phase 2A Complete — Unified Architecture In Progress
 > **Author:** Distinguished Engineering Team
+>
+> **Architecture Evolution:** Firecrawl + Gemini unified (not split by target type)
 
 ---
 
@@ -84,50 +86,381 @@ We were building "search" when we should be building "agent memory." The value i
   - AgentMemoryService retrieval before reasoning
   - Structured thought emission with citations
 
-### Phase 2A (Next) — Document Tool
+### Phase 2A (Complete) — Document Tool Infrastructure ✓
 
 > **Perceptual Goal**: Documents are evidence to trust, not content to read. L3 depth exists for verification when users need it, but the default path remains streamlined agent reasoning with L1 citation markers.
 
-- [ ] **Reducto Integration** - `src/lib/server/reducto/` + `src/lib/core/tools/`
-  - ReductoClient (API wrapper for parse/extract)
-  - DocumentTool (agent-invocable analysis)
-  - MongoDB caching for parsed documents
-  - Integration with ThoughtEmitter (document findings as insights)
-  - L3 depth layer in DetailDrawer
+- [x] **Reducto Integration** - `src/lib/server/reducto/` + `src/lib/core/tools/`
+  - ReductoClient (API wrapper for parse/extract) ✓
+  - DocumentTool (agent-invocable analysis) ✓
+  - Types and MongoDB caching schema ✓
+  - DocumentPreview (L2) and DocumentDetail (L3) components ✓
+  - CSS tokens for document type colors ✓
 
-#### Phase 2A File Scope (~350 lines total)
+#### Files Built
 
-| File | Purpose | Lines |
-|------|---------|-------|
-| `src/lib/server/reducto/client.ts` | API wrapper with chunked parsing | ~100 |
-| `src/lib/server/reducto/types.ts` | ParsedDocument, Section, Entity types | ~50 |
-| `src/lib/core/tools/document.ts` | Agent-invocable tool definition | ~100 |
-| `src/lib/components/thoughts/DocumentDetail.svelte` | L3 focal immersion view | ~100 |
+| File | Purpose | Status |
+|------|---------|--------|
+| `src/lib/server/reducto/client.ts` | API wrapper with caching | ✓ |
+| `src/lib/server/reducto/types.ts` | ParsedDocument, Section, Entity | ✓ |
+| `src/lib/server/reducto/index.ts` | Clean exports | ✓ |
+| `src/lib/core/tools/document.ts` | Agent-invocable tool | ✓ |
+| `src/lib/components/thoughts/DocumentPreview.svelte` | L2 hover card | ✓ |
+| `src/lib/components/thoughts/DocumentDetail.svelte` | L3 focal view | ✓ |
 
-#### Perceptual Requirements
+---
 
-1. **L1 Integration**: Document citations appear inline with type-colored markers
-   - `[📜1]` for legislative, `[📊2]` for reports, etc.
-   - Minimal weight, flows with text, peripheral registration
+### Phase 2A.1 (Next) — Wire Document Tool Live
+
+Integration to make document intelligence operational:
+
+- [ ] **Register tool with agent** — Add `documentToolDefinition` to Gemini function calling
+- [ ] **Add API key** — `REDUCTO_API_KEY` in `.env`
+- [ ] **Create MongoDB collection** — `parsed_documents` with TTL index (30 days)
+- [ ] **Wire L2 hover** — Connect DocumentPreview to InlineCitation hover state
+- [ ] **Wire L3 drawer** — Connect DocumentDetail to DetailDrawer for document citations
+
+#### Perceptual Requirements (from Phase 2A)
+
+1. **L1 Integration**: Document citations inline with type-colored markers
+   - `[📜1]` legislative, `[📊2]` reports — peripheral registration
 
 2. **L2 Preview**: Hover shows recognition card (300ms delay)
-   - Title, source, date
-   - Query-relevant excerpt (why agent cited this)
+   - Title, source, date, query-relevant excerpt
    - "View Full Analysis" affordance → L3
 
 3. **L3 Document Detail**: Slide-in drawer with structure
-   - Section navigation (from Reducto structure extraction)
-   - Key entities highlighted (amounts, dates, names)
-   - Query-relevant sections prioritized
-   - Stream de-emphasized (40% opacity) but visible
+   - Section navigation, entity highlighting, query-relevance
+   - Stream de-emphasized (40% opacity), Key Moments captures
 
-4. **Temporal**: When user is in L3, Key Moments captures stream
-   - User can return and catch up via footer
-   - Pause auto-engaged when L3 opens
+---
 
-**Scope:** Agent can analyze documents when user provides them or when relevant. On-demand parsing, cached results, cited in messages.
+### Phase 2B — Voyage AI: Legal-Grade Search
 
-**Not in Phase 2A:** Proactive ingestion, legislative feeds, cross-document comparison, vote history extraction. Those remain aspirational for Phase 2B+.
+**Current state:** Using voyage-3, reranking code exists but unused, no legal model
+
+**Gaps identified by expert analysis:**
+| Gap | Impact |
+|-----|--------|
+| Not using `voyage-law-2` | 6-10% worse on legislative retrieval |
+| Reranking not in production | 10-30% precision loss |
+| voyage-3 for queries | 3x cost savings available with lite |
+
+**Implementation:**
+- [ ] **voyage-law-2** — Use for legislative/legal content queries
+- [ ] **Enable reranking** — Wire into `AgentMemoryService.retrieveContext()`
+- [ ] **voyage-3-lite for queries** — 3x cheaper, <5% quality loss
+- [ ] **Hybrid search default** — Vector + full-text via `$rankFusion`
+- [ ] **Future: voyage-context-3** — Contextualized chunk embeddings for long docs
+
+#### Files to Modify
+
+| File | Change |
+|------|--------|
+| `src/lib/server/embeddings/voyage-client.ts` | Add model selection |
+| `src/lib/server/mongodb/vector-search.ts` | Use legal model for legislative |
+| `src/lib/server/mongodb/semantic-service.ts` | Enable reranking path |
+| `src/lib/server/agent-memory/service.ts` | Wire reranking into retrieval |
+
+---
+
+### Phase 2C — Firecrawl: Beyond Agent API
+
+**Current state:** Using Agent API only for non-government targets
+
+**Unused capabilities:**
+| API | Capability | Use Case |
+|-----|------------|----------|
+| Deep Research | Autonomous multi-step research | Complex cross-sector queries |
+| Map | Discover all URLs on site | Pre-crawl leadership page discovery |
+| Observer | Real-time page monitoring | Leadership change alerts |
+| Fire Enrich | Augment from email | Enrich contact databases |
+
+**Implementation:**
+- [ ] **Deep Research API** — For queries like "Find Fortune 500 sustainability execs with gov backgrounds"
+- [ ] **Map API** — Discover leadership URLs before Agent crawl
+- [ ] **Observer integration** — Monitor org leadership pages for changes
+- [ ] **Fire Enrich** — Augment contact data from email addresses
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/server/firecrawl/deep-research.ts` | Deep Research API wrapper |
+| `src/lib/server/firecrawl/observer.ts` | Change monitoring service |
+| `src/lib/server/firecrawl/enrich.ts` | Contact enrichment |
+
+---
+
+### Phase 2D — Unified Provider Architecture: Firecrawl + Gemini
+
+**Architecture shift:** From "Firecrawl OR Gemini" to "Firecrawl THEN Gemini"
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  FIRECRAWL (Primary Layer - ALL Target Types)                   │
+│  ─────────────────────────────────────────────                  │
+│  • Deep Research / Agent API                                    │
+│  • Extract: leadership, contacts, bios, policy positions        │
+│  • Cache to MongoDB (30-day TTL)                                │
+│  • Works for government, corporate, nonprofit — ALL             │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  GEMINI (Verification Layer - Recency Check)                    │
+│  ─────────────────────────────────────────────                  │
+│  • Google Search grounding (lightweight)                        │
+│  • "Is [Name] still [Title] at [Org] as of 2026?"              │
+│  • Check for resignations, elections, appointments              │
+│  • Returns: verified/unverified + confidence + source           │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  COMBINED OUTPUT                                                │
+│  • Firecrawl depth (emails, bios, policy positions)             │
+│  • Gemini freshness (verified current as of today)              │
+│  • Confidence score based on verification                       │
+│  • Citations from both sources                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Why unified is better:**
+| Aspect | Split (Old) | Unified (New) |
+|--------|-------------|---------------|
+| Government targets | Gemini only (shallow) | Firecrawl depth + Gemini verify |
+| Corporate targets | Firecrawl only (may be stale) | Firecrawl + Gemini verify |
+| Architecture | Two separate paths | One composite path |
+| Freshness | Varies by target | Consistent verification |
+
+**Implementation:**
+- [ ] **CompositeDecisionMakerProvider** — Orchestrates Firecrawl → Gemini flow
+- [ ] **Lightweight verification prompt** — Gemini checks current status only
+- [ ] **Confidence scoring** — Based on verification result
+- [ ] **Update router** — Use composite as default provider
+- [ ] **Deprecate split routing** — Remove target-type branching
+
+#### New/Modified Files
+
+| File | Change |
+|------|--------|
+| `src/lib/core/agents/providers/composite-provider.ts` | New: Firecrawl + Gemini |
+| `src/lib/core/agents/providers/router.ts` | Use composite as primary |
+| `src/lib/core/agents/providers/gemini-provider.ts` | Add lightweight verify mode |
+
+---
+
+### Phase 2D.1 — Composite Streaming: Perceptual Architecture
+
+**Challenge:** Two-phase async operation (Firecrawl 30-60s → Gemini 5-10s) must feel like **one coherent experience** while preserving the distinct value of each phase.
+
+**The Cognitive Reality:**
+Users watching a stream don't naturally partition it into "provider A output" vs "provider B output." They experience a **continuous flow of insights** with varying confidence levels.
+
+**What Users Need to Understand:**
+1. **Temporal awareness** — Where we are (early discovery vs late verification)
+2. **Confidence dynamics** — Why trust is growing (cross-checked sources)
+3. **Graceful degradation** — What happens if verification fails (still usable)
+
+#### Perceptual Strategy: Confidence Gradient, Not Phase Boundaries
+
+Instead of "Phase 1 complete! Starting Phase 2...", use a **continuous confidence signal** that naturally increases as verification completes.
+
+```
+Discovery:    ────────────────░░░░░░░░░░░░░░░░░░░░  warm amber undertone
+                              ↓ (subtle shift)
+Verification: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  cool blue-green undertone
+```
+
+#### Confidence Indicators Per Thought
+
+Each thought carries a confidence indicator that **grows during verification**:
+
+```
+┌──────────────────────────────────────────────────┐
+│  [○ ○ ○]  Found contact info for CEO...          │  ← During discovery
+└──────────────────────────────────────────────────┘
+        ↓
+┌──────────────────────────────────────────────────┐
+│  [● ● ●]  Found contact info for CEO ✓           │  ← Fully verified
+└──────────────────────────────────────────────────┘
+```
+
+The dots fill peripherally—user doesn't need to focus on them, but notices the pattern.
+
+#### State Machine
+
+```typescript
+type CompositePhase =
+  | 'idle'
+  | 'discovery'           // Firecrawl extracting (30-60s)
+  | 'discovery-complete'  // Brief pause (500ms settling)
+  | 'verification'        // Gemini confirming (5-10s)
+  | 'complete'            // Both done
+  | 'degraded';           // Verification failed, discovery-only results
+
+interface CompositeStreamState {
+  phase: CompositePhase;
+  discoveryThoughts: Thought[];
+  verificationResults: Map<string, VerificationStatus>;
+  overallConfidence: number;  // 0-1, grows as items verified
+}
+```
+
+#### Timing Constants (Composite-Specific)
+
+```typescript
+const COMPOSITE_TIMING = {
+  // Discovery phase (Firecrawl)
+  DISCOVERY: {
+    expected: 45_000,          // 45s typical
+    thoughtInterval: 2_000,    // Thought every 2s average
+    progressPulse: 500,        // Peripheral activity indicator
+  },
+
+  // Verification phase (Gemini)
+  VERIFICATION: {
+    expected: 8_000,           // 8s typical
+    thoughtInterval: 3_000,    // Fewer, confirmatory thoughts
+    confidenceBoost: 0.15,     // Each verification adds 15% confidence
+  },
+
+  // Transition
+  TRANSITION: {
+    duration: 300,             // Smooth visual transition
+    pauseBeforeVerify: 500,    // Brief settling before verification
+  }
+};
+```
+
+#### Graceful Degradation
+
+If verification fails, results are still usable:
+
+1. **Confidence indicators stay at discovery level** (partial fill)
+2. **Subtle indicator**: `"Based on available sources"` (no error UI)
+3. **No alarm** — discovery data is still valid, just unverified
+
+#### Key Moments Across Phases
+
+Key Moments captures from BOTH phases with clear attribution:
+
+```
+KEY MOMENTS
+───────────────────────────────────────
+🔍  Found CEO contact information         [●○○]
+🔍  Located 2024 annual report           [●○○]
+   ─ ─ ─ verification ─ ─ ─
+✓  CEO contact confirmed current         [●●●]
+✓  Annual report dated verified          [●●○]
+```
+
+#### L2 Preview with Verification Status
+
+```svelte
+<DocumentPreview document={doc} verificationStatus={status}>
+  {#if status === 'verified'}
+    <span class="verified-badge">✓ Verified current</span>
+  {:else if status === 'pending'}
+    <span class="pending-badge">Verifying...</span>
+  {:else}
+    <span class="unverified-badge">Source only</span>
+  {/if}
+</DocumentPreview>
+```
+
+#### CSS Tokens (Composite-Specific)
+
+```css
+:root {
+  /* Phase colors - subtle, ambient */
+  --phase-discovery: oklch(0.85 0.08 85);    /* Warm amber-cream */
+  --phase-verification: oklch(0.85 0.06 200); /* Cool teal-grey */
+  --phase-complete: oklch(0.85 0.06 145);    /* Calm green-grey */
+  --phase-degraded: oklch(0.85 0.04 60);     /* Muted amber */
+
+  /* Confidence levels */
+  --confidence-low: oklch(0.7 0.08 80);      /* Amber */
+  --confidence-medium: oklch(0.7 0.08 150);  /* Teal-green */
+  --confidence-high: oklch(0.7 0.1 145);     /* Confident green */
+}
+```
+
+#### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/core/thoughts/composite-emitter.ts` | Extended emitter for two-phase streaming |
+| `src/lib/components/thoughts/ConfidenceIndicator.svelte` | Peripheral confidence dots |
+| `src/lib/components/thoughts/PhaseAmbient.svelte` | Subtle phase color overlay |
+| `src/lib/core/agents/providers/composite-provider.ts` | Orchestrator (from Phase 2D) |
+
+---
+
+### Phase 2E — Legislative Intelligence + Vote History
+
+**Goal:** Break down legislative complexity into simple, intuitable impact with progressive disclosure.
+
+#### Proactive Legislative Ingestion
+
+```
+Congress.gov API → Parse → voyage-law-2 embed → MongoDB intelligence
+     │
+     ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Progressive Disclosure for Bills                               │
+│                                                                 │
+│  L1: One-line impact                                            │
+│      "Increases solar tax credit from 26% to 40%"               │
+│                                                                 │
+│  L2: Key provisions + who it affects                            │
+│      • Extends credit through 2035                              │
+│      • Applies to residential and commercial                    │
+│      • Your district has 12 solar companies affected            │
+│                                                                 │
+│  L3: Full bill analysis (Reducto parse)                         │
+│      Section navigation, amendments, vote history               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Implementation:**
+- [ ] **Congress.gov API integration** — Fetch new bills, amendments, votes
+- [ ] **State legislature feeds** — Where APIs available
+- [ ] **voyage-law-2 embeddings** — On ingest for semantic search
+- [ ] **Impact summarization** — LLM-generated one-liners
+- [ ] **Bill complexity breakdown** — Progressive L1 → L2 → L3
+
+#### Vote History for Representatives
+
+```
+User Address → District Geocoder → Representative → Vote History
+                    │                                    │
+                    ▼                                    ▼
+            "CA-12 (Pelosi)"              "Voted YES on HR 1234"
+                                          "Voted NO on HR 5678"
+```
+
+**Implementation:**
+- [ ] **Address → District** — Existing geocoder integration
+- [ ] **District → Representative** — Congress.gov member lookup
+- [ ] **Representative → Votes** — Roll call vote history API
+- [ ] **Vote display component** — "Your rep voted [YES/NO] on [Bill]"
+- [ ] **Progressive disclosure** — L1 vote, L2 context, L3 full roll call
+
+#### New Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/server/congress/feed.ts` | Legislative feed ingestion |
+| `src/lib/server/congress/votes.ts` | Vote history API |
+| `src/lib/components/votes/VoteIndicator.svelte` | L1 vote display |
+| `src/lib/components/votes/VoteContext.svelte` | L2 vote context |
+| `src/lib/components/votes/RollCall.svelte` | L3 full roll call |
+
+---
+
+**Scope for Phase 2E:** Agent surfaces relevant legislative context and vote history for the user's representative, with progressive disclosure from simple impact to full analysis.
 
 ---
 
@@ -1328,6 +1661,8 @@ Current decision-maker resolution works well for government targets (Congress, s
 - **Labor unions** — Union leadership, local chapters
 
 ### 2.2 Solution: Provider-Based Architecture
+
+> **⚠️ EVOLVING:** This split-by-target-type architecture is being replaced by the **Unified Provider Architecture** (Phase 2D). The new approach uses Firecrawl as primary for ALL targets, with Gemini as a lightweight verification layer. See [Phase 2D](#phase-2d--unified-provider-architecture-firecrawl--gemini) for the new design.
 
 ```typescript
 // src/lib/core/agents/providers/types.ts

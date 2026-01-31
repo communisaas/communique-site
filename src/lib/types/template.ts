@@ -158,6 +158,7 @@ export interface ProcessedDecisionMaker {
 	isAiResolved: boolean; // true = AI-resolved, false = manually added
 	recencyCheck?: string; // New: explicit recency verification text
 	positionSourceDate?: string; // New: date of verification source
+	confidence?: number; // Confidence score 0.0-1.0 based on verification
 }
 
 /**

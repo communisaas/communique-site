@@ -2,6 +2,38 @@ import { dev } from '$app/environment';
 import * as auth from '$lib/core/auth/auth.js';
 import type { Handle } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
+import { ensureAllIndexes } from '$lib/server/mongodb/indexes';
+
+/**
+ * MongoDB Index Initialization
+ *
+ * Runs once on server startup to ensure all indexes exist.
+ * Uses a module-level guard to prevent multiple invocations during hot reload.
+ * Fire-and-forget pattern: doesn't block request handling.
+ */
+let indexInitialized = false;
+
+function initializeMongoIndexes(): void {
+	if (indexInitialized) {
+		return;
+	}
+	indexInitialized = true;
+
+	// Fire and forget - don't block request handling
+	ensureAllIndexes()
+		.then(() => {
+			console.log('[Hooks] MongoDB indexes initialized successfully');
+		})
+		.catch((err) => {
+			// Log error but don't crash the server
+			console.error('[Hooks] Failed to initialize MongoDB indexes:', err);
+			// Reset flag so it can be retried on next request if needed
+			indexInitialized = false;
+		});
+}
+
+// Initialize indexes on module load (server startup)
+initializeMongoIndexes();
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	try {
