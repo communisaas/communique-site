@@ -44,10 +44,31 @@
 	let draftLastSaved = $state<number | null>(null);
 	let draftStep = $state<string | null>(null);
 
-	// Load draft on mount - pre-fill surface with user's saved work
+	// Store subscription trigger - increments when store updates
+	let storeVersion = $state(0);
+
+	// Subscribe to store changes for reactivity
 	onMount(() => {
+		const unsubscribe = templateDraftStore.subscribe(() => {
+			storeVersion++;
+		});
+		return unsubscribe;
+	});
+
+	// Load draft reactively - re-runs when store updates
+	$effect(() => {
+		// Trigger on store version changes
+		void storeVersion;
+
 		const draftIds = templateDraftStore.getAllDraftIds();
-		if (draftIds.length === 0) return;
+		if (draftIds.length === 0) {
+			// No drafts - clear state
+			activeDraftId = null;
+			draftLastSaved = null;
+			draftStep = null;
+			// Don't clear issueText - user might be typing
+			return;
+		}
 
 		// Find most recent draft within 24 hours
 		const cutoff = 24 * 60 * 60 * 1000;
@@ -81,8 +102,18 @@
 					activeDraftId = mostRecentId;
 					draftLastSaved = draft.lastSaved;
 					draftStep = draft.currentStep;
+				} else {
+					// Draft exists but no content - clear draft state
+					activeDraftId = null;
+					draftLastSaved = null;
+					draftStep = null;
 				}
 			}
+		} else {
+			// No recent draft found
+			activeDraftId = null;
+			draftLastSaved = null;
+			draftStep = null;
 		}
 	});
 
