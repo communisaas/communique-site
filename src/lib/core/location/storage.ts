@@ -274,6 +274,51 @@ export class LocationStorage {
 	}
 
 	/**
+	 * Clear non-verified signals (privacy: only persist user-entered addresses)
+	 *
+	 * PERCEPTUAL ENGINEERING: Only cache verified (address-entered) location.
+	 * Other signals (IP, browser GPS, OAuth, behavioral, user_selected) are
+	 * session-only and should not persist across page loads.
+	 */
+	async clearNonVerifiedSignals(): Promise<number> {
+		try {
+			const db = await this.init();
+
+			if (!db.objectStoreNames.contains(INDEXED_DB_STORES.LOCATION_SIGNALS)) {
+				return 0;
+			}
+
+			return new Promise((resolve, reject) => {
+				const transaction = db.transaction([INDEXED_DB_STORES.LOCATION_SIGNALS], 'readwrite');
+				const store = transaction.objectStore(INDEXED_DB_STORES.LOCATION_SIGNALS);
+				const request = store.openCursor();
+
+				let deletedCount = 0;
+
+				request.onsuccess = (event) => {
+					const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result;
+					if (cursor) {
+						const signal = cursor.value as unknown;
+						// Only keep 'verified' signals (user entered their address)
+						if (isLocationSignal(signal) && signal.signal_type !== 'verified') {
+							cursor.delete();
+							deletedCount++;
+						}
+						cursor.continue();
+					} else {
+						resolve(deletedCount);
+					}
+				};
+
+				request.onerror = () => reject(new Error('Failed to clear non-verified signals'));
+			});
+		} catch (error) {
+			console.error('[LocationStorage] Failed to clear non-verified signals:', error);
+			return 0;
+		}
+	}
+
+	/**
 	 * Clear expired signals
 	 */
 	async clearExpiredSignals(): Promise<number> {
