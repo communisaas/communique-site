@@ -202,6 +202,12 @@ export interface CitationSource {
 
 	/** Reducto document ID */
 	documentId?: string;
+
+	/**
+	 * Explicit source type override
+	 * If not provided, inferred from mongoId/documentId/url
+	 */
+	sourceType?: CitationSourceType;
 }
 
 // ============================================================================
@@ -392,8 +398,9 @@ export interface ActionHandle {
  * - action: Significant research/retrieval
  * - insight: Key finding or discovery
  * - decision_maker: Identified decision-maker
+ * - document: L3 full document view (user engaged deeply with content)
  */
-export type KeyMomentType = 'citation' | 'action' | 'insight' | 'decision_maker';
+export type KeyMomentType = 'citation' | 'action' | 'insight' | 'decision_maker' | 'document';
 
 /**
  * Important item pinned to Key Moments footer

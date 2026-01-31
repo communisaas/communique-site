@@ -5,6 +5,7 @@
 	 * PERCEPTUAL ENGINEERING:
 	 * - Visual hierarchy through emphasis levels (highlight = left border, muted = reduced opacity)
 	 * - Inline citations rendered as clickable elements (affordance clarity)
+	 * - Document citations show L2 preview on hover (300ms delay)
 	 * - Action segments get specialized rendering (temporal rhythm)
 	 * - Type-based styling (insights highlighted, reasoning normal)
 	 *
@@ -16,6 +17,7 @@
 	 */
 
 	import type { ThoughtSegment as ThoughtSegmentType, Citation } from '$lib/core/thoughts/types';
+	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import InlineCitation from './InlineCitation.svelte';
 	import ActionSegment from './ActionSegment.svelte';
 	import { Lightbulb, Sparkles } from 'lucide-svelte';
@@ -23,9 +25,21 @@
 	interface Props {
 		segment: ThoughtSegmentType;
 		oncitationclick?: (citation: Citation) => void;
+		/** Map of documentId -> ParsedDocument for L2 preview on hover */
+		documents?: Map<string, ParsedDocument>;
+		/** Callback when user clicks "View Full" in document preview */
+		onViewFullDocument?: (document: ParsedDocument) => void;
 	}
 
-	let { segment, oncitationclick }: Props = $props();
+	let { segment, oncitationclick, documents, onViewFullDocument }: Props = $props();
+
+	// Helper to get document for a citation
+	function getDocumentForCitation(citation: Citation): ParsedDocument | undefined {
+		if (citation.sourceType !== 'document' || !citation.documentId || !documents) {
+			return undefined;
+		}
+		return documents.get(citation.documentId);
+	}
 
 	// Type indicators
 	const isAction = $derived(segment.type === 'action');
@@ -85,7 +99,12 @@
 				{#if segment.citations && segment.citations.length > 0}
 					<div class="citations-list mt-2 flex flex-wrap gap-x-3 gap-y-1">
 						{#each segment.citations as citation}
-							<InlineCitation {citation} onclick={oncitationclick} />
+							<InlineCitation
+								{citation}
+								document={getDocumentForCitation(citation)}
+								onclick={oncitationclick}
+								onViewFull={onViewFullDocument}
+							/>
 						{/each}
 					</div>
 				{/if}

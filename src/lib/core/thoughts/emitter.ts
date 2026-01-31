@@ -28,6 +28,7 @@ import type {
 	CitationSource,
 	ActionTrace,
 	ActionHandle,
+	ActionType,
 	KeyMoment,
 	PhaseState,
 	ActionTargetType,
@@ -357,6 +358,70 @@ export class ThoughtEmitter {
 	}
 
 	/**
+	 * Start a generic action (analyze, search, etc.)
+	 *
+	 * Emits an action segment and returns a handle for updating the action
+	 * as it progresses. Useful for tool invocations like document analysis.
+	 *
+	 * @param actionType - Type of action (e.g., 'analyze', 'search')
+	 * @param description - Human-readable description of the action
+	 * @returns ActionHandle for updating the action
+	 *
+	 * @example
+	 * ```typescript
+	 * const action = emitter.startAction('analyze', 'Analyzing document: https://...');
+	 *
+	 * action.addFinding('Found 3 relevant sections');
+	 * action.complete('Document analysis complete');
+	 * ```
+	 */
+	startAction(actionType: ActionType, description: string): ActionHandle {
+		const action: ActionTrace = {
+			type: actionType,
+			target: description,
+			status: 'pending',
+			startTime: Date.now(),
+			findings: []
+		};
+
+		const segment = this.emit({
+			type: 'action',
+			phase: this.currentPhase,
+			content: description,
+			action,
+			expandable: true,
+			pinToKeyMoments: true
+		});
+
+		// Add to key moments
+		this.keyMoments.push({
+			id: crypto.randomUUID(),
+			type: 'action',
+			label: this.truncateLabel(description),
+			icon: actionType === 'analyze' ? '📄' : '🔧',
+			segmentId: segment.id
+		});
+
+		// Return handle for updating action
+		return {
+			addFinding: (finding: string) => {
+				action.findings?.push(finding);
+			},
+			complete: (summary: string) => {
+				action.status = 'complete';
+				action.endTime = Date.now();
+				this.think(summary, { pin: true });
+			},
+			error: (message: string) => {
+				action.status = 'error';
+				action.endTime = Date.now();
+				action.error = message;
+				this.think(`Action failed: ${message}`, { emphasis: 'muted' });
+			}
+		};
+	}
+
+	/**
 	 * Start a retrieval action (MongoDB/vector search)
 	 *
 	 * Emits an action segment for context retrieval and returns a handle
@@ -544,6 +609,9 @@ export class ThoughtEmitter {
 	 * @returns Inferred source type
 	 */
 	private inferSourceType(source: CitationSource): Citation['sourceType'] {
+		// Use explicit sourceType if provided
+		if (source.sourceType) return source.sourceType;
+		// Otherwise infer from IDs/URL
 		if (source.mongoId) return 'intelligence';
 		if (source.documentId) return 'document';
 		if (source.url?.includes('communique.vote')) return 'organization';

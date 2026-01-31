@@ -60,6 +60,12 @@ ACCESSIBILITY:
 			border: 'border-orange-200/60',
 			text: 'text-orange-700',
 			ring: 'focus-visible:ring-orange-500/50'
+		},
+		document: {
+			bg: 'bg-indigo-50/90 hover:bg-indigo-100/95',
+			border: 'border-indigo-200/60',
+			text: 'text-indigo-700',
+			ring: 'focus-visible:ring-indigo-500/50'
 		}
 	};
 

@@ -10,6 +10,8 @@ Complete integration example for Communique agent visualization.
   import { ThoughtStream, KeyMoments, DetailDrawer } from '$lib/components/thoughts';
   import { ThoughtEmitter } from '$lib/core/thoughts/emitter';
   import type { ThoughtSegment, PhaseState, Citation, ActionTrace, KeyMoment } from '$lib/core/thoughts/types';
+  import type { ParsedDocument } from '$lib/server/reducto/types';
+  import { getReductoClient } from '$lib/server/reducto/client';
 
   // ============================================================================
   // State Management
@@ -24,6 +26,26 @@ Complete integration example for Communique agent visualization.
   // Detail drawer state
   let drawerOpen = $state(false);
   let drawerContent = $state<Citation | ActionTrace | null>(null);
+  let drawerDocument = $state<ParsedDocument | null>(null);
+
+  // Track L3 state for stream de-emphasis
+  let detailDrawer: { isL3Active: boolean };
+
+  // ============================================================================
+  // CRITICAL: Document Map for L2/L3 Previews
+  // ============================================================================
+  //
+  // This Map stores fetched ParsedDocuments keyed by documentId.
+  // When a citation has sourceType='document' and documentId, AND that documentId
+  // exists in this Map, InlineCitation will show the L2 hover preview.
+  //
+  // The data flows through the component tree:
+  // ThoughtStream -> PhaseContainer -> ThoughtSegment -> InlineCitation
+  //
+  let documents = $state(new Map<string, ParsedDocument>());
+
+  // Loading state for document fetches
+  let loadingDocuments = $state(new Set<string>());
 
   // Initialize ThoughtEmitter
   const emitter = new ThoughtEmitter((segment) => {
@@ -36,11 +58,13 @@ Complete integration example for Communique agent visualization.
 
   function handleCitationClick(citation: Citation) {
     drawerContent = citation;
+    drawerDocument = null; // Reset document when opening citation
     drawerOpen = true;
   }
 
   function handleActionExpand(action: ActionTrace) {
     drawerContent = action;
+    drawerDocument = null;
     drawerOpen = true;
   }
 
@@ -52,8 +76,66 @@ Complete integration example for Communique agent visualization.
     // Option 2: Open in detail drawer if it's a citation
     if (moment.type === 'citation' && moment.metadata?.citation) {
       drawerContent = moment.metadata.citation as Citation;
+      drawerDocument = null;
       drawerOpen = true;
     }
+  }
+
+  // Handle L3 document request from CitationDetail
+  // This fetches from the API and updates both the Map (for L2 previews) and drawer
+  async function handleRequestDocument(documentId: string) {
+    // Skip if already loading
+    if (loadingDocuments.has(documentId)) return;
+
+    // Check cache first
+    const cached = documents.get(documentId);
+    if (cached) {
+      drawerDocument = cached;
+      return;
+    }
+
+    // Fetch from API
+    loadingDocuments.add(documentId);
+    loadingDocuments = new Set(loadingDocuments); // Trigger reactivity
+
+    try {
+      const response = await fetch(`/api/documents/${documentId}`);
+      const result = await response.json();
+
+      if (result.success && result.data?.document) {
+        const doc = result.data.document as ParsedDocument;
+        // Update the Map (triggers reactivity for L2 previews)
+        documents.set(documentId, doc);
+        documents = new Map(documents); // Trigger reactivity
+        // Set for L3 view in drawer
+        drawerDocument = doc;
+      }
+    } catch (error) {
+      console.error('Document fetch failed:', error);
+    } finally {
+      loadingDocuments.delete(documentId);
+      loadingDocuments = new Set(loadingDocuments);
+    }
+  }
+
+  // Handle "View Full" from DocumentPreview (L2 hover preview)
+  function handleViewFullDocument(doc: ParsedDocument) {
+    drawerDocument = doc;
+    drawerOpen = true;
+    handleDocumentView(doc, null);
+  }
+
+  // Capture Key Moment when user enters L3 document view
+  function handleDocumentView(doc: ParsedDocument, sourceCitation: Citation | null) {
+    const moment: KeyMoment = {
+      id: crypto.randomUUID(),
+      type: 'document', // L3 document engagement
+      label: `${doc.title.slice(0, 30)}${doc.title.length > 30 ? '...' : ''}`,
+      icon: '📑',
+      segmentId: sourceCitation?.id || doc.id,
+      metadata: { documentId: doc.id, documentTitle: doc.title, sourceCitationId: sourceCitation?.id }
+    };
+    keyMoments = [...keyMoments, moment];
   }
 
   function closeDrawer() {
@@ -61,6 +143,7 @@ Complete integration example for Communique agent visualization.
     // Keep content for smooth exit animation
     setTimeout(() => {
       drawerContent = null;
+      drawerDocument = null;
     }, 300);
   }
 
@@ -100,11 +183,15 @@ Complete integration example for Communique agent visualization.
       await simulateDelay(400);
       research.complete('Found sustainability leadership and emissions data');
 
-      // Create citation
+      // Create citation with documentId for L2/L3 features
+      // When documentId is provided AND sourceType is 'document':
+      // - L2: Hover preview shows DocumentPreview card
+      // - L3: "View Full Document" button opens document analysis
       const citation = emitter.cite("Apple's 2025 Environmental Report", {
         url: 'https://apple.com/environmental-report-2025',
         excerpt: 'We are committed to achieving carbon neutrality across our entire supply chain by 2030. Lisa Jackson, VP Environmental Policy, leads these efforts.',
-        mongoId: '507f1f77bcf86cd799439011'
+        documentId: 'doc-apple-env-2025', // Enables L2/L3 features
+        sourceType: 'document' // Explicit type (or inferred from documentId)
       });
 
       await simulateDelay(300);
@@ -184,24 +271,40 @@ Complete integration example for Communique agent visualization.
   <!-- Main content -->
   <main class="flex flex-1 overflow-hidden">
     <!-- Thought stream (takes full width when drawer closed, shrinks when open) -->
+    <!-- De-emphasize to 40% opacity when L3 document view is active -->
     <div
       class="flex-1 overflow-hidden transition-all duration-300"
-      class:mr-[480px]={drawerOpen}
+      class:mr-[480px]={drawerOpen && !detailDrawer?.isL3Active}
+      class:mr-[720px]={drawerOpen && detailDrawer?.isL3Active}
+      style:opacity={detailDrawer?.isL3Active ? 0.4 : 1}
+      style:transition="opacity 300ms ease, margin-right 300ms ease"
     >
+      <!--
+        CRITICAL: Pass documents Map and onViewFullDocument for L2/L3 features
+        - documents: Enables L2 hover previews on document citations
+        - onViewFullDocument: Opens document in L3 full view
+      -->
       <ThoughtStream
         {segments}
         {phases}
         {streaming}
+        {documents}
         oncitationclick={handleCitationClick}
         onactionexpand={handleActionExpand}
+        onViewFullDocument={handleViewFullDocument}
       />
     </div>
 
     <!-- Detail drawer (slides in from right) -->
+    <!-- Supports L1/L2 citation/action detail and L3 document analysis -->
     <DetailDrawer
+      bind:this={detailDrawer}
       bind:open={drawerOpen}
       content={drawerContent}
+      parsedDocument={drawerDocument}
       onclose={closeDrawer}
+      onrequestdocument={handleRequestDocument}
+      ondocumentview={handleDocumentView}
     />
   </main>
 
@@ -220,6 +323,45 @@ Complete integration example for Communique agent visualization.
   }
 </style>
 ```
+
+## L2/L3 Document Preview Wiring
+
+The document preview system requires proper wiring through the component tree:
+
+```
+ThoughtStream ─┬─ documents Map ──────► PhaseContainer ──► ThoughtSegment ──► InlineCitation
+               └─ onViewFullDocument ─► PhaseContainer ──► ThoughtSegment ──► InlineCitation
+```
+
+### Key Concepts:
+
+1. **documents Map**: A reactive `Map<string, ParsedDocument>` that caches fetched documents
+   - When a citation has `sourceType='document'` AND `documentId`, InlineCitation checks this Map
+   - If the document exists in the Map, the L2 hover preview shows on mouse enter (300ms delay)
+
+2. **Fetching Documents**: Use the `/api/documents/[id]` endpoint
+   ```typescript
+   const response = await fetch(`/api/documents/${documentId}`);
+   const result = await response.json();
+   if (result.success) {
+     documents.set(documentId, result.data.document);
+     documents = new Map(documents); // Trigger Svelte 5 reactivity
+   }
+   ```
+
+3. **Creating Document Citations**: Set `documentId` and optionally `sourceType`:
+   ```typescript
+   const citation = emitter.cite('Document Title', {
+     url: 'https://...',
+     excerpt: 'Relevant text...',
+     documentId: 'doc-123', // Enables L2/L3 features
+     sourceType: 'document' // Optional: inferred from documentId
+   });
+   ```
+
+### Demo Page
+
+See `/demo/thought-stream` for a complete working example with mock documents.
 
 ## Minimal Integration
 

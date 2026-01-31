@@ -29,6 +29,7 @@
 		ActionTrace,
 		ThoughtSegmentGroup
 	} from '$lib/core/thoughts/types';
+	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import PhaseContainer from './PhaseContainer.svelte';
 	import StreamControls from './StreamControls.svelte';
 
@@ -38,6 +39,10 @@
 		streaming?: boolean;
 		oncitationclick?: (citation: Citation) => void;
 		onactionexpand?: (action: ActionTrace) => void;
+		/** Map of documentId -> ParsedDocument for L2 preview on hover */
+		documents?: Map<string, ParsedDocument>;
+		/** Callback when user clicks "View Full" in document preview */
+		onViewFullDocument?: (document: ParsedDocument) => void;
 	}
 
 	let {
@@ -45,7 +50,9 @@
 		phases = [],
 		streaming = false,
 		oncitationclick,
-		onactionexpand
+		onactionexpand,
+		documents,
+		onViewFullDocument
 	}: Props = $props();
 
 	// Pause state
@@ -141,6 +148,8 @@
 						phase={group.phase}
 						segments={group.segments}
 						{oncitationclick}
+						{documents}
+						{onViewFullDocument}
 					/>
 				{/if}
 			{/each}

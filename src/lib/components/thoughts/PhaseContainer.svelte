@@ -17,6 +17,7 @@
 	 */
 
 	import type { PhaseState, ThoughtSegment, Citation } from '$lib/core/thoughts/types';
+	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import { ChevronDown, ChevronRight } from 'lucide-svelte';
 	import ThoughtSegmentComponent from './ThoughtSegment.svelte';
 
@@ -24,9 +25,13 @@
 		phase: PhaseState;
 		segments: ThoughtSegment[];
 		oncitationclick?: (citation: Citation) => void;
+		/** Map of documentId -> ParsedDocument for L2 preview on hover */
+		documents?: Map<string, ParsedDocument>;
+		/** Callback when user clicks "View Full" in document preview */
+		onViewFullDocument?: (document: ParsedDocument) => void;
 	}
 
-	let { phase, segments, oncitationclick }: Props = $props();
+	let { phase, segments, oncitationclick, documents, onViewFullDocument }: Props = $props();
 
 	// Collapse state (completed phases start collapsed)
 	let collapsed = $state(phase.status === 'complete');
@@ -134,7 +139,7 @@
 			{#if segments.length > 0}
 				<div class="segments-list space-y-1">
 					{#each segments as segment (segment.id)}
-						<ThoughtSegmentComponent {segment} {oncitationclick} />
+						<ThoughtSegmentComponent {segment} {oncitationclick} {documents} {onViewFullDocument} />
 					{/each}
 				</div>
 			{:else}
