@@ -574,6 +574,24 @@ function createTwitterConfig(): OAuthCallbackConfig {
 export const twitterConfig: OAuthCallbackConfig = createTwitterConfig();
 
 // =============================================================================
+// TWITTER/X CONFIGURATION — FULLY DISABLED
+// =============================================================================
+// Twitter/X is DISABLED due to low Sybil resistance (⭐⭐):
+// - UI: Removed from AuthButtons.svelte
+// - Routes: /auth/twitter/* return 403
+// - Config: Kept here for potential future re-enablement
+//
+// Reasons for disabling:
+// - No phone verification required for most accounts
+// - Minimal identity verification
+// - Easy to create multiple accounts
+// - High bot/spam prevalence
+//
+// To re-enable:
+// 1. Restore routes from git history (src/routes/auth/twitter/*)
+// 2. Add Twitter back to primaryProviders in AuthButtons.svelte
+
+// =============================================================================
 // DISCORD CONFIGURATION — FULLY DISABLED
 // =============================================================================
 // Discord is DISABLED due to low Sybil resistance (⭐⭐):
