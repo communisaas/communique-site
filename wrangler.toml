@@ -1,10 +1,4 @@
-name = "communique-site"
+name = "communique"
 compatibility_date = "2025-01-21"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".svelte-kit/cloudflare"
-
-[env.production]
-name = "communique-site"
-
-[env.staging]
-name = "communique-site-staging"
