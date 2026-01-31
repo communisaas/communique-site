@@ -109,10 +109,11 @@ export function getUserContext(event: RequestEvent): UserContext {
 			'unknown';
 	}
 
-	// Check verification status from session user record
+	// Check verification status from user record in locals
 	// SECURITY FIX: Use correct field name (is_verified: boolean, not verificationStatus)
-	// This is populated from the database via hooks.server.ts:37
-	const isVerified = session?.user?.is_verified === true;
+	// User is set directly on event.locals.user by hooks.server.ts:28-55
+	const user = event.locals.user;
+	const isVerified = user?.is_verified === true;
 
 	const isAuthenticated = !!userId;
 
