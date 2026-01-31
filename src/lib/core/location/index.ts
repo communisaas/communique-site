@@ -101,3 +101,15 @@ export {
 	censusAPI,
 	CensusAPIClient
 } from './census-api';
+
+// ============================================================================
+// Location Resolution (GeoScope utilities)
+// ============================================================================
+
+export {
+	resolveToGeoScope,
+	formatDisplayName,
+	displayGeoScope,
+	countryCodeToName,
+	stateCodeToName
+} from './location-resolver';
