@@ -23,7 +23,8 @@ import type {
 	RerankRequest,
 	RerankResponse,
 	VoyageError,
-	BatchEmbeddingOptions
+	BatchEmbeddingOptions,
+	ContentType
 } from './types';
 
 // Voyage AI API configuration
@@ -70,6 +71,34 @@ class CostTracker {
 }
 
 export const costTracker = new CostTracker();
+
+/**
+ * Content types that should use the voyage-law-2 model
+ * These benefit from the 6-10% accuracy improvement for legal/legislative text
+ */
+const LEGAL_CONTENT_TYPES: ContentType[] = ['legislative', 'legal', 'regulatory'];
+
+/**
+ * Get the appropriate Voyage AI model for a given content type
+ *
+ * Uses voyage-law-2 for legislative, legal, and regulatory content
+ * which provides 6-10% better accuracy for legal text.
+ * Falls back to voyage-3 for all other content types.
+ *
+ * @param contentType - The type of content being embedded
+ * @returns The recommended Voyage AI model for the content type
+ *
+ * @example
+ * const model = getEmbeddingModelForContent('legislative'); // 'voyage-law-2'
+ * const model = getEmbeddingModelForContent('news');        // 'voyage-3'
+ * const model = getEmbeddingModelForContent();              // 'voyage-3' (default)
+ */
+export function getEmbeddingModelForContent(contentType?: ContentType): VoyageModel {
+	if (contentType && LEGAL_CONTENT_TYPES.includes(contentType)) {
+		return 'voyage-law-2';
+	}
+	return 'voyage-3';
+}
 
 /**
  * Validate API key is configured
@@ -171,16 +200,29 @@ async function voyageRequest<T>(
  *   'First document',
  *   'Second document'
  * ]);
+ *
+ * // With content type for automatic model selection
+ * const [embedding] = await createEmbedding('HR 1234 Amendment', {
+ *   contentType: 'legislative' // Uses voyage-law-2
+ * });
  */
 export async function createEmbedding(
 	input: string | string[],
 	options: {
 		model?: VoyageModel;
 		inputType?: VoyageInputType;
+		contentType?: ContentType;
 	} = {}
 ): Promise<number[][]> {
-	const model = options.model || 'voyage-3';
+	// Determine model: explicit model > contentType-derived model > default
+	const model = options.model || getEmbeddingModelForContent(options.contentType);
 	const inputType = options.inputType || 'document';
+
+	// Log which model is being used for debugging
+	const inputCount = Array.isArray(input) ? input.length : 1;
+	console.log(
+		`[Voyage AI] Creating embeddings: model=${model}, inputType=${inputType}, count=${inputCount}${options.contentType ? `, contentType=${options.contentType}` : ''}`
+	);
 
 	const request: EmbeddingRequest = {
 		input,
@@ -214,17 +256,27 @@ export async function createEmbedding(
  *   batchSize: 64,
  *   showProgress: true
  * });
+ *
+ * // With content type for automatic model selection
+ * const embeddings = await createBatchEmbeddings(legislativeDocs, {
+ *   contentType: 'legislative', // Uses voyage-law-2
+ *   showProgress: true
+ * });
  */
 export async function createBatchEmbeddings(
 	texts: string[],
 	options: BatchEmbeddingOptions = {}
 ): Promise<number[][]> {
 	const {
-		model = 'voyage-3',
+		model: explicitModel,
+		contentType,
 		inputType = 'document',
 		batchSize = 64, // Conservative default
 		showProgress = false
 	} = options;
+
+	// Determine model: explicit model > contentType-derived model > default
+	const model = explicitModel || getEmbeddingModelForContent(contentType);
 
 	const effectiveBatchSize = Math.min(batchSize, MAX_BATCH_SIZE);
 	const batches: string[][] = [];

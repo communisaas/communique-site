@@ -8,7 +8,7 @@
  */
 
 // Client
-export { ReductoClient, getReductoClient, initReductoClient } from './client';
+export { ReductoClient, getReductoClient, resetReductoClient } from './client';
 
 // Types
 export type {
@@ -22,6 +22,8 @@ export type {
 	ParseOptions,
 	ParseResult,
 	AnalyzeOptions,
-	AnalysisResult,
-	ParsedDocumentDocument
+	AnalysisResult
 } from './types';
+
+// MongoDB cache type is in mongodb/schema
+export type { ParsedDocumentCacheDocument } from '$lib/server/mongodb/schema';

@@ -254,15 +254,12 @@ export interface AnalysisResult {
 // MongoDB Cache Types
 // ============================================================================
 
-/**
- * MongoDB schema for cached parsed documents
- * TTL: 30 days (documents don't change once published)
- */
-export interface ParsedDocumentDocument {
-	_id: string;
-	sourceUrl: string;
-	sourceUrlHash: string; // For deduplication
-	document: ParsedDocument;
-	createdAt: Date;
-	expiresAt: Date; // TTL index
-}
+// Note: The MongoDB cache schema is now defined in:
+// src/lib/server/mongodb/schema.ts as ParsedDocumentCacheDocument
+//
+// This provides:
+// - Proper ObjectId typing
+// - TTL index on expiresAt (30 days)
+// - Unique index on sourceUrlHash for deduplication
+// - Index on documentType for filtering
+// - Hit count tracking for cache statistics

@@ -11,9 +11,24 @@
 
 /**
  * Voyage AI model identifiers
- * Use voyage-3 for best quality, voyage-3-lite for speed
+ * - voyage-3: General-purpose, best for most content types
+ * - voyage-3-lite: Faster, good for high-throughput scenarios
+ * - voyage-law-2: Optimized for legal/legislative content (6-10% better for legal text)
  */
-export type VoyageModel = 'voyage-3' | 'voyage-3-lite';
+export type VoyageModel = 'voyage-3' | 'voyage-3-lite' | 'voyage-law-2';
+
+/**
+ * Content types for automatic model selection
+ * Legislative/legal/regulatory content uses voyage-law-2 for better accuracy
+ */
+export type ContentType =
+	| 'legislative'
+	| 'legal'
+	| 'regulatory'
+	| 'general'
+	| 'news'
+	| 'research'
+	| 'policy';
 
 /**
  * Input type affects how the model processes the text
@@ -24,10 +39,12 @@ export type VoyageInputType = 'document' | 'query';
 
 /**
  * Embedding vector dimensions based on model
+ * Note: voyage-law-2 has the same dimensions as voyage-3
  */
 export const MODEL_DIMENSIONS: Record<VoyageModel, number> = {
 	'voyage-3': 1024,
-	'voyage-3-lite': 512
+	'voyage-3-lite': 512,
+	'voyage-law-2': 1024
 };
 
 /**
@@ -152,10 +169,12 @@ export interface CachedEmbedding {
  * Options for batch embedding generation
  */
 export interface BatchEmbeddingOptions {
-	/** Model to use */
+	/** Model to use (overrides contentType-based selection) */
 	model?: VoyageModel;
 	/** Input type */
 	inputType?: VoyageInputType;
+	/** Content type for automatic model selection (ignored if model is specified) */
+	contentType?: ContentType;
 	/** Batch size (Voyage supports up to 128 per request) */
 	batchSize?: number;
 	/** Show progress for large batches */

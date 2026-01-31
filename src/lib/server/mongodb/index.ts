@@ -17,6 +17,7 @@ export {
 	getOrganizationsCollection,
 	getIntelligenceCollection,
 	getDecisionMakerCacheCollection,
+	getParsedDocumentsCollection,
 	collectionAccessors
 } from './collections';
 
@@ -33,7 +34,8 @@ export type {
 	DecisionMakerCacheDocument,
 	DecisionMakerDocument,
 	TargetType,
-	CollectionName
+	CollectionName,
+	ParsedDocumentCacheDocument
 } from './schema';
 
 export { COLLECTIONS, DATABASE_NAME } from './schema';

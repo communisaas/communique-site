@@ -13,12 +13,14 @@ export {
 	estimateTokenCount,
 	estimateEmbeddingCost,
 	healthCheck as voyageHealthCheck,
-	costTracker
+	costTracker,
+	getEmbeddingModelForContent
 } from './voyage-client';
 
 export type {
 	VoyageModel,
 	VoyageInputType,
+	ContentType,
 	EmbeddingRequest,
 	EmbeddingResponse,
 	RerankRequest,

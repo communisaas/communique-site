@@ -167,13 +167,57 @@ export interface DecisionMakerCacheDocument {
 }
 
 // ============================================================================
+// Parsed Documents Cache - Reducto results
+// ============================================================================
+
+import type {
+	ParsedDocument,
+	DocumentType
+} from '../reducto/types';
+
+/**
+ * MongoDB schema for cached parsed documents from Reducto
+ * TTL: 30 days (documents don't change once published)
+ *
+ * Indexes:
+ * - TTL on expiresAt (automatic cleanup)
+ * - Unique on sourceUrlHash (deduplication)
+ * - On documentType (filtering by type)
+ */
+export interface ParsedDocumentCacheDocument {
+	_id: ObjectId;
+
+	/** Original document URL */
+	sourceUrl: string;
+
+	/** SHA-256 hash of sourceUrl for deduplication */
+	sourceUrlHash: string;
+
+	/** Document type for filtering */
+	documentType: DocumentType;
+
+	/** The full parsed document */
+	document: ParsedDocument;
+
+	/** Cache metadata */
+	createdAt: Date;
+	updatedAt: Date;
+	expiresAt: Date; // TTL index
+
+	/** Access statistics */
+	hitCount: number;
+	lastAccessedAt?: Date;
+}
+
+// ============================================================================
 // Collection Names - Centralized constants
 // ============================================================================
 
 export const COLLECTIONS = {
 	ORGANIZATIONS: 'organizations',
 	INTELLIGENCE: 'intelligence',
-	DECISION_MAKER_CACHE: 'decision_maker_cache'
+	DECISION_MAKER_CACHE: 'decision_maker_cache',
+	PARSED_DOCUMENTS: 'parsed_documents'
 } as const;
 
 export type CollectionName = typeof COLLECTIONS[keyof typeof COLLECTIONS];

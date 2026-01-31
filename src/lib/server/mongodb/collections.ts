@@ -11,7 +11,8 @@ import {
 	COLLECTIONS,
 	type OrganizationDocument,
 	type IntelligenceItemDocument,
-	type DecisionMakerCacheDocument
+	type DecisionMakerCacheDocument,
+	type ParsedDocumentCacheDocument
 } from './schema';
 
 /**
@@ -68,11 +69,29 @@ export async function getDecisionMakerCacheCollection(): Promise<
 }
 
 /**
+ * Get the Parsed Documents Cache collection
+ * Stores cached Reducto document parsing results
+ *
+ * @returns Promise<Collection<ParsedDocumentCacheDocument>>
+ *
+ * @example
+ * const docs = await getParsedDocumentsCollection();
+ * const cached = await docs.findOne({ sourceUrlHash: '...' });
+ */
+export async function getParsedDocumentsCollection(): Promise<
+	Collection<ParsedDocumentCacheDocument>
+> {
+	const db = await getDatabase();
+	return db.collection<ParsedDocumentCacheDocument>(COLLECTIONS.PARSED_DOCUMENTS);
+}
+
+/**
  * Collection accessor map for dynamic access
  * Useful when you need to access collections by name
  */
 export const collectionAccessors = {
 	[COLLECTIONS.ORGANIZATIONS]: getOrganizationsCollection,
 	[COLLECTIONS.INTELLIGENCE]: getIntelligenceCollection,
-	[COLLECTIONS.DECISION_MAKER_CACHE]: getDecisionMakerCacheCollection
+	[COLLECTIONS.DECISION_MAKER_CACHE]: getDecisionMakerCacheCollection,
+	[COLLECTIONS.PARSED_DOCUMENTS]: getParsedDocumentsCollection
 } as const;

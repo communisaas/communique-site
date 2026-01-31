@@ -12,12 +12,32 @@
 
 import type { Document as MongoDocument } from 'mongodb';
 import { getIntelligenceCollection, getOrganizationsCollection } from './collections';
-import { createEmbedding } from '../embeddings';
+import { createEmbedding, getEmbeddingModelForContent } from '../embeddings';
+import type { ContentType } from '../embeddings';
 import type {
 	IntelligenceItemDocument,
 	OrganizationDocument,
 	IntelligenceCategory
 } from './schema';
+
+/**
+ * Map IntelligenceCategory to ContentType for model selection
+ * Legislative and regulatory categories use voyage-law-2 for better accuracy
+ */
+function categoryToContentType(category?: IntelligenceCategory): ContentType | undefined {
+	if (!category) return undefined;
+
+	switch (category) {
+		case 'legislative':
+			return 'legislative';
+		case 'regulatory':
+			return 'regulatory';
+		case 'news':
+			return 'news';
+		default:
+			return 'general';
+	}
+}
 
 /**
  * Options for vector search queries
@@ -31,6 +51,8 @@ export interface VectorSearchOptions {
 	numCandidates?: number;
 	/** Include the similarity score in results */
 	includeScore?: boolean;
+	/** Content type for embedding model selection (voyage-law-2 for legal content) */
+	contentType?: ContentType;
 }
 
 /**
@@ -89,10 +111,20 @@ export async function semanticSearchIntelligence(
 	filters: IntelligenceVectorFilters = {},
 	options: VectorSearchOptions = {}
 ): Promise<VectorSearchResult<IntelligenceItemDocument>[]> {
-	const { limit = 10, minScore = 0, numCandidates = 100, includeScore = true } = options;
+	const { limit = 10, minScore = 0, numCandidates = 100, includeScore = true, contentType } =
+		options;
 
-	// Generate query embedding
-	const [queryEmbedding] = await createEmbedding(query, { inputType: 'query' });
+	// Determine content type from filter categories if not explicitly provided
+	// If filtering by legislative/regulatory categories, use voyage-law-2 for better accuracy
+	const effectiveContentType =
+		contentType ||
+		(filters.categories?.length === 1 ? categoryToContentType(filters.categories[0]) : undefined);
+
+	// Generate query embedding with appropriate model
+	const [queryEmbedding] = await createEmbedding(query, {
+		inputType: 'query',
+		contentType: effectiveContentType
+	});
 
 	// Build filter object
 	const filter: MongoDocument = {};
@@ -182,10 +214,15 @@ export async function semanticSearchOrganizations(
 	filters: OrganizationVectorFilters = {},
 	options: VectorSearchOptions = {}
 ): Promise<VectorSearchResult<OrganizationDocument>[]> {
-	const { limit = 10, minScore = 0, numCandidates = 100, includeScore = true } = options;
+	const { limit = 10, minScore = 0, numCandidates = 100, includeScore = true, contentType } =
+		options;
 
-	// Generate query embedding
-	const [queryEmbedding] = await createEmbedding(query, { inputType: 'query' });
+	// Generate query embedding with optional content type for model selection
+	// Organizations are typically general content unless explicitly specified
+	const [queryEmbedding] = await createEmbedding(query, {
+		inputType: 'query',
+		contentType: contentType
+	});
 
 	// Build filter object
 	const filter: MongoDocument = {};
@@ -406,10 +443,18 @@ export async function hybridSearchIntelligence(
 	filters: IntelligenceVectorFilters = {},
 	options: VectorSearchOptions = {}
 ): Promise<VectorSearchResult<IntelligenceItemDocument>[]> {
-	const { limit = 10 } = options;
+	const { limit = 10, contentType } = options;
 
-	// Generate query embedding for vector search
-	const [queryEmbedding] = await createEmbedding(query, { inputType: 'query' });
+	// Determine content type from filter categories if not explicitly provided
+	const effectiveContentType =
+		contentType ||
+		(filters.categories?.length === 1 ? categoryToContentType(filters.categories[0]) : undefined);
+
+	// Generate query embedding for vector search with appropriate model
+	const [queryEmbedding] = await createEmbedding(query, {
+		inputType: 'query',
+		contentType: effectiveContentType
+	});
 
 	// Build filter object
 	const filter: MongoDocument = {};
