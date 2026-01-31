@@ -121,6 +121,7 @@
 			const response = await fetch('/api/agents/stream-decision-makers', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include', // Ensure session cookie is sent after OAuth return
 				body: JSON.stringify({
 					subject_line: formData.objective.title,
 					core_message: formData.objective.description,
@@ -133,6 +134,13 @@
 			// Check for auth errors
 			if (response.status === 429 || response.status === 401) {
 				const errorData = await response.json().catch(() => ({}));
+				console.log('[DecisionMakerResolver] Auth/rate error:', {
+					status: response.status,
+					error: errorData.error,
+					tier: errorData.tier,
+					remaining: errorData.remaining,
+					limit: errorData.limit
+				});
 				throw new Error(errorData.error || 'Authentication required');
 			}
 
@@ -199,10 +207,34 @@
 		}
 	}
 
+	/**
+	 * Detect if we just returned from OAuth
+	 * The oauth_completion cookie is set by the OAuth callback handler
+	 */
+	function isOAuthReturn(): boolean {
+		if (typeof document === 'undefined') return false;
+		return document.cookie.includes('oauth_completion');
+	}
+
+	/**
+	 * Clear the OAuth completion cookie after use
+	 */
+	function clearOAuthCookie(): void {
+		if (typeof document === 'undefined') return;
+		document.cookie = 'oauth_completion=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+	}
+
 	// Auto-run on mount (only if not already resolved)
 	onMount(() => {
+		const fromOAuth = isOAuthReturn();
+		if (fromOAuth) {
+			console.log('[DecisionMakerResolver] Detected OAuth return, clearing cookie');
+			clearOAuthCookie();
+		}
+
 		// Only auto-resolve if we don't already have decision-makers
 		if (!formData.audience?.decisionMakers || formData.audience.decisionMakers.length === 0) {
+			console.log('[DecisionMakerResolver] No decision-makers, starting resolution', { fromOAuth });
 			resolveDecisionMakers();
 		} else {
 			// Check for stale/broken data (missing emails/sources from old drafts)
@@ -215,6 +247,7 @@
 				resolveDecisionMakers();
 			} else {
 				// Already have decision-makers, skip to results
+				console.log('[DecisionMakerResolver] Decision-makers already resolved, skipping to results');
 				stage = 'results';
 			}
 		}

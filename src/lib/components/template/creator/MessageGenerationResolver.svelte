@@ -164,6 +164,7 @@
 			const response = await fetch('/api/agents/stream-message', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
+				credentials: 'include', // Ensure session cookie is sent after OAuth return
 				body: JSON.stringify({
 					subject_line: subjectLine,
 					core_message: coreMessage,
