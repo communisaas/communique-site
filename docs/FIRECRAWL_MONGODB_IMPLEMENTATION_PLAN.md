@@ -85,12 +85,45 @@ We were building "search" when we should be building "agent memory." The value i
   - Structured thought emission with citations
 
 ### Phase 2A (Next) — Document Tool
+
+> **Perceptual Goal**: Documents are evidence to trust, not content to read. L3 depth exists for verification when users need it, but the default path remains streamlined agent reasoning with L1 citation markers.
+
 - [ ] **Reducto Integration** - `src/lib/server/reducto/` + `src/lib/core/tools/`
   - ReductoClient (API wrapper for parse/extract)
   - DocumentTool (agent-invocable analysis)
   - MongoDB caching for parsed documents
   - Integration with ThoughtEmitter (document findings as insights)
   - L3 depth layer in DetailDrawer
+
+#### Phase 2A File Scope (~350 lines total)
+
+| File | Purpose | Lines |
+|------|---------|-------|
+| `src/lib/server/reducto/client.ts` | API wrapper with chunked parsing | ~100 |
+| `src/lib/server/reducto/types.ts` | ParsedDocument, Section, Entity types | ~50 |
+| `src/lib/core/tools/document.ts` | Agent-invocable tool definition | ~100 |
+| `src/lib/components/thoughts/DocumentDetail.svelte` | L3 focal immersion view | ~100 |
+
+#### Perceptual Requirements
+
+1. **L1 Integration**: Document citations appear inline with type-colored markers
+   - `[📜1]` for legislative, `[📊2]` for reports, etc.
+   - Minimal weight, flows with text, peripheral registration
+
+2. **L2 Preview**: Hover shows recognition card (300ms delay)
+   - Title, source, date
+   - Query-relevant excerpt (why agent cited this)
+   - "View Full Analysis" affordance → L3
+
+3. **L3 Document Detail**: Slide-in drawer with structure
+   - Section navigation (from Reducto structure extraction)
+   - Key entities highlighted (amounts, dates, names)
+   - Query-relevant sections prioritized
+   - Stream de-emphasized (40% opacity) but visible
+
+4. **Temporal**: When user is in L3, Key Moments captures stream
+   - User can return and catch up via footer
+   - Pause auto-engaged when L3 opens
 
 **Scope:** Agent can analyze documents when user provides them or when relevant. On-demand parsing, cached results, cited in messages.
 
@@ -142,24 +175,61 @@ We were building "search" when we should be building "agent memory." The value i
 
 ### Phase 2A Components to Build
 
-| Component | Location | Purpose |
-|-----------|----------|---------|
-| `ReductoClient` | `src/lib/server/reducto/client.ts` | API wrapper |
-| `DocumentTool` | `src/lib/core/tools/document.ts` | Agent-invocable analysis |
-| `DocumentDetail` | `src/lib/components/thoughts/DocumentDetail.svelte` | L3 depth layer |
+| Component | Location | Purpose | Perceptual Role |
+|-----------|----------|---------|-----------------|
+| `ReductoClient` | `src/lib/server/reducto/client.ts` | API wrapper | Enables structured extraction for L3 |
+| `reducto/types.ts` | `src/lib/server/reducto/types.ts` | ParsedDocument types | Structure for section nav |
+| `DocumentTool` | `src/lib/core/tools/document.ts` | Agent-invocable | Triggers L1 citations with doc refs |
+| `DocumentDetail` | `src/lib/components/thoughts/DocumentDetail.svelte` | L3 depth layer | Focal immersion with structure nav |
+| `DocumentPreview` | `src/lib/components/thoughts/DocumentPreview.svelte` | L2 hover card | Recognition layer (300ms delay) |
 
 ---
 
-## Temporal Design: Pace & Flow
+## Perceptual Architecture
 
-### The Speed Problem
+> **Meta-Principle**: The interface IS the computational substrate experienced through human perception. Data structures, rendering, timing, and interaction are all expressions of how humans actually perceive, predict, and cognize.
 
-Agent streams at 500+ wpm. Humans read at ~250 wpm. Current flow creates:
-- Cognitive overload from fast streaming
-- Missed affordances that scroll past
-- Auto-transitions before processing completes
+### Cognitive Invariants
 
-### Temporal Fixes
+These constraints are non-negotiable — violating them creates friction regardless of visual polish:
+
+| Invariant | Constraint | Implication |
+|-----------|------------|-------------|
+| **Working Memory** | 4±1 chunks active | User tracks ≤4 changing things |
+| **Attention** | Serial for focal, parallel for peripheral | L3 depth requires mode switch |
+| **Causality** | >100ms feels disconnected | Action-response within frame budget |
+| **Prediction** | Brain minimizes prediction error | Consistency = low cognitive load |
+| **Habituation** | Repeated stimuli become invisible | Motion only for salience |
+
+### The Three Perceptual Channels
+
+```
+L1: CITATION MARKS     → Peripheral channel (parallel, preconscious)
+L2: RESEARCH TRACES    → Transition channel (triggered by attention)
+L3: DOCUMENT CONTENT   → Focal channel (serial, deliberate)
+```
+
+Each layer maps to different cognitive bandwidth:
+
+| Layer | Perceptual Mode | User Capacity | Design Treatment |
+|-------|-----------------|---------------|------------------|
+| **L1** | Peripheral (parallel) | High — registers without reading | Minimal weight, inline, muted color |
+| **L2** | Transitional | Medium — recognition task | Near-citation popup, 1-2 chunks |
+| **L3** | Focal (serial) | Low — full attention required | Mode switch, drawer/modal, navigation |
+
+**Key Insight**: Most users never reach L3. Citations (L1) provide *ambient trust* — "this is grounded." The depth exists for verification, but the default path is streamlined reasoning.
+
+### Temporal Design: Pace & Flow
+
+#### The Speed Problem
+
+```
+Agent tempo:     ████████████████████████████████████ (500+ wpm)
+Human reading:   ██      ██      ██      ██           (250 wpm)
+Document depth:  ████████████████████████████████████████████████████
+```
+
+#### Temporal Fixes
 
 1. **Chunked streaming** — Emit complete thought units, not characters
    - Natural ~300ms pause between thoughts
@@ -172,13 +242,168 @@ Agent streams at 500+ wpm. Humans read at ~250 wpm. Current flow creates:
 
 3. **Key Moments footer** — Persistent affordance capture
    - Important items "pin" to footer as they appear
-   - Never scroll away
-   - Always accessible for dive-in
+   - Never scroll away — solves temporal displacement
+   - Click to jump back in stream
 
 4. **User controls** — Agency over pace
    - Hover pauses (implicit)
    - Pause button (explicit)
    - Scroll up enters "review mode"
+
+#### Timing Constants
+
+```typescript
+const PERCEPTUAL_TIMING = {
+  // Causality budget
+  INSTANT: 0,           // Direct state changes (user-caused)
+  CAUSALITY_MAX: 100,   // Action must feel connected to response
+
+  // Transitions
+  SNAP: 150,            // UI reorganization
+  TRANSITION: 300,      // View changes, drawer slide
+
+  // L2 Preview behavior
+  L2_HOVER_DELAY: 300,  // Prevent accidental triggers
+  L2_LINGER: 150,       // Grace period when leaving
+
+  // Streaming rhythm
+  THOUGHT_PAUSE: 300,   // Between thought chunks
+  PHASE_PAUSE: 500,     // Between phase transitions
+
+  // Loading thresholds
+  LOADING_THRESHOLD: 1000,  // Show progress indicator
+};
+```
+
+### Document Disclosure Architecture
+
+Documents (PDFs, bills, reports) are dense artifacts. The perceptual challenge:
+
+> **Documents are evidence to trust, not content to read.**
+
+The disclosure architecture serves this hierarchy:
+1. **Agent reasoning** → Primary cognitive engagement
+2. **Citation presence** (L1) → Peripheral trust signal ("grounded")
+3. **Document preview** (L2) → Recognition ("what is this?")
+4. **Document content** (L3) → Verification ("is this correct?")
+
+#### Document Disclosure State Machine
+
+```
+                    ┌─────────────┐
+                    │  STREAMING  │ ← Default: following agent
+                    └──────┬──────┘
+                           │
+              hover L1     │
+                           ▼
+                    ┌─────────────┐
+                    │  L2 PREVIEW │ ← Recognition layer
+                    └──────┬──────┘
+                           │
+              click "View" │     escape/click-away
+                           ▼            │
+                    ┌─────────────┐     │
+                    │  L3 DRAWER  │ ────┘
+                    │  (document) │ ← Focal immersion
+                    └─────────────┘
+                           │
+              close drawer │
+                           ▼
+                    ┌─────────────┐
+                    │  STREAMING  │ ← Return with Key Moments catch-up
+                    └─────────────┘
+```
+
+#### L2 Preview Card (Recognition Layer)
+
+Appears on hover, 300ms delay. Shows just enough for recognition:
+
+```
+┌─────────────────────────────────────────┐
+│ 📜 H.R. 4521: CHIPS and Science Act     │  ← Title (recognition)
+│ Congress.gov • Enacted 2022-08-09       │  ← Source + temporal
+├─────────────────────────────────────────┤
+│ "...establishes a $52 billion fund      │  ← Relevance snippet
+│ for domestic semiconductor manufac..."  │     (why agent cited)
+├─────────────────────────────────────────┤
+│ [View Full Analysis]                    │  ← L3 affordance
+└─────────────────────────────────────────┘
+```
+
+#### L3 Document Detail (Focal Immersion)
+
+When user enters L3, they're in the document, not following the agent:
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  Agent Stream (de-emphasized)           │  Document Analysis       │
+│  ─────────────────────────────          │  ═══════════════════     │
+│  The CHIPS Act provides $52B[¹]...      │                          │
+│                                         │  H.R. 4521               │
+│  ░░░░░░░░░░░░░░░░░░░░░░░░░░            │  CHIPS and Science Act   │
+│  (stream continues, 40% opacity)        │                          │
+│                                         │  ┌─ Key Sections ──────┐ │
+│                                         │  │ § 102: Funding       │ │
+│                                         │  │ § 103: Allocations   │ │
+│                                         │  │ § 201: Workforce     │ │
+│                                         │  └─────────────────────┘ │
+├─────────────────────────────────────────┴──────────────────────────┤
+│ 🎯 KEY MOMENTS                                        [⏸️ Paused]  │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+#### Document Type Visual Encoding
+
+Peripheral color recognition (no text parsing needed):
+
+| Type | Color Token | Example Sources |
+|------|-------------|-----------------|
+| Legislative | `--doc-legislative` (amber) | Bills, resolutions, amendments |
+| Official | `--doc-official` (slate) | Agency reports, filings |
+| Media | `--doc-media` (blue) | News articles, analysis |
+| Corporate | `--doc-corporate` (emerald) | SEC filings, announcements |
+| Academic | `--doc-academic` (purple) | Research papers, studies |
+
+### Visual Hierarchy as Perceptual Priority
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                                                                  │
+│   AGENT STREAM (primary attention)                               │
+│   ─────────────────────────────────                              │
+│   Text with inline citations[¹] that signal                      │
+│   evidence without interrupting flow[²]...                       │
+│                      ↑                                           │
+│              L1: Peripheral markers                              │
+│                                                                  │
+│        ┌─────────────────────┐                                   │
+│        │ L2 PREVIEW (hover)  │  ← Transition channel             │
+│        │ Recognition layer   │     (triggered, not forced)       │
+│        └─────────────────────┘                                   │
+│                                                                  │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   L3 DRAWER (slide-in, focal mode)                               │
+│   ═══════════════════════════════                                │
+│   Full document with structure,                                  │
+│   entities, cross-references...                                  │
+│                                                                  │
+├──────────────────────────────────────────────────────────────────┤
+│ 🎯 KEY MOMENTS (sticky)              [1] [2] [3]       [⏸️ ▶️]  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Implementation Checklist (Perceptual)
+
+Before shipping any interface change:
+
+- [ ] **Working Memory**: User holds ≤4 chunks at any moment?
+- [ ] **Causality**: Action-response within 100ms budget?
+- [ ] **Consistency**: Timing constants used (not ad-hoc durations)?
+- [ ] **Peripheral**: Critical state visible without focal attention?
+- [ ] **Recognition > Recall**: Clickable options over text input?
+- [ ] **Reversibility**: Every action undoable or clearly destructive?
+- [ ] **Mode Clarity**: User knows which layer they're in (L1/L2/L3)?
 
 ---
 

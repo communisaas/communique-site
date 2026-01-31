@@ -1,6 +1,6 @@
 # OAuth Authentication Setup
 
-**Status**: ✅ IMPLEMENTED | 4 Providers Active + 1 Planned
+**Status**: ✅ IMPLEMENTED | 4 Providers Active + 2 Disabled
 
 ---
 
@@ -10,25 +10,24 @@
 
 | Provider | Status | Sybil Resistance | Notes |
 |----------|--------|------------------|-------|
-| **Coinbase** | 🟡 PLANNED | ⭐⭐⭐⭐⭐ | KYC-verified, see `specs/coinbase-auth-integration.md` |
-| Google | ✅ Active | ⭐⭐⭐⭐ | Primary tier |
+| Google | ✅ Active | ⭐⭐⭐⭐ | Primary tier, featured provider |
 | LinkedIn | ✅ Active | ⭐⭐⭐⭐ | Primary tier |
 | Facebook | ✅ Active | ⭐⭐⭐ | Secondary tier |
-| X/Twitter | ✅ Active | ⭐⭐ | Secondary tier, `users.email` scope added |
+| **Coinbase** | ✅ Active | ⭐⭐⭐⭐⭐ | KYC-verified, highest trust, see `specs/coinbase-auth-integration.md` |
+| X/Twitter | ❌ DISABLED | ⭐⭐ | Routes return 403, low Sybil resistance, high bot prevalence |
 | Discord | ❌ DISABLED | ⭐⭐ | Routes return 403, low Sybil resistance |
 
 ## Overview
 
 Communique uses passwordless OAuth authentication to reduce friction and maximize conversion. Users authenticate with existing social accounts, enabling instant civic action without signup forms.
 
-**Active Providers**:
-- Google OAuth 2.0 (Primary tier)
-- LinkedIn OAuth 2.0 (Primary tier)
-- Facebook Login (Secondary tier)
-- Twitter (X) OAuth 2.0 (Secondary tier)
+**Active Providers** (4 total, ordered by UI display):
+1. Google OAuth 2.0 (Featured provider)
+2. LinkedIn OAuth 2.0 (Primary tier)
+3. Facebook Login (Secondary tier)
+4. Coinbase OAuth 2.0 (KYC-verified, highest Sybil resistance)
 
-**Planned**: Coinbase OAuth 2.0 (KYC-verified, highest Sybil resistance)
-**Disabled**: Discord OAuth 2.0 (low Sybil resistance)
+**Disabled**: Discord OAuth 2.0 + Twitter/X OAuth 2.0 (low Sybil resistance)
 
 **Architecture**: Arctic library + unified callback handler + session management
 
@@ -531,13 +530,12 @@ try {
 ## Roadmap
 
 ### Near Term (P1)
-- **Coinbase OAuth** — KYC-verified identity, highest Sybil resistance (see `specs/coinbase-auth-integration.md`)
 - Session refresh tokens (extend 90-day expiry)
+- **Coinbase On-Chain Verifications** — EAS attestations on Base L2 (see `specs/coinbase-auth-integration.md`)
 
 ### Medium Term
 - Apple Sign In (device-bound identity)
 - WebAuthn/Passkey support (passwordless++)
-- On-chain verification (Coinbase Verifications on Base L2)
 - Account linking (merge multiple OAuth accounts)
 
 ### Long Term
@@ -547,6 +545,7 @@ try {
 
 ### Removed
 - ~~Discord OAuth~~ — Disabled due to low Sybil resistance (2026-01-31)
+- ~~Twitter/X OAuth~~ — Disabled due to low Sybil resistance, high bot prevalence (2026-01-31)
 
 ## References
 
