@@ -20,7 +20,7 @@ DESIGN:
 -->
 <script lang="ts">
 	import type { ParsedDocument, DocumentSection, DocumentEntity } from '$lib/server/reducto/types';
-	import { getDocumentTypeIcon, getDocumentTypeColor } from '$lib/core/tools/document';
+	import { getDocumentTypeIcon, getDocumentTypeColor } from '$lib/core/tools/document-helpers';
 	import {
 		ExternalLink,
 		ChevronRight,
