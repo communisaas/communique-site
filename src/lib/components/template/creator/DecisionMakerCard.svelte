@@ -1,13 +1,5 @@
 <script lang="ts">
-	import {
-		CheckCircle2,
-		Mail,
-		ExternalLink,
-		X,
-		User,
-		ChevronDown,
-		ChevronUp
-	} from '@lucide/svelte';
+	import { CheckCircle2, Mail, ExternalLink, X, User } from '@lucide/svelte';
 	import type { ProcessedDecisionMaker } from '$lib/types/template';
 
 	interface Props {
@@ -17,7 +9,6 @@
 
 	let { decisionMaker, onremove }: Props = $props();
 
-	let expanded = $state(false);
 	let showProvenance = $state(false);
 
 	function copyEmail() {
@@ -27,80 +18,52 @@
 	}
 </script>
 
-<div class="rounded-lg border border-slate-200 bg-white transition-all duration-200">
-	<!-- Compact View -->
-	<button
-		type="button"
-		onclick={() => (expanded = !expanded)}
-		class="flex w-full items-center justify-between p-4 text-left transition-colors hover:bg-slate-50"
-	>
-		<div class="flex items-start gap-3">
-			<!-- Icon/Avatar -->
-			<div
-				class="flex h-10 w-10 items-center justify-center rounded-full"
-				class:bg-green-100={decisionMaker.isAiResolved}
-				class:bg-slate-100={!decisionMaker.isAiResolved}
-			>
-				{#if decisionMaker.isAiResolved}
-					<CheckCircle2 class="h-5 w-5 text-green-600" />
-				{:else}
-					<User class="h-5 w-5 text-slate-600" />
-				{/if}
-			</div>
-
-			<!-- Name & Title -->
-			<div class="flex-1">
-				<h4 class="font-semibold text-slate-900">{decisionMaker.name}</h4>
-				<p class="text-sm text-slate-600">
-					{decisionMaker.title} • {decisionMaker.organization}
-				</p>
-			</div>
-		</div>
-
-		<!-- Expand/Collapse Icon -->
-		<div class="ml-2">
-			{#if expanded}
-				<ChevronUp class="h-5 w-5 text-slate-400" />
+<div class="rounded-lg border border-slate-200 bg-white p-4">
+	<!-- Header: Icon + Name/Title -->
+	<div class="flex items-start gap-3">
+		<div
+			class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full {decisionMaker.isAiResolved ? 'bg-green-100' : 'bg-slate-100'}"
+		>
+			{#if decisionMaker.isAiResolved}
+				<CheckCircle2 class="h-4 w-4 text-green-600" />
 			{:else}
-				<ChevronDown class="h-5 w-5 text-slate-400" />
+				<User class="h-4 w-4 text-slate-600" />
 			{/if}
 		</div>
-	</button>
 
-	<!-- Expanded View -->
-	{#if expanded}
-		<div class="space-y-3 border-t border-slate-100 p-4">
-			<!-- Why This Matters -->
-			<div>
-				<p class="text-xs font-medium text-slate-500 md:text-sm">Why this matters:</p>
-				<p class="mt-1 text-sm text-slate-700 md:text-base">{decisionMaker.reasoning}</p>
-			</div>
+		<div class="min-w-0 flex-1">
+			<h4 class="font-semibold text-slate-900">{decisionMaker.name}</h4>
+			<p class="text-sm text-slate-600">
+				{decisionMaker.title} • {decisionMaker.organization}
+			</p>
 
-			<!-- Email -->
-			{#if decisionMaker.email}
-				<div class="flex items-center gap-2">
+			<!-- Reasoning -->
+			{#if decisionMaker.reasoning}
+				<p class="mt-2 text-sm text-slate-600">{decisionMaker.reasoning}</p>
+			{/if}
+
+			<!-- Contact & Source Row -->
+			<div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+				{#if decisionMaker.email}
 					<button
 						type="button"
 						onclick={() => (showProvenance = true)}
-						class="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+						class="inline-flex items-center gap-1.5 text-slate-700 hover:text-slate-900"
 					>
-						<Mail class="h-4 w-4" />
-						{decisionMaker.email}
+						<Mail class="h-3.5 w-3.5 text-slate-400" />
+						<span class="font-medium">{decisionMaker.email}</span>
 					</button>
-				</div>
-			{/if}
+				{/if}
 
-			<!-- Actions -->
-			<div class="flex items-center gap-2 border-t border-slate-100 pt-3">
 				{#if decisionMaker.source}
 					<a
 						href={decisionMaker.source}
 						target="_blank"
 						rel="noopener noreferrer"
-						class="inline-flex items-center gap-1 text-xs text-participation-primary-600 hover:text-participation-primary-700 md:text-sm"
+						class="inline-flex items-center gap-1 text-participation-primary-600 hover:text-participation-primary-700"
 					>
 						<ExternalLink class="h-3.5 w-3.5" />
-						View source
+						<span>Source</span>
 					</a>
 				{/if}
 
@@ -108,15 +71,15 @@
 					<button
 						type="button"
 						onclick={onremove}
-						class="ml-auto inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 md:text-sm"
+						class="ml-auto inline-flex items-center gap-1 text-red-600 hover:text-red-700"
 					>
 						<X class="h-3.5 w-3.5" />
-						Remove
+						<span>Remove</span>
 					</button>
 				{/if}
 			</div>
 		</div>
-	{/if}
+	</div>
 </div>
 
 <!-- Provenance Popover (Modal) -->

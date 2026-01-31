@@ -33,7 +33,7 @@
 		/** Exposes the current ready suggestion so parent can auto-apply on close */
 		pendingSuggestion?: {
 			subject_line: string;
-			core_issue: string;
+			core_message: string;
 			topics: string[];
 			url_slug: string;
 			voice_sample: string;
@@ -41,7 +41,7 @@
 		/** Restored suggestion from draft — shows panel immediately without re-generating */
 		initialSuggestion?: {
 			subject_line: string;
-			core_issue: string;
+			core_message: string;
 			topics: string[];
 			url_slug: string;
 			voice_sample: string;
@@ -89,7 +89,7 @@
 
 	interface AISuggestion {
 		subject_line: string;
-		core_issue: string;
+		core_message: string;
 		topics: string[];
 		url_slug: string;
 		voice_sample: string;
@@ -100,7 +100,7 @@
 	let showAISuggest = $state(false);
 	let attemptCount = $state(0);
 	let isGenerating = $state(false);
-	let userWantsAI = $state(true); // Default to AI mode - auto-trigger on first input
+	let userWantsAI = $state(true); // AI mode enabled - but explicit trigger required (Cmd/Ctrl+Enter)
 	let manualMode = $state(false); // User writing subject line manually
 	let hasAutoTriggered = $state(false); // Track if we've auto-triggered once
 
@@ -120,6 +120,9 @@
 	let currentRequestId: string | null = null;
 	let lastGeneratedText = '';
 
+	// Thought container ref for auto-scroll
+	let thoughtContainerRef: HTMLDivElement | null = $state(null);
+
 	// Cache and rate limiter
 	const suggestionCache = new SuggestionCache<AISuggestion>();
 	const rateLimiter = new SuggestionRateLimiter();
@@ -128,6 +131,32 @@
 	const canShowRegenerateButton = $derived(
 		showAISuggest && suggestionState.status === 'ready' && attemptCount < 5
 	);
+
+	// OS-aware keyboard shortcut (Cmd for Mac, Ctrl for Windows/Linux)
+	// Using text labels instead of symbols for screen reader compatibility
+	let isMac = $state(false);
+	const shortcutKey = $derived(isMac ? 'Cmd' : 'Ctrl');
+	const shortcutHint = $derived(`${shortcutKey}+Enter to generate`);
+
+	// Settled state: rawInput transforms from editable workspace to grounded artifact
+	// When user has accepted an AI suggestion, the original input is "settled" - read-only reference
+	const isSettled = $derived(data.aiGenerated === true && !!data.title?.trim());
+	let showEditConfirm = $state(false); // Inline confirmation for editing settled input
+
+	// Auto-scroll thought container when new thoughts arrive
+	$effect(() => {
+		if (
+			suggestionState.status === 'streaming' &&
+			suggestionState.thoughts.length > 0 &&
+			thoughtContainerRef
+		) {
+			// Smooth scroll to bottom
+			thoughtContainerRef.scrollTo({
+				top: thoughtContainerRef.scrollHeight,
+				behavior: 'smooth'
+			});
+		}
+	});
 
 	// Current displayed suggestion (from history if navigating, else from state)
 	const currentSuggestion = $derived<AISuggestion | null>(
@@ -143,12 +172,17 @@
 		pendingSuggestion = showAISuggest ? currentSuggestion : null;
 	});
 
-	// Update template link as soon as AI suggestion arrives
-	// This flows through bind:slug to SlugCustomizer so the link section
-	// updates in real-time, not just when the user clicks "Use this"
+	// Pre-populate title and slug as soon as AI suggestion arrives
+	// This allows validation to pass so user can proceed (or click "Use this" to officially accept)
+	// Only sets values if currently empty — never overwrites user edits
 	$effect(() => {
-		if (currentSuggestion?.url_slug && showAISuggest) {
-			data.slug = currentSuggestion.url_slug;
+		if (currentSuggestion && showAISuggest) {
+			if (!data.title && currentSuggestion.subject_line) {
+				data.title = currentSuggestion.subject_line;
+			}
+			if (!data.slug && currentSuggestion.url_slug) {
+				data.slug = currentSuggestion.url_slug;
+			}
 		}
 	});
 
@@ -157,48 +191,14 @@
 		suggestionHistory.length > 0 && selectedIterationIndex < suggestionHistory.length - 1
 	);
 
-	// React to rawInput changes with debouncing
-	// Auto-triggers on first sufficient input, then on subsequent changes if userWantsAI
+	// React to rawInput changes - no auto-generation on typing
+	// Explicit trigger required via Cmd/Ctrl+Enter (see handleTextareaKeydown)
+	// This $effect only cleans up any stale timers
 	$effect(() => {
-		// Cancel existing timer
+		// Cancel any existing timer (cleanup only - no new timers started)
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
-		}
-
-		// Don't auto-generate if in manual mode
-		if (manualMode) {
-			return;
-		}
-
-		// Don't auto-generate if a suggestion already exists (accepted or pending from draft)
-		// This prevents the $effect from racing ahead of onMount restoration
-		if (initialSuggestion || (data.aiGenerated && data.title?.trim())) {
-			return;
-		}
-
-		// Don't auto-generate if already triggered (onMount Path 3 or previous debounce)
-		// This prevents the $effect and onMount from double-triggering the API
-		if (hasAutoTriggered) {
-			return;
-		}
-
-		const text = data.rawInput || '';
-		const hasSufficientInput = text.trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH;
-
-		// Check conditions for generation
-		const shouldGenerate =
-			hasSufficientInput &&
-			suggestionState.status === 'idle' &&
-			!isGenerating &&
-			calculateSimilarity(text, lastGeneratedText) <
-				1 - AI_SUGGESTION_TIMING.CONTENT_SIMILARITY_THRESHOLD;
-
-		if (shouldGenerate && userWantsAI) {
-			// Start debounce timer
-			debounceTimer = setTimeout(() => {
-				hasAutoTriggered = true;
-				handleDebouncedGeneration(text);
-			}, AI_SUGGESTION_TIMING.DEBOUNCE_DELAY);
+			debounceTimer = undefined;
 		}
 	});
 
@@ -483,10 +483,10 @@
 
 	function acceptSuggestion() {
 		if (currentSuggestion) {
-			const { subject_line, core_issue, url_slug, topics, voice_sample } = currentSuggestion;
+			const { subject_line, core_message, url_slug, topics, voice_sample } = currentSuggestion;
 			data.title = subject_line || '';
-			// Fallback chain for core_issue: use raw input if agent didn't provide one
-			data.description = core_issue || data.rawInput || '';
+			// Fallback chain for core_message: use raw input if agent didn't provide one
+			data.description = core_message || data.rawInput || '';
 			data.slug = url_slug || '';
 			// Fallback chain for voice_sample: prefer agent-extracted, then raw input
 			data.voiceSample = voice_sample || data.rawInput || '';
@@ -540,36 +540,26 @@
 
 	// Attach keyboard listener on mount + auto-trigger if we have initial input
 	onMount(() => {
+		// Detect OS for keyboard shortcut display
+		isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+
 		window.addEventListener('keydown', handleKeyboardNavigation);
 
 		// Three restoration paths, checked in priority order:
 		//
-		// 1. Pending suggestion from draft (user saw it but didn't click "Use this")
-		// 2. Accepted suggestion (user clicked "Use this", navigated forward, then back)
+		// 1. ACCEPTED suggestion (user clicked "Use this" — this is the source of truth)
+		// 2. Pending suggestion from draft (user saw it but didn't click "Use this")
 		// 3. Fresh start (auto-trigger generation if sufficient input)
+		//
+		// CRITICAL: Accepted state (aiGenerated + title) takes priority over pending suggestion.
+		// This prevents the bug where navigating back restores stale pending state.
 
-		if (initialSuggestion) {
-			// Path 1: Restore pending suggestion from draft
-			const restored: AISuggestion = {
-				subject_line: initialSuggestion.subject_line,
-				core_issue: initialSuggestion.core_issue,
-				topics: initialSuggestion.topics,
-				url_slug: initialSuggestion.url_slug,
-				voice_sample: initialSuggestion.voice_sample
-			};
-			suggestionHistory = [restored];
-			selectedIterationIndex = 0;
-			suggestionState = { status: 'ready', suggestion: restored };
-			showAISuggest = true;
-			hasAutoTriggered = true;
-			lastGeneratedText = data.rawInput || '';
-			attemptCount = 1;
-		} else if (data.aiGenerated && data.title?.trim()) {
-			// Path 2: Reconstruct accepted suggestion from formData
+		if (data.aiGenerated && data.title?.trim()) {
+			// Path 1: Reconstruct from ACCEPTED state (formData is source of truth)
 			// User already accepted → lock in the result, don't re-generate
 			const reconstructed: AISuggestion = {
 				subject_line: data.title,
-				core_issue: data.description || data.rawInput || '',
+				core_message: data.description || data.rawInput || '',
 				topics: data.topics || [],
 				url_slug: data.slug || '',
 				voice_sample: data.voiceSample || data.rawInput || ''
@@ -577,6 +567,22 @@
 			suggestionHistory = [reconstructed];
 			selectedIterationIndex = 0;
 			suggestionState = { status: 'ready', suggestion: reconstructed };
+			showAISuggest = true;
+			hasAutoTriggered = true;
+			lastGeneratedText = data.rawInput || '';
+			attemptCount = 1;
+		} else if (initialSuggestion) {
+			// Path 2: Restore pending suggestion from draft (user saw but didn't accept)
+			const restored: AISuggestion = {
+				subject_line: initialSuggestion.subject_line,
+				core_message: initialSuggestion.core_message,
+				topics: initialSuggestion.topics,
+				url_slug: initialSuggestion.url_slug,
+				voice_sample: initialSuggestion.voice_sample
+			};
+			suggestionHistory = [restored];
+			selectedIterationIndex = 0;
+			suggestionState = { status: 'ready', suggestion: restored };
 			showAISuggest = true;
 			hasAutoTriggered = true;
 			lastGeneratedText = data.rawInput || '';
@@ -718,41 +724,134 @@
 </script>
 
 <div class="unified-objective-entry">
-	<!-- Raw writing surface (always visible) -->
-	<div class="raw-writing-surface">
-		<label for="raw-input" class="mb-2 block text-sm font-medium text-slate-700">
-			What needs to change?
-		</label>
+	<!-- Raw writing surface: Settled artifact OR editable textarea -->
+	{#if isSettled && !manualMode}
+		<!-- SETTLED STATE: Read-only artifact presentation -->
+		<div
+			class="settled-artifact rounded-lg border border-slate-200 bg-white shadow-sm"
+			role="region"
+			aria-label="Your original concern"
+		>
+			<!-- Header -->
+			<div class="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+				<span class="text-xs font-medium uppercase tracking-wide text-slate-500">Your concern</span>
+				<button
+					type="button"
+					onclick={() => (showEditConfirm = !showEditConfirm)}
+					class="inline-flex items-center gap-1 text-sm text-slate-500 transition-colors hover:text-slate-700"
+					aria-expanded={showEditConfirm}
+				>
+					<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+					</svg>
+					Edit
+				</button>
+			</div>
 
-		<textarea
-			id="raw-input"
-			bind:value={data.rawInput}
-			onkeydown={handleTextareaKeydown}
-			placeholder="The rent keeps going up but wages don't..."
-			rows="5"
-			disabled={isGenerating}
-			tabindex={0}
-			class="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3
-             text-base text-slate-900 transition-colors duration-200
-             placeholder:italic placeholder:text-slate-500 focus:border-participation-primary-500 focus:bg-white focus:outline-none
-             focus:ring-2 focus:ring-participation-primary-500
-             disabled:cursor-not-allowed disabled:opacity-60"
-		></textarea>
+			<!-- Content: The original input displayed as quotation -->
+			<div class="px-4 py-4">
+				<blockquote class="border-l-2 border-slate-200 pl-3 text-base leading-relaxed text-slate-700">
+					"{data.rawInput}"
+				</blockquote>
+			</div>
 
-		<div class="mt-2 flex items-center justify-between text-xs text-slate-600">
-			{#if (data.rawInput || '').trim().length > 0}
-				<span class="font-mono">{(data.rawInput || '').length} characters</span>
-				{#if (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && !isGenerating && !showAISuggest}
-					<span class="text-slate-400">⌘↵ to generate now</span>
-				{/if}
-			{:else}
-				<span class="italic">Describe the problem you want to solve</span>
+			<!-- Inline edit confirmation (slides in when Edit clicked) -->
+			{#if showEditConfirm}
+				<div
+					class="border-t border-slate-100 bg-amber-50 px-4 py-3"
+					transition:slide={{ duration: 150 }}
+					role="alertdialog"
+					aria-labelledby="edit-confirm-label"
+				>
+					<p id="edit-confirm-label" class="text-sm text-amber-800">
+						Editing will reset your subject line. You'll need to generate a new one.
+					</p>
+					<div class="mt-2 flex gap-2">
+						<button
+							type="button"
+							onclick={() => {
+								showEditConfirm = false;
+								data.aiGenerated = false;
+								showAISuggest = false;
+								suggestionState = { status: 'idle' };
+								hasAutoTriggered = false;
+							}}
+							class="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-700"
+						>
+							Edit anyway
+						</button>
+						<button
+							type="button"
+							onclick={() => (showEditConfirm = false)}
+							class="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+						>
+							Keep it
+						</button>
+					</div>
+				</div>
 			{/if}
+
+			<!-- Footer with Start Fresh -->
+			<div class="flex items-center justify-end border-t border-slate-100 bg-slate-50/30 px-4 py-2">
+				<button
+					type="button"
+					onclick={() => {
+						data.rawInput = '';
+						data.title = '';
+						data.description = '';
+						data.slug = '';
+						data.aiGenerated = false;
+						data.voiceSample = '';
+						data.topics = [];
+						showAISuggest = false;
+						suggestionState = { status: 'idle' };
+						suggestionHistory = [];
+						hasAutoTriggered = false;
+						showEditConfirm = false;
+					}}
+					class="text-sm text-slate-500 transition-colors hover:text-slate-700"
+				>
+					Start fresh →
+				</button>
+			</div>
 		</div>
-	</div>
+	{:else}
+		<!-- ACTIVE STATE: Editable textarea -->
+		<div class="raw-writing-surface">
+			<label for="raw-input" class="mb-2 block text-sm font-medium text-slate-700">
+				What needs to change?
+			</label>
+
+			<textarea
+				id="raw-input"
+				bind:value={data.rawInput}
+				onkeydown={handleTextareaKeydown}
+				placeholder="The rent keeps going up but wages don't..."
+				rows="5"
+				disabled={isGenerating}
+				tabindex={0}
+				class="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-3
+	             text-base text-slate-900 transition-colors duration-200
+	             placeholder:italic placeholder:text-slate-500 focus:border-participation-primary-500 focus:bg-white focus:outline-none
+	             focus:ring-2 focus:ring-participation-primary-500
+	             disabled:cursor-not-allowed disabled:opacity-60"
+			></textarea>
+
+			<div class="mt-2 flex items-center justify-between text-xs text-slate-600">
+				{#if (data.rawInput || '').trim().length > 0}
+					<span class="font-mono">{(data.rawInput || '').length} characters</span>
+					{#if (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && !isGenerating && !showAISuggest}
+						<span class="text-slate-400">{shortcutHint}</span>
+					{/if}
+				{:else}
+					<span class="italic">Describe the problem you want to solve</span>
+				{/if}
+			</div>
+		</div>
+	{/if}
 
 	<!-- Manual mode option (shown during generation or when AI is working) -->
-	{#if !manualMode && !showAISuggest && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && suggestionState.status !== 'thinking'}
+	{#if !isSettled && !manualMode && !showAISuggest && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && suggestionState.status !== 'thinking'}
 		<div class="mt-3 text-right" transition:fade={{ duration: 150 }}>
 			<button
 				type="button"
@@ -766,53 +865,36 @@
 	{/if}
 
 	<!-- Status indicator (shows when waiting to generate) -->
-	{#if !manualMode && !showAISuggest && suggestionState.status === 'idle' && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH}
+	{#if !isSettled && !manualMode && !showAISuggest && suggestionState.status === 'idle' && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH}
 		<div
 			class="mt-2 flex items-center gap-2 text-xs text-slate-500"
 			transition:fade={{ duration: 150 }}
+			role="status"
+			aria-live="polite"
 		>
-			<Sparkles class="h-3.5 w-3.5" />
-			<span>Generating when you stop typing...</span>
+			<Sparkles class="h-3.5 w-3.5" aria-hidden="true" />
+			<span>Press <kbd class="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-slate-700">{shortcutKey}+Enter</kbd> to generate</span>
 		</div>
 	{/if}
 
-	<!-- Streaming thoughts (perceptual engineering: show the agent thinking out loud) -->
-	{#if suggestionState.status === 'streaming' && !showAISuggest}
+	<!-- Streaming thoughts (perceptual engineering: scannable research log) -->
+	{#if !isSettled && suggestionState.status === 'streaming' && !showAISuggest}
 		<div
-			class="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4"
+			class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3"
 			transition:fade={{ duration: 200 }}
+			role="status"
+			aria-live="polite"
+			aria-label="AI analysis in progress"
 		>
-			<div class="flex items-start gap-3">
-				<!-- Pulsing indicator (alive, not mechanical) -->
-				<div class="mt-1 flex-shrink-0">
-					<div class="relative h-2 w-2">
-						<div
-							class="absolute inset-0 animate-ping rounded-full bg-participation-primary-400 opacity-75"
-						></div>
-						<div class="relative h-2 w-2 rounded-full bg-participation-primary-500"></div>
-					</div>
+			<!-- Header with activity indicator -->
+			<div class="mb-2 flex items-center justify-between">
+				<div class="flex items-center gap-2">
+					<span class="relative flex h-2 w-2" aria-hidden="true">
+						<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-participation-primary-400 opacity-75"></span>
+						<span class="relative inline-flex h-2 w-2 rounded-full bg-participation-primary-500"></span>
+					</span>
+					<span class="text-xs font-medium text-slate-500">Analyzing your message...</span>
 				</div>
-
-				<!-- Thoughts stream -->
-				<div class="min-h-[3rem] flex-1 space-y-1.5">
-					{#if suggestionState.thoughts.length === 0}
-						<p class="text-sm italic text-slate-400">analyzing your issue...</p>
-					{:else}
-						{#each suggestionState.thoughts as thought, i}
-							<p
-								class="text-sm text-slate-600"
-								class:font-medium={i === suggestionState.thoughts.length - 1}
-								style="animation: thoughtAppear 0.3s ease-out forwards; opacity: 0;"
-							>
-								{thought}
-							</p>
-						{/each}
-					{/if}
-				</div>
-			</div>
-
-			<!-- Subtle "skip" option -->
-			<div class="mt-3 flex justify-end">
 				<button
 					type="button"
 					onclick={writeManually}
@@ -821,23 +903,42 @@
 					I'll write my own
 				</button>
 			</div>
+
+			<!-- Thought log - left-justified, scannable -->
+			<div bind:this={thoughtContainerRef} class="max-h-32 space-y-1 overflow-y-auto" role="log">
+				{#if suggestionState.thoughts.length === 0}
+					<p class="py-2 text-sm italic text-slate-400">understanding your concern...</p>
+				{:else}
+					{#each suggestionState.thoughts as thought, i}
+						<p
+							class="border-l-2 py-0.5 pl-2 text-sm transition-all duration-150"
+							class:border-participation-primary-500={i === suggestionState.thoughts.length - 1}
+							class:bg-white={i === suggestionState.thoughts.length - 1}
+							class:text-slate-800={i === suggestionState.thoughts.length - 1}
+							class:border-transparent={i < suggestionState.thoughts.length - 1}
+							class:text-slate-500={i < suggestionState.thoughts.length - 1}
+							style="animation: thoughtAppear 0.2s ease-out forwards; opacity: 0;"
+						>
+							{thought}
+						</p>
+					{/each}
+				{/if}
+			</div>
 		</div>
 	{/if}
 
 	<!-- Fallback thinking indicator (for non-streaming paths like clarification follow-up) -->
-	{#if suggestionState.status === 'thinking' && !showAISuggest}
+	{#if !isSettled && suggestionState.status === 'thinking' && !showAISuggest}
 		<div
-			class="mt-4 rounded-lg border border-slate-200 bg-slate-50/80 p-4"
+			class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3"
 			transition:fade={{ duration: 150 }}
 		>
-			<div class="flex items-center gap-3">
-				<div class="relative h-2 w-2">
-					<div
-						class="absolute inset-0 animate-ping rounded-full bg-participation-primary-400 opacity-75"
-					></div>
-					<div class="relative h-2 w-2 rounded-full bg-participation-primary-500"></div>
-				</div>
-				<span class="text-sm text-slate-500">refining with your clarifications...</span>
+			<div class="flex items-center gap-2">
+				<span class="relative flex h-2 w-2">
+					<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-participation-primary-400 opacity-75"></span>
+					<span class="relative inline-flex h-2 w-2 rounded-full bg-participation-primary-500"></span>
+				</span>
+				<span class="text-xs font-medium text-slate-500">Refining with your clarifications...</span>
 			</div>
 		</div>
 	{/if}
@@ -956,7 +1057,7 @@
 
 			<div class="mb-3">
 				<div class="mb-2 flex items-center gap-2">
-					<Sparkles class="h-4 w-4 text-participation-primary-600" />
+					<Sparkles class="h-4 w-4 text-participation-primary-600" aria-hidden="true" />
 					<span
 						class="text-xs font-semibold uppercase tracking-wide text-participation-primary-700"
 					>
@@ -970,8 +1071,8 @@
 
 			<div class="mb-4 space-y-2 text-sm text-slate-700">
 				<div>
-					<strong class="font-semibold">Core issue:</strong>
-					{currentSuggestion.core_issue}
+					<strong class="font-semibold">Core message:</strong>
+					{currentSuggestion.core_message}
 				</div>
 				<div class="flex flex-wrap gap-1.5">
 					{#each currentSuggestion.topics as topic}
@@ -1028,9 +1129,10 @@
 							{#if isGenerating}
 								<div
 									class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-participation-primary-600 border-t-transparent"
+									aria-hidden="true"
 								></div>
 							{:else}
-								<Sparkles class="h-3.5 w-3.5" />
+								<Sparkles class="h-3.5 w-3.5" aria-hidden="true" />
 							{/if}
 							Try another ({5 - attemptCount} left)
 						</button>
@@ -1090,12 +1192,12 @@
 
 				<div class="mb-3">
 					<label for="manual-description" class="mb-1 block text-sm font-medium text-slate-700">
-						Core Issue (Optional)
+						Core Message (Optional)
 					</label>
 					<textarea
 						id="manual-description"
 						bind:value={data.description}
-						placeholder="Brief description of the core issue..."
+						placeholder="Brief description of your core message..."
 						rows="3"
 						class="w-full rounded-lg border-2 border-slate-200 bg-slate-50 px-4 py-2
                      text-base text-slate-900 transition-colors duration-200
@@ -1112,7 +1214,7 @@
                    bg-white px-3 py-2 text-sm font-medium text-slate-700
                    transition-colors duration-150 hover:bg-slate-50"
 					>
-						<Sparkles class="h-3.5 w-3.5" />
+						<Sparkles class="h-3.5 w-3.5" aria-hidden="true" />
 						Refine it for me
 					</button>
 				</div>
@@ -1136,18 +1238,16 @@
 	/*
 	 * Streaming Thoughts Animation
 	 *
-	 * Perceptual Engineering: Each thought fades in and slides up slightly,
-	 * creating the feeling of emergence rather than sudden appearance.
-	 * The animation is fast (300ms) to avoid feeling sluggish.
+	 * Perceptual Engineering: Each thought fades in quickly,
+	 * creating the feeling of emergence. Fast (200ms) to maintain
+	 * reading flow without jarring transitions.
 	 */
 	@keyframes -global-thoughtAppear {
 		from {
 			opacity: 0;
-			transform: translateY(4px);
 		}
 		to {
 			opacity: 1;
-			transform: translateY(0);
 		}
 	}
 </style>

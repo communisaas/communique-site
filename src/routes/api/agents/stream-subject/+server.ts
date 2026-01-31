@@ -21,6 +21,7 @@
 import type { RequestHandler } from './$types';
 import { generateStreamWithThoughts } from '$lib/core/agents/gemini-client';
 import { SUBJECT_LINE_PROMPT } from '$lib/core/agents/prompts/subject-line';
+import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
 import type { SubjectLineResponseWithClarification } from '$lib/core/agents/types';
 import {
 	enforceLLMRateLimit,
@@ -154,31 +155,3 @@ export const POST: RequestHandler = async (event) => {
 	return new Response(stream, { headers });
 };
 
-/**
- * Clean thought content for UI display
- *
- * Gemini's thought summaries often include markdown headings.
- * Extract the core insight for cleaner display.
- */
-function cleanThoughtForDisplay(thought: string): string {
-	// Remove markdown bold headings like "**Analyzing the Issue**"
-	let cleaned = thought.replace(/^\*\*([^*]+)\*\*\s*[-–—]?\s*/i, '');
-
-	// Remove leading newlines
-	cleaned = cleaned.replace(/^\n+/, '');
-
-	// Trim and ensure reasonable length for UI
-	cleaned = cleaned.trim();
-
-	// Truncate very long thoughts for UI readability
-	if (cleaned.length > 200) {
-		const lastPeriod = cleaned.lastIndexOf('.', 200);
-		if (lastPeriod > 100) {
-			cleaned = cleaned.slice(0, lastPeriod + 1);
-		} else {
-			cleaned = cleaned.slice(0, 200) + '...';
-		}
-	}
-
-	return cleaned;
-}

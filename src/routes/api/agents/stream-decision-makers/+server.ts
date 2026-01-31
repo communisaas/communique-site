@@ -18,6 +18,7 @@
 
 import type { RequestHandler } from './$types';
 import { resolveDecisionMakers, type PipelinePhase } from '$lib/core/agents/agents/decision-maker';
+import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
 import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
 import {
 	enforceLLMRateLimit,
@@ -28,7 +29,7 @@ import {
 
 interface RequestBody {
 	subject_line: string;
-	core_issue: string;
+	core_message: string;
 	topics: string[];
 	voice_sample?: string;
 	url_slug?: string;
@@ -52,7 +53,7 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	const { subject_line, core_issue, topics, voice_sample, url_slug } = body;
+	const { subject_line, core_message, topics, voice_sample, url_slug } = body;
 
 	if (!subject_line?.trim()) {
 		return new Response(JSON.stringify({ error: 'Subject line is required' }), {
@@ -61,8 +62,8 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	if (!core_issue?.trim()) {
-		return new Response(JSON.stringify({ error: 'Core issue is required' }), {
+	if (!core_message?.trim()) {
+		return new Response(JSON.stringify({ error: 'Core message is required' }), {
 			status: 400,
 			headers: { 'Content-Type': 'application/json' }
 		});
@@ -90,7 +91,7 @@ export const POST: RequestHandler = async (event) => {
 		try {
 			const result = await resolveDecisionMakers({
 				subjectLine: subject_line,
-				coreIssue: core_issue,
+				coreMessage: core_message,
 				topics,
 				voiceSample: voice_sample,
 				urlSlug: url_slug,
@@ -148,34 +149,3 @@ export const POST: RequestHandler = async (event) => {
 	return new Response(stream, { headers });
 };
 
-/**
- * Clean thought content for UI display
- *
- * Agent thoughts can be verbose with markdown formatting.
- * Extract core insights for cleaner, more readable display.
- */
-function cleanThoughtForDisplay(thought: string): string {
-	// Skip empty thoughts
-	if (!thought?.trim()) return '';
-
-	// Remove markdown bold headings like "**Analyzing the Issue**"
-	let cleaned = thought.replace(/^\*\*([^*]+)\*\*\s*[-–—]?\s*/i, '');
-
-	// Remove leading/trailing whitespace and newlines
-	cleaned = cleaned.replace(/^\n+/, '').trim();
-
-	// Skip very short thoughts (likely noise)
-	if (cleaned.length < 15) return '';
-
-	// Truncate very long thoughts for UI readability
-	if (cleaned.length > 200) {
-		const lastPeriod = cleaned.lastIndexOf('.', 200);
-		if (lastPeriod > 100) {
-			cleaned = cleaned.slice(0, lastPeriod + 1);
-		} else {
-			cleaned = cleaned.slice(0, 200) + '...';
-		}
-	}
-
-	return cleaned;
-}

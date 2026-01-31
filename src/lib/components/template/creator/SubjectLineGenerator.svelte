@@ -11,7 +11,7 @@
 		description: string;
 		onaccept: (suggestion: {
 			subject_line: string;
-			core_issue: string;
+			core_message: string;
 			topics: string[];
 			url_slug: string;
 			voice_sample: string;
@@ -25,7 +25,7 @@
 	let suggestions = $state<
 		Array<{
 			subject_line: string;
-			core_issue: string;
+			core_message: string;
 			topics: string[];
 			url_slug: string;
 			voice_sample: string;
@@ -102,7 +102,7 @@
 				const CompleteEventSchema = z.object({
 					data: z.object({
 						subject_line: z.string(),
-						core_issue: z.string(),
+						core_message: z.string(),
 						topics: z.array(z.string()),
 						url_slug: z.string(),
 						voice_sample: z.string(),
@@ -294,9 +294,9 @@
 				</div>
 
 				<div>
-					<label class="text-xs font-medium text-slate-600">Core issue</label>
+					<label class="text-xs font-medium text-slate-600">Core message</label>
 					<p class="mt-0.5 text-xs text-slate-700 md:text-sm">
-						{currentSuggestion.core_issue}
+						{currentSuggestion.core_message}
 					</p>
 				</div>
 

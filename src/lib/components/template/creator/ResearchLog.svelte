@@ -63,7 +63,7 @@
 				<p class="text-xs leading-relaxed text-slate-600">
 					<span class="font-semibold text-slate-700">Why transparency matters:</span>
 					This log shows the agent's research process. You can verify the reasoning, check sources, and
-					understand why specific points were included. No black box—just traceable civic intelligence.
+					understand why specific points were included.
 				</p>
 			</div>
 		</div>

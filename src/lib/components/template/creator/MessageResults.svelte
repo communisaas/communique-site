@@ -1,14 +1,13 @@
 <script lang="ts">
-	import { RotateCcw, Edit3, BookOpen } from '@lucide/svelte';
+	import { Edit3, BookOpen, MapPin } from '@lucide/svelte';
 	import type { Source } from '$lib/types/template';
-	import type { MessageGeographicScope } from '$lib/core/agents/types';
+	import type { GeoScope } from '$lib/core/agents/types';
 	import SourceCard from './SourceCard.svelte';
 	import ResearchLog from './ResearchLog.svelte';
 	import GeographicScopeEditor from './GeographicScopeEditor.svelte';
 	import {
 		splitIntoParagraphs,
 		countWords,
-		estimateReadingTime,
 		hasCitations
 	} from '$lib/utils/message-processing';
 
@@ -17,9 +16,8 @@
 		subject: string;
 		sources: Source[];
 		researchLog: string[];
-		geographicScope?: MessageGeographicScope | null;
+		geographicScope?: GeoScope | null;
 		onEdit: () => void;
-		onStartFresh: () => void;
 	}
 
 	let {
@@ -28,8 +26,7 @@
 		sources,
 		researchLog,
 		geographicScope = $bindable(),
-		onEdit,
-		onStartFresh
+		onEdit
 	}: Props = $props();
 
 	let showResearchLog = $state(false);
@@ -37,126 +34,120 @@
 
 	const paragraphs = $derived(splitIntoParagraphs(message));
 	const wordCount = $derived(countWords(message));
-	const readingTime = $derived(estimateReadingTime(message));
 	const hasCitationsInMessage = $derived(hasCitations(message));
 
-	// Handle citation click
 	function handleCitationClick(citationNum: number) {
 		selectedCitation = citationNum;
-		// Scroll to source
 		const sourceElement = document.querySelector(`[data-source="${citationNum}"]`);
 		if (sourceElement) {
 			sourceElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
 		}
 	}
 
-	// Handle geographic scope changes
-	function handleScopeChanged(scope: MessageGeographicScope) {
+	function handleScopeChanged(scope: GeoScope) {
 		geographicScope = scope;
+	}
+
+	/**
+	 * Format geographic scope for inline display
+	 */
+	function formatScope(s: GeoScope): string {
+		if (s.type === 'international') return 'International';
+		if (s.type === 'nationwide') return s.country;
+		const parts: string[] = [];
+		if (s.locality) parts.push(s.locality);
+		if (s.subdivision) {
+			// Extract state code from ISO format (e.g., "US-CA" → "CA")
+			const stateCode = s.subdivision.includes('-')
+				? s.subdivision.split('-')[1]
+				: s.subdivision;
+			parts.push(stateCode);
+		}
+		return parts.join(', ') || s.country;
 	}
 </script>
 
-<div class="space-y-6 py-4">
-	<!-- Header with actions -->
-	<div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-		<div>
-			<h3 class="text-lg font-semibold text-slate-900 md:text-xl">Your research-backed message</h3>
-			<p class="mt-1 text-sm text-slate-600">
-				{wordCount} words · {readingTime} min read
-				{#if hasCitationsInMessage}
-					· {sources.length} sources cited
-				{/if}
-			</p>
-		</div>
-
-		<div class="flex gap-2">
+<div class="space-y-4 py-4">
+	<!-- Email Preview Card -->
+	<div class="rounded-lg border border-slate-200 bg-white shadow-sm">
+		<!-- Subject Header -->
+		<div class="flex items-start justify-between gap-4 border-b border-slate-100 bg-slate-50/50 px-5 py-4">
+			<div class="min-w-0 flex-1">
+				<p class="text-xs font-medium uppercase tracking-wide text-slate-500">Subject</p>
+				<p class="mt-1 text-base font-semibold text-slate-900">{subject}</p>
+			</div>
 			<button
 				type="button"
 				onclick={onEdit}
-				class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+				class="flex shrink-0 items-center gap-1.5 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
 			>
-				<Edit3 class="h-4 w-4" />
+				<Edit3 class="h-3.5 w-3.5" />
 				Edit
 			</button>
-			<button
-				type="button"
-				onclick={onStartFresh}
-				class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-			>
-				<RotateCcw class="h-4 w-4" />
-				Start fresh
-			</button>
 		</div>
-	</div>
 
-	<!-- Subject line -->
-	<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-		<p class="text-xs font-medium text-slate-700">Subject</p>
-		<p class="mt-1 font-medium text-slate-900">{subject}</p>
-	</div>
-
-	<!-- Geographic scope (if extracted) -->
-	{#if geographicScope}
-		<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-			<p class="mb-2 text-xs font-medium text-slate-700">Geographic Scope</p>
-			<div class="flex items-baseline gap-1">
-				<p class="text-sm text-slate-700">
-					This message is targeted
-					<GeographicScopeEditor scope={geographicScope} onScopeChanged={handleScopeChanged} />
-				</p>
+		<!-- Message Body -->
+		<div class="px-5 py-5">
+			<div class="prose prose-sm max-w-none">
+				{#each paragraphs as paragraph}
+					<p class="mb-4 whitespace-pre-line leading-relaxed text-slate-700 last:mb-0">
+						{#each paragraph.split(/(\[\d+\]|\*\*.*?\*\*|\*.*?\*)/) as part}
+							{#if /^\[\d+\]$/.test(part)}
+								{@const citationNum = parseInt(part.slice(1, -1), 10)}
+								{@const source = sources.find((s) => s.num === citationNum)}
+								{#if source}
+									<button
+										type="button"
+										onclick={() => handleCitationClick(citationNum)}
+										class="citation-link font-semibold text-participation-primary-600 transition-colors hover:text-participation-primary-700"
+										class:bg-participation-primary-50={selectedCitation === citationNum}
+										class:px-1={selectedCitation === citationNum}
+										class:rounded={selectedCitation === citationNum}
+										title={source.title}
+									>
+										{part}
+									</button>
+								{:else}
+									<span class="text-slate-400">{part}</span>
+								{/if}
+							{:else if /^\*\*.*?\*\*$/.test(part)}
+								<strong class="font-semibold text-slate-900">{part.slice(2, -2)}</strong>
+							{:else if /^\*.*?\*$/.test(part)}
+								<em class="italic">{part.slice(1, -1)}</em>
+							{:else}
+								{part}
+							{/if}
+						{/each}
+					</p>
+				{/each}
 			</div>
 		</div>
-	{/if}
 
-	<!-- Message with citations -->
-	<div class="rounded-lg border border-slate-200 bg-white p-6">
-		<div class="prose prose-sm max-w-none">
-			{#each paragraphs as paragraph}
-				<p class="mb-4 leading-relaxed text-slate-700">
-					{#each paragraph.split(/(\[\d+\]|\*\*.*?\*\*|\*.*?\*)/) as part}
-						{#if /^\[\d+\]$/.test(part)}
-							<!-- Citation link -->
-							{@const citationNum = parseInt(part.slice(1, -1), 10)}
-							{@const source = sources.find((s) => s.num === citationNum)}
-							{#if source}
-								<button
-									type="button"
-									onclick={() => handleCitationClick(citationNum)}
-									class="citation-link inline-flex items-baseline font-semibold text-participation-primary-600 transition-colors hover:text-participation-primary-700"
-									class:bg-participation-primary-50={selectedCitation === citationNum}
-									class:px-1={selectedCitation === citationNum}
-									class:rounded={selectedCitation === citationNum}
-									title={source.title}
-								>
-									{part}
-								</button>
-							{:else}
-								<span class="text-slate-400">{part}</span>
-							{/if}
-						{:else if /^\*\*.*?\*\*$/.test(part)}
-							<!-- Bold text (markdown **text**) -->
-							<strong class="font-semibold text-slate-900">{part.slice(2, -2)}</strong>
-						{:else if /^\*.*?\*$/.test(part)}
-							<!-- Italic text (markdown *text*) -->
-							<em class="italic">{part.slice(1, -1)}</em>
-						{:else}
-							<!-- Regular text -->
-							{part}
-						{/if}
-					{/each}
-				</p>
-			{/each}
+		<!-- Footer Metadata -->
+		<div class="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-slate-100 bg-slate-50/30 px-5 py-3 text-xs text-slate-500">
+			<span>{wordCount} words</span>
+			{#if hasCitationsInMessage}
+				<span class="flex items-center gap-1">
+					<BookOpen class="h-3 w-3" />
+					{sources.length} source{sources.length !== 1 ? 's' : ''}
+				</span>
+			{/if}
+			{#if geographicScope}
+				<span class="flex items-center gap-1">
+					<MapPin class="h-3 w-3" />
+					<GeographicScopeEditor scope={geographicScope} onScopeChanged={handleScopeChanged} />
+				</span>
+			{/if}
 		</div>
 	</div>
 
 	<!-- Sources -->
 	{#if sources.length > 0}
-		<div class="space-y-3">
-			<div class="flex items-center gap-2">
-				<BookOpen class="h-5 w-5 text-slate-600" />
-				<h4 class="font-semibold text-slate-900">Sources ({sources.length})</h4>
+		<div class="space-y-2">
+			<div class="flex items-center gap-2 px-1">
+				<BookOpen class="h-4 w-4 text-slate-500" />
+				<h4 class="text-sm font-medium text-slate-700">Sources</h4>
 			</div>
-
 			<div class="space-y-2">
 				{#each sources as source}
 					<div data-source={source.num}>
@@ -167,19 +158,10 @@
 		</div>
 	{/if}
 
-	<!-- Research log -->
+	<!-- Research Log -->
 	{#if researchLog.length > 0}
 		<ResearchLog {researchLog} bind:expanded={showResearchLog} />
 	{/if}
-
-	<!-- Educational context -->
-	<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-		<p class="text-sm leading-relaxed text-slate-600">
-			<span class="font-semibold text-slate-900">Why citations matter:</span>
-			Decision-makers get hundreds of messages. Citations demonstrate you've done your homework, understand
-			the issue deeply, and aren't just copy-pasting a template. This is how you earn attention and respect.
-		</p>
-	</div>
 </div>
 
 <style>

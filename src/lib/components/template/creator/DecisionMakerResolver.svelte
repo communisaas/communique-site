@@ -7,10 +7,9 @@
 		extractRecipientEmails
 	} from '$lib/utils/decision-maker-processing';
 	import { parseSSEStream } from '$lib/utils/sse-stream';
-	import ThinkingAtmosphere from '$lib/components/ui/ThinkingAtmosphere.svelte';
+	import AgentThinking from '$lib/components/ui/AgentThinking.svelte';
 	import DecisionMakerResults from './DecisionMakerResults.svelte';
 	import AuthGateOverlay from './AuthGateOverlay.svelte';
-	import { Search, Building, CheckCircle2 } from '@lucide/svelte';
 
 	interface Props {
 		formData: TemplateFormData;
@@ -31,15 +30,6 @@
 
 	// Streaming state
 	let thoughts = $state<string[]>([]);
-	let currentPhase = $state<'discover' | 'lookup' | 'complete'>('discover');
-	let enrichmentProgress = $state<{ current: number; total: number } | null>(null);
-
-	// Phase display data — matches two-phase backend architecture
-	const phases = [
-		{ id: 'discover', icon: Search, text: 'Mapping institutional power' },
-		{ id: 'lookup', icon: Building, text: 'Verifying current officeholders' },
-		{ id: 'complete', icon: CheckCircle2, text: 'Complete' }
-	] as const;
 
 	/**
 	 * Check if error indicates auth is required
@@ -98,8 +88,6 @@
 		isResolving = true;
 		errorMessage = null;
 		thoughts = [];
-		currentPhase = 'discover';
-		enrichmentProgress = null;
 
 		try {
 			// Stage 1: Structure input if manual (quick pass)
@@ -135,7 +123,7 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					subject_line: formData.objective.title,
-					core_issue: formData.objective.description,
+					core_message: formData.objective.description,
 					topics,
 					voice_sample: voiceSample,
 					url_slug: formData.objective.slug
@@ -156,21 +144,10 @@
 			// Process SSE stream
 			for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
 				switch (event.type) {
-					case 'phase':
-						currentPhase = event.data.phase as typeof currentPhase;
-						break;
-
 					case 'thought':
 						if (typeof event.data.content === 'string') {
 							thoughts = [...thoughts, event.data.content];
 						}
-						break;
-
-					case 'progress':
-						enrichmentProgress = {
-							current: event.data.current as number,
-							total: event.data.total as number
-						};
 						break;
 
 					case 'complete': {
@@ -256,91 +233,13 @@
 </script>
 
 <div class="mx-auto max-w-3xl">
-	{#if stage === 'structuring'}
-		<!-- Brief transition: 1-2 seconds -->
-		<div class="space-y-4 py-8 text-center">
-			<div
-				class="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-participation-primary-600 border-t-transparent"
-			></div>
-			<p class="text-lg font-medium text-slate-900">Analyzing your issue...</p>
-			<p class="text-sm text-slate-600">Preparing to find decision-makers</p>
-		</div>
-	{:else if stage === 'resolving'}
-		<!-- Streaming resolution UI with real agent thoughts -->
-		<div class="space-y-6 py-8">
-			<!-- Header -->
-			<div class="text-center">
-				<h3 class="text-lg font-semibold text-slate-900 md:text-xl">
-					Finding who can actually fix this
-				</h3>
-			</div>
-
-			<!-- Phase Indicators (real progress, not fake cycling) -->
-			<div class="space-y-2">
-				{#each phases as phase, i}
-					{@const phaseIndex = phases.findIndex((p) => p.id === currentPhase)}
-					{@const isActive = phase.id === currentPhase}
-					{@const isComplete = i < phaseIndex || currentPhase === 'complete'}
-					{@const IconComponent = phase.icon}
-					<div
-						class="flex items-center gap-3 rounded-lg p-3 transition-all duration-300"
-						class:bg-participation-primary-50={isActive}
-						class:border={isActive}
-						class:border-participation-primary-200={isActive}
-					>
-						<div
-							class="flex h-8 w-8 items-center justify-center rounded-full transition-all duration-300"
-							class:bg-participation-primary-600={isActive}
-							class:text-white={isActive}
-							class:bg-green-100={isComplete}
-							class:text-green-600={isComplete}
-							class:bg-slate-100={!isActive && !isComplete}
-							class:text-slate-400={!isActive && !isComplete}
-						>
-							<IconComponent class="h-4 w-4" />
-						</div>
-
-						<div class="flex-1">
-							<p
-								class="text-sm font-medium transition-colors duration-300"
-								class:text-participation-primary-900={isActive}
-								class:text-green-900={isComplete}
-								class:text-slate-500={!isActive && !isComplete}
-							>
-								{phase.text}
-							</p>
-							<!-- Enrichment progress bar -->
-							{#if isActive && phase.id === 'lookup' && enrichmentProgress}
-								<div class="mt-1.5 flex items-center gap-2">
-									<div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200">
-										<div
-											class="h-full rounded-full bg-participation-primary-500 transition-all duration-300"
-											style="width: {(enrichmentProgress.current / enrichmentProgress.total) * 100}%"
-										></div>
-									</div>
-									<span class="text-xs text-slate-500">
-										{enrichmentProgress.current}/{enrichmentProgress.total}
-									</span>
-								</div>
-							{/if}
-						</div>
-
-						{#if isComplete}
-							<CheckCircle2 class="h-5 w-5 text-green-600" />
-						{:else if isActive}
-							<div class="h-5 w-5">
-								<div
-									class="h-full w-full animate-spin rounded-full border-2 border-participation-primary-600 border-t-transparent"
-								></div>
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
-
-			<!-- Real agent thoughts (replaces fake educational messages) -->
-			<ThinkingAtmosphere {thoughts} isActive={stage === 'resolving'} />
-		</div>
+	{#if stage === 'structuring' || stage === 'resolving'}
+		<!-- Thought-centered loading: the agent's reasoning IS the experience -->
+		<AgentThinking
+			{thoughts}
+			isActive={stage === 'structuring' || stage === 'resolving'}
+			context="Finding decision-makers"
+		/>
 	{:else if stage === 'results'}
 		<!-- Results display -->
 		<DecisionMakerResults
@@ -405,7 +304,7 @@
 			<!-- Auth overlay (full coverage) -->
 			<AuthGateOverlay
 				subjectLine={formData.objective.title}
-				coreIssue={formData.objective.description}
+				coreMessage={formData.objective.description}
 				onback={onback}
 				{draftId}
 				{onSaveDraft}

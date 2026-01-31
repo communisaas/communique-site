@@ -1,21 +1,26 @@
 /**
- * Streaming Message Generation API
+ * Streaming Message Generation API — Two-Phase Source Verification
  *
  * POST /api/agents/stream-message
  *
  * Returns Server-Sent Events (SSE) stream with:
- * - thought: Agent reasoning during research and writing
- * - complete: Final message with sources and research log
+ * - phase: Current pipeline phase (sources | message | complete)
+ * - thought: Agent reasoning during source discovery and writing
+ * - complete: Final message with VERIFIED sources
  * - error: Error message if generation fails
  *
- * Perceptual Engineering: Users see the agent researching their issue
- * in real-time, building trust through transparency.
+ * Two-Phase Pipeline:
+ * 1. Source Discovery: Find and validate URLs via web search
+ * 2. Message Generation: Write using ONLY verified sources
+ *
+ * This eliminates citation hallucination—every URL in the output is verified.
  *
  * Rate Limiting: BLOCKED for guests, 10/hour authenticated, 30/hour verified.
  */
 
 import type { RequestHandler } from './$types';
-import { generateMessage } from '$lib/core/agents/agents/message-writer';
+import { generateMessage, type PipelinePhase } from '$lib/core/agents/agents/message-writer';
+import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
 import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
 import {
 	enforceLLMRateLimit,
@@ -27,11 +32,17 @@ import type { DecisionMaker } from '$lib/core/agents';
 
 interface RequestBody {
 	subject_line: string;
-	core_issue: string;
+	core_message: string;
 	topics: string[];
 	decision_makers: DecisionMaker[];
 	voice_sample?: string;
 	raw_input?: string;
+	geographic_scope?: {
+		type: 'international' | 'nationwide' | 'subnational';
+		country?: string;
+		subdivision?: string;
+		locality?: string;
+	};
 }
 
 export const POST: RequestHandler = async (event) => {
@@ -61,8 +72,8 @@ export const POST: RequestHandler = async (event) => {
 	}
 
 	// Validate required fields
-	if (!body.subject_line || !body.core_issue) {
-		return new Response(JSON.stringify({ error: 'Subject line and core issue are required' }), {
+	if (!body.subject_line || !body.core_message) {
+		return new Response(JSON.stringify({ error: 'Subject line and core message are required' }), {
 			status: 400,
 			headers: { 'Content-Type': 'application/json' }
 		});
@@ -80,40 +91,40 @@ export const POST: RequestHandler = async (event) => {
 	// Run generation in background
 	(async () => {
 		try {
-			// Send initial phase
-			emitter.send('phase', { phase: 'research', message: 'Researching your issue...' });
-
 			const result = await generateMessage({
 				subjectLine: body.subject_line,
-				coreIssue: body.core_issue,
+				coreMessage: body.core_message,
 				topics: body.topics || [],
 				decisionMakers: body.decision_makers || [],
 				voiceSample: body.voice_sample,
 				rawInput: body.raw_input,
-				onThought: (thought: string) => {
+				geographicScope: body.geographic_scope,
+				onThought: (thought: string, phase?: PipelinePhase) => {
 					const cleaned = cleanThoughtForDisplay(thought);
 					if (cleaned) {
-						emitter.send('thought', { content: cleaned });
+						emitter.send('thought', { content: cleaned, phase: phase || 'message' });
 					}
+				},
+				onPhase: (phase: PipelinePhase, message: string) => {
+					emitter.send('phase', { phase, message });
 				}
 			});
 
 			const latencyMs = Date.now() - startTime;
 
-			// Send completion phase then result
-			emitter.send('phase', { phase: 'complete', message: 'Message ready' });
+			// Send final result
 			emitter.complete(result);
 
-			console.log('[stream-message] Generation complete:', {
+			console.log('[stream-message] Two-phase generation complete:', {
 				userId: session.userId,
 				messageLength: result.message.length,
-				sourceCount: result.sources.length,
+				verifiedSourceCount: result.sources.length,
 				latencyMs
 			});
 
-			// Log operation
+			// Log operation (now 2+ calls: source discovery + message generation)
 			logLLMOperation('message-generation', userContext, {
-				callCount: 2,
+				callCount: 3, // Source discovery (grounded) + message generation
 				durationMs: latencyMs,
 				success: true
 			});
@@ -131,25 +142,3 @@ export const POST: RequestHandler = async (event) => {
 	return new Response(stream, { headers });
 };
 
-/**
- * Clean thought content for UI display
- */
-function cleanThoughtForDisplay(thought: string): string {
-	if (!thought?.trim()) return '';
-
-	let cleaned = thought.replace(/^\*\*([^*]+)\*\*\s*[-–—]?\s*/i, '');
-	cleaned = cleaned.replace(/^\n+/, '').trim();
-
-	if (cleaned.length < 15) return '';
-
-	if (cleaned.length > 200) {
-		const lastPeriod = cleaned.lastIndexOf('.', 200);
-		if (lastPeriod > 100) {
-			cleaned = cleaned.slice(0, lastPeriod + 1);
-		} else {
-			cleaned = cleaned.slice(0, 200) + '...';
-		}
-	}
-
-	return cleaned;
-}

@@ -28,7 +28,7 @@
 		icon?: ComponentType<Icon>;
 		progress?: ProgressItem[];
 		subjectLine?: string;
-		coreIssue?: string;
+		coreMessage?: string;
 		onback?: () => void;
 		/** Draft ID to resume after OAuth - enables seamless continuation */
 		draftId?: string;
@@ -42,7 +42,7 @@
 		icon: IconComponent = Search,
 		progress = [],
 		subjectLine,
-		coreIssue,
+		coreMessage,
 		onback,
 		draftId,
 		onSaveDraft
@@ -51,7 +51,7 @@
 	const normalizedProgress = $derived.by(() => {
 		if (progress.length > 0) return progress;
 		if (subjectLine) {
-			return [{ label: 'Your issue', value: subjectLine, secondary: coreIssue }];
+			return [{ label: 'Your message', value: subjectLine, secondary: coreMessage }];
 		}
 		return [];
 	});

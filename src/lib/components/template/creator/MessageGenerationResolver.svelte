@@ -1,10 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { FileText, Search, BookOpen, CheckCircle2 } from '@lucide/svelte';
 	import type { TemplateFormData } from '$lib/types/template';
 	import { cleanHtmlFormatting } from '$lib/utils/message-processing';
 	import { parseSSEStream } from '$lib/utils/sse-stream';
-	import ThinkingAtmosphere from '$lib/components/ui/ThinkingAtmosphere.svelte';
+	import AgentThinking from '$lib/components/ui/AgentThinking.svelte';
 	import MessageResults from './MessageResults.svelte';
 	import AuthGateOverlay from './AuthGateOverlay.svelte';
 
@@ -16,9 +15,21 @@
 		draftId?: string;
 		/** Save draft callback for OAuth flow */
 		onSaveDraft?: () => void;
+		/** Error message to display inline (from parent validation or API) */
+		publishError?: string | null;
+		/** Whether publish is in progress */
+		isPublishing?: boolean;
 	}
 
-	let { formData = $bindable(), onnext, onback, draftId, onSaveDraft }: Props = $props();
+	let {
+		formData = $bindable(),
+		onnext,
+		onback,
+		draftId,
+		onSaveDraft,
+		publishError = null,
+		isPublishing = false
+	}: Props = $props();
 
 	type Stage = 'generating' | 'results' | 'editing' | 'error' | 'auth-required';
 	let stage = $state<Stage>('generating');
@@ -27,13 +38,6 @@
 
 	// Streaming state
 	let thoughts = $state<string[]>([]);
-	let currentPhase = $state<'research' | 'complete'>('research');
-
-	// Phase display
-	const phases = [
-		{ id: 'research', icon: Search, text: 'Researching and writing' },
-		{ id: 'complete', icon: CheckCircle2, text: 'Complete' }
-	] as const;
 
 	/**
 	 * Check if error indicates auth is required
@@ -136,12 +140,15 @@
 			stage = 'generating';
 			errorMessage = null;
 			thoughts = [];
-			currentPhase = 'research';
 			console.log('[MessageGenerationResolver] Starting streaming generation...');
 
-			// Validate we have required data
-			if (!formData.objective.title || !formData.objective.description) {
-				throw new Error('Missing subject line or core issue');
+			// Validate we have required data (with fallback for core_message)
+			const subjectLine = formData.objective.title;
+			const coreMessage =
+				formData.objective.description || formData.objective.rawInput || formData.objective.title;
+
+			if (!subjectLine) {
+				throw new Error('Missing subject line');
 			}
 
 			if (!formData.audience.decisionMakers || formData.audience.decisionMakers.length === 0) {
@@ -158,8 +165,8 @@
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					subject_line: formData.objective.title,
-					core_issue: formData.objective.description,
+					subject_line: subjectLine,
+					core_message: coreMessage,
 					topics,
 					decision_makers: formData.audience.decisionMakers.map((dm) => ({
 						name: dm.name,
@@ -185,10 +192,6 @@
 			// Process SSE stream
 			for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
 				switch (event.type) {
-					case 'phase':
-						currentPhase = event.data.phase as typeof currentPhase;
-						break;
-
 					case 'thought':
 						if (typeof event.data.content === 'string') {
 							thoughts = [...thoughts, event.data.content];
@@ -198,7 +201,6 @@
 					case 'complete': {
 						const result = event.data as {
 							message?: string;
-							subject?: string;
 							sources?: unknown[];
 							research_log?: string[];
 							geographic_scope?: unknown;
@@ -209,9 +211,9 @@
 
 						// Store original for "start fresh"
 						originalMessage = cleanedMessage;
-						originalSubject = result.subject || formData.objective.title;
+						originalSubject = formData.objective.title;
 
-						// Update formData
+						// Update formData — subject is already set by the subject-line agent
 						formData.content.preview = cleanedMessage;
 						formData.content.sources = (result.sources as typeof formData.content.sources) || [];
 						formData.content.researchLog = result.research_log || [];
@@ -219,11 +221,6 @@
 							(result.geographic_scope as typeof formData.content.geographicScope) || null;
 						formData.content.aiGenerated = true;
 						formData.content.edited = false;
-
-						// Update subject if different
-						if (result.subject && result.subject !== formData.objective.title) {
-							formData.objective.title = result.subject;
-						}
 
 						console.log('[MessageGenerationResolver] Message generated:', {
 							message_length: cleanedMessage.length,
@@ -300,77 +297,8 @@
 
 <div class="mx-auto max-w-3xl">
 	{#if stage === 'generating'}
-		<!-- Streaming generation UI with real agent thoughts -->
-		<div class="mx-auto max-w-2xl space-y-6 py-8">
-			<!-- Header -->
-			<div class="text-center">
-				<h3 class="text-lg font-semibold text-slate-900 md:text-xl">
-					Crafting your research-backed message
-				</h3>
-				<p class="mt-2 text-sm text-slate-500">
-					Finding sources, building arguments, writing with your voice
-				</p>
-			</div>
-
-			<!-- Phase indicator -->
-			<div class="space-y-2">
-				{#each phases as phase, i}
-					{@const phaseIndex = phases.findIndex((p) => p.id === currentPhase)}
-					{@const isActive = phase.id === currentPhase}
-					{@const isComplete = i < phaseIndex || currentPhase === 'complete'}
-					{@const IconComponent = phase.icon}
-					<div
-						class="flex items-center gap-3 rounded-lg p-3 transition-all duration-300"
-						class:bg-participation-primary-50={isActive}
-						class:border={isActive}
-						class:border-participation-primary-200={isActive}
-					>
-						<div
-							class="flex h-10 w-10 items-center justify-center rounded-full transition-all duration-300"
-							class:bg-participation-primary-600={isActive}
-							class:text-white={isActive}
-							class:bg-green-100={isComplete}
-							class:text-green-600={isComplete}
-							class:bg-slate-100={!isActive && !isComplete}
-							class:text-slate-400={!isActive && !isComplete}
-						>
-							<IconComponent class="h-5 w-5" />
-						</div>
-
-						<p
-							class="text-sm font-medium transition-colors duration-300"
-							class:text-participation-primary-900={isActive}
-							class:text-green-900={isComplete}
-							class:text-slate-500={!isActive && !isComplete}
-						>
-							{phase.text}
-						</p>
-
-						{#if isComplete}
-							<CheckCircle2 class="ml-auto h-5 w-5 text-green-600" />
-						{:else if isActive}
-							<div class="ml-auto h-5 w-5">
-								<div
-									class="h-full w-full animate-spin rounded-full border-2 border-participation-primary-600 border-t-transparent"
-								></div>
-							</div>
-						{/if}
-					</div>
-				{/each}
-			</div>
-
-			<!-- Real agent thoughts -->
-			<ThinkingAtmosphere {thoughts} isActive={stage === 'generating'} />
-
-			<!-- Educational context -->
-			<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
-				<p class="text-sm text-slate-600">
-					<span class="font-medium text-slate-700">Why this takes time:</span>
-					We're researching your specific issue, finding credible sources, and writing a message that
-					shows you understand the landscape.
-				</p>
-			</div>
-		</div>
+		<!-- Thought-centered loading: the agent's reasoning IS the experience -->
+		<AgentThinking {thoughts} isActive={stage === 'generating'} context="Writing your message" />
 	{:else if stage === 'results'}
 		<!-- Results display with citations, sources, and research log -->
 		<MessageResults
@@ -380,26 +308,64 @@
 			sources={formData.content.sources || []}
 			researchLog={formData.content.researchLog || []}
 			onEdit={handleEdit}
-			onStartFresh={handleStartFresh}
 		/>
 
-		<!-- Navigation -->
-		<div class="mt-8 flex items-center justify-between border-t border-slate-200 pt-6">
-			<button
-				type="button"
-				onclick={onback}
-				class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-			>
-				← Back
-			</button>
+		<!-- Navigation with inline error display -->
+		<div class="mt-8 border-t border-slate-200 pt-6">
+			{#if publishError}
+				<!-- Inline error: appears at locus of action, not displaced to header/toast -->
+				<div
+					class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+					role="alert"
+				>
+					<div class="flex items-start gap-3">
+						<svg
+							class="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500"
+							fill="currentColor"
+							viewBox="0 0 20 20"
+						>
+							<path
+								fill-rule="evenodd"
+								d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+								clip-rule="evenodd"
+							/>
+						</svg>
+						<span>{publishError}</span>
+					</div>
+				</div>
+			{/if}
 
-			<button
-				type="button"
-				onclick={handleNext}
-				class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 hover:shadow"
-			>
-				Publish →
-			</button>
+			<div class="flex items-center justify-between">
+				<button
+					type="button"
+					onclick={onback}
+					disabled={isPublishing}
+					class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+				>
+					← Back
+				</button>
+
+				<button
+					type="button"
+					onclick={handleNext}
+					disabled={isPublishing}
+					class="inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all disabled:opacity-70
+						{publishError
+						? 'bg-red-600 hover:bg-red-700'
+						: 'bg-participation-primary-600 hover:bg-participation-primary-700 hover:shadow'}"
+				>
+					{#if isPublishing}
+						<div
+							class="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"
+						></div>
+						Publishing...
+					{:else if publishError}
+						Try Again →
+					{:else}
+						Publish →
+					{/if}
+				</button>
+			</div>
 		</div>
 	{:else if stage === 'editing'}
 		<!-- Message editor -->

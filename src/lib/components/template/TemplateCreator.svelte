@@ -5,6 +5,7 @@
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
 	import { templateDraftStore, generateDraftId, formatTimeAgo } from '$lib/stores/templateDraft';
 	import { appendReferences } from '$lib/utils/message-processing';
+	import { extractRecipientEmails } from '$lib/utils/decision-maker-processing';
 	import UnifiedObjectiveEntry from './creator/UnifiedObjectiveEntry.svelte';
 	import DecisionMakerResolver from './creator/DecisionMakerResolver.svelte';
 	import MessageGenerationResolver from './creator/MessageGenerationResolver.svelte';
@@ -19,7 +20,8 @@
 		isSubmitting = false,
 		validationErrors = {},
 		initialText = '',
-		initialDraftId = ''
+		initialDraftId = '',
+		onSaveError = $bindable<string | null>(null)
 	}: {
 		context: TemplateCreationContext;
 		isSubmitting?: boolean;
@@ -27,6 +29,8 @@
 		initialText?: string;
 		/** Pre-load a specific draft by ID (skips recovery modal) */
 		initialDraftId?: string;
+		/** Bindable: parent sets this when save fails (for inline error display) */
+		onSaveError?: string | null;
 	} = $props();
 
 	// --- Synchronous draft restoration ---
@@ -45,10 +49,21 @@
 	let showDraftRecovery = $state(false);
 	let isTransitioning = $state(false);
 
+	// Publish flow states (for inline error display at point of action)
+	let publishError = $state<string | null>(null);
+	let isPublishing = $derived(isSubmitting);
+
+	// Sync parent's save error to inline display
+	$effect(() => {
+		if (onSaveError) {
+			publishError = onSaveError;
+		}
+	});
+
 	// Pending AI suggestion from UnifiedObjectiveEntry (persisted in draft on close)
 	let pendingSuggestion = $state<{
 		subject_line: string;
-		core_issue: string;
+		core_message: string;
 		topics: string[];
 		url_slug: string;
 		voice_sample: string;
@@ -56,9 +71,18 @@
 
 	// Suggestion restored from draft (passed to UnifiedObjectiveEntry to show panel immediately)
 	// Set synchronously so it's available at child's first render + onMount
+	// Cleared when user accepts a suggestion to prevent stale state on navigation
 	let restoredSuggestion = $state<typeof pendingSuggestion>(
 		_loadedDraft?.pendingSuggestion ?? null
 	);
+
+	// Clear restoredSuggestion once user accepts (aiGenerated becomes true)
+	// This prevents stale pending suggestion from overriding accepted state on back-navigation
+	$effect(() => {
+		if (formData.objective.aiGenerated && restoredSuggestion) {
+			restoredSuggestion = null;
+		}
+	});
 
 	// Template link readiness from SlugCustomizer (via UnifiedObjectiveEntry)
 	let slugReady = $state<boolean | null>(null);
@@ -121,9 +145,15 @@
 			return errors;
 		},
 		audience: (data: TemplateFormData['audience']) => {
-			const errors = [];
-			// Multi-target validation: At least one recipient required
-			if (data.recipientEmails.length === 0) {
+			const errors: string[] = [];
+			// Check source data, not derived recipientEmails
+			// This matches the DecisionMakerResolver's Next button disabled logic
+			const hasRecipients =
+				(data.decisionMakers?.length || 0) > 0 ||
+				(data.customRecipients?.length || 0) > 0 ||
+				data.includesCongress;
+
+			if (!hasRecipients) {
 				errors.push('At least one recipient is required');
 			}
 			return errors;
@@ -194,19 +224,31 @@
 	}
 
 	function handleSave() {
+		// Clear previous errors (fresh attempt)
+		publishError = null;
+		onSaveError = null;
+
 		if (!validateCurrentStep()) return;
 
-		// Additional validation for required fields
+		// Re-extract recipient emails from source data (handles stale draft restoration)
+		// This ensures emails are current even if draft had missing/stale recipientEmails
+		formData.audience.recipientEmails = extractRecipientEmails(
+			formData.audience.decisionMakers,
+			formData.audience.customRecipients,
+			formData.audience.includesCongress
+		);
+
+		// Validation errors display inline at the publish button (perceptual: feedback at action locus)
 		if (!formData.objective.title?.trim()) {
-			formErrors = ['Template title is required'];
+			publishError = 'Template title is required';
 			return;
 		}
 		if (!formData.content.preview?.trim()) {
-			formErrors = ['Message content is required'];
+			publishError = 'Message content is required';
 			return;
 		}
 		if (!formData.audience.recipientEmails || formData.audience.recipientEmails.length === 0) {
-			formErrors = ['At least one recipient email is required'];
+			publishError = 'At least one recipient email is required';
 			return;
 		}
 
@@ -265,9 +307,9 @@
 
 	const stepInfo = {
 		objective: {
-			title: 'What Issue Needs Action?',
+			title: "What's Your Message?",
 			icon: Megaphone,
-			description: 'What issue do you want decision-makers to address?'
+			description: 'What do you want decision-makers to hear?'
 		},
 		audience: {
 			title: 'Who Controls This?',
@@ -507,6 +549,8 @@
 					onback={handleBack}
 					{draftId}
 					onSaveDraft={() => templateDraftStore.saveDraft(draftId, formData, currentStep)}
+					{publishError}
+					{isPublishing}
 				/>
 			{/if}
 		</div>
