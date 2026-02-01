@@ -55,7 +55,7 @@ export function getGeminiClient(): GoogleGenAI {
 // ============================================================================
 
 export const GEMINI_CONFIG = {
-	model: 'gemini-3.0-flash',
+	model: 'gemini-3-flash-preview',
 	defaults: {
 		temperature: 0.3,
 		maxOutputTokens: 65536, // Maximum for Gemini 3.0 to prevent truncation

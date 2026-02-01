@@ -676,7 +676,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	 * Verify existing decision-makers are still in their positions.
 	 *
 	 * This is a LIGHTWEIGHT operation (5-10s) compared to full research (30-60s).
-	 * Uses gemini-3.0-flash with Google Search grounding to quickly verify currency.
+	 * Uses gemini-3-flash-preview with Google Search grounding to quickly verify currency.
 	 *
 	 * Use cases:
 	 * - Verifying Firecrawl results before sending campaigns
@@ -725,7 +725,7 @@ ${verificationList}
 
 For each person, search for recent news and verify their current status.`;
 
-			// Use gemini-3.0-flash for lightweight verification
+			// Use gemini-3-flash-preview for lightweight verification
 			const config: GenerateContentConfig = {
 				temperature: 0.1, // Low temperature for factual verification
 				maxOutputTokens: 8192, // Much smaller than full research
@@ -733,7 +733,7 @@ For each person, search for recent news and verify their current status.`;
 				tools: [{ googleSearch: {} }] // Enable grounding for real-time search
 			};
 
-			console.log('[gemini-provider] Calling gemini-3.0-flash for verification with grounding...');
+			console.log('[gemini-provider] Calling gemini-3-flash-preview for verification with grounding...');
 
 			const response = await ai.models.generateContent({
 				model: GEMINI_CONFIG.model, // Use consistent model from config
