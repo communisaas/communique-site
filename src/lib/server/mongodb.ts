@@ -11,10 +11,12 @@
 import { MongoClient, Db } from 'mongodb';
 import { DATABASE_NAME } from './mongodb/schema';
 
-// Connection string from MongoDB Atlas
-const MONGODB_URI =
-	process.env.MONGODB_URI ||
-	'mongodb+srv://communique:***REMOVED***@cluster0.udtiui.mongodb.net/?appName=Cluster0';
+// Connection string from MongoDB Atlas - MUST be set via environment variable
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+	throw new Error('MONGODB_URI environment variable is required');
+}
 
 // Connection options for optimal performance
 const MONGODB_OPTIONS = {

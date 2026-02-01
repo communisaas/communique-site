@@ -25,9 +25,10 @@ mongodb.ts            # Client singleton with connection pooling
 
 ## Connection
 
-**Connection String:**
+**Connection String:** Set via `MONGODB_URI` environment variable
+
 ```
-mongodb+srv://communique:***REMOVED***@cluster0.udtiui.mongodb.net/?appName=Cluster0
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/?appName=Cluster0
 ```
 
 **Database:** `communique`

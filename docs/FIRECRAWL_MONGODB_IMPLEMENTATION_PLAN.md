@@ -1365,7 +1365,7 @@ async function resolveDecisionMaker(
 import { MongoClient, ServerApiVersion } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
-// mongodb+srv://communique:***REMOVED***@cluster0.udtiui.mongodb.net/?appName=Cluster0
+// Set MONGODB_URI in environment: mongodb+srv://user:password@cluster.mongodb.net/
 
 let client: MongoClient | null = null;
 let clientPromise: Promise<MongoClient>;
@@ -3839,7 +3839,7 @@ ${filing.environmentalDisclosures?.commitments?.join('\n') || 'None disclosed'}
 # .env additions
 
 # MongoDB Atlas
-MONGODB_URI=mongodb+srv://communique:***REMOVED***@cluster0.udtiui.mongodb.net/?appName=Cluster0
+MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net/?appName=Cluster0
 MONGODB_API_KEY=<atlas-api-key-for-voyage-ai>
 
 # Firecrawl

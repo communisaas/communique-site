@@ -50,13 +50,14 @@ The MongoDB integration layer has been implemented but requires Atlas configurat
 
 #### B. Verify Database User
 1. Navigate to Database Access
-2. Ensure user `communique` exists with password `***REMOVED***`
+2. Create or verify user `communique` with appropriate credentials
 3. Grant `readWrite` permissions on `communique` database
-4. Or create new credentials and update connection string
+4. Store credentials securely in environment variables
 
-#### C. Update Connection String (if needed)
-If you need different credentials, update the connection string in:
-- `src/lib/server/mongodb.ts` (hardcoded default)
+#### C. Set Connection String
+Set the `MONGODB_URI` environment variable with your connection string:
+- Development: Add to `.env` file (not committed to git)
+- Production: Set via Fly.io secrets or your hosting provider
 - Or set `MONGODB_URI` environment variable
 
 ### 2. Create Vector Search Indexes
