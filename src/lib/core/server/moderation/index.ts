@@ -75,7 +75,7 @@ async function assessQuality(template: TemplateModerationInput): Promise<Quality
 			confidence: 0.5,
 			reasoning: 'Gemini API key not configured - quality check skipped',
 			timestamp: new Date().toISOString(),
-			model: 'gemini-2.5-flash'
+			model: 'gemini-3.0-flash'
 		};
 	}
 
@@ -98,7 +98,7 @@ Respond in JSON format only:
 {"approved": boolean, "confidence": number, "reasoning": "brief explanation"}`;
 
 	const response = await fetch(
-		`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+		`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-flash:generateContent?key=${apiKey}`,
 		{
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -145,7 +145,7 @@ Respond in JSON format only:
 		confidence: result.confidence ?? 0.5,
 		reasoning: result.reasoning || 'No reasoning provided',
 		timestamp: new Date().toISOString(),
-		model: 'gemini-2.5-flash'
+		model: 'gemini-3.0-flash'
 	};
 }
 

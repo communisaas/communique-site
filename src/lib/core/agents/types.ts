@@ -99,7 +99,11 @@ export interface GroundingMetadata {
 	groundingSupports?: Array<{
 		segment?: { startIndex: number; endIndex: number };
 		groundingChunkIndices?: number[];
+		/** Confidence scores (0-1) for each grounding chunk index */
+		confidenceScores?: number[];
 	}>;
+	/** Search entry point HTML for rendering Google Search suggestions */
+	searchEntryPoint?: { renderedContent?: string };
 }
 
 // ============================================================================
@@ -169,6 +173,12 @@ export interface StreamResultWithThoughts<T = unknown> {
 	parseSuccess: boolean;
 	/** Parse error message if extraction failed */
 	parseError?: string;
+	/**
+	 * Grounding metadata from Google Search (when enableGrounding=true)
+	 * Contains verified source URLs in groundingChunks - use these instead of
+	 * trusting URLs generated in the LLM's text output.
+	 */
+	groundingMetadata?: GroundingMetadata;
 }
 
 /**

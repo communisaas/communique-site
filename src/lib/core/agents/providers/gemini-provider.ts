@@ -23,6 +23,8 @@ import {
 	buildPersonLookupPrompt
 } from '../prompts/decision-maker';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
+import { findBestGroundedSource } from '../utils/grounding';
+import type { GroundingMetadata } from '../types';
 import {
 	getAgentToolDeclarations,
 	processGeminiFunctionCall
@@ -147,9 +149,16 @@ interface Candidate {
 	title: string;
 	organization: string;
 	reasoning: string;
-	source_url: string;
+	/** LLM-provided source URL (may be hallucinated - use grounding metadata instead) */
+	source_url?: string;
 	email: string;
 	recency_check: string;
+}
+
+/** Result from function calling execution with grounding metadata */
+interface FunctionCallingResult {
+	text: string;
+	groundingMetadata?: GroundingMetadata;
 }
 
 interface PersonLookupResponse {
@@ -186,7 +195,7 @@ async function executeWithFunctionCalling(
 	config: GenerateContentConfig,
 	emitter: ThoughtEmitter,
 	onThought?: (thought: string) => void
-): Promise<string> {
+): Promise<FunctionCallingResult> {
 	const ai = getGeminiClient();
 
 	// Get document tool declarations
@@ -304,7 +313,31 @@ async function executeWithFunctionCalling(
 			// No function calls - this is the final response
 			const finalText = response.text || '';
 			console.log(`[gemini-provider] Function calling complete after ${iterations} iteration(s)`);
-			return finalText;
+
+			// Extract grounding metadata from the final response
+			const rawGrounding = response.candidates?.[0]?.groundingMetadata;
+			let groundingMetadata: GroundingMetadata | undefined;
+
+			if (rawGrounding) {
+				groundingMetadata = {
+					webSearchQueries: rawGrounding.webSearchQueries as string[] | undefined,
+					groundingChunks: (rawGrounding.groundingChunks as Array<Record<string, unknown>>)?.map((gc) => ({
+						web: gc.web as { uri?: string; title?: string } | undefined
+					})),
+					groundingSupports: (rawGrounding.groundingSupports as Array<Record<string, unknown>>)?.map((gs) => ({
+						segment: gs.segment as { startIndex: number; endIndex: number } | undefined,
+						groundingChunkIndices: gs.groundingChunkIndices as number[] | undefined,
+						confidenceScores: gs.confidenceScores as number[] | undefined
+					})),
+					searchEntryPoint: rawGrounding.searchEntryPoint as { renderedContent?: string } | undefined
+				};
+				console.log(`[gemini-provider] Captured grounding metadata:`, {
+					chunks: groundingMetadata.groundingChunks?.length || 0,
+					supports: groundingMetadata.groundingSupports?.length || 0
+				});
+			}
+
+			return { text: finalText, groundingMetadata };
 
 		} catch (error) {
 			console.error(`[gemini-provider] Error in function calling loop:`, error);
@@ -453,15 +486,18 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			};
 
 			let rawText: string;
+			let groundingMetadata: GroundingMetadata | undefined;
 
 			try {
 				// Use function calling loop for document analysis support
-				rawText = await executeWithFunctionCalling(
+				const functionResult = await executeWithFunctionCalling(
 					lookupPrompt,
 					lookupConfig,
 					documentEmitter,
 					streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
 				);
+				rawText = functionResult.text;
+				groundingMetadata = functionResult.groundingMetadata;
 
 				// Log document analysis activity
 				if (documentSegments.length > 0) {
@@ -483,6 +519,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
 				);
 				rawText = lookupResult.rawText || '{}';
+				groundingMetadata = lookupResult.groundingMetadata;
 			}
 
 			const lookupExtraction = extractJsonFromGroundingResponse<PersonLookupResponse>(rawText);
@@ -499,10 +536,17 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			const data = lookupExtraction.data;
 			console.log('[gemini-provider] Phase 2 complete:', {
-				candidatesFound: data.decision_makers?.length || 0
+				candidatesFound: data.decision_makers?.length || 0,
+				hasGroundingMetadata: !!groundingMetadata,
+				groundingChunks: groundingMetadata?.groundingChunks?.length || 0
 			});
 
-			const processed = this.processDecisionMakers(data.decision_makers || []);
+			// Process decision-makers with verified sources from grounding metadata
+			const processed = this.processDecisionMakers(
+				data.decision_makers || [],
+				rawText,
+				groundingMetadata
+			);
 
 			const latencyMs = Date.now() - startTime;
 
@@ -560,23 +604,68 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 	/**
 	 * Process candidates into ProcessedDecisionMaker format.
-	 * All candidates should have verified emails (agent only returns those).
+	 *
+	 * CRITICAL: Uses grounding metadata for verified source URLs instead of
+	 * trusting LLM-generated URLs which may be hallucinated.
+	 *
+	 * @param candidates - Raw candidates from LLM response
+	 * @param rawText - Raw response text for entity position matching
+	 * @param groundingMetadata - Grounding metadata with verified URLs
 	 */
-	private processDecisionMakers(candidates: Candidate[]): ProcessedDecisionMaker[] {
+	private processDecisionMakers(
+		candidates: Candidate[],
+		rawText: string,
+		groundingMetadata?: GroundingMetadata
+	): ProcessedDecisionMaker[] {
 		return candidates
-			.filter((c) => c.email && c.reasoning && c.source_url && c.recency_check)
-			.map((candidate) => ({
-				name: candidate.name,
-				title: candidate.title,
-				organization: candidate.organization,
-				email: candidate.email,
-				reasoning: candidate.reasoning,
-				source: candidate.source_url,
-				provenance: `${candidate.reasoning}\n\nVerified via: ${candidate.source_url}\n${candidate.recency_check}`,
-				isAiResolved: true,
-				recencyCheck: candidate.recency_check,
-				powerLevel: 'primary' as const
-			}));
+			.filter((c) => c.email && c.reasoning && c.recency_check)
+			.map((candidate) => {
+				// Get VERIFIED source URL from grounding metadata
+				// This prevents hallucinated URLs by only using URLs that Gemini's
+				// Google Search actually retrieved and cited
+				let verifiedSource = '';
+
+				if (groundingMetadata && rawText) {
+					// Search for this person's name, title, and org in the response text
+					// to find which grounding chunks support mentions of them
+					const searchTerms = [
+						candidate.name,
+						candidate.title,
+						candidate.organization,
+						candidate.email // Email mentions are strong signals
+					].filter(Boolean);
+
+					verifiedSource = findBestGroundedSource(searchTerms, rawText, groundingMetadata);
+
+					if (verifiedSource) {
+						console.log(`[gemini-provider] Verified source for ${candidate.name}: ${verifiedSource}`);
+					} else {
+						console.log(`[gemini-provider] No grounded source found for ${candidate.name}, using LLM-provided URL as fallback`);
+					}
+				}
+
+				// Fallback to LLM-provided URL only if grounding didn't find anything
+				// This may be hallucinated but is better than nothing
+				const finalSource = verifiedSource || candidate.source_url || '';
+				const sourceNote = verifiedSource
+					? '(verified via Google Search grounding)'
+					: candidate.source_url
+						? '(LLM-provided, not verified)'
+						: '(no source available)';
+
+				return {
+					name: candidate.name,
+					title: candidate.title,
+					organization: candidate.organization,
+					email: candidate.email,
+					reasoning: candidate.reasoning,
+					source: finalSource,
+					provenance: `${candidate.reasoning}\n\nSource: ${finalSource} ${sourceNote}\n${candidate.recency_check}`,
+					isAiResolved: true,
+					recencyCheck: candidate.recency_check,
+					powerLevel: 'primary' as const
+				};
+			});
 	}
 
 	// ========================================================================
@@ -587,7 +676,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	 * Verify existing decision-makers are still in their positions.
 	 *
 	 * This is a LIGHTWEIGHT operation (5-10s) compared to full research (30-60s).
-	 * Uses gemini-2.0-flash with Google Search grounding to quickly verify currency.
+	 * Uses gemini-3.0-flash with Google Search grounding to quickly verify currency.
 	 *
 	 * Use cases:
 	 * - Verifying Firecrawl results before sending campaigns
@@ -636,7 +725,7 @@ ${verificationList}
 
 For each person, search for recent news and verify their current status.`;
 
-			// Use gemini-2.0-flash for speed (lightweight verification)
+			// Use gemini-3.0-flash for lightweight verification
 			const config: GenerateContentConfig = {
 				temperature: 0.1, // Low temperature for factual verification
 				maxOutputTokens: 8192, // Much smaller than full research
@@ -644,10 +733,10 @@ For each person, search for recent news and verify their current status.`;
 				tools: [{ googleSearch: {} }] // Enable grounding for real-time search
 			};
 
-			console.log('[gemini-provider] Calling gemini-2.0-flash with grounding...');
+			console.log('[gemini-provider] Calling gemini-3.0-flash for verification with grounding...');
 
 			const response = await ai.models.generateContent({
-				model: 'gemini-2.0-flash', // Faster model for verification
+				model: GEMINI_CONFIG.model, // Use consistent model from config
 				contents: userPrompt,
 				config
 			});

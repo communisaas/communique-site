@@ -14,6 +14,7 @@ import { GoogleGenAI } from '@google/genai';
 import type { GenerateContentResponse, GenerateContentConfig } from '@google/genai';
 import type {
 	GenerateOptions,
+	GroundingMetadata,
 	InteractionResponse,
 	StreamChunk,
 	StreamResultWithThoughts
@@ -54,10 +55,10 @@ export function getGeminiClient(): GoogleGenAI {
 // ============================================================================
 
 export const GEMINI_CONFIG = {
-	model: 'gemini-3-flash-preview',
+	model: 'gemini-3.0-flash',
 	defaults: {
 		temperature: 0.3,
-		maxOutputTokens: 65536, // Maximum for Gemini 2.5+ to prevent truncation
+		maxOutputTokens: 65536, // Maximum for Gemini 3.0 to prevent truncation
 		thinkingLevel: 'medium' as const
 	}
 } as const;
@@ -414,6 +415,7 @@ export async function* generateStreamWithThoughts<T = unknown>(
 
 	const thoughts: string[] = [];
 	let fullText = '';
+	let groundingMetadata: GroundingMetadata | undefined;
 
 	try {
 		const response = await ai.models.generateContentStream({
@@ -423,6 +425,32 @@ export async function* generateStreamWithThoughts<T = unknown>(
 		});
 
 		for await (const chunk of response) {
+			// Capture grounding metadata (typically in final chunks when using Google Search)
+			const chunkGrounding = chunk.candidates?.[0]?.groundingMetadata;
+			if (chunkGrounding) {
+				// Build our typed GroundingMetadata from the raw response
+				// Cast through unknown to handle SDK type differences
+				const rawChunks = chunkGrounding.groundingChunks as unknown as Array<{ web?: { uri?: string; title?: string } }> | undefined;
+				const rawSupports = chunkGrounding.groundingSupports as unknown as Array<{
+					segment?: { startIndex: number; endIndex: number };
+					groundingChunkIndices?: number[];
+					confidenceScores?: number[];
+				}> | undefined;
+
+				groundingMetadata = {
+					webSearchQueries: chunkGrounding.webSearchQueries as string[] | undefined,
+					groundingChunks: rawChunks?.map((gc) => ({
+						web: gc.web
+					})),
+					groundingSupports: rawSupports?.map((gs) => ({
+						segment: gs.segment,
+						groundingChunkIndices: gs.groundingChunkIndices,
+						confidenceScores: gs.confidenceScores
+					})),
+					searchEntryPoint: chunkGrounding.searchEntryPoint as { renderedContent?: string } | undefined
+				};
+			}
+
 			// Check for parts with thought flag
 			if (chunk.candidates?.[0]?.content?.parts) {
 				for (const part of chunk.candidates[0].content.parts) {
@@ -446,6 +474,15 @@ export async function* generateStreamWithThoughts<T = unknown>(
 
 		yield { type: 'complete', content: fullText };
 
+		// Log grounding info for debugging
+		if (groundingMetadata) {
+			console.log('[agents/gemini-client] Grounding metadata captured:', {
+				searchQueries: groundingMetadata.webSearchQueries?.length || 0,
+				chunks: groundingMetadata.groundingChunks?.length || 0,
+				supports: groundingMetadata.groundingSupports?.length || 0
+			});
+		}
+
 		// Parse JSON from the collected text
 		const extraction = extractJsonFromGroundingResponse<T>(fullText);
 
@@ -454,7 +491,8 @@ export async function* generateStreamWithThoughts<T = unknown>(
 			rawText: fullText,
 			data: extraction.data,
 			parseSuccess: extraction.success,
-			parseError: extraction.error
+			parseError: extraction.error,
+			groundingMetadata
 		};
 	} catch (error) {
 		console.error('[agents/gemini-client] Stream error:', error);
@@ -468,7 +506,8 @@ export async function* generateStreamWithThoughts<T = unknown>(
 			rawText: fullText,
 			data: null,
 			parseSuccess: false,
-			parseError: error instanceof Error ? error.message : 'Stream generation failed'
+			parseError: error instanceof Error ? error.message : 'Stream generation failed',
+			groundingMetadata
 		};
 	}
 }

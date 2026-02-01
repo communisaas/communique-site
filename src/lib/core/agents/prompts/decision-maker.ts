@@ -90,7 +90,7 @@ Return valid JSON:
     "title": string (their title at the organization),
     "organization": string,
     "reasoning": string (why this position has power — from the role description),
-    "source_url": string (URL where you verified they currently hold this position),
+    "source_url": string (optional - URL mentioned in your research, verified sources extracted automatically from search results),
     "email": string (discovered email — REQUIRED, skip candidate if not found),
     "recency_check": string (format: "Verified via [SOURCE] dated [DATE]. Source age: [N] days.")
   }],
@@ -104,7 +104,8 @@ Return valid JSON:
 2. No email = no inclusion — skip candidates without discovered emails
 3. Recent sources only — reject verification sources older than 6 months
 4. If a position appears vacant or you cannot find the current holder, note it in research_summary and skip
-5. Never invent or guess emails — only report emails you actually find in search results`;
+5. Never invent or guess emails — only report emails you actually find in search results
+6. Source URLs are automatically extracted from search grounding — focus on finding accurate information`;
 
 // ============================================================================
 // Prompt Builders
