@@ -11,13 +11,6 @@
 import { MongoClient, Db } from 'mongodb';
 import { DATABASE_NAME } from './mongodb/schema';
 
-// Connection string from MongoDB Atlas - MUST be set via environment variable
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-	throw new Error('MONGODB_URI environment variable is required');
-}
-
 // Connection options for optimal performance
 const MONGODB_OPTIONS = {
 	maxPoolSize: 10,
@@ -39,17 +32,29 @@ declare global {
 let clientPromise: Promise<MongoClient>;
 
 /**
+ * Get MongoDB URI from environment (lazy to avoid build-time errors)
+ */
+function getMongoUri(): string {
+	const uri = process.env.MONGODB_URI;
+	if (!uri) {
+		throw new Error('MONGODB_URI environment variable is required');
+	}
+	return uri;
+}
+
+/**
  * Initialize MongoDB client with singleton pattern
  * Handles both development (with HMR) and production environments
  */
 function initializeMongoClient(): Promise<MongoClient> {
+	const mongoUri = getMongoUri();
 	const isDevelopment = process.env.NODE_ENV === 'development';
 
 	if (isDevelopment) {
 		// In development, use a global variable to preserve the client across HMR
 		if (!global.__mongoClientPromise) {
 			console.log('[MongoDB] Creating new development client connection');
-			const client = new MongoClient(MONGODB_URI, MONGODB_OPTIONS);
+			const client = new MongoClient(mongoUri, MONGODB_OPTIONS);
 			global.__mongoClientPromise = client.connect();
 		} else {
 			console.log('[MongoDB] Reusing existing development client connection');
@@ -59,7 +64,7 @@ function initializeMongoClient(): Promise<MongoClient> {
 		// In production, create a new connection if one doesn't exist
 		if (!clientPromise) {
 			console.log('[MongoDB] Creating new production client connection');
-			const client = new MongoClient(MONGODB_URI, MONGODB_OPTIONS);
+			const client = new MongoClient(mongoUri, MONGODB_OPTIONS);
 			clientPromise = client.connect();
 		}
 		return clientPromise;
