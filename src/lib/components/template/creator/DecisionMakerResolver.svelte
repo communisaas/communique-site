@@ -150,9 +150,21 @@
 			}
 
 			// Process SSE stream
+			// V2 emits 'segment' events with ThoughtSegment objects
+			// V1 emits 'thought' events with { content: string }
 			for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
 				switch (event.type) {
+					case 'segment': {
+						// V2 format: ThoughtSegment with content field
+						const segment = event.data as { content?: string };
+						if (typeof segment.content === 'string' && segment.content.trim()) {
+							thoughts = [...thoughts, segment.content];
+						}
+						break;
+					}
+
 					case 'thought':
+						// V1 legacy format
 						if (typeof event.data.content === 'string') {
 							thoughts = [...thoughts, event.data.content];
 						}
