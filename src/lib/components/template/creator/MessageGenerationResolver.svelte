@@ -6,6 +6,8 @@
 	import AgentThinking from '$lib/components/ui/AgentThinking.svelte';
 	import MessageResults from './MessageResults.svelte';
 	import AuthGateOverlay from './AuthGateOverlay.svelte';
+	import { browser } from '$app/environment';
+	import { FileText } from '@lucide/svelte';
 
 	interface Props {
 		formData: TemplateFormData;
@@ -55,6 +57,47 @@
 			);
 		}
 		return false;
+	}
+
+	/**
+	 * Parse error to provide actionable, user-friendly messages
+	 * Reduces friction by telling users exactly what to do
+	 */
+	function parseErrorMessage(err: unknown, statusCode?: number): string {
+		// Handle specific status codes first
+		if (statusCode === 429) {
+			return 'Rate limit reached. Please sign in for more requests.';
+		}
+		if (statusCode === 500) {
+			return 'Server error. Please try again in a moment.';
+		}
+		if (statusCode === 503) {
+			return 'Service temporarily unavailable. Please try again shortly.';
+		}
+
+		// Handle error types
+		if (err instanceof Error) {
+			// AbortError / timeout
+			if (err.name === 'AbortError') {
+				return 'Request timed out. Please retry.';
+			}
+
+			// Network errors (fetch fails entirely)
+			if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+				return 'Connection lost. Check your internet and retry.';
+			}
+
+			// Timeout errors
+			if (err.message.toLowerCase().includes('timeout')) {
+				return 'Request timed out. Please retry.';
+			}
+
+			// Return the original message if it's already user-friendly
+			return err.message;
+		}
+
+		// Fallback
+		return 'Failed to generate message. Please try again.';
 	}
 
 	/**
@@ -134,6 +177,15 @@
 	async function generateMessage() {
 		// Prevent concurrent generation
 		if (isGenerating) return;
+
+		// Offline Detection: Check before starting fetch
+		// Provides immediate feedback instead of waiting for timeout
+		if (browser && !navigator.onLine) {
+			errorMessage = "You're offline. Please check your connection.";
+			stage = 'error';
+			return;
+		}
+
 		isGenerating = true;
 
 		try {
@@ -241,12 +293,15 @@
 		} catch (err) {
 			console.error('[MessageGenerationResolver] Error:', err);
 
+			// Extract status code if available from error context
+			const statusCode = (err as any)?.status || (err as any)?.statusCode;
+
 			if (isAuthRequiredError(err)) {
 				console.log('[MessageGenerationResolver] Auth required, showing overlay');
 				stage = 'auth-required';
 			} else {
-				errorMessage =
-					err instanceof Error ? err.message : 'Failed to generate message. Please try again.';
+				// Use specific, actionable error messages
+				errorMessage = parseErrorMessage(err, statusCode);
 				stage = 'error';
 			}
 		} finally {

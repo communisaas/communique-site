@@ -106,6 +106,20 @@
 		const resumeDraftParam = $page.url.searchParams.get('resumeDraft');
 
 		if (createTemplate === 'true') {
+			// OAuth Return Session Validation: Verify session exists before opening modal
+			// Prevents dead-end loop where unauthenticated user re-hits rate limit
+			if (!data.user) {
+				console.log('[HomePage] No session on ?create=true, redirecting to sign-in');
+				// Clear the URL parameter to prevent redirect loop
+				window.history.replaceState({}, '', '/');
+				// Redirect to sign-in with return URL
+				const returnUrl = resumeDraftParam
+					? `/?create=true&resumeDraft=${encodeURIComponent(resumeDraftParam)}`
+					: '/?create=true';
+				navigateTo(`/auth/google?returnTo=${encodeURIComponent(returnUrl)}`);
+				return;
+			}
+
 			// Extract draft ID for seamless auth return flow
 			if (resumeDraftParam) {
 				resumeDraftId = decodeURIComponent(resumeDraftParam);

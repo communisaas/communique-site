@@ -1,15 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { TemplateFormData } from '$lib/types/template';
+	import type { TemplateFormData, Source } from '$lib/types/template';
 	import { api } from '$lib/core/api/client';
 	import {
 		processDecisionMakers,
 		extractRecipientEmails
 	} from '$lib/utils/decision-maker-processing';
 	import { parseSSEStream } from '$lib/utils/sse-stream';
-	import AgentThinking from '$lib/components/ui/AgentThinking.svelte';
+	import ThoughtStream from '$lib/components/thoughts/ThoughtStream.svelte';
+	import type { ThoughtSegment, PhaseState } from '$lib/core/thoughts/types';
+	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import DecisionMakerResults from './DecisionMakerResults.svelte';
 	import AuthGateOverlay from './AuthGateOverlay.svelte';
+	import { L2_HOVER_DELAY } from '$lib/core/perceptual';
+	import { browser } from '$app/environment';
 
 	interface Props {
 		formData: TemplateFormData;
@@ -19,9 +23,11 @@
 		draftId?: string;
 		/** Save draft callback for OAuth flow */
 		onSaveDraft?: () => void;
+		/** Resume from previously saved segments (partial recovery) */
+		resumeFromSegments?: ThoughtSegment[];
 	}
 
-	let { formData = $bindable(), onnext, onback, draftId, onSaveDraft }: Props = $props();
+	let { formData = $bindable(), onnext, onback, draftId, onSaveDraft, resumeFromSegments }: Props = $props();
 
 	type Stage = 'structuring' | 'resolving' | 'results' | 'error' | 'auth-required';
 	let stage = $state<Stage>('resolving');
@@ -29,7 +35,19 @@
 	let isResolving = $state(false);
 
 	// Streaming state
-	let thoughts = $state<string[]>([]);
+	let segments = $state<ThoughtSegment[]>(resumeFromSegments || []);
+	let phases = $state<PhaseState[]>([
+		{ name: 'research', status: 'pending' },
+		{ name: 'verification', status: 'pending' }
+	]);
+	let documents = $state<Map<string, ParsedDocument>>(new Map());
+	let sources = $state<Source[]>([]);
+	let currentPhase = $state<'discovery' | 'verification' | 'complete'>('discovery');
+
+	// Incremental save tracking
+	let segmentsSinceLastSave = $state(0);
+	let lastSavedPhase = $state<string | null>(null);
+	const SAVE_EVERY_N_SEGMENTS = 5;
 
 	/**
 	 * Check if error indicates auth is required
@@ -46,6 +64,63 @@
 			);
 		}
 		return false;
+	}
+
+	/**
+	 * Parse error to provide actionable, user-friendly messages
+	 * Reduces friction by telling users exactly what to do
+	 */
+	function parseErrorMessage(err: unknown, statusCode?: number): string {
+		// Handle specific status codes first
+		if (statusCode === 429) {
+			return 'Rate limit reached. Please sign in for more requests.';
+		}
+		if (statusCode === 500) {
+			return 'Server error. Please try again in a moment.';
+		}
+		if (statusCode === 503) {
+			return 'Service temporarily unavailable. Please try again shortly.';
+		}
+
+		// Handle error types
+		if (err instanceof Error) {
+			// AbortError / timeout
+			if (err.name === 'AbortError') {
+				return 'Request timed out. Please retry.';
+			}
+
+			// Network errors (fetch fails entirely)
+			if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+				return 'Connection lost. Check your internet and retry.';
+			}
+
+			// Timeout errors
+			if (err.message.toLowerCase().includes('timeout')) {
+				return 'Request timed out. Please retry.';
+			}
+
+			// Return the original message if it's already user-friendly
+			return err.message;
+		}
+
+		// Fallback
+		return 'Failed to resolve decision-makers. Please try again.';
+	}
+
+	/**
+	 * Incremental save: persist segments periodically during streaming
+	 * Enables partial recovery on network failure
+	 */
+	function incrementalSave() {
+		if (onSaveDraft) {
+			// Store current segments in formData for recovery
+			// This piggybacks on the existing draft storage mechanism
+			(formData as any)._savedSegments = [...segments];
+			(formData as any)._savedPhase = currentPhase;
+			onSaveDraft();
+			console.log(`[DecisionMakerResolver] Incremental save: ${segments.length} segments`);
+		}
+		segmentsSinceLastSave = 0;
 	}
 
 	/**
@@ -85,9 +160,28 @@
 			return;
 		}
 
+		// Offline Detection: Check before starting fetch
+		// Provides immediate feedback instead of waiting for timeout
+		if (browser && !navigator.onLine) {
+			errorMessage = "You're offline. Please check your connection.";
+			stage = 'error';
+			return;
+		}
+
 		isResolving = true;
 		errorMessage = null;
-		thoughts = [];
+		// Preserve resumed segments if available, otherwise reset
+		if (!resumeFromSegments || resumeFromSegments.length === 0) {
+			segments = [];
+		}
+		segmentsSinceLastSave = 0;
+		lastSavedPhase = null;
+		phases = [
+			{ name: 'research', status: 'pending' },
+			{ name: 'verification', status: 'pending' }
+		];
+		documents = new Map();
+		currentPhase = 'discovery';
 
 		try {
 			// Stage 1: Structure input if manual (quick pass)
@@ -152,11 +246,60 @@
 			// Process SSE stream
 			for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
 				switch (event.type) {
-					case 'thought':
-						if (typeof event.data.content === 'string') {
-							thoughts = [...thoughts, event.data.content];
+					case 'segment': {
+						const segment = event.data as ThoughtSegment;
+						segments = [...segments, segment];
+
+						// Incremental Thought Storage: Save periodically during streaming
+						// Enables partial recovery on network failure
+						segmentsSinceLastSave++;
+						if (segmentsSinceLastSave >= SAVE_EVERY_N_SEGMENTS) {
+							incrementalSave();
 						}
 						break;
+					}
+
+					case 'phase':
+					case 'phase-change': {
+						// Handle both 'phase' (legacy) and 'phase-change' (standard) event types
+						const phaseEvent = event.data as { from: string; to: string };
+						// Update phase states
+						phases = phases.map((p) => {
+							if (p.name === phaseEvent.from) return { ...p, status: 'complete' as const };
+							if (p.name === phaseEvent.to) return { ...p, status: 'active' as const };
+							return p;
+						});
+						currentPhase = phaseEvent.to as any;
+
+						// Save on phase change (important checkpoint)
+						if (phaseEvent.to !== lastSavedPhase) {
+							lastSavedPhase = phaseEvent.to;
+							incrementalSave();
+						}
+						break;
+					}
+
+					case 'confidence': {
+						const confEvent = event.data as { thoughtId: string; newConfidence: number };
+						// Update segment confidence
+						segments = segments.map((s) =>
+							s.id === confEvent.thoughtId ? { ...s, confidence: confEvent.newConfidence } : s
+						);
+						break;
+					}
+
+					case 'documents': {
+						const docsEvent = event.data as { documents: Array<[string, ParsedDocument]> };
+						documents = new Map(docsEvent.documents);
+						break;
+					}
+
+					case 'sources': {
+						const sourcesEvent = event.data as { sources: Source[] };
+						sources = sourcesEvent.sources;
+						console.log(`[DecisionMakerResolver] Captured ${sources.length} sources for L1 citations`);
+						break;
+					}
 
 					case 'complete': {
 						const result = event.data as { decision_makers?: unknown[] };
@@ -174,6 +317,13 @@
 						}
 
 						formData.audience.decisionMakers = processed;
+
+						// Store grounding sources for L1 citations (carried to message generation)
+						if (sources.length > 0) {
+							formData.audience.sources = sources;
+							console.log(`[DecisionMakerResolver] Stored ${sources.length} sources in formData`);
+						}
+
 						stage = 'results';
 						break;
 					}
@@ -189,18 +339,22 @@
 		} catch (err) {
 			console.error('[DecisionMakerResolver] Error:', err);
 
-			if (err instanceof Error && err.name === 'AbortError') {
-				errorMessage = 'Request was cancelled. Please try again.';
-				stage = 'error';
-			} else if (isAuthRequiredError(err)) {
+			// Extract status code if available from error context
+			const statusCode = (err as any)?.status || (err as any)?.statusCode;
+
+			if (isAuthRequiredError(err)) {
 				console.log('[DecisionMakerResolver] Auth required, showing overlay');
 				stage = 'auth-required';
 			} else {
-				errorMessage =
-					err instanceof Error
-						? err.message
-						: 'Failed to resolve decision-makers. Please try again.';
+				// Use specific, actionable error messages
+				errorMessage = parseErrorMessage(err, statusCode);
 				stage = 'error';
+
+				// If we have partial progress, save it for potential recovery
+				if (segments.length > 0 && onSaveDraft) {
+					console.log(`[DecisionMakerResolver] Saving ${segments.length} segments for recovery`);
+					incrementalSave();
+				}
 			}
 		} finally {
 			isResolving = false;
@@ -268,11 +422,7 @@
 <div class="mx-auto max-w-3xl">
 	{#if stage === 'structuring' || stage === 'resolving'}
 		<!-- Thought-centered loading: the agent's reasoning IS the experience -->
-		<AgentThinking
-			{thoughts}
-			isActive={stage === 'structuring' || stage === 'resolving'}
-			context="Finding decision-makers"
-		/>
+		<ThoughtStream {segments} {phases} streaming={stage === 'resolving'} {documents} />
 	{:else if stage === 'results'}
 		<!-- Results display -->
 		<DecisionMakerResults
