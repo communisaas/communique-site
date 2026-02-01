@@ -255,6 +255,13 @@ function getRequiredEnv(name: string, provider: string): string {
 	return value;
 }
 
+/**
+ * Check if OAuth credentials are available for a provider (without throwing)
+ */
+function hasCredentials(envVars: string[]): boolean {
+	return envVars.every((name) => !!process.env[name]);
+}
+
 // =============================================================================
 // GOOGLE CONFIGURATION
 // =============================================================================
@@ -326,7 +333,12 @@ function createGoogleConfig(): OAuthCallbackConfig {
 	};
 }
 
-export const googleConfig: OAuthCallbackConfig = createGoogleConfig();
+// Lazy-loaded config - created on first access
+let _googleConfig: OAuthCallbackConfig | null = null;
+export function getGoogleConfig(): OAuthCallbackConfig {
+	if (!_googleConfig) _googleConfig = createGoogleConfig();
+	return _googleConfig;
+}
 
 // =============================================================================
 // FACEBOOK CONFIGURATION
@@ -402,7 +414,12 @@ function createFacebookConfig(): OAuthCallbackConfig {
 	};
 }
 
-export const facebookConfig: OAuthCallbackConfig = createFacebookConfig();
+// Lazy-loaded config - created on first access
+let _facebookConfig: OAuthCallbackConfig | null = null;
+export function getFacebookConfig(): OAuthCallbackConfig {
+	if (!_facebookConfig) _facebookConfig = createFacebookConfig();
+	return _facebookConfig;
+}
 
 // =============================================================================
 // LINKEDIN CONFIGURATION
@@ -476,7 +493,12 @@ function createLinkedInConfig(): OAuthCallbackConfig {
 	};
 }
 
-export const linkedinConfig: OAuthCallbackConfig = createLinkedInConfig();
+// Lazy-loaded config - created on first access
+let _linkedinConfig: OAuthCallbackConfig | null = null;
+export function getLinkedInConfig(): OAuthCallbackConfig {
+	if (!_linkedinConfig) _linkedinConfig = createLinkedInConfig();
+	return _linkedinConfig;
+}
 
 // =============================================================================
 // TWITTER CONFIGURATION
@@ -571,7 +593,12 @@ function createTwitterConfig(): OAuthCallbackConfig {
 	};
 }
 
-export const twitterConfig: OAuthCallbackConfig = createTwitterConfig();
+// Lazy-loaded config - created on first access
+let _twitterConfig: OAuthCallbackConfig | null = null;
+export function getTwitterConfig(): OAuthCallbackConfig {
+	if (!_twitterConfig) _twitterConfig = createTwitterConfig();
+	return _twitterConfig;
+}
 
 // =============================================================================
 // TWITTER/X CONFIGURATION — FULLY DISABLED
@@ -687,7 +714,12 @@ function createDiscordConfig(): OAuthCallbackConfig {
 	};
 }
 
-export const discordConfig: OAuthCallbackConfig = createDiscordConfig();
+// Lazy-loaded config - created on first access
+let _discordConfig: OAuthCallbackConfig | null = null;
+export function getDiscordConfig(): OAuthCallbackConfig {
+	if (!_discordConfig) _discordConfig = createDiscordConfig();
+	return _discordConfig;
+}
 
 // =============================================================================
 // COINBASE CONFIGURATION
@@ -783,28 +815,64 @@ function createCoinbaseConfig(): OAuthCallbackConfig {
 	};
 }
 
-export const coinbaseConfig: OAuthCallbackConfig = createCoinbaseConfig();
+// Lazy-loaded config - created on first access (optional - only if credentials exist)
+let _coinbaseConfig: OAuthCallbackConfig | null = null;
+let _coinbaseConfigChecked = false;
+export function getCoinbaseConfig(): OAuthCallbackConfig | null {
+	if (!_coinbaseConfigChecked) {
+		_coinbaseConfigChecked = true;
+		if (hasCredentials(['COINBASE_CLIENT_ID', 'COINBASE_CLIENT_SECRET'])) {
+			_coinbaseConfig = createCoinbaseConfig();
+		}
+	}
+	return _coinbaseConfig;
+}
 
 // =============================================================================
 // PROVIDER REGISTRY
 // =============================================================================
 
-export const OAUTH_PROVIDERS: Record<OAuthProvider, OAuthCallbackConfig> = {
-	google: googleConfig,
-	facebook: facebookConfig,
-	linkedin: linkedinConfig,
-	twitter: twitterConfig,
-	discord: discordConfig,
-	coinbase: coinbaseConfig
-} as const;
+// Provider getter map for lazy loading
+const PROVIDER_GETTERS: Record<OAuthProvider, () => OAuthCallbackConfig | null> = {
+	google: getGoogleConfig,
+	facebook: getFacebookConfig,
+	linkedin: getLinkedInConfig,
+	twitter: getTwitterConfig,
+	discord: getDiscordConfig,
+	coinbase: getCoinbaseConfig
+};
 
 /**
- * Get configuration for a specific provider
+ * Get configuration for a specific provider (lazy-loaded)
  */
 export function getProviderConfig(provider: OAuthProvider): OAuthCallbackConfig {
-	const config = OAUTH_PROVIDERS[provider];
-	if (!config) {
+	const getter = PROVIDER_GETTERS[provider];
+	if (!getter) {
 		throw new Error(`Unknown OAuth provider: ${provider}`);
 	}
+	const config = getter();
+	if (!config) {
+		throw new Error(`OAuth provider ${provider} is not configured (missing credentials)`);
+	}
 	return config;
+}
+
+/**
+ * Check if a provider is available (has credentials configured)
+ */
+export function isProviderAvailable(provider: OAuthProvider): boolean {
+	const getter = PROVIDER_GETTERS[provider];
+	if (!getter) return false;
+	try {
+		return getter() !== null;
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Get all available (configured) providers
+ */
+export function getAvailableProviders(): OAuthProvider[] {
+	return (Object.keys(PROVIDER_GETTERS) as OAuthProvider[]).filter(isProviderAvailable);
 }
