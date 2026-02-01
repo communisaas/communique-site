@@ -50,6 +50,7 @@ import {
 import type { DocumentType } from '$lib/server/reducto/types';
 import type { ResolveContext, DecisionMakerResult } from '../providers/types';
 import type { ThoughtSegment, Citation } from '$lib/core/thoughts/types';
+import { cleanThoughtForDisplay } from '../utils/thought-filter';
 
 // ============================================================================
 // Composite Streaming Types
@@ -458,8 +459,11 @@ export async function resolveDecisionMakersV2(
 					emitter.think(message, { emphasis: 'muted' });
 				},
 				onThought: (thought, phase) => {
-					// Emit provider thoughts as normal reasoning
-					emitter.think(thought);
+					// Clean thought before emitting - remove markdown and implementation details
+					const cleaned = cleanThoughtForDisplay(thought);
+					if (cleaned) {
+						emitter.think(cleaned);
+					}
 				},
 				onProgress: (progress) => {
 					if (progress.candidateName) {
