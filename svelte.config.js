@@ -4,7 +4,8 @@ import adapterCloudflare from '@sveltejs/adapter-cloudflare';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 
 // Use Node adapter for Fly.io, Cloudflare adapter for CF Pages
-const useCloudflare = process.env.ADAPTER === 'cloudflare';
+// Auto-detect Cloudflare Pages via CF_PAGES env var, or explicit ADAPTER=cloudflare
+const useCloudflare = process.env.ADAPTER === 'cloudflare' || process.env.CF_PAGES === '1';
 
 /** @type {import('@sveltejs/kit').Config} */
 const config = {
