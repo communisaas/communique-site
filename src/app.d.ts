@@ -108,11 +108,15 @@ declare global {
 			CWC_API_KEY?: string;
 			CWC_API_BASE_URL?: string;
 			CWC_CAMPAIGN_ID?: string;
+			CWC_ENVIRONMENT?: 'test' | 'production';
 			CWC_DELIVERY_AGENT_ID?: string;
-			CWC_DELIVERY_AGENT_NAME?: string;
+			CWC_DELIVERY_AGENT_NAME?: string; // House delivery agent name (registered with House CWC)
+			CWC_SENATE_DELIVERY_AGENT_NAME?: string; // Senate delivery agent name (from SOAPBox Company Legal Name)
+			CWC_SENATE_ACK_EMAIL?: string; // Senate auto-messaging email (from SOAPBox)
 			CWC_DELIVERY_AGENT_CONTACT?: string;
 			CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL?: string;
 			CWC_DELIVERY_AGENT_ACK?: 'Y' | 'N';
+			HOUSE_CWC_API_KEY?: string;
 
 			// GCP Proxy (for House CWC API - requires IP whitelisting)
 			GCP_PROXY_URL?: string;

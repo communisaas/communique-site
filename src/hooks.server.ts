@@ -2,53 +2,105 @@ import { dev } from '$app/environment';
 import * as auth from '$lib/core/auth/auth.js';
 import type { Handle } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
-import { ensureAllIndexes } from '$lib/server/mongodb/indexes';
 
 /**
- * MongoDB Index Initialization
+ * Background Infrastructure Warmup
  *
- * Runs lazily on first MongoDB-using request to ensure all indexes exist.
- * Uses a module-level guard to prevent multiple invocations.
- * Fire-and-forget pattern: doesn't block request handling.
+ * Perceptual contract: App loads instantly. Infrastructure warms silently.
  *
- * NOTE: MongoDB initialization is deferred because the Node.js MongoDB driver
- * may not be available in all deployment environments (e.g., Cloudflare Workers).
+ * - MongoDB connects in background with retry
+ * - Indexes build after connection (non-blocking)
+ * - Congress ingestion runs after MongoDB ready
+ * - User never waits, never sees loading states for infra
  */
-let indexInitialized = false;
+let warmupStarted = false;
 
-function initializeMongoIndexes(): void {
-	// Skip if already initialized or in a serverless environment that may not support MongoDB
-	if (indexInitialized) {
-		return;
-	}
-	indexInitialized = true;
+function startBackgroundWarmup(): void {
+	if (warmupStarted) return;
+	warmupStarted = true;
 
-	// Fire and forget - don't block request handling
-	ensureAllIndexes()
-		.then(() => {
-			console.log('[Hooks] MongoDB indexes initialized successfully');
-		})
-		.catch((err) => {
-			// Log error but don't crash the server
-			console.error('[Hooks] Failed to initialize MongoDB indexes:', err);
-			// Reset flag so it can be retried on next request if needed
-			indexInitialized = false;
-		});
+	// Dynamic import to avoid blocking module load
+	import('$lib/server/mongodb/warm').then(({ startWarmup, getStatus }) => {
+		// Start MongoDB warmup (includes index creation)
+		startWarmup();
+
+		// Congress ingestion: wait for MongoDB, then run
+		scheduleCongressIngestion(getStatus);
+	}).catch(err => {
+		console.error('[Warmup] Failed to start:', err.message);
+		warmupStarted = false;
+	});
 }
 
-// NOTE: Do not initialize indexes on module load - MongoDB may not be available
-// in all environments. Index initialization will happen on first MongoDB access.
+function scheduleCongressIngestion(getStatus: () => { state: string }): void {
+	const congressApiKey = process.env.CONGRESS_API_KEY;
+	if (!congressApiKey) {
+		return; // Silently skip - no API key configured
+	}
+
+	// Poll for MongoDB readiness, then run ingestion
+	const checkAndRun = async () => {
+		const status = getStatus();
+		if (status.state === 'ready' || status.state === 'degraded' || status.state === 'indexing') {
+			try {
+				const { runCongressIngestion } = await import('$lib/server/congress/ingest-job');
+				const result = await runCongressIngestion();
+				if (result.success) {
+					console.log('[Congress] Ingestion completed:', result.stats);
+				} else if (!result.skipped) {
+					console.warn('[Congress] Ingestion issue:', result.reason);
+				}
+			} catch (err) {
+				console.error('[Congress] Ingestion failed:', err instanceof Error ? err.message : err);
+			}
+		} else if (status.state === 'failed') {
+			console.warn('[Congress] Skipping ingestion - MongoDB unavailable');
+		} else {
+			// Still connecting, check again in 2s
+			setTimeout(checkAndRun, 2000);
+		}
+	};
+
+	// Start checking after a brief delay
+	setTimeout(checkAndRun, 1000);
+}
 
 const handleAuth: Handle = async ({ event, resolve }) => {
+	// Start background warmup (non-blocking, runs once)
+	startBackgroundWarmup();
+
 	try {
 		const sessionId = event.cookies.get(auth.sessionCookieName);
+
+		// Debug: Log all cookie names for template POST requests
+		if (event.url.pathname === '/api/templates' && event.request.method === 'POST') {
+			const allCookies = event.request.headers.get('cookie');
+			console.log('[Auth] Template POST - Cookie header:', allCookies ? allCookies.substring(0, 100) + '...' : 'NONE');
+			console.log('[Auth] Template POST - Session cookie name:', auth.sessionCookieName);
+			console.log('[Auth] Template POST - Session ID found:', !!sessionId);
+		}
+
 		if (!sessionId) {
+			// Log on template POST for debugging
+			if (event.url.pathname === '/api/templates' && event.request.method === 'POST') {
+				console.log('[Auth] No session cookie for template POST');
+			}
 			event.locals.user = null;
 			event.locals.session = null;
 			return resolve(event);
 		}
 
 		const { session, user } = await auth.validateSession(sessionId);
+
+		// Debug: Log validation result for template API
+		if (event.url.pathname === '/api/templates' && event.request.method === 'POST') {
+			console.log('[Auth] Template POST - Session validation:', {
+				hasSession: !!session,
+				hasUser: !!user,
+				userId: user?.id,
+				sessionId: sessionId?.substring(0, 8) + '...'
+			});
+		}
 		if (session) {
 			event.cookies.set(auth.sessionCookieName, session.id, {
 				path: '/',
@@ -92,9 +144,14 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 		event.locals.session = session;
 
 		return resolve(event);
-	} catch {
+	} catch (err) {
 		// If authentication fails for any reason, clear session and continue
-		console.error('Error occurred');
+		const errorMessage = err instanceof Error ? err.message : String(err);
+		const errorStack = err instanceof Error ? err.stack : undefined;
+		console.error('[Auth] Session validation failed:', errorMessage);
+		if (errorStack) {
+			console.error('[Auth] Stack:', errorStack);
+		}
 		event.locals.user = null;
 		event.locals.session = null;
 		// Clear the session cookie on error

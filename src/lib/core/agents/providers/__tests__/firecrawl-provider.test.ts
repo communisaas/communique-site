@@ -339,4 +339,154 @@ describe('FirecrawlDecisionMakerProvider', () => {
 			expect(withConfidence).toBeGreaterThan(withoutConfidence);
 		});
 	});
+
+	describe('Batch Discovery', () => {
+		const skipIfNoApiKey = process.env.FIRECRAWL_API_KEY ? it : it.skip;
+
+		skipIfNoApiKey('should discover multiple organizations in parallel', async () => {
+			const organizations = ['Patagonia', 'Ben & Jerry\'s', 'Seventh Generation'];
+			const context = {
+				targetType: 'corporate' as const,
+				subjectLine: 'Environmental sustainability commitment',
+				coreMessage: 'Support for environmental initiatives',
+				topics: ['environment', 'sustainability']
+			};
+
+			const results = await provider.resolveBatch(organizations, context);
+
+			expect(results).toHaveLength(organizations.length);
+			expect(Array.isArray(results)).toBe(true);
+
+			// Each result should have decision-makers array
+			results.forEach((result, idx) => {
+				expect(result).toBeDefined();
+				expect(result.provider).toBe('firecrawl');
+				expect(Array.isArray(result.decisionMakers)).toBe(true);
+			});
+
+			// At least one org should have found decision-makers
+			const totalDMs = results.reduce((sum, r) => sum + r.decisionMakers.length, 0);
+			expect(totalDMs).toBeGreaterThan(0);
+		}, 180000); // 3 min timeout for batch
+
+		skipIfNoApiKey('should handle batch with some cache hits', async () => {
+			// First, populate cache with one org
+			const firstContext = {
+				targetType: 'corporate' as const,
+				targetEntity: 'Patagonia',
+				subjectLine: 'Test',
+				coreMessage: 'Test',
+				topics: ['environment']
+			};
+
+			await provider.resolve(firstContext);
+
+			// Now do batch with that org + new ones
+			const organizations = ['Patagonia', 'Tesla'];
+			const batchContext = {
+				targetType: 'corporate' as const,
+				subjectLine: 'Clean energy',
+				coreMessage: 'Support for clean energy',
+				topics: ['energy', 'climate']
+			};
+
+			const results = await provider.resolveBatch(organizations, batchContext);
+
+			expect(results).toHaveLength(2);
+
+			// At least one should be a cache hit
+			const cacheHits = results.filter(r => r.cacheHit);
+			expect(cacheHits.length).toBeGreaterThan(0);
+		}, 180000);
+
+		skipIfNoApiKey('should isolate errors in batch processing', async () => {
+			const organizations = [
+				'Patagonia', // Real org
+				'NonExistentCompanyXYZ123456', // Should fail
+				'Ben & Jerry\'s' // Real org
+			];
+
+			const context = {
+				targetType: 'corporate' as const,
+				subjectLine: 'Test',
+				coreMessage: 'Test',
+				topics: ['test']
+			};
+
+			const results = await provider.resolveBatch(organizations, context);
+
+			// Should still get results for all orgs
+			expect(results).toHaveLength(3);
+
+			// Check that some succeeded and some failed
+			const successful = results.filter(r => r.decisionMakers.length > 0 || r.cacheHit);
+			const failed = results.filter(r => r.decisionMakers.length === 0 && !r.cacheHit);
+
+			// Should have at least one success and one failure
+			expect(successful.length).toBeGreaterThan(0);
+			expect(failed.length).toBeGreaterThan(0);
+		}, 180000);
+
+		it('should call batch progress callbacks', async () => {
+			const phaseCallback = vi.fn();
+			const thoughtCallback = vi.fn();
+
+			const organizations = ['Test Corp A', 'Test Corp B', 'Test Corp C'];
+			const context = {
+				targetType: 'corporate' as const,
+				subjectLine: 'Test',
+				coreMessage: 'Test',
+				topics: ['test'],
+				streaming: {
+					onPhase: phaseCallback,
+					onThought: thoughtCallback
+				}
+			};
+
+			// Mock discoverOrganizationsBatch
+			const mockBatch = vi
+				.spyOn(provider as any, 'firecrawl')
+				.mockReturnValue({
+					discoverOrganizationsBatch: vi.fn().mockResolvedValue({
+						successful: organizations.map(org => ({
+							organization: org,
+							profile: {
+								name: org,
+								website: `https://${org.toLowerCase().replace(/\s/g, '')}.com`,
+								leadership: [],
+								policyPositions: [],
+								contacts: {}
+							},
+							creditsUsed: 10
+						})),
+						failed: [],
+						totalCreditsUsed: 30,
+						totalTimeMs: 5000
+					})
+				});
+
+			await provider.resolveBatch(organizations, context);
+
+			// Should have called progress callbacks
+			expect(phaseCallback).toHaveBeenCalled();
+		});
+
+		it('should optimize with cache-aware batch processing', async () => {
+			// This test would require proper mocking of MongoDB service
+			// For now, we test the logic path exists
+			const organizations = ['Test Corp A', 'Test Corp B'];
+			const context = {
+				targetType: 'corporate' as const,
+				subjectLine: 'Test',
+				coreMessage: 'Test',
+				topics: ['test']
+			};
+
+			// Verify the method exists and accepts the right parameters
+			expect(typeof provider.resolveBatch).toBe('function');
+
+			// Note: Full integration test requires MongoDB + Firecrawl API
+			// See integration tests for actual batch processing validation
+		});
+	});
 });

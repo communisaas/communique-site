@@ -36,10 +36,8 @@
 
 	// Streaming state
 	let segments = $state<ThoughtSegment[]>(resumeFromSegments || []);
-	let phases = $state<PhaseState[]>([
-		{ name: 'research', status: 'pending' },
-		{ name: 'verification', status: 'pending' }
-	]);
+	// Simplified to single research phase (verification runs silently in background)
+	let phases = $state<PhaseState[]>([{ name: 'research', status: 'pending' }]);
 	let documents = $state<Map<string, ParsedDocument>>(new Map());
 	let sources = $state<Source[]>([]);
 	let currentPhase = $state<'discovery' | 'verification' | 'complete'>('discovery');
@@ -50,17 +48,17 @@
 	const SAVE_EVERY_N_SEGMENTS = 5;
 
 	/**
-	 * Check if error indicates auth is required
-	 * The rate limiter returns 429 with specific messages for auth-blocked operations
+	 * Check if error indicates auth is required (guest blocked)
+	 * Does NOT match rate limit errors for authenticated users
 	 */
 	function isAuthRequiredError(err: unknown): boolean {
 		if (err instanceof Error) {
 			const msg = err.message.toLowerCase();
+			// Only match guest-specific auth errors, NOT general rate limits
 			return (
 				msg.includes('requires an account') ||
-				msg.includes('sign in') ||
-				msg.includes('authentication required') ||
-				msg.includes('rate limit') // 429 errors from guest quota = 0
+				msg.includes('sign in to continue') ||
+				msg.includes('authentication required')
 			);
 		}
 		return false;
@@ -176,10 +174,7 @@
 		}
 		segmentsSinceLastSave = 0;
 		lastSavedPhase = null;
-		phases = [
-			{ name: 'research', status: 'pending' },
-			{ name: 'verification', status: 'pending' }
-		];
+		phases = [{ name: 'research', status: 'pending' }];
 		documents = new Map();
 		currentPhase = 'discovery';
 
@@ -278,6 +273,10 @@
 						}
 						break;
 					}
+
+					case 'ping':
+					// Heartbeat event to keep connection alive - no action needed
+					break;
 
 					case 'confidence': {
 						const confEvent = event.data as { thoughtId: string; newConfidence: number };

@@ -3,6 +3,7 @@ import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
 import { cwcClient } from '$lib/core/congress/cwc-client';
 import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
+import { toCongressionalOffices } from '$lib/core/congress/types';
 import {
 	isCredentialValidForAction,
 	formatValidationError,
@@ -99,11 +100,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		// Get user's congressional representatives
 		console.log('[CWC MVP] Looking up representatives for address:', address);
-		const representatives = await getRepresentativesForAddress(address);
+		const rawRepresentatives = await getRepresentativesForAddress(address);
 
-		if (!representatives || representatives.length === 0) {
+		if (!rawRepresentatives || rawRepresentatives.length === 0) {
 			throw error(404, 'No congressional representatives found for this address');
 		}
+
+		// Convert to CongressionalOffice format with properly generated office codes
+		const representatives = toCongressionalOffices(rawRepresentatives);
 
 		console.log('[CWC MVP] Found representatives:', {
 			count: representatives.length,
@@ -213,8 +217,10 @@ interface RepresentativeData {
 	name: string;
 	chamber: string;
 	bioguideId: string;
-	state?: string;
-	district?: string;
+	state: string;
+	district: string;
+	officeCode: string;
+	party: string;
 	[key: string]: unknown;
 }
 

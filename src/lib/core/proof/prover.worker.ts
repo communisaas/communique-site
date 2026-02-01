@@ -10,46 +10,13 @@
 import { Buffer } from './buffer-shim';
 (globalThis as any).Buffer = Buffer;
 
-// Type for proof results (matching prover-core.ts)
-interface ProofResult {
-	success: boolean;
-	proof?: Uint8Array;
-	publicInputs?: Record<string, unknown>;
-	nullifier?: string;
-	error?: string;
-}
+// Type-only imports are safe - they don't generate runtime code and won't cause hoisting issues
+// These provide type safety while keeping the canonical type definitions in worker-protocol.ts
+import type { WorkerEvent, WorkerCommand } from './worker-protocol';
+import type { WitnessData, ProofResult } from './prover-core';
 
-// Type for witness data
-interface WitnessData {
-	identityCommitment: string;
-	leafIndex: number;
-	merklePath: string[];
-	merkleRoot: string;
-	actionId: string;
-	timestamp: number;
-	address: string;
-	[key: string]: unknown;
-}
-
-// Type for worker events (inline to avoid hoisting issues)
-type WorkerEvent =
-	| { type: 'STATUS'; status: string }
-	| { type: 'ERROR'; message: string }
-	| { type: 'PROGRESS'; stage: string; percent: number }
-	| { type: 'PROOF_COMPLETE'; result: ProofResult }
-	| { type: 'MERKLE_ROOT_RESULT'; merkleRoot: string }
-	| { type: 'POSEIDON_HASH_RESULT'; hash: string };
-
-type WorkerCommand =
-	| { type: 'INIT'; k?: number }
-	| { type: 'INIT_HASH_ONLY' }
-	| { type: 'PROVE'; witness: WitnessData }
-	| { type: 'COMPUTE_MERKLE_ROOT'; leaf: string; merklePath: string[]; leafIndex: number }
-	| { type: 'POSEIDON_HASH'; input: string };
-
-function isWorkerCommand(data: unknown): data is WorkerCommand {
-	return typeof data === 'object' && data !== null && 'type' in data;
-}
+// Import the type guard function (this is fine as it's a pure function with no side effects)
+import { isWorkerCommand } from './worker-protocol';
 
 const ctx: Worker = self as Worker;
 

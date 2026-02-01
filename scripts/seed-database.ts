@@ -63,6 +63,7 @@ const templateData = [
 		title: "The Math Doesn't Work: Climate Edition",
 		description: "Climate subsidies vs disaster costs: the math doesn't add up.",
 		category: 'Environment',
+		topics: ['climate', 'subsidies', 'environment', 'disaster-relief'],
 		type: 'advocacy',
 		deliveryMethod: 'cwc' as const,
 		preview: "Dear [Representative Name], The math doesn't work anymore.",
@@ -108,6 +109,7 @@ Sincerely,
 		title: '35% Offices Empty, Only 1 Building Converting',
 		description: 'SF office-to-housing conversion failure: 35% vacancy, 1 building converting.',
 		category: 'Housing',
+		topics: ['housing', 'office-conversion', 'urban-development', 'san-francisco'],
 		type: 'advocacy',
 		deliveryMethod: 'email' as const,
 		preview: "The math doesn't work anymore.",
@@ -138,8 +140,8 @@ Sincerely,
 			reach: 'location-specific',
 			decisionMakers: [
 				{
-					name: 'Mayor London Breed',
-					shortName: 'Mayor Breed',
+					name: 'Mayor Daniel Lurie',
+					shortName: 'Mayor Lurie',
 					role: 'Mayor',
 					organization: 'City of San Francisco'
 				},
@@ -162,6 +164,7 @@ Sincerely,
 		title: 'Housing: $2,400 Rent, $400k Starter Home',
 		description: 'Housing math broken: $400k homes, $75k income.',
 		category: 'Housing',
+		topics: ['housing', 'affordability', 'homeownership', 'mortgage'],
 		type: 'advocacy',
 		deliveryMethod: 'cwc' as const,
 		preview: 'Dear [Representative Name], The housing math has broken America.',
@@ -208,6 +211,7 @@ Sincerely,
 		title: "Kids' Brains for Sale: Zero Privacy Laws",
 		description: "Kids's data harvested, mental health destroyed, laws unchanged since 1998.",
 		category: 'Digital Rights',
+		topics: ['digital-rights', 'privacy', 'children', 'technology', 'social-media'],
 		type: 'advocacy',
 		deliveryMethod: 'cwc' as const,
 		preview: 'Dear Senator, Our kids are the product being sold.',
@@ -254,6 +258,7 @@ Sincerely,
 		title: 'Uber Nets $9.8B, Drivers Get $318/Week',
 		description: 'Gig companies profit billions while workers earn below minimum wage.',
 		category: 'Labor Rights',
+		topics: ['labor', 'gig-economy', 'worker-rights', 'minimum-wage'],
 		type: 'advocacy',
 		deliveryMethod: 'cwc' as const,
 		preview: 'Gig economy: record profits, poverty wages.',
@@ -301,6 +306,7 @@ Sincerely,
 		title: 'Pharma: $4 Production, $315 Retail, 100x Markup',
 		description: 'Insulin costs $4 to make, sells for $315, government pays 100x markup.',
 		category: 'Healthcare',
+		topics: ['healthcare', 'drug-pricing', 'pharmaceutical', 'insulin'],
 		type: 'advocacy',
 		deliveryMethod: 'cwc' as const,
 		preview: 'Pharmaceutical markup: 100x production cost.',
@@ -335,6 +341,353 @@ Sincerely,
 			cwcRouting: true,
 			chambers: ['house', 'senate'],
 			committees: ['health', 'judiciary']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	// ========================================================================
+	// NEW TEMPLATES - Real issues with citations
+	// ========================================================================
+	{
+		title: 'Student Debt: $1.7T Owed, $0 Forgiven',
+		description: 'Student loan forgiveness blocked while debt crushes 45 million Americans.',
+		category: 'Education',
+		topics: ['education', 'student-debt', 'loans', 'forgiveness'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], 45 million Americans owe $1.7 trillion.',
+		message_body: `Dear [Representative Name],
+
+45 million Americans owe $1.7 trillion in student debt.
+
+Total student debt: $1.77 trillion (Federal Reserve Q4 2024).
+Average debt per borrower: $37,850 (Education Data Initiative 2025).
+Biden forgiveness blocked: $430 billion struck down (SCOTUS June 2023).
+Monthly payments restarted: October 2023, delinquencies up 40%.
+
+Sources: Federal Reserve Bank of New York, "Household Debt and Credit Report" Q4 2024; Education Data Initiative, "Student Loan Debt Statistics" 2025; Supreme Court, Biden v. Nebraska (2023)
+
+From [Address] where graduates delay homes, families, and futures.
+
+[Personal Connection]
+
+A degree shouldn't mean a lifetime of debt.
+
+Pass the Student Loan Relief Act now.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'Student Loan Reform', urgency: 'high', policy_area: 'Education' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['education', 'finance']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	{
+		title: 'AI Took 14,000 Jobs Last Month, Zero Laws Passed',
+		description: 'AI displaces workers at record pace while Congress debates definitions.',
+		category: 'Technology',
+		topics: ['ai', 'automation', 'jobs', 'technology', 'unemployment'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], AI is moving faster than democracy.',
+		message_body: `Dear [Representative Name],
+
+AI is moving faster than democracy.
+
+Jobs displaced by AI (Jan 2025): 14,000+ in single month (Challenger Report).
+Companies citing AI in layoffs: Up 300% YoY (Bloomberg Analysis).
+Retraining programs funded: $0 federal dollars for AI displacement.
+AI legislation passed: Zero comprehensive laws since ChatGPT launch.
+
+Sources: Challenger, Gray & Christmas "Job Cuts Report" January 2025; Bloomberg, "AI-Related Layoffs Surge" 2025; Congressional Research Service, "AI Workforce Impact" 2024
+
+From [Address] where my skills became obsolete overnight.
+
+[Personal Connection]
+
+We need transition support, not just innovation celebration.
+
+Fund AI displacement programs and pass worker protection laws.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'AI and Employment', urgency: 'critical', policy_area: 'Technology' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['technology', 'labor']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	{
+		title: 'Groceries Up 25%, Wages Up 4%',
+		description: 'Food prices outpace wages 6:1 while corporate profits hit records.',
+		category: 'Economy',
+		topics: ['inflation', 'groceries', 'wages', 'cost-of-living', 'corporate-profits'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], Families choose between food and rent.',
+		message_body: `Dear [Representative Name],
+
+Families are choosing between food and rent.
+
+Grocery prices since 2020: Up 25% (Bureau of Labor Statistics).
+Real wages since 2020: Up 4% (adjusted for inflation).
+Kroger profit margin 2024: Record $2.2 billion (SEC Filing).
+SNAP benefit increase: 0% in 2025 (USDA).
+
+Sources: Bureau of Labor Statistics, "Consumer Price Index - Food" January 2025; Kroger Co. Form 10-K FY2024; USDA Food and Nutrition Service, "SNAP Cost-of-Living Adjustments" 2025
+
+From [Address] where the grocery bill doubled but the paycheck didn't.
+
+[Personal Connection]
+
+Record profits + record prices = policy failure.
+
+Investigate grocery price-fixing and expand SNAP benefits.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'Food Prices', urgency: 'high', policy_area: 'Consumer Protection' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['agriculture', 'commerce']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	{
+		title: 'Rent Control Works: 1M Units Saved in NYC',
+		description: 'Cities with rent control kept 1M affordable units. States without lost them.',
+		category: 'Housing',
+		topics: ['housing', 'rent-control', 'affordability', 'tenants-rights'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], The data is clear: rent control works.',
+		message_body: `Dear [Representative Name],
+
+The data is clear: rent control works.
+
+NYC rent-stabilized units preserved: 1 million apartments (NYC Rent Guidelines Board).
+Average rent-stabilized rent: $1,400/month vs $3,500 market rate.
+States banning rent control: 31 states with preemption laws.
+Affordable units lost nationally: 4.7 million since 2010 (Harvard JCHS).
+
+Sources: NYC Rent Guidelines Board, "2024 Housing Supply Report"; Harvard Joint Center for Housing Studies, "State of the Nation's Housing" 2024; National Multifamily Housing Council, "Rent Control Laws by State" 2024
+
+From [Address] where landlords raise rent 20% yearly.
+
+[Personal Connection]
+
+Let cities decide what works for their residents.
+
+Repeal state rent control preemption laws.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'Rent Stabilization', urgency: 'high', policy_area: 'Housing' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['housing', 'judiciary']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	{
+		title: 'Billionaires Pay 8% Tax, Workers Pay 25%',
+		description: 'The ultra-wealthy pay a lower tax rate than nurses and teachers.',
+		category: 'Economy',
+		topics: ['taxes', 'wealth-inequality', 'billionaires', 'tax-reform'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], Billionaires pay less than their secretaries.',
+		message_body: `Dear [Representative Name],
+
+Warren Buffett was right: billionaires pay less than their secretaries.
+
+Effective tax rate for billionaires: 8.2% (White House 2021 Analysis).
+Effective tax rate for median worker: 25% (Tax Policy Center).
+Wealth held by top 1%: $45 trillion, 32% of all US wealth.
+IRS audit rate for millionaires: Down 80% since 2010.
+
+Sources: White House, "The Economics of Taxing the Wealthy" September 2021; Tax Policy Center, "Effective Tax Rates by Income" 2024; Federal Reserve, "Distribution of Household Wealth" Q3 2024
+
+From [Address] where I pay more than Elon Musk.
+
+[Personal Connection]
+
+The tax code is upside down.
+
+Pass the Billionaire Minimum Income Tax.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'Tax Fairness', urgency: 'high', policy_area: 'Taxation' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['finance', 'ways-and-means']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	{
+		title: 'Police Budgets Up 45%, Crime Down 12%',
+		description: 'More police spending hasn\'t solved crime. Prevention programs have.',
+		category: 'Public Safety',
+		topics: ['policing', 'crime', 'public-safety', 'prevention', 'budget'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], We\'re spending more and getting less.',
+		message_body: `Dear [Representative Name],
+
+We're spending more on policing and getting less.
+
+Police budgets since 2014: Up 45% ($150B → $218B nationwide).
+Violent crime clearance rate: 41% (FBI 2023) - down from 47% in 2014.
+Cities with violence intervention programs: 65% reduction in shootings (GIFFORDS).
+Federal prevention funding: $0.50 for every $1,000 spent on policing.
+
+Sources: Bureau of Justice Statistics, "Justice Expenditure and Employment" 2024; FBI Uniform Crime Report 2023; GIFFORDS Law Center, "Community Violence Intervention Programs" 2024
+
+From [Address] where we need solutions, not just sirens.
+
+[Personal Connection]
+
+Prevention works. Let's fund what actually reduces crime.
+
+Invest in community violence intervention programs.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'Public Safety', urgency: 'medium', policy_area: 'Criminal Justice' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['judiciary', 'appropriations']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	{
+		title: 'Maternal Deaths: US Worst in Developed World',
+		description: 'American mothers die at 3x the rate of other wealthy nations.',
+		category: 'Healthcare',
+		topics: ['healthcare', 'maternal-health', 'womens-health', 'mortality'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], Giving birth shouldn\'t be deadly.',
+		message_body: `Dear [Representative Name],
+
+Giving birth in America shouldn't be deadly. But it is.
+
+US maternal mortality rate: 32.9 per 100,000 births (CDC 2024).
+UK maternal mortality rate: 10.9 per 100,000 births.
+Black maternal mortality: 69.9 per 100,000 - 3x white mothers.
+Maternal deaths preventable: 84% (Commonwealth Fund 2023).
+
+Sources: CDC National Center for Health Statistics, "Maternal Mortality Rates" 2024; Commonwealth Fund, "Maternal Mortality and Morbidity in the U.S." 2023; WHO, "Trends in Maternal Mortality" 2023
+
+From [Address] where pregnancy is riskier than in 49 other countries.
+
+[Personal Connection]
+
+Every mother deserves to survive childbirth.
+
+Pass the Momnibus Act and fund maternal health programs.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'Maternal Health', urgency: 'critical', policy_area: 'Healthcare' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['health', 'appropriations']
+		},
+		jurisdiction_level: 'federal',
+		is_public: true,
+		verification_status: 'approved'
+	},
+	{
+		title: 'Broadband: $42B Spent, 0 New Homes Connected',
+		description: 'Billions for rural broadband, zero homes connected after 3 years.',
+		category: 'Technology',
+		topics: ['broadband', 'internet', 'rural', 'infrastructure', 'digital-divide'],
+		type: 'advocacy',
+		deliveryMethod: 'cwc' as const,
+		preview: 'Dear [Representative Name], Where did $42 billion go?',
+		message_body: `Dear [Representative Name],
+
+Where did $42 billion for broadband go?
+
+BEAD Program funding: $42.45 billion allocated (NTIA 2022).
+New homes connected to date: 0 (GAO Report January 2025).
+Americans without broadband: 24 million, mostly rural.
+Program timeline: 3 years in, no construction started.
+
+Sources: National Telecommunications and Information Administration, "BEAD Program Allocations" 2022; Government Accountability Office, "Broadband: Actions Needed to Address Continuing Deployment Challenges" January 2025; FCC, "Broadband Deployment Report" 2024
+
+From [Address] where we still can't get reliable internet.
+
+[Personal Connection]
+
+We were promised connectivity. We got bureaucracy.
+
+Accelerate BEAD deployment and hold states accountable.
+
+Sincerely,
+[Name]
+[Address]`,
+		metrics: ZERO_METRICS,
+		delivery_config: { timing: 'immediate', followUp: true, cwcEnabled: true },
+		cwc_config: { topic: 'Rural Broadband', urgency: 'high', policy_area: 'Technology' },
+		recipient_config: {
+			reach: 'district-based',
+			cwcRouting: true,
+			chambers: ['house', 'senate'],
+			committees: ['commerce', 'appropriations']
 		},
 		jurisdiction_level: 'federal',
 		is_public: true,
@@ -470,6 +823,7 @@ async function seedTemplates(users: User[]) {
 				slug,
 				description: template.description,
 				category: template.category,
+				topics: template.topics || [],
 				type: template.type,
 				deliveryMethod: template.deliveryMethod,
 				preview: template.preview,

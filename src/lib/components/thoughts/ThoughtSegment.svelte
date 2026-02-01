@@ -20,6 +20,7 @@
 	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import InlineCitation from './InlineCitation.svelte';
 	import ActionSegment from './ActionSegment.svelte';
+	import { ConfidenceIndicator } from './index';
 	import { Lightbulb, Sparkles } from 'lucide-svelte';
 
 	interface Props {
@@ -73,6 +74,13 @@
 	{:else}
 		<!-- Regular thought content -->
 		<div class="thought-content flex items-start gap-2">
+			<!-- Confidence indicator (peripheral, left edge) -->
+			{#if segment.confidence !== undefined}
+				<div class="flex-shrink-0 pt-1.5">
+					<ConfidenceIndicator confidence={segment.confidence} size="sm" />
+				</div>
+			{/if}
+
 			<!-- Type icon (for insights/recommendations) -->
 			{#if TypeIcon}
 				<div class="flex-shrink-0 pt-0.5">

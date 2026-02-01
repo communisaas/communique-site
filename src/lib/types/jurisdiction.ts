@@ -1,5 +1,7 @@
-import type { GeoFence } from './location';
 import type { TemplateJurisdiction } from '@prisma/client';
+
+// Re-export TemplateScope and TemplateScopeMode from shared for backward compatibility
+export type { TemplateScope, TemplateScopeMode } from './shared';
 
 export type JurisdictionType =
 	| 'country'
@@ -24,7 +26,7 @@ export interface Jurisdiction {
 	admin2?: string;
 	admin3?: string;
 	external_ids?: Record<string, string>;
-	geometry?: GeoFence | unknown; // Allow server-provided GeoJSON
+	geometry?: import('./location').GeoFence | unknown; // Allow server-provided GeoJSON
 	created_at: string | Date;
 	updated_at: string | Date;
 }
@@ -44,18 +46,8 @@ export interface Office {
 	updated_at: string | Date;
 }
 
-export type TemplateScopeMode = 'jurisdictions' | 'geofence' | 'user_home' | 'country';
-
-export interface TemplateScope {
-	id: string;
-	template_id: string;
-	mode: TemplateScopeMode;
-	country_codes?: string[];
-	jurisdiction_ids?: string[];
-	geofence?: GeoFence | unknown;
-	created_at: string | Date;
-	updated_at: string | Date;
-}
+// NOTE: TemplateScope and TemplateScopeMode are now defined in ./shared.ts
+// and re-exported above for backward compatibility.
 
 // ===== TEMPLATE CREATOR JURISDICTION PICKER TYPES =====
 

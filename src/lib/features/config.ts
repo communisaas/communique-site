@@ -22,6 +22,7 @@ export const FEATURES = {
 	// Beta Features (working but not polished)
 	LEGISLATIVE_CHANNELS: FeatureStatus.BETA, // Database schema exists, no UI
 	ZK_PROOF_GENERATION: FeatureStatus.BETA, // Browser-native Halo2 proving (requires Shadow Atlas)
+	SEMANTIC_RERANKING: FeatureStatus.BETA, // Voyage AI reranking for 10-30% precision improvement
 
 	// === PHASE 2: ROADMAP (12-18 months) ===
 	// Removed from codebase - will be implemented in voter-protocol repo

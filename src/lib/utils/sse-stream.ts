@@ -132,21 +132,38 @@ export async function collectStream<TFinal>(
 export function createSSEStream() {
 	const encoder = new TextEncoder();
 	let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+	let closed = false;
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(c) {
 			controller = c;
+		},
+		cancel() {
+			// Client disconnected
+			closed = true;
 		}
 	});
 
 	const emitter = {
 		/**
+		 * Check if the stream is still open
+		 */
+		get isOpen() {
+			return !closed && controller !== null;
+		},
+
+		/**
 		 * Send a typed event to the stream
 		 */
 		send<T>(type: string, data: T) {
-			if (!controller) return;
-			const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-			controller.enqueue(encoder.encode(event));
+			if (!controller || closed) return;
+			try {
+				const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+				controller.enqueue(encoder.encode(event));
+			} catch {
+				// Controller may be closed - ignore
+				closed = true;
+			}
 		},
 
 		/**
@@ -181,7 +198,13 @@ export function createSSEStream() {
 		 * Close the stream
 		 */
 		close() {
-			controller?.close();
+			if (closed) return;
+			closed = true;
+			try {
+				controller?.close();
+			} catch {
+				// Already closed - ignore
+			}
 		}
 	};
 

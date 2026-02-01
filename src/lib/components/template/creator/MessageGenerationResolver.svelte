@@ -42,18 +42,17 @@
 	let thoughts = $state<string[]>([]);
 
 	/**
-	 * Check if error indicates auth is required
-	 * Matches rate limiter 429 responses for guests
+	 * Check if error indicates auth is required (guest blocked)
+	 * Does NOT match rate limit errors for authenticated users
 	 */
 	function isAuthRequiredError(err: unknown): boolean {
 		if (err instanceof Error) {
 			const msg = err.message.toLowerCase();
+			// Only match guest-specific auth errors, NOT general rate limits
 			return (
 				msg.includes('requires an account') ||
-				msg.includes('sign in') ||
-				msg.includes('authentication required') ||
-				msg.includes('rate limit') ||
-				msg.includes('401')
+				msg.includes('sign in to continue') ||
+				msg.includes('authentication required')
 			);
 		}
 		return false;

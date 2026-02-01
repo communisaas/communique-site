@@ -11,16 +11,28 @@
  * - Corporate announcements
  * - Organizational profiles
  *
+ * Features:
+ * - Semantic vector search using Voyage AI embeddings
+ * - Optional Voyage AI reranking for 10-30% precision improvement
+ * - Automatic category selection based on target type
+ * - Synthesized context ready for prompt injection
+ *
  * Usage:
  * ```typescript
  * const context = await AgentMemoryService.retrieveContext({
  *   topic: 'climate change legislation',
  *   targetType: 'congress',
- *   location: { state: 'CA' }
+ *   location: { state: 'CA' },
+ *   enableReranking: true // Optional: enable for better precision
  * });
  *
  * // Use context.synthesizedContext in agent prompt
  * const prompt = `${basePrompt}\n\nContext:\n${context.synthesizedContext}`;
+ *
+ * // Check if reranking was applied
+ * if (context.metadata.rerankingApplied) {
+ *   console.log(`Reranking took ${context.metadata.rerankingLatencyMs}ms`);
+ * }
  * ```
  */
 
@@ -33,6 +45,8 @@ import {
 	semanticSearchOrganizations,
 	type VectorSearchResult
 } from '$lib/server/mongodb/vector-search';
+import { rerankDocuments } from '$lib/server/embeddings';
+import { FEATURES, FeatureStatus } from '$lib/features/config';
 
 // ============================================================================
 // Types
@@ -69,6 +83,19 @@ export interface RetrieveContextParams {
 
 	/** Days to look back for intelligence (default: 30) */
 	lookbackDays?: number;
+
+	/**
+	 * Enable Voyage AI reranking for improved precision (10-30% improvement).
+	 * Default: Uses SEMANTIC_RERANKING feature flag when undefined.
+	 * Set explicitly to override the feature flag.
+	 */
+	enableReranking?: boolean;
+
+	/**
+	 * Number of top results to rerank after vector search (default: 10).
+	 * Only used when reranking is enabled.
+	 */
+	rerankTopK?: number;
 }
 
 /**
@@ -174,6 +201,10 @@ export interface AgentContext {
 		latencyMs: number;
 		/** Whether organization was found */
 		hasOrganization: boolean;
+		/** Whether reranking was applied */
+		rerankingApplied: boolean;
+		/** Reranking latency in milliseconds (if applied) */
+		rerankingLatencyMs?: number;
 	};
 }
 
@@ -235,16 +266,31 @@ export class AgentMemoryService {
 			limit = 5,
 			minRelevanceScore = 0.6,
 			useSemanticSearch = true,
-			lookbackDays = 30
+			lookbackDays = 30,
+			enableReranking,
+			rerankTopK = 10
 		} = params;
+
+		// Determine if reranking should be used:
+		// 1. Explicit param takes precedence
+		// 2. Otherwise check feature flag (BETA = enabled if VITE_ENABLE_BETA=true)
+		const shouldRerank =
+			enableReranking !== undefined
+				? enableReranking
+				: FEATURES.SEMANTIC_RERANKING === FeatureStatus.ON ||
+					(FEATURES.SEMANTIC_RERANKING === FeatureStatus.BETA &&
+						(typeof process !== 'undefined' && process.env?.VITE_ENABLE_BETA === 'true'));
 
 		// Determine which categories to search based on target type
 		const categories = this.selectCategories(targetType);
 
 		// Build date filter for recency
 		const dateFilter = {
-			publishedAfter: new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
+			start: new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
 		};
+
+		// When reranking, fetch more candidates to rerank from
+		const searchLimit = shouldRerank ? Math.max(limit * 3, rerankTopK * 2) : limit;
 
 		// Fetch intelligence and organization in parallel
 		const [intelligenceResults, organizationResult] = await Promise.all([
@@ -252,13 +298,13 @@ export class AgentMemoryService {
 			useSemanticSearch
 				? this.semanticSearchIntelligence(topic, {
 						categories,
-						limit,
+						limit: searchLimit,
 						minScore: minRelevanceScore,
 						dateRange: dateFilter
 					})
 				: this.keywordSearchIntelligence(topic, {
 						categories,
-						limit,
+						limit: searchLimit,
 						minScore: minRelevanceScore,
 						dateRange: dateFilter
 					}),
@@ -267,8 +313,37 @@ export class AgentMemoryService {
 			targetEntity ? this.getOrganization(targetEntity) : Promise.resolve(null)
 		]);
 
+		// Apply reranking if enabled and we have results
+		let finalResults = intelligenceResults;
+		let rerankingLatencyMs: number | undefined;
+		let rerankingApplied = false;
+
+		if (shouldRerank && intelligenceResults.length > 0 && useSemanticSearch) {
+			const rerankStart = Date.now();
+			try {
+				finalResults = await this.rerankIntelligenceResults(
+					topic,
+					intelligenceResults,
+					Math.min(rerankTopK, limit)
+				);
+				rerankingApplied = true;
+				rerankingLatencyMs = Date.now() - rerankStart;
+
+				console.log(
+					`[AgentMemory] Reranking complete: ${intelligenceResults.length} candidates -> ${finalResults.length} results in ${rerankingLatencyMs}ms`
+				);
+			} catch (error) {
+				// Reranking failed - fall back to original results
+				console.error('[AgentMemory] Reranking failed, using original results:', error);
+				finalResults = intelligenceResults.slice(0, limit);
+			}
+		} else {
+			// No reranking - just trim to limit
+			finalResults = intelligenceResults.slice(0, limit);
+		}
+
 		// Group intelligence by category
-		const intelligence = this.groupByCategory(intelligenceResults);
+		const intelligence = this.groupByCategory(finalResults);
 
 		// Synthesize into prompt-ready context
 		const synthesizedContext = this.synthesizeContext({
@@ -286,10 +361,12 @@ export class AgentMemoryService {
 			organization: organizationResult || undefined,
 			synthesizedContext,
 			metadata: {
-				totalItems: intelligenceResults.length,
+				totalItems: finalResults.length,
 				method: useSemanticSearch ? 'semantic' : 'keyword',
 				latencyMs,
-				hasOrganization: !!organizationResult
+				hasOrganization: !!organizationResult,
+				rerankingApplied,
+				rerankingLatencyMs
 			}
 		};
 	}
@@ -410,6 +487,54 @@ export class AgentMemoryService {
 			console.error('[AgentMemory] Keyword search failed:', error);
 			return [];
 		}
+	}
+
+	/**
+	 * Rerank intelligence results using Voyage AI reranking model.
+	 *
+	 * This provides 10-30% precision improvement by using a cross-encoder
+	 * to directly score query-document pairs, rather than relying solely
+	 * on embedding similarity.
+	 *
+	 * @param query - The original search query
+	 * @param results - Vector search results to rerank
+	 * @param topK - Number of top results to return after reranking
+	 * @returns Reranked results with updated relevance scores
+	 */
+	private static async rerankIntelligenceResults(
+		query: string,
+		results: IntelligenceItem[],
+		topK: number
+	): Promise<IntelligenceItem[]> {
+		if (results.length === 0) {
+			return [];
+		}
+
+		// Prepare documents for reranking - combine title and snippet for richer context
+		const documentsToRerank = results.map(
+			(item) => `${item.title}. ${item.snippet}`
+		);
+
+		console.log(
+			`[AgentMemory] Reranking ${documentsToRerank.length} candidates for query: "${query.slice(0, 50)}..."`
+		);
+
+		// Call Voyage AI rerank (using rerank-2.5 for best performance)
+		const rerankResults = await rerankDocuments(query, documentsToRerank, {
+			model: 'rerank-2.5',
+			topK: Math.min(topK, results.length),
+			returnDocuments: false // We already have the documents
+		});
+
+		// Map reranked results back to IntelligenceItem with updated scores
+		return rerankResults.map((rerankResult) => {
+			const originalItem = results[rerankResult.index];
+			return {
+				...originalItem,
+				// Update relevance score with the reranking score
+				relevanceScore: rerankResult.relevanceScore
+			};
+		});
 	}
 
 	/**

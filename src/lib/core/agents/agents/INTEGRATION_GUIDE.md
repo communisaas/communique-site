@@ -93,7 +93,8 @@ eventSource.addEventListener('thought', (event) => {
   console.log(`[${phase}] ${content}`);
 });
 
-eventSource.addEventListener('phase', (event) => {
+// Standard event type is 'phase-change' (also handles legacy 'phase' for compatibility)
+eventSource.addEventListener('phase-change', (event) => {
   const { phase, message } = JSON.parse(event.data);
   console.log(`Phase: ${phase}`);
 });

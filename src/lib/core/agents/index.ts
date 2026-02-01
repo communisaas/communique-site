@@ -58,6 +58,17 @@ export type { GenerateMessageOptions } from './agents/message-writer';
 export { resolveDecisionMakers } from './agents/decision-maker';
 export type { ResolveOptions } from './agents/decision-maker';
 
+// Decision-Maker V2 with ThoughtStream integration
+export {
+	resolveDecisionMakersV2,
+	resolveDecisionMakersWithCompositeStreaming,
+	resolveDecisionMakersWithThoughts,
+	handleDocumentToolCall,
+	processGeminiFunctionCall,
+	getAgentToolDeclarations
+} from './agents/decision-maker-v2';
+export type { CompositeStreamingOptions } from './agents/decision-maker-v2';
+
 // Grounding utilities
 export {
 	extractSourcesFromGrounding,
@@ -91,3 +102,16 @@ export {
 	buildContinuationPrompt,
 	mergeContinuation
 } from './utils/truncation-recovery';
+
+// Context caching for token cost savings
+export {
+	getOrCreateCache,
+	invalidateCache,
+	clearAllCaches,
+	getCacheStats,
+	estimateTokenSavings,
+	hashContent,
+	stopCleanup,
+	CACHE_TTL_SECONDS
+} from './cache-manager';
+export type { CacheableContent, CacheEntry, CacheTTL } from './cache-manager';

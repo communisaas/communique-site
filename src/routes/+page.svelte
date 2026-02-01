@@ -58,6 +58,7 @@
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
 	let templateSaveError = $state<string | null>(null);
+	let isSubmitting = $state(false);
 	let userInitiatedSelection = $state(false);
 	let locationFilteredGroups = $state<TemplateGroup[]>([]);
 
@@ -516,6 +517,7 @@
 			context={creationContext}
 			initialText={creationInitialText}
 			initialDraftId={resumeDraftId}
+			{isSubmitting}
 			bind:onSaveError={templateSaveError}
 			on:close={() => {
 				showTemplateCreator = false;
@@ -526,6 +528,7 @@
 			}}
 			on:save={async (_event) => {
 				if (data.user) {
+					isSubmitting = true;
 					try {
 						templateSaveError = null;
 						const newTemplate = await templateStore.addTemplate(_event.detail);
@@ -540,6 +543,8 @@
 						templateSaveError =
 							error instanceof Error ? error.message : 'Failed to publish template';
 						console.error('Template save failed:', error);
+					} finally {
+						isSubmitting = false;
 					}
 				} else {
 					pendingTemplateToSave = _event.detail;

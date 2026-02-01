@@ -13,9 +13,9 @@ A production-ready semantic search system for Communique using MongoDB Atlas Vec
 ### Core Components
 
 1. **Voyage AI Client** (`src/lib/server/embeddings/`)
-   - Embedding generation (voyage-3, voyage-3-lite)
+   - Embedding generation (voyage-4, voyage-4-lite, voyage-law-2)
    - Batch processing with automatic chunking
-   - Reranking via Voyage AI rerank-2
+   - Reranking via Voyage AI rerank-2.5
    - Cost tracking and estimation
    - Retry logic with exponential backoff
    - Rate limiting handling
@@ -163,7 +163,7 @@ export interface IntelligenceItemDocument {
 
   // NEW: Vector search fields
   embedding?: number[];              // Voyage AI embedding (1024 dims)
-  embeddingModel?: string;           // e.g., 'voyage-3'
+  embeddingModel?: string;           // e.g., 'voyage-4'
   embeddingGeneratedAt?: Date;       // Timestamp
 }
 ```
@@ -176,7 +176,7 @@ export interface OrganizationDocument {
 
   // NEW: Vector search fields
   embedding?: number[];              // Voyage AI embedding (1024 dims)
-  embeddingModel?: string;           // e.g., 'voyage-3'
+  embeddingModel?: string;           // e.g., 'voyage-4'
   embeddingGeneratedAt?: Date;       // Timestamp
 }
 ```
@@ -223,7 +223,7 @@ const [embedding] = await createEmbedding(`${item.title}. ${item.snippet}`);
 await db.collection('intelligence').insertOne({
   ...item,
   embedding,
-  embeddingModel: 'voyage-3',
+  embeddingModel: 'voyage-4',
   embeddingGeneratedAt: new Date()
 });
 ```
@@ -236,9 +236,12 @@ Based on Voyage AI pricing (2026-01):
 
 | Component           | Model         | Price/1M Tokens |
 | ------------------- | ------------- | --------------- |
-| Embeddings          | voyage-3      | $0.06           |
-| Embeddings (lite)   | voyage-3-lite | $0.02           |
-| Reranking           | rerank-2      | $0.05           |
+| Embeddings          | voyage-4      | $0.06           |
+| Embeddings (lite)   | voyage-4-lite | $0.02           |
+| Embeddings (legal)  | voyage-law-2  | $0.12           |
+| Reranking           | rerank-2.5    | $0.05           |
+
+> **Note:** All Voyage 4 models output 1024-dimensional embeddings in a shared embedding space, allowing cost optimization (e.g., index with voyage-4, query with voyage-4-lite) without reindexing.
 
 **Estimated Monthly Cost (10K templates/month):**
 

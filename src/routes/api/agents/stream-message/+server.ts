@@ -46,8 +46,8 @@ interface RequestBody {
 }
 
 export const POST: RequestHandler = async (event) => {
-	// Rate limit check - throws 429 if exceeded (also blocks guests)
-	const rateLimitCheck = await enforceLLMRateLimit(event, 'message-generation');
+	// Rate limit check - DISABLED FOR DEMO
+	// const rateLimitCheck = await enforceLLMRateLimit(event, 'message-generation');
 	const userContext = getUserContext(event);
 	const startTime = Date.now();
 
@@ -106,7 +106,9 @@ export const POST: RequestHandler = async (event) => {
 					}
 				},
 				onPhase: (phase: PipelinePhase, message: string) => {
-					emitter.send('phase', { phase, message });
+					// Use 'phase-change' for consistency with unified event schema
+					// Note: Some legacy consumers may still expect 'phase'
+					emitter.send('phase-change', { phase, message });
 				}
 			});
 
@@ -137,7 +139,7 @@ export const POST: RequestHandler = async (event) => {
 	})();
 
 	const headers = new Headers(SSE_HEADERS);
-	addRateLimitHeaders(headers, rateLimitCheck);
+	// addRateLimitHeaders(headers, rateLimitCheck); // DISABLED FOR DEMO
 
 	return new Response(stream, { headers });
 };

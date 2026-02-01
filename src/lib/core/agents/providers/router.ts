@@ -193,7 +193,7 @@ export class DecisionMakerRouter {
 	private async resolveWithTimeout(
 		provider: DecisionMakerProvider,
 		context: ResolveContext,
-		timeoutMs: number = 60000
+		timeoutMs: number = 300000 // 5 minutes - increased for demo
 	): Promise<DecisionMakerResult> {
 		return Promise.race([
 			provider.resolve(context),

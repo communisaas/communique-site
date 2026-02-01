@@ -15,8 +15,7 @@ export { ThoughtEmitter } from './emitter';
 export {
 	CompositeThoughtEmitter,
 	createCompositeEmitter,
-	COMPOSITE_TIMING,
-	BASE_CONFIDENCE
+	COMPOSITE_TIMING
 } from './composite-emitter';
 
 // Export emitter option types
@@ -27,11 +26,13 @@ export type {
 	CompositePhase,
 	ConfidentThoughtSegment,
 	PhaseChangeEvent,
+	PhaseSettlingEvent,
 	ConfidenceUpdateEvent,
 	CompositeEvent,
 	ConfidentSegmentCallback,
 	PhaseChangeCallback,
-	ConfidenceUpdateCallback
+	ConfidenceUpdateCallback,
+	PhaseSettlingCallback
 } from './composite-emitter';
 
 // Export all types
@@ -64,5 +65,7 @@ export type {
 	// Utility Types
 	ThoughtSegmentGroup,
 	ThoughtStreamEvent,
-	ThoughtRenderOptions
+	ThoughtRenderOptions,
+	// Backward compatibility
+	LegacyPhaseThoughtStreamEvent
 } from './types';

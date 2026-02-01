@@ -123,7 +123,7 @@ async function generateIntelligenceEmbeddings(
 	// Generate embeddings
 	console.log('\nGenerating embeddings...');
 	const embeddings = await createBatchEmbeddings(texts, {
-		model: 'voyage-3',
+		model: 'voyage-4',
 		inputType: 'document',
 		batchSize,
 		showProgress: true
@@ -137,7 +137,7 @@ async function generateIntelligenceEmbeddings(
 			update: {
 				$set: {
 					embedding: embeddings[i],
-					embeddingModel: 'voyage-3',
+					embeddingModel: 'voyage-4',
 					embeddingGeneratedAt: new Date()
 				}
 			}
@@ -214,7 +214,7 @@ async function generateOrganizationEmbeddings(
 	// Generate embeddings
 	console.log('\nGenerating embeddings...');
 	const embeddings = await createBatchEmbeddings(texts, {
-		model: 'voyage-3',
+		model: 'voyage-4',
 		inputType: 'document',
 		batchSize,
 		showProgress: true
@@ -228,7 +228,7 @@ async function generateOrganizationEmbeddings(
 			update: {
 				$set: {
 					embedding: embeddings[i],
-					embeddingModel: 'voyage-3',
+					embeddingModel: 'voyage-4',
 					embeddingGeneratedAt: new Date()
 				}
 			}

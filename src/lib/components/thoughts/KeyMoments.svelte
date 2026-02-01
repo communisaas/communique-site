@@ -72,6 +72,17 @@ ACCESSIBILITY:
 	function getScheme(type: KeyMoment['type']) {
 		return typeSchemes[type];
 	}
+
+	/**
+	 * Convert confidence score to filled dot count
+	 * Aligns with Phase 2D.1 confidence thresholds
+	 */
+	function getConfidenceDots(confidence?: number) {
+		if (!confidence) return { filled: 1 }; // Default to 1 if unknown
+		if (confidence >= 0.85) return { filled: 3 };
+		if (confidence >= 0.55) return { filled: 2 };
+		return { filled: 1 };
+	}
 </script>
 
 {#if moments.length > 0}
@@ -100,6 +111,17 @@ ACCESSIBILITY:
 				<div class="moments-row flex min-w-0 flex-1 items-center gap-2 overflow-x-auto">
 					{#each moments as moment, i (moment.id)}
 						{@const scheme = getScheme(moment.type)}
+						{@const confidenceDots = getConfidenceDots(moment.confidence)}
+
+						<!-- Phase separator when transitioning from discovery to verification -->
+						{#if i > 0 && moment.sourcePhase === 'verification' && moments[i - 1]?.sourcePhase === 'discovery'}
+							<div class="phase-separator" aria-hidden="true">
+								<span class="separator-line"></span>
+								<span class="separator-label">verification</span>
+								<span class="separator-line"></span>
+							</div>
+						{/if}
+
 						<button
 							class="moment-chip group flex shrink-0 items-center gap-2 rounded-full border px-3 py-2
 								transition-all duration-200 ease-out
@@ -107,7 +129,7 @@ ACCESSIBILITY:
 								{scheme.bg} {scheme.border} {scheme.text} {scheme.ring}"
 							style="min-height: 44px; min-width: 44px;"
 							onclick={() => onmomentclick(moment)}
-							aria-label="View {moment.label}"
+							aria-label="View {moment.label} - {confidenceDots.filled} of 3 confidence"
 							in:fly={{
 								x: -20,
 								duration: 200,
@@ -127,6 +149,16 @@ ACCESSIBILITY:
 							<!-- Label -->
 							<span class="whitespace-nowrap text-sm font-medium">
 								{moment.label}
+							</span>
+
+							<!-- Confidence dots -->
+							<span
+								class="confidence-dots"
+								aria-label="{confidenceDots.filled} of 3 confidence"
+							>
+								{#each [0, 1, 2] as dotIndex}
+									<span class="dot" class:filled={dotIndex < confidenceDots.filled}>●</span>
+								{/each}
 							</span>
 						</button>
 					{/each}
@@ -174,5 +206,45 @@ ACCESSIBILITY:
 
 	.moment-chip:active {
 		transform: translateY(0);
+	}
+
+	/* Confidence dots - peripheral visual indicator */
+	.confidence-dots {
+		display: flex;
+		gap: 2px;
+		font-size: 0.625rem;
+		margin-left: 0.5rem;
+	}
+
+	.dot {
+		color: oklch(0.7 0.01 60 / 0.3); /* Unfilled */
+	}
+
+	.dot.filled {
+		color: oklch(0.55 0.12 145); /* Confident green */
+	}
+
+	/* Phase separator - subtle temporal marker */
+	.phase-separator {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 0 8px;
+		margin: 0 8px;
+	}
+
+	.separator-line {
+		flex: 1;
+		height: 1px;
+		background: oklch(0.8 0.02 60 / 0.4);
+		min-width: 16px;
+	}
+
+	.separator-label {
+		font-size: 0.625rem;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: oklch(0.5 0.02 60);
+		white-space: nowrap;
 	}
 </style>

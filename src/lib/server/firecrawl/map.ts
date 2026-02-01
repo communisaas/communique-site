@@ -21,21 +21,37 @@ import type { Collection, ObjectId } from 'mongodb';
 // ============================================================================
 
 /**
- * Options for the Map API request
+ * Options for the Map API request (v2)
  */
 export interface MapOptions {
 	/** URL of the site to map */
 	url: string;
 	/** Maximum depth to crawl (default: 2) */
 	maxDepth?: number;
-	/** Include subdomains in results (default: false) */
+	/** Include subdomains in results (default: false) - v1 parameter, kept for compatibility */
 	includeSubdomains?: boolean;
 	/** Maximum number of links to return (default: 100) */
 	limit?: number;
 	/** Search query to filter results (optional) */
 	search?: string;
-	/** Ignore sitemap.xml (default: false) */
+	/** Include sitemap.xml in discovery (default: false) - v2 parameter */
+	includeSitemap?: boolean;
+	/** Location settings for geo-targeted results (v2) */
+	location?: {
+		country?: string;
+		languages?: string[];
+	};
+	/** @deprecated Use includeSitemap instead. Kept for backward compatibility. */
 	ignoreSitemap?: boolean;
+}
+
+/**
+ * Link with metadata from v2 Map API
+ */
+export interface MapLink {
+	url: string;
+	title?: string;
+	description?: string;
 }
 
 /**
@@ -43,7 +59,10 @@ export interface MapOptions {
  */
 export interface MapResult {
 	success: boolean;
+	/** URL strings for backward compatibility */
 	links: string[];
+	/** Rich link data with metadata (v2) - may not be populated if API returns plain strings */
+	linksWithMetadata?: MapLink[];
 	error?: string;
 	/** Number of links discovered before filtering */
 	totalDiscovered?: number;
@@ -95,7 +114,7 @@ interface SiteMapCacheDocument {
 // Constants
 // ============================================================================
 
-const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v1';
+const FIRECRAWL_BASE_URL = 'https://api.firecrawl.dev/v2';
 const COLLECTION_NAME = 'site_map_cache';
 const DEFAULT_CACHE_DAYS = 7; // 1-week TTL
 
@@ -293,9 +312,18 @@ async function cacheMapResult(
 // ============================================================================
 
 /**
- * Call Firecrawl Map API directly
+ * Internal result type from Map API call
  */
-async function callFirecrawlMapApi(options: MapOptions): Promise<{ links: string[]; error?: string }> {
+interface MapApiCallResult {
+	links: string[];
+	linksWithMetadata?: MapLink[];
+	error?: string;
+}
+
+/**
+ * Call Firecrawl Map API v2 directly
+ */
+async function callFirecrawlMapApi(options: MapOptions): Promise<MapApiCallResult> {
 	const apiKey = process.env.FIRECRAWL_API_KEY;
 
 	if (!apiKey) {
@@ -309,21 +337,31 @@ async function callFirecrawlMapApi(options: MapOptions): Promise<{ links: string
 		limit: options.limit ?? 100
 	};
 
-	// Add optional parameters if provided
+	// Add optional parameters if provided (v2 format)
 	if (options.search) {
 		body.search = options.search;
 	}
-	if (options.ignoreSitemap !== undefined) {
-		body.ignoreSitemap = options.ignoreSitemap;
-	}
-	if (options.includeSubdomains !== undefined) {
-		body.includeSubdomains = options.includeSubdomains;
+
+	// Handle sitemap parameter (v2 uses 'sitemap' with 'include'/'exclude' values)
+	// Support both new includeSitemap and deprecated ignoreSitemap
+	if (options.includeSitemap !== undefined) {
+		body.sitemap = options.includeSitemap ? 'include' : undefined;
+	} else if (options.ignoreSitemap !== undefined) {
+		// Backward compatibility: ignoreSitemap=true means sitemap=undefined (exclude)
+		body.sitemap = options.ignoreSitemap ? undefined : 'include';
 	}
 
-	console.log('[firecrawl-map] Calling Map API:', {
+	// v2 location parameter for geo-targeting
+	if (options.location) {
+		body.location = options.location;
+	}
+
+	console.log('[firecrawl-map] Calling Map API v2:', {
 		url: options.url,
 		limit: body.limit,
-		hasSearch: !!options.search
+		hasSearch: !!options.search,
+		sitemap: body.sitemap,
+		hasLocation: !!options.location
 	});
 
 	try {
@@ -357,7 +395,7 @@ async function callFirecrawlMapApi(options: MapOptions): Promise<{ links: string
 
 		const data = await response.json();
 
-		// Firecrawl Map API returns { success: boolean, links: string[] }
+		// Firecrawl Map API returns { success: boolean, links: string[] | MapLink[] }
 		if (!data.success) {
 			return {
 				links: [],
@@ -365,7 +403,28 @@ async function callFirecrawlMapApi(options: MapOptions): Promise<{ links: string
 			};
 		}
 
-		return { links: data.links || [] };
+		// Handle v2 response format: links may be objects with metadata or plain strings
+		const rawLinks = data.links || [];
+		const links: string[] = [];
+		const linksWithMetadata: MapLink[] = [];
+
+		for (const link of rawLinks) {
+			if (typeof link === 'string') {
+				// v1 format: plain URL string
+				links.push(link);
+				linksWithMetadata.push({ url: link });
+			} else if (link && typeof link === 'object' && 'url' in link) {
+				// v2 format: object with url, title, description
+				links.push(link.url);
+				linksWithMetadata.push({
+					url: link.url,
+					title: link.title,
+					description: link.description
+				});
+			}
+		}
+
+		return { links, linksWithMetadata };
 	} catch (error) {
 		console.error('[firecrawl-map] Request error:', error);
 		return {
@@ -412,8 +471,8 @@ export async function mapSite(options: MapOptions): Promise<MapResult> {
 		};
 	}
 
-	// Call Firecrawl Map API
-	const { links, error } = await callFirecrawlMapApi(options);
+	// Call Firecrawl Map API v2
+	const { links, linksWithMetadata, error } = await callFirecrawlMapApi(options);
 
 	if (error) {
 		return {
@@ -436,13 +495,14 @@ export async function mapSite(options: MapOptions): Promise<MapResult> {
 			includeSubdomains: options.includeSubdomains,
 			limit: options.limit,
 			search: options.search,
-			ignoreSitemap: options.ignoreSitemap
+			includeSitemap: options.includeSitemap
 		}
 	);
 
 	return {
 		success: true,
 		links,
+		linksWithMetadata,
 		totalDiscovered: links.length,
 		cached: false
 	};
@@ -494,8 +554,8 @@ export async function mapSiteForLeadership(options: MapOptions): Promise<Leaders
 		};
 	}
 
-	// Call Firecrawl Map API
-	const { links, error } = await callFirecrawlMapApi(options);
+	// Call Firecrawl Map API v2
+	const { links, linksWithMetadata, error } = await callFirecrawlMapApi(options);
 
 	if (error) {
 		return {
@@ -529,13 +589,14 @@ export async function mapSiteForLeadership(options: MapOptions): Promise<Leaders
 			includeSubdomains: options.includeSubdomains,
 			limit: options.limit,
 			search: options.search,
-			ignoreSitemap: options.ignoreSitemap
+			includeSitemap: options.includeSitemap
 		}
 	);
 
 	return {
 		success: true,
 		links,
+		linksWithMetadata,
 		leadershipPages,
 		aboutPages,
 		otherPages,

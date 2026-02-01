@@ -144,7 +144,7 @@ export function deriveTargetPresentation(
  * Parse recipient_config from unknown JSON
  * Handles both new PerceptualRecipientConfig and legacy formats
  */
-function parseRecipientConfig(recipientConfig: unknown): PerceptualRecipientConfig | null {
+export function parseRecipientConfig(recipientConfig: unknown): PerceptualRecipientConfig | null {
 	if (!recipientConfig || typeof recipientConfig !== 'object') {
 		return null;
 	}

@@ -1,4 +1,4 @@
-import { redirect } from '@sveltejs/kit';
+import { redirect, error } from '@sveltejs/kit';
 import { CoinbaseOAuth } from '$lib/core/auth/coinbase-oauth';
 import { generateState, generateCodeVerifier, validateReturnTo } from '$lib/core/auth/oauth';
 import type { RequestHandler } from './$types';
@@ -7,11 +7,11 @@ export const GET: RequestHandler = async ({ cookies, url }) => {
 	const state = generateState();
 	const codeVerifier = generateCodeVerifier();
 
-	// Validate OAuth credentials
+	// Validate OAuth credentials - return 503 if not configured
 	const clientId = process.env.COINBASE_CLIENT_ID;
 	const clientSecret = process.env.COINBASE_CLIENT_SECRET;
 	if (!clientId || !clientSecret) {
-		throw new Error('Missing OAuth credentials for Coinbase');
+		throw error(503, 'Coinbase authentication is not currently available');
 	}
 
 	const redirectUri = `${process.env.OAUTH_REDIRECT_BASE_URL}/auth/coinbase/callback`;

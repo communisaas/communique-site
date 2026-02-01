@@ -57,6 +57,34 @@ const QUOTAS: Record<string, Record<TrustTier, [number, number]>> = {
 		verified: [30, 3600000] // 30 per hour
 	},
 
+	// Firecrawl Map API: site mapping for leadership pages
+	'firecrawl-map': {
+		guest: [0, 3600000], // BLOCKED for guests
+		authenticated: [5, 3600000], // 5 per hour
+		verified: [15, 3600000] // 15 per hour
+	},
+
+	// Firecrawl Deep Research API: expensive autonomous research
+	'firecrawl-research': {
+		guest: [0, 3600000], // BLOCKED for guests
+		authenticated: [0, 3600000], // BLOCKED - verified only
+		verified: [3, 3600000] // 3 per hour (expensive operation)
+	},
+
+	// Firecrawl Observer API: page monitoring
+	'firecrawl-observer': {
+		guest: [0, 3600000], // BLOCKED for guests
+		authenticated: [0, 3600000], // BLOCKED - verified only
+		verified: [10, 3600000] // 10 per hour (creates observers)
+	},
+
+	// Firecrawl Enrich API: contact enrichment
+	'firecrawl-enrich': {
+		guest: [0, 3600000], // BLOCKED for guests
+		authenticated: [0, 3600000], // BLOCKED - verified only
+		verified: [20, 3600000] // 20 per hour (moderate cost operation)
+	},
+
 	// Global daily limit across all operations (circuit breaker)
 	'daily-global': {
 		guest: [10, 86400000], // 10 per day total
@@ -220,8 +248,28 @@ function getBlockedReason(operation: string, tier: TrustTier): string {
 				return 'Finding decision-makers requires an account. Sign in to continue.';
 			case 'message-generation':
 				return 'Generating messages requires an account. Sign in to continue.';
+			case 'firecrawl-map':
+				return 'Site mapping requires an account. Sign in to continue.';
+			case 'firecrawl-research':
+				return 'Deep research requires a verified account. Sign in and verify your identity.';
+			case 'firecrawl-observer':
+				return 'Page observers require a verified account. Sign in and verify your identity.';
+			case 'firecrawl-enrich':
+				return 'Contact enrichment requires a verified account. Sign in and verify your identity.';
 			default:
 				return 'This action requires an account.';
+		}
+	}
+	if (tier === 'authenticated') {
+		switch (operation) {
+			case 'firecrawl-research':
+				return 'Deep research requires a verified account. Please verify your identity.';
+			case 'firecrawl-observer':
+				return 'Page observers require a verified account. Please verify your identity.';
+			case 'firecrawl-enrich':
+				return 'Contact enrichment requires a verified account. Please verify your identity.';
+			default:
+				return 'This action requires identity verification.';
 		}
 	}
 	return 'This action is not available for your account type.';
@@ -250,6 +298,14 @@ function getRateLimitReason(
 			return `Decision-maker lookup limit reached. Try again after ${resetTime}.`;
 		case 'message-generation':
 			return `Message generation limit reached. Try again after ${resetTime}.`;
+		case 'firecrawl-map':
+			return `Site mapping limit reached. Try again after ${resetTime}.`;
+		case 'firecrawl-research':
+			return `Deep research limit reached (expensive operation). Try again after ${resetTime}.`;
+		case 'firecrawl-observer':
+			return `Observer creation limit reached. Try again after ${resetTime}.`;
+		case 'firecrawl-enrich':
+			return `Contact enrichment limit reached. Try again after ${resetTime}.`;
 		default:
 			return `Rate limit exceeded. Try again after ${resetTime}.`;
 	}

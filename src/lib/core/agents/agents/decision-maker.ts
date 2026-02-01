@@ -16,7 +16,8 @@
  * Two calls total (not N+1): Phase 2 is a single batched grounding call.
  */
 
-import { decisionMakerRouter, type ResolveContext } from '../providers';
+import { decisionMakerRouter } from '../providers';
+import type { ResolveContext } from '../providers';
 import type { DecisionMakerResponse, DecisionMaker } from '../types';
 import type { ProcessedDecisionMaker } from '$lib/types/template';
 
@@ -24,13 +25,11 @@ import type { ProcessedDecisionMaker } from '$lib/types/template';
 // Public Interface — Exported for backward compatibility
 // ============================================================================
 
-export type PipelinePhase = 'discover' | 'lookup' | 'complete';
+// Re-export shared types for backward compatibility
+export type { PipelinePhase, StreamingCallbacks } from '../shared-types';
 
-export interface StreamingCallbacks {
-	onThought?: (thought: string, phase: PipelinePhase) => void;
-	onPhase?: (phase: PipelinePhase, message: string) => void;
-	onProgress?: (progress: { current: number; total: number; candidateName?: string; status?: string }) => void;
-}
+// Import for local use
+import type { StreamingCallbacks } from '../shared-types';
 
 export interface ResolveOptions {
 	subjectLine: string;

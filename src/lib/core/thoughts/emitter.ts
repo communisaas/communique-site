@@ -36,6 +36,11 @@ import type {
 	InsightOptions,
 	RecommendOptions
 } from './types';
+import type {
+	DocumentAnalysisEvent,
+	DocumentProgressEvent,
+	AnalysisStartEvent
+} from '$lib/server/reducto/types';
 
 // ============================================================================
 // ThoughtEmitter Class
@@ -531,6 +536,178 @@ export class ThoughtEmitter {
 
 		return citation;
 	}
+
+	// ========================================================================
+	// Document Analysis Streaming (Perceptual Engineering)
+	// ========================================================================
+
+	/**
+	 * Bridge Reducto document analysis events to thought segments.
+	 *
+	 * This method implements perceptual engineering for long-running document
+	 * analysis (30-60s). It converts DocumentAnalysisEvents into appropriate
+	 * ThoughtSegments that maintain user engagement:
+	 *
+	 * Timing budget awareness:
+	 * - 0-1s: Immediate feedback (analysis_start -> action segment)
+	 * - 1-30s: Granular progress (document_progress -> updates)
+	 * - 30s+: "Still working" signals (interim findings, stage changes)
+	 *
+	 * @param event - Document analysis event from Reducto client
+	 *
+	 * @example
+	 * ```typescript
+	 * const emitter = new ThoughtEmitter(onSegment);
+	 *
+	 * await client.parseMultiple(urls, {
+	 *   onProgress: (event) => emitter.handleDocumentAnalysisEvent(event)
+	 * });
+	 * ```
+	 */
+	handleDocumentAnalysisEvent(event: DocumentAnalysisEvent): void {
+		switch (event.type) {
+			case 'analysis_start':
+				this.handleAnalysisStart(event);
+				break;
+			case 'document_progress':
+				this.handleDocumentProgress(event);
+				break;
+			case 'document_interim':
+				this.handleDocumentInterim(event);
+				break;
+			case 'analysis_complete':
+				this.handleAnalysisComplete(event);
+				break;
+		}
+	}
+
+	/**
+	 * Handle analysis start event - immediate feedback (0-1s timing budget)
+	 */
+	private handleAnalysisStart(event: AnalysisStartEvent): void {
+		const estimatedSeconds = Math.round(event.estimatedTimeMs / 1000);
+		const parallelNote = event.parallel ? ' in parallel' : '';
+
+		this.think(
+			`Analyzing ${event.count} document${event.count > 1 ? 's' : ''}${parallelNote}. ` +
+			`Estimated time: ~${estimatedSeconds}s.`,
+			{ emphasis: 'normal' }
+		);
+
+		// Create action for tracking
+		const action = this.startAction(
+			'analyze',
+			`Document analysis: ${event.count} file${event.count > 1 ? 's' : ''}`
+		);
+
+		// Store the action handle for later updates (using closure)
+		// We'll emit progress as document_progress events arrive
+		this.documentAnalysisAction = action;
+	}
+
+	/**
+	 * Handle document progress event - granular updates (1-30s timing budget)
+	 */
+	private handleDocumentProgress(event: DocumentProgressEvent): void {
+		const progressPercent = Math.round(((event.index + 1) / event.total) * 100);
+		const seconds = (event.timeElapsedMs / 1000).toFixed(1);
+
+		// Map stage to user-friendly message
+		const stageMessages: Record<DocumentProgressEvent['stage'], string> = {
+			queued: 'Queued for analysis',
+			parsing: 'Parsing document structure',
+			extracting: 'Extracting key information',
+			complete: `Complete (${seconds}s)${event.cached ? ' [cached]' : ''}`,
+			error: `Failed: ${event.error || 'Unknown error'}`,
+			timeout: `Timed out after ${seconds}s`
+		};
+
+		const stageMessage = stageMessages[event.stage] || event.stage;
+		const docLabel = event.title || this.extractUrlName(event.url);
+
+		// Emit progress thought with muted emphasis (ambient awareness)
+		if (event.stage === 'complete') {
+			this.documentAnalysisAction?.addFinding(`${docLabel}: ${stageMessage}`);
+		} else if (event.stage === 'error' || event.stage === 'timeout') {
+			this.think(`[${event.index + 1}/${event.total}] ${docLabel}: ${stageMessage}`, {
+				emphasis: 'muted'
+			});
+		} else if (event.stage === 'parsing') {
+			// Only emit parsing start for ambient awareness (not queued, which is too noisy)
+			this.think(`[${event.index + 1}/${event.total}] ${docLabel}: ${stageMessage}`, {
+				emphasis: 'muted'
+			});
+		}
+	}
+
+	/**
+	 * Handle interim finding event - prevents "stuck" perception (30s+ timing budget)
+	 */
+	private handleDocumentInterim(event: { documentIndex: number; finding: string; confidence: number }): void {
+		// Convert confidence to a more human-readable indicator
+		const confidenceLabel = event.confidence >= 0.7 ? 'likely relevant' :
+			event.confidence >= 0.4 ? 'potentially relevant' : 'mentioned';
+
+		this.insight(
+			`Found (${confidenceLabel}): "${event.finding}"`,
+			{ pin: event.confidence >= 0.7 }
+		);
+	}
+
+	/**
+	 * Handle analysis complete event
+	 */
+	private handleAnalysisComplete(event: {
+		total: number;
+		successful: number;
+		failed: number;
+		timedOut: number;
+		totalTimeMs: number;
+	}): void {
+		const seconds = (event.totalTimeMs / 1000).toFixed(1);
+
+		// Build summary message
+		const parts: string[] = [];
+		if (event.successful > 0) {
+			parts.push(`${event.successful} succeeded`);
+		}
+		if (event.failed > 0) {
+			parts.push(`${event.failed} failed`);
+		}
+		if (event.timedOut > 0) {
+			parts.push(`${event.timedOut} timed out`);
+		}
+
+		const summary = `Document analysis complete: ${parts.join(', ')} in ${seconds}s`;
+
+		// Complete the action
+		this.documentAnalysisAction?.complete(summary);
+		this.documentAnalysisAction = undefined;
+	}
+
+	/**
+	 * Extract a readable name from a URL for display
+	 */
+	private extractUrlName(url: string): string {
+		try {
+			const urlObj = new URL(url);
+			// Get filename or last path segment
+			const path = urlObj.pathname;
+			const segments = path.split('/').filter(Boolean);
+			if (segments.length > 0) {
+				const last = segments[segments.length - 1];
+				// Remove extension and truncate if too long
+				const name = last.replace(/\.[^.]+$/, '');
+				return name.length > 40 ? name.slice(0, 37) + '...' : name;
+			}
+			return urlObj.hostname;
+		} catch {
+			return url.length > 50 ? url.slice(0, 47) + '...' : url;
+		}
+	}
+
+	/** Internal handle for tracking document analysis action */
+	private documentAnalysisAction?: ActionHandle;
 
 	// ========================================================================
 	// State Access

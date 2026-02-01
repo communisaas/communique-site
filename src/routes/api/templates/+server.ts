@@ -157,6 +157,204 @@ function validateTemplateData(data: unknown): {
 	return { isValid: true, errors: [], validData };
 }
 
+// Zod schema for metrics validation (shared by GET and POST)
+const MetricsSchema = z
+	.object({
+		opened: z.number().optional(),
+		clicked: z.number().optional(),
+		responded: z.number().optional(),
+		views: z.number().optional(),
+		total_districts: z.number().optional(),
+		district_coverage_percent: z.number().optional(),
+		personalization_rate: z.number().optional(),
+		effectiveness_score: z.number().optional(),
+		cascade_depth: z.number().optional(),
+		viral_coefficient: z.number().optional(),
+		funnel_views: z.number().optional(),
+		modal_views: z.number().optional(),
+		onboarding_starts: z.number().optional(),
+		onboarding_completes: z.number().optional(),
+		auth_completions: z.number().optional(),
+		shares: z.number().optional()
+	})
+	.passthrough();
+
+/**
+ * Format a raw Prisma template for client consumption.
+ * Adds computed fields required by the Template interface:
+ * - coordinationScale: 0-1 logarithmic scale based on verified_sends
+ * - isNew: true if created within last 7 days
+ * - send_count: mapped from verified_sends for frontend compatibility
+ */
+function formatTemplateForClient(
+	template: {
+		id: string;
+		slug: string;
+		title: string;
+		description: string | null;
+		category: string;
+		topics: unknown;
+		type: string;
+		deliveryMethod: string;
+		message_body: string;
+		preview: string;
+		verified_sends: number;
+		unique_districts: number;
+		metrics: unknown;
+		delivery_config: unknown;
+		cwc_config: unknown;
+		recipient_config: unknown;
+		campaign_id: string | null;
+		status: string;
+		is_public: boolean;
+		createdAt: Date;
+		jurisdictions?: unknown[];
+		applicable_countries?: string[] | null;
+		specific_locations?: string[] | null;
+		jurisdiction_level?: string | null;
+	},
+	scope?: UnknownRecord | null
+) {
+	// Extract metrics from JSON field with validation
+	let jsonMetrics = {};
+	if (typeof template.metrics === 'string') {
+		try {
+			const parsed = JSON.parse(template.metrics);
+			const result = MetricsSchema.safeParse(parsed);
+			if (result.success) {
+				jsonMetrics = result.data;
+			} else {
+				console.warn(
+					`[Templates API] Invalid metrics for template ${template.id}:`,
+					result.error.flatten()
+				);
+			}
+		} catch (error) {
+			console.warn(`[Templates API] Failed to parse metrics for template ${template.id}:`, error);
+		}
+	} else {
+		const result = MetricsSchema.safeParse(template.metrics || {});
+		if (result.success) {
+			jsonMetrics = result.data;
+		} else {
+			console.warn(
+				`[Templates API] Invalid metrics object for template ${template.id}:`,
+				result.error.flatten()
+			);
+		}
+	}
+
+	// Calculate coordination scale (0-1 range, logarithmic for perceptual encoding)
+	// 1 send = 0.0, 10 sends = 0.33, 100 sends = 0.67, 1000+ sends = 1.0
+	const sendCount = template.verified_sends || 0;
+	const coordinationScale = Math.min(1.0, Math.log10(Math.max(1, sendCount)) / 3);
+
+	// Determine if template is "new" (created in last 7 days)
+	const createdAt = new Date(template.createdAt);
+	const now = new Date();
+	const daysSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
+	const isNew = daysSinceCreation <= 7;
+
+	return {
+		id: template.id,
+		slug: template.slug,
+		title: template.title,
+		description: template.description || '',
+		category: template.category,
+		topics: (template.topics as string[]) || [],
+		type: template.type,
+		deliveryMethod: template.deliveryMethod,
+		subject: template.title,
+		message_body: template.message_body,
+		preview: template.preview,
+
+		// === PERCEPTUAL ENCODING PROPERTIES ===
+		coordinationScale, // 0-1 scale for visual weight (card size)
+		isNew, // Temporal signal for "New" badge
+
+		// === AGGREGATE METRICS (consistent with schema) ===
+		verified_sends: template.verified_sends, // Integer field from schema
+		unique_districts: template.unique_districts, // Integer field from schema
+		send_count: template.verified_sends, // Frontend compatibility (mapped from verified_sends)
+
+		// === METRICS OBJECT (backward compatibility + JSON fields) ===
+		metrics: {
+			// Aggregate fields (single source of truth)
+			sent: template.verified_sends, // Use schema field as source of truth
+			districts_covered: template.unique_districts, // Use schema field as source of truth
+
+			// JSON-only metrics (not in schema as integers)
+			opened: (jsonMetrics as { opened?: number }).opened || 0,
+			clicked: (jsonMetrics as { clicked?: number }).clicked || 0,
+			responded: (jsonMetrics as { responded?: number }).responded || 0,
+			views: (jsonMetrics as { views?: number }).views || 0,
+
+			// Congressional-specific (fallback to JSON if not in aggregate)
+			total_districts: (jsonMetrics as { total_districts?: number }).total_districts || 435,
+			district_coverage_percent:
+				(jsonMetrics as { district_coverage_percent?: number }).district_coverage_percent ||
+				(template.unique_districts ? Math.round((template.unique_districts / 435) * 100) : 0),
+
+			// AI/Analytics metrics from JSON
+			personalization_rate:
+				(jsonMetrics as { personalization_rate?: number }).personalization_rate || 0,
+			effectiveness_score: (jsonMetrics as { effectiveness_score?: number }).effectiveness_score,
+			cascade_depth: (jsonMetrics as { cascade_depth?: number }).cascade_depth,
+			viral_coefficient: (jsonMetrics as { viral_coefficient?: number }).viral_coefficient,
+
+			// Funnel tracking metrics from JSON
+			funnel_views: (jsonMetrics as { funnel_views?: number }).funnel_views,
+			modal_views: (jsonMetrics as { modal_views?: number }).modal_views,
+			onboarding_starts: (jsonMetrics as { onboarding_starts?: number }).onboarding_starts,
+			onboarding_completes: (jsonMetrics as { onboarding_completes?: number }).onboarding_completes,
+			auth_completions: (jsonMetrics as { auth_completions?: number }).auth_completions,
+			shares: (jsonMetrics as { shares?: number }).shares
+		},
+
+		delivery_config: template.delivery_config,
+		cwc_config: template.cwc_config,
+		recipient_config: template.recipient_config,
+		campaign_id: template.campaign_id,
+		status: template.status,
+		is_public: template.is_public,
+
+		// Jurisdictions for location filtering (Phase 3)
+		jurisdictions: template.jurisdictions || [],
+
+		// Optional scope from separate table
+		scope: scope || null,
+
+		// Legacy fields for backward compatibility
+		applicable_countries: template.applicable_countries || null,
+		specific_locations: template.specific_locations || null,
+		jurisdiction_level: template.jurisdiction_level || null,
+
+		recipientEmails: (() => {
+			// Validate and parse recipient_config
+			const RecipientConfigSchema = z.unknown();
+			let recipientConfig = null;
+
+			if (typeof template.recipient_config === 'string') {
+				try {
+					const parsed = JSON.parse(template.recipient_config);
+					const result = RecipientConfigSchema.safeParse(parsed);
+					recipientConfig = result.success ? result.data : null;
+				} catch (error) {
+					console.warn(
+						`[Templates API] Failed to parse recipient_config for template ${template.id}:`,
+						error
+					);
+				}
+			} else {
+				const result = RecipientConfigSchema.safeParse(template.recipient_config);
+				recipientConfig = result.success ? result.data : null;
+			}
+
+			return extractRecipientEmails(recipientConfig);
+		})()
+	};
+}
+
 export const GET: RequestHandler = async () => {
 	try {
 		const dbTemplates = await db.template.findMany({
@@ -191,165 +389,10 @@ export const GET: RequestHandler = async () => {
 
 		const idToScope = new Map(scopes.map((s) => [s.template_id, s]));
 
-		// Zod schema for metrics validation
-		const MetricsSchema = z
-			.object({
-				opened: z.number().optional(),
-				clicked: z.number().optional(),
-				responded: z.number().optional(),
-				views: z.number().optional(),
-				total_districts: z.number().optional(),
-				district_coverage_percent: z.number().optional(),
-				personalization_rate: z.number().optional(),
-				effectiveness_score: z.number().optional(),
-				cascade_depth: z.number().optional(),
-				viral_coefficient: z.number().optional(),
-				funnel_views: z.number().optional(),
-				modal_views: z.number().optional(),
-				onboarding_starts: z.number().optional(),
-				onboarding_completes: z.number().optional(),
-				auth_completions: z.number().optional(),
-				shares: z.number().optional()
-			})
-			.passthrough();
-
-		const formattedTemplates = dbTemplates.map((template) => {
-			// Extract metrics from JSON field with validation
-			let jsonMetrics = {};
-			if (typeof template.metrics === 'string') {
-				try {
-					const parsed = JSON.parse(template.metrics);
-					const result = MetricsSchema.safeParse(parsed);
-					if (result.success) {
-						jsonMetrics = result.data;
-					} else {
-						console.warn(
-							`[Templates API] Invalid metrics for template ${template.id}:`,
-							result.error.flatten()
-						);
-					}
-				} catch (error) {
-					console.warn(`[Templates API] Failed to parse metrics for template ${template.id}:`, error);
-				}
-			} else {
-				const result = MetricsSchema.safeParse(template.metrics || {});
-				if (result.success) {
-					jsonMetrics = result.data;
-				} else {
-					console.warn(
-						`[Templates API] Invalid metrics object for template ${template.id}:`,
-						result.error.flatten()
-					);
-				}
-			}
-
-			// Calculate coordination scale (0-1 range, logarithmic for perceptual encoding)
-			// 1 send = 0.0, 10 sends = 0.33, 100 sends = 0.67, 1000+ sends = 1.0
-			const sendCount = template.verified_sends || 0;
-			const coordinationScale = Math.min(1.0, Math.log10(Math.max(1, sendCount)) / 3);
-
-			// Determine if template is "new" (created in last 7 days)
-			const createdAt = new Date(template.createdAt);
-			const now = new Date();
-			const daysSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24);
-			const isNew = daysSinceCreation <= 7;
-
-			return {
-				id: template.id,
-				slug: template.slug,
-				title: template.title,
-				description: template.description,
-				category: template.category,
-				topics: (template.topics as string[]) || [],
-				type: template.type,
-				deliveryMethod: template.deliveryMethod,
-				subject: template.title,
-				message_body: template.message_body,
-				preview: template.preview,
-
-				// === PERCEPTUAL ENCODING PROPERTIES ===
-				coordinationScale, // 0-1 scale for visual weight (card size)
-				isNew, // Temporal signal for "New" badge
-
-				// === AGGREGATE METRICS (consistent with schema) ===
-				verified_sends: template.verified_sends, // Integer field from schema
-				unique_districts: template.unique_districts, // Integer field from schema
-				send_count: template.verified_sends, // Frontend compatibility (mapped from verified_sends)
-
-				// === METRICS OBJECT (backward compatibility + JSON fields) ===
-				metrics: {
-					// Aggregate fields (single source of truth)
-					sent: template.verified_sends, // Use schema field as source of truth
-					districts_covered: template.unique_districts, // Use schema field as source of truth
-
-					// JSON-only metrics (not in schema as integers)
-					opened: (jsonMetrics as { opened?: number }).opened || 0,
-					clicked: (jsonMetrics as { clicked?: number }).clicked || 0,
-					responded: (jsonMetrics as { responded?: number }).responded || 0,
-					views: (jsonMetrics as { views?: number }).views || 0,
-
-					// Congressional-specific (fallback to JSON if not in aggregate)
-					total_districts: (jsonMetrics as { total_districts?: number }).total_districts || 435,
-					district_coverage_percent:
-						(jsonMetrics as { district_coverage_percent?: number }).district_coverage_percent ||
-						(template.unique_districts ? Math.round((template.unique_districts / 435) * 100) : 0),
-
-					// AI/Analytics metrics from JSON
-					personalization_rate:
-						(jsonMetrics as { personalization_rate?: number }).personalization_rate || 0,
-					effectiveness_score: (jsonMetrics as { effectiveness_score?: number })
-						.effectiveness_score,
-					cascade_depth: (jsonMetrics as { cascade_depth?: number }).cascade_depth,
-					viral_coefficient: (jsonMetrics as { viral_coefficient?: number }).viral_coefficient,
-
-					// Funnel tracking metrics from JSON
-					funnel_views: (jsonMetrics as { funnel_views?: number }).funnel_views,
-					modal_views: (jsonMetrics as { modal_views?: number }).modal_views,
-					onboarding_starts: (jsonMetrics as { onboarding_starts?: number }).onboarding_starts,
-					onboarding_completes: (jsonMetrics as { onboarding_completes?: number })
-						.onboarding_completes,
-					auth_completions: (jsonMetrics as { auth_completions?: number }).auth_completions,
-					shares: (jsonMetrics as { shares?: number }).shares
-				},
-
-				delivery_config: template.delivery_config,
-				cwc_config: template.cwc_config,
-				recipient_config: template.recipient_config,
-				campaign_id: template.campaign_id,
-				status: template.status,
-				is_public: template.is_public,
-
-				// Jurisdictions for location filtering (Phase 3)
-				jurisdictions: template.jurisdictions || [],
-
-				// Optional scope from separate table
-				scope: idToScope.get(template.id) || null,
-
-				recipientEmails: (() => {
-					// Validate and parse recipient_config
-					const RecipientConfigSchema = z.unknown();
-					let recipientConfig = null;
-
-					if (typeof template.recipient_config === 'string') {
-						try {
-							const parsed = JSON.parse(template.recipient_config);
-							const result = RecipientConfigSchema.safeParse(parsed);
-							recipientConfig = result.success ? result.data : null;
-						} catch (error) {
-							console.warn(
-								`[Templates API] Failed to parse recipient_config for template ${template.id}:`,
-								error
-							);
-						}
-					} else {
-						const result = RecipientConfigSchema.safeParse(template.recipient_config);
-						recipientConfig = result.success ? result.data : null;
-					}
-
-					return extractRecipientEmails(recipientConfig);
-				})()
-			};
-		});
+		// Use shared formatting helper for consistency between GET and POST
+		const formattedTemplates = dbTemplates.map((template) =>
+			formatTemplateForClient(template, idToScope.get(template.id))
+		);
 
 		const response: ApiResponse = {
 			success: true,
@@ -679,9 +722,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					}
 				}
 
+				// Format template with computed fields for client consumption
+				// This ensures POST returns the same structure as GET for consistency
+				const formattedTemplate = formatTemplateForClient(newTemplate, null);
+
 				const response: ApiResponse = {
 					success: true,
-					data: { template: newTemplate }
+					data: formattedTemplate
 				};
 
 				return json(response);

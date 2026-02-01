@@ -23,12 +23,17 @@ import {
 	buildPersonLookupPrompt
 } from '../prompts/decision-maker';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
+import { buildSourceList, findBestGroundedSource } from '../utils/grounding';
+import type { GroundingMetadata } from '../types';
+import type { Source } from '../types';
 import {
 	getAgentToolDeclarations,
-	processGeminiFunctionCall
+	processGeminiFunctionCall,
+	processMultipleDocumentCalls
 } from '../agents/decision-maker-v2';
 import { ThoughtEmitter } from '$lib/core/thoughts/emitter';
 import type { ThoughtSegment } from '$lib/core/thoughts/types';
+import type { ParsedDocument } from '$lib/server/reducto/types';
 import type { ProcessedDecisionMaker } from '$lib/types/template';
 import type {
 	DecisionMakerProvider,
@@ -44,7 +49,7 @@ import type {
 /**
  * Result of verifying a single decision-maker's current status
  */
-export interface VerificationResult {
+export interface DecisionMakerVerificationResult {
 	/** ID/reference of the decision-maker being verified */
 	decisionMakerId: string;
 	/** Whether the person is confirmed to still hold their position */
@@ -167,6 +172,25 @@ interface PersonLookupResponse {
 const MAX_FUNCTION_CALL_ITERATIONS = 5;
 
 /**
+ * Result from executeWithFunctionCalling
+ */
+interface FunctionCallingResult {
+	/** Final response text after all function calls resolved */
+	text: string;
+	/** Parsed documents collected during function calling */
+	documents: Map<string, ParsedDocument>;
+	/** Grounding metadata from Google Search (for L1 inline citations) */
+	groundingMetadata?: {
+		webSearchQueries?: string[];
+		groundingChunks?: Array<{ web?: { uri?: string; title?: string } }>;
+		groundingSupports?: Array<{
+			segment?: { startIndex: number; endIndex: number };
+			groundingChunkIndices?: number[];
+		}>;
+	};
+}
+
+/**
  * Execute a Gemini request with function calling support.
  *
  * This function handles the agentic loop:
@@ -179,15 +203,18 @@ const MAX_FUNCTION_CALL_ITERATIONS = 5;
  * @param config - Gemini generation config (will add tools if not present)
  * @param emitter - ThoughtEmitter for streaming document analysis updates
  * @param onThought - Callback for streaming thoughts to the user
- * @returns Final response text after all function calls resolved
+ * @returns Final response text and collected documents after all function calls resolved
  */
 async function executeWithFunctionCalling(
 	prompt: string,
 	config: GenerateContentConfig,
 	emitter: ThoughtEmitter,
 	onThought?: (thought: string) => void
-): Promise<string> {
+): Promise<FunctionCallingResult> {
 	const ai = getGeminiClient();
+
+	// Create documents collector for L2 previews
+	const documentsCollector = new Map<string, ParsedDocument>();
 
 	// Get document tool declarations
 	const agentTools = getAgentToolDeclarations();
@@ -238,34 +265,122 @@ async function executeWithFunctionCalling(
 					contents.push(response.candidates[0].content);
 				}
 
-				// Process each function call and collect results
+				// Process function calls - use parallel processing for multiple document calls
 				const functionResponseParts: Part[] = [];
 
-				for (const functionCall of functionCalls) {
-					// Skip if missing required fields
-					if (!functionCall.name) {
-						console.warn('[gemini-provider] Function call missing name, skipping');
-						continue;
+				// Separate document calls from other calls for parallel processing
+				const documentCalls = functionCalls.filter(fc => fc.name === 'analyze_document');
+				const otherCalls = functionCalls.filter(fc => fc.name !== 'analyze_document');
+
+				// Process multiple document calls in parallel (significant speedup)
+				if (documentCalls.length > 1) {
+					console.log(`[gemini-provider] Processing ${documentCalls.length} document calls in parallel`);
+
+					if (onThought) {
+						onThought(`Analyzing ${documentCalls.length} documents in parallel...`);
 					}
 
-					// Emit thought about the function call
+					try {
+						const wrappedCalls = documentCalls.map(fc => ({
+							name: fc.name!,
+							args: fc.args || {}
+						}));
+
+						const results = await processMultipleDocumentCalls(
+							wrappedCalls,
+							emitter,
+							documentsCollector
+						);
+
+						// Add results to response parts
+						documentCalls.forEach((fc, index) => {
+							functionResponseParts.push({
+								functionResponse: {
+									name: fc.name!,
+									response: results[index]
+								}
+							} as Part);
+						});
+
+						console.log(`[gemini-provider] Parallel document processing complete`);
+					} catch (error) {
+						console.error(`[gemini-provider] Parallel document processing failed:`, error);
+
+						// Fall back to individual error responses
+						documentCalls.forEach(fc => {
+							functionResponseParts.push({
+								functionResponse: {
+									name: fc.name!,
+									response: {
+										success: false,
+										error: error instanceof Error ? error.message : 'Parallel processing failed'
+									}
+								}
+							} as Part);
+						});
+					}
+				} else if (documentCalls.length === 1) {
+					// Single document call - process normally
+					const functionCall = documentCalls[0];
 					if (onThought) {
 						const url = functionCall.args?.url as string | undefined;
 						onThought(`Analyzing document: ${url || 'document'}...`);
 					}
 
 					try {
-						// Execute the function with the emitter for thought streaming
-						// Wrap in the expected format for processGeminiFunctionCall
+						const result = await processGeminiFunctionCall(
+							{
+								name: functionCall.name!,
+								args: functionCall.args || {}
+							},
+							emitter,
+							documentsCollector
+						);
+
+						functionResponseParts.push({
+							functionResponse: {
+								name: functionCall.name!,
+								response: result
+							}
+						} as Part);
+
+						console.log(`[gemini-provider] Document analysis completed successfully`);
+					} catch (error) {
+						console.error(`[gemini-provider] Document analysis failed:`, error);
+
+						functionResponseParts.push({
+							functionResponse: {
+								name: functionCall.name!,
+								response: {
+									success: false,
+									error: error instanceof Error ? error.message : 'Function execution failed'
+								}
+							}
+						} as Part);
+					}
+				}
+
+				// Process other (non-document) function calls sequentially
+				for (const functionCall of otherCalls) {
+					if (!functionCall.name) {
+						console.warn('[gemini-provider] Function call missing name, skipping');
+						continue;
+					}
+
+					if (onThought) {
+						onThought(`Executing ${functionCall.name}...`);
+					}
+
+					try {
 						const result = await processGeminiFunctionCall(
 							{
 								name: functionCall.name,
 								args: functionCall.args || {}
 							},
-							emitter
+							emitter,
+							documentsCollector
 						);
 
-						// Create the function response part
 						functionResponseParts.push({
 							functionResponse: {
 								name: functionCall.name,
@@ -275,7 +390,6 @@ async function executeWithFunctionCalling(
 
 						console.log(`[gemini-provider] Function ${functionCall.name} completed successfully`);
 					} catch (error) {
-						// Log error but continue with error response to Gemini
 						console.error(`[gemini-provider] Function ${functionCall.name} failed:`, error);
 
 						functionResponseParts.push({
@@ -303,8 +417,19 @@ async function executeWithFunctionCalling(
 
 			// No function calls - this is the final response
 			const finalText = response.text || '';
-			console.log(`[gemini-provider] Function calling complete after ${iterations} iteration(s)`);
-			return finalText;
+
+			// Extract grounding metadata for L1 inline citations
+			const groundingMetadata = response.candidates?.[0]?.groundingMetadata;
+			if (groundingMetadata?.groundingChunks?.length) {
+				console.log(`[gemini-provider] Captured ${groundingMetadata.groundingChunks.length} grounding sources`);
+			}
+
+			console.log(`[gemini-provider] Function calling complete after ${iterations} iteration(s), collected ${documentsCollector.size} documents`);
+			return {
+				text: finalText,
+				documents: documentsCollector,
+				groundingMetadata: groundingMetadata as FunctionCallingResult['groundingMetadata']
+			};
 
 		} catch (error) {
 			console.error(`[gemini-provider] Error in function calling loop:`, error);
@@ -312,8 +437,8 @@ async function executeWithFunctionCalling(
 		}
 	}
 
-	// Max iterations reached - return what we have
-	console.warn(`[gemini-provider] Max function call iterations (${MAX_FUNCTION_CALL_ITERATIONS}) reached`);
+	// Max iterations reached - return what we have with collected documents
+	console.warn(`[gemini-provider] Max function call iterations (${MAX_FUNCTION_CALL_ITERATIONS}) reached, collected ${documentsCollector.size} documents`);
 	throw new Error('Maximum function call iterations exceeded. The request may be too complex.');
 }
 
@@ -359,7 +484,11 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					systemInstruction: ROLE_DISCOVERY_PROMPT,
 					temperature: 0.3,
 					thinkingLevel: 'medium',
-					maxOutputTokens: 65536
+					maxOutputTokens: 65536,
+					// Enable caching for role discovery prompt (stable across requests)
+					enableCaching: true,
+					cacheTTL: 'long', // 24-hour cache
+					cacheDisplayName: 'role-discovery-prompt'
 				},
 				streaming?.onThought ? (thought) => streaming.onThought!(thought, 'discover') : undefined
 			);
@@ -453,19 +582,36 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			};
 
 			let rawText: string;
+			let collectedDocuments = new Map<string, ParsedDocument>();
+			let groundingSources: Source[] = [];
+			let groundingMetadata: GroundingMetadata | undefined;
 
 			try {
 				// Use function calling loop for document analysis support
-				rawText = await executeWithFunctionCalling(
+				const functionCallingResult = await executeWithFunctionCalling(
 					lookupPrompt,
 					lookupConfig,
 					documentEmitter,
 					streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
 				);
+				rawText = functionCallingResult.text;
+				collectedDocuments = functionCallingResult.documents;
+
+				// Capture grounding metadata for source mapping
+				if (functionCallingResult.groundingMetadata) {
+					groundingMetadata = functionCallingResult.groundingMetadata as GroundingMetadata;
+					groundingSources = buildSourceList(groundingMetadata);
+					if (groundingSources.length > 0) {
+						console.log(`[gemini-provider] Extracted ${groundingSources.length} sources from grounding metadata`);
+					}
+				}
 
 				// Log document analysis activity
 				if (documentSegments.length > 0) {
 					console.log(`[gemini-provider] Document tool emitted ${documentSegments.length} thought segments`);
+				}
+				if (collectedDocuments.size > 0) {
+					console.log(`[gemini-provider] Collected ${collectedDocuments.size} documents for L2 previews`);
 				}
 			} catch (functionCallError) {
 				// If function calling fails, fall back to standard generation
@@ -483,6 +629,12 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
 				);
 				rawText = lookupResult.rawText || '{}';
+
+				// Capture grounding metadata for source mapping
+				if (lookupResult.groundingMetadata) {
+					groundingMetadata = lookupResult.groundingMetadata as GroundingMetadata;
+					groundingSources = buildSourceList(groundingMetadata);
+				}
 			}
 
 			const lookupExtraction = extractJsonFromGroundingResponse<PersonLookupResponse>(rawText);
@@ -499,10 +651,18 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			const data = lookupExtraction.data;
 			console.log('[gemini-provider] Phase 2 complete:', {
-				candidatesFound: data.decision_makers?.length || 0
+				candidatesFound: data.decision_makers?.length || 0,
+				groundingSourcesAvailable: groundingSources.length
 			});
 
-			const processed = this.processDecisionMakers(data.decision_makers || []);
+			// GROUNDING FIX: Use groundingSupports to map text segments to verified sources
+			// This prevents hallucinated URLs by finding which grounding chunks actually back each claim
+			const processed = this.processDecisionMakers(
+				data.decision_makers || [],
+				rawText,
+				groundingMetadata,
+				groundingSources
+			);
 
 			const latencyMs = Date.now() - startTime;
 
@@ -525,7 +685,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				candidatesFound: data.decision_makers?.length || 0,
 				verified: processed.length,
 				withEmail: processed.filter((dm) => dm.email).length,
-				names: processed.map((dm) => dm.name)
+				names: processed.map((dm) => dm.name),
+				documentsCollected: collectedDocuments.size
 			});
 
 			streaming?.onPhase?.(
@@ -544,7 +705,11 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					candidatesFound: data.decision_makers?.length || 0,
 					verified: processed.length,
 					withEmail: processed.filter((dm) => dm.email).length
-				}
+				},
+				// Include collected documents for L2 previews
+				documents: collectedDocuments.size > 0 ? collectedDocuments : undefined,
+				// Include grounding sources for L1 inline citations
+				sources: groundingSources.length > 0 ? groundingSources : undefined
 			};
 		} catch (error) {
 			console.error('[gemini-provider] Resolution error:', error);
@@ -561,22 +726,103 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	/**
 	 * Process candidates into ProcessedDecisionMaker format.
 	 * All candidates should have verified emails (agent only returns those).
+	 *
+	 * CRITICAL: We do NOT trust the LLM's source_url field - it can be hallucinated.
+	 * Instead, we use groundingSupports to map which grounding chunks actually back
+	 * the text mentioning each decision-maker.
+	 *
+	 * @param candidates - Candidates from LLM JSON response
+	 * @param rawResponseText - Raw text response for searching entity mentions
+	 * @param groundingMetadata - Full grounding metadata with supports and chunks
+	 * @param groundingSources - Extracted source list as fallback
 	 */
-	private processDecisionMakers(candidates: Candidate[]): ProcessedDecisionMaker[] {
+	private processDecisionMakers(
+		candidates: Candidate[],
+		rawResponseText: string,
+		groundingMetadata: GroundingMetadata | undefined,
+		groundingSources: Source[] = []
+	): ProcessedDecisionMaker[] {
 		return candidates
-			.filter((c) => c.email && c.reasoning && c.source_url && c.recency_check)
-			.map((candidate) => ({
-				name: candidate.name,
-				title: candidate.title,
-				organization: candidate.organization,
-				email: candidate.email,
-				reasoning: candidate.reasoning,
-				source: candidate.source_url,
-				provenance: `${candidate.reasoning}\n\nVerified via: ${candidate.source_url}\n${candidate.recency_check}`,
-				isAiResolved: true,
-				recencyCheck: candidate.recency_check,
-				powerLevel: 'primary' as const
-			}));
+			.filter((c) => c.email && c.reasoning && c.recency_check)
+			.map((candidate) => {
+				// GROUNDING FIX: Find verified source by mapping entity text to grounding supports
+				// This searches for the candidate's name/title/org in the response and finds
+				// which grounding chunks actually back those text segments
+				let verifiedSource = '';
+
+				if (groundingMetadata) {
+					verifiedSource = findBestGroundedSource(
+						[candidate.name, candidate.title, candidate.organization],
+						rawResponseText,
+						groundingMetadata
+					);
+					if (verifiedSource) {
+						console.log(`[gemini-provider] Grounding-mapped source for ${candidate.name}: ${verifiedSource}`);
+					}
+				}
+
+				// Fallback: Try matching by organization in source titles
+				if (!verifiedSource && groundingSources.length > 0) {
+					verifiedSource = this.findSourceByOrgMatch(candidate, groundingSources);
+				}
+
+				// Last resort: Use LLM URL only if it's an official domain
+				if (!verifiedSource && candidate.source_url && this.isOfficialDomain(candidate.source_url)) {
+					console.log(`[gemini-provider] Using official-domain LLM URL for ${candidate.name}: ${candidate.source_url}`);
+					verifiedSource = candidate.source_url;
+				}
+
+				if (!verifiedSource) {
+					console.log(`[gemini-provider] No verified source found for ${candidate.name}`);
+				}
+
+				return {
+					name: candidate.name,
+					title: candidate.title,
+					organization: candidate.organization,
+					email: candidate.email,
+					reasoning: candidate.reasoning,
+					source: verifiedSource,
+					provenance: verifiedSource
+						? `${candidate.reasoning}\n\nVerified via: ${verifiedSource}\n${candidate.recency_check}`
+						: `${candidate.reasoning}\n\n${candidate.recency_check}`,
+					isAiResolved: true,
+					recencyCheck: candidate.recency_check,
+					powerLevel: 'primary' as const
+				};
+			});
+	}
+
+	/**
+	 * Fallback: Find a source by matching organization name in source titles
+	 */
+	private findSourceByOrgMatch(candidate: Candidate, groundingSources: Source[]): string {
+		const orgLower = candidate.organization.toLowerCase().replace(/[^a-z0-9\s]/g, '');
+		const orgParts = orgLower.split(/\s+/).filter(w => w.length > 3);
+
+		const orgMatch = groundingSources.find((s) => {
+			const titleLower = (s.title || '').toLowerCase();
+			return orgParts.some(part => titleLower.includes(part));
+		});
+
+		if (orgMatch) {
+			console.log(`[gemini-provider] Org-match source for ${candidate.name}: ${orgMatch.title}`);
+			return orgMatch.url;
+		}
+
+		return '';
+	}
+
+	/**
+	 * Check if URL domain looks like an official source
+	 */
+	private isOfficialDomain(url: string): boolean {
+		try {
+			const domain = new URL(url).hostname.toLowerCase();
+			return /\.(gov|edu|org)$/.test(domain) || domain.includes('.gov.') || domain.includes('.edu.');
+		} catch {
+			return false;
+		}
 	}
 
 	// ========================================================================
@@ -587,7 +833,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	 * Verify existing decision-makers are still in their positions.
 	 *
 	 * This is a LIGHTWEIGHT operation (5-10s) compared to full research (30-60s).
-	 * Uses gemini-2.0-flash with Google Search grounding to quickly verify currency.
+	 * Uses gemini-3-flash-preview with Google Search grounding to quickly verify currency.
 	 *
 	 * Use cases:
 	 * - Verifying Firecrawl results before sending campaigns
@@ -599,7 +845,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	 */
 	async verifyDecisionMakers(
 		decisionMakers: DecisionMakerToVerify[]
-	): Promise<VerificationResult[]> {
+	): Promise<DecisionMakerVerificationResult[]> {
 		const startTime = Date.now();
 
 		console.log('[gemini-provider] Starting lightweight verification...');
@@ -636,7 +882,7 @@ ${verificationList}
 
 For each person, search for recent news and verify their current status.`;
 
-			// Use gemini-2.0-flash for speed (lightweight verification)
+			// Use gemini-3-flash-preview for speed (lightweight verification)
 			const config: GenerateContentConfig = {
 				temperature: 0.1, // Low temperature for factual verification
 				maxOutputTokens: 8192, // Much smaller than full research
@@ -644,10 +890,10 @@ For each person, search for recent news and verify their current status.`;
 				tools: [{ googleSearch: {} }] // Enable grounding for real-time search
 			};
 
-			console.log('[gemini-provider] Calling gemini-2.0-flash with grounding...');
+			console.log('[gemini-provider] Calling gemini-3-flash-preview with grounding...');
 
 			const response = await ai.models.generateContent({
-				model: 'gemini-2.0-flash', // Faster model for verification
+				model: 'gemini-3-flash-preview', // Fast model for lightweight verification
 				contents: userPrompt,
 				config
 			});
@@ -678,8 +924,8 @@ For each person, search for recent news and verify their current status.`;
 			console.log('[gemini-provider] Verification complete in', latencyMs, 'ms');
 			console.log('[gemini-provider] Results:', verifications.length);
 
-			// Map responses back to VerificationResult format
-			const results: VerificationResult[] = decisionMakers.map((dm) => {
+			// Map responses back to DecisionMakerVerificationResult format
+			const results: DecisionMakerVerificationResult[] = decisionMakers.map((dm) => {
 				const verification = verifications.find((v) => v.id === dm.id);
 
 				if (verification) {
@@ -733,7 +979,7 @@ For each person, search for recent news and verify their current status.`;
 	/**
 	 * Verify a single decision-maker (convenience method)
 	 */
-	async verifySingleDecisionMaker(decisionMaker: DecisionMakerToVerify): Promise<VerificationResult> {
+	async verifySingleDecisionMaker(decisionMaker: DecisionMakerToVerify): Promise<DecisionMakerVerificationResult> {
 		const results = await this.verifyDecisionMakers([decisionMaker]);
 		return results[0];
 	}

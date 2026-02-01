@@ -32,7 +32,7 @@ Communique's vector search system enables semantic search across intelligence it
 
 ### Key Features
 
-- **1024-dimensional embeddings** via Voyage AI (voyage-3 model)
+- **1024-dimensional embeddings** via Voyage AI (voyage-4 model)
 - **Cosine similarity** search in MongoDB Atlas
 - **Pre-filtering** by category, topics, dates, industry
 - **Reranking** for improved precision

@@ -7,16 +7,21 @@
  *
  * Confidence Scoring Model:
  * - Base discovery confidence: 0.4 (unverified findings)
- * - Each Gemini verification: +0.15 confidence boost
+ * - Each Gemini verification: +0.15 confidence boost (from PERCEPTUAL_TIMING)
  * - Maximum confidence: 1.0
  */
+
+import { PERCEPTUAL_TIMING } from '$lib/core/perceptual/timing';
 
 export const CONFIDENCE = {
 	/** Base confidence for discovered decision-makers before verification */
 	BASE_DISCOVERY: 0.4,
 
-	/** Confidence boost applied when a decision-maker is verified */
-	VERIFICATION_BOOST: 0.15,
+	/**
+	 * Confidence boost applied when a decision-maker is verified
+	 * @deprecated Use PERCEPTUAL_TIMING.CONFIDENCE_BOOST instead
+	 */
+	VERIFICATION_BOOST: PERCEPTUAL_TIMING.CONFIDENCE_BOOST,
 
 	/** Maximum confidence score cap */
 	MAX: 1.0

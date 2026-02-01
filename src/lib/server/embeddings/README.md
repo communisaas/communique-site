@@ -37,7 +37,7 @@ Generate embeddings for one or more texts.
 **Parameters:**
 
 - `input: string | string[]` - Text(s) to embed
-- `options.model?: 'voyage-3' | 'voyage-3-lite'` - Model (default: voyage-3)
+- `options.model?: 'voyage-4' | 'voyage-4-lite'` - Model (default: voyage-4)
 - `options.inputType?: 'document' | 'query'` - Input type (default: document)
 
 **Returns:** `Promise<number[][]>` - Array of embedding vectors
@@ -66,7 +66,7 @@ Generate embeddings for large batches with automatic chunking.
 **Parameters:**
 
 - `texts: string[]` - Array of texts
-- `options.model?: VoyageModel` - Default: voyage-3
+- `options.model?: VoyageModel` - Default: voyage-4
 - `options.inputType?: VoyageInputType` - Default: document
 - `options.batchSize?: number` - Batch size (default: 64, max: 128)
 - `options.showProgress?: boolean` - Show progress logs (default: false)
@@ -79,7 +79,7 @@ Generate embeddings for large batches with automatic chunking.
 const texts = await loadDocuments(); // 500 documents
 
 const embeddings = await createBatchEmbeddings(texts, {
-	model: 'voyage-3',
+	model: 'voyage-4',
 	batchSize: 64,
 	showProgress: true
 });
@@ -174,7 +174,7 @@ const cost = estimateEmbeddingCost(texts, 'voyage-3');
 console.log(`Estimated cost: $${cost.toFixed(4)}`);
 
 if (cost > 1.0) {
-	console.warn('High cost - consider batching or using voyage-3-lite');
+	console.warn('High cost - consider batching or using voyage-4-lite');
 }
 ```
 
@@ -228,15 +228,17 @@ if (!isHealthy) {
 
 | Model           | Dimensions | Price/1M Tokens | Use Case               |
 | --------------- | ---------- | --------------- | ---------------------- |
-| `voyage-3`      | 1024       | $0.06           | Best quality (default) |
-| `voyage-3-lite` | 512        | $0.02           | High throughput        |
+| `voyage-4`      | 1024       | $0.06           | Best quality (default) |
+| `voyage-4-lite` | 1024       | $0.02           | High throughput        |
+| `voyage-law-2`  | 1024       | $0.12           | Legal/legislative      |
+
+> **Note:** All Voyage 4 models share the same embedding space (1024 dimensions), enabling cost optimization without reindexing.
 
 ### Reranking Models
 
 | Model           | Price/1M Tokens | Use Case      |
 | --------------- | --------------- | ------------- |
-| `rerank-2`      | $0.05           | Best quality  |
-| `rerank-lite-1` | $0.01           | High speed    |
+| `rerank-2.5`    | $0.05           | Best quality  |
 
 ---
 
@@ -275,12 +277,17 @@ const embeddings = await createBatchEmbeddings(texts, {
 ```typescript
 // ✅ High-quality search
 const [embedding] = await createEmbedding(text, {
-	model: 'voyage-3'
+	model: 'voyage-4'
 });
 
 // ✅ High-volume, cost-sensitive
 const [embedding] = await createEmbedding(text, {
-	model: 'voyage-3-lite'
+	model: 'voyage-4-lite'
+});
+
+// ✅ Legal/legislative content
+const [embedding] = await createEmbedding(text, {
+	model: 'voyage-law-2'
 });
 ```
 
@@ -291,7 +298,7 @@ const [embedding] = await createEmbedding(text, {
 await db.collection('documents').insertOne({
 	text,
 	embedding,
-	embeddingModel: 'voyage-3',
+	embeddingModel: 'voyage-4',
 	embeddingGeneratedAt: new Date()
 });
 
@@ -356,12 +363,12 @@ const sim = cosineSimilarity(embedding1, embedding2);
 ```typescript
 // Documents: High quality
 const [docEmbedding] = await createEmbedding(document, {
-	model: 'voyage-3' // $0.06/1M
+	model: 'voyage-4' // $0.06/1M
 });
 
-// Queries: Lower cost
+// Queries: Lower cost (same embedding space!)
 const [queryEmbedding] = await createEmbedding(query, {
-	model: 'voyage-3-lite' // $0.02/1M (3x cheaper)
+	model: 'voyage-4-lite' // $0.02/1M (3x cheaper, compatible)
 });
 ```
 

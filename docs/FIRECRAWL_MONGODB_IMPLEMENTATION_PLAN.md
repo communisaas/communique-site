@@ -1,11 +1,13 @@
 # Firecrawl + MongoDB Atlas Integration Plan
 
-> **Version:** 2.2.0
+> **Version:** 2.3.0
 > **Date:** 2026-01-31
-> **Status:** Phase 2A Complete — Unified Architecture In Progress
+> **Status:** All Phases Coded — Critical Integration Gaps Identified
 > **Author:** Distinguished Engineering Team
 >
 > **Architecture Evolution:** Firecrawl + Gemini unified (not split by target type)
+>
+> ⚠️ **CRITICAL**: Code exists for all phases but end-to-end flow is broken. See Wave 12 Gaps section.
 
 ---
 
@@ -110,15 +112,15 @@ We were building "search" when we should be building "agent memory." The value i
 
 ---
 
-### Phase 2A.1 (Next) — Wire Document Tool Live
+### Phase 2A.1 (Complete) — Wire Document Tool Live ✓
 
 Integration to make document intelligence operational:
 
-- [ ] **Register tool with agent** — Add `documentToolDefinition` to Gemini function calling
-- [ ] **Add API key** — `REDUCTO_API_KEY` in `.env`
-- [ ] **Create MongoDB collection** — `parsed_documents` with TTL index (30 days)
-- [ ] **Wire L2 hover** — Connect DocumentPreview to InlineCitation hover state
-- [ ] **Wire L3 drawer** — Connect DocumentDetail to DetailDrawer for document citations
+- [x] **Register tool with agent** — Added to `decision-maker-v2.ts`, multi-turn function calling
+- [x] **Add API key** — `REDUCTO_API_KEY` in `.env.example`
+- [x] **Create MongoDB collection** — `parsed_documents` with TTL index (30 days)
+- [x] **Wire L2 hover** — DocumentPreview connected with 300ms delay
+- [x] **Wire L3 drawer** — DocumentDetail with drawer integration, back navigation
 
 #### Perceptual Requirements (from Phase 2A)
 
@@ -135,23 +137,19 @@ Integration to make document intelligence operational:
 
 ---
 
-### Phase 2B — Voyage AI: Legal-Grade Search
+### Phase 2B (Complete) — Voyage AI: Legal-Grade Search ✓
 
-**Current state:** Using voyage-3, reranking code exists but unused, no legal model
+**Implementation complete with API contract fixes:**
 
-**Gaps identified by expert analysis:**
-| Gap | Impact |
-|-----|--------|
-| Not using `voyage-law-2` | 6-10% worse on legislative retrieval |
-| Reranking not in production | 10-30% precision loss |
-| voyage-3 for queries | 3x cost savings available with lite |
+- [x] **voyage-4** — Updated from voyage-3 (voyage-3 deprecated)
+- [x] **voyage-law-2** — Auto-detect for legislative content
+- [x] **voyage-4-lite** — 3x cheaper for query embeddings
+- [x] **Enable reranking** — `rerank-2.5` wired into AgentMemoryService
+- [x] **API contract fixed** — snake_case field names per Voyage AI spec
 
-**Implementation:**
-- [ ] **voyage-law-2** — Use for legislative/legal content queries
-- [ ] **Enable reranking** — Wire into `AgentMemoryService.retrieveContext()`
-- [ ] **voyage-3-lite for queries** — 3x cheaper, <5% quality loss
-- [ ] **Hybrid search default** — Vector + full-text via `$rankFusion`
-- [ ] **Future: voyage-context-3** — Contextualized chunk embeddings for long docs
+**Files modified:**
+- `src/lib/server/embeddings/voyage-client.ts` — Model selection, reranking
+- `src/lib/server/agent-memory/service.ts` — Reranking integration
 
 #### Files to Modify
 
@@ -164,31 +162,22 @@ Integration to make document intelligence operational:
 
 ---
 
-### Phase 2C — Firecrawl: Beyond Agent API
+### Phase 2C (Complete) — Firecrawl: Beyond Agent API ✓
 
-**Current state:** Using Agent API only for non-government targets
+**All APIs implemented with v2 upgrades:**
 
-**Unused capabilities:**
-| API | Capability | Use Case |
-|-----|------------|----------|
-| Deep Research | Autonomous multi-step research | Complex cross-sector queries |
-| Map | Discover all URLs on site | Pre-crawl leadership page discovery |
-| Observer | Real-time page monitoring | Leadership change alerts |
-| Fire Enrich | Augment from email | Enrich contact databases |
+- [x] **Deep Research API** — `src/lib/server/firecrawl/deep-research.ts`
+- [x] **Map API v2** — `src/lib/server/firecrawl/map.ts` (async polling)
+- [x] **Observer via Change Tracking** — `src/lib/server/firecrawl/observer.ts`
+- [x] **Fire Enrich API** — `src/lib/server/firecrawl/enrich.ts`
+- [x] **Agent API v2** — `src/lib/core/agents/providers/firecrawl-client.ts` (spark models)
 
-**Implementation:**
-- [ ] **Deep Research API** — For queries like "Find Fortune 500 sustainability execs with gov backgrounds"
-- [ ] **Map API** — Discover leadership URLs before Agent crawl
-- [ ] **Observer integration** — Monitor org leadership pages for changes
-- [ ] **Fire Enrich** — Augment contact data from email addresses
+**API Contract Fixes:**
+- Observer: Redesigned — `/watch` endpoint doesn't exist, using `/scrape` with changeTracking
+- Agent/Map: Upgraded to v2 with async job polling
+- Enrich: Full person + company enrichment from email/LinkedIn
 
-#### New Files
-
-| File | Purpose |
-|------|---------|
-| `src/lib/server/firecrawl/deep-research.ts` | Deep Research API wrapper |
-| `src/lib/server/firecrawl/observer.ts` | Change monitoring service |
-| `src/lib/server/firecrawl/enrich.ts` | Contact enrichment |
+**⚠️ GAP: Observer cron job not created** — `runObserverChecks()` exists but nothing calls it
 
 ---
 
@@ -234,20 +223,19 @@ Integration to make document intelligence operational:
 | Architecture | Two separate paths | One composite path |
 | Freshness | Varies by target | Consistent verification |
 
-**Implementation:**
-- [ ] **CompositeDecisionMakerProvider** — Orchestrates Firecrawl → Gemini flow
-- [ ] **Lightweight verification prompt** — Gemini checks current status only
-- [ ] **Confidence scoring** — Based on verification result
-- [ ] **Update router** — Use composite as default provider
-- [ ] **Deprecate split routing** — Remove target-type branching
+**Implementation (Complete):**
+- [x] **CompositeDecisionMakerProvider** — `src/lib/core/agents/providers/composite-provider.ts`
+- [x] **Lightweight verification** — `gemini-provider.ts:verifyDecisionMakers()`
+- [x] **Confidence scoring** — Base 0.4 + 0.15 per verification
+- [x] **Router updated** — Composite as default, `useLegacyRouting` flag
+- [x] **Legacy routing deprecated** — Warning box in old section
 
-#### New/Modified Files
+**Files Built:**
+- `src/lib/core/agents/providers/composite-provider.ts` — ~700 lines, orchestration
+- `src/lib/core/agents/providers/router.ts` — Composite default
+- `src/lib/core/agents/providers/gemini-provider.ts` — `verifyDecisionMakers()` added
 
-| File | Change |
-|------|--------|
-| `src/lib/core/agents/providers/composite-provider.ts` | New: Firecrawl + Gemini |
-| `src/lib/core/agents/providers/router.ts` | Use composite as primary |
-| `src/lib/core/agents/providers/gemini-provider.ts` | Add lightweight verify mode |
+**⚠️ CRITICAL GAP: API endpoint hardcodes `confidence: 0.8`** — Ignores computed values
 
 ---
 
@@ -398,69 +386,763 @@ KEY MOMENTS
 
 ---
 
-### Phase 2E — Legislative Intelligence + Vote History
+### Phase 2E (Complete) — Legislative Intelligence + Vote History ✓
 
 **Goal:** Break down legislative complexity into simple, intuitable impact with progressive disclosure.
 
-#### Proactive Legislative Ingestion
+**Implementation (Complete):**
+- [x] **Congress.gov API** — `src/lib/server/congress/client.ts`, `feed.ts`, `votes.ts`
+- [x] **voyage-law-2 embeddings** — Auto-detect for legislative content
+- [x] **Rate limits fixed** — 5000/hour (was incorrectly 1000)
+- [x] **Vote history API** — `getMemberByDistrict()`, roll call votes
+- [x] **Vote UI components** — VoteIndicator, VoteContext, RollCall with progressive disclosure
 
-```
-Congress.gov API → Parse → voyage-law-2 embed → MongoDB intelligence
-     │
-     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Progressive Disclosure for Bills                               │
-│                                                                 │
-│  L1: One-line impact                                            │
-│      "Increases solar tax credit from 26% to 40%"               │
-│                                                                 │
-│  L2: Key provisions + who it affects                            │
-│      • Extends credit through 2035                              │
-│      • Applies to residential and commercial                    │
-│      • Your district has 12 solar companies affected            │
-│                                                                 │
-│  L3: Full bill analysis (Reducto parse)                         │
-│      Section navigation, amendments, vote history               │
-└─────────────────────────────────────────────────────────────────┘
-```
+**Files Built:**
+- `src/lib/server/congress/client.ts` — API client
+- `src/lib/server/congress/feed.ts` — Bill ingestion
+- `src/lib/server/congress/votes.ts` — Vote history
+- `src/lib/components/votes/VoteIndicator.svelte` — L1 peripheral
+- `src/lib/components/votes/VoteContext.svelte` — L2 hover context
+- `src/lib/components/votes/RollCall.svelte` — L3 full roll call
 
-**Implementation:**
-- [ ] **Congress.gov API integration** — Fetch new bills, amendments, votes
-- [ ] **State legislature feeds** — Where APIs available
-- [ ] **voyage-law-2 embeddings** — On ingest for semantic search
-- [ ] **Impact summarization** — LLM-generated one-liners
-- [ ] **Bill complexity breakdown** — Progressive L1 → L2 → L3
-
-#### Vote History for Representatives
-
-```
-User Address → District Geocoder → Representative → Vote History
-                    │                                    │
-                    ▼                                    ▼
-            "CA-12 (Pelosi)"              "Voted YES on HR 1234"
-                                          "Voted NO on HR 5678"
-```
-
-**Implementation:**
-- [ ] **Address → District** — Existing geocoder integration
-- [ ] **District → Representative** — Congress.gov member lookup
-- [ ] **Representative → Votes** — Roll call vote history API
-- [ ] **Vote display component** — "Your rep voted [YES/NO] on [Bill]"
-- [ ] **Progressive disclosure** — L1 vote, L2 context, L3 full roll call
-
-#### New Files
-
-| File | Purpose |
-|------|---------|
-| `src/lib/server/congress/feed.ts` | Legislative feed ingestion |
-| `src/lib/server/congress/votes.ts` | Vote history API |
-| `src/lib/components/votes/VoteIndicator.svelte` | L1 vote display |
-| `src/lib/components/votes/VoteContext.svelte` | L2 vote context |
-| `src/lib/components/votes/RollCall.svelte` | L3 full roll call |
+**⚠️ CRITICAL GAP: Vote components NEVER USED** — Built but not wired into any page
 
 ---
 
+### Wave 12 (Complete) — Critical Integration Fixes ✓
+
+> **Status:** All critical integration gaps resolved. End-to-end flow now works.
+
+#### P0: CRITICAL — Fixed ✓
+
+| Issue | Fix Applied |
+|-------|-------------|
+| **Event mismatch** | Replaced `AgentThinking` with `ThoughtStream` in DecisionMakerResolver |
+| **ThoughtStream unused** | Now wired with segment/phase/confidence/documents event handlers |
+| **Confidence hardcoded** | Now uses computed confidence from composite flow (dm.confidence or average) |
+
+#### P1: HIGH — Fixed ✓
+
+| Issue | Fix Applied |
+|-------|-------------|
+| Observer cron job | Created `/api/cron/observer-checks/+server.ts` with CRON_SECRET auth |
+| Vote components | Created `/representatives/[id]` page with full progressive disclosure |
+| Verification badges | Added to DocumentPreview: "✓ Verified current", "◉ Verifying...", "○ Source only" |
+| KeyMoments confidence | Added confidence dots (●○○→●●●) and phase separator to KeyMoments |
+
+#### P2: MEDIUM — Fixed in Wave 13 ✓
+
+| Issue | Status |
+|-------|--------|
+| Timing constants scattered | ✅ Centralized in `/src/lib/core/perceptual/timing.ts` |
+| 500ms phase pause | ✅ Added `PhaseSettlingEvent` in composite-emitter |
+
+#### Files Created/Modified in Wave 12
+
+| File | Change |
+|------|--------|
+| `src/lib/components/template/creator/DecisionMakerResolver.svelte` | Replaced AgentThinking with ThoughtStream, added event handlers |
+| `src/routes/api/agents/stream-decision-makers/+server.ts` | Fixed hardcoded confidence:0.8 |
+| `src/routes/api/cron/observer-checks/+server.ts` | **NEW** Observer cron endpoint |
+| `src/routes/representatives/[id]/+page.svelte` | **NEW** Representative profile with votes |
+| `src/routes/representatives/[id]/+page.server.ts` | **NEW** Data loading |
+| `src/lib/components/thoughts/DocumentPreview.svelte` | Added verification badges |
+| `src/lib/components/thoughts/KeyMoments.svelte` | Added confidence dots, phase separator |
+| `src/lib/core/thoughts/types.ts` | Added confidence/sourcePhase to KeyMoment |
+
 **Scope for Phase 2E:** Agent surfaces relevant legislative context and vote history for the user's representative, with progressive disclosure from simple impact to full analysis.
+
+---
+
+### Wave 13 (Complete) — API Contract Audits & Model Updates ✓
+
+> **Status:** Comprehensive API contract verification complete. All critical mismatches fixed.
+
+#### P2 Fixes (from Wave 12)
+
+| Issue | Fix Applied |
+|-------|-------------|
+| Timing constants scattered | Created `/src/lib/core/perceptual/timing.ts` with centralized constants |
+| 500ms phase pause | Added `PhaseSettlingEvent` and `emitPhasePause()` in composite-emitter |
+
+Files updated to use centralized timing:
+- `ThoughtStream.svelte`, `PhaseContainer.svelte`, `InlineCitation.svelte`
+- `DocumentPreview.svelte`, `RollCall.svelte`, `VoteContext.svelte`
+- `representatives/[id]/+page.svelte`, `composite-emitter.ts`
+
+#### API Contract Audit Results
+
+| API | Status | Finding |
+|-----|--------|---------|
+| **Reducto** | ✅ Verified | Contract matches implementation |
+| **Firecrawl Agent** | ⚠️ Fixed | `jobId` → `id` in response |
+| **Firecrawl Observer** | ⚠️ Fixed | `changeTrackingOptions` format corrected |
+| **Voyage AI** | ✅ Verified | Contract matches implementation |
+| **Congress.gov** | ✅ Verified | Contract matches implementation |
+| **Gemini** | ⚠️ Fixed | Model updated to `gemini-3-flash-preview` |
+| **SSE Events** | ✅ Verified | Frontend-backend contract verified |
+
+#### Critical Fixes Applied
+
+| File | Issue | Fix |
+|------|-------|-----|
+| `src/lib/core/agents/providers/firecrawl-client.ts` | Response returned `id`, code expected `jobId` | Changed `data.jobId` → `data.id` |
+| `src/lib/server/firecrawl/observer.ts` | `changeTracking` embedded in formats array | Moved to `changeTrackingOptions` top-level object |
+| `src/lib/core/agents/providers/gemini-provider.ts` | Using deprecated `gemini-2.0-flash` | Updated to `gemini-3-flash-preview` |
+| `src/lib/core/server/moderation/index.ts` | Using `gemini-2.5-flash` | Updated to `gemini-3-flash-preview` |
+| `src/lib/core/server/moderation/types.ts` | Type literal outdated | Updated to `'gemini-3-flash-preview'` |
+
+#### Dead Code Audit
+
+28 unused exports identified for future cleanup:
+- Duplicate type exports (e.g., `FirecrawlDocument` in multiple files)
+- Legacy backward-compatibility exports (e.g., `CIVIC_CRITICAL_HAZARDS`)
+- Internal-only exports exposed at module boundaries
+
+#### Future Work Identified
+
+| Item | Priority | Notes |
+|------|----------|-------|
+| Dead code cleanup | Low | 28 exports can be removed incrementally |
+| ~~Deep Research API migration~~ | ~~Low~~ | ✅ Resolved in Wave 14 — removed entirely |
+| Map API defaults | Low | limit 100 vs API default 5000 — acceptable |
+
+---
+
+### Wave 14 (Complete) — Deep Research API Removal ✓
+
+> **Status:** Sunset Firecrawl Deep Research API removed. The API was deprecated June 30, 2025 and has been non-functional for 7 months.
+
+#### Rationale
+
+The Firecrawl Deep Research API (`/v1/deep-research`) was sunset on June 30, 2025. Rather than migrate to an alternative, we removed it entirely because:
+
+1. **Optional Enhancement**: Deep Research was always optional for "complex cross-sector queries"
+2. **Core Flow Intact**: The main discovery pipeline (Map API → Firecrawl Agent → Gemini Verification) works without it
+3. **No User Impact**: 7 months of silent failures with no reported issues indicates the feature wasn't critical
+4. **Reduced Complexity**: Cleaner codebase without dead API integrations
+
+#### Files Removed
+
+| File | Purpose |
+|------|---------|
+| `src/lib/server/firecrawl/deep-research.ts` | Deep Research API wrapper + MongoDB cache |
+| `src/routes/api/firecrawl/research/+server.ts` | Public endpoint for deep research |
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/lib/core/agents/providers/composite-provider.ts` | Removed `deepResearch` import, `DeepResearchFindings` type, `isDeepResearchEligible()`, `buildResearchQuery()`, `executeDeepResearch()`, and all related constants/references |
+| `src/lib/server/firecrawl/index.ts` | Removed deep-research exports and updated module docstring |
+| `src/lib/server/mongodb/indexes.ts` | Removed `ensureDeepResearchCacheIndexes` import and index operation |
+
+#### Simplified Architecture
+
+**Before (4 phases for organizational targets):**
+1. Map API Pre-crawl (optional)
+2. Deep Research API (optional) ← REMOVED
+3. Firecrawl Agent (primary)
+4. Gemini Verification
+
+**After (3 phases for organizational targets):**
+1. Map API Pre-crawl (optional)
+2. Firecrawl Agent (primary)
+3. Gemini Verification
+
+---
+
+### Wave 15 (Complete) — Gemini groundingMetadata Integration ✓
+
+> **Status:** Wired up Gemini `groundingMetadata` to enable L1 inline citations. The grounding utilities existed but were never called.
+
+#### Problem Identified
+
+Expert audit discovered that `src/lib/core/agents/utils/grounding.ts` contained complete utilities for:
+- `extractSourcesFromGrounding()` - Extract URLs from chunks
+- `buildCitationMap()` - Map text segments to source indices
+- `injectCitations()` - Add [1][2] markers to text
+- `buildSourceList()` - Create Source[] from metadata
+
+**But these were NEVER CALLED.** Response processing only extracted `.text`, ignoring `candidates[0].groundingMetadata`.
+
+#### Root Cause
+
+1. `generate()` returns `GenerateContentResponse` but callers only use `.text`
+2. `generateStreamWithThoughts()` yields chunks but discards metadata
+3. `StreamResultWithThoughts` type had no grounding fields
+
+#### Files Modified
+
+| File | Change |
+|------|--------|
+| `src/lib/core/agents/types.ts` | Added `groundingMetadata` and `sources` fields to `StreamResultWithThoughts` |
+| `src/lib/core/agents/gemini-client.ts` | Import `buildSourceList`, capture metadata from streaming chunks, extract sources |
+| `src/lib/core/agents/providers/gemini-provider.ts` | Add grounding fields to `FunctionCallingResult`, extract metadata in both primary and fallback paths, include sources in return |
+| `src/lib/core/agents/providers/types.ts` | Added `sources` field to `DecisionMakerResult` |
+
+#### Data Flow (After)
+
+```
+Gemini Response
+    │
+    ├── .text → rawText (existing)
+    │
+    └── candidates[0].groundingMetadata
+            │
+            ├── groundingChunks[] → buildSourceList() → Source[]
+            │
+            └── groundingSupports[] → citation mapping (future L1)
+```
+
+#### Impact
+
+- **L1 Citations Enabled**: Sources now flow through the pipeline
+- **No Breaking Changes**: Optional fields added to existing types
+- **Future Work**: Wire sources to frontend for inline citation rendering
+
+---
+
+### Wave 16 (Complete) — Integration Coherence Audit ✓
+
+> **Status:** Expert agents completed comprehensive audit. All gaps documented, designs ready for implementation.
+
+#### Audit Results
+
+| Integration | Gap | Priority | Status |
+|-------------|-----|----------|--------|
+| **Gemini** | groundingMetadata never called | P0 | ✅ Fixed in Wave 15 |
+| **Voyage AI** | Docs outdated (voyage-3 → voyage-4) | P0 | 📋 4 files identified |
+| **Gemini** | Sources not emitted to frontend | P0 | 📋 Design complete |
+| **Firecrawl** | No Zod validation on Agent API | P1 | 📋 Schema designed |
+| **Reducto** | Extract API not integrated | P1 | 📋 High value identified |
+| **Congress.gov** | Voting records not used | P1 | 📋 High value identified |
+| **Firecrawl** | Batch operations not used | P2 | 📋 4x speedup possible |
+
+#### Detailed Findings
+
+**1. Voyage AI Documentation (P0)**
+Files needing voyage-3 → voyage-4 updates:
+- `.env.example` (lines 117-118)
+- `src/lib/server/embeddings/README.md` (lines 40, 69, 82, 231-232)
+- `src/lib/server/mongodb/VECTOR_SEARCH_IMPLEMENTATION.md` (16, 166, 179, 226, 239-240)
+- `docs/VECTOR_SEARCH_GUIDE.md` (line 35)
+
+**2. Sources-to-Frontend Flow (P0)**
+Gap: `DecisionMakerResult.sources` extracted but NOT emitted via SSE.
+- API endpoint (`stream-decision-makers/+server.ts`) emits `documents` but not `sources`
+- Frontend (`DecisionMakerResolver.svelte`) captures documents but not sources
+- **Design**: Carry sources → message generation → merge with message sources (reuse existing citation UI)
+
+**3. Firecrawl Zod Validation (P1)**
+Complete schema design ready:
+- `FirecrawlLeaderSchema` with graceful degradation
+- `FirecrawlOrganizationProfileSchema` with partial recovery
+- Integration point: `pollAgentJob()` line 383
+- Strategy: Strict first → lenient fallback → partial results
+
+**4. Unused API Capabilities (P1-P2)**
+
+| Capability | Integration | Value | Effort |
+|------------|-------------|-------|--------|
+| Voting records | Congress.gov | Alignment scoring | Medium |
+| Extract API | Reducto | Structured bill parsing | High |
+| Batch Operations | Firecrawl | 4x faster discovery | Medium |
+| Context Caching | Gemini | 20-30% token savings | Low |
+
+---
+
+### Wave 17 (Complete) — Critical Gap Fixes ✓
+
+> **Status:** All P0/P1 gaps fixed. Runtime validation and L1 citation pipeline operational.
+
+#### Completed Tasks
+
+| Task | Priority | Files Modified |
+|------|----------|----------------|
+| ✅ Update Voyage AI docs | P0 | `.env.example`, `embeddings/README.md`, `VECTOR_SEARCH_IMPLEMENTATION.md`, `VECTOR_SEARCH_GUIDE.md` |
+| ✅ Wire sources through SSE | P0 | `stream-decision-makers/+server.ts` |
+| ✅ Capture sources in frontend | P0 | `DecisionMakerResolver.svelte`, `template.ts` |
+| ✅ Add Zod validation schemas | P1 | `firecrawl-schemas.ts` (new file) |
+| ✅ Integrate validation | P1 | `firecrawl-client.ts` |
+
+#### Key Changes
+
+**Voyage AI Documentation:**
+- Updated all references from voyage-3 → voyage-4 series
+- Documented shared embedding space (1024 dims for all models)
+- Added voyage-law-2 for legislative content
+- Updated pricing tables to 2026-01 rates
+
+**L1 Citation Pipeline:**
+- `DecisionMakerResult.sources` now emits via SSE `sources` event
+- `DecisionMakerResolver.svelte` captures and stores sources
+- `TemplateFormData.audience.sources` carries sources to message generation
+- Sources merge with message sources for unified L1 citation display
+
+**Firecrawl Validation:**
+- New `firecrawl-schemas.ts` with Zod schemas for all response types
+- Graceful degradation: partial recovery when some fields fail validation
+- `validateOrganizationProfile()` returns usable data + warnings
+- Integration in `pollAgentJob()` prevents runtime crashes from malformed API responses
+
+#### Expert Audit (Post-Wave 17)
+
+Five expert agents reviewed implementation integrity:
+
+| Review | Finding | Resolution |
+|--------|---------|------------|
+| Interface Contracts | `emailVerified` vs `isVerified` field mismatch flagged | ✓ Intentional design: Firecrawl uses domain-specific `emailVerified`, MongoDB uses generic `isVerified`. Explicit mapping at `firecrawl-provider.ts:348` |
+| Plan Alignment | 92% alignment, minor doc discrepancies | ✓ Low priority doc updates (voyage-3 refs in guides) |
+| Engineering Patterns | Scored 3-5/5 across 8 patterns | ✓ No blockers identified |
+| Congress.gov Research | Alignment scoring feasible | → Wave 18 task |
+| Reducto Extract Research | Bill extraction schema designed | → Wave 18 task |
+
+---
+
+### Wave 18 (Complete) — Strategic Improvements ✓
+
+> **Status:** Core strategic improvements complete
+
+| Task | Status | Files Modified |
+|------|--------|----------------|
+| ✅ Congress.gov alignment scoring | Complete | `alignment.ts`, `alignment/+server.ts`, `delegation/+server.ts` |
+| ✅ Reducto Extract API | Complete | `client.ts`, `types.ts`, `extract-bill/+server.ts` |
+| ✅ Firecrawl batch operations | Complete | `firecrawl-client.ts`, `firecrawl-provider.ts` |
+| ✅ Gemini context caching | Complete | `cache-manager.ts`, `gemini-client.ts`, `types.ts` |
+
+#### Congress.gov Alignment Scoring (Complete)
+
+**New Files:**
+- `src/lib/server/congress/alignment.ts` — Core alignment calculation service
+- `src/routes/api/congress/members/[bioguideId]/alignment/+server.ts` — Per-member alignment endpoint
+- `src/routes/api/congress/alignment/delegation/+server.ts` — Full delegation alignment endpoint
+
+**Scoring Algorithm:**
+- Matches votes to user's policy positions via keyword matching
+- Weights votes by recency (recent votes count more)
+- Weights votes by type (passage votes > procedural)
+- Returns [0-100] alignment score with confidence level
+- Per-topic breakdown with key vote explanations
+
+**API Endpoints:**
+```
+POST /api/congress/members/{bioguideId}/alignment
+POST /api/congress/alignment/delegation
+```
+
+**Predefined Topics:**
+- healthcare, climate, education, immigration, economy
+- defense, technology, housing, criminal-justice, civil-rights
+
+#### Reducto Extract API (Complete)
+
+**New Types** (`src/lib/server/reducto/types.ts`):
+- `ExtractSchema`, `ExtractSchemaField` - Schema definition for extraction
+- `ExtractedBill`, `BillSponsor`, `BillFunding`, `BillProvision`, `BillDefinition`
+- `BillExtractOptions`, `BillExtractResult`
+
+**New Methods** (`src/lib/server/reducto/client.ts`):
+- `extract(url, schema)` - Generic schema-driven extraction
+- `extractBill(options)` - Specialized legislative bill extraction
+- `buildBillExtractionSchema()` - Comprehensive bill schema
+- `transformExtractedBill()` - Raw data → structured ExtractedBill
+
+**API Endpoint** (`/api/documents/extract-bill`):
+```
+POST /api/documents/extract-bill
+{
+  "url": "https://congress.gov/118/bills/hr1/BILLS-118hr1ih.pdf",
+  "congress": 118,
+  "billType": "hr"
+}
+```
+
+**Extracted Fields:**
+- Bill metadata: number, title, shortTitle, congress, chamber
+- Sponsors: primary sponsor and cosponsors with party/state
+- Content: provisions, definitions, purpose statement
+- Fiscal: funding allocations with amounts and fiscal years
+- Temporal: effective dates, sunset dates
+- Legal: amended laws, section references
+
+---
+
+### Wave 19 (Complete) — Performance & Quality
+
+> **Status:** All implementations and audits complete
+
+#### Implementation Tasks
+
+| Task | Status | Description |
+|------|--------|-------------|
+| ✅ Firecrawl batch operations | Complete | Parallel organization discovery (~4x faster) |
+| ✅ Gemini context caching | Complete | Cache prompts for 20-30% token savings |
+
+#### Firecrawl Batch Operations (Complete)
+
+**New Methods:**
+- `firecrawl-client.ts`: `discoverOrganizationsBatch()` — Parallel discovery with configurable concurrency
+- `firecrawl-provider.ts`: `resolveBatch()` — High-level batch resolution with progress callbacks
+
+**Configuration:**
+```typescript
+DEFAULT_BATCH_CONCURRENCY = 4  // Parallel requests
+BATCH_RATE_LIMIT_DELAY_MS = 500  // Rate limiting between batches
+```
+
+**Key Patterns:**
+- `Promise.allSettled` for error isolation (one failure doesn't abort batch)
+- Progress callbacks for UI feedback during long operations
+- Configurable concurrency respecting Firecrawl rate limits
+
+**Documentation:**
+- `providers/BATCH_OPERATIONS.md` — Technical reference
+- `BATCH_OPERATIONS_SUMMARY.md` — Implementation overview
+
+#### Gemini Context Caching (Complete)
+
+**New Files:**
+- `src/lib/core/agents/cache-manager.ts` — Core cache management with TTL
+- `src/lib/core/agents/cache-manager.example.ts` — Usage examples
+- `src/lib/core/agents/CACHING.md` — Comprehensive documentation
+- `tests/unit/agents/cache-manager.test.ts` — Unit tests
+
+**Added to `GenerateOptions`:**
+```typescript
+enableCaching?: boolean;
+cacheTTL?: 'short' | 'medium' | 'long';
+cacheDisplayName?: string;
+```
+
+**TTL Configuration:**
+- `short`: 1 hour — Volatile prompts
+- `medium`: 6 hours — Session-stable content
+- `long`: 24 hours — Reference material
+
+**Features:**
+- SHA-256 content hashing for deterministic cache keys
+- Background cleanup every 5 minutes (expired entries)
+- 90% token discount on cached content (Gemini pricing)
+- Expected 20-30% overall token savings
+
+#### Integrity Audits
+
+| Audit | Scope | Status | Finding |
+|-------|-------|--------|---------|
+| ✅ Data Flow Integrity | API → Provider → Cache → SSE → Frontend | Complete | Minor field naming issues |
+| ✅ User Flow Integrity | Template creation journey, auth gates, streaming UX | Complete | 3 friction points identified |
+| ✅ Code Fragmentation | Type duplication, pattern consistency, imports | Complete | 2-3 week refactoring needed |
+
+---
+
+#### Code Fragmentation Audit — Full Findings
+
+**Overall Assessment:** Moderate to high fragmentation. Recent consolidation efforts visible (PERCEPTUAL_TIMING, provider architecture) but significant technical debt remains.
+
+##### 1. Type Duplication (🔴 HIGH — 20+ instances)
+
+**Source Interface (3 duplicates):**
+| Location | Structure |
+|----------|-----------|
+| `src/lib/types/template.ts:178` | Main definition |
+| `src/lib/core/agents/types.ts:76` | Agent-specific (IDENTICAL) |
+| `src/lib/components/intelligence/INTEGRATION_GUIDE.md:185` | Documentation example |
+
+**DecisionMaker Interface (4+ variants):**
+| Location | Purpose |
+|----------|---------|
+| `src/lib/types/template.ts:233` | Perceptual/UI (name, shortName, role, organization) |
+| `src/lib/core/agents/types.ts:50` | Pipeline format (+email, reasoning, sourceUrl, confidence) |
+| `src/lib/core/agents/providers/types.ts:114` | DecisionMakerResult wrapper |
+| `src/routes/api/decision-makers/search/+server.ts:4` | API endpoint variant |
+| `src/lib/server/mongodb/schema.ts:121` | Database schema variant |
+
+**TemplateScope Interface (3 duplicates):**
+| Location | Notes |
+|----------|-------|
+| `src/lib/types/jurisdiction.ts:49` | Main definition |
+| `src/lib/types/any-replacements.ts:167` | Staging area duplicate |
+| `src/lib/core/location/template-filter.ts:35` | Location-specific |
+
+**User Interfaces (5+ variants):**
+| Location | Type Name |
+|----------|-----------|
+| `src/lib/types/user.ts:15` | UserProfile |
+| `src/lib/core/auth/auth.ts:23` | Auth User |
+| `src/lib/core/congress/cwc-client.ts:34` | EmailServiceUser |
+| `src/lib/core/congress/cwc-generator.ts:23` | CWC User |
+| `src/routes/api/cwc/submit-mvp/+server.ts:205` | UserData |
+
+##### 2. Naming Inconsistencies (🟡 MEDIUM — 30+ instances)
+
+**Email Verification Field (3 patterns):**
+| Pattern | Locations |
+|---------|-----------|
+| `emailVerified` (camelCase) | `oauth-callback-handler.ts`, `oauth-providers.ts`, `firecrawl-schemas.ts` |
+| `email_verified` (snake_case) | Database (Prisma), `api-helpers.ts` |
+| `isVerified` (boolean prefix) | `session-cache.ts`, `verification-handler.ts` |
+
+##### 3. Circular Dependencies (🔴 HIGH — 11 cycles)
+
+**Critical Cycles:**
+
+```
+1. Agents/Providers (MOST CRITICAL)
+   providers/types.ts → agents/decision-maker.ts → providers/index.ts
+   → providers/composite-provider.ts → providers/gemini-provider.ts → providers/types.ts
+
+2. MongoDB/Reducto
+   server/mongodb/schema.ts → server/reducto/types.ts → server/reducto/client.ts
+   → server/mongodb/collections.ts → server/mongodb/schema.ts
+
+3. Analytics
+   core/analytics/aggregate.ts → core/analytics/snapshot.ts → core/analytics/aggregate.ts
+```
+
+##### 4. SSE Event Schema Fragmentation (🟡 MEDIUM — 7 variants)
+
+| Schema | Location | Event Types |
+|--------|----------|-------------|
+| `ThoughtStreamEvent` | `core/thoughts/types.ts:528` | 8 events |
+| `CompositeEvent` | `core/thoughts/composite-emitter.ts:159` | 4 events |
+| `SubjectStreamEvent` | `core/agents/types.ts:181` | 5 events |
+| `IntelligenceStreamEvent` | `core/intelligence/types.ts:126` | 5 events |
+| `WorkerEvent` | `core/proof/worker-protocol.ts:24` | 6 events |
+| `WorkerEvent` (dup) | `core/proof/prover.worker.ts:35` | Duplicate |
+| `WorkerEvent` (dup) | `core/proof/prover-orchestrator.ts:9` | Duplicate |
+
+**Naming Inconsistencies:** `phase` vs `phase-change`, `data` vs `content`/`segment`/`message`
+
+##### 5. Constants Fragmentation (🟡 MEDIUM — 52+ locations)
+
+**Timeout Values (scattered):**
+```typescript
+// Found in 15+ files
+30000 (30s): composite-provider.ts:50, congress/client.ts:26, oauth-providers.ts:25
+5000, 10000, 15000, 20000, 60000: Various locations
+```
+
+**Cache TTL Values (15+ patterns):**
+```typescript
+24 * 60 * 60 * 1000 (24h): 8 locations
+30 * 24 * 60 * 60 (30d): 3 locations
+CACHE_TTL_DAYS, CACHE_TTL_SECONDS, CACHE_EXPIRY_DAYS: Inconsistent naming
+```
+
+**Database Names (5+ hardcoded):**
+```typescript
+'communique-sessions', 'communique-keystore', 'communique-location', 'communique'
+// In: session-cache.ts, credential-encryption.ts, mongodb/schema.ts
+```
+
+##### 6. Positive Patterns (to extend)
+
+| Pattern | Location | Quality |
+|---------|----------|---------|
+| `PERCEPTUAL_TIMING` | `core/perceptual/timing.ts` | ✅ Excellent centralization |
+| Provider Architecture | `providers/index.ts` | ✅ Clean interface pattern |
+| Thoughts System | `core/thoughts/` | ✅ Well-structured types |
+| Confidence Constants | `providers/constants.ts` | ✅ Good centralization |
+
+---
+
+#### Data Flow Audit — Full Findings
+
+**Overall Assessment:** ✅ Strong integrity. All critical paths validated.
+
+##### Flow 1: API Request → Provider Pipeline
+**Status:** ✅ INTACT
+- `RequestBody` → `ResolveContext` transformation verified
+- `CompositeStreamingOptions` callbacks match emitter signatures
+- Evidence: `stream-decision-makers/+server.ts:148-156`, `decision-maker-v2.ts:64-71`
+
+##### Flow 2: Provider → MongoDB Cache
+**Status:** ⚠️ PARTIAL
+- Firecrawl `FirecrawlOrganizationProfile` validated by Zod
+- `LeaderDocument` schema matches between systems
+- **MISMATCH:** `LeaderDocument.isVerified` (MongoDB) vs `emailVerified` (Firecrawl)
+- **DATA LOSS:** `responsibilities` field from Firecrawl discarded during MongoDB storage (intentional?)
+
+##### Flow 3: SSE Stream Pipeline
+**Status:** ✅ INTACT
+- All 6 event types verified: segment, phase, confidence, documents, sources, complete
+- Type match confirmed across producer → transport → consumer
+
+##### Flow 4: L1 Citation Sources Flow
+**Status:** ✅ INTACT
+- `buildSourceList(groundingMetadata)` → SSE `sources` event → `formData.audience.sources`
+- Complete flow from Gemini grounding to frontend storage verified
+
+##### Error Propagation
+**Status:** ✅ INTACT
+- Provider errors wrapped with context
+- Validation errors trigger graceful degradation
+- MongoDB cache failures non-blocking
+- Frontend auth-required errors route to overlay
+
+---
+
+#### User Flow Audit — Full Findings
+
+**Overall Assessment:** Core flows architecturally sound. 3 friction points identified.
+
+| Flow | Status | Notes |
+|------|--------|-------|
+| Template Creation | ✅ SMOOTH | All 5 steps validated, formData passes cleanly |
+| OAuth Gate | ⚠️ FRICTION | Cookie + URL params work, but **no session validation on return** |
+| Decision-Maker Streaming | ⚠️ FRICTION | SSE works, but **generic errors**, **no partial recovery** |
+| Message Generation | ✅ SMOOTH | Auth gate + retry, inline error display |
+| Progressive Disclosure | ✅ SMOOTH | L1→L2→L3, auto-scroll works |
+| Draft Persistence | ✅ SMOOTH | 30s auto-save, 7-day retention, synchronous restore |
+| Error Recovery | ⚠️ FRICTION | Retry works, but **no partial results**, **no offline detection** |
+
+##### Critical Issues Identified
+
+**1. OAuth Return Missing Session Validation**
+- **File:** `src/routes/+page.svelte:104-128`
+- **Issue:** Opens modal on `?create=true` without verifying OAuth succeeded
+- **Impact:** User re-hits rate limit in dead-end loop
+
+**2. Streaming Progress Lost on Network Failure**
+- **File:** `src/lib/components/template/creator/DecisionMakerResolver.svelte`
+- **Issue:** SSE stream failure = total thought loss
+- **Impact:** 30s of streaming thoughts lost on network hiccup
+
+**3. Generic Error Messages Not Actionable**
+- **Files:** `DecisionMakerResolver:258`, `MessageGenerationResolver:249`
+- **Issue:** "Failed to resolve decision-makers" doesn't tell user what to do
+- **Impact:** User doesn't know if network, server, or data issue
+
+---
+
+### Wave 20 (Complete) — Engineering Distinction Refactoring
+
+> **Status:** ✅ All 5 refactoring tasks complete. Zero circular dependencies. Unified type system.
+> **Philosophy:** Realize resonant engineering abstractions while maintaining interface contracts
+
+#### Refactoring Strategy
+
+**Phase 1: Foundation (Week 1) — Type Consolidation** ✅ COMPLETE
+
+| Task | Status | Target Files | Pattern Reference |
+|------|--------|--------------|-------------------|
+| ✅ Create shared types module | Complete | `src/lib/types/shared.ts` | TypeScript Handbook: Module Augmentation |
+| ✅ Consolidate Source interface | Complete | Removed from `agents/types.ts` | Single Source of Truth |
+| ✅ Establish DecisionMaker hierarchy | Complete | `DecisionMakerBase`, `...WithContact`, `...Enriched`, `...Display` | Discriminated Union pattern |
+| ✅ Remove TemplateScope duplicates | Complete | Kept in `shared.ts`, re-exports in `jurisdiction.ts` | Barrel file best practices |
+
+**Proposed DecisionMaker Type Hierarchy:**
+```typescript
+// src/lib/types/shared.ts
+export interface DecisionMakerBase {
+  name: string;
+  title: string;
+  organization: string;
+}
+
+export interface DecisionMakerWithContact extends DecisionMakerBase {
+  email: string;
+  contactChannel: ContactChannel;
+}
+
+export interface DecisionMakerEnriched extends DecisionMakerWithContact {
+  reasoning: string;
+  sourceUrl: string;
+  confidence: number;
+}
+
+export interface DecisionMakerDisplay extends DecisionMakerBase {
+  shortName?: string;
+  role?: string;
+}
+```
+
+**Phase 2: Consolidation (Week 2) — Constants & Events** ✅ COMPLETE
+
+| Task | Status | Target Files | Pattern Reference |
+|------|--------|--------------|-------------------|
+| ✅ Create centralized timeouts | Complete | `src/lib/constants/timeouts.ts` | Configuration as Code |
+| ✅ Create centralized cache TTL | Complete | `src/lib/constants/cache.ts` | Temporal constants pattern |
+| ✅ Create database names module | Complete | `src/lib/constants/database.ts` | Environment abstraction |
+| ✅ Standardize SSE event types | Complete | `src/lib/core/events/base.ts` | Discriminated unions |
+| ⏳ Standardize field naming | Future | `isEmailVerified` everywhere | Boolean prefix convention |
+
+**Proposed Constants Structure:**
+```typescript
+// src/lib/constants/timeouts.ts
+export const TIMEOUTS = {
+  API: { DEFAULT: 30_000, SHORT: 10_000, LONG: 60_000 },
+  VERIFICATION: 30_000,
+  MAP_API: 15_000,
+  FIRECRAWL_POLL: 2_000
+} as const;
+
+// src/lib/constants/cache.ts
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+export const CACHE_TTL = {
+  SESSION: 7 * MS_PER_DAY,
+  ORGANIZATION: 30 * MS_PER_DAY,
+  GEOCODING: 30 * MS_PER_DAY,
+  CENSUS: 365 * MS_PER_DAY,
+  BILL: 90 * MS_PER_DAY
+} as const;
+
+// src/lib/constants/database.ts
+export const DB_NAMES = {
+  MAIN: 'communique',
+  SESSIONS: 'communique-sessions',
+  KEYSTORE: 'communique-keystore',
+  LOCATION: 'communique-location'
+} as const;
+```
+
+**Proposed Base SSE Event Type:**
+```typescript
+// src/lib/core/events/base.ts
+export type BaseStreamEvent<T extends string, D = unknown> =
+  | { type: 'progress'; data: D }
+  | { type: 'complete'; data: D }
+  | { type: 'error'; error: string }
+  | { type: T; data: D };
+```
+
+**Phase 3: Architecture (Week 3) — Dependency Resolution** ✅ COMPLETE
+
+| Task | Status | Target | Pattern Reference |
+|------|--------|--------|-------------------|
+| ✅ Break agents/providers cycle | Complete | Created `core/agents/shared-types.ts` | Dependency Inversion Principle |
+| ✅ Break MongoDB/Reducto cycle | Complete | Created `mongodb/constants.ts` | Type-only imports |
+| ✅ Break analytics cycle | Complete | Created `core/analytics/utils.ts` | Module boundary separation |
+| ✅ Audit barrel files for cycles | Complete | `madge --circular` passes | **0 cycles found** |
+
+**Phase 4: UX Fixes (Week 3) — Flow Friction** ✅ COMPLETE
+
+| Task | Status | Target | Issue |
+|------|--------|--------|-------|
+| ✅ Validate OAuth on modal resume | Complete | `routes/+page.svelte:108-121` | Checks session before opening |
+| ✅ Add incremental thought storage | Complete | `DecisionMakerResolver.svelte` | Saves every 5 segments |
+| ✅ Improve error message specificity | Complete | Both resolver components | 429→auth, 500→retry, timeout→retry |
+| ✅ Add offline detection | Complete | Both resolver components | `navigator.onLine` check |
+
+#### Testing Strategy
+
+- Run `madge --circular` after each phase
+- Add integration tests for type conversions
+- Visual regression tests for SSE streaming UI
+- Contract tests for API boundaries
+
+#### Metrics — Final Results
+
+| Category | Before | After | Status |
+|----------|--------|-------|--------|
+| Type Duplication | 20+ instances | Consolidated in `shared.ts` | ✅ Resolved |
+| Naming Inconsistency | 30+ instances | Partially addressed | ⏳ Future work |
+| Circular Dependencies | 12 cycles | **0 cycles** | ✅ Resolved |
+| Constants Fragmentation | 52+ locations | Centralized in `$lib/constants` | ✅ Resolved |
+| SSE Event Inconsistency | 7 variants | Unified `BaseStreamEvent` | ✅ Resolved |
+| UX Flow Friction | 3 issues | All fixed | ✅ Resolved |
+| **Completion** | | | **5/6 categories resolved** |
 
 ---
 

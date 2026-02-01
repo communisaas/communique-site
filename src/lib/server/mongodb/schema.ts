@@ -210,20 +210,7 @@ export interface ParsedDocumentCacheDocument {
 }
 
 // ============================================================================
-// Collection Names - Centralized constants
+// Re-export constants for backward compatibility
 // ============================================================================
 
-export const COLLECTIONS = {
-	ORGANIZATIONS: 'organizations',
-	INTELLIGENCE: 'intelligence',
-	DECISION_MAKER_CACHE: 'decision_maker_cache',
-	PARSED_DOCUMENTS: 'parsed_documents'
-} as const;
-
-export type CollectionName = typeof COLLECTIONS[keyof typeof COLLECTIONS];
-
-// ============================================================================
-// Database Name
-// ============================================================================
-
-export const DATABASE_NAME = 'communique';
+export { COLLECTIONS, DATABASE_NAME, type CollectionName } from './constants';

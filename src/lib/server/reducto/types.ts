@@ -263,3 +263,319 @@ export interface AnalysisResult {
 // - Unique index on sourceUrlHash for deduplication
 // - Index on documentType for filtering
 // - Hit count tracking for cache statistics
+
+// ============================================================================
+// Reducto Extract API Types (Structured Extraction)
+// ============================================================================
+
+/**
+ * Schema field for Extract API
+ * Defines what to extract from the document
+ */
+export interface ExtractSchemaField {
+	/** Field name (becomes key in extracted data) */
+	name: string;
+	/** Description for the AI to understand what to extract */
+	description: string;
+	/** Data type */
+	type: 'string' | 'number' | 'boolean' | 'date' | 'array' | 'object';
+	/** Whether this field is required */
+	required?: boolean;
+	/** For array/object types, nested schema */
+	items?: ExtractSchemaField;
+	properties?: ExtractSchemaField[];
+}
+
+/**
+ * Schema for Extract API request
+ */
+export interface ExtractSchema {
+	/** Schema fields to extract */
+	fields: ExtractSchemaField[];
+	/** Optional context to guide extraction */
+	context?: string;
+}
+
+/**
+ * Result from Extract API
+ */
+export interface ExtractResult {
+	success: boolean;
+	data?: Record<string, unknown>;
+	error?: string;
+	/** Confidence scores per field (0-1) */
+	confidence?: Record<string, number>;
+	/** Source citations for extracted data */
+	citations?: Record<string, string>;
+}
+
+// ============================================================================
+// Legislative Bill Extraction Types
+// ============================================================================
+
+/**
+ * Sponsor/cosponsor information
+ */
+export interface BillSponsor {
+	name: string;
+	party: 'D' | 'R' | 'I' | string;
+	state: string;
+	district?: number;
+	role: 'sponsor' | 'cosponsor';
+}
+
+/**
+ * Funding allocation in a bill
+ */
+export interface BillFunding {
+	program: string;
+	amount: number;
+	fiscalYear?: number;
+	duration?: string;
+	purpose?: string;
+}
+
+/**
+ * Key provision in a bill
+ */
+export interface BillProvision {
+	section: string;
+	title: string;
+	summary: string;
+	effectiveDate?: string;
+	impactedEntities?: string[];
+}
+
+/**
+ * Definition from a bill
+ */
+export interface BillDefinition {
+	term: string;
+	definition: string;
+	section?: string;
+}
+
+/**
+ * Structured extraction of a legislative bill
+ */
+export interface ExtractedBill {
+	/** Bill identifier (e.g., "H.R. 1234") */
+	billNumber: string;
+	/** Official title */
+	title: string;
+	/** Short title (if different) */
+	shortTitle?: string;
+	/** Congress number */
+	congress: number;
+	/** Chamber of origin */
+	chamber: 'house' | 'senate';
+	/** Date introduced */
+	introducedDate?: string;
+	/** Primary sponsor */
+	sponsor?: BillSponsor;
+	/** Cosponsors */
+	cosponsors: BillSponsor[];
+	/** Total cosponsors count */
+	cosponsorsCount: number;
+	/** Policy area */
+	policyArea?: string;
+	/** Subject keywords */
+	subjects: string[];
+	/** Purpose statement */
+	purpose?: string;
+	/** Key provisions */
+	provisions: BillProvision[];
+	/** Funding allocations */
+	funding: BillFunding[];
+	/** Definitions */
+	definitions: BillDefinition[];
+	/** Effective date(s) */
+	effectiveDates?: string[];
+	/** Sunset/expiration date */
+	sunsetDate?: string;
+	/** Amendments to existing law */
+	amendsLaws?: string[];
+	/** Extraction metadata */
+	extractionMetadata: {
+		extractedAt: Date;
+		confidence: number;
+		reductoJobId?: string;
+	};
+}
+
+/**
+ * Options for bill extraction
+ */
+export interface BillExtractOptions {
+	/** URL of the bill document */
+	url: string;
+	/** Bill type hint */
+	billType?: 'hr' | 's' | 'hjres' | 'sjres';
+	/** Congress number (for validation) */
+	congress?: number;
+	/** Include definitions section */
+	includeDefinitions?: boolean;
+	/** Maximum provisions to extract */
+	maxProvisions?: number;
+}
+
+/**
+ * Result from bill extraction
+ */
+export interface BillExtractResult {
+	success: boolean;
+	bill?: ExtractedBill;
+	error?: string;
+	cached: boolean;
+}
+
+// ============================================================================
+// Parallel Processing Configuration
+// ============================================================================
+
+/** Maximum documents to process in parallel (API rate limits) */
+export const MAX_PARALLEL_DOCUMENTS = 3;
+
+/** Maximum document size in bytes (10 MB) */
+export const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+
+/** Analysis timeout per document in milliseconds (60 seconds) */
+export const ANALYSIS_TIMEOUT_MS = 60_000;
+
+/** Estimated time per document for progress calculations (30 seconds) */
+export const ESTIMATED_TIME_PER_DOCUMENT_MS = 30_000;
+
+// ============================================================================
+// Parallel Processing Types
+// ============================================================================
+
+/**
+ * Progress callback for document analysis lifecycle events.
+ * Enables perceptual engineering for long-running operations.
+ */
+export interface DocumentAnalysisProgress {
+	/** Event type for UI state management */
+	type: 'analysis_start' | 'document_progress' | 'document_interim' | 'analysis_complete';
+}
+
+/**
+ * Emitted when document analysis begins.
+ * Timing budget: 0-1s user expects immediate feedback.
+ */
+export interface AnalysisStartEvent extends DocumentAnalysisProgress {
+	type: 'analysis_start';
+	/** Number of documents being analyzed */
+	count: number;
+	/** Estimated total time in milliseconds */
+	estimatedTimeMs: number;
+	/** Whether documents are being processed in parallel */
+	parallel: boolean;
+	/** Document URLs being analyzed */
+	urls: string[];
+}
+
+/**
+ * Emitted as each document progresses through stages.
+ * Timing budget: 1-30s user expects granular progress.
+ */
+export interface DocumentProgressEvent extends DocumentAnalysisProgress {
+	type: 'document_progress';
+	/** Index of this document (0-based) */
+	index: number;
+	/** Total documents being analyzed */
+	total: number;
+	/** Document URL */
+	url: string;
+	/** Document title (if known) */
+	title?: string;
+	/** Current stage of analysis */
+	stage: 'queued' | 'parsing' | 'extracting' | 'complete' | 'error' | 'timeout';
+	/** Time elapsed for this document in milliseconds */
+	timeElapsedMs: number;
+	/** Error message if stage is 'error' or 'timeout' */
+	error?: string;
+	/** Whether result was from cache */
+	cached?: boolean;
+}
+
+/**
+ * Emitted when interim findings are discovered.
+ * Prevents user from thinking the system is stuck.
+ */
+export interface DocumentInterimEvent extends DocumentAnalysisProgress {
+	type: 'document_interim';
+	/** Index of the document */
+	documentIndex: number;
+	/** Description of the finding */
+	finding: string;
+	/** Confidence in this finding (0-1) */
+	confidence: number;
+}
+
+/**
+ * Emitted when all document analysis completes.
+ */
+export interface AnalysisCompleteEvent extends DocumentAnalysisProgress {
+	type: 'analysis_complete';
+	/** Total documents processed */
+	total: number;
+	/** Successfully parsed documents */
+	successful: number;
+	/** Failed documents */
+	failed: number;
+	/** Timed out documents */
+	timedOut: number;
+	/** Total time elapsed in milliseconds */
+	totalTimeMs: number;
+}
+
+/**
+ * Union type for all document analysis events
+ */
+export type DocumentAnalysisEvent =
+	| AnalysisStartEvent
+	| DocumentProgressEvent
+	| DocumentInterimEvent
+	| AnalysisCompleteEvent;
+
+/**
+ * Callback for receiving document analysis events
+ */
+export type DocumentAnalysisEventCallback = (event: DocumentAnalysisEvent) => void;
+
+/**
+ * Options for parallel document parsing
+ */
+export interface ParseMultipleOptions {
+	/** Query for relevance scoring across all documents */
+	query?: string;
+	/** Document type hint (auto-detected if not provided) */
+	type?: DocumentType;
+	/** Whether to extract entities */
+	extractEntities?: boolean;
+	/** Whether to detect cross-references */
+	detectCrossRefs?: boolean;
+	/** Callback for progress events (enables perceptual engineering) */
+	onProgress?: DocumentAnalysisEventCallback;
+	/** Relevance scores for prioritization (optional, keyed by URL) */
+	relevanceScores?: Map<string, number>;
+	/** Custom timeout per document (defaults to ANALYSIS_TIMEOUT_MS) */
+	timeoutMs?: number;
+}
+
+/**
+ * Result from parallel document parsing
+ */
+export interface ParseMultipleResult {
+	/** Results in the same order as input URLs */
+	results: ParseResult[];
+	/** Summary statistics */
+	stats: {
+		total: number;
+		successful: number;
+		failed: number;
+		timedOut: number;
+		cached: number;
+		totalTimeMs: number;
+	};
+}

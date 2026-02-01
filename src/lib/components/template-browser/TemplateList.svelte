@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ChevronRight, PenLine, Landmark, Building2, Mail, Users, Search } from '@lucide/svelte';
+	import { ChevronRight, PenLine, Landmark, Building2, Mail, Users, Search, Sparkles } from '@lucide/svelte';
 	import { preloadData } from '$app/navigation';
 	import type { Template, TemplateGroup } from '$lib/types/template';
 	import Badge from '$lib/components/ui/Badge.svelte';
@@ -17,6 +17,12 @@
 	}
 
 	let { groups, selectedId, onSelect, onCreateTemplate, loading = false }: Props = $props();
+
+	// Semantic search state
+	let semanticMode = $state(false);
+	let semanticLoading = $state(false);
+	let semanticResults = $state<{ id: string; score: number }[]>([]); // Template IDs + scores from semantic search
+	let lastSemanticQuery = $state('');
 
 	/**
 	 * PERCEPTUAL ENGINEERING: Progressive Rendering Constants
@@ -69,12 +75,66 @@
 		});
 	});
 
+	// Debounced semantic search
+	let searchTimeout: ReturnType<typeof setTimeout> | null = null;
+
+	async function performSemanticSearch(query: string) {
+		if (!query.trim() || query.length < 3) {
+			semanticResults = [];
+			semanticLoading = false;
+			return;
+		}
+
+		// Don't re-search the same query
+		if (query === lastSemanticQuery) return;
+
+		semanticLoading = true;
+		lastSemanticQuery = query;
+
+		try {
+			const response = await fetch('/api/templates/search', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ query, limit: 50 })
+			});
+
+			if (response.ok) {
+				const data = await response.json();
+				semanticResults = data.results?.map((r: { id: string }) => r.id) || [];
+			}
+		} catch (error) {
+			console.error('[TemplateList] Semantic search failed:', error);
+		} finally {
+			semanticLoading = false;
+		}
+	}
+
+	// Watch searchQuery changes for semantic search (debounced)
+	$effect(() => {
+		if (semanticMode && searchQuery) {
+			if (searchTimeout) clearTimeout(searchTimeout);
+			searchTimeout = setTimeout(() => performSemanticSearch(searchQuery), 300);
+		}
+	});
+
 	// Client-side filter (instant - no debounce needed)
 	const filteredGroups = $derived.by(() => {
 		if (!searchQuery.trim()) return scoredGroups;
 
 		const query = searchQuery.toLowerCase();
 
+		// If semantic mode and we have results, filter by those IDs
+		if (semanticMode && semanticResults.length > 0) {
+			const resultSet = new Set(semanticResults);
+			return scoredGroups
+				.map((group) => ({
+					...group,
+					templates: group.templates.filter((t) => resultSet.has(t.id))
+				}))
+				.filter((group) => group.templates.length > 0);
+		}
+
+		// Default: client-side text matching (instant)
 		return scoredGroups
 			.map((group) => ({
 				...group,
@@ -82,10 +142,11 @@
 					(t) =>
 						t.title.toLowerCase().includes(query) ||
 						t.description?.toLowerCase().includes(query) ||
-						t.category?.toLowerCase().includes(query)
+						t.category?.toLowerCase().includes(query) ||
+						t.topics?.some((topic: string) => topic.toLowerCase().includes(query))
 				)
 			}))
-			.filter((group) => group.templates.length > 0); // Remove empty groups
+			.filter((group) => group.templates.length > 0);
 	});
 
 	// Match count for feedback
@@ -275,24 +336,63 @@
 		<!-- Search UI -->
 		<div class="search-container">
 			<div class="search-input-wrapper">
-				<Search class="search-icon" size={18} />
+				{#if semanticMode}
+					<Sparkles class="search-icon semantic-active" size={18} />
+				{:else}
+					<Search class="search-icon" size={18} />
+				{/if}
 				<input
 					type="search"
 					class="search-input"
-					placeholder="Search templates..."
+					class:semantic-mode={semanticMode}
+					placeholder={semanticMode ? "Describe what you're looking for..." : "Search templates..."}
 					bind:value={searchQuery}
 				/>
+				<button
+					type="button"
+					class="semantic-toggle"
+					class:active={semanticMode}
+					onclick={() => {
+						semanticMode = !semanticMode;
+						if (!semanticMode) {
+							semanticResults = [];
+							lastSemanticQuery = '';
+						}
+					}}
+					title={semanticMode ? 'Switch to text search' : 'Enable AI-powered search'}
+				>
+					<Sparkles size={16} />
+					<span class="toggle-label">AI</span>
+				</button>
 			</div>
 
-			{#if searchQuery && matchCount > 0}
+			{#if semanticLoading}
+				<p class="search-status searching">
+					<span class="loading-dot"></span>
+					Searching with AI...
+				</p>
+			{:else if searchQuery && matchCount > 0}
 				<p class="search-results-count">
 					{matchCount}
-					{matchCount === 1 ? 'template' : 'templates'} match "{searchQuery}"
+					{matchCount === 1 ? 'template' : 'templates'}
+					{semanticMode ? 'found' : 'match'} "{searchQuery}"
+					{#if semanticMode}
+						<span class="search-badge">MongoDB Vector Search</span>
+					{/if}
 				</p>
-			{/if}
-
-			{#if searchQuery && matchCount === 0}
-				<p class="no-results">No templates match "{searchQuery}"</p>
+			{:else if searchQuery && matchCount === 0 && !semanticLoading}
+				<p class="no-results">
+					No templates {semanticMode ? 'found for' : 'match'} "{searchQuery}"
+					{#if !semanticMode}
+						<button
+							type="button"
+							class="try-semantic-link"
+							onclick={() => semanticMode = true}
+						>
+							Try AI search
+						</button>
+					{/if}
+				</p>
 			{/if}
 		</div>
 
@@ -514,6 +614,103 @@
 		font-size: 0.875rem;
 		color: oklch(0.45 0.02 250);
 		font-style: italic;
+	}
+
+	/* Semantic Search Styles */
+	.search-input.semantic-mode {
+		border-color: oklch(0.7 0.15 280);
+		background: linear-gradient(to right, oklch(0.98 0.02 280), white);
+	}
+
+	.search-input.semantic-mode:focus {
+		border-color: oklch(0.6 0.2 280);
+		box-shadow: 0 0 0 3px oklch(0.6 0.2 280 / 0.15);
+	}
+
+	.search-input-wrapper :global(.search-icon.semantic-active) {
+		color: oklch(0.55 0.2 280);
+	}
+
+	.semantic-toggle {
+		position: absolute;
+		right: 0.5rem;
+		display: flex;
+		align-items: center;
+		gap: 0.25rem;
+		padding: 0.35rem 0.6rem;
+		border: 1px solid oklch(0.85 0.02 250);
+		border-radius: 6px;
+		background: white;
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: oklch(0.5 0.02 250);
+		cursor: pointer;
+		transition: all 150ms ease-out;
+	}
+
+	.semantic-toggle:hover {
+		border-color: oklch(0.7 0.15 280);
+		color: oklch(0.5 0.15 280);
+	}
+
+	.semantic-toggle.active {
+		border-color: oklch(0.6 0.2 280);
+		background: oklch(0.95 0.05 280);
+		color: oklch(0.45 0.2 280);
+	}
+
+	.toggle-label {
+		font-family: 'Satoshi', system-ui, sans-serif;
+	}
+
+	.search-status.searching {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 0.5rem;
+		font-size: 0.875rem;
+		color: oklch(0.5 0.15 280);
+	}
+
+	.loading-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: oklch(0.6 0.2 280);
+		animation: pulse 1s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 0.4; transform: scale(0.8); }
+		50% { opacity: 1; transform: scale(1); }
+	}
+
+	.search-badge {
+		display: inline-block;
+		margin-left: 0.5rem;
+		padding: 0.15rem 0.5rem;
+		border-radius: 4px;
+		background: oklch(0.92 0.08 145);
+		color: oklch(0.35 0.12 145);
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.03em;
+	}
+
+	.try-semantic-link {
+		margin-left: 0.5rem;
+		padding: 0;
+		border: none;
+		background: none;
+		color: oklch(0.5 0.15 280);
+		font-size: inherit;
+		text-decoration: underline;
+		cursor: pointer;
+	}
+
+	.try-semantic-link:hover {
+		color: oklch(0.4 0.2 280);
 	}
 
 	/**

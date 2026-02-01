@@ -5,7 +5,7 @@
 	 * PERCEPTUAL ENGINEERING:
 	 * - Groups segments by phase (visual organization)
 	 * - Active phase expanded, completed phases soft-collapsed (focus management)
-	 * - Temporal rhythm through chunked streaming (~300ms intervals)
+	 * - Temporal rhythm through chunked streaming (THOUGHT_PAUSE intervals)
 	 * - Progressive disclosure layers (citations, actions, expansions)
 	 * - Scroll behavior: auto-scroll during streaming, manual control when paused
 	 *
@@ -32,6 +32,8 @@
 	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import PhaseContainer from './PhaseContainer.svelte';
 	import StreamControls from './StreamControls.svelte';
+	import { PhaseAmbient } from './index';
+	import { SNAP } from '$lib/core/perceptual';
 
 	interface Props {
 		segments: ThoughtSegment[];
@@ -57,6 +59,31 @@
 
 	// Pause state
 	let paused = $state(false);
+
+	// Derive current phase from phases array for PhaseAmbient
+	const currentPhase = $derived.by(() => {
+		// Find active phase
+		const activePhase = phases.find((p) => p.status === 'active');
+		if (activePhase) {
+			// Map phase names to PhaseAmbient phase types
+			const phaseName = activePhase.name.toLowerCase();
+			if (phaseName.includes('research') || phaseName.includes('discovery')) {
+				return 'discovery';
+			}
+			if (phaseName.includes('verif') || phaseName.includes('context') || phaseName.includes('validat')) {
+				return 'verification';
+			}
+		}
+
+		// If all phases complete, show complete state
+		const allComplete = phases.length > 0 && phases.every((p) => p.status === 'complete');
+		if (allComplete) {
+			return 'complete';
+		}
+
+		// Default to idle
+		return 'idle';
+	}) as 'idle' | 'discovery' | 'verification' | 'complete';
 
 	// Group segments by phase
 	const segmentGroups = $derived.by(() => {
@@ -117,58 +144,60 @@
 	}
 </script>
 
-<div
-	class="thought-stream flex h-full flex-col"
-	role="region"
-	aria-label="Agent thought stream"
-	aria-live={streaming ? 'polite' : 'off'}
->
-	<!-- Stream controls (sticky at top) -->
-	{#if streaming || paused}
-		<div
-			class="stream-controls-container sticky top-0 z-10 border-b border-surface-border
-				bg-surface-base/95 px-4 py-3 backdrop-blur-sm"
-		>
-			<StreamControls {streaming} {paused} onpause={handlePause} onresume={handleResume} />
-		</div>
-	{/if}
-
-	<!-- Thought stream content (scrollable) -->
+<PhaseAmbient phase={currentPhase}>
 	<div
-		bind:this={streamContainer}
-		class="stream-content flex-1 space-y-4 overflow-y-auto px-4 py-4"
-		role="feed"
-		aria-busy={streaming}
+		class="thought-stream flex h-full flex-col"
+		role="region"
+		aria-label="Agent thought stream"
+		aria-live={streaming ? 'polite' : 'off'}
 	>
-		{#if segmentGroups.length > 0}
-			<!-- Render phase containers -->
-			{#each segmentGroups as group (group.id)}
-				{#if group.phase}
-					<PhaseContainer
-						phase={group.phase}
-						segments={group.segments}
-						{oncitationclick}
-						{documents}
-						{onViewFullDocument}
-					/>
-				{/if}
-			{/each}
-		{:else}
-			<!-- Empty state -->
-			<div class="empty-state flex h-full items-center justify-center">
-				<div class="text-center">
-					<p class="text-base font-medium text-text-tertiary">No thoughts yet</p>
-					<p class="mt-1 text-sm text-text-quaternary">
-						The agent will share its reasoning here as it works
-					</p>
-				</div>
+		<!-- Stream controls (sticky at top) -->
+		{#if streaming || paused}
+			<div
+				class="stream-controls-container sticky top-0 z-10 border-b border-surface-border
+					bg-surface-base/95 px-4 py-3 backdrop-blur-sm"
+			>
+				<StreamControls {streaming} {paused} onpause={handlePause} onresume={handleResume} />
 			</div>
 		{/if}
 
-		<!-- Spacer for scroll padding -->
-		<div class="h-4" aria-hidden="true"></div>
+		<!-- Thought stream content (scrollable) -->
+		<div
+			bind:this={streamContainer}
+			class="stream-content flex-1 space-y-4 overflow-y-auto px-4 py-4"
+			role="feed"
+			aria-busy={streaming}
+		>
+			{#if segmentGroups.length > 0}
+				<!-- Render phase containers -->
+				{#each segmentGroups as group (group.id)}
+					{#if group.phase}
+						<PhaseContainer
+							phase={group.phase}
+							segments={group.segments}
+							{oncitationclick}
+							{documents}
+							{onViewFullDocument}
+						/>
+					{/if}
+				{/each}
+			{:else}
+				<!-- Empty state -->
+				<div class="empty-state flex h-full items-center justify-center">
+					<div class="text-center">
+						<p class="text-base font-medium text-text-tertiary">No thoughts yet</p>
+						<p class="mt-1 text-sm text-text-quaternary">
+							The agent will share its reasoning here as it works
+						</p>
+					</div>
+				</div>
+			{/if}
+
+			<!-- Spacer for scroll padding -->
+			<div class="h-4" aria-hidden="true"></div>
+		</div>
 	</div>
-</div>
+</PhaseAmbient>
 
 <style>
 	/* Custom scrollbar styling */
@@ -194,9 +223,9 @@
 		background-color: var(--surface-border);
 	}
 
-	/* Smooth transitions */
+	/* Smooth transitions - uses PERCEPTUAL_TIMING.SNAP for quick reorganization */
 	.thought-stream {
-		transition: all 200ms ease-out;
+		transition: all calc(var(--snap-duration, 150) * 1ms) ease-out;
 	}
 
 	/* Backdrop blur for sticky controls */

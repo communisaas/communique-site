@@ -21,6 +21,7 @@
 	 */
 
 	import type { Snippet } from 'svelte';
+	import { TRANSITION } from '$lib/core/perceptual';
 
 	type Phase = 'idle' | 'discovery' | 'verification' | 'complete' | 'degraded';
 
@@ -74,8 +75,8 @@
 		/* Current phase color - defaults to transparent */
 		--current-phase-color: transparent;
 
-		/* Transition timing */
-		--phase-transition: 300ms ease-out;
+		/* Transition timing from PERCEPTUAL_TIMING.TRANSITION */
+		--phase-transition: calc(var(--transition-duration, 300) * 1ms) ease-out;
 	}
 
 	/* === BASE STYLES === */

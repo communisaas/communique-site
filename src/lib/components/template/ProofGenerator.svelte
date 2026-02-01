@@ -71,11 +71,50 @@
 	let state = $state<ProofGenerationState>({ status: 'idle' });
 	let educationIndex = $state(0);
 
+	// Import DeliveryResult type for the complete event
+	import type { DeliveryResult } from '../delivery/delivery-types';
+
 	const dispatch = createEventDispatcher<{
-		complete: { submissionId: string };
+		complete: { submissionId: string; deliveryResults?: DeliveryResult[] };
 		cancel: void;
 		error: { message: string };
 	}>();
+
+	/**
+	 * Transform API response to DeliveryResult format
+	 */
+	function transformToDeliveryResults(
+		apiResults: Array<{
+			office: string;
+			chamber: string;
+			state?: string;
+			district?: string;
+			success: boolean;
+			status: string;
+			messageId?: string;
+			confirmationNumber?: string;
+			error?: string;
+			deliveredAt?: string;
+			retryable?: boolean;
+		}>
+	): DeliveryResult[] {
+		return apiResults.map((r) => ({
+			office: r.office,
+			chamber: r.chamber as 'senate' | 'house',
+			state: r.state || '',
+			district: r.district,
+			outcome: r.success
+				? ('delivered' as const)
+				: r.status === 'unavailable'
+					? ('unavailable' as const)
+					: ('failed' as const),
+			confirmationId: r.messageId || r.confirmationNumber,
+			deliveredAt: r.deliveredAt,
+			error: r.error,
+			errorCode: r.status,
+			retryable: r.retryable
+		}));
+	}
 
 	// Educational messages that cycle during proof generation
 	const educationalMessages = [
@@ -311,9 +350,14 @@
 
 			const data = await response.json();
 
+			// Transform delivery results if present (MVP mode returns immediately)
+			const deliveryResults = data.delivery?.results
+				? transformToDeliveryResults(data.delivery.results)
+				: undefined;
+
 			// Success!
 			state = { status: 'complete', submissionId: data.submissionId };
-			dispatch('complete', { submissionId: data.submissionId });
+			dispatch('complete', { submissionId: data.submissionId, deliveryResults });
 		} catch (error) {
 			console.error('[ProofGenerator] Generation failed:', error);
 			state = {

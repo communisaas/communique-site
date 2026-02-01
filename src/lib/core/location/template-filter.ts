@@ -20,6 +20,15 @@ import type {
 } from './types';
 import type { ScopeMapping, ScopeLevel } from '$lib/utils/scope-mapper-international';
 
+// Import TemplateScopeExtended from shared types (canonical definition for client-side filtering)
+import type { TemplateScopeExtended } from '$lib/types/shared';
+
+// Create local type alias for use within this file
+type TemplateScope = TemplateScopeExtended;
+
+// Re-export for backward compatibility with external consumers
+export type { TemplateScopeExtended as TemplateScope } from '$lib/types/shared';
+
 // ============================================================================
 // Template Filter
 // ============================================================================
@@ -28,22 +37,6 @@ import type { ScopeMapping, ScopeLevel } from '$lib/utils/scope-mapper-internati
  * Geographic scope filter (breadcrumb selection)
  */
 export type GeographicScope = 'district' | 'city' | 'county' | 'state' | 'nationwide' | null;
-
-/**
- * TemplateScope from database (matches Prisma schema)
- */
-export interface TemplateScope {
-	id: string;
-	template_id: string;
-	country_code: string;
-	region_code?: string | null;
-	locality_code?: string | null;
-	district_code?: string | null;
-	display_text: string;
-	scope_level: ScopeLevel;
-	confidence: number;
-	extraction_method?: string;
-}
 
 // ============================================================================
 // Hierarchical Scope Matching

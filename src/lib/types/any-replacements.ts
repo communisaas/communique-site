@@ -160,11 +160,18 @@ export interface DeliveryConfig {
 
 export interface TemplateWithRelations extends Omit<Template, 'correction_log'> {
 	user?: User;
-	template_scopes?: TemplateScope[];
+	template_scopes?: TemplateScopeLegacy[];
 	correction_log?: CorrectionLogEntry[] | null;
 }
 
-export interface TemplateScope {
+/**
+ * Legacy template scope structure
+ *
+ * @deprecated Use TemplateScope from '$lib/types/shared' instead.
+ * This interface exists for backward compatibility with older code
+ * that uses scope_type/scope_value pattern.
+ */
+export interface TemplateScopeLegacy {
 	id: string;
 	template_id: string;
 	scope_type: string;

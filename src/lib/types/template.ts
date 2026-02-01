@@ -1,5 +1,8 @@
-import type { TemplateScope } from './jurisdiction';
+import type { TemplateScope, Source } from './shared';
 import type { GeoScope } from '$lib/core/agents/types';
+
+// Re-export Source for backward compatibility
+export type { Source } from './shared';
 
 export interface Template {
 	id: string;
@@ -130,6 +133,8 @@ export interface TemplateFormData {
 		recipientEmails: string[];
 		includesCongress: boolean;
 		customRecipients: CustomRecipient[];
+		/** Grounding sources from decision-maker research for L1 citations */
+		sources?: Source[];
 	};
 	content: {
 		preview: string;
@@ -170,15 +175,8 @@ export interface CustomRecipient {
 	organization?: string;
 }
 
-/**
- * Source reference from message generation agent
- */
-export interface Source {
-	num: number; // Citation number [1], [2], etc.
-	title: string; // Source title
-	url: string; // Source URL
-	type: 'journalism' | 'research' | 'government' | 'legal' | 'advocacy'; // Source type
-}
+// NOTE: Source interface is now defined in ./shared.ts and re-exported above
+// for backward compatibility. The canonical definition is in shared.ts.
 
 // ============================================================================
 // Multi-Target Delivery Types (Hackathon Implementation)

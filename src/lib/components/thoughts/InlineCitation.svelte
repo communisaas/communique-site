@@ -9,10 +9,8 @@
 	 * - Click emits event for progressive disclosure in DetailDrawer
 	 * - Color matches coordination graph aesthetic (teal for routes)
 	 *
-	 * TIMING CONSTANTS (from perceptual architecture):
-	 * - L2_HOVER_DELAY: 300ms (prevents accidental triggers)
-	 * - L2_LINGER: 150ms (allows traversal to preview card)
-	 * - L2_FADE_IN: 150ms (smooth appearance)
+	 * TIMING CONSTANTS:
+	 * All timing values sourced from $lib/core/perceptual/timing
 	 *
 	 * ACCESSIBILITY:
 	 * - Keyboard navigable (tab to focus, enter/space to activate)
@@ -24,10 +22,7 @@
 	import type { Citation } from '$lib/core/thoughts/types';
 	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import DocumentPreview from './DocumentPreview.svelte';
-
-	// Perceptual timing constants
-	const L2_HOVER_DELAY = 300; // ms before showing preview
-	const L2_LINGER = 150; // ms grace period when leaving
+	import { L2_HOVER_DELAY, L2_LINGER, L2_FADE_IN } from '$lib/core/perceptual';
 
 	interface Props {
 		citation: Citation;
@@ -269,7 +264,8 @@
 
 	/* Tooltip positioning and animation */
 	.citation-tooltip {
-		animation: fadeIn 150ms ease-out;
+		/* Duration from PERCEPTUAL_TIMING.L2_FADE_IN */
+		animation: fadeIn calc(var(--l2-fade-in, 150) * 1ms) ease-out;
 		white-space: normal;
 		word-break: break-word;
 	}
@@ -295,8 +291,8 @@
 	.document-preview-wrapper {
 		position: fixed;
 		z-index: 100;
-		/* Smooth fade-in animation matching DocumentPreview timing */
-		animation: documentPreviewFadeIn 150ms ease-out;
+		/* Smooth fade-in animation from PERCEPTUAL_TIMING.L2_FADE_IN */
+		animation: documentPreviewFadeIn calc(var(--l2-fade-in, 150) * 1ms) ease-out;
 	}
 
 	@keyframes documentPreviewFadeIn {

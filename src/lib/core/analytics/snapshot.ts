@@ -16,7 +16,7 @@
 import { db } from '$lib/core/db';
 import { PRIVACY, METRIC_VALUES, type Metric } from '$lib/types/analytics';
 import { cryptoRandom } from './noise';
-import { getTodayUTC, getDaysAgoUTC } from './aggregate';
+import { getTodayUTC, getDaysAgoUTC } from './utils';
 import { createHmac } from 'crypto';
 
 // =============================================================================

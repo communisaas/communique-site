@@ -33,6 +33,7 @@ import {
 	isEncryptionAvailable,
 	type EncryptedCredential
 } from './credential-encryption';
+import { DB_NAMES, STORES } from '$lib/constants';
 
 // ============================================================================
 // Types
@@ -87,9 +88,9 @@ interface StoredCredential {
 // IndexedDB Setup
 // ============================================================================
 
-const DB_NAME = 'communique-sessions';
+const DB_NAME = DB_NAMES.SESSIONS;
 const DB_VERSION = 2; // Bumped for encryption migration
-const STORE_NAME = 'verification-credentials';
+const STORE_NAME = STORES.VERIFICATION_CREDENTIALS;
 
 /**
  * Open IndexedDB database

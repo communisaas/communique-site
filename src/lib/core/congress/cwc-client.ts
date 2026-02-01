@@ -47,28 +47,80 @@ interface CWCSubmissionResult {
 	confirmationNumber?: string;
 	status: 'submitted' | 'queued' | 'failed' | 'rejected';
 	office: string;
+	chamber?: 'house' | 'senate';
 	timestamp: string;
 	error?: string;
+	details?: {
+		configuration?: string;
+		action?: string;
+	};
 	cwcResponse?: CWCResponse;
 }
 
 export class CWCClient {
 	// Use lazy getters for env vars to ensure they're read at call time, not import time
 	// This is critical for test environments where env vars may be set after module import
-	private get apiKey(): string {
+
+	/** Senate API key */
+	private get senateApiKey(): string {
 		return process.env.CWC_API_KEY || '';
 	}
 
-	private get baseUrl(): string {
-		return process.env.CWC_API_BASE_URL || 'https://soapbox.senate.gov/api';
+	/** House API key (passed as query param to House CWC) */
+	private get houseApiKey(): string {
+		return process.env.HOUSE_CWC_API_KEY || '';
+	}
+
+	/** Environment: 'test' or 'production' */
+	private get environment(): 'test' | 'production' {
+		const env = process.env.CWC_ENVIRONMENT || 'test';
+		return env === 'production' ? 'production' : 'test';
+	}
+
+	/** Senate base URL based on environment */
+	private get senateBaseUrl(): string {
+		return this.environment === 'production'
+			? 'https://soapbox.senate.gov/api'
+			: 'https://soapbox.senate.gov/api';
+	}
+
+	/** Senate endpoint path based on environment */
+	private get senateEndpointPath(): string {
+		return this.environment === 'production'
+			? '/production-messages/'
+			: '/testing-messages/';
+	}
+
+	/** House proxy URL (must be IP-whitelisted server) */
+	private get houseProxyUrl(): string {
+		return process.env.GCP_PROXY_URL || '';
+	}
+
+	/** House CWC base URL based on environment */
+	private get houseBaseUrl(): string {
+		return this.environment === 'production'
+			? 'https://cwc.house.gov'
+			: 'https://uat-cwc.house.gov';
 	}
 
 	private readonly DEFAULT_TIMEOUT = 30000; // 30 seconds
 	private readonly MAX_RETRIES = 3;
 	private readonly RETRY_DELAY = 1000; // 1 second
+	private senateOfficeCodeCacheInitialized = false;
 
 	constructor() {
 		// Env vars are now read lazily via getters, so no need to check here
+	}
+
+	/**
+	 * Ensure Senate office code cache is initialized for accurate office codes
+	 * This is called automatically before Senate submissions
+	 */
+	private async ensureSenateOfficeCodeCache(): Promise<void> {
+		if (!this.senateOfficeCodeCacheInitialized) {
+			await CWCGenerator.preloadSenateOfficeCodeCache();
+			this.senateOfficeCodeCacheInitialized = true;
+		}
 	}
 
 	/**
@@ -166,9 +218,24 @@ export class CWCClient {
 			throw new Error('This method is only for Senate offices');
 		}
 
-		if (!this.apiKey) {
-			return this.simulateSubmission(senator, 'no_api_key');
+		if (!this.senateApiKey) {
+			console.warn('[CWC Senate] No API key configured - submission will fail');
+			return {
+				success: false,
+				status: 'failed' as const,
+				office: senator.name,
+				chamber: 'senate' as const,
+				timestamp: new Date().toISOString(),
+				error: 'Senate CWC delivery not configured. Set CWC_API_KEY environment variable.',
+				details: {
+					configuration: 'missing_api_key',
+					action: 'Configure CWC_API_KEY in environment'
+				}
+			};
 		}
+
+		// Ensure Senate office code cache is loaded for accurate office codes
+		await this.ensureSenateOfficeCodeCache();
 
 		try {
 			// Convert CongressionalOffice to UserRepresentative format for CWC Generator
@@ -231,8 +298,10 @@ export class CWCClient {
 				};
 			}
 
-			// Submit to Senate CWC endpoint (testing for now)
-			const endpoint = `${this.baseUrl}/testing-messages/?apikey=${this.apiKey}`;
+			// Submit to Senate CWC endpoint (environment-aware)
+			const endpoint = `${this.senateBaseUrl}${this.senateEndpointPath}?apikey=${this.senateApiKey}`;
+			console.log(`[CWC Senate] Submitting to ${this.environment} environment: ${endpoint.replace(/apikey=.*/, 'apikey=<REDACTED>')}`);
+
 
 			const response = await this.fetchWithRetry(endpoint, {
 				method: 'POST',
@@ -298,9 +367,8 @@ export class CWCClient {
 			timestamp
 		};
 
-		// Check for GCP proxy configuration
-		const proxyUrl = process.env.GCP_PROXY_URL;
-		const proxyAuthToken = process.env.GCP_PROXY_AUTH_TOKEN;
+		// Check for GCP proxy and House API key configuration
+		const proxyUrl = this.houseProxyUrl;
 
 		if (!proxyUrl) {
 			const errorMessage = [
@@ -329,47 +397,101 @@ export class CWCClient {
 			};
 		}
 
+		if (!this.houseApiKey) {
+			console.warn('[CWC House] No House API key configured - submission will fail');
+			return {
+				...baseResult,
+				success: false,
+				status: 'failed',
+				error: 'House CWC delivery not configured. Set HOUSE_CWC_API_KEY environment variable.'
+			};
+		}
+
 		try {
 			console.log('[CWC House] Attempting submission via GCP proxy:', {
 				office: representative.name,
 				bioguideId: representative.bioguideId,
 				district: `${representative.state}-${representative.district}`,
 				proxyUrl: proxyUrl.replace(/\/\/.*@/, '//<REDACTED>@'), // Redact auth in URL if present
-				hasAuthToken: !!proxyAuthToken,
+				environment: this.environment,
 				timestamp
 			});
 
-			// Prepare House CWC submission payload
-			const jobId = `house-${Date.now()}-${representative.bioguideId}`;
-			const submission = {
-				jobId,
-				officeCode: representative.officeCode,
-				recipientName: representative.name,
-				recipientEmail: `${representative.bioguideId}@house.gov`,
-				subject: template.title,
-				message: personalizedMessage,
-				senderName: user.name,
-				senderEmail: user.email,
-				senderAddress: `${user.street}, ${user.city}, ${user.state} ${user.zip}`,
-				senderPhone: user.phone || '',
-				priority: 'normal' as const,
-				metadata: {
-					templateId: template.id,
-					userId: user.id,
-					bioguideId: representative.bioguideId,
-					submissionTime: timestamp
-				}
+			// Convert CongressionalOffice to UserRepresentative format for CWC Generator
+			const targetRep = {
+				bioguideId: representative.bioguideId,
+				name: representative.name,
+				party: representative.party,
+				state: representative.state,
+				district: representative.district,
+				chamber: representative.chamber,
+				officeCode: representative.officeCode
 			};
 
-			// Submit to GCP proxy with timeout and retry
-			const response = await this.fetchWithRetry(`${proxyUrl}/api/house/submit`, {
+			// Create mock senate representatives for interface compliance
+			const mockSenateReps = [
+				{
+					bioguideId: '',
+					name: '',
+					party: '',
+					state: '',
+					district: '',
+					chamber: 'senate' as const,
+					officeCode: ''
+				}
+			];
+
+			// Generate CWC XML using proper generator (House format)
+			const cwcMessage = {
+				template,
+				user: {
+					id: user.id,
+					name: user.name || 'Constituent',
+					email: user.email,
+					phone: user.phone || undefined,
+					address: {
+						street: user.street || '',
+						city: user.city || '',
+						state: user.state || '',
+						zip: user.zip || ''
+					},
+					representatives: {
+						house: targetRep,
+						senate: mockSenateReps
+					}
+				},
+				_targetRep: targetRep,
+				personalizedMessage
+			};
+
+			const cwcXml = CWCGenerator.generateUserAdvocacyXML(cwcMessage);
+
+			// Validate XML before submission
+			const validation = CWCGenerator.validateXML(cwcXml);
+			if (!validation.valid) {
+				console.error('[CWC House] XML validation failed:', validation.errors);
+				return {
+					...baseResult,
+					success: false,
+					status: 'failed',
+					error: `XML validation failed: ${validation.errors.join(', ')}`
+				};
+			}
+
+			const jobId = `house-${Date.now()}-${representative.bioguideId}`;
+
+			// Submit to GCP proxy with XML payload
+			// Proxy forwards to House CWC at: {houseBaseUrl}/v2/message?apikey={houseApiKey}
+			// Using /cwc-house endpoint which the proxy recognizes
+			const proxyEndpoint = this.environment === 'production' ? '/cwc-house' : '/cwc-house-test';
+			const response = await this.fetchWithRetry(`${proxyUrl}${proxyEndpoint}`, {
 				method: 'POST',
 				headers: {
-					'Content-Type': 'application/json',
-					Authorization: proxyAuthToken ? `Bearer ${proxyAuthToken}` : '',
+					'Content-Type': 'application/xml',
+					'User-Agent': 'Communique-Advocacy-Platform/1.0',
 					'X-Request-ID': jobId
 				},
-				body: JSON.stringify(submission)
+				body: cwcXml
 			});
 
 			if (!response.ok) {
@@ -529,8 +651,9 @@ export class CWCClient {
 				cwcResponse = { raw: await response.text() };
 			}
 
-			// Determine success based on response
-			const success = response.status === 200 || response.status === 202;
+			// Determine success based on response (200, 201, 202 are all success codes)
+			// Senate API returns 201 for successful message creation
+			const success = response.status === 200 || response.status === 201 || response.status === 202;
 			const messageId = cwcResponse?.messageId || cwcResponse?.id || `CWC-${Date.now()}`;
 			const status = cwcResponse?.status || (success ? 'submitted' : 'failed');
 
@@ -578,12 +701,12 @@ export class CWCClient {
 	 * This should be called regularly to ensure we only send to participating offices
 	 */
 	async getActiveOffices(): Promise<{ success: boolean; offices?: unknown[]; error?: string }> {
-		if (!this.apiKey) {
-			return { success: false, error: 'No API key configured' };
+		if (!this.senateApiKey) {
+			return { success: false, error: 'No Senate API key configured' };
 		}
 
 		try {
-			const response = await this.fetchWithRetry(`${this.baseUrl}/active_offices?apikey=${this.apiKey}`, {
+			const response = await this.fetchWithRetry(`${this.senateBaseUrl}/active_offices?apikey=${this.senateApiKey}`, {
 				method: 'GET'
 			});
 
@@ -614,11 +737,11 @@ export class CWCClient {
 	}
 
 	/**
-	 * Test connectivity to CWC API
+	 * Test connectivity to CWC API (Senate)
 	 */
 	async testConnection(): Promise<{ connected: boolean; error?: string }> {
-		if (!this.apiKey) {
-			return { connected: false, error: 'No API key configured' };
+		if (!this.senateApiKey) {
+			return { connected: false, error: 'No Senate API key configured' };
 		}
 
 		try {

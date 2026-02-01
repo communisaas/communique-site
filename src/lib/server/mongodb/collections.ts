@@ -7,12 +7,12 @@
 
 import type { Collection } from 'mongodb';
 import { getDatabase } from '../mongodb';
-import {
-	COLLECTIONS,
-	type OrganizationDocument,
-	type IntelligenceItemDocument,
-	type DecisionMakerCacheDocument,
-	type ParsedDocumentCacheDocument
+import { COLLECTIONS } from './constants';
+import type {
+	OrganizationDocument,
+	IntelligenceItemDocument,
+	DecisionMakerCacheDocument,
+	ParsedDocumentCacheDocument
 } from './schema';
 
 /**

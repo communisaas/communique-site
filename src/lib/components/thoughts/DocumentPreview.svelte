@@ -2,10 +2,10 @@
 DocumentPreview: L2 Recognition Layer for Documents
 
 PERCEPTUAL ENGINEERING:
-- Appears on hover with 300ms delay (prevents accidental triggers)
+- Appears on hover with L2_HOVER_DELAY (prevents accidental triggers)
 - Shows just enough for recognition: title, source, date, relevance snippet
 - Clear affordance to L3 ("View Full Analysis")
-- 150ms linger time when leaving (allows traversal to card)
+- L2_LINGER time when leaving (allows traversal to card)
 
 COGNITIVE LOAD:
 - 1-2 chunks: document identity + why it's relevant
@@ -13,14 +13,13 @@ COGNITIVE LOAD:
 - Type color provides peripheral classification
 
 TIMING CONSTANTS:
-- L2_HOVER_DELAY: 300ms (from perceptual architecture)
-- L2_FADE_IN: 150ms
-- L2_LINGER: 150ms
+All timing values sourced from $lib/core/perceptual/timing
 -->
 <script lang="ts">
 	import type { ParsedDocument } from '$lib/server/reducto/types';
 	import { getDocumentTypeIcon, getDocumentTypeColor } from '$lib/core/tools/document-helpers';
 	import { ExternalLink, FileText, ChevronRight } from '@lucide/svelte';
+	import { L2_FADE_IN } from '$lib/core/perceptual';
 
 	interface Props {
 		/** The parsed document to preview */
@@ -34,9 +33,12 @@ TIMING CONSTANTS:
 
 		/** Callback when user clicks external link */
 		onExternalLink?: (url: string) => void;
+
+		/** Verification status from composite flow */
+		verificationStatus?: 'verified' | 'pending' | 'unverified';
 	}
 
-	let { document, position, onViewFull, onExternalLink }: Props = $props();
+	let { document, position, onViewFull, onExternalLink, verificationStatus }: Props = $props();
 
 	const icon = $derived(getDocumentTypeIcon(document.type));
 	const typeColor = $derived(getDocumentTypeColor(document.type));
@@ -100,6 +102,24 @@ TIMING CONSTANTS:
 			<span class="source-date">{formattedDate()}</span>
 		{/if}
 	</div>
+
+	<!-- Verification Badge -->
+	{#if verificationStatus === 'verified'}
+		<div class="verification-badge verified">
+			<span class="badge-icon">✓</span>
+			<span class="badge-text">Verified current</span>
+		</div>
+	{:else if verificationStatus === 'pending'}
+		<div class="verification-badge pending">
+			<span class="badge-icon pulse">◉</span>
+			<span class="badge-text">Verifying...</span>
+		</div>
+	{:else if verificationStatus === 'unverified'}
+		<div class="verification-badge unverified">
+			<span class="badge-icon">○</span>
+			<span class="badge-text">Source only</span>
+		</div>
+	{/if}
 
 	<!-- Relevance Snippet -->
 	{#if relevanceSnippet()}
@@ -166,8 +186,8 @@ TIMING CONSTANTS:
 			0 2px 4px -2px oklch(0.2 0.02 60 / 0.1),
 			0 0 0 1px oklch(0.9 0.01 60 / 0.3);
 
-		/* Animation from perceptual constants */
-		animation: fadeSlideIn 150ms ease-out;
+		/* Animation duration from PERCEPTUAL_TIMING.L2_FADE_IN */
+		animation: fadeSlideIn calc(var(--l2-fade-in, 150) * 1ms) ease-out;
 	}
 
 	@keyframes fadeSlideIn {
@@ -218,6 +238,41 @@ TIMING CONSTANTS:
 
 	.meta-separator {
 		color: oklch(0.7 0.01 60);
+	}
+
+	/* Verification Badge */
+	.verification-badge {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px;
+		border-radius: 12px;
+		font-size: 0.75rem;
+		font-weight: 500;
+	}
+
+	.verification-badge.verified {
+		background: oklch(0.93 0.06 145 / 0.9); /* phase-complete green */
+		color: oklch(0.35 0.08 145);
+	}
+
+	.verification-badge.pending {
+		background: oklch(0.93 0.06 85 / 0.9); /* phase-discovery amber */
+		color: oklch(0.4 0.1 85);
+	}
+
+	.verification-badge.unverified {
+		background: oklch(0.94 0.02 60 / 0.9); /* neutral */
+		color: oklch(0.45 0.02 60);
+	}
+
+	.badge-icon.pulse {
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 1; }
+		50% { opacity: 0.4; }
 	}
 
 	/* Snippet */

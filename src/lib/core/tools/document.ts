@@ -1,15 +1,31 @@
 /**
  * Document Tool
  *
- * Agent-invocable tool for document analysis.
- * Integrates with Reducto for parsing and ThoughtEmitter for citations.
+ * Agent-invocable tool for document analysis with parallel processing support.
+ * Integrates with Reducto for parsing and ThoughtEmitter for perceptual engineering.
+ *
+ * Key features:
+ * - Single document analysis via executeDocumentTool()
+ * - Parallel multi-document analysis via executeMultipleDocumentTool()
+ * - Progress events for UI feedback during long operations (30-60s)
+ * - Automatic prioritization by relevance when exceeding limits
  *
  * @module tools/document
  */
 
-import { getReductoClient } from '$lib/server/reducto/client';
-import type { ParsedDocument, DocumentType } from '$lib/server/reducto/types';
-import type { Citation } from '$lib/core/thoughts/types';
+import {
+	getReductoClient,
+	MAX_PARALLEL_DOCUMENTS,
+	ANALYSIS_TIMEOUT_MS,
+	ESTIMATED_TIME_PER_DOCUMENT_MS
+} from '$lib/server/reducto/client';
+import type {
+	ParsedDocument,
+	DocumentType,
+	DocumentAnalysisEventCallback,
+	ParseMultipleResult
+} from '$lib/server/reducto/types';
+import type { Citation, ActionHandle } from '$lib/core/thoughts/types';
 import type { ThoughtEmitter } from '$lib/core/thoughts/emitter';
 
 // ============================================================================
@@ -81,7 +97,7 @@ export async function executeDocumentTool(
 	const client = getReductoClient();
 
 	// Emit action start if emitter provided
-	let actionHandle: any;
+	let actionHandle: ActionHandle | undefined;
 	if (emitter) {
 		actionHandle = emitter.startAction?.('analyze', `Analyzing document: ${url}`);
 	}
@@ -132,6 +148,166 @@ export async function executeDocumentTool(
 		};
 	}
 }
+
+// ============================================================================
+// Multi-Document Analysis (Parallel Processing)
+// ============================================================================
+
+/**
+ * Options for parallel document analysis
+ */
+export interface MultiDocumentAnalysisOptions {
+	/** Query for relevance scoring across all documents */
+	query: string;
+	/** Document type hint (auto-detected if not provided) */
+	documentType?: DocumentType;
+	/** Optional ThoughtEmitter for streaming updates */
+	emitter?: ThoughtEmitter;
+	/** Relevance scores for prioritization (optional, keyed by URL) */
+	relevanceScores?: Map<string, number>;
+	/** Custom timeout per document (defaults to 60s) */
+	timeoutMs?: number;
+}
+
+/**
+ * Result from multi-document analysis
+ */
+export interface MultiDocumentAnalysisResult {
+	/** Whether the overall operation succeeded (at least one document parsed) */
+	success: boolean;
+	/** Successfully parsed documents */
+	documents: ParsedDocument[];
+	/** Summary text across all documents */
+	summary?: string;
+	/** Aggregated citations from all documents */
+	citations?: Citation[];
+	/** Documents that failed to parse */
+	errors: Array<{ url: string; error: string }>;
+	/** Statistics about the operation */
+	stats: {
+		total: number;
+		successful: number;
+		failed: number;
+		timedOut: number;
+		cached: number;
+		totalTimeMs: number;
+	};
+}
+
+/**
+ * Execute document analysis on multiple documents in parallel.
+ *
+ * This is the preferred method when the agent needs to analyze multiple
+ * documents (e.g., multiple SEC filings, bills, reports). It provides:
+ *
+ * - Parallel processing (3 docs in ~35s vs 90s+ sequential)
+ * - Error isolation (one failure doesn't affect others)
+ * - Timeout handling (60s max per document)
+ * - Prioritization by relevance when exceeding limits
+ * - Progress events for UI feedback
+ *
+ * @param urls - Array of document URLs to analyze
+ * @param options - Analysis options with query and emitter
+ * @returns Results with documents, errors, and stats
+ *
+ * @example
+ * ```typescript
+ * const result = await executeMultipleDocumentTool(
+ *   [
+ *     'https://sec.gov/filing1.pdf',
+ *     'https://sec.gov/filing2.pdf',
+ *     'https://congress.gov/bill123'
+ *   ],
+ *   {
+ *     query: 'executive compensation disclosure',
+ *     emitter,
+ *     relevanceScores: new Map([
+ *       ['https://sec.gov/filing1.pdf', 0.9],
+ *       ['https://sec.gov/filing2.pdf', 0.7],
+ *       ['https://congress.gov/bill123', 0.5]
+ *     ])
+ *   }
+ * );
+ *
+ * console.log(`Analyzed ${result.stats.successful}/${result.stats.total} documents`);
+ * ```
+ */
+export async function executeMultipleDocumentTool(
+	urls: string[],
+	options: MultiDocumentAnalysisOptions
+): Promise<MultiDocumentAnalysisResult> {
+	const {
+		query,
+		documentType,
+		emitter,
+		relevanceScores,
+		timeoutMs = ANALYSIS_TIMEOUT_MS
+	} = options;
+
+	const client = getReductoClient();
+
+	// Create progress callback that bridges to emitter
+	const onProgress: DocumentAnalysisEventCallback | undefined = emitter
+		? (event) => emitter.handleDocumentAnalysisEvent(event)
+		: undefined;
+
+	// Execute parallel parsing
+	const parseResult = await client.parseMultiple(urls, {
+		query,
+		type: documentType,
+		extractEntities: true,
+		detectCrossRefs: true,
+		onProgress,
+		relevanceScores,
+		timeoutMs
+	});
+
+	// Process results
+	const documents: ParsedDocument[] = [];
+	const errors: Array<{ url: string; error: string }> = [];
+	const allCitations: Citation[] = [];
+
+	parseResult.results.forEach((result, index) => {
+		const url = urls[index];
+		if (result.success && result.document) {
+			documents.push(result.document);
+
+			// Build citations for this document
+			const docCitations = buildCitationsFromDocument(result.document, query);
+			allCitations.push(...docCitations);
+		} else {
+			errors.push({
+				url,
+				error: result.error || 'Unknown error'
+			});
+		}
+	});
+
+	// Generate combined summary
+	let summary: string | undefined;
+	if (documents.length > 0) {
+		const summaryParts = documents.map((doc) => generateDocumentSummary(doc));
+		summary = `## Document Analysis Results\n\n${summaryParts.join('\n\n---\n\n')}`;
+	}
+
+	return {
+		success: documents.length > 0,
+		documents,
+		summary,
+		citations: allCitations.length > 0 ? allCitations : undefined,
+		errors,
+		stats: parseResult.stats
+	};
+}
+
+/**
+ * Re-export constants for external use
+ */
+export {
+	MAX_PARALLEL_DOCUMENTS,
+	ANALYSIS_TIMEOUT_MS,
+	ESTIMATED_TIME_PER_DOCUMENT_MS
+};
 
 // ============================================================================
 // Helper Functions
@@ -227,33 +403,7 @@ function generateDocumentSummary(doc: ParsedDocument): string {
 }
 
 // ============================================================================
-// Document Type Helpers
+// Document Type Helpers (re-exported from document-helpers.ts for backward compatibility)
 // ============================================================================
 
-/**
- * Get icon for document type (for L1 citations)
- */
-export function getDocumentTypeIcon(type: DocumentType): string {
-	const icons: Record<DocumentType, string> = {
-		legislative: '📜',
-		official: '📋',
-		media: '📰',
-		corporate: '📊',
-		academic: '📚'
-	};
-	return icons[type] || '📄';
-}
-
-/**
- * Get color token for document type (for peripheral encoding)
- */
-export function getDocumentTypeColor(type: DocumentType): string {
-	const colors: Record<DocumentType, string> = {
-		legislative: 'var(--doc-legislative, oklch(0.75 0.15 85))', // amber
-		official: 'var(--doc-official, oklch(0.55 0.03 260))', // slate
-		media: 'var(--doc-media, oklch(0.6 0.15 250))', // blue
-		corporate: 'var(--doc-corporate, oklch(0.6 0.15 160))', // emerald
-		academic: 'var(--doc-academic, oklch(0.6 0.15 300))' // purple
-	};
-	return colors[type] || 'var(--color-text-secondary)';
-}
+export { getDocumentTypeIcon, getDocumentTypeColor } from './document-helpers';

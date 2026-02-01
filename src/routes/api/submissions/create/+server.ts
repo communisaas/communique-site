@@ -258,6 +258,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					}
 				});
 
+				// Map results with location data from representatives
+				// Results array matches representatives array order
 				deliveryResults = {
 					representatives: representatives.map((r) => ({
 						name: r.name,
@@ -265,15 +267,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 						state: r.state,
 						district: r.district
 					})),
-					results: results.map((r) => ({
-						office: r.office,
-						chamber: r.chamber || (r.office.includes('Senator') ? 'senate' : 'house'),
-						success: r.success,
-						status: r.status,
-						messageId: r.messageId,
-						confirmationNumber: r.confirmationNumber,
-						error: r.error
-					})),
+					results: results.map((r, index) => {
+						const rep = representatives[index];
+						const chamber = r.chamber || (r.office.includes('Senator') ? 'senate' : 'house');
+						return {
+							office: r.office,
+							chamber,
+							state: rep?.state || mvpAddress.state,
+							district: chamber === 'house' ? rep?.district : undefined,
+							success: r.success,
+							status: r.status,
+							messageId: r.messageId,
+							confirmationNumber: r.confirmationNumber,
+							error: r.error,
+							deliveredAt: r.success ? new Date().toISOString() : undefined,
+							retryable: r.status !== 'unavailable' && !r.success
+						};
+					}),
 					summary: {
 						total: results.length,
 						successful: successCount,

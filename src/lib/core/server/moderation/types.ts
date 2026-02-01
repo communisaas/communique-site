@@ -162,7 +162,7 @@ export interface QualityResult {
 	/** Processing timestamp */
 	timestamp: string;
 	/** Model used for assessment */
-	model: 'gemini-2.5-flash';
+	model: 'gemini-3-flash-preview';
 }
 
 /**

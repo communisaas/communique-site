@@ -219,17 +219,20 @@ The `ThoughtStreamEvent` type enables real-time updates:
 ```typescript
 type ThoughtStreamEvent =
   | { type: 'segment'; segment: ThoughtSegment }
-  | { type: 'phase'; phase: PhaseState }
+  | { type: 'phase-change'; phase: PhaseState; from?: string; to: string }
   | { type: 'key_moment'; moment: KeyMoment }
   | { type: 'complete'; totalSegments: number; duration: number }
   | { type: 'error'; error: string };
 ```
 
+> **Note**: Uses `phase-change` (not `phase`) for consistency with the unified SSE event schema.
+> See `$lib/core/events` for the complete event type definitions.
+
 Use in a streaming context:
 
 ```typescript
 async function* emitThoughts(): AsyncGenerator<ThoughtStreamEvent> {
-  yield { type: 'phase', phase: { name: 'Research', status: 'active' } };
+  yield { type: 'phase-change', phase: { name: 'Research', status: 'active' }, to: 'Research' };
 
   yield {
     type: 'segment',

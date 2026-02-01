@@ -420,7 +420,7 @@ export class SemanticSearchService {
 		// Check intelligence index (try a simple search)
 		try {
 			const [testEmbedding] = await createEmbedding('test query', {
-				model: 'voyage-3-lite'
+				model: 'voyage-4-lite'
 			});
 
 			await import('./collections')
@@ -449,7 +449,7 @@ export class SemanticSearchService {
 		// Check organization index
 		try {
 			const [testEmbedding] = await createEmbedding('test organization', {
-				model: 'voyage-3-lite'
+				model: 'voyage-4-lite'
 			});
 
 			await import('./collections')

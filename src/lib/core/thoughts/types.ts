@@ -100,6 +100,16 @@ export interface ThoughtSegment {
 	 * Important items that shouldn't scroll away
 	 */
 	pinToKeyMoments?: boolean;
+
+	/**
+	 * Confidence level for this segment (0.0 - 1.0)
+	 * Used by composite streaming to show verification progress
+	 * - 0.4: Base confidence (discovery phase)
+	 * - 0.55: Single verification
+	 * - 0.70: Double verification
+	 * - 0.85+: Triple+ verification
+	 */
+	confidence?: number;
 }
 
 // ============================================================================
@@ -413,7 +423,10 @@ export type KeyMomentType = 'citation' | 'action' | 'insight' | 'decision_maker'
  *   type: 'citation',
  *   label: "Apple's 2025 Report",
  *   icon: '📄',
- *   segmentId: 'thought-5'
+ *   segmentId: 'thought-5',
+ *   timestamp: Date.now(),
+ *   confidence: 0.85,
+ *   sourcePhase: 'verification'
  * };
  * ```
  */
@@ -432,6 +445,15 @@ export interface KeyMoment {
 
 	/** ID of the thought segment this moment came from */
 	segmentId: string;
+
+	/** Unix timestamp (ms) when this moment was captured */
+	timestamp: number;
+
+	/** Confidence level 0-1 from composite flow */
+	confidence?: number;
+
+	/** Phase this moment was captured in */
+	sourcePhase?: 'discovery' | 'verification';
 
 	/** Optional metadata about the moment */
 	metadata?: Record<string, unknown>;
@@ -502,10 +524,32 @@ export interface ThoughtSegmentGroup {
 /**
  * Helper type for streaming thought updates
  * Used by ThoughtEmitter service
+ *
+ * @note Uses 'phase-change' (not 'phase') for consistency across SSE event schemas.
+ *       See $lib/core/events for the unified event schema.
+ *
+ * MIGRATION NOTE: Field naming is transitioning:
+ * - Legacy: 'segment', 'phase', 'moment' (direct properties)
+ * - Standard: 'data' field containing the payload (for consistency with BaseStreamEvent)
+ *
+ * Both patterns are currently supported for backward compatibility.
  */
 export type ThoughtStreamEvent =
 	| { type: 'segment'; segment: ThoughtSegment }
-	| { type: 'phase'; phase: PhaseState }
+	| { type: 'phase-change'; phase: PhaseState; from?: string; to: string }
+	| { type: 'confidence'; thoughtId: string; previousConfidence: number; newConfidence: number }
+	| { type: 'key_moment'; moment: KeyMoment }
+	| { type: 'complete'; totalSegments: number; duration: number }
+	| { type: 'error'; error: string };
+
+/**
+ * @deprecated Use ThoughtStreamEvent (uses 'phase-change' instead of 'phase')
+ * Legacy type alias for backward compatibility with old consumers
+ */
+export type LegacyPhaseThoughtStreamEvent =
+	| { type: 'segment'; segment: ThoughtSegment }
+	| { type: 'phase'; phase: PhaseState; from?: string; to: string }
+	| { type: 'confidence'; thoughtId: string; previousConfidence: number; newConfidence: number }
 	| { type: 'key_moment'; moment: KeyMoment }
 	| { type: 'complete'; totalSegments: number; duration: number }
 	| { type: 'error'; error: string };

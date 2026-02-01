@@ -13,6 +13,10 @@ import {
 	getParsedDocumentsCollection
 } from './collections';
 
+// Firecrawl collection index functions
+import { ensureSiteMapCacheIndexes } from '$lib/server/firecrawl/map';
+import { ensureObserverIndexes } from '$lib/server/firecrawl/observer';
+
 /**
  * Create all indexes for the Organizations collection
  */
@@ -285,6 +289,8 @@ async function ensureParsedDocumentsIndexes(): Promise<void> {
  * Ensure all indexes exist across all collections
  * Should be called on server startup or during deployment
  *
+ * Uses Promise.allSettled to ensure one index creation failure doesn't block others.
+ *
  * @example
  * // In your server startup hook (hooks.server.ts)
  * import { ensureAllIndexes } from '$lib/server/mongodb/indexes';
@@ -293,20 +299,35 @@ async function ensureParsedDocumentsIndexes(): Promise<void> {
 export async function ensureAllIndexes(): Promise<void> {
 	console.log('[MongoDB Indexes] Starting index creation...');
 
-	try {
-		await Promise.all([
-			ensureOrganizationIndexes(),
-			ensureIntelligenceIndexes(),
-			ensureDecisionMakerCacheIndexes(),
-			ensureParsedDocumentsIndexes()
-		]);
+	const indexOperations = [
+		// Core collections
+		{ name: 'organizations', fn: ensureOrganizationIndexes },
+		{ name: 'intelligence', fn: ensureIntelligenceIndexes },
+		{ name: 'decision_maker_cache', fn: ensureDecisionMakerCacheIndexes },
+		{ name: 'parsed_documents', fn: ensureParsedDocumentsIndexes },
+		// Firecrawl collections
+		{ name: 'site_map_cache', fn: ensureSiteMapCacheIndexes },
+		{ name: 'page_observers', fn: ensureObserverIndexes }
+	];
 
+	const results = await Promise.allSettled(indexOperations.map((op) => op.fn()));
+
+	// Log results and collect failures
+	const failures: string[] = [];
+	results.forEach((result, index) => {
+		const opName = indexOperations[index].name;
+		if (result.status === 'rejected') {
+			console.error(`[MongoDB Indexes] Failed to create indexes for ${opName}:`, result.reason);
+			failures.push(opName);
+		}
+	});
+
+	if (failures.length > 0) {
+		console.error(`[MongoDB Indexes] Index creation failed for: ${failures.join(', ')}`);
+		// Don't throw - allow server to continue with partial index coverage
+		// This is safer for production deployments where one collection issue shouldn't block startup
+	} else {
 		console.log('[MongoDB Indexes] All indexes created successfully');
-	} catch (error) {
-		console.error('[MongoDB Indexes] Error creating indexes:', error);
-		throw new Error(
-			`Failed to create MongoDB indexes: ${error instanceof Error ? error.message : 'Unknown error'}`
-		);
 	}
 }
 

@@ -43,11 +43,13 @@ import { decisionMakerRouter } from '../providers/router';
 import {
 	documentToolDefinition,
 	executeDocumentTool,
-	getDocumentTypeColor,
-	getDocumentTypeIcon,
-	type DocumentAnalysisResult
+	executeMultipleDocumentTool,
+	MAX_PARALLEL_DOCUMENTS,
+	type DocumentAnalysisResult,
+	type MultiDocumentAnalysisResult
 } from '$lib/core/tools/document';
-import type { DocumentType } from '$lib/server/reducto/types';
+import { getDocumentTypeColor, getDocumentTypeIcon } from '$lib/core/tools/document-helpers';
+import type { DocumentType, ParsedDocument } from '$lib/server/reducto/types';
 import type { ResolveContext, DecisionMakerResult } from '../providers/types';
 import type { ThoughtSegment, Citation } from '$lib/core/thoughts/types';
 
@@ -69,30 +71,15 @@ export interface CompositeStreamingOptions {
 }
 
 /**
- * Check if a target type uses the composite provider
- * Composite provider handles both organizational and government targets
- */
-function isCompositeProviderTarget(targetType: string): boolean {
-	// The composite provider is the default for all target types
-	// Government targets use Gemini-primary strategy
-	// Organizational targets use Firecrawl-primary + Gemini-verification strategy
-	const compositeTargetTypes = [
-		'congress',
-		'state_legislature',
-		'local_government',
-		'corporate',
-		'nonprofit',
-		'education',
-		'healthcare',
-		'labor',
-		'media'
-	];
-	return compositeTargetTypes.includes(targetType);
-}
-
-/**
- * Check if a target type uses the two-phase discovery + verification flow
+ * Check if a target type uses the two-phase discovery + verification flow.
+ *
  * Only organizational targets get the full two-phase streaming experience
+ * with CompositeThoughtEmitter:
+ * - Discovery phase (Firecrawl): Deep website extraction, emits thoughts with base confidence
+ * - Verification phase (Gemini): Recency check, boosts confidence for verified thoughts
+ *
+ * Government targets (congress, state_legislature, local_government) use
+ * Gemini-primary strategy without the two-phase pattern.
  */
 function usesTwoPhaseFlow(targetType: string): boolean {
 	const twoPhaseTypes = [
@@ -149,20 +136,25 @@ interface GeminiFunctionCall {
  *
  * @param args - Tool arguments from Gemini
  * @param emitter - ThoughtEmitter for streaming updates
+ * @param documentsCollector - Optional Map to collect parsed documents for L2 previews
  * @returns Tool result for Gemini to continue generation
  *
  * @example
  * ```typescript
+ * const documents = new Map<string, ParsedDocument>();
  * const result = await handleDocumentToolCall(
  *   { url: 'https://congress.gov/bill/...', query: 'climate policy' },
- *   emitter
+ *   emitter,
+ *   documents
  * );
  * // Result is sent back to Gemini for continued reasoning
+ * // documents Map now contains the parsed document keyed by its ID
  * ```
  */
 export async function handleDocumentToolCall(
 	args: DocumentToolArgs,
-	emitter: ThoughtEmitter
+	emitter: ThoughtEmitter,
+	documentsCollector?: Map<string, ParsedDocument>
 ): Promise<DocumentAnalysisResult> {
 	const { url, query, documentType } = args;
 
@@ -178,10 +170,16 @@ export async function handleDocumentToolCall(
 			return result;
 		}
 
-		// Emit findings
+		// Emit findings and collect document for L2 previews
 		if (result.document) {
 			action.addFinding(`Parsed ${result.document.sections.length} sections`);
 			action.addFinding(`Extracted ${result.document.entities.length} entities`);
+
+			// Add to documents collector for L2 preview access
+			if (documentsCollector) {
+				documentsCollector.set(result.document.id, result.document);
+				console.log(`[decision-maker-v2] Collected document for L2 preview: ${result.document.id}`);
+			}
 		}
 
 		// Emit L1 citations with document type colors
@@ -262,24 +260,197 @@ function emitDocumentCitations(
  *
  * @param functionCall - Function call from Gemini response
  * @param emitter - ThoughtEmitter for streaming updates
+ * @param documentsCollector - Optional Map to collect parsed documents for L2 previews
  * @returns Result to send back to Gemini
  */
 export async function processGeminiFunctionCall(
 	functionCall: GeminiFunctionCall,
-	emitter: ThoughtEmitter
+	emitter: ThoughtEmitter,
+	documentsCollector?: Map<string, ParsedDocument>
 ): Promise<unknown> {
 	console.log(`[decision-maker-v2] Processing function call: ${functionCall.name}`);
 
 	switch (functionCall.name) {
 		case 'analyze_document': {
 			const args = functionCall.args as unknown as DocumentToolArgs;
-			return await handleDocumentToolCall(args, emitter);
+			return await handleDocumentToolCall(args, emitter, documentsCollector);
 		}
 
 		default:
 			console.warn(`[decision-maker-v2] Unknown function call: ${functionCall.name}`);
 			return { error: `Unknown function: ${functionCall.name}` };
 	}
+}
+
+/**
+ * Process multiple document function calls in parallel.
+ *
+ * When the agent requests analysis of multiple documents (e.g., via multiple
+ * function calls in one response), this method processes them in parallel
+ * for significantly faster total time (3 docs = ~35s vs 90s+ sequential).
+ *
+ * Key features:
+ * - Parallel processing with Promise.allSettled
+ * - Error isolation (one failure doesn't affect others)
+ * - Progress events for perceptual engineering
+ * - Automatic prioritization if exceeding MAX_PARALLEL_DOCUMENTS
+ *
+ * @param functionCalls - Array of document analysis function calls
+ * @param emitter - ThoughtEmitter for streaming updates
+ * @param documentsCollector - Optional Map to collect parsed documents for L2 previews
+ * @returns Array of results in the same order as input
+ *
+ * @example
+ * ```typescript
+ * const functionCalls = extractGeminiFunctionCalls(response);
+ * const documentCalls = functionCalls.filter(fc => fc.name === 'analyze_document');
+ *
+ * if (documentCalls.length > 1) {
+ *   // Process in parallel for speed
+ *   const results = await processMultipleDocumentCalls(
+ *     documentCalls,
+ *     emitter,
+ *     documentsCollector
+ *   );
+ * }
+ * ```
+ */
+export async function processMultipleDocumentCalls(
+	functionCalls: GeminiFunctionCall[],
+	emitter: ThoughtEmitter,
+	documentsCollector?: Map<string, ParsedDocument>
+): Promise<DocumentAnalysisResult[]> {
+	// Filter to only document analysis calls
+	const documentCalls = functionCalls.filter((fc) => fc.name === 'analyze_document');
+
+	if (documentCalls.length === 0) {
+		return [];
+	}
+
+	// For single document, use the standard handler
+	if (documentCalls.length === 1) {
+		const args = documentCalls[0].args as unknown as DocumentToolArgs;
+		const result = await handleDocumentToolCall(args, emitter, documentsCollector);
+		return [result];
+	}
+
+	console.log(`[decision-maker-v2] Processing ${documentCalls.length} document calls in parallel`);
+
+	// Extract URLs and build relevance score map from queries
+	const urls: string[] = [];
+	const queries: string[] = [];
+	const relevanceScores = new Map<string, number>();
+
+	for (const call of documentCalls) {
+		const args = call.args as unknown as DocumentToolArgs;
+		urls.push(args.url);
+		queries.push(args.query);
+
+		// Use query specificity as a proxy for relevance
+		// More specific queries (longer, more terms) get higher priority
+		const queryWords = args.query.split(/\s+/).length;
+		const relevance = Math.min(1, queryWords / 10); // Normalize to 0-1
+		relevanceScores.set(args.url, relevance);
+	}
+
+	// Combine queries for relevance scoring
+	const combinedQuery = queries.join(' ');
+
+	// Use the parallel document tool
+	const result = await executeMultipleDocumentTool(urls, {
+		query: combinedQuery,
+		emitter,
+		relevanceScores
+	});
+
+	// Collect documents for L2 previews
+	if (documentsCollector) {
+		for (const doc of result.documents) {
+			documentsCollector.set(doc.id, doc);
+			console.log(`[decision-maker-v2] Collected document for L2 preview: ${doc.id}`);
+		}
+	}
+
+	// Convert to individual DocumentAnalysisResult format
+	// Map results back to original order
+	const results: DocumentAnalysisResult[] = urls.map((url, index) => {
+		const doc = result.documents.find((d) => d.metadata.sourceUrl === url);
+		const error = result.errors.find((e) => e.url === url);
+
+		if (doc) {
+			return {
+				success: true,
+				document: doc,
+				summary: generateCompactSummary(doc),
+				citations: buildCompactCitations(doc, queries[index])
+			};
+		} else {
+			return {
+				success: false,
+				error: error?.error || 'Document analysis failed'
+			};
+		}
+	});
+
+	console.log(`[decision-maker-v2] Parallel processing complete:`, {
+		total: urls.length,
+		successful: result.stats.successful,
+		failed: result.stats.failed,
+		timedOut: result.stats.timedOut,
+		totalTimeMs: result.stats.totalTimeMs
+	});
+
+	return results;
+}
+
+/**
+ * Generate a compact summary for parallel-processed documents
+ */
+function generateCompactSummary(doc: ParsedDocument): string {
+	const parts: string[] = [];
+	parts.push(`**${doc.title}**`);
+	parts.push(`${doc.sections.length} sections, ${doc.entities.length} entities`);
+
+	if (doc.queryRelevance?.summary) {
+		parts.push(doc.queryRelevance.summary);
+	}
+
+	return parts.join(' | ');
+}
+
+/**
+ * Build compact citations for parallel-processed documents
+ */
+function buildCompactCitations(doc: ParsedDocument, query: string): Citation[] {
+	const citations: Citation[] = [];
+
+	// Add top relevant passages as citations
+	if (doc.queryRelevance?.passages) {
+		for (const passage of doc.queryRelevance.passages.slice(0, 2)) {
+			citations.push({
+				id: `doc-${doc.id}-${passage.sectionId}`,
+				label: `${doc.title} - ${passage.sectionId}`,
+				url: doc.source.url,
+				excerpt: passage.text.slice(0, 150) + (passage.text.length > 150 ? '...' : ''),
+				sourceType: 'document',
+				documentId: doc.id
+			});
+		}
+	}
+
+	// Fallback citation
+	if (citations.length === 0) {
+		citations.push({
+			id: `doc-${doc.id}`,
+			label: doc.title,
+			url: doc.source.url,
+			excerpt: doc.sections[0]?.content.slice(0, 150) || 'Document analyzed',
+			sourceType: 'document',
+			documentId: doc.id
+		});
+	}
+
+	return citations;
 }
 
 // ============================================================================
@@ -337,107 +508,21 @@ export async function resolveDecisionMakersV2(
 		emitter.startPhase('understanding');
 		emitter.think(`Analyzing your message about: "${context.subjectLine}"`);
 
-		const targetTypeLabels: Record<string, string> = {
-			congress: 'Congressional representatives',
-			state_legislature: 'State legislators',
-			local_government: 'Local government officials',
-			corporate: 'Corporate leadership',
-			nonprofit: 'Nonprofit leadership',
-			education: 'Educational institution leadership',
-			healthcare: 'Healthcare system leadership',
-			labor: 'Labor organization leadership',
-			media: 'Media organization leadership'
-		};
-
-		const targetLabel =
-			targetTypeLabels[context.targetType] || `${context.targetType} decision-makers`;
-
 		if (context.targetEntity) {
 			emitter.think(
-				`Searching for ${targetLabel} at ${context.targetEntity} who can address this issue.`
+				`Searching for decision-makers at ${context.targetEntity} who can address this issue.`
 			);
 		} else {
-			emitter.think(`Identifying ${targetLabel} with power over this issue.`);
+			emitter.think(`Identifying decision-makers with power over this issue.`);
 		}
 
 		// ========================================================================
-		// Phase 2: Context — Retrieve relevant intelligence
+		// Phase 2: Context — Use core issue as context (simplified for demo)
 		// ========================================================================
 
-		emitter.startPhase('context');
-		const retrieval = emitter.startRetrieval(
-			context.topics.join(' ') + ' ' + context.subjectLine
-		);
-
-		try {
-			const memory = await AgentMemoryService.retrieveContext({
-				topic: context.coreMessage,
-				targetType: context.targetType,
-				targetEntity: context.targetEntity,
-				location: context.geographicScope,
-				limit: 3,
-				minRelevanceScore: 0.7
-			});
-
-			retrieval.addFinding(
-				`Retrieved ${memory.metadata.totalItems} intelligence items (${memory.metadata.method} search)`
-			);
-
-			// Emit insights for top intelligence items with citations
-			const allIntelligence = [
-				...memory.intelligence.news,
-				...memory.intelligence.legislative,
-				...memory.intelligence.corporate,
-				...memory.intelligence.regulatory,
-				...memory.intelligence.social
-			].sort((a, b) => b.relevanceScore - a.relevanceScore);
-
-			if (allIntelligence.length > 0) {
-				const top = allIntelligence[0];
-				const citation = emitter.cite(top.title, {
-					url: top.sourceUrl,
-					excerpt: top.snippet
-				});
-
-				const dateStr = top.publishedAt.toLocaleDateString('en-US', {
-					month: 'short',
-					day: 'numeric',
-					year: 'numeric'
-				});
-
-				emitter.insight(
-					`Recent development (${dateStr}): ${top.title} — ${top.snippet.slice(0, 100)}...`,
-					{ citations: [citation], pin: true }
-				);
-
-				retrieval.complete(
-					`Found ${memory.metadata.totalItems} relevant intelligence items to inform decision-maker selection`
-				);
-			} else {
-				retrieval.complete('No recent intelligence items found for this topic');
-			}
-
-			// Add organization context if available
-			if (memory.organization) {
-				const org = memory.organization;
-				emitter.think(`Target organization: ${org.name} (${org.industry || 'Industry unknown'})`);
-
-				if (org.leadership && org.leadership.length > 0) {
-					emitter.think(
-						`Known leadership: ${org.leadership
-							.slice(0, 3)
-							.map((l) => `${l.name} (${l.title})`)
-							.join(', ')}`
-					);
-				}
-			}
-		} catch (error) {
-			console.error('[decision-maker-v2] Context retrieval failed:', error);
-			retrieval.error(
-				`Context retrieval failed: ${error instanceof Error ? error.message : 'Unknown error'}`
-			);
-			// Continue with resolution even if memory retrieval fails
-		}
+		// Simplified: Just use the core message from subject line agent as context
+		// No external intelligence retrieval needed
+		emitter.think(`Core issue: ${context.coreMessage}`);
 
 		// ========================================================================
 		// Phase 3: Research — Delegate to provider
@@ -446,7 +531,7 @@ export async function resolveDecisionMakersV2(
 		emitter.startPhase('research');
 
 		const research = emitter.startResearch(
-			context.targetEntity || targetLabel,
+			context.targetEntity || 'decision-makers',
 			context.targetType
 		);
 
@@ -637,20 +722,9 @@ export async function resolveDecisionMakersWithCompositeStreaming(
 		regularEmitter.startPhase('understanding');
 		regularEmitter.think(`Analyzing your message about: "${context.subjectLine}"`);
 
-		const targetTypeLabels: Record<string, string> = {
-			corporate: 'Corporate leadership',
-			nonprofit: 'Nonprofit leadership',
-			education: 'Educational institution leadership',
-			healthcare: 'Healthcare system leadership',
-			labor: 'Labor organization leadership',
-			media: 'Media organization leadership'
-		};
-
-		const targetLabel = targetTypeLabels[context.targetType] || `${context.targetType} decision-makers`;
-
 		if (context.targetEntity) {
 			regularEmitter.think(
-				`Searching for ${targetLabel} at ${context.targetEntity} who can address this issue.`
+				`Searching for decision-makers at ${context.targetEntity} who can address this issue.`
 			);
 		}
 

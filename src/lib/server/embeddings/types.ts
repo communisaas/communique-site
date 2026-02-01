@@ -4,18 +4,22 @@
  * Type definitions for Voyage AI embedding generation and vector operations.
  * Voyage AI provides embeddings optimized for retrieval and semantic search.
  *
- * Models:
- * - voyage-3: Latest model, 1024 dimensions, best for general-purpose retrieval
- * - voyage-3-lite: Faster, 512 dimensions, good for high-throughput scenarios
+ * Models (Voyage 4 Series - January 2026):
+ * - voyage-4: General-purpose, 1024 dimensions, best for documents/storage ($0.06/1M tokens)
+ * - voyage-4-lite: 1024 dimensions, 3x cheaper, <5% quality loss - use for queries ($0.02/1M tokens)
+ * - voyage-law-2: 1024 dimensions, optimized for legal/legislative content ($0.12/1M tokens)
+ *
+ * Note: Voyage 4 series supports shared embedding space - embeddings from different
+ * voyage-4 models are compatible and don't require reindexing when switching models.
  */
 
 /**
  * Voyage AI model identifiers
- * - voyage-3: General-purpose, best for most content types
- * - voyage-3-lite: Faster, good for high-throughput scenarios
+ * - voyage-4: General-purpose, best for documents/storage (highest quality)
+ * - voyage-4-lite: 3x cheaper, <5% quality loss for queries (use for search)
  * - voyage-law-2: Optimized for legal/legislative content (6-10% better for legal text)
  */
-export type VoyageModel = 'voyage-3' | 'voyage-3-lite' | 'voyage-law-2';
+export type VoyageModel = 'voyage-4' | 'voyage-4-lite' | 'voyage-law-2';
 
 /**
  * Content types for automatic model selection
@@ -39,26 +43,34 @@ export type VoyageInputType = 'document' | 'query';
 
 /**
  * Embedding vector dimensions based on model
- * Note: voyage-law-2 has the same dimensions as voyage-3
+ * Note: Voyage 4 series supports flexible dimensions (256, 512, 1024, 2048)
+ * voyage-law-2 has fixed 1024 dimensions
  */
 export const MODEL_DIMENSIONS: Record<VoyageModel, number> = {
-	'voyage-3': 1024,
-	'voyage-3-lite': 512,
+	'voyage-4': 1024,
+	'voyage-4-lite': 1024,
 	'voyage-law-2': 1024
 };
 
 /**
  * Request to generate a single or batch of embeddings
+ * Note: Uses snake_case to match Voyage AI API contract
  */
 export interface EmbeddingRequest {
 	/** Text or array of texts to embed */
 	input: string | string[];
 	/** Model to use for embedding generation */
 	model: VoyageModel;
-	/** Input type for optimization */
-	inputType?: VoyageInputType;
+	/** Input type for optimization (snake_case per API spec) */
+	input_type?: VoyageInputType | null;
 	/** Truncate input if it exceeds token limit (default: true) */
-	truncate?: boolean;
+	truncation?: boolean;
+	/** Output dimension for flexible dimension models (256, 512, 1024, 2048) */
+	output_dimension?: number;
+	/** Output data type (float, int8, uint8, binary, ubinary) */
+	output_dtype?: 'float' | 'int8' | 'uint8' | 'binary' | 'ubinary';
+	/** Index signature for Record<string, unknown> compatibility */
+	[key: string]: unknown;
 }
 
 /**
@@ -98,18 +110,23 @@ export interface VoyageError {
 
 /**
  * Reranking request for improving search precision
+ * Note: Uses snake_case to match Voyage AI API contract
  */
 export interface RerankRequest {
 	/** Search query */
 	query: string;
 	/** Documents to rerank */
 	documents: string[] | RerankDocument[];
-	/** Model to use (rerank-2 is latest) */
-	model?: 'rerank-2' | 'rerank-lite-1';
-	/** Number of top results to return */
-	topK?: number;
-	/** Return documents in response */
-	returnDocuments?: boolean;
+	/** Model to use (rerank-2.5 is latest and recommended) */
+	model?: 'rerank-2.5' | 'rerank-2.5-lite' | 'rerank-2' | 'rerank-2-lite';
+	/** Number of top results to return (snake_case per API spec) */
+	top_k?: number;
+	/** Return documents in response (snake_case per API spec) */
+	return_documents?: boolean;
+	/** Truncate inputs to fit context limits (default: true) */
+	truncation?: boolean;
+	/** Index signature for Record<string, unknown> compatibility */
+	[key: string]: unknown;
 }
 
 /**
@@ -124,21 +141,52 @@ export interface RerankDocument {
 
 /**
  * Individual reranking result
+ * Note: API returns snake_case (relevance_score), we normalize to camelCase internally
  */
 export interface RerankResult {
 	/** Index in the input documents array */
 	index: number;
-	/** Relevance score (0-1, higher is better) */
+	/** Relevance score (0-1, higher is better) - normalized from API's relevance_score */
 	relevanceScore: number;
-	/** Original document (if returnDocuments: true) */
+	/** Original document (if return_documents: true) */
 	document?: string | RerankDocument;
 }
 
 /**
- * Response from Voyage AI reranking API
+ * Raw reranking result from Voyage AI API (snake_case)
+ * Used internally for API response parsing
+ */
+export interface RawRerankResult {
+	/** Index in the input documents array */
+	index: number;
+	/** Relevance score (0-1, higher is better) */
+	relevance_score: number;
+	/** Original document (if return_documents: true) */
+	document?: string | RerankDocument;
+}
+
+/**
+ * Raw response from Voyage AI reranking API (snake_case)
+ * Used internally for API response parsing
+ */
+export interface RawRerankResponse {
+	/** List type indicator */
+	object: 'list';
+	/** Reranked results sorted by relevance (snake_case from API) */
+	data: RawRerankResult[];
+	/** Model used for reranking */
+	model: string;
+	/** Token usage */
+	usage: {
+		total_tokens: number;
+	};
+}
+
+/**
+ * Normalized response from Voyage AI reranking API (camelCase)
  */
 export interface RerankResponse {
-	/** Reranked results sorted by relevance */
+	/** Reranked results sorted by relevance (normalized to camelCase) */
 	results: RerankResult[];
 	/** Model used for reranking */
 	model: string;

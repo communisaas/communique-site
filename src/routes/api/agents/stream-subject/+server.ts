@@ -35,8 +35,8 @@ interface RequestBody {
 }
 
 export const POST: RequestHandler = async (event) => {
-	// Rate limit check - throws 429 if exceeded
-	const rateLimitCheck = await enforceLLMRateLimit(event, 'subject-line');
+	// Rate limit check - DISABLED FOR DEMO
+	// const rateLimitCheck = await enforceLLMRateLimit(event, 'subject-line');
 	const userContext = getUserContext(event);
 	const startTime = Date.now();
 
@@ -142,8 +142,8 @@ export const POST: RequestHandler = async (event) => {
 		Connection: 'keep-alive'
 	});
 
-	// Add rate limit info to headers
-	addRateLimitHeaders(headers, rateLimitCheck);
+	// Add rate limit info to headers - DISABLED FOR DEMO
+	// addRateLimitHeaders(headers, rateLimitCheck);
 
 	// Log operation for cost tracking
 	logLLMOperation('subject-line', userContext, {

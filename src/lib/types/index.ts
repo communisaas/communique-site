@@ -5,6 +5,9 @@
  * Organized by domain with clear separation of concerns.
  */
 
+// Shared/Consolidated Types (canonical definitions)
+export * from './shared';
+
 // API & Network Types
 export * from './api';
 export * from './errors';
@@ -48,7 +51,7 @@ export type {
 	PrismaUserForEmail
 } from './user';
 export { toEmailServiceUser } from './user';
-export type { Jurisdiction, Office, Jurisdiction, TemplateScope } from './jurisdiction';
+export type { Jurisdiction, Office } from './jurisdiction';
 export type { NormalizedAddress, GeoFence } from './location';
 export type { ModalScrollState } from './modal';
 export type { PopoverSlots, TriggerAction } from './popover';
@@ -59,6 +62,22 @@ export type {
 	ConsensusResult,
 	ReputationUpdate
 } from './n8n';
+
+// Shared types convenience re-exports
+export type {
+	Source,
+	DecisionMakerBase,
+	DecisionMakerWithContact,
+	DecisionMakerEnriched,
+	DecisionMakerDisplay,
+	DecisionMakerCandidate,
+	EnrichedDecisionMaker,
+	ValidatedDecisionMaker,
+	ContactChannel,
+	TemplateScope,
+	TemplateScopeMode,
+	TemplateScopeExtended
+} from './shared';
 
 // Error helper functions
 export { createApiError, createValidationError, ERROR_CODES, ERROR_MESSAGES } from './errors';

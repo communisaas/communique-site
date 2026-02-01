@@ -13,13 +13,14 @@
 
 import { z } from 'zod';
 import { browser } from '$app/environment';
+import { DB_NAMES, LOCAL_STORAGE_KEYS } from '$lib/constants';
 
 // IndexedDB database names
-const SESSION_DB_NAME = 'communique-sessions';
-const LOCATION_DB_NAME = 'communique-location';
+const SESSION_DB_NAME = DB_NAMES.SESSIONS;
+const LOCATION_DB_NAME = DB_NAMES.LOCATION;
 
 // localStorage keys
-const GUEST_STATE_KEY = 'communique_guest_template';
+const GUEST_STATE_KEY = LOCAL_STORAGE_KEYS.GUEST_STATE;
 
 // =============================================================================
 // ZOD SCHEMA

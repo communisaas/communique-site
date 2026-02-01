@@ -37,3 +37,6 @@ export { default as DocumentDetail } from './DocumentDetail.svelte';
 
 // Confidence Visualization (Composite Streaming)
 export { default as ConfidenceIndicator } from './ConfidenceIndicator.svelte';
+
+// Phase Ambient Background
+export { default as PhaseAmbient } from './PhaseAmbient.svelte';

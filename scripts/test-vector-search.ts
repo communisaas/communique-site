@@ -63,9 +63,9 @@ async function testEmbeddingGeneration(): Promise<boolean> {
 
 		console.log('\nGenerating embeddings for 3 test texts...');
 
-		const [embedding1] = await createEmbedding(testTexts[0], { model: 'voyage-3' });
-		const [embedding2] = await createEmbedding(testTexts[1], { model: 'voyage-3' });
-		const [embedding3] = await createEmbedding(testTexts[2], { model: 'voyage-3' });
+		const [embedding1] = await createEmbedding(testTexts[0], { model: 'voyage-4' });
+		const [embedding2] = await createEmbedding(testTexts[1], { model: 'voyage-4' });
+		const [embedding3] = await createEmbedding(testTexts[2], { model: 'voyage-4' });
 
 		console.log(`\nEmbedding dimensions: ${embedding1.length}`);
 		console.log(`Expected: 1024`);

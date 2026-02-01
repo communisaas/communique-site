@@ -21,7 +21,8 @@ export type TimerType =
 	| 'progress' // UI timers
 	| 'override-navigation'
 	| 'open-creator'
-	| 'direct-navigation' // navigation timers
+	| 'direct-navigation'
+	| 'guest-navigation' // navigation timers
 	| 'detection-timeout'
 	| 'copy-success'
 	| 'copy-reset'
@@ -30,7 +31,10 @@ export type TimerType =
 	| 'auto-send' // system timers
 	| 'attention-stagger'
 	| 'attention-settle'
-	| 'attention-end'; // attention management
+	| 'attention-end' // attention management
+	| 'guest-multi-target-auth'
+	| 'multi-target-address-gate'
+	| 'multi-target-cwc'; // multi-target flow timers
 
 // Type guard for TimerType
 export function isValidTimerType(type: unknown): type is TimerType {
@@ -53,6 +57,7 @@ export function isValidTimerType(type: unknown): type is TimerType {
 			'override-navigation',
 			'open-creator',
 			'direct-navigation',
+			'guest-navigation',
 			// Action timers
 			'detection-timeout',
 			'copy-success',
@@ -64,7 +69,11 @@ export function isValidTimerType(type: unknown): type is TimerType {
 			// Attention management
 			'attention-stagger',
 			'attention-settle',
-			'attention-end'
+			'attention-end',
+			// Multi-target flow timers
+			'guest-multi-target-auth',
+			'multi-target-address-gate',
+			'multi-target-cwc'
 		].includes(type)
 	);
 }

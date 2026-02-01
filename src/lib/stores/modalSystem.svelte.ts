@@ -50,7 +50,12 @@ export type LegacyModalState =
 	| 'proof-generation' // ZK proof generation (Phase 2)
 	| 'celebration'
 	| 'tracking'
-	| 'retry_needed';
+	| 'retry_needed'
+	| 'cwc-submission' // CWC API submission in progress
+	| 'error' // Generic error state
+	| 'multi-target-briefing' // Multi-target: show briefing before dual-track flow
+	| 'multi-target-address' // Multi-target: collect address for CWC after mailto
+	| 'multi-target-progress'; // Multi-target: parallel progress tracking
 
 interface LegacyModalContext {
 	template: Template | null;

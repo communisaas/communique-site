@@ -7,101 +7,31 @@
  */
 
 import type { ProcessedDecisionMaker } from '$lib/types/template';
-import type { StreamingCallbacks, PipelinePhase } from '../agents/decision-maker';
-import type { CompositeThoughtEmitter } from '$lib/core/thoughts/composite-emitter';
 
-// ============================================================================
-// Target Types
-// ============================================================================
+// Import shared types for use in this file
+import type {
+	PipelinePhase as _PipelinePhase,
+	StreamingCallbacks as _StreamingCallbacks,
+	DecisionMakerTargetType as _DecisionMakerTargetType,
+	TargetType as _TargetType,
+	GeographicScope as _GeographicScope,
+	ResolveContext as _ResolveContext
+} from '../shared-types';
 
-/**
- * Categories of decision-making power structures
- * Routes to appropriate provider for research strategy
- *
- * NOTE: This is more specific than the clarification TargetType
- * which has broader categories (government | corporate | institutional | other)
- */
-export type DecisionMakerTargetType =
-	| 'congress'
-	| 'state_legislature'
-	| 'local_government'
-	| 'corporate'
-	| 'nonprofit'
-	| 'education'
-	| 'healthcare'
-	| 'labor'
-	| 'media';
+// Re-export shared types that are used by both agents/ and providers/
+// This avoids circular dependencies between the two modules
+export type {
+	PipelinePhase,
+	StreamingCallbacks,
+	DecisionMakerTargetType,
+	TargetType,
+	GeographicScope,
+	ResolveContext
+} from '../shared-types';
 
-/**
- * Alias for backward compatibility with imports
- * @deprecated Use DecisionMakerTargetType for clarity
- */
-export type TargetType = DecisionMakerTargetType;
-
-// ============================================================================
-// Geographic Scope
-// ============================================================================
-
-/**
- * Geographic context for decision-maker resolution
- * Helps providers understand jurisdiction and scope
- */
-export interface GeographicScope {
-	/** ISO 3166-1 alpha-2 country code */
-	country?: string;
-	/** State/province code (e.g., "CA", "TX") */
-	state?: string;
-	/** City name */
-	city?: string;
-	/** Congressional district (e.g., "CA-11") */
-	district?: string;
-	/** Display name for UI (e.g., "San Francisco, CA") */
-	displayName?: string;
-}
-
-// ============================================================================
-// Resolution Context
-// ============================================================================
-
-/**
- * Input context for decision-maker resolution
- * Providers use this to determine HOW to research
- */
-export interface ResolveContext {
-	/** Type of target entity (routes to provider) */
-	targetType: DecisionMakerTargetType;
-
-	/** Entity name for corporate/institutional targets */
-	targetEntity?: string;
-
-	/** Entity homepage/website for research */
-	targetUrl?: string;
-
-	/** Subject line from campaign */
-	subjectLine: string;
-
-	/** Core message being sent */
-	coreMessage: string;
-
-	/** Topic tags for context */
-	topics: string[];
-
-	/** Geographic scope for jurisdiction-based targets */
-	geographicScope?: GeographicScope;
-
-	/** Voice sample (emotional peak from user input) */
-	voiceSample?: string;
-
-	/** Streaming callbacks for progress updates */
-	streaming?: StreamingCallbacks;
-
-	/**
-	 * CompositeThoughtEmitter for two-phase streaming (Discovery + Verification).
-	 * When provided, the composite provider will use this instead of raw callbacks,
-	 * enabling proper phase state machine, confidence tracking, and verification boost.
-	 */
-	compositeEmitter?: CompositeThoughtEmitter;
-}
+// Type aliases for use within this file
+type DecisionMakerTargetType = _DecisionMakerTargetType;
+type ResolveContext = _ResolveContext;
 
 // ============================================================================
 // Resolution Result
@@ -132,6 +62,19 @@ export interface DecisionMakerResult {
 
 	/** Optional: provider-specific metadata */
 	metadata?: Record<string, unknown>;
+
+	/**
+	 * Parsed documents from document tool invocations.
+	 * Map keyed by document ID for L2 preview access.
+	 * Only populated when document tool is called during resolution.
+	 */
+	documents?: Map<string, import('$lib/server/reducto/types').ParsedDocument>;
+
+	/**
+	 * Grounding sources from Google Search for L1 inline citations.
+	 * Extracted from Gemini groundingMetadata when grounding is enabled.
+	 */
+	sources?: import('../types').Source[];
 }
 
 // ============================================================================

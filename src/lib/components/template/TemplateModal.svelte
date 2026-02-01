@@ -41,11 +41,14 @@
 	// import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import SubmissionStatus from '$lib/components/submission/SubmissionStatus.svelte';
 	import CWCProgressTracker from '$lib/components/template/CWCProgressTracker.svelte';
+	import DeliveryJourney from '$lib/components/delivery/DeliveryJourney.svelte';
+	import type { DeliveryResult } from '$lib/components/delivery/delivery-types';
 	import VerificationGate from '$lib/components/auth/VerificationGate.svelte';
 	import ProofGenerator from '$lib/components/template/ProofGenerator.svelte';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
 	import type { Template } from '$lib/types/template';
+	import { parseRecipientConfig } from '$lib/utils/deriveTargetPresentation';
 
 	let {
 		template,
@@ -60,6 +63,37 @@
 		used: { templateId: string; action: 'mailto_opened' };
 	}>();
 
+	// Multi-target type definitions
+	interface MultiTargetInfo {
+		hasCongressional: boolean;
+		hasDecisionMakers: boolean;
+		isMultiTarget: boolean;
+		decisionMakerNames: string[];
+	}
+
+	/**
+	 * Detect if template targets both Congressional AND decision-makers
+	 */
+	function detectMultiTarget(tpl: ComponentTemplate): MultiTargetInfo {
+		const config = parseRecipientConfig(tpl.recipient_config);
+
+		const hasCongressional = tpl.deliveryMethod === 'cwc' || config?.cwcRouting === true;
+
+		const decisionMakers = config?.decisionMakers ?? [];
+		const emails = config?.emails ?? [];
+
+		const hasDecisionMakers = decisionMakers.length > 0 || emails.length > 0;
+
+		const decisionMakerNames = decisionMakers.slice(0, 2).map((dm) => dm.shortName || dm.name);
+
+		return {
+			hasCongressional,
+			hasDecisionMakers,
+			isMultiTarget: hasCongressional && hasDecisionMakers,
+			decisionMakerNames
+		};
+	}
+
 	// Component ID for timer coordination
 	const componentId = 'template-modal-' + Math.random().toString(36).substring(2, 15);
 
@@ -71,6 +105,7 @@
 	let actionProgress = spring(0, { stiffness: 0.2, damping: 0.8 });
 	let celebrationScale = spring(1, { stiffness: 0.3, damping: 0.6 });
 	let submissionId = $state<string | null>(null);
+	let deliveryResults = $state<DeliveryResult[] | null>(null);
 
 	// Verification gate state
 	let showVerificationGate = $state(false);
@@ -103,6 +138,19 @@
 				!r.messageId.startsWith('HOUSE-SIM-')
 		)
 	);
+
+	// Multi-target state tracking
+	let multiTargetInfo = $state<MultiTargetInfo | null>(null);
+	let multiTargetProgress = $state({
+		mailtoLaunched: false,
+		mailtoConfirmed: false,
+		cwcStarted: false,
+		cwcComplete: false,
+		cwcResults: null as { success: boolean; office: string; chamber?: string }[] | null
+	});
+
+	// Track component lifecycle for navigation guard
+	let componentActive = true;
 
 	// Generate share URL for template
 	const shareUrl = $derived(`${$page.url.origin}/s/${template.slug}`);
@@ -142,20 +190,30 @@
 		// Don't manipulate scroll here - UnifiedModal handles it
 		// Don't call modalActions.open - parent component handles it
 
-		// Check if this is a congressional template (ZKP flow)
+		// Detect multi-target FIRST
+		multiTargetInfo = detectMultiTarget(template);
+
+		if (multiTargetInfo.isMultiTarget) {
+			console.log('[TemplateModal] Multi-target template detected');
+			modalActions.setState('multi-target-briefing');
+			return;
+		}
+
+		// Single-target flows (unchanged)
 		if (template.deliveryMethod === 'cwc') {
-			console.log('[TemplateModal] Congressional template detected, initiating ZKP flow');
+			console.log('[TemplateModal] Congressional template detected, initiating CWC flow');
 			submitCongressionalMessage();
 			return;
 		}
 
-		// HACKATHON: Trigger mailto for EVERYONE (authenticated or not)
-		// This removes friction for viral template sharing via QR code
-		// After they send, we'll prompt account creation if needed
+		// Decision-makers only (mailto flow)
 		handleUnifiedEmailFlow();
 	});
 
 	onDestroy(() => {
+		// Mark component as inactive to guard navigation callbacks
+		componentActive = false;
+
 		// Don't manipulate scroll here - UnifiedModal handles it
 		useTimerCleanup(componentId)();
 
@@ -440,15 +498,45 @@
 
 	/**
 	 * Handle proof generation complete
-	 * Move to tracking state to show TEE processing + delivery
+	 * If delivery results are included (MVP mode), go directly to delivery-journey
+	 * Otherwise, fall back to tracking state for TEE processing
 	 */
-	function handleProofComplete(event: CustomEvent<{ submissionId: string }>) {
+	function handleProofComplete(
+		event: CustomEvent<{ submissionId: string; deliveryResults?: DeliveryResult[] }>
+	) {
 		console.log('[Template Modal] Proof generation complete:', event.detail);
 		submissionId = event.detail.submissionId;
-		modalActions.setState('tracking');
+
+		// MVP mode: delivery results returned immediately from API
+		if (event.detail.deliveryResults && event.detail.deliveryResults.length > 0) {
+			deliveryResults = event.detail.deliveryResults;
+			modalActions.setState('delivery-journey');
+		} else {
+			// Legacy/TEE mode: need to poll for results
+			modalActions.setState('tracking');
+		}
 
 		// Celebration animation
 		celebrationScale.set(1.05).then(() => celebrationScale.set(1));
+	}
+
+	/**
+	 * Handle delivery journey completion
+	 * Transition to celebration state
+	 */
+	function handleDeliveryComplete() {
+		console.log('[Template Modal] Delivery journey complete');
+		// Update CWC job results for any post-celebration logic
+		if (deliveryResults) {
+			cwcJobResults = deliveryResults.map((r) => ({
+				office: r.office,
+				chamber: r.chamber,
+				success: r.outcome === 'delivered',
+				messageId: r.confirmationId,
+				status: r.outcome
+			}));
+		}
+		modalActions.setState('celebration');
 	}
 
 	/**
@@ -469,6 +557,85 @@
 		// For now, return to confirmation state
 		// TODO: Show dedicated error state with retry option
 		modalActions.setState('retry_needed');
+	}
+
+	/**
+	 * User acknowledged the dual-track briefing, proceed with both channels
+	 */
+	function handleMultiTargetProceed() {
+		console.log('[TemplateModal] Multi-target: User acknowledged, starting dual-track flow');
+
+		// Step 1: Launch mailto for decision-makers
+		// This is synchronous - opens email client
+		handleUnifiedEmailFlow();
+		multiTargetProgress.mailtoLaunched = true;
+
+		// Step 2: Check if we need address for CWC
+		const currentUser = $page.data?.user;
+		const hasAddress = currentUser?.street && currentUser?.city && currentUser?.state && currentUser?.zip;
+
+		if (!currentUser) {
+			// Guest user: mailto sent, prompt auth for CWC
+			console.log('[TemplateModal] Multi-target: Guest user, prompting auth for CWC');
+			coordinated.setTimeout(
+				() => {
+					if (!componentActive) return;
+					// Store pending CWC
+					sessionStorage.setItem('pendingCwcTemplate', template.id);
+					dispatch('close');
+					modalActions.openModal('onboarding-modal', 'onboarding', {
+						template,
+						source: 'multi-target-cwc' as const,
+						message: 'Create an account to contact your congressional representatives'
+					});
+				},
+				2000,
+				'guest-multi-target-auth',
+				componentId
+			);
+			return;
+		}
+
+		if (!hasAddress) {
+			// Authenticated but no address: mailto sent, collect address for CWC
+			console.log('[TemplateModal] Multi-target: Collecting address for CWC');
+			coordinated.setTimeout(
+				() => {
+					if (!componentActive) return;
+					modalActions.setState('multi-target-address');
+					collectingAddress = true;
+					needsAddress = true;
+				},
+				2000,
+				'multi-target-address-gate',
+				componentId
+			);
+			return;
+		}
+
+		// Has user + address: proceed to CWC after delay
+		console.log('[TemplateModal] Multi-target: Proceeding to CWC submission');
+		coordinated.setTimeout(
+			() => {
+				if (!componentActive) return;
+				multiTargetProgress.cwcStarted = true;
+				submitCongressionalMessage();
+			},
+			3000,
+			'multi-target-cwc',
+			componentId
+		);
+	}
+
+	/**
+	 * After address collected in multi-target flow, continue to CWC
+	 */
+	function handleMultiTargetAddressComplete() {
+		console.log('[TemplateModal] Multi-target: Address collected, proceeding to CWC');
+		collectingAddress = false;
+		needsAddress = false;
+		multiTargetProgress.cwcStarted = true;
+		submitCongressionalMessage();
 	}
 
 	async function handleSendConfirmation(sent: boolean) {
@@ -1050,6 +1217,166 @@
 				oncomplete={handleAddressComplete}
 			/>
 		</div>
+	{:else if currentState === 'multi-target-briefing' && multiTargetInfo}
+		<!-- Multi-Target Briefing State -->
+		<div class="relative p-6" in:scale={{ duration: 500, easing: backOut }}>
+			<!-- Close Button -->
+			<button
+				onclick={handleClose}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
+
+			<h3 class="mb-4 text-lg font-semibold text-slate-900">
+				Contacting {3 + multiTargetInfo.decisionMakerNames.length} decision-makers
+			</h3>
+
+			<div class="mb-6 space-y-3">
+				<!-- Your Action: Email -->
+				<div class="rounded-lg border-l-4 border-amber-400 bg-amber-50 p-4">
+					<div class="mb-1 flex items-center gap-2">
+						<Send class="h-4 w-4 text-amber-600" />
+						<span class="font-medium text-amber-900">Your email client will open</span>
+					</div>
+					<p class="text-sm text-amber-700">
+						{multiTargetInfo.decisionMakerNames.join(', ')}
+						— you'll review and send
+					</p>
+				</div>
+
+				<!-- System Action: Congress -->
+				<div class="rounded-lg border-l-4 border-blue-400 bg-blue-50 p-4">
+					<div class="mb-1 flex items-center gap-2">
+						<ShieldCheck class="h-4 w-4 text-blue-600" />
+						<span class="font-medium text-blue-900">Automatic delivery to Congress</span>
+					</div>
+					<p class="text-sm text-blue-700">
+						Your 3 representatives — we'll deliver through verified channels
+					</p>
+				</div>
+			</div>
+
+			<Button variant="primary" size="lg" classNames="w-full" onclick={handleMultiTargetProceed}>
+				<Send class="mr-2 h-5 w-5" />
+				Start — Open Email & Deliver to Congress
+			</Button>
+		</div>
+	{:else if currentState === 'multi-target-progress'}
+		<!-- Multi-Target Progress State -->
+		<div class="relative p-6" in:scale={{ duration: 500, easing: backOut }}>
+			<!-- Close Button -->
+			<button
+				onclick={handleClose}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
+
+			<h3 class="mb-4 text-lg font-semibold text-slate-900">Delivery Progress</h3>
+
+			<div class="space-y-4">
+				<!-- Email Track -->
+				<div class="rounded-lg border border-slate-200 p-4">
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="font-medium text-slate-900">
+								Email to {multiTargetInfo?.decisionMakerNames.join(', ')}
+							</p>
+							<p class="text-sm text-slate-600">
+								{#if multiTargetProgress.mailtoConfirmed}
+									Sent
+								{:else if multiTargetProgress.mailtoLaunched}
+									Did you send it?
+								{:else}
+									Preparing...
+								{/if}
+							</p>
+						</div>
+						{#if multiTargetProgress.mailtoConfirmed}
+							<CheckCircle2 class="h-5 w-5 text-green-600" />
+						{:else if multiTargetProgress.mailtoLaunched}
+							<div class="flex gap-2">
+								<Button
+									size="sm"
+									onclick={() => {
+										multiTargetProgress.mailtoConfirmed = true;
+									}}
+								>
+									Yes, sent
+								</Button>
+								<Button size="sm" variant="ghost" onclick={() => handleUnifiedEmailFlow()}>
+									Retry
+								</Button>
+							</div>
+						{:else}
+							<div
+								class="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-600"
+							></div>
+						{/if}
+					</div>
+				</div>
+
+				<!-- Congress Track -->
+				<div class="rounded-lg border border-slate-200 p-4">
+					{#if multiTargetProgress.cwcStarted}
+						<CWCProgressTracker
+							{submissionId}
+							{template}
+							onComplete={(results) => {
+								multiTargetProgress.cwcComplete = true;
+								multiTargetProgress.cwcResults = results;
+							}}
+						/>
+					{:else}
+						<div class="flex items-center gap-3">
+							<div class="h-5 w-5 animate-pulse rounded-full bg-blue-200"></div>
+							<p class="text-slate-600">Congress delivery will start after email...</p>
+						</div>
+					{/if}
+				</div>
+
+				<!-- Combined Completion -->
+				{#if multiTargetProgress.mailtoConfirmed && multiTargetProgress.cwcComplete}
+					<div
+						class="rounded-lg border border-green-200 bg-green-50 p-4 text-center"
+						in:scale={{ duration: 300, easing: backOut }}
+					>
+						<CheckCircle2 class="mx-auto mb-2 h-8 w-8 text-green-600" />
+						<p class="font-medium text-green-900">
+							All {3 + (multiTargetInfo?.decisionMakerNames.length ?? 0)} decision-makers contacted
+						</p>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{:else if currentState === 'multi-target-address'}
+		<!-- Multi-Target Address Collection -->
+		<div class="relative p-6" in:scale={{ duration: 500, easing: backOut }}>
+			<!-- Close Button -->
+			<button
+				onclick={handleClose}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
+
+			<div class="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
+				<div class="flex items-center gap-2">
+					<CheckCircle2 class="h-4 w-4 text-green-600" />
+					<span class="text-sm text-green-800">
+						Email opened for {multiTargetInfo?.decisionMakerNames.join(', ')}
+					</span>
+				</div>
+			</div>
+
+			<h3 class="mb-2 text-lg font-semibold">Now, let's contact Congress</h3>
+			<p class="mb-4 text-sm text-slate-600">
+				Enter your address to verify your congressional district
+			</p>
+
+			<AddressCollectionForm {template} oncomplete={handleMultiTargetAddressComplete} />
+		</div>
 	{:else if currentState === 'cwc-submission'}
 		<!-- ZKP Proof Generation & Submission State -->
 		<div class="flex h-full flex-col">
@@ -1169,6 +1496,54 @@
 					/>
 				{:else}
 					<!-- Fallback if no submission ID -->
+					<div class="rounded-lg border border-slate-200 bg-white p-4 text-center">
+						<Send class="mx-auto mb-3 h-8 w-8 text-participation-primary-600" />
+						<p class="text-slate-600">Message processing started</p>
+					</div>
+				{/if}
+			</div>
+		</div>
+	{:else if currentState === 'delivery-journey'}
+		<!-- Delivery Journey State - MVP mode with immediate results -->
+		<div class="flex h-full flex-col">
+			<!-- Header -->
+			<div class="border-b border-slate-100 p-6">
+				<div class="flex items-center justify-between">
+					<div class="flex items-center gap-3">
+						<div
+							class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-participation-primary-100"
+							style="transform: scale({$celebrationScale})"
+						>
+							<Send class="h-5 w-5 text-participation-primary-600" />
+						</div>
+						<div>
+							<h2 class="text-lg font-semibold text-slate-900">Reaching Congress</h2>
+							<p class="text-sm text-slate-600">Your message is being delivered</p>
+						</div>
+					</div>
+					<button
+						onclick={() => {
+							goto(`/s/${template.slug}`, { replaceState: true });
+							handleClose();
+						}}
+						class="rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+					>
+						<X class="h-5 w-5" />
+					</button>
+				</div>
+			</div>
+
+			<!-- Delivery Journey -->
+			<div class="flex-1 overflow-y-auto p-6">
+				{#if submissionId && deliveryResults}
+					<DeliveryJourney
+						{submissionId}
+						results={deliveryResults}
+						template={{ title: template.title, category: template.category }}
+						onComplete={handleDeliveryComplete}
+					/>
+				{:else}
+					<!-- Fallback if data missing -->
 					<div class="rounded-lg border border-slate-200 bg-white p-4 text-center">
 						<Send class="mx-auto mb-3 h-8 w-8 text-participation-primary-600" />
 						<p class="text-slate-600">Message processing started</p>

@@ -153,3 +153,115 @@ export function mergeAndDeduplicateSources(
 
 	return merged;
 }
+
+// ============================================================================
+// Grounded Source Mapping for Entities
+// ============================================================================
+
+/**
+ * Find verified grounding sources for an entity by searching for its text in the response.
+ *
+ * This is the KEY function for preventing hallucinated sources:
+ * - Instead of trusting LLM-generated URLs, we find which grounding chunks actually
+ *   support the text mentioning this entity.
+ * - We search for the entity's name/title/org in the raw response text
+ * - We check which groundingSupports cover those text positions
+ * - We return the grounding chunk URIs as verified sources
+ *
+ * @param entitySearchTerms - Array of strings to search for (e.g., [name, title, org])
+ * @param rawResponseText - The raw text response from Gemini
+ * @param metadata - Grounding metadata from the response
+ * @returns Array of verified source URLs backed by grounding
+ */
+export function findGroundedSourcesForEntity(
+	entitySearchTerms: string[],
+	rawResponseText: string,
+	metadata: GroundingMetadata
+): string[] {
+	const supports = metadata.groundingSupports || [];
+	const chunks = metadata.groundingChunks || [];
+
+	if (supports.length === 0 || chunks.length === 0) {
+		return [];
+	}
+
+	// Find all positions where entity terms appear in the response
+	const entityPositions: Array<{ start: number; end: number }> = [];
+	const textLower = rawResponseText.toLowerCase();
+
+	for (const term of entitySearchTerms) {
+		if (!term || term.length < 3) continue;
+		const termLower = term.toLowerCase();
+		let pos = 0;
+		while ((pos = textLower.indexOf(termLower, pos)) !== -1) {
+			entityPositions.push({ start: pos, end: pos + term.length });
+			pos += term.length;
+		}
+	}
+
+	if (entityPositions.length === 0) {
+		return [];
+	}
+
+	// Find which grounding supports overlap with entity positions
+	const matchingChunkIndices = new Set<number>();
+
+	for (const support of supports) {
+		const segStart = support.segment?.startIndex ?? 0;
+		const segEnd = support.segment?.endIndex ?? 0;
+		const chunkIndices = support.groundingChunkIndices || [];
+
+		// Check if this support segment overlaps with any entity position
+		for (const entityPos of entityPositions) {
+			// Overlap check: segments overlap if one starts before the other ends
+			if (segStart <= entityPos.end && segEnd >= entityPos.start) {
+				for (const idx of chunkIndices) {
+					matchingChunkIndices.add(idx);
+				}
+			}
+		}
+	}
+
+	// Extract URLs from matching chunks (deduplicated)
+	const urls: string[] = [];
+	const seenUrls = new Set<string>();
+
+	for (const idx of matchingChunkIndices) {
+		const chunk = chunks[idx];
+		const uri = chunk?.web?.uri;
+		if (uri && !seenUrls.has(uri)) {
+			seenUrls.add(uri);
+			urls.push(uri);
+		}
+	}
+
+	return urls;
+}
+
+/**
+ * Find the best single source for an entity from grounding metadata.
+ *
+ * Prioritizes:
+ * 1. Official domains (.gov, .edu, .org) from grounding
+ * 2. Any grounding source
+ * 3. Empty string if nothing found
+ */
+export function findBestGroundedSource(
+	entitySearchTerms: string[],
+	rawResponseText: string,
+	metadata: GroundingMetadata
+): string {
+	const sources = findGroundedSourcesForEntity(entitySearchTerms, rawResponseText, metadata);
+
+	if (sources.length === 0) {
+		return '';
+	}
+
+	// Prioritize official domains
+	const official = sources.find(url => {
+		const lower = url.toLowerCase();
+		return lower.includes('.gov') || lower.includes('.edu') || lower.includes('.org');
+	});
+
+	return official || sources[0];
+}

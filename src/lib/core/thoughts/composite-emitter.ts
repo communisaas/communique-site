@@ -48,6 +48,7 @@ import type {
 	RecommendOptions
 } from './types';
 import { CONFIDENCE } from '$lib/core/agents/providers/constants';
+import { PERCEPTUAL_TIMING } from '$lib/core/perceptual/timing';
 
 // ============================================================================
 // Types
@@ -73,34 +74,29 @@ export type CompositePhase =
 
 /**
  * Timing constants for composite streaming phases
+ * @deprecated Use PERCEPTUAL_TIMING from $lib/core/perceptual/timing instead
  */
 export const COMPOSITE_TIMING = {
 	/** Discovery phase (Firecrawl research) */
 	DISCOVERY: {
 		/** Expected duration in ms (45s typical) */
-		expected: 45_000,
+		expected: PERCEPTUAL_TIMING.DISCOVERY_EXPECTED,
 		/** Minimum interval between thought emissions */
-		thoughtInterval: 2_000
+		thoughtInterval: PERCEPTUAL_TIMING.DISCOVERY_THOUGHT_INTERVAL
 	},
 	/** Verification phase (Gemini) */
 	VERIFICATION: {
 		/** Expected duration in ms (8s typical) */
-		expected: 8_000,
+		expected: PERCEPTUAL_TIMING.VERIFICATION_EXPECTED,
 		/** Confidence boost per verified thought */
-		confidenceBoost: CONFIDENCE.VERIFICATION_BOOST
+		confidenceBoost: PERCEPTUAL_TIMING.CONFIDENCE_BOOST
 	},
 	/** Phase transition settings */
 	TRANSITION: {
 		/** Settling pause before verification starts (ms) */
-		pauseBeforeVerify: 500
+		pauseBeforeVerify: PERCEPTUAL_TIMING.PHASE_PAUSE
 	}
 } as const;
-
-/**
- * Base confidence for discovery-phase thoughts
- * @deprecated Use CONFIDENCE.BASE_DISCOVERY from '$lib/core/agents/providers/constants' instead
- */
-export const BASE_CONFIDENCE = CONFIDENCE.BASE_DISCOVERY;
 
 /**
  * Extended thought segment with confidence tracking
@@ -127,6 +123,23 @@ export interface PhaseChangeEvent {
 }
 
 /**
+ * Phase settling event payload - emitted during transition pauses
+ *
+ * Per Phase 2D.1 perceptual architecture spec, a settling pause gives users
+ * time to register phase changes cognitively before the next phase begins.
+ */
+export interface PhaseSettlingEvent {
+	/** Event type identifier */
+	type: 'settling';
+	/** Duration of the settling pause in ms */
+	duration: number;
+	/** Human-readable message for UI feedback */
+	message: string;
+	/** Timestamp when settling began */
+	timestamp: number;
+}
+
+/**
  * Confidence update event payload
  */
 export interface ConfidenceUpdateEvent {
@@ -145,6 +158,7 @@ export interface ConfidenceUpdateEvent {
  */
 export type CompositeEvent =
 	| { type: 'phase-change'; event: PhaseChangeEvent }
+	| { type: 'phase-settling'; event: PhaseSettlingEvent }
 	| { type: 'confidence-update'; event: ConfidenceUpdateEvent }
 	| { type: 'thought'; segment: ConfidentThoughtSegment };
 
@@ -162,6 +176,11 @@ export type PhaseChangeCallback = (event: PhaseChangeEvent) => void;
  * Callback for confidence updates
  */
 export type ConfidenceUpdateCallback = (event: ConfidenceUpdateEvent) => void;
+
+/**
+ * Callback for phase settling events
+ */
+export type PhaseSettlingCallback = (event: PhaseSettlingEvent) => void;
 
 // ============================================================================
 // CompositeThoughtEmitter Class
@@ -200,6 +219,9 @@ export class CompositeThoughtEmitter {
 
 	/** Confidence update listeners */
 	private confidenceUpdateListeners: Set<ConfidenceUpdateCallback> = new Set();
+
+	/** Phase settling listeners */
+	private phaseSettlingListeners: Set<PhaseSettlingCallback> = new Set();
 
 	/** Phase start timestamps for timing analysis */
 	private phaseTimestamps: Map<CompositePhase, number> = new Map();
@@ -299,7 +321,9 @@ export class CompositeThoughtEmitter {
 	 * Transition to verification phase with settling pause
 	 *
 	 * Handles the 500ms settling pause before verification begins,
-	 * giving the UI time to show discovery completion.
+	 * giving the UI time to show discovery completion. Per Phase 2D.1
+	 * perceptual architecture spec, this pause allows users to cognitively
+	 * register the phase change before verification starts.
 	 *
 	 * @returns Promise that resolves when verification phase begins
 	 */
@@ -316,11 +340,44 @@ export class CompositeThoughtEmitter {
 			);
 		}
 
-		// Settling pause for UI transition
-		await this.sleep(COMPOSITE_TIMING.TRANSITION.pauseBeforeVerify);
+		// Emit settling event for UI feedback before pause
+		await this.emitPhasePause(
+			COMPOSITE_TIMING.TRANSITION.pauseBeforeVerify,
+			'Processing findings...'
+		);
 
 		this.transitionTo('verification');
 		this.emitter.startPhase('verification');
+	}
+
+	/**
+	 * Emit a phase settling event and wait for the specified duration
+	 *
+	 * This allows the UI to show subtle feedback (e.g., "Processing findings...")
+	 * during the cognitive settling pause between phases.
+	 *
+	 * @param duration - Duration of pause in milliseconds
+	 * @param message - Human-readable message for UI display
+	 */
+	private async emitPhasePause(duration: number, message: string): Promise<void> {
+		const event: PhaseSettlingEvent = {
+			type: 'settling',
+			duration,
+			message,
+			timestamp: Date.now()
+		};
+
+		// Notify settling listeners
+		Array.from(this.phaseSettlingListeners).forEach((listener) => {
+			try {
+				listener(event);
+			} catch (error) {
+				console.error('Phase settling listener error:', error);
+			}
+		});
+
+		// Wait for the settling duration
+		await this.sleep(duration);
 	}
 
 	/**
@@ -519,6 +576,20 @@ export class CompositeThoughtEmitter {
 	onConfidenceUpdate(callback: ConfidenceUpdateCallback): () => void {
 		this.confidenceUpdateListeners.add(callback);
 		return () => this.confidenceUpdateListeners.delete(callback);
+	}
+
+	/**
+	 * Subscribe to phase settling events
+	 *
+	 * Called when a settling pause begins between phases. The UI can use this
+	 * to show subtle feedback like "Processing findings..." during the pause.
+	 *
+	 * @param callback - Callback invoked when phase settling begins
+	 * @returns Unsubscribe function
+	 */
+	onPhaseSettling(callback: PhaseSettlingCallback): () => void {
+		this.phaseSettlingListeners.add(callback);
+		return () => this.phaseSettlingListeners.delete(callback);
 	}
 
 	// ========================================================================
@@ -733,12 +804,14 @@ export class CompositeThoughtEmitter {
  * @param onSegment - Callback for thought segments
  * @param onPhaseChange - Optional callback for phase changes
  * @param onConfidenceUpdate - Optional callback for confidence updates
+ * @param onPhaseSettling - Optional callback for phase settling events
  * @returns Configured CompositeThoughtEmitter
  */
 export function createCompositeEmitter(
 	onSegment: ConfidentSegmentCallback,
 	onPhaseChange?: PhaseChangeCallback,
-	onConfidenceUpdate?: ConfidenceUpdateCallback
+	onConfidenceUpdate?: ConfidenceUpdateCallback,
+	onPhaseSettling?: PhaseSettlingCallback
 ): CompositeThoughtEmitter {
 	const emitter = new CompositeThoughtEmitter(onSegment);
 
@@ -748,6 +821,10 @@ export function createCompositeEmitter(
 
 	if (onConfidenceUpdate) {
 		emitter.onConfidenceUpdate(onConfidenceUpdate);
+	}
+
+	if (onPhaseSettling) {
+		emitter.onPhaseSettling(onPhaseSettling);
 	}
 
 	return emitter;

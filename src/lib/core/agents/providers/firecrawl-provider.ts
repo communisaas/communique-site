@@ -17,7 +17,12 @@
  */
 
 import { getFirecrawlClient } from './firecrawl-client';
-import type { FirecrawlOrganizationProfile } from './firecrawl-client';
+import type {
+	FirecrawlOrganizationProfile,
+	AgentProgressCallback,
+	BatchProgressCallback,
+	BatchDiscoveryResult
+} from './firecrawl-client';
 import { OrganizationService } from '$lib/server/mongodb/service';
 import type { OrganizationDocument, LeaderDocument } from '$lib/server/mongodb/schema';
 import { generateWithThoughts } from '../gemini-client';
@@ -263,7 +268,7 @@ export class FirecrawlDecisionMakerProvider implements DecisionMakerProvider {
 	}
 
 	/**
-	 * Discover organization using Firecrawl Agent API
+	 * Discover organization using Firecrawl Agent API v2
 	 */
 	private async discoverOrganization(
 		entityName: string,
@@ -272,10 +277,24 @@ export class FirecrawlDecisionMakerProvider implements DecisionMakerProvider {
 		streaming?: ResolveContext['streaming']
 	): Promise<FirecrawlOrganizationProfile> {
 		try {
+			// Create progress callback to emit streaming events during polling
+			const onProgress: AgentProgressCallback = (status, elapsedMs) => {
+				if (streaming?.onThought) {
+					const elapsedSec = Math.round(elapsedMs / 1000);
+					if (status === 'processing') {
+						streaming.onThought(
+							`Firecrawl agent still researching ${entityName}... (${elapsedSec}s elapsed)`,
+							'discover'
+						);
+					}
+				}
+			};
+
 			const profile = await this.firecrawl.discoverOrganization(
 				entityName,
 				topics,
-				startUrl
+				startUrl,
+				onProgress
 			);
 
 			if (streaming?.onThought) {
@@ -539,7 +558,7 @@ Return a JSON array of relevant leaders with reasoning:
 	/**
 	 * Determine power level from title
 	 */
-	private determinePowerLevel(title: string): 'primary' | 'secondary' | 'support' {
+	private determinePowerLevel(title: string): 'primary' | 'secondary' | 'supporting' {
 		const titleLower = title.toLowerCase();
 
 		if (
@@ -560,6 +579,249 @@ Return a JSON array of relevant leaders with reasoning:
 			return 'secondary';
 		}
 
-		return 'support';
+		return 'supporting';
+	}
+
+	// ========================================================================
+	// Batch Discovery
+	// ========================================================================
+
+	/**
+	 * Discover decision-makers for multiple organizations in parallel
+	 *
+	 * This method provides ~4x faster discovery by running multiple Firecrawl
+	 * Agent jobs in parallel with controlled concurrency and error isolation.
+	 *
+	 * Key features:
+	 * - Parallel execution (default: 4 concurrent jobs)
+	 * - Cache-aware (checks MongoDB before discovery)
+	 * - Error isolation (one failure doesn't break all)
+	 * - Progress callbacks for UI feedback
+	 * - Rate limiting to avoid API throttling
+	 *
+	 * @param organizations - Array of organization names to research
+	 * @param context - Shared context (topics, subject line, etc.)
+	 * @returns Array of results (one per organization)
+	 *
+	 * @example
+	 * ```typescript
+	 * const results = await provider.resolveBatch(
+	 *   ['Microsoft', 'Google', 'Apple'],
+	 *   {
+	 *     targetType: 'corporate',
+	 *     topics: ['sustainability'],
+	 *     subjectLine: 'Climate Action Request',
+	 *     streaming: { onPhase: console.log }
+	 *   }
+	 * );
+	 * ```
+	 */
+	async resolveBatch(
+		organizations: string[],
+		context: Omit<ResolveContext, 'targetEntity'>
+	): Promise<DecisionMakerResult[]> {
+		const startTime = Date.now();
+
+		console.log('[firecrawl-provider] Starting batch resolution:', {
+			organizations: organizations.length,
+			topics: context.topics
+		});
+
+		context.streaming?.onPhase?.(
+			'discover',
+			`Preparing to research ${organizations.length} organizations in parallel...`
+		);
+
+		// ================================================================
+		// Phase 1: Check cache for all organizations
+		// ================================================================
+
+		const cacheResults = await Promise.all(
+			organizations.map(async (org) => {
+				const cached = await OrganizationService.findOrganization(org);
+				return {
+					organization: org,
+					cached: cached && !this.isStale(cached) ? cached : null
+				};
+			})
+		);
+
+		const cacheHits = cacheResults.filter(r => r.cached !== null);
+		const cacheMisses = cacheResults.filter(r => r.cached === null);
+
+		console.log('[firecrawl-provider] Cache status:', {
+			hits: cacheHits.length,
+			misses: cacheMisses.length
+		});
+
+		if (cacheHits.length > 0) {
+			context.streaming?.onPhase?.(
+				'lookup',
+				`Found ${cacheHits.length} organizations in cache. Discovering ${cacheMisses.length} new...`
+			);
+		}
+
+		// ================================================================
+		// Phase 2: Batch discover cache misses
+		// ================================================================
+
+		let batchResult: BatchDiscoveryResult | null = null;
+
+		if (cacheMisses.length > 0) {
+			context.streaming?.onPhase?.(
+				'discover',
+				`Researching ${cacheMisses.length} organizations in parallel (4 at a time)...`
+			);
+
+			// Create progress callback
+			const onBatchProgress: BatchProgressCallback = (progress) => {
+				const percentage = Math.round((progress.completed / progress.total) * 100);
+				context.streaming?.onPhase?.(
+					'discover',
+					`Discovery progress: ${progress.completed}/${progress.total} (${percentage}%) - ${progress.currentOrg || 'processing...'}`
+				);
+
+				// Emit thoughts for individual org completions
+				if (progress.currentOrg && context.streaming?.onThought) {
+					const orgResult = progress.results.find(r => r.organization === progress.currentOrg);
+					if (orgResult?.status === 'completed') {
+						context.streaming.onThought(
+							`Completed research for ${progress.currentOrg}`,
+							'discover'
+						);
+					} else if (orgResult?.status === 'failed') {
+						context.streaming.onThought(
+							`Failed to research ${progress.currentOrg}: ${orgResult.error}`,
+							'discover'
+						);
+					}
+				}
+			};
+
+			batchResult = await this.firecrawl.discoverOrganizationsBatch(
+				cacheMisses.map(r => r.organization),
+				context.topics,
+				{
+					concurrency: 4,
+					onProgress: onBatchProgress
+				}
+			);
+
+			// Cache all successful discoveries
+			if (batchResult.successful.length > 0) {
+				context.streaming?.onPhase?.(
+					'lookup',
+					`Caching ${batchResult.successful.length} newly discovered organizations...`
+				);
+
+				await Promise.allSettled(
+					batchResult.successful.map(result =>
+						this.cacheOrganization(result.profile)
+					)
+				);
+			}
+
+			// Log failures
+			if (batchResult.failed.length > 0) {
+				console.warn('[firecrawl-provider] Batch discovery failures:', batchResult.failed);
+			}
+		}
+
+		// ================================================================
+		// Phase 3: Process all results (cached + newly discovered)
+		// ================================================================
+
+		context.streaming?.onPhase?.(
+			'lookup',
+			'Filtering leadership to decision-makers with authority...'
+		);
+
+		const allResults: DecisionMakerResult[] = [];
+
+		// Process cache hits
+		for (const { organization, cached } of cacheHits) {
+			if (!cached) continue;
+
+			const relevant = await this.filterByRelevance(
+				cached.leadership,
+				context.subjectLine,
+				context.topics,
+				context.streaming
+			);
+
+			allResults.push({
+				decisionMakers: this.transformToProcessedDecisionMakers(
+					relevant,
+					cached.name,
+					cached.website
+				),
+				provider: this.name,
+				orgProfile: cached,
+				cacheHit: true,
+				latencyMs: 0, // Cached
+				researchSummary: `Retrieved ${cached.name} from cache with ${cached.leadership.length} leaders.`
+			});
+		}
+
+		// Process newly discovered organizations
+		if (batchResult) {
+			for (const success of batchResult.successful) {
+				const leaders = success.profile.leadership.map(this.firecrawlLeaderToLeaderDocument);
+				const relevant = await this.filterByRelevance(
+					leaders,
+					context.subjectLine,
+					context.topics,
+					context.streaming
+				);
+
+				allResults.push({
+					decisionMakers: this.transformToProcessedDecisionMakers(
+						relevant,
+						success.profile.name,
+						success.profile.website
+					),
+					provider: this.name,
+					cacheHit: false,
+					latencyMs: 0, // Part of batch
+					researchSummary: `Discovered ${relevant.length} relevant decision-makers at ${success.profile.name}.`,
+					metadata: {
+						totalLeadersFound: success.profile.leadership.length,
+						relevantCount: relevant.length,
+						withEmail: relevant.filter(l => l.email).length,
+						policyPositions: success.profile.policyPositions.length
+					}
+				});
+			}
+
+			// Add failed organizations as empty results
+			for (const failure of batchResult.failed) {
+				allResults.push({
+					decisionMakers: [],
+					provider: this.name,
+					cacheHit: false,
+					latencyMs: 0,
+					researchSummary: `Failed to discover ${failure.organization}: ${failure.error}`
+				});
+			}
+		}
+
+		const totalDMs = allResults.reduce((sum, r) => sum + r.decisionMakers.length, 0);
+		const totalTime = Date.now() - startTime;
+
+		console.log('[firecrawl-provider] Batch resolution complete:', {
+			organizations: organizations.length,
+			cacheHits: cacheHits.length,
+			newDiscoveries: batchResult?.successful.length || 0,
+			failures: batchResult?.failed.length || 0,
+			totalDecisionMakers: totalDMs,
+			totalTimeMs: totalTime
+		});
+
+		context.streaming?.onPhase?.(
+			'complete',
+			`Found ${totalDMs} decision-makers across ${organizations.length} organizations in ${Math.round(totalTime / 1000)}s`
+		);
+
+		return allResults;
 	}
 }

@@ -117,6 +117,8 @@ class UnifiedApiClient {
 		const config: RequestInit = {
 			...fetchOptions,
 			headers,
+			// Explicitly include cookies for same-origin requests
+			credentials: 'same-origin',
 			body: fetchOptions.body
 				? typeof fetchOptions.body === 'string' ||
 					fetchOptions.body instanceof FormData ||

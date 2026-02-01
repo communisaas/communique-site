@@ -16,12 +16,14 @@
  * @module credential-encryption
  */
 
+import { DB_NAMES, STORES } from '$lib/constants';
+
 // ============================================================================
 // Constants
 // ============================================================================
 
-const KEY_DB_NAME = 'communique-keystore';
-const KEY_STORE_NAME = 'encryption-keys';
+const KEY_DB_NAME = DB_NAMES.KEYSTORE;
+const KEY_STORE_NAME = STORES.ENCRYPTION_KEYS;
 const DEVICE_KEY_ID = 'device-credential-key';
 
 /** Current encryption version for migration support */

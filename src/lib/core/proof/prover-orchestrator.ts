@@ -1,18 +1,11 @@
 import ProverWorker from './prover.worker?worker';
 import type { WitnessData, ProofResult } from './prover-core';
+import type { WorkerEvent } from './worker-protocol';
 import {
 	initMainThreadProver,
 	generateProofMainThread,
 	isProverInitialized
 } from './prover-main-thread';
-
-type WorkerEvent =
-	| { type: 'STATUS'; status: string }
-	| { type: 'ERROR'; message: string }
-	| { type: 'PROGRESS'; stage: string; percent: number }
-	| { type: 'PROOF_COMPLETE'; result: ProofResult }
-	| { type: 'MERKLE_ROOT_RESULT'; merkleRoot: string }
-	| { type: 'POSEIDON_HASH_RESULT'; hash: string };
 
 /**
  * Prover Orchestrator
