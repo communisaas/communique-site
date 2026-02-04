@@ -23,6 +23,7 @@ import {
 	calculateExpirationDate,
 	type SessionCredential
 } from './session-credentials';
+import { poseidonHash } from '../crypto/poseidon';
 
 // ============================================================================
 // Types
@@ -140,29 +141,18 @@ export async function registerInShadowAtlas(
 /**
  * Generate identity commitment from verification provider data
  *
- * For now, this is a placeholder that generates a deterministic hash.
- * In production, this should use the actual Poseidon hash from the provider.
+ * Uses Poseidon2 hash (via Barretenberg) to match the Noir circuit in voter-protocol.
+ * This ensures the identity commitment is compatible with on-chain verification.
  *
  * @param providerData - Verification provider data
- * @returns Identity commitment (hex string)
+ * @returns Identity commitment (hex string with 0x prefix, BN254 field element)
  */
 export async function generateIdentityCommitment(providerData: {
 	provider: 'self.xyz' | 'didit.me';
 	credentialHash: string;
 	issuedAt: number;
 }): Promise<string> {
-	// TODO: Use actual Poseidon hash from self.xyz or Didit.me
-	// For now, generate deterministic hash from credential data
-
 	const input = `${providerData.provider}:${providerData.credentialHash}:${providerData.issuedAt}`;
-	const encoder = new TextEncoder();
-	const data = encoder.encode(input);
-
-	const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-	const hashArray = Array.from(new Uint8Array(hashBuffer));
-	const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
-
-	// Return as hex string with 0x prefix
-	return '0x' + hashHex;
+	return await poseidonHash(input);
 }
 

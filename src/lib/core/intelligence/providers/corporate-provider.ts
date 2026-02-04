@@ -65,9 +65,9 @@ export class CorporateProvider extends BaseIntelligenceProvider {
 		// For MVP: Return placeholder data
 		// In production, this would call:
 		// - SEC EDGAR API for filings
-		// - Firecrawl for investor relations pages
 		// - Corporate press release APIs
 		// - Earnings calendar services
+		// - Investor relations pages via web scraping
 
 		const items: IntelligenceItem[] = [];
 
@@ -100,7 +100,7 @@ export class CorporateProvider extends BaseIntelligenceProvider {
 				isActionable: true,
 				metadata: {
 					placeholder: true,
-					integrationNeeded: 'SEC EDGAR API or Firecrawl'
+					integrationNeeded: 'SEC EDGAR API'
 				}
 			});
 		}

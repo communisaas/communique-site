@@ -3,7 +3,7 @@
  *
  * Gathers recent news coverage related to query topics.
  * For MVP, uses a placeholder implementation that can be enhanced
- * with real news APIs (NewsAPI, Perplexity, Firecrawl) later.
+ * with real news APIs (NewsAPI, Perplexity) later.
  */
 
 import type {
@@ -56,14 +56,13 @@ export class NewsProvider extends BaseIntelligenceProvider {
 
 	/**
 	 * Fetch news items from external source
-	 * TODO: Integrate with real news API (NewsAPI, Perplexity, Firecrawl)
+	 * TODO: Integrate with real news API (NewsAPI, Perplexity)
 	 */
 	private async fetchNews(query: IntelligenceQuery): Promise<IntelligenceItem[]> {
 		// For MVP: Return placeholder data
 		// In production, this would call:
 		// - NewsAPI.org for broad coverage
 		// - Perplexity API for recent AI-curated news
-		// - Firecrawl Agent for deep web search
 		// - RSS feeds for specific sources
 
 		const items: IntelligenceItem[] = [];

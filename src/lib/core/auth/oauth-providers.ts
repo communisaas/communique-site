@@ -5,9 +5,10 @@
  * while using the common OAuth callback handler.
  */
 
-import { Google, Facebook, LinkedIn, Discord } from 'arctic';
+import { Google, LinkedIn, Discord } from 'arctic';
 import { Twitter } from 'arctic';
 import { CoinbaseOAuth } from './coinbase-oauth';
+import { FacebookOAuth } from './facebook-oauth';
 import type {
 	OAuthCallbackConfig,
 	OAuthProvider,
@@ -343,6 +344,19 @@ export function getGoogleConfig(): OAuthCallbackConfig {
 // =============================================================================
 // FACEBOOK CONFIGURATION
 // =============================================================================
+// MEDIUM-001: Facebook OAuth now uses PKCE (Proof Key for Code Exchange)
+// to prevent authorization code interception attacks.
+//
+// PKCE Security Benefits:
+// - Prevents code interception by malicious apps or network attackers
+// - Eliminates need for client_secret in mobile/SPA apps (we still use it for server-side)
+// - Required by OAuth 2.1 for all clients
+//
+// Implementation:
+// - Uses custom FacebookOAuth class (not Arctic's Facebook which lacks PKCE)
+// - code_verifier stored in httpOnly cookie during auth initiation
+// - code_verifier sent with token exchange request
+// - Facebook validates SHA256(code_verifier) matches original code_challenge
 
 function createFacebookConfig(): OAuthCallbackConfig {
 	const clientId = getRequiredEnv('FACEBOOK_CLIENT_ID', 'Facebook');
@@ -355,19 +369,32 @@ function createFacebookConfig(): OAuthCallbackConfig {
 		clientSecret,
 		redirectUrl,
 		userInfoUrl: 'https://graph.facebook.com/me',
-		requiresCodeVerifier: false,
+		// MEDIUM-001: Enable PKCE for Facebook OAuth
+		requiresCodeVerifier: true,
 		scope: 'email public_profile',
 
 		createOAuthClient: (): OAuthClient => {
-			return new Facebook(
+			// Use custom FacebookOAuth class with PKCE support
+			return new FacebookOAuth(
 				clientId,
 				clientSecret,
 				redirectUrl
 			) as unknown as OAuthClient;
 		},
 
-		exchangeTokens: async (client: OAuthClient, code: string): Promise<OAuthTokens> => {
-			return await client.validateAuthorizationCode(code);
+		exchangeTokens: async (
+			client: OAuthClient,
+			code: string,
+			codeVerifier?: string
+		): Promise<OAuthTokens> => {
+			// MEDIUM-001: PKCE code_verifier is mandatory for security
+			if (!codeVerifier) {
+				throw new Error(
+					'Missing code_verifier for Facebook OAuth. ' +
+						'PKCE is required to prevent authorization code interception attacks.'
+				);
+			}
+			return await client.validateAuthorizationCode(code, codeVerifier);
 		},
 
 		getUserInfo: async (accessToken: string, clientSecret?: string): Promise<unknown> => {

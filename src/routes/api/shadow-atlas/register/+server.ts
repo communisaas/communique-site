@@ -1,138 +1,54 @@
+/**
+ * Shadow Atlas Registration Endpoint
+ *
+ * Registers a user's identity commitment with voter-protocol's Shadow Atlas.
+ * This endpoint now acts as a proxy to the production Shadow Atlas API instead
+ * of building local Merkle trees.
+ *
+ * FLOW:
+ * 1. Receive identity commitment from client (from generateIdentityCommitment())
+ * 2. Call voter-protocol Shadow Atlas API for district lookup + Merkle proof
+ * 3. Store registration in ShadowAtlasRegistration table
+ * 4. Return Merkle proof data to client for ZK proof generation
+ *
+ * REMOVED (WS1.2):
+ * - Local Merkle tree building (computeMerkleRoot, computeMerklePath)
+ * - ShadowAtlasTree storage (now uses voter-protocol's depth-20 trees)
+ * - Depth-12 compatibility layer (circuits require depth-20)
+ */
+
 import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db';
 import type { RequestHandler } from './$types';
-import { Poseidon2Hasher } from '@voter-protocol/crypto';
-
-/**
- * CVE-VOTER-004 FIX: Use production Poseidon2 hasher for Merkle tree operations
- *
- * CRITICAL: This module now uses the same Poseidon2 implementation as the ZK circuits.
- * The Poseidon2Hasher executes the actual Noir stdlib Poseidon2 permutation, ensuring
- * that Merkle roots computed here will match those verified in zero-knowledge proofs.
- *
- * ZERO padding constant - represents empty leaf in Merkle tree
- */
-const ZERO_LEAF = 0n;
-
-/**
- * Merkle tree depth - supports up to 2^12 = 4096 leaves per district
- */
-const MERKLE_DEPTH = 12;
-
-/**
- * Compute the Merkle path (authentication path) for a leaf at given index
- *
- * @param hasher - Poseidon2Hasher instance
- * @param leaves - Array of leaf values as bigint
- * @param index - Index of the leaf to compute path for
- * @param depth - Tree depth (default: 12)
- * @returns Array of sibling hashes along the path from leaf to root
- */
-async function computeMerklePath(
-	hasher: Poseidon2Hasher,
-	leaves: bigint[],
-	index: number,
-	depth: number = MERKLE_DEPTH
-): Promise<bigint[]> {
-	const path: bigint[] = [];
-	let currentLevel = [...leaves];
-	let currentIndex = index;
-
-	for (let i = 0; i < depth; i++) {
-		// Pad level to even length with zero leaves
-		if (currentLevel.length % 2 !== 0) {
-			currentLevel.push(ZERO_LEAF);
-		}
-
-		// Determine sibling position
-		const isRightNode = currentIndex % 2 !== 0;
-		const siblingIndex = isRightNode ? currentIndex - 1 : currentIndex + 1;
-
-		// Get sibling (or zero if out of bounds)
-		const sibling = siblingIndex < currentLevel.length ? currentLevel[siblingIndex] : ZERO_LEAF;
-		path.push(sibling);
-
-		// Compute next level using Poseidon2
-		const nextLevel: bigint[] = [];
-		for (let j = 0; j < currentLevel.length; j += 2) {
-			const left = currentLevel[j];
-			const right = j + 1 < currentLevel.length ? currentLevel[j + 1] : ZERO_LEAF;
-			const hash = await hasher.hashPair(left, right);
-			nextLevel.push(hash);
-		}
-
-		currentLevel = nextLevel;
-		currentIndex = Math.floor(currentIndex / 2);
-	}
-
-	return path;
-}
-
-/**
- * Compute the Merkle root from an array of leaves
- *
- * @param hasher - Poseidon2Hasher instance
- * @param leaves - Array of leaf values as bigint
- * @param depth - Tree depth (default: 12)
- * @returns The Merkle root as bigint
- */
-async function computeMerkleRoot(
-	hasher: Poseidon2Hasher,
-	leaves: bigint[],
-	depth: number = MERKLE_DEPTH
-): Promise<bigint> {
-	if (leaves.length === 0) {
-		return ZERO_LEAF;
-	}
-
-	let currentLevel = [...leaves];
-
-	for (let i = 0; i < depth; i++) {
-		// Pad level to even length with zero leaves
-		if (currentLevel.length % 2 !== 0) {
-			currentLevel.push(ZERO_LEAF);
-		}
-
-		// Compute next level using Poseidon2
-		const nextLevel: bigint[] = [];
-		for (let j = 0; j < currentLevel.length; j += 2) {
-			const left = currentLevel[j];
-			const right = j + 1 < currentLevel.length ? currentLevel[j + 1] : ZERO_LEAF;
-			const hash = await hasher.hashPair(left, right);
-			nextLevel.push(hash);
-		}
-
-		currentLevel = nextLevel;
-	}
-
-	return currentLevel[0] ?? ZERO_LEAF;
-}
-
-/**
- * Convert bigint array to string array for database storage
- */
-function bigintArrayToStringArray(arr: bigint[]): string[] {
-	return arr.map((v) => v.toString());
-}
-
-/**
- * Convert string array from database to bigint array
- */
-function stringArrayToBigintArray(arr: string[]): bigint[] {
-	return arr.map((v) => BigInt(v));
-}
+import { lookupDistrict } from '$lib/core/shadow-atlas/client';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	console.log('Register endpoint called');
+	console.log('Shadow Atlas registration endpoint called');
+
 	try {
 		const session = locals.session;
 		console.log('Session:', session);
-		if (!session) return json({ error: 'Unauthorized' }, { status: 401 });
 
-		const { identityCommitment, district } = await request.json();
+		if (!session) {
+			return json({ error: 'Unauthorized' }, { status: 401 });
+		}
 
-		if (!identityCommitment || !district) {
-			return json({ error: 'Missing required fields' }, { status: 400 });
+		const body = await request.json();
+		const { identityCommitment, lat, lng } = body;
+
+		// Validate required fields
+		if (!identityCommitment) {
+			return json(
+				{ error: 'Missing required field: identityCommitment' },
+				{ status: 400 }
+			);
+		}
+
+		if (typeof lat !== 'number' || typeof lng !== 'number') {
+			return json(
+				{ error: 'Missing or invalid required fields: lat, lng must be numbers' },
+				{ status: 400 }
+			);
 		}
 
 		// Parse identity commitment as bigint (accepts hex string or decimal string)
@@ -145,113 +61,112 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			} else if (typeof identityCommitment === 'bigint') {
 				commitmentBigint = identityCommitment;
 			} else {
-				return json({ error: 'Invalid identityCommitment format' }, { status: 400 });
+				return json(
+					{ error: 'Invalid identityCommitment format. Must be hex string or bigint.' },
+					{ status: 400 }
+				);
 			}
-		} catch {
-			return json({ error: 'Failed to parse identityCommitment as bigint' }, { status: 400 });
+		} catch (error) {
+			console.error('Failed to parse identityCommitment:', error);
+			return json(
+				{ error: 'Failed to parse identityCommitment as bigint' },
+				{ status: 400 }
+			);
 		}
 
-		// Initialize Poseidon2 hasher (singleton, cached after first call)
-		const hasher = await Poseidon2Hasher.getInstance();
+		// Lookup district and Merkle proof from voter-protocol Shadow Atlas
+		console.log(`Looking up district for coordinates: lat=${lat}, lng=${lng}`);
+		let districtLookup;
+		try {
+			districtLookup = await lookupDistrict(lat, lng);
+		} catch (error) {
+			console.error('Shadow Atlas lookup failed:', error);
+			return json(
+				{
+					error: 'Failed to lookup district',
+					details: error instanceof Error ? error.message : String(error)
+				},
+				{ status: 503 }
+			);
+		}
+
+		const { district, merkleProof } = districtLookup;
+		console.log(`District found: ${district.id} (${district.name})`);
 
 		// Use transaction to ensure consistency
 		const result = await prisma.$transaction(async (tx) => {
-			// 0. Verify user exists (defensive check for test isolation)
+			// 1. Verify user exists (defensive check for test isolation)
 			const userExists = await tx.user.findUnique({
 				where: { id: session.userId },
 				select: { id: true }
 			});
+
 			if (!userExists) {
-				throw new Error(`User ${session.userId} not found - cannot register for Shadow Atlas`);
+				throw new Error(
+					`User ${session.userId} not found - cannot register for Shadow Atlas`
+				);
 			}
 
-			// 1. Get or create the tree for this district
-			let tree = await tx.shadowAtlasTree.findUnique({
-				where: { congressional_district: district }
-			});
-
-			if (!tree) {
-				tree = await tx.shadowAtlasTree.create({
-					data: {
-						congressional_district: district,
-						leaves: [],
-						merkle_root: '0',
-						leaf_count: 0
-					}
-				});
-			}
-
-			// 2. Check if user is already registered in this district
+			// 2. Check if user is already registered
 			const existingRegistration = await tx.shadowAtlasRegistration.findUnique({
 				where: { user_id: session.userId }
 			});
 
 			if (existingRegistration) {
-				// If already registered, return existing path
-				// Convert stored string arrays back to bigint for response
+				// If already registered, return existing registration
+				console.log(`User ${session.userId} already registered, returning existing data`);
 				return {
+					districtId: existingRegistration.congressional_district,
+					districtName: district.name, // Use fresh name from API
 					leafIndex: existingRegistration.leaf_index,
-					merklePath: existingRegistration.merkle_path,
-					root: existingRegistration.merkle_root
+					merkleRoot: existingRegistration.merkle_root,
+					merklePath: existingRegistration.merkle_path as string[]
 				};
 			}
 
-			// 3. Add leaf to tree (convert existing leaves to bigint)
-			const existingLeaves = stringArrayToBigintArray(tree.leaves);
-			const newLeaves = [...existingLeaves, commitmentBigint];
-			const leafIndex = existingLeaves.length;
-
-			// 4. Compute new root and path using Poseidon2
-			// Note: This is O(N) which is fine for small trees (4096 leaves)
-			// For larger trees, we'd use a sparse tree or incremental updates
-			const root = await computeMerkleRoot(hasher, newLeaves);
-			const path = await computeMerklePath(hasher, newLeaves, leafIndex);
-
-			// Convert bigint values to strings for database storage
-			const rootString = root.toString();
-			const pathStrings = bigintArrayToStringArray(path);
-			const leavesStrings = bigintArrayToStringArray(newLeaves);
-
-			// 5. Update tree
-			await tx.shadowAtlasTree.update({
-				where: { id: tree.id },
-				data: {
-					leaves: leavesStrings,
-					leaf_count: newLeaves.length,
-					merkle_root: rootString
-				}
-			});
-
-			// 6. Create registration record
-			await tx.shadowAtlasRegistration.create({
+			// 3. Create new registration record
+			// NOTE: We store the Merkle proof data for client-side ZK proof generation
+			// The leaf index comes from the voter-protocol API response
+			const registration = await tx.shadowAtlasRegistration.create({
 				data: {
 					user_id: session.userId,
-					congressional_district: district,
+					congressional_district: district.id,
 					identity_commitment: commitmentBigint.toString(),
-					leaf_index: leafIndex,
-					merkle_root: rootString,
-					merkle_path: pathStrings,
+					leaf_index: 0, // TODO: Extract from merkleProof.leaf position once API provides it
+					merkle_root: merkleProof.root,
+					merkle_path: merkleProof.siblings, // Array of hex strings
 					verification_method: 'self.xyz', // Default for Phase 1
-					verification_id: 'mock-verification-id',
+					verification_id: 'mock-verification-id', // TODO: Link to actual verification session
 					verification_timestamp: new Date(),
 					registration_status: 'registered',
 					expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 6 months
 				}
 			});
 
+			console.log(`Created new registration for user ${session.userId}`);
+
 			return {
-				leafIndex,
-				merklePath: pathStrings,
-				root: rootString
+				districtId: district.id,
+				districtName: district.name,
+				leafIndex: registration.leaf_index,
+				merkleRoot: registration.merkle_root,
+				merklePath: registration.merkle_path as string[]
 			};
 		});
 
+		console.log('Registration successful');
 		return json(result);
 	} catch (error) {
 		console.error('Shadow Atlas registration error:', error);
 		if (error instanceof Error) {
 			console.error('Error stack:', error.stack);
 		}
-		return json({ error: 'Internal server error', details: String(error) }, { status: 500 });
+		return json(
+			{
+				error: 'Internal server error',
+				details: error instanceof Error ? error.message : String(error)
+			},
+			{ status: 500 }
+		);
 	}
 };

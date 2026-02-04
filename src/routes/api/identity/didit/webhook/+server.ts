@@ -1,20 +1,25 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { createHmac, createHash, timingSafeEqual } from 'crypto';
+import { createHash } from 'crypto';
 import {
 	generateIdentityHash,
 	generateIdentityFingerprint,
 	validateIdentityProof,
-	isAgeEligible,
 	type IdentityProof
 } from '$lib/core/server/identity-hash';
 import { prisma } from '$lib/core/db';
-import { z } from 'zod';
 import {
 	computeIdentityCommitment,
 	bindIdentityCommitment,
 	getCommitmentFingerprint
 } from '$lib/core/identity/identity-binding';
+import {
+	validateWebhook,
+	parseVerificationResult,
+	isAgeEligible,
+	type DiditWebhookEvent
+} from '$lib/core/identity/didit-client';
+import { generateIdentityCommitment } from '$lib/core/identity/shadow-atlas-handler';
 
 /**
  * Didit.me Webhook Handler
@@ -35,41 +40,7 @@ import {
  * - data.updated: KYC/POA data manually updated
  */
 
-/**
- * Verify Didit webhook HMAC signature
- * Security: Prevents unauthorized webhook events
- * Uses constant-time comparison to prevent timing attacks
- */
-function verifyWebhookSignature(
-	body: string,
-	signature: string | null,
-	timestamp: string | null,
-	secret: string
-): boolean {
-	if (!signature || !timestamp) {
-		return false;
-	}
-
-	const payload = `${timestamp}.${body}`;
-	const expectedSignature = createHmac('sha256', secret).update(payload).digest('hex');
-
-	// SECURITY FIX: Use constant-time comparison to prevent timing attacks
-	// Convert hex strings to Buffers for timingSafeEqual
-	try {
-		const signatureBuffer = Buffer.from(signature, 'hex');
-		const expectedBuffer = Buffer.from(expectedSignature, 'hex');
-
-		// Ensure buffers are same length before comparison
-		if (signatureBuffer.length !== expectedBuffer.length) {
-			return false;
-		}
-
-		return timingSafeEqual(signatureBuffer, expectedBuffer);
-	} catch {
-		// Handle invalid hex strings
-		return false;
-	}
-}
+// verifyWebhookSignature removed - now using validateWebhook from didit-client.ts
 
 /**
  * Didit webhook handler
@@ -82,78 +53,46 @@ export const POST: RequestHandler = async ({ request }) => {
 		const signature = request.headers.get('x-didit-signature');
 		const timestamp = request.headers.get('x-didit-timestamp');
 
-		// Verify webhook authenticity
-		const webhookSecret = process.env.DIDIT_WEBHOOK_SECRET;
-		if (!webhookSecret) {
-			console.error('DIDIT_WEBHOOK_SECRET not configured');
-			throw error(500, 'Webhook configuration error');
-		}
-		if (!verifyWebhookSignature(body, signature, timestamp, webhookSecret)) {
-			console.error('Invalid webhook signature');
+		// Verify webhook authenticity using SDK
+		if (!validateWebhook(body, signature, timestamp)) {
+			console.error('[Didit Webhook] Invalid webhook signature');
 			throw error(401, 'Invalid webhook signature');
 		}
 
-		// Parse and validate event data
-		const DiditEventSchema = z.object({
-			type: z.string(),
-			data: z.object({
-				status: z.string(),
-				metadata: z
-					.object({
-						user_id: z.string().optional()
-					})
-					.passthrough()
-					.optional(),
-				session_id: z.string().optional(),
-				decision: z
-					.object({
-						id_verification: z
-							.object({
-								date_of_birth: z.string(),
-								document_number: z.string(),
-								issuing_state: z.string(),
-								document_type: z.string()
-							})
-							.passthrough()
-							.optional()
-					})
-					.passthrough()
-					.optional()
-			})
-		});
-
-		let event;
+		// Parse event payload
+		let event: DiditWebhookEvent;
 		try {
-			const parsed = JSON.parse(body);
-			const result = DiditEventSchema.safeParse(parsed);
-			if (!result.success) {
-				console.error('[Didit Webhook] Invalid event structure:', result.error.flatten());
-				throw error(400, 'Invalid webhook event structure');
-			}
-			event = result.data;
+			event = JSON.parse(body) as DiditWebhookEvent;
 		} catch (parseError) {
 			console.error('[Didit Webhook] Failed to parse event body:', parseError);
 			throw error(400, 'Invalid JSON in webhook body');
 		}
 
-		const { type, data } = event;
-
 		// Only process status.updated events
-		if (type !== 'status.updated') {
-			return json({ received: true, processed: false });
+		if (event.type !== 'status.updated') {
+			return json({ received: true, processed: false, event_type: event.type });
 		}
 
 		// Only process approved verifications
-		if (data.status !== 'Approved') {
-			return json({ received: true, processed: false, status: data.status });
+		if (event.data.status !== 'Approved') {
+			return json({
+				received: true,
+				processed: false,
+				status: event.data.status
+			});
 		}
 
-		// Extract user ID from session metadata
-		const userId = data.metadata?.user_id;
-		if (!userId) {
-			console.error('Missing user_id in webhook metadata');
-			throw error(400, 'Missing user_id in session metadata');
+		// Parse verification result using SDK
+		let verificationResult;
+		try {
+			verificationResult = parseVerificationResult(event);
+		} catch (parseError) {
+			console.error('[Didit Webhook] Failed to parse verification result:', parseError);
+			throw error(400, parseError instanceof Error ? parseError.message : 'Invalid verification data');
 		}
+
+		const { userId, documentNumber, nationality, birthYear, documentType, credentialHash, sessionId } =
+			verificationResult;
 
 		// Check if already processed (idempotency)
 		const existingUser = await prisma.user.findUnique({
@@ -162,6 +101,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		});
 
 		if (existingUser?.is_verified && existingUser.verification_method === 'didit') {
+			console.log(`[Didit Webhook] User ${userId} already verified, skipping`);
 			return json({
 				received: true,
 				processed: false,
@@ -169,13 +109,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			});
 		}
 
-		// Process verification result
-		const verification = data.decision.id_verification;
-
-		// Map Didit data to our IdentityProof structure
-		const birthDate = new Date(verification.date_of_birth);
-		const birthYear = birthDate.getFullYear();
-
+		// Map to internal document type
 		const documentTypeMap: Record<string, IdentityProof['documentType']> = {
 			passport: 'passport',
 			drivers_license: 'drivers_license',
@@ -183,10 +117,10 @@ export const POST: RequestHandler = async ({ request }) => {
 		};
 
 		const identityProof: IdentityProof = {
-			passportNumber: verification.document_number,
-			nationality: verification.issuing_state,
+			passportNumber: documentNumber,
+			nationality,
 			birthYear,
-			documentType: documentTypeMap[verification.document_type] || 'national_id'
+			documentType: documentTypeMap[documentType] || 'national_id'
 		};
 
 		// Validate proof structure
@@ -200,7 +134,7 @@ export const POST: RequestHandler = async ({ request }) => {
 					method: 'didit',
 					status: 'failed',
 					failure_reason: 'age_below_18',
-					metadata: { session_id: data.session_id, event_type: type }
+					metadata: { session_id: sessionId, event_type: event.type }
 				}
 			});
 
@@ -212,6 +146,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const identityFingerprint = generateIdentityFingerprint(identityHash);
 
 		// ISSUE-001: Generate identity commitment for cross-provider deduplication
+		// Uses SHA-256 double-hash for Phase 1 (Phase 2 will use Poseidon from ZK circuit)
 		const identityCommitment = computeIdentityCommitment(
 			identityProof.passportNumber,
 			identityProof.nationality,
@@ -219,6 +154,14 @@ export const POST: RequestHandler = async ({ request }) => {
 			identityProof.documentType
 		);
 		const commitmentFingerprint = getCommitmentFingerprint(identityCommitment);
+
+		// Generate Shadow Atlas identity commitment (Poseidon hash)
+		// This will be used for ZK proof generation after user provides address
+		const shadowAtlasCommitment = await generateIdentityCommitment({
+			provider: 'didit.me',
+			credentialHash,
+			issuedAt: Date.now()
+		});
 
 		// Check for duplicate identity
 		const duplicateUser = await prisma.user.findUnique({
@@ -263,18 +206,30 @@ export const POST: RequestHandler = async ({ request }) => {
 				identity_hash: identityHash,
 				identity_fingerprint: identityFingerprint,
 				metadata: {
-					session_id: data.session_id,
-					event_type: type,
+					session_id: sessionId,
+					event_type: event.type,
 					nationality: identityProof.nationality,
 					document_type: identityProof.documentType,
 					document_number_hash: createHash('sha256')
-						.update(verification.document_number)
+						.update(documentNumber)
 						.digest('hex')
 						.substring(0, 16), // Store hash, not actual number
-					commitment_fingerprint: commitmentFingerprint
+					commitment_fingerprint: commitmentFingerprint,
+					shadow_atlas_commitment: shadowAtlasCommitment // Store for later Shadow Atlas registration
 				}
 			}
 		});
+
+		// TODO: Shadow Atlas Registration (Phase 1.4)
+		// The Shadow Atlas registration requires congressional district, which requires:
+		// 1. User provides their address (separate step after identity verification)
+		// 2. Geocode address to lat/lng
+		// 3. Call Shadow Atlas API with identity commitment + coordinates
+		// 4. Store merkle_path in ShadowAtlasRegistration table
+		//
+		// For now, we store the shadowAtlasCommitment in verification audit metadata.
+		// A separate endpoint will handle the address → Shadow Atlas registration flow.
+		console.log(`[Didit Webhook] Identity verified, Shadow Atlas commitment generated: ${shadowAtlasCommitment.substring(0, 16)}...`);
 
 		// ISSUE-001: Bind identity commitment for cross-provider deduplication
 		const bindingResult = await bindIdentityCommitment(userId, identityCommitment);
