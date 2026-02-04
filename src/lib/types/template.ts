@@ -153,12 +153,17 @@ export interface ProcessedDecisionMaker {
 	email?: string;
 	provenance: string; // Full verification text from agent
 	reasoning: string; // Extracted: why this person matters
-	source?: string; // Extracted: verification URL
-	powerLevel?: 'primary' | 'secondary' | 'supporting';
+	source?: string; // Extracted: verification URL (for person/position)
 	isAiResolved: boolean; // true = AI-resolved, false = manually added
-	recencyCheck?: string; // New: explicit recency verification text
-	positionSourceDate?: string; // New: date of verification source
+	recencyCheck?: string; // Explicit recency verification text
+	positionSourceDate?: string; // Date of verification source
 	confidence?: number; // Confidence score 0.0-1.0 based on verification
+	// Email grounding verification
+	emailGrounded?: boolean; // true = email found in grounded search results
+	emailSource?: string; // Specific URL where email was found (if grounded)
+	emailSourceTitle?: string; // Title of email source page
+	/** Free-form notes about alternative contact paths discovered by the agent */
+	contactNotes?: string;
 }
 
 /**
@@ -177,7 +182,7 @@ export interface Source {
 	num: number; // Citation number [1], [2], etc.
 	title: string; // Source title
 	url: string; // Source URL
-	type: 'journalism' | 'research' | 'government' | 'legal' | 'advocacy'; // Source type
+	type: 'journalism' | 'research' | 'government' | 'legal' | 'advocacy' | 'other'; // Source type
 }
 
 // ============================================================================

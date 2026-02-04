@@ -3,6 +3,12 @@ import * as auth from '$lib/core/auth/auth.js';
 import type { Handle } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
 import { ensureAllIndexes } from '$lib/server/mongodb/indexes';
+import {
+	getRateLimiter,
+	findRateLimitConfig,
+	createRateLimitHeaders,
+	SlidingWindowRateLimiter
+} from '$lib/core/security/rate-limiter';
 
 /**
  * MongoDB Index Initialization
@@ -193,55 +199,146 @@ const handleCrossOriginIsolation: Handle = async ({ event, resolve }) => {
 import { sequence } from '@sveltejs/kit/hooks';
 
 /**
- * TODO [BA-014]: Add per-endpoint rate limiting for sensitive POST endpoints.
+ * BA-014: Sliding Window Rate Limiting for API Endpoints
  *
- * ASSESSMENT (2026-01-26):
+ * IMPLEMENTED (2026-02-02):
  *
- * The repo has three rate-limiter implementations that are NOT wired to any
- * of the high-risk endpoints listed below:
- *   - src/lib/server/rate-limiter.ts          (in-memory, generic — singleton exists but unused by routes)
- *   - src/lib/core/server/api-security.ts     (in-memory, per-IP per-endpoint — only configured for analytics endpoints)
- *   - src/lib/core/analytics/rate-limit-db.ts (Postgres-based — analytics contribution limits only)
- *   - src/lib/server/geocoding-rate-limiter.ts (Google Maps quota guard — protects upstream API, not the endpoint)
+ * Uses sliding window log algorithm from '$lib/core/security/rate-limiter'.
+ * Supports Redis backend for production (set REDIS_URL environment variable).
  *
- * HIGH-RISK ENDPOINTS WITH NO SERVER-SIDE RATE LIMITING:
+ * PROTECTED ENDPOINTS:
  *
- *   Risk  | Endpoint                              | Threat
- *   ------+---------------------------------------+----------------------------------------------
- *   P1    | POST /api/identity/verify             | Brute-force verification codes / replay proofs
- *   P1    | POST /api/identity/init               | QR-code generation spam (self.xyz API abuse)
- *   P1    | POST /api/identity/didit/init          | Session creation spam (Didit.me API abuse)
- *   P2    | POST /api/address/verify              | Census Geocoding API abuse (external rate limit)
- *   P2    | POST /api/submissions/create          | Spam congressional submissions via CWC
- *   P2    | POST /api/shadow-atlas/register       | Merkle tree spam / resource exhaustion
- *   P3    | POST /api/identity/store-blob         | Storage spam
- *   P3    | POST /api/identity/delete-blob        | Deletion spam
+ *   Priority | Path Prefix               | Limit        | Key Strategy | Threat Mitigated
+ *   ---------+---------------------------+--------------+--------------+------------------------------------------
+ *   P1       | /api/identity/            | 10 req/min   | IP           | Brute-force verification, QR spam
+ *   P1       | /api/shadow-atlas/register| 5 req/min    | User         | Shadow Atlas registration abuse
+ *   P1       | /api/congressional/submit | 3 req/hour   | User         | Congressional submission spam
+ *   P2       | /api/address/             | 5 req/min    | IP           | Census Geocoding API abuse
+ *   P2       | /api/submissions/         | 5 req/min    | IP           | CWC submission spam
  *
- * All high-risk endpoints already require authentication (session check), which
- * limits the attack surface to authenticated users. However, a compromised or
- * malicious account can still abuse these endpoints without rate limits.
+ * ALGORITHM: Sliding Window Log
+ *   - More accurate than fixed windows (no burst at boundaries)
+ *   - Maintains timestamps of requests within window
+ *   - O(n) time, O(n) space where n = max requests
  *
- * EXISTING MITIGATIONS:
- *   - SvelteKit csrf.checkOrigin blocks cross-origin POST (svelte.config.js)
- *   - handleCsrfGuard (above) adds defense-in-depth Origin validation for identity paths
- *   - All sensitive endpoints require authenticated session
- *   - geocoding-rate-limiter.ts protects upstream Google Maps quota (but not the /api/address/verify endpoint itself)
+ * STORAGE BACKENDS:
+ *   - Development: In-memory Map (zero config)
+ *   - Production: Redis (REDIS_URL environment variable)
  *
- * RECOMMENDED APPROACH (non-invasive):
- *   Option A — Cloudflare WAF Rate Limiting Rules (preferred for Cloudflare Pages deployment):
- *     Configure via Cloudflare Dashboard > Security > WAF > Rate limiting rules.
- *     Target: POST requests to /api/identity/*, /api/address/*, /api/submissions/*,
- *     /api/shadow-atlas/* with thresholds like 10 req/min per IP for identity,
- *     5 req/min for submissions. Zero code changes required.
+ * RESPONSE HEADERS (RFC 6585 compliant):
+ *   - X-RateLimit-Limit: Maximum requests per window
+ *   - X-RateLimit-Remaining: Requests remaining in current window
+ *   - X-RateLimit-Reset: Unix timestamp when window resets
+ *   - Retry-After: Seconds to wait (only on 429)
  *
- *   Option B — Hook-level rate limiting using existing InMemoryRateLimiter:
- *     Import rateLimiter from '$lib/server/rate-limiter' and add a handleRateLimit
- *     hook in this sequence. Key by IP + pathname, with per-path limits.
- *     Caveat: in-memory state resets on deploy and is single-instance only.
- *     Acceptable for current scale (Cloudflare Pages single-instance).
- *
- * DEFERRED — Requires either Cloudflare WAF configuration (Option A) or a new
- * handleRateLimit hook (Option B). Not implementing in this assessment.
+ * DESIGN NOTES:
+ *   - Runs FIRST in the sequence to reject abusive requests early
+ *   - Only applies to mutating methods (POST, PUT, PATCH, DELETE)
+ *   - Webhook paths are exempted (server-to-server, HMAC-authenticated)
+ *   - User-keyed limits fall back to IP when no session exists
  */
 
-export const handle = sequence(handleCsrfGuard, handleCrossOriginIsolation, handleAuth);
+const handleRateLimit: Handle = async ({ event, resolve }) => {
+	const { request, url, locals } = event;
+	const method = request.method;
+	const pathname = url.pathname;
+
+	// Only rate limit mutating requests (POST, PUT, PATCH, DELETE)
+	if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+		return resolve(event);
+	}
+
+	// Find matching rate limit config
+	const config = findRateLimitConfig(pathname);
+	if (!config) {
+		// No rate limit configured for this path
+		return resolve(event);
+	}
+
+	// Get client IP for rate limiting
+	// Note: event.getClientAddress() respects X-Forwarded-For behind reverse proxies
+	const clientIP = event.getClientAddress();
+
+	// Get user ID if available and config requires user-based limiting
+	// Note: Session may not be available yet (rate limit runs before auth)
+	// For user-based limits, we need to peek at the session cookie
+	let userId: string | undefined;
+	if (config.keyStrategy === 'user') {
+		// Try to get user from locals (if auth already ran) or session cookie
+		userId = locals.session?.userId;
+
+		// If no user ID for a user-keyed limit, fall back to IP
+		// This handles unauthenticated requests to protected endpoints
+		if (!userId) {
+			console.warn(
+				`[RateLimit] User-keyed limit for ${pathname} but no session, falling back to IP`
+			);
+		}
+	}
+
+	// Generate rate limit key
+	const key = SlidingWindowRateLimiter.generateKey(config, clientIP, userId);
+
+	// Check rate limit using sliding window algorithm
+	const rateLimiter = getRateLimiter();
+	const result = await rateLimiter.check(key, {
+		maxRequests: config.maxRequests,
+		windowMs: config.windowMs
+	});
+
+	if (!result.allowed) {
+		// Rate limit exceeded - return 429 with standard headers
+		const windowDescription =
+			config.windowMs >= 3600000
+				? `${config.windowMs / 3600000} hour(s)`
+				: `${config.windowMs / 1000} seconds`;
+
+		console.warn(
+			`[RateLimit] Blocked ${method} ${pathname} from ${userId ? `user:${userId}` : `ip:${clientIP}`}. ` +
+				`Limit: ${result.limit} req/${windowDescription}, Retry in: ${result.retryAfter}s`
+		);
+
+		// Create rate limit headers
+		const headers = createRateLimitHeaders(result);
+
+		// Return 429 with headers
+		return new Response(
+			JSON.stringify({
+				error: 'Too many requests',
+				message: `Rate limit exceeded. Please try again in ${result.retryAfter} seconds.`,
+				retryAfter: result.retryAfter
+			}),
+			{
+				status: 429,
+				headers: {
+					'Content-Type': 'application/json',
+					...headers
+				}
+			}
+		);
+	}
+
+	// Request allowed - continue and add rate limit headers to response
+	const response = await resolve(event);
+
+	// Add rate limit headers to successful responses
+	const headers = createRateLimitHeaders(result);
+	for (const [name, value] of Object.entries(headers)) {
+		response.headers.set(name, value);
+	}
+
+	return response;
+};
+
+/**
+ * Hook execution order:
+ * 1. handleAuth - Populate session/user in locals (needed for user-based rate limits)
+ * 2. handleRateLimit - Check rate limits (can use user ID from auth)
+ * 3. handleCsrfGuard - CSRF protection for sensitive endpoints
+ * 4. handleCrossOriginIsolation - Add COOP/COEP headers
+ *
+ * Note: Auth runs first so rate limiting can use user ID for user-keyed limits.
+ * This is a minor performance trade-off (auth runs on rate-limited requests),
+ * but ensures accurate per-user rate limiting.
+ */
+export const handle = sequence(handleAuth, handleRateLimit, handleCsrfGuard, handleCrossOriginIsolation);

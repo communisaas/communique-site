@@ -29,7 +29,6 @@ export function processDecisionMakers(
 			...dm,
 			reasoning: reasoningText,
 			source: sourceUrl,
-			powerLevel: inferPowerLevel(dm.title),
 			isAiResolved: true,
 			// Ensure provenance is always a string to satisfy typscript if needed, or just let it match the input
 			provenance: dm.provenance || '',
@@ -82,34 +81,6 @@ export function extractSource(provenance: string | undefined): string | undefine
 	if (!provenance) return undefined;
 	const urlMatch = provenance.match(/https?:\/\/[^\s)]+/);
 	return urlMatch?.[0];
-}
-
-/**
- * Infer power level from job title
- */
-export function inferPowerLevel(title: string): 'primary' | 'secondary' | 'supporting' {
-	const titleLower = title.toLowerCase();
-
-	// Primary: C-suite, President
-	if (
-		titleLower.includes('ceo') ||
-		titleLower.includes('president') ||
-		titleLower.includes('chief')
-	) {
-		return 'primary';
-	}
-
-	// Secondary: VPs, Directors, Heads
-	if (
-		titleLower.includes('vice president') ||
-		titleLower.includes('director') ||
-		titleLower.includes('head of')
-	) {
-		return 'secondary';
-	}
-
-	// Supporting: Everyone else (press, coordinators, etc.)
-	return 'supporting';
 }
 
 /**

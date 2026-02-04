@@ -29,7 +29,9 @@ export default defineConfig({
 		// File patterns
 		include: ['tests/**/*.{test,spec}.{js,ts}'],
 		exclude: [
-			'tests/e2e/**/*',
+			// Exclude Playwright E2E tests (UI-based) but include voter-protocol E2E tests (MSW-based)
+			'tests/e2e/basic-functionality.spec.ts',
+			'tests/e2e/identity-verification-flow.spec.ts',
 			// Temporarily exclude Svelte component tests - require Svelte 5 browser environment
 			// (incompatible with MSW Node.js environment in current config)
 			// See: docs/testing/svelte-component-testing.md for migration path

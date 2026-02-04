@@ -20,7 +20,6 @@
  */
 
 import { rateLimiter } from './rate-limiter';
-import { error } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 
 // ============================================
@@ -260,16 +259,19 @@ function getRateLimitReason(
 // ============================================
 
 /**
- * Enforce rate limit or throw 429 error
- *
- * Use this at the start of expensive API routes:
+ * Check rate limit for an operation.
  *
  * ```typescript
- * export const POST: RequestHandler = async (event) => {
- *   await enforceLLMRateLimit(event, 'decision-makers');
- *   // ... rest of handler
- * };
+ * const check = await enforceLLMRateLimit(event, 'decision-makers');
+ * if (!check.allowed) return rateLimitResponse(check);
  * ```
+ */
+/**
+ * Check rate limit and return the result.
+ *
+ * Does NOT throw — returns the check so the caller can build a proper
+ * Response with the full JSON body (tier, resetAt, etc.) instead of
+ * relying on SvelteKit's error() which strips extra fields.
  */
 export async function enforceLLMRateLimit(
 	event: RequestEvent,
@@ -280,24 +282,34 @@ export async function enforceLLMRateLimit(
 
 	if (!check.allowed) {
 		console.log(`[LLM-Protection] Rate limit blocked: ${operation} for ${context.identifier}`);
+	} else {
+		console.log(
+			`[LLM-Protection] Allowed: ${operation} for ${context.identifier} (${check.remaining}/${check.limit} remaining)`
+		);
+	}
 
-		// Return 429 with informative headers and body
-		throw error(429, {
-			message: check.reason || 'Rate limit exceeded',
-			// @ts-expect-error - SvelteKit allows extra fields
+	return check;
+}
+
+/**
+ * Build a 429 JSON response from a failed rate-limit check.
+ * Includes tier, resetAt, and remaining so the frontend can
+ * distinguish guest-blocked from authenticated-rate-limited.
+ */
+export function rateLimitResponse(check: RateLimitCheck): Response {
+	return new Response(
+		JSON.stringify({
+			error: check.reason || 'Rate limit exceeded',
 			tier: check.tier,
 			remaining: check.remaining,
 			limit: check.limit,
 			resetAt: check.resetAt.toISOString()
-		});
-	}
-
-	// Log successful check for monitoring
-	console.log(
-		`[LLM-Protection] Allowed: ${operation} for ${context.identifier} (${check.remaining}/${check.limit} remaining)`
+		}),
+		{
+			status: 429,
+			headers: { 'Content-Type': 'application/json' }
+		}
 	);
-
-	return check;
 }
 
 /**

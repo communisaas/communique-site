@@ -25,6 +25,7 @@ import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
 import type { SubjectLineResponseWithClarification } from '$lib/core/agents/types';
 import {
 	enforceLLMRateLimit,
+	rateLimitResponse,
 	addRateLimitHeaders,
 	getUserContext,
 	logLLMOperation
@@ -35,8 +36,10 @@ interface RequestBody {
 }
 
 export const POST: RequestHandler = async (event) => {
-	// Rate limit check - throws 429 if exceeded
 	const rateLimitCheck = await enforceLLMRateLimit(event, 'subject-line');
+	if (!rateLimitCheck.allowed) {
+		return rateLimitResponse(rateLimitCheck);
+	}
 	const userContext = getUserContext(event);
 	const startTime = Date.now();
 

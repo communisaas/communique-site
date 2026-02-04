@@ -26,11 +26,10 @@
 
 import type { DecisionMakerTargetType, GeographicScope } from '$lib/core/agents/providers/types';
 import type { IntelligenceCategory } from '$lib/server/mongodb/schema';
-import type { IntelligenceItemDocument, OrganizationDocument } from '$lib/server/mongodb/schema';
-import { OrganizationService, IntelligenceService } from '$lib/server/mongodb/service';
+import type { IntelligenceItemDocument } from '$lib/server/mongodb/schema';
+import { IntelligenceService } from '$lib/server/mongodb/service';
 import {
 	semanticSearchIntelligence,
-	semanticSearchOrganizations,
 	type VectorSearchResult
 } from '$lib/server/mongodb/vector-search';
 
@@ -243,7 +242,7 @@ export class AgentMemoryService {
 
 		// Build date filter for recency
 		const dateFilter = {
-			publishedAfter: new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
+			start: new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000)
 		};
 
 		// Fetch intelligence and organization in parallel
@@ -273,7 +272,7 @@ export class AgentMemoryService {
 		// Synthesize into prompt-ready context
 		const synthesizedContext = this.synthesizeContext({
 			intelligence,
-			organization: organizationResult,
+			organization: organizationResult ?? undefined,
 			topic,
 			targetType,
 			location
@@ -297,32 +296,12 @@ export class AgentMemoryService {
 	/**
 	 * Quick lookup of a specific organization's cached profile.
 	 *
-	 * Returns organization context if available in cache, null otherwise.
-	 *
 	 * @param name - Organization name
-	 * @returns Organization context or null
-	 *
-	 * @example
-	 * ```typescript
-	 * const org = await AgentMemoryService.getOrganization('ExxonMobil');
-	 * if (org) {
-	 *   console.log(`CEO: ${org.leadership[0]?.name}`);
-	 * }
-	 * ```
+	 * @returns null (organization lookup not currently supported)
 	 */
-	static async getOrganization(name: string): Promise<OrganizationContext | null> {
-		try {
-			const org = await OrganizationService.findOrganization(name);
-
-			if (!org) {
-				return null;
-			}
-
-			return this.formatOrganization(org);
-		} catch (error) {
-			console.error(`[AgentMemory] Error fetching organization "${name}":`, error);
-			return null;
-		}
+	static async getOrganization(_name: string): Promise<OrganizationContext | null> {
+		// Organization lookup not currently implemented
+		return null;
 	}
 
 	/**
@@ -494,29 +473,6 @@ export class AgentMemoryService {
 			topics: doc.topics,
 			entities: doc.entities,
 			sentiment: doc.sentiment
-		};
-	}
-
-	/**
-	 * Format organization document into OrganizationContext
-	 */
-	private static formatOrganization(doc: OrganizationDocument): OrganizationContext {
-		return {
-			name: doc.name,
-			type: 'corporate', // Could be inferred from industry or metadata
-			about: doc.about,
-			industry: doc.industry,
-			leadership: doc.leadership.map((leader) => ({
-				name: leader.name,
-				title: leader.title,
-				email: leader.email
-			})),
-			policyPositions: doc.policyPositions?.map((pos) => ({
-				topic: pos.topic,
-				stance: pos.stance,
-				summary: pos.summary
-			})),
-			contacts: doc.contacts
 		};
 	}
 

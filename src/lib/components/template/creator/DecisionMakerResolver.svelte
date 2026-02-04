@@ -23,30 +23,14 @@
 
 	let { formData = $bindable(), onnext, onback, draftId, onSaveDraft }: Props = $props();
 
-	type Stage = 'structuring' | 'resolving' | 'results' | 'error' | 'auth-required';
+	type Stage = 'structuring' | 'resolving' | 'results' | 'error' | 'auth-required' | 'rate-limited';
 	let stage = $state<Stage>('resolving');
 	let errorMessage = $state<string | null>(null);
+	let rateLimitResetAt = $state<string | null>(null);
 	let isResolving = $state(false);
 
 	// Streaming state
 	let thoughts = $state<string[]>([]);
-
-	/**
-	 * Check if error indicates auth is required
-	 * The rate limiter returns 429 with specific messages for auth-blocked operations
-	 */
-	function isAuthRequiredError(err: unknown): boolean {
-		if (err instanceof Error) {
-			const msg = err.message.toLowerCase();
-			return (
-				msg.includes('requires an account') ||
-				msg.includes('sign in') ||
-				msg.includes('authentication required') ||
-				msg.includes('rate limit') // 429 errors from guest quota = 0
-			);
-		}
-		return false;
-	}
 
 	/**
 	 * Build topics array with robust fallback chain
@@ -131,7 +115,7 @@
 				})
 			});
 
-			// Check for auth errors
+			// Check for auth / rate-limit errors
 			if (response.status === 429 || response.status === 401) {
 				const errorData = await response.json().catch(() => ({}));
 				console.log('[DecisionMakerResolver] Auth/rate error:', {
@@ -139,9 +123,17 @@
 					error: errorData.error,
 					tier: errorData.tier,
 					remaining: errorData.remaining,
-					limit: errorData.limit
+					limit: errorData.limit,
+					resetAt: errorData.resetAt
 				});
-				throw new Error(errorData.error || 'Authentication required');
+
+				// Guest with zero quota → auth gate
+				if (response.status === 401 || errorData.tier === 'guest') {
+					throw { _kind: 'auth-required' };
+				}
+
+				// Authenticated/verified user who exhausted quota → rate-limited
+				throw { _kind: 'rate-limited', resetAt: errorData.resetAt, message: errorData.error };
 			}
 
 			if (!response.ok) {
@@ -198,15 +190,17 @@
 						);
 				}
 			}
-		} catch (err) {
+		} catch (err: any) {
 			console.error('[DecisionMakerResolver] Error:', err);
 
-			if (err instanceof Error && err.name === 'AbortError') {
+			if (err?._kind === 'auth-required') {
+				stage = 'auth-required';
+			} else if (err?._kind === 'rate-limited') {
+				rateLimitResetAt = err.resetAt ?? null;
+				stage = 'rate-limited';
+			} else if (err instanceof Error && err.name === 'AbortError') {
 				errorMessage = 'Request was cancelled. Please try again.';
 				stage = 'error';
-			} else if (isAuthRequiredError(err)) {
-				console.log('[DecisionMakerResolver] Auth required, showing overlay');
-				stage = 'auth-required';
 			} else {
 				errorMessage =
 					err instanceof Error
@@ -264,6 +258,22 @@
 			}
 		}
 	});
+
+	/**
+	 * Skip agent resolution and go straight to results with empty AI list.
+	 * User can still add custom recipients manually.
+	 */
+	function skipToManualRecipients() {
+		if (!formData.audience) {
+			formData.audience = {
+				decisionMakers: [],
+				recipientEmails: [],
+				includesCongress: false,
+				customRecipients: []
+			};
+		}
+		stage = 'results';
+	}
 
 	function handleNext() {
 		// Ensure recipientEmails is updated from decision-makers
@@ -332,6 +342,40 @@
 					class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-participation-primary-700"
 				>
 					Try again
+				</button>
+
+				<button
+					type="button"
+					onclick={onback}
+					class="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-6 py-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+				>
+					Go back
+				</button>
+			</div>
+		</div>
+	{:else if stage === 'rate-limited'}
+		<!-- Rate limit reached — friendly, non-blocking -->
+		<div class="space-y-6 py-8">
+			<div class="rounded-lg border border-amber-200 bg-amber-50 p-6 text-center">
+				<p class="text-base font-semibold text-amber-900">
+					Research limit reached
+				</p>
+				<p class="mx-auto mt-2 max-w-md text-sm text-amber-700">
+					You've used all your decision-maker lookups for now.
+					{#if rateLimitResetAt}
+						Resets at {new Date(rateLimitResetAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.
+					{/if}
+					You can still add recipients manually below.
+				</p>
+			</div>
+
+			<div class="flex items-center justify-center gap-4">
+				<button
+					type="button"
+					onclick={skipToManualRecipients}
+					class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-participation-primary-700"
+				>
+					Add recipients manually
 				</button>
 
 				<button

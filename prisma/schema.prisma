@@ -1020,18 +1020,15 @@ model ShadowAtlasRegistration {
   @@map("shadow_atlas_registration")
 }
 
-model ShadowAtlasTree {
-  id                     String   @id @default(cuid())
-  congressional_district String   @unique @map("congressional_district")
-  leaf_count             Int      @default(0) @map("leaf_count")
-  merkle_root            String   @map("merkle_root")
-  leaves                 String[] // Array of identity commitments
-
-  created_at DateTime @default(now()) @map("created_at")
-  updated_at DateTime @updatedAt @map("updated_at")
-
-  @@map("shadow_atlas_tree")
-}
+// ============= REMOVED: ShadowAtlasTree (WS1.2) =============
+// Local Merkle tree storage removed - now using voter-protocol Shadow Atlas API
+// The production API maintains depth-20 trees (1M capacity) which are circuit-compatible
+// Previous local implementation used depth-12 trees (4K capacity) which were incompatible
+//
+// Migration path:
+// 1. Drop shadow_atlas_tree table: npx prisma migrate dev --name remove_shadow_atlas_tree
+// 2. Existing ShadowAtlasRegistration records remain valid (just store proof data)
+// 3. Users re-register to get depth-20 proofs from voter-protocol API
 
 // ============= ZK PROOF SUBMISSIONS (Phase 1: Encrypted Delivery) =============
 // Tracks ZK proof submissions for congressional delivery
