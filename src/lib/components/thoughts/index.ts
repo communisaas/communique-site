@@ -34,6 +34,3 @@ export { default as ActionDetail } from './ActionDetail.svelte';
 // Document Intelligence (L2/L3 depth)
 export { default as DocumentPreview } from './DocumentPreview.svelte';
 export { default as DocumentDetail } from './DocumentDetail.svelte';
-
-// Confidence Visualization (Composite Streaming)
-export { default as ConfidenceIndicator } from './ConfidenceIndicator.svelte';

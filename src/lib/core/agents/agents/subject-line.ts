@@ -158,8 +158,8 @@ ${options.description}`;
 	const response = await interact(prompt, {
 		systemInstruction: systemPrompt,
 		responseSchema: SUBJECT_LINE_SCHEMA,
-		temperature: 0.4, // Moderate creativity
-		thinkingLevel: 'low', // Fast reasoning (not research-heavy)
+		temperature: 0.7, // Creative latitude for sharp, resonant lines
+		thinkingLevel: 'medium', // Reason about voice and craft, not just structure
 		previousInteractionId: options.previousInteractionId
 	});
 
@@ -202,8 +202,8 @@ Generate the output with subject_line, core_message, topics, url_slug, and voice
 			{
 				systemInstruction: systemPrompt,
 				responseSchema: SUBJECT_LINE_SCHEMA,
-				temperature: 0.5, // Slightly higher for more output
-				thinkingLevel: 'low',
+				temperature: 0.8, // Higher on retry for creative range
+				thinkingLevel: 'medium',
 				previousInteractionId: currentInteractionId
 			}
 		);

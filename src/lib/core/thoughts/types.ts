@@ -111,7 +111,7 @@ export interface ThoughtSegment {
  *
  * Depth layers (from spec):
  * - L1: Citations/excerpts from MongoDB cache
- * - L2: Research trace from Firecrawl results
+ * - L2: Research trace from Google Search grounding
  * - L3: Full documents from Reducto parse
  */
 export interface ThoughtExpansion {
@@ -217,7 +217,7 @@ export interface CitationSource {
 /**
  * Type of action being traced
  *
- * - research: Web research via Firecrawl
+ * - research: Web research via Google Search grounding
  * - retrieve: Context retrieval from MongoDB/vector search
  * - analyze: Analysis operation
  * - search: Search operation
@@ -308,7 +308,7 @@ export interface ActionTrace {
 	/** Unix timestamp (ms) when action completed (if finished) */
 	endTime?: number;
 
-	// Research-specific fields (Firecrawl)
+	// Research-specific fields
 
 	/** Pages visited during research */
 	pagesVisited?: PageVisit[];

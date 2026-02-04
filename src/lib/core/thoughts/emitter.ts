@@ -285,7 +285,7 @@ export class ThoughtEmitter {
 	// ========================================================================
 
 	/**
-	 * Start a research action (Firecrawl web research)
+	 * Start a research action (web research)
 	 *
 	 * Emits an action segment and returns a handle for updating the action
 	 * as research progresses (adding findings, marking complete).

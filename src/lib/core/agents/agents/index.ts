@@ -1,26 +1,16 @@
 /**
  * Decision-Maker Agent Exports
- *
- * Provides both legacy and enhanced versions of the decision-maker agent:
- * - v1: Original implementation with raw text streaming
- * - v2: Enhanced with ThoughtStream (structured segments, citations, memory)
  */
 
-// V1: Legacy implementation (backward compatibility)
 export {
-	resolveDecisionMakers,
-	type ResolveOptions,
-	type StreamingCallbacks,
-	type PipelinePhase
+	resolveDecisionMakersV2 as resolveDecisionMakers,
+	// Tool helpers
+	getAgentToolDeclarations,
+	processGeminiFunctionCall,
+	handleDocumentToolCall
 } from './decision-maker';
 
-// V2: Enhanced ThoughtStream integration
-export {
-	resolveDecisionMakersV2,
-	resolveDecisionMakersWithThoughts
-} from './decision-maker-v2';
-
-// Re-export provider types for convenience
+// Re-export provider types
 export type {
 	ResolveContext,
 	DecisionMakerResult,

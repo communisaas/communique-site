@@ -19,7 +19,6 @@ export {
 export type {
 	SubjectLineResponse,
 	DecisionMaker,
-	DecisionMakerResponse,
 	Source,
 	MessageResponse,
 	GroundingMetadata,
@@ -31,18 +30,11 @@ export type {
 	// Clarification types (Phase 1)
 	GeographicScope,
 	TargetType,
-	ClarificationOption,
 	ClarificationQuestion,
-	ClarificationQuestionId,
 	ClarificationQuestionType,
 	InferredContext,
 	SubjectLineResponseWithClarification,
-	ClarificationAnswers,
-	// Decision-Maker Pipeline types
-	ContactChannel,
-	DecisionMakerCandidate,
-	EnrichedDecisionMaker,
-	ValidatedDecisionMaker
+	ClarificationAnswers
 } from './types';
 
 // JSON schemas
@@ -55,8 +47,7 @@ export type { GenerateSubjectOptions, GenerateSubjectResult } from './agents/sub
 export { generateMessage } from './agents/message-writer';
 export type { GenerateMessageOptions } from './agents/message-writer';
 
-export { resolveDecisionMakers } from './agents/decision-maker';
-export type { ResolveOptions } from './agents/decision-maker';
+export { resolveDecisionMakers } from './agents';
 
 // Grounding utilities
 export {

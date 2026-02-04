@@ -11,28 +11,8 @@
 // Export the ThoughtEmitter service
 export { ThoughtEmitter } from './emitter';
 
-// Export the CompositeThoughtEmitter for two-phase streaming
-export {
-	CompositeThoughtEmitter,
-	createCompositeEmitter,
-	COMPOSITE_TIMING,
-	BASE_CONFIDENCE
-} from './composite-emitter';
-
 // Export emitter option types
 export type { ThinkOptions, InsightOptions, RecommendOptions } from './types';
-
-// Export composite emitter types
-export type {
-	CompositePhase,
-	ConfidentThoughtSegment,
-	PhaseChangeEvent,
-	ConfidenceUpdateEvent,
-	CompositeEvent,
-	ConfidentSegmentCallback,
-	PhaseChangeCallback,
-	ConfidenceUpdateCallback
-} from './composite-emitter';
 
 // Export all types
 export type {
