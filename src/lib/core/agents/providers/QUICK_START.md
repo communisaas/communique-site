@@ -1,32 +1,24 @@
-# Firecrawl Provider Quick Start
+# Decision-Maker Provider Quick Start
 
-> **TL;DR:** The Firecrawl provider finds decision-makers at corporations, nonprofits, universities, and other organizations by autonomously researching their websites. No API required for testing—just uses cached demo data.
+> **TL;DR:** The provider system routes decision-maker resolution to specialized providers based on target type. The Gemini provider handles government targets using Google Search grounding for real-time verification.
 
 ---
 
 ## 5-Minute Setup
 
-### 1. Install Firecrawl SDK
-
-```bash
-npm install @mendable/firecrawl-js
-```
-
-### 2. Add API Key (Optional for Testing)
+### 1. Configure Gemini API
 
 ```bash
 # Add to .env
-FIRECRAWL_API_KEY=fc-your-api-key-here
+GEMINI_API_KEY=your-gemini-api-key-here
 ```
 
-**Get API key:** https://www.firecrawl.dev/
+**Get API key:** https://aistudio.google.com/apikey
 
-**Note:** Tests work without API key using mocks. Only needed for live discovery.
-
-### 3. Test It Works
+### 2. Test It Works
 
 ```bash
-npm run test -- firecrawl-provider.test.ts
+npm run test -- gemini-provider.test.ts
 ```
 
 ---
@@ -39,36 +31,44 @@ npm run test -- firecrawl-provider.test.ts
 import { decisionMakerRouter } from '$lib/core/agents/providers';
 
 const result = await decisionMakerRouter.resolve({
-  targetType: 'corporate',        // Routes to Firecrawl automatically
-  targetEntity: 'Amazon',          // Organization name
-  subjectLine: 'Warehouse safety',
-  coreMessage: 'We urge improved working conditions...',
-  topics: ['labor', 'safety']
+  targetType: 'local_government',   // Routes to Gemini automatically
+  subjectLine: 'Stop the pipeline',
+  coreMessage: 'Environmental concerns about the proposed construction...',
+  topics: ['environment', 'infrastructure']
 });
 
 console.log(result.decisionMakers);
-// [{ name: "Beth Galetti", title: "SVP, People...", email: "..." }]
+// [{ name: "Jane Smith", title: "Mayor", email: "mayor@cityname.gov", ... }]
 ```
 
 ### Direct Provider
 
 ```typescript
-import { FirecrawlDecisionMakerProvider } from '$lib/core/agents/providers';
+import { GeminiDecisionMakerProvider } from '$lib/core/agents/providers';
 
-const provider = new FirecrawlDecisionMakerProvider();
+const provider = new GeminiDecisionMakerProvider();
 
 const result = await provider.resolve({
-  targetType: 'corporate',
-  targetEntity: 'Patagonia',
-  targetUrl: 'https://www.patagonia.com', // Optional
-  subjectLine: 'Environmental commitment',
-  topics: ['environment']
+  targetType: 'congress',
+  subjectLine: 'Healthcare reform',
+  coreMessage: 'We urge support for affordable healthcare...',
+  topics: ['healthcare', 'policy']
 });
 ```
 
 ---
 
 ## Supported Target Types
+
+### Government (Gemini Provider)
+
+| Type | Description |
+|------|-------------|
+| `congress` | US Congress members |
+| `state_legislature` | State legislators |
+| `local_government` | Mayors, city councils, county officials |
+
+### Institutional (Future Providers)
 
 | Type | Example Organizations |
 |------|----------------------|
@@ -79,27 +79,24 @@ const result = await provider.resolve({
 | `labor` | AFL-CIO, SEIU, UAW |
 | `media` | New York Times, Reuters, NPR |
 
-**Government targets** use Gemini provider (automatic).
-
 ---
 
 ## How It Works
 
 ```
-1. Check MongoDB Cache (7-day freshness)
+1. Router receives resolution request
    ↓
-2. If cache miss → Firecrawl Agent discovers org
+2. Selects provider based on targetType
    ↓
-3. Cache to MongoDB (30-day TTL)
+3. Gemini Provider (for government):
+   - Phase 1: Discover relevant positions
+   - Phase 2: Look up current holders via Google Search
    ↓
-4. Filter leadership by relevance (Gemini AI)
-   ↓
-5. Return ProcessedDecisionMaker[] results
+4. Return ProcessedDecisionMaker[] results
 ```
 
 **Performance:**
-- Cache hit: <100ms
-- Discovery: ~30-60s (autonomous web research)
+- Typical resolution: 10-30s (real-time web research)
 
 ---
 
@@ -109,10 +106,14 @@ const result = await provider.resolve({
 
 ```typescript
 {
-  targetType: 'nonprofit',
-  targetEntity: 'Electronic Frontier Foundation',
-  subjectLine: 'Digital privacy legislation',
-  topics: ['privacy', 'digital-rights']
+  targetType: 'local_government',
+  subjectLine: 'Stop pipeline construction',
+  coreMessage: 'Environmental concerns about infrastructure...',
+  topics: ['environment', 'energy'],
+  geographicScope: {
+    city: 'San Francisco',
+    state: 'CA'
+  }
 }
 ```
 
@@ -122,22 +123,22 @@ const result = await provider.resolve({
 {
   decisionMakers: [
     {
-      name: "Cindy Cohn",
-      title: "Executive Director",
-      organization: "Electronic Frontier Foundation",
-      email: "cindy@eff.org",
-      reasoning: "Executive leadership with authority over policy advocacy",
-      source: "https://www.eff.org/about/staff",
-      confidence: 0.9,
+      name: "London Breed",
+      title: "Mayor",
+      organization: "City of San Francisco",
+      email: "mayorlondonbreed@sfgov.org",
+      reasoning: "Has executive authority over city infrastructure",
+      source: "https://sf.gov/mayor",
+      confidence: 0.95,
       powerLevel: "primary",
       isAiResolved: true
     },
     // ... more decision-makers
   ],
-  provider: "firecrawl",
+  provider: "gemini-search",
   cacheHit: false,
-  latencyMs: 42000,
-  researchSummary: "Discovered 3 relevant decision-makers at EFF..."
+  latencyMs: 12500,
+  researchSummary: "Found 3 decision-makers with verified contact info"
 }
 ```
 
@@ -146,22 +147,21 @@ const result = await provider.resolve({
 ## Streaming Progress Updates
 
 ```typescript
-const result = await provider.resolve({
-  targetType: 'corporate',
-  targetEntity: 'Amazon',
-  subjectLine: 'Warehouse conditions',
-  topics: ['labor'],
+const result = await decisionMakerRouter.resolve({
+  targetType: 'local_government',
+  subjectLine: 'Stop pipeline construction',
+  topics: ['environment'],
   streaming: {
     onPhase: (phase, message) => {
       console.log(`[${phase}] ${message}`);
-      // [discover] Researching Amazon website...
-      // [lookup] Filtering 12 leaders...
+      // [discover] Mapping institutional power structure...
+      // [lookup] Verifying current holders of 3 positions...
       // [complete] Found 3 decision-makers...
     },
     onThought: (thought, phase) => {
       console.log(`  → ${thought}`);
-      // → Beginning autonomous website research...
-      // → Found 12 leaders. Analyzing authority...
+      // → Analyzing power dynamics in city government...
+      // → Found: London Breed verified via sf.gov...
     }
   }
 });
@@ -170,19 +170,6 @@ const result = await provider.resolve({
 ---
 
 ## Common Patterns
-
-### Check if Provider Can Resolve
-
-```typescript
-const provider = new FirecrawlDecisionMakerProvider();
-
-const canHandle = provider.canResolve({
-  targetType: 'corporate',
-  targetEntity: 'Amazon',
-  // ... other fields
-});
-// true - Firecrawl handles corporate targets
-```
 
 ### Router Auto-Selection
 
@@ -194,24 +181,24 @@ await decisionMakerRouter.resolve({
 });
 
 await decisionMakerRouter.resolve({
-  targetType: 'corporate',   // → Firecrawl provider
+  targetType: 'state_legislature',   // → Gemini provider
   // ...
 });
 ```
 
-### Cache Management
+### With Geographic Scope
 
 ```typescript
-import { OrganizationService } from '$lib/server/mongodb/service';
-
-// Find cached org
-const cached = await OrganizationService.findOrganization('Amazon');
-
-if (cached) {
-  console.log(`Cached org: ${cached.name}`);
-  console.log(`Leaders: ${cached.leadership.length}`);
-  console.log(`Last updated: ${cached.updatedAt}`);
-}
+const result = await decisionMakerRouter.resolve({
+  targetType: 'local_government',
+  subjectLine: 'School funding',
+  topics: ['education'],
+  geographicScope: {
+    city: 'Austin',
+    state: 'TX',
+    displayName: 'Austin, TX'
+  }
+});
 ```
 
 ---
@@ -220,37 +207,33 @@ if (cached) {
 
 ### "No API key provided" Error
 
-**Problem:** `FIRECRAWL_API_KEY` not set
+**Problem:** `GEMINI_API_KEY` not set
 
 **Solution:**
 ```bash
 # Add to .env
-FIRECRAWL_API_KEY=fc-xxxxx
+GEMINI_API_KEY=your-key-here
 ```
 
-**For Testing:** Tests work without API key (uses mocks).
-
-### Empty Leadership Results
-
-**Problem:** Firecrawl found org but no leaders
+### Empty Results
 
 **Possible Causes:**
-- Organization has no public leadership pages
-- Website is heavily JavaScript-dependent
-- Leadership behind login/paywall
+- Geographic scope too broad or missing
+- Topic mismatch with target type
+- Rate limiting from Google Search
 
 **Solution:**
-- Check `orgProfile` in result for partial data
-- Suggest manual research to user
-- Consider fallback to Gemini for web search
+- Provide specific geographic scope
+- Ensure topics align with government authority
+- Check API quota in Google Cloud Console
 
 ### Slow Resolution (>60s)
 
-**Problem:** Firecrawl Agent is taking too long
+**Problem:** Gemini lookup taking too long
 
 **Optimizations:**
-- Provide `targetUrl` to skip search phase
-- Check Firecrawl API status dashboard
+- Provide more specific geographic scope
+- Check Gemini API status
 - Verify network connectivity
 
 ---
@@ -260,54 +243,15 @@ FIRECRAWL_API_KEY=fc-xxxxx
 ### Run Unit Tests
 
 ```bash
-npm run test -- firecrawl-provider.test.ts
+npm run test -- gemini-provider.test.ts
 ```
 
-### Run Integration Tests (Requires API Key)
+### Run Integration Tests
 
 ```bash
-export FIRECRAWL_API_KEY=fc-your-key-here
-npm run test -- firecrawl-provider.test.ts
+export GEMINI_API_KEY=your-key-here
+npm run test -- providers/
 ```
-
-### Manual Test
-
-```bash
-node -e "
-const { FirecrawlDecisionMakerProvider } = require('./src/lib/core/agents/providers/firecrawl-provider.ts');
-
-const provider = new FirecrawlDecisionMakerProvider();
-
-provider.resolve({
-  targetType: 'nonprofit',
-  targetEntity: 'Electronic Frontier Foundation',
-  subjectLine: 'Digital privacy',
-  coreMessage: 'Support privacy legislation',
-  topics: ['privacy']
-}).then(result => {
-  console.log('Decision-makers:', result.decisionMakers.length);
-  console.log('Cache hit:', result.cacheHit);
-  console.log('Latency:', result.latencyMs + 'ms');
-});
-"
-```
-
----
-
-## Cost Reference
-
-| Plan | Credits/Month | Cost | Org Profiles |
-|------|---------------|------|--------------|
-| Free | 500 | $0 | ~30-50 |
-| Standard | 100,000 | $83 | ~6,000 |
-
-**Per Discovery:**
-- ~15 credits
-- ~$0.01-$0.02 per org
-
-**Monthly (1K templates, 30% organizational):**
-- ~300 org discoveries
-- ~$5/month
 
 ---
 
@@ -315,23 +259,24 @@ provider.resolve({
 
 | File | Purpose |
 |------|---------|
-| `firecrawl-client.ts` | API client wrapper |
-| `firecrawl-provider.ts` | Main provider implementation |
-| `FIRECRAWL_PROVIDER.md` | Complete documentation |
-| `__tests__/firecrawl-provider.test.ts` | Test suite |
-| `.env.example` | Environment config |
+| `types.ts` | Core interfaces and types |
+| `router.ts` | Provider routing logic |
+| `gemini-provider.ts` | Gemini + Google Search provider |
+| `index.ts` | Public API exports |
+| `README.md` | Architecture documentation |
+| `ARCHITECTURE.md` | Visual architecture guide |
 
 ---
 
 ## Next Steps
 
-1. **Install SDK:** `npm install @mendable/firecrawl-js`
-2. **Test locally:** Run test suite
-3. **Configure production:** Add API key to `.env`
-4. **Deploy:** Standard deployment process
+1. **Configure Gemini:** Add API key to `.env`
+2. **Test locally:** Run the test suite
+3. **Integrate:** Use router in your components
+4. **Customize:** Create custom providers for new target types
 
-**Full Documentation:** See `FIRECRAWL_PROVIDER.md`
+**Full Documentation:** See `README.md` and `ARCHITECTURE.md`
 
 ---
 
-**Questions?** Check `FIRECRAWL_PROVIDER.md` or ask in #engineering
+**Questions?** Check the documentation or ask in #engineering

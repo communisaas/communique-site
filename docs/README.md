@@ -11,6 +11,7 @@
 **"What's the current status?"** → `implementation-status.md`
 **"How does Communiqué work?"** → `architecture.md`
 **"How do I integrate with voter-protocol?"** → `integration.md`
+**"What's the remediation plan?"** → `specs/INTEGRATION-REMEDIATION-PLAN.md`
 **"How do I build frontend features?"** → `frontend.md`
 **"How do I test?"** → `development/testing.md`
 **"Voice and design language?"** → `design/voice.md`
@@ -43,13 +44,14 @@ Feature-specific documentation.
 - `jurisdiction.md` - Jurisdiction system (TemplateJurisdiction model)
 - `identity-verification.md` - self.xyz + Didit.me flows
 
-### `specs/` (15 files)
+### `specs/` (16 files)
 Technical specifications and design docs.
 
 **Core specs:**
 - `zk-proof-integration.md` - ZK proof integration (5 phases, 45K)
 - `portable-identity.md` - IPFS + on-chain pointer (Phase 2)
 - `universal-credibility.md` - Credential verification system
+- `INTEGRATION-REMEDIATION-PLAN.md` - **MASTER** Multi-wave remediation plan (Wave 1 ✅, Waves 2-4 planned)
 
 **Design specs:**
 - `subject-line-clarifying-questions.md` - Clarification UI design
@@ -138,6 +140,7 @@ Contains archived docs from past migrations, refactors, and design iterations. R
 | Implementation Status | `implementation-status.md` |
 | Architecture | `architecture.md` |
 | Integration | `integration.md` |
+| **Integration Remediation** | `specs/INTEGRATION-REMEDIATION-PLAN.md` |
 | Frontend | `frontend.md` |
 | Features | `features/*.md` |
 | Specs | `specs/*.md` |
@@ -156,4 +159,4 @@ Contains archived docs from past migrations, refactors, and design iterations. R
 
 ---
 
-*Communiqué PBC | Documentation Map | 2025-01-02*
+*Communiqué PBC | Documentation Map | 2026-02-02*

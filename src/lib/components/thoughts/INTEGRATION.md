@@ -157,51 +157,46 @@ Complete integration example for Communique agent visualization.
     phases = [];
 
     try {
-      // PHASE 1: Understanding
-      emitter.startPhase('understanding');
-      emitter.think('Analyzing user message and intent...');
-
-      await simulateDelay(300);
-      emitter.insight(`User wants to advocate for climate policy to ${targetType} decision-makers.`);
-      emitter.completePhase();
-
-      // PHASE 2: Research
-      emitter.startPhase('research');
-      emitter.think(`Searching for ${targetType} targets related to climate policy...`);
+      // PHASE 1: Role Discovery
+      emitter.startPhase('role-discovery');
+      emitter.think('Identifying relevant decision-maker roles...');
 
       await simulateDelay(500);
 
-      // Start research action
       const research = emitter.startResearch('Apple Inc.', 'corporate');
-
-      await simulateDelay(800);
-      research.addPage?.('https://apple.com/sustainability', 'Apple Sustainability', true);
-      research.addFinding('Lisa Jackson leads Environmental Policy');
-      research.addFinding('Committed to carbon neutrality by 2030');
-      research.addFinding('Scope 3 emissions increased 12% in 2025');
+      research.addFinding('VP Environmental Policy role identified');
+      research.addFinding('Reports to CEO and oversees sustainability initiatives');
 
       await simulateDelay(400);
-      research.complete('Found sustainability leadership and emissions data');
+      research.complete('Found relevant leadership roles');
+
+      emitter.completePhase();
+
+      // PHASE 2: Person Lookup
+      emitter.startPhase('person-lookup');
+      emitter.think('Finding individuals in identified roles...');
+
+      await simulateDelay(500);
 
       // Create citation with documentId for L2/L3 features
       // When documentId is provided AND sourceType is 'document':
       // - L2: Hover preview shows DocumentPreview card
       // - L3: "View Full Document" button opens document analysis
-      const citation = emitter.cite("Apple's 2025 Environmental Report", {
-        url: 'https://apple.com/environmental-report-2025',
-        excerpt: 'We are committed to achieving carbon neutrality across our entire supply chain by 2030. Lisa Jackson, VP Environmental Policy, leads these efforts.',
-        documentId: 'doc-apple-env-2025', // Enables L2/L3 features
+      const citation = emitter.cite("Apple's Leadership Page", {
+        url: 'https://apple.com/leadership',
+        excerpt: 'Lisa Jackson, VP Environmental Policy, leads Apple\'s efforts on climate and sustainability.',
+        documentId: 'doc-apple-leadership', // Enables L2/L3 features
         sourceType: 'document' // Explicit type (or inferred from documentId)
       });
 
       await simulateDelay(300);
-      emitter.insight('Lisa Jackson (VP Environmental Policy) reports directly to CEO Tim Cook.', {
+      emitter.insight('Lisa Jackson (VP Environmental Policy) is the key decision-maker.', {
         citations: [citation]
       });
 
       emitter.completePhase();
 
-      // PHASE 3: Context Retrieval
+      // PHASE 3: Context Retrieval (optional)
       emitter.startPhase('context');
       emitter.think('Retrieving relevant intelligence from knowledge base...');
 
@@ -214,14 +209,14 @@ Complete integration example for Communique agent visualization.
 
       emitter.completePhase();
 
-      // PHASE 4: Drafting
-      emitter.startPhase('drafting');
-      emitter.think('Crafting message based on research and user intent...');
+      // PHASE 4: Recommendation
+      emitter.startPhase('recommendation');
+      emitter.think('Preparing final recommendation...');
 
-      await simulateDelay(1000);
+      await simulateDelay(500);
 
       emitter.recommend(
-        'I recommend addressing Lisa Jackson directly, focusing on Scope 3 emissions which increased despite neutrality goals.',
+        'Lisa Jackson — VP Environmental Policy at Apple Inc.',
         { pin: true }
       );
 
@@ -412,34 +407,34 @@ export async function executeDecisionMakerAgent(
 
   const emitter = new ThoughtEmitter(onThought);
 
-  // Phase 1: Understanding
-  emitter.startPhase('understanding');
-  emitter.think('Analyzing user message and extracting intent...');
-
-  const intent = await analyzeIntent(userMessage);
-  emitter.insight(`Detected intent: ${intent.summary}`);
-  emitter.completePhase();
-
-  // Phase 2: Research
-  emitter.startPhase('research');
+  // Phase 1: Role Discovery
+  emitter.startPhase('role-discovery');
+  emitter.think('Identifying relevant decision-maker roles...');
 
   const research = emitter.startResearch(intent.targetEntity, targetType);
 
-  const firecrawlResults = await firecrawl.search(intent.targetEntity);
+  const rolesResult = await gemini.identifyRoles(intent.targetEntity, targetType);
 
-  for (const page of firecrawlResults.pages) {
-    research.addPage?.(page.url, page.title, page.relevant);
-  }
-
-  for (const finding of firecrawlResults.findings) {
+  for (const finding of rolesResult.findings) {
     research.addFinding(finding);
   }
 
-  research.complete(`Found ${firecrawlResults.findings.length} key insights`);
+  research.complete(`Identified ${rolesResult.roles.length} relevant roles`);
+  emitter.completePhase();
+
+  // Phase 2: Person Lookup
+  emitter.startPhase('person-lookup');
+  emitter.think('Finding individuals in identified roles...');
+
+  const personsResult = await gemini.findPersons(rolesResult.roles, intent.targetEntity);
+
+  for (const person of personsResult.decisionMakers) {
+    emitter.insight(`${person.name} — ${person.title} at ${person.organization}`);
+  }
 
   emitter.completePhase();
 
-  // Phase 3: Context
+  // Phase 3: Context (optional)
   emitter.startPhase('context');
 
   const retrieval = emitter.startRetrieval(intent.query);
@@ -450,17 +445,18 @@ export async function executeDecisionMakerAgent(
 
   emitter.completePhase();
 
-  // Phase 4: Drafting
-  emitter.startPhase('drafting');
-  emitter.think('Generating message based on research and context...');
+  // Phase 4: Recommendation
+  emitter.startPhase('recommendation');
+  emitter.think('Preparing final recommendations...');
 
-  const draft = await generateMessage(intent, firecrawlResults, intelligenceItems);
+  for (const dm of personsResult.decisionMakers) {
+    emitter.recommend(`${dm.name} — ${dm.title} at ${dm.organization}`, { pin: true });
+  }
 
-  emitter.recommend(`Message drafted for ${draft.target.name}`);
   emitter.completePhase();
 
   return {
-    draft,
+    decisionMakers: personsResult.decisionMakers,
     phases: emitter.getPhases(),
     keyMoments: emitter.getKeyMoments()
   };

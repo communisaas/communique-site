@@ -1,8 +1,9 @@
 # Current Architecture: Communique + voter-protocol
 
-**Date:** 2025-11-09
+**Date:** 2026-02-02 (Updated)
 **Status:** ✅ CURRENT - Authoritative architecture documentation
 **Consolidates:** ARCHITECTURE-REFACTOR-2025-11-09.md + CYPHERPUNK-ARCHITECTURE.md
+**Last Major Update:** Wave 1-3 integration remediation complete
 
 ---
 
@@ -422,7 +423,7 @@ TOTAL COST:
 
 ## Implementation Status
 
-### ✅ COMPLETE (Phase 1 MVP)
+### ✅ COMPLETE (Waves 1-3)
 
 **Database:**
 - ✅ Privacy migration (PII removed, Message model added)
@@ -434,57 +435,76 @@ TOTAL COST:
 - ✅ API endpoints (store/retrieve/delete blobs)
 - ✅ Integration tests passing (7/7)
 
-**Architecture Refactor:**
-- ✅ Credential verification moved to voter-protocol
-- ✅ 519 lines deprecated code removed
-- ✅ OpenAI dependency removed
-- ✅ Cost savings: $682.50/month
+**Identity Verification (Wave 2):**
+- ✅ Didit.me SDK integration (HMAC webhook validation)
+- ✅ Authority level mapping (passport → 4, DL → 3)
+- ✅ Three-layer identity binding (Sybil + cross-provider + ZK)
+- ✅ Shadow Atlas commitment generation
+
+**ZK Proof Infrastructure (Wave 2):**
+- ✅ Browser WASM prover integration (`@voter-protocol/noir-prover`)
+- ✅ Svelte 5 reactive store (`proof-generation.svelte.ts`)
+- ✅ Witness builder with BN254 validation
+- ✅ Progress tracking with UI feedback
+
+**Congressional Submit (Wave 2):**
+- ✅ Nullifier-enforced submission endpoint
+- ✅ Blockchain client integration
+- ✅ Async blockchain submission (non-blocking)
+
+**Security Hardening (Wave 3):**
+- ✅ Rate limiting on sensitive endpoints (BA-014)
+- ✅ URL allowlist enforcement (SA-009)
+- ✅ JSON schema validation with Zod (SA-014)
+- ✅ Circuit constraint user_secret != 0 (SA-011)
+
+**Contract Security (Waves 1-2):**
+- ✅ actionDomain whitelist with 7-day timelock (SA-001)
+- ✅ DistrictRegistry root lifecycle (SA-004)
+- ✅ Poseidon2 hash consistency (SA-005, SA-007)
+- ✅ 164 contract tests passing
+
+**E2E Testing (Wave 3):**
+- ✅ 285+ tests across all packages
+- ✅ Depth-24 proof generation tested (BA-017)
 
 **Documentation:**
-- ✅ ZK-PROOF-INTEGRATION-PHASE-1.md (45K, comprehensive)
-- ✅ PORTABLE-ENCRYPTED-IDENTITY-ARCHITECTURE.md (19K, Phase 2 plan)
-- ✅ This document (consolidated architecture)
+- ✅ INTEGRATION-REMEDIATION-PLAN.md (comprehensive Wave 1-3 status)
+- ✅ DIDIT-IMPLEMENTATION-SUMMARY.md (identity verification)
+- ✅ ZK-PROVER-INTEGRATION-SUMMARY.md (browser prover)
 
 ---
 
-### ⏳ IN PROGRESS (voter-protocol)
+### ⏳ IN PROGRESS (Wave 4)
 
-**ZK Proof Infrastructure:**
-- ✅ Noir/UltraHonk circuits PRODUCTION-READY (depth 18/20/22/24)
-- ✅ Browser WASM prover COMPLETE (noir-prover, 600ms-10s)
-- ✅ Solidity verifier COMPLETE (300-500k gas)
-- ⏳ Shadow Atlas registration API (backend)
-- ⏳ WASM prover client integration (frontend)
-- ⏳ Encrypted witness submission flow
+**Mainnet Deployment:**
+- ⏳ DistrictGateV2 deployment (CRITICAL: not V1)
+- ⏳ Security council multisig setup
+- ⏳ Initial actionDomain whitelisting
+- ⏳ Etherscan verification
 
-**ReputationAgent:**
-- ⏳ Gemini 2.5 Flash integration (Cloudflare Workers)
-- ⏳ State API verification (nursing boards, IAAP, APICS)
-- ⏳ Credibility multiplier calculation (2.0x → 1.0x)
+**Critical Fixes Required:**
+- ⏳ CRITICAL-001: NullifierRegistry 7-day timelock
+- ⏳ CRITICAL-002: Deploy scripts → DistrictGateV2
+- ⏳ HIGH-002: Kubernetes security hardening
 
 ---
 
-### ❌ BLOCKED (Deployment Dependencies)
+### ⚪ DEFERRED (Phase 2)
 
-**TEE Infrastructure:**
-- ❌ AWS Nitro Enclave deployment
-- ❌ TEE decryption service (Rust)
-- ❌ CWC API integration (inside enclave)
-- ❌ Key management (TEE private key generation)
+**TEE Infrastructure (SA-008):**
+- ⚪ AWS Nitro Enclave deployment
+- ⚪ IPFS sync service implementation
+- ⚪ TEE attestation verification
+- ⚪ Real public key endpoint (not mock)
 
-**Message Delivery:**
-- ❌ POST /api/messages/send endpoint
-- ❌ End-to-end delivery flow
-- ❌ Message record creation
-- ❌ Template aggregate metrics updates
+**Geocoder Cross-Validation (SA-017):**
+- ⚪ Secondary provider integration (OSM)
+- ⚪ District disagreement handling
 
-**Identity Verification:**
-- ❌ self.xyz NFC integration (frontend)
-- ❌ Didit.me fallback (frontend)
-- ❌ Session credential caching
-- ❌ District hash generation
+**Rationale:** Full implementation requires significant infrastructure work not blocking Phase 1 deployment.
 
-**Estimated Effort:** 20-30 days for MVP completion
+**Estimated Effort:** 3-4 weeks for Phase 2 completion
 
 ---
 

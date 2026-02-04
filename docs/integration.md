@@ -100,6 +100,78 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 ---
 
+## Congressional Submit Endpoint (IMPLEMENTED)
+
+**Status:** ✅ Complete (Wave 2.4)
+**Implementation:** `src/routes/api/congressional/submit/+server.ts`
+**Documentation:** `CONGRESSIONAL-SUBMIT-IMPLEMENTATION.md`
+
+### Endpoint
+
+```typescript
+POST /api/congressional/submit
+Authorization: Bearer <session-token>
+Content-Type: application/json
+
+{
+  "proof": "0x...",           // Serialized Noir proof
+  "publicInputs": [           // 7 public inputs
+    "nullifier",
+    "merkleRoot",
+    "authorityLevel",
+    "actionDomain",
+    "districtId",
+    "timestamp",
+    "templateHash"
+  ],
+  "encryptedWitness": "...",  // TEE-encrypted address
+  "encryptedMessage": "...",  // TEE-encrypted message content
+  "templateId": "template-123"
+}
+```
+
+### Response
+
+**Success (200):**
+```json
+{
+  "success": true,
+  "data": {
+    "submissionId": "sub_abc123",
+    "status": "pending",
+    "nullifier": "0x..."
+  }
+}
+```
+
+**Duplicate (409):**
+```json
+{
+  "error": "This proof has already been submitted"
+}
+```
+
+### Flow
+
+```
+1. Validate proof structure and public inputs
+2. Check nullifier uniqueness (prevent double-voting)
+3. Store submission in Postgres (encrypted blobs)
+4. Queue blockchain submission (async, non-blocking)
+5. Return submission ID immediately
+6. Background: Submit to DistrictGateV2 on Scroll
+7. Background: Forward encrypted blobs to TEE for delivery
+```
+
+### Security Invariants
+
+1. Nullifier uniqueness MUST be enforced before blockchain submission
+2. All submissions MUST be logged for audit trail
+3. Blockchain submission MUST be async (don't block response)
+4. Encrypted data stored but NEVER decrypted in Communique
+
+---
+
 ## CWC API (Congressional Delivery)
 
 **CWC (Communicating With Congress)** - Official API for delivering constituent messages to congressional offices.
@@ -332,43 +404,79 @@ async function verifySelfIdentity(userId: string) {
 }
 ```
 
-### Didit.me Integration
+### Didit.me Integration (IMPLEMENTED)
+
+**Status:** ✅ Complete (Wave 2.2)
+**Implementation:** `src/lib/core/identity/didit-client.ts`
+**Documentation:** `DIDIT-IMPLEMENTATION-SUMMARY.md`
 
 **Configuration:**
 ```bash
+# Get credentials from: https://dashboard.didit.me/
 DIDIT_API_KEY=your-didit-api-key
-DIDIT_APP_ID=your-didit-app-id
+DIDIT_WORKFLOW_ID=your-didit-workflow-id
 DIDIT_WEBHOOK_SECRET=your-webhook-secret
 ```
 
-**Flow:**
+**API Endpoints:**
+
 ```typescript
-import { DiditSDK } from '@didit/sdk';
+// 1. Initialize verification session
+POST /api/identity/didit/init
+// Returns: { verificationUrl, sessionId, status }
 
-const diditSDK = new DiditSDK({
-  apiKey: process.env.DIDIT_API_KEY
-});
-
-async function verifyDiditIdentity(userId: string) {
-  // User completes Didit ID verification flow
-  const result = await diditSDK.verify({
-    userId,
-    verificationType: 'government_id'
-  });
-
-  if (result.verified) {
-    await fetch('/api/identity/verify', {
-      method: 'POST',
-      body: JSON.stringify({
-        provider: 'didit',
-        zkProof: result.proof
-      })
-    });
-  }
-}
+// 2. Webhook callback (server-to-server)
+POST /api/identity/didit/webhook
+// Headers: x-didit-signature, x-didit-timestamp
+// Validates HMAC, updates user verification status
 ```
 
-**See:** `docs/features/identity-verification.md` for comprehensive flows and progressive verification tiers.
+**Client Usage:**
+```typescript
+import {
+  createVerificationSession,
+  validateWebhook,
+  parseVerificationResult
+} from '$lib/core/identity/didit-client';
+
+// Create session
+const session = await createVerificationSession(
+  { userId: 'user123', templateSlug: 'kyc-lite' },
+  'https://communi.email/api/identity/didit/webhook'
+);
+
+// Redirect user to Didit
+window.location.href = session.sessionUrl;
+
+// Validate webhook (in webhook handler)
+const isValid = validateWebhook(rawBody, signature, timestamp);
+if (!isValid) return { status: 401 };
+
+// Parse result
+const result = parseVerificationResult(webhookEvent);
+// Returns: { userId, authorityLevel, credentialHash, ... }
+```
+
+**Authority Level Mapping:**
+| Document Type | Authority Level | Trust |
+|--------------|-----------------|-------|
+| Passport | 4 | Highest |
+| Driver's License | 3 | High |
+| National ID | 3 | High |
+
+**Security Features:**
+- ✅ HMAC-SHA256 webhook signature validation (constant-time)
+- ✅ No raw PII storage (only hashed credentials)
+- ✅ Age verification (18+ enforcement)
+- ✅ Sybil resistance (identity_hash prevents duplicates)
+- ✅ Cross-provider identity linking (identity_commitment)
+
+**Three-Layer Identity Binding:**
+1. `identity_hash` - Sybil resistance (prevents duplicate accounts)
+2. `identity_commitment` - Cross-provider linking (merges OAuth accounts)
+3. `shadowAtlasCommitment` - Poseidon2 hash for ZK proofs
+
+**See:** `DIDIT-IMPLEMENTATION-SUMMARY.md` for comprehensive implementation details.
 
 ---
 
@@ -539,4 +647,4 @@ TEE_PUBLIC_KEY=<base64-encoded-X25519-public-key>
 
 ---
 
-*Communiqué PBC | Integration Guide | 2025-11-09*
+*Communiqué PBC | Integration Guide | Last Updated: 2026-02-02*

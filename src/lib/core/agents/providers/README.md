@@ -19,12 +19,12 @@ Pluggable provider system for decision-maker resolution. Enables routing between
         │               │               │
         ▼               ▼               ▼
 ┌───────────────┐ ┌──────────┐ ┌──────────────┐
-│    Gemini     │ │Firecrawl │ │   Custom     │
+│    Gemini     │ │ Database │ │   Custom     │
 │   Provider    │ │ Provider │ │  Providers   │
 │               │ │          │ │              │
-│ - Congress    │ │- Corp.   │ │- ...         │
-│ - State Leg.  │ │- Nonprofit│ │              │
-│ - Local Govt  │ │- Education│ │              │
+│ - Congress    │ │- Cached  │ │- ...         │
+│ - State Leg.  │ │- Pre-    │ │              │
+│ - Local Govt  │ │  indexed │ │              │
 └───────────────┘ └──────────┘ └──────────────┘
 ```
 
@@ -112,7 +112,7 @@ const result = await decisionMakerRouter.resolve({
 ```typescript
 const result = await decisionMakerRouter.resolve(context, {
   allowFallback: true,           // Try other providers on failure
-  preferredProvider: 'firecrawl', // Prefer specific provider
+  preferredProvider: 'gemini',   // Prefer specific provider
   timeoutMs: 90000               // Custom timeout
 });
 ```
@@ -159,8 +159,8 @@ import type {
   TargetType
 } from './types';
 
-export class FirecrawlDecisionMakerProvider implements DecisionMakerProvider {
-  readonly name = 'firecrawl-corporate';
+export class CustomDecisionMakerProvider implements DecisionMakerProvider {
+  readonly name = 'custom-corporate';
   readonly supportedTargetTypes: TargetType[] = [
     'corporate',
     'nonprofit',
@@ -177,14 +177,14 @@ export class FirecrawlDecisionMakerProvider implements DecisionMakerProvider {
     const startTime = Date.now();
 
     // Your resolution logic here
-    const decisionMakers = await this.scrapeOrgChart(context.targetUrl);
+    const decisionMakers = await this.lookupOrgChart(context.targetUrl);
 
     return {
       decisionMakers,
       provider: this.name,
       cacheHit: false,
       latencyMs: Date.now() - startTime,
-      researchSummary: 'Scraped corporate leadership page'
+      researchSummary: 'Looked up corporate leadership'
     };
   }
 }
@@ -194,11 +194,11 @@ export class FirecrawlDecisionMakerProvider implements DecisionMakerProvider {
 
 ```typescript
 import { decisionMakerRouter } from '$lib/core/agents/providers';
-import { FirecrawlDecisionMakerProvider } from './firecrawl-provider';
+import { CustomDecisionMakerProvider } from './custom-provider';
 
 // Register with priority (higher = preferred)
-const firecrawlProvider = new FirecrawlDecisionMakerProvider();
-decisionMakerRouter.register(firecrawlProvider, 20);
+const customProvider = new CustomDecisionMakerProvider();
+decisionMakerRouter.register(customProvider, 20);
 ```
 
 ### 3. Use It
@@ -211,7 +211,7 @@ const result = await decisionMakerRouter.resolve({
   // ... other context
 });
 
-// Router automatically selects FirecrawlProvider for corporate targets
+// Router automatically selects provider for corporate targets
 ```
 
 ## Provider Priority System
@@ -228,9 +228,9 @@ Example:
 ```typescript
 // Both providers support 'corporate'
 decisionMakerRouter.register(geminiProvider, 10);
-decisionMakerRouter.register(firecrawlProvider, 20); // Higher priority
+decisionMakerRouter.register(customProvider, 20); // Higher priority
 
-// Firecrawl will be tried first for corporate targets
+// Higher priority provider will be tried first for corporate targets
 ```
 
 ## Streaming Support
@@ -274,17 +274,17 @@ await router.resolve({
 Providers should throw meaningful errors:
 
 ```typescript
-class FirecrawlProvider implements DecisionMakerProvider {
+class CustomProvider implements DecisionMakerProvider {
   async resolve(context: ResolveContext): Promise<DecisionMakerResult> {
     if (!context.targetUrl) {
-      throw new Error('Firecrawl provider requires a target URL');
+      throw new Error('Custom provider requires a target URL');
     }
 
     try {
       // Resolution logic
     } catch (error) {
       throw new Error(
-        `Firecrawl scraping failed: ${error.message}`
+        `Provider resolution failed: ${error.message}`
       );
     }
   }
@@ -371,7 +371,6 @@ const result = await decisionMakerRouter.resolve({
 
 ### Upcoming Providers
 
-- **FirecrawlDecisionMakerProvider**: Corporate/nonprofit leadership scraping
 - **DatabaseProvider**: Cached/pre-indexed decision-makers
 - **APIProvider**: Third-party data sources (GovTrack, OpenSecrets)
 
@@ -381,4 +380,3 @@ const result = await decisionMakerRouter.resolve({
 - Result caching layer
 - A/B testing between providers
 - Provider-specific analytics
-- Composite providers (merge results from multiple sources)

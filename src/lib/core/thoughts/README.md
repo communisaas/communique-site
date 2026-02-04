@@ -171,13 +171,13 @@ interface PhaseState {
 
 ## Progressive Disclosure Layers
 
-From the spec (Section 0 of FIRECRAWL_MONGODB_IMPLEMENTATION_PLAN.md):
+The thought system supports progressive disclosure of information:
 
 | Layer | Content | Source | Access |
 |-------|---------|--------|--------|
 | Surface | Agent synthesis | Gemini reasoning | Always visible |
 | L1 | Citations/excerpts | MongoDB cache | Click inline citation |
-| L2 | Research trace | Firecrawl results | Click action segment |
+| L2 | Research trace | Google Search grounding | Click action segment |
 | L3 | Full documents | Reducto parse | "View full document" |
 
 ## Usage in Components
@@ -262,8 +262,7 @@ These types embody a **designer's sensibility** combined with **technical rigor*
 ## Related Files
 
 - `/src/lib/core/agents/providers/types.ts` - Provider interfaces
-- `/src/lib/core/intelligence/types.ts` - Intelligence item types
-- `/docs/FIRECRAWL_MONGODB_IMPLEMENTATION_PLAN.md` - Full specification (Section 0)
+- `/src/lib/core/agents/types.ts` - Agent type definitions
 
 ## ThoughtEmitter Service
 

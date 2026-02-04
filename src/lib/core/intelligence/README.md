@@ -154,7 +154,7 @@ interface OrchestrationOptions {
 - **Category**: `corporate`
 - **Cache Duration**: 12 hours
 - **Relevance**: Corporate targets only
-- **Status**: MVP placeholder (integrate SEC EDGAR/Firecrawl later)
+- **Status**: MVP placeholder (integrate SEC EDGAR later)
 
 ### Creating Custom Providers
 
@@ -393,7 +393,6 @@ async function gatherIntelligence() {
 - [ ] Perplexity API for AI-curated news
 - [ ] Congress.gov API for federal legislation
 - [ ] SEC EDGAR API for corporate filings
-- [ ] Firecrawl for deep web scraping
 
 ### Phase 3: Semantic Search
 - [ ] Vector embeddings for intelligence items
@@ -426,7 +425,6 @@ src/lib/core/intelligence/
 
 - [MongoDB IntelligenceService](/src/lib/server/mongodb/service.ts)
 - [MongoDB Schema Definitions](/src/lib/server/mongodb/schema.ts)
-- [Implementation Plan](/docs/FIRECRAWL_MONGODB_IMPLEMENTATION_PLAN.md)
 - [Provider Architecture](/src/lib/core/agents/providers/ARCHITECTURE.md)
 
 ---

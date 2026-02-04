@@ -63,8 +63,8 @@ User Input: "Stop the pipeline construction"
  local_government]       education]
      │                           │
      ▼                           ▼
-GeminiProvider          FirecrawlProvider
-(Google Search)         (Web Scraping)
+GeminiProvider          CustomProvider
+(Google Search)         (Database/API)
      │                           │
      └──────────┬────────────────┘
                 │
@@ -158,7 +158,7 @@ decisionMakerRouter.register(
 );
 
 decisionMakerRouter.register(
-  new FirecrawlDecisionMakerProvider(),
+  new CustomDecisionMakerProvider(),
   20  // Higher priority
 );
 ```
@@ -172,10 +172,10 @@ Request: { targetType: 'corporate' }
 
 Registered Providers:
   1. GeminiProvider (priority: 10) → supports 'corporate'
-  2. FirecrawlProvider (priority: 20) → supports 'corporate'
+  2. CustomProvider (priority: 20) → supports 'corporate'
 
 Selection:
-  ✓ FirecrawlProvider selected (highest priority)
+  ✓ CustomProvider selected (highest priority)
   ✓ GeminiProvider available as fallback
 ```
 
@@ -349,14 +349,14 @@ describe('DecisionMakerRouter', () => {
   it('selects correct provider for target type', async () => {
     const router = new DecisionMakerRouter();
     router.register(geminiProvider, 10);
-    router.register(firecrawlProvider, 20);
+    router.register(customProvider, 20);
 
     const result = await router.resolve({
       targetType: 'corporate',
       // ...
     });
 
-    expect(result.provider).toBe('firecrawl-corporate');
+    expect(result.provider).toBe('custom-corporate');
   });
 });
 ```
@@ -388,7 +388,6 @@ class MockProvider implements DecisionMakerProvider {
 - [x] Add comprehensive tests
 - [x] Document architecture
 - [ ] Create UI for target type selection
-- [ ] Implement Firecrawl provider
 - [ ] Add provider analytics/monitoring
 - [ ] Migrate all callsites to new API
 - [ ] Remove legacy compatibility layer

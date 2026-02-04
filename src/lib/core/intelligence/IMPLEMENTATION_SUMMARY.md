@@ -286,7 +286,7 @@ intelligenceOrchestrator.registerProvider(new TwitterProvider());
 - **Cache miss**: Varies by provider
   - News: ~500-2000ms (API dependent)
   - Legislative: ~1000-3000ms (Congress.gov)
-  - Corporate: ~800-2000ms (SEC/Firecrawl)
+  - Corporate: ~800-2000ms (SEC EDGAR)
 
 ### Parallel Speedup
 With 3 providers running in parallel:
@@ -356,7 +356,7 @@ Replace placeholder providers with real APIs:
 
 3. **CorporateProvider**
    - [ ] Integrate SEC EDGAR API
-   - [ ] Add Firecrawl for IR pages
+   - [ ] Add web scraping for IR pages
    - [ ] Parse earnings transcripts
 
 ### Phase 3: UI Components

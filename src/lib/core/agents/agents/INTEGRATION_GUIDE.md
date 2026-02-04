@@ -4,16 +4,16 @@ This guide explains how to use the new ThoughtStream-integrated decision-maker a
 
 ## Quick Start
 
-### V2: ThoughtStream Integration (Recommended)
+### ThoughtStream Integration
 
 ```typescript
-import { resolveDecisionMakersV2 } from '$lib/core/agents/agents';
+import { resolveDecisionMakers } from '$lib/core/agents/agents';
 import type { ThoughtSegment } from '$lib/core/thoughts/types';
 
 // Collect thought segments
 const segments: ThoughtSegment[] = [];
 
-const result = await resolveDecisionMakersV2(
+const result = await resolveDecisionMakers(
   {
     targetType: 'corporate',
     targetEntity: 'Apple Inc.',
@@ -31,29 +31,7 @@ const result = await resolveDecisionMakersV2(
 console.log(`Found ${result.decisionMakers.length} decision-makers`);
 ```
 
-### V1: Legacy Text Streaming (Backward Compatible)
-
-```typescript
-import { resolveDecisionMakers } from '$lib/core/agents/agents';
-
-const result = await resolveDecisionMakers({
-  subjectLine: 'Climate leadership',
-  coreMessage: 'We need action...',
-  topics: ['climate'],
-  streaming: {
-    onThought: (thought, phase) => {
-      console.log(`[${phase}] ${thought}`);
-    },
-    onPhase: (phase, message) => {
-      console.log(`Phase: ${phase} - ${message}`);
-    }
-  }
-});
-```
-
 ## SSE Endpoint Usage
-
-### V2 Format (Default)
 
 ```typescript
 // Client-side
@@ -82,28 +60,11 @@ eventSource.addEventListener('complete', (event) => {
 });
 ```
 
-### V1 Format (Legacy)
-
-```typescript
-// Add ?version=v1 query parameter
-const eventSource = new EventSource('/api/agents/stream-decision-makers?version=v1');
-
-eventSource.addEventListener('thought', (event) => {
-  const { content, phase } = JSON.parse(event.data);
-  console.log(`[${phase}] ${content}`);
-});
-
-eventSource.addEventListener('phase', (event) => {
-  const { phase, message } = JSON.parse(event.data);
-  console.log(`Phase: ${phase}`);
-});
-```
-
 ## Key Features
 
-### ThoughtStream Segments (V2)
+### ThoughtStream Segments
 
-V2 emits structured `ThoughtSegment` objects with rich metadata:
+The agent emits structured `ThoughtSegment` objects with rich metadata:
 
 ```typescript
 interface ThoughtSegment {
@@ -170,10 +131,10 @@ interface ThoughtSegment {
 
 ### AgentMemoryService Integration
 
-V2 automatically retrieves contextual intelligence before reasoning:
+The agent automatically retrieves contextual intelligence before reasoning:
 
 ```typescript
-// Happens automatically in resolveDecisionMakersV2
+// Happens automatically in resolveDecisionMakers
 const memory = await AgentMemoryService.retrieveContext({
   topic: context.coreMessage,
   targetType: context.targetType,
@@ -201,69 +162,30 @@ if (memory.intelligence.news.length > 0) {
 
 ### Reasoning Phases
 
-V2 follows a structured flow:
+The agent follows a structured two-phase flow:
 
-1. **understanding** - Comprehend user intent
-2. **context** - Retrieve relevant intelligence from memory
-3. **research** - Delegate to provider (Gemini/Firecrawl)
-4. **recommendation** - Present findings with citations
+1. **Role Discovery** - Identify decision-maker roles and titles via Gemini with Google Search grounding
+2. **Person Lookup** - Find specific individuals in those roles via Gemini with Google Search grounding
+
+Additional phases may include:
+- **understanding** - Comprehend user intent
+- **context** - Retrieve relevant intelligence from memory
+- **recommendation** - Present findings with citations
 
 UI components can group segments by phase for collapsible sections.
 
-## Migration Guide
+## Architecture Overview
 
-### Migrating from V1 to V2
+### Single Provider System
 
-**Before (V1):**
-```typescript
-await resolveDecisionMakers({
-  subjectLine: 'Climate action',
-  coreMessage: 'We need change...',
-  topics: ['climate'],
-  streaming: {
-    onThought: (thought) => console.log(thought)
-  }
-});
-```
+The decision-maker agent uses a single-provider architecture:
 
-**After (V2):**
-```typescript
-await resolveDecisionMakersV2(
-  {
-    targetType: 'corporate',
-    targetEntity: 'ExxonMobil',
-    subjectLine: 'Climate action',
-    coreMessage: 'We need change...',
-    topics: ['climate']
-  },
-  (segment) => {
-    // Access structured data
-    if (segment.type === 'insight') {
-      console.log('Insight:', segment.content);
-    }
-  }
-);
-```
+- **Provider**: `GeminiDecisionMakerProvider` (registered at priority 100)
+- **Router**: Selects provider via `canResolve()` — accepts any target type string
+- **Resolution**: Two-phase process (Role Discovery → Person Lookup)
+- **Grounding**: All phases use Gemini with Google Search grounding
+- **Thought Streaming**: Direct `ThoughtEmitter` usage (no composite layer)
 
-### Bridge Function (Temporary)
-
-For gradual migration, use the bridge function:
-
-```typescript
-import { resolveDecisionMakersWithThoughts } from '$lib/core/agents/agents';
-
-await resolveDecisionMakersWithThoughts(
-  context,
-  {
-    // New format
-    onSegment: (segment) => console.log('Segment:', segment),
-
-    // Old format (backward compatible)
-    onThought: (thought) => console.log('Thought:', thought),
-    onPhase: (phase) => console.log('Phase:', phase)
-  }
-);
-```
 
 ## UI Integration Examples
 
@@ -276,7 +198,7 @@ await resolveDecisionMakersWithThoughts(
   let segments: ThoughtSegment[] = [];
 
   async function resolve() {
-    const result = await resolveDecisionMakersV2(context, (segment) => {
+    const result = await resolveDecisionMakers(context, (segment) => {
       segments = [...segments, segment];
     });
   }
@@ -336,12 +258,10 @@ await resolveDecisionMakersWithThoughts(
 
 ## Best Practices
 
-1. **Use V2 for new features** - Richer data, better UX
-2. **Keep V1 for backward compatibility** - Don't break existing code
-3. **Group by phase** - Natural visual organization
-4. **Pin key moments** - Important items shouldn't scroll away
-5. **Expand on demand** - Progressive disclosure reduces cognitive load
-6. **Show citations inline** - Build trust through transparency
+1. **Group by phase** - Natural visual organization
+2. **Pin key moments** - Important items shouldn't scroll away
+3. **Expand on demand** - Progressive disclosure reduces cognitive load
+4. **Show citations inline** - Build trust through transparency
 
 ## Performance Notes
 
@@ -354,7 +274,7 @@ await resolveDecisionMakersWithThoughts(
 
 ```typescript
 try {
-  const result = await resolveDecisionMakersV2(context, (segment) => {
+  const result = await resolveDecisionMakers(context, (segment) => {
     if (segment.type === 'reasoning' && segment.content.startsWith('Error:')) {
       console.error('Agent error:', segment.content);
     }
@@ -392,12 +312,12 @@ Enable detailed logging:
 
 ```typescript
 // Set environment variable
-DEBUG=decision-maker-v2,agent-memory,thought-emitter
+DEBUG=decision-maker,agent-memory,thought-emitter
 
 // Or in code
-import { resolveDecisionMakersV2 } from '$lib/core/agents/agents';
+import { resolveDecisionMakers } from '$lib/core/agents/agents';
 
-const result = await resolveDecisionMakersV2(context, (segment) => {
+const result = await resolveDecisionMakers(context, (segment) => {
   console.log('[DEBUG]', {
     type: segment.type,
     phase: segment.phase,
