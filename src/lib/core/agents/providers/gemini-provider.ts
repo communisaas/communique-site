@@ -1,130 +1,46 @@
 /**
  * Gemini Decision-Maker Provider
  *
- * Implements two-phase resolution using Gemini + Google Search grounding:
- * - Phase 1: Role Discovery (structural reasoning, no grounding)
- * - Phase 2: Person Lookup (grounded search for current holders)
+ * Implements two-phase resolution using Gemini + Exa Search:
+ * - Phase 1: Role Discovery (structural reasoning, no search)
+ * - Phase 2: Person Lookup (Exa search → Gemini triage → content fetch → extraction)
  *
- * Also supports lightweight verification mode for existing decision-makers.
+ * Phase 2 Pipeline:
+ * - Step A: Exa metadata-only search (grouped by organization)
+ * - Step B: Gemini URL triage (selects most promising pages)
+ * - Step C: Exa content resolution (fetches selected pages)
+ * - Step D: Gemini extraction (extracts names, emails, verification)
  *
  * Function Calling Integration:
- * - Document tool: Deep document analysis via Reducto for legislative bills,
+ * - Document tool: Deep document analysis for legislative bills,
  *   corporate filings, etc.
- *
- * Supports: congress, state_legislature, local_government
  */
 
 import type { GenerateContentConfig, Content, Part } from '@google/genai';
 import { getGeminiClient, generateWithThoughts, GEMINI_CONFIG } from '../gemini-client';
 import {
 	ROLE_DISCOVERY_PROMPT,
-	PERSON_LOOKUP_PROMPT,
 	buildRoleDiscoveryPrompt,
-	buildPersonLookupPrompt
+	URL_TRIAGE_PROMPT,
+	CONTENT_EXTRACTION_PROMPT,
+	buildUrlTriagePrompt,
+	buildContentExtractionPrompt
 } from '../prompts/decision-maker';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
-import { findBestGroundedSource } from '../utils/grounding';
-import type { GroundingMetadata } from '../types';
+import { searchForRoleHolders, fetchPageContents } from '../exa-search';
+import type { ExaOrgSearchResult, ExaPageContent } from '../exa-search';
 import {
 	getAgentToolDeclarations,
 	processGeminiFunctionCall
-} from '../agents/decision-maker-v2';
+} from '../agents/decision-maker';
 import { ThoughtEmitter } from '$lib/core/thoughts/emitter';
 import type { ThoughtSegment } from '$lib/core/thoughts/types';
 import type { ProcessedDecisionMaker } from '$lib/types/template';
 import type {
 	DecisionMakerProvider,
 	ResolveContext,
-	DecisionMakerResult,
-	DecisionMakerTargetType
+	DecisionMakerResult
 } from './types';
-
-// ============================================================================
-// Verification Types
-// ============================================================================
-
-/**
- * Result of verifying a single decision-maker's current status
- */
-export interface VerificationResult {
-	/** ID/reference of the decision-maker being verified */
-	decisionMakerId: string;
-	/** Whether the person is confirmed to still hold their position */
-	verified: boolean;
-	/** Confidence level 0-1 (1 = highly confident, 0 = uncertain) */
-	confidence: number;
-	/** URL or description of the source used for verification */
-	verificationSource?: string;
-	/** Timestamp of when verification was performed */
-	lastCheckedAt: Date;
-	/** Additional context (e.g., "Resigned Jan 2026" or "Confirmed in press release") */
-	notes?: string;
-}
-
-/**
- * Input for verification: existing decision-maker data to verify
- */
-export interface DecisionMakerToVerify {
-	/** Unique identifier for tracking */
-	id: string;
-	/** Person's name */
-	name: string;
-	/** Current title/position */
-	title: string;
-	/** Organization they work for */
-	organization: string;
-	/** Optional: when was this data originally collected */
-	dataAsOf?: Date;
-}
-
-/**
- * Internal response structure from Gemini verification
- */
-interface VerificationResponse {
-	verifications: Array<{
-		id: string;
-		name: string;
-		still_in_position: boolean;
-		confidence: number;
-		source_url?: string;
-		notes: string;
-	}>;
-}
-
-// ============================================================================
-// Verification Prompt
-// ============================================================================
-
-const VERIFICATION_SYSTEM_PROMPT = `You are a verification specialist. Your ONLY job is to verify whether people still hold their stated positions.
-
-For each person, search for recent news about:
-1. Whether they still hold the position (confirmations, recent activities)
-2. Any resignations, retirements, or departures
-3. Any elections, appointments, or replacements
-4. Recent press releases, news articles, or official announcements
-
-CRITICAL RULES:
-- Use Google Search to find the most recent information
-- Focus on news from the last 6 months
-- If you find no recent information, mark as unverified with low confidence
-- If you find conflicting information, note it and use lower confidence
-- Be skeptical of outdated sources
-
-Current date: {CURRENT_DATE}
-
-OUTPUT FORMAT (JSON only, no markdown):
-{
-  "verifications": [
-    {
-      "id": "the-id-provided",
-      "name": "Person Name",
-      "still_in_position": true/false,
-      "confidence": 0.0-1.0,
-      "source_url": "https://...",
-      "notes": "Brief explanation of what you found"
-    }
-  ]
-}`;
 
 // ============================================================================
 // Internal Types
@@ -149,16 +65,15 @@ interface Candidate {
 	title: string;
 	organization: string;
 	reasoning: string;
-	/** LLM-provided source URL (may be hallucinated - use grounding metadata instead) */
-	source_url?: string;
 	email: string;
+	/** LLM-provided URL where email was found (verify against grounding) */
+	email_source?: string;
 	recency_check: string;
 }
 
-/** Result from function calling execution with grounding metadata */
+/** Result from function calling execution */
 interface FunctionCallingResult {
 	text: string;
-	groundingMetadata?: GroundingMetadata;
 }
 
 interface PersonLookupResponse {
@@ -201,7 +116,7 @@ async function executeWithFunctionCalling(
 	// Get document tool declarations
 	const agentTools = getAgentToolDeclarations();
 
-	// Build tools array: preserve existing tools (like googleSearch) and add function declarations
+	// Build tools array: preserve existing tools and add function declarations
 	const existingTools = config.tools || [];
 	const toolsWithFunctions = [
 		...existingTools,
@@ -314,30 +229,7 @@ async function executeWithFunctionCalling(
 			const finalText = response.text || '';
 			console.log(`[gemini-provider] Function calling complete after ${iterations} iteration(s)`);
 
-			// Extract grounding metadata from the final response
-			const rawGrounding = response.candidates?.[0]?.groundingMetadata;
-			let groundingMetadata: GroundingMetadata | undefined;
-
-			if (rawGrounding) {
-				groundingMetadata = {
-					webSearchQueries: rawGrounding.webSearchQueries as string[] | undefined,
-					groundingChunks: (rawGrounding.groundingChunks as Array<Record<string, unknown>>)?.map((gc) => ({
-						web: gc.web as { uri?: string; title?: string } | undefined
-					})),
-					groundingSupports: (rawGrounding.groundingSupports as Array<Record<string, unknown>>)?.map((gs) => ({
-						segment: gs.segment as { startIndex: number; endIndex: number } | undefined,
-						groundingChunkIndices: gs.groundingChunkIndices as number[] | undefined,
-						confidenceScores: gs.confidenceScores as number[] | undefined
-					})),
-					searchEntryPoint: rawGrounding.searchEntryPoint as { renderedContent?: string } | undefined
-				};
-				console.log(`[gemini-provider] Captured grounding metadata:`, {
-					chunks: groundingMetadata.groundingChunks?.length || 0,
-					supports: groundingMetadata.groundingSupports?.length || 0
-				});
-			}
-
-			return { text: finalText, groundingMetadata };
+			return { text: finalText };
 
 		} catch (error) {
 			console.error(`[gemini-provider] Error in function calling loop:`, error);
@@ -357,14 +249,11 @@ async function executeWithFunctionCalling(
 export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	readonly name = 'gemini-search';
 
-	readonly supportedTargetTypes: readonly DecisionMakerTargetType[] = [
-		'congress',
-		'state_legislature',
-		'local_government'
-	];
+	readonly supportedTargetTypes: readonly string[] = [];
 
 	canResolve(context: ResolveContext): boolean {
-		return this.supportedTargetTypes.includes(context.targetType);
+		// Gemini + Exa Search can handle any target type
+		return !!context.subjectLine;
 	}
 
 	async resolve(context: ResolveContext): Promise<DecisionMakerResult> {
@@ -441,14 +330,11 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			}
 
 			// ================================================================
-			// Phase 2: Person Lookup — Grounded search for current holders
-			// With Document Tool for deep analysis of bills, filings, etc.
+			// Phase 2: Person Lookup — Exa Search for current holders
+			// Four-step pipeline: Search → Triage → Content → Extract
 			// ================================================================
 
-			streaming?.onPhase?.('lookup', `Verifying current holders of ${roles.length} positions...`);
-			streaming?.onProgress?.({ current: 0, total: roles.length, status: 'Searching...' });
-
-			const lookupPrompt = buildPersonLookupPrompt(roles, subjectLine);
+			streaming?.onPhase?.('lookup', `Searching for current holders of ${roles.length} positions...`);
 
 			const now = new Date();
 			const currentDate = now.toLocaleDateString('en-US', {
@@ -458,74 +344,133 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			});
 			const currentYear = now.getFullYear().toString();
 
-			const systemPrompt = PERSON_LOOKUP_PROMPT.replace(/{CURRENT_DATE}/g, currentDate).replace(
-				/{CURRENT_YEAR}/g,
-				currentYear
-			);
-
-			console.log('[gemini-provider] Phase 2: Looking up current holders with document tool...');
-
-			// Create a ThoughtEmitter for document analysis streaming
-			// This bridges the document tool's thought emissions to the streaming callback
+			// Create a ThoughtEmitter for search/content streaming
 			const documentSegments: ThoughtSegment[] = [];
 			const documentEmitter = new ThoughtEmitter((segment) => {
 				documentSegments.push(segment);
-				// Bridge document analysis thoughts to the streaming callback
 				if (streaming?.onThought && segment.content) {
-					streaming.onThought(`[Document] ${segment.content}`, 'lookup');
+					streaming.onThought(segment.content, 'lookup');
 				}
 			});
 
-			// Build config for function calling with grounding
-			const lookupConfig: GenerateContentConfig = {
-				systemInstruction: systemPrompt,
-				temperature: 0.2,
-				maxOutputTokens: 65536,
-				// Enable Google Search grounding
-				tools: [{ googleSearch: {} }]
-			};
+			// --- Step A: Exa Search (metadata only) ---
+			console.log('[gemini-provider] Step A: Searching Exa for role holders...');
+			streaming?.onProgress?.({ current: 0, total: 4, status: 'Searching for candidates...' });
 
-			let rawText: string;
-			let groundingMetadata: GroundingMetadata | undefined;
+			const searchResults = await searchForRoleHolders(roles, {
+				currentYear,
+				emitter: documentEmitter
+			});
 
-			try {
-				// Use function calling loop for document analysis support
-				const functionResult = await executeWithFunctionCalling(
-					lookupPrompt,
-					lookupConfig,
-					documentEmitter,
-					streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
-				);
-				rawText = functionResult.text;
-				groundingMetadata = functionResult.groundingMetadata;
+			const totalHits = searchResults.reduce((sum, r) => sum + r.hits.length, 0);
+			console.log(`[gemini-provider] Step A complete: ${searchResults.length} searches, ${totalHits} total hits`);
 
-				// Log document analysis activity
-				if (documentSegments.length > 0) {
-					console.log(`[gemini-provider] Document tool emitted ${documentSegments.length} thought segments`);
-				}
-			} catch (functionCallError) {
-				// If function calling fails, fall back to standard generation
-				console.warn('[gemini-provider] Function calling failed, falling back to standard generation:', functionCallError);
-
-				const lookupResult = await generateWithThoughts<PersonLookupResponse>(
-					lookupPrompt,
-					{
-						systemInstruction: systemPrompt,
-						temperature: 0.2,
-						thinkingLevel: 'high',
-						enableGrounding: true,
-						maxOutputTokens: 65536
-					},
-					streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
-				);
-				rawText = lookupResult.rawText || '{}';
-				groundingMetadata = lookupResult.groundingMetadata;
+			if (totalHits === 0) {
+				console.log('[gemini-provider] No search results found');
+				streaming?.onPhase?.('complete', 'No search results found for identified positions');
+				return {
+					decisionMakers: [],
+					provider: this.name,
+					cacheHit: false,
+					latencyMs: Date.now() - startTime,
+					researchSummary: 'No search results found for the identified positions. Try broadening the search or checking the target entities.'
+				};
 			}
 
+			// --- Step B: Gemini Triage (URL selection) ---
+			console.log('[gemini-provider] Step B: Gemini triaging URLs...');
+			streaming?.onProgress?.({ current: 1, total: 4, status: 'Selecting best sources...' });
+
+			const triagePrompt = buildUrlTriagePrompt(roles, searchResults);
+			const triageSystemPrompt = URL_TRIAGE_PROMPT
+				.replace(/{CURRENT_DATE}/g, currentDate)
+				.replace(/{CURRENT_YEAR}/g, currentYear);
+
+			const triageResult = await generateWithThoughts<{ url_selections: Array<{ role_index: number; selected_urls: string[]; reasoning: string }> }>(
+				triagePrompt,
+				{
+					systemInstruction: triageSystemPrompt,
+					temperature: 0.1,
+					thinkingLevel: 'low' as const,
+					maxOutputTokens: 8192
+				},
+				streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
+			);
+
+			// Extract selected URLs from triage result
+			let selectedUrls: string[] = [];
+			if (triageResult.data?.url_selections) {
+				selectedUrls = triageResult.data.url_selections.flatMap(s => s.selected_urls);
+			} else {
+				// Fallback: if triage JSON parsing failed, use top hits from each search
+				console.warn('[gemini-provider] Triage JSON parsing failed, using top search hits as fallback');
+				selectedUrls = searchResults.flatMap(r => r.hits.slice(0, 3).map(h => h.url));
+			}
+
+			// Deduplicate URLs
+			selectedUrls = [...new Set(selectedUrls)];
+
+			console.log(`[gemini-provider] Step B complete: ${selectedUrls.length} URLs selected for content fetch`);
+
+			if (selectedUrls.length === 0) {
+				console.log('[gemini-provider] No URLs selected by triage');
+				streaming?.onPhase?.('complete', 'No promising sources found for identified positions');
+				return {
+					decisionMakers: [],
+					provider: this.name,
+					cacheHit: false,
+					latencyMs: Date.now() - startTime,
+					researchSummary: 'Search returned results but no promising sources were found for contact information.'
+				};
+			}
+
+			// --- Step C: Exa Content Resolution ---
+			console.log(`[gemini-provider] Step C: Fetching content from ${selectedUrls.length} pages...`);
+			streaming?.onProgress?.({ current: 2, total: 4, status: `Reading ${selectedUrls.length} pages...` });
+
+			const pageContents = await fetchPageContents(selectedUrls, {
+				emitter: documentEmitter
+			});
+
+			console.log(`[gemini-provider] Step C complete: ${pageContents.length}/${selectedUrls.length} pages fetched successfully`);
+
+			if (pageContents.length === 0) {
+				console.log('[gemini-provider] No page content could be retrieved');
+				streaming?.onPhase?.('complete', 'Could not retrieve content from selected sources');
+				return {
+					decisionMakers: [],
+					provider: this.name,
+					cacheHit: false,
+					latencyMs: Date.now() - startTime,
+					researchSummary: 'Selected sources could not be retrieved. The pages may be behind authentication or temporarily unavailable.'
+				};
+			}
+
+			// --- Step D: Gemini Extraction ---
+			console.log('[gemini-provider] Step D: Extracting contact information...');
+			streaming?.onProgress?.({ current: 3, total: 4, status: 'Extracting contact information...' });
+
+			const extractionPrompt = buildContentExtractionPrompt(roles, pageContents, subjectLine);
+			const extractionSystemPrompt = CONTENT_EXTRACTION_PROMPT
+				.replace(/{CURRENT_DATE}/g, currentDate)
+				.replace(/{CURRENT_YEAR}/g, currentYear);
+
+			const extractionResult = await generateWithThoughts<PersonLookupResponse>(
+				extractionPrompt,
+				{
+					systemInstruction: extractionSystemPrompt,
+					temperature: 0.2,
+					thinkingLevel: 'medium' as const,
+					maxOutputTokens: 65536
+				},
+				streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
+			);
+
+			const rawText = extractionResult.rawText || '{}';
 			const lookupExtraction = extractJsonFromGroundingResponse<PersonLookupResponse>(rawText);
 
 			if (!isSuccessfulExtraction(lookupExtraction)) {
-				console.error('[gemini-provider] Phase 2 JSON extraction failed:', {
+				console.error('[gemini-provider] Step D JSON extraction failed:', {
 					error: lookupExtraction.error,
 					rawTextLength: rawText.length,
 					rawTextHead: rawText.slice(0, 200),
@@ -535,17 +480,15 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			}
 
 			const data = lookupExtraction.data;
-			console.log('[gemini-provider] Phase 2 complete:', {
+			console.log('[gemini-provider] Step D complete:', {
 				candidatesFound: data.decision_makers?.length || 0,
-				hasGroundingMetadata: !!groundingMetadata,
-				groundingChunks: groundingMetadata?.groundingChunks?.length || 0
+				pagesUsed: pageContents.length
 			});
 
-			// Process decision-makers with verified sources from grounding metadata
+			// Process decision-makers with content-based email verification
 			const processed = this.processDecisionMakers(
 				data.decision_makers || [],
-				rawText,
-				groundingMetadata
+				pageContents
 			);
 
 			const latencyMs = Date.now() - startTime;
@@ -572,13 +515,39 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				names: processed.map((dm) => dm.name)
 			});
 
+			// Calculate email grounding stats
+			const withEmail = processed.filter((dm) => dm.email);
+			const withGroundedEmail = processed.filter((dm) => dm.emailGrounded === true);
+			const withUngroundedEmail = withEmail.filter((dm) => dm.emailGrounded === false);
+
+			console.log(`[gemini-provider] Email grounding summary:`, {
+				total: processed.length,
+				withEmail: withEmail.length,
+				groundedEmails: withGroundedEmail.length,
+				ungroundedEmails: withUngroundedEmail.length
+			});
+
+			// CRITICAL: Only return decision-makers with VERIFIED emails
+			// No grounded email = not shown to users
+			const filtered = processed.filter((dm) => dm.email && dm.emailGrounded === true);
+
+			console.log(`[gemini-provider] Filtered to ${filtered.length} decision-makers with verified emails`);
+			for (const dm of withUngroundedEmail) {
+				console.log(`[gemini-provider] Filtered out ${dm.name} - email not grounded: ${dm.email}`);
+			}
+			for (const dm of processed.filter((dm) => !dm.email)) {
+				console.log(`[gemini-provider] Filtered out ${dm.name} - no email found`);
+			}
+
 			streaming?.onPhase?.(
 				'complete',
-				`Found ${processed.length} decision-makers with verified contact info`
+				filtered.length > 0
+					? `Found ${filtered.length} decision-makers with verified contact information`
+					: `No decision-makers with verified email addresses found`
 			);
 
 			return {
-				decisionMakers: processed,
+				decisionMakers: filtered,
 				provider: this.name,
 				cacheHit: false,
 				latencyMs,
@@ -586,8 +555,9 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				metadata: {
 					rolesDiscovered: roles.length,
 					candidatesFound: data.decision_makers?.length || 0,
-					verified: processed.length,
-					withEmail: processed.filter((dm) => dm.email).length
+					verified: filtered.length,
+					withVerifiedEmail: filtered.length,
+					emailsFilteredOut: withUngroundedEmail.length
 				}
 			};
 		} catch (error) {
@@ -605,225 +575,108 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	/**
 	 * Process candidates into ProcessedDecisionMaker format.
 	 *
-	 * CRITICAL: Uses grounding metadata for verified source URLs instead of
-	 * trusting LLM-generated URLs which may be hallucinated.
+	 * Uses content-based verification: checks if email appears verbatim
+	 * in any of the fetched page contents from Exa.
 	 *
 	 * @param candidates - Raw candidates from LLM response
-	 * @param rawText - Raw response text for entity position matching
-	 * @param groundingMetadata - Grounding metadata with verified URLs
+	 * @param pageContents - Fetched page contents from Exa
 	 */
 	private processDecisionMakers(
 		candidates: Candidate[],
-		rawText: string,
-		groundingMetadata?: GroundingMetadata
+		pageContents: ExaPageContent[]
 	): ProcessedDecisionMaker[] {
 		return candidates
-			.filter((c) => c.email && c.reasoning && c.recency_check)
+			.filter((c) => c.reasoning && c.recency_check)
 			.map((candidate) => {
-				// Get VERIFIED source URL from grounding metadata
-				// This prevents hallucinated URLs by only using URLs that Gemini's
-				// Google Search actually retrieved and cited
-				let verifiedSource = '';
+				const hasEmail = candidate.email &&
+					candidate.email !== 'NO_EMAIL_FOUND' &&
+					candidate.email.toUpperCase() !== 'NO_EMAIL_FOUND' &&
+					candidate.email.includes('@');
 
-				if (groundingMetadata && rawText) {
-					// Search for this person's name, title, and org in the response text
-					// to find which grounding chunks support mentions of them
-					const searchTerms = [
-						candidate.name,
-						candidate.title,
-						candidate.organization,
-						candidate.email // Email mentions are strong signals
-					].filter(Boolean);
+				// ================================================================
+				// Content-based email verification
+				// Much simpler than grounding segment analysis: check if email
+				// appears verbatim in any of the fetched page contents
+				// ================================================================
+				let emailGrounded = false;
+				let emailSource: string | undefined;
+				let emailSourceTitle: string | undefined;
 
-					verifiedSource = findBestGroundedSource(searchTerms, rawText, groundingMetadata);
+				if (hasEmail) {
+					const emailLower = candidate.email.toLowerCase();
 
-					if (verifiedSource) {
-						console.log(`[gemini-provider] Verified source for ${candidate.name}: ${verifiedSource}`);
+					// First: check the LLM-reported email_source page
+					if (candidate.email_source) {
+						const sourcePage = pageContents.find(p => p.url === candidate.email_source);
+						if (sourcePage?.text.toLowerCase().includes(emailLower)) {
+							emailGrounded = true;
+							emailSource = sourcePage.url;
+							emailSourceTitle = sourcePage.title;
+						}
+					}
+
+					// Second: if not found in reported source, check all pages
+					if (!emailGrounded) {
+						for (const page of pageContents) {
+							if (page.text.toLowerCase().includes(emailLower)) {
+								emailGrounded = true;
+								emailSource = page.url;
+								emailSourceTitle = page.title;
+								break;
+							}
+						}
+					}
+
+					if (emailGrounded) {
+						console.log(`[gemini-provider] ✓ Email VERIFIED for ${candidate.name}: ${candidate.email} from ${emailSource}`);
 					} else {
-						console.log(`[gemini-provider] No grounded source found for ${candidate.name}, using LLM-provided URL as fallback`);
+						console.log(`[gemini-provider] ✗ Email NOT verified for ${candidate.name}: ${candidate.email} (not found in page content)`);
 					}
 				}
 
-				// Fallback to LLM-provided URL only if grounding didn't find anything
-				// This may be hallucinated but is better than nothing
-				const finalSource = verifiedSource || candidate.source_url || '';
-				const sourceNote = verifiedSource
-					? '(verified via Google Search grounding)'
-					: candidate.source_url
-						? '(LLM-provided, not verified)'
-						: '(no source available)';
+				// Person source URL — use the LLM-reported email_source or first page mentioning them
+				let verifiedPersonSource = '';
+				if (emailSource) {
+					verifiedPersonSource = emailSource;
+				} else if (candidate.email_source) {
+					verifiedPersonSource = candidate.email_source;
+				}
+
+				// Build provenance with clear verification status
+				const personSourceNote = verifiedPersonSource
+					? `Person verified via: ${verifiedPersonSource}`
+					: 'Person source: from search results';
+
+				const emailStatusNote = !hasEmail
+					? 'Email: Not found in retrieved pages'
+					: emailGrounded
+						? `Email VERIFIED in page content: ${emailSource}`
+						: `Email NOT VERIFIED (not found verbatim in any retrieved page)`;
+
+				const provenance = [
+					candidate.reasoning,
+					'',
+					personSourceNote,
+					emailStatusNote,
+					'',
+					candidate.recency_check
+				].join('\n');
 
 				return {
 					name: candidate.name,
 					title: candidate.title,
 					organization: candidate.organization,
-					email: candidate.email,
+					email: hasEmail ? candidate.email : undefined,
 					reasoning: candidate.reasoning,
-					source: finalSource,
-					provenance: `${candidate.reasoning}\n\nSource: ${finalSource} ${sourceNote}\n${candidate.recency_check}`,
+					source: verifiedPersonSource || '',
+					provenance,
 					isAiResolved: true,
 					recencyCheck: candidate.recency_check,
-					powerLevel: 'primary' as const
+					emailGrounded: hasEmail ? emailGrounded : undefined,
+					emailSource: emailGrounded ? emailSource : undefined,
+					emailSourceTitle: emailGrounded ? emailSourceTitle : undefined
 				};
 			});
 	}
 
-	// ========================================================================
-	// Lightweight Verification Mode
-	// ========================================================================
-
-	/**
-	 * Verify existing decision-makers are still in their positions.
-	 *
-	 * This is a LIGHTWEIGHT operation (5-10s) compared to full research (30-60s).
-	 * Uses gemini-3-flash-preview with Google Search grounding to quickly verify currency.
-	 *
-	 * Use cases:
-	 * - Verifying Firecrawl results before sending campaigns
-	 * - Periodic refresh of cached decision-maker data
-	 * - Quick check before re-using stale data
-	 *
-	 * @param decisionMakers - Existing decision-makers to verify
-	 * @returns Array of verification results with status and confidence
-	 */
-	async verifyDecisionMakers(
-		decisionMakers: DecisionMakerToVerify[]
-	): Promise<VerificationResult[]> {
-		const startTime = Date.now();
-
-		console.log('[gemini-provider] Starting lightweight verification...');
-		console.log('[gemini-provider] Verifying:', decisionMakers.length, 'decision-makers');
-
-		if (decisionMakers.length === 0) {
-			return [];
-		}
-
-		try {
-			const ai = getGeminiClient();
-
-			// Build the verification prompt
-			const now = new Date();
-			const currentDate = now.toLocaleDateString('en-US', {
-				year: 'numeric',
-				month: 'long',
-				day: 'numeric'
-			});
-
-			const systemPrompt = VERIFICATION_SYSTEM_PROMPT.replace('{CURRENT_DATE}', currentDate);
-
-			// Build a compact list of people to verify
-			const verificationList = decisionMakers
-				.map(
-					(dm) =>
-						`- ID: "${dm.id}" | Name: ${dm.name} | Title: ${dm.title} | Organization: ${dm.organization}`
-				)
-				.join('\n');
-
-			const userPrompt = `Verify whether these people still hold their stated positions as of ${currentDate}:
-
-${verificationList}
-
-For each person, search for recent news and verify their current status.`;
-
-			// Use gemini-3-flash-preview for lightweight verification
-			const config: GenerateContentConfig = {
-				temperature: 0.1, // Low temperature for factual verification
-				maxOutputTokens: 8192, // Much smaller than full research
-				systemInstruction: systemPrompt,
-				tools: [{ googleSearch: {} }] // Enable grounding for real-time search
-			};
-
-			console.log('[gemini-provider] Calling gemini-3-flash-preview for verification with grounding...');
-
-			const response = await ai.models.generateContent({
-				model: GEMINI_CONFIG.model, // Use consistent model from config
-				contents: userPrompt,
-				config
-			});
-
-			const rawText = response.text || '{}';
-			const extraction = extractJsonFromGroundingResponse<VerificationResponse>(rawText);
-
-			if (!isSuccessfulExtraction(extraction)) {
-				console.error('[gemini-provider] Verification JSON extraction failed:', {
-					error: extraction.error,
-					rawTextLength: rawText.length,
-					rawTextHead: rawText.slice(0, 200)
-				});
-
-				// Return unverified results with low confidence on parse failure
-				return decisionMakers.map((dm) => ({
-					decisionMakerId: dm.id,
-					verified: false,
-					confidence: 0,
-					lastCheckedAt: now,
-					notes: 'Verification failed: unable to parse response'
-				}));
-			}
-
-			const verifications = extraction.data?.verifications || [];
-			const latencyMs = Date.now() - startTime;
-
-			console.log('[gemini-provider] Verification complete in', latencyMs, 'ms');
-			console.log('[gemini-provider] Results:', verifications.length);
-
-			// Map responses back to VerificationResult format
-			const results: VerificationResult[] = decisionMakers.map((dm) => {
-				const verification = verifications.find((v) => v.id === dm.id);
-
-				if (verification) {
-					return {
-						decisionMakerId: dm.id,
-						verified: verification.still_in_position,
-						confidence: Math.max(0, Math.min(1, verification.confidence)), // Clamp 0-1
-						verificationSource: verification.source_url,
-						lastCheckedAt: now,
-						notes: verification.notes
-					};
-				}
-
-				// Fallback for missing verifications
-				return {
-					decisionMakerId: dm.id,
-					verified: false,
-					confidence: 0,
-					lastCheckedAt: now,
-					notes: 'No verification data returned for this person'
-				};
-			});
-
-			// Log summary
-			const verified = results.filter((r) => r.verified).length;
-			const highConfidence = results.filter((r) => r.confidence >= 0.8).length;
-			console.log('[gemini-provider] Verification summary:', {
-				total: results.length,
-				verified,
-				unverified: results.length - verified,
-				highConfidence,
-				latencyMs
-			});
-
-			return results;
-		} catch (error) {
-			console.error('[gemini-provider] Verification error:', error);
-
-			// Return failed results rather than throwing
-			const now = new Date();
-			return decisionMakers.map((dm) => ({
-				decisionMakerId: dm.id,
-				verified: false,
-				confidence: 0,
-				lastCheckedAt: now,
-				notes: `Verification error: ${error instanceof Error ? error.message : String(error)}`
-			}));
-		}
-	}
-
-	/**
-	 * Verify a single decision-maker (convenience method)
-	 */
-	async verifySingleDecisionMaker(decisionMaker: DecisionMakerToVerify): Promise<VerificationResult> {
-		const results = await this.verifyDecisionMakers([decisionMaker]);
-		return results[0];
-	}
 }

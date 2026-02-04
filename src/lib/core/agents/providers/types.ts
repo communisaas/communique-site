@@ -2,35 +2,25 @@
  * Decision-Maker Provider Architecture
  *
  * Abstraction layer for pluggable decision-maker resolution strategies.
- * Enables routing between Gemini (Google Search grounding) and Firecrawl
- * (structured corporate data) based on target type.
+ * Currently uses Gemini + Exa Search for all target types.
  */
 
 import type { ProcessedDecisionMaker } from '$lib/types/template';
-import type { StreamingCallbacks, PipelinePhase } from '../agents/decision-maker';
-import type { CompositeThoughtEmitter } from '$lib/core/thoughts/composite-emitter';
 
 // ============================================================================
 // Target Types
 // ============================================================================
 
 /**
- * Categories of decision-making power structures
- * Routes to appropriate provider for research strategy
+ * Target type for decision-maker resolution.
  *
- * NOTE: This is more specific than the clarification TargetType
- * which has broader categories (government | corporate | institutional | other)
+ * Open-ended string — Gemini + Exa Search can research
+ * any kind of organization or power structure. Common values include
+ * 'congress', 'state_legislature', 'local_government', 'corporate',
+ * 'nonprofit', 'education', 'healthcare', 'labor', 'media', but
+ * any descriptive string is accepted.
  */
-export type DecisionMakerTargetType =
-	| 'congress'
-	| 'state_legislature'
-	| 'local_government'
-	| 'corporate'
-	| 'nonprofit'
-	| 'education'
-	| 'healthcare'
-	| 'labor'
-	| 'media';
+export type DecisionMakerTargetType = string;
 
 /**
  * Alias for backward compatibility with imports
@@ -57,6 +47,28 @@ export interface GeographicScope {
 	district?: string;
 	/** Display name for UI (e.g., "San Francisco, CA") */
 	displayName?: string;
+}
+
+// ============================================================================
+// Streaming Callbacks
+// ============================================================================
+
+/**
+ * Streaming callbacks for provider progress updates.
+ * Used by providers to emit real-time thoughts, phase changes, and progress.
+ */
+export interface StreamingCallbacks {
+	/** Emitted for model reasoning thoughts */
+	onThought?: (thought: string, phase: string) => void;
+	/** Emitted when entering a new phase */
+	onPhase?: (phase: string, message: string) => void;
+	/** Emitted for progress updates (e.g., verification progress) */
+	onProgress?: (progress: {
+		current?: number;
+		total?: number;
+		status?: string;
+		candidateName?: string;
+	}) => void;
 }
 
 // ============================================================================
@@ -94,13 +106,6 @@ export interface ResolveContext {
 
 	/** Streaming callbacks for progress updates */
 	streaming?: StreamingCallbacks;
-
-	/**
-	 * CompositeThoughtEmitter for two-phase streaming (Discovery + Verification).
-	 * When provided, the composite provider will use this instead of raw callbacks,
-	 * enabling proper phase state machine, confidence tracking, and verification boost.
-	 */
-	compositeEmitter?: CompositeThoughtEmitter;
 }
 
 // ============================================================================
@@ -146,12 +151,16 @@ export interface DecisionMakerProvider {
 	/** Provider name for logging and routing */
 	readonly name: string;
 
-	/** Target types this provider can handle */
-	readonly supportedTargetTypes: readonly DecisionMakerTargetType[];
+	/**
+	 * Informational only — not used for routing.
+	 * Kept for backward compatibility; may be empty.
+	 */
+	readonly supportedTargetTypes: readonly string[];
 
 	/**
-	 * Check if this provider can resolve the given context
-	 * Allows for dynamic capability checks beyond just target type
+	 * Check if this provider can resolve the given context.
+	 * This is the sole gate for provider selection — target type
+	 * is treated as an open string passed through to the model.
 	 */
 	canResolve(context: ResolveContext): boolean;
 
@@ -185,12 +194,4 @@ export interface RouterOptions {
 	preferredProvider?: string;
 	/** Maximum resolution time before timeout (ms) */
 	timeoutMs?: number;
-	/**
-	 * Force legacy split routing (Gemini for gov, Firecrawl for org).
-	 * @deprecated Use the new composite provider architecture instead.
-	 * The composite provider handles both target types with intelligent
-	 * strategy selection and fallback. This flag exists only for
-	 * backward compatibility and will be removed in a future version.
-	 */
-	useLegacyRouting?: boolean;
 }

@@ -4,33 +4,22 @@
  * POST /api/agents/stream-decision-makers
  *
  * Returns Server-Sent Events (SSE) stream with:
- * - segment: ThoughtSegment objects (v2 format, default)
- * - phase: Pipeline phase changes (v1 legacy format)
- * - thought: Agent reasoning (v1 legacy format)
- * - progress: Enrichment progress (v1 legacy format)
- * - complete: Final result with decision-makers
+ * - segment: ThoughtSegment objects for real-time reasoning display
+ * - complete: Final result with verified decision-makers
  * - error: Error message if resolution fails
  *
- * Version Support:
- * - v2 (default): Emits structured ThoughtSegments with citations and progressive disclosure
- * - v1 (legacy): Emits raw text thoughts for backward compatibility
- *
- * Set `?version=v1` query param to use legacy format.
- *
- * Perceptual Engineering: Users see the agent's actual research process,
- * building trust through transparency. Real thoughts replace marketing fluff.
+ * All emails are verified against grounded sources. Unverified emails are filtered out.
  *
  * Rate Limiting: BLOCKED for guests (quota = 0), 3/hour authenticated, 10/hour verified.
  */
 
 import type { RequestHandler } from './$types';
-import { resolveDecisionMakers, type PipelinePhase } from '$lib/core/agents/agents/decision-maker';
-import { resolveDecisionMakersV2 } from '$lib/core/agents/agents/decision-maker-v2';
-import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
+import { resolveDecisionMakers } from '$lib/core/agents/agents';
 import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
 import type { ThoughtSegment } from '$lib/core/thoughts/types';
 import {
 	enforceLLMRateLimit,
+	rateLimitResponse,
 	addRateLimitHeaders,
 	getUserContext,
 	logLLMOperation
@@ -41,19 +30,18 @@ interface RequestBody {
 	core_message: string;
 	topics: string[];
 	voice_sample?: string;
-	url_slug?: string;
-	target_type?: string; // Optional: specific target type for v2
-	target_entity?: string; // Optional: specific entity name for v2
+	target_type?: string;
+	target_entity?: string;
 }
 
 export const POST: RequestHandler = async (event) => {
-	// Rate limit check - throws 429 if exceeded
-	// CRITICAL: Guests are blocked (quota = 0) - this is the most expensive operation
 	const rateLimitCheck = await enforceLLMRateLimit(event, 'decision-makers');
+	if (!rateLimitCheck.allowed) {
+		return rateLimitResponse(rateLimitCheck);
+	}
 	const userContext = getUserContext(event);
 	const startTime = Date.now();
 
-	// Parse and validate request
 	let body: RequestBody;
 	try {
 		body = (await event.request.json()) as RequestBody;
@@ -64,7 +52,7 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	const { subject_line, core_message, topics, voice_sample, url_slug } = body;
+	const { subject_line, core_message, topics, voice_sample } = body;
 
 	if (!subject_line?.trim()) {
 		return new Response(JSON.stringify({ error: 'Subject line is required' }), {
@@ -89,136 +77,62 @@ export const POST: RequestHandler = async (event) => {
 
 	const userId = event.locals.session?.userId || 'guest';
 
-	// Check for version parameter (default to v2)
-	const url = new URL(event.request.url);
-	const version = url.searchParams.get('version') || 'v2';
-	const useV2 = version === 'v2';
-
-	console.log('[stream-decision-makers] Starting streaming resolution:', {
+	console.log('[stream-decision-makers] Starting resolution:', {
 		userId,
-		version,
 		subject: subject_line.substring(0, 50),
 		topics,
 		targetType: body.target_type,
 		targetEntity: body.target_entity
 	});
 
-	// Create SSE stream
 	const { stream, emitter } = createSSEStream();
 
-	// Run resolution in background (stream is returned immediately)
 	(async () => {
 		try {
-			let result;
+			const context = {
+				targetType: body.target_type || 'local_government',
+				targetEntity: body.target_entity,
+				subjectLine: subject_line,
+				coreMessage: core_message,
+				topics,
+				voiceSample: voice_sample
+			};
 
-			if (useV2) {
-				// ================================================================
-				// V2 Flow: ThoughtStream with structured segments
-				// ================================================================
+			const result = await resolveDecisionMakers(context, (segment: ThoughtSegment) => {
+				emitter.send('segment', segment);
+			});
 
-				// Build resolution context
-				const context = {
-					targetType: (body.target_type as any) || 'local_government',
-					targetEntity: body.target_entity,
-					subjectLine: subject_line,
-					coreMessage: core_message,
-					topics,
-					voiceSample: voice_sample
-				};
+			// Build response - source is the email source (verified)
+			const response = {
+				decision_makers: result.decisionMakers.map((dm) => ({
+					name: dm.name,
+					title: dm.title,
+					organization: dm.organization,
+					email: dm.email || '',
+					reasoning: dm.reasoning,
+					sourceUrl: dm.emailSource || dm.source || '',
+					sourceTitle: dm.emailSourceTitle || '',
+					provenance: dm.provenance
+				})),
+				research_summary: result.researchSummary || 'Decision-makers resolved successfully.',
+				pipeline_stats: {
+					candidates_found: result.decisionMakers.length,
+					verified_emails: result.decisionMakers.filter((dm) => dm.email).length,
+					total_latency_ms: result.latencyMs
+				}
+			};
 
-				// Resolve with ThoughtEmitter
-				result = await resolveDecisionMakersV2(context, (segment: ThoughtSegment) => {
-					// Emit segment as SSE
-					emitter.send('segment', segment);
-				});
-
-				// Convert to legacy format for final result
-				const legacyResult = {
-					decision_makers: result.decisionMakers.map((dm) => ({
-						name: dm.name,
-						title: dm.title,
-						organization: dm.organization,
-						email: dm.email || '',
-						reasoning: dm.reasoning,
-						sourceUrl: dm.source || '',
-						emailSource: dm.source || '',
-						confidence: 0.8,
-						contactChannel: 'email' as const,
-						provenance: dm.provenance
-					})),
-					research_summary: result.researchSummary || 'Decision-makers resolved successfully.',
-					pipeline_stats: {
-						candidates_found: result.decisionMakers.length,
-						enrichments_succeeded: result.decisionMakers.filter((dm) => dm.email).length,
-						validations_passed: result.decisionMakers.length,
-						total_latency_ms: result.latencyMs
-					}
-				};
-
-				emitter.complete(legacyResult);
-			} else {
-				// ================================================================
-				// V1 Flow: Legacy text streaming (backward compatibility)
-				// ================================================================
-
-				const legacyResult = await resolveDecisionMakers({
-					subjectLine: subject_line,
-					coreMessage: core_message,
-					topics,
-					voiceSample: voice_sample,
-					urlSlug: url_slug,
-					streaming: {
-						onPhase: (phase: PipelinePhase, message: string) => {
-							emitter.send('phase', { phase, message });
-						},
-						onThought: (thought: string, phase: PipelinePhase) => {
-							// Clean thought for display
-							const cleaned = cleanThoughtForDisplay(thought);
-							if (cleaned) {
-								emitter.send('thought', { content: cleaned, phase });
-							}
-						},
-						onProgress: (progress) => {
-							emitter.send('progress', {
-								current: progress.current,
-								total: progress.total,
-								name: progress.candidateName,
-								status: progress.status
-							});
-						}
-					}
-				});
-
-				emitter.complete(legacyResult);
-				result = {
-					decisionMakers: legacyResult.decision_makers.map((dm) => ({
-						name: dm.name,
-						title: dm.title,
-						organization: dm.organization,
-						email: dm.email,
-						reasoning: dm.reasoning,
-						source: dm.sourceUrl,
-						provenance: dm.provenance || '',
-						isAiResolved: true,
-						powerLevel: 'primary' as const
-					})),
-					provider: 'legacy',
-					cacheHit: false,
-					latencyMs: legacyResult.pipeline_stats?.total_latency_ms || 0
-				};
-			}
+			emitter.complete(response);
 
 			const latencyMs = Date.now() - startTime;
 
-			// Log success
 			console.log('[stream-decision-makers] Resolution complete:', {
 				userId,
-				version,
 				count: result.decisionMakers.length,
+				withEmail: result.decisionMakers.filter((dm) => dm.email).length,
 				latencyMs
 			});
 
-			// Log operation for cost tracking (2 Gemini calls: role discovery + person lookup)
 			logLLMOperation('decision-makers', userContext, {
 				callCount: 2,
 				durationMs: latencyMs,
@@ -237,4 +151,3 @@ export const POST: RequestHandler = async (event) => {
 
 	return new Response(stream, { headers });
 };
-

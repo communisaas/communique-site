@@ -23,6 +23,9 @@ export type GeoScope =
 			displayName?: string;
 	  };
 
+// Import clarification types (needed locally for SubjectStreamEvent)
+import type { SubjectLineResponseWithClarification as _SubjectLineResponseWithClarification } from './types/clarification';
+
 // Re-export clarification types
 export type {
 	GeographicScope,
@@ -53,31 +56,22 @@ export interface DecisionMaker {
 	organization: string;
 	email: string; // REQUIRED - guaranteed present after pipeline
 	reasoning: string;
-	sourceUrl: string; // Identity verification source
-	emailSource: string; // Email verification source
+	sourceUrl: string; // Identity/person verification source
+	emailSource: string; // Email-specific verification source
+	emailGrounded: boolean; // true = email found verbatim in search results
+	emailSourceTitle?: string; // Title of page where email was found
 	confidence: number;
-	contactChannel: ContactChannel;
+	contactChannel: string;
 	// Legacy field for backward compatibility (deprecated)
 	provenance?: string;
 	source_url?: string;
-}
-
-export interface DecisionMakerResponse {
-	decision_makers: DecisionMaker[];
-	research_summary?: string;
-	pipeline_stats?: {
-		candidates_found: number;
-		enrichments_succeeded: number;
-		validations_passed: number;
-		total_latency_ms: number;
-	};
 }
 
 export interface Source {
 	num: number;
 	title: string;
 	url: string;
-	type: 'journalism' | 'research' | 'government' | 'legal' | 'advocacy';
+	type: 'journalism' | 'research' | 'government' | 'legal' | 'advocacy' | 'other';
 }
 
 export interface MessageResponse {
@@ -91,6 +85,10 @@ export interface MessageResponse {
 // Grounding Metadata
 // ============================================================================
 
+/**
+ * @deprecated Google Search grounding specific. The Exa-backed pipeline uses
+ * content-based verification instead of grounding metadata.
+ */
 export interface GroundingMetadata {
 	webSearchQueries?: string[];
 	groundingChunks?: Array<{
@@ -187,42 +185,7 @@ export interface StreamResultWithThoughts<T = unknown> {
 export type SubjectStreamEvent =
 	| { type: 'thought'; content: string }
 	| { type: 'partial'; content: string }
-	| { type: 'clarification'; data: SubjectLineResponseWithClarification }
-	| { type: 'complete'; data: SubjectLineResponseWithClarification }
+	| { type: 'clarification'; data: _SubjectLineResponseWithClarification }
+	| { type: 'complete'; data: _SubjectLineResponseWithClarification }
 	| { type: 'error'; message: string };
 
-// ============================================================================
-// Decision-Maker Pipeline Types
-// ============================================================================
-
-export type ContactChannel = 'email' | 'form' | 'phone' | 'congress' | 'other';
-
-export interface DecisionMakerCandidate {
-	name: string;
-	title: string;
-	organization: string;
-	reasoning: string;
-	sourceUrl: string;
-	confidence: number;
-	contactChannel?: ContactChannel;
-}
-
-export interface EnrichedDecisionMaker extends DecisionMakerCandidate {
-	email?: string;
-	emailSource?: string;
-	emailConfidence?: number;
-	enrichmentStatus: 'success' | 'not_found' | 'timeout' | 'error';
-	enrichmentAttempts: number;
-}
-
-export interface ValidatedDecisionMaker {
-	name: string;
-	title: string;
-	organization: string;
-	email: string; // REQUIRED - guaranteed present
-	reasoning: string;
-	sourceUrl: string;
-	emailSource: string;
-	confidence: number;
-	contactChannel: ContactChannel;
-}
