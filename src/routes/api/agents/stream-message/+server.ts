@@ -24,6 +24,7 @@ import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
 import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
 import {
 	enforceLLMRateLimit,
+	rateLimitResponse,
 	addRateLimitHeaders,
 	getUserContext,
 	logLLMOperation
@@ -46,8 +47,10 @@ interface RequestBody {
 }
 
 export const POST: RequestHandler = async (event) => {
-	// Rate limit check - throws 429 if exceeded (also blocks guests)
 	const rateLimitCheck = await enforceLLMRateLimit(event, 'message-generation');
+	if (!rateLimitCheck.allowed) {
+		return rateLimitResponse(rateLimitCheck);
+	}
 	const userContext = getUserContext(event);
 	const startTime = Date.now();
 

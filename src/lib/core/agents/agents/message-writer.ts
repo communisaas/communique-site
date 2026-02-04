@@ -184,58 +184,66 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 		.map((dm) => `- ${dm.name}, ${dm.title} at ${dm.organization}`)
 		.join('\n');
 
-	// Build voice context block if available
-	const voiceBlock =
-		options.voiceSample || options.rawInput
-			? `
-## Original Voice
-
-${options.voiceSample ? `Voice Sample (emotional peak):\n"${options.voiceSample}"\n` : ''}${options.rawInput ? `Raw Input (full texture):\n"${options.rawInput}"\n` : ''}
-Channel this voice. The message should feel like it came from this person.
-`
-			: '';
-
 	// Build temporal context
-	const currentDate = new Date().toISOString().split('T')[0];
-	const temporalContext = `## Temporal Context
+	const currentDate = new Date().toLocaleDateString('en-US', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
 
-Today is ${currentDate}.`;
+	// Inject current date into system prompt
+	const systemPrompt = MESSAGE_WRITER_PROMPT.replace('{CURRENT_DATE}', currentDate);
 
 	// Format verified sources for the prompt
 	const sourcesBlock = formatSourcesForPrompt(verifiedSources);
 
-	// Construct the prompt with verified sources
-	const prompt = `${temporalContext}
+	// Build the voice block — this is the emotional core to mine
+	const voiceBlock =
+		options.voiceSample || options.rawInput
+			? `## THE HUMAN VOICE
 
-${sourcesBlock}
+${options.rawInput ? `What they wrote:\n"${options.rawInput}"\n` : ''}
+${options.voiceSample ? `The emotional peak:\n"${options.voiceSample}"\n` : ''}
+Find the specific trigger in these words. Build around what made them actually feel something.`
+			: '';
 
-Write a compelling message about this issue:
+	// Construct the user prompt — framed for emotional archaeology, not checklist
+	const prompt = `${sourcesBlock}
+
+## THE ISSUE
 
 Subject: ${subjectLine}
 Core Message: ${coreMessage}
 Topics: ${topics.join(', ')}
-
-Decision-makers to address:
-${decisionMakerList}
 ${voiceBlock}
-Write a message that:
-1. States the problem using ONLY the verified sources above
-2. Cites sources using [1], [2], [3] notation matching the source numbers
-3. Makes a clear, actionable ask
-4. Maintains a respectful but firm tone
-5. Includes geographic_scope identifying where this issue is relevant
 
-CRITICAL: Only cite sources from the verified list above. Use exact URLs as provided.`;
+## DECISION-MAKERS
+
+These are the specific people who will receive this message:
+${decisionMakerList}
+
+Make them feel the presence of real constituents behind this — people with real experiences who are watching and will remember.
+
+## YOUR TASK
+
+Find the emotional truth in the input above. Build a message that:
+- Opens with the human experience, not context-setting
+- Places [Personal Connection] where testimony amplifies the feeling
+- Uses ONLY the verified sources above (cite as [1], [2], etc.)
+- Makes a clear, concrete ask these specific decision-makers can act on
+
+The stranger who shares this link should think "I need to send that too." Every sender should feel "this is exactly what I wanted to say."`;
 
 	console.log('[message-writer] Phase 2: Generating message with verified sources...');
 
 	// Generate WITHOUT grounding — we already have verified sources
 	// This prevents the model from hallucinating additional URLs
+	// Temperature 0.7: creative latitude for emotional resonance (matches subject-line)
 	const result = await generateWithThoughts<MessageResponse>(
 		prompt,
 		{
-			systemInstruction: MESSAGE_WRITER_PROMPT,
-			temperature: 0.4,
+			systemInstruction: systemPrompt,
+			temperature: 0.7,
 			thinkingLevel: 'high',
 			enableGrounding: false, // Disabled — using pre-verified sources
 			maxOutputTokens: 65536 // Maximum for Gemini 2.5+ to prevent truncation
