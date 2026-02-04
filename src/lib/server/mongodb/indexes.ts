@@ -7,82 +7,9 @@
 
 import type { CreateIndexesOptions } from 'mongodb';
 import {
-	getOrganizationsCollection,
 	getIntelligenceCollection,
-	getDecisionMakerCacheCollection,
 	getParsedDocumentsCollection
 } from './collections';
-
-/**
- * Create all indexes for the Organizations collection
- */
-async function ensureOrganizationIndexes(): Promise<void> {
-	const collection = await getOrganizationsCollection();
-
-	console.log('[MongoDB Indexes] Creating organization indexes...');
-
-	// TTL index - automatically delete expired documents
-	await collection.createIndex(
-		{ expiresAt: 1 },
-		{
-			expireAfterSeconds: 0,
-			name: 'ttl_expiresAt'
-		} as CreateIndexesOptions
-	);
-
-	// Unique index on normalized name for fast lookups
-	await collection.createIndex(
-		{ normalizedName: 1 },
-		{
-			unique: true,
-			name: 'unique_normalizedName'
-		} as CreateIndexesOptions
-	);
-
-	// Index on website for lookups
-	await collection.createIndex(
-		{ website: 1 },
-		{
-			name: 'idx_website'
-		} as CreateIndexesOptions
-	);
-
-	// Compound index for filtering by source and date
-	await collection.createIndex(
-		{ source: 1, createdAt: -1 },
-		{
-			name: 'idx_source_createdAt'
-		} as CreateIndexesOptions
-	);
-
-	// Text index for full-text search
-	await collection.createIndex(
-		{
-			name: 'text',
-			about: 'text',
-			'leadership.name': 'text',
-			'leadership.title': 'text'
-		},
-		{
-			name: 'idx_text_search',
-			weights: {
-				name: 10,
-				about: 5,
-				'leadership.name': 3,
-				'leadership.title': 2
-			}
-		} as CreateIndexesOptions
-	);
-
-	// Vector search index will be created separately via Atlas UI
-	// as it requires specific Atlas Search configuration
-	// Index name: vector_search_organizations
-	// Field: embedding
-	// Dimensions: 1024 (Voyage AI)
-	// Similarity: cosine
-
-	console.log('[MongoDB Indexes] Organization indexes created');
-}
 
 /**
  * Create all indexes for the Intelligence collection
@@ -168,59 +95,6 @@ async function ensureIntelligenceIndexes(): Promise<void> {
 }
 
 /**
- * Create all indexes for the Decision Maker Cache collection
- */
-async function ensureDecisionMakerCacheIndexes(): Promise<void> {
-	const collection = await getDecisionMakerCacheCollection();
-
-	console.log('[MongoDB Indexes] Creating decision maker cache indexes...');
-
-	// TTL index - automatically delete expired documents
-	await collection.createIndex(
-		{ expiresAt: 1 },
-		{
-			expireAfterSeconds: 0,
-			name: 'ttl_expiresAt'
-		} as CreateIndexesOptions
-	);
-
-	// Unique index on query hash for deduplication
-	await collection.createIndex(
-		{ queryHash: 1 },
-		{
-			unique: true,
-			name: 'unique_queryHash'
-		} as CreateIndexesOptions
-	);
-
-	// Compound index for cache lookups
-	await collection.createIndex(
-		{ targetType: 1, targetEntity: 1, topics: 1 },
-		{
-			name: 'idx_cache_lookup'
-		} as CreateIndexesOptions
-	);
-
-	// Index on hit count for cache eviction strategies
-	await collection.createIndex(
-		{ hitCount: -1, lastHitAt: -1 },
-		{
-			name: 'idx_hitCount_lastHitAt'
-		} as CreateIndexesOptions
-	);
-
-	// Index on provider
-	await collection.createIndex(
-		{ provider: 1 },
-		{
-			name: 'idx_provider'
-		} as CreateIndexesOptions
-	);
-
-	console.log('[MongoDB Indexes] Decision maker cache indexes created');
-}
-
-/**
  * Create all indexes for the Parsed Documents Cache collection
  */
 async function ensureParsedDocumentsIndexes(): Promise<void> {
@@ -295,9 +169,7 @@ export async function ensureAllIndexes(): Promise<void> {
 
 	try {
 		await Promise.all([
-			ensureOrganizationIndexes(),
 			ensureIntelligenceIndexes(),
-			ensureDecisionMakerCacheIndexes(),
 			ensureParsedDocumentsIndexes()
 		]);
 
@@ -318,17 +190,13 @@ export async function dropAllIndexes(): Promise<void> {
 	console.log('[MongoDB Indexes] Dropping all indexes...');
 
 	try {
-		const [orgs, intel, cache, parsedDocs] = await Promise.all([
-			getOrganizationsCollection(),
+		const [intel, parsedDocs] = await Promise.all([
 			getIntelligenceCollection(),
-			getDecisionMakerCacheCollection(),
 			getParsedDocumentsCollection()
 		]);
 
 		await Promise.all([
-			orgs.dropIndexes(),
 			intel.dropIndexes(),
-			cache.dropIndexes(),
 			parsedDocs.dropIndexes()
 		]);
 
@@ -343,19 +211,13 @@ export async function dropAllIndexes(): Promise<void> {
  * List all indexes for a collection (debugging utility)
  */
 export async function listCollectionIndexes(
-	collectionName: 'organizations' | 'intelligence' | 'decision_maker_cache' | 'parsed_documents'
+	collectionName: 'intelligence' | 'parsed_documents'
 ): Promise<void> {
 	let collection;
 
 	switch (collectionName) {
-		case 'organizations':
-			collection = await getOrganizationsCollection();
-			break;
 		case 'intelligence':
 			collection = await getIntelligenceCollection();
-			break;
-		case 'decision_maker_cache':
-			collection = await getDecisionMakerCacheCollection();
 			break;
 		case 'parsed_documents':
 			collection = await getParsedDocumentsCollection();

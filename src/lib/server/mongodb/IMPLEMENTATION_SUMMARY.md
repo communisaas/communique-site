@@ -109,7 +109,7 @@ The MongoDB Atlas integration layer has been fully implemented for Communique. T
 #### `/src/lib/server/mongodb/examples.ts` - Usage Examples
 - **Purpose**: Practical code examples for common scenarios
 - **Examples**:
-  - Caching organization profiles from Firecrawl
+  - Caching organization profiles
   - Storing news articles and intelligence
   - Caching decision maker lookups
   - Full user workflow example
@@ -173,10 +173,10 @@ The MongoDB Atlas integration layer has been fully implemented for Communique. T
 
 The MongoDB layer is ready to integrate with:
 
-1. **Firecrawl Provider** - Cache organization profiles
+1. **Organization Data** - Cache organization profiles
    ```typescript
    import { upsertOrganization } from '$lib/server/mongodb';
-   // After scraping org data from Firecrawl
+   // After gathering org data
    await upsertOrganization({ ... });
    ```
 
@@ -240,10 +240,9 @@ The MongoDB layer is ready to integrate with:
 1. Configure MongoDB Atlas network access
 2. Run initialization script
 3. Create vector search indexes via Atlas UI
-4. Integrate with Firecrawl provider
-5. Implement Voyage AI embedding generation
-6. Build Intelligence Orchestrator
-7. Create UI components
+4. Implement Voyage AI embedding generation
+5. Build Intelligence Orchestrator
+6. Create UI components
 
 ## Testing the Implementation
 
@@ -344,7 +343,7 @@ The MongoDB integration layer is **production-ready** and **fully type-safe**. I
 - Developer-friendly API
 
 Once MongoDB Atlas is configured, the system is ready to:
-1. Cache organization profiles from Firecrawl
+1. Cache organization profiles
 2. Store and query intelligence items
 3. Cache decision maker lookups
 4. Enable semantic search (with embeddings)

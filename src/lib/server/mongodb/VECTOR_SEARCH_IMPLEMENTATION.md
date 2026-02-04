@@ -279,7 +279,7 @@ Based on Voyage AI pricing (2026-01):
 When storing intelligence items:
 
 ```typescript
-// In FirecrawlNewsProvider.cacheItem()
+// In intelligence provider
 const embedding = await createEmbedding(`${item.title} ${item.snippet}`);
 await db.collection('intelligence').updateOne(
   { _id: item.id },
@@ -292,7 +292,7 @@ await db.collection('intelligence').updateOne(
 When caching organizations:
 
 ```typescript
-// In FirecrawlProvider.cacheOrganization()
+// In organization service
 const text = [org.name, org.about, org.industry].join(' ');
 const [embedding] = await createEmbedding(text);
 await db.collection('organizations').insertOne({

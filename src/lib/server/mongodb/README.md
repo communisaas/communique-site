@@ -6,7 +6,7 @@ This directory contains the MongoDB Atlas integration for Communique, providing 
 
 The MongoDB layer provides:
 
-1. **Organization Profile Caching** - Stores enriched organization profiles from Firecrawl
+1. **Organization Profile Caching** - Stores enriched organization profiles
 2. **Intelligence Storage** - News, legislative activity, and other intelligence items
 3. **Decision Maker Caching** - Optimized lookups for decision makers
 4. **Vector Search** - Semantic search using Voyage AI embeddings (1024 dimensions)
@@ -43,7 +43,7 @@ The client uses a singleton pattern with:
 
 ### 1. Organizations (`organizations`)
 
-Stores cached organization profiles from Firecrawl with leadership and policy positions.
+Stores cached organization profiles with leadership and policy positions.
 
 **Key Fields:**
 - `normalizedName` - Lowercase name for matching (unique index)

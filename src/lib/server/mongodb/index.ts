@@ -14,26 +14,17 @@ export {
 
 // Collection accessors
 export {
-	getOrganizationsCollection,
 	getIntelligenceCollection,
-	getDecisionMakerCacheCollection,
 	getParsedDocumentsCollection,
 	collectionAccessors
 } from './collections';
 
 // Schema types
 export type {
-	OrganizationDocument,
-	LeaderDocument,
-	PolicyPositionDocument,
-	OrganizationContactsDocument,
 	IntelligenceItemDocument,
 	IntelligenceCategory,
 	GeographicScope,
 	Sentiment,
-	DecisionMakerCacheDocument,
-	DecisionMakerDocument,
-	TargetType,
 	CollectionName,
 	ParsedDocumentCacheDocument
 } from './schema';
@@ -49,25 +40,14 @@ export {
 
 // Query builders
 export {
-	findOrganizationByName,
-	findOrganizationByWebsite,
-	searchOrganizations,
-	findOrganizationsByIndustry,
-	upsertOrganization,
 	queryIntelligence,
 	findIntelligenceByTopics,
 	findRecentIntelligence,
 	insertIntelligenceItem,
-	bulkInsertIntelligence,
-	findCachedDecisionMakers,
-	cacheDecisionMakers,
-	getCacheStatistics,
-	clearExpiredCache,
-	getPopularCacheEntries,
-	findOrganizationsInIntelligence
+	bulkInsertIntelligence
 } from './queries';
 
-export type { IntelligenceQueryOptions, CacheLookupParams } from './queries';
+export type { IntelligenceQueryOptions } from './queries';
 
 // Utility functions
 export {
@@ -92,9 +72,7 @@ export {
 // Service layer (recommended for application code)
 export {
 	MongoDBService,
-	OrganizationService,
-	IntelligenceService,
-	DecisionMakerCacheService
+	IntelligenceService
 } from './service';
 
 // Re-export default service as primary interface

@@ -8,18 +8,15 @@
 import { createEmbedding, rerankDocuments } from '../embeddings';
 import {
 	semanticSearchIntelligence,
-	semanticSearchOrganizations,
 	findSimilarIntelligence,
-	findSimilarOrganizations,
 	hybridSearchIntelligence
 } from './vector-search';
 import type {
 	VectorSearchOptions,
 	IntelligenceVectorFilters,
-	OrganizationVectorFilters,
 	VectorSearchResult
 } from './vector-search';
-import type { IntelligenceItemDocument, OrganizationDocument } from './schema';
+import type { IntelligenceItemDocument } from './schema';
 
 /**
  * Semantic Intelligence Search Service
@@ -199,196 +196,10 @@ export class SemanticIntelligenceService {
 }
 
 /**
- * Semantic Organization Search Service
- */
-export class SemanticOrganizationService {
-	/**
-	 * Search organizations by natural language description
-	 *
-	 * @example
-	 * const results = await SemanticOrganizationService.search(
-	 *   'healthcare nonprofits focused on rural communities',
-	 *   { industry: 'healthcare', limit: 5 }
-	 * );
-	 */
-	static async search(
-		query: string,
-		options: OrganizationVectorFilters & VectorSearchOptions = {}
-	): Promise<VectorSearchResult<OrganizationDocument>[]> {
-		return semanticSearchOrganizations(query, options, options);
-	}
-
-	/**
-	 * Find organizations with similar missions or policy positions
-	 *
-	 * @example
-	 * const similar = await SemanticOrganizationService.findSimilar(
-	 *   'aclu',
-	 *   { limit: 5, sameIndustryOnly: true }
-	 * );
-	 */
-	static async findSimilar(
-		orgId: string,
-		options: VectorSearchOptions & { sameIndustryOnly?: boolean } = {}
-	): Promise<VectorSearchResult<OrganizationDocument>[]> {
-		return findSimilarOrganizations(orgId, options);
-	}
-
-	/**
-	 * Find organizations matching a policy position description
-	 *
-	 * Useful for finding organizations that align with specific issues.
-	 *
-	 * @example
-	 * const orgs = await SemanticOrganizationService.findByPolicyPosition(
-	 *   'supporting renewable energy transition and carbon pricing',
-	 *   { limit: 10 }
-	 * );
-	 */
-	static async findByPolicyPosition(
-		policyDescription: string,
-		options: OrganizationVectorFilters & VectorSearchOptions = {}
-	): Promise<VectorSearchResult<OrganizationDocument>[]> {
-		// Generate embedding for the policy description
-		const [policyEmbedding] = await createEmbedding(policyDescription, {
-			inputType: 'query'
-		});
-
-		const collection = await import('./collections').then((m) =>
-			m.getOrganizationsCollection()
-		);
-
-		const { limit = 10, minScore = 0, numCandidates = 100 } = options;
-
-		// Build filter
-		const filter: Record<string, unknown> = {};
-
-		if (options.industry) {
-			filter.industry = options.industry;
-		}
-
-		// Vector search
-		const pipeline: any[] = [
-			{
-				$vectorSearch: {
-					index: 'organization_vector_index',
-					path: 'embedding',
-					queryVector: policyEmbedding,
-					numCandidates: Math.max(numCandidates, limit * 2),
-					limit,
-					...(Object.keys(filter).length > 0 && { filter })
-				}
-			},
-			{
-				$addFields: {
-					score: { $meta: 'vectorSearchScore' }
-				}
-			}
-		];
-
-		if (minScore > 0) {
-			pipeline.push({
-				$match: {
-					score: { $gte: minScore }
-				}
-			});
-		}
-
-		const results = await collection
-			.aggregate<OrganizationDocument & { score: number }>(pipeline)
-			.toArray();
-
-		return results.map((doc) => ({
-			document: doc,
-			score: doc.score
-		}));
-	}
-
-	/**
-	 * Cluster organizations by similarity
-	 *
-	 * Groups organizations into clusters based on semantic similarity.
-	 * Useful for discovering coalitions or similar advocacy groups.
-	 *
-	 * @example
-	 * const clusters = await SemanticOrganizationService.clusterBySimilarity({
-	 *   industry: 'nonprofit',
-	 *   minClusterSize: 3
-	 * });
-	 */
-	static async clusterBySimilarity(options: {
-		industry?: string;
-		minClusterSize?: number;
-		similarityThreshold?: number;
-	} = {}): Promise<
-		Array<{
-			representative: OrganizationDocument;
-			members: Array<VectorSearchResult<OrganizationDocument>>;
-		}>
-	> {
-		const { industry, minClusterSize = 2, similarityThreshold = 0.8 } = options;
-
-		const collection = await import('./collections').then((m) =>
-			m.getOrganizationsCollection()
-		);
-
-		// Get all organizations with embeddings
-		const query: Record<string, unknown> = {
-			embedding: { $exists: true }
-		};
-
-		if (industry) {
-			query.industry = industry;
-		}
-
-		const orgs = await collection.find(query).toArray();
-
-		if (orgs.length === 0) {
-			return [];
-		}
-
-		// Simple clustering: for each org, find similar ones
-		const clusters: Array<{
-			representative: OrganizationDocument;
-			members: Array<VectorSearchResult<OrganizationDocument>>;
-		}> = [];
-
-		const processed = new Set<string>();
-
-		for (const org of orgs) {
-			if (processed.has(org._id.toString())) {
-				continue;
-			}
-
-			// Find similar organizations
-			const similar = await findSimilarOrganizations(org._id.toString(), {
-				limit: 20,
-				minScore: similarityThreshold
-			});
-
-			if (similar.length >= minClusterSize - 1) {
-				// We have a cluster
-				clusters.push({
-					representative: org,
-					members: similar
-				});
-
-				// Mark all cluster members as processed
-				processed.add(org._id.toString());
-				similar.forEach((s) => processed.add(s.document._id.toString()));
-			}
-		}
-
-		return clusters;
-	}
-}
-
-/**
  * Unified Semantic Search Service
  */
 export class SemanticSearchService {
 	static intelligence = SemanticIntelligenceService;
-	static organizations = SemanticOrganizationService;
 
 	/**
 	 * Health check for semantic search capabilities
@@ -401,12 +212,10 @@ export class SemanticSearchService {
 	static async healthCheck(): Promise<{
 		voyageAI: boolean;
 		intelligenceIndex: boolean;
-		organizationIndex: boolean;
 	}> {
 		const results = {
 			voyageAI: false,
-			intelligenceIndex: false,
-			organizationIndex: false
+			intelligenceIndex: false
 		};
 
 		// Check Voyage AI
@@ -444,35 +253,6 @@ export class SemanticSearchService {
 			results.intelligenceIndex = true;
 		} catch (error) {
 			console.error('[Semantic Search] Intelligence index check failed:', error);
-		}
-
-		// Check organization index
-		try {
-			const [testEmbedding] = await createEmbedding('test organization', {
-				model: 'voyage-3-lite'
-			});
-
-			await import('./collections')
-				.then((m) => m.getOrganizationsCollection())
-				.then((col) =>
-					col
-						.aggregate([
-							{
-								$vectorSearch: {
-									index: 'organization_vector_index',
-									path: 'embedding',
-									queryVector: testEmbedding,
-									numCandidates: 10,
-									limit: 1
-								}
-							}
-						])
-						.toArray()
-				);
-
-			results.organizationIndex = true;
-		} catch (error) {
-			console.error('[Semantic Search] Organization index check failed:', error);
 		}
 
 		return results;

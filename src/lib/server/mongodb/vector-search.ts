@@ -4,19 +4,18 @@
  * Semantic search capabilities using MongoDB Atlas Vector Search and Voyage AI embeddings.
  *
  * Features:
- * - Vector similarity search across organizations and intelligence
+ * - Vector similarity search across intelligence items
  * - Hybrid search combining full-text and semantic search
  * - Pre-filtering support (category, topics, dates)
  * - Configurable similarity metrics
  */
 
 import type { Document as MongoDocument } from 'mongodb';
-import { getIntelligenceCollection, getOrganizationsCollection } from './collections';
-import { createEmbedding, getEmbeddingModelForContent } from '../embeddings';
+import { getIntelligenceCollection } from './collections';
+import { createEmbedding } from '../embeddings';
 import type { ContentType } from '../embeddings';
 import type {
 	IntelligenceItemDocument,
-	OrganizationDocument,
 	IntelligenceCategory
 } from './schema';
 
@@ -69,16 +68,6 @@ export interface IntelligenceVectorFilters {
 	publishedBefore?: Date;
 	/** Minimum relevance score */
 	minRelevanceScore?: number;
-}
-
-/**
- * Filter options for organization vector search
- */
-export interface OrganizationVectorFilters {
-	/** Filter by industry */
-	industry?: string;
-	/** Filter by source */
-	source?: OrganizationDocument['source'];
 }
 
 /**
@@ -195,90 +184,6 @@ export async function semanticSearchIntelligence(
 }
 
 /**
- * Search organizations by semantic similarity
- *
- * @param query - Natural language query describing desired organization
- * @param filters - Optional filters
- * @param options - Search options
- * @returns Matching organizations with similarity scores
- *
- * @example
- * const results = await semanticSearchOrganizations(
- *   'renewable energy companies with strong climate commitments',
- *   { industry: 'energy' },
- *   { limit: 5 }
- * );
- */
-export async function semanticSearchOrganizations(
-	query: string,
-	filters: OrganizationVectorFilters = {},
-	options: VectorSearchOptions = {}
-): Promise<VectorSearchResult<OrganizationDocument>[]> {
-	const { limit = 10, minScore = 0, numCandidates = 100, includeScore = true, contentType } =
-		options;
-
-	// Generate query embedding with optional content type for model selection
-	// Organizations are typically general content unless explicitly specified
-	const [queryEmbedding] = await createEmbedding(query, {
-		inputType: 'query',
-		contentType: contentType
-	});
-
-	// Build filter object
-	const filter: MongoDocument = {};
-
-	if (filters.industry) {
-		filter.industry = filters.industry;
-	}
-
-	if (filters.source) {
-		filter.source = filters.source;
-	}
-
-	// Build aggregation pipeline
-	const pipeline: MongoDocument[] = [
-		{
-			$vectorSearch: {
-				index: 'organization_vector_index',
-				path: 'embedding',
-				queryVector: queryEmbedding,
-				numCandidates: Math.max(numCandidates, limit * 2),
-				limit: limit,
-				...(Object.keys(filter).length > 0 && { filter })
-			}
-		}
-	];
-
-	// Add score
-	if (includeScore) {
-		pipeline.push({
-			$addFields: {
-				score: { $meta: 'vectorSearchScore' }
-			}
-		});
-	}
-
-	// Filter by minimum score
-	if (minScore > 0) {
-		pipeline.push({
-			$match: {
-				score: { $gte: minScore }
-			}
-		});
-	}
-
-	const collection = await getOrganizationsCollection();
-	const results = await collection.aggregate<OrganizationDocument & { score?: number }>(
-		pipeline
-	).toArray();
-
-	return results.map((doc) => ({
-		document: doc,
-		score: doc.score || 0
-	}));
-}
-
-/**
  * Find similar intelligence items to a given item
  *
  * Uses the item's embedding to find semantically similar content.
@@ -297,12 +202,16 @@ export async function findSimilarIntelligence(
 	itemId: string | import('mongodb').ObjectId,
 	options: VectorSearchOptions = {}
 ): Promise<VectorSearchResult<IntelligenceItemDocument>[]> {
+	const { ObjectId } = await import('mongodb');
 	const { limit = 5, minScore = 0.7, numCandidates = 50 } = options;
 
 	const collection = await getIntelligenceCollection();
 
+	// Convert string to ObjectId if needed
+	const objectId = typeof itemId === 'string' ? new ObjectId(itemId) : itemId;
+
 	// Get the source item
-	const sourceItem = await collection.findOne({ _id: itemId });
+	const sourceItem = await collection.findOne({ _id: objectId });
 
 	if (!sourceItem || !sourceItem.embedding) {
 		throw new Error('Intelligence item not found or has no embedding');
@@ -318,7 +227,7 @@ export async function findSimilarIntelligence(
 				numCandidates: Math.max(numCandidates, limit * 2),
 				limit: limit + 1, // +1 to exclude self
 				filter: {
-					_id: { $ne: itemId } // Exclude the source item
+					_id: { $ne: objectId } // Exclude the source item
 				}
 			}
 		},
@@ -338,79 +247,6 @@ export async function findSimilarIntelligence(
 	}
 
 	const results = await collection.aggregate<IntelligenceItemDocument & { score: number }>(
-		pipeline
-	).toArray();
-
-	return results.map((doc) => ({
-		document: doc,
-		score: doc.score
-	}));
-}
-
-/**
- * Find similar organizations to a given organization
- *
- * Useful for finding organizations with similar missions, policy positions, or characteristics.
- *
- * @param orgId - ID of the organization
- * @param options - Search options
- * @returns Similar organizations
- *
- * @example
- * const similar = await findSimilarOrganizations('aclu', { limit: 5 });
- */
-export async function findSimilarOrganizations(
-	orgId: string,
-	options: VectorSearchOptions & { sameIndustryOnly?: boolean } = {}
-): Promise<VectorSearchResult<OrganizationDocument>[]> {
-	const { limit = 5, minScore = 0.7, numCandidates = 50, sameIndustryOnly = false } = options;
-
-	const collection = await getOrganizationsCollection();
-
-	// Get the source organization
-	const sourceOrg = await collection.findOne({ _id: orgId });
-
-	if (!sourceOrg || !sourceOrg.embedding) {
-		throw new Error('Organization not found or has no embedding');
-	}
-
-	// Build filter
-	const filter: MongoDocument = {
-		_id: { $ne: orgId } // Exclude self
-	};
-
-	if (sameIndustryOnly && sourceOrg.industry) {
-		filter.industry = sourceOrg.industry;
-	}
-
-	// Search using the organization's embedding
-	const pipeline: MongoDocument[] = [
-		{
-			$vectorSearch: {
-				index: 'organization_vector_index',
-				path: 'embedding',
-				queryVector: sourceOrg.embedding,
-				numCandidates: Math.max(numCandidates, limit * 2),
-				limit: limit,
-				filter
-			}
-		},
-		{
-			$addFields: {
-				score: { $meta: 'vectorSearchScore' }
-			}
-		}
-	];
-
-	if (minScore > 0) {
-		pipeline.push({
-			$match: {
-				score: { $gte: minScore }
-			}
-		});
-	}
-
-	const results = await collection.aggregate<OrganizationDocument & { score: number }>(
 		pipeline
 	).toArray();
 

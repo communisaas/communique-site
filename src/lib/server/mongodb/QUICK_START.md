@@ -17,12 +17,12 @@ import {
 
 ## Common Operations
 
-### 1. Cache Organization Profile (from Firecrawl)
+### 1. Cache Organization Profile
 
 ```typescript
 import { OrganizationService } from '$lib/server/mongodb';
 
-// After scraping org from Firecrawl
+// After gathering org data
 const orgId = await OrganizationService.cacheOrganizationProfile({
   name: 'ACME Corporation',
   website: 'https://acme.com',
@@ -98,7 +98,7 @@ const result = await DecisionMakerCacheService.getDecisionMakers({
   targetType: 'legislative',
   targetEntity: 'US Senate',
   topics: ['healthcare'],
-  provider: 'firecrawl',
+  provider: 'gemini',
   cacheDays: 7,
 
   // Fetch function called on cache miss
@@ -162,8 +162,8 @@ async function handleUserMessage(userInput: {
   let org = await OrganizationService.findOrganization(userInput.organization);
 
   if (!org) {
-    // Fetch from Firecrawl and cache
-    org = await fetchFromFirecrawl(userInput.organization);
+    // Fetch organization data and cache
+    org = await fetchOrganizationData(userInput.organization);
     await OrganizationService.cacheOrganizationProfile({
       name: org.name,
       website: org.website,
