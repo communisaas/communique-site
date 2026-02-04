@@ -46,7 +46,7 @@ describe('Clarification Type Guards', () => {
 		it('should return false when no clarification needed', () => {
 			const response: SubjectLineResponseWithClarification = {
 				subject_line: 'Test Subject',
-				core_issue: 'Test issue',
+				core_message: 'Test issue',
 				topics: ['test'],
 				url_slug: 'test-slug',
 				voice_sample: 'Test voice',
@@ -84,7 +84,7 @@ describe('Clarification Type Guards', () => {
 		it('should return true when all output fields present', () => {
 			const response: SubjectLineResponseWithClarification = {
 				subject_line: 'Amazon Drivers Pissing in Bottles',
-				core_issue: 'Warehouse workers lack basic dignities',
+				core_message: 'Warehouse workers lack basic dignities',
 				topics: ['labor', 'gig-workers', 'warehouse'],
 				url_slug: 'piss-bottle-prime',
 				voice_sample: 'my friend had to piss in a bottle',
