@@ -74,6 +74,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		// Extract congressional district
 		const district = extractCongressionalDistrictFromCensus(match.geographies, state);
 
+		// Extract cell_id (15-digit Census Block GEOID) for two-tree ZK architecture
+		// PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
+		const cell_id = extractCellIdFromCensus(match.geographies);
+
 		// Get real representatives using Congress.gov API
 		let representatives = [];
 		let specialStatus = null;
@@ -138,6 +142,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			correctedAddress,
 			representatives,
 			district,
+			cell_id, // 15-digit Census Block GEOID for two-tree ZK architecture
 			special_status: specialStatus,
 			message: 'Address  verified successfully'
 		});
@@ -179,6 +184,40 @@ function extractCongressionalDistrictFromCensus(
 		return `${state.toUpperCase()}-AL`;
 	} catch (error) {
 		return `${state.toUpperCase()}-01`;
+	}
+}
+
+/**
+ * Extract cell_id (Census Block GEOID) from Census Bureau geocoding response
+ *
+ * PRIVACY: The 15-digit GEOID provides neighborhood-level precision (600-3000 people).
+ * This is used as a private witness in the two-tree ZK architecture.
+ * Never log the full cell_id value.
+ *
+ * @returns 15-digit Census Block GEOID or null if not found
+ */
+function extractCellIdFromCensus(
+	geographies: Record<string, unknown>
+): string | null {
+	try {
+		// Look for 2020 Census Blocks
+		const censusBlocks = geographies['2020 Census Blocks'];
+		if (Array.isArray(censusBlocks) && censusBlocks.length > 0) {
+			const firstBlock = censusBlocks[0];
+			if (firstBlock && typeof firstBlock === 'object' && 'GEOID' in firstBlock) {
+				const geoid = (firstBlock as { GEOID: string }).GEOID;
+				// Validate 15-digit GEOID format
+				if (/^\d{15}$/.test(geoid)) {
+					// Log only state+county prefix (5 digits) for debugging - never full GEOID
+					console.log(`[Address Verify] Cell_id extracted: ${geoid.slice(0, 5)}... (two-tree enabled)`);
+					return geoid;
+				}
+			}
+		}
+		return null;
+	} catch (_error) {
+		console.warn('[Address Verify] Failed to extract cell_id from Census data');
+		return null;
 	}
 }
 

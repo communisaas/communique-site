@@ -57,7 +57,7 @@ export async function clearTestDatabase() {
 
     // Shadow Atlas (depends on users via FK)
     await db.shadowAtlasRegistration.deleteMany();
-    await db.shadowAtlasTree.deleteMany();
+    // Note: ShadowAtlasTree was removed in WS1.2 two-tree refactoring
 
     // Representative relationships
     await db.user_representatives.deleteMany();

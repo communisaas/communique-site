@@ -8,6 +8,7 @@ import {
 	formatValidationError,
 	type SessionCredentialForPolicy
 } from '$lib/core/identity/credential-policy';
+import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 
 /**
  * Submission Creation Endpoint
@@ -144,11 +145,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				throw error(409, 'This action has already been submitted (duplicate nullifier)');
 			}
 
+			// Compute pseudonymous ID via HMAC-SHA256(salt, userId)
+			// Breaks the link between authenticated identity and on-chain proof submission
+			const pseudonymousId = computePseudonymousId(userId);
+
 			// Create submission atomically
 			// action_id is the templateId (in production, it's poseidon hash of templateId in public_inputs)
 			return await tx.submission.create({
 				data: {
-					user_id: userId,
+					pseudonymous_id: pseudonymousId,
 					template_id: templateId,
 					action_id: templateId, // MVP: use templateId directly; production: extract from publicInputs
 					proof_hex: proof,
@@ -167,7 +172,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 		console.log('[Submission] Created:', {
 			submissionId: submission.id,
-			userId,
+			pseudonymousId: submission.pseudonymous_id.slice(0, 12) + '...',
 			templateId,
 			nullifier: nullifier.slice(0, 10) + '...'
 		});

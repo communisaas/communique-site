@@ -13,6 +13,8 @@ import {
 	bindIdentityCommitment,
 	getCommitmentFingerprint
 } from '$lib/core/identity/identity-binding';
+import { generateUserEntropy } from '$lib/core/identity/user-secret-derivation';
+import { deriveAuthorityLevel } from '$lib/core/identity/authority-level';
 import {
 	validateWebhook,
 	parseVerificationResult,
@@ -177,12 +179,31 @@ export const POST: RequestHandler = async ({ request }) => {
 					failure_reason: 'duplicate_identity',
 					identity_hash: identityHash,
 					identity_fingerprint: identityFingerprint,
-					metadata: { session_id: data.session_id, event_type: type }
+					metadata: { session_id: sessionId, event_type: event.type }
 				}
 			});
 
 			throw error(409, 'Identity already verified with another account');
 		}
+
+		// Wave 14R: Fetch current user for trust_score AND existing entropy (idempotency)
+		const currentUser = await prisma.user.findUnique({
+			where: { id: userId },
+			select: { trust_score: true, encrypted_entropy: true }
+		});
+
+		// Wave 14R fix (C-2): Only generate entropy once per user.
+		// Re-generating entropy on re-verification would change user_secret → new nullifiers → double-actions.
+		const userEntropy = currentUser?.encrypted_entropy || generateUserEntropy();
+
+		// Wave 14R fix (H-1): Pass document_type for accurate authority differentiation
+		// passport → L4, drivers_license/national_id → L3
+		const authorityLevel = deriveAuthorityLevel({
+			identity_commitment: identityCommitment,
+			trust_score: currentUser?.trust_score ?? 0,
+			verification_method: 'didit',
+			document_type: identityProof.documentType
+		});
 
 		// Update user verification status
 		await prisma.user.update({
@@ -193,7 +214,10 @@ export const POST: RequestHandler = async ({ request }) => {
 				verified_at: new Date(),
 				identity_hash: identityHash,
 				identity_fingerprint: identityFingerprint,
-				birth_year: birthYear
+				birth_year: birthYear,
+				document_type: identityProof.documentType,
+				encrypted_entropy: userEntropy, // TODO: encrypt with AES-256-GCM in production
+				authority_level: authorityLevel
 			}
 		});
 

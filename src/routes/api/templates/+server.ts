@@ -517,6 +517,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		const user = locals.user;
 
 		if (user) {
+			// Anti-astroturf gate: require verified identity OR sufficient reputation (G-03)
+			// Prevents unverified accounts from flooding the template pool
+			const isVerified = user.is_verified === true;
+			const hasSufficientReputation = (user.trust_score ?? 0) >= 100;
+			if (!isVerified && !hasSufficientReputation) {
+				const response: ApiResponse = {
+					success: false,
+					error: createApiError(
+						'auth',
+						'INSUFFICIENT_TRUST',
+						'Template creation requires account verification. Please complete identity verification to create templates.'
+					)
+				};
+				return json(response, { status: 403 });
+			}
+
 			// Authenticated user - save to database
 			try {
 				// HACKATHON FIX: Use AI-generated slug if provided, otherwise generate from title
@@ -681,7 +697,55 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 				const response: ApiResponse = {
 					success: true,
-					data: { template: newTemplate }
+					data: { template: (() => {
+					// Transform to match GET response shape — client validates computed fields
+					const jsonMetrics =
+						typeof newTemplate.metrics === 'object' && newTemplate.metrics !== null
+							? (newTemplate.metrics as Record<string, number>)
+							: ({} as Record<string, number>);
+					return {
+						id: newTemplate.id,
+						slug: newTemplate.slug,
+						title: newTemplate.title,
+						description: newTemplate.description,
+						category: newTemplate.category,
+						topics: (newTemplate.topics as string[]) || [],
+						type: newTemplate.type,
+						deliveryMethod: newTemplate.deliveryMethod,
+						subject: newTemplate.title,
+						message_body: newTemplate.message_body,
+						preview: newTemplate.preview,
+						coordinationScale: 0,
+						isNew: true,
+						verified_sends: 0,
+						unique_districts: 0,
+						send_count: 0,
+						metrics: {
+							sent: 0,
+							districts_covered: 0,
+							opened: jsonMetrics.opened || 0,
+							clicked: jsonMetrics.clicked || 0,
+							responded: jsonMetrics.responded || 0,
+							views: jsonMetrics.views || 0,
+							total_districts: 435,
+							district_coverage_percent: 0,
+							personalization_rate: 0
+						},
+						delivery_config: newTemplate.delivery_config,
+						cwc_config: newTemplate.cwc_config,
+						recipient_config: newTemplate.recipient_config,
+						campaign_id: newTemplate.campaign_id,
+						status: newTemplate.status,
+						is_public: newTemplate.is_public,
+						jurisdiction_level: null,
+						applicable_countries: null,
+						specific_locations: null,
+						jurisdictions: [],
+						scope: null,
+						createdAt: newTemplate.createdAt,
+						updatedAt: newTemplate.updatedAt
+					};
+				})() }
 				};
 
 				return json(response);

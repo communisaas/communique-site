@@ -36,6 +36,13 @@ export interface ShadowAtlasRegistrationRequest {
 	identityCommitment: string;
 	/** Congressional district (e.g., "CA-12") */
 	congressionalDistrict: string;
+	/**
+	 * Census Block GEOID (15-digit cell identifier)
+	 *
+	 * PRIVACY: Neighborhood-level precision. Never log this value.
+	 * Optional for single-tree mode; required for two-tree mode.
+	 */
+	cellId?: string;
 	/** Verification method used */
 	verificationMethod: 'self.xyz' | 'didit';
 	/** External verification ID */
@@ -68,6 +75,9 @@ export async function registerInShadowAtlas(
 	request: ShadowAtlasRegistrationRequest
 ): Promise<ShadowAtlasRegistrationResult> {
 	try {
+		// Determine credential type based on cell_id presence
+		const credentialType = request.cellId ? 'two-tree' : 'single-tree';
+
 		// Call Shadow Atlas registration API
 		const response = await fetch('/api/shadow-atlas/register', {
 			method: 'POST',
@@ -77,6 +87,8 @@ export async function registerInShadowAtlas(
 			body: JSON.stringify({
 				identityCommitment: request.identityCommitment,
 				congressionalDistrict: request.congressionalDistrict,
+				cellId: request.cellId, // Optional: enables two-tree mode
+				credentialType,
 				verificationMethod: request.verificationMethod,
 				verificationId: request.verificationId
 			})
@@ -109,6 +121,9 @@ export async function registerInShadowAtlas(
 			merklePath: data.merklePath,
 			merkleRoot: data.root,
 			congressionalDistrict: request.congressionalDistrict,
+			// Two-tree support
+			credentialType: request.cellId ? 'two-tree' : 'single-tree',
+			cellId: request.cellId,
 			verificationMethod: request.verificationMethod,
 			createdAt: now,
 			expiresAt: calculateExpirationDate()

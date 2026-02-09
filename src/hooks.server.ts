@@ -2,7 +2,6 @@ import { dev } from '$app/environment';
 import * as auth from '$lib/core/auth/auth.js';
 import type { Handle } from '@sveltejs/kit';
 import { error } from '@sveltejs/kit';
-import { ensureAllIndexes } from '$lib/server/mongodb/indexes';
 import {
 	getRateLimiter,
 	findRateLimitConfig,
@@ -10,40 +9,7 @@ import {
 	SlidingWindowRateLimiter
 } from '$lib/core/security/rate-limiter';
 
-/**
- * MongoDB Index Initialization
- *
- * Runs lazily on first MongoDB-using request to ensure all indexes exist.
- * Uses a module-level guard to prevent multiple invocations.
- * Fire-and-forget pattern: doesn't block request handling.
- *
- * NOTE: MongoDB initialization is deferred because the Node.js MongoDB driver
- * may not be available in all deployment environments (e.g., Cloudflare Workers).
- */
-let indexInitialized = false;
-
-function initializeMongoIndexes(): void {
-	// Skip if already initialized or in a serverless environment that may not support MongoDB
-	if (indexInitialized) {
-		return;
-	}
-	indexInitialized = true;
-
-	// Fire and forget - don't block request handling
-	ensureAllIndexes()
-		.then(() => {
-			console.log('[Hooks] MongoDB indexes initialized successfully');
-		})
-		.catch((err) => {
-			// Log error but don't crash the server
-			console.error('[Hooks] Failed to initialize MongoDB indexes:', err);
-			// Reset flag so it can be retried on next request if needed
-			indexInitialized = false;
-		});
-}
-
-// NOTE: Do not initialize indexes on module load - MongoDB may not be available
-// in all environments. Index initialization will happen on first MongoDB access.
+// MongoDB removed — intelligence data now lives in Postgres via pgvector
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	try {
@@ -233,7 +199,8 @@ import { sequence } from '@sveltejs/kit/hooks';
  *
  * DESIGN NOTES:
  *   - Runs FIRST in the sequence to reject abusive requests early
- *   - Only applies to mutating methods (POST, PUT, PATCH, DELETE)
+ *   - Applies to mutating methods by default (POST, PUT, PATCH, DELETE)
+ *   - Routes with `includeGet: true` also rate-limit GET requests (e.g., metrics, confirmation)
  *   - Webhook paths are exempted (server-to-server, HMAC-authenticated)
  *   - User-keyed limits fall back to IP when no session exists
  */
@@ -243,8 +210,8 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 	const method = request.method;
 	const pathname = url.pathname;
 
-	// Only rate limit mutating requests (POST, PUT, PATCH, DELETE)
-	if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+	// Skip HEAD/OPTIONS entirely
+	if (method === 'HEAD' || method === 'OPTIONS') {
 		return resolve(event);
 	}
 
@@ -252,6 +219,11 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 	const config = findRateLimitConfig(pathname);
 	if (!config) {
 		// No rate limit configured for this path
+		return resolve(event);
+	}
+
+	// Wave 15R: Skip GET unless this route explicitly includes GET rate limiting
+	if (method === 'GET' && !config.includeGet) {
 		return resolve(event);
 	}
 

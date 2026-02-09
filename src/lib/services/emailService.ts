@@ -17,7 +17,8 @@ import type { Template } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails as _extractRecipientEmails } from '$lib/types/templateConfig';
 import { resolveTemplate } from '$lib/utils/templateResolver';
-// VOTER certification now handled by mail server - removed client-side integration
+// Confirmation token generation is server-only (HMAC + JWT_SECRET).
+// Handled via server endpoint, not client-side mailto generation.
 
 // Re-export the unified User interface for backward compatibility
 export type { EmailServiceUser as User } from '$lib/types/user';
@@ -40,6 +41,20 @@ export interface EmailFlowResult {
 
 	/** Next required action in the flow */
 	nextAction: 'auth' | 'address' | 'email';
+
+	/**
+	 * Whether this message is cryptographically verified via ZK proof.
+	 * - true: Sent through CWC with on-chain proof verification
+	 * - false: Sent via mailto: without proof (CI-003 labeling)
+	 */
+	verified?: boolean;
+
+	/**
+	 * Delivery method used for analytics tracking.
+	 * - 'cwc': Congressional Web Contact (verified path)
+	 * - 'mailto': Local email client (unverified path)
+	 */
+	deliveryMethod?: 'cwc' | 'mailto';
 
 	/** Error details if flow analysis failed */
 	error?: {
@@ -192,6 +207,8 @@ export function analyzeEmailFlow(
 			requiresAddress: false,
 			mailtoUrl: mailtoResult.url,
 			nextAction: 'email',
+			verified: false,
+			deliveryMethod: 'mailto' as const,
 			analytics: { ...analytics, step: 'ready_to_send' }
 		};
 	} catch (error) {
@@ -302,7 +319,9 @@ export function generateMailtoUrl(
 		const recipients =
 			resolved.recipients.length > 0 ? resolved.recipients.join(',') : 'test@example.com'; // Fallback for development
 
-		const url = `mailto:${recipients}?subject=${subject}&body=${body}`;
+		const bodyEncoded = encodeURIComponent(resolved.body || '');
+
+		const url = `mailto:${recipients}?subject=${subject}&body=${bodyEncoded}`;
 
 		// Validate URL length
 		if (url.length > 8000) {

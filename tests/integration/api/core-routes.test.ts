@@ -212,6 +212,65 @@ describe('Templates API', () => {
       expect(saved?.userId).toBe(user.id);
     });
 
+    it('should return response matching client isTemplate() contract', async () => {
+      // This test guards against the POST/GET response shape mismatch that caused
+      // "Invalid template data received from API" — the save succeeded but the client
+      // rejected the response because it lacked computed fields (send_count, coordinationScale, isNew).
+      const user = await createTestUser();
+
+      const templateData = {
+        title: 'Contract Validation Template',
+        message_body: 'Message body for contract test',
+        preview: 'Preview text',
+        type: 'congressional',
+        deliveryMethod: 'cwc',
+        category: 'Testing',
+        topics: ['contract-test']
+      };
+
+      const event = createMockRequestEvent({
+        url: '/api/templates',
+        method: 'POST',
+        body: JSON.stringify(templateData),
+        locals: { user }
+      }) as unknown as RequestEvent;
+
+      const response = await createTemplate(event);
+      const data = await response.json();
+      const template = data.data.template;
+
+      // Required string fields (isTemplate lines 14-38)
+      expect(typeof template.id).toBe('string');
+      expect(typeof template.slug).toBe('string');
+      expect(typeof template.title).toBe('string');
+      expect(typeof template.description).toBe('string');
+      expect(typeof template.category).toBe('string');
+      expect(typeof template.type).toBe('string');
+      expect(typeof template.message_body).toBe('string');
+      expect(typeof template.preview).toBe('string');
+      expect(typeof template.status).toBe('string');
+
+      // Required boolean fields (isTemplate lines 40-48)
+      expect(typeof template.is_public).toBe('boolean');
+      expect(typeof template.isNew).toBe('boolean');
+
+      // Required number fields (isTemplate lines 50-60)
+      expect(typeof template.send_count).toBe('number');
+      expect(typeof template.coordinationScale).toBe('number');
+
+      // Required enum field (isTemplate lines 62-66)
+      expect(['cwc', 'email']).toContain(template.deliveryMethod);
+
+      // Required object field (isTemplate lines 88-93)
+      expect(typeof template.metrics).toBe('object');
+      expect(template.metrics).not.toBeNull();
+
+      // Computed values for a fresh template
+      expect(template.send_count).toBe(0);
+      expect(template.coordinationScale).toBe(0);
+      expect(template.isNew).toBe(true);
+    });
+
     it('should create guest template for unauthenticated user', async () => {
       const templateData = {
         title: 'Guest Template',

@@ -15,6 +15,8 @@ import {
 	bindIdentityCommitment,
 	getCommitmentFingerprint
 } from '$lib/core/identity/identity-binding';
+import { generateUserEntropy } from '$lib/core/identity/user-secret-derivation';
+import { deriveAuthorityLevel } from '$lib/core/identity/authority-level';
 
 /**
  * self.xyz Verification Callback
@@ -103,6 +105,23 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		);
 		const commitmentFingerprint = getCommitmentFingerprint(identityCommitment);
 
+		// Wave 14R: Fetch current user for trust_score and existing entropy (idempotency)
+		const currentUser = await prisma.user.findUnique({
+			where: { id: userId },
+			select: { trust_score: true, encrypted_entropy: true }
+		});
+
+		// Wave 14R fix (C-2): Only generate entropy once per user
+		const userEntropy = currentUser?.encrypted_entropy || generateUserEntropy();
+
+		// Wave 14R fix (H-1): Derive authority level using document_type
+		const authorityLevel = deriveAuthorityLevel({
+			identity_commitment: identityCommitment,
+			trust_score: currentUser?.trust_score ?? 0,
+			verification_method: 'self.xyz',
+			document_type: identityProof.documentType
+		});
+
 		// Wrap all database operations in a transaction to prevent race conditions
 		// This ensures atomic check-and-set for duplicate identity detection
 		const duplicateDetected = await prisma.$transaction(async (tx) => {
@@ -137,7 +156,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 					verified_at: new Date(),
 					identity_hash: identityHash,
 					identity_fingerprint: identityFingerprint,
-					birth_year: birthYear
+					birth_year: birthYear,
+					document_type: identityProof.documentType,
+					encrypted_entropy: userEntropy,
+					authority_level: authorityLevel
 				}
 			});
 

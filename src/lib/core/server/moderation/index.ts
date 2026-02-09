@@ -314,3 +314,81 @@ export async function moderatePromptOnly(content: string): Promise<PromptGuardRe
 	return detectPromptInjection(content);
 }
 
+/**
+ * Moderate user-supplied personalization text at send time.
+ *
+ * Lightweight pipeline: Prompt Guard + Llama Guard only (no Gemini).
+ * The template itself was already moderated at creation time — this
+ * only checks the user's personalization delta (e.g., [Personal Connection]).
+ *
+ * Designed for send-time latency: target < 500ms total.
+ *
+ * @param text - User-supplied personalization text
+ * @returns ModerationResult (approved/rejected with reason)
+ */
+export async function moderatePersonalization(text: string): Promise<ModerationResult> {
+	const startTime = Date.now();
+
+	// Skip empty text — nothing to moderate
+	if (!text || text.trim().length === 0) {
+		return {
+			approved: true,
+			summary: 'Empty personalization — skipped',
+			latency_ms: Date.now() - startTime
+		};
+	}
+
+	// Layer 0: Prompt injection detection
+	const promptGuard = await detectPromptInjection(text);
+
+	if (!promptGuard.safe) {
+		const latencyMs = Date.now() - startTime;
+		console.log('[moderation] Personalization REJECTED — prompt injection:', {
+			score: promptGuard.score.toFixed(4),
+			latencyMs
+		});
+
+		return {
+			approved: false,
+			rejection_reason: 'prompt_injection',
+			prompt_guard: promptGuard,
+			summary: `Blocked: Detected potential prompt injection in personalization (score: ${(promptGuard.score * 100).toFixed(1)}%)`,
+			latency_ms: latencyMs
+		};
+	}
+
+	// Layer 1: Content safety (only S1/S4 block)
+	const safety = await classifySafety(text);
+
+	if (!safety.safe) {
+		const latencyMs = Date.now() - startTime;
+		console.log('[moderation] Personalization REJECTED — safety:', {
+			blocking_hazards: safety.blocking_hazards,
+			latencyMs
+		});
+
+		const safetyResult = safety;
+		const hazardDescriptions = safetyResult.blocking_hazards
+			.map((h) => safetyResult.hazard_descriptions[safetyResult.hazards.indexOf(h)])
+			.join(', ');
+
+		return {
+			approved: false,
+			rejection_reason: 'safety_violation',
+			safety,
+			summary: `Blocked: ${hazardDescriptions}`,
+			latency_ms: latencyMs
+		};
+	}
+
+	const latencyMs = Date.now() - startTime;
+	console.log('[moderation] Personalization APPROVED:', { latencyMs });
+
+	return {
+		approved: true,
+		safety,
+		summary: 'Approved',
+		latency_ms: latencyMs
+	};
+}
+

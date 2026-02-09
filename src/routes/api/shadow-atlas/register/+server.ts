@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { identityCommitment, lat, lng } = body;
+		const { identityCommitment, lat, lng, cellId, credentialType } = body;
 
 		// Validate required fields
 		if (!identityCommitment) {
@@ -50,6 +50,23 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				{ status: 400 }
 			);
 		}
+
+		// Validate cellId format if provided (15-digit Census Block GEOID)
+		// PRIVACY: cellId is neighborhood-level precision - never log the full value
+		if (cellId !== undefined) {
+			if (typeof cellId !== 'string' || !/^\d{15}$/.test(cellId)) {
+				return json(
+					{ error: 'Invalid cellId format: must be 15-digit Census Block GEOID' },
+					{ status: 400 }
+				);
+			}
+			// Log only state+county prefix (5 digits) for debugging
+			console.log(`[Shadow Atlas] Cell prefix: ${cellId.slice(0, 5)}... (two-tree mode)`);
+		}
+
+		// Determine credential type
+		const resolvedCredentialType = credentialType || (cellId ? 'two-tree' : 'single-tree');
+		console.log(`[Shadow Atlas] Credential type: ${resolvedCredentialType}`);
 
 		// Parse identity commitment as bigint (accepts hex string or decimal string)
 		let commitmentBigint: bigint;
@@ -135,6 +152,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					leaf_index: 0, // TODO: Extract from merkleProof.leaf position once API provides it
 					merkle_root: merkleProof.root,
 					merkle_path: merkleProof.siblings, // Array of hex strings
+					// Two-tree architecture support (Issue #21)
+					credential_type: resolvedCredentialType,
+					cell_id: cellId || null, // 15-digit Census Block GEOID (encrypted at rest by Prisma)
 					verification_method: 'self.xyz', // Default for Phase 1
 					verification_id: 'mock-verification-id', // TODO: Link to actual verification session
 					verification_timestamp: new Date(),

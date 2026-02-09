@@ -468,6 +468,78 @@ describe('CWC API Routes', () => {
 			expect(houseReps.length).toBe(1);
 		});
 
+		it('should return cell_id (Census Block GEOID) for two-tree ZK architecture', async () => {
+			// MSW mock includes 2020 Census Blocks data
+			const event = createMockRequestEvent({
+				url: 'http://localhost:5173/api/address/verify',
+				method: 'POST',
+				body: JSON.stringify({
+					street: '350 Fifth Avenue',
+					city: 'New York',
+					state: 'NY',
+					zipCode: '10118'
+				}),
+				locals: { user: { id: 'test-user-cellid' }, db }
+			});
+
+			const response = await addressVerifyPost(event as any);
+			const data = await response.json();
+
+			expect(response.status).toBe(200);
+			expect(data.verified).toBe(true);
+
+			// cell_id should be 15-digit Census Block GEOID
+			expect(data.cell_id).toBeDefined();
+			expect(data.cell_id).toMatch(/^\d{15}$/);
+
+			// Verify the specific GEOID from our mock (NYC)
+			expect(data.cell_id).toBe('360610076001234');
+		});
+
+		it('should return cell_id for DC addresses', async () => {
+			const event = createMockRequestEvent({
+				url: 'http://localhost:5173/api/address/verify',
+				method: 'POST',
+				body: JSON.stringify({
+					street: '1600 Pennsylvania Ave NW',
+					city: 'Washington',
+					state: 'DC',
+					zipCode: '20500'
+				}),
+				locals: { user: { id: 'test-user-dc' }, db }
+			});
+
+			const response = await addressVerifyPost(event as any);
+			const data = await response.json();
+
+			expect(response.status).toBe(200);
+			expect(data.cell_id).toBeDefined();
+			expect(data.cell_id).toMatch(/^\d{15}$/);
+			expect(data.cell_id).toBe('110010062001001'); // DC Census Block
+		});
+
+		it('should return cell_id for Puerto Rico addresses', async () => {
+			const event = createMockRequestEvent({
+				url: 'http://localhost:5173/api/address/verify',
+				method: 'POST',
+				body: JSON.stringify({
+					street: '100 Calle San Francisco',
+					city: 'San Juan',
+					state: 'PR',
+					zipCode: '00901'
+				}),
+				locals: { user: { id: 'test-user-pr' }, db }
+			});
+
+			const response = await addressVerifyPost(event as any);
+			const data = await response.json();
+
+			expect(response.status).toBe(200);
+			expect(data.cell_id).toBeDefined();
+			expect(data.cell_id).toMatch(/^\d{15}$/);
+			expect(data.cell_id).toBe('720070065003001'); // PR Census Block
+		});
+
 		it('should include special_status for DC', async () => {
 			// MSW handles Census API and Congress.gov API - no manual mocking needed
 			const event = createMockRequestEvent({

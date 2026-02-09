@@ -46,6 +46,28 @@ export interface SessionCredential {
 	/** Congressional district (e.g., "CA-12") */
 	congressionalDistrict: string;
 
+	// ═══════════════════════════════════════════════════════════════════════
+	// Two-Tree Architecture Support (Issue #21)
+	// ═══════════════════════════════════════════════════════════════════════
+
+	/**
+	 * Credential type discriminator
+	 * - 'single-tree': Traditional district-based merkle tree (backward compatible)
+	 * - 'two-tree': Cell-based dual merkle tree (user tree + cell map)
+	 */
+	credentialType?: 'single-tree' | 'two-tree';
+
+	/**
+	 * Census Block GEOID (15-digit cell identifier)
+	 *
+	 * PRIVACY: Neighborhood-level precision (600-3000 people).
+	 * This is encrypted at rest along with other credential data.
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	cellId?: string;
+
+	// ═══════════════════════════════════════════════════════════════════════
+
 	/** Verification method used */
 	verificationMethod: 'self.xyz' | 'didit';
 
@@ -81,6 +103,10 @@ interface StoredCredential {
 	congressionalDistrict?: string;
 	verificationMethod?: 'self.xyz' | 'didit';
 	createdAt?: Date;
+
+	// Two-tree support (stored in encrypted data, listed here for type completeness)
+	credentialType?: 'single-tree' | 'two-tree';
+	cellId?: string;
 }
 
 interface SessionCredentialDB extends DBSchema {

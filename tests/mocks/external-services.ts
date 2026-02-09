@@ -234,6 +234,16 @@ export const censusAndCongressHandlers = [
                     CD119: '98', // DC delegate special code
                     GEOID: '1100'
                   }
+                ],
+                '2020 Census Blocks': [
+                  {
+                    GEOID: '110010062001001', // 15-digit Census Block GEOID for DC
+                    STATE: '11',
+                    COUNTY: '001',
+                    TRACT: '006200',
+                    BLOCK: '1001',
+                    NAME: 'Block 1001'
+                  }
                 ]
               }
             }
@@ -256,6 +266,16 @@ export const censusAndCongressHandlers = [
                     CD119: '10',
                     GEOID: '3610'
                   }
+                ],
+                '2020 Census Blocks': [
+                  {
+                    GEOID: '360610076001234', // 15-digit Census Block GEOID for NYC
+                    STATE: '36',
+                    COUNTY: '061',
+                    TRACT: '007600',
+                    BLOCK: '1234',
+                    NAME: 'Block 1234'
+                  }
                 ]
               }
             }
@@ -277,6 +297,16 @@ export const censusAndCongressHandlers = [
                   {
                     CD119: '98',
                     GEOID: '7200'
+                  }
+                ],
+                '2020 Census Blocks': [
+                  {
+                    GEOID: '720070065003001', // 15-digit Census Block GEOID for PR
+                    STATE: '72',
+                    COUNTY: '007',
+                    TRACT: '006500',
+                    BLOCK: '3001',
+                    NAME: 'Block 3001'
                   }
                 ]
               }
