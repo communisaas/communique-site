@@ -84,6 +84,11 @@ export const SUBJECT_LINE_SCHEMA = {
 			type: 'string',
 			description: 'Most visceral phrase from input (1-2 sentences, verbatim)'
 		},
+		detected_ask: {
+			type: ['string', 'null'],
+			description:
+				'The specific action the person wants, extracted verbatim from their input. Null if they did not state one explicitly.'
+		},
 
 		// Context - ALWAYS required
 		inferred_context: {
@@ -121,6 +126,23 @@ export const SUBJECT_LINE_SCHEMA = {
 					maximum: 1,
 					description: '0-1 confidence in target type'
 				},
+				detected_urgency: {
+					type: ['string', 'null'],
+					enum: ['breaking', 'recent', 'ongoing', 'structural', null],
+					description:
+						"Issue's temporal character: breaking (days), recent (weeks), ongoing (no clear boundary), structural (systemic)"
+				},
+				urgency_confidence: {
+					type: 'number',
+					minimum: 0,
+					maximum: 1,
+					description: '0-1 confidence in urgency classification'
+				},
+				detected_ask: {
+					type: ['string', 'null'],
+					description:
+						'The specific action the person wants, extracted verbatim. Null if implicit.'
+				},
 				reasoning: {
 					type: 'string',
 					description: 'Why clarification is or is not needed'
@@ -141,147 +163,3 @@ export const SUBJECT_LINE_SCHEMA = {
 	required: ['needs_clarification', 'clarification_questions', 'inferred_context']
 };
 
-// ============================================================================
-// Role Discovery Schema (Phase 1 of two-phase decision-maker resolution)
-// ============================================================================
-
-export const ROLE_DISCOVERY_SCHEMA = {
-	type: 'object',
-	properties: {
-		roles: {
-			type: 'array',
-			items: {
-				type: 'object',
-				properties: {
-					position: {
-						type: 'string',
-						description: 'Title/role (e.g., "Mayor", "CEO", "Chair of Senate Committee")'
-					},
-					organization: {
-						type: 'string',
-						description: 'Specific organization (e.g., "City of San Francisco")'
-					},
-					jurisdiction: {
-						type: 'string',
-						description: 'Geographic or institutional scope (e.g., "San Francisco, CA")'
-					},
-					reasoning: {
-						type: 'string',
-						description: 'Why this position has power over the issue'
-					},
-					search_query: {
-						type: 'string',
-						description: 'Suggested search query to find the current holder'
-					}
-				},
-				required: ['position', 'organization', 'jurisdiction', 'reasoning', 'search_query']
-			},
-			minItems: 3,
-			maxItems: 12
-		}
-	},
-	required: ['roles']
-};
-
-// ============================================================================
-// Decision Maker Schema (used by Phase 2 output / legacy)
-// ============================================================================
-
-export const DECISION_MAKER_SCHEMA = {
-	type: 'object',
-	properties: {
-		decision_makers: {
-			type: 'array',
-			items: {
-				type: 'object',
-				properties: {
-					name: { type: 'string' },
-					title: { type: 'string' },
-					organization: { type: 'string' },
-					email: { type: 'string' },
-					provenance: {
-						type: 'string',
-						description: 'Why this person has power over this issue'
-					},
-					source_url: { type: 'string' },
-					confidence: {
-						type: 'number',
-						minimum: 0,
-						maximum: 1
-					}
-				},
-				required: [
-					'name',
-					'title',
-					'organization',
-					'provenance',
-					'email',
-					'source_url',
-					'confidence'
-				]
-			},
-			maxItems: 10
-		},
-		research_summary: { type: 'string' }
-	},
-	required: ['decision_makers', 'research_summary']
-};
-
-// ============================================================================
-// Message Schema
-// ============================================================================
-
-export const MESSAGE_SCHEMA = {
-	type: 'object',
-	properties: {
-		message: {
-			type: 'string',
-			description: 'The full message body with citation markers [1], [2], etc.'
-		},
-		sources: {
-			type: 'array',
-			items: {
-				type: 'object',
-				properties: {
-					num: { type: 'integer' },
-					title: { type: 'string' },
-					url: { type: 'string' },
-					type: {
-						type: 'string',
-						enum: ['journalism', 'research', 'government', 'legal', 'advocacy']
-					}
-				},
-				required: ['num', 'title', 'url', 'type']
-			}
-		},
-		research_log: {
-			type: 'array',
-			items: { type: 'string' }
-		},
-		geographic_scope: {
-			type: 'object',
-			description: 'ISO 3166 geographic scope. type=international (no other fields), type=nationwide (country: ISO 3166-1), type=subnational (country + optional subdivision ISO 3166-2 + optional locality city name)',
-			properties: {
-				type: {
-					type: 'string',
-					enum: ['international', 'nationwide', 'subnational'],
-					description: 'Scope type'
-				},
-				country: {
-					type: 'string',
-					description: 'ISO 3166-1 alpha-2 country code (e.g. "US", "GB", "JP")'
-				},
-				subdivision: {
-					type: 'string',
-					description: 'ISO 3166-2 subdivision code (e.g. "US-CA", "GB-ENG", "JP-13")'
-				},
-				locality: {
-					type: 'string',
-					description: 'City or locality name (e.g. "San Francisco", "London")'
-				}
-			},
-			required: ['type']
-		}
-	},
-	required: ['message', 'sources', 'geographic_scope']
-};

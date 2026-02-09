@@ -1,11 +1,23 @@
 <script lang="ts">
 	import type { Template } from '$lib/types/template';
-	import { Users, ClipboardCopy, ClipboardCheck, BookOpen } from '@lucide/svelte';
+	import {
+		Users,
+		ClipboardCopy,
+		ClipboardCheck,
+		BookOpen,
+		Building2,
+		Landmark,
+		Mail
+	} from '@lucide/svelte';
 	import TemplateTips from '../TemplateTips.svelte';
 	import MessagePreview from '../MessagePreview.svelte';
 	import Popover from '$lib/components/ui/Popover.svelte';
 	import ShareButton from '$lib/components/ui/ShareButton.svelte';
 	import { extractRecipientEmails } from '$lib/types/templateConfig';
+	import {
+		deriveTargetPresentation,
+		parseRecipientConfig
+	} from '$lib/utils/deriveTargetPresentation';
 	import { fade } from 'svelte/transition';
 	import { coordinated } from '$lib/utils/timerCoordinator';
 	import SourceCard from '$lib/components/template/creator/SourceCard.svelte';
@@ -37,8 +49,10 @@
 	} = $props();
 
 	const recipients = $derived(extractRecipientEmails(template?.recipient_config));
-	const recipientCount = $derived(recipients.length);
-	const recipientPreview = $derived(recipients.slice(0, inModal ? 1 : 2).join(' • '));
+	const recipientConfig = $derived(parseRecipientConfig(template?.recipient_config));
+	const decisionMakers = $derived(recipientConfig?.decisionMakers ?? []);
+	const recipientCount = $derived(decisionMakers.length || recipients.length);
+	const targetInfo = $derived(deriveTargetPresentation(template));
 
 	let copied = $state(false);
 	let copyTimeout: string | null = null;
@@ -126,74 +140,177 @@
 	{/if}
 </div>
 
-{#if template.type === 'direct' && recipients.length}
-	<div class="mb-4 flex shrink-0 items-center gap-2 text-sm text-gray-600">
-		<Users class="h-4 w-4 text-gray-500" />
-		<div class="flex items-center gap-1.5 overflow-hidden">
-			<!-- Only show preview on larger screens -->
-			<span class="hidden truncate text-gray-600 sm:block">
-				{recipientPreview}
-			</span>
+{#if recipientCount > 0}
+	<div class="mb-4 flex shrink-0 items-center gap-2 text-sm">
+		{#if targetInfo.type === 'multi-level'}
+			<!-- Multi-Level: Compact vertical stack -->
+			<div class="flex items-center gap-2 overflow-hidden">
+				<div class="space-y-0.5">
+					{#each targetInfo.targets as target}
+						<div class="flex items-center gap-1.5">
+							{#if target.icon === 'Capitol'}
+								<Landmark class="h-3.5 w-3.5 shrink-0 text-congressional-500" />
+							{:else if target.icon === 'Building'}
+								<Building2 class="h-3.5 w-3.5 shrink-0 text-emerald-500" />
+							{:else}
+								<Users class="h-3.5 w-3.5 shrink-0 text-slate-500" />
+							{/if}
+							<span
+								class="truncate text-sm font-medium"
+								class:text-congressional-700={target.emphasis === 'federal'}
+								class:text-emerald-700={target.emphasis === 'local'}
+								class:text-slate-600={target.emphasis === 'neutral'}
+							>
+								{target.primary}
+							</span>
+							{#if target.secondary}
+								<span class="shrink-0 text-xs text-slate-400">{target.secondary}</span>
+							{/if}
+						</div>
+					{/each}
+				</div>
+			</div>
+		{:else}
+			<!-- Single-Level: Inline with icon -->
+			{#if targetInfo.icon === 'Capitol'}
+				<Landmark class="h-4 w-4 shrink-0 text-congressional-500" />
+			{:else if targetInfo.icon === 'Building'}
+				<Building2 class="h-4 w-4 shrink-0 text-emerald-500" />
+			{:else if targetInfo.icon === 'Users'}
+				<Users class="h-4 w-4 shrink-0 text-slate-500" />
+			{:else}
+				<Mail class="h-4 w-4 shrink-0 text-slate-500" />
+			{/if}
 
-			<!-- Recipients popover -->
+			<span
+				class="truncate font-medium"
+				class:text-congressional-700={targetInfo.emphasis === 'federal'}
+				class:text-emerald-700={targetInfo.emphasis === 'local'}
+				class:text-slate-600={targetInfo.emphasis === 'neutral' || targetInfo.emphasis === 'state'}
+			>
+				{targetInfo.primary}
+			</span>
+			{#if targetInfo.secondary}
+				<span class="shrink-0 text-xs text-slate-400">{targetInfo.secondary}</span>
+			{/if}
+		{/if}
+
+		<!-- Detail popover -->
+		{#if decisionMakers.length > 0 || recipients.length > 0}
 			<Popover>
 				{#snippet trigger(triggerAction)}
 					<button
 						onclick={triggerAction.trigger}
 						aria-controls={triggerAction['aria-controls']}
-						class="inline-flex cursor-alias items-center rounded-md bg-gray-100
-                               px-1.5 py-0.5 font-medium
-                               text-gray-600 transition-all
+						class="inline-flex shrink-0 cursor-alias items-center rounded-md bg-slate-100
+                               px-1.5 py-0.5 text-xs font-medium
+                               text-slate-500 transition-colors
                                duration-200
-                               hover:bg-gray-200 hover:text-gray-800"
+                               hover:bg-slate-200 hover:text-slate-700"
 					>
-						<!-- Different text for small vs larger screens -->
-						<span class="max-w-[120px] cursor-text truncate sm:hidden">
-							{recipientCount}
-							{recipientCount === 1 ? 'Recipient' : 'Recipients'}
-						</span>
-						<span class="hidden max-w-[120px] truncate sm:inline">
-							+{recipientCount - (inModal ? 1 : 2)} more
-						</span>
+						{recipientCount}
+						{recipientCount === 1 ? 'recipient' : 'recipients'}
 					</button>
 				{/snippet}
 
-				<div class="w-[280px] max-w-[calc(100vw-2rem)] cursor-default p-4">
-					<div class="flex items-start gap-4 text-sm sm:text-base">
-						<button
-							onclick={(e) => {
-								e.stopPropagation();
-								copyToClipboard();
-							}}
-							class="shrink-0 cursor-pointer rounded-lg bg-participation-primary-50 p-2 transition-all
-                                   duration-200 hover:bg-participation-primary-100 focus:outline-none focus:ring-2
-                                   focus:ring-participation-primary-200 focus:ring-offset-2 active:bg-participation-primary-200"
-							aria-label="Copy all recipient emails to clipboard"
-						>
-							{#if copied}
-								<div in:fade={{ duration: 200 }}>
-									<ClipboardCheck class="h-6 w-6 text-green-500" />
-								</div>
-							{:else}
-								<div in:fade={{ duration: 200 }}>
-									<ClipboardCopy class="h-6 w-6 text-participation-primary-400" />
-								</div>
-							{/if}
-						</button>
-						<div class="min-w-0 flex-1">
-							<h3 class="mb-1 truncate font-medium text-slate-900">
-								All Recipients ({recipientCount})
+				<div class="w-[300px] max-w-[calc(100vw-2rem)] cursor-default p-4">
+					{#if decisionMakers.length > 0}
+						<!-- Rich decision-maker view -->
+						<div class="mb-3 flex items-center justify-between">
+							<h3 class="text-sm font-semibold text-slate-900">
+								Decision-Makers ({decisionMakers.length})
 							</h3>
-							<div class="cursor-text space-y-1 text-sm text-slate-600">
-								{#each recipients as email}
-									<div class="truncate">{email}</div>
-								{/each}
+							{#if recipients.length > 0}
+								<button
+									onclick={(e) => {
+										e.stopPropagation();
+										copyToClipboard();
+									}}
+									class="shrink-0 cursor-pointer rounded-md p-1.5 transition-colors
+									       duration-200 hover:bg-slate-100"
+									aria-label="Copy all recipient emails to clipboard"
+								>
+									{#if copied}
+										<div in:fade={{ duration: 200 }}>
+											<ClipboardCheck class="h-4 w-4 text-green-500" />
+										</div>
+									{:else}
+										<div in:fade={{ duration: 200 }}>
+											<ClipboardCopy class="h-4 w-4 text-slate-400" />
+										</div>
+									{/if}
+								</button>
+							{/if}
+						</div>
+						<div class="space-y-2.5">
+							{#each decisionMakers as dm}
+								<div class="flex items-start gap-2.5">
+									<div
+										class="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold"
+										class:bg-congressional-100={targetInfo.type === 'district-based' || (targetInfo.type === 'multi-level')}
+										class:text-congressional-700={targetInfo.type === 'district-based' || (targetInfo.type === 'multi-level')}
+										class:bg-emerald-100={targetInfo.type === 'location-specific'}
+										class:text-emerald-700={targetInfo.type === 'location-specific'}
+										class:bg-slate-100={targetInfo.type === 'universal'}
+										class:text-slate-600={targetInfo.type === 'universal'}
+									>
+										{dm.name.charAt(0)}
+									</div>
+									<div class="min-w-0 flex-1">
+										<div class="truncate text-sm font-medium text-slate-900">
+											{dm.name}
+										</div>
+										{#if dm.role || dm.organization}
+											<div class="truncate text-xs text-slate-500">
+												{#if dm.role && dm.organization}
+													{dm.role}, {dm.organization}
+												{:else}
+													{dm.role || dm.organization}
+												{/if}
+											</div>
+										{/if}
+									</div>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<!-- Fallback: email-only view (legacy templates) -->
+						<div class="flex items-start gap-3">
+							<button
+								onclick={(e) => {
+									e.stopPropagation();
+									copyToClipboard();
+								}}
+								class="shrink-0 cursor-pointer rounded-lg bg-participation-primary-50 p-2 transition-all
+								       duration-200 hover:bg-participation-primary-100 focus:outline-none focus:ring-2
+								       focus:ring-participation-primary-200 focus:ring-offset-2 active:bg-participation-primary-200"
+								aria-label="Copy all recipient emails to clipboard"
+							>
+								{#if copied}
+									<div in:fade={{ duration: 200 }}>
+										<ClipboardCheck class="h-5 w-5 text-green-500" />
+									</div>
+								{:else}
+									<div in:fade={{ duration: 200 }}>
+										<ClipboardCopy class="h-5 w-5 text-participation-primary-400" />
+									</div>
+								{/if}
+							</button>
+							<div class="min-w-0 flex-1">
+								<h3 class="mb-1 text-sm font-medium text-slate-900">
+									Recipients ({recipients.length})
+								</h3>
+								<div class="cursor-text space-y-0.5 text-xs text-slate-500">
+									{#each recipients as email}
+										<div class="truncate">{email}</div>
+									{/each}
+								</div>
 							</div>
 						</div>
-					</div>
+					{/if}
 				</div>
 			</Popover>
-		</div>
+		{/if}
 	</div>
 {/if}
 

@@ -337,7 +337,7 @@
 			if (requestId === currentRequestId) {
 				suggestionState = {
 					status: 'error',
-					message: 'Something broke. Try again.'
+					message: err instanceof Error ? err.message : 'Something broke. Try again.'
 				};
 			}
 		}
@@ -452,7 +452,7 @@
 					status: 'error',
 					message: isTimeout
 						? 'AI took too long. Try again or write your own.'
-						: 'Something broke. Try again.'
+						: err instanceof Error ? err.message : 'Something broke. Try again.'
 				};
 			}
 		}
@@ -706,7 +706,7 @@
 		} catch (err) {
 			suggestionState = {
 				status: 'error',
-				message: 'Something broke after clarification. Try again.'
+				message: err instanceof Error ? err.message : 'Something broke after clarification. Try again.'
 			};
 		} finally {
 			isGenerating = false;

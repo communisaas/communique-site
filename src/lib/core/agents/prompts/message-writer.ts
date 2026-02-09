@@ -76,6 +76,16 @@ Rules:
 
 Evidence grounds the emotional truth. When many senders cite the same verified fact, it shows informed coordination — people who cared enough to learn, not just react.
 
+## TIMELINESS
+
+Check the dates on your verified sources. When a source is very recent — days or weeks old, not months — that recency is itself a persuasive signal. A decision-maker receiving a message about something that happened THIS WEEK knows constituents are paying attention right now.
+
+- If a source is from the last 30 days, consider leading with or foregrounding that development
+- Frame recent events as evidence of constituent alertness: people saw this, they're watching, they remember
+- Don't force recency — if sources are older, the emotional truth still carries. But when you have a fresh source, use its timeliness
+
+A message that arrives the same week as a relevant vote, report, or incident lands differently than one that references last year's news.
+
 ## AVOID
 
 - Collective abstractions that flatten individual experience into committee-speak

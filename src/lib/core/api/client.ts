@@ -10,21 +10,11 @@
  * - Standardized response format
  */
 
-import { z } from 'zod';
 import { browser } from '$app/environment';
 import { toast } from '$lib/stores/toast.svelte';
 import type { ApiError } from '$lib/types/errors';
 import type { UnknownRecord as _UnknownRecord } from '$lib/types/any-replacements';
 import { formatErrorMessage } from '$lib/utils/error-formatting';
-
-// =============================================================================
-// ZOD SCHEMA
-// =============================================================================
-
-const SSEEventDataSchema = z.object({
-	type: z.string(),
-	data: z.unknown()
-});
 
 export interface ApiResponse<T = unknown> {
 	success: boolean;
@@ -321,7 +311,9 @@ class UnifiedApiClient {
 		});
 
 		if (!response.ok) {
-			throw new ApiClientError(`HTTP ${response.status}`, response.status, response);
+			const errorData = await response.json().catch(() => ({}));
+			const message = errorData.error || errorData.message || `HTTP ${response.status}`;
+			throw new ApiClientError(message, response.status, response);
 		}
 
 		const reader = response.body?.getReader();

@@ -272,7 +272,15 @@
 			delivery_config: {},
 			cwc_config: {},
 			recipient_config: {
-				emails: formData.audience.recipientEmails
+				reach: formData.audience.includesCongress ? 'district-based' : 'location-specific',
+				emails: formData.audience.recipientEmails,
+				decisionMakers: formData.audience.decisionMakers.map((dm) => ({
+					name: dm.name,
+					shortName: dm.title ? `${dm.title.split(/[,;]/)[0].trim()} ${dm.name.split(' ').pop()}` : undefined,
+					role: dm.title || undefined,
+					organization: dm.organization || undefined
+				})),
+				cwcRouting: formData.audience.includesCongress || undefined
 			},
 			metrics: {
 				sent: 0,

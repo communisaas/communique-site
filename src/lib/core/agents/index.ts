@@ -38,7 +38,7 @@ export type {
 } from './types';
 
 // JSON schemas
-export { SUBJECT_LINE_SCHEMA, DECISION_MAKER_SCHEMA, MESSAGE_SCHEMA } from './schemas';
+export { SUBJECT_LINE_SCHEMA } from './schemas';
 
 // Agent functions
 export { generateSubjectLine } from './agents/subject-line';
@@ -48,16 +48,6 @@ export { generateMessage } from './agents/message-writer';
 export type { GenerateMessageOptions } from './agents/message-writer';
 
 export { resolveDecisionMakers } from './agents';
-
-// Grounding utilities
-export {
-	extractSourcesFromGrounding,
-	buildCitationMap,
-	injectCitations,
-	buildSourceList,
-	mergeAndDeduplicateSources,
-	inferSourceType
-} from './utils/grounding';
 
 // Clarification utilities (Phase 1)
 export {

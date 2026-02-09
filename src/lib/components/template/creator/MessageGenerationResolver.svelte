@@ -6,6 +6,7 @@
 	import AgentThinking from '$lib/components/ui/AgentThinking.svelte';
 	import MessageResults from './MessageResults.svelte';
 	import AuthGateOverlay from './AuthGateOverlay.svelte';
+	import { FileText } from '@lucide/svelte';
 
 	interface Props {
 		formData: TemplateFormData;
@@ -458,6 +459,7 @@
 				title="Unlock Message Generation"
 				description="Free account required to craft your message"
 				icon={FileText}
+				hints={[]}
 				progress={buildAuthProgressItems()}
 				onback={onback}
 				{draftId}

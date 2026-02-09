@@ -18,7 +18,8 @@ import { generateWithThoughts } from '../gemini-client';
 import { MESSAGE_WRITER_PROMPT } from '../prompts/message-writer';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
 import { discoverSources, formatSourcesForPrompt, type VerifiedSource } from './source-discovery';
-import type { MessageResponse, DecisionMaker } from '../types';
+import type { MessageResponse, DecisionMaker, TokenUsage } from '../types';
+import { sumTokenUsage } from '../types';
 
 // ============================================================================
 // Zod Schema for Runtime Validation
@@ -28,7 +29,7 @@ const SourceSchema = z.object({
 	num: z.number(),
 	title: z.string(),
 	url: z.string(),
-	type: z.enum(['journalism', 'research', 'government', 'legal', 'advocacy'])
+	type: z.enum(['journalism', 'research', 'government', 'legal', 'advocacy', 'other'])
 });
 
 // GeoScope: ISO 3166 discriminated union (with optional displayName for human-readable preservation)
@@ -77,6 +78,11 @@ const MessageResponseSchema = z.object({
 
 export type PipelinePhase = 'sources' | 'message' | 'complete';
 
+export interface GenerateMessageResult extends MessageResponse {
+	/** Accumulated token usage across source discovery + message generation */
+	tokenUsage?: TokenUsage;
+}
+
 export interface GenerateMessageOptions {
 	subjectLine: string;
 	coreMessage: string;
@@ -110,7 +116,7 @@ export interface GenerateMessageOptions {
  * 1. Source Discovery: Find and validate sources (unless pre-verified sources provided)
  * 2. Message Generation: Write using ONLY verified sources
  */
-export async function generateMessage(options: GenerateMessageOptions): Promise<MessageResponse> {
+export async function generateMessage(options: GenerateMessageOptions): Promise<GenerateMessageResult> {
 	const startTime = Date.now();
 	const { subjectLine, coreMessage, topics, decisionMakers, onThought, onPhase } = options;
 
@@ -123,6 +129,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 
 	let verifiedSources: VerifiedSource[] = options.verifiedSources || [];
 	let actualSearchQueries: string[] = []; // The REAL Google searches we ran
+	let sourceTokenUsage: TokenUsage | undefined;
 
 	if (verifiedSources.length === 0) {
 		onPhase?.('sources', 'Discovering and verifying sources...');
@@ -146,6 +153,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 
 		verifiedSources = sourceResult.verified;
 		actualSearchQueries = sourceResult.searchQueries; // Capture REAL search queries
+		sourceTokenUsage = sourceResult.tokenUsage;
 
 		console.log('[message-writer] Phase 1 complete:', {
 			discovered: sourceResult.discovered.length,
@@ -251,6 +259,8 @@ The stranger who shares this link should think "I need to send that too." Every 
 		onThought ? (thought) => onThought(thought, 'message') : undefined
 	);
 
+	const messageTokenUsage = result.tokenUsage;
+
 	// Extract JSON from response
 	const extraction = extractJsonFromGroundingResponse<MessageResponse>(result.rawText || '');
 
@@ -295,12 +305,13 @@ The stranger who shares this link should think "I need to send that too." Every 
 
 	const latencyMs = Date.now() - startTime;
 
-	const data: MessageResponse = {
+	const data: GenerateMessageResult = {
 		...validationResult.data,
 		message: messageWithSignature,
 		sources: verifiedSourcesForOutput, // Use verified sources, not generated
 		// Use ACTUAL search queries from source discovery, not model's fabricated "research steps"
-		research_log: actualSearchQueries.length > 0 ? actualSearchQueries : []
+		research_log: actualSearchQueries.length > 0 ? actualSearchQueries : [],
+		tokenUsage: sumTokenUsage(sourceTokenUsage, messageTokenUsage),
 	};
 
 	console.log('[message-writer] Two-phase generation complete', {

@@ -145,6 +145,38 @@ export interface InteractionResponse {
 }
 
 // ============================================================================
+// Token Usage
+// ============================================================================
+
+/**
+ * Token usage metadata from Gemini API responses.
+ * Maps to GenerateContentResponseUsageMetadata from @google/genai.
+ */
+export interface TokenUsage {
+	promptTokens: number;
+	candidatesTokens: number;
+	thoughtsTokens?: number;
+	totalTokens: number;
+}
+
+/**
+ * Sum multiple TokenUsage objects (for multi-call agents).
+ * Returns undefined if all inputs are undefined.
+ */
+export function sumTokenUsage(...usages: (TokenUsage | undefined)[]): TokenUsage | undefined {
+	const defined = usages.filter((u): u is TokenUsage => u !== undefined);
+	if (defined.length === 0) return undefined;
+	return {
+		promptTokens: defined.reduce((s, u) => s + u.promptTokens, 0),
+		candidatesTokens: defined.reduce((s, u) => s + u.candidatesTokens, 0),
+		thoughtsTokens: defined.some((u) => u.thoughtsTokens !== undefined)
+			? defined.reduce((s, u) => s + (u.thoughtsTokens ?? 0), 0)
+			: undefined,
+		totalTokens: defined.reduce((s, u) => s + u.totalTokens, 0)
+	};
+}
+
+// ============================================================================
 // Streaming Types
 // ============================================================================
 
@@ -177,6 +209,8 @@ export interface StreamResultWithThoughts<T = unknown> {
 	 * trusting URLs generated in the LLM's text output.
 	 */
 	groundingMetadata?: GroundingMetadata;
+	/** Token usage from the Gemini API (when available) */
+	tokenUsage?: TokenUsage;
 }
 
 /**
@@ -184,7 +218,6 @@ export interface StreamResultWithThoughts<T = unknown> {
  */
 export type SubjectStreamEvent =
 	| { type: 'thought'; content: string }
-	| { type: 'partial'; content: string }
 	| { type: 'clarification'; data: _SubjectLineResponseWithClarification }
 	| { type: 'complete'; data: _SubjectLineResponseWithClarification }
 	| { type: 'error'; message: string };

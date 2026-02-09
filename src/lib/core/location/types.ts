@@ -45,6 +45,14 @@ export interface LocationSignal {
 	/** County FIPS code (e.g., "48453" for Travis County, TX) */
 	county_fips?: string | null;
 
+	/**
+	 * Census Block GEOID (15-digit cell identifier)
+	 *
+	 * PRIVACY: This is neighborhood-level precision (600-3000 people).
+	 * Treat as sensitive PII - never log, encrypt at rest.
+	 */
+	cell_id?: CellId | null;
+
 	/** Latitude coordinate */
 	latitude?: number | null;
 
@@ -86,6 +94,12 @@ export interface InferredLocation {
 	/** County FIPS code (optional, from highest confidence signal) */
 	county_fips?: string | null;
 
+	/**
+	 * Census Block GEOID (15-digit cell identifier)
+	 * Only available from verified signals with high-precision geocoding.
+	 */
+	cell_id?: CellId | null;
+
 	/** Overall confidence (weighted average of all signals) */
 	confidence: number;
 
@@ -126,6 +140,91 @@ export const SIGNAL_EXPIRATION: Record<LocationSignalType, number> = {
 };
 
 // ============================================================================
+// Cell ID Types (Census Block GEOID)
+// ============================================================================
+
+/**
+ * CellId: 15-digit Census Block GEOID (branded type for type safety)
+ *
+ * Structure: SSCCCTTTTTTBBBB
+ * - SS: State FIPS code (2 digits)
+ * - CCC: County FIPS code (3 digits)
+ * - TTTTTT: Census Tract code (6 digits)
+ * - BBBB: Census Block code (4 digits)
+ *
+ * Example: "060372086003001"
+ *   06 = California
+ *   037 = Los Angeles County
+ *   208600 = Census Tract
+ *   3001 = Census Block
+ *
+ * PRIVACY NOTE: Census Blocks contain 600-3000 people on average.
+ * This is neighborhood-level precision and should be treated as sensitive PII.
+ * Never log cell_id values; encrypt at rest; use only as ZK private witness.
+ */
+export type CellId = string & { readonly __brand: 'CellId' };
+
+/**
+ * Parsed components of a Census Block GEOID
+ */
+export interface CellIdComponents {
+	/** State FIPS code (2 digits, e.g., "06" for California) */
+	state_fips: string;
+	/** County FIPS code (3 digits, e.g., "037" for Los Angeles) */
+	county_fips: string;
+	/** Census Tract code (6 digits, e.g., "208600") */
+	tract: string;
+	/** Census Block code (4 digits, e.g., "3001") */
+	block: string;
+	/** Full 15-digit GEOID */
+	full_geoid: CellId;
+}
+
+/**
+ * Type guard: Validate CellId format
+ *
+ * @param value - Value to check
+ * @returns True if value is a valid 15-digit Census Block GEOID
+ */
+export function isCellId(value: unknown): value is CellId {
+	if (typeof value !== 'string') return false;
+	// Must be exactly 15 numeric digits
+	return /^\d{15}$/.test(value);
+}
+
+/**
+ * Parse CellId into its component parts
+ *
+ * @param cellId - Valid 15-digit Census Block GEOID
+ * @returns Parsed components (state, county, tract, block)
+ * @throws Error if cellId format is invalid
+ */
+export function parseCellId(cellId: CellId): CellIdComponents {
+	if (!isCellId(cellId)) {
+		throw new Error(`Invalid CellId format: expected 15 digits, got "${cellId}"`);
+	}
+
+	return {
+		state_fips: cellId.slice(0, 2),
+		county_fips: cellId.slice(2, 5),
+		tract: cellId.slice(5, 11),
+		block: cellId.slice(11, 15),
+		full_geoid: cellId
+	};
+}
+
+/**
+ * Create a CellId from a raw string (with validation)
+ *
+ * @param value - Raw GEOID string from Census API
+ * @returns CellId if valid, null if invalid
+ */
+export function createCellId(value: string | undefined | null): CellId | null {
+	if (!value || !isCellId(value)) return null;
+	return value as CellId;
+}
+
+// ============================================================================
 // Census API Types
 // ============================================================================
 
@@ -147,10 +246,16 @@ export interface CensusAddressMatch {
 		x: number; // Longitude
 		y: number; // Latitude
 	};
+	addressComponents?: {
+		city?: string;
+		state?: string;
+		zip?: string;
+	};
 	geographies: {
 		'119th Congressional Districts'?: CensusCongressionalDistrict[];
 		Counties?: CensusCounty[];
 		'Census Tracts'?: CensusTract[];
+		'2020 Census Blocks'?: CensusBlock[];
 	};
 }
 
@@ -180,6 +285,36 @@ export interface CensusTract {
 	TRACT: string; // Tract code
 	STATE: string; // State FIPS code
 	COUNTY: string; // County FIPS code
+}
+
+/**
+ * Census block data (2020 Census Blocks layer)
+ *
+ * Contains the 15-digit GEOID used for cell-based identity binding.
+ */
+export interface CensusBlock {
+	/** Full 15-digit Census Block GEOID (STATE + COUNTY + TRACT + BLOCK) */
+	GEOID: string;
+	/** State FIPS code (2 digits) */
+	STATE: string;
+	/** County FIPS code (3 digits) */
+	COUNTY: string;
+	/** Census Tract code (6 digits) */
+	TRACT: string;
+	/** Census Block code (4 digits) */
+	BLOCK: string;
+	/** Block Group (first digit of BLOCK) */
+	BLKGRP: string;
+	/** Block name (e.g., "Block 1024") */
+	NAME: string;
+	/** Centroid latitude */
+	CENTLAT?: string;
+	/** Centroid longitude */
+	CENTLON?: string;
+	/** Urban/Rural indicator ("U" or "R") */
+	UR?: string;
+	/** Land area in square meters */
+	AREALAND?: string;
 }
 
 // ============================================================================

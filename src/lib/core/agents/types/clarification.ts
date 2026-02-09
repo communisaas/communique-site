@@ -66,10 +66,17 @@ export interface InferredContext {
 	/** Agent's interpretation of power structure type */
 	detected_target_type: 'government' | 'corporate' | 'institutional' | 'other' | null;
 
+	/** Issue's relationship to time: breaking (days), recent (weeks), ongoing (no clear boundary), structural (systemic) */
+	detected_urgency?: 'breaking' | 'recent' | 'ongoing' | 'structural' | null;
+
+	/** The specific action the person wants, extracted verbatim. Null if implicit. */
+	detected_ask?: string | null;
+
 	/** Confidence scores for analytics (0-1) */
 	location_confidence: number;
 	scope_confidence: number;
 	target_type_confidence: number;
+	urgency_confidence?: number;
 
 	/** Agent's reasoning about why clarification is/isn't needed */
 	reasoning?: string;
@@ -86,6 +93,7 @@ export interface SubjectLineResponseWithClarification {
 	topics?: string[];
 	url_slug?: string;
 	voice_sample?: string;
+	detected_ask?: string | null;
 
 	// Clarification request (only present if clarification needed)
 	needs_clarification?: boolean;

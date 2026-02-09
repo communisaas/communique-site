@@ -14,24 +14,35 @@
  */
 
 /**
- * Witness data structure
+ * Witness data structure (v0.2.0 API)
  * Contains all inputs needed for proof generation in TEE
+ * Nullifier computed IN-CIRCUIT from userSecret + actionDomain + districtId
  */
 export interface WitnessData {
-	/** Identity commitment (Poseidon hash) */
-	identityCommitment: string;
-	/** Leaf index in district Merkle tree (0-4095) */
-	leafIndex: number;
-	/** Merkle path (12 sibling hashes) */
-	merklePath: string[];
-	/** Merkle root */
+	// Public inputs
+	/** Merkle root of the user tree */
 	merkleRoot: string;
-	/** Action ID (template ID) */
-	actionId: string;
-	/** Timestamp */
-	timestamp: number;
+	/** Action domain for nullifier derivation (e.g., campaign ID) */
+	actionDomain: string;
+
+	// Private inputs
+	/** User's identity secret (commitment preimage) */
+	userSecret: string;
+	/** User's district identifier */
+	districtId: string;
+	/** Authorization level (1-5) */
+	authorityLevel: 1 | 2 | 3 | 4 | 5;
+	/** Salt from registration */
+	registrationSalt: string;
+
+	// Merkle proof data
+	/** Merkle path (sibling hashes) */
+	merklePath: string[];
+	/** Leaf index in district Merkle tree */
+	leafIndex: number;
+
 	/** User address for encryption (not used in proof) */
-	address: string;
+	address?: string;
 }
 
 /**

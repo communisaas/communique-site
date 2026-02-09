@@ -24,6 +24,8 @@ import {
 	getUserContext,
 	logLLMOperation
 } from '$lib/server/llm-cost-protection';
+import { moderatePromptOnly } from '$lib/core/server/moderation';
+import { traceRequest } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	subject_line: string;
@@ -75,7 +77,56 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
-	const userId = event.locals.session?.userId || 'guest';
+	// Auth check
+	const session = event.locals.session;
+	if (!session?.userId) {
+		return new Response(JSON.stringify({ error: 'Authentication required' }), {
+			status: 401,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
+
+	const userId = session.userId;
+	const traceId = crypto.randomUUID();
+
+	traceRequest(traceId, 'decision-makers', {
+		metadata: {
+			subjectLength: subject_line.length,
+			coreMessageLength: core_message.length,
+			topicCount: topics.length,
+			topics,
+			hasVoiceSample: !!voice_sample,
+			targetType: body.target_type || 'local_government',
+			targetEntity: body.target_entity || null
+		},
+		content: {
+			subjectLine: subject_line,
+			coreMessage: core_message,
+			voiceSample: voice_sample
+		}
+	}, { userId });
+
+	// Prompt injection detection
+	const contentToCheck = `${subject_line}\n${core_message}\n${topics.join(' ')}`;
+	const injectionCheck = await moderatePromptOnly(contentToCheck);
+
+	if (!injectionCheck.safe) {
+		console.log('[stream-decision-makers] Prompt injection detected:', {
+			score: injectionCheck.score.toFixed(4),
+			threshold: injectionCheck.threshold
+		});
+
+		return new Response(
+			JSON.stringify({
+				error: 'Content flagged by safety filter',
+				code: 'PROMPT_INJECTION_DETECTED'
+			}),
+			{
+				status: 403,
+				headers: { 'Content-Type': 'application/json' }
+			}
+		);
+	}
 
 	console.log('[stream-decision-makers] Starting resolution:', {
 		userId,
@@ -85,9 +136,16 @@ export const POST: RequestHandler = async (event) => {
 		targetEntity: body.target_entity
 	});
 
-	const { stream, emitter } = createSSEStream();
+	const { stream, emitter } = createSSEStream({
+		traceId,
+		endpoint: 'decision-makers',
+		userId
+	});
 
 	(async () => {
+		let streamSuccess = false;
+		let resultTokenUsage: import('$lib/core/agents/types').TokenUsage | undefined;
+
 		try {
 			const context = {
 				targetType: body.target_type || 'local_government',
@@ -101,6 +159,8 @@ export const POST: RequestHandler = async (event) => {
 			const result = await resolveDecisionMakers(context, (segment: ThoughtSegment) => {
 				emitter.send('segment', segment);
 			});
+
+			resultTokenUsage = result.tokenUsage;
 
 			// Build response - source is the email source (verified)
 			const response = {
@@ -123,25 +183,28 @@ export const POST: RequestHandler = async (event) => {
 			};
 
 			emitter.complete(response);
-
-			const latencyMs = Date.now() - startTime;
+			streamSuccess = true;
 
 			console.log('[stream-decision-makers] Resolution complete:', {
 				userId,
 				count: result.decisionMakers.length,
 				withEmail: result.decisionMakers.filter((dm) => dm.email).length,
-				latencyMs
-			});
-
-			logLLMOperation('decision-makers', userContext, {
-				callCount: 2,
-				durationMs: latencyMs,
-				success: true
+				latencyMs: Date.now() - startTime
 			});
 		} catch (error) {
 			console.error('[stream-decision-makers] Resolution failed:', error);
 			emitter.error(error instanceof Error ? error.message : 'Resolution failed');
 		} finally {
+			logLLMOperation(
+				'decision-makers',
+				userContext,
+				{
+					durationMs: Date.now() - startTime,
+					success: streamSuccess,
+					tokenUsage: resultTokenUsage
+				},
+				traceId
+			);
 			emitter.close();
 		}
 	})();

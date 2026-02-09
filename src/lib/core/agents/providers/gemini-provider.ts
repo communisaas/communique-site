@@ -17,7 +17,8 @@
  */
 
 import type { GenerateContentConfig, Content, Part } from '@google/genai';
-import { getGeminiClient, generateWithThoughts, GEMINI_CONFIG } from '../gemini-client';
+import { getGeminiClient, generateWithThoughts, GEMINI_CONFIG, extractTokenUsage } from '../gemini-client';
+import { sumTokenUsage, type TokenUsage } from '../types';
 import {
 	ROLE_DISCOVERY_PROMPT,
 	buildRoleDiscoveryPrompt,
@@ -74,6 +75,7 @@ interface Candidate {
 /** Result from function calling execution */
 interface FunctionCallingResult {
 	text: string;
+	tokenUsage?: TokenUsage;
 }
 
 interface PersonLookupResponse {
@@ -137,6 +139,7 @@ async function executeWithFunctionCalling(
 	];
 
 	let iterations = 0;
+	const functionCallUsages: (TokenUsage | undefined)[] = [];
 
 	while (iterations < MAX_FUNCTION_CALL_ITERATIONS) {
 		iterations++;
@@ -149,6 +152,7 @@ async function executeWithFunctionCalling(
 				contents,
 				config: configWithTools
 			});
+			functionCallUsages.push(extractTokenUsage(response));
 
 			// Check if response contains function calls using SDK's built-in getter
 			const functionCalls = response.functionCalls;
@@ -229,7 +233,7 @@ async function executeWithFunctionCalling(
 			const finalText = response.text || '';
 			console.log(`[gemini-provider] Function calling complete after ${iterations} iteration(s)`);
 
-			return { text: finalText };
+			return { text: finalText, tokenUsage: sumTokenUsage(...functionCallUsages) };
 
 		} catch (error) {
 			console.error(`[gemini-provider] Error in function calling loop:`, error);
@@ -259,6 +263,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	async resolve(context: ResolveContext): Promise<DecisionMakerResult> {
 		const startTime = Date.now();
 		const { subjectLine, coreMessage, topics, voiceSample, streaming } = context;
+		const tokenUsages: (TokenUsage | undefined)[] = [];
 
 		console.log('[gemini-provider] Starting two-phase resolution...');
 		console.log('[gemini-provider] Target type:', context.targetType);
@@ -285,6 +290,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				},
 				streaming?.onThought ? (thought) => streaming.onThought!(thought, 'discover') : undefined
 			);
+			tokenUsages.push(roleResult.tokenUsage);
 
 			const extraction = extractJsonFromGroundingResponse<RoleDiscoveryResponse>(
 				roleResult.rawText || '{}'
@@ -315,7 +321,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					cacheHit: false,
 					latencyMs: Date.now() - startTime,
 					researchSummary:
-						'No positions with direct power over this issue were identified. Try refining the subject line to be more specific about the decision being sought.'
+						'No positions with direct power over this issue were identified. Try refining the subject line to be more specific about the decision being sought.',
+					tokenUsage: sumTokenUsage(...tokenUsages)
 				};
 			}
 
@@ -373,7 +380,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					provider: this.name,
 					cacheHit: false,
 					latencyMs: Date.now() - startTime,
-					researchSummary: 'No search results found for the identified positions. Try broadening the search or checking the target entities.'
+					researchSummary: 'No search results found for the identified positions. Try broadening the search or checking the target entities.',
+					tokenUsage: sumTokenUsage(...tokenUsages)
 				};
 			}
 
@@ -396,6 +404,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				},
 				streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
 			);
+			tokenUsages.push(triageResult.tokenUsage);
 
 			// Extract selected URLs from triage result
 			let selectedUrls: string[] = [];
@@ -420,7 +429,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					provider: this.name,
 					cacheHit: false,
 					latencyMs: Date.now() - startTime,
-					researchSummary: 'Search returned results but no promising sources were found for contact information.'
+					researchSummary: 'Search returned results but no promising sources were found for contact information.',
+					tokenUsage: sumTokenUsage(...tokenUsages)
 				};
 			}
 
@@ -442,7 +452,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					provider: this.name,
 					cacheHit: false,
 					latencyMs: Date.now() - startTime,
-					researchSummary: 'Selected sources could not be retrieved. The pages may be behind authentication or temporarily unavailable.'
+					researchSummary: 'Selected sources could not be retrieved. The pages may be behind authentication or temporarily unavailable.',
+					tokenUsage: sumTokenUsage(...tokenUsages)
 				};
 			}
 
@@ -465,6 +476,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				},
 				streaming?.onThought ? (thought) => streaming.onThought!(thought, 'lookup') : undefined
 			);
+			tokenUsages.push(extractionResult.tokenUsage);
 
 			const rawText = extractionResult.rawText || '{}';
 			const lookupExtraction = extractJsonFromGroundingResponse<PersonLookupResponse>(rawText);
@@ -503,7 +515,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					latencyMs,
 					researchSummary:
 						data.research_summary ||
-						'No verifiable decision-makers found. The positions were identified but current holders could not be verified with recent sources.'
+						'No verifiable decision-makers found. The positions were identified but current holders could not be verified with recent sources.',
+					tokenUsage: sumTokenUsage(...tokenUsages)
 				};
 			}
 
@@ -558,7 +571,8 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 					verified: filtered.length,
 					withVerifiedEmail: filtered.length,
 					emailsFilteredOut: withUngroundedEmail.length
-				}
+				},
+				tokenUsage: sumTokenUsage(...tokenUsages)
 			};
 		} catch (error) {
 			console.error('[gemini-provider] Resolution error:', error);

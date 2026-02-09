@@ -28,9 +28,15 @@
 		templateSlug?: string;
 		/** If true, shows the verification modal */
 		showModal: boolean;
+		/**
+		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+		 * PRIVACY: Neighborhood-level precision (600-3000 people)
+		 * Passed to Shadow Atlas registration for two-tree mode
+		 */
+		cellId?: string;
 	}
 
-	let { userId, templateSlug, showModal = $bindable() }: Props = $props();
+	let { userId, templateSlug, showModal = $bindable(), cellId }: Props = $props();
 
 	const dispatch = createEventDispatcher<{
 		verified: { userId: string; method: string };
@@ -153,6 +159,7 @@
 				<IdentityVerificationFlow
 					{userId}
 					{templateSlug}
+					{cellId}
 					skipValueProp={true}
 					on:complete={handleVerificationComplete}
 					on:cancel={handleCancel}

@@ -17,7 +17,8 @@ import type {
 	GroundingMetadata,
 	InteractionResponse,
 	StreamChunk,
-	StreamResultWithThoughts
+	StreamResultWithThoughts,
+	TokenUsage
 } from './types';
 import { extractJsonFromGroundingResponse } from './utils/grounding-json';
 import { recoverTruncatedJson } from './utils/truncation-recovery';
@@ -62,6 +63,25 @@ export const GEMINI_CONFIG = {
 		thinkingLevel: 'medium' as const
 	}
 } as const;
+
+// ============================================================================
+// Token Usage Extraction
+// ============================================================================
+
+/**
+ * Extract TokenUsage from a Gemini API response.
+ * Returns undefined if usageMetadata is not present.
+ */
+export function extractTokenUsage(response: GenerateContentResponse): TokenUsage | undefined {
+	const meta = response.usageMetadata;
+	if (!meta) return undefined;
+	return {
+		promptTokens: meta.promptTokenCount ?? 0,
+		candidatesTokens: meta.candidatesTokenCount ?? 0,
+		thoughtsTokens: meta.thoughtsTokenCount ?? undefined,
+		totalTokens: meta.totalTokenCount ?? 0
+	};
+}
 
 // ============================================================================
 // Generate Content (Single-turn)
@@ -416,6 +436,7 @@ export async function* generateStreamWithThoughts<T = unknown>(
 	const thoughts: string[] = [];
 	let fullText = '';
 	let groundingMetadata: GroundingMetadata | undefined;
+	let tokenUsage: TokenUsage | undefined;
 
 	try {
 		const response = await ai.models.generateContentStream({
@@ -448,6 +469,16 @@ export async function* generateStreamWithThoughts<T = unknown>(
 						confidenceScores: gs.confidenceScores
 					})),
 					searchEntryPoint: chunkGrounding.searchEntryPoint as { renderedContent?: string } | undefined
+				};
+			}
+
+			// Capture usageMetadata (latest wins — final chunk has totals)
+			if (chunk.usageMetadata) {
+				tokenUsage = {
+					promptTokens: chunk.usageMetadata.promptTokenCount ?? 0,
+					candidatesTokens: chunk.usageMetadata.candidatesTokenCount ?? 0,
+					thoughtsTokens: chunk.usageMetadata.thoughtsTokenCount ?? undefined,
+					totalTokens: chunk.usageMetadata.totalTokenCount ?? 0
 				};
 			}
 
@@ -492,7 +523,8 @@ export async function* generateStreamWithThoughts<T = unknown>(
 			data: extraction.data,
 			parseSuccess: extraction.success,
 			parseError: extraction.error,
-			groundingMetadata
+			groundingMetadata,
+			tokenUsage
 		};
 	} catch (error) {
 		console.error('[agents/gemini-client] Stream error:', error);
@@ -507,7 +539,8 @@ export async function* generateStreamWithThoughts<T = unknown>(
 			data: null,
 			parseSuccess: false,
 			parseError: error instanceof Error ? error.message : 'Stream generation failed',
-			groundingMetadata
+			groundingMetadata,
+			tokenUsage
 		};
 	}
 }

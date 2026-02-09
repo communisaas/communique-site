@@ -16,6 +16,7 @@
  */
 
 import { generateWithThoughts } from '../gemini-client';
+import type { TokenUsage } from '../types';
 import { extractJsonFromGroundingResponse, isSuccessfulExtraction } from '../utils/grounding-json';
 import { validateUrls } from '../utils/url-validator';
 
@@ -60,6 +61,8 @@ export interface SourceDiscoveryResult {
 	searchQueries: string[];
 	/** Total discovery time in ms */
 	latencyMs: number;
+	/** Token usage from the source discovery LLM call */
+	tokenUsage?: TokenUsage;
 }
 
 export interface SourceDiscoveryOptions {
@@ -109,7 +112,8 @@ Search for high-quality sources that support the user's position. Return ONLY so
 Generate 3-5 targeted search queries:
 - Include location if the issue is local
 - Use specific terminology from the topic
-- Search for recent data and reports
+- Include the current year in queries for legislation, policy changes, and government actions
+- At least one query should target recent developments (e.g., "[topic] latest [YEAR]")
 - Look for official government sources first
 
 ## Output Format
@@ -136,7 +140,7 @@ Return JSON with sources found through search:
 
 1. ONLY return URLs you found in search results
 2. Copy URLs EXACTLY as they appear—do not modify or construct URLs
-3. Prefer recent sources (within last 2 years)
+3. Tiered recency: news and government actions within last 6 months; research and data within last 2 years. More recent is always better.
 4. Prioritize primary sources over aggregators
 5. Include at least one government or academic source if available`;
 
@@ -176,8 +180,9 @@ export async function discoverSources(
 
 	// Build temporal context
 	const currentDate = new Date().toISOString().split('T')[0];
+	const currentYear = new Date().getFullYear();
 
-	const prompt = `Today is ${currentDate}.
+	const prompt = `Today is ${currentDate}. Current year: ${currentYear}.
 
 Find credible sources for this civic message:
 
@@ -186,11 +191,13 @@ Core Message: ${coreMessage}
 Topics: ${topics.join(', ')}
 ${locationContext ? `\n${locationContext}` : ''}
 
-Search for ${maxSources} high-quality sources that support this position. Prioritize:
-- Recent data and statistics
+Search for ${maxSources} high-quality sources. Prioritize:
+- Recent developments, actions, or decisions related to this issue
 - Government reports or official sources
 - Local news coverage (if applicable)
-- Academic research
+- Data and academic research
+
+Include at least one search targeting recent activity (use ${currentYear} in the query).
 
 Return the sources you find through search.`;
 
@@ -247,7 +254,8 @@ Return the sources you find through search.`;
 			verified: [],
 			failed: [],
 			searchQueries,
-			latencyMs: Date.now() - startTime
+			latencyMs: Date.now() - startTime,
+			tokenUsage: result.tokenUsage,
 		};
 	}
 
@@ -328,32 +336,68 @@ Return the sources you find through search.`;
 		verified,
 		failed,
 		searchQueries,
-		latencyMs
+		latencyMs,
+		tokenUsage: result.tokenUsage,
 	};
 }
 
 /**
- * Format verified sources for inclusion in message generation prompt
+ * Parse a date string and return days since that date, or null if unparseable.
+ * Handles ISO, English date formats, and partial dates (e.g., "January 2026").
+ */
+function daysSince(dateStr: string | undefined): number | null {
+	if (!dateStr || dateStr === 'Unknown') return null;
+	const parsed = new Date(dateStr);
+	if (isNaN(parsed.getTime())) return null;
+	return Math.floor((Date.now() - parsed.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+/**
+ * Format verified sources for inclusion in message generation prompt.
+ * Sources are sorted by freshness (most recent first) and annotated
+ * with days-ago to give the message writer unambiguous recency signals.
  */
 export function formatSourcesForPrompt(sources: VerifiedSource[]): string {
 	if (sources.length === 0) {
 		return 'No verified sources available. Write the message without citations.';
 	}
 
-	const formatted = sources
-		.map(
-			(s) => `[${s.num}] ${s.title}
+	// Calculate freshness for each source
+	const withAge = sources.map((s) => ({ source: s, age: daysSince(s.date) }));
+
+	// Sort: known-recent first, then known-older, then unknown-date last
+	withAge.sort((a, b) => {
+		if (a.age === null && b.age === null) return 0;
+		if (a.age === null) return 1;
+		if (b.age === null) return -1;
+		return a.age - b.age;
+	});
+
+	// Build freshness summary
+	const knownAges = withAge.filter((w) => w.age !== null);
+	const recentCount = knownAges.filter((w) => w.age! <= 30).length;
+	const freshest = knownAges.length > 0 ? knownAges[0].age : null;
+	const freshnessSummary =
+		freshest !== null
+			? `Freshest source: ${freshest} days old. ${recentCount} of ${sources.length} sources from the last 30 days.`
+			: '';
+
+	const formatted = withAge
+		.map(({ source: s, age }) => {
+			const dateField = s.date || 'Unknown';
+			const ageAnnotation = age !== null ? ` (${age} days ago)` : '';
+			return `[${s.num}] ${s.title}
    URL: ${s.url}
    Type: ${s.type}
    Publisher: ${s.publisher || 'Unknown'}
-   Date: ${s.date || 'Unknown'}
+   Date: ${dateField}${ageAnnotation}
    Relevance: ${s.relevance}
-   Snippet: ${s.snippet}`
-		)
+   Snippet: ${s.snippet}`;
+		})
 		.join('\n\n');
 
 	return `## Verified Sources (cite using [1], [2], etc.)
-
+${freshnessSummary ? `\n${freshnessSummary}\n` : ''}
 ${formatted}
 
 IMPORTANT: You may ONLY cite sources from this list. Use the exact URLs provided.

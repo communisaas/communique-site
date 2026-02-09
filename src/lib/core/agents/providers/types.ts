@@ -6,6 +6,7 @@
  */
 
 import type { ProcessedDecisionMaker } from '$lib/types/template';
+import type { TokenUsage } from '../types';
 
 // ============================================================================
 // Target Types
@@ -137,6 +138,9 @@ export interface DecisionMakerResult {
 
 	/** Optional: provider-specific metadata */
 	metadata?: Record<string, unknown>;
+
+	/** Accumulated token usage across all LLM calls in this resolution */
+	tokenUsage?: TokenUsage;
 }
 
 // ============================================================================

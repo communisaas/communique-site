@@ -79,6 +79,8 @@
 	// Address collection state (for congressional templates)
 	let needsAddress = $state(false);
 	let collectingAddress = $state(false);
+	/** Census Block GEOID from address verification (for two-tree ZK architecture) */
+	let verifiedCellId = $state<string | undefined>(undefined);
 
 	// Enhanced URL copy component state
 	let copyButtonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
@@ -209,8 +211,13 @@
 					// Launch email using unified service
 					launchEmail(flow.mailtoUrl);
 
-					// Dispatch for analytics
-					dispatch('used', { templateId: template.id, action: 'mailto_opened' });
+					// Dispatch for analytics — distinguish verified vs unverified (CI-003)
+					dispatch('used', {
+						templateId: template.id,
+						action: 'mailto_opened',
+						verified: flow.verified ?? false,
+						deliveryMethod: flow.deliveryMethod ?? 'mailto'
+					});
 
 					// Set up enhanced mail app detection
 					setupEnhancedMailAppDetection();
@@ -327,9 +334,14 @@
 			city: string;
 			state: string;
 			zipCode: string;
+			/**
+			 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+			 * PRIVACY: Neighborhood-level precision (600-3000 people)
+			 */
+			cell_id?: string;
 		}>
 	) {
-		const { streetAddress, city, state, zipCode, district, verified } = _event.detail;
+		const { streetAddress, city, state, zipCode, district, verified, cell_id } = _event.detail;
 
 		// Save address to database
 		try {
@@ -341,6 +353,7 @@
 				state,
 				zip: zipCode,
 				congressional_district: district,
+				cell_id, // 15-digit Census Block GEOID (two-tree ZK architecture)
 				verified
 			});
 
@@ -350,7 +363,13 @@
 				return;
 			}
 
-			console.log('[Template Modal] Address saved successfully');
+			console.log('[Template Modal] Address saved successfully', {
+				district,
+				credentialType: cell_id ? 'two-tree' : 'single-tree'
+			});
+
+			// Store cell_id for passing to verification gate (two-tree ZK architecture)
+			verifiedCellId = cell_id;
 
 			// Invalidate stale location caches (old address/district data)
 			await invalidateLocationCaches();
@@ -362,6 +381,8 @@
 				$page.data.user.state = state;
 				$page.data.user.zip = zipCode;
 				$page.data.user.congressional_district = district;
+				// Note: cell_id is stored separately for ZK proof generation,
+				// not exposed in page data for privacy
 			}
 
 			// Close address collection
@@ -1185,6 +1206,7 @@
 		bind:this={verificationGateRef}
 		userId={user.id}
 		templateSlug={template.slug}
+		cellId={verifiedCellId}
 		bind:showModal={showVerificationGate}
 		on:verified={handleVerificationComplete}
 		on:cancel={handleVerificationCancel}

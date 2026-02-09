@@ -22,11 +22,18 @@
 		secondary?: string;
 	}
 
+	interface PreviewHint {
+		icon: ComponentType<Icon>;
+		label: string;
+	}
+
 	interface Props {
 		title?: string;
 		description?: string;
 		icon?: ComponentType<Icon>;
 		progress?: ProgressItem[];
+		/** Context-specific preview hints shown below the unlock prompt */
+		hints?: PreviewHint[];
 		subjectLine?: string;
 		coreMessage?: string;
 		onback?: () => void;
@@ -41,6 +48,7 @@
 		description = 'Free account to continue',
 		icon: IconComponent = Search,
 		progress = [],
+		hints,
 		subjectLine,
 		coreMessage,
 		onback,
@@ -71,12 +79,13 @@
 		goto(`/auth/${provider}?returnTo=${encodeURIComponent(returnTo)}`);
 	}
 
-	// Preview hints
-	const previewHints = [
+	// Default hints for decision-maker discovery context
+	const defaultHints: PreviewHint[] = [
 		{ icon: Building2, label: 'Directors' },
 		{ icon: Users, label: 'Council' },
 		{ icon: Building2, label: 'Commissioners' }
 	];
+	const previewHints = $derived(hints ?? defaultHints);
 </script>
 
 <!--
@@ -108,7 +117,8 @@
 			<p class="text-sm text-slate-500">{description}</p>
 		</div>
 
-		<!-- Preview hints (visual promise) -->
+		<!-- Preview hints (visual promise — only when contextually relevant) -->
+		{#if previewHints.length > 0}
 		<div class="mb-5 flex flex-wrap items-center justify-center gap-1.5">
 			<span class="text-xs text-slate-400">Find:</span>
 			{#each previewHints as hint}
@@ -119,6 +129,7 @@
 				</span>
 			{/each}
 		</div>
+		{/if}
 
 		<!-- Auth buttons -->
 		<div class="mb-4">

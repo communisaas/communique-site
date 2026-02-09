@@ -25,5 +25,4 @@ export type {
 	AnalysisResult
 } from './types';
 
-// MongoDB cache type is in mongodb/schema
-export type { ParsedDocumentCacheDocument } from '$lib/server/mongodb/schema';
+// ParsedDocumentCache is now a Prisma model — import from @prisma/client if needed

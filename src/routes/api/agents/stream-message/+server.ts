@@ -30,6 +30,8 @@ import {
 	logLLMOperation
 } from '$lib/server/llm-cost-protection';
 import type { DecisionMaker } from '$lib/core/agents';
+import { moderatePromptOnly } from '$lib/core/server/moderation';
+import { traceRequest } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	subject_line: string;
@@ -82,6 +84,57 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
+	const traceId = crypto.randomUUID();
+
+	traceRequest(traceId, 'message-generation', {
+		metadata: {
+			subjectLength: body.subject_line.length,
+			coreMessageLength: body.core_message.length,
+			topicCount: body.topics?.length || 0,
+			topics: body.topics || [],
+			decisionMakerCount: body.decision_makers?.length || 0,
+			hasVoiceSample: !!body.voice_sample,
+			hasRawInput: !!body.raw_input,
+			geographicScopeType: body.geographic_scope?.type || null
+		},
+		content: {
+			subjectLine: body.subject_line,
+			coreMessage: body.core_message,
+			voiceSample: body.voice_sample,
+			rawInput: body.raw_input,
+			decisionMakerNames: body.decision_makers?.map((dm) => dm.name).filter(Boolean)
+		}
+	}, { userId: session.userId });
+
+	// Prompt injection detection
+	const contentToCheck = [
+		body.subject_line,
+		body.core_message,
+		...(body.topics || []),
+		body.voice_sample,
+		body.raw_input
+	].filter(Boolean).join('\n');
+
+	const injectionCheck = await moderatePromptOnly(contentToCheck);
+
+	if (!injectionCheck.safe) {
+		console.log('[stream-message] Prompt injection detected:', {
+			score: injectionCheck.score.toFixed(4),
+			threshold: injectionCheck.threshold
+		});
+
+		return new Response(
+			JSON.stringify({
+				error: 'Content flagged by safety filter',
+				code: 'PROMPT_INJECTION_DETECTED'
+			}),
+			{
+				status: 403,
+				headers: { 'Content-Type': 'application/json' }
+			}
+		);
+	}
+
 	console.log('[stream-message] Starting streaming generation:', {
 		userId: session.userId,
 		subject: body.subject_line.substring(0, 50),
@@ -89,10 +142,17 @@ export const POST: RequestHandler = async (event) => {
 	});
 
 	// Create SSE stream
-	const { stream, emitter } = createSSEStream();
+	const { stream, emitter } = createSSEStream({
+		traceId,
+		endpoint: 'message-generation',
+		userId: session.userId
+	});
 
 	// Run generation in background
 	(async () => {
+		let streamSuccess = false;
+		let resultTokenUsage: import('$lib/core/agents/types').TokenUsage | undefined;
+
 		try {
 			const result = await generateMessage({
 				subjectLine: body.subject_line,
@@ -113,28 +173,34 @@ export const POST: RequestHandler = async (event) => {
 				}
 			});
 
-			const latencyMs = Date.now() - startTime;
+			// Strip tokenUsage from SSE payload (internal concern)
+			const { tokenUsage, ...clientResult } = result;
+			resultTokenUsage = tokenUsage;
 
 			// Send final result
-			emitter.complete(result);
+			emitter.complete(clientResult);
+			streamSuccess = true;
 
 			console.log('[stream-message] Two-phase generation complete:', {
 				userId: session.userId,
 				messageLength: result.message.length,
 				verifiedSourceCount: result.sources.length,
-				latencyMs
-			});
-
-			// Log operation (now 2+ calls: source discovery + message generation)
-			logLLMOperation('message-generation', userContext, {
-				callCount: 3, // Source discovery (grounded) + message generation
-				durationMs: latencyMs,
-				success: true
+				latencyMs: Date.now() - startTime
 			});
 		} catch (error) {
 			console.error('[stream-message] Generation failed:', error);
 			emitter.error(error instanceof Error ? error.message : 'Generation failed');
 		} finally {
+			logLLMOperation(
+				'message-generation',
+				userContext,
+				{
+					durationMs: Date.now() - startTime,
+					success: streamSuccess,
+					tokenUsage: resultTokenUsage
+				},
+				traceId
+			);
 			emitter.close();
 		}
 	})();

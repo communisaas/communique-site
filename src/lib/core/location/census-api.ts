@@ -7,7 +7,8 @@
  * API Documentation: https://geocoding.geo.census.gov/geocoder/
  */
 
-import type { CensusGeocodingResponse, CensusAddressMatch, LocationSignal } from './types';
+import type { CensusGeocodingResponse, CensusAddressMatch, LocationSignal, CellId } from './types';
+import { createCellId } from './types';
 
 // ============================================================================
 // Census API Client
@@ -171,6 +172,14 @@ export class CensusAPIClient {
 								'119th Congressional Districts'?: Array<{ GEOID: string; NAME: string }>;
 								Counties?: Array<{ GEOID: string; NAME: string; STATE: string; COUNTY: string }>;
 								States?: Array<{ GEOID: string; NAME: string; STUSAB: string }>;
+								'2020 Census Blocks'?: Array<{
+									GEOID: string;
+									STATE: string;
+									COUNTY: string;
+									TRACT: string;
+									BLOCK: string;
+									NAME: string;
+								}>;
 							};
 							input?: {
 								location?: { x: number; y: number };
@@ -199,6 +208,16 @@ export class CensusAPIClient {
 					const states = geographies['States'];
 					const state = states?.[0];
 
+					// Extract Census Block for cell_id (15-digit GEOID)
+					const blocks = geographies['2020 Census Blocks'];
+					const block = blocks?.[0];
+					const cell_id: CellId | null = createCellId(block?.GEOID);
+
+					// Log cell_id extraction (debug, without revealing full GEOID for privacy)
+					if (cell_id) {
+						console.log('[Census API] ✓ Extracted cell_id:', cell_id.slice(0, 5) + '...');
+					}
+
 					if (!district || !state) {
 						console.warn(
 							'[Census API] Missing district or state data - falling back to Nominatim data'
@@ -217,19 +236,22 @@ export class CensusAPIClient {
 					// Build location signal with actual city name from Nominatim + district from Census
 					const signal: LocationSignal = {
 						signal_type: 'browser',
-						confidence: 0.6,
+						confidence: cell_id ? 0.7 : 0.6, // Higher confidence if cell_id extracted
 						country_code: 'US', // Census API only covers US
 						congressional_district: congressionalDistrict,
 						state_code: censusStateCode,
 						city_name: cityName, // From Nominatim reverse geocoding
 						county_fips: county ? county.GEOID : null,
+						cell_id, // 15-digit Census Block GEOID (privacy-sensitive)
 						latitude,
 						longitude,
 						source: 'census.browser',
 						timestamp: new Date().toISOString(),
 						metadata: {
 							county_name: censusCountyName || countyName, // Prefer Census county, fallback to Nominatim
-							district_name: district.NAME
+							district_name: district.NAME,
+							// Include tract for debugging (less sensitive than full cell_id)
+							tract: block?.TRACT || null
 						}
 					};
 

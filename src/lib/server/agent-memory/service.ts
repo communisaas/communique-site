@@ -25,13 +25,9 @@
  */
 
 import type { DecisionMakerTargetType, GeographicScope } from '$lib/core/agents/providers/types';
-import type { IntelligenceCategory } from '$lib/server/mongodb/schema';
-import type { IntelligenceItemDocument } from '$lib/server/mongodb/schema';
-import { IntelligenceService } from '$lib/server/mongodb/service';
-import {
-	semanticSearchIntelligence,
-	type VectorSearchResult
-} from '$lib/server/mongodb/vector-search';
+import type { IntelligenceCategory, IntelligenceItem as IntelligenceItemDocument, VectorSearchResult } from '$lib/server/intelligence/types';
+import { IntelligenceService } from '$lib/server/intelligence/service';
+import { semanticSearchIntelligence } from '$lib/server/intelligence/vector-search';
 
 // ============================================================================
 // Types

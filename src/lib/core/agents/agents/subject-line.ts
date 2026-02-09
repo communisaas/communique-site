@@ -38,6 +38,12 @@ const InferredContextSchema = z.object({
 	detected_location: z.string().nullable(),
 	detected_scope: z.enum(['local', 'state', 'national', 'international']).nullable(),
 	detected_target_type: z.enum(['government', 'corporate', 'institutional', 'other']).nullable(),
+	detected_urgency: z
+		.enum(['breaking', 'recent', 'ongoing', 'structural'])
+		.nullable()
+		.optional(),
+	urgency_confidence: z.number().min(0).max(1).optional(),
+	detected_ask: z.string().nullable().optional(),
 	location_confidence: z.number().min(0).max(1),
 	scope_confidence: z.number().min(0).max(1),
 	target_type_confidence: z.number().min(0).max(1),
@@ -52,6 +58,7 @@ const SubjectLineResponseSchema = z.object({
 	topics: z.array(z.string()).optional(),
 	url_slug: z.string().optional(),
 	voice_sample: z.string().optional(),
+	detected_ask: z.string().nullable().optional(),
 	inferred_context: InferredContextSchema
 });
 
@@ -145,21 +152,23 @@ Please generate a new subject line based on this feedback.`;
 ${options.description}`;
 	}
 
-	// Inject current date for temporal awareness
-	const systemPrompt = SUBJECT_LINE_PROMPT.replace(
-		'{CURRENT_DATE}',
-		new Date().toLocaleDateString('en-US', {
-			year: 'numeric',
-			month: 'long',
-			day: 'numeric'
-		})
+	// Inject temporal context
+	const currentDate = new Date().toLocaleDateString('en-US', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
+	const currentYear = String(new Date().getFullYear());
+	const systemPrompt = SUBJECT_LINE_PROMPT.replace('{CURRENT_DATE}', currentDate).replace(
+		'{CURRENT_YEAR}',
+		currentYear
 	);
 
 	const response = await interact(prompt, {
 		systemInstruction: systemPrompt,
 		responseSchema: SUBJECT_LINE_SCHEMA,
 		temperature: 0.7, // Creative latitude for sharp, resonant lines
-		thinkingLevel: 'medium', // Reason about voice and craft, not just structure
+		thinkingLevel: 'high', // First interpreter — emotional archaeology + context extraction needs deep reasoning
 		previousInteractionId: options.previousInteractionId
 	});
 
@@ -203,7 +212,7 @@ Generate the output with subject_line, core_message, topics, url_slug, and voice
 				systemInstruction: systemPrompt,
 				responseSchema: SUBJECT_LINE_SCHEMA,
 				temperature: 0.8, // Higher on retry for creative range
-				thinkingLevel: 'medium',
+				thinkingLevel: 'high',
 				previousInteractionId: currentInteractionId
 			}
 		);

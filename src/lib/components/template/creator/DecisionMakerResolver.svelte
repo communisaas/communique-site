@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import type { TemplateFormData } from '$lib/types/template';
-	import { api } from '$lib/core/api/client';
+
 	import {
 		processDecisionMakers,
 		extractRecipientEmails
@@ -23,7 +23,7 @@
 
 	let { formData = $bindable(), onnext, onback, draftId, onSaveDraft }: Props = $props();
 
-	type Stage = 'structuring' | 'resolving' | 'results' | 'error' | 'auth-required' | 'rate-limited';
+	type Stage = 'resolving' | 'results' | 'error' | 'auth-required' | 'rate-limited';
 	let stage = $state<Stage>('resolving');
 	let errorMessage = $state<string | null>(null);
 	let rateLimitResetAt = $state<string | null>(null);
@@ -74,28 +74,7 @@
 		thoughts = [];
 
 		try {
-			// Stage 1: Structure input if manual (quick pass)
-			if (!formData.objective.aiGenerated) {
-				stage = 'structuring';
-				console.log('[DecisionMakerResolver] Structuring manual input...');
-
-				const structureResponse = await api.post(
-					'/agents/generate-subject',
-					{
-						message: `${formData.objective.title}. ${formData.objective.description}`
-					},
-					{
-						timeout: 30000,
-						showToast: false
-					}
-				);
-
-				if (structureResponse.success && structureResponse.data) {
-					console.log('[DecisionMakerResolver] Structured input:', structureResponse.data);
-				}
-			}
-
-			// Stage 2: Resolve decision-makers via streaming endpoint
+			// Resolve decision-makers via streaming endpoint
 			stage = 'resolving';
 			console.log('[DecisionMakerResolver] Starting streaming resolution...');
 
@@ -288,11 +267,11 @@
 </script>
 
 <div class="mx-auto max-w-3xl">
-	{#if stage === 'structuring' || stage === 'resolving'}
+	{#if stage === 'resolving'}
 		<!-- Thought-centered loading: the agent's reasoning IS the experience -->
 		<AgentThinking
 			{thoughts}
-			isActive={stage === 'structuring' || stage === 'resolving'}
+			isActive={stage === 'resolving'}
 			context="Finding decision-makers"
 		/>
 	{:else if stage === 'results'}

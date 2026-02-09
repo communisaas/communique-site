@@ -476,7 +476,9 @@
 		}
 	});
 
-	// Update variable styling with more delightful interactions
+	// Variable styling: variables are parts of a letter, not code tokens.
+	// System variables blend into the text with subtle personalization cues.
+	// User-editable variables invite contribution with warm affordances.
 	function getVariableClasses(variableName: string): string {
 		const isSystemVariable = systemVariables.has(variableName);
 		const isUserEditable = userEditableVariables.has(variableName);
@@ -486,42 +488,48 @@
 				variableValues[variableName]!.trim() === '');
 
 		if (isSystemVariable) {
+			// Resolved system variables blend into the letter with subtle emphasis
 			return `
-				inline-flex items-center gap-1
-				px-1 py-0.5 rounded-sm
-				font-mono text-xs leading-none
+				inline-flex items-center gap-0.5
+				px-0.5 rounded
+				text-sm leading-none
 				transition-colors duration-150
-				bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200
+				text-emerald-800 bg-emerald-50/50 border-b border-dotted border-emerald-300/70
 				cursor-default align-baseline
 			`;
 		} else if (isUserEditable) {
-			const baseClasses = `
-				inline-flex items-center gap-1
-				px-1 py-0.5 rounded-sm
-				font-mono text-xs leading-none
-				cursor-pointer transition-all duration-150
-				align-baseline transform
-			`;
-
 			if (isEmpty) {
-				return (
-					baseClasses +
-					' bg-purple-50 text-purple-700 ring-1 ring-purple-200 hover:bg-purple-100 hover:ring-purple-300'
-				);
+				// Empty: warm invitation to contribute — spacious, not a code token
+				return `
+					inline-flex items-center gap-1.5
+					px-2 py-0.5 rounded-md
+					text-sm leading-none
+					cursor-pointer transition-all duration-200
+					bg-participation-primary-50 text-participation-primary-600
+					border border-dashed border-participation-primary-300/70
+					hover:bg-participation-primary-100 hover:border-participation-primary-400
+					align-baseline
+				`;
 			} else {
-				return (
-					baseClasses +
-					' bg-participation-primary-50 text-participation-primary-700 ring-1 ring-participation-primary-200 hover:bg-participation-primary-100 hover:ring-participation-primary-300'
-				);
+				// Filled: flows naturally into the letter with subtle underline
+				return `
+					inline-flex items-center gap-0.5
+					px-0.5 rounded
+					text-sm leading-none
+					cursor-pointer transition-all duration-200
+					text-participation-primary-800 border-b border-participation-primary-300/60
+					hover:bg-participation-primary-50
+					align-baseline
+				`;
 			}
 		} else {
-			// Default styling for unknown variables
+			// Unknown variables: subtle inline treatment
 			return `
 				inline-flex items-center
-				px-1 py-0.5 rounded-sm
-				font-mono text-xs leading-none
+				px-0.5 rounded
+				text-sm leading-none
 				cursor-pointer transition-colors duration-150
-				bg-slate-50 text-slate-600 ring-1 ring-slate-200
+				text-slate-600 border-b border-dotted border-slate-300
 				align-baseline
 			`;
 		}
@@ -576,7 +584,7 @@
 			ontouchend={expandToContent ? undefined : handleTouchEnd}
 			data-scrollable={expandToContent ? false : isScrollable}
 		>
-			<div class="min-h-[12rem] font-mono text-sm leading-normal text-slate-600">
+			<div class="min-h-[12rem] font-sans text-sm leading-relaxed text-slate-700">
 				{#each templateSegments as segment}
 					{#if segment.type === 'text'}
 						{segment.content}
@@ -590,18 +598,14 @@
 										aria-label={`Edit ${segment.name} variable`}
 										type="button"
 									>
-										<!-- Always show icon based on variable type -->
+										<!-- Variable type indicator -->
 										{#if segment.name && systemVariables.has(segment.name)}
-											<User class="h-2.5 w-2.5 text-emerald-600" />
+											<User class="h-3 w-3 text-emerald-600/70" />
 										{:else if segment.name && userEditableVariables.has(segment.name)}
-											{#if segment.name && variableValues[segment.name]}
-												<Edit3 class="h-2.5 w-2.5 text-participation-primary-600" />
-											{:else}
-												<Sparkles class="h-2.5 w-2.5 text-purple-600" />
-											{/if}
+											<Edit3 class="h-3 w-3 text-participation-primary-500" />
 										{/if}
 
-										<!-- Always show text - either resolved value or placeholder -->
+										<!-- Resolved value, user input, or placeholder -->
 										<span>
 											{#if segment.name && resolvedValues[segment.name]}
 												{resolvedValues[segment.name]}
@@ -611,14 +615,6 @@
 												{segment.name || ''}
 											{/if}
 										</span>
-
-										<!-- Personalized indicator -->
-										{#if segment.name === 'Personal Connection' && segment.name && (variableValues[segment.name] || '').trim().length > 0}
-											<span
-												class="ml-1 rounded bg-emerald-50 px-1 py-0.5 text-[10px] font-medium text-emerald-700 ring-1 ring-emerald-200"
-												>Personalized</span
-											>
-										{/if}
 									</button>
 								{/snippet}
 

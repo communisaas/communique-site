@@ -13,6 +13,11 @@
 		verified?: boolean;
 		correctedAddress?: string;
 		district?: string;
+		/**
+		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+		 * PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
+		 */
+		cell_id?: string;
 		representatives?: Representative[];
 		[key: string]: unknown;
 	};
@@ -35,6 +40,11 @@
 			address: string;
 			verified: boolean;
 			congressional_district?: string;
+			/**
+			 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+			 * PRIVACY: Neighborhood-level precision (600-3000 people)
+			 */
+			cell_id?: string;
 			representatives?: Array<Record<string, unknown>>;
 		}) => void;
 	} = $props();
@@ -115,6 +125,7 @@
 			address: selectedAddress,
 			verified: true,
 			congressional_district: verificationResult?.district,
+			cell_id: verificationResult?.cell_id, // 15-digit Census Block GEOID (two-tree mode)
 			representatives: verificationResult?.representatives as
 				| Array<Record<string, unknown>>
 				| undefined

@@ -22,7 +22,8 @@ import type { RequestHandler } from './$types';
 import { generateStreamWithThoughts } from '$lib/core/agents/gemini-client';
 import { SUBJECT_LINE_PROMPT } from '$lib/core/agents/prompts/subject-line';
 import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
-import type { SubjectLineResponseWithClarification } from '$lib/core/agents/types';
+import type { SubjectLineResponseWithClarification, TokenUsage } from '$lib/core/agents/types';
+import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
 import {
 	enforceLLMRateLimit,
 	rateLimitResponse,
@@ -30,6 +31,8 @@ import {
 	getUserContext,
 	logLLMOperation
 } from '$lib/server/llm-cost-protection';
+import { moderatePromptOnly } from '$lib/core/server/moderation';
+import { traceRequest } from '$lib/server/agent-trace';
 
 interface RequestBody {
 	message: string;
@@ -42,8 +45,17 @@ export const POST: RequestHandler = async (event) => {
 	}
 	const userContext = getUserContext(event);
 	const startTime = Date.now();
+	const traceId = crypto.randomUUID();
 
-	const body = (await event.request.json()) as RequestBody;
+	let body: RequestBody;
+	try {
+		body = (await event.request.json()) as RequestBody;
+	} catch {
+		return new Response(JSON.stringify({ error: 'Invalid request body' }), {
+			status: 400,
+			headers: { 'Content-Type': 'application/json' }
+		});
+	}
 
 	if (!body.message?.trim()) {
 		return new Response(JSON.stringify({ error: 'Message is required' }), {
@@ -52,108 +64,138 @@ export const POST: RequestHandler = async (event) => {
 		});
 	}
 
+	traceRequest(traceId, 'subject-line', {
+		metadata: {
+			messageLength: body.message.length
+		},
+		content: {
+			message: body.message
+		}
+	}, { userId: userContext.userId });
+
+	// Prompt injection detection
+	const injectionCheck = await moderatePromptOnly(body.message);
+	if (!injectionCheck.safe) {
+		console.log('[stream-subject] Prompt injection detected:', {
+			score: injectionCheck.score.toFixed(4),
+			threshold: injectionCheck.threshold
+		});
+		return new Response(
+			JSON.stringify({ error: 'Content flagged by safety filter', code: 'PROMPT_INJECTION_DETECTED' }),
+			{
+				status: 403,
+				headers: { 'Content-Type': 'application/json' }
+			}
+		);
+	}
+
 	const prompt = `Analyze this issue and generate a subject line:\n\n${body.message}`;
 
-	// Create readable stream for SSE
-	const stream = new ReadableStream({
-		async start(controller) {
-			const encoder = new TextEncoder();
+	// Inject temporal context into system prompt
+	const currentDate = new Date().toLocaleDateString('en-US', {
+		year: 'numeric',
+		month: 'long',
+		day: 'numeric'
+	});
+	const currentYear = String(new Date().getFullYear());
+	const systemPrompt = SUBJECT_LINE_PROMPT.replace('{CURRENT_DATE}', currentDate).replace(
+		'{CURRENT_YEAR}',
+		currentYear
+	);
 
-			const sendEvent = (type: string, data: unknown) => {
-				const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-				controller.enqueue(encoder.encode(event));
-			};
+	const { stream, emitter } = createSSEStream({
+		traceId,
+		endpoint: 'subject-line',
+		userId: userContext.userId
+	});
 
-			try {
-				// Use generateStreamWithThoughts to get actual thinking summaries
-				// This doesn't use responseMimeType, allowing thoughts to flow
-				const generator = generateStreamWithThoughts<SubjectLineResponseWithClarification>(prompt, {
-					systemInstruction: SUBJECT_LINE_PROMPT,
-					temperature: 0.4,
-					thinkingLevel: 'medium' // Medium gives richer thought summaries
-				});
+	(async () => {
+		let streamSuccess = false;
+		let resultTokenUsage: TokenUsage | undefined;
 
-				let iterResult = await generator.next();
+		try {
+			const generator = generateStreamWithThoughts<SubjectLineResponseWithClarification>(prompt, {
+				systemInstruction: systemPrompt,
+				temperature: 0.4,
+				thinkingLevel: 'high'
+			});
 
-				while (!iterResult.done) {
-					const chunk = iterResult.value;
+			let iterResult = await generator.next();
 
-					switch (chunk.type) {
-						case 'thought':
-							// Stream thoughts to UI for real-time visibility
-							// Clean up markdown formatting for UI display
-							sendEvent('thought', {
-								content: cleanThoughtForDisplay(chunk.content)
-							});
-							break;
+			while (!iterResult.done) {
+				const chunk = iterResult.value;
 
-						case 'text':
-							// Don't stream partial JSON - wait for complete
-							break;
+				switch (chunk.type) {
+					case 'thought':
+						emitter.send('thought', {
+							content: cleanThoughtForDisplay(chunk.content)
+						});
+						break;
 
-						case 'complete':
-							// Final parsing happens in generator return value
-							break;
+					case 'text':
+						// Don't stream partial JSON - wait for complete
+						break;
 
-						case 'error':
-							sendEvent('error', { message: chunk.content });
-							break;
-					}
+					case 'complete':
+						// Final parsing happens in generator return value
+						break;
 
-					iterResult = await generator.next();
+					case 'error':
+						emitter.error(chunk.content);
+						break;
 				}
 
-				// Get the final parsed result from the generator
-				if (iterResult.done && iterResult.value) {
-					const result = iterResult.value;
-
-					if (result.parseSuccess && result.data) {
-						const data = result.data;
-
-						// Validate: if needs_clarification but no questions, override
-						if (
-							data.needs_clarification &&
-							(!data.clarification_questions || data.clarification_questions.length === 0)
-						) {
-							data.needs_clarification = false;
-						}
-
-						if (data.needs_clarification) {
-							sendEvent('clarification', { data });
-						} else {
-							sendEvent('complete', { data });
-						}
-					} else {
-						console.error('[stream-subject] JSON parse error:', result.parseError);
-						sendEvent('error', { message: 'Failed to parse response' });
-					}
-				}
-			} catch (error) {
-				console.error('[stream-subject] Stream error:', error);
-				sendEvent('error', {
-					message: error instanceof Error ? error.message : 'Generation failed'
-				});
-			} finally {
-				controller.close();
+				iterResult = await generator.next();
 			}
+
+			// Get the final parsed result from the generator
+			if (iterResult.done && iterResult.value) {
+				const result = iterResult.value;
+				resultTokenUsage = result.tokenUsage;
+
+				if (result.parseSuccess && result.data) {
+					const data = result.data;
+
+					// Validate: if needs_clarification but no questions, override
+					if (
+						data.needs_clarification &&
+						(!data.clarification_questions || data.clarification_questions.length === 0)
+					) {
+						data.needs_clarification = false;
+					}
+
+					if (data.needs_clarification) {
+						emitter.send('clarification', { data });
+					} else {
+						emitter.complete({ data });
+					}
+
+					streamSuccess = true;
+				} else {
+					console.error('[stream-subject] JSON parse error:', result.parseError);
+					emitter.error('Failed to parse response');
+				}
+			}
+		} catch (error) {
+			console.error('[stream-subject] Stream error:', error);
+			emitter.error(error instanceof Error ? error.message : 'Generation failed');
+		} finally {
+			logLLMOperation(
+				'subject-line',
+				userContext,
+				{
+					durationMs: Date.now() - startTime,
+					success: streamSuccess,
+					tokenUsage: resultTokenUsage
+				},
+				traceId
+			);
+			emitter.close();
 		}
-	});
+	})();
 
-	const headers = new Headers({
-		'Content-Type': 'text/event-stream',
-		'Cache-Control': 'no-cache',
-		Connection: 'keep-alive'
-	});
-
-	// Add rate limit info to headers
+	const headers = new Headers(SSE_HEADERS);
 	addRateLimitHeaders(headers, rateLimitCheck);
-
-	// Log operation for cost tracking
-	logLLMOperation('subject-line', userContext, {
-		callCount: 1,
-		durationMs: Date.now() - startTime,
-		success: true
-	});
 
 	return new Response(stream, { headers });
 };

@@ -14,9 +14,15 @@
 		skipValueProp?: boolean;
 		/** Default verification method (if user already made a choice) */
 		defaultMethod?: 'nfc' | 'government-id' | null;
+		/**
+		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+		 * PRIVACY: Neighborhood-level precision (600-3000 people)
+		 * When provided, enables two-tree mode for Shadow Atlas registration
+		 */
+		cellId?: string;
 	}
 
-	let { userId, templateSlug, skipValueProp = false, defaultMethod = null }: Props = $props();
+	let { userId, templateSlug, skipValueProp = false, defaultMethod = null, cellId }: Props = $props();
 
 	type FlowStep = 'value-prop' | 'choice' | 'verify-nfc' | 'verify-id' | 'complete';
 
@@ -49,6 +55,11 @@
 			district?: string;
 			state?: string;
 			address?: { street: string; city: string; state: string; zip: string };
+			/**
+			 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+			 * PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
+			 */
+			cell_id?: string;
 			providerData?: {
 				provider: 'self.xyz' | 'didit.me';
 				credentialHash: string;
@@ -118,11 +129,14 @@
 						// Generate identity commitment from provider data
 						const identityCommitment = await generateIdentityCommitment(event.detail.providerData);
 
-						// Register in Shadow Atlas
+						// Register in Shadow Atlas (with cell_id for two-tree architecture)
+						// Use cell_id from event detail if available, otherwise use cellId prop
+						const resolvedCellId = event.detail.cell_id || cellId;
 						const atlasResult = await registerInShadowAtlas({
 							userId,
 							identityCommitment,
 							congressionalDistrict: event.detail.district,
+							cellId: resolvedCellId, // 15-digit Census Block GEOID (enables two-tree mode)
 							verificationMethod:
 								event.detail.providerData.provider === 'self.xyz' ? 'self.xyz' : 'didit',
 							verificationId: event.detail.providerData.credentialHash
@@ -132,7 +146,8 @@
 							console.log('[Verification Flow] Shadow Atlas registration successful:', {
 								district: event.detail.district,
 								leafIndex: atlasResult.sessionCredential?.leafIndex,
-								expiresAt: atlasResult.sessionCredential?.expiresAt
+								expiresAt: atlasResult.sessionCredential?.expiresAt,
+								credentialType: resolvedCellId ? 'two-tree' : 'single-tree'
 							});
 						} else {
 							console.error(

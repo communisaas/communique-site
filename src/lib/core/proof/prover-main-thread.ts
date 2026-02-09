@@ -16,14 +16,9 @@
 import type { WitnessData, ProofResult } from './prover-core';
 
 // Type for the NoirProver instance (avoiding direct import to prevent SSR issues)
-interface NoirProverInstance {
-	init(): Promise<void>;
-	warmup(): Promise<void>;
-	prove(inputs: Record<string, unknown>): Promise<{
-		proof: Uint8Array;
-		publicInputs: Record<string, unknown>;
-	}>;
-}
+// Using 'any' for the actual NoirProver class since it's dynamically imported
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type NoirProverInstance = any;
 
 // Lazy-loaded prover instance
 let noirProverInstance: NoirProverInstance | null = null;
@@ -78,9 +73,10 @@ export async function initMainThreadProver(
 }
 
 /**
- * Generate a ZK proof on the main thread
+ * Generate a ZK proof on the main thread using v0.2.0 API
  *
  * This allows Barretenberg to create its internal worker properly.
+ * Nullifier is computed IN-CIRCUIT (not externally).
  */
 export async function generateProofMainThread(
 	witness: WitnessData,
@@ -92,39 +88,27 @@ export async function generateProofMainThread(
 		}
 
 		progressCallback?.('proving', 0);
-		console.log('[MainThreadProver] Starting proof generation...');
+		console.log('[MainThreadProver] Starting proof generation (v0.2.0 API)...');
 
-		// Import poseidon for nullifier computation
-		const { computePoseidonNullifier } = await import('../crypto/poseidon');
-
-		// Prepare public input defaults
-		const userSecret = witness.userSecret || witness.identityCommitment;
-		const campaignId = witness.campaignId || witness.actionId;
-		const epochId = witness.epochId || witness.actionId;
-		const authorityHash = witness.authorityHash || '0x0';
-
-		// Compute nullifier
-		const nullifier = await computePoseidonNullifier(
-			userSecret,
-			campaignId,
-			authorityHash,
-			epochId
-		);
-
-		// Map witness to circuit inputs
+		// Map witness to circuit inputs (v0.2.0 API)
+		// Nullifier is computed IN-CIRCUIT from userSecret + actionDomain + districtId
 		const circuitInputs = {
+			// Public inputs
 			merkleRoot: witness.merkleRoot,
-			nullifier,
-			authorityHash,
-			epochId,
-			campaignId,
-			leaf: witness.identityCommitment,
+			actionDomain: witness.actionDomain,
+
+			// Private inputs
+			userSecret: witness.userSecret,
+			districtId: witness.districtId,
+			authorityLevel: witness.authorityLevel,
+			registrationSalt: witness.registrationSalt,
+
+			// Merkle proof
 			merklePath: witness.merklePath,
-			leafIndex: witness.leafIndex,
-			userSecret
+			leafIndex: witness.leafIndex
 		};
 
-		// Generate proof
+		// Generate proof (nullifier computed in-circuit)
 		const proveStart = performance.now();
 		console.log('[MainThreadProver] Generating proof with UltraHonkBackend...');
 		const result = await noirProverInstance.prove(circuitInputs);
@@ -139,7 +123,9 @@ export async function generateProofMainThread(
 			publicInputs: {
 				merkleRoot: result.publicInputs.merkleRoot,
 				nullifier: result.publicInputs.nullifier,
-				actionId: result.publicInputs.campaignId
+				authorityLevel: result.publicInputs.authorityLevel,
+				actionDomain: result.publicInputs.actionDomain,
+				districtId: result.publicInputs.districtId
 			},
 			nullifier: result.publicInputs.nullifier
 		};

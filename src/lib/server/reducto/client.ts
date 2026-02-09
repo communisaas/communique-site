@@ -1,14 +1,13 @@
 /**
  * Reducto Client
  *
- * API wrapper for Reducto document parsing with MongoDB caching.
+ * API wrapper for Reducto document parsing with Postgres JSONB caching.
  * Enables L3 depth layer with on-demand document analysis.
  *
  * @module reducto/client
  */
 
 import { createHash } from 'crypto';
-import type { Collection } from 'mongodb';
 import type {
 	ParsedDocument,
 	ParseOptions,
@@ -20,8 +19,7 @@ import type {
 	DocumentSection,
 	RelevantPassage
 } from './types';
-import type { ParsedDocumentCacheDocument } from '../mongodb/schema';
-import { getParsedDocumentsCollection } from '../mongodb/collections';
+import { db } from '$lib/core/db';
 
 // ============================================================================
 // Configuration
@@ -36,8 +34,6 @@ const CACHE_TTL_DAYS = 30;
 
 export class ReductoClient {
 	private apiKey: string;
-	private collection: Collection<ParsedDocumentCacheDocument> | null = null;
-	private collectionPromise: Promise<Collection<ParsedDocumentCacheDocument>> | null = null;
 
 	constructor(apiKey?: string) {
 		this.apiKey = apiKey || process.env.REDUCTO_API_KEY || '';
@@ -45,20 +41,6 @@ export class ReductoClient {
 		if (!this.apiKey) {
 			console.warn('[ReductoClient] No API key provided - document parsing will be unavailable');
 		}
-	}
-
-	/**
-	 * Get the MongoDB collection for caching (lazy initialization)
-	 */
-	private async getCollection(): Promise<Collection<ParsedDocumentCacheDocument>> {
-		if (this.collection) return this.collection;
-
-		if (!this.collectionPromise) {
-			this.collectionPromise = getParsedDocumentsCollection();
-		}
-
-		this.collection = await this.collectionPromise;
-		return this.collection;
 	}
 
 	/**
@@ -72,12 +54,11 @@ export class ReductoClient {
 		// Check cache first
 		const cached = await this.getFromCache(url);
 		if (cached) {
-			// If query provided, compute relevance on cached doc
-			if (query && cached.document) {
-				const relevance = await this.computeRelevance(cached.document, query);
-				cached.document.queryRelevance = relevance;
+			const doc = cached.document as unknown as ParsedDocument;
+			if (query && doc) {
+				doc.queryRelevance = await this.computeRelevance(doc, query);
 			}
-			return { success: true, document: cached.document, cached: true };
+			return { success: true, document: doc, cached: true };
 		}
 
 		// Parse with Reducto
@@ -88,11 +69,8 @@ export class ReductoClient {
 				detectCrossRefs
 			});
 
-			// Cache the result
 			if (parsed) {
 				await this.saveToCache(url, parsed);
-
-				// Compute relevance if query provided
 				if (query) {
 					parsed.queryRelevance = await this.computeRelevance(parsed, query);
 				}
@@ -115,7 +93,6 @@ export class ReductoClient {
 	async analyze(options: AnalyzeOptions): Promise<AnalysisResult> {
 		const { documentId, query, maxPassages = 5 } = options;
 
-		// Get document from cache
 		const doc = await this.getById(documentId);
 		if (!doc) {
 			return { success: false, error: 'Document not found in cache' };
@@ -137,9 +114,12 @@ export class ReductoClient {
 	 */
 	async getById(documentId: string): Promise<ParsedDocument | null> {
 		try {
-			const collection = await this.getCollection();
-			const cached = await collection.findOne({ 'document.id': documentId });
-			return cached?.document || null;
+			const cached = await db.parsedDocumentCache.findFirst({
+				where: {
+					document: { path: ['id'], equals: documentId }
+				}
+			});
+			return cached ? (cached.document as unknown as ParsedDocument) : null;
 		} catch (error) {
 			console.error('[ReductoClient] getById failed:', error);
 			return null;
@@ -153,12 +133,13 @@ export class ReductoClient {
 		const urlHash = createHash('sha256').update(url).digest('hex');
 
 		try {
-			const collection = await this.getCollection();
-			const cached = await collection.findOne({
-				sourceUrlHash: urlHash,
-				expiresAt: { $gt: new Date() }
+			const cached = await db.parsedDocumentCache.findUnique({
+				where: {
+					source_url_hash: urlHash,
+					expires_at: { gt: new Date() }
+				}
 			});
-			return cached?.document || null;
+			return cached ? (cached.document as unknown as ParsedDocument) : null;
 		} catch (error) {
 			console.error('[ReductoClient] getByUrl failed:', error);
 			return null;
@@ -170,17 +151,16 @@ export class ReductoClient {
 	 */
 	async getByType(documentType: DocumentType, limit = 10): Promise<ParsedDocument[]> {
 		try {
-			const collection = await this.getCollection();
-			const cached = await collection
-				.find({
-					documentType,
-					expiresAt: { $gt: new Date() }
-				})
-				.sort({ createdAt: -1 })
-				.limit(limit)
-				.toArray();
+			const cached = await db.parsedDocumentCache.findMany({
+				where: {
+					document_type: documentType,
+					expires_at: { gt: new Date() }
+				},
+				orderBy: { created_at: 'desc' },
+				take: limit
+			});
 
-			return cached.map((doc) => doc.document);
+			return cached.map((doc) => doc.document as unknown as ParsedDocument);
 		} catch (error) {
 			console.error('[ReductoClient] getByType failed:', error);
 			return [];
@@ -197,18 +177,16 @@ export class ReductoClient {
 		newestDocument?: Date;
 	}> {
 		try {
-			const collection = await this.getCollection();
-
+			const now = new Date();
 			const [total, byType, oldest, newest] = await Promise.all([
-				collection.countDocuments({ expiresAt: { $gt: new Date() } }),
-				collection
-					.aggregate<{ _id: DocumentType; count: number }>([
-						{ $match: { expiresAt: { $gt: new Date() } } },
-						{ $group: { _id: '$documentType', count: { $sum: 1 } } }
-					])
-					.toArray(),
-				collection.findOne({}, { sort: { createdAt: 1 }, projection: { createdAt: 1 } }),
-				collection.findOne({}, { sort: { createdAt: -1 }, projection: { createdAt: 1 } })
+				db.parsedDocumentCache.count({ where: { expires_at: { gt: now } } }),
+				db.parsedDocumentCache.groupBy({
+					by: ['document_type'],
+					where: { expires_at: { gt: now } },
+					_count: true
+				}),
+				db.parsedDocumentCache.findFirst({ orderBy: { created_at: 'asc' }, select: { created_at: true } }),
+				db.parsedDocumentCache.findFirst({ orderBy: { created_at: 'desc' }, select: { created_at: true } })
 			]);
 
 			const typeCount: Record<DocumentType, number> = {
@@ -220,16 +198,16 @@ export class ReductoClient {
 			};
 
 			for (const item of byType) {
-				if (item._id) {
-					typeCount[item._id] = item.count;
+				if (item.document_type in typeCount) {
+					typeCount[item.document_type as DocumentType] = item._count;
 				}
 			}
 
 			return {
 				totalDocuments: total,
 				byType: typeCount,
-				oldestDocument: oldest?.createdAt,
-				newestDocument: newest?.createdAt
+				oldestDocument: oldest?.created_at,
+				newestDocument: newest?.created_at
 			};
 		} catch (error) {
 			console.error('[ReductoClient] getCacheStats failed:', error);
@@ -244,9 +222,6 @@ export class ReductoClient {
 	// Private Methods
 	// ============================================================================
 
-	/**
-	 * Call Reducto API to parse document
-	 */
 	private async callReductoAPI(
 		url: string,
 		options: { type?: DocumentType; extractEntities: boolean; detectCrossRefs: boolean }
@@ -255,7 +230,6 @@ export class ReductoClient {
 			throw new Error('Reducto API key not configured');
 		}
 
-		// Call Reducto parse endpoint
 		const response = await fetch(`${REDUCTO_API_BASE}/parse`, {
 			method: 'POST',
 			headers: {
@@ -266,7 +240,7 @@ export class ReductoClient {
 				url,
 				options: {
 					extract_tables: true,
-					extract_images: false, // Text-focused for now
+					extract_images: false,
 					chunking_strategy: 'semantic'
 				}
 			})
@@ -278,25 +252,16 @@ export class ReductoClient {
 		}
 
 		const result = await response.json();
-
-		// Transform Reducto response to our format
 		return this.transformReductoResponse(result, url, options.type);
 	}
 
-	/**
-	 * Transform Reducto API response to our ParsedDocument format
-	 */
 	private transformReductoResponse(
 		result: any,
 		sourceUrl: string,
 		typeHint?: DocumentType
 	): ParsedDocument {
 		const docType = typeHint || this.inferDocumentType(sourceUrl, result);
-
-		// Extract sections from Reducto chunks
 		const sections = this.extractSections(result.chunks || result.elements || []);
-
-		// Extract entities from Reducto
 		const entities = this.extractEntities(result.entities || []);
 
 		return {
@@ -311,7 +276,7 @@ export class ReductoClient {
 			type: docType,
 			sections,
 			entities,
-			crossRefs: [], // TODO: Extract cross-references
+			crossRefs: [],
 			metadata: {
 				parsedAt: new Date(),
 				sourceUrl,
@@ -321,52 +286,30 @@ export class ReductoClient {
 		};
 	}
 
-	/**
-	 * Infer document type from URL and content
-	 */
-	private inferDocumentType(url: string, result: any): DocumentType {
+	private inferDocumentType(url: string, _result: any): DocumentType {
 		const urlLower = url.toLowerCase();
-
-		if (urlLower.includes('congress.gov') || urlLower.includes('govinfo.gov')) {
-			return 'legislative';
-		}
-		if (urlLower.includes('sec.gov') || urlLower.includes('edgar')) {
-			return 'corporate';
-		}
-		if (urlLower.includes('.gov')) {
-			return 'official';
-		}
-		if (urlLower.includes('arxiv') || urlLower.includes('.edu')) {
-			return 'academic';
-		}
-
-		return 'media'; // Default
+		if (urlLower.includes('congress.gov') || urlLower.includes('govinfo.gov')) return 'legislative';
+		if (urlLower.includes('sec.gov') || urlLower.includes('edgar')) return 'corporate';
+		if (urlLower.includes('.gov')) return 'official';
+		if (urlLower.includes('arxiv') || urlLower.includes('.edu')) return 'academic';
+		return 'media';
 	}
 
-	/**
-	 * Infer source name from URL
-	 */
 	private inferSourceName(url: string): string {
 		try {
 			const hostname = new URL(url).hostname;
-			// Remove www. and common TLDs for cleaner display
 			return hostname.replace(/^www\./, '').replace(/\.(com|org|gov|edu|io)$/, '');
 		} catch {
 			return 'Unknown Source';
 		}
 	}
 
-	/**
-	 * Extract hierarchical sections from Reducto chunks
-	 */
 	private extractSections(chunks: any[]): DocumentSection[] {
 		const sections: DocumentSection[] = [];
 		let currentSection: DocumentSection | null = null;
 
 		for (const chunk of chunks) {
-			// Reducto chunks have type (heading, paragraph, list, table)
 			if (chunk.type === 'heading' || chunk.type === 'title') {
-				// New section
 				const section: DocumentSection = {
 					id: `section-${sections.length + 1}`,
 					title: chunk.text || chunk.content,
@@ -377,10 +320,8 @@ export class ReductoClient {
 				sections.push(section);
 				currentSection = section;
 			} else if (currentSection) {
-				// Add to current section
 				currentSection.content += (currentSection.content ? '\n\n' : '') + (chunk.text || chunk.content);
 			} else {
-				// No section yet, create implicit first section
 				const section: DocumentSection = {
 					id: 'section-1',
 					title: 'Introduction',
@@ -395,11 +336,8 @@ export class ReductoClient {
 		return sections;
 	}
 
-	/**
-	 * Extract entities from Reducto response
-	 */
 	private extractEntities(rawEntities: any[]): DocumentEntity[] {
-		return rawEntities.map((entity, index) => ({
+		return rawEntities.map((entity) => ({
 			type: this.mapEntityType(entity.type),
 			value: entity.value || entity.text,
 			normalized: entity.normalized,
@@ -408,40 +346,25 @@ export class ReductoClient {
 		}));
 	}
 
-	/**
-	 * Map Reducto entity types to our types
-	 */
 	private mapEntityType(
 		reductoType: string
 	): 'amount' | 'date' | 'person' | 'organization' | 'location' | 'reference' {
 		const mapping: Record<string, DocumentEntity['type']> = {
-			money: 'amount',
-			currency: 'amount',
-			number: 'amount',
-			date: 'date',
-			time: 'date',
-			person: 'person',
-			name: 'person',
-			organization: 'organization',
-			company: 'organization',
-			location: 'location',
-			place: 'location',
-			citation: 'reference',
-			reference: 'reference'
+			money: 'amount', currency: 'amount', number: 'amount',
+			date: 'date', time: 'date',
+			person: 'person', name: 'person',
+			organization: 'organization', company: 'organization',
+			location: 'location', place: 'location',
+			citation: 'reference', reference: 'reference'
 		};
 		return mapping[reductoType?.toLowerCase()] || 'reference';
 	}
 
-	/**
-	 * Compute query relevance for a document
-	 */
 	private async computeRelevance(
 		doc: ParsedDocument,
 		query: string,
 		maxPassages = 5
 	): Promise<ParsedDocument['queryRelevance']> {
-		// Simple keyword-based relevance for now
-		// TODO: Use Voyage AI for semantic similarity
 		const queryTerms = query.toLowerCase().split(/\s+/);
 		const passages: RelevantPassage[] = [];
 
@@ -449,18 +372,13 @@ export class ReductoClient {
 			const contentLower = section.content.toLowerCase();
 			const titleLower = section.title.toLowerCase();
 
-			// Count matching terms
 			let matches = 0;
 			for (const term of queryTerms) {
-				if (contentLower.includes(term) || titleLower.includes(term)) {
-					matches++;
-				}
+				if (contentLower.includes(term) || titleLower.includes(term)) matches++;
 			}
 
 			if (matches > 0) {
 				const score = matches / queryTerms.length;
-
-				// Extract most relevant sentence
 				const sentences = section.content.split(/[.!?]+/);
 				let bestSentence = sentences[0];
 				let bestScore = 0;
@@ -486,91 +404,82 @@ export class ReductoClient {
 			}
 		}
 
-		// Sort by score and limit
-		passages.sort((a: RelevantPassage, b: RelevantPassage) => b.score - a.score);
+		passages.sort((a, b) => b.score - a.score);
 		const topPassages = passages.slice(0, maxPassages);
 
-		// Compute overall score
 		const overallScore =
 			topPassages.length > 0
-				? topPassages.reduce((sum: number, p: RelevantPassage) => sum + p.score, 0) / topPassages.length
+				? topPassages.reduce((sum, p) => sum + p.score, 0) / topPassages.length
 				: 0;
 
 		return {
 			score: overallScore,
-			relevantSections: topPassages.map((p: RelevantPassage) => p.sectionId),
+			relevantSections: topPassages.map((p) => p.sectionId),
 			passages: topPassages,
 			summary:
 				topPassages.length > 0
-					? `Found ${topPassages.length} relevant passages across ${new Set(topPassages.map((p: RelevantPassage) => p.sectionId)).size} sections`
+					? `Found ${topPassages.length} relevant passages across ${new Set(topPassages.map((p) => p.sectionId)).size} sections`
 					: 'No relevant content found'
 		};
 	}
 
-	/**
-	 * Get document from MongoDB cache
-	 */
-	private async getFromCache(url: string): Promise<ParsedDocumentCacheDocument | null> {
+	private async getFromCache(url: string): Promise<{ document: unknown } | null> {
 		const urlHash = createHash('sha256').update(url).digest('hex');
 
 		try {
-			const collection = await this.getCollection();
-			const cached = await collection.findOne({
-				sourceUrlHash: urlHash,
-				expiresAt: { $gt: new Date() }
+			const cached = await db.parsedDocumentCache.findUnique({
+				where: { source_url_hash: urlHash }
 			});
 
-			if (cached) {
-				// Update hit count and last accessed time
-				await collection.updateOne(
-					{ _id: cached._id },
-					{
-						$inc: { hitCount: 1 },
-						$set: { lastAccessedAt: new Date() }
+			if (cached && cached.expires_at > new Date()) {
+				// Increment hit count
+				await db.parsedDocumentCache.update({
+					where: { id: cached.id },
+					data: {
+						hit_count: { increment: 1 },
+						last_accessed_at: new Date()
 					}
-				);
+				});
+				return { document: cached.document };
 			}
 
-			return cached;
+			return null;
 		} catch (error) {
 			console.error('[ReductoClient] Cache read failed:', error);
 			return null;
 		}
 	}
 
-	/**
-	 * Save parsed document to MongoDB cache
-	 */
 	private async saveToCache(url: string, document: ParsedDocument): Promise<void> {
 		const urlHash = createHash('sha256').update(url).digest('hex');
 		const now = new Date();
 		const expiresAt = new Date(now.getTime() + CACHE_TTL_DAYS * 24 * 60 * 60 * 1000);
 
 		try {
-			const collection = await this.getCollection();
-			await collection.updateOne(
-				{ sourceUrlHash: urlHash },
-				{
-					$set: {
-						sourceUrl: url,
-						sourceUrlHash: urlHash,
-						documentType: document.type,
-						document,
-						updatedAt: now,
-						expiresAt
-					},
-					$setOnInsert: {
-						createdAt: now,
-						hitCount: 0
-					}
+			await db.parsedDocumentCache.upsert({
+				where: { source_url_hash: urlHash },
+				create: {
+					source_url: url,
+					source_url_hash: urlHash,
+					document_type: document.type,
+					document: document as unknown as Prisma.InputJsonValue,
+					expires_at: expiresAt,
+					hit_count: 0
 				},
-				{ upsert: true }
-			);
+				update: {
+					document_type: document.type,
+					document: document as unknown as Prisma.InputJsonValue,
+					expires_at: expiresAt
+				}
+			});
 		} catch (error) {
 			console.error('[ReductoClient] Cache write failed:', error);
 		}
 	}
 }
+
+// Need Prisma types for JSON operations
+import type { Prisma } from '@prisma/client';
 
 // ============================================================================
 // Singleton Instance
@@ -578,16 +487,6 @@ export class ReductoClient {
 
 let clientInstance: ReductoClient | null = null;
 
-/**
- * Get the Reducto client singleton
- *
- * The client automatically connects to MongoDB for caching.
- * No initialization required - just call this function.
- *
- * @example
- * const client = getReductoClient();
- * const result = await client.parse({ url: 'https://example.com/doc.pdf' });
- */
 export function getReductoClient(): ReductoClient {
 	if (!clientInstance) {
 		clientInstance = new ReductoClient();
@@ -595,9 +494,6 @@ export function getReductoClient(): ReductoClient {
 	return clientInstance;
 }
 
-/**
- * Reset the client instance (useful for testing)
- */
 export function resetReductoClient(): void {
 	clientInstance = null;
 }

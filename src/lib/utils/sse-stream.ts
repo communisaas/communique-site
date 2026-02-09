@@ -5,8 +5,6 @@
  * Used by all streaming agent consumers (subject line, decision-makers, message generation).
  */
 
-import { z } from 'zod';
-
 export interface SSEEvent<T = unknown> {
 	type: string;
 	data: T;
@@ -54,15 +52,7 @@ export async function* parseSSEStream<T = unknown>(
 				} else if (line.startsWith('data: ') && currentEventType) {
 					try {
 						const parsed = JSON.parse(line.slice(6));
-						// Basic validation - ensure it's a valid object
-						const GenericDataSchema = z.unknown();
-						const result = GenericDataSchema.safeParse(parsed);
-
-						if (result.success) {
-							yield { type: currentEventType, data: result.data as T };
-						} else {
-							console.warn('[SSE Stream] Invalid event data:', result.error);
-						}
+						yield { type: currentEventType, data: parsed as T };
 					} catch (error) {
 						console.warn('[SSE Stream] Failed to parse SSE data:', error);
 					}
@@ -129,7 +119,11 @@ export async function collectStream<TFinal>(
  * Create SSE response helper for server endpoints.
  * Provides typed event emitter for consistent SSE formatting.
  */
-export function createSSEStream() {
+export function createSSEStream(traceConfig?: {
+	traceId: string;
+	endpoint: string;
+	userId?: string | null;
+}) {
 	const encoder = new TextEncoder();
 	let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
 
@@ -147,6 +141,18 @@ export function createSSEStream() {
 			if (!controller) return;
 			const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
 			controller.enqueue(encoder.encode(event));
+
+			if (traceConfig) {
+				import('$lib/server/agent-trace').then(({ traceEvent }) => {
+					traceEvent(
+						traceConfig.traceId,
+						traceConfig.endpoint,
+						type,
+						data as Record<string, unknown>,
+						{ userId: traceConfig.userId }
+					);
+				}).catch(() => {});
+			}
 		},
 
 		/**

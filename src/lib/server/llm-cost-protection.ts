@@ -325,42 +325,74 @@ export function addRateLimitHeaders(headers: Headers, check: RateLimitCheck): vo
 }
 
 // ============================================
-// Cost Tracking (Future Enhancement)
+// Cost Tracking
 // ============================================
 
+import type { TokenUsage } from '$lib/core/agents/types';
+
 /**
- * Log LLM operation for cost tracking
+ * Compute cost from actual token counts.
  *
- * TODO: Store in database for analytics dashboard
+ * Gemini 3 Flash pricing:
+ * - Input: $0.075 per 1M tokens
+ * - Output: $0.30 per 1M tokens
+ *
+ * Returns undefined if token counts are not available.
+ */
+export function computeCostUsd(
+	tokenUsage?: { promptTokens: number; candidatesTokens: number }
+): number | undefined {
+	if (!tokenUsage) return undefined;
+	const inputCost = (tokenUsage.promptTokens / 1_000_000) * 0.075;
+	const outputCost = (tokenUsage.candidatesTokens / 1_000_000) * 0.3;
+	return inputCost + outputCost;
+}
+
+/**
+ * Log LLM operation with real token usage and persist via trace system.
  */
 export function logLLMOperation(
 	operation: string,
 	context: UserContext,
 	details: {
-		callCount: number;
-		inputTokens?: number;
-		outputTokens?: number;
 		durationMs: number;
 		success: boolean;
-	}
+		tokenUsage?: TokenUsage;
+	},
+	traceId?: string
 ): void {
+	const costUsd = computeCostUsd(details.tokenUsage);
+
 	console.log(`[LLM-Cost] ${operation}`, {
 		user: context.identifier,
 		tier: context.tier,
-		...details,
-		estimatedCost: estimateCost(details.callCount, details.inputTokens, details.outputTokens)
+		durationMs: details.durationMs,
+		success: details.success,
+		...(details.tokenUsage && {
+			inputTokens: details.tokenUsage.promptTokens,
+			outputTokens: details.tokenUsage.candidatesTokens,
+			totalTokens: details.tokenUsage.totalTokens
+		}),
+		costUsd: costUsd !== undefined ? `$${costUsd.toFixed(6)}` : 'no token data'
 	});
-}
 
-/**
- * Estimate cost of LLM operation
- *
- * Gemini 3 Flash pricing:
- * - Input: $0.075 per 1M tokens
- * - Output: $0.30 per 1M tokens
- */
-function estimateCost(calls: number, inputTokens = 2000, outputTokens = 1000): string {
-	const inputCost = (inputTokens / 1_000_000) * 0.075 * calls;
-	const outputCost = (outputTokens / 1_000_000) * 0.3 * calls;
-	return `$${(inputCost + outputCost).toFixed(4)}`;
+	if (traceId) {
+		import('$lib/server/agent-trace').then(({ traceCompletion }) => {
+			traceCompletion(
+				traceId,
+				operation,
+				{ tier: context.tier },
+				{
+					userId: context.userId,
+					durationMs: details.durationMs,
+					success: details.success,
+					costUsd,
+					inputTokens: details.tokenUsage?.promptTokens,
+					outputTokens: details.tokenUsage?.candidatesTokens,
+					thoughtsTokens: details.tokenUsage?.thoughtsTokens,
+					totalTokens: details.tokenUsage?.totalTokens
+				}
+			);
+		}).catch(() => {});
+	}
 }

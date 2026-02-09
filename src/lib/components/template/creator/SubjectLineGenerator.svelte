@@ -73,7 +73,8 @@
 			});
 
 			if (!response.ok) {
-				throw new Error('Failed to start generation');
+				const errorData = await response.json().catch(() => ({}));
+				throw new Error(errorData.error || 'Failed to start generation');
 			}
 
 			const reader = response.body?.getReader();
@@ -169,7 +170,7 @@
 			}
 		} catch (err) {
 			console.error('[SubjectLineGenerator] Error:', err);
-			error = 'Something broke. Try again.';
+			error = err instanceof Error ? err.message : 'Something broke. Try again.';
 		} finally {
 			isGenerating = false;
 		}

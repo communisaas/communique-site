@@ -3,29 +3,40 @@
  *
  * This module runs inside the Web Worker.
  * It handles the direct interaction with @voter-protocol/noir-prover.
+ *
+ * UPDATED for v0.2.0 API:
+ * - Nullifier computed IN-CIRCUIT (not externally)
+ * - New fields: actionDomain, districtId, authorityLevel, registrationSalt
+ * - Removed: nullifier, authorityHash, epochId, campaignId, leaf
  */
 
 import { NoirProver } from '@voter-protocol/noir-prover';
 import type { CircuitInputs } from '@voter-protocol/noir-prover';
-import { computePoseidonNullifier } from '../crypto/poseidon';
 
 // ============================================================================
 // Types
 // ============================================================================
 
 export interface WitnessData {
-	identityCommitment: string;
-	leafIndex: number;
-	merklePath: string[];
+	// Public inputs
 	merkleRoot: string;
-	actionId: string;
-	timestamp: number;
+	actionDomain: string; // Domain separator for nullifier (e.g., campaign ID)
+
+	// Private inputs
+	userSecret: string; // User's identity secret (commitment preimage)
+	districtId: string; // User's district identifier
+	authorityLevel: 1 | 2 | 3 | 4 | 5; // Authorization level
+	registrationSalt: string; // Salt from registration
+
+	// Merkle proof data
+	merklePath: string[];
+	leafIndex: number;
+
+	// Legacy fields (for backwards compatibility during migration)
+	identityCommitment?: string;
+	actionId?: string;
+	timestamp?: number;
 	address?: string;
-	// New fields for Noir circuit
-	authorityHash?: string;
-	epochId?: string;
-	campaignId?: string;
-	userSecret?: string;
 }
 
 export interface ProofResult {
@@ -34,7 +45,9 @@ export interface ProofResult {
 	publicInputs?: {
 		merkleRoot: string;
 		nullifier: string;
-		actionId: string;
+		authorityLevel: number;
+		actionDomain: string;
+		districtId: string;
 	};
 	nullifier?: string;
 	error?: string;
@@ -84,7 +97,12 @@ export async function initializeWasmProver(
 }
 
 /**
- * Generate a ZK proof
+ * Generate a ZK proof using v0.2.0 API
+ *
+ * Nullifier is computed IN-CIRCUIT from:
+ * - userSecret
+ * - actionDomain
+ * - districtId
  */
 export async function generateZkProof(
 	witness: WitnessData,
@@ -96,36 +114,26 @@ export async function generateZkProof(
 		}
 
 		progressCallback?.('proving', 0);
-		console.log('[ProverCore] Starting proof generation...');
+		console.log('[ProverCore] Starting proof generation (v0.2.0 API)...');
 
-		// Prepare public input defaults
-		const userSecret = witness.userSecret || witness.identityCommitment;
-		const campaignId = witness.campaignId || witness.actionId;
-		const epochId = witness.epochId || witness.actionId;
-		const authorityHash = witness.authorityHash || '0x0';
-
-		// Compute nullifier to verify inputs (must match circuit assertion)
-		const nullifier = await computePoseidonNullifier(
-			userSecret,
-			campaignId,
-			authorityHash,
-			epochId
-		);
-
-		// Map witness to circuit inputs
+		// Map witness to circuit inputs (v0.2.0 API)
 		const circuitInputs: CircuitInputs = {
+			// Public inputs
 			merkleRoot: witness.merkleRoot,
-			nullifier,
-			authorityHash,
-			epochId,
-			campaignId,
-			leaf: witness.identityCommitment,
+			actionDomain: witness.actionDomain,
+
+			// Private inputs
+			userSecret: witness.userSecret,
+			districtId: witness.districtId,
+			authorityLevel: witness.authorityLevel,
+			registrationSalt: witness.registrationSalt,
+
+			// Merkle proof
 			merklePath: witness.merklePath,
-			leafIndex: witness.leafIndex,
-			userSecret
+			leafIndex: witness.leafIndex
 		};
 
-		// Generate proof
+		// Generate proof (nullifier computed in-circuit)
 		const proveStart = performance.now();
 		const result = await proverInstance.prove(circuitInputs);
 		const proveTime = performance.now() - proveStart;
@@ -139,7 +147,9 @@ export async function generateZkProof(
 			publicInputs: {
 				merkleRoot: result.publicInputs.merkleRoot,
 				nullifier: result.publicInputs.nullifier,
-				actionId: result.publicInputs.campaignId
+				authorityLevel: result.publicInputs.authorityLevel,
+				actionDomain: result.publicInputs.actionDomain,
+				districtId: result.publicInputs.districtId
 			},
 			nullifier: result.publicInputs.nullifier
 		};

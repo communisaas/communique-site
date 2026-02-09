@@ -19,15 +19,23 @@ interface ProofResult {
 	error?: string;
 }
 
-// Type for witness data
+// Type for witness data (v0.2.0 API - nullifier computed in-circuit)
 interface WitnessData {
-	identityCommitment: string;
-	leafIndex: number;
-	merklePath: string[];
+	// Public inputs
 	merkleRoot: string;
-	actionId: string;
-	timestamp: number;
-	address: string;
+	actionDomain: string;
+
+	// Private inputs
+	userSecret: string;
+	districtId: string;
+	authorityLevel: 1 | 2 | 3 | 4 | 5;
+	registrationSalt: string;
+
+	// Merkle proof
+	merklePath: string[];
+	leafIndex: number;
+
+	// Allow additional fields for flexibility
 	[key: string]: unknown;
 }
 
@@ -51,7 +59,7 @@ function isWorkerCommand(data: unknown): data is WorkerCommand {
 	return typeof data === 'object' && data !== null && 'type' in data;
 }
 
-const ctx: Worker = self as Worker;
+const ctx: Worker = self as unknown as Worker;
 
 // Dynamic import wrapper to load prover-core AFTER Buffer is set
 let proverCore: typeof import('./prover-core') | null = null;

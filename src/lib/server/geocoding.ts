@@ -18,6 +18,13 @@ export interface GeocodeResult {
 	region_code?: string; // State code (e.g., "CA")
 	locality_code?: string; // City name
 	district_code?: string; // Congressional district (e.g., "11")
+	/**
+	 * Census Block GEOID (15-digit cell identifier)
+	 *
+	 * PRIVACY: Neighborhood-level precision (600-3000 people).
+	 * Never log this value; encrypt at rest; use only as ZK private witness.
+	 */
+	cell_id?: string;
 	scope_level: ScopeLevel;
 	confidence: number;
 	lat?: number;
@@ -48,6 +55,14 @@ interface CensusGeocodeResponse {
 					BASENAME?: string;
 				}>;
 				Counties?: Array<{
+					NAME: string;
+				}>;
+				'2020 Census Blocks'?: Array<{
+					GEOID: string; // 15-digit Census Block GEOID
+					STATE: string;
+					COUNTY: string;
+					TRACT: string;
+					BLOCK: string;
 					NAME: string;
 				}>;
 			};
@@ -176,6 +191,10 @@ function parseCensusGeocodeResult(
 	const cd = geo['119th Congressional Districts']?.[0];
 	const county = geo.Counties?.[0];
 
+	// Extract Census Block for cell_id (15-digit GEOID)
+	const block = geo['2020 Census Blocks']?.[0];
+	const cell_id = block?.GEOID && /^\d{15}$/.test(block.GEOID) ? block.GEOID : undefined;
+
 	if (!cd) {
 		// If no congressional district, return locality-level
 		const city = match.addressComponents.city;
@@ -211,8 +230,9 @@ function parseCensusGeocodeResult(
 		region_code: stateCode,
 		locality_code: match.addressComponents.city,
 		district_code: districtNumber,
+		cell_id, // 15-digit Census Block GEOID (privacy-sensitive)
 		scope_level: 'district',
-		confidence: 0.95, // Very high confidence from official Census data
+		confidence: cell_id ? 0.98 : 0.95, // Higher confidence with cell_id
 		lat: match.coordinates.y,
 		lng: match.coordinates.x,
 		formatted_address: match.matchedAddress
