@@ -42,6 +42,20 @@ model User {
   identity_commitment    String?   @unique @map("identity_commitment")
   identity_commitment_at DateTime? @map("identity_commitment_at")
 
+  // === DOCUMENT TYPE (Wave 14R: authority level differentiation) ===
+  // Stored at verification time to differentiate passport (L4) from ID card/license (L3)
+  document_type String? @map("document_type") // 'passport' | 'drivers_license' | 'national_id'
+
+  // === USER SECRET DERIVATION (Wave 14b: G-02 Sybil closure) ===
+  // Random 32-byte entropy generated once at verification, stored AES-256-GCM encrypted
+  // user_secret = Poseidon2(identity_commitment, user_entropy) — derived on-demand, never stored
+  encrypted_entropy String? @map("encrypted_entropy") // AES-256-GCM(user_entropy, ENV key)
+
+  // === AUTHORITY LEVEL (Wave 14c: G-03 authority enforcement) ===
+  // Derived from verification method + document_type: 1=OAuth, 2=email, 3=ID/license, 4=passport, 5=reserved
+  // Stored at verification time, used during ZK proof generation
+  authority_level Int @default(1) @map("authority_level")
+
   // === VERIFICATION RATE LIMITING (Phase 1A) ===
   verification_attempts       Int       @default(0) @map("verification_attempts")
   verification_cooldown_until DateTime? @map("verification_cooldown_until")
@@ -991,6 +1005,21 @@ model ShadowAtlasRegistration {
   // Merkle path for proof generation (14 sibling hashes for 16384-leaf tree)
   merkle_path Json @map("merkle_path") // Array of 14 hex strings
 
+  // === TWO-TREE ARCHITECTURE SUPPORT ===
+  // Credential type discriminator (default to single-tree for backward compatibility)
+  credential_type String @default("single-tree") @map("credential_type") // 'single-tree' | 'two-tree'
+
+  // Cell-based fields (two-tree only)
+  cell_id   String? @map("cell_id")   // 15-digit Census GEOID (encrypted at rest)
+  districts Json?   @map("districts") // Array of 24 district identifiers
+
+  // Dual Merkle paths (two-tree only)
+  user_tree_root     String? @map("user_tree_root")     // Root of user identity tree
+  user_tree_path     Json?   @map("user_tree_path")     // Array of siblings for user tree
+  cell_map_root      String? @map("cell_map_root")      // Root of cell-to-district SMT
+  cell_map_path      Json?   @map("cell_map_path")      // Array of siblings for cell map
+  cell_map_path_bits Json?   @map("cell_map_path_bits") // Direction bits for SMT traversal
+
   // === VERIFICATION METADATA ===
   verification_method    String   @map("verification_method") // 'self.xyz' | 'didit'
   verification_id        String   @map("verification_id") // External verification ID
@@ -1017,6 +1046,7 @@ model ShadowAtlasRegistration {
   @@index([congressional_district])
   @@index([registration_status])
   @@index([expires_at])
+  @@index([credential_type])
   @@map("shadow_atlas_registration")
 }
 
@@ -1035,9 +1065,9 @@ model ShadowAtlasRegistration {
 // Links proof generation → encrypted blob → delivery → on-chain verification
 
 model Submission {
-  id          String @id @default(cuid())
-  user_id     String @map("user_id")
-  template_id String @map("template_id")
+  id              String @id @default(cuid())
+  pseudonymous_id String @map("pseudonymous_id") // SHA-256(user_id + SUBMISSION_ANONYMIZATION_SALT) — unlinkable to auth identity
+  template_id     String @map("template_id")
 
   // === ZERO-KNOWLEDGE PROOF DATA ===
   // Browser-generated Halo2 proof (2-5s in TEE)
@@ -1083,12 +1113,35 @@ model Submission {
   created_at DateTime @default(now()) @map("created_at")
   updated_at DateTime @updatedAt @map("updated_at")
 
-  @@index([user_id])
+  @@index([pseudonymous_id])
   @@index([template_id])
   @@index([delivery_status])
   @@index([verification_status])
   @@index([created_at])
   @@map("submission")
+}
+
+// ============= SUBMISSION RETRY QUEUE (Wave 15a) =============
+// Database-backed retry queue for failed blockchain submissions
+// Retries with exponential backoff: 30s, 60s, 120s, 240s → give up
+
+model SubmissionRetry {
+  id            String   @id @default(cuid())
+  submission_id String   @unique @map("submission_id")
+  nullifier     String   @map("nullifier")
+  proof_hex     String   @map("proof_hex")
+  public_inputs Json     @map("public_inputs")
+  verifier_depth Int     @map("verifier_depth")
+  retry_count   Int      @default(0) @map("retry_count")
+  next_retry_at DateTime @map("next_retry_at")
+  last_error    String?  @map("last_error")
+  status        String   @default("pending") @map("status") // 'pending' | 'succeeded' | 'exhausted'
+  created_at    DateTime @default(now()) @map("created_at")
+  updated_at    DateTime @updatedAt @map("updated_at")
+
+  @@index([status, next_retry_at])
+  @@index([nullifier])
+  @@map("submission_retry")
 }
 
 // ============= IDENTITY VERIFICATION AUDIT (Phase 1A) =============
@@ -1208,4 +1261,82 @@ model RateLimit {
   // Index for cleanup queries (delete old windows)
   @@index([window_start])
   @@map("rate_limits")
+}
+
+// ============================================================================
+// Intelligence (migrated from MongoDB — pgvector for embeddings)
+// ============================================================================
+
+model Intelligence {
+  id              String    @id @default(cuid())
+  category        String    // 'news' | 'legislative' | 'regulatory' | 'corporate' | 'social'
+  title           String
+  source          String
+  source_url      String
+  published_at    DateTime
+  snippet         String
+  topics          String[]  // Postgres array
+  entities        String[]  // Postgres array
+  embedding       Unsupported("vector(1024)")?
+  relevance_score Float?
+  sentiment       String?   // 'positive' | 'negative' | 'neutral' | 'mixed'
+  geographic_scope String?
+  created_at      DateTime  @default(now())
+  expires_at      DateTime?
+
+  // Full-text search: generated tsvector column added via raw SQL migration
+  // Indexes: HNSW on embedding, GIN on tsvector, GIN on topics — added via raw SQL
+
+  @@index([category])
+  @@index([published_at])
+  @@index([relevance_score])
+  @@index([expires_at])
+  @@map("intelligence")
+}
+
+// ============================================================================
+// Parsed Document Cache (migrated from MongoDB — JSONB storage)
+// ============================================================================
+
+model ParsedDocumentCache {
+  id               String    @id @default(cuid())
+  source_url       String
+  source_url_hash  String    @unique
+  document_type    String    // 'legislative' | 'official' | 'media' | 'corporate' | 'academic'
+  document         Json      // Full ParsedDocument as JSONB
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+  expires_at       DateTime
+  hit_count        Int       @default(0)
+  last_accessed_at DateTime?
+
+  @@index([source_url])
+  @@index([document_type])
+  @@index([expires_at])
+  @@map("parsed_document_cache")
+}
+
+// ============================================================================
+// Agent Trace — Persists agent thoughts, completions, and costs
+// ============================================================================
+
+model AgentTrace {
+  id        String   @id @default(cuid())
+  traceId   String   @map("trace_id")
+  userId    String?  @map("user_id")
+  endpoint  String
+  eventType String   @map("event_type")
+  payload   Json     @default("{}")
+  success   Boolean?
+  durationMs Int?    @map("duration_ms")
+  costUsd   Float?   @map("cost_usd")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([traceId])
+  @@index([userId, createdAt])
+  @@index([endpoint, createdAt])
+  @@index([eventType, createdAt])
+  @@index([expiresAt])
+  @@map("agent_trace")
 }

@@ -26,8 +26,9 @@
 
 **voter-protocol handles:**
 - Geocoding (Census Bureau + Geocodio)
-- District resolution (city council + congressional)
-- ZK proof generation (Halo2 WASM prover)
+- District resolution (city council + congressional via two-tree architecture)
+- ZK proof generation (Noir/UltraHonk WASM prover, depths 18/20/22/24)
+- On-chain verification (DistrictGate on Scroll — nullifier registry, campaign tracking)
 - TEE deployment (AWS Nitro Enclaves)
 - ReputationAgent (Gemini 2.5 Flash credential verification)
 
@@ -115,15 +116,15 @@ Content-Type: application/json
 
 {
   "proof": "0x...",           // Serialized Noir proof
-  "publicInputs": [           // 7 public inputs
-    "nullifier",
-    "merkleRoot",
-    "authorityLevel",
-    "actionDomain",
-    "districtId",
-    "timestamp",
-    "templateHash"
+  "publicInputs": [           // 29 public inputs (two-tree architecture)
+    "userRoot",               // [0] User identity tree root
+    "cellMapRoot",            // [1] Geographic cell tree root
+    ...                       // [2-25] Witness data (Merkle proof siblings)
+    "nullifier",              // [26] Unique action identifier
+    "actionDomain",           // [27] Action domain hash (whitelisted via SA-001)
+    "authorityLevel"          // [28] User authority level (0-15)
   ],
+  "verifierDepth": 20,        // Circuit depth (18|20|22|24)
   "encryptedWitness": "...",  // TEE-encrypted address
   "encryptedMessage": "...",  // TEE-encrypted message content
   "templateId": "template-123"
@@ -154,12 +155,12 @@ Content-Type: application/json
 ### Flow
 
 ```
-1. Validate proof structure and public inputs
+1. Validate proof structure and public inputs (29 elements, two-tree)
 2. Check nullifier uniqueness (prevent double-voting)
 3. Store submission in Postgres (encrypted blobs)
 4. Queue blockchain submission (async, non-blocking)
 5. Return submission ID immediately
-6. Background: Submit to DistrictGateV2 on Scroll
+6. Background: Submit to DistrictGate on Scroll (0x6eD37CC3D42c788d09657Af3D81e35A69e295930)
 7. Background: Forward encrypted blobs to TEE for delivery
 ```
 
@@ -639,12 +640,86 @@ TEE_PUBLIC_KEY=<base64-encoded-X25519-public-key>
 
 ---
 
+## Coordination Integrity: Proof-Message Binding & Delivery Path Security
+
+**Cross-reference:** `voter-protocol/specs/COORDINATION-INTEGRITY-SPEC.md`, `voter-protocol/specs/COMMUNIQUE-INTEGRATION-SPEC.md` Section 15
+
+This section documents critical integration findings from the 2026-02-08 coordination integrity review. These affect how communique generates, submits, and delivers verified messages.
+
+### Finding: Proof and Message Are Unbound
+
+The ZK proof generated in `ProofGenerator.svelte` is not cryptographically bound to the message content. The EIP-712 signature covers `proofHash` and `publicInputsHash` but not the message body. A valid proof for action domain X can be paired with arbitrary message content.
+
+**Why this is acceptable for Phase 1:** The `action_domain = keccak256("communique.v1" || jurisdiction || template_id || session_id)` binds the proof to a specific campaign context. Per-message content binding is deferred to Phase 2 TEE delivery (where the TEE verifies message-template correspondence server-side).
+
+**Why contentHash on-chain is rejected:** Templates are public. On-chain content hashes would enable a **template fingerprinting attack** — an adversary precomputes `keccak256(template_text)` for every template and correlates on-chain hashes with political positions, deanonymizing users. This is documented in COORDINATION-INTEGRITY-SPEC.md Section 3.
+
+### Finding: Blockchain Submission Is Mocked (P0) — RESOLVED
+
+~~`src/lib/core/blockchain/district-gate-client.ts:83-132` returns a fabricated transaction hash.~~
+
+**Status: IMPLEMENTED (2026-02-08).** Mock replaced with real ethers.js client (`district-gate-client.ts`):
+- `verifyOnChain()` calls `DistrictGate.verifyTwoTreeProof()` via ethers v6
+- Contract deployed at 0x6eD37CC3D42c788d09657Af3D81e35A69e295930 (Scroll Sepolia)
+- EIP-712 signing with `SubmitTwoTreeProof` struct
+- Server acts as gas-paying relayer (SCROLL_PRIVATE_KEY env)
+- Nullifier pre-check via `isNullifierUsed()` contract read
+- Submission handler updated for 29-element two-tree public inputs
+- Action domain builder (`action-domain-builder.ts`) computes `keccak256(abi.encodePacked(...))` → BN254 field element
+
+### Finding: `mailto:` Path Bypasses Proof Requirements — MITIGATED
+
+**Status: IMPLEMENTED (2026-02-08).** The `mailto:` path cannot be blocked (user's OS controls the email client), but is now fenced:
+1. `EmailFlowResult` extended with `verified` and `deliveryMethod` fields
+2. Non-CWC sends labeled "Sent via email without cryptographic verification" in ActionBar
+3. Analytics dispatch includes `verified: false, deliveryMethod: 'mailto'` for tracking
+4. Phase 2: TEE-based SMTP delivery with proof enforcement (deferred)
+
+### Finding: Personalized Content Bypasses Moderation — RESOLVED
+
+**Status: IMPLEMENTED (2026-02-08).** Send-time moderation added:
+1. `moderatePersonalization()` function in `moderation/index.ts` — runs Prompt Guard + Llama Guard (no Gemini, for latency)
+2. API endpoint at `/api/moderation/personalization` for client-side calls
+3. `ActionBar.svelte` calls moderation API before applying `[Personal Connection]` text
+4. Blocks send on moderation failure with clear error message; user can edit and retry
+
+### Finding: Nullifier Scoping Needs Recipient Granularity — RESOLVED
+
+**Status: IMPLEMENTED (2026-02-08).** Action domain builder (`action-domain-builder.ts`) includes `recipientSubdivision` field:
+
+```typescript
+buildActionDomain({
+  country: 'US',
+  jurisdictionType: 'federal',
+  recipientSubdivision: 'US-CA',  // ← recipient granularity
+  templateId: 'climate-action-2026',
+  sessionId: '119th-congress'
+})
+// → keccak256(abi.encodePacked(...)) % BN254_MODULUS → valid field element
+```
+
+A user can now message both their House representative (`recipientSubdivision: 'US-CA-12'`) and Senator (`recipientSubdivision: 'US-CA'`) without nullifier collision. 22 unit tests passing.
+
+### Decision-Maker Generalization — RESOLVED
+
+**Status: IMPLEMENTED (2026-02-08).** The action domain schema uses `jurisdictionType` (not `legislature`) with an extensible vocabulary:
+- `federal` — national legislature (CWC-delivered for US)
+- `state` — subnational legislature
+- `local` — municipal/county government
+- `international` — international bodies (EU Parliament, UN)
+
+The `ActionDomainParams` TypeScript interface validates jurisdiction types at build time. The on-chain `allowedActionDomains` whitelist accepts any `bytes32` hash — the schema is purely an off-chain convention.
+
+---
+
 ## Next Steps
 
 - **Architecture:** See `docs/ARCHITECTURE.md` for Communique/voter-protocol separation
 - **Frontend:** See `docs/FRONTEND.md` for SvelteKit 5 patterns
 - **Identity Verification:** See `docs/features/identity-verification.md` for verification tiers and flows
+- **Coordination Integrity:** See `voter-protocol/specs/COORDINATION-INTEGRITY-SPEC.md` for anti-astroturf architecture
+- **Implementation Gaps:** See `voter-protocol/specs/IMPLEMENTATION-GAP-ANALYSIS.md` Round 4 for CI-001 through CI-007
 
 ---
 
-*Communiqué PBC | Integration Guide | Last Updated: 2026-02-02*
+*Communiqué PBC | Integration Guide | Last Updated: 2026-02-08*

@@ -1,0 +1,20 @@
+{$DOMAIN:localhost} {
+	# Communique SvelteKit app
+	reverse_proxy communique:3000
+
+	# Shadow Atlas API at /atlas/*
+	handle_path /atlas/* {
+		reverse_proxy shadow-atlas:3001
+	}
+
+	# Security headers
+	header {
+		X-Frame-Options DENY
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+
+	# Compress responses
+	encode gzip zstd
+}

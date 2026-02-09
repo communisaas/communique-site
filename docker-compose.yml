@@ -1,0 +1,62 @@
+# Communique Local Development Stack
+#
+# Usage:
+#   docker compose up        - Start all services
+#   docker compose up -d     - Start in background
+#   docker compose down      - Stop all services
+#   docker compose down -v   - Stop and remove volumes (full reset)
+#
+# After first start, run:
+#   npx prisma db push       - Apply schema to dev database
+#   npx prisma generate      - Generate Prisma client
+#
+# Databases created automatically:
+#   communique  - Development (DATABASE_URL)
+#   test        - Integration tests (TEST_DATABASE_URL)
+#
+# pgvector extension is enabled on all databases automatically.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: communique-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: communique
+      POSTGRES_PASSWORD: communique
+      POSTGRES_DB: communique
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U communique"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: communique-ipfs
+    ports:
+      - "5001:5001"   # API
+      - "8080:8080"   # Gateway
+    environment:
+      IPFS_PROFILE: server
+    volumes:
+      - ipfs-data:/data/ipfs
+    healthcheck:
+      test: ["CMD-SHELL", "ipfs id || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+    driver: local
+  ipfs-data:
+    driver: local

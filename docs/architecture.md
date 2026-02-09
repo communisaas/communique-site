@@ -478,14 +478,14 @@ TOTAL COST:
 ### ⏳ IN PROGRESS (Wave 4)
 
 **Mainnet Deployment:**
-- ⏳ DistrictGateV2 deployment (CRITICAL: not V1)
+- ✅ DistrictGate deployed to Scroll Sepolia (0x6eD37CC3D42c788d09657Af3D81e35A69e295930)
 - ⏳ Security council multisig setup
 - ⏳ Initial actionDomain whitelisting
 - ⏳ Etherscan verification
+- ⏳ Deploy to Scroll Mainnet
 
 **Critical Fixes Required:**
 - ⏳ CRITICAL-001: NullifierRegistry 7-day timelock
-- ⏳ CRITICAL-002: Deploy scripts → DistrictGateV2
 - ⏳ HIGH-002: Kubernetes security hardening
 
 ---
