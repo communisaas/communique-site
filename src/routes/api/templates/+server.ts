@@ -644,55 +644,59 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					return template;
 				});
 
-				// Set verification fields for congressional templates (deliveryMethod === 'cwc')
-				if (validData.deliveryMethod === 'cwc') {
-					try {
-						// Update template with initial verification status
-						await db.template.update({
-							where: { id: newTemplate.id },
-							data: {
-								verification_status: 'pending',
-								country_code: 'US', // TODO: Extract from user profile
-								reputation_applied: false
+				// Deferred work: CWC verification + embeddings run after response is sent.
+				// These are non-user-facing side effects that inflate response latency
+				// and cause client timeouts when external APIs (Gemini, GROQ) are slow.
+				const templateId = newTemplate.id;
+				const isPublic = newTemplate.is_public;
+				const isCwc = validData.deliveryMethod === 'cwc';
+
+				if (isCwc || isPublic) {
+					// Fire-and-forget: don't await, don't block response
+					(async () => {
+						if (isCwc) {
+							try {
+								await db.template.update({
+									where: { id: templateId },
+									data: {
+										verification_status: 'pending',
+										country_code: 'US',
+										reputation_applied: false
+									}
+								});
+								await triggerModerationPipeline(templateId);
+								console.log(`[deferred] CWC verification set for template ${templateId}`);
+							} catch (error) {
+								console.error('[deferred] CWC verification failed:', error);
 							}
-						});
+						}
 
-						// Trigger moderation pipeline via webhook
-						await triggerModerationPipeline(newTemplate.id);
-						console.log(`Set verification status for congressional template ${newTemplate.id}`);
-					} catch (error) {
-						console.error('Failed to set template verification status');
-						// Don't fail the template creation, just log the error
-					}
-				}
+						if (isPublic) {
+							try {
+								const locationText = `${newTemplate.title} ${newTemplate.description || ''} ${newTemplate.category}`;
+								const topicText = `${newTemplate.title} ${newTemplate.description || ''} ${newTemplate.message_body}`;
 
-				// Generate embeddings for searchability (FREE via Gemini)
-				// Only generate if template is public (passed moderation)
-				if (newTemplate.is_public) {
-					try {
-						const locationText = `${newTemplate.title} ${newTemplate.description || ''} ${newTemplate.category}`;
-						const topicText = `${newTemplate.title} ${newTemplate.description || ''} ${newTemplate.message_body}`;
+								const embeddings = await generateBatchEmbeddings(
+									[locationText, topicText],
+									{ taskType: 'RETRIEVAL_DOCUMENT' }
+								);
 
-						const embeddings = await generateBatchEmbeddings(
-							[locationText, topicText],
-							{ taskType: 'RETRIEVAL_DOCUMENT' }
-						);
+								await db.template.update({
+									where: { id: templateId },
+									data: {
+										location_embedding: embeddings[0],
+										topic_embedding: embeddings[1],
+										embedding_version: 'v1',
+										embeddings_updated_at: new Date()
+									}
+								});
 
-						await db.template.update({
-							where: { id: newTemplate.id },
-							data: {
-								location_embedding: embeddings[0],
-								topic_embedding: embeddings[1],
-								embedding_version: 'v1',
-								embeddings_updated_at: new Date()
+								console.log(`[deferred] Embeddings generated for template ${templateId}`);
+							} catch (embeddingError) {
+								console.error('[deferred] Embedding generation failed:', embeddingError);
 							}
-						});
-
-						console.log(`[embeddings] Generated for template ${newTemplate.id}`);
-					} catch (embeddingError) {
-						// Don't fail template creation if embedding generation fails
-						console.error('[embeddings] Failed to generate:', embeddingError);
-					}
+						}
+					})();
 				}
 
 				const response: ApiResponse = {

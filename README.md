@@ -92,13 +92,13 @@ npm run dev        # http://localhost:5173
 **Identity & Privacy:**
 
 - self.xyz + Didit.me (FREE identity verification)
-- Browser-native ZKPs (Halo2, 600ms-10s proving)
+- Browser-native ZKPs (Noir/UltraHonk, 600ms-10s proving)
 - XChaCha20-Poly1305 (end-to-end encryption)
 
 **Blockchain (via voter-protocol):**
 
 - Scroll zkEVM (settlement layer)
-- Halo2 recursive proofs (zero-knowledge)
+- Noir/UltraHonk proofs (zero-knowledge)
 - ERC-8004 reputation tracking
 
 **Deployment:**
@@ -117,7 +117,7 @@ Communiqué is the **frontend application** for VOTER Protocol's cryptographic i
 - Template browsing, creation, customization
 - OAuth authentication (5 providers)
 - Address validation → congressional district lookup
-- Browser-native ZK proofs (Halo2, 600ms-10s proving)
+- Browser-native ZK proofs (Noir/UltraHonk, 600ms-10s proving)
 - Multi-target delivery (Congress + corporations + HOAs + schools + nonprofits)
 - 3-layer content moderation (OpenAI + Gemini/Claude)
 - Encrypted message delivery
@@ -125,7 +125,7 @@ Communiqué is the **frontend application** for VOTER Protocol's cryptographic i
 **What voter-protocol handles:**
 
 - Smart contracts on Scroll zkEVM
-- Halo2 ZK proof verification on-chain
+- Noir/UltraHonk ZK proof verification on-chain
 - ERC-8004 on-chain reputation
 - Multi-agent treasury management (Phase 2)
 - Token economics, challenge markets, outcome markets (Phase 2)
@@ -140,7 +140,7 @@ Communiqué is the **frontend application** for VOTER Protocol's cryptographic i
 2. **OAuth login** - One of 5 providers (Google/Facebook/Twitter/LinkedIn/Discord)
 3. **Address collection** - Census Bureau geocoding → district lookup
 4. **Customize template** - Fill variables, add personal connection
-5. **Generate ZK proof** - Browser-native Halo2 proving (600ms-10s device-dependent)
+5. **Generate ZK proof** - Browser-native Noir/UltraHonk proving (600ms-10s device-dependent)
    - Modern desktop: 600-800ms
    - Recent mobile: 2-3s
    - Budget mobile: 5-10s
@@ -150,7 +150,7 @@ Communiqué is the **frontend application** for VOTER Protocol's cryptographic i
 8. **Build reputation** - On-chain ERC-8004 reputation tracking
 9. **Earn rewards** - Token rewards launch in Phase 2 (12-18 months)
 
-**Zero-knowledge guarantee:** Your address is used to generate a Halo2 proof entirely in browser (WASM). Address never leaves your device, never sent to any server. Decision-makers verify proof on-chain (~60-100k gas, ~$0.002 per verification).
+**Zero-knowledge guarantee:** Your address is used to generate a Noir/UltraHonk proof entirely in browser (WASM). Address never leaves your device, never sent to any server. Decision-makers verify proof on-chain (~60-100k gas, ~$0.002 per verification).
 
 **Encrypted delivery:** Message plaintext exists only in: your browser → delivery API → decision-maker CRM. Platform operators cannot read messages.
 

@@ -124,11 +124,13 @@ class UnifiedApiClient {
 		let lastError: Error | null = null;
 
 		for (let attempt = 0; attempt <= retries; attempt++) {
-			try {
-				// Create abort controller for timeout
-				const controller = new AbortController();
-				const timeoutId = setTimeout(() => controller.abort(), timeout);
+			const controller = new AbortController();
+			const timeoutId = setTimeout(
+				() => controller.abort('Request timed out'),
+				timeout
+			);
 
+			try {
 				const response = await fetch(url, {
 					...config,
 					signal: controller.signal
@@ -152,10 +154,16 @@ class UnifiedApiClient {
 				onLoadingChange?.(false);
 				return result;
 			} catch (error) {
+				clearTimeout(timeoutId);
 				lastError = error instanceof Error ? error : new Error(String(error));
 
-				// Don't retry on abort errors
+				// Don't retry on abort errors — for mutating requests the server
+				// may have already processed it (template publish, etc.)
 				if (error instanceof Error && error.name === 'AbortError') {
+					lastError = new Error(
+						'This is taking longer than expected. Your changes may have been saved — please refresh to check.'
+					);
+					lastError.name = 'TimeoutError';
 					break;
 				}
 

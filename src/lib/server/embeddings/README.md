@@ -405,5 +405,5 @@ VOYAGE_API_KEY=your-api-key-here
 ## Related Documentation
 
 - [Vector Search Guide](../../../../docs/VECTOR_SEARCH_GUIDE.md)
-- [MongoDB Service Layer](../mongodb/README.md)
+- [Intelligence Service Layer](../intelligence/README.md)
 - [Voyage AI Official Docs](https://docs.voyageai.com/)
