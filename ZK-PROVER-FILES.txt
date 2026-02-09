@@ -1,0 +1,163 @@
+ZK PROVER BROWSER WASM INTEGRATION - FILE MANIFEST
+==================================================
+
+Created: 2026-02-02
+Total Lines of Code: 1,106 (excluding examples and docs)
+
+CORE IMPLEMENTATION FILES
+-------------------------
+
+1. src/lib/core/zkp/prover-client.ts (307 lines)
+   - Low-level prover wrapper with singleton management
+   - Input validation (BN254 modulus, Merkle path, authority level)
+   - Progress tracking via callbacks
+   - SA-006 compliant error recovery
+
+2. src/lib/core/zkp/witness-builder.ts (239 lines)
+   - Constructs circuit inputs from application data
+   - Validates all field elements
+   - Type-safe authority level handling
+   - Merkle path structure validation
+
+3. src/lib/stores/proof-generation.svelte.ts (250 lines)
+   - Svelte 5 runes-based reactive store
+   - Concurrency control (one proof at a time)
+   - Progress tracking for UI updates
+   - Error recovery with explicit reset
+
+4. src/lib/core/zkp/index.ts (27 lines)
+   - Public API exports
+   - Convenient import paths
+
+DOCUMENTATION & EXAMPLES
+------------------------
+
+5. src/lib/core/zkp/README.md (6.3 KB)
+   - Architecture overview
+   - Usage examples (functional & reactive)
+   - Security invariants
+   - Performance characteristics
+   - Browser compatibility
+
+6. src/lib/core/zkp/example-usage.ts (283 lines)
+   - Example 1: Basic proof generation
+   - Example 2: Proof generation with Svelte store
+   - Example 3: Integration with Shadow Atlas lookup
+   - Example 4: Error handling patterns
+
+7. ZK-PROVER-INTEGRATION-SUMMARY.md (15.2 KB)
+   - Executive summary
+   - Architecture deep dive
+   - Security analysis
+   - Performance benchmarks
+   - Testing strategy
+   - Integration checklist
+
+FILE TREE
+---------
+
+/Users/noot/Documents/communique/
+├── src/
+│   └── lib/
+│       ├── core/
+│       │   └── zkp/
+│       │       ├── prover-client.ts       ← Prover wrapper & validation
+│       │       ├── witness-builder.ts     ← Input construction
+│       │       ├── index.ts               ← Public API
+│       │       ├── example-usage.ts       ← Usage examples
+│       │       └── README.md              ← Module documentation
+│       └── stores/
+│           └── proof-generation.svelte.ts ← Reactive store
+└── ZK-PROVER-INTEGRATION-SUMMARY.md       ← This summary
+
+VERIFICATION COMMANDS
+---------------------
+
+# Check TypeScript compilation
+cd /Users/noot/Documents/communique
+npm run check
+
+# Build project
+npm run build
+
+# Run tests (when implemented)
+npm test
+
+IMPORT PATHS
+------------
+
+# Functional API (direct usage)
+import { generateProof, initializeProver } from '$lib/core/zkp/prover-client';
+import { buildWitness } from '$lib/core/zkp/witness-builder';
+
+# Or use convenience exports
+import { generateProof, buildWitness } from '$lib/core/zkp';
+
+# Reactive store (Svelte components)
+import { getProofState, initProver, generate } from '$lib/stores/proof-generation.svelte';
+
+USAGE PATTERN
+-------------
+
+// 1. Initialize prover (warm up)
+await initProver();
+
+// 2. Build witness
+const witness = await buildWitness(registration, userSecret, actionDomain, 1);
+
+// 3. Generate proof
+const result = await generate(witness);
+
+// 4. Use proof
+console.log('Proof:', result.proof);
+console.log('Nullifier:', result.publicInputs.nullifier);
+
+DEPENDENCIES
+------------
+
+Required packages (already in package.json):
+- @voter-protocol/noir-prover@^0.1.4
+- @voter-protocol/crypto@^0.1.3
+- @voter-protocol/types@^0.1.0
+
+Transitive dependencies:
+- @aztec/bb.js@^2.1.9
+- @noir-lang/noir_js@^1.0.0-beta.16
+- buffer@^6.0.3
+
+SECURITY INVARIANTS
+-------------------
+
+1. Singleton Management: Prover cached per depth (SA-006: clear on failure)
+2. Field Validation: All inputs < BN254 modulus
+3. Path Length: Merkle path = 20 siblings (depth-20 circuits)
+4. Non-Blocking: All operations async via WASM
+5. Concurrency: One proof at a time
+
+PERFORMANCE
+-----------
+
+First Load:     ~1-2s  (circuit download + WASM init)
+Proof Generation: ~3-5s  (subsequent proofs, prover cached)
+Memory Usage:   ~60-125MB per prover instance
+
+Optimization: Call initProver() on app load to hide latency
+
+BROWSER SUPPORT
+---------------
+
+WASM:          Chrome 87+, Firefox 89+, Safari 15.2+
+Multithreading: Requires COOP/COEP headers (optional)
+Coverage:      ~95% of modern browsers
+
+NEXT STEPS
+----------
+
+1. Integrate with registration flow (generate identityCommitment)
+2. Connect to DistrictGate contract for proof submission
+3. Add UI components for proof generation flow
+4. Set up monitoring for proof generation metrics
+5. Implement tests (unit + integration)
+
+END OF FILE MANIFEST
+====================

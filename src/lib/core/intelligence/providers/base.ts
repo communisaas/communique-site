@@ -11,8 +11,8 @@ import type {
 	IntelligenceItem,
 	IntelligenceCategory
 } from '../types';
-import { IntelligenceService } from '$lib/server/mongodb/service';
-import type { IntelligenceItemDocument } from '$lib/server/mongodb/schema';
+import { IntelligenceService } from '$lib/server/intelligence/service';
+import type { IntelligenceItem as IntelligenceItemDocument } from '$lib/server/intelligence/types';
 
 /**
  * Abstract base provider with common caching and utility methods

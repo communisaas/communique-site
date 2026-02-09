@@ -12,7 +12,7 @@ The Intelligence Orchestrator surfaces contextual information (news, legislative
 
 - **True Async Streaming**: Uses `AsyncGenerator` for items to flow as they arrive
 - **Parallel Execution**: Multiple providers run concurrently, merged with `Promise.race`
-- **MongoDB Caching**: Automatic caching via `IntelligenceService`
+- **PostgreSQL Caching**: Automatic caching via `IntelligenceService` (pgvector)
 - **Deduplication**: URL-based dedup across providers
 - **Graceful Degradation**: Failed providers don't crash the stream
 - **Extensible**: Easy to add new providers via `IntelligenceProvider` interface
@@ -31,7 +31,7 @@ The Intelligence Orchestrator surfaces contextual information (news, legislative
 │              AsyncMergedStream<IntelligenceItem>             │
 │                         │                                     │
 │                         ▼                                     │
-│              MongoDB Cache (via IntelligenceService)         │
+│           PostgreSQL + pgvector (via IntelligenceService)    │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -234,9 +234,9 @@ private async *mergeStreams(
 - Uses `Promise.race` to find the fastest next item
 - Continues until **all providers complete**
 
-## MongoDB Caching
+## PostgreSQL Caching
 
-All providers automatically cache items via `IntelligenceService`:
+All providers automatically cache items via `IntelligenceService` (pgvector):
 
 ### Cache Flow
 1. Provider checks cache via `checkCache(query, category, maxAgeHours)`
@@ -246,7 +246,7 @@ All providers automatically cache items via `IntelligenceService`:
 5. Yield fresh items
 
 ### Cache Keys
-- Items stored in `intelligence` collection
+- Items stored in `intelligence` table (PostgreSQL)
 - Indexed by: `category`, `topics`, `publishedAt`, `relevanceScore`
 - TTL: Configurable per provider (default: 7 days)
 
@@ -258,7 +258,7 @@ All providers automatically cache items via `IntelligenceService`:
 ## Performance Characteristics
 
 ### Latency
-- **Cache hit**: ~10-50ms (MongoDB query)
+- **Cache hit**: ~10-50ms (PostgreSQL query)
 - **Cache miss**: Depends on provider (500-3000ms typical)
 - **Parallel speedup**: 3 providers in parallel ≈ 1x slowest provider, not 3x sum
 
@@ -423,8 +423,6 @@ src/lib/core/intelligence/
 
 ## References
 
-- [MongoDB IntelligenceService](/src/lib/server/mongodb/service.ts)
-- [MongoDB Schema Definitions](/src/lib/server/mongodb/schema.ts)
 - [Provider Architecture](/src/lib/core/agents/providers/ARCHITECTURE.md)
 
 ---

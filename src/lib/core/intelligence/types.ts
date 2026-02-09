@@ -6,7 +6,7 @@
  */
 
 import type { DecisionMakerTargetType, GeographicScope } from '../agents/providers/types';
-import type { IntelligenceCategory } from '$lib/server/mongodb/schema';
+import type { IntelligenceCategory } from '$lib/server/intelligence/types';
 
 // Re-export for convenience
 export type { IntelligenceCategory, GeographicScope };
