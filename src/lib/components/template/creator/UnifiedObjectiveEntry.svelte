@@ -3,7 +3,7 @@
 	import { Sparkles, ArrowRight } from 'lucide-svelte';
 	import { api } from '$lib/core/api/client';
 	import { slide, fade } from 'svelte/transition';
-	import { onMount } from 'svelte';
+	import { onMount, tick } from 'svelte';
 	import { AI_SUGGESTION_TIMING } from '$lib/constants/ai-timing';
 	import { calculateSimilarity } from '$lib/utils/similarity';
 	import { SuggestionCache } from '$lib/services/ai/suggestion-cache';
@@ -115,6 +115,10 @@
 	let suggestionHistory = $state<AISuggestion[]>([]);
 	let selectedIterationIndex = $state<number>(0);
 
+	// Inline editing state for suggestion refinement
+	let editingSubjectLine = $state(false);
+	let editingCoreMessage = $state(false);
+
 	// Real-time generation state
 	let debounceTimer: ReturnType<typeof setTimeout> | undefined;
 	let currentRequestId: string | null = null;
@@ -136,12 +140,18 @@
 	// Using text labels instead of symbols for screen reader compatibility
 	let isMac = $state(false);
 	const shortcutKey = $derived(isMac ? 'Cmd' : 'Ctrl');
-	const shortcutHint = $derived(`${shortcutKey}+Enter to generate`);
+
 
 	// Settled state: rawInput transforms from editable workspace to grounded artifact
 	// When user has accepted an AI suggestion, the original input is "settled" - read-only reference
 	const isSettled = $derived(data.aiGenerated === true && !!data.title?.trim());
 	let showEditConfirm = $state(false); // Inline confirmation for editing settled input
+
+	// Written-state: text exists but hasn't been AI-refined yet
+	let isEditingRawInput = $state(true); // Default to textarea; onMount may flip to quote
+	const hasExistingText = $derived(
+		(data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH
+	);
 
 	// Auto-scroll thought container when new thoughts arrive
 	$effect(() => {
@@ -172,15 +182,14 @@
 		pendingSuggestion = showAISuggest ? currentSuggestion : null;
 	});
 
-	// Pre-populate title and slug as soon as AI suggestion arrives
-	// This allows validation to pass so user can proceed (or click "Use this" to officially accept)
-	// Only sets values if currently empty — never overwrites user edits
+	// Sync title and slug from the current suggestion so SlugCustomizer
+	// and validation always reflect the latest AI output (including "Try another")
 	$effect(() => {
 		if (currentSuggestion && showAISuggest) {
-			if (!data.title && currentSuggestion.subject_line) {
+			if (currentSuggestion.subject_line) {
 				data.title = currentSuggestion.subject_line;
 			}
-			if (!data.slug && currentSuggestion.url_slug) {
+			if (currentSuggestion.url_slug) {
 				data.slug = currentSuggestion.url_slug;
 			}
 		}
@@ -510,6 +519,8 @@
 	function navigateToIteration(index: number) {
 		if (index >= 0 && index < suggestionHistory.length) {
 			selectedIterationIndex = index;
+			editingSubjectLine = false;
+			editingCoreMessage = false;
 		}
 	}
 
@@ -522,6 +533,77 @@
 	function navigateNext() {
 		if (selectedIterationIndex < suggestionHistory.length - 1) {
 			selectedIterationIndex++;
+		}
+	}
+
+	// Inline edit: commit refined subject line back into suggestion history
+	async function startEditingField(field: 'subject' | 'core') {
+		if (field === 'subject') {
+			editingSubjectLine = true;
+			await tick();
+			const input = document.querySelector('[data-edit-subject]') as HTMLInputElement;
+			input?.focus();
+			input?.select();
+		} else {
+			editingCoreMessage = true;
+			await tick();
+			const textarea = document.querySelector('[data-edit-core]') as HTMLTextAreaElement;
+			textarea?.focus();
+		}
+	}
+
+	// Guard: when Escape cancels an edit, the DOM removal fires blur — skip commit
+	let editCancelled = false;
+
+	function commitSubjectLineEdit(newValue: string) {
+		if (editCancelled) return;
+		const trimmed = newValue.trim();
+		if (trimmed && suggestionHistory.length > 0) {
+			suggestionHistory[selectedIterationIndex] = {
+				...suggestionHistory[selectedIterationIndex],
+				subject_line: trimmed
+			};
+		}
+		editingSubjectLine = false;
+	}
+
+	function commitCoreMessageEdit(newValue: string) {
+		if (editCancelled) return;
+		const trimmed = newValue.trim();
+		if (trimmed && suggestionHistory.length > 0) {
+			suggestionHistory[selectedIterationIndex] = {
+				...suggestionHistory[selectedIterationIndex],
+				core_message: trimmed
+			};
+		}
+		editingCoreMessage = false;
+	}
+
+	function cancelEdit(field: 'subject' | 'core') {
+		editCancelled = true;
+		if (field === 'subject') editingSubjectLine = false;
+		else editingCoreMessage = false;
+		// Reset after blur has fired (DOM removal → blur is synchronous in same microtask)
+		tick().then(() => { editCancelled = false; });
+	}
+
+	function handleSubjectLineKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			commitSubjectLineEdit((event.target as HTMLInputElement).value);
+		} else if (event.key === 'Escape') {
+			event.stopPropagation();
+			cancelEdit('subject');
+		}
+	}
+
+	function handleCoreMessageKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter' && !event.shiftKey) {
+			event.preventDefault();
+			commitCoreMessageEdit((event.target as HTMLTextAreaElement).value);
+		} else if (event.key === 'Escape') {
+			event.stopPropagation();
+			cancelEdit('core');
 		}
 	}
 
@@ -605,6 +687,9 @@
 			}
 		}
 
+		// Initialize raw input display mode: quote view when text exists, textarea when empty
+		isEditingRawInput = !((data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH);
+
 		return () => {
 			if (debounceTimer) clearTimeout(debounceTimer);
 			window.removeEventListener('keydown', handleKeyboardNavigation);
@@ -612,9 +697,26 @@
 	});
 
 	function editRawWriting() {
-		showAISuggest = false;
-		suggestionState = { status: 'idle' };
-		userWantsAI = false;
+		// Keep suggestion visible — user is editing raw input, not discarding the result
+		startEditingRawInput();
+	}
+
+	function startEditingRawInput() {
+		isEditingRawInput = true;
+		tick().then(() => {
+			const textarea = document.getElementById('raw-input') as HTMLTextAreaElement;
+			if (textarea) {
+				textarea.focus();
+				textarea.selectionStart = textarea.selectionEnd = textarea.value.length;
+			}
+		});
+	}
+
+	function finishEditingRawInput() {
+		// Only return to quote view if there's meaningful content
+		if ((data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH) {
+			isEditingRawInput = false;
+		}
 	}
 
 	function enableAISuggestions() {
@@ -651,6 +753,7 @@
 			data.voiceSample = data.rawInput.trim();
 		}
 		data.aiGenerated = false;
+		isEditingRawInput = true;
 	}
 
 	/**
@@ -775,6 +878,7 @@
 								showAISuggest = false;
 								suggestionState = { status: 'idle' };
 								hasAutoTriggered = false;
+								isEditingRawInput = true;
 							}}
 							class="rounded-md bg-amber-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-amber-700"
 						>
@@ -808,11 +912,71 @@
 						suggestionHistory = [];
 						hasAutoTriggered = false;
 						showEditConfirm = false;
+						isEditingRawInput = true;
 					}}
 					class="text-sm text-slate-500 transition-colors hover:text-slate-700"
 				>
 					Start fresh →
 				</button>
+			</div>
+		</div>
+	{:else if hasExistingText && !isEditingRawInput && !manualMode}
+		<!-- WRITTEN STATE: Pre-existing text displayed as quote artifact -->
+		<div
+			class="written-artifact rounded-lg border border-participation-primary-200 bg-gradient-to-br from-participation-primary-50/40 to-white shadow-sm"
+			role="region"
+			aria-label="Your concern"
+		>
+			<!-- Header -->
+			<div class="flex items-center justify-between border-b border-participation-primary-100 bg-participation-primary-50/30 px-4 py-3">
+				<span class="text-xs font-medium uppercase tracking-wide text-participation-primary-600/70">Your concern</span>
+				<button
+					type="button"
+					onclick={startEditingRawInput}
+					class="inline-flex items-center gap-1 text-sm text-participation-primary-500 transition-colors hover:text-participation-primary-700"
+				>
+					<svg class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+					</svg>
+					Edit
+				</button>
+			</div>
+
+			<!-- Content: blockquote -->
+			<div class="px-4 py-4">
+				<blockquote class="border-l-2 border-participation-primary-300 pl-3 text-base leading-relaxed text-slate-700">
+					"{data.rawInput}"
+				</blockquote>
+			</div>
+
+			<!-- Footer -->
+			<div class="flex items-center justify-end border-t border-participation-primary-100 bg-participation-primary-50/20 px-4 py-2.5">
+				<div class="flex items-center gap-3">
+					{#if !isGenerating}
+						<button
+							type="button"
+							onclick={() => generateSuggestion()}
+							class="inline-flex items-center gap-1.5 text-sm font-medium text-participation-primary-600 transition-colors hover:text-participation-primary-700"
+						>
+							<kbd class="hidden rounded bg-participation-primary-100 px-1 py-0.5 font-mono text-xs text-participation-primary-700 md:inline">{shortcutKey}+Enter</kbd>
+							<span class="text-xs md:hidden"><Sparkles class="inline h-3 w-3" aria-hidden="true" /> Generate</span>
+						</button>
+					{/if}
+					<button
+						type="button"
+						onclick={() => {
+							data.rawInput = '';
+							data.aiGenerated = false;
+							showAISuggest = false;
+							suggestionState = { status: 'idle' };
+							hasAutoTriggered = false;
+							isEditingRawInput = true;
+						}}
+						class="text-xs text-participation-primary-400 transition-colors hover:text-participation-primary-600"
+					>
+						Start fresh
+					</button>
+				</div>
 			</div>
 		</div>
 	{:else}
@@ -826,6 +990,7 @@
 				id="raw-input"
 				bind:value={data.rawInput}
 				onkeydown={handleTextareaKeydown}
+				onblur={finishEditingRawInput}
 				placeholder="The rent keeps going up but wages don't..."
 				rows="5"
 				disabled={isGenerating}
@@ -840,11 +1005,27 @@
 			<div class="mt-2 flex items-center justify-between text-xs text-slate-600">
 				{#if (data.rawInput || '').trim().length > 0}
 					<span class="font-mono">{(data.rawInput || '').length} characters</span>
-					{#if (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && !isGenerating && !showAISuggest}
-						<span class="text-slate-400">{shortcutHint}</span>
-					{/if}
 				{:else}
 					<span class="italic">Describe the problem you want to solve</span>
+				{/if}
+				{#if !isSettled && !manualMode}
+					{#if !isGenerating && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH}
+						<button
+							type="button"
+							onpointerdown={(e) => e.preventDefault()}
+							onclick={() => generateSuggestion()}
+							class="inline-flex items-center gap-1.5 font-medium text-participation-primary-600 transition-colors hover:text-participation-primary-700"
+						>
+							<Sparkles class="h-3 w-3" aria-hidden="true" />
+							<kbd class="hidden rounded bg-participation-primary-100 px-1 py-0.5 font-mono text-participation-primary-700 md:inline">{shortcutKey}+Enter</kbd>
+							<span class="text-xs md:hidden">Generate</span>
+						</button>
+					{:else if !isGenerating}
+						<div class="flex items-center gap-1.5 text-slate-400">
+							<Sparkles class="h-3 w-3" aria-hidden="true" />
+							<kbd class="hidden rounded bg-slate-100 px-1 py-0.5 font-mono text-slate-400 md:inline">{shortcutKey}+Enter</kbd>
+						</div>
+					{/if}
 				{/if}
 			</div>
 		</div>
@@ -864,23 +1045,11 @@
 		</div>
 	{/if}
 
-	<!-- Status indicator (shows when waiting to generate) -->
-	{#if !isSettled && !manualMode && !showAISuggest && suggestionState.status === 'idle' && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH}
-		<div
-			class="mt-2 flex items-center gap-2 text-xs text-slate-500"
-			transition:fade={{ duration: 150 }}
-			role="status"
-			aria-live="polite"
-		>
-			<Sparkles class="h-3.5 w-3.5" aria-hidden="true" />
-			<span>Press <kbd class="rounded bg-slate-200 px-1.5 py-0.5 font-mono text-slate-700">{shortcutKey}+Enter</kbd> to generate</span>
-		</div>
-	{/if}
 
 	<!-- Streaming thoughts (perceptual engineering: scannable research log) -->
 	{#if !isSettled && suggestionState.status === 'streaming' && !showAISuggest}
 		<div
-			class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3"
+			class="mt-4 rounded-xl border border-participation-primary-200/60 bg-gradient-to-br from-participation-primary-50 to-white/80 p-3 shadow-atmospheric-card backdrop-blur-sm"
 			transition:fade={{ duration: 200 }}
 			role="status"
 			aria-live="polite"
@@ -893,12 +1062,12 @@
 						<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-participation-primary-400 opacity-75"></span>
 						<span class="relative inline-flex h-2 w-2 rounded-full bg-participation-primary-500"></span>
 					</span>
-					<span class="text-xs font-medium text-slate-500">Analyzing your message...</span>
+					<span class="text-xs font-medium text-participation-primary-600/70">Analyzing your message...</span>
 				</div>
 				<button
 					type="button"
 					onclick={writeManually}
-					class="text-xs text-slate-400 transition-colors hover:text-slate-600"
+					class="text-xs text-participation-primary-400 transition-colors hover:text-participation-primary-600"
 				>
 					I'll write my own
 				</button>
@@ -907,16 +1076,12 @@
 			<!-- Thought log - left-justified, scannable -->
 			<div bind:this={thoughtContainerRef} class="max-h-32 space-y-1 overflow-y-auto" role="log">
 				{#if suggestionState.thoughts.length === 0}
-					<p class="py-2 text-sm italic text-slate-400">understanding your concern...</p>
+					<p class="py-2 text-sm italic text-participation-primary-400">understanding your concern...</p>
 				{:else}
 					{#each suggestionState.thoughts as thought, i}
 						<p
-							class="border-l-2 py-0.5 pl-2 text-sm transition-all duration-150"
-							class:border-participation-primary-500={i === suggestionState.thoughts.length - 1}
-							class:bg-white={i === suggestionState.thoughts.length - 1}
-							class:text-slate-800={i === suggestionState.thoughts.length - 1}
-							class:border-transparent={i < suggestionState.thoughts.length - 1}
-							class:text-slate-500={i < suggestionState.thoughts.length - 1}
+							class="border-l-2 py-0.5 pl-2 text-sm transition-all duration-150
+							{i === suggestionState.thoughts.length - 1 ? 'border-participation-primary-400 bg-participation-primary-100/40 text-participation-primary-900' : 'border-transparent text-participation-primary-700/60'}"
 							style="animation: thoughtAppear 0.2s ease-out forwards; opacity: 0;"
 						>
 							{thought}
@@ -930,7 +1095,7 @@
 	<!-- Fallback thinking indicator (for non-streaming paths like clarification follow-up) -->
 	{#if !isSettled && suggestionState.status === 'thinking' && !showAISuggest}
 		<div
-			class="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3"
+			class="mt-4 rounded-xl border border-participation-primary-200/60 bg-gradient-to-br from-participation-primary-50 to-white/80 p-3 shadow-atmospheric-card"
 			transition:fade={{ duration: 150 }}
 		>
 			<div class="flex items-center gap-2">
@@ -938,7 +1103,7 @@
 					<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-participation-primary-400 opacity-75"></span>
 					<span class="relative inline-flex h-2 w-2 rounded-full bg-participation-primary-500"></span>
 				</span>
-				<span class="text-xs font-medium text-slate-500">Refining with your clarifications...</span>
+				<span class="text-xs font-medium text-participation-primary-600/70">Refining with your clarifications...</span>
 			</div>
 		</div>
 	{/if}
@@ -958,7 +1123,7 @@
 	<!-- Refined suggestion surface -->
 	{#if showAISuggest && currentSuggestion}
 		<div
-			class="mt-4 rounded-lg border-2 border-participation-primary-200 bg-participation-primary-50 p-4"
+			class="mt-4 rounded-xl border border-participation-primary-200/60 bg-gradient-to-br from-participation-primary-50 to-white/80 p-4 shadow-atmospheric-card backdrop-blur-sm"
 			transition:slide={{ duration: 200 }}
 		>
 			<!-- Iteration timeline (perceptual temporal navigation) -->
@@ -1055,64 +1220,125 @@
 				{/if}
 			{/if}
 
-			<div class="mb-3">
-				<div class="mb-2 flex items-center gap-2">
-					<Sparkles class="h-4 w-4 text-participation-primary-600" aria-hidden="true" />
-					<span
-						class="text-xs font-semibold uppercase tracking-wide text-participation-primary-700"
-					>
-						Refined Subject Line
-					</span>
+			{#if suggestionState.status === 'streaming'}
+				<!-- Thought traces during regeneration -->
+				<div class="mb-4" role="status" aria-live="polite" aria-label="Regenerating">
+					<div class="mb-2 flex items-center gap-2">
+						<span class="relative flex h-2 w-2" aria-hidden="true">
+							<span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-participation-primary-400 opacity-75"></span>
+							<span class="relative inline-flex h-2 w-2 rounded-full bg-participation-primary-500"></span>
+						</span>
+						<span class="text-xs font-medium text-participation-primary-600/70">Rethinking...</span>
+					</div>
+					<div bind:this={thoughtContainerRef} class="max-h-32 space-y-1 overflow-y-auto" role="log">
+						{#if suggestionState.thoughts.length === 0}
+							<p class="py-2 text-sm italic text-participation-primary-400">finding a new angle...</p>
+						{:else}
+							{#each suggestionState.thoughts as thought, i}
+								<p
+									class="border-l-2 py-0.5 pl-2 text-sm transition-all duration-150
+										{i === suggestionState.thoughts.length - 1 ? 'border-participation-primary-400 bg-participation-primary-100/40 text-participation-primary-900' : 'border-transparent text-participation-primary-700/60'}"
+									style="animation: thoughtAppear 0.2s ease-out forwards; opacity: 0;"
+								>
+									{thought}
+								</p>
+							{/each}
+						{/if}
+					</div>
 				</div>
-				<p class="text-lg font-bold leading-tight text-slate-900">
-					{currentSuggestion.subject_line}
-				</p>
-			</div>
-
-			<div class="mb-4 space-y-2 text-sm text-slate-700">
-				<div>
-					<strong class="font-semibold">Core message:</strong>
-					{currentSuggestion.core_message}
-				</div>
-				<div class="flex flex-wrap gap-1.5">
-					{#each currentSuggestion.topics as topic}
-						<span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-700">{topic}</span
+			{:else}
+				<!-- Current suggestion content — inline-editable -->
+				<div class="mb-3">
+					<div class="mb-2 flex items-center gap-2">
+						<Sparkles class="h-4 w-4 text-participation-primary-600" aria-hidden="true" />
+						<span
+							class="text-xs font-semibold uppercase tracking-wide text-participation-primary-700"
 						>
-					{/each}
+							Refined Subject Line
+						</span>
+					</div>
+
+					{#if editingSubjectLine}
+						<input
+							data-edit-subject
+							type="text"
+							value={currentSuggestion.subject_line}
+							onblur={(e) => commitSubjectLineEdit(e.currentTarget.value)}
+							onkeydown={handleSubjectLineKeydown}
+							class="w-full rounded-md border-2 border-participation-primary-300 bg-white px-3 py-2
+								text-lg font-bold leading-tight text-slate-900
+								focus:border-participation-primary-500 focus:outline-none focus:ring-2 focus:ring-participation-primary-500/30"
+						/>
+					{:else}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<p
+							class="cursor-text rounded-md border border-participation-primary-200/40 bg-white/50
+								px-3 py-2.5 text-lg font-bold leading-tight text-slate-900
+								transition-all duration-150
+								md:border-transparent md:bg-transparent md:px-1 md:py-0.5 md:hover:bg-participation-primary-50/80"
+							onclick={() => startEditingField('subject')}
+							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditingField('subject'); }}
+							role="button"
+							tabindex={0}
+							title="Tap to edit subject line"
+						>
+							{currentSuggestion.subject_line}
+						</p>
+					{/if}
 				</div>
-				<div class="text-xs text-slate-600">
-					<strong class="font-semibold">Slug:</strong>
-					{currentSuggestion.url_slug}
+
+				<div class="mb-4 space-y-2 text-sm text-participation-primary-900/80">
+					{#if editingCoreMessage}
+						<div>
+							<strong class="mb-1 block font-semibold">Core message:</strong>
+							<textarea
+								data-edit-core
+								value={currentSuggestion.core_message}
+								onblur={(e) => commitCoreMessageEdit(e.currentTarget.value)}
+								onkeydown={handleCoreMessageKeydown}
+								rows="3"
+								class="w-full rounded-md border-2 border-participation-primary-300 bg-white px-3 py-2
+									text-base md:text-sm text-slate-900
+									focus:border-participation-primary-500 focus:outline-none focus:ring-2 focus:ring-participation-primary-500/30"
+							></textarea>
+						</div>
+					{:else}
+						<!-- svelte-ignore a11y_no_static_element_interactions -->
+						<div
+							class="cursor-text rounded-md border border-participation-primary-200/40 bg-white/50
+								px-3 py-2.5 transition-all duration-150
+								md:border-transparent md:bg-transparent md:px-1 md:py-0.5 md:hover:bg-participation-primary-50/80"
+							onclick={() => startEditingField('core')}
+							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditingField('core'); }}
+							role="button"
+							tabindex={0}
+							title="Tap to edit core message"
+						>
+							<strong class="font-semibold">Core message:</strong>
+							{currentSuggestion.core_message}
+						</div>
+					{/if}
+					<div class="flex flex-wrap gap-1.5">
+						{#each currentSuggestion.topics as topic}
+							<span class="rounded-full bg-participation-primary-100/70 px-2 py-0.5 text-xs text-participation-primary-800">{topic}</span>
+						{/each}
+					</div>
 				</div>
-			</div>
+			{/if}
 
 			<div class="space-y-2">
-				<div class="flex gap-2">
-					<button
-						type="button"
-						onclick={acceptSuggestion}
-						tabindex={0}
-						class="inline-flex flex-1 items-center justify-center gap-2 rounded-lg
-                 bg-participation-primary-600 px-4 py-2 text-sm font-semibold text-white
-                 shadow-sm transition-all duration-150 hover:bg-participation-primary-700 hover:shadow
+				<button
+					type="button"
+					onclick={acceptSuggestion}
+					tabindex={0}
+					class="inline-flex w-full items-center justify-center gap-2 rounded-lg
+                 bg-gradient-to-r from-participation-primary-600 to-participation-primary-500 px-4 py-2.5 text-sm font-semibold text-white
+                 shadow-participation-primary transition-all duration-200 hover:from-participation-primary-700 hover:to-participation-primary-600 hover:shadow-lg
                  focus:outline-none focus:ring-2 focus:ring-participation-primary-500 focus:ring-offset-2"
-					>
-						Use this
-						<ArrowRight class="h-4 w-4" />
-					</button>
-
-					<button
-						type="button"
-						onclick={writeManually}
-						tabindex={0}
-						class="inline-flex items-center gap-2 rounded-lg border-2 border-slate-300
-                 bg-white px-4 py-2 text-sm font-medium text-slate-700
-                 transition-all duration-150 hover:border-slate-400 hover:bg-slate-50
-                 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2"
-					>
-						I'll write it
-					</button>
-				</div>
+				>
+					Use this
+					<ArrowRight class="h-4 w-4" />
+				</button>
 
 				<div class="flex items-center justify-between">
 					{#if attemptCount < 5}
@@ -1137,16 +1363,16 @@
 							Try another ({5 - attemptCount} left)
 						</button>
 					{:else}
-						<span class="text-sm text-slate-600">Out of refinements</span>
+						<span class="text-sm text-participation-primary-700/60">Out of refinements</span>
 					{/if}
 
 					<button
 						type="button"
-						onclick={editRawWriting}
+						onclick={writeManually}
 						tabindex={0}
-						class="text-sm text-slate-600 underline hover:text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-400"
+						class="text-sm text-participation-primary-600 transition-colors hover:text-participation-primary-700 focus:outline-none focus:underline"
 					>
-						Edit original
+						I'll write it
 					</button>
 				</div>
 			</div>

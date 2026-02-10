@@ -108,7 +108,8 @@
 		font-size: 0.75rem;
 		font-weight: 500;
 		letter-spacing: 0.02em;
-		color: #64748b; /* slate-500 */
+		color: var(--color-participation-primary-600, #4f46e5);
+		opacity: 0.7;
 	}
 
 	/* Thought log container */
@@ -126,7 +127,7 @@
 	.thought {
 		font-size: 0.875rem;
 		line-height: 1.5;
-		color: #334155; /* slate-700 */
+		color: #3730a3; /* indigo-800 */
 		text-align: left;
 		margin: 0;
 		padding: 0.375rem 0.5rem;
@@ -134,20 +135,21 @@
 		transition: all 0.2s ease-out;
 	}
 
-	/* Latest thought - highlighted */
+	/* Latest thought - highlighted with tinted background */
 	.thought.latest {
-		color: #1e293b; /* slate-800 */
+		color: #312e81; /* indigo-900 */
 		border-left-color: var(--color-participation-primary-500, #6366f1);
-		background: #f8fafc; /* slate-50 */
+		background: color-mix(in srgb, var(--color-participation-primary-100, #e0e7ff) 40%, transparent);
 	}
 
 	/* Older thoughts - faded back */
 	.thought.faded {
-		color: #64748b; /* slate-500 */
+		color: #6366f1; /* participation-primary-500 equivalent */
+		opacity: 0.5;
 	}
 
 	.thought.placeholder {
-		color: #94a3b8; /* slate-400 */
+		color: var(--color-participation-primary-400, #818cf8);
 		font-style: italic;
 	}
 
@@ -161,12 +163,12 @@
 	}
 
 	.thought-log::-webkit-scrollbar-thumb {
-		background: #e2e8f0; /* slate-200 */
+		background: var(--color-participation-primary-200, #c7d2fe);
 		border-radius: 2px;
 	}
 
 	.thought-log::-webkit-scrollbar-thumb:hover {
-		background: #cbd5e1; /* slate-300 */
+		background: var(--color-participation-primary-300, #a5b4fc);
 	}
 
 	/* Reduced motion */

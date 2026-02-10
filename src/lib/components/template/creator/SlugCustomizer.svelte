@@ -203,29 +203,21 @@
 
 <div class="space-y-2 md:space-y-4">
 	<!-- Header -->
-	<div class="flex items-center justify-between">
-		<label class="flex items-center gap-1 text-xs font-medium text-slate-700 md:gap-2 md:text-sm">
-			<Link2 class="h-3 w-3 md:h-4 md:w-4" />
-			Template Link
-		</label>
-		{#if isAvailable === true}
-			<span class="flex items-center gap-1 text-xs text-green-600 md:text-xs" in:fade>
-				<CheckCircle2 class="h-3 w-3 md:h-3 md:w-3" />
-				Available
-			</span>
-		{:else if isAvailable === false}
-			<span class="flex items-center gap-1 text-xs text-amber-600 md:text-xs" in:fade>
-				<AlertCircle class="h-3 w-3 md:h-3 md:w-3" />
-				Already taken
-			</span>
-		{/if}
-	</div>
+	<p class="flex items-start gap-1.5 text-xs text-participation-primary-600/70 md:text-sm">
+		<Link2 class="mt-0.5 h-3 w-3 flex-shrink-0 md:h-3.5 md:w-3.5" aria-hidden="true" />
+		<span><span class="font-medium text-participation-primary-700">Your shareable link</span> — after publishing, anyone with this link can send your message.</span>
+	</p>
 
-	<!-- URL Preview -->
-	<div class="rounded border border-slate-200 bg-slate-50 p-1.5 md:p-3">
-		<div class="flex items-center gap-1 font-mono text-xs md:gap-2 md:text-sm">
-			<span class="break-all text-slate-500">{$page.url.origin}/</span>
+	<!-- URL Preview with inline availability -->
+	<div class="rounded-lg border border-participation-primary-200/50 bg-gradient-to-br from-participation-primary-50/40 to-white p-2 md:p-3">
+		<div class="flex flex-wrap items-center gap-1 font-mono text-xs md:gap-1.5 md:text-sm">
+			<span class="break-all text-participation-primary-400">{$page.url.origin}/</span>
 			<span class="font-semibold text-slate-900">{slug || 'your-template'}</span>
+			{#if isAvailable === true}
+				<CheckCircle2 class="h-3.5 w-3.5 text-green-600 md:h-4 md:w-4" aria-label="Available" />
+			{:else if isAvailable === false}
+				<AlertCircle class="h-3.5 w-3.5 text-amber-600 md:h-4 md:w-4" aria-label="Taken" />
+			{/if}
 		</div>
 	</div>
 
@@ -300,10 +292,4 @@
 		</button>
 	{/if}
 
-	<!-- Share Context -->
-	<div
-		class="rounded bg-participation-primary-50 p-2 text-xs text-participation-primary-700 md:p-3"
-	>
-		<p>Anyone with this link can instantly use your template. Share it.</p>
-	</div>
 </div>
