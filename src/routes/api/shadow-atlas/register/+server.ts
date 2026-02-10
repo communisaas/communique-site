@@ -1,191 +1,139 @@
 /**
- * Shadow Atlas Registration Endpoint
+ * Shadow Atlas Registration Endpoint (Two-Tree Architecture)
  *
- * Registers a user's identity commitment with voter-protocol's Shadow Atlas.
- * This endpoint now acts as a proxy to the production Shadow Atlas API instead
- * of building local Merkle trees.
+ * Registers a user's precomputed leaf hash with Shadow Atlas Tree 1.
+ * The leaf is Poseidon2_H3(user_secret, cell_id, registration_salt),
+ * computed entirely in the browser. This endpoint sees ONLY the leaf hash.
  *
  * FLOW:
- * 1. Receive identity commitment from client (from generateIdentityCommitment())
- * 2. Call voter-protocol Shadow Atlas API for district lookup + Merkle proof
- * 3. Store registration in ShadowAtlasRegistration table
- * 4. Return Merkle proof data to client for ZK proof generation
+ * 1. Receive precomputed leaf hash from browser
+ * 2. Validate OAuth session
+ * 3. Call voter-protocol Shadow Atlas POST /v1/register with { leaf }
+ * 4. Store registration metadata in Postgres (leaf hash, leafIndex, timestamp)
+ * 5. Return Tree 1 Merkle proof to client
  *
- * REMOVED (WS1.2):
- * - Local Merkle tree building (computeMerkleRoot, computeMerklePath)
- * - ShadowAtlasTree storage (now uses voter-protocol's depth-20 trees)
- * - Depth-12 compatibility layer (circuits require depth-20)
+ * PRIVACY: This endpoint does NOT receive or store:
+ * - user_secret (private key material)
+ * - cell_id (Census tract FIPS code)
+ * - registration_salt (random value)
+ * - address data (stored only in browser IndexedDB)
+ *
+ * SPEC REFERENCE: WAVE-17-19-IMPLEMENTATION-PLAN.md Section 17c
+ * SPEC REFERENCE: COMMUNIQUE-INTEGRATION-SPEC.md Section 2.1
  */
 
 import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db';
 import type { RequestHandler } from './$types';
-import { lookupDistrict } from '$lib/core/shadow-atlas/client';
+import { registerLeaf } from '$lib/core/shadow-atlas/client';
+
+/** BN254 scalar field modulus */
+const BN254_MODULUS =
+	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
 
 export const POST: RequestHandler = async ({ request, locals }) => {
-	console.log('Shadow Atlas registration endpoint called');
-
 	try {
 		const session = locals.session;
-		console.log('Session:', session);
 
 		if (!session) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
 
 		const body = await request.json();
-		const { identityCommitment, lat, lng, cellId, credentialType } = body;
+		const { leaf } = body;
 
-		// Validate required fields
-		if (!identityCommitment) {
+		// Validate leaf is present and hex-formatted
+		if (!leaf || typeof leaf !== 'string') {
 			return json(
-				{ error: 'Missing required field: identityCommitment' },
+				{ error: 'Missing required field: leaf (hex-encoded field element)' },
 				{ status: 400 }
 			);
 		}
 
-		if (typeof lat !== 'number' || typeof lng !== 'number') {
+		if (!/^(0x)?[0-9a-fA-F]+$/.test(leaf)) {
 			return json(
-				{ error: 'Missing or invalid required fields: lat, lng must be numbers' },
+				{ error: 'Invalid leaf format: must be hex-encoded' },
 				{ status: 400 }
 			);
 		}
 
-		// Validate cellId format if provided (15-digit Census Block GEOID)
-		// PRIVACY: cellId is neighborhood-level precision - never log the full value
-		if (cellId !== undefined) {
-			if (typeof cellId !== 'string' || !/^\d{15}$/.test(cellId)) {
-				return json(
-					{ error: 'Invalid cellId format: must be 15-digit Census Block GEOID' },
-					{ status: 400 }
-				);
-			}
-			// Log only state+county prefix (5 digits) for debugging
-			console.log(`[Shadow Atlas] Cell prefix: ${cellId.slice(0, 5)}... (two-tree mode)`);
-		}
-
-		// Determine credential type
-		const resolvedCredentialType = credentialType || (cellId ? 'two-tree' : 'single-tree');
-		console.log(`[Shadow Atlas] Credential type: ${resolvedCredentialType}`);
-
-		// Parse identity commitment as bigint (accepts hex string or decimal string)
-		let commitmentBigint: bigint;
+		// Validate leaf is within BN254 field
 		try {
-			if (typeof identityCommitment === 'string') {
-				commitmentBigint = identityCommitment.startsWith('0x')
-					? BigInt(identityCommitment)
-					: BigInt(identityCommitment);
-			} else if (typeof identityCommitment === 'bigint') {
-				commitmentBigint = identityCommitment;
-			} else {
-				return json(
-					{ error: 'Invalid identityCommitment format. Must be hex string or bigint.' },
-					{ status: 400 }
-				);
+			const leafBigint = BigInt(leaf.startsWith('0x') ? leaf : '0x' + leaf);
+			if (leafBigint === 0n) {
+				return json({ error: 'Zero leaf not allowed' }, { status: 400 });
 			}
-		} catch (error) {
-			console.error('Failed to parse identityCommitment:', error);
-			return json(
-				{ error: 'Failed to parse identityCommitment as bigint' },
-				{ status: 400 }
-			);
+			if (leafBigint >= BN254_MODULUS) {
+				return json({ error: 'Leaf exceeds BN254 field modulus' }, { status: 400 });
+			}
+		} catch {
+			return json({ error: 'Invalid leaf value' }, { status: 400 });
 		}
 
-		// Lookup district and Merkle proof from voter-protocol Shadow Atlas
-		console.log(`Looking up district for coordinates: lat=${lat}, lng=${lng}`);
-		let districtLookup;
+		// Check if user is already registered
+		const existingRegistration = await prisma.shadowAtlasRegistration.findUnique({
+			where: { user_id: session.userId },
+		});
+
+		if (existingRegistration) {
+			// Derive pathIndices from leafIndex (bit decomposition, depth=20)
+			const depth = (existingRegistration.merkle_path as string[]).length;
+			const pathIndices = Array.from({ length: depth }, (_, i) =>
+				(existingRegistration.leaf_index >> i) & 1,
+			);
+
+			return json({
+				leafIndex: existingRegistration.leaf_index,
+				userRoot: existingRegistration.merkle_root,
+				userPath: existingRegistration.merkle_path as string[],
+				pathIndices,
+				alreadyRegistered: true,
+			});
+		}
+
+		// Call Shadow Atlas registration API
+		let registrationResult;
 		try {
-			districtLookup = await lookupDistrict(lat, lng);
+			registrationResult = await registerLeaf(leaf);
 		} catch (error) {
-			console.error('Shadow Atlas lookup failed:', error);
+			const msg = error instanceof Error ? error.message : String(error);
+			console.error('[Shadow Atlas] Registration API call failed:', msg);
 			return json(
-				{
-					error: 'Failed to lookup district',
-					details: error instanceof Error ? error.message : String(error)
-				},
+				{ error: 'Shadow Atlas registration unavailable' },
 				{ status: 503 }
 			);
 		}
 
-		const { district, merkleProof } = districtLookup;
-		console.log(`District found: ${district.id} (${district.name})`);
-
-		// Use transaction to ensure consistency
-		const result = await prisma.$transaction(async (tx) => {
-			// 1. Verify user exists (defensive check for test isolation)
-			const userExists = await tx.user.findUnique({
-				where: { id: session.userId },
-				select: { id: true }
-			});
-
-			if (!userExists) {
-				throw new Error(
-					`User ${session.userId} not found - cannot register for Shadow Atlas`
-				);
-			}
-
-			// 2. Check if user is already registered
-			const existingRegistration = await tx.shadowAtlasRegistration.findUnique({
-				where: { user_id: session.userId }
-			});
-
-			if (existingRegistration) {
-				// If already registered, return existing registration
-				console.log(`User ${session.userId} already registered, returning existing data`);
-				return {
-					districtId: existingRegistration.congressional_district,
-					districtName: district.name, // Use fresh name from API
-					leafIndex: existingRegistration.leaf_index,
-					merkleRoot: existingRegistration.merkle_root,
-					merklePath: existingRegistration.merkle_path as string[]
-				};
-			}
-
-			// 3. Create new registration record
-			// NOTE: We store the Merkle proof data for client-side ZK proof generation
-			// The leaf index comes from the voter-protocol API response
-			const registration = await tx.shadowAtlasRegistration.create({
-				data: {
-					user_id: session.userId,
-					congressional_district: district.id,
-					identity_commitment: commitmentBigint.toString(),
-					leaf_index: 0, // TODO: Extract from merkleProof.leaf position once API provides it
-					merkle_root: merkleProof.root,
-					merkle_path: merkleProof.siblings, // Array of hex strings
-					// Two-tree architecture support (Issue #21)
-					credential_type: resolvedCredentialType,
-					cell_id: cellId || null, // 15-digit Census Block GEOID (encrypted at rest by Prisma)
-					verification_method: 'self.xyz', // Default for Phase 1
-					verification_id: 'mock-verification-id', // TODO: Link to actual verification session
-					verification_timestamp: new Date(),
-					registration_status: 'registered',
-					expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000) // 6 months
-				}
-			});
-
-			console.log(`Created new registration for user ${session.userId}`);
-
-			return {
-				districtId: district.id,
-				districtName: district.name,
-				leafIndex: registration.leaf_index,
-				merkleRoot: registration.merkle_root,
-				merklePath: registration.merkle_path as string[]
-			};
+		// Store registration metadata in Postgres
+		// NOTE: We store the leaf hash (not private inputs) and the Merkle proof
+		await prisma.shadowAtlasRegistration.create({
+			data: {
+				user_id: session.userId,
+				congressional_district: 'two-tree', // District comes from Tree 2, not registration
+				identity_commitment: leaf, // The leaf hash (operator never sees private inputs)
+				leaf_index: registrationResult.leafIndex,
+				merkle_root: registrationResult.userRoot,
+				merkle_path: registrationResult.userPath,
+				credential_type: 'two-tree',
+				cell_id: null, // PRIVACY: cell_id never sent to this endpoint
+				verification_method: 'self.xyz',
+				verification_id: session.userId, // Link to auth session
+				verification_timestamp: new Date(),
+				registration_status: 'registered',
+				expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // 6 months
+			},
 		});
 
-		console.log('Registration successful');
-		return json(result);
+		return json({
+			leafIndex: registrationResult.leafIndex,
+			userRoot: registrationResult.userRoot,
+			userPath: registrationResult.userPath,
+			pathIndices: registrationResult.pathIndices,
+		});
 	} catch (error) {
-		console.error('Shadow Atlas registration error:', error);
-		if (error instanceof Error) {
-			console.error('Error stack:', error.stack);
-		}
+		console.error('[Shadow Atlas] Registration error:', error);
 		return json(
-			{
-				error: 'Internal server error',
-				details: error instanceof Error ? error.message : String(error)
-			},
+			{ error: 'Internal server error' },
 			{ status: 500 }
 		);
 	}

@@ -1,21 +1,21 @@
 /**
- * Shadow Atlas Registration Handler
+ * Shadow Atlas Registration Handler (Two-Tree Architecture)
  *
- * Orchestrates Shadow Atlas registration after identity verification.
+ * Orchestrates the two-tree registration flow after identity verification:
  *
- * Flow:
  * 1. User completes identity verification (self.xyz or Didit.me)
- * 2. Extract identity commitment + congressional district
- * 3. Call Shadow Atlas registration API
- * 4. Receive merkle_path from voter-protocol
- * 5. Store in database (ShadowAtlasRegistration)
- * 6. Cache in IndexedDB (session-credentials.ts)
+ * 2. Browser generates user_secret and registration_salt
+ * 3. Browser computes leaf = Poseidon2_H3(user_secret, cell_id, registration_salt)
+ * 4. Browser sends ONLY the leaf hash to communique server
+ * 5. Server proxies to Shadow Atlas POST /v1/register → Tree 1 proof
+ * 6. Browser requests Tree 2 cell proof (separate call)
+ * 7. All credentials stored encrypted in IndexedDB
  *
- * This happens AFTER the existing verification-handler.ts flow:
- * - verification-handler.ts: Handles address encryption + storage
- * - shadow-atlas-handler.ts: Handles ZK proof registration (this file)
+ * PRIVACY: The communique server never receives user_secret, cell_id,
+ * or registration_salt. It sees only the leaf hash.
  *
- * Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md Phase 1.4
+ * SPEC REFERENCE: WAVE-17-19-IMPLEMENTATION-PLAN.md Section 17c
+ * SPEC REFERENCE: COMMUNIQUE-INTEGRATION-SPEC.md Section 2.3
  */
 
 import {
@@ -23,38 +23,29 @@ import {
 	calculateExpirationDate,
 	type SessionCredential
 } from './session-credentials';
-import { poseidonHash } from '../crypto/poseidon';
 
 // ============================================================================
 // Types
 // ============================================================================
 
-export interface ShadowAtlasRegistrationRequest {
+export interface TwoTreeRegistrationRequest {
 	/** User ID */
 	userId: string;
-	/** Identity commitment (Poseidon hash from self.xyz/Didit.me) */
-	identityCommitment: string;
-	/** Congressional district (e.g., "CA-12") */
-	congressionalDistrict: string;
-	/**
-	 * Census Block GEOID (15-digit cell identifier)
-	 *
-	 * PRIVACY: Neighborhood-level precision. Never log this value.
-	 * Optional for single-tree mode; required for two-tree mode.
-	 */
-	cellId?: string;
+	/** Precomputed leaf hash (hex with 0x prefix) */
+	leaf: string;
+	/** Census tract cell ID (for Tree 2 proof lookup) */
+	cellId: string;
+	/** User secret (stored client-side only, never sent to server) */
+	userSecret: string;
+	/** Registration salt (stored client-side only, never sent to server) */
+	registrationSalt: string;
 	/** Verification method used */
 	verificationMethod: 'self.xyz' | 'didit';
-	/** External verification ID */
-	verificationId: string;
 }
 
-export interface ShadowAtlasRegistrationResult {
-	/** Was registration successful? */
+export interface TwoTreeRegistrationResult {
 	success: boolean;
-	/** Session credential for IndexedDB caching */
 	sessionCredential?: SessionCredential;
-	/** Error message if failed */
 	error?: string;
 }
 
@@ -63,111 +54,145 @@ export interface ShadowAtlasRegistrationResult {
 // ============================================================================
 
 /**
- * Register user in Shadow Atlas Merkle tree
+ * Register user in the two-tree architecture.
  *
- * Called AFTER identity verification completes.
- * Integrates with voter-protocol Shadow Atlas API.
+ * Sends only the leaf hash to the server (Tree 1 registration),
+ * then fetches the cell proof (Tree 2) for the user's cell_id.
+ * Stores all credentials in encrypted IndexedDB.
  *
- * @param request - Registration request data
- * @returns Session credential for proof generation
+ * @param request - Registration data (includes private inputs stored locally)
+ * @returns Session credential for ZK proof generation
  */
-export async function registerInShadowAtlas(
-	request: ShadowAtlasRegistrationRequest
-): Promise<ShadowAtlasRegistrationResult> {
+export async function registerTwoTree(
+	request: TwoTreeRegistrationRequest
+): Promise<TwoTreeRegistrationResult> {
 	try {
-		// Determine credential type based on cell_id presence
-		const credentialType = request.cellId ? 'two-tree' : 'single-tree';
-
-		// Call Shadow Atlas registration API
-		const response = await fetch('/api/shadow-atlas/register', {
+		// Step 1: Register leaf hash in Tree 1 (server sees only the hash)
+		const tree1Response = await fetch('/api/shadow-atlas/register', {
 			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({
-				identityCommitment: request.identityCommitment,
-				congressionalDistrict: request.congressionalDistrict,
-				cellId: request.cellId, // Optional: enables two-tree mode
-				credentialType,
-				verificationMethod: request.verificationMethod,
-				verificationId: request.verificationId
-			})
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ leaf: request.leaf }),
 		});
 
-		if (!response.ok) {
-			const errorData = await response.json();
+		if (!tree1Response.ok) {
+			const errorData = await tree1Response.json().catch(() => ({ error: 'Unknown error' }));
 			return {
 				success: false,
-				error: errorData.error || 'Shadow Atlas registration failed'
+				error: errorData.error || `Tree 1 registration failed (${tree1Response.status})`,
 			};
 		}
 
-		const data = await response.json();
+		const tree1Data = await tree1Response.json();
 
-		// API returns: { leafIndex, merklePath, root }
-		if (data.leafIndex === undefined || !data.merklePath || !data.root) {
+		if (tree1Data.leafIndex === undefined || !tree1Data.userRoot || !tree1Data.userPath || !tree1Data.pathIndices) {
 			return {
 				success: false,
-				error: 'Invalid response from Shadow Atlas API: missing leafIndex, merklePath, or root'
+				error: 'Invalid Tree 1 registration response',
 			};
 		}
 
-		// Construct session credential from API response fields
+		// Step 2: Fetch Tree 2 cell proof (server proxies to Shadow Atlas)
+		const tree2Response = await fetch(
+			`/api/shadow-atlas/cell-proof?cell_id=${encodeURIComponent(request.cellId)}`
+		);
+
+		if (!tree2Response.ok) {
+			const errorData = await tree2Response.json().catch(() => ({ error: 'Unknown error' }));
+			return {
+				success: false,
+				error: errorData.error || `Tree 2 cell proof failed (${tree2Response.status})`,
+			};
+		}
+
+		const tree2Data = await tree2Response.json();
+
+		if (!tree2Data.cellMapRoot || !tree2Data.cellMapPath || !tree2Data.districts) {
+			return {
+				success: false,
+				error: 'Invalid Tree 2 cell proof response',
+			};
+		}
+
+		// Step 3: Construct session credential with BOTH tree proofs
 		const now = new Date();
 		const sessionCredential: SessionCredential = {
 			userId: request.userId,
-			identityCommitment: request.identityCommitment,
-			leafIndex: data.leafIndex,
-			merklePath: data.merklePath,
-			merkleRoot: data.root,
-			congressionalDistrict: request.congressionalDistrict,
-			// Two-tree support
-			credentialType: request.cellId ? 'two-tree' : 'single-tree',
+			identityCommitment: request.leaf, // The leaf hash is our identity commitment
+			leafIndex: tree1Data.leafIndex,
+			merklePath: tree1Data.userPath, // Tree 1 siblings
+			merkleRoot: tree1Data.userRoot, // Tree 1 root
+			congressionalDistrict: 'two-tree', // Districts come from Tree 2
+
+			// Two-tree specific fields
+			credentialType: 'two-tree',
 			cellId: request.cellId,
+			cellMapRoot: tree2Data.cellMapRoot,
+			cellMapPath: tree2Data.cellMapPath,
+			cellMapPathBits: tree2Data.cellMapPathBits,
+			districts: tree2Data.districts,
+
+			// Private inputs (stored client-side only, NEVER sent to server)
+			userSecret: request.userSecret,
+			registrationSalt: request.registrationSalt,
+
 			verificationMethod: request.verificationMethod,
 			createdAt: now,
-			expiresAt: calculateExpirationDate()
+			expiresAt: calculateExpirationDate(),
 		};
 
-		// Cache in IndexedDB for future proof generation
+		// Step 4: Store encrypted in IndexedDB
 		await storeSessionCredential(sessionCredential);
 
-		console.log('[Shadow Atlas] Registration successful:', {
+		console.log('[Shadow Atlas] Two-tree registration successful:', {
 			userId: request.userId,
-			district: request.congressionalDistrict,
-			leafIndex: data.leafIndex,
-			expiresAt: sessionCredential.expiresAt
+			leafIndex: tree1Data.leafIndex,
+			districts: tree2Data.districts.length,
+			expiresAt: sessionCredential.expiresAt,
 		});
 
 		return {
 			success: true,
-			sessionCredential
+			sessionCredential,
 		};
 	} catch (error) {
-		console.error('[Shadow Atlas] Registration failed:', error);
+		console.error('[Shadow Atlas] Two-tree registration failed:', error);
 		return {
 			success: false,
-			error:
-				error instanceof Error ? error.message : 'Unknown error during Shadow Atlas registration'
+			error: error instanceof Error ? error.message : 'Unknown error',
 		};
 	}
 }
 
+// ============================================================================
+// Identity Commitment Generation
+// ============================================================================
+
 /**
- * Generate identity commitment from verification provider data
+ * Generate identity commitment from verification provider data.
  *
- * Uses Poseidon2 hash (via Barretenberg) to match the Noir circuit in voter-protocol.
- * This ensures the identity commitment is compatible with on-chain verification.
+ * Uses Poseidon hash to create a pseudonymous identity commitment
+ * compatible with on-chain verification.
  *
  * @param providerData - Verification provider data
- * @returns Identity commitment (hex string with 0x prefix, BN254 field element)
+ * @returns Identity commitment (hex string with 0x prefix)
  */
 export async function generateIdentityCommitment(providerData: {
 	provider: 'self.xyz' | 'didit.me';
 	credentialHash: string;
 	issuedAt: number;
 }): Promise<string> {
+	const { poseidonHash } = await import('../crypto/poseidon');
 	const input = `${providerData.provider}:${providerData.credentialHash}:${providerData.issuedAt}`;
 	return await poseidonHash(input);
 }
 
+// ============================================================================
+// Legacy Support
+// ============================================================================
+
+/**
+ * @deprecated Use registerTwoTree() instead. Single-tree registration is superseded
+ * by the two-tree architecture. This function remains for backward compatibility
+ * during the transition period.
+ */
+export { registerTwoTree as registerInShadowAtlas };

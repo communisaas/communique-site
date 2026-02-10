@@ -12,8 +12,8 @@
  * 4. Never block main thread - all proving is async via WASM
  *
  * CONTROL FLOW:
- * initializeProver() → getProverForDepth() → NoirProver.init() → cached instance
- * generateProof() → initializeProver() → prover.prove() → ProofResult
+ * Single-tree: initializeProver() → NoirProver.init() → prover.prove() → ProofResult
+ * Two-tree:    initializeTwoTreeProver() → TwoTreeNoirProver.init() → prover.generateProof() → TwoTreeProofResult
  */
 
 import { getProverForDepth, type NoirProver } from '@voter-protocol/noir-prover';
@@ -493,7 +493,7 @@ export async function generateTwoTreeProof(
 
 	try {
 		// Generate proof via TwoTreeNoirProver
-		const result: NoirTwoTreeProofResult = await prover.prove(circuitInputs);
+		const result: NoirTwoTreeProofResult = await prover.generateProof(circuitInputs);
 
 		onProgress?.({ stage: 'complete', percent: 100, message: 'Two-tree proof generated' });
 

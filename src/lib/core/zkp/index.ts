@@ -5,7 +5,7 @@
  * Wraps @voter-protocol/noir-prover with Svelte-friendly interfaces.
  */
 
-// Prover client API
+// Prover client API (single-tree — legacy)
 export {
 	initializeProver,
 	generateProof,
@@ -14,6 +14,16 @@ export {
 	type ProgressCallback,
 	type ProofInputs,
 	type ProofResult
+} from './prover-client';
+
+// Two-tree prover client API (current architecture)
+export {
+	initializeTwoTreeProver,
+	generateTwoTreeProof,
+	resetTwoTreeProver,
+	resetAllProvers,
+	type TwoTreeProofInputs,
+	type TwoTreeProofResult
 } from './prover-client';
 
 // Witness builder utilities

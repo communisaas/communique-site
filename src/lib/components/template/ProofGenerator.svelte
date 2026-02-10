@@ -42,6 +42,10 @@
 		userEmail?: string;
 		/** User name for CWC submission */
 		userName?: string;
+		/** Legislative session ID for action domain (defaults to '119th-congress') */
+		sessionId?: string;
+		/** Recipient subdivision for action domain (defaults to 'national') */
+		recipientSubdivision?: string;
 	}
 
 	let {
@@ -52,7 +56,9 @@
 		address,
 		mvpAddress,
 		userEmail,
-		userName
+		userName,
+		sessionId = '119th-congress',
+		recipientSubdivision = 'national'
 	}: Props = $props();
 
 	type ProofGenerationState =
@@ -120,7 +126,7 @@
 				// Create a cryptographically valid single-leaf merkle tree
 				// The mock data must satisfy circuit constraints in main.nr:
 				// 1. computed_root = compute_merkle_root(leaf, path, index) must equal merkleRoot
-				// 2. computed_nullifier = poseidon2_hash4(...) must equal nullifier (handled by prover-core)
+				// 2. computed_nullifier = poseidon2_hash2(userSecret, actionDomain) must equal nullifier
 				const mockLeaf = '0x0000000000000000000000000000000000000000000000000000000000000001';
 				const mockPath = Array(14).fill(
 					'0x0000000000000000000000000000000000000000000000000000000000000000'
@@ -166,62 +172,140 @@
 				return;
 			}
 
-			// Step 2: Prepare Witness Data
-			// Convert template ID to field element using Poseidon hash (via worker)
-			// Note: proverOrchestrator may already be imported from mock credentials block above
-			const orchestratorModule = await import('$lib/core/proof/prover-orchestrator');
-			const actionId = await orchestratorModule.proverOrchestrator.poseidonHash(templateId);
+			// Step 2: Generate ZK Proof (branches on credential type)
+			let proofHex: string;
+			let publicInputsPayload: Record<string, unknown>;
+			let nullifierHex: string;
 
-			console.log('[ProofGenerator] Template ID hashed to action ID:', {
-				templateId,
-				actionId: actionId.slice(0, 16) + '...'
-			});
+			if (credential!.credentialType === 'two-tree') {
+				// ═══════════════════════════════════════════════════════════
+				// TWO-TREE FLOW (current architecture)
+				// ═══════════════════════════════════════════════════════════
+				console.log('[ProofGenerator] Using two-tree proof flow');
 
-			// Build witness inputs
-			const witness = {
-				identityCommitment: credential!.identityCommitment,
-				leafIndex: credential!.leafIndex,
-				merklePath: credential!.merklePath,
-				merkleRoot: credential!.merkleRoot,
-				actionId: actionId,
-				timestamp: Date.now(),
-				address
-			};
+				// 2a. Build action domain (deterministic from template + session context)
+				const { buildActionDomain } = await import('$lib/core/zkp/action-domain-builder');
+				const actionDomain = buildActionDomain({
+					country: 'US',
+					jurisdictionType: 'federal',
+					recipientSubdivision,
+					templateId,
+					sessionId
+				});
+				console.log('[ProofGenerator] Action domain:', actionDomain.slice(0, 16) + '...');
 
-			// Step 3: Generate ZK Proof
-			// Use the Orchestrator to run proving in a Web Worker (non-blocking)
-			// Note: orchestratorModule already imported above for poseidonHash
+				// 2b. Compute nullifier = H2(userSecret, actionDomain)
+				const { computeNullifier } = await import('$lib/core/crypto/poseidon');
+				nullifierHex = await computeNullifier(credential!.userSecret!, actionDomain);
+				console.log('[ProofGenerator] Nullifier:', nullifierHex.slice(0, 16) + '...');
 
-			// Initialize if needed (idempotent)
-			state = { status: 'initializing-prover', progress: 0 };
-			await orchestratorModule.proverOrchestrator.init();
+				// 2c. Map credential to circuit inputs
+				const { mapCredentialToProofInputs } = await import(
+					'$lib/core/identity/proof-input-mapper'
+				);
+				const proofInputs = mapCredentialToProofInputs(credential!, {
+					actionDomain,
+					nullifier: nullifierHex
+				});
 
-			// Generate proof
-			const proofResult = await orchestratorModule.proverOrchestrator.prove(
-				witness,
-				(stage, percent) => {
-					// Map worker stages to UI states
-					if (stage === 'generating-keys') {
-						state = { status: 'initializing-prover', progress: percent };
-					} else if (stage === 'proving') {
-						state = { status: 'generating-proof', progress: percent };
-					} else if (stage === 'finalizing') {
-						state = { status: 'generating-proof', progress: 95 };
+				// 2d. Initialize two-tree prover
+				state = { status: 'initializing-prover', progress: 0 };
+				const { generateTwoTreeProof } = await import('$lib/core/zkp/prover-client');
+				state = { status: 'initializing-prover', progress: 50 };
+
+				// 2e. Generate two-tree proof
+				state = { status: 'generating-proof', progress: 0 };
+				const twoTreeResult = await generateTwoTreeProof(proofInputs, (progress) => {
+					if (progress.stage === 'loading' || progress.stage === 'initializing') {
+						state = { status: 'initializing-prover', progress: progress.percent };
+					} else if (progress.stage === 'generating') {
+						state = { status: 'generating-proof', progress: progress.percent };
+					} else if (progress.stage === 'complete') {
+						state = { status: 'generating-proof', progress: 100 };
 					}
-				}
-			);
+				});
 
-			if (!proofResult.success) {
-				state = {
-					status: 'error',
-					message: proofResult.error || 'Proof generation failed. Please try again.',
-					recoverable: true,
-					retryAction: () => generateAndSubmit()
+				proofHex = twoTreeResult.proof;
+				nullifierHex = twoTreeResult.publicInputs.nullifier;
+				publicInputsPayload = {
+					userRoot: twoTreeResult.publicInputs.userRoot,
+					cellMapRoot: twoTreeResult.publicInputs.cellMapRoot,
+					districts: twoTreeResult.publicInputs.districts,
+					nullifier: twoTreeResult.publicInputs.nullifier,
+					actionDomain: twoTreeResult.publicInputs.actionDomain,
+					authorityLevel: twoTreeResult.publicInputs.authorityLevel,
+					publicInputsArray: twoTreeResult.publicInputsArray
 				};
-				return;
+
+				console.log('[ProofGenerator] Two-tree proof generated:', {
+					proofSize: proofHex.length,
+					publicInputCount: twoTreeResult.publicInputsArray.length
+				});
+			} else {
+				// ═══════════════════════════════════════════════════════════
+				// LEGACY SINGLE-TREE FLOW (backward compatibility)
+				// ═══════════════════════════════════════════════════════════
+				console.log('[ProofGenerator] Using legacy single-tree proof flow');
+
+				const orchestratorModule = await import('$lib/core/proof/prover-orchestrator');
+				const actionId = await orchestratorModule.proverOrchestrator.poseidonHash(templateId);
+
+				const witness = {
+					identityCommitment: credential!.identityCommitment,
+					leafIndex: credential!.leafIndex,
+					merklePath: credential!.merklePath,
+					merkleRoot: credential!.merkleRoot,
+					actionId,
+					timestamp: Date.now(),
+					address
+				};
+
+				state = { status: 'initializing-prover', progress: 0 };
+				await orchestratorModule.proverOrchestrator.init();
+
+				const proofResult = await orchestratorModule.proverOrchestrator.prove(
+					witness,
+					(stage, percent) => {
+						if (stage === 'generating-keys') {
+							state = { status: 'initializing-prover', progress: percent };
+						} else if (stage === 'proving') {
+							state = { status: 'generating-proof', progress: percent };
+						} else if (stage === 'finalizing') {
+							state = { status: 'generating-proof', progress: 95 };
+						}
+					}
+				);
+
+				if (!proofResult.success) {
+					state = {
+						status: 'error',
+						message: proofResult.error || 'Proof generation failed. Please try again.',
+						recoverable: true,
+						retryAction: () => generateAndSubmit()
+					};
+					return;
+				}
+
+				proofHex = proofResult.proof
+					? Array.from(proofResult.proof)
+							.map((b) => b.toString(16).padStart(2, '0'))
+							.join('')
+					: '';
+				nullifierHex = proofResult.nullifier || '';
+				publicInputsPayload = proofResult.publicInputs || {};
 			}
 
-			// Step 4: Fetch and verify Nitro Enclave attestation
+			// Step 3: Encrypt witness for TEE processing
+			// The witness contains address data for TEE-based constituency verification.
+			// In two-tree architecture, the circuit handles district verification via Tree 2,
+			// so the witness is primarily for CWC delivery address (TEE Phase 2).
+			const witnessForEncryption = {
+				address,
+				nullifier: nullifierHex,
+				templateId,
+				timestamp: Date.now()
+			};
+
 			let encryptedWitness;
 			if (credential!.congressionalDistrict === 'DEMO-00') {
 				console.log('[ProofGenerator] Using Nitro Enclave demo mode');
@@ -249,7 +333,7 @@
 
 				// Encrypt witness to Nitro Enclave
 				state = { status: 'encrypting-witness' };
-				const encrypted = await encryptToNitroEnclave(witness, attestation);
+				const encrypted = await encryptToNitroEnclave(witnessForEncryption, attestation);
 
 				// Store benchmark data
 				encryptedWitness = {
@@ -268,10 +352,10 @@
 				// Real encryption for production
 				state = { status: 'encrypting-witness' };
 				const { encryptWitness } = await import('$lib/core/proof/witness-encryption');
-				encryptedWitness = await encryptWitness(witness);
+				encryptedWitness = await encryptWitness(witnessForEncryption);
 			}
 
-			// Step 5: Submit to backend
+			// Step 4: Submit to backend
 			state = { status: 'submitting' };
 
 			const response = await fetch('/api/submissions/create', {
@@ -279,19 +363,16 @@
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					templateId,
-					proof: proofResult.proof
-						? Array.from(proofResult.proof)
-								.map((b) => b.toString(16).padStart(2, '0'))
-								.join('')
-						: '',
-					publicInputs: proofResult.publicInputs,
-					nullifier: proofResult.nullifier,
+					proof: proofHex,
+					publicInputs: publicInputsPayload,
+					nullifier: nullifierHex,
 					encryptedWitness: encryptedWitness.ciphertext,
 					witnessNonce: encryptedWitness.nonce,
 					ephemeralPublicKey: encryptedWitness.ephemeralPublicKey,
 					teeKeyId: encryptedWitness.teeKeyId,
 					templateData,
 					// MVP bypass: Pass cleartext address for direct CWC delivery
+					// TODO(INT-003): Remove before production (requires TEE for address decryption)
 					mvpAddress,
 					userEmail,
 					userName

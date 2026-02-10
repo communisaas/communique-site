@@ -15,6 +15,7 @@
 import { env } from '$env/dynamic/private';
 
 const SHADOW_ATLAS_URL = env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
+const SHADOW_ATLAS_REGISTRATION_TOKEN = env.SHADOW_ATLAS_REGISTRATION_TOKEN || '';
 
 /**
  * District information returned from Shadow Atlas
@@ -145,6 +146,146 @@ export async function lookupDistrict(lat: number, lng: number): Promise<District
 		throw new Error('Shadow Atlas lookup failed with unknown error');
 	}
 }
+
+// ============================================================================
+// Registration (Tree 1)
+// ============================================================================
+
+/**
+ * Registration response from Shadow Atlas POST /v1/register
+ */
+export interface RegistrationResult {
+	leafIndex: number;
+	userRoot: string;
+	userPath: string[];
+	pathIndices: number[];
+}
+
+/**
+ * Register a precomputed leaf hash in Tree 1.
+ *
+ * The leaf is Poseidon2_H3(user_secret, cell_id, registration_salt),
+ * computed client-side. The operator sees ONLY the leaf hash.
+ *
+ * @param leaf - Hex-encoded leaf hash (with 0x prefix)
+ * @returns Registration result with Merkle proof
+ * @throws Error if registration fails
+ */
+export async function registerLeaf(leaf: string): Promise<RegistrationResult> {
+	const url = `${SHADOW_ATLAS_URL}/v1/register`;
+
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+		'X-Client-Version': 'communique-v1',
+	};
+	if (SHADOW_ATLAS_REGISTRATION_TOKEN) {
+		headers['Authorization'] = `Bearer ${SHADOW_ATLAS_REGISTRATION_TOKEN}`;
+	}
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify({ leaf }),
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas registration failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid registration response');
+	}
+
+	const { leafIndex, userRoot, userPath, pathIndices } = result.data;
+
+	if (leafIndex === undefined || !userRoot || !userPath || !pathIndices) {
+		throw new Error('Shadow Atlas registration response missing required fields');
+	}
+
+	if (userPath.length !== 20 || pathIndices.length !== 20) {
+		throw new Error(
+			`Invalid proof length: userPath=${userPath.length}, pathIndices=${pathIndices.length}. Expected 20.`
+		);
+	}
+
+	return { leafIndex, userRoot, userPath, pathIndices };
+}
+
+// ============================================================================
+// Cell Proof (Tree 2)
+// ============================================================================
+
+/**
+ * Cell proof response from Shadow Atlas GET /v1/cell-proof
+ */
+export interface CellProofResult {
+	cellMapRoot: string;
+	cellMapPath: string[];
+	cellMapPathBits: number[];
+	districts: string[];
+}
+
+/**
+ * Get the Tree 2 SMT proof for a cell_id.
+ *
+ * Returns the Merkle path and all 24 district IDs for the cell.
+ * cell_id is neighborhood-level (~600-3000 people) — accepted
+ * privacy tradeoff for Phase 1.
+ *
+ * @param cellId - Census tract FIPS code (numeric string or hex)
+ * @returns Cell proof with districts
+ * @throws Error if cell not found or request fails
+ */
+export async function getCellProof(cellId: string): Promise<CellProofResult> {
+	const url = `${SHADOW_ATLAS_URL}/v1/cell-proof?cell_id=${encodeURIComponent(cellId)}`;
+
+	const response = await fetch(url, {
+		headers: {
+			Accept: 'application/json',
+			'X-Client-Version': 'communique-v1',
+		},
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas cell proof failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid cell proof response');
+	}
+
+	const { cellMapRoot, cellMapPath, cellMapPathBits, districts } = result.data;
+
+	if (!cellMapRoot || !cellMapPath || !cellMapPathBits || !districts) {
+		throw new Error('Shadow Atlas cell proof response missing required fields');
+	}
+
+	if (districts.length !== 24) {
+		throw new Error(`Invalid district count: ${districts.length}. Expected 24.`);
+	}
+
+	return { cellMapRoot, cellMapPath, cellMapPathBits, districts };
+}
+
+// ============================================================================
+// Health
+// ============================================================================
 
 /**
  * Health check for Shadow Atlas API

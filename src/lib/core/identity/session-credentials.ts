@@ -34,13 +34,13 @@ export interface SessionCredential {
 	/** Identity commitment (Poseidon hash from self.xyz/Didit.me) */
 	identityCommitment: string;
 
-	/** Position in district Merkle tree (0-4095) */
+	/** Position in Tree 1 (User Identity Merkle tree, depth 20) */
 	leafIndex: number;
 
-	/** Merkle path for proof generation (12 sibling hashes) */
+	/** Tree 1 Merkle siblings for proof generation (20 for two-tree, 12 for legacy) */
 	merklePath: string[];
 
-	/** Merkle root (verification anchor) */
+	/** Tree 1 Merkle root (verification anchor) */
 	merkleRoot: string;
 
 	/** Congressional district (e.g., "CA-12") */
@@ -65,6 +65,45 @@ export interface SessionCredential {
 	 * Only present when credentialType === 'two-tree'.
 	 */
 	cellId?: string;
+
+	/**
+	 * Tree 2 (Cell-District Map) root hash.
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	cellMapRoot?: string;
+
+	/**
+	 * Tree 2 SMT siblings (depth elements, hex-encoded).
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	cellMapPath?: string[];
+
+	/**
+	 * Tree 2 SMT direction bits (0=left, 1=right).
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	cellMapPathBits?: number[];
+
+	/**
+	 * All 24 district IDs for this cell (hex-encoded).
+	 * Per DISTRICT-TAXONOMY.md slot allocation.
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	districts?: string[];
+
+	/**
+	 * Registration salt used for leaf computation.
+	 * Stored client-side only — never sent to server.
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	registrationSalt?: string;
+
+	/**
+	 * User secret used for leaf computation.
+	 * Stored client-side only — never sent to server.
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	userSecret?: string;
 
 	// ═══════════════════════════════════════════════════════════════════════
 

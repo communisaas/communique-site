@@ -79,8 +79,12 @@ async function getBarretenbergSync(): Promise<BarretenbergSyncType> {
 	return bbSyncInstance;
 }
 
+/** BN254 field modulus (matches voter-protocol/packages/crypto/poseidon2.ts) */
+const BN254_MODULUS = BigInt('0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001');
+
 /**
- * Convert hex string to Fr (field element)
+ * Convert hex string to Fr (field element).
+ * Validates hex format and BN254 field modulus bound.
  */
 function hexToFr(hex: string): FrType {
 	if (!Fr) {
@@ -88,9 +92,22 @@ function hexToFr(hex: string): FrType {
 	}
 	// Remove 0x prefix if present
 	const cleanHex = hex.startsWith('0x') ? hex.slice(2) : hex;
+	// M-05: Reject empty hex strings (would silently become 0)
+	if (cleanHex.length === 0) {
+		throw new Error(`Empty hex string: "${hex}"`);
+	}
+	// Validate hex characters
+	if (!/^[0-9a-fA-F]+$/.test(cleanHex)) {
+		throw new Error(`Invalid hex string: "${hex}"`);
+	}
 	// Pad to 64 chars (32 bytes)
 	const padded = cleanHex.padStart(64, '0');
-	// Convert to Uint8Array
+	// Validate BN254 field modulus bound
+	const value = BigInt('0x' + padded);
+	if (value >= BN254_MODULUS) {
+		throw new Error(`Value exceeds BN254 field modulus: 0x${padded}`);
+	}
+	// Convert to Uint8Array (big-endian)
 	const bytes = new Uint8Array(32);
 	for (let i = 0; i < 32; i++) {
 		bytes[i] = parseInt(padded.slice(i * 2, i * 2 + 2), 16);
@@ -121,15 +138,58 @@ function getFrZero(): FrType {
 }
 
 /**
+ * Domain separation tag for 2-input hash (BA-003).
+ * DOMAIN_HASH2 = 0x48324d = "H2M" in ASCII.
+ * Prevents collision between hash2(a, b) and hash4(a, b, 0, 0).
+ *
+ * Must match voter-protocol/packages/crypto/poseidon2.ts DOMAIN_HASH2
+ * and Noir circuit global DOMAIN_HASH2: Field = 0x48324d.
+ */
+const DOMAIN_HASH2 = '0x' + (0x48324d).toString(16).padStart(64, '0');
+
+/**
  * Poseidon2 hash of 2 field elements (matches Noir's poseidon2_hash2)
- * state = [left, right, 0, 0], output = permutation(state)[0]
+ * state = [left, right, DOMAIN_HASH2, 0], output = permutation(state)[0]
+ *
+ * BA-003: Domain separation tag in slot 2 prevents collision with hash4(a, b, 0, 0).
  */
 export async function poseidon2Hash2(left: string, right: string): Promise<string> {
 	// Ensure bb.js is loaded first
 	await loadBbJs();
 	const bb = await getBarretenbergSync();
 	const zero = getFrZero();
-	const state = [hexToFr(left), hexToFr(right), zero, zero];
+	const state = [hexToFr(left), hexToFr(right), hexToFr(DOMAIN_HASH2), zero];
+	// poseidon2Permutation is synchronous on BarretenbergSync
+	const result = bb.poseidon2Permutation(state);
+	return frToHex(result[0]);
+}
+
+/**
+ * Domain separation tag for 3-input hash (two-tree architecture).
+ * DOMAIN_HASH3 = 0x48334d = "H3M" in ASCII.
+ * Prevents collision between hash3(a, b, c) and hash4(a, b, c, 0).
+ *
+ * Must match voter-protocol/packages/crypto/poseidon2.ts DOMAIN_HASH3.
+ */
+const DOMAIN_HASH3 = '0x' + (0x48334d).toString(16).padStart(64, '0');
+
+/**
+ * Poseidon2 hash of 3 field elements (matches voter-protocol hash3)
+ * state = [a, b, c, DOMAIN_HASH3], output = permutation(state)[0]
+ *
+ * Used for user leaf computation in two-tree architecture:
+ *   user_leaf = poseidon2Hash3(user_secret, cell_id, registration_salt)
+ *
+ * @param a - First input (hex string, 0x-prefixed)
+ * @param b - Second input (hex string, 0x-prefixed)
+ * @param c - Third input (hex string, 0x-prefixed)
+ * @returns Hash as hex string (0x-prefixed)
+ */
+export async function poseidon2Hash3(a: string, b: string, c: string): Promise<string> {
+	// Ensure bb.js is loaded first
+	await loadBbJs();
+	const bb = await getBarretenbergSync();
+	const state = [hexToFr(a), hexToFr(b), hexToFr(c), hexToFr(DOMAIN_HASH3)];
 	// poseidon2Permutation is synchronous on BarretenbergSync
 	const result = bb.poseidon2Permutation(state);
 	return frToHex(result[0]);
@@ -192,21 +252,21 @@ export async function poseidonHash(input: string): Promise<string> {
 
 /**
  * Compute nullifier using Poseidon2 (matches Noir circuit exactly)
- * nullifier = poseidon2_hash4(userSecret, campaignId, authorityHash, epochId)
+ * nullifier = poseidon2_hash2(userSecret, actionDomain)
+ *
+ * CVE-002 fix: action_domain is a PUBLIC contract-controlled field that
+ * encodes epoch, campaign, and authority context. Users cannot manipulate
+ * it to generate multiple valid nullifiers.
  *
  * @param userSecret - User's secret (hex string)
- * @param campaignId - Campaign/action ID (hex string)
- * @param authorityHash - Authority hash (hex string, default 0x0)
- * @param epochId - Epoch ID (hex string, default 0x0)
+ * @param actionDomain - Action domain (hex string, from buildActionDomain)
  * @returns Nullifier as hex string
  */
-export async function computePoseidonNullifier(
+export async function computeNullifier(
 	userSecret: string,
-	campaignId: string,
-	authorityHash: string = '0x0',
-	epochId: string = '0x0'
+	actionDomain: string
 ): Promise<string> {
-	return poseidon2Hash4(userSecret, campaignId, authorityHash, epochId);
+	return poseidon2Hash2(userSecret, actionDomain);
 }
 
 /**

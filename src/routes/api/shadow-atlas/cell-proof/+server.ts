@@ -1,0 +1,62 @@
+/**
+ * Shadow Atlas Cell Proof Endpoint
+ *
+ * Proxies Tree 2 (Cell-District Map) proof requests to Shadow Atlas.
+ * Returns SMT proof + 24 district IDs for a given cell_id.
+ *
+ * PRIVACY NOTE: cell_id is neighborhood-level (~600-3000 people).
+ * The Shadow Atlas operator learns which cell the user is in,
+ * but not their specific address. Accepted tradeoff for Phase 1.
+ * Phase 2 TEE can provide PIR-like privacy.
+ *
+ * SPEC REFERENCE: WAVE-17-19-IMPLEMENTATION-PLAN.md Section 17b
+ */
+
+import { json } from '@sveltejs/kit';
+import type { RequestHandler } from './$types';
+import { getCellProof } from '$lib/core/shadow-atlas/client';
+
+export const GET: RequestHandler = async ({ url, locals }) => {
+	const session = locals.session;
+
+	if (!session) {
+		return json({ error: 'Unauthorized' }, { status: 401 });
+	}
+
+	const cellId = url.searchParams.get('cell_id');
+
+	if (!cellId) {
+		return json(
+			{ error: 'Missing required parameter: cell_id' },
+			{ status: 400 }
+		);
+	}
+
+	// Validate cell_id format (numeric FIPS or hex)
+	if (!/^(0x)?[0-9a-fA-F]+$|^\d+$/.test(cellId)) {
+		return json(
+			{ error: 'Invalid cell_id format' },
+			{ status: 400 }
+		);
+	}
+
+	try {
+		const result = await getCellProof(cellId);
+		return json(result);
+	} catch (error) {
+		const msg = error instanceof Error ? error.message : String(error);
+
+		if (msg.includes('CELL_NOT_FOUND')) {
+			return json(
+				{ error: 'Cell ID not found in district map' },
+				{ status: 404 }
+			);
+		}
+
+		console.error('[Shadow Atlas] Cell proof failed:', msg);
+		return json(
+			{ error: 'Cell proof unavailable' },
+			{ status: 503 }
+		);
+	}
+};
