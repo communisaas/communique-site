@@ -51,12 +51,34 @@
 
 	// Publish flow states (for inline error display at point of action)
 	let publishError = $state<string | null>(null);
-	let isPublishing = $derived(isSubmitting);
+	let localPublishing = $state(false);
+	let isPublishing = $derived(isSubmitting || localPublishing);
+
+	// Draft cleanup mode: 'save' = preserve on close, 'delete' = clean up (save succeeded)
+	let draftCleanupMode: 'save' | 'delete' = 'save';
 
 	// Sync parent's save error to inline display
 	$effect(() => {
 		if (onSaveError) {
 			publishError = onSaveError;
+		}
+	});
+
+	// When parent's save handler completes, determine outcome and reset guard
+	$effect(() => {
+		if (!isSubmitting && localPublishing) {
+			if (!onSaveError) {
+				// Success: parent will close us — mark draft for cleanup
+				draftCleanupMode = 'delete';
+			}
+			localPublishing = false;
+		}
+	});
+
+	// If save fails, ensure draft is preserved on future close
+	$effect(() => {
+		if (onSaveError && draftCleanupMode === 'delete') {
+			draftCleanupMode = 'save';
 		}
 	});
 
@@ -95,9 +117,20 @@
 	let isSaving = $state(false);
 	const DEBOUNCE_SAVE_DELAY = 2000;
 
+	// When resuming a draft, backfill rawInput from initialText if the draft's rawInput is empty.
+	// This covers the case where rawInput was cleared (e.g. "Start fresh") but the homepage
+	// still shows the draft title — the user sees text, clicks continue, and expects it in the modal.
+	function _backfillDraftData(draft: typeof _loadedDraft): TemplateFormData {
+		const data = draft!.data;
+		if (!data.objective.rawInput?.trim() && initialText.trim()) {
+			data.objective.rawInput = initialText;
+		}
+		return data;
+	}
+
 	let formData: TemplateFormData = $state(
 		_loadedDraft
-			? _loadedDraft.data
+			? _backfillDraftData(_loadedDraft)
 			: {
 					objective: {
 						rawInput: initialText,
@@ -224,11 +257,16 @@
 	}
 
 	function handleSave() {
+		if (isPublishing) return; // Guard against double-submit
 		// Clear previous errors (fresh attempt)
 		publishError = null;
 		onSaveError = null;
+		localPublishing = true;
 
-		if (!validateCurrentStep()) return;
+		if (!validateCurrentStep()) {
+			localPublishing = false;
+			return;
+		}
 
 		// Re-extract recipient emails from source data (handles stale draft restoration)
 		// This ensures emails are current even if draft had missing/stale recipientEmails
@@ -241,14 +279,17 @@
 		// Validation errors display inline at the publish button (perceptual: feedback at action locus)
 		if (!formData.objective.title?.trim()) {
 			publishError = 'Template title is required';
+			localPublishing = false;
 			return;
 		}
 		if (!formData.content.preview?.trim()) {
 			publishError = 'Message content is required';
+			localPublishing = false;
 			return;
 		}
 		if (!formData.audience.recipientEmails || formData.audience.recipientEmails.length === 0) {
 			publishError = 'At least one recipient email is required';
+			localPublishing = false;
 			return;
 		}
 
@@ -302,9 +343,7 @@
 		};
 
 		dispatch('save', template);
-
-		// Clean up draft after successful save
-		templateDraftStore.deleteDraft(draftId);
+		// Draft deletion deferred to parent's success handler to prevent data loss on save failure
 	}
 
 	// Progress calculation
@@ -360,16 +399,19 @@
 	});
 
 	onDestroy(() => {
-		// Save draft immediately on close - user's work must persist
-		// Perceptual: Action-outcome causality - closing preserves work
-		// Include pendingSuggestion so the suggestion panel restores on resume
-		const hasContent =
-			formData.objective.rawInput?.trim() ||
-			formData.objective.title?.trim() ||
-			formData.content.preview?.trim();
+		if (draftCleanupMode === 'delete') {
+			// Save succeeded — clean up the draft instead of re-saving
+			templateDraftStore.deleteDraft(draftId);
+		} else {
+			// Normal close or failed save — preserve user's work
+			const hasContent =
+				formData.objective.rawInput?.trim() ||
+				formData.objective.title?.trim() ||
+				formData.content.preview?.trim();
 
-		if (hasContent) {
-			templateDraftStore.saveDraft(draftId, formData, currentStep, pendingSuggestion);
+			if (hasContent) {
+				templateDraftStore.saveDraft(draftId, formData, currentStep, pendingSuggestion);
+			}
 		}
 
 		// Cleanup timers

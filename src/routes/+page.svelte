@@ -34,7 +34,7 @@
 	import TemplateCreator from '$lib/components/template/TemplateCreator.svelte';
 	import { CreationSpark, CoordinationExplainer } from '$lib/components/activation';
 	import { guestState } from '$lib/stores/guestState.svelte';
-		import { z } from 'zod';
+	import { z } from 'zod';
 
 	let { data }: { data: PageData } = $props();
 
@@ -58,6 +58,7 @@
 	let pendingTemplateToSave: Record<string, unknown> | null = $state(null);
 	let savedTemplate = $state<Template | null>(null);
 	let templateSaveError = $state<string | null>(null);
+	let isSubmitting = $state(false);
 	let userInitiatedSelection = $state(false);
 	let locationFilteredGroups = $state<TemplateGroup[]>([]);
 
@@ -500,6 +501,7 @@
 	>
 		<TemplateCreator
 			context={creationContext}
+			{isSubmitting}
 			initialText={creationInitialText}
 			initialDraftId={resumeDraftId}
 			bind:onSaveError={templateSaveError}
@@ -514,8 +516,10 @@
 				if (data.user) {
 					try {
 						templateSaveError = null;
+						isSubmitting = true;
 						const newTemplate = await templateStore.addTemplate(_event.detail);
 						// Success: close creator and show success modal
+						// (Draft cleanup handled by TemplateCreator's onDestroy via draftCleanupMode)
 						showTemplateCreator = false;
 						creationContext = null;
 						creationInitialText = '';
@@ -526,6 +530,8 @@
 						templateSaveError =
 							error instanceof Error ? error.message : 'Failed to publish template';
 						console.error('Template save failed:', error);
+					} finally {
+						isSubmitting = false;
 					}
 				} else {
 					pendingTemplateToSave = _event.detail;
