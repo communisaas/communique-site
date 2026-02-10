@@ -68,7 +68,7 @@ export const SUBJECT_LINE_SCHEMA = {
 		},
 		core_message: {
 			type: 'string',
-			description: 'One sentence: what the user is saying + who has power to act'
+			description: 'One sentence: the collective demand and the named entity responsible'
 		},
 		topics: {
 			type: 'array',
@@ -78,7 +78,7 @@ export const SUBJECT_LINE_SCHEMA = {
 		},
 		url_slug: {
 			type: 'string',
-			description: 'URL slug: 2-4 words, lowercase, hyphens'
+			description: 'Emotional hook as URL slug: 2-4 words, lowercase, hyphens'
 		},
 		voice_sample: {
 			type: 'string',
@@ -87,7 +87,7 @@ export const SUBJECT_LINE_SCHEMA = {
 		detected_ask: {
 			type: ['string', 'null'],
 			description:
-				'The specific action the person wants, extracted verbatim from their input. Null if they did not state one explicitly.'
+				'The specific action demanded, extracted verbatim from input. Null if not stated explicitly.'
 		},
 
 		// Context - ALWAYS required
@@ -141,7 +141,7 @@ export const SUBJECT_LINE_SCHEMA = {
 				detected_ask: {
 					type: ['string', 'null'],
 					description:
-						'The specific action the person wants, extracted verbatim. Null if implicit.'
+						'The specific action demanded, extracted verbatim. Null if implicit.'
 				},
 				reasoning: {
 					type: 'string',
