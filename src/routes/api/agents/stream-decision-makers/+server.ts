@@ -107,8 +107,14 @@ export const POST: RequestHandler = async (event) => {
 	}, { userId });
 
 	// Prompt injection detection
+	// NOTE: core_message is AI-refined (from subject-line agent), not raw user input.
+	// The AI's paraphrasing uses phrases like "The user is demanding that..." which
+	// Prompt Guard interprets as indirect injection (meta-reference + imperative).
+	// The raw input was already checked at the subject-line step, so we use a higher
+	// threshold here (0.8) to avoid false positives on AI-generated descriptions
+	// while still catching clear attacks (which score 0.9+).
 	const contentToCheck = `${subject_line}\n${core_message}\n${topics.join(' ')}`;
-	const injectionCheck = await moderatePromptOnly(contentToCheck);
+	const injectionCheck = await moderatePromptOnly(contentToCheck, 0.8);
 
 	if (!injectionCheck.safe) {
 		console.log('[stream-decision-makers] Prompt injection detected:', {

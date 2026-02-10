@@ -310,8 +310,8 @@ export async function moderateTemplate(
  * @param content - User input to check
  * @returns PromptGuardResult with score and classification
  */
-export async function moderatePromptOnly(content: string): Promise<PromptGuardResult> {
-	return detectPromptInjection(content);
+export async function moderatePromptOnly(content: string, threshold?: number): Promise<PromptGuardResult> {
+	return detectPromptInjection(content, threshold);
 }
 
 /**

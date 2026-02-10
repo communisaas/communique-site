@@ -107,6 +107,9 @@ export const POST: RequestHandler = async (event) => {
 	}, { userId: session.userId });
 
 	// Prompt injection detection
+	// Content includes AI-refined text (core_message, voice_sample) which can contain
+	// meta-phrasing like "The user is demanding..." that triggers false positives.
+	// Raw input was already checked at subject-line step; use 0.8 threshold here.
 	const contentToCheck = [
 		body.subject_line,
 		body.core_message,
@@ -115,7 +118,7 @@ export const POST: RequestHandler = async (event) => {
 		body.raw_input
 	].filter(Boolean).join('\n');
 
-	const injectionCheck = await moderatePromptOnly(contentToCheck);
+	const injectionCheck = await moderatePromptOnly(contentToCheck, 0.8);
 
 	if (!injectionCheck.safe) {
 		console.log('[stream-message] Prompt injection detected:', {
