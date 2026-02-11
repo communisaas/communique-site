@@ -94,6 +94,8 @@ export interface UserProfileData {
 	email: string;
 	role?: string;
 	connection?: string;
+	organization?: string; // User's organization/company
+	location?: string; // User's general location description
 	street?: string | null;
 	city?: string | null;
 	state?: string | null;
@@ -105,6 +107,7 @@ export interface UserProfileData {
 	wallet_address?: string | null;
 	trust_score?: number;
 	reputation_tier?: string;
+	profile_visibility?: string; // 'public', 'private', etc.
 }
 
 export interface ProfileUpdateData {
@@ -398,6 +401,7 @@ export interface HeaderUser {
 	id: string;
 	email: string;
 	name: string | null;
+	picture?: string | null; // User avatar/profile picture URL
 	street?: string | null;
 	city?: string | null;
 	state?: string | null;

@@ -154,6 +154,7 @@ export interface ProcessedDecisionMaker {
 	provenance: string; // Full verification text from agent
 	reasoning: string; // Extracted: why this person matters
 	source?: string; // Extracted: verification URL (for person/position)
+	source_url?: string; // Alias for source (used in some code paths)
 	isAiResolved: boolean; // true = AI-resolved, false = manually added
 	recencyCheck?: string; // Explicit recency verification text
 	positionSourceDate?: string; // Date of verification source
@@ -172,6 +173,7 @@ export interface ProcessedDecisionMaker {
 export interface CustomRecipient {
 	email: string;
 	name: string;
+	title?: string; // Job title/position
 	organization?: string;
 }
 
@@ -318,6 +320,14 @@ export type TargetPresentation =
 		targets: PowerLevelTarget[];
 		/** Coordination context: "CA-11" or "San Francisco" */
 		coordinationContext?: string;
+		/** Primary text for first target (for compatibility) */
+		primary?: string;
+		/** Secondary text (for compatibility) */
+		secondary?: string | null;
+		/** Icon for first target (for compatibility) */
+		icon?: 'Capitol' | 'Building' | 'Users' | 'Mail';
+		/** Emphasis for first target (for compatibility) */
+		emphasis?: 'federal' | 'state' | 'local' | 'neutral';
 	};
 
 // ============================================================================

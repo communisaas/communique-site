@@ -32,6 +32,7 @@ export interface Representative {
 	party: string;
 	state: string;
 	district: string;
+	congressional_district?: string; // Alias for district (format: "CA-12")
 	chamber: string;
 	office_code: string;
 	phone?: string;

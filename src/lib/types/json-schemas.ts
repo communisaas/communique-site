@@ -8,6 +8,21 @@ import type { Prisma } from '@prisma/client';
 
 // ============= ANALYTICS SCHEMA TYPES =============
 
+/**
+ * Analytics Session entity - tracks user sessions with metrics
+ */
+export interface AnalyticsSession {
+	id: string;
+	session_id: string;
+	user_id?: string | null;
+	created_at: Date;
+	updated_at: Date;
+	metrics: AnalyticsSessionMetrics;
+	device_data?: AnalyticsDeviceData;
+	funnel_progress?: AnalyticsFunnelProgress;
+	computed_metrics?: AnalyticsComputedMetrics;
+}
+
 export interface AnalyticsSessionMetrics {
 	events_count: number;
 	page_views: number;
@@ -170,6 +185,20 @@ export interface AnalyticsComputedMetrics {
 }
 
 // ============= EXPERIMENT SCHEMA TYPES =============
+
+/**
+ * Analytics Experiment entity - for A/B tests, funnels, campaigns
+ */
+export interface AnalyticsExperiment {
+	id: string;
+	name: string;
+	type: 'ab_test' | 'funnel' | 'campaign';
+	status: 'draft' | 'active' | 'paused' | 'completed';
+	created_at: Date;
+	updated_at: Date;
+	config: AnalyticsExperimentConfig;
+	metrics_cache?: AnalyticsExperimentMetricsCache;
+}
 
 export interface AnalyticsExperimentConfig {
 	steps?: Array<{

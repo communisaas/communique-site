@@ -48,6 +48,7 @@ export interface IncrementBatch {
 export interface IncrementResponse {
 	success: boolean;
 	processed: number;
+	dropped: number;
 }
 
 // =============================================================================
@@ -73,7 +74,7 @@ export interface AggregateQuery {
  * Single query result row
  */
 export interface AggregateResult {
-	dimensions: Record<DimensionKey, string | null>;
+	dimensions: Partial<Record<DimensionKey, string | null>>;
 	count: number; // Always noisy
 	coarsened: boolean;
 	coarsen_level?: string;

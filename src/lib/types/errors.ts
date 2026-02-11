@@ -1,4 +1,4 @@
-export type ErrorType = 'validation' | 'network' | 'server' | 'authentication' | 'authorization';
+export type ErrorType = 'validation' | 'network' | 'server' | 'authentication' | 'authorization' | 'auth';
 
 export interface ApiError {
 	type: ErrorType;
@@ -23,6 +23,9 @@ export const ERROR_CODES = {
 	VALIDATION_TOO_LONG: 'VALIDATION_TOO_LONG',
 	VALIDATION_TOO_SHORT: 'VALIDATION_TOO_SHORT',
 	VALIDATION_DUPLICATE: 'VALIDATION_DUPLICATE',
+	VALIDATION_MISSING_DATA: 'VALIDATION_MISSING_DATA',
+	CONTENT_FLAGGED: 'CONTENT_FLAGGED',
+	QUALITY_REJECTED: 'QUALITY_REJECTED',
 
 	// Network errors
 	NETWORK_TIMEOUT: 'NETWORK_TIMEOUT',
@@ -34,12 +37,14 @@ export const ERROR_CODES = {
 	SERVER_DATABASE: 'SERVER_DATABASE',
 	SERVER_RATE_LIMIT: 'SERVER_RATE_LIMIT',
 	SERVER_NOT_IMPLEMENTED: 'SERVER_NOT_IMPLEMENTED',
+	MODERATION_FAILED: 'MODERATION_FAILED',
 
 	// Auth errors
 	AUTH_REQUIRED: 'AUTH_REQUIRED',
 	AUTH_INVALID_TOKEN: 'AUTH_INVALID_TOKEN',
 	AUTH_INSUFFICIENT_PERMISSIONS: 'AUTH_INSUFFICIENT_PERMISSIONS',
-	AUTH_UNAUTHORIZED: 'AUTH_UNAUTHORIZED'
+	AUTH_UNAUTHORIZED: 'AUTH_UNAUTHORIZED',
+	INSUFFICIENT_TRUST: 'INSUFFICIENT_TRUST'
 } as const;
 
 export const ERROR_MESSAGES = {
@@ -48,6 +53,9 @@ export const ERROR_MESSAGES = {
 	[ERROR_CODES.VALIDATION_TOO_LONG]: 'Text is too long',
 	[ERROR_CODES.VALIDATION_TOO_SHORT]: 'Text is too short',
 	[ERROR_CODES.VALIDATION_DUPLICATE]: 'This value already exists',
+	[ERROR_CODES.VALIDATION_MISSING_DATA]: 'Validation passed but data is missing',
+	[ERROR_CODES.CONTENT_FLAGGED]: 'Content flagged by moderation',
+	[ERROR_CODES.QUALITY_REJECTED]: 'Content quality rejected',
 
 	[ERROR_CODES.NETWORK_TIMEOUT]: 'Request timed out. Please try again.',
 	[ERROR_CODES.NETWORK_OFFLINE]: 'You appear to be offline. Please check your connection.',
@@ -57,11 +65,13 @@ export const ERROR_MESSAGES = {
 	[ERROR_CODES.SERVER_DATABASE]: 'Database error. Please try again later.',
 	[ERROR_CODES.SERVER_RATE_LIMIT]: 'Too many requests. Please wait a moment and try again.',
 	[ERROR_CODES.SERVER_NOT_IMPLEMENTED]: 'Feature not implemented yet.',
+	[ERROR_CODES.MODERATION_FAILED]: 'Content moderation failed',
 
 	[ERROR_CODES.AUTH_REQUIRED]: 'Please sign in to continue',
 	[ERROR_CODES.AUTH_INVALID_TOKEN]: 'Your session has expired. Please sign in again.',
 	[ERROR_CODES.AUTH_INSUFFICIENT_PERMISSIONS]: 'You do not have permission to perform this action',
-	[ERROR_CODES.AUTH_UNAUTHORIZED]: 'Unauthorized access'
+	[ERROR_CODES.AUTH_UNAUTHORIZED]: 'Unauthorized access',
+	[ERROR_CODES.INSUFFICIENT_TRUST]: 'Insufficient trust level'
 } as const;
 
 // Helper functions for creating errors

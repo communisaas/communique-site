@@ -60,3 +60,16 @@ export type { JurisdictionHierarchy, CoarsenLevel, CoarsenResult } from './juris
 
 // Percolation types (specialized analytics)
 export type { PercolationData, FusionData, AnalyticsError } from './percolation';
+
+// Session and experiment types (from JSON schema helpers)
+export type {
+	AnalyticsSession,
+	AnalyticsSessionMetrics,
+	AnalyticsDeviceData,
+	AnalyticsFunnelProgress,
+	AnalyticsEventProperties,
+	AnalyticsComputedMetrics,
+	AnalyticsExperiment,
+	AnalyticsExperimentConfig,
+	AnalyticsExperimentMetricsCache
+} from '../json-schemas';

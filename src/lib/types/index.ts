@@ -12,9 +12,6 @@ export * from './errors';
 // Analytics & Metrics Types
 export * from './analytics';
 
-// N8N Integration Types
-export * from './n8n';
-
 // Core Domain Types
 export * from './template';
 export * from './templateConfig';
@@ -43,22 +40,13 @@ export type { Template, TemplateFormData, MinimalUser } from './template';
 export type {
 	EmailServiceUser,
 	UserProfile,
-	UserAddress,
 	Representative,
 	PrismaUserForEmail
 } from './user';
 export { toEmailServiceUser } from './user';
-export type { Jurisdiction, Office, Jurisdiction, TemplateScope } from './jurisdiction';
+export type { Jurisdiction, Office, TemplateScope } from './jurisdiction';
 export type { NormalizedAddress, GeoFence } from './location';
 export type { ModalScrollState } from './modal';
 export type { PopoverSlots, TriggerAction } from './popover';
-export type {
-	N8NWebhookPayload,
-	N8NWorkflowResult,
-	VerificationResult,
-	ConsensusResult,
-	ReputationUpdate
-} from './n8n';
-
 // Error helper functions
 export { createApiError, createValidationError, ERROR_CODES, ERROR_MESSAGES } from './errors';
