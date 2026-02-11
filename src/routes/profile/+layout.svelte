@@ -36,7 +36,8 @@
 	// Calculate profile completion
 	function getCompletionStatus() {
 		const required = [user.name, user.email];
-		const optional = [user.street, user.city, user.state, user.zip];
+		// Note: Address fields removed for privacy per CYPHERPUNK-ARCHITECTURE.md
+		const optional: (string | null | undefined)[] = [];
 
 		const completedRequired = required.filter(Boolean).length;
 		const completedOptional = optional.filter(Boolean).length;

@@ -192,11 +192,11 @@
 		<div class="mt-6 rounded-lg border border-slate-200 bg-slate-900 p-6">
 			<h3 class="mb-3 text-sm font-semibold text-slate-300">Usage Example</h3>
 			<pre class="overflow-x-auto text-sm text-slate-300"><code
-					>{`<script lang="ts">
+					>{`${'<'}script lang="ts"${'>'}
   import { TargetTypeSelector } from '$lib/components/targets';
   import type { DecisionMakerTargetType } from '$lib/core/agents/providers/types';
 
-  let targetType = $state<DecisionMakerTargetType | null>(null);
+  let targetType = $state${'<'}DecisionMakerTargetType | null${'>'} (null);
   let entity = $state('');
 
   function handleSelect(type: DecisionMakerTargetType) {
@@ -206,9 +206,9 @@
   function handleEntityChange(value: string) {
     console.log('Entity:', value);
   }
-</script>
+${'<'}/script${'>'}
 
-<TargetTypeSelector
+${'<'}TargetTypeSelector
   bind:selected={targetType}
   bind:entity={entity}
   onselect={handleSelect}

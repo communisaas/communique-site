@@ -20,6 +20,7 @@ import {
 } from '$lib/core/analytics/rate-limit-db';
 import {
 	isMetric,
+	type Dimensions,
 	type Increment,
 	type IncrementResponse,
 	type Metric
@@ -94,7 +95,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		const hashedIP = hashIP(clientIP);
 
 		// Validate and filter increments
-		const valid: Array<{ metric: string; dimensions?: Record<string, string | null> }> = [];
+		const valid: Array<{ metric: Metric; dimensions?: Dimensions }> = [];
 
 		for (const inc of increments) {
 			if (

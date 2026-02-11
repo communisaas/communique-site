@@ -162,7 +162,6 @@ export const POST: RequestHandler = async ({ request }) => {
 		const shadowAtlasCommitment = await generateIdentityCommitment({
 			provider: 'didit.me',
 			credentialHash,
-			issuedAt: Date.now()
 		});
 
 		// Check for duplicate identity

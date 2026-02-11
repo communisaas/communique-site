@@ -8,7 +8,8 @@ import {
 	type ApiResponse,
 	type ApiError
 } from '$lib/types/errors';
-import type { Prisma as _Prisma } from '@prisma/client';
+import type { Prisma as _Prisma, Prisma } from '@prisma/client';
+import type { InputJsonValue } from '@prisma/client/runtime/library';
 import type { UnknownRecord } from '$lib/types/any-replacements';
 import { moderateTemplate } from '$lib/core/server/moderation';
 import { generateBatchEmbeddings } from '$lib/core/search/gemini-embeddings';
@@ -576,10 +577,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 							type: validData.type,
 							deliveryMethod: validData.deliveryMethod,
 							preview: validData.preview,
-							delivery_config: validData.delivery_config || {},
-							cwc_config: validData.cwc_config || {},
-							recipient_config: validData.recipient_config || {},
-							metrics: validData.metrics || {},
+							delivery_config: (validData.delivery_config || {}) as InputJsonValue,
+							cwc_config: (validData.cwc_config || {}) as InputJsonValue,
+							recipient_config: (validData.recipient_config || {}) as InputJsonValue,
+							metrics: (validData.metrics || {}) as InputJsonValue,
 							// Auto-publish if moderation passes - no manual review needed
 							status: consensusResult?.approved ? 'published' : 'draft',
 							is_public: consensusResult?.approved ?? false,

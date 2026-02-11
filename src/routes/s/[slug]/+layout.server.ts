@@ -60,6 +60,9 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 		research_log: template.research_log || [],
 		preview: template.preview,
 		is_public: template.is_public,
+		applicable_countries: (template as any).applicable_countries ?? [],
+		jurisdiction_level: (template as any).jurisdiction_level ?? null,
+		specific_locations: (template as any).specific_locations ?? [],
 
 		// === AGGREGATE METRICS (consistent with schema) ===
 		verified_sends: template.verified_sends,
@@ -82,9 +85,6 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 		delivery_config: template.delivery_config,
 		recipient_config: template.recipient_config,
 		recipientEmails: extractRecipientEmails(template.recipient_config),
-		applicable_countries: template.applicable_countries ?? [],
-		jurisdiction_level: template.jurisdiction_level ?? null,
-		specific_locations: template.specific_locations ?? [],
 		author: template.user
 			? {
 					name: template.user.name,

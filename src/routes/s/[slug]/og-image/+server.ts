@@ -12,12 +12,8 @@ export const GET: RequestHandler = async ({ params }) => {
 				title: true,
 				description: true,
 				category: true,
-				metrics: {
-					select: {
-						sent: true,
-						views: true
-					}
-				}
+				verified_sends: true,
+				metrics: true
 			}
 		});
 
@@ -25,7 +21,11 @@ export const GET: RequestHandler = async ({ params }) => {
 			return new Response('Template not found', { status: 404 });
 		}
 
-		const actionCount = template.metrics?.sent || 0;
+		// Extract metrics from JSON field
+		const metrics = typeof template.metrics === 'object' && template.metrics !== null
+			? (template.metrics as Record<string, unknown>)
+			: {};
+		const actionCount = template.verified_sends || (metrics.sent as number) || 0;
 
 		// Category-specific colors
 		const categoryColors: Record<string, { bg: string; accent: string }> = {
@@ -57,7 +57,7 @@ export const GET: RequestHandler = async ({ params }) => {
 						justifyContent: 'space-between',
 						backgroundColor: colors.bg,
 						padding: '60px',
-						fontFamily: 'system-ui, -apple-system, sans-serif'
+						fontFamily: 'sans-serif'
 					},
 					children: [
 						// Category Badge + Social Proof
@@ -214,14 +214,15 @@ export const GET: RequestHandler = async ({ params }) => {
 			},
 			{
 				width: 1200,
-				height: 630
-			}
+				height: 630,
+				fonts: []
+			} as any // Type assertion needed due to satori's complex font options
 		);
 
 		// Convert SVG to PNG using Sharp
-		const png = await sharp(Buffer.from(svg)).png().toBuffer();
+		const png = await sharp(Buffer.from(svg as string)).png().toBuffer();
 
-		return new Response(png, {
+		return new Response(png as unknown as BodyInit, {
 			headers: {
 				'Content-Type': 'image/png',
 				'Cache-Control': 'public, max-age=3600' // Cache for 1 hour

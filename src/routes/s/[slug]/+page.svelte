@@ -48,20 +48,20 @@
 	);
 
 	// Enhanced description with social proof for Open Graph
-	const socialProofDescription = $derived(() => {
-		const sent = template.verified_sends || template.metrics?.sent || 0;
+	const socialProofDescription = $derived((() => {
+		const sent = (template as any).verified_sends || template.metrics?.sent || 0;
 		if (sent > 1000) {
 			return `Join ${sent.toLocaleString()}+ constituents who took action. ${template.description}`;
 		} else if (sent > 100) {
 			return `${sent.toLocaleString()} people have taken action. ${template.description}`;
 		}
 		return template.description;
-	});
+	})());
 
 	// Check if user has complete address for congressional templates
+	// Note: Address fields removed from User model per CYPHERPUNK-ARCHITECTURE.md
 	const hasCompleteAddress = $derived(
-		(data.user && data.user.street && data.user.city && data.user.state && data.user.zip) ||
-			guestState.state?.address
+		guestState.state?.address
 	);
 	const isCongressional = $derived(template.deliveryMethod === 'cwc');
 	const addressRequired = $derived(isCongressional && !hasCompleteAddress);
@@ -263,7 +263,7 @@
 					<div class="flex items-center gap-1.5">
 						<Users class="h-4 w-4" />
 						<span
-							>{(template.verified_sends || template.metrics?.sent || 0).toLocaleString()} sent this</span
+							>{((template as any).verified_sends || template.metrics?.sent || 0).toLocaleString()} sent this</span
 						>
 					</div>
 					<div class="flex items-center gap-1.5">
@@ -280,7 +280,7 @@
 				<div class="flex items-center gap-2">
 					<span class="text-sm text-slate-600">
 						Hi {data.user.name?.split(' ')[0]} - join the {(
-							template.verified_sends ||
+							(template as any).verified_sends ||
 							template.metrics?.sent ||
 							0
 						).toLocaleString()} who sent this
@@ -319,10 +319,10 @@
 	</div>
 
 	<!-- Social Proof Banner (show if > 10 actions) -->
-	{#if (template.verified_sends || template.metrics?.sent || 0) > 10}
+	{#if ((template as any).verified_sends || template.metrics?.sent || 0) > 10}
 		<div class="mb-6">
 			<SocialProofBanner
-				totalActions={template.verified_sends || template.metrics?.sent || 0}
+				totalActions={(template as any).verified_sends || template.metrics?.sent || 0}
 				{topDistricts}
 			/>
 		</div>

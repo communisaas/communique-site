@@ -54,13 +54,18 @@ export const POST: RequestHandler = async ({ request }) => {
 			delivery_config: {},
 			cwc_config: {},
 			recipient_config: {},
+			coordinationScale: 0,
+			isNew: true,
+			send_count: 0,
 			metrics: {},
 			status: 'active',
 			is_public: true,
 			applicable_countries: ['US'],
 			specific_locations: [],
 			preview:
-				'Dear Representative, As your constituent, I urge you to support climate action legislation...'
+				'Dear Representative, As your constituent, I urge you to support climate action legislation...',
+			createdAt: new Date(),
+			updatedAt: new Date(),
 		};
 
 		// Test user

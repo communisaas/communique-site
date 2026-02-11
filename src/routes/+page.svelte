@@ -79,9 +79,9 @@
 					const result = PendingTemplateSchema.safeParse(parsed);
 
 					if (result.success) {
-						const { templateData } = result.data;
+						const { templateData } = result.data as any;
 						templateStore
-							.addTemplate(templateData)
+							.addTemplate(templateData as any)
 							.then(() => {
 								sessionStorage.removeItem('pending_template_save');
 							})
@@ -272,13 +272,13 @@
 			return;
 		}
 
-		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
+		const flow = analyzeEmailFlow(template as any, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 		if (flow.nextAction === 'address') {
 			modalActions.openModal('address-modal', 'address', {
-				template,
+				template: template as any,
 				source: 'featured',
-				user: data.user,
+				user: data.user as any,
 				onComplete: async (detail: OnCompleteDetail) => {
 					if (detail?.address) {
 						// Client-side caching only - Cypherpunk ethos
@@ -412,8 +412,8 @@
 						</div>
 					{:else if selectedTemplate}
 						<TemplatePreview
-							template={selectedTemplate}
-							user={data.user}
+							template={selectedTemplate as any}
+							user={data.user as any}
 							onSendMessage={async () => handleSendMessage(selectedTemplate)}
 						/>
 					{:else}
@@ -446,15 +446,12 @@
 <!-- Mobile Preview Modal -->
 {#if showMobilePreview && selectedTemplate}
 	<TouchModal
-		bind:this={modalComponent}
 		on:close={() => (showMobilePreview = false)}
-		inModal={true}
 	>
 		<div class="h-full">
 			<TemplatePreview
-				template={selectedTemplate}
-				inModal={true}
-				user={data.user}
+				template={selectedTemplate as any}
+				user={data.user as any}
 				onSendMessage={async () => {
 					if (!data.user) {
 						modalActions.openModal('onboarding-modal', 'onboarding', {
@@ -465,7 +462,7 @@
 						return;
 					}
 
-					const flow = analyzeEmailFlow(selectedTemplate, toEmailServiceUser(data.user));
+					const flow = analyzeEmailFlow(selectedTemplate as any, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 					if (flow.nextAction === 'address') {
 						modalActions.openModal('address-modal', 'address', {

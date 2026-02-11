@@ -25,7 +25,7 @@
 import { json } from '@sveltejs/kit';
 import { prisma } from '$lib/core/db';
 import type { RequestHandler } from './$types';
-import { registerLeaf } from '$lib/core/shadow-atlas/client';
+import { registerLeaf, replaceLeaf } from '$lib/core/shadow-atlas/client';
 
 /** BN254 scalar field modulus */
 const BN254_MODULUS =
@@ -40,7 +40,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		}
 
 		const body = await request.json();
-		const { leaf } = body;
+		const { leaf, replace: isReplace } = body;
 
 		// Validate leaf is present and hex-formatted
 		if (!leaf || typeof leaf !== 'string') {
@@ -76,7 +76,57 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		});
 
 		if (existingRegistration) {
-			// Derive pathIndices from leafIndex (bit decomposition, depth=20)
+			// Recovery mode: replace leaf with fresh credential
+			if (isReplace === true) {
+				let replacementResult;
+				try {
+					replacementResult = await replaceLeaf(leaf, existingRegistration.leaf_index);
+				} catch (error) {
+					const msg = error instanceof Error ? error.message : String(error);
+					console.error('[Shadow Atlas] Registration service failed:', msg);
+					return json(
+						{ error: 'Registration service unavailable' },
+						{ status: 503 }
+					);
+				}
+
+				// Update Postgres record with new leaf data
+				// NOTE: pathIndices not stored — derived from leaf_index on read
+				try {
+					await prisma.shadowAtlasRegistration.update({
+						where: { user_id: session.userId },
+						data: {
+							identity_commitment: leaf,
+							leaf_index: replacementResult.leafIndex,
+							merkle_root: replacementResult.userRoot,
+							merkle_path: replacementResult.userPath,
+						},
+					});
+				} catch (dbError) {
+					// CRITICAL: Shadow Atlas tree was mutated but Postgres failed.
+					// Old leaf is zeroed, new leaf inserted, but DB still points to old index.
+					// Manual operator intervention required to reconcile.
+					console.error('[CRITICAL] Postgres update failed after Shadow Atlas replacement', {
+						userId: session.userId,
+						oldIndex: existingRegistration.leaf_index,
+						newIndex: replacementResult.leafIndex,
+						error: dbError,
+					});
+					return json(
+						{ error: 'Registration service unavailable' },
+						{ status: 503 }
+					);
+				}
+
+				return json({
+					leafIndex: replacementResult.leafIndex,
+					userRoot: replacementResult.userRoot,
+					userPath: replacementResult.userPath,
+					pathIndices: replacementResult.pathIndices,
+				});
+			}
+
+			// Normal already-registered: return cached proof
 			const depth = (existingRegistration.merkle_path as string[]).length;
 			const pathIndices = Array.from({ length: depth }, (_, i) =>
 				(existingRegistration.leaf_index >> i) & 1,
@@ -97,9 +147,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			registrationResult = await registerLeaf(leaf);
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
-			console.error('[Shadow Atlas] Registration API call failed:', msg);
+			console.error('[Shadow Atlas] Registration service failed:', msg);
 			return json(
-				{ error: 'Shadow Atlas registration unavailable' },
+				{ error: 'Registration service unavailable' },
 				{ status: 503 }
 			);
 		}

@@ -65,7 +65,7 @@
 	function handleTemplateUse(__event: { template: _Template; requiresAuth: boolean }): void {
 		const { template } = __event;
 
-		const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
+		const flow = analyzeEmailFlow(template as any, toEmailServiceUser(data.user as Record<string, unknown> | null));
 
 		if (flow.nextAction === 'auth') {
 			// Navigate to auth or show modal
@@ -87,7 +87,7 @@
 </script>
 
 <!-- HeaderSystem handles context-aware header rendering -->
-<HeaderSystem user={data.user} template={data.template} onTemplateUse={handleTemplateUse} />
+<HeaderSystem user={data.user as any} template={data.template as any} onTemplateUse={handleTemplateUse as any} />
 
 {#if isProfilePage}
 	<!-- Profile pages: No header padding, full control -->

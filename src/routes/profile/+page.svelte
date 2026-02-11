@@ -10,7 +10,7 @@
 
 	let { data }: { data: PageData } = $props();
 
-	type EditSection = 'basic' | 'profile' | 'address';
+	type EditSection = 'basic' | 'profile';
 	let showEditModal = $state(false);
 	let editingSection = $state<EditSection>('basic');
 
@@ -43,7 +43,7 @@
 	}
 
 	function handleProfileSave(__event: CustomEvent) {
-		const { section: _section, data: _data } = event.detail;
+		const { section: _section, data: _data } = __event.detail;
 
 		// Update the local user data (in a real app, you might want to reload from server)
 		// For now, this is a simple optimistic update
@@ -89,7 +89,7 @@
 								<div>
 									<dt class="text-sm font-medium text-slate-500">Congressional District</dt>
 									<dd class="text-sm text-slate-900">
-										{userDetails.address?.congressional_district || 'Not determined'}
+										{'Not determined'}
 									</dd>
 								</div>
 								<div>
@@ -199,41 +199,8 @@
 
 			<!-- Sidebar -->
 			<div class="space-y-6">
-				<!-- Address Info -->
-				{#await userDetailsPromise}
-					<SkeletonCard lines={2} />
-				{:then userDetails}
-					<div class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-						<div class="mb-4 flex items-center justify-between">
-							<h3 class="text-lg font-semibold text-slate-900">Address</h3>
-							<Button variant="secondary" size="sm" onclick={() => openEditModal('address')}>
-								<Edit3 class="h-4 w-4" />
-							</Button>
-						</div>
-						{#if userDetails?.address?.street}
-							<div class="text-sm text-slate-900">
-								<div>{userDetails.address.street}</div>
-								<div>
-									{userDetails.address.city}, {userDetails.address.state}
-									{userDetails.address.zip}
-								</div>
-							</div>
-						{:else}
-							<div class="text-sm text-slate-500">
-								<MapPin class="mr-1 inline h-4 w-4" />
-								No address provided
-							</div>
-							<Button
-								variant="primary"
-								size="sm"
-								classNames="mt-3 w-full"
-								onclick={() => openEditModal('address')}
-							>
-								Add Address
-							</Button>
-						{/if}
-					</div>
-				{/await}
+				<!-- Note: Address section removed per CYPHERPUNK-ARCHITECTURE.md privacy requirements -->
+				<!-- Address data is verified via TEE but never stored in plaintext -->
 
 				<!-- Representatives -->
 				{#await representativesPromise}
@@ -245,9 +212,9 @@
 							<div class="space-y-3">
 								{#each representatives as rep}
 									<div class="rounded-lg bg-slate-50 p-3">
-										<div class="font-medium text-slate-900">{rep.name}</div>
-										<div class="text-sm text-slate-600">{rep.party} - {rep.chamber}</div>
-										<div class="text-xs text-slate-500">{rep.state}-{rep.district}</div>
+										<div class="font-medium text-slate-900">{(rep as any).name}</div>
+										<div class="text-sm text-slate-600">{(rep as any).party} - {(rep as any).chamber}</div>
+										<div class="text-xs text-slate-500">{(rep as any).state}-{(rep as any).district}</div>
 									</div>
 								{/each}
 							</div>
@@ -328,11 +295,6 @@
 							<dd class="mt-1 text-sm text-slate-900">
 								{userDetails?.profile?.connection || 'Not provided'}
 							</dd>
-							{#if userDetails?.profile?.connection_details}
-								<div class="mt-2 text-sm text-slate-600">
-									{userDetails.profile.connection_details}
-								</div>
-							{/if}
 						</div>
 
 						<div class="flex justify-end">

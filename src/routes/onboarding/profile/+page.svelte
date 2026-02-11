@@ -6,7 +6,7 @@
 	import type { PageData } from './$types';
 	import { z } from 'zod';
 
-	let { _data }: { data: PageData } = $props();
+	let { data: _data }: { data: PageData } = $props();
 
 	let showDirectModal = $state(true);
 	let pendingTemplate: {
@@ -85,7 +85,7 @@
 	});
 
 	async function handleProfileComplete(__event: CustomEvent) {
-		const { role, organization, location, connection, connectionDetails } = event.detail;
+		const { role, organization, location, connection, connectionDetails } = (__event as any).detail;
 
 		try {
 			// Save profile information to user

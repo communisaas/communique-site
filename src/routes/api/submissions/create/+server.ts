@@ -1,8 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
-import { cwcClient } from '$lib/core/congress/cwc-client';
-import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
 import {
 	isCredentialValidForAction,
 	formatValidationError,
@@ -13,8 +11,8 @@ import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
 /**
  * Submission Creation Endpoint
  *
- * Receives ZK proof + encrypted witness from browser
- * Stores in database for TEE processing and congressional delivery
+ * Receives ZK proof + encrypted witness from browser.
+ * Stores in database; TEE decrypts witness and handles congressional delivery.
  *
  * Flow:
  * 1. Validate authentication
@@ -22,13 +20,12 @@ import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
  * 3. Verify proof format
  * 4. Check nullifier uniqueness (prevent double-actions)
  * 5. Store in Submission table
- * 6. Trigger TEE processing (async)
+ * 6. TEE processes encrypted witness → CWC delivery (async)
  *
- * Security: Enforces action-based TTL (ISSUE-005)
- * - constituent_message requires verification within 30 days
- * - Prevents stale district credentials from moved users (~2% annually)
- *
- * Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md Phase 2
+ * Security:
+ * - Action-based TTL (ISSUE-005): constituent_message requires verification within 30 days
+ * - Chain = source of truth: verification_status set only after on-chain confirmation (BR5-003)
+ * - User PII is in encrypted witness, never in plaintext request fields
  */
 export const POST: RequestHandler = async ({ request, locals }) => {
 	try {
@@ -86,12 +83,6 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			witnessNonce,
 			ephemeralPublicKey,
 			teeKeyId,
-			templateData,
-			// MVP bypass fields (cleartext address for direct CWC delivery)
-			mvpAddress,
-			personalizedMessage,
-			userEmail,
-			userName,
 			// Idempotency key for preventing duplicate submissions from retries
 			idempotencyKey
 		} = body;
@@ -110,10 +101,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			throw error(400, 'Missing required fields');
 		}
 
-		// Validate template exists and get full data for CWC delivery
+		// Validate template exists
 		const template = await prisma.template.findUnique({
 			where: { id: templateId },
-			select: { id: true, title: true, message_body: true, slug: true }
+			select: { id: true }
 		});
 
 		if (!template) {
@@ -155,7 +146,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				data: {
 					pseudonymous_id: pseudonymousId,
 					template_id: templateId,
-					action_id: templateId, // MVP: use templateId directly; production: extract from publicInputs
+					action_id: templateId, // TODO: extract action domain from publicInputs[ACTION_DOMAIN]
 					proof_hex: proof,
 					public_inputs: publicInputs,
 					nullifier,
@@ -177,142 +168,18 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			nullifier: nullifier.slice(0, 10) + '...'
 		});
 
-		// MVP Mode: Direct CWC delivery (bypasses TEE for pre-launch)
-		// Production: TEE decrypts witness and handles delivery
-		// Note: CWC delivery updates below are separate transactions since they're
-		// status updates on an already-created submission (no race condition risk)
-		let deliveryResults = null;
-
-		if (mvpAddress && mvpAddress.street && mvpAddress.city && mvpAddress.state && mvpAddress.zip) {
-			console.log('[Submission] MVP mode: Direct CWC delivery');
-
-			try {
-				// Look up congressional representatives
-				const representatives = await getRepresentativesForAddress(mvpAddress);
-
-				if (!representatives || representatives.length === 0) {
-					console.error('[Submission] No representatives found for address');
-					await prisma.submission.update({
-						where: { id: submission.id },
-						data: {
-							delivery_status: 'failed',
-							delivery_error: 'No congressional representatives found for this address'
-						}
-					});
-
-					return json({
-						success: false,
-						submissionId: submission.id,
-						status: 'failed',
-						error: 'No congressional representatives found for this address'
-					});
-				}
-
-				console.log('[Submission] Found representatives:', {
-					count: representatives.length,
-					names: representatives.map((r) => r.name)
-				});
-
-				// Create mock user object for CWC submission
-				const user = await prisma.user.findUnique({
-					where: { id: userId },
-					select: { email: true, first_name: true, last_name: true }
-				});
-
-				const cwcUser = {
-					id: userId,
-					name:
-						userName ||
-						`${user?.first_name || ''} ${user?.last_name || ''}`.trim() ||
-						'Verified Constituent',
-					email: userEmail || user?.email || 'constituent@verified.communique.app',
-					street: mvpAddress.street,
-					city: mvpAddress.city,
-					state: mvpAddress.state,
-					zip: mvpAddress.zip
-				};
-
-				// Submit directly to CWC API
-				const results = await cwcClient.submitToAllRepresentatives(
-					template,
-					cwcUser,
-					representatives,
-					personalizedMessage || ''
-				);
-
-				const successCount = results.filter((r) => r.success).length;
-				const failedCount = results.filter((r) => !r.success).length;
-
-				console.log('[Submission] CWC delivery complete:', {
-					submissionId: submission.id,
-					successCount,
-					failedCount,
-					total: results.length
-				});
-
-				// Update submission with delivery status
-				// Note: detailed results returned in response; Submission model tracks status only
-				await prisma.submission.update({
-					where: { id: submission.id },
-					data: {
-						delivery_status:
-							failedCount === 0 ? 'delivered' : successCount > 0 ? 'partial' : 'failed',
-						verification_status: 'verified', // MVP mode - proof already validated
-						cwc_submission_id: results[0]?.messageId || null, // Store first message ID as reference
-						delivered_at: new Date()
-					}
-				});
-
-				deliveryResults = {
-					representatives: representatives.map((r) => ({
-						name: r.name,
-						chamber: r.chamber,
-						state: r.state,
-						district: r.district
-					})),
-					results: results.map((r) => ({
-						office: r.office,
-						chamber: r.chamber || (r.office.includes('Senator') ? 'senate' : 'house'),
-						success: r.success,
-						status: r.status,
-						messageId: r.messageId,
-						confirmationNumber: r.confirmationNumber,
-						error: r.error
-					})),
-					summary: {
-						total: results.length,
-						successful: successCount,
-						failed: failedCount
-					}
-				};
-			} catch (cwcError) {
-				console.error('[Submission] CWC delivery failed:', cwcError);
-
-				await prisma.submission.update({
-					where: { id: submission.id },
-					data: {
-						delivery_status: 'failed',
-						delivery_error: cwcError instanceof Error ? cwcError.message : 'CWC delivery failed'
-					}
-				});
-
-				return json({
-					success: false,
-					submissionId: submission.id,
-					status: 'failed',
-					error: 'Congressional delivery failed. Please try again.'
-				});
-			}
-		}
+		// TEE processes encrypted witness asynchronously:
+		// 1. Decrypts witness inside enclave
+		// 2. Extracts user PII (name, email, address)
+		// 3. Verifies proof on-chain via DistrictGate
+		// 4. Delivers to CWC API
+		// verification_status transitions: pending → verified (on-chain) → delivered (CWC)
 
 		return json({
 			success: true,
 			submissionId: submission.id,
-			status: deliveryResults ? 'delivered' : 'pending',
-			message: deliveryResults
-				? `Delivered to ${deliveryResults.summary.successful}/${deliveryResults.summary.total} congressional offices`
-				: 'Submission created. Processing will begin shortly.',
-			delivery: deliveryResults
+			status: 'pending',
+			message: 'Submission created. Processing will begin shortly.'
 		});
 	} catch (err) {
 		console.error('[Submission Creation] Error:', err);

@@ -107,7 +107,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 				representatives: {
 					select: {
 						relationship: true,
-						_representative: {
+						representative: {
 							select: {
 								id: true,
 								name: true,
@@ -125,9 +125,9 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 		})
 		.then(
 			(result) =>
-				result?.representatives.map((ur: { relationship: string; _representative: unknown }) => ({
+				result?.representatives.map((ur: { relationship: string; representative: Record<string, unknown> }) => ({
 					relationship: ur.relationship,
-					...ur._representative
+					...(ur.representative as object)
 				})) || []
 		);
 

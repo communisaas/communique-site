@@ -45,15 +45,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		return json(result);
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error);
-
-		if (msg.includes('CELL_NOT_FOUND')) {
-			return json(
-				{ error: 'Cell ID not found in district map' },
-				{ status: 404 }
-			);
-		}
-
 		console.error('[Shadow Atlas] Cell proof failed:', msg);
+
+		// 29M-006: Return generic error for all failure modes to prevent
+		// cell ID existence oracle (attacker could enumerate valid cells
+		// by distinguishing 404 from 503). Log the real error internally.
 		return json(
 			{ error: 'Cell proof unavailable' },
 			{ status: 503 }
