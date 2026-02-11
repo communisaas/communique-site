@@ -13,7 +13,7 @@
  * This version tests actual behavior.
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 
@@ -232,13 +232,13 @@ describe('Legislative Abstraction Integration', () => {
 		it('should handle US congressional delivery through real CWC adapter', async () => {
 			const user = userFactory.build({
 				overrides: {
-					address: {
+					address: JSON.stringify({
 						street: '123 Main St',
 						city: 'San Francisco',
 						state: 'CA',
 						postal_code: '94102',
 						country_code: 'US'
-					}
+					}) as any
 				}
 			});
 
@@ -253,8 +253,8 @@ describe('Legislative Abstraction Integration', () => {
 
 			const job: DeliveryJob = {
 				id: 'test-job-1',
-				template,
-				user,
+				template: template as any,
+				user: user as any,
 				target_country: 'US',
 				created_at: new Date()
 			};
@@ -326,13 +326,13 @@ describe('Legislative Abstraction Integration', () => {
 		it('should handle invalid addresses gracefully', async () => {
 			const user = userFactory.build({
 				overrides: {
-					address: {
+					address: JSON.stringify({
 						street: '123 Invalid St',
 						city: 'Nowhere',
 						state: 'ZZ',
 						postal_code: '00000',
 						country_code: 'US'
-					}
+					}) as any
 				}
 			});
 
@@ -340,8 +340,8 @@ describe('Legislative Abstraction Integration', () => {
 
 			const job: DeliveryJob = {
 				id: 'test-job-invalid',
-				template,
-				user,
+				template: template as any,
+				user: user as any,
 				target_country: 'US',
 				created_at: new Date()
 			};
@@ -357,13 +357,13 @@ describe('Legislative Abstraction Integration', () => {
 		it('should handle unsupported countries with generic adapter', async () => {
 			const user = userFactory.build({
 				overrides: {
-					address: {
+					address: JSON.stringify({
 						street: '123 Main St',
 						city: 'Toronto',
 						state: 'ON',
 						postal_code: 'M5V 1A1',
 						country_code: 'CA'
-					}
+					}) as any
 				}
 			});
 
@@ -371,8 +371,8 @@ describe('Legislative Abstraction Integration', () => {
 
 			const job: DeliveryJob = {
 				id: 'test-job-canada',
-				template,
-				user,
+				template: template as any,
+				user: user as any,
 				target_country: 'CA',
 				created_at: new Date()
 			};

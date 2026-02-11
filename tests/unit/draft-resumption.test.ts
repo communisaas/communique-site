@@ -62,7 +62,8 @@ function makeDraftObjective(overrides: Partial<TemplateFormData['objective']> = 
 			geographicScope: null,
 			aiGenerated: false,
 			edited: false
-		}
+		},
+		review: {}
 	};
 }
 

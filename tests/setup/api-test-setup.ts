@@ -118,16 +118,16 @@ export async function createTestRepresentative(overrides?: Partial<any>) {
   return await db.representative.create({
     data: {
       id: 'test-rep-123',
+      bioguide_id: 'T000001',
       name: 'Test Representative',
-      title: 'Representative',
       party: 'Democratic',
       state: 'CA',
       district: '12',
+      chamber: 'house',
+      office_code: 'CA12',
       email: 'test.rep@mail.house.gov',
       phone: '202-555-0123',
       office_address: '1234 Capitol Hill, Washington DC 20515',
-      created_at: new Date(),
-      updated_at: new Date(),
       ...overrides
     }
   });
@@ -137,10 +137,13 @@ export async function createTestSubmission(templateId: string, userId: string, o
   return await db.submission.create({
     data: {
       id: 'test-submission-123',
+      pseudonymous_id: 'anon-' + userId,
       template_id: templateId,
-      user_id: userId,
-      resolved_content: 'Dear Representative Smith, I am writing to express my views on climate change. As a parent, I am deeply concerned about the future. Thank you.',
-      recipient_emails: ['test.rep@mail.house.gov'],
+      proof_hex: '0x1234567890',
+      public_inputs: {},
+      nullifier: 'null-' + Math.random(),
+      action_id: templateId,
+      encrypted_witness: 'encrypted',
       delivery_status: 'pending',
       created_at: new Date(),
       updated_at: new Date(),
@@ -174,7 +177,10 @@ export function createMockRequest(options: {
   });
 }
 
-export function createMockRequestEvent(options: {
+export function createMockRequestEvent<
+  Params extends Record<string, string> = Record<string, string>,
+  RouteId extends string = string
+>(options: {
   url: string;
   method: string;
   body?: string;
@@ -184,19 +190,50 @@ export function createMockRequestEvent(options: {
 }) {
   const request = createMockRequest(options);
 
+  // Mock span for tracing
+  const mockSpan = {
+    setAttribute: () => {},
+    setAttributes: () => {},
+    addEvent: () => {},
+    setStatus: () => {},
+    updateName: () => {},
+    end: () => {},
+    isRecording: () => false,
+    recordException: () => {}
+  };
+
   return {
     request,
-    params: options.params || {},
+    params: (options.params || {}) as Params,
     url: new URL(options.url, 'http://localhost:5173'),
     locals: {
       // Provide database instances for API routes
       db: testDb,
       analyticsDb: testDb,
+      user: null,
+      session: null,
       ...options.locals
     },
+    cookies: {
+      get: () => undefined,
+      getAll: () => [],
+      set: () => {},
+      delete: () => {},
+      serialize: () => ''
+    },
+    fetch: global.fetch,
     getClientAddress: () => '127.0.0.1',
     platform: null,
-    route: { id: options.url }
+    setHeaders: () => {},
+    isDataRequest: false,
+    isSubRequest: false,
+    route: { id: options.url as RouteId },
+    tracing: {
+      enabled: false,
+      root: mockSpan as unknown,
+      current: mockSpan as unknown
+    },
+    isRemoteRequest: false
   };
 }
 

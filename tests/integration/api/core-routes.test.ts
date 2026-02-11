@@ -66,9 +66,9 @@ describe('Templates API', () => {
       const event = createMockRequestEvent({
         url: '/api/templates',
         method: 'GET'
-      }) as unknown as RequestEvent;
+      });
 
-      const response = await getTemplates(event);
+      const response = await getTemplates(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -101,7 +101,7 @@ describe('Templates API', () => {
         method: 'GET'
       }) as unknown as RequestEvent;
 
-      const response = await getTemplates(event);
+      const response = await getTemplates(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -125,7 +125,7 @@ describe('Templates API', () => {
         method: 'GET'
       }) as unknown as RequestEvent;
 
-      const response = await getTemplates(event);
+      const response = await getTemplates(event as any);
       const data = await response.json();
 
       expect(data.data[0].coordinationScale).toBeDefined();
@@ -163,7 +163,7 @@ describe('Templates API', () => {
         method: 'GET'
       }) as unknown as RequestEvent;
 
-      const response = await getTemplates(event);
+      const response = await getTemplates(event as any);
       const data = await response.json();
 
       const newTemplate = data.data.find((t: any) => t.id === 'new-template');
@@ -195,7 +195,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -235,7 +235,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
       const template = data.data.template;
 
@@ -287,7 +287,7 @@ describe('Templates API', () => {
         locals: {} // No user
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -320,7 +320,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -347,7 +347,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -375,7 +375,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -410,7 +410,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -437,7 +437,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      await createTemplate(event);
+      await createTemplate(event as any);
 
       // Verify moderation was called
       expect(moderateTemplate).toHaveBeenCalledWith(
@@ -467,7 +467,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(data.success).toBe(true);
@@ -497,7 +497,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await createTemplate(event);
+      const response = await createTemplate(event as any);
       const data = await response.json();
 
       expect(data.success).toBe(true);
@@ -518,7 +518,7 @@ describe('Templates API', () => {
         method: 'GET'
       }) as unknown as RequestEvent;
 
-      const response = await checkSlug(event);
+      const response = await checkSlug(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -539,7 +539,7 @@ describe('Templates API', () => {
         method: 'GET'
       }) as unknown as RequestEvent;
 
-      const response = await checkSlug(event);
+      const response = await checkSlug(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -559,7 +559,7 @@ describe('Templates API', () => {
         method: 'GET'
       }) as unknown as RequestEvent;
 
-      const response = await checkSlug(event);
+      const response = await checkSlug(event as any);
       const data = await response.json();
 
       expect(data.data.available).toBe(false);
@@ -574,7 +574,7 @@ describe('Templates API', () => {
         method: 'GET'
       }) as unknown as RequestEvent;
 
-      const response = await checkSlug(event);
+      const response = await checkSlug(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -591,7 +591,7 @@ describe('Templates API', () => {
         locals: {} // No user
       }) as unknown as RequestEvent;
 
-      const response = await getUserTemplates(event);
+      const response = await getUserTemplates(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -628,7 +628,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await getUserTemplates(event);
+      const response = await getUserTemplates(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -661,7 +661,7 @@ describe('Templates API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await getUserTemplates(event);
+      const response = await getUserTemplates(event as any);
       const data = await response.json();
 
       expect(data[0].id).toBe('new-template');
@@ -687,7 +687,7 @@ describe('User API', () => {
         locals: {} // No user
       }) as unknown as RequestEvent;
 
-      const response = await getUserProfile(event);
+      const response = await getUserProfile(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -709,7 +709,7 @@ describe('User API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await getUserProfile(event);
+      const response = await getUserProfile(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -732,7 +732,7 @@ describe('User API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await getUserProfile(event);
+      const response = await getUserProfile(event as any);
       const data = await response.json();
 
       // Should not include password, internal fields, etc
@@ -750,7 +750,7 @@ describe('User API', () => {
         locals: {} // No user
       }) as unknown as RequestEvent;
 
-      const response = await updateUserProfile(event);
+      const response = await updateUserProfile(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(401);
@@ -774,7 +774,7 @@ describe('User API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await updateUserProfile(event);
+      const response = await updateUserProfile(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -808,7 +808,7 @@ describe('User API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      const response = await updateUserProfile(event);
+      const response = await updateUserProfile(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(400);
@@ -832,7 +832,7 @@ describe('User API', () => {
         locals: { user }
       }) as unknown as RequestEvent;
 
-      await updateUserProfile(event);
+      await updateUserProfile(event as any);
 
       const updated = await db.user.findUnique({
         where: { id: user.id }
@@ -873,7 +873,7 @@ describe('Analytics API', () => {
         body: JSON.stringify(incrementData)
       }) as unknown as RequestEvent;
 
-      const response = await trackAnalytics(event);
+      const response = await trackAnalytics(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -896,7 +896,7 @@ describe('Analytics API', () => {
         body: JSON.stringify(incrementData)
       }) as unknown as RequestEvent;
 
-      const response = await trackAnalytics(event);
+      const response = await trackAnalytics(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -919,7 +919,7 @@ describe('Analytics API', () => {
         body: JSON.stringify(incrementData)
       }) as unknown as RequestEvent;
 
-      const response = await trackAnalytics(event);
+      const response = await trackAnalytics(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -939,7 +939,7 @@ describe('Analytics API', () => {
         body: JSON.stringify(invalidData)
       }) as unknown as RequestEvent;
 
-      const response = await trackAnalytics(event);
+      const response = await trackAnalytics(event as any);
       const data = await response.json();
 
       // Even with invalid data, should return success
@@ -961,7 +961,7 @@ describe('Analytics API', () => {
         }
       }) as unknown as RequestEvent;
 
-      const response = await trackAnalytics(event);
+      const response = await trackAnalytics(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -985,7 +985,7 @@ describe('Analytics API', () => {
         }
       }) as unknown as RequestEvent;
 
-      const response = await trackAnalytics(event);
+      const response = await trackAnalytics(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);
@@ -1001,7 +1001,7 @@ describe('Analytics API', () => {
         body: JSON.stringify({}) // No increments field
       }) as unknown as RequestEvent;
 
-      const response = await trackAnalytics(event);
+      const response = await trackAnalytics(event as any);
       const data = await response.json();
 
       expect(response.status).toBe(200);

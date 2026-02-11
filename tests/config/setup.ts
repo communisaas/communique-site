@@ -107,7 +107,8 @@ beforeEach(() => {
 	// Global fetch mock for unit tests ONLY
 	// Integration tests (tests/integration/**) use MSW for external API mocking
 	// MSW must intercept fetch, so we skip the global mock for integration tests
-	const isIntegrationTest = expect.getState().testPath?.includes('/tests/integration/');
+	const testState = expect.getState() as any;
+	const isIntegrationTest = testState.testPath?.includes('/tests/integration/');
 	if (!isIntegrationTest) {
 		global.fetch = vi.fn().mockResolvedValue({
 			ok: true,
@@ -121,6 +122,8 @@ beforeEach(() => {
 		});
 	}
 });
+
+import { afterEach } from 'vitest';
 
 /**
  * Global test teardown that runs after each test

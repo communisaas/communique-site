@@ -88,12 +88,14 @@ export interface MockLocals {
  * Helper to create a proper RequestEvent from mocks
  * Provides better type safety while maintaining test flexibility
  */
-export function asRequestEvent<Params extends Record<string, string> = Record<string, string>>(
+export function asRequestEvent<
+	Params extends Record<string, string> = Record<string, string>
+>(
 	request: MockRequest | Partial<Request>,
 	locals: MockLocals = {},
 	params: Params = {} as Params,
 	routeId: string = '/api/test'
-): RequestEvent<Params, string> {
+): RequestEvent<Params, any> {
 	// Create a more complete mock Request object
 	const mockRequest = {
 		json: vi.fn(),
@@ -145,11 +147,11 @@ export function asRequestEvent<Params extends Record<string, string> = Record<st
 		isSubRequest: false,
 		tracing: {
 			enabled: false,
-			root: mockSpan as RequestEvent['tracing']['root'],
-			current: mockSpan as RequestEvent['tracing']['current']
+			root: mockSpan as unknown as RequestEvent['tracing']['root'],
+			current: mockSpan as unknown as RequestEvent['tracing']['current']
 		},
 		isRemoteRequest: false
-	} as RequestEvent<Params, string>;
+	} as unknown as RequestEvent<Params, any>;
 }
 
 /**
@@ -163,6 +165,7 @@ export interface MockTemplate extends Omit<Template, 'metrics'> {
 	creator_id?: string;
 	severity_level?: number;
 	userId?: string;
+	last_sent_at?: Date | undefined;
 	metrics?: {
 		sent?: number;
 		opened?: number;
@@ -223,6 +226,10 @@ export function createMockTemplate(overrides: Partial<MockTemplate> = {}): MockT
 		country_code: 'US',
 		created_at: now,
 		updated_at: now,
+		createdAt: overrides.createdAt ?? now,
+		updatedAt: overrides.updatedAt ?? now,
+		isNew: false,
+		coordinationScale: 0,
 		...overrides
 	};
 }
@@ -269,7 +276,7 @@ export function createMockClaim(overrides: Partial<ClaimData> = {}): ClaimData {
 		template: {
 			id: 'template-123',
 			send_count: 100
-		},
+		} as any,
 		...overrides
 	};
 }

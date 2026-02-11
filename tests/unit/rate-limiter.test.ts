@@ -5,7 +5,7 @@ describe('SuggestionRateLimiter', () => {
 	let limiter: SuggestionRateLimiter;
 
 	beforeEach(() => {
-		limiter = new SuggestionRateLimiter(3, 1000); // 3 calls per 1 second for testing
+		limiter = new SuggestionRateLimiter(3 as any, 1000 as any); // 3 calls per 1 second for testing
 		vi.useFakeTimers();
 	});
 

@@ -119,7 +119,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 				data: {
 					id: uniqueId('session'),
 					userId: user.id,
-					expires: new Date(Date.now() + 86400000)
+					expiresAt: new Date(Date.now() + 86400000)
 				}
 			});
 
@@ -144,7 +144,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 
 			// Note: The actual response depends on the lookupDistrict mock
 			// For now, verify the request was accepted
-			expect(response.status).toBe(200).or.toBe(503); // 503 if lookup fails
+			expect([200, 503]).toContain(response.status); // 503 if lookup fails
 		});
 
 		it('should reject invalid cell_id format (not 15 digits)', async () => {
@@ -155,7 +155,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 				data: {
 					id: uniqueId('session'),
 					userId: user.id,
-					expires: new Date(Date.now() + 86400000)
+					expiresAt: new Date(Date.now() + 86400000)
 				}
 			});
 
@@ -189,7 +189,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 				data: {
 					id: uniqueId('session'),
 					userId: user.id,
-					expires: new Date(Date.now() + 86400000)
+					expiresAt: new Date(Date.now() + 86400000)
 				}
 			});
 
@@ -223,7 +223,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 				data: {
 					id: uniqueId('session'),
 					userId: user.id,
-					expires: new Date(Date.now() + 86400000)
+					expiresAt: new Date(Date.now() + 86400000)
 				}
 			});
 

@@ -407,7 +407,7 @@ describe('POST /api/moderation/check', () => {
 				request: {
 					json: () => Promise.reject(new Error('Invalid JSON'))
 				}
-			};
+			} as any;
 
 			const response = await POST(event);
 			const body = await response.json();

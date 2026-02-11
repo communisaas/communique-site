@@ -1,5 +1,6 @@
 import { cwcClient } from '$lib/core/congress/cwc-client';
 import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
+import type { Template } from '$lib/types/template';
 
 /**
  * Test script for CWC MVP submission endpoint
@@ -59,9 +60,9 @@ async function testCWCSubmission() {
 		if (senators.length > 0) {
 			console.log('🏛️ Testing Senate submission to:', senators[0].name);
 			const senateResult = await cwcClient.submitToSenate(
-				testTemplate,
+				testTemplate as Template,
 				testUser,
-				senators[0],
+				senators[0] as any,
 				testTemplate.message_body
 			);
 			console.log('✅ Senate result:', senateResult);
@@ -72,9 +73,9 @@ async function testCWCSubmission() {
 		if (houseReps.length > 0) {
 			console.log('🏛️ Testing House submission to:', houseReps[0].name);
 			const houseResult = await cwcClient.submitToHouse(
-				testTemplate,
+				testTemplate as Template,
 				testUser,
-				houseReps[0],
+				houseReps[0] as any,
 				testTemplate.message_body
 			);
 			console.log('✅ House result:', houseResult);
@@ -83,9 +84,9 @@ async function testCWCSubmission() {
 		// Step 4: Test batch submission
 		console.log('📤 Testing batch submission to all representatives...');
 		const batchResults = await cwcClient.submitToAllRepresentatives(
-			testTemplate,
+			testTemplate as Template,
 			testUser,
-			representatives,
+			representatives as any,
 			testTemplate.message_body
 		);
 		console.log('✅ Batch results:', batchResults);

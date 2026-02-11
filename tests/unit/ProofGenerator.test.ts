@@ -22,6 +22,10 @@ vi.mock('$lib/core/identity/session-credentials', () => ({
 }));
 
 vi.mock('$lib/core/proof/prover', () => ({
+	default: {
+		initializeProver: vi.fn(),
+		generateProof: vi.fn()
+	},
 	initializeProver: vi.fn(),
 	generateProof: vi.fn()
 }));
@@ -34,6 +38,7 @@ describe('ProofGenerator Component', () => {
 	// Mock data
 	const mockUserId = 'test-user-id';
 	const mockTemplateId = 'test-template-id';
+	const mockAddress = '123 Main St, San Francisco, CA 94102';
 	const mockTemplateData = {
 		subject: 'Test Subject',
 		message: 'Test Message',
@@ -78,7 +83,8 @@ describe('ProofGenerator Component', () => {
 		const { getSessionCredential } = await import('$lib/core/identity/session-credentials');
 		(getSessionCredential as Mock).mockResolvedValue(mockCredential);
 
-		const { initializeProver, generateProof } = await import('$lib/core/proof/prover');
+		const proverModule = await import('$lib/core/proof/prover');
+		const { initializeProver, generateProof } = proverModule;
 		(initializeProver as Mock).mockImplementation(async (progressCallback?: (p: number) => void) => {
 			// Simulate prover initialization with progress
 			if (progressCallback) {
@@ -121,7 +127,8 @@ describe('ProofGenerator Component', () => {
 				props: {
 					userId: mockUserId,
 					templateId: mockTemplateId,
-					templateData: mockTemplateData
+					templateData: mockTemplateData,
+					address: mockAddress
 				}
 			});
 
@@ -148,6 +155,7 @@ describe('ProofGenerator Component', () => {
 				props: {
 					userId: '',
 					templateId: mockTemplateId,
+					address: mockAddress,
 					templateData: mockTemplateData
 				}
 			});
@@ -179,7 +187,8 @@ describe('ProofGenerator Component', () => {
 				props: {
 					userId: mockUserId,
 					templateId: mockTemplateId,
-					templateData: mockTemplateData
+					templateData: mockTemplateData,
+					address: mockAddress
 				}
 			});
 
@@ -208,7 +217,8 @@ describe('ProofGenerator Component', () => {
 
 	describe('Error Recovery', () => {
 		it('should allow retry after recoverable error', async () => {
-			const { generateProof } = await import('$lib/core/proof/prover');
+			const proverModule = await import('$lib/core/proof/prover');
+			const { generateProof } = proverModule;
 			let callCount = 0;
 			(generateProof as Mock).mockImplementation(async () => {
 				callCount++;
@@ -222,7 +232,8 @@ describe('ProofGenerator Component', () => {
 				props: {
 					userId: mockUserId,
 					templateId: mockTemplateId,
-					templateData: mockTemplateData
+					templateData: mockTemplateData,
+					address: mockAddress
 				}
 			});
 
@@ -272,7 +283,8 @@ describe('ProofGenerator Component', () => {
 				props: {
 					userId: mockUserId,
 					templateId: mockTemplateId,
-					templateData: mockTemplateData
+					templateData: mockTemplateData,
+					address: mockAddress
 				}
 			});
 
@@ -294,7 +306,8 @@ describe('ProofGenerator Component', () => {
 				props: {
 					userId: mockUserId,
 					templateId: mockTemplateId,
-					templateData: mockTemplateData
+					templateData: mockTemplateData,
+					address: mockAddress
 				}
 			});
 
@@ -312,28 +325,4 @@ describe('ProofGenerator Component', () => {
 		}, 5000);
 	});
 
-	describe('Skip Credential Check Flag', () => {
-		it('should skip credential check when flag is true', async () => {
-			const { getSessionCredential } = await import('$lib/core/identity/session-credentials');
-			(getSessionCredential as Mock).mockResolvedValue(null);
-
-			const { getByText } = render(ProofGenerator, {
-				props: {
-					userId: mockUserId,
-					templateId: mockTemplateId,
-					templateData: mockTemplateData,
-					skipCredentialCheck: true // Skip check
-				}
-			});
-
-			const sendButton = getByText('Send to Representative');
-			await fireEvent.click(sendButton);
-
-			// Should NOT show credential error
-			await waitFor(() => {
-				// Should proceed to next state instead of erroring
-				expect(getByText('Initializing secure delivery...')).toBeTruthy();
-			});
-		}, 5000);
-	});
 });

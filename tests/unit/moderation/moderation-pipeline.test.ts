@@ -41,7 +41,7 @@ vi.mock('$env/dynamic/private', () => ({
 
 // Import after mocks
 import { moderateTemplate, moderatePromptOnly } from '$lib/core/server/moderation';
-import type { PromptGuardResult, SafetyResult } from '$lib/core/server/moderation';
+import type { PromptGuardResult, SafetyResult, MLCommonsHazard } from '$lib/core/server/moderation';
 
 // =============================================================================
 // HELPERS
@@ -59,14 +59,15 @@ function makePromptGuardResult(safe: boolean, score: number): PromptGuardResult 
 
 function makeSafetyResult(
 	safe: boolean,
-	hazards: string[] = [],
-	blockingHazards: string[] = []
+	hazards: MLCommonsHazard[] = [],
+	blockingHazards: MLCommonsHazard[] = []
 ): SafetyResult {
 	return {
 		safe,
 		hazards,
 		blocking_hazards: blockingHazards,
 		hazard_descriptions: hazards.map((h) => `Description for ${h}`),
+		reasoning: safe ? 'No safety violations detected' : 'Safety violations found',
 		timestamp: new Date().toISOString(),
 		model: 'llama-guard-4-12b'
 	};
@@ -371,7 +372,7 @@ describe('Civic Speech Permissiveness', () => {
 		it(`should ALLOW: ${desc}`, async () => {
 			mockDetectPromptInjection.mockResolvedValue(makePromptGuardResult(true, 0.05));
 
-			const detectedHazards = hazards || (hazard ? [hazard] : []);
+			const detectedHazards = (hazards || (hazard ? [hazard] : [])) as MLCommonsHazard[];
 			mockClassifySafety.mockResolvedValue(makeSafetyResult(true, detectedHazards, []));
 
 			const result = await moderateTemplate(

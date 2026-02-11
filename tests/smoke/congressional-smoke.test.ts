@@ -26,9 +26,9 @@ import {
 	type TestAddressWithReps
 } from '../fixtures/test-addresses';
 
-// Real imports - no mocks
 import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
 import { cwcClient } from '$lib/core/congress/cwc-client';
+import type { Template } from '$lib/types/template';
 
 // Check if we're in live mode
 const IS_LIVE_MODE = process.env.SMOKE_CWC_LIVE === 'true';
@@ -171,9 +171,9 @@ describe('Congressional Smoke Tests (Real APIs)', () => {
 			console.log(`[Smoke] Submitting to ${senators.length} senators...`);
 
 			const results = await cwcClient.submitToAllRepresentatives(
-				testTemplate,
+				testTemplate as Template,
 				testUser,
-				senators.slice(0, 1), // Only submit to first senator for safety
+				senators.slice(0, 1) as any, // Only submit to first senator for safety
 				'[SMOKE TEST] This is an automated test submission.'
 			);
 
@@ -205,9 +205,9 @@ describe('Congressional Smoke Tests (Real APIs)', () => {
 			console.log(`[Smoke] Submitting to ${houseReps.length} house representative(s)...`);
 
 			const results = await cwcClient.submitToAllRepresentatives(
-				testTemplate,
+				testTemplate as Template,
 				testUser,
-				houseReps,
+				houseReps as any,
 				'[SMOKE TEST] This is an automated test submission.'
 			);
 

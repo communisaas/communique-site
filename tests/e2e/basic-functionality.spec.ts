@@ -40,7 +40,8 @@ test.describe('Basic E2E Functionality', () => {
 
 		// On desktop: template preview should be visible
 		// On mobile: modal opens
-		const isMobile = await page.viewport().then((vp) => (vp?.width ?? 1024) < 768);
+		const viewport = page.viewportSize();
+		const isMobile = viewport ? viewport.width < 768 : false;
 
 		if (isMobile) {
 			// Mobile: check for modal
@@ -78,7 +79,8 @@ test.describe('Basic E2E Functionality', () => {
 			await page.waitForTimeout(500);
 
 			// On desktop, preview should still be visible (just different content)
-			const isMobile = await page.viewport().then((vp) => (vp?.width ?? 1024) < 768);
+			const viewport = page.viewportSize();
+			const isMobile = viewport ? viewport.width < 768 : false;
 			if (!isMobile) {
 				const templatePreview = page.getByTestId('template-preview');
 				await expect(templatePreview).toBeVisible();

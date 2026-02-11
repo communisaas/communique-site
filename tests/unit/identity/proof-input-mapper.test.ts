@@ -137,6 +137,14 @@ describe('mapCredentialToProofInputs', () => {
 			expect(inputs.registrationSalt).toBe(credential.registrationSalt);
 		});
 
+		it('passes identityCommitment directly (NUL-001)', () => {
+			const credential = makeTwoTreeCredential();
+			const context = makeProofContext();
+			const inputs = mapCredentialToProofInputs(credential, context);
+
+			expect(inputs.identityCommitment).toBe(credential.identityCommitment);
+		});
+
 		it('uses context.nullifier', () => {
 			const credential = makeTwoTreeCredential();
 			const context = makeProofContext({ nullifier: '0x42' });
@@ -160,10 +168,7 @@ describe('mapCredentialToProofInputs', () => {
 
 	describe('authority level resolution', () => {
 		it('uses credential.authorityLevel when present (server-derived)', () => {
-			const credential = makeTwoTreeCredential() as SessionCredential & {
-				authorityLevel: 1 | 2 | 3 | 4 | 5;
-			};
-			credential.authorityLevel = 4;
+			const credential = makeTwoTreeCredential({ authorityLevel: 4 });
 			const context = makeProofContext({ authorityLevel: 2 });
 
 			const inputs = mapCredentialToProofInputs(credential, context);
@@ -192,15 +197,15 @@ describe('mapCredentialToProofInputs', () => {
 			expect(inputs.authorityLevel).toBe(3);
 		});
 
-		it('uses fallback (1) for unverified users without authorityLevel', () => {
+		it('throws when identityCommitment is empty (NUL-001 requires verified identity)', () => {
 			const credential = makeTwoTreeCredential({
-				identityCommitment: '' // empty → unverified
+				identityCommitment: '' // empty → unverified → cannot generate proof
 			});
-			const context = makeProofContext(); // no authorityLevel
+			const context = makeProofContext();
 
-			const inputs = mapCredentialToProofInputs(credential, context);
-
-			expect(inputs.authorityLevel).toBe(1);
+			expect(() => mapCredentialToProofInputs(credential, context)).toThrow(
+				'identityCommitment'
+			);
 		});
 	});
 
@@ -313,6 +318,7 @@ describe('mapCredentialToProofInputs', () => {
 			expect(inputs).toHaveProperty('userSecret');
 			expect(inputs).toHaveProperty('cellId');
 			expect(inputs).toHaveProperty('registrationSalt');
+			expect(inputs).toHaveProperty('identityCommitment');
 		});
 
 		it('has all required tree proof fields', () => {

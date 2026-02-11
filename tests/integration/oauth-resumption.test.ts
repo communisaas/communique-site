@@ -118,7 +118,8 @@ describe('OAuth Resumption Flow', () => {
 				userId: user.id,
 				isVerified: false,
 				tier: 'authenticated' as const,
-				identifier: user.id
+				identifier: user.id,
+				isAuthenticated: true
 			};
 
 			// Check rate limit for decision-makers operation
@@ -135,7 +136,8 @@ describe('OAuth Resumption Flow', () => {
 				userId: null,
 				isVerified: false,
 				tier: 'guest' as const,
-				identifier: '127.0.0.1'
+				identifier: '127.0.0.1',
+				isAuthenticated: false
 			};
 
 			// Check rate limit for decision-makers operation
@@ -153,7 +155,8 @@ describe('OAuth Resumption Flow', () => {
 				userId: user.id,
 				isVerified: false,
 				tier: 'authenticated' as const,
-				identifier: user.id
+				identifier: user.id,
+				isAuthenticated: true
 			};
 
 			const check = await checkRateLimit('message-generation', context);

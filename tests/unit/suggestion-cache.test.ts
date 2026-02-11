@@ -10,7 +10,7 @@ describe('SuggestionCache', () => {
 	let cache: SuggestionCache<TestSuggestion>;
 
 	beforeEach(() => {
-		cache = new SuggestionCache<TestSuggestion>(5, 1000); // Small cache, 1s duration for testing
+		cache = new SuggestionCache<TestSuggestion>(5 as any, 1000 as any); // Small cache, 1s duration for testing
 		vi.useFakeTimers();
 	});
 

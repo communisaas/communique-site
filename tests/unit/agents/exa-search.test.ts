@@ -1,7 +1,7 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 
 const mockSearch = vi.fn();
-const mockGetContents = vi.fn();
+const mockScrapeUrl = vi.fn();
 
 // Mock rate limiter that executes immediately without throttling
 const createMockRateLimiter = () => ({
@@ -18,23 +18,6 @@ const createMockRateLimiter = () => ({
 			};
 		}
 	},
-	executeStaggered: async <T>(fns: Array<() => Promise<T>>, _context: string) => {
-		const results = [];
-		for (const fn of fns) {
-			try {
-				const data = await fn();
-				results.push({ success: true, data, attempts: 1, wasRateLimited: false });
-			} catch (error) {
-				results.push({
-					success: false,
-					error: error instanceof Error ? error.message : String(error),
-					attempts: 1,
-					wasRateLimited: false
-				});
-			}
-		}
-		return results;
-	},
 	getState: () => ({
 		requestTimestamps: [],
 		circuitState: 'closed' as const,
@@ -45,122 +28,60 @@ const createMockRateLimiter = () => ({
 });
 
 const mockSearchRateLimiter = createMockRateLimiter();
-const mockContentsRateLimiter = createMockRateLimiter();
+const mockFirecrawlRateLimiter = createMockRateLimiter();
 
 vi.mock('$lib/server/exa', () => ({
 	getExaClient: () => ({
-		search: mockSearch,
-		getContents: mockGetContents
+		search: mockSearch
 	}),
-	getSearchRateLimiter: () => mockSearchRateLimiter,
-	getContentsRateLimiter: () => mockContentsRateLimiter
+	getSearchRateLimiter: () => mockSearchRateLimiter
 }));
 
-import { searchForRoleHolders, fetchPageContents } from '$lib/core/agents/exa-search';
-import type { DiscoveredRole } from '$lib/core/agents/exa-search';
+vi.mock('$lib/server/firecrawl', () => ({
+	getFirecrawlClient: () => ({
+		scrapeUrl: mockScrapeUrl
+	}),
+	getFirecrawlRateLimiter: () => mockFirecrawlRateLimiter
+}));
 
-function makeRole(position: string, organization: string): DiscoveredRole {
-	return {
-		position,
-		organization,
-		jurisdiction: 'National',
-		reasoning: 'Test reasoning',
-		search_query: `${organization} ${position}`
-	};
-}
+import { searchWeb, readPage } from '$lib/core/agents/exa-search';
 
-describe('searchForRoleHolders', () => {
+describe('searchWeb', () => {
 	beforeEach(() => {
 		mockSearch.mockReset();
-		mockGetContents.mockReset();
 	});
 
-	it('returns empty array when given no roles', async () => {
-		const results = await searchForRoleHolders([], { currentYear: '2026' });
-		expect(results).toEqual([]);
-		expect(mockSearch).not.toHaveBeenCalled();
-	});
-
-	it('groups roles with the same normalized organization name', async () => {
+	it('calls exa.search with metadata-only (contents: false)', async () => {
 		mockSearch.mockResolvedValue({ results: [] });
 
-		const roles: DiscoveredRole[] = [
-			makeRole('CEO', 'Apple Inc.'),
-			makeRole('CTO', 'apple'),
-			makeRole('CFO', 'Apple Corporation')
-		];
+		await searchWeb('Portland mayor contact');
 
-		await searchForRoleHolders(roles, { currentYear: '2026' });
-
-		// All three should be grouped into one search
 		expect(mockSearch).toHaveBeenCalledTimes(1);
+		const [query, options] = mockSearch.mock.calls[0];
+		expect(query).toBe('Portland mayor contact');
+		expect(options.contents).toBe(false);
+		expect(options.type).toBe('auto');
 	});
 
-	it('creates separate searches for different organizations', async () => {
+	it('defaults to 25 results', async () => {
 		mockSearch.mockResolvedValue({ results: [] });
 
-		const roles: DiscoveredRole[] = [
-			makeRole('CEO', 'Apple Inc.'),
-			makeRole('Mayor', 'City of Portland')
-		];
+		await searchWeb('test query');
 
-		await searchForRoleHolders(roles, { currentYear: '2026' });
-
-		expect(mockSearch).toHaveBeenCalledTimes(2);
+		const options = mockSearch.mock.calls[0][1];
+		expect(options.numResults).toBe(25);
 	});
 
-	it('sorts groups by role count descending (most roles searched first)', async () => {
-		const searchCalls: string[] = [];
-		mockSearch.mockImplementation((query: string) => {
-			searchCalls.push(query);
-			return Promise.resolve({ results: [] });
-		});
-
-		const roles: DiscoveredRole[] = [
-			makeRole('Mayor', 'City of Portland'),
-			makeRole('CEO', 'Apple Inc.'),
-			makeRole('CTO', 'Apple Inc.'),
-			makeRole('CFO', 'Apple Inc.')
-		];
-
-		await searchForRoleHolders(roles, { currentYear: '2026' });
-
-		expect(mockSearch).toHaveBeenCalledTimes(2);
-		// Apple has 3 roles, Portland has 1 — Apple should be searched first
-		expect(searchCalls[0]).toContain('Apple');
-		expect(searchCalls[1]).toContain('Portland');
-	});
-
-	it('includes org name, role keywords, and year in the search query', async () => {
+	it('respects custom maxResults', async () => {
 		mockSearch.mockResolvedValue({ results: [] });
 
-		const roles: DiscoveredRole[] = [
-			makeRole('Chief Executive Officer', 'Acme Corp')
-		];
+		await searchWeb('test query', { maxResults: 10 });
 
-		await searchForRoleHolders(roles, { currentYear: '2026' });
-
-		const query = mockSearch.mock.calls[0][0] as string;
-		expect(query).toContain('Acme Corp');
-		expect(query).toContain('Chief');
-		expect(query).toContain('Executive');
-		expect(query).toContain('Officer');
-		expect(query).toContain('2026');
+		const options = mockSearch.mock.calls[0][1];
+		expect(options.numResults).toBe(10);
 	});
 
-	it('calls exa.search with contents: false', async () => {
-		mockSearch.mockResolvedValue({ results: [] });
-
-		await searchForRoleHolders(
-			[makeRole('Mayor', 'City of Portland')],
-			{ currentYear: '2026' }
-		);
-
-		const searchOptions = mockSearch.mock.calls[0][1];
-		expect(searchOptions.contents).toBe(false);
-	});
-
-	it('returns correctly shaped results from exa search', async () => {
+	it('returns correctly shaped search hits', async () => {
 		mockSearch.mockResolvedValue({
 			results: [
 				{
@@ -178,155 +99,154 @@ describe('searchForRoleHolders', () => {
 			]
 		});
 
-		const results = await searchForRoleHolders(
-			[makeRole('Mayor', 'City of Portland')],
-			{ currentYear: '2026' }
-		);
+		const hits = await searchWeb('Portland mayor');
 
-		expect(results).toHaveLength(1);
-		expect(results[0].organization).toBe('City of Portland');
-		expect(results[0].roleIndices).toEqual([0]);
-		expect(results[0].hits).toHaveLength(2);
-		expect(results[0].hits[0]).toEqual({
+		expect(hits).toHaveLength(2);
+		expect(hits[0]).toEqual({
 			url: 'https://portland.gov/mayor',
 			title: 'Mayor of Portland',
 			publishedDate: '2025-01-01',
 			author: 'City of Portland',
 			score: 0.95
 		});
-		expect(results[0].hits[1].url).toBe('https://oregonlive.com/mayor');
-		expect(results[0].hits[1].publishedDate).toBeUndefined();
+		expect(hits[1].url).toBe('https://oregonlive.com/mayor');
+		expect(hits[1].publishedDate).toBeUndefined();
 	});
 
-	it('handles a search failure without breaking other searches', async () => {
-		mockSearch
-			.mockRejectedValueOnce(new Error('Rate limited'))
-			.mockResolvedValueOnce({
-				results: [{ url: 'https://stanford.edu/president', title: 'President', score: 0.9 }]
-			});
+	it('throws when search fails', async () => {
+		mockSearch.mockRejectedValue(new Error('Rate limited'));
 
-		const roles: DiscoveredRole[] = [
-			makeRole('Mayor', 'City of Portland'),
-			makeRole('President', 'Stanford University')
-		];
-
-		const results = await searchForRoleHolders(roles, { currentYear: '2026' });
-
-		expect(results).toHaveLength(2);
-		const portland = results.find(r => r.organization === 'City of Portland');
-		const stanford = results.find(r => r.organization === 'Stanford University');
-
-		expect(portland!.hits).toHaveLength(0);
-		expect(stanford!.hits).toHaveLength(1);
-	});
-
-	it('respects maxSearches by batching overflow orgs', async () => {
-		mockSearch.mockResolvedValue({ results: [] });
-
-		const roles: DiscoveredRole[] = [
-			makeRole('CEO', 'Org A'),
-			makeRole('CEO', 'Org B'),
-			makeRole('CEO', 'Org C'),
-			makeRole('CEO', 'Org D'),
-			makeRole('CEO', 'Org E')
-		];
-
-		await searchForRoleHolders(roles, { currentYear: '2026', maxSearches: 3 });
-
-		// 2 individual + 1 batched = 3 searches
-		expect(mockSearch).toHaveBeenCalledTimes(3);
+		await expect(searchWeb('test')).rejects.toThrow('Search failed');
 	});
 });
 
-describe('fetchPageContents', () => {
+describe('readPage', () => {
 	beforeEach(() => {
-		mockSearch.mockReset();
-		mockGetContents.mockReset();
+		mockScrapeUrl.mockReset();
 	});
 
-	it('returns empty array when given no URLs', async () => {
-		const results = await fetchPageContents([]);
-		expect(results).toEqual([]);
-		expect(mockGetContents).not.toHaveBeenCalled();
-	});
-
-	it('calls exa.getContents with livecrawl preferred', async () => {
-		mockGetContents.mockResolvedValue({ results: [] });
-
-		await fetchPageContents(['https://example.com']);
-
-		expect(mockGetContents).toHaveBeenCalledTimes(1);
-		const options = mockGetContents.mock.calls[0][1];
-		expect(options.livecrawl).toBe('preferred');
-	});
-
-	it('passes maxCharacters to the text option', async () => {
-		mockGetContents.mockResolvedValue({ results: [] });
-
-		await fetchPageContents(['https://example.com'], { maxCharacters: 5000 });
-
-		const options = mockGetContents.mock.calls[0][1];
-		expect(options.text.maxCharacters).toBe(5000);
-	});
-
-	it('returns page contents with correct shape', async () => {
-		mockGetContents.mockResolvedValue({
-			results: [
-				{
-					url: 'https://portland.gov/staff',
-					title: 'Staff Directory',
-					text: 'Mayor Ted Wheeler\nEmail: mayor@portlandoregon.gov',
-					publishedDate: '2025-06-01'
-				}
-			]
+	it('calls firecrawl.scrapeUrl with markdown+links format', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: '# Test Page\nSome content',
+			links: [],
+			metadata: { title: 'Test', statusCode: 200 }
 		});
 
-		const results = await fetchPageContents(['https://portland.gov/staff']);
+		await readPage('https://example.com');
 
-		expect(results).toHaveLength(1);
-		expect(results[0]).toEqual({
+		expect(mockScrapeUrl).toHaveBeenCalledTimes(1);
+		const [url, options] = mockScrapeUrl.mock.calls[0];
+		expect(url).toBe('https://example.com');
+		expect(options.formats).toEqual(['markdown', 'links']);
+	});
+
+	it('returns page content with correct shape', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: 'Mayor Ted Wheeler\nEmail: mayor@portlandoregon.gov',
+			links: ['mailto:mayor@portlandoregon.gov'],
+			metadata: { title: 'Staff Directory', statusCode: 200 }
+		});
+
+		const result = await readPage('https://portland.gov/staff');
+
+		expect(result).toMatchObject({
 			url: 'https://portland.gov/staff',
 			title: 'Staff Directory',
-			text: 'Mayor Ted Wheeler\nEmail: mayor@portlandoregon.gov',
-			publishedDate: '2025-06-01'
+			statusCode: 200
 		});
+		expect(result!.text).toContain('Mayor Ted Wheeler');
+		expect(result!.text).toContain('mayor@portlandoregon.gov');
+		// mailto emails are extracted to highlights
+		expect(result!.highlights).toEqual(['mayor@portlandoregon.gov']);
 	});
 
-	it('filters out pages without text content', async () => {
-		mockGetContents.mockResolvedValue({
-			results: [
-				{
-					url: 'https://example.com/page1',
-					title: 'Page 1',
-					text: 'Some content here'
-				},
-				{
-					url: 'https://example.com/page2',
-					title: 'Page 2',
-					text: undefined
-				},
-				{
-					url: 'https://example.com/page3',
-					title: 'Page 3',
-					text: ''
-				}
-			]
+	it('captures emails from JS-rendered pages that Exa would miss', async () => {
+		// Firecrawl renders the full page with headless browser —
+		// emails in mailto: links and contact widgets are captured inline
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: 'The Federal Trade Commission\n\nContact us: [opa@ftc.gov](mailto:opa@ftc.gov)\n\nOffice of Public Affairs',
+			links: ['mailto:opa@ftc.gov', 'https://ftc.gov/about'],
+			metadata: { title: 'About the FTC', statusCode: 200 }
 		});
 
-		const results = await fetchPageContents([
-			'https://example.com/page1',
-			'https://example.com/page2',
-			'https://example.com/page3'
-		]);
+		const result = await readPage('https://ftc.gov/about');
 
-		expect(results).toHaveLength(1);
-		expect(results[0].url).toBe('https://example.com/page1');
+		expect(result!.text).toContain('opa@ftc.gov');
+		expect(result!.text).toContain('CONTACT EMAILS');
+		expect(result!.title).toBe('About the FTC');
+		expect(result!.highlights).toEqual(['opa@ftc.gov']);
 	});
 
-	it('returns empty array when getContents throws', async () => {
-		mockGetContents.mockRejectedValue(new Error('API error'));
+	it('truncates content to maxCharacters', async () => {
+		const longContent = 'A'.repeat(20000);
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: longContent,
+			links: [],
+			metadata: { title: 'Long Page', statusCode: 200 }
+		});
 
-		const results = await fetchPageContents(['https://example.com']);
-		expect(results).toEqual([]);
+		const result = await readPage('https://example.com', { maxCharacters: 5000 });
+
+		expect(result!.text.length).toBe(5000);
+	});
+
+	it('defaults to 12000 maxCharacters', async () => {
+		const longContent = 'B'.repeat(20000);
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: longContent,
+			links: [],
+			metadata: { title: 'Long Page', statusCode: 200 }
+		});
+
+		const result = await readPage('https://example.com');
+
+		expect(result!.text.length).toBe(12000);
+	});
+
+	it('returns null when scrape has no markdown content', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: '',
+			metadata: { title: 'Empty', statusCode: 200 }
+		});
+
+		const result = await readPage('https://example.com');
+		expect(result).toBeNull();
+	});
+
+	it('returns null when scrape fails', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: false,
+			error: 'Page not found'
+		});
+
+		const result = await readPage('https://example.com');
+		expect(result).toBeNull();
+	});
+
+	it('returns null when scrapeUrl throws', async () => {
+		mockScrapeUrl.mockRejectedValue(new Error('Network error'));
+
+		const result = await readPage('https://example.com');
+		expect(result).toBeNull();
+	});
+
+	it('handles missing metadata gracefully', async () => {
+		mockScrapeUrl.mockResolvedValue({
+			success: true,
+			markdown: '# Content here',
+			links: [],
+			metadata: {}
+		});
+
+		const result = await readPage('https://example.com');
+
+		expect(result!.title).toBe('');
+		expect(result!.text).toBe('# Content here');
 	});
 });

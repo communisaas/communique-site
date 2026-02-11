@@ -6,15 +6,16 @@ import type { RequestEvent } from '@sveltejs/kit';
  */
 export function createMockRequestEvent<
 	Params extends Record<string, string> = Record<string, string>
->(request: Request | unknown, routeId: string = '/'): RequestEvent<Params, string> {
+>(request: Request | unknown, routeId: string = '/'): RequestEvent<Params, any> {
 	// Handle both absolute and relative URLs
 	let url: URL;
-	if (request.url) {
+	const req = request as Partial<Request>;
+	if (req.url) {
 		try {
-			url = new URL(request.url);
+			url = new URL(req.url);
 		} catch {
 			// If URL is relative, make it absolute
-			url = new URL(request.url, 'http://localhost:3000');
+			url = new URL(req.url, 'http://localhost:3000');
 		}
 	} else {
 		url = new URL('http://localhost:3000');
@@ -60,7 +61,7 @@ export function createMockRequestEvent<
 			current: mockSpan as unknown
 		},
 		isRemoteRequest: false
-	} as RequestEvent<Params, string>;
+	} as unknown as RequestEvent<Params, any>;
 }
 
 /**
@@ -74,7 +75,7 @@ export function createMockRequestEventWithParams<
 	params: Params = {} as Params,
 	locals: Partial<App.Locals> = {},
 	routeId: string = '/'
-): RequestEvent<Params, string> {
+): RequestEvent<Params, any> {
 	const baseEvent = createMockRequestEvent<Params>(request, routeId);
 	return {
 		...baseEvent,
@@ -84,5 +85,5 @@ export function createMockRequestEventWithParams<
 			session: null,
 			...locals
 		} as App.Locals
-	};
+	} as unknown as RequestEvent<Params, any>;
 }

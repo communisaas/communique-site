@@ -49,6 +49,7 @@ export interface UserFactoryData {
 	zip?: string;
 	congressional_district?: string;
 	phone?: string;
+	address?: string; // Legacy field for backward compatibility
 
 	// Verification status
 	is_verified?: boolean;
@@ -156,6 +157,10 @@ export interface TemplateFactoryData {
 	status: string;
 	is_public: boolean;
 
+	// Perceptual encoding properties
+	coordinationScale: number;
+	isNew: boolean;
+
 	// Usage tracking
 	send_count: number;
 	last_sent_at?: Date;
@@ -210,6 +215,10 @@ export class TemplateFactory extends Factory<TemplateFactoryData> {
 			campaign_id: undefined,
 			status: 'draft',
 			is_public: true,
+
+			// Perceptual encoding properties
+			coordinationScale: 0.0,
+			isNew: true,
 
 			// Usage tracking
 			send_count: 0,

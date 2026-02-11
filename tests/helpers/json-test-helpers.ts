@@ -151,15 +151,16 @@ export function safeExperimentConfig(experiment: unknown) {
 		experiment && typeof experiment === 'object' && experiment !== null && 'config' in experiment
 			? (experiment as Record<string, unknown>).config || {}
 			: {};
+	const configObj = config as Record<string, unknown>;
 	return {
-		steps: config.steps || [],
-		targeting_rules: config.targeting_rules || {},
-		optimization_goals: config.optimization_goals || {},
-		statistical_config: config.statistical_config || {},
-		budget: config.budget || 0,
-		campaign_channels: config.campaign_channels || [],
-		kpi_targets: config.kpi_targets || {},
-		variations: config.variations || []
+		steps: configObj.steps || [],
+		targeting_rules: configObj.targeting_rules || {},
+		optimization_goals: configObj.optimization_goals || {},
+		statistical_config: configObj.statistical_config || {},
+		budget: configObj.budget || 0,
+		campaign_channels: configObj.campaign_channels || [],
+		kpi_targets: configObj.kpi_targets || {},
+		variations: configObj.variations || []
 	};
 }
 
@@ -171,20 +172,21 @@ export function safeMetricsCache(experiment: unknown) {
 		'metrics_cache' in experiment
 			? (experiment as Record<string, unknown>).metrics_cache || {}
 			: {};
+	const cacheObj = cache as Record<string, unknown>;
 	return {
-		participants_count: cache.participants_count || 0,
-		conversion_rate: cache.conversion_rate || 0,
-		step_conversion_rates: cache.step_conversion_rates || {},
-		drop_off_analysis: cache.drop_off_analysis || {},
-		winning_variation: cache.winning_variation,
-		variation_results: cache.variation_results || {},
-		statistical_significance: cache.statistical_significance || 0,
-		recommendation: cache.recommendation,
-		error: cache.error,
-		budget_spent: cache.budget_spent || 0,
-		funnel_completion_rate: cache.funnel_completion_rate || 0,
-		funnel_completion_rates: cache.funnel_completion_rates || {},
-		temporal_analysis: cache.temporal_analysis || {}
+		participants_count: cacheObj.participants_count || 0,
+		conversion_rate: cacheObj.conversion_rate || 0,
+		step_conversion_rates: cacheObj.step_conversion_rates || {},
+		drop_off_analysis: cacheObj.drop_off_analysis || {},
+		winning_variation: cacheObj.winning_variation,
+		variation_results: cacheObj.variation_results || {},
+		statistical_significance: cacheObj.statistical_significance || 0,
+		recommendation: cacheObj.recommendation,
+		error: cacheObj.error,
+		budget_spent: cacheObj.budget_spent || 0,
+		funnel_completion_rate: cacheObj.funnel_completion_rate || 0,
+		funnel_completion_rates: cacheObj.funnel_completion_rates || {},
+		temporal_analysis: cacheObj.temporal_analysis || {}
 	};
 }
 
@@ -199,14 +201,15 @@ export function safeSessionMetrics(session: unknown) {
 		session && typeof session === 'object' && session !== null && 'session_metrics' in session
 			? (session as Record<string, unknown>).session_metrics || {}
 			: {};
+	const metricsObj = metrics as Record<string, unknown>;
 	return {
-		events_count: metrics.events_count || 0,
-		page_views: metrics.page_views || 0,
-		duration_ms: metrics.duration_ms || 0,
-		conversion_count: metrics.conversion_count || 0,
-		funnel_conversions: metrics.funnel_conversions || {},
-		predictive_metrics: metrics.predictive_metrics || {},
-		performance_metrics: metrics.performance_metrics || {}
+		events_count: metricsObj.events_count || 0,
+		page_views: metricsObj.page_views || 0,
+		duration_ms: metricsObj.duration_ms || 0,
+		conversion_count: metricsObj.conversion_count || 0,
+		funnel_conversions: metricsObj.funnel_conversions || {},
+		predictive_metrics: metricsObj.predictive_metrics || {},
+		performance_metrics: metricsObj.performance_metrics || {}
 	};
 }
 
@@ -215,11 +218,12 @@ export function safeDeviceData(session: unknown) {
 		session && typeof session === 'object' && session !== null && 'device_data' in session
 			? (session as Record<string, unknown>).device_data || {}
 			: {};
+	const dataObj = data as Record<string, unknown>;
 	return {
-		device_type: data.device_type || 'desktop',
-		viewport: data.viewport || { width: 1920, height: 1080 },
-		accessibility: data.accessibility || {},
-		connection_type: data.connection_type || 'wifi'
+		device_type: dataObj.device_type || 'desktop',
+		viewport: dataObj.viewport || { width: 1920, height: 1080 },
+		accessibility: dataObj.accessibility || {},
+		connection_type: dataObj.connection_type || 'wifi'
 	};
 }
 
@@ -228,13 +232,14 @@ export function safeComputedMetrics(event: unknown) {
 		event && typeof event === 'object' && event !== null && 'computed_metrics' in event
 			? (event as Record<string, unknown>).computed_metrics || {}
 			: {};
+	const metricsObj = metrics as Record<string, unknown>;
 	return {
-		engagement_score: metrics.engagement_score || 0,
-		anomaly_detection: metrics.anomaly_detection || {},
-		ml_insights: metrics.ml_insights || {},
-		calculation_metadata: metrics.calculation_metadata || {},
-		time_series_data: metrics.time_series_data || {},
-		cohort_analysis: metrics.cohort_analysis || {},
-		legacy_migration_flag: metrics.legacy_migration_flag
+		engagement_score: metricsObj.engagement_score || 0,
+		anomaly_detection: metricsObj.anomaly_detection || {},
+		ml_insights: metricsObj.ml_insights || {},
+		calculation_metadata: metricsObj.calculation_metadata || {},
+		time_series_data: metricsObj.time_series_data || {},
+		cohort_analysis: metricsObj.cohort_analysis || {},
+		legacy_migration_flag: metricsObj.legacy_migration_flag
 	};
 }

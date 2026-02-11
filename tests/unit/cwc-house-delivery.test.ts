@@ -6,8 +6,9 @@
  * instead of silently simulating success.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CWCClient } from '$lib/core/congress/cwc-client';
+import type { Template } from '$lib/types/template';
 
 describe('CWC House Delivery', () => {
 	let originalEnv: NodeJS.ProcessEnv;
@@ -22,7 +23,7 @@ describe('CWC House Delivery', () => {
 		process.env = originalEnv;
 	});
 
-	const mockTemplate = {
+	const mockTemplate: Partial<Template> = {
 		id: 'test-template-123',
 		title: 'Test Climate Action Template',
 		message_body: 'Please support climate legislation for our community.',
@@ -57,7 +58,7 @@ describe('CWC House Delivery', () => {
 
 			const client = new CWCClient();
 			const result = await client.submitToHouse(
-				mockTemplate,
+				mockTemplate as Template,
 				mockUser,
 				mockHouseRep,
 				'Personal message about climate action.'
@@ -87,7 +88,7 @@ describe('CWC House Delivery', () => {
 			const consoleSpy = vi.spyOn(console, 'error');
 
 			const client = new CWCClient();
-			await client.submitToHouse(mockTemplate, mockUser, mockHouseRep, '');
+			await client.submitToHouse(mockTemplate as Template, mockUser, mockHouseRep, '');
 
 			// Should log configuration error
 			expect(consoleSpy).toHaveBeenCalled();
@@ -105,7 +106,7 @@ describe('CWC House Delivery', () => {
 			const consoleSpy = vi.spyOn(console, 'error');
 
 			const client = new CWCClient();
-			await client.submitToHouse(mockTemplate, mockUser, mockHouseRep, '');
+			await client.submitToHouse(mockTemplate as Template, mockUser, mockHouseRep, '');
 
 			// Error log should include rep details for debugging
 			const errorLogs = consoleSpy.mock.calls.map((call) => JSON.stringify(call));
@@ -124,7 +125,7 @@ describe('CWC House Delivery', () => {
 			process.env.GCP_PROXY_URL = 'http://localhost:9999';
 
 			const client = new CWCClient();
-			const result = await client.submitToHouse(mockTemplate, mockUser, mockHouseRep, '');
+			const result = await client.submitToHouse(mockTemplate as Template, mockUser, mockHouseRep, '');
 
 			// In a test environment with mocked fetch, this may succeed
 			// The important thing is that it doesn't simulate - it actually tries the proxy
@@ -151,7 +152,7 @@ describe('CWC House Delivery', () => {
 			const consoleSpy = vi.spyOn(console, 'log');
 
 			const client = new CWCClient();
-			await client.submitToHouse(mockTemplate, mockUser, mockHouseRep, '');
+			await client.submitToHouse(mockTemplate as Template, mockUser, mockHouseRep, '');
 
 			// Should log the proxy attempt
 			const proxyLogs = consoleSpy.mock.calls.filter((call) =>
@@ -179,7 +180,7 @@ describe('CWC House Delivery', () => {
 			const client = new CWCClient();
 
 			await expect(
-				client.submitToHouse(mockTemplate, mockUser, senateMember, '')
+				client.submitToHouse(mockTemplate as Template, mockUser, senateMember, '')
 			).rejects.toThrow('only for House offices');
 		});
 	});
@@ -191,7 +192,7 @@ describe('CWC House Delivery', () => {
 			const consoleSpy = vi.spyOn(console, 'error');
 
 			const client = new CWCClient();
-			await client.submitToHouse(mockTemplate, mockUser, mockHouseRep, '');
+			await client.submitToHouse(mockTemplate as Template, mockUser, mockHouseRep, '');
 
 			// All House-related logs should use [CWC House] prefix
 			const houseLogs = consoleSpy.mock.calls.filter((call) =>
@@ -208,7 +209,7 @@ describe('CWC House Delivery', () => {
 			const consoleSpy = vi.spyOn(console, 'error');
 
 			const client = new CWCClient();
-			await client.submitToHouse(mockTemplate, mockUser, mockHouseRep, '');
+			await client.submitToHouse(mockTemplate as Template, mockUser, mockHouseRep, '');
 
 			// Logs should include timestamp field
 			const errorLogs = consoleSpy.mock.calls.map((call) => JSON.stringify(call));

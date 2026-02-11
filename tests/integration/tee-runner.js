@@ -25,7 +25,7 @@ async function startServers() {
     // Start Mock CWC
     await new Promise(resolve => cwcServer.listen(8083, () => {
         console.log('[Mock CWC] Listening on 8083');
-        resolve();
+        resolve(undefined);
     }));
 
     // Start GCP Proxy

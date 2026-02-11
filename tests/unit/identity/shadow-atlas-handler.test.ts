@@ -3,6 +3,10 @@
  *
  * Verifies that generateIdentityCommitment() uses Poseidon2 correctly
  * and produces valid BN254 field elements compatible with the Noir circuit.
+ *
+ * NUL-001: Identity commitment MUST be deterministic per verified person.
+ * issuedAt was removed from the hash input to ensure same document always
+ * produces the same commitment, preventing Sybil via re-registration.
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
@@ -43,7 +47,6 @@ describe('generateIdentityCommitment', () => {
 		const commitment = await generateIdentityCommitment({
 			provider: 'self.xyz',
 			credentialHash: '0x1234567890abcdef',
-			issuedAt: 1234567890
 		});
 
 		expect(commitment).toMatch(/^0x[0-9a-fA-F]+$/);
@@ -53,17 +56,15 @@ describe('generateIdentityCommitment', () => {
 		const commitment = await generateIdentityCommitment({
 			provider: 'self.xyz',
 			credentialHash: '0x1234567890abcdef',
-			issuedAt: 1234567890
 		});
 
 		expect(isValidBN254FieldElement(commitment)).toBe(true);
 	});
 
-	it('should be deterministic for same input', async () => {
+	it('should be deterministic for same input (NUL-001)', async () => {
 		const input = {
 			provider: 'self.xyz' as const,
 			credentialHash: '0x1234567890abcdef',
-			issuedAt: 1234567890
 		};
 
 		const commitment1 = await generateIdentityCommitment(input);
@@ -75,7 +76,6 @@ describe('generateIdentityCommitment', () => {
 	it('should produce different commitments for different providers', async () => {
 		const baseInput = {
 			credentialHash: '0x1234567890abcdef',
-			issuedAt: 1234567890
 		};
 
 		const commitment1 = await generateIdentityCommitment({
@@ -92,55 +92,47 @@ describe('generateIdentityCommitment', () => {
 	});
 
 	it('should produce different commitments for different credential hashes', async () => {
-		const baseInput = {
-			provider: 'self.xyz' as const,
-			issuedAt: 1234567890
-		};
-
 		const commitment1 = await generateIdentityCommitment({
-			...baseInput,
+			provider: 'self.xyz',
 			credentialHash: '0x1111111111111111'
 		});
 
 		const commitment2 = await generateIdentityCommitment({
-			...baseInput,
+			provider: 'self.xyz',
 			credentialHash: '0x2222222222222222'
 		});
 
 		expect(commitment1).not.toBe(commitment2);
 	});
 
-	it('should produce different commitments for different issuedAt timestamps', async () => {
-		const baseInput = {
-			provider: 'self.xyz' as const,
-			credentialHash: '0x1234567890abcdef'
-		};
-
+	it('should be deterministic regardless of call timing (NUL-001 Sybil prevention)', async () => {
+		// NUL-001: Same person re-verifying at different times MUST get same commitment.
+		// issuedAt was removed from the hash to ensure this property.
 		const commitment1 = await generateIdentityCommitment({
-			...baseInput,
-			issuedAt: 1234567890
+			provider: 'self.xyz',
+			credentialHash: '0x1234567890abcdef',
 		});
 
+		// Simulate re-verification at a different time
 		const commitment2 = await generateIdentityCommitment({
-			...baseInput,
-			issuedAt: 9876543210
+			provider: 'self.xyz',
+			credentialHash: '0x1234567890abcdef',
 		});
 
-		expect(commitment1).not.toBe(commitment2);
+		expect(commitment1).toBe(commitment2);
 	});
 
 	it('should produce commitment that differs from SHA-256', async () => {
 		const input = {
 			provider: 'self.xyz' as const,
 			credentialHash: '0x1234567890abcdef',
-			issuedAt: 1234567890
 		};
 
 		// Generate Poseidon2 commitment
 		const poseidonCommitment = await generateIdentityCommitment(input);
 
 		// Generate SHA-256 for comparison (the OLD broken way)
-		const inputString = `${input.provider}:${input.credentialHash}:${input.issuedAt}`;
+		const inputString = `${input.provider}:${input.credentialHash}`;
 		const encoder = new TextEncoder();
 		const data = encoder.encode(inputString);
 		const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -155,13 +147,11 @@ describe('generateIdentityCommitment', () => {
 		const selfXyzCommitment = await generateIdentityCommitment({
 			provider: 'self.xyz',
 			credentialHash: '0x1234567890abcdef',
-			issuedAt: 1234567890
 		});
 
 		const diditCommitment = await generateIdentityCommitment({
 			provider: 'didit.me',
 			credentialHash: '0xfedcba0987654321',
-			issuedAt: 9876543210
 		});
 
 		expect(isValidBN254FieldElement(selfXyzCommitment)).toBe(true);
