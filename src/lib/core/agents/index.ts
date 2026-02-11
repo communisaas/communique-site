@@ -61,7 +61,6 @@ export {
 // Prompts
 export { SUBJECT_LINE_PROMPT } from './prompts/subject-line';
 export { MESSAGE_WRITER_PROMPT } from './prompts/message-writer';
-// Note: DECISION_MAKER_PROMPT exists but is unused - phase-specific prompts are used instead
 
 // Utilities for grounding mode (when JSON schema is incompatible)
 export { extractJsonFromGroundingResponse, isSuccessfulExtraction } from './utils/grounding-json';

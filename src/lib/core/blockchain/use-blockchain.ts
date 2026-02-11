@@ -183,10 +183,10 @@ export async function hasExistingBlockchainSetup(userId: string): Promise<boolea
 
 		const user = await db.user.findUnique({
 			where: { id: userId },
-			select: { near_account_id: true, scroll_address: true }
+			select: { wallet_address: true, scroll_address: true }
 		});
 
-		return Boolean(user?.near_account_id && user?.scroll_address);
+		return Boolean(user?.wallet_address && user?.scroll_address);
 	} catch (error) {
 		console.error('[Blockchain] Failed to check existing setup:', error);
 		return false;
@@ -206,15 +206,15 @@ export async function loadExistingBlockchainAccounts(userId: string): Promise<vo
 		const user = await db.user.findUnique({
 			where: { id: userId },
 			select: {
-				near_account_id: true,
+				wallet_address: true,
 				scroll_address: true
 			}
 		});
 
-		if (user?.near_account_id && user?.scroll_address) {
+		if (user?.wallet_address && user?.scroll_address) {
 			blockchainState.set({
 				initialized: true,
-				nearAccountId: user.near_account_id,
+				nearAccountId: user.wallet_address,
 				scrollAddress: user.scroll_address,
 				ethereumAddress: user.scroll_address, // Same as Scroll
 				loading: false,
@@ -222,7 +222,7 @@ export async function loadExistingBlockchainAccounts(userId: string): Promise<vo
 			});
 
 			console.log('[Blockchain] Loaded existing accounts from database:', {
-				nearAccount: user.near_account_id,
+				nearAccount: user.wallet_address,
 				scrollAddress: user.scroll_address
 			});
 		}

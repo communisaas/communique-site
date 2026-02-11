@@ -49,6 +49,21 @@ export interface TwoTreeRegistrationResult {
 	error?: string;
 }
 
+export interface TwoTreeRecoveryRequest {
+	/** User ID */
+	userId: string;
+	/** Fresh leaf hash (new random inputs) */
+	leaf: string;
+	/** Cell ID derived from re-entered address */
+	cellId: string;
+	/** New random user secret */
+	userSecret: string;
+	/** New random registration salt */
+	registrationSalt: string;
+	/** Verification method (carried from original registration) */
+	verificationMethod: 'self.xyz' | 'didit';
+}
+
 // ============================================================================
 // Main Handler
 // ============================================================================
@@ -117,7 +132,11 @@ export async function registerTwoTree(
 		const now = new Date();
 		const sessionCredential: SessionCredential = {
 			userId: request.userId,
-			identityCommitment: request.leaf, // The leaf hash is our identity commitment
+			// TODO(NUL-001): Replace with provider-derived identity commitment from
+			// generateIdentityCommitment(). Currently uses leaf hash as placeholder.
+			// End-to-end wiring requires passing shadowAtlasCommitment from didit webhook
+			// through the registration flow to this credential storage.
+			identityCommitment: request.leaf,
 			leafIndex: tree1Data.leafIndex,
 			merklePath: tree1Data.userPath, // Tree 1 siblings
 			merkleRoot: tree1Data.userRoot, // Tree 1 root
@@ -163,6 +182,122 @@ export async function registerTwoTree(
 	}
 }
 
+/**
+ * Recover a user's two-tree credential after browser clear / device loss.
+ *
+ * Sends replace: true to the registration endpoint which:
+ * 1. Looks up the user's existing registration in Postgres
+ * 2. Calls Shadow Atlas POST /v1/register/replace to zero the old leaf
+ * 3. Updates Postgres with the new leaf index and proof
+ * 4. Returns fresh Tree 1 proof
+ *
+ * Then fetches fresh Tree 2 cell proof and stores all credentials in IndexedDB.
+ *
+ * @param request - Recovery data (includes private inputs stored locally)
+ * @returns Session credential for ZK proof generation
+ */
+export async function recoverTwoTree(
+	request: TwoTreeRecoveryRequest
+): Promise<TwoTreeRegistrationResult> {
+	try {
+		// Step 1: Replace leaf in Tree 1 (sends replace: true)
+		const tree1Response = await fetch('/api/shadow-atlas/register', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ leaf: request.leaf, replace: true }),
+		});
+
+		if (!tree1Response.ok) {
+			const errorData = await tree1Response.json().catch(() => ({ error: 'Unknown error' }));
+			return {
+				success: false,
+				error: errorData.error || `Tree 1 leaf replacement failed (${tree1Response.status})`,
+			};
+		}
+
+		const tree1Data = await tree1Response.json();
+
+		if (tree1Data.leafIndex === undefined || !tree1Data.userRoot || !tree1Data.userPath || !tree1Data.pathIndices) {
+			return {
+				success: false,
+				error: 'Invalid Tree 1 replacement response',
+			};
+		}
+
+		// Step 2: Fetch Tree 2 cell proof (same as registration)
+		const tree2Response = await fetch(
+			`/api/shadow-atlas/cell-proof?cell_id=${encodeURIComponent(request.cellId)}`
+		);
+
+		if (!tree2Response.ok) {
+			const errorData = await tree2Response.json().catch(() => ({ error: 'Unknown error' }));
+			return {
+				success: false,
+				error: errorData.error || `Tree 2 cell proof failed (${tree2Response.status})`,
+			};
+		}
+
+		const tree2Data = await tree2Response.json();
+
+		if (!tree2Data.cellMapRoot || !tree2Data.cellMapPath || !tree2Data.districts) {
+			return {
+				success: false,
+				error: 'Invalid Tree 2 cell proof response',
+			};
+		}
+
+		// Step 3: Construct session credential with BOTH tree proofs
+		const now = new Date();
+		const sessionCredential: SessionCredential = {
+			userId: request.userId,
+			// TODO(NUL-001): Replace with provider-derived identity commitment from
+			// generateIdentityCommitment(). Currently uses leaf hash as placeholder.
+			// IMPORTANT: Recovery is NOT Sybil-safe until NUL-001 is complete — different
+			// leaf hashes produce different nullifiers, enabling double-voting.
+			identityCommitment: request.leaf,
+			leafIndex: tree1Data.leafIndex,
+			merklePath: tree1Data.userPath,
+			merkleRoot: tree1Data.userRoot,
+			congressionalDistrict: 'two-tree',
+
+			credentialType: 'two-tree',
+			cellId: request.cellId,
+			cellMapRoot: tree2Data.cellMapRoot,
+			cellMapPath: tree2Data.cellMapPath,
+			cellMapPathBits: tree2Data.cellMapPathBits,
+			districts: tree2Data.districts,
+
+			userSecret: request.userSecret,
+			registrationSalt: request.registrationSalt,
+
+			verificationMethod: request.verificationMethod,
+			createdAt: now,
+			expiresAt: calculateExpirationDate(),
+		};
+
+		// Step 4: Store encrypted in IndexedDB
+		await storeSessionCredential(sessionCredential);
+
+		console.log('[Shadow Atlas] Two-tree recovery successful:', {
+			userId: request.userId,
+			leafIndex: tree1Data.leafIndex,
+			districts: tree2Data.districts.length,
+			expiresAt: sessionCredential.expiresAt,
+		});
+
+		return {
+			success: true,
+			sessionCredential,
+		};
+	} catch (error) {
+		console.error('[Shadow Atlas] Two-tree recovery failed:', error);
+		return {
+			success: false,
+			error: error instanceof Error ? error.message : 'Unknown error',
+		};
+	}
+}
+
 // ============================================================================
 // Identity Commitment Generation
 // ============================================================================
@@ -173,16 +308,20 @@ export async function registerTwoTree(
  * Uses Poseidon hash to create a pseudonymous identity commitment
  * compatible with on-chain verification.
  *
+ * SECURITY (NUL-001): The commitment MUST be deterministic per verified person.
+ * Same person re-verifying must produce the SAME commitment so nullifiers match.
+ * Therefore we hash ONLY provider + credentialHash (which is deterministic per
+ * document), and EXCLUDE issuedAt/timestamps which would break Sybil prevention.
+ *
  * @param providerData - Verification provider data
  * @returns Identity commitment (hex string with 0x prefix)
  */
 export async function generateIdentityCommitment(providerData: {
 	provider: 'self.xyz' | 'didit.me';
 	credentialHash: string;
-	issuedAt: number;
 }): Promise<string> {
 	const { poseidonHash } = await import('../crypto/poseidon');
-	const input = `${providerData.provider}:${providerData.credentialHash}:${providerData.issuedAt}`;
+	const input = `${providerData.provider}:${providerData.credentialHash}`;
 	return await poseidonHash(input);
 }
 

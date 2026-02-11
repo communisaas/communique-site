@@ -52,7 +52,7 @@ export abstract class BaseIntelligenceProvider implements IntelligenceProvider {
 		return cached
 			.filter(
 				(item) =>
-					item.publishedAt >= cutoffDate && (!item.expiresAt || item.expiresAt > new Date())
+					item.published_at >= cutoffDate && (!item.expires_at || item.expires_at > new Date())
 			)
 			.map((doc) => this.documentToItem(doc));
 	}
@@ -117,20 +117,20 @@ export abstract class BaseIntelligenceProvider implements IntelligenceProvider {
 	 */
 	protected documentToItem(doc: IntelligenceItemDocument): IntelligenceItem {
 		return {
-			id: doc._id.toString(),
+			id: doc.id,
 			category: doc.category,
 			title: doc.title,
 			summary: doc.snippet,
-			sourceUrl: doc.sourceUrl,
+			sourceUrl: doc.source_url,
 			sourceName: doc.source,
-			publishedAt: doc.publishedAt,
-			relevanceScore: doc.relevanceScore || 0.5,
+			publishedAt: doc.published_at,
+			relevanceScore: doc.relevance_score || 0.5,
 			topics: doc.topics,
 			entities: doc.entities.map((name) => ({
 				name,
 				type: 'other' as const
 			})),
-			sentiment: doc.sentiment,
+			sentiment: doc.sentiment as 'positive' | 'negative' | 'neutral' | 'mixed' | undefined,
 			isActionable: true
 		};
 	}

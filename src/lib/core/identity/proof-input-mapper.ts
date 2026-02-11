@@ -17,7 +17,7 @@
  *   SessionCredential.registrationSalt → TwoTreeProofInputs.registrationSalt (direct)
  *
  * COMPUTED AT PROOF TIME:
- *   nullifier     = poseidon2Hash2(userSecret, actionDomain)  [CVE-002 fix]
+ *   nullifier     = poseidon2Hash2(identityCommitment, actionDomain)  [NUL-001 fix]
  *   actionDomain  = buildActionDomain(actionParams)  [caller-provided]
  *   authorityLevel = credential.authorityLevel (server-derived via deriveAuthorityLevel)
  *                    ?? context.authorityLevel (caller override)
@@ -41,7 +41,7 @@ export interface ProofContext {
 	/** Action domain hex string (from buildActionDomain) */
 	actionDomain: string;
 
-	/** Pre-computed nullifier hex string = H2(userSecret, actionDomain) */
+	/** Pre-computed nullifier hex string = H2(identityCommitment, actionDomain) (NUL-001) */
 	nullifier: string;
 
 	/**
@@ -70,8 +70,9 @@ export interface ProofContext {
  * or ensure credential.authorityLevel is set during registration.
  */
 function fallbackAuthorityLevel(credential: SessionCredential): 1 | 2 | 3 | 4 | 5 {
-	// If identity was verified (identity commitment present), conservative level 3
-	if (credential.identityCommitment) {
+	// If identity was verified (identity commitment present and non-zero), conservative level 3
+	const ic = credential.identityCommitment;
+	if (ic && ic.length > 4 && BigInt(ic) !== 0n) {
 		return 3;
 	}
 	// Unverified / OAuth-only
@@ -112,6 +113,7 @@ export function mapCredentialToProofInputs(
 	if (!credential.userSecret) missing.push('userSecret');
 	if (!credential.cellId) missing.push('cellId');
 	if (!credential.registrationSalt) missing.push('registrationSalt');
+	if (!credential.identityCommitment) missing.push('identityCommitment');
 
 	if (missing.length > 0) {
 		throw new Error(
@@ -122,7 +124,7 @@ export function mapCredentialToProofInputs(
 
 	// Authority level resolution: credential (server-derived) > context > conservative fallback
 	const authorityLevel =
-		(credential as SessionCredential & { authorityLevel?: 1 | 2 | 3 | 4 | 5 }).authorityLevel ??
+		credential.authorityLevel ??
 		context.authorityLevel ??
 		fallbackAuthorityLevel(credential);
 
@@ -139,6 +141,7 @@ export function mapCredentialToProofInputs(
 		userSecret: credential.userSecret!,
 		cellId: credential.cellId!,
 		registrationSalt: credential.registrationSalt!,
+		identityCommitment: credential.identityCommitment,
 
 		// Tree 1 proof (renamed fields)
 		userPath: credential.merklePath,

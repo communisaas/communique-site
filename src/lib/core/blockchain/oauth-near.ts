@@ -100,18 +100,18 @@ export async function ensureBlockchainAccounts(
 	// Check if user already has blockchain accounts
 	const user = await db.user.findUnique({
 		where: { id: userId },
-		select: { near_account_id: true, scroll_address: true }
+		select: { wallet_address: true, scroll_address: true }
 	});
 
-	if (user?.near_account_id && user?.scroll_address) {
+	if (user?.wallet_address && user?.scroll_address) {
 		console.log('[Blockchain] User already has complete blockchain setup:', {
 			userId,
-			nearAccount: user.near_account_id,
+			nearAccount: user.wallet_address,
 			scrollAddress: user.scroll_address
 		});
 
 		return {
-			nearAccountId: user.near_account_id,
+			nearAccountId: user.wallet_address,
 			scrollAddress: user.scroll_address
 		};
 	}
@@ -126,7 +126,7 @@ export async function ensureBlockchainAccounts(
 	await db.user.update({
 		where: { id: userId },
 		data: {
-			near_account_id: nearAccountId,
+			wallet_address: nearAccountId,
 			scroll_address: scrollAddress
 		}
 	});
@@ -152,8 +152,8 @@ export async function ensureBlockchainAccounts(
 export async function hasBlockchainSetup(userId: string): Promise<boolean> {
 	const user = await db.user.findUnique({
 		where: { id: userId },
-		select: { near_account_id: true, scroll_address: true }
+		select: { wallet_address: true, scroll_address: true }
 	});
 
-	return Boolean(user?.near_account_id && user?.scroll_address);
+	return Boolean(user?.wallet_address && user?.scroll_address);
 }

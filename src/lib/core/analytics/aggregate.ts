@@ -440,7 +440,11 @@ export async function queryAggregates(params: AggregateQuery): Promise<Aggregate
 				start: start.toISOString(),
 				end: end.toISOString()
 			},
-			results: snapshotResults,
+			results: snapshotResults.map((r) => ({
+				dimensions: r.dimensions,
+				count: r.count,
+				coarsened: false
+			})),
 			privacy: {
 				epsilon: PRIVACY.SERVER_EPSILON,
 				differential_privacy: true,
@@ -513,7 +517,7 @@ export async function queryAggregates(params: AggregateQuery): Promise<Aggregate
 
 	// Convert to AggregateResult format (noise already applied in coarsening)
 	const noisy: AggregateResult[] = merged.map((r) => ({
-		dimensions: { [groupBy?.[0] ?? 'jurisdiction']: r.value } as Record<string, string | null>,
+		dimensions: { [groupBy?.[0] ?? 'jurisdiction']: r.value },
 		count: r.count, // Already noisy from coarsenResults
 		coarsened: r.coarsened,
 		coarsen_level: r.coarsened ? r.level : undefined,
@@ -577,7 +581,7 @@ function groupByDimensions(
 	}
 
 	return Array.from(groups.entries()).map(([value, count]) => ({
-		dimensions: { [key]: value } as Record<string, string | null>,
+		dimensions: { [key]: value },
 		count,
 		coarsened: false
 	}));

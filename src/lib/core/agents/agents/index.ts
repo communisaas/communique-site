@@ -3,12 +3,14 @@
  */
 
 export {
-	resolveDecisionMakersV2 as resolveDecisionMakers,
+	resolveDecisionMakers,
 	// Tool helpers
 	getAgentToolDeclarations,
 	processGeminiFunctionCall,
 	handleDocumentToolCall
 } from './decision-maker';
+
+export type { AgenticToolContext } from './decision-maker';
 
 // Re-export provider types
 export type {

@@ -74,7 +74,7 @@ export class CorporateProvider extends BaseIntelligenceProvider {
 		// Simulate API delay
 		await new Promise((resolve) => setTimeout(resolve, 600));
 
-		const company = query.targetEntity;
+		const company = query.targetEntity ?? 'Unknown Company';
 
 		// Generate placeholder items
 		if (query.topics.some((t) => t.toLowerCase().includes('labor') || t.toLowerCase().includes('worker'))) {

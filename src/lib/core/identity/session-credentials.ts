@@ -92,6 +92,13 @@ export interface SessionCredential {
 	districts?: string[];
 
 	/**
+	 * Authority level set during registration by server via deriveAuthorityLevel (1-5).
+	 * Cryptographically bound into user leaf via H4 (BR5-001).
+	 * Only present when credentialType === 'two-tree'.
+	 */
+	authorityLevel?: 1 | 2 | 3 | 4 | 5;
+
+	/**
 	 * Registration salt used for leaf computation.
 	 * Stored client-side only — never sent to server.
 	 * Only present when credentialType === 'two-tree'.

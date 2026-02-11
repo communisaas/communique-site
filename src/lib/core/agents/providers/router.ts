@@ -106,22 +106,25 @@ export class DecisionMakerRouter {
 	}
 
 	/**
-	 * Attempt resolution with timeout
+	 * Attempt resolution with timeout.
+	 * Uses AbortController so providers can check signal.aborted and exit cleanly.
 	 */
 	private async resolveWithTimeout(
 		provider: DecisionMakerProvider,
 		context: ResolveContext,
-		timeoutMs: number = 120000 // 2 minutes - grounding queries can be slow
+		timeoutMs: number = 300000 // 5 minutes — staged orchestration (Phase 2a + 2b) runs 90-150s typical
 	): Promise<DecisionMakerResult> {
-		return Promise.race([
-			provider.resolve(context),
-			new Promise<DecisionMakerResult>((_, reject) =>
-				setTimeout(
-					() => reject(new Error(`Resolution timeout after ${timeoutMs}ms`)),
-					timeoutMs
-				)
-			)
-		]);
+		const controller = new AbortController();
+		const timeout = setTimeout(
+			() => controller.abort(new Error(`Resolution timeout after ${timeoutMs}ms`)),
+			timeoutMs
+		);
+
+		try {
+			return await provider.resolve({ ...context, signal: controller.signal });
+		} finally {
+			clearTimeout(timeout);
+		}
 	}
 
 	/**

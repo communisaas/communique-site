@@ -9,8 +9,7 @@
 
 import { intelligenceOrchestrator } from '$lib/core/intelligence';
 import type { IntelligenceQuery } from '$lib/core/intelligence';
-import { error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { error, type RequestHandler } from '@sveltejs/kit';
 
 /**
  * Example 1: Server-Sent Events (SSE) Stream

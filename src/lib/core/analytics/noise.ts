@@ -42,7 +42,7 @@ export function applyKaryRR(
 	}
 
 	// Report uniformly random OTHER value
-	const otherMetrics = METRIC_VALUES.filter((m) => m !== trueMetric);
+	const otherMetrics = METRIC_VALUES.filter((m: Metric | null) => m !== trueMetric);
 	const selectedIndex = Math.floor(cryptoRandom() * otherMetrics.length);
 	return otherMetrics[selectedIndex];
 }
@@ -207,9 +207,10 @@ export function cryptoRandom(): number {
 	// Node.js environment
 	if (
 		typeof globalThis.crypto !== 'undefined' &&
-		typeof globalThis.crypto.randomBytes === 'function'
+		'randomBytes' in globalThis.crypto &&
+		typeof (globalThis.crypto as any).randomBytes === 'function'
 	) {
-		const buffer = globalThis.crypto.randomBytes(4);
+		const buffer = (globalThis.crypto as any).randomBytes(4);
 		return buffer.readUInt32BE(0) / 0x100000000;
 	}
 

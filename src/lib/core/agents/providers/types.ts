@@ -107,6 +107,9 @@ export interface ResolveContext {
 
 	/** Streaming callbacks for progress updates */
 	streaming?: StreamingCallbacks;
+
+	/** Abort signal from router timeout — providers should check on each iteration */
+	signal?: AbortSignal;
 }
 
 // ============================================================================

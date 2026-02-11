@@ -1,15 +1,18 @@
 /**
- * Decision-Maker Discovery Prompts — Two-Phase Architecture
+ * Decision-Maker Discovery Prompts — Three-Phase Parallel Architecture
  *
  * Phase 1 (Role Discovery): Identify POSITIONS with power over the issue.
  *   - No grounding needed. LLMs excel at structural/institutional reasoning.
  *   - Explicitly forbids names to prevent stale parametric recall.
- *   - Uses responseSchema for guaranteed JSON structure.
  *
- * Phase 2 (Person Lookup): Search for who CURRENTLY holds each role.
- *   - Google Search grounding enabled. Information flows from search → name extraction.
- *   - The model enters with positions to fill, not names to verify.
- *   - This inversion eliminates confirmation bias from training data.
+ * Phase 2a (Identity Resolution): Parallel direct Exa searches + single extraction call.
+ *   - NOT agentic. Search queries derived from Phase 1 roles.
+ *   - One generateWithThoughts() call extracts names from search result titles.
+ *
+ * Phase 2b (Contact Hunting): Per-identity parallel mini-agents.
+ *   - Each identity gets its own executeWithFunctionCalling session.
+ *   - Budget: 1 search + 2 reads per identity. Isolated contexts.
+ *   - Email verification: must find email verbatim in page content.
  */
 
 // ============================================================================
@@ -20,7 +23,7 @@ export const ROLE_DISCOVERY_PROMPT = `You are a power-structure analyst identify
 
 ## Mission
 
-Identify 10-15 **positions** (NOT people) with direct power to act on the described issue.
+Identify 8-10 **positions** (NOT people) with direct power to act on the described issue.
 
 ## Rules
 
@@ -45,80 +48,7 @@ Return a JSON object with a "roles" array. Each role has:
 CRITICAL: Do NOT include any person's name. We look up current holders separately.`;
 
 // ============================================================================
-// Phase 2: Person Lookup — Grounded search for current holders
-// ============================================================================
-
-/**
- * @deprecated Use URL_TRIAGE_PROMPT + CONTENT_EXTRACTION_PROMPT for Exa-backed lookup
- */
-export const PERSON_LOOKUP_PROMPT = `You are a researcher finding WHO currently holds specific positions and their contact information.
-
-TODAY'S DATE: {CURRENT_DATE}
-CURRENT YEAR: {CURRENT_YEAR}
-
-## Mission
-
-For each position listed below, find the CURRENT holder and their contact information using web search.
-
-## Search Protocol
-
-For EACH position:
-1. Search using the provided search query (or construct one: "current [POSITION] [ORGANIZATION] {CURRENT_YEAR}")
-2. Extract the name FROM THE SEARCH RESULTS, not from your memory
-3. Look for their official email address
-4. Record the source URL where you found this information
-
-## Recency Verification
-
-- ONLY use sources from the last 6 months
-- If you find a name but the source is older than 6 months, search for "[NAME] resigned" or "new [POSITION] [ORGANIZATION]" to verify
-- If you cannot verify a holder is current, note this in recency_check
-
-## Email Discovery
-
-For each person, search in order:
-1. Direct search: "[NAME] email [ORGANIZATION]"
-2. Staff directory: "[ORGANIZATION] staff directory" or "[ORGANIZATION] leadership"
-3. Official contact page: "[ORGANIZATION] contact" or "[NAME] contact information"
-4. Press/media contacts: "[ORGANIZATION] press contact" or "[ORGANIZATION] media inquiries"
-
-CRITICAL EMAIL RULES:
-- ONLY return emails that appear VERBATIM in your search results
-- Do NOT infer or guess emails based on patterns (e.g., guessing firstname.lastname@domain.com)
-- If you cannot find an actual email in search results, set email to "NO_EMAIL_FOUND"
-- A grounded email from an official .gov or .org source is worth more than an inferred email
-
-## Output Schema
-
-Return valid JSON:
-
-\`\`\`
-{
-  "decision_makers": [{
-    "name": string (full name of current holder),
-    "title": string (their title at the organization),
-    "organization": string,
-    "reasoning": string (why this position has power — from the role description),
-    "email": string (discovered email OR "NO_EMAIL_FOUND" if not found in search results),
-    "email_source": string (the specific URL where you found this email, or empty if NO_EMAIL_FOUND),
-    "recency_check": string (format: "Verified via [SOURCE] dated [DATE]. Source age: [N] days.")
-  }],
-  "research_summary": string (brief summary of research process and confidence)
-}
-\`\`\`
-
-## Critical Rules
-
-1. Extract names FROM search results, not from memory
-2. Recent sources only — reject verification sources older than 6 months
-3. If a position appears vacant or you cannot find the current holder, note it in research_summary and skip
-4. NEVER invent, guess, or pattern-infer emails — only report emails you actually find verbatim in search results
-5. If you cannot find a real email, set email to "NO_EMAIL_FOUND" — do not skip the candidate
-6. For each email you DO find, note the specific source where you found it in your reasoning
-7. Source URLs are automatically extracted from search grounding — focus on finding accurate information`;
-
-// ============================================================================
-// Prompt Builders
+// Phase 1: Prompt Builder
 // ============================================================================
 
 /**
@@ -140,421 +70,411 @@ Subject: ${subjectLine}
 Core Message: ${coreMessage}
 Topics: ${topics.join(', ')}
 ${voiceBlock}
-Return 10-15 positions (NOT people) with direct authority, gatekeeping power, coalition leverage, or amplification reach over this matter.`;
+Return 8-10 positions (NOT people) with direct authority, gatekeeping power, coalition leverage, or amplification reach over this matter.`;
+}
+
+// ============================================================================
+// Phase 2a: Identity Extraction — Parallel search + single extraction call
+// ============================================================================
+
+/**
+ * @deprecated Replaced by IDENTITY_EXTRACTION_PROMPT (non-agentic parallel approach).
+ * Kept for reference only — not imported anywhere.
+ */
+export const IDENTITY_RESOLUTION_PROMPT = `DEPRECATED — see IDENTITY_EXTRACTION_PROMPT`;
+
+/** @deprecated Replaced by buildIdentityExtractionPrompt. */
+export function buildIdentityResolutionPrompt(
+	roles: Array<{
+		position: string;
+		organization: string;
+		jurisdiction: string;
+		reasoning: string;
+		search_query: string;
+	}>
+): string {
+	return 'DEPRECATED';
+}
+
+// ============================================================================
+// Phase 2b: Contact Hunting — Full tools, maximum agent autonomy
+// ============================================================================
+
+/** Resolved identity from Phase 2a */
+export interface ResolvedIdentity {
+	position: string;
+	name: string;
+	title: string;
+	organization: string;
+	search_evidence: string;
+}
+
+/** Cached contact info for prompt injection */
+export interface CachedContactInfo {
+	name: string | null;
+	title: string | null;
+	email: string | null;
+	emailSource: string | null;
+	orgKey: string;
 }
 
 /**
- * @deprecated Use buildUrlTriagePrompt + buildContentExtractionPrompt for Exa-backed lookup
+ * @deprecated Replaced by SINGLE_CONTACT_PROMPT (per-identity parallel approach).
+ * Kept for reference only.
+ *
+ * Template variables: {CURRENT_DATE}, {CURRENT_YEAR}, {MAX_SEARCHES}, {MAX_PAGE_READS}, {DOMAIN_CONTEXT}, {CACHED_CONTACTS}
  */
-export function buildPersonLookupPrompt(
-	roles: Array<{ position: string; organization: string; jurisdiction: string; reasoning: string; search_query: string }>,
-	subjectLine: string
-): string {
-	const roleList = roles
-		.map(
-			(role, i) =>
-				`${i + 1}. **${role.position}** at ${role.organization} (${role.jurisdiction})
-   - Why: ${role.reasoning}
-   - Search: "${role.search_query}"`
-		)
-		.join('\n\n');
-
-	return `Find the CURRENT holders of these positions and their email addresses.
-
-Issue context: "${subjectLine}"
-
-## Positions to Research
-
-${roleList}
-
-For each position, search the web to find who currently holds it, verify they are the current holder, and discover their email address. Return results as JSON.`;
-}
-
-// ============================================================================
-// Phase 2a: URL Triage — Select best URLs from Exa search results (Step B)
-// ============================================================================
-
-export const URL_TRIAGE_PROMPT = `You are a research assistant selecting the most promising web pages for finding current holders of specific positions and their contact information.
+export const CONTACT_HUNTING_PROMPT = `You are finding email addresses for NAMED individuals at specific organizations.
 
 TODAY'S DATE: {CURRENT_DATE}
 CURRENT YEAR: {CURRENT_YEAR}
 
-## Mission
+## YOUR MISSION
 
-For each position below, review the search results and select the 2-3 URLs most likely to contain:
-1. Confirmation of who CURRENTLY holds this position
-2. Their official email address or a contact page with email addresses
+You are given a list of people with confirmed identities. Your ONLY job is finding their email addresses. Identities are already confirmed — you do not need to verify who holds each position.
 
-## Selection Criteria (in order of priority)
+## TOOLS
 
-1. **Official organization websites** — .gov, .edu, organization's own domain
-2. **Staff directories and leadership pages** — URLs containing /staff, /directory, /leadership, /team, /about, /people, /contact
-3. **Recent pages** — prefer pages published within the last 6 months (check publishedDate)
-4. **Contact pages** — any page likely to list email addresses
+You have two tools:
+- **search_web**: Search the web. Returns titles, URLs, published dates, relevance scores, url_hint (page type), and suggested_contact_urls.
+- **read_page**: Read a web page. Returns full text, contact_hints (pre-extracted emails, phones, social URLs), and url_hint.
 
-## What to AVOID selecting
+Use these signals however you see fit. Emails appear in unexpected places — news articles, press releases, third-party directories, campaign sites, staff listings. Use your judgment about what to search for and what to read.
 
-- News articles (unlikely to have email addresses)
-- Social media profiles
-- Wikipedia pages
-- Job listings
-- Pages older than 1 year unless they are official staff directories
+## CONTEXT
 
-## Output
+{DOMAIN_CONTEXT}
 
-Return valid JSON with NO other text:
+{CACHED_CONTACTS}
 
-\`\`\`
+## RULES
+
+1. ONLY report emails you found on a page you read via read_page
+2. When you find an email, note the URL — we verify the source page contains it
+3. Do NOT construct or guess email addresses
+4. General office emails (mayor@city.gov, press@org.com) ARE acceptable when they're the published way to reach that office
+5. When no email is found, capture what you DID find (phone numbers, contact form URLs, social profiles, press contacts) in the contact_notes field — this information is valuable
+
+## BUDGET
+
+- Maximum **{MAX_SEARCHES}** web searches
+- Maximum **{MAX_PAGE_READS}** page reads
+- Focus your entire budget on finding emails. Do NOT spend reads verifying identities — they are already confirmed.
+- When budget runs low, produce your final JSON output. Partial results are better than no results.
+
+## OUTPUT
+
+Return a JSON object with NO markdown code fences:
+
 {
-  "url_selections": [
+  "decision_makers": [
     {
-      "role_index": 0,
-      "selected_urls": ["url1", "url2"],
-      "reasoning": "Brief explanation of why these URLs were selected"
+      "name": "Full Name",
+      "title": "Official Title",
+      "organization": "Organization Name",
+      "reasoning": "Why this position has power over the issue",
+      "email": "verified@email.gov or NO_EMAIL_FOUND",
+      "email_source": "URL where you read the email, or empty string",
+      "recency_check": "Identity confirmed via [search evidence]",
+      "contact_notes": "Alternative contact info found: phone (555) 123-4567, contact form at https://..."
+    }
+  ],
+  "research_summary": "Brief summary of email search outcomes"
+}
+
+Include ALL people from the input, even those without emails. Return JSON directly.`;
+
+/**
+ * @deprecated Replaced by buildSingleContactPrompt (per-identity parallel approach).
+ * Kept for reference only.
+ */
+export function buildContactHuntingPrompt(
+	identities: ResolvedIdentity[],
+	cachedContacts: CachedContactInfo[],
+	subjectLine: string,
+	roles: Array<{ position: string; organization: string; reasoning: string }>
+): string {
+	// Build a map of cached contacts by orgKey + title
+	const cacheMap = new Map<string, CachedContactInfo>();
+	for (const c of cachedContacts) {
+		if (c.title) {
+			cacheMap.set(`${c.orgKey}::${c.title.toLowerCase()}`, c);
+		}
+	}
+
+	// Format each identity with cache annotation
+	const identityList = identities
+		.map((id, i) => {
+			// Find matching role for reasoning
+			const role = roles.find(
+				(r) =>
+					r.position.toLowerCase() === id.position.toLowerCase() &&
+					r.organization.toLowerCase() === id.organization.toLowerCase()
+			);
+
+			const orgKey = id.organization
+				.toLowerCase()
+				.replace(/^the\s+/, '')
+				.replace(/['']/g, '')
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-|-$/g, '');
+
+			const cached = cacheMap.get(`${orgKey}::${id.title.toLowerCase()}`);
+
+			if (cached?.email) {
+				return `${i}. **${id.name}** — ${id.title} at ${id.organization} [ALREADY RESOLVED — use cached email: ${cached.email}]`;
+			}
+
+			const evidenceLine = id.search_evidence
+				? `\n   Identity evidence: ${id.search_evidence}`
+				: '';
+			const reasoningLine = role?.reasoning
+				? `\n   Power relevance: ${role.reasoning}`
+				: '';
+
+			return `${i}. **${id.name}** — ${id.title} at ${id.organization}${evidenceLine}${reasoningLine}`;
+		})
+		.join('\n\n');
+
+	// Generate domain context from organization types
+	const orgTypes = detectOrgTypes(identities.map((id) => id.organization));
+	const domainContext = generateDomainContext(orgTypes);
+
+	// Format cached contacts note
+	const cachedNote =
+		cachedContacts.filter((c) => c.email).length > 0
+			? `Already resolved (skip research for these):\n${cachedContacts
+					.filter((c) => c.email)
+					.map((c) => `- ${c.name || 'Unknown'} at ${c.orgKey}: ${c.email}`)
+					.join('\n')}`
+			: 'No cached contacts available.';
+
+	return `Find email addresses for these individuals. Their identities are already confirmed.
+
+Issue context: "${subjectLine}"
+
+## PEOPLE TO FIND EMAILS FOR
+
+${identityList}
+
+For each person, search for and read pages where their email address appears. Return results for ALL people as JSON.`;
+}
+
+// ============================================================================
+// Domain Context Helpers — Observational patterns, NOT directives
+// ============================================================================
+
+type OrgType = 'government' | 'union' | 'think_tank' | 'corporate' | 'nonprofit' | 'media' | 'other';
+
+function detectOrgTypes(organizations: string[]): Set<OrgType> {
+	const types = new Set<OrgType>();
+	for (const org of organizations) {
+		const lower = org.toLowerCase();
+		if (
+			/congress|senate|house|committee|commission|department|agency|city of|county of|state of|mayor|governor/.test(
+				lower
+			)
+		) {
+			types.add('government');
+		} else if (/union|afl-cio|seiu|teamsters|federation|labor/.test(lower)) {
+			types.add('union');
+		} else if (/institute|foundation|center for|policy|research|council on/.test(lower)) {
+			types.add('think_tank');
+		} else if (/inc|corp|llc|company|group|enterprises/.test(lower)) {
+			types.add('corporate');
+		} else if (/association|society|alliance|coalition|network/.test(lower)) {
+			types.add('nonprofit');
+		} else if (/times|post|news|journal|media|press|editorial/.test(lower)) {
+			types.add('media');
+		} else {
+			types.add('other');
+		}
+	}
+	return types;
+}
+
+function generateDomainContext(orgTypes: Set<OrgType>): string {
+	const observations: string[] = [];
+
+	if (orgTypes.has('government')) {
+		observations.push(
+			'Government offices typically publish phone numbers and contact forms rather than email addresses. Staff directories, when available, may list individual emails. Congressional offices sometimes publish emails on senate.gov or house.gov profile pages.'
+		);
+	}
+	if (orgTypes.has('union')) {
+		observations.push(
+			'Labor unions and advocacy organizations often publish press and media contact emails. National offices tend to have general contact forms, but press contacts are frequently available.'
+		);
+	}
+	if (orgTypes.has('think_tank')) {
+		observations.push(
+			'Think tanks and policy institutes tend to list staff emails on team/people pages. Researchers and analysts often have published email addresses.'
+		);
+	}
+	if (orgTypes.has('corporate')) {
+		observations.push(
+			'Corporate executives rarely publish direct email addresses. Investor relations and press contacts are more commonly available. SEC filings sometimes contain contact information.'
+		);
+	}
+	if (orgTypes.has('media')) {
+		observations.push(
+			'Media organizations typically publish editorial contact emails. Reporters and editors often have published email addresses on bylines or staff pages.'
+		);
+	}
+
+	if (observations.length === 0) return '';
+
+	return `Domain patterns (for context, not constraints — use your judgment):\n${observations.map((o) => `- ${o}`).join('\n')}`;
+}
+
+/**
+ * Generate a single-line domain hint for a specific organization.
+ * Used by per-identity mini-agents in Phase 2b.
+ */
+export function generateDomainHintForOrg(organization: string): string {
+	const types = detectOrgTypes([organization]);
+	const context = generateDomainContext(types);
+	if (!context) return '';
+	return `\n${context}\n`;
+}
+
+// ============================================================================
+// Phase 2a: Identity Extraction — Non-agentic parallel approach
+// ============================================================================
+
+/**
+ * System prompt for Phase 2a identity extraction.
+ * Used with generateWithThoughts() — NOT agentic, no function calling.
+ * Receives pre-fetched search results and extracts names from titles.
+ *
+ * Template variables: {CURRENT_DATE}
+ */
+export const IDENTITY_EXTRACTION_PROMPT = `You are an identity extraction system. Given search results about institutional positions, extract the name of the current holder from search result metadata.
+
+Rules:
+- Use the MOST RECENT results (check publishedDate) as primary evidence
+- Search result titles are your evidence: "John Smith Named New CEO of Acme Corp"
+- If multiple names appear for the same role, prefer the most recent result
+- If no name can be determined, set name to "UNKNOWN" and explain what you found
+- search_evidence should cite the specific result title and date
+
+Today's date: {CURRENT_DATE}
+
+Return a JSON object (no markdown code fences):
+
+{
+  "identities": [
+    {
+      "position": "original position description from input",
+      "name": "Full Name or UNKNOWN",
+      "title": "official title (may differ from position)",
+      "organization": "organization name",
+      "search_evidence": "From: 'result title' (YYYY-MM-DD)"
     }
   ]
 }
-\`\`\`
 
-Select exactly 2-3 URLs per role. If no promising URLs exist for a role, return an empty selected_urls array with reasoning explaining why.`;
-
-// ============================================================================
-// Phase 2b: Content Extraction — Extract contact info from fetched pages (Step D)
-// ============================================================================
-
-export const CONTENT_EXTRACTION_PROMPT = `You are a researcher extracting verified contact information from web page content that has already been retrieved for you.
-
-TODAY'S DATE: {CURRENT_DATE}
-CURRENT YEAR: {CURRENT_YEAR}
-
-## Mission
-
-For each position listed below, examine the provided page content and extract:
-- The name of the person who CURRENTLY holds this position
-- Their official title
-- Their email address (MUST appear VERBATIM in the page content provided)
-- The specific URL of the page where you found this information
-
-## CRITICAL EMAIL RULES
-
-1. ONLY report an email if it appears CHARACTER-FOR-CHARACTER in the page content provided below
-2. Do NOT infer or construct emails from naming patterns (e.g., do NOT guess firstname.lastname@domain.com)
-3. Do NOT construct emails from domain names you see in URLs
-4. If no email appears verbatim in the provided content, set email to "NO_EMAIL_FOUND"
-5. When you find an email, note the EXACT URL of the page that contained it in email_source
-
-## Recency Verification
-
-- Cross-reference names across multiple pages when possible
-- Note the publication dates of your sources
-- If sources conflict about who currently holds a position, prefer the most recent source
-- Flag any indication that a person has left the role
-
-## Output Schema
-
-Return valid JSON with NO other text:
-
-\`\`\`
-{
-  "decision_makers": [{
-    "name": string,
-    "title": string,
-    "organization": string,
-    "reasoning": string,
-    "email": string,
-    "email_source": string,
-    "recency_check": string
-  }],
-  "research_summary": string
-}
-\`\`\`
-
-Field details:
-- name: Full name of the current holder
-- title: Their exact title at the organization
-- organization: The organization name
-- reasoning: Why this position has power over the issue (from the role description)
-- email: The email found VERBATIM in page content, OR "NO_EMAIL_FOUND"
-- email_source: The exact URL of the page containing the email (empty string if NO_EMAIL_FOUND)
-- recency_check: Format: "Verified via [SOURCE TITLE] dated [DATE]. Source age: [N] days."
-- research_summary: Brief summary of research process and confidence level`;
-
-// ============================================================================
-// Phase 2c: Unified Extraction — Single-call extraction for multiple roles (Wave 1B)
-// ============================================================================
+Include ALL positions from the input. Return JSON directly.`;
 
 /**
- * Unified extraction prompt for Wave 1B architecture.
- * Combines role resolution and contact extraction in a single Gemini call.
- * Eliminates triage step by trusting Exa's ranking.
+ * Build user prompt for Phase 2a: identity extraction from pre-fetched search results.
  *
- * Key features:
- * - Processes multiple roles in one call
- * - Uses 0-based indexing for role and page references
- * - Includes free-form contact_notes for alternative contact paths
- * - Strict email verification requirements
+ * Input: roles paired with their Exa search hits.
  */
-export const UNIFIED_EXTRACTION_PROMPT = `You are extracting verified contact information for multiple positions from retrieved web pages.
-
-TODAY'S DATE: {CURRENT_DATE}
-CURRENT YEAR: {CURRENT_YEAR}
-
-## MISSION
-
-For each position listed below, find the CURRENT holder from the provided page content and extract their contact information.
-
-## CRITICAL EMAIL RULES
-
-1. ONLY report an email as verified if it appears CHARACTER-FOR-CHARACTER in the page content provided
-2. The email must be clearly associated with this specific person (near their name, in their bio, in a staff listing)
-3. General inboxes (info@, contact@, press@) only count if explicitly listed as this person's direct contact
-4. Do NOT infer or construct emails from naming patterns
-5. If you cannot verify an email belongs to this specific person, set email to null and email_verified to false
-
-## CONTACT DISCOVERY
-
-Beyond the primary email, note any alternative contact paths you discover:
-- Scheduler or executive assistant contacts
-- Press office or media relations
-- Chief of staff or deputy contacts
-- General office phone or contact form
-- Any other relevant contact information
-
-Record these in the contact_notes field as free-form text.
-
-## OUTPUT FORMAT
-
-Return valid JSON:
-
-{
-  "extractions": [
-    {
-      "role_index": number,
-      "name": "Full Name" | null,
-      "title": "Exact Title" | null,
-      "email": "verified@email.gov" | null,
-      "email_verified": boolean,
-      "email_source_page": number | null,
-      "contact_notes": "Free-form notes about alternative contacts discovered",
-      "resolved": boolean,
-      "recency_note": "Verification source and date"
-    }
-  ],
-  "research_summary": "Brief summary of extraction process and confidence"
-}
-
-Field definitions:
-- role_index: The index of the position from the input list (0-based)
-- name: Full name of current holder, or null if not found
-- title: Their exact title at the organization
-- email: Verified email found in page content, or null
-- email_verified: true ONLY if email appears verbatim in provided content
-- email_source_page: Index of the page where email was found (0-based)
-- contact_notes: Any alternative contact paths discovered (scheduler, press, etc.)
-- resolved: true if we confidently identified the current holder
-- recency_note: How we verified this person is current (e.g., "Staff directory dated Jan 2026")`;
-
-/**
- * Build user prompt for unified extraction.
- * Combines role requirements with fetched page contents for single-call extraction.
- *
- * @param roles - Discovered roles from Phase 1
- * @param pageContents - Fetched page contents from Exa
- * @param subjectLine - Issue context for relevance
- * @returns Formatted user prompt
- */
-export function buildUnifiedExtractionPrompt(
-	roles: Array<{
-		position: string;
-		organization: string;
-		jurisdiction: string;
-		reasoning: string;
-	}>,
-	pageContents: Array<{
-		url: string;
-		title: string;
-		text: string;
-		publishedDate?: string;
-	}>,
-	subjectLine: string
-): string {
-	// Format roles
-	const roleList = roles
-		.map(
-			(role, i) =>
-				`${i}. **${role.position}** at ${role.organization} (${role.jurisdiction})\n   Why: ${role.reasoning}`
-		)
-		.join('\n\n');
-
-	// Format page contents
-	const pageBlocks = pageContents
-		.map((page, i) => {
-			const date = page.publishedDate ? ` | Published: ${page.publishedDate}` : '';
-			return `--- PAGE ${i} ---
-URL: ${page.url}
-Title: ${page.title}${date}
-
-${page.text}
-
---- END PAGE ${i} ---`;
-		})
-		.join('\n\n');
-
-	return `Extract contact information for these positions from the provided page content.
-
-Issue context: "${subjectLine}"
-
-## POSITIONS TO RESOLVE
-
-${roleList}
-
-## RETRIEVED PAGE CONTENT
-
-${pageBlocks}
-
-For each position, identify the current holder from the pages above. Report their email ONLY if it appears verbatim in the content. Note any alternative contact paths in contact_notes.`;
-}
-
-// ============================================================================
-// Exa-backed Prompt Builders (Steps B and D)
-// ============================================================================
-
-/**
- * Build user prompt for Step B: URL Triage
- * Formats discovered roles and Exa search results for Gemini to select best URLs.
- */
-export function buildUrlTriagePrompt(
-	roles: Array<{
-		position: string;
-		organization: string;
-		jurisdiction: string;
-		reasoning: string;
-	}>,
-	searchResults: Array<{
-		organization: string;
-		roleIndices: number[];
-		hits: Array<{
-			url: string;
-			title: string;
-			publishedDate?: string;
-			author?: string;
-		}>;
+export function buildIdentityExtractionPrompt(
+	roleResults: Array<{
+		role: { position: string; organization: string; jurisdiction: string };
+		hits: Array<{ url: string; title: string; publishedDate?: string; score?: number }>;
 	}>
 ): string {
-	// Format roles
-	const roleList = roles
-		.map(
-			(role, i) =>
-				`${i}. **${role.position}** at ${role.organization} (${role.jurisdiction})`
-		)
-		.join('\n');
+	const sections = roleResults
+		.map((rr, i) => {
+			const hitLines =
+				rr.hits.length > 0
+					? rr.hits
+							.slice(0, 10) // Cap at 10 results per role to control prompt size
+							.map(
+								(h, j) =>
+									`  ${j + 1}. "${h.title}" (${h.publishedDate || 'no date'}) — ${h.url.slice(0, 80)}`
+							)
+							.join('\n')
+					: '  (no search results found)';
 
-	// Format search results grouped by organization
-	const resultSections = searchResults
-		.map((orgResult) => {
-			const roleRefs = orgResult.roleIndices
-				.map((i) => `Role ${i}`)
-				.join(', ');
-			const hitList = orgResult.hits
-				.map((hit, j) => {
-					const date = hit.publishedDate
-						? ` (${hit.publishedDate})`
-						: '';
-					const author = hit.author ? ` by ${hit.author}` : '';
-					return `  ${j + 1}. ${hit.title}${date}${author}\n     URL: ${hit.url}`;
-				})
-				.join('\n');
-
-			return `### ${orgResult.organization} (covers ${roleRefs})\n${hitList}`;
+			return `## Position ${i}: ${rr.role.position} (${rr.role.organization}, ${rr.role.jurisdiction})\nSearch results:\n${hitLines}`;
 		})
 		.join('\n\n');
 
-	return `Select the best URLs for finding current holders and email addresses for these positions.
-
-## Positions to Research
-
-${roleList}
-
-## Search Results
-
-${resultSections}
-
-For each role (by index), select 2-3 URLs most likely to contain the current holder's name and email address. Return as JSON.`;
+	return `Extract the current holder for each position from the search results below.\n\n${sections}`;
 }
+
+// ============================================================================
+// Phase 2b: Single-Contact Hunting — Per-identity mini-agents
+// ============================================================================
 
 /**
- * Build user prompt for Step D: Content Extraction
- * Formats discovered roles and fetched page content for Gemini to extract contact information.
+ * System prompt for per-identity contact hunting mini-agents.
+ * Each mini-agent has a tiny budget (1 search + 2 reads) focused on ONE person.
+ *
+ * Design: maximum agency, minimum prescription.
+ * Template variables: {MAX_SEARCHES}, {MAX_PAGE_READS}, {DOMAIN_HINT}, {CURRENT_DATE}
  */
-export function buildContentExtractionPrompt(
-	roles: Array<{
-		position: string;
-		organization: string;
-		jurisdiction: string;
-		reasoning: string;
-	}>,
-	pageContents: Array<{
-		url: string;
-		title: string;
-		text: string;
-		publishedDate?: string;
-	}>,
-	subjectLine: string
-): string {
-	// Format roles
-	const roleList = roles
-		.map(
-			(role, i) =>
-				`${i + 1}. **${role.position}** at ${role.organization} (${role.jurisdiction})\n   Why: ${role.reasoning}`
-		)
-		.join('\n\n');
+export const SINGLE_CONTACT_PROMPT = `You are searching for the email address of ONE specific person. You have two tools: search_web and read_page.
 
-	// Format page contents with clear URL labels
-	const pageBlocks = pageContents
-		.map((page, i) => {
-			const date = page.publishedDate
-				? ` | Published: ${page.publishedDate}`
-				: '';
-			return `--- PAGE ${i + 1} ---
-URL: ${page.url}
-Title: ${page.title}${date}
+Budget: {MAX_SEARCHES} search(es), {MAX_PAGE_READS} page read(s).
 
-${page.text}
+Rules:
+1. Emails you report MUST appear verbatim in a page you read via read_page.
+2. Do NOT construct, guess, or infer email addresses.
+3. General office emails ARE acceptable (mayor@city.gov, press@org.com) — these are valid published contact paths.
+4. Tool responses include contact_hints (pre-extracted emails/phones) and url_hint (page type). Use these however you see fit.
+5. If no email found, capture alternatives (phone, form URL, social profile) in contact_notes.
+{DOMAIN_HINT}
+Today's date: {CURRENT_DATE}
 
---- END PAGE ${i + 1} ---`;
-		})
-		.join('\n\n');
+Return a JSON object (no markdown code fences):
 
-	return `Find the CURRENT holders of these positions and their email addresses from the page content provided below.
-
-Issue context: "${subjectLine}"
-
-## Positions to Research
-
-${roleList}
-
-## Retrieved Page Content
-
-The following pages have been fetched and their full text content is provided. Extract names and email addresses ONLY from this content.
-
-${pageBlocks}
-
-For each position, identify the current holder from the page content above. Report their email ONLY if it appears verbatim in the content. Return results as JSON.`;
+{
+  "decision_makers": [{
+    "name": "Full Name",
+    "title": "Official Title",
+    "organization": "Organization Name",
+    "reasoning": "Why this position matters (1 sentence)",
+    "email": "found@email.com or NO_EMAIL_FOUND",
+    "email_source": "URL where email appeared in read_page text, or empty string",
+    "recency_check": "Identity confirmed via [search evidence]",
+    "contact_notes": "Alternative contacts found, or empty string"
+  }],
+  "research_summary": "What you found"
 }
 
-// ============================================================================
-// Legacy exports for backwards compatibility
-// ============================================================================
+Return JSON directly — no markdown code blocks.`;
 
-/** @deprecated Use ROLE_DISCOVERY_PROMPT and PERSON_LOOKUP_PROMPT instead */
-export const DECISION_MAKER_PROMPT = ROLE_DISCOVERY_PROMPT;
-
-/** @deprecated Use buildRoleDiscoveryPrompt and buildPersonLookupPrompt instead */
-export function buildDecisionMakerPrompt(
-	subjectLine: string,
-	coreMessage: string,
-	topics: string[],
-	voiceSample?: string
+/**
+ * Build focused user prompt for a single-identity contact hunting mini-agent.
+ *
+ * When identity is UNKNOWN, the mission expands: identify the person first,
+ * then find their email. The agent gets a bigger budget for this (2 searches).
+ */
+export function buildSingleContactPrompt(
+	identity: ResolvedIdentity,
+	reasoning: string
 ): string {
-	return buildRoleDiscoveryPrompt(subjectLine, coreMessage, topics, voiceSample);
+	if (identity.name === 'UNKNOWN') {
+		return `Identify who currently holds this position AND find their email address:
+
+**${identity.title}** at ${identity.organization}
+Why this position matters: ${reasoning || 'Key decision-maker for this issue.'}
+
+Step 1: Search to find the CURRENT person in this role. Use the most recent results.
+Step 2: Once you have a name, search for their email.
+
+You MUST return the person's actual name in the "name" field — never return "Unknown" or "UNKNOWN".
+If you cannot determine who holds this position, set name to the most specific title you can find.`;
+	}
+
+	return `Find the email address for:
+
+**${identity.name}** — ${identity.title} at ${identity.organization}
+Identity confirmed via: ${identity.search_evidence}
+Why they matter: ${reasoning || 'Key decision-maker for this issue.'}`;
 }

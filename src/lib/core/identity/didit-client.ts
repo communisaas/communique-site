@@ -382,21 +382,6 @@ export function isAgeEligible(birthYear: number): boolean {
 	return age >= 18;
 }
 
-// ============================================================================
-// Exports
-// ============================================================================
-
-export type {
-	DiditConfig,
-	DiditSessionRequest,
-	DiditSessionResponse,
-	DiditWebhookEvent,
-	DiditVerificationResult,
-	DiditVerificationStatus,
-	DiditDocumentType,
-	AuthorityLevel
-};
-
 // Functions are already exported where defined
 // Re-export generateCredentialHash with alias
 export { generateCredentialHash as generateDiditCredentialHash };

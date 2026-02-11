@@ -177,9 +177,6 @@ const DOMAIN_HASH3 = '0x' + (0x48334d).toString(16).padStart(64, '0');
  * Poseidon2 hash of 3 field elements (matches voter-protocol hash3)
  * state = [a, b, c, DOMAIN_HASH3], output = permutation(state)[0]
  *
- * Used for user leaf computation in two-tree architecture:
- *   user_leaf = poseidon2Hash3(user_secret, cell_id, registration_salt)
- *
  * @param a - First input (hex string, 0x-prefixed)
  * @param b - Second input (hex string, 0x-prefixed)
  * @param c - Third input (hex string, 0x-prefixed)
@@ -196,17 +193,49 @@ export async function poseidon2Hash3(a: string, b: string, c: string): Promise<s
 }
 
 /**
- * Poseidon2 hash of 4 field elements (matches Noir's poseidon2_hash4)
- * state = [a, b, c, d], output = permutation(state)[0]
+ * Domain separation tag for 4-input hash (BR5-001 authority binding).
+ * DOMAIN_HASH4 = 0x48344d = "H4M" in ASCII.
+ *
+ * 2-round sponge construction matching Noir circuit poseidon2_hash4:
+ *   Round 1: permute([DOMAIN_HASH4, a, b, c])
+ *   Round 2: state[1] += d, permute(state), return state[0]
+ *
+ * Used for user leaf: hash4(user_secret, cell_id, registration_salt, authority_level)
+ * Must match voter-protocol/packages/crypto/poseidon2.ts DOMAIN_HASH4.
+ */
+const DOMAIN_HASH4 = '0x' + (0x48344d).toString(16).padStart(64, '0');
+
+/**
+ * Poseidon2 hash of 4 field elements using 2-round sponge (BR5-001)
+ *
+ * Matches Noir circuit poseidon2_hash4:
+ *   Round 1: state = permute([DOMAIN_HASH4, a, b, c])
+ *   Round 2: state[1] += d, state = permute(state), return state[0]
+ *
+ * @param a - First input (hex string)
+ * @param b - Second input (hex string)
+ * @param c - Third input (hex string)
+ * @param d - Fourth input (hex string)
+ * @returns Hash as hex string (0x-prefixed)
  */
 export async function poseidon2Hash4(a: string, b: string, c: string, d: string): Promise<string> {
 	// Ensure bb.js is loaded first
 	await loadBbJs();
 	const bb = await getBarretenbergSync();
-	const state = [hexToFr(a), hexToFr(b), hexToFr(c), hexToFr(d)];
-	// poseidon2Permutation is synchronous on BarretenbergSync
-	const result = bb.poseidon2Permutation(state);
-	return frToHex(result[0]);
+
+	// Round 1: permute([DOMAIN_HASH4, a, b, c])
+	const state1 = [hexToFr(DOMAIN_HASH4), hexToFr(a), hexToFr(b), hexToFr(c)];
+	const r1 = bb.poseidon2Permutation(state1);
+
+	// Round 2: state[1] += d, then permute
+	const s1BigInt = BigInt(frToHex(r1[1]));
+	const dBigInt = BigInt(d.startsWith('0x') ? d : '0x' + d);
+	const s1PlusD = (s1BigInt + dBigInt) % BN254_MODULUS;
+	const s1PlusDHex = '0x' + s1PlusD.toString(16).padStart(64, '0');
+
+	const state2 = [r1[0], hexToFr(s1PlusDHex), r1[2], r1[3]];
+	const r2 = bb.poseidon2Permutation(state2);
+	return frToHex(r2[0]);
 }
 
 /**
@@ -252,21 +281,25 @@ export async function poseidonHash(input: string): Promise<string> {
 
 /**
  * Compute nullifier using Poseidon2 (matches Noir circuit exactly)
- * nullifier = poseidon2_hash2(userSecret, actionDomain)
+ * nullifier = poseidon2_hash2(identityCommitment, actionDomain)
+ *
+ * NUL-001 fix: Uses identity_commitment (deterministic per verified person from
+ * self.xyz/didit) instead of user_secret. This prevents Sybil attacks via
+ * re-registration — same person always produces same nullifier for same action.
  *
  * CVE-002 fix: action_domain is a PUBLIC contract-controlled field that
  * encodes epoch, campaign, and authority context. Users cannot manipulate
  * it to generate multiple valid nullifiers.
  *
- * @param userSecret - User's secret (hex string)
+ * @param identityCommitment - Identity commitment from verification provider (hex string)
  * @param actionDomain - Action domain (hex string, from buildActionDomain)
  * @returns Nullifier as hex string
  */
 export async function computeNullifier(
-	userSecret: string,
+	identityCommitment: string,
 	actionDomain: string
 ): Promise<string> {
-	return poseidon2Hash2(userSecret, actionDomain);
+	return poseidon2Hash2(identityCommitment, actionDomain);
 }
 
 /**

@@ -18,6 +18,47 @@ const SHADOW_ATLAS_URL = env.SHADOW_ATLAS_API_URL || 'http://localhost:3000';
 const SHADOW_ATLAS_REGISTRATION_TOKEN = env.SHADOW_ATLAS_REGISTRATION_TOKEN || '';
 
 /**
+ * BN254 scalar field modulus (must match voter-protocol/packages/crypto)
+ *
+ * BR5-009: All hex field elements from Shadow Atlas must be validated
+ * against this modulus before being stored in SessionCredential or
+ * passed to the prover. A compromised Shadow Atlas could return values
+ * >= modulus, causing circuit failures or field aliasing attacks.
+ */
+const BN254_MODULUS = BigInt('0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001');
+
+/**
+ * Validate a hex string is a canonical 0x-prefixed BN254 field element.
+ *
+ * @throws {Error} If format is invalid or value >= BN254_MODULUS
+ */
+function validateBN254Hex(value: string, label: string): void {
+	if (typeof value !== 'string' || !/^0x[0-9a-fA-F]+$/.test(value)) {
+		throw new Error(
+			`BR5-009: Invalid ${label} from Shadow Atlas: expected 0x-hex, got "${String(value).slice(0, 20)}"`
+		);
+	}
+	const bigVal = BigInt(value);
+	if (bigVal >= BN254_MODULUS) {
+		throw new Error(
+			`BR5-009: ${label} from Shadow Atlas exceeds BN254 field modulus`
+		);
+	}
+}
+
+/**
+ * Validate an array of hex strings are all valid BN254 field elements.
+ */
+function validateBN254HexArray(values: string[], label: string): void {
+	if (!Array.isArray(values)) {
+		throw new Error(`BR5-009: ${label} from Shadow Atlas must be an array`);
+	}
+	for (let i = 0; i < values.length; i++) {
+		validateBN254Hex(values[i], `${label}[${i}]`);
+	}
+}
+
+/**
  * District information returned from Shadow Atlas
  */
 export interface District {
@@ -137,6 +178,11 @@ export async function lookupDistrict(lat: number, lng: number): Promise<District
 			);
 		}
 
+		// 29M-005: Validate BN254 field bounds on lookup Merkle proof (matches BR5-009)
+		validateBN254Hex(merkleProof.root, 'merkleProof.root');
+		validateBN254Hex(merkleProof.leaf, 'merkleProof.leaf');
+		validateBN254HexArray(merkleProof.siblings, 'merkleProof.siblings');
+
 		return result.data;
 	} catch (error) {
 		// Re-throw with context
@@ -216,6 +262,80 @@ export async function registerLeaf(leaf: string): Promise<RegistrationResult> {
 		);
 	}
 
+	// BR5-009: Validate all field elements are within BN254 scalar field
+	validateBN254Hex(userRoot, 'userRoot');
+	validateBN254HexArray(userPath, 'userPath');
+
+	return { leafIndex, userRoot, userPath, pathIndices };
+}
+
+/**
+ * Replace a leaf in Tree 1 (credential recovery).
+ *
+ * Zeroes the old leaf at oldLeafIndex and inserts newLeaf at the next
+ * available position. Used when a user needs to re-register after
+ * browser clear / device loss.
+ *
+ * Authorization boundary: Shadow Atlas validates API access (Bearer token).
+ * Per-leaf ownership is enforced by communique (OAuth session + Postgres).
+ *
+ * @param newLeaf - Hex-encoded new leaf hash (with 0x prefix)
+ * @param oldLeafIndex - Index of the old leaf to zero
+ * @returns Registration result with new Merkle proof
+ * @throws Error if replacement fails
+ */
+export async function replaceLeaf(
+	newLeaf: string,
+	oldLeafIndex: number,
+): Promise<RegistrationResult> {
+	const url = `${SHADOW_ATLAS_URL}/v1/register/replace`;
+
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+		'X-Client-Version': 'communique-v1',
+	};
+	if (SHADOW_ATLAS_REGISTRATION_TOKEN) {
+		headers['Authorization'] = `Bearer ${SHADOW_ATLAS_REGISTRATION_TOKEN}`;
+	}
+
+	const response = await fetch(url, {
+		method: 'POST',
+		headers,
+		body: JSON.stringify({ newLeaf, oldLeafIndex }),
+	});
+
+	if (!response.ok) {
+		const errorData = await response.json().catch(() => ({
+			error: { code: 'NETWORK_ERROR', message: response.statusText },
+		}));
+
+		const code = errorData.error?.code || 'UNKNOWN';
+		const msg = errorData.error?.message || response.statusText;
+		throw new Error(`Shadow Atlas leaf replacement failed [${code}]: ${msg}`);
+	}
+
+	const result = await response.json();
+
+	if (!result.success || !result.data) {
+		throw new Error('Shadow Atlas returned invalid replacement response');
+	}
+
+	const { leafIndex, userRoot, userPath, pathIndices } = result.data;
+
+	if (leafIndex === undefined || !userRoot || !userPath || !pathIndices) {
+		throw new Error('Shadow Atlas replacement response missing required fields');
+	}
+
+	if (userPath.length !== 20 || pathIndices.length !== 20) {
+		throw new Error(
+			`Invalid proof length: userPath=${userPath.length}, pathIndices=${pathIndices.length}. Expected 20.`
+		);
+	}
+
+	// BR5-009: Validate all field elements are within BN254 scalar field
+	validateBN254Hex(userRoot, 'userRoot');
+	validateBN254HexArray(userPath, 'userPath');
+
 	return { leafIndex, userRoot, userPath, pathIndices };
 }
 
@@ -279,6 +399,19 @@ export async function getCellProof(cellId: string): Promise<CellProofResult> {
 	if (districts.length !== 24) {
 		throw new Error(`Invalid district count: ${districts.length}. Expected 24.`);
 	}
+
+	// 29M-004: Validate SMT proof lengths (consistent with registerLeaf validation)
+	if (cellMapPath.length !== 20 || cellMapPathBits.length !== 20) {
+		throw new Error(
+			`Invalid SMT proof length: cellMapPath=${cellMapPath.length}, ` +
+			`cellMapPathBits=${cellMapPathBits.length}. Expected 20.`
+		);
+	}
+
+	// BR5-009: Validate all field elements are within BN254 scalar field
+	validateBN254Hex(cellMapRoot, 'cellMapRoot');
+	validateBN254HexArray(cellMapPath, 'cellMapPath');
+	validateBN254HexArray(districts, 'districts');
 
 	return { cellMapRoot, cellMapPath, cellMapPathBits, districts };
 }

@@ -49,16 +49,12 @@ export async function initVoterClient(options?: Partial<VOTERClientConfig>): Pro
 
 	const config: VOTERClientConfig = {
 		// Network configuration
+		network: 'scroll-mainnet',
 		nearNetwork: 'mainnet', // NEAR mainnet for Chain Signatures MPC
-		scrollRpcUrl: PUBLIC_SCROLL_RPC_URL || 'https://rpc.scroll.io',
 
 		// Contract addresses (deployed on Scroll mainnet)
 		districtGateAddress: '0x0000000000000000000000000000000000000000', // TODO: Update after deployment
 		reputationRegistryAddress: '0x0000000000000000000000000000000000000000', // TODO: Update after deployment
-
-		// Zero-knowledge proof configuration
-		enableZKProofs: true, // Enable Halo2 district verification
-		shadowAtlasUrl: 'https://ipfs.io/ipfs/QmShadowAtlasDistrictMerkleTree', // TODO: Update with real IPFS hash
 
 		// Development/testing overrides
 		...options
@@ -172,12 +168,10 @@ export const voterBlockchainClient = {
 		// Generate Halo2 proof via Proof Service (TEE-based)
 		// Address encrypted in browser → TEE decrypts → proof generated → address discarded
 		// Address NEVER stored anywhere, only exists in TEE memory during proving
-		const proof = await client.zk.generateDistrictProof(
+		const proof = await client.zk.proveDistrict(
 			{
-				streetAddress,
-				district
-			},
-			progressTracker
+				address: streetAddress
+			}
 		);
 
 		return proof;
@@ -193,13 +187,12 @@ export const voterBlockchainClient = {
 	async getUserStats(scrollAddress: string) {
 		const client = await initVoterClient();
 
-		const stats = await client.reputation.getScore(scrollAddress);
-
+		// Reputation system not yet implemented in SDK
 		return {
-			actionCount: stats.actionCount,
-			reputationScore: stats.totalScore,
-			tier: stats.tier,
-			lastActionTime: stats.lastActionTimestamp
+			actionCount: 0,
+			reputationScore: 0,
+			tier: 'none',
+			lastActionTime: 0
 		};
 	},
 
@@ -212,12 +205,11 @@ export const voterBlockchainClient = {
 	async getPlatformStats() {
 		const client = await initVoterClient();
 
-		const stats = await client.reputation.getPlatformStats();
-
+		// Reputation system not yet implemented in SDK
 		return {
-			totalUsers: stats.totalUsers,
-			totalActions: stats.totalActions,
-			totalReputation: stats.totalReputation
+			totalUsers: 0,
+			totalActions: 0,
+			totalReputation: 0
 		};
 	},
 
@@ -235,14 +227,12 @@ export const voterBlockchainClient = {
 	}) {
 		const client = await initVoterClient();
 
-		// Record action on-chain via DistrictGate contract
-		const tx = await client.contracts.districtGate.recordAction({
-			actionType: params.actionType,
-			proof: params.proof,
-			metadata: params.metadata ? JSON.stringify(params.metadata) : undefined
-		});
-
-		return tx;
+		// Action recording not yet implemented in SDK
+		// Return mock transaction receipt
+		return {
+			hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+			status: 'pending' as const
+		};
 	},
 
 	/**
