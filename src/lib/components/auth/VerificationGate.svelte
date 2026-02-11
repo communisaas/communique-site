@@ -174,7 +174,7 @@
 	<ProofGenerationModal
 		bind:show={showProofModal}
 		district={'CA-12'}
-		onComplete={handleProofComplete}
-		onError={handleProofError}
+		onComplete={(e: any) => handleProofComplete(e)}
+		onError={(e: any) => handleProofError(e)}
 	/>
 {/if}

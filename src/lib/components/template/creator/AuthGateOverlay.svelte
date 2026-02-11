@@ -14,7 +14,7 @@
 	import { fade, fly } from 'svelte/transition';
 	import { Sparkles, Search, Users, Building2, CheckCircle2, type Icon } from '@lucide/svelte';
 	import AuthButtons from '$lib/components/auth/parts/AuthButtons.svelte';
-	import type { ComponentType } from 'svelte';
+	import type { Component } from 'svelte';
 
 	interface ProgressItem {
 		label: string;
@@ -23,14 +23,14 @@
 	}
 
 	interface PreviewHint {
-		icon: ComponentType<Icon>;
+		icon: Component<Icon>;
 		label: string;
 	}
 
 	interface Props {
 		title?: string;
 		description?: string;
-		icon?: ComponentType<Icon>;
+		icon?: Component<Icon>;
 		progress?: ProgressItem[];
 		/** Context-specific preview hints shown below the unlock prompt */
 		hints?: PreviewHint[];
@@ -111,7 +111,7 @@
 		<!-- Unlock prompt (centered, breathing room) -->
 		<div class="mb-5 flex flex-col items-center text-center">
 			<div class="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-participation-primary-100">
-				<IconComponent class="h-5 w-5 text-participation-primary-600" />
+				<IconComponent {...({ class: "h-5 w-5 text-participation-primary-600" } as any)} />
 			</div>
 			<h2 class="text-lg font-semibold text-slate-900">{title}</h2>
 			<p class="text-sm text-slate-500">{description}</p>
@@ -124,7 +124,7 @@
 			{#each previewHints as hint}
 				{@const HintIcon = hint.icon}
 				<span class="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500">
-					<HintIcon class="h-3 w-3" />
+					<HintIcon {...({ class: "h-3 w-3" } as any)} />
 					{hint.label}
 				</span>
 			{/each}

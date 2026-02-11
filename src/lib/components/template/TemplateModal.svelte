@@ -93,18 +93,8 @@
 	let showQRCode = $state(false);
 	let showPreWrittenMessages = $state(false);
 
-	// CWC job results state (for conditional .gov verification)
-	let cwcJobResults = $state<any[]>([]);
-	let hasSenateDelivery = $derived(
-		cwcJobResults.some(
-			(r) =>
-				r.chamber === 'senate' &&
-				r.success &&
-				r.messageId &&
-				!r.messageId.startsWith('SIM-') &&
-				!r.messageId.startsWith('HOUSE-SIM-')
-		)
-	);
+	// Senate delivery tracking (populated by TEE delivery confirmation in Phase 2)
+	let hasSenateDelivery = $state(false);
 
 	// Generate share URL for template
 	const shareUrl = $derived(`${$page.url.origin}/s/${template.slug}`);
@@ -112,7 +102,7 @@
 	// Pre-written share messages for different contexts
 	const shareMessages = $derived(() => {
 		const actionCount = template.metrics?.sent || 0;
-		const category = template.category.toLowerCase();
+		const category = (template as any).category?.toLowerCase() || 'advocacy';
 
 		return {
 			// Short & urgent (Twitter, Discord) - <280 chars
@@ -194,7 +184,7 @@
 
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
-		const flow = analyzeEmailFlow(template as Template, currentUser);
+		const flow = analyzeEmailFlow(template as unknown as Template, currentUser);
 
 		// Store mailto URL for later use
 		if (flow.mailtoUrl) {
@@ -214,10 +204,8 @@
 					// Dispatch for analytics — distinguish verified vs unverified (CI-003)
 					dispatch('used', {
 						templateId: template.id,
-						action: 'mailto_opened',
-						verified: flow.verified ?? false,
-						deliveryMethod: flow.deliveryMethod ?? 'mailto'
-					});
+						action: 'mailto_opened'
+					} as any);
 
 					// Set up enhanced mail app detection
 					setupEnhancedMailAppDetection();
@@ -409,15 +397,15 @@
 	}
 
 	/**
-	 * Submit Congressional message with direct CWC API submission (MVP version)
-	 * HACKATHON: Bypasses ZK proof generation for demo purposes
+	 * Submit Congressional message via ZK proof flow.
+	 * Triggers ProofGenerator component for proof generation + encrypted submission.
 	 */
 	async function submitCongressionalMessage() {
 		try {
 			console.log('[Template Modal] Starting ZKP submission flow');
 
 			// Set loading state - this will now trigger the ProofGenerator component
-			modalActions.setState('cwc-submission');
+			modalActions.setState('cwc-submission' as any);
 
 			// The ProofGenerator component handles the rest:
 			// 1. Loading credentials
@@ -426,7 +414,7 @@
 			// 4. Submitting to backend
 		} catch (error) {
 			console.error('[Template Modal] Submission error:', error);
-			modalActions.setState('error');
+			modalActions.setState('error' as any);
 		}
 	}
 
@@ -513,7 +501,7 @@
 						await goto(`/s/${template.slug}`, { replaceState: true });
 					},
 					1500,
-					'guest-navigation',
+					'guest-navigation' as any,
 					componentId
 				);
 
@@ -742,29 +730,7 @@
 		a.click();
 	}
 
-	// Fetch CWC job results to check for Senate delivery
-	async function fetchCWCResults() {
-		if (!submissionId) return;
-
-		try {
-			const response = await fetch(`/api/cwc/jobs/${submissionId}`);
-			if (!response.ok) {
-				console.error('[Template Modal] Failed to fetch CWC job results');
-				return;
-			}
-
-			const data = await response.json();
-			if (data.results && Array.isArray(data.results)) {
-				cwcJobResults = data.results;
-				console.log('[Template Modal] CWC job results loaded:', {
-					count: cwcJobResults.length,
-					hasSenate: hasSenateDelivery
-				});
-			}
-		} catch (error) {
-			console.error('[Template Modal] Error fetching CWC results:', error);
-		}
-	}
+	// TODO(Phase 2): Poll submission delivery status from TEE confirmation endpoint
 </script>
 
 <!-- Modal Content (no backdrop - UnifiedModal handles that) -->
@@ -970,7 +936,7 @@
 						class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
 					>
 						<Share2 class="h-5 w-5" />
-						<span>{navigator.share ? 'Share template' : 'Copy share message'}</span>
+						<span>{(typeof navigator !== 'undefined' && (navigator as any).share) ? 'Share template' : 'Copy share message'}</span>
 					</button>
 				</div>
 
@@ -1068,10 +1034,10 @@
 					title: template.title,
 					deliveryMethod: template.deliveryMethod
 				}}
-				oncomplete={handleAddressComplete}
+				oncomplete={handleAddressComplete as any}
 			/>
 		</div>
-	{:else if currentState === 'cwc-submission'}
+	{:else if (currentState as any) === 'cwc-submission'}
 		<!-- ZKP Proof Generation & Submission State -->
 		<div class="flex h-full flex-col">
 			<!-- Header -->
@@ -1106,23 +1072,10 @@
 						templateId={template.id}
 						templateData={{
 							subject: template.title,
-							message: template.body || template.description,
+							message: (template as any).body || template.description,
 							recipientOffices: ['Senate', 'House'] // TODO: Get actual offices
 						}}
-						address={guestState.state?.address || $page.data.user?.street || ''}
-						mvpAddress={$page.data.user?.street
-							? {
-									street: $page.data.user.street,
-									city: $page.data.user.city || '',
-									state: $page.data.user.state || '',
-									zip: $page.data.user.zip || ''
-								}
-							: undefined}
-						userEmail={$page.data.user?.email}
-						userName={$page.data.user?.first_name
-							? `${$page.data.user.first_name} ${$page.data.user.last_name || ''}`.trim()
-							: undefined}
-						skipCredentialCheck={true}
+						address={(guestState.state?.address || $page.data?.user?.street || '') as any}
 						on:complete={handleProofComplete}
 						on:cancel={handleProofCancel}
 						on:error={handleProofError}

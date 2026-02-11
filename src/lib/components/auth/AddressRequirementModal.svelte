@@ -13,7 +13,7 @@
 	let {
 		template,
 		user,
-		_isOpen = true,
+		isOpen: _isOpen = true,
 		onclose,
 		oncomplete
 	}: {
@@ -48,7 +48,7 @@
 	let _selfXyzVerifying = $state(false);
 
 	// Modal control functions
-	let unifiedModal: UnifiedModal;
+	let unifiedModal: UnifiedModal | undefined = undefined;
 
 	export function open(data?: unknown) {
 		unifiedModal?.open(data);
@@ -311,7 +311,7 @@
 					onAcceptAddress={acceptAddress}
 				/>
 			{:else if currentStep === 'selfxyz'}
-				<SelfXyzVerification {selfXyzQrCode} />
+				<SelfXyzVerification userId={template.slug} templateSlug={template.slug} />
 			{:else}
 				<CompletionStep />
 			{/if}

@@ -42,16 +42,16 @@
 	// Form state
 	let street = $state('');
 	let city = $state('');
-	let state = $state('CA'); // Default to California
+	let stateCode = $state('CA'); // Default to California
 	let zipCode = $state('');
 	let isSubmitting = $state(false);
-	let error = $state<string | null>(null);
+	let error: string | null = $state(null);
 
 	// Security: Device fingerprinting
-	let deviceFingerprint = $state<string | null>(null);
+	let deviceFingerprint: string | null = $state(null);
 
 	// Security: CAPTCHA
-	let turnstileToken = $state<string | null>(null);
+	let turnstileToken: string | null = $state(null);
 	let showCaptcha = $state(false); // Only show if needed
 
 	// Security: Honeypot (invisible field that bots auto-fill)
@@ -59,7 +59,7 @@
 
 	// Security: Behavioral analysis
 	let formStartTime = $state(0);
-	let mouseMovements = $state<{ x: number; y: number; timestamp: number }[]>([]);
+	let mouseMovements: { x: number; y: number; timestamp: number }[] = $state([]);
 
 	// Generate device fingerprint on mount
 	onMount(async () => {
@@ -185,7 +185,7 @@
 		}
 
 		// Client-side validation
-		if (!street.trim() || !city.trim() || !state || !zipCode.trim()) {
+		if (!street.trim() || !city.trim() || !stateCode || !zipCode.trim()) {
 			error = 'Please fill in all fields';
 			return;
 		}
@@ -210,7 +210,7 @@
 				body: JSON.stringify({
 					street,
 					city,
-					state,
+					state: stateCode,
 					zipCode,
 					// Security metadata
 					fingerprint: deviceFingerprint,
@@ -233,7 +233,7 @@
 			// Reset form
 			street = '';
 			city = '';
-			state = 'CA';
+			stateCode = 'CA';
 			zipCode = '';
 			honeypot = '';
 			mouseMovements = [];
@@ -358,7 +358,7 @@
 						</label>
 						<select
 							id="state"
-							bind:value={state}
+							bind:value={stateCode}
 							class="w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-sm text-slate-900 transition-colors focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
 							disabled={isSubmitting}
 						>

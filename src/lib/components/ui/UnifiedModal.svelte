@@ -9,7 +9,7 @@ backdrop handling, and keyboard navigation.
 	import { quintOut, backOut } from 'svelte/easing';
 	import { createModalStore, type ModalType } from '$lib/stores/modalSystem.svelte';
 	import { X } from '@lucide/svelte';
-	import type { ModalChildrenFunction } from '$lib/types/any-replacements.js';
+	import type { Snippet } from 'svelte';
 
 	let {
 		id,
@@ -28,7 +28,7 @@ backdrop handling, and keyboard navigation.
 		showCloseButton?: boolean;
 		closeOnBackdrop?: boolean;
 		closeOnEscape?: boolean;
-		children: ModalChildrenFunction;
+		children: Snippet<[any]>;
 	} = $props();
 
 	// Connect to modal system
@@ -121,7 +121,7 @@ backdrop handling, and keyboard navigation.
 
 			<!-- Modal Content -->
 			<div class="flex-1 overflow-y-auto">
-				{@render children(modal.data)}
+				{@render children((modal.data || {}) as any)}
 			</div>
 		</div>
 	</div>

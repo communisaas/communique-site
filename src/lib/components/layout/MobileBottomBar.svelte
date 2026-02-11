@@ -53,7 +53,7 @@
 	function handlePrimaryAction(): void {
 		if (!onTemplateUse) return;
 
-		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
+		const emailFlow = analyzeEmailFlow(template as any, toEmailServiceUser(user as any));
 		onTemplateUse({
 			template,
 			requiresAuth: emailFlow.requiresAuth

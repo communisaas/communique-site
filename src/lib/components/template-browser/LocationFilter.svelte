@@ -737,7 +737,7 @@
 			// If template specifies countries, enforce country match
 			if (template.applicable_countries && template.applicable_countries.length > 0) {
 				return (
-					inferredLocation.country_code &&
+					inferredLocation?.country_code &&
 					template.applicable_countries.includes(inferredLocation.country_code)
 				);
 			}
@@ -747,28 +747,28 @@
 
 		// Filter templates to only those with jurisdictions (for scoring)
 		const templatesWithJurisdictions = countryFiltered.filter(
-			(t): t is TemplateWithJurisdictions => 'jurisdictions' in t && Array.isArray(t.jurisdictions)
+			(t): t is any => 'jurisdictions' in t && Array.isArray(t.jurisdictions)
 		);
 
 		// Score templates by location relevance (0.0 = no match, 1.0 = district match)
 		// Pass currentScope to boost templates matching the selected breadcrumb level
 		const scored = scoreTemplatesByRelevance(
-			templatesWithJurisdictions,
-			inferredLocation,
+			templatesWithJurisdictions as any,
+			inferredLocation as any,
 			currentScope
 		);
 
 		// Apply behavioral boosting asynchronously, then create groups
 		getTemplateViewCounts()
 			.then((viewCounts) => {
-				const boosted = boostByUserBehavior(scored, viewCounts);
-				const groups = createTemplateGroups(boosted, inferredLocation, currentScope);
+				const boosted = boostByUserBehavior(scored as any, viewCounts);
+				const groups = createTemplateGroups(boosted as any, inferredLocation as any, currentScope);
 
 				onFilterChange(groups);
 			})
 			.catch(() => {
 				// Fallback to location-only scoring
-				const groups = createTemplateGroups(scored, inferredLocation, currentScope);
+				const groups = createTemplateGroups(scored as any, inferredLocation as any, currentScope);
 
 				onFilterChange(groups);
 			});
@@ -877,8 +877,8 @@
 				city_name: result.city?.name || null,
 				country_code: countryCode,
 				county_fips: null,
-				latitude: result.city?.lat || result.state?.lat || null,
-				longitude: result.city?.lon || result.state?.lon || null,
+				latitude: (result.city as any)?.lat || (result.state as any)?.lat || null,
+				longitude: (result.city as any)?.lon || (result.state as any)?.lon || null,
 				source: 'user.breadcrumb_selection',
 				timestamp: new Date().toISOString(),
 				metadata: {
@@ -1102,7 +1102,7 @@
 					<LocationAutocomplete
 						label={breadcrumbState}
 						level="state"
-						currentCountry={inferredLocation?.country_code}
+						currentCountry={inferredLocation?.country_code ?? undefined}
 						isSelected={selectedScope === 'state'}
 						on:select={handleLocationSelect}
 						on:filter={() => handleScopeFilter('state')}
@@ -1126,8 +1126,8 @@
 					<LocationAutocomplete
 						label={breadcrumbCounty}
 						level="city"
-						currentCountry={inferredLocation?.country_code}
-						currentState={inferredLocation?.state_code}
+						currentCountry={inferredLocation?.country_code ?? undefined}
+						currentState={inferredLocation?.state_code ?? undefined}
 						isSelected={selectedScope === 'county'}
 						on:select={handleLocationSelect}
 						on:filter={() => handleScopeFilter('county')}
@@ -1151,8 +1151,8 @@
 					<LocationAutocomplete
 						label={breadcrumbCity}
 						level="city"
-						currentCountry={inferredLocation?.country_code}
-						currentState={inferredLocation?.state_code}
+						currentCountry={inferredLocation?.country_code ?? undefined}
+						currentState={inferredLocation?.state_code ?? undefined}
 						isSelected={selectedScope === 'city'}
 						on:select={handleLocationSelect}
 						on:filter={() => handleScopeFilter('city')}

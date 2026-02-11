@@ -1,14 +1,44 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { Building2, Mail, ExternalLink, Copy, Check, ChevronDown, X } from '@lucide/svelte';
+	import { Building2, Mail, ExternalLink, Copy, Check, ChevronDown, X, Plus } from '@lucide/svelte';
 	import type { ProcessedDecisionMaker } from '$lib/types/template';
+	import { isValidEmail } from '$lib/utils/decision-maker-processing';
 
 	interface Props {
 		decisionMakers: ProcessedDecisionMaker[];
 		onremove?: (index: number) => void;
+		onupdateemail?: (index: number, email: string) => void;
 	}
 
-	let { decisionMakers, onremove }: Props = $props();
+	let { decisionMakers, onremove, onupdateemail }: Props = $props();
+
+	// Track which members have the email input open
+	let emailInputOpen = $state<Set<number>>(new Set());
+	let emailInputValues = $state<Map<number, string>>(new Map());
+	let emailErrors = $state<Map<number, string>>(new Map());
+
+	function openEmailInput(originalIndex: number) {
+		emailInputOpen = new Set([...emailInputOpen, originalIndex]);
+		emailInputValues = new Map([...emailInputValues, [originalIndex, '']]);
+		emailErrors = new Map([...emailErrors].filter(([k]) => k !== originalIndex));
+	}
+
+	function cancelEmailInput(originalIndex: number) {
+		emailInputOpen = new Set([...emailInputOpen].filter(i => i !== originalIndex));
+		emailInputValues = new Map([...emailInputValues].filter(([k]) => k !== originalIndex));
+		emailErrors = new Map([...emailErrors].filter(([k]) => k !== originalIndex));
+	}
+
+	function submitEmail(originalIndex: number) {
+		const email = emailInputValues.get(originalIndex)?.trim() || '';
+		if (!email) return;
+		if (!isValidEmail(email)) {
+			emailErrors = new Map([...emailErrors, [originalIndex, 'Enter a valid email address']]);
+			return;
+		}
+		onupdateemail?.(originalIndex, email);
+		cancelEmailInput(originalIndex);
+	}
 
 	// Group decision-makers by organization
 	const groupedByOrg = $derived(() => {
@@ -37,7 +67,7 @@
 
 	// Track copy state per email
 	let copiedEmail = $state<string | null>(null);
-	let copyTimeout: number | null = null;
+	let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	async function copyEmail(email: string) {
 		await navigator.clipboard.writeText(email);
@@ -108,8 +138,12 @@
 						>
 							<!-- Person Row -->
 							<div class="flex items-start gap-3">
-								<!-- Indicator dot -->
-								<div class="mt-1.5 h-2 w-2 rounded-full bg-green-500 ring-2 ring-green-100"></div>
+								<!-- Indicator dot: green = has email, amber = needs email -->
+								{#if member.email}
+									<div class="mt-1.5 h-2 w-2 rounded-full bg-green-500 ring-2 ring-green-100"></div>
+								{:else}
+									<div class="mt-1.5 h-2 w-2 rounded-full bg-amber-400 ring-2 ring-amber-100"></div>
+								{/if}
 
 								<!-- Person Info -->
 								<div class="flex-1 min-w-0">
@@ -138,6 +172,53 @@
 													<Copy class="h-3 w-3 opacity-0 group-hover:opacity-50 transition-opacity" />
 												{/if}
 											</button>
+										{:else if emailInputOpen.has(member.originalIndex)}
+											<!-- Inline email input -->
+											<div class="flex w-full items-center gap-2">
+												<Mail class="h-3.5 w-3.5 text-slate-400" />
+												<input
+													type="email"
+													placeholder="name@example.com"
+													value={emailInputValues.get(member.originalIndex) || ''}
+													oninput={(e) => {
+														emailInputValues = new Map([...emailInputValues, [member.originalIndex, e.currentTarget.value]]);
+														emailErrors = new Map([...emailErrors].filter(([k]) => k !== member.originalIndex));
+													}}
+													onkeydown={(e) => {
+														if (e.key === 'Enter') submitEmail(member.originalIndex);
+														if (e.key === 'Escape') cancelEmailInput(member.originalIndex);
+													}}
+													class="flex-1 rounded border border-slate-300 px-2 py-1 text-sm text-base focus:border-participation-primary-400 focus:outline-none focus:ring-1 focus:ring-participation-primary-400 md:text-sm"
+												/>
+												<button
+													type="button"
+													onclick={() => submitEmail(member.originalIndex)}
+													class="rounded bg-participation-primary-600 px-2 py-1 text-xs font-medium text-white transition-colors hover:bg-participation-primary-700"
+												>
+													Save
+												</button>
+												<button
+													type="button"
+													onclick={() => cancelEmailInput(member.originalIndex)}
+													class="rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:text-slate-700"
+												>
+													Cancel
+												</button>
+											</div>
+											{#if emailErrors.get(member.originalIndex)}
+												<p class="text-xs text-red-600">{emailErrors.get(member.originalIndex)}</p>
+											{/if}
+										{:else}
+											<!-- No email — add email affordance -->
+											<button
+												type="button"
+												onclick={() => openEmailInput(member.originalIndex)}
+												class="inline-flex items-center gap-1.5 text-amber-600 transition-colors hover:text-amber-700"
+											>
+												<Plus class="h-3 w-3" />
+												<span>Add email</span>
+											</button>
+											<span class="text-xs text-slate-400">Email not found in public sources</span>
 										{/if}
 
 										{#if member.source}

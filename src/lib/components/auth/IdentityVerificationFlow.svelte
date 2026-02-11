@@ -77,7 +77,7 @@
 		if (event.detail.district && event.detail.state) {
 			try {
 				const { addVerifiedLocationSignal } = await import('$lib/core/location');
-				await addVerifiedLocationSignal(event.detail.district, event.detail.state);
+				await addVerifiedLocationSignal(event.detail.district || '', event.detail.state || '');
 				console.log('[Verification] Added verified location signal:', {
 					district: event.detail.district,
 					state: event.detail.state
@@ -135,12 +135,12 @@
 						const atlasResult = await registerInShadowAtlas({
 							userId,
 							identityCommitment,
-							congressionalDistrict: event.detail.district,
-							cellId: resolvedCellId, // 15-digit Census Block GEOID (enables two-tree mode)
+							congressionalDistrict: (event.detail.district as string) || '',
+							cellId: (resolvedCellId as string | undefined), // 15-digit Census Block GEOID (enables two-tree mode)
 							verificationMethod:
 								event.detail.providerData.provider === 'self.xyz' ? 'self.xyz' : 'didit',
 							verificationId: event.detail.providerData.credentialHash
-						});
+						} as any);
 
 						if (atlasResult.success) {
 							console.log('[Verification Flow] Shadow Atlas registration successful:', {

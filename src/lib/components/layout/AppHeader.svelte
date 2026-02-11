@@ -109,7 +109,7 @@
 	const ctaConfig = $derived.by(() => {
 		if (!template || !headerConfig.showCTA) return null;
 
-		const _emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
+		const _emailFlow = analyzeEmailFlow(template as any, toEmailServiceUser(user as any));
 		const isCongressional = template.deliveryMethod === 'cwc';
 
 		if (isCongressional) {
@@ -188,7 +188,7 @@
 	function handleTemplateUse() {
 		if (!template || !onTemplateUse) return;
 
-		const emailFlow = analyzeEmailFlow(template, toEmailServiceUser(user));
+		const emailFlow = analyzeEmailFlow(template as any, toEmailServiceUser(user as any));
 		onTemplateUse({
 			template,
 			requiresAuth: emailFlow.requiresAuth

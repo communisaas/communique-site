@@ -121,12 +121,9 @@
 			}
 
 			// Process SSE stream
-			// V2 emits 'segment' events with ThoughtSegment objects
-			// V1 emits 'thought' events with { content: string }
 			for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
 				switch (event.type) {
 					case 'segment': {
-						// V2 format: ThoughtSegment with content field
 						const segment = event.data as { content?: string };
 						if (typeof segment.content === 'string' && segment.content.trim()) {
 							thoughts = [...thoughts, segment.content];
@@ -134,17 +131,10 @@
 						break;
 					}
 
-					case 'thought':
-						// V1 legacy format
-						if (typeof event.data.content === 'string') {
-							thoughts = [...thoughts, event.data.content];
-						}
-						break;
-
 					case 'complete': {
 						const result = event.data as { decision_makers?: unknown[] };
 						const rawDecisionMakers = result.decision_makers || [];
-						const processed = processDecisionMakers(rawDecisionMakers);
+						const processed = processDecisionMakers(rawDecisionMakers as any);
 
 						// Initialize audience data if not already set
 						if (!formData.audience) {
@@ -298,7 +288,7 @@
 			<button
 				type="button"
 				onclick={handleNext}
-				disabled={formData.audience.decisionMakers.length === 0 &&
+				disabled={formData.audience.decisionMakers.filter(dm => dm.email).length === 0 &&
 					formData.audience.customRecipients.length === 0 &&
 					!formData.audience.includesCongress}
 				class="inline-flex items-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-participation-primary-700 disabled:cursor-not-allowed disabled:opacity-50"

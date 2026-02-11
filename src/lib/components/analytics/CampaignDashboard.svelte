@@ -6,7 +6,7 @@
 	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
 	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import type { AnalyticsSession, AnalyticsExperiment } from '$lib/types/analytics.ts';
+	import type { AnalyticsSession, AnalyticsExperiment } from '$lib/types/analytics';
 	import type { TemplateData, UnknownRecord } from '$lib/types/any-replacements.js';
 
 	interface CampaignOverview {
@@ -354,15 +354,15 @@
 								</Badge>
 							</div>
 							<div class="space-y-1 text-sm text-gray-600">
-								{#if experiment.metrics_cache.participants_count}
+								{#if experiment.metrics_cache?.participants_count}
 									<div>Participants: {experiment.metrics_cache.participants_count}</div>
 								{/if}
-								{#if experiment.metrics_cache.conversion_rate}
+								{#if experiment.metrics_cache?.conversion_rate}
 									<div>
 										Conversion Rate: {(experiment.metrics_cache.conversion_rate * 100).toFixed(1)}%
 									</div>
 								{/if}
-								{#if experiment.metrics_cache.statistical_significance}
+								{#if experiment.metrics_cache?.statistical_significance}
 									<div>
 										Significance: {(
 											experiment.metrics_cache.statistical_significance * 100
@@ -413,8 +413,8 @@
 				<div class="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
 					{#each userTemplates.slice(0, 6) as template}
 						<TemplatePerformanceCard
-							templateId={template.id}
-							title={template.title}
+							templateId={template.id || ''}
+							title={template.title || ''}
 							compact={false}
 						/>
 					{/each}
@@ -488,9 +488,9 @@
 						{#each overview.recent_activity.slice(0, 5) as activity}
 							<div class="flex items-center space-x-3">
 								<div
-									class={`flex h-8 w-8 items-center justify-center rounded-full ${getActivityColor(activity._event)}`}
+									class={`flex h-8 w-8 items-center justify-center rounded-full ${getActivityColor(activity.event)}`}
 								>
-									<span class="text-sm">{getActivityIcon(activity._event)}</span>
+									<span class="text-sm">{getActivityIcon(activity.event)}</span>
 								</div>
 								<div class="min-w-0 flex-1">
 									<p class="text-sm font-medium text-gray-900">

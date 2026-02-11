@@ -15,13 +15,13 @@
 	 * - Touch-friendly 44px minimum target size
 	 */
 
-	import type { ComponentType } from 'svelte';
-	import type { IconProps } from '@lucide/svelte';
+	import type { Component } from 'svelte';
+	import type { Icon as LucideIcon } from '@lucide/svelte';
 
 	interface Props {
 		label: string;
 		description: string;
-		icon: ComponentType<IconProps>;
+		icon: Component<LucideIcon>;
 		selected?: boolean;
 		disabled?: boolean;
 		colorScheme: 'blue' | 'gray' | 'green' | 'purple' | 'red' | 'orange' | 'cyan';
@@ -111,7 +111,7 @@
 		class="flex h-10 w-10 items-center justify-center rounded-full transition-transform duration-200
 		{selected ? 'scale-110' : 'group-hover:scale-105'}"
 	>
-		<Icon class="h-6 w-6 {scheme.icon}" strokeWidth={2} />
+		<Icon {...({ class: `h-6 w-6 ${scheme.icon}`, strokeWidth: 2 } as any)} />
 	</div>
 
 	<!-- Label -->

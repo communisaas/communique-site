@@ -3,7 +3,7 @@
 	import { onMount, onDestroy } from 'svelte';
 	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
 	import SkeletonList from '$lib/components/ui/SkeletonList.svelte';
-	import type { AnalyticsSession } from '$lib/types/analytics.ts';
+	import type { AnalyticsSession } from '$lib/types/analytics';
 	import type { AnalyticsProperties } from '$lib/types/any-replacements.js';
 
 	interface DeliveryStatus {
@@ -48,7 +48,7 @@
 	let metrics: DeliveryMetrics | null = $state(null);
 	let loading = $state(true);
 	let error = $state<string | null>(null);
-	let refreshInterval: number | null = null;
+	let refreshInterval: ReturnType<typeof setInterval> | null = null;
 	let lastUpdate = $state<string>('');
 	let _sessionData: AnalyticsSession | null = $state(null);
 	let viewStartTime = Date.now();

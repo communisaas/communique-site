@@ -27,8 +27,8 @@
 	{#snippet children(data)}
 		{#if data?.template}
 			<OnboardingContent
-				template={data.template}
-				source={data.source || 'direct-link'}
+				template={data.template as any}
+				source={(data.source || 'direct-link') as any}
 				onauth={(provider) => (window.location.href = `/auth/${provider}`)}
 				onclose={() => modalActions.closeModal('onboarding-modal')}
 			/>
@@ -46,7 +46,7 @@
 	closeOnEscape={true}
 >
 	{#snippet children(data)}
-		<SignInContent onauth={(provider) => (window.location.href = `/auth/${provider}`)} />
+		<SignInContent onauth={(provider: string) => (window.location.href = `/auth/${provider}`)} onclose={() => modalActions.closeModal('sign-in-modal')} />
 	{/snippet}
 </UnifiedModal>
 
@@ -62,13 +62,13 @@
 		{@const _ = console.log('[ModalRegistry] Snippet rendered with data:', data)}
 		<div class="overflow-hidden rounded-xl bg-white">
 			<AddressCollectionForm
-				_template={data?.template}
+				_template={(data?.template as any) || {}}
 				oncomplete={(detail) => {
 					console.log('[ModalRegistry] AddressCollectionForm completed with:', detail);
 					// Handle address collection completion
 					if (data?.onComplete) {
 						console.log('[ModalRegistry] Calling data.onComplete...');
-						data.onComplete(detail);
+						(data.onComplete as any)(detail);
 					} else {
 						console.warn('[ModalRegistry] No data.onComplete handler registered!');
 					}
@@ -91,8 +91,8 @@
 	{#snippet children(data)}
 		{#if data?.template}
 			<TemplateModal
-				template={data.template}
-				user={data.user}
+				template={data.template as any}
+				user={(data.user as any) || null}
 				on:close={() => modalActions.closeModal('template-modal')}
 				on:used={() => {
 					// Template used - keep modal open for post-send flow
@@ -114,12 +114,12 @@
 	{#snippet children(data)}
 		{#if data?.template}
 			<ProgressiveFormContent
-				template={data.template}
-				user={data.user}
-				onclose={() => modalActions.closeModal('progressive-form-modal')}
+				template={data.template as any}
+				user={(data.user as any) || null}
+				_onclose={() => modalActions.closeModal('progressive-form-modal')}
 				onsend={(sendData) => {
 					if (data.onSend) {
-						data.onSend(sendData);
+						(data.onSend as any)(sendData);
 					}
 					modalActions.closeModal('progressive-form-modal');
 				}}

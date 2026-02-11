@@ -52,8 +52,8 @@
 				...scoreTemplate(
 					{
 						send_count: t.send_count || 0,
-						created_at: new Date(t.created_at),
-						updated_at: new Date(t.updated_at)
+						created_at: new Date(t.createdAt),
+						updated_at: new Date(t.updatedAt)
 					},
 					now
 				)

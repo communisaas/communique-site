@@ -30,7 +30,7 @@
 	} = $props();
 
 	// Track active timeouts for cleanup
-	let activeTimeouts: number[] = [];
+	let activeTimeouts: ReturnType<typeof setTimeout>[] = [];
 
 	// Container ref for auto-scroll
 	let containerRef: HTMLDivElement | null = $state(null);

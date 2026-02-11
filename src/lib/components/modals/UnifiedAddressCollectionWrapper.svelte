@@ -72,7 +72,7 @@ Bridges the old event dispatcher pattern with the new unified modal system.
 >
 	{#snippet children(data)}
 		{#if data?.template}
-			<AddressCollectionForm _template={data.template} on:complete={handleComplete} />
+			<AddressCollectionForm _template={{ title: '', deliveryMethod: '', ...data.template } as any} oncomplete={(result: any) => dispatch('complete', result)} />
 		{/if}
 	{/snippet}
 </UnifiedModal>

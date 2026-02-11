@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import LoadingCard from '$lib/components/ui/LoadingCard.svelte';
-	import type { PercolationData, AnalyticsSession } from '$lib/types/analytics.ts';
+	import type { PercolationData, AnalyticsSession } from '$lib/types/analytics';
 	import type { AnalyticsProperties } from '$lib/types/any-replacements.js';
 	// Note: using inline badges here to avoid dependency on specific Badge props
 

@@ -2,28 +2,6 @@
 	import { createEventDispatcher } from 'svelte';
 	import { ShieldCheck, AlertCircle, Check, Loader2 } from 'lucide-svelte';
 
-	interface AddressData {
-		street: string;
-		city: string;
-		state: string;
-		zip: string;
-	}
-
-	interface EncryptionBenchmark {
-		totalTime: number;
-		steps: {
-			keyDerivation: number;
-			encryption: number;
-			[key: string]: number;
-		};
-		crypto: {
-			curve: string;
-			cipher: string;
-			kdf: string;
-			enclaveKeyId: string;
-		};
-	}
-
 	interface Props {
 		userId: string;
 		templateId: string;
@@ -32,16 +10,8 @@
 			message: string;
 			recipientOffices: string[];
 		};
-		/** Skip credential check (for testing) */
-		skipCredentialCheck?: boolean;
-		/** User address for encryption (string for witness, structured for CWC) */
+		/** User address for encryption (string for witness) */
 		address: string;
-		/** Structured address for MVP direct CWC delivery (bypasses TEE) */
-		mvpAddress?: AddressData;
-		/** User email for CWC submission */
-		userEmail?: string;
-		/** User name for CWC submission */
-		userName?: string;
 		/** Legislative session ID for action domain (defaults to '119th-congress') */
 		sessionId?: string;
 		/** Recipient subdivision for action domain (defaults to 'national') */
@@ -52,11 +22,7 @@
 		userId,
 		templateId,
 		templateData,
-		skipCredentialCheck = false,
 		address,
-		mvpAddress,
-		userEmail,
-		userName,
 		sessionId = '119th-congress',
 		recipientSubdivision = 'national'
 	}: Props = $props();
@@ -66,15 +32,12 @@
 		| { status: 'loading-credential' }
 		| { status: 'initializing-prover'; progress: number }
 		| { status: 'generating-proof'; progress: number }
-		| { status: 'fetching-attestation' }
-		| { status: 'verifying-attestation'; pcr0?: string }
-		| { status: 'encrypting-witness'; benchmark?: EncryptionBenchmark }
-		| { status: 'paused-on-benchmark'; benchmark: EncryptionBenchmark }
+		| { status: 'encrypting-witness' }
 		| { status: 'submitting' }
-		| { status: 'complete'; submissionId: string; benchmark?: EncryptionBenchmark }
+		| { status: 'complete'; submissionId: string }
 		| { status: 'error'; message: string; recoverable: boolean; retryAction?: () => void };
 
-	let state = $state<ProofGenerationState>({ status: 'idle' });
+	let proofState: ProofGenerationState = $state({ status: 'idle' });
 	let educationIndex = $state(0);
 
 	const dispatch = createEventDispatcher<{
@@ -95,7 +58,7 @@
 
 	// Cycle educational messages every 3 seconds during proof generation
 	$effect(() => {
-		if (state.status === 'generating-proof') {
+		if (proofState.status === 'generating-proof') {
 			const interval = setInterval(() => {
 				educationIndex = (educationIndex + 1) % educationalMessages.length;
 			}, 3000);
@@ -109,58 +72,13 @@
 	async function generateAndSubmit() {
 		try {
 			// Step 1: Load session credential from IndexedDB
-			state = { status: 'loading-credential' };
+			proofState = { status: 'loading-credential' };
 
 			const { getSessionCredential } = await import('$lib/core/identity/session-credentials');
-			let credential = await getSessionCredential(userId);
+			const credential = await getSessionCredential(userId);
 
-			// Generate mock credentials if skipping check (for testing/demo)
-			if (!credential && skipCredentialCheck) {
-				console.log('[ProofGenerator] Using mock credentials for demo');
-
-				// Use ProverOrchestrator to compute merkle root in the worker
-				// This avoids initializing a separate Barretenberg instance in the main thread
-				// (which would hang for 30+ seconds due to WASM/threading issues)
-				const { proverOrchestrator } = await import('$lib/core/proof/prover-orchestrator');
-
-				// Create a cryptographically valid single-leaf merkle tree
-				// The mock data must satisfy circuit constraints in main.nr:
-				// 1. computed_root = compute_merkle_root(leaf, path, index) must equal merkleRoot
-				// 2. computed_nullifier = poseidon2_hash2(userSecret, actionDomain) must equal nullifier
-				const mockLeaf = '0x0000000000000000000000000000000000000000000000000000000000000001';
-				const mockPath = Array(14).fill(
-					'0x0000000000000000000000000000000000000000000000000000000000000000'
-				);
-				const mockIndex = 0;
-
-				// Compute merkle root using worker's Barretenberg Poseidon2 (matches Noir circuit)
-				console.log(
-					'[ProofGenerator] Computing merkle root via worker (Barretenberg Poseidon2)...'
-				);
-				const mockMerkleRoot = await proverOrchestrator.computeMerkleRoot(
-					mockLeaf,
-					mockPath,
-					mockIndex
-				);
-				console.log('[ProofGenerator] Computed merkle root:', mockMerkleRoot);
-
-				credential = {
-					userId,
-					identityCommitment: mockLeaf,
-					leafIndex: mockIndex,
-					merklePath: mockPath,
-					merkleRoot: mockMerkleRoot,
-					congressionalDistrict: 'DEMO-00',
-					verificationMethod: 'self.xyz' as const,
-					createdAt: new Date(),
-					expiresAt: new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000)
-				};
-
-				console.log('[ProofGenerator] Mock credentials created with valid merkle root');
-			}
-
-			if (!credential && !skipCredentialCheck) {
-				state = {
+			if (!credential) {
+				proofState = {
 					status: 'error',
 					message: 'Session credential not found. Please verify your identity first.',
 					recoverable: true,
@@ -194,9 +112,9 @@
 				});
 				console.log('[ProofGenerator] Action domain:', actionDomain.slice(0, 16) + '...');
 
-				// 2b. Compute nullifier = H2(userSecret, actionDomain)
+				// 2b. Compute nullifier = H2(identityCommitment, actionDomain) (NUL-001)
 				const { computeNullifier } = await import('$lib/core/crypto/poseidon');
-				nullifierHex = await computeNullifier(credential!.userSecret!, actionDomain);
+				nullifierHex = await computeNullifier(credential!.identityCommitment, actionDomain);
 				console.log('[ProofGenerator] Nullifier:', nullifierHex.slice(0, 16) + '...');
 
 				// 2c. Map credential to circuit inputs
@@ -209,19 +127,19 @@
 				});
 
 				// 2d. Initialize two-tree prover
-				state = { status: 'initializing-prover', progress: 0 };
+				proofState = { status: 'initializing-prover', progress: 0 };
 				const { generateTwoTreeProof } = await import('$lib/core/zkp/prover-client');
-				state = { status: 'initializing-prover', progress: 50 };
+				proofState = { status: 'initializing-prover', progress: 50 };
 
 				// 2e. Generate two-tree proof
-				state = { status: 'generating-proof', progress: 0 };
+				proofState = { status: 'generating-proof', progress: 0 };
 				const twoTreeResult = await generateTwoTreeProof(proofInputs, (progress) => {
 					if (progress.stage === 'loading' || progress.stage === 'initializing') {
-						state = { status: 'initializing-prover', progress: progress.percent };
+						proofState = { status: 'initializing-prover', progress: progress.percent };
 					} else if (progress.stage === 'generating') {
-						state = { status: 'generating-proof', progress: progress.percent };
+						proofState = { status: 'generating-proof', progress: progress.percent };
 					} else if (progress.stage === 'complete') {
-						state = { status: 'generating-proof', progress: 100 };
+						proofState = { status: 'generating-proof', progress: 100 };
 					}
 				});
 
@@ -236,6 +154,31 @@
 					authorityLevel: twoTreeResult.publicInputs.authorityLevel,
 					publicInputsArray: twoTreeResult.publicInputsArray
 				};
+
+				// BR5-010: Cross-validate public inputs against expected values.
+				// A compromised prover (XSS, browser extension) could return valid
+				// proofs with substituted public inputs. Check critical fields.
+				if (twoTreeResult.publicInputs.actionDomain !== actionDomain) {
+					throw new Error(
+						'BR5-010: Proof actionDomain mismatch. Possible proof substitution.'
+					);
+				}
+				if (twoTreeResult.publicInputs.nullifier !== nullifierHex) {
+					throw new Error(
+						'BR5-010: Proof nullifier mismatch. Possible proof substitution.'
+					);
+				}
+				if (twoTreeResult.publicInputs.userRoot !== credential!.merkleRoot) {
+					throw new Error(
+						'BR5-010: Proof userRoot does not match credential. Stale or substituted.'
+					);
+				}
+				// 29M-002: Also check cellMapRoot (attacker could substitute with different cell's root)
+				if (twoTreeResult.publicInputs.cellMapRoot !== credential!.cellMapRoot) {
+					throw new Error(
+						'BR5-010: Proof cellMapRoot does not match credential. Possible district spoofing.'
+					);
+				}
 
 				console.log('[ProofGenerator] Two-tree proof generated:', {
 					proofSize: proofHex.length,
@@ -260,24 +203,24 @@
 					address
 				};
 
-				state = { status: 'initializing-prover', progress: 0 };
+				proofState = { status: 'initializing-prover', progress: 0 };
 				await orchestratorModule.proverOrchestrator.init();
 
 				const proofResult = await orchestratorModule.proverOrchestrator.prove(
-					witness,
+					witness as any,
 					(stage, percent) => {
 						if (stage === 'generating-keys') {
-							state = { status: 'initializing-prover', progress: percent };
+							proofState = { status: 'initializing-prover', progress: percent };
 						} else if (stage === 'proving') {
-							state = { status: 'generating-proof', progress: percent };
+							proofState = { status: 'generating-proof', progress: percent };
 						} else if (stage === 'finalizing') {
-							state = { status: 'generating-proof', progress: 95 };
+							proofState = { status: 'generating-proof', progress: 95 };
 						}
 					}
 				);
 
 				if (!proofResult.success) {
-					state = {
+					proofState = {
 						status: 'error',
 						message: proofResult.error || 'Proof generation failed. Please try again.',
 						recoverable: true,
@@ -306,57 +249,12 @@
 				timestamp: Date.now()
 			};
 
-			let encryptedWitness;
-			if (credential!.congressionalDistrict === 'DEMO-00') {
-				console.log('[ProofGenerator] Using Nitro Enclave demo mode');
-
-				// Fetch attestation document
-				state = { status: 'fetching-attestation' };
-				const { fetchNitroAttestation, verifyNitroAttestation, encryptToNitroEnclave } =
-					await import('$lib/core/proof/nitro-enclave-demo');
-
-				const attestation = await fetchNitroAttestation();
-
-				// Verify attestation
-				state = { status: 'verifying-attestation', pcr0: attestation.pcrs.pcr0 };
-				const isValid = await verifyNitroAttestation(attestation);
-
-				if (!isValid) {
-					state = {
-						status: 'error',
-						message: 'Nitro Enclave attestation verification failed',
-						recoverable: true,
-						retryAction: () => generateAndSubmit()
-					};
-					return;
-				}
-
-				// Encrypt witness to Nitro Enclave
-				state = { status: 'encrypting-witness' };
-				const encrypted = await encryptToNitroEnclave(witnessForEncryption, attestation);
-
-				// Store benchmark data
-				encryptedWitness = {
-					ciphertext: encrypted.ciphertext,
-					nonce: encrypted.nonce,
-					ephemeralPublicKey: encrypted.ephemeralPublicKey,
-					teeKeyId: encrypted.enclaveKeyId
-				};
-
-				// Update state with benchmark
-				state = { status: 'paused-on-benchmark', benchmark: encrypted.benchmark };
-
-				// Don't auto-continue - wait for user to click "Continue"
-				return;
-			} else {
-				// Real encryption for production
-				state = { status: 'encrypting-witness' };
-				const { encryptWitness } = await import('$lib/core/proof/witness-encryption');
-				encryptedWitness = await encryptWitness(witnessForEncryption);
-			}
+			proofState = { status: 'encrypting-witness' };
+			const { encryptWitness } = await import('$lib/core/proof/witness-encryption');
+			const encryptedWitness = await encryptWitness(witnessForEncryption as any);
 
 			// Step 4: Submit to backend
-			state = { status: 'submitting' };
+			proofState = { status: 'submitting' };
 
 			const response = await fetch('/api/submissions/create', {
 				method: 'POST',
@@ -369,19 +267,13 @@
 					encryptedWitness: encryptedWitness.ciphertext,
 					witnessNonce: encryptedWitness.nonce,
 					ephemeralPublicKey: encryptedWitness.ephemeralPublicKey,
-					teeKeyId: encryptedWitness.teeKeyId,
-					templateData,
-					// MVP bypass: Pass cleartext address for direct CWC delivery
-					// TODO(INT-003): Remove before production (requires TEE for address decryption)
-					mvpAddress,
-					userEmail,
-					userName
+					teeKeyId: encryptedWitness.teeKeyId
 				})
 			});
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				state = {
+				proofState = {
 					status: 'error',
 					message: errorData.error || 'Submission failed. Please try again.',
 					recoverable: true,
@@ -393,11 +285,11 @@
 			const data = await response.json();
 
 			// Success!
-			state = { status: 'complete', submissionId: data.submissionId };
+			proofState = { status: 'complete', submissionId: data.submissionId };
 			dispatch('complete', { submissionId: data.submissionId });
 		} catch (error) {
 			console.error('[ProofGenerator] Generation failed:', error);
-			state = {
+			proofState = {
 				status: 'error',
 				message:
 					error instanceof Error
@@ -406,13 +298,13 @@
 				recoverable: true,
 				retryAction: () => generateAndSubmit()
 			};
-			dispatch('error', { message: state.message });
+			dispatch('error', { message: (proofState as any).message || 'Unknown error' });
 		}
 	}
 
 	function handleRetry() {
-		if (state.status === 'error' && state.retryAction) {
-			state.retryAction();
+		if (proofState.status === 'error' && proofState.retryAction) {
+			proofState.retryAction();
 		}
 	}
 
@@ -420,29 +312,10 @@
 		dispatch('cancel');
 	}
 
-	async function handleContinue() {
-		if (state.status !== 'paused-on-benchmark') return;
-
-		// For demo mode, just show completion
-		// In production, this would continue with actual submission
-		state = { status: 'submitting' };
-
-		// Simulate submission delay
-		await new Promise((resolve) => setTimeout(resolve, 1500));
-
-		// Demo completion
-		state = {
-			status: 'complete',
-			submissionId: 'demo-' + Date.now(),
-			benchmark: state.status === 'paused-on-benchmark' ? state.benchmark : undefined
-		};
-
-		dispatch('complete', { submissionId: 'demo-' + Date.now() });
-	}
 </script>
 
 <div class="proof-generator">
-	{#if state.status === 'idle'}
+	{#if proofState.status === 'idle'}
 		<!-- Initial state - show preview and submit button -->
 		<div class="space-y-6">
 			<div class="rounded-lg border border-slate-200 bg-white p-6">
@@ -499,14 +372,14 @@
 				</button>
 			</div>
 		</div>
-	{:else if state.status === 'loading-credential'}
+	{:else if proofState.status === 'loading-credential'}
 		<!-- Loading session credential -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<Loader2 class="mb-4 h-12 w-12 animate-spin text-blue-600" />
 			<h3 class="mb-2 text-lg font-semibold text-slate-900">Loading credentials...</h3>
 			<p class="text-sm text-slate-600">Retrieving your verification status</p>
 		</div>
-	{:else if state.status === 'initializing-prover'}
+	{:else if proofState.status === 'initializing-prover'}
 		<!-- Initializing WASM prover -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<ShieldCheck class="mb-4 h-12 w-12 animate-pulse text-blue-600" />
@@ -518,13 +391,13 @@
 				<div class="h-2 w-full rounded-full bg-slate-200">
 					<div
 						class="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300"
-						style="width: {state.progress}%"
+						style="width: {proofState.progress}%"
 					></div>
 				</div>
-				<p class="mt-2 text-xs text-slate-500">{Math.round(state.progress)}%</p>
+				<p class="mt-2 text-xs text-slate-500">{Math.round(proofState.progress)}%</p>
 			</div>
 		</div>
-	{:else if state.status === 'generating-proof'}
+	{:else if proofState.status === 'generating-proof'}
 		<!-- Generating ZK proof (main wait time) -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<ShieldCheck class="mb-4 h-12 w-12 animate-pulse text-blue-600" />
@@ -538,10 +411,10 @@
 				<div class="h-2 w-full rounded-full bg-slate-200">
 					<div
 						class="h-full rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 transition-all duration-300"
-						style="width: {state.progress}%"
+						style="width: {proofState.progress}%"
 					></div>
 				</div>
-				<p class="mt-2 text-xs text-slate-500">{Math.round(state.progress)}%</p>
+				<p class="mt-2 text-xs text-slate-500">{Math.round(proofState.progress)}%</p>
 			</div>
 
 			<!-- Educational messaging (cycles every 3s) -->
@@ -556,142 +429,21 @@
 				</div>
 			</div>
 		</div>
-	{:else if state.status === 'fetching-attestation'}
-		<!-- Fetching Nitro Enclave attestation -->
-		<div class="flex flex-col items-center justify-center py-12 text-center">
-			<Loader2 class="mb-4 h-12 w-12 animate-spin text-purple-600" />
-			<h3 class="mb-2 text-lg font-semibold text-slate-900">
-				Fetching Nitro Enclave attestation...
-			</h3>
-			<p class="text-sm text-slate-600">Requesting secure enclave proof</p>
-		</div>
-	{:else if state.status === 'verifying-attestation'}
-		<!-- Verifying Nitro attestation -->
-		<div class="flex flex-col items-center justify-center py-12 text-center">
-			<ShieldCheck class="mb-4 h-12 w-12 animate-pulse text-purple-600" />
-			<h3 class="mb-2 text-lg font-semibold text-slate-900">Verifying secure enclave...</h3>
-			<p class="mb-6 text-sm text-slate-600">
-				Cryptographically verifying AWS Nitro Enclave integrity
-			</p>
-
-			{#if state.pcr0}
-				<div class="w-full max-w-md">
-					<div class="rounded-lg border border-purple-200 bg-purple-50 p-4 text-left">
-						<p class="mb-2 text-xs font-medium text-purple-900">
-							Platform Configuration Register (PCR0):
-						</p>
-						<code class="block overflow-x-auto font-mono text-xs text-purple-800">
-							{state.pcr0.slice(0, 32)}...
-						</code>
-						<p class="mt-2 text-xs text-purple-700">✓ Enclave image measurement verified</p>
-					</div>
-				</div>
-			{/if}
-		</div>
-	{:else if state.status === 'encrypting-witness'}
-		<!-- Encrypting witness (with optional benchmark) -->
+	{:else if proofState.status === 'encrypting-witness'}
+		<!-- Encrypting witness -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<ShieldCheck class="mb-4 h-12 w-12 animate-pulse text-blue-600" />
 			<h3 class="mb-2 text-lg font-semibold text-slate-900">Encrypting delivery...</h3>
 			<p class="mb-6 text-sm text-slate-600">Securing your message with P-256 ECDH + AES-256-GCM</p>
-
-			{#if state.benchmark}
-				<div class="w-full max-w-md space-y-3">
-					<div class="rounded-lg border border-green-200 bg-green-50 p-4">
-						<p class="mb-3 text-sm font-medium text-green-900">Encryption Benchmark:</p>
-						<div class="space-y-2 text-left text-xs text-green-800">
-							<div class="flex justify-between">
-								<span>Key Derivation (ECDH):</span>
-								<span class="font-mono font-semibold"
-									>{state.benchmark.steps.keyDerivation.toFixed(2)}ms</span
-								>
-							</div>
-							<div class="flex justify-between">
-								<span>AES-256-GCM Encryption:</span>
-								<span class="font-mono font-semibold"
-									>{state.benchmark.steps.encryption.toFixed(2)}ms</span
-								>
-							</div>
-							<div class="flex justify-between border-t border-green-300 pt-2 font-medium">
-								<span>Total Time:</span>
-								<span class="font-mono">{state.benchmark.totalTime.toFixed(2)}ms</span>
-							</div>
-						</div>
-					</div>
-
-					<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-left">
-						<p class="mb-2 text-xs font-medium text-blue-900">Cryptographic Details:</p>
-						<div class="space-y-1 text-xs text-blue-800">
-							<div>Curve: <code class="font-mono">{state.benchmark.crypto.curve}</code></div>
-							<div>Cipher: <code class="font-mono">{state.benchmark.crypto.cipher}</code></div>
-							<div>KDF: <code class="font-mono">{state.benchmark.crypto.kdf}</code></div>
-							<div>
-								Enclave Key ID: <code class="font-mono">{state.benchmark.crypto.enclaveKeyId}</code>
-							</div>
-						</div>
-					</div>
-				</div>
-			{/if}
 		</div>
-	{:else if state.status === 'paused-on-benchmark'}
-		<!-- Paused on benchmark - user must click to continue -->
-		<div class="flex flex-col items-center justify-center py-12 text-center">
-			<ShieldCheck class="mb-4 h-12 w-12 text-green-600" />
-			<h3 class="mb-2 text-lg font-semibold text-slate-900">Encryption Complete!</h3>
-			<p class="mb-6 text-sm text-slate-600">Review the cryptographic details below</p>
-
-			<div class="mb-6 w-full max-w-md space-y-3">
-				<div class="rounded-lg border border-green-200 bg-green-50 p-4">
-					<p class="mb-3 text-sm font-medium text-green-900">Encryption Benchmark:</p>
-					<div class="space-y-2 text-left text-xs text-green-800">
-						<div class="flex justify-between">
-							<span>Key Derivation (ECDH):</span>
-							<span class="font-mono font-semibold"
-								>{state.benchmark.steps.keyDerivation.toFixed(2)}ms</span
-							>
-						</div>
-						<div class="flex justify-between">
-							<span>AES-256-GCM Encryption:</span>
-							<span class="font-mono font-semibold"
-								>{state.benchmark.steps.encryption.toFixed(2)}ms</span
-							>
-						</div>
-						<div class="flex justify-between border-t border-green-300 pt-2 font-medium">
-							<span>Total Time:</span>
-							<span class="font-mono">{state.benchmark.totalTime.toFixed(2)}ms</span>
-						</div>
-					</div>
-				</div>
-
-				<div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-left">
-					<p class="mb-2 text-xs font-medium text-blue-900">Cryptographic Details:</p>
-					<div class="space-y-1 text-xs text-blue-800">
-						<div>Curve: <code class="font-mono">{state.benchmark.crypto.curve}</code></div>
-						<div>Cipher: <code class="font-mono">{state.benchmark.crypto.cipher}</code></div>
-						<div>KDF: <code class="font-mono">{state.benchmark.crypto.kdf}</code></div>
-						<div>
-							Enclave Key ID: <code class="font-mono">{state.benchmark.crypto.enclaveKeyId}</code>
-						</div>
-					</div>
-				</div>
-			</div>
-
-			<button
-				type="button"
-				onclick={handleContinue}
-				class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
-			>
-				Continue to Submit
-			</button>
-		</div>
-	{:else if state.status === 'submitting'}
+	{:else if proofState.status === 'submitting'}
 		<!-- Submitting to backend -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<Loader2 class="mb-4 h-12 w-12 animate-spin text-blue-600" />
 			<h3 class="mb-2 text-lg font-semibold text-slate-900">Submitting...</h3>
 			<p class="text-sm text-slate-600">Sending to congressional offices</p>
 		</div>
-	{:else if state.status === 'complete'}
+	{:else if proofState.status === 'complete'}
 		<!-- Success state -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<div
@@ -729,18 +481,18 @@
 
 			<button
 				type="button"
-				onclick={() => dispatch('complete', { submissionId: state.submissionId })}
+				onclick={() => dispatch('complete', { submissionId: (proofState as any).submissionId || '' })}
 				class="mt-6 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
 			>
 				Continue
 			</button>
 		</div>
-	{:else if state.status === 'error'}
+	{:else if proofState.status === 'error'}
 		<!-- Error state with recovery -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<AlertCircle class="mb-4 h-12 w-12 text-red-600" />
 			<h3 class="mb-2 text-xl font-bold text-slate-900">Something went wrong</h3>
-			<p class="mb-6 text-sm text-slate-600">{state.message}</p>
+			<p class="mb-6 text-sm text-slate-600">{proofState.message}</p>
 
 			<div class="flex gap-3">
 				<button
@@ -750,7 +502,7 @@
 				>
 					Cancel
 				</button>
-				{#if state.recoverable && state.retryAction}
+				{#if proofState.recoverable && proofState.retryAction}
 					<button
 						type="button"
 						onclick={handleRetry}

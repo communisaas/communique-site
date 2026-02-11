@@ -89,10 +89,10 @@
 		class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
 		onmousedown={handleMouseDown}
 		onclick={handleBackdropClick}
-		onkeydown={(e) => {
-			if (e.key === 'Escape') handleClose();
-			if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) {
-				handleBackdropClick(e);
+		onkeydown={(e: MouseEvent | KeyboardEvent) => {
+			if ((e as KeyboardEvent).key === 'Escape') handleClose();
+			if (((e as KeyboardEvent).key === 'Enter' || (e as KeyboardEvent).key === ' ') && e.target === e.currentTarget) {
+				handleBackdropClick(e as MouseEvent);
 			}
 		}}
 		role="dialog"

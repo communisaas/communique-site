@@ -233,7 +233,7 @@
 				id="target-entity"
 				type="text"
 				value={entity}
-				placeholder={selectedTarget.placeholder}
+				placeholder={'placeholder' in selectedTarget ? selectedTarget.placeholder : ''}
 				oninput={handleEntityInput}
 				{disabled}
 				class="w-full rounded-lg border-2 border-slate-200 bg-white px-4 py-3

@@ -76,14 +76,14 @@
 		const sessionDuration = Date.now() - viewStartTime;
 		await trackAnalyticsEvent('cascade_analytics_session_end', {
 			session_duration_ms: sessionDuration,
-			final_metrics: summary
+			final_metrics: (summary
 				? {
 						r0: metrics?.r0,
 						viral_coefficient: summary.viral_coefficient,
 						total_activations: summary.total_activations,
 						viral_status: summary.viral_status
 					}
-				: null
+				: null) as any
 		});
 	});
 

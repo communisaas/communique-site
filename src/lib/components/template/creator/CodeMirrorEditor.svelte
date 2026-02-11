@@ -178,7 +178,7 @@
 				}
 				// Otherwise let default backspace behavior run
 				console.log('🔥 KEYMAP: Calling default deleteCharBackward');
-				return deleteCharBackward(view);
+				return deleteCharBackward(view as any);
 			}
 		},
 		{
@@ -189,7 +189,7 @@
 					return true; // Signal that we handled it, prevent all defaults
 				}
 				// Otherwise let default delete behavior run
-				return deleteCharForward(view);
+				return deleteCharForward(view as any);
 			}
 		}
 	]);
@@ -361,7 +361,7 @@
 			};
 		}
 
-		editorView.dispatch(dispatch);
+		editorView.dispatch(dispatch as any);
 
 		// Update the bound value
 		value = editorView.state.doc.toString();
@@ -446,7 +446,7 @@
 				};
 			}
 
-			editorView.dispatch(dispatch);
+			editorView.dispatch(dispatch as any);
 		}
 	});
 </script>

@@ -26,8 +26,10 @@
 	let showCustomForm = $state(false);
 	let duplicateError = $state<string | null>(null);
 
+	const withEmail = $derived(decisionMakers?.filter(dm => dm.email) || []);
+	const withoutEmail = $derived(decisionMakers?.filter(dm => !dm.email) || []);
 	const totalRecipients = $derived(
-		(decisionMakers?.length || 0) + (customRecipients?.length || 0) + (includesCongress ? 1 : 0)
+		withEmail.length + (customRecipients?.length || 0) + (includesCongress ? 1 : 0)
 	);
 
 	function handleAddCustom(recipient: { email: string; name: string; organization?: string }) {
@@ -52,6 +54,13 @@
 		if (!customRecipients) return;
 		customRecipients = customRecipients.filter((_, i) => i !== index);
 	}
+
+	function handleUpdateEmail(index: number, email: string) {
+		if (!decisionMakers) return;
+		decisionMakers = decisionMakers.map((dm, i) =>
+			i === index ? { ...dm, email } : dm
+		);
+	}
 </script>
 
 <div class="space-y-6 py-4">
@@ -59,12 +68,24 @@
 	<div>
 		<h3 class="text-lg font-semibold text-slate-900 md:text-xl">
 			{#if decisionMakers?.length > 0}
-				We found {decisionMakers.length} decision-maker{decisionMakers.length === 1 ? '' : 's'}
+				{#if withEmail.length > 0}
+					We found {withEmail.length} decision-maker{withEmail.length === 1 ? '' : 's'} with verified contact
+				{:else}
+					We identified {decisionMakers.length} decision-maker{decisionMakers.length === 1 ? '' : 's'}
+				{/if}
 			{:else}
 				Add decision-makers
 			{/if}
 		</h3>
-		{#if totalRecipients > 0}
+		{#if withoutEmail.length > 0 && withEmail.length > 0}
+			<p class="mt-1 text-sm text-slate-600">
+				{withoutEmail.length} more identified — add their email to include them
+			</p>
+		{:else if withoutEmail.length > 0 && withEmail.length === 0}
+			<p class="mt-1 text-sm text-amber-600">
+				Email addresses weren't found in public sources. Add emails to include them, or add recipients manually below.
+			</p>
+		{:else if totalRecipients > 0}
 			<p class="mt-1 text-sm text-slate-600">
 				Total recipients: {totalRecipients}
 			</p>
@@ -76,6 +97,7 @@
 		<DecisionMakerGrouped
 			{decisionMakers}
 			onremove={handleRemoveDecisionMaker}
+			onupdateemail={handleUpdateEmail}
 		/>
 	{/if}
 

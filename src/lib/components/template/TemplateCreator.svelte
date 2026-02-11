@@ -156,7 +156,8 @@
 						geographicScope: null,
 						aiGenerated: false,
 						edited: false
-					}
+					},
+					review: {}
 				}
 	);
 
@@ -172,6 +173,7 @@
 		objective: (data: TemplateFormData['objective']) => {
 			const errors: string[] = [];
 			if (!data.title.trim()) errors.push('Title is required');
+			if (!data.description?.trim()) errors.push('Core message is required');
 			if (!data.slug?.trim()) errors.push('Template link is required');
 			else if (slugReady === false) errors.push('Template link is unavailable — choose a different link');
 			// slugReady === null (still checking) is allowed — server validates uniqueness at save time
@@ -334,7 +336,10 @@
 			status: 'published',
 			is_public: true,
 			send_count: 0,
-			last_sent_at: null,
+			coordinationScale: 0,
+			isNew: true,
+			createdAt: new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
 			applicable_countries: [],
 			jurisdiction_level: null,
 			specific_locations: [],

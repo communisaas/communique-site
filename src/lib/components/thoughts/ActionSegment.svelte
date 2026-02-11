@@ -124,7 +124,7 @@
 
 				{#if hasFindings && !expanded}
 					<span class="text-xs text-text-tertiary">
-						{action.findings.length} finding{action.findings.length === 1 ? '' : 's'}
+						{action.findings?.length} finding{action.findings?.length === 1 ? '' : 's'}
 					</span>
 				{/if}
 			</div>
@@ -144,7 +144,7 @@
 		<!-- Expanded findings -->
 		{#if expanded && hasFindings}
 			<div class="findings-list mt-2 space-y-1.5 border-l-2 border-surface-border pl-3">
-				{#each action.findings as finding}
+				{#each (action.findings || []) as finding}
 					<div class="flex items-start gap-2">
 						<span class="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-coord-route-solid/70"></span>
 						<span class="text-sm text-text-secondary">{finding}</span>

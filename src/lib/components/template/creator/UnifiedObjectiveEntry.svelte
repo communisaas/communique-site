@@ -182,8 +182,9 @@
 		pendingSuggestion = showAISuggest ? currentSuggestion : null;
 	});
 
-	// Sync title and slug from the current suggestion so SlugCustomizer
-	// and validation always reflect the latest AI output (including "Try another")
+	// Sync suggestion fields to formData so downstream steps always have current values.
+	// Without this, "Pick Decision-Makers" can advance with stale/empty description
+	// because acceptSuggestion() only commits on explicit "Use this" click.
 	$effect(() => {
 		if (currentSuggestion && showAISuggest) {
 			if (currentSuggestion.subject_line) {
@@ -191,6 +192,15 @@
 			}
 			if (currentSuggestion.url_slug) {
 				data.slug = currentSuggestion.url_slug;
+			}
+			if (currentSuggestion.core_message) {
+				data.description = currentSuggestion.core_message;
+			}
+			if (currentSuggestion.voice_sample) {
+				data.voiceSample = currentSuggestion.voice_sample;
+			}
+			if (currentSuggestion.topics?.length) {
+				data.topics = currentSuggestion.topics;
 			}
 		}
 	});
@@ -290,7 +300,7 @@
 
 						case 'clarification':
 							if (event.data.data) {
-								const responseData = event.data.data;
+								const responseData = event.data.data as any;
 								suggestionState = {
 									status: 'clarifying',
 									questions: responseData.clarification_questions || [],
@@ -403,11 +413,11 @@
 
 			if (response.success && response.data) {
 				// Check if agent needs clarification
-				if (response.data.needs_clarification) {
+				if ((response.data as any).needs_clarification) {
 					suggestionState = {
 						status: 'clarifying',
-						questions: response.data.clarification_questions || [],
-						inferredContext: response.data.inferred_context || {
+						questions: (response.data as any).clarification_questions || [],
+						inferredContext: (response.data as any).inferred_context || {
 							detected_location: null,
 							detected_scope: null,
 							detected_target_type: null,
@@ -415,14 +425,14 @@
 							scope_confidence: 0,
 							target_type_confidence: 0
 						},
-						interactionId: response.data.interactionId || crypto.randomUUID()
+						interactionId: (response.data as any).interactionId || crypto.randomUUID()
 					};
 
 					// Store complete context for reconstruction on answer submission
 					conversationContext = {
 						originalDescription: text,
-						questionsAsked: response.data.clarification_questions || [],
-						inferredContext: response.data.inferred_context || {
+						questionsAsked: (response.data as any).clarification_questions || [],
+						inferredContext: (response.data as any).inferred_context || {
 							detected_location: null,
 							detected_scope: null,
 							detected_target_type: null,
@@ -914,7 +924,10 @@
 						showEditConfirm = false;
 						isEditingRawInput = true;
 					}}
-					class="text-sm text-slate-500 transition-colors hover:text-slate-700"
+					class="transform-gpu rounded-md px-2 py-1 text-sm text-slate-500
+						transition-all duration-150
+						hover:bg-slate-100/60 hover:text-slate-700
+						active:scale-[0.97] active:bg-slate-200/60"
 				>
 					Start fresh →
 				</button>
@@ -956,7 +969,11 @@
 						<button
 							type="button"
 							onclick={() => generateSuggestion()}
-							class="inline-flex items-center gap-1.5 text-sm font-medium text-participation-primary-600 transition-colors hover:text-participation-primary-700"
+							class="inline-flex transform-gpu items-center gap-1.5 px-1 py-0.5
+							text-sm font-medium text-participation-primary-600
+							transition-all duration-150
+							hover:scale-[1.04] hover:text-participation-primary-700
+							active:scale-[0.97]"
 						>
 							<kbd class="hidden rounded bg-participation-primary-100 px-1 py-0.5 font-mono text-xs text-participation-primary-700 md:inline">{shortcutKey}+Enter</kbd>
 							<span class="text-xs md:hidden"><Sparkles class="inline h-3 w-3" aria-hidden="true" /> Generate</span>
@@ -972,7 +989,10 @@
 							hasAutoTriggered = false;
 							isEditingRawInput = true;
 						}}
-						class="text-xs text-participation-primary-400 transition-colors hover:text-participation-primary-600"
+						class="transform-gpu rounded-md px-2 py-1 text-xs text-participation-primary-400
+							transition-all duration-150
+							hover:bg-participation-primary-100/60 hover:text-participation-primary-600
+							active:scale-[0.97] active:bg-participation-primary-200/60"
 					>
 						Start fresh
 					</button>
@@ -1014,7 +1034,11 @@
 							type="button"
 							onpointerdown={(e) => e.preventDefault()}
 							onclick={() => generateSuggestion()}
-							class="inline-flex items-center gap-1.5 font-medium text-participation-primary-600 transition-colors hover:text-participation-primary-700"
+							class="inline-flex transform-gpu items-center gap-1.5 px-1 py-0.5
+							font-medium text-participation-primary-600
+							transition-all duration-150
+							hover:scale-[1.04] hover:text-participation-primary-700
+							active:scale-[0.97]"
 						>
 							<Sparkles class="h-3 w-3" aria-hidden="true" />
 							<kbd class="hidden rounded bg-participation-primary-100 px-1 py-0.5 font-mono text-participation-primary-700 md:inline">{shortcutKey}+Enter</kbd>
@@ -1248,8 +1272,8 @@
 				</div>
 			{:else}
 				<!-- Current suggestion content — inline-editable -->
-				<div class="mb-3">
-					<div class="mb-2 flex items-center gap-2">
+				<div class="md:mb-1">
+					<div class="mb-1 flex items-center gap-2">
 						<Sparkles class="h-4 w-4 text-participation-primary-600" aria-hidden="true" />
 						<span
 							class="text-xs font-semibold uppercase tracking-wide text-participation-primary-700"
@@ -1272,10 +1296,10 @@
 					{:else}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<p
-							class="cursor-text rounded-md border border-participation-primary-200/40 bg-white/50
-								px-3 py-2.5 text-lg font-bold leading-tight text-slate-900
-								transition-all duration-150
-								md:border-transparent md:bg-transparent md:px-1 md:py-0.5 md:hover:bg-participation-primary-50/80"
+							class="cursor-text rounded px-2 py-1.5 text-lg font-bold leading-tight text-slate-900
+								transition-colors duration-150
+								hover:bg-white/50
+								md:px-1 md:py-0.5"
 							onclick={() => startEditingField('subject')}
 							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditingField('subject'); }}
 							role="button"
@@ -1305,9 +1329,9 @@
 					{:else}
 						<!-- svelte-ignore a11y_no_static_element_interactions -->
 						<div
-							class="cursor-text rounded-md border border-participation-primary-200/40 bg-white/50
-								px-3 py-2.5 transition-all duration-150
-								md:border-transparent md:bg-transparent md:px-1 md:py-0.5 md:hover:bg-participation-primary-50/80"
+							class="cursor-text rounded px-2 py-1.5 transition-colors duration-150
+								hover:bg-white/50
+								md:px-1 md:py-0.5"
 							onclick={() => startEditingField('core')}
 							onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') startEditingField('core'); }}
 							role="button"
@@ -1331,9 +1355,11 @@
 					type="button"
 					onclick={acceptSuggestion}
 					tabindex={0}
-					class="inline-flex w-full items-center justify-center gap-2 rounded-lg
+					class="inline-flex w-full transform-gpu items-center justify-center gap-2 rounded-lg
                  bg-gradient-to-r from-participation-primary-600 to-participation-primary-500 px-4 py-2.5 text-sm font-semibold text-white
-                 shadow-participation-primary transition-all duration-200 hover:from-participation-primary-700 hover:to-participation-primary-600 hover:shadow-lg
+                 shadow-participation-primary transition-all duration-200
+                 hover:from-participation-primary-700 hover:to-participation-primary-600 hover:shadow-lg
+                 active:scale-[0.97]
                  focus:outline-none focus:ring-2 focus:ring-participation-primary-500 focus:ring-offset-2"
 				>
 					Use this
@@ -1347,10 +1373,13 @@
 							onclick={generateSuggestion}
 							disabled={isGenerating}
 							tabindex={0}
-							class="inline-flex items-center gap-2 text-sm font-medium text-participation-primary-700
-                     transition-colors duration-150 hover:text-participation-primary-800
-                     focus:underline focus:outline-none
-                     disabled:cursor-not-allowed disabled:opacity-50"
+							class="inline-flex transform-gpu items-center gap-2 rounded-md px-2 py-1
+								text-sm font-medium text-participation-primary-700
+								transition-all duration-150
+								hover:bg-participation-primary-100/60 hover:text-participation-primary-900
+								active:scale-[0.97] active:bg-participation-primary-200/60
+								focus:outline-none focus:underline
+								disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{#if isGenerating}
 								<div
@@ -1370,7 +1399,11 @@
 						type="button"
 						onclick={writeManually}
 						tabindex={0}
-						class="text-sm text-participation-primary-600 transition-colors hover:text-participation-primary-700 focus:outline-none focus:underline"
+						class="transform-gpu rounded-md px-2 py-1 text-sm text-participation-primary-600
+							transition-all duration-150
+							hover:bg-participation-primary-100/60 hover:text-participation-primary-800
+							active:scale-[0.97] active:bg-participation-primary-200/60
+							focus:outline-none focus:underline"
 					>
 						I'll write it
 					</button>
