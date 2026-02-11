@@ -183,13 +183,6 @@ export function applyValidation(
 
 	return {
 		...extracted,
-		confidence: adjustedConfidence,
-		validated_against: validationResult.validated
-			? validationResult.reason.includes('verified address')
-				? 'verified_address'
-				: validationResult.reason.includes('OAuth')
-					? 'oauth_location'
-					: 'ip_location'
-			: undefined
+		confidence: adjustedConfidence
 	};
 }

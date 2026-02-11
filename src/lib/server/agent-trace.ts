@@ -11,6 +11,7 @@
 
 import { db } from '$lib/core/db';
 import { env } from '$env/dynamic/private';
+import { Prisma } from '@prisma/client';
 
 function isEnabled(): boolean {
 	return env.AGENT_TRACE_ENABLED === 'true';
@@ -56,7 +57,7 @@ export function traceEvent(
 				userId: opts?.userId ?? null,
 				endpoint,
 				eventType,
-				payload,
+				payload: payload as Prisma.InputJsonValue,
 				success: opts?.success ?? null,
 				durationMs: opts?.durationMs ?? null,
 				costUsd: opts?.costUsd ?? null,

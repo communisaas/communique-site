@@ -54,7 +54,7 @@ export async function trackTemplateAdoption(params: TrackAdoptionParams): Promis
 		params;
 
 	// Use a transaction to ensure atomic updates
-	const result = await db.$transaction(async (tx: PrismaClient) => {
+	const result = await db.$transaction(async (tx: any) => {
 		// 1. Create verifiable message record (PUBLIC, pseudonymous)
 		await tx.message.create({
 			data: {
@@ -145,7 +145,7 @@ export async function trackTemplateAdoption(params: TrackAdoptionParams): Promis
  * @param templateId - Template that was just adopted
  */
 async function updateCreatorReputation(
-	tx: PrismaClient,
+	tx: any,
 	userId: string,
 	templateId: string
 ): Promise<void> {
@@ -159,7 +159,7 @@ async function updateCreatorReputation(
 	});
 
 	// Count how many templates have been adopted (verified_sends > 0)
-	const adoptedTemplates = userTemplates.filter((t) => t.verified_sends > 0).length;
+	const adoptedTemplates = userTemplates.filter((t: any) => t.verified_sends > 0).length;
 	const totalTemplates = userTemplates.length;
 
 	// Calculate adoption rate (0.0 - 1.0)

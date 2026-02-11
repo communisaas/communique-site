@@ -10,6 +10,7 @@
 type Encoding = 'utf8' | 'utf-8' | 'hex' | 'base64' | 'ascii' | 'binary' | 'latin1';
 
 // Minimal Buffer class that covers the API surface used by @aztec/bb.js
+// @ts-expect-error - Static 'from' signature intentionally differs from Uint8Array for Buffer compat
 class BufferShim extends Uint8Array {
 	// Static methods
 	static isBuffer(obj: unknown): obj is BufferShim {
@@ -17,6 +18,15 @@ class BufferShim extends Uint8Array {
 	}
 
 	static from(
+		value: string | ArrayBuffer | ArrayLike<number> | Uint8Array,
+		encodingOrOffset?: Encoding | number,
+		length?: number
+	): BufferShim {
+		// @ts-ignore - Uint8Array.from signature mismatch
+		return BufferShim._fromImpl(value, encodingOrOffset, length);
+	}
+
+	private static _fromImpl(
 		value: string | ArrayBuffer | ArrayLike<number> | Uint8Array,
 		encodingOrOffset?: Encoding | number,
 		length?: number

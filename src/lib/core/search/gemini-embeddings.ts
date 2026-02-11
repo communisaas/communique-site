@@ -154,7 +154,12 @@ export async function generateEmbedding(
 				throw new Error('No embeddings returned from Gemini API');
 			}
 
-			return result.embeddings[0].values;
+			const values = result.embeddings[0].values;
+			if (!values) {
+				throw new Error('Embedding values are undefined');
+			}
+
+			return values;
 		} catch (error) {
 			const isLastAttempt = attempt === maxRetries - 1;
 
@@ -277,7 +282,12 @@ export async function generateBatchEmbeddings(
 				);
 			}
 
-			return result.embeddings.map((e) => e.values);
+			return result.embeddings.map((e) => {
+				if (!e.values) {
+					throw new Error('Embedding values are undefined');
+				}
+				return e.values;
+			});
 		} catch (error) {
 			const isLastAttempt = attempt === maxRetries - 1;
 

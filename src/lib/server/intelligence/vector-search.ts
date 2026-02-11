@@ -40,7 +40,7 @@ export async function semanticSearchIntelligence(
 
 	const [queryEmbedding] = await createEmbedding(query, {
 		inputType: 'query',
-		contentType: effectiveContentType
+		contentType: effectiveContentType as ContentType | undefined
 	});
 
 	const vectorStr = `[${queryEmbedding.join(',')}]`;
@@ -107,7 +107,7 @@ export async function hybridSearchIntelligence(
 
 	const [queryEmbedding] = await createEmbedding(query, {
 		inputType: 'query',
-		contentType: effectiveContentType
+		contentType: effectiveContentType as ContentType | undefined
 	});
 
 	const vectorStr = `[${queryEmbedding.join(',')}]`;

@@ -179,7 +179,7 @@ export class CWCGenerator {
         <LibraryOfCongressTopics>
             ${topics.map((topic) => `<LibraryOfCongressTopic>${topic}</LibraryOfCongressTopic>`).join('\n            ')}
         </LibraryOfCongressTopics>
-        <ConstituentMessage>${this.escapeXML(personalizedMessage || template.message_body || template.body || '')}</ConstituentMessage>
+        <ConstituentMessage>${this.escapeXML(personalizedMessage || template.message_body || '')}</ConstituentMessage>
     </Message>
 </CWC>`;
 

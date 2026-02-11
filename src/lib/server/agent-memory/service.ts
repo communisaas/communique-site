@@ -443,12 +443,12 @@ export class AgentMemoryService {
 			title: doc.title,
 			snippet: doc.snippet,
 			source: doc.source,
-			sourceUrl: doc.sourceUrl,
-			publishedAt: doc.publishedAt,
+			sourceUrl: doc.source_url,
+			publishedAt: doc.published_at,
 			relevanceScore: result.score,
 			topics: doc.topics,
 			entities: doc.entities,
-			sentiment: doc.sentiment
+			sentiment: doc.sentiment as 'positive' | 'negative' | 'neutral' | 'mixed' | undefined
 		};
 	}
 
@@ -463,12 +463,12 @@ export class AgentMemoryService {
 			title: doc.title,
 			snippet: doc.snippet,
 			source: doc.source,
-			sourceUrl: doc.sourceUrl,
-			publishedAt: doc.publishedAt,
-			relevanceScore: doc.relevanceScore || 0.5,
+			sourceUrl: doc.source_url,
+			publishedAt: doc.published_at,
+			relevanceScore: doc.relevance_score || 0.5,
 			topics: doc.topics,
 			entities: doc.entities,
-			sentiment: doc.sentiment
+			sentiment: doc.sentiment as 'positive' | 'negative' | 'neutral' | 'mixed' | undefined
 		};
 	}
 

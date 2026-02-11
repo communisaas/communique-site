@@ -34,8 +34,8 @@ function createLogger(options?: { level?: string }): PinoLogger {
 		if (idx < levelIndex) return noop;
 		return (msg: string, ...args: unknown[]) => {
 			const method = lvl === 'fatal' ? 'error' : lvl === 'trace' ? 'debug' : lvl;
-			if (method in console && typeof (console as Record<string, unknown>)[method] === 'function') {
-				(console as Record<string, (...args: unknown[]) => void>)[method](`[${lvl}]`, msg, ...args);
+			if (method in console && typeof (console as unknown as Record<string, unknown>)[method] === 'function') {
+				(console as unknown as Record<string, (...args: unknown[]) => void>)[method](`[${lvl}]`, msg, ...args);
 			}
 		};
 	};

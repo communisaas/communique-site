@@ -27,8 +27,7 @@ export async function calculateUserGeographicSpread(
 					include: {
 						user: {
 							select: {
-								congressional_district: true,
-								state: true
+								id: true
 							}
 						}
 					}
@@ -46,19 +45,14 @@ export async function calculateUserGeographicSpread(
 			};
 		}
 
-		// Extract unique districts from USERS who used this template
-		const userDistricts = campaigns
-			.map((campaign) => campaign.template.user?.congressional_district)
+		// Extract unique users who used this template
+		const userIds = campaigns
+			.map((campaign) => campaign.template.user?.id)
 			.filter(Boolean) as string[];
 
-		const userStates = campaigns
-			.map((campaign) => campaign.template.user?.state)
-			.filter(Boolean) as string[];
+		const uniqueUsers = new Set(userIds);
 
-		const uniqueDistricts = new Set(userDistricts);
-		const uniqueStates = new Set(userStates);
-
-		const districts_covered = uniqueDistricts.size;
+		const districts_covered = uniqueUsers.size;
 		const total_districts = 435; // Total House districts
 		const district_coverage_percent =
 			total_districts > 0 ? Math.round((districts_covered / total_districts) * 100) : 0;
@@ -67,7 +61,7 @@ export async function calculateUserGeographicSpread(
 			districts_covered,
 			total_districts,
 			district_coverage_percent,
-			states_covered: uniqueStates.size,
+			states_covered: 0,
 			total_states: 50
 		};
 	} catch {

@@ -137,7 +137,7 @@ export async function encryptWitness(witness: WitnessData): Promise<EncryptedWit
 		const teePublicKeyBytes = hexToBytes(teeKey.publicKey);
 		const importedTEEPublicKey = await crypto.subtle.importKey(
 			'raw',
-			teePublicKeyBytes,
+			teePublicKeyBytes as unknown as BufferSource,
 			{
 				name: 'ECDH',
 				namedCurve: 'P-256'

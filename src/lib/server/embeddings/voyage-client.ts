@@ -230,7 +230,7 @@ export async function createEmbedding(
 		inputType
 	};
 
-	const response = await voyageRequest<EmbeddingResponse>('/embeddings', request);
+	const response = await voyageRequest<EmbeddingResponse>('/embeddings', request as unknown as Record<string, unknown>);
 
 	// Track cost
 	costTracker.track(response.usage.total_tokens, 'embedding');
@@ -369,7 +369,7 @@ export async function rerankDocuments(
 		returnDocuments
 	};
 
-	const response = await voyageRequest<RerankResponse>('/rerank', request);
+	const response = await voyageRequest<RerankResponse>('/rerank', request as unknown as Record<string, unknown>);
 
 	// Track cost
 	costTracker.track(response.usage.total_tokens, 'rerank');

@@ -135,7 +135,7 @@ export function meetsMinimumPrecision(
 		const hasSufficientPrecision = ['state', 'county', 'district'].includes(userPrecision);
 		const hasMatchingState =
 			userLocation?.state_code &&
-			template.specific_locations?.some((loc) => loc.includes(userLocation.state_code));
+			template.specific_locations?.some((loc) => loc.includes(userLocation.state_code || ''));
 
 		return hasSufficientPrecision && (hasMatchingState || !template.specific_locations?.length);
 	}

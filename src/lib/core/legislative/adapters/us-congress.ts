@@ -164,10 +164,14 @@ export class USCongressAdapter extends LegislativeAdapter {
 				title: 'Congressional Message',
 				description: 'Message to Congress',
 				category: 'advocacy',
+				topics: [],
 				type: 'advocacy',
 				deliveryMethod: 'cwc',
 				subject: request.template.title,
 				message_body: request.personalized_message,
+				coordinationScale: 0,
+				isNew: false,
+				send_count: 0,
 				delivery_config: {},
 				cwc_config: {},
 				recipient_config: {},
@@ -176,7 +180,10 @@ export class USCongressAdapter extends LegislativeAdapter {
 				is_public: true,
 				applicable_countries: ['US'],
 				specific_locations: [],
-				preview: request.personalized_message.substring(0, 200)
+				scope: undefined,
+				preview: request.personalized_message.substring(0, 200),
+				createdAt: new Date(),
+				updatedAt: new Date()
 			};
 
 			let submissionResult;

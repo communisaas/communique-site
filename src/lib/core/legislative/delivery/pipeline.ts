@@ -105,8 +105,8 @@ export class LegislativeDeliveryPipeline {
 				// Track template adoption on successful delivery (Phase 1 reputation)
 				if (result.success && job.user.id && job.template.id) {
 					try {
-						// Generate district hash from congressional district (privacy-preserving)
-						const districtIdentifier = rep.congressional_district || rep.state || 'unknown';
+						// Generate district hash from representative ID (privacy-preserving)
+						const districtIdentifier = rep.id || 'unknown';
 						const districtHash = crypto
 							.createHash('sha256')
 							.update(districtIdentifier)

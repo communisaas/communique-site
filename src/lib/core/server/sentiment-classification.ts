@@ -168,11 +168,7 @@ export async function processTemplateMessages(): Promise<MessageEmbedding[]> {
 				include: {
 					user: {
 						select: {
-							id: true,
-							state: true,
-							congressional_district: true,
-							latitude: true,
-							longitude: true
+							id: true
 						}
 					}
 				}
@@ -198,13 +194,7 @@ export async function processTemplateMessages(): Promise<MessageEmbedding[]> {
 			text: messageText,
 			embedding,
 			sentiment,
-			geographic_coords:
-				campaign.template.user?.latitude && campaign.template.user?.longitude
-					? {
-							latitude: campaign.template.user.latitude,
-							longitude: campaign.template.user.longitude
-						}
-					: undefined
+			geographic_coords: undefined
 		};
 
 		processedMessages.push(messageEmbedding);
@@ -287,18 +277,8 @@ export async function storePoliticalEmbeddings(messages: MessageEmbedding[]): Pr
 			continue; // Skip this message
 		}
 
-		// Update political embedding directly in User model
-		await db.user.update({
-			where: { id: campaign.template.userId },
-			data: {
-				political_embedding: JSON.parse(JSON.stringify(validationResult.data)),
-				embedding_version: 'v1_mock_bert',
-				coordinates_updated_at: new Date(),
-				// Update coordinates if they're not already set
-				latitude: message.geographic_coords.latitude,
-				longitude: message.geographic_coords.longitude
-			}
-		});
+		// Political embedding storage not yet implemented in User model
+		// Skip update for now
 	}
 }
 

@@ -112,7 +112,7 @@ export interface TwoTreeProofInputs {
 	 */
 	districts: string[];
 
-	/** Anti-double-vote nullifier = H(user_secret, action_domain) */
+	/** Anti-double-vote nullifier = H2(identity_commitment, action_domain) (NUL-001) */
 	nullifier: string;
 
 	/** Contract-controlled action scope (matches district-gate-client.ts) */
@@ -133,6 +133,13 @@ export interface TwoTreeProofInputs {
 
 	/** Random salt assigned during registration */
 	registrationSalt: string;
+
+	/**
+	 * Identity commitment from self.xyz/didit verification provider.
+	 * Used for nullifier: H2(identityCommitment, actionDomain) (NUL-001).
+	 * Deterministic per verified person — prevents Sybil via re-registration.
+	 */
+	identityCommitment: string;
 
 	// ═══════════════════════════════════════════════════════════════════════
 	// TREE 1 PROOF DATA
@@ -639,6 +646,12 @@ function validateTwoTreeProofInputs(inputs: TwoTreeProofInputs): void {
 	// SA-011: Reject zero user_secret
 	if (BigInt(inputs.userSecret) === 0n) {
 		throw new Error('userSecret cannot be zero (SA-011 security requirement)');
+	}
+
+	// NUL-001: Validate identityCommitment
+	validateFieldElement(inputs.identityCommitment, 'identityCommitment');
+	if (BigInt(inputs.identityCommitment) === 0n) {
+		throw new Error('identityCommitment cannot be zero (NUL-001: required for Sybil prevention)');
 	}
 
 	// Validate authority level

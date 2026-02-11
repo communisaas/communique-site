@@ -53,7 +53,3 @@ export { validateOAuthSession, checkAnalyticsPermission } from './auth/oauth-sec
 
 // Direct exports for commonly used items
 export { db } from './db';
-
-// Convenience re-exports
-export { funnelAnalytics } from './analytics';
-export { analyzeCivicInformationCascades, apiSecurityMiddleware } from './server';

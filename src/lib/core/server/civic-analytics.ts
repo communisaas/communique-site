@@ -124,22 +124,20 @@ export async function getCivicSentimentByIssue(): Promise<CivicSentiment[]> {
  */
 export async function getGeographicSentiment(): Promise<GeographicSentiment[]> {
 	const results = (await db.$queryRaw`
-    SELECT 
-      u.state,
-      u.congressional_district as district,
+    SELECT
+      '' as state,
+      '' as district,
       COUNT(*) as message_count,
-      AVG(CASE 
+      AVG(CASE
         WHEN t.body LIKE '%support%' OR t.body LIKE '%approve%' OR t.body LIKE '%yes%' THEN 1
         WHEN t.body LIKE '%oppose%' OR t.body LIKE '%against%' OR t.body LIKE '%no%' THEN -1
-        ELSE 0 
+        ELSE 0
       END) as sentiment_ratio,
       GROUP_CONCAT(DISTINCT t.category) as issues
     FROM template t
     JOIN user u ON t.user_id = u.id
-    WHERE u.state IS NOT NULL 
-      AND u.congressional_district IS NOT NULL
-      AND t.created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
-    GROUP BY u.state, u.congressional_district
+    WHERE t.created_at > DATE_SUB(NOW(), INTERVAL 30 DAY)
+    GROUP BY u.id
     HAVING message_count >= 3
     ORDER BY message_count DESC
   `) as Array<Record<string, unknown>>;
@@ -236,8 +234,7 @@ export async function detectInformationFlow(): Promise<{
 					category: true,
 					user: {
 						select: {
-							state: true,
-							congressional_district: true
+							id: true
 						}
 					}
 				}
@@ -251,7 +248,7 @@ export async function detectInformationFlow(): Promise<{
 
 	campaigns.forEach((campaign) => {
 		const category = campaign.template.category;
-		const location = `${campaign.template.user?.state}-${campaign.template.user?.congressional_district}`;
+		const location = `${campaign.template.user?.id}`;
 		const delivered = campaign.status === 'delivered';
 
 		// Track category success
