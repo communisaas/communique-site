@@ -54,9 +54,9 @@ export function deriveTargetPresentation(
 		});
 
 		// Local level
-		const displayNames = config.decisionMakers.slice(0, 2).map((dm) => dm.shortName || dm.name);
-		const hasMore = config.decisionMakers.length > 2;
-		const moreCount = config.decisionMakers.length - 2;
+		const displayNames = config.decisionMakers?.slice(0, 2).map((dm) => dm.shortName || dm.name) || [];
+		const hasMore = (config.decisionMakers?.length || 0) > 2;
+		const moreCount = (config.decisionMakers?.length || 0) - 2;
 
 		targets.push({
 			primary: displayNames.join(', '),
@@ -92,10 +92,10 @@ export function deriveTargetPresentation(
 	// Show names directly, not categories
 	// "Mayor Breed" is instantly recognizable
 	if (hasLocalDecisionMakers) {
-		const displayNames = config.decisionMakers.slice(0, 2).map((dm) => dm.shortName || dm.name);
+		const displayNames = config.decisionMakers?.slice(0, 2).map((dm) => dm.shortName || dm.name) || [];
 
-		const hasMore = config.decisionMakers.length > 2;
-		const moreCount = config.decisionMakers.length - 2;
+		const hasMore = (config.decisionMakers?.length || 0) > 2;
+		const moreCount = (config.decisionMakers?.length || 0) - 2;
 
 		return {
 			type: 'location-specific',
@@ -153,7 +153,7 @@ export function parseRecipientConfig(recipientConfig: unknown): PerceptualRecipi
 
 	// Handle new perceptual format
 	if ('reach' in config || 'decisionMakers' in config) {
-		return config as PerceptualRecipientConfig;
+		return config as unknown as PerceptualRecipientConfig;
 	}
 
 	// Handle legacy format - try to extract what we can

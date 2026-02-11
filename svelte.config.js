@@ -23,6 +23,27 @@ const config = {
 					}
 				})
 			: adapterNode(),
+		// BR5-015: Content Security Policy — SvelteKit auto-injects nonces for its inline scripts.
+		// Mode 'auto' uses hashes for prerendered pages, nonces for dynamic pages.
+		// 'wasm-unsafe-eval' required for Noir/Barretenberg WASM execution.
+		// COOP/COEP headers remain in hooks.server.ts (not part of CSP).
+		csp: {
+			mode: 'auto',
+			directives: {
+				'default-src': ['self'],
+				'script-src': ['self', 'wasm-unsafe-eval'],
+				'style-src': ['self', 'unsafe-inline', 'https://fonts.googleapis.com'],
+				'img-src': ['self', 'data:', 'blob:'],
+				'font-src': ['self', 'https://fonts.gstatic.com'],
+				'connect-src': ['self'],
+				'worker-src': ['self', 'blob:'],
+				'object-src': ['none'],
+				'frame-ancestors': ['none'],
+				'base-uri': ['self'],
+				'form-action': ['self'],
+				'upgrade-insecure-requests': true
+			}
+		},
 		// BA-010: Explicitly enable CSRF origin checking (defense-in-depth).
 		// This is the SvelteKit 2.x default, but we set it explicitly to prevent
 		// accidental disabling. All non-GET requests must have a matching Origin header.

@@ -163,7 +163,8 @@ function createTemplateDraftStore(): TemplateDraftStore {
 							// Critical: these fields are needed for email extraction
 							email: dm.email ?? '',
 							source: dm.source ?? '',
-							isAiResolved: dm.isAiResolved ?? true
+							isAiResolved: dm.isAiResolved ?? true,
+							provenance: dm.provenance ?? ''
 						}))
 					: [],
 				// These fields were missing - critical for recipient extraction

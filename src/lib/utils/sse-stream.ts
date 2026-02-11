@@ -126,6 +126,7 @@ export function createSSEStream(traceConfig?: {
 }) {
 	const encoder = new TextEncoder();
 	let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+	let closed = false;
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(c) {
@@ -138,9 +139,15 @@ export function createSSEStream(traceConfig?: {
 		 * Send a typed event to the stream
 		 */
 		send<T>(type: string, data: T) {
-			if (!controller) return;
-			const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
-			controller.enqueue(encoder.encode(event));
+			if (!controller || closed) return;
+			try {
+				const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+				controller.enqueue(encoder.encode(event));
+			} catch {
+				// Stream already closed by client disconnect or timeout
+				closed = true;
+				return;
+			}
 
 			if (traceConfig) {
 				import('$lib/server/agent-trace').then(({ traceEvent }) => {
@@ -187,7 +194,13 @@ export function createSSEStream(traceConfig?: {
 		 * Close the stream
 		 */
 		close() {
-			controller?.close();
+			if (closed) return;
+			closed = true;
+			try {
+				controller?.close();
+			} catch {
+				// Already closed
+			}
 		}
 	};
 

@@ -66,7 +66,8 @@ export function formatSourceCitation(source: Source): string {
 		research: 'Research',
 		government: 'Government',
 		legal: 'Legal',
-		advocacy: 'Advocacy'
+		advocacy: 'Advocacy',
+		other: 'Other'
 	};
 
 	const typeLabel = typeLabels[source.type] || source.type;
@@ -108,6 +109,11 @@ export function getSourceTypeBadge(type: Source['type']): {
 			bg: 'bg-emerald-50',
 			text: 'text-emerald-700',
 			border: 'border-emerald-200'
+		},
+		other: {
+			bg: 'bg-gray-50',
+			text: 'text-gray-700',
+			border: 'border-gray-200'
 		}
 	};
 

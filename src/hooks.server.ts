@@ -150,13 +150,16 @@ const handleCsrfGuard: Handle = async ({ event, resolve }) => {
 	return resolve(event);
 };
 
-// Add cross-origin isolation headers for ZK proving (SharedArrayBuffer support)
-const handleCrossOriginIsolation: Handle = async ({ event, resolve }) => {
+// Add cross-origin isolation + security headers for ZK proving
+const handleSecurityHeaders: Handle = async ({ event, resolve }) => {
 	const response = await resolve(event);
 
-	// Set COOP/COEP headers for all responses
+	// Set COOP/COEP headers for all responses (SharedArrayBuffer support for ZK proving)
 	response.headers.set('Cross-Origin-Opener-Policy', 'same-origin');
 	response.headers.set('Cross-Origin-Embedder-Policy', 'require-corp');
+
+	// CSP is now managed by SvelteKit's kit.csp in svelte.config.js.
+	// SvelteKit auto-injects nonces for its inline scripts (mode: 'auto').
 
 	return response;
 };
@@ -307,10 +310,10 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
  * 1. handleAuth - Populate session/user in locals (needed for user-based rate limits)
  * 2. handleRateLimit - Check rate limits (can use user ID from auth)
  * 3. handleCsrfGuard - CSRF protection for sensitive endpoints
- * 4. handleCrossOriginIsolation - Add COOP/COEP headers
+ * 4. handleSecurityHeaders - Add COOP/COEP + CSP headers
  *
  * Note: Auth runs first so rate limiting can use user ID for user-keyed limits.
  * This is a minor performance trade-off (auth runs on rate-limited requests),
  * but ensures accurate per-user rate limiting.
  */
-export const handle = sequence(handleAuth, handleRateLimit, handleCsrfGuard, handleCrossOriginIsolation);
+export const handle = sequence(handleAuth, handleRateLimit, handleCsrfGuard, handleSecurityHeaders);

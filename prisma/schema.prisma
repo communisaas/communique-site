@@ -1340,3 +1340,23 @@ model AgentTrace {
   @@index([expiresAt])
   @@map("agent_trace")
 }
+
+// ============================================================================
+// Resolved Contact Cache — Persists email discoveries across pipeline runs
+// 14-day TTL. Keyed on normalized org + title for upsert.
+// ============================================================================
+
+model ResolvedContact {
+  id          String   @id @default(cuid())
+  orgKey      String   @map("org_key")
+  name        String?
+  title       String?
+  email       String?
+  emailSource String?  @map("email_source")
+  resolvedAt  DateTime @default(now()) @map("resolved_at")
+  expiresAt   DateTime @map("expires_at")
+
+  @@unique([orgKey, title])
+  @@index([expiresAt])
+  @@map("resolved_contact")
+}

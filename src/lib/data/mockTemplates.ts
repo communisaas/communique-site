@@ -1,6 +1,16 @@
 import type { Template } from '$lib/types/template';
 
 /**
+ * Calculate coordination scale from send count (logarithmic scale)
+ * 1 send = 0.0, 10 = 0.33, 100 = 0.67, 1000+ = 1.0
+ */
+function calculateCoordinationScale(sendCount: number): number {
+	if (sendCount <= 1) return 0.0;
+	if (sendCount >= 1000) return 1.0;
+	return Math.log10(sendCount) / 3; // log10(1000) = 3
+}
+
+/**
  * Mock template data for Week 1-2 UX development
  *
  * Phase 1 Strategy: Build UX layer FIRST with mock data to validate user flow
@@ -35,6 +45,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 20
 		},
 		send_count: 1247,
+		coordinationScale: calculateCoordinationScale(1247),
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -43,7 +55,9 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Urge your representatives to expand Medicare coverage to include dental, vision, and hearing benefits...',
 		verification_status: 'approved',
-		quality_score: 92
+		quality_score: 92,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	},
 	{
 		id: 'mock-2',
@@ -66,6 +80,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 33
 		},
 		send_count: 2834,
+		coordinationScale: 1.0000,
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -74,7 +90,9 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Call on Congress to pass comprehensive climate legislation that invests in renewable energy...',
 		verification_status: 'approved',
-		quality_score: 95
+		quality_score: 95,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	},
 	{
 		id: 'mock-3',
@@ -97,6 +115,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 46
 		},
 		send_count: 3912,
+		coordinationScale: 1.0000,
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -105,7 +125,9 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Support comprehensive student debt cancellation to relieve the burden on millions of Americans...',
 		verification_status: 'approved',
-		quality_score: 89
+		quality_score: 89,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	},
 	{
 		id: 'mock-4',
@@ -128,6 +150,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 15
 		},
 		send_count: 1589,
+		coordinationScale: 1.0000,
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -136,7 +160,9 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Demand that Congress pass legislation to protect and expand voting rights for all Americans...',
 		verification_status: 'approved',
-		quality_score: 91
+		quality_score: 91,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	},
 	{
 		id: 'mock-5',
@@ -159,6 +185,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 10
 		},
 		send_count: 742,
+		coordinationScale: 0.9568,
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -167,7 +195,9 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Support comprehensive criminal justice reform to end mass incarceration and address systemic inequities...',
 		verification_status: 'approved',
-		quality_score: 88
+		quality_score: 88,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	},
 	{
 		id: 'mock-6',
@@ -190,6 +220,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 13
 		},
 		send_count: 967,
+		coordinationScale: 0.9951,
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -198,7 +230,9 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Demand federal investment in affordable housing to address the housing crisis affecting millions...',
 		verification_status: 'approved',
-		quality_score: 90
+		quality_score: 90,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	},
 	{
 		id: 'mock-7',
@@ -221,6 +255,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 26
 		},
 		send_count: 2145,
+		coordinationScale: 1.0000,
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -229,7 +265,9 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Support legislation to raise the federal minimum wage to $15 per hour to ensure working families can afford...',
 		verification_status: 'approved',
-		quality_score: 93
+		quality_score: 93,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	},
 	{
 		id: 'mock-8',
@@ -252,6 +290,8 @@ export const mockTemplates: Template[] = [
 			district_coverage_percent: 54
 		},
 		send_count: 4521,
+		coordinationScale: 1.0000,
+		isNew: false,
 		is_public: true,
 		status: 'approved',
 		applicable_countries: ['US'],
@@ -260,6 +300,8 @@ export const mockTemplates: Template[] = [
 		preview:
 			'Urge Congress to pass Medicare for All legislation to guarantee healthcare as a human right...',
 		verification_status: 'approved',
-		quality_score: 96
+		quality_score: 96,
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString()
 	}
 ];
