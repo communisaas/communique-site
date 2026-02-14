@@ -135,9 +135,9 @@ export interface TwoTreeProofInputs {
 	registrationSalt: string;
 
 	/**
-	 * Identity commitment from self.xyz/didit verification provider.
+	 * Identity commitment (SHA-256 mod BN254, deterministic per verified person).
 	 * Used for nullifier: H2(identityCommitment, actionDomain) (NUL-001).
-	 * Deterministic per verified person — prevents Sybil via re-registration.
+	 * Guaranteed < BN254 modulus — safe as circuit Field input.
 	 */
 	identityCommitment: string;
 

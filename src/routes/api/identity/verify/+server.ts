@@ -9,7 +9,7 @@ import {
 	type IdentityProof
 } from '$lib/core/server/identity-hash';
 import { prisma } from '$lib/core/db';
-import { hashIPAddress } from '$lib/core/server/security';
+import { hashIPAddress, encryptEntropy, decryptEntropy } from '$lib/core/server/security';
 import {
 	computeIdentityCommitment,
 	bindIdentityCommitment,
@@ -112,7 +112,10 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		});
 
 		// Wave 14R fix (C-2): Only generate entropy once per user
-		const userEntropy = currentUser?.encrypted_entropy || generateUserEntropy();
+		// BR6-001: Decrypt existing entropy or generate fresh
+		const userEntropy = currentUser?.encrypted_entropy
+			? decryptEntropy(currentUser.encrypted_entropy)
+			: generateUserEntropy();
 
 		// Wave 14R fix (H-1): Derive authority level using document_type
 		const authorityLevel = deriveAuthorityLevel({
@@ -158,7 +161,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 					identity_fingerprint: identityFingerprint,
 					birth_year: birthYear,
 					document_type: identityProof.documentType,
-					encrypted_entropy: userEntropy,
+					encrypted_entropy: encryptEntropy(userEntropy),
 					authority_level: authorityLevel
 				}
 			});

@@ -46,19 +46,20 @@ export interface MergeAccountsResult {
 // IDENTITY COMMITMENT GENERATION
 // =============================================================================
 
+/** BN254 scalar field modulus — identity commitments must be valid field elements */
+const BN254_MODULUS =
+	21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
 /**
- * Compute identity commitment from verification proof data
+ * Compute identity commitment from verification proof data.
  *
- * The commitment is a deterministic hash of the identity proof,
- * producing the same value regardless of which OAuth provider is used.
+ * Produces a deterministic value per verified person regardless of OAuth provider.
+ * The output is guaranteed to be a valid BN254 field element (< modulus) so it
+ * can be used directly as a private input to the ZK circuit for nullifier computation.
  *
- * NOTE: This uses a different hashing scheme than identity_hash.
- * - identity_hash: SHA-256(passport + nationality + birthYear) - for basic Sybil resistance
- * - identity_commitment: Poseidon/SHA-256 of ZK proof inputs - for cross-provider linking
+ * Pipeline: SHA-256(SHA-256(domain:passport:nationality:birthYear:documentType)) mod BN254
  *
- * For Phase 1 MVP, we use the identity_hash as the commitment since it's
- * already unique per person. In Phase 2, this will be replaced with
- * Poseidon hash from the ZK circuit for full cryptographic binding.
+ * NOTE: Different from identity_hash (which is unbounded SHA-256 for Sybil detection).
  */
 export function computeIdentityCommitment(
 	passportNumber: string,
@@ -69,9 +70,21 @@ export function computeIdentityCommitment(
 	// Domain separation prefix prevents cross-protocol hash collisions
 	const DOMAIN_PREFIX = 'communique-identity-v1';
 
+	// BR6-002: Platform salt prevents offline passport enumeration attacks.
+	// Without salt, an attacker with passport databases could precompute
+	// all commitments and link them to on-chain nullifiers.
+	const COMMITMENT_SALT = process.env.IDENTITY_COMMITMENT_SALT;
+	if (!COMMITMENT_SALT) {
+		throw new Error(
+			'IDENTITY_COMMITMENT_SALT environment variable not configured. ' +
+				'Generate with: openssl rand -hex 32'
+		);
+	}
+
 	// Normalize inputs for consistent hashing
 	const normalized = [
 		DOMAIN_PREFIX,
+		COMMITMENT_SALT,
 		passportNumber.toUpperCase().trim(),
 		nationality.toUpperCase().trim(),
 		birthYear.toString(),
@@ -79,11 +92,15 @@ export function computeIdentityCommitment(
 	].join(':');
 
 	// Double-hash with domain separation for preimage resistance
-	// In Phase 2, this will be replaced with Poseidon hash for ZK compatibility
 	const inner = createHash('sha256').update(normalized).digest();
-	const commitment = createHash('sha256').update(inner).digest('hex');
+	const rawHex = createHash('sha256').update(inner).digest('hex');
 
-	return commitment;
+	// Reduce mod BN254 — SHA-256 is 256 bits but BN254 field is ~254 bits.
+	// ~25% of SHA-256 outputs exceed the modulus; reduction ensures the commitment
+	// is always a valid field element for ZK circuit consumption.
+	const value = BigInt('0x' + rawHex);
+	const reduced = value % BN254_MODULUS;
+	return reduced.toString(16).padStart(64, '0');
 }
 
 /**
@@ -236,17 +253,23 @@ async function mergeAccounts(sourceUserId: string, targetUserId: string): Promis
 
 		// Move user representatives
 		// Note: May cause unique constraint violations if both users have same rep
-		// In that case, just delete the duplicates
+		// BR6-006: Only catch P2002 (unique constraint), re-throw unexpected errors
 		try {
 			await tx.user_representatives.updateMany({
 				where: { user_id: sourceUserId },
 				data: { user_id: targetUserId }
 			});
-		} catch {
-			// If unique constraint violation, delete source user's duplicates
-			await tx.user_representatives.deleteMany({
-				where: { user_id: sourceUserId }
-			});
+		} catch (e: unknown) {
+			const isPrismaUniqueViolation =
+				e && typeof e === 'object' && 'code' in e && (e as { code: string }).code === 'P2002';
+			if (isPrismaUniqueViolation) {
+				// Both users have same rep — delete source user's duplicates
+				await tx.user_representatives.deleteMany({
+					where: { user_id: sourceUserId }
+				});
+			} else {
+				throw e;
+			}
 		}
 
 		// Delete the duplicate user

@@ -17,6 +17,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createVerificationSession } from '$lib/core/identity/didit-client';
+import { createVerificationSession as createDbSession } from '$lib/core/server/verification-sessions';
 
 export const POST: RequestHandler = async ({ locals, request, url }) => {
 	// Authentication check
@@ -52,6 +53,15 @@ export const POST: RequestHandler = async ({ locals, request, url }) => {
 		console.log('[Didit.me] Session created successfully:', {
 			sessionId: sessionResponse.sessionId,
 			status: sessionResponse.status
+		});
+
+		// BR6-004: Store VerificationSession binding for webhook userId validation.
+		// The Didit session_id is stored as `challenge` so the webhook can cross-reference
+		// vendor_data userId against the userId that initiated the session.
+		await createDbSession({
+			userId,
+			method: 'didit',
+			challenge: sessionResponse.sessionId,
 		});
 
 		// Return verification URL and session details to client

@@ -31,7 +31,7 @@ export interface SessionCredential {
 	/** User ID (for multi-user support) */
 	userId: string;
 
-	/** Identity commitment (Poseidon hash from self.xyz/Didit.me) */
+	/** Identity commitment (SHA-256 mod BN254, deterministic per verified person) */
 	identityCommitment: string;
 
 	/** Position in Tree 1 (User Identity Merkle tree, depth 20) */

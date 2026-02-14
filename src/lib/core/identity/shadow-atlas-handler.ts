@@ -99,7 +99,7 @@ export async function registerTwoTree(
 
 		const tree1Data = await tree1Response.json();
 
-		if (tree1Data.leafIndex === undefined || !tree1Data.userRoot || !tree1Data.userPath || !tree1Data.pathIndices) {
+		if (tree1Data.leafIndex === undefined || !tree1Data.userRoot || !tree1Data.userPath || !tree1Data.pathIndices || !tree1Data.identityCommitment) {
 			return {
 				success: false,
 				error: 'Invalid Tree 1 registration response',
@@ -132,11 +132,9 @@ export async function registerTwoTree(
 		const now = new Date();
 		const sessionCredential: SessionCredential = {
 			userId: request.userId,
-			// TODO(NUL-001): Replace with provider-derived identity commitment from
-			// generateIdentityCommitment(). Currently uses leaf hash as placeholder.
-			// End-to-end wiring requires passing shadowAtlasCommitment from didit webhook
-			// through the registration flow to this credential storage.
-			identityCommitment: request.leaf,
+			// NUL-001: Server returns canonical identity commitment (from User.identity_commitment).
+			// Deterministic per verified person — ensures same nullifier across re-registrations.
+			identityCommitment: tree1Data.identityCommitment,
 			leafIndex: tree1Data.leafIndex,
 			merklePath: tree1Data.userPath, // Tree 1 siblings
 			merkleRoot: tree1Data.userRoot, // Tree 1 root
@@ -217,7 +215,7 @@ export async function recoverTwoTree(
 
 		const tree1Data = await tree1Response.json();
 
-		if (tree1Data.leafIndex === undefined || !tree1Data.userRoot || !tree1Data.userPath || !tree1Data.pathIndices) {
+		if (tree1Data.leafIndex === undefined || !tree1Data.userRoot || !tree1Data.userPath || !tree1Data.pathIndices || !tree1Data.identityCommitment) {
 			return {
 				success: false,
 				error: 'Invalid Tree 1 replacement response',
@@ -250,11 +248,9 @@ export async function recoverTwoTree(
 		const now = new Date();
 		const sessionCredential: SessionCredential = {
 			userId: request.userId,
-			// TODO(NUL-001): Replace with provider-derived identity commitment from
-			// generateIdentityCommitment(). Currently uses leaf hash as placeholder.
-			// IMPORTANT: Recovery is NOT Sybil-safe until NUL-001 is complete — different
-			// leaf hashes produce different nullifiers, enabling double-voting.
-			identityCommitment: request.leaf,
+			// NUL-001: Server returns canonical identity commitment (from User.identity_commitment).
+			// Recovery now produces the same nullifier as original registration.
+			identityCommitment: tree1Data.identityCommitment,
 			leafIndex: tree1Data.leafIndex,
 			merklePath: tree1Data.userPath,
 			merkleRoot: tree1Data.userRoot,

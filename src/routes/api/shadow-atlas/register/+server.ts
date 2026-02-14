@@ -8,9 +8,10 @@
  * FLOW:
  * 1. Receive precomputed leaf hash from browser
  * 2. Validate OAuth session
- * 3. Call voter-protocol Shadow Atlas POST /v1/register with { leaf }
- * 4. Store registration metadata in Postgres (leaf hash, leafIndex, timestamp)
- * 5. Return Tree 1 Merkle proof to client
+ * 3. Look up User.identity_commitment (NUL-001: required for nullifier binding)
+ * 4. Call voter-protocol Shadow Atlas POST /v1/register with { leaf }
+ * 5. Store registration metadata in Postgres (identity commitment, leafIndex, proof)
+ * 6. Return Tree 1 Merkle proof + identity commitment to client
  *
  * PRIVACY: This endpoint does NOT receive or store:
  * - user_secret (private key material)
@@ -38,6 +39,22 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 		if (!session) {
 			return json({ error: 'Unauthorized' }, { status: 401 });
 		}
+
+		// NUL-001: Look up canonical identity commitment (set during verification).
+		// Required for nullifier binding — prevents Sybil via re-registration.
+		const user = await prisma.user.findUnique({
+			where: { id: session.userId },
+			select: { identity_commitment: true, verification_method: true },
+		});
+
+		if (!user?.identity_commitment) {
+			return json(
+				{ error: 'Identity verification required before Shadow Atlas registration' },
+				{ status: 403 }
+			);
+		}
+
+		const identityCommitment = user.identity_commitment;
 
 		const body = await request.json();
 		const { leaf, replace: isReplace } = body;
@@ -96,7 +113,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					await prisma.shadowAtlasRegistration.update({
 						where: { user_id: session.userId },
 						data: {
-							identity_commitment: leaf,
+							identity_commitment: identityCommitment,
 							leaf_index: replacementResult.leafIndex,
 							merkle_root: replacementResult.userRoot,
 							merkle_path: replacementResult.userPath,
@@ -123,6 +140,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 					userRoot: replacementResult.userRoot,
 					userPath: replacementResult.userPath,
 					pathIndices: replacementResult.pathIndices,
+					identityCommitment,
 				});
 			}
 
@@ -138,6 +156,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 				userPath: existingRegistration.merkle_path as string[],
 				pathIndices,
 				alreadyRegistered: true,
+				identityCommitment,
 			});
 		}
 
@@ -160,13 +179,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			data: {
 				user_id: session.userId,
 				congressional_district: 'two-tree', // District comes from Tree 2, not registration
-				identity_commitment: leaf, // The leaf hash (operator never sees private inputs)
+				identity_commitment: identityCommitment, // NUL-001: canonical commitment from verification
 				leaf_index: registrationResult.leafIndex,
 				merkle_root: registrationResult.userRoot,
 				merkle_path: registrationResult.userPath,
 				credential_type: 'two-tree',
 				cell_id: null, // PRIVACY: cell_id never sent to this endpoint
-				verification_method: 'self.xyz',
+				verification_method: user.verification_method || 'unknown', // BR6-005: use actual method, not hardcoded
 				verification_id: session.userId, // Link to auth session
 				verification_timestamp: new Date(),
 				registration_status: 'registered',
@@ -179,6 +198,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			userRoot: registrationResult.userRoot,
 			userPath: registrationResult.userPath,
 			pathIndices: registrationResult.pathIndices,
+			identityCommitment,
 		});
 	} catch (error) {
 		console.error('[Shadow Atlas] Registration error:', error);
