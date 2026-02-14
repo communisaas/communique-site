@@ -163,7 +163,15 @@ export const POST: RequestHandler = async (event) => {
 			};
 
 			const result = await resolveDecisionMakers(context, (segment: ThoughtSegment) => {
-				emitter.send('segment', segment);
+				// Route progressive reveal events to their own SSE event types
+				const segmentAny = segment as any;
+				if (segmentAny.type === 'identity-found') {
+					emitter.send('identity-found', segmentAny.metadata.identities);
+				} else if (segmentAny.type === 'candidate-resolved') {
+					emitter.send('candidate-resolved', segmentAny.metadata.candidate);
+				} else {
+					emitter.send('segment', segment);
+				}
 			});
 
 			resultTokenUsage = result.tokenUsage;

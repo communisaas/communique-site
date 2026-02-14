@@ -64,13 +64,9 @@
 		}
 	});
 
-	// When parent's save handler completes, determine outcome and reset guard
+	// Reset local guard once parent finishes (success or failure)
 	$effect(() => {
 		if (!isSubmitting && localPublishing) {
-			if (!onSaveError) {
-				// Success: parent will close us — mark draft for cleanup
-				draftCleanupMode = 'delete';
-			}
 			localPublishing = false;
 		}
 	});
@@ -317,12 +313,26 @@
 			recipient_config: {
 				reach: formData.audience.includesCongress ? 'district-based' : 'location-specific',
 				emails: formData.audience.recipientEmails,
-				decisionMakers: formData.audience.decisionMakers.map((dm) => ({
-					name: dm.name,
-					shortName: dm.title ? `${dm.title.split(/[,;]/)[0].trim()} ${dm.name.split(' ').pop()}` : undefined,
-					role: dm.title || undefined,
-					organization: dm.organization || undefined
-				})),
+				decisionMakers: formData.audience.decisionMakers
+					.filter((dm) => dm.email)
+					.map((dm) => ({
+						name: dm.name,
+						shortName: dm.title
+						? (() => {
+								const role = dm.title.split(/[,;]|\band\b/i)[0].trim();
+								const lastName = dm.name.split(' ').pop();
+								const short =
+									role.length > 30
+										? role.lastIndexOf(' ', 30) > 10
+											? role.slice(0, role.lastIndexOf(' ', 30))
+											: role.slice(0, 30)
+										: role;
+								return `${short} ${lastName}`;
+							})()
+						: undefined,
+						role: dm.title || undefined,
+						organization: dm.organization || undefined
+					})),
 				cwcRouting: formData.audience.includesCongress || undefined
 			},
 			metrics: {
@@ -347,8 +357,15 @@
 			recipientEmails: formData.audience.recipientEmails
 		};
 
+		// Optimistic: mark draft for deletion BEFORE dispatching to parent.
+		// Parent may destroy us synchronously (showTemplateCreator=false happens before
+		// isSubmitting=false in the finally block), so the $effect that was setting this
+		// reactively never ran — onDestroy saw 'save' and re-saved the draft instead.
+		// If the save fails, the error-recovery $effect (below) resets to 'save',
+		// and the component stays alive on failure (parent only unmounts on success).
+		draftCleanupMode = 'delete';
+
 		dispatch('save', template);
-		// Draft deletion deferred to parent's success handler to prevent data loss on save failure
 	}
 
 	// Progress calculation

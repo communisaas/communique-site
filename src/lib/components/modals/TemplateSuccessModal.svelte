@@ -1,17 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
-	import {
-		CheckCircle,
-		Clock,
-		Share2,
-		ExternalLink,
-		PlusCircle,
-		LayoutDashboard,
-		Copy,
-		X
-	} from '@lucide/svelte';
-	import Button from '$lib/components/ui/Button.svelte';
+	import { CheckCircle, Clock, Share2, LayoutDashboard, X } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 
 	let {
@@ -25,7 +15,6 @@
 	const dispatch = createEventDispatcher<{
 		close: void;
 		dashboard: void;
-		createAnother: void;
 	}>();
 
 	let copied = $state(false);
@@ -33,22 +22,44 @@
 		`${typeof window !== 'undefined' ? window.location.origin : ''}/s/${template.slug}`
 	);
 
+	// Share message matching TemplateModal's medium format
+	let shareMessage = $derived(
+		(() => {
+			const actionCount = template.metrics?.sent || 0;
+			const category = template.category?.toLowerCase() || 'advocacy';
+			return `Coordinating on ${category}.\n\n"${template.title}"\n\n${actionCount > 0 ? `${actionCount.toLocaleString()} people already sent. ` : ''}Takes 2 minutes: ${shareUrl}`;
+		})()
+	);
+
 	// State-aware derived values for perceptual clarity
 	let isPublished = $derived(template.status === 'published' && template.is_public);
 	let isDraft = $derived(template.status === 'draft' || !template.is_public);
+	let hasNativeShare = typeof navigator !== 'undefined' && 'share' in navigator;
 
 	function handleClose() {
 		onclose?.();
 		dispatch('close');
 	}
 
-	function handleShare() {
-		if (typeof navigator !== 'undefined' && navigator.share) {
-			navigator.share({
-				title: template.title,
-				text: `Check out this advocacy template: ${template.title}`,
-				url: shareUrl
-			});
+	async function handleShare() {
+		const shareData = {
+			title: template.title,
+			text: shareMessage,
+			url: shareUrl
+		};
+
+		if (
+			typeof navigator !== 'undefined' &&
+			navigator.share &&
+			navigator.canShare?.(shareData)
+		) {
+			try {
+				await navigator.share(shareData);
+			} catch (err) {
+				if (err instanceof Error && err.name !== 'AbortError') {
+					console.error('[Share] Native share failed:', err);
+				}
+			}
 		} else {
 			copyToClipboard();
 		}
@@ -66,11 +77,6 @@
 	function handleDashboard() {
 		dispatch('dashboard');
 		window.location.href = '/';
-	}
-
-	function handleCreateAnother() {
-		dispatch('createAnother');
-		handleClose();
 	}
 
 	function handleViewTemplate() {
@@ -97,6 +103,7 @@
 	<div
 		class="relative w-full max-w-md overflow-hidden rounded-xl bg-white shadow-2xl"
 		role="document"
+		onclick={(e) => e.stopPropagation()}
 		in:scale={{
 			duration: 300,
 			start: 0.9,
@@ -112,7 +119,7 @@
 			<X class="h-5 w-5" />
 		</button>
 
-		<!-- State-Aware Header: Immediately perceivable (peripheral vision → focal) -->
+		<!-- State-Aware Header -->
 		<div
 			class="px-6 pb-6 pt-8 text-center {isPublished
 				? 'bg-gradient-to-br from-emerald-50 to-blue-50'
@@ -140,8 +147,8 @@
 		</div>
 
 		<!-- Template Preview -->
-		<div class="border-b border-slate-200 px-6 py-4">
-			<div class="rounded-lg bg-slate-50 p-4">
+		<div class="px-6 pb-4 pt-5">
+			<div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
 				<h3 class="mb-1 font-semibold text-slate-900">
 					{template.title}
 				</h3>
@@ -163,100 +170,94 @@
 			</div>
 		</div>
 
-		<!-- Share Section: Only visible when template is published -->
 		{#if isPublished}
-			<div class="border-b border-slate-200 px-6 py-4">
-				<div class="mb-3 flex items-center justify-between">
-					<span class="text-sm font-medium text-slate-700">Share your template</span>
+			<!-- Primary: Share Button -->
+			<div class="px-6 pb-2 pt-1">
+				<button
+					onclick={handleShare}
+					class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
+				>
+					<Share2 class="h-5 w-5" />
+					<span>{hasNativeShare ? 'Share template' : 'Copy share message'}</span>
+				</button>
+			</div>
+
+			<!-- Tertiary: URL display with copy link -->
+			<div class="px-6 pb-4">
+				<div class="flex items-center gap-2 rounded-lg bg-slate-50 px-3 py-2">
+					<span class="flex-1 truncate font-mono text-xs text-slate-500">
+						{shareUrl}
+					</span>
 					{#if copied}
-						<span class="text-xs font-medium text-emerald-600" in:fade> Copied! </span>
+						<span class="text-xs font-medium text-emerald-600" in:fade>Copied!</span>
+					{:else}
+						<button
+							onclick={copyToClipboard}
+							class="flex-shrink-0 text-xs font-medium text-participation-primary-600 hover:text-participation-primary-700"
+						>
+							Copy URL
+						</button>
 					{/if}
 				</div>
-				<div class="flex gap-2">
-					<div class="flex-1 truncate rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-700">
-						{shareUrl}
-					</div>
-					<button
-						onclick={copyToClipboard}
-						class="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100"
-						aria-label="Copy link"
-					>
-						<Copy class="h-5 w-5" />
-					</button>
-					<button
-						onclick={handleShare}
-						class="rounded-lg p-2 text-slate-600 transition-colors hover:bg-slate-100"
-						aria-label="Share"
-					>
-						<Share2 class="h-5 w-5" />
-					</button>
-				</div>
+			</div>
+
+			<!-- Warm closing note -->
+			<div class="px-6 pb-3 pt-1">
+				<p class="text-center text-sm leading-relaxed text-slate-500">
+					Every template starts with someone willing to share. Your voice can inspire others
+					to act.
+				</p>
+			</div>
+
+			<!-- Secondary: single text link -->
+			<div class="flex justify-center px-6 pb-6">
+				<button
+					onclick={handleViewTemplate}
+					class="text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 hover:decoration-slate-500"
+				>
+					View template
+				</button>
 			</div>
 		{:else}
-			<!-- Draft state: Explain what's happening -->
-			<div class="border-b border-slate-200 px-6 py-4">
+			<!-- Draft: Explain what's happening -->
+			<div class="px-6 pb-4">
 				<div class="rounded-lg bg-amber-50 p-4">
 					<p class="text-sm font-medium text-amber-800">Why is my template a draft?</p>
 					<p class="mt-1 text-sm text-amber-700">
-						Our automated review couldn't verify the content. This usually resolves within a few
-						minutes. Check your dashboard for updates.
+						Our automated review couldn't verify the content. This usually resolves within
+						a few minutes. Check your dashboard for updates.
 					</p>
 				</div>
 			</div>
-		{/if}
 
-		<!-- Action Buttons: State-appropriate primary action -->
-		<div class="space-y-2 px-6 py-4">
-			{#if isPublished}
-				<Button variant="primary" size="sm" classNames="w-full" onclick={handleViewTemplate}>
-					<ExternalLink class="mr-2 h-4 w-4" />
-					View Template
-				</Button>
-			{:else}
-				<Button variant="primary" size="sm" classNames="w-full" onclick={handleDashboard}>
-					<LayoutDashboard class="mr-2 h-4 w-4" />
+			<!-- Draft: Primary action -->
+			<div class="px-6 pb-2">
+				<button
+					onclick={handleDashboard}
+					class="flex w-full items-center justify-center gap-2 rounded-lg bg-participation-primary-600 px-6 py-3 font-semibold text-white shadow-sm transition-all hover:bg-participation-primary-700 active:scale-95"
+				>
+					<LayoutDashboard class="h-5 w-5" />
 					Go to Dashboard
-				</Button>
-			{/if}
-
-			<div class="grid grid-cols-2 gap-2">
-				{#if isPublished}
-					<Button variant="secondary" size="sm" onclick={handleDashboard}>
-						<LayoutDashboard class="mr-1.5 h-4 w-4" />
-						Dashboard
-					</Button>
-				{:else}
-					<Button variant="secondary" size="sm" onclick={handleViewTemplate}>
-						<ExternalLink class="mr-1.5 h-4 w-4" />
-						Preview Draft
-					</Button>
-				{/if}
-
-				<Button variant="secondary" size="sm" onclick={handleCreateAnother}>
-					<PlusCircle class="mr-1.5 h-4 w-4" />
-					Create Another
-				</Button>
+				</button>
 			</div>
-		</div>
 
-		<!-- Tips Section: Context-appropriate guidance -->
-		{#if isPublished}
-			<div class="bg-blue-50 px-6 py-4">
-				<p class="mb-2 text-xs font-medium text-blue-900">💡 Next steps:</p>
-				<ul class="space-y-1 text-xs text-blue-700">
-					<li>• Share your template on social media to gather support</li>
-					<li>• Track engagement from your dashboard</li>
-					<li>• Customize messaging for different audiences</li>
-				</ul>
+			<!-- Draft: What happens next (prose, not bullets) -->
+			<div class="px-6 pb-3 pt-1">
+				<p class="text-xs font-medium text-amber-800">What happens next</p>
+				<p class="mt-1.5 text-xs leading-relaxed text-amber-700">
+					Your template is being reviewed automatically. Most reviews complete within a few
+					minutes — check your dashboard for updates.
+				</p>
 			</div>
-		{:else}
-			<div class="bg-amber-50 px-6 py-4">
-				<p class="mb-2 text-xs font-medium text-amber-900">⏳ What happens next:</p>
-				<ul class="space-y-1 text-xs text-amber-700">
-					<li>• Your template is being reviewed automatically</li>
-					<li>• Most reviews complete within a few minutes</li>
-					<li>• Check your dashboard for status updates</li>
-				</ul>
+
+			<!-- Draft: Secondary link -->
+			<div class="flex justify-center px-6 pb-6">
+				<button
+					onclick={handleViewTemplate}
+					class="text-sm text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-700 hover:decoration-slate-500"
+				>
+					Preview draft
+				</button>
 			</div>
 		{/if}
 	</div>

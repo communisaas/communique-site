@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { slide } from 'svelte/transition';
 	import type { TemplateFormData } from '$lib/types/template';
 
 	import {
@@ -31,6 +32,18 @@
 
 	// Streaming state
 	let thoughts = $state<string[]>([]);
+
+	// Progressive reveal state
+	type PendingIdentity = {
+		name: string;
+		title: string;
+		organization: string;
+		status: 'pending' | 'cached' | 'resolved' | 'no-email' | 'failed';
+		email?: string;
+		reasoning?: string;
+	};
+	let pendingIdentities = $state<PendingIdentity[]>([]);
+	let identitiesRevealed = $state(false);
 
 	/**
 	 * Build topics array with robust fallback chain
@@ -72,6 +85,8 @@
 		isResolving = true;
 		errorMessage = null;
 		thoughts = [];
+		pendingIdentities = [];
+		identitiesRevealed = false;
 
 		try {
 			// Resolve decision-makers via streaming endpoint
@@ -120,7 +135,7 @@
 				throw new Error(errorData.error || 'Failed to resolve decision-makers');
 			}
 
-			// Process SSE stream
+			// Process SSE stream — includes progressive reveal events
 			for await (const event of parseSSEStream<Record<string, unknown>>(response)) {
 				switch (event.type) {
 					case 'segment': {
@@ -128,6 +143,42 @@
 						if (typeof segment.content === 'string' && segment.content.trim()) {
 							thoughts = [...thoughts, segment.content];
 						}
+						break;
+					}
+
+					case 'identity-found': {
+						const identities = event.data as unknown as Array<{
+							name: string; title: string; organization: string; status: string;
+						}>;
+						pendingIdentities = identities.map(id => ({
+							name: id.name || '',
+							title: id.title,
+							organization: id.organization,
+							status: id.status as PendingIdentity['status']
+						}));
+						identitiesRevealed = true;
+						break;
+					}
+
+					case 'candidate-resolved': {
+						const candidate = event.data as {
+							name: string; title: string; organization: string;
+							email?: string; status: string; reasoning?: string;
+						};
+						// Find matching pending identity by org+title and upgrade it
+						pendingIdentities = pendingIdentities.map(id => {
+							if (id.organization === candidate.organization &&
+								id.title === candidate.title) {
+								return {
+									...id,
+									name: candidate.name || id.name,
+									email: candidate.email,
+									reasoning: candidate.reasoning,
+									status: candidate.status as PendingIdentity['status']
+								};
+							}
+							return id;
+						});
 						break;
 					}
 
@@ -258,12 +309,52 @@
 
 <div class="mx-auto max-w-3xl">
 	{#if stage === 'resolving'}
-		<!-- Thought-centered loading: the agent's reasoning IS the experience -->
-		<AgentThinking
-			{thoughts}
-			isActive={stage === 'resolving'}
-			context="Finding decision-makers"
-		/>
+		{#if !identitiesRevealed}
+			<!-- Phase 1: thoughts only (no cards yet) -->
+			<AgentThinking {thoughts} isActive={true} context="Finding decision-makers" />
+		{:else}
+			<!-- Phase 2: compressed thoughts + progressive cards -->
+			<div class="split-view">
+				<AgentThinking {thoughts} isActive={true} context="Searching contacts" compact />
+
+				<div class="progressive-cards">
+					{#each pendingIdentities as identity, i (identity.organization + '::' + identity.title)}
+						<div
+							class="identity-card"
+							class:resolved={identity.status === 'resolved' || identity.status === 'cached'}
+							class:no-email={identity.status === 'no-email'}
+							class:pending={identity.status === 'pending'}
+							transition:slide={{ duration: 200, delay: i * 50 }}
+						>
+							<div class="card-status">
+								{#if identity.status === 'pending'}
+									<span class="status-dot pending-pulse"></span>
+								{:else if identity.status === 'resolved' || identity.status === 'cached'}
+									<span class="status-dot resolved"></span>
+								{:else}
+									<span class="status-dot no-email"></span>
+								{/if}
+							</div>
+							<div class="card-content">
+								<p class="card-name">
+									{identity.name || identity.title}
+								</p>
+								<p class="card-org">
+									{identity.title}{identity.organization ? ` · ${identity.organization}` : ''}
+								</p>
+								{#if identity.email}
+									<p class="card-email">{identity.email}</p>
+								{:else if identity.status === 'pending'}
+									<p class="card-searching">Searching...</p>
+								{:else if identity.status === 'no-email'}
+									<p class="card-no-email">No public email found</p>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	{:else if stage === 'results'}
 		<!-- Results display -->
 		<DecisionMakerResults
@@ -370,3 +461,115 @@
 		</div>
 	{/if}
 </div>
+
+<style>
+	.split-view {
+		display: flex;
+		flex-direction: column;
+		gap: 1.5rem;
+	}
+
+	.progressive-cards {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.identity-card {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.75rem;
+		padding: 0.75rem 1rem;
+		border-radius: 0.5rem;
+		border: 1px solid #e2e8f0;
+		background: white;
+		transition: all 0.3s ease-out;
+	}
+
+	.identity-card.resolved {
+		border-color: #86efac;
+		background: #f0fdf4;
+	}
+
+	.identity-card.no-email {
+		border-color: #fde68a;
+		background: #fffbeb;
+	}
+
+	.identity-card.pending {
+		border-color: #e2e8f0;
+	}
+
+	.card-status {
+		flex-shrink: 0;
+		padding-top: 0.125rem;
+	}
+
+	.status-dot {
+		display: block;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+	}
+
+	.status-dot.resolved {
+		background: #22c55e;
+	}
+
+	.status-dot.no-email {
+		background: #f59e0b;
+	}
+
+	.status-dot.pending-pulse {
+		background: #94a3b8;
+		animation: pulse 1.5s ease-in-out infinite;
+	}
+
+	@keyframes pulse {
+		0%, 100% { opacity: 0.4; }
+		50% { opacity: 1; }
+	}
+
+	.card-content {
+		min-width: 0;
+	}
+
+	.card-name {
+		font-weight: 600;
+		font-size: 0.875rem;
+		color: #1e293b;
+		margin: 0;
+	}
+
+	.card-org {
+		font-size: 0.75rem;
+		color: #64748b;
+		margin: 0.125rem 0 0;
+	}
+
+	.card-email {
+		font-size: 0.75rem;
+		color: #16a34a;
+		margin: 0.25rem 0 0;
+	}
+
+	.card-searching {
+		font-size: 0.75rem;
+		color: #94a3b8;
+		font-style: italic;
+		margin: 0.25rem 0 0;
+	}
+
+	.card-no-email {
+		font-size: 0.75rem;
+		color: #d97706;
+		margin: 0.25rem 0 0;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.status-dot.pending-pulse {
+			animation: none;
+			opacity: 0.7;
+		}
+	}
+</style>

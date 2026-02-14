@@ -1055,21 +1055,6 @@
 		</div>
 	{/if}
 
-	<!-- Manual mode option (shown during generation or when AI is working) -->
-	{#if !isSettled && !manualMode && !showAISuggest && (data.rawInput || '').trim().length >= AI_SUGGESTION_TIMING.MIN_INPUT_LENGTH && suggestionState.status !== 'thinking'}
-		<div class="mt-3 text-right" transition:fade={{ duration: 150 }}>
-			<button
-				type="button"
-				onclick={writeManually}
-				tabindex={0}
-				class="text-sm text-slate-500 underline transition-colors hover:text-slate-700"
-			>
-				I'll write my own subject line
-			</button>
-		</div>
-	{/if}
-
-
 	<!-- Streaming thoughts (perceptual engineering: scannable research log) -->
 	{#if !isSettled && suggestionState.status === 'streaming' && !showAISuggest}
 		<div

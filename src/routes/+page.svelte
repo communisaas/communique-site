@@ -547,13 +547,6 @@
 			showTemplateSuccess = false;
 			savedTemplate = null;
 		}}
-		on:createAnother={() => {
-			showTemplateSuccess = false;
-			savedTemplate = null;
-			if (creationContext) {
-				showTemplateCreator = true;
-			}
-		}}
 	/>
 {/if}
 
