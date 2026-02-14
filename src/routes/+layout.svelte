@@ -89,6 +89,12 @@
 <!-- HeaderSystem handles context-aware header rendering -->
 <HeaderSystem user={data.user as any} template={data.template as any} onTemplateUse={handleTemplateUse as any} />
 
+{#if data.user?.id === 'user-demo-1'}
+	<div class="pointer-events-none fixed top-0 left-0 right-0 z-[9999] bg-amber-500/10 text-amber-200 text-center text-xs py-1 font-mono tracking-wide">
+		DEMO MODE — communique.app
+	</div>
+{/if}
+
 {#if isProfilePage}
 	<!-- Profile pages: No header padding, full control -->
 	<div class="relative min-h-screen">

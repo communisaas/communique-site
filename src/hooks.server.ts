@@ -213,6 +213,11 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
 	const method = request.method;
 	const pathname = url.pathname;
 
+	// Bypass rate limiting for demo user
+	if (locals.user?.id === 'user-demo-1') {
+		return resolve(event);
+	}
+
 	// Skip HEAD/OPTIONS entirely
 	if (method === 'HEAD' || method === 'OPTIONS') {
 		return resolve(event);
