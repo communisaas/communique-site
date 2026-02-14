@@ -89,7 +89,10 @@ export default defineConfig({
 			wasm()
 		],
 		rollupOptions: {
-			external: [],
+			external: [
+				'@voter-protocol/noir-prover',
+				'@voter-protocol/crypto'
+			],
 			output: {
 				inlineDynamicImports: false
 			}
