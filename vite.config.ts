@@ -26,7 +26,13 @@ export default defineConfig({
 
 	// Use native top-level await with esnext target (replaces vite-plugin-top-level-await)
 	build: {
-		target: 'esnext'
+		target: 'esnext',
+		rollupOptions: {
+			// 'redis' is optionally imported in rate-limiter.ts (only when REDIS_URL is set).
+			// Not installed, not available on Cloudflare Workers (no TCP). Externalize to prevent
+			// Rollup from failing on the unresolvable dynamic import.
+			external: ['redis']
+		}
 	},
 
 	// Polyfill Node.js globals for browser (needed for @aztec/bb.js)

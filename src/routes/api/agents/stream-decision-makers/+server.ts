@@ -15,7 +15,7 @@
 
 import type { RequestHandler } from './$types';
 import { resolveDecisionMakers } from '$lib/core/agents/agents';
-import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
+import { createSSEStream, SSE_HEADERS } from '$lib/server/sse-stream';
 import type { ThoughtSegment } from '$lib/core/thoughts/types';
 import {
 	enforceLLMRateLimit,

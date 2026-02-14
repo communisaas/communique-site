@@ -23,7 +23,7 @@ import { generateStreamWithThoughts } from '$lib/core/agents/gemini-client';
 import { SUBJECT_LINE_PROMPT } from '$lib/core/agents/prompts/subject-line';
 import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
 import type { SubjectLineResponseWithClarification, TokenUsage } from '$lib/core/agents/types';
-import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
+import { createSSEStream, SSE_HEADERS } from '$lib/server/sse-stream';
 import {
 	enforceLLMRateLimit,
 	rateLimitResponse,

@@ -21,7 +21,7 @@
 import type { RequestHandler } from './$types';
 import { generateMessage, type PipelinePhase } from '$lib/core/agents/agents/message-writer';
 import { cleanThoughtForDisplay } from '$lib/core/agents/utils/thought-filter';
-import { createSSEStream, SSE_HEADERS } from '$lib/utils/sse-stream';
+import { createSSEStream, SSE_HEADERS } from '$lib/server/sse-stream';
 import {
 	enforceLLMRateLimit,
 	rateLimitResponse,
