@@ -228,6 +228,12 @@ const DISTRICT_GATE_ABI = [
 /** Number of public inputs expected by the two-tree circuit */
 export const TWO_TREE_PUBLIC_INPUT_COUNT = 29;
 
+/** BN254 scalar field modulus — all public inputs must be < this value */
+const BN254_MODULUS = 21888242871839275222246405745257275088548364400416034343698204186575808495617n;
+
+/** Valid circuit depths for two-tree verifier */
+const VALID_VERIFIER_DEPTHS = [18, 20, 22, 24] as const;
+
 /** Indices into the 29-element public inputs array */
 export const PUBLIC_INPUT_INDEX = {
 	USER_ROOT: 0,
@@ -361,6 +367,42 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 			success: false,
 			error: `Expected ${TWO_TREE_PUBLIC_INPUT_COUNT} public inputs, got ${params.publicInputs.length}`
 		};
+	}
+
+	// Validate proof is non-empty valid hex
+	const proofRaw = params.proof.startsWith('0x') ? params.proof.slice(2) : params.proof;
+	if (!proofRaw || proofRaw.length === 0) {
+		return { success: false, error: 'Proof is empty' };
+	}
+	if (!/^[0-9a-fA-F]+$/.test(proofRaw)) {
+		return { success: false, error: 'Proof contains invalid hex characters' };
+	}
+
+	// Validate verifier depth is one of the supported circuit sizes
+	if (!(VALID_VERIFIER_DEPTHS as readonly number[]).includes(params.verifierDepth)) {
+		return {
+			success: false,
+			error: `Invalid verifierDepth ${params.verifierDepth}. Must be one of: ${VALID_VERIFIER_DEPTHS.join(', ')}`
+		};
+	}
+
+	// Validate each public input is a valid field element within BN254 modulus
+	for (let i = 0; i < params.publicInputs.length; i++) {
+		const input = params.publicInputs[i];
+		try {
+			const val = BigInt(input);
+			if (val < 0n || val >= BN254_MODULUS) {
+				return {
+					success: false,
+					error: `Public input [${i}] out of BN254 field range`
+				};
+			}
+		} catch {
+			return {
+				success: false,
+				error: `Public input [${i}] is not a valid integer or hex string`
+			};
+		}
 	}
 
 	const instance = getContractInstance();
