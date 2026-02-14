@@ -12,9 +12,10 @@
 		thoughts: string[];
 		isActive: boolean;
 		context?: string;
+		compact?: boolean;
 	}
 
-	let { thoughts = [], isActive = false, context }: Props = $props();
+	let { thoughts = [], isActive = false, context, compact = false }: Props = $props();
 
 	// Container reference for direct scroll control
 	let containerEl: HTMLDivElement | null = $state(null);
@@ -33,7 +34,7 @@
 </script>
 
 {#if isActive || thoughts.length > 0}
-	<div class="agent-thinking" role="status" aria-live="polite" aria-label="AI analysis in progress">
+	<div class="agent-thinking" class:compact role="status" aria-live="polite" aria-label="AI analysis in progress">
 		<!-- Header: context + activity indicator -->
 		<div class="header">
 			{#if isActive}
@@ -169,6 +170,22 @@
 
 	.thought-log::-webkit-scrollbar-thumb:hover {
 		background: var(--color-participation-primary-300, #a5b4fc);
+	}
+
+	/* Compact mode — reduced height for split-view layout */
+	.agent-thinking.compact {
+		min-height: 4rem;
+		max-height: 8rem;
+		padding: 0.5rem 0;
+	}
+
+	.agent-thinking.compact .thought {
+		font-size: 0.75rem;
+		padding: 0.25rem 0.5rem;
+	}
+
+	.agent-thinking.compact .thought.faded {
+		display: none;
 	}
 
 	/* Reduced motion */

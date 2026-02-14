@@ -78,7 +78,7 @@ export const SUBJECT_LINE_SCHEMA = {
 		},
 		url_slug: {
 			type: 'string',
-			description: 'Emotional hook as URL slug: 2-4 words, lowercase, hyphens'
+			description: 'Campaign-unique slug: target-anchored emotional core, 2-4 words, lowercase, hyphens'
 		},
 		voice_sample: {
 			type: 'string',

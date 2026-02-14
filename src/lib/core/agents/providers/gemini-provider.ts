@@ -574,7 +574,9 @@ async function huntContactsParallel(
 	cachedContacts: CachedContactInfo[],
 	roles: DiscoveredRole[],
 	streaming?: StreamingCallbacks,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	/** Called per-identity as each mini-agent completes (for progressive UI streaming) */
+	onCandidateProcessed?: (candidate: Candidate, fetchedPages: ExaPageContent[]) => void
 ): Promise<{
 	candidates: Candidate[];
 	fetchedPages: Map<string, ExaPageContent>;
@@ -602,37 +604,59 @@ async function huntContactsParallel(
 
 		const cached = cacheMap.get(`${orgKey}::${identity.title.toLowerCase()}`);
 
+		// Match Phase 1 reasoning by position + organization
+		const roleReasoning = roles.find(r =>
+			r.position.toLowerCase() === identity.position.toLowerCase() &&
+			r.organization.toLowerCase() === identity.organization.toLowerCase()
+		)?.reasoning || '';
+
 		if (cached?.email) {
 			// Inject cached contact as pre-verified candidate
 			cachedCandidates.push({
 				name: cached.name || identity.name,
 				title: cached.title || identity.title,
 				organization: identity.organization,
-				reasoning: roles.find(r => r.organization === identity.organization)?.reasoning || 'Key decision-maker',
+				reasoning: roleReasoning,
 				email: cached.email,
 				email_source: cached.emailSource || undefined,
 				recency_check: `Cached contact (verified in prior run)`,
 				contact_notes: ''
 			});
 		} else {
-			const reasoning = roles.find(r =>
-				r.position.toLowerCase() === identity.position.toLowerCase() &&
-				r.organization.toLowerCase() === identity.organization.toLowerCase()
-			)?.reasoning || '';
-			uncached.push({ identity, reasoning });
+			uncached.push({ identity, reasoning: roleReasoning });
 		}
 	}
 
 	console.log(`[gemini-provider] Phase 2b: ${cachedCandidates.length} cached, ${uncached.length} uncached → launching ${uncached.length} parallel mini-agents`);
 
-	// Fan out mini-agents for uncached identities
+	// Emit cached contacts immediately — no agent call needed
+	if (onCandidateProcessed) {
+		for (const cached of cachedCandidates) {
+			onCandidateProcessed(cached, []);
+		}
+	}
+
+	// Fan out mini-agents — each emits its candidate immediately on completion
 	const settled = await Promise.allSettled(
-		uncached.map(({ identity, reasoning }) =>
-			huntSingleContact(identity, reasoning, streaming, signal)
-		)
+		uncached.map(async ({ identity, reasoning }) => {
+			const result = await huntSingleContact(identity, reasoning, streaming, signal);
+			// Inject Phase 1 reasoning — the mini-agent doesn't have issue context,
+			// so we overwrite whatever generic description it produced.
+			for (const candidate of result.candidates) {
+				if (reasoning) candidate.reasoning = reasoning;
+			}
+			// Immediately emit this candidate to the UI
+			if (onCandidateProcessed && result.candidates.length > 0) {
+				const pages = Array.from(result.fetchedPages.values());
+				for (const candidate of result.candidates) {
+					onCandidateProcessed(candidate, pages);
+				}
+			}
+			return result;
+		})
 	);
 
-	// Merge results
+	// Merge results (still needed for batch email grounding in resolve())
 	const allCandidates: Candidate[] = [...cachedCandidates];
 	const mergedPages = new Map<string, ExaPageContent>();
 	const tokenUsages: (TokenUsage | undefined)[] = [];
@@ -776,6 +800,28 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				console.log(`[gemini-provider] Cache hit: ${withEmail.length} contacts pre-populated`);
 			}
 
+			// Emit identity placeholders to UI — cards appear before contact hunting starts
+			if (streaming?.onIdentitiesFound) {
+				const placeholders = identities.map(id => {
+					const orgKey = id.organization
+						.toLowerCase()
+						.replace(/^the\s+/, '')
+						.replace(/['']/g, '')
+						.replace(/[^a-z0-9]+/g, '-')
+						.replace(/^-|-$/g, '');
+					const cached = cachedContacts.find(
+						c => c.email && c.orgKey === orgKey && c.title?.toLowerCase() === id.title.toLowerCase()
+					);
+					return {
+						name: id.name === 'UNKNOWN' ? '' : id.name,
+						title: id.title,
+						organization: id.organization,
+						status: cached?.email ? 'cached' as const : 'pending' as const
+					};
+				});
+				streaming.onIdentitiesFound(placeholders);
+			}
+
 			// ================================================================
 			// Phase 2b: Per-Identity Parallel Contact Hunting
 			// N concurrent mini-agents (1 search + 2 reads each)
@@ -784,7 +830,46 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			streaming?.onPhase?.('contact', `Searching for contact information...`);
 
 			const contactResult = await huntContactsParallel(
-				identities, cachedContacts, roles, streaming, context.signal
+				identities, cachedContacts, roles, streaming, context.signal,
+				// Per-identity streaming callback — emit as each mini-agent completes
+				(candidate, pages) => {
+					const nameLower = (candidate.name || '').toLowerCase().trim();
+					if (!nameLower || nameLower === 'unknown' || nameLower === 'n/a') return;
+
+					// Cache hits have no pages — email was verified in a prior run.
+					// Skip processOneCandidate which would strip the email when it
+					// finds no page content to re-verify against.
+					if (pages.length === 0 && candidate.email?.includes('@')) {
+						streaming?.onCandidateResolved?.({
+							name: candidate.name,
+							title: candidate.title,
+							organization: candidate.organization,
+							email: candidate.email,
+							emailSource: candidate.email_source,
+							reasoning: candidate.reasoning,
+							status: 'resolved'
+						});
+						return;
+					}
+
+					const processed = this.processOneCandidate(candidate, pages);
+					if (!processed) return;
+
+					// Strip ungrounded email for the streaming preview
+					const final = (processed.email && processed.emailGrounded !== true)
+						? { ...processed, email: undefined, emailGrounded: undefined }
+						: processed;
+
+					streaming?.onCandidateResolved?.({
+						name: final.name,
+						title: final.title,
+						organization: final.organization,
+						email: final.email,
+						emailSource: final.emailSource,
+						reasoning: final.reasoning,
+						status: final.email ? 'resolved' : 'no-email'
+					});
+				}
 			);
 			tokenUsages.push(contactResult.tokenUsage);
 
@@ -855,6 +940,24 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				return dm;
 			});
 
+			// Deduplicate shared emails: if the same address appears on multiple
+			// candidates, it's an office-wide address (mediarelations@, press@, info@).
+			// Keep it on the first candidate only — duplicates become "no email found."
+			const seenEmails = new Set<string>();
+			for (const dm of filtered) {
+				if (!dm.email) continue;
+				const lower = dm.email.toLowerCase();
+				if (seenEmails.has(lower)) {
+					console.log(`[gemini-provider] Dedup: stripping shared email ${dm.email} from ${dm.name} (already assigned)`);
+					dm.email = undefined;
+					dm.emailGrounded = undefined;
+					dm.emailSource = undefined;
+					dm.emailSourceTitle = undefined;
+				} else {
+					seenEmails.add(lower);
+				}
+			}
+
 			const withVerifiedEmail = filtered.filter(dm => dm.email);
 			const withoutEmail = filtered.filter(dm => !dm.email);
 			console.log(`[gemini-provider] Returning ${filtered.length} candidates: ${withVerifiedEmail.length} with verified email, ${withoutEmail.length} without email`);
@@ -920,14 +1023,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 	/**
 	 * Process candidates into ProcessedDecisionMaker format.
-	 *
-	 * Content-based email verification: the email must appear in a page
-	 * the agent actually read. The agent has latitude in what sources it
-	 * uses (news articles, directories, contact pages), but the source
-	 * must contain the email.
-	 *
-	 * @param candidates - Raw candidates from LLM response
-	 * @param pageContents - Fetched page contents from Exa
+	 * Filters unnamed candidates, then runs per-candidate email verification.
 	 */
 	private processDecisionMakers(
 		candidates: Candidate[],
@@ -936,7 +1032,6 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 		return candidates
 			.filter((c) => {
 				if (!c.reasoning || !c.recency_check) return false;
-				// Drop candidates with unresolved names — never show "Unknown" to the user
 				const nameLower = (c.name || '').toLowerCase().trim();
 				if (!nameLower || nameLower === 'unknown' || nameLower === 'n/a') {
 					console.log(`[gemini-provider] Dropping unnamed candidate: ${c.title} at ${c.organization}`);
@@ -944,97 +1039,99 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				}
 				return true;
 			})
-			.map((candidate) => {
-				const hasEmail = candidate.email &&
-					candidate.email !== 'NO_EMAIL_FOUND' &&
-					candidate.email.toUpperCase() !== 'NO_EMAIL_FOUND' &&
-					candidate.email.includes('@');
+			.map(c => this.processOneCandidate(c, pageContents))
+			.filter((dm): dm is ProcessedDecisionMaker => dm !== null);
+	}
 
-				// ================================================================
-				// Content-based email verification
-				// Email must appear in a page the agent read.
-				// Agent decides what sources to use; we verify the email is there.
-				// ================================================================
-				let emailGrounded = false;
-				let emailSource: string | undefined;
-				let emailSourceTitle: string | undefined;
+	/**
+	 * Process a single candidate with content-based email verification.
+	 * The email must appear in a page the agent actually read.
+	 * Used both in batch (processDecisionMakers) and per-identity streaming.
+	 */
+	private processOneCandidate(
+		candidate: Candidate,
+		pageContents: ExaPageContent[]
+	): ProcessedDecisionMaker | null {
+		const hasEmail = candidate.email &&
+			candidate.email !== 'NO_EMAIL_FOUND' &&
+			candidate.email.toUpperCase() !== 'NO_EMAIL_FOUND' &&
+			candidate.email.includes('@');
 
-				if (hasEmail) {
-					const emailLower = candidate.email.toLowerCase();
+		let emailGrounded = false;
+		let emailSource: string | undefined;
+		let emailSourceTitle: string | undefined;
 
-					// First: check the LLM-reported email_source page
-					if (candidate.email_source) {
-						const sourcePage = pageContents.find(p => p.url === candidate.email_source);
-						if (sourcePage?.text.toLowerCase().includes(emailLower)) {
-							emailGrounded = true;
-							emailSource = sourcePage.url;
-							emailSourceTitle = sourcePage.title;
-						}
-					}
+		if (hasEmail) {
+			const emailLower = candidate.email.toLowerCase();
 
-					// Second: if not found in reported source, check all pages
-					if (!emailGrounded) {
-						for (const page of pageContents) {
-							if (page.text.toLowerCase().includes(emailLower)) {
-								emailGrounded = true;
-								emailSource = page.url;
-								emailSourceTitle = page.title;
-								break;
-							}
-						}
-					}
+			if (candidate.email_source) {
+				const sourcePage = pageContents.find(p => p.url === candidate.email_source);
+				if (sourcePage?.text.toLowerCase().includes(emailLower)) {
+					emailGrounded = true;
+					emailSource = sourcePage.url;
+					emailSourceTitle = sourcePage.title;
+				}
+			}
 
-					if (emailGrounded) {
-						console.log(`[gemini-provider] ✓ Email VERIFIED for ${candidate.name}: ${candidate.email} from ${emailSource}`);
-					} else {
-						console.log(`[gemini-provider] ✗ Email NOT verified for ${candidate.name}: ${candidate.email} (not found in page content)`);
+			if (!emailGrounded) {
+				for (const page of pageContents) {
+					if (page.text.toLowerCase().includes(emailLower)) {
+						emailGrounded = true;
+						emailSource = page.url;
+						emailSourceTitle = page.title;
+						break;
 					}
 				}
+			}
 
-				// Person source URL — use the LLM-reported email_source or first page mentioning them
-				let verifiedPersonSource = '';
-				if (emailSource) {
-					verifiedPersonSource = emailSource;
-				} else if (candidate.email_source) {
-					verifiedPersonSource = candidate.email_source;
-				}
+			if (emailGrounded) {
+				console.log(`[gemini-provider] ✓ Email VERIFIED for ${candidate.name}: ${candidate.email} from ${emailSource}`);
+			} else {
+				console.log(`[gemini-provider] ✗ Email NOT verified for ${candidate.name}: ${candidate.email} (not found in page content)`);
+			}
+		}
 
-				// Build provenance with clear verification status
-				const personSourceNote = verifiedPersonSource
-					? `Person verified via: ${verifiedPersonSource}`
-					: 'Person source: from search results';
+		let verifiedPersonSource = '';
+		if (emailSource) {
+			verifiedPersonSource = emailSource;
+		} else if (candidate.email_source) {
+			verifiedPersonSource = candidate.email_source;
+		}
 
-				const emailStatusNote = !hasEmail
-					? 'Email: Not found in retrieved pages'
-					: emailGrounded
-						? `Email VERIFIED in page content: ${emailSource}`
-						: `Email NOT VERIFIED (not found in any retrieved page)`;
+		const personSourceNote = verifiedPersonSource
+			? `Person verified via: ${verifiedPersonSource}`
+			: 'Person source: from search results';
 
-				const provenance = [
-					candidate.reasoning,
-					'',
-					personSourceNote,
-					emailStatusNote,
-					'',
-					candidate.recency_check
-				].join('\n');
+		const emailStatusNote = !hasEmail
+			? 'Email: Not found in retrieved pages'
+			: emailGrounded
+				? `Email VERIFIED in page content: ${emailSource}`
+				: `Email NOT VERIFIED (not found in any retrieved page)`;
 
-				return {
-					name: candidate.name,
-					title: candidate.title,
-					organization: candidate.organization,
-					email: hasEmail ? candidate.email : undefined,
-					reasoning: candidate.reasoning,
-					source: verifiedPersonSource || '',
-					provenance,
-					isAiResolved: true,
-					recencyCheck: candidate.recency_check,
-					emailGrounded: hasEmail ? emailGrounded : undefined,
-					emailSource: emailGrounded ? emailSource : undefined,
-					emailSourceTitle: emailGrounded ? emailSourceTitle : undefined,
-					contactNotes: candidate.contact_notes || undefined
-				};
-			});
+		const provenance = [
+			candidate.reasoning,
+			'',
+			personSourceNote,
+			emailStatusNote,
+			'',
+			candidate.recency_check
+		].join('\n');
+
+		return {
+			name: candidate.name,
+			title: candidate.title,
+			organization: candidate.organization,
+			email: hasEmail ? candidate.email : undefined,
+			reasoning: candidate.reasoning,
+			source: verifiedPersonSource || '',
+			provenance,
+			isAiResolved: true,
+			recencyCheck: candidate.recency_check,
+			emailGrounded: hasEmail ? emailGrounded : undefined,
+			emailSource: emailGrounded ? emailSource : undefined,
+			emailSourceTitle: emailGrounded ? emailSourceTitle : undefined,
+			contactNotes: candidate.contact_notes || undefined
+		};
 	}
 
 }

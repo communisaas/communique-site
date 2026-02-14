@@ -74,193 +74,6 @@ Return 8-10 positions (NOT people) with direct authority, gatekeeping power, coa
 }
 
 // ============================================================================
-// Phase 2a: Identity Extraction — Parallel search + single extraction call
-// ============================================================================
-
-/**
- * @deprecated Replaced by IDENTITY_EXTRACTION_PROMPT (non-agentic parallel approach).
- * Kept for reference only — not imported anywhere.
- */
-export const IDENTITY_RESOLUTION_PROMPT = `DEPRECATED — see IDENTITY_EXTRACTION_PROMPT`;
-
-/** @deprecated Replaced by buildIdentityExtractionPrompt. */
-export function buildIdentityResolutionPrompt(
-	roles: Array<{
-		position: string;
-		organization: string;
-		jurisdiction: string;
-		reasoning: string;
-		search_query: string;
-	}>
-): string {
-	return 'DEPRECATED';
-}
-
-// ============================================================================
-// Phase 2b: Contact Hunting — Full tools, maximum agent autonomy
-// ============================================================================
-
-/** Resolved identity from Phase 2a */
-export interface ResolvedIdentity {
-	position: string;
-	name: string;
-	title: string;
-	organization: string;
-	search_evidence: string;
-}
-
-/** Cached contact info for prompt injection */
-export interface CachedContactInfo {
-	name: string | null;
-	title: string | null;
-	email: string | null;
-	emailSource: string | null;
-	orgKey: string;
-}
-
-/**
- * @deprecated Replaced by SINGLE_CONTACT_PROMPT (per-identity parallel approach).
- * Kept for reference only.
- *
- * Template variables: {CURRENT_DATE}, {CURRENT_YEAR}, {MAX_SEARCHES}, {MAX_PAGE_READS}, {DOMAIN_CONTEXT}, {CACHED_CONTACTS}
- */
-export const CONTACT_HUNTING_PROMPT = `You are finding email addresses for NAMED individuals at specific organizations.
-
-TODAY'S DATE: {CURRENT_DATE}
-CURRENT YEAR: {CURRENT_YEAR}
-
-## YOUR MISSION
-
-You are given a list of people with confirmed identities. Your ONLY job is finding their email addresses. Identities are already confirmed — you do not need to verify who holds each position.
-
-## TOOLS
-
-You have two tools:
-- **search_web**: Search the web. Returns titles, URLs, published dates, relevance scores, url_hint (page type), and suggested_contact_urls.
-- **read_page**: Read a web page. Returns full text, contact_hints (pre-extracted emails, phones, social URLs), and url_hint.
-
-Use these signals however you see fit. Emails appear in unexpected places — news articles, press releases, third-party directories, campaign sites, staff listings. Use your judgment about what to search for and what to read.
-
-## CONTEXT
-
-{DOMAIN_CONTEXT}
-
-{CACHED_CONTACTS}
-
-## RULES
-
-1. ONLY report emails you found on a page you read via read_page
-2. When you find an email, note the URL — we verify the source page contains it
-3. Do NOT construct or guess email addresses
-4. General office emails (mayor@city.gov, press@org.com) ARE acceptable when they're the published way to reach that office
-5. When no email is found, capture what you DID find (phone numbers, contact form URLs, social profiles, press contacts) in the contact_notes field — this information is valuable
-
-## BUDGET
-
-- Maximum **{MAX_SEARCHES}** web searches
-- Maximum **{MAX_PAGE_READS}** page reads
-- Focus your entire budget on finding emails. Do NOT spend reads verifying identities — they are already confirmed.
-- When budget runs low, produce your final JSON output. Partial results are better than no results.
-
-## OUTPUT
-
-Return a JSON object with NO markdown code fences:
-
-{
-  "decision_makers": [
-    {
-      "name": "Full Name",
-      "title": "Official Title",
-      "organization": "Organization Name",
-      "reasoning": "Why this position has power over the issue",
-      "email": "verified@email.gov or NO_EMAIL_FOUND",
-      "email_source": "URL where you read the email, or empty string",
-      "recency_check": "Identity confirmed via [search evidence]",
-      "contact_notes": "Alternative contact info found: phone (555) 123-4567, contact form at https://..."
-    }
-  ],
-  "research_summary": "Brief summary of email search outcomes"
-}
-
-Include ALL people from the input, even those without emails. Return JSON directly.`;
-
-/**
- * @deprecated Replaced by buildSingleContactPrompt (per-identity parallel approach).
- * Kept for reference only.
- */
-export function buildContactHuntingPrompt(
-	identities: ResolvedIdentity[],
-	cachedContacts: CachedContactInfo[],
-	subjectLine: string,
-	roles: Array<{ position: string; organization: string; reasoning: string }>
-): string {
-	// Build a map of cached contacts by orgKey + title
-	const cacheMap = new Map<string, CachedContactInfo>();
-	for (const c of cachedContacts) {
-		if (c.title) {
-			cacheMap.set(`${c.orgKey}::${c.title.toLowerCase()}`, c);
-		}
-	}
-
-	// Format each identity with cache annotation
-	const identityList = identities
-		.map((id, i) => {
-			// Find matching role for reasoning
-			const role = roles.find(
-				(r) =>
-					r.position.toLowerCase() === id.position.toLowerCase() &&
-					r.organization.toLowerCase() === id.organization.toLowerCase()
-			);
-
-			const orgKey = id.organization
-				.toLowerCase()
-				.replace(/^the\s+/, '')
-				.replace(/['']/g, '')
-				.replace(/[^a-z0-9]+/g, '-')
-				.replace(/^-|-$/g, '');
-
-			const cached = cacheMap.get(`${orgKey}::${id.title.toLowerCase()}`);
-
-			if (cached?.email) {
-				return `${i}. **${id.name}** — ${id.title} at ${id.organization} [ALREADY RESOLVED — use cached email: ${cached.email}]`;
-			}
-
-			const evidenceLine = id.search_evidence
-				? `\n   Identity evidence: ${id.search_evidence}`
-				: '';
-			const reasoningLine = role?.reasoning
-				? `\n   Power relevance: ${role.reasoning}`
-				: '';
-
-			return `${i}. **${id.name}** — ${id.title} at ${id.organization}${evidenceLine}${reasoningLine}`;
-		})
-		.join('\n\n');
-
-	// Generate domain context from organization types
-	const orgTypes = detectOrgTypes(identities.map((id) => id.organization));
-	const domainContext = generateDomainContext(orgTypes);
-
-	// Format cached contacts note
-	const cachedNote =
-		cachedContacts.filter((c) => c.email).length > 0
-			? `Already resolved (skip research for these):\n${cachedContacts
-					.filter((c) => c.email)
-					.map((c) => `- ${c.name || 'Unknown'} at ${c.orgKey}: ${c.email}`)
-					.join('\n')}`
-			: 'No cached contacts available.';
-
-	return `Find email addresses for these individuals. Their identities are already confirmed.
-
-Issue context: "${subjectLine}"
-
-## PEOPLE TO FIND EMAILS FOR
-
-${identityList}
-
-For each person, search for and read pages where their email address appears. Return results for ALL people as JSON.`;
-}
-
-// ============================================================================
 // Domain Context Helpers — Observational patterns, NOT directives
 // ============================================================================
 
@@ -339,6 +152,28 @@ export function generateDomainHintForOrg(organization: string): string {
 }
 
 // ============================================================================
+// Shared Types — Used by Phase 2a and 2b
+// ============================================================================
+
+/** Resolved identity from Phase 2a */
+export interface ResolvedIdentity {
+	position: string;
+	name: string;
+	title: string;
+	organization: string;
+	search_evidence: string;
+}
+
+/** Cached contact info for prompt injection */
+export interface CachedContactInfo {
+	name: string | null;
+	title: string | null;
+	email: string | null;
+	emailSource: string | null;
+	orgKey: string;
+}
+
+// ============================================================================
 // Phase 2a: Identity Extraction — Non-agentic parallel approach
 // ============================================================================
 
@@ -367,7 +202,7 @@ Return a JSON object (no markdown code fences):
     {
       "position": "original position description from input",
       "name": "Full Name or UNKNOWN",
-      "title": "official title (may differ from position)",
+      "title": "concise functional title — primary role only, e.g. 'CEO', 'Mayor', 'Chair, Senate HELP Committee' (never full descriptions or multiple titles)",
       "organization": "organization name",
       "search_evidence": "From: 'result title' (YYYY-MM-DD)"
     }
@@ -436,9 +271,8 @@ Return a JSON object (no markdown code fences):
 {
   "decision_makers": [{
     "name": "Full Name",
-    "title": "Official Title",
+    "title": "Concise role (e.g. 'CEO', 'Senator', 'VP of Operations')",
     "organization": "Organization Name",
-    "reasoning": "Why this position matters (1 sentence)",
     "email": "found@email.com or NO_EMAIL_FOUND",
     "email_source": "URL where email appeared in read_page text, or empty string",
     "recency_check": "Identity confirmed via [search evidence]",
@@ -463,7 +297,7 @@ export function buildSingleContactPrompt(
 		return `Identify who currently holds this position AND find their email address:
 
 **${identity.title}** at ${identity.organization}
-Why this position matters: ${reasoning || 'Key decision-maker for this issue.'}
+Why this position matters: ${reasoning}
 
 Step 1: Search to find the CURRENT person in this role. Use the most recent results.
 Step 2: Once you have a name, search for their email.
@@ -476,5 +310,5 @@ If you cannot determine who holds this position, set name to the most specific t
 
 **${identity.name}** — ${identity.title} at ${identity.organization}
 Identity confirmed via: ${identity.search_evidence}
-Why they matter: ${reasoning || 'Key decision-maker for this issue.'}`;
+Why they matter: ${reasoning}`;
 }

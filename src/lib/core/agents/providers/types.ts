@@ -70,6 +70,29 @@ export interface StreamingCallbacks {
 		status?: string;
 		candidateName?: string;
 	}) => void;
+	/** Emitted after Phase 2a: identities resolved, contacts pending */
+	onIdentitiesFound?: (identities: IdentityPlaceholder[]) => void;
+	/** Emitted per-identity as Phase 2b mini-agents complete */
+	onCandidateResolved?: (candidate: ResolvedCandidate) => void;
+}
+
+/** Placeholder card data emitted after Phase 2a identity resolution */
+export interface IdentityPlaceholder {
+	name: string;
+	title: string;
+	organization: string;
+	status: 'pending' | 'cached';
+}
+
+/** Per-identity resolution result from Phase 2b contact hunting */
+export interface ResolvedCandidate {
+	name: string;
+	title: string;
+	organization: string;
+	email?: string;
+	emailSource?: string;
+	reasoning?: string;
+	status: 'resolved' | 'no-email' | 'failed';
 }
 
 // ============================================================================

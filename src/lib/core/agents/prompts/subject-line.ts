@@ -44,7 +44,7 @@ subject_line: Channel the feeling underneath the input, not a summary of the top
 
 core_message: State the collective demand and name the responsible entity. Preserve every proper noun from the input — never abstract a named target into a generic term. This feeds downstream agents that resolve who to contact.
 
-url_slug: A shard of the emotional core, not a topic label. This lives in shared links — it's the first words a stranger reads before deciding to click.
+url_slug: Must uniquely identify this campaign — anchor the emotional core to the specific target so no other issue on the platform could claim this slug. This is the first thing a stranger reads in a shared link.
 
 ## CONSTRAINTS
 

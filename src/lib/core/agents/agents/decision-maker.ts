@@ -529,6 +529,8 @@ export async function resolveDecisionMakers(
 		emitter.startPhase('research');
 
 		// Bridge streaming callbacks to ThoughtEmitter - only forward real model thoughts
+		// Progressive reveal events (identity-found, candidate-resolved) bypass the
+		// ThoughtEmitter and go directly through onSegment as typed metadata payloads.
 		const enhancedContext: ResolveContext = {
 			...context,
 			streaming: {
@@ -537,6 +539,22 @@ export async function resolveDecisionMakers(
 					if (cleaned) {
 						emitter.think(cleaned);
 					}
+				},
+				onIdentitiesFound: (identities) => {
+					onSegment({
+						type: 'identity-found',
+						content: '',
+						timestamp: Date.now(),
+						metadata: { identities }
+					} as any);
+				},
+				onCandidateResolved: (candidate) => {
+					onSegment({
+						type: 'candidate-resolved',
+						content: '',
+						timestamp: Date.now(),
+						metadata: { candidate }
+					} as any);
 				}
 			}
 		};
