@@ -28,10 +28,16 @@ export default defineConfig({
 	build: {
 		target: 'esnext',
 		rollupOptions: {
-			// 'redis' is optionally imported in rate-limiter.ts (only when REDIS_URL is set).
-			// Not installed, not available on Cloudflare Workers (no TCP). Externalize to prevent
-			// Rollup from failing on the unresolvable dynamic import.
-			external: ['redis']
+			external: [
+				// 'redis' is optionally imported in rate-limiter.ts (only when REDIS_URL is set).
+				// Not available on Cloudflare Workers (no TCP).
+				'redis',
+				// voter-protocol packages resolved as local paths (../voter-protocol/packages/*)
+				// in package-lock.json. Not available on CF Pages. ZK proving runs client-side
+				// in Web Workers — doesn't need to be in the SSR/Worker bundle.
+				'@voter-protocol/noir-prover',
+				'@voter-protocol/crypto'
+			]
 		}
 	},
 
