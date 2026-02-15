@@ -2,3 +2,6 @@ name = "communique"
 compatibility_date = "2025-01-21"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = ".svelte-kit/cloudflare"
+
+[vars]
+PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
