@@ -1,7 +1,11 @@
 name = "communique"
-compatibility_date = "2025-01-21"
-compatibility_flags = ["nodejs_compat"]
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat", "nodejs_als"]
 pages_build_output_dir = ".svelte-kit/cloudflare"
 
 [vars]
 PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
+
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "870ed0ebca654838bc0df0d83c4e2645"

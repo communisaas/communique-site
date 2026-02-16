@@ -8,8 +8,34 @@ import {
 	createRateLimitHeaders,
 	SlidingWindowRateLimiter
 } from '$lib/core/security/rate-limiter';
+import { createRequestClient, runWithDb } from '$lib/core/db';
 
 // MongoDB removed — intelligence data now lives in Postgres via pgvector
+
+// On Cloudflare Workers, process.env is empty. Secrets are only available
+// via event.platform.env. This shim copies them to process.env once so that
+// the ~90 call sites using process.env.XXX work without modification.
+let envShimApplied = false;
+const handlePlatformEnv: Handle = async ({ event, resolve }) => {
+	if (!envShimApplied && event.platform?.env) {
+		for (const [key, value] of Object.entries(event.platform.env as Record<string, unknown>)) {
+			if (typeof value === 'string') {
+				process.env[key] = value;
+			}
+		}
+		envShimApplied = true;
+	}
+	// Initialize per-request PrismaClient with Hyperdrive connection.
+	// On Workers, Hyperdrive provides a local connection string to its pool.
+	// On dev, falls back to DATABASE_URL.
+	const hyperdrive = event.platform?.env?.HYPERDRIVE;
+	const connectionString = hyperdrive?.connectionString || process.env.DATABASE_URL || '';
+	const client = createRequestClient(connectionString);
+
+	// Wrap the entire request in AsyncLocalStorage so all `db.xxx()` calls
+	// throughout the request lifecycle resolve to this per-request client.
+	return runWithDb(client, () => resolve(event));
+};
 
 const handleAuth: Handle = async ({ event, resolve }) => {
 	try {
@@ -321,4 +347,4 @@ const handleRateLimit: Handle = async ({ event, resolve }) => {
  * This is a minor performance trade-off (auth runs on rate-limited requests),
  * but ensures accurate per-user rate limiting.
  */
-export const handle = sequence(handleAuth, handleRateLimit, handleCsrfGuard, handleSecurityHeaders);
+export const handle = sequence(handlePlatformEnv, handleAuth, handleRateLimit, handleCsrfGuard, handleSecurityHeaders);
