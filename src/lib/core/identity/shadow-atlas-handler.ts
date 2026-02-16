@@ -153,6 +153,8 @@ export async function registerTwoTree(
 			registrationSalt: request.registrationSalt,
 
 			verificationMethod: request.verificationMethod,
+			// Wave 39d: Signed receipt from operator (anti-censorship proof)
+			receipt: tree1Data.receipt,
 			createdAt: now,
 			expiresAt: calculateExpirationDate(),
 		};
@@ -267,6 +269,8 @@ export async function recoverTwoTree(
 			registrationSalt: request.registrationSalt,
 
 			verificationMethod: request.verificationMethod,
+			// W40-010: Thread receipt from recovery path (parity with registerTwoTree)
+			receipt: tree1Data.receipt,
 			createdAt: now,
 			expiresAt: calculateExpirationDate(),
 		};

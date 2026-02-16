@@ -205,19 +205,23 @@ export interface RegistrationResult {
 	userRoot: string;
 	userPath: string[];
 	pathIndices: number[];
+	/** Ed25519 signed receipt from the operator (Wave 39d — anti-censorship proof) */
+	receipt?: { data: string; sig: string };
 }
 
 /**
  * Register a precomputed leaf hash in Tree 1.
  *
- * The leaf is Poseidon2_H3(user_secret, cell_id, registration_salt),
+ * The leaf is Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level),
  * computed client-side. The operator sees ONLY the leaf hash.
  *
  * @param leaf - Hex-encoded leaf hash (with 0x prefix)
- * @returns Registration result with Merkle proof
+ * @param options - Optional metadata for attestation binding
+ * @param options.attestationHash - Identity attestation hash (binds insertion to verification event)
+ * @returns Registration result with Merkle proof + optional signed receipt
  * @throws Error if registration fails
  */
-export async function registerLeaf(leaf: string): Promise<RegistrationResult> {
+export async function registerLeaf(leaf: string, options?: { attestationHash?: string }): Promise<RegistrationResult> {
 	const url = `${SHADOW_ATLAS_URL}/v1/register`;
 
 	const headers: Record<string, string> = {
@@ -228,10 +232,15 @@ export async function registerLeaf(leaf: string): Promise<RegistrationResult> {
 		headers['Authorization'] = `Bearer ${SHADOW_ATLAS_REGISTRATION_TOKEN}`;
 	}
 
+	const requestBody: Record<string, unknown> = { leaf };
+	if (options?.attestationHash) {
+		requestBody.attestationHash = options.attestationHash;
+	}
+
 	const response = await fetch(url, {
 		method: 'POST',
 		headers,
-		body: JSON.stringify({ leaf }),
+		body: JSON.stringify(requestBody),
 	});
 
 	if (!response.ok) {
@@ -250,7 +259,7 @@ export async function registerLeaf(leaf: string): Promise<RegistrationResult> {
 		throw new Error('Shadow Atlas returned invalid registration response');
 	}
 
-	const { leafIndex, userRoot, userPath, pathIndices } = result.data;
+	const { leafIndex, userRoot, userPath, pathIndices, receipt } = result.data;
 
 	if (leafIndex === undefined || !userRoot || !userPath || !pathIndices) {
 		throw new Error('Shadow Atlas registration response missing required fields');
@@ -266,7 +275,7 @@ export async function registerLeaf(leaf: string): Promise<RegistrationResult> {
 	validateBN254Hex(userRoot, 'userRoot');
 	validateBN254HexArray(userPath, 'userPath');
 
-	return { leafIndex, userRoot, userPath, pathIndices };
+	return { leafIndex, userRoot, userPath, pathIndices, receipt };
 }
 
 /**

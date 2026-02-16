@@ -2,7 +2,7 @@
  * Shadow Atlas Registration Endpoint (Two-Tree Architecture)
  *
  * Registers a user's precomputed leaf hash with Shadow Atlas Tree 1.
- * The leaf is Poseidon2_H3(user_secret, cell_id, registration_salt),
+ * The leaf is Poseidon2_H4(user_secret, cell_id, registration_salt, authority_level),
  * computed entirely in the browser. This endpoint sees ONLY the leaf hash.
  *
  * FLOW:
@@ -160,10 +160,15 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			});
 		}
 
+		// Wave 39c: Use identity_commitment as attestation hash.
+		// This binds the tree insertion to a real identity verification event.
+		// If the operator fabricates registrations, they won't have valid attestation hashes.
+		const attestationHash = identityCommitment;
+
 		// Call Shadow Atlas registration API
 		let registrationResult;
 		try {
-			registrationResult = await registerLeaf(leaf);
+			registrationResult = await registerLeaf(leaf, { attestationHash });
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
 			console.error('[Shadow Atlas] Registration service failed:', msg);
@@ -199,6 +204,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			userPath: registrationResult.userPath,
 			pathIndices: registrationResult.pathIndices,
 			identityCommitment,
+			receipt: registrationResult.receipt, // Wave 39d: signed registration receipt
 		});
 	} catch (error) {
 		console.error('[Shadow Atlas] Registration error:', error);
