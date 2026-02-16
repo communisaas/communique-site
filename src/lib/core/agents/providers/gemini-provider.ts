@@ -1031,7 +1031,6 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 	): ProcessedDecisionMaker[] {
 		return candidates
 			.filter((c) => {
-				if (!c.reasoning || !c.recency_check) return false;
 				const nameLower = (c.name || '').toLowerCase().trim();
 				if (!nameLower || nameLower === 'unknown' || nameLower === 'n/a') {
 					console.log(`[gemini-provider] Dropping unnamed candidate: ${c.title} at ${c.organization}`);
@@ -1113,8 +1112,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			'',
 			personSourceNote,
 			emailStatusNote,
-			'',
-			candidate.recency_check
+			...(candidate.recency_check ? ['', candidate.recency_check] : [])
 		].join('\n');
 
 		return {
