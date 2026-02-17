@@ -10,6 +10,11 @@ PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
 binding = "HYPERDRIVE"
 id = "870ed0ebca654838bc0df0d83c4e2645"
 
+# DC_SESSION_KV: KV namespace for DC (district-confirmed) session state
+# Used to store ephemeral session data during the congressional contact flow
+# Create the namespace before deploying:
+#   npx wrangler kv namespace create DC_SESSION_KV
+# Then replace the id below with the output namespace ID
 [[kv_namespaces]]
 binding = "DC_SESSION_KV"
 id = "placeholder-create-via-wrangler-cli"
