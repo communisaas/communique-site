@@ -135,6 +135,7 @@ const SENSITIVE_IDENTITY_PATHS = [
 	'/api/identity/delete-blob',
 	'/api/identity/didit/init',
 	'/api/address/verify',
+	'/api/identity/verify-mdl',
 	'/api/auth/passkey/register',
 	'/api/auth/passkey/authenticate'
 ];
