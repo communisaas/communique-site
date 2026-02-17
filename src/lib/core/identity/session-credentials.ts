@@ -115,7 +115,7 @@ export interface SessionCredential {
 	// ═══════════════════════════════════════════════════════════════════════
 
 	/** Verification method used */
-	verificationMethod: 'self.xyz' | 'didit';
+	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
 
 	/**
 	 * Ed25519 signed receipt from the Shadow Atlas operator (Wave 39d).
@@ -156,7 +156,7 @@ interface StoredCredential {
 	merklePath?: string[];
 	merkleRoot?: string;
 	congressionalDistrict?: string;
-	verificationMethod?: 'self.xyz' | 'didit';
+	verificationMethod?: 'self.xyz' | 'didit' | 'digital-credentials-api';
 	createdAt?: Date;
 
 	// Two-tree support (stored in encrypted data, listed here for type completeness)

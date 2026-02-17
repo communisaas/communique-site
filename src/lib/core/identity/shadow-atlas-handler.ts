@@ -40,7 +40,7 @@ export interface TwoTreeRegistrationRequest {
 	/** Registration salt (stored client-side only, never sent to server) */
 	registrationSalt: string;
 	/** Verification method used */
-	verificationMethod: 'self.xyz' | 'didit';
+	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
 }
 
 export interface TwoTreeRegistrationResult {
@@ -61,7 +61,7 @@ export interface TwoTreeRecoveryRequest {
 	/** New random registration salt */
 	registrationSalt: string;
 	/** Verification method (carried from original registration) */
-	verificationMethod: 'self.xyz' | 'didit';
+	verificationMethod: 'self.xyz' | 'didit' | 'digital-credentials-api';
 }
 
 // ============================================================================
