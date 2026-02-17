@@ -116,7 +116,7 @@
 			let nullifierHex: string;
 			let actionDomainHex: string = '';
 
-			if (credential!.credentialType === 'two-tree') {
+			if (credential.credentialType === 'two-tree') {
 				// ═══════════════════════════════════════════════════════════
 				// TWO-TREE FLOW (current architecture)
 				// ═══════════════════════════════════════════════════════════
@@ -136,14 +136,14 @@
 
 				// 2b. Compute nullifier = H2(identityCommitment, actionDomain) (NUL-001)
 				const { computeNullifier } = await import('$lib/core/crypto/poseidon');
-				nullifierHex = await computeNullifier(credential!.identityCommitment, actionDomain);
+				nullifierHex = await computeNullifier(credential.identityCommitment, actionDomain);
 				console.log('[ProofGenerator] Nullifier:', nullifierHex.slice(0, 16) + '...');
 
 				// 2c. Map credential to circuit inputs
 				const { mapCredentialToProofInputs } = await import(
 					'$lib/core/identity/proof-input-mapper'
 				);
-				const proofInputs = mapCredentialToProofInputs(credential!, {
+				const proofInputs = mapCredentialToProofInputs(credential, {
 					actionDomain,
 					nullifier: nullifierHex
 				});
@@ -194,13 +194,13 @@
 						'BR5-010: Proof nullifier mismatch. Possible proof substitution.'
 					);
 				}
-				if (twoTreeResult.publicInputs.userRoot !== credential!.merkleRoot) {
+				if (twoTreeResult.publicInputs.userRoot !== credential.merkleRoot) {
 					throw new Error(
 						'BR5-010: Proof userRoot does not match credential. Stale or substituted.'
 					);
 				}
 				// 29M-002: Also check cellMapRoot (attacker could substitute with different cell's root)
-				if (twoTreeResult.publicInputs.cellMapRoot !== credential!.cellMapRoot) {
+				if (twoTreeResult.publicInputs.cellMapRoot !== credential.cellMapRoot) {
 					throw new Error(
 						'BR5-010: Proof cellMapRoot does not match credential. Possible district spoofing.'
 					);
@@ -220,10 +220,10 @@
 				const actionId = await orchestratorModule.proverOrchestrator.poseidonHash(templateId);
 
 				const witness = {
-					identityCommitment: credential!.identityCommitment,
-					leafIndex: credential!.leafIndex,
-					merklePath: credential!.merklePath,
-					merkleRoot: credential!.merkleRoot,
+					identityCommitment: credential.identityCommitment,
+					leafIndex: credential.leafIndex,
+					merklePath: credential.merklePath,
+					merkleRoot: credential.merkleRoot,
 					actionId,
 					timestamp: Date.now(),
 					deliveryAddress
@@ -269,22 +269,22 @@
 			// Legacy: simplified witness (backward compatibility)
 			let witnessForEncryption: WitnessData | Record<string, unknown>;
 
-			if (credential!.credentialType === 'two-tree') {
+			if (credential.credentialType === 'two-tree') {
 				witnessForEncryption = {
-					userRoot: credential!.merkleRoot,
-					cellMapRoot: credential!.cellMapRoot!,
-					districts: credential!.districts!,
+					userRoot: credential.merkleRoot,
+					cellMapRoot: credential.cellMapRoot!,
+					districts: credential.districts!,
 					nullifier: nullifierHex,
 					actionDomain: actionDomainHex,
-					authorityLevel: credential!.authorityLevel ?? 3,
-					userSecret: credential!.userSecret!,
-					cellId: credential!.cellId!,
-					registrationSalt: credential!.registrationSalt!,
-					identityCommitment: credential!.identityCommitment,
-					userPath: credential!.merklePath,
-					userIndex: credential!.leafIndex,
-					cellMapPath: credential!.cellMapPath!,
-					cellMapPathBits: credential!.cellMapPathBits!,
+					authorityLevel: credential.authorityLevel ?? 3,
+					userSecret: credential.userSecret!,
+					cellId: credential.cellId!,
+					registrationSalt: credential.registrationSalt!,
+					identityCommitment: credential.identityCommitment,
+					userPath: credential.merklePath,
+					userIndex: credential.leafIndex,
+					cellMapPath: credential.cellMapPath!,
+					cellMapPathBits: credential.cellMapPathBits!,
 					deliveryAddress
 				} satisfies WitnessData;
 			} else {
