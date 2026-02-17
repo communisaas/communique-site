@@ -13,7 +13,7 @@
  * - Flow analytics and conversion tracking
  */
 
-import type { Template } from '$lib/types/template';
+import type { EmailFlowTemplate } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails as _extractRecipientEmails } from '$lib/types/templateConfig';
 import { resolveTemplate } from '$lib/utils/templateResolver';
@@ -124,7 +124,7 @@ export interface EmailLaunchResult {
  * ```
  */
 export function analyzeEmailFlow(
-	template: Template,
+	template: EmailFlowTemplate,
 	user: EmailServiceUser | null,
 	options?: { trustTier?: number }
 ): EmailFlowResult {
@@ -267,7 +267,7 @@ interface MailtoUrlResult {
  * ```
  */
 export function generateMailtoUrl(
-	template: Template,
+	template: EmailFlowTemplate,
 	user: EmailServiceUser | null,
 	options?: { trustTier?: number }
 ): MailtoUrlResult {
@@ -382,7 +382,7 @@ export function generateMailtoUrl(
  * @returns Validation result with detailed error information
  */
 export function validateEmailFlow(
-	template: Template,
+	template: EmailFlowTemplate,
 	user: EmailServiceUser | null
 ): { isValid: boolean; errors: Array<{ code: string; message: string; field?: string }> } {
 	const errors: Array<{ code: string; message: string; field?: string }> = [];
@@ -440,7 +440,7 @@ export function validateEmailFlow(
  * Useful for debugging and conversion optimization.
  */
 export function getEmailFlowAnalytics(
-	template: Template,
+	template: EmailFlowTemplate,
 	user: EmailServiceUser | null
 ): {
 	flowStage: string;
@@ -615,7 +615,7 @@ function _isValidEmail(email: string): boolean {
 /**
  * Validate template has required fields
  */
-function validateTemplate(template: Template): { isValid: boolean; errors: string[] } {
+function validateTemplate(template: EmailFlowTemplate): { isValid: boolean; errors: string[] } {
 	const errors: string[] = [];
 
 	if (!template.id) {

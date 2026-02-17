@@ -1,6 +1,23 @@
 import type { TemplateScope } from './jurisdiction';
 import type { GeoScope } from '$lib/core/agents/types';
 
+/**
+ * Minimal template interface for email flow functions (analyzeEmailFlow, resolveTemplate, generateMailtoUrl).
+ * Both Template and ComponentTemplate satisfy this interface, eliminating unsafe casts.
+ */
+export interface EmailFlowTemplate {
+	id: string;
+	slug: string;
+	title: string;
+	description: string;
+	deliveryMethod: string;
+	message_body?: string;
+	preview?: string;
+	subject?: string | null;
+	recipient_config?: unknown;
+	recipientEmails?: string[];
+}
+
 export interface Template {
 	id: string;
 	slug: string; // Required in database with unique constraint

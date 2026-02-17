@@ -38,19 +38,20 @@
 	import { analyzeEmailFlow, launchEmail } from '$lib/services/emailService';
 	// import TemplatePreview from '$lib/components/landing/template/TemplatePreview.svelte';
 	import SubmissionStatus from '$lib/components/submission/SubmissionStatus.svelte';
-	import CWCProgressTracker from '$lib/components/template/CWCProgressTracker.svelte';
+
 	import VerificationGate from '$lib/components/auth/VerificationGate.svelte';
 	import ProofGenerator from '$lib/components/template/ProofGenerator.svelte';
 	import AddressCollectionForm from '$lib/components/onboarding/AddressCollectionForm.svelte';
 	import type { ComponentTemplate } from '$lib/types/component-props';
-	import type { Template } from '$lib/types/template';
+	import type { Representative } from '$lib/types/any-replacements';
+	import type { Representative as ProviderRepresentative } from '$lib/core/legislative/types';
 
 	let {
 		template,
 		user = null
 	}: {
 		template: ComponentTemplate;
-		user?: { id: string; name: string } | null;
+		user?: { id: string; name: string; trust_tier?: number } | null;
 	} = $props();
 
 	const dispatch = createEventDispatcher<{
@@ -91,7 +92,9 @@
 	// QR code state
 	let qrCodeDataUrl = $state<string>('');
 	let showQRCode = $state(false);
-	let showPreWrittenMessages = $state(false);
+
+	// Submission error message for error state UI
+	let submissionError = $state<string | null>(null);
 
 	// Senate delivery tracking (populated by TEE delivery confirmation in Phase 2)
 	let hasSenateDelivery = $state(false);
@@ -102,7 +105,7 @@
 	// Pre-written share messages for different contexts
 	const shareMessages = $derived(() => {
 		const actionCount = template.metrics?.sent || 0;
-		const category = (template as any).category?.toLowerCase() || 'advocacy';
+		const category = template.category?.toLowerCase() || 'advocacy';
 
 		return {
 			// Short & urgent (Twitter, Discord) - <280 chars
@@ -135,9 +138,12 @@
 		// Don't call modalActions.open - parent component handles it
 
 		// Check if this is a congressional template (ZKP flow)
+		// Route through handleSendConfirmation which checks address + verification
+		// before reaching submitCongressionalMessage. Without this, verifiedAddress
+		// is never set and the delivery worker has no address to route to Congress.
 		if (template.deliveryMethod === 'cwc') {
-			console.log('[TemplateModal] Congressional template detected, initiating ZKP flow');
-			submitCongressionalMessage();
+			console.log('[TemplateModal] Congressional template detected, initiating CWC flow');
+			handleSendConfirmation(true);
 			return;
 		}
 
@@ -184,7 +190,7 @@
 
 		// Use unified email service
 		const currentUser = $page.data?.user || user;
-		const flow = analyzeEmailFlow(template as unknown as Template, currentUser);
+		const flow = analyzeEmailFlow(template, currentUser);
 
 		// Store mailto URL for later use
 		if (flow.mailtoUrl) {
@@ -322,7 +328,7 @@
 			city: string;
 			state: string;
 			zip: string;
-			representatives?: unknown[];
+			representatives?: Representative[] | ProviderRepresentative[];
 		}
 	) {
 		console.log('[Template Modal] Address complete:', {
@@ -362,32 +368,22 @@
 	 * Submit Congressional message via ZK proof flow.
 	 * Triggers ProofGenerator component for proof generation + encrypted submission.
 	 */
-	async function submitCongressionalMessage() {
-		try {
-			console.log('[Template Modal] Starting ZKP submission flow');
-
-			// Set loading state - this will now trigger the ProofGenerator component
-			modalActions.setState('cwc-submission' as any);
-
-			// The ProofGenerator component handles the rest:
-			// 1. Loading credentials
-			// 2. Generating proof
-			// 3. Encrypting witness (with address)
-			// 4. Submitting to backend
-		} catch (error) {
-			console.error('[Template Modal] Submission error:', error);
-			modalActions.setState('error' as any);
-		}
+	function submitCongressionalMessage() {
+		console.log('[Template Modal] Starting ZKP submission flow');
+		// Renders ProofGenerator (with autoStart) which handles:
+		// credentials, proof generation, witness encryption, submission.
+		// Errors are dispatched back via on:error → handleProofError.
+		modalActions.setState('cwc-submission');
 	}
 
 	/**
 	 * Handle verification complete from VerificationGate
 	 * After user verifies, proceed with Congressional submission
 	 */
-	function handleVerificationComplete(_event: CustomEvent<{ userId: string; method: string }>) {
+	function handleVerificationComplete(data: { userId: string; method: string }) {
 		console.log(
 			'[Template Modal] Verification complete, proceeding with submission:',
-			_event.detail
+			data
 		);
 		showVerificationGate = false;
 
@@ -413,9 +409,9 @@
 	 * Handle proof generation complete
 	 * Move to tracking state to show TEE processing + delivery
 	 */
-	function handleProofComplete(event: CustomEvent<{ submissionId: string }>) {
-		console.log('[Template Modal] Proof generation complete:', event.detail);
-		submissionId = event.detail.submissionId;
+	function handleProofComplete(data: { submissionId: string }) {
+		console.log('[Template Modal] Proof generation complete:', data);
+		submissionId = data.submissionId;
 		modalActions.setState('tracking');
 
 		// Celebration animation
@@ -435,11 +431,10 @@
 	 * Handle proof generation error
 	 * Show error and allow retry
 	 */
-	function handleProofError(event: CustomEvent<{ message: string }>) {
-		console.error('[Template Modal] Proof generation failed:', event.detail.message);
-		// For now, return to confirmation state
-		// TODO: Show dedicated error state with retry option
-		modalActions.setState('retry_needed');
+	function handleProofError(data: { message: string }) {
+		console.error('[Template Modal] Proof generation failed:', data.message);
+		submissionError = data.message;
+		modalActions.setState('error');
 	}
 
 	async function handleSendConfirmation(sent: boolean) {
@@ -492,13 +487,13 @@
 
 			if (isCongressional) {
 				// STEP 1: Check if user has address (for congressional routing)
-				const currentUser = $page.data?.user || user;
-				const hasAddress =
-					currentUser &&
-					currentUser.street &&
-					currentUser.city &&
-					currentUser.state &&
-					currentUser.zip;
+				// Address is collected via AddressCollectionForm and stored in verifiedAddress state.
+				// User model does NOT have street/city/state/zip fields (privacy-by-design).
+				const hasAddress = verifiedAddress &&
+					verifiedAddress.street &&
+					verifiedAddress.city &&
+					verifiedAddress.state &&
+					verifiedAddress.zip;
 
 				if (!hasAddress) {
 					// Need address for congressional routing - collect it inline
@@ -996,10 +991,10 @@
 					title: template.title,
 					deliveryMethod: template.deliveryMethod
 				}}
-				oncomplete={handleAddressComplete as any}
+				oncomplete={handleAddressComplete}
 			/>
 		</div>
-	{:else if (currentState as any) === 'cwc-submission'}
+	{:else if currentState === 'cwc-submission'}
 		<!-- ZKP Proof Generation & Submission State -->
 		<div class="flex h-full flex-col">
 			<!-- Header -->
@@ -1034,7 +1029,7 @@
 						templateId={template.id}
 						templateData={{
 							subject: template.title,
-							message: (template as any).body || template.description,
+							message: template.message_body || template.description,
 							recipientOffices: ['Senate', 'House'] // TODO: Get actual offices
 						}}
 						deliveryAddress={verifiedAddress ? {
@@ -1046,15 +1041,39 @@
 							zip: verifiedAddress.zip,
 							congressional_district: $page.data?.user?.congressional_district || undefined
 						} : undefined}
-						on:complete={handleProofComplete}
-						on:cancel={handleProofCancel}
-						on:error={handleProofError}
+						autoStart={true}
+						oncomplete={(data) => handleProofComplete(data)}
+						oncancel={() => handleProofCancel()}
+						onerror={(data) => handleProofError(data)}
 					/>
 				{:else}
 					<div class="flex flex-col items-center justify-center py-12 text-center">
 						<AlertCircle class="mb-4 h-12 w-12 text-amber-500" />
 						<h3 class="mb-2 text-lg font-semibold text-slate-900">Authentication Required</h3>
-						<p class="text-sm text-slate-600">Please sign in to send verified messages.</p>
+						<p class="mb-6 text-sm text-slate-600">Sign in to send verified messages to Congress.</p>
+						<div class="flex gap-3">
+							<Button
+								variant="secondary"
+								size="lg"
+								onclick={handleClose}
+							>
+								Cancel
+							</Button>
+							<Button
+								variant="primary"
+								size="lg"
+								onclick={() => {
+									dispatch('close');
+									modalActions.openModal('onboarding-modal', 'onboarding', {
+										template,
+										source: 'template-modal' as const,
+										skipDirectSend: true
+									});
+								}}
+							>
+								Sign in to continue
+							</Button>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -1096,6 +1115,11 @@
 					<SubmissionStatus
 						{submissionId}
 						initialStatus="sending"
+						onDelivered={() => {
+							// Auto-transition to celebration when delivery confirms
+							// No auto-navigate: let user interact with share/celebration UI
+							modalActions.setState('celebration');
+						}}
 						onOverride={() => {
 							// Allow user to bypass agent processing
 							modalActions.setState('celebration');
@@ -1120,6 +1144,55 @@
 				{/if}
 			</div>
 		</div>
+	{:else if currentState === 'error'}
+		<!-- Error State - submission failed -->
+		<div class="relative p-6 text-center sm:p-8" in:scale={{ duration: 500, easing: backOut }}>
+			<!-- Close Button -->
+			<button
+				onclick={handleClose}
+				class="absolute right-4 top-4 rounded-full p-2 text-slate-400 transition-all duration-200 hover:bg-slate-100 hover:text-slate-600"
+			>
+				<X class="h-5 w-5" />
+			</button>
+
+			<div
+				class="mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-red-100 sm:mb-6 sm:h-20 sm:w-20"
+			>
+				<AlertCircle class="h-8 w-8 text-red-600 sm:h-10 sm:w-10" />
+			</div>
+			<h3 class="mb-2 text-xl font-bold text-slate-900 sm:text-2xl">Something went wrong</h3>
+			<p class="mb-4 text-sm text-slate-600 sm:mb-6 sm:text-base">
+				{submissionError || 'An unexpected error occurred while sending your message.'}
+			</p>
+
+			<div class="flex justify-center gap-2 sm:gap-3">
+				<Button
+					variant="primary"
+					size="lg"
+					classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
+					onclick={() => {
+						submissionError = null;
+						submitCongressionalMessage();
+					}}
+				>
+					<ArrowRight class="mr-2 h-5 w-5 shrink-0" />
+					Try Again
+				</Button>
+				<Button
+					variant="secondary"
+					size="lg"
+					classNames="flex-1 min-w-[120px] sm:min-w-[140px] whitespace-nowrap"
+					onclick={handleClose}
+				>
+					Close
+				</Button>
+			</div>
+		</div>
+	{:else}
+		<!-- Fallback for unhandled states (auth_required, proof-generation, etc.) -->
+		<div class="p-6 text-center">
+			<p class="text-sm text-slate-600">Loading...</p>
+		</div>
 	{/if}
 </div>
 
@@ -1130,8 +1203,9 @@
 		userId={user.id}
 		templateSlug={template.slug}
 		cellId={verifiedCellId}
+		userTrustTier={user.trust_tier ?? 0}
 		bind:showModal={showVerificationGate}
-		on:verified={handleVerificationComplete}
-		on:cancel={handleVerificationCancel}
+		onverified={(data) => handleVerificationComplete(data)}
+		oncancel={() => handleVerificationCancel()}
 	/>
 {/if}

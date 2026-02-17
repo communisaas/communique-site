@@ -111,8 +111,10 @@ export function isModalComponent(obj: unknown): obj is ModalComponent {
 }
 
 /**
- * Component template interface that extends Template with index signature
- * This allows components to accept Template objects while being flexible about extra properties
+ * Component template interface that extends Template with index signature.
+ * This allows components to accept Template objects while being flexible about extra properties.
+ * Includes explicit optional fields (category, preview, subject) that are accessed in
+ * TemplateModal and email flow functions, avoiding unsafe `as any` casts.
  */
 export interface ComponentTemplate {
 	id: string;
@@ -121,7 +123,10 @@ export interface ComponentTemplate {
 	description: string;
 	deliveryMethod: string;
 	type?: string;
+	category?: string;
+	subject?: string | null;
 	message_body?: string;
+	preview?: string;
 	recipient_config?: UnknownRecord;
 	recipientEmails?: string[];
 	metrics: { sent?: number; delivered?: number; views?: number };

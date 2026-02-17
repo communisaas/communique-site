@@ -13,7 +13,7 @@
  * 4. OS-level mailto bridging
  */
 
-import type { Template } from '$lib/types/template';
+import type { Template, EmailFlowTemplate } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 import { extractRecipientEmails } from '$lib/types/templateConfig';
 import { z } from 'zod';
@@ -37,7 +37,7 @@ export function isValidReplacements(obj: unknown): obj is TemplateReplacements {
 }
 
 // Type guards for template validation
-export function isValidTemplate(template: unknown): template is Template {
+export function isValidTemplate(template: unknown): template is EmailFlowTemplate {
 	if (typeof template !== 'object' || template === null) return false;
 	const t = template as Record<string, unknown>;
 
@@ -45,7 +45,7 @@ export function isValidTemplate(template: unknown): template is Template {
 		typeof t.id === 'string' &&
 		typeof t.title === 'string' &&
 		typeof t.deliveryMethod === 'string' &&
-		['email', 'certified', 'direct', 'cwc'].includes(t.deliveryMethod as string) &&
+		['email', 'email_attested', 'certified', 'direct', 'cwc'].includes(t.deliveryMethod as string) &&
 		(typeof t.message_body === 'string' || typeof t.preview === 'string')
 	);
 }
@@ -100,7 +100,7 @@ function isValidRepresentativesArray(reps: unknown): reps is Representative[] {
  * block variables with actual user context AT THE MOMENT OF INTERACTION.
  */
 export function resolveTemplate(
-	template: Template,
+	template: EmailFlowTemplate,
 	user: EmailServiceUser | null,
 	options: { preserveVariables?: boolean } = {}
 ): ResolvedTemplate {

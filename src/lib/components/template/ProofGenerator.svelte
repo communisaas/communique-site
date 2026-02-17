@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
-	import { ShieldCheck, AlertCircle, Check, Loader2 } from 'lucide-svelte';
+	import { onMount } from 'svelte';
+	import { ShieldCheck, AlertCircle, Check, Loader2 } from '@lucide/svelte';
 	import type { WitnessData } from '$lib/core/proof/witness-encryption';
 
 	interface Props {
@@ -26,6 +26,11 @@
 		sessionId?: string;
 		/** Recipient subdivision for action domain (defaults to 'national') */
 		recipientSubdivision?: string;
+		/** Auto-start proof generation on mount (skips idle state) */
+		autoStart?: boolean;
+		oncomplete?: (data: { submissionId: string }) => void;
+		oncancel?: () => void;
+		onerror?: (data: { message: string }) => void;
 	}
 
 	let {
@@ -34,7 +39,11 @@
 		templateData,
 		deliveryAddress,
 		sessionId = '119th-congress',
-		recipientSubdivision = 'national'
+		recipientSubdivision = 'national',
+		autoStart = false,
+		oncomplete,
+		oncancel,
+		onerror
 	}: Props = $props();
 
 	type ProofGenerationState =
@@ -50,12 +59,6 @@
 	let proofState: ProofGenerationState = $state({ status: 'idle' });
 	let educationIndex = $state(0);
 
-	const dispatch = createEventDispatcher<{
-		complete: { submissionId: string };
-		cancel: void;
-		error: { message: string };
-	}>();
-
 	// Educational messages that cycle during proof generation
 	const educationalMessages = [
 		{ icon: '✓', text: 'Your exact address stays private' },
@@ -65,6 +68,13 @@
 		},
 		{ icon: '✓', text: 'Building your civic reputation on-chain' }
 	];
+
+	// Auto-start proof generation if requested (skips idle confirmation step)
+	onMount(() => {
+		if (autoStart) {
+			generateAndSubmit();
+		}
+	});
 
 	// Cycle educational messages every 3 seconds during proof generation
 	$effect(() => {
@@ -93,7 +103,7 @@
 					message: 'Session credential not found. Please verify your identity first.',
 					recoverable: true,
 					retryAction: () => {
-						dispatch('cancel');
+						oncancel?.();
 						// Parent component should redirect to identity verification
 					}
 				};
@@ -156,6 +166,10 @@
 				});
 
 				proofHex = twoTreeResult.proof;
+				// BR5-010: Save expected nullifier BEFORE overwriting with prover output.
+				// The cross-validation below must compare against our independently computed value,
+				// not the prover's output (which could be substituted by a compromised prover).
+				const expectedNullifier = nullifierHex;
 				nullifierHex = twoTreeResult.publicInputs.nullifier;
 				publicInputsPayload = {
 					userRoot: twoTreeResult.publicInputs.userRoot,
@@ -175,7 +189,7 @@
 						'BR5-010: Proof actionDomain mismatch. Possible proof substitution.'
 					);
 				}
-				if (twoTreeResult.publicInputs.nullifier !== nullifierHex) {
+				if (twoTreeResult.publicInputs.nullifier !== expectedNullifier) {
 					throw new Error(
 						'BR5-010: Proof nullifier mismatch. Possible proof substitution.'
 					);
@@ -320,19 +334,19 @@
 
 			// Success!
 			proofState = { status: 'complete', submissionId: data.submissionId };
-			dispatch('complete', { submissionId: data.submissionId });
+			oncomplete?.({ submissionId: data.submissionId });
 		} catch (error) {
 			console.error('[ProofGenerator] Generation failed:', error);
+			const errorMessage = error instanceof Error
+				? error.message
+				: 'An unexpected error occurred. Please try again.';
 			proofState = {
 				status: 'error',
-				message:
-					error instanceof Error
-						? error.message
-						: 'An unexpected error occurred. Please try again.',
+				message: errorMessage,
 				recoverable: true,
 				retryAction: () => generateAndSubmit()
 			};
-			dispatch('error', { message: (proofState as any).message || 'Unknown error' });
+			onerror?.({ message: errorMessage });
 		}
 	}
 
@@ -343,7 +357,7 @@
 	}
 
 	function handleCancel() {
-		dispatch('cancel');
+		oncancel?.();
 	}
 
 </script>
@@ -478,6 +492,7 @@
 			<p class="text-sm text-slate-600">Sending to congressional offices</p>
 		</div>
 	{:else if proofState.status === 'complete'}
+		{@const completedSubmissionId = proofState.submissionId}
 		<!-- Success state -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<div
@@ -515,7 +530,7 @@
 
 			<button
 				type="button"
-				onclick={() => dispatch('complete', { submissionId: (proofState as any).submissionId || '' })}
+				onclick={() => oncomplete?.({ submissionId: completedSubmissionId })}
 				class="mt-6 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
 			>
 				Continue
