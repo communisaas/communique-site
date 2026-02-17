@@ -61,8 +61,8 @@
 		};
 	} | null>(null);
 
-	function handleMethodSelection(event: CustomEvent<{ method: 'nfc' | 'government-id' | 'mdl' }>) {
-		selectedMethod = event.detail.method;
+	function handleMethodSelection(data: { method: 'nfc' | 'government-id' | 'mdl' }) {
+		selectedMethod = data.method;
 
 		// Automatically advance to verification step
 		if (selectedMethod === 'nfc') {
@@ -74,39 +74,37 @@
 		}
 	}
 
-	async function handleVerificationComplete(
-		event: CustomEvent<{
-			verified: boolean;
-			method: string;
-			district?: string;
-			state?: string;
-			address?: { street: string; city: string; state: string; zip: string };
-			/**
-			 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
-			 * PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
-			 */
-			cell_id?: string;
-			providerData?: {
-				provider: 'self.xyz' | 'didit.me';
-				credentialHash: string;
-				issuedAt: number;
-				expiresAt?: number;
-			};
-		}>
-	) {
+	async function handleVerificationComplete(data: {
+		verified: boolean;
+		method: string;
+		district?: string;
+		state?: string;
+		address?: { street: string; city: string; state: string; zip: string };
+		/**
+		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
+		 * PRIVACY: Neighborhood-level precision (600-3000 people), encrypted at rest
+		 */
+		cell_id?: string;
+		providerData?: {
+			provider: 'self.xyz' | 'didit.me';
+			credentialHash: string;
+			issuedAt: number;
+			expiresAt?: number;
+		};
+	}) {
 		verificationComplete = true;
-		verificationData = event.detail;
+		verificationData = data;
 		currentStep = 'complete';
 
 		// Add verified location signal to IndexedDB (client-side only)
 		// This is the highest confidence signal (1.0) in our 5-signal progressive inference
-		if (event.detail.district && event.detail.state) {
+		if (data.district && data.state) {
 			try {
 				const { addVerifiedLocationSignal } = await import('$lib/core/location');
-				await addVerifiedLocationSignal(event.detail.district || '', event.detail.state || '');
+				await addVerifiedLocationSignal(data.district || '', data.state || '');
 				console.log('[Verification] Added verified location signal:', {
-					district: event.detail.district,
-					state: event.detail.state
+					district: data.district,
+					state: data.state
 				});
 			} catch (error) {
 				console.error('[Verification] Failed to add location signal:', error);
@@ -115,7 +113,7 @@
 
 		// Handle complete verification flow: encryption + storage + caching
 		// This is the critical integration point that makes progressive verification work
-		if (event.detail.address && event.detail.providerData) {
+		if (data.address && data.providerData) {
 			try {
 				// Step 1: Encrypt address and store blob (existing flow)
 				const { handleVerificationComplete: processVerification } = await import(
@@ -123,13 +121,13 @@
 				);
 
 				const result = await processVerification(userId, {
-					method: event.detail.method as 'nfc-passport' | 'government-id',
-					verified: event.detail.verified,
-					providerData: event.detail.providerData,
-					address: event.detail.address,
-					district: event.detail.district
+					method: data.method as 'nfc-passport' | 'government-id',
+					verified: data.verified,
+					providerData: data.providerData,
+					address: data.address,
+					district: data.district
 						? {
-								congressional: event.detail.district
+								congressional: data.district
 							}
 						: undefined
 				});
@@ -146,31 +144,31 @@
 				}
 
 				// Step 2: Register in Shadow Atlas for ZK proof generation (new flow)
-				if (event.detail.district && event.detail.providerData) {
+				if (data.district && data.providerData) {
 					try {
 						const { registerInShadowAtlas, generateIdentityCommitment } = await import(
 							'$lib/core/identity/shadow-atlas-handler'
 						);
 
 						// Generate identity commitment from provider data
-						const identityCommitment = await generateIdentityCommitment(event.detail.providerData);
+						const identityCommitment = await generateIdentityCommitment(data.providerData);
 
 						// Register in Shadow Atlas (with cell_id for two-tree architecture)
-						// Use cell_id from event detail if available, otherwise use cellId prop
-						const resolvedCellId = event.detail.cell_id || cellId;
+						// Use cell_id from data if available, otherwise use cellId prop
+						const resolvedCellId = data.cell_id || cellId;
 						const atlasResult = await registerInShadowAtlas({
 							userId,
 							identityCommitment,
-							congressionalDistrict: (event.detail.district as string) || '',
+							congressionalDistrict: (data.district as string) || '',
 							cellId: (resolvedCellId as string | undefined), // 15-digit Census Block GEOID (enables two-tree mode)
 							verificationMethod:
-								event.detail.providerData.provider === 'self.xyz' ? 'self.xyz' : 'didit',
-							verificationId: event.detail.providerData.credentialHash
+								data.providerData.provider === 'self.xyz' ? 'self.xyz' : 'didit',
+							verificationId: data.providerData.credentialHash
 						} as any);
 
 						if (atlasResult.success) {
 							console.log('[Verification Flow] Shadow Atlas registration successful:', {
-								district: event.detail.district,
+								district: data.district,
 								leafIndex: atlasResult.sessionCredential?.leafIndex,
 								expiresAt: atlasResult.sessionCredential?.expiresAt,
 								credentialType: resolvedCellId ? 'two-tree' : 'single-tree'
@@ -196,13 +194,13 @@
 
 		// Notify parent component
 		oncomplete?.({
-			...event.detail,
+			...data,
 			userId
 		});
 	}
 
-	function handleVerificationError(event: CustomEvent<{ message: string }>) {
-		console.error('Verification error:', event.detail.message);
+	function handleVerificationError(data: { message: string }) {
+		console.error('Verification error:', data.message);
 		// Error handling is managed within child components
 		// Could optionally dispatch to parent for additional handling
 	}
@@ -340,22 +338,22 @@
 			</div>
 		{:else if currentStep === 'choice'}
 			<!-- Method Selection -->
-			<VerificationChoice defaultMethod={selectedMethod} on:select={handleMethodSelection} />
+			<VerificationChoice defaultMethod={selectedMethod} onselect={handleMethodSelection} />
 		{:else if currentStep === 'verify-nfc'}
 			<!-- NFC Passport Verification -->
 			<SelfXyzVerification
 				{userId}
 				{templateSlug}
-				on:complete={handleVerificationComplete}
-				on:error={handleVerificationError}
+				oncomplete={handleVerificationComplete}
+				onerror={handleVerificationError}
 			/>
 		{:else if currentStep === 'verify-id'}
 			<!-- Government ID Verification -->
 			<DiditVerification
 				{userId}
 				{templateSlug}
-				on:complete={handleVerificationComplete}
-				on:error={handleVerificationError}
+				oncomplete={handleVerificationComplete}
+				onerror={handleVerificationError}
 			/>
 		{:else if currentStep === 'verify-mdl'}
 			<!-- mDL / Digital ID Verification (Svelte 5 callback props) -->
