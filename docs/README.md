@@ -10,6 +10,7 @@
 
 **"What's the current status?"** → `implementation-status.md`
 **"How does Communiqué work?"** → `architecture.md`
+**"How does identity/trust work?"** → `architecture/graduated-trust.md` **(north star for identity architecture)**
 **"How do I integrate with voter-protocol?"** → `integration.md`
 **"What's the remediation plan?"** → `specs/INTEGRATION-REMEDIATION-PLAN.md`
 **"How do I build frontend features?"** → `frontend.md`
@@ -74,10 +75,11 @@ Development workflows and guides.
   - `decision-maker-resolution-integration.md` - Decision-maker lookup
   - `multi-target-delivery-spec.md` - Multi-target delivery
 
-### `architecture/` (4 files)
+### `architecture/` (5 files)
 Architectural deep-dives.
 
 **Key files:**
+- `graduated-trust.md` - **Identity & trust tier architecture (Tiers 0-4).** North star for all identity/verification work. Supersedes the binary verified/unverified model.
 - `LOCATION-SIGNAL-ACCURACY-LIMITS.md` - Location signal accuracy matrix (IP = state only)
 - `progressive-precision.md` - Progressive precision framework
 
@@ -139,6 +141,7 @@ Contains archived docs from past migrations, refactors, and design iterations. R
 |-------|------|
 | Implementation Status | `implementation-status.md` |
 | Architecture | `architecture.md` |
+| **Identity & Trust Tiers** | `architecture/graduated-trust.md` |
 | Integration | `integration.md` |
 | **Integration Remediation** | `specs/INTEGRATION-REMEDIATION-PLAN.md` |
 | Frontend | `frontend.md` |

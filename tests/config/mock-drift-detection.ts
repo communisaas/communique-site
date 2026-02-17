@@ -75,7 +75,7 @@ export class MockDriftDetector {
 
 		try {
 			// Check Prisma schema changes
-			const schemaPath = path.resolve(process.cwd(), 'prisma/core.prisma');
+			const schemaPath = path.resolve(process.cwd(), 'prisma/schema.prisma');
 			const schemaContent = await fs.readFile(schemaPath, 'utf-8');
 
 			// Extract model definitions
@@ -90,7 +90,7 @@ export class MockDriftDetector {
 				if (missingModels.length > 0) {
 					drifts.push({
 						mockName: 'DatabaseMock',
-						sourceFile: 'prisma/core.prisma',
+						sourceFile: 'prisma/schema.prisma',
 						type: 'new_method',
 						description: `Missing database mock methods for models: ${missingModels.join(', ')}`,
 						impact: 'medium'

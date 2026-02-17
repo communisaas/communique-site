@@ -38,7 +38,14 @@ describe('ProofGenerator Component', () => {
 	// Mock data
 	const mockUserId = 'test-user-id';
 	const mockTemplateId = 'test-template-id';
-	const mockAddress = '123 Main St, San Francisco, CA 94102';
+	const mockDeliveryAddress = {
+		name: 'Test User',
+		email: 'test@example.com',
+		street: '123 Main St',
+		city: 'San Francisco',
+		state: 'CA',
+		zip: '94102'
+	};
 	const mockTemplateData = {
 		subject: 'Test Subject',
 		message: 'Test Message',
@@ -128,7 +135,7 @@ describe('ProofGenerator Component', () => {
 					userId: mockUserId,
 					templateId: mockTemplateId,
 					templateData: mockTemplateData,
-					address: mockAddress
+					deliveryAddress: mockDeliveryAddress
 				}
 			});
 
@@ -155,7 +162,7 @@ describe('ProofGenerator Component', () => {
 				props: {
 					userId: '',
 					templateId: mockTemplateId,
-					address: mockAddress,
+					deliveryAddress: mockDeliveryAddress,
 					templateData: mockTemplateData
 				}
 			});
@@ -188,7 +195,7 @@ describe('ProofGenerator Component', () => {
 					userId: mockUserId,
 					templateId: mockTemplateId,
 					templateData: mockTemplateData,
-					address: mockAddress
+					deliveryAddress: mockDeliveryAddress
 				}
 			});
 
@@ -233,7 +240,7 @@ describe('ProofGenerator Component', () => {
 					userId: mockUserId,
 					templateId: mockTemplateId,
 					templateData: mockTemplateData,
-					address: mockAddress
+					deliveryAddress: mockDeliveryAddress
 				}
 			});
 
@@ -284,7 +291,7 @@ describe('ProofGenerator Component', () => {
 					userId: mockUserId,
 					templateId: mockTemplateId,
 					templateData: mockTemplateData,
-					address: mockAddress
+					deliveryAddress: mockDeliveryAddress
 				}
 			});
 
@@ -307,7 +314,7 @@ describe('ProofGenerator Component', () => {
 					userId: mockUserId,
 					templateId: mockTemplateId,
 					templateData: mockTemplateData,
-					address: mockAddress
+					deliveryAddress: mockDeliveryAddress
 				}
 			});
 
