@@ -332,3 +332,59 @@ export function formatValidationError(validation: CredentialValidation): {
 		maxDays: Math.floor(validation.maxAge / (24 * 60 * 60 * 1000))
 	};
 }
+
+// ============================================================================
+// Tier-Aware Credential TTL (Wave 1C: Graduated Trust)
+// ============================================================================
+
+/**
+ * TTL configuration for credentials at each trust tier (in milliseconds)
+ *
+ * Rationale:
+ * - Tier 0: No credential (anonymous users)
+ * - Tier 1: Passkey is device-bound, 1 year TTL (user keeps device)
+ * - Tier 2: Address attestation, 90 days (population moves ~2% annually)
+ * - Tier 3: Identity verification, 6 months (government ID expiry patterns)
+ * - Tier 4: Government credential, 1 year (follows issuer TTL)
+ *
+ * Note: Action-based TTL applies ON TOP of tier TTL.
+ * Example: Tier 2 user sending constituent_message needs credential < 30 days old,
+ * even though the district credential itself is valid for 90 days.
+ */
+export const TIER_CREDENTIAL_TTL: Record<number, number> = {
+	0: 0, // No credential
+	1: 365 * 24 * 60 * 60 * 1000, // Passkey: 1 year (device-bound)
+	2: 90 * 24 * 60 * 60 * 1000, // Address attestation: 90 days
+	3: 180 * 24 * 60 * 60 * 1000, // Identity verification: 6 months
+	4: 365 * 24 * 60 * 60 * 1000 // Government credential: follows issuer TTL (typically 1-5 years)
+};
+
+/**
+ * Check if a credential for a given tier is still fresh.
+ *
+ * This checks the tier's base TTL, NOT the action-based TTL.
+ * For action-specific validation, use isCredentialValidForAction().
+ *
+ * @param tier - Trust tier (0-4)
+ * @param verifiedAt - When the credential was issued/verified
+ * @returns True if credential is within tier's TTL window
+ */
+export function isTierCredentialFresh(
+	tier: number,
+	verifiedAt: Date | string | null
+): boolean {
+	if (tier === 0 || !verifiedAt) {
+		return false; // No credential or anonymous user
+	}
+
+	const ttl = TIER_CREDENTIAL_TTL[tier];
+	if (!ttl) {
+		return false; // Invalid tier
+	}
+
+	const now = Date.now();
+	const verifiedTime = parseDate(verifiedAt);
+	const age = now - verifiedTime;
+
+	return age < ttl;
+}

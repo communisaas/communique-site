@@ -32,6 +32,12 @@ export interface User {
 	verification_method: string | null;
 	verification_data: UnknownRecord | null;
 	verified_at: Date | null;
+	// Graduated trust (Wave 1C)
+	passkey_credential_id: string | null;
+	did_key: string | null;
+	address_verified_at: Date | null;
+	identity_commitment: string | null;
+	document_type: string | null;
 	// Privacy-preserving district (hash only, no plaintext)
 	district_hash: string | null;
 	district_verified: boolean;
@@ -141,7 +147,13 @@ export async function validateSession(
 		session,
 		user: {
 			...user,
-			verification_data: user.verification_data as UnknownRecord | null
+			verification_data: user.verification_data as UnknownRecord | null,
+			// Ensure all new fields are explicitly included for type safety
+			passkey_credential_id: user.passkey_credential_id ?? null,
+			did_key: user.did_key ?? null,
+			address_verified_at: user.address_verified_at ?? null,
+			identity_commitment: user.identity_commitment ?? null,
+			document_type: user.document_type ?? null
 		}
 	};
 }

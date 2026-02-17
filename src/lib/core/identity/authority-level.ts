@@ -14,9 +14,17 @@
  * On-chain enforcement:
  *   Each action domain can require a minimum authority level via
  *   DistrictGate.actionDomainMinAuthority mapping (Wave 14d).
+ *
+ * Trust Tiers (Graduated Trust - see docs/architecture/graduated-trust.md):
+ *   0 — Anonymous (no account)
+ *   1 — Passkey-bound identity (persistent pseudonym)
+ *   2 — Address-attested (district verified via civic data)
+ *   3 — ZK-verified constituent (cryptographic proof of district)
+ *   4 — Government credential (mDL / EUDIW via Digital Credentials API)
  */
 
 export type AuthorityLevel = 1 | 2 | 3 | 4 | 5;
+export type TrustTier = 0 | 1 | 2 | 3 | 4;
 
 /**
  * Derive authority level from user verification state.
@@ -54,4 +62,89 @@ export function deriveAuthorityLevel(user: {
 
 	// Level 1: OAuth-only (default)
 	return 1;
+}
+
+/**
+ * Trust tier labels for UI display
+ */
+export const TRUST_TIER_LABELS: Record<TrustTier, string> = {
+	0: 'Anonymous',
+	1: 'Account Verified',
+	2: 'District Verified',
+	3: 'Identity Verified',
+	4: 'Government Verified'
+};
+
+/**
+ * Derive trust tier from user verification state.
+ *
+ * Tiers are cumulative - a user at Tier 3 has achieved all lower tiers.
+ * Returns the HIGHEST tier achieved by the user.
+ *
+ * Wave 1C: Graduated Trust implementation
+ *
+ * @param user - User verification fields
+ * @returns Trust tier (0-4), where 0 is handled at call site (no user object)
+ */
+export function deriveTrustTier(user: {
+	passkey_credential_id?: string | null;
+	district_verified?: boolean;
+	address_verified_at?: Date | string | null;
+	identity_commitment?: string | null;
+	document_type?: string | null;
+	trust_score?: number;
+}): TrustTier {
+	// Tier 4: Government credential (mDL / EUDIW)
+	// Future: Will check for government credential metadata
+	// For now, this is unreachable (no gov credential flow exists yet)
+	if (user.document_type === 'mdl' && user.identity_commitment) {
+		return 4;
+	}
+
+	// Tier 3: ZK-verified (has identity_commitment from self.xyz or Didit)
+	if (user.identity_commitment) {
+		return 3;
+	}
+
+	// Tier 2: Address-attested (district verified via civic data)
+	// Requires BOTH district_verified flag AND address_verified_at timestamp
+	if (user.district_verified === true && user.address_verified_at) {
+		return 2;
+	}
+
+	// Tier 1: Passkey-bound identity (has registered a passkey)
+	if (user.passkey_credential_id) {
+		return 1;
+	}
+
+	// Tier 0: Anonymous (no passkey, no verification)
+	// This represents an authenticated OAuth user who hasn't added a passkey yet
+	// True anonymous (no user object at all) is handled at the call site
+	return 0;
+}
+
+/**
+ * Map trust tier to authority level for backward compatibility.
+ *
+ * This mapping allows existing code using authority_level to continue working
+ * while we transition to the graduated trust tier model.
+ *
+ * @param tier - Trust tier (0-4)
+ * @returns Authority level (1-5)
+ */
+export function trustTierToAuthorityLevel(tier: TrustTier): AuthorityLevel {
+	switch (tier) {
+		case 0:
+			return 1; // Anonymous → OAuth-only equivalent
+		case 1:
+			return 1; // Passkey-bound → OAuth-only equivalent (no identity verification yet)
+		case 2:
+			return 2; // Address-attested → Verified email equivalent
+		case 3:
+			return 3; // ZK-verified → ID card/license verified
+		case 4:
+			return 4; // Government credential → Passport-verified equivalent
+		default:
+			return 1; // Default to lowest authority level
+	}
 }
