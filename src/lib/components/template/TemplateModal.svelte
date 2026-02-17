@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	// import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { fade, fly, scale, slide } from 'svelte/transition';
@@ -48,16 +48,15 @@
 
 	let {
 		template,
-		user = null
+		user = null,
+		onclose,
+		onused
 	}: {
 		template: ComponentTemplate;
 		user?: { id: string; name: string; trust_tier?: number } | null;
+		onclose?: () => void;
+		onused?: (data: { templateId: string; action: 'mailto_opened' }) => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher<{
-		close: void;
-		used: { templateId: string; action: 'mailto_opened' };
-	}>();
 
 	// Component ID for timer coordination
 	const componentId = 'template-modal-' + Math.random().toString(36).substring(2, 15);
@@ -169,7 +168,7 @@
 	});
 
 	function handleClose() {
-		dispatch('close');
+		onclose?.();
 	}
 
 	async function handleUnifiedEmailFlow(_skipNavigation: boolean = false) {
@@ -208,10 +207,10 @@
 					launchEmail(flow.mailtoUrl);
 
 					// Dispatch for analytics — distinguish verified vs unverified (CI-003)
-					dispatch('used', {
+					onused?.({
 						templateId: template.id,
 						action: 'mailto_opened'
-					} as any);
+					});
 
 					// Set up enhanced mail app detection
 					setupEnhancedMailAppDetection();
@@ -472,7 +471,7 @@
 				console.log('[Template Modal] Guest user on Congressional template - showing onboarding');
 
 				// Close template modal
-				dispatch('close');
+				onclose?.();
 
 				// Open onboarding modal to create account
 				modalActions.openModal('onboarding-modal', 'onboarding', {
@@ -1063,7 +1062,7 @@
 								variant="primary"
 								size="lg"
 								onclick={() => {
-									dispatch('close');
+									onclose?.();
 									modalActions.openModal('onboarding-modal', 'onboarding', {
 										template,
 										source: 'template-modal' as const,
