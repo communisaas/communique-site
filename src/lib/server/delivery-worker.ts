@@ -36,18 +36,23 @@ interface DeliveryResult {
 	}>;
 }
 
-export async function processSubmissionDelivery(submissionId: string): Promise<DeliveryResult> {
+export async function processSubmissionDelivery(
+	submissionId: string,
+	db?: typeof prisma
+): Promise<DeliveryResult> {
+	// Use explicitly-passed client (safe for waitUntil), fall back to ALS-backed proxy
+	const client = db ?? prisma;
 	console.log('[Delivery] Starting delivery for submission:', submissionId);
 
 	try {
 		// Step 1: Mark as processing
-		await prisma.submission.update({
+		await client.submission.update({
 			where: { id: submissionId },
 			data: { delivery_status: 'processing' }
 		});
 
 		// Step 2: Read submission
-		const submission = await prisma.submission.findUnique({
+		const submission = await client.submission.findUnique({
 			where: { id: submissionId },
 			select: {
 				id: true,
@@ -122,7 +127,7 @@ export async function processSubmissionDelivery(submissionId: string): Promise<D
 		);
 
 		// Step 6: Fetch template for message body
-		const template = await prisma.template.findUnique({
+		const template = await client.template.findUnique({
 			where: { id: submission.template_id }
 		});
 
@@ -208,7 +213,7 @@ export async function processSubmissionDelivery(submissionId: string): Promise<D
 		const overallStatus = allFailed ? 'failed' : anySuccess ? 'delivered' : 'partial';
 
 		// Step 10: Update submission with delivery results
-		await prisma.submission.update({
+		await client.submission.update({
 			where: { id: submissionId },
 			data: {
 				delivery_status: overallStatus,
@@ -233,7 +238,7 @@ export async function processSubmissionDelivery(submissionId: string): Promise<D
 
 		// Update submission with error status
 		try {
-			await prisma.submission.update({
+			await client.submission.update({
 				where: { id: submissionId },
 				data: {
 					delivery_status: 'failed',
