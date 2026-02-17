@@ -8,7 +8,6 @@
 		Check,
 		Smartphone
 	} from '@lucide/svelte';
-	import { createEventDispatcher } from 'svelte';
 	import { isDigitalCredentialsSupported } from '$lib/core/identity/digital-credentials-api';
 
 	interface Props {
@@ -16,20 +15,17 @@
 		compact?: boolean;
 		/** Pre-selected verification method */
 		defaultMethod?: 'nfc' | 'government-id' | 'mdl' | null;
+		onselect?: (data: { method: 'nfc' | 'government-id' | 'mdl' }) => void;
 	}
 
-	let { compact = false, defaultMethod = null }: Props = $props();
+	let { compact = false, defaultMethod = null, onselect }: Props = $props();
 
 	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(defaultMethod);
 	let mdlSupported = isDigitalCredentialsSupported();
 
-	const dispatch = createEventDispatcher<{
-		select: { method: 'nfc' | 'government-id' | 'mdl' };
-	}>();
-
 	function selectMethod(method: 'nfc' | 'government-id' | 'mdl') {
 		selectedMethod = method;
-		dispatch('select', { method });
+		onselect?.({ method });
 	}
 </script>
 
