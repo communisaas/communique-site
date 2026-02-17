@@ -229,11 +229,150 @@ Real congressional delivery. Encrypt witness on client, decrypt on server, deliv
 
 ---
 
-## Cycle 6: Government Credentials (scoped after Cycle 5)
+## Cycle 6: Fix Post-Proof Pipeline & Modal Error States
 
-- Digital Credentials API integration
-- mDL verification
-- Feature detection + graceful degradation
+The delivery worker (Cycle 5) writes status to the Submission model, but the client-side tracking component was polling the wrong table (CWCJob). Modal state machine had multiple dead ends. This cycle closes the gap between server-side delivery and client-side UX.
+
+### Wave 6A: Fix Status Tracking Pipeline
+- Created `GET /api/submissions/[id]/status` — queries Submission model with pseudonymous ID ownership check
+- Created `POST /api/submissions/[id]/retry` — atomic conditional retry (only from `failed` state, prevents TOCTOU race)
+- Rewrote `SubmissionStatus.svelte` — removed dead WebSocket code, polls correct endpoint, AbortController for unmount safety, generation counter for stale response discard, `onDelivered` callback
+
+### Wave 6B: Fix Modal Dead Ends
+- Added `'cwc-submission' | 'error'` to `LegacyModalState` type (killed all `as any` casts on state)
+- Added error state UI branch in TemplateModal (was rendering blank on submission error)
+- Fixed guest + congressional dead end: "Authentication Required" now has sign-in CTA button
+- Added `autoStart` prop to ProofGenerator (eliminates redundant second click)
+
+### Wave 6C: Dead Code Cleanup
+- Removed dead `CWCProgressTracker` import (imported but never rendered)
+- Removed dead `showPreWrittenMessages` state variable
+- Removed debug `console.log` statements from ModalRegistry production render path
+- Added `{:else}` fallback for unhandled modal states
+
+### Wave 6D: Opus Review Fixes
+- Fixed TOCTOU race in retry endpoint (atomic `updateMany` with `delivery_status: 'failed'` WHERE clause)
+- Fixed infinite polling on 401/403/404 (terminal HTTP errors now stop poller)
+- Added AbortController to prevent state updates on destroyed components
+- Added poll generation counter to discard stale responses after retry
+- Removed aggressive 2s auto-navigation from onDelivered (let user interact with celebration)
+- Added `{:else}` fallback for `auth_required`/`proof-generation` states that had no UI branch
+
+## Cycle 7: Security Fixes + Svelte 5 Migration
+
+Security bugs (BR5-010 nullifier no-op, address bypass), UX bugs (VerificationGate trust tier, hasAddress always-false), and legacy Svelte 4 event patterns.
+
+### Wave 7A: BR5-010 Nullifier Fix + Dead Code
+- Fixed nullifier self-comparison: saved `expectedNullifier` before overwriting `nullifierHex` with prover output. Cross-validation now compares against independently-computed value.
+- Removed dead try/catch from `submitCongressionalMessage()` (sync setState can't throw)
+- Fixed `handleProofError` → routes to `error` state instead of `retry_needed` (which shows wrong "Email client didn't open" text)
+
+### Wave 7B: Trust Tier + hasAddress Fixes
+- Widened TemplateModal `user` prop type to include `trust_tier`
+- Passed `userTrustTier={user.trust_tier ?? 0}` to VerificationGate (was always defaulting to 0, causing unnecessary verification prompts)
+- Fixed `hasAddress` to check `verifiedAddress` state instead of non-existent `user.street/city/state/zip` fields
+
+### Wave 7C: Svelte 5 Event Migration
+- ProofGenerator: `createEventDispatcher` → `oncomplete`/`oncancel`/`onerror` callback props
+- VerificationGate: `createEventDispatcher` → `onverified`/`oncancel` callback props
+- TemplateModal: Updated call sites and handler signatures (CustomEvent → direct data)
+
+### Wave 7D: Opus Review Fixes
+- Fixed CRITICAL: `onMount` CWC path bypassed address collection/verification, sending proofs with no delivery address. Now routes through `handleSendConfirmation(true)`.
+- Fixed HIGH: `as any` cast on `proofState.message` replaced with local `errorMessage` variable
+- Added TODO for IdentityVerificationFlow Svelte 5 migration (still uses `createEventDispatcher`)
+- Deferred: TemplateModal's own `createEventDispatcher` (requires parent migration), `needsTier3` dead derived, legacy single-tree BR5-010 gap
+
+## Cycle 8: Production Hardening + Code Quality
+
+Address 10 deferred issues from Cycles 6-7, including a production risk (ALS+waitUntil), type safety gaps, and incomplete Svelte 5 migration.
+
+### Wave 8A: ALS Safety + Error Sanitization
+- Added `getRequestClient()` to `db.ts` — resolves concrete PrismaClient from ALS (not the Proxy)
+- `delivery-worker.ts` accepts optional `db` parameter, uses captured client in `waitUntil`
+- Callers (`create/+server.ts`, `retry/+server.ts`) capture client via `getRequestClient()` before response
+- Sanitized `delivery_error` in status endpoint (generic user-safe message)
+
+### Wave 8B: Type Safety + `as any` Elimination
+- Created `EmailFlowTemplate` shared interface (both Template and ComponentTemplate satisfy it)
+- Added `category?`, `subject?`, `preview?` to `ComponentTemplate`
+- Changed `analyzeEmailFlow` + related functions to accept `EmailFlowTemplate`
+- Eliminated: `as unknown as Template`, `(template as any).category`, `(template as any).body`, `handleAddressComplete as any`, `(proofState as any).submissionId`
+
+### Wave 8C: Complete Svelte 5 Migration
+- `IdentityVerificationFlow`: `createEventDispatcher` → `oncomplete`/`oncancel`/`onback` callback props
+- `TemplateModal`: `createEventDispatcher` → `onclose`/`onused` callback props
+- Updated consumers: `template-modal/[slug]/+page.svelte`, `ModalRegistry.svelte`
+- Removed dead `needsTier3` derived from VerificationGate
+- Fixed double oncomplete dispatch in ProofGenerator (kept auto-dispatch, removed Continue re-dispatch)
+- Removed 22 redundant `credential!` assertions in ProofGenerator
+
+### Wave 8D: Legacy Cleanup + Opus Review
+- Gated legacy single-tree flow with deprecation warning + documentation
+- Opus review found 0 critical, 3 high, 5 medium, 9 low issues
+- Fixed: trust tier promotion uses captured client + registered with waitUntil (HIGH)
+- Fixed: IdentityVerificationFlow verificationData stores full payload (HIGH, data loss on re-dispatch)
+- Fixed: tautological validation `!template.title && !template.title` → `!template.title && !template.subject` (MEDIUM)
+- Fixed: stale `on:error` comment, unused `{@const}` in ProofGenerator
+- Added Cycle 7 status table (was missing from tracking section)
+
+## Cycle 9: Government Credentials — Tier 4
+
+Browser-native mDL verification via W3C Digital Credentials API. Ship pragmatic minimum (Option A: server decrypts in memory, derives district, discards address), architect for TEE upgrade path (Option B: same code runs inside Nitro Enclave, server never sees plaintext).
+
+**Privacy architecture:** Selective disclosure requests ONLY `resident_postal_code` + `resident_city` + `resident_state`. Never name, DOB, photo, document number. `intent_to_retain: false` on all fields. The `processCredentialResponse()` function boundary IS the privacy boundary — raw address never escapes it, only the derived fact (`{ district, verificationMethod: 'mdl' }`). Ephemeral key pairs (5-min TTL) prevent persistent decryption capability. Same nullifier source as Tier 3 (identity_commitment from Shadow Atlas), just with higher provenance.
+
+**Browser support:** Chrome 141+ (org-iso-mdoc + openid4vp), Safari 26+ (org-iso-mdoc only). Firefox: no support, no plans. 21 US states + PR have active mDL programs. Progressive enhancement — mDL option only shown when `typeof DigitalCredential !== 'undefined'`.
+
+### Wave 9A: Foundation + Types
+
+Fix authority level discrepancy, extend verification type system for mDL.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Fix `trustTierToAuthorityLevel(4)` | `authority-level.ts` | Currently returns 4, should return 5 per arch doc |
+| Fix `deriveAuthorityLevel()` for mdl | `authority-level.ts` | Add `document_type === 'mdl'` → authority level 5 path |
+| Add `'mdl'` to `VerificationMethod` | `src/lib/types/verification.ts` | `'nfc-passport' \| 'government-id' \| 'mdl'` |
+| Add `'digital-credentials-api'` to `VerificationProvider` | `src/lib/types/verification.ts` | `'self.xyz' \| 'didit.me' \| 'digital-credentials-api'` |
+| Add mDL entry to `VERIFICATION_METHODS` | `src/lib/types/verification.ts` | Display metadata for new method |
+| Update session + handler types | `session-cache.ts`, `session-credentials.ts`, `shadow-atlas-handler.ts` | Add `'mdl'` / `'digital-credentials-api'` to method unions |
+| Add rate limit path | `hooks.server.ts` | Add `/api/identity/verify-mdl` to `SENSITIVE_IDENTITY_PATHS` |
+| Create DigitalCredential type declarations | `src/lib/types/digital-credentials.d.ts` | TypeScript declarations for `DigitalCredential`, `navigator.credentials.get({ digital })` — new browser API without `@types` |
+
+### Wave 9B: Client-Side Digital Credentials API
+
+Browser feature detection, dual-protocol request builder, and UI component.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Create `digital-credentials-api.ts` | `src/lib/core/identity/digital-credentials-api.ts` | `isDigitalCredentialsSupported()` feature detection. `getSupportedProtocols()` — checks `userAgentAllowsProtocol('org-iso-mdoc')` and `userAgentAllowsProtocol('openid4vp')`. `requestCredential(requests)` — wrapper around `navigator.credentials.get({ digital })` with AbortController timeout (60s for wallet interaction), graceful AbortError handling for user dismissal. |
+| Create `GovernmentCredentialVerification.svelte` | `src/lib/components/auth/GovernmentCredentialVerification.svelte` | Svelte 5 component. States: `idle` → `requesting` (OS wallet prompt) → `verifying` (server processing) → `complete` / `error` / `unsupported`. Callback props: `oncomplete`, `oncancel`, `onerror`. Flow: fetch `/api/identity/verify-mdl/start` → call `requestCredential()` → POST to `/api/identity/verify-mdl/verify`. Unsupported fallback: "Your browser doesn't support digital ID. Use NFC passport or document scan instead." |
+
+### Wave 9C: Server-Side Verification Pipeline
+
+Enclave-portable verification. The `processCredentialResponse()` function runs in a CF Worker today, moves to TEE unchanged later.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Create request start endpoint | `src/routes/api/identity/verify-mdl/start/+server.ts` | Generate ephemeral ECDH key pair (P-256) via `crypto.subtle`. Store private key + nonce in Workers KV (`DC_SESSION_KV`, 5-min TTL). Build dual-protocol request: `org-iso-mdoc` DeviceRequest (doctype `org.iso.18013.5.1.mDL`, fields: `resident_postal_code`, `resident_city`, `resident_state`, all `intent_to_retain: false`) + `openid4vp` DCQL query (same fields). Return both + nonce to client. |
+| Create `mdl-verification.ts` | `src/lib/core/identity/mdl-verification.ts` | **The privacy boundary function.** `processCredentialResponse(encryptedResponse, protocol, ephemeralPrivateKey)` → `{ district, state, verificationMethod: 'mdl' }`. Dispatches to `decryptMdocResponse()` or `decryptOid4vpResponse()`. CBOR decode via `cbor-web` (Workers-compatible). COSE_Sign1 signature verification against IACA roots. MSO valueDigest validation. DeviceAuth check. Returns ONLY derived district — raw address fields never leave this function scope. |
+| Create IACA trust store | `src/lib/core/identity/iaca-roots.ts` | Hardcoded IACA root certificates for ~10 most populated mDL states (CA, TX, NY, FL, etc.). Published by AAMVA. Used for issuer signature verification. |
+| Create verification endpoint | `src/routes/api/identity/verify-mdl/verify/+server.ts` | Accept `{ protocol, data, nonce }`. Retrieve + delete ephemeral key from KV (one-time use). Call `processCredentialResponse()`. Map result to district via existing civic data pipeline. DB transaction: set `document_type = 'mdl'`, `address_verification_method = 'mdl'` on User. Issue DistrictResidencyCredential (same as Tier 2 but `verification_method: 'mdl'`). Shadow Atlas registration if not already registered. Trust tier promotes automatically via `deriveTrustTier()` (existing stub activates). |
+| Install dependencies | `package.json` | `cbor-web` for CBOR decoding. Evaluate `@animo-id/mdoc` for COSE verification on Workers — if incompatible, manual verification via `crypto.subtle`. |
+| Add KV binding | `wrangler.toml` | `DC_SESSION_KV` namespace for ephemeral key storage |
+
+### Wave 9D: Integration + Opus Review
+
+Wire into existing verification flow, feature detection, review.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Add mDL option to VerificationChoice | `src/lib/components/auth/address-steps/VerificationChoice.svelte` | Third option: "Verify with Digital ID" (shield/smartphone icon). Only shown when `isDigitalCredentialsSupported()` returns true. Description: "Use your state-issued digital driver's license — fastest, most private." |
+| Wire into IdentityVerificationFlow | `IdentityVerificationFlow.svelte` | Add `'verify-mdl'` to `FlowStep` type. When mDL selected, render `GovernmentCredentialVerification`. Handle oncomplete → advance to complete step with full data. |
+| Update VerificationGate for Tier 4 | `VerificationGate.svelte` | For `minimumTier >= 4` (future-proofing), show GovernmentCredentialVerification directly. For now, Tier 4 is reached through the existing choice flow. |
+| Opus review | — | Full review of all Cycle 9 changes. Focus: privacy boundary integrity, selective disclosure correctness, ephemeral key lifecycle, COSE verification completeness, Workers KV TTL enforcement. |
+
+**Verification:** Full Tier 4 flow: click "Verify with Digital ID" → OS wallet prompt with ONLY postal code/city/state fields visible → server verifies + derives district → address discarded → DistrictResidencyCredential issued → trust_tier=4 via deriveTrustTier() → authority_level=5. Existing NFC/document scan paths unchanged. Firefox/unsupported browsers see fallback.
 
 ---
 
@@ -285,6 +424,95 @@ After each cycle:
 | 5B: Server-side decryption | **COMPLETE** | 2026-02-17: Created `src/lib/server/witness-decryption.ts` — exact mirror of client encryption (X25519 ECDH → BLAKE2b → XChaCha20-Poly1305). Replaced mock TEE public key with real env var (`WITNESS_ENCRYPTION_PUBLIC_KEY`). Stable keyId from key prefix. Created `scripts/generate-witness-keypair.ts`. Roundtrip test passed. |
 | 5C: CWC delivery pipeline | **COMPLETE** | 2026-02-17: Created `src/lib/server/delivery-worker.ts` (10-step pipeline: read submission → decrypt witness → extract deliveryAddress → lookup reps → fetch template → build CWC user → submit per-rep → determine overall status → update DB). Wired into submission endpoint with `platform.context.waitUntil()`. Senate endpoint toggleable via `CWC_PRODUCTION` env var. Added Platform.context types to app.d.ts. |
 | 5D: Review fixes + polish | **COMPLETE** | 2026-02-17: Opus review found 16 issues (4 critical, 3 high, 6 medium, 3 low). Fixed 6: (1) fragile address parsing replaced with structured fields from AddressCollectionForm; (2) silent fake Senate delivery now fails loudly; (3) delivery_status enum documented with 'processing'+'partial'; (4) WITNESS_ENCRYPTION_PUBLIC_KEY added to app.d.ts; (5) type assertion precedence fixed in delivery worker; (6) .env.example updated with witness encryption + CWC_PRODUCTION. Pre-existing: BR5-010 nullifier cross-validation no-op (from Cycle 4), libsodium WASM on Workers (needs deployment test). |
+
+### Cycle 6 Status
+
+| Wave | Status | Notes |
+|------|--------|-------|
+| 6A: Status tracking pipeline | **COMPLETE** | 2026-02-17: Created `/api/submissions/[id]/status` (pseudonymous_id ownership) + `/api/submissions/[id]/retry` (atomic conditional). Rewrote `SubmissionStatus.svelte`: removed dead WebSocket, polls correct Submission model, `onDelivered` callback fires once on terminal success. |
+| 6B: Modal dead ends | **COMPLETE** | 2026-02-17: Added `cwc-submission`+`error` to `LegacyModalState`. Error state now renders UI (was blank). Guest+congressional shows sign-in CTA (was dead end). ProofGenerator `autoStart` skips idle state. |
+| 6C: Dead code cleanup | **COMPLETE** | 2026-02-17: Removed dead `CWCProgressTracker` import, dead `showPreWrittenMessages` state, debug `console.log`s from ModalRegistry. Added `{:else}` fallback for unhandled states. |
+| 6D: Review fixes + polish | **COMPLETE** | 2026-02-17: Opus review found 16 issues (2 critical, 4 high, 5 medium, 5 low). Fixed 6 directly: (1) TOCTOU race in retry → atomic updateMany; (2) 401/403/404 → terminal polling stop; (3) AbortController on unmount; (4) poll generation counter for stale discard; (5) removed aggressive 2s auto-navigate from onDelivered; (6) fallback {:else} for auth_required/proof-generation. Deferred: ALS+waitUntil context persistence (pre-existing Cycle 5 concern), ProofGenerator event dispatch→callback migration (Svelte 5 modernization), template type unification. |
+
+### Cycle 7 Status
+
+| Wave | Status | Notes |
+|------|--------|-------|
+| 7A: BR5-010 nullifier fix | **COMPLETE** | 2026-02-17: Fixed nullifier self-comparison (saved expectedNullifier before overwrite). Removed dead try/catch from submitCongressionalMessage. Fixed handleProofError → routes to error state instead of retry_needed. |
+| 7B: Trust tier + hasAddress | **COMPLETE** | 2026-02-17: Widened TemplateModal user prop to include trust_tier. Passed userTrustTier to VerificationGate. Fixed hasAddress to check verifiedAddress state instead of non-existent user fields. |
+| 7C: Svelte 5 event migration | **COMPLETE** | 2026-02-17: Migrated ProofGenerator + VerificationGate from createEventDispatcher to callback props. Updated TemplateModal call sites and handler signatures. |
+| 7D: Review fixes + polish | **COMPLETE** | 2026-02-17: Opus review found 12 issues (2 critical, 3 high, 4 medium, 3 low). Fixed: (1) CRITICAL onMount CWC bypass → routes through handleSendConfirmation(true); (2) as any on proofState.message → local errorMessage variable; (3) added TODO for IdentityVerificationFlow migration. Deferred: TemplateModal createEventDispatcher, needsTier3 dead derived, legacy single-tree BR5-010 gap, credential! assertions. |
+
+### Cycle 8 Status
+
+| Wave | Status | Notes |
+|------|--------|-------|
+| 8A: ALS safety + errors | **COMPLETE** | 2026-02-17: Added `getRequestClient()` to db.ts. delivery-worker.ts accepts optional db param. Callers capture concrete client before waitUntil. Sanitized delivery_error in status endpoint. |
+| 8B: Type safety | **COMPLETE** | 2026-02-17: Created EmailFlowTemplate shared interface. Added missing fields to ComponentTemplate. Changed emailService + templateResolver to accept EmailFlowTemplate. Eliminated 5 unsafe casts from TemplateModal + ProofGenerator. |
+| 8C: Svelte 5 migration | **COMPLETE** | 2026-02-17: Migrated IdentityVerificationFlow + TemplateModal from createEventDispatcher to callback props. Updated 2 consumers. Removed needsTier3 dead derived, double oncomplete dispatch, 22 redundant credential! assertions. |
+| 8D: Review + polish | **COMPLETE** | 2026-02-17: Opus review found 0 critical, 3 high, 5 medium, 9 low. Fixed 5: (1) trust tier promotion uses captured client + waitUntil (HIGH); (2) verificationData stores full payload (HIGH); (3) tautological validation bug (MEDIUM); (4) stale on:error comment; (5) unused {@const}. Gated legacy single-tree with deprecation warning. Remaining debt: child components (VerificationChoice, SelfXyz, Didit) still use createEventDispatcher; delivery-worker.ts still has `as unknown as Template` for CWC calls. |
+
+### Cycle 9 Status
+
+| Wave | Status | Notes |
+|------|--------|-------|
+| 9A: Foundation + types | **COMPLETE** | 2026-02-17: Fixed `trustTierToAuthorityLevel(4)` → 5. Added `'mdl'` to VerificationMethod, `'digital-credentials-api'` to VerificationProvider. Updated session-cache, shadow-atlas-handler, session-credentials type unions. Added `/api/identity/verify-mdl` to SENSITIVE_IDENTITY_PATHS. Created `digital-credentials.d.ts` ambient type declarations. Auto-fixed: isVerificationMethod type guard for 'mdl', optional verificationMethod in session-credentials. |
+| 9B: Client-side DC API | **COMPLETE** | 2026-02-17: Created `digital-credentials-api.ts` (feature detection, protocol support check, credential request with 60s AbortController timeout, discriminated union CredentialRequestResult). Created `GovernmentCredentialVerification.svelte` (Svelte 5 callback props, 6-state flow: idle→requesting→verifying→complete/error/unsupported, selective disclosure privacy messaging, browser fallback). Auto-fixed: renamed `state` → `verificationState` (Svelte 5 $state rune conflict). |
+| 9C: Server-side mDL pipeline | **COMPLETE** | 2026-02-17: Added DC_SESSION_KV Workers KV binding. Installed cbor-web (Workers-compatible CBOR). Created `iaca-roots.ts` (IACA trust store structure, empty placeholder). Created `mdl-verification.ts` (THE privacy boundary: CBOR decode → extract address → derive district → discard PII). Created `/api/identity/verify-mdl/start` (ephemeral ECDH P-256, KV 5-min TTL, dual-protocol mdoc+oid4vp). Created `/api/identity/verify-mdl/verify` (one-time key retrieval, privacy boundary, trust_tier upgrade with `updateMany lt:4`). Auto-fixed: DC_SESSION_KV Platform.env type, GOOGLE_CIVIC_API_KEY ProcessEnv, cbor-web type declarations, updateMany safe upgrade pattern. |
+| 9D: Integration + Opus review | **COMPLETE** | 2026-02-17: Added mDL as third option in VerificationChoice (progressive enhancement via `isDigitalCredentialsSupported()`, positioned first as "Fastest" when available). Wired GovernmentCredentialVerification into IdentityVerificationFlow with Svelte 5 callback props (handleMdlComplete/Error/Cancel). Added Tier 4-aware header to VerificationGate. **Opus review:** 0 P0 (privacy boundary verified clean), 1 P1 fixed (missing document_type/identity_commitment in verify endpoint — deriveTrustTier() would regress on re-login), 2 P2 documented (COSE stub needs IACA roots, minor comment accuracy). svelte-check: 0 new errors. |
+
+---
+
+## Cycle 10: Production Readiness + Cleanup
+
+Verify all Cycle 1-9 code works in Cloudflare Workers runtime. Complete remaining Svelte 5 migration. Remove deprecated code paths. Build verification.
+
+### Wave 10A: CF Workers Runtime Verification
+
+Verify new dependencies work in Workers, create production KV namespace, test build.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Test libsodium on Workers | `src/lib/server/witness-decryption.ts` | libsodium-wrappers uses WASM — verify it loads in Workers runtime. If incompatible, find Workers-native alternative (Web Crypto can't do XChaCha20). May need `libsodium-wrappers-sumo` or conditional import. |
+| Test cbor-web on Workers | `src/lib/core/identity/mdl-verification.ts` | Dynamic `import('cbor-web')` — verify it resolves in Workers bundle. |
+| Create DC_SESSION_KV namespace | `wrangler.toml` | `npx wrangler kv namespace create DC_SESSION_KV` → update placeholder ID in wrangler.toml. |
+| Full CF build test | — | `ADAPTER=cloudflare npm run build` with all new Cycle 9 dependencies. Fix any bundle errors. |
+| Verify env var propagation | `src/hooks.server.ts` | Confirm `GOOGLE_CIVIC_API_KEY`, `WITNESS_ENCRYPTION_PUBLIC_KEY` propagate via `handlePlatformEnv`. |
+
+### Wave 10B: Final Svelte 5 Event Migration
+
+Complete the createEventDispatcher → callback props migration for the 3 remaining child components. This is the last batch.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Migrate VerificationChoice | `VerificationChoice.svelte` | Replace `createEventDispatcher<{ select }>` with `onselect?: (data) => void` callback prop. Update `IdentityVerificationFlow.svelte` consumer (change `on:select={handleMethodSelection}` to `onselect={...}`, remove CustomEvent wrapper from handler). |
+| Migrate SelfXyzVerification | `SelfXyzVerification.svelte` | Replace dispatched `complete` and `error` events with `oncomplete` and `onerror` callback props. Update IdentityVerificationFlow consumer (change `on:complete={handleVerificationComplete}` to `oncomplete={...}`). |
+| Migrate DiditVerification | `DiditVerification.svelte` | Same pattern as SelfXyz — callback props instead of dispatch. Update IdentityVerificationFlow consumer. |
+| Update IdentityVerificationFlow handlers | `IdentityVerificationFlow.svelte` | After migrating children, `handleMethodSelection` and `handleVerificationComplete` no longer need CustomEvent wrappers. Simplify to direct function signatures. |
+
+### Wave 10C: Dead Code + Type Cleanup
+
+Remove deprecated code paths and unsafe type casts accumulated across Cycles 1-9.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Remove legacy single-tree code | `ProofGenerator.svelte`, `prover-client.ts` | Legacy single-tree branch was gated with deprecation warning in Cycle 8D. All new flows use two-tree. Remove the legacy branch entirely. |
+| Fix delivery-worker Template cast | `delivery-worker.ts` | `as unknown as Template` cast is unsafe. Create proper type or use Prisma's generated type with select/include to get exactly the fields CWC needs. |
+| Remove dead imports + unused vars | Various | Sweep for any `// removed`, `// deprecated`, `// TODO: remove` markers left by previous cycles. |
+| Update env documentation | `.env.example`, `wrangler.toml` | Ensure all new env vars (GOOGLE_CIVIC_API_KEY, CWC_PRODUCTION, WITNESS_ENCRYPTION_PUBLIC_KEY) are documented with descriptions. |
+
+### Wave 10D: Review + Build Verification
+
+Final review gate. Verify the entire codebase builds and deploys cleanly.
+
+| Task | File(s) | Detail |
+|------|---------|--------|
+| Opus review | — | Review all Cycle 10 changes. Focus: Workers runtime compatibility, Svelte 5 migration completeness, type safety improvements, build output size. |
+| svelte-check | — | Target: 0 errors (fix the 2 pre-existing if feasible: PrismaClient cast in db.ts, data.user in layout.svelte). |
+| CF build + deploy dry run | — | `ADAPTER=cloudflare npm run build && npx wrangler pages deploy .svelte-kit/cloudflare --project-name communique-site --branch staging --dry-run` |
+| Document remaining gaps | `.planning/production-gaps.md` | Honest list of what's NOT production-ready: IACA root certificates, COSE_Sign1 verification, OpenID4VP, Ed25519 credential signing (currently HMAC), Nitro Enclave deployment. |
+
+**Verification:** `ADAPTER=cloudflare npm run build` succeeds. `svelte-check` clean (0 or 2 pre-existing only). No `createEventDispatcher` remaining in auth components. No legacy single-tree code. All env vars documented.
 
 ---
 
