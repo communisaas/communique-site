@@ -31,7 +31,7 @@
 
 	const componentId = 'TemplateModalPage_' + Math.random().toString(36).substr(2, 9);
 
-	function handleTemplateUsed(__event: CustomEvent) {
+	function handleTemplateUsed(_data: { templateId: string; action: string }) {
 		// Track successful conversion
 
 		// Optionally redirect to profile or success page
@@ -58,8 +58,8 @@
 	<TemplateModal
 		template={data.template}
 		user={simplifiedUser}
-		on:close={handleModalClose}
-		on:used={handleTemplateUsed}
+		onclose={handleModalClose}
+		onused={handleTemplateUsed}
 	/>
 {/if}
 

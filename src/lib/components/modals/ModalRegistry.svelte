@@ -59,18 +59,12 @@
 	closeOnEscape={true}
 >
 	{#snippet children(data)}
-		{@const _ = console.log('[ModalRegistry] Snippet rendered with data:', data)}
 		<div class="overflow-hidden rounded-xl bg-white">
 			<AddressCollectionForm
 				_template={(data?.template as any) || {}}
 				oncomplete={(detail) => {
-					console.log('[ModalRegistry] AddressCollectionForm completed with:', detail);
-					// Handle address collection completion
 					if (data?.onComplete) {
-						console.log('[ModalRegistry] Calling data.onComplete...');
 						(data.onComplete as any)(detail);
-					} else {
-						console.warn('[ModalRegistry] No data.onComplete handler registered!');
 					}
 					modalActions.closeModal('address-modal');
 				}}
@@ -93,8 +87,8 @@
 			<TemplateModal
 				template={data.template as any}
 				user={(data.user as any) || null}
-				on:close={() => modalActions.closeModal('template-modal')}
-				on:used={() => {
+				onclose={() => modalActions.closeModal('template-modal')}
+				onused={() => {
 					// Template used - keep modal open for post-send flow
 				}}
 			/>
