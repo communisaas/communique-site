@@ -5,6 +5,7 @@
 	import VerificationValueProp from './address-steps/VerificationValueProp.svelte';
 	import SelfXyzVerification from './address-steps/SelfXyzVerification.svelte';
 	import DiditVerification from './address-steps/DiditVerification.svelte';
+	import GovernmentCredentialVerification from './GovernmentCredentialVerification.svelte';
 
 	interface Props {
 		userId: string;
@@ -12,7 +13,7 @@
 		/** Skip value proposition (if already shown earlier in flow) */
 		skipValueProp?: boolean;
 		/** Default verification method (if user already made a choice) */
-		defaultMethod?: 'nfc' | 'government-id' | null;
+		defaultMethod?: 'nfc' | 'government-id' | 'mdl' | null;
 		/**
 		 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
 		 * PRIVACY: Neighborhood-level precision (600-3000 people)
@@ -28,7 +29,7 @@
 			address?: { street: string; city: string; state: string; zip: string };
 			cell_id?: string;
 			providerData?: {
-				provider: 'self.xyz' | 'didit.me';
+				provider: 'self.xyz' | 'didit.me' | 'digital-credentials-api';
 				credentialHash: string;
 				issuedAt: number;
 				expiresAt?: number;
@@ -40,14 +41,27 @@
 
 	let { userId, templateSlug, skipValueProp = false, defaultMethod = null, cellId, oncomplete, oncancel, onback }: Props = $props();
 
-	type FlowStep = 'value-prop' | 'choice' | 'verify-nfc' | 'verify-id' | 'complete';
+	type FlowStep = 'value-prop' | 'choice' | 'verify-nfc' | 'verify-id' | 'verify-mdl' | 'complete';
 
 	let currentStep = $state<FlowStep>(skipValueProp ? 'choice' : 'value-prop');
-	let selectedMethod = $state<'nfc' | 'government-id' | null>(defaultMethod);
+	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(defaultMethod);
 	let verificationComplete = $state(false);
-	let verificationData = $state<{ verified: boolean; method: string } | null>(null);
+	let verificationData = $state<{
+		verified: boolean;
+		method: string;
+		district?: string;
+		state?: string;
+		address?: { street: string; city: string; state: string; zip: string };
+		cell_id?: string;
+		providerData?: {
+			provider: 'self.xyz' | 'didit.me' | 'digital-credentials-api';
+			credentialHash: string;
+			issuedAt: number;
+			expiresAt?: number;
+		};
+	} | null>(null);
 
-	function handleMethodSelection(event: CustomEvent<{ method: 'nfc' | 'government-id' }>) {
+	function handleMethodSelection(event: CustomEvent<{ method: 'nfc' | 'government-id' | 'mdl' }>) {
 		selectedMethod = event.detail.method;
 
 		// Automatically advance to verification step
@@ -55,6 +69,8 @@
 			currentStep = 'verify-nfc';
 		} else if (selectedMethod === 'government-id') {
 			currentStep = 'verify-id';
+		} else if (selectedMethod === 'mdl') {
+			currentStep = 'verify-mdl';
 		}
 	}
 
@@ -191,8 +207,59 @@
 		// Could optionally dispatch to parent for additional handling
 	}
 
+	/**
+	 * Handle mDL verification completion (callback props, not CustomEvent).
+	 * GovernmentCredentialVerification uses Svelte 5 callback pattern.
+	 */
+	async function handleMdlComplete(data: {
+		verified: boolean;
+		method: string;
+		district?: string;
+		state?: string;
+		address?: { street: string; city: string; state: string; zip: string };
+		cell_id?: string;
+		providerData?: {
+			provider: 'digital-credentials-api';
+			credentialHash: string;
+			issuedAt: number;
+		};
+	}) {
+		verificationComplete = true;
+		verificationData = data;
+		currentStep = 'complete';
+
+		// Add verified location signal to IndexedDB (client-side only)
+		if (data.district && data.state) {
+			try {
+				const { addVerifiedLocationSignal } = await import('$lib/core/location');
+				await addVerifiedLocationSignal(data.district, data.state);
+				console.log('[Verification] Added verified location signal:', {
+					district: data.district,
+					state: data.state
+				});
+			} catch (error) {
+				console.error('[Verification] Failed to add location signal:', error);
+			}
+		}
+
+		// Notify parent component
+		oncomplete?.({
+			...data,
+			userId
+		});
+	}
+
+	function handleMdlError(data: { message: string }) {
+		console.error('mDL verification error:', data.message);
+	}
+
+	function handleMdlCancel() {
+		currentStep = 'choice';
+		selectedMethod = null;
+	}
+
 	function goBack() {
-		if (currentStep === 'verify-nfc' || currentStep === 'verify-id') {
+		if (currentStep === 'verify-nfc' || currentStep === 'verify-id' || currentStep === 'verify-mdl') {
 			currentStep = 'choice';
 			selectedMethod = null;
 		} else if (currentStep === 'choice' && !skipValueProp) {
@@ -217,7 +284,7 @@
 						Step 1 of 3: Understand Verification
 					{:else if currentStep === 'choice'}
 						Step 2 of 3: Choose Method
-					{:else if currentStep === 'verify-nfc' || currentStep === 'verify-id'}
+					{:else if currentStep === 'verify-nfc' || currentStep === 'verify-id' || currentStep === 'verify-mdl'}
 						Step 3 of 3: Complete Verification
 					{/if}
 				</span>
@@ -289,6 +356,15 @@
 				{templateSlug}
 				on:complete={handleVerificationComplete}
 				on:error={handleVerificationError}
+			/>
+		{:else if currentStep === 'verify-mdl'}
+			<!-- mDL / Digital ID Verification (Svelte 5 callback props) -->
+			<GovernmentCredentialVerification
+				{userId}
+				{templateSlug}
+				oncomplete={handleMdlComplete}
+				onerror={handleMdlError}
+				oncancel={handleMdlCancel}
 			/>
 		{:else if currentStep === 'complete'}
 			<!-- Success State -->
