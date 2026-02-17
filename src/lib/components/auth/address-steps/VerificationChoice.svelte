@@ -1,23 +1,33 @@
 <script lang="ts">
-	import { Shield, FileText, ChevronRight, TrendingUp, Lock, Check } from '@lucide/svelte';
+	import {
+		Shield,
+		FileText,
+		ChevronRight,
+		TrendingUp,
+		Lock,
+		Check,
+		Smartphone
+	} from '@lucide/svelte';
 	import { createEventDispatcher } from 'svelte';
+	import { isDigitalCredentialsSupported } from '$lib/core/identity/digital-credentials-api';
 
 	interface Props {
 		/** Show compact version (for inline contexts) */
 		compact?: boolean;
 		/** Pre-selected verification method */
-		defaultMethod?: 'nfc' | 'government-id' | null;
+		defaultMethod?: 'nfc' | 'government-id' | 'mdl' | null;
 	}
 
 	let { compact = false, defaultMethod = null }: Props = $props();
 
-	let selectedMethod = $state<'nfc' | 'government-id' | null>(defaultMethod);
+	let selectedMethod = $state<'nfc' | 'government-id' | 'mdl' | null>(defaultMethod);
+	let mdlSupported = isDigitalCredentialsSupported();
 
 	const dispatch = createEventDispatcher<{
-		select: { method: 'nfc' | 'government-id' };
+		select: { method: 'nfc' | 'government-id' | 'mdl' };
 	}>();
 
-	function selectMethod(method: 'nfc' | 'government-id') {
+	function selectMethod(method: 'nfc' | 'government-id' | 'mdl') {
 		selectedMethod = method;
 		dispatch('select', { method });
 	}
@@ -68,6 +78,83 @@
 			{compact ? 'Choose verification method:' : 'Choose how to verify:'}
 		</h3>
 
+		<!-- Digital ID (mDL) — shown first when supported (fastest/most private) -->
+		{#if mdlSupported}
+			<button
+				type="button"
+				onclick={() => selectMethod('mdl')}
+				class="group relative w-full rounded-xl border-2 bg-white p-6 text-left transition-all hover:border-blue-300 hover:shadow-lg {selectedMethod ===
+				'mdl'
+					? 'border-blue-500 ring-4 ring-blue-100'
+					: 'border-slate-200'}"
+			>
+				<!-- Fastest Badge -->
+				<div
+					class="absolute -top-3 left-4 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-md"
+				>
+					Fastest
+				</div>
+
+				<div class="flex items-start gap-4">
+					<!-- Icon -->
+					<div
+						class="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-md"
+					>
+						<Smartphone class="h-6 w-6 text-white" />
+					</div>
+
+					<!-- Content -->
+					<div class="flex-1">
+						<div class="mb-2 flex items-center gap-2">
+							<h4 class="text-lg font-semibold text-slate-900">Verify with Digital ID</h4>
+							<span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+								10 seconds
+							</span>
+						</div>
+
+						<p class="mb-3 text-sm text-slate-600">
+							Use your state-issued digital driver's license — fastest, most private
+						</p>
+
+						<!-- Benefits -->
+						<ul class="space-y-1.5 text-sm">
+							<li class="flex items-start gap-2 text-slate-700">
+								<Check class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
+								<span><span class="font-medium">10 seconds</span> verification time</span>
+							</li>
+							<li class="flex items-start gap-2 text-slate-700">
+								<Check class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
+								<span
+									><span class="font-medium">Maximum privacy</span> — browser-native verification</span
+								>
+							</li>
+							<li class="flex items-start gap-2 text-slate-700">
+								<Check class="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
+								<span
+									><span class="font-medium">No photos, no scans</span> — cryptographic proof</span
+								>
+							</li>
+						</ul>
+					</div>
+
+					<!-- Selection Indicator -->
+					<div class="flex-shrink-0">
+						{#if selectedMethod === 'mdl'}
+							<div
+								class="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white"
+							>
+								<Check class="h-4 w-4" />
+							</div>
+						{:else}
+							<ChevronRight
+								class="h-6 w-6 text-slate-400 transition-transform group-hover:translate-x-1 group-hover:text-blue-600"
+							/>
+						{/if}
+					</div>
+				</div>
+			</button>
+		{/if}
+
 		<!-- NFC Passport (Recommended) -->
 		<button
 			type="button"
@@ -97,7 +184,7 @@
 					<div class="mb-2 flex items-center gap-2">
 						<h4 class="text-lg font-semibold text-slate-900">NFC Passport</h4>
 						<span class="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-							Fastest
+							{mdlSupported ? '30 seconds' : 'Fastest'}
 						</span>
 					</div>
 
