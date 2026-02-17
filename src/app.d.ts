@@ -52,6 +52,7 @@ declare global {
 		interface Platform {
 			env?: {
 				HYPERDRIVE?: { connectionString: string };
+				DC_SESSION_KV?: KVNamespace;
 			};
 			context?: {
 				waitUntil: (promise: Promise<unknown>) => void;

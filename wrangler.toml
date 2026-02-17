@@ -9,3 +9,7 @@ PUBLIC_SCROLL_RPC_URL = "https://rpc.scroll.io"
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "870ed0ebca654838bc0df0d83c4e2645"
+
+[[kv_namespaces]]
+binding = "DC_SESSION_KV"
+id = "placeholder-create-via-wrangler-cli"
