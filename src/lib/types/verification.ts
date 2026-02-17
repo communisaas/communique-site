@@ -12,12 +12,12 @@
 /**
  * Available identity verification methods
  */
-export type VerificationMethod = 'nfc-passport' | 'government-id';
+export type VerificationMethod = 'nfc-passport' | 'government-id' | 'mdl';
 
 /**
  * Verification provider types
  */
-export type VerificationProvider = 'self.xyz' | 'didit.me';
+export type VerificationProvider = 'self.xyz' | 'didit.me' | 'digital-credentials-api';
 
 /**
  * Verification status states
@@ -443,7 +443,7 @@ export interface VerificationStats {
  * Type guard: Check if value is VerificationMethod
  */
 export function isVerificationMethod(value: unknown): value is VerificationMethod {
-	return value === 'nfc-passport' || value === 'government-id';
+	return value === 'nfc-passport' || value === 'government-id' || value === 'mdl';
 }
 
 /**
@@ -521,6 +521,16 @@ export const VERIFICATION_METHODS: Record<VerificationMethod, VerificationMethod
 		recommended: false,
 		requiresDevice: 'any',
 		iconName: 'FileText'
+	},
+	mdl: {
+		method: 'mdl',
+		provider: 'digital-credentials-api',
+		displayName: 'Digital ID',
+		description: 'Use your state-issued digital driver\'s license — fastest, most private',
+		estimatedTime: '10 seconds',
+		recommended: false,
+		requiresDevice: 'any',
+		iconName: 'Smartphone'
 	}
 };
 
