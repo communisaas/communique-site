@@ -2,9 +2,10 @@
  * Verification Gate Component
  *
  * Progressive verification interceptor that gates Congressional message submission.
- * Supports graduated trust tiers (Wave 3A):
+ * Supports graduated trust tiers (Wave 3A + Cycle 9):
  *   - Tier 2 (address-attested): AddressVerificationFlow (district credential)
  *   - Tier 3 (ZK-verified):      IdentityVerificationFlow (full identity)
+ *   - Tier 4 (government-cred):  IdentityVerificationFlow (with mDL option)
  *
  * Flow:
  * 1. User clicks "Send Message" on Congressional template
@@ -56,6 +57,7 @@
 
 	// Derived: which verification flow to show
 	let needsTier2: boolean = $derived(minimumTier <= 2 && userTrustTier < 2);
+	let needsTier4: boolean = $derived(minimumTier >= 4 && userTrustTier < 4);
 
 	/**
 	 * Check if user meets the minimum trust tier or has valid session credential.
@@ -136,7 +138,17 @@
 			</button>
 
 			<!-- Header (tier-aware) -->
-			{#if needsTier2}
+			{#if needsTier4}
+				<div class="border-b border-indigo-200 bg-gradient-to-r from-indigo-50 to-blue-50 px-8 py-6">
+					<h2 id="verification-gate-title" class="text-2xl font-bold text-slate-900">
+						Verify with Government Credential
+					</h2>
+					<p class="mt-2 text-slate-600">
+						This action requires government-level verification. Use your digital driver's
+						license or passport for the fastest, most private verification available.
+					</p>
+				</div>
+			{:else if needsTier2}
 				<div class="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-8 py-6">
 					<h2 id="verification-gate-title" class="text-2xl font-bold text-slate-900">
 						Verify Your Address to Send
