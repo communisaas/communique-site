@@ -528,12 +528,14 @@
 				</div>
 			</div>
 
+			<!-- oncomplete already dispatched automatically on success (line above).
+				 Button retained as visual anchor if parent hasn't transitioned yet. -->
 			<button
 				type="button"
-				onclick={() => oncomplete?.({ submissionId: completedSubmissionId })}
+				onclick={() => { /* Parent already notified via auto-dispatch */ }}
 				class="mt-6 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
 			>
-				Continue
+				Done
 			</button>
 		</div>
 	{:else if proofState.status === 'error'}
