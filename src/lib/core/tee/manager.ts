@@ -13,7 +13,6 @@ import type {
 	TEEResponse
 } from './provider';
 import { AWSNitroEnclavesProvider, type AWSProviderConfig } from './providers/aws';
-import { GCPConfidentialSpaceProvider, type GCPProviderConfig } from './providers/gcp';
 import crypto from 'node:crypto';
 
 /**
@@ -23,9 +22,6 @@ export interface TEEManagerConfig {
 	/** AWS Nitro Enclaves configuration (PRIMARY - Phase 1) */
 	aws?: AWSProviderConfig;
 
-	/** GCP Confidential Space configuration (DEPRECATED - kept for fallback only) */
-	gcp?: GCPProviderConfig;
-
 	/** Azure Confidential VMs configuration (future) */
 	azure?: {
 		subscriptionId: string;
@@ -34,7 +30,7 @@ export interface TEEManagerConfig {
 	};
 
 	/** Preferred provider (defaults to AWS) */
-	preferredProvider?: 'aws' | 'gcp' | 'azure';
+	preferredProvider?: 'aws' | 'azure';
 }
 
 /**
@@ -53,11 +49,6 @@ export class TEEManager {
 			this.providers.set('aws', new AWSNitroEnclavesProvider(config.aws));
 		}
 
-		// Initialize GCP provider (DEPRECATED - fallback only)
-		if (config.gcp) {
-			this.providers.set('gcp', new GCPConfidentialSpaceProvider(config.gcp));
-		}
-
 		// Future providers
 		// if (config.azure) {
 		//   this.providers.set('azure', new AzureConfidentialVMProvider(config.azure));
@@ -73,7 +64,7 @@ export class TEEManager {
 	 */
 	async deployTEE(
 		config: TEEDeploymentConfig,
-		providerName?: 'gcp' | 'aws' | 'azure'
+		providerName?: 'aws' | 'azure'
 	): Promise<string> {
 		const provider = providerName
 			? this.providers.get(providerName)
@@ -304,11 +295,10 @@ export class TEEManager {
 	 * Select optimal provider based on security, cost, and availability
 	 */
 	private selectOptimalProvider(config: TEEDeploymentConfig): TEEProvider {
-		// Priority: AWS > GCP > Azure (based on security + cost)
+		// Priority: AWS > Azure (based on security + cost)
 		// AWS Nitro: No Intel ME/AMD PSP, independently audited, 15-30% cheaper
-		// GCP: Kept as fallback only (AMD PSP present)
 
-		const preferences = ['aws', 'gcp', 'azure'];
+		const preferences = ['aws', 'azure'];
 
 		for (const name of preferences) {
 			const provider = this.providers.get(name);
@@ -339,17 +329,6 @@ export function createTEEManagerFromEnv(): TEEManager {
 			subnetId: process.env.AWS_SUBNET_ID,
 			securityGroupIds: process.env.AWS_SECURITY_GROUP_IDS?.split(','),
 			iamInstanceProfile: process.env.AWS_IAM_INSTANCE_PROFILE
-		};
-	}
-
-	// GCP configuration (DEPRECATED - fallback only)
-	if (process.env.GCP_PROJECT_ID && process.env.GCP_REGION) {
-		config.gcp = {
-			projectId: process.env.GCP_PROJECT_ID,
-			region: process.env.GCP_REGION,
-			serviceAccountEmail: process.env.GCP_SERVICE_ACCOUNT_EMAIL,
-			workloadIdentityPoolId: process.env.GCP_WORKLOAD_IDENTITY_POOL_ID,
-			workloadIdentityProviderId: process.env.GCP_WORKLOAD_IDENTITY_PROVIDER_ID
 		};
 	}
 

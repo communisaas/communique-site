@@ -2,41 +2,41 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 /**
- * TEE Public Key Endpoint
+ * Witness Encryption Public Key Endpoint
  *
- * Returns the TEE's current X25519 public key for witness encryption
- * Keys rotate every 24 hours for forward secrecy
+ * Returns the server's X25519 public key for witness encryption.
+ * Client uses this to encrypt witness data that only the server can decrypt.
  *
- * Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md Phase 2
+ * Key is configured via WITNESS_ENCRYPTION_PUBLIC_KEY env var.
+ * Generate keypair with: npx tsx scripts/generate-witness-keypair.ts
  */
-
-// Mock TEE public key (replace with real AWS Nitro Enclave key rotation)
-// In production, this will fetch from AWS Secrets Manager
-const MOCK_TEE_PUBLIC_KEY = '0x' + '1'.repeat(64); // 32-byte X25519 public key
 
 export const GET: RequestHandler = async () => {
 	try {
-		// TODO: Fetch real TEE public key from AWS Secrets Manager
-		// const { teeKeyId, publicKey, expiresAt } = await fetchTEEPublicKey();
+		const publicKey = process.env.WITNESS_ENCRYPTION_PUBLIC_KEY;
 
-		// For now, return mock data
-		const now = new Date();
-		const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours
+		if (!publicKey) {
+			console.error('[Witness Key] WITNESS_ENCRYPTION_PUBLIC_KEY not configured');
+			return json(
+				{ success: false, error: 'Witness encryption not configured' },
+				{ status: 503 }
+			);
+		}
+
+		// Stable key ID derived from public key (first 16 chars)
+		// This lets the client cache keys and detect rotation
+		const keyId = `wek-${publicKey.replace(/^0x/, '').slice(0, 16)}`;
 
 		return json({
 			success: true,
-			keyId: 'mock-tee-key-' + Date.now(),
-			publicKey: MOCK_TEE_PUBLIC_KEY,
-			expiresAt: expiresAt.toISOString(),
+			keyId,
+			publicKey,
 			algorithm: 'X25519-XChaCha20-Poly1305'
 		});
 	} catch (error) {
-		console.error('[TEE Public Key] Failed to fetch key:', error);
+		console.error('[Witness Key] Error:', error);
 		return json(
-			{
-				success: false,
-				error: 'Failed to fetch TEE public key'
-			},
+			{ success: false, error: 'Failed to retrieve encryption key' },
 			{ status: 500 }
 		);
 	}

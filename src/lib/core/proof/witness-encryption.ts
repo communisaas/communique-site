@@ -2,47 +2,74 @@
  * Witness Encryption Module
  *
  * Encrypts witness data (address + proof inputs) to TEE public key
- * Uses XChaCha20-Poly1305 for authenticated encryption
+ * Uses XChaCha20-Poly1305 for authenticated encryption via libsodium
  *
  * Flow:
- * 1. Generate ephemeral keypair
- * 2. Derive shared secret (ECDH with TEE public key)
- * 3. Encrypt witness with XChaCha20-Poly1305
- * 4. Return ciphertext + nonce + ephemeral public key
+ * 1. Generate ephemeral X25519 keypair
+ * 2. Derive shared secret (X25519 ECDH with TEE public key)
+ * 3. Derive encryption key (BLAKE2b)
+ * 4. Encrypt witness with XChaCha20-Poly1305 (24-byte nonce)
+ * 5. Return ciphertext + nonce + ephemeral public key
  *
  * Per COMMUNIQUE-ZK-IMPLEMENTATION-SPEC.md Phase 2
  */
 
+import sodium from 'libsodium-wrappers';
+
 /**
- * Witness data structure (v0.2.0 API)
- * Contains all inputs needed for proof generation in TEE
- * Nullifier computed IN-CIRCUIT from userSecret + actionDomain + districtId
+ * Witness data structure (v0.3.0 — two-tree architecture)
+ * Contains all inputs needed for proof generation in TEE.
+ * Matches TwoTreeProofInputs: Tree 1 (user identity) + Tree 2 (cell-district SMT).
+ * Nullifier computed IN-CIRCUIT from userSecret + actionDomain + identityCommitment.
  */
 export interface WitnessData {
 	// Public inputs
-	/** Merkle root of the user tree */
-	merkleRoot: string;
-	/** Action domain for nullifier derivation (e.g., campaign ID) */
+	/** Root of Tree 1 (user identity Merkle tree) */
+	userRoot: string;
+	/** Root of Tree 2 (cell-district mapping sparse Merkle tree) */
+	cellMapRoot: string;
+	/** All 24 district IDs for this cell */
+	districts: string[];
+	/** Anti-double-vote nullifier */
+	nullifier: string;
+	/** Contract-controlled action scope */
 	actionDomain: string;
+	/** User's voting tier (1-5) */
+	authorityLevel: 1 | 2 | 3 | 4 | 5;
 
 	// Private inputs
-	/** User's identity secret (commitment preimage) */
+	/** User's secret key material */
 	userSecret: string;
-	/** User's district identifier */
-	districtId: string;
-	/** Authorization level (1-5) */
-	authorityLevel: 1 | 2 | 3 | 4 | 5;
-	/** Salt from registration */
+	/** Census tract cell ID */
+	cellId: string;
+	/** Random salt from registration */
 	registrationSalt: string;
+	/** Identity commitment for nullifier derivation */
+	identityCommitment: string;
 
-	// Merkle proof data
-	/** Merkle path (sibling hashes) */
-	merklePath: string[];
-	/** Leaf index in district Merkle tree */
-	leafIndex: number;
+	// Tree 1 proof data
+	/** Tree 1 Merkle siblings */
+	userPath: string[];
+	/** Leaf position in Tree 1 */
+	userIndex: number;
 
-	/** User address for encryption (not used in proof) */
-	address?: string;
+	// Tree 2 proof data (Sparse Merkle Tree)
+	/** Tree 2 SMT siblings */
+	cellMapPath: string[];
+	/** Tree 2 SMT direction bits */
+	cellMapPathBits: number[];
+
+	/** Delivery data for congressional message (encrypted, not used in proof) */
+	deliveryAddress?: {
+		name: string;
+		email: string;
+		street: string;
+		city: string;
+		state: string;
+		zip: string;
+		phone?: string;
+		congressional_district?: string;
+	};
 }
 
 /**
@@ -60,12 +87,11 @@ export interface EncryptedWitness {
 }
 
 /**
- * TEE public key (fetched from backend)
+ * Server public key for witness encryption (fetched from /api/tee/public-key)
  */
 interface TEEPublicKey {
 	keyId: string;
 	publicKey: string; // Hex-encoded X25519 public key
-	expiresAt: string;
 }
 
 // Cache TEE public key for 1 hour
@@ -99,8 +125,7 @@ async function getTEEPublicKey(): Promise<TEEPublicKey> {
 
 	cachedTEEKey = {
 		keyId: data.keyId,
-		publicKey: data.publicKey,
-		expiresAt: data.expiresAt
+		publicKey: data.publicKey
 	};
 
 	// Cache for 1 hour
@@ -112,105 +137,58 @@ async function getTEEPublicKey(): Promise<TEEPublicKey> {
 /**
  * Encrypt witness data to TEE public key
  *
- * Uses XChaCha20-Poly1305 for authenticated encryption
- * Derives shared secret via ECDH with ephemeral keypair
+ * Uses XChaCha20-Poly1305 for authenticated encryption via libsodium.
+ * Derives shared secret via X25519 ECDH with ephemeral keypair.
  *
  * @param witness - Witness data to encrypt
  * @returns Encrypted witness with nonce and ephemeral public key
  */
 export async function encryptWitness(witness: WitnessData): Promise<EncryptedWitness> {
 	try {
-		// Step 1: Get TEE public key
+		await sodium.ready;
+
+		// Step 1: Get TEE public key (X25519)
 		const teeKey = await getTEEPublicKey();
 
-		// Step 2: Generate ephemeral P-256 keypair (X25519 not supported in browsers)
-		const ephemeralKeypair = await crypto.subtle.generateKey(
-			{
-				name: 'ECDH',
-				namedCurve: 'P-256'
-			},
-			true, // extractable
-			['deriveBits']
-		);
+		// Step 2: Generate ephemeral X25519 keypair
+		const ephemeralKeypair = sodium.crypto_box_keypair();
 
-		// Step 3: Derive shared secret (ECDH)
+		// Step 3: Derive shared secret via X25519 ECDH
 		const teePublicKeyBytes = hexToBytes(teeKey.publicKey);
-		const importedTEEPublicKey = await crypto.subtle.importKey(
-			'raw',
-			teePublicKeyBytes as unknown as BufferSource,
-			{
-				name: 'ECDH',
-				namedCurve: 'P-256'
-			},
-			false,
-			[]
-		);
-
-		const sharedSecret = await crypto.subtle.deriveBits(
-			{
-				name: 'ECDH',
-				public: importedTEEPublicKey
-			},
+		const sharedSecret = sodium.crypto_scalarmult(
 			ephemeralKeypair.privateKey,
-			256 // 32 bytes
+			teePublicKeyBytes
 		);
 
-		// Step 4: Derive encryption key from shared secret (HKDF)
-		const sharedSecretKey = await crypto.subtle.importKey('raw', sharedSecret, 'HKDF', false, [
-			'deriveBits'
-		]);
-
-		const encryptionKeyBits = await crypto.subtle.deriveBits(
-			{
-				name: 'HKDF',
-				hash: 'SHA-256',
-				salt: new Uint8Array(32), // 32-byte zero salt
-				info: new TextEncoder().encode('communique-witness-encryption')
-			},
-			sharedSecretKey,
-			256 // 32 bytes for XChaCha20-Poly1305
+		// Step 4: Derive encryption key from shared secret (BLAKE2b keyed hash)
+		const encryptionKey = sodium.crypto_generichash(
+			32, // 32 bytes for XChaCha20-Poly1305
+			sharedSecret,
+			sodium.from_string('communique-witness-encryption')
 		);
 
-		// Step 5: Generate random nonce (24 bytes for XChaCha20)
-		const nonce = crypto.getRandomValues(new Uint8Array(24));
+		// Step 5: Generate random 24-byte nonce (full XChaCha20 nonce, no truncation)
+		const nonce = sodium.randombytes_buf(
+			sodium.crypto_aead_xchacha20poly1305_ietf_NPUBBYTES // 24 bytes
+		);
 
 		// Step 6: Serialize witness to JSON
-		const witnessJson = JSON.stringify(witness);
-		const witnessBytes = new TextEncoder().encode(witnessJson);
+		const witnessBytes = sodium.from_string(JSON.stringify(witness));
 
-		// Step 7: Encrypt with XChaCha20-Poly1305
-		// NOTE: Web Crypto API doesn't support XChaCha20-Poly1305 directly
-		// We'll use AES-GCM as a fallback for now
-		// TODO: Replace with XChaCha20-Poly1305 using @stablelib/xchacha20poly1305
-		const encryptionKey = await crypto.subtle.importKey(
-			'raw',
-			encryptionKeyBits,
-			'AES-GCM',
-			false,
-			['encrypt']
+		// Step 7: Encrypt with XChaCha20-Poly1305 (AEAD)
+		const ciphertext = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+			witnessBytes,
+			null, // no additional authenticated data
+			null, // no secret nonce
+			nonce,
+			encryptionKey
 		);
 
-		const ciphertext = await crypto.subtle.encrypt(
-			{
-				name: 'AES-GCM',
-				iv: nonce.slice(0, 12), // AES-GCM uses 12-byte nonce
-				tagLength: 128 // 16-byte authentication tag
-			},
-			encryptionKey,
-			witnessBytes
-		);
-
-		// Step 8: Export ephemeral public key
-		const ephemeralPublicKeyBytes = await crypto.subtle.exportKey(
-			'raw',
-			ephemeralKeypair.publicKey
-		);
-
-		// Step 9: Return encrypted witness
+		// Step 8: Return encrypted witness
 		return {
-			ciphertext: bytesToBase64(new Uint8Array(ciphertext)),
-			nonce: bytesToBase64(nonce),
-			ephemeralPublicKey: bytesToHex(new Uint8Array(ephemeralPublicKeyBytes)),
+			ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+			nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
+			ephemeralPublicKey: bytesToHex(ephemeralKeypair.publicKey),
 			teeKeyId: teeKey.keyId
 		};
 	} catch (error) {
@@ -247,14 +225,6 @@ function bytesToHex(bytes: Uint8Array): string {
 			.map((b) => b.toString(16).padStart(2, '0'))
 			.join('')
 	);
-}
-
-/**
- * Convert Uint8Array to base64 string
- */
-function bytesToBase64(bytes: Uint8Array): string {
-	const binary = String.fromCharCode(...bytes);
-	return btoa(binary);
 }
 
 /**

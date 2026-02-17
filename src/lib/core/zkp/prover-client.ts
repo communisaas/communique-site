@@ -30,6 +30,13 @@ import {
 	TWO_TREE_PUBLIC_INPUT_COUNT
 } from '@voter-protocol/noir-prover';
 
+/** Convert Uint8Array to hex string (CF Workers compatible, no Node.js Buffer) */
+function uint8ArrayToHex(bytes: Uint8Array): string {
+	return Array.from(bytes)
+		.map((b) => b.toString(16).padStart(2, '0'))
+		.join('');
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // PROGRESS TRACKING TYPES
 // ═══════════════════════════════════════════════════════════════════════════
@@ -423,7 +430,7 @@ export async function generateProof(
 		onProgress?.({ stage: 'complete', percent: 100, message: 'Proof generated' });
 
 		// Convert Uint8Array proof to hex string for browser storage/transmission
-		const proofHex = Buffer.from(result.proof).toString('hex');
+		const proofHex = uint8ArrayToHex(result.proof);
 
 		return {
 			proof: proofHex,
@@ -488,6 +495,7 @@ export async function generateTwoTreeProof(
 		userSecret: BigInt(inputs.userSecret),
 		cellId: BigInt(inputs.cellId),
 		registrationSalt: BigInt(inputs.registrationSalt),
+		identityCommitment: BigInt(inputs.identityCommitment),
 
 		// Tree 1 proof
 		userPath: inputs.userPath.map((p) => BigInt(p)),
@@ -505,7 +513,7 @@ export async function generateTwoTreeProof(
 		onProgress?.({ stage: 'complete', percent: 100, message: 'Two-tree proof generated' });
 
 		// Convert Uint8Array proof to hex string (0x-prefixed)
-		const proofHex = '0x' + Buffer.from(result.proof).toString('hex');
+		const proofHex = '0x' + uint8ArrayToHex(result.proof);
 
 		// Validate we got exactly 29 public inputs
 		if (result.publicInputs.length !== TWO_TREE_PUBLIC_INPUT_COUNT) {

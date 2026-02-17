@@ -2,9 +2,8 @@
  * Cloud-Agnostic TEE Provider Interface
  *
  * Abstraction layer for Trusted Execution Environments across:
- * - GCP Confidential Space (AMD SEV-SNP)
- * - AWS Nitro Enclaves (Hypervisor-backed)
- * - Azure Confidential VMs (AMD SEV-SNP / Intel SGX)
+ * - AWS Nitro Enclaves (Hypervisor-backed) — PRIMARY
+ * - Azure Confidential VMs (AMD SEV-SNP / Intel SGX) — FUTURE
  *
  * Enables switching cloud providers without rewriting core logic.
  */
@@ -16,7 +15,7 @@ export interface TEEProvider {
 	/**
 	 * Provider identifier
 	 */
-	readonly name: 'gcp' | 'aws' | 'azure';
+	readonly name: 'aws' | 'azure';
 
 	/**
 	 * Deploy TEE instance with given configuration
@@ -100,9 +99,9 @@ export interface TEEInstance {
  */
 export interface AttestationToken {
 	/** Provider that issued token */
-	provider: 'gcp' | 'aws' | 'azure';
+	provider: 'aws' | 'azure';
 
-	/** Raw token (JWT for GCP/Azure, CBOR for AWS) */
+	/** Raw token (JWT for Azure, CBOR for AWS) */
 	rawToken: string;
 
 	/** Parsed claims */
