@@ -56,7 +56,7 @@
 		| 'error'
 		| 'unsupported';
 
-	let state = $state<VerificationState>(
+	let verificationState = $state<VerificationState>(
 		isDigitalCredentialsSupported() ? 'idle' : 'unsupported'
 	);
 	let errorMessage = $state<string | null>(null);
@@ -67,7 +67,7 @@
 	} | null>(null);
 
 	async function startVerification() {
-		state = 'requesting';
+		verificationState = 'requesting';
 		errorMessage = null;
 
 		try {
@@ -90,14 +90,14 @@
 
 			if (!result.success) {
 				if (result.error === 'user_cancelled') {
-					state = 'idle';
+					verificationState = 'idle';
 					return;
 				}
 				throw new Error(result.message);
 			}
 
 			// Step 3: Verify on server
-			state = 'verifying';
+			verificationState = 'verifying';
 
 			const verifyResponse = await fetch('/api/identity/verify-mdl/verify', {
 				method: 'POST',
@@ -122,7 +122,7 @@
 				credentialHash: verification.credentialHash
 			};
 
-			state = 'complete';
+			verificationState = 'complete';
 
 			// Notify parent
 			oncomplete?.({
@@ -137,7 +137,7 @@
 				}
 			});
 		} catch (err) {
-			state = 'error';
+			verificationState = 'error';
 			errorMessage = err instanceof Error ? err.message : 'Verification failed';
 			onerror?.({ message: errorMessage });
 		}
@@ -163,7 +163,7 @@
 		</p>
 	</div>
 
-	{#if state === 'idle'}
+	{#if verificationState === 'idle'}
 		<!-- Privacy Guarantee -->
 		<div class="rounded-lg border border-green-200 bg-green-50 p-4">
 			<div class="flex items-start gap-3">
@@ -232,7 +232,7 @@
 				<span>Verify with Digital ID</span>
 			</span>
 		</button>
-	{:else if state === 'requesting'}
+	{:else if verificationState === 'requesting'}
 		<!-- Wallet Prompt State -->
 		<div class="flex flex-col items-center justify-center py-8">
 			<div class="relative mb-6">
@@ -255,7 +255,7 @@
 				You can cancel the wallet prompt at any time
 			</p>
 		</div>
-	{:else if state === 'verifying'}
+	{:else if verificationState === 'verifying'}
 		<!-- Server Verification State -->
 		<div class="flex flex-col items-center justify-center py-8">
 			<Loader2 class="mb-4 h-12 w-12 animate-spin text-blue-600" />
@@ -264,7 +264,7 @@
 				Checking your digital ID with the state issuer
 			</p>
 		</div>
-	{:else if state === 'complete'}
+	{:else if verificationState === 'complete'}
 		<!-- Success State -->
 		<div class="flex flex-col items-center justify-center py-8">
 			<div
@@ -284,7 +284,7 @@
 				</p>
 			{/if}
 		</div>
-	{:else if state === 'error'}
+	{:else if verificationState === 'error'}
 		<!-- Error State -->
 		<div class="space-y-4">
 			<div class="rounded-lg border border-red-200 bg-red-50 p-4">
@@ -308,7 +308,7 @@
 				</span>
 			</button>
 		</div>
-	{:else if state === 'unsupported'}
+	{:else if verificationState === 'unsupported'}
 		<!-- Unsupported Browser State -->
 		<div class="space-y-4">
 			<div class="rounded-lg border border-amber-200 bg-amber-50 p-4">
@@ -353,7 +353,7 @@
 	{/if}
 
 	<!-- Trust Indicator (shown in idle, requesting, verifying states) -->
-	{#if state === 'idle' || state === 'requesting' || state === 'verifying'}
+	{#if verificationState === 'idle' || verificationState === 'requesting' || verificationState === 'verifying'}
 		<div class="rounded-lg border border-slate-200 bg-white p-4">
 			<div class="flex items-start gap-3">
 				<div class="rounded-full bg-slate-100 p-2">
