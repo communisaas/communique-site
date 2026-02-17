@@ -9,7 +9,7 @@ export interface Template {
 	category: string;
 	topics?: string[]; // Topic tags for search/filtering (1-5 lowercase strings)
 	type: string;
-	deliveryMethod: 'email' | 'certified' | 'direct' | 'cwc';
+	deliveryMethod: 'email' | 'email_attested' | 'certified' | 'direct' | 'cwc';
 	subject?: string | null;
 	message_body: string;
 	sources?: Source[]; // Citation sources from message generation agent
@@ -105,7 +105,7 @@ export interface Template {
 }
 
 export interface TemplateCreationContext {
-	channelId: 'certified' | 'direct' | 'cwc';
+	channelId: 'certified' | 'direct' | 'cwc' | 'email_attested';
 	channelTitle: string;
 	isCongressional?: boolean;
 	features?: Array<{

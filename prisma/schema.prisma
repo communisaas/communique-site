@@ -57,6 +57,21 @@ model User {
   // Stored at verification time, used during ZK proof generation
   authority_level Int @default(1) @map("authority_level")
 
+  // === GRADUATED TRUST (see docs/architecture/graduated-trust.md) ===
+  trust_tier Int @default(0) @map("trust_tier")
+  // 0=anonymous, 1=passkey-bound, 2=address-attested, 3=ZK-verified, 4=gov-credential
+
+  // === PASSKEY / WEBAUTHN (Tier 1) ===
+  passkey_credential_id  String?   @unique @map("passkey_credential_id")
+  passkey_public_key_jwk Json?     @map("passkey_public_key_jwk")
+  did_key                String?   @unique @map("did_key")
+  passkey_created_at     DateTime? @map("passkey_created_at")
+  passkey_last_used_at   DateTime? @map("passkey_last_used_at")
+
+  // === ADDRESS ATTESTATION (Tier 2) ===
+  address_verification_method String?   @map("address_verification_method") // 'civic_api' | 'postal' | 'mdl'
+  address_verified_at         DateTime? @map("address_verified_at")
+
   // === VERIFICATION RATE LIMITING (Phase 1A) ===
   verification_attempts       Int       @default(0) @map("verification_attempts")
   verification_cooldown_until DateTime? @map("verification_cooldown_until")
@@ -138,6 +153,9 @@ model User {
   // Works for Congress, HOAs, universities, corporations, nonprofits
   expertise UserExpertise[]
 
+  // === DISTRICT CREDENTIALS (Tier 2: Address-Attested) ===
+  district_credentials DistrictCredential[]
+
   // === SHADOW ATLAS REGISTRATION ===
   // Zero-knowledge proof generation data (NO PII, only cryptographic metadata)
   shadow_atlas_registration ShadowAtlasRegistration?
@@ -159,7 +177,6 @@ model Session {
 
   @@map("session")
 }
-
 
 model Template {
   id               String  @id @default(cuid())
@@ -403,9 +420,9 @@ model account {
   // Twitter allows accounts without verified email, creating synthetic emails
   // like username@twitter.local. These accounts get lower trust_score to
   // prevent Sybil attacks while still allowing basic functionality.
-  email_verified      Boolean  @default(true) @map("email_verified") // false for synthetic emails (e.g., Twitter without email)
+  email_verified Boolean @default(true) @map("email_verified") // false for synthetic emails (e.g., Twitter without email)
 
-  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([provider, provider_account_id])
 }
@@ -502,9 +519,6 @@ model template_personalization {
   @@map("template_personalization")
 }
 
-
-
-
 model user_activation {
   id                    String   @id @default(cuid())
   user_id               String   @map("user_id")
@@ -527,7 +541,6 @@ model user_activation {
   @@map("user_activation")
 }
 
-
 // ===================================================================
 // EXPERIMENTAL RESEARCH TABLES REMOVED (Phase 0.1 Cleanup)
 // The following 8 tables were removed as they had zero production usage:
@@ -544,13 +557,13 @@ model user_activation {
 // ===================================================================
 
 model legislative_channel {
-  id                    String   @id @default(cuid())
-  country_code          String   @unique
+  id                    String    @id @default(cuid())
+  country_code          String    @unique
   country_name          String
   legislature_name      String
   legislature_type      String
   access_method         String
-  access_tier           Int      @default(3)
+  access_tier           Int       @default(3)
   email_pattern         String?
   email_domain          String?
   email_format_notes    String?
@@ -560,21 +573,21 @@ model legislative_channel {
   rate_limit_requests   Int?
   rate_limit_daily      Int?
   form_url              String?
-  form_requires_captcha Boolean  @default(false)
+  form_requires_captcha Boolean   @default(false)
   form_max_length       Int?
   primary_language      String
   supported_languages   String[]
-  requires_constituent  Boolean  @default(false)
-  requires_real_address Boolean  @default(false)
-  forbidden_words       String[] @default([])
+  requires_constituent  Boolean   @default(false)
+  requires_real_address Boolean   @default(false)
+  forbidden_words       String[]  @default([])
   message_guidelines    String?
   population            BigInt?
   internet_penetration  Float?
   democracy_index       Float?
-  is_active             Boolean  @default(true)
+  is_active             Boolean   @default(true)
   last_verified         DateTime?
-  created_at            DateTime @default(now()) @map("created_at")
-  updated_at            DateTime @updatedAt @map("updated_at")
+  created_at            DateTime  @default(now()) @map("created_at")
+  updated_at            DateTime  @updatedAt @map("updated_at")
 
   @@index([access_tier, is_active])
   @@index([country_code])
@@ -701,8 +714,6 @@ model privacy_budget {
 
   @@map("privacy_budget")
 }
-
-
 
 // ============= CONSOLIDATED AUDIT SYSTEM (4→2 MODELS) =============
 // Enhanced unified audit trail for all user actions
@@ -861,7 +872,6 @@ model ChallengeStake {
   @@map("challenge_stake")
 }
 
-
 // === MULTI-AGENT CONSENSUS TRACKING ===
 
 model CostTracking {
@@ -875,7 +885,6 @@ model CostTracking {
   @@index([date])
   @@map("cost_tracking")
 }
-
 
 // CWC Job Status Tracking for Async Submissions
 model CWCJob {
@@ -1011,14 +1020,14 @@ model ShadowAtlasRegistration {
   credential_type String @default("single-tree") @map("credential_type") // 'single-tree' | 'two-tree'
 
   // Cell-based fields (two-tree only)
-  cell_id   String? @map("cell_id")   // 15-digit Census GEOID (encrypted at rest)
+  cell_id   String? @map("cell_id") // 15-digit Census GEOID (encrypted at rest)
   districts Json?   @map("districts") // Array of 24 district identifiers
 
   // Dual Merkle paths (two-tree only)
-  user_tree_root     String? @map("user_tree_root")     // Root of user identity tree
-  user_tree_path     Json?   @map("user_tree_path")     // Array of siblings for user tree
-  cell_map_root      String? @map("cell_map_root")      // Root of cell-to-district SMT
-  cell_map_path      Json?   @map("cell_map_path")      // Array of siblings for cell map
+  user_tree_root     String? @map("user_tree_root") // Root of user identity tree
+  user_tree_path     Json?   @map("user_tree_path") // Array of siblings for user tree
+  cell_map_root      String? @map("cell_map_root") // Root of cell-to-district SMT
+  cell_map_path      Json?   @map("cell_map_path") // Array of siblings for cell map
   cell_map_path_bits Json?   @map("cell_map_path_bits") // Direction bits for SMT traversal
 
   // === VERIFICATION METADATA ===
@@ -1094,7 +1103,7 @@ model Submission {
   // === CONGRESSIONAL DELIVERY ===
   // CWC API submission (encrypted delivery through TEE)
   cwc_submission_id String?   @map("cwc_submission_id") // CWC API submission ID
-  delivery_status   String    @default("pending") @map("delivery_status") // 'pending' | 'delivered' | 'failed'
+  delivery_status   String    @default("pending") @map("delivery_status") // 'pending' | 'processing' | 'delivered' | 'partial' | 'failed'
   delivery_error    String?   @map("delivery_error") // Error message if failed
   delivered_at      DateTime? @map("delivered_at")
 
@@ -1127,18 +1136,18 @@ model Submission {
 // Retries with exponential backoff: 30s, 60s, 120s, 240s → give up
 
 model SubmissionRetry {
-  id            String   @id @default(cuid())
-  submission_id String   @unique @map("submission_id")
-  nullifier     String   @map("nullifier")
-  proof_hex     String   @map("proof_hex")
-  public_inputs Json     @map("public_inputs")
-  verifier_depth Int     @map("verifier_depth")
-  retry_count   Int      @default(0) @map("retry_count")
-  next_retry_at DateTime @map("next_retry_at")
-  last_error    String?  @map("last_error")
-  status        String   @default("pending") @map("status") // 'pending' | 'succeeded' | 'exhausted'
-  created_at    DateTime @default(now()) @map("created_at")
-  updated_at    DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(cuid())
+  submission_id  String   @unique @map("submission_id")
+  nullifier      String   @map("nullifier")
+  proof_hex      String   @map("proof_hex")
+  public_inputs  Json     @map("public_inputs")
+  verifier_depth Int      @map("verifier_depth")
+  retry_count    Int      @default(0) @map("retry_count")
+  next_retry_at  DateTime @map("next_retry_at")
+  last_error     String?  @map("last_error")
+  status         String   @default("pending") @map("status") // 'pending' | 'succeeded' | 'exhausted'
+  created_at     DateTime @default(now()) @map("created_at")
+  updated_at     DateTime @updatedAt @map("updated_at")
 
   @@index([status, next_retry_at])
   @@index([nullifier])
@@ -1190,6 +1199,31 @@ model VerificationSession {
   @@index([user_id, created_at])
   @@index([expires_at]) // For cleanup job
   @@map("verification_session")
+}
+
+// ============= DISTRICT CREDENTIAL (Wave 3A: Address-Attested Tier 2) =============
+// Verifiable credential for district residency, issued after address verification
+// Supports both Civic API instant verification and postal verification
+// Credentials expire and can be revoked; credential_hash enables offline verification
+
+model DistrictCredential {
+  id                      String    @id @default(cuid())
+  user_id                 String    @map("user_id")
+  credential_type         String    @default("district_residency") @map("credential_type")
+  congressional_district  String    @map("congressional_district")
+  state_senate_district   String?   @map("state_senate_district")
+  state_assembly_district String?   @map("state_assembly_district")
+  verification_method     String    @map("verification_method") // 'civic_api' | 'postal'
+  issued_at               DateTime  @default(now()) @map("issued_at")
+  expires_at              DateTime  @map("expires_at")
+  revoked_at              DateTime? @map("revoked_at")
+  credential_hash         String    @map("credential_hash") // SHA-256 of the VC JSON
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, expires_at])
+  @@index([congressional_district])
+  @@map("district_credential")
 }
 
 // ============= SCOPE CORRECTION LEARNING (EPIC 5: SELF-IMPROVING) =============
@@ -1269,21 +1303,21 @@ model RateLimit {
 // ============================================================================
 
 model Intelligence {
-  id              String    @id @default(cuid())
-  category        String    // 'news' | 'legislative' | 'regulatory' | 'corporate' | 'social'
-  title           String
-  source          String
-  source_url      String
-  published_at    DateTime
-  snippet         String
-  topics          String[]  // Postgres array
-  entities        String[]  // Postgres array
-  embedding       Unsupported("vector(1024)")?
-  relevance_score Float?
-  sentiment       String?   // 'positive' | 'negative' | 'neutral' | 'mixed'
+  id               String                       @id @default(cuid())
+  category         String // 'news' | 'legislative' | 'regulatory' | 'corporate' | 'social'
+  title            String
+  source           String
+  source_url       String
+  published_at     DateTime
+  snippet          String
+  topics           String[] // Postgres array
+  entities         String[] // Postgres array
+  embedding        Unsupported("vector(1024)")?
+  relevance_score  Float?
+  sentiment        String? // 'positive' | 'negative' | 'neutral' | 'mixed'
   geographic_scope String?
-  created_at      DateTime  @default(now())
-  expires_at      DateTime?
+  created_at       DateTime                     @default(now())
+  expires_at       DateTime?
 
   // Full-text search: generated tsvector column added via raw SQL migration
   // Indexes: HNSW on embedding, GIN on tsvector, GIN on topics — added via raw SQL
@@ -1303,8 +1337,8 @@ model ParsedDocumentCache {
   id               String    @id @default(cuid())
   source_url       String
   source_url_hash  String    @unique
-  document_type    String    // 'legislative' | 'official' | 'media' | 'corporate' | 'academic'
-  document         Json      // Full ParsedDocument as JSONB
+  document_type    String // 'legislative' | 'official' | 'media' | 'corporate' | 'academic'
+  document         Json // Full ParsedDocument as JSONB
   created_at       DateTime  @default(now())
   updated_at       DateTime  @updatedAt
   expires_at       DateTime
@@ -1322,17 +1356,17 @@ model ParsedDocumentCache {
 // ============================================================================
 
 model AgentTrace {
-  id        String   @id @default(cuid())
-  traceId   String   @map("trace_id")
-  userId    String?  @map("user_id")
-  endpoint  String
-  eventType String   @map("event_type")
-  payload   Json     @default("{}")
-  success   Boolean?
-  durationMs Int?    @map("duration_ms")
-  costUsd   Float?   @map("cost_usd")
-  createdAt DateTime @default(now()) @map("created_at")
-  expiresAt DateTime @map("expires_at")
+  id         String   @id @default(cuid())
+  traceId    String   @map("trace_id")
+  userId     String?  @map("user_id")
+  endpoint   String
+  eventType  String   @map("event_type")
+  payload    Json     @default("{}")
+  success    Boolean?
+  durationMs Int?     @map("duration_ms")
+  costUsd    Float?   @map("cost_usd")
+  createdAt  DateTime @default(now()) @map("created_at")
+  expiresAt  DateTime @map("expires_at")
 
   @@index([traceId])
   @@index([userId, createdAt])

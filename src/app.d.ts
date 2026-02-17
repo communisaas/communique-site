@@ -17,6 +17,10 @@ declare global {
 				is_verified: boolean;
 				verification_method: string | null;
 				verified_at: Date | null;
+				// Graduated trust (Wave 1C)
+				trust_tier: number;
+				// did:key identifier derived from WebAuthn public key (Wave 2B)
+				did_key: string | null;
 				// Privacy-preserving district (hash only, no PII)
 				district_hash: string | null;
 				district_verified: boolean;
@@ -48,6 +52,10 @@ declare global {
 		interface Platform {
 			env?: {
 				HYPERDRIVE?: { connectionString: string };
+			};
+			context?: {
+				waitUntil: (promise: Promise<unknown>) => void;
+				passThroughOnException: () => void;
 			};
 		}
 	}
@@ -117,6 +125,9 @@ declare global {
 			CWC_DELIVERY_AGENT_ACKNOWLEDGEMENT_EMAIL?: string;
 			CWC_DELIVERY_AGENT_ACK?: 'Y' | 'N';
 
+			// CWC production toggle (set 'true' to use /messages/ instead of /testing-messages/)
+			CWC_PRODUCTION?: string;
+
 			// GCP Proxy (for House CWC API - requires IP whitelisting)
 			GCP_PROXY_URL?: string;
 			GCP_PROXY_AUTH_TOKEN?: string;
@@ -149,6 +160,11 @@ declare global {
 			HUNTER_IO_API_KEY?: string; // Email verification
 			CLEARBIT_API_KEY?: string; // Email enrichment
 
+			// Witness Encryption (X25519 keypair for witness encryption/decryption)
+			// Generate with: npx tsx scripts/generate-witness-keypair.ts
+			WITNESS_ENCRYPTION_PUBLIC_KEY?: string;
+			WITNESS_ENCRYPTION_PRIVATE_KEY?: string;
+
 			// Trusted Execution Environment (TEE) Configuration
 			// AWS Nitro Enclaves
 			AWS_REGION?: string;
@@ -162,14 +178,7 @@ declare global {
 			AWS_IAM_INSTANCE_PROFILE?: string;
 			AWS_ENCLAVE_BUCKET?: string;
 
-			// Google Cloud Confidential Computing
-			GCP_REGION?: string;
-			GCP_PROJECT_ID?: string;
-			GCP_SERVICE_ACCOUNT_EMAIL?: string;
-			GCP_WORKLOAD_IDENTITY_POOL_ID?: string;
-			GCP_WORKLOAD_IDENTITY_PROVIDER_ID?: string;
-
-			// Azure Confidential Computing (commented out - not yet implemented)
+			// Azure Confidential Computing (future — no provider implemented yet)
 			AZURE_SUBSCRIPTION_ID?: string;
 			AZURE_RESOURCE_GROUP?: string;
 			AZURE_REGION?: string;
