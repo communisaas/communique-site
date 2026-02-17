@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { ChevronLeft, Check } from '@lucide/svelte';
 
 	import VerificationChoice from './address-steps/VerificationChoice.svelte';
@@ -20,9 +19,26 @@
 		 * When provided, enables two-tree mode for Shadow Atlas registration
 		 */
 		cellId?: string;
+		oncomplete?: (data: {
+			verified: boolean;
+			method: string;
+			userId: string;
+			district?: string;
+			state?: string;
+			address?: { street: string; city: string; state: string; zip: string };
+			cell_id?: string;
+			providerData?: {
+				provider: 'self.xyz' | 'didit.me';
+				credentialHash: string;
+				issuedAt: number;
+				expiresAt?: number;
+			};
+		}) => void;
+		oncancel?: () => void;
+		onback?: () => void;
 	}
 
-	let { userId, templateSlug, skipValueProp = false, defaultMethod = null, cellId }: Props = $props();
+	let { userId, templateSlug, skipValueProp = false, defaultMethod = null, cellId, oncomplete, oncancel, onback }: Props = $props();
 
 	type FlowStep = 'value-prop' | 'choice' | 'verify-nfc' | 'verify-id' | 'complete';
 
@@ -30,12 +46,6 @@
 	let selectedMethod = $state<'nfc' | 'government-id' | null>(defaultMethod);
 	let verificationComplete = $state(false);
 	let verificationData = $state<{ verified: boolean; method: string } | null>(null);
-
-	const dispatch = createEventDispatcher<{
-		complete: { verified: boolean; method: string; userId: string };
-		cancel: void;
-		back: void;
-	}>();
 
 	function handleMethodSelection(event: CustomEvent<{ method: 'nfc' | 'government-id' }>) {
 		selectedMethod = event.detail.method;
@@ -169,7 +179,7 @@
 		}
 
 		// Notify parent component
-		dispatch('complete', {
+		oncomplete?.({
 			...event.detail,
 			userId
 		});
@@ -188,7 +198,7 @@
 		} else if (currentStep === 'choice' && !skipValueProp) {
 			currentStep = 'value-prop';
 		} else {
-			dispatch('back');
+			onback?.();
 		}
 	}
 
@@ -316,7 +326,7 @@
 				<div class="flex flex-col gap-3 sm:flex-row sm:justify-center">
 					<button
 						type="button"
-						onclick={() => dispatch('complete', { ...verificationData!, userId })}
+						onclick={() => oncomplete?.({ ...verificationData!, userId })}
 						class="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-lg transition-all hover:from-blue-700 hover:to-indigo-700 hover:shadow-xl"
 					>
 						Continue to Message Submission
