@@ -56,7 +56,6 @@
 
 	// Derived: which verification flow to show
 	let needsTier2: boolean = $derived(minimumTier <= 2 && userTrustTier < 2);
-	let needsTier3: boolean = $derived(minimumTier >= 3 && userTrustTier < 3);
 
 	/**
 	 * Check if user meets the minimum trust tier or has valid session credential.
