@@ -16,7 +16,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 			is_verified: locals.user.is_verified,
 			district_verified: locals.user.district_verified,
 			trust_score: locals.user.trust_score,
-			reputation_tier: locals.user.reputation_tier
+			reputation_tier: locals.user.reputation_tier,
+			trust_tier: locals.user.trust_tier
 		}
 	};
 };

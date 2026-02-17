@@ -9,6 +9,7 @@ import {
 	SlidingWindowRateLimiter
 } from '$lib/core/security/rate-limiter';
 import { createRequestClient, runWithDb } from '$lib/core/db';
+import { deriveTrustTier } from '$lib/core/identity/authority-level';
 
 // MongoDB removed — intelligence data now lives in Postgres via pgvector
 
@@ -69,6 +70,17 @@ const handleAuth: Handle = async ({ event, resolve }) => {
 					is_verified: user.is_verified,
 					verification_method: user.verification_method ?? null,
 					verified_at: user.verified_at ?? null,
+					// Graduated trust (Wave 1C) - derived from user verification state
+					trust_tier: deriveTrustTier({
+						passkey_credential_id: user.passkey_credential_id,
+						district_verified: user.district_verified,
+						address_verified_at: user.address_verified_at,
+						identity_commitment: user.identity_commitment,
+						document_type: user.document_type,
+						trust_score: user.trust_score
+					}),
+					// did:key from WebAuthn public key (Wave 2B)
+					did_key: user.did_key ?? null,
 					// Privacy-preserving district (hash only, no PII)
 					district_hash: user.district_hash ?? null,
 					district_verified: user.district_verified ?? false,
@@ -122,7 +134,9 @@ const SENSITIVE_IDENTITY_PATHS = [
 	'/api/identity/store-blob',
 	'/api/identity/delete-blob',
 	'/api/identity/didit/init',
-	'/api/address/verify'
+	'/api/address/verify',
+	'/api/auth/passkey/register',
+	'/api/auth/passkey/authenticate'
 ];
 
 // Webhook paths that receive server-to-server requests (HMAC-authenticated, no Origin)

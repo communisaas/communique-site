@@ -6,9 +6,16 @@
 	import ProfileEditModal from '$lib/components/profile/ProfileEditModal.svelte';
 	import SkeletonCard from '$lib/components/ui/SkeletonCard.svelte';
 	import SkeletonStat from '$lib/components/ui/SkeletonStat.svelte';
+	import PasskeyUpgrade from '$lib/components/auth/PasskeyUpgrade.svelte';
+	import { invalidateAll } from '$app/navigation';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+
+	function handlePasskeyRegistered() {
+		// Reload page data to refresh user trust_tier
+		invalidateAll();
+	}
 
 	type EditSection = 'basic' | 'profile';
 	let showEditModal = $state(false);
@@ -66,6 +73,10 @@
 		<div class="grid grid-cols-1 gap-8 lg:grid-cols-3">
 			<!-- Profile Summary -->
 			<div class="space-y-6 lg:col-span-2">
+				<!-- Passkey Upgrade Banner (for trust_tier 0 users) -->
+				{#if user}
+					<PasskeyUpgrade user={user} onregistered={handlePasskeyRegistered} />
+				{/if}
 				<!-- Account Status -->
 				{#await userDetailsPromise}
 					<SkeletonCard lines={4} />

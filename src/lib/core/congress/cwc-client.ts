@@ -167,7 +167,17 @@ export class CWCClient {
 		}
 
 		if (!this.apiKey) {
-			return this.simulateSubmission(senator, 'no_api_key');
+			console.error('[CWC Senate] CWC_API_KEY not configured:', {
+				office: senator.name,
+				state: senator.state
+			});
+			return {
+				success: false,
+				status: 'failed',
+				office: senator.name,
+				timestamp: new Date().toISOString(),
+				error: 'Senate CWC delivery not configured. Set CWC_API_KEY environment variable.'
+			};
 		}
 
 		try {
@@ -231,8 +241,10 @@ export class CWCClient {
 				};
 			}
 
-			// Submit to Senate CWC endpoint (testing for now)
-			const endpoint = `${this.baseUrl}/testing-messages/?apikey=${this.apiKey}`;
+			// Submit to Senate CWC endpoint
+			// CWC_PRODUCTION=true switches from testing to production endpoint
+			const path = process.env.CWC_PRODUCTION === 'true' ? '/messages/' : '/testing-messages/';
+			const endpoint = `${this.baseUrl}${path}?apikey=${this.apiKey}`;
 
 			const response = await this.fetchWithRetry(endpoint, {
 				method: 'POST',

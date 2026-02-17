@@ -147,7 +147,8 @@
 	}
 
 	function handlePostAuthFlow() {
-		const flow = analyzeEmailFlow(template, data.user);
+		const trustTier = (data.user as any)?.trust_tier ?? 0;
+		const flow = analyzeEmailFlow(template, data.user, { trustTier });
 
 		if (flow.nextAction === 'address') {
 			// Need address collection
@@ -199,7 +200,7 @@
 			// Clear any stored intent even on error
 			sessionStorage.removeItem(`template_${template.id}_intent`);
 
-			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
+			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: (data.user as any)?.trust_tier ?? 0 });
 			if (flow.mailtoUrl) {
 				// Open TemplateModal using modalActions
 				modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
@@ -295,7 +296,7 @@
 			<div class="w-full sm:w-auto [&>div]:mt-0">
 				<ActionBar
 					{template}
-					user={data.user as { id: string; name: string | null } | null}
+					user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
 					{personalConnectionValue}
 					onSendMessage={() => {
 						if (!data.user) {
@@ -371,7 +372,7 @@
 		<TemplatePreview
 			{template}
 			context="page"
-			user={data.user as { id: string; name: string | null } | null}
+			user={data.user as { id: string; name: string | null; trust_tier?: number } | null}
 			showEmailModal={false}
 			onEmailModalClose={() => {
 				/* Intentionally empty - modal close handled elsewhere */
@@ -388,7 +389,7 @@
 			}}
 			onSendMessage={async () => {
 				if (channel?.access_tier === 1) {
-					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
+					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: (data.user as any)?.trust_tier ?? 0 });
 					if (flow.nextAction === 'auth') {
 						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
 					} else if (flow.nextAction === 'address') {
@@ -412,7 +413,7 @@
 
 				// For now, treat US or certified templates as existing path
 				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'cwc')) {
-					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user));
+					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: (data.user as any)?.trust_tier ?? 0 });
 
 					// Check if we have a cached address from guestState (Cypherpunk flow)
 					if (guestState.state?.address && flow.nextAction === 'address') {

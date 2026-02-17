@@ -400,6 +400,19 @@ export const ROUTE_RATE_LIMITS: RouteRateLimitConfig[] = [
 		windowMs: 60 * 60 * 1000, // 1 hour
 		keyStrategy: 'user'
 	},
+	// Passkey registration + authentication (Wave 2A: Graduated Trust)
+	{
+		pattern: '/api/auth/passkey/register',
+		maxRequests: 5,
+		windowMs: 60 * 1000, // 5 req/min — passkey registration attempts
+		keyStrategy: 'user'
+	},
+	{
+		pattern: '/api/auth/passkey/authenticate',
+		maxRequests: 10,
+		windowMs: 60 * 1000, // 10 req/min — passkey auth attempts
+		keyStrategy: 'ip'
+	},
 	// Legacy rules from existing implementation
 	{
 		pattern: '/api/address/',

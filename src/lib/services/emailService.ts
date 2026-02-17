@@ -53,8 +53,9 @@ export interface EmailFlowResult {
 	 * Delivery method used for analytics tracking.
 	 * - 'cwc': Congressional Web Contact (verified path)
 	 * - 'mailto': Local email client (unverified path)
+	 * - 'email_attested': Mailto with district attestation footer (Tier 2+ verified)
 	 */
-	deliveryMethod?: 'cwc' | 'mailto';
+	deliveryMethod?: 'cwc' | 'mailto' | 'email_attested';
 
 	/** Error details if flow analysis failed */
 	error?: {
@@ -124,7 +125,8 @@ export interface EmailLaunchResult {
  */
 export function analyzeEmailFlow(
 	template: Template,
-	user: EmailServiceUser | null
+	user: EmailServiceUser | null,
+	options?: { trustTier?: number }
 ): EmailFlowResult {
 	try {
 		// Generate analytics metadata
@@ -164,11 +166,14 @@ export function analyzeEmailFlow(
 		}
 
 		// Enforce address gating for authenticated users on congressional delivery
+		// Tier 2+ users are already district-verified — skip address collection
+		const trustTier = options?.trustTier ?? 0;
+		const isDistrictVerified = trustTier >= 2;
 		const hasCompleteAddress = user
 			? Boolean(user.street && user.city && user.state && user.zip)
 			: false;
 
-		if (isCongressional && !hasCompleteAddress) {
+		if (isCongressional && !hasCompleteAddress && !isDistrictVerified) {
 			return {
 				requiresAuth: false,
 				requiresAddress: true,
@@ -178,7 +183,7 @@ export function analyzeEmailFlow(
 		}
 
 		// Ready to send email
-		const mailtoResult = generateMailtoUrl(template, user);
+		const mailtoResult = generateMailtoUrl(template, user, { trustTier });
 		if (mailtoResult.error) {
 			return {
 				requiresAuth: false,
@@ -202,13 +207,18 @@ export function analyzeEmailFlow(
 			};
 		}
 
+		// Tier 2+ on congressional templates get attested delivery method
+		const deliveryMethod = (isCongressional && isDistrictVerified)
+			? 'email_attested' as const
+			: 'mailto' as const;
+
 		return {
 			requiresAuth: false,
 			requiresAddress: false,
 			mailtoUrl: mailtoResult.url,
 			nextAction: 'email',
-			verified: false,
-			deliveryMethod: 'mailto' as const,
+			verified: isDistrictVerified,
+			deliveryMethod,
 			analytics: { ...analytics, step: 'ready_to_send' }
 		};
 	} catch (error) {
@@ -258,7 +268,8 @@ interface MailtoUrlResult {
  */
 export function generateMailtoUrl(
 	template: Template,
-	user: EmailServiceUser | null
+	user: EmailServiceUser | null,
+	options?: { trustTier?: number }
 ): MailtoUrlResult {
 	try {
 		// Resolve template with user context
@@ -289,11 +300,21 @@ export function generateMailtoUrl(
 			const encodedSubject = encodeURIComponent(enhancedSubject);
 
 			// Add metadata footer to help mail server identify template
+			const trustTier = options?.trustTier ?? 0;
+			let footer =
+				`[Template: ${template.slug || template.id}]\n` +
+				`[From: ${user?.email || 'Guest'}]`;
+
+			// District attestation footer for Tier 2+ verified constituents
+			if (trustTier >= 2 && user?.id) {
+				const credentialHash = btoa(user.id).replace(/[+/=]/g, '').substring(0, 16);
+				footer += `\n[District: Verified Constituent | communique.io/verify/${credentialHash}]`;
+			}
+
 			const enhancedBody =
 				resolved.body +
 				'\n\n---\n' +
-				`[Template: ${template.slug || template.id}]\n` +
-				`[From: ${user?.email || 'Guest'}]`;
+				footer;
 
 			const encodedBody = encodeURIComponent(enhancedBody);
 

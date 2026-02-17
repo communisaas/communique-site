@@ -7,6 +7,7 @@ import {
 	type SessionCredentialForPolicy
 } from '$lib/core/identity/credential-policy';
 import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
+import { processSubmissionDelivery } from '$lib/server/delivery-worker';
 
 /**
  * Submission Creation Endpoint
@@ -27,7 +28,7 @@ import { computePseudonymousId } from '$lib/core/privacy/pseudonymous-id';
  * - Chain = source of truth: verification_status set only after on-chain confirmation (BR5-003)
  * - User PII is in encrypted witness, never in plaintext request fields
  */
-export const POST: RequestHandler = async ({ request, locals }) => {
+export const POST: RequestHandler = async ({ request, locals, platform }) => {
 	try {
 		// Check authentication
 		const session = locals.session;
@@ -168,12 +169,34 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 			nullifier: nullifier.slice(0, 10) + '...'
 		});
 
-		// TEE processes encrypted witness asynchronously:
-		// 1. Decrypts witness inside enclave
-		// 2. Extracts user PII (name, email, address)
-		// 3. Verifies proof on-chain via DistrictGate
-		// 4. Delivers to CWC API
-		// verification_status transitions: pending → verified (on-chain) → delivered (CWC)
+		// Promote user to Tier 3 (ZK-verified) if currently lower
+		// Fire-and-forget: don't block the submission response
+		prisma.user
+			.updateMany({
+				where: { id: userId, trust_tier: { lt: 3 } },
+				data: { trust_tier: 3 }
+			})
+			.then((result: { count: number }) => {
+				if (result.count > 0) {
+					console.log('[Submission] User promoted to trust_tier 3:', userId);
+				}
+			})
+			.catch((err: unknown) => {
+				console.error('[Submission] Trust tier promotion failed:', err);
+			});
+
+		// Trigger background CWC delivery
+		// Decrypts witness, looks up representatives, submits to CWC API
+		// delivery_status transitions: pending → processing → delivered | failed | partial
+		const deliveryPromise = processSubmissionDelivery(submission.id).catch((err) =>
+			console.error('[Submission] Background delivery failed:', err)
+		);
+
+		if (platform?.context?.waitUntil) {
+			// Cloudflare Workers: keep isolate alive until delivery completes
+			platform.context.waitUntil(deliveryPromise);
+		}
+		// Non-CF environments (dev): promise runs fire-and-forget
 
 		return json({
 			success: true,
