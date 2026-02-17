@@ -149,6 +149,7 @@ declare global {
 			DIDIT_API_KEY?: string;
 			DIDIT_WORKFLOW_ID?: string;
 			DIDIT_WEBHOOK_SECRET?: string;
+			GOOGLE_CIVIC_API_KEY?: string; // Google Civic Information API for district lookup
 
 			// Self.xyz (Zero-knowledge passport verification)
 			SELF_APP_NAME?: string;
