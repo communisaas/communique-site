@@ -8,15 +8,15 @@
 		AlertCircle,
 		RefreshCw
 	} from '@lucide/svelte';
-	import { createEventDispatcher } from 'svelte';
-
 	interface Props {
 		userId: string;
 		templateSlug?: string;
 		isLoading?: boolean;
+		oncomplete?: (data: { verified: boolean; method: string }) => void;
+		onerror?: (data: { message: string }) => void;
 	}
 
-	let { userId, templateSlug, isLoading = false }: Props = $props();
+	let { userId, templateSlug, isLoading = false, oncomplete, onerror }: Props = $props();
 
 	let verificationState = $state<
 		'idle' | 'initializing' | 'qr-ready' | 'waiting' | 'verified' | 'error'
@@ -25,11 +25,6 @@
 	let errorMessage = $state<string | null>(null);
 	let sessionId = $state<string | null>(null);
 	let pollingInterval = $state<number | null>(null);
-
-	const dispatch = createEventDispatcher<{
-		complete: { verified: boolean; method: string };
-		error: { message: string };
-	}>();
 
 	async function initializeVerification() {
 		verificationState = 'initializing';
@@ -69,7 +64,7 @@
 			errorMessage =
 				error instanceof Error ? error.message : 'Failed to initialize verification process';
 			verificationState = 'error';
-			dispatch('error', { message: errorMessage });
+			onerror?.({ message: errorMessage });
 		}
 	}
 
@@ -90,7 +85,7 @@
 				if (data.status === 'verified') {
 					stopPolling();
 					verificationState = 'verified';
-					dispatch('complete', { verified: true, method: 'nfc-passport' });
+					oncomplete?.({ verified: true, method: 'nfc-passport' });
 				} else if (data.status === 'failed') {
 					stopPolling();
 					errorMessage = data.error || 'Verification failed';
