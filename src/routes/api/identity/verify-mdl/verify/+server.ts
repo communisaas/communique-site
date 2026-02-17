@@ -76,23 +76,29 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 
 		// Update user record with mDL verification
 		// Use updateMany with lt condition to only upgrade trust_tier, never downgrade
+		// CRITICAL: Set document_type='mdl' and identity_commitment so deriveTrustTier()
+		// and deriveAuthorityLevel() correctly compute Tier 4 / Level 5 on subsequent sessions
 		await prisma.user.updateMany({
 			where: { id: session.userId, trust_tier: { lt: 4 } },
 			data: {
 				verified_at: new Date(),
 				address_verification_method: 'mdl',
 				address_verified_at: new Date(),
-				trust_tier: 4
+				trust_tier: 4,
+				document_type: 'mdl',
+				identity_commitment: result.credentialHash
 			}
 		});
 
-		// Also update verified_at + method for users already at tier 4+
+		// Also update verification metadata for users already at tier 4+
 		// (they may be re-verifying with mDL after a different method)
 		await prisma.user.update({
 			where: { id: session.userId },
 			data: {
 				address_verification_method: 'mdl',
-				address_verified_at: new Date()
+				address_verified_at: new Date(),
+				document_type: 'mdl',
+				identity_commitment: result.credentialHash
 			}
 		});
 
