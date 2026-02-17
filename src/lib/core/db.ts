@@ -81,6 +81,17 @@ function getInstance(): PrismaClient {
 	);
 }
 
+/**
+ * Return the concrete PrismaClient for the current request.
+ *
+ * Use this when you need to capture the client reference for use
+ * OUTSIDE the ALS scope (e.g., in platform.context.waitUntil callbacks
+ * where the ALS store may no longer be available).
+ */
+export function getRequestClient(): PrismaClient {
+	return getInstance();
+}
+
 // Proxy so existing `db.user.findMany()` imports keep working.
 // In production, reads from AsyncLocalStorage (per-request).
 // In dev, falls back to global singleton.

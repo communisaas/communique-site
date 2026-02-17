@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { prisma } from '$lib/core/db';
+import { prisma, getRequestClient } from '$lib/core/db';
 import {
 	isCredentialValidForAction,
 	formatValidationError,
@@ -188,7 +188,11 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		// Trigger background CWC delivery
 		// Decrypts witness, looks up representatives, submits to CWC API
 		// delivery_status transitions: pending → processing → delivered | failed | partial
-		const deliveryPromise = processSubmissionDelivery(submission.id).catch((err) =>
+		// Capture the concrete PrismaClient NOW (while still in request context).
+		// After response is sent, waitUntil runs outside ALS scope — the proxy
+		// would throw "No request-scoped PrismaClient found".
+		const db = getRequestClient();
+		const deliveryPromise = processSubmissionDelivery(submission.id, db).catch((err) =>
 			console.error('[Submission] Background delivery failed:', err)
 		);
 
