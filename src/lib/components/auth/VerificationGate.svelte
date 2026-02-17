@@ -17,7 +17,6 @@
  -->
 
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { scale, fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { X } from '@lucide/svelte';
@@ -40,6 +39,8 @@
 		minimumTier?: number;
 		/** User's current trust tier from server (default: 0 for anonymous) */
 		userTrustTier?: number;
+		onverified?: (data: { userId: string; method: string }) => void;
+		oncancel?: () => void;
 	}
 
 	let {
@@ -48,17 +49,14 @@
 		showModal = $bindable(),
 		cellId,
 		minimumTier = 2,
-		userTrustTier = 0
+		userTrustTier = 0,
+		onverified,
+		oncancel
 	}: Props = $props();
 
 	// Derived: which verification flow to show
 	let needsTier2: boolean = $derived(minimumTier <= 2 && userTrustTier < 2);
 	let needsTier3: boolean = $derived(minimumTier >= 3 && userTrustTier < 3);
-
-	const dispatch = createEventDispatcher<{
-		verified: { userId: string; method: string };
-		cancel: void;
-	}>();
 
 	/**
 	 * Check if user meets the minimum trust tier or has valid session credential.
@@ -87,13 +85,13 @@
 	}
 
 	function handleVerificationComplete(
-		event: CustomEvent<{ verified: boolean; method: string; userId: string; district?: string }>
+		data: { verified: boolean; method: string; userId: string; district?: string }
 	) {
-		console.log('[Verification Gate] Verification complete:', event.detail);
+		console.log('[Verification Gate] Verification complete:', data);
 		showModal = false;
-		dispatch('verified', {
-			userId: event.detail.userId,
-			method: event.detail.method
+		onverified?.({
+			userId: data.userId,
+			method: data.method
 		});
 	}
 
@@ -103,7 +101,7 @@
 	function handleAddressVerificationComplete(detail: { district: string; method: string }) {
 		console.log('[Verification Gate] Address verification complete:', detail);
 		showModal = false;
-		dispatch('verified', {
+		onverified?.({
 			userId,
 			method: `address:${detail.method}`
 		});
@@ -111,7 +109,7 @@
 
 	function handleCancel() {
 		showModal = false;
-		dispatch('cancel');
+		oncancel?.();
 	}
 </script>
 
@@ -175,8 +173,8 @@
 						{templateSlug}
 						{cellId}
 						skipValueProp={true}
-						on:complete={handleVerificationComplete}
-						on:cancel={handleCancel}
+						oncomplete={handleVerificationComplete}
+						oncancel={handleCancel}
 					/>
 				{/if}
 			</div>
