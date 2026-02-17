@@ -1,22 +1,17 @@
 <script lang="ts">
 	import { FileText, ExternalLink, Check, Loader2, AlertCircle } from '@lucide/svelte';
-	import { createEventDispatcher } from 'svelte';
-
 	interface Props {
 		userId: string;
 		templateSlug?: string;
 		isLoading?: boolean;
+		oncomplete?: (data: { verified: boolean; method: string }) => void;
+		onerror?: (data: { message: string }) => void;
 	}
 
-	let { userId, templateSlug, isLoading = false }: Props = $props();
+	let { userId, templateSlug, isLoading = false, oncomplete, onerror }: Props = $props();
 
 	let verificationState = $state<'idle' | 'initializing' | 'redirecting' | 'error'>('idle');
 	let errorMessage = $state<string | null>(null);
-
-	const dispatch = createEventDispatcher<{
-		complete: { verified: boolean; method: string };
-		error: { message: string };
-	}>();
 
 	async function initiateVerification() {
 		verificationState = 'initializing';
@@ -72,7 +67,7 @@
 			errorMessage =
 				error instanceof Error ? error.message : 'Failed to start verification process';
 			verificationState = 'error';
-			dispatch('error', { message: errorMessage });
+			onerror?.({ message: errorMessage });
 		}
 	}
 </script>
