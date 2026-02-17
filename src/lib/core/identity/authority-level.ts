@@ -5,8 +5,8 @@
  * Stored on User model and used during proof generation.
  *
  * Authority Levels:
- *   5 — Reserved for future (e.g., biometric + passport + address)
- *   4 — Passport-verified identity (highest current tier)
+ *   5 — Government credential (mDL / EUDIW via Digital Credentials API)
+ *   4 — Passport-verified identity
  *   3 — ID card / drivers license verified
  *   2 — Verified email (trust_score >= 100)
  *   1 — OAuth-only (unverified, default)
@@ -41,6 +41,11 @@ export function deriveAuthorityLevel(user: {
 	verification_method?: string | null;
 	document_type?: string | null;
 }): AuthorityLevel {
+	// Level 5: Government credential (mDL / EUDIW via Digital Credentials API)
+	if (user.document_type === 'mdl' && user.identity_commitment) {
+		return 5;
+	}
+
 	// Level 4: Passport-verified via Didit or self.xyz
 	if (
 		user.identity_commitment &&
@@ -143,7 +148,7 @@ export function trustTierToAuthorityLevel(tier: TrustTier): AuthorityLevel {
 		case 3:
 			return 3; // ZK-verified → ID card/license verified
 		case 4:
-			return 4; // Government credential → Passport-verified equivalent
+			return 5; // Government credential → Highest authority (government-issued)
 		default:
 			return 1; // Default to lowest authority level
 	}
