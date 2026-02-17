@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { devSessionStore } from '../_dev-session-store';
 
 /**
  * mDL Verification Start Endpoint
@@ -113,18 +114,3 @@ export const POST: RequestHandler = async ({ locals, platform }) => {
 	}
 };
 
-// Dev-only in-memory session store (replaced by Workers KV in production)
-const devSessionStore = new Map<string, { data: string; expires: number }>();
-
-// Clean up expired dev sessions periodically
-if (typeof setInterval !== 'undefined') {
-	setInterval(() => {
-		const now = Date.now();
-		for (const [key, value] of devSessionStore) {
-			if (value.expires < now) devSessionStore.delete(key);
-		}
-	}, 60_000);
-}
-
-// Export for use by verify endpoint in dev mode
-export { devSessionStore };

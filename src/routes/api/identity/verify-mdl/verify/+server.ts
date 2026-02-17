@@ -37,8 +37,8 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			// Delete immediately -- one-time use
 			await kv.delete(kvKey);
 		} else {
-			// Dev fallback: import from start endpoint's in-memory store
-			const { devSessionStore } = await import('../start/+server');
+			// Dev fallback: use shared in-memory store
+			const { devSessionStore } = await import('../_dev-session-store');
 			const stored = devSessionStore.get(kvKey);
 			if (stored && stored.expires > Date.now()) {
 				sessionData = stored.data;
