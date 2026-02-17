@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 	import { ShieldCheck, AlertCircle, Check, Loader2 } from 'lucide-svelte';
+	import type { WitnessData } from '$lib/core/proof/witness-encryption';
 
 	interface Props {
 		userId: string;
@@ -10,8 +11,17 @@
 			message: string;
 			recipientOffices: string[];
 		};
-		/** User address for encryption (string for witness) */
-		address: string;
+		/** Structured delivery address for CWC submission (encrypted in witness) */
+		deliveryAddress?: {
+			name: string;
+			email: string;
+			street: string;
+			city: string;
+			state: string;
+			zip: string;
+			phone?: string;
+			congressional_district?: string;
+		};
 		/** Legislative session ID for action domain (defaults to '119th-congress') */
 		sessionId?: string;
 		/** Recipient subdivision for action domain (defaults to 'national') */
@@ -22,7 +32,7 @@
 		userId,
 		templateId,
 		templateData,
-		address,
+		deliveryAddress,
 		sessionId = '119th-congress',
 		recipientSubdivision = 'national'
 	}: Props = $props();
@@ -94,6 +104,7 @@
 			let proofHex: string;
 			let publicInputsPayload: Record<string, unknown>;
 			let nullifierHex: string;
+			let actionDomainHex: string = '';
 
 			if (credential!.credentialType === 'two-tree') {
 				// ═══════════════════════════════════════════════════════════
@@ -110,6 +121,7 @@
 					templateId,
 					sessionId
 				});
+				actionDomainHex = actionDomain;
 				console.log('[ProofGenerator] Action domain:', actionDomain.slice(0, 16) + '...');
 
 				// 2b. Compute nullifier = H2(identityCommitment, actionDomain) (NUL-001)
@@ -200,7 +212,7 @@
 					merkleRoot: credential!.merkleRoot,
 					actionId,
 					timestamp: Date.now(),
-					address
+					deliveryAddress
 				};
 
 				proofState = { status: 'initializing-prover', progress: 0 };
@@ -239,19 +251,41 @@
 			}
 
 			// Step 3: Encrypt witness for TEE processing
-			// The witness contains address data for TEE-based constituency verification.
-			// In two-tree architecture, the circuit handles district verification via Tree 2,
-			// so the witness is primarily for CWC delivery address (TEE Phase 2).
-			const witnessForEncryption = {
-				address,
-				nullifier: nullifierHex,
-				templateId,
-				timestamp: Date.now()
-			};
+			// Two-tree: full WitnessData for TEE proof verification + CWC delivery
+			// Legacy: simplified witness (backward compatibility)
+			let witnessForEncryption: WitnessData | Record<string, unknown>;
+
+			if (credential!.credentialType === 'two-tree') {
+				witnessForEncryption = {
+					userRoot: credential!.merkleRoot,
+					cellMapRoot: credential!.cellMapRoot!,
+					districts: credential!.districts!,
+					nullifier: nullifierHex,
+					actionDomain: actionDomainHex,
+					authorityLevel: credential!.authorityLevel ?? 3,
+					userSecret: credential!.userSecret!,
+					cellId: credential!.cellId!,
+					registrationSalt: credential!.registrationSalt!,
+					identityCommitment: credential!.identityCommitment,
+					userPath: credential!.merklePath,
+					userIndex: credential!.leafIndex,
+					cellMapPath: credential!.cellMapPath!,
+					cellMapPathBits: credential!.cellMapPathBits!,
+					deliveryAddress
+				} satisfies WitnessData;
+			} else {
+				// Legacy single-tree: simplified witness for backward compatibility
+				witnessForEncryption = {
+					deliveryAddress,
+					nullifier: nullifierHex,
+					templateId,
+					timestamp: Date.now()
+				};
+			}
 
 			proofState = { status: 'encrypting-witness' };
 			const { encryptWitness } = await import('$lib/core/proof/witness-encryption');
-			const encryptedWitness = await encryptWitness(witnessForEncryption as any);
+			const encryptedWitness = await encryptWitness(witnessForEncryption as WitnessData);
 
 			// Step 4: Submit to backend
 			proofState = { status: 'submitting' };
@@ -434,7 +468,7 @@
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<ShieldCheck class="mb-4 h-12 w-12 animate-pulse text-blue-600" />
 			<h3 class="mb-2 text-lg font-semibold text-slate-900">Encrypting delivery...</h3>
-			<p class="mb-6 text-sm text-slate-600">Securing your message with P-256 ECDH + AES-256-GCM</p>
+			<p class="mb-6 text-sm text-slate-600">Securing your message with XChaCha20-Poly1305 encryption</p>
 		</div>
 	{:else if proofState.status === 'submitting'}
 		<!-- Submitting to backend -->

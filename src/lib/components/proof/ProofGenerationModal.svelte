@@ -1,17 +1,36 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { scale, fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { Loader2, Lock, Shield, TrendingUp, CheckCircle2 } from '@lucide/svelte';
+	import { getSessionCredential } from '$lib/core/identity/session-credentials';
+	import { buildActionDomain } from '$lib/core/zkp/action-domain-builder';
+	import { computeNullifier } from '$lib/core/crypto/poseidon';
+	import { mapCredentialToProofInputs } from '$lib/core/identity/proof-input-mapper';
+	import { generateTwoTreeProof, type ProverProgress } from '$lib/core/zkp/prover-client';
 
 	interface Props {
 		district: string;
 		show: boolean;
-		onComplete?: (result: { proof: Uint8Array; generationTime: number }) => void;
+		userId: string;
+		templateId: string;
+		sessionId?: string;
+		onComplete?: (result: {
+			proof: Uint8Array;
+			publicInputs: Record<string, unknown>;
+			generationTime: number;
+		}) => void;
 		onError?: (error: Error) => void;
 	}
 
-	let { district, show = $bindable(), onComplete, onError }: Props = $props();
+	let {
+		district,
+		show = $bindable(),
+		userId,
+		templateId,
+		sessionId,
+		onComplete,
+		onError
+	}: Props = $props();
 
 	// Proof generation state
 	let stage = $state<'initializing' | 'generating' | 'complete' | 'error'>('initializing');
@@ -51,57 +70,93 @@
 		}
 	});
 
-	// Simulate proof generation (replace with real proof generation when Shadow Atlas ready)
 	async function generateProof() {
 		try {
 			const startTime = performance.now();
 
-			// Stage 1: Initialization (5-10s first time, instant if cached)
+			// Stage 1: Load credential
 			stage = 'initializing';
-			statusMessage = 'Initializing Noir prover...';
-			progress = 10;
+			statusMessage = 'Loading identity credential...';
+			progress = 5;
 
-			// Use orchestrator for real initialization
-			const { proverOrchestrator } = await import('$lib/core/proof/prover-orchestrator');
-			await proverOrchestrator.init();
+			const credential = await getSessionCredential(userId);
+			if (!credential) {
+				throw new Error(
+					'No identity credential found. Please verify your identity first.'
+				);
+			}
+			if (credential.credentialType !== 'two-tree') {
+				throw new Error(
+					'Legacy credential detected. Please re-verify your identity for enhanced privacy.'
+				);
+			}
+			progress = 15;
+
+			// Stage 2: Initialize prover
+			statusMessage = 'Initializing Noir prover...';
+			progress = 20;
+
+			// Build action domain and nullifier while prover initializes
+			const actionDomain = buildActionDomain({
+				country: 'US',
+				jurisdictionType: 'federal',
+				recipientSubdivision: district,
+				templateId,
+				sessionId: sessionId ?? '119th-congress'
+			});
+
+			const nullifier = await computeNullifier(
+				credential.identityCommitment,
+				actionDomain
+			);
 			progress = 30;
 
-			// Stage 2: Proof generation
+			// Stage 3: Map inputs and generate proof
+			const proofInputs = mapCredentialToProofInputs(credential, {
+				actionDomain,
+				nullifier
+			});
+
 			stage = 'generating';
 			statusMessage = 'Generating zero-knowledge proof...';
 			educationalMessage = educationalMessages[0].text;
 			progress = 40;
 
-			// Simulate progress updates
-			const progressInterval = setInterval(() => {
-				if (progress < 90) {
-					progress += 10;
-				}
-			}, 500);
+			const onProgress = (p: ProverProgress) => {
+				// Map prover progress (0-100) to our range (40-95)
+				progress = 40 + Math.round(p.percent * 0.55);
+				statusMessage = p.message;
+			};
 
-			// Simulate proof generation (since we don't have full witness here)
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-			const result = { proof: new Uint8Array(100) }; // Mock result
+			const result = await generateTwoTreeProof(proofInputs, onProgress);
 
-			clearInterval(progressInterval);
 			progress = 100;
-
 			const endTime = performance.now();
 			generationTime = Math.round(endTime - startTime);
 
-			// Stage 3: Complete
+			// Stage 4: Complete
 			stage = 'complete';
 			statusMessage = 'Proof generated successfully!';
 
-			console.log('[ProofModal] Proof generation complete:', {
+			console.log('[ProofModal] Real proof generation complete:', {
 				proofSize: result.proof.length,
+				publicInputCount: result.publicInputsArray.length,
 				generationTime: `${generationTime}ms`
 			});
 
-			// Notify parent
+			// Convert hex proof back to Uint8Array for parent callback
+			const proofHex = result.proof.startsWith('0x')
+				? result.proof.slice(2)
+				: result.proof;
+			const proofBytes = new Uint8Array(proofHex.length / 2);
+			for (let i = 0; i < proofHex.length; i += 2) {
+				proofBytes[i / 2] = parseInt(proofHex.substring(i, i + 2), 16);
+			}
+
 			if (onComplete) {
 				onComplete({
-					proof: result.proof,
+					proof: proofBytes,
+					publicInputs: result.publicInputs,
 					generationTime
 				});
 			}

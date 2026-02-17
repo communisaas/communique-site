@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Template } from '$lib/types/template';
 	import Button from '$lib/components/ui/Button.svelte';
+	import TrustSignal from '$lib/components/trust/TrustSignal.svelte';
 	import { browser } from '$app/environment';
 	// import { coordinated } from '$lib/utils/timerCoordinator';
 	import { type Spring } from 'svelte/motion';
@@ -13,16 +14,18 @@
 		localShowEmailModal = $bindable(),
 		actionProgress = $bindable(),
 		onEmailModalClose: _onEmailModalClose,
-		componentId: _componentId
+		componentId: _componentId,
+		onVerifyAddress
 	}: {
 		template: Template;
-		user: { id: string; name: string | null } | null;
+		user: { id: string; name: string | null; trust_tier?: number } | null;
 		personalConnectionValue: string;
 		onSendMessage: (() => void) | null;
 		localShowEmailModal: boolean;
 		actionProgress: Spring<number>;
 		onEmailModalClose: () => void;
 		componentId: string;
+		onVerifyAddress?: () => void;
 	} = $props();
 
 	let flightState = $state<
@@ -30,6 +33,25 @@
 	>('ready');
 	let moderationError = $state<string | null>(null);
 	let isModerating = $state(false);
+
+	// Derived trust tier state
+	const userTrustTier = $derived(user?.trust_tier ?? 0);
+	const isVerifiedConstituent = $derived(userTrustTier >= 2);
+	const isCwcTemplate = $derived(template.deliveryMethod === 'cwc');
+
+	// Button text and variant based on trust tier + delivery method
+	const buttonVariant = $derived(
+		isCwcTemplate || isVerifiedConstituent ? 'verified' : 'primary'
+	);
+	const buttonText = $derived(
+		isModerating
+			? 'Checking...'
+			: isCwcTemplate && isVerifiedConstituent
+				? 'Send as Verified Constituent'
+				: isCwcTemplate
+					? 'Send to Congress'
+					: 'Send to Decision-Makers'
+	);
 
 	// Circuit breaker for moderation service (CI-004 hardening)
 	// Fail-closed: block sends when moderation is unavailable, unless circuit trips open
@@ -122,10 +144,22 @@
 			{moderationError}
 		</div>
 	{/if}
-	<div class="mt-4 flex justify-center">
-		{#if template.deliveryMethod === 'cwc'}
+	<div class="mt-4 flex flex-col items-center gap-2">
+		<!-- Trust Signal: show when user is authenticated -->
+		{#if user}
+			<div class="flex w-full flex-col items-center gap-1">
+				<TrustSignal
+					trustTier={userTrustTier}
+					showUpgrade={userTrustTier < 2}
+					onUpgradeClick={onVerifyAddress}
+					compact={true}
+				/>
+			</div>
+		{/if}
+
+		{#if isCwcTemplate}
 			<Button
-				variant="verified"
+				variant={buttonVariant}
 				size="lg"
 				testId="contact-congress-button"
 				classNames="w-full pr-5"
@@ -135,11 +169,11 @@
 				{user}
 				onclick={handleSendClick}
 				disabled={isModerating}
-				text={isModerating ? 'Checking...' : user ? 'Send to Congress' : 'Send to Congress'}
+				text={buttonText}
 			/>
 		{:else}
 			<Button
-				variant="primary"
+				variant={isVerifiedConstituent ? 'verified' : 'primary'}
 				size="lg"
 				testId="send-email-button"
 				classNames="w-full pr-5"
@@ -149,11 +183,8 @@
 				{user}
 				onclick={handleSendClick}
 				disabled={isModerating}
-				text={isModerating ? 'Checking...' : user ? 'Send to Decision-Makers' : 'Send to Decision-Makers'}
+				text={buttonText}
 			/>
-			<p class="mt-1 text-center text-xs text-gray-400">
-				Sent via email without cryptographic verification
-			</p>
 		{/if}
 	</div>
 {/if}

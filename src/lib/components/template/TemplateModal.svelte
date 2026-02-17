@@ -7,7 +7,6 @@
 	import { spring } from 'svelte/motion';
 	import { page } from '$app/stores';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
-	import { invalidateLocationCaches } from '$lib/core/identity/cache-invalidation';
 	import {
 		X,
 		Send,
@@ -31,7 +30,6 @@
 	// import TemplateMeta from '$lib/components/template/TemplateMeta.svelte';
 	// import MessagePreview from '$lib/components/landing/template/MessagePreview.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import { guestState } from '$lib/stores/guestState.svelte';
 	import {
 		modalActions,
 		modalState as _modalState,
@@ -81,6 +79,8 @@
 	let collectingAddress = $state(false);
 	/** Census Block GEOID from address verification (for two-tree ZK architecture) */
 	let verifiedCellId = $state<string | undefined>(undefined);
+	/** Structured address from AddressCollectionForm for ProofGenerator deliveryAddress */
+	let verifiedAddress = $state<{ street: string; city: string; state: string; zip: string } | null>(null);
 
 	// Enhanced URL copy component state
 	let copyButtonScale = spring(1, { stiffness: 0.4, damping: 0.8 });
@@ -310,90 +310,52 @@
 
 	/**
 	 * Handle address collection complete
-	 * Continue to verification gate (if needed) then submission
+	 * AddressCollectionForm calls oncomplete() with a plain object (not CustomEvent).
+	 * We parse the formatted address string into components and store locally
+	 * (privacy-preserving: no server persistence of address).
 	 */
 	async function handleAddressComplete(
-		_event: CustomEvent<{
+		data: {
 			address: string;
 			verified: boolean;
-			representatives: unknown[];
-			district: string;
 			streetAddress: string;
 			city: string;
 			state: string;
-			zipCode: string;
-			/**
-			 * Census Block GEOID (15-digit cell identifier) for two-tree ZK architecture
-			 * PRIVACY: Neighborhood-level precision (600-3000 people)
-			 */
-			cell_id?: string;
-		}>
+			zip: string;
+			representatives?: unknown[];
+		}
 	) {
-		const { streetAddress, city, state, zipCode, district, verified, cell_id } = _event.detail;
+		console.log('[Template Modal] Address complete:', {
+			street: data.streetAddress,
+			city: data.city,
+			state: data.state,
+			zip: data.zip,
+			verified: data.verified
+		});
 
-		// Save address to database
-		try {
-			const { api } = await import('$lib/core/api/client');
+		// Store structured address in component state for ProofGenerator
+		verifiedAddress = {
+			street: data.streetAddress,
+			city: data.city,
+			state: data.state,
+			zip: data.zip
+		};
 
-			const result = await api.post('/user/address', {
-				street: streetAddress,
-				city,
-				state,
-				zip: zipCode,
-				congressional_district: district,
-				cell_id, // 15-digit Census Block GEOID (two-tree ZK architecture)
-				verified
-			});
+		// Close address collection
+		collectingAddress = false;
+		needsAddress = false;
 
-			if (!result.success) {
-				console.error('[Template Modal] Failed to save address:', result.error);
-				// TODO: Show error state
+		// Continue with submission flow
+		if (user?.id && verificationGateRef) {
+			const isVerified = await verificationGateRef.checkVerification();
+			if (!isVerified) {
+				showVerificationGate = true;
 				return;
 			}
-
-			console.log('[Template Modal] Address saved successfully', {
-				district,
-				credentialType: cell_id ? 'two-tree' : 'single-tree'
-			});
-
-			// Store cell_id for passing to verification gate (two-tree ZK architecture)
-			verifiedCellId = cell_id;
-
-			// Invalidate stale location caches (old address/district data)
-			await invalidateLocationCaches();
-
-			// Update page data to reflect new address
-			if ($page.data?.user) {
-				$page.data.user.street = streetAddress;
-				$page.data.user.city = city;
-				$page.data.user.state = state;
-				$page.data.user.zip = zipCode;
-				$page.data.user.congressional_district = district;
-				// Note: cell_id is stored separately for ZK proof generation,
-				// not exposed in page data for privacy
-			}
-
-			// Close address collection
-			collectingAddress = false;
-			needsAddress = false;
-
-			// Continue with submission flow
-			// Check verification gate, then submit
-			if (user?.id && verificationGateRef) {
-				const isVerified = await verificationGateRef.checkVerification();
-
-				if (!isVerified) {
-					showVerificationGate = true;
-					return;
-				}
-			}
-
-			// Proceed to submission
-			await submitCongressionalMessage();
-		} catch (error) {
-			console.error('[Template Modal] Address save error:', error);
-			// TODO: Show error state
 		}
+
+		// Proceed to submission
+		await submitCongressionalMessage();
 	}
 
 	/**
@@ -1075,7 +1037,15 @@
 							message: (template as any).body || template.description,
 							recipientOffices: ['Senate', 'House'] // TODO: Get actual offices
 						}}
-						address={(guestState.state?.address || $page.data?.user?.street || '') as any}
+						deliveryAddress={verifiedAddress ? {
+							name: user.name || 'Constituent',
+							email: $page.data?.user?.email || '',
+							street: verifiedAddress.street,
+							city: verifiedAddress.city,
+							state: verifiedAddress.state,
+							zip: verifiedAddress.zip,
+							congressional_district: $page.data?.user?.congressional_district || undefined
+						} : undefined}
 						on:complete={handleProofComplete}
 						on:cancel={handleProofCancel}
 						on:error={handleProofError}

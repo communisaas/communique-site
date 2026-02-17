@@ -2,6 +2,7 @@
 	import { Users } from 'lucide-svelte';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
 	import AuthButtons from './AuthButtons.svelte';
+	import PasskeyLogin from '../PasskeyLogin.svelte';
 
 	let { onauth, onclose } = $props();
 
@@ -19,6 +20,11 @@
 			console.error('Error occurred');
 			onauth?.(provider);
 		}
+	}
+
+	function handlePasskeyAuth() {
+		// Close modal after successful passkey authentication
+		onclose?.();
 	}
 </script>
 
@@ -42,6 +48,9 @@
 <!-- Auth Options -->
 <div class="px-8 pb-6">
 	<AuthButtons onAuth={handleAuth} />
+
+	<!-- Passkey login option -->
+	<PasskeyLogin onauthenticated={handlePasskeyAuth} />
 </div>
 
 <!-- Value Props -->

@@ -30,7 +30,7 @@
 		template: Template;
 		inModal?: boolean;
 		context?: 'list' | 'page' | 'modal';
-		user?: { id: string; name: string | null } | null;
+		user?: { id: string; name: string | null; trust_tier?: number } | null;
 		onScroll?: (isAtBottom: boolean, scrollProgress?: number) => void;
 		onOpenModal?: (() => void) | null;
 		onSendMessage?: (() => void) | null;

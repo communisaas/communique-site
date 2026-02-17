@@ -18,6 +18,10 @@
 		oncomplete?: (data: {
 			address: string;
 			verified: boolean;
+			streetAddress: string;
+			city: string;
+			state: string;
+			zip: string;
 			representatives?: Representative[] | ProviderRepresentative[];
 		}) => void;
 	} = $props();
@@ -110,6 +114,10 @@
 			oncomplete({
 				address: selectedAddress,
 				verified: true,
+				streetAddress,
+				city,
+				state: stateCode,
+				zip: zipCode,
 				representatives:
 					Array.isArray(verificationResult?.representatives) &&
 					verificationResult.representatives.every(
@@ -133,7 +141,11 @@
 		if (oncomplete) {
 			oncomplete({
 				address: fullAddress,
-				verified: false
+				verified: false,
+				streetAddress,
+				city,
+				state: stateCode,
+				zip: zipCode
 			});
 		}
 	}

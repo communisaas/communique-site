@@ -2,12 +2,15 @@
  * Verification Gate Component
  *
  * Progressive verification interceptor that gates Congressional message submission.
+ * Supports graduated trust tiers (Wave 3A):
+ *   - Tier 2 (address-attested): AddressVerificationFlow (district credential)
+ *   - Tier 3 (ZK-verified):      IdentityVerificationFlow (full identity)
  *
  * Flow:
  * 1. User clicks "Send Message" on Congressional template
- * 2. Check session credential (hasValidSession)
+ * 2. Check trust_tier >= minimumTier OR session credential (hasValidSession)
  * 3. If verified: Allow submission
- * 4. If not verified: Show IdentityVerificationFlow modal
+ * 4. If not verified: Show appropriate verification flow based on minimumTier
  * 5. After verification: Continue with original action
  *
  * This implements the "pull users naturally toward verification" paradigm.
@@ -19,9 +22,8 @@
 	import { quintOut } from 'svelte/easing';
 	import { X } from '@lucide/svelte';
 	import IdentityVerificationFlow from './IdentityVerificationFlow.svelte';
-	import ProofGenerationModal from '$lib/components/proof/ProofGenerationModal.svelte';
+	import AddressVerificationFlow from './AddressVerificationFlow.svelte';
 	import { hasValidSession } from '$lib/core/identity/session-cache';
-	import { isFeatureEnabled } from '$lib/features/config';
 
 	interface Props {
 		userId: string;
@@ -34,32 +36,49 @@
 		 * Passed to Shadow Atlas registration for two-tree mode
 		 */
 		cellId?: string;
+		/** Minimum trust tier required (default: 2 for address-attested) */
+		minimumTier?: number;
+		/** User's current trust tier from server (default: 0 for anonymous) */
+		userTrustTier?: number;
 	}
 
-	let { userId, templateSlug, showModal = $bindable(), cellId }: Props = $props();
+	let {
+		userId,
+		templateSlug,
+		showModal = $bindable(),
+		cellId,
+		minimumTier = 2,
+		userTrustTier = 0
+	}: Props = $props();
+
+	// Derived: which verification flow to show
+	let needsTier2: boolean = $derived(minimumTier <= 2 && userTrustTier < 2);
+	let needsTier3: boolean = $derived(minimumTier >= 3 && userTrustTier < 3);
 
 	const dispatch = createEventDispatcher<{
 		verified: { userId: string; method: string };
 		cancel: void;
 	}>();
 
-	// ZK proof generation state (Phase 2)
-	let showProofModal = $state(false);
-	let zkProofEnabled = $state(false);
-
-	// Check if ZK proof generation is enabled
-	$effect(() => {
-		zkProofEnabled = isFeatureEnabled('ZK_PROOF_GENERATION');
-	});
-
 	/**
-	 * Check if user has valid session credential
-	 * Called before showing modal - allows instant send if verified
+	 * Check if user meets the minimum trust tier or has valid session credential.
+	 * Called before showing modal - allows instant send if verified.
+	 *
+	 * Priority:
+	 * 1. If userTrustTier >= minimumTier, user is already verified (no IndexedDB check needed)
+	 * 2. Otherwise, fall back to IndexedDB session credential check (legacy Tier 3 path)
 	 */
 	export async function checkVerification(): Promise<boolean> {
 		try {
+			// Fast path: server-side trust tier already meets requirement
+			if (userTrustTier >= minimumTier) {
+				console.log('[Verification Gate] Trust tier check passed:', { userId, userTrustTier, minimumTier });
+				return true;
+			}
+
+			// Fallback: check IndexedDB session credential (legacy Tier 3 flow)
 			const isVerified = await hasValidSession(userId);
-			console.log('[Verification Gate] Session check:', { userId, isVerified });
+			console.log('[Verification Gate] Session check:', { userId, isVerified, userTrustTier, minimumTier });
 			return isVerified;
 		} catch (error) {
 			console.error('[Verification Gate] Session check failed:', error);
@@ -72,45 +91,21 @@
 	) {
 		console.log('[Verification Gate] Verification complete:', event.detail);
 		showModal = false;
-
-		// If ZK proof generation enabled, show proof generation modal
-		if (zkProofEnabled && event.detail.district) {
-			console.log('[Verification Gate] Triggering ZK proof generation for:', event.detail.district);
-			showProofModal = true;
-			return;
-		}
-
-		// Otherwise, dispatch verified event immediately (Phase 1 behavior)
 		dispatch('verified', {
 			userId: event.detail.userId,
 			method: event.detail.method
 		});
 	}
 
-	function handleProofComplete(event: CustomEvent<{ proof: Uint8Array; generationTime: number }>) {
-		console.log('[Verification Gate] ZK proof generated:', {
-			proofSize: event.detail.proof.length,
-			generationTime: event.detail.generationTime
-		});
-
-		showProofModal = false;
-
-		// Dispatch verified event with proof
+	/**
+	 * Handle Tier 2 address verification completion (callback from AddressVerificationFlow)
+	 */
+	function handleAddressVerificationComplete(detail: { district: string; method: string }) {
+		console.log('[Verification Gate] Address verification complete:', detail);
+		showModal = false;
 		dispatch('verified', {
 			userId,
-			method: 'zk-proof'
-		});
-	}
-
-	function handleProofError(event: CustomEvent<Error>) {
-		console.error('[Verification Gate] ZK proof generation failed:', event.detail);
-		showProofModal = false;
-
-		// Fallback to Phase 1 (encrypted address)
-		console.log('[Verification Gate] Falling back to Phase 1 encrypted address flow');
-		dispatch('verified', {
-			userId,
-			method: 'encrypted-address'
+			method: `address:${detail.method}`
 		});
 	}
 
@@ -143,38 +138,48 @@
 				<X class="h-5 w-5" />
 			</button>
 
-			<!-- Header -->
-			<div class="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
-				<h2 id="verification-gate-title" class="text-2xl font-bold text-slate-900">
-					Verify Your Identity to Send
-				</h2>
-				<p class="mt-2 text-slate-600">
-					Congressional offices prioritize verified constituents. This one-time verification takes
-					30 seconds and lets you send instantly in the future.
-				</p>
-			</div>
+			<!-- Header (tier-aware) -->
+			{#if needsTier2}
+				<div class="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 px-8 py-6">
+					<h2 id="verification-gate-title" class="text-2xl font-bold text-slate-900">
+						Verify Your Address to Send
+					</h2>
+					<p class="mt-2 text-slate-600">
+						Confirm your district to message your representatives. Takes 30 seconds
+						and lets you send instantly in the future.
+					</p>
+				</div>
+			{:else}
+				<div class="border-b border-slate-200 bg-gradient-to-r from-blue-50 to-indigo-50 px-8 py-6">
+					<h2 id="verification-gate-title" class="text-2xl font-bold text-slate-900">
+						Verify Your Identity to Send
+					</h2>
+					<p class="mt-2 text-slate-600">
+						Congressional offices prioritize verified constituents. This one-time verification takes
+						30 seconds and lets you send instantly in the future.
+					</p>
+				</div>
+			{/if}
 
-			<!-- Verification Flow Content -->
+			<!-- Verification Flow Content (tier-aware) -->
 			<div class="max-h-[calc(100vh-12rem)] overflow-y-auto p-8">
-				<IdentityVerificationFlow
-					{userId}
-					{templateSlug}
-					{cellId}
-					skipValueProp={true}
-					on:complete={handleVerificationComplete}
-					on:cancel={handleCancel}
-				/>
+				{#if needsTier2}
+					<AddressVerificationFlow
+						{userId}
+						onComplete={handleAddressVerificationComplete}
+						onCancel={handleCancel}
+					/>
+				{:else}
+					<IdentityVerificationFlow
+						{userId}
+						{templateSlug}
+						{cellId}
+						skipValueProp={true}
+						on:complete={handleVerificationComplete}
+						on:cancel={handleCancel}
+					/>
+				{/if}
 			</div>
 		</div>
 	</div>
-{/if}
-
-<!-- ZK Proof Generation Modal (Phase 2) -->
-{#if zkProofEnabled}
-	<ProofGenerationModal
-		bind:show={showProofModal}
-		district={'CA-12'}
-		onComplete={(e: any) => handleProofComplete(e)}
-		onError={(e: any) => handleProofError(e)}
-	/>
 {/if}
