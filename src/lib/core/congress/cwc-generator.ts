@@ -1,4 +1,4 @@
-import type { Template } from '$lib/types/template';
+import type { CwcTemplate as Template } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 
 interface UserRepresentative {

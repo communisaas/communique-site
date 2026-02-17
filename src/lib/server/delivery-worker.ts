@@ -22,7 +22,7 @@ import { prisma } from '$lib/core/db';
 import { decryptWitness, type EncryptedWitnessPayload } from '$lib/server/witness-decryption';
 import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
 import { cwcClient, type CongressionalOffice } from '$lib/core/congress/cwc-client';
-import type { Template } from '$lib/types/template';
+import type { CwcTemplate } from '$lib/types/template';
 import type { EmailServiceUser } from '$lib/types/user';
 
 interface DeliveryResult {
@@ -128,12 +128,22 @@ export async function processSubmissionDelivery(
 
 		// Step 6: Fetch template for message body
 		const template = await client.template.findUnique({
-			where: { id: submission.template_id }
+			where: { id: submission.template_id },
+			select: {
+				id: true,
+				title: true,
+				description: true,
+				message_body: true,
+				delivery_config: true
+			}
 		});
 
 		if (!template) {
 			throw new Error(`Template not found: ${submission.template_id}`);
 		}
+
+		// Narrowed select result satisfies CwcTemplate — no cast needed
+		const cwcTemplate: CwcTemplate = template;
 
 		// Step 7: Build CWC user from delivery address
 		const cwcUser: EmailServiceUser = {
@@ -164,19 +174,19 @@ export async function processSubmissionDelivery(
 			};
 
 			try {
-				const message = (template.message_body || (template as Record<string, unknown>).description || '') as string;
+				const message = cwcTemplate.message_body || cwcTemplate.description || '';
 
 				let result;
 				if (rep.chamber === 'senate') {
 					result = await cwcClient.submitToSenate(
-						template as unknown as Template,
+						cwcTemplate,
 						cwcUser,
 						office,
 						message
 					);
 				} else {
 					result = await cwcClient.submitToHouse(
-						template as unknown as Template,
+						cwcTemplate,
 						cwcUser,
 						office,
 						message

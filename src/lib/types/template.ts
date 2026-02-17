@@ -2,6 +2,19 @@ import type { TemplateScope } from './jurisdiction';
 import type { GeoScope } from '$lib/core/agents/types';
 
 /**
+ * Minimal template interface for CWC (Communicating With Congress) submission pipeline.
+ * Used by cwc-client and cwc-generator to avoid unsafe casts with Prisma model types.
+ * Contains only the fields accessed during CWC XML generation and submission.
+ */
+export interface CwcTemplate {
+	id: string;
+	title: string;
+	description: string;
+	message_body: string;
+	delivery_config: unknown;
+}
+
+/**
  * Minimal template interface for email flow functions (analyzeEmailFlow, resolveTemplate, generateMailtoUrl).
  * Both Template and ComponentTemplate satisfy this interface, eliminating unsafe casts.
  */
