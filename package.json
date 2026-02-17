@@ -129,6 +129,7 @@
 		"arctic": "^3.7.0",
 		"best-effort-json-parser": "^1.2.1",
 		"buffer": "^6.0.3",
+		"cbor-web": "^10.0.11",
 		"codemirror": "^6.0.2",
 		"date-fns": "^4.1.0",
 		"dompurify": "^3.2.7",
