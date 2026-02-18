@@ -158,14 +158,31 @@ async function processMdocResponse(
 			};
 		}
 
-		// Step 3: COSE_Sign1 verification (when IACA roots available)
-		// TODO: Implement full COSE verification when IACA roots are populated
-		// For now, log a warning and proceed with data extraction
+		// Step 3: COSE_Sign1 verification
 		const issuerAuth = issuerSigned.issuerAuth;
-		if (issuerAuth) {
-			// MSO is in the COSE_Sign1 payload
-			// In production: verify signature against IACA root, check validity period
-			console.warn('[mDL] COSE_Sign1 verification not yet implemented -- IACA roots needed');
+		if (issuerAuth && Array.isArray(issuerAuth)) {
+			const { verifyCoseSign1 } = await import('./cose-verify');
+			const { getIACARootsForVerification } = await import('./iaca-roots');
+			const roots = getIACARootsForVerification();
+
+			if (roots.length > 0) {
+				const coseResult = await verifyCoseSign1(issuerAuth, roots);
+				if (!coseResult.valid) {
+					return {
+						success: false,
+						error: 'signature_invalid',
+						message: `COSE_Sign1 verification failed: ${coseResult.reason}`
+					};
+				}
+				// Optionally: validate MSO digests
+				// (validates that extracted field values match the signed digests)
+			} else {
+				// No IACA roots loaded -- log warning but proceed
+				// This allows development/testing without real certificates
+				console.warn('[mDL] No IACA roots loaded -- skipping issuer verification');
+			}
+		} else {
+			console.warn('[mDL] No issuerAuth in issuerSigned -- cannot verify issuer');
 		}
 
 		// Step 4: Extract namespace elements
