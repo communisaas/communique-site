@@ -169,9 +169,14 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			nullifier: nullifier.slice(0, 10) + '...'
 		});
 
+		// Capture the concrete PrismaClient NOW (while still in request context).
+		// After response is sent, waitUntil runs outside ALS scope — the proxy
+		// would throw "No request-scoped PrismaClient found".
+		const db = getRequestClient();
+
 		// Promote user to Tier 3 (ZK-verified) if currently lower
-		// Fire-and-forget: don't block the submission response
-		prisma.user
+		// Fire-and-forget: uses captured client, registered with waitUntil
+		const promotionPromise = db.user
 			.updateMany({
 				where: { id: userId, trust_tier: { lt: 3 } },
 				data: { trust_tier: 3 }
@@ -188,19 +193,16 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 		// Trigger background CWC delivery
 		// Decrypts witness, looks up representatives, submits to CWC API
 		// delivery_status transitions: pending → processing → delivered | failed | partial
-		// Capture the concrete PrismaClient NOW (while still in request context).
-		// After response is sent, waitUntil runs outside ALS scope — the proxy
-		// would throw "No request-scoped PrismaClient found".
-		const db = getRequestClient();
 		const deliveryPromise = processSubmissionDelivery(submission.id, db).catch((err) =>
 			console.error('[Submission] Background delivery failed:', err)
 		);
 
 		if (platform?.context?.waitUntil) {
-			// Cloudflare Workers: keep isolate alive until delivery completes
+			// Cloudflare Workers: keep isolate alive until delivery + promotion complete
 			platform.context.waitUntil(deliveryPromise);
+			platform.context.waitUntil(promotionPromise);
 		}
-		// Non-CF environments (dev): promise runs fire-and-forget
+		// Non-CF environments (dev): promises run fire-and-forget
 
 		return json({
 			success: true,
