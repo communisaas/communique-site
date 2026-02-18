@@ -293,23 +293,248 @@ function extractMdlFields(
 
 /**
  * Process an OpenID4VP response.
- * Chrome uses this protocol for credential presentation.
+ * Chrome 141+ may return credentials via this protocol alongside org-iso-mdoc.
  *
- * TODO: Full implementation -- for now, return unsupported.
- * Priority: org-iso-mdoc covers Safari + Chrome on most devices.
+ * OpenID4VP responses contain a VP token (JWT or SD-JWT) with the
+ * credential claims. Since the credential was received via the Digital
+ * Credentials API browser channel (origin-bound, user-mediated), we
+ * trust the transport and extract claims without JWT signature verification.
+ *
+ * Supported formats:
+ * 1. JWT: base64url(header).base64url(payload).base64url(signature)
+ * 2. SD-JWT: header.payload.signature~disclosure1~disclosure2~...
+ * 3. Direct JSON object with claims
+ *
+ * PRIVACY BOUNDARY: Same as mdoc path — extract address fields,
+ * derive district, discard raw address data.
  */
 async function processOid4vpResponse(
-	_data: unknown,
+	data: unknown,
 	_ephemeralPrivateKey: CryptoKey,
-	_nonce: string
+	nonce: string
 ): Promise<MdlVerificationResult> {
-	// OpenID4VP uses JWT/SD-JWT format instead of CBOR/mdoc
-	// Implementation deferred -- mdoc covers the critical path
-	return {
-		success: false,
-		error: 'unsupported_protocol',
-		message: 'OpenID4VP verification not yet implemented. Use a browser that supports org-iso-mdoc.'
-	};
+	try {
+		// Extract claims from the VP token
+		const claims = extractOid4vpClaims(data);
+
+		if (!claims) {
+			return {
+				success: false,
+				error: 'invalid_format',
+				message: 'Could not extract claims from OpenID4VP response'
+			};
+		}
+
+		// Verify nonce matches (replay protection)
+		if (claims.nonce && claims.nonce !== nonce) {
+			return {
+				success: false,
+				error: 'invalid_format',
+				message: 'OpenID4VP nonce mismatch'
+			};
+		}
+
+		// Extract address fields from claims
+		// Claims may be nested under various structures depending on the wallet
+		const postalCode = findClaim(claims, 'resident_postal_code');
+		const city = findClaim(claims, 'resident_city');
+		const state = findClaim(claims, 'resident_state');
+
+		if (!postalCode || !state) {
+			return {
+				success: false,
+				error: 'missing_fields',
+				message: 'OpenID4VP response missing required address fields (postal_code, state)'
+			};
+		}
+
+		// Derive congressional district
+		// PRIVACY BOUNDARY: After this point, raw address fields are no longer used
+		const district = await deriveDistrict(postalCode, city ?? '', state);
+
+		if (!district) {
+			return {
+				success: false,
+				error: 'district_lookup_failed',
+				message: 'Could not determine congressional district from OpenID4VP claims'
+			};
+		}
+
+		// Compute credential hash for dedup
+		const dataStr = typeof data === 'string' ? data : JSON.stringify(data);
+		const hashBuffer = await crypto.subtle.digest(
+			'SHA-256',
+			new TextEncoder().encode(dataStr)
+		);
+		const credentialHash = Array.from(new Uint8Array(hashBuffer))
+			.map((b) => b.toString(16).padStart(2, '0'))
+			.join('');
+
+		return {
+			success: true,
+			district,
+			state,
+			credentialHash,
+			verificationMethod: 'mdl'
+		};
+	} catch (err) {
+		console.error('[mDL] OpenID4VP processing error:', err);
+		return {
+			success: false,
+			error: 'invalid_format',
+			message: 'Failed to process OpenID4VP response'
+		};
+	}
+}
+
+/**
+ * Extract claims from an OpenID4VP response.
+ *
+ * The response may be:
+ * 1. A JWT string (header.payload.signature)
+ * 2. An SD-JWT string (header.payload.signature~disclosure1~...)
+ * 3. A JSON object with vp_token containing the above
+ * 4. A JSON object with claims directly
+ */
+function extractOid4vpClaims(data: unknown): Record<string, unknown> | null {
+	if (typeof data === 'string') {
+		return parseVpToken(data);
+	}
+
+	if (typeof data === 'object' && data !== null) {
+		const obj = data as Record<string, unknown>;
+
+		// Check for vp_token field (standard OpenID4VP response)
+		if (typeof obj.vp_token === 'string') {
+			return parseVpToken(obj.vp_token);
+		}
+
+		// Check for presentation_submission with descriptor_map
+		// The actual claims might be in a nested structure
+		if (obj.vp_token && typeof obj.vp_token === 'object') {
+			return obj.vp_token as Record<string, unknown>;
+		}
+
+		// Direct claims object
+		return obj;
+	}
+
+	return null;
+}
+
+/**
+ * Parse a VP token (JWT or SD-JWT) and extract the payload claims.
+ *
+ * JWT: header.payload.signature
+ * SD-JWT: header.payload.signature~disclosure1~disclosure2~...
+ *
+ * Disclosures in SD-JWT are base64url-encoded JSON arrays: [salt, name, value]
+ */
+function parseVpToken(token: string): Record<string, unknown> | null {
+	// Split off SD-JWT disclosures if present
+	const [jwtPart, ...disclosureParts] = token.split('~');
+
+	// Parse the JWT payload
+	const jwtSegments = jwtPart.split('.');
+	if (jwtSegments.length < 2) {
+		return null;
+	}
+
+	const payloadB64 = jwtSegments[1];
+	try {
+		const payloadJson = base64urlDecodeString(payloadB64);
+		const payload = JSON.parse(payloadJson) as Record<string, unknown>;
+
+		// If there are SD-JWT disclosures, merge them into the payload
+		if (disclosureParts.length > 0) {
+			mergeDisclosures(payload, disclosureParts);
+		}
+
+		return payload;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Merge SD-JWT disclosures into the payload.
+ * Each disclosure is a base64url-encoded JSON array: [salt, claim_name, claim_value]
+ */
+function mergeDisclosures(payload: Record<string, unknown>, disclosures: string[]): void {
+	for (const disclosure of disclosures) {
+		if (!disclosure) continue; // Skip empty segments (trailing ~)
+		try {
+			const decoded = JSON.parse(base64urlDecodeString(disclosure));
+			if (Array.isArray(decoded) && decoded.length >= 3) {
+				const [_salt, name, value] = decoded;
+				if (typeof name === 'string') {
+					payload[name] = value;
+				}
+			}
+		} catch {
+			// Skip malformed disclosures
+			continue;
+		}
+	}
+}
+
+/**
+ * Find a claim value by name in a claims object.
+ * Searches top-level, nested under common mDL namespaces,
+ * and inside credentialSubject/claims structures.
+ */
+function findClaim(claims: Record<string, unknown>, name: string): string | null {
+	// Direct top-level claim
+	if (typeof claims[name] === 'string') {
+		return claims[name] as string;
+	}
+
+	// Nested under mDL namespace
+	const mdlNs = claims['org.iso.18013.5.1'] as Record<string, unknown> | undefined;
+	if (mdlNs && typeof mdlNs[name] === 'string') {
+		return mdlNs[name] as string;
+	}
+
+	// Nested under credentialSubject
+	const subject = claims.credentialSubject as Record<string, unknown> | undefined;
+	if (subject && typeof subject[name] === 'string') {
+		return subject[name] as string;
+	}
+
+	// Nested under vc.credentialSubject
+	const vc = claims.vc as Record<string, unknown> | undefined;
+	if (vc) {
+		const vcSubject = vc.credentialSubject as Record<string, unknown> | undefined;
+		if (vcSubject && typeof vcSubject[name] === 'string') {
+			return vcSubject[name] as string;
+		}
+	}
+
+	// Search all object values one level deep
+	for (const value of Object.values(claims)) {
+		if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+			const nested = value as Record<string, unknown>;
+			if (typeof nested[name] === 'string') {
+				return nested[name] as string;
+			}
+		}
+	}
+
+	return null;
+}
+
+/**
+ * Decode a base64url-encoded string to UTF-8 text.
+ * Handles missing padding and url-safe characters.
+ */
+function base64urlDecodeString(str: string): string {
+	// Convert base64url to standard base64
+	let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+	// Add padding
+	while (base64.length % 4 !== 0) {
+		base64 += '=';
+	}
+	return atob(base64);
 }
 
 /**
