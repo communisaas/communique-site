@@ -371,7 +371,7 @@
 		console.log('[Template Modal] Starting ZKP submission flow');
 		// Renders ProofGenerator (with autoStart) which handles:
 		// credentials, proof generation, witness encryption, submission.
-		// Errors are dispatched back via on:error → handleProofError.
+		// Errors dispatched via onerror callback → handleProofError.
 		modalActions.setState('cwc-submission');
 	}
 

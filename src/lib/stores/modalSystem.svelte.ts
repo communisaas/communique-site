@@ -47,9 +47,11 @@ export type LegacyModalState =
 	| 'auth_required'
 	| 'loading'
 	| 'confirmation'
+	| 'cwc-submission' // ZKP proof generation + Congressional submission
 	| 'proof-generation' // ZK proof generation (Phase 2)
 	| 'celebration'
 	| 'tracking'
+	| 'error'
 	| 'retry_needed';
 
 interface LegacyModalContext {

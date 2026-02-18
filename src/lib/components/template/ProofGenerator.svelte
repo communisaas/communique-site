@@ -212,9 +212,12 @@
 				});
 			} else {
 				// ═══════════════════════════════════════════════════════════
-				// LEGACY SINGLE-TREE FLOW (backward compatibility)
+				// LEGACY SINGLE-TREE FLOW (deprecated — pre-Shadow Atlas credentials)
+				// All credentials registered after Shadow Atlas migration are two-tree.
+				// This path only fires for stale IndexedDB credentials from before migration.
+				// No BR5-010 cross-validation (accepted risk for deprecated path).
 				// ═══════════════════════════════════════════════════════════
-				console.log('[ProofGenerator] Using legacy single-tree proof flow');
+				console.warn('[ProofGenerator] DEPRECATED: Using legacy single-tree proof flow. Credential should be re-registered.');
 
 				const orchestratorModule = await import('$lib/core/proof/prover-orchestrator');
 				const actionId = await orchestratorModule.proverOrchestrator.poseidonHash(templateId);
@@ -492,8 +495,7 @@
 			<p class="text-sm text-slate-600">Sending to congressional offices</p>
 		</div>
 	{:else if proofState.status === 'complete'}
-		{@const completedSubmissionId = proofState.submissionId}
-		<!-- Success state -->
+		<!-- Success state (parent transitions away on auto-dispatch; user rarely sees this) -->
 		<div class="flex flex-col items-center justify-center py-12 text-center">
 			<div
 				class="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-emerald-600 shadow-2xl"
