@@ -579,6 +579,79 @@ Address the remaining P0 items that Cycle 10 build verification didn't cover.
 
 **Verification:** svelte-check errors reduced to 0 (or documented exceptions). Submission pipeline status transitions verified. CF build passes. DC_SESSION_KV provisioned with real namespace ID.
 
+**Status:** COMPLETE — 4 waves, 4 commits. svelte-check 0 errors. CF build passes. libsodium eliminated from server. KV provisioned.
+
+---
+
+## Cycle 12: Dead Code Purge + Broken Event Wiring
+
+**Theme:** Reduce technical debt — fix silently broken event wiring, delete ~8,700 lines of dead code, fix build warnings.
+
+**Rationale:** Three Svelte components have parent-child event mismatches (parent migrated to callback props, child still dispatches) — these are silent runtime bugs. ~8,700 lines of dead code across TEE stubs, blockchain placeholders, intelligence examples, and dead server utilities inflate the codebase and slow comprehension. The 95 svelte-check warnings include 2 SSR bugs (nested buttons cause hydration mismatch).
+
+### Wave 12A: Fix Broken Svelte 5 Event Wiring
+
+Three components dispatch events that no parent receives (parent uses callback props, child uses createEventDispatcher). These are **silently broken features**.
+
+| Task | Component | Events | Parent | Fix |
+|------|-----------|--------|--------|-----|
+| Fix SimpleModal | `src/lib/components/modals/SimpleModal.svelte` | `close` | `+page.svelte`, `ProfileEditModal.svelte` (both use `onclose` callback) | Migrate to `onclose` callback prop, remove dispatcher |
+| Fix TemplateSuccessModal | `src/lib/components/modals/TemplateSuccessModal.svelte` | `close`, `dashboard` | `+page.svelte` (uses `onclose` callback) | Migrate to `onclose`/`ondashboard` callback props, remove dispatcher |
+| Fix ProfileEditModal | `src/lib/components/profile/ProfileEditModal.svelte` | `close`, `save` | `profile/+page.svelte` (mixed: `onclose` new, `on:save` old) | Migrate to `onclose`/`onsave` callback props, fix parent to use `onsave` |
+| Remove dead dispatcher imports | `AppHeader.svelte`, `SlugCustomizer.svelte`, `AddressCollectionForm.svelte` | `_dispatch` never called / import unused | N/A | Delete import + unused variable |
+| Remove dispatchers with no listeners | `ErrorBoundary.svelte`, `TemplatePreview.svelte`, `Popover.svelte`, `AnimatedPopover.svelte` | Events dispatched but no parent listens | N/A | Remove dispatcher + dispatch calls (events are dead) |
+| Delete dead components | `AddressRequirementModal.svelte` (imported but never instantiated), `UnifiedAddressCollectionWrapper.svelte` (commented out import) | N/A | `ModalRegistry.svelte` | Delete files + remove dead imports |
+
+**Verification:** `npx svelte-check` still 0 errors. All `on:close`, `on:save`, `on:dashboard` usages match callback prop pattern. `grep -r createEventDispatcher` count drops from 20 to ~7 (remaining are the consistent old-style components migrated in 12D).
+
+### Wave 12B: Dead Code Purge — Large Subsystems
+
+Delete dead modules with zero import sites. Target: ~5,000 lines removed.
+
+| Task | Files | Lines | Rationale |
+|------|-------|-------|-----------|
+| Delete TEE stubs | `src/lib/core/tee/manager.ts`, `src/lib/core/tee/providers/aws.ts` | ~1,140 | `getTEEManager()`/`createTEEManager()` never called. AWS provider is pure scaffold with placeholder AMI. |
+| Delete intelligence examples | `src/lib/core/intelligence/examples.ts`, `api-example.ts` | ~674 | Demo/documentation code. 53 `console.log` calls. Never imported. |
+| Delete thoughts example | `src/lib/core/thoughts/example.ts` | ~270 | `if (import.meta.url === ...)` main block. Never imported. |
+| Delete dead blockchain modules | `chain-signatures.ts`, `oauth-near.ts`, `use-blockchain.ts`, `src/lib/core/api/voter.ts` | ~600 | Feature-flagged ROADMAP with no callers. Only reference each other. |
+| Delete dead server utilities | `complete-extraction-pipeline.ts`, `scope-learning.ts`, `reducto/client.ts`, `reducto/index.ts`, `geocoding-cache.ts`, `agent-memory/service.ts` | ~1,000 | 0 import sites each |
+| Delete dead core/server barrel consumers | `civic-analytics.ts`, `reputation/adoption-tracker.ts`, `perceptual/timing.ts`, `tools/document-helpers.ts`, `tools/document.ts`, `metrics/coordination-metrics.ts`, `server/district-metrics.ts`, `server/sentiment-classification.ts`, `server/selfxyz-verifier.ts`, `server/verification-sessions.ts`, `server/api-security.ts`, `server/reserved-slugs.ts`, `server/sentiment-basic.ts` | ~1,500 | 0 external import sites. `core/server/index.ts` barrel re-exports them but nothing imports the barrel. |
+| Delete dead location modules | `behavioral-tracker.ts`, `autocomplete-cache.ts`, `geocoding-api.ts` | ~835 | 0 import sites |
+| Clean core/server/index.ts barrel | `src/lib/core/server/index.ts` | — | Remove re-exports of deleted modules. Delete barrel if empty. |
+
+**Verification:** `npm run build` succeeds. `ADAPTER=cloudflare npm run build` succeeds. `npx svelte-check` 0 errors.
+
+### Wave 12C: Dead Code Purge — Small Files + Type Cleanup
+
+Delete small dead files, .bak artifacts, duplicate types. Target: ~2,000 lines removed.
+
+| Task | Files | Action |
+|------|-------|--------|
+| Delete .bak files | `TemplateCreator.svelte.bak`, `draft-resumption.test.ts.bak` | Delete |
+| Delete dead data files | `src/lib/data/mockTemplates.ts`, `data/steps.ts`, `data/verification.ts` | Delete (0 imports each) |
+| Delete dead types | `src/lib/types/audit.ts`, `types/api-helpers.ts`, `types/challenge.ts` | Delete (0 imports / re-exported but unused) |
+| Delete dead utils | `src/lib/utils/validation.ts`, `utils/debounce.ts`, `actions/gestures.ts`, `integrations/voter.ts` | Delete (0 imports) |
+| Delete misplaced test | `src/lib/tests/cwc-mvp-test.ts` | Delete (test file in src/lib, not tests/) |
+| Fix duplicate Address type | `src/lib/types/api.ts` lines 35-47 | Remove duplicate declaration, rename response type to `AddressUpdateResponse` |
+| Fix zkp dead code | `src/lib/core/zkp/action-domain-builder.ts`, `zkp/prover-client.ts` | Delete (0 external imports) |
+
+**Verification:** `npm run build` succeeds. `npx svelte-check` 0 errors.
+
+### Wave 12D: svelte-check Warnings + Remaining Migration + Review
+
+Fix actionable warnings and migrate remaining consistent old-style event dispatchers.
+
+| Task | Detail |
+|------|--------|
+| Fix state_referenced_locally warnings | `TemplatePreviewCard.svelte:30-35` — wrap in `$derived()`. `Toast.svelte:62` — wrap in `$derived()`. |
+| Fix SSR nested button bugs | `RelayLoom.svelte:998,1048` — change inner `<button class="narrative-cta">` to `<div role="button" tabindex="0">` |
+| Migrate remaining dispatchers | `TemplateCreator.svelte`, `CreationSpark.svelte`, `DirectOutreachCompact.svelte`, `TouchModal.svelte` — convert to callback props, update parents |
+| Migrate location chain | `LocationAutocomplete.svelte` → `DistrictBreadcrumb.svelte` → `InlineAddressResolver.svelte` — convert entire chain to callback props |
+| Final verification | `npx svelte-check`: target 0 errors, reduced warnings. `ADAPTER=cloudflare npm run build` passes. `grep -r createEventDispatcher` returns 0. |
+| Update implementation status | Reflect Cycle 12 in `docs/implementation-status.md`. |
+
+**Verification:** 0 `createEventDispatcher` remaining. svelte-check 0 errors, warnings reduced from 95. CF build passes.
+
 ---
 
 *Communique PBC | Implementation Plan | 2026-02-17*

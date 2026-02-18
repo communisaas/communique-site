@@ -126,6 +126,7 @@
 | 9 | Government Credentials (Tier 4) | 4 | mDL via Digital Credentials API, privacy boundary, ephemeral keys, integration |
 | 10 | Production Readiness | 4 | CF build fix, final Svelte 5 auth migration, ~1300 lines dead code removed, build verified |
 | 11 | Type Safety + Submission Hardening | 4 | 0 svelte-check errors, 3 delivery-worker bugs fixed, libsodium→noble (pure JS), KV provisioned |
+| 12 | Dead Code Purge + Broken Wiring | 4 | *Planned* — fix 3 broken event mismatches, delete ~8,700 lines dead code, complete Svelte 5 migration |
 
 **Full cycle details:** `docs/architecture/graduated-trust-implementation.md`
 
