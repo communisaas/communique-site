@@ -514,6 +514,71 @@ Final review gate. Verify the entire codebase builds and deploys cleanly.
 
 **Verification:** `ADAPTER=cloudflare npm run build` succeeds. `svelte-check` clean (0 or 2 pre-existing only). No `createEventDispatcher` remaining in auth components. No legacy single-tree code. All env vars documented.
 
+### Cycle 10 Status
+
+| Wave | Status | Notes |
+|------|--------|-------|
+| 10A: CF Workers Build | **COMPLETE** | 2026-02-17: Build failed on `Invalid export 'devSessionStore'` from `start/+server.ts`. Fixed by extracting to `_dev-session-store.ts` (underscore prefix = non-route SvelteKit convention). `ADAPTER=cloudflare npm run build` passes in 38s. Env var propagation verified via `handlePlatformEnv` in hooks. Commit: c0bb1ce1. **Note:** libsodium WASM and KV namespace remain untested at runtime. |
+| 10B: Svelte 5 Migration | **COMPLETE** | 2026-02-17: VerificationChoice, SelfXyzVerification, DiditVerification migrated to callback props. IdentityVerificationFlow consumer updated — all handlers take direct data instead of CustomEvent wrappers. 4 commits. svelte-check: 0 new errors. |
+| 10C: Dead Code Cleanup | **COMPLETE** | 2026-02-17: Removed 240 lines single-tree code from prover-client.ts. Created CwcTemplate minimal interface (5 fields). Updated delivery-worker.ts to use Prisma `select` — no cast needed. Updated .env.example and wrangler.toml documentation. 4 commits. |
+| 10D: Review + Build | **COMPLETE** | 2026-02-17: Found and fixed 2 dangling files (example-usage.ts, witness-builder.ts) importing removed exports — 544 more lines deleted. Updated barrel index.ts. CF build passes. svelte-check: 18 errors, 95 warnings (0 new from Cycle 10). Total dead code removed: ~1300 lines. |
+
+**Post-Cycle 10 fixes** (committed separately):
+- `fix(email)`: Duplicate title check → title + subject
+- `fix(submissions)`: ALS scope — capture PrismaClient before response, register promotion with waitUntil
+- `refactor(submission)`: SubmissionStatus rewrite — WebSocket→polling, retry, generation counter
+- `chore`: ProofGenerator deprecation warning, modal state types
+
+---
+
+## Cycle 11: Type Safety + Submission Hardening
+
+Fix the 18 pre-existing svelte-check errors, audit the submission pipeline end-to-end, and resolve remaining CF Workers runtime gaps.
+
+### Wave 11A: svelte-check Error Resolution
+
+Triage and fix the 18 type errors. Target: 0 errors, or document remaining as accepted technical debt with rationale.
+
+| Task | Detail |
+|------|--------|
+| Triage all 18 errors | Run `npx svelte-check --output machine-verbose` to get full error list with line numbers. Categorize: fixable, requires upstream fix, accepted debt. |
+| Fix layout.svelte type error | `Property 'id' does not exist on type '{}'` at `+layout.svelte:92`. Likely needs a `PageData` type annotation or `data.user` cast. |
+| Fix templateDraft type errors | Missing `provenance`/`source_url` on ProcessedDecisionMaker. Add missing fields to type definition or update usage. |
+| Fix crypto noise.ts | `randomBytes` property missing — Node.js vs browser crypto mismatch. Use conditional import or `crypto.getRandomValues()`. |
+| Fix remaining type errors | Address target selector, intelligence panel, delivery confirmation, and other type mismatches found during triage. |
+
+### Wave 11B: Submission Pipeline Audit
+
+Verify the SubmissionStatus → retry → delivery-worker → status polling flow works end-to-end with proper state transitions.
+
+| Task | Detail |
+|------|--------|
+| Audit delivery status transitions | Trace `delivery_status` field through: create (pending) → processSubmissionDelivery (processing → delivered/partial/failed). Verify all transitions are atomic. |
+| Verify retry idempotency | Check `/api/submissions/[id]/retry` prevents double-delivery. Verify it resets status to `pending` before re-triggering. |
+| Audit polling lifecycle | SubmissionStatus polls every 2s. Verify: AbortController cleanup on unmount, generation counter prevents stale responses, terminal states stop polling. |
+| Check error boundary | What happens when delivery-worker throws? Verify status transitions to `failed`, error is persisted, SubmissionStatus shows retry button. |
+
+### Wave 11C: CF Workers Runtime Gaps
+
+Address the remaining P0 items that Cycle 10 build verification didn't cover.
+
+| Task | Detail |
+|------|--------|
+| Test libsodium WASM on Workers | `witness-decryption.ts` imports `libsodium-wrappers`. Test if WASM initializes in Workers runtime. If it fails, evaluate: (1) `@aspect-build/libsodium-wasm` (Workers-native), (2) Web Crypto polyfill for XChaCha20, (3) `tweetnacl` pure-JS fallback. |
+| Provision DC_SESSION_KV | Run `npx wrangler kv namespace create DC_SESSION_KV`. Update placeholder ID in `wrangler.toml`. Create preview namespace for staging. |
+| Test mDL endpoints on Workers | Deploy to staging branch. Hit `/api/identity/verify-mdl/start` to verify: ECDH key generation works, KV put succeeds, JSON response is correct. |
+
+### Wave 11D: Review + Documentation
+
+| Task | Detail |
+|------|--------|
+| Opus review | Review all Cycle 11 changes. Focus: type safety improvements, submission flow correctness, Workers runtime compatibility. |
+| Update implementation status | Reflect Cycle 11 fixes in `docs/implementation-status.md`. Update P0/P1 table. |
+| svelte-check verification | Target: 0 errors. Document any accepted debt. |
+| CF build verification | `ADAPTER=cloudflare npm run build` must still pass with all Cycle 11 changes. |
+
+**Verification:** svelte-check errors reduced to 0 (or documented exceptions). Submission pipeline status transitions verified. CF build passes. DC_SESSION_KV provisioned with real namespace ID.
+
 ---
 
 *Communique PBC | Implementation Plan | 2026-02-17*

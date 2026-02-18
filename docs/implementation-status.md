@@ -1,14 +1,14 @@
 # Implementation Status Report
 
 **Date:** 2026-02-17 (Updated)
-**Focus:** Honest assessment after Cycles 1-9 of Graduated Trust Architecture
-**Last Major Update:** Cycle 9 (Government Credentials / Tier 4 mDL) complete
+**Focus:** Honest assessment after Cycles 1-10 of Graduated Trust Architecture
+**Last Major Update:** Cycle 10 (Production Readiness + Cleanup) complete
 
 ---
 
 ## TL;DR
 
-9 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4. Production deployment on Cloudflare Workers with Hyperdrive connection pooling.
+10 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. Cycle 10 cleaned dead code (~1300 lines), completed Svelte 5 event migration for auth components, and verified CF build.
 
 **What works end-to-end:** User verifies identity (NFC passport / government ID / mDL) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Halo2/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
 
@@ -71,7 +71,7 @@
 - **TrustSignal** — Compact tier badge with upgrade affordance
 - **VerificationChoice** — 3-method selection (mDL/NFC/Government ID) with progressive enhancement
 - **SubmissionStatus** — Polling-based delivery tracking with terminal state detection
-- **Svelte 5 migration** — Most components on callback props (3 remaining: VerificationChoice, SelfXyz, Didit)
+- **Svelte 5 migration** — All auth components on callback props. ~15 non-auth components still on createEventDispatcher (UI modals, template browser, address collection)
 
 ---
 
@@ -79,21 +79,23 @@
 
 ### P0: Must fix before production deploy
 
-| Gap | Detail | Cycle to fix |
-|-----|--------|--------------|
-| libsodium on CF Workers | XChaCha20-Poly1305 via libsodium-wrappers uses WASM — untested on Workers runtime. Witness encryption/decryption may fail. | 10A |
-| Workers KV namespace | `DC_SESSION_KV` binding has placeholder ID in wrangler.toml. Must create via `wrangler kv namespace create`. | 10A |
-| CF build verification | New deps (cbor-web, libsodium-wrappers) untested in `ADAPTER=cloudflare npm run build`. | 10A |
+| Gap | Detail | Status |
+|-----|--------|--------|
+| libsodium on CF Workers | XChaCha20-Poly1305 via libsodium-wrappers uses WASM — untested on Workers runtime. Witness encryption/decryption may fail. | **OPEN** — build passes, runtime untested |
+| Workers KV namespace | `DC_SESSION_KV` binding has placeholder ID in wrangler.toml. Must create via `wrangler kv namespace create`. | **OPEN** — provisioning needed |
+| CF build verification | New deps (cbor-web, libsodium-wrappers) in `ADAPTER=cloudflare npm run build`. | **FIXED** in Cycle 10A |
+| svelte-check errors | 18 pre-existing type errors across the codebase. | **OPEN** — triage needed |
 
 ### P1: Should fix before production
 
-| Gap | Detail | Cycle to fix |
-|-----|--------|--------------|
-| COSE_Sign1 verification | mDL issuer signature verification is stubbed (`console.warn`). Needs IACA root certificates from AAMVA. | Post-10 |
-| IACA root certificates | Trust store structure exists but is empty. Need real certs for CA, TX, NY, FL, etc. | Post-10 |
-| 3 components still on createEventDispatcher | VerificationChoice, SelfXyzVerification, DiditVerification. | 10B |
-| Legacy single-tree code | Deprecated in Cycle 8D but still present. Two-tree is the canonical path. | 10C |
-| delivery-worker Template cast | `as unknown as Template` unsafe cast for CWC calls. | 10C |
+| Gap | Detail | Status |
+|-----|--------|--------|
+| COSE_Sign1 verification | mDL issuer signature verification is stubbed (`console.warn`). Needs IACA root certificates from AAMVA. | **OPEN** — deferred |
+| IACA root certificates | Trust store structure exists but is empty. Need real certs for CA, TX, NY, FL, etc. | **OPEN** — deferred |
+| Auth component Svelte 5 migration | VerificationChoice, SelfXyz, Didit → callback props. | **FIXED** in Cycle 10B |
+| Legacy single-tree code | 240+ lines in prover-client, witness-builder, example-usage. | **FIXED** in Cycles 10C+10D |
+| delivery-worker Template cast | `as unknown as Template` unsafe cast for CWC calls. | **FIXED** in Cycle 10C (CwcTemplate) |
+| Submission ALS scope | Tier promotion promise not registered with waitUntil. | **FIXED** post-Cycle 10 |
 
 ### P2: Post-launch improvements
 
@@ -121,7 +123,8 @@
 | 7 | Correctness | 4 | Nullifier fix (BR5-010), trust tier propagation, Svelte 5 event migration |
 | 8 | Production Hardening | 4 | ALS safety, type safety, Svelte 5 migration, legacy gating |
 | 9 | Government Credentials (Tier 4) | 4 | mDL via Digital Credentials API, privacy boundary, ephemeral keys, integration |
-| **10** | **Production Readiness** | **4** | **CF Workers verification, final Svelte 5 migration, dead code removal, build test** |
+| 10 | Production Readiness | 4 | CF build fix, final Svelte 5 auth migration, ~1300 lines dead code removed, build verified |
+| **11** | **Type Safety + Submission Hardening** | **4** | **svelte-check errors, submission pipeline audit, CF runtime gaps, review** |
 
 **Full cycle details:** `docs/architecture/graduated-trust-implementation.md`
 
