@@ -31,12 +31,13 @@ export interface TemplateUpdateData {
 	delivery_config?: unknown;
 }
 
-// Address  Update Request
-export interface Address {
+// Address Update Request
+export interface AddressUpdateRequest {
 	address: string;
 }
 
-export interface Address {
+// Address Update Response
+export interface AddressUpdateResponse {
 	success: boolean;
 	user: {
 		street: string;

@@ -16,7 +16,6 @@ export * from './analytics';
 export * from './template';
 export * from './templateConfig';
 export * from './user';
-export * from './challenge';
 
 // Geographic & Location Types
 export * from './location';
@@ -31,7 +30,8 @@ export type {
 	ApiResponse,
 	AnalyticsEventCreate as AnalyticsEvent,
 	EnrichedAnalyticsEvent,
-	Address,
+	AddressUpdateRequest,
+	AddressUpdateResponse,
 	ProfileUpdateRequest
 } from './api';
 export type { ApiError, ErrorType, AppError } from './errors';
