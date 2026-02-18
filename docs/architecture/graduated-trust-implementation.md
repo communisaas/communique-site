@@ -654,4 +654,91 @@ Fix actionable warnings and migrate remaining consistent old-style event dispatc
 
 ---
 
-*Communique PBC | Implementation Plan | 2026-02-17*
+## Cycle 13: Cryptographic Verification Hardening
+
+Close the remaining P1/P2 gaps in the identity verification pipeline: implement real COSE_Sign1 signature verification for mDL credentials, populate the IACA trust store with production certificate format, replace HMAC-SHA256 credential signing with Ed25519, and implement the OpenID4VP protocol path.
+
+**Dependencies:**
+- 13A (IACA + COSE): Foundation — no dependencies
+- 13B (Ed25519 signing): Independent — can parallel with 13A
+- 13C (OpenID4VP): Depends on 13A (reuses COSE verification patterns)
+- 13D (Review + docs): Depends on 13A, 13B, 13C
+
+**Available crypto primitives (already in dep tree):**
+- `cbor-web@10.0.11` — CBOR encode/decode
+- `@noble/ciphers@1.3.0` (direct dep)
+- `@noble/curves@1.2.0` (transitive) — ed25519, p256
+- `@noble/hashes@1.3.2` (transitive) — sha256
+- Web Crypto API — ECDSA P-256 verify, SHA-256
+
+### Wave 13A: IACA Trust Store + COSE_Sign1 Verification
+
+Implement real cryptographic verification of mDL issuer signatures per ISO 18013-5.
+
+**Key files:**
+- `src/lib/core/identity/iaca-roots.ts` — Populate trust store structure
+- `src/lib/core/identity/mdl-verification.ts` — Replace stub at line 168 with real verification
+- New: `src/lib/core/identity/cose-verify.ts` — COSE_Sign1 parsing + ECDSA verification
+
+| Task | Detail |
+|------|--------|
+| Implement COSE_Sign1 parser | Parse COSE_Sign1 structure from `issuerAuth`: `[protectedHeaders, unprotectedHeaders, payload(MSO), signature]`. Use `cbor-web` for CBOR decoding. Extract MSO, signer certificate chain, and ECDSA signature. |
+| Implement ECDSA P-256 verification | Extract public key from issuer X.509 certificate in MSO. Verify COSE_Sign1 signature over `Sig_structure = ["Signature1", protectedHeaders, "", payload]` using Web Crypto API `crypto.subtle.verify('ECDSA', ...)`. |
+| Implement MSO digest validation | Parse MSO (MobileSecurityObject): check validity period (validFrom/validUntil), match `valueDigests` against SHA-256 hashes of IssuerSignedItem elements. Ensures field values haven't been tampered with post-signing. |
+| Restructure IACA trust store | Change `iaca-roots.ts` from hardcoded DER to a runtime-loadable format. Add `VICALCertificate` type with DER bytes + parsed metadata. `getIACARootForIssuer()` returns the root cert for signature chain verification. Keep placeholder certs for development/test mode. |
+| Wire verification into privacy boundary | Replace `console.warn` stub in `mdl-verification.ts:168` with call to `verifyCoseSign1()`. Return `signature_invalid` error if verification fails. Add `skipIssuerVerification` option for dev/test when IACA roots aren't loaded. |
+| X.509 certificate chain validation | Parse issuer certificate from MSO, check basic constraints (validity period, key usage). Verify issuer cert is signed by an IACA root. Minimal ASN.1 parsing using byte-level operations (avoid adding asn1js dep). |
+
+**Verification:** `npx svelte-check` 0 errors. `ADAPTER=cloudflare npm run build` passes. Unit tests for COSE parsing with synthetic COSE_Sign1 payloads.
+
+### Wave 13B: Ed25519 Credential Signing
+
+Replace HMAC-SHA256 with proper Ed25519 digital signatures for district residency credentials.
+
+**Key files:**
+- `src/lib/core/identity/district-credential.ts` — Replace HMAC with Ed25519
+- `tests/unit/district-credential.test.ts` — Update test expectations
+
+| Task | Detail |
+|------|--------|
+| Add Ed25519 signing | Import `ed25519` from `@noble/curves/ed25519`. New `getSigningKeyPair()` from `IDENTITY_SIGNING_KEY` env var (hex-encoded 32-byte seed). Replace `crypto.subtle.sign('HMAC', ...)` with `ed25519.sign(bodyBytes, privateKey)`. |
+| Fix proof type label | `proof.type` already says `'Ed25519Signature2020'` — now the signature actually matches. The verificationMethod already points to `did:web:communique.io#district-attestation-key`. |
+| Add backward-compatible verification | `verifyDistrictCredential()` tries Ed25519 first, falls back to HMAC if Ed25519 fails. This allows existing HMAC-signed credentials to remain valid during the migration window. After 90 days (credential TTL), all credentials will be Ed25519. |
+| Update tests | Update `district-credential.test.ts`: change `IDENTITY_HASH_SALT` setup to `IDENTITY_SIGNING_KEY` (hex seed). Verify Ed25519 signatures are correct length (64 bytes). Add test for HMAC fallback verification. |
+| Update env documentation | Document new `IDENTITY_SIGNING_KEY` env var in wrangler.toml (as placeholder) and deployment docs. |
+
+**Verification:** All existing district-credential tests pass. New Ed25519 signatures verify correctly. HMAC-signed credentials still verify (backward compatibility).
+
+### Wave 13C: OpenID4VP Protocol Support
+
+Implement the OpenID4VP response path for Chrome 141+ which may present credentials in JWT/SD-JWT format instead of CBOR/mdoc.
+
+**Key files:**
+- `src/lib/core/identity/mdl-verification.ts` — Implement `processOid4vpResponse()`
+- `src/routes/api/identity/verify-mdl/start/+server.ts` — Verify dual-protocol request format
+
+| Task | Detail |
+|------|--------|
+| Implement VP token parsing | Parse `vp_token` from OpenID4VP response. Token is a JWT or SD-JWT containing the mDL claims. Decode JWT header + payload (base64url decode, no signature verification needed since the credential was received via the Digital Credentials API browser channel). |
+| Extract address claims from VP | Navigate JWT claims to find address fields (`resident_postal_code`, `resident_city`, `resident_state`) in the mDL namespace or as top-level claims. Apply same privacy boundary: extract → derive district → discard. |
+| Handle SD-JWT selective disclosure | If SD-JWT format (`~` delimited), parse disclosures, verify they contain the requested address fields. SD-JWT disclosures are base64url-encoded JSON arrays `[salt, claim_name, claim_value]`. |
+| Wire into processCredentialResponse | Replace `unsupported_protocol` return with real processing. Same output shape as mdoc path: `{success, district, state, credentialHash}`. |
+| Add error handling | Handle missing claims, malformed JWTs, expired tokens. Use same error discriminated union as mdoc path. |
+
+**Verification:** `npx svelte-check` 0 errors. Unit tests for JWT/SD-JWT parsing with synthetic payloads.
+
+### Wave 13D: Review + Documentation + Build Verification
+
+Final verification, documentation updates, and build checks.
+
+| Task | Detail |
+|------|--------|
+| svelte-check | 0 errors, track warning count change |
+| CF build | `ADAPTER=cloudflare npm run build` exits 0 |
+| Update implementation-status.md | Move COSE_Sign1 and IACA to FIXED, move Ed25519 to FIXED, update OpenID4VP status |
+| Update this document | Cycle 13 findings and results |
+| Commit | Atomic commits per wave |
+
+---
+
+*Communique PBC | Implementation Plan | 2026-02-18*
