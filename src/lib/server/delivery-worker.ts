@@ -18,7 +18,7 @@
  * - No retry logic here (that's Wave 5D territory)
  */
 
-import { prisma } from '$lib/core/db';
+import type { PrismaClient } from '@prisma/client';
 import { decryptWitness, type EncryptedWitnessPayload } from '$lib/server/witness-decryption';
 import { getRepresentativesForAddress } from '$lib/core/congress/address-lookup';
 import { cwcClient, type CongressionalOffice } from '$lib/core/congress/cwc-client';
@@ -38,10 +38,9 @@ interface DeliveryResult {
 
 export async function processSubmissionDelivery(
 	submissionId: string,
-	db?: typeof prisma
+	db: PrismaClient
 ): Promise<DeliveryResult> {
-	// Use explicitly-passed client (safe for waitUntil), fall back to ALS-backed proxy
-	const client = db ?? prisma;
+	const client = db;
 	console.log('[Delivery] Starting delivery for submission:', submissionId);
 
 	try {
@@ -217,10 +216,20 @@ export async function processSubmissionDelivery(
 		}
 
 		// Step 9: Determine overall status
+		// CWC returns 'submitted' | 'queued' | 'failed' | 'rejected'.
+		// 'rejected' is a terminal failure (e.g., office not accepting messages),
+		// so treat it the same as 'failed' when computing overall status.
 		const anySuccess = results.some((r) => r.status === 'submitted' || r.status === 'queued');
-		const allFailed = results.every((r) => r.status === 'failed');
+		const allFailed = results.every((r) => r.status === 'failed' || r.status === 'rejected');
 
 		const overallStatus = allFailed ? 'failed' : anySuccess ? 'delivered' : 'partial';
+
+		// Collect per-representative errors for diagnostics (partial failures included)
+		const failedResults = results.filter((r) => r.status === 'failed' || r.status === 'rejected');
+		const errorSummary =
+			failedResults.length > 0
+				? failedResults.map((r) => `${r.office}: ${r.error || r.status}`).join('; ')
+				: null;
 
 		// Step 10: Update submission with delivery results
 		await client.submission.update({
@@ -229,9 +238,7 @@ export async function processSubmissionDelivery(
 				delivery_status: overallStatus,
 				cwc_submission_id: messageIds.length > 0 ? messageIds.join(',') : null,
 				delivered_at: anySuccess ? new Date() : null,
-				delivery_error: allFailed
-					? results.map((r) => `${r.office}: ${r.error}`).join('; ')
-					: null
+				delivery_error: errorSummary
 			}
 		});
 
