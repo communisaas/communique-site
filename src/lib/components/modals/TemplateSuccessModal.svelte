@@ -1,21 +1,17 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { fade, scale } from 'svelte/transition';
 	import { CheckCircle, Clock, Share2, LayoutDashboard, X } from '@lucide/svelte';
 	import type { Template } from '$lib/types/template';
 
 	let {
 		template,
-		onclose
+		onclose,
+		ondashboard
 	}: {
 		template: Template;
 		onclose?: () => void;
+		ondashboard?: () => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher<{
-		close: void;
-		dashboard: void;
-	}>();
 
 	let copied = $state(false);
 	let shareUrl = $derived(
@@ -38,7 +34,6 @@
 
 	function handleClose() {
 		onclose?.();
-		dispatch('close');
 	}
 
 	async function handleShare() {
@@ -75,7 +70,7 @@
 	}
 
 	function handleDashboard() {
-		dispatch('dashboard');
+		ondashboard?.();
 		window.location.href = '/';
 	}
 

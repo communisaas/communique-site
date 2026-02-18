@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { scale } from 'svelte/transition';
 	import { quintOut, expoOut } from 'svelte/easing';
 	import { tick as _tick } from 'svelte';
@@ -16,7 +16,6 @@
 
 	const { id, animationStyle = 'expand', duration = 200, trigger, children }: Props = $props();
 
-	const dispatch = createEventDispatcher();
 	let popoverElement: HTMLDivElement | undefined = $state();
 	let containerElement: HTMLDivElement;
 	let contentElement: HTMLDivElement | undefined = $state();
@@ -245,7 +244,6 @@
 	async function handleAnimationOut() {
 		isPositioned = false;
 		isAnimating = false;
-		dispatch('close');
 	}
 
 	async function updatePosition() {
@@ -327,7 +325,6 @@
 
 	async function handleAnimationIn() {
 		isAnimating = true;
-		dispatch('open');
 
 		await _tick();
 		await updatePosition();

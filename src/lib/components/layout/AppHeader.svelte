@@ -13,7 +13,6 @@
 		Home
 	} from '@lucide/svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
-	import { createEventDispatcher } from 'svelte';
 	import { analyzeEmailFlow } from '$lib/services/emailService';
 	import { toEmailServiceUser } from '$lib/types/user';
 	import { modalActions } from '$lib/stores/modalSystem.svelte';
@@ -22,8 +21,6 @@
 		HeaderUser,
 		TemplateUseEvent
 	} from '$lib/types/any-replacements.js';
-
-	const _dispatch = createEventDispatcher();
 
 	let {
 		user = null,

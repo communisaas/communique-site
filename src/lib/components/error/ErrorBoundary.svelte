@@ -9,7 +9,7 @@ This component only handles the USER EXPERIENCE:
 - Allow navigation back to safety
 -->
 <script lang="ts">
-	import { createEventDispatcher, onMount as _onMount, type Snippet } from 'svelte';
+	import { onMount as _onMount, type Snippet } from 'svelte';
 	import { AlertTriangle, RefreshCw, Home } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import { coordinated } from '$lib/utils/timerCoordinator';
@@ -43,11 +43,6 @@ This component only handles the USER EXPERIENCE:
 	let errorInfo: ErrorInfo | null = $state(null);
 	let retryCount = $state(0);
 	let isRetrying = $state(false);
-
-	const dispatch = createEventDispatcher<{
-		error: ErrorInfo;
-		retry: void;
-	}>();
 
 	const componentId = `ErrorBoundary_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -96,9 +91,6 @@ This component only handles the USER EXPERIENCE:
 			console.error('[ErrorBoundary]', error);
 		}
 
-		// Dispatch error event (Sentry captures via global handlers)
-		dispatch('error', info);
-
 		// Auto-retry if configured
 		if (autoRetryDelay > 0 && retryCount < maxRetries) {
 			coordinated.setTimeout(
@@ -124,7 +116,6 @@ This component only handles the USER EXPERIENCE:
 				hasError = false;
 				errorInfo = null;
 				isRetrying = false;
-				dispatch('retry');
 			},
 			100,
 			'feedback',

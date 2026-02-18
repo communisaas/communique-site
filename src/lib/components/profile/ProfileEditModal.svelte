@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { X as _X, User, Building, Save, Loader2 } from '@lucide/svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import SimpleModal from '$lib/components/modals/SimpleModal.svelte';
@@ -10,17 +9,14 @@
 	let {
 		user,
 		section = 'basic',
-		onclose
+		onclose,
+		onsave
 	}: {
 		user: UserProfileData;
 		section?: 'basic' | 'profile';
 		onclose?: () => void;
+		onsave?: (data: ProfileUpdateData) => void;
 	} = $props();
-
-	const dispatch = createEventDispatcher<{
-		close: void;
-		save: ProfileUpdateData;
-	}>();
 
 	let isSubmitting = $state(false);
 	let errors = $state<Record<string, string>>({});
@@ -50,7 +46,6 @@
 
 	function handleClose() {
 		onclose?.();
-		dispatch('close');
 	}
 
 	function validateForm(): boolean {
@@ -100,7 +95,7 @@
 			const result = await response.json();
 
 			if (result.success) {
-				dispatch('save', { section, data: formData });
+				onsave?.({ section, data: formData });
 				handleClose();
 			} else {
 				errors.general = result.error || 'Failed to save changes';

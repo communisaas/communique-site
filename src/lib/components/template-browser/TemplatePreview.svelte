@@ -2,13 +2,12 @@
 	/// <reference types="dom" />
 	import { browser } from '$app/environment';
 	import type { Template } from '$lib/types/template';
-	import { onDestroy, onMount, tick, createEventDispatcher } from 'svelte';
+	import { onDestroy, onMount, tick } from 'svelte';
 	import { spring } from 'svelte/motion';
 	import { isMobile } from '$lib/utils/browserUtils';
 	import { coordinated, useTimerCleanup } from '$lib/utils/timerCoordinator';
 	import { PreviewContent, ActionBar } from './parts';
 
-	const dispatch = createEventDispatcher();
 	const componentId = 'TemplatePreview_' + Math.random().toString(36).substr(2, 9);
 
 	let {
@@ -203,14 +202,6 @@
 		useTimerCleanup(componentId)();
 	});
 
-	function handleScrollStateChange(scrollState: unknown) {
-		dispatch('scrollStateChange', scrollState);
-	}
-
-	function handleTouchStateChange(touchState: unknown) {
-		dispatch('touchStateChange', touchState);
-	}
-
 	function handleMobileClick(_event: MouseEvent) {
 		// Don't intercept button clicks
 		const target = _event.target as HTMLElement;
@@ -258,8 +249,6 @@
 				{user}
 				{onScroll}
 				bind:personalConnectionValue
-				onScrollStateChange={handleScrollStateChange}
-				onTouchStateChange={handleTouchStateChange}
 				{componentId}
 				{expandToContent}
 			/>

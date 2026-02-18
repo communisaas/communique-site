@@ -42,8 +42,8 @@
 		user: { id: string; name: string | null } | null;
 		onScroll: (isAtBottom: boolean, scrollProgress?: number) => void;
 		personalConnectionValue: string;
-		onScrollStateChange: (scrollState: unknown) => void;
-		onTouchStateChange: (touchState: unknown) => void;
+		onScrollStateChange?: (scrollState: unknown) => void;
+		onTouchStateChange?: (touchState: unknown) => void;
 		componentId: string;
 		expandToContent?: boolean;
 	} = $props();

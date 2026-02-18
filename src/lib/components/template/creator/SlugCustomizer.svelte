@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { Link2, Sparkles, RefreshCw, CheckCircle2, AlertCircle } from '@lucide/svelte';
-	import { createEventDispatcher } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { page } from '$app/stores';
 	import type { TemplateCreationContext } from '$lib/types/template';
@@ -21,8 +20,6 @@
 		context = undefined,
 		slugReady = $bindable(null)
 	}: Props = $props();
-
-	const _dispatch = createEventDispatcher();
 
 	let __isChecking = false;
 	let isAvailable: boolean | null = $state(null);

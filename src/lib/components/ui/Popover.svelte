@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { tick as _tick } from 'svelte';
 	import type { PopoverSlots as _PopoverSlots } from '$lib/types/popover';
@@ -22,7 +22,6 @@
 		children
 	}: Props = $props();
 
-	const dispatch = createEventDispatcher();
 	let popoverElement: HTMLDivElement | undefined = $state();
 	let containerElement: HTMLDivElement | undefined = $state();
 
@@ -38,7 +37,7 @@
 	function handleScroll() {
 		if (open) {
 			open = false;
-			dispatch('close');
+
 		}
 	}
 
@@ -65,14 +64,14 @@
 
 	async function handleMouseEnter() {
 		open = true;
-		dispatch('open');
+
 		await _tick();
 		updatePosition();
 	}
 
 	function handleMouseLeave() {
 		open = false;
-		dispatch('close');
+
 	}
 
 	function updatePosition() {
@@ -141,7 +140,7 @@
 
 	function handleFocus() {
 		open = true;
-		dispatch('open');
+
 		_tick().then(updatePosition);
 	}
 
@@ -151,14 +150,14 @@
 
 		if (currentTarget && relatedTarget && !currentTarget.contains(relatedTarget)) {
 			open = false;
-			dispatch('close');
+
 		}
 	}
 
 	function handleKeydown(__event: KeyboardEvent) {
 		if (__event.key === 'Escape' && open) {
 			open = false;
-			dispatch('close');
+
 		}
 	}
 
@@ -182,10 +181,10 @@
 
 		open = !open;
 		if (open) {
-			dispatch('open');
+	
 			_tick().then(updatePosition);
 		} else {
-			dispatch('close');
+
 		}
 
 		// Reset isTouch after a delay to allow mouse events again

@@ -49,16 +49,9 @@
 		showEditModal = true;
 	}
 
-	function handleProfileSave(__event: CustomEvent) {
-		const { section: _section, data: _data } = __event.detail;
-
-		// Update the local user data (in a real app, you might want to reload from server)
-		// For now, this is a simple optimistic update
-
+	function handleProfileSave(_data: import('$lib/types/any-replacements.js').ProfileUpdateData) {
+		// Optimistic update — modal already persisted via API
 		showEditModal = false;
-
-		// Optionally reload the page data or update reactive state
-		// window.location.reload(); // Simple approach
 	}
 </script>
 
@@ -463,6 +456,6 @@
 		{user}
 		section={editingSection}
 		onclose={() => (showEditModal = false)}
-		on:save={handleProfileSave}
+		onsave={handleProfileSave}
 	/>
 {/if}

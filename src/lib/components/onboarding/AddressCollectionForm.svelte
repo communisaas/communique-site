@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import { MapPin, CheckCircle2, AlertCircle, Loader2, Home } from '@lucide/svelte';

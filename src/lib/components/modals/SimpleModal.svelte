@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { fade } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
@@ -20,8 +20,6 @@
 		children?: import('svelte').Snippet;
 	} = $props();
 
-	const dispatch = createEventDispatcher<{ close: void }>();
-
 	let dialogElement: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
 	let isOpen = $state(false);
 	let scrollPosition: number;
@@ -29,7 +27,6 @@
 
 	function handleClose() {
 		onclose?.();
-		dispatch('close');
 		isOpen = false;
 	}
 
