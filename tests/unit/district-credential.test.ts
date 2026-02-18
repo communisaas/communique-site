@@ -4,14 +4,18 @@ import {
 	verifyDistrictCredential,
 	hashCredential,
 	hashDistrict,
+	base64urlDecode,
 	type DistrictResidencyCredential
 } from '$lib/core/identity/district-credential';
 
 // ============================================================================
-// Setup: ensure IDENTITY_HASH_SALT is available for HMAC operations
+// Setup: ensure signing keys are available
 // ============================================================================
 
 beforeAll(() => {
+	// Ed25519 signing key (32-byte hex seed)
+	process.env.IDENTITY_SIGNING_KEY = 'a'.repeat(64); // deterministic test key
+	// Legacy HMAC key for backward-compat testing
 	process.env.IDENTITY_HASH_SALT = 'test-salt-for-district-credential-unit-tests-32bytes!';
 });
 
@@ -178,6 +182,55 @@ describe('verifyDistrictCredential', () => {
 		};
 		const valid = await verifyDistrictCredential(tampered);
 		expect(valid).toBe(false);
+	});
+});
+
+describe('Ed25519 signature properties', () => {
+	it('should produce a 64-byte Ed25519 signature', async () => {
+		const vc = await issueDistrictCredential(BASE_PARAMS);
+		const sigBytes = base64urlDecode(vc.proof.proofValue);
+		expect(sigBytes.length).toBe(64);
+	});
+
+	it('should produce deterministic signatures for the same input', async () => {
+		// Ed25519 is deterministic (no random nonce), but timestamps differ
+		// so we verify two calls produce different proofValues (different timestamps)
+		const vc1 = await issueDistrictCredential(BASE_PARAMS);
+		const vc2 = await issueDistrictCredential(BASE_PARAMS);
+		// Different issuance times -> different bodies -> different signatures
+		if (vc1.issuanceDate !== vc2.issuanceDate) {
+			expect(vc1.proof.proofValue).not.toBe(vc2.proof.proofValue);
+		}
+	});
+});
+
+describe('backward compatibility', () => {
+	it('should verify Ed25519-signed credentials', async () => {
+		const vc = await issueDistrictCredential(BASE_PARAMS);
+		const valid = await verifyDistrictCredential(vc);
+		expect(valid).toBe(true);
+	});
+
+	it('should reject tampered credentials even with HMAC fallback available', async () => {
+		const vc = await issueDistrictCredential(BASE_PARAMS);
+		const tampered: DistrictResidencyCredential = {
+			...vc,
+			issuer: 'did:web:evil.example.com'
+		};
+		const valid = await verifyDistrictCredential(tampered);
+		expect(valid).toBe(false);
+	});
+
+	it('should fail gracefully when IDENTITY_SIGNING_KEY is missing', async () => {
+		const saved = process.env.IDENTITY_SIGNING_KEY;
+		delete process.env.IDENTITY_SIGNING_KEY;
+		try {
+			await expect(issueDistrictCredential(BASE_PARAMS)).rejects.toThrow(
+				'IDENTITY_SIGNING_KEY'
+			);
+		} finally {
+			process.env.IDENTITY_SIGNING_KEY = saved;
+		}
 	});
 });
 

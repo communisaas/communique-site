@@ -5,12 +5,15 @@
  * Tier 2 in the Graduated Trust Architecture.
  *
  * Signing:
- *   HMAC-SHA256 using IDENTITY_HASH_SALT as the key (pragmatic choice for CF Workers).
- *   Full Ed25519 VC signing deferred to Cycle 4 when TEE infrastructure is ready.
+ *   Ed25519 using IDENTITY_SIGNING_KEY env var (hex-encoded 32-byte seed).
+ *   Backward-compatible verification accepts HMAC-SHA256 (IDENTITY_HASH_SALT)
+ *   for credentials issued before the migration.
  *
- * All crypto uses the Web Crypto API (no Node.js `crypto`, no Buffer).
+ * Uses @noble/curves for Ed25519 (pure JS, CF Workers compatible).
+ * Web Crypto API used only for legacy HMAC fallback and SHA-256 hashing.
  */
 
+import { ed25519 } from '@noble/curves/ed25519';
 import { TIER_CREDENTIAL_TTL } from '$lib/core/identity/credential-policy';
 
 // ============================================================================
@@ -38,7 +41,7 @@ export interface DistrictResidencyCredential {
 		created: string;
 		verificationMethod: string;
 		proofPurpose: 'assertionMethod';
-		proofValue: string; // base64url-encoded HMAC signature
+		proofValue: string; // base64url-encoded Ed25519 signature
 	};
 }
 
@@ -59,30 +62,27 @@ const ISSUER_DID = 'did:web:communique.io';
 const VERIFICATION_METHOD = `${ISSUER_DID}#district-attestation-key`;
 
 // ============================================================================
-// Internal Helpers (Web Crypto only, CF Workers compatible)
+// Internal Helpers (CF Workers compatible)
 // ============================================================================
 
 const encoder = new TextEncoder();
 
 /**
- * Import HMAC key from the platform salt string.
+ * Get Ed25519 signing key pair from environment.
+ * IDENTITY_SIGNING_KEY is a hex-encoded 32-byte Ed25519 private key (seed).
+ * Returns hex string for private key (accepted by @noble/curves) and
+ * Uint8Array for public key.
  */
-async function getHmacKey(): Promise<CryptoKey> {
-	const salt = process.env.IDENTITY_HASH_SALT;
-	if (!salt) {
+function getSigningKeyPair(): { privateKeyHex: string; publicKey: Uint8Array } {
+	const keyHex = process.env.IDENTITY_SIGNING_KEY;
+	if (!keyHex) {
 		throw new Error(
-			'IDENTITY_HASH_SALT environment variable not configured. ' +
+			'IDENTITY_SIGNING_KEY environment variable not configured. ' +
 				'Generate with: openssl rand -hex 32'
 		);
 	}
-
-	return crypto.subtle.importKey(
-		'raw',
-		encoder.encode(salt),
-		{ name: 'HMAC', hash: 'SHA-256' },
-		false,
-		['sign', 'verify']
-	);
+	const publicKey = ed25519.getPublicKey(keyHex);
+	return { privateKeyHex: keyHex, publicKey };
 }
 
 /**
@@ -109,7 +109,7 @@ function base64urlEncode(bytes: Uint8Array): string {
 /**
  * Decode base64url string to Uint8Array, CF Workers compatible.
  */
-function base64urlDecode(str: string): Uint8Array {
+export function base64urlDecode(str: string): Uint8Array {
 	// Convert base64url back to standard base64
 	let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
 	// Add padding
@@ -198,7 +198,7 @@ function deterministicJSON(obj: unknown): string {
 /**
  * Issue a W3C VC 2.0 DistrictResidencyCredential.
  *
- * Signs the credential body with HMAC-SHA256 using the platform salt.
+ * Signs the credential body with Ed25519 using the IDENTITY_SIGNING_KEY.
  * Expiration is TIER_CREDENTIAL_TTL[2] (90 days) from now.
  */
 export async function issueDistrictCredential(
@@ -213,11 +213,13 @@ export async function issueDistrictCredential(
 
 	const body = buildCredentialBody(params, issuanceDate, expirationDate);
 
-	// Sign the canonical body
-	const key = await getHmacKey();
-	const bodyBytes = encoder.encode(deterministicJSON(body));
-	const signature = await crypto.subtle.sign('HMAC', key, bodyBytes);
-	const proofValue = base64urlEncode(new Uint8Array(signature));
+	// Sign the canonical body with Ed25519
+	// Note: pass privateKey as hex string and wrap bodyBytes to avoid
+	// cross-realm Uint8Array issues (jsdom vs Node.js globals)
+	const { privateKeyHex } = getSigningKeyPair();
+	const bodyBytes = new Uint8Array(encoder.encode(deterministicJSON(body)));
+	const signature = ed25519.sign(bodyBytes, privateKeyHex);
+	const proofValue = base64urlEncode(signature);
 
 	const credential: DistrictResidencyCredential = {
 		...body,
@@ -234,21 +236,56 @@ export async function issueDistrictCredential(
 }
 
 /**
- * Verify a DistrictResidencyCredential by recomputing the HMAC.
+ * Verify a DistrictResidencyCredential.
  *
- * Returns true if the credential body was signed with the current platform salt
- * and has not been tampered with.
+ * Tries Ed25519 verification first (current signing method).
+ * Falls back to legacy HMAC-SHA256 for credentials issued before migration.
+ * Returns true if the credential is valid and untampered.
  */
 export async function verifyDistrictCredential(
 	credential: DistrictResidencyCredential
 ): Promise<boolean> {
 	try {
-		// Reconstruct the body (everything except `proof`)
 		const { proof: _proof, ...body } = credential;
+		const bodyBytes = new Uint8Array(encoder.encode(deterministicJSON(body)));
+		const signatureBytes = new Uint8Array(base64urlDecode(credential.proof.proofValue));
 
-		const key = await getHmacKey();
-		const bodyBytes = encoder.encode(deterministicJSON(body));
-		const signatureBytes = base64urlDecode(credential.proof.proofValue);
+		// Try Ed25519 verification first
+		try {
+			const { publicKey } = getSigningKeyPair();
+			const valid = ed25519.verify(signatureBytes, bodyBytes, publicKey);
+			if (valid) return true;
+		} catch {
+			// Ed25519 verification failed — try HMAC fallback
+		}
+
+		// Backward compatibility: try HMAC-SHA256 verification
+		// This handles credentials signed before the Ed25519 migration
+		return await verifyWithHmac(bodyBytes, signatureBytes);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * Legacy HMAC-SHA256 verification for pre-migration credentials.
+ * Will be removed after credential TTL expires (90 days from migration).
+ */
+async function verifyWithHmac(
+	bodyBytes: Uint8Array,
+	signatureBytes: Uint8Array
+): Promise<boolean> {
+	try {
+		const salt = process.env.IDENTITY_HASH_SALT;
+		if (!salt) return false;
+
+		const key = await crypto.subtle.importKey(
+			'raw',
+			encoder.encode(salt),
+			{ name: 'HMAC', hash: 'SHA-256' },
+			false,
+			['verify']
+		);
 
 		return crypto.subtle.verify(
 			'HMAC',
