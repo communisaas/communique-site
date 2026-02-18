@@ -81,10 +81,10 @@
 
 | Gap | Detail | Status |
 |-----|--------|--------|
-| libsodium on CF Workers | XChaCha20-Poly1305 via libsodium-wrappers uses WASM — untested on Workers runtime. Witness encryption/decryption may fail. | **OPEN** — build passes, runtime untested |
-| Workers KV namespace | `DC_SESSION_KV` binding has placeholder ID in wrangler.toml. Must create via `wrangler kv namespace create`. | **OPEN** — provisioning needed |
+| libsodium on CF Workers | Server-side decryption replaced with @noble/curves + @noble/hashes + @noble/ciphers (pure JS, zero WASM). | **FIXED** in Cycle 11C |
+| Workers KV namespace | `DC_SESSION_KV` provisioned: `a76f18d2c07042bc856a30038af05ab8`. | **FIXED** in Cycle 11C |
 | CF build verification | New deps (cbor-web, libsodium-wrappers) in `ADAPTER=cloudflare npm run build`. | **FIXED** in Cycle 10A |
-| svelte-check errors | 18 pre-existing type errors across the codebase. | **OPEN** — triage needed |
+| svelte-check errors | 8 type errors resolved (dead store, PrismaClient cast, layout type). | **FIXED** in Cycle 11A — 0 errors |
 
 ### P1: Should fix before production
 
@@ -96,6 +96,7 @@
 | Legacy single-tree code | 240+ lines in prover-client, witness-builder, example-usage. | **FIXED** in Cycles 10C+10D |
 | delivery-worker Template cast | `as unknown as Template` unsafe cast for CWC calls. | **FIXED** in Cycle 10C (CwcTemplate) |
 | Submission ALS scope | Tier promotion promise not registered with waitUntil. | **FIXED** post-Cycle 10 |
+| delivery-worker status bugs | CWC 'rejected' misclassified, partial errors dropped, unsafe ALS fallback. | **FIXED** in Cycle 11B |
 
 ### P2: Post-launch improvements
 
@@ -124,7 +125,7 @@
 | 8 | Production Hardening | 4 | ALS safety, type safety, Svelte 5 migration, legacy gating |
 | 9 | Government Credentials (Tier 4) | 4 | mDL via Digital Credentials API, privacy boundary, ephemeral keys, integration |
 | 10 | Production Readiness | 4 | CF build fix, final Svelte 5 auth migration, ~1300 lines dead code removed, build verified |
-| **11** | **Type Safety + Submission Hardening** | **4** | **svelte-check errors, submission pipeline audit, CF runtime gaps, review** |
+| 11 | Type Safety + Submission Hardening | 4 | 0 svelte-check errors, 3 delivery-worker bugs fixed, libsodium→noble (pure JS), KV provisioned |
 
 **Full cycle details:** `docs/architecture/graduated-trust-implementation.md`
 
