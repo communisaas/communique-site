@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher, onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { fade } from 'svelte/transition';
 	import { Building2, Users, Mail, Megaphone, ArrowRight, ArrowLeft, X } from '@lucide/svelte';
 	import type { TemplateCreationContext, TemplateFormData, Template } from '$lib/types/template';
@@ -10,18 +10,15 @@
 	import DecisionMakerResolver from './creator/DecisionMakerResolver.svelte';
 	import MessageGenerationResolver from './creator/MessageGenerationResolver.svelte';
 
-	const dispatch = createEventDispatcher<{
-		close: void;
-		save: Omit<Template, 'id'>;
-	}>();
-
 	let {
 		context,
 		isSubmitting = false,
 		validationErrors = {},
 		initialText = '',
 		initialDraftId = '',
-		onSaveError = $bindable<string | null>(null)
+		onSaveError = $bindable<string | null>(null),
+		onclose,
+		onsave
 	}: {
 		context: TemplateCreationContext;
 		isSubmitting?: boolean;
@@ -31,6 +28,8 @@
 		initialDraftId?: string;
 		/** Bindable: parent sets this when save fails (for inline error display) */
 		onSaveError?: string | null;
+		onclose?: () => void;
+		onsave?: (data: Omit<Template, 'id'>) => void;
 	} = $props();
 
 	// --- Synchronous draft restoration ---
@@ -365,7 +364,7 @@
 		// and the component stays alive on failure (parent only unmounts on success).
 		draftCleanupMode = 'delete';
 
-		dispatch('save', template);
+		onsave?.(template);
 	}
 
 	// Progress calculation
@@ -573,7 +572,7 @@
 					<!-- Close button -->
 					<button
 						type="button"
-						onclick={() => dispatch('close')}
+						onclick={() => onclose?.()}
 						class="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
 						aria-label="Close"
 					>

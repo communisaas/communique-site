@@ -84,8 +84,14 @@
 		}
 	});
 
-	async function handleProfileComplete(__event: CustomEvent) {
-		const { role, organization, location, connection, connectionDetails } = (__event as any).detail;
+	async function handleProfileComplete(data: {
+		role: string;
+		organization?: string;
+		location?: string;
+		connection: string;
+		connectionDetails?: string;
+	}) {
+		const { role, organization, location, connection, connectionDetails } = data;
 
 		try {
 			// Save profile information to user
@@ -186,7 +192,7 @@
 {#if showDirectModal}
 	<DirectOutreachCompact
 		template={flowTemplate}
-		on:complete={handleProfileComplete}
-		on:close={handleProfileSkip}
+		oncomplete={handleProfileComplete}
+		onclose={handleProfileSkip}
 	/>
 {/if}

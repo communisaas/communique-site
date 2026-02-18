@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
 	import { Building2, MapPin, Users, CheckCircle2 } from '@lucide/svelte';
 	import AgencyRibbon from '$lib/components/ui/AgencyRibbon.svelte';
 
@@ -17,9 +16,15 @@
 		category?: string;
 	}
 
-	const dispatch = createEventDispatcher<{ close: void; complete: CompletePayload }>();
-
-	let { template }: { template: TemplateLike } = $props();
+	let {
+		template,
+		onclose,
+		oncomplete
+	}: {
+		template: TemplateLike;
+		onclose?: () => void;
+		oncomplete?: (data: CompletePayload) => void;
+	} = $props();
 
 	// Form state (single-screen)
 	let role = $state('');
@@ -105,7 +110,7 @@
 		if (!validate()) return;
 		const finalRole = role === 'other' ? customRole.trim() : role;
 		const finalConnection = connection === 'other' ? connectionDetails.trim() : connection;
-		dispatch('complete', {
+		oncomplete?.({
 			role: finalRole,
 			organization: organization.trim() || undefined,
 			location: location.trim() || undefined,
@@ -115,7 +120,7 @@
 	}
 
 	function handleSkip() {
-		dispatch('close');
+		onclose?.();
 	}
 </script>
 

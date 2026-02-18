@@ -1,14 +1,14 @@
 # Implementation Status Report
 
-**Date:** 2026-02-17 (Updated)
-**Focus:** Honest assessment after Cycles 1-10 of Graduated Trust Architecture
-**Last Major Update:** Cycle 10 (Production Readiness + Cleanup) complete
+**Date:** 2026-02-18 (Updated)
+**Focus:** Honest assessment after Cycles 1-12 of Graduated Trust Architecture
+**Last Major Update:** Cycle 12 (Dead Code Purge + Broken Event Wiring) complete
 
 ---
 
 ## TL;DR
 
-10 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. Cycle 10 cleaned dead code (~1300 lines), completed Svelte 5 event migration for auth components, and verified CF build.
+12 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. Cycle 12 purged ~10,500 lines of dead code, repaired 3 silently broken event wiring mismatches, completed Svelte 5 event migration (0 remaining createEventDispatcher in live code), and reduced svelte-check warnings from 95 to 88.
 
 **What works end-to-end:** User verifies identity (NFC passport / government ID / mDL) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Halo2/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
 
@@ -84,7 +84,7 @@
 | libsodium on CF Workers | Server-side decryption replaced with @noble/curves + @noble/hashes + @noble/ciphers (pure JS, zero WASM). | **FIXED** in Cycle 11C |
 | Workers KV namespace | `DC_SESSION_KV` provisioned: `a76f18d2c07042bc856a30038af05ab8`. | **FIXED** in Cycle 11C |
 | CF build verification | New deps (cbor-web, libsodium-wrappers) in `ADAPTER=cloudflare npm run build`. | **FIXED** in Cycle 10A |
-| svelte-check errors | 8 type errors resolved (dead store, PrismaClient cast, layout type). | **FIXED** in Cycle 11A — 0 errors |
+| svelte-check errors | 8 type errors resolved (dead store, PrismaClient cast, layout type). | **FIXED** in Cycle 11A — 0 errors, 88 warnings (down from 95) |
 
 ### P1: Should fix before production
 
@@ -126,7 +126,7 @@
 | 9 | Government Credentials (Tier 4) | 4 | mDL via Digital Credentials API, privacy boundary, ephemeral keys, integration |
 | 10 | Production Readiness | 4 | CF build fix, final Svelte 5 auth migration, ~1300 lines dead code removed, build verified |
 | 11 | Type Safety + Submission Hardening | 4 | 0 svelte-check errors, 3 delivery-worker bugs fixed, libsodium→noble (pure JS), KV provisioned |
-| 12 | Dead Code Purge + Broken Wiring | 4 | *Planned* — fix 3 broken event mismatches, delete ~8,700 lines dead code, complete Svelte 5 migration |
+| 12 | Dead Code Purge + Broken Wiring | 4 | 3 broken event mismatches repaired, ~10,500 lines dead code deleted (50+ files), Svelte 5 migration complete (0 live dispatchers), SSR nested-button bugs fixed, warnings 95→88 |
 
 **Full cycle details:** `docs/architecture/graduated-trust-implementation.md`
 

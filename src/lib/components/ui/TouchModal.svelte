@@ -1,6 +1,6 @@
 <script lang="ts">
 	/// <reference types="dom" />
-	import { onMount, onDestroy, createEventDispatcher } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
 	import { scale } from 'svelte/transition';
 	import { X } from '@lucide/svelte';
@@ -21,8 +21,6 @@
 		_inModal?: boolean;
 		children?: import('svelte').Snippet;
 	} = $props();
-
-	const dispatch = createEventDispatcher<{ close: void }>();
 
 	let dialogElement: HTMLDivElement = $state(undefined as unknown as HTMLDivElement);
 	let isOpen = $state(false);
@@ -141,7 +139,6 @@
 	function close() {
 		unlockScroll(); // Ensure scroll is unlocked when closing via any method
 		onclose?.();
-		dispatch('close');
 		closeModal();
 	}
 

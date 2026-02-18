@@ -59,7 +59,7 @@
 		}
 	};
 
-	const config = typeConfig[type];
+	const config = $derived(typeConfig[type]);
 	const IconComponent = $derived(config.icon);
 
 	// Safely format the message to handle objects

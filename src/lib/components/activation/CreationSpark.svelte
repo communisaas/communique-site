@@ -18,7 +18,7 @@
 	 * transitions to the full wizard.
 	 */
 
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { ArrowRight, Clock } from '@lucide/svelte';
 	import { templateDraftStore, formatTimeAgo } from '$lib/stores/templateDraft';
 
@@ -27,13 +27,10 @@
 	// Props
 	interface Props {
 		context?: Snippet;
+		onactivate?: (data: { initialText: string; draftId?: string }) => void;
 	}
 
-	let { context }: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		activate: { initialText: string; draftId?: string };
-	}>();
+	let { context, onactivate }: Props = $props();
 
 	let issueText = $state('');
 	let isFocused = $state(false);
@@ -140,7 +137,7 @@
 	});
 
 	function handleContinue() {
-		dispatch('activate', {
+		onactivate?.({
 			initialText: issueText.trim(),
 			draftId: activeDraftId || undefined
 		});

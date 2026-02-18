@@ -107,7 +107,7 @@
 	}
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
 <div
 	class="clarification-panel rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-6 shadow-sm"
@@ -191,7 +191,7 @@
 								level={getLocationLevel(question.location_level)}
 								isSelected={!!answers[question.id]}
 								suggestedLocations={question.suggested_locations}
-								on:select={(e) => handleLocationSelect(question.id, e.detail)}
+								onselect={(location) => handleLocationSelect(question.id, location)}
 							/>
 							{#if question.suggested_locations && question.suggested_locations.length > 0}
 								<button

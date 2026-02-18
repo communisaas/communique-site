@@ -27,12 +27,12 @@
 		currentCount = 0
 	}: TemplatePreviewCardProps = $props();
 
-	const precisionLabel = precisionLevel === 'county' ? 'county-level' : 'district-level';
-	const actionLabel = precisionLevel === 'county' ? 'Enable GPS' : 'Enter address';
+	const precisionLabel = $derived(precisionLevel === 'county' ? 'county-level' : 'district-level');
+	const actionLabel = $derived(precisionLevel === 'county' ? 'Enable GPS' : 'Enter address');
 
 	// Collective power: Show coordination strength, open invitation
-	const coordinatingCount = templateCount;
-	const locationContext = precisionLevel === 'county' ? 'in your area' : 'at this precision level';
+	const coordinatingCount = $derived(templateCount);
+	const locationContext = $derived(precisionLevel === 'county' ? 'in your area' : 'at this precision level');
 </script>
 
 <div class="relative overflow-hidden rounded-lg border border-slate-200 bg-white p-4 shadow-sm">

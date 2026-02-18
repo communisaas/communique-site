@@ -163,11 +163,11 @@
 		}
 	}
 
-	function handleSparkActivate(event: CustomEvent<{ initialText: string; draftId?: string }>) {
-		creationInitialText = event.detail.initialText;
+	function handleSparkActivate(data: { initialText: string; draftId?: string }) {
+		creationInitialText = data.initialText;
 		// If draft ID provided, use it for seamless continuation
-		if (event.detail.draftId) {
-			resumeDraftId = event.detail.draftId;
+		if (data.draftId) {
+			resumeDraftId = data.draftId;
 		}
 		creationContext = {
 			channelId: 'direct',
@@ -316,7 +316,7 @@
 	<div class="activation-container">
 		<!-- Left Column: Creation Spark + Minimal Footer -->
 		<div class="creation-column">
-			<CreationSpark on:activate={handleSparkActivate}>
+			<CreationSpark onactivate={handleSparkActivate}>
 				{#snippet context()}
 					<footer class="creation-footer">
 						<a href="mailto:hello@communi.email" class="contact-link">
@@ -446,7 +446,7 @@
 <!-- Mobile Preview Modal -->
 {#if showMobilePreview && selectedTemplate}
 	<TouchModal
-		on:close={() => (showMobilePreview = false)}
+		onclose={() => (showMobilePreview = false)}
 	>
 		<div class="h-full">
 			<TemplatePreview
@@ -502,19 +502,19 @@
 			initialText={creationInitialText}
 			initialDraftId={resumeDraftId}
 			bind:onSaveError={templateSaveError}
-			on:close={() => {
+			onclose={() => {
 				showTemplateCreator = false;
 				creationContext = null;
 				creationInitialText = '';
 				resumeDraftId = '';
 				templateSaveError = null;
 			}}
-			on:save={async (_event) => {
+			onsave={async (templateData) => {
 				if (data.user) {
 					try {
 						templateSaveError = null;
 						isSubmitting = true;
-						const newTemplate = await templateStore.addTemplate(_event.detail);
+						const newTemplate = await templateStore.addTemplate(templateData);
 						// Success: close creator and show success modal
 						// (Draft cleanup handled by TemplateCreator's onDestroy via draftCleanupMode)
 						showTemplateCreator = false;
@@ -531,7 +531,7 @@
 						isSubmitting = false;
 					}
 				} else {
-					pendingTemplateToSave = _event.detail;
+					pendingTemplateToSave = templateData;
 					showTemplateAuthModal = true;
 				}
 			}}

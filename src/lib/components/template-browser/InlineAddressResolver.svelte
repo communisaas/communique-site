@@ -13,7 +13,7 @@
 	 * - Honeypot, timing, behavioral analysis
 	 */
 
-	import { createEventDispatcher, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { slide, fade } from 'svelte/transition';
 	import { TIMING, type DistrictConfig } from '$lib/core/location/district-config';
 
@@ -23,19 +23,16 @@
 		stateCode?: string | null; // Pre-fill state
 		isResolving: boolean;
 		error: string | null;
-	}
-
-	let { config, locality, stateCode, isResolving, error }: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		submit: {
+		onsubmit?: (data: {
 			street?: string;
 			city?: string;
 			state?: string;
 			postalCode: string;
-		};
-		cancel: void;
-	}>();
+		}) => void;
+		oncancel?: () => void;
+	}
+
+	let { config, locality, stateCode, isResolving, error, onsubmit, oncancel }: Props = $props();
 
 	// Form state
 	let street = $state('');
@@ -108,7 +105,7 @@
 
 		if (!isFormValid) return;
 
-		dispatch('submit', {
+		onsubmit?.({
 			street: config.requiresStreetAddress ? street.trim() : undefined,
 			city: locality || city.trim(),
 			state: stateCode || selectedState || undefined,
@@ -117,7 +114,7 @@
 	}
 
 	function handleCancel() {
-		dispatch('cancel');
+		oncancel?.();
 	}
 
 	function handleKeydown(e: KeyboardEvent) {

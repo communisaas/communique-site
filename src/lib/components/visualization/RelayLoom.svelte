@@ -995,14 +995,22 @@
 								<p class="narrative-body">{paragraph}</p>
 							{/each}
 							<p class="narrative-insight">{content.insight}</p>
-							<button
+							<span
 								class="narrative-cta"
+								role="button"
+								tabindex="0"
 								onclick={(e) => {
 									e.stopPropagation(); /* TODO: dispatch action */
 								}}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										e.stopPropagation();
+									}
+								}}
 							>
 								{content.cta}
-							</button>
+							</span>
 						</div>
 					{/if}
 				</span>
@@ -1045,14 +1053,22 @@
 								<p class="narrative-body">{paragraph}</p>
 							{/each}
 							<p class="narrative-insight">{content.insight}</p>
-							<button
+							<span
 								class="narrative-cta"
+								role="button"
+								tabindex="0"
 								onclick={(e) => {
 									e.stopPropagation(); /* TODO: dispatch action */
 								}}
+								onkeydown={(e) => {
+									if (e.key === 'Enter' || e.key === ' ') {
+										e.preventDefault();
+										e.stopPropagation();
+									}
+								}}
 							>
 								{content.cta}
-							</button>
+							</span>
 						</div>
 					{/if}
 				</span>

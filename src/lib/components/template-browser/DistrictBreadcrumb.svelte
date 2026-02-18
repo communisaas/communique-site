@@ -19,7 +19,6 @@
 	 * - BR: Distritos Eleitorais (Address lookup)
 	 */
 
-	import { createEventDispatcher } from 'svelte';
 	import {
 		type DistrictConfig,
 		formatDistrictLabel
@@ -47,6 +46,14 @@
 
 		/** Error from parent resolution attempt */
 		parentError?: string | null;
+
+		onfilter?: () => void;
+		onresolve?: (data: {
+			street?: string;
+			city?: string;
+			state?: string;
+			postalCode: string;
+		}) => void;
 	}
 
 	let {
@@ -56,18 +63,10 @@
 		currentState,
 		isSelected = false,
 		parentIsResolving = false,
-		parentError = null
+		parentError = null,
+		onfilter,
+		onresolve
 	}: Props = $props();
-
-	const dispatch = createEventDispatcher<{
-		filter: void;
-		resolve: {
-			street?: string;
-			city?: string;
-			state?: string;
-			postalCode: string;
-		};
-	}>();
 
 	// Simple state: are we showing the form?
 	let isExpanded = $state(false);
@@ -93,7 +92,7 @@
 	// Handle filter click (when district is known)
 	function handleFilterClick() {
 		if (!isExpanded) {
-			dispatch('filter');
+			onfilter?.();
 		}
 	}
 
@@ -113,16 +112,14 @@
 	}
 
 	// Handle address submission
-	function handleAddressSubmit(
-		event: CustomEvent<{
-			street?: string;
-			city?: string;
-			state?: string;
-			postalCode: string;
-		}>
-	) {
+	function handleAddressSubmit(data: {
+		street?: string;
+		city?: string;
+		state?: string;
+		postalCode: string;
+	}) {
 		hasSubmitted = true;
-		dispatch('resolve', event.detail);
+		onresolve?.(data);
 		// Parent handles API call and sets parentIsResolving/parentError
 	}
 
@@ -155,8 +152,8 @@
 			stateCode={currentState}
 			{isResolving}
 			error={resolveError}
-			on:submit={handleAddressSubmit}
-			on:cancel={collapse}
+			onsubmit={handleAddressSubmit}
+			oncancel={collapse}
 		/>
 	</div>
 {:else if district}

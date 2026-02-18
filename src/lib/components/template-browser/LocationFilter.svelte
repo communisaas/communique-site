@@ -839,10 +839,8 @@
 	 * Handle location change from autocomplete breadcrumb
 	 * Creates a user-selected signal (confidence 0.9, not 1.0 since not verified)
 	 */
-	async function handleLocationSelect(event: CustomEvent<LocationHierarchy>) {
+	async function handleLocationSelect(result: LocationHierarchy) {
 		try {
-			// Extract LocationHierarchy from CustomEvent detail
-			const result = event.detail;
 
 			// Validate that result has meaningful location data
 			const hasCountryData = result.country?.code && result.country.code !== '';
@@ -920,15 +918,13 @@
 	 * Currently only US (census-bureau) is implemented. Other countries will
 	 * need their own API adapters (uk-postcodes, france-geo, etc.)
 	 */
-	async function handleDistrictResolve(
-		event: CustomEvent<{
-			street?: string;
-			city?: string;
-			state?: string;
-			postalCode: string;
-		}>
-	) {
-		const { street, city, state, postalCode } = event.detail;
+	async function handleDistrictResolve(data: {
+		street?: string;
+		city?: string;
+		state?: string;
+		postalCode: string;
+	}) {
+		const { street, city, state, postalCode } = data;
 		isResolvingDistrict = true;
 		districtResolveError = null;
 
@@ -1077,8 +1073,8 @@
 						label={breadcrumbCountry}
 						level="country"
 						isSelected={selectedScope === 'nationwide'}
-						on:select={handleLocationSelect}
-						on:filter={() => handleScopeFilter('nationwide')}
+						onselect={handleLocationSelect}
+						onfilter={() => handleScopeFilter('nationwide')}
 					/>
 				{/if}
 
@@ -1104,8 +1100,8 @@
 						level="state"
 						currentCountry={inferredLocation?.country_code ?? undefined}
 						isSelected={selectedScope === 'state'}
-						on:select={handleLocationSelect}
-						on:filter={() => handleScopeFilter('state')}
+						onselect={handleLocationSelect}
+						onfilter={() => handleScopeFilter('state')}
 					/>
 				{/if}
 
@@ -1129,8 +1125,8 @@
 						currentCountry={inferredLocation?.country_code ?? undefined}
 						currentState={inferredLocation?.state_code ?? undefined}
 						isSelected={selectedScope === 'county'}
-						on:select={handleLocationSelect}
-						on:filter={() => handleScopeFilter('county')}
+						onselect={handleLocationSelect}
+						onfilter={() => handleScopeFilter('county')}
 					/>
 				{/if}
 
@@ -1154,8 +1150,8 @@
 						currentCountry={inferredLocation?.country_code ?? undefined}
 						currentState={inferredLocation?.state_code ?? undefined}
 						isSelected={selectedScope === 'city'}
-						on:select={handleLocationSelect}
-						on:filter={() => handleScopeFilter('city')}
+						onselect={handleLocationSelect}
+						onfilter={() => handleScopeFilter('city')}
 					/>
 				{/if}
 
@@ -1182,8 +1178,8 @@
 						isSelected={selectedScope === 'district'}
 						parentIsResolving={isResolvingDistrict}
 						parentError={districtResolveError}
-						on:filter={() => handleScopeFilter('district')}
-						on:resolve={handleDistrictResolve}
+						onfilter={() => handleScopeFilter('district')}
+						onresolve={handleDistrictResolve}
 					/>
 				{/if}
 			</nav>
@@ -1248,8 +1244,8 @@
 					label="Set your location"
 					level="country"
 					isSelected={false}
-					on:select={handleLocationSelect}
-					on:filter={() => {}}
+					onselect={handleLocationSelect}
+					onfilter={() => {}}
 				/>
 
 				<!-- Hint text -->

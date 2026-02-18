@@ -16,7 +16,6 @@
 
 	import { searchLocationsCached } from '$lib/core/location/autocomplete-cache';
 	import type { LocationHierarchy } from '$lib/core/location/geocoding-api';
-	import { createEventDispatcher } from 'svelte';
 	import { browser } from '$app/environment';
 
 	interface LocationAutocompleteProps {
@@ -26,6 +25,8 @@
 		currentState?: string; // Filter results to state
 		isSelected?: boolean; // Whether this breadcrumb is currently filtering
 		suggestedLocations?: string[]; // Array of suggested location strings
+		onselect?: (data: LocationHierarchy) => void;
+		onfilter?: (level: 'country' | 'state' | 'city' | 'district') => void;
 	}
 
 	let {
@@ -34,13 +35,10 @@
 		currentCountry,
 		currentState,
 		isSelected = false,
-		suggestedLocations = []
+		suggestedLocations = [],
+		onselect,
+		onfilter
 	}: LocationAutocompleteProps = $props();
-
-	const dispatch = createEventDispatcher<{
-		select: LocationHierarchy;
-		filter: typeof level;
-	}>();
 
 	// State
 	let isHovering = $state(false);
@@ -99,14 +97,14 @@
 
 	// Handle result selection
 	function handleSelect(result: LocationHierarchy, index: number) {
-		dispatch('select', result);
+		onselect?.(result);
 		closeDropdown();
 	}
 
 	// Handle filter click (toggle scope filtering)
 	function handleFilterClick() {
 		if (!isOpen) {
-			dispatch('filter', level);
+			onfilter?.(level);
 		}
 	}
 
