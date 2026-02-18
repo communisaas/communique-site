@@ -97,7 +97,7 @@ export function getRequestClient(): PrismaClient {
 // In dev, falls back to global singleton.
 export const db: PrismaClient = new Proxy({} as PrismaClient, {
 	get(_target, prop) {
-		return (getInstance() as Record<string | symbol, unknown>)[prop];
+		return (getInstance() as unknown as Record<string | symbol, unknown>)[prop];
 	}
 });
 
