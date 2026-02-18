@@ -622,7 +622,7 @@ function validateTemplate(template: EmailFlowTemplate): { isValid: boolean; erro
 		errors.push('Template missing required id field');
 	}
 
-	if (!template.title && !template.title) {
+	if (!template.title && !template.subject) {
 		errors.push('Template missing both title and subject');
 	}
 
