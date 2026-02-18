@@ -739,6 +739,37 @@ Final verification, documentation updates, and build checks.
 | Update this document | Cycle 13 findings and results |
 | Commit | Atomic commits per wave |
 
+## Cycle 13 Results
+
+**Focus:** Cryptographic Verification Hardening
+**Waves:** 4 (13A–13D)
+**Commits:** 5
+
+### What was done
+
+| Wave | Outcome |
+|------|---------|
+| 13A | Real COSE_Sign1 ECDSA P-256 verification via Web Crypto (RFC 9052). Minimal ASN.1/DER parser for X.509 EC key extraction. MSO digest validation. IACA trust store restructured with `derBytes` field, `DEV_IACA_ROOT` placeholder, `getIACARootsForVerification()`. Graceful degradation when no IACA roots loaded. 15 tests. |
+| 13B | Ed25519 credential signing via `@noble/curves/ed25519` (pure JS, CF Workers compatible). `issueDistrictCredential()` produces real Ed25519 signatures. `verifyDistrictCredential()` tries Ed25519 first, falls back to HMAC-SHA256 for 90-day migration window. `proof.type: 'Ed25519Signature2020'` now truthful. 23 tests (17 existing + 6 new). |
+| 13C | OpenID4VP protocol support. JWT parsing, SD-JWT disclosure merging, direct JSON object handling. Flexible claim extraction (5 nesting patterns: top-level, mDL namespace, credentialSubject, vc.credentialSubject, one-level-deep). Nonce verification for replay protection. Same privacy boundary as mdoc path. 9 tests. |
+| 13D | 0 svelte-check errors (88 warnings, unchanged). CF build passes. BufferSource type cast fix. All docs updated. |
+
+### Findings
+
+1. **COSE signature format alignment:** COSE uses raw r‖s (IEEE P1363) for ECDSA — same as Web Crypto. No DER conversion needed. Plan anticipated DER conversion; agent correctly identified this and omitted it.
+2. **Cross-realm Uint8Array in vitest/jsdom:** `@noble/curves` uses `instanceof Uint8Array` which fails across realms (jsdom vs Node.js). Fix: pass private keys as hex strings (accepted by noble's `Hex` type), wrap `TextEncoder.encode()` with `new Uint8Array(...)`.
+3. **Mock isolation in vitest:** `vi.stubGlobal('fetch', mockFetch)` with `mockResolvedValueOnce` leaks state between tests. Fix: `globalThis.fetch = vi.fn()` in `beforeEach` with explicit restore in `afterEach`.
+4. **IACA production certs:** Trust store structure ready and verified with dev cert, but production AAMVA VICAL certificates not yet available. Structure supports lazy DER decode and byte-level comparison.
+
+### Test count
+
+| Test file | Count |
+|-----------|-------|
+| `tests/unit/identity/cose-verify.test.ts` | 15 |
+| `tests/unit/district-credential.test.ts` | 23 |
+| `tests/unit/identity/oid4vp-verify.test.ts` | 9 |
+| **Total new in Cycle 13** | **47** |
+
 ---
 
 *Communique PBC | Implementation Plan | 2026-02-18*

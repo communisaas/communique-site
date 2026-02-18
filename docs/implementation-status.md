@@ -1,18 +1,18 @@
 # Implementation Status Report
 
 **Date:** 2026-02-18 (Updated)
-**Focus:** Honest assessment after Cycles 1-12 of Graduated Trust Architecture
-**Last Major Update:** Cycle 12 (Dead Code Purge + Broken Event Wiring) complete
+**Focus:** Honest assessment after Cycles 1-13 of Graduated Trust Architecture
+**Last Major Update:** Cycle 13 (Cryptographic Verification Hardening) complete
 
 ---
 
 ## TL;DR
 
-12 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. Cycle 12 purged ~10,500 lines of dead code, repaired 3 silently broken event wiring mismatches, completed Svelte 5 event migration (0 remaining createEventDispatcher in live code), and reduced svelte-check warnings from 95 to 88.
+13 implementation cycles completed across Graduated Trust Architecture. The core identity verification, ZK proof generation, encrypted delivery, and congressional submission pipeline are implemented. Government credential (mDL) verification added as Tier 4 with full COSE_Sign1 issuer signature verification. Production deployment on Cloudflare Workers with Hyperdrive connection pooling. Cycle 13 implemented real COSE_Sign1 ECDSA P-256 verification (RFC 9052), IACA trust store ready for AAMVA VICAL certificates, Ed25519 credential signing (replacing HMAC-SHA256), and OpenID4VP protocol support (JWT/SD-JWT). 47 new unit tests across 3 test files.
 
 **What works end-to-end:** User verifies identity (NFC passport / government ID / mDL) → address encrypted client-side (XChaCha20-Poly1305) → ZK proof generated in browser (Halo2/WASM) → submission created with nullifier uniqueness → encrypted witness decrypted server-side → CWC API delivery to congressional offices → status tracking with polling.
 
-**What doesn't work yet:** COSE_Sign1 mDL issuer verification (stub), IACA root certificates (placeholder), libsodium on CF Workers (untested), OpenID4VP protocol (deferred).
+**What doesn't work yet:** IACA root certificates (trust store structure ready, production certs pending AAMVA VICAL download), COSE_Sign1 issuer certificate chain validation (direct match implemented, full chain walking deferred).
 
 ---
 
@@ -90,8 +90,8 @@
 
 | Gap | Detail | Status |
 |-----|--------|--------|
-| COSE_Sign1 verification | mDL issuer signature verification is stubbed (`console.warn`). Needs IACA root certificates from AAMVA. | **OPEN** — deferred |
-| IACA root certificates | Trust store structure exists but is empty. Need real certs for CA, TX, NY, FL, etc. | **OPEN** — deferred |
+| COSE_Sign1 verification | Full RFC 9052 COSE_Sign1 verification: ECDSA P-256 via Web Crypto, Sig_structure, MSO digest validation, X.509 DER public key extraction. | **FIXED** in Cycle 13A |
+| IACA root certificates | Trust store restructured with DER decode, AAMVA VICAL reference. Ready for production certs (structure verified, empty pending VICAL download). | **FIXED** in Cycle 13A (structure); **OPEN** — production certs pending AAMVA VICAL |
 | Auth component Svelte 5 migration | VerificationChoice, SelfXyz, Didit → callback props. | **FIXED** in Cycle 10B |
 | Legacy single-tree code | 240+ lines in prover-client, witness-builder, example-usage. | **FIXED** in Cycles 10C+10D |
 | delivery-worker Template cast | `as unknown as Template` unsafe cast for CWC calls. | **FIXED** in Cycle 10C (CwcTemplate) |
@@ -102,8 +102,8 @@
 
 | Gap | Detail |
 |-----|--------|
-| OpenID4VP protocol | Deferred — org-iso-mdoc covers Chrome 141+ and Safari 26+ |
-| Ed25519 credential signing | Currently HMAC-SHA256 (pragmatic for CF Workers). Ed25519 deferred. |
+| OpenID4VP protocol | JWT/SD-JWT parsing implemented. Extracts mDL claims from VP tokens. Same privacy boundary as mdoc path. | **FIXED** in Cycle 13C |
+| Ed25519 credential signing | `@noble/curves/ed25519` replaces HMAC-SHA256. `proof.type: 'Ed25519Signature2020'` now truthful. HMAC backward-compat during 90-day TTL. | **FIXED** in Cycle 13B |
 | Nitro Enclave deployment | TEE is designed but not deployed. Server-side decryption runs in-process. |
 | IPFS migration | Encrypted blobs in Postgres. IPFS would reduce costs 99.97%. |
 | On-chain reputation | ERC-8004 contracts designed, not deployed to Scroll L2 |
@@ -127,6 +127,7 @@
 | 10 | Production Readiness | 4 | CF build fix, final Svelte 5 auth migration, ~1300 lines dead code removed, build verified |
 | 11 | Type Safety + Submission Hardening | 4 | 0 svelte-check errors, 3 delivery-worker bugs fixed, libsodium→noble (pure JS), KV provisioned |
 | 12 | Dead Code Purge + Broken Wiring | 4 | 3 broken event mismatches repaired, ~10,500 lines dead code deleted (50+ files), Svelte 5 migration complete (0 live dispatchers), SSR nested-button bugs fixed, warnings 95→88 |
+| 13 | Cryptographic Verification Hardening | 4 | Real COSE_Sign1 ECDSA P-256 verification (RFC 9052), IACA trust store with DER decode, Ed25519 credential signing (replaces HMAC-SHA256), OpenID4VP JWT/SD-JWT support, 47 new tests |
 
 **Full cycle details:** `docs/architecture/graduated-trust-implementation.md`
 

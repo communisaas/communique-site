@@ -291,7 +291,7 @@ async function verifyWithHmac(
 			'HMAC',
 			key,
 			signatureBytes as unknown as BufferSource,
-			bodyBytes
+			bodyBytes as unknown as BufferSource
 		);
 	} catch {
 		return false;
