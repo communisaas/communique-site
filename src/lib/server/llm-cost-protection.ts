@@ -281,9 +281,9 @@ export async function enforceLLMRateLimit(
 	const check = await checkRateLimit(operation, context);
 
 	if (!check.allowed) {
-		console.log(`[LLM-Protection] Rate limit blocked: ${operation} for ${context.identifier}`);
+		console.debug(`[LLM-Protection] Rate limit blocked: ${operation} for ${context.identifier}`);
 	} else {
-		console.log(
+		console.debug(
 			`[LLM-Protection] Allowed: ${operation} for ${context.identifier} (${check.remaining}/${check.limit} remaining)`
 		);
 	}

@@ -97,7 +97,7 @@ async function openKeyDB(): Promise<IDBDatabase> {
 			const db = (event.target as IDBOpenDBRequest).result;
 			if (!db.objectStoreNames.contains(KEY_STORE_NAME)) {
 				db.createObjectStore(KEY_STORE_NAME, { keyPath: 'id' });
-				console.log('[CredentialEncryption] Key store created');
+				console.debug('[CredentialEncryption] Key store created');
 			}
 		};
 	});
@@ -150,7 +150,7 @@ async function getOrCreateDeviceKey(): Promise<CryptoKey> {
 
 	if (existingKey) {
 		cachedDeviceKey = existingKey;
-		console.log('[CredentialEncryption] Retrieved existing device key');
+		console.debug('[CredentialEncryption] Retrieved existing device key');
 		return existingKey;
 	}
 
@@ -183,7 +183,7 @@ async function getOrCreateDeviceKey(): Promise<CryptoKey> {
 	});
 
 	cachedDeviceKey = key;
-	console.log('[CredentialEncryption] Created new device-bound encryption key');
+	console.debug('[CredentialEncryption] Created new device-bound encryption key');
 	return key;
 }
 
@@ -398,7 +398,7 @@ export async function rotateDeviceKey(): Promise<{
 	// Update cache
 	cachedDeviceKey = newKey;
 
-	console.log('[CredentialEncryption] Device key rotated');
+	console.debug('[CredentialEncryption] Device key rotated');
 
 	return { oldKey, newKey };
 }
@@ -422,5 +422,5 @@ export async function clearDeviceKey(): Promise<void> {
 	});
 
 	cachedDeviceKey = null;
-	console.log('[CredentialEncryption] Device key cleared');
+	console.debug('[CredentialEncryption] Device key cleared');
 }

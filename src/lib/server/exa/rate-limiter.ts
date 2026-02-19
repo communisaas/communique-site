@@ -230,7 +230,7 @@ export class ExaRateLimiter {
 			const waitMs = oldestInWindow + 1000 - now + 50; // +50ms buffer
 
 			if (waitMs > 0) {
-				console.log(`[exa-rate-limit] Throttling: waiting ${waitMs}ms to stay under RPS limit`);
+				console.debug(`[exa-rate-limit] Throttling: waiting ${waitMs}ms to stay under RPS limit`);
 				await this.sleep(waitMs);
 			}
 		}
@@ -315,7 +315,7 @@ export class ExaRateLimiter {
 			// Check if we should transition to half-open
 			const openDuration = Date.now() - (this.state.circuitOpenedAt || 0);
 			if (openDuration >= this.config.circuitBreakerResetMs) {
-				console.log('[exa-rate-limit] Circuit transitioning to HALF-OPEN');
+				console.debug('[exa-rate-limit] Circuit transitioning to HALF-OPEN');
 				this.state.circuitState = 'half-open';
 				return false; // Allow one request through
 			}
@@ -332,7 +332,7 @@ export class ExaRateLimiter {
 	private onSuccess(): void {
 		this.state.consecutiveFailures = 0;
 		if (this.state.circuitState !== 'closed') {
-			console.log('[exa-rate-limit] Circuit CLOSED after successful request');
+			console.debug('[exa-rate-limit] Circuit CLOSED after successful request');
 			this.state.circuitState = 'closed';
 			this.state.circuitOpenedAt = null;
 		}

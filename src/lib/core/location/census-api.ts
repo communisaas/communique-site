@@ -136,7 +136,7 @@ export class CensusAPIClient {
 						return null;
 					}
 
-					console.log('[Census API] ⚠️ Using fallback signal with Nominatim data only');
+					console.debug('[Census API] ⚠️ Using fallback signal with Nominatim data only');
 					return {
 						signal_type: 'browser',
 						confidence: 0.4, // Lower confidence without district data
@@ -162,8 +162,6 @@ export class CensusAPIClient {
 					data: unknown
 				) => {
 					cleanup();
-
-					console.log('[Census API] Raw response:', data);
 
 					// The /geographies/coordinates endpoint returns nested under "result"
 					const responseData = data as {
@@ -215,7 +213,7 @@ export class CensusAPIClient {
 
 					// Log cell_id extraction (debug, without revealing full GEOID for privacy)
 					if (cell_id) {
-						console.log('[Census API] ✓ Extracted cell_id:', cell_id.slice(0, 5) + '...');
+						console.debug('[Census API] ✓ Extracted cell_id:', cell_id.slice(0, 5) + '...');
 					}
 
 					if (!district || !state) {
@@ -255,7 +253,7 @@ export class CensusAPIClient {
 						}
 					};
 
-					console.log('[Census API] ✓ Extracted location signal:', signal);
+					console.debug('[Census API] ✓ Extracted location signal:', signal);
 					resolve(signal);
 				};
 
@@ -397,7 +395,7 @@ export class CensusAPIClient {
 			}
 
 			const data = await response.json();
-			console.log('[Nominatim] Reverse geocoding response:', data);
+			console.debug('[Nominatim] Reverse geocoding response received');
 
 			// Extract address components
 			const address = data?.address;
@@ -544,7 +542,7 @@ export async function getBrowserGeolocation(): Promise<LocationSignal | null> {
 export function getTimezoneLocation(): LocationSignal | null {
 	try {
 		const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-		console.log(`[Location] Detected timezone: ${timezone}`);
+		console.debug(`[Location] Detected timezone: ${timezone}`);
 
 		// Comprehensive timezone to state mapping
 		const timezoneToState: Record<string, string> = {

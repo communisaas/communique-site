@@ -192,7 +192,7 @@ ${options.description}`;
 		data.needs_clarification &&
 		(!data.clarification_questions || data.clarification_questions.length === 0)
 	) {
-		console.log(
+		console.debug(
 			'[subject-line] Agent said needs_clarification but provided no questions - overriding to false'
 		);
 		data.needs_clarification = false;
@@ -200,7 +200,7 @@ ${options.description}`;
 
 	// If agent returned neither clarification questions nor a subject line, retry with explicit instruction
 	if (!data.needs_clarification && !data.subject_line) {
-		console.log(
+		console.debug(
 			'[subject-line] Agent returned empty response - retrying with explicit instruction'
 		);
 
@@ -232,12 +232,12 @@ Generate the output with subject_line, core_message, topics, url_slug, and voice
 		currentInteractionId = retryResponse.id;
 		data.needs_clarification = false; // Force no clarification on retry
 
-		console.log('[subject-line] Retry result:', {
+		console.debug('[subject-line] Retry result:', {
 			has_subject_line: !!data.subject_line
 		});
 	}
 
-	console.log('[subject-line] Result:', {
+	console.debug('[subject-line] Result:', {
 		needs_clarification: data.needs_clarification,
 		question_count: data.clarification_questions?.length ?? 0,
 		has_subject_line: !!data.subject_line

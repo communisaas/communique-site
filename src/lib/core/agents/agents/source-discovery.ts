@@ -163,8 +163,7 @@ export async function discoverSources(
 	const minSources = options.minSources ?? 3;
 	const maxSources = options.maxSources ?? 8;
 
-	console.log('[source-discovery] Starting two-phase source discovery...');
-	console.log('[source-discovery] Topic:', subjectLine);
+	console.debug('[source-discovery] Starting two-phase source discovery...');
 
 	// Build location context for search
 	let locationContext = '';
@@ -207,7 +206,7 @@ Return the sources you find through search.`;
 
 	onPhase?.('discover', 'Searching for credible sources...');
 
-	console.log('[source-discovery] Phase 1: Discovering sources with grounding...');
+	console.debug('[source-discovery] Phase 1: Discovering sources with grounding...');
 
 	interface DiscoveryResponse {
 		search_queries: string[];
@@ -242,7 +241,7 @@ Return the sources you find through search.`;
 	const discovered = extraction.data?.sources || [];
 	const searchQueries = extraction.data?.search_queries || [];
 
-	console.log('[source-discovery] Phase 1 complete:', {
+	console.debug('[source-discovery] Phase 1 complete:', {
 		sourcesFound: discovered.length,
 		queries: searchQueries
 	});
@@ -277,7 +276,7 @@ Return the sources you find through search.`;
 
 	onPhase?.('validate', `Validating ${discovered.length} source URLs...`);
 
-	console.log('[source-discovery] Phase 2: Validating URLs...');
+	console.debug('[source-discovery] Phase 2: Validating URLs...');
 
 	const urls = discovered.map((s) => s.url);
 	const validationResults = await validateUrls(urls);
@@ -315,7 +314,7 @@ Return the sources you find through search.`;
 
 	const latencyMs = Date.now() - startTime;
 
-	console.log('[source-discovery] Phase 2 complete:', {
+	console.debug('[source-discovery] Phase 2 complete:', {
 		discovered: discovered.length,
 		verified: verified.length,
 		failed: failed.length,

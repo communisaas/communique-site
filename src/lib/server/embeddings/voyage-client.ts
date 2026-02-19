@@ -224,7 +224,7 @@ export async function createEmbedding(
 
 	// Log which model is being used for debugging
 	const inputCount = Array.isArray(input) ? input.length : 1;
-	console.log(
+	console.debug(
 		`[Voyage AI] Creating embeddings: model=${model}, inputType=${inputType}, count=${inputCount}${options.contentType ? `, contentType=${options.contentType}` : ''}`
 	);
 
@@ -291,7 +291,7 @@ export async function createBatchEmbeddings(
 	}
 
 	if (showProgress) {
-		console.log(
+		console.debug(
 			`[Voyage AI] Processing ${texts.length} texts in ${batches.length} batches of ${effectiveBatchSize}`
 		);
 	}
@@ -303,7 +303,7 @@ export async function createBatchEmbeddings(
 		const batch = batches[i];
 
 		if (showProgress && i % 10 === 0) {
-			console.log(`[Voyage AI] Processing batch ${i + 1}/${batches.length}...`);
+			console.debug(`[Voyage AI] Processing batch ${i + 1}/${batches.length}...`);
 		}
 
 		const embeddings = await createEmbedding(batch, { model, inputType });
@@ -316,8 +316,8 @@ export async function createBatchEmbeddings(
 	}
 
 	if (showProgress) {
-		console.log(`[Voyage AI] Completed ${texts.length} embeddings`);
-		console.log(`[Voyage AI] Cost stats:`, costTracker.getStats());
+		console.debug(`[Voyage AI] Completed ${texts.length} embeddings`);
+		console.debug(`[Voyage AI] Cost stats:`, costTracker.getStats());
 	}
 
 	return allEmbeddings;
@@ -450,7 +450,7 @@ export async function healthCheck(): Promise<boolean> {
 		// Generate a simple embedding as health check
 		await createEmbedding('test', { model: 'voyage-3-lite' });
 
-		console.log('[Voyage AI] Health check passed');
+		console.debug('[Voyage AI] Health check passed');
 		return true;
 	} catch (error) {
 		console.error('[Voyage AI] Health check failed:', error);

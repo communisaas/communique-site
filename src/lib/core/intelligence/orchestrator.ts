@@ -45,7 +45,7 @@ export class IntelligenceOrchestrator {
 	 */
 	registerProvider(provider: IntelligenceProvider): void {
 		this.providers.set(provider.name, provider);
-		console.log(`[orchestrator] Registered provider: ${provider.name}`);
+		console.debug(`[orchestrator] Registered provider: ${provider.name}`);
 	}
 
 	/**
@@ -76,11 +76,11 @@ export class IntelligenceOrchestrator {
 		const relevantProviders = this.selectProviders(query, categories);
 
 		if (relevantProviders.length === 0) {
-			console.log('[orchestrator] No relevant providers for query');
+			console.debug('[orchestrator] No relevant providers for query');
 			return;
 		}
 
-		console.log(
+		console.debug(
 			`[orchestrator] Using ${relevantProviders.length} providers:`,
 			relevantProviders.map((p) => p.name)
 		);
@@ -103,7 +103,7 @@ export class IntelligenceOrchestrator {
 			)
 		);
 
-		console.log(`[orchestrator] Total items yielded: ${totalYielded}`);
+		console.debug(`[orchestrator] Total items yielded: ${totalYielded}`);
 	}
 
 	/**
@@ -260,12 +260,12 @@ export class IntelligenceOrchestrator {
 
 				// Check max items
 				if (itemCount >= maxItems) {
-					console.log(`[${provider.name}] Max items reached: ${maxItems}`);
+					console.debug(`[${provider.name}] Max items reached: ${maxItems}`);
 					break;
 				}
 			}
 
-			console.log(
+			console.debug(
 				`[${provider.name}] Completed: ${itemCount} items in ${Date.now() - startTime}ms`
 			);
 		} catch (error) {

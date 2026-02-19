@@ -39,7 +39,7 @@ export async function initMainThreadProver(
 	initPromise = (async () => {
 		try {
 			progressCallback?.('loading-wasm', 10);
-			console.log('[MainThreadProver] Loading NoirProver...');
+			console.debug('[MainThreadProver] Loading NoirProver...');
 
 			// Import buffer shim first
 			await import('./buffer-shim');
@@ -51,15 +51,15 @@ export async function initMainThreadProver(
 			// Pass threads config - NoirProver will auto-detect if not specified
 			noirProverInstance = new NoirProver(threads !== undefined ? { threads } : {});
 
-			console.log('[MainThreadProver] Initializing NoirProver...');
+			console.debug('[MainThreadProver] Initializing NoirProver...');
 			await noirProverInstance.init();
 
 			progressCallback?.('generating-keys', 50);
-			console.log('[MainThreadProver] Warming up prover...');
+			console.debug('[MainThreadProver] Warming up prover...');
 			const startTime = performance.now();
 			await noirProverInstance.warmup();
 			const duration = performance.now() - startTime;
-			console.log(`[MainThreadProver] Warmup complete in ${duration.toFixed(0)}ms`);
+			console.debug(`[MainThreadProver] Warmup complete in ${duration.toFixed(0)}ms`);
 
 			progressCallback?.('ready', 100);
 		} catch (error) {
@@ -88,7 +88,7 @@ export async function generateProofMainThread(
 		}
 
 		progressCallback?.('proving', 0);
-		console.log('[MainThreadProver] Starting proof generation (v0.2.0 API)...');
+		console.debug('[MainThreadProver] Starting proof generation (v0.2.0 API)...');
 
 		// Map witness to circuit inputs (v0.2.0 API)
 		// Nullifier is computed IN-CIRCUIT from userSecret + actionDomain + districtId
@@ -110,10 +110,10 @@ export async function generateProofMainThread(
 
 		// Generate proof (nullifier computed in-circuit)
 		const proveStart = performance.now();
-		console.log('[MainThreadProver] Generating proof with UltraHonkBackend...');
+		console.debug('[MainThreadProver] Generating proof with UltraHonkBackend...');
 		const result = await noirProverInstance.prove(circuitInputs);
 		const proveTime = performance.now() - proveStart;
-		console.log(`[MainThreadProver] Proof generation took ${proveTime.toFixed(0)}ms`);
+		console.debug(`[MainThreadProver] Proof generation took ${proveTime.toFixed(0)}ms`);
 
 		progressCallback?.('complete', 100);
 

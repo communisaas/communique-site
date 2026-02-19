@@ -361,7 +361,7 @@ export async function checkBatchRateLimits(
  * ```typescript
  * // In cron job handler
  * const deleted = await cleanupOldRateLimits(2);
- * console.log(`Cleaned up ${deleted} rate limit entries`);
+ * console.debug(`Cleaned up ${deleted} rate limit entries`);
  * ```
  */
 export async function cleanupOldRateLimits(olderThanDays: number = 2): Promise<number> {
@@ -376,7 +376,7 @@ export async function cleanupOldRateLimits(olderThanDays: number = 2): Promise<n
 			}
 		});
 
-		console.log(
+		console.debug(
 			`[RateLimitDB] Cleanup: deleted ${result.count} entries older than ${olderThanDays} days`
 		);
 		return result.count;
@@ -514,7 +514,7 @@ export function pruneLocalCache(): void {
 	}
 
 	if (removedCount > 0) {
-		console.log(`[RateLimitDB] Local cache cleanup: removed ${removedCount} stale entries`);
+		console.debug(`[RateLimitDB] Local cache cleanup: removed ${removedCount} stale entries`);
 	}
 }
 

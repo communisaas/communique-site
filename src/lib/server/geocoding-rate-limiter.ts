@@ -68,7 +68,7 @@ export function checkRateLimit(): RateLimitCheck {
 		state.circuitBreakerOpenedAt &&
 		now - state.circuitBreakerOpenedAt >= CIRCUIT_BREAKER_RESET_TIME_MS
 	) {
-		console.log('[geocoding-rate-limiter] Circuit breaker auto-reset after 24 hours');
+		console.debug('[geocoding-rate-limiter] Circuit breaker auto-reset after 24 hours');
 		state.circuitBreakerOpen = false;
 		state.circuitBreakerOpenedAt = null;
 	}
@@ -178,7 +178,7 @@ export function closeCircuitBreaker(): void {
 	state.circuitBreakerOpen = false;
 	state.circuitBreakerOpenedAt = null;
 
-	console.log(
+	console.debug(
 		'[geocoding-rate-limiter]',
 		JSON.stringify({
 			timestamp: new Date().toISOString(),

@@ -129,7 +129,7 @@ export class EmbeddingSearch {
 		const limitedResults = results.slice(0, limit);
 
 		const endTime = performance.now();
-		console.log(`Search completed in ${(endTime - startTime).toFixed(2)}ms`);
+		console.debug(`[embedding-search] Search completed in ${(endTime - startTime).toFixed(2)}ms`);
 
 		return limitedResults;
 	}

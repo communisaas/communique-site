@@ -49,7 +49,7 @@ export class InMemoryRateLimiter {
 			this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000);
 		}
 
-		console.log('[RateLimiter] In-memory rate limiter initialized');
+		console.debug('[RateLimiter] In-memory rate limiter initialized');
 	}
 
 	/**
@@ -117,7 +117,7 @@ export class InMemoryRateLimiter {
 		}
 
 		if (removedCount > 0) {
-			console.log(`[RateLimiter] Cleanup: removed ${removedCount} expired entries`);
+			console.debug(`[RateLimiter] Cleanup: removed ${removedCount} expired entries`);
 		}
 	}
 
@@ -139,7 +139,7 @@ export class InMemoryRateLimiter {
 			clearInterval(this.cleanupInterval);
 		}
 		this.store.clear();
-		console.log('[RateLimiter] Destroyed');
+		console.debug('[RateLimiter] Destroyed');
 	}
 }
 

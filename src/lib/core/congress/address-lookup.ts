@@ -579,7 +579,7 @@ export class Address {
 			// Fetch all members with pagination
 			const allMembers = await this.fetchAllMembers();
 
-			console.log(`Looking for senators from ${stateAbbr}/${stateFullName}`);
+			console.debug(`[address-lookup] Looking for senators from ${stateAbbr}/${stateFullName}`);
 
 			// Filter for senators from the specific state
 			const senators = allMembers
@@ -618,12 +618,12 @@ export class Address {
 		let offset = 0;
 		const limit = 250; // Max allowed by API
 
-		console.log('Fetching all Congress members with pagination...');
+		console.debug('[address-lookup] Fetching all Congress members with pagination...');
 
 		while (true) {
 			const url = `https://api.congress.gov/v3/member?api_key=${this.congressApiKey}&format=json&currentMember=true&limit=${limit}&offset=${offset}`;
 
-			console.log(`Fetching members offset ${offset}...`);
+			console.debug(`[address-lookup] Fetching members offset ${offset}...`);
 			const response = await this.fetchWithRetry(url, {
 				headers: {
 					'User-Agent': 'Communique/1.0',
@@ -638,7 +638,7 @@ export class Address {
 
 			const data = await response.json();
 			const members = (data.members || []) as unknown[];
-			console.log(`Fetched ${members.length} members at offset ${offset}`);
+			console.debug(`[address-lookup] Fetched ${members.length} members at offset ${offset}`);
 
 			// Filter and validate members before adding
 			const validMembers = members.filter(isCongressMember);
@@ -657,7 +657,7 @@ export class Address {
 			}
 		}
 
-		console.log(`Total members fetched: ${allMembers.length}`);
+		console.debug(`[address-lookup] Total members fetched: ${allMembers.length}`);
 		return allMembers;
 	}
 

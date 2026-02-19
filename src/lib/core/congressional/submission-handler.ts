@@ -173,7 +173,7 @@ async function queueBlockchainSubmission(
 				}
 			});
 
-			console.log('[SubmissionHandler] Blockchain verification successful:', {
+			console.debug('[SubmissionHandler] Blockchain verification successful:', {
 				submissionId,
 				txHash: result.txHash
 			});

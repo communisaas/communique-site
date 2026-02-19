@@ -219,7 +219,7 @@ async function executeWithFunctionCalling(
 				});
 				functionCallUsages.push(extractTokenUsage(finalResponse));
 				const salvaged = finalResponse.text || lastTextResponse || '{}';
-				console.log(`[gemini-provider] Forced output after abort: ${salvaged.length} chars`);
+				console.debug(`[gemini-provider] Forced output after abort: ${salvaged.length} chars`);
 				return { text: salvaged, tokenUsage: sumTokenUsage(...functionCallUsages) };
 			} catch (e) {
 				console.warn('[gemini-provider] Forced output after abort failed:', e);
@@ -234,10 +234,10 @@ async function executeWithFunctionCalling(
 		const effectiveConfig = forceOutput ? configWithoutTools : configWithTools;
 
 		if (forceOutput && toolContext) {
-			console.log(`[gemini-provider] Forcing output — iteration ${iterations}/${MAX_FUNCTION_CALL_ITERATIONS}, searches: ${toolContext.searchCount}/${toolContext.maxSearches}, reads: ${toolContext.pageReadCount}/${toolContext.maxPageReads}`);
+			console.debug(`[gemini-provider] Forcing output — iteration ${iterations}/${MAX_FUNCTION_CALL_ITERATIONS}, searches: ${toolContext.searchCount}/${toolContext.maxSearches}, reads: ${toolContext.pageReadCount}/${toolContext.maxPageReads}`);
 		}
 
-		console.log(`[gemini-provider] Function calling iteration ${iterations}/${MAX_FUNCTION_CALL_ITERATIONS}`);
+		console.debug(`[gemini-provider] Function calling iteration ${iterations}/${MAX_FUNCTION_CALL_ITERATIONS}`);
 
 		try {
 			const response = await ai.models.generateContent({
@@ -269,7 +269,7 @@ async function executeWithFunctionCalling(
 			const functionCalls = response.functionCalls;
 
 			if (functionCalls && functionCalls.length > 0) {
-				console.log(`[gemini-provider] Received ${functionCalls.length} function call(s):`,
+				console.debug(`[gemini-provider] Received ${functionCalls.length} function call(s):`,
 					functionCalls.map(fc => fc.name).filter(Boolean));
 
 				// Add the model's response (with function calls) to history
@@ -293,7 +293,7 @@ async function executeWithFunctionCalling(
 								emitter,
 								toolContext
 							);
-							console.log(`[gemini-provider] Function ${functionCall.name} completed successfully`);
+							console.debug(`[gemini-provider] Function ${functionCall.name} completed successfully`);
 							return { name: functionCall.name!, response: result };
 						} catch (error) {
 							console.error(`[gemini-provider] Function ${functionCall.name} failed:`, error);
@@ -332,7 +332,7 @@ async function executeWithFunctionCalling(
 
 			// No function calls - this is the final response
 			const finalText = response.text || '';
-			console.log(`[gemini-provider] Function calling complete after ${iterations} iteration(s)`);
+			console.debug(`[gemini-provider] Function calling complete after ${iterations} iteration(s)`);
 
 			return { text: finalText, tokenUsage: sumTokenUsage(...functionCallUsages) };
 
@@ -358,7 +358,7 @@ async function executeWithFunctionCalling(
 		functionCallUsages.push(extractTokenUsage(finalResponse));
 
 		const finalText = finalResponse.text || lastTextResponse || '{}';
-		console.log(`[gemini-provider] Forced final output: ${finalText.length} chars`);
+		console.debug(`[gemini-provider] Forced final output: ${finalText.length} chars`);
 		return { text: finalText, tokenUsage: sumTokenUsage(...functionCallUsages) };
 	} catch (error) {
 		// Even the forced call failed — return accumulated text or empty JSON
@@ -393,7 +393,7 @@ async function resolveIdentitiesFromSearch(
 		r.search_query || `${r.position} ${r.organization} ${currentYear}`
 	);
 
-	console.log(`[gemini-provider] Phase 2a: ${queries.length} parallel identity searches`);
+	console.debug(`[gemini-provider] Phase 2a: ${queries.length} parallel identity searches`);
 
 	// 2. Parallel Exa searches — rate limiter handles throttling
 	const searchResults = await Promise.allSettled(
@@ -415,7 +415,7 @@ async function resolveIdentitiesFromSearch(
 	});
 
 	const totalHits = roleResults.reduce((sum, rr) => sum + rr.hits.length, 0);
-	console.log(`[gemini-provider] Phase 2a: ${totalHits} total search hits across ${roles.length} roles`);
+	console.debug(`[gemini-provider] Phase 2a: ${totalHits} total search hits across ${roles.length} roles`);
 
 	if (signal?.aborted) {
 		console.warn('[gemini-provider] Phase 2a aborted after searches');
@@ -429,7 +429,7 @@ async function resolveIdentitiesFromSearch(
 	const extractionPrompt = buildIdentityExtractionPrompt(roleResults);
 	const systemPrompt = IDENTITY_EXTRACTION_PROMPT.replace(/{CURRENT_DATE}/g, currentDate);
 
-	console.log('[gemini-provider] Phase 2a: Identity extraction call');
+	console.debug('[gemini-provider] Phase 2a: Identity extraction call');
 
 	const extractionResult = await generateWithThoughts<IdentityResolutionResponse>(
 		extractionPrompt,
@@ -449,7 +449,7 @@ async function resolveIdentitiesFromSearch(
 
 	if (isSuccessfulExtraction(extraction) && extraction.data?.identities?.length > 0) {
 		const identities = extraction.data.identities;
-		console.log(`[gemini-provider] Phase 2a extracted ${identities.length} identities:`,
+		console.debug(`[gemini-provider] Phase 2a extracted ${identities.length} identities:`,
 			identities.map(id => `${id.name} (${id.title} at ${id.organization})`));
 		return { identities, tokenUsage: extractionResult.tokenUsage };
 	}
@@ -522,7 +522,7 @@ async function huntSingleContact(
 
 	const userPrompt = buildSingleContactPrompt(identity, reasoning);
 
-	console.log(`[gemini-provider] Mini-agent [${identity.name}]: starting (${MAX_SEARCHES} search${MAX_SEARCHES > 1 ? 'es' : ''}, ${MAX_PAGE_READS} reads${isUnknown ? ', identity resolution mode' : ''})`);
+	console.debug(`[gemini-provider] Mini-agent [${identity.name}]: starting (${MAX_SEARCHES} search${MAX_SEARCHES > 1 ? 'es' : ''}, ${MAX_PAGE_READS} reads${isUnknown ? ', identity resolution mode' : ''})`);
 
 	const result = await executeWithFunctionCalling(
 		userPrompt,
@@ -538,7 +538,7 @@ async function huntSingleContact(
 		signal
 	);
 
-	console.log(`[gemini-provider] Mini-agent [${identity.name}]: done — ${toolContext.searchCount} searches, ${toolContext.pageReadCount} reads`);
+	console.debug(`[gemini-provider] Mini-agent [${identity.name}]: done — ${toolContext.searchCount} searches, ${toolContext.pageReadCount} reads`);
 
 	// Parse the mini-agent's JSON output
 	const extraction = extractJsonFromGroundingResponse<PersonLookupResponse>(result.text || '{}');
@@ -627,7 +627,7 @@ async function huntContactsParallel(
 		}
 	}
 
-	console.log(`[gemini-provider] Phase 2b: ${cachedCandidates.length} cached, ${uncached.length} uncached → launching ${uncached.length} parallel mini-agents`);
+	console.debug(`[gemini-provider] Phase 2b: ${cachedCandidates.length} cached, ${uncached.length} uncached → launching ${uncached.length} parallel mini-agents`);
 
 	// Emit cached contacts immediately — no agent call needed
 	if (onCandidateProcessed) {
@@ -673,7 +673,7 @@ async function huntContactsParallel(
 		}
 	}
 
-	console.log(`[gemini-provider] Phase 2b merged: ${allCandidates.length} candidates, ${mergedPages.size} pages`);
+	console.debug(`[gemini-provider] Phase 2b merged: ${allCandidates.length} candidates, ${mergedPages.size} pages`);
 
 	return {
 		candidates: allCandidates,
@@ -701,9 +701,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 		const { subjectLine, coreMessage, topics, voiceSample, streaming } = context;
 		const tokenUsages: (TokenUsage | undefined)[] = [];
 
-		console.log('[gemini-provider] Starting parallel resolution...');
-		console.log('[gemini-provider] Target type:', context.targetType);
-		console.log('[gemini-provider] Subject:', subjectLine);
+		console.debug('[gemini-provider] Starting parallel resolution...');
 
 		try {
 			// ================================================================
@@ -714,7 +712,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			const rolePrompt = buildRoleDiscoveryPrompt(subjectLine, coreMessage, topics, voiceSample);
 
-			console.log('[gemini-provider] Phase 1: Discovering roles with thoughts...');
+			console.debug('[gemini-provider] Phase 1: Discovering roles with thoughts...');
 
 			const roleResult = await generateWithThoughts<RoleDiscoveryResponse>(
 				rolePrompt,
@@ -744,7 +742,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			const roles: DiscoveredRole[] = extraction.data?.roles || [];
 
-			console.log('[gemini-provider] Phase 1 complete:', {
+			console.debug('[gemini-provider] Phase 1 complete:', {
 				rolesFound: roles.length,
 				positions: roles.map((r) => `${r.position} at ${r.organization}`)
 			});
@@ -783,7 +781,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			tokenUsages.push(identityResult.tokenUsage);
 			const identities = identityResult.identities;
 
-			console.log(`[gemini-provider] Phase 2a complete: ${identities.length} identities`);
+			console.debug(`[gemini-provider] Phase 2a complete: ${identities.length} identities`);
 
 			// ================================================================
 			// Cache Lookup — Pre-populate known emails
@@ -797,7 +795,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			if (cachedContacts.length > 0) {
 				const withEmail = cachedContacts.filter(c => c.email);
-				console.log(`[gemini-provider] Cache hit: ${withEmail.length} contacts pre-populated`);
+				console.debug(`[gemini-provider] Cache hit: ${withEmail.length} contacts pre-populated`);
 			}
 
 			// Emit identity placeholders to UI — cards appear before contact hunting starts
@@ -878,7 +876,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				research_summary: `Searched for ${identities.length} decision-makers across ${contactResult.fetchedPages.size} pages.`
 			};
 			const pageContents = Array.from(contactResult.fetchedPages.values());
-			console.log('[gemini-provider] Contact hunting results:', {
+			console.debug('[gemini-provider] Contact hunting results:', {
 				candidatesFound: data.decision_makers?.length || 0,
 				pagesRead: pageContents.length
 			});
@@ -892,7 +890,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			const latencyMs = Date.now() - startTime;
 
 			if (processed.length === 0) {
-				console.log('[gemini-provider] No decision-makers found after processing');
+				console.debug('[gemini-provider] No decision-makers found after processing');
 				streaming?.onPhase?.('complete', 'No verified decision-makers found');
 				return {
 					decisionMakers: [],
@@ -906,7 +904,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				};
 			}
 
-			console.log(`[gemini-provider] Parallel resolution complete in ${latencyMs}ms:`, {
+			console.debug(`[gemini-provider] Parallel resolution complete in ${latencyMs}ms:`, {
 				rolesDiscovered: roles.length,
 				identitiesResolved: identities.filter(id => id.name !== 'UNKNOWN').length,
 				cacheHits: cachedContacts.filter(c => c.email).length,
@@ -923,7 +921,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			const withGroundedEmail = processed.filter((dm) => dm.emailGrounded === true);
 			const withUngroundedEmail = withEmail.filter((dm) => dm.emailGrounded === false);
 
-			console.log(`[gemini-provider] Email grounding summary:`, {
+			console.debug(`[gemini-provider] Email grounding summary:`, {
 				total: processed.length,
 				withEmail: withEmail.length,
 				groundedEmails: withGroundedEmail.length,
@@ -934,7 +932,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			// Keep the candidate, just remove the unverified email.
 			const filtered = processed.map(dm => {
 				if (dm.email && dm.emailGrounded !== true) {
-					console.log(`[gemini-provider] Stripping ungrounded email for ${dm.name}: ${dm.email}`);
+					console.debug(`[gemini-provider] Stripping ungrounded email for ${dm.name}: ${dm.email}`);
 					return { ...dm, email: undefined, emailGrounded: undefined };
 				}
 				return dm;
@@ -948,7 +946,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 				if (!dm.email) continue;
 				const lower = dm.email.toLowerCase();
 				if (seenEmails.has(lower)) {
-					console.log(`[gemini-provider] Dedup: stripping shared email ${dm.email} from ${dm.name} (already assigned)`);
+					console.debug(`[gemini-provider] Dedup: stripping shared email ${dm.email} from ${dm.name} (already assigned)`);
 					dm.email = undefined;
 					dm.emailGrounded = undefined;
 					dm.emailSource = undefined;
@@ -960,7 +958,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 
 			const withVerifiedEmail = filtered.filter(dm => dm.email);
 			const withoutEmail = filtered.filter(dm => !dm.email);
-			console.log(`[gemini-provider] Returning ${filtered.length} candidates: ${withVerifiedEmail.length} with verified email, ${withoutEmail.length} without email`);
+			console.debug(`[gemini-provider] Returning ${filtered.length} candidates: ${withVerifiedEmail.length} with verified email, ${withoutEmail.length} without email`);
 
 			// Cache write — fire-and-forget, never blocks the response
 			upsertResolvedContacts(
@@ -1033,7 +1031,7 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			.filter((c) => {
 				const nameLower = (c.name || '').toLowerCase().trim();
 				if (!nameLower || nameLower === 'unknown' || nameLower === 'n/a') {
-					console.log(`[gemini-provider] Dropping unnamed candidate: ${c.title} at ${c.organization}`);
+					console.debug(`[gemini-provider] Dropping unnamed candidate: ${c.title} at ${c.organization}`);
 					return false;
 				}
 				return true;
@@ -1084,9 +1082,9 @@ export class GeminiDecisionMakerProvider implements DecisionMakerProvider {
 			}
 
 			if (emailGrounded) {
-				console.log(`[gemini-provider] ✓ Email VERIFIED for ${candidate.name}: ${candidate.email} from ${emailSource}`);
+				console.debug(`[gemini-provider] Email VERIFIED for ${candidate.name}: ${candidate.email} from ${emailSource}`);
 			} else {
-				console.log(`[gemini-provider] ✗ Email NOT verified for ${candidate.name}: ${candidate.email} (not found in page content)`);
+				console.debug(`[gemini-provider] Email NOT verified for ${candidate.name}: ${candidate.email} (not found in page content)`);
 			}
 		}
 

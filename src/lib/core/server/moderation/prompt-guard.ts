@@ -110,7 +110,7 @@ export async function detectPromptInjection(
 	const latencyMs = Date.now() - startTime;
 	const safe = score < threshold;
 
-	console.log(`[prompt-guard] Detection complete in ${latencyMs}ms:`, {
+	console.debug(`[prompt-guard] Detection complete in ${latencyMs}ms:`, {
 		safe,
 		score: score.toFixed(4),
 		threshold

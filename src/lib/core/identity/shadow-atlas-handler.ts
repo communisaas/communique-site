@@ -162,7 +162,7 @@ export async function registerTwoTree(
 		// Step 4: Store encrypted in IndexedDB
 		await storeSessionCredential(sessionCredential);
 
-		console.log('[Shadow Atlas] Two-tree registration successful:', {
+		console.debug('[Shadow Atlas] Two-tree registration successful:', {
 			userId: request.userId,
 			leafIndex: tree1Data.leafIndex,
 			districts: tree2Data.districts.length,
@@ -278,7 +278,7 @@ export async function recoverTwoTree(
 		// Step 4: Store encrypted in IndexedDB
 		await storeSessionCredential(sessionCredential);
 
-		console.log('[Shadow Atlas] Two-tree recovery successful:', {
+		console.debug('[Shadow Atlas] Two-tree recovery successful:', {
 			userId: request.userId,
 			leafIndex: tree1Data.leafIndex,
 			districts: tree2Data.districts.length,

@@ -120,8 +120,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 	const startTime = Date.now();
 	const { subjectLine, coreMessage, topics, decisionMakers, onThought, onPhase } = options;
 
-	console.log('[message-writer] Starting two-phase message generation...');
-	console.log('[message-writer] Subject:', subjectLine);
+	console.debug('[message-writer] Starting two-phase message generation...');
 
 	// ====================================================================
 	// Phase 1: Source Discovery (skip if pre-verified sources provided)
@@ -134,7 +133,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 	if (verifiedSources.length === 0) {
 		onPhase?.('sources', 'Discovering and verifying sources...');
 
-		console.log('[message-writer] Phase 1: Discovering sources...');
+		console.debug('[message-writer] Phase 1: Discovering sources...');
 
 		const sourceResult = await discoverSources({
 			coreMessage,
@@ -155,7 +154,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 		actualSearchQueries = sourceResult.searchQueries; // Capture REAL search queries
 		sourceTokenUsage = sourceResult.tokenUsage;
 
-		console.log('[message-writer] Phase 1 complete:', {
+		console.debug('[message-writer] Phase 1 complete:', {
 			discovered: sourceResult.discovered.length,
 			verified: verifiedSources.length,
 			failed: sourceResult.failed.length,
@@ -178,7 +177,7 @@ export async function generateMessage(options: GenerateMessageOptions): Promise<
 			);
 		}
 	} else {
-		console.log('[message-writer] Using pre-verified sources:', verifiedSources.length);
+		console.debug('[message-writer] Using pre-verified sources:', verifiedSources.length);
 	}
 
 	// ====================================================================
@@ -242,7 +241,7 @@ Find the emotional truth in the input above. Build a message that:
 
 The stranger who shares this link should think "I need to send that too." Every sender should feel "this is exactly what I wanted to say."`;
 
-	console.log('[message-writer] Phase 2: Generating message with verified sources...');
+	console.debug('[message-writer] Phase 2: Generating message with verified sources...');
 
 	// Generate WITHOUT grounding — we already have verified sources
 	// This prevents the model from hallucinating additional URLs
@@ -276,7 +275,7 @@ The stranger who shares this link should think "I need to send that too." Every 
 		throw new Error('Message generation hit a snag. Please try again.');
 	}
 
-	console.log('[message-writer] Extracted data keys:', Object.keys(extraction.data || {}));
+	console.debug('[message-writer] Extracted data keys:', Object.keys(extraction.data || {}));
 
 	// Validate with Zod
 	const validationResult = MessageResponseSchema.safeParse(extraction.data);
@@ -314,7 +313,7 @@ The stranger who shares this link should think "I need to send that too." Every 
 		tokenUsage: sumTokenUsage(sourceTokenUsage, messageTokenUsage),
 	};
 
-	console.log('[message-writer] Two-phase generation complete', {
+	console.debug('[message-writer] Two-phase generation complete', {
 		messageLength: data.message.length,
 		verifiedSources: verifiedSourcesForOutput.length,
 		latencyMs,

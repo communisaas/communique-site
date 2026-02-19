@@ -256,7 +256,7 @@ async function handleSearchWebToolCall(
 
 	// Budget check
 	if (context.searchCount >= context.maxSearches) {
-		console.log(`[decision-maker] search_web budget exhausted (${context.maxSearches} used)`);
+		console.debug(`[decision-maker] search_web budget exhausted (${context.maxSearches} used)`);
 		return {
 			success: false,
 			query,
@@ -328,7 +328,7 @@ async function handleReadPageToolCall(
 
 	// Budget check
 	if (context.pageReadCount >= context.maxPageReads) {
-		console.log(`[decision-maker] read_page budget exhausted (${context.maxPageReads} used)`);
+		console.debug(`[decision-maker] read_page budget exhausted (${context.maxPageReads} used)`);
 		return {
 			success: false,
 			url,
@@ -469,7 +469,7 @@ function emitDocumentCitations(
 		});
 	}
 
-	console.log(`[decision-maker] Emitted ${citations.length} document citations with color: ${color}`);
+	console.debug(`[decision-maker] Emitted ${citations.length} document citations with color: ${color}`);
 }
 
 // ============================================================================
@@ -492,7 +492,7 @@ export async function processGeminiFunctionCall(
 	emitter: ThoughtEmitter,
 	context?: AgenticToolContext
 ): Promise<unknown> {
-	console.log(`[decision-maker] Processing function call: ${functionCall.name}`);
+	console.debug(`[decision-maker] Processing function call: ${functionCall.name}`);
 
 	switch (functionCall.name) {
 		case 'analyze_document': {

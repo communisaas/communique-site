@@ -118,6 +118,6 @@ export async function upsertResolvedContacts(
 	if (failed.length > 0) {
 		console.warn(`[contact-cache] ${failed.length}/${contacts.length} upserts failed`);
 	} else {
-		console.log(`[contact-cache] Cached ${contacts.length} contacts (TTL: ${CACHE_TTL_DAYS}d)`);
+		console.debug(`[contact-cache] Cached ${contacts.length} contacts (TTL: ${CACHE_TTL_DAYS}d)`);
 	}
 }

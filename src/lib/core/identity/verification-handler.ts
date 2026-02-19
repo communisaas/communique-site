@@ -143,7 +143,7 @@ export async function handleVerificationComplete(
 		// Step 6: Cache session credential in IndexedDB
 		await storeSessionCredential(sessionCredential);
 
-		console.log('[Verification] Complete flow successful:', {
+		console.debug('[Verification] Complete flow successful:', {
 			userId,
 			method: verificationResult.method,
 			blobId,
@@ -198,7 +198,7 @@ export async function checkVerificationStatus(userId: string): Promise<SessionCr
 		const now = new Date();
 
 		if (expiresAt < now) {
-			console.log('[Verification] Session expired for user:', userId);
+			console.debug('[Verification] Session expired for user:', userId);
 			return null;
 		}
 
@@ -218,7 +218,7 @@ export async function clearVerificationSession(userId: string): Promise<void> {
 	try {
 		const { deleteSessionCredential } = await import('./session-cache');
 		await deleteSessionCredential(userId);
-		console.log('[Verification] Session cleared for user:', userId);
+		console.debug('[Verification] Session cleared for user:', userId);
 	} catch (error) {
 		console.error('[Verification] Session clear failed:', error);
 		throw error;

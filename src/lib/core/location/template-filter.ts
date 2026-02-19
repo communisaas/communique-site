@@ -417,7 +417,7 @@ export class ClientSideTemplateFilter {
 		if (score > 0 && this.selectedScope && matchLevel === this.selectedScope) {
 			// Boost templates matching the selected breadcrumb level by 30%
 			const boostedScore = Math.min(1.0, score * 1.3);
-			console.log('[TemplateFilter] 🎯 Breadcrumb boost applied:', {
+			console.debug('[TemplateFilter] 🎯 Breadcrumb boost applied:', {
 				matchLevel,
 				selectedScope: this.selectedScope,
 				baseScore,
@@ -485,7 +485,7 @@ export class ClientSideTemplateFilter {
 		// Apply breadcrumb scope boost
 		if (score > 0 && this.selectedScope && geographicScope === this.selectedScope) {
 			const boostedScore = Math.min(1.0, score * 1.3);
-			console.log('[TemplateFilter] 🎯 Scope breadcrumb boost applied:', {
+			console.debug('[TemplateFilter] 🎯 Scope breadcrumb boost applied:', {
 				matchLevel,
 				geographicScope,
 				selectedScope: this.selectedScope,

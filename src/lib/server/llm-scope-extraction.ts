@@ -127,7 +127,7 @@ Return JSON matching this schema:
 		};
 
 		// Structured logging for monitoring
-		console.log(
+		console.debug(
 			'[llm-extraction]',
 			JSON.stringify({
 				timestamp: new Date().toISOString(),

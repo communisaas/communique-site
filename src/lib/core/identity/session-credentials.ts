@@ -203,14 +203,14 @@ async function getDB(): Promise<IDBPDatabase<SessionCredentialDB>> {
 				// Index for expiration queries
 				store.createIndex('by-expires', 'expiresAt');
 
-				console.log('[Session Credentials] Database initialized');
+				console.debug('[Session Credentials] Database initialized');
 			}
 
 			if (oldVersion < 2) {
 				// Version 2: Added encryption support
 				// No schema changes needed - we store encrypted data in the same store
 				// Migration happens lazily on read/write
-				console.log('[Session Credentials] Upgraded to v2 (encryption support)');
+				console.debug('[Session Credentials] Upgraded to v2 (encryption support)');
 			}
 		},
 		blocked() {
@@ -305,7 +305,7 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 
 		await db.put(STORE_NAME, storedCredential);
 
-		console.log('[Session Credentials] Stored (encrypted):', {
+		console.debug('[Session Credentials] Stored (encrypted):', {
 			userId: credential.userId,
 			district: credential.congressionalDistrict,
 			expiresAt: normalizedCredential.expiresAt.toISOString()
@@ -333,7 +333,7 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 		const stored = await db.get(STORE_NAME, userId);
 
 		if (!stored) {
-			console.log('[Session Credentials] Not found:', { userId });
+			console.debug('[Session Credentials] Not found:', { userId });
 			return null;
 		}
 
@@ -341,7 +341,7 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 		const now = new Date();
 		const expiresAt = stored.expiresAt instanceof Date ? stored.expiresAt : new Date(stored.expiresAt);
 		if (expiresAt < now) {
-			console.log('[Session Credentials] Expired, auto-clearing:', {
+			console.debug('[Session Credentials] Expired, auto-clearing:', {
 				userId,
 				expiredAt: expiresAt.toISOString()
 			});
@@ -373,14 +373,14 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 				storeSessionCredential(credential).catch((error) => {
 					console.error('[Session Credentials] Migration failed:', error);
 				});
-				console.log('[Session Credentials] Migrating to encrypted format:', { userId });
+				console.debug('[Session Credentials] Migrating to encrypted format:', { userId });
 			}
 		} else {
 			console.error('[Session Credentials] Invalid stored format:', { userId });
 			return null;
 		}
 
-		console.log('[Session Credentials] Retrieved:', {
+		console.debug('[Session Credentials] Retrieved:', {
 			userId,
 			district: credential.congressionalDistrict,
 			remainingDays: Math.floor(
@@ -416,7 +416,7 @@ export async function clearSessionCredential(userId: string): Promise<void> {
 	try {
 		const db = await getDB();
 		await db.delete(STORE_NAME, userId);
-		console.log('[Session Credentials] Cleared:', { userId });
+		console.debug('[Session Credentials] Cleared:', { userId });
 	} catch (error) {
 		console.error('[Session Credentials] Clear failed:', error);
 		throw new Error('Failed to clear session credential');
@@ -451,7 +451,7 @@ export async function clearExpiredCredentials(): Promise<number> {
 		await tx.done;
 
 		if (expiredKeys.length > 0) {
-			console.log('[Session Credentials] Cleared expired credentials:', {
+			console.debug('[Session Credentials] Cleared expired credentials:', {
 				count: expiredKeys.length,
 				userIds: expiredKeys
 			});
@@ -478,7 +478,7 @@ export async function clearExpiredCredentials(): Promise<number> {
  */
 export async function migrateToEncrypted(): Promise<number> {
 	if (!isEncryptionAvailable()) {
-		console.log('[Session Credentials] Encryption unavailable, skipping migration');
+		console.debug('[Session Credentials] Encryption unavailable, skipping migration');
 		return 0;
 	}
 
@@ -506,7 +506,7 @@ export async function migrateToEncrypted(): Promise<number> {
 		}
 
 		if (migratedCount > 0) {
-			console.log(`[Session Credentials] Migrated ${migratedCount} credentials to encrypted storage`);
+			console.debug(`[Session Credentials] Migrated ${migratedCount} credentials to encrypted storage`);
 		}
 
 		return migratedCount;

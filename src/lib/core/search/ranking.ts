@@ -76,7 +76,7 @@ export class TemplateRanker {
 		});
 
 		const endTime = performance.now();
-		console.log(`Ranking completed in ${(endTime - startTime).toFixed(2)}ms`);
+		console.debug(`[ranking] Ranking completed in ${(endTime - startTime).toFixed(2)}ms`);
 
 		return rankedResults;
 	}

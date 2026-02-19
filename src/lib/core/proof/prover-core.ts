@@ -80,13 +80,13 @@ export async function initializeWasmProver(
 
 		// Pre-generate proving key (expensive, but cached)
 		progressCallback?.('generating-keys', 50);
-		console.log('[ProverCore] Starting warmup...');
+		console.debug('[ProverCore] Starting warmup...');
 		const startTime = performance.now();
 
 		await proverInstance.warmup();
 
 		const duration = performance.now() - startTime;
-		console.log(`[ProverCore] Warmup complete in ${duration.toFixed(0)}ms`);
+		console.debug(`[ProverCore] Warmup complete in ${duration.toFixed(0)}ms`);
 
 		progressCallback?.('ready', 100);
 		return proverInstance;
@@ -114,7 +114,7 @@ export async function generateZkProof(
 		}
 
 		progressCallback?.('proving', 0);
-		console.log('[ProverCore] Starting proof generation (v0.2.0 API)...');
+		console.debug('[ProverCore] Starting proof generation (v0.2.0 API)...');
 
 		// Map witness to circuit inputs (v0.2.0 API)
 		const circuitInputs: CircuitInputs = {
@@ -137,7 +137,7 @@ export async function generateZkProof(
 		const proveStart = performance.now();
 		const result = await proverInstance.prove(circuitInputs);
 		const proveTime = performance.now() - proveStart;
-		console.log(`[ProverCore] Proof generation took ${proveTime.toFixed(0)}ms`);
+		console.debug(`[ProverCore] Proof generation took ${proveTime.toFixed(0)}ms`);
 
 		progressCallback?.('complete', 100);
 

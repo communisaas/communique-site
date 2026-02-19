@@ -36,13 +36,13 @@ const GuestStateSchema = z.object({
 export async function invalidateLocationCaches(): Promise<void> {
 	if (!browser) return;
 
-	console.log('[CacheInvalidation] Clearing location caches...');
+	console.debug('[CacheInvalidation] Clearing location caches...');
 
 	try {
 		// Clear location storage (location signals, inferred location)
 		const { locationStorage } = await import('$lib/core/location/storage');
 		await locationStorage.clearAll();
-		console.log('[CacheInvalidation] Cleared location storage');
+		console.debug('[CacheInvalidation] Cleared location storage');
 	} catch (error) {
 		console.error('[CacheInvalidation] Failed to clear location storage:', error);
 	}
@@ -64,7 +64,7 @@ export async function invalidateLocationCaches(): Promise<void> {
 			} else if (validationResult.data.address) {
 				delete validationResult.data.address;
 				localStorage.setItem(GUEST_STATE_KEY, JSON.stringify(validationResult.data));
-				console.log('[CacheInvalidation] Cleared guest state address');
+				console.debug('[CacheInvalidation] Cleared guest state address');
 			}
 		}
 	} catch (error) {
@@ -79,18 +79,18 @@ export async function invalidateLocationCaches(): Promise<void> {
 export async function invalidateSessionCredentials(userId?: string): Promise<void> {
 	if (!browser) return;
 
-	console.log('[CacheInvalidation] Clearing session credentials...');
+	console.debug('[CacheInvalidation] Clearing session credentials...');
 
 	try {
 		if (userId) {
 			// Clear specific user's credentials
 			const { deleteSessionCredential } = await import('$lib/core/identity/session-cache');
 			await deleteSessionCredential(userId);
-			console.log('[CacheInvalidation] Cleared session credential for user:', userId);
+			console.debug('[CacheInvalidation] Cleared session credential for user:', userId);
 		} else {
 			// Clear all session credentials (nuclear option)
 			await clearDatabase(SESSION_DB_NAME);
-			console.log('[CacheInvalidation] Cleared all session credentials');
+			console.debug('[CacheInvalidation] Cleared all session credentials');
 		}
 	} catch (error) {
 		console.error('[CacheInvalidation] Failed to clear session credentials:', error);
@@ -104,7 +104,7 @@ export async function invalidateSessionCredentials(userId?: string): Promise<voi
 export async function clearAllClientCaches(): Promise<void> {
 	if (!browser) return;
 
-	console.log('[CacheInvalidation] Clearing ALL client caches...');
+	console.debug('[CacheInvalidation] Clearing ALL client caches...');
 
 	// Clear location storage
 	await invalidateLocationCaches();
@@ -115,7 +115,7 @@ export async function clearAllClientCaches(): Promise<void> {
 	// Clear guest state entirely
 	try {
 		localStorage.removeItem(GUEST_STATE_KEY);
-		console.log('[CacheInvalidation] Cleared guest state');
+		console.debug('[CacheInvalidation] Cleared guest state');
 	} catch (error) {
 		console.error('[CacheInvalidation] Failed to clear guest state:', error);
 	}
@@ -131,12 +131,12 @@ export async function clearAllClientCaches(): Promise<void> {
 			}
 		}
 		keysToRemove.forEach((key) => localStorage.removeItem(key));
-		console.log('[CacheInvalidation] Cleared localStorage items:', keysToRemove);
+		console.debug('[CacheInvalidation] Cleared localStorage items:', keysToRemove);
 	} catch (error) {
 		console.error('[CacheInvalidation] Failed to clear localStorage:', error);
 	}
 
-	console.log('[CacheInvalidation] All client caches cleared');
+	console.debug('[CacheInvalidation] All client caches cleared');
 }
 
 /**
@@ -146,7 +146,7 @@ async function clearDatabase(dbName: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		const request = indexedDB.deleteDatabase(dbName);
 		request.onsuccess = () => {
-			console.log(`[CacheInvalidation] Deleted database: ${dbName}`);
+			console.debug(`[CacheInvalidation] Deleted database: ${dbName}`);
 			resolve();
 		};
 		request.onerror = () => {

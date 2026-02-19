@@ -145,7 +145,7 @@ export async function bindIdentityCommitment(
 
 	if (existingUser && existingUser.id !== currentUserId) {
 		// Commitment belongs to different user - merge accounts
-		console.log(
+		console.debug(
 			`[IdentityBinding] Detected duplicate identity. Merging user ${currentUserId} into ${existingUser.id}`
 		);
 
@@ -193,7 +193,7 @@ export async function bindIdentityCommitment(
 		}
 	});
 
-	console.log(`[IdentityBinding] Bound identity commitment to user ${currentUserId}`);
+	console.debug(`[IdentityBinding] Bound identity commitment to user ${currentUserId}`);
 
 	return {
 		success: true,
@@ -281,7 +281,7 @@ async function mergeAccounts(sourceUserId: string, targetUserId: string): Promis
 		return { accountsMoved: accountCount, sourceDeleted: true };
 	});
 
-	console.log(
+	console.debug(
 		`[IdentityBinding] Merged user ${sourceUserId} into ${targetUserId}: ${result.accountsMoved} accounts moved`
 	);
 

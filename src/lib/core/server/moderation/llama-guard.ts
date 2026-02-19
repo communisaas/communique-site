@@ -134,14 +134,14 @@ export async function classifySafety(content: string): Promise<SafetyResult> {
 
 	// Log all hazards but only reject on blocking ones
 	if (hazards.length > 0) {
-		console.log(`[llama-guard] Classification complete in ${latencyMs}ms:`, {
+		console.debug(`[llama-guard] Classification complete in ${latencyMs}ms:`, {
 			safe,
 			all_hazards: hazards,
 			blocking_hazards,
 			tokens: data.usage?.total_tokens
 		});
 	} else {
-		console.log(`[llama-guard] Classification complete in ${latencyMs}ms: safe`);
+		console.debug(`[llama-guard] Classification complete in ${latencyMs}ms: safe`);
 	}
 
 	return {

@@ -496,7 +496,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 	const nullifier = params.publicInputs[PUBLIC_INPUT_INDEX.NULLIFIER];
 	const actionDomain = params.publicInputs[PUBLIC_INPUT_INDEX.ACTION_DOMAIN];
 
-	console.log('[DistrictGateClient] Submitting verifyTwoTreeProof:', {
+	console.debug('[DistrictGateClient] Submitting verifyTwoTreeProof:', {
 		signer: wallet.address,
 		verifierDepth: params.verifierDepth,
 		deadline,
@@ -521,7 +521,7 @@ export async function verifyOnChain(params: VerifyParams): Promise<VerifyResult>
 		// Wave 15a: Record success for circuit breaker
 		recordRpcSuccess();
 
-		console.log('[DistrictGateClient] Verification confirmed:', {
+		console.debug('[DistrictGateClient] Verification confirmed:', {
 			txHash: receipt.hash,
 			blockNumber: receipt.blockNumber,
 			gasUsed: receipt.gasUsed.toString()

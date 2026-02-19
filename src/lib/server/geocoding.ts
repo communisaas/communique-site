@@ -258,7 +258,7 @@ export async function geocodeLocation(
 	const addressParts = parseAddress(locationText);
 
 	if (!addressParts) {
-		console.log('[geocoding] Could not parse address:', locationText);
+		console.debug('[geocoding] Could not parse address:', locationText);
 		return null;
 	}
 
@@ -295,7 +295,7 @@ export async function geocodeLocation(
 		const geocodeResult = parseCensusGeocodeResult(data, locationText);
 
 		// Structured logging for monitoring
-		console.log(
+		console.debug(
 			'[geocoding-census-api-call]',
 			JSON.stringify({
 				timestamp: new Date().toISOString(),

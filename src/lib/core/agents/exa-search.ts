@@ -57,7 +57,7 @@ export async function searchWeb(
 	const exa = getExaClient();
 	const rateLimiter = getSearchRateLimiter();
 
-	console.log(`[exa-search] searchWeb: "${query}"`);
+	console.debug(`[exa-search] searchWeb: "${query}"`);
 
 	const result = await rateLimiter.execute(
 		async () => exa.search(query, {
@@ -74,7 +74,7 @@ export async function searchWeb(
 	}
 
 	if (result.wasRateLimited) {
-		console.log(`[exa-search] searchWeb succeeded after rate limit retry (${result.attempts} attempts)`);
+		console.debug(`[exa-search] searchWeb succeeded after rate limit retry (${result.attempts} attempts)`);
 	}
 
 	const hits: ExaSearchHit[] = result.data!.results.map((r) => ({
@@ -85,7 +85,7 @@ export async function searchWeb(
 		score: r.score
 	}));
 
-	console.log(`[exa-search] searchWeb: ${hits.length} results for "${query.slice(0, 50)}"`);
+	console.debug(`[exa-search] searchWeb: ${hits.length} results for "${query.slice(0, 50)}"`);
 	return hits;
 }
 
@@ -111,7 +111,7 @@ export async function readPage(
 	const firecrawl = getFirecrawlClient();
 	const rateLimiter = getFirecrawlRateLimiter();
 
-	console.log(`[page-fetch] readPage: ${url}`);
+	console.debug(`[page-fetch] readPage: ${url}`);
 
 	const result = await rateLimiter.execute(
 		async () => firecrawl.scrapeUrl(url, { formats: ['markdown', 'links'] }),
@@ -125,7 +125,7 @@ export async function readPage(
 
 	const scrapeData = result.data;
 	if (!scrapeData?.success || !scrapeData.markdown) {
-		console.log(`[page-fetch] readPage: no content for ${url}`);
+		console.debug(`[page-fetch] readPage: no content for ${url}`);
 		return null;
 	}
 
@@ -142,7 +142,7 @@ export async function readPage(
 
 	if (mailtoEmails.length > 0) {
 		text += '\n\n--- CONTACT EMAILS (from page links) ---\n' + mailtoEmails.join('\n');
-		console.log(`[page-fetch] readPage: ${mailtoEmails.length} mailto emails appended for ${url}`);
+		console.debug(`[page-fetch] readPage: ${mailtoEmails.length} mailto emails appended for ${url}`);
 	}
 
 	text = text.slice(0, maxCharacters);
@@ -156,6 +156,6 @@ export async function readPage(
 		statusCode: scrapeData.metadata?.statusCode
 	};
 
-	console.log(`[page-fetch] readPage: ${content.text.length} chars from "${content.title.slice(0, 60)}"`);
+	console.debug(`[page-fetch] readPage: ${content.text.length} chars from "${content.title.slice(0, 60)}"`);
 	return content;
 }

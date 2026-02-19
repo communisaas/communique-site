@@ -139,7 +139,7 @@ class InMemoryStore implements RateLimitStore {
 		}
 
 		if (removedKeys > 0) {
-			console.log(`[RateLimiter] Cleanup: removed ${removedKeys} expired keys`);
+			console.debug(`[RateLimiter] Cleanup: removed ${removedKeys} expired keys`);
 		}
 	}
 
@@ -209,7 +209,7 @@ class RedisStore implements RateLimitStore {
 			});
 
 			await client.connect();
-			console.log('[RateLimiter] Redis connected for rate limiting');
+			console.debug('[RateLimiter] Redis connected for rate limiting');
 
 			this.client = client as RedisClient;
 			return this.client;
@@ -281,10 +281,10 @@ export class SlidingWindowRateLimiter {
 		const url = redisUrl || env.REDIS_URL;
 
 		if (url) {
-			console.log('[RateLimiter] Using Redis backend');
+			console.debug('[RateLimiter] Using Redis backend');
 			this.store = new RedisStore(url);
 		} else {
-			console.log('[RateLimiter] Using in-memory backend (set REDIS_URL for production)');
+			console.debug('[RateLimiter] Using in-memory backend (set REDIS_URL for production)');
 			this.store = new InMemoryStore();
 		}
 	}
@@ -357,7 +357,7 @@ export class SlidingWindowRateLimiter {
 	 */
 	async destroy(): Promise<void> {
 		await this.store.destroy();
-		console.log('[RateLimiter] Destroyed');
+		console.debug('[RateLimiter] Destroyed');
 	}
 }
 

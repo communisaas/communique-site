@@ -62,7 +62,7 @@ export async function syncOAuthLocation(): Promise<boolean> {
 		// Delete cookie after reading (privacy: one-time use)
 		document.cookie = 'oauth_location=; path=/; max-age=0; secure; samesite=lax';
 
-		console.log('[OAuth Location Sync] Processing OAuth location data:', {
+		console.debug('[OAuth Location Sync] Processing OAuth location data:', {
 			provider: locationData.provider,
 			hasLocation: !!locationData.location,
 			hasLocale: !!locationData.locale,
@@ -99,7 +99,7 @@ export async function syncOAuthLocation(): Promise<boolean> {
 			const signal = await censusAPI.geocodeAddress(locationString);
 			if (signal) {
 				// Signal already stored by censusAPI.geocodeAddress
-				console.log('[OAuth Location Sync] Added OAuth signal via Census API');
+				console.debug('[OAuth Location Sync] Added OAuth signal via Census API');
 				return true;
 			}
 		}
@@ -107,7 +107,7 @@ export async function syncOAuthLocation(): Promise<boolean> {
 		// Otherwise, add as basic OAuth signal
 		await addOAuthLocationSignal(locationData.provider, locationString);
 
-		console.log('[OAuth Location Sync] Added OAuth location signal:', locationString);
+		console.debug('[OAuth Location Sync] Added OAuth location signal:', locationString);
 		return true;
 	} catch (error) {
 		console.error('[OAuth Location Sync] Failed to sync OAuth location:', error);

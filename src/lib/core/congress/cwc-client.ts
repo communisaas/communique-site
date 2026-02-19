@@ -258,7 +258,7 @@ export class CWCClient {
 			const result = await this.parseResponse(response, senator);
 
 			// Log submission for debugging
-			console.log('Senate CWC submission:', {
+			console.debug('[CWC Senate] Submission:', {
 				office: senator.name,
 				state: senator.state,
 				success: result.success,
@@ -343,7 +343,7 @@ export class CWCClient {
 		}
 
 		try {
-			console.log('[CWC House] Attempting submission via GCP proxy:', {
+			console.debug('[CWC House] Attempting submission via GCP proxy:', {
 				office: representative.name,
 				bioguideId: representative.bioguideId,
 				district: `${representative.state}-${representative.district}`,
@@ -419,7 +419,7 @@ export class CWCClient {
 			}
 
 			const result = await response.json();
-			console.log('[CWC House] Submission successful:', {
+			console.debug('[CWC House] Submission successful:', {
 				office: representative.name,
 				bioguideId: representative.bioguideId,
 				submissionId: result.submissionId,
@@ -611,7 +611,7 @@ export class CWCClient {
 
 			const offices = await response.json();
 
-			console.log('Active Senate offices retrieved:', {
+			console.debug('[CWC Senate] Active offices retrieved:', {
 				count: Array.isArray(offices) ? offices.length : 'unknown',
 				timestamp: new Date().toISOString()
 			});

@@ -131,12 +131,12 @@ export async function generate(
 	if (options.enableGrounding) {
 		config.tools = [{ googleSearch: {} }];
 		// Cannot use responseMimeType with tools - Gemini API limitation
-		console.log('[agents/gemini-client] Using grounding mode (no JSON schema)');
+		console.debug('[agents/gemini-client] Using grounding mode (no JSON schema)');
 	} else if (options.responseSchema) {
 		// Only add structured output if NOT using grounding
 		config.responseMimeType = 'application/json';
 		config.responseSchema = options.responseSchema;
-		console.log('[agents/gemini-client] Using JSON schema mode (no grounding)');
+		console.debug('[agents/gemini-client] Using JSON schema mode (no grounding)');
 	}
 
 	// Add system instruction if provided
@@ -186,7 +186,7 @@ export async function generate(
 					const recovery = recoverTruncatedJson<Record<string, unknown>>(response.text, []);
 
 					if (recovery.data && Object.keys(recovery.data).length > 0) {
-						console.log(
+						console.debug(
 							'[agents/gemini-client] Truncated but recoverable - extracted fields:',
 							Object.keys(recovery.data)
 						);
@@ -430,7 +430,7 @@ export async function* generateStreamWithThoughts<T = unknown>(
 	// Add grounding if enabled (Google Search for real-time data)
 	if (options.enableGrounding) {
 		config.tools = [{ googleSearch: {} }];
-		console.log('[agents/gemini-client] Stream+thoughts: grounding enabled');
+		console.debug('[agents/gemini-client] Stream+thoughts: grounding enabled');
 	}
 
 	const thoughts: string[] = [];
@@ -508,7 +508,7 @@ export async function* generateStreamWithThoughts<T = unknown>(
 
 		// Log grounding info for debugging
 		if (groundingMetadata) {
-			console.log('[agents/gemini-client] Grounding metadata captured:', {
+			console.debug('[agents/gemini-client] Grounding metadata captured:', {
 				searchQueries: groundingMetadata.webSearchQueries?.length || 0,
 				chunks: groundingMetadata.groundingChunks?.length || 0,
 				supports: groundingMetadata.groundingSupports?.length || 0

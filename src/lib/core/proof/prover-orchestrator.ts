@@ -45,7 +45,7 @@ export class ProverOrchestrator {
 	public async init(_k: number = 14): Promise<void> {
 		// Initialize main-thread prover (for proof generation)
 		if (!this.proverInitPromise && !isProverInitialized()) {
-			console.log('[ProverOrchestrator] Initializing main-thread prover...');
+			console.debug('[ProverOrchestrator] Initializing main-thread prover...');
 			this.proverInitPromise = initMainThreadProver((stage, percent) => {
 				this.notifyProgress(stage, percent);
 			});
@@ -65,7 +65,7 @@ export class ProverOrchestrator {
 	 */
 	private async initWorker(): Promise<void> {
 		return new Promise((resolve, reject) => {
-			console.log('[ProverOrchestrator] Spawning hash worker...');
+			console.debug('[ProverOrchestrator] Spawning hash worker...');
 
 			try {
 				this.worker = new ProverWorker();
@@ -188,7 +188,7 @@ export class ProverOrchestrator {
 	) {
 		switch (data.type) {
 			case 'STATUS':
-				console.log('[ProverOrchestrator] Hash worker status:', data.status);
+				console.debug('[ProverOrchestrator] Hash worker status:', data.status);
 				if (data.status === 'ready') {
 					this.workerInitialized = true;
 					this.lastErrorMessage = null;

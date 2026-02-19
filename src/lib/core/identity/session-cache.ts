@@ -114,7 +114,7 @@ async function openDatabase(): Promise<IDBDatabase> {
 			// Version 2: Added encryption support
 			// No schema changes needed - we store encrypted data in the same store
 			// Migration happens lazily on read/write
-			console.log('[Session Cache] Database upgraded to v2 (encryption support)');
+			console.debug('[Session Cache] Database upgraded to v2 (encryption support)');
 		};
 	});
 }
@@ -229,7 +229,7 @@ export async function storeSessionCredential(credential: SessionCredential): Pro
 			expiresAt: credential.expiresAt
 		};
 
-		console.log('[Session Cache] Stored encrypted credential for user:', credential.userId);
+		console.debug('[Session Cache] Stored encrypted credential for user:', credential.userId);
 
 		return new Promise((resolve, reject) => {
 			const request = store.put(storedCredential);
@@ -273,7 +273,7 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 				const stored = request.result as StoredCredential | undefined;
 
 				if (!stored) {
-					console.log('[Session Cache] No credential found for user:', userId);
+					console.debug('[Session Cache] No credential found for user:', userId);
 					resolve(null);
 					return;
 				}
@@ -283,7 +283,7 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 				const now = new Date();
 
 				if (expiresAt < now) {
-					console.log('[Session Cache] Credential expired for user:', userId);
+					console.debug('[Session Cache] Credential expired for user:', userId);
 					// Auto-delete expired credential
 					deleteSessionCredential(userId);
 					resolve(null);
@@ -297,7 +297,7 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 					try {
 						const decrypted = await decryptCredential<Record<string, unknown>>(stored.encrypted);
 						credential = deserializeAfterDecryption(decrypted);
-						console.log('[Session Cache] Retrieved encrypted credential for user:', userId);
+						console.debug('[Session Cache] Retrieved encrypted credential for user:', userId);
 					} catch (decryptError) {
 						console.error('[Session Cache] Decryption failed:', decryptError);
 						// Key may have been rotated or device changed - clear invalid credential
@@ -314,10 +314,10 @@ export async function getSessionCredential(userId: string): Promise<SessionCrede
 						storeSessionCredential(credential).catch((error) => {
 							console.error('[Session Cache] Migration failed:', error);
 						});
-						console.log('[Session Cache] Migrating to encrypted format:', userId);
+						console.debug('[Session Cache] Migrating to encrypted format:', userId);
 					}
 
-					console.log('[Session Cache] Retrieved plaintext credential for user:', userId);
+					console.debug('[Session Cache] Retrieved plaintext credential for user:', userId);
 				} else {
 					console.error('[Session Cache] Invalid stored format for user:', userId);
 					resolve(null);
@@ -355,7 +355,7 @@ export async function deleteSessionCredential(userId: string): Promise<void> {
 			const request = store.delete(userId);
 
 			request.onsuccess = () => {
-				console.log('[Session Cache] Deleted credential for user:', userId);
+				console.debug('[Session Cache] Deleted credential for user:', userId);
 				resolve();
 			};
 
@@ -397,7 +397,7 @@ export async function clearExpiredCredentials(): Promise<number> {
 					deletedCount++;
 					cursor.continue();
 				} else {
-					console.log('[Session Cache] Cleared expired credentials:', deletedCount);
+					console.debug('[Session Cache] Cleared expired credentials:', deletedCount);
 					resolve(deletedCount);
 				}
 			};
@@ -440,7 +440,7 @@ export async function hasValidSession(userId: string): Promise<boolean> {
  */
 export async function migrateToEncrypted(): Promise<number> {
 	if (!isEncryptionAvailable()) {
-		console.log('[Session Cache] Encryption unavailable, skipping migration');
+		console.debug('[Session Cache] Encryption unavailable, skipping migration');
 		return 0;
 	}
 
@@ -474,7 +474,7 @@ export async function migrateToEncrypted(): Promise<number> {
 				}
 
 				if (migratedCount > 0) {
-					console.log(`[Session Cache] Migrated ${migratedCount} credentials to encrypted storage`);
+					console.debug(`[Session Cache] Migrated ${migratedCount} credentials to encrypted storage`);
 				}
 
 				resolve(migratedCount);
@@ -510,7 +510,7 @@ export async function initializeSessionCache(): Promise<void> {
 		// Migrate any remaining plaintext to encrypted
 		await migrateToEncrypted();
 
-		console.log('[Session Cache] Initialized');
+		console.debug('[Session Cache] Initialized');
 	} catch (error) {
 		console.error('[Session Cache] Initialization failed:', error);
 	}

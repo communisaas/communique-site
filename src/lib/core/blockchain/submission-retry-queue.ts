@@ -52,7 +52,7 @@ export async function queueForRetry(
 		}
 	});
 
-	console.log('[RetryQueue] Queued submission for retry:', {
+	console.debug('[RetryQueue] Queued submission for retry:', {
 		submissionId,
 		nullifier: nullifier.slice(0, 12) + '...',
 		nextRetryAt: nextRetryAt.toISOString()
@@ -67,7 +67,7 @@ export async function queueForRetry(
 export async function processRetryQueue(): Promise<number> {
 	// Wave 15R fix (M-01): Don't process retries when circuit breaker is open
 	if (isCircuitOpen()) {
-		console.log('[RetryQueue] Circuit breaker open, skipping retry batch');
+		console.debug('[RetryQueue] Circuit breaker open, skipping retry batch');
 		return 0;
 	}
 
@@ -101,7 +101,7 @@ export async function processRetryQueue(): Promise<number> {
 						data: { verification_status: 'verified' }
 					})
 				]);
-				console.log('[RetryQueue] Nullifier already on-chain, marking success:', retry.submission_id);
+				console.debug('[RetryQueue] Nullifier already on-chain, marking success:', retry.submission_id);
 				processed++;
 				continue;
 			}
@@ -128,7 +128,7 @@ export async function processRetryQueue(): Promise<number> {
 						}
 					})
 				]);
-				console.log('[RetryQueue] Retry succeeded:', retry.submission_id);
+				console.debug('[RetryQueue] Retry succeeded:', retry.submission_id);
 			} else {
 				const newRetryCount = retry.retry_count + 1;
 
@@ -159,7 +159,7 @@ export async function processRetryQueue(): Promise<number> {
 							last_error: result.error
 						}
 					});
-					console.log('[RetryQueue] Scheduled retry:', {
+					console.debug('[RetryQueue] Scheduled retry:', {
 						submissionId: retry.submission_id,
 						attempt: newRetryCount + 1,
 						nextIn: `${delayMs / 1000}s`

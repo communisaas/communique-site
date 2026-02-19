@@ -29,7 +29,7 @@ export class DecisionMakerRouter {
 	register(provider: DecisionMakerProvider, priority: number = 10): void {
 		const registration: ProviderRegistration = { provider, priority };
 		this.providers.set(provider.name, registration);
-		console.log(`[router] Registered provider: ${provider.name} (priority: ${priority})`);
+		console.debug(`[router] Registered provider: ${provider.name} (priority: ${priority})`);
 	}
 
 	/**
@@ -73,7 +73,7 @@ export class DecisionMakerRouter {
 	): Promise<DecisionMakerResult> {
 		const startTime = Date.now();
 
-		console.log('[router] Resolving decision-makers:', {
+		console.debug('[router] Resolving decision-makers:', {
 			targetType: context.targetType,
 			targetEntity: context.targetEntity,
 			subjectLine: context.subjectLine.slice(0, 50) + '...'
@@ -88,11 +88,11 @@ export class DecisionMakerRouter {
 			);
 		}
 
-		console.log(`[router] Selected provider: ${provider.name}`);
+		console.debug(`[router] Selected provider: ${provider.name}`);
 
 		try {
 			const result = await this.resolveWithTimeout(provider, context, options?.timeoutMs);
-			console.log(`[router] Resolution successful via ${provider.name} in ${Date.now() - startTime}ms`);
+			console.debug(`[router] Resolution successful via ${provider.name} in ${Date.now() - startTime}ms`);
 			return result;
 		} catch (error) {
 			console.error(`[router] Provider ${provider.name} failed:`, error);
@@ -135,7 +135,7 @@ export class DecisionMakerRouter {
 		failedProvider: DecisionMakerProvider,
 		options?: RouterOptions
 	): Promise<DecisionMakerResult> {
-		console.log(`[router] Attempting fallback after ${failedProvider.name} failure`);
+		console.debug(`[router] Attempting fallback after ${failedProvider.name} failure`);
 
 		const sorted = Array.from(this.providers.values()).sort(
 			(a, b) => b.priority - a.priority
@@ -146,11 +146,11 @@ export class DecisionMakerRouter {
 				continue;
 			}
 
-			console.log(`[router] Trying fallback provider: ${provider.name}`);
+			console.debug(`[router] Trying fallback provider: ${provider.name}`);
 
 			try {
 				const result = await this.resolveWithTimeout(provider, context, options?.timeoutMs);
-				console.log(`[router] Fallback successful via ${provider.name}`);
+				console.debug(`[router] Fallback successful via ${provider.name}`);
 				return result;
 			} catch (error) {
 				console.error(`[router] Fallback provider ${provider.name} also failed:`, error);

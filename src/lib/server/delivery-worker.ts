@@ -41,7 +41,7 @@ export async function processSubmissionDelivery(
 	db: PrismaClient
 ): Promise<DeliveryResult> {
 	const client = db;
-	console.log('[Delivery] Starting delivery for submission:', submissionId);
+	console.debug('[Delivery] Starting delivery for submission:', submissionId);
 
 	try {
 		// Step 1: Mark as processing
@@ -102,7 +102,7 @@ export async function processSubmissionDelivery(
 			throw new Error('Incomplete delivery address: missing required fields (street, city, state, or zip)');
 		}
 
-		console.log('[Delivery] Decrypted delivery address for:', {
+		console.debug('[Delivery] Decrypted delivery address for:', {
 			submissionId,
 			state: deliveryAddress.state,
 			district: deliveryAddress.congressional_district || 'unknown'
@@ -120,7 +120,7 @@ export async function processSubmissionDelivery(
 			throw new Error('No representatives found for address');
 		}
 
-		console.log(
+		console.debug(
 			'[Delivery] Found representatives:',
 			representatives.map((r) => `${r.name} (${r.chamber})`)
 		);
@@ -242,7 +242,7 @@ export async function processSubmissionDelivery(
 			}
 		});
 
-		console.log('[Delivery] Complete:', {
+		console.debug('[Delivery] Complete:', {
 			submissionId,
 			status: overallStatus,
 			results: results.map((r) => `${r.office}: ${r.status}`)

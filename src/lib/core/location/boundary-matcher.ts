@@ -74,7 +74,7 @@ export class BoundaryMatcher {
 		cityName: string,
 		stateCode: string
 	): Promise<BoundaryMatchResult> {
-		console.log(
+		console.debug(
 			`[BoundaryMatcher] Matching: ${cityName}, ${stateCode} (${latitude}, ${longitude})`
 		);
 
@@ -82,7 +82,7 @@ export class BoundaryMatcher {
 		const localMatch = await this.matchLocalBoundaries(latitude, longitude, cityName, stateCode);
 
 		if (localMatch) {
-			console.log('[BoundaryMatcher] ✓ Client-side match (zero cost, zero trust)');
+			console.debug('[BoundaryMatcher] ✓ Client-side match (zero cost, zero trust)');
 			return {
 				source: 'local',
 				city_council_district: localMatch,
@@ -92,7 +92,7 @@ export class BoundaryMatcher {
 		}
 
 		// Step 2: Fall back to Cicero API (with server-side caching)
-		console.log('[BoundaryMatcher] No local boundaries available, falling back to Cicero API');
+		console.debug('[BoundaryMatcher] No local boundaries available, falling back to Cicero API');
 		const ciceroMatch = await this.matchCicero(latitude, longitude, cityName, stateCode);
 
 		if (ciceroMatch) {
@@ -130,7 +130,7 @@ export class BoundaryMatcher {
 			const boundariesExist = await this.checkBoundariesExist(citySlug);
 
 			if (!boundariesExist) {
-				console.log(`[BoundaryMatcher] No local boundaries for ${cityName}, ${stateCode}`);
+				console.debug(`[BoundaryMatcher] No local boundaries for ${cityName}, ${stateCode}`);
 				return null;
 			}
 
@@ -161,7 +161,7 @@ export class BoundaryMatcher {
 				}
 			}
 
-			console.log('[BoundaryMatcher] Point not in any district polygon');
+			console.debug('[BoundaryMatcher] Point not in any district polygon');
 			return null;
 		} catch (error) {
 			console.error('[BoundaryMatcher] Local matching error:', error);
@@ -181,7 +181,7 @@ export class BoundaryMatcher {
 		// Check memory cache first (fastest)
 		const cachedBoundary = this.boundaryCache.get(citySlug);
 		if (cachedBoundary) {
-			console.log(`[BoundaryMatcher] Memory cache HIT: ${citySlug}`);
+			console.debug(`[BoundaryMatcher] Memory cache HIT: ${citySlug}`);
 			return cachedBoundary;
 		}
 
@@ -197,13 +197,13 @@ export class BoundaryMatcher {
 		});
 
 		if (cachedData) {
-			console.log(`[BoundaryMatcher] IndexedDB cache HIT: ${citySlug}`);
+			console.debug(`[BoundaryMatcher] IndexedDB cache HIT: ${citySlug}`);
 			this.boundaryCache.set(citySlug, cachedData.data);
 			return cachedData.data;
 		}
 
 		// Fetch from CDN (first time only)
-		console.log(`[BoundaryMatcher] Fetching boundaries: /boundaries/${citySlug}.geojson`);
+		console.debug(`[BoundaryMatcher] Fetching boundaries: /boundaries/${citySlug}.geojson`);
 		const response = await fetch(`/boundaries/${citySlug}.geojson`);
 
 		if (!response.ok) {
@@ -229,7 +229,7 @@ export class BoundaryMatcher {
 		// Cache in memory (fastest)
 		this.boundaryCache.set(citySlug, boundaries);
 
-		console.log(`[BoundaryMatcher] ✓ Boundaries cached for ${citySlug}`);
+		console.debug(`[BoundaryMatcher] ✓ Boundaries cached for ${citySlug}`);
 		return boundaries;
 	}
 
@@ -341,7 +341,7 @@ export class BoundaryMatcher {
 					const store = db.createObjectStore('boundaries', { keyPath: 'citySlug' });
 					store.createIndex('cachedAt', 'cachedAt', { unique: false });
 
-					console.log('[BoundaryMatcher] ✓ IndexedDB schema created');
+					console.debug('[BoundaryMatcher] ✓ IndexedDB schema created');
 				}
 			};
 		});
@@ -363,7 +363,7 @@ export class BoundaryMatcher {
 			});
 
 			this.boundaryCache.clear();
-			console.log('[BoundaryMatcher] ✓ Cache cleared');
+			console.debug('[BoundaryMatcher] ✓ Cache cleared');
 		} catch (error) {
 			console.error('[BoundaryMatcher] Failed to clear cache:', error);
 		}

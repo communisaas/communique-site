@@ -206,7 +206,7 @@ export async function initializeTwoTreeProver(
 
 	// If depth changed, clear old instance
 	if (twoTreeProverInstance && twoTreeCurrentDepth !== depth) {
-		console.log(
+		console.debug(
 			`[ProverClient] Two-tree depth changed from ${twoTreeCurrentDepth} to ${depth}, reinitializing...`
 		);
 		twoTreeProverInstance = null;

@@ -51,16 +51,16 @@ async function loadBbJs() {
  */
 async function getBarretenbergSync(): Promise<BarretenbergSyncType> {
 	if (!bbSyncInstance) {
-		console.log('[Poseidon] Loading bb.js (BarretenbergSync)...');
+		console.debug('[Poseidon] Loading bb.js (BarretenbergSync)...');
 		const { BarretenbergSync } = await loadBbJs();
 
 		const sabSupport = typeof SharedArrayBuffer !== 'undefined';
 		const threads = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 4 : 4;
-		console.log(
+		console.debug(
 			`[Poseidon] Environment check: SAB=${sabSupport}, Threads=${threads}, Context=${typeof self !== 'undefined' && 'WorkerGlobalScope' in self ? 'Worker' : 'Main'}`
 		);
 
-		console.log(
+		console.debug(
 			'[Poseidon] Initializing BarretenbergSync singleton (threads: 1, no nested workers)...'
 		);
 		const startTime = performance.now();
@@ -70,7 +70,7 @@ async function getBarretenbergSync(): Promise<BarretenbergSyncType> {
 			// This is the correct way to use Barretenberg for hashing in worker contexts
 			bbSyncInstance = await BarretenbergSync.initSingleton();
 			const duration = performance.now() - startTime;
-			console.log(`[Poseidon] BarretenbergSync initialized in ${duration.toFixed(0)}ms`);
+			console.debug(`[Poseidon] BarretenbergSync initialized in ${duration.toFixed(0)}ms`);
 		} catch (e) {
 			console.error('[Poseidon] Failed to initialize BarretenbergSync:', e);
 			throw e;

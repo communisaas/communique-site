@@ -115,17 +115,17 @@ ctx.onmessage = async (event: MessageEvent) => {
 
 async function handleInit(k: number = 14) {
 	sendEvent({ type: 'STATUS', status: 'initializing' });
-	console.log('[ProverWorker] Starting initialization...');
+	console.debug('[ProverWorker] Starting initialization...');
 
 	try {
-		console.log('[ProverWorker] Loading prover-core...');
+		console.debug('[ProverWorker] Loading prover-core...');
 		const core = await loadProverCore();
-		console.log('[ProverWorker] prover-core loaded, initializing WASM...');
+		console.debug('[ProverWorker] prover-core loaded, initializing WASM...');
 		await core.initializeWasmProver(k, (stage, percent) => {
 			sendEvent({ type: 'PROGRESS', stage, percent });
 		});
 
-		console.log('[ProverWorker] Initialization complete!');
+		console.debug('[ProverWorker] Initialization complete!');
 		sendEvent({ type: 'STATUS', status: 'ready' });
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
@@ -145,17 +145,17 @@ async function handleInit(k: number = 14) {
  */
 async function handleInitHashOnly() {
 	sendEvent({ type: 'STATUS', status: 'initializing' });
-	console.log('[ProverWorker] Starting hash-only initialization (BarretenbergSync)...');
+	console.debug('[ProverWorker] Starting hash-only initialization (BarretenbergSync)...');
 
 	try {
 		// Pre-load poseidon module which initializes BarretenbergSync
 		const { poseidonHash } = await import('../crypto/poseidon');
 
 		// Do a warmup hash to ensure BarretenbergSync is fully initialized
-		console.log('[ProverWorker] Warming up BarretenbergSync...');
+		console.debug('[ProverWorker] Warming up BarretenbergSync...');
 		await poseidonHash('warmup');
 
-		console.log('[ProverWorker] Hash worker ready!');
+		console.debug('[ProverWorker] Hash worker ready!');
 		sendEvent({ type: 'STATUS', status: 'ready' });
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : 'Unknown initialization error';
@@ -191,9 +191,9 @@ async function handleComputeMerkleRoot(leaf: string, merklePath: string[], leafI
 	try {
 		// Import poseidon module (uses Barretenberg which is already initialized in worker context)
 		const { computeMerkleRoot } = await import('../crypto/poseidon');
-		console.log('[ProverWorker] Computing merkle root...');
+		console.debug('[ProverWorker] Computing merkle root...');
 		const merkleRoot = await computeMerkleRoot(leaf, merklePath, leafIndex);
-		console.log('[ProverWorker] Merkle root computed:', merkleRoot.slice(0, 16) + '...');
+		console.debug('[ProverWorker] Merkle root computed:', merkleRoot.slice(0, 16) + '...');
 		sendEvent({ type: 'MERKLE_ROOT_RESULT', merkleRoot });
 	} catch (error) {
 		console.error('[ProverWorker] Merkle root computation failed:', error);
@@ -207,9 +207,9 @@ async function handleComputeMerkleRoot(leaf: string, merklePath: string[], leafI
 async function handlePoseidonHash(input: string) {
 	try {
 		const { poseidonHash } = await import('../crypto/poseidon');
-		console.log('[ProverWorker] Computing poseidon hash...');
+		console.debug('[ProverWorker] Computing poseidon hash...');
 		const hash = await poseidonHash(input);
-		console.log('[ProverWorker] Hash computed:', hash.slice(0, 16) + '...');
+		console.debug('[ProverWorker] Hash computed:', hash.slice(0, 16) + '...');
 		sendEvent({ type: 'POSEIDON_HASH_RESULT', hash });
 	} catch (error) {
 		console.error('[ProverWorker] Poseidon hash failed:', error);
