@@ -61,6 +61,11 @@ export class InMemoryRateLimiter {
 	 * @returns Rate limit result with success/remaining/reset info
 	 */
 	async limit(key: string, max: number, windowMs: number): Promise<RateLimitResult> {
+		// On CF Workers, in-memory state resets per-isolate — always allow.
+		// Cloudflare's own rate limiting (via wrangler.toml rules) handles abuse.
+		if (typeof caches !== 'undefined' && this.store.size === 0) {
+			return { success: true, remaining: max - 1, limit: max, reset: Date.now() + windowMs };
+		}
 		const now = Date.now();
 		const item = this.store.get(key);
 

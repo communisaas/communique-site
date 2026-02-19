@@ -77,6 +77,11 @@ export interface RateLimitStats {
  * Set via environment variable: RATE_LIMIT_USE_DB=true
  */
 export function isDBRateLimitEnabled(): boolean {
+	// On CF Workers, in-memory rate limiting is useless (per-isolate state resets each request).
+	// Auto-enable DB rate limiting when running on Workers (detected via caches global).
+	if (typeof caches !== 'undefined' && typeof process !== 'undefined' && !process.env.NODE_ENV?.includes('test')) {
+		return true;
+	}
 	return process.env.RATE_LIMIT_USE_DB === 'true';
 }
 
