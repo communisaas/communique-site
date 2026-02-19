@@ -325,13 +325,5 @@ export async function generateIdentityCommitment(providerData: {
 	return await poseidonHash(input);
 }
 
-// ============================================================================
-// Legacy Support
-// ============================================================================
-
-/**
- * @deprecated Use registerTwoTree() instead. Single-tree registration is superseded
- * by the two-tree architecture. This function remains for backward compatibility
- * during the transition period.
- */
+// Re-export for backward compatibility (callers use the registerInShadowAtlas name)
 export { registerTwoTree as registerInShadowAtlas };

@@ -85,10 +85,7 @@ export interface MessageResponse {
 // Grounding Metadata
 // ============================================================================
 
-/**
- * @deprecated Google Search grounding specific. The Exa-backed pipeline uses
- * content-based verification instead of grounding metadata.
- */
+/** Normalized grounding metadata from Gemini's built-in web grounding. */
 export interface GroundingMetadata {
 	webSearchQueries?: string[];
 	groundingChunks?: Array<{
