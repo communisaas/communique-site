@@ -235,7 +235,7 @@ describe('POST /api/agents/stream-subject', () => {
 				{
 					systemInstruction: 'test prompt',
 					temperature: 0.4,
-					thinkingLevel: 'medium'
+					thinkingLevel: 'high'
 				}
 			);
 		});

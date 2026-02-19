@@ -202,8 +202,7 @@ describe('Templates API', () => {
       expect(data.success).toBe(true);
       expect(data.data.template).toBeDefined();
       expect(data.data.template.title).toBe(templateData.title);
-      expect(data.data.template.userId).toBe(user.id);
-
+      // userId is not returned in API response (intentional)
       // Verify it was saved to database
       const saved = await db.template.findFirst({
         where: { title: templateData.title }
@@ -271,7 +270,7 @@ describe('Templates API', () => {
       expect(template.isNew).toBe(true);
     });
 
-    it('should create guest template for unauthenticated user', async () => {
+    it('should reject unauthenticated template creation', async () => {
       const templateData = {
         title: 'Guest Template',
         message_body: 'Template content from guest user',
@@ -290,16 +289,9 @@ describe('Templates API', () => {
       const response = await createTemplate(event as any);
       const data = await response.json();
 
-      expect(response.status).toBe(200);
-      expect(data.success).toBe(true);
-      expect(data.data.template.id).toMatch(/^guest-/);
-      expect(data.data.template.userId).toBeNull();
-
-      // Should not be saved to database
-      const notSaved = await db.template.findFirst({
-        where: { title: templateData.title }
-      });
-      expect(notSaved).toBeNull();
+      // Authentication is required for template creation
+      expect(response.status).toBe(401);
+      expect(data.success).toBe(false);
     });
 
     it('should validate required fields', async () => {

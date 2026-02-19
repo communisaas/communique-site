@@ -46,6 +46,10 @@ describe('Identity API Routes', () => {
 	let testSession: { id: string; userId: string };
 
 	beforeAll(async () => {
+		// Set env vars required by identity-binding.ts and security.ts
+		process.env.IDENTITY_COMMITMENT_SALT = 'test-commitment-salt-do-not-use-in-production';
+		process.env.ENTROPY_ENCRYPTION_KEY = 'a'.repeat(64); // 32-byte hex key for AES-256
+
 		// Create test users with unique IDs to avoid conflicts with parallel tests
 		const uniqueSuffix = `identity-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
@@ -129,7 +133,7 @@ describe('Identity API Routes', () => {
 			where: { user_id: { in: [testUser.id, testUser2.id] } }
 		});
 
-		// Reset user verification status
+		// Reset user verification status (including identity commitment fields)
 		await db.user.updateMany({
 			where: { id: { in: [testUser.id, testUser2.id] } },
 			data: {
@@ -137,6 +141,9 @@ describe('Identity API Routes', () => {
 				verification_method: null,
 				identity_hash: null,
 				identity_fingerprint: null,
+				identity_commitment: null,
+				identity_commitment_at: null,
+				encrypted_entropy: null,
 				birth_year: null
 			}
 		});

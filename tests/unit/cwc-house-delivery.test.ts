@@ -149,7 +149,7 @@ describe('CWC House Delivery', () => {
 		it('should log proxy attempts with proper details', async () => {
 			process.env.GCP_PROXY_URL = 'http://test-proxy:8080';
 
-			const consoleSpy = vi.spyOn(console, 'log');
+			const consoleSpy = vi.spyOn(console, 'debug');
 
 			const client = new CWCClient();
 			await client.submitToHouse(mockTemplate as Template, mockUser, mockHouseRep, '');

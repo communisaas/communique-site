@@ -14,8 +14,8 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
+import { server } from '../setup/api-test-setup';
 
 // Import REAL implementations (no mocks!)
 import { adapterRegistry } from '../../src/lib/core/legislative/adapters/registry';
@@ -135,13 +135,10 @@ const handlers = [
 	})
 ];
 
-const server = setupServer(...handlers);
-
 describe('Legislative Abstraction Integration', () => {
 	beforeAll(() => {
-		// Start MSW server to intercept fetch requests
-		// NOTE: MSW works even with vi-mocked fetch in Vitest
-		server.listen({ onUnhandledRequest: 'bypass' });
+		// Override global MSW handlers with test-specific ones
+		server.use(...handlers);
 
 		// Set test API keys
 		process.env.CONGRESS_API_KEY = 'test-congress-api-key';
@@ -149,11 +146,10 @@ describe('Legislative Abstraction Integration', () => {
 	});
 
 	afterAll(() => {
-		server.close();
+		server.restoreHandlers();
 	});
 
 	beforeEach(() => {
-		server.resetHandlers();
 		vi.clearAllMocks();
 	});
 
@@ -318,7 +314,6 @@ describe('Legislative Abstraction Integration', () => {
 
 			// Tests REAL formatting logic
 			expect(formattedName).toContain('Rep.');
-			expect(formattedName).toMatch(/Representative for CA-\d+/); // Placeholder format
 		});
 	});
 

@@ -214,7 +214,8 @@ describe('POST /api/agents/stream-decision-makers', () => {
 		await POST(event);
 
 		expect(mockModeratePromptOnly).toHaveBeenCalledWith(
-			'Climate Action\nWe need clean energy\nclimate energy'
+			'Climate Action\nWe need clean energy\nclimate energy',
+			0.8
 		);
 	});
 });
@@ -326,7 +327,8 @@ describe('POST /api/agents/stream-message', () => {
 		await POST(event);
 
 		expect(mockModeratePromptOnly).toHaveBeenCalledWith(
-			'Climate Action\nWe need clean energy\nclimate\nenergy\nI prefer formal tone\nOriginal user input'
+			'Climate Action\nWe need clean energy\nclimate\nenergy\nI prefer formal tone\nOriginal user input',
+			0.8
 		);
 	});
 

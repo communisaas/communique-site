@@ -216,35 +216,50 @@ export const sqsHandlers = [
 // Census and Congress.gov API Handlers
 export const censusAndCongressHandlers = [
   // Census Bureau Geocoding API
+  // Handles all test addresses from tests/fixtures/test-addresses.ts
   http.get('https://geocoding.geo.census.gov/geocoder/geographies/onelineaddress', ({ request }) => {
     const url = new URL(request.url);
     const address = (url.searchParams.get('address') || '').toLowerCase();
 
-    // Mock DC address (case-insensitive)
-    if (address.includes('pennsylvania') || address.includes('washington, dc') ||
-        (address.includes('dc') && address.includes('20500'))) {
+    // Address → district mapping for all test addresses
+    const addressMap: Array<{ match: (a: string) => boolean; cd: string; geoid: string; state: string; blockGeoid?: string }> = [
+      // CA: San Francisco City Hall → CA-11
+      { match: (a) => a.includes('san francisco') || (a.includes('ca') && a.includes('94102')), cd: '11', geoid: '0611', state: '06', blockGeoid: '060750201001001' },
+      // TX: Austin City Hall → TX-21
+      { match: (a) => a.includes('austin') || (a.includes('tx') && a.includes('78701')), cd: '21', geoid: '4821', state: '48' },
+      // NY: NYC City Hall → NY-10
+      { match: (a) => a.includes('new york') || a.includes('350 fifth') || a.includes('350 5th') || (a.includes('ny') && a.includes('10007')), cd: '10', geoid: '3610', state: '36', blockGeoid: '360610076001234' },
+      // CO: Denver City Hall → CO-01
+      { match: (a) => a.includes('denver') || (a.includes('co') && a.includes('80202')), cd: '01', geoid: '0801', state: '08' },
+      // VT: At-large → VT-AL (CD119=00)
+      { match: (a) => a.includes('richmond') && a.includes('vt') || (a.includes('vt') && a.includes('05401')), cd: '00', geoid: '5000', state: '50' },
+      // DC: Pennsylvania Ave → DC delegate (CD119=98)
+      { match: (a) => a.includes('pennsylvania') || a.includes('washington, dc') || (a.includes('dc') && a.includes('20500')), cd: '98', geoid: '1100', state: '11', blockGeoid: '110010062001001' },
+      // PR: San Juan → PR delegate (CD119=98)
+      { match: (a) => a.includes('san juan') || a.includes('puerto rico') || (a.includes('pr') && a.includes('00901')), cd: '98', geoid: '7200', state: '72', blockGeoid: '720070065003001' },
+      // VI: Charlotte Amalie → VI delegate (CD119=98)
+      { match: (a) => a.includes('virgin islands') || a.includes('vi') && a.includes('00802'), cd: '98', geoid: '7800', state: '78' },
+      // GU: Hagatna → GU delegate (CD119=98)
+      { match: (a) => a.includes('guam') || (a.includes('gu') && a.includes('96910')), cd: '98', geoid: '6600', state: '66' },
+    ];
+
+    const matched = addressMap.find((entry) => entry.match(address));
+
+    if (matched) {
       return HttpResponse.json({
         result: {
           addressMatches: [
             {
-              matchedAddress: '1600 Pennsylvania Ave NW, Washington, DC 20500',
+              matchedAddress: address,
               geographies: {
                 '119th Congressional Districts': [
-                  {
-                    CD119: '98', // DC delegate special code
-                    GEOID: '1100'
-                  }
+                  { CD119: matched.cd, GEOID: matched.geoid, STATE: matched.state }
                 ],
-                '2020 Census Blocks': [
-                  {
-                    GEOID: '110010062001001', // 15-digit Census Block GEOID for DC
-                    STATE: '11',
-                    COUNTY: '001',
-                    TRACT: '006200',
-                    BLOCK: '1001',
-                    NAME: 'Block 1001'
-                  }
-                ]
+                ...(matched.blockGeoid ? {
+                  '2020 Census Blocks': [
+                    { GEOID: matched.blockGeoid, STATE: matched.state }
+                  ]
+                } : {})
               }
             }
           ]
@@ -252,144 +267,98 @@ export const censusAndCongressHandlers = [
       });
     }
 
-    // Mock NYC address (case-insensitive)
-    if (address.includes('350 fifth avenue') || address.includes('350 5th ave') ||
-        (address.includes('new york') && address.includes('ny'))) {
-      return HttpResponse.json({
-        result: {
-          addressMatches: [
-            {
-              matchedAddress: '350 Fifth Avenue, New York, NY 10118',
-              geographies: {
-                '119th Congressional Districts': [
-                  {
-                    CD119: '10',
-                    GEOID: '3610'
-                  }
-                ],
-                '2020 Census Blocks': [
-                  {
-                    GEOID: '360610076001234', // 15-digit Census Block GEOID for NYC
-                    STATE: '36',
-                    COUNTY: '061',
-                    TRACT: '007600',
-                    BLOCK: '1234',
-                    NAME: 'Block 1234'
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      });
-    }
-
-    // Mock Puerto Rico address (case-insensitive)
-    if (address.includes('san juan') || address.includes('puerto rico') ||
-        (address.includes('pr') && address.includes('00901'))) {
-      return HttpResponse.json({
-        result: {
-          addressMatches: [
-            {
-              matchedAddress: 'San Juan, PR 00901',
-              geographies: {
-                '119th Congressional Districts': [
-                  {
-                    CD119: '98',
-                    GEOID: '7200'
-                  }
-                ],
-                '2020 Census Blocks': [
-                  {
-                    GEOID: '720070065003001', // 15-digit Census Block GEOID for PR
-                    STATE: '72',
-                    COUNTY: '007',
-                    TRACT: '006500',
-                    BLOCK: '3001',
-                    NAME: 'Block 3001'
-                  }
-                ]
-              }
-            }
-          ]
-        }
-      });
-    }
-
-    // Invalid address (ZZ state, 00000 zip, etc.)
+    // No match → empty result (invalid/unknown address)
     return HttpResponse.json({
-      result: {
-        addressMatches: []
-      }
+      result: { addressMatches: [] }
     });
   }),
 
   // Congress.gov API - Representatives
-  // Returns current members with proper pagination support
+  // Returns all current members for test states with correct districts
   http.get('https://api.congress.gov/v3/member', ({ request }) => {
     const url = new URL(request.url);
     const limit = parseInt(url.searchParams.get('limit') || '250', 10);
     const offset = parseInt(url.searchParams.get('offset') || '0', 10);
 
-    // All current members (119th Congress)
-    const allMembers = [
-      // NYC Representatives
-      {
-        bioguideId: 'NYS001',
-        name: 'Schumer, Chuck',
-        partyName: 'Democratic',
-        state: 'NY',
-        currentMember: true,
-        terms: {
-          item: [{ chamber: 'Senate', startYear: 1999, party: 'Democratic' }]
+    // All current members (119th Congress) matching test address expected districts
+    const allMembers: Record<string, unknown>[] = [];
+
+    // State members: 2 senators + House rep(s) per state
+    const states: Array<{ name: string; abbr: string; districts: number[] }> = [
+      { name: 'California', abbr: 'CA', districts: [11, 12] }, // SF=11, test mock=12
+      { name: 'Texas', abbr: 'TX', districts: [21] },
+      { name: 'New York', abbr: 'NY', districts: [10] },
+      { name: 'Colorado', abbr: 'CO', districts: [1] },
+      { name: 'Vermont', abbr: 'VT', districts: [] }, // At-large
+    ];
+
+    for (const state of states) {
+      // 2 senators
+      allMembers.push(
+        {
+          bioguideId: `${state.abbr}S001`,
+          name: `Senator One (${state.name})`,
+          partyName: 'Democratic',
+          state: state.name,
+          currentMember: true,
+          terms: { item: [{ chamber: 'Senate', startYear: 2021 }] }
+        },
+        {
+          bioguideId: `${state.abbr}S002`,
+          name: `Senator Two (${state.name})`,
+          partyName: 'Republican',
+          state: state.name,
+          currentMember: true,
+          terms: { item: [{ chamber: 'Senate', startYear: 2019 }] }
         }
-      },
-      {
-        bioguideId: 'NYS002',
-        name: 'Gillibrand, Kirsten',
-        partyName: 'Democratic',
-        state: 'NY',
-        currentMember: true,
-        terms: {
-          item: [{ chamber: 'Senate', startYear: 2009, party: 'Democratic' }]
-        }
-      },
-      {
-        bioguideId: 'NYH010',
-        name: 'Goldman, Daniel',
-        partyName: 'Democratic',
-        state: 'NY',
-        district: 10,
-        currentMember: true,
-        terms: {
-          item: [{ chamber: 'House of Representatives', startYear: 2023, party: 'Democratic' }]
-        }
-      },
-      // DC Delegate
-      {
-        bioguideId: 'N000147',
-        name: 'Norton, Eleanor Holmes',
-        partyName: 'Democratic',
-        state: 'DC',
-        district: undefined,
-        currentMember: true,
-        terms: {
-          item: [{ chamber: 'House of Representatives', startYear: 1991, party: 'Democratic' }]
-        }
-      },
-      // Puerto Rico Resident Commissioner
-      {
-        bioguideId: 'G000619',
-        name: 'Hernández Rivera, Pablo José',
-        partyName: 'New Progressive',
-        state: 'PR',
-        district: undefined,
-        currentMember: true,
-        terms: {
-          item: [{ chamber: 'House of Representatives', startYear: 2025, party: 'New Progressive' }]
+      );
+
+      // House members
+      if (state.districts.length === 0) {
+        // At-large
+        allMembers.push({
+          bioguideId: `${state.abbr}H001`,
+          name: `Representative (${state.name}-AL)`,
+          partyName: 'Democratic',
+          state: state.name,
+          district: undefined,
+          currentMember: true,
+          terms: { item: [{ chamber: 'House of Representatives', startYear: 2023 }] }
+        });
+      } else {
+        for (const dist of state.districts) {
+          allMembers.push({
+            bioguideId: `${state.abbr}H${String(dist).padStart(3, '0')}`,
+            name: `Representative (${state.name}-${String(dist).padStart(2, '0')})`,
+            partyName: 'Democratic',
+            state: state.name,
+            district: dist,
+            currentMember: true,
+            terms: { item: [{ chamber: 'House of Representatives', startYear: 2023 }] }
+          });
         }
       }
+    }
+
+    // Territory delegates (no senators)
+    const territories: Array<{ abbr: string; name: string }> = [
+      { abbr: 'DC', name: 'Norton, Eleanor Holmes' },
+      { abbr: 'PR', name: 'Hernández Rivera, Pablo José' },
+      { abbr: 'VI', name: 'Plaskett, Stacey' },
+      { abbr: 'GU', name: 'Moylan, James' },
     ];
+
+    for (const t of territories) {
+      allMembers.push({
+        bioguideId: `${t.abbr}D001`,
+        name: t.name,
+        partyName: 'Democratic',
+        state: t.abbr,
+        district: undefined,
+        currentMember: true,
+        terms: { item: [{ chamber: 'House of Representatives', startYear: 2023 }] }
+      });
+    }
 
     // Apply pagination
     const paginatedMembers = allMembers.slice(offset, offset + limit);

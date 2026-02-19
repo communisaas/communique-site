@@ -109,13 +109,22 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 	// Shadow Atlas Registration with Cell ID
 	// =========================================================================
 
-	describe('Shadow Atlas Registration with Cell ID', () => {
-		it('should accept valid cell_id and enable two-tree mode', async () => {
-			const userId = uniqueId('user');
-			const user = await createTestUser({ id: userId, email: `${userId}@example.com` });
+	describe('Shadow Atlas Registration', () => {
+		// NOTE: The shadow-atlas/register handler accepts { leaf } (a precomputed hex field element).
+		// Cell ID (GEOID) is embedded inside the leaf hash by the client.
+		// The server never sees the raw cell_id — only the hash.
 
-			// Create authenticated session
-			const session = await db.session.create({
+		it('should accept valid leaf and register with Shadow Atlas', async () => {
+			const userId = uniqueId('user');
+			const user = await createTestUser({
+				id: userId,
+				email: `${userId}@example.com`,
+				identity_commitment: '0x' + 'a'.repeat(64),
+				is_verified: true,
+				verification_method: 'selfxyz'
+			});
+
+			await db.session.create({
 				data: {
 					id: uniqueId('session'),
 					userId: user.id,
@@ -123,16 +132,13 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 				}
 			});
 
+			// Valid BN254 field element (leaf hash)
+			const validLeaf = '0x' + '1'.repeat(64);
+
 			const event = createMockRequestEvent({
 				url: 'http://localhost:5173/api/shadow-atlas/register',
 				method: 'POST',
-				body: JSON.stringify({
-					identityCommitment: '0x' + '1'.repeat(64),
-					lat: 40.7484,
-					lng: -73.9857,
-					cellId: '360610076001234', // Valid 15-digit GEOID
-					credentialType: 'two-tree'
-				}),
+				body: JSON.stringify({ leaf: validLeaf }),
 				locals: {
 					session: { userId: user.id },
 					db
@@ -140,16 +146,20 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 			});
 
 			const response = await shadowAtlasRegister(event as any);
-			const data = await response.json();
 
-			// Note: The actual response depends on the lookupDistrict mock
-			// For now, verify the request was accepted
-			expect([200, 503]).toContain(response.status); // 503 if lookup fails
+			// 200 on success, 503 if Shadow Atlas service is unavailable
+			expect([200, 503]).toContain(response.status);
 		});
 
-		it('should reject invalid cell_id format (not 15 digits)', async () => {
+		it('should reject missing leaf field', async () => {
 			const userId = uniqueId('user');
-			const user = await createTestUser({ id: userId, email: `${userId}@example.com` });
+			const user = await createTestUser({
+				id: userId,
+				email: `${userId}@example.com`,
+				identity_commitment: '0x' + 'a'.repeat(64),
+				is_verified: true,
+				verification_method: 'selfxyz'
+			});
 
 			await db.session.create({
 				data: {
@@ -162,46 +172,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 			const event = createMockRequestEvent({
 				url: 'http://localhost:5173/api/shadow-atlas/register',
 				method: 'POST',
-				body: JSON.stringify({
-					identityCommitment: '0x' + '1'.repeat(64),
-					lat: 40.7484,
-					lng: -73.9857,
-					cellId: '123456789' // Invalid: only 9 digits
-				}),
-				locals: {
-					session: { userId: user.id },
-					db
-				}
-			});
-
-			const response = await shadowAtlasRegister(event as any);
-			const data = await response.json();
-
-			expect(response.status).toBe(400);
-			expect(data.error).toContain('cellId');
-		});
-
-		it('should reject cell_id with non-numeric characters', async () => {
-			const userId = uniqueId('user');
-			const user = await createTestUser({ id: userId, email: `${userId}@example.com` });
-
-			await db.session.create({
-				data: {
-					id: uniqueId('session'),
-					userId: user.id,
-					expiresAt: new Date(Date.now() + 86400000)
-				}
-			});
-
-			const event = createMockRequestEvent({
-				url: 'http://localhost:5173/api/shadow-atlas/register',
-				method: 'POST',
-				body: JSON.stringify({
-					identityCommitment: '0x' + '1'.repeat(64),
-					lat: 40.7484,
-					lng: -73.9857,
-					cellId: '36061007600123X' // Invalid: contains 'X'
-				}),
+				body: JSON.stringify({}), // No leaf
 				locals: {
 					session: { userId: user.id },
 					db
@@ -212,12 +183,18 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 			const data = await response.json();
 
 			expect(response.status).toBe(400);
-			expect(data.error).toContain('cellId');
+			expect(data.error).toContain('leaf');
 		});
 
-		it('should work without cell_id (single-tree mode)', async () => {
+		it('should reject non-hex leaf format', async () => {
 			const userId = uniqueId('user');
-			const user = await createTestUser({ id: userId, email: `${userId}@example.com` });
+			const user = await createTestUser({
+				id: userId,
+				email: `${userId}@example.com`,
+				identity_commitment: '0x' + 'a'.repeat(64),
+				is_verified: true,
+				verification_method: 'selfxyz'
+			});
 
 			await db.session.create({
 				data: {
@@ -230,12 +207,7 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 			const event = createMockRequestEvent({
 				url: 'http://localhost:5173/api/shadow-atlas/register',
 				method: 'POST',
-				body: JSON.stringify({
-					identityCommitment: '0x' + '1'.repeat(64),
-					lat: 40.7484,
-					lng: -73.9857
-					// No cellId - should default to single-tree mode
-				}),
+				body: JSON.stringify({ leaf: 'not-valid-hex-xyz!' }),
 				locals: {
 					session: { userId: user.id },
 					db
@@ -243,9 +215,44 @@ describe('Cell ID Integration (Two-Tree ZK Architecture)', () => {
 			});
 
 			const response = await shadowAtlasRegister(event as any);
+			const data = await response.json();
 
-			// Should not fail due to missing cell_id
-			expect(response.status).not.toBe(400);
+			expect(response.status).toBe(400);
+			expect(data.error).toContain('hex');
+		});
+
+		it('should require identity verification before registration', async () => {
+			const userId = uniqueId('user');
+			const user = await createTestUser({
+				id: userId,
+				email: `${userId}@example.com`
+				// No identity_commitment
+			});
+
+			await db.session.create({
+				data: {
+					id: uniqueId('session'),
+					userId: user.id,
+					expiresAt: new Date(Date.now() + 86400000)
+				}
+			});
+
+			const event = createMockRequestEvent({
+				url: 'http://localhost:5173/api/shadow-atlas/register',
+				method: 'POST',
+				body: JSON.stringify({ leaf: '0x' + '1'.repeat(64) }),
+				locals: {
+					session: { userId: user.id },
+					db
+				}
+			});
+
+			const response = await shadowAtlasRegister(event as any);
+			const data = await response.json();
+
+			// Should require identity verification
+			expect(response.status).toBe(403);
+			expect(data.error).toContain('Identity verification required');
 		});
 	});
 

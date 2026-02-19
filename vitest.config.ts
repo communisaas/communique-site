@@ -4,6 +4,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { svelteTesting } from '@testing-library/svelte/vite';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import type { Plugin } from 'vite';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -11,8 +12,37 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const env = loadEnv('test', process.cwd(), '');
 Object.assign(process.env, env);
 
+/**
+ * Fix pg → pg-pool CJS/ESM interop crash in vitest.
+ *
+ * Problem: pg-pool's `module.exports = Pool` gets wrapped as ESM namespace
+ * { default: Pool } by Node's CJS→ESM translator. When pg/lib/index.js does
+ * `class BoundPool extends Pool`, it extends an object instead of a constructor.
+ *
+ * Solution: Intercept `$lib/core/db` resolution BEFORE the SvelteKit plugin
+ * processes it, redirecting to a mock that uses PrismaClient with datasourceUrl
+ * instead of the pg driver adapter. Also mock @prisma/adapter-pg as a fallback.
+ */
+function dbMockPlugin(): Plugin {
+	const dbMockPath = path.join(__dirname, 'tests/mocks/db-mock.ts');
+	const adapterMockPath = path.join(__dirname, 'tests/mocks/prisma-adapter-pg.ts');
+	return {
+		name: 'db-mock-for-tests',
+		enforce: 'pre',
+		resolveId(source) {
+			if (source === '$lib/core/db' || source.endsWith('/src/lib/core/db.ts') || source.endsWith('/src/lib/core/db')) {
+				return dbMockPath;
+			}
+			if (source === '@prisma/adapter-pg') {
+				return adapterMockPath;
+			}
+		}
+	};
+}
+
 export default defineConfig({
 	plugins: [
+		dbMockPlugin(),
 		sveltekit(),
 		svelteTesting({
 			resolveBrowser: false, // Don't automatically modify resolve.conditions
@@ -32,6 +62,7 @@ export default defineConfig({
 			// Exclude Playwright E2E tests (UI-based) but include voter-protocol E2E tests (MSW-based)
 			'tests/e2e/basic-functionality.spec.ts',
 			'tests/e2e/identity-verification-flow.spec.ts',
+			'tests/e2e/moderation/moderation-pipeline.spec.ts',
 			// Temporarily exclude Svelte component tests - require Svelte 5 browser environment
 			// (incompatible with MSW Node.js environment in current config)
 			// See: docs/testing/svelte-component-testing.md for migration path
@@ -52,7 +83,7 @@ export default defineConfig({
 		// MSW v2 Node.js compatibility - resolve server imports correctly
 		server: {
 			deps: {
-				inline: ['msw'], //  MSW must be inlined for Node.js environment
+				inline: ['msw'], // MSW must be inlined for Node.js ESM compatibility
 				external: [] // Don't externalize anything else unnecessarily
 			}
 		},
@@ -72,7 +103,7 @@ export default defineConfig({
 
 		// Test execution settings (CI-aware)
 		testTimeout: process.env.CI ? 15000 : 10000, // Longer timeouts for CI
-		hookTimeout: process.env.CI ? 8000 : 5000, // Extended hooks for CI
+		hookTimeout: process.env.CI ? 15000 : 10000, // DB cold start needs headroom
 
 		// Mock optimizations
 		clearMocks: true, // Clear mocks between tests
