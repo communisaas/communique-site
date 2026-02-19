@@ -29,7 +29,11 @@ import type {
 
 // Voyage AI API configuration
 const VOYAGE_API_BASE = 'https://api.voyageai.com/v1';
-const VOYAGE_API_KEY = process.env.VOYAGE_API_KEY;
+
+/** Lazy getter — process.env is empty at module load on CF Workers */
+function getVoyageApiKey(): string {
+	return process.env.VOYAGE_API_KEY || '';
+}
 
 // Rate limiting and retry configuration
 const MAX_RETRIES = 3;
@@ -104,7 +108,7 @@ export function getEmbeddingModelForContent(contentType?: ContentType): VoyageMo
  * Validate API key is configured
  */
 function validateApiKey(): void {
-	if (!VOYAGE_API_KEY) {
+	if (!getVoyageApiKey()) {
 		throw new Error(
 			'VOYAGE_API_KEY environment variable is not set. ' +
 				'Get your API key at https://dash.voyageai.com/'
@@ -132,7 +136,7 @@ async function voyageRequest<T>(
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				Authorization: `Bearer ${VOYAGE_API_KEY}`
+				Authorization: `Bearer ${getVoyageApiKey()}`
 			},
 			body: JSON.stringify(body),
 			signal: controller.signal

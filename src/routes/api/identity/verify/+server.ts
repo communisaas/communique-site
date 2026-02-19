@@ -1,6 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { selfVerifier } from '$lib/core/server/selfxyz-verifier';
+import { getSelfVerifier } from '$lib/core/server/selfxyz-verifier';
 import {
 	generateIdentityHash,
 	generateIdentityFingerprint,
@@ -37,7 +37,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress, locals }
 		}
 
 		// Verify proof with self.xyz SDK
-		const result = await selfVerifier.verify(attestationId, proof, publicSignals, userContextData);
+		const result = await getSelfVerifier().verify(attestationId, proof, publicSignals, userContextData);
 
 		const { isValid, isMinimumAgeValid, isOfacValid } = result.isValidDetails;
 

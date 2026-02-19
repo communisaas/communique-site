@@ -301,8 +301,8 @@ describe('Identity API Routes', () => {
 
 		it('should verify user successfully with valid proof', async () => {
 			// Mock selfVerifier for this specific test scenario
-			const { selfVerifier } = await import('$lib/core/server/selfxyz-verifier');
-			const verifySpy = vi.spyOn(selfVerifier, 'verify').mockResolvedValueOnce({
+			const { getSelfVerifier } = await import('$lib/core/server/selfxyz-verifier');
+			const verifySpy = vi.spyOn(getSelfVerifier(), 'verify').mockResolvedValueOnce({
 				attestationId: 1,
 				isValidDetails: {
 					isValid: true,
@@ -373,8 +373,8 @@ describe('Identity API Routes', () => {
 
 		it('should reject verification when age below 18', async () => {
 			// Mock verifier to return age validation failure
-			const { selfVerifier } = await import('$lib/core/server/selfxyz-verifier');
-			const verifySpy = vi.spyOn(selfVerifier, 'verify').mockResolvedValueOnce({
+			const { getSelfVerifier } = await import('$lib/core/server/selfxyz-verifier');
+			const verifySpy = vi.spyOn(getSelfVerifier(), 'verify').mockResolvedValueOnce({
 				attestationId: 1,
 				isValidDetails: {
 					isValid: true,
@@ -436,8 +436,8 @@ describe('Identity API Routes', () => {
 		});
 
 		it('should reject verification when OFAC check fails', async () => {
-			const { selfVerifier } = await import('$lib/core/server/selfxyz-verifier');
-			const verifySpy = vi.spyOn(selfVerifier, 'verify').mockResolvedValueOnce({
+			const { getSelfVerifier } = await import('$lib/core/server/selfxyz-verifier');
+			const verifySpy = vi.spyOn(getSelfVerifier(), 'verify').mockResolvedValueOnce({
 				attestationId: 1,
 				isValidDetails: {
 					isValid: true,
@@ -529,7 +529,7 @@ describe('Identity API Routes', () => {
 
 			// Mock selfVerifier for testUser2
 			const selfxyzModule = await import('$lib/core/server/selfxyz-verifier');
-			const verifySpy = vi.spyOn(selfxyzModule.selfVerifier, 'verify').mockResolvedValueOnce({
+			const verifySpy = vi.spyOn(selfxyzModule.getSelfVerifier(), 'verify').mockResolvedValueOnce({
 				attestationId: 1,
 				isValidDetails: {
 					isValid: true,
