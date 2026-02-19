@@ -44,14 +44,14 @@
 		box-shadow: 0 0 0 2px var(--header-focus-ring);
 	}
 
-	.header-back__icon {
+	.header-back :global(.header-back__icon) {
 		width: 18px;
 		height: 18px;
 		flex-shrink: 0;
 		transition: transform var(--header-transition-fast) var(--header-easing);
 	}
 
-	.header-back:hover .header-back__icon {
+	.header-back:hover :global(.header-back__icon) {
 		transform: translateX(-2px);
 	}
 
@@ -63,12 +63,15 @@
 
 	/* Reduced motion */
 	@media (prefers-reduced-motion: reduce) {
-		.header-back,
-		.header-back__icon {
+		.header-back {
 			transition: none;
 		}
 
-		.header-back:hover .header-back__icon {
+		.header-back :global(.header-back__icon) {
+			transition: none;
+		}
+
+		.header-back:hover :global(.header-back__icon) {
 			transform: none;
 		}
 	}

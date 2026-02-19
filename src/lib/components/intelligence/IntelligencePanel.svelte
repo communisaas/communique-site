@@ -214,11 +214,6 @@
 		transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
-	/* Rotate chevron smoothly */
-	.rotate-180 {
-		transform: rotate(180deg);
-	}
-
 	/* Custom scrollbar for items list */
 	.items-list {
 		scrollbar-width: thin;

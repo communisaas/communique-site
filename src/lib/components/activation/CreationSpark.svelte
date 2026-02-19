@@ -442,19 +442,6 @@
 		background: white;
 	}
 
-	/* Draft state - subtle emerald accent to signal preserved work */
-	.input-container.has-draft {
-		border-color: oklch(0.75 0.08 155);
-		background: oklch(0.995 0.005 155);
-	}
-
-	.input-container.has-draft.focused {
-		border-color: oklch(0.6 0.12 155);
-		box-shadow:
-			0 0 0 3px oklch(0.7 0.08 155 / 0.15),
-			0 4px 12px -2px oklch(0.5 0.08 155 / 0.1);
-	}
-
 	/* Draft Artifact - Settled state presentation */
 	.draft-artifact {
 		border-radius: 12px;

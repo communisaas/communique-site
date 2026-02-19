@@ -449,7 +449,7 @@ DESIGN:
 		white-space: nowrap;
 	}
 
-	.nav-arrow {
+	.nav-item :global(.nav-arrow) {
 		flex-shrink: 0;
 		color: oklch(0.5 0.02 60);
 	}
@@ -542,7 +542,7 @@ DESIGN:
 		font-size: 0.8125rem;
 	}
 
-	.entity-icon {
+	.entity-item :global(.entity-icon) {
 		color: var(--type-color);
 	}
 

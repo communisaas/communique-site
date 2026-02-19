@@ -153,7 +153,7 @@
 		box-shadow: 0 0 0 2px var(--header-focus-ring);
 	}
 
-	.bottom-bar-icon {
+	.bottom-bar-secondary :global(.bottom-bar-icon) {
 		width: 18px;
 		height: 18px;
 		color: var(--header-text-muted);

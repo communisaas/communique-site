@@ -280,7 +280,7 @@
 		white-space: nowrap;
 	}
 
-	.ambient-user-chevron {
+	.ambient-user :global(.ambient-user-chevron) {
 		width: 16px;
 		height: 16px;
 		color: var(--header-text-muted);
@@ -288,7 +288,7 @@
 		transition: transform var(--header-transition-fast) var(--header-easing);
 	}
 
-	.ambient-user[aria-expanded='true'] .ambient-user-chevron {
+	.ambient-user[aria-expanded='true'] :global(.ambient-user-chevron) {
 		transform: rotate(180deg);
 	}
 
@@ -342,7 +342,7 @@
 		color: var(--header-text-primary);
 	}
 
-	.ambient-dropdown-icon {
+	.ambient-dropdown-item :global(.ambient-dropdown-icon) {
 		width: 18px;
 		height: 18px;
 		opacity: 0.7;
@@ -358,8 +358,11 @@
 	@media (prefers-reduced-motion: reduce) {
 		.ambient-presence,
 		.ambient-auth-pill,
-		.ambient-user,
-		.ambient-user-chevron {
+		.ambient-user {
+			transition: none;
+		}
+
+		.ambient-user :global(.ambient-user-chevron) {
 			transition: none;
 		}
 

@@ -167,14 +167,14 @@
 		}
 	}
 
-	.header-avatar-chevron {
+	.header-avatar-button :global(.header-avatar-chevron) {
 		width: 16px;
 		height: 16px;
 		color: var(--header-text-muted);
 		transition: transform var(--header-transition-fast) var(--header-easing);
 	}
 
-	.header-avatar-button[aria-expanded='true'] .header-avatar-chevron {
+	.header-avatar-button[aria-expanded='true'] :global(.header-avatar-chevron) {
 		transform: rotate(180deg);
 	}
 
@@ -234,7 +234,7 @@
 		color: var(--header-text-primary);
 	}
 
-	.header-dropdown-item-icon {
+	.header-dropdown-item :global(.header-dropdown-item-icon) {
 		width: 18px;
 		height: 18px;
 		opacity: 0.7;
@@ -253,8 +253,11 @@
 			animation: none;
 		}
 
-		.header-avatar-button,
-		.header-avatar-chevron {
+		.header-avatar-button {
+			transition: none;
+		}
+
+		.header-avatar-button :global(.header-avatar-chevron) {
 			transition: none;
 		}
 	}

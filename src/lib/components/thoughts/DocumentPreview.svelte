@@ -242,7 +242,7 @@ TIMING CONSTANTS:
 		color: oklch(0.5 0.02 60);
 	}
 
-	.structure-icon {
+	.preview-structure :global(.structure-icon) {
 		color: oklch(0.6 0.02 60);
 	}
 

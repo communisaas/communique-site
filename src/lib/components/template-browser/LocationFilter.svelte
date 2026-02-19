@@ -1283,7 +1283,7 @@
 	}
 
 	/* When inline resolver is active, allow more space */
-	.location-filter-container:has(.inline-resolver) {
+	.location-filter-container:has(:global(.inline-resolver)) {
 		min-height: 140px;
 	}
 
@@ -1293,7 +1293,7 @@
 			min-height: 100px;
 		}
 
-		.location-filter-container:has(.inline-resolver) {
+		.location-filter-container:has(:global(.inline-resolver)) {
 			min-height: 220px;
 		}
 	}

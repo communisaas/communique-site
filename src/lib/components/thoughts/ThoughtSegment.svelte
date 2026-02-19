@@ -115,7 +115,7 @@
 
 <style>
 	/* Subtle hover effect for highlighted segments */
-	.thought-segment:has(.border-l-4):hover {
+	.thought-segment:has(:global(.border-l-4)):hover {
 		background-color: var(--coord-route-solid, rgba(59, 196, 184, 0.08));
 	}
 

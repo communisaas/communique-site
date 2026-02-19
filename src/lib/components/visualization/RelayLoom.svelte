@@ -1311,14 +1311,6 @@
 		opacity: 0;
 	}
 
-	.particle.ambient.share {
-		fill: var(--share-color);
-	}
-
-	.particle.ambient.deliver {
-		fill: var(--deliver-color);
-	}
-
 	/* Fade in ambient particles after narrative - use animation delay to sync with SMIL begin */
 	.relay-loom.narrative-complete .particle.ambient {
 		animation: particle-fade-in 400ms ease-out forwards;
@@ -1338,25 +1330,12 @@
 		opacity: 0.95;
 	}
 
-	.particle.active.share {
-		fill: var(--share-color-bright);
-	}
-
-	.particle.active.deliver {
-		fill: var(--deliver-color-bright);
-	}
-
 	/* Reduced motion: hide all particles */
 	.relay-loom.reduced-motion .particles-ambient,
 	.relay-loom.reduced-motion .particles-active {
 		display: none;
 	}
 
-	/* Reduced motion: hide pulses */
-	.relay-loom.reduced-motion .signals-layer,
-	.relay-loom.reduced-motion .signals-active {
-		display: none;
-	}
 
 	/* ─────────────────────────────────────────────────────────────
 	   Nodes
