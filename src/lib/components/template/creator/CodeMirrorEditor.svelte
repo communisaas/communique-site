@@ -101,18 +101,9 @@
 		const doc = view.state.doc.toString();
 		const ranges = getAtomicRanges(doc);
 
-		// DEBUG: Log current state
-		console.log('🔍 Backspace Debug:', {
-			cursorPos: pos,
-			docLength: doc.length,
-			docSnippet: doc.slice(Math.max(0, pos - 10), pos + 10),
-			ranges: ranges.map((r) => ({ from: r.from, to: r.to, text: doc.slice(r.from, r.to) }))
-		});
-
-		// Check if cursor is at the end of a variable
+			// Check if cursor is at the end of a variable
 		for (const range of ranges) {
 			if (range.to === pos) {
-				console.log('✅ ATOMIC JUMP: Moving cursor from', pos, 'to', range.from);
 				// CRITICAL: Dispatch a transaction that ONLY moves cursor, no deletion
 				view.dispatch({
 					selection: { anchor: range.from, head: range.from },
@@ -124,7 +115,6 @@
 			}
 		}
 
-		console.log('❌ NO ATOMIC MATCH: Letting default backspace run');
 		return false; // Let default backspace run
 	}
 
@@ -171,13 +161,11 @@
 		{
 			key: 'Backspace',
 			run: (view) => {
-				console.log('🔥 KEYMAP: Backspace handler called');
 				// If we handle the atomic jump, completely prevent default
 				if (jumpOverAtomBackward(view)) {
 					return true; // Signal that we handled it, prevent all defaults
 				}
 				// Otherwise let default backspace behavior run
-				console.log('🔥 KEYMAP: Calling default deleteCharBackward');
 				return deleteCharBackward(view as any);
 			}
 		},
@@ -368,8 +356,6 @@
 	}
 
 	onMount(() => {
-		console.log('🚀 CodeMirror initializing with atomic ranges handlers');
-
 		const startState = EditorState.create({
 			doc: value,
 			extensions: [

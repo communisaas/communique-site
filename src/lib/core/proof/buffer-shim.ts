@@ -22,7 +22,6 @@ class BufferShim extends Uint8Array {
 		encodingOrOffset?: Encoding | number,
 		length?: number
 	): BufferShim {
-		// @ts-ignore - Uint8Array.from signature mismatch
 		return BufferShim._fromImpl(value, encodingOrOffset, length);
 	}
 

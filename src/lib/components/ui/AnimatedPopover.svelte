@@ -265,22 +265,6 @@
 		const popoverWidth = popoverElement.offsetWidth;
 		const popoverHeight = popoverElement.offsetHeight;
 
-		console.log('AnimatedPopover positioning debug:', {
-			id,
-			triggerRect: {
-				top: triggerRect.top,
-				left: triggerRect.left,
-				bottom: triggerRect.bottom,
-				right: triggerRect.right,
-				width: triggerRect.width,
-				height: triggerRect.height
-			},
-			popoverDimensions: {
-				width: popoverWidth,
-				height: popoverHeight
-			}
-		});
-
 		// Calculate available space in each direction
 		const spaceAbove = triggerRect.top;
 		const spaceBelow = viewportHeight - triggerRect.bottom;
@@ -315,8 +299,6 @@
 
 		// Ensure tooltip stays within viewport bounds
 		top = Math.max(margin, Math.min(top, viewportHeight - popoverHeight - margin));
-
-		console.log('AnimatedPopover final position:', { top, left });
 
 		// Apply fixed positioning
 		popoverElement.style.top = `${top}px`;

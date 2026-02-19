@@ -18,10 +18,21 @@ import { z } from 'zod';
 // Import GeoScope for agent-extracted geographic scope
 import type { GeoScope } from '$lib/core/agents/types';
 
+/** Sanitize slug: lowercase, alphanumeric + hyphens only, max 100 chars */
+function sanitizeSlug(slug: string | undefined): string | undefined {
+	if (!slug) return undefined;
+	return slug
+		.toLowerCase()
+		.replace(/[^a-z0-9-]/g, '-')
+		.replace(/-+/g, '-')
+		.replace(/^-|-$/g, '')
+		.slice(0, 100) || undefined;
+}
+
 // Validation schema for template creation - matches Prisma schema field names
 interface CreateTemplateRequest {
 	title: string;
-	slug?: string; // HACKATHON: Accept slug from AI agent (don't regenerate)
+	slug?: string; // AI-generated slug (sanitized before use)
 	message_body: string;
 	sources?: Array<{ num: number; title: string; url: string; type: string }>; // Citation sources from AI agent
 	research_log?: string[]; // Agent's research process log
@@ -61,13 +72,12 @@ function validateTemplateData(data: unknown): {
 		errors.push(
 			createValidationError('title', 'VALIDATION_REQUIRED', 'Template title is required')
 		);
-	} else if (templateData.title.length > 500) {
-		// HACKATHON: Increased from 200 to 500 for generous limits
+	} else if (templateData.title.length > 200) {
 		errors.push(
 			createValidationError(
 				'title',
 				'VALIDATION_TOO_LONG',
-				'Title must be less than 500 characters'
+				'Title must be less than 200 characters'
 			)
 		);
 	}
@@ -80,13 +90,12 @@ function validateTemplateData(data: unknown): {
 		errors.push(
 			createValidationError('message_body', 'VALIDATION_REQUIRED', 'Message content is required')
 		);
-	} else if (templateData.message_body.length > 50000) {
-		// HACKATHON: Increased from 10,000 to 50,000 for generous limits
+	} else if (templateData.message_body.length > 10000) {
 		errors.push(
 			createValidationError(
 				'message_body',
 				'VALIDATION_TOO_LONG',
-				'Message must be less than 50,000 characters'
+				'Message must be less than 10,000 characters'
 			)
 		);
 	}
@@ -126,7 +135,7 @@ function validateTemplateData(data: unknown): {
 	// Return valid data with defaults
 	const validData: CreateTemplateRequest = {
 		title: templateData.title as string,
-		slug: (templateData.slug as string) || undefined, // HACKATHON: Extract slug from request
+		slug: sanitizeSlug(templateData.slug as string) || undefined,
 		message_body: templateData.message_body as string,
 		sources:
 			(templateData.sources as Array<{ num: number; title: string; url: string; type: string }>) ||
@@ -536,15 +545,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
 			// Authenticated user - save to database
 			try {
-				// HACKATHON FIX: Use AI-generated slug if provided, otherwise generate from title
-				// This preserves the slug created by the subject line generator agent
+				// Use pre-sanitized slug if provided, otherwise generate from title
 				const slug = validData.slug?.trim()
 					? validData.slug.trim()
 					: validData.title
 							.toLowerCase()
 							.replace(/[^a-z0-9\s-]/g, '')
 							.replace(/\s+/g, '-')
-							.substring(0, 100); // Increased from 50 to 100 for generous limits
+							.substring(0, 100);
 
 				const existingTemplate = await db.template.findUnique({
 					where: { slug }
