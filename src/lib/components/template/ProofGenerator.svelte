@@ -211,61 +211,18 @@
 					publicInputCount: twoTreeResult.publicInputsArray.length
 				});
 			} else {
-				// ═══════════════════════════════════════════════════════════
-				// LEGACY SINGLE-TREE FLOW (deprecated — pre-Shadow Atlas credentials)
-				// All credentials registered after Shadow Atlas migration are two-tree.
-				// This path only fires for stale IndexedDB credentials from before migration.
-				// No BR5-010 cross-validation (accepted risk for deprecated path).
-				// ═══════════════════════════════════════════════════════════
-				console.warn('[ProofGenerator] DEPRECATED: Using legacy single-tree proof flow. Credential should be re-registered.');
-
-				const orchestratorModule = await import('$lib/core/proof/prover-orchestrator');
-				const actionId = await orchestratorModule.proverOrchestrator.poseidonHash(templateId);
-
-				const witness = {
-					identityCommitment: credential.identityCommitment,
-					leafIndex: credential.leafIndex,
-					merklePath: credential.merklePath,
-					merkleRoot: credential.merkleRoot,
-					actionId,
-					timestamp: Date.now(),
-					deliveryAddress
-				};
-
-				proofState = { status: 'initializing-prover', progress: 0 };
-				await orchestratorModule.proverOrchestrator.init();
-
-				const proofResult = await orchestratorModule.proverOrchestrator.prove(
-					// witness-encryption.WitnessData ≠ prover-core.WitnessData (duplicate interfaces)
-					witness as any, // eslint-disable-line @typescript-eslint/no-explicit-any
-					(stage, percent) => {
-						if (stage === 'generating-keys') {
-							proofState = { status: 'initializing-prover', progress: percent };
-						} else if (stage === 'proving') {
-							proofState = { status: 'generating-proof', progress: percent };
-						} else if (stage === 'finalizing') {
-							proofState = { status: 'generating-proof', progress: 95 };
-						}
+				// Stale pre-migration credential: cannot produce compatible proofs
+				// The old single-tree circuit uses different actionId formula and public input count
+				proofState = {
+					status: 'error',
+					message: 'Your verification credential needs to be updated. Please re-verify your identity to continue.',
+					recoverable: true,
+					retryAction: () => {
+						oncancel?.();
+						// Parent component should redirect to identity verification
 					}
-				);
-
-				if (!proofResult.success) {
-					proofState = {
-						status: 'error',
-						message: proofResult.error || 'Proof generation failed. Please try again.',
-						recoverable: true,
-						retryAction: () => generateAndSubmit()
-					};
-					return;
-				}
-
-				proofHex = proofResult.proof
-					? Array.from(proofResult.proof)
-							.map((b) => b.toString(16).padStart(2, '0'))
-							.join('')
-					: '';
-				nullifierHex = proofResult.nullifier || '';
-				publicInputsPayload = proofResult.publicInputs || {};
+				};
+				return;
 			}
 
 			// Step 3: Encrypt witness for TEE processing

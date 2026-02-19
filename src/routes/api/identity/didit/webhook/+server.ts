@@ -294,16 +294,12 @@ export const POST: RequestHandler = async ({ request }) => {
 			throw error(409, 'Identity already verified with another account');
 		}
 
-		// TODO: Shadow Atlas Registration (Phase 1.4)
-		// The Shadow Atlas registration requires congressional district, which requires:
-		// 1. User provides their address (separate step after identity verification)
-		// 2. Geocode address to lat/lng
-		// 3. Call Shadow Atlas API with identity commitment + coordinates
-		// 4. Store merkle_path in ShadowAtlasRegistration table
-		//
-		// For now, we store the shadowAtlasCommitment in verification audit metadata.
-		// A separate endpoint will handle the address → Shadow Atlas registration flow.
-		console.log(`[Didit Webhook] Identity verified, Shadow Atlas commitment generated: ${shadowAtlasCommitment.substring(0, 16)}...`);
+		// Shadow Atlas registration is handled separately after address collection:
+		// 1. This webhook stores shadowAtlasCommitment in verification audit metadata
+		// 2. User provides address in a separate step (AddressCollectionForm)
+		// 3. Client calls registerTwoTree() -> POST /api/shadow-atlas/register
+		// The split is intentional: identity verification doesn't require address disclosure.
+		console.log(`[Didit Webhook] Identity verified, Shadow Atlas commitment stored: ${shadowAtlasCommitment.substring(0, 16)}...`);
 
 		// ISSUE-001: Bind identity commitment for cross-provider deduplication
 		const bindingResult = await bindIdentityCommitment(userId, identityCommitment);

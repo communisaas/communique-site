@@ -140,18 +140,24 @@ export function meetsMinimumPrecision(
 		return hasSufficientPrecision && (hasMatchingState || !template.specific_locations?.length);
 	}
 
-	// County requirement: User must have county-level precision
+	// County requirement: User must have county-level precision and matching county
 	if (required === 'county') {
 		const hasSufficientPrecision = ['county', 'district'].includes(userPrecision);
-		// TODO: Add county matching logic when we have county data on templates
-		return hasSufficientPrecision && !!userLocation?.county_fips;
+		if (!hasSufficientPrecision || !userLocation?.county_fips) return false;
+		// If template has no specific county constraint, accept any county-level user
+		if (!template.specific_locations?.length) return true;
+		// User's county_fips must appear in template's specific_locations
+		return template.specific_locations.some((loc) => loc.includes(userLocation.county_fips!));
 	}
 
-	// District requirement: User must have district-level precision
+	// District requirement: User must have district-level precision and matching district
 	if (required === 'district') {
 		const hasSufficientPrecision = userPrecision === 'district';
-		// TODO: Add district matching logic when we have district data on templates
-		return hasSufficientPrecision && !!userLocation?.congressional_district;
+		if (!hasSufficientPrecision || !userLocation?.congressional_district) return false;
+		if (!template.specific_locations?.length) return true;
+		return template.specific_locations.some(
+			(loc) => loc === userLocation.congressional_district
+		);
 	}
 
 	return false;

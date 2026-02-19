@@ -142,12 +142,13 @@ export const POST: RequestHandler = async ({ request, locals, platform }) => {
 			const pseudonymousId = computePseudonymousId(userId);
 
 			// Create submission atomically
-			// action_id is the templateId (in production, it's poseidon hash of templateId in public_inputs)
+			// Extract action_id from ZK public inputs when available (two-tree proofs)
+			const publicInputsTyped = publicInputs as Record<string, unknown> | undefined;
 			return await tx.submission.create({
 				data: {
 					pseudonymous_id: pseudonymousId,
 					template_id: templateId,
-					action_id: templateId, // TODO: extract action domain from publicInputs[ACTION_DOMAIN]
+					action_id: (publicInputsTyped?.actionDomain as string) ?? templateId,
 					proof_hex: proof,
 					public_inputs: publicInputs,
 					nullifier,
