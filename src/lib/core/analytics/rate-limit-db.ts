@@ -437,6 +437,9 @@ export async function getRateLimitStats(): Promise<RateLimitStats> {
  * IMPORTANT: This cache is per-instance and may allow slightly more requests
  * than the exact limit across multiple instances. For DP purposes, this is
  * acceptable because the privacy guarantee comes from the noise, not exact limits.
+ *
+ * NOTE: On CF Workers, this cache resets per-isolate. This is acceptable —
+ * DB is authoritative, cache is an optimization for fast-path rejections.
  */
 const localCache = new Map<
 	string,

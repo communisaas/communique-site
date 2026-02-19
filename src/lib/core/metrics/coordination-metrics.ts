@@ -21,6 +21,8 @@ interface CacheEntry<T> {
 	cachedAt: number;
 }
 
+// NOTE: On CF Workers, this cache resets per-isolate. Each isolate will
+// re-fetch from subgraph. This is acceptable for a 5-minute cache.
 const cache = new Map<string, CacheEntry<unknown>>();
 
 function getCached<T>(key: string): T | null {
