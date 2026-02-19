@@ -807,6 +807,37 @@ Test that client-encrypted witness data can be decrypted by the server. Uses `@n
 
 svelte-check (0 errors), CF build, full test suite, update docs.
 
+## Cycle 14 Results
+
+**Focus:** Security-Critical Test Coverage + Production Hygiene
+**Waves:** 4 (14A–14D)
+**Commits:** 4
+
+### What was done
+
+| Wave | Outcome |
+|------|---------|
+| 14A | 31 tests across 3 files: `authority-level.test.ts` (18 tests — all 5 authority levels, all trust tiers, tier→authority mapping), `pseudonymous-id.test.ts` (5 tests — HMAC format, determinism, uniqueness, salt guards), `user-secret-derivation.test.ts` (8 tests — Poseidon2 determinism, hex normalization, entropy generation). Mock pattern for `$env/dynamic/private` and `poseidon2Hash2`. |
+| 14B | 5 tests in `witness-roundtrip.test.ts`: encrypt→decrypt round-trip using @noble for both sides, wrong-key rejection, tamper detection (Poly1305 auth tag), nonce uniqueness, complex nested data round-trip. Used `@vitest-environment node` pragma to avoid cross-realm Uint8Array issue. |
+| 14C | Debug console.log floods removed (6 emoji logs in CodeMirrorEditor, 2 in AnimatedPopover). 3 empty `catch {}` blocks fixed with `console.warn`. `@ts-ignore` removed (no actual error on line). HACKATHON limits tightened: title 500→200, body 50000→10000. `sanitizeSlug()` function added. 3 demo pages dev-gated with 404. |
+| 14D | 0 svelte-check errors (88 warnings, unchanged). CF build passes. 36 new tests all pass. Docs updated. |
+
+### Findings
+
+1. **`@ts-ignore` was unnecessary:** The plan called for `@ts-ignore` → `@ts-expect-error`, but svelte-check revealed no actual TypeScript error on that line. The directive was simply removed — keeping unused suppressions is misleading.
+2. **Cross-realm Uint8Array in @noble/hashes:** The `blake2b` and `xchacha20poly1305` functions use `instanceof Uint8Array` checks that fail in jsdom. The witness round-trip test uses `@vitest-environment node` pragma since it tests server-side crypto with no DOM dependency.
+3. **Poseidon2 WASM in tests:** The `@aztec/bb.js` WASM loading is fragile in vitest. Mocking `poseidon2Hash2` with a deterministic function is the right approach for unit tests — the real Poseidon2 is already tested in `tests/unit/crypto/poseidon.test.ts`.
+
+### Test count
+
+| Test file | Count |
+|-----------|-------|
+| `tests/unit/authority-level.test.ts` | 18 |
+| `tests/unit/pseudonymous-id.test.ts` | 5 |
+| `tests/unit/user-secret-derivation.test.ts` | 8 |
+| `tests/unit/witness-roundtrip.test.ts` | 5 |
+| **Total new in Cycle 14** | **36** |
+
 ---
 
 *Communique PBC | Implementation Plan | 2026-02-18*
