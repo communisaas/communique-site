@@ -29,7 +29,7 @@ export class NewsProvider extends BaseIntelligenceProvider {
 		const cached = await this.checkCache(query, 'news', this.cacheHours);
 
 		if (cached.length > 0) {
-			console.log(`[${this.name}] Cache hit: ${cached.length} items`);
+			console.debug(`[${this.name}] Cache hit: ${cached.length} items`);
 			for (const item of cached) {
 				yield item;
 			}
@@ -37,7 +37,7 @@ export class NewsProvider extends BaseIntelligenceProvider {
 		}
 
 		// Cache miss - fetch fresh news
-		console.log(`[${this.name}] Cache miss, fetching fresh news`);
+		console.debug(`[${this.name}] Cache miss, fetching fresh news`);
 
 		try {
 			const items = await this.fetchNews(query);
@@ -56,63 +56,11 @@ export class NewsProvider extends BaseIntelligenceProvider {
 
 	/**
 	 * Fetch news items from external source
-	 * TODO: Integrate with real news API (NewsAPI, Perplexity)
+	 * NOT YET IMPLEMENTED: Requires NewsAPI or Perplexity integration
 	 */
-	private async fetchNews(query: IntelligenceQuery): Promise<IntelligenceItem[]> {
-		// For MVP: Return placeholder data
-		// In production, this would call:
-		// - NewsAPI.org for broad coverage
-		// - Perplexity API for recent AI-curated news
-		// - RSS feeds for specific sources
-
-		const items: IntelligenceItem[] = [];
-
-		// Simulate API delay
-		await new Promise((resolve) => setTimeout(resolve, 500));
-
-		// Generate placeholder items based on topics
-		for (const topic of query.topics.slice(0, 3)) {
-			const item: IntelligenceItem = {
-				id: this.generateItemId(
-					`https://example.com/news/${topic}`,
-					'news'
-				),
-				category: 'news',
-				title: `Recent Developments in ${topic}`,
-				summary: `Placeholder news article about ${topic}. In production, this would contain actual news content from a news API.`,
-				sourceUrl: `https://example.com/news/${topic}`,
-				sourceName: 'Placeholder News',
-				publishedAt: new Date(),
-				relevanceScore: 0.8,
-				topics: [topic],
-				entities: [],
-				sentiment: 'neutral',
-				isActionable: true,
-				metadata: {
-					placeholder: true,
-					integrationNeeded: 'NewsAPI or Perplexity'
-				}
-			};
-
-			items.push(item);
-		}
-
-		return items;
-	}
-
-	/**
-	 * Helper to determine timeframe for API queries
-	 */
-	private getTimeframeDays(timeframe?: IntelligenceQuery['timeframe']): number {
-		switch (timeframe) {
-			case 'day':
-				return 1;
-			case 'week':
-				return 7;
-			case 'month':
-				return 30;
-			default:
-				return 7;
-		}
+	private async fetchNews(_query: IntelligenceQuery): Promise<IntelligenceItem[]> {
+		throw new Error(
+			'[NewsProvider] Not implemented. Requires NewsAPI or Perplexity API integration.'
+		);
 	}
 }

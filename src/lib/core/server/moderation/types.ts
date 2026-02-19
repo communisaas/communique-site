@@ -124,12 +124,6 @@ export const NON_BLOCKING_HAZARDS: MLCommonsHazard[] = [
 ];
 
 /**
- * @deprecated Use BLOCKING_HAZARDS instead
- * Kept for backward compatibility
- */
-export const CIVIC_CRITICAL_HAZARDS: MLCommonsHazard[] = ['S5', 'S6', 'S13'];
-
-/**
  * Safety result from Llama Guard 4
  */
 export interface SafetyResult {

@@ -8,7 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { db } from '../setup/api-test-setup';
 import { incrementAggregate, processBatch, queryAggregates, getHealthMetrics } from '../../src/lib/core/analytics/aggregate';
-import { applyLocalDP, applyLaplace, correctForLDP } from '../../src/lib/core/analytics/noise';
+import { applyLaplace, correctForLDP } from '../../src/lib/core/analytics/noise';
 import { coarsenResults, mergeCoarsenedResults } from '../../src/lib/core/analytics/coarsen';
 import { sanitizeDimensions, sanitizeJurisdiction, categorizeError } from '../../src/lib/core/analytics/sanitize';
 import { METRICS, PRIVACY, isMetric, isDeliveryMethod } from '../../src/lib/types/analytics';

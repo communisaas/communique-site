@@ -8,7 +8,6 @@
 // Types
 export type {
 	DecisionMakerTargetType,
-	TargetType,
 	GeographicScope,
 	ResolveContext,
 	DecisionMakerResult,
@@ -37,7 +36,7 @@ import { decisionMakerRouter } from './router';
 export function initializeProviders(): void {
 	const geminiProvider = new GeminiDecisionMakerProvider();
 	decisionMakerRouter.register(geminiProvider, 100);
-	console.log('[providers] Gemini provider registered (priority 100)');
+	console.debug('[providers] Gemini provider registered (priority 100)');
 }
 
 initializeProviders();

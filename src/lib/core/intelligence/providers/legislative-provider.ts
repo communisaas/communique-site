@@ -36,7 +36,7 @@ export class LegislativeProvider extends BaseIntelligenceProvider {
 		const cached = await this.checkCache(query, 'legislative', this.cacheHours);
 
 		if (cached.length > 0) {
-			console.log(`[${this.name}] Cache hit: ${cached.length} items`);
+			console.debug(`[${this.name}] Cache hit: ${cached.length} items`);
 			for (const item of cached) {
 				yield item;
 			}
@@ -44,7 +44,7 @@ export class LegislativeProvider extends BaseIntelligenceProvider {
 		}
 
 		// Cache miss - fetch fresh data
-		console.log(`[${this.name}] Cache miss, fetching legislative data`);
+		console.debug(`[${this.name}] Cache miss, fetching legislative data`);
 
 		try {
 			const items = await this.fetchLegislativeActivity(query);
@@ -63,67 +63,13 @@ export class LegislativeProvider extends BaseIntelligenceProvider {
 
 	/**
 	 * Fetch legislative activity from external sources
-	 * TODO: Integrate with Congress.gov API, ProPublica Congress API
+	 * NOT YET IMPLEMENTED: Requires Congress.gov API or ProPublica integration
 	 */
 	private async fetchLegislativeActivity(
-		query: IntelligenceQuery
+		_query: IntelligenceQuery
 	): Promise<IntelligenceItem[]> {
-		// For MVP: Return placeholder data
-		// In production, this would call:
-		// - Congress.gov API (free, official)
-		// - ProPublica Congress API (easier to use)
-		// - State legislature APIs (varies by state)
-		// - GovTrack.us API
-
-		const items: IntelligenceItem[] = [];
-
-		// Simulate API delay
-		await new Promise((resolve) => setTimeout(resolve, 700));
-
-		// Generate placeholder items
-		for (const topic of query.topics.slice(0, 2)) {
-			const billNumber = `H.R. ${Math.floor(Math.random() * 9000) + 1000}`;
-
-			const item: IntelligenceItem = {
-				id: this.generateItemId(
-					`https://www.congress.gov/bill/${billNumber}`,
-					'legislative'
-				),
-				category: 'legislative',
-				title: `${billNumber}: Legislation Related to ${topic}`,
-				summary: `Placeholder bill about ${topic}. In production, this would contain actual bill summaries, sponsors, and status from Congress.gov API.`,
-				sourceUrl: `https://www.congress.gov/bill/${billNumber}`,
-				sourceName: 'U.S. Congress',
-				publishedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000), // Random date in last 30 days
-				relevanceScore: 0.75,
-				topics: [topic],
-				entities: [
-					{
-						name: 'House of Representatives',
-						type: 'organization'
-					}
-				],
-				isActionable: true,
-				metadata: {
-					placeholder: true,
-					billNumber,
-					status: 'Introduced',
-					integrationNeeded: 'Congress.gov API or ProPublica'
-				}
-			};
-
-			items.push(item);
-		}
-
-		return items;
-	}
-
-	/**
-	 * Helper to determine appropriate Congress session
-	 */
-	private getCurrentCongress(): number {
-		const year = new Date().getFullYear();
-		// Congress sessions are 2 years, starting in odd years
-		return Math.floor((year - 1789) / 2) + 1;
+		throw new Error(
+			'[LegislativeProvider] Not implemented. Requires Congress.gov API or ProPublica integration.'
+		);
 	}
 }

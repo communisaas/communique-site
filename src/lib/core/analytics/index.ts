@@ -172,7 +172,6 @@ export {
 } from './sanitize';
 
 export {
-	applyLocalDP,
 	applyLaplace,
 	applyKaryRR,
 	correctForLDP,

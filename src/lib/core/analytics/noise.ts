@@ -6,7 +6,7 @@
  * 2. Central DP (server): Laplace noise on query results
  */
 
-import { PRIVACY, type Metric, type Increment, METRIC_VALUES } from '$lib/types/analytics';
+import { PRIVACY, type Metric, METRIC_VALUES } from '$lib/types/analytics';
 
 // =============================================================================
 // LOCAL DIFFERENTIAL PRIVACY (Client-Side)
@@ -45,33 +45,6 @@ export function applyKaryRR(
 	const otherMetrics = METRIC_VALUES.filter((m: Metric | null) => m !== trueMetric);
 	const selectedIndex = Math.floor(cryptoRandom() * otherMetrics.length);
 	return otherMetrics[selectedIndex];
-}
-
-/**
- * Apply local differential privacy (randomized response)
- *
- * @deprecated Use applyKaryRR directly. This wrapper exists for backward compatibility.
- *
- * IMPORTANT: The old implementation was BROKEN (likelihood ratio ~235:1 for ε=2.0).
- * This now calls applyKaryRR which properly implements k-ary Randomized Response
- * with correct ε-LDP guarantees.
- */
-export function applyLocalDP(
-	increment: Increment | null,
-	enabled: boolean = true
-): Increment | null {
-	if (!enabled || !increment) return increment;
-
-	const noisyMetric = applyKaryRR(increment.metric, PRIVACY.CLIENT_EPSILON);
-
-	if (noisyMetric === null) {
-		return null;
-	}
-
-	return {
-		metric: noisyMetric,
-		dimensions: increment.dimensions
-	};
 }
 
 // =============================================================================

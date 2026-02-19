@@ -30,7 +30,7 @@ export class CorporateProvider extends BaseIntelligenceProvider {
 		const cached = await this.checkCache(query, 'corporate', this.cacheHours);
 
 		if (cached.length > 0) {
-			console.log(`[${this.name}] Cache hit: ${cached.length} items`);
+			console.debug(`[${this.name}] Cache hit: ${cached.length} items`);
 			for (const item of cached) {
 				yield item;
 			}
@@ -38,7 +38,7 @@ export class CorporateProvider extends BaseIntelligenceProvider {
 		}
 
 		// Cache miss - fetch fresh data
-		console.log(`[${this.name}] Cache miss, fetching corporate announcements`);
+		console.debug(`[${this.name}] Cache miss, fetching corporate announcements`);
 
 		try {
 			const items = await this.fetchCorporateActivity(query);
@@ -57,82 +57,13 @@ export class CorporateProvider extends BaseIntelligenceProvider {
 
 	/**
 	 * Fetch corporate announcements and activity
-	 * TODO: Integrate with SEC EDGAR API, earnings calendar APIs
+	 * NOT YET IMPLEMENTED: Requires SEC EDGAR API or corporate IR integration
 	 */
 	private async fetchCorporateActivity(
-		query: IntelligenceQuery
+		_query: IntelligenceQuery
 	): Promise<IntelligenceItem[]> {
-		// For MVP: Return placeholder data
-		// In production, this would call:
-		// - SEC EDGAR API for filings
-		// - Corporate press release APIs
-		// - Earnings calendar services
-		// - Investor relations pages via web scraping
-
-		const items: IntelligenceItem[] = [];
-
-		// Simulate API delay
-		await new Promise((resolve) => setTimeout(resolve, 600));
-
-		const company = query.targetEntity ?? 'Unknown Company';
-
-		// Generate placeholder items
-		if (query.topics.some((t) => t.toLowerCase().includes('labor') || t.toLowerCase().includes('worker'))) {
-			items.push({
-				id: this.generateItemId(
-					`https://example.com/${company}/labor-announcement`,
-					'corporate'
-				),
-				category: 'corporate',
-				title: `${company} Announces New Labor Initiative`,
-				summary: `Placeholder corporate announcement about labor practices. In production, this would contain actual press releases and SEC filings.`,
-				sourceUrl: `https://example.com/${company}/news`,
-				sourceName: `${company} Newsroom`,
-				publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-				relevanceScore: 0.85,
-				topics: query.topics,
-				entities: [
-					{
-						name: company,
-						type: 'organization'
-					}
-				],
-				isActionable: true,
-				metadata: {
-					placeholder: true,
-					integrationNeeded: 'SEC EDGAR API'
-				}
-			});
-		}
-
-		if (query.topics.some((t) => t.toLowerCase().includes('environment') || t.toLowerCase().includes('climate'))) {
-			items.push({
-				id: this.generateItemId(
-					`https://example.com/${company}/sustainability-report`,
-					'corporate'
-				),
-				category: 'corporate',
-				title: `${company} Publishes Sustainability Report`,
-				summary: `Placeholder sustainability report. In production, this would link to actual corporate disclosures.`,
-				sourceUrl: `https://example.com/${company}/sustainability`,
-				sourceName: `${company} ESG`,
-				publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-				relevanceScore: 0.8,
-				topics: query.topics,
-				entities: [
-					{
-						name: company,
-						type: 'organization'
-					}
-				],
-				isActionable: true,
-				metadata: {
-					placeholder: true,
-					integrationNeeded: 'Corporate IR pages or ESG databases'
-				}
-			});
-		}
-
-		return items;
+		throw new Error(
+			'[CorporateProvider] Not implemented. Requires SEC EDGAR API or corporate IR integration.'
+		);
 	}
 }

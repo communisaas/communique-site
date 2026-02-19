@@ -1,6 +1,51 @@
 // Svelte 5 Templates Store - migrated from Svelte 4 store patterns
 import type { Template } from '$lib/types/template';
 import { formatErrorMessage } from '$lib/utils/error-formatting';
+import { api, type ApiResponse } from '$lib/core/api';
+
+// Templates API wrapper (domain-specific response unwrapping)
+const templatesApi = {
+	async list<T = unknown>(): Promise<ApiResponse<T>> {
+		return api.get('/templates');
+	},
+
+	async create<T = unknown>(template: Record<string, unknown>): Promise<ApiResponse<T>> {
+		const res = await api.post('/templates', template, { showToast: false });
+		if (
+			res.success &&
+			res.data &&
+			typeof res.data === 'object' &&
+			res.data !== null &&
+			'template' in res.data
+		) {
+			const templateData = (res.data as { template: T }).template;
+			return { success: true, data: templateData, status: res.status };
+		}
+		return res as ApiResponse<T>;
+	},
+
+	async update<T = unknown>(
+		id: string,
+		template: Record<string, unknown>
+	): Promise<ApiResponse<T>> {
+		const res = await api.put(`/templates/${id}`, template);
+		if (
+			res.success &&
+			res.data &&
+			typeof res.data === 'object' &&
+			res.data !== null &&
+			'template' in res.data
+		) {
+			const templateData = (res.data as { template: T }).template;
+			return { success: true, data: templateData, status: res.status };
+		}
+		return res as ApiResponse<T>;
+	},
+
+	async delete<T = unknown>(id: string): Promise<ApiResponse<T>> {
+		return api.delete(`/templates/${id}`);
+	}
+};
 
 // Type guard for Template with enhanced debugging
 function isTemplate(obj: unknown): obj is Template {
@@ -215,7 +260,6 @@ function createTemplateStore() {
 			state.error = null;
 
 			try {
-				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.list<Template[]>();
 
 				if (!result.success) {
@@ -252,7 +296,6 @@ function createTemplateStore() {
 		// Template CRUD operations
 		async addTemplate(template: Omit<Template, 'id'>): Promise<Template> {
 			try {
-				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.create(template);
 
 				if (!result.success) {
@@ -282,7 +325,6 @@ function createTemplateStore() {
 
 		async updateTemplate(id: string, updates: Partial<Template>): Promise<Template> {
 			try {
-				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.update(id, updates);
 
 				if (!result.success) {
@@ -309,7 +351,6 @@ function createTemplateStore() {
 
 		async deleteTemplate(id: string): Promise<void> {
 			try {
-				const { templatesApi } = await import('$lib/services/apiClient');
 				const result = await templatesApi.delete(id);
 
 				if (!result.success) {

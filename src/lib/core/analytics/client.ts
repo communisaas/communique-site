@@ -21,7 +21,7 @@ import {
 	isMetric
 } from '$lib/types/analytics';
 import { sanitizeDimensions, categorizeError } from './sanitize';
-import { applyLocalDP } from './noise';
+import { applyKaryRR } from './noise';
 
 // =============================================================================
 // CONFIGURATION
@@ -177,12 +177,14 @@ class AnalyticsClient {
 			dimensions: sanitized
 		};
 
-		// Apply local differential privacy
-		const maybeNoisy = applyLocalDP(increment, this.ldpEnabled);
-
-		// LDP might return null (randomized non-report)
-		if (maybeNoisy) {
-			this.queue.push(maybeNoisy);
+		// Apply local differential privacy (k-ary Randomized Response)
+		if (!this.ldpEnabled) {
+			this.queue.push(increment);
+		} else {
+			const noisyMetric = applyKaryRR(increment.metric);
+			if (noisyMetric !== null) {
+				this.queue.push({ metric: noisyMetric, dimensions: increment.dimensions });
+			}
 		}
 
 		// Flush if batch size reached

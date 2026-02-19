@@ -345,7 +345,7 @@ export class OAuthCallbackHandler {
 
 		// Log Sybil resistance action for audit
 		if (!emailVerified) {
-			console.log('[OAuth Sybil Resistance] New user created with unverified email:', {
+			console.debug('[OAuth Sybil Resistance] New user created with unverified email:', {
 				provider: config.provider,
 				userId: newUser.id,
 				email: userData.email,
@@ -358,31 +358,6 @@ export class OAuthCallbackHandler {
 		// See BlockchainInit.svelte component for actual account creation
 
 		return newUser;
-	}
-
-	/**
-	 * DEPRECATED: Blockchain account creation moved to client-side
-	 *
-	 * Previously this method attempted to create NEAR/Scroll accounts server-side,
-	 * but it caused SSR build failures due to browser-only dependencies.
-	 *
-	 * NEW APPROACH: Client-side initialization via BlockchainInit.svelte
-	 * - Uses dynamic imports with browser guards
-	 * - Triggers after OAuth callback completes
-	 * - Zero server-side blockchain code execution
-	 *
-	 * See: /src/lib/core/blockchain/use-blockchain.ts
-	 * See: /src/lib/components/blockchain/BlockchainInit.svelte
-	 */
-	private async ensureBlockchainAccounts(
-		_user: DatabaseUser,
-		_provider: OAuthProvider,
-		_oauthUserId: string
-	): Promise<void> {
-		// This method is deprecated and no longer used
-		// Blockchain account creation happens client-side via BlockchainInit.svelte
-		console.log('[Blockchain] Account creation deferred to client-side component');
-		return;
 	}
 
 	/**
@@ -576,7 +551,7 @@ export class OAuthCallbackHandler {
 				sameSite: 'lax'
 			});
 
-			console.log('[OAuth Location] Stored location cookie for client-side inference:', {
+			console.debug('[OAuth Location] Stored location cookie for client-side inference:', {
 				provider,
 				hasLocation: !!location,
 				hasLocale: !!locale,

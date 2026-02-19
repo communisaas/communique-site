@@ -23,12 +23,6 @@ import type { TokenUsage } from '../types';
  */
 export type DecisionMakerTargetType = string;
 
-/**
- * Alias for backward compatibility with imports
- * @deprecated Use DecisionMakerTargetType for clarity
- */
-export type TargetType = DecisionMakerTargetType;
-
 // ============================================================================
 // Geographic Scope
 // ============================================================================

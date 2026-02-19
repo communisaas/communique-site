@@ -44,8 +44,6 @@ export type {
 };
 export type { MLCommonsHazard } from './types';
 export { HAZARD_DESCRIPTIONS, BLOCKING_HAZARDS, NON_BLOCKING_HAZARDS } from './types';
-// Legacy export for backward compatibility
-export { CIVIC_CRITICAL_HAZARDS } from './types';
 export { classifySafety } from './llama-guard';
 export { detectPromptInjection, isPromptInjection } from './prompt-guard';
 
