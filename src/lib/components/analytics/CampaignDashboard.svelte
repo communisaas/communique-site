@@ -90,8 +90,8 @@
 			if (data.success) {
 				overview = data.overview;
 			}
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[CampaignDashboard] loadOverview failed:', error instanceof Error ? error.message : String(error));
 		}
 	}
 
@@ -103,8 +103,8 @@
 			if (data.success) {
 				userTemplates = data.templates || [];
 			}
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[CampaignDashboard] loadUserTemplates failed:', error instanceof Error ? error.message : String(error));
 		}
 	}
 
@@ -116,8 +116,8 @@
 			if (data.success) {
 				experiments = data.experiments || [];
 			}
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[CampaignDashboard] loadActiveExperiments failed:', error instanceof Error ? error.message : String(error));
 		}
 	}
 

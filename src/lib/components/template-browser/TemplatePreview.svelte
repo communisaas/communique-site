@@ -154,8 +154,8 @@
 						// Data is too old, clean it up
 						sessionStorage.removeItem(`template_${template.id}_personalization`);
 					}
-				} catch {
-					console.error('Error occurred');
+				} catch (error) {
+					console.error('[TemplatePreview] Failed to restore personalization:', error instanceof Error ? error.message : String(error));
 				}
 			}
 		}

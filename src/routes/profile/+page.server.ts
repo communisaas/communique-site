@@ -79,7 +79,7 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 					if (template.is_public) acc.public++;
 
 					// Count campaigns/uses
-					const campaigns: Array<{ sent_at?: Date | null; delivered_at?: Date | null }> = []; // TODO: Fix template campaigns relation
+					const campaigns = template.template_campaign;
 					acc.totalUses += campaigns.length;
 					acc.totalSent += campaigns.filter((c) => c.sent_at).length;
 					acc.totalDelivered += campaigns.filter((c) => c.delivered_at).length;
@@ -172,12 +172,12 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 						}
 					};
 				})
-				.catch((_error) => {
-					console.error('Error occurred');
+				.catch((error) => {
+					console.error('[Profile] Activity fetch failed:', error instanceof Error ? error.message : String(error));
 					return null;
 				}),
-			templatesData: templatesPromise.catch((_error) => {
-				console.error('Error occurred');
+			templatesData: templatesPromise.catch((error) => {
+				console.error('[Profile] Templates fetch failed:', error instanceof Error ? error.message : String(error));
 				return {
 					templates: [],
 					templateStats: {
@@ -190,8 +190,8 @@ export const load: PageServerLoad = async ({ locals, parent }) => {
 					}
 				};
 			}),
-			representatives: representativesPromise.catch((_error) => {
-				console.error('Error occurred');
+			representatives: representativesPromise.catch((error) => {
+				console.error('[Profile] Representatives fetch failed:', error instanceof Error ? error.message : String(error));
 				return [];
 			})
 		}

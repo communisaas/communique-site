@@ -98,6 +98,7 @@ async function getCached(
 			};
 		});
 	} catch (error) {
+		console.warn('[AutocompleteCache] getCached failed:', error instanceof Error ? error.message : String(error));
 		return null;
 	}
 }

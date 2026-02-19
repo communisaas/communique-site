@@ -415,7 +415,8 @@ export class Address {
 				district: result.district
 			};
 		} catch (error) {
-			console.error('Error occurred');
+			const msg = error instanceof Error ? error.message : String(error);
+			console.error('[AddressLookup] zipToDistrict failed:', { zip, state, error: msg });
 			return {
 				state: state.toUpperCase(),
 				district: '01' // Final fallback
@@ -532,17 +533,12 @@ export class Address {
 
 			return this.formatRepresentative(houseRep, 'house');
 		} catch (error) {
-			console.error('Error fetching House representative:', error);
-			// Return placeholder data
-			return {
-				bioguide_id: `${state}${district}H`,
-				name: `Representative for ${state}-${district}`,
-				party: 'Unknown',
+			console.error('[AddressLookup] Failed to fetch House representative:', {
 				state,
 				district,
-				chamber: 'house',
-				office_code: `${state}${district}H`
-			};
+				error: error instanceof Error ? error.message : String(error)
+			});
+			throw error;
 		}
 	}
 
@@ -597,52 +593,17 @@ export class Address {
 				.map((senator: CongressMember) => this.formatRepresentative(senator, 'senate'));
 
 			if (senators.length === 0) {
-				// Return placeholder senators
-				return [
-					{
-						bioguide_id: `${state}S1`,
-						name: `Senior Senator for ${state}`,
-						party: 'Unknown',
-						state,
-						district: '00',
-						chamber: 'senate',
-						office_code: `${state}S1`
-					},
-					{
-						bioguide_id: `${state}S2`,
-						name: `Junior Senator for ${state}`,
-						party: 'Unknown',
-						state,
-						district: '00',
-						chamber: 'senate',
-						office_code: `${state}S2`
-					}
-				];
+				console.error('[AddressLookup] No senators found for state:', { state: stateAbbr });
+				return [];
 			}
 
 			return senators;
 		} catch (error) {
-			// Return placeholder senators
-			return [
-				{
-					bioguide_id: `${state}S1`,
-					name: `Senior Senator for ${state}`,
-					party: 'Unknown',
-					state,
-					district: '00',
-					chamber: 'senate',
-					office_code: `${state}S1`
-				},
-				{
-					bioguide_id: `${state}S2`,
-					name: `Junior Senator for ${state}`,
-					party: 'Unknown',
-					state,
-					district: '00',
-					chamber: 'senate',
-					office_code: `${state}S2`
-				}
-			];
+			console.error('[AddressLookup] Failed to fetch senators:', {
+				state,
+				error: error instanceof Error ? error.message : String(error)
+			});
+			return [];
 		}
 	}
 
@@ -769,7 +730,8 @@ export class Address {
 				}
 			}
 		} catch (error) {
-			errors.push('Validation failed: API error');
+			const msg = error instanceof Error ? error.message : String(error);
+			errors.push(`Validation failed: ${msg}`);
 		}
 
 		return {
@@ -807,7 +769,8 @@ export async function addressLookup(zip: string): Promise<Representative[]> {
 		// Return as flat array of representatives
 		return [userReps.house, ...userReps.senate];
 	} catch (error) {
-		console.error('Error occurred');
+		const msg = error instanceof Error ? error.message : String(error);
+		console.error('[AddressLookup] addressLookup failed:', { zip, error: msg });
 		// Return empty array on failure
 		return [];
 	}

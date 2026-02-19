@@ -94,11 +94,11 @@
 				addressError =
 					(result.error as string) || 'Unable to verify address. Please check and try again.';
 			}
-		} catch (_error) {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[AddressCollectionForm] verifyAddress failed:', error instanceof Error ? error.message : String(error));
 			addressError =
-				_error instanceof Error
-					? _error.message
+				error instanceof Error
+					? error.message
 					: 'Verification service temporarily unavailable. Please try again.';
 		} finally {
 			isVerifying = false;

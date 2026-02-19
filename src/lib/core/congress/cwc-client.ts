@@ -268,13 +268,14 @@ export class CWCClient {
 
 			return result;
 		} catch (error) {
-			console.error('Error occurred');
+			const msg = error instanceof Error ? error.message : String(error);
+			console.error('[CWC] submitToSenate failed:', { office: senator.name, error: msg });
 			return {
 				success: false,
 				status: 'failed',
 				office: senator.name,
 				timestamp: new Date().toISOString(),
-				error: 'Unknown error'
+				error: msg
 			};
 		}
 	}
@@ -491,13 +492,14 @@ export class CWCClient {
 				// Add delay between submissions to avoid rate limiting
 				await this.delay(1000);
 			} catch (error) {
-				console.error('Error occurred');
+				const msg = error instanceof Error ? error.message : String(error);
+				console.error('[CWC] submitToAllRepresentatives failed:', { office: rep.name, error: msg });
 				results.push({
 					success: false,
 					status: 'failed',
 					office: rep.name,
 					timestamp: new Date().toISOString(),
-					error: 'Unknown error'
+					error: msg
 				});
 			}
 		}
@@ -554,12 +556,13 @@ export class CWCClient {
 				cwcResponse
 			};
 		} catch (error) {
-			console.error('Error occurred');
+			const msg = error instanceof Error ? error.message : String(error);
+			console.error('[CWC] parseResponse failed:', { office: office.name, error: msg });
 			return {
 				...baseResult,
 				success: false,
 				status: 'failed',
-				error: 'Failed to parse CWC response'
+				error: 'Failed to parse CWC response: ' + msg
 			};
 		}
 	}
@@ -618,9 +621,11 @@ export class CWCClient {
 				offices: Array.isArray(offices) ? offices : [offices]
 			};
 		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			console.error('[CWC] getActiveOffices failed:', msg);
 			return {
 				success: false,
-				error: 'Failed to retrieve offices'
+				error: 'Failed to retrieve offices: ' + msg
 			};
 		}
 	}
@@ -641,9 +646,11 @@ export class CWCClient {
 				error: result.error
 			};
 		} catch (error) {
+			const msg = error instanceof Error ? error.message : String(error);
+			console.error('[CWC] testConnection failed:', msg);
 			return {
 				connected: false,
-				error: 'Connection failed'
+				error: 'Connection failed: ' + msg
 			};
 		}
 	}

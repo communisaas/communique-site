@@ -104,8 +104,8 @@ export class USCongressAdapter extends LegislativeAdapter {
 					is_current: true
 				}))
 			];
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[USCongress] getRepresentatives failed:', error instanceof Error ? error.message : String(error));
 			return [];
 		}
 	}

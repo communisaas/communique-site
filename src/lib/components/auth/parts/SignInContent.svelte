@@ -16,8 +16,8 @@
 			});
 
 			onauth?.(provider);
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[SignIn] Auth preparation failed:', error instanceof Error ? error.message : String(error));
 			onauth?.(provider);
 		}
 	}

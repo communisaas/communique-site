@@ -203,7 +203,7 @@
 				});
 			}
 		} catch (error) {
-			console.error('Error occurred');
+			console.error('[DeliveryTracker] retryDelivery failed:', error instanceof Error ? error.message : String(error));
 
 			// Track retry error
 			await trackAnalyticsEvent('delivery_retryerror', {

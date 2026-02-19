@@ -76,8 +76,8 @@ export class UKParliamentAdapter extends LegislativeAdapter {
 					is_current: true
 				}
 			];
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[UKParliament] getRepresentatives failed:', error instanceof Error ? error.message : String(error));
 			return [];
 		}
 	}

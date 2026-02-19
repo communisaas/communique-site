@@ -149,7 +149,7 @@ export const POST: RequestHandler = async ({ request }) => {
 			message: 'CWC integration test completed'
 		});
 	} catch (error) {
-		console.error('Error occurred');
+		console.error('[TestCWC] Integration test failed:', error instanceof Error ? error.message : String(error));
 		return json(
 			{
 				success: false,

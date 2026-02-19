@@ -131,8 +131,8 @@ export function formatNumber(value: number, options: NumberFormatOptions = {}): 
 
 	try {
 		return new Intl.NumberFormat(locale, intlOptions).format(value);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[Formatters] formatNumber failed:', error instanceof Error ? error.message : String(error));
 		return value.toString();
 	}
 }
@@ -154,8 +154,8 @@ export function formatCurrency(value: number, options: CurrencyFormatOptions = {
 			currency,
 			...intlOptions
 		}).format(value);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[Formatters] formatCurrency failed:', error instanceof Error ? error.message : String(error));
 		return `${currency} ${value.toFixed(2)}`;
 	}
 }
@@ -179,8 +179,8 @@ export function formatPercentage(value: number, decimals: number = 1): string {
 			minimumFractionDigits: decimals,
 			maximumFractionDigits: decimals
 		}).format(value / 100);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[Formatters] formatPercentage failed:', error instanceof Error ? error.message : String(error));
 		return `${value.toFixed(decimals)}%`;
 	}
 }
@@ -235,8 +235,8 @@ export function formatDate(date: Date | string | number, options: DateFormatOpti
 
 	try {
 		return new Intl.DateTimeFormat(locale, intlOptions).format(dateObj);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[Formatters] formatDate failed:', error instanceof Error ? error.message : String(error));
 		return dateObj.toLocaleDateString();
 	}
 }

@@ -85,8 +85,8 @@ export function navigateTo(url: string): void {
 	if (win) {
 		try {
 			win.location.href = url;
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[BrowserUtils] navigateTo failed:', error instanceof Error ? error.message : String(error));
 		}
 	}
 }
@@ -101,8 +101,8 @@ export function openInNewTab(url: string): void {
 	if (win) {
 		try {
 			win.open(url, '_blank', 'noopener,noreferrer');
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[BrowserUtils] openInNewTab failed:', error instanceof Error ? error.message : String(error));
 		}
 	}
 }
@@ -140,8 +140,8 @@ export async function copyToClipboard(text: string): Promise<boolean> {
 		const success = doc.execCommand('copy');
 		textArea.remove();
 		return success;
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[BrowserUtils] copyToClipboard failed:', error instanceof Error ? error.message : String(error));
 		return false;
 	}
 }
@@ -155,8 +155,8 @@ export function matchesMediaQuery(query: string): boolean {
 
 	try {
 		return window.matchMedia(query).matches;
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[BrowserUtils] matchesMediaQuery failed:', error instanceof Error ? error.message : String(error));
 		return false;
 	}
 }
@@ -174,8 +174,8 @@ export function createMediaQueryWatcher(
 		const handler = (e: MediaQueryListEvent): void => {
 			try {
 				callback(e.matches);
-			} catch {
-				console.error('Error occurred');
+			} catch (error) {
+				console.error('[BrowserUtils] mediaQuery change handler failed:', error instanceof Error ? error.message : String(error));
 			}
 		};
 
@@ -184,20 +184,20 @@ export function createMediaQueryWatcher(
 		// Initial call with error handling
 		try {
 			callback(mediaQuery.matches);
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[BrowserUtils] mediaQuery initial callback failed:', error instanceof Error ? error.message : String(error));
 		}
 
 		// Return cleanup function
 		return (): void => {
 			try {
 				mediaQuery.removeEventListener('change', handler);
-			} catch {
-				console.error('Error occurred');
+			} catch (error) {
+				console.error('[BrowserUtils] mediaQuery cleanup failed:', error instanceof Error ? error.message : String(error));
 			}
 		};
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[BrowserUtils] createMediaQueryWatcher failed:', error instanceof Error ? error.message : String(error));
 		return null;
 	}
 }
@@ -329,8 +329,8 @@ export function canShareData(data: ShareData): boolean {
 
 	try {
 		return nav.canShare(data);
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[BrowserUtils] canShareData failed:', error instanceof Error ? error.message : String(error));
 		return false;
 	}
 }

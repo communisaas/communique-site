@@ -58,8 +58,8 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 				representatives: representatives
 			}
 		};
-	} catch {
-		console.error('Error occurred');
+	} catch (error) {
+		console.error('[Layout] Failed to load representatives:', error instanceof Error ? error.message : String(error));
 		// Fallback to basic user data without representatives
 		return {
 			user: {

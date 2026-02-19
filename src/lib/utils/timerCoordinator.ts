@@ -136,8 +136,8 @@ class TimerCoordinator {
 		const timeoutId = setTimeout(() => {
 			try {
 				callback();
-			} catch {
-				console.error('Error occurred');
+			} catch (error) {
+				console.error('[TimerCoordinator] setTimeout callback failed:', { timerId: id, type, error: error instanceof Error ? error.message : String(error) });
 			} finally {
 				this.clearTimer(id);
 			}
@@ -199,8 +199,8 @@ class TimerCoordinator {
 		const intervalId = setInterval(() => {
 			try {
 				callback();
-			} catch {
-				console.error('Error occurred');
+			} catch (error) {
+				console.error('[TimerCoordinator] setInterval callback failed:', { timerId: id, type, error: error instanceof Error ? error.message : String(error) });
 			}
 		}, duration);
 
@@ -245,8 +245,8 @@ class TimerCoordinator {
 			} else {
 				clearTimeout(timer.timeoutId);
 			}
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[TimerCoordinator] clearTimer failed:', { timerId: id, error: error instanceof Error ? error.message : String(error) });
 		}
 
 		this.timers.delete(id);

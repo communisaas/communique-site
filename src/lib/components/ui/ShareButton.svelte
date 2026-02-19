@@ -114,8 +114,8 @@
 					animating = false; // Animation complete, re-enable hover
 				}, 200);
 			}, 2000);
-		} catch {
-			console.error('Error occurred');
+		} catch (error) {
+			console.error('[ShareButton] copyToClipboard failed:', error instanceof Error ? error.message : String(error));
 		}
 	}
 
