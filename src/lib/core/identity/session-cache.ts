@@ -513,5 +513,6 @@ export async function initializeSessionCache(): Promise<void> {
 		console.debug('[Session Cache] Initialized');
 	} catch (error) {
 		console.error('[Session Cache] Initialization failed:', error);
+		throw error;
 	}
 }

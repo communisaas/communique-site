@@ -268,14 +268,32 @@ export class CWCClient {
 
 			return result;
 		} catch (error) {
-			const msg = error instanceof Error ? error.message : String(error);
-			console.error('[CWC] submitToSenate failed:', { office: senator.name, error: msg });
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const isNetworkError =
+				errorMessage.includes('timeout') ||
+				errorMessage.includes('ECONNREFUSED') ||
+				errorMessage.includes('ENOTFOUND') ||
+				errorMessage.includes('fetch failed');
+
+			console.error('[CWC Senate] Submission failed:', {
+				office: senator.name,
+				state: senator.state,
+				error: errorMessage,
+				errorType: error instanceof Error ? error.constructor.name : typeof error,
+				isNetworkError
+			});
+
+			let userErrorMessage = `Senate CWC submission failed: ${errorMessage}`;
+			if (isNetworkError) {
+				userErrorMessage += '. The CWC API may be unreachable. Please verify CWC_API_URL configuration and network connectivity.';
+			}
+
 			return {
 				success: false,
 				status: 'failed',
 				office: senator.name,
 				timestamp: new Date().toISOString(),
-				error: msg
+				error: userErrorMessage
 			};
 		}
 	}
@@ -557,12 +575,17 @@ export class CWCClient {
 			};
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error);
-			console.error('[CWC] parseResponse failed:', { office: office.name, error: msg });
+			console.error('[CWC] parseResponse failed:', {
+				office: office.name,
+				error: msg,
+				responseStatus: response.status,
+				contentType: response.headers.get('content-type')
+			});
 			return {
 				...baseResult,
 				success: false,
 				status: 'failed',
-				error: 'Failed to parse CWC response: ' + msg
+				error: `Failed to parse CWC response (HTTP ${response.status}): ${msg}`
 			};
 		}
 	}

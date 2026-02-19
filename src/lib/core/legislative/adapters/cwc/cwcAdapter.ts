@@ -301,17 +301,11 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 			};
 		}
 
-		// TODO: Implement actual CWC API submission using cwcClient singleton:
-		// - For Senate: cwcClient.submitToSenate()
-		// - For House: cwcClient.submitToHouse()
-		// IMPORTANT: House submissions require IP whitelisting.
-		// See src/lib/core/congress/cwc-client.ts for details.
-		// Current status: This adapter is a legacy abstraction layer.
-		// Active CWC submissions go through cwcClient directly, not this adapter.
-		console.error('[CWCAdapter] submitToCWCAPI: real submission not implemented');
+		// Deprecated path: active CWC submissions go through cwcClient directly (see cwc-client.ts)
+		console.warn('[CWCAdapter] submitToCWCAPI is a deprecated path — active submissions use cwcClient directly');
 		return {
 			success: false,
-			error: 'CWC API submission not yet implemented. Use cwcClient directly for submissions.'
+			error: 'This adapter is deprecated. CWC submissions are handled by cwcClient (see cwc-client.ts).'
 		};
 	}
 }
