@@ -1029,7 +1029,11 @@
 						templateData={{
 							subject: template.title,
 							message: template.message_body || template.description,
-							recipientOffices: ['Senate', 'House'] // TODO: Get actual offices
+							recipientOffices: (() => {
+								const config = template.recipient_config as Record<string, unknown> | undefined;
+								const chambers = config?.chambers as string[] | undefined;
+								return chambers ?? ['Senate', 'House'];
+							})()
 						}}
 						deliveryAddress={verifiedAddress ? {
 							name: user.name || 'Constituent',

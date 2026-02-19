@@ -99,7 +99,8 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 	async validateRepresentative(_representative: Representative): Promise<boolean> {
 		// TODO: Validate against CWC office codes
 		// This would check if the _representative has a valid CWC office identifier
-		return true; // Placeholder
+		console.warn('[CWCAdapter] validateRepresentative not implemented — returning true without validation');
+		return true;
 	}
 
 	/**
@@ -186,13 +187,10 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 		state: string;
 		zip: string;
 	}): Promise<ProviderRepresentative[]> {
-		// In a real implementation, this would call the Google Civic Info API or similar
-		// For CWC, we might rely on the user providing their rep, or use a separate lookup service
-		// Since CWC is just for delivery, we might return empty or throw if we can't lookup
-		// But the interface requires it.
-		// For now, we'll return an empty array or mock data if needed, but ideally we connect to `src/lib/core/congress/address-lookup.ts`
-
-		// TODO: Connect to address-lookup.ts
+		// TODO: Connect to address-lookup.ts for real representative lookup
+		// CWC is a delivery adapter — representative lookup should be delegated to
+		// src/lib/core/congress/address-lookup.ts via getRepresentativesForAddress()
+		console.warn('[CWCAdapter] getRepresentatives not implemented — returning empty array. Connect to address-lookup.ts for real data.');
 		return [];
 	}
 
@@ -292,28 +290,28 @@ export class CWCAdapter extends LegislativeAdapter implements LegislativeProvide
 	 * Submit XML to CWC API
 	 */
 	private async submitToCWCAPI(
-		xmlMessage: string
-	): Promise<{ success: boolean; submissionId?: string }> {
-		// TODO: Implement actual CWC API submission
-		// Implementation reference: src/lib/core/congress/cwc-client.ts
-		//
-		// This method should use the cwcClient singleton for actual submissions:
+		_xmlMessage: string
+	): Promise<{ success: boolean; submissionId?: string; error?: string }> {
+		// Check if CWC API is configured
+		if (!this._apiKey) {
+			console.error('[CWCAdapter] submitToCWCAPI called without CWC_API_KEY configured');
+			return {
+				success: false,
+				error: 'CWC API integration not configured. Set CWC_API_KEY and CWC_API_URL environment variables.'
+			};
+		}
+
+		// TODO: Implement actual CWC API submission using cwcClient singleton:
 		// - For Senate: cwcClient.submitToSenate()
 		// - For House: cwcClient.submitToHouse()
-		//
-		// IMPORTANT: House submissions require IP whitelisting
-		// See cwc-client.ts for details on House CWC configuration requirements
-		//
+		// IMPORTANT: House submissions require IP whitelisting.
+		// See src/lib/core/congress/cwc-client.ts for details.
 		// Current status: This adapter is a legacy abstraction layer.
 		// Active CWC submissions go through cwcClient directly, not this adapter.
-
-		console.log('CWC XML Message (not sent - placeholder only):', xmlMessage.substring(0, 200));
-
-		// Placeholder implementation - returns simulated success
-		// Real implementation should call cwcClient methods
+		console.error('[CWCAdapter] submitToCWCAPI: real submission not implemented');
 		return {
-			success: true,
-			submissionId: `CWC_PLACEHOLDER_${Date.now()}`
+			success: false,
+			error: 'CWC API submission not yet implemented. Use cwcClient directly for submissions.'
 		};
 	}
 }

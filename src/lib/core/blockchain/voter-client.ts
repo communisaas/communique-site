@@ -26,6 +26,12 @@ import { PUBLIC_SCROLL_RPC_URL } from '$env/static/public';
 let voterClient: VOTERClient | null = null;
 
 /**
+ * Track the config used at init time so we can check contract addresses
+ * without accessing VOTERClient's private config property.
+ */
+let lastInitConfig: VOTERClientConfig | null = null;
+
+/**
  * Initialize VOTER Protocol client with Communique-specific configuration
  *
  * CRITICAL: This function requires browser context (IndexedDB, WebAuthn)
@@ -53,6 +59,8 @@ export async function initVoterClient(options?: Partial<VOTERClientConfig>): Pro
 		nearNetwork: 'mainnet', // NEAR mainnet for Chain Signatures MPC
 
 		// Contract addresses (deployed on Scroll mainnet)
+		// WARNING: Zero addresses mean contracts are not yet deployed.
+		// Functions that depend on these will log warnings and return defaults.
 		districtGateAddress: '0x0000000000000000000000000000000000000000', // TODO: Update after deployment
 		reputationRegistryAddress: '0x0000000000000000000000000000000000000000', // TODO: Update after deployment
 
@@ -60,6 +68,7 @@ export async function initVoterClient(options?: Partial<VOTERClientConfig>): Pro
 		...options
 	};
 
+	lastInitConfig = config;
 	voterClient = new VOTERClient(config);
 
 	// Wait for client initialization (ZK circuits, Shadow Atlas, etc.)
@@ -90,6 +99,13 @@ export function getVoterClient(): VOTERClient {
 	}
 
 	return voterClient;
+}
+
+/**
+ * Check if an address is the zero address (contracts not deployed)
+ */
+function isZeroAddress(address: string): boolean {
+	return /^0x0+$/.test(address);
 }
 
 /**
@@ -187,11 +203,16 @@ export const voterBlockchainClient = {
 	async getUserStats(scrollAddress: string) {
 		const client = await initVoterClient();
 
+		// Check if reputation registry contract is deployed
+		if (isZeroAddress(lastInitConfig?.reputationRegistryAddress ?? '0x0000000000000000000000000000000000000000')) {
+			console.warn('[VOTERClient] Blockchain contracts not deployed — returning defaults for getUserStats');
+		}
+
 		// Reputation system not yet implemented in SDK
 		return {
 			actionCount: 0,
 			reputationScore: 0,
-			tier: 'none',
+			tier: 'none' as const,
 			lastActionTime: 0
 		};
 	},
@@ -204,6 +225,11 @@ export const voterBlockchainClient = {
 	 */
 	async getPlatformStats() {
 		const client = await initVoterClient();
+
+		// Check if reputation registry contract is deployed
+		if (isZeroAddress(lastInitConfig?.reputationRegistryAddress ?? '0x0000000000000000000000000000000000000000')) {
+			console.warn('[VOTERClient] Blockchain contracts not deployed — returning defaults for getPlatformStats');
+		}
 
 		// Reputation system not yet implemented in SDK
 		return {
@@ -227,11 +253,19 @@ export const voterBlockchainClient = {
 	}) {
 		const client = await initVoterClient();
 
+		// Check if reputation registry contract is deployed
+		if (isZeroAddress(lastInitConfig?.reputationRegistryAddress ?? '0x0000000000000000000000000000000000000000')) {
+			console.warn(`[VOTERClient] Blockchain contracts not deployed — skipping recordAction for ${params.actionType}`);
+			return {
+				hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
+				status: 'skipped' as const
+			};
+		}
+
 		// Action recording not yet implemented in SDK
-		// Return mock transaction receipt
 		return {
 			hash: '0x0000000000000000000000000000000000000000000000000000000000000000',
-			status: 'pending' as const
+			status: 'skipped' as const
 		};
 	},
 
