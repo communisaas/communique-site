@@ -95,11 +95,14 @@ interface RateLimitStore {
  */
 class InMemoryStore implements RateLimitStore {
 	private store = new Map<string, number[]>();
-	private cleanupInterval: ReturnType<typeof setInterval>;
+	private cleanupInterval: ReturnType<typeof setInterval> | undefined;
 
 	constructor() {
 		// Cleanup expired entries every 5 minutes
-		this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000);
+		// Guard for CF Workers where setInterval may not be available at module init
+		if (typeof setInterval !== 'undefined') {
+			this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000);
+		}
 	}
 
 	async getTimestamps(key: string, windowMs: number): Promise<number[]> {
@@ -148,7 +151,9 @@ class InMemoryStore implements RateLimitStore {
 	}
 
 	async destroy(): Promise<void> {
-		clearInterval(this.cleanupInterval);
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval);
+		}
 		this.store.clear();
 	}
 }
@@ -529,6 +534,14 @@ let rateLimiterInstance: SlidingWindowRateLimiter | null = null;
 export function getRateLimiter(): SlidingWindowRateLimiter {
 	if (!rateLimiterInstance) {
 		rateLimiterInstance = new SlidingWindowRateLimiter();
+
+		// Warn when using in-memory store on CF Workers (per-isolate state only)
+		const stats = rateLimiterInstance.getStats();
+		if (stats.implementation === 'in-memory' && typeof caches !== 'undefined') {
+			console.warn(
+				'[RateLimiter] Using in-memory store on Workers — rate limiting is per-isolate only. Set REDIS_URL for distributed rate limiting.'
+			);
+		}
 	}
 	return rateLimiterInstance;
 }

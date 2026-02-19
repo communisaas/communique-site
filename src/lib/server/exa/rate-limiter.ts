@@ -1,6 +1,10 @@
 /**
  * Exa API Rate Limiter
  *
+ * NOTE: On CF Workers, rate limiting state resets per-isolate. Proactive
+ * throttling within a single request still works. Circuit breaker across
+ * requests does not.
+ *
  * Provides intelligent rate limit handling for Exa API calls:
  * - Proactive throttling to stay under QPS limits
  * - Reactive retry with exponential backoff on 429 responses

@@ -1,6 +1,10 @@
 /**
  * Firecrawl Rate Limiter
  *
+ * NOTE: On CF Workers, rate limiting state resets per-isolate. Proactive
+ * throttling within a single request still works. Circuit breaker across
+ * requests does not.
+ *
  * Reuses the generic ExaRateLimiter with Firecrawl-appropriate config.
  * Conservative 10 RPS — Firecrawl has no documented QPS limit,
  * but headless browser renders are inherently slower.

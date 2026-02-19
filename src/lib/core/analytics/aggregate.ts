@@ -52,6 +52,8 @@ const MAX_DAILY = PRIVACY.MAX_DAILY_CONTRIBUTIONS;
  * @param metric - Metric being incremented
  * @returns true if contribution allowed, false if limit exceeded
  */
+// WARNING: This in-memory rate limiter does NOT work on CF Workers (per-isolate state).
+// Set RATE_LIMIT_USE_DB=true for production.
 export function checkContributionLimit(identifier: string, metric: Metric): boolean {
 	const key = `${identifier}:${metric}`;
 	const now = Date.now();

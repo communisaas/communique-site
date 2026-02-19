@@ -39,14 +39,17 @@ interface RateLimitResult {
 
 export class InMemoryRateLimiter {
 	private store = new Map<string, RateLimitEntry>();
-	private cleanupInterval: NodeJS.Timeout;
+	private cleanupInterval: NodeJS.Timeout | undefined;
 
 	constructor() {
 		// Cleanup expired entries every 5 minutes
 		// Prevents memory growth from abandoned rate limit entries
-		this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000);
+		// Guard for CF Workers where setInterval may not be available at module init
+		if (typeof setInterval !== 'undefined') {
+			this.cleanupInterval = setInterval(() => this.cleanup(), 5 * 60 * 1000);
+		}
 
-		console.log('[RateLimiter] ✓ In-memory rate limiter initialized');
+		console.log('[RateLimiter] In-memory rate limiter initialized');
 	}
 
 	/**
@@ -132,7 +135,9 @@ export class InMemoryRateLimiter {
 	 * Cleanup on server shutdown
 	 */
 	destroy() {
-		clearInterval(this.cleanupInterval);
+		if (this.cleanupInterval) {
+			clearInterval(this.cleanupInterval);
+		}
 		this.store.clear();
 		console.log('[RateLimiter] Destroyed');
 	}
