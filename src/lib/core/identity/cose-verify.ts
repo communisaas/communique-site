@@ -171,6 +171,7 @@ export async function verifyCoseSign1(
 	let publicKey: CryptoKey;
 	try {
 		const rawKey = extractEcPublicKeyFromDER(issuerCertDER);
+		// Uint8Array is a valid BufferSource at runtime; cast needed due to TS cross-realm type limitation
 		publicKey = await crypto.subtle.importKey(
 			'raw',
 			rawKey as unknown as BufferSource,
@@ -198,6 +199,7 @@ export async function verifyCoseSign1(
 
 	// COSE signature is raw format (r || s, 64 bytes for P-256).
 	// Web Crypto API also uses raw (IEEE P1363) format for ECDSA — pass directly.
+	// Uint8Array is a valid BufferSource at runtime; casts needed due to TS cross-realm type limitation
 	let valid: boolean;
 	try {
 		valid = await crypto.subtle.verify(
@@ -299,6 +301,7 @@ export async function validateMsoDigests(
 			}
 
 			// Compute SHA-256 of the CBOR-encoded IssuerSignedItem
+			// Uint8Array is a valid BufferSource at runtime; cast needed due to TS cross-realm type limitation
 			const actualDigest = new Uint8Array(
 				await crypto.subtle.digest('SHA-256', elementBytes as unknown as BufferSource)
 			);

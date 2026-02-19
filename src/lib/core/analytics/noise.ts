@@ -197,36 +197,16 @@ export function correctKaryRR(
  * We MUST use crypto APIs and fail loudly if unavailable.
  */
 export function cryptoRandom(): number {
-	// Browser environment
+	// Web Crypto API: works in browsers, CF Workers, and Node.js 19+
 	if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.getRandomValues) {
 		const array = new Uint32Array(1);
 		globalThis.crypto.getRandomValues(array);
 		return array[0] / 0x100000000; // Divide by 2^32
 	}
 
-	// Node.js environment
-	if (
-		typeof globalThis.crypto !== 'undefined' &&
-		'randomBytes' in globalThis.crypto &&
-		typeof (globalThis.crypto as any).randomBytes === 'function'
-	) {
-		const buffer = (globalThis.crypto as any).randomBytes(4);
-		return buffer.readUInt32BE(0) / 0x100000000;
-	}
-
-	// Try Node.js crypto module directly (dynamic import for compatibility)
-	try {
-		// eslint-disable-next-line @typescript-eslint/no-require-imports
-		const nodeCrypto = require('node:crypto');
-		if (nodeCrypto && nodeCrypto.randomBytes) {
-			const buffer = nodeCrypto.randomBytes(4);
-			return buffer.readUInt32BE(0) / 0x100000000;
-		}
-	} catch {
-		// Module not available
-	}
-
 	// NO FALLBACK - Fail loudly
+	// crypto.getRandomValues is available in all target environments:
+	// browsers, Cloudflare Workers, and Node.js 19+.
 	throw new Error(
 		'[Analytics] Cryptographic randomness unavailable. ' +
 			'Differential privacy guarantees cannot be met. ' +

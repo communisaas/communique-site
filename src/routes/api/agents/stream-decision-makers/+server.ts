@@ -15,8 +15,8 @@
 
 import type { RequestHandler } from './$types';
 import { resolveDecisionMakers } from '$lib/core/agents/agents';
+import type { SegmentOrRevealEvent } from '$lib/core/agents/agents';
 import { createSSEStream, SSE_HEADERS } from '$lib/server/sse-stream';
-import type { ThoughtSegment } from '$lib/core/thoughts/types';
 import {
 	enforceLLMRateLimit,
 	rateLimitResponse,
@@ -162,13 +162,12 @@ export const POST: RequestHandler = async (event) => {
 				voiceSample: voice_sample
 			};
 
-			const result = await resolveDecisionMakers(context, (segment: ThoughtSegment) => {
+			const result = await resolveDecisionMakers(context, (segment: SegmentOrRevealEvent) => {
 				// Route progressive reveal events to their own SSE event types
-				const segmentAny = segment as any;
-				if (segmentAny.type === 'identity-found') {
-					emitter.send('identity-found', segmentAny.metadata.identities);
-				} else if (segmentAny.type === 'candidate-resolved') {
-					emitter.send('candidate-resolved', segmentAny.metadata.candidate);
+				if (segment.type === 'identity-found') {
+					emitter.send('identity-found', segment.metadata.identities);
+				} else if (segment.type === 'candidate-resolved') {
+					emitter.send('candidate-resolved', segment.metadata.candidate);
 				} else {
 					emitter.send('segment', segment);
 				}

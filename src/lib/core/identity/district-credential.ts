@@ -287,6 +287,7 @@ async function verifyWithHmac(
 			['verify']
 		);
 
+		// Uint8Array is a valid BufferSource at runtime; casts needed due to TS cross-realm type limitation
 		return crypto.subtle.verify(
 			'HMAC',
 			key,

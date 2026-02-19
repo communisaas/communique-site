@@ -185,6 +185,7 @@ export const GET: RequestHandler = async () => {
 		let scopes: UnknownRecord[] = [];
 		try {
 			// Check if template_scope table exists in the db schema
+			// Runtime feature check: cast justified because table may not exist in all schema versions
 			if ('template_scope' in db) {
 				scopes = await (
 					db as unknown as {

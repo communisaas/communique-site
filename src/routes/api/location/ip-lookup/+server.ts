@@ -33,8 +33,17 @@ export const GET: RequestHandler = async ({ getClientAddress, request, platform 
 	try {
 		// Priority 1: Cloudflare Native Geolocation (Zero-latency)
 		// Only available when deployed to Cloudflare Pages/Workers
-		if ((platform as any)?.cf) {
-			const cf = (platform as any).cf;
+		interface CfProperties {
+			city?: string;
+			region?: string;
+			regionCode?: string;
+			country?: string;
+			latitude?: string;
+			longitude?: string;
+			timezone?: string;
+		}
+		const cf = (platform as { cf?: CfProperties } | undefined)?.cf;
+		if (cf) {
 			console.log('[IP Lookup] Using Cloudflare Platform Geolocation');
 			return json({
 				city: cf.city,

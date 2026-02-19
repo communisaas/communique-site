@@ -42,6 +42,28 @@ import type { ResolveContext, DecisionMakerResult } from '../providers/types';
 import type { ThoughtSegment, Citation } from '$lib/core/thoughts/types';
 import { cleanThoughtForDisplay } from '../utils/thought-filter';
 
+/**
+ * Progressive reveal events emitted alongside ThoughtSegments.
+ * These bypass the ThoughtEmitter and go directly to the SSE stream
+ * as typed metadata payloads for the UI to render incrementally.
+ */
+interface IdentityFoundEvent {
+	type: 'identity-found';
+	content: string;
+	timestamp: number;
+	metadata: { identities: unknown };
+}
+
+interface CandidateResolvedEvent {
+	type: 'candidate-resolved';
+	content: string;
+	timestamp: number;
+	metadata: { candidate: unknown };
+}
+
+/** Union of ThoughtSegment and progressive reveal events */
+export type SegmentOrRevealEvent = ThoughtSegment | IdentityFoundEvent | CandidateResolvedEvent;
+
 // ============================================================================
 // Agentic Tool Context — shared state for tool handlers during a session
 // ============================================================================
@@ -474,6 +496,7 @@ export async function processGeminiFunctionCall(
 
 	switch (functionCall.name) {
 		case 'analyze_document': {
+			// Gemini SDK types functionCall.args as Record<string, unknown>
 			const args = functionCall.args as unknown as DocumentToolArgs;
 			return await handleDocumentToolCall(args, emitter);
 		}
@@ -482,6 +505,7 @@ export async function processGeminiFunctionCall(
 			if (!context) {
 				return { success: false, error: 'search_web requires an agentic tool context' };
 			}
+			// Gemini SDK types functionCall.args as Record<string, unknown>
 			const args = functionCall.args as unknown as SearchWebToolArgs;
 			return await handleSearchWebToolCall(args, context, emitter);
 		}
@@ -490,6 +514,7 @@ export async function processGeminiFunctionCall(
 			if (!context) {
 				return { success: false, error: 'read_page requires an agentic tool context' };
 			}
+			// Gemini SDK types functionCall.args as Record<string, unknown>
 			const args = functionCall.args as unknown as ReadPageToolArgs;
 			return await handleReadPageToolCall(args, context, emitter);
 		}
@@ -517,7 +542,7 @@ export async function processGeminiFunctionCall(
  */
 export async function resolveDecisionMakers(
 	context: ResolveContext,
-	onSegment: (segment: ThoughtSegment) => void
+	onSegment: (segment: SegmentOrRevealEvent) => void
 ): Promise<DecisionMakerResult> {
 	const emitter = new ThoughtEmitter(onSegment);
 
@@ -546,7 +571,7 @@ export async function resolveDecisionMakers(
 						content: '',
 						timestamp: Date.now(),
 						metadata: { identities }
-					} as any);
+					});
 				},
 				onCandidateResolved: (candidate) => {
 					onSegment({
@@ -554,7 +579,7 @@ export async function resolveDecisionMakers(
 						content: '',
 						timestamp: Date.now(),
 						metadata: { candidate }
-					} as any);
+					});
 				}
 			}
 		};

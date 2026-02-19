@@ -450,8 +450,9 @@ export async function* generateStreamWithThoughts<T = unknown>(
 			const chunkGrounding = chunk.candidates?.[0]?.groundingMetadata;
 			if (chunkGrounding) {
 				// Build our typed GroundingMetadata from the raw response
-				// Cast through unknown to handle SDK type differences
+				// Gemini SDK type doesn't expose web grounding fields
 				const rawChunks = chunkGrounding.groundingChunks as unknown as Array<{ web?: { uri?: string; title?: string } }> | undefined;
+				// Gemini SDK type doesn't expose grounding support fields
 				const rawSupports = chunkGrounding.groundingSupports as unknown as Array<{
 					segment?: { startIndex: number; endIndex: number };
 					groundingChunkIndices?: number[];

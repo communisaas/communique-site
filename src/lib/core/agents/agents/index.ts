@@ -10,7 +10,7 @@ export {
 	handleDocumentToolCall
 } from './decision-maker';
 
-export type { AgenticToolContext } from './decision-maker';
+export type { AgenticToolContext, SegmentOrRevealEvent } from './decision-maker';
 
 // Re-export provider types
 export type {

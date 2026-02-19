@@ -25,7 +25,7 @@
 
 	// Independent state for each popover - no shared store
 	let open = $state(false);
-	let closeTimeout: number | null = null;
+	let closeTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Enhanced animation configurations
 	const animations = {
@@ -144,7 +144,7 @@
 	});
 
 	let isTouch = false;
-	let touchTimeout: number | null = null;
+	let touchTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	async function handleMouseEnter() {
 		if (!isTouch) {
@@ -165,7 +165,7 @@
 			closeTimeout = setTimeout(() => {
 				open = false;
 				closeTimeout = null;
-			}, 100) as unknown as number;
+			}, 100);
 		}
 	}
 
@@ -185,7 +185,7 @@
 			closeTimeout = setTimeout(() => {
 				open = false;
 				closeTimeout = null;
-			}, 100) as unknown as number;
+			}, 100);
 		}
 	}
 
@@ -231,7 +231,7 @@
 		touchTimeout = setTimeout(() => {
 			isTouch = false;
 			touchTimeout = null;
-		}, 1000) as unknown as number;
+		}, 1000);
 	}
 
 	function handleTouchEnd(__event: TouchEvent) {

@@ -117,7 +117,7 @@ function validateApiKey(): void {
  */
 async function voyageRequest<T>(
 	endpoint: string,
-	body: Record<string, unknown>,
+	body: unknown,
 	retryCount = 0
 ): Promise<T> {
 	validateApiKey();
@@ -230,7 +230,7 @@ export async function createEmbedding(
 		inputType
 	};
 
-	const response = await voyageRequest<EmbeddingResponse>('/embeddings', request as unknown as Record<string, unknown>);
+	const response = await voyageRequest<EmbeddingResponse>('/embeddings', request);
 
 	// Track cost
 	costTracker.track(response.usage.total_tokens, 'embedding');
@@ -369,7 +369,7 @@ export async function rerankDocuments(
 		returnDocuments
 	};
 
-	const response = await voyageRequest<RerankResponse>('/rerank', request as unknown as Record<string, unknown>);
+	const response = await voyageRequest<RerankResponse>('/rerank', request);
 
 	// Track cost
 	costTracker.track(response.usage.total_tokens, 'rerank');

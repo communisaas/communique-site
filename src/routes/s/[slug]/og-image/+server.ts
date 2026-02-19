@@ -1,6 +1,6 @@
 import type { RequestHandler } from './$types';
 import { prisma } from '$lib/core/db';
-import satori from 'satori';
+import satori, { type SatoriOptions } from 'satori';
 import sharp from 'sharp';
 
 export const GET: RequestHandler = async ({ params }) => {
@@ -216,13 +216,13 @@ export const GET: RequestHandler = async ({ params }) => {
 				width: 1200,
 				height: 630,
 				fonts: []
-			} as any // Type assertion needed due to satori's complex font options
+			} satisfies SatoriOptions
 		);
 
 		// Convert SVG to PNG using Sharp
 		const png = await sharp(Buffer.from(svg as string)).png().toBuffer();
 
-		return new Response(png as unknown as BodyInit, {
+		return new Response(new Uint8Array(png), {
 			headers: {
 				'Content-Type': 'image/png',
 				'Cache-Control': 'public, max-age=3600' // Cache for 1 hour
