@@ -838,6 +838,20 @@ svelte-check (0 errors), CF build, full test suite, update docs.
 | `tests/unit/witness-roundtrip.test.ts` | 5 |
 | **Total new in Cycle 14** | **36** |
 
+## Cycles 15–19: Complete Production Hardening (Plan)
+
+Five sequential cycles to close every remaining gap between "functionally complete" and "production-ready":
+
+| Cycle | Focus | Key Targets |
+|-------|-------|-------------|
+| 15 | Type Safety Purge | ~57 `as any` + ~42 `as unknown as` casts, schema-driven type gaps, Svelte 5 component types |
+| 16 | Workers Infrastructure Reality | 5 in-memory caches/rate limiters → Postgres/KV, module-level env reads, dead setInterval |
+| 17 | Stub Elimination + Error Discipline | CWC placeholder, zero blockchain addresses, fake reps, swallowed catches, deferred wiring |
+| 18 | Dead Code Purge + Logging Discipline | 15+ deprecated functions, ~300 console.log, intelligence provider stubs, dead file cleanup |
+| 19 | Warning Annihilation + Test Coverage | 88 svelte warnings → 0, submission handler + delivery worker + mdoc tests |
+
+**Full plan:** `.claude/plans/starry-dreaming-micali.md`
+
 ---
 
 *Communique PBC | Implementation Plan | 2026-02-18*
