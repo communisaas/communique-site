@@ -60,10 +60,6 @@ export const load: LayoutServerLoad = async ({ params, locals: _locals, request 
 		research_log: template.research_log || [],
 		preview: template.preview,
 		is_public: template.is_public,
-		applicable_countries: (template as any).applicable_countries ?? [],
-		jurisdiction_level: (template as any).jurisdiction_level ?? null,
-		specific_locations: (template as any).specific_locations ?? [],
-
 		// === AGGREGATE METRICS (consistent with schema) ===
 		verified_sends: template.verified_sends,
 		unique_districts: template.unique_districts,

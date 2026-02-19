@@ -77,10 +77,10 @@ export interface Template {
 	// Frontend: send_count (mapped from verified_sends for compatibility)
 	send_count: number; // Total verified sends (aggregate pool metric)
 
-	// Geographic scope (from Prisma Template model)
-	applicable_countries: string[]; // String[] with default []
+	// Geographic scope (populated by scope-filtering, not in Prisma Template model)
+	applicable_countries?: string[];
 	jurisdiction_level?: string | null;
-	specific_locations: string[]; // String[] with default []
+	specific_locations?: string[];
 
 	// Optional place scoping linked via separate table
 	scope?: TemplateScope;

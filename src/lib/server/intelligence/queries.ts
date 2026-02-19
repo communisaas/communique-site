@@ -3,8 +3,16 @@
  */
 
 import { db } from '$lib/core/db';
-import type { Prisma } from '@prisma/client';
+import type { Intelligence, Prisma } from '@prisma/client';
 import type { IntelligenceQueryOptions, IntelligenceItem } from './types';
+
+function toIntelligenceItem(row: Intelligence): IntelligenceItem {
+	return {
+		...row,
+		category: row.category as IntelligenceItem['category'],
+		embedding: undefined
+	};
+}
 
 export async function queryIntelligence(
 	options: IntelligenceQueryOptions
@@ -40,7 +48,7 @@ export async function queryIntelligence(
 		take: options.limit || 20
 	});
 
-	return results as unknown as IntelligenceItem[];
+	return results.map(toIntelligenceItem);
 }
 
 export async function findIntelligenceByTopics(

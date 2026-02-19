@@ -119,11 +119,6 @@ export const load: PageServerLoad = async () => {
 					return extractRecipientEmails(recipientConfig);
 				})(),
 
-				// Geographic targeting
-				applicable_countries: (template as any).applicable_countries ?? [],
-				jurisdiction_level: (template as any).jurisdiction_level ?? null,
-				specific_locations: (template as any).specific_locations ?? [],
-
 				// Metadata
 				is_public: template.is_public,
 

@@ -49,7 +49,7 @@
 
 	// Enhanced description with social proof for Open Graph
 	const socialProofDescription = $derived((() => {
-		const sent = (template as any).verified_sends || template.metrics?.sent || 0;
+		const sent = template.metrics?.sent || 0;
 		if (sent > 1000) {
 			return `Join ${sent.toLocaleString()}+ constituents who took action. ${template.description}`;
 		} else if (sent > 100) {
@@ -147,7 +147,7 @@
 	}
 
 	function handlePostAuthFlow() {
-		const trustTier = (data.user as any)?.trust_tier ?? 0;
+		const trustTier = data.user?.trust_tier ?? 0;
 		const flow = analyzeEmailFlow(template, data.user, { trustTier });
 
 		if (flow.nextAction === 'address') {
@@ -200,7 +200,7 @@
 			// Clear any stored intent even on error
 			sessionStorage.removeItem(`template_${template.id}_intent`);
 
-			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: (data.user as any)?.trust_tier ?? 0 });
+			const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: data.user?.trust_tier ?? 0 });
 			if (flow.mailtoUrl) {
 				// Open TemplateModal using modalActions
 				modalActions.openModal('template-modal', 'template_modal', { template, user: data.user });
@@ -264,7 +264,7 @@
 					<div class="flex items-center gap-1.5">
 						<Users class="h-4 w-4" />
 						<span
-							>{((template as any).verified_sends || template.metrics?.sent || 0).toLocaleString()} sent this</span
+							>{(template.metrics?.sent || 0).toLocaleString()} sent this</span
 						>
 					</div>
 					<div class="flex items-center gap-1.5">
@@ -281,9 +281,7 @@
 				<div class="flex items-center gap-2">
 					<span class="text-sm text-slate-600">
 						Hi {data.user.name?.split(' ')[0]} - join the {(
-							(template as any).verified_sends ||
-							template.metrics?.sent ||
-							0
+							template.metrics?.sent || 0
 						).toLocaleString()} who sent this
 					</span>
 					{#if data.user.is_verified}
@@ -320,10 +318,10 @@
 	</div>
 
 	<!-- Social Proof Banner (show if > 10 actions) -->
-	{#if ((template as any).verified_sends || template.metrics?.sent || 0) > 10}
+	{#if (template.metrics?.sent || 0) > 10}
 		<div class="mb-6">
 			<SocialProofBanner
-				totalActions={(template as any).verified_sends || template.metrics?.sent || 0}
+				totalActions={template.metrics?.sent || 0}
 				{topDistricts}
 			/>
 		</div>
@@ -389,7 +387,7 @@
 			}}
 			onSendMessage={async () => {
 				if (channel?.access_tier === 1) {
-					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: (data.user as any)?.trust_tier ?? 0 });
+					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: data.user?.trust_tier ?? 0 });
 					if (flow.nextAction === 'auth') {
 						modalActions.openModal('onboarding-modal', 'onboarding', { template, source });
 					} else if (flow.nextAction === 'address') {
@@ -413,7 +411,7 @@
 
 				// For now, treat US or certified templates as existing path
 				if (data.user && (channel?.country_code === 'US' || template.deliveryMethod === 'cwc')) {
-					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: (data.user as any)?.trust_tier ?? 0 });
+					const flow = analyzeEmailFlow(template, toEmailServiceUser(data.user), { trustTier: data.user?.trust_tier ?? 0 });
 
 					// Check if we have a cached address from guestState (Cypherpunk flow)
 					if (guestState.state?.address && flow.nextAction === 'address') {
