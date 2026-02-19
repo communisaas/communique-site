@@ -770,6 +770,43 @@ Final verification, documentation updates, and build checks.
 | `tests/unit/identity/oid4vp-verify.test.ts` | 9 |
 | **Total new in Cycle 13** | **47** |
 
+## Cycle 14: Security-Critical Test Coverage + Production Hygiene
+
+**Focus:** Add test coverage to untested security-critical path; remove debug artifacts and hackathon shortcuts.
+
+**Motivation:** After 13 cycles, the core pipeline is implemented — but the nullifier enforcement (Sybil prevention), pseudonymous ID generation, authority level derivation, user secret derivation, and witness encryption/decryption round-trip have zero test coverage. Debug `console.log` floods with emoji markers, 50k-char hackathon limits, and silent `catch {}` blocks remain in production code.
+
+### Wave 14A: Core Security Unit Tests
+
+Test the deterministic security logic that gates Sybil prevention and trust computation.
+
+**Files to create:**
+- `tests/unit/authority-level.test.ts` — all 5 authority levels, all trust tiers, tier→authority mapping
+- `tests/unit/pseudonymous-id.test.ts` — HMAC correctness, salt validation, determinism (mock `$env/dynamic/private`)
+- `tests/unit/user-secret-derivation.test.ts` — Poseidon2 determinism, hex normalization, entropy generation
+
+### Wave 14B: Witness Encryption Round-Trip Test
+
+**File to create:** `tests/unit/witness-roundtrip.test.ts`
+
+Test that client-encrypted witness data can be decrypted by the server. Uses `@noble` libraries for both sides (same wire format as libsodium). Tests: round-trip, wrong-key rejection, tamper detection, nonce uniqueness.
+
+### Wave 14C: Production Hygiene
+
+| Fix | Files |
+|-----|-------|
+| Remove 6 debug console.log with emoji markers | `CodeMirrorEditor.svelte` |
+| Remove 2 positioning debug logs | `AnimatedPopover.svelte` |
+| Fix 3 empty `catch (error) {}` blocks | `autocomplete-cache.ts` |
+| Fix `@ts-ignore` → `@ts-expect-error` | `buffer-shim.ts` |
+| Tighten title limit 500→200, body 50000→10000 | `+server.ts` (templates) |
+| Sanitize slug input, remove HACKATHON comments | `+server.ts` (templates) |
+| Guard demo pages with dev-only check | 3 demo `+page.server.ts` files |
+
+### Wave 14D: Review + Documentation + Build Verification
+
+svelte-check (0 errors), CF build, full test suite, update docs.
+
 ---
 
 *Communique PBC | Implementation Plan | 2026-02-18*
